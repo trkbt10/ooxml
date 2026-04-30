@@ -37,6 +37,12 @@ pub(all) struct Relationship {
   target_mode : TargetMode
 } derive(Eq, @debug.Debug)
 
+pub struct RelationshipId {
+  value : String
+} derive(Eq)
+pub fn RelationshipId::new(String) -> Self
+pub fn RelationshipId::to_string(Self) -> String
+
 pub(all) struct Relationships {
   relationships : Array[Relationship]
 } derive(Eq, @debug.Debug)

@@ -31,6 +31,22 @@ pub fn TargetMode::to_string(self : TargetMode) -> String {
 }
 
 ///|
+/// §6.5 ST_RelationshipId — xsd:string identifier for OPC relationships.
+pub struct RelationshipId {
+  value : String
+} derive(Eq)
+
+///|
+pub fn RelationshipId::new(s : String) -> RelationshipId {
+  RelationshipId::{ value: s }
+}
+
+///|
+pub fn RelationshipId::to_string(self : RelationshipId) -> String {
+  self.value
+}
+
+///|
 /// Relationship top-level element and CT_Relationship complex type.
 pub(all) struct Relationship {
   id : String
