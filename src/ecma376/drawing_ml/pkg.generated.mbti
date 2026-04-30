@@ -171,6 +171,20 @@ pub suberror SchemaViolation {
 } derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct AG_Blob {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Blob::attribute_names(Self) -> Array[String]
+pub fn AG_Blob::has_attribute(Self, String) -> Bool
+pub fn AG_Blob::new(@xml.Element) -> Self
+
+pub(all) struct AG_Locking {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Locking::attribute_names(Self) -> Array[String]
+pub fn AG_Locking::has_attribute(Self, String) -> Bool
+pub fn AG_Locking::new(@xml.Element) -> Self
+
 pub(all) struct CT_AdjPoint2D {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1218,6 +1232,188 @@ pub(all) struct CT_XYAdjustHandle {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_XYAdjustHandle::new(@xml.Element) -> Self
+
+pub(all) struct EG_ColorChoice {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ColorChoice::child_names(Self) -> Array[String]
+pub fn EG_ColorChoice::has_child(Self, String) -> Bool
+pub fn EG_ColorChoice::new(@xml.Element) -> Self
+
+pub(all) struct EG_ColorTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ColorTransform::child_names(Self) -> Array[String]
+pub fn EG_ColorTransform::has_child(Self, String) -> Bool
+pub fn EG_ColorTransform::new(@xml.Element) -> Self
+
+pub(all) struct EG_Effect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_Effect::child_names(Self) -> Array[String]
+pub fn EG_Effect::has_child(Self, String) -> Bool
+pub fn EG_Effect::new(@xml.Element) -> Self
+
+pub(all) struct EG_EffectProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_EffectProperties::child_names(Self) -> Array[String]
+pub fn EG_EffectProperties::has_child(Self, String) -> Bool
+pub fn EG_EffectProperties::new(@xml.Element) -> Self
+
+pub(all) struct EG_FillModeProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_FillModeProperties::child_names(Self) -> Array[String]
+pub fn EG_FillModeProperties::has_child(Self, String) -> Bool
+pub fn EG_FillModeProperties::new(@xml.Element) -> Self
+
+pub(all) struct EG_FillProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_FillProperties::child_names(Self) -> Array[String]
+pub fn EG_FillProperties::has_child(Self, String) -> Bool
+pub fn EG_FillProperties::new(@xml.Element) -> Self
+
+pub(all) struct EG_Geometry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_Geometry::child_names(Self) -> Array[String]
+pub fn EG_Geometry::has_child(Self, String) -> Bool
+pub fn EG_Geometry::new(@xml.Element) -> Self
+
+pub(all) struct EG_LineDashProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_LineDashProperties::child_names(Self) -> Array[String]
+pub fn EG_LineDashProperties::has_child(Self, String) -> Bool
+pub fn EG_LineDashProperties::new(@xml.Element) -> Self
+
+pub(all) struct EG_LineFillProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_LineFillProperties::child_names(Self) -> Array[String]
+pub fn EG_LineFillProperties::has_child(Self, String) -> Bool
+pub fn EG_LineFillProperties::new(@xml.Element) -> Self
+
+pub(all) struct EG_LineJoinProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_LineJoinProperties::child_names(Self) -> Array[String]
+pub fn EG_LineJoinProperties::has_child(Self, String) -> Bool
+pub fn EG_LineJoinProperties::new(@xml.Element) -> Self
+
+pub(all) struct EG_Media {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_Media::child_names(Self) -> Array[String]
+pub fn EG_Media::has_child(Self, String) -> Bool
+pub fn EG_Media::new(@xml.Element) -> Self
+
+pub(all) struct EG_OfficeArtExtensionList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_OfficeArtExtensionList::child_names(Self) -> Array[String]
+pub fn EG_OfficeArtExtensionList::has_child(Self, String) -> Bool
+pub fn EG_OfficeArtExtensionList::new(@xml.Element) -> Self
+
+pub(all) struct EG_ShadeProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ShadeProperties::child_names(Self) -> Array[String]
+pub fn EG_ShadeProperties::has_child(Self, String) -> Bool
+pub fn EG_ShadeProperties::new(@xml.Element) -> Self
+
+pub(all) struct EG_Text3D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_Text3D::child_names(Self) -> Array[String]
+pub fn EG_Text3D::has_child(Self, String) -> Bool
+pub fn EG_Text3D::new(@xml.Element) -> Self
+
+pub(all) struct EG_TextAutofit {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TextAutofit::child_names(Self) -> Array[String]
+pub fn EG_TextAutofit::has_child(Self, String) -> Bool
+pub fn EG_TextAutofit::new(@xml.Element) -> Self
+
+pub(all) struct EG_TextBullet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TextBullet::child_names(Self) -> Array[String]
+pub fn EG_TextBullet::has_child(Self, String) -> Bool
+pub fn EG_TextBullet::new(@xml.Element) -> Self
+
+pub(all) struct EG_TextBulletColor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TextBulletColor::child_names(Self) -> Array[String]
+pub fn EG_TextBulletColor::has_child(Self, String) -> Bool
+pub fn EG_TextBulletColor::new(@xml.Element) -> Self
+
+pub(all) struct EG_TextBulletSize {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TextBulletSize::child_names(Self) -> Array[String]
+pub fn EG_TextBulletSize::has_child(Self, String) -> Bool
+pub fn EG_TextBulletSize::new(@xml.Element) -> Self
+
+pub(all) struct EG_TextBulletTypeface {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TextBulletTypeface::child_names(Self) -> Array[String]
+pub fn EG_TextBulletTypeface::has_child(Self, String) -> Bool
+pub fn EG_TextBulletTypeface::new(@xml.Element) -> Self
+
+pub(all) struct EG_TextGeometry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TextGeometry::child_names(Self) -> Array[String]
+pub fn EG_TextGeometry::has_child(Self, String) -> Bool
+pub fn EG_TextGeometry::new(@xml.Element) -> Self
+
+pub(all) struct EG_TextRun {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TextRun::child_names(Self) -> Array[String]
+pub fn EG_TextRun::has_child(Self, String) -> Bool
+pub fn EG_TextRun::new(@xml.Element) -> Self
+
+pub(all) struct EG_TextUnderlineFill {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TextUnderlineFill::child_names(Self) -> Array[String]
+pub fn EG_TextUnderlineFill::has_child(Self, String) -> Bool
+pub fn EG_TextUnderlineFill::new(@xml.Element) -> Self
+
+pub(all) struct EG_TextUnderlineLine {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TextUnderlineLine::child_names(Self) -> Array[String]
+pub fn EG_TextUnderlineLine::has_child(Self, String) -> Bool
+pub fn EG_TextUnderlineLine::new(@xml.Element) -> Self
+
+pub(all) struct EG_ThemeableEffectStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ThemeableEffectStyle::child_names(Self) -> Array[String]
+pub fn EG_ThemeableEffectStyle::has_child(Self, String) -> Bool
+pub fn EG_ThemeableEffectStyle::new(@xml.Element) -> Self
+
+pub(all) struct EG_ThemeableFillStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ThemeableFillStyle::child_names(Self) -> Array[String]
+pub fn EG_ThemeableFillStyle::has_child(Self, String) -> Bool
+pub fn EG_ThemeableFillStyle::new(@xml.Element) -> Self
+
+pub(all) struct EG_ThemeableFontStyles {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ThemeableFontStyles::child_names(Self) -> Array[String]
+pub fn EG_ThemeableFontStyles::has_child(Self, String) -> Bool
+pub fn EG_ThemeableFontStyles::new(@xml.Element) -> Self
 
 pub struct ST_Angle {
   value : String
