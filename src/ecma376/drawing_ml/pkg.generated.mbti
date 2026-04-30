@@ -11,25 +11,57 @@ pub fn package_name() -> String
 
 pub fn read_blur_effect(Bytes) -> CT_BlurEffect raise
 
+pub fn read_color_mapping(Bytes) -> CT_ColorMapping raise
+
+pub fn read_color_scheme(Bytes) -> CT_ColorScheme raise
+
 pub fn read_custom_geometry2d(Bytes) -> CT_CustomGeometry2D raise
 
 pub fn read_effect_list(Bytes) -> CT_EffectList raise
 
+pub fn read_hsl_color(Bytes) -> CT_HslColor raise
+
 pub fn read_outer_shadow_effect(Bytes) -> CT_OuterShadowEffect raise
 
+pub fn read_preset_color(Bytes) -> CT_PresetColor raise
+
 pub fn read_preset_geometry2d(Bytes) -> CT_PresetGeometry2D raise
+
+pub fn read_s_rgb_color(Bytes) -> CT_SRgbColor raise
+
+pub fn read_sc_rgb_color(Bytes) -> CT_ScRgbColor raise
+
+pub fn read_scheme_color(Bytes) -> CT_SchemeColor raise
+
+pub fn read_system_color(Bytes) -> CT_SystemColor raise
 
 pub fn read_transform2d(Bytes) -> CT_Transform2D raise
 
 pub fn write_blur_effect(CT_BlurEffect) -> Bytes
 
+pub fn write_color_mapping(CT_ColorMapping) -> Bytes
+
+pub fn write_color_scheme(CT_ColorScheme) -> Bytes
+
 pub fn write_custom_geometry2d(CT_CustomGeometry2D) -> Bytes
 
 pub fn write_effect_list(CT_EffectList) -> Bytes
 
+pub fn write_hsl_color(CT_HslColor) -> Bytes
+
 pub fn write_outer_shadow_effect(CT_OuterShadowEffect) -> Bytes
 
+pub fn write_preset_color(CT_PresetColor) -> Bytes
+
 pub fn write_preset_geometry2d(CT_PresetGeometry2D) -> Bytes
+
+pub fn write_s_rgb_color(CT_SRgbColor) -> Bytes
+
+pub fn write_sc_rgb_color(CT_ScRgbColor) -> Bytes
+
+pub fn write_scheme_color(CT_SchemeColor) -> Bytes
+
+pub fn write_system_color(CT_SystemColor) -> Bytes
 
 pub fn write_transform2d(CT_Transform2D) -> Bytes
 
@@ -109,6 +141,51 @@ pub(all) struct CT_BlurEffect {
 } derive(Eq, @debug.Debug)
 pub fn CT_BlurEffect::new(@xml.Element) -> Self
 
+pub(all) struct CT_Color {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Color::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorChangeEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorChangeEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorMRU {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorMRU::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorMapping {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorMapping::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorMappingOverride {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorMappingOverride::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorReplaceEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorReplaceEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorScheme {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorScheme::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorSchemeAndMapping {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorSchemeAndMapping::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorSchemeList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorSchemeList::new(@xml.Element) -> Self
+
 pub(all) struct CT_ComplementTransform {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -128,6 +205,16 @@ pub(all) struct CT_ConnectionSiteList {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_ConnectionSiteList::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomColor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomColor::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomColorList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomColorList::new(@xml.Element) -> Self
 
 pub(all) struct CT_CustomGeometry2D {
   element : @xml.Element
@@ -218,6 +305,11 @@ pub(all) struct CT_HSLEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_HSLEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_HslColor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HslColor::new(@xml.Element) -> Self
 
 pub(all) struct CT_InnerShadowEffect {
   element : @xml.Element
@@ -324,6 +416,11 @@ pub(all) struct CT_PositiveSize2D {
 } derive(Eq, @debug.Debug)
 pub fn CT_PositiveSize2D::new(@xml.Element) -> Self
 
+pub(all) struct CT_PresetColor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PresetColor::new(@xml.Element) -> Self
+
 pub(all) struct CT_PresetGeometry2D {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -359,20 +456,50 @@ pub(all) struct CT_RelativeRect {
 } derive(Eq, @debug.Debug)
 pub fn CT_RelativeRect::new(@xml.Element) -> Self
 
+pub(all) struct CT_SRgbColor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SRgbColor::new(@xml.Element) -> Self
+
+pub(all) struct CT_ScRgbColor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ScRgbColor::new(@xml.Element) -> Self
+
 pub(all) struct CT_Scale2D {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Scale2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_SchemeColor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SchemeColor::new(@xml.Element) -> Self
 
 pub(all) struct CT_SoftEdgesEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SoftEdgesEffect::new(@xml.Element) -> Self
 
+pub(all) struct CT_SolidColorFillProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SolidColorFillProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_SphereCoords {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SphereCoords::new(@xml.Element) -> Self
+
+pub(all) struct CT_SystemColor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SystemColor::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextBulletColorFollowText {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextBulletColorFollowText::new(@xml.Element) -> Self
 
 pub(all) struct CT_TintEffect {
   element : @xml.Element
@@ -405,6 +532,13 @@ pub struct ST_Angle {
 pub fn ST_Angle::new(String) -> Self raise SchemaViolation
 pub fn ST_Angle::parse(String) -> Self raise SchemaViolation
 pub fn ST_Angle::to_string(Self) -> String
+
+pub struct ST_ColorSchemeIndex {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ColorSchemeIndex::new(String) -> Self raise SchemaViolation
+pub fn ST_ColorSchemeIndex::parse(String) -> Self raise SchemaViolation
+pub fn ST_ColorSchemeIndex::to_string(Self) -> String
 
 pub struct ST_Coordinate {
   value : String
@@ -448,6 +582,13 @@ pub fn ST_FixedPercentage::new(String) -> Self raise SchemaViolation
 pub fn ST_FixedPercentage::parse(String) -> Self raise SchemaViolation
 pub fn ST_FixedPercentage::to_string(Self) -> String
 
+pub struct ST_FontCollectionIndex {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FontCollectionIndex::new(String) -> Self raise SchemaViolation
+pub fn ST_FontCollectionIndex::parse(String) -> Self raise SchemaViolation
+pub fn ST_FontCollectionIndex::to_string(Self) -> String
+
 pub struct ST_Percentage {
   value : String
 } derive(Eq, @debug.Debug)
@@ -489,6 +630,27 @@ pub struct ST_PositivePercentage {
 pub fn ST_PositivePercentage::new(String) -> Self raise SchemaViolation
 pub fn ST_PositivePercentage::parse(String) -> Self raise SchemaViolation
 pub fn ST_PositivePercentage::to_string(Self) -> String
+
+pub struct ST_PresetColorVal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PresetColorVal::new(String) -> Self raise SchemaViolation
+pub fn ST_PresetColorVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_PresetColorVal::to_string(Self) -> String
+
+pub struct ST_SchemeColorVal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SchemeColorVal::new(String) -> Self raise SchemaViolation
+pub fn ST_SchemeColorVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_SchemeColorVal::to_string(Self) -> String
+
+pub struct ST_SystemColorVal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SystemColorVal::new(String) -> Self raise SchemaViolation
+pub fn ST_SystemColorVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_SystemColorVal::to_string(Self) -> String
 
 // Type aliases
 

@@ -49,40 +49,62 @@ fn validate_main_attributes(
   for attribute in element.attributes {
     let name = attribute.name.local_name
     let value = attribute.value
-    match name {
-      "x"
-      | "y"
-      | "cx"
-      | "cy"
-      | "chOff"
-      | "chExt"
-      | "w"
-      | "h"
-      | "l"
-      | "t"
-      | "r"
-      | "b"
-      | "rad"
-      | "dist"
-      | "blurRad"
-      | "sx"
-      | "sy"
-      | "kx"
-      | "ky"
-      | "amt"
-      | "pos"
-      | "algn"
-      | "rot"
-      | "lat"
-      | "lon"
-      | "rev"
-      | "ang"
-      | "idx"
-      | "fmla"
-      | "prst"
-      | "path"
-      | "fill"
-      | "name" => validate_non_empty_attr(name, value)
+    match (element.name.local_name, name) {
+      ("sysClr", "val") => ST_SystemColorVal::parse(value) |> ignore
+      ("schemeClr", "val") => ST_SchemeColorVal::parse(value) |> ignore
+      ("prstClr", "val") => ST_PresetColorVal::parse(value) |> ignore
+      ("clrMap", "bg1")
+      | ("clrMap", "tx1")
+      | ("clrMap", "bg2")
+      | ("clrMap", "tx2")
+      | ("clrMap", "accent1")
+      | ("clrMap", "accent2")
+      | ("clrMap", "accent3")
+      | ("clrMap", "accent4")
+      | ("clrMap", "accent5")
+      | ("clrMap", "accent6")
+      | ("clrMap", "hlink")
+      | ("clrMap", "folHlink") => ST_ColorSchemeIndex::parse(value) |> ignore
+      (_, "x")
+      | (_, "y")
+      | (_, "cx")
+      | (_, "cy")
+      | (_, "chOff")
+      | (_, "chExt")
+      | (_, "w")
+      | (_, "h")
+      | (_, "l")
+      | (_, "t")
+      | (_, "r")
+      | (_, "g")
+      | (_, "b")
+      | (_, "rad")
+      | (_, "dist")
+      | (_, "blurRad")
+      | (_, "sx")
+      | (_, "sy")
+      | (_, "kx")
+      | (_, "ky")
+      | (_, "amt")
+      | (_, "pos")
+      | (_, "algn")
+      | (_, "rot")
+      | (_, "lat")
+      | (_, "lon")
+      | (_, "rev")
+      | (_, "ang")
+      | (_, "idx")
+      | (_, "fmla")
+      | (_, "prst")
+      | (_, "path")
+      | (_, "fill")
+      | (_, "val")
+      | (_, "lastClr")
+      | (_, "hue")
+      | (_, "sat")
+      | (_, "lum")
+      | (_, "useA")
+      | (_, "name") => validate_non_empty_attr(name, value)
       _ => ()
     }
   }
