@@ -1,8 +1,38 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/wordprocessing_ml/builder"
 
+import {
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
+}
+
 // Values
 pub fn package_name() -> String
+
+pub fn write_comments(@domain.CT_Comments) -> Bytes
+
+pub fn write_document(@domain.CT_Document) -> Bytes
+
+pub fn write_endnotes(@domain.CT_Endnotes) -> Bytes
+
+pub fn write_fonts(@domain.CT_FontsList) -> Bytes
+
+pub fn write_footnotes(@domain.CT_Footnotes) -> Bytes
+
+pub fn write_ftr(@domain.CT_HdrFtr) -> Bytes
+
+pub fn write_glossary_document(@domain.CT_GlossaryDocument) -> Bytes
+
+pub fn write_hdr(@domain.CT_HdrFtr) -> Bytes
+
+pub fn write_numbering(@domain.CT_Numbering) -> Bytes
+
+pub fn write_recipients(@domain.CT_Recipients) -> Bytes
+
+pub fn write_settings(@domain.CT_Settings) -> Bytes
+
+pub fn write_styles(@domain.CT_Styles) -> Bytes
+
+pub fn write_web_settings(@domain.CT_WebSettings) -> Bytes
 
 // Errors
 

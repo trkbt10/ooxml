@@ -1,3 +1,13 @@
 // trkbt10/ooxml/ecma376/wordprocessing_ml/reader
 //
 // WordprocessingML XML → domain reader.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @domain,
+}
+
+import {
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/builder" @builder,
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"

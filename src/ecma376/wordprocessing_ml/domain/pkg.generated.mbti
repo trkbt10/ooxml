@@ -7,7 +7,35 @@ import {
 }
 
 // Values
+pub fn comments(@xml.Element) -> CT_Comments
+
+pub fn document(@xml.Element) -> CT_Document
+
+pub fn endnotes(@xml.Element) -> CT_Endnotes
+
+pub fn fonts(@xml.Element) -> CT_FontsList
+
+pub fn footnotes(@xml.Element) -> CT_Footnotes
+
+pub fn ftr(@xml.Element) -> CT_HdrFtr
+
+pub fn glossary_document(@xml.Element) -> CT_GlossaryDocument
+
+pub fn hdr(@xml.Element) -> CT_HdrFtr
+
+pub fn numbering(@xml.Element) -> CT_Numbering
+
 pub fn package_name() -> String
+
+pub fn[T] raise_schema_violation(String, String, String) -> T raise SchemaViolation
+
+pub fn recipients(@xml.Element) -> CT_Recipients
+
+pub fn settings(@xml.Element) -> CT_Settings
+
+pub fn styles(@xml.Element) -> CT_Styles
+
+pub fn web_settings(@xml.Element) -> CT_WebSettings
 
 // Errors
 pub suberror SchemaViolation {

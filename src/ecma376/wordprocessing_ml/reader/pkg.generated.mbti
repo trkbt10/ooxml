@@ -1,8 +1,38 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/wordprocessing_ml/reader"
 
+import {
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
+}
+
 // Values
 pub fn package_name() -> String
+
+pub fn read_comments(Bytes) -> @domain.CT_Comments raise
+
+pub fn read_document(Bytes) -> @domain.CT_Document raise
+
+pub fn read_endnotes(Bytes) -> @domain.CT_Endnotes raise
+
+pub fn read_fonts(Bytes) -> @domain.CT_FontsList raise
+
+pub fn read_footnotes(Bytes) -> @domain.CT_Footnotes raise
+
+pub fn read_ftr(Bytes) -> @domain.CT_HdrFtr raise
+
+pub fn read_glossary_document(Bytes) -> @domain.CT_GlossaryDocument raise
+
+pub fn read_hdr(Bytes) -> @domain.CT_HdrFtr raise
+
+pub fn read_numbering(Bytes) -> @domain.CT_Numbering raise
+
+pub fn read_recipients(Bytes) -> @domain.CT_Recipients raise
+
+pub fn read_settings(Bytes) -> @domain.CT_Settings raise
+
+pub fn read_styles(Bytes) -> @domain.CT_Styles raise
+
+pub fn read_web_settings(Bytes) -> @domain.CT_WebSettings raise
 
 // Errors
 

@@ -1,3 +1,8 @@
 // trkbt10/ooxml/ecma376/wordprocessing_ml/builder
 //
 // WordprocessingML domain/context → XML writer.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @domain,
+}
