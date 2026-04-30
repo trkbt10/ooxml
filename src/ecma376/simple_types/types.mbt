@@ -1,32 +1,15 @@
 ///|
 /// XSD simple type ST_Lang.
-/// Schema shared-commonSimpleTypes.xsd simple type ST_Lang, an xsd:string
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
-/// language tag value in the sharedTypes namespace.
+/// Schema shared-commonSimpleTypes.xsd simple type ST_Lang (§22.9).
+/// ST_Lang is an xsd:string value for language-tag lexical content.
+/// Its constructor enforces the lexical constraint and reports SchemaViolation.
 pub struct ST_Lang {
   value : String
 } derive(Eq, Debug)
 
 ///|
 /// Construct ST_Lang and carry SchemaViolation context for this simple type.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
+/// Schema shared-commonSimpleTypes.xsd simple type ST_Lang (§22.9).
 pub fn ST_Lang::new(s : String) -> ST_Lang raise SchemaViolation {
   validate_xsd_string("ST_Lang", s)
   { value: s }
@@ -34,31 +17,12 @@ pub fn ST_Lang::new(s : String) -> ST_Lang raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_Lang simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_Lang::to_string(self : ST_Lang) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_HexColorRGB, exactly
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// three bytes represented as six hex digits.
 pub struct ST_HexColorRGB {
   value : String
@@ -66,15 +30,6 @@ pub struct ST_HexColorRGB {
 
 ///|
 /// Construct ST_HexColorRGB and enforce its hexBinary length constraint.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_HexColorRGB::new(s : String) -> ST_HexColorRGB raise SchemaViolation {
   if !fixed_hex(s, 6) {
     violation("ST_HexColorRGB", s)
@@ -84,31 +39,12 @@ pub fn ST_HexColorRGB::new(s : String) -> ST_HexColorRGB raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_HexColorRGB simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_HexColorRGB::to_string(self : ST_HexColorRGB) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_Panose, exactly ten bytes
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// represented as twenty hex digits.
 pub struct ST_Panose {
   value : String
@@ -116,15 +52,6 @@ pub struct ST_Panose {
 
 ///|
 /// Construct ST_Panose and enforce its hexBinary length constraint.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_Panose::new(s : String) -> ST_Panose raise SchemaViolation {
   if !fixed_hex(s, 20) {
     violation("ST_Panose", s)
@@ -134,31 +61,12 @@ pub fn ST_Panose::new(s : String) -> ST_Panose raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_Panose simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_Panose::to_string(self : ST_Panose) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_CalendarType,
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// calendar-system enumeration.
 pub(all) enum ST_CalendarType {
   Gregorian
@@ -179,15 +87,6 @@ pub(all) enum ST_CalendarType {
 
 ///|
 /// Construct ST_CalendarType from its schema enumeration value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_CalendarType::new(
   s : String,
 ) -> ST_CalendarType raise SchemaViolation {
@@ -212,15 +111,6 @@ pub fn ST_CalendarType::new(
 
 ///|
 /// Return the lexical ST_CalendarType simple-type enumeration member.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_CalendarType::to_string(self : ST_CalendarType) -> String {
   match self {
     Gregorian => "gregorian"
@@ -242,33 +132,14 @@ pub fn ST_CalendarType::to_string(self : ST_CalendarType) -> String {
 
 ///|
 /// XSD simple type ST_Guid.
-/// Schema shared-commonSimpleTypes.xsd simple type ST_Guid, a token in
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
-/// brace-delimited hexadecimal UUID form.
+/// Schema shared-commonSimpleTypes.xsd simple type ST_Guid (§22.9).
+/// Value type ST_Guid enforces a brace-delimited hexadecimal UUID token.
 pub struct ST_Guid {
   value : String
 } derive(Eq, Debug)
 
 ///|
 /// Construct ST_Guid and enforce its lexical pattern.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_Guid::new(s : String) -> ST_Guid raise SchemaViolation {
   if !is_guid(s) {
     violation("ST_Guid", s)
@@ -278,31 +149,12 @@ pub fn ST_Guid::new(s : String) -> ST_Guid raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_Guid simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_Guid::to_string(self : ST_Guid) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_OnOff, a boolean-like
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// shared value.
 pub struct ST_OnOff {
   value : Bool
@@ -310,15 +162,6 @@ pub struct ST_OnOff {
 
 ///|
 /// Construct ST_OnOff from true/false, 1/0, or on/off lexical values.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_OnOff::new(s : String) -> ST_OnOff raise SchemaViolation {
   match s {
     "true" | "1" | "on" => { value: true }
@@ -329,30 +172,12 @@ pub fn ST_OnOff::new(s : String) -> ST_OnOff raise SchemaViolation {
 
 ///|
 /// Return the boolean value carried by ST_OnOff.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_OnOff::to_bool(self : ST_OnOff) -> Bool {
   self.value
 }
 
 ///|
 /// Return the canonical lexical ST_OnOff simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_OnOff::to_string(self : ST_OnOff) -> String {
   if self.value {
     "true"
@@ -363,16 +188,6 @@ pub fn ST_OnOff::to_string(self : ST_OnOff) -> String {
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_String, an
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// unconstrained xsd:string shared value.
 pub struct ST_String {
   value : String
@@ -380,15 +195,6 @@ pub struct ST_String {
 
 ///|
 /// Construct ST_String and carry SchemaViolation context for this simple type.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_String::new(s : String) -> ST_String raise SchemaViolation {
   validate_xsd_string("ST_String", s)
   { value: s }
@@ -396,31 +202,12 @@ pub fn ST_String::new(s : String) -> ST_String raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_String simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_String::to_string(self : ST_String) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_XmlName, an xsd:NCName
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// value.
 pub struct ST_XmlName {
   value : String
@@ -428,15 +215,6 @@ pub struct ST_XmlName {
 
 ///|
 /// Construct ST_XmlName and enforce its NCName lexical constraint.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_XmlName::new(s : String) -> ST_XmlName raise SchemaViolation {
   if !is_ncname(s) {
     violation("ST_XmlName", s)
@@ -446,31 +224,12 @@ pub fn ST_XmlName::new(s : String) -> ST_XmlName raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_XmlName simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_XmlName::to_string(self : ST_XmlName) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_UnsignedDecimalNumber,
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// an xsd:unsignedLong decimal lexical value.
 pub struct ST_UnsignedDecimalNumber {
   value : String
@@ -478,15 +237,6 @@ pub struct ST_UnsignedDecimalNumber {
 
 ///|
 /// Construct ST_UnsignedDecimalNumber and enforce its unsignedLong range.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_UnsignedDecimalNumber::new(
   s : String,
 ) -> ST_UnsignedDecimalNumber raise SchemaViolation {
@@ -498,15 +248,6 @@ pub fn ST_UnsignedDecimalNumber::new(
 
 ///|
 /// Return the lexical ST_UnsignedDecimalNumber simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_UnsignedDecimalNumber::to_string(
   self : ST_UnsignedDecimalNumber,
 ) -> String {
@@ -515,16 +256,6 @@ pub fn ST_UnsignedDecimalNumber::to_string(
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_TwipsMeasure, either an
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// unsigned decimal number or a positive universal measure.
 pub struct ST_TwipsMeasure {
   value : String
@@ -532,15 +263,6 @@ pub struct ST_TwipsMeasure {
 
 ///|
 /// Construct ST_TwipsMeasure and enforce its union lexical constraint.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_TwipsMeasure::new(
   s : String,
 ) -> ST_TwipsMeasure raise SchemaViolation {
@@ -552,31 +274,12 @@ pub fn ST_TwipsMeasure::new(
 
 ///|
 /// Return the lexical ST_TwipsMeasure simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_TwipsMeasure::to_string(self : ST_TwipsMeasure) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_VerticalAlignRun, run
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// vertical-alignment enumeration.
 pub(all) enum ST_VerticalAlignRun {
   Baseline
@@ -586,15 +289,6 @@ pub(all) enum ST_VerticalAlignRun {
 
 ///|
 /// Construct ST_VerticalAlignRun from its schema enumeration value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_VerticalAlignRun::new(
   s : String,
 ) -> ST_VerticalAlignRun raise SchemaViolation {
@@ -608,15 +302,6 @@ pub fn ST_VerticalAlignRun::new(
 
 ///|
 /// Return the lexical ST_VerticalAlignRun simple-type enumeration member.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_VerticalAlignRun::to_string(self : ST_VerticalAlignRun) -> String {
   match self {
     Baseline => "baseline"
@@ -627,16 +312,6 @@ pub fn ST_VerticalAlignRun::to_string(self : ST_VerticalAlignRun) -> String {
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_Xstring, an
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// unconstrained shared xstring value.
 pub struct ST_Xstring {
   value : String
@@ -644,15 +319,6 @@ pub struct ST_Xstring {
 
 ///|
 /// Construct ST_Xstring and carry SchemaViolation context for this simple type.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_Xstring::new(s : String) -> ST_Xstring raise SchemaViolation {
   validate_xsd_string("ST_Xstring", s)
   { value: s }
@@ -660,33 +326,14 @@ pub fn ST_Xstring::new(s : String) -> ST_Xstring raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_Xstring simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_Xstring::to_string(self : ST_Xstring) -> String {
   self.value
 }
 
 ///|
 /// XSD simple type ST_XAlign.
-/// Schema shared-commonSimpleTypes.xsd simple type ST_XAlign, horizontal
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
-/// alignment enumeration.
+/// Schema shared-commonSimpleTypes.xsd simple type ST_XAlign (§22.9).
+/// Value type ST_XAlign enforces left, center, right, inside, or outside.
 pub(all) enum ST_XAlign {
   Left
   Center
@@ -697,15 +344,6 @@ pub(all) enum ST_XAlign {
 
 ///|
 /// Construct ST_XAlign from its schema enumeration value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_XAlign::new(s : String) -> ST_XAlign raise SchemaViolation {
   match s {
     "left" => Left
@@ -719,15 +357,6 @@ pub fn ST_XAlign::new(s : String) -> ST_XAlign raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_XAlign simple-type enumeration member.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_XAlign::to_string(self : ST_XAlign) -> String {
   match self {
     Left => "left"
@@ -740,16 +369,6 @@ pub fn ST_XAlign::to_string(self : ST_XAlign) -> String {
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_YAlign, vertical
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// alignment enumeration.
 pub(all) enum ST_YAlign {
   Inline
@@ -762,15 +381,6 @@ pub(all) enum ST_YAlign {
 
 ///|
 /// Construct ST_YAlign from its schema enumeration value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_YAlign::new(s : String) -> ST_YAlign raise SchemaViolation {
   match s {
     "inline" => Inline
@@ -785,15 +395,6 @@ pub fn ST_YAlign::new(s : String) -> ST_YAlign raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_YAlign simple-type enumeration member.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_YAlign::to_string(self : ST_YAlign) -> String {
   match self {
     Inline => "inline"
@@ -807,16 +408,6 @@ pub fn ST_YAlign::to_string(self : ST_YAlign) -> String {
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_ConformanceClass,
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// document conformance enumeration.
 pub(all) enum ST_ConformanceClass {
   Strict
@@ -825,15 +416,6 @@ pub(all) enum ST_ConformanceClass {
 
 ///|
 /// Construct ST_ConformanceClass from its schema enumeration value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_ConformanceClass::new(
   s : String,
 ) -> ST_ConformanceClass raise SchemaViolation {
@@ -846,15 +428,6 @@ pub fn ST_ConformanceClass::new(
 
 ///|
 /// Return the lexical ST_ConformanceClass simple-type enumeration member.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_ConformanceClass::to_string(self : ST_ConformanceClass) -> String {
   match self {
     Strict => "strict"
@@ -864,16 +437,6 @@ pub fn ST_ConformanceClass::to_string(self : ST_ConformanceClass) -> String {
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_UniversalMeasure, signed
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// decimal measure with a fixed unit suffix.
 pub struct ST_UniversalMeasure {
   value : String
@@ -881,15 +444,6 @@ pub struct ST_UniversalMeasure {
 
 ///|
 /// Construct ST_UniversalMeasure and enforce its lexical pattern.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_UniversalMeasure::new(
   s : String,
 ) -> ST_UniversalMeasure raise SchemaViolation {
@@ -901,31 +455,12 @@ pub fn ST_UniversalMeasure::new(
 
 ///|
 /// Return the lexical ST_UniversalMeasure simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_UniversalMeasure::to_string(self : ST_UniversalMeasure) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_PositiveUniversalMeasure,
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// non-negative universal measure.
 pub struct ST_PositiveUniversalMeasure {
   value : String
@@ -933,15 +468,6 @@ pub struct ST_PositiveUniversalMeasure {
 
 ///|
 /// Construct ST_PositiveUniversalMeasure and enforce its non-negative range.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_PositiveUniversalMeasure::new(
   s : String,
 ) -> ST_PositiveUniversalMeasure raise SchemaViolation {
@@ -953,15 +479,6 @@ pub fn ST_PositiveUniversalMeasure::new(
 
 ///|
 /// Return the lexical ST_PositiveUniversalMeasure simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_PositiveUniversalMeasure::to_string(
   self : ST_PositiveUniversalMeasure,
 ) -> String {
@@ -970,16 +487,6 @@ pub fn ST_PositiveUniversalMeasure::to_string(
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_Percentage, signed
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// decimal percentage.
 pub struct ST_Percentage {
   value : String
@@ -987,15 +494,6 @@ pub struct ST_Percentage {
 
 ///|
 /// Construct ST_Percentage and enforce its lexical pattern.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_Percentage::new(s : String) -> ST_Percentage raise SchemaViolation {
   if !is_percentage(s, positive=false, fixed=false) {
     violation("ST_Percentage", s)
@@ -1005,31 +503,12 @@ pub fn ST_Percentage::new(s : String) -> ST_Percentage raise SchemaViolation {
 
 ///|
 /// Return the lexical ST_Percentage simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_Percentage::to_string(self : ST_Percentage) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_FixedPercentage, signed
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// percentage in the closed range -100% to 100%.
 pub struct ST_FixedPercentage {
   value : String
@@ -1037,15 +516,6 @@ pub struct ST_FixedPercentage {
 
 ///|
 /// Construct ST_FixedPercentage and enforce its fixed percentage range.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_FixedPercentage::new(
   s : String,
 ) -> ST_FixedPercentage raise SchemaViolation {
@@ -1057,31 +527,12 @@ pub fn ST_FixedPercentage::new(
 
 ///|
 /// Return the lexical ST_FixedPercentage simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_FixedPercentage::to_string(self : ST_FixedPercentage) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_PositivePercentage,
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// non-negative decimal percentage.
 pub struct ST_PositivePercentage {
   value : String
@@ -1089,15 +540,6 @@ pub struct ST_PositivePercentage {
 
 ///|
 /// Construct ST_PositivePercentage and enforce its non-negative range.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_PositivePercentage::new(
   s : String,
 ) -> ST_PositivePercentage raise SchemaViolation {
@@ -1109,31 +551,12 @@ pub fn ST_PositivePercentage::new(
 
 ///|
 /// Return the lexical ST_PositivePercentage simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_PositivePercentage::to_string(self : ST_PositivePercentage) -> String {
   self.value
 }
 
 ///|
 /// Schema shared-commonSimpleTypes.xsd simple type ST_PositiveFixedPercentage,
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: ST_CalendarType, ST_ConformanceClass, ST_FixedPercentage, ST_Guid, ST_HexColorRGB, ST_Lang, ST_OnOff, ST_Panose, ST_Percentage, ST_PositiveFixedPercentage, ST_PositivePercentage, ST_PositiveUniversalMeasure, ST_String, ST_TwipsMeasure, ST_UniversalMeasure, ST_UnsignedDecimalNumber, ST_VerticalAlignRun, ST_XAlign, ST_XmlName, ST_Xstring, ST_YAlign.
 /// non-negative percentage up to 100%.
 pub struct ST_PositiveFixedPercentage {
   value : String
@@ -1141,15 +564,6 @@ pub struct ST_PositiveFixedPercentage {
 
 ///|
 /// Construct ST_PositiveFixedPercentage and enforce its non-negative fixed range.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Constructor raises SchemaViolation for lexical or enumeration constraints.
 pub fn ST_PositiveFixedPercentage::new(
   s : String,
 ) -> ST_PositiveFixedPercentage raise SchemaViolation {
@@ -1161,15 +575,6 @@ pub fn ST_PositiveFixedPercentage::new(
 
 ///|
 /// Return the lexical ST_PositiveFixedPercentage simple-type value.
-/// Schema shared-commonSimpleTypes.xsd.
-/// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
-/// Simple types: `ST_CalendarType`, `ST_ConformanceClass`, `ST_FixedPercentage`, `ST_Guid`, `ST_HexColorRGB`, `ST_Lang`, `ST_OnOff`, `ST_Panose`, `ST_Percentage`, `ST_PositiveFixedPercentage`, `ST_PositivePercentage`, `ST_PositiveUniversalMeasure`, `ST_String`, `ST_TwipsMeasure`, `ST_UniversalMeasure`, `ST_UnsignedDecimalNumber`, `ST_VerticalAlignRun`, `ST_XAlign`, `ST_XmlName`, `ST_Xstring`, `ST_YAlign`.
-/// The same data, in machine-readable form, is in `coverage.json`.
-/// I1 XML byte stream of any part listed in §3, well-formed per W3C XML 1.0 (Fifth Edition). I2 a namespace context resolved against the target namespaces of §4. I3 a package-level resource resolver supplied by the surrounding OPC package (relationship targets, embedded media, theme references); the resolver contract is owned by `src/ecma376/opc`.
-/// O1 a typed domain value tree exposing every element/attribute listed in §4; domain types are private to this package and consumers see only the public API in `pkg.generated.mbti`. O2 on the writer side, an XML byte stream that re-validates against the XSD schemas listed in §4 (round-trip identity for every element/attribute the reader successfully parsed).
-/// V1 no element defined by another package is parsed inline; cross-package element references go through the foreign package's reader/builder API. V2 element ordering inside any complex type follows the schema's sequence/choice/all model; the implementation never silently reorders children. V3 default values declared in the XSD are materialised at read time so consumers see fully populated structures regardless of whether the source document set them explicitly.
-/// E1 `SchemaViolation` — a value does not satisfy the lexical or enumeration constraint of the simple type it was constructed from. Every error carries the simple-type name and the offending input.
-/// Schema shared-commonSimpleTypes.xsd. Bundle strict/transitional. Target namespace http://purl.oclc.org/ooxml/officeDocument/sharedTypes. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0. Formatter preserves the simple-type lexical value.
 pub fn ST_PositiveFixedPercentage::to_string(
   self : ST_PositiveFixedPercentage,
 ) -> String {
