@@ -25,6 +25,8 @@ pub fn read_font_scheme(Bytes) -> CT_FontScheme raise
 
 pub fn read_gradient_fill_properties(Bytes) -> CT_GradientFillProperties raise
 
+pub fn read_graphical_object(Bytes) -> CT_GraphicalObject raise
+
 pub fn read_group_fill_properties(Bytes) -> CT_GroupFillProperties raise
 
 pub fn read_hsl_color(Bytes) -> CT_HslColor raise
@@ -52,6 +54,10 @@ pub fn read_scheme_color(Bytes) -> CT_SchemeColor raise
 pub fn read_solid_color_fill_properties(Bytes) -> CT_SolidColorFillProperties raise
 
 pub fn read_system_color(Bytes) -> CT_SystemColor raise
+
+pub fn read_table(Bytes) -> CT_Table raise
+
+pub fn read_table_style_list(Bytes) -> CT_TableStyleList raise
 
 pub fn read_text_body(Bytes) -> CT_TextBody raise
 
@@ -85,6 +91,8 @@ pub fn write_font_scheme(CT_FontScheme) -> Bytes
 
 pub fn write_gradient_fill_properties(CT_GradientFillProperties) -> Bytes
 
+pub fn write_graphical_object(CT_GraphicalObject) -> Bytes
+
 pub fn write_group_fill_properties(CT_GroupFillProperties) -> Bytes
 
 pub fn write_hsl_color(CT_HslColor) -> Bytes
@@ -112,6 +120,10 @@ pub fn write_scheme_color(CT_SchemeColor) -> Bytes
 pub fn write_solid_color_fill_properties(CT_SolidColorFillProperties) -> Bytes
 
 pub fn write_system_color(CT_SystemColor) -> Bytes
+
+pub fn write_table(CT_Table) -> Bytes
+
+pub fn write_table_style_list(CT_TableStyleList) -> Bytes
 
 pub fn write_text_body(CT_TextBody) -> Bytes
 
@@ -286,6 +298,16 @@ pub(all) struct CT_ConnectionSiteList {
 } derive(Eq, @debug.Debug)
 pub fn CT_ConnectionSiteList::new(@xml.Element) -> Self
 
+pub(all) struct CT_ConnectorLocking {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ConnectorLocking::new(@xml.Element) -> Self
+
+pub(all) struct CT_ContentPartLocking {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ContentPartLocking::new(@xml.Element) -> Self
+
 pub(all) struct CT_CustomColor {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -417,6 +439,21 @@ pub(all) struct CT_GradientStopList {
 } derive(Eq, @debug.Debug)
 pub fn CT_GradientStopList::new(@xml.Element) -> Self
 
+pub(all) struct CT_GraphicalObject {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GraphicalObject::new(@xml.Element) -> Self
+
+pub(all) struct CT_GraphicalObjectData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GraphicalObjectData::new(@xml.Element) -> Self
+
+pub(all) struct CT_GraphicalObjectFrameLocking {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GraphicalObjectFrameLocking::new(@xml.Element) -> Self
+
 pub(all) struct CT_GrayscaleEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -432,6 +469,16 @@ pub(all) struct CT_GroupFillProperties {
 } derive(Eq, @debug.Debug)
 pub fn CT_GroupFillProperties::new(@xml.Element) -> Self
 
+pub(all) struct CT_GroupLocking {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupLocking::new(@xml.Element) -> Self
+
+pub(all) struct CT_GroupShapeProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupShapeProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_GroupTransform2D {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -446,6 +493,11 @@ pub(all) struct CT_HslColor {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_HslColor::new(@xml.Element) -> Self
+
+pub(all) struct CT_Hyperlink {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Hyperlink::new(@xml.Element) -> Self
 
 pub(all) struct CT_InnerShadowEffect {
   element : @xml.Element
@@ -501,6 +553,36 @@ pub(all) struct CT_NoFillProperties {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_NoFillProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_NonVisualConnectorProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NonVisualConnectorProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_NonVisualDrawingProps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NonVisualDrawingProps::new(@xml.Element) -> Self
+
+pub(all) struct CT_NonVisualDrawingShapeProps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NonVisualDrawingShapeProps::new(@xml.Element) -> Self
+
+pub(all) struct CT_NonVisualGraphicFrameProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NonVisualGraphicFrameProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_NonVisualGroupDrawingShapeProps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NonVisualGroupDrawingShapeProps::new(@xml.Element) -> Self
+
+pub(all) struct CT_NonVisualPictureProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NonVisualPictureProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_OfficeArtExtension {
   element : @xml.Element
@@ -577,6 +659,11 @@ pub(all) struct CT_Percentage {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Percentage::new(@xml.Element) -> Self
+
+pub(all) struct CT_PictureLocking {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PictureLocking::new(@xml.Element) -> Self
 
 pub(all) struct CT_Point2D {
   element : @xml.Element
@@ -683,6 +770,16 @@ pub(all) struct CT_SchemeColor {
 } derive(Eq, @debug.Debug)
 pub fn CT_SchemeColor::new(@xml.Element) -> Self
 
+pub(all) struct CT_ShapeLocking {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShapeLocking::new(@xml.Element) -> Self
+
+pub(all) struct CT_ShapeProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShapeProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_SoftEdgesEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -712,6 +809,76 @@ pub(all) struct CT_SystemColor {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SystemColor::new(@xml.Element) -> Self
+
+pub(all) struct CT_Table {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Table::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableBackgroundStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableBackgroundStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableCell {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableCell::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableCellBorderStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableCellBorderStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableCellProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableCellProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableCol {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableCol::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableGrid {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableGrid::new(@xml.Element) -> Self
+
+pub(all) struct CT_TablePartStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TablePartStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableRow {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableRow::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableStyleCellStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableStyleCellStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableStyleList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableStyleList::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableStyleTextStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableStyleTextStyle::new(@xml.Element) -> Self
 
 pub(all) struct CT_TextAutonumberBullet {
   element : @xml.Element
