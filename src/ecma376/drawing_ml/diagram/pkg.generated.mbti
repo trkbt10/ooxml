@@ -1,12 +1,1171 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/drawing_ml/diagram"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
+pub fn new_ag_iterator_attributes() -> AG_IteratorAttributes
+
+pub fn new_colors_def(@xml.Element) -> CT_ColorTransform
+
+pub fn new_colors_def_hdr(@xml.Element) -> CT_ColorTransformHeader
+
+pub fn new_colors_def_hdr_lst(@xml.Element) -> CT_ColorTransformHeaderLst
+
+pub fn new_ct_adj(@xml.Element) -> CT_Adj
+
+pub fn new_ct_cxn(@xml.Element) -> CT_Cxn
+
+pub fn new_ct_pt(@xml.Element) -> CT_Pt
+
+pub fn new_ct_when(@xml.Element) -> CT_When
+
+pub fn new_data_model(@xml.Element) -> CT_DataModel
+
+pub fn new_layout_def(@xml.Element) -> CT_DiagramDefinition
+
+pub fn new_layout_def_hdr(@xml.Element) -> CT_DiagramDefinitionHeader
+
+pub fn new_layout_def_hdr_lst(@xml.Element) -> CT_DiagramDefinitionHeaderLst
+
+pub fn new_rel_ids(@xml.Element) -> CT_RelIds
+
+pub fn new_style_def(@xml.Element) -> CT_StyleDefinition
+
+pub fn new_style_def_hdr(@xml.Element) -> CT_StyleDefinitionHeader
+
+pub fn new_style_def_hdr_lst(@xml.Element) -> CT_StyleDefinitionHeaderLst
+
 pub fn package_name() -> String
 
+pub fn parse_st_ints(String) -> ST_Ints raise SchemaViolation
+
+pub fn read_colors_def(Bytes) -> CT_ColorTransform raise
+
+pub fn read_colors_def_hdr(Bytes) -> CT_ColorTransformHeader raise
+
+pub fn read_colors_def_hdr_lst(Bytes) -> CT_ColorTransformHeaderLst raise
+
+pub fn read_data_model(Bytes) -> CT_DataModel raise
+
+pub fn read_layout_def(Bytes) -> CT_DiagramDefinition raise
+
+pub fn read_layout_def_hdr(Bytes) -> CT_DiagramDefinitionHeader raise
+
+pub fn read_layout_def_hdr_lst(Bytes) -> CT_DiagramDefinitionHeaderLst raise
+
+pub fn read_rel_ids(Bytes) -> CT_RelIds raise
+
+pub fn read_style_def(Bytes) -> CT_StyleDefinition raise
+
+pub fn read_style_def_hdr(Bytes) -> CT_StyleDefinitionHeader raise
+
+pub fn read_style_def_hdr_lst(Bytes) -> CT_StyleDefinitionHeaderLst raise
+
+pub fn write_colors_def(CT_ColorTransform) -> Bytes
+
+pub fn write_colors_def_hdr(CT_ColorTransformHeader) -> Bytes
+
+pub fn write_colors_def_hdr_lst(CT_ColorTransformHeaderLst) -> Bytes
+
+pub fn write_data_model(CT_DataModel) -> Bytes
+
+pub fn write_layout_def(CT_DiagramDefinition) -> Bytes
+
+pub fn write_layout_def_hdr(CT_DiagramDefinitionHeader) -> Bytes
+
+pub fn write_layout_def_hdr_lst(CT_DiagramDefinitionHeaderLst) -> Bytes
+
+pub fn write_rel_ids(CT_RelIds) -> Bytes
+
+pub fn write_style_def(CT_StyleDefinition) -> Bytes
+
+pub fn write_style_def_hdr(CT_StyleDefinitionHeader) -> Bytes
+
+pub fn write_style_def_hdr_lst(CT_StyleDefinitionHeaderLst) -> Bytes
+
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct AG_ConstraintAttributes {
+  type_ : String?
+  for_ : String?
+  for_name : String?
+  pt_type : String?
+} derive(Eq, @debug.Debug)
+pub fn AG_ConstraintAttributes::empty() -> Self
+
+pub(all) struct AG_ConstraintRefAttributes {
+  ref_type : String?
+  ref_for : String?
+  ref_for_name : String?
+  ref_pt_type : String?
+} derive(Eq, @debug.Debug)
+pub fn AG_ConstraintRefAttributes::empty() -> Self
+
+pub(all) struct AG_IteratorAttributes {
+  axis : String?
+  pt_type : String?
+  hide_last_trans : String?
+  st : String?
+  cnt : String?
+  step : String?
+} derive(Eq, @debug.Debug)
+pub fn AG_IteratorAttributes::empty() -> Self
+pub fn AG_IteratorAttributes::has_axis(Self) -> Bool
+
+pub(all) struct CT_Adj {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Adj::idx(Self) -> String?
+pub fn CT_Adj::new(@xml.Element) -> Self
+
+pub(all) struct CT_AdjLst {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AdjLst::new(@xml.Element) -> Self
+
+pub(all) struct CT_Algorithm {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Algorithm::new(@xml.Element) -> Self
+
+pub(all) struct CT_AnimLvl {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AnimLvl::new(@xml.Element) -> Self
+
+pub(all) struct CT_AnimOne {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AnimOne::new(@xml.Element) -> Self
+
+pub(all) struct CT_BulletEnabled {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BulletEnabled::new(@xml.Element) -> Self
+
+pub(all) struct CT_CTCategories {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CTCategories::new(@xml.Element) -> Self
+
+pub(all) struct CT_CTCategory {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CTCategory::new(@xml.Element) -> Self
+
+pub(all) struct CT_CTDescription {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CTDescription::new(@xml.Element) -> Self
+
+pub(all) struct CT_CTName {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CTName::new(@xml.Element) -> Self
+
+pub(all) struct CT_CTStyleLabel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CTStyleLabel::new(@xml.Element) -> Self
+
+pub(all) struct CT_Categories {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Categories::new(@xml.Element) -> Self
+
+pub(all) struct CT_Category {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Category::new(@xml.Element) -> Self
+
+pub(all) struct CT_ChildMax {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ChildMax::new(@xml.Element) -> Self
+
+pub(all) struct CT_ChildPref {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ChildPref::new(@xml.Element) -> Self
+
+pub(all) struct CT_Choose {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Choose::new(@xml.Element) -> Self
+
+#alias(ColorsDef)
+pub(all) struct CT_ColorTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorTransform::new(@xml.Element) -> Self
+
+#alias(ColorsDefHdr)
+pub(all) struct CT_ColorTransformHeader {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorTransformHeader::new(@xml.Element) -> Self
+
+#alias(ColorsDefHdrLst)
+pub(all) struct CT_ColorTransformHeaderLst {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorTransformHeaderLst::new(@xml.Element) -> Self
+
+pub(all) struct CT_Colors {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Colors::new(@xml.Element) -> Self
+
+pub(all) struct CT_Constraint {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Constraint::new(@xml.Element) -> Self
+
+pub(all) struct CT_Constraints {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Constraints::new(@xml.Element) -> Self
+
+pub(all) struct CT_Cxn {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Cxn::model_id(Self) -> String?
+pub fn CT_Cxn::new(@xml.Element) -> Self
+
+pub(all) struct CT_CxnList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CxnList::new(@xml.Element) -> Self
+
+#alias(DataModel)
+pub(all) struct CT_DataModel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataModel::new(@xml.Element) -> Self
+
+pub(all) struct CT_Description {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Description::new(@xml.Element) -> Self
+
+#alias(LayoutDef)
+pub(all) struct CT_DiagramDefinition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DiagramDefinition::new(@xml.Element) -> Self
+
+#alias(LayoutDefHdr)
+pub(all) struct CT_DiagramDefinitionHeader {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DiagramDefinitionHeader::new(@xml.Element) -> Self
+
+#alias(LayoutDefHdrLst)
+pub(all) struct CT_DiagramDefinitionHeaderLst {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DiagramDefinitionHeaderLst::new(@xml.Element) -> Self
+
+pub(all) struct CT_Direction {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Direction::new(@xml.Element) -> Self
+
+pub(all) struct CT_ElemPropSet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ElemPropSet::new(@xml.Element) -> Self
+
+pub(all) struct CT_ForEach {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ForEach::new(@xml.Element) -> Self
+
+pub(all) struct CT_HierBranchStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HierBranchStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_LayoutNode {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LayoutNode::new(@xml.Element) -> Self
+
+pub(all) struct CT_LayoutVariablePropertySet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LayoutVariablePropertySet::new(@xml.Element) -> Self
+
+pub(all) struct CT_Name {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Name::new(@xml.Element) -> Self
+pub fn CT_Name::val(Self) -> String?
+
+pub(all) struct CT_NumericRule {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NumericRule::new(@xml.Element) -> Self
+
+pub(all) struct CT_OrgChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OrgChart::new(@xml.Element) -> Self
+
+pub(all) struct CT_Otherwise {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Otherwise::new(@xml.Element) -> Self
+
+pub(all) struct CT_Parameter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Parameter::new(@xml.Element) -> Self
+
+pub(all) struct CT_PresentationOf {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PresentationOf::new(@xml.Element) -> Self
+
+pub(all) struct CT_Pt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Pt::model_id(Self) -> String?
+pub fn CT_Pt::new(@xml.Element) -> Self
+
+pub(all) struct CT_PtList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PtList::new(@xml.Element) -> Self
+
+#alias(RelIds)
+pub(all) struct CT_RelIds {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RelIds::new(@xml.Element) -> Self
+
+pub(all) struct CT_ResizeHandles {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ResizeHandles::new(@xml.Element) -> Self
+
+pub(all) struct CT_Rules {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Rules::new(@xml.Element) -> Self
+
+pub(all) struct CT_SDCategories {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SDCategories::new(@xml.Element) -> Self
+
+pub(all) struct CT_SDCategory {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SDCategory::new(@xml.Element) -> Self
+
+pub(all) struct CT_SDDescription {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SDDescription::new(@xml.Element) -> Self
+
+pub(all) struct CT_SDName {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SDName::new(@xml.Element) -> Self
+
+pub(all) struct CT_SampleData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SampleData::new(@xml.Element) -> Self
+
+pub(all) struct CT_Shape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Shape::new(@xml.Element) -> Self
+
+#alias(StyleDef)
+pub(all) struct CT_StyleDefinition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StyleDefinition::new(@xml.Element) -> Self
+
+#alias(StyleDefHdr)
+pub(all) struct CT_StyleDefinitionHeader {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StyleDefinitionHeader::new(@xml.Element) -> Self
+
+#alias(StyleDefHdrLst)
+pub(all) struct CT_StyleDefinitionHeaderLst {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StyleDefinitionHeaderLst::new(@xml.Element) -> Self
+
+pub(all) struct CT_StyleLabel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StyleLabel::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextProps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextProps::new(@xml.Element) -> Self
+
+pub(all) struct CT_When {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_When::func(Self) -> String?
+pub fn CT_When::new(@xml.Element) -> Self
+
+pub(all) enum ST_AlgorithmType {
+  AlgorithmTypeComposite
+  AlgorithmTypeConn
+  AlgorithmTypeCycle
+  AlgorithmTypeHierChild
+  AlgorithmTypeHierRoot
+  AlgorithmTypePyra
+  AlgorithmTypeLin
+  AlgorithmTypeSp
+  AlgorithmTypeTx
+  AlgorithmTypeSnake
+} derive(Eq, @debug.Debug)
+pub fn ST_AlgorithmType::new(String) -> Self raise SchemaViolation
+pub fn ST_AlgorithmType::parse(String) -> Self raise SchemaViolation
+pub fn ST_AlgorithmType::to_string(Self) -> String
+
+pub(all) enum ST_AnimLvlStr {
+  AnimLvlStrNone
+  AnimLvlStrLvl
+  AnimLvlStrCtr
+} derive(Eq, @debug.Debug)
+pub fn ST_AnimLvlStr::new(String) -> Self raise SchemaViolation
+pub fn ST_AnimLvlStr::parse(String) -> Self raise SchemaViolation
+pub fn ST_AnimLvlStr::to_string(Self) -> String
+
+pub(all) enum ST_AnimOneStr {
+  AnimOneStrNone
+  AnimOneStrOne
+  AnimOneStrBranch
+} derive(Eq, @debug.Debug)
+pub fn ST_AnimOneStr::new(String) -> Self raise SchemaViolation
+pub fn ST_AnimOneStr::parse(String) -> Self raise SchemaViolation
+pub fn ST_AnimOneStr::to_string(Self) -> String
+
+pub(all) enum ST_ArrowheadStyle {
+  ArrowheadStyleAuto
+  ArrowheadStyleArr
+  ArrowheadStyleNoArr
+} derive(Eq, @debug.Debug)
+pub fn ST_ArrowheadStyle::new(String) -> Self raise SchemaViolation
+pub fn ST_ArrowheadStyle::parse(String) -> Self raise SchemaViolation
+pub fn ST_ArrowheadStyle::to_string(Self) -> String
+
+pub(all) enum ST_AutoTextRotation {
+  AutoTextRotationNone
+  AutoTextRotationUpr
+  AutoTextRotationGrav
+} derive(Eq, @debug.Debug)
+pub fn ST_AutoTextRotation::new(String) -> Self raise SchemaViolation
+pub fn ST_AutoTextRotation::parse(String) -> Self raise SchemaViolation
+pub fn ST_AutoTextRotation::to_string(Self) -> String
+
+pub(all) enum ST_AxisType {
+  AxisTypeSelf
+  AxisTypeCh
+  AxisTypeDes
+  AxisTypeDesOrSelf
+  AxisTypePar
+  AxisTypeAncst
+  AxisTypeAncstOrSelf
+  AxisTypeFollowSib
+  AxisTypePrecedSib
+  AxisTypeFollow
+  AxisTypePreced
+  AxisTypeRoot
+  AxisTypeNone
+} derive(Eq, @debug.Debug)
+pub fn ST_AxisType::new(String) -> Self raise SchemaViolation
+pub fn ST_AxisType::parse(String) -> Self raise SchemaViolation
+pub fn ST_AxisType::to_string(Self) -> String
+
+pub struct ST_AxisTypes {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_AxisTypes::new(String) -> Self raise SchemaViolation
+pub fn ST_AxisTypes::parse(String) -> Self raise SchemaViolation
+pub fn ST_AxisTypes::to_string(Self) -> String
+
+pub(all) enum ST_BendPoint {
+  BendPointBeg
+  BendPointDef
+  BendPointEnd
+} derive(Eq, @debug.Debug)
+pub fn ST_BendPoint::new(String) -> Self raise SchemaViolation
+pub fn ST_BendPoint::parse(String) -> Self raise SchemaViolation
+pub fn ST_BendPoint::to_string(Self) -> String
+
+pub(all) enum ST_BoolOperator {
+  BoolOperatorNone
+  BoolOperatorEqu
+  BoolOperatorGte
+  BoolOperatorLte
+} derive(Eq, @debug.Debug)
+pub fn ST_BoolOperator::new(String) -> Self raise SchemaViolation
+pub fn ST_BoolOperator::parse(String) -> Self raise SchemaViolation
+pub fn ST_BoolOperator::to_string(Self) -> String
+
+pub struct ST_Booleans {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Booleans::new(String) -> Self raise SchemaViolation
+pub fn ST_Booleans::parse(String) -> Self raise SchemaViolation
+pub fn ST_Booleans::to_string(Self) -> String
+
+pub(all) enum ST_Breakpoint {
+  BreakpointEndCnv
+  BreakpointBal
+  BreakpointFixed
+} derive(Eq, @debug.Debug)
+pub fn ST_Breakpoint::new(String) -> Self raise SchemaViolation
+pub fn ST_Breakpoint::parse(String) -> Self raise SchemaViolation
+pub fn ST_Breakpoint::to_string(Self) -> String
+
+pub(all) enum ST_CenterShapeMapping {
+  CenterShapeMappingNone
+  CenterShapeMappingFNode
+} derive(Eq, @debug.Debug)
+pub fn ST_CenterShapeMapping::new(String) -> Self raise SchemaViolation
+pub fn ST_CenterShapeMapping::parse(String) -> Self raise SchemaViolation
+pub fn ST_CenterShapeMapping::to_string(Self) -> String
+
+pub(all) enum ST_ChildAlignment {
+  ChildAlignmentT
+  ChildAlignmentB
+  ChildAlignmentL
+  ChildAlignmentR
+} derive(Eq, @debug.Debug)
+pub fn ST_ChildAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_ChildAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_ChildAlignment::to_string(Self) -> String
+
+pub(all) enum ST_ChildDirection {
+  ChildDirectionHorz
+  ChildDirectionVert
+} derive(Eq, @debug.Debug)
+pub fn ST_ChildDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_ChildDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_ChildDirection::to_string(Self) -> String
+
+pub(all) enum ST_ChildOrderType {
+  ChildOrderTypeB
+  ChildOrderTypeT
+} derive(Eq, @debug.Debug)
+pub fn ST_ChildOrderType::new(String) -> Self raise SchemaViolation
+pub fn ST_ChildOrderType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ChildOrderType::to_string(Self) -> String
+
+pub(all) enum ST_ClrAppMethod {
+  ClrAppMethodSpan
+  ClrAppMethodCycle
+  ClrAppMethodRepeat
+} derive(Eq, @debug.Debug)
+pub fn ST_ClrAppMethod::new(String) -> Self raise SchemaViolation
+pub fn ST_ClrAppMethod::parse(String) -> Self raise SchemaViolation
+pub fn ST_ClrAppMethod::to_string(Self) -> String
+
+pub(all) enum ST_ConnectorDimension {
+  ConnectorDimensionOneD
+  ConnectorDimensionTwoD
+  ConnectorDimensionCust
+} derive(Eq, @debug.Debug)
+pub fn ST_ConnectorDimension::new(String) -> Self raise SchemaViolation
+pub fn ST_ConnectorDimension::parse(String) -> Self raise SchemaViolation
+pub fn ST_ConnectorDimension::to_string(Self) -> String
+
+pub(all) enum ST_ConnectorPoint {
+  ConnectorPointAuto
+  ConnectorPointBCtr
+  ConnectorPointCtr
+  ConnectorPointMidL
+  ConnectorPointMidR
+  ConnectorPointTCtr
+  ConnectorPointBL
+  ConnectorPointBR
+  ConnectorPointTL
+  ConnectorPointTR
+  ConnectorPointRadial
+} derive(Eq, @debug.Debug)
+pub fn ST_ConnectorPoint::new(String) -> Self raise SchemaViolation
+pub fn ST_ConnectorPoint::parse(String) -> Self raise SchemaViolation
+pub fn ST_ConnectorPoint::to_string(Self) -> String
+
+pub(all) enum ST_ConnectorRouting {
+  ConnectorRoutingStra
+  ConnectorRoutingBend
+  ConnectorRoutingCurve
+  ConnectorRoutingLongCurve
+} derive(Eq, @debug.Debug)
+pub fn ST_ConnectorRouting::new(String) -> Self raise SchemaViolation
+pub fn ST_ConnectorRouting::parse(String) -> Self raise SchemaViolation
+pub fn ST_ConnectorRouting::to_string(Self) -> String
+
+pub(all) enum ST_ConstraintRelationship {
+  ConstraintRelationshipSelf
+  ConstraintRelationshipCh
+  ConstraintRelationshipDes
+} derive(Eq, @debug.Debug)
+pub fn ST_ConstraintRelationship::new(String) -> Self raise SchemaViolation
+pub fn ST_ConstraintRelationship::parse(String) -> Self raise SchemaViolation
+pub fn ST_ConstraintRelationship::to_string(Self) -> String
+
+pub(all) enum ST_ConstraintType {
+  ConstraintTypeNone
+  ConstraintTypeAlignOff
+  ConstraintTypeBegMarg
+  ConstraintTypeBendDist
+  ConstraintTypeBegPad
+  ConstraintTypeB
+  ConstraintTypeBMarg
+  ConstraintTypeBOff
+  ConstraintTypeCtrX
+  ConstraintTypeCtrXOff
+  ConstraintTypeCtrY
+  ConstraintTypeCtrYOff
+  ConstraintTypeConnDist
+  ConstraintTypeDiam
+  ConstraintTypeEndMarg
+  ConstraintTypeEndPad
+  ConstraintTypeH
+  ConstraintTypeHArH
+  ConstraintTypeHOff
+  ConstraintTypeL
+  ConstraintTypeLMarg
+  ConstraintTypeLOff
+  ConstraintTypeR
+  ConstraintTypeRMarg
+  ConstraintTypeROff
+  ConstraintTypePrimFontSz
+  ConstraintTypePyraAcctRatio
+  ConstraintTypeSecFontSz
+  ConstraintTypeSibSp
+  ConstraintTypeSecSibSp
+  ConstraintTypeSp
+  ConstraintTypeStemThick
+  ConstraintTypeT
+  ConstraintTypeTMarg
+  ConstraintTypeTOff
+  ConstraintTypeUserA
+  ConstraintTypeUserB
+  ConstraintTypeUserC
+  ConstraintTypeUserD
+  ConstraintTypeUserE
+  ConstraintTypeUserF
+  ConstraintTypeUserG
+  ConstraintTypeUserH
+  ConstraintTypeUserI
+  ConstraintTypeUserJ
+  ConstraintTypeUserK
+  ConstraintTypeUserL
+  ConstraintTypeUserM
+  ConstraintTypeUserN
+  ConstraintTypeUserO
+  ConstraintTypeUserP
+  ConstraintTypeUserQ
+  ConstraintTypeUserR
+  ConstraintTypeUserS
+  ConstraintTypeUserT
+  ConstraintTypeUserU
+  ConstraintTypeUserV
+  ConstraintTypeUserW
+  ConstraintTypeUserX
+  ConstraintTypeUserY
+  ConstraintTypeUserZ
+  ConstraintTypeW
+  ConstraintTypeWArH
+  ConstraintTypeWOff
+} derive(Eq, @debug.Debug)
+pub fn ST_ConstraintType::new(String) -> Self raise SchemaViolation
+pub fn ST_ConstraintType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ConstraintType::to_string(Self) -> String
+
+pub(all) enum ST_ContinueDirection {
+  ContinueDirectionRevDir
+  ContinueDirectionSameDir
+} derive(Eq, @debug.Debug)
+pub fn ST_ContinueDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_ContinueDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_ContinueDirection::to_string(Self) -> String
+
+pub(all) enum ST_CxnType {
+  CxnTypeParOf
+  CxnTypePresOf
+  CxnTypePresParOf
+  CxnTypeUnknownRelationship
+} derive(Eq, @debug.Debug)
+pub fn ST_CxnType::new(String) -> Self raise SchemaViolation
+pub fn ST_CxnType::parse(String) -> Self raise SchemaViolation
+pub fn ST_CxnType::to_string(Self) -> String
+
+pub(all) enum ST_DiagramHorizontalAlignment {
+  DiagramHorizontalAlignmentL
+  DiagramHorizontalAlignmentCtr
+  DiagramHorizontalAlignmentR
+  DiagramHorizontalAlignmentNone
+} derive(Eq, @debug.Debug)
+pub fn ST_DiagramHorizontalAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_DiagramHorizontalAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_DiagramHorizontalAlignment::to_string(Self) -> String
+
+pub(all) enum ST_DiagramTextAlignment {
+  DiagramTextAlignmentL
+  DiagramTextAlignmentCtr
+  DiagramTextAlignmentR
+} derive(Eq, @debug.Debug)
+pub fn ST_DiagramTextAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_DiagramTextAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_DiagramTextAlignment::to_string(Self) -> String
+
+pub(all) enum ST_Direction {
+  DirectionNorm
+  DirectionRev
+} derive(Eq, @debug.Debug)
+pub fn ST_Direction::new(String) -> Self raise SchemaViolation
+pub fn ST_Direction::parse(String) -> Self raise SchemaViolation
+pub fn ST_Direction::to_string(Self) -> String
+
+pub(all) enum ST_ElementType {
+  ElementTypeAll
+  ElementTypeDoc
+  ElementTypeNode
+  ElementTypeNorm
+  ElementTypeNonNorm
+  ElementTypeAsst
+  ElementTypeNonAsst
+  ElementTypeParTrans
+  ElementTypePres
+  ElementTypeSibTrans
+} derive(Eq, @debug.Debug)
+pub fn ST_ElementType::new(String) -> Self raise SchemaViolation
+pub fn ST_ElementType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ElementType::to_string(Self) -> String
+
+pub struct ST_ElementTypes {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ElementTypes::new(String) -> Self raise SchemaViolation
+pub fn ST_ElementTypes::parse(String) -> Self raise SchemaViolation
+pub fn ST_ElementTypes::to_string(Self) -> String
+
+pub(all) enum ST_FallbackDimension {
+  FallbackDimensionOneD
+  FallbackDimensionTwoD
+} derive(Eq, @debug.Debug)
+pub fn ST_FallbackDimension::new(String) -> Self raise SchemaViolation
+pub fn ST_FallbackDimension::parse(String) -> Self raise SchemaViolation
+pub fn ST_FallbackDimension::to_string(Self) -> String
+
+pub(all) enum ST_FlowDirection {
+  FlowDirectionRow
+  FlowDirectionCol
+} derive(Eq, @debug.Debug)
+pub fn ST_FlowDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_FlowDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_FlowDirection::to_string(Self) -> String
+
+pub struct ST_FunctionArgument {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FunctionArgument::new(String) -> Self raise SchemaViolation
+pub fn ST_FunctionArgument::parse(String) -> Self raise SchemaViolation
+pub fn ST_FunctionArgument::to_string(Self) -> String
+
+pub(all) enum ST_FunctionOperator {
+  FunctionOperatorEqu
+  FunctionOperatorNeq
+  FunctionOperatorGt
+  FunctionOperatorLt
+  FunctionOperatorGte
+  FunctionOperatorLte
+} derive(Eq, @debug.Debug)
+pub fn ST_FunctionOperator::new(String) -> Self raise SchemaViolation
+pub fn ST_FunctionOperator::parse(String) -> Self raise SchemaViolation
+pub fn ST_FunctionOperator::to_string(Self) -> String
+
+pub(all) enum ST_FunctionType {
+  FunctionTypeCnt
+  FunctionTypePos
+  FunctionTypeRevPos
+  FunctionTypePosEven
+  FunctionTypePosOdd
+  FunctionTypeVar
+  FunctionTypeDepth
+  FunctionTypeMaxDepth
+} derive(Eq, @debug.Debug)
+pub fn ST_FunctionType::new(String) -> Self raise SchemaViolation
+pub fn ST_FunctionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_FunctionType::to_string(Self) -> String
+
+pub struct ST_FunctionValue {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FunctionValue::new(String) -> Self raise SchemaViolation
+pub fn ST_FunctionValue::parse(String) -> Self raise SchemaViolation
+pub fn ST_FunctionValue::to_string(Self) -> String
+
+pub(all) enum ST_GrowDirection {
+  GrowDirectionTL
+  GrowDirectionTR
+  GrowDirectionBL
+  GrowDirectionBR
+} derive(Eq, @debug.Debug)
+pub fn ST_GrowDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_GrowDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_GrowDirection::to_string(Self) -> String
+
+pub(all) enum ST_HierBranchStyle {
+  HierBranchStyleL
+  HierBranchStyleR
+  HierBranchStyleHang
+  HierBranchStyleStd
+  HierBranchStyleInit
+} derive(Eq, @debug.Debug)
+pub fn ST_HierBranchStyle::new(String) -> Self raise SchemaViolation
+pub fn ST_HierBranchStyle::parse(String) -> Self raise SchemaViolation
+pub fn ST_HierBranchStyle::to_string(Self) -> String
+
+pub(all) enum ST_HierarchyAlignment {
+  HierarchyAlignmentTL
+  HierarchyAlignmentTR
+  HierarchyAlignmentTCtrCh
+  HierarchyAlignmentTCtrDes
+  HierarchyAlignmentBL
+  HierarchyAlignmentBR
+  HierarchyAlignmentBCtrCh
+  HierarchyAlignmentBCtrDes
+  HierarchyAlignmentLT
+  HierarchyAlignmentLB
+  HierarchyAlignmentLCtrCh
+  HierarchyAlignmentLCtrDes
+  HierarchyAlignmentRT
+  HierarchyAlignmentRB
+  HierarchyAlignmentRCtrCh
+  HierarchyAlignmentRCtrDes
+} derive(Eq, @debug.Debug)
+pub fn ST_HierarchyAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_HierarchyAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_HierarchyAlignment::to_string(Self) -> String
+
+pub(all) enum ST_HueDir {
+  HueDirCw
+  HueDirCcw
+} derive(Eq, @debug.Debug)
+pub fn ST_HueDir::new(String) -> Self raise SchemaViolation
+pub fn ST_HueDir::parse(String) -> Self raise SchemaViolation
+pub fn ST_HueDir::to_string(Self) -> String
+
+pub struct ST_Index1 {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Index1::new(String) -> Self raise SchemaViolation
+pub fn ST_Index1::parse(String) -> Self raise SchemaViolation
+pub fn ST_Index1::to_string(Self) -> String
+
+pub struct ST_Ints {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Ints::new(String) -> Self raise SchemaViolation
+pub fn ST_Ints::parse(String) -> Self raise SchemaViolation
+pub fn ST_Ints::to_string(Self) -> String
+pub fn ST_Ints::values(Self) -> Array[String]
+
+pub struct ST_LayoutShapeType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LayoutShapeType::new(String) -> Self raise SchemaViolation
+pub fn ST_LayoutShapeType::parse(String) -> Self raise SchemaViolation
+pub fn ST_LayoutShapeType::to_string(Self) -> String
+
+pub(all) enum ST_LinearDirection {
+  LinearDirectionFromL
+  LinearDirectionFromR
+  LinearDirectionFromT
+  LinearDirectionFromB
+} derive(Eq, @debug.Debug)
+pub fn ST_LinearDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_LinearDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_LinearDirection::to_string(Self) -> String
+
+pub struct ST_ModelId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ModelId::new(String) -> Self raise SchemaViolation
+pub fn ST_ModelId::parse(String) -> Self raise SchemaViolation
+pub fn ST_ModelId::to_string(Self) -> String
+
+pub struct ST_NodeCount {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_NodeCount::new(String) -> Self raise SchemaViolation
+pub fn ST_NodeCount::parse(String) -> Self raise SchemaViolation
+pub fn ST_NodeCount::to_string(Self) -> String
+
+pub(all) enum ST_NodeHorizontalAlignment {
+  NodeHorizontalAlignmentL
+  NodeHorizontalAlignmentCtr
+  NodeHorizontalAlignmentR
+} derive(Eq, @debug.Debug)
+pub fn ST_NodeHorizontalAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_NodeHorizontalAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_NodeHorizontalAlignment::to_string(Self) -> String
+
+pub(all) enum ST_NodeVerticalAlignment {
+  NodeVerticalAlignmentT
+  NodeVerticalAlignmentMid
+  NodeVerticalAlignmentB
+} derive(Eq, @debug.Debug)
+pub fn ST_NodeVerticalAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_NodeVerticalAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_NodeVerticalAlignment::to_string(Self) -> String
+
+pub(all) enum ST_Offset {
+  OffsetCtr
+  OffsetOff
+} derive(Eq, @debug.Debug)
+pub fn ST_Offset::new(String) -> Self raise SchemaViolation
+pub fn ST_Offset::parse(String) -> Self raise SchemaViolation
+pub fn ST_Offset::to_string(Self) -> String
+
+pub(all) enum ST_OutputShapeType {
+  OutputShapeTypeNone
+  OutputShapeTypeConn
+} derive(Eq, @debug.Debug)
+pub fn ST_OutputShapeType::new(String) -> Self raise SchemaViolation
+pub fn ST_OutputShapeType::parse(String) -> Self raise SchemaViolation
+pub fn ST_OutputShapeType::to_string(Self) -> String
+
+pub(all) enum ST_ParameterId {
+  ParameterIdHorzAlign
+  ParameterIdVertAlign
+  ParameterIdChDir
+  ParameterIdChAlign
+  ParameterIdSecChAlign
+  ParameterIdLinDir
+  ParameterIdSecLinDir
+  ParameterIdStElem
+  ParameterIdBendPt
+  ParameterIdConnRout
+  ParameterIdBegSty
+  ParameterIdEndSty
+  ParameterIdDim
+  ParameterIdRotPath
+  ParameterIdCtrShpMap
+  ParameterIdNodeHorzAlign
+  ParameterIdNodeVertAlign
+  ParameterIdFallback
+  ParameterIdTxDir
+  ParameterIdPyraAcctPos
+  ParameterIdPyraAcctTxMar
+  ParameterIdTxBlDir
+  ParameterIdTxAnchorHorz
+  ParameterIdTxAnchorVert
+  ParameterIdTxAnchorHorzCh
+  ParameterIdTxAnchorVertCh
+  ParameterIdParTxLTRAlign
+  ParameterIdParTxRTLAlign
+  ParameterIdShpTxLTRAlignCh
+  ParameterIdShpTxRTLAlignCh
+  ParameterIdAutoTxRot
+  ParameterIdGrDir
+  ParameterIdFlowDir
+  ParameterIdContDir
+  ParameterIdBkpt
+  ParameterIdOff
+  ParameterIdHierAlign
+  ParameterIdBkPtFixedVal
+  ParameterIdStBulletLvl
+  ParameterIdStAng
+  ParameterIdSpanAng
+  ParameterIdAr
+  ParameterIdLnSpPar
+  ParameterIdLnSpAfParP
+  ParameterIdLnSpCh
+  ParameterIdLnSpAfChP
+  ParameterIdRtShortDist
+  ParameterIdAlignTx
+  ParameterIdPyraLvlNode
+  ParameterIdPyraAcctBkgdNode
+  ParameterIdPyraAcctTxNode
+  ParameterIdSrcNode
+  ParameterIdDstNode
+  ParameterIdBegPts
+  ParameterIdEndPts
+} derive(Eq, @debug.Debug)
+pub fn ST_ParameterId::new(String) -> Self raise SchemaViolation
+pub fn ST_ParameterId::parse(String) -> Self raise SchemaViolation
+pub fn ST_ParameterId::to_string(Self) -> String
+
+pub struct ST_ParameterVal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ParameterVal::new(String) -> Self raise SchemaViolation
+pub fn ST_ParameterVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_ParameterVal::to_string(Self) -> String
+
+pub struct ST_PrSetCustVal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PrSetCustVal::new(String) -> Self raise SchemaViolation
+pub fn ST_PrSetCustVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_PrSetCustVal::to_string(Self) -> String
+
+pub(all) enum ST_PtType {
+  PtTypeNode
+  PtTypeAsst
+  PtTypeDoc
+  PtTypePres
+  PtTypeParTrans
+  PtTypeSibTrans
+} derive(Eq, @debug.Debug)
+pub fn ST_PtType::new(String) -> Self raise SchemaViolation
+pub fn ST_PtType::parse(String) -> Self raise SchemaViolation
+pub fn ST_PtType::to_string(Self) -> String
+
+pub(all) enum ST_PyramidAccentPosition {
+  PyramidAccentPositionBef
+  PyramidAccentPositionAft
+} derive(Eq, @debug.Debug)
+pub fn ST_PyramidAccentPosition::new(String) -> Self raise SchemaViolation
+pub fn ST_PyramidAccentPosition::parse(String) -> Self raise SchemaViolation
+pub fn ST_PyramidAccentPosition::to_string(Self) -> String
+
+pub(all) enum ST_PyramidAccentTextMargin {
+  PyramidAccentTextMarginStep
+  PyramidAccentTextMarginStack
+} derive(Eq, @debug.Debug)
+pub fn ST_PyramidAccentTextMargin::new(String) -> Self raise SchemaViolation
+pub fn ST_PyramidAccentTextMargin::parse(String) -> Self raise SchemaViolation
+pub fn ST_PyramidAccentTextMargin::to_string(Self) -> String
+
+pub(all) enum ST_ResizeHandlesStr {
+  ResizeHandlesStrExact
+  ResizeHandlesStrRel
+} derive(Eq, @debug.Debug)
+pub fn ST_ResizeHandlesStr::new(String) -> Self raise SchemaViolation
+pub fn ST_ResizeHandlesStr::parse(String) -> Self raise SchemaViolation
+pub fn ST_ResizeHandlesStr::to_string(Self) -> String
+
+pub(all) enum ST_RotationPath {
+  RotationPathNone
+  RotationPathAlongPath
+} derive(Eq, @debug.Debug)
+pub fn ST_RotationPath::new(String) -> Self raise SchemaViolation
+pub fn ST_RotationPath::parse(String) -> Self raise SchemaViolation
+pub fn ST_RotationPath::to_string(Self) -> String
+
+pub(all) enum ST_SecondaryChildAlignment {
+  SecondaryChildAlignmentNone
+  SecondaryChildAlignmentT
+  SecondaryChildAlignmentB
+  SecondaryChildAlignmentL
+  SecondaryChildAlignmentR
+} derive(Eq, @debug.Debug)
+pub fn ST_SecondaryChildAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_SecondaryChildAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_SecondaryChildAlignment::to_string(Self) -> String
+
+pub(all) enum ST_SecondaryLinearDirection {
+  SecondaryLinearDirectionNone
+  SecondaryLinearDirectionFromL
+  SecondaryLinearDirectionFromR
+  SecondaryLinearDirectionFromT
+  SecondaryLinearDirectionFromB
+} derive(Eq, @debug.Debug)
+pub fn ST_SecondaryLinearDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_SecondaryLinearDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_SecondaryLinearDirection::to_string(Self) -> String
+
+pub(all) enum ST_StartingElement {
+  StartingElementNode
+  StartingElementTrans
+} derive(Eq, @debug.Debug)
+pub fn ST_StartingElement::new(String) -> Self raise SchemaViolation
+pub fn ST_StartingElement::parse(String) -> Self raise SchemaViolation
+pub fn ST_StartingElement::to_string(Self) -> String
+
+pub(all) enum ST_TextAnchorHorizontal {
+  TextAnchorHorizontalNone
+  TextAnchorHorizontalCtr
+} derive(Eq, @debug.Debug)
+pub fn ST_TextAnchorHorizontal::new(String) -> Self raise SchemaViolation
+pub fn ST_TextAnchorHorizontal::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextAnchorHorizontal::to_string(Self) -> String
+
+pub(all) enum ST_TextAnchorVertical {
+  TextAnchorVerticalT
+  TextAnchorVerticalMid
+  TextAnchorVerticalB
+} derive(Eq, @debug.Debug)
+pub fn ST_TextAnchorVertical::new(String) -> Self raise SchemaViolation
+pub fn ST_TextAnchorVertical::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextAnchorVertical::to_string(Self) -> String
+
+pub(all) enum ST_TextBlockDirection {
+  TextBlockDirectionHorz
+  TextBlockDirectionVert
+} derive(Eq, @debug.Debug)
+pub fn ST_TextBlockDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_TextBlockDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextBlockDirection::to_string(Self) -> String
+
+pub(all) enum ST_TextDirection {
+  TextDirectionFromT
+  TextDirectionFromB
+} derive(Eq, @debug.Debug)
+pub fn ST_TextDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_TextDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextDirection::to_string(Self) -> String
+
+pub struct ST_UnsignedInts {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UnsignedInts::new(String) -> Self raise SchemaViolation
+pub fn ST_UnsignedInts::parse(String) -> Self raise SchemaViolation
+pub fn ST_UnsignedInts::to_string(Self) -> String
+
+pub(all) enum ST_VariableType {
+  VariableTypeNone
+  VariableTypeOrgChart
+  VariableTypeChMax
+  VariableTypeChPref
+  VariableTypeBulEnabled
+  VariableTypeDir
+  VariableTypeHierBranch
+  VariableTypeAnimOne
+  VariableTypeAnimLvl
+  VariableTypeResizeHandles
+} derive(Eq, @debug.Debug)
+pub fn ST_VariableType::new(String) -> Self raise SchemaViolation
+pub fn ST_VariableType::parse(String) -> Self raise SchemaViolation
+pub fn ST_VariableType::to_string(Self) -> String
+
+pub(all) enum ST_VerticalAlignment {
+  VerticalAlignmentT
+  VerticalAlignmentMid
+  VerticalAlignmentB
+  VerticalAlignmentNone
+} derive(Eq, @debug.Debug)
+pub fn ST_VerticalAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_VerticalAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_VerticalAlignment::to_string(Self) -> String
 
 // Type aliases
 
