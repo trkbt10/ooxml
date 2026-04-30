@@ -15,14 +15,26 @@
 /// ResourceMissing errors.
 ///
 /// §3 Specification Sections: §10 Digital Signatures is represented by
-/// package_name and digital_signature_ns. §10.1 General and §10.3 Choosing
-/// Content To Sign are overview contracts for this package. §10.4.1 General,
+/// package_name and digital_signature_ns. §10.1 General defines the digital
+/// signatures package role: an OPC package can carry XML digital signature
+/// markup while cryptographic policy and resource resolution stay in the
+/// surrounding OPC layer. §10.3 Choosing Content To Sign defines the content
+/// selection contract: RelationshipReference and RelationshipsGroupReference
+/// name the package relationship material selected for signing, and XML-
+/// Signature Reference/Transform children preserve any selected content
+/// filters. §10.4.1 General defines the digital signature parts contract:
+/// origin, XML signature, and certificate parts are modeled as package parts
+/// whose local markup is exposed by this domain and reader/writer API.
 /// §10.4.2 Digital Signature Origin Part, §10.4.3 Digital Signature Xml
 /// Signature Part, and §10.4.4 Digital Signature Certificate Part are package
 /// part contracts surfaced through the domain and reader/writer API.
-/// §10.5.1 General and §10.5.2 Support For Versioning And Extensibility are
-/// represented by the structural XML-Signature markup wrappers that preserve
-/// child @xml.Node values. §10.5.3 Signature Element is Signature,
+/// §10.5.1 General defines the digital signature markup contract for
+/// opc-digSig and imported XML-Signature elements handled by this package.
+/// §10.5.2 Support For Versioning And Extensibility defines the extension
+/// contract: Markup Compatibility namespaced attributes and unknown extension
+/// elements are preserved through child @xml.Node arrays while the dedicated
+/// markup-compatibility package owns MC processing rules. §10.5.3 Signature
+/// Element is Signature,
 /// read_signature, and write_signature. §10.5.4 SignedInfo Element is
 /// SignedInfo, read_signed_info, and write_signed_info. §10.5.5
 /// CanonicalizationMethod Element is CanonicalizationMethod,

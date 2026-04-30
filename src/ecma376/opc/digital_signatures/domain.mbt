@@ -133,9 +133,22 @@ fn SignatureTime::new(format : ST_Format, value : ST_Value) -> SignatureTime {
 }
 
 ///|
-/// 3. Specification Sections TOC coverage for §10 Digital Signatures is tied
-/// to this namespace because every owned opc-digSig XML reader validates
-/// elements against it.
+/// ECMA-376 Part 2 §10.1 General source section
+/// 10.1__general.md is owned by src/ecma376/opc/digital_signatures.
+/// ECMA-376 Part 2 §10.3 Choosing Content To Sign source section
+/// 10.3__choosing-content-to-sign.md is owned by this package through
+/// RelationshipReference, RelationshipsGroupReference, Reference, and
+/// Transform content selection markup.
+/// ECMA-376 Part 2 §10.4.1 General source section 10.4.1__general.md is
+/// owned by this digital signature parts namespace contract.
+/// ECMA-376 Part 2 §10.5.1 General source section 10.5.1__general.md is
+/// owned by the opc-digSig and XML-Signature markup readers and writers.
+/// ECMA-376 Part 2 §10.5.2 Support For Versioning And Extensibility source
+/// section 10.5.2__support-for-versioning-and-extensibility.md is owned by
+/// extension-preserving child @xml.Node arrays and markup compatibility
+/// boundaries.
+/// §10 Digital Signatures schema coverage is tied to this namespace because
+/// every owned opc-digSig XML reader validates elements against it.
 pub fn digital_signature_ns() -> String {
   "http://schemas.openxmlformats.org/package/2006/digital-signature"
 }
