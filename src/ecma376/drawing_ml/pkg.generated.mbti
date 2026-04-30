@@ -9,6 +9,8 @@ import {
 // Values
 pub fn package_name() -> String
 
+pub fn read_blip(Bytes) -> CT_Blip raise
+
 pub fn read_blip_fill_properties(Bytes) -> CT_BlipFillProperties raise
 
 pub fn read_blur_effect(Bytes) -> CT_BlurEffect raise
@@ -74,6 +76,10 @@ pub fn read_theme_manager(Bytes) -> CT_EmptyElement raise
 pub fn read_theme_override(Bytes) -> CT_BaseStylesOverride raise
 
 pub fn read_transform2d(Bytes) -> CT_Transform2D raise
+
+pub fn read_video_file(Bytes) -> CT_VideoFile raise
+
+pub fn write_blip(CT_Blip) -> Bytes
 
 pub fn write_blip_fill_properties(CT_BlipFillProperties) -> Bytes
 
@@ -141,6 +147,8 @@ pub fn write_theme_override(CT_BaseStylesOverride) -> Bytes
 
 pub fn write_transform2d(CT_Transform2D) -> Bytes
 
+pub fn write_video_file(CT_VideoFile) -> Bytes
+
 // Errors
 pub suberror SchemaViolation {
   SchemaViolation(schema~ : String, path~ : String, reason~ : String)
@@ -202,6 +210,21 @@ pub(all) struct CT_Angle {
 } derive(Eq, @debug.Debug)
 pub fn CT_Angle::new(@xml.Element) -> Self
 
+pub(all) struct CT_AudioCD {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AudioCD::new(@xml.Element) -> Self
+
+pub(all) struct CT_AudioCDTime {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AudioCDTime::new(@xml.Element) -> Self
+
+pub(all) struct CT_AudioFile {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AudioFile::new(@xml.Element) -> Self
+
 pub(all) struct CT_BaseStyles {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -222,6 +245,11 @@ pub(all) struct CT_BlendEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_BlendEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_Blip {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Blip::new(@xml.Element) -> Self
 
 pub(all) struct CT_BlipFillProperties {
   element : @xml.Element
@@ -357,6 +385,11 @@ pub(all) struct CT_EffectReference {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_EffectReference::new(@xml.Element) -> Self
+
+pub(all) struct CT_EmbeddedWAVAudioFile {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EmbeddedWAVAudioFile::new(@xml.Element) -> Self
 
 #alias(ThemeManager)
 pub(all) struct CT_EmptyElement {
@@ -725,6 +758,11 @@ pub(all) struct CT_PresetTextShape {
 } derive(Eq, @debug.Debug)
 pub fn CT_PresetTextShape::new(@xml.Element) -> Self
 
+pub(all) struct CT_QuickTimeFile {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_QuickTimeFile::new(@xml.Element) -> Self
+
 pub(all) struct CT_Ratio {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1049,6 +1087,11 @@ pub(all) struct CT_Vector3D {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Vector3D::new(@xml.Element) -> Self
+
+pub(all) struct CT_VideoFile {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_VideoFile::new(@xml.Element) -> Self
 
 pub(all) struct CT_XYAdjustHandle {
   element : @xml.Element
