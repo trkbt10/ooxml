@@ -5,7 +5,3 @@
 import {
   "trkbt10/ooxml/xml" @xml,
 }
-
-import {
-  "moonbitlang/core/encoding/utf8" @utf8,
-} for "wbtest"

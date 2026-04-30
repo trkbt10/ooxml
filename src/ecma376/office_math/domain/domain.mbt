@@ -939,3 +939,21 @@ pub(all) struct CT_OMath {
 pub fn CT_OMath::new(element : @xml.Element) -> CT_OMath {
   { element, }
 }
+
+///|
+/// Construct top-level XSD element oMath as CT_OMath (§22.1).
+pub fn o_math(element : @xml.Element) -> CT_OMath {
+  CT_OMath::new(element)
+}
+
+///|
+/// Construct top-level XSD element oMathPara as CT_OMathPara (§22.1).
+pub fn o_math_para(element : @xml.Element) -> CT_OMathPara {
+  CT_OMathPara::new(element)
+}
+
+///|
+/// Construct top-level XSD element mathPr as CT_MathPr (§22.1).
+pub fn math_pr(element : @xml.Element) -> CT_MathPr {
+  CT_MathPr::new(element)
+}

@@ -97,6 +97,7 @@ pub fn ST_Char::to_string(self : ST_Char) -> String {
 
 ///|
 /// XSD simple type ST_Shp (§22.1.x).
+/// OMML shape enumeration with centered and match values.
 pub(all) enum ST_Shp {
   Centered
   Match
@@ -199,6 +200,7 @@ pub fn ST_TopBot::to_string(self : ST_TopBot) -> String {
 
 ///|
 /// XSD simple type ST_Script (§22.1.x).
+/// OMML script enumeration with roman, script, fraktur, double-struck, sans-serif, and monospace values.
 pub(all) enum ST_Script {
   Roman
   Script

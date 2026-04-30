@@ -7,6 +7,18 @@ import {
 }
 
 // Values
+pub fn eg_o_math_elements(@xml.Element) -> EG_OMathElements
+
+pub fn eg_o_math_math_elements(@xml.Element) -> EG_OMathMathElements
+
+pub fn eg_script_style(@xml.Element) -> EG_ScriptStyle
+
+pub fn math_pr(@xml.Element) -> CT_MathPr
+
+pub fn o_math(@xml.Element) -> CT_OMath
+
+pub fn o_math_para(@xml.Element) -> CT_OMathPara
+
 pub fn package_name() -> String
 
 // Errors
@@ -374,6 +386,21 @@ pub(all) struct CT_YAlign {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_YAlign::new(@xml.Element) -> Self
+
+pub(all) struct EG_OMathElements {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_OMathElements::new(@xml.Element) -> Self
+
+pub(all) struct EG_OMathMathElements {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_OMathMathElements::new(@xml.Element) -> Self
+
+pub(all) struct EG_ScriptStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ScriptStyle::new(@xml.Element) -> Self
 
 pub(all) enum ST_BreakBin {
   Before
