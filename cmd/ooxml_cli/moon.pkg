@@ -1,0 +1,12 @@
+// Native CLI for trkbt10/ooxml.
+//
+// Build:  moon build --target native --release
+// Run:    moon run cmd/ooxml_cli
+
+import {
+  "trkbt10/ooxml" as @ooxml,
+}
+
+options(
+  "is-main": true,
+)

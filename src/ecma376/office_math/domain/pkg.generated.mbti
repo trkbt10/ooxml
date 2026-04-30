@@ -1,0 +1,14 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/office_math/domain"
+
+// Values
+pub fn package_name() -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

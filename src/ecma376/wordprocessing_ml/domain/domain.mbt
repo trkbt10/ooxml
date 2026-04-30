@@ -1,0 +1,7 @@
+///|
+/// WordprocessingML domain: w:document, w:body, w:p, w:r, w:tbl, w:sectPr, styles, numbering.
+///
+/// Implementation pending.
+pub fn package_name() -> String {
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain"
+}

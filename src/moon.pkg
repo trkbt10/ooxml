@@ -1,0 +1,7 @@
+// trkbt10/ooxml — root facade.
+//
+// Public re-exports of the per-format facades live here. The root package
+// itself does not implement parsing/building; it only ties the format
+// facades together for convenience.
+//
+// Format facade imports are added once each facade package exposes API.

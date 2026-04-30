@@ -1,0 +1,21 @@
+// WASM build target for the .docx facade.
+//
+// Build:  moon build --target wasm-gc --release
+//
+// Exports listed below become callable from JavaScript hosts when this
+// package is published as the npm-side core wasm bundle. Names are kept
+// flat (no namespace prefix) so that the JS wrapper can re-namespace them.
+
+import {
+  "trkbt10/ooxml/docx" as @docx,
+}
+
+options(
+  link: {
+    "wasm-gc": {
+      exports: [
+        "docx_package_name:package_name",
+      ],
+    },
+  },
+)

@@ -1,0 +1,17 @@
+{
+  "name": "trkbt10/ooxml",
+  "version": "0.1.0",
+  "readme": "README.mbt.md",
+  "repository": "",
+  "license": "Apache-2.0",
+  "keywords": [
+    "ooxml",
+    "ecma-376",
+    "xlsx",
+    "pptx",
+    "docx",
+    "office"
+  ],
+  "description": "OOXML (ECMA-376) parsing, building, and rendering library for Office formats (xlsx/pptx/docx) in MoonBit.",
+  "source": "src"
+}

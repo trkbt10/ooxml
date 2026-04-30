@@ -1,0 +1,6 @@
+// MS-CFB (Compound File Binary).
+//
+// Pre-OOXML Office formats (.xls, .doc, .ppt) and the OLE objects embedded
+// inside OOXML packages use MS-CFB. This package handles the raw container
+// only; format-specific stream parsers live elsewhere (or in dedicated
+// converters).
