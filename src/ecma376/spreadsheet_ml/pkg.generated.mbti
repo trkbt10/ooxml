@@ -1,12 +1,683 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/spreadsheet_ml"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn package_name() -> String
 
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub struct ST_Axis {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Axis::new(String) -> Self raise SchemaViolation
+pub fn ST_Axis::parse(String) -> Self raise SchemaViolation
+pub fn ST_Axis::to_string(Self) -> String
+
+pub struct ST_BorderId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BorderId::new(String) -> Self raise SchemaViolation
+pub fn ST_BorderId::parse(String) -> Self raise SchemaViolation
+pub fn ST_BorderId::to_string(Self) -> String
+
+pub struct ST_BorderStyle {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BorderStyle::new(String) -> Self raise SchemaViolation
+pub fn ST_BorderStyle::parse(String) -> Self raise SchemaViolation
+pub fn ST_BorderStyle::to_string(Self) -> String
+
+pub struct ST_CalcMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CalcMode::new(String) -> Self raise SchemaViolation
+pub fn ST_CalcMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_CalcMode::to_string(Self) -> String
+
+pub struct ST_CellComments {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CellComments::new(String) -> Self raise SchemaViolation
+pub fn ST_CellComments::parse(String) -> Self raise SchemaViolation
+pub fn ST_CellComments::to_string(Self) -> String
+
+pub struct ST_CellFormulaType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CellFormulaType::new(String) -> Self raise SchemaViolation
+pub fn ST_CellFormulaType::parse(String) -> Self raise SchemaViolation
+pub fn ST_CellFormulaType::to_string(Self) -> String
+
+pub struct ST_CellRef {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CellRef::new(String) -> Self raise SchemaViolation
+pub fn ST_CellRef::parse(String) -> Self raise SchemaViolation
+pub fn ST_CellRef::to_string(Self) -> String
+
+pub struct ST_CellSpan {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CellSpan::new(String) -> Self raise SchemaViolation
+pub fn ST_CellSpan::parse(String) -> Self raise SchemaViolation
+pub fn ST_CellSpan::to_string(Self) -> String
+
+pub struct ST_CellSpans {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CellSpans::new(String) -> Self raise SchemaViolation
+pub fn ST_CellSpans::parse(String) -> Self raise SchemaViolation
+pub fn ST_CellSpans::to_string(Self) -> String
+
+pub struct ST_CellStyleXfId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CellStyleXfId::new(String) -> Self raise SchemaViolation
+pub fn ST_CellStyleXfId::parse(String) -> Self raise SchemaViolation
+pub fn ST_CellStyleXfId::to_string(Self) -> String
+
+pub struct ST_CellType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CellType::new(String) -> Self raise SchemaViolation
+pub fn ST_CellType::parse(String) -> Self raise SchemaViolation
+pub fn ST_CellType::to_string(Self) -> String
+
+pub struct ST_CfType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CfType::new(String) -> Self raise SchemaViolation
+pub fn ST_CfType::parse(String) -> Self raise SchemaViolation
+pub fn ST_CfType::to_string(Self) -> String
+
+pub struct ST_CfvoType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CfvoType::new(String) -> Self raise SchemaViolation
+pub fn ST_CfvoType::parse(String) -> Self raise SchemaViolation
+pub fn ST_CfvoType::to_string(Self) -> String
+
+pub struct ST_Comments {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Comments::new(String) -> Self raise SchemaViolation
+pub fn ST_Comments::parse(String) -> Self raise SchemaViolation
+pub fn ST_Comments::to_string(Self) -> String
+
+pub struct ST_ConditionalFormattingOperator {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ConditionalFormattingOperator::new(String) -> Self raise SchemaViolation
+pub fn ST_ConditionalFormattingOperator::parse(String) -> Self raise SchemaViolation
+pub fn ST_ConditionalFormattingOperator::to_string(Self) -> String
+
+pub struct ST_CredMethod {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CredMethod::new(String) -> Self raise SchemaViolation
+pub fn ST_CredMethod::parse(String) -> Self raise SchemaViolation
+pub fn ST_CredMethod::to_string(Self) -> String
+
+pub struct ST_DataConsolidateFunction {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DataConsolidateFunction::new(String) -> Self raise SchemaViolation
+pub fn ST_DataConsolidateFunction::parse(String) -> Self raise SchemaViolation
+pub fn ST_DataConsolidateFunction::to_string(Self) -> String
+
+pub struct ST_DataValidationErrorStyle {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DataValidationErrorStyle::new(String) -> Self raise SchemaViolation
+pub fn ST_DataValidationErrorStyle::parse(String) -> Self raise SchemaViolation
+pub fn ST_DataValidationErrorStyle::to_string(Self) -> String
+
+pub struct ST_DataValidationImeMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DataValidationImeMode::new(String) -> Self raise SchemaViolation
+pub fn ST_DataValidationImeMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_DataValidationImeMode::to_string(Self) -> String
+
+pub struct ST_DataValidationOperator {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DataValidationOperator::new(String) -> Self raise SchemaViolation
+pub fn ST_DataValidationOperator::parse(String) -> Self raise SchemaViolation
+pub fn ST_DataValidationOperator::to_string(Self) -> String
+
+pub struct ST_DataValidationType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DataValidationType::new(String) -> Self raise SchemaViolation
+pub fn ST_DataValidationType::parse(String) -> Self raise SchemaViolation
+pub fn ST_DataValidationType::to_string(Self) -> String
+
+pub struct ST_DateTimeGrouping {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DateTimeGrouping::new(String) -> Self raise SchemaViolation
+pub fn ST_DateTimeGrouping::parse(String) -> Self raise SchemaViolation
+pub fn ST_DateTimeGrouping::to_string(Self) -> String
+
+pub struct ST_DdeValueType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DdeValueType::new(String) -> Self raise SchemaViolation
+pub fn ST_DdeValueType::parse(String) -> Self raise SchemaViolation
+pub fn ST_DdeValueType::to_string(Self) -> String
+
+pub struct ST_DvAspect {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DvAspect::new(String) -> Self raise SchemaViolation
+pub fn ST_DvAspect::parse(String) -> Self raise SchemaViolation
+pub fn ST_DvAspect::to_string(Self) -> String
+
+pub struct ST_DxfId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DxfId::new(String) -> Self raise SchemaViolation
+pub fn ST_DxfId::parse(String) -> Self raise SchemaViolation
+pub fn ST_DxfId::to_string(Self) -> String
+
+pub struct ST_DynamicFilterType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DynamicFilterType::new(String) -> Self raise SchemaViolation
+pub fn ST_DynamicFilterType::parse(String) -> Self raise SchemaViolation
+pub fn ST_DynamicFilterType::to_string(Self) -> String
+
+pub struct ST_ExternalConnectionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ExternalConnectionType::new(String) -> Self raise SchemaViolation
+pub fn ST_ExternalConnectionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ExternalConnectionType::to_string(Self) -> String
+
+pub struct ST_FieldSortType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FieldSortType::new(String) -> Self raise SchemaViolation
+pub fn ST_FieldSortType::parse(String) -> Self raise SchemaViolation
+pub fn ST_FieldSortType::to_string(Self) -> String
+
+pub struct ST_FileType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FileType::new(String) -> Self raise SchemaViolation
+pub fn ST_FileType::parse(String) -> Self raise SchemaViolation
+pub fn ST_FileType::to_string(Self) -> String
+
+pub struct ST_FillId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FillId::new(String) -> Self raise SchemaViolation
+pub fn ST_FillId::parse(String) -> Self raise SchemaViolation
+pub fn ST_FillId::to_string(Self) -> String
+
+pub struct ST_FilterOperator {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FilterOperator::new(String) -> Self raise SchemaViolation
+pub fn ST_FilterOperator::parse(String) -> Self raise SchemaViolation
+pub fn ST_FilterOperator::to_string(Self) -> String
+
+pub struct ST_FontFamily {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FontFamily::new(String) -> Self raise SchemaViolation
+pub fn ST_FontFamily::parse(String) -> Self raise SchemaViolation
+pub fn ST_FontFamily::to_string(Self) -> String
+
+pub struct ST_FontId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FontId::new(String) -> Self raise SchemaViolation
+pub fn ST_FontId::parse(String) -> Self raise SchemaViolation
+pub fn ST_FontId::to_string(Self) -> String
+
+pub struct ST_FontScheme {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FontScheme::new(String) -> Self raise SchemaViolation
+pub fn ST_FontScheme::parse(String) -> Self raise SchemaViolation
+pub fn ST_FontScheme::to_string(Self) -> String
+
+pub struct ST_FormatAction {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FormatAction::new(String) -> Self raise SchemaViolation
+pub fn ST_FormatAction::parse(String) -> Self raise SchemaViolation
+pub fn ST_FormatAction::to_string(Self) -> String
+
+pub struct ST_Formula {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Formula::new(String) -> Self raise SchemaViolation
+pub fn ST_Formula::parse(String) -> Self raise SchemaViolation
+pub fn ST_Formula::to_string(Self) -> String
+
+pub struct ST_FormulaExpression {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FormulaExpression::new(String) -> Self raise SchemaViolation
+pub fn ST_FormulaExpression::parse(String) -> Self raise SchemaViolation
+pub fn ST_FormulaExpression::to_string(Self) -> String
+
+pub struct ST_GradientType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_GradientType::new(String) -> Self raise SchemaViolation
+pub fn ST_GradientType::parse(String) -> Self raise SchemaViolation
+pub fn ST_GradientType::to_string(Self) -> String
+
+pub struct ST_GroupBy {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_GroupBy::new(String) -> Self raise SchemaViolation
+pub fn ST_GroupBy::parse(String) -> Self raise SchemaViolation
+pub fn ST_GroupBy::to_string(Self) -> String
+
+pub struct ST_GrowShrinkType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_GrowShrinkType::new(String) -> Self raise SchemaViolation
+pub fn ST_GrowShrinkType::parse(String) -> Self raise SchemaViolation
+pub fn ST_GrowShrinkType::to_string(Self) -> String
+
+pub struct ST_HorizontalAlignment {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HorizontalAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_HorizontalAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_HorizontalAlignment::to_string(Self) -> String
+
+pub struct ST_HtmlFmt {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HtmlFmt::new(String) -> Self raise SchemaViolation
+pub fn ST_HtmlFmt::parse(String) -> Self raise SchemaViolation
+pub fn ST_HtmlFmt::to_string(Self) -> String
+
+pub struct ST_IconSetType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_IconSetType::new(String) -> Self raise SchemaViolation
+pub fn ST_IconSetType::parse(String) -> Self raise SchemaViolation
+pub fn ST_IconSetType::to_string(Self) -> String
+
+pub struct ST_ItemType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ItemType::new(String) -> Self raise SchemaViolation
+pub fn ST_ItemType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ItemType::to_string(Self) -> String
+
+pub struct ST_MdxFunctionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MdxFunctionType::new(String) -> Self raise SchemaViolation
+pub fn ST_MdxFunctionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_MdxFunctionType::to_string(Self) -> String
+
+pub struct ST_MdxKPIProperty {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MdxKPIProperty::new(String) -> Self raise SchemaViolation
+pub fn ST_MdxKPIProperty::parse(String) -> Self raise SchemaViolation
+pub fn ST_MdxKPIProperty::to_string(Self) -> String
+
+pub struct ST_MdxSetOrder {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MdxSetOrder::new(String) -> Self raise SchemaViolation
+pub fn ST_MdxSetOrder::parse(String) -> Self raise SchemaViolation
+pub fn ST_MdxSetOrder::to_string(Self) -> String
+
+pub struct ST_NumFmtId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_NumFmtId::new(String) -> Self raise SchemaViolation
+pub fn ST_NumFmtId::parse(String) -> Self raise SchemaViolation
+pub fn ST_NumFmtId::to_string(Self) -> String
+
+pub struct ST_Objects {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Objects::new(String) -> Self raise SchemaViolation
+pub fn ST_Objects::parse(String) -> Self raise SchemaViolation
+pub fn ST_Objects::to_string(Self) -> String
+
+pub struct ST_OleUpdate {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_OleUpdate::new(String) -> Self raise SchemaViolation
+pub fn ST_OleUpdate::parse(String) -> Self raise SchemaViolation
+pub fn ST_OleUpdate::to_string(Self) -> String
+
+pub struct ST_Orientation {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Orientation::new(String) -> Self raise SchemaViolation
+pub fn ST_Orientation::parse(String) -> Self raise SchemaViolation
+pub fn ST_Orientation::to_string(Self) -> String
+
+pub struct ST_PageOrder {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PageOrder::new(String) -> Self raise SchemaViolation
+pub fn ST_PageOrder::parse(String) -> Self raise SchemaViolation
+pub fn ST_PageOrder::to_string(Self) -> String
+
+pub struct ST_Pane {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Pane::new(String) -> Self raise SchemaViolation
+pub fn ST_Pane::parse(String) -> Self raise SchemaViolation
+pub fn ST_Pane::to_string(Self) -> String
+
+pub struct ST_PaneState {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PaneState::new(String) -> Self raise SchemaViolation
+pub fn ST_PaneState::parse(String) -> Self raise SchemaViolation
+pub fn ST_PaneState::to_string(Self) -> String
+
+pub struct ST_ParameterType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ParameterType::new(String) -> Self raise SchemaViolation
+pub fn ST_ParameterType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ParameterType::to_string(Self) -> String
+
+pub struct ST_PatternType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PatternType::new(String) -> Self raise SchemaViolation
+pub fn ST_PatternType::parse(String) -> Self raise SchemaViolation
+pub fn ST_PatternType::to_string(Self) -> String
+
+pub struct ST_PhoneticAlignment {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PhoneticAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_PhoneticAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_PhoneticAlignment::to_string(Self) -> String
+
+pub struct ST_PhoneticType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PhoneticType::new(String) -> Self raise SchemaViolation
+pub fn ST_PhoneticType::parse(String) -> Self raise SchemaViolation
+pub fn ST_PhoneticType::to_string(Self) -> String
+
+pub struct ST_PivotAreaType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PivotAreaType::new(String) -> Self raise SchemaViolation
+pub fn ST_PivotAreaType::parse(String) -> Self raise SchemaViolation
+pub fn ST_PivotAreaType::to_string(Self) -> String
+
+pub struct ST_PivotFilterType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PivotFilterType::new(String) -> Self raise SchemaViolation
+pub fn ST_PivotFilterType::parse(String) -> Self raise SchemaViolation
+pub fn ST_PivotFilterType::to_string(Self) -> String
+
+pub struct ST_PrintError {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PrintError::new(String) -> Self raise SchemaViolation
+pub fn ST_PrintError::parse(String) -> Self raise SchemaViolation
+pub fn ST_PrintError::to_string(Self) -> String
+
+pub struct ST_Qualifier {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Qualifier::new(String) -> Self raise SchemaViolation
+pub fn ST_Qualifier::parse(String) -> Self raise SchemaViolation
+pub fn ST_Qualifier::to_string(Self) -> String
+
+pub struct ST_Ref {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Ref::new(String) -> Self raise SchemaViolation
+pub fn ST_Ref::parse(String) -> Self raise SchemaViolation
+pub fn ST_Ref::to_string(Self) -> String
+
+pub struct ST_RefA {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RefA::new(String) -> Self raise SchemaViolation
+pub fn ST_RefA::parse(String) -> Self raise SchemaViolation
+pub fn ST_RefA::to_string(Self) -> String
+
+pub struct ST_RefMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RefMode::new(String) -> Self raise SchemaViolation
+pub fn ST_RefMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_RefMode::to_string(Self) -> String
+
+pub struct ST_RevisionAction {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RevisionAction::new(String) -> Self raise SchemaViolation
+pub fn ST_RevisionAction::parse(String) -> Self raise SchemaViolation
+pub fn ST_RevisionAction::to_string(Self) -> String
+
+pub struct ST_Scope {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Scope::new(String) -> Self raise SchemaViolation
+pub fn ST_Scope::parse(String) -> Self raise SchemaViolation
+pub fn ST_Scope::to_string(Self) -> String
+
+pub struct ST_SheetState {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SheetState::new(String) -> Self raise SchemaViolation
+pub fn ST_SheetState::parse(String) -> Self raise SchemaViolation
+pub fn ST_SheetState::to_string(Self) -> String
+
+pub struct ST_SheetViewType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SheetViewType::new(String) -> Self raise SchemaViolation
+pub fn ST_SheetViewType::parse(String) -> Self raise SchemaViolation
+pub fn ST_SheetViewType::to_string(Self) -> String
+
+pub struct ST_ShowDataAs {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ShowDataAs::new(String) -> Self raise SchemaViolation
+pub fn ST_ShowDataAs::parse(String) -> Self raise SchemaViolation
+pub fn ST_ShowDataAs::to_string(Self) -> String
+
+pub struct ST_SmartTagShow {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SmartTagShow::new(String) -> Self raise SchemaViolation
+pub fn ST_SmartTagShow::parse(String) -> Self raise SchemaViolation
+pub fn ST_SmartTagShow::to_string(Self) -> String
+
+pub struct ST_SortBy {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SortBy::new(String) -> Self raise SchemaViolation
+pub fn ST_SortBy::parse(String) -> Self raise SchemaViolation
+pub fn ST_SortBy::to_string(Self) -> String
+
+pub struct ST_SortMethod {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SortMethod::new(String) -> Self raise SchemaViolation
+pub fn ST_SortMethod::parse(String) -> Self raise SchemaViolation
+pub fn ST_SortMethod::to_string(Self) -> String
+
+pub struct ST_SortType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SortType::new(String) -> Self raise SchemaViolation
+pub fn ST_SortType::parse(String) -> Self raise SchemaViolation
+pub fn ST_SortType::to_string(Self) -> String
+
+pub struct ST_SourceType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SourceType::new(String) -> Self raise SchemaViolation
+pub fn ST_SourceType::parse(String) -> Self raise SchemaViolation
+pub fn ST_SourceType::to_string(Self) -> String
+
+pub struct ST_Sqref {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Sqref::new(String) -> Self raise SchemaViolation
+pub fn ST_Sqref::parse(String) -> Self raise SchemaViolation
+pub fn ST_Sqref::to_string(Self) -> String
+
+pub struct ST_TableStyleType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TableStyleType::new(String) -> Self raise SchemaViolation
+pub fn ST_TableStyleType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TableStyleType::to_string(Self) -> String
+
+pub struct ST_TableType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TableType::new(String) -> Self raise SchemaViolation
+pub fn ST_TableType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TableType::to_string(Self) -> String
+
+pub struct ST_TargetScreenSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TargetScreenSize::new(String) -> Self raise SchemaViolation
+pub fn ST_TargetScreenSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_TargetScreenSize::to_string(Self) -> String
+
+pub struct ST_TextHAlign {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextHAlign::new(String) -> Self raise SchemaViolation
+pub fn ST_TextHAlign::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextHAlign::to_string(Self) -> String
+
+pub struct ST_TextRotation {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextRotation::new(String) -> Self raise SchemaViolation
+pub fn ST_TextRotation::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextRotation::to_string(Self) -> String
+
+pub struct ST_TextVAlign {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextVAlign::new(String) -> Self raise SchemaViolation
+pub fn ST_TextVAlign::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextVAlign::to_string(Self) -> String
+
+pub struct ST_TimePeriod {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TimePeriod::new(String) -> Self raise SchemaViolation
+pub fn ST_TimePeriod::parse(String) -> Self raise SchemaViolation
+pub fn ST_TimePeriod::to_string(Self) -> String
+
+pub struct ST_TotalsRowFunction {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TotalsRowFunction::new(String) -> Self raise SchemaViolation
+pub fn ST_TotalsRowFunction::parse(String) -> Self raise SchemaViolation
+pub fn ST_TotalsRowFunction::to_string(Self) -> String
+
+pub struct ST_Type {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Type::new(String) -> Self raise SchemaViolation
+pub fn ST_Type::parse(String) -> Self raise SchemaViolation
+pub fn ST_Type::to_string(Self) -> String
+
+pub struct ST_UnderlineValues {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UnderlineValues::new(String) -> Self raise SchemaViolation
+pub fn ST_UnderlineValues::parse(String) -> Self raise SchemaViolation
+pub fn ST_UnderlineValues::to_string(Self) -> String
+
+pub struct ST_UnsignedIntHex {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UnsignedIntHex::new(String) -> Self raise SchemaViolation
+pub fn ST_UnsignedIntHex::parse(String) -> Self raise SchemaViolation
+pub fn ST_UnsignedIntHex::to_string(Self) -> String
+
+pub struct ST_UpdateLinks {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UpdateLinks::new(String) -> Self raise SchemaViolation
+pub fn ST_UpdateLinks::parse(String) -> Self raise SchemaViolation
+pub fn ST_UpdateLinks::to_string(Self) -> String
+
+pub struct ST_VerticalAlignment {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_VerticalAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_VerticalAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_VerticalAlignment::to_string(Self) -> String
+
+pub struct ST_Visibility {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Visibility::new(String) -> Self raise SchemaViolation
+pub fn ST_Visibility::parse(String) -> Self raise SchemaViolation
+pub fn ST_Visibility::to_string(Self) -> String
+
+pub struct ST_VolDepType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_VolDepType::new(String) -> Self raise SchemaViolation
+pub fn ST_VolDepType::parse(String) -> Self raise SchemaViolation
+pub fn ST_VolDepType::to_string(Self) -> String
+
+pub struct ST_VolValueType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_VolValueType::new(String) -> Self raise SchemaViolation
+pub fn ST_VolValueType::parse(String) -> Self raise SchemaViolation
+pub fn ST_VolValueType::to_string(Self) -> String
+
+pub struct ST_WebSourceType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_WebSourceType::new(String) -> Self raise SchemaViolation
+pub fn ST_WebSourceType::parse(String) -> Self raise SchemaViolation
+pub fn ST_WebSourceType::to_string(Self) -> String
+
+pub struct ST_XmlDataType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_XmlDataType::new(String) -> Self raise SchemaViolation
+pub fn ST_XmlDataType::parse(String) -> Self raise SchemaViolation
+pub fn ST_XmlDataType::to_string(Self) -> String
+
+pub struct ST_rwColActionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_rwColActionType::new(String) -> Self raise SchemaViolation
+pub fn ST_rwColActionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_rwColActionType::to_string(Self) -> String
 
 // Type aliases
 
