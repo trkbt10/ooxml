@@ -13,6 +13,8 @@ pub fn package_name() -> String
 
 pub fn pivot_type_group_name() -> String
 
+pub fn schema_group_name() -> String
+
 pub fn shared_string_type_group_name() -> String
 
 pub fn sheet_type_group_name() -> String
@@ -24,6 +26,24 @@ pub fn workbook_connection_type_group_name() -> String
 // Errors
 
 // Types and methods
+pub(all) struct AG_AutoFormat {
+  auto_format_id : String?
+  apply_number_formats : String?
+  apply_border_formats : String?
+  apply_font_formats : String?
+  apply_pattern_formats : String?
+  apply_alignment_formats : String?
+  apply_width_height_formats : String?
+} derive(Eq, @debug.Debug)
+pub fn AG_AutoFormat::new(auto_format_id? : String?, apply_number_formats? : String?, apply_border_formats? : String?, apply_font_formats? : String?, apply_pattern_formats? : String?, apply_alignment_formats? : String?, apply_width_height_formats? : String?) -> Self
+
+pub(all) struct AG_RevData {
+  r_id : String?
+  ua : String?
+  ra : String?
+} derive(Eq, @debug.Debug)
+pub fn AG_RevData::new(r_id? : String?, ua? : String?, ra? : String?) -> Self
+
 pub(all) struct CT_Authors {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1853,6 +1873,11 @@ pub(all) struct CT_rowItems {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_rowItems::new(@xml.Element) -> Self
+
+pub(all) struct EG_ExtensionList {
+  ext : Array[CT_Extension]
+} derive(Eq, @debug.Debug)
+pub fn EG_ExtensionList::new(Array[CT_Extension]) -> Self
 
 // Type aliases
 
