@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn migration_feature_citation() -> MigrationFeatureCitation
+
 pub fn package_name() -> String
 
 // Errors
@@ -14,6 +16,12 @@ pub suberror SchemaViolation {
 } derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct MigrationFeatureCitation {
+  part : Int
+  section : String
+  subject : String
+} derive(Eq, @debug.Debug)
+
 pub struct ST_Axis {
   value : String
 } derive(Eq, @debug.Debug)
