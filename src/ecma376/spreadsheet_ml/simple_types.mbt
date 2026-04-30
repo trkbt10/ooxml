@@ -486,6 +486,7 @@ pub fn ST_CredMethod::to_string(self : ST_CredMethod) -> String {
 }
 
 ///|
+/// SpreadsheetML HTML import/export format values: none, rtf, all.
 pub struct ST_HtmlFmt {
   value : String
 } derive(Eq, Debug)
@@ -3228,6 +3229,7 @@ pub fn ST_CalcMode::to_string(self : ST_CalcMode) -> String {
 }
 
 ///|
+/// SpreadsheetML formula reference mode values: A1 and R1C1.
 pub struct ST_RefMode {
   value : String
 } derive(Eq, Debug)

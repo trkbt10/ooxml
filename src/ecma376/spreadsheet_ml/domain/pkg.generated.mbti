@@ -1,12 +1,1858 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/spreadsheet_ml/domain"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
+pub fn metadata_external_type_group_name() -> String
+
 pub fn package_name() -> String
+
+pub fn pivot_type_group_name() -> String
+
+pub fn shared_string_type_group_name() -> String
+
+pub fn sheet_type_group_name() -> String
+
+pub fn style_type_group_name() -> String
+
+pub fn workbook_connection_type_group_name() -> String
 
 // Errors
 
 // Types and methods
+pub(all) struct CT_Authors {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Authors::new(@xml.Element) -> Self
+
+pub(all) struct CT_AutoFilter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AutoFilter::new(@xml.Element) -> Self
+
+pub(all) struct CT_AutoSortScope {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AutoSortScope::new(@xml.Element) -> Self
+
+pub(all) struct CT_BookView {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BookView::new(@xml.Element) -> Self
+
+pub(all) struct CT_BookViews {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BookViews::new(@xml.Element) -> Self
+
+pub(all) struct CT_Boolean {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Boolean::new(@xml.Element) -> Self
+
+pub(all) struct CT_BooleanProperty {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BooleanProperty::new(@xml.Element) -> Self
+
+pub(all) struct CT_Border {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Border::new(@xml.Element) -> Self
+
+pub(all) struct CT_BorderPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BorderPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_Borders {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Borders::new(@xml.Element) -> Self
+
+pub(all) struct CT_Break {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Break::new(@xml.Element) -> Self
+
+pub(all) struct CT_CacheField {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CacheField::new(@xml.Element) -> Self
+
+pub(all) struct CT_CacheFields {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CacheFields::new(@xml.Element) -> Self
+
+pub(all) struct CT_CacheHierarchies {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CacheHierarchies::new(@xml.Element) -> Self
+
+pub(all) struct CT_CacheHierarchy {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CacheHierarchy::new(@xml.Element) -> Self
+
+pub(all) struct CT_CacheSource {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CacheSource::new(@xml.Element) -> Self
+
+pub(all) struct CT_CalcCell {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CalcCell::new(@xml.Element) -> Self
+
+pub(all) struct CT_CalcChain {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CalcChain::new(@xml.Element) -> Self
+
+pub(all) struct CT_CalcPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CalcPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_CalculatedItem {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CalculatedItem::new(@xml.Element) -> Self
+
+pub(all) struct CT_CalculatedItems {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CalculatedItems::new(@xml.Element) -> Self
+
+pub(all) struct CT_CalculatedMember {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CalculatedMember::new(@xml.Element) -> Self
+
+pub(all) struct CT_CalculatedMembers {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CalculatedMembers::new(@xml.Element) -> Self
+
+pub(all) struct CT_Cell {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Cell::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellAlignment {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellAlignment::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellFormula {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellFormula::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellProtection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellProtection::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellSmartTag {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellSmartTag::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellSmartTagPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellSmartTagPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellSmartTags {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellSmartTags::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellStyleXfs {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellStyleXfs::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellStyles {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellStyles::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellWatch {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellWatch::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellWatches {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellWatches::new(@xml.Element) -> Self
+
+pub(all) struct CT_CellXfs {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CellXfs::new(@xml.Element) -> Self
+
+pub(all) struct CT_CfRule {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CfRule::new(@xml.Element) -> Self
+
+pub(all) struct CT_Cfvo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Cfvo::new(@xml.Element) -> Self
+
+pub(all) struct CT_ChartFormat {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ChartFormat::new(@xml.Element) -> Self
+
+pub(all) struct CT_ChartFormats {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ChartFormats::new(@xml.Element) -> Self
+
+pub(all) struct CT_Chartsheet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Chartsheet::new(@xml.Element) -> Self
+
+pub(all) struct CT_ChartsheetPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ChartsheetPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_ChartsheetProtection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ChartsheetProtection::new(@xml.Element) -> Self
+
+pub(all) struct CT_ChartsheetView {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ChartsheetView::new(@xml.Element) -> Self
+
+pub(all) struct CT_ChartsheetViews {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ChartsheetViews::new(@xml.Element) -> Self
+
+pub(all) struct CT_Col {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Col::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColFields {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColFields::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColHierarchiesUsage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColHierarchiesUsage::new(@xml.Element) -> Self
+
+pub(all) struct CT_Color {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Color::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorFilter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorFilter::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorScale {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorScale::new(@xml.Element) -> Self
+
+pub(all) struct CT_Colors {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Colors::new(@xml.Element) -> Self
+
+pub(all) struct CT_Cols {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Cols::new(@xml.Element) -> Self
+
+pub(all) struct CT_Comment {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Comment::new(@xml.Element) -> Self
+
+pub(all) struct CT_CommentList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CommentList::new(@xml.Element) -> Self
+
+pub(all) struct CT_CommentPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CommentPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_Comments {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Comments::new(@xml.Element) -> Self
+
+pub(all) struct CT_ConditionalFormat {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ConditionalFormat::new(@xml.Element) -> Self
+
+pub(all) struct CT_ConditionalFormats {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ConditionalFormats::new(@xml.Element) -> Self
+
+pub(all) struct CT_ConditionalFormatting {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ConditionalFormatting::new(@xml.Element) -> Self
+
+pub(all) struct CT_Connection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Connection::new(@xml.Element) -> Self
+
+pub(all) struct CT_Connections {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Connections::new(@xml.Element) -> Self
+
+pub(all) struct CT_Consolidation {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Consolidation::new(@xml.Element) -> Self
+
+pub(all) struct CT_Control {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Control::new(@xml.Element) -> Self
+
+pub(all) struct CT_ControlPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ControlPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_Controls {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Controls::new(@xml.Element) -> Self
+
+pub(all) struct CT_CsPageSetup {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CsPageSetup::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomChartsheetView {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomChartsheetView::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomChartsheetViews {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomChartsheetViews::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomFilter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomFilter::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomFilters {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomFilters::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomProperty {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomProperty::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomSheetView {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomSheetView::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomSheetViews {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomSheetViews::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomWorkbookView {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomWorkbookView::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomWorkbookViews {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomWorkbookViews::new(@xml.Element) -> Self
+
+pub(all) struct CT_DataBar {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataBar::new(@xml.Element) -> Self
+
+pub(all) struct CT_DataBinding {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataBinding::new(@xml.Element) -> Self
+
+pub(all) struct CT_DataConsolidate {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataConsolidate::new(@xml.Element) -> Self
+
+pub(all) struct CT_DataField {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataField::new(@xml.Element) -> Self
+
+pub(all) struct CT_DataFields {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataFields::new(@xml.Element) -> Self
+
+pub(all) struct CT_DataRef {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataRef::new(@xml.Element) -> Self
+
+pub(all) struct CT_DataRefs {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataRefs::new(@xml.Element) -> Self
+
+pub(all) struct CT_DataValidation {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataValidation::new(@xml.Element) -> Self
+
+pub(all) struct CT_DataValidations {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DataValidations::new(@xml.Element) -> Self
+
+pub(all) struct CT_DateGroupItem {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DateGroupItem::new(@xml.Element) -> Self
+
+pub(all) struct CT_DateTime {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DateTime::new(@xml.Element) -> Self
+
+pub(all) struct CT_DbPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DbPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_DdeItem {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DdeItem::new(@xml.Element) -> Self
+
+pub(all) struct CT_DdeItems {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DdeItems::new(@xml.Element) -> Self
+
+pub(all) struct CT_DdeLink {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DdeLink::new(@xml.Element) -> Self
+
+pub(all) struct CT_DdeValue {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DdeValue::new(@xml.Element) -> Self
+
+pub(all) struct CT_DdeValues {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DdeValues::new(@xml.Element) -> Self
+
+pub(all) struct CT_DefinedName {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DefinedName::new(@xml.Element) -> Self
+
+pub(all) struct CT_DefinedNames {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DefinedNames::new(@xml.Element) -> Self
+
+pub(all) struct CT_DeletedField {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DeletedField::new(@xml.Element) -> Self
+
+pub(all) struct CT_Dialogsheet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Dialogsheet::new(@xml.Element) -> Self
+
+pub(all) struct CT_Dimensions {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Dimensions::new(@xml.Element) -> Self
+
+pub(all) struct CT_DiscretePr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DiscretePr::new(@xml.Element) -> Self
+
+pub(all) struct CT_Drawing {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Drawing::new(@xml.Element) -> Self
+
+pub(all) struct CT_DrawingHF {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DrawingHF::new(@xml.Element) -> Self
+
+pub(all) struct CT_Dxf {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Dxf::new(@xml.Element) -> Self
+
+pub(all) struct CT_Dxfs {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Dxfs::new(@xml.Element) -> Self
+
+pub(all) struct CT_DynamicFilter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DynamicFilter::new(@xml.Element) -> Self
+
+pub(all) struct CT_Error {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Error::new(@xml.Element) -> Self
+
+pub(all) struct CT_Extension {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Extension::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExtensionList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExtensionList::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalBook {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalBook::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalCell {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalCell::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalDefinedName {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalDefinedName::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalDefinedNames {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalDefinedNames::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalLink {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalLink::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalReference {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalReference::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalReferences {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalReferences::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalRow {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalRow::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalSheetData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalSheetData::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalSheetDataSet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalSheetDataSet::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalSheetName {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalSheetName::new(@xml.Element) -> Self
+
+pub(all) struct CT_ExternalSheetNames {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExternalSheetNames::new(@xml.Element) -> Self
+
+pub(all) struct CT_Field {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Field::new(@xml.Element) -> Self
+
+pub(all) struct CT_FieldGroup {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FieldGroup::new(@xml.Element) -> Self
+
+pub(all) struct CT_FieldUsage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FieldUsage::new(@xml.Element) -> Self
+
+pub(all) struct CT_FieldsUsage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FieldsUsage::new(@xml.Element) -> Self
+
+pub(all) struct CT_FileRecoveryPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FileRecoveryPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_FileSharing {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FileSharing::new(@xml.Element) -> Self
+
+pub(all) struct CT_FileVersion {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FileVersion::new(@xml.Element) -> Self
+
+pub(all) struct CT_Fill {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Fill::new(@xml.Element) -> Self
+
+pub(all) struct CT_Fills {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Fills::new(@xml.Element) -> Self
+
+pub(all) struct CT_Filter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Filter::new(@xml.Element) -> Self
+
+pub(all) struct CT_FilterColumn {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FilterColumn::new(@xml.Element) -> Self
+
+pub(all) struct CT_Filters {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Filters::new(@xml.Element) -> Self
+
+pub(all) struct CT_Font {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Font::new(@xml.Element) -> Self
+
+pub(all) struct CT_FontFamily {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontFamily::new(@xml.Element) -> Self
+
+pub(all) struct CT_FontName {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontName::new(@xml.Element) -> Self
+
+pub(all) struct CT_FontScheme {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontScheme::new(@xml.Element) -> Self
+
+pub(all) struct CT_FontSize {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontSize::new(@xml.Element) -> Self
+
+pub(all) struct CT_Fonts {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Fonts::new(@xml.Element) -> Self
+
+pub(all) struct CT_Format {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Format::new(@xml.Element) -> Self
+
+pub(all) struct CT_Formats {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Formats::new(@xml.Element) -> Self
+
+pub(all) struct CT_FunctionGroup {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FunctionGroup::new(@xml.Element) -> Self
+
+pub(all) struct CT_FunctionGroups {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FunctionGroups::new(@xml.Element) -> Self
+
+pub(all) struct CT_FutureMetadata {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FutureMetadata::new(@xml.Element) -> Self
+
+pub(all) struct CT_FutureMetadataBlock {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FutureMetadataBlock::new(@xml.Element) -> Self
+
+pub(all) struct CT_GradientFill {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GradientFill::new(@xml.Element) -> Self
+
+pub(all) struct CT_GradientStop {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GradientStop::new(@xml.Element) -> Self
+
+pub(all) struct CT_GroupItems {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupItems::new(@xml.Element) -> Self
+
+pub(all) struct CT_GroupLevel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupLevel::new(@xml.Element) -> Self
+
+pub(all) struct CT_GroupLevels {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupLevels::new(@xml.Element) -> Self
+
+pub(all) struct CT_GroupMember {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupMember::new(@xml.Element) -> Self
+
+pub(all) struct CT_GroupMembers {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupMembers::new(@xml.Element) -> Self
+
+pub(all) struct CT_Groups {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Groups::new(@xml.Element) -> Self
+
+pub(all) struct CT_HeaderFooter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HeaderFooter::new(@xml.Element) -> Self
+
+pub(all) struct CT_HierarchyUsage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HierarchyUsage::new(@xml.Element) -> Self
+
+pub(all) struct CT_Hyperlink {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Hyperlink::new(@xml.Element) -> Self
+
+pub(all) struct CT_Hyperlinks {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Hyperlinks::new(@xml.Element) -> Self
+
+pub(all) struct CT_I {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_I::new(@xml.Element) -> Self
+
+pub(all) struct CT_IconFilter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_IconFilter::new(@xml.Element) -> Self
+
+pub(all) struct CT_IconSet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_IconSet::new(@xml.Element) -> Self
+
+pub(all) struct CT_IgnoredError {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_IgnoredError::new(@xml.Element) -> Self
+
+pub(all) struct CT_IgnoredErrors {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_IgnoredErrors::new(@xml.Element) -> Self
+
+pub(all) struct CT_Index {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Index::new(@xml.Element) -> Self
+
+pub(all) struct CT_IndexedColors {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_IndexedColors::new(@xml.Element) -> Self
+
+pub(all) struct CT_InputCells {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_InputCells::new(@xml.Element) -> Self
+
+pub(all) struct CT_IntProperty {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_IntProperty::new(@xml.Element) -> Self
+
+pub(all) struct CT_Item {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Item::new(@xml.Element) -> Self
+
+pub(all) struct CT_Items {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Items::new(@xml.Element) -> Self
+
+pub(all) struct CT_LevelGroup {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LevelGroup::new(@xml.Element) -> Self
+
+pub(all) struct CT_Location {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Location::new(@xml.Element) -> Self
+
+pub(all) struct CT_MRUColors {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MRUColors::new(@xml.Element) -> Self
+
+pub(all) struct CT_Macrosheet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Macrosheet::new(@xml.Element) -> Self
+
+pub(all) struct CT_Map {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Map::new(@xml.Element) -> Self
+
+pub(all) struct CT_MapInfo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MapInfo::new(@xml.Element) -> Self
+
+pub(all) struct CT_Mdx {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Mdx::new(@xml.Element) -> Self
+
+pub(all) struct CT_MdxKPI {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MdxKPI::new(@xml.Element) -> Self
+
+pub(all) struct CT_MdxMemeberProp {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MdxMemeberProp::new(@xml.Element) -> Self
+
+pub(all) struct CT_MdxMetadata {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MdxMetadata::new(@xml.Element) -> Self
+
+pub(all) struct CT_MdxSet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MdxSet::new(@xml.Element) -> Self
+
+pub(all) struct CT_MdxTuple {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MdxTuple::new(@xml.Element) -> Self
+
+pub(all) struct CT_MeasureDimensionMap {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MeasureDimensionMap::new(@xml.Element) -> Self
+
+pub(all) struct CT_MeasureDimensionMaps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MeasureDimensionMaps::new(@xml.Element) -> Self
+
+pub(all) struct CT_MeasureGroup {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MeasureGroup::new(@xml.Element) -> Self
+
+pub(all) struct CT_MeasureGroups {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MeasureGroups::new(@xml.Element) -> Self
+
+pub(all) struct CT_Member {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Member::new(@xml.Element) -> Self
+
+pub(all) struct CT_MemberProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MemberProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_MemberProperty {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MemberProperty::new(@xml.Element) -> Self
+
+pub(all) struct CT_Members {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Members::new(@xml.Element) -> Self
+
+pub(all) struct CT_MergeCell {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MergeCell::new(@xml.Element) -> Self
+
+pub(all) struct CT_MergeCells {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MergeCells::new(@xml.Element) -> Self
+
+pub(all) struct CT_Metadata {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Metadata::new(@xml.Element) -> Self
+
+pub(all) struct CT_MetadataBlock {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MetadataBlock::new(@xml.Element) -> Self
+
+pub(all) struct CT_MetadataBlocks {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MetadataBlocks::new(@xml.Element) -> Self
+
+pub(all) struct CT_MetadataRecord {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MetadataRecord::new(@xml.Element) -> Self
+
+pub(all) struct CT_MetadataStringIndex {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MetadataStringIndex::new(@xml.Element) -> Self
+
+pub(all) struct CT_MetadataStrings {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MetadataStrings::new(@xml.Element) -> Self
+
+pub(all) struct CT_MetadataType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MetadataType::new(@xml.Element) -> Self
+
+pub(all) struct CT_MetadataTypes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MetadataTypes::new(@xml.Element) -> Self
+
+pub(all) struct CT_Missing {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Missing::new(@xml.Element) -> Self
+
+pub(all) struct CT_NumFmt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NumFmt::new(@xml.Element) -> Self
+
+pub(all) struct CT_NumFmts {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NumFmts::new(@xml.Element) -> Self
+
+pub(all) struct CT_Number {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Number::new(@xml.Element) -> Self
+
+pub(all) struct CT_ObjectAnchor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ObjectAnchor::new(@xml.Element) -> Self
+
+pub(all) struct CT_ObjectPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ObjectPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_OlapPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OlapPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_OleItem {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OleItem::new(@xml.Element) -> Self
+
+pub(all) struct CT_OleItems {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OleItems::new(@xml.Element) -> Self
+
+pub(all) struct CT_OleLink {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OleLink::new(@xml.Element) -> Self
+
+pub(all) struct CT_OleObject {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OleObject::new(@xml.Element) -> Self
+
+pub(all) struct CT_OleObjects {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OleObjects::new(@xml.Element) -> Self
+
+pub(all) struct CT_OleSize {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OleSize::new(@xml.Element) -> Self
+
+pub(all) struct CT_OutlinePr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OutlinePr::new(@xml.Element) -> Self
+
+pub(all) struct CT_PCDKPI {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PCDKPI::new(@xml.Element) -> Self
+
+pub(all) struct CT_PCDKPIs {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PCDKPIs::new(@xml.Element) -> Self
+
+pub(all) struct CT_PCDSCPage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PCDSCPage::new(@xml.Element) -> Self
+
+pub(all) struct CT_PCDSDTCEntries {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PCDSDTCEntries::new(@xml.Element) -> Self
+
+pub(all) struct CT_PageBreak {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PageBreak::new(@xml.Element) -> Self
+
+pub(all) struct CT_PageField {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PageField::new(@xml.Element) -> Self
+
+pub(all) struct CT_PageFields {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PageFields::new(@xml.Element) -> Self
+
+pub(all) struct CT_PageItem {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PageItem::new(@xml.Element) -> Self
+
+pub(all) struct CT_PageMargins {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PageMargins::new(@xml.Element) -> Self
+
+pub(all) struct CT_PageSetUpPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PageSetUpPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_PageSetup {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PageSetup::new(@xml.Element) -> Self
+
+pub(all) struct CT_Pages {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Pages::new(@xml.Element) -> Self
+
+pub(all) struct CT_Pane {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Pane::new(@xml.Element) -> Self
+
+pub(all) struct CT_Parameter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Parameter::new(@xml.Element) -> Self
+
+pub(all) struct CT_Parameters {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Parameters::new(@xml.Element) -> Self
+
+pub(all) struct CT_PatternFill {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PatternFill::new(@xml.Element) -> Self
+
+pub(all) struct CT_PhoneticPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PhoneticPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_PhoneticRun {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PhoneticRun::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotArea {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotArea::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotAreaReference {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotAreaReference::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotAreaReferences {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotAreaReferences::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotAreas {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotAreas::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotCache {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotCache::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotCacheDefinition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotCacheDefinition::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotCacheRecords {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotCacheRecords::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotCaches {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotCaches::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotDimension {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotDimension::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotField {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotField::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotFields {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotFields::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotFilter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotFilter::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotFilters {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotFilters::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotHierarchies {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotHierarchies::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotHierarchy {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotHierarchy::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotSelection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotSelection::new(@xml.Element) -> Self
+
+pub(all) struct CT_PivotTableStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PivotTableStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_PrintOptions {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PrintOptions::new(@xml.Element) -> Self
+
+pub(all) struct CT_ProtectedRange {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ProtectedRange::new(@xml.Element) -> Self
+
+pub(all) struct CT_ProtectedRanges {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ProtectedRanges::new(@xml.Element) -> Self
+
+pub(all) struct CT_Query {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Query::new(@xml.Element) -> Self
+
+pub(all) struct CT_QueryCache {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_QueryCache::new(@xml.Element) -> Self
+
+pub(all) struct CT_QueryTable {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_QueryTable::new(@xml.Element) -> Self
+
+pub(all) struct CT_QueryTableDeletedFields {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_QueryTableDeletedFields::new(@xml.Element) -> Self
+
+pub(all) struct CT_QueryTableField {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_QueryTableField::new(@xml.Element) -> Self
+
+pub(all) struct CT_QueryTableFields {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_QueryTableFields::new(@xml.Element) -> Self
+
+pub(all) struct CT_QueryTableRefresh {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_QueryTableRefresh::new(@xml.Element) -> Self
+
+pub(all) struct CT_RElt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RElt::new(@xml.Element) -> Self
+
+pub(all) struct CT_RPrElt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RPrElt::new(@xml.Element) -> Self
+
+pub(all) struct CT_RangePr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RangePr::new(@xml.Element) -> Self
+
+pub(all) struct CT_RangeSet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RangeSet::new(@xml.Element) -> Self
+
+pub(all) struct CT_RangeSets {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RangeSets::new(@xml.Element) -> Self
+
+pub(all) struct CT_Record {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Record::new(@xml.Element) -> Self
+
+pub(all) struct CT_Reviewed {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Reviewed::new(@xml.Element) -> Self
+
+pub(all) struct CT_ReviewedRevisions {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ReviewedRevisions::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionAutoFormatting {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionAutoFormatting::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionCellChange {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionCellChange::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionComment {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionComment::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionConflict {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionConflict::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionCustomView {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionCustomView::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionDefinedName {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionDefinedName::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionFormatting {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionFormatting::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionHeader {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionHeader::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionHeaders {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionHeaders::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionInsertSheet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionInsertSheet::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionMove {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionMove::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionQueryTableField {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionQueryTableField::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionRowColumn {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionRowColumn::new(@xml.Element) -> Self
+
+pub(all) struct CT_RevisionSheetRename {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RevisionSheetRename::new(@xml.Element) -> Self
+
+pub(all) struct CT_Revisions {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Revisions::new(@xml.Element) -> Self
+
+pub(all) struct CT_RgbColor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RgbColor::new(@xml.Element) -> Self
+
+pub(all) struct CT_Row {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Row::new(@xml.Element) -> Self
+
+pub(all) struct CT_RowFields {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RowFields::new(@xml.Element) -> Self
+
+pub(all) struct CT_RowHierarchiesUsage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RowHierarchiesUsage::new(@xml.Element) -> Self
+
+pub(all) struct CT_Rst {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Rst::new(@xml.Element) -> Self
+
+pub(all) struct CT_Scenario {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Scenario::new(@xml.Element) -> Self
+
+pub(all) struct CT_Scenarios {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Scenarios::new(@xml.Element) -> Self
+
+pub(all) struct CT_Schema {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Schema::new(@xml.Element) -> Self
+
+pub(all) struct CT_Selection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Selection::new(@xml.Element) -> Self
+
+pub(all) struct CT_ServerFormat {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ServerFormat::new(@xml.Element) -> Self
+
+pub(all) struct CT_ServerFormats {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ServerFormats::new(@xml.Element) -> Self
+
+pub(all) struct CT_Set {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Set::new(@xml.Element) -> Self
+
+pub(all) struct CT_Sets {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Sets::new(@xml.Element) -> Self
+
+pub(all) struct CT_SharedItems {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SharedItems::new(@xml.Element) -> Self
+
+pub(all) struct CT_SharedUser {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SharedUser::new(@xml.Element) -> Self
+
+pub(all) struct CT_Sheet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Sheet::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetBackgroundPicture {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetBackgroundPicture::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetCalcPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetCalcPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetData::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetDimension {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetDimension::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetFormatPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetFormatPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetId {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetId::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetIdMap {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetIdMap::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetProtection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetProtection::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetView {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetView::new(@xml.Element) -> Self
+
+pub(all) struct CT_SheetViews {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SheetViews::new(@xml.Element) -> Self
+
+pub(all) struct CT_Sheets {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Sheets::new(@xml.Element) -> Self
+
+pub(all) struct CT_SingleXmlCell {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SingleXmlCell::new(@xml.Element) -> Self
+
+pub(all) struct CT_SingleXmlCells {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SingleXmlCells::new(@xml.Element) -> Self
+
+pub(all) struct CT_SmartTagPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SmartTagPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_SmartTagType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SmartTagType::new(@xml.Element) -> Self
+
+pub(all) struct CT_SmartTagTypes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SmartTagTypes::new(@xml.Element) -> Self
+
+pub(all) struct CT_SmartTags {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SmartTags::new(@xml.Element) -> Self
+
+pub(all) struct CT_SortCondition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SortCondition::new(@xml.Element) -> Self
+
+pub(all) struct CT_SortState {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SortState::new(@xml.Element) -> Self
+
+pub(all) struct CT_Sst {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Sst::new(@xml.Element) -> Self
+
+pub(all) struct CT_String {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_String::new(@xml.Element) -> Self
+
+pub(all) struct CT_Stylesheet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Stylesheet::new(@xml.Element) -> Self
+
+pub(all) struct CT_Table {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Table::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableColumn {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableColumn::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableColumns {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableColumns::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableFormula {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableFormula::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableMissing {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableMissing::new(@xml.Element) -> Self
+
+pub(all) struct CT_TablePart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TablePart::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableParts {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableParts::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableStyleElement {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableStyleElement::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableStyleInfo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableStyleInfo::new(@xml.Element) -> Self
+
+pub(all) struct CT_TableStyles {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TableStyles::new(@xml.Element) -> Self
+
+pub(all) struct CT_Tables {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Tables::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextField {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextField::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextFields {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextFields::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_Top10 {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Top10::new(@xml.Element) -> Self
+
+pub(all) struct CT_Tuple {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Tuple::new(@xml.Element) -> Self
+
+pub(all) struct CT_TupleCache {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TupleCache::new(@xml.Element) -> Self
+
+pub(all) struct CT_Tuples {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Tuples::new(@xml.Element) -> Self
+
+pub(all) struct CT_UnderlineProperty {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_UnderlineProperty::new(@xml.Element) -> Self
+
+pub(all) struct CT_UndoInfo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_UndoInfo::new(@xml.Element) -> Self
+
+pub(all) struct CT_Users {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Users::new(@xml.Element) -> Self
+
+pub(all) struct CT_VerticalAlignFontProperty {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_VerticalAlignFontProperty::new(@xml.Element) -> Self
+
+pub(all) struct CT_VolMain {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_VolMain::new(@xml.Element) -> Self
+
+pub(all) struct CT_VolTopic {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_VolTopic::new(@xml.Element) -> Self
+
+pub(all) struct CT_VolTopicRef {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_VolTopicRef::new(@xml.Element) -> Self
+
+pub(all) struct CT_VolType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_VolType::new(@xml.Element) -> Self
+
+pub(all) struct CT_VolTypes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_VolTypes::new(@xml.Element) -> Self
+
+pub(all) struct CT_WebPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WebPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_WebPublishItem {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WebPublishItem::new(@xml.Element) -> Self
+
+pub(all) struct CT_WebPublishItems {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WebPublishItems::new(@xml.Element) -> Self
+
+pub(all) struct CT_WebPublishObject {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WebPublishObject::new(@xml.Element) -> Self
+
+pub(all) struct CT_WebPublishObjects {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WebPublishObjects::new(@xml.Element) -> Self
+
+pub(all) struct CT_WebPublishing {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WebPublishing::new(@xml.Element) -> Self
+
+pub(all) struct CT_Workbook {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Workbook::new(@xml.Element) -> Self
+
+pub(all) struct CT_WorkbookPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WorkbookPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_WorkbookProtection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WorkbookProtection::new(@xml.Element) -> Self
+
+pub(all) struct CT_Worksheet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Worksheet::new(@xml.Element) -> Self
+
+pub(all) struct CT_WorksheetSource {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WorksheetSource::new(@xml.Element) -> Self
+
+pub(all) struct CT_X {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_X::new(@xml.Element) -> Self
+
+pub(all) struct CT_XStringElement {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_XStringElement::new(@xml.Element) -> Self
+
+pub(all) struct CT_Xf {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Xf::new(@xml.Element) -> Self
+
+pub(all) struct CT_XmlCellPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_XmlCellPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_XmlColumnPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_XmlColumnPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_XmlPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_XmlPr::new(@xml.Element) -> Self
+
+pub(all) struct CT_colItems {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_colItems::new(@xml.Element) -> Self
+
+pub(all) struct CT_pivotTableDefinition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_pivotTableDefinition::new(@xml.Element) -> Self
+
+pub(all) struct CT_rowItems {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_rowItems::new(@xml.Element) -> Self
 
 // Type aliases
 

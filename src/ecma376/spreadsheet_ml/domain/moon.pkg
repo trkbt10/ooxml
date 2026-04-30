@@ -1,3 +1,7 @@
 // trkbt10/ooxml/ecma376/spreadsheet_ml/domain
 //
 // SpreadsheetML domain: workbook, worksheet, cell, sharedStrings, styles, defined names, formulas.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}
