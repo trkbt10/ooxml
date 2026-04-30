@@ -45,11 +45,15 @@ pub fn read_sst(Bytes) -> @domain.CT_Sst raise
 
 pub fn read_style_sheet(Bytes) -> @domain.CT_Stylesheet raise
 
+pub fn read_table(Bytes) -> @domain.CT_Table raise
+
 pub fn read_table_single_cells(Bytes) -> @domain.CT_SingleXmlCells raise
 
 pub fn read_users(Bytes) -> @domain.CT_Users raise
 
 pub fn read_vol_types(Bytes) -> @domain.CT_VolTypes raise
+
+pub fn read_workbook(Bytes) -> @domain.CT_Workbook raise
 
 pub fn read_worksheet(Bytes) -> @domain.CT_Worksheet raise
 

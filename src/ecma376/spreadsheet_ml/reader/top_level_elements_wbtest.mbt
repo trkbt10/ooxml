@@ -131,6 +131,16 @@ test "SML top-level readers round trip through builders" {
     read_style_sheet(@builder.write_style_sheet(style_sheet)).element.name.local_name,
     "styleSheet",
   )
+  let table = read_table(bytes("<s:table xmlns:s=\"urn:s\"/>"))
+  assert_eq(
+    read_table(@builder.write_table(table)).element.name.local_name,
+    "table",
+  )
+  let workbook = read_workbook(bytes("<s:workbook xmlns:s=\"urn:s\"/>"))
+  assert_eq(
+    read_workbook(@builder.write_workbook(workbook)).element.name.local_name,
+    "workbook",
+  )
   let external_link = read_external_link(
     bytes("<s:externalLink xmlns:s=\"urn:s\"/>"),
   )

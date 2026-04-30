@@ -44,11 +44,15 @@ pub fn write_sst(@domain.CT_Sst) -> Bytes
 
 pub fn write_style_sheet(@domain.CT_Stylesheet) -> Bytes
 
+pub fn write_table(@domain.CT_Table) -> Bytes
+
 pub fn write_table_single_cells(@domain.CT_SingleXmlCells) -> Bytes
 
 pub fn write_users(@domain.CT_Users) -> Bytes
 
 pub fn write_vol_types(@domain.CT_VolTypes) -> Bytes
+
+pub fn write_workbook(@domain.CT_Workbook) -> Bytes
 
 pub fn write_worksheet(@domain.CT_Worksheet) -> Bytes
 

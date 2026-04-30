@@ -148,6 +148,18 @@ pub fn read_style_sheet(bytes : Bytes) -> @domain.CT_Stylesheet raise {
 }
 
 ///|
+/// Read top-level XSD element table as CT_Table (§18).
+pub fn read_table(bytes : Bytes) -> @domain.CT_Table raise {
+  @domain.CT_Table::new(read_sml_root(bytes, "table"))
+}
+
+///|
+/// Read top-level XSD element workbook as CT_Workbook (§18).
+pub fn read_workbook(bytes : Bytes) -> @domain.CT_Workbook raise {
+  @domain.CT_Workbook::new(read_sml_root(bytes, "workbook"))
+}
+
+///|
 /// Read top-level XSD element externalLink as CT_ExternalLink (§18).
 pub fn read_external_link(bytes : Bytes) -> @domain.CT_ExternalLink raise {
   @domain.CT_ExternalLink::new(read_sml_root(bytes, "externalLink"))

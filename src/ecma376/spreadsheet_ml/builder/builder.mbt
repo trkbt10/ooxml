@@ -135,6 +135,18 @@ pub fn write_style_sheet(value : @domain.CT_Stylesheet) -> Bytes {
 }
 
 ///|
+/// Write top-level XSD element table from CT_Table (§18).
+pub fn write_table(value : @domain.CT_Table) -> Bytes {
+  write_element(value.element)
+}
+
+///|
+/// Write top-level XSD element workbook from CT_Workbook (§18).
+pub fn write_workbook(value : @domain.CT_Workbook) -> Bytes {
+  write_element(value.element)
+}
+
+///|
 /// Write top-level XSD element externalLink from CT_ExternalLink (§18).
 pub fn write_external_link(value : @domain.CT_ExternalLink) -> Bytes {
   write_element(value.element)
