@@ -316,6 +316,141 @@ pub fn ST_PositiveFixedPercentage::to_string(
 }
 
 ///|
+/// XSD simple type ST_TextFontScalePercentOrPercentString (§20.1.10).
+pub struct ST_TextFontScalePercentOrPercentString {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TextFontScalePercentOrPercentString::parse(
+  s : String,
+) -> ST_TextFontScalePercentOrPercentString raise SchemaViolation {
+  validate_non_empty_token("ST_TextFontScalePercentOrPercentString", s)
+  { value: s }
+}
+
+///|
+pub fn ST_TextFontScalePercentOrPercentString::new(
+  s : String,
+) -> ST_TextFontScalePercentOrPercentString raise SchemaViolation {
+  ST_TextFontScalePercentOrPercentString::parse(s)
+}
+
+///|
+pub fn ST_TextFontScalePercentOrPercentString::to_string(
+  self : ST_TextFontScalePercentOrPercentString,
+) -> String {
+  self.value
+}
+
+///|
+/// XSD simple type ST_TextFontSize (§20.1.10).
+pub struct ST_TextFontSize {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TextFontSize::parse(
+  s : String,
+) -> ST_TextFontSize raise SchemaViolation {
+  validate_int_token("ST_TextFontSize", s)
+  { value: s }
+}
+
+///|
+pub fn ST_TextFontSize::new(
+  s : String,
+) -> ST_TextFontSize raise SchemaViolation {
+  ST_TextFontSize::parse(s)
+}
+
+///|
+pub fn ST_TextFontSize::to_string(self : ST_TextFontSize) -> String {
+  self.value
+}
+
+///|
+/// XSD simple type ST_TextTypeface (§20.1.4).
+pub struct ST_TextTypeface {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TextTypeface::parse(
+  s : String,
+) -> ST_TextTypeface raise SchemaViolation {
+  validate_non_empty_token("ST_TextTypeface", s)
+  { value: s }
+}
+
+///|
+pub fn ST_TextTypeface::new(
+  s : String,
+) -> ST_TextTypeface raise SchemaViolation {
+  ST_TextTypeface::parse(s)
+}
+
+///|
+pub fn ST_TextTypeface::to_string(self : ST_TextTypeface) -> String {
+  self.value
+}
+
+///|
+/// XSD simple type ST_PitchFamily (§20.1.4).
+pub struct ST_PitchFamily {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PitchFamily::parse(
+  s : String,
+) -> ST_PitchFamily raise SchemaViolation {
+  validate_main_enum("ST_PitchFamily", s, [
+    "00", "01", "02", "16", "17", "18", "32", "33", "34", "48", "49", "50", "64",
+    "65", "66", "80", "81", "82",
+  ])
+  { value: s }
+}
+
+///|
+pub fn ST_PitchFamily::new(s : String) -> ST_PitchFamily raise SchemaViolation {
+  ST_PitchFamily::parse(s)
+}
+
+///|
+pub fn ST_PitchFamily::to_string(self : ST_PitchFamily) -> String {
+  self.value
+}
+
+///|
+/// XSD simple type ST_TextFontAlignType (§20.1.10).
+pub struct ST_TextFontAlignType {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TextFontAlignType::parse(
+  s : String,
+) -> ST_TextFontAlignType raise SchemaViolation {
+  validate_main_enum("ST_TextFontAlignType", s, [
+    "auto", "t", "ctr", "base", "b",
+  ])
+  { value: s }
+}
+
+///|
+pub fn ST_TextFontAlignType::new(
+  s : String,
+) -> ST_TextFontAlignType raise SchemaViolation {
+  ST_TextFontAlignType::parse(s)
+}
+
+///|
+pub fn ST_TextFontAlignType::to_string(self : ST_TextFontAlignType) -> String {
+  self.value
+}
+
+///|
 fn validate_measure(
   type_name : String,
   value : String,
@@ -369,6 +504,20 @@ fn validate_non_negative_int(
       schema="dml-main.xsd",
       path=type_name,
       reason="negative value is not allowed",
+    )
+  }
+}
+
+///|
+fn validate_non_empty_token(
+  type_name : String,
+  value : String,
+) -> Unit raise SchemaViolation {
+  if value.length() == 0 {
+    raise SchemaViolation(
+      schema="dml-main.xsd",
+      path=type_name,
+      reason="empty token",
     )
   }
 }

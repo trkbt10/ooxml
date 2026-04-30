@@ -19,6 +19,8 @@ pub fn read_custom_geometry2d(Bytes) -> CT_CustomGeometry2D raise
 
 pub fn read_effect_list(Bytes) -> CT_EffectList raise
 
+pub fn read_font_scheme(Bytes) -> CT_FontScheme raise
+
 pub fn read_hsl_color(Bytes) -> CT_HslColor raise
 
 pub fn read_outer_shadow_effect(Bytes) -> CT_OuterShadowEffect raise
@@ -35,6 +37,14 @@ pub fn read_scheme_color(Bytes) -> CT_SchemeColor raise
 
 pub fn read_system_color(Bytes) -> CT_SystemColor raise
 
+pub fn read_text_font(Bytes) -> CT_TextFont raise
+
+pub fn read_theme(Bytes) -> CT_OfficeStyleSheet raise
+
+pub fn read_theme_manager(Bytes) -> CT_EmptyElement raise
+
+pub fn read_theme_override(Bytes) -> CT_BaseStylesOverride raise
+
 pub fn read_transform2d(Bytes) -> CT_Transform2D raise
 
 pub fn write_blur_effect(CT_BlurEffect) -> Bytes
@@ -46,6 +56,8 @@ pub fn write_color_scheme(CT_ColorScheme) -> Bytes
 pub fn write_custom_geometry2d(CT_CustomGeometry2D) -> Bytes
 
 pub fn write_effect_list(CT_EffectList) -> Bytes
+
+pub fn write_font_scheme(CT_FontScheme) -> Bytes
 
 pub fn write_hsl_color(CT_HslColor) -> Bytes
 
@@ -62,6 +74,14 @@ pub fn write_sc_rgb_color(CT_ScRgbColor) -> Bytes
 pub fn write_scheme_color(CT_SchemeColor) -> Bytes
 
 pub fn write_system_color(CT_SystemColor) -> Bytes
+
+pub fn write_text_font(CT_TextFont) -> Bytes
+
+pub fn write_theme(CT_OfficeStyleSheet) -> Bytes
+
+pub fn write_theme_manager(CT_EmptyElement) -> Bytes
+
+pub fn write_theme_override(CT_BaseStylesOverride) -> Bytes
 
 pub fn write_transform2d(CT_Transform2D) -> Bytes
 
@@ -125,6 +145,17 @@ pub(all) struct CT_Angle {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Angle::new(@xml.Element) -> Self
+
+pub(all) struct CT_BaseStyles {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BaseStyles::new(@xml.Element) -> Self
+
+#alias(ThemeOverride)
+pub(all) struct CT_BaseStylesOverride {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BaseStylesOverride::new(@xml.Element) -> Self
 
 pub(all) struct CT_BiLevelEffect {
   element : @xml.Element
@@ -246,6 +277,12 @@ pub(all) struct CT_EffectReference {
 } derive(Eq, @debug.Debug)
 pub fn CT_EffectReference::new(@xml.Element) -> Self
 
+#alias(ThemeManager)
+pub(all) struct CT_EmptyElement {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EmptyElement::new(@xml.Element) -> Self
+
 pub(all) struct CT_FillEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -260,6 +297,21 @@ pub(all) struct CT_FixedPercentage {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_FixedPercentage::new(@xml.Element) -> Self
+
+pub(all) struct CT_FontCollection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontCollection::new(@xml.Element) -> Self
+
+pub(all) struct CT_FontReference {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontReference::new(@xml.Element) -> Self
+
+pub(all) struct CT_FontScheme {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontScheme::new(@xml.Element) -> Self
 
 pub(all) struct CT_GammaTransform {
   element : @xml.Element
@@ -330,6 +382,22 @@ pub(all) struct CT_LuminanceEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_LuminanceEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_OfficeArtExtension {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OfficeArtExtension::new(@xml.Element) -> Self
+
+pub(all) struct CT_OfficeArtExtensionList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OfficeArtExtensionList::new(@xml.Element) -> Self
+
+#alias(Theme)
+pub(all) struct CT_OfficeStyleSheet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OfficeStyleSheet::new(@xml.Element) -> Self
 
 pub(all) struct CT_OuterShadowEffect {
   element : @xml.Element
@@ -491,6 +559,11 @@ pub(all) struct CT_SphereCoords {
 } derive(Eq, @debug.Debug)
 pub fn CT_SphereCoords::new(@xml.Element) -> Self
 
+pub(all) struct CT_SupplementalFont {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SupplementalFont::new(@xml.Element) -> Self
+
 pub(all) struct CT_SystemColor {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -500,6 +573,11 @@ pub(all) struct CT_TextBulletColorFollowText {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextBulletColorFollowText::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextFont {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextFont::new(@xml.Element) -> Self
 
 pub(all) struct CT_TintEffect {
   element : @xml.Element
@@ -596,6 +674,13 @@ pub fn ST_Percentage::new(String) -> Self raise SchemaViolation
 pub fn ST_Percentage::parse(String) -> Self raise SchemaViolation
 pub fn ST_Percentage::to_string(Self) -> String
 
+pub struct ST_PitchFamily {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PitchFamily::new(String) -> Self raise SchemaViolation
+pub fn ST_PitchFamily::parse(String) -> Self raise SchemaViolation
+pub fn ST_PitchFamily::to_string(Self) -> String
+
 pub struct ST_PositiveCoordinate {
   value : String
 } derive(Eq, @debug.Debug)
@@ -651,6 +736,34 @@ pub struct ST_SystemColorVal {
 pub fn ST_SystemColorVal::new(String) -> Self raise SchemaViolation
 pub fn ST_SystemColorVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_SystemColorVal::to_string(Self) -> String
+
+pub struct ST_TextFontAlignType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextFontAlignType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextFontAlignType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextFontAlignType::to_string(Self) -> String
+
+pub struct ST_TextFontScalePercentOrPercentString {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextFontScalePercentOrPercentString::new(String) -> Self raise SchemaViolation
+pub fn ST_TextFontScalePercentOrPercentString::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextFontScalePercentOrPercentString::to_string(Self) -> String
+
+pub struct ST_TextFontSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextFontSize::new(String) -> Self raise SchemaViolation
+pub fn ST_TextFontSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextFontSize::to_string(Self) -> String
+
+pub struct ST_TextTypeface {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextTypeface::new(String) -> Self raise SchemaViolation
+pub fn ST_TextTypeface::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextTypeface::to_string(Self) -> String
 
 // Type aliases
 

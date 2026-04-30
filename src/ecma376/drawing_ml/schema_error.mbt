@@ -105,6 +105,10 @@ fn validate_main_attributes(
       | (_, "lum")
       | (_, "useA")
       | (_, "name") => validate_non_empty_attr(name, value)
+      (_, "typeface") => ST_TextTypeface::parse(value) |> ignore
+      (_, "pitchFamily") => ST_PitchFamily::parse(value) |> ignore
+      (_, "charset") | (_, "panose") | (_, "script") | (_, "uri") =>
+        validate_non_empty_attr(name, value)
       _ => ()
     }
   }
