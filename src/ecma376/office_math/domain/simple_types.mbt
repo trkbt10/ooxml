@@ -265,6 +265,7 @@ pub fn ST_Style::to_string(self : ST_Style) -> String {
 
 ///|
 /// XSD simple type ST_Jc (§22.1.x).
+/// OMML math justification enumeration: left, right, center, centerGroup.
 pub(all) enum ST_Jc {
   Left
   Right
