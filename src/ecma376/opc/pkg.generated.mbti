@@ -1,12 +1,50 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/opc"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/content_types",
+  "trkbt10/ooxml/ecma376/opc/relationships",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn require_schema(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise SchemaViolation
+
+pub fn require_supported_feature(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise UnsupportedFeature
+
 // Errors
+pub suberror ResourceMissing {
+  ResourceMissing(section~ : String, path~ : String, target~ : String)
+} derive(@debug.Debug)
+
+pub suberror SchemaViolation {
+  SchemaViolation(section~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
+
+pub suberror UnsupportedFeature {
+  UnsupportedFeature(section~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct Package {
+  content_types : @content_types.Types
+  parts : Array[PackagePart]
+  package_relationships : @relationships.Relationships?
+  part_relationships : Array[(String, @relationships.Relationships)]
+  entry_order : Array[String]
+} derive(Eq, @debug.Debug)
+pub fn Package::open(Bytes) -> Self raise
+pub fn Package::part(Self, String) -> PackagePart?
+pub fn Package::relationships(Self, String) -> @relationships.Relationships?
+pub fn Package::save(Self) -> Bytes raise
+
+pub(all) struct PackagePart {
+  name : String
+  content_type : String
+  data : Bytes
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
