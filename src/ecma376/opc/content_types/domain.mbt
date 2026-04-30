@@ -1,7 +1,6 @@
 ///|
 /// ST_ContentType simple type from schema bundle opc-contentTypes.xsd, used by
-/// CT_Default and CT_Override to identify package parts including the §10.4
-/// digital-signature part family.
+/// CT_Default and CT_Override to identify package part media types.
 pub(all) struct ContentType {
   value : String
 } derive(Eq, Debug)
@@ -59,9 +58,7 @@ pub fn Extension::to_string(self : Extension) -> String {
 }
 
 ///|
-/// Part name used by CT_Override PartName attributes. Override declarations
-/// are the precise content-type lookup path for individual §10.4.2, §10.4.3,
-/// and §10.4.4 digital-signature parts.
+/// Part name used by CT_Override PartName attributes.
 pub(all) struct PartName {
   value : String
 } derive(Eq, Debug)
@@ -176,8 +173,7 @@ fn Types::new(rules : Array[ContentTypeRule]) -> Types raise SchemaViolation {
 ///|
 /// Return the content type for a part, first using CT_Override and then the
 /// CT_Default extension fallback. This accessor is the typed O1 query surface
-/// the top-level OPC package uses before dispatching §10 digital-signature
-/// parts to payload readers.
+/// the top-level OPC package uses before dispatching part payload readers.
 pub fn Types::content_type_for_part(
   self : Types,
   part_name : PartName,
@@ -209,9 +205,8 @@ pub fn Types::content_type_for_part(
 }
 
 ///|
-/// Validate the §10.4 digital-signature content types that `[Content_Types].xml`
-/// must expose before payload markup from §10.5 and the §10.6 relationships
-/// transform can be resolved by the owning OPC readers.
+/// Media type registry helper consumed by ecma376/opc/digital_signatures to
+/// validate the digital-signature content types in `[Content_Types].xml`.
 pub fn Types::require_digital_signature_content_types(
   self : Types,
   origin_part : PartName,
@@ -267,7 +262,8 @@ pub fn Types::require_part_content_type(
 }
 
 ///|
-/// Content type token for the §10.4.2 Digital Signature Origin part.
+/// Media type registry helper consumed by ecma376/opc/digital_signatures for
+/// the Digital Signature Origin part.
 pub fn digital_signature_origin_content_type() -> ContentType {
   unsafe_content_type(
     "application/vnd.openxmlformats-package.digital-signature-origin",
@@ -275,7 +271,8 @@ pub fn digital_signature_origin_content_type() -> ContentType {
 }
 
 ///|
-/// Content type token for the §10.4.3 Digital Signature XML Signature part.
+/// Media type registry helper consumed by ecma376/opc/digital_signatures for
+/// the Digital Signature XML Signature part.
 pub fn digital_signature_xml_signature_content_type() -> ContentType {
   unsafe_content_type(
     "application/vnd.openxmlformats-package.digital-signature-xmlsignature+xml",
@@ -283,7 +280,8 @@ pub fn digital_signature_xml_signature_content_type() -> ContentType {
 }
 
 ///|
-/// Content type token for the §10.4.4 Digital Signature Certificate part.
+/// Media type registry helper consumed by ecma376/opc/digital_signatures for
+/// the Digital Signature Certificate part.
 pub fn digital_signature_certificate_content_type() -> ContentType {
   unsafe_content_type(
     "application/vnd.openxmlformats-package.digital-signature-certificate",
