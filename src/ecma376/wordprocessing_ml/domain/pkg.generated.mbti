@@ -1,12 +1,767 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/wordprocessing_ml/domain"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn package_name() -> String
 
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(type_name~ : String, value~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub struct ST_AnnotationVMerge {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_AnnotationVMerge::new(String) -> Self raise SchemaViolation
+pub fn ST_AnnotationVMerge::parse(String) -> Self raise SchemaViolation
+pub fn ST_AnnotationVMerge::to_string(Self) -> String
+
+pub struct ST_Border {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Border::new(String) -> Self raise SchemaViolation
+pub fn ST_Border::parse(String) -> Self raise SchemaViolation
+pub fn ST_Border::to_string(Self) -> String
+
+pub struct ST_BrClear {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BrClear::new(String) -> Self raise SchemaViolation
+pub fn ST_BrClear::parse(String) -> Self raise SchemaViolation
+pub fn ST_BrClear::to_string(Self) -> String
+
+pub struct ST_BrType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BrType::new(String) -> Self raise SchemaViolation
+pub fn ST_BrType::parse(String) -> Self raise SchemaViolation
+pub fn ST_BrType::to_string(Self) -> String
+
+pub struct ST_CaptionPos {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CaptionPos::new(String) -> Self raise SchemaViolation
+pub fn ST_CaptionPos::parse(String) -> Self raise SchemaViolation
+pub fn ST_CaptionPos::to_string(Self) -> String
+
+pub struct ST_ChapterSep {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ChapterSep::new(String) -> Self raise SchemaViolation
+pub fn ST_ChapterSep::parse(String) -> Self raise SchemaViolation
+pub fn ST_ChapterSep::to_string(Self) -> String
+
+pub struct ST_CharacterSpacing {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CharacterSpacing::new(String) -> Self raise SchemaViolation
+pub fn ST_CharacterSpacing::parse(String) -> Self raise SchemaViolation
+pub fn ST_CharacterSpacing::to_string(Self) -> String
+
+pub struct ST_CombineBrackets {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CombineBrackets::new(String) -> Self raise SchemaViolation
+pub fn ST_CombineBrackets::parse(String) -> Self raise SchemaViolation
+pub fn ST_CombineBrackets::to_string(Self) -> String
+
+pub struct ST_DateTime {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DateTime::new(String) -> Self raise SchemaViolation
+pub fn ST_DateTime::parse(String) -> Self raise SchemaViolation
+pub fn ST_DateTime::to_string(Self) -> String
+
+pub struct ST_DecimalNumber {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DecimalNumber::new(String) -> Self raise SchemaViolation
+pub fn ST_DecimalNumber::parse(String) -> Self raise SchemaViolation
+pub fn ST_DecimalNumber::to_string(Self) -> String
+
+pub struct ST_DecimalNumberOrPercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DecimalNumberOrPercent::new(String) -> Self raise SchemaViolation
+pub fn ST_DecimalNumberOrPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_DecimalNumberOrPercent::to_string(Self) -> String
+
+pub struct ST_Direction {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Direction::new(String) -> Self raise SchemaViolation
+pub fn ST_Direction::parse(String) -> Self raise SchemaViolation
+pub fn ST_Direction::to_string(Self) -> String
+
+pub struct ST_DisplacedByCustomXml {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DisplacedByCustomXml::new(String) -> Self raise SchemaViolation
+pub fn ST_DisplacedByCustomXml::parse(String) -> Self raise SchemaViolation
+pub fn ST_DisplacedByCustomXml::to_string(Self) -> String
+
+pub struct ST_DocGrid {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DocGrid::new(String) -> Self raise SchemaViolation
+pub fn ST_DocGrid::parse(String) -> Self raise SchemaViolation
+pub fn ST_DocGrid::to_string(Self) -> String
+
+pub struct ST_DocPartBehavior {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DocPartBehavior::new(String) -> Self raise SchemaViolation
+pub fn ST_DocPartBehavior::parse(String) -> Self raise SchemaViolation
+pub fn ST_DocPartBehavior::to_string(Self) -> String
+
+pub struct ST_DocPartGallery {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DocPartGallery::new(String) -> Self raise SchemaViolation
+pub fn ST_DocPartGallery::parse(String) -> Self raise SchemaViolation
+pub fn ST_DocPartGallery::to_string(Self) -> String
+
+pub struct ST_DocPartType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DocPartType::new(String) -> Self raise SchemaViolation
+pub fn ST_DocPartType::parse(String) -> Self raise SchemaViolation
+pub fn ST_DocPartType::to_string(Self) -> String
+
+pub struct ST_DocProtect {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DocProtect::new(String) -> Self raise SchemaViolation
+pub fn ST_DocProtect::parse(String) -> Self raise SchemaViolation
+pub fn ST_DocProtect::to_string(Self) -> String
+
+pub struct ST_DocType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DocType::new(String) -> Self raise SchemaViolation
+pub fn ST_DocType::parse(String) -> Self raise SchemaViolation
+pub fn ST_DocType::to_string(Self) -> String
+
+pub struct ST_DropCap {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DropCap::new(String) -> Self raise SchemaViolation
+pub fn ST_DropCap::parse(String) -> Self raise SchemaViolation
+pub fn ST_DropCap::to_string(Self) -> String
+
+pub struct ST_EdGrp {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_EdGrp::new(String) -> Self raise SchemaViolation
+pub fn ST_EdGrp::parse(String) -> Self raise SchemaViolation
+pub fn ST_EdGrp::to_string(Self) -> String
+
+pub struct ST_EdnPos {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_EdnPos::new(String) -> Self raise SchemaViolation
+pub fn ST_EdnPos::parse(String) -> Self raise SchemaViolation
+pub fn ST_EdnPos::to_string(Self) -> String
+
+pub struct ST_EighthPointMeasure {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_EighthPointMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_EighthPointMeasure::parse(String) -> Self raise SchemaViolation
+pub fn ST_EighthPointMeasure::to_string(Self) -> String
+
+pub struct ST_Em {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Em::new(String) -> Self raise SchemaViolation
+pub fn ST_Em::parse(String) -> Self raise SchemaViolation
+pub fn ST_Em::to_string(Self) -> String
+
+pub struct ST_FFHelpTextVal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FFHelpTextVal::new(String) -> Self raise SchemaViolation
+pub fn ST_FFHelpTextVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_FFHelpTextVal::to_string(Self) -> String
+
+pub struct ST_FFName {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FFName::new(String) -> Self raise SchemaViolation
+pub fn ST_FFName::parse(String) -> Self raise SchemaViolation
+pub fn ST_FFName::to_string(Self) -> String
+
+pub struct ST_FFStatusTextVal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FFStatusTextVal::new(String) -> Self raise SchemaViolation
+pub fn ST_FFStatusTextVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_FFStatusTextVal::to_string(Self) -> String
+
+pub struct ST_FFTextType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FFTextType::new(String) -> Self raise SchemaViolation
+pub fn ST_FFTextType::parse(String) -> Self raise SchemaViolation
+pub fn ST_FFTextType::to_string(Self) -> String
+
+pub struct ST_FldCharType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FldCharType::new(String) -> Self raise SchemaViolation
+pub fn ST_FldCharType::parse(String) -> Self raise SchemaViolation
+pub fn ST_FldCharType::to_string(Self) -> String
+
+pub struct ST_FontFamily {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FontFamily::new(String) -> Self raise SchemaViolation
+pub fn ST_FontFamily::parse(String) -> Self raise SchemaViolation
+pub fn ST_FontFamily::to_string(Self) -> String
+
+pub struct ST_FrameLayout {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FrameLayout::new(String) -> Self raise SchemaViolation
+pub fn ST_FrameLayout::parse(String) -> Self raise SchemaViolation
+pub fn ST_FrameLayout::to_string(Self) -> String
+
+pub struct ST_FrameScrollbar {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FrameScrollbar::new(String) -> Self raise SchemaViolation
+pub fn ST_FrameScrollbar::parse(String) -> Self raise SchemaViolation
+pub fn ST_FrameScrollbar::to_string(Self) -> String
+
+pub struct ST_FtnEdn {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FtnEdn::new(String) -> Self raise SchemaViolation
+pub fn ST_FtnEdn::parse(String) -> Self raise SchemaViolation
+pub fn ST_FtnEdn::to_string(Self) -> String
+
+pub struct ST_FtnPos {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FtnPos::new(String) -> Self raise SchemaViolation
+pub fn ST_FtnPos::parse(String) -> Self raise SchemaViolation
+pub fn ST_FtnPos::to_string(Self) -> String
+
+pub struct ST_HAnchor {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HAnchor::new(String) -> Self raise SchemaViolation
+pub fn ST_HAnchor::parse(String) -> Self raise SchemaViolation
+pub fn ST_HAnchor::to_string(Self) -> String
+
+pub struct ST_HdrFtr {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HdrFtr::new(String) -> Self raise SchemaViolation
+pub fn ST_HdrFtr::parse(String) -> Self raise SchemaViolation
+pub fn ST_HdrFtr::to_string(Self) -> String
+
+pub struct ST_HeightRule {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HeightRule::new(String) -> Self raise SchemaViolation
+pub fn ST_HeightRule::parse(String) -> Self raise SchemaViolation
+pub fn ST_HeightRule::to_string(Self) -> String
+
+pub struct ST_HexColor {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HexColor::new(String) -> Self raise SchemaViolation
+pub fn ST_HexColor::parse(String) -> Self raise SchemaViolation
+pub fn ST_HexColor::to_string(Self) -> String
+
+pub struct ST_HexColorAuto {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HexColorAuto::new(String) -> Self raise SchemaViolation
+pub fn ST_HexColorAuto::parse(String) -> Self raise SchemaViolation
+pub fn ST_HexColorAuto::to_string(Self) -> String
+
+pub struct ST_HighlightColor {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HighlightColor::new(String) -> Self raise SchemaViolation
+pub fn ST_HighlightColor::parse(String) -> Self raise SchemaViolation
+pub fn ST_HighlightColor::to_string(Self) -> String
+
+pub struct ST_Hint {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Hint::new(String) -> Self raise SchemaViolation
+pub fn ST_Hint::parse(String) -> Self raise SchemaViolation
+pub fn ST_Hint::to_string(Self) -> String
+
+pub struct ST_HpsMeasure {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HpsMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_HpsMeasure::parse(String) -> Self raise SchemaViolation
+pub fn ST_HpsMeasure::to_string(Self) -> String
+
+pub struct ST_InfoTextType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_InfoTextType::new(String) -> Self raise SchemaViolation
+pub fn ST_InfoTextType::parse(String) -> Self raise SchemaViolation
+pub fn ST_InfoTextType::to_string(Self) -> String
+
+pub struct ST_Jc {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Jc::new(String) -> Self raise SchemaViolation
+pub fn ST_Jc::parse(String) -> Self raise SchemaViolation
+pub fn ST_Jc::to_string(Self) -> String
+
+pub struct ST_JcTable {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_JcTable::new(String) -> Self raise SchemaViolation
+pub fn ST_JcTable::parse(String) -> Self raise SchemaViolation
+pub fn ST_JcTable::to_string(Self) -> String
+
+pub struct ST_LevelSuffix {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LevelSuffix::new(String) -> Self raise SchemaViolation
+pub fn ST_LevelSuffix::parse(String) -> Self raise SchemaViolation
+pub fn ST_LevelSuffix::to_string(Self) -> String
+
+pub struct ST_LineNumberRestart {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LineNumberRestart::new(String) -> Self raise SchemaViolation
+pub fn ST_LineNumberRestart::parse(String) -> Self raise SchemaViolation
+pub fn ST_LineNumberRestart::to_string(Self) -> String
+
+pub struct ST_LineSpacingRule {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LineSpacingRule::new(String) -> Self raise SchemaViolation
+pub fn ST_LineSpacingRule::parse(String) -> Self raise SchemaViolation
+pub fn ST_LineSpacingRule::to_string(Self) -> String
+
+pub struct ST_Lock {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Lock::new(String) -> Self raise SchemaViolation
+pub fn ST_Lock::parse(String) -> Self raise SchemaViolation
+pub fn ST_Lock::to_string(Self) -> String
+
+pub struct ST_LongHexNumber {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LongHexNumber::new(String) -> Self raise SchemaViolation
+pub fn ST_LongHexNumber::parse(String) -> Self raise SchemaViolation
+pub fn ST_LongHexNumber::to_string(Self) -> String
+
+pub struct ST_MacroName {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MacroName::new(String) -> Self raise SchemaViolation
+pub fn ST_MacroName::parse(String) -> Self raise SchemaViolation
+pub fn ST_MacroName::to_string(Self) -> String
+
+pub struct ST_MailMergeDataType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MailMergeDataType::new(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeDataType::parse(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeDataType::to_string(Self) -> String
+
+pub struct ST_MailMergeDest {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MailMergeDest::new(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeDest::parse(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeDest::to_string(Self) -> String
+
+pub struct ST_MailMergeDocType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MailMergeDocType::new(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeDocType::parse(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeDocType::to_string(Self) -> String
+
+pub struct ST_MailMergeOdsoFMDFieldType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MailMergeOdsoFMDFieldType::new(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeOdsoFMDFieldType::parse(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeOdsoFMDFieldType::to_string(Self) -> String
+
+pub struct ST_MailMergeSourceType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MailMergeSourceType::new(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeSourceType::parse(String) -> Self raise SchemaViolation
+pub fn ST_MailMergeSourceType::to_string(Self) -> String
+
+pub struct ST_MeasurementOrPercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MeasurementOrPercent::new(String) -> Self raise SchemaViolation
+pub fn ST_MeasurementOrPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_MeasurementOrPercent::to_string(Self) -> String
+
+pub struct ST_Merge {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Merge::new(String) -> Self raise SchemaViolation
+pub fn ST_Merge::parse(String) -> Self raise SchemaViolation
+pub fn ST_Merge::to_string(Self) -> String
+
+pub struct ST_MultiLevelType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MultiLevelType::new(String) -> Self raise SchemaViolation
+pub fn ST_MultiLevelType::parse(String) -> Self raise SchemaViolation
+pub fn ST_MultiLevelType::to_string(Self) -> String
+
+pub struct ST_NumberFormat {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_NumberFormat::new(String) -> Self raise SchemaViolation
+pub fn ST_NumberFormat::parse(String) -> Self raise SchemaViolation
+pub fn ST_NumberFormat::to_string(Self) -> String
+
+pub struct ST_ObjectDrawAspect {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ObjectDrawAspect::new(String) -> Self raise SchemaViolation
+pub fn ST_ObjectDrawAspect::parse(String) -> Self raise SchemaViolation
+pub fn ST_ObjectDrawAspect::to_string(Self) -> String
+
+pub struct ST_ObjectUpdateMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ObjectUpdateMode::new(String) -> Self raise SchemaViolation
+pub fn ST_ObjectUpdateMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_ObjectUpdateMode::to_string(Self) -> String
+
+pub struct ST_PTabAlignment {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PTabAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_PTabAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_PTabAlignment::to_string(Self) -> String
+
+pub struct ST_PTabLeader {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PTabLeader::new(String) -> Self raise SchemaViolation
+pub fn ST_PTabLeader::parse(String) -> Self raise SchemaViolation
+pub fn ST_PTabLeader::to_string(Self) -> String
+
+pub struct ST_PTabRelativeTo {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PTabRelativeTo::new(String) -> Self raise SchemaViolation
+pub fn ST_PTabRelativeTo::parse(String) -> Self raise SchemaViolation
+pub fn ST_PTabRelativeTo::to_string(Self) -> String
+
+pub struct ST_PageBorderDisplay {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PageBorderDisplay::new(String) -> Self raise SchemaViolation
+pub fn ST_PageBorderDisplay::parse(String) -> Self raise SchemaViolation
+pub fn ST_PageBorderDisplay::to_string(Self) -> String
+
+pub struct ST_PageBorderOffset {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PageBorderOffset::new(String) -> Self raise SchemaViolation
+pub fn ST_PageBorderOffset::parse(String) -> Self raise SchemaViolation
+pub fn ST_PageBorderOffset::to_string(Self) -> String
+
+pub struct ST_PageBorderZOrder {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PageBorderZOrder::new(String) -> Self raise SchemaViolation
+pub fn ST_PageBorderZOrder::parse(String) -> Self raise SchemaViolation
+pub fn ST_PageBorderZOrder::to_string(Self) -> String
+
+pub struct ST_PageOrientation {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PageOrientation::new(String) -> Self raise SchemaViolation
+pub fn ST_PageOrientation::parse(String) -> Self raise SchemaViolation
+pub fn ST_PageOrientation::to_string(Self) -> String
+
+pub struct ST_Pitch {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Pitch::new(String) -> Self raise SchemaViolation
+pub fn ST_Pitch::parse(String) -> Self raise SchemaViolation
+pub fn ST_Pitch::to_string(Self) -> String
+
+pub struct ST_PixelsMeasure {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PixelsMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_PixelsMeasure::parse(String) -> Self raise SchemaViolation
+pub fn ST_PixelsMeasure::to_string(Self) -> String
+
+pub struct ST_PointMeasure {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PointMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_PointMeasure::parse(String) -> Self raise SchemaViolation
+pub fn ST_PointMeasure::to_string(Self) -> String
+
+pub struct ST_Proof {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Proof::new(String) -> Self raise SchemaViolation
+pub fn ST_Proof::parse(String) -> Self raise SchemaViolation
+pub fn ST_Proof::to_string(Self) -> String
+
+pub struct ST_ProofErr {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ProofErr::new(String) -> Self raise SchemaViolation
+pub fn ST_ProofErr::parse(String) -> Self raise SchemaViolation
+pub fn ST_ProofErr::to_string(Self) -> String
+
+pub struct ST_RestartNumber {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RestartNumber::new(String) -> Self raise SchemaViolation
+pub fn ST_RestartNumber::parse(String) -> Self raise SchemaViolation
+pub fn ST_RestartNumber::to_string(Self) -> String
+
+pub struct ST_RubyAlign {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RubyAlign::new(String) -> Self raise SchemaViolation
+pub fn ST_RubyAlign::parse(String) -> Self raise SchemaViolation
+pub fn ST_RubyAlign::to_string(Self) -> String
+
+pub struct ST_SdtDateMappingType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SdtDateMappingType::new(String) -> Self raise SchemaViolation
+pub fn ST_SdtDateMappingType::parse(String) -> Self raise SchemaViolation
+pub fn ST_SdtDateMappingType::to_string(Self) -> String
+
+pub struct ST_SectionMark {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SectionMark::new(String) -> Self raise SchemaViolation
+pub fn ST_SectionMark::parse(String) -> Self raise SchemaViolation
+pub fn ST_SectionMark::to_string(Self) -> String
+
+pub struct ST_Shd {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Shd::new(String) -> Self raise SchemaViolation
+pub fn ST_Shd::parse(String) -> Self raise SchemaViolation
+pub fn ST_Shd::to_string(Self) -> String
+
+pub struct ST_ShortHexNumber {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ShortHexNumber::new(String) -> Self raise SchemaViolation
+pub fn ST_ShortHexNumber::parse(String) -> Self raise SchemaViolation
+pub fn ST_ShortHexNumber::to_string(Self) -> String
+
+pub struct ST_SignedHpsMeasure {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SignedHpsMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_SignedHpsMeasure::parse(String) -> Self raise SchemaViolation
+pub fn ST_SignedHpsMeasure::to_string(Self) -> String
+
+pub struct ST_SignedTwipsMeasure {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SignedTwipsMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_SignedTwipsMeasure::parse(String) -> Self raise SchemaViolation
+pub fn ST_SignedTwipsMeasure::to_string(Self) -> String
+
+pub struct ST_StyleSort {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_StyleSort::new(String) -> Self raise SchemaViolation
+pub fn ST_StyleSort::parse(String) -> Self raise SchemaViolation
+pub fn ST_StyleSort::to_string(Self) -> String
+
+pub struct ST_StyleType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_StyleType::new(String) -> Self raise SchemaViolation
+pub fn ST_StyleType::parse(String) -> Self raise SchemaViolation
+pub fn ST_StyleType::to_string(Self) -> String
+
+pub struct ST_TabJc {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TabJc::new(String) -> Self raise SchemaViolation
+pub fn ST_TabJc::parse(String) -> Self raise SchemaViolation
+pub fn ST_TabJc::to_string(Self) -> String
+
+pub struct ST_TabTlc {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TabTlc::new(String) -> Self raise SchemaViolation
+pub fn ST_TabTlc::parse(String) -> Self raise SchemaViolation
+pub fn ST_TabTlc::to_string(Self) -> String
+
+pub struct ST_TargetScreenSz {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TargetScreenSz::new(String) -> Self raise SchemaViolation
+pub fn ST_TargetScreenSz::parse(String) -> Self raise SchemaViolation
+pub fn ST_TargetScreenSz::to_string(Self) -> String
+
+pub struct ST_TblLayoutType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TblLayoutType::new(String) -> Self raise SchemaViolation
+pub fn ST_TblLayoutType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TblLayoutType::to_string(Self) -> String
+
+pub struct ST_TblOverlap {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TblOverlap::new(String) -> Self raise SchemaViolation
+pub fn ST_TblOverlap::parse(String) -> Self raise SchemaViolation
+pub fn ST_TblOverlap::to_string(Self) -> String
+
+pub struct ST_TblStyleOverrideType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TblStyleOverrideType::new(String) -> Self raise SchemaViolation
+pub fn ST_TblStyleOverrideType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TblStyleOverrideType::to_string(Self) -> String
+
+pub struct ST_TblWidth {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TblWidth::new(String) -> Self raise SchemaViolation
+pub fn ST_TblWidth::parse(String) -> Self raise SchemaViolation
+pub fn ST_TblWidth::to_string(Self) -> String
+
+pub struct ST_TextAlignment {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_TextAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextAlignment::to_string(Self) -> String
+
+pub struct ST_TextDirection {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_TextDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextDirection::to_string(Self) -> String
+
+pub struct ST_TextEffect {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextEffect::new(String) -> Self raise SchemaViolation
+pub fn ST_TextEffect::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextEffect::to_string(Self) -> String
+
+pub struct ST_TextScale {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextScale::new(String) -> Self raise SchemaViolation
+pub fn ST_TextScale::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextScale::to_string(Self) -> String
+
+pub struct ST_TextScalePercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextScalePercent::new(String) -> Self raise SchemaViolation
+pub fn ST_TextScalePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextScalePercent::to_string(Self) -> String
+
+pub struct ST_TextboxTightWrap {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextboxTightWrap::new(String) -> Self raise SchemaViolation
+pub fn ST_TextboxTightWrap::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextboxTightWrap::to_string(Self) -> String
+
+pub struct ST_Theme {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Theme::new(String) -> Self raise SchemaViolation
+pub fn ST_Theme::parse(String) -> Self raise SchemaViolation
+pub fn ST_Theme::to_string(Self) -> String
+
+pub struct ST_ThemeColor {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ThemeColor::new(String) -> Self raise SchemaViolation
+pub fn ST_ThemeColor::parse(String) -> Self raise SchemaViolation
+pub fn ST_ThemeColor::to_string(Self) -> String
+
+pub struct ST_UcharHexNumber {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UcharHexNumber::new(String) -> Self raise SchemaViolation
+pub fn ST_UcharHexNumber::parse(String) -> Self raise SchemaViolation
+pub fn ST_UcharHexNumber::to_string(Self) -> String
+
+pub struct ST_Underline {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Underline::new(String) -> Self raise SchemaViolation
+pub fn ST_Underline::parse(String) -> Self raise SchemaViolation
+pub fn ST_Underline::to_string(Self) -> String
+
+pub struct ST_VAnchor {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_VAnchor::new(String) -> Self raise SchemaViolation
+pub fn ST_VAnchor::parse(String) -> Self raise SchemaViolation
+pub fn ST_VAnchor::to_string(Self) -> String
+
+pub struct ST_VerticalJc {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_VerticalJc::new(String) -> Self raise SchemaViolation
+pub fn ST_VerticalJc::parse(String) -> Self raise SchemaViolation
+pub fn ST_VerticalJc::to_string(Self) -> String
+
+pub struct ST_View {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_View::new(String) -> Self raise SchemaViolation
+pub fn ST_View::parse(String) -> Self raise SchemaViolation
+pub fn ST_View::to_string(Self) -> String
+
+pub struct ST_WmlColorSchemeIndex {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_WmlColorSchemeIndex::new(String) -> Self raise SchemaViolation
+pub fn ST_WmlColorSchemeIndex::parse(String) -> Self raise SchemaViolation
+pub fn ST_WmlColorSchemeIndex::to_string(Self) -> String
+
+pub struct ST_Wrap {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Wrap::new(String) -> Self raise SchemaViolation
+pub fn ST_Wrap::parse(String) -> Self raise SchemaViolation
+pub fn ST_Wrap::to_string(Self) -> String
+
+pub struct ST_Zoom {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Zoom::new(String) -> Self raise SchemaViolation
+pub fn ST_Zoom::parse(String) -> Self raise SchemaViolation
+pub fn ST_Zoom::to_string(Self) -> String
 
 // Type aliases
 
