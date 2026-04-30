@@ -7,7 +7,11 @@ import {
 }
 
 // Values
+pub fn apply_relationships_transform(Bytes) -> Bytes raise UnsupportedFeature
+
 pub fn digital_signature_ns() -> String
+
+pub fn generate_signature(SignedInfo) -> Signature raise UnsupportedFeature
 
 pub fn package_name() -> String
 
@@ -38,6 +42,8 @@ pub fn read_signed_info(Bytes) -> SignedInfo raise SchemaViolation
 pub fn read_transform(Bytes) -> Transform raise SchemaViolation
 
 pub fn read_xpath(Bytes) -> XPath raise SchemaViolation
+
+pub fn validate_signature(Signature) -> Bool raise UnsupportedFeature
 
 pub fn write_canonicalization_method(CanonicalizationMethod) -> Bytes
 

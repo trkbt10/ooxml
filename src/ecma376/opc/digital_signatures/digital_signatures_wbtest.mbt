@@ -138,6 +138,24 @@ test "xpath element round trip identity" {
 }
 
 ///|
+test "relationships transform algorithm stub raises unsupported feature" {
+  let result = try? apply_relationships_transform(b("<Relationships/>"))
+  assert_true(result is Err(UnsupportedFeature(_)))
+}
+
+///|
+test "signature generation stub raises unsupported feature" {
+  let result = try? generate_signature(SignedInfo::new(None, []))
+  assert_true(result is Err(UnsupportedFeature(_)))
+}
+
+///|
+test "signature validation stub raises unsupported feature" {
+  let result = try? validate_signature(Signature::new(None, []))
+  assert_true(result is Err(UnsupportedFeature(_)))
+}
+
+///|
 fn b(source : String) -> Bytes {
   @utf8.encode(source[:])
 }
