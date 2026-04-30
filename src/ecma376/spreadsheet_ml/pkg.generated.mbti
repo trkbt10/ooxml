@@ -672,6 +672,13 @@ pub fn ST_XmlDataType::new(String) -> Self raise SchemaViolation
 pub fn ST_XmlDataType::parse(String) -> Self raise SchemaViolation
 pub fn ST_XmlDataType::to_string(Self) -> String
 
+pub struct ST_Xstring {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Xstring::new(String) -> Self raise SchemaViolation
+pub fn ST_Xstring::parse(String) -> Self raise SchemaViolation
+pub fn ST_Xstring::to_string(Self) -> String
+
 pub struct ST_rwColActionType {
   value : String
 } derive(Eq, @debug.Debug)

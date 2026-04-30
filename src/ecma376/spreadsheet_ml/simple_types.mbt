@@ -363,6 +363,28 @@ pub fn ST_Formula::to_string(self : ST_Formula) -> String {
 }
 
 ///|
+/// SpreadsheetML shared xstring value.
+pub struct ST_Xstring {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_Xstring::parse(s : String) -> ST_Xstring raise SchemaViolation {
+  validate_xsd_string("ST_Xstring", s)
+  { value: s }
+}
+
+///|
+pub fn ST_Xstring::new(s : String) -> ST_Xstring raise SchemaViolation {
+  ST_Xstring::parse(s)
+}
+
+///|
+pub fn ST_Xstring::to_string(self : ST_Xstring) -> String {
+  self.value
+}
+
+///|
 pub struct ST_UnsignedIntHex {
   value : String
 } derive(Eq, Debug)
@@ -3312,6 +3334,20 @@ fn validate_non_empty_token(
       schema="sml.xsd",
       path=type_name,
       reason="empty token",
+    )
+  }
+}
+
+///|
+fn validate_xsd_string(
+  type_name : String,
+  value : String,
+) -> Unit raise SchemaViolation {
+  if value.length() < 0 {
+    raise SchemaViolation(
+      schema="sml.xsd",
+      path=type_name,
+      reason="invalid xsd:string token",
     )
   }
 }
