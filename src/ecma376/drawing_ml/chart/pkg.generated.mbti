@@ -1,12 +1,1272 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/drawing_ml/chart"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
+pub fn chart_schema_bundles() -> Array[String]
+
+pub fn chart_section_name() -> String
+
 pub fn package_name() -> String
 
+pub fn parse_ct_chart_element(@xml.Element) -> CT_Chart
+
+pub fn parse_st_shape(String) -> ST_Shape raise SchemaViolation
+
+pub fn read_chart(Bytes) -> Chart raise
+
+pub fn read_chart_space(Bytes) -> ChartSpace raise
+
+pub fn read_user_shapes(Bytes) -> UserShapes raise
+
+pub fn write_chart(Chart) -> Bytes
+
+pub fn write_chart_space(ChartSpace) -> Bytes
+
+pub fn write_user_shapes(UserShapes) -> Bytes
+
 // Errors
+pub suberror ResourceMissing {
+  ResourceMissing(section~ : String, path~ : String, target~ : String)
+} derive(@debug.Debug)
+
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct CT_AbsSizeAnchor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Area3DChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_AreaChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_AreaSer {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_AxDataSource {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_AxPos {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_AxisUnit {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BandFmt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BandFmts {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Bar3DChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BarChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BarDir {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BarGrouping {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BarSer {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Boolean {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BubbleChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BubbleScale {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BubbleSer {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_BuiltInUnit {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_CatAx {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Chart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Chart::has_plot_area(Self) -> Bool
+pub fn CT_Chart::new(@xml.Element) -> Self
+
+pub(all) struct CT_ChartLines {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ChartSpace {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Connector {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ConnectorNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_CrossBetween {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Crosses {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_CustSplit {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DLbl {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DLblPos {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DLbls {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DPt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DTable {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DateAx {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DepthPercent {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DispBlanksAs {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DispUnits {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DispUnitsLbl {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Double {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DoughnutChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Drawing {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ErrBarType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ErrBars {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ErrDir {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ErrValType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Extension {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ExtensionList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ExternalData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_FirstSliceAng {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_GapAmount {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_GraphicFrame {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_GraphicFrameNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_GroupShape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_GroupShapeNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Grouping {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_HPercent {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_HeaderFooter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_HoleSize {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Layout {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_LayoutMode {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_LayoutTarget {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_LblAlgn {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_LblOffset {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Legend {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_LegendEntry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_LegendPos {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Line3DChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_LineChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_LineSer {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_LogBase {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Lvl {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ManualLayout {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Marker {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_MarkerSize {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_MarkerStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_MultiLvlStrData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_MultiLvlStrRef {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_NumData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_NumDataSource {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_NumFmt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_NumRef {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_NumVal {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_OfPieChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_OfPieType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Order {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Orientation {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Overlap {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PageMargins {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PageSetup {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Period {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Perspective {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Picture {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PictureFormat {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PictureNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PictureOptions {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PictureStackUnit {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Pie3DChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PieChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PieSer {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PivotFmt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PivotFmts {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PivotSource {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PlotArea {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PrintSettings {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Protection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_RadarChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_RadarSer {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_RadarStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_RelId {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_RelSizeAnchor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_RotX {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_RotY {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Scaling {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ScatterChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ScatterSer {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ScatterStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_SecondPieSize {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_SerAx {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_SerTx {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Shape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ShapeNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_SizeRepresents {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Skip {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_SplitType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_StockChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_StrData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_StrRef {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_StrVal {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Style {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Surface {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Surface3DChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_SurfaceChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_SurfaceSer {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TextLanguageID {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Thickness {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TickLblPos {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TickMark {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TimeUnit {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Title {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Trendline {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TrendlineLbl {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TrendlineType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Tx {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_UnsignedInt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_UpDownBar {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_UpDownBars {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ValAx {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_View3D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Chart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ChartSpace {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct EG_Anchor {
+  elements : Array[@xml.Element]
+}
+pub fn EG_Anchor::contains(Self, String) -> Bool
+pub fn EG_Anchor::count(Self) -> Int
+pub fn EG_Anchor::member_names(Self) -> Array[String]
+pub fn EG_Anchor::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_AreaChartShared {
+  elements : Array[@xml.Element]
+}
+pub fn EG_AreaChartShared::contains(Self, String) -> Bool
+pub fn EG_AreaChartShared::count(Self) -> Int
+pub fn EG_AreaChartShared::member_names(Self) -> Array[String]
+pub fn EG_AreaChartShared::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_AxShared {
+  elements : Array[@xml.Element]
+}
+pub fn EG_AxShared::contains(Self, String) -> Bool
+pub fn EG_AxShared::count(Self) -> Int
+pub fn EG_AxShared::member_names(Self) -> Array[String]
+pub fn EG_AxShared::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_BarChartShared {
+  elements : Array[@xml.Element]
+}
+pub fn EG_BarChartShared::contains(Self, String) -> Bool
+pub fn EG_BarChartShared::count(Self) -> Int
+pub fn EG_BarChartShared::member_names(Self) -> Array[String]
+pub fn EG_BarChartShared::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_DLblShared {
+  elements : Array[@xml.Element]
+}
+pub fn EG_DLblShared::contains(Self, String) -> Bool
+pub fn EG_DLblShared::count(Self) -> Int
+pub fn EG_DLblShared::member_names(Self) -> Array[String]
+pub fn EG_DLblShared::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_LegendEntryData {
+  elements : Array[@xml.Element]
+}
+pub fn EG_LegendEntryData::contains(Self, String) -> Bool
+pub fn EG_LegendEntryData::count(Self) -> Int
+pub fn EG_LegendEntryData::member_names(Self) -> Array[String]
+pub fn EG_LegendEntryData::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_LineChartShared {
+  elements : Array[@xml.Element]
+}
+pub fn EG_LineChartShared::contains(Self, String) -> Bool
+pub fn EG_LineChartShared::count(Self) -> Int
+pub fn EG_LineChartShared::member_names(Self) -> Array[String]
+pub fn EG_LineChartShared::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_ObjectChoices {
+  elements : Array[@xml.Element]
+}
+pub fn EG_ObjectChoices::contains(Self, String) -> Bool
+pub fn EG_ObjectChoices::count(Self) -> Int
+pub fn EG_ObjectChoices::member_names(Self) -> Array[String]
+pub fn EG_ObjectChoices::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_PieChartShared {
+  elements : Array[@xml.Element]
+}
+pub fn EG_PieChartShared::contains(Self, String) -> Bool
+pub fn EG_PieChartShared::count(Self) -> Int
+pub fn EG_PieChartShared::member_names(Self) -> Array[String]
+pub fn EG_PieChartShared::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_SerShared {
+  elements : Array[@xml.Element]
+}
+pub fn EG_SerShared::contains(Self, String) -> Bool
+pub fn EG_SerShared::count(Self) -> Int
+pub fn EG_SerShared::member_names(Self) -> Array[String]
+pub fn EG_SerShared::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_SurfaceChartShared {
+  elements : Array[@xml.Element]
+}
+pub fn EG_SurfaceChartShared::contains(Self, String) -> Bool
+pub fn EG_SurfaceChartShared::count(Self) -> Int
+pub fn EG_SurfaceChartShared::member_names(Self) -> Array[String]
+pub fn EG_SurfaceChartShared::new(Array[@xml.Element]) -> Self
+
+pub(all) struct Group_DLbl {
+  elements : Array[@xml.Element]
+}
+pub fn Group_DLbl::contains(Self, String) -> Bool
+pub fn Group_DLbl::count(Self) -> Int
+pub fn Group_DLbl::member_names(Self) -> Array[String]
+pub fn Group_DLbl::new(Array[@xml.Element]) -> Self
+
+pub(all) struct Group_DLbls {
+  elements : Array[@xml.Element]
+}
+pub fn Group_DLbls::contains(Self, String) -> Bool
+pub fn Group_DLbls::count(Self) -> Int
+pub fn Group_DLbls::member_names(Self) -> Array[String]
+pub fn Group_DLbls::new(Array[@xml.Element]) -> Self
+
+pub(all) enum ST_AxPos {
+  AxPosB
+  AxPosL
+  AxPosR
+  AxPosT
+} derive(Eq, @debug.Debug)
+pub fn ST_AxPos::new(String) -> Self raise SchemaViolation
+pub fn ST_AxPos::parse(String) -> Self raise SchemaViolation
+pub fn ST_AxPos::to_string(Self) -> String
+
+pub struct ST_AxisUnit {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_AxisUnit::new(String) -> Self raise SchemaViolation
+pub fn ST_AxisUnit::parse(String) -> Self raise SchemaViolation
+pub fn ST_AxisUnit::to_string(Self) -> String
+
+pub(all) enum ST_BarDir {
+  BarDirBar
+  BarDirCol
+} derive(Eq, @debug.Debug)
+pub fn ST_BarDir::new(String) -> Self raise SchemaViolation
+pub fn ST_BarDir::parse(String) -> Self raise SchemaViolation
+pub fn ST_BarDir::to_string(Self) -> String
+
+pub(all) enum ST_BarGrouping {
+  BarGroupingPercentStacked
+  BarGroupingClustered
+  BarGroupingStandard
+  BarGroupingStacked
+} derive(Eq, @debug.Debug)
+pub fn ST_BarGrouping::new(String) -> Self raise SchemaViolation
+pub fn ST_BarGrouping::parse(String) -> Self raise SchemaViolation
+pub fn ST_BarGrouping::to_string(Self) -> String
+
+pub struct ST_BubbleScale {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BubbleScale::new(String) -> Self raise SchemaViolation
+pub fn ST_BubbleScale::parse(String) -> Self raise SchemaViolation
+pub fn ST_BubbleScale::to_string(Self) -> String
+
+pub struct ST_BubbleScalePercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BubbleScalePercent::new(String) -> Self raise SchemaViolation
+pub fn ST_BubbleScalePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_BubbleScalePercent::to_string(Self) -> String
+
+pub(all) enum ST_BuiltInUnit {
+  BuiltInUnitHundreds
+  BuiltInUnitThousands
+  BuiltInUnitTenThousands
+  BuiltInUnitHundredThousands
+  BuiltInUnitMillions
+  BuiltInUnitTenMillions
+  BuiltInUnitHundredMillions
+  BuiltInUnitBillions
+  BuiltInUnitTrillions
+} derive(Eq, @debug.Debug)
+pub fn ST_BuiltInUnit::new(String) -> Self raise SchemaViolation
+pub fn ST_BuiltInUnit::parse(String) -> Self raise SchemaViolation
+pub fn ST_BuiltInUnit::to_string(Self) -> String
+
+pub(all) enum ST_CrossBetween {
+  CrossBetweenBetween
+  CrossBetweenMidCat
+} derive(Eq, @debug.Debug)
+pub fn ST_CrossBetween::new(String) -> Self raise SchemaViolation
+pub fn ST_CrossBetween::parse(String) -> Self raise SchemaViolation
+pub fn ST_CrossBetween::to_string(Self) -> String
+
+pub(all) enum ST_Crosses {
+  CrossesAutoZero
+  CrossesMax
+  CrossesMin
+} derive(Eq, @debug.Debug)
+pub fn ST_Crosses::new(String) -> Self raise SchemaViolation
+pub fn ST_Crosses::parse(String) -> Self raise SchemaViolation
+pub fn ST_Crosses::to_string(Self) -> String
+
+pub(all) enum ST_DLblPos {
+  DLblPosBestFit
+  DLblPosB
+  DLblPosCtr
+  DLblPosInBase
+  DLblPosInEnd
+  DLblPosL
+  DLblPosOutEnd
+  DLblPosR
+  DLblPosT
+} derive(Eq, @debug.Debug)
+pub fn ST_DLblPos::new(String) -> Self raise SchemaViolation
+pub fn ST_DLblPos::parse(String) -> Self raise SchemaViolation
+pub fn ST_DLblPos::to_string(Self) -> String
+
+pub struct ST_DepthPercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DepthPercent::new(String) -> Self raise SchemaViolation
+pub fn ST_DepthPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_DepthPercent::to_string(Self) -> String
+
+pub struct ST_DepthPercentWithSymbol {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DepthPercentWithSymbol::new(String) -> Self raise SchemaViolation
+pub fn ST_DepthPercentWithSymbol::parse(String) -> Self raise SchemaViolation
+pub fn ST_DepthPercentWithSymbol::to_string(Self) -> String
+
+pub(all) enum ST_DispBlanksAs {
+  DispBlanksAsSpan
+  DispBlanksAsGap
+  DispBlanksAsZero
+} derive(Eq, @debug.Debug)
+pub fn ST_DispBlanksAs::new(String) -> Self raise SchemaViolation
+pub fn ST_DispBlanksAs::parse(String) -> Self raise SchemaViolation
+pub fn ST_DispBlanksAs::to_string(Self) -> String
+
+pub(all) enum ST_ErrBarType {
+  ErrBarTypeBoth
+  ErrBarTypeMinus
+  ErrBarTypePlus
+} derive(Eq, @debug.Debug)
+pub fn ST_ErrBarType::new(String) -> Self raise SchemaViolation
+pub fn ST_ErrBarType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ErrBarType::to_string(Self) -> String
+
+pub(all) enum ST_ErrDir {
+  ErrDirX
+  ErrDirY
+} derive(Eq, @debug.Debug)
+pub fn ST_ErrDir::new(String) -> Self raise SchemaViolation
+pub fn ST_ErrDir::parse(String) -> Self raise SchemaViolation
+pub fn ST_ErrDir::to_string(Self) -> String
+
+pub(all) enum ST_ErrValType {
+  ErrValTypeCust
+  ErrValTypeFixedVal
+  ErrValTypePercentage
+  ErrValTypeStdDev
+  ErrValTypeStdErr
+} derive(Eq, @debug.Debug)
+pub fn ST_ErrValType::new(String) -> Self raise SchemaViolation
+pub fn ST_ErrValType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ErrValType::to_string(Self) -> String
+
+pub struct ST_FirstSliceAng {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FirstSliceAng::new(String) -> Self raise SchemaViolation
+pub fn ST_FirstSliceAng::parse(String) -> Self raise SchemaViolation
+pub fn ST_FirstSliceAng::to_string(Self) -> String
+
+pub struct ST_GapAmount {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_GapAmount::new(String) -> Self raise SchemaViolation
+pub fn ST_GapAmount::parse(String) -> Self raise SchemaViolation
+pub fn ST_GapAmount::to_string(Self) -> String
+
+pub struct ST_GapAmountPercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_GapAmountPercent::new(String) -> Self raise SchemaViolation
+pub fn ST_GapAmountPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_GapAmountPercent::to_string(Self) -> String
+
+pub(all) enum ST_Grouping {
+  GroupingPercentStacked
+  GroupingStandard
+  GroupingStacked
+} derive(Eq, @debug.Debug)
+pub fn ST_Grouping::new(String) -> Self raise SchemaViolation
+pub fn ST_Grouping::parse(String) -> Self raise SchemaViolation
+pub fn ST_Grouping::to_string(Self) -> String
+
+pub struct ST_HPercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HPercent::new(String) -> Self raise SchemaViolation
+pub fn ST_HPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_HPercent::to_string(Self) -> String
+
+pub struct ST_HPercentWithSymbol {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HPercentWithSymbol::new(String) -> Self raise SchemaViolation
+pub fn ST_HPercentWithSymbol::parse(String) -> Self raise SchemaViolation
+pub fn ST_HPercentWithSymbol::to_string(Self) -> String
+
+pub struct ST_HoleSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HoleSize::new(String) -> Self raise SchemaViolation
+pub fn ST_HoleSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_HoleSize::to_string(Self) -> String
+
+pub struct ST_HoleSizePercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HoleSizePercent::new(String) -> Self raise SchemaViolation
+pub fn ST_HoleSizePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_HoleSizePercent::to_string(Self) -> String
+
+pub(all) enum ST_LayoutMode {
+  LayoutModeEdge
+  LayoutModeFactor
+} derive(Eq, @debug.Debug)
+pub fn ST_LayoutMode::new(String) -> Self raise SchemaViolation
+pub fn ST_LayoutMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_LayoutMode::to_string(Self) -> String
+
+pub(all) enum ST_LayoutTarget {
+  LayoutTargetInner
+  LayoutTargetOuter
+} derive(Eq, @debug.Debug)
+pub fn ST_LayoutTarget::new(String) -> Self raise SchemaViolation
+pub fn ST_LayoutTarget::parse(String) -> Self raise SchemaViolation
+pub fn ST_LayoutTarget::to_string(Self) -> String
+
+pub(all) enum ST_LblAlgn {
+  LblAlgnCtr
+  LblAlgnL
+  LblAlgnR
+} derive(Eq, @debug.Debug)
+pub fn ST_LblAlgn::new(String) -> Self raise SchemaViolation
+pub fn ST_LblAlgn::parse(String) -> Self raise SchemaViolation
+pub fn ST_LblAlgn::to_string(Self) -> String
+
+pub struct ST_LblOffset {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LblOffset::new(String) -> Self raise SchemaViolation
+pub fn ST_LblOffset::parse(String) -> Self raise SchemaViolation
+pub fn ST_LblOffset::to_string(Self) -> String
+
+pub struct ST_LblOffsetPercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LblOffsetPercent::new(String) -> Self raise SchemaViolation
+pub fn ST_LblOffsetPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_LblOffsetPercent::to_string(Self) -> String
+
+pub(all) enum ST_LegendPos {
+  LegendPosB
+  LegendPosTr
+  LegendPosL
+  LegendPosR
+  LegendPosT
+} derive(Eq, @debug.Debug)
+pub fn ST_LegendPos::new(String) -> Self raise SchemaViolation
+pub fn ST_LegendPos::parse(String) -> Self raise SchemaViolation
+pub fn ST_LegendPos::to_string(Self) -> String
+
+pub struct ST_LogBase {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LogBase::new(String) -> Self raise SchemaViolation
+pub fn ST_LogBase::parse(String) -> Self raise SchemaViolation
+pub fn ST_LogBase::to_string(Self) -> String
+
+pub struct ST_MarkerCoordinate {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MarkerCoordinate::new(String) -> Self raise SchemaViolation
+pub fn ST_MarkerCoordinate::parse(String) -> Self raise SchemaViolation
+pub fn ST_MarkerCoordinate::to_string(Self) -> String
+
+pub struct ST_MarkerSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_MarkerSize::new(String) -> Self raise SchemaViolation
+pub fn ST_MarkerSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_MarkerSize::to_string(Self) -> String
+
+pub(all) enum ST_MarkerStyle {
+  MarkerStyleCircle
+  MarkerStyleDash
+  MarkerStyleDiamond
+  MarkerStyleDot
+  MarkerStyleNone
+  MarkerStylePicture
+  MarkerStylePlus
+  MarkerStyleSquare
+  MarkerStyleStar
+  MarkerStyleTriangle
+  MarkerStyleX
+  MarkerStyleAuto
+} derive(Eq, @debug.Debug)
+pub fn ST_MarkerStyle::new(String) -> Self raise SchemaViolation
+pub fn ST_MarkerStyle::parse(String) -> Self raise SchemaViolation
+pub fn ST_MarkerStyle::to_string(Self) -> String
+
+pub(all) enum ST_OfPieType {
+  OfPieTypePie
+  OfPieTypeBar
+} derive(Eq, @debug.Debug)
+pub fn ST_OfPieType::new(String) -> Self raise SchemaViolation
+pub fn ST_OfPieType::parse(String) -> Self raise SchemaViolation
+pub fn ST_OfPieType::to_string(Self) -> String
+
+pub struct ST_Order {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Order::new(String) -> Self raise SchemaViolation
+pub fn ST_Order::parse(String) -> Self raise SchemaViolation
+pub fn ST_Order::to_string(Self) -> String
+
+pub(all) enum ST_Orientation {
+  OrientationMaxMin
+  OrientationMinMax
+} derive(Eq, @debug.Debug)
+pub fn ST_Orientation::new(String) -> Self raise SchemaViolation
+pub fn ST_Orientation::parse(String) -> Self raise SchemaViolation
+pub fn ST_Orientation::to_string(Self) -> String
+
+pub struct ST_Overlap {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Overlap::new(String) -> Self raise SchemaViolation
+pub fn ST_Overlap::parse(String) -> Self raise SchemaViolation
+pub fn ST_Overlap::to_string(Self) -> String
+
+pub struct ST_OverlapPercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_OverlapPercent::new(String) -> Self raise SchemaViolation
+pub fn ST_OverlapPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_OverlapPercent::to_string(Self) -> String
+
+pub(all) enum ST_PageSetupOrientation {
+  PageSetupOrientationDefaultValue
+  PageSetupOrientationPortrait
+  PageSetupOrientationLandscape
+} derive(Eq, @debug.Debug)
+pub fn ST_PageSetupOrientation::new(String) -> Self raise SchemaViolation
+pub fn ST_PageSetupOrientation::parse(String) -> Self raise SchemaViolation
+pub fn ST_PageSetupOrientation::to_string(Self) -> String
+
+pub struct ST_Period {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Period::new(String) -> Self raise SchemaViolation
+pub fn ST_Period::parse(String) -> Self raise SchemaViolation
+pub fn ST_Period::to_string(Self) -> String
+
+pub struct ST_Perspective {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Perspective::new(String) -> Self raise SchemaViolation
+pub fn ST_Perspective::parse(String) -> Self raise SchemaViolation
+pub fn ST_Perspective::to_string(Self) -> String
+
+pub(all) enum ST_PictureFormat {
+  PictureFormatStretch
+  PictureFormatStack
+  PictureFormatStackScale
+} derive(Eq, @debug.Debug)
+pub fn ST_PictureFormat::new(String) -> Self raise SchemaViolation
+pub fn ST_PictureFormat::parse(String) -> Self raise SchemaViolation
+pub fn ST_PictureFormat::to_string(Self) -> String
+
+pub struct ST_PictureStackUnit {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PictureStackUnit::new(String) -> Self raise SchemaViolation
+pub fn ST_PictureStackUnit::parse(String) -> Self raise SchemaViolation
+pub fn ST_PictureStackUnit::to_string(Self) -> String
+
+pub(all) enum ST_RadarStyle {
+  RadarStyleStandard
+  RadarStyleMarker
+  RadarStyleFilled
+} derive(Eq, @debug.Debug)
+pub fn ST_RadarStyle::new(String) -> Self raise SchemaViolation
+pub fn ST_RadarStyle::parse(String) -> Self raise SchemaViolation
+pub fn ST_RadarStyle::to_string(Self) -> String
+
+pub struct ST_RotX {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RotX::new(String) -> Self raise SchemaViolation
+pub fn ST_RotX::parse(String) -> Self raise SchemaViolation
+pub fn ST_RotX::to_string(Self) -> String
+
+pub struct ST_RotY {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RotY::new(String) -> Self raise SchemaViolation
+pub fn ST_RotY::parse(String) -> Self raise SchemaViolation
+pub fn ST_RotY::to_string(Self) -> String
+
+pub(all) enum ST_ScatterStyle {
+  ScatterStyleNone
+  ScatterStyleLine
+  ScatterStyleLineMarker
+  ScatterStyleMarker
+  ScatterStyleSmooth
+  ScatterStyleSmoothMarker
+} derive(Eq, @debug.Debug)
+pub fn ST_ScatterStyle::new(String) -> Self raise SchemaViolation
+pub fn ST_ScatterStyle::parse(String) -> Self raise SchemaViolation
+pub fn ST_ScatterStyle::to_string(Self) -> String
+
+pub struct ST_SecondPieSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SecondPieSize::new(String) -> Self raise SchemaViolation
+pub fn ST_SecondPieSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_SecondPieSize::to_string(Self) -> String
+
+pub struct ST_SecondPieSizePercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SecondPieSizePercent::new(String) -> Self raise SchemaViolation
+pub fn ST_SecondPieSizePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_SecondPieSizePercent::to_string(Self) -> String
+
+pub(all) enum ST_Shape {
+  ShapeCone
+  ShapeConeToMax
+  ShapeBox
+  ShapeCylinder
+  ShapePyramid
+  ShapePyramidToMax
+} derive(Eq, @debug.Debug)
+pub fn ST_Shape::new(String) -> Self raise SchemaViolation
+pub fn ST_Shape::parse(String) -> Self raise SchemaViolation
+pub fn ST_Shape::to_string(Self) -> String
+
+pub(all) enum ST_SizeRepresents {
+  SizeRepresentsArea
+  SizeRepresentsW
+} derive(Eq, @debug.Debug)
+pub fn ST_SizeRepresents::new(String) -> Self raise SchemaViolation
+pub fn ST_SizeRepresents::parse(String) -> Self raise SchemaViolation
+pub fn ST_SizeRepresents::to_string(Self) -> String
+
+pub struct ST_Skip {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Skip::new(String) -> Self raise SchemaViolation
+pub fn ST_Skip::parse(String) -> Self raise SchemaViolation
+pub fn ST_Skip::to_string(Self) -> String
+
+pub(all) enum ST_SplitType {
+  SplitTypeAuto
+  SplitTypeCust
+  SplitTypePercent
+  SplitTypePos
+  SplitTypeVal
+} derive(Eq, @debug.Debug)
+pub fn ST_SplitType::new(String) -> Self raise SchemaViolation
+pub fn ST_SplitType::parse(String) -> Self raise SchemaViolation
+pub fn ST_SplitType::to_string(Self) -> String
+
+pub struct ST_Style {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Style::new(String) -> Self raise SchemaViolation
+pub fn ST_Style::parse(String) -> Self raise SchemaViolation
+pub fn ST_Style::to_string(Self) -> String
+
+pub struct ST_Thickness {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Thickness::new(String) -> Self raise SchemaViolation
+pub fn ST_Thickness::parse(String) -> Self raise SchemaViolation
+pub fn ST_Thickness::to_string(Self) -> String
+
+pub struct ST_ThicknessPercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ThicknessPercent::new(String) -> Self raise SchemaViolation
+pub fn ST_ThicknessPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_ThicknessPercent::to_string(Self) -> String
+
+pub(all) enum ST_TickLblPos {
+  TickLblPosHigh
+  TickLblPosLow
+  TickLblPosNextTo
+  TickLblPosNone
+} derive(Eq, @debug.Debug)
+pub fn ST_TickLblPos::new(String) -> Self raise SchemaViolation
+pub fn ST_TickLblPos::parse(String) -> Self raise SchemaViolation
+pub fn ST_TickLblPos::to_string(Self) -> String
+
+pub(all) enum ST_TickMark {
+  TickMarkCross
+  TickMarkInValue
+  TickMarkNone
+  TickMarkOut
+} derive(Eq, @debug.Debug)
+pub fn ST_TickMark::new(String) -> Self raise SchemaViolation
+pub fn ST_TickMark::parse(String) -> Self raise SchemaViolation
+pub fn ST_TickMark::to_string(Self) -> String
+
+pub(all) enum ST_TimeUnit {
+  TimeUnitDays
+  TimeUnitMonths
+  TimeUnitYears
+} derive(Eq, @debug.Debug)
+pub fn ST_TimeUnit::new(String) -> Self raise SchemaViolation
+pub fn ST_TimeUnit::parse(String) -> Self raise SchemaViolation
+pub fn ST_TimeUnit::to_string(Self) -> String
+
+pub(all) enum ST_TrendlineType {
+  TrendlineTypeExp
+  TrendlineTypeLinear
+  TrendlineTypeLog
+  TrendlineTypeMovingAvg
+  TrendlineTypePoly
+  TrendlineTypePower
+} derive(Eq, @debug.Debug)
+pub fn ST_TrendlineType::new(String) -> Self raise SchemaViolation
+pub fn ST_TrendlineType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TrendlineType::to_string(Self) -> String
+
+pub(all) struct UserShapes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
