@@ -29,6 +29,8 @@ pub fn read_group_fill_properties(Bytes) -> CT_GroupFillProperties raise
 
 pub fn read_hsl_color(Bytes) -> CT_HslColor raise
 
+pub fn read_line_properties(Bytes) -> CT_LineProperties raise
+
 pub fn read_no_fill_properties(Bytes) -> CT_NoFillProperties raise
 
 pub fn read_outer_shadow_effect(Bytes) -> CT_OuterShadowEffect raise
@@ -38,6 +40,8 @@ pub fn read_pattern_fill_properties(Bytes) -> CT_PatternFillProperties raise
 pub fn read_preset_color(Bytes) -> CT_PresetColor raise
 
 pub fn read_preset_geometry2d(Bytes) -> CT_PresetGeometry2D raise
+
+pub fn read_preset_line_dash_properties(Bytes) -> CT_PresetLineDashProperties raise
 
 pub fn read_s_rgb_color(Bytes) -> CT_SRgbColor raise
 
@@ -79,6 +83,8 @@ pub fn write_group_fill_properties(CT_GroupFillProperties) -> Bytes
 
 pub fn write_hsl_color(CT_HslColor) -> Bytes
 
+pub fn write_line_properties(CT_LineProperties) -> Bytes
+
 pub fn write_no_fill_properties(CT_NoFillProperties) -> Bytes
 
 pub fn write_outer_shadow_effect(CT_OuterShadowEffect) -> Bytes
@@ -88,6 +94,8 @@ pub fn write_pattern_fill_properties(CT_PatternFillProperties) -> Bytes
 pub fn write_preset_color(CT_PresetColor) -> Bytes
 
 pub fn write_preset_geometry2d(CT_PresetGeometry2D) -> Bytes
+
+pub fn write_preset_line_dash_properties(CT_PresetLineDashProperties) -> Bytes
 
 pub fn write_s_rgb_color(CT_SRgbColor) -> Bytes
 
@@ -281,6 +289,16 @@ pub(all) struct CT_CustomGeometry2D {
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomGeometry2D::new(@xml.Element) -> Self
 
+pub(all) struct CT_DashStop {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DashStop::new(@xml.Element) -> Self
+
+pub(all) struct CT_DashStopList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DashStopList::new(@xml.Element) -> Self
+
 pub(all) struct CT_DuotoneEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -432,6 +450,31 @@ pub(all) struct CT_InverseTransform {
 } derive(Eq, @debug.Debug)
 pub fn CT_InverseTransform::new(@xml.Element) -> Self
 
+pub(all) struct CT_LineEndProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LineEndProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_LineJoinBevel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LineJoinBevel::new(@xml.Element) -> Self
+
+pub(all) struct CT_LineJoinMiterProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LineJoinMiterProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_LineJoinRound {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LineJoinRound::new(@xml.Element) -> Self
+
+pub(all) struct CT_LineProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LineProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_LinearShadeProperties {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -568,6 +611,11 @@ pub(all) struct CT_PresetGeometry2D {
 } derive(Eq, @debug.Debug)
 pub fn CT_PresetGeometry2D::new(@xml.Element) -> Self
 
+pub(all) struct CT_PresetLineDashProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PresetLineDashProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_PresetShadowEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -702,6 +750,13 @@ pub fn ST_ColorSchemeIndex::new(String) -> Self raise SchemaViolation
 pub fn ST_ColorSchemeIndex::parse(String) -> Self raise SchemaViolation
 pub fn ST_ColorSchemeIndex::to_string(Self) -> String
 
+pub struct ST_CompoundLine {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CompoundLine::new(String) -> Self raise SchemaViolation
+pub fn ST_CompoundLine::parse(String) -> Self raise SchemaViolation
+pub fn ST_CompoundLine::to_string(Self) -> String
+
 pub struct ST_Coordinate {
   value : String
 } derive(Eq, @debug.Debug)
@@ -751,12 +806,47 @@ pub fn ST_FontCollectionIndex::new(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::parse(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::to_string(Self) -> String
 
+pub struct ST_LineCap {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LineCap::new(String) -> Self raise SchemaViolation
+pub fn ST_LineCap::parse(String) -> Self raise SchemaViolation
+pub fn ST_LineCap::to_string(Self) -> String
+
+pub struct ST_LineEndLength {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LineEndLength::new(String) -> Self raise SchemaViolation
+pub fn ST_LineEndLength::parse(String) -> Self raise SchemaViolation
+pub fn ST_LineEndLength::to_string(Self) -> String
+
+pub struct ST_LineEndType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LineEndType::new(String) -> Self raise SchemaViolation
+pub fn ST_LineEndType::parse(String) -> Self raise SchemaViolation
+pub fn ST_LineEndType::to_string(Self) -> String
+
+pub struct ST_LineEndWidth {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_LineEndWidth::new(String) -> Self raise SchemaViolation
+pub fn ST_LineEndWidth::parse(String) -> Self raise SchemaViolation
+pub fn ST_LineEndWidth::to_string(Self) -> String
+
 pub struct ST_PathShadeType {
   value : String
 } derive(Eq, @debug.Debug)
 pub fn ST_PathShadeType::new(String) -> Self raise SchemaViolation
 pub fn ST_PathShadeType::parse(String) -> Self raise SchemaViolation
 pub fn ST_PathShadeType::to_string(Self) -> String
+
+pub struct ST_PenAlignment {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PenAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_PenAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_PenAlignment::to_string(Self) -> String
 
 pub struct ST_Percentage {
   value : String
@@ -813,6 +903,13 @@ pub struct ST_PresetColorVal {
 pub fn ST_PresetColorVal::new(String) -> Self raise SchemaViolation
 pub fn ST_PresetColorVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_PresetColorVal::to_string(Self) -> String
+
+pub struct ST_PresetLineDashVal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PresetLineDashVal::new(String) -> Self raise SchemaViolation
+pub fn ST_PresetLineDashVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_PresetLineDashVal::to_string(Self) -> String
 
 pub struct ST_PresetPatternVal {
   value : String

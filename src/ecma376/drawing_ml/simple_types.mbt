@@ -566,6 +566,182 @@ fn preset_pattern_values() -> Array[String] {
 }
 
 ///|
+pub struct ST_LineCap {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_LineCap::parse(s : String) -> ST_LineCap raise SchemaViolation {
+  validate_main_enum("ST_LineCap", s, ["rnd", "sq", "flat"])
+  { value: s }
+}
+
+///|
+pub fn ST_LineCap::new(s : String) -> ST_LineCap raise SchemaViolation {
+  ST_LineCap::parse(s)
+}
+
+///|
+pub fn ST_LineCap::to_string(self : ST_LineCap) -> String {
+  self.value
+}
+
+///|
+pub struct ST_CompoundLine {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_CompoundLine::parse(
+  s : String,
+) -> ST_CompoundLine raise SchemaViolation {
+  validate_main_enum("ST_CompoundLine", s, [
+    "sng", "dbl", "thickThin", "thinThick", "tri",
+  ])
+  { value: s }
+}
+
+///|
+pub fn ST_CompoundLine::new(
+  s : String,
+) -> ST_CompoundLine raise SchemaViolation {
+  ST_CompoundLine::parse(s)
+}
+
+///|
+pub fn ST_CompoundLine::to_string(self : ST_CompoundLine) -> String {
+  self.value
+}
+
+///|
+pub struct ST_PenAlignment {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PenAlignment::parse(
+  s : String,
+) -> ST_PenAlignment raise SchemaViolation {
+  validate_main_enum("ST_PenAlignment", s, ["ctr", "in"])
+  { value: s }
+}
+
+///|
+pub fn ST_PenAlignment::new(
+  s : String,
+) -> ST_PenAlignment raise SchemaViolation {
+  ST_PenAlignment::parse(s)
+}
+
+///|
+pub fn ST_PenAlignment::to_string(self : ST_PenAlignment) -> String {
+  self.value
+}
+
+///|
+pub struct ST_LineEndType {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_LineEndType::parse(
+  s : String,
+) -> ST_LineEndType raise SchemaViolation {
+  validate_main_enum("ST_LineEndType", s, [
+    "none", "triangle", "stealth", "diamond", "oval", "arrow",
+  ])
+  { value: s }
+}
+
+///|
+pub fn ST_LineEndType::new(s : String) -> ST_LineEndType raise SchemaViolation {
+  ST_LineEndType::parse(s)
+}
+
+///|
+pub fn ST_LineEndType::to_string(self : ST_LineEndType) -> String {
+  self.value
+}
+
+///|
+pub struct ST_LineEndWidth {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_LineEndWidth::parse(
+  s : String,
+) -> ST_LineEndWidth raise SchemaViolation {
+  validate_main_enum("ST_LineEndWidth", s, ["sm", "med", "lg"])
+  { value: s }
+}
+
+///|
+pub fn ST_LineEndWidth::new(
+  s : String,
+) -> ST_LineEndWidth raise SchemaViolation {
+  ST_LineEndWidth::parse(s)
+}
+
+///|
+pub fn ST_LineEndWidth::to_string(self : ST_LineEndWidth) -> String {
+  self.value
+}
+
+///|
+pub struct ST_LineEndLength {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_LineEndLength::parse(
+  s : String,
+) -> ST_LineEndLength raise SchemaViolation {
+  validate_main_enum("ST_LineEndLength", s, ["sm", "med", "lg"])
+  { value: s }
+}
+
+///|
+pub fn ST_LineEndLength::new(
+  s : String,
+) -> ST_LineEndLength raise SchemaViolation {
+  ST_LineEndLength::parse(s)
+}
+
+///|
+pub fn ST_LineEndLength::to_string(self : ST_LineEndLength) -> String {
+  self.value
+}
+
+///|
+pub struct ST_PresetLineDashVal {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PresetLineDashVal::parse(
+  s : String,
+) -> ST_PresetLineDashVal raise SchemaViolation {
+  validate_main_enum("ST_PresetLineDashVal", s, [
+    "solid", "dot", "dash", "lgDash", "dashDot", "lgDashDot", "lgDashDotDot", "sysDash",
+    "sysDot", "sysDashDot", "sysDashDotDot",
+  ])
+  { value: s }
+}
+
+///|
+pub fn ST_PresetLineDashVal::new(
+  s : String,
+) -> ST_PresetLineDashVal raise SchemaViolation {
+  ST_PresetLineDashVal::parse(s)
+}
+
+///|
+pub fn ST_PresetLineDashVal::to_string(self : ST_PresetLineDashVal) -> String {
+  self.value
+}
+
+///|
 fn validate_measure(
   type_name : String,
   value : String,

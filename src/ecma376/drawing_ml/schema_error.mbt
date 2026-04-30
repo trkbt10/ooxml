@@ -58,6 +58,16 @@ fn validate_main_attributes(
       ("tile", "algn") => ST_RectAlignment::parse(value) |> ignore
       ("path", "path") => ST_PathShadeType::parse(value) |> ignore
       ("pattFill", "prst") => ST_PresetPatternVal::parse(value) |> ignore
+      ("ln", "cap") => ST_LineCap::parse(value) |> ignore
+      ("ln", "cmpd") => ST_CompoundLine::parse(value) |> ignore
+      ("ln", "algn") => ST_PenAlignment::parse(value) |> ignore
+      ("headEnd", "type") | ("tailEnd", "type") =>
+        ST_LineEndType::parse(value) |> ignore
+      ("headEnd", "w") | ("tailEnd", "w") =>
+        ST_LineEndWidth::parse(value) |> ignore
+      ("headEnd", "len") | ("tailEnd", "len") =>
+        ST_LineEndLength::parse(value) |> ignore
+      ("prstDash", "val") => ST_PresetLineDashVal::parse(value) |> ignore
       ("clrMap", "bg1")
       | ("clrMap", "tx1")
       | ("clrMap", "bg2")
