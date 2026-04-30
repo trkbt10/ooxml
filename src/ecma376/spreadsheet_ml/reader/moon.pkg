@@ -1,3 +1,13 @@
 // trkbt10/ooxml/ecma376/spreadsheet_ml/reader
 //
 // SpreadsheetML XML → domain reader.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @domain,
+}
+
+import {
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/builder" @builder,
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"

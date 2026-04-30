@@ -1,8 +1,56 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/spreadsheet_ml/builder"
 
+import {
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
+}
+
 // Values
 pub fn package_name() -> String
+
+pub fn write_calc_chain(@domain.CT_CalcChain) -> Bytes
+
+pub fn write_chartsheet(@domain.CT_Chartsheet) -> Bytes
+
+pub fn write_comments(@domain.CT_Comments) -> Bytes
+
+pub fn write_connections(@domain.CT_Connections) -> Bytes
+
+pub fn write_dialogsheet(@domain.CT_Dialogsheet) -> Bytes
+
+pub fn write_external_link(@domain.CT_ExternalLink) -> Bytes
+
+pub fn write_headers(@domain.CT_RevisionHeaders) -> Bytes
+
+pub fn write_map_info(@domain.CT_MapInfo) -> Bytes
+
+pub fn write_metadata(@domain.CT_Metadata) -> Bytes
+
+pub fn write_pivot_cache_definition(@domain.CT_PivotCacheDefinition) -> Bytes
+
+pub fn write_pivot_cache_records(@domain.CT_PivotCacheRecords) -> Bytes
+
+pub fn write_pivot_table_definition(@domain.CT_pivotTableDefinition) -> Bytes
+
+pub fn write_query_table(@domain.CT_QueryTable) -> Bytes
+
+pub fn write_revisions(@domain.CT_Revisions) -> Bytes
+
+pub fn write_shared_strings(@domain.CT_Sst) -> Bytes
+
+pub fn write_single_xml_cells(@domain.CT_SingleXmlCells) -> Bytes
+
+pub fn write_sst(@domain.CT_Sst) -> Bytes
+
+pub fn write_style_sheet(@domain.CT_Stylesheet) -> Bytes
+
+pub fn write_table_single_cells(@domain.CT_SingleXmlCells) -> Bytes
+
+pub fn write_users(@domain.CT_Users) -> Bytes
+
+pub fn write_vol_types(@domain.CT_VolTypes) -> Bytes
+
+pub fn write_worksheet(@domain.CT_Worksheet) -> Bytes
 
 // Errors
 

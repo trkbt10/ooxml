@@ -1,10 +1,62 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/spreadsheet_ml/reader"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn read_calc_chain(Bytes) -> @domain.CT_CalcChain raise
+
+pub fn read_chartsheet(Bytes) -> @domain.CT_Chartsheet raise
+
+pub fn read_comments(Bytes) -> @domain.CT_Comments raise
+
+pub fn read_connections(Bytes) -> @domain.CT_Connections raise
+
+pub fn read_dialogsheet(Bytes) -> @domain.CT_Dialogsheet raise
+
+pub fn read_external_link(Bytes) -> @domain.CT_ExternalLink raise
+
+pub fn read_headers(Bytes) -> @domain.CT_RevisionHeaders raise
+
+pub fn read_map_info(Bytes) -> @domain.CT_MapInfo raise
+
+pub fn read_metadata(Bytes) -> @domain.CT_Metadata raise
+
+pub fn read_pivot_cache_definition(Bytes) -> @domain.CT_PivotCacheDefinition raise
+
+pub fn read_pivot_cache_records(Bytes) -> @domain.CT_PivotCacheRecords raise
+
+pub fn read_pivot_table_definition(Bytes) -> @domain.CT_pivotTableDefinition raise
+
+pub fn read_query_table(Bytes) -> @domain.CT_QueryTable raise
+
+pub fn read_revisions(Bytes) -> @domain.CT_Revisions raise
+
+pub fn read_shared_strings(Bytes) -> @domain.CT_Sst raise
+
+pub fn read_single_xml_cells(Bytes) -> @domain.CT_SingleXmlCells raise
+
+pub fn read_sst(Bytes) -> @domain.CT_Sst raise
+
+pub fn read_style_sheet(Bytes) -> @domain.CT_Stylesheet raise
+
+pub fn read_table_single_cells(Bytes) -> @domain.CT_SingleXmlCells raise
+
+pub fn read_users(Bytes) -> @domain.CT_Users raise
+
+pub fn read_vol_types(Bytes) -> @domain.CT_VolTypes raise
+
+pub fn read_worksheet(Bytes) -> @domain.CT_Worksheet raise
+
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
 
