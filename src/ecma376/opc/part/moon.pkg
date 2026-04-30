@@ -1,3 +1,7 @@
 // trkbt10/ooxml/ecma376/opc/part
 //
 // PackagePart, PartName, and PackUri (OPC §9.1.1, §9.1.2).
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}
