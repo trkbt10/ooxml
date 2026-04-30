@@ -43,6 +43,20 @@ pub suberror SchemaViolation {
 } derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct AG_Password {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Password::attribute_names(Self) -> Array[String]
+pub fn AG_Password::has_attribute(Self, String) -> Bool
+pub fn AG_Password::new(@xml.Element) -> Self
+
+pub(all) struct AG_SectPrAttributes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_SectPrAttributes::attribute_names(Self) -> Array[String]
+pub fn AG_SectPrAttributes::has_attribute(Self, String) -> Bool
+pub fn AG_SectPrAttributes::new(@xml.Element) -> Self
+
 pub(all) struct CT_AbstractNum {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1995,6 +2009,198 @@ pub(all) struct CT_Zoom {
 pub fn CT_Zoom::new(@xml.Element) -> Self
 pub fn CT_Zoom::parse(@xml.Element) -> Self
 pub fn CT_Zoom::to_element(Self) -> @xml.Element
+
+pub(all) struct EG_BlockLevelChunkElts {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_BlockLevelChunkElts::contains(Self, String) -> Bool
+pub fn EG_BlockLevelChunkElts::count(Self) -> Int
+pub fn EG_BlockLevelChunkElts::member_names(Self) -> Array[String]
+pub fn EG_BlockLevelChunkElts::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_BlockLevelElts {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_BlockLevelElts::contains(Self, String) -> Bool
+pub fn EG_BlockLevelElts::count(Self) -> Int
+pub fn EG_BlockLevelElts::member_names(Self) -> Array[String]
+pub fn EG_BlockLevelElts::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_CellMarkupElements {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_CellMarkupElements::contains(Self, String) -> Bool
+pub fn EG_CellMarkupElements::count(Self) -> Int
+pub fn EG_CellMarkupElements::member_names(Self) -> Array[String]
+pub fn EG_CellMarkupElements::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_ContentBlockContent {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_ContentBlockContent::contains(Self, String) -> Bool
+pub fn EG_ContentBlockContent::count(Self) -> Int
+pub fn EG_ContentBlockContent::member_names(Self) -> Array[String]
+pub fn EG_ContentBlockContent::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_ContentCellContent {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_ContentCellContent::contains(Self, String) -> Bool
+pub fn EG_ContentCellContent::count(Self) -> Int
+pub fn EG_ContentCellContent::member_names(Self) -> Array[String]
+pub fn EG_ContentCellContent::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_ContentRowContent {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_ContentRowContent::contains(Self, String) -> Bool
+pub fn EG_ContentRowContent::count(Self) -> Int
+pub fn EG_ContentRowContent::member_names(Self) -> Array[String]
+pub fn EG_ContentRowContent::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_ContentRunContent {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_ContentRunContent::contains(Self, String) -> Bool
+pub fn EG_ContentRunContent::count(Self) -> Int
+pub fn EG_ContentRunContent::member_names(Self) -> Array[String]
+pub fn EG_ContentRunContent::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_ContentRunContentBase {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_ContentRunContentBase::contains(Self, String) -> Bool
+pub fn EG_ContentRunContentBase::count(Self) -> Int
+pub fn EG_ContentRunContentBase::member_names(Self) -> Array[String]
+pub fn EG_ContentRunContentBase::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_FtnEdnNumProps {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_FtnEdnNumProps::contains(Self, String) -> Bool
+pub fn EG_FtnEdnNumProps::count(Self) -> Int
+pub fn EG_FtnEdnNumProps::member_names(Self) -> Array[String]
+pub fn EG_FtnEdnNumProps::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_HdrFtrReferences {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_HdrFtrReferences::contains(Self, String) -> Bool
+pub fn EG_HdrFtrReferences::count(Self) -> Int
+pub fn EG_HdrFtrReferences::member_names(Self) -> Array[String]
+pub fn EG_HdrFtrReferences::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_MathContent {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_MathContent::contains(Self, String) -> Bool
+pub fn EG_MathContent::count(Self) -> Int
+pub fn EG_MathContent::member_names(Self) -> Array[String]
+pub fn EG_MathContent::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_PContent {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_PContent::contains(Self, String) -> Bool
+pub fn EG_PContent::count(Self) -> Int
+pub fn EG_PContent::member_names(Self) -> Array[String]
+pub fn EG_PContent::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_PContentBase {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_PContentBase::contains(Self, String) -> Bool
+pub fn EG_PContentBase::count(Self) -> Int
+pub fn EG_PContentBase::member_names(Self) -> Array[String]
+pub fn EG_PContentBase::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_PContentMath {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_PContentMath::contains(Self, String) -> Bool
+pub fn EG_PContentMath::count(Self) -> Int
+pub fn EG_PContentMath::member_names(Self) -> Array[String]
+pub fn EG_PContentMath::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_ParaRPrTrackChanges {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_ParaRPrTrackChanges::contains(Self, String) -> Bool
+pub fn EG_ParaRPrTrackChanges::count(Self) -> Int
+pub fn EG_ParaRPrTrackChanges::member_names(Self) -> Array[String]
+pub fn EG_ParaRPrTrackChanges::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_RPr {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_RPr::contains(Self, String) -> Bool
+pub fn EG_RPr::count(Self) -> Int
+pub fn EG_RPr::member_names(Self) -> Array[String]
+pub fn EG_RPr::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_RPrBase {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_RPrBase::contains(Self, String) -> Bool
+pub fn EG_RPrBase::count(Self) -> Int
+pub fn EG_RPrBase::member_names(Self) -> Array[String]
+pub fn EG_RPrBase::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_RPrContent {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_RPrContent::contains(Self, String) -> Bool
+pub fn EG_RPrContent::count(Self) -> Int
+pub fn EG_RPrContent::member_names(Self) -> Array[String]
+pub fn EG_RPrContent::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_RPrMath {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_RPrMath::contains(Self, String) -> Bool
+pub fn EG_RPrMath::count(Self) -> Int
+pub fn EG_RPrMath::member_names(Self) -> Array[String]
+pub fn EG_RPrMath::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_RangeMarkupElements {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_RangeMarkupElements::contains(Self, String) -> Bool
+pub fn EG_RangeMarkupElements::count(Self) -> Int
+pub fn EG_RangeMarkupElements::member_names(Self) -> Array[String]
+pub fn EG_RangeMarkupElements::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_RubyContent {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_RubyContent::contains(Self, String) -> Bool
+pub fn EG_RubyContent::count(Self) -> Int
+pub fn EG_RubyContent::member_names(Self) -> Array[String]
+pub fn EG_RubyContent::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_RunInnerContent {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_RunInnerContent::contains(Self, String) -> Bool
+pub fn EG_RunInnerContent::count(Self) -> Int
+pub fn EG_RunInnerContent::member_names(Self) -> Array[String]
+pub fn EG_RunInnerContent::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_RunLevelElts {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_RunLevelElts::contains(Self, String) -> Bool
+pub fn EG_RunLevelElts::count(Self) -> Int
+pub fn EG_RunLevelElts::member_names(Self) -> Array[String]
+pub fn EG_RunLevelElts::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_SectPrContents {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_SectPrContents::contains(Self, String) -> Bool
+pub fn EG_SectPrContents::count(Self) -> Int
+pub fn EG_SectPrContents::member_names(Self) -> Array[String]
+pub fn EG_SectPrContents::new(Array[@xml.Element]) -> Self
 
 pub struct ST_AnnotationVMerge {
   value : String
