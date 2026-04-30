@@ -1,12 +1,83 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/custom_xml_properties"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn read_custom_properties(Bytes) -> CT_Properties raise
+
+pub fn read_datastore_item(Bytes) -> CT_DatastoreItem raise
+
+pub fn read_extended_properties(Bytes) -> CT_Properties raise
+
+pub fn read_schema_library(Bytes) -> CT_SchemaLibrary raise
+
+pub fn write_custom_properties(CT_Properties) -> Bytes
+
+pub fn write_datastore_item(CT_DatastoreItem) -> Bytes
+
+pub fn write_extended_properties(CT_Properties) -> Bytes
+
+pub fn write_schema_library(CT_SchemaLibrary) -> Bytes
+
 // Errors
+pub suberror ResourceMissing {
+  ResourceMissing(section~ : String, path~ : String, target~ : String)
+} derive(@debug.Debug)
+
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+#alias(DatastoreItem)
+pub(all) struct CT_DatastoreItem {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DatastoreSchemaRef {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DatastoreSchemaRefs {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_DigSigBlob {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(CustomProperties)
+#alias(ExtendedProperties)
+pub(all) struct CT_Properties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Property {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Schema {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(SchemaLibrary)
+pub(all) struct CT_SchemaLibrary {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_VectorLpstr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_VectorVariant {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
