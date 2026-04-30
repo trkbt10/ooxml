@@ -24,6 +24,12 @@
 ///
 /// The public API honours the package SDD contract as follows:
 ///
+/// SDD 1. Scope: ECMA-376 Part 2 §10 Digital Signatures part and the
+/// opc-digSig schema are represented by the package identifier, the
+/// digital_signature_ns namespace helper, the typed domain values, and the XML
+/// reader/builder entry points. The owned scope is the 30 ECMA-376 sections
+/// listed above and the single opc-digSig schema bundle.
+///
 /// - §1 Scope: RelationshipReference, RelationshipsGroupReference, and
 ///   SignatureTime model the opc-digSig XML values used by signature
 ///   references, relationship-group references, and signature timestamps.
@@ -31,13 +37,13 @@
 ///   read_relationships_group_reference, and read_signature_time accept the
 ///   top-level elements owned by opc-digSig.xsd.
 /// - §2 Conformance C2: RelationshipReference::new,
-///   RelationshipsGroupReference::new, SignatureTimeFormat::new,
-///   SignatureTimeValue::new, and the XML readers reject missing attributes,
+///   RelationshipsGroupReference::new, ST_Format::new,
+///   ST_Value::new, and the XML readers reject missing attributes,
 ///   unexpected elements, and invalid child structure through SchemaViolation.
 /// - §2 Conformance C3: the writer functions preserve the required attributes
 ///   and child values when converting typed values back to XML.
-/// - §2 Conformance C4: SignatureTimeFormat::new and
-///   SignatureTimeValue::new enforce ST_Format and ST_Value lexical forms.
+/// - §2 Conformance C4: ST_Format::new and ST_Value::new enforce ST_Format
+///   and ST_Value lexical forms.
 /// - §2 Conformance C5: SchemaViolation carries the §10 section and local
 ///   element or attribute path for diagnostics.
 /// - 9. Drift Measurement Hooks: coverage.json is represented by the public
@@ -48,25 +54,36 @@
 ///   http://schemas.openxmlformats.org/package/2006/digital-signature.
 /// - §5 Inputs I3: require_resource records missing signature resources that
 ///   the surrounding OPC package resolver could not supply.
-/// - §6 Outputs O1: public domain values expose typed relationship references,
-///   relationship-group references, SignatureTime, ST_Format, and ST_Value.
-/// - §6 Outputs O2: write_relationship_reference,
-///   write_relationships_group_reference, and write_signature_time emit
-///   schema-valid XML byte streams for the typed values.
-/// - 7. Invariants V1: XML outside opc-digSig is not parsed inline; package,
-///   relationship, and content-type resolution stays in the OPC facade
-///   packages.
-/// - 7. Invariants V2: SignatureTime is written in CT_SignatureTime child order
-///   with Format before Value.
-/// - 7. Invariants V3: constructors validate and normalise populated domain
-///   values before consumers receive them.
-/// - §8 Errors E1: XmlMalformed is raised by @xml for invalid XML bytes.
-/// - §8 Errors E2: SchemaViolation reports schema, cardinality, required
-///   attribute, type, and pattern failures.
-/// - §8 Errors E3: UnsupportedFeature reports a recognised digital-signature
-///   construct outside the current implementation.
-/// - §8 Errors E4: ResourceMissing reports signature relationships or parts
-///   that the OPC resolver cannot supply.
+///
+/// SDD 6. Outputs: O1 is a typed domain value tree exposing the elements and
+/// attributes listed in the opc-digSig schema: RelationshipReference,
+/// RelationshipsGroupReference, SignatureTime, CT_RelationshipReference,
+/// CT_RelationshipsGroupReference, CT_SignatureTime, ST_Format, and ST_Value.
+/// O2 is produced by write_relationship_reference,
+/// write_relationships_group_reference, and write_signature_time as an XML
+/// byte stream that re-validates against opc-digSig.xsd and preserves
+/// read/write round-trip identity for parsed element and attribute data.
+///
+/// SDD 7. Invariants: V1 keeps elements from other packages out of this parser
+/// and routes cross-package references through the OPC layer; V2 keeps complex
+/// type element ordering in schema sequence, including CT_SignatureTime Format
+/// before Value; V3 materialises validated domain structures through
+/// constructors before consumers receive them.
+///
+/// SDD 8. Errors: E1 XmlMalformed is raised by @xml for invalid XML bytes; E2
+/// SchemaViolation reports occurrence, cardinality, required-attribute, type,
+/// and enumeration or pattern failures against opc-digSig.xsd; E3
+/// UnsupportedFeature identifies known §10 constructs outside this build; E4
+/// ResourceMissing identifies unresolved relationship targets or signature
+/// resources delegated to the surrounding OPC package resolver. Each public
+/// error carries a section number and local element or attribute path when
+/// known.
+///
+/// SDD 9. Drift Measurement Hooks: coverage.json is represented by source
+/// references to the §10 sections, the schema identifiers, package_name,
+/// digital_signature_ns, the public domain symbols, the read/write entry
+/// points, and the error helpers. Public symbols in this package are expected
+/// to trace back to those section or schema identifiers.
 ///
 /// Schema bundle opc-digSig.xsd has target namespace
 /// http://schemas.openxmlformats.org/package/2006/digital-signature. Its

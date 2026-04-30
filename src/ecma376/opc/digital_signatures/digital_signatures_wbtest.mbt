@@ -1,8 +1,8 @@
 ///|
 test "signature time round trip identity" {
   let signature_time = SignatureTime::new(
-    try! SignatureTimeFormat::new("YYYY-MM-DDThh:mm:ssTZD"),
-    try! SignatureTimeValue::new("2026-04-30T00:00:00Z"),
+    try! ST_Format::new("YYYY-MM-DDThh:mm:ssTZD"),
+    try! ST_Value::new("2026-04-30T00:00:00Z"),
   )
   let parsed = try! read_signature_time(write_signature_time(signature_time))
   assert_true(parsed == signature_time)

@@ -55,8 +55,8 @@ pub fn write_signature_time(value : SignatureTime) -> Bytes {
       name: digital_signature_name("SignatureTime"),
       attributes: [],
       children: [
-        Element(text_element("Format", value.format.value)),
-        Element(text_element("Value", value.value.value)),
+        Element(text_element("Format", value.format.to_string())),
+        Element(text_element("Value", value.value.to_string())),
       ],
     },
   }

@@ -83,8 +83,8 @@ pub fn read_signature_time(bytes : Bytes) -> SignatureTime raise {
     )
   }
   SignatureTime::new(
-    SignatureTimeFormat::new(element_text(elements[0])),
-    SignatureTimeValue::new(element_text(elements[1])),
+    ST_Format::new(element_text(elements[0])),
+    ST_Value::new(element_text(elements[1])),
   )
 }
 

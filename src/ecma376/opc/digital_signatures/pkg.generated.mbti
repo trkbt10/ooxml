@@ -48,17 +48,21 @@ pub(all) struct RelationshipsGroupReference {
   source_type : String
 } derive(Eq, @debug.Debug)
 
+pub(all) struct ST_Format {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Format::new(String) -> Self raise SchemaViolation
+pub fn ST_Format::to_string(Self) -> String
+
+pub(all) struct ST_Value {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Value::new(String) -> Self raise SchemaViolation
+pub fn ST_Value::to_string(Self) -> String
+
 pub(all) struct SignatureTime {
-  format : SignatureTimeFormat
-  value : SignatureTimeValue
-} derive(Eq, @debug.Debug)
-
-pub(all) struct SignatureTimeFormat {
-  value : String
-} derive(Eq, @debug.Debug)
-
-pub(all) struct SignatureTimeValue {
-  value : String
+  format : ST_Format
+  value : ST_Value
 } derive(Eq, @debug.Debug)
 
 // Type aliases

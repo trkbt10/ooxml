@@ -50,16 +50,14 @@ fn RelationshipsGroupReference::new(
 /// ST_Format simple type for SignatureTime from schema bundle opc-digSig.xsd
 /// in the http://schemas.openxmlformats.org/package/2006/digital-signature
 /// target namespace.
-pub(all) struct SignatureTimeFormat {
+pub(all) struct ST_Format {
   value : String
 } derive(Eq, Debug)
 
 ///|
 /// Build ST_Format for SignatureTime, rejecting values outside the XSD pattern
 /// as C4 schema violations.
-fn SignatureTimeFormat::new(
-  value : String,
-) -> SignatureTimeFormat raise SchemaViolation {
+pub fn ST_Format::new(value : String) -> ST_Format raise SchemaViolation {
   if !is_signature_time_format(value) {
     raise SchemaViolation(
       section="10",
@@ -71,19 +69,23 @@ fn SignatureTimeFormat::new(
 }
 
 ///|
+/// Serialize §10.5.16 ST_Format to its XSD string lexical value.
+pub fn ST_Format::to_string(self : ST_Format) -> String {
+  self.value
+}
+
+///|
 /// ST_Value simple type for SignatureTime from schema bundle opc-digSig.xsd in
 /// the http://schemas.openxmlformats.org/package/2006/digital-signature target
 /// namespace.
-pub(all) struct SignatureTimeValue {
+pub(all) struct ST_Value {
   value : String
 } derive(Eq, Debug)
 
 ///|
 /// Build ST_Value for SignatureTime, rejecting values outside the XSD pattern
 /// as C4 schema violations.
-fn SignatureTimeValue::new(
-  value : String,
-) -> SignatureTimeValue raise SchemaViolation {
+pub fn ST_Value::new(value : String) -> ST_Value raise SchemaViolation {
   if !is_signature_time_value(value) {
     raise SchemaViolation(
       section="10",
@@ -95,6 +97,12 @@ fn SignatureTimeValue::new(
 }
 
 ///|
+/// Serialize §10.5.17 ST_Value to its XSD string lexical value.
+pub fn ST_Value::to_string(self : ST_Value) -> String {
+  self.value
+}
+
+///|
 /// 1. Scope domain value for the §10.5.15 SignatureTime element and
 /// CT_SignatureTime from schema bundle
 /// opc-digSig.xsd in the
@@ -102,16 +110,13 @@ fn SignatureTimeValue::new(
 /// namespace; the builder preserves V2 child order by writing Format before
 /// Value.
 pub(all) struct SignatureTime {
-  format : SignatureTimeFormat
-  value : SignatureTimeValue
+  format : ST_Format
+  value : ST_Value
 } derive(Eq, Debug)
 
 ///|
 /// Build CT_SignatureTime.
-fn SignatureTime::new(
-  format : SignatureTimeFormat,
-  value : SignatureTimeValue,
-) -> SignatureTime {
+fn SignatureTime::new(format : ST_Format, value : ST_Value) -> SignatureTime {
   { format, value }
 }
 
