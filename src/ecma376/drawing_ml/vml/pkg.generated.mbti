@@ -1,0 +1,674 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/drawing_ml/vml"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn read_vml_background(Bytes) -> CT_Background raise
+
+pub fn read_vml_complex(Bytes) -> CT_Complex raise
+
+pub fn read_vml_diagram(Bytes) -> CT_Diagram raise
+
+pub fn read_vml_fill(Bytes) -> CT_Fill raise
+
+pub fn read_vml_group(Bytes) -> CT_Group raise
+
+pub fn read_vml_idmap(Bytes) -> CT_IdMap raise
+
+pub fn read_vml_imagedata(Bytes) -> CT_ImageData raise
+
+pub fn read_vml_ink(Bytes) -> CT_Ink raise
+
+pub fn read_vml_oleobject(Bytes) -> CT_OLEObject raise
+
+pub fn read_vml_path(Bytes) -> CT_Path raise
+
+pub fn read_vml_regrouptable(Bytes) -> CT_RegroupTable raise
+
+pub fn read_vml_rules(Bytes) -> CT_Rules raise
+
+pub fn read_vml_shape(Bytes) -> CT_Shape raise
+
+pub fn read_vml_shapedefaults(Bytes) -> CT_ShapeDefaults raise
+
+pub fn read_vml_shapelayout(Bytes) -> CT_ShapeLayout raise
+
+pub fn read_vml_shapetype(Bytes) -> CT_Shapetype raise
+
+pub fn read_vml_signatureline(Bytes) -> CT_SignatureLine raise
+
+pub fn read_vml_stroke(Bytes) -> CT_Stroke raise
+
+pub fn read_vml_textbox(Bytes) -> CT_Textbox raise
+
+pub fn read_vml_textpath(Bytes) -> CT_TextPath raise
+
+pub fn write_vml_background(CT_Background) -> Bytes
+
+pub fn write_vml_complex(CT_Complex) -> Bytes
+
+pub fn write_vml_diagram(CT_Diagram) -> Bytes
+
+pub fn write_vml_fill(CT_Fill) -> Bytes
+
+pub fn write_vml_group(CT_Group) -> Bytes
+
+pub fn write_vml_idmap(CT_IdMap) -> Bytes
+
+pub fn write_vml_imagedata(CT_ImageData) -> Bytes
+
+pub fn write_vml_ink(CT_Ink) -> Bytes
+
+pub fn write_vml_oleobject(CT_OLEObject) -> Bytes
+
+pub fn write_vml_path(CT_Path) -> Bytes
+
+pub fn write_vml_regrouptable(CT_RegroupTable) -> Bytes
+
+pub fn write_vml_rules(CT_Rules) -> Bytes
+
+pub fn write_vml_shape(CT_Shape) -> Bytes
+
+pub fn write_vml_shapedefaults(CT_ShapeDefaults) -> Bytes
+
+pub fn write_vml_shapelayout(CT_ShapeLayout) -> Bytes
+
+pub fn write_vml_shapetype(CT_Shapetype) -> Bytes
+
+pub fn write_vml_signatureline(CT_SignatureLine) -> Bytes
+
+pub fn write_vml_stroke(CT_Stroke) -> Bytes
+
+pub fn write_vml_textbox(CT_Textbox) -> Bytes
+
+pub fn write_vml_textpath(CT_TextPath) -> Bytes
+
+// Errors
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
+
+// Types and methods
+pub(all) struct AG_Adj {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Adj::attribute_names(Self) -> Array[String]
+pub fn AG_Adj::new(@xml.Element) -> Self
+
+pub(all) struct AG_AllCoreAttributes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_AllCoreAttributes::attribute_names(Self) -> Array[String]
+pub fn AG_AllCoreAttributes::new(@xml.Element) -> Self
+
+pub(all) struct AG_AllShapeAttributes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_AllShapeAttributes::attribute_names(Self) -> Array[String]
+pub fn AG_AllShapeAttributes::new(@xml.Element) -> Self
+
+pub(all) struct AG_Chromakey {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Chromakey::attribute_names(Self) -> Array[String]
+pub fn AG_Chromakey::new(@xml.Element) -> Self
+
+pub(all) struct AG_CoreAttributes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_CoreAttributes::attribute_names(Self) -> Array[String]
+pub fn AG_CoreAttributes::new(@xml.Element) -> Self
+
+pub(all) struct AG_Ext {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Ext::attribute_names(Self) -> Array[String]
+pub fn AG_Ext::new(@xml.Element) -> Self
+
+pub(all) struct AG_Fill {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Fill::attribute_names(Self) -> Array[String]
+pub fn AG_Fill::new(@xml.Element) -> Self
+
+pub(all) struct AG_Id {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Id::attribute_names(Self) -> Array[String]
+pub fn AG_Id::new(@xml.Element) -> Self
+
+pub(all) struct AG_ImageAttributes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_ImageAttributes::attribute_names(Self) -> Array[String]
+pub fn AG_ImageAttributes::new(@xml.Element) -> Self
+
+pub(all) struct AG_OfficeCoreAttributes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_OfficeCoreAttributes::attribute_names(Self) -> Array[String]
+pub fn AG_OfficeCoreAttributes::new(@xml.Element) -> Self
+
+pub(all) struct AG_OfficeShapeAttributes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_OfficeShapeAttributes::attribute_names(Self) -> Array[String]
+pub fn AG_OfficeShapeAttributes::new(@xml.Element) -> Self
+
+pub(all) struct AG_Path {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Path::attribute_names(Self) -> Array[String]
+pub fn AG_Path::new(@xml.Element) -> Self
+
+pub(all) struct AG_ShapeAttributes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_ShapeAttributes::attribute_names(Self) -> Array[String]
+pub fn AG_ShapeAttributes::new(@xml.Element) -> Self
+
+pub(all) struct AG_StrokeAttributes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_StrokeAttributes::attribute_names(Self) -> Array[String]
+pub fn AG_StrokeAttributes::new(@xml.Element) -> Self
+
+pub(all) struct AG_Style {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Style::attribute_names(Self) -> Array[String]
+pub fn AG_Style::new(@xml.Element) -> Self
+
+pub(all) struct AG_Type {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Type::attribute_names(Self) -> Array[String]
+pub fn AG_Type::new(@xml.Element) -> Self
+
+pub(all) struct CT_Arc {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Arc::new(@xml.Element) -> Self
+
+pub(all) struct CT_Background {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Background::new(@xml.Element) -> Self
+
+pub(all) struct CT_Callout {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Callout::new(@xml.Element) -> Self
+
+pub(all) struct CT_ClipPath {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ClipPath::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorMenu {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorMenu::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorMru {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorMru::new(@xml.Element) -> Self
+
+pub(all) struct CT_Complex {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Complex::new(@xml.Element) -> Self
+
+pub(all) struct CT_Curve {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Curve::new(@xml.Element) -> Self
+
+pub(all) struct CT_Diagram {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Diagram::new(@xml.Element) -> Self
+
+pub(all) struct CT_Entry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Entry::new(@xml.Element) -> Self
+
+pub(all) struct CT_EquationXml {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EquationXml::new(@xml.Element) -> Self
+
+pub(all) struct CT_Extrusion {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Extrusion::new(@xml.Element) -> Self
+
+pub(all) struct CT_F {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_F::new(@xml.Element) -> Self
+
+pub(all) struct CT_Fill {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Fill::new(@xml.Element) -> Self
+
+pub(all) struct CT_Formulas {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Formulas::new(@xml.Element) -> Self
+
+pub(all) struct CT_Group {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Group::new(@xml.Element) -> Self
+
+pub(all) struct CT_H {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_H::new(@xml.Element) -> Self
+
+pub(all) struct CT_Handles {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Handles::new(@xml.Element) -> Self
+
+pub(all) struct CT_IdMap {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_IdMap::new(@xml.Element) -> Self
+
+pub(all) struct CT_Image {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Image::new(@xml.Element) -> Self
+
+pub(all) struct CT_ImageData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ImageData::new(@xml.Element) -> Self
+
+pub(all) struct CT_Ink {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Ink::new(@xml.Element) -> Self
+
+pub(all) struct CT_Line {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Line::new(@xml.Element) -> Self
+
+pub(all) struct CT_Lock {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Lock::new(@xml.Element) -> Self
+
+pub(all) struct CT_OLEObject {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OLEObject::new(@xml.Element) -> Self
+
+pub(all) struct CT_Oval {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Oval::new(@xml.Element) -> Self
+
+pub(all) struct CT_Path {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Path::new(@xml.Element) -> Self
+
+pub(all) struct CT_PolyLine {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PolyLine::new(@xml.Element) -> Self
+
+pub(all) struct CT_Proxy {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Proxy::new(@xml.Element) -> Self
+
+pub(all) struct CT_R {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_R::new(@xml.Element) -> Self
+
+pub(all) struct CT_Rect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Rect::new(@xml.Element) -> Self
+
+pub(all) struct CT_RegroupTable {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RegroupTable::new(@xml.Element) -> Self
+
+pub(all) struct CT_Relation {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Relation::new(@xml.Element) -> Self
+
+pub(all) struct CT_RelationTable {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RelationTable::new(@xml.Element) -> Self
+
+pub(all) struct CT_RoundRect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RoundRect::new(@xml.Element) -> Self
+
+pub(all) struct CT_Rules {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Rules::new(@xml.Element) -> Self
+
+pub(all) struct CT_Shadow {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Shadow::new(@xml.Element) -> Self
+
+pub(all) struct CT_Shape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Shape::new(@xml.Element) -> Self
+
+pub(all) struct CT_ShapeDefaults {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShapeDefaults::new(@xml.Element) -> Self
+
+pub(all) struct CT_ShapeLayout {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShapeLayout::new(@xml.Element) -> Self
+
+pub(all) struct CT_Shapetype {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Shapetype::new(@xml.Element) -> Self
+
+pub(all) struct CT_SignatureLine {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SignatureLine::new(@xml.Element) -> Self
+
+pub(all) struct CT_Skew {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Skew::new(@xml.Element) -> Self
+
+pub(all) struct CT_Stroke {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Stroke::new(@xml.Element) -> Self
+
+pub(all) struct CT_StrokeChild {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StrokeChild::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextPath {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextPath::new(@xml.Element) -> Self
+
+pub(all) struct CT_Textbox {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Textbox::new(@xml.Element) -> Self
+
+pub(all) struct EG_ShapeElements {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ShapeElements::child_names(Self) -> Array[String]
+pub fn EG_ShapeElements::new(@xml.Element) -> Self
+
+pub struct ST_AlternateMathContentType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_AlternateMathContentType::new(String) -> Self raise SchemaViolation
+pub fn ST_AlternateMathContentType::parse(String) -> Self raise SchemaViolation
+pub fn ST_AlternateMathContentType::to_string(Self) -> String
+
+pub struct ST_Angle {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Angle::new(String) -> Self raise SchemaViolation
+pub fn ST_Angle::parse(String) -> Self raise SchemaViolation
+pub fn ST_Angle::to_string(Self) -> String
+
+pub struct ST_BWMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BWMode::new(String) -> Self raise SchemaViolation
+pub fn ST_BWMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_BWMode::to_string(Self) -> String
+
+pub struct ST_CalloutDrop {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CalloutDrop::new(String) -> Self raise SchemaViolation
+pub fn ST_CalloutDrop::parse(String) -> Self raise SchemaViolation
+pub fn ST_CalloutDrop::to_string(Self) -> String
+
+pub struct ST_CalloutPlacement {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CalloutPlacement::new(String) -> Self raise SchemaViolation
+pub fn ST_CalloutPlacement::parse(String) -> Self raise SchemaViolation
+pub fn ST_CalloutPlacement::to_string(Self) -> String
+
+pub struct ST_ColorMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ColorMode::new(String) -> Self raise SchemaViolation
+pub fn ST_ColorMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_ColorMode::to_string(Self) -> String
+
+pub struct ST_ConnectType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ConnectType::new(String) -> Self raise SchemaViolation
+pub fn ST_ConnectType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ConnectType::to_string(Self) -> String
+
+pub struct ST_ConnectorType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ConnectorType::new(String) -> Self raise SchemaViolation
+pub fn ST_ConnectorType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ConnectorType::to_string(Self) -> String
+
+pub struct ST_ContentType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ContentType::new(String) -> Self raise SchemaViolation
+pub fn ST_ContentType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ContentType::to_string(Self) -> String
+
+pub struct ST_DiagramLayout {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_DiagramLayout::new(String) -> Self raise SchemaViolation
+pub fn ST_DiagramLayout::parse(String) -> Self raise SchemaViolation
+pub fn ST_DiagramLayout::to_string(Self) -> String
+
+pub struct ST_EditAs {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_EditAs::new(String) -> Self raise SchemaViolation
+pub fn ST_EditAs::parse(String) -> Self raise SchemaViolation
+pub fn ST_EditAs::to_string(Self) -> String
+
+pub struct ST_Ext {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Ext::new(String) -> Self raise SchemaViolation
+pub fn ST_Ext::parse(String) -> Self raise SchemaViolation
+pub fn ST_Ext::to_string(Self) -> String
+
+pub struct ST_ExtrusionPlane {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ExtrusionPlane::new(String) -> Self raise SchemaViolation
+pub fn ST_ExtrusionPlane::parse(String) -> Self raise SchemaViolation
+pub fn ST_ExtrusionPlane::to_string(Self) -> String
+
+pub struct ST_ExtrusionRender {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ExtrusionRender::new(String) -> Self raise SchemaViolation
+pub fn ST_ExtrusionRender::parse(String) -> Self raise SchemaViolation
+pub fn ST_ExtrusionRender::to_string(Self) -> String
+
+pub struct ST_ExtrusionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ExtrusionType::new(String) -> Self raise SchemaViolation
+pub fn ST_ExtrusionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ExtrusionType::to_string(Self) -> String
+
+pub struct ST_FillMethod {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FillMethod::new(String) -> Self raise SchemaViolation
+pub fn ST_FillMethod::parse(String) -> Self raise SchemaViolation
+pub fn ST_FillMethod::to_string(Self) -> String
+
+pub struct ST_FillType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FillType::new(String) -> Self raise SchemaViolation
+pub fn ST_FillType::parse(String) -> Self raise SchemaViolation
+pub fn ST_FillType::to_string(Self) -> String
+
+pub struct ST_How {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_How::new(String) -> Self raise SchemaViolation
+pub fn ST_How::parse(String) -> Self raise SchemaViolation
+pub fn ST_How::to_string(Self) -> String
+
+pub struct ST_HrAlign {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HrAlign::new(String) -> Self raise SchemaViolation
+pub fn ST_HrAlign::parse(String) -> Self raise SchemaViolation
+pub fn ST_HrAlign::to_string(Self) -> String
+
+pub struct ST_ImageAspect {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ImageAspect::new(String) -> Self raise SchemaViolation
+pub fn ST_ImageAspect::parse(String) -> Self raise SchemaViolation
+pub fn ST_ImageAspect::to_string(Self) -> String
+
+pub struct ST_InsetMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_InsetMode::new(String) -> Self raise SchemaViolation
+pub fn ST_InsetMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_InsetMode::to_string(Self) -> String
+
+pub struct ST_OLEDrawAspect {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_OLEDrawAspect::new(String) -> Self raise SchemaViolation
+pub fn ST_OLEDrawAspect::parse(String) -> Self raise SchemaViolation
+pub fn ST_OLEDrawAspect::to_string(Self) -> String
+
+pub struct ST_OLELinkType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_OLELinkType::new(String) -> Self raise SchemaViolation
+pub fn ST_OLELinkType::parse(String) -> Self raise SchemaViolation
+pub fn ST_OLELinkType::to_string(Self) -> String
+
+pub struct ST_OLEType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_OLEType::new(String) -> Self raise SchemaViolation
+pub fn ST_OLEType::parse(String) -> Self raise SchemaViolation
+pub fn ST_OLEType::to_string(Self) -> String
+
+pub struct ST_OLEUpdateMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_OLEUpdateMode::new(String) -> Self raise SchemaViolation
+pub fn ST_OLEUpdateMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_OLEUpdateMode::to_string(Self) -> String
+
+pub struct ST_RType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RType::new(String) -> Self raise SchemaViolation
+pub fn ST_RType::parse(String) -> Self raise SchemaViolation
+pub fn ST_RType::to_string(Self) -> String
+
+pub struct ST_ScreenSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ScreenSize::new(String) -> Self raise SchemaViolation
+pub fn ST_ScreenSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_ScreenSize::to_string(Self) -> String
+
+pub struct ST_ShadowType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ShadowType::new(String) -> Self raise SchemaViolation
+pub fn ST_ShadowType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ShadowType::to_string(Self) -> String
+
+pub struct ST_StrokeArrowLength {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_StrokeArrowLength::new(String) -> Self raise SchemaViolation
+pub fn ST_StrokeArrowLength::parse(String) -> Self raise SchemaViolation
+pub fn ST_StrokeArrowLength::to_string(Self) -> String
+
+pub struct ST_StrokeArrowType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_StrokeArrowType::new(String) -> Self raise SchemaViolation
+pub fn ST_StrokeArrowType::parse(String) -> Self raise SchemaViolation
+pub fn ST_StrokeArrowType::to_string(Self) -> String
+
+pub struct ST_StrokeArrowWidth {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_StrokeArrowWidth::new(String) -> Self raise SchemaViolation
+pub fn ST_StrokeArrowWidth::parse(String) -> Self raise SchemaViolation
+pub fn ST_StrokeArrowWidth::to_string(Self) -> String
+
+pub struct ST_StrokeEndCap {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_StrokeEndCap::new(String) -> Self raise SchemaViolation
+pub fn ST_StrokeEndCap::parse(String) -> Self raise SchemaViolation
+pub fn ST_StrokeEndCap::to_string(Self) -> String
+
+pub struct ST_StrokeJoinStyle {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_StrokeJoinStyle::new(String) -> Self raise SchemaViolation
+pub fn ST_StrokeJoinStyle::parse(String) -> Self raise SchemaViolation
+pub fn ST_StrokeJoinStyle::to_string(Self) -> String
+
+pub struct ST_StrokeLineStyle {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_StrokeLineStyle::new(String) -> Self raise SchemaViolation
+pub fn ST_StrokeLineStyle::parse(String) -> Self raise SchemaViolation
+pub fn ST_StrokeLineStyle::to_string(Self) -> String
+
+// Type aliases
+
+// Traits
+
