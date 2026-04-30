@@ -55,6 +55,11 @@ pub(all) struct ST_Format {
 } derive(Eq, Debug)
 
 ///|
+/// §10.5.16 Format element. Carries the timestamp format token used by
+/// SignatureTime; the value is constrained by the ST_Format simple type.
+pub type Format = ST_Format
+
+///|
 /// Build ST_Format for SignatureTime, rejecting values outside the XSD pattern
 /// as C4 schema violations.
 pub fn ST_Format::new(value : String) -> ST_Format raise SchemaViolation {
@@ -82,6 +87,11 @@ pub fn ST_Format::to_string(self : ST_Format) -> String {
 pub(all) struct ST_Value {
   value : String
 } derive(Eq, Debug)
+
+///|
+/// §10.5.17 Value element. Carries the timestamp value used by SignatureTime;
+/// the value is constrained by the ST_Value simple type.
+pub type Value = ST_Value
 
 ///|
 /// Build ST_Value for SignatureTime, rejecting values outside the XSD pattern

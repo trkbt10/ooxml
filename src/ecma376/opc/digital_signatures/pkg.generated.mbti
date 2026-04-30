@@ -127,12 +127,14 @@ pub(all) struct RelationshipsGroupReference {
   source_type : String
 } derive(Eq, @debug.Debug)
 
+#alias(Format)
 pub(all) struct ST_Format {
   value : String
 } derive(Eq, @debug.Debug)
 pub fn ST_Format::new(String) -> Self raise SchemaViolation
 pub fn ST_Format::to_string(Self) -> String
 
+#alias(Value)
 pub(all) struct ST_Value {
   value : String
 } derive(Eq, @debug.Debug)
