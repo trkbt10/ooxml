@@ -36,6 +36,8 @@ pub fn write_settings(@domain.CT_Settings) -> Bytes
 
 pub fn write_styles(@domain.CT_Styles) -> Bytes
 
+pub fn write_txbx_content(@domain.CT_TxbxContent) -> Bytes
+
 pub fn write_web_settings(@domain.CT_WebSettings) -> Bytes
 
 pub fn write_wgp(@domain.CT_WordprocessingGroup) -> Bytes

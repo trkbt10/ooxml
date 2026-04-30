@@ -36,6 +36,8 @@ pub fn read_settings(Bytes) -> @domain.CT_Settings raise
 
 pub fn read_styles(Bytes) -> @domain.CT_Styles raise
 
+pub fn read_txbx_content(Bytes) -> @domain.CT_TxbxContent raise
+
 pub fn read_web_settings(Bytes) -> @domain.CT_WebSettings raise
 
 pub fn read_wgp(Bytes) -> @domain.CT_WordprocessingGroup raise

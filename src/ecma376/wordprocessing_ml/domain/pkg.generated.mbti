@@ -39,6 +39,8 @@ pub fn settings(@xml.Element) -> CT_Settings
 
 pub fn styles(@xml.Element) -> CT_Styles
 
+pub fn txbx_content(@xml.Element) -> CT_TxbxContent
+
 pub fn web_settings(@xml.Element) -> CT_WebSettings
 
 pub fn wgp(@xml.Element) -> CT_WordprocessingGroup
@@ -66,6 +68,13 @@ pub(all) struct AG_SectPrAttributes {
 pub fn AG_SectPrAttributes::attribute_names(Self) -> Array[String]
 pub fn AG_SectPrAttributes::has_attribute(Self, String) -> Bool
 pub fn AG_SectPrAttributes::new(@xml.Element) -> Self
+
+pub(all) struct AG_TransitionalPassword {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_TransitionalPassword::attribute_names(Self) -> Array[String]
+pub fn AG_TransitionalPassword::has_attribute(Self, String) -> Bool
+pub fn AG_TransitionalPassword::new(@xml.Element) -> Self
 
 pub(all) struct CT_AbstractNum {
   element : @xml.Element
@@ -795,6 +804,13 @@ pub fn CT_Guid::new(@xml.Element) -> Self
 pub fn CT_Guid::parse(@xml.Element) -> Self
 pub fn CT_Guid::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_HMerge {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HMerge::new(@xml.Element) -> Self
+pub fn CT_HMerge::parse(@xml.Element) -> Self
+pub fn CT_HMerge::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_HdrFtr {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -955,6 +971,13 @@ pub(all) struct CT_Lvl {
 pub fn CT_Lvl::new(@xml.Element) -> Self
 pub fn CT_Lvl::parse(@xml.Element) -> Self
 pub fn CT_Lvl::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_LvlLegacy {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LvlLegacy::new(@xml.Element) -> Self
+pub fn CT_LvlLegacy::parse(@xml.Element) -> Self
+pub fn CT_LvlLegacy::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_MacroName {
   element : @xml.Element
@@ -1285,6 +1308,13 @@ pub fn CT_PermStart::new(@xml.Element) -> Self
 pub fn CT_PermStart::parse(@xml.Element) -> Self
 pub fn CT_PermStart::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Picture {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Picture::new(@xml.Element) -> Self
+pub fn CT_Picture::parse(@xml.Element) -> Self
+pub fn CT_Picture::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Pitch {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1599,6 +1629,13 @@ pub(all) struct CT_Settings {
 pub fn CT_Settings::new(@xml.Element) -> Self
 pub fn CT_Settings::parse(@xml.Element) -> Self
 pub fn CT_Settings::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ShapeDefaults {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShapeDefaults::new(@xml.Element) -> Self
+pub fn CT_ShapeDefaults::parse(@xml.Element) -> Self
+pub fn CT_ShapeDefaults::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Shd {
   element : @xml.Element
@@ -1984,6 +2021,13 @@ pub(all) struct CT_TrackChange {
 pub fn CT_TrackChange::new(@xml.Element) -> Self
 pub fn CT_TrackChange::parse(@xml.Element) -> Self
 pub fn CT_TrackChange::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TrackChangeNumbering {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TrackChangeNumbering::new(@xml.Element) -> Self
+pub fn CT_TrackChangeNumbering::parse(@xml.Element) -> Self
+pub fn CT_TrackChangeNumbering::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TrackChangeRange {
   element : @xml.Element
@@ -2421,6 +2465,13 @@ pub struct ST_CharacterSpacing {
 pub fn ST_CharacterSpacing::new(String) -> Self raise SchemaViolation
 pub fn ST_CharacterSpacing::parse(String) -> Self raise SchemaViolation
 pub fn ST_CharacterSpacing::to_string(Self) -> String
+
+pub struct ST_Cnf {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Cnf::new(String) -> Self raise SchemaViolation
+pub fn ST_Cnf::parse(String) -> Self raise SchemaViolation
+pub fn ST_Cnf::to_string(Self) -> String
 
 pub struct ST_CombineBrackets {
   value : String
@@ -3059,6 +3110,13 @@ pub fn ST_TextScale::new(String) -> Self raise SchemaViolation
 pub fn ST_TextScale::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextScale::to_string(Self) -> String
 
+pub struct ST_TextScaleDecimal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextScaleDecimal::new(String) -> Self raise SchemaViolation
+pub fn ST_TextScaleDecimal::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextScaleDecimal::to_string(Self) -> String
+
 pub struct ST_TextScalePercent {
   value : String
 } derive(Eq, @debug.Debug)
@@ -3100,6 +3158,13 @@ pub struct ST_Underline {
 pub fn ST_Underline::new(String) -> Self raise SchemaViolation
 pub fn ST_Underline::parse(String) -> Self raise SchemaViolation
 pub fn ST_Underline::to_string(Self) -> String
+
+pub struct ST_UnqualifiedPercentage {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UnqualifiedPercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_UnqualifiedPercentage::parse(String) -> Self raise SchemaViolation
+pub fn ST_UnqualifiedPercentage::to_string(Self) -> String
 
 pub struct ST_VAnchor {
   value : String

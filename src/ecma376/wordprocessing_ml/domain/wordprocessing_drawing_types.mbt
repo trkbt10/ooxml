@@ -420,7 +420,8 @@ pub fn CT_Anchor::to_element(self : CT_Anchor) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_TxbxContent from dml-wordprocessingDrawing.xsd (§20.4).
+/// XSD complex type CT_TxbxContent from dml-wordprocessingDrawing.xsd (§20.4)
+/// and transitional wml.xsd (Part 4 §14).
 pub(all) struct CT_TxbxContent {
   element : @xml.Element
 } derive(Eq, Debug)
