@@ -9,6 +9,8 @@ import {
 // Values
 pub fn package_name() -> String
 
+pub fn read_bevel(Bytes) -> CT_Bevel raise
+
 pub fn read_blip(Bytes) -> CT_Blip raise
 
 pub fn read_blip_fill_properties(Bytes) -> CT_BlipFillProperties raise
@@ -51,9 +53,15 @@ pub fn read_s_rgb_color(Bytes) -> CT_SRgbColor raise
 
 pub fn read_sc_rgb_color(Bytes) -> CT_ScRgbColor raise
 
+pub fn read_scene3d(Bytes) -> CT_Scene3D raise
+
 pub fn read_scheme_color(Bytes) -> CT_SchemeColor raise
 
+pub fn read_shape3d(Bytes) -> CT_Shape3D raise
+
 pub fn read_solid_color_fill_properties(Bytes) -> CT_SolidColorFillProperties raise
+
+pub fn read_style_matrix(Bytes) -> CT_StyleMatrix raise
 
 pub fn read_system_color(Bytes) -> CT_SystemColor raise
 
@@ -78,6 +86,8 @@ pub fn read_theme_override(Bytes) -> CT_BaseStylesOverride raise
 pub fn read_transform2d(Bytes) -> CT_Transform2D raise
 
 pub fn read_video_file(Bytes) -> CT_VideoFile raise
+
+pub fn write_bevel(CT_Bevel) -> Bytes
 
 pub fn write_blip(CT_Blip) -> Bytes
 
@@ -121,9 +131,15 @@ pub fn write_s_rgb_color(CT_SRgbColor) -> Bytes
 
 pub fn write_sc_rgb_color(CT_ScRgbColor) -> Bytes
 
+pub fn write_scene3d(CT_Scene3D) -> Bytes
+
 pub fn write_scheme_color(CT_SchemeColor) -> Bytes
 
+pub fn write_shape3d(CT_Shape3D) -> Bytes
+
 pub fn write_solid_color_fill_properties(CT_SolidColorFillProperties) -> Bytes
+
+pub fn write_style_matrix(CT_StyleMatrix) -> Bytes
 
 pub fn write_system_color(CT_SystemColor) -> Bytes
 
@@ -225,6 +241,21 @@ pub(all) struct CT_AudioFile {
 } derive(Eq, @debug.Debug)
 pub fn CT_AudioFile::new(@xml.Element) -> Self
 
+pub(all) struct CT_Backdrop {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Backdrop::new(@xml.Element) -> Self
+
+pub(all) struct CT_BackgroundFillStyleList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BackgroundFillStyleList::new(@xml.Element) -> Self
+
+pub(all) struct CT_BackgroundFormatting {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BackgroundFormatting::new(@xml.Element) -> Self
+
 pub(all) struct CT_BaseStyles {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -235,6 +266,11 @@ pub(all) struct CT_BaseStylesOverride {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_BaseStylesOverride::new(@xml.Element) -> Self
+
+pub(all) struct CT_Bevel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Bevel::new(@xml.Element) -> Self
 
 pub(all) struct CT_BiLevelEffect {
   element : @xml.Element
@@ -260,6 +296,16 @@ pub(all) struct CT_BlurEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_BlurEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_Camera {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Camera::new(@xml.Element) -> Self
+
+pub(all) struct CT_Cell3D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Cell3D::new(@xml.Element) -> Self
 
 pub(all) struct CT_Color {
   element : @xml.Element
@@ -361,6 +407,11 @@ pub(all) struct CT_DashStopList {
 } derive(Eq, @debug.Debug)
 pub fn CT_DashStopList::new(@xml.Element) -> Self
 
+pub(all) struct CT_DefaultShapeDefinition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DefaultShapeDefinition::new(@xml.Element) -> Self
+
 pub(all) struct CT_DuotoneEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -385,6 +436,16 @@ pub(all) struct CT_EffectReference {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_EffectReference::new(@xml.Element) -> Self
+
+pub(all) struct CT_EffectStyleItem {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EffectStyleItem::new(@xml.Element) -> Self
+
+pub(all) struct CT_EffectStyleList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EffectStyleList::new(@xml.Element) -> Self
 
 pub(all) struct CT_EmbeddedWAVAudioFile {
   element : @xml.Element
@@ -412,10 +473,20 @@ pub(all) struct CT_FillProperties {
 } derive(Eq, @debug.Debug)
 pub fn CT_FillProperties::new(@xml.Element) -> Self
 
+pub(all) struct CT_FillStyleList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FillStyleList::new(@xml.Element) -> Self
+
 pub(all) struct CT_FixedPercentage {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_FixedPercentage::new(@xml.Element) -> Self
+
+pub(all) struct CT_FlatText {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FlatText::new(@xml.Element) -> Self
 
 pub(all) struct CT_FontCollection {
   element : @xml.Element
@@ -522,6 +593,11 @@ pub(all) struct CT_HSLEffect {
 } derive(Eq, @debug.Debug)
 pub fn CT_HSLEffect::new(@xml.Element) -> Self
 
+pub(all) struct CT_Headers {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Headers::new(@xml.Element) -> Self
+
 pub(all) struct CT_HslColor {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -547,6 +623,11 @@ pub(all) struct CT_InverseTransform {
 } derive(Eq, @debug.Debug)
 pub fn CT_InverseTransform::new(@xml.Element) -> Self
 
+pub(all) struct CT_LightRig {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LightRig::new(@xml.Element) -> Self
+
 pub(all) struct CT_LineEndProperties {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -571,6 +652,11 @@ pub(all) struct CT_LineProperties {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_LineProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_LineStyleList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LineStyleList::new(@xml.Element) -> Self
 
 pub(all) struct CT_LinearShadeProperties {
   element : @xml.Element
@@ -616,6 +702,11 @@ pub(all) struct CT_NonVisualPictureProperties {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_NonVisualPictureProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_ObjectStyleDefaults {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ObjectStyleDefaults::new(@xml.Element) -> Self
 
 pub(all) struct CT_OfficeArtExtension {
   element : @xml.Element
@@ -803,10 +894,20 @@ pub(all) struct CT_Scale2D {
 } derive(Eq, @debug.Debug)
 pub fn CT_Scale2D::new(@xml.Element) -> Self
 
+pub(all) struct CT_Scene3D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Scene3D::new(@xml.Element) -> Self
+
 pub(all) struct CT_SchemeColor {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SchemeColor::new(@xml.Element) -> Self
+
+pub(all) struct CT_Shape3D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Shape3D::new(@xml.Element) -> Self
 
 pub(all) struct CT_ShapeLocking {
   element : @xml.Element
@@ -817,6 +918,11 @@ pub(all) struct CT_ShapeProperties {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_ShapeProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_ShapeStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShapeStyle::new(@xml.Element) -> Self
 
 pub(all) struct CT_SoftEdgesEffect {
   element : @xml.Element
@@ -837,6 +943,16 @@ pub(all) struct CT_StretchInfoProperties {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_StretchInfoProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_StyleMatrix {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StyleMatrix::new(@xml.Element) -> Self
+
+pub(all) struct CT_StyleMatrixReference {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StyleMatrixReference::new(@xml.Element) -> Self
 
 pub(all) struct CT_SupplementalFont {
   element : @xml.Element
@@ -1062,6 +1178,11 @@ pub(all) struct CT_TextUnderlineLineFollowText {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextUnderlineLineFollowText::new(@xml.Element) -> Self
+
+pub(all) struct CT_ThemeableLineStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ThemeableLineStyle::new(@xml.Element) -> Self
 
 pub(all) struct CT_TileInfoProperties {
   element : @xml.Element
