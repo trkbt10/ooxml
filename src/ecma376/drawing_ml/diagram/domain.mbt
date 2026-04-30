@@ -111,7 +111,7 @@ pub fn CT_ColorTransformHeaderLst::new(
 }
 
 ///|
-/// XSD complex type CT_Pt (§21.4): diagram point with modelId, type, cxnId attributes and prSet, spPr, t, extLst children.
+/// XSD complex type CT_Pt (§21.4): domain type exposes CT_Pt for dml-diagram.xsd point records with modelId, type, cxnId attributes and prSet, spPr, t, extLst children.
 pub(all) struct CT_Pt {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -135,7 +135,7 @@ pub fn CT_PtList::new(element : @xml.Element) -> CT_PtList {
 }
 
 ///|
-/// XSD complex type CT_Cxn (§21.4): diagram connection with modelId, type, srcId, destId, srcOrd, destOrd, parTransId, sibTransId, presId attributes and extLst child.
+/// XSD complex type CT_Cxn (§21.4): domain type exposes CT_Cxn for dml-diagram.xsd connection records with modelId, type, srcId, destId, srcOrd, destOrd, parTransId, sibTransId, presId attributes and extLst child.
 pub(all) struct CT_Cxn {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -231,7 +231,7 @@ pub fn CT_PresentationOf::new(element : @xml.Element) -> CT_PresentationOf {
 }
 
 ///|
-/// XSD complex type CT_Adj (§21.4): adjustment entry with idx and val attributes.
+/// XSD complex type CT_Adj (§21.4): domain type exposes CT_Adj for dml-diagram.xsd adjustment entries with idx and val attributes.
 pub(all) struct CT_Adj {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -255,7 +255,7 @@ pub fn CT_AdjLst::new(element : @xml.Element) -> CT_AdjLst {
 }
 
 ///|
-/// XSD complex type CT_Shape (§21.4): attributes rot, type, zOrderOff, hideGeom, lkTxEntry, blipPhldr; children adjLst, extLst.
+/// XSD complex type CT_Shape (§21.4): domain type exposes CT_Shape for dml-diagram.xsd shape records with rot, type, zOrderOff, hideGeom, lkTxEntry, blipPhldr attributes and adjLst, extLst children.
 pub(all) struct CT_Shape {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -303,7 +303,7 @@ pub fn CT_LayoutNode::new(element : @xml.Element) -> CT_LayoutNode {
 }
 
 ///|
-/// XSD complex type CT_ForEach (§21.4): attributes name, ref; children alg, shape, presOf, constrLst, ruleLst, forEach, layoutNode, choose, extLst.
+/// XSD complex type CT_ForEach (§21.4): domain type exposes CT_ForEach.
 pub(all) struct CT_ForEach {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -315,7 +315,7 @@ pub fn CT_ForEach::new(element : @xml.Element) -> CT_ForEach {
 }
 
 ///|
-/// XSD complex type CT_When (§21.4): choose branch condition with name, func, arg, op, val attributes and layout children.
+/// XSD complex type CT_When (§21.4): domain type exposes CT_When for dml-diagram.xsd choose branch conditions with name, func, arg, op, val attributes and layout children.
 pub(all) struct CT_When {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -387,7 +387,7 @@ pub fn CT_Categories::new(element : @xml.Element) -> CT_Categories {
 }
 
 ///|
-/// XSD complex type CT_Name (§21.4): localized diagram name carrying lang and val attributes.
+/// XSD complex type CT_Name (§21.4): domain type exposes CT_Name for dml-diagram.xsd localized diagram names carrying lang and val attributes.
 pub(all) struct CT_Name {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -711,30 +711,6 @@ pub fn CT_StyleDefinitionHeaderLst::new(
 }
 
 ///|
-/// XSD attribute group AG_IteratorAttributes (§21.4): iterator axis, ptType, hideLastTrans, st, cnt, and step attributes for layout traversal.
-pub(all) struct AG_IteratorAttributes {
-  axis : String?
-  pt_type : String?
-  hide_last_trans : String?
-  st : String?
-  cnt : String?
-  step : String?
-} derive(Eq, Debug)
-
-///|
-/// Construct an empty AG_IteratorAttributes attribute-group value.
-pub fn AG_IteratorAttributes::empty() -> AG_IteratorAttributes {
-  {
-    axis: None,
-    pt_type: None,
-    hide_last_trans: None,
-    st: None,
-    cnt: None,
-    step: None,
-  }
-}
-
-///|
 /// XSD attribute group AG_ConstraintAttributes (§21.4): type, for, forName, ptType.
 pub(all) struct AG_ConstraintAttributes {
   type_ : String?
@@ -939,7 +915,7 @@ pub fn new_ct_when(element : @xml.Element) -> CT_When {
 }
 
 ///|
-/// Construct AG_IteratorAttributes with no iterator attributes set.
+/// Construct XSD attribute group AG_IteratorAttributes (§21.4) with no iterator attributes set.
 pub fn new_ag_iterator_attributes() -> AG_IteratorAttributes {
   AG_IteratorAttributes::empty()
 }

@@ -118,7 +118,6 @@ pub(all) struct AG_IteratorAttributes {
   step : String?
 } derive(Eq, @debug.Debug)
 pub fn AG_IteratorAttributes::empty() -> Self
-pub fn AG_IteratorAttributes::has_axis(Self) -> Bool
 
 pub(all) struct CT_Adj {
   element : @xml.Element
@@ -885,7 +884,6 @@ pub struct ST_Ints {
 pub fn ST_Ints::new(String) -> Self raise SchemaViolation
 pub fn ST_Ints::parse(String) -> Self raise SchemaViolation
 pub fn ST_Ints::to_string(Self) -> String
-pub fn ST_Ints::values(Self) -> Array[String]
 
 pub struct ST_LayoutShapeType {
   value : String

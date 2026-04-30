@@ -1274,7 +1274,7 @@ pub fn ST_ParameterId::to_string(self : ST_ParameterId) -> String {
 }
 
 ///|
-/// XSD simple type ST_Ints (§21.4.x): whitespace-separated xsd:int list.
+/// XSD simple type ST_Ints (§21.4): value type exposes ST_Ints for a dml-diagram.xsd whitespace-separated xsd:int list.
 pub struct ST_Ints {
   value : String
 } derive(Eq, Debug)
@@ -3087,7 +3087,7 @@ fn digits(s : String, start : Int, end : Int) -> Bool {
 }
 
 ///|
-/// Parse ST_Ints from a whitespace-separated xsd:int list.
+/// Parse XSD simple type ST_Ints (§21.4) from a whitespace-separated xsd:int list.
 pub fn parse_st_ints(s : String) -> ST_Ints raise SchemaViolation {
   ST_Ints::parse(s)
 }

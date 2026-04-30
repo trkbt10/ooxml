@@ -41,7 +41,7 @@ pub fn write_layout_def_hdr_lst(value : LayoutDefHdrLst) -> Bytes {
 }
 
 ///|
-/// Write top-level XSD element relIds.
+/// §21.4 RelIds writer for top-level XSD element relIds.
 pub fn write_rel_ids(value : RelIds) -> Bytes {
   write_element(value.element)
 }
