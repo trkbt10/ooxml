@@ -1,9 +1,12 @@
 ///|
 /// ECMA-376 Part 2 OPC relationships implementation for `.rels` parts.
 ///
-/// - §1 Scope: ECMA-376 Part 2 §6.5 Relationships and its relationship
-///   markup sections. This package owns 5 ECMA-376 sections and 2 schema
-///   bundles: opc-relationships.xsd and shared-relationshipReference.xsd.
+/// - §1 Scope: ECMA-376 Part 2 §6.5 Relationships and ECMA-376 Part 2
+///   §6.5.1 General relationship markup sections. Source anchor:
+///   references/spec/part2/sections/6.5.1__general.md, owned by
+///   src/ecma376/opc/relationships. This package owns 5 ECMA-376 sections and
+///   2 schema bundles: opc-relationships.xsd and
+///   shared-relationshipReference.xsd.
 /// - §2 Conformance C1: read_relationships accepts every §4 element where the
 ///   schema permits it: Relationship and Relationships.
 /// - §2 Conformance C2: TargetMode::parse, Relationship::new,
