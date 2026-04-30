@@ -55,7 +55,7 @@ pub fn read_relationships_group_reference(
 ///|
 /// Read the §5 Inputs XML byte stream for SignatureTime, CT_SignatureTime,
 /// ST_Format, and ST_Value while enforcing the opc-digSig sequence Format then
-/// Value for §7 Invariants V2 and rejecting C4 pattern violations as
+/// Value for 7. Invariants V2 and rejecting C4 pattern violations as
 /// SchemaViolation.
 pub fn read_signature_time(bytes : Bytes) -> SignatureTime raise {
   let doc = @xml.parse(bytes)

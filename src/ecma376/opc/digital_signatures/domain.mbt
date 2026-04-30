@@ -1,6 +1,6 @@
 ///|
-/// RelationshipReference top-level element and CT_RelationshipReference from
-/// schema bundle opc-digSig.xsd in the
+/// 1. Scope domain value for the §10.5.9 RelationshipReference element and
+/// CT_RelationshipReference from schema bundle opc-digSig.xsd in the
 /// http://schemas.openxmlformats.org/package/2006/digital-signature target
 /// namespace.
 pub(all) struct RelationshipReference {
@@ -23,7 +23,7 @@ fn RelationshipReference::new(
 }
 
 ///|
-/// RelationshipsGroupReference top-level element and
+/// 1. Scope domain value for the §10.5.10 RelationshipsGroupReference element and
 /// CT_RelationshipsGroupReference from schema bundle opc-digSig.xsd in the
 /// http://schemas.openxmlformats.org/package/2006/digital-signature target
 /// namespace.
@@ -95,7 +95,8 @@ fn SignatureTimeValue::new(
 }
 
 ///|
-/// SignatureTime top-level element and CT_SignatureTime from schema bundle
+/// 1. Scope domain value for the §10.5.15 SignatureTime element and
+/// CT_SignatureTime from schema bundle
 /// opc-digSig.xsd in the
 /// http://schemas.openxmlformats.org/package/2006/digital-signature target
 /// namespace; the builder preserves V2 child order by writing Format before
@@ -115,7 +116,9 @@ fn SignatureTime::new(
 }
 
 ///|
-/// Return the OPC digital-signature target namespace used by opc-digSig.xsd.
+/// 3. Specification Sections TOC coverage for §10 Digital Signatures is tied
+/// to this namespace because every owned opc-digSig XML reader validates
+/// elements against it.
 pub fn digital_signature_ns() -> String {
   "http://schemas.openxmlformats.org/package/2006/digital-signature"
 }
