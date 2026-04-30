@@ -1,12 +1,80 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/opc/content_types"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
+pub fn digital_signature_certificate_content_type() -> ContentType
+
+pub fn digital_signature_origin_content_type() -> ContentType
+
+pub fn digital_signature_xml_signature_content_type() -> ContentType
+
 pub fn package_name() -> String
 
+pub fn read_content_types(Bytes) -> Types raise
+
+pub fn require_resource(Bool, section~ : String, path~ : String, target~ : String) -> Unit raise ResourceMissing
+
+pub fn require_supported_feature(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise UnsupportedFeature
+
+pub fn write_content_types(Types) -> Bytes
+
 // Errors
+pub suberror ResourceMissing {
+  ResourceMissing(section~ : String, path~ : String, target~ : String)
+} derive(@debug.Debug)
+
+pub suberror SchemaViolation {
+  SchemaViolation(section~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
+
+pub suberror UnsupportedFeature {
+  UnsupportedFeature(section~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct ContentType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ContentType::parse(String) -> Self raise SchemaViolation
+pub fn ContentType::to_string(Self) -> String
+
+pub(all) enum ContentTypeRule {
+  Default(Default)
+  Override(Override)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Default {
+  extension : Extension
+  content_type : ContentType
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Extension {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn Extension::parse(String) -> Self raise SchemaViolation
+pub fn Extension::to_string(Self) -> String
+
+pub(all) struct Override {
+  part_name : PartName
+  content_type : ContentType
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PartName {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn PartName::parse(String) -> Self raise SchemaViolation
+pub fn PartName::to_string(Self) -> String
+
+pub(all) struct Types {
+  rules : Array[ContentTypeRule]
+} derive(Eq, @debug.Debug)
+pub fn Types::content_type_for_part(Self, PartName) -> ContentType?
+pub fn Types::require_digital_signature_content_types(Self, PartName, PartName, PartName?) -> Unit raise
+pub fn Types::require_part_content_type(Self, PartName, ContentType, section~ : String, path~ : String) -> Unit raise
 
 // Type aliases
 
