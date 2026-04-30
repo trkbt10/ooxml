@@ -1,0 +1,7 @@
+// trkbt10/ooxml/ecma376/opc/digital_signatures
+//
+// ECMA-376 Part 2 §10 Digital Signatures part. Implements the opc-digSig
+// schema (RelationshipReference, RelationshipsGroupReference,
+// SignatureTime, ST_Format, ST_Value, etc.) plus the §10.* normative
+// chapters on signing process, validation, and the relationships
+// transform algorithm.
