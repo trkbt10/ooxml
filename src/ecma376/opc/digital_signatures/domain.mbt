@@ -47,9 +47,10 @@ fn RelationshipsGroupReference::new(
 }
 
 ///|
-/// XSD simple type ST_Format and §10.5.16 Format element lexical wrapper for
-/// SignatureTime from schema bundle opc-digSig.xsd in the digital-signature
-/// target namespace.
+/// XSD simple type ST_Format from schema opc-digSig.xsd. This lexical wrapper
+/// enforces the timestamp format token constraint used by the §10.5.16 Format
+/// element under SignatureTime; accepted values are the schema enumeration-like
+/// date and date-time format strings.
 pub(all) struct ST_Format {
   value : String
 } derive(Eq, Debug)
@@ -60,8 +61,9 @@ pub(all) struct ST_Format {
 pub type Format = ST_Format
 
 ///|
-/// Build ST_Format for SignatureTime, rejecting values outside the XSD pattern
-/// as C4 schema violations.
+/// Build XSD simple type ST_Format from schema opc-digSig.xsd for the §10.5.16
+/// Format element under SignatureTime, rejecting values outside the lexical
+/// constraint and enumeration-like token set as C4 schema violations.
 pub fn ST_Format::new(value : String) -> ST_Format raise SchemaViolation {
   if !is_signature_time_format(value) {
     raise SchemaViolation(
@@ -74,28 +76,31 @@ pub fn ST_Format::new(value : String) -> ST_Format raise SchemaViolation {
 }
 
 ///|
-/// Serialize XSD simple type ST_Format for §10.5.16 Format to its string
-/// lexical value.
+/// Serialize XSD simple type ST_Format for the §10.5.16 Format element to its
+/// schema lexical string.
 pub fn ST_Format::to_string(self : ST_Format) -> String {
   self.value
 }
 
 ///|
-/// XSD simple type ST_Value and §10.5.17 Value element lexical wrapper for
-/// SignatureTime from schema bundle opc-digSig.xsd in the digital-signature
-/// target namespace.
+/// ECMA-376 Part 2 §10.5.17 Value Element, source section
+/// 10.5.17__value-element.md, and XSD simple type ST_Value from schema
+/// opc-digSig.xsd. This lexical wrapper carries the timestamp value used by
+/// SignatureTime and enforces the schema date or date-time lexical constraint.
 pub(all) struct ST_Value {
   value : String
 } derive(Eq, Debug)
 
 ///|
-/// §10.5.17 Value element. Carries the timestamp value used by SignatureTime;
-/// the value is constrained by the ST_Value simple type.
+/// §10.5.17 Value element from source section 10.5.17__value-element.md.
+/// Carries the timestamp value used by SignatureTime; the value is constrained
+/// by the ST_Value simple type.
 pub type Value = ST_Value
 
 ///|
-/// Build ST_Value for SignatureTime, rejecting values outside the XSD pattern
-/// as C4 schema violations.
+/// Build XSD simple type ST_Value from schema opc-digSig.xsd for the §10.5.17
+/// Value element under SignatureTime, rejecting values outside the lexical
+/// constraint as C4 schema violations.
 pub fn ST_Value::new(value : String) -> ST_Value raise SchemaViolation {
   if !is_signature_time_value(value) {
     raise SchemaViolation(
@@ -108,8 +113,8 @@ pub fn ST_Value::new(value : String) -> ST_Value raise SchemaViolation {
 }
 
 ///|
-/// Serialize XSD simple type ST_Value for §10.5.17 Value to its string lexical
-/// value.
+/// Serialize XSD simple type ST_Value for the §10.5.17 Value element to its
+/// schema lexical string.
 pub fn ST_Value::to_string(self : ST_Value) -> String {
   self.value
 }
