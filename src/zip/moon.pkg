@@ -3,3 +3,8 @@
 // OOXML packages are ZIP archives. This package handles raw archive I/O
 // without any knowledge of OPC. OPC concepts (PartName, ContentTypes,
 // Relationships) live in `ecma376/opc`.
+
+import {
+  "moonbitlang/core/buffer" @buffer,
+  "moonbitlang/core/encoding/utf8" @utf8,
+}

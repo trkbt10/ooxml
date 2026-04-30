@@ -1,12 +1,61 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/zip"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn read(Bytes) -> Archive raise
+
+pub fn write(Archive) -> Bytes raise
+
 // Errors
+pub(all) suberror Crc32Mismatch {
+  Crc32Mismatch(name~ : String, expected~ : Int64, actual~ : Int64)
+} derive(@debug.Debug)
+
+pub(all) suberror UnsupportedCompression {
+  UnsupportedCompression(compression~ : Int)
+} derive(@debug.Debug)
+
+pub(all) suberror ZipMalformed {
+  ZipMalformed(reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct Archive {
+  entries : Array[Entry]
+} derive(Eq, @debug.Debug)
+pub fn Archive::new(Array[(String, Bytes)]) -> Self
+
+pub(all) enum CompressionMethod {
+  Stored
+  Deflate
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Entry {
+  name : String
+  data : Bytes
+  compression : CompressionMethod
+  crc32 : Int64
+  compressed_size : Int
+  uncompressed_size : Int
+} derive(Eq, @debug.Debug)
+pub fn Entry::stored(String, Bytes) -> Self
+
+pub struct Reader {
+  // private fields
+}
+pub fn Reader::new(Bytes) -> Self
+pub fn Reader::read(Self) -> Archive raise
+
+pub struct Writer {
+}
+pub fn Writer::new() -> Self
+pub fn Writer::write(Self, Archive) -> Bytes raise
 
 // Type aliases
 
