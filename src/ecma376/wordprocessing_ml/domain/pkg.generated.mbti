@@ -15,6 +15,13 @@ pub suberror SchemaViolation {
 } derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct CT_AbstractNum {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AbstractNum::new(@xml.Element) -> Self
+pub fn CT_AbstractNum::parse(@xml.Element) -> Self
+pub fn CT_AbstractNum::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_AltChunk {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -36,6 +43,20 @@ pub fn CT_Attr::new(@xml.Element) -> Self
 pub fn CT_Attr::parse(@xml.Element) -> Self
 pub fn CT_Attr::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_AutoCaption {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AutoCaption::new(@xml.Element) -> Self
+pub fn CT_AutoCaption::parse(@xml.Element) -> Self
+pub fn CT_AutoCaption::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_AutoCaptions {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AutoCaptions::new(@xml.Element) -> Self
+pub fn CT_AutoCaptions::parse(@xml.Element) -> Self
+pub fn CT_AutoCaptions::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Background {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -43,12 +64,26 @@ pub fn CT_Background::new(@xml.Element) -> Self
 pub fn CT_Background::parse(@xml.Element) -> Self
 pub fn CT_Background::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Base64Binary {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Base64Binary::new(@xml.Element) -> Self
+pub fn CT_Base64Binary::parse(@xml.Element) -> Self
+pub fn CT_Base64Binary::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_BdoContentRun {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_BdoContentRun::new(@xml.Element) -> Self
 pub fn CT_BdoContentRun::parse(@xml.Element) -> Self
 pub fn CT_BdoContentRun::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Body {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Body::new(@xml.Element) -> Self
+pub fn CT_Body::parse(@xml.Element) -> Self
+pub fn CT_Body::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Bookmark {
   element : @xml.Element
@@ -92,12 +127,33 @@ pub fn CT_CalendarType::new(@xml.Element) -> Self
 pub fn CT_CalendarType::parse(@xml.Element) -> Self
 pub fn CT_CalendarType::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Caption {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Caption::new(@xml.Element) -> Self
+pub fn CT_Caption::parse(@xml.Element) -> Self
+pub fn CT_Caption::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Captions {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Captions::new(@xml.Element) -> Self
+pub fn CT_Captions::parse(@xml.Element) -> Self
+pub fn CT_Captions::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_CellMergeTrackChange {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_CellMergeTrackChange::new(@xml.Element) -> Self
 pub fn CT_CellMergeTrackChange::parse(@xml.Element) -> Self
 pub fn CT_CellMergeTrackChange::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CharacterSpacing {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CharacterSpacing::new(@xml.Element) -> Self
+pub fn CT_CharacterSpacing::parse(@xml.Element) -> Self
+pub fn CT_CharacterSpacing::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Charset {
   element : @xml.Element
@@ -106,12 +162,26 @@ pub fn CT_Charset::new(@xml.Element) -> Self
 pub fn CT_Charset::parse(@xml.Element) -> Self
 pub fn CT_Charset::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Cnf {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Cnf::new(@xml.Element) -> Self
+pub fn CT_Cnf::parse(@xml.Element) -> Self
+pub fn CT_Cnf::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Color {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Color::new(@xml.Element) -> Self
 pub fn CT_Color::parse(@xml.Element) -> Self
 pub fn CT_Color::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ColorSchemeMapping {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ColorSchemeMapping::new(@xml.Element) -> Self
+pub fn CT_ColorSchemeMapping::parse(@xml.Element) -> Self
+pub fn CT_ColorSchemeMapping::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Column {
   element : @xml.Element
@@ -133,6 +203,27 @@ pub(all) struct CT_Comment {
 pub fn CT_Comment::new(@xml.Element) -> Self
 pub fn CT_Comment::parse(@xml.Element) -> Self
 pub fn CT_Comment::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Comments {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Comments::new(@xml.Element) -> Self
+pub fn CT_Comments::parse(@xml.Element) -> Self
+pub fn CT_Comments::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Compat {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Compat::new(@xml.Element) -> Self
+pub fn CT_Compat::parse(@xml.Element) -> Self
+pub fn CT_Compat::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CompatSetting {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CompatSetting::new(@xml.Element) -> Self
+pub fn CT_CompatSetting::parse(@xml.Element) -> Self
+pub fn CT_CompatSetting::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Control {
   element : @xml.Element
@@ -204,12 +295,110 @@ pub fn CT_DirContentRun::new(@xml.Element) -> Self
 pub fn CT_DirContentRun::parse(@xml.Element) -> Self
 pub fn CT_DirContentRun::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Div {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Div::new(@xml.Element) -> Self
+pub fn CT_Div::parse(@xml.Element) -> Self
+pub fn CT_Div::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DivBdr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DivBdr::new(@xml.Element) -> Self
+pub fn CT_DivBdr::parse(@xml.Element) -> Self
+pub fn CT_DivBdr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Divs {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Divs::new(@xml.Element) -> Self
+pub fn CT_Divs::parse(@xml.Element) -> Self
+pub fn CT_Divs::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocDefaults {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocDefaults::new(@xml.Element) -> Self
+pub fn CT_DocDefaults::parse(@xml.Element) -> Self
+pub fn CT_DocDefaults::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_DocGrid {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_DocGrid::new(@xml.Element) -> Self
 pub fn CT_DocGrid::parse(@xml.Element) -> Self
 pub fn CT_DocGrid::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocPart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocPart::new(@xml.Element) -> Self
+pub fn CT_DocPart::parse(@xml.Element) -> Self
+pub fn CT_DocPart::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocPartBehavior {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocPartBehavior::new(@xml.Element) -> Self
+pub fn CT_DocPartBehavior::parse(@xml.Element) -> Self
+pub fn CT_DocPartBehavior::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocPartBehaviors {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocPartBehaviors::new(@xml.Element) -> Self
+pub fn CT_DocPartBehaviors::parse(@xml.Element) -> Self
+pub fn CT_DocPartBehaviors::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocPartCategory {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocPartCategory::new(@xml.Element) -> Self
+pub fn CT_DocPartCategory::parse(@xml.Element) -> Self
+pub fn CT_DocPartCategory::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocPartGallery {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocPartGallery::new(@xml.Element) -> Self
+pub fn CT_DocPartGallery::parse(@xml.Element) -> Self
+pub fn CT_DocPartGallery::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocPartName {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocPartName::new(@xml.Element) -> Self
+pub fn CT_DocPartName::parse(@xml.Element) -> Self
+pub fn CT_DocPartName::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocPartPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocPartPr::new(@xml.Element) -> Self
+pub fn CT_DocPartPr::parse(@xml.Element) -> Self
+pub fn CT_DocPartPr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocPartType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocPartType::new(@xml.Element) -> Self
+pub fn CT_DocPartType::parse(@xml.Element) -> Self
+pub fn CT_DocPartType::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocPartTypes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocPartTypes::new(@xml.Element) -> Self
+pub fn CT_DocPartTypes::parse(@xml.Element) -> Self
+pub fn CT_DocPartTypes::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocParts {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocParts::new(@xml.Element) -> Self
+pub fn CT_DocParts::parse(@xml.Element) -> Self
+pub fn CT_DocParts::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocProtect {
   element : @xml.Element
@@ -218,12 +407,47 @@ pub fn CT_DocProtect::new(@xml.Element) -> Self
 pub fn CT_DocProtect::parse(@xml.Element) -> Self
 pub fn CT_DocProtect::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_DocRsids {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocRsids::new(@xml.Element) -> Self
+pub fn CT_DocRsids::parse(@xml.Element) -> Self
+pub fn CT_DocRsids::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_DocType {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_DocType::new(@xml.Element) -> Self
 pub fn CT_DocType::parse(@xml.Element) -> Self
 pub fn CT_DocType::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocVar {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocVar::new(@xml.Element) -> Self
+pub fn CT_DocVar::parse(@xml.Element) -> Self
+pub fn CT_DocVar::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocVars {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocVars::new(@xml.Element) -> Self
+pub fn CT_DocVars::parse(@xml.Element) -> Self
+pub fn CT_DocVars::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Document {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Document::new(@xml.Element) -> Self
+pub fn CT_Document::parse(@xml.Element) -> Self
+pub fn CT_Document::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_DocumentBase {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DocumentBase::new(@xml.Element) -> Self
+pub fn CT_DocumentBase::parse(@xml.Element) -> Self
+pub fn CT_DocumentBase::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Drawing {
   element : @xml.Element
@@ -239,6 +463,27 @@ pub fn CT_EastAsianLayout::new(@xml.Element) -> Self
 pub fn CT_EastAsianLayout::parse(@xml.Element) -> Self
 pub fn CT_EastAsianLayout::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_EdnDocProps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EdnDocProps::new(@xml.Element) -> Self
+pub fn CT_EdnDocProps::parse(@xml.Element) -> Self
+pub fn CT_EdnDocProps::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_EdnPos {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EdnPos::new(@xml.Element) -> Self
+pub fn CT_EdnPos::parse(@xml.Element) -> Self
+pub fn CT_EdnPos::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_EdnProps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EdnProps::new(@xml.Element) -> Self
+pub fn CT_EdnProps::parse(@xml.Element) -> Self
+pub fn CT_EdnProps::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Em {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -252,6 +497,13 @@ pub(all) struct CT_Empty {
 pub fn CT_Empty::new(@xml.Element) -> Self
 pub fn CT_Empty::parse(@xml.Element) -> Self
 pub fn CT_Empty::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Endnotes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Endnotes::new(@xml.Element) -> Self
+pub fn CT_Endnotes::parse(@xml.Element) -> Self
+pub fn CT_Endnotes::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FFCheckBox {
   element : @xml.Element
@@ -323,6 +575,34 @@ pub fn CT_FldChar::new(@xml.Element) -> Self
 pub fn CT_FldChar::parse(@xml.Element) -> Self
 pub fn CT_FldChar::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Font {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Font::new(@xml.Element) -> Self
+pub fn CT_Font::parse(@xml.Element) -> Self
+pub fn CT_Font::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FontFamily {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontFamily::new(@xml.Element) -> Self
+pub fn CT_FontFamily::parse(@xml.Element) -> Self
+pub fn CT_FontFamily::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FontRel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontRel::new(@xml.Element) -> Self
+pub fn CT_FontRel::parse(@xml.Element) -> Self
+pub fn CT_FontRel::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FontSig {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontSig::new(@xml.Element) -> Self
+pub fn CT_FontSig::parse(@xml.Element) -> Self
+pub fn CT_FontSig::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Fonts {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -330,12 +610,110 @@ pub fn CT_Fonts::new(@xml.Element) -> Self
 pub fn CT_Fonts::parse(@xml.Element) -> Self
 pub fn CT_Fonts::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_FontsList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontsList::new(@xml.Element) -> Self
+pub fn CT_FontsList::parse(@xml.Element) -> Self
+pub fn CT_FontsList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Footnotes {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Footnotes::new(@xml.Element) -> Self
+pub fn CT_Footnotes::parse(@xml.Element) -> Self
+pub fn CT_Footnotes::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Frame {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Frame::new(@xml.Element) -> Self
+pub fn CT_Frame::parse(@xml.Element) -> Self
+pub fn CT_Frame::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FrameLayout {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FrameLayout::new(@xml.Element) -> Self
+pub fn CT_FrameLayout::parse(@xml.Element) -> Self
+pub fn CT_FrameLayout::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_FramePr {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_FramePr::new(@xml.Element) -> Self
 pub fn CT_FramePr::parse(@xml.Element) -> Self
 pub fn CT_FramePr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FrameScrollbar {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FrameScrollbar::new(@xml.Element) -> Self
+pub fn CT_FrameScrollbar::parse(@xml.Element) -> Self
+pub fn CT_FrameScrollbar::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Frameset {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Frameset::new(@xml.Element) -> Self
+pub fn CT_Frameset::parse(@xml.Element) -> Self
+pub fn CT_Frameset::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FramesetSplitbar {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FramesetSplitbar::new(@xml.Element) -> Self
+pub fn CT_FramesetSplitbar::parse(@xml.Element) -> Self
+pub fn CT_FramesetSplitbar::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FtnDocProps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FtnDocProps::new(@xml.Element) -> Self
+pub fn CT_FtnDocProps::parse(@xml.Element) -> Self
+pub fn CT_FtnDocProps::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FtnEdn {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FtnEdn::new(@xml.Element) -> Self
+pub fn CT_FtnEdn::parse(@xml.Element) -> Self
+pub fn CT_FtnEdn::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FtnEdnRef {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FtnEdnRef::new(@xml.Element) -> Self
+pub fn CT_FtnEdnRef::parse(@xml.Element) -> Self
+pub fn CT_FtnEdnRef::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FtnEdnSepRef {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FtnEdnSepRef::new(@xml.Element) -> Self
+pub fn CT_FtnEdnSepRef::parse(@xml.Element) -> Self
+pub fn CT_FtnEdnSepRef::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FtnPos {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FtnPos::new(@xml.Element) -> Self
+pub fn CT_FtnPos::parse(@xml.Element) -> Self
+pub fn CT_FtnPos::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_FtnProps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FtnProps::new(@xml.Element) -> Self
+pub fn CT_FtnProps::parse(@xml.Element) -> Self
+pub fn CT_FtnProps::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_GlossaryDocument {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GlossaryDocument::new(@xml.Element) -> Self
+pub fn CT_GlossaryDocument::parse(@xml.Element) -> Self
+pub fn CT_GlossaryDocument::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Guid {
   element : @xml.Element
@@ -357,6 +735,20 @@ pub(all) struct CT_HdrFtrRef {
 pub fn CT_HdrFtrRef::new(@xml.Element) -> Self
 pub fn CT_HdrFtrRef::parse(@xml.Element) -> Self
 pub fn CT_HdrFtrRef::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Headers {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Headers::new(@xml.Element) -> Self
+pub fn CT_Headers::parse(@xml.Element) -> Self
+pub fn CT_Headers::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Height {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Height::new(@xml.Element) -> Self
+pub fn CT_Height::parse(@xml.Element) -> Self
+pub fn CT_Height::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Highlight {
   element : @xml.Element
@@ -421,6 +813,27 @@ pub fn CT_Language::new(@xml.Element) -> Self
 pub fn CT_Language::parse(@xml.Element) -> Self
 pub fn CT_Language::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_LatentStyles {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LatentStyles::new(@xml.Element) -> Self
+pub fn CT_LatentStyles::parse(@xml.Element) -> Self
+pub fn CT_LatentStyles::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_LevelSuffix {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LevelSuffix::new(@xml.Element) -> Self
+pub fn CT_LevelSuffix::parse(@xml.Element) -> Self
+pub fn CT_LevelSuffix::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_LevelText {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LevelText::new(@xml.Element) -> Self
+pub fn CT_LevelText::parse(@xml.Element) -> Self
+pub fn CT_LevelText::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_LineNumber {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -442,12 +855,33 @@ pub fn CT_LongHexNumber::new(@xml.Element) -> Self
 pub fn CT_LongHexNumber::parse(@xml.Element) -> Self
 pub fn CT_LongHexNumber::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_LsdException {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LsdException::new(@xml.Element) -> Self
+pub fn CT_LsdException::parse(@xml.Element) -> Self
+pub fn CT_LsdException::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Lvl {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Lvl::new(@xml.Element) -> Self
+pub fn CT_Lvl::parse(@xml.Element) -> Self
+pub fn CT_Lvl::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_MacroName {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_MacroName::new(@xml.Element) -> Self
 pub fn CT_MacroName::parse(@xml.Element) -> Self
 pub fn CT_MacroName::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_MailMerge {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MailMerge::new(@xml.Element) -> Self
+pub fn CT_MailMerge::parse(@xml.Element) -> Self
+pub fn CT_MailMerge::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_MailMergeDataType {
   element : @xml.Element
@@ -476,6 +910,13 @@ pub(all) struct CT_MailMergeOdsoFMDFieldType {
 pub fn CT_MailMergeOdsoFMDFieldType::new(@xml.Element) -> Self
 pub fn CT_MailMergeOdsoFMDFieldType::parse(@xml.Element) -> Self
 pub fn CT_MailMergeOdsoFMDFieldType::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_MailMergeSourceType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MailMergeSourceType::new(@xml.Element) -> Self
+pub fn CT_MailMergeSourceType::parse(@xml.Element) -> Self
+pub fn CT_MailMergeSourceType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Markup {
   element : @xml.Element
@@ -512,12 +953,61 @@ pub fn CT_MoveBookmark::new(@xml.Element) -> Self
 pub fn CT_MoveBookmark::parse(@xml.Element) -> Self
 pub fn CT_MoveBookmark::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_MultiLevelType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_MultiLevelType::new(@xml.Element) -> Self
+pub fn CT_MultiLevelType::parse(@xml.Element) -> Self
+pub fn CT_MultiLevelType::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Num {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Num::new(@xml.Element) -> Self
+pub fn CT_Num::parse(@xml.Element) -> Self
+pub fn CT_Num::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NumFmt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NumFmt::new(@xml.Element) -> Self
+pub fn CT_NumFmt::parse(@xml.Element) -> Self
+pub fn CT_NumFmt::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NumLvl {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NumLvl::new(@xml.Element) -> Self
+pub fn CT_NumLvl::parse(@xml.Element) -> Self
+pub fn CT_NumLvl::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NumPicBullet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NumPicBullet::new(@xml.Element) -> Self
+pub fn CT_NumPicBullet::parse(@xml.Element) -> Self
+pub fn CT_NumPicBullet::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_NumPr {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_NumPr::new(@xml.Element) -> Self
 pub fn CT_NumPr::parse(@xml.Element) -> Self
 pub fn CT_NumPr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NumRestart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NumRestart::new(@xml.Element) -> Self
+pub fn CT_NumRestart::parse(@xml.Element) -> Self
+pub fn CT_NumRestart::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Numbering {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Numbering::new(@xml.Element) -> Self
+pub fn CT_Numbering::parse(@xml.Element) -> Self
+pub fn CT_Numbering::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Object {
   element : @xml.Element
@@ -540,12 +1030,33 @@ pub fn CT_ObjectLink::new(@xml.Element) -> Self
 pub fn CT_ObjectLink::parse(@xml.Element) -> Self
 pub fn CT_ObjectLink::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Odso {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Odso::new(@xml.Element) -> Self
+pub fn CT_Odso::parse(@xml.Element) -> Self
+pub fn CT_Odso::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OdsoFieldMapData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OdsoFieldMapData::new(@xml.Element) -> Self
+pub fn CT_OdsoFieldMapData::parse(@xml.Element) -> Self
+pub fn CT_OdsoFieldMapData::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_OnOff {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_OnOff::new(@xml.Element) -> Self
 pub fn CT_OnOff::parse(@xml.Element) -> Self
 pub fn CT_OnOff::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OptimizeForBrowser {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OptimizeForBrowser::new(@xml.Element) -> Self
+pub fn CT_OptimizeForBrowser::parse(@xml.Element) -> Self
+pub fn CT_OptimizeForBrowser::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_P {
   element : @xml.Element
@@ -581,6 +1092,13 @@ pub(all) struct CT_PPrChange {
 pub fn CT_PPrChange::new(@xml.Element) -> Self
 pub fn CT_PPrChange::parse(@xml.Element) -> Self
 pub fn CT_PPrChange::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_PPrDefault {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PPrDefault::new(@xml.Element) -> Self
+pub fn CT_PPrDefault::parse(@xml.Element) -> Self
+pub fn CT_PPrDefault::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PPrGeneral {
   element : @xml.Element
@@ -631,6 +1149,13 @@ pub fn CT_PageSz::new(@xml.Element) -> Self
 pub fn CT_PageSz::parse(@xml.Element) -> Self
 pub fn CT_PageSz::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Panose {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Panose::new(@xml.Element) -> Self
+pub fn CT_Panose::parse(@xml.Element) -> Self
+pub fn CT_Panose::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_PaperSource {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -672,6 +1197,13 @@ pub(all) struct CT_PermStart {
 pub fn CT_PermStart::new(@xml.Element) -> Self
 pub fn CT_PermStart::parse(@xml.Element) -> Self
 pub fn CT_PermStart::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Pitch {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Pitch::new(@xml.Element) -> Self
+pub fn CT_Pitch::parse(@xml.Element) -> Self
+pub fn CT_Pitch::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PixelsMeasure {
   element : @xml.Element
@@ -722,6 +1254,13 @@ pub fn CT_RPrChange::new(@xml.Element) -> Self
 pub fn CT_RPrChange::parse(@xml.Element) -> Self
 pub fn CT_RPrChange::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_RPrDefault {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RPrDefault::new(@xml.Element) -> Self
+pub fn CT_RPrDefault::parse(@xml.Element) -> Self
+pub fn CT_RPrDefault::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_RPrOriginal {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -729,12 +1268,40 @@ pub fn CT_RPrOriginal::new(@xml.Element) -> Self
 pub fn CT_RPrOriginal::parse(@xml.Element) -> Self
 pub fn CT_RPrOriginal::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_ReadingModeInkLockDown {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ReadingModeInkLockDown::new(@xml.Element) -> Self
+pub fn CT_ReadingModeInkLockDown::parse(@xml.Element) -> Self
+pub fn CT_ReadingModeInkLockDown::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_RecipientData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RecipientData::new(@xml.Element) -> Self
+pub fn CT_RecipientData::parse(@xml.Element) -> Self
+pub fn CT_RecipientData::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Recipients {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Recipients::new(@xml.Element) -> Self
+pub fn CT_Recipients::parse(@xml.Element) -> Self
+pub fn CT_Recipients::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Rel {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Rel::new(@xml.Element) -> Self
 pub fn CT_Rel::parse(@xml.Element) -> Self
 pub fn CT_Rel::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Row {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Row::new(@xml.Element) -> Self
+pub fn CT_Row::parse(@xml.Element) -> Self
+pub fn CT_Row::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Ruby {
   element : @xml.Element
@@ -770,6 +1337,13 @@ pub(all) struct CT_RunTrackChange {
 pub fn CT_RunTrackChange::new(@xml.Element) -> Self
 pub fn CT_RunTrackChange::parse(@xml.Element) -> Self
 pub fn CT_RunTrackChange::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SaveThroughXslt {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SaveThroughXslt::new(@xml.Element) -> Self
+pub fn CT_SaveThroughXslt::parse(@xml.Element) -> Self
+pub fn CT_SaveThroughXslt::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtBlock {
   element : @xml.Element
@@ -918,6 +1492,13 @@ pub fn CT_SectType::new(@xml.Element) -> Self
 pub fn CT_SectType::parse(@xml.Element) -> Self
 pub fn CT_SectType::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Settings {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Settings::new(@xml.Element) -> Self
+pub fn CT_Settings::parse(@xml.Element) -> Self
+pub fn CT_Settings::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Shd {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -960,6 +1541,13 @@ pub fn CT_SmartTagRun::new(@xml.Element) -> Self
 pub fn CT_SmartTagRun::parse(@xml.Element) -> Self
 pub fn CT_SmartTagRun::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_SmartTagType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SmartTagType::new(@xml.Element) -> Self
+pub fn CT_SmartTagType::parse(@xml.Element) -> Self
+pub fn CT_SmartTagType::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Spacing {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -973,6 +1561,34 @@ pub(all) struct CT_String {
 pub fn CT_String::new(@xml.Element) -> Self
 pub fn CT_String::parse(@xml.Element) -> Self
 pub fn CT_String::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Style {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Style::new(@xml.Element) -> Self
+pub fn CT_Style::parse(@xml.Element) -> Self
+pub fn CT_Style::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_StylePaneFilter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StylePaneFilter::new(@xml.Element) -> Self
+pub fn CT_StylePaneFilter::parse(@xml.Element) -> Self
+pub fn CT_StylePaneFilter::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_StyleSort {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StyleSort::new(@xml.Element) -> Self
+pub fn CT_StyleSort::parse(@xml.Element) -> Self
+pub fn CT_StyleSort::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Styles {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Styles::new(@xml.Element) -> Self
+pub fn CT_Styles::parse(@xml.Element) -> Self
+pub fn CT_Styles::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Sym {
   element : @xml.Element
@@ -995,12 +1611,103 @@ pub fn CT_Tabs::new(@xml.Element) -> Self
 pub fn CT_Tabs::parse(@xml.Element) -> Self
 pub fn CT_Tabs::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_TargetScreenSz {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TargetScreenSz::new(@xml.Element) -> Self
+pub fn CT_TargetScreenSz::parse(@xml.Element) -> Self
+pub fn CT_TargetScreenSz::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Tbl {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Tbl::new(@xml.Element) -> Self
+pub fn CT_Tbl::parse(@xml.Element) -> Self
+pub fn CT_Tbl::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblBorders {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblBorders::new(@xml.Element) -> Self
+pub fn CT_TblBorders::parse(@xml.Element) -> Self
+pub fn CT_TblBorders::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblCellMar {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblCellMar::new(@xml.Element) -> Self
+pub fn CT_TblCellMar::parse(@xml.Element) -> Self
+pub fn CT_TblCellMar::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblGrid {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblGrid::new(@xml.Element) -> Self
+pub fn CT_TblGrid::parse(@xml.Element) -> Self
+pub fn CT_TblGrid::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblGridBase {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblGridBase::new(@xml.Element) -> Self
+pub fn CT_TblGridBase::parse(@xml.Element) -> Self
+pub fn CT_TblGridBase::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_TblGridChange {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TblGridChange::new(@xml.Element) -> Self
 pub fn CT_TblGridChange::parse(@xml.Element) -> Self
 pub fn CT_TblGridChange::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblGridCol {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblGridCol::new(@xml.Element) -> Self
+pub fn CT_TblGridCol::parse(@xml.Element) -> Self
+pub fn CT_TblGridCol::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblLayoutType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblLayoutType::new(@xml.Element) -> Self
+pub fn CT_TblLayoutType::parse(@xml.Element) -> Self
+pub fn CT_TblLayoutType::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblLook {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblLook::new(@xml.Element) -> Self
+pub fn CT_TblLook::parse(@xml.Element) -> Self
+pub fn CT_TblLook::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblOverlap {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblOverlap::new(@xml.Element) -> Self
+pub fn CT_TblOverlap::parse(@xml.Element) -> Self
+pub fn CT_TblOverlap::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblPPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblPPr::new(@xml.Element) -> Self
+pub fn CT_TblPPr::parse(@xml.Element) -> Self
+pub fn CT_TblPPr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblPr::new(@xml.Element) -> Self
+pub fn CT_TblPr::parse(@xml.Element) -> Self
+pub fn CT_TblPr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblPrBase {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblPrBase::new(@xml.Element) -> Self
+pub fn CT_TblPrBase::parse(@xml.Element) -> Self
+pub fn CT_TblPrBase::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TblPrChange {
   element : @xml.Element
@@ -1009,6 +1716,20 @@ pub fn CT_TblPrChange::new(@xml.Element) -> Self
 pub fn CT_TblPrChange::parse(@xml.Element) -> Self
 pub fn CT_TblPrChange::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_TblPrEx {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblPrEx::new(@xml.Element) -> Self
+pub fn CT_TblPrEx::parse(@xml.Element) -> Self
+pub fn CT_TblPrEx::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblPrExBase {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblPrExBase::new(@xml.Element) -> Self
+pub fn CT_TblPrExBase::parse(@xml.Element) -> Self
+pub fn CT_TblPrExBase::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_TblPrExChange {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1016,12 +1737,68 @@ pub fn CT_TblPrExChange::new(@xml.Element) -> Self
 pub fn CT_TblPrExChange::parse(@xml.Element) -> Self
 pub fn CT_TblPrExChange::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_TblStylePr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblStylePr::new(@xml.Element) -> Self
+pub fn CT_TblStylePr::parse(@xml.Element) -> Self
+pub fn CT_TblStylePr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TblWidth {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TblWidth::new(@xml.Element) -> Self
+pub fn CT_TblWidth::parse(@xml.Element) -> Self
+pub fn CT_TblWidth::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Tc {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Tc::new(@xml.Element) -> Self
+pub fn CT_Tc::parse(@xml.Element) -> Self
+pub fn CT_Tc::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TcBorders {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TcBorders::new(@xml.Element) -> Self
+pub fn CT_TcBorders::parse(@xml.Element) -> Self
+pub fn CT_TcBorders::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TcMar {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TcMar::new(@xml.Element) -> Self
+pub fn CT_TcMar::parse(@xml.Element) -> Self
+pub fn CT_TcMar::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TcPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TcPr::new(@xml.Element) -> Self
+pub fn CT_TcPr::parse(@xml.Element) -> Self
+pub fn CT_TcPr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TcPrBase {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TcPrBase::new(@xml.Element) -> Self
+pub fn CT_TcPrBase::parse(@xml.Element) -> Self
+pub fn CT_TcPrBase::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_TcPrChange {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TcPrChange::new(@xml.Element) -> Self
 pub fn CT_TcPrChange::parse(@xml.Element) -> Self
 pub fn CT_TcPrChange::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TcPrInner {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TcPrInner::new(@xml.Element) -> Self
+pub fn CT_TcPrInner::parse(@xml.Element) -> Self
+pub fn CT_TcPrInner::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Text {
   element : @xml.Element
@@ -1072,6 +1849,20 @@ pub fn CT_TopPageBorder::new(@xml.Element) -> Self
 pub fn CT_TopPageBorder::parse(@xml.Element) -> Self
 pub fn CT_TopPageBorder::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_TrPr {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TrPr::new(@xml.Element) -> Self
+pub fn CT_TrPr::parse(@xml.Element) -> Self
+pub fn CT_TrPr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TrPrBase {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TrPrBase::new(@xml.Element) -> Self
+pub fn CT_TrPrBase::parse(@xml.Element) -> Self
+pub fn CT_TrPrBase::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_TrPrChange {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1121,6 +1912,13 @@ pub fn CT_UnsignedDecimalNumber::new(@xml.Element) -> Self
 pub fn CT_UnsignedDecimalNumber::parse(@xml.Element) -> Self
 pub fn CT_UnsignedDecimalNumber::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_VMerge {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_VMerge::new(@xml.Element) -> Self
+pub fn CT_VMerge::parse(@xml.Element) -> Self
+pub fn CT_VMerge::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_VerticalAlignRun {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1141,6 +1939,20 @@ pub(all) struct CT_View {
 pub fn CT_View::new(@xml.Element) -> Self
 pub fn CT_View::parse(@xml.Element) -> Self
 pub fn CT_View::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WebSettings {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WebSettings::new(@xml.Element) -> Self
+pub fn CT_WebSettings::parse(@xml.Element) -> Self
+pub fn CT_WebSettings::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WriteProtection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WriteProtection::new(@xml.Element) -> Self
+pub fn CT_WriteProtection::parse(@xml.Element) -> Self
+pub fn CT_WriteProtection::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WritingStyle {
   element : @xml.Element
