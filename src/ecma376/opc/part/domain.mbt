@@ -104,6 +104,11 @@ pub(all) struct CoreKeyword {
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_Keyword is the opc-coreProperties.xsd wrapper for one
+/// CoreKeyword value.
+pub type CT_Keyword = CoreKeyword
+
+///|
 /// CT_Keywords container from schema bundle opc-coreProperties.xsd in the
 /// http://schemas.openxmlformats.org/package/2006/metadata/core-properties
 /// target namespace. The values array preserves the CT_Keyword value sequence

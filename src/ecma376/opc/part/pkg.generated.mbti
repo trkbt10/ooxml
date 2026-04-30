@@ -39,6 +39,7 @@ pub suberror UnsupportedFeature {
 } derive(@debug.Debug)
 
 // Types and methods
+#alias(CT_Keyword)
 pub(all) struct CoreKeyword {
   value : String
 } derive(Eq, @debug.Debug)
