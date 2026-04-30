@@ -1,12 +1,170 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/simple_types"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn package_name() -> String
 
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(type_name~ : String, value~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) enum ST_CalendarType {
+  Gregorian
+  GregorianUs
+  GregorianMeFrench
+  GregorianArabic
+  Hijri
+  Hebrew
+  Taiwan
+  Japan
+  Thai
+  Korea
+  Saka
+  GregorianXlitEnglish
+  GregorianXlitFrench
+  NoneCalendar
+} derive(Eq, @debug.Debug)
+pub fn ST_CalendarType::new(String) -> Self raise SchemaViolation
+pub fn ST_CalendarType::to_string(Self) -> String
+
+pub(all) enum ST_ConformanceClass {
+  Strict
+  Transitional
+} derive(Eq, @debug.Debug)
+pub fn ST_ConformanceClass::new(String) -> Self raise SchemaViolation
+pub fn ST_ConformanceClass::to_string(Self) -> String
+
+pub struct ST_FixedPercentage {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FixedPercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_FixedPercentage::to_string(Self) -> String
+
+pub struct ST_Guid {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Guid::new(String) -> Self raise SchemaViolation
+pub fn ST_Guid::to_string(Self) -> String
+
+pub struct ST_HexColorRGB {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_HexColorRGB::new(String) -> Self raise SchemaViolation
+pub fn ST_HexColorRGB::to_string(Self) -> String
+
+pub struct ST_Lang {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Lang::new(String) -> Self raise SchemaViolation
+pub fn ST_Lang::to_string(Self) -> String
+
+pub struct ST_OnOff {
+  value : Bool
+} derive(Eq, @debug.Debug)
+pub fn ST_OnOff::new(String) -> Self raise SchemaViolation
+pub fn ST_OnOff::to_bool(Self) -> Bool
+pub fn ST_OnOff::to_string(Self) -> String
+
+pub struct ST_Panose {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Panose::new(String) -> Self raise SchemaViolation
+pub fn ST_Panose::to_string(Self) -> String
+
+pub struct ST_Percentage {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Percentage::new(String) -> Self raise SchemaViolation
+pub fn ST_Percentage::to_string(Self) -> String
+
+pub struct ST_PositiveFixedPercentage {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PositiveFixedPercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedPercentage::to_string(Self) -> String
+
+pub struct ST_PositivePercentage {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PositivePercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_PositivePercentage::to_string(Self) -> String
+
+pub struct ST_PositiveUniversalMeasure {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PositiveUniversalMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_PositiveUniversalMeasure::to_string(Self) -> String
+
+pub struct ST_String {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_String::new(String) -> Self raise SchemaViolation
+pub fn ST_String::to_string(Self) -> String
+
+pub struct ST_TwipsMeasure {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TwipsMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_TwipsMeasure::to_string(Self) -> String
+
+pub struct ST_UniversalMeasure {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UniversalMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_UniversalMeasure::to_string(Self) -> String
+
+pub struct ST_UnsignedDecimalNumber {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UnsignedDecimalNumber::new(String) -> Self raise SchemaViolation
+pub fn ST_UnsignedDecimalNumber::to_string(Self) -> String
+
+pub(all) enum ST_VerticalAlignRun {
+  Baseline
+  Superscript
+  Subscript
+} derive(Eq, @debug.Debug)
+pub fn ST_VerticalAlignRun::new(String) -> Self raise SchemaViolation
+pub fn ST_VerticalAlignRun::to_string(Self) -> String
+
+pub(all) enum ST_XAlign {
+  Left
+  Center
+  Right
+  Inside
+  Outside
+} derive(Eq, @debug.Debug)
+pub fn ST_XAlign::new(String) -> Self raise SchemaViolation
+pub fn ST_XAlign::to_string(Self) -> String
+
+pub struct ST_XmlName {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_XmlName::new(String) -> Self raise SchemaViolation
+pub fn ST_XmlName::to_string(Self) -> String
+
+pub struct ST_Xstring {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Xstring::new(String) -> Self raise SchemaViolation
+pub fn ST_Xstring::to_string(Self) -> String
+
+pub(all) enum ST_YAlign {
+  Inline
+  Top
+  YCenter
+  Bottom
+  YInside
+  YOutside
+} derive(Eq, @debug.Debug)
+pub fn ST_YAlign::new(String) -> Self raise SchemaViolation
+pub fn ST_YAlign::to_string(Self) -> String
 
 // Type aliases
 
