@@ -1,3 +1,20 @@
 // trkbt10/ooxml/ecma376/spreadsheet_ml/drawing
 //
 // Spreadsheet Drawing (§22.8 xdr:): anchor types, embedded drawings on worksheets.
+// dml-spreadsheetDrawing.xsd identifiers: from, to, wsDr,
+// CT_AbsoluteAnchor, CT_AnchorClientData, CT_Connector,
+// CT_ConnectorNonVisual, CT_Drawing, CT_GraphicalObjectFrame,
+// CT_GraphicalObjectFrameNonVisual, CT_GroupShape, CT_GroupShapeNonVisual,
+// CT_Marker, CT_OneCellAnchor, CT_Picture, CT_PictureNonVisual, CT_Rel,
+// CT_Shape, CT_ShapeNonVisual, CT_TwoCellAnchor, ST_ColID, ST_EditAs,
+// ST_RowID, EG_Anchor, and EG_ObjectChoices.
+// vml-spreadsheetDrawing.xsd identifiers: ClientData, CT_ClientData, ST_CF,
+// and ST_ObjectType.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"

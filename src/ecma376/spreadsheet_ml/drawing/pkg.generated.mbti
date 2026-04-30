@@ -1,12 +1,176 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/spreadsheet_ml/drawing"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn read_client_data(Bytes) -> CT_ClientData raise
+
+pub fn read_from(Bytes) -> CT_Marker raise
+
+pub fn read_to(Bytes) -> CT_Marker raise
+
+pub fn read_ws_dr(Bytes) -> CT_Drawing raise
+
+pub fn write_client_data(CT_ClientData) -> Bytes
+
+pub fn write_from(CT_Marker) -> Bytes
+
+pub fn write_to(CT_Marker) -> Bytes
+
+pub fn write_ws_dr(CT_Drawing) -> Bytes
+
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct CT_AbsoluteAnchor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_AnchorClientData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(ClientData)
+pub(all) struct CT_ClientData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Connector {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ConnectorNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(WsDr)
+pub(all) struct CT_Drawing {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_GraphicalObjectFrame {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_GraphicalObjectFrameNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_GroupShape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_GroupShapeNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(From)
+#alias(To)
+pub(all) struct CT_Marker {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_OneCellAnchor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Picture {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PictureNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Rel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Shape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_ShapeNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TwoCellAnchor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) enum EG_Anchor {
+  TwoCellAnchor(CT_TwoCellAnchor)
+  OneCellAnchor(CT_OneCellAnchor)
+  AbsoluteAnchor(CT_AbsoluteAnchor)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum EG_ObjectChoices {
+  Sp(CT_Shape)
+  GrpSp(CT_GroupShape)
+  GraphicFrame(CT_GraphicalObjectFrame)
+  CxnSp(CT_Connector)
+  Pic(CT_Picture)
+  ContentPart(CT_Rel)
+} derive(Eq, @debug.Debug)
+
+pub struct ST_CF {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CF::new(String) -> Self
+pub fn ST_CF::to_string(Self) -> String
+
+pub struct ST_ColID {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ColID::new(String) -> Self raise SchemaViolation
+pub fn ST_ColID::to_string(Self) -> String
+
+pub(all) enum ST_EditAs {
+  TwoCell
+  OneCell
+  Absolute
+} derive(Eq, @debug.Debug)
+pub fn ST_EditAs::new(String) -> Self raise SchemaViolation
+pub fn ST_EditAs::to_string(Self) -> String
+
+pub(all) enum ST_ObjectType {
+  Button
+  Checkbox
+  Dialog
+  Drop
+  Edit
+  GBox
+  Label
+  LineA
+  List
+  Movie
+  Note
+  Pict
+  Radio
+  RectA
+  Scroll
+  Spin
+  Shape
+  Group
+  Rect
+} derive(Eq, @debug.Debug)
+pub fn ST_ObjectType::new(String) -> Self raise SchemaViolation
+pub fn ST_ObjectType::to_string(Self) -> String
+
+pub struct ST_RowID {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RowID::new(String) -> Self raise SchemaViolation
+pub fn ST_RowID::to_string(Self) -> String
 
 // Type aliases
 
