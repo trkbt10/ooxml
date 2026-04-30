@@ -213,7 +213,7 @@ pub fn CT_ManualBreak::new(element : @xml.Element) -> CT_ManualBreak {
 }
 
 ///|
-/// XSD complex type CT_RPR (§22.1.x).
+/// XSD complex type CT_RPR with lit, nor, brk, and aln children (§22.1.x).
 /// OMML run property set with lit, nor, brk, aln, scr, and sty children.
 pub(all) struct CT_RPR {
   element : @xml.Element
@@ -239,7 +239,7 @@ pub fn CT_Text::new(element : @xml.Element) -> CT_Text {
 }
 
 ///|
-/// XSD complex type CT_R (§22.1.x).
+/// XSD complex type CT_R with rPr CT_RPR and t CT_Text children (§22.1.x).
 /// OMML math run with rPr and t children.
 pub(all) struct CT_R {
   element : @xml.Element
@@ -265,7 +265,7 @@ pub fn CT_CtrlPr::new(element : @xml.Element) -> CT_CtrlPr {
 }
 
 ///|
-/// XSD complex type CT_AccPr (§22.1.x).
+/// XSD complex type CT_AccPr with chr CT_Char and ctrlPr CT_CtrlPr children (§22.1.x).
 /// OMML accent properties with chr and ctrlPr children.
 pub(all) struct CT_AccPr {
   element : @xml.Element
@@ -291,7 +291,7 @@ pub fn CT_Acc::new(element : @xml.Element) -> CT_Acc {
 }
 
 ///|
-/// XSD complex type CT_BarPr (§22.1.x).
+/// XSD complex type CT_BarPr with pos CT_TopBot and ctrlPr CT_CtrlPr children (§22.1.x).
 /// OMML bar properties with pos and ctrlPr children.
 pub(all) struct CT_BarPr {
   element : @xml.Element
@@ -304,7 +304,7 @@ pub fn CT_BarPr::new(element : @xml.Element) -> CT_BarPr {
 }
 
 ///|
-/// XSD complex type CT_Bar (§22.1.x).
+/// XSD complex type CT_Bar with barPr CT_BarPr and e CT_OMathArg children (§22.1.x).
 /// OMML bar object with barPr and e children.
 pub(all) struct CT_Bar {
   element : @xml.Element
@@ -317,7 +317,7 @@ pub fn CT_Bar::new(element : @xml.Element) -> CT_Bar {
 }
 
 ///|
-/// XSD complex type CT_BoxPr (§22.1.x).
+/// XSD complex type CT_BoxPr with opEmu, noBreak, diff, brk, aln, and ctrlPr children (§22.1.x).
 /// OMML box properties with opEmu, noBreak, diff, brk, aln, and ctrlPr children.
 pub(all) struct CT_BoxPr {
   element : @xml.Element
@@ -330,7 +330,7 @@ pub fn CT_BoxPr::new(element : @xml.Element) -> CT_BoxPr {
 }
 
 ///|
-/// XSD complex type CT_Box (§22.1.x).
+/// XSD complex type CT_Box with boxPr CT_BoxPr and e CT_OMathArg children (§22.1.x).
 /// OMML box object.
 pub(all) struct CT_Box {
   element : @xml.Element
@@ -369,7 +369,7 @@ pub fn CT_BorderBox::new(element : @xml.Element) -> CT_BorderBox {
 }
 
 ///|
-/// XSD complex type CT_DPr (§22.1.x).
+/// XSD complex type CT_DPr with begChr, sepChr, endChr, grow, shp, and ctrlPr children (§22.1.x).
 /// OMML delimiter properties with begChr, sepChr, endChr, grow, shp, and ctrlPr children.
 pub(all) struct CT_DPr {
   element : @xml.Element
@@ -382,7 +382,7 @@ pub fn CT_DPr::new(element : @xml.Element) -> CT_DPr {
 }
 
 ///|
-/// XSD complex type CT_D (§22.1.x).
+/// XSD complex type CT_D with dPr CT_DPr and e CT_OMathArg children (§22.1.x).
 /// OMML delimiter object with dPr and e children.
 pub(all) struct CT_D {
   element : @xml.Element
@@ -434,7 +434,7 @@ pub fn CT_FPr::new(element : @xml.Element) -> CT_FPr {
 }
 
 ///|
-/// XSD complex type CT_F (§22.1.x).
+/// XSD complex type CT_F with fPr CT_FPr, num CT_OMathArg, and den CT_OMathArg children (§22.1.x).
 /// OMML fraction object with fPr, num, and den children.
 pub(all) struct CT_F {
   element : @xml.Element
@@ -460,7 +460,7 @@ pub fn CT_FuncPr::new(element : @xml.Element) -> CT_FuncPr {
 }
 
 ///|
-/// XSD complex type CT_Func (§22.1.x).
+/// XSD complex type CT_Func with funcPr CT_FuncPr, fName CT_OMathArg, and e CT_OMathArg children (§22.1.x).
 /// OMML function object.
 pub(all) struct CT_Func {
   element : @xml.Element
@@ -551,7 +551,7 @@ pub fn CT_LimUpp::new(element : @xml.Element) -> CT_LimUpp {
 }
 
 ///|
-/// XSD complex type CT_MCPr (§22.1.x).
+/// XSD complex type CT_MCPr with count CT_Integer255 and mcJc CT_XAlign children (§22.1.x).
 /// OMML matrix column properties with count and mcJc children.
 pub(all) struct CT_MCPr {
   element : @xml.Element
@@ -564,7 +564,7 @@ pub fn CT_MCPr::new(element : @xml.Element) -> CT_MCPr {
 }
 
 ///|
-/// XSD complex type CT_MC (§22.1.x).
+/// XSD complex type CT_MC with mcPr CT_MCPr child (§22.1.x).
 /// OMML matrix column.
 pub(all) struct CT_MC {
   element : @xml.Element
@@ -590,7 +590,7 @@ pub fn CT_MCS::new(element : @xml.Element) -> CT_MCS {
 }
 
 ///|
-/// XSD complex type CT_MPr (§22.1.x).
+/// XSD complex type CT_MPr with baseJc, plcHide, spacing, mcs, and ctrlPr children (§22.1.x).
 /// OMML matrix properties with baseJc, plcHide, spacing, mcs, and ctrlPr children.
 pub(all) struct CT_MPr {
   element : @xml.Element
@@ -603,7 +603,7 @@ pub fn CT_MPr::new(element : @xml.Element) -> CT_MPr {
 }
 
 ///|
-/// XSD complex type CT_MR (§22.1.x).
+/// XSD complex type CT_MR with e CT_OMathArg matrix row children (§22.1.x).
 /// OMML matrix row.
 pub(all) struct CT_MR {
   element : @xml.Element
@@ -616,7 +616,7 @@ pub fn CT_MR::new(element : @xml.Element) -> CT_MR {
 }
 
 ///|
-/// XSD complex type CT_M (§22.1.x).
+/// XSD complex type CT_M with mPr CT_MPr and mr CT_MR children (§22.1.x).
 /// OMML matrix object with mPr and mr children.
 pub(all) struct CT_M {
   element : @xml.Element
@@ -681,7 +681,7 @@ pub fn CT_Phant::new(element : @xml.Element) -> CT_Phant {
 }
 
 ///|
-/// XSD complex type CT_RadPr (§22.1.x).
+/// XSD complex type CT_RadPr with degHide CT_OnOff and ctrlPr CT_CtrlPr children (§22.1.x).
 /// OMML radical properties with degHide and ctrlPr children.
 pub(all) struct CT_RadPr {
   element : @xml.Element
@@ -902,7 +902,7 @@ pub fn CT_BreakBinSub::new(element : @xml.Element) -> CT_BreakBinSub {
 }
 
 ///|
-/// XSD complex type CT_MathPr (§22.1.x).
+/// XSD complex type CT_MathPr with mathFont, brkBin, brkBinSub, margins, spacing, and limit children (§22.1.x).
 /// OMML document math properties with mathFont, margins, spacing, defaults, intLim, and naryLim children.
 pub(all) struct CT_MathPr {
   element : @xml.Element
@@ -928,7 +928,7 @@ pub fn CT_OMathPara::new(element : @xml.Element) -> CT_OMathPara {
 }
 
 ///|
-/// XSD complex type CT_OMath (§22.1.x).
+/// XSD complex type CT_OMath with EG_OMathElements children for top-level oMath (§22.1.x).
 /// OMML inline or display math zone containing EG_OMathElements children.
 pub(all) struct CT_OMath {
   element : @xml.Element
@@ -938,6 +938,19 @@ pub(all) struct CT_OMath {
 /// Construct CT_OMath from its OMML XML element.
 pub fn CT_OMath::new(element : @xml.Element) -> CT_OMath {
   { element, }
+}
+
+///|
+/// Return child elements selected through EG_OMathElements for this oMath zone.
+pub fn CT_OMath::children(self : CT_OMath) -> Array[EG_OMathElements] {
+  let children : Array[EG_OMathElements] = []
+  for child in self.element.children {
+    match child {
+      Element(element) => children.push(EG_OMathElements::new(element))
+      _ => ()
+    }
+  }
+  children
 }
 
 ///|
@@ -956,4 +969,114 @@ pub fn o_math_para(element : @xml.Element) -> CT_OMathPara {
 /// Construct top-level XSD element mathPr as CT_MathPr (§22.1).
 pub fn math_pr(element : @xml.Element) -> CT_MathPr {
   CT_MathPr::new(element)
+}
+
+///|
+/// Return CT_AccPr child names for chr CT_Char and ctrlPr CT_CtrlPr.
+pub fn CT_AccPr::child_names(self : CT_AccPr) -> Array[String] {
+  omml_child_names(self.element, ["chr", "ctrlPr"])
+}
+
+///|
+/// Return CT_BarPr child names for pos CT_TopBot and ctrlPr CT_CtrlPr.
+pub fn CT_BarPr::child_names(self : CT_BarPr) -> Array[String] {
+  omml_child_names(self.element, ["pos", "ctrlPr"])
+}
+
+///|
+/// Return CT_BoxPr child names for opEmu, noBreak, diff, brk, aln, and ctrlPr.
+pub fn CT_BoxPr::child_names(self : CT_BoxPr) -> Array[String] {
+  omml_child_names(self.element, [
+    "opEmu", "noBreak", "diff", "brk", "aln", "ctrlPr",
+  ])
+}
+
+///|
+/// Return CT_DPr child names for begChr, sepChr, endChr, grow, shp, and ctrlPr.
+pub fn CT_DPr::child_names(self : CT_DPr) -> Array[String] {
+  omml_child_names(self.element, [
+    "begChr", "sepChr", "endChr", "grow", "shp", "ctrlPr",
+  ])
+}
+
+///|
+/// Return CT_F child names for fPr CT_FPr, num CT_OMathArg, and den CT_OMathArg.
+pub fn CT_F::child_names(self : CT_F) -> Array[String] {
+  omml_child_names(self.element, ["fPr", "num", "den"])
+}
+
+///|
+/// Return CT_Func child names for funcPr CT_FuncPr, fName CT_OMathArg, and e CT_OMathArg.
+pub fn CT_Func::child_names(self : CT_Func) -> Array[String] {
+  omml_child_names(self.element, ["funcPr", "fName", "e"])
+}
+
+///|
+/// Return CT_M child names for mPr CT_MPr and mr CT_MR.
+pub fn CT_M::child_names(self : CT_M) -> Array[String] {
+  omml_child_names(self.element, ["mPr", "mr"])
+}
+
+///|
+/// Return CT_MCPr child names for count CT_Integer255 and mcJc CT_XAlign.
+pub fn CT_MCPr::child_names(self : CT_MCPr) -> Array[String] {
+  omml_child_names(self.element, ["count", "mcJc"])
+}
+
+///|
+/// Return CT_MPr child names for matrix alignment, spacing, column set, and ctrlPr.
+pub fn CT_MPr::child_names(self : CT_MPr) -> Array[String] {
+  omml_child_names(self.element, [
+    "baseJc", "plcHide", "rSpRule", "cGpRule", "rSp", "cSp", "cGp", "mcs", "ctrlPr",
+  ])
+}
+
+///|
+/// Return CT_MathPr child names for mathFont, break settings, margins, spacing, and limits.
+pub fn CT_MathPr::child_names(self : CT_MathPr) -> Array[String] {
+  omml_child_names(self.element, [
+    "mathFont", "brkBin", "brkBinSub", "smallFrac", "dispDef", "lMargin", "rMargin",
+    "defJc", "preSp", "postSp", "interSp", "intraSp", "wrapIndent", "wrapRight",
+    "intLim", "naryLim",
+  ])
+}
+
+///|
+/// Return CT_RPR child names for lit, nor, brk, and aln run properties.
+pub fn CT_RPR::child_names(self : CT_RPR) -> Array[String] {
+  omml_child_names(self.element, ["lit", "nor", "brk", "aln"])
+}
+
+///|
+/// Return CT_RadPr child names for degHide CT_OnOff and ctrlPr CT_CtrlPr.
+pub fn CT_RadPr::child_names(self : CT_RadPr) -> Array[String] {
+  omml_child_names(self.element, ["degHide", "ctrlPr"])
+}
+
+///|
+fn omml_child_names(
+  element : @xml.Element,
+  allowed : Array[String],
+) -> Array[String] {
+  let names : Array[String] = []
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        if omml_name_allowed(allowed, child_element.name.local_name) {
+          names.push(child_element.name.local_name)
+        }
+      _ => ()
+    }
+  }
+  names
+}
+
+///|
+fn omml_name_allowed(allowed : Array[String], name : String) -> Bool {
+  for allowed_name in allowed {
+    if allowed_name == name {
+      return true
+    }
+  }
+  false
 }
