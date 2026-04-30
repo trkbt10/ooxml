@@ -55,8 +55,11 @@ fn ThumbnailPart::new(name : PartName, data : Bytes) -> ThumbnailPart {
 }
 
 ///|
-/// OPC §9 Thumbnails generic package part record used by the surrounding OPC
-/// resolver when it supplies embedded resources.
+/// Generic OPC package part record used by the surrounding OPC resolver when
+/// it supplies embedded resources, including ECMA-376 Part 2 §8.1 General
+/// Core Properties part payloads and OPC §9 Thumbnails binary payloads.
+/// Source anchor: references/spec/part2/sections/8.1__general.md, owned by
+/// src/ecma376/opc/part.
 pub(all) struct PackagePart {
   name : PartName
   content_type : String
@@ -83,8 +86,11 @@ fn PackagePart::new(
 ///|
 /// CT_Keyword value from schema bundle opc-coreProperties.xsd in the
 /// http://schemas.openxmlformats.org/package/2006/metadata/core-properties
-/// target namespace. It contributes to the coreProperties top-level element
-/// and the CT_Keywords container.
+/// target namespace. It contributes to ECMA-376 Part 2 §8.3.1 General Core
+/// Properties Markup through the coreProperties top-level element and the
+/// CT_Keywords container. Source anchor:
+/// references/spec/part2/sections/8.3.1__general.md, owned by
+/// src/ecma376/opc/part.
 pub(all) struct CoreKeyword {
   value : String
 } derive(Eq, Debug)
@@ -99,14 +105,23 @@ pub(all) struct CoreKeywords {
 } derive(Eq, Debug)
 
 ///|
-/// coreProperties element and CT_CoreProperties preserve the parsed XML
-/// document so C3 attributes and child ordering survive read/write round trip.
+/// ECMA-376 Part 2 §8.1 General Core Properties domain value for the package
+/// metadata part. ECMA-376 Part 2 §8.3.1 General is the Core Properties
+/// Markup overview for the `coreProperties` root. ECMA-376 Part 2 §8.3.2
+/// Support For Versioning And Extensibility is represented by preserving the
+/// versioning and extensibility markup carried by the parsed XML document.
+/// Source anchor: references/spec/part2/sections/8.3.2__support-for-versioning-and-extensibility.md,
+/// owned by src/ecma376/opc/part. §8.3.3 coreProperties element /
+/// CT_CoreProperties preserve attributes and child ordering for read/write
+/// round trip.
 pub(all) struct CoreProperties {
   document : @xml.Document
 } derive(Eq, Debug)
 
 ///|
-/// Create a coreProperties CT_CoreProperties wrapper around validated XML.
+/// Create a §8.3.3 coreProperties CT_CoreProperties wrapper around validated
+/// XML already checked against the §8.3.1 markup overview and §8.3.2
+/// versioning/extensibility allowance.
 fn CoreProperties::new(document : @xml.Document) -> CoreProperties {
   { document, }
 }

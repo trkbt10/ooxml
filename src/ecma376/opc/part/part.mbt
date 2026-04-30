@@ -24,10 +24,10 @@
 ///   values before building the domain tree.
 /// - §2 Conformance C5: SchemaViolation carries section + path metadata using
 ///   the §3 section references for the failing OPC part location.
-/// - §3 TOC: §8 Core Properties; §8.1 General; §8.2 Core Properties Part;
-///   §8.3 Core Properties Markup; §8.3.1 General; §8.3.2 Support For
-///   Versioning And Extensibility; §8.3.3 coreProperties Element; §8.3.4 Core
-///   Property Elements; §9 Thumbnails.
+/// - §3 TOC: §8 Core Properties, §8.1 General, §8.2 Core Properties Part,
+///   §8.3 Core Properties Markup, §8.3.1 General (markup overview),
+///   §8.3.2 Support For Versioning And Extensibility, §8.3.3 coreProperties
+///   element, §8.3.4 Core Property Elements, §9 Thumbnails.
 /// - §4 Schema: opc-coreProperties.xsd targets
 ///   http://schemas.openxmlformats.org/package/2006/metadata/core-properties.
 ///   It exports top-level element coreProperties, complex types

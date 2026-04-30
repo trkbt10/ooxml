@@ -20,12 +20,15 @@ pub fn read_part(
 }
 
 ///|
-/// Read the §5 Inputs I1 XML byte stream for coreProperties and
-/// CT_CoreProperties, using §5 Inputs I2 namespace context for the
-/// core-properties target namespace. XML well-formedness failures are
-/// @xml.XmlMalformed E1; schema failures are OPC §8 E2 SchemaViolation with
-/// the §9 source section, and C3/V2 preserve parsed attributes and child order
-/// for round-trip writing.
+/// Read the §5 Inputs I1 XML byte stream for ECMA-376 Part 2 §8.1 General
+/// Core Properties and the §8.3 Core Properties Markup organization.
+/// ECMA-376 Part 2 §8.3.1 General supplies the markup overview for
+/// `coreProperties`; ECMA-376 Part 2 §8.3.2 Support For Versioning And
+/// Extensibility is honored by retaining extension-bearing XML; §8.3.3
+/// coreProperties / CT_CoreProperties is validated as the root element. XML
+/// well-formedness failures are @xml.XmlMalformed E1; schema failures are OPC
+/// §8 E2 SchemaViolation with section metadata, and C3/V2 preserve parsed
+/// attributes and child order for round-trip writing.
 pub fn read_core_properties(bytes : Bytes) -> CoreProperties raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "coreProperties", core_properties_ns()) {
