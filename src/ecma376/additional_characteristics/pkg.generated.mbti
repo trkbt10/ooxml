@@ -1,12 +1,28 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/additional_characteristics"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn package_name() -> String
 
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(type_name~ : String, value~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) enum ST_Relation {
+  Ge
+  Le
+  Gt
+  Lt
+  Eq
+} derive(Eq, @debug.Debug)
+pub fn ST_Relation::parse(String) -> Self raise SchemaViolation
+pub fn ST_Relation::to_string(Self) -> String
 
 // Type aliases
 
