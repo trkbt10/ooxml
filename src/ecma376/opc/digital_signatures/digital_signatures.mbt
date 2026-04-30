@@ -1,99 +1,97 @@
 ///|
-/// ECMA-376 Part 2 §10 Digital Signatures part implementation for the
-/// opc-digSig schema bundle.
+/// ECMA-376 Part 2 §10 Digital Signatures package overview for opc-digSig.xsd.
 ///
-/// 1. Scope: this package owns ECMA-376 Part 2 §10 Digital Signatures XML and
-/// the opc-digSig.xsd schema. It does not sign cryptographic bytes itself;
-/// it models the OPC signature reference markup consumed by the surrounding
-/// package layer.
+/// §1 Scope is ECMA-376 Part 2 §10 Digital Signatures and the opc-digSig
+/// schema bundle. This package owns the markup shell for OPC digital
+/// signatures; cryptographic providers and package resource resolution stay
+/// outside this package.
 ///
-/// 3. Specification Sections TOC coverage: owned sections are §10 Digital
-/// Signatures, §10.1 General, §10.3 Choosing Content To Sign, §10.4 Digital
-/// Signature Parts, §10.4.1 General, §10.4.2 Digital Signature Origin Part,
-/// §10.4.3 Digital Signature Xml Signature Part, §10.4.4 Digital Signature
-/// Certificate Part, §10.5 Digital Signature Markup, §10.5.1 General,
-/// §10.5.2 Support For Versioning And Extensibility, §10.5.3 Signature
-/// Element, §10.5.4 SignedInfo Element, §10.5.5 CanonicalizationMethod
-/// Element, §10.5.6 SignatureMethod Element, §10.5.7 Reference Element,
-/// §10.5.8 Transform Element, §10.5.10 RelationshipsGroupReference Element,
-/// §10.5.11 DigestMethod Element, §10.5.12 Object Element, §10.5.13 Manifest
-/// Element, §10.5.14 SignatureProperty Element, §10.5.15 SignatureTime
-/// Element, §10.5.16 Format Element, §10.5.17 Value Element, §10.5.18 XPath
-/// Element, §10.6 Relationships Transform Algorithm, §10.7 Digital Signature
-/// Example, §10.8 Generating Signatures, and §10.9 Validating Signatures.
+/// §2 Conformance C1 is represented by readers for the three opc-digSig
+/// top-level elements and the W3C XML-Signature elements referenced by §10.5.
+/// C2 is represented by SchemaViolation from constructors and readers. C3 is
+/// represented by writers preserving parsed attributes and child nodes. C4 is
+/// represented by ST_Format::new and ST_Value::new lexical checks. C5 is
+/// represented by section-bearing SchemaViolation, UnsupportedFeature, and
+/// ResourceMissing errors.
 ///
-/// The public API honours the package SDD contract as follows:
+/// §3 Specification Sections: §10 Digital Signatures is represented by
+/// package_name and digital_signature_ns. §10.1 General and §10.3 Choosing
+/// Content To Sign are overview contracts for this package. §10.4.1 General,
+/// §10.4.2 Digital Signature Origin Part, §10.4.3 Digital Signature Xml
+/// Signature Part, and §10.4.4 Digital Signature Certificate Part are package
+/// part contracts surfaced through the domain and reader/writer API.
+/// §10.5.1 General and §10.5.2 Support For Versioning And Extensibility are
+/// represented by the structural XML-Signature markup wrappers that preserve
+/// child @xml.Node values. §10.5.3 Signature Element is Signature,
+/// read_signature, and write_signature. §10.5.4 SignedInfo Element is
+/// SignedInfo, read_signed_info, and write_signed_info. §10.5.5
+/// CanonicalizationMethod Element is CanonicalizationMethod,
+/// read_canonicalization_method, and write_canonicalization_method. §10.5.6
+/// SignatureMethod Element is SignatureMethod, read_signature_method, and
+/// write_signature_method. §10.5.7 Reference Element is Reference,
+/// read_reference, and write_reference. §10.5.8 Transform Element is Transform,
+/// read_transform, and write_transform. §10.5.10 RelationshipsGroupReference
+/// Element is RelationshipsGroupReference, read_relationships_group_reference,
+/// and write_relationships_group_reference. §10.5.11 DigestMethod Element is
+/// DigestMethod, read_digest_method, and write_digest_method. §10.5.12 Object
+/// Element is Object, read_object, and write_object. §10.5.13 Manifest Element
+/// is Manifest, read_manifest, and write_manifest. §10.5.14 SignatureProperty
+/// Element is SignatureProperty, read_signature_property, and
+/// write_signature_property. §10.5.15 SignatureTime Element is SignatureTime,
+/// read_signature_time, and write_signature_time. §10.5.16 Format Element is
+/// ST_Format and ST_Format::to_string. §10.5.17 Value Element is ST_Value and
+/// ST_Value::to_string. §10.5.18 XPath Element is XPath, read_xpath, and
+/// write_xpath. §10.6 Relationships Transform Algorithm is
+/// apply_relationships_transform. §10.7 Digital Signature Example is covered by
+/// round-trip tests over the same markup shapes. §10.8 Generating Signatures is
+/// generate_signature. §10.9 Validating Signatures is validate_signature.
 ///
-/// SDD 1. Scope: ECMA-376 Part 2 §10 Digital Signatures part and the
-/// opc-digSig schema are represented by the package identifier, the
-/// digital_signature_ns namespace helper, the typed domain values, and the XML
-/// reader/builder entry points. The owned scope is the 30 ECMA-376 sections
-/// listed above and the single opc-digSig schema bundle.
+/// §4 Schema Facts: schema opc-digSig.xsd uses namespace
+/// http://schemas.openxmlformats.org/package/2006/digital-signature. XSD
+/// element RelationshipReference is RelationshipReference,
+/// read_relationship_reference, and write_relationship_reference. XSD element
+/// RelationshipsGroupReference is RelationshipsGroupReference,
+/// read_relationships_group_reference, and write_relationships_group_reference.
+/// XSD element SignatureTime is SignatureTime, read_signature_time, and
+/// write_signature_time. XSD complex type CT_RelationshipReference is
+/// RelationshipReference. XSD complex type CT_RelationshipsGroupReference is
+/// RelationshipsGroupReference. XSD complex type CT_SignatureTime is
+/// SignatureTime. XSD simple type ST_Format is ST_Format, ST_Format::new, and
+/// ST_Format::to_string. XSD simple type ST_Value is ST_Value, ST_Value::new,
+/// and ST_Value::to_string.
 ///
-/// - §1 Scope: RelationshipReference, RelationshipsGroupReference, and
-///   SignatureTime model the opc-digSig XML values used by signature
-///   references, relationship-group references, and signature timestamps.
-/// - §2 Conformance C1: read_relationship_reference,
-///   read_relationships_group_reference, and read_signature_time accept the
-///   top-level elements owned by opc-digSig.xsd.
-/// - §2 Conformance C2: RelationshipReference::new,
-///   RelationshipsGroupReference::new, ST_Format::new,
-///   ST_Value::new, and the XML readers reject missing attributes,
-///   unexpected elements, and invalid child structure through SchemaViolation.
-/// - §2 Conformance C3: the writer functions preserve the required attributes
-///   and child values when converting typed values back to XML.
-/// - §2 Conformance C4: ST_Format::new and ST_Value::new enforce ST_Format
-///   and ST_Value lexical forms.
-/// - §2 Conformance C5: SchemaViolation carries the §10 section and local
-///   element or attribute path for diagnostics.
-/// - 9. Drift Measurement Hooks: coverage.json is represented by the public
-///   domain symbols named below, the read/write entry points, and the
-///   package_name overview.
-/// - §5 Inputs I1: XML byte streams enter through the read_* functions.
-/// - §5 Inputs I2: digital_signature_ns supplies the namespace context for
-///   http://schemas.openxmlformats.org/package/2006/digital-signature.
-/// - §5 Inputs I3: require_resource records missing signature resources that
-///   the surrounding OPC package resolver could not supply.
+/// §5 Inputs I1 are XML byte streams passed to read_* functions. I2 is the
+/// namespace context checked by digital_signature_ns and the XML-Signature
+/// namespace readers. I3 is the package-level resolver contract reported with
+/// ResourceMissing when the surrounding OPC layer cannot supply a referenced
+/// signature resource.
 ///
-/// SDD 6. Outputs: O1 is a typed domain value tree exposing the elements and
-/// attributes listed in the opc-digSig schema: RelationshipReference,
-/// RelationshipsGroupReference, SignatureTime, CT_RelationshipReference,
-/// CT_RelationshipsGroupReference, CT_SignatureTime, ST_Format, and ST_Value.
-/// O2 is produced by write_relationship_reference,
-/// write_relationships_group_reference, and write_signature_time as an XML
-/// byte stream that re-validates against opc-digSig.xsd and preserves
-/// read/write round-trip identity for parsed element and attribute data.
+/// §6 Outputs O1 are typed domain values: RelationshipReference,
+/// RelationshipsGroupReference, SignatureTime, Signature, SignedInfo,
+/// CanonicalizationMethod, SignatureMethod, Reference, Transform, DigestMethod,
+/// Object, Manifest, SignatureProperty, XPath, ST_Format, and ST_Value. O2 is
+/// XML bytes from write_relationship_reference,
+/// write_relationships_group_reference, write_signature_time, write_signature,
+/// write_signed_info, write_canonicalization_method, write_signature_method,
+/// write_reference, write_transform, write_digest_method, write_object,
+/// write_manifest, write_signature_property, and write_xpath.
 ///
-/// SDD 7. Invariants: V1 keeps elements from other packages out of this parser
-/// and routes cross-package references through the OPC layer; V2 keeps complex
-/// type element ordering in schema sequence, including CT_SignatureTime Format
-/// before Value; V3 materialises validated domain structures through
-/// constructors before consumers receive them.
+/// §7 Invariants V1 keeps foreign package elements routed through package
+/// boundaries. V2 preserves schema child order and parsed XML-Signature child
+/// node order. V3 exposes constructed domain values only after required
+/// attributes and simple-type lexical constraints are checked.
 ///
-/// SDD 8. Errors: E1 XmlMalformed is raised by @xml for invalid XML bytes; E2
-/// SchemaViolation reports occurrence, cardinality, required-attribute, type,
-/// and enumeration or pattern failures against opc-digSig.xsd; E3
-/// UnsupportedFeature identifies known §10 constructs outside this build; E4
-/// ResourceMissing identifies unresolved relationship targets or signature
-/// resources delegated to the surrounding OPC package resolver. Each public
-/// error carries a section number and local element or attribute path when
-/// known.
+/// §8 Errors E1 XmlMalformed comes from @xml parsing and is mapped to
+/// SchemaViolation by the XML-Signature shell readers. E2 SchemaViolation
+/// reports malformed opc-digSig structure and lexical constraints. E3
+/// UnsupportedFeature is raised by apply_relationships_transform,
+/// generate_signature, and validate_signature. E4 ResourceMissing is the
+/// resolver error type for missing OPC signature resources.
 ///
-/// SDD 9. Drift Measurement Hooks: coverage.json is represented by source
-/// references to the §10 sections, the schema identifiers, package_name,
-/// digital_signature_ns, the public domain symbols, the read/write entry
-/// points, and the error helpers. Public symbols in this package are expected
-/// to trace back to those section or schema identifiers.
-///
-/// Schema bundle opc-digSig.xsd has target namespace
-/// http://schemas.openxmlformats.org/package/2006/digital-signature. Its
-/// top-level elements are RelationshipReference,
-/// RelationshipsGroupReference, and SignatureTime; its complex types are
-/// CT_RelationshipReference, CT_RelationshipsGroupReference, and
-/// CT_SignatureTime; its simple types are ST_Format and ST_Value.
-///
-/// Return the implementation package identifier for
-/// ecma376/opc/digital_signatures.
+/// §9 Drift Measurement Hooks are the §10 section references, schema
+/// identifiers, package_name, digital_signature_ns, public domain symbols,
+/// reader and writer entry points, algorithm stubs, and public error types
+/// listed in this package overview.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/opc/digital_signatures"
 }
