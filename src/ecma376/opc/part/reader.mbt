@@ -1,7 +1,8 @@
 ///|
 /// Read OPC §9 Thumbnails binary image bytes into a ThumbnailPart. This is the
-/// §5 Inputs path for thumbnail image content because thumbnails are related
-/// image parts and have no XML schema of their own.
+/// implementation entry for §1 Scope and §3 Specification Sections TOC
+/// coverage: the single ECMA-376 Part 2 section owned by this package is §9
+/// Thumbnails.
 pub fn read_thumbnail_part(name : PartName, bytes : Bytes) -> ThumbnailPart {
   ThumbnailPart::new(name, bytes)
 }
@@ -19,10 +20,12 @@ pub fn read_part(
 }
 
 ///|
-/// Read the §5 Inputs XML byte stream for coreProperties and CT_CoreProperties.
-/// XML well-formedness failures are @xml.XmlMalformed E1; schema failures are
-/// OPC §8 E2 SchemaViolation with the §9 source section, and C3/V2 preserve
-/// parsed attributes and child order for round-trip writing.
+/// Read the §5 Inputs I1 XML byte stream for coreProperties and
+/// CT_CoreProperties, using §5 Inputs I2 namespace context for the
+/// core-properties target namespace. XML well-formedness failures are
+/// @xml.XmlMalformed E1; schema failures are OPC §8 E2 SchemaViolation with
+/// the §9 source section, and C3/V2 preserve parsed attributes and child order
+/// for round-trip writing.
 pub fn read_core_properties(bytes : Bytes) -> CoreProperties raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "coreProperties", core_properties_ns()) {
@@ -37,8 +40,12 @@ pub fn read_core_properties(bytes : Bytes) -> CoreProperties raise {
 }
 
 ///|
-/// Read the §5 Inputs XML byte stream for the opc-digSig RelationshipReference
-/// top-level element and CT_RelationshipReference schema identifier.
+/// Read the §5 Inputs XML byte stream for Schema `opc-digSig`. The owned
+/// inventory is top-level elements RelationshipReference,
+/// RelationshipsGroupReference, and SignatureTime; complex types
+/// CT_RelationshipReference, CT_RelationshipsGroupReference, and
+/// CT_SignatureTime; and simple types ST_Format and ST_Value. This function
+/// accepts the RelationshipReference element and CT_RelationshipReference.
 pub fn read_relationship_reference(
   bytes : Bytes,
 ) -> RelationshipReference raise {
@@ -59,7 +66,8 @@ pub fn read_relationship_reference(
 ///|
 /// Read the §5 Inputs XML byte stream for the opc-digSig
 /// RelationshipsGroupReference top-level element and
-/// CT_RelationshipsGroupReference schema identifier.
+/// CT_RelationshipsGroupReference schema identifier, using the digital-
+/// signature target namespace from §4 Schema Facts.
 pub fn read_relationships_group_reference(
   bytes : Bytes,
 ) -> RelationshipsGroupReference raise {
@@ -88,7 +96,8 @@ pub fn read_relationships_group_reference(
 ///|
 /// Read the §5 Inputs XML byte stream for SignatureTime, CT_SignatureTime,
 /// ST_Format, and ST_Value while enforcing the opc-digSig sequence Format then
-/// Value for V2 and rejecting C4 pattern violations as SchemaViolation.
+/// Value for §7 Invariants V2 and rejecting C4 pattern violations as
+/// SchemaViolation.
 pub fn read_signature_time(bytes : Bytes) -> SignatureTime raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "SignatureTime", digital_signature_ns()) {

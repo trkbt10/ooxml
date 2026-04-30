@@ -6,8 +6,10 @@ pub(all) struct PartName {
 } derive(Eq, Debug)
 
 ///|
-/// Parse a package part name for OPC §9 Thumbnails; C2 failures are reported
-/// as SchemaViolation with the source section number.
+/// Parse a package part name for OPC §9 Thumbnails. This enforces §2
+/// Conformance C2 by rejecting malformed part names that violate structural
+/// constraints, and C5 by reporting SchemaViolation with the §9 section
+/// reference and local path.
 pub fn PartName::parse(value : String) -> PartName raise SchemaViolation {
   if !value.has_prefix("/") {
     raise SchemaViolation(
@@ -31,8 +33,8 @@ pub fn PartName::parse(value : String) -> PartName raise SchemaViolation {
 }
 
 ///|
-/// Return the OPC §9 Thumbnails PartName lexical form for package and part
-/// relationship targets.
+/// Return the OPC §6 Outputs O1 typed domain value as the lexical part-name
+/// attribute used by §9 Thumbnails relationship targets.
 pub fn PartName::to_string(self : PartName) -> String {
   self.value
 }
@@ -79,15 +81,19 @@ fn PackagePart::new(
 }
 
 ///|
-/// CT_Keyword value from the §4 per-schema identifier inventory for
-/// opc-coreProperties.xsd coreProperties.
+/// CT_Keyword value from schema bundle opc-coreProperties.xsd in the
+/// http://schemas.openxmlformats.org/package/2006/metadata/core-properties
+/// target namespace. It contributes to the coreProperties top-level element
+/// and the CT_Keywords container.
 pub(all) struct CoreKeyword {
   value : String
 } derive(Eq, Debug)
 
 ///|
-/// CT_Keywords value from the §4 per-schema identifier inventory for
-/// opc-coreProperties.xsd coreProperties.
+/// CT_Keywords container from schema bundle opc-coreProperties.xsd in the
+/// http://schemas.openxmlformats.org/package/2006/metadata/core-properties
+/// target namespace. The values array preserves the CT_Keyword value sequence
+/// exposed by the coreProperties element.
 pub(all) struct CoreKeywords {
   values : Array[CoreKeyword]
 } derive(Eq, Debug)
@@ -107,7 +113,9 @@ fn CoreProperties::new(document : @xml.Document) -> CoreProperties {
 
 ///|
 /// RelationshipReference top-level element and CT_RelationshipReference from
-/// the §4 per-schema identifier inventory for opc-digSig.xsd.
+/// schema bundle opc-digSig.xsd in the
+/// http://schemas.openxmlformats.org/package/2006/digital-signature target
+/// namespace.
 pub(all) struct RelationshipReference {
   source_id : String
 } derive(Eq, Debug)
@@ -129,8 +137,9 @@ fn RelationshipReference::new(
 
 ///|
 /// RelationshipsGroupReference top-level element and
-/// CT_RelationshipsGroupReference from the §4 per-schema identifier inventory
-/// for opc-digSig.xsd.
+/// CT_RelationshipsGroupReference from schema bundle opc-digSig.xsd in the
+/// http://schemas.openxmlformats.org/package/2006/digital-signature target
+/// namespace.
 pub(all) struct RelationshipsGroupReference {
   source_type : String
 } derive(Eq, Debug)
@@ -151,8 +160,9 @@ fn RelationshipsGroupReference::new(
 }
 
 ///|
-/// ST_Format simple type for SignatureTime from the §4 per-schema identifier
-/// inventory for opc-digSig.xsd.
+/// ST_Format simple type for SignatureTime from schema bundle opc-digSig.xsd
+/// in the http://schemas.openxmlformats.org/package/2006/digital-signature
+/// target namespace.
 pub(all) struct SignatureTimeFormat {
   value : String
 } derive(Eq, Debug)
@@ -174,8 +184,9 @@ fn SignatureTimeFormat::new(
 }
 
 ///|
-/// ST_Value simple type for SignatureTime from the §4 per-schema identifier
-/// inventory for opc-digSig.xsd.
+/// ST_Value simple type for SignatureTime from schema bundle opc-digSig.xsd in
+/// the http://schemas.openxmlformats.org/package/2006/digital-signature target
+/// namespace.
 pub(all) struct SignatureTimeValue {
   value : String
 } derive(Eq, Debug)
@@ -197,9 +208,11 @@ fn SignatureTimeValue::new(
 }
 
 ///|
-/// SignatureTime top-level element and CT_SignatureTime from the §4 per-schema
-/// identifier inventory for opc-digSig.xsd; the builder preserves V2 child
-/// order by writing Format before Value.
+/// SignatureTime top-level element and CT_SignatureTime from schema bundle
+/// opc-digSig.xsd in the
+/// http://schemas.openxmlformats.org/package/2006/digital-signature target
+/// namespace; the builder preserves V2 child order by writing Format before
+/// Value.
 pub(all) struct SignatureTime {
   format : SignatureTimeFormat
   value : SignatureTimeValue

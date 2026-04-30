@@ -54,69 +54,52 @@ pub suberror UnsupportedFeature {
 pub(all) struct CoreKeyword {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn CoreKeyword::new(String) -> Self
 
 pub(all) struct CoreKeywords {
   values : Array[CoreKeyword]
 } derive(Eq, @debug.Debug)
-pub fn CoreKeywords::new(Array[String]) -> Self
 
 pub(all) struct CoreProperties {
   document : @xml.Document
 } derive(Eq, @debug.Debug)
-pub fn CoreProperties::new(@xml.Document) -> Self
-
-pub(all) struct PackUri {
-  value : String
-} derive(Eq, @debug.Debug)
-pub fn PackUri::parse(String) -> Self raise SchemaViolation
-pub fn PackUri::to_string(Self) -> String
 
 pub(all) struct PackagePart {
   name : PartName
   content_type : String
   data : Bytes
 } derive(Eq, @debug.Debug)
-pub fn PackagePart::new(PartName, String, Bytes) -> Self raise SchemaViolation
 
 pub(all) struct PartName {
   value : String
 } derive(Eq, @debug.Debug)
 pub fn PartName::parse(String) -> Self raise SchemaViolation
 pub fn PartName::to_string(Self) -> String
-pub fn PartName::zip_item_name(Self) -> String
 
 pub(all) struct RelationshipReference {
   source_id : String
 } derive(Eq, @debug.Debug)
-pub fn RelationshipReference::new(String) -> Self raise SchemaViolation
 
 pub(all) struct RelationshipsGroupReference {
   source_type : String
 } derive(Eq, @debug.Debug)
-pub fn RelationshipsGroupReference::new(String) -> Self raise SchemaViolation
 
 pub(all) struct SignatureTime {
   format : SignatureTimeFormat
   value : SignatureTimeValue
 } derive(Eq, @debug.Debug)
-pub fn SignatureTime::new(SignatureTimeFormat, SignatureTimeValue) -> Self
 
 pub(all) struct SignatureTimeFormat {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn SignatureTimeFormat::new(String) -> Self raise SchemaViolation
 
 pub(all) struct SignatureTimeValue {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn SignatureTimeValue::new(String) -> Self raise SchemaViolation
 
 pub(all) struct ThumbnailPart {
   name : PartName
   data : Bytes
 } derive(Eq, @debug.Debug)
-pub fn ThumbnailPart::new(PartName, Bytes) -> Self
 
 // Type aliases
 
