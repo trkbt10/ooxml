@@ -213,7 +213,8 @@ pub fn CT_ManualBreak::new(element : @xml.Element) -> CT_ManualBreak {
 }
 
 ///|
-/// XSD complex type CT_RPR with lit, nor, brk, and aln children (§22.1.x).
+/// Schema shared-math.xsd complex type CT_RPR with lit CT_OnOff, nor CT_OnOff,
+/// brk CT_ManualBreak, and aln CT_OnOff children (§22.1.x).
 /// OMML run property set with lit, nor, brk, aln, scr, and sty children.
 pub(all) struct CT_RPR {
   element : @xml.Element
@@ -226,7 +227,8 @@ pub fn CT_RPR::new(element : @xml.Element) -> CT_RPR {
 }
 
 ///|
-/// XSD complex type CT_Text (§22.1.x).
+/// Schema shared-math.xsd complex type CT_Text with base s:ST_String and
+/// xml:space attribute group reference (§22.1.x).
 /// OMML run text content.
 pub(all) struct CT_Text {
   element : @xml.Element
@@ -239,7 +241,8 @@ pub fn CT_Text::new(element : @xml.Element) -> CT_Text {
 }
 
 ///|
-/// XSD complex type CT_R with rPr CT_RPR and t CT_Text children (§22.1.x).
+/// Schema shared-math.xsd complex type CT_R with rPr CT_RPR and t CT_Text
+/// children (§22.1.x).
 /// OMML math run with rPr and t children.
 pub(all) struct CT_R {
   element : @xml.Element
@@ -330,7 +333,8 @@ pub fn CT_BoxPr::new(element : @xml.Element) -> CT_BoxPr {
 }
 
 ///|
-/// XSD complex type CT_Box with boxPr CT_BoxPr and e CT_OMathArg children (§22.1.x).
+/// Schema shared-math.xsd complex type CT_Box with boxPr CT_BoxPr and
+/// e CT_OMathArg children (§22.1.x).
 /// OMML box object.
 pub(all) struct CT_Box {
   element : @xml.Element
@@ -382,7 +386,8 @@ pub fn CT_DPr::new(element : @xml.Element) -> CT_DPr {
 }
 
 ///|
-/// XSD complex type CT_D with dPr CT_DPr and e CT_OMathArg children (§22.1.x).
+/// Schema shared-math.xsd complex type CT_D with dPr CT_DPr and e CT_OMathArg
+/// children (§22.1.x).
 /// OMML delimiter object with dPr and e children.
 pub(all) struct CT_D {
   element : @xml.Element
@@ -564,7 +569,7 @@ pub fn CT_MCPr::new(element : @xml.Element) -> CT_MCPr {
 }
 
 ///|
-/// XSD complex type CT_MC with mcPr CT_MCPr child (§22.1.x).
+/// Schema shared-math.xsd complex type CT_MC with mcPr CT_MCPr child (§22.1.x).
 /// OMML matrix column.
 pub(all) struct CT_MC {
   element : @xml.Element
@@ -590,7 +595,10 @@ pub fn CT_MCS::new(element : @xml.Element) -> CT_MCS {
 }
 
 ///|
-/// XSD complex type CT_MPr with baseJc, plcHide, spacing, mcs, and ctrlPr children (§22.1.x).
+/// Schema shared-math.xsd complex type CT_MPr with baseJc CT_YAlign,
+/// plcHide CT_OnOff, rSpRule CT_SpacingRule, cGpRule CT_SpacingRule,
+/// rSp CT_UnSignedInteger, cSp CT_UnSignedInteger, cGp CT_UnSignedInteger,
+/// mcs CT_MCS, and ctrlPr CT_CtrlPr children (§22.1.x).
 /// OMML matrix properties with baseJc, plcHide, spacing, mcs, and ctrlPr children.
 pub(all) struct CT_MPr {
   element : @xml.Element
@@ -616,7 +624,8 @@ pub fn CT_MR::new(element : @xml.Element) -> CT_MR {
 }
 
 ///|
-/// XSD complex type CT_M with mPr CT_MPr and mr CT_MR children (§22.1.x).
+/// Schema shared-math.xsd complex type CT_M with mPr CT_MPr and mr CT_MR
+/// children (§22.1.x).
 /// OMML matrix object with mPr and mr children.
 pub(all) struct CT_M {
   element : @xml.Element
@@ -902,7 +911,11 @@ pub fn CT_BreakBinSub::new(element : @xml.Element) -> CT_BreakBinSub {
 }
 
 ///|
-/// XSD complex type CT_MathPr with mathFont, brkBin, brkBinSub, margins, spacing, and limit children (§22.1.x).
+/// Schema shared-math.xsd complex type CT_MathPr with mathFont CT_String,
+/// brkBin CT_BreakBin, brkBinSub CT_BreakBinSub, smallFrac CT_OnOff,
+/// dispDef CT_OnOff, margin and spacing CT_TwipsMeasure children, defJc
+/// CT_OMathJc, wrapRight CT_OnOff, intLim CT_LimLoc, and naryLim CT_LimLoc
+/// children (§22.1.x).
 /// OMML document math properties with mathFont, margins, spacing, defaults, intLim, and naryLim children.
 pub(all) struct CT_MathPr {
   element : @xml.Element
@@ -928,7 +941,8 @@ pub fn CT_OMathPara::new(element : @xml.Element) -> CT_OMathPara {
 }
 
 ///|
-/// XSD complex type CT_OMath with EG_OMathElements children for top-level oMath (§22.1.x).
+/// Schema shared-math.xsd complex type CT_OMath for the top-level oMath
+/// element, carrying EG_OMathElements children (§22.1.x).
 /// OMML inline or display math zone containing EG_OMathElements children.
 pub(all) struct CT_OMath {
   element : @xml.Element
@@ -951,6 +965,36 @@ pub fn CT_OMath::children(self : CT_OMath) -> Array[EG_OMathElements] {
     }
   }
   children
+}
+
+///|
+/// Schema shared-math.xsd complex type CT_OMath.
+pub fn CT_OMath::schema_type_name(_self : CT_OMath) -> String {
+  "CT_OMath"
+}
+
+///|
+/// Return CT_Box child names for boxPr CT_BoxPr and e CT_OMathArg.
+pub fn CT_Box::child_names(self : CT_Box) -> Array[String] {
+  omml_child_names(self.element, ["boxPr", "e"])
+}
+
+///|
+/// Return CT_D child names for dPr CT_DPr and e CT_OMathArg.
+pub fn CT_D::child_names(self : CT_D) -> Array[String] {
+  omml_child_names(self.element, ["dPr", "e"])
+}
+
+///|
+/// Return CT_MC child names for mcPr CT_MCPr.
+pub fn CT_MC::child_names(self : CT_MC) -> Array[String] {
+  omml_child_names(self.element, ["mcPr"])
+}
+
+///|
+/// Return CT_R child names for rPr CT_RPR and t CT_Text.
+pub fn CT_R::child_names(self : CT_R) -> Array[String] {
+  omml_child_names(self.element, ["rPr", "t"])
 }
 
 ///|

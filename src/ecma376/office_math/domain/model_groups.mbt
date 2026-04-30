@@ -1,5 +1,6 @@
 ///|
-/// XSD model group EG_ScriptStyle with scr CT_Script and sty CT_Style children (§22.1.x).
+/// Schema shared-math.xsd model group EG_ScriptStyle with scr CT_Script and
+/// sty CT_Style children (§22.1.x).
 /// OMML script style model group with optional scr CT_Script and sty CT_Style children.
 pub(all) struct EG_ScriptStyle {
   element : @xml.Element
@@ -15,6 +16,23 @@ pub fn EG_ScriptStyle::new(element : @xml.Element) -> EG_ScriptStyle {
 /// Construct XSD model group EG_ScriptStyle (§22.1.x).
 pub fn eg_script_style(element : @xml.Element) -> EG_ScriptStyle {
   EG_ScriptStyle::new(element)
+}
+
+///|
+/// Return EG_ScriptStyle child names for scr CT_Script and sty CT_Style.
+pub fn EG_ScriptStyle::child_names(self : EG_ScriptStyle) -> Array[String] {
+  let names : Array[String] = []
+  for child in self.element.children {
+    match child {
+      Element(element) =>
+        match element.name.local_name {
+          "scr" | "sty" => names.push(element.name.local_name)
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  names
 }
 
 ///|

@@ -4,6 +4,8 @@ package "trkbt10/ooxml/ecma376/office_math"
 // Values
 pub fn package_name() -> String
 
+pub fn schema_bundle_name() -> String
+
 // Errors
 
 // Types and methods
