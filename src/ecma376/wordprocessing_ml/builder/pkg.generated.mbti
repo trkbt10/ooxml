@@ -8,6 +8,8 @@ import {
 // Values
 pub fn package_name() -> String
 
+pub fn write_anchor(@domain.CT_Anchor) -> Bytes
+
 pub fn write_comments(@domain.CT_Comments) -> Bytes
 
 pub fn write_document(@domain.CT_Document) -> Bytes
@@ -24,6 +26,8 @@ pub fn write_glossary_document(@domain.CT_GlossaryDocument) -> Bytes
 
 pub fn write_hdr(@domain.CT_HdrFtr) -> Bytes
 
+pub fn write_inline(@domain.CT_Inline) -> Bytes
+
 pub fn write_numbering(@domain.CT_Numbering) -> Bytes
 
 pub fn write_recipients(@domain.CT_Recipients) -> Bytes
@@ -33,6 +37,12 @@ pub fn write_settings(@domain.CT_Settings) -> Bytes
 pub fn write_styles(@domain.CT_Styles) -> Bytes
 
 pub fn write_web_settings(@domain.CT_WebSettings) -> Bytes
+
+pub fn write_wgp(@domain.CT_WordprocessingGroup) -> Bytes
+
+pub fn write_wpc(@domain.CT_WordprocessingCanvas) -> Bytes
+
+pub fn write_wsp(@domain.CT_WordprocessingShape) -> Bytes
 
 // Errors
 

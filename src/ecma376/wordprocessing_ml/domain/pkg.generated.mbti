@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn anchor(@xml.Element) -> CT_Anchor
+
 pub fn comments(@xml.Element) -> CT_Comments
 
 pub fn document(@xml.Element) -> CT_Document
@@ -23,6 +25,8 @@ pub fn glossary_document(@xml.Element) -> CT_GlossaryDocument
 
 pub fn hdr(@xml.Element) -> CT_HdrFtr
 
+pub fn inline(@xml.Element) -> CT_Inline
+
 pub fn numbering(@xml.Element) -> CT_Numbering
 
 pub fn package_name() -> String
@@ -36,6 +40,12 @@ pub fn settings(@xml.Element) -> CT_Settings
 pub fn styles(@xml.Element) -> CT_Styles
 
 pub fn web_settings(@xml.Element) -> CT_WebSettings
+
+pub fn wgp(@xml.Element) -> CT_WordprocessingGroup
+
+pub fn wpc(@xml.Element) -> CT_WordprocessingCanvas
+
+pub fn wsp(@xml.Element) -> CT_WordprocessingShape
 
 // Errors
 pub suberror SchemaViolation {
@@ -77,6 +87,13 @@ pub(all) struct CT_AltChunkPr {
 pub fn CT_AltChunkPr::new(@xml.Element) -> Self
 pub fn CT_AltChunkPr::parse(@xml.Element) -> Self
 pub fn CT_AltChunkPr::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Anchor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Anchor::new(@xml.Element) -> Self
+pub fn CT_Anchor::parse(@xml.Element) -> Self
+pub fn CT_Anchor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Attr {
   element : @xml.Element
@@ -526,6 +543,13 @@ pub fn CT_EdnProps::new(@xml.Element) -> Self
 pub fn CT_EdnProps::parse(@xml.Element) -> Self
 pub fn CT_EdnProps::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_EffectExtent {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EffectExtent::new(@xml.Element) -> Self
+pub fn CT_EffectExtent::parse(@xml.Element) -> Self
+pub fn CT_EffectExtent::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Em {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -757,6 +781,13 @@ pub fn CT_GlossaryDocument::new(@xml.Element) -> Self
 pub fn CT_GlossaryDocument::parse(@xml.Element) -> Self
 pub fn CT_GlossaryDocument::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_GraphicFrame {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GraphicFrame::new(@xml.Element) -> Self
+pub fn CT_GraphicFrame::parse(@xml.Element) -> Self
+pub fn CT_GraphicFrame::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Guid {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -820,6 +851,13 @@ pub fn CT_Ind::new(@xml.Element) -> Self
 pub fn CT_Ind::parse(@xml.Element) -> Self
 pub fn CT_Ind::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_Inline {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Inline::new(@xml.Element) -> Self
+pub fn CT_Inline::parse(@xml.Element) -> Self
+pub fn CT_Inline::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Jc {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -882,6 +920,13 @@ pub(all) struct CT_LineNumber {
 pub fn CT_LineNumber::new(@xml.Element) -> Self
 pub fn CT_LineNumber::parse(@xml.Element) -> Self
 pub fn CT_LineNumber::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_LinkedTextboxInformation {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LinkedTextboxInformation::new(@xml.Element) -> Self
+pub fn CT_LinkedTextboxInformation::parse(@xml.Element) -> Self
+pub fn CT_LinkedTextboxInformation::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Lock {
   element : @xml.Element
@@ -1260,6 +1305,20 @@ pub(all) struct CT_Placeholder {
 pub fn CT_Placeholder::new(@xml.Element) -> Self
 pub fn CT_Placeholder::parse(@xml.Element) -> Self
 pub fn CT_Placeholder::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_PosH {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PosH::new(@xml.Element) -> Self
+pub fn CT_PosH::parse(@xml.Element) -> Self
+pub fn CT_PosH::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_PosV {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PosV::new(@xml.Element) -> Self
+pub fn CT_PosV::parse(@xml.Element) -> Self
+pub fn CT_PosV::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Proof {
   element : @xml.Element
@@ -1877,6 +1936,13 @@ pub fn CT_TextScale::new(@xml.Element) -> Self
 pub fn CT_TextScale::parse(@xml.Element) -> Self
 pub fn CT_TextScale::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_TextboxInfo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextboxInfo::new(@xml.Element) -> Self
+pub fn CT_TextboxInfo::parse(@xml.Element) -> Self
+pub fn CT_TextboxInfo::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_TextboxTightWrap {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1940,6 +2006,13 @@ pub fn CT_TwipsMeasure::new(@xml.Element) -> Self
 pub fn CT_TwipsMeasure::parse(@xml.Element) -> Self
 pub fn CT_TwipsMeasure::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_TxbxContent {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TxbxContent::new(@xml.Element) -> Self
+pub fn CT_TxbxContent::parse(@xml.Element) -> Self
+pub fn CT_TxbxContent::to_element(Self) -> @xml.Element
+
 pub(all) struct CT_Underline {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1988,6 +2061,83 @@ pub(all) struct CT_WebSettings {
 pub fn CT_WebSettings::new(@xml.Element) -> Self
 pub fn CT_WebSettings::parse(@xml.Element) -> Self
 pub fn CT_WebSettings::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WordprocessingCanvas {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WordprocessingCanvas::new(@xml.Element) -> Self
+pub fn CT_WordprocessingCanvas::parse(@xml.Element) -> Self
+pub fn CT_WordprocessingCanvas::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WordprocessingContentPart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WordprocessingContentPart::new(@xml.Element) -> Self
+pub fn CT_WordprocessingContentPart::parse(@xml.Element) -> Self
+pub fn CT_WordprocessingContentPart::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WordprocessingContentPartNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WordprocessingContentPartNonVisual::new(@xml.Element) -> Self
+pub fn CT_WordprocessingContentPartNonVisual::parse(@xml.Element) -> Self
+pub fn CT_WordprocessingContentPartNonVisual::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WordprocessingGroup {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WordprocessingGroup::new(@xml.Element) -> Self
+pub fn CT_WordprocessingGroup::parse(@xml.Element) -> Self
+pub fn CT_WordprocessingGroup::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WordprocessingShape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WordprocessingShape::new(@xml.Element) -> Self
+pub fn CT_WordprocessingShape::parse(@xml.Element) -> Self
+pub fn CT_WordprocessingShape::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WrapNone {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WrapNone::new(@xml.Element) -> Self
+pub fn CT_WrapNone::parse(@xml.Element) -> Self
+pub fn CT_WrapNone::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WrapPath {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WrapPath::new(@xml.Element) -> Self
+pub fn CT_WrapPath::parse(@xml.Element) -> Self
+pub fn CT_WrapPath::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WrapSquare {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WrapSquare::new(@xml.Element) -> Self
+pub fn CT_WrapSquare::parse(@xml.Element) -> Self
+pub fn CT_WrapSquare::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WrapThrough {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WrapThrough::new(@xml.Element) -> Self
+pub fn CT_WrapThrough::parse(@xml.Element) -> Self
+pub fn CT_WrapThrough::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WrapTight {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WrapTight::new(@xml.Element) -> Self
+pub fn CT_WrapTight::parse(@xml.Element) -> Self
+pub fn CT_WrapTight::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WrapTopBottom {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WrapTopBottom::new(@xml.Element) -> Self
+pub fn CT_WrapTopBottom::parse(@xml.Element) -> Self
+pub fn CT_WrapTopBottom::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WriteProtection {
   element : @xml.Element
@@ -2201,6 +2351,27 @@ pub fn EG_SectPrContents::contains(Self, String) -> Bool
 pub fn EG_SectPrContents::count(Self) -> Int
 pub fn EG_SectPrContents::member_names(Self) -> Array[String]
 pub fn EG_SectPrContents::new(Array[@xml.Element]) -> Self
+
+pub(all) struct EG_WrapType {
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn EG_WrapType::contains(Self, String) -> Bool
+pub fn EG_WrapType::count(Self) -> Int
+pub fn EG_WrapType::new(Array[@xml.Element]) -> Self
+
+pub struct ST_AlignH {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_AlignH::new(String) -> Self raise SchemaViolation
+pub fn ST_AlignH::parse(String) -> Self raise SchemaViolation
+pub fn ST_AlignH::to_string(Self) -> String
+
+pub struct ST_AlignV {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_AlignV::new(String) -> Self raise SchemaViolation
+pub fn ST_AlignV::parse(String) -> Self raise SchemaViolation
+pub fn ST_AlignV::to_string(Self) -> String
 
 pub struct ST_AnnotationVMerge {
   value : String
@@ -2706,6 +2877,13 @@ pub fn ST_PointMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_PointMeasure::parse(String) -> Self raise SchemaViolation
 pub fn ST_PointMeasure::to_string(Self) -> String
 
+pub struct ST_PositionOffset {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PositionOffset::new(String) -> Self raise SchemaViolation
+pub fn ST_PositionOffset::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositionOffset::to_string(Self) -> String
+
 pub struct ST_Proof {
   value : String
 } derive(Eq, @debug.Debug)
@@ -2719,6 +2897,20 @@ pub struct ST_ProofErr {
 pub fn ST_ProofErr::new(String) -> Self raise SchemaViolation
 pub fn ST_ProofErr::parse(String) -> Self raise SchemaViolation
 pub fn ST_ProofErr::to_string(Self) -> String
+
+pub struct ST_RelFromH {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RelFromH::new(String) -> Self raise SchemaViolation
+pub fn ST_RelFromH::parse(String) -> Self raise SchemaViolation
+pub fn ST_RelFromH::to_string(Self) -> String
+
+pub struct ST_RelFromV {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RelFromV::new(String) -> Self raise SchemaViolation
+pub fn ST_RelFromV::parse(String) -> Self raise SchemaViolation
+pub fn ST_RelFromV::to_string(Self) -> String
 
 pub struct ST_RestartNumber {
   value : String
@@ -2943,6 +3135,20 @@ pub struct ST_Wrap {
 pub fn ST_Wrap::new(String) -> Self raise SchemaViolation
 pub fn ST_Wrap::parse(String) -> Self raise SchemaViolation
 pub fn ST_Wrap::to_string(Self) -> String
+
+pub struct ST_WrapDistance {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_WrapDistance::new(String) -> Self raise SchemaViolation
+pub fn ST_WrapDistance::parse(String) -> Self raise SchemaViolation
+pub fn ST_WrapDistance::to_string(Self) -> String
+
+pub struct ST_WrapText {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_WrapText::new(String) -> Self raise SchemaViolation
+pub fn ST_WrapText::parse(String) -> Self raise SchemaViolation
+pub fn ST_WrapText::to_string(Self) -> String
 
 pub struct ST_Zoom {
   value : String
