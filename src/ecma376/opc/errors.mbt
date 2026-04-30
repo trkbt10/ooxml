@@ -17,7 +17,8 @@ pub suberror ResourceMissing {
 } derive(Debug)
 
 ///|
-/// Enforce an OPC package schema condition.
+/// Enforce an OPC package schema condition, including ECMA-376 Part 2 §6.2.5
+/// Xml Usage constraints delegated by XML-owning OPC sub-packages.
 pub fn require_schema(
   valid : Bool,
   section~ : String,

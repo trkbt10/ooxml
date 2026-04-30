@@ -1,6 +1,9 @@
 ///|
 /// OPC §9 Thumbnails use PartName to identify the image part reached from a
-/// package or part relationship.
+/// package or part relationship. The OPC facade maps these names for
+/// ECMA-376 Part 2 §7.3.3 Zip Item Names when deriving ZIP entries. Source:
+/// `references/spec/part2/sections/7.3.3__zip-item-names.md`. Owned by
+/// `src/ecma376/opc`.
 pub(all) struct PartName {
   value : String
 } derive(Eq, Debug)
@@ -55,9 +58,10 @@ fn ThumbnailPart::new(name : PartName, data : Bytes) -> ThumbnailPart {
 }
 
 ///|
-/// Generic OPC package part record used by the surrounding OPC resolver when
-/// it supplies embedded resources, including ECMA-376 Part 2 §8.1 General
-/// Core Properties part payloads and OPC §9 Thumbnails binary payloads.
+/// Generic OPC package part record used by the surrounding OPC resolver. It
+/// participates in OPC facade coverage for ECMA-376 Part 2 §6.2.1 General,
+/// §6.3.1 General, §6.4.1 General, §7.1 General, and §7.3.1 General while it
+/// supplies embedded §8 Core Properties and §9 Thumbnails payloads.
 /// Source anchor: references/spec/part2/sections/8.1__general.md, owned by
 /// src/ecma376/opc/part.
 pub(all) struct PackagePart {
@@ -67,7 +71,11 @@ pub(all) struct PackagePart {
 } derive(Eq, Debug)
 
 ///|
-/// Create an OPC §9 Thumbnails PackagePart.
+/// Create an OPC §9 Thumbnails PackagePart. ECMA-376 Part 2 §8.1 General.
+/// Source anchor: references/spec/part2/sections/8.1__general.md, owned by
+/// src/ecma376/opc/part. The OPC facade also records §6.2.4 Growth Hint and
+/// §7.1 General physical package context without interpreting growth-hint
+/// metadata.
 fn PackagePart::new(
   name : PartName,
   content_type : String,
@@ -120,8 +128,10 @@ pub(all) struct CoreProperties {
 
 ///|
 /// Create a §8.3.3 coreProperties CT_CoreProperties wrapper around validated
-/// XML already checked against the §8.3.1 markup overview and §8.3.2
-/// versioning/extensibility allowance.
+/// XML already checked against ECMA-376 Part 2 §8.3.1 General markup overview
+/// and §8.3.2 versioning/extensibility allowance. Source anchor:
+/// references/spec/part2/sections/8.3.1__general.md, owned by
+/// src/ecma376/opc/part.
 fn CoreProperties::new(document : @xml.Document) -> CoreProperties {
   { document, }
 }

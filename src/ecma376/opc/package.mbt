@@ -1,5 +1,12 @@
 ///|
 /// Raw OPC package part with its package part name, content type, and bytes.
+/// ECMA-376 Part 2 §6.1 General. Source:
+/// `references/spec/part2/sections/6.1__general.md`. Owned by
+/// `src/ecma376/opc`.
+/// ECMA-376 Part 2 §6.2.1 General. ECMA-376 Part 2 §6.2.4 Growth Hint.
+/// ECMA-376 Part 2 §6.2.5 Xml Usage. Each part is represented by its part
+/// name, content type, and byte payload; growth-hint metadata is not
+/// interpreted by this lightweight table.
 pub(all) struct PackagePart {
   name : String
   content_type : String
@@ -7,7 +14,10 @@ pub(all) struct PackagePart {
 } derive(Eq, Debug)
 
 ///|
-/// Parsed OPC package context over a ZIP archive.
+/// Parsed OPC package context over a ZIP archive. ECMA-376 Part 2 §7.2.1
+/// Using Features Of Physical Formats and §7.2.2 Mapped Components are
+/// represented by the ZIP entry table, content-types table, and relationships
+/// tables that determine which physical items hold OPC parts.
 pub(all) struct Package {
   content_types : @content_types.Types
   parts : Array[PackagePart]
@@ -17,9 +27,13 @@ pub(all) struct Package {
 } derive(Eq, Debug)
 
 ///|
-/// §7.3 Mapping to a ZIP file and §6.2.2 Part Names: open OPC package bytes
-/// from a ZIP archive, parse content types and relationships, map ZIP item
-/// names to OPC part names, and validate internal relationship targets.
+/// ECMA-376 Part 2 §7.2.1 Using Features Of Physical Formats and §7.3
+/// Mapping To A Zip File. Source anchor:
+/// references/spec/part2/sections/7.3__mapping-to-a-zip-file.md. §7.3.1
+/// General: open OPC package bytes from a ZIP archive, parse §7.3.7 Mapping
+/// The Media Types Stream from `[Content_Types].xml`, parse relationships, map
+/// ZIP item names to OPC part names, and validate internal relationship
+/// targets.
 pub fn Package::open(bytes : Bytes) -> Package raise {
   let archive = @zip.read(bytes)
   let content_types_bytes = required_entry(archive, "[Content_Types].xml")
@@ -66,8 +80,12 @@ pub fn Package::open(bytes : Bytes) -> Package raise {
 }
 
 ///|
-/// §7.3 Mapping to a ZIP file and §6.2.2 Part Names: save the OPC package
-/// back to ZIP bytes after mapping OPC part names to physical ZIP item names.
+/// ECMA-376 Part 2 §7.2.4 Interleaving and §7.3 Mapping To A Zip File: save
+/// the OPC package back to ZIP bytes after mapping OPC part names to physical
+/// ZIP item names and writing §7.3.7 Mapping The Media Types Stream as
+/// `[Content_Types].xml`. Source:
+/// `references/spec/part2/sections/7.2.4__interleaving.md`. Owned by
+/// `src/ecma376/opc`.
 pub fn Package::save(self : Package) -> Bytes raise {
   let entries : Array[(String, Bytes)] = []
   entries.push(
@@ -100,7 +118,10 @@ pub fn Package::save(self : Package) -> Bytes raise {
 }
 
 ///|
-/// Return a package part by OPC part name such as `/word/document.xml`.
+/// Return a package part by OPC part name such as `/word/document.xml`,
+/// covering ECMA-376 Part 2 §6.3.3 Resolving A Pack Iri To A Resource at the
+/// facade level. Source anchor:
+/// references/spec/part2/sections/6.3.3__resolving-a-pack-iri-to-a-resource.md.
 pub fn Package::part(self : Package, name : String) -> PackagePart? {
   for part in self.parts {
     if part.name == name {
@@ -111,7 +132,11 @@ pub fn Package::part(self : Package, name : String) -> PackagePart? {
 }
 
 ///|
-/// Return package relationships for `/`, or part relationships for a part name.
+/// Return package relationships for `/`, or part relationships for a part
+/// name. ECMA-376 Part 2 §6.4.2 Base Iris and §6.4.3 Examples are represented
+/// by the owner part name used later when resolving internal targets. Sources:
+/// `references/spec/part2/sections/6.4.2__base-iris.md` and
+/// `references/spec/part2/sections/6.4.3__examples.md`.
 pub fn Package::relationships(
   self : Package,
   name : String,
@@ -164,6 +189,9 @@ fn validate_targets(
 }
 
 ///|
+/// Require a ZIP entry such as §7.3.7 Mapping The Media Types Stream
+/// `[Content_Types].xml`, reporting ResourceMissing when the mapped component
+/// is absent.
 fn required_entry(
   archive : @zip.Archive,
   name : String,
@@ -219,6 +247,9 @@ fn relationships_entry_for_part(part_name : String) -> String {
 }
 
 ///|
+/// Map an OPC part name to its ECMA-376 Part 2 §7.3.3 Zip Item Names physical
+/// ZIP item name. Source anchor:
+/// references/spec/part2/sections/7.3.3__zip-item-names.md.
 fn zip_name_from_part_name(name : String) -> String {
   if name.has_prefix("/") {
     name[1:].to_owned()

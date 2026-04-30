@@ -20,12 +20,19 @@
 ///   A Resource; §6.3.4 Composing A Pack Iri; §6.3.5 Equivalence; §6.4
 ///   Resolving Relative References; §6.4.1 General; §6.4.2 Base Iris; §6.4.3
 ///   Examples; §6.5 Relationships; §7 Physical Package Model; §7.1 General;
-///   §7.2.1 Using Features Of Physical Formats; §7.2.2 Mapped Components;
+///   §7.2.1 Using Features Of Physical Formats for generic ZIP features;
+///   §7.2.2 Mapped Components determining which ZIP items hold OPC parts;
 ///   §7.2.3 Mapping Media Types To Parts; §7.2.4 Interleaving; §7.2.5 Mapping
 ///   Part Names To Physical Package Item Names; §7.3 Mapping To A Zip File;
 ///   §7.3.1 General; §7.3.2 Mapping Part Data; §7.3.3 Zip Item Names; §7.3.6
-///   Zip Package Limitations; §7.3.7 Mapping The Media Types Stream; §7.3.8
-///   Mapping The Growth Hint.
+///   Zip Package Limitations; §7.3.7 Mapping The Media Types Stream for
+///   `[Content_Types].xml`; §7.3.8 Mapping The Growth Hint.
+/// - §3 Facade anchors: §6.3.3 Resolving A Pack Iri To A Resource is exposed
+///   by Package::part(name); §7.3 Mapping To A Zip File is exposed by
+///   Package::open(bytes) and Package::save(); §7.3.3 Zip Item Names is
+///   implemented by PartName::zip_item_name in opc/part and by the facade ZIP
+///   name mapping; §7.3.7 Mapping The Media Types Stream is the
+///   `[Content_Types].xml` read/write path delegated to content_types.
 /// - §4 Schema: none directly; content_types, relationships, part, and
 ///   digital_signatures own their schema bundles.
 /// - §5 Inputs I1: this facade consumes no XML byte streams directly; ZIP byte
