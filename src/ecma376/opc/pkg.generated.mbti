@@ -28,6 +28,14 @@ pub suberror UnsupportedFeature {
 } derive(@debug.Debug)
 
 // Types and methods
+pub struct PackUri {
+  authority : String
+  part : String
+} derive(Eq)
+pub fn PackUri::compose(String, String) -> Self
+pub fn PackUri::parse(String) -> Self raise SchemaViolation
+pub fn PackUri::to_string(Self) -> String
+
 pub(all) struct Package {
   content_types : @content_types.Types
   parts : Array[PackagePart]

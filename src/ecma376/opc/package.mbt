@@ -17,8 +17,9 @@ pub(all) struct Package {
 } derive(Eq, Debug)
 
 ///|
-/// Open OPC package bytes from a ZIP archive, parse content types and
-/// relationships, and validate internal relationship targets.
+/// §7.3 Mapping to a ZIP file and §6.2.2 Part Names: open OPC package bytes
+/// from a ZIP archive, parse content types and relationships, map ZIP item
+/// names to OPC part names, and validate internal relationship targets.
 pub fn Package::open(bytes : Bytes) -> Package raise {
   let archive = @zip.read(bytes)
   let content_types_bytes = required_entry(archive, "[Content_Types].xml")
@@ -65,7 +66,8 @@ pub fn Package::open(bytes : Bytes) -> Package raise {
 }
 
 ///|
-/// Save the OPC package back to ZIP bytes.
+/// §7.3 Mapping to a ZIP file and §6.2.2 Part Names: save the OPC package
+/// back to ZIP bytes after mapping OPC part names to physical ZIP item names.
 pub fn Package::save(self : Package) -> Bytes raise {
   let entries : Array[(String, Bytes)] = []
   entries.push(

@@ -41,6 +41,14 @@ test "open reports unresolved internal relationship target" {
 }
 
 ///|
+test "pack uri parses composed value" {
+  let uri = PackUri::compose("example.com", "/word/document.xml")
+  assert_eq(uri.to_string(), "pack://example.com/word/document.xml")
+  let parsed = try! PackUri::parse(uri.to_string())
+  assert_true(parsed == uri)
+}
+
+///|
 fn b(source : String) -> Bytes {
   @utf8.encode(source[:])
 }
