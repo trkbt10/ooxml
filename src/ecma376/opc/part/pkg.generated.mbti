@@ -11,17 +11,43 @@ pub fn package_name() -> String
 
 pub fn read_core_properties(Bytes) -> CoreProperties raise
 
+pub fn read_part(PartName, Bytes) -> PackagePart raise SchemaViolation
+
+pub fn read_relationship_reference(Bytes) -> RelationshipReference raise
+
+pub fn read_relationships_group_reference(Bytes) -> RelationshipsGroupReference raise
+
 pub fn read_signature_time(Bytes) -> SignatureTime raise
+
+pub fn read_thumbnail_part(PartName, Bytes) -> ThumbnailPart
+
+pub fn require_resource(Bool, section~ : String, path~ : String, target~ : String) -> Unit raise ResourceMissing
+
+pub fn require_supported_feature(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise UnsupportedFeature
 
 pub fn write_core_properties(CoreProperties) -> Bytes
 
+pub fn write_part(PackagePart) -> Bytes
+
+pub fn write_relationship_reference(RelationshipReference) -> Bytes
+
+pub fn write_relationships_group_reference(RelationshipsGroupReference) -> Bytes
+
 pub fn write_signature_time(SignatureTime) -> Bytes
 
+pub fn write_thumbnail_part(ThumbnailPart) -> Bytes
+
 // Errors
-pub(all) suberror PartError {
-  SchemaViolation(section~ : String, path~ : String, reason~ : String)
-  UnsupportedFeature(section~ : String, path~ : String, reason~ : String)
+pub suberror ResourceMissing {
   ResourceMissing(section~ : String, path~ : String, target~ : String)
+} derive(@debug.Debug)
+
+pub suberror SchemaViolation {
+  SchemaViolation(section~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
+
+pub suberror UnsupportedFeature {
+  UnsupportedFeature(section~ : String, path~ : String, reason~ : String)
 } derive(@debug.Debug)
 
 // Types and methods
@@ -43,7 +69,7 @@ pub fn CoreProperties::new(@xml.Document) -> Self
 pub(all) struct PackUri {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn PackUri::parse(String) -> Self raise PartError
+pub fn PackUri::parse(String) -> Self raise SchemaViolation
 pub fn PackUri::to_string(Self) -> String
 
 pub(all) struct PackagePart {
@@ -51,24 +77,24 @@ pub(all) struct PackagePart {
   content_type : String
   data : Bytes
 } derive(Eq, @debug.Debug)
-pub fn PackagePart::new(PartName, String, Bytes) -> Self raise PartError
+pub fn PackagePart::new(PartName, String, Bytes) -> Self raise SchemaViolation
 
 pub(all) struct PartName {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn PartName::parse(String) -> Self raise PartError
+pub fn PartName::parse(String) -> Self raise SchemaViolation
 pub fn PartName::to_string(Self) -> String
 pub fn PartName::zip_item_name(Self) -> String
 
 pub(all) struct RelationshipReference {
   source_id : String
 } derive(Eq, @debug.Debug)
-pub fn RelationshipReference::new(String) -> Self raise PartError
+pub fn RelationshipReference::new(String) -> Self raise SchemaViolation
 
 pub(all) struct RelationshipsGroupReference {
   source_type : String
 } derive(Eq, @debug.Debug)
-pub fn RelationshipsGroupReference::new(String) -> Self raise PartError
+pub fn RelationshipsGroupReference::new(String) -> Self raise SchemaViolation
 
 pub(all) struct SignatureTime {
   format : SignatureTimeFormat
@@ -79,12 +105,18 @@ pub fn SignatureTime::new(SignatureTimeFormat, SignatureTimeValue) -> Self
 pub(all) struct SignatureTimeFormat {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn SignatureTimeFormat::new(String) -> Self raise PartError
+pub fn SignatureTimeFormat::new(String) -> Self raise SchemaViolation
 
 pub(all) struct SignatureTimeValue {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn SignatureTimeValue::new(String) -> Self raise PartError
+pub fn SignatureTimeValue::new(String) -> Self raise SchemaViolation
+
+pub(all) struct ThumbnailPart {
+  name : PartName
+  data : Bytes
+} derive(Eq, @debug.Debug)
+pub fn ThumbnailPart::new(PartName, Bytes) -> Self
 
 // Type aliases
 
