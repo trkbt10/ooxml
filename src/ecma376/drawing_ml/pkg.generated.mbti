@@ -1,12 +1,494 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/drawing_ml"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn read_blur_effect(Bytes) -> CT_BlurEffect raise
+
+pub fn read_custom_geometry2d(Bytes) -> CT_CustomGeometry2D raise
+
+pub fn read_effect_list(Bytes) -> CT_EffectList raise
+
+pub fn read_outer_shadow_effect(Bytes) -> CT_OuterShadowEffect raise
+
+pub fn read_preset_geometry2d(Bytes) -> CT_PresetGeometry2D raise
+
+pub fn read_transform2d(Bytes) -> CT_Transform2D raise
+
+pub fn write_blur_effect(CT_BlurEffect) -> Bytes
+
+pub fn write_custom_geometry2d(CT_CustomGeometry2D) -> Bytes
+
+pub fn write_effect_list(CT_EffectList) -> Bytes
+
+pub fn write_outer_shadow_effect(CT_OuterShadowEffect) -> Bytes
+
+pub fn write_preset_geometry2d(CT_PresetGeometry2D) -> Bytes
+
+pub fn write_transform2d(CT_Transform2D) -> Bytes
+
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct CT_AdjPoint2D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AdjPoint2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_AdjustHandleList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AdjustHandleList::new(@xml.Element) -> Self
+
+pub(all) struct CT_AlphaBiLevelEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AlphaBiLevelEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_AlphaCeilingEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AlphaCeilingEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_AlphaFloorEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AlphaFloorEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_AlphaInverseEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AlphaInverseEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_AlphaModulateEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AlphaModulateEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_AlphaModulateFixedEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AlphaModulateFixedEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_AlphaOutsetEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AlphaOutsetEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_AlphaReplaceEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AlphaReplaceEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_Angle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Angle::new(@xml.Element) -> Self
+
+pub(all) struct CT_BiLevelEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BiLevelEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_BlendEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BlendEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_BlurEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BlurEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_ComplementTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ComplementTransform::new(@xml.Element) -> Self
+
+pub(all) struct CT_Connection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Connection::new(@xml.Element) -> Self
+
+pub(all) struct CT_ConnectionSite {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ConnectionSite::new(@xml.Element) -> Self
+
+pub(all) struct CT_ConnectionSiteList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ConnectionSiteList::new(@xml.Element) -> Self
+
+pub(all) struct CT_CustomGeometry2D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomGeometry2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_DuotoneEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_DuotoneEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_EffectContainer {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EffectContainer::new(@xml.Element) -> Self
+
+pub(all) struct CT_EffectList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EffectList::new(@xml.Element) -> Self
+
+pub(all) struct CT_EffectProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EffectProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_EffectReference {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EffectReference::new(@xml.Element) -> Self
+
+pub(all) struct CT_FillEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FillEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_FillOverlayEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FillOverlayEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_FixedPercentage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FixedPercentage::new(@xml.Element) -> Self
+
+pub(all) struct CT_GammaTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GammaTransform::new(@xml.Element) -> Self
+
+pub(all) struct CT_GeomGuide {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GeomGuide::new(@xml.Element) -> Self
+
+pub(all) struct CT_GeomGuideList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GeomGuideList::new(@xml.Element) -> Self
+
+pub(all) struct CT_GeomRect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GeomRect::new(@xml.Element) -> Self
+
+pub(all) struct CT_GlowEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GlowEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_GrayscaleEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GrayscaleEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_GrayscaleTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GrayscaleTransform::new(@xml.Element) -> Self
+
+pub(all) struct CT_GroupTransform2D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupTransform2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_HSLEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HSLEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_InnerShadowEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_InnerShadowEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_InverseGammaTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_InverseGammaTransform::new(@xml.Element) -> Self
+
+pub(all) struct CT_InverseTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_InverseTransform::new(@xml.Element) -> Self
+
+pub(all) struct CT_LuminanceEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LuminanceEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_OuterShadowEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OuterShadowEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_Path2D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Path2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_Path2DArcTo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Path2DArcTo::new(@xml.Element) -> Self
+
+pub(all) struct CT_Path2DClose {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Path2DClose::new(@xml.Element) -> Self
+
+pub(all) struct CT_Path2DCubicBezierTo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Path2DCubicBezierTo::new(@xml.Element) -> Self
+
+pub(all) struct CT_Path2DLineTo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Path2DLineTo::new(@xml.Element) -> Self
+
+pub(all) struct CT_Path2DList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Path2DList::new(@xml.Element) -> Self
+
+pub(all) struct CT_Path2DMoveTo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Path2DMoveTo::new(@xml.Element) -> Self
+
+pub(all) struct CT_Path2DQuadBezierTo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Path2DQuadBezierTo::new(@xml.Element) -> Self
+
+pub(all) struct CT_Percentage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Percentage::new(@xml.Element) -> Self
+
+pub(all) struct CT_Point2D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Point2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_Point3D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Point3D::new(@xml.Element) -> Self
+
+pub(all) struct CT_PolarAdjustHandle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PolarAdjustHandle::new(@xml.Element) -> Self
+
+pub(all) struct CT_PositiveFixedAngle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PositiveFixedAngle::new(@xml.Element) -> Self
+
+pub(all) struct CT_PositiveFixedPercentage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PositiveFixedPercentage::new(@xml.Element) -> Self
+
+pub(all) struct CT_PositivePercentage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PositivePercentage::new(@xml.Element) -> Self
+
+pub(all) struct CT_PositiveSize2D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PositiveSize2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_PresetGeometry2D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PresetGeometry2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_PresetShadowEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PresetShadowEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_PresetTextShape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PresetTextShape::new(@xml.Element) -> Self
+
+pub(all) struct CT_Ratio {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Ratio::new(@xml.Element) -> Self
+
+pub(all) struct CT_ReflectionEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ReflectionEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_RelativeOffsetEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RelativeOffsetEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_RelativeRect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RelativeRect::new(@xml.Element) -> Self
+
+pub(all) struct CT_Scale2D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Scale2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_SoftEdgesEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SoftEdgesEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_SphereCoords {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SphereCoords::new(@xml.Element) -> Self
+
+pub(all) struct CT_TintEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TintEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_Transform2D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Transform2D::new(@xml.Element) -> Self
+
+pub(all) struct CT_TransformEffect {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TransformEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_Vector3D {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Vector3D::new(@xml.Element) -> Self
+
+pub(all) struct CT_XYAdjustHandle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_XYAdjustHandle::new(@xml.Element) -> Self
+
+pub struct ST_Angle {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Angle::new(String) -> Self raise SchemaViolation
+pub fn ST_Angle::parse(String) -> Self raise SchemaViolation
+pub fn ST_Angle::to_string(Self) -> String
+
+pub struct ST_Coordinate {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Coordinate::new(String) -> Self raise SchemaViolation
+pub fn ST_Coordinate::parse(String) -> Self raise SchemaViolation
+pub fn ST_Coordinate::to_string(Self) -> String
+
+pub struct ST_Coordinate32 {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Coordinate32::new(String) -> Self raise SchemaViolation
+pub fn ST_Coordinate32::parse(String) -> Self raise SchemaViolation
+pub fn ST_Coordinate32::to_string(Self) -> String
+
+pub struct ST_Coordinate32Unqualified {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Coordinate32Unqualified::new(String) -> Self raise SchemaViolation
+pub fn ST_Coordinate32Unqualified::parse(String) -> Self raise SchemaViolation
+pub fn ST_Coordinate32Unqualified::to_string(Self) -> String
+
+pub struct ST_CoordinateUnqualified {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_CoordinateUnqualified::new(String) -> Self raise SchemaViolation
+pub fn ST_CoordinateUnqualified::parse(String) -> Self raise SchemaViolation
+pub fn ST_CoordinateUnqualified::to_string(Self) -> String
+
+pub struct ST_FixedAngle {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FixedAngle::new(String) -> Self raise SchemaViolation
+pub fn ST_FixedAngle::parse(String) -> Self raise SchemaViolation
+pub fn ST_FixedAngle::to_string(Self) -> String
+
+pub struct ST_FixedPercentage {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_FixedPercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_FixedPercentage::parse(String) -> Self raise SchemaViolation
+pub fn ST_FixedPercentage::to_string(Self) -> String
+
+pub struct ST_Percentage {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Percentage::new(String) -> Self raise SchemaViolation
+pub fn ST_Percentage::parse(String) -> Self raise SchemaViolation
+pub fn ST_Percentage::to_string(Self) -> String
+
+pub struct ST_PositiveCoordinate {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PositiveCoordinate::new(String) -> Self raise SchemaViolation
+pub fn ST_PositiveCoordinate::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositiveCoordinate::to_string(Self) -> String
+
+pub struct ST_PositiveCoordinate32 {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PositiveCoordinate32::new(String) -> Self raise SchemaViolation
+pub fn ST_PositiveCoordinate32::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositiveCoordinate32::to_string(Self) -> String
+
+pub struct ST_PositiveFixedAngle {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PositiveFixedAngle::new(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedAngle::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedAngle::to_string(Self) -> String
+
+pub struct ST_PositiveFixedPercentage {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PositiveFixedPercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedPercentage::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedPercentage::to_string(Self) -> String
+
+pub struct ST_PositivePercentage {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PositivePercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_PositivePercentage::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositivePercentage::to_string(Self) -> String
 
 // Type aliases
 
