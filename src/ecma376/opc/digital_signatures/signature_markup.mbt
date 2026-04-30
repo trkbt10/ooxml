@@ -29,8 +29,9 @@ pub fn write_signature(value : Signature) -> Bytes {
 }
 
 ///|
-/// §10.5.4 SignedInfo element. Captures canonicalization, signature method,
-/// and Reference children for XML-Signature.
+/// §10.5.4 SignedInfo element from source section
+/// 10.5.4__signedinfo-element.md. Captures canonicalization, signature method,
+/// and Reference children for XML-Signature SignedInfo markup.
 pub(all) struct SignedInfo {
   id : String?
   children : Array[@xml.Node]
@@ -43,14 +44,18 @@ pub fn SignedInfo::new(id : String?, children : Array[@xml.Node]) -> SignedInfo 
 }
 
 ///|
-/// Read the §10.5.4 SignedInfo Element from W3C XML-Signature XML bytes.
+/// §10.5.4 SignedInfo element reader. Parses a SignedInfo XML element from
+/// W3C XML-Signature bytes, preserving canonicalization, signature method, and
+/// Reference children in the SignedInfo domain shell.
 pub fn read_signed_info(bytes : Bytes) -> SignedInfo raise SchemaViolation {
   let root = read_xmldsig_root(bytes, "SignedInfo")
   SignedInfo::new(optional_attribute(root, "Id"), root.children)
 }
 
 ///|
-/// Write the §10.5.4 SignedInfo Element to W3C XML-Signature XML bytes.
+/// §10.5.4 SignedInfo element writer. Emits a SignedInfo XML element back to
+/// W3C XML-Signature bytes with preserved canonicalization, signature method,
+/// and Reference children.
 pub fn write_signed_info(value : SignedInfo) -> Bytes {
   write_xmldsig_element(
     "SignedInfo",
@@ -207,7 +212,10 @@ pub fn Transform::new(
 }
 
 ///|
-/// Read the §10.5.8 Transform Element from XML-Signature bytes.
+/// §10.5.8 Transform element reader. Parses a Transform XML element from
+/// XML-Signature bytes, including the Algorithm attribute and optional XPath or
+/// transform-specific child content, into the Transform domain type imported
+/// through schema opc-digSig.xsd.
 pub fn read_transform(bytes : Bytes) -> Transform raise SchemaViolation {
   let root = read_xmldsig_root(bytes, "Transform")
   Transform::new(
@@ -217,7 +225,9 @@ pub fn read_transform(bytes : Bytes) -> Transform raise SchemaViolation {
 }
 
 ///|
-/// Write the §10.5.8 Transform Element to XML-Signature bytes.
+/// §10.5.8 Transform element writer. Emits a Transform XML element with the
+/// Algorithm attribute and preserved optional XPath or transform-specific child
+/// content back to XML-Signature bytes for schema opc-digSig.xsd.
 pub fn write_transform(value : Transform) -> Bytes {
   write_xmldsig_element(
     "Transform",
@@ -245,7 +255,10 @@ pub fn DigestMethod::new(
 }
 
 ///|
-/// Read the §10.5.11 DigestMethod Element from XML-Signature bytes.
+/// §10.5.11 DigestMethod element reader. Parses a DigestMethod XML element
+/// from XML-Signature bytes, including the required Algorithm attribute and
+/// extension children, into the DigestMethod domain type referenced by
+/// opc-digSig.xsd.
 pub fn read_digest_method(bytes : Bytes) -> DigestMethod raise SchemaViolation {
   let root = read_xmldsig_root(bytes, "DigestMethod")
   DigestMethod::new(
@@ -255,7 +268,9 @@ pub fn read_digest_method(bytes : Bytes) -> DigestMethod raise SchemaViolation {
 }
 
 ///|
-/// Write the §10.5.11 DigestMethod Element to XML-Signature bytes.
+/// §10.5.11 DigestMethod element writer. Emits a DigestMethod XML element with
+/// its Algorithm attribute and preserved extension children back to XML-
+/// Signature bytes for the opc-digSig.xsd signature markup contract.
 pub fn write_digest_method(value : DigestMethod) -> Bytes {
   write_xmldsig_element(
     "DigestMethod",
@@ -279,14 +294,18 @@ pub fn Object::new(id : String?, children : Array[@xml.Node]) -> Object {
 }
 
 ///|
-/// Read the §10.5.12 Object Element from XML-Signature bytes.
+/// §10.5.12 Object element reader. Parses an Object XML element from XML-
+/// Signature bytes, preserving the optional Id attribute and nested object
+/// children in the Object domain type used by opc-digSig.xsd.
 pub fn read_object(bytes : Bytes) -> Object raise SchemaViolation {
   let root = read_xmldsig_root(bytes, "Object")
   Object::new(optional_attribute(root, "Id"), root.children)
 }
 
 ///|
-/// Write the §10.5.12 Object Element to XML-Signature bytes.
+/// §10.5.12 Object element writer. Emits an Object XML element with the
+/// optional Id attribute and preserved nested object children back to XML-
+/// Signature bytes for the opc-digSig.xsd markup surface.
 pub fn write_object(value : Object) -> Bytes {
   write_xmldsig_element(
     "Object",
@@ -309,14 +328,18 @@ pub fn Manifest::new(id : String?, children : Array[@xml.Node]) -> Manifest {
 }
 
 ///|
-/// Read the §10.5.13 Manifest Element from XML-Signature bytes.
+/// §10.5.13 Manifest element reader. Parses a Manifest XML element from XML-
+/// Signature bytes, preserving the optional Id attribute and Reference child
+/// content in the Manifest domain type referenced by opc-digSig.xsd.
 pub fn read_manifest(bytes : Bytes) -> Manifest raise SchemaViolation {
   let root = read_xmldsig_root(bytes, "Manifest")
   Manifest::new(optional_attribute(root, "Id"), root.children)
 }
 
 ///|
-/// Write the §10.5.13 Manifest Element to XML-Signature bytes.
+/// §10.5.13 Manifest element writer. Emits a Manifest XML element with the
+/// optional Id attribute and preserved Reference child content back to XML-
+/// Signature bytes for the opc-digSig.xsd markup contract.
 pub fn write_manifest(value : Manifest) -> Bytes {
   write_xmldsig_element(
     "Manifest",
