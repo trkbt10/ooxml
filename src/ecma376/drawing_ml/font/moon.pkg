@@ -1,3 +1,11 @@
 // trkbt10/ooxml/ecma376/drawing_ml/font
 //
 // DrawingML font types (§20.1.10.x): CT_TextFont, ST_TextFontSize, etc.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"

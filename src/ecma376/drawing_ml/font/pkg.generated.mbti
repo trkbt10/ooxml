@@ -1,12 +1,87 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/drawing_ml/font"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn read_font_scheme(Bytes) -> CT_FontScheme raise
+
+pub fn read_text_font(Bytes) -> CT_TextFont raise
+
+pub fn write_font_scheme(CT_FontScheme) -> Bytes
+
+pub fn write_text_font(CT_TextFont) -> Bytes
+
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct CT_FontCollection {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontCollection::new(@xml.Element) -> Self
+
+pub(all) struct CT_FontReference {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontReference::new(@xml.Element) -> Self
+
+pub(all) struct CT_FontScheme {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FontScheme::new(@xml.Element) -> Self
+
+pub(all) struct CT_SupplementalFont {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SupplementalFont::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextFont {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextFont::new(@xml.Element) -> Self
+
+pub struct ST_PitchFamily {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PitchFamily::new(String) -> Self raise SchemaViolation
+pub fn ST_PitchFamily::parse(String) -> Self raise SchemaViolation
+pub fn ST_PitchFamily::to_string(Self) -> String
+
+pub struct ST_TextFontAlignType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextFontAlignType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextFontAlignType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextFontAlignType::to_string(Self) -> String
+
+pub struct ST_TextFontScalePercentOrPercentString {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextFontScalePercentOrPercentString::new(String) -> Self raise SchemaViolation
+pub fn ST_TextFontScalePercentOrPercentString::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextFontScalePercentOrPercentString::to_string(Self) -> String
+
+pub struct ST_TextFontSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextFontSize::new(String) -> Self raise SchemaViolation
+pub fn ST_TextFontSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextFontSize::to_string(Self) -> String
+
+pub struct ST_TextTypeface {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextTypeface::new(String) -> Self raise SchemaViolation
+pub fn ST_TextTypeface::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextTypeface::to_string(Self) -> String
 
 // Type aliases
 

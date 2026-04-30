@@ -1,3 +1,11 @@
 // trkbt10/ooxml/ecma376/drawing_ml/theme
 //
 // DrawingML theme (§20.1.6): clrScheme, fontScheme, fmtScheme.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"
