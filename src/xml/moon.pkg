@@ -2,3 +2,8 @@
 //
 // Scope: namespaces, prefixes, attributes, character references, CDATA.
 // Out of scope: ECMA-376-specific concepts (those live in `ecma376/...`).
+
+import {
+  // UTF-8 encode/decode is required for the public Bytes reader/writer API.
+  "moonbitlang/core/encoding/utf8" @utf8,
+}

@@ -1,12 +1,102 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/xml"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn parse(Bytes) -> Document raise
+
+pub fn write(Document) -> Bytes
+
 // Errors
+pub suberror DuplicateAttribute {
+  DuplicateAttribute(name~ : String)
+}
+
+pub suberror UndeclaredPrefix {
+  UndeclaredPrefix(prefix~ : String)
+}
+
+pub suberror XmlMalformed {
+  XmlMalformed(line~ : Int, col~ : Int, reason~ : String)
+}
 
 // Types and methods
+pub(all) struct Attribute {
+  name : QName
+  value : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Document {
+  declaration : XmlDeclaration?
+  doctype : String?
+  root : Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Element {
+  name : QName
+  attributes : Array[Attribute]
+  children : Array[Node]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Event {
+  StartElement(Element)
+  EndElement(QName)
+  Text(String)
+  CData(String)
+  Comment(String)
+  ProcessingInstruction(ProcessingInstruction)
+  XmlDeclaration(XmlDeclaration)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct NamespaceBinding {
+  prefix : String?
+  uri : String
+} derive(Eq, @debug.Debug)
+
+pub struct NamespaceContext {
+  // private fields
+} derive(@debug.Debug)
+pub fn NamespaceContext::bind(Self, String?, String) -> Unit
+pub fn NamespaceContext::new() -> Self
+pub fn NamespaceContext::pop_scope(Self) -> Unit
+pub fn NamespaceContext::push_scope(Self) -> Unit
+pub fn NamespaceContext::resolve(Self, String?) -> String?
+
+pub(all) enum Node {
+  Element(Element)
+  Text(String)
+  CData(String)
+  Comment(String)
+  ProcessingInstruction(ProcessingInstruction)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ProcessingInstruction {
+  target : String
+  data : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct QName {
+  prefix : String?
+  local_name : String
+  ns : String?
+} derive(Eq, @debug.Debug)
+
+pub struct Reader {
+  // private fields
+}
+pub fn Reader::new(Bytes) -> Self raise XmlMalformed
+pub fn Reader::next(Self) -> Event? raise
+
+pub(all) struct XmlDeclaration {
+  version : String
+  encoding : String?
+  standalone : Bool?
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
