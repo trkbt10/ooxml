@@ -1,3 +1,11 @@
 // trkbt10/ooxml/ecma376/drawing_ml/color
 //
 // DrawingML colour model (§20.1.2 / §20.1.4): sRGB, scheme, system, HSL, preset.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"
