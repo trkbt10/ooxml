@@ -1,4 +1,5 @@
 ///|
+/// XSD simple type ST_Lang.
 /// Schema shared-commonSimpleTypes.xsd simple type ST_Lang, an xsd:string
 /// Schema shared-commonSimpleTypes.xsd.
 /// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
@@ -240,6 +241,7 @@ pub fn ST_CalendarType::to_string(self : ST_CalendarType) -> String {
 }
 
 ///|
+/// XSD simple type ST_Guid.
 /// Schema shared-commonSimpleTypes.xsd simple type ST_Guid, a token in
 /// Schema shared-commonSimpleTypes.xsd.
 /// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
@@ -672,6 +674,7 @@ pub fn ST_Xstring::to_string(self : ST_Xstring) -> String {
 }
 
 ///|
+/// XSD simple type ST_XAlign.
 /// Schema shared-commonSimpleTypes.xsd simple type ST_XAlign, horizontal
 /// Schema shared-commonSimpleTypes.xsd.
 /// Bundle `strict/transitional`. Target namespace `http://purl.oclc.org/ooxml/officeDocument/sharedTypes`. Identifier counts: elements=0, complexTypes=0, simpleTypes=21, attributeGroups=0, groups=0.
