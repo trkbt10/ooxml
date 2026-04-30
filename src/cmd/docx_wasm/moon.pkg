@@ -7,15 +7,10 @@
 // flat (no namespace prefix) so that the JS wrapper can re-namespace them.
 
 import {
-  "trkbt10/ooxml/docx" as @docx,
+  "trkbt10/ooxml/docx" @docx,
 }
 
 options(
-  link: {
-    "wasm-gc": {
-      exports: [
-        "docx_package_name:package_name",
-      ],
-    },
-  },
+  "is-main": true,
+  link: { "wasm-gc": { "exports": [ "docx_package_name:package_name" ] } },
 )

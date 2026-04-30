@@ -4,7 +4,7 @@
 // Run:    moon run cmd/ooxml_cli
 
 import {
-  "trkbt10/ooxml" as @ooxml,
+  "trkbt10/ooxml" @ooxml,
 }
 
 options(

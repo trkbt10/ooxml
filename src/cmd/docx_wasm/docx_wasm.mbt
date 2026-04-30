@@ -7,3 +7,10 @@
 pub fn package_name() -> String {
   @docx.package_name()
 }
+
+///|
+/// `main` is required because wasm-gc export bundles must be `is-main: true`.
+/// It is never invoked by JS hosts.
+fn main {
+  ignore(package_name())
+}

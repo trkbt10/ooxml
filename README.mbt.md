@@ -61,7 +61,8 @@ src/
 ├── xlsx/                             Public facade
 └── pptx/                             Public facade
 
-cmd/
+src/cmd/                              build targets (kept under src/ because
+│                                     moonbit's `source` is a single tree)
 ├── ooxml_cli/                        native CLI build target
 ├── docx_wasm/                        wasm-gc export bundle for .docx
 ├── xlsx_wasm/                        wasm-gc export bundle for .xlsx
@@ -88,7 +89,7 @@ cmd/
 moon check                          # all packages, default target
 moon check --target native          # native build
 moon check --target wasm-gc         # core wasm build (for npm bundle)
-moon run cmd/ooxml_cli              # run the CLI
+moon run src/cmd/ooxml_cli          # run the CLI
 moon fmt && moon info               # format + regenerate .mbti
 ```
 

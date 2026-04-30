@@ -1,0 +1,10 @@
+// WASM build target for the .xlsx facade.
+
+import {
+  "trkbt10/ooxml/xlsx" @xlsx,
+}
+
+options(
+  "is-main": true,
+  link: { "wasm-gc": { "exports": [ "xlsx_package_name:package_name" ] } },
+)

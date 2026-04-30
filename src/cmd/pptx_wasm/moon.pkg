@@ -1,0 +1,10 @@
+// WASM build target for the .pptx facade.
+
+import {
+  "trkbt10/ooxml/pptx" @pptx,
+}
+
+options(
+  "is-main": true,
+  link: { "wasm-gc": { "exports": [ "pptx_package_name:package_name" ] } },
+)

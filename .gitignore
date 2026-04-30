@@ -1,4 +1,10 @@
 .DS_Store
 _build/
+target/
 .mooncakes/
 .moonagent/
+
+references/
+.kiro/
+tmp/
+out/
