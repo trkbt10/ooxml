@@ -1,12 +1,123 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/office_math/domain"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn package_name() -> String
 
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(type_name~ : String, value~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) enum ST_BreakBin {
+  Before
+  After
+  Repeat
+} derive(Eq, @debug.Debug)
+pub fn ST_BreakBin::parse(String) -> Self raise SchemaViolation
+pub fn ST_BreakBin::to_string(Self) -> String
+
+pub(all) enum ST_BreakBinSub {
+  MinusMinus
+  MinusPlus
+  PlusMinus
+} derive(Eq, @debug.Debug)
+pub fn ST_BreakBinSub::parse(String) -> Self raise SchemaViolation
+pub fn ST_BreakBinSub::to_string(Self) -> String
+
+pub struct ST_Char {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Char::parse(String) -> Self raise SchemaViolation
+pub fn ST_Char::to_string(Self) -> String
+
+pub(all) enum ST_FType {
+  Bar
+  Skw
+  Lin
+  NoBar
+} derive(Eq, @debug.Debug)
+pub fn ST_FType::parse(String) -> Self raise SchemaViolation
+pub fn ST_FType::to_string(Self) -> String
+
+pub struct ST_Integer2 {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Integer2::parse(String) -> Self raise SchemaViolation
+pub fn ST_Integer2::to_string(Self) -> String
+
+pub struct ST_Integer255 {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Integer255::parse(String) -> Self raise SchemaViolation
+pub fn ST_Integer255::to_string(Self) -> String
+
+pub(all) enum ST_Jc {
+  Left
+  Right
+  Center
+  CenterGroup
+} derive(Eq, @debug.Debug)
+pub fn ST_Jc::parse(String) -> Self raise SchemaViolation
+pub fn ST_Jc::to_string(Self) -> String
+
+pub(all) enum ST_LimLoc {
+  UndOvr
+  SubSup
+} derive(Eq, @debug.Debug)
+pub fn ST_LimLoc::parse(String) -> Self raise SchemaViolation
+pub fn ST_LimLoc::to_string(Self) -> String
+
+pub(all) enum ST_Script {
+  Roman
+  Script
+  Fraktur
+  DoubleStruck
+  SansSerif
+  Monospace
+} derive(Eq, @debug.Debug)
+pub fn ST_Script::parse(String) -> Self raise SchemaViolation
+pub fn ST_Script::to_string(Self) -> String
+
+pub(all) enum ST_Shp {
+  Centered
+  Match
+} derive(Eq, @debug.Debug)
+pub fn ST_Shp::parse(String) -> Self raise SchemaViolation
+pub fn ST_Shp::to_string(Self) -> String
+
+pub struct ST_SpacingRule {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SpacingRule::parse(String) -> Self raise SchemaViolation
+pub fn ST_SpacingRule::to_string(Self) -> String
+
+pub(all) enum ST_Style {
+  Plain
+  Bold
+  Italic
+  BoldItalic
+} derive(Eq, @debug.Debug)
+pub fn ST_Style::parse(String) -> Self raise SchemaViolation
+pub fn ST_Style::to_string(Self) -> String
+
+pub(all) enum ST_TopBot {
+  Top
+  Bot
+} derive(Eq, @debug.Debug)
+pub fn ST_TopBot::parse(String) -> Self raise SchemaViolation
+pub fn ST_TopBot::to_string(Self) -> String
+
+pub struct ST_UnSignedInteger {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UnSignedInteger::parse(String) -> Self raise SchemaViolation
+pub fn ST_UnSignedInteger::to_string(Self) -> String
 
 // Type aliases
 
