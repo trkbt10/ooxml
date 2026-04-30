@@ -1,12 +1,65 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/opc/digital_signatures"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
+pub fn digital_signature_ns() -> String
+
 pub fn package_name() -> String
 
+pub fn read_relationship_reference(Bytes) -> RelationshipReference raise
+
+pub fn read_relationships_group_reference(Bytes) -> RelationshipsGroupReference raise
+
+pub fn read_signature_time(Bytes) -> SignatureTime raise
+
+pub fn require_resource(Bool, section~ : String, path~ : String, target~ : String) -> Unit raise ResourceMissing
+
+pub fn require_supported_feature(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise UnsupportedFeature
+
+pub fn write_relationship_reference(RelationshipReference) -> Bytes
+
+pub fn write_relationships_group_reference(RelationshipsGroupReference) -> Bytes
+
+pub fn write_signature_time(SignatureTime) -> Bytes
+
 // Errors
+pub suberror ResourceMissing {
+  ResourceMissing(section~ : String, path~ : String, target~ : String)
+} derive(@debug.Debug)
+
+pub suberror SchemaViolation {
+  SchemaViolation(section~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
+
+pub suberror UnsupportedFeature {
+  UnsupportedFeature(section~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct RelationshipReference {
+  source_id : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct RelationshipsGroupReference {
+  source_type : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SignatureTime {
+  format : SignatureTimeFormat
+  value : SignatureTimeValue
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SignatureTimeFormat {
+  value : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SignatureTimeValue {
+  value : String
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
