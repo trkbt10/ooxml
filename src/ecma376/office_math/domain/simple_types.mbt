@@ -1,6 +1,6 @@
 ///|
 /// Schema shared-math.xsd validation error for OMML (§22.1).
-pub suberror SchemaViolation {
+pub(all) suberror SchemaViolation {
   SchemaViolation(type_name~ : String, value~ : String)
 } derive(Debug)
 

@@ -1,8 +1,18 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/office_math/reader"
 
+import {
+  "trkbt10/ooxml/ecma376/office_math/domain",
+}
+
 // Values
 pub fn package_name() -> String
+
+pub fn read_math_pr(Bytes) -> @domain.CT_MathPr raise
+
+pub fn read_o_math(Bytes) -> @domain.CT_OMath raise
+
+pub fn read_o_math_para(Bytes) -> @domain.CT_OMathPara raise
 
 // Errors
 

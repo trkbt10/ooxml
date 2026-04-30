@@ -10,7 +10,7 @@ import {
 pub fn package_name() -> String
 
 // Errors
-pub suberror SchemaViolation {
+pub(all) suberror SchemaViolation {
   SchemaViolation(type_name~ : String, value~ : String)
 } derive(@debug.Debug)
 
