@@ -53,7 +53,13 @@ pub fn read_solid_color_fill_properties(Bytes) -> CT_SolidColorFillProperties ra
 
 pub fn read_system_color(Bytes) -> CT_SystemColor raise
 
+pub fn read_text_body(Bytes) -> CT_TextBody raise
+
+pub fn read_text_body_properties(Bytes) -> CT_TextBodyProperties raise
+
 pub fn read_text_font(Bytes) -> CT_TextFont raise
+
+pub fn read_text_paragraph(Bytes) -> CT_TextParagraph raise
 
 pub fn read_theme(Bytes) -> CT_OfficeStyleSheet raise
 
@@ -107,7 +113,13 @@ pub fn write_solid_color_fill_properties(CT_SolidColorFillProperties) -> Bytes
 
 pub fn write_system_color(CT_SystemColor) -> Bytes
 
+pub fn write_text_body(CT_TextBody) -> Bytes
+
+pub fn write_text_body_properties(CT_TextBodyProperties) -> Bytes
+
 pub fn write_text_font(CT_TextFont) -> Bytes
+
+pub fn write_text_paragraph(CT_TextParagraph) -> Bytes
 
 pub fn write_theme(CT_OfficeStyleSheet) -> Bytes
 
@@ -636,6 +648,11 @@ pub(all) struct CT_ReflectionEffect {
 } derive(Eq, @debug.Debug)
 pub fn CT_ReflectionEffect::new(@xml.Element) -> Self
 
+pub(all) struct CT_RegularTextRun {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_RegularTextRun::new(@xml.Element) -> Self
+
 pub(all) struct CT_RelativeOffsetEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -696,15 +713,150 @@ pub(all) struct CT_SystemColor {
 } derive(Eq, @debug.Debug)
 pub fn CT_SystemColor::new(@xml.Element) -> Self
 
+pub(all) struct CT_TextAutonumberBullet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextAutonumberBullet::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextBlipBullet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextBlipBullet::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextBody {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextBody::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextBodyProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextBodyProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_TextBulletColorFollowText {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextBulletColorFollowText::new(@xml.Element) -> Self
 
+pub(all) struct CT_TextBulletSizeFollowText {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextBulletSizeFollowText::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextBulletSizePercent {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextBulletSizePercent::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextBulletSizePoint {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextBulletSizePoint::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextBulletTypefaceFollowText {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextBulletTypefaceFollowText::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextCharBullet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextCharBullet::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextCharacterProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextCharacterProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextField {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextField::new(@xml.Element) -> Self
+
 pub(all) struct CT_TextFont {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextFont::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextLineBreak {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextLineBreak::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextListStyle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextListStyle::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextNoAutofit {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextNoAutofit::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextNoBullet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextNoBullet::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextNormalAutofit {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextNormalAutofit::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextParagraph {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextParagraph::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextParagraphProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextParagraphProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextShapeAutofit {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextShapeAutofit::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextSpacing {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextSpacing::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextSpacingPercent {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextSpacingPercent::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextSpacingPoint {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextSpacingPoint::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextTabStop {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextTabStop::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextTabStopList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextTabStopList::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextUnderlineFillFollowText {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextUnderlineFillFollowText::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextUnderlineFillGroupWrapper {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextUnderlineFillGroupWrapper::new(@xml.Element) -> Self
+
+pub(all) struct CT_TextUnderlineLineFollowText {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TextUnderlineLineFollowText::new(@xml.Element) -> Self
 
 pub(all) struct CT_TileInfoProperties {
   element : @xml.Element
@@ -939,6 +1091,62 @@ pub fn ST_SystemColorVal::new(String) -> Self raise SchemaViolation
 pub fn ST_SystemColorVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_SystemColorVal::to_string(Self) -> String
 
+pub struct ST_TextAlignType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextAlignType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextAlignType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextAlignType::to_string(Self) -> String
+
+pub struct ST_TextAnchoringType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextAnchoringType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextAnchoringType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextAnchoringType::to_string(Self) -> String
+
+pub struct ST_TextAutonumberScheme {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextAutonumberScheme::new(String) -> Self raise SchemaViolation
+pub fn ST_TextAutonumberScheme::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextAutonumberScheme::to_string(Self) -> String
+
+pub struct ST_TextBulletSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextBulletSize::new(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletSize::to_string(Self) -> String
+
+pub struct ST_TextBulletSizePercent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextBulletSizePercent::new(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletSizePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletSizePercent::to_string(Self) -> String
+
+pub struct ST_TextBulletStartAtNum {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextBulletStartAtNum::new(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletStartAtNum::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletStartAtNum::to_string(Self) -> String
+
+pub struct ST_TextCapsType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextCapsType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextCapsType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextCapsType::to_string(Self) -> String
+
+pub struct ST_TextColumnCount {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextColumnCount::new(String) -> Self raise SchemaViolation
+pub fn ST_TextColumnCount::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextColumnCount::to_string(Self) -> String
+
 pub struct ST_TextFontAlignType {
   value : String
 } derive(Eq, @debug.Debug)
@@ -960,12 +1168,124 @@ pub fn ST_TextFontSize::new(String) -> Self raise SchemaViolation
 pub fn ST_TextFontSize::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextFontSize::to_string(Self) -> String
 
+pub struct ST_TextHorzOverflowType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextHorzOverflowType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextHorzOverflowType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextHorzOverflowType::to_string(Self) -> String
+
+pub struct ST_TextIndent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextIndent::new(String) -> Self raise SchemaViolation
+pub fn ST_TextIndent::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextIndent::to_string(Self) -> String
+
+pub struct ST_TextIndentLevelType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextIndentLevelType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextIndentLevelType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextIndentLevelType::to_string(Self) -> String
+
+pub struct ST_TextMargin {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextMargin::new(String) -> Self raise SchemaViolation
+pub fn ST_TextMargin::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextMargin::to_string(Self) -> String
+
+pub struct ST_TextNonNegativePoint {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextNonNegativePoint::new(String) -> Self raise SchemaViolation
+pub fn ST_TextNonNegativePoint::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextNonNegativePoint::to_string(Self) -> String
+
+pub struct ST_TextPoint {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextPoint::new(String) -> Self raise SchemaViolation
+pub fn ST_TextPoint::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextPoint::to_string(Self) -> String
+
+pub struct ST_TextPointUnqualified {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextPointUnqualified::new(String) -> Self raise SchemaViolation
+pub fn ST_TextPointUnqualified::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextPointUnqualified::to_string(Self) -> String
+
+pub struct ST_TextShapeType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextShapeType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextShapeType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextShapeType::to_string(Self) -> String
+
+pub struct ST_TextSpacingPercentOrPercentString {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextSpacingPercentOrPercentString::new(String) -> Self raise SchemaViolation
+pub fn ST_TextSpacingPercentOrPercentString::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextSpacingPercentOrPercentString::to_string(Self) -> String
+
+pub struct ST_TextSpacingPoint {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextSpacingPoint::new(String) -> Self raise SchemaViolation
+pub fn ST_TextSpacingPoint::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextSpacingPoint::to_string(Self) -> String
+
+pub struct ST_TextStrikeType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextStrikeType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextStrikeType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextStrikeType::to_string(Self) -> String
+
+pub struct ST_TextTabAlignType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextTabAlignType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextTabAlignType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextTabAlignType::to_string(Self) -> String
+
 pub struct ST_TextTypeface {
   value : String
 } derive(Eq, @debug.Debug)
 pub fn ST_TextTypeface::new(String) -> Self raise SchemaViolation
 pub fn ST_TextTypeface::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextTypeface::to_string(Self) -> String
+
+pub struct ST_TextUnderlineType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextUnderlineType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextUnderlineType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextUnderlineType::to_string(Self) -> String
+
+pub struct ST_TextVertOverflowType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextVertOverflowType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextVertOverflowType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextVertOverflowType::to_string(Self) -> String
+
+pub struct ST_TextVerticalType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextVerticalType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextVerticalType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextVerticalType::to_string(Self) -> String
+
+pub struct ST_TextWrappingType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TextWrappingType::new(String) -> Self raise SchemaViolation
+pub fn ST_TextWrappingType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextWrappingType::to_string(Self) -> String
 
 pub struct ST_TileFlipMode {
   value : String

@@ -68,6 +68,43 @@ fn validate_main_attributes(
       ("headEnd", "len") | ("tailEnd", "len") =>
         ST_LineEndLength::parse(value) |> ignore
       ("prstDash", "val") => ST_PresetLineDashVal::parse(value) |> ignore
+      ("bodyPr", "anchor") => ST_TextAnchoringType::parse(value) |> ignore
+      ("bodyPr", "vertOverflow") =>
+        ST_TextVertOverflowType::parse(value) |> ignore
+      ("bodyPr", "horzOverflow") =>
+        ST_TextHorzOverflowType::parse(value) |> ignore
+      ("bodyPr", "vert") => ST_TextVerticalType::parse(value) |> ignore
+      ("bodyPr", "wrap") => ST_TextWrappingType::parse(value) |> ignore
+      ("bodyPr", "numCol") => ST_TextColumnCount::parse(value) |> ignore
+      ("normAutofit", "fontScale") =>
+        ST_TextFontScalePercentOrPercentString::parse(value) |> ignore
+      ("normAutofit", "lnSpcReduction") =>
+        ST_TextSpacingPercentOrPercentString::parse(value) |> ignore
+      ("prstTxWarp", "prst") => ST_TextShapeType::parse(value) |> ignore
+      ("buAutoNum", "type") => ST_TextAutonumberScheme::parse(value) |> ignore
+      ("buAutoNum", "startAt") =>
+        ST_TextBulletStartAtNum::parse(value) |> ignore
+      ("buSzPct", "val") => ST_TextBulletSizePercent::parse(value) |> ignore
+      ("buSzPts", "val") => ST_TextPoint::parse(value) |> ignore
+      ("spcPct", "val") =>
+        ST_TextSpacingPercentOrPercentString::parse(value) |> ignore
+      ("spcPts", "val") => ST_TextSpacingPoint::parse(value) |> ignore
+      ("tab", "algn") => ST_TextTabAlignType::parse(value) |> ignore
+      ("tab", "pos") => ST_TextPointUnqualified::parse(value) |> ignore
+      ("pPr", "algn") => ST_TextAlignType::parse(value) |> ignore
+      ("pPr", "fontAlgn") => ST_TextFontAlignType::parse(value) |> ignore
+      ("pPr", "lvl") => ST_TextIndentLevelType::parse(value) |> ignore
+      ("pPr", "marL") | ("pPr", "marR") | ("pPr", "defTabSz") =>
+        ST_TextMargin::parse(value) |> ignore
+      ("pPr", "indent") => ST_TextIndent::parse(value) |> ignore
+      ("rPr", "sz") | ("endParaRPr", "sz") =>
+        ST_TextFontSize::parse(value) |> ignore
+      ("rPr", "u") | ("endParaRPr", "u") =>
+        ST_TextUnderlineType::parse(value) |> ignore
+      ("rPr", "strike") | ("endParaRPr", "strike") =>
+        ST_TextStrikeType::parse(value) |> ignore
+      ("rPr", "cap") | ("endParaRPr", "cap") =>
+        ST_TextCapsType::parse(value) |> ignore
       ("clrMap", "bg1")
       | ("clrMap", "tx1")
       | ("clrMap", "bg2")
