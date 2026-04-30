@@ -1,12 +1,39 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/drawing_ml/picture"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn read_pic(Bytes) -> CT_Picture raise
+
+pub fn write_pic(CT_Picture) -> Bytes
+
 // Errors
+pub suberror ResourceMissing {
+  ResourceMissing(section~ : String, path~ : String, target~ : String)
+} derive(@debug.Debug)
+
+pub suberror SchemaViolation {
+  SchemaViolation(section~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+#alias(Pic)
+pub(all) struct CT_Picture {
+  nv_pic_pr : CT_PictureNonVisual
+  blip_fill : @xml.Element
+  sp_pr : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_PictureNonVisual {
+  c_nv_pr : @xml.Element
+  c_nv_pic_pr : @xml.Element
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
