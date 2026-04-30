@@ -16,10 +16,6 @@ pub fn read_relationships_group_reference(Bytes) -> RelationshipsGroupReference 
 
 pub fn read_signature_time(Bytes) -> SignatureTime raise
 
-pub fn require_resource(Bool, section~ : String, path~ : String, target~ : String) -> Unit raise ResourceMissing
-
-pub fn require_supported_feature(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise UnsupportedFeature
-
 pub fn write_relationship_reference(RelationshipReference) -> Bytes
 
 pub fn write_relationships_group_reference(RelationshipsGroupReference) -> Bytes

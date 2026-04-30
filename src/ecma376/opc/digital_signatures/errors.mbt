@@ -24,7 +24,7 @@ pub suberror ResourceMissing {
 ///|
 /// Enforce the 8. Errors E3 capability check for a known digital-signature
 /// feature that is outside the current build.
-pub fn require_supported_feature(
+fn require_supported_feature(
   supported : Bool,
   section~ : String,
   path~ : String,
@@ -39,7 +39,7 @@ pub fn require_supported_feature(
 /// Enforce the §5 Inputs I3 package-level resource resolver contract delegated
 /// to ecma376/opc. Missing relationship targets and signature resources are
 /// reported with 8. Errors E4 ResourceMissing.
-pub fn require_resource(
+fn require_resource(
   available : Bool,
   section~ : String,
   path~ : String,
