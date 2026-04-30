@@ -1,8 +1,44 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/presentation_ml/builder"
 
+import {
+  "trkbt10/ooxml/ecma376/presentation_ml/domain",
+}
+
 // Values
 pub fn package_name() -> String
+
+pub fn write_cm_author_lst(@domain.CT_CommentAuthorList) -> Bytes
+
+pub fn write_cm_lst(@domain.CT_CommentList) -> Bytes
+
+pub fn write_handout_master(@domain.CT_HandoutMaster) -> Bytes
+
+pub fn write_notes(@domain.CT_NotesSlide) -> Bytes
+
+pub fn write_notes_master(@domain.CT_NotesMaster) -> Bytes
+
+pub fn write_ole_obj(@domain.CT_OleObject) -> Bytes
+
+pub fn write_presentation(@domain.CT_Presentation) -> Bytes
+
+pub fn write_presentation_pr(@domain.CT_PresentationProperties) -> Bytes
+
+pub fn write_sld(@domain.CT_Slide) -> Bytes
+
+pub fn write_sld_layout(@domain.CT_SlideLayout) -> Bytes
+
+pub fn write_sld_master(@domain.CT_SlideMaster) -> Bytes
+
+pub fn write_sld_sync_pr(@domain.CT_SlideSyncProperties) -> Bytes
+
+pub fn write_tag_lst(@domain.CT_TagList) -> Bytes
+
+pub fn write_view_pr(@domain.CT_ViewProperties) -> Bytes
+
+pub fn write_vml_presentation_drawing_iscomment(@domain.VmlPresentationDrawing_CT_Empty) -> Bytes
+
+pub fn write_vml_presentation_drawing_textdata(@domain.VmlPresentationDrawing_CT_Rel) -> Bytes
 
 // Errors
 

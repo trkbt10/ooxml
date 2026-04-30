@@ -1,8 +1,44 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/presentation_ml/reader"
 
+import {
+  "trkbt10/ooxml/ecma376/presentation_ml/domain",
+}
+
 // Values
 pub fn package_name() -> String
+
+pub fn read_cm_author_lst(Bytes) -> @domain.CT_CommentAuthorList raise
+
+pub fn read_cm_lst(Bytes) -> @domain.CT_CommentList raise
+
+pub fn read_handout_master(Bytes) -> @domain.CT_HandoutMaster raise
+
+pub fn read_notes(Bytes) -> @domain.CT_NotesSlide raise
+
+pub fn read_notes_master(Bytes) -> @domain.CT_NotesMaster raise
+
+pub fn read_ole_obj(Bytes) -> @domain.CT_OleObject raise
+
+pub fn read_presentation(Bytes) -> @domain.CT_Presentation raise
+
+pub fn read_presentation_pr(Bytes) -> @domain.CT_PresentationProperties raise
+
+pub fn read_sld(Bytes) -> @domain.CT_Slide raise
+
+pub fn read_sld_layout(Bytes) -> @domain.CT_SlideLayout raise
+
+pub fn read_sld_master(Bytes) -> @domain.CT_SlideMaster raise
+
+pub fn read_sld_sync_pr(Bytes) -> @domain.CT_SlideSyncProperties raise
+
+pub fn read_tag_lst(Bytes) -> @domain.CT_TagList raise
+
+pub fn read_view_pr(Bytes) -> @domain.CT_ViewProperties raise
+
+pub fn read_vml_presentation_drawing_iscomment(Bytes) -> @domain.VmlPresentationDrawing_CT_Empty raise
+
+pub fn read_vml_presentation_drawing_textdata(Bytes) -> @domain.VmlPresentationDrawing_CT_Rel raise
 
 // Errors
 

@@ -1,12 +1,1573 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/presentation_ml/domain"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
+pub fn cm_author_lst(@xml.Element) -> CT_CommentAuthorList
+
+pub fn cm_lst(@xml.Element) -> CT_CommentList
+
+pub fn handout_master(@xml.Element) -> CT_HandoutMaster
+
+pub fn notes(@xml.Element) -> CT_NotesSlide
+
+pub fn notes_master(@xml.Element) -> CT_NotesMaster
+
+pub fn ole_obj(@xml.Element) -> CT_OleObject
+
 pub fn package_name() -> String
 
+pub fn presentation(@xml.Element) -> CT_Presentation
+
+pub fn presentation_pr(@xml.Element) -> CT_PresentationProperties
+
+pub fn raise_schema_violation(String, String, String) -> Unit raise SchemaViolation
+
+pub fn sld(@xml.Element) -> CT_Slide
+
+pub fn sld_layout(@xml.Element) -> CT_SlideLayout
+
+pub fn sld_master(@xml.Element) -> CT_SlideMaster
+
+pub fn sld_sync_pr(@xml.Element) -> CT_SlideSyncProperties
+
+pub fn tag_lst(@xml.Element) -> CT_TagList
+
+pub fn view_pr(@xml.Element) -> CT_ViewProperties
+
+pub fn vml_presentation_drawing_iscomment(@xml.Element) -> VmlPresentationDrawing_CT_Empty
+
+pub fn vml_presentation_drawing_textdata(@xml.Element) -> VmlPresentationDrawing_CT_Rel
+
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(type_name~ : String, value~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct AG_ChildSlide {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_ChildSlide::attribute_names(Self) -> Array[String]
+pub fn AG_ChildSlide::has_attribute(Self, String) -> Bool
+pub fn AG_ChildSlide::new(@xml.Element) -> Self
+
+pub(all) struct AG_Ole {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_Ole::attribute_names(Self) -> Array[String]
+pub fn AG_Ole::has_attribute(Self, String) -> Bool
+pub fn AG_Ole::new(@xml.Element) -> Self
+
+pub(all) struct AG_TLBuild {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn AG_TLBuild::attribute_names(Self) -> Array[String]
+pub fn AG_TLBuild::has_attribute(Self, String) -> Bool
+pub fn AG_TLBuild::new(@xml.Element) -> Self
+
+pub(all) struct CT_ApplicationNonVisualDrawingProps {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ApplicationNonVisualDrawingProps::new(@xml.Element) -> Self
+pub fn CT_ApplicationNonVisualDrawingProps::parse(@xml.Element) -> Self
+pub fn CT_ApplicationNonVisualDrawingProps::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Background {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Background::new(@xml.Element) -> Self
+pub fn CT_Background::parse(@xml.Element) -> Self
+pub fn CT_Background::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_BackgroundProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BackgroundProperties::new(@xml.Element) -> Self
+pub fn CT_BackgroundProperties::parse(@xml.Element) -> Self
+pub fn CT_BackgroundProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_BuildList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BuildList::new(@xml.Element) -> Self
+pub fn CT_BuildList::parse(@xml.Element) -> Self
+pub fn CT_BuildList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Comment {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Comment::new(@xml.Element) -> Self
+pub fn CT_Comment::parse(@xml.Element) -> Self
+pub fn CT_Comment::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CommentAuthor {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CommentAuthor::new(@xml.Element) -> Self
+pub fn CT_CommentAuthor::parse(@xml.Element) -> Self
+pub fn CT_CommentAuthor::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CommentAuthorList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CommentAuthorList::new(@xml.Element) -> Self
+pub fn CT_CommentAuthorList::parse(@xml.Element) -> Self
+pub fn CT_CommentAuthorList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CommentList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CommentList::new(@xml.Element) -> Self
+pub fn CT_CommentList::parse(@xml.Element) -> Self
+pub fn CT_CommentList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CommonSlideData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CommonSlideData::new(@xml.Element) -> Self
+pub fn CT_CommonSlideData::parse(@xml.Element) -> Self
+pub fn CT_CommonSlideData::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CommonSlideViewProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CommonSlideViewProperties::new(@xml.Element) -> Self
+pub fn CT_CommonSlideViewProperties::parse(@xml.Element) -> Self
+pub fn CT_CommonSlideViewProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CommonViewProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CommonViewProperties::new(@xml.Element) -> Self
+pub fn CT_CommonViewProperties::parse(@xml.Element) -> Self
+pub fn CT_CommonViewProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Connector {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Connector::new(@xml.Element) -> Self
+pub fn CT_Connector::parse(@xml.Element) -> Self
+pub fn CT_Connector::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ConnectorNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ConnectorNonVisual::new(@xml.Element) -> Self
+pub fn CT_ConnectorNonVisual::parse(@xml.Element) -> Self
+pub fn CT_ConnectorNonVisual::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Control {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Control::new(@xml.Element) -> Self
+pub fn CT_Control::parse(@xml.Element) -> Self
+pub fn CT_Control::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ControlList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ControlList::new(@xml.Element) -> Self
+pub fn CT_ControlList::parse(@xml.Element) -> Self
+pub fn CT_ControlList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CornerDirectionTransition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CornerDirectionTransition::new(@xml.Element) -> Self
+pub fn CT_CornerDirectionTransition::parse(@xml.Element) -> Self
+pub fn CT_CornerDirectionTransition::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CustomShow {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomShow::new(@xml.Element) -> Self
+pub fn CT_CustomShow::parse(@xml.Element) -> Self
+pub fn CT_CustomShow::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CustomShowId {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomShowId::new(@xml.Element) -> Self
+pub fn CT_CustomShowId::parse(@xml.Element) -> Self
+pub fn CT_CustomShowId::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CustomShowList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomShowList::new(@xml.Element) -> Self
+pub fn CT_CustomShowList::parse(@xml.Element) -> Self
+pub fn CT_CustomShowList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CustomerData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomerData::new(@xml.Element) -> Self
+pub fn CT_CustomerData::parse(@xml.Element) -> Self
+pub fn CT_CustomerData::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_CustomerDataList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_CustomerDataList::new(@xml.Element) -> Self
+pub fn CT_CustomerDataList::parse(@xml.Element) -> Self
+pub fn CT_CustomerDataList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_EightDirectionTransition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EightDirectionTransition::new(@xml.Element) -> Self
+pub fn CT_EightDirectionTransition::parse(@xml.Element) -> Self
+pub fn CT_EightDirectionTransition::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_EmbeddedFontDataId {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EmbeddedFontDataId::new(@xml.Element) -> Self
+pub fn CT_EmbeddedFontDataId::parse(@xml.Element) -> Self
+pub fn CT_EmbeddedFontDataId::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_EmbeddedFontList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EmbeddedFontList::new(@xml.Element) -> Self
+pub fn CT_EmbeddedFontList::parse(@xml.Element) -> Self
+pub fn CT_EmbeddedFontList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_EmbeddedFontListEntry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_EmbeddedFontListEntry::new(@xml.Element) -> Self
+pub fn CT_EmbeddedFontListEntry::parse(@xml.Element) -> Self
+pub fn CT_EmbeddedFontListEntry::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Empty {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Empty::new(@xml.Element) -> Self
+pub fn CT_Empty::parse(@xml.Element) -> Self
+pub fn CT_Empty::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Extension {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Extension::new(@xml.Element) -> Self
+pub fn CT_Extension::parse(@xml.Element) -> Self
+pub fn CT_Extension::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ExtensionList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExtensionList::new(@xml.Element) -> Self
+pub fn CT_ExtensionList::parse(@xml.Element) -> Self
+pub fn CT_ExtensionList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ExtensionListModify {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ExtensionListModify::new(@xml.Element) -> Self
+pub fn CT_ExtensionListModify::parse(@xml.Element) -> Self
+pub fn CT_ExtensionListModify::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_GraphicalObjectFrame {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GraphicalObjectFrame::new(@xml.Element) -> Self
+pub fn CT_GraphicalObjectFrame::parse(@xml.Element) -> Self
+pub fn CT_GraphicalObjectFrame::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_GraphicalObjectFrameNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GraphicalObjectFrameNonVisual::new(@xml.Element) -> Self
+pub fn CT_GraphicalObjectFrameNonVisual::parse(@xml.Element) -> Self
+pub fn CT_GraphicalObjectFrameNonVisual::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_GroupShape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupShape::new(@xml.Element) -> Self
+pub fn CT_GroupShape::parse(@xml.Element) -> Self
+pub fn CT_GroupShape::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_GroupShapeNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupShapeNonVisual::new(@xml.Element) -> Self
+pub fn CT_GroupShapeNonVisual::parse(@xml.Element) -> Self
+pub fn CT_GroupShapeNonVisual::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Guide {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Guide::new(@xml.Element) -> Self
+pub fn CT_Guide::parse(@xml.Element) -> Self
+pub fn CT_Guide::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_GuideList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GuideList::new(@xml.Element) -> Self
+pub fn CT_GuideList::parse(@xml.Element) -> Self
+pub fn CT_GuideList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_HandoutMaster {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HandoutMaster::new(@xml.Element) -> Self
+pub fn CT_HandoutMaster::parse(@xml.Element) -> Self
+pub fn CT_HandoutMaster::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_HandoutMasterIdList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HandoutMasterIdList::new(@xml.Element) -> Self
+pub fn CT_HandoutMasterIdList::parse(@xml.Element) -> Self
+pub fn CT_HandoutMasterIdList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_HandoutMasterIdListEntry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HandoutMasterIdListEntry::new(@xml.Element) -> Self
+pub fn CT_HandoutMasterIdListEntry::parse(@xml.Element) -> Self
+pub fn CT_HandoutMasterIdListEntry::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_HeaderFooter {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HeaderFooter::new(@xml.Element) -> Self
+pub fn CT_HeaderFooter::parse(@xml.Element) -> Self
+pub fn CT_HeaderFooter::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_HtmlPublishProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_HtmlPublishProperties::new(@xml.Element) -> Self
+pub fn CT_HtmlPublishProperties::parse(@xml.Element) -> Self
+pub fn CT_HtmlPublishProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_InOutTransition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_InOutTransition::new(@xml.Element) -> Self
+pub fn CT_InOutTransition::parse(@xml.Element) -> Self
+pub fn CT_InOutTransition::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_IndexRange {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_IndexRange::new(@xml.Element) -> Self
+pub fn CT_IndexRange::parse(@xml.Element) -> Self
+pub fn CT_IndexRange::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Kinsoku {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Kinsoku::new(@xml.Element) -> Self
+pub fn CT_Kinsoku::parse(@xml.Element) -> Self
+pub fn CT_Kinsoku::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ModifyVerifier {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ModifyVerifier::new(@xml.Element) -> Self
+pub fn CT_ModifyVerifier::parse(@xml.Element) -> Self
+pub fn CT_ModifyVerifier::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NormalViewPortion {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NormalViewPortion::new(@xml.Element) -> Self
+pub fn CT_NormalViewPortion::parse(@xml.Element) -> Self
+pub fn CT_NormalViewPortion::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NormalViewProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NormalViewProperties::new(@xml.Element) -> Self
+pub fn CT_NormalViewProperties::parse(@xml.Element) -> Self
+pub fn CT_NormalViewProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NotesMaster {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NotesMaster::new(@xml.Element) -> Self
+pub fn CT_NotesMaster::parse(@xml.Element) -> Self
+pub fn CT_NotesMaster::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NotesMasterIdList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NotesMasterIdList::new(@xml.Element) -> Self
+pub fn CT_NotesMasterIdList::parse(@xml.Element) -> Self
+pub fn CT_NotesMasterIdList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NotesMasterIdListEntry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NotesMasterIdListEntry::new(@xml.Element) -> Self
+pub fn CT_NotesMasterIdListEntry::parse(@xml.Element) -> Self
+pub fn CT_NotesMasterIdListEntry::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NotesSlide {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NotesSlide::new(@xml.Element) -> Self
+pub fn CT_NotesSlide::parse(@xml.Element) -> Self
+pub fn CT_NotesSlide::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NotesTextViewProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NotesTextViewProperties::new(@xml.Element) -> Self
+pub fn CT_NotesTextViewProperties::parse(@xml.Element) -> Self
+pub fn CT_NotesTextViewProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NotesViewProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NotesViewProperties::new(@xml.Element) -> Self
+pub fn CT_NotesViewProperties::parse(@xml.Element) -> Self
+pub fn CT_NotesViewProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OleObject {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OleObject::new(@xml.Element) -> Self
+pub fn CT_OleObject::parse(@xml.Element) -> Self
+pub fn CT_OleObject::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OleObjectEmbed {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OleObjectEmbed::new(@xml.Element) -> Self
+pub fn CT_OleObjectEmbed::parse(@xml.Element) -> Self
+pub fn CT_OleObjectEmbed::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OleObjectLink {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OleObjectLink::new(@xml.Element) -> Self
+pub fn CT_OleObjectLink::parse(@xml.Element) -> Self
+pub fn CT_OleObjectLink::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OptionalBlackTransition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OptionalBlackTransition::new(@xml.Element) -> Self
+pub fn CT_OptionalBlackTransition::parse(@xml.Element) -> Self
+pub fn CT_OptionalBlackTransition::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OrientationTransition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OrientationTransition::new(@xml.Element) -> Self
+pub fn CT_OrientationTransition::parse(@xml.Element) -> Self
+pub fn CT_OrientationTransition::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OutlineViewProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OutlineViewProperties::new(@xml.Element) -> Self
+pub fn CT_OutlineViewProperties::parse(@xml.Element) -> Self
+pub fn CT_OutlineViewProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OutlineViewSlideEntry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OutlineViewSlideEntry::new(@xml.Element) -> Self
+pub fn CT_OutlineViewSlideEntry::parse(@xml.Element) -> Self
+pub fn CT_OutlineViewSlideEntry::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_OutlineViewSlideList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_OutlineViewSlideList::new(@xml.Element) -> Self
+pub fn CT_OutlineViewSlideList::parse(@xml.Element) -> Self
+pub fn CT_OutlineViewSlideList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_PhotoAlbum {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PhotoAlbum::new(@xml.Element) -> Self
+pub fn CT_PhotoAlbum::parse(@xml.Element) -> Self
+pub fn CT_PhotoAlbum::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Picture {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Picture::new(@xml.Element) -> Self
+pub fn CT_Picture::parse(@xml.Element) -> Self
+pub fn CT_Picture::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_PictureNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PictureNonVisual::new(@xml.Element) -> Self
+pub fn CT_PictureNonVisual::parse(@xml.Element) -> Self
+pub fn CT_PictureNonVisual::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Placeholder {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Placeholder::new(@xml.Element) -> Self
+pub fn CT_Placeholder::parse(@xml.Element) -> Self
+pub fn CT_Placeholder::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Presentation {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Presentation::new(@xml.Element) -> Self
+pub fn CT_Presentation::parse(@xml.Element) -> Self
+pub fn CT_Presentation::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_PresentationProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PresentationProperties::new(@xml.Element) -> Self
+pub fn CT_PresentationProperties::parse(@xml.Element) -> Self
+pub fn CT_PresentationProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_PrintProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PrintProperties::new(@xml.Element) -> Self
+pub fn CT_PrintProperties::parse(@xml.Element) -> Self
+pub fn CT_PrintProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Rel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Rel::new(@xml.Element) -> Self
+pub fn CT_Rel::parse(@xml.Element) -> Self
+pub fn CT_Rel::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Shape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Shape::new(@xml.Element) -> Self
+pub fn CT_Shape::parse(@xml.Element) -> Self
+pub fn CT_Shape::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ShapeNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShapeNonVisual::new(@xml.Element) -> Self
+pub fn CT_ShapeNonVisual::parse(@xml.Element) -> Self
+pub fn CT_ShapeNonVisual::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ShowInfoBrowse {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShowInfoBrowse::new(@xml.Element) -> Self
+pub fn CT_ShowInfoBrowse::parse(@xml.Element) -> Self
+pub fn CT_ShowInfoBrowse::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ShowInfoKiosk {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShowInfoKiosk::new(@xml.Element) -> Self
+pub fn CT_ShowInfoKiosk::parse(@xml.Element) -> Self
+pub fn CT_ShowInfoKiosk::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ShowProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ShowProperties::new(@xml.Element) -> Self
+pub fn CT_ShowProperties::parse(@xml.Element) -> Self
+pub fn CT_ShowProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SideDirectionTransition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SideDirectionTransition::new(@xml.Element) -> Self
+pub fn CT_SideDirectionTransition::parse(@xml.Element) -> Self
+pub fn CT_SideDirectionTransition::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_Slide {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_Slide::new(@xml.Element) -> Self
+pub fn CT_Slide::parse(@xml.Element) -> Self
+pub fn CT_Slide::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideIdList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideIdList::new(@xml.Element) -> Self
+pub fn CT_SlideIdList::parse(@xml.Element) -> Self
+pub fn CT_SlideIdList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideIdListEntry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideIdListEntry::new(@xml.Element) -> Self
+pub fn CT_SlideIdListEntry::parse(@xml.Element) -> Self
+pub fn CT_SlideIdListEntry::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideLayout {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideLayout::new(@xml.Element) -> Self
+pub fn CT_SlideLayout::parse(@xml.Element) -> Self
+pub fn CT_SlideLayout::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideLayoutIdList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideLayoutIdList::new(@xml.Element) -> Self
+pub fn CT_SlideLayoutIdList::parse(@xml.Element) -> Self
+pub fn CT_SlideLayoutIdList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideLayoutIdListEntry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideLayoutIdListEntry::new(@xml.Element) -> Self
+pub fn CT_SlideLayoutIdListEntry::parse(@xml.Element) -> Self
+pub fn CT_SlideLayoutIdListEntry::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideMaster {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideMaster::new(@xml.Element) -> Self
+pub fn CT_SlideMaster::parse(@xml.Element) -> Self
+pub fn CT_SlideMaster::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideMasterIdList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideMasterIdList::new(@xml.Element) -> Self
+pub fn CT_SlideMasterIdList::parse(@xml.Element) -> Self
+pub fn CT_SlideMasterIdList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideMasterIdListEntry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideMasterIdListEntry::new(@xml.Element) -> Self
+pub fn CT_SlideMasterIdListEntry::parse(@xml.Element) -> Self
+pub fn CT_SlideMasterIdListEntry::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideMasterTextStyles {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideMasterTextStyles::new(@xml.Element) -> Self
+pub fn CT_SlideMasterTextStyles::parse(@xml.Element) -> Self
+pub fn CT_SlideMasterTextStyles::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideRelationshipList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideRelationshipList::new(@xml.Element) -> Self
+pub fn CT_SlideRelationshipList::parse(@xml.Element) -> Self
+pub fn CT_SlideRelationshipList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideRelationshipListEntry {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideRelationshipListEntry::new(@xml.Element) -> Self
+pub fn CT_SlideRelationshipListEntry::parse(@xml.Element) -> Self
+pub fn CT_SlideRelationshipListEntry::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideSize {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideSize::new(@xml.Element) -> Self
+pub fn CT_SlideSize::parse(@xml.Element) -> Self
+pub fn CT_SlideSize::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideSorterViewProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideSorterViewProperties::new(@xml.Element) -> Self
+pub fn CT_SlideSorterViewProperties::parse(@xml.Element) -> Self
+pub fn CT_SlideSorterViewProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideSyncProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideSyncProperties::new(@xml.Element) -> Self
+pub fn CT_SlideSyncProperties::parse(@xml.Element) -> Self
+pub fn CT_SlideSyncProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideTiming {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideTiming::new(@xml.Element) -> Self
+pub fn CT_SlideTiming::parse(@xml.Element) -> Self
+pub fn CT_SlideTiming::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideTransition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideTransition::new(@xml.Element) -> Self
+pub fn CT_SlideTransition::parse(@xml.Element) -> Self
+pub fn CT_SlideTransition::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SlideViewProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SlideViewProperties::new(@xml.Element) -> Self
+pub fn CT_SlideViewProperties::parse(@xml.Element) -> Self
+pub fn CT_SlideViewProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SmartTags {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SmartTags::new(@xml.Element) -> Self
+pub fn CT_SmartTags::parse(@xml.Element) -> Self
+pub fn CT_SmartTags::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SplitTransition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_SplitTransition::new(@xml.Element) -> Self
+pub fn CT_SplitTransition::parse(@xml.Element) -> Self
+pub fn CT_SplitTransition::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_StringTag {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StringTag::new(@xml.Element) -> Self
+pub fn CT_StringTag::parse(@xml.Element) -> Self
+pub fn CT_StringTag::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimVariant {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimVariant::new(@xml.Element) -> Self
+pub fn CT_TLAnimVariant::parse(@xml.Element) -> Self
+pub fn CT_TLAnimVariant::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimVariantBooleanVal {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimVariantBooleanVal::new(@xml.Element) -> Self
+pub fn CT_TLAnimVariantBooleanVal::parse(@xml.Element) -> Self
+pub fn CT_TLAnimVariantBooleanVal::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimVariantFloatVal {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimVariantFloatVal::new(@xml.Element) -> Self
+pub fn CT_TLAnimVariantFloatVal::parse(@xml.Element) -> Self
+pub fn CT_TLAnimVariantFloatVal::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimVariantIntegerVal {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimVariantIntegerVal::new(@xml.Element) -> Self
+pub fn CT_TLAnimVariantIntegerVal::parse(@xml.Element) -> Self
+pub fn CT_TLAnimVariantIntegerVal::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimVariantStringVal {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimVariantStringVal::new(@xml.Element) -> Self
+pub fn CT_TLAnimVariantStringVal::parse(@xml.Element) -> Self
+pub fn CT_TLAnimVariantStringVal::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimateBehavior {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimateBehavior::new(@xml.Element) -> Self
+pub fn CT_TLAnimateBehavior::parse(@xml.Element) -> Self
+pub fn CT_TLAnimateBehavior::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimateColorBehavior {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimateColorBehavior::new(@xml.Element) -> Self
+pub fn CT_TLAnimateColorBehavior::parse(@xml.Element) -> Self
+pub fn CT_TLAnimateColorBehavior::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimateEffectBehavior {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimateEffectBehavior::new(@xml.Element) -> Self
+pub fn CT_TLAnimateEffectBehavior::parse(@xml.Element) -> Self
+pub fn CT_TLAnimateEffectBehavior::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimateMotionBehavior {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimateMotionBehavior::new(@xml.Element) -> Self
+pub fn CT_TLAnimateMotionBehavior::parse(@xml.Element) -> Self
+pub fn CT_TLAnimateMotionBehavior::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimateRotationBehavior {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimateRotationBehavior::new(@xml.Element) -> Self
+pub fn CT_TLAnimateRotationBehavior::parse(@xml.Element) -> Self
+pub fn CT_TLAnimateRotationBehavior::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLAnimateScaleBehavior {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLAnimateScaleBehavior::new(@xml.Element) -> Self
+pub fn CT_TLAnimateScaleBehavior::parse(@xml.Element) -> Self
+pub fn CT_TLAnimateScaleBehavior::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLBehaviorAttributeNameList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLBehaviorAttributeNameList::new(@xml.Element) -> Self
+pub fn CT_TLBehaviorAttributeNameList::parse(@xml.Element) -> Self
+pub fn CT_TLBehaviorAttributeNameList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLBuildDiagram {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLBuildDiagram::new(@xml.Element) -> Self
+pub fn CT_TLBuildDiagram::parse(@xml.Element) -> Self
+pub fn CT_TLBuildDiagram::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLBuildParagraph {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLBuildParagraph::new(@xml.Element) -> Self
+pub fn CT_TLBuildParagraph::parse(@xml.Element) -> Self
+pub fn CT_TLBuildParagraph::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLByAnimateColorTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLByAnimateColorTransform::new(@xml.Element) -> Self
+pub fn CT_TLByAnimateColorTransform::parse(@xml.Element) -> Self
+pub fn CT_TLByAnimateColorTransform::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLByHslColorTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLByHslColorTransform::new(@xml.Element) -> Self
+pub fn CT_TLByHslColorTransform::parse(@xml.Element) -> Self
+pub fn CT_TLByHslColorTransform::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLByRgbColorTransform {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLByRgbColorTransform::new(@xml.Element) -> Self
+pub fn CT_TLByRgbColorTransform::parse(@xml.Element) -> Self
+pub fn CT_TLByRgbColorTransform::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLCommandBehavior {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLCommandBehavior::new(@xml.Element) -> Self
+pub fn CT_TLCommandBehavior::parse(@xml.Element) -> Self
+pub fn CT_TLCommandBehavior::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLCommonBehaviorData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLCommonBehaviorData::new(@xml.Element) -> Self
+pub fn CT_TLCommonBehaviorData::parse(@xml.Element) -> Self
+pub fn CT_TLCommonBehaviorData::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLCommonMediaNodeData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLCommonMediaNodeData::new(@xml.Element) -> Self
+pub fn CT_TLCommonMediaNodeData::parse(@xml.Element) -> Self
+pub fn CT_TLCommonMediaNodeData::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLCommonTimeNodeData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLCommonTimeNodeData::new(@xml.Element) -> Self
+pub fn CT_TLCommonTimeNodeData::parse(@xml.Element) -> Self
+pub fn CT_TLCommonTimeNodeData::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLGraphicalObjectBuild {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLGraphicalObjectBuild::new(@xml.Element) -> Self
+pub fn CT_TLGraphicalObjectBuild::parse(@xml.Element) -> Self
+pub fn CT_TLGraphicalObjectBuild::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLIterateData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLIterateData::new(@xml.Element) -> Self
+pub fn CT_TLIterateData::parse(@xml.Element) -> Self
+pub fn CT_TLIterateData::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLIterateIntervalPercentage {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLIterateIntervalPercentage::new(@xml.Element) -> Self
+pub fn CT_TLIterateIntervalPercentage::parse(@xml.Element) -> Self
+pub fn CT_TLIterateIntervalPercentage::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLIterateIntervalTime {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLIterateIntervalTime::new(@xml.Element) -> Self
+pub fn CT_TLIterateIntervalTime::parse(@xml.Element) -> Self
+pub fn CT_TLIterateIntervalTime::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLMediaNodeAudio {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLMediaNodeAudio::new(@xml.Element) -> Self
+pub fn CT_TLMediaNodeAudio::parse(@xml.Element) -> Self
+pub fn CT_TLMediaNodeAudio::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLMediaNodeVideo {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLMediaNodeVideo::new(@xml.Element) -> Self
+pub fn CT_TLMediaNodeVideo::parse(@xml.Element) -> Self
+pub fn CT_TLMediaNodeVideo::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLOleBuildChart {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLOleBuildChart::new(@xml.Element) -> Self
+pub fn CT_TLOleBuildChart::parse(@xml.Element) -> Self
+pub fn CT_TLOleBuildChart::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLOleChartTargetElement {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLOleChartTargetElement::new(@xml.Element) -> Self
+pub fn CT_TLOleChartTargetElement::parse(@xml.Element) -> Self
+pub fn CT_TLOleChartTargetElement::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLPoint {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLPoint::new(@xml.Element) -> Self
+pub fn CT_TLPoint::parse(@xml.Element) -> Self
+pub fn CT_TLPoint::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLSetBehavior {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLSetBehavior::new(@xml.Element) -> Self
+pub fn CT_TLSetBehavior::parse(@xml.Element) -> Self
+pub fn CT_TLSetBehavior::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLShapeTargetElement {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLShapeTargetElement::new(@xml.Element) -> Self
+pub fn CT_TLShapeTargetElement::parse(@xml.Element) -> Self
+pub fn CT_TLShapeTargetElement::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLSubShapeId {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLSubShapeId::new(@xml.Element) -> Self
+pub fn CT_TLSubShapeId::parse(@xml.Element) -> Self
+pub fn CT_TLSubShapeId::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTemplate {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTemplate::new(@xml.Element) -> Self
+pub fn CT_TLTemplate::parse(@xml.Element) -> Self
+pub fn CT_TLTemplate::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTemplateList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTemplateList::new(@xml.Element) -> Self
+pub fn CT_TLTemplateList::parse(@xml.Element) -> Self
+pub fn CT_TLTemplateList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTextTargetElement {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTextTargetElement::new(@xml.Element) -> Self
+pub fn CT_TLTextTargetElement::parse(@xml.Element) -> Self
+pub fn CT_TLTextTargetElement::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTimeAnimateValue {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeAnimateValue::new(@xml.Element) -> Self
+pub fn CT_TLTimeAnimateValue::parse(@xml.Element) -> Self
+pub fn CT_TLTimeAnimateValue::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTimeAnimateValueList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeAnimateValueList::new(@xml.Element) -> Self
+pub fn CT_TLTimeAnimateValueList::parse(@xml.Element) -> Self
+pub fn CT_TLTimeAnimateValueList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTimeCondition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeCondition::new(@xml.Element) -> Self
+pub fn CT_TLTimeCondition::parse(@xml.Element) -> Self
+pub fn CT_TLTimeCondition::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTimeConditionList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeConditionList::new(@xml.Element) -> Self
+pub fn CT_TLTimeConditionList::parse(@xml.Element) -> Self
+pub fn CT_TLTimeConditionList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTimeNodeExclusive {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeNodeExclusive::new(@xml.Element) -> Self
+pub fn CT_TLTimeNodeExclusive::parse(@xml.Element) -> Self
+pub fn CT_TLTimeNodeExclusive::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTimeNodeParallel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeNodeParallel::new(@xml.Element) -> Self
+pub fn CT_TLTimeNodeParallel::parse(@xml.Element) -> Self
+pub fn CT_TLTimeNodeParallel::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTimeNodeSequence {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeNodeSequence::new(@xml.Element) -> Self
+pub fn CT_TLTimeNodeSequence::parse(@xml.Element) -> Self
+pub fn CT_TLTimeNodeSequence::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTimeTargetElement {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeTargetElement::new(@xml.Element) -> Self
+pub fn CT_TLTimeTargetElement::parse(@xml.Element) -> Self
+pub fn CT_TLTimeTargetElement::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTriggerRuntimeNode {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTriggerRuntimeNode::new(@xml.Element) -> Self
+pub fn CT_TLTriggerRuntimeNode::parse(@xml.Element) -> Self
+pub fn CT_TLTriggerRuntimeNode::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TLTriggerTimeNodeID {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTriggerTimeNodeID::new(@xml.Element) -> Self
+pub fn CT_TLTriggerTimeNodeID::parse(@xml.Element) -> Self
+pub fn CT_TLTriggerTimeNodeID::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TagList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TagList::new(@xml.Element) -> Self
+pub fn CT_TagList::parse(@xml.Element) -> Self
+pub fn CT_TagList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TagsData {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TagsData::new(@xml.Element) -> Self
+pub fn CT_TagsData::parse(@xml.Element) -> Self
+pub fn CT_TagsData::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TimeNodeList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TimeNodeList::new(@xml.Element) -> Self
+pub fn CT_TimeNodeList::parse(@xml.Element) -> Self
+pub fn CT_TimeNodeList::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TransitionSoundAction {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TransitionSoundAction::new(@xml.Element) -> Self
+pub fn CT_TransitionSoundAction::parse(@xml.Element) -> Self
+pub fn CT_TransitionSoundAction::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TransitionStartSoundAction {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TransitionStartSoundAction::new(@xml.Element) -> Self
+pub fn CT_TransitionStartSoundAction::parse(@xml.Element) -> Self
+pub fn CT_TransitionStartSoundAction::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_ViewProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ViewProperties::new(@xml.Element) -> Self
+pub fn CT_ViewProperties::parse(@xml.Element) -> Self
+pub fn CT_ViewProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WebProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WebProperties::new(@xml.Element) -> Self
+pub fn CT_WebProperties::parse(@xml.Element) -> Self
+pub fn CT_WebProperties::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_WheelTransition {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WheelTransition::new(@xml.Element) -> Self
+pub fn CT_WheelTransition::parse(@xml.Element) -> Self
+pub fn CT_WheelTransition::to_element(Self) -> @xml.Element
+
+pub(all) struct EG_Background {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_Background::child_names(Self) -> Array[String]
+pub fn EG_Background::new(@xml.Element) -> Self
+
+pub(all) struct EG_ChildSlide {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ChildSlide::child_names(Self) -> Array[String]
+pub fn EG_ChildSlide::new(@xml.Element) -> Self
+
+pub(all) struct EG_ExtensionList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ExtensionList::child_names(Self) -> Array[String]
+pub fn EG_ExtensionList::new(@xml.Element) -> Self
+
+pub(all) struct EG_ShowType {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_ShowType::child_names(Self) -> Array[String]
+pub fn EG_ShowType::new(@xml.Element) -> Self
+
+pub(all) struct EG_SlideListChoice {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_SlideListChoice::child_names(Self) -> Array[String]
+pub fn EG_SlideListChoice::new(@xml.Element) -> Self
+
+pub(all) struct EG_TopLevelSlide {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn EG_TopLevelSlide::child_names(Self) -> Array[String]
+pub fn EG_TopLevelSlide::new(@xml.Element) -> Self
+
+pub struct ST_BookmarkIdSeed {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BookmarkIdSeed::new(String) -> Self raise SchemaViolation
+pub fn ST_BookmarkIdSeed::parse(String) -> Self raise SchemaViolation
+pub fn ST_BookmarkIdSeed::to_string(Self) -> String
+
+pub struct ST_Direction {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Direction::new(String) -> Self raise SchemaViolation
+pub fn ST_Direction::parse(String) -> Self raise SchemaViolation
+pub fn ST_Direction::to_string(Self) -> String
+
+pub struct ST_Index {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Index::new(String) -> Self raise SchemaViolation
+pub fn ST_Index::parse(String) -> Self raise SchemaViolation
+pub fn ST_Index::to_string(Self) -> String
+
+pub struct ST_IterateType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_IterateType::new(String) -> Self raise SchemaViolation
+pub fn ST_IterateType::parse(String) -> Self raise SchemaViolation
+pub fn ST_IterateType::to_string(Self) -> String
+
+pub struct ST_Name {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Name::new(String) -> Self raise SchemaViolation
+pub fn ST_Name::parse(String) -> Self raise SchemaViolation
+pub fn ST_Name::to_string(Self) -> String
+
+pub struct ST_OleObjectFollowColorScheme {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_OleObjectFollowColorScheme::new(String) -> Self raise SchemaViolation
+pub fn ST_OleObjectFollowColorScheme::parse(String) -> Self raise SchemaViolation
+pub fn ST_OleObjectFollowColorScheme::to_string(Self) -> String
+
+pub struct ST_PhotoAlbumFrameShape {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PhotoAlbumFrameShape::new(String) -> Self raise SchemaViolation
+pub fn ST_PhotoAlbumFrameShape::parse(String) -> Self raise SchemaViolation
+pub fn ST_PhotoAlbumFrameShape::to_string(Self) -> String
+
+pub struct ST_PhotoAlbumLayout {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PhotoAlbumLayout::new(String) -> Self raise SchemaViolation
+pub fn ST_PhotoAlbumLayout::parse(String) -> Self raise SchemaViolation
+pub fn ST_PhotoAlbumLayout::to_string(Self) -> String
+
+pub struct ST_PlaceholderSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PlaceholderSize::new(String) -> Self raise SchemaViolation
+pub fn ST_PlaceholderSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_PlaceholderSize::to_string(Self) -> String
+
+pub struct ST_PlaceholderType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PlaceholderType::new(String) -> Self raise SchemaViolation
+pub fn ST_PlaceholderType::parse(String) -> Self raise SchemaViolation
+pub fn ST_PlaceholderType::to_string(Self) -> String
+
+pub struct ST_PrintColorMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PrintColorMode::new(String) -> Self raise SchemaViolation
+pub fn ST_PrintColorMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_PrintColorMode::to_string(Self) -> String
+
+pub struct ST_PrintWhat {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PrintWhat::new(String) -> Self raise SchemaViolation
+pub fn ST_PrintWhat::parse(String) -> Self raise SchemaViolation
+pub fn ST_PrintWhat::to_string(Self) -> String
+
+pub struct ST_SlideId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SlideId::new(String) -> Self raise SchemaViolation
+pub fn ST_SlideId::parse(String) -> Self raise SchemaViolation
+pub fn ST_SlideId::to_string(Self) -> String
+
+pub struct ST_SlideLayoutId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SlideLayoutId::new(String) -> Self raise SchemaViolation
+pub fn ST_SlideLayoutId::parse(String) -> Self raise SchemaViolation
+pub fn ST_SlideLayoutId::to_string(Self) -> String
+
+pub struct ST_SlideLayoutType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SlideLayoutType::new(String) -> Self raise SchemaViolation
+pub fn ST_SlideLayoutType::parse(String) -> Self raise SchemaViolation
+pub fn ST_SlideLayoutType::to_string(Self) -> String
+
+pub struct ST_SlideMasterId {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SlideMasterId::new(String) -> Self raise SchemaViolation
+pub fn ST_SlideMasterId::parse(String) -> Self raise SchemaViolation
+pub fn ST_SlideMasterId::to_string(Self) -> String
+
+pub struct ST_SlideSizeCoordinate {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SlideSizeCoordinate::new(String) -> Self raise SchemaViolation
+pub fn ST_SlideSizeCoordinate::parse(String) -> Self raise SchemaViolation
+pub fn ST_SlideSizeCoordinate::to_string(Self) -> String
+
+pub struct ST_SlideSizeType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SlideSizeType::new(String) -> Self raise SchemaViolation
+pub fn ST_SlideSizeType::parse(String) -> Self raise SchemaViolation
+pub fn ST_SlideSizeType::to_string(Self) -> String
+
+pub struct ST_SplitterBarState {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_SplitterBarState::new(String) -> Self raise SchemaViolation
+pub fn ST_SplitterBarState::parse(String) -> Self raise SchemaViolation
+pub fn ST_SplitterBarState::to_string(Self) -> String
+
+pub struct ST_TLAnimateBehaviorCalcMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLAnimateBehaviorCalcMode::new(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateBehaviorCalcMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateBehaviorCalcMode::to_string(Self) -> String
+
+pub struct ST_TLAnimateBehaviorValueType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLAnimateBehaviorValueType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateBehaviorValueType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateBehaviorValueType::to_string(Self) -> String
+
+pub struct ST_TLAnimateColorDirection {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLAnimateColorDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateColorDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateColorDirection::to_string(Self) -> String
+
+pub struct ST_TLAnimateColorSpace {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLAnimateColorSpace::new(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateColorSpace::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateColorSpace::to_string(Self) -> String
+
+pub struct ST_TLAnimateEffectTransition {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLAnimateEffectTransition::new(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateEffectTransition::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateEffectTransition::to_string(Self) -> String
+
+pub struct ST_TLAnimateMotionBehaviorOrigin {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLAnimateMotionBehaviorOrigin::new(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateMotionBehaviorOrigin::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateMotionBehaviorOrigin::to_string(Self) -> String
+
+pub struct ST_TLAnimateMotionPathEditMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLAnimateMotionPathEditMode::new(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateMotionPathEditMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLAnimateMotionPathEditMode::to_string(Self) -> String
+
+pub struct ST_TLBehaviorAccumulateType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLBehaviorAccumulateType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLBehaviorAccumulateType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLBehaviorAccumulateType::to_string(Self) -> String
+
+pub struct ST_TLBehaviorAdditiveType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLBehaviorAdditiveType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLBehaviorAdditiveType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLBehaviorAdditiveType::to_string(Self) -> String
+
+pub struct ST_TLBehaviorOverrideType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLBehaviorOverrideType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLBehaviorOverrideType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLBehaviorOverrideType::to_string(Self) -> String
+
+pub struct ST_TLBehaviorTransformType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLBehaviorTransformType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLBehaviorTransformType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLBehaviorTransformType::to_string(Self) -> String
+
+pub struct ST_TLChartSubelementType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLChartSubelementType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLChartSubelementType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLChartSubelementType::to_string(Self) -> String
+
+pub struct ST_TLCommandType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLCommandType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLCommandType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLCommandType::to_string(Self) -> String
+
+pub struct ST_TLDiagramBuildType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLDiagramBuildType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLDiagramBuildType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLDiagramBuildType::to_string(Self) -> String
+
+pub struct ST_TLNextActionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLNextActionType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLNextActionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLNextActionType::to_string(Self) -> String
+
+pub struct ST_TLOleChartBuildType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLOleChartBuildType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLOleChartBuildType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLOleChartBuildType::to_string(Self) -> String
+
+pub struct ST_TLParaBuildType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLParaBuildType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLParaBuildType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLParaBuildType::to_string(Self) -> String
+
+pub struct ST_TLPreviousActionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLPreviousActionType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLPreviousActionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLPreviousActionType::to_string(Self) -> String
+
+pub struct ST_TLTime {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTime::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTime::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTime::to_string(Self) -> String
+
+pub struct ST_TLTimeAnimateValueTime {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTimeAnimateValueTime::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeAnimateValueTime::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeAnimateValueTime::to_string(Self) -> String
+
+pub struct ST_TLTimeIndefinite {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTimeIndefinite::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeIndefinite::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeIndefinite::to_string(Self) -> String
+
+pub struct ST_TLTimeNodeFillType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTimeNodeFillType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeFillType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeFillType::to_string(Self) -> String
+
+pub struct ST_TLTimeNodeID {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTimeNodeID::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeID::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeID::to_string(Self) -> String
+
+pub struct ST_TLTimeNodeMasterRelation {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTimeNodeMasterRelation::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeMasterRelation::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeMasterRelation::to_string(Self) -> String
+
+pub struct ST_TLTimeNodePresetClassType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTimeNodePresetClassType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodePresetClassType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodePresetClassType::to_string(Self) -> String
+
+pub struct ST_TLTimeNodeRestartType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTimeNodeRestartType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeRestartType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeRestartType::to_string(Self) -> String
+
+pub struct ST_TLTimeNodeSyncType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTimeNodeSyncType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeSyncType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeSyncType::to_string(Self) -> String
+
+pub struct ST_TLTimeNodeType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTimeNodeType::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTimeNodeType::to_string(Self) -> String
+
+pub struct ST_TLTriggerEvent {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTriggerEvent::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTriggerEvent::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTriggerEvent::to_string(Self) -> String
+
+pub struct ST_TLTriggerRuntimeNode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TLTriggerRuntimeNode::new(String) -> Self raise SchemaViolation
+pub fn ST_TLTriggerRuntimeNode::parse(String) -> Self raise SchemaViolation
+pub fn ST_TLTriggerRuntimeNode::to_string(Self) -> String
+
+pub struct ST_TransitionCornerDirectionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TransitionCornerDirectionType::new(String) -> Self raise SchemaViolation
+pub fn ST_TransitionCornerDirectionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TransitionCornerDirectionType::to_string(Self) -> String
+
+pub struct ST_TransitionEightDirectionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TransitionEightDirectionType::new(String) -> Self raise SchemaViolation
+pub fn ST_TransitionEightDirectionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TransitionEightDirectionType::to_string(Self) -> String
+
+pub struct ST_TransitionInOutDirectionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TransitionInOutDirectionType::new(String) -> Self raise SchemaViolation
+pub fn ST_TransitionInOutDirectionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TransitionInOutDirectionType::to_string(Self) -> String
+
+pub struct ST_TransitionSideDirectionType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TransitionSideDirectionType::new(String) -> Self raise SchemaViolation
+pub fn ST_TransitionSideDirectionType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TransitionSideDirectionType::to_string(Self) -> String
+
+pub struct ST_TransitionSpeed {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TransitionSpeed::new(String) -> Self raise SchemaViolation
+pub fn ST_TransitionSpeed::parse(String) -> Self raise SchemaViolation
+pub fn ST_TransitionSpeed::to_string(Self) -> String
+
+pub struct ST_ViewType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ViewType::new(String) -> Self raise SchemaViolation
+pub fn ST_ViewType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ViewType::to_string(Self) -> String
+
+pub struct ST_WebColorType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_WebColorType::new(String) -> Self raise SchemaViolation
+pub fn ST_WebColorType::parse(String) -> Self raise SchemaViolation
+pub fn ST_WebColorType::to_string(Self) -> String
+
+pub struct ST_WebEncoding {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_WebEncoding::new(String) -> Self raise SchemaViolation
+pub fn ST_WebEncoding::parse(String) -> Self raise SchemaViolation
+pub fn ST_WebEncoding::to_string(Self) -> String
+
+pub struct ST_WebScreenSize {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_WebScreenSize::new(String) -> Self raise SchemaViolation
+pub fn ST_WebScreenSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_WebScreenSize::to_string(Self) -> String
+
+pub(all) struct VmlPresentationDrawing_CT_Empty {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn VmlPresentationDrawing_CT_Empty::new(@xml.Element) -> Self
+pub fn VmlPresentationDrawing_CT_Empty::parse(@xml.Element) -> Self
+pub fn VmlPresentationDrawing_CT_Empty::to_element(Self) -> @xml.Element
+
+pub(all) struct VmlPresentationDrawing_CT_Rel {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn VmlPresentationDrawing_CT_Rel::new(@xml.Element) -> Self
+pub fn VmlPresentationDrawing_CT_Rel::parse(@xml.Element) -> Self
+pub fn VmlPresentationDrawing_CT_Rel::to_element(Self) -> @xml.Element
 
 // Type aliases
 
