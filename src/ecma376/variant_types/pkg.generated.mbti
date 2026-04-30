@@ -1,12 +1,161 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/variant_types"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn read_value(Bytes) -> Variant raise
+
+pub fn read_variant(Bytes) -> CT_Variant raise
+
+pub fn read_vector(Bytes) -> CT_Vector raise
+
+pub fn variant_from_element(@xml.Element) -> Variant raise SchemaViolation
+
+pub fn write_value(Variant) -> Bytes
+
+pub fn write_variant(CT_Variant) -> Bytes
+
+pub fn write_vector(CT_Vector) -> Bytes
+
 // Errors
+pub suberror ResourceMissing {
+  ResourceMissing(section~ : String, path~ : String, target~ : String)
+} derive(@debug.Debug)
+
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+#alias(ArrayElement)
+pub(all) struct CT_Array {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(EmptyElement)
+pub(all) struct CT_Empty {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(NullElement)
+pub(all) struct CT_Null {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(VariantElement)
+pub(all) struct CT_Variant {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(VectorElement)
+pub(all) struct CT_Vector {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+#alias(VstreamElement)
+pub(all) struct CT_Vstream {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+
+pub struct ST_ArrayBaseType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ArrayBaseType::new(String) -> Self raise SchemaViolation
+pub fn ST_ArrayBaseType::to_string(Self) -> String
+
+pub struct ST_Cy {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Cy::new(String) -> Self
+pub fn ST_Cy::to_string(Self) -> String
+
+pub struct ST_Error {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_Error::new(String) -> Self
+pub fn ST_Error::to_string(Self) -> String
+
+pub struct ST_VectorBaseType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_VectorBaseType::new(String) -> Self raise SchemaViolation
+pub fn ST_VectorBaseType::to_string(Self) -> String
+
+pub(all) enum Variant {
+  VtArray(CT_Array)
+  VtBlob(VariantAtom)
+  VtBool(VariantAtom)
+  VtBstr(VariantAtom)
+  VtClsid(VariantAtom)
+  VtCy(VariantAtom)
+  VtDate(VariantAtom)
+  VtDecimal(VariantAtom)
+  VtEmpty(CT_Empty)
+  VtError(VariantAtom)
+  VtFiletime(VariantAtom)
+  VtI1(VariantAtom)
+  VtI2(VariantAtom)
+  VtI4(VariantAtom)
+  VtI8(VariantAtom)
+  VtInt(VariantAtom)
+  VtLpstr(VariantAtom)
+  VtLpwstr(VariantAtom)
+  VtNull(CT_Null)
+  VtOblob(VariantAtom)
+  VtOstorage(VariantAtom)
+  VtOstream(VariantAtom)
+  VtR4(VariantAtom)
+  VtR8(VariantAtom)
+  VtStorage(VariantAtom)
+  VtStream(VariantAtom)
+  VtUi1(VariantAtom)
+  VtUi2(VariantAtom)
+  VtUi4(VariantAtom)
+  VtUi8(VariantAtom)
+  VtUint(VariantAtom)
+  VtVariant(CT_Variant)
+  VtVector(CT_Vector)
+  VtVstream(CT_Vstream)
+} derive(Eq, @debug.Debug)
+pub fn Variant::to_element(Self) -> @xml.Element
+
+#alias(Blob)
+#alias(BoolElement)
+#alias(Bstr)
+#alias(Clsid)
+#alias(Cy)
+#alias(DateElement)
+#alias(DecimalElement)
+#alias(ErrorElement)
+#alias(Filetime)
+#alias(I1)
+#alias(I2)
+#alias(I4)
+#alias(I8)
+#alias(IntElement)
+#alias(Lpstr)
+#alias(Lpwstr)
+#alias(Oblob)
+#alias(Ostorage)
+#alias(Ostream)
+#alias(R4)
+#alias(R8)
+#alias(Storage)
+#alias(Stream)
+#alias(Ui1)
+#alias(Ui2)
+#alias(Ui4)
+#alias(Ui8)
+#alias(UintElement)
+pub(all) struct VariantAtom {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 
