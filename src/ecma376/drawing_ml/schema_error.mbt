@@ -53,6 +53,11 @@ fn validate_main_attributes(
       ("sysClr", "val") => ST_SystemColorVal::parse(value) |> ignore
       ("schemeClr", "val") => ST_SchemeColorVal::parse(value) |> ignore
       ("prstClr", "val") => ST_PresetColorVal::parse(value) |> ignore
+      ("gradFill", "flip") | ("tile", "flip") =>
+        ST_TileFlipMode::parse(value) |> ignore
+      ("tile", "algn") => ST_RectAlignment::parse(value) |> ignore
+      ("path", "path") => ST_PathShadeType::parse(value) |> ignore
+      ("pattFill", "prst") => ST_PresetPatternVal::parse(value) |> ignore
       ("clrMap", "bg1")
       | ("clrMap", "tx1")
       | ("clrMap", "bg2")

@@ -451,6 +451,121 @@ pub fn ST_TextFontAlignType::to_string(self : ST_TextFontAlignType) -> String {
 }
 
 ///|
+pub struct ST_RectAlignment {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_RectAlignment::parse(
+  s : String,
+) -> ST_RectAlignment raise SchemaViolation {
+  validate_main_enum("ST_RectAlignment", s, [
+    "tl", "t", "tr", "l", "ctr", "r", "bl", "b", "br",
+  ])
+  { value: s }
+}
+
+///|
+pub fn ST_RectAlignment::new(
+  s : String,
+) -> ST_RectAlignment raise SchemaViolation {
+  ST_RectAlignment::parse(s)
+}
+
+///|
+pub fn ST_RectAlignment::to_string(self : ST_RectAlignment) -> String {
+  self.value
+}
+
+///|
+pub struct ST_PathShadeType {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PathShadeType::parse(
+  s : String,
+) -> ST_PathShadeType raise SchemaViolation {
+  validate_main_enum("ST_PathShadeType", s, ["shape", "circle", "rect"])
+  { value: s }
+}
+
+///|
+pub fn ST_PathShadeType::new(
+  s : String,
+) -> ST_PathShadeType raise SchemaViolation {
+  ST_PathShadeType::parse(s)
+}
+
+///|
+pub fn ST_PathShadeType::to_string(self : ST_PathShadeType) -> String {
+  self.value
+}
+
+///|
+pub struct ST_TileFlipMode {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TileFlipMode::parse(
+  s : String,
+) -> ST_TileFlipMode raise SchemaViolation {
+  validate_main_enum("ST_TileFlipMode", s, ["none", "x", "y", "xy"])
+  { value: s }
+}
+
+///|
+pub fn ST_TileFlipMode::new(
+  s : String,
+) -> ST_TileFlipMode raise SchemaViolation {
+  ST_TileFlipMode::parse(s)
+}
+
+///|
+pub fn ST_TileFlipMode::to_string(self : ST_TileFlipMode) -> String {
+  self.value
+}
+
+///|
+pub struct ST_PresetPatternVal {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PresetPatternVal::parse(
+  s : String,
+) -> ST_PresetPatternVal raise SchemaViolation {
+  validate_main_enum("ST_PresetPatternVal", s, preset_pattern_values())
+  { value: s }
+}
+
+///|
+pub fn ST_PresetPatternVal::new(
+  s : String,
+) -> ST_PresetPatternVal raise SchemaViolation {
+  ST_PresetPatternVal::parse(s)
+}
+
+///|
+pub fn ST_PresetPatternVal::to_string(self : ST_PresetPatternVal) -> String {
+  self.value
+}
+
+///|
+fn preset_pattern_values() -> Array[String] {
+  [
+    "pct5", "pct10", "pct20", "pct25", "pct30", "pct40", "pct50", "pct60", "pct70",
+    "pct75", "pct80", "pct90", "horz", "vert", "ltHorz", "ltVert", "dkHorz", "dkVert",
+    "narHorz", "narVert", "dashHorz", "dashVert", "cross", "dnDiag", "upDiag", "ltDnDiag",
+    "ltUpDiag", "dkDnDiag", "dkUpDiag", "wdDnDiag", "wdUpDiag", "dashDnDiag", "dashUpDiag",
+    "diagCross", "smCheck", "lgCheck", "smGrid", "lgGrid", "dotGrid", "smConfetti",
+    "lgConfetti", "horzBrick", "diagBrick", "solidDmnd", "openDmnd", "dotDmnd", "plaid",
+    "sphere", "weave", "divot", "shingle", "wave", "trellis", "zigZag",
+  ]
+}
+
+///|
 fn validate_measure(
   type_name : String,
   value : String,

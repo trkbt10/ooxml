@@ -9,6 +9,8 @@ import {
 // Values
 pub fn package_name() -> String
 
+pub fn read_blip_fill_properties(Bytes) -> CT_BlipFillProperties raise
+
 pub fn read_blur_effect(Bytes) -> CT_BlurEffect raise
 
 pub fn read_color_mapping(Bytes) -> CT_ColorMapping raise
@@ -21,9 +23,17 @@ pub fn read_effect_list(Bytes) -> CT_EffectList raise
 
 pub fn read_font_scheme(Bytes) -> CT_FontScheme raise
 
+pub fn read_gradient_fill_properties(Bytes) -> CT_GradientFillProperties raise
+
+pub fn read_group_fill_properties(Bytes) -> CT_GroupFillProperties raise
+
 pub fn read_hsl_color(Bytes) -> CT_HslColor raise
 
+pub fn read_no_fill_properties(Bytes) -> CT_NoFillProperties raise
+
 pub fn read_outer_shadow_effect(Bytes) -> CT_OuterShadowEffect raise
+
+pub fn read_pattern_fill_properties(Bytes) -> CT_PatternFillProperties raise
 
 pub fn read_preset_color(Bytes) -> CT_PresetColor raise
 
@@ -34,6 +44,8 @@ pub fn read_s_rgb_color(Bytes) -> CT_SRgbColor raise
 pub fn read_sc_rgb_color(Bytes) -> CT_ScRgbColor raise
 
 pub fn read_scheme_color(Bytes) -> CT_SchemeColor raise
+
+pub fn read_solid_color_fill_properties(Bytes) -> CT_SolidColorFillProperties raise
 
 pub fn read_system_color(Bytes) -> CT_SystemColor raise
 
@@ -47,6 +59,8 @@ pub fn read_theme_override(Bytes) -> CT_BaseStylesOverride raise
 
 pub fn read_transform2d(Bytes) -> CT_Transform2D raise
 
+pub fn write_blip_fill_properties(CT_BlipFillProperties) -> Bytes
+
 pub fn write_blur_effect(CT_BlurEffect) -> Bytes
 
 pub fn write_color_mapping(CT_ColorMapping) -> Bytes
@@ -59,9 +73,17 @@ pub fn write_effect_list(CT_EffectList) -> Bytes
 
 pub fn write_font_scheme(CT_FontScheme) -> Bytes
 
+pub fn write_gradient_fill_properties(CT_GradientFillProperties) -> Bytes
+
+pub fn write_group_fill_properties(CT_GroupFillProperties) -> Bytes
+
 pub fn write_hsl_color(CT_HslColor) -> Bytes
 
+pub fn write_no_fill_properties(CT_NoFillProperties) -> Bytes
+
 pub fn write_outer_shadow_effect(CT_OuterShadowEffect) -> Bytes
+
+pub fn write_pattern_fill_properties(CT_PatternFillProperties) -> Bytes
 
 pub fn write_preset_color(CT_PresetColor) -> Bytes
 
@@ -72,6 +94,8 @@ pub fn write_s_rgb_color(CT_SRgbColor) -> Bytes
 pub fn write_sc_rgb_color(CT_ScRgbColor) -> Bytes
 
 pub fn write_scheme_color(CT_SchemeColor) -> Bytes
+
+pub fn write_solid_color_fill_properties(CT_SolidColorFillProperties) -> Bytes
 
 pub fn write_system_color(CT_SystemColor) -> Bytes
 
@@ -166,6 +190,11 @@ pub(all) struct CT_BlendEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_BlendEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_BlipFillProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_BlipFillProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_BlurEffect {
   element : @xml.Element
@@ -293,6 +322,11 @@ pub(all) struct CT_FillOverlayEffect {
 } derive(Eq, @debug.Debug)
 pub fn CT_FillOverlayEffect::new(@xml.Element) -> Self
 
+pub(all) struct CT_FillProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_FillProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_FixedPercentage {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -338,6 +372,21 @@ pub(all) struct CT_GlowEffect {
 } derive(Eq, @debug.Debug)
 pub fn CT_GlowEffect::new(@xml.Element) -> Self
 
+pub(all) struct CT_GradientFillProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GradientFillProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_GradientStop {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GradientStop::new(@xml.Element) -> Self
+
+pub(all) struct CT_GradientStopList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GradientStopList::new(@xml.Element) -> Self
+
 pub(all) struct CT_GrayscaleEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -347,6 +396,11 @@ pub(all) struct CT_GrayscaleTransform {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_GrayscaleTransform::new(@xml.Element) -> Self
+
+pub(all) struct CT_GroupFillProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GroupFillProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupTransform2D {
   element : @xml.Element
@@ -378,10 +432,20 @@ pub(all) struct CT_InverseTransform {
 } derive(Eq, @debug.Debug)
 pub fn CT_InverseTransform::new(@xml.Element) -> Self
 
+pub(all) struct CT_LinearShadeProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_LinearShadeProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_LuminanceEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_LuminanceEffect::new(@xml.Element) -> Self
+
+pub(all) struct CT_NoFillProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NoFillProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_OfficeArtExtension {
   element : @xml.Element
@@ -443,6 +507,16 @@ pub(all) struct CT_Path2DQuadBezierTo {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Path2DQuadBezierTo::new(@xml.Element) -> Self
+
+pub(all) struct CT_PathShadeProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PathShadeProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_PatternFillProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_PatternFillProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_Percentage {
   element : @xml.Element
@@ -559,6 +633,11 @@ pub(all) struct CT_SphereCoords {
 } derive(Eq, @debug.Debug)
 pub fn CT_SphereCoords::new(@xml.Element) -> Self
 
+pub(all) struct CT_StretchInfoProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_StretchInfoProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_SupplementalFont {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -578,6 +657,11 @@ pub(all) struct CT_TextFont {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextFont::new(@xml.Element) -> Self
+
+pub(all) struct CT_TileInfoProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TileInfoProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_TintEffect {
   element : @xml.Element
@@ -667,6 +751,13 @@ pub fn ST_FontCollectionIndex::new(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::parse(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::to_string(Self) -> String
 
+pub struct ST_PathShadeType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PathShadeType::new(String) -> Self raise SchemaViolation
+pub fn ST_PathShadeType::parse(String) -> Self raise SchemaViolation
+pub fn ST_PathShadeType::to_string(Self) -> String
+
 pub struct ST_Percentage {
   value : String
 } derive(Eq, @debug.Debug)
@@ -723,6 +814,20 @@ pub fn ST_PresetColorVal::new(String) -> Self raise SchemaViolation
 pub fn ST_PresetColorVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_PresetColorVal::to_string(Self) -> String
 
+pub struct ST_PresetPatternVal {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_PresetPatternVal::new(String) -> Self raise SchemaViolation
+pub fn ST_PresetPatternVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_PresetPatternVal::to_string(Self) -> String
+
+pub struct ST_RectAlignment {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_RectAlignment::new(String) -> Self raise SchemaViolation
+pub fn ST_RectAlignment::parse(String) -> Self raise SchemaViolation
+pub fn ST_RectAlignment::to_string(Self) -> String
+
 pub struct ST_SchemeColorVal {
   value : String
 } derive(Eq, @debug.Debug)
@@ -764,6 +869,13 @@ pub struct ST_TextTypeface {
 pub fn ST_TextTypeface::new(String) -> Self raise SchemaViolation
 pub fn ST_TextTypeface::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextTypeface::to_string(Self) -> String
+
+pub struct ST_TileFlipMode {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_TileFlipMode::new(String) -> Self raise SchemaViolation
+pub fn ST_TileFlipMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_TileFlipMode::to_string(Self) -> String
 
 // Type aliases
 
