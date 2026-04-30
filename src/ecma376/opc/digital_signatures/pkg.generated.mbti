@@ -3,6 +3,7 @@ package "trkbt10/ooxml/ecma376/opc/digital_signatures"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
 }
 
 // Values
@@ -10,17 +11,61 @@ pub fn digital_signature_ns() -> String
 
 pub fn package_name() -> String
 
+pub fn read_canonicalization_method(Bytes) -> CanonicalizationMethod raise SchemaViolation
+
+pub fn read_digest_method(Bytes) -> DigestMethod raise SchemaViolation
+
+pub fn read_manifest(Bytes) -> Manifest raise SchemaViolation
+
+pub fn read_object(Bytes) -> Object raise SchemaViolation
+
+pub fn read_reference(Bytes) -> Reference raise SchemaViolation
+
 pub fn read_relationship_reference(Bytes) -> RelationshipReference raise
 
 pub fn read_relationships_group_reference(Bytes) -> RelationshipsGroupReference raise
 
+pub fn read_signature(Bytes) -> Signature raise SchemaViolation
+
+pub fn read_signature_method(Bytes) -> SignatureMethod raise SchemaViolation
+
+pub fn read_signature_property(Bytes) -> SignatureProperty raise SchemaViolation
+
 pub fn read_signature_time(Bytes) -> SignatureTime raise
+
+pub fn read_signed_info(Bytes) -> SignedInfo raise SchemaViolation
+
+pub fn read_transform(Bytes) -> Transform raise SchemaViolation
+
+pub fn read_xpath(Bytes) -> XPath raise SchemaViolation
+
+pub fn write_canonicalization_method(CanonicalizationMethod) -> Bytes
+
+pub fn write_digest_method(DigestMethod) -> Bytes
+
+pub fn write_manifest(Manifest) -> Bytes
+
+pub fn write_object(Object) -> Bytes
+
+pub fn write_reference(Reference) -> Bytes
 
 pub fn write_relationship_reference(RelationshipReference) -> Bytes
 
 pub fn write_relationships_group_reference(RelationshipsGroupReference) -> Bytes
 
+pub fn write_signature(Signature) -> Bytes
+
+pub fn write_signature_method(SignatureMethod) -> Bytes
+
+pub fn write_signature_property(SignatureProperty) -> Bytes
+
 pub fn write_signature_time(SignatureTime) -> Bytes
+
+pub fn write_signed_info(SignedInfo) -> Bytes
+
+pub fn write_transform(Transform) -> Bytes
+
+pub fn write_xpath(XPath) -> Bytes
 
 // Errors
 pub suberror ResourceMissing {
@@ -36,6 +81,38 @@ pub suberror UnsupportedFeature {
 } derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct CanonicalizationMethod {
+  algorithm : String
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn CanonicalizationMethod::new(String, Array[@xml.Node]) -> Self raise SchemaViolation
+
+pub(all) struct DigestMethod {
+  algorithm : String
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn DigestMethod::new(String, Array[@xml.Node]) -> Self raise SchemaViolation
+
+pub(all) struct Manifest {
+  id : String?
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn Manifest::new(String?, Array[@xml.Node]) -> Self
+
+pub(all) struct Object {
+  id : String?
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn Object::new(String?, Array[@xml.Node]) -> Self
+
+pub(all) struct Reference {
+  id : String?
+  type_ : String?
+  uri : String?
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn Reference::new(String?, String?, String?, Array[@xml.Node]) -> Self
+
 pub(all) struct RelationshipReference {
   source_id : String
 } derive(Eq, @debug.Debug)
@@ -56,10 +133,47 @@ pub(all) struct ST_Value {
 pub fn ST_Value::new(String) -> Self raise SchemaViolation
 pub fn ST_Value::to_string(Self) -> String
 
+pub(all) struct Signature {
+  id : String?
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn Signature::new(String?, Array[@xml.Node]) -> Self
+
+pub(all) struct SignatureMethod {
+  algorithm : String
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn SignatureMethod::new(String, Array[@xml.Node]) -> Self raise SchemaViolation
+
+pub(all) struct SignatureProperty {
+  id : String?
+  target : String
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn SignatureProperty::new(String?, String, Array[@xml.Node]) -> Self raise SchemaViolation
+
 pub(all) struct SignatureTime {
   format : ST_Format
   value : ST_Value
 } derive(Eq, @debug.Debug)
+
+pub(all) struct SignedInfo {
+  id : String?
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn SignedInfo::new(String?, Array[@xml.Node]) -> Self
+
+pub(all) struct Transform {
+  algorithm : String
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn Transform::new(String, Array[@xml.Node]) -> Self raise SchemaViolation
+
+pub(all) struct XPath {
+  id : String?
+  children : Array[@xml.Node]
+} derive(Eq, @debug.Debug)
+pub fn XPath::new(String?, Array[@xml.Node]) -> Self
 
 // Type aliases
 

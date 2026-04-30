@@ -47,8 +47,8 @@ fn RelationshipsGroupReference::new(
 }
 
 ///|
-/// ST_Format simple type for SignatureTime from schema bundle opc-digSig.xsd
-/// in the http://schemas.openxmlformats.org/package/2006/digital-signature
+/// XSD simple type ST_Format and §10.5.16 Format element lexical wrapper for
+/// SignatureTime from schema bundle opc-digSig.xsd in the digital-signature
 /// target namespace.
 pub(all) struct ST_Format {
   value : String
@@ -69,15 +69,16 @@ pub fn ST_Format::new(value : String) -> ST_Format raise SchemaViolation {
 }
 
 ///|
-/// Serialize §10.5.16 ST_Format to its XSD string lexical value.
+/// Serialize XSD simple type ST_Format for §10.5.16 Format to its string
+/// lexical value.
 pub fn ST_Format::to_string(self : ST_Format) -> String {
   self.value
 }
 
 ///|
-/// ST_Value simple type for SignatureTime from schema bundle opc-digSig.xsd in
-/// the http://schemas.openxmlformats.org/package/2006/digital-signature target
-/// namespace.
+/// XSD simple type ST_Value and §10.5.17 Value element lexical wrapper for
+/// SignatureTime from schema bundle opc-digSig.xsd in the digital-signature
+/// target namespace.
 pub(all) struct ST_Value {
   value : String
 } derive(Eq, Debug)
@@ -97,7 +98,8 @@ pub fn ST_Value::new(value : String) -> ST_Value raise SchemaViolation {
 }
 
 ///|
-/// Serialize §10.5.17 ST_Value to its XSD string lexical value.
+/// Serialize XSD simple type ST_Value for §10.5.17 Value to its string lexical
+/// value.
 pub fn ST_Value::to_string(self : ST_Value) -> String {
   self.value
 }
