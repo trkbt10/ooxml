@@ -1,12 +1,102 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/bibliography"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn parse_sources_element(@xml.Element) -> CT_Sources raise SchemaViolation
+
+pub fn read_sources(Bytes) -> CT_Sources raise
+
+pub fn write_sources(CT_Sources) -> Bytes
+
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(type_name~ : String, value~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) enum BibliographyContributor {
+  Name(String, CT_NameType)
+  NameOrCorporate(String, CT_NameOrCorporateType)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_AuthorType {
+  contributors : Array[BibliographyContributor]
+} derive(Eq, @debug.Debug)
+pub fn CT_AuthorType::parse(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AuthorType::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_NameListType {
+  persons : Array[CT_PersonType]
+} derive(Eq, @debug.Debug)
+pub fn CT_NameListType::parse(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_NameListType::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_NameOrCorporateType {
+  NameList(CT_NameListType)
+  Corporate(String)
+} derive(Eq, @debug.Debug)
+pub fn CT_NameOrCorporateType::parse(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_NameOrCorporateType::to_element(Self, String) -> @xml.Element
+
+pub(all) struct CT_NameType {
+  name_list : CT_NameListType
+} derive(Eq, @debug.Debug)
+pub fn CT_NameType::parse(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_NameType::to_element(Self, String) -> @xml.Element
+
+pub(all) struct CT_PersonType {
+  last : String?
+  first : String?
+  middle : String?
+} derive(Eq, @debug.Debug)
+pub fn CT_PersonType::parse(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PersonType::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_SourceType {
+  source_type : ST_SourceType?
+  author : CT_AuthorType?
+  elements : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+pub fn CT_SourceType::parse(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SourceType::to_element(Self) -> @xml.Element
+
+#alias(Sources)
+pub(all) struct CT_Sources {
+  selected_style : String?
+  style_name : String?
+  uri : String?
+  sources : Array[CT_SourceType]
+} derive(Eq, @debug.Debug)
+pub fn CT_Sources::to_element(Self) -> @xml.Element
+
+pub(all) enum ST_SourceType {
+  ArticleInAPeriodical
+  Book
+  BookSection
+  JournalArticle
+  ConferenceProceedings
+  Report
+  SoundRecording
+  Performance
+  Art
+  DocumentFromInternetSite
+  InternetSite
+  Film
+  Interview
+  Patent
+  ElectronicSource
+  Case
+  Misc
+} derive(Eq, @debug.Debug)
+pub fn ST_SourceType::parse(String) -> Self raise SchemaViolation
+pub fn ST_SourceType::to_string(Self) -> String
 
 // Type aliases
 
