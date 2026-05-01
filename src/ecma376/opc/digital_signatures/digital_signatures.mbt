@@ -3,8 +3,8 @@
 ///
 /// §1 Scope is ECMA-376 Part 2 §10 Digital Signatures and the opc-digSig
 /// schema bundle. This package owns the markup shell for OPC digital
-/// signatures; cryptographic providers and package resource resolution stay
-/// outside this package.
+/// signatures; signing engines and package resource resolution are supplied by
+/// the surrounding OPC layer.
 ///
 /// §2 Conformance C1 is represented by readers for the three opc-digSig
 /// top-level elements and the W3C XML-Signature elements referenced by §10.5.

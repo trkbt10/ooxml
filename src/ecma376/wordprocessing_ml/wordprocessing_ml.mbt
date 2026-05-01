@@ -187,6 +187,152 @@
 /// XSD complex type CT_SdtPr: wml.xsd declares this complex type; structured document tag properties are represented by CT_SdtPr.
 /// XSD complex type CT_Shd: wml.xsd declares this complex type; shading properties are represented by CT_Shd.
 /// XSD complex type CT_TblPPr: wml.xsd declares this complex type; floating table positioning properties are represented by CT_TblPPr.
+///
+/// §11.2 Package Structure: read_document and CT_Document cover the main document part, while CT_Settings, CT_Style, CT_Numbering, CT_Comments, CT_FontsList, and CT_HdrFtr cover the package-level WordprocessingML parts.
+/// §11.3 Part Summary: CT_Document, CT_Body, CT_Settings, CT_Style, CT_Numbering, CT_Comments, CT_FontsList, and CT_HdrFtr identify the WordprocessingML parts summarized for a word-processing package.
+/// §11.4 Document Template: CT_Settings and CT_SaveThroughXslt preserve attached-template and transformation settings carried by a document package.
+/// §11.5 Framesets: CT_Frameset, CT_Frame, CT_FrameLayout, CT_FramesetSplitbar, and CT_FrameScrollbar represent the frameset structures used by WordprocessingML web documents.
+/// §11.6 Master Documents And Subdocuments: CT_P, CT_R, and EG_BlockLevelChunkElts preserve subdocument and alternate content references used by master documents.
+/// §11.9 Xsl Transformation: CT_SaveThroughXslt and CT_Settings represent save-through-XSLT document settings and their package relationships.
+/// §17.1 Table Of Contents: CT_SimpleField, CT_FldChar, CT_Hyperlink, CT_FFData, and CT_R preserve the field-coded TOC content model.
+/// §17.3 Paragraphs And Rich Formatting: CT_P, CT_R, CT_PPr, CT_RPr, CT_Fonts, CT_Ind, CT_Border, and CT_Shd model paragraph and run content with direct formatting.
+/// §17.8 Fonts: CT_FontsList, CT_Font, CT_FontRel, CT_FontFamily, CT_Pitch, and CT_FontSig model font-table entries and embedded font relationships.
+/// §17.10 Headers And Footers: CT_HdrFtrRef, EG_HdrFtrReferences, and CT_HdrFtr model section header/footer references and the header/footer part body.
+/// §17.13 Annotations: CT_Comments, CT_Bookmark, CT_BookmarkRange, CT_TrackChange, CT_TrackChangeRange, and EG_RangeMarkupElements model comments, bookmarks, and revisions.
+/// §17.15 Settings: CT_Settings, CT_WebSettings, CT_Compat, CT_CompatSetting, CT_DocVars, and CT_DocRsids model document-wide settings and compatibility options.
+/// §17.16 Fields And Hyperlinks: CT_SimpleField, CT_FldChar, CT_FFData, CT_Hyperlink, and EG_RunInnerContent model fields, form fields, and hyperlink run content.
+/// §17.17 Miscellaneous Topics: CT_P, CT_R, CT_FramePr, EG_BlockLevelChunkElts, and EG_RunLevelElts preserve alternate chunks, frames, objects, and subdocument references.
+/// §17.18 Simple Types: ST_Jc, ST_JcTable, ST_TabJc, ST_BrType, ST_TextScale, ST_FontFamily, and ST_FrameLayout provide WordprocessingML lexical value wrappers.
+/// §14.1 General: CT_Document and the package CT_* and ST_* wrappers preserve Part 4 transitional WordprocessingML markup during parse and serialization.
+/// §14.2 Table Of Contents: CT_SimpleField, CT_FldChar, CT_R, and CT_P preserve legacy TOC fields as WordprocessingML run and paragraph content.
+/// §14.3 Paragraphs And Rich Formatting: CT_PPr, CT_PPrBase, CT_R, CT_Fonts, CT_Ind, CT_Border, and CT_Shd represent transitional paragraph and run formatting.
+/// §14.3.1 Paragraphs: CT_P, CT_PPr, CT_PPrBase, CT_PPrGeneral, and EG_PContent represent paragraph content and compatibility properties.
+/// §14.3.1.1 Additional Attribute For Cnfstyle Element Part 1 17 3 1 8: CT_Cnf and ST_Cnf preserve conditional-format bit attributes on paragraph cnfStyle markup.
+/// §14.3.1.2 Additional Attributes For Ind Element Part 1 17 3 1 12: CT_Ind preserves transitional paragraph indentation attributes.
+/// §14.4 Tables: CT_Tbl, CT_TblPr, CT_TblPrBase, CT_TblGrid, CT_Row, CT_Cnf, and CT_TblLook represent table compatibility markup.
+/// §14.4.1 Left Table Cell Leading Edge Border: CT_TblBorders and CT_Border preserve leading cell border compatibility markup.
+/// §14.4.2 Left Table Leading Edge Border: CT_TblBorders and CT_Border preserve leading table border compatibility markup.
+/// §14.4.3 Left Table Cell Leading Margin Exception: CT_TblCellMar and CT_TblWidth preserve leading cell-margin exception widths.
+/// §14.4.4 Left Table Cell Leading Margin Default: CT_TblCellMar and CT_TblWidth preserve default leading cell margins.
+/// §14.4.5 Right Table Cell Trailing Edge Border: CT_TblBorders and CT_Border preserve trailing cell border compatibility markup.
+/// §14.4.6 Right Table Trailing Edge Border: CT_TblBorders and CT_Border preserve trailing table border compatibility markup.
+/// §14.4.7 Right Table Cell Trailing Margin Default: CT_TblCellMar and CT_TblWidth preserve default trailing cell margins.
+/// §14.4.8 Right Table Cell Trailing Margin Exception: CT_TblCellMar and CT_TblWidth preserve trailing cell-margin exception widths.
+/// §14.4.9 Additional Attribute For Cnfstyle Element Part 1 17 4 7: CT_Cnf and ST_Cnf preserve conditional-format attributes for table property markup.
+/// §14.4.10 Additional Attribute For Cnfstyle Element Part 1 17 4 8: CT_Cnf and ST_Cnf preserve conditional-format attributes for row property markup.
+/// §14.4.11 Additional Attribute For Tbllook Element Part 1 17 4 54: CT_TblLook preserves table-look compatibility attributes on table styles.
+/// §14.4.12 Additional Attribute For Tbllook Element Part 1 17 4 55: CT_TblLook preserves table-look compatibility attributes on table properties.
+/// §14.4.13 Hmerge Horizontally Merged Cell: CT_Row, CT_Tbl, and CT_TcPr preserve horizontally merged table-cell markup.
+/// §14.5 Fonts: CT_FontsList, CT_Font, CT_FontFamily, CT_Pitch, and CT_FontSig represent transitional font-table markup.
+/// §14.5.1 Elements: CT_FontsList, CT_Font, CT_FontRel, CT_Panose, and CT_FontSig represent font-table child elements.
+/// §14.5.1.1 Additional Attribute For Charset Element Part 1 17 8 3 2: CT_Font and CT_FontSig preserve charset-related font compatibility attributes.
+/// §14.6.2 Legacy Legacy Numbering Level Properties: CT_LvlLegacy, CT_Lvl, CT_Num, and CT_Numbering preserve legacy numbering level properties.
+/// §14.7.1 Revisions: CT_TrackChange, CT_TrackChangesView, CT_TrackChangeRange, CT_PPrChange, CT_TblPrChange, and CT_TblGridChange model revision markup.
+/// §14.8 Settings: CT_Settings, CT_Compat, CT_CompatSetting, CT_WebSettings, and CT_SaveThroughXslt model transitional document settings.
+/// §14.8.2 Document Settings: CT_Settings, CT_DocVars, CT_DocRsids, CT_WriteProtection, and CT_ColorSchemeMapping represent document-level settings.
+/// §14.8.2.4 Additional Attribute For Stylepaneformatfilter Element Part 1 17 15 1 85: CT_Settings and ST_StyleSort preserve style-pane format-filter compatibility values.
+/// §14.8.3 Compatibility Settings: CT_Compat and CT_CompatSetting preserve named compatibility settings and their values.
+/// §14.8.3.1 Aligntablesrowbyrow Align Table Rows Independently: CT_CompatSetting, CT_Tbl, and CT_Row represent row-independent table alignment behavior.
+/// §14.8.3.2 Allowspaceofsamestyleintable Allow Contextual Spacing Of Paragraphs In Tables: CT_CompatSetting, CT_PPr, and CT_Tbl represent contextual spacing inside tables.
+/// §14.8.3.5 Cachedcolbalance Use Cached Paragraph Information For Column Balancing: CT_CompatSetting and EG_SectPrContents preserve cached column balancing behavior.
+/// §14.8.3.6 Convmailmergeesc Treat Backslash Quotation Delimiter As Two Quotation Marks: CT_CompatSetting and CT_MailMerge preserve mail-merge escape compatibility.
+/// §14.8.3.7 Displayhangulfixedwidth Always Use Fixed Width For Hangul Characters: CT_CompatSetting and CT_CharacterSpacing preserve fixed-width Hangul behavior.
+/// §14.8.3.10 Donotbreakwrappedtables Do Not Allow Floating Tables To Break Across Pages: CT_CompatSetting, CT_TblPPr, and CT_Tbl preserve wrapped-table pagination behavior.
+/// §14.8.3.11 Donotsnaptogridincell Do Not Snap To Document Grid In Table Cells With Objects: CT_CompatSetting and CT_Tbl preserve table-cell grid snapping behavior.
+/// §14.8.3.13 Donotsuppressparagraphborders Do Not Suppress Paragraph Borders Next To Frames: CT_CompatSetting, CT_Border, and CT_FramePr preserve frame-adjacent paragraph borders.
+/// §14.8.3.19 Donotwraptextwithpunct Do Not Allow Hanging Punctuation With Character Grid: CT_CompatSetting and CT_PPr preserve punctuation wrapping behavior.
+/// §14.8.3.20 Footnotelayoutlikeww8 Ignore Page Break From Continuous Section Break: CT_CompatSetting and EG_FtnEdnNumProps preserve legacy footnote layout behavior.
+/// §14.8.3.22 Growautofit Allow Tables To Autofit Into Page Margins: CT_CompatSetting, CT_TblLayoutType, and CT_TblPr preserve table autofit behavior.
+/// §14.8.3.24 Layouttablerowsapart Allow Table Rows To Wrap Inline Objects Independently: CT_CompatSetting, CT_Row, and CT_TblPPr preserve independent row wrapping behavior.
+/// §14.8.3.25 Linewraplikeword6 Ignore Compression Of Full Width Punctuation Ending A Line: CT_CompatSetting and CT_PPr preserve legacy line-wrapping behavior.
+/// §14.8.3.26 Mwsmallcaps Use Specific Small Caps Algorithm: CT_CompatSetting and EG_RPr preserve small-caps compatibility behavior.
+/// §14.8.3.27 Nocolumnbalance Do Not Balance Text Columns Within A Section: CT_CompatSetting and EG_SectPrContents preserve unbalanced section columns.
+/// §14.8.3.30 Nospaceraiselower Do Not Increase Line Height For Raised Lowered Text: CT_CompatSetting and EG_RPr preserve raised/lowered text line-height behavior.
+/// §14.8.3.31 Notabhangind Do Not Create Custom Tab Stop For Hanging Indent: CT_CompatSetting and CT_Ind preserve hanging-indent tab behavior.
+/// §14.8.3.33 Printcolblack Print Colors As Black And White Without Dithering: CT_CompatSetting and CT_Settings preserve black-and-white print compatibility.
+/// §14.8.3.34 Selectfldwithfirstorlastchar Select Field When First Or Last Character Is Select: CT_CompatSetting, CT_SimpleField, and CT_FldChar preserve field-selection behavior.
+/// §14.8.3.35 Shapelayoutlikeww8 Ignore Text Wrapping Around Objects At Bottom Of Page: CT_CompatSetting, CT_Anchor, and EG_WrapType preserve legacy floating-shape layout behavior.
+/// §14.8.3.36 Showbreaksinframes Display Page Column Breaks Present In Frames: CT_CompatSetting, CT_Frame, and CT_FramePr preserve frame break display behavior.
+/// §14.8.3.37 Spacinginwholepoints Only Expand Condense Text By Whole Points: CT_CompatSetting and CT_CharacterSpacing preserve whole-point character spacing.
+/// §14.8.3.39 Subfontbysize Require Exact Size During Font Substitution: CT_CompatSetting and CT_FontsList preserve exact-size font substitution behavior.
+/// §14.8.3.42 Suppressspbfafterpgbrk Do Not Use Space Before On First Line After A Page Break: CT_CompatSetting and CT_PPr preserve page-break paragraph spacing behavior.
+/// §14.8.3.44 Suppresstopspacingwp Use Static Text Leading: CT_CompatSetting and CT_PPr preserve static text-leading behavior.
+/// §14.8.3.45 Swapbordersfacingpages Swap Paragraph Borders On Odd Numbered Pages: CT_CompatSetting and CT_Border preserve facing-page paragraph border swapping.
+/// §14.8.3.46 Truncatefontheightslikewp6 Use Truncated Integer Division For Font Calculation: CT_CompatSetting and CT_Fonts preserve font-height truncation behavior.
+/// §14.8.3.49 Useansikerningpairs Use Ansi Kerning Pairs From Fonts: CT_CompatSetting and CT_Font preserve ANSI kerning pair behavior.
+/// §14.8.3.52 Useprintermetrics Use Printer Metrics To Display Documents: CT_CompatSetting and CT_Settings preserve printer-metric display behavior.
+/// §14.8.3.53 Usesingleborderforcontiguouscells Use Simplified Rules For Table Border Conflict: CT_CompatSetting, CT_TblBorders, and CT_Border preserve contiguous-cell border rules.
+/// §14.8.3.54 Useword2002Tablestylerules Incorrectly Display Top Border Of Conditional Columns: CT_CompatSetting, CT_TblLook, and CT_Cnf preserve Word 2002 table-style border behavior.
+/// §14.8.3.56 Wpjustification Fit To Expanded Width When Performing Full Justification: CT_CompatSetting and ST_Jc preserve WordPerfect full-justification behavior.
+/// §14.8.3.57 Wpspacewidth Use Specific Space Width: CT_CompatSetting and CT_CharacterSpacing preserve WordPerfect space-width behavior.
+/// §14.8.3.58 Wraptrailspaces Line Wrap Trailing Spaces: CT_CompatSetting and CT_PPr preserve trailing-space line wrapping.
+/// §14.8.4 Web Page Settings: CT_WebSettings, CT_Frame, CT_Frameset, CT_Div, and CT_OptimizeForBrowser represent web-page settings.
+/// §14.8.4.1 Relyonvml Utilize Vml When Saving As Web Page: CT_WebSettings and CT_OptimizeForBrowser preserve VML use during web-page save.
+/// §14.9 Miscellaneous Topics: CT_R, CT_P, EG_BlockLevelChunkElts, and EG_RunLevelElts preserve text boxes, alternate chunks, objects, and subdocuments.
+/// §14.10 Fields And Hyperlinks: CT_SimpleField, CT_FldChar, CT_Hyperlink, CT_FFData, and EG_RunInnerContent model legacy fields and hyperlinks.
+/// §14.10.1 Syntax: CT_SimpleField, CT_FldChar, and CT_R preserve field syntax as simple or complex run content.
+/// §14.10.2 Legacy Language References: CT_SimpleField and CT_R preserve legacy field language references in run content.
+/// §14.10.3 Use Of Dos File Paths: CT_Hyperlink and CT_SimpleField preserve DOS-style paths used by field targets.
+/// §14.10.4 Field Definitions: CT_SimpleField, CT_FldChar, and CT_FFData preserve field definitions and form-field data.
+/// §14.10.4.1 Autonum: CT_SimpleField and CT_R preserve AUTONUM fields in run content.
+/// §14.10.4.3 Autonumout: CT_SimpleField and CT_R preserve AUTONUMOUT fields in run content.
+/// §14.10.4.4 Barcode: CT_SimpleField and CT_R preserve BARCODE fields in run content.
+/// §14.10.4.6 Eq: CT_SimpleField and CT_R preserve EQ fields in run content.
+/// §14.10.4.7 Info: CT_SimpleField and CT_R preserve INFO fields in run content.
+/// §14.10.4.8 Quote: CT_SimpleField and CT_R preserve QUOTE fields in run content.
+/// §14.11 Simple Types: ST_Cnf, ST_TextScaleDecimal, ST_Jc, ST_JcTable, ST_TabJc, and ST_BrType preserve Part 4 lexical additions.
+/// §14.11.2 Additional Enumeration Values For St Jc Part 1 17 18 44: ST_Jc preserves additional paragraph justification values.
+/// §14.11.3 Additional Enumeration Values For St Jctable Part 1 17 18 45: ST_JcTable preserves additional table justification values.
+/// §14.11.6 Additional Enumeration Values For St Tabjc Part 1 17 18 84: ST_TabJc preserves additional tab justification values.
+/// §14.11.8 Additional Member Types For The Union In St Textscale Part 1 17 18 95: ST_TextScale and ST_TextScaleDecimal preserve decimal text-scale values.
+/// §14.11.9 St Cnf Conditional Formatting Bitmask: ST_Cnf and CT_Cnf preserve conditional-format bitmask values.
+/// §14.11.12 Changed Enumeration Value For St Brtype Part 1 17 18 4: ST_BrType preserves the changed break-type enumeration value.
+/// §14.12 Changed Attributes: CT_Document and CT_* parse/to_element methods preserve changed relationship attributes on transitional elements.
+/// §14.12.1 General: CT_* and ST_* wrappers preserve changed WordprocessingML attributes for round-trip serialization.
+/// §14.12.2 Changed Attribute For Contentpart Element Part 1 17 3 3 2: CT_R and EG_RunLevelElts preserve content part relationship attributes.
+/// §14.12.3 Changed Attribute For Control Element Part 1 17 3 3 3: CT_R and CT_Control preserve embedded-control relationship attributes.
+/// §14.12.4 Changed Attribute For Movie Element Part 1 17 3 3 17: CT_R and EG_RunInnerContent preserve movie relationship attributes.
+/// §14.12.5 Changed Attribute For Objectembed Element Part 1 17 3 3 20: CT_R and CT_Object preserve embedded-object relationship attributes.
+/// §14.12.6 Changed Attribute For Objectlink Element Part 1 17 3 3 21: CT_R and CT_Object preserve linked-object relationship attributes.
+/// §14.12.7 Changed Attribute For Bottom Element Part 1 17 6 2: EG_SectPrContents and CT_SectPr preserve bottom page-margin attributes.
+/// §14.12.8 Changed Attribute For Left Element Part 1 17 6 7: EG_SectPrContents and CT_SectPr preserve left page-margin attributes.
+/// §14.12.9 Changed Attribute For Printersettings Element Part 1 17 6 14: CT_Settings and CT_SectPr preserve printer-settings relationship attributes.
+/// §14.12.10 Changed Attribute For Right Element Part 1 17 6 15: EG_SectPrContents and CT_SectPr preserve right page-margin attributes.
+/// §14.12.11 Changed Attribute For Top Element Part 1 17 6 21: EG_SectPrContents and CT_SectPr preserve top page-margin attributes.
+/// §14.12.12 Changed Attribute For Embedbold Element Part 1 17 8 3 3: CT_FontRel and CT_Font preserve embedded bold font relationships.
+/// §14.12.13 Changed Attribute For Embedbolditalic Element Part 1 17 8 3 4: CT_FontRel and CT_Font preserve embedded bold-italic font relationships.
+/// §14.12.14 Changed Attribute For Embeditalic Element Part 1 17 8 3 5: CT_FontRel and CT_Font preserve embedded italic font relationships.
+/// §14.12.15 Changed Attribute For Embedregular Element Part 1 17 8 3 6: CT_FontRel and CT_Font preserve embedded regular font relationships.
+/// §14.12.16 Changed Attribute For Footerreference Element Part 1 17 10 2: CT_HdrFtrRef and EG_HdrFtrReferences preserve footer relationship attributes.
+/// §14.12.17 Changed Attribute For Headerreference Element Part 1 17 10 5: CT_HdrFtrRef and EG_HdrFtrReferences preserve header relationship attributes.
+/// §14.12.18 Changed Attribute For Datasource Element Part 1 17 14 9: CT_MailMerge and CT_Odso preserve mail-merge data-source relationships.
+/// §14.12.19 Changed Attribute For Headersource Element Part 1 17 14 16: CT_MailMerge and CT_Odso preserve mail-merge header-source relationships.
+/// §14.12.21 Changed Attribute For Src Element Part 1 17 14 30: CT_MailMerge and CT_Odso preserve mail-merge source relationships.
+/// §14.12.22 Changed Attribute For Attachedtemplate Element Part 1 17 15 1 6: CT_Settings preserves attached-template relationship attributes.
+/// §14.12.23 Changed Attribute For Savethroughxslt Element Part 1 17 15 1 76: CT_SaveThroughXslt and CT_Settings preserve save-through-XSLT relationship attributes.
+/// §14.12.24 Changed Attribute For Longdesc Element Part 1 17 15 2 23: CT_WebSettings preserves long-description relationship attributes.
+/// §14.12.25 Changed Attribute For Sourcefilename Element Part 1 17 15 2 39: CT_WebSettings preserves source-file-name relationship attributes.
+/// §14.12.26 Changed Attribute For Subdoc Element Part 1 17 17 1 1: CT_R, CT_P, and EG_BlockLevelChunkElts preserve subdocument relationship attributes.
+/// §14.12.27 Changed Attribute For Altchunk Element Part 1 17 17 2 1: CT_P, CT_R, and EG_BlockLevelChunkElts preserve alternate-chunk relationship attributes.
+/// XSD complex type CT_Anchor: CT_Anchor and CT_Anchor::parse/to_element represent positioned word-processing drawing anchors.
+/// XSD simple type ST_HorizontalAnchor: ST_HorizontalAnchor represents horizontal anchor lexical values for word-processing drawings.
+/// XSD simple type ST_VerticalAnchor: ST_VerticalAnchor represents vertical anchor lexical values for word-processing drawings.
+/// Schema wml.xsd: CT_*, ST_*, EG_*, and AG_* wrappers represent the WordprocessingML schema surface exposed by this package.
+/// XSD complex type CT_Border: CT_Border and CT_Border::parse/to_element represent border elements and their attributes.
+/// XSD complex type CT_Cnf: CT_Cnf and ST_Cnf represent conditional-format structures and bitmasks.
+/// XSD complex type CT_Div: CT_Div and CT_Divs represent web-page div settings.
+/// XSD complex type CT_FFData: CT_FFData represents form-field data for field content.
+/// XSD complex type CT_Font: CT_Font and CT_FontsList represent font-table entries.
+/// XSD complex type CT_Frame: CT_Frame and CT_Frameset represent frameset frame definitions.
+/// XSD complex type CT_Ind: CT_Ind represents paragraph indentation settings.
+/// XSD complex type CT_Lvl: CT_Lvl and CT_LvlLegacy represent numbering levels.
+/// XSD complex type CT_Num: CT_Num and CT_Numbering represent numbering instances.
+/// XSD complex type CT_NumFmt: CT_NumFmt represents numbering format settings.
+/// XSD complex type CT_PPrBase: CT_PPrBase and CT_PPr represent paragraph property bases.
+/// XSD complex type CT_Row: CT_Row and CT_Tbl represent table rows.
+/// XSD complex type CT_SdtPr: CT_SdtPr represents structured document tag properties.
+/// XSD complex type CT_Shd: CT_Shd represents shading properties.
+/// XSD complex type CT_TblPPr: CT_TblPPr represents floating table positioning properties.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/wordprocessing_ml"
 }
