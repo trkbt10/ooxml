@@ -10,6 +10,114 @@ pub fn migration_feature_citation() -> MigrationFeatureCitation
 
 pub fn package_name() -> String
 
+pub fn sml_12_1_glossary_of_spreadsheetml_specific_terms_section_name() -> String
+
+pub fn sml_12_2_package_structure_section_name() -> String
+
+pub fn sml_12_3_part_summary_section_name() -> String
+
+pub fn sml_12_4_external_workbooks_section_name() -> String
+
+pub fn sml_15_10_10_changed_attribute_for_hyperlink_element_part_1_18_3_1_47_section_name() -> String
+
+pub fn sml_15_10_12_changed_attribute_for_oleobject_element_part_1_18_3_1_59_section_name() -> String
+
+pub fn sml_15_10_13_changed_attribute_for_pagesetup_element_part_1_18_3_1_63_section_name() -> String
+
+pub fn sml_15_10_14_changed_attribute_for_pagesetup_element_part_1_18_3_1_64_section_name() -> String
+
+pub fn sml_15_10_15_changed_attribute_for_picture_element_part_1_18_3_1_67_section_name() -> String
+
+pub fn sml_15_10_16_changed_attribute_for_pivotselection_element_part_1_18_3_1_69_section_name() -> String
+
+pub fn sml_15_10_17_changed_attribute_for_tablepart_element_part_1_18_3_1_94_section_name() -> String
+
+pub fn sml_15_10_18_changed_attribute_for_pivotcachedefinition_element_part_1_18_10_1_67_section_name() -> String
+
+pub fn sml_15_10_19_changed_attribute_for_rangeset_element_part_1_18_10_1_79_section_name() -> String
+
+pub fn sml_15_10_20_changed_attribute_for_worksheetsource_element_part_1_18_10_1_95_section_name() -> String
+
+pub fn sml_15_10_21_changed_attribute_for_header_element_part_1_18_11_1_1_section_name() -> String
+
+pub fn sml_15_10_22_changed_attribute_for_externalbook_element_part_1_18_14_7_section_name() -> String
+
+pub fn sml_15_10_23_changed_attribute_for_olelink_element_part_1_18_14_11_section_name() -> String
+
+pub fn sml_15_10_2_changed_attribute_for_pivotcache_element_part_1_18_2_17_section_name() -> String
+
+pub fn sml_15_10_3_changed_attribute_for_sheet_element_part_1_18_2_19_section_name() -> String
+
+pub fn sml_15_10_5_changed_attribute_for_controlpr_element_part_1_18_3_1_20_section_name() -> String
+
+pub fn sml_15_10_6_changed_attribute_for_custompr_element_part_1_18_3_1_22_section_name() -> String
+
+pub fn sml_15_10_8_changed_attribute_for_drawing_element_part_1_18_3_1_36_section_name() -> String
+
+pub fn sml_15_10_9_changed_attribute_for_drawinghf_element_part_1_18_3_1_37_section_name() -> String
+
+pub fn sml_15_10_changed_attributes_section_name() -> String
+
+pub fn sml_15_1_general_section_name() -> String
+
+pub fn sml_15_2_table_of_contents_section_name() -> String
+
+pub fn sml_15_3_2_additional_attribute_for_webpublishing_element_part_1_18_2_24_section_name() -> String
+
+pub fn sml_15_3_4_modified_content_for_date_conversion_for_serial_date_times_part_1_18_17_4_1_section_name() -> String
+
+pub fn sml_15_3_workbook_section_name() -> String
+
+pub fn sml_15_4_1_worksheets_section_name() -> String
+
+pub fn sml_15_4_2_autofilter_settings_section_name() -> String
+
+pub fn sml_15_4_worksheets_section_name() -> String
+
+pub fn sml_15_5_1_left_leading_edge_border_section_name() -> String
+
+pub fn sml_15_5_2_right_trailing_edge_border_section_name() -> String
+
+pub fn sml_15_6_1_pivot_tables_section_name() -> String
+
+pub fn sml_15_7_1_additional_attribute_for_textpr_element_part_1_18_13_12_section_name() -> String
+
+pub fn sml_15_8_1_additional_enumeration_values_for_st_pivotareatype_part_1_18_18_58_section_name() -> String
+
+pub fn sml_15_8_3_removed_enumeration_values_for_st_celltype_part_1_18_18_11_section_name() -> String
+
+pub fn sml_15_8_simple_types_section_name() -> String
+
+pub fn sml_15_9_1_attribute_synonym_for_c_element_part_1_18_6_1_section_name() -> String
+
+pub fn sml_15_9_2_additional_representation_for_dates_and_times_part_1_18_17_4_section_name() -> String
+
+pub fn sml_15_9_formulas_section_name() -> String
+
+pub fn sml_18_11_shared_workbook_data_section_name() -> String
+
+pub fn sml_18_12_querytable_data_section_name() -> String
+
+pub fn sml_18_14_supplementary_workbook_data_section_name() -> String
+
+pub fn sml_18_15_volatile_dependencies_section_name() -> String
+
+pub fn sml_18_16_custom_xml_mappings_section_name() -> String
+
+pub fn sml_18_17_formulas_section_name() -> String
+
+pub fn sml_18_18_simple_types_section_name() -> String
+
+pub fn sml_18_1_table_of_contents_section_name() -> String
+
+pub fn sml_18_2_workbook_section_name() -> String
+
+pub fn sml_18_3_worksheets_section_name() -> String
+
+pub fn sml_18_6_calculation_chain_section_name() -> String
+
+pub fn sml_18_7_comments_section_name() -> String
+
 // Errors
 pub suberror SchemaViolation {
   SchemaViolation(schema~ : String, path~ : String, reason~ : String)

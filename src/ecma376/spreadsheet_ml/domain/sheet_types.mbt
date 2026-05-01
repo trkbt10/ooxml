@@ -720,7 +720,10 @@ pub fn CT_Row::new(element : @xml.Element) -> CT_Row {
 }
 
 ///|
-/// XSD complex type CT_Cell: worksheet cell with formula f, value v, inline string is, extension list, and r, s, t, cm, vm, ph attributes.
+/// XSD complex type CT_Cell: Schema sml.xsd complex type `CT_Cell` has
+/// attributes `r`, `s`, `t`, `cm`, `vm`, and `ph`; child elements `f`, `v`,
+/// `is`, and `extLst`; CT_Cell and CT_Cell::new own that worksheet cell
+/// payload.
 pub(all) struct CT_Cell {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -1818,7 +1821,10 @@ pub fn CT_Sheets::new(element : @xml.Element) -> CT_Sheets {
 }
 
 ///|
-/// XSD complex type CT_Sheet.
+/// XSD complex type CT_Sheet: Schema sml.xsd complex type `CT_Sheet` has
+/// attributes `name`, `sheetId`, and `state`, and references the `r:id`
+/// relationship attribute group; CT_Sheet and CT_Sheet::new own that workbook
+/// sheet entry.
 pub(all) struct CT_Sheet {
   element : @xml.Element
 } derive(Eq, Debug)

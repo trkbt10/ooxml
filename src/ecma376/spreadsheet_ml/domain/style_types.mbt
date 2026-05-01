@@ -400,7 +400,9 @@ pub fn CT_CellStyle::new(element : @xml.Element) -> CT_CellStyle {
 }
 
 ///|
-/// XSD complex type CT_Dxfs.
+/// XSD complex type CT_Dxfs: Schema sml.xsd complex type `CT_Dxfs` has
+/// attribute `count` and `dxf` children of type CT_Dxf; CT_Dxfs and
+/// CT_Dxfs::new own that differential-format collection.
 pub(all) struct CT_Dxfs {
   element : @xml.Element
 } derive(Eq, Debug)

@@ -24,7 +24,10 @@ pub fn CT_XStringElement::new(element : @xml.Element) -> CT_XStringElement {
 }
 
 ///|
-/// XSD complex type CT_String: pivot cache string item with tuple and index children plus v, u, f, c, cp, in, bc, fc, i, un, st, b attributes.
+/// XSD complex type CT_String: Schema sml.xsd complex type `CT_String` has
+/// attributes `v`, `u`, `f`, `c`, `cp`, `in`, `bc`, `fc`, `i`, `un`, `st`,
+/// and `b`, with `tpls` and `x` children; CT_String and CT_String::new own
+/// that pivot cache string item.
 pub(all) struct CT_String {
   element : @xml.Element
 } derive(Eq, Debug)

@@ -57,7 +57,9 @@ pub fn AG_RevData::new(
 }
 
 ///|
-/// XSD model group EG_ExtensionList.
+/// XSD model group EG_ExtensionList: Schema sml.xsd model group
+/// `EG_ExtensionList` has `ext` children of type CT_Extension;
+/// EG_ExtensionList and EG_ExtensionList::new own that extension-list group.
 pub(all) struct EG_ExtensionList {
   ext : Array[CT_Extension]
 } derive(Eq, Debug)

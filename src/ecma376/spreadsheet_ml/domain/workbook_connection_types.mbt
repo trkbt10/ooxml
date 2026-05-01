@@ -381,7 +381,11 @@ pub fn CT_OlapPr::new(element : @xml.Element) -> CT_OlapPr {
 }
 
 ///|
-/// XSD complex type CT_WebPr.
+/// XSD complex type CT_WebPr: Schema sml.xsd complex type `CT_WebPr` has
+/// attributes `xml`, `sourceData`, `parsePre`, `consecutive`, `firstRow`,
+/// `xl97`, `textDates`, `xl2000`, `url`, `post`, `htmlTables`, `htmlFormat`,
+/// and `editPage`, with `tables` children; CT_WebPr and CT_WebPr::new own
+/// those web query properties.
 pub(all) struct CT_WebPr {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -551,7 +555,10 @@ pub fn CT_Number::new(element : @xml.Element) -> CT_Number {
 }
 
 ///|
-/// XSD complex type CT_Error: pivot cache error item with tuple and index children plus v, u, f, c, cp, in, bc, fc, i, un, st, b attributes.
+/// XSD complex type CT_Error: Schema sml.xsd complex type `CT_Error` has
+/// attributes `v`, `u`, `f`, `c`, `cp`, `in`, `bc`, `fc`, `i`, `un`, `st`,
+/// and `b`, with `tpls` and `x` children; CT_Error and CT_Error::new own that
+/// pivot cache error item.
 pub(all) struct CT_Error {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -874,7 +881,9 @@ pub fn CT_Item::new(element : @xml.Element) -> CT_Item {
 }
 
 ///|
-/// XSD complex type CT_I: pivot row or column item with x children and t, r, i attributes.
+/// XSD complex type CT_I: Schema sml.xsd complex type `CT_I` has attributes
+/// `t`, `r`, and `i`, and `x` children of type CT_X; CT_I and CT_I::new own
+/// that pivot row or column item.
 pub(all) struct CT_I {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -891,7 +900,8 @@ pub fn CT_I::new(element : @xml.Element) -> CT_I {
 }
 
 ///|
-/// XSD complex type CT_X.
+/// XSD complex type CT_X: Schema sml.xsd complex type `CT_X` has attribute
+/// `v`; CT_X and CT_X::new own that pivot tuple index value.
 pub(all) struct CT_X {
   element : @xml.Element
 } derive(Eq, Debug)

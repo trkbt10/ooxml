@@ -2,6 +2,10 @@
 /// ECMA-376 Part 1 SpreadsheetML domain model for §18 workbook, worksheet,
 /// style, shared string, metadata, pivot, and external data markup.
 ///
+/// XSD model group EG_ExtensionList: Schema sml.xsd model group
+/// `EG_ExtensionList`. Children: `{'name': 'ext', 'type': 'CT_Extension'}`;
+/// EG_ExtensionList and EG_ExtensionList::new own that extension-list group.
+///
 /// This package owns the typed wrappers consumed by the SpreadsheetML
 /// reader/context/builder pipeline: CT_Workbook, CT_Worksheet, CT_Sst,
 /// CT_Rst, CT_Stylesheet, CT_Cell, CT_Row, CT_SheetData, CT_DefinedNames,
