@@ -68,9 +68,10 @@
 /// write_signature_time. XSD complex type CT_RelationshipReference is
 /// RelationshipReference. XSD complex type CT_RelationshipsGroupReference is
 /// RelationshipsGroupReference. XSD complex type CT_SignatureTime is
-/// SignatureTime. XSD simple type ST_Format is ST_Format, ST_Format::new, and
-/// ST_Format::to_string. XSD simple type ST_Value is ST_Value, ST_Value::new,
-/// and ST_Value::to_string.
+/// SignatureTime. XSD simple type ST_Format: opc-digSig.xsd declares the
+/// SignatureTime Format lexical token, represented by ST_Format, ST_Format::new,
+/// and ST_Format::to_string. XSD simple type ST_Value is ST_Value,
+/// ST_Value::new, and ST_Value::to_string.
 ///
 /// §5 Inputs I1 are XML byte streams passed to read_* functions. I2 is the
 /// namespace context checked by digital_signature_ns and the XML-Signature

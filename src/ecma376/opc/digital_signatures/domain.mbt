@@ -48,6 +48,8 @@ fn RelationshipsGroupReference::new(
 
 ///|
 /// XSD simple type ST_Format from schema opc-digSig.xsd. This lexical wrapper
+/// XSD simple type ST_Format: opc-digSig.xsd defines the SignatureTime Format
+/// token values enforced by ST_Format::new and serialized by ST_Format::to_string.
 /// enforces the timestamp format token constraint used by the §10.5.16 Format
 /// element under SignatureTime; accepted values are the schema enumeration-like
 /// date and date-time format strings.
@@ -62,6 +64,9 @@ pub type Format = ST_Format
 
 ///|
 /// Build XSD simple type ST_Format from schema opc-digSig.xsd for the §10.5.16
+/// XSD simple type ST_Format: validates the allowed SignatureTime Format
+/// lexical strings before constructing an ST_Format value.
+///
 /// Format element under SignatureTime, rejecting values outside the lexical
 /// constraint and enumeration-like token set as C4 schema violations.
 pub fn ST_Format::new(value : String) -> ST_Format raise SchemaViolation {
