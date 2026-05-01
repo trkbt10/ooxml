@@ -26,7 +26,11 @@ pub fn VmlPresentationDrawing_CT_Empty::to_element(
 }
 
 ///|
-/// XSD complex type VmlPresentationDrawing_CT_Rel from vml-presentationDrawing.xsd (Part 4 §16).
+/// XSD complex type CT_Rel: Schema vml-presentationDrawing.xsd complex type
+/// `CT_Rel` has attribute `id`; VmlPresentationDrawing_CT_Rel,
+/// VmlPresentationDrawing_CT_Rel::new, VmlPresentationDrawing_CT_Rel::parse,
+/// and VmlPresentationDrawing_CT_Rel::to_element own that VML relationship
+/// payload.
 pub(all) struct VmlPresentationDrawing_CT_Rel {
   element : @xml.Element
 } derive(Eq, Debug)

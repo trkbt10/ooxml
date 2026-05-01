@@ -2662,7 +2662,10 @@ pub fn CT_ShapeNonVisual::to_element(self : CT_ShapeNonVisual) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_Shape from pml.xsd (§19).
+/// XSD complex type CT_Shape: Schema pml.xsd complex type `CT_Shape` has
+/// attribute `useBgFill` and child elements `nvSpPr`, `spPr`, `style`,
+/// `txBody`, and `extLst`; CT_Shape, CT_Shape::new, CT_Shape::parse, and
+/// CT_Shape::to_element own that slide shape payload.
 pub(all) struct CT_Shape {
   element : @xml.Element
 } derive(Eq, Debug)
@@ -2879,7 +2882,12 @@ pub fn CT_GroupShape::to_element(self : CT_GroupShape) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_Rel from pml.xsd (§19).
+/// XSD complex type CT_Rel: Schema pml.xsd complex type `CT_Rel` references
+/// the `r:id` relationship attribute group; CT_Rel, CT_Rel::new,
+/// CT_Rel::parse, and CT_Rel::to_element own that relationship payload.
+/// The package also cites Schema vml-presentationDrawing.xsd complex type
+/// `CT_Rel` with attribute `id`, represented by VmlPresentationDrawing_CT_Rel
+/// in the VML presentation drawing domain file.
 pub(all) struct CT_Rel {
   element : @xml.Element
 } derive(Eq, Debug)
