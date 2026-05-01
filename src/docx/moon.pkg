@@ -1,3 +1,17 @@
 // trkbt10/ooxml/docx
 //
 // Public facade for .docx files. Orchestrates opc + wordprocessing_ml + drawing_ml + office_math: open(bytes) → context → (save | to_html).
+
+import {
+  "trkbt10/ooxml/ecma376/opc" @opc,
+  "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @wml,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/reader" @wml_reader,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/builder" @wml_builder,
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/zip" @zip,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"
