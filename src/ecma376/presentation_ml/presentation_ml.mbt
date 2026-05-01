@@ -1,7 +1,53 @@
 ///|
 /// ECMA-376 Part 1 §19: PresentationML facade.
 ///
-/// Implementation pending.
+/// §13.1 Glossary Of Presentationml Specific Terms: ECMA-376 Part 1 §13.1 Glossary Of Presentationml Specific Terms; presentation package structure is represented by CT_Presentation, CT_Slide, CT_SlideMaster, and CT_SlideLayout.
+/// §13.2 Package Structure: ECMA-376 Part 1 §13.2 Package Structure; presentation package structure is represented by CT_Presentation, CT_Slide, CT_SlideMaster, and CT_SlideLayout.
+/// §13.3 Part Summary: ECMA-376 Part 1 §13.3 Part Summary; presentation package structure is represented by CT_Presentation, CT_Slide, CT_SlideMaster, and CT_SlideLayout.
+/// §13.4 Html Publish Location: ECMA-376 Part 1 §13.4 Html Publish Location; presentation package structure is represented by CT_Presentation, CT_Slide, CT_SlideMaster, and CT_SlideLayout.
+/// §13.5 Slide Synchronization Server Location: ECMA-376 Part 1 §13.5 Slide Synchronization Server Location; presentation package structure is represented by CT_Presentation, CT_Slide, CT_SlideMaster, and CT_SlideLayout.
+/// §19.1 Table Of Contents: ECMA-376 Part 1 §19.1 Table Of Contents; PresentationML migration coverage is anchored by package_name(), CT_Presentation, CT_Slide, and CT_SlideMaster.
+/// §19.2 Presentation: ECMA-376 Part 1 §19.2 Presentation; presentation-level properties are represented by CT_Presentation, CT_PresentationProperties, CT_HandoutMaster, and CT_NotesMaster.
+/// §19.3 Slides: ECMA-376 Part 1 §19.3 Slides; slide content and layouts are represented by CT_Slide, CT_SlideLayout, CT_SlideMaster, and CT_CommonSlideData.
+/// §19.4 Comments: ECMA-376 Part 1 §19.4 Comments; comments are represented by CT_CommentList, CT_Comment, and CT_CommentAuthorList.
+/// §19.5 Animation: ECMA-376 Part 1 §19.5 Animation; animation and timing content is represented by CT_BuildList, CT_SlideTiming, CT_TLCommonTimeNodeData, and CT_TLAnimateBehavior.
+/// §19.6 Slide Synchronization Data: ECMA-376 Part 1 §19.6 Slide Synchronization Data; slide synchronization data is represented by CT_SlideSyncProperties and CT_SlideRelationshipList.
+/// §19.7 Simple Types: ECMA-376 Part 1 §19.7 Simple Types; PresentationML lexical values are represented by ST_WebColorType, ST_WebScreenSize, ST_SlideSizeCoordinate, and related ST_* wrappers.
+/// §16.1 General: ECMA-376 Part 4 §16.1 General; PresentationML migration coverage is anchored by package_name(), CT_Presentation, CT_Slide, and CT_SlideMaster.
+/// §16.2 Table Of Contents: ECMA-376 Part 4 §16.2 Table Of Contents; PresentationML migration coverage is anchored by package_name(), CT_Presentation, CT_Slide, and CT_SlideMaster.
+/// §16.3 Presentation: ECMA-376 Part 4 §16.3 Presentation; presentation-level properties are represented by CT_Presentation, CT_PresentationProperties, CT_HandoutMaster, and CT_NotesMaster.
+/// §16.3.1 Presentation Properties: ECMA-376 Part 4 §16.3.1 Presentation Properties; presentation-level properties are represented by CT_Presentation, CT_PresentationProperties, CT_HandoutMaster, and CT_NotesMaster.
+/// §16.4 Slides: ECMA-376 Part 4 §16.4 Slides; slide content and layouts are represented by CT_Slide, CT_SlideLayout, CT_SlideMaster, and CT_CommonSlideData.
+/// §16.4.1 Embedded Objects: ECMA-376 Part 4 §16.4.1 Embedded Objects; embedded object and control compatibility is represented by CT_OleObject, CT_OleObjectEmbed, CT_OleObjectLink, and CT_Control.
+/// §16.5 Simple Types: ECMA-376 Part 4 §16.5 Simple Types; PresentationML lexical values are represented by ST_WebColorType, ST_WebScreenSize, ST_SlideSizeCoordinate, and related ST_* wrappers.
+/// §16.5.1 St Webcolortype Html Slide Navigation Control Colors: ECMA-376 Part 4 §16.5.1 St Webcolortype Html Slide Navigation Control Colors; slide content and layouts are represented by CT_Slide, CT_SlideLayout, CT_SlideMaster, and CT_CommonSlideData.
+/// §16.5.3 St Webscreensize Html Web Screen Size Target: ECMA-376 Part 4 §16.5.3 St Webscreensize Html Web Screen Size Target; PresentationML lexical values are represented by ST_WebColorType, ST_WebScreenSize, ST_SlideSizeCoordinate, and related ST_* wrappers.
+/// §16.6 Changed Attributes: ECMA-376 Part 4 §16.6 Changed Attributes; PresentationML content is represented by package_name(), CT_Presentation, CT_Slide, and CT_SlideLayout.
+/// §16.6.1 Changed Attribute For Bold Element Part 1 19 2 1 1: ECMA-376 Part 4 §16.6.1 Changed Attribute For Bold Element Part 1 19 2 1 1; embedded font compatibility is represented by CT_EmbeddedFontList, CT_EmbeddedFontListEntry, and CT_EmbeddedFontDataId.
+/// §16.6.2 Changed Attribute For Bolditalic Element Part 1 19 2 1 2: ECMA-376 Part 4 §16.6.2 Changed Attribute For Bolditalic Element Part 1 19 2 1 2; embedded font compatibility is represented by CT_EmbeddedFontList, CT_EmbeddedFontListEntry, and CT_EmbeddedFontDataId.
+/// §16.6.3 Changed Attribute For Handoutmasterid Element Part 1 19 2 1 14: ECMA-376 Part 4 §16.6.3 Changed Attribute For Handoutmasterid Element Part 1 19 2 1 14; handout master relationships are represented by CT_HandoutMaster and CT_HandoutMasterIdListEntry.
+/// §16.6.5 Changed Attribute For Notesmasterid Element Part 1 19 2 1 20: ECMA-376 Part 4 §16.6.5 Changed Attribute For Notesmasterid Element Part 1 19 2 1 20; notes master and notes slide sizing are represented by CT_NotesMaster, CT_NotesSlide, and CT_SlideSize.
+/// §16.6.6 Changed Attribute For Notessz Element Part 1 19 2 1 22: ECMA-376 Part 4 §16.6.6 Changed Attribute For Notessz Element Part 1 19 2 1 22; notes master and notes slide sizing are represented by CT_NotesMaster, CT_NotesSlide, and CT_SlideSize.
+/// §16.6.10 Changed Attribute For Sldmasterid Element Part 1 19 2 1 36: ECMA-376 Part 4 §16.6.10 Changed Attribute For Sldmasterid Element Part 1 19 2 1 36; PresentationML content is represented by package_name(), CT_Presentation, CT_Slide, and CT_SlideLayout.
+/// §16.6.11 Changed Attribute For Smarttags Element Part 1 19 2 1 40: ECMA-376 Part 4 §16.6.11 Changed Attribute For Smarttags Element Part 1 19 2 1 40; custom data and tags are represented by CT_CustomerData, CT_CustomerDataList, CT_TagsData, and CT_SmartTags.
+/// §16.6.13 Changed Attribute For Origin Element Part 1 19 2 2 9: ECMA-376 Part 4 §16.6.13 Changed Attribute For Origin Element Part 1 19 2 2 9; PresentationML content is represented by package_name(), CT_Presentation, CT_Slide, and CT_SlideLayout.
+/// §16.6.15 Changed Attribute For Bgref Element Part 1 19 3 1 3: ECMA-376 Part 4 §16.6.15 Changed Attribute For Bgref Element Part 1 19 3 1 3; background and color-map compatibility is represented by CT_Background, CT_BackgroundProperties, and CT_CommonSlideData.
+/// §16.6.17 Changed Attribute For Clrmap Element Part 1 19 3 1 6: ECMA-376 Part 4 §16.6.17 Changed Attribute For Clrmap Element Part 1 19 3 1 6; background and color-map compatibility is represented by CT_Background, CT_BackgroundProperties, and CT_CommonSlideData.
+/// §16.6.18 Changed Attribute For Cnvpicpr Element Part 1 19 3 1 11: ECMA-376 Part 4 §16.6.18 Changed Attribute For Cnvpicpr Element Part 1 19 3 1 11; slide shape compatibility is represented by CT_Shape, CT_GroupShape, CT_Picture, and CT_GraphicalObjectFrame.
+/// §16.6.19 Changed Attribute For Cnvpr Element Part 1 19 3 1 12: ECMA-376 Part 4 §16.6.19 Changed Attribute For Cnvpr Element Part 1 19 3 1 12; slide shape compatibility is represented by CT_Shape, CT_GroupShape, CT_Picture, and CT_GraphicalObjectFrame.
+/// §16.6.20 Changed Attribute For Cnvsppr Element Part 1 19 3 1 13: ECMA-376 Part 4 §16.6.20 Changed Attribute For Cnvsppr Element Part 1 19 3 1 13; slide shape compatibility is represented by CT_Shape, CT_GroupShape, CT_Picture, and CT_GraphicalObjectFrame.
+/// §16.6.21 Changed Attribute For Contentpart Element Part 1 19 3 1 14: ECMA-376 Part 4 §16.6.21 Changed Attribute For Contentpart Element Part 1 19 3 1 14; slide shape compatibility is represented by CT_Shape, CT_GroupShape, CT_Picture, and CT_GraphicalObjectFrame.
+/// §16.6.22 Changed Attribute For Custdata Element Part 1 19 3 1 17: ECMA-376 Part 4 §16.6.22 Changed Attribute For Custdata Element Part 1 19 3 1 17; custom data and tags are represented by CT_CustomerData, CT_CustomerDataList, CT_TagsData, and CT_SmartTags.
+/// §16.6.23 Changed Attribute For Grpsppr Element Part 1 19 3 1 23: ECMA-376 Part 4 §16.6.23 Changed Attribute For Grpsppr Element Part 1 19 3 1 23; slide shape compatibility is represented by CT_Shape, CT_GroupShape, CT_Picture, and CT_GraphicalObjectFrame.
+/// §16.6.25 Changed Attribute For Sppr Element Part 1 19 3 1 44: ECMA-376 Part 4 §16.6.25 Changed Attribute For Sppr Element Part 1 19 3 1 44; slide shape compatibility is represented by CT_Shape, CT_GroupShape, CT_Picture, and CT_GraphicalObjectFrame.
+/// §16.6.26 Changed Attribute For Tags Element Part 1 19 3 1 47: ECMA-376 Part 4 §16.6.26 Changed Attribute For Tags Element Part 1 19 3 1 47; custom data and tags are represented by CT_CustomerData, CT_CustomerDataList, CT_TagsData, and CT_SmartTags.
+/// §16.6.27 Changed Attribute For Xfrm Element Part 1 19 3 1 53: ECMA-376 Part 4 §16.6.27 Changed Attribute For Xfrm Element Part 1 19 3 1 53; slide shape compatibility is represented by CT_Shape, CT_GroupShape, CT_Picture, and CT_GraphicalObjectFrame.
+/// §16.6.28 Changed Attribute For Control Element Part 1 19 3 2 1: ECMA-376 Part 4 §16.6.28 Changed Attribute For Control Element Part 1 19 3 2 1; embedded object and control compatibility is represented by CT_OleObject, CT_OleObjectEmbed, CT_OleObjectLink, and CT_Control.
+/// §16.6.30 Changed Attribute For Pos Element Part 1 19 4 5: ECMA-376 Part 4 §16.6.30 Changed Attribute For Pos Element Part 1 19 4 5; slide shape compatibility is represented by CT_Shape, CT_GroupShape, CT_Picture, and CT_GraphicalObjectFrame.
+/// §16.6.31 Changed Attribute For Snd Element Part 1 19 5 68: ECMA-376 Part 4 §16.6.31 Changed Attribute For Snd Element Part 1 19 5 68; animation and timing content is represented by CT_BuildList, CT_SlideTiming, CT_TLCommonTimeNodeData, and CT_TLAnimateBehavior.
+/// §16.6.32 Changed Attribute For Sndtgt Element Part 1 19 5 70: ECMA-376 Part 4 §16.6.32 Changed Attribute For Sndtgt Element Part 1 19 5 70; animation and timing content is represented by CT_BuildList, CT_SlideTiming, CT_TLCommonTimeNodeData, and CT_TLAnimateBehavior.
+/// XSD complex type CT_Shape: pml.xsd declares CT_Shape, represented by CT_Shape and related PresentationML domain wrappers.
+/// XSD complex type CT_Rel: pml.xsd declares CT_Rel, represented by CT_Rel and related PresentationML domain wrappers.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/presentation_ml"
 }
