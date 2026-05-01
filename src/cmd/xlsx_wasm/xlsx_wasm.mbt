@@ -1,5 +1,18 @@
 ///|
-/// WASM exports for the .xlsx facade.
+/// xlsx (.xlsx) wasm-gc bundle for the npm distribution.
+///
+/// This package exposes the `src/xlsx` facade through wasm-gc exports so the
+/// npm-side core bundle can call:
+///
+/// - `xlsx_package_name()` to identify the underlying facade package.
+/// - `xlsx_open(bytes)` to parse a `.xlsx` workbook.
+/// - `xlsx_save(handle)` to serialize the parsed workbook back to OOXML bytes.
+/// - `xlsx_to_html(handle)` to convert the workbook to HTML.
+/// - `xlsx_to_svg(handle)` to convert drawing and chart content to SVG.
+///
+/// The callable names are enabled by this package's `moon.pkg`
+/// `link.wasm-gc.exports` list. npm consumers call these exports through the
+/// JavaScript core wrapper rather than importing the MoonBit facade directly.
 pub fn package_name() -> String {
   @xlsx.package_name()
 }
@@ -8,6 +21,9 @@ pub fn package_name() -> String {
 let xlsx_workbooks : Ref[Array[@xlsx.Workbook]] = { val: [] }
 
 ///|
+/// Parse `.xlsx` OOXML bytes and store the resulting workbook in the wasm
+/// handle table. Returns a positive workbook handle on success, or 0 on
+/// failure.
 pub fn xlsx_open(bytes : Bytes) -> Int {
   try {
     let workbook = @xlsx.open(bytes)
@@ -19,6 +35,8 @@ pub fn xlsx_open(bytes : Bytes) -> Int {
 }
 
 ///|
+/// Serialize a stored `.xlsx` workbook back to OOXML package bytes. Invalid
+/// handles return an empty byte buffer.
 pub fn xlsx_save(handle : Int) -> Bytes {
   match xlsx_workbook(handle) {
     Some(workbook) => workbook.save()
@@ -27,6 +45,8 @@ pub fn xlsx_save(handle : Int) -> Bytes {
 }
 
 ///|
+/// Convert a stored `.xlsx` workbook to HTML for npm-side preview and export
+/// flows. Invalid handles return an empty string.
 pub fn xlsx_to_html(handle : Int) -> String {
   match xlsx_workbook(handle) {
     Some(workbook) => workbook.to_html()
@@ -35,6 +55,8 @@ pub fn xlsx_to_html(handle : Int) -> String {
 }
 
 ///|
+/// Convert drawing and chart content from a stored `.xlsx` workbook to SVG for
+/// npm-side rendering. Invalid handles return an empty string.
 pub fn xlsx_to_svg(handle : Int) -> String {
   match xlsx_workbook(handle) {
     Some(workbook) => workbook.to_svg()
