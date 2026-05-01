@@ -7,6 +7,176 @@ import {
 }
 
 // Values
+pub fn dml_14_1_glossary_of_drawingml_specific_terms_section_name() -> String
+
+pub fn dml_14_2_part_summary_section_name() -> String
+
+pub fn dml_17_1_general_section_name() -> String
+
+pub fn dml_17_2_1_table_of_contents_section_name() -> String
+
+pub fn dml_17_2_2_simple_types_section_name() -> String
+
+pub fn dml_17_2_drawingml_main_section_name() -> String
+
+pub fn dml_17_3_1_table_of_contents_section_name() -> String
+
+pub fn dml_17_3_2_basics_section_name() -> String
+
+pub fn dml_17_3_drawingml_legacy_compatibility_section_name() -> String
+
+pub fn dml_17_4_10_changed_attribute_for_cnvpr_element_part_1_20_2_2_3_section_name() -> String
+
+pub fn dml_17_4_11_changed_attribute_for_sppr_element_part_1_20_2_2_6_section_name() -> String
+
+pub fn dml_17_4_12_changed_attribute_for_docpr_element_part_1_20_4_2_5_section_name() -> String
+
+pub fn dml_17_4_13_changed_attribute_for_extent_element_part_1_20_4_2_7_section_name() -> String
+
+pub fn dml_17_4_14_changed_attribute_for_lineto_element_part_1_20_4_2_9_section_name() -> String
+
+pub fn dml_17_4_15_changed_attribute_for_simplepos_element_part_1_20_4_2_13_section_name() -> String
+
+pub fn dml_17_4_16_changed_attribute_for_start_element_part_1_20_4_2_14_section_name() -> String
+
+pub fn dml_17_4_18_changed_attribute_for_cnvpicpr_element_part_1_20_5_2_7_section_name() -> String
+
+pub fn dml_17_4_19_changed_attribute_for_cnvpr_element_part_1_20_5_2_8_section_name() -> String
+
+pub fn dml_17_4_20_changed_attribute_for_cnvsppr_element_part_1_20_5_2_9_section_name() -> String
+
+pub fn dml_17_4_21_changed_attribute_for_contentpart_element_part_1_20_5_2_12_section_name() -> String
+
+pub fn dml_17_4_22_changed_attribute_for_ext_element_part_1_20_5_2_14_section_name() -> String
+
+pub fn dml_17_4_23_changed_attribute_for_grpsppr_element_part_1_20_5_2_18_section_name() -> String
+
+pub fn dml_17_4_24_changed_attribute_for_pos_element_part_1_20_5_2_26_section_name() -> String
+
+pub fn dml_17_4_25_changed_attribute_for_sppr_element_part_1_20_5_2_30_section_name() -> String
+
+pub fn dml_17_4_26_changed_attribute_for_xfrm_element_part_1_20_5_2_36_section_name() -> String
+
+pub fn dml_17_4_2_changed_attribute_for_snd_element_part_1_20_1_2_2_32_section_name() -> String
+
+pub fn dml_17_4_3_changed_attribute_for_audiofile_element_part_1_20_1_3_2_section_name() -> String
+
+pub fn dml_17_4_4_changed_attribute_for_quicktimefile_element_part_1_20_1_3_4_section_name() -> String
+
+pub fn dml_17_4_5_changed_attribute_for_videofile_element_part_1_20_1_3_6_section_name() -> String
+
+pub fn dml_17_4_6_changed_attribute_for_wavaudiofile_element_part_1_20_1_3_7_section_name() -> String
+
+pub fn dml_17_4_7_changed_attribute_for_blip_element_part_1_20_1_8_13_section_name() -> String
+
+pub fn dml_17_4_9_changed_attribute_for_cnvpicpr_element_part_1_20_2_2_2_section_name() -> String
+
+pub fn dml_17_4_changed_attributes_section_name() -> String
+
+pub fn dml_18_2_10_changed_attribute_for_cnvpr_element_part_1_21_3_2_7_section_name() -> String
+
+pub fn dml_18_2_11_changed_attribute_for_cnvsppr_element_part_1_21_3_2_8_section_name() -> String
+
+pub fn dml_18_2_12_changed_attribute_for_ext_element_part_1_21_3_2_10_section_name() -> String
+
+pub fn dml_18_2_13_changed_attribute_for_grpsppr_element_part_1_21_3_2_14_section_name() -> String
+
+pub fn dml_18_2_14_changed_attribute_for_sppr_element_part_1_21_3_2_23_section_name() -> String
+
+pub fn dml_18_2_15_changed_attribute_for_xfrm_element_part_1_21_3_2_28_section_name() -> String
+
+pub fn dml_18_2_16_changed_attribute_for_relids_element_part_1_21_4_2_22_section_name() -> String
+
+pub fn dml_18_2_17_changed_attribute_for_shape_element_part_1_21_4_2_27_section_name() -> String
+
+pub fn dml_18_2_18_changed_attribute_for_sppr_element_part_1_21_4_3_7_section_name() -> String
+
+pub fn dml_18_2_19_changed_attribute_for_sp3d_element_part_1_21_4_5_6_section_name() -> String
+
+pub fn dml_18_2_1_changed_attribute_for_hlinkclick_element_part_1_21_1_2_3_5_section_name() -> String
+
+pub fn dml_18_2_2_changed_attribute_for_hlinkmouseover_element_part_1_21_1_2_3_6_section_name() -> String
+
+pub fn dml_18_2_4_changed_attribute_for_clrmapovr_element_part_1_21_2_2_30_section_name() -> String
+
+pub fn dml_18_2_5_changed_attribute_for_externaldata_element_part_1_21_2_2_63_section_name() -> String
+
+pub fn dml_18_2_6_changed_attribute_for_sppr_element_part_1_21_2_2_197_section_name() -> String
+
+pub fn dml_18_2_9_changed_attribute_for_cnvpicpr_element_part_1_21_3_2_6_section_name() -> String
+
+pub fn dml_19_1_1_table_of_contents_section_name() -> String
+
+pub fn dml_19_1_2_elements_section_name() -> String
+
+pub fn dml_19_1_3_simple_types_section_name() -> String
+
+pub fn dml_19_1_vml_section_name() -> String
+
+pub fn dml_19_2_1_table_of_contents_section_name() -> String
+
+pub fn dml_19_2_2_elements_section_name() -> String
+
+pub fn dml_19_2_3_simple_types_section_name() -> String
+
+pub fn dml_19_3_1_table_of_contents_section_name() -> String
+
+pub fn dml_19_3_2_elements_section_name() -> String
+
+pub fn dml_19_3_3_simple_types_section_name() -> String
+
+pub fn dml_19_3_vml_wordprocessingml_drawing_section_name() -> String
+
+pub fn dml_19_4_1_table_of_contents_section_name() -> String
+
+pub fn dml_19_4_2_elements_section_name() -> String
+
+pub fn dml_19_4_3_simple_types_section_name() -> String
+
+pub fn dml_19_5_1_table_of_contents_section_name() -> String
+
+pub fn dml_19_5_2_elements_section_name() -> String
+
+pub fn dml_19_5_vml_presentationml_drawing_section_name() -> String
+
+pub fn dml_20_5_drawingml_spreadsheetml_drawing_section_name() -> String
+
+pub fn dml_schema_vml_main_xsd_name() -> String
+
+pub fn dml_schema_vml_officedrawing_xsd_name() -> String
+
+pub fn dml_simple_type_st_adjangle_name() -> String
+
+pub fn dml_simple_type_st_animationbuildtype_name() -> String
+
+pub fn dml_simple_type_st_animationchartonlybuildtype_name() -> String
+
+pub fn dml_simple_type_st_animationdgmbuildtype_name() -> String
+
+pub fn dml_simple_type_st_animationdgmonlybuildtype_name() -> String
+
+pub fn dml_simple_type_st_blackwhitemode_name() -> String
+
+pub fn dml_simple_type_st_blendmode_name() -> String
+
+pub fn dml_simple_type_st_blipcompression_name() -> String
+
+pub fn dml_simple_type_st_chartbuildstep_name() -> String
+
+pub fn dml_simple_type_st_dgmbuildstep_name() -> String
+
+pub fn dml_simple_type_st_ext_name() -> String
+
+pub fn dml_simple_type_st_fovangle_name() -> String
+
+pub fn dml_simple_type_st_geomguideformula_name() -> String
+
+pub fn dml_simple_type_st_geomguidename_name() -> String
+
+pub fn dml_simple_type_st_linecap_name() -> String
+
+pub fn dml_simple_type_st_pathfillmode_name() -> String
+
 pub fn package_name() -> String
 
 pub fn read_bevel(Bytes) -> CT_Bevel raise
