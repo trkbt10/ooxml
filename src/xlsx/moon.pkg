@@ -1,3 +1,17 @@
 // trkbt10/ooxml/xlsx
 //
 // Public facade for .xlsx files. Orchestrates opc + spreadsheet_ml + drawing_ml: open(bytes) → context → (save | to_html).
+
+import {
+  "trkbt10/ooxml/ecma376/opc" @opc,
+  "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @sml,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/reader" @sml_reader,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/builder" @sml_builder,
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/zip" @zip,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"
