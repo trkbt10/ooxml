@@ -4,6 +4,14 @@ package "trkbt10/ooxml/cmd/pptx_wasm"
 // Values
 pub fn package_name() -> String
 
+pub fn pptx_open(Bytes) -> Int
+
+pub fn pptx_save(Int) -> Bytes
+
+pub fn pptx_to_html(Int) -> String
+
+pub fn pptx_to_svg(Int) -> String
+
 // Errors
 
 // Types and methods

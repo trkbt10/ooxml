@@ -6,5 +6,15 @@ import {
 
 options(
   "is-main": true,
-  link: { "wasm-gc": { "exports": [ "pptx_package_name:package_name" ] } },
+  link: {
+    "wasm-gc": {
+      "exports": [
+        "pptx_package_name:package_name",
+        "pptx_open",
+        "pptx_save",
+        "pptx_to_html",
+        "pptx_to_svg",
+      ],
+    },
+  },
 )
