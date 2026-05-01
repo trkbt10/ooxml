@@ -42,8 +42,6 @@
 /// - §9 Drift hooks: coverage.json represents the §3 section and §4
 ///   identifiers; alignment is measured against this public API doc and the
 ///   package domain types.
-///
-/// Return the implementation package identifier for ecma376/opc/content_types.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/opc/content_types"
 }

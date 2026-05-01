@@ -59,8 +59,6 @@
 /// - §9 Drift hooks: coverage.json represents §6 and §7 section headings;
 ///   alignment is measured against Package, PackagePart, PackUri, open/save,
 ///   and delegated facade APIs.
-///
-/// Return the implementation package identifier for ecma376/opc.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/opc"
 }
