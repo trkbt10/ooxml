@@ -82,6 +82,8 @@ pub fn pml_19_6_slide_synchronization_data_section_name() -> String
 
 pub fn pml_19_7_simple_types_section_name() -> String
 
+pub fn pml_xsd_ct_rel_schema_name() -> String
+
 pub fn vml_presentation_drawing_ct_rel_schema_name() -> String
 
 pub fn vml_presentation_drawing_ct_rel_type_name() -> String

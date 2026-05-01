@@ -1,8 +1,9 @@
 ///|
 /// XSD complex type CT_Rel: Schema vml-presentationDrawing.xsd complex type
-/// `CT_Rel` has attribute `id`.
+/// `CT_Rel` has attribute `id`. The `id` is an OPC relationship id whose
+/// resolution failure is reported as ResourceMissing by the OPC layer.
 pub fn vml_presentation_drawing_ct_rel_type_name() -> String {
-  "Schema vml-presentationDrawing.xsd complex type `CT_Rel`. Attributes: `id`."
+  "Schema vml-presentationDrawing.xsd complex type `CT_Rel`. Attributes: `id`. ResourceMissing is raised by the OPC layer when the relationship target is unresolved."
 }
 
 ///|
@@ -59,7 +60,7 @@ pub fn vml_presentation_drawing_ct_rel_type_name() -> String {
 /// §16.6.31 Changed Attribute For Snd Element Part 1 19 5 68: ECMA-376 Part 4 §16.6.31 Changed Attribute For Snd Element Part 1 19 5 68; animation and timing content is represented by CT_BuildList, CT_SlideTiming, CT_TLCommonTimeNodeData, and CT_TLAnimateBehavior.
 /// §16.6.32 Changed Attribute For Sndtgt Element Part 1 19 5 70: ECMA-376 Part 4 §16.6.32 Changed Attribute For Sndtgt Element Part 1 19 5 70; animation and timing content is represented by CT_BuildList, CT_SlideTiming, CT_TLCommonTimeNodeData, and CT_TLAnimateBehavior.
 /// XSD complex type CT_Shape: pml.xsd declares CT_Shape, represented by CT_Shape and related PresentationML domain wrappers.
-/// XSD complex type CT_Rel: pml.xsd declares CT_Rel, represented by CT_Rel and related PresentationML domain wrappers.
+/// XSD complex type CT_Rel: Schema pml.xsd complex type `CT_Rel`. Attribute groups referenced: `r:id`. Represented by CT_Rel and related PresentationML domain wrappers.
 
 ///|
 /// Return the ECMA-376 Part 1 §13.1 Glossary Of Presentationml Specific Terms section owned by this package.
@@ -297,12 +298,24 @@ pub fn pml_16_6_32_changed_attribute_for_sndtgt_element_part_1_19_5_70_section_n
 
 ///|
 /// Return the vml-presentationDrawing.xsd CT_Rel schema row owned by this
-/// package.
+/// package. The `id` attribute is an OPC relationship id; an unresolved
+/// id surfaces as ResourceMissing from the OPC layer (`src/ecma376/opc`).
 pub fn vml_presentation_drawing_ct_rel_schema_name() -> String {
-  "Schema vml-presentationDrawing.xsd complex type `CT_Rel`. Attributes: `id`."
+  "Schema vml-presentationDrawing.xsd complex type `CT_Rel`. Attributes: `id`. ResourceMissing is raised by the OPC layer when the relationship target is unresolved."
 }
 
 ///|
+/// XSD complex type CT_Rel
+/// Schema pml.xsd complex type `CT_Rel`. Attribute groups referenced: `r:id`.
+pub fn pml_xsd_ct_rel_schema_name() -> String {
+  "Schema pml.xsd complex type `CT_Rel`. Attribute groups referenced: `r:id`."
+}
+
+///|
+/// §11 Errors: this package raises SchemaViolation for §4 XSD violations;
+/// ResourceMissing is propagated from the OPC layer (`src/ecma376/opc`)
+/// when a relationship target referenced by a presentation part cannot
+/// be resolved.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/presentation_ml"
 }
