@@ -19,6 +19,26 @@ pub fn parse_preserve_elements(String) -> Array[String]
 
 pub fn parse_process_content(String) -> Array[String]
 
+pub fn part3_application_defined_extensions_section_name() -> String
+
+pub fn part3_general_description_section_name() -> String
+
+pub fn part3_introduction_section_name() -> String
+
+pub fn part3_mustunderstand_section_name() -> String
+
+pub fn part3_normative_references_section_name() -> String
+
+pub fn part3_notational_conventions_section_name() -> String
+
+pub fn part3_overview_section_name() -> String
+
+pub fn part3_reference_processing_overview_section_name() -> String
+
+pub fn part3_scope_section_name() -> String
+
+pub fn part3_terms_and_definitions_section_name() -> String
+
 // Errors
 
 // Types and methods
