@@ -118,6 +118,8 @@ pub fn sml_18_6_calculation_chain_section_name() -> String
 
 pub fn sml_18_7_comments_section_name() -> String
 
+pub fn sml_xsd_eg_extensionlist_schema_name() -> String
+
 // Errors
 pub suberror SchemaViolation {
   SchemaViolation(schema~ : String, path~ : String, reason~ : String)

@@ -66,7 +66,7 @@
 /// XSD complex type CT_I: sml.xsd declares CT_I, represented by CT_I and related SpreadsheetML domain wrappers.
 /// XSD complex type CT_Sheet: sml.xsd declares CT_Sheet, represented by CT_Sheet and related SpreadsheetML domain wrappers.
 /// XSD complex type CT_String: sml.xsd declares CT_String, represented by CT_String and related SpreadsheetML domain wrappers.
-/// XSD model group EG_ExtensionList: sml.xsd declares EG_ExtensionList, represented by EG_ExtensionList and related SpreadsheetML domain wrappers.
+/// XSD model group EG_ExtensionList: Schema sml.xsd model group `EG_ExtensionList`. Children: `{'name': 'ext', 'type': 'CT_Extension'}`. Represented by EG_ExtensionList and related SpreadsheetML domain wrappers.
 
 ///|
 /// Return the ECMA-376 Part 1 §12.1 Glossary Of Spreadsheetml Specific Terms section owned by this package.
@@ -393,6 +393,21 @@ pub fn sml_15_10_23_changed_attribute_for_olelink_element_part_1_18_14_11_sectio
 }
 
 ///|
+/// XSD model group EG_ExtensionList.
+/// Schema sml.xsd model group `EG_ExtensionList`.
+/// Children: `{'name': 'ext', 'type': 'CT_Extension'}`.
+/// The same data, in machine-readable form, is in `coverage.json`.
+/// CT_Extension carries an OPC relationship id whose resolution failure
+/// surfaces as ResourceMissing from the OPC layer.
+pub fn sml_xsd_eg_extensionlist_schema_name() -> String {
+  "XSD model group EG_ExtensionList. Schema sml.xsd model group `EG_ExtensionList`. Children: `{'name': 'ext', 'type': 'CT_Extension'}`. ResourceMissing is raised by the OPC layer when CT_Extension references an unresolved relationship target."
+}
+
+///|
+/// §11 Errors: this package raises SchemaViolation for §4 XSD violations;
+/// ResourceMissing is propagated from the OPC layer (`src/ecma376/opc`)
+/// when a relationship target referenced by a workbook part cannot be
+/// resolved.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/spreadsheet_ml"
 }
