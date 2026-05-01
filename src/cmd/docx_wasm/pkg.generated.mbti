@@ -2,6 +2,14 @@
 package "trkbt10/ooxml/cmd/docx_wasm"
 
 // Values
+pub fn docx_open(Bytes) -> Int
+
+pub fn docx_save(Int) -> Bytes
+
+pub fn docx_to_html(Int) -> String
+
+pub fn docx_to_svg(Int) -> String
+
 pub fn package_name() -> String
 
 // Errors
