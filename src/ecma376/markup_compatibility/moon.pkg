@@ -1,3 +1,7 @@
 // trkbt10/ooxml/ecma376/markup_compatibility
 //
 // ECMA-376 Part 3: Markup Compatibility (mc:Ignorable, mc:AlternateContent).
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}
