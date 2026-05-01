@@ -1,47 +1,829 @@
 ///|
-/// §10.6 Relationships Transform Algorithm. Applies the OPC
-/// relationships-transform rules to a relationships part before digest
-/// computation. Currently raises UnsupportedFeature until signing support is
-/// wired to the package layer.
+fn relationship_transform_algorithm() -> String {
+  "http://schemas.openxmlformats.org/package/2006/RelationshipTransform"
+}
+
+///|
+fn c14n_algorithm() -> String {
+  "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+}
+
+///|
+fn sha256_algorithm() -> String {
+  "http://www.w3.org/2001/04/xmlenc#sha256"
+}
+
+///|
+fn relationships_namespace() -> String {
+  "http://schemas.openxmlformats.org/package/2006/relationships"
+}
+
+///|
+fn digital_signature_namespace() -> String {
+  "http://schemas.openxmlformats.org/package/2006/digital-signature"
+}
+
+///|
+fn xmldsig_namespace_for_algorithm() -> String {
+  "http://www.w3.org/2000/09/xmldsig#"
+}
+
+///|
+priv struct RelationshipTransformEntry {
+  id : String
+  type_uri : String
+  target : String
+  target_mode : String?
+}
+
+///|
+priv struct NamespaceForCanonicalXml {
+  prefix : String?
+  uri : String
+} derive(Eq)
+
+///|
+priv struct ReferenceProcessingData {
+  reference : Reference
+  transforms : Array[Transform]
+  digest_method : DigestMethod
+}
+
+///|
+/// §10.6 Relationships Transform Algorithm. Parses a relationships part,
+/// selects the requested Relationship elements, sorts them by Id, and emits the
+/// canonical UTF-8 byte stream consumed by XML-Signature digest processing.
 pub fn apply_relationships_transform(
   source : Bytes,
-) -> Bytes raise UnsupportedFeature {
-  source |> ignore
-  raise UnsupportedFeature(
-    section="10.6",
-    path="/",
-    reason="relationships transform algorithm not implemented",
-  )
+  filter : Array[String]?,
+) -> Bytes raise SchemaViolation {
+  let doc = @xml.parse(source) catch {
+    _ =>
+      raise SchemaViolation(
+        section="10.6",
+        path="/",
+        reason="relationships part is not well-formed XML",
+      )
+  }
+  if !is_algorithm_element(doc.root, "Relationships", relationships_namespace()) {
+    raise SchemaViolation(
+      section="10.6",
+      path="/",
+      reason="expected Relationships in the relationships namespace",
+    )
+  }
+  let selected : Array[RelationshipTransformEntry] = []
+  for child in algorithm_element_children(doc.root, "/Relationships", "10.6") {
+    if !is_algorithm_element(child, "Relationship", relationships_namespace()) {
+      raise SchemaViolation(
+        section="10.6",
+        path="/Relationships/" + child.name.local_name,
+        reason="Relationships may contain only Relationship elements",
+      )
+    }
+    let id = algorithm_required_attribute(
+      child, "Id", "/Relationships/Relationship/@Id", "10.6",
+    )
+    if relationship_filter_contains(filter, id) {
+      selected.push({
+        id,
+        type_uri: algorithm_required_attribute(
+          child, "Type", "/Relationships/Relationship/@Type", "10.6",
+        ),
+        target: algorithm_required_attribute(
+          child, "Target", "/Relationships/Relationship/@Target", "10.6",
+        ),
+        target_mode: algorithm_optional_attribute(child, "TargetMode"),
+      })
+    }
+  }
+  sort_relationship_transform_entries(selected)
+  write_relationships_transform_entries(selected)
 }
 
 ///|
-/// §10.8 Generating Signatures. Drives the signing process: collect
-/// references, canonicalise SignedInfo, compute the signature value, and emit
-/// the Signature element. Currently raises UnsupportedFeature until signing
-/// support is wired to the package layer.
+/// §10.8 Generating Signatures. Applies each Reference transform, computes
+/// SHA-256 digest values, canonicalizes SignedInfo with W3C C14N
+/// `http://www.w3.org/TR/2001/REC-xml-c14n-20010315`, and delegates the
+/// SignatureMethod primitive to the supplied signing callback.
 pub fn generate_signature(
   signed_info : SignedInfo,
-) -> Signature raise UnsupportedFeature {
-  signed_info |> ignore
-  raise UnsupportedFeature(
-    section="10.8",
-    path="/Signature",
-    reason="signature generation not implemented",
+  resolve : (String) -> Bytes,
+  sign : (Bytes) -> Bytes,
+) -> Signature raise SchemaViolation {
+  let populated_signed_info = populate_reference_digests(signed_info, resolve)
+  let canonical_signed_info = canonicalize_xml(
+    write_signed_info(populated_signed_info),
+  )
+  let signature_value = @base64.encode(sign(canonical_signed_info)[:])
+  Signature::new(None, [
+    Element(signed_info_element(populated_signed_info)),
+    Element(xmldsig_text_element("SignatureValue", signature_value)),
+  ])
+}
+
+///|
+/// §10.9 Validating Signatures. Canonicalizes SignedInfo, verifies
+/// SignatureValue through the supplied XML-Signature SignatureMethod callback,
+/// then recomputes every Reference digest after applying the declared
+/// transform chain.
+pub fn validate_signature(
+  signature : Signature,
+  resolve : (String) -> Bytes,
+  verify : (Bytes, Bytes) -> Bool,
+) -> Bool raise SchemaViolation {
+  let signed_info = signature_signed_info(signature)
+  let signature_value = signature_value_bytes(signature)
+  let canonical_signed_info = canonicalize_xml(write_signed_info(signed_info))
+  if !verify(canonical_signed_info, signature_value) {
+    return false
+  }
+  for item in signed_info_references(signed_info) {
+    let source = resolve(item.reference.uri.unwrap_or(""))
+    let transformed = apply_transforms(source, item.transforms)
+    let digest = digest_reference_bytes(transformed, item.digest_method)
+    match reference_digest_value(item.reference) {
+      Some(value) => if value != digest { return false }
+      None => return false
+    }
+  }
+  true
+}
+
+///|
+fn populate_reference_digests(
+  signed_info : SignedInfo,
+  resolve : (String) -> Bytes,
+) -> SignedInfo raise SchemaViolation {
+  let children : Array[@xml.Node] = []
+  for child in signed_info.children {
+    match child {
+      Element(element) =>
+        if is_algorithm_element(
+            element,
+            "Reference",
+            xmldsig_namespace_for_algorithm(),
+          ) {
+          let item = read_reference_processing_data(element)
+          let source = resolve(item.reference.uri.unwrap_or(""))
+          let transformed = apply_transforms(source, item.transforms)
+          let digest_value = digest_reference_bytes(
+            transformed,
+            item.digest_method,
+          )
+          children.push(
+            Element(reference_element_with_digest(item, digest_value)),
+          )
+        } else {
+          children.push(child)
+        }
+      _ => children.push(child)
+    }
+  }
+  SignedInfo::new(signed_info.id, children)
+}
+
+///|
+fn apply_transforms(
+  source : Bytes,
+  transforms : Array[Transform],
+) -> Bytes raise SchemaViolation {
+  let mut current = source
+  for transform in transforms {
+    if transform.algorithm == relationship_transform_algorithm() {
+      current = apply_relationships_transform(
+        current,
+        Some(relationship_reference_filter(transform.children)),
+      )
+    } else if transform.algorithm == c14n_algorithm() {
+      current = canonicalize_xml(current)
+    } else {
+      raise SchemaViolation(
+        section="10.8",
+        path="/SignedInfo/Reference/Transforms/Transform/@Algorithm",
+        reason="unsupported transform algorithm: " + transform.algorithm,
+      )
+    }
+  }
+  current
+}
+
+///|
+fn digest_reference_bytes(
+  bytes : Bytes,
+  digest_method : DigestMethod,
+) -> String raise SchemaViolation {
+  if digest_method.algorithm != sha256_algorithm() {
+    raise SchemaViolation(
+      section="10.8",
+      path="/SignedInfo/Reference/DigestMethod/@Algorithm",
+      reason="unsupported digest algorithm: " + digest_method.algorithm,
+    )
+  }
+  @base64.encode(@crypto.sha256(bytes).unsafe_reinterpret_as_bytes()[:])
+}
+
+///|
+fn read_reference_processing_data(
+  element : @xml.Element,
+) -> ReferenceProcessingData raise SchemaViolation {
+  let reference = Reference::new(
+    algorithm_optional_attribute(element, "Id"),
+    algorithm_optional_attribute(element, "Type"),
+    algorithm_optional_attribute(element, "URI"),
+    element.children,
+  )
+  let transforms : Array[Transform] = []
+  let mut digest_method : DigestMethod? = None
+  for child in element.children {
+    if child is Element(child_element) {
+      if is_algorithm_element(
+          child_element,
+          "Transforms",
+          xmldsig_namespace_for_algorithm(),
+        ) {
+        for
+          transform_element in algorithm_element_children(
+            child_element, "/Reference/Transforms", "10.8",
+          ) {
+          if !is_algorithm_element(
+              transform_element,
+              "Transform",
+              xmldsig_namespace_for_algorithm(),
+            ) {
+            raise SchemaViolation(
+              section="10.8",
+              path="/Reference/Transforms/" + transform_element.name.local_name,
+              reason="Transforms may contain only Transform elements",
+            )
+          }
+          transforms.push(
+            Transform::new(
+              algorithm_required_attribute(
+                transform_element, "Algorithm", "/Reference/Transforms/Transform/@Algorithm",
+                "10.8",
+              ),
+              transform_element.children,
+            ),
+          )
+        }
+      } else if is_algorithm_element(
+          child_element,
+          "DigestMethod",
+          xmldsig_namespace_for_algorithm(),
+        ) {
+        digest_method = Some(
+          DigestMethod::new(
+            algorithm_required_attribute(
+              child_element, "Algorithm", "/Reference/DigestMethod/@Algorithm", "10.8",
+            ),
+            child_element.children,
+          ),
+        )
+      }
+    }
+  }
+  match digest_method {
+    Some(value) => { reference, transforms, digest_method: value }
+    None =>
+      raise SchemaViolation(
+        section="10.8",
+        path="/Reference/DigestMethod",
+        reason="Reference requires a DigestMethod",
+      )
+  }
+}
+
+///|
+fn reference_element_with_digest(
+  item : ReferenceProcessingData,
+  digest_value : String,
+) -> @xml.Element {
+  let children : Array[@xml.Node] = []
+  let mut replaced = false
+  for child in item.reference.children {
+    match child {
+      Element(element) =>
+        if is_algorithm_element(
+            element,
+            "DigestValue",
+            xmldsig_namespace_for_algorithm(),
+          ) {
+          children.push(
+            Element(xmldsig_text_element("DigestValue", digest_value)),
+          )
+          replaced = true
+        } else {
+          children.push(child)
+        }
+      _ => children.push(child)
+    }
+  }
+  if !replaced {
+    children.push(Element(xmldsig_text_element("DigestValue", digest_value)))
+  }
+  {
+    name: xmldsig_name_for_algorithm("Reference"),
+    attributes: optional_algorithm_attributes([
+      ("Id", item.reference.id),
+      ("Type", item.reference.type_),
+      ("URI", item.reference.uri),
+    ]),
+    children,
+  }
+}
+
+///|
+fn signed_info_element(value : SignedInfo) -> @xml.Element {
+  {
+    name: xmldsig_name_for_algorithm("SignedInfo"),
+    attributes: optional_algorithm_attributes([("Id", value.id)]),
+    children: value.children,
+  }
+}
+
+///|
+fn signature_signed_info(
+  signature : Signature,
+) -> SignedInfo raise SchemaViolation {
+  for child in signature.children {
+    if child is Element(element) &&
+      is_algorithm_element(
+        element,
+        "SignedInfo",
+        xmldsig_namespace_for_algorithm(),
+      ) {
+      return SignedInfo::new(
+        algorithm_optional_attribute(element, "Id"),
+        element.children,
+      )
+    }
+  }
+  raise SchemaViolation(
+    section="10.9",
+    path="/Signature/SignedInfo",
+    reason="Signature requires SignedInfo",
   )
 }
 
 ///|
-/// §10.9 Validating Signatures. Drives the validation process:
-/// re-canonicalise SignedInfo, recompute the signature value, compare against
-/// the embedded SignatureValue, and validate every Reference's digest.
-/// Currently raises UnsupportedFeature.
-pub fn validate_signature(
-  signature : Signature,
-) -> Bool raise UnsupportedFeature {
-  signature |> ignore
-  raise UnsupportedFeature(
+fn signature_value_bytes(signature : Signature) -> Bytes raise SchemaViolation {
+  for child in signature.children {
+    if child is Element(element) &&
+      is_algorithm_element(
+        element,
+        "SignatureValue",
+        xmldsig_namespace_for_algorithm(),
+      ) {
+      return @base64.decode(element_text_for_algorithm(element)[:]) catch {
+        _ =>
+          raise SchemaViolation(
+            section="10.9",
+            path="/Signature/SignatureValue",
+            reason="SignatureValue is not valid base64",
+          )
+      }
+    }
+  }
+  raise SchemaViolation(
     section="10.9",
-    path="/Signature",
-    reason="signature validation not implemented",
+    path="/Signature/SignatureValue",
+    reason="Signature requires SignatureValue",
   )
+}
+
+///|
+fn signed_info_references(
+  signed_info : SignedInfo,
+) -> Array[ReferenceProcessingData] raise SchemaViolation {
+  let references : Array[ReferenceProcessingData] = []
+  for child in signed_info.children {
+    if child is Element(element) &&
+      is_algorithm_element(
+        element,
+        "Reference",
+        xmldsig_namespace_for_algorithm(),
+      ) {
+      references.push(read_reference_processing_data(element))
+    }
+  }
+  references
+}
+
+///|
+fn reference_digest_value(reference : Reference) -> String? {
+  for child in reference.children {
+    if child is Element(element) &&
+      is_algorithm_element(
+        element,
+        "DigestValue",
+        xmldsig_namespace_for_algorithm(),
+      ) {
+      return Some(element_text_for_algorithm(element))
+    }
+  }
+  None
+}
+
+///|
+fn relationship_reference_filter(children : Array[@xml.Node]) -> Array[String] {
+  let filter : Array[String] = []
+  for child in children {
+    if child is Element(element) &&
+      is_algorithm_element(
+        element,
+        "RelationshipReference",
+        digital_signature_namespace(),
+      ) {
+      match algorithm_optional_attribute(element, "SourceId") {
+        Some(source_id) => filter.push(source_id)
+        None => ()
+      }
+    }
+  }
+  filter
+}
+
+///|
+fn relationship_filter_contains(filter : Array[String]?, id : String) -> Bool {
+  match filter {
+    Some(values) => values.contains(id)
+    None => true
+  }
+}
+
+///|
+fn write_relationships_transform_entries(
+  entries : Array[RelationshipTransformEntry],
+) -> Bytes {
+  let out = StringBuilder::new()
+  let mut first = true
+  for entry in entries {
+    out.write_string("<Relationship")
+    if first {
+      out.write_string(" xmlns=\"")
+      out.write_string(escape_canonical_attribute(relationships_namespace()))
+      out.write_string("\"")
+      first = false
+    }
+    out.write_string(" Id=\"")
+    out.write_string(escape_canonical_attribute(entry.id))
+    out.write_string("\" Type=\"")
+    out.write_string(escape_canonical_attribute(entry.type_uri))
+    out.write_string("\" Target=\"")
+    out.write_string(escape_canonical_attribute(entry.target))
+    out.write_string("\"")
+    match entry.target_mode {
+      Some("External") => out.write_string(" TargetMode=\"External\"")
+      _ => ()
+    }
+    out.write_string("></Relationship>")
+  }
+  @utf8.encode(out.to_string()[:])
+}
+
+///|
+fn sort_relationship_transform_entries(
+  entries : Array[RelationshipTransformEntry],
+) -> Unit {
+  for i in 1..<entries.length() {
+    let current = entries[i]
+    let mut j = i
+    while j > 0 && current.id.lexical_compare(entries[j - 1].id) < 0 {
+      entries[j] = entries[j - 1]
+      j -= 1
+    }
+    entries[j] = current
+  }
+}
+
+///|
+fn canonicalize_xml(bytes : Bytes) -> Bytes raise SchemaViolation {
+  let doc = @xml.parse(bytes) catch {
+    _ =>
+      raise SchemaViolation(
+        section="10.8",
+        path="/",
+        reason="XML input is not well-formed for canonicalization",
+      )
+  }
+  let out = StringBuilder::new()
+  write_canonical_element(out, doc.root, [
+    { prefix: Some("xml"), uri: "http://www.w3.org/XML/1998/namespace" },
+  ])
+  @utf8.encode(out.to_string()[:])
+}
+
+///|
+fn write_canonical_element(
+  out : StringBuilder,
+  element : @xml.Element,
+  inherited : Array[NamespaceForCanonicalXml],
+) -> Unit {
+  out.write_string("<")
+  out.write_string(format_algorithm_qname(element.name))
+  let active = inherited.copy()
+  let namespaces : Array[NamespaceForCanonicalXml] = []
+  collect_namespace_if_needed(
+    namespaces,
+    active,
+    element.name.prefix,
+    element.name.ns,
+  )
+  for attr in element.attributes {
+    if attr.name.prefix is Some(_) {
+      collect_namespace_if_needed(
+        namespaces,
+        active,
+        attr.name.prefix,
+        attr.name.ns,
+      )
+    }
+  }
+  sort_canonical_namespaces(namespaces)
+  for ns in namespaces {
+    out.write_string(" ")
+    match ns.prefix {
+      Some(prefix) => {
+        out.write_string("xmlns:")
+        out.write_string(prefix)
+      }
+      None => out.write_string("xmlns")
+    }
+    out.write_string("=\"")
+    out.write_string(escape_canonical_attribute(ns.uri))
+    out.write_string("\"")
+    active.push(ns)
+  }
+  let attributes = element.attributes.copy()
+  sort_canonical_attributes(attributes)
+  for attr in attributes {
+    out.write_string(" ")
+    out.write_string(format_algorithm_qname(attr.name))
+    out.write_string("=\"")
+    out.write_string(escape_canonical_attribute(attr.value))
+    out.write_string("\"")
+  }
+  out.write_string(">")
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        write_canonical_element(out, child_element, active)
+      Text(text) | CData(text) => out.write_string(escape_canonical_text(text))
+      Comment(_) => ()
+      ProcessingInstruction(pi) => {
+        out.write_string("<?")
+        out.write_string(pi.target)
+        if pi.data != "" {
+          out.write_string(" ")
+          out.write_string(pi.data)
+        }
+        out.write_string("?>")
+      }
+    }
+  }
+  out.write_string("</")
+  out.write_string(format_algorithm_qname(element.name))
+  out.write_string(">")
+}
+
+///|
+fn collect_namespace_if_needed(
+  namespaces : Array[NamespaceForCanonicalXml],
+  active : Array[NamespaceForCanonicalXml],
+  prefix : String?,
+  ns : String?,
+) -> Unit {
+  match ns {
+    Some(uri) =>
+      if lookup_canonical_namespace(active, prefix) != Some(uri) &&
+        !namespaces.contains({ prefix, uri }) {
+        namespaces.push({ prefix, uri })
+      }
+    None =>
+      if prefix == None &&
+        lookup_canonical_namespace(active, None) is Some(current) &&
+        current != "" {
+        namespaces.push({ prefix: None, uri: "" })
+      }
+  }
+}
+
+///|
+fn lookup_canonical_namespace(
+  active : Array[NamespaceForCanonicalXml],
+  prefix : String?,
+) -> String? {
+  let mut found : String? = None
+  for item in active {
+    if item.prefix == prefix {
+      found = Some(item.uri)
+    }
+  }
+  found
+}
+
+///|
+fn sort_canonical_namespaces(items : Array[NamespaceForCanonicalXml]) -> Unit {
+  for i in 1..<items.length() {
+    let current = items[i]
+    let mut j = i
+    while j > 0 &&
+          namespace_sort_key(current).lexical_compare(
+            namespace_sort_key(items[j - 1]),
+          ) <
+          0 {
+      items[j] = items[j - 1]
+      j -= 1
+    }
+    items[j] = current
+  }
+}
+
+///|
+fn sort_canonical_attributes(items : Array[@xml.Attribute]) -> Unit {
+  for i in 1..<items.length() {
+    let current = items[i]
+    let mut j = i
+    while j > 0 &&
+          attribute_sort_key(current).lexical_compare(
+            attribute_sort_key(items[j - 1]),
+          ) <
+          0 {
+      items[j] = items[j - 1]
+      j -= 1
+    }
+    items[j] = current
+  }
+}
+
+///|
+fn namespace_sort_key(item : NamespaceForCanonicalXml) -> String {
+  item.prefix.unwrap_or("")
+}
+
+///|
+fn attribute_sort_key(item : @xml.Attribute) -> String {
+  item.name.ns.unwrap_or("") + "\u{0}" + item.name.local_name
+}
+
+///|
+fn algorithm_element_children(
+  element : @xml.Element,
+  path : String,
+  section : String,
+) -> Array[@xml.Element] raise SchemaViolation {
+  let children : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      Element(element) => children.push(element)
+      Text(text) | CData(text) =>
+        if text.trim() != "" {
+          raise SchemaViolation(
+            section~,
+            path~,
+            reason="element-only content contains non-whitespace text",
+          )
+        }
+      _ => ()
+    }
+  }
+  children
+}
+
+///|
+fn algorithm_required_attribute(
+  element : @xml.Element,
+  name : String,
+  path : String,
+  section : String,
+) -> String raise SchemaViolation {
+  match algorithm_optional_attribute(element, name) {
+    Some(value) =>
+      if value == "" {
+        raise SchemaViolation(
+          section~,
+          path~,
+          reason="required attribute is empty",
+        )
+      } else {
+        value
+      }
+    None =>
+      raise SchemaViolation(
+        section~,
+        path~,
+        reason="required attribute is missing",
+      )
+  }
+}
+
+///|
+fn algorithm_optional_attribute(
+  element : @xml.Element,
+  name : String,
+) -> String? {
+  for attr in element.attributes {
+    if attr.name.local_name == name && attr.name.ns == None {
+      return Some(attr.value)
+    }
+  }
+  None
+}
+
+///|
+fn optional_algorithm_attributes(
+  values : Array[(String, String?)],
+) -> Array[@xml.Attribute] {
+  let attributes : Array[@xml.Attribute] = []
+  for item in values {
+    match item {
+      (name, Some(value)) =>
+        attributes.push({
+          name: { prefix: None, local_name: name, ns: None },
+          value,
+        })
+      (_, None) => ()
+    }
+  }
+  attributes
+}
+
+///|
+fn xmldsig_text_element(local_name : String, text : String) -> @xml.Element {
+  {
+    name: xmldsig_name_for_algorithm(local_name),
+    attributes: [],
+    children: [Text(text)],
+  }
+}
+
+///|
+fn xmldsig_name_for_algorithm(local_name : String) -> @xml.QName {
+  {
+    prefix: Some("ds"),
+    local_name,
+    ns: Some(xmldsig_namespace_for_algorithm()),
+  }
+}
+
+///|
+fn format_algorithm_qname(name : @xml.QName) -> String {
+  match name.prefix {
+    Some(prefix) => prefix + ":" + name.local_name
+    None => name.local_name
+  }
+}
+
+///|
+fn is_algorithm_element(
+  element : @xml.Element,
+  local_name : String,
+  ns : String,
+) -> Bool {
+  element.name.local_name == local_name && element.name.ns == Some(ns)
+}
+
+///|
+fn element_text_for_algorithm(element : @xml.Element) -> String {
+  let out = StringBuilder::new()
+  for child in element.children {
+    match child {
+      Text(text) | CData(text) => out.write_string(text)
+      _ => ()
+    }
+  }
+  out.to_string()
+}
+
+///|
+fn escape_canonical_attribute(value : String) -> String {
+  let out = StringBuilder::new()
+  for ch in value {
+    match ch {
+      '&' => out.write_string("&amp;")
+      '<' => out.write_string("&lt;")
+      '"' => out.write_string("&quot;")
+      '\t' => out.write_string("&#x9;")
+      '\n' => out.write_string("&#xA;")
+      '\r' => out.write_string("&#xD;")
+      _ => out.write_char(ch)
+    }
+  }
+  out.to_string()
+}
+
+///|
+fn escape_canonical_text(value : String) -> String {
+  let out = StringBuilder::new()
+  for ch in value {
+    match ch {
+      '&' => out.write_string("&amp;")
+      '<' => out.write_string("&lt;")
+      '>' => out.write_string("&gt;")
+      '\r' => out.write_string("&#xD;")
+      _ => out.write_char(ch)
+    }
+  }
+  out.to_string()
 }

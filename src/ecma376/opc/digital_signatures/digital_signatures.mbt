@@ -101,15 +101,17 @@
 ///
 /// §8 Errors E1 XmlMalformed comes from @xml parsing and is mapped to
 /// SchemaViolation by the XML-Signature shell readers. E2 SchemaViolation
-/// reports malformed opc-digSig structure and lexical constraints. E3
-/// UnsupportedFeature is raised by apply_relationships_transform,
-/// generate_signature, and validate_signature. E4 ResourceMissing is the
-/// resolver error type for missing OPC signature resources.
+/// reports malformed opc-digSig structure, lexical constraints, unsupported
+/// XML-Signature transform identifiers, and digest identifiers not implemented
+/// by this package. E3 UnsupportedFeature remains available for optional
+/// ECMA-376 features outside this package's current API surface. E4
+/// ResourceMissing is the resolver error type for missing OPC signature
+/// resources.
 ///
 /// §9 Drift Measurement Hooks are the §10 section references, schema
 /// identifiers, package_name, digital_signature_ns, public domain symbols,
-/// reader and writer entry points, algorithm stubs, and public error types
-/// listed in this package overview.
+/// reader and writer entry points, normative algorithm entry points, and
+/// public error types listed in this package overview.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/opc/digital_signatures"
 }
