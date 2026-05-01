@@ -1,12 +1,28 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/drawing_ml/shape"
 
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/xml",
+}
+
 // Values
 pub fn package_name() -> String
 
+pub fn read_locked_canvas(Bytes) -> CT_GvmlLockedCanvas raise
+
+pub fn write_locked_canvas(CT_GvmlLockedCanvas) -> Bytes
+
 // Errors
+pub suberror SchemaViolation {
+  SchemaViolation(schema~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct CT_GvmlLockedCanvas {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlLockedCanvas::new(@xml.Element) -> Self raise SchemaViolation
 
 // Type aliases
 
