@@ -1,5 +1,7 @@
 ///|
 /// Represents dml-diagram.xsd XSD attribute group AG_IteratorAttributes (§21.4).
+/// XSD attribute group AG_IteratorAttributes: dml-diagram.xsd groups iterator
+/// axis, ptType, hideLastTrans, st, cnt, and step attributes for layout traversal.
 /// This iterator attribute-group domain value carries axis, ptType,
 /// hideLastTrans, st, cnt, and step so reader output and writer input keep
 /// layout traversal attributes reachable from the package API.

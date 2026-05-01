@@ -916,6 +916,8 @@ pub fn new_ct_when(element : @xml.Element) -> CT_When {
 
 ///|
 /// Construct XSD attribute group AG_IteratorAttributes (§21.4) with no iterator attributes set.
+/// XSD attribute group AG_IteratorAttributes: exposes iterator traversal
+/// attributes through the AG_IteratorAttributes domain value constructor.
 pub fn new_ag_iterator_attributes() -> AG_IteratorAttributes {
   AG_IteratorAttributes::empty()
 }
