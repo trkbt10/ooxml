@@ -4,7 +4,13 @@
 // Run:    moon run cmd/ooxml_cli
 
 import {
+  "moonbitlang/core/env" @env,
+  "moonbitlang/x/fs" @fs,
   "trkbt10/ooxml" @ooxml,
+  "trkbt10/ooxml/docx" @docx,
+  "trkbt10/ooxml/ecma376/opc" @opc,
+  "trkbt10/ooxml/pptx" @pptx,
+  "trkbt10/ooxml/xlsx" @xlsx,
 }
 
 options(
