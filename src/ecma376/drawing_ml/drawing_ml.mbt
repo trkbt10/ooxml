@@ -74,11 +74,11 @@
 /// §19.3.3 Simple Types: ECMA-376 Part 4 §19.3.3 Simple Types; ECMA-376 Part 4 section; DrawingML lexical value spaces are represented by ST_Coordinate, ST_Angle, ST_Percentage, and related ST_* wrappers.
 /// §19.4 Vml Spreadsheetml Drawing: ECMA-376 Part 4 §19.4 Vml Spreadsheetml Drawing; ECMA-376 Part 4 section; VML drawing migration notes are tracked at package scope by package_name(), CT_GraphicalObject, and CT_Blip.
 /// §19.4.1 Table Of Contents: ECMA-376 Part 4 §19.4.1 Table Of Contents; ECMA-376 Part 4 section; migration table-of-contents coverage is anchored by package_name(), CT_GraphicalObject, and CT_OfficeArtExtension.
-/// §19.4.2 Elements: ECMA-376 Part 4 §19.4.2 Elements; ECMA-376 Part 4 section; DrawingML element compatibility is represented by CT_GraphicalObject, CT_Blip, CT_Table, and CT_ShapeProperties.
+/// §19.4.2 Elements: ECMA-376 Part 4 §19.4.2 Elements; ECMA-376 Part 4 section; SpreadsheetML Drawing element compatibility is represented by CT_GraphicalObject, CT_Blip, CT_Table, and CT_ShapeProperties.
 /// §19.4.3 Simple Types: ECMA-376 Part 4 §19.4.3 Simple Types; ECMA-376 Part 4 section; DrawingML lexical value spaces are represented by ST_Coordinate, ST_Angle, ST_Percentage, and related ST_* wrappers.
 /// §19.5 Vml Presentationml Drawing: ECMA-376 Part 4 §19.5 Vml Presentationml Drawing; ECMA-376 Part 4 section; VML drawing migration notes are tracked at package scope by package_name(), CT_GraphicalObject, and CT_Blip.
 /// §19.5.1 Table Of Contents: ECMA-376 Part 4 §19.5.1 Table Of Contents; ECMA-376 Part 4 section; migration table-of-contents coverage is anchored by package_name(), CT_GraphicalObject, and CT_OfficeArtExtension.
-/// §19.5.2 Elements: ECMA-376 Part 4 §19.5.2 Elements; ECMA-376 Part 4 section; DrawingML element compatibility is represented by CT_GraphicalObject, CT_Blip, CT_Table, and CT_ShapeProperties.
+/// §19.5.2 Elements: ECMA-376 Part 4 §19.5.2 Elements; ECMA-376 Part 4 section; PresentationML Drawing element compatibility is represented by CT_GraphicalObject, CT_Blip, CT_Table, and CT_ShapeProperties.
 /// Schema dml-main.xsd: dml-main.xsd schema coverage is documented by package_name(), CT_GraphicalObject, CT_Blip, and related CT_* or ST_* wrappers.
 /// Schema vml-main.xsd: vml-main.xsd schema coverage is documented by package_name(), CT_GraphicalObject, CT_Blip, and related CT_* or ST_* wrappers.
 /// Schema vml-officeDrawing.xsd: vml-officeDrawing.xsd schema coverage is documented by package_name(), CT_GraphicalObject, CT_Blip, and related CT_* or ST_* wrappers.
@@ -484,9 +484,9 @@ pub fn dml_19_5_1_table_of_contents_section_name() -> String {
 }
 
 ///|
-/// Return the ECMA-376 Part 4 §19.5.2 Elements section owned by this package;
-/// this is the VML PresentationML Drawing elements section, distinct from the
-/// §19.4.2 VML SpreadsheetML Drawing elements section.
+/// ECMA-376 Part 4 §19.5.2 Elements
+/// Source: references/spec/part4/sections/19.5.2__elements.md.
+/// Owned by src/ecma376/drawing_ml.
 pub fn dml_19_5_2_elements_section_name() -> String {
   "ECMA-376 Part 4 §19.5.2 Elements"
 }
