@@ -756,6 +756,8 @@ pub(all) struct CT_DispBlanksAs {
 
 ///|
 /// XSD complex type CT_Chart (§21.2, dml-chart.xsd): attributes no local attributes; children title: CT_Title, autoTitleDeleted: CT_Boolean, pivotFmts: CT_PivotFmts, view3D: CT_View3D, floor: CT_Surface, sideWall: CT_Surface, backWall: CT_Surface, plotArea: CT_PlotArea, legend: CT_Legend, plotVisOnly: CT_Boolean, dispBlanksAs: CT_DispBlanksAs, showDLblsOverMax: CT_Boolean, extLst: CT_ExtensionList.
+/// XSD complex type CT_Chart: dml-chart.xsd defines CT_Chart for chart
+/// payload children including title, plotArea, legend, view3D, and extLst.
 /// CT_Chart is the chart element payload containing plot area, title, legend,
 /// 3-D view, floor, side wall, back wall, display blanks behavior, and extensions.
 /// Schema dml-chart.xsd complex type `CT_Chart` children include
