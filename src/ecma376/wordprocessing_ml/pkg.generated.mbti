@@ -4,6 +4,260 @@ package "trkbt10/ooxml/ecma376/wordprocessing_ml"
 // Values
 pub fn package_name() -> String
 
+pub fn wml_part1_11_2_package_structure_section_name() -> String
+
+pub fn wml_part1_11_3_part_summary_section_name() -> String
+
+pub fn wml_part1_11_4_document_template_section_name() -> String
+
+pub fn wml_part1_11_5_framesets_section_name() -> String
+
+pub fn wml_part1_11_6_master_documents_and_subdocuments_section_name() -> String
+
+pub fn wml_part1_11_9_xsl_transformation_section_name() -> String
+
+pub fn wml_part1_17_10_headers_and_footers_section_name() -> String
+
+pub fn wml_part1_17_13_annotations_section_name() -> String
+
+pub fn wml_part1_17_15_settings_section_name() -> String
+
+pub fn wml_part1_17_16_fields_and_hyperlinks_section_name() -> String
+
+pub fn wml_part1_17_17_miscellaneous_topics_section_name() -> String
+
+pub fn wml_part1_17_18_simple_types_section_name() -> String
+
+pub fn wml_part1_17_1_table_of_contents_section_name() -> String
+
+pub fn wml_part1_17_3_paragraphs_and_rich_formatting_section_name() -> String
+
+pub fn wml_part1_17_8_fonts_section_name() -> String
+
+pub fn wml_part4_14_10_1_syntax_section_name() -> String
+
+pub fn wml_part4_14_10_2_legacy_language_references_section_name() -> String
+
+pub fn wml_part4_14_10_3_use_of_dos_file_paths_section_name() -> String
+
+pub fn wml_part4_14_10_4_1_autonum_section_name() -> String
+
+pub fn wml_part4_14_10_4_3_autonumout_section_name() -> String
+
+pub fn wml_part4_14_10_4_4_barcode_section_name() -> String
+
+pub fn wml_part4_14_10_4_6_eq_section_name() -> String
+
+pub fn wml_part4_14_10_4_7_info_section_name() -> String
+
+pub fn wml_part4_14_10_4_8_quote_section_name() -> String
+
+pub fn wml_part4_14_10_4_field_definitions_section_name() -> String
+
+pub fn wml_part4_14_10_fields_and_hyperlinks_section_name() -> String
+
+pub fn wml_part4_14_11_12_changed_enumeration_value_for_st_brtype_part_1_17_18_4_section_name() -> String
+
+pub fn wml_part4_14_11_2_additional_enumeration_values_for_st_jc_part_1_17_18_44_section_name() -> String
+
+pub fn wml_part4_14_11_3_additional_enumeration_values_for_st_jctable_part_1_17_18_45_section_name() -> String
+
+pub fn wml_part4_14_11_6_additional_enumeration_values_for_st_tabjc_part_1_17_18_84_section_name() -> String
+
+pub fn wml_part4_14_11_8_additional_member_types_for_the_union_in_st_textscale_part_1_17_18_95_section_name() -> String
+
+pub fn wml_part4_14_11_9_st_cnf_conditional_formatting_bitmask_section_name() -> String
+
+pub fn wml_part4_14_11_simple_types_section_name() -> String
+
+pub fn wml_part4_14_12_10_changed_attribute_for_right_element_part_1_17_6_15_section_name() -> String
+
+pub fn wml_part4_14_12_11_changed_attribute_for_top_element_part_1_17_6_21_section_name() -> String
+
+pub fn wml_part4_14_12_12_changed_attribute_for_embedbold_element_part_1_17_8_3_3_section_name() -> String
+
+pub fn wml_part4_14_12_13_changed_attribute_for_embedbolditalic_element_part_1_17_8_3_4_section_name() -> String
+
+pub fn wml_part4_14_12_14_changed_attribute_for_embeditalic_element_part_1_17_8_3_5_section_name() -> String
+
+pub fn wml_part4_14_12_15_changed_attribute_for_embedregular_element_part_1_17_8_3_6_section_name() -> String
+
+pub fn wml_part4_14_12_16_changed_attribute_for_footerreference_element_part_1_17_10_2_section_name() -> String
+
+pub fn wml_part4_14_12_17_changed_attribute_for_headerreference_element_part_1_17_10_5_section_name() -> String
+
+pub fn wml_part4_14_12_18_changed_attribute_for_datasource_element_part_1_17_14_9_section_name() -> String
+
+pub fn wml_part4_14_12_19_changed_attribute_for_headersource_element_part_1_17_14_16_section_name() -> String
+
+pub fn wml_part4_14_12_1_general_section_name() -> String
+
+pub fn wml_part4_14_12_21_changed_attribute_for_src_element_part_1_17_14_30_section_name() -> String
+
+pub fn wml_part4_14_12_22_changed_attribute_for_attachedtemplate_element_part_1_17_15_1_6_section_name() -> String
+
+pub fn wml_part4_14_12_23_changed_attribute_for_savethroughxslt_element_part_1_17_15_1_76_section_name() -> String
+
+pub fn wml_part4_14_12_24_changed_attribute_for_longdesc_element_part_1_17_15_2_23_section_name() -> String
+
+pub fn wml_part4_14_12_25_changed_attribute_for_sourcefilename_element_part_1_17_15_2_39_section_name() -> String
+
+pub fn wml_part4_14_12_26_changed_attribute_for_subdoc_element_part_1_17_17_1_1_section_name() -> String
+
+pub fn wml_part4_14_12_27_changed_attribute_for_altchunk_element_part_1_17_17_2_1_section_name() -> String
+
+pub fn wml_part4_14_12_2_changed_attribute_for_contentpart_element_part_1_17_3_3_2_section_name() -> String
+
+pub fn wml_part4_14_12_3_changed_attribute_for_control_element_part_1_17_3_3_3_section_name() -> String
+
+pub fn wml_part4_14_12_4_changed_attribute_for_movie_element_part_1_17_3_3_17_section_name() -> String
+
+pub fn wml_part4_14_12_5_changed_attribute_for_objectembed_element_part_1_17_3_3_20_section_name() -> String
+
+pub fn wml_part4_14_12_6_changed_attribute_for_objectlink_element_part_1_17_3_3_21_section_name() -> String
+
+pub fn wml_part4_14_12_7_changed_attribute_for_bottom_element_part_1_17_6_2_section_name() -> String
+
+pub fn wml_part4_14_12_8_changed_attribute_for_left_element_part_1_17_6_7_section_name() -> String
+
+pub fn wml_part4_14_12_9_changed_attribute_for_printersettings_element_part_1_17_6_14_section_name() -> String
+
+pub fn wml_part4_14_12_changed_attributes_section_name() -> String
+
+pub fn wml_part4_14_1_general_section_name() -> String
+
+pub fn wml_part4_14_2_table_of_contents_section_name() -> String
+
+pub fn wml_part4_14_3_1_1_additional_attribute_for_cnfstyle_element_part_1_17_3_1_8_section_name() -> String
+
+pub fn wml_part4_14_3_1_2_additional_attributes_for_ind_element_part_1_17_3_1_12_section_name() -> String
+
+pub fn wml_part4_14_3_1_paragraphs_section_name() -> String
+
+pub fn wml_part4_14_3_paragraphs_and_rich_formatting_section_name() -> String
+
+pub fn wml_part4_14_4_10_additional_attribute_for_cnfstyle_element_part_1_17_4_8_section_name() -> String
+
+pub fn wml_part4_14_4_11_additional_attribute_for_tbllook_element_part_1_17_4_54_section_name() -> String
+
+pub fn wml_part4_14_4_12_additional_attribute_for_tbllook_element_part_1_17_4_55_section_name() -> String
+
+pub fn wml_part4_14_4_13_hmerge_horizontally_merged_cell_section_name() -> String
+
+pub fn wml_part4_14_4_1_left_table_cell_leading_edge_border_section_name() -> String
+
+pub fn wml_part4_14_4_2_left_table_leading_edge_border_section_name() -> String
+
+pub fn wml_part4_14_4_3_left_table_cell_leading_margin_exception_section_name() -> String
+
+pub fn wml_part4_14_4_4_left_table_cell_leading_margin_default_section_name() -> String
+
+pub fn wml_part4_14_4_5_right_table_cell_trailing_edge_border_section_name() -> String
+
+pub fn wml_part4_14_4_6_right_table_trailing_edge_border_section_name() -> String
+
+pub fn wml_part4_14_4_7_right_table_cell_trailing_margin_default_section_name() -> String
+
+pub fn wml_part4_14_4_8_right_table_cell_trailing_margin_exception_section_name() -> String
+
+pub fn wml_part4_14_4_9_additional_attribute_for_cnfstyle_element_part_1_17_4_7_section_name() -> String
+
+pub fn wml_part4_14_4_tables_section_name() -> String
+
+pub fn wml_part4_14_5_1_1_additional_attribute_for_charset_element_part_1_17_8_3_2_section_name() -> String
+
+pub fn wml_part4_14_5_1_elements_section_name() -> String
+
+pub fn wml_part4_14_5_fonts_section_name() -> String
+
+pub fn wml_part4_14_6_2_legacy_legacy_numbering_level_properties_section_name() -> String
+
+pub fn wml_part4_14_7_1_revisions_section_name() -> String
+
+pub fn wml_part4_14_8_2_4_additional_attribute_for_stylepaneformatfilter_element_part_1_17_15_1_85_section_name() -> String
+
+pub fn wml_part4_14_8_2_document_settings_section_name() -> String
+
+pub fn wml_part4_14_8_3_10_donotbreakwrappedtables_do_not_allow_floating_tables_to_break_across_pages_section_name() -> String
+
+pub fn wml_part4_14_8_3_11_donotsnaptogridincell_do_not_snap_to_document_grid_in_table_cells_with_objects_section_name() -> String
+
+pub fn wml_part4_14_8_3_13_donotsuppressparagraphborders_do_not_suppress_paragraph_borders_next_to_frames_section_name() -> String
+
+pub fn wml_part4_14_8_3_19_donotwraptextwithpunct_do_not_allow_hanging_punctuation_with_character_grid_section_name() -> String
+
+pub fn wml_part4_14_8_3_1_aligntablesrowbyrow_align_table_rows_independently_section_name() -> String
+
+pub fn wml_part4_14_8_3_20_footnotelayoutlikeww8_ignore_page_break_from_continuous_section_break_section_name() -> String
+
+pub fn wml_part4_14_8_3_22_growautofit_allow_tables_to_autofit_into_page_margins_section_name() -> String
+
+pub fn wml_part4_14_8_3_24_layouttablerowsapart_allow_table_rows_to_wrap_inline_objects_independently_section_name() -> String
+
+pub fn wml_part4_14_8_3_25_linewraplikeword6_ignore_compression_of_full_width_punctuation_ending_a_line_section_name() -> String
+
+pub fn wml_part4_14_8_3_26_mwsmallcaps_use_specific_small_caps_algorithm_section_name() -> String
+
+pub fn wml_part4_14_8_3_27_nocolumnbalance_do_not_balance_text_columns_within_a_section_section_name() -> String
+
+pub fn wml_part4_14_8_3_2_allowspaceofsamestyleintable_allow_contextual_spacing_of_paragraphs_in_tables_section_name() -> String
+
+pub fn wml_part4_14_8_3_30_nospaceraiselower_do_not_increase_line_height_for_raised_lowered_text_section_name() -> String
+
+pub fn wml_part4_14_8_3_31_notabhangind_do_not_create_custom_tab_stop_for_hanging_indent_section_name() -> String
+
+pub fn wml_part4_14_8_3_33_printcolblack_print_colors_as_black_and_white_without_dithering_section_name() -> String
+
+pub fn wml_part4_14_8_3_34_selectfldwithfirstorlastchar_select_field_when_first_or_last_character_is_select_section_name() -> String
+
+pub fn wml_part4_14_8_3_35_shapelayoutlikeww8_ignore_text_wrapping_around_objects_at_bottom_of_page_section_name() -> String
+
+pub fn wml_part4_14_8_3_36_showbreaksinframes_display_page_column_breaks_present_in_frames_section_name() -> String
+
+pub fn wml_part4_14_8_3_37_spacinginwholepoints_only_expand_condense_text_by_whole_points_section_name() -> String
+
+pub fn wml_part4_14_8_3_39_subfontbysize_require_exact_size_during_font_substitution_section_name() -> String
+
+pub fn wml_part4_14_8_3_42_suppressspbfafterpgbrk_do_not_use_space_before_on_first_line_after_a_page_break_section_name() -> String
+
+pub fn wml_part4_14_8_3_44_suppresstopspacingwp_use_static_text_leading_section_name() -> String
+
+pub fn wml_part4_14_8_3_45_swapbordersfacingpages_swap_paragraph_borders_on_odd_numbered_pages_section_name() -> String
+
+pub fn wml_part4_14_8_3_46_truncatefontheightslikewp6_use_truncated_integer_division_for_font_calculation_section_name() -> String
+
+pub fn wml_part4_14_8_3_49_useansikerningpairs_use_ansi_kerning_pairs_from_fonts_section_name() -> String
+
+pub fn wml_part4_14_8_3_52_useprintermetrics_use_printer_metrics_to_display_documents_section_name() -> String
+
+pub fn wml_part4_14_8_3_53_usesingleborderforcontiguouscells_use_simplified_rules_for_table_border_conflict_section_name() -> String
+
+pub fn wml_part4_14_8_3_54_useword2002tablestylerules_incorrectly_display_top_border_of_conditional_columns_section_name() -> String
+
+pub fn wml_part4_14_8_3_56_wpjustification_fit_to_expanded_width_when_performing_full_justification_section_name() -> String
+
+pub fn wml_part4_14_8_3_57_wpspacewidth_use_specific_space_width_section_name() -> String
+
+pub fn wml_part4_14_8_3_58_wraptrailspaces_line_wrap_trailing_spaces_section_name() -> String
+
+pub fn wml_part4_14_8_3_5_cachedcolbalance_use_cached_paragraph_information_for_column_balancing_section_name() -> String
+
+pub fn wml_part4_14_8_3_6_convmailmergeesc_treat_backslash_quotation_delimiter_as_two_quotation_marks_section_name() -> String
+
+pub fn wml_part4_14_8_3_7_displayhangulfixedwidth_always_use_fixed_width_for_hangul_characters_section_name() -> String
+
+pub fn wml_part4_14_8_3_compatibility_settings_section_name() -> String
+
+pub fn wml_part4_14_8_4_1_relyonvml_utilize_vml_when_saving_as_web_page_section_name() -> String
+
+pub fn wml_part4_14_8_4_web_page_settings_section_name() -> String
+
+pub fn wml_part4_14_8_settings_section_name() -> String
+
+pub fn wml_part4_14_9_miscellaneous_topics_section_name() -> String
+
+pub fn wml_xsd_eg_sectprcontents_schema_name() -> String
+
 // Errors
 
 // Types and methods

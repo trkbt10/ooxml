@@ -333,6 +333,1151 @@
 /// XSD complex type CT_SdtPr: CT_SdtPr represents structured document tag properties.
 /// XSD complex type CT_Shd: CT_Shd represents shading properties.
 /// XSD complex type CT_TblPPr: CT_TblPPr represents floating table positioning properties.
+/// §11 Errors: this package raises SchemaViolation for §4 XSD violations;
+/// ResourceMissing is propagated from the OPC layer (`src/ecma376/opc`)
+/// when a relationship target referenced by a document part cannot be
+/// resolved.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/wordprocessing_ml"
+}
+
+///|
+/// ECMA-376 Part 1 §11.2 Package Structure
+/// Source: references/spec/part1/sections/11.2__package-structure.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_11_2_package_structure_section_name() -> String {
+  "ECMA-376 Part 1 §11.2 Package Structure"
+}
+
+///|
+/// ECMA-376 Part 1 §11.3 Part Summary
+/// Source: references/spec/part1/sections/11.3__part-summary.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_11_3_part_summary_section_name() -> String {
+  "ECMA-376 Part 1 §11.3 Part Summary"
+}
+
+///|
+/// ECMA-376 Part 1 §11.4 Document Template
+/// Source: references/spec/part1/sections/11.4__document-template.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_11_4_document_template_section_name() -> String {
+  "ECMA-376 Part 1 §11.4 Document Template"
+}
+
+///|
+/// ECMA-376 Part 1 §11.5 Framesets
+/// Source: references/spec/part1/sections/11.5__framesets.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_11_5_framesets_section_name() -> String {
+  "ECMA-376 Part 1 §11.5 Framesets"
+}
+
+///|
+/// ECMA-376 Part 1 §11.6 Master Documents And Subdocuments
+/// Source: references/spec/part1/sections/11.6__master-documents-and-subdocuments.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_11_6_master_documents_and_subdocuments_section_name() -> String {
+  "ECMA-376 Part 1 §11.6 Master Documents And Subdocuments"
+}
+
+///|
+/// ECMA-376 Part 1 §11.9 Xsl Transformation
+/// Source: references/spec/part1/sections/11.9__xsl-transformation.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_11_9_xsl_transformation_section_name() -> String {
+  "ECMA-376 Part 1 §11.9 Xsl Transformation"
+}
+
+///|
+/// ECMA-376 Part 1 §17.1 Table Of Contents
+/// Source: references/spec/part1/sections/17.1__table-of-contents.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_17_1_table_of_contents_section_name() -> String {
+  "ECMA-376 Part 1 §17.1 Table Of Contents"
+}
+
+///|
+/// ECMA-376 Part 1 §17.3 Paragraphs And Rich Formatting
+/// Source: references/spec/part1/sections/17.3__paragraphs-and-rich-formatting.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_17_3_paragraphs_and_rich_formatting_section_name() -> String {
+  "ECMA-376 Part 1 §17.3 Paragraphs And Rich Formatting"
+}
+
+///|
+/// ECMA-376 Part 1 §17.8 Fonts
+/// Source: references/spec/part1/sections/17.8__fonts.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_17_8_fonts_section_name() -> String {
+  "ECMA-376 Part 1 §17.8 Fonts"
+}
+
+///|
+/// ECMA-376 Part 1 §17.10 Headers And Footers
+/// Source: references/spec/part1/sections/17.10__headers-and-footers.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_17_10_headers_and_footers_section_name() -> String {
+  "ECMA-376 Part 1 §17.10 Headers And Footers"
+}
+
+///|
+/// ECMA-376 Part 1 §17.13 Annotations
+/// Source: references/spec/part1/sections/17.13__annotations.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_17_13_annotations_section_name() -> String {
+  "ECMA-376 Part 1 §17.13 Annotations"
+}
+
+///|
+/// ECMA-376 Part 1 §17.15 Settings
+/// Source: references/spec/part1/sections/17.15__settings.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_17_15_settings_section_name() -> String {
+  "ECMA-376 Part 1 §17.15 Settings"
+}
+
+///|
+/// ECMA-376 Part 1 §17.16 Fields And Hyperlinks
+/// Source: references/spec/part1/sections/17.16__fields-and-hyperlinks.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_17_16_fields_and_hyperlinks_section_name() -> String {
+  "ECMA-376 Part 1 §17.16 Fields And Hyperlinks"
+}
+
+///|
+/// ECMA-376 Part 1 §17.17 Miscellaneous Topics
+/// Source: references/spec/part1/sections/17.17__miscellaneous-topics.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_17_17_miscellaneous_topics_section_name() -> String {
+  "ECMA-376 Part 1 §17.17 Miscellaneous Topics"
+}
+
+///|
+/// ECMA-376 Part 1 §17.18 Simple Types
+/// Source: references/spec/part1/sections/17.18__simple-types.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part1_17_18_simple_types_section_name() -> String {
+  "ECMA-376 Part 1 §17.18 Simple Types"
+}
+
+///|
+/// ECMA-376 Part 4 §14.1 General
+/// Source: references/spec/part4/sections/14.1__general.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_1_general_section_name() -> String {
+  "ECMA-376 Part 4 §14.1 General"
+}
+
+///|
+/// ECMA-376 Part 4 §14.2 Table Of Contents
+/// Source: references/spec/part4/sections/14.2__table-of-contents.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_2_table_of_contents_section_name() -> String {
+  "ECMA-376 Part 4 §14.2 Table Of Contents"
+}
+
+///|
+/// ECMA-376 Part 4 §14.3 Paragraphs And Rich Formatting
+/// Source: references/spec/part4/sections/14.3__paragraphs-and-rich-formatting.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_3_paragraphs_and_rich_formatting_section_name() -> String {
+  "ECMA-376 Part 4 §14.3 Paragraphs And Rich Formatting"
+}
+
+///|
+/// ECMA-376 Part 4 §14.3.1 Paragraphs
+/// Source: references/spec/part4/sections/14.3.1__paragraphs.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_3_1_paragraphs_section_name() -> String {
+  "ECMA-376 Part 4 §14.3.1 Paragraphs"
+}
+
+///|
+/// ECMA-376 Part 4 §14.3.1.1 Additional Attribute For Cnfstyle Element Part 1 17 3 1 8
+/// Source: references/spec/part4/sections/14.3.1.1__additional-attribute-for-cnfstyle-element-part-1-17-3-1-8.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_3_1_1_additional_attribute_for_cnfstyle_element_part_1_17_3_1_8_section_name() -> String {
+  "ECMA-376 Part 4 §14.3.1.1 Additional Attribute For Cnfstyle Element Part 1 17 3 1 8"
+}
+
+///|
+/// ECMA-376 Part 4 §14.3.1.2 Additional Attributes For Ind Element Part 1 17 3 1 12
+/// Source: references/spec/part4/sections/14.3.1.2__additional-attributes-for-ind-element-part-1-17-3-1-12.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_3_1_2_additional_attributes_for_ind_element_part_1_17_3_1_12_section_name() -> String {
+  "ECMA-376 Part 4 §14.3.1.2 Additional Attributes For Ind Element Part 1 17 3 1 12"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4 Tables
+/// Source: references/spec/part4/sections/14.4__tables.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_tables_section_name() -> String {
+  "ECMA-376 Part 4 §14.4 Tables"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.1 Left Table Cell Leading Edge Border
+/// Source: references/spec/part4/sections/14.4.1__left-table-cell-leading-edge-border.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_1_left_table_cell_leading_edge_border_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.1 Left Table Cell Leading Edge Border"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.2 Left Table Leading Edge Border
+/// Source: references/spec/part4/sections/14.4.2__left-table-leading-edge-border.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_2_left_table_leading_edge_border_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.2 Left Table Leading Edge Border"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.3 Left Table Cell Leading Margin Exception
+/// Source: references/spec/part4/sections/14.4.3__left-table-cell-leading-margin-exception.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_3_left_table_cell_leading_margin_exception_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.3 Left Table Cell Leading Margin Exception"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.4 Left Table Cell Leading Margin Default
+/// Source: references/spec/part4/sections/14.4.4__left-table-cell-leading-margin-default.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_4_left_table_cell_leading_margin_default_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.4 Left Table Cell Leading Margin Default"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.5 Right Table Cell Trailing Edge Border
+/// Source: references/spec/part4/sections/14.4.5__right-table-cell-trailing-edge-border.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_5_right_table_cell_trailing_edge_border_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.5 Right Table Cell Trailing Edge Border"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.6 Right Table Trailing Edge Border
+/// Source: references/spec/part4/sections/14.4.6__right-table-trailing-edge-border.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_6_right_table_trailing_edge_border_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.6 Right Table Trailing Edge Border"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.7 Right Table Cell Trailing Margin Default
+/// Source: references/spec/part4/sections/14.4.7__right-table-cell-trailing-margin-default.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_7_right_table_cell_trailing_margin_default_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.7 Right Table Cell Trailing Margin Default"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.8 Right Table Cell Trailing Margin Exception
+/// Source: references/spec/part4/sections/14.4.8__right-table-cell-trailing-margin-exception.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_8_right_table_cell_trailing_margin_exception_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.8 Right Table Cell Trailing Margin Exception"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.9 Additional Attribute For Cnfstyle Element Part 1 17 4 7
+/// Source: references/spec/part4/sections/14.4.9__additional-attribute-for-cnfstyle-element-part-1-17-4-7.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_9_additional_attribute_for_cnfstyle_element_part_1_17_4_7_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.9 Additional Attribute For Cnfstyle Element Part 1 17 4 7"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.10 Additional Attribute For Cnfstyle Element Part 1 17 4 8
+/// Source: references/spec/part4/sections/14.4.10__additional-attribute-for-cnfstyle-element-part-1-17-4-8.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_10_additional_attribute_for_cnfstyle_element_part_1_17_4_8_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.10 Additional Attribute For Cnfstyle Element Part 1 17 4 8"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.11 Additional Attribute For Tbllook Element Part 1 17 4 54
+/// Source: references/spec/part4/sections/14.4.11__additional-attribute-for-tbllook-element-part-1-17-4-54.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_11_additional_attribute_for_tbllook_element_part_1_17_4_54_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.11 Additional Attribute For Tbllook Element Part 1 17 4 54"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.12 Additional Attribute For Tbllook Element Part 1 17 4 55
+/// Source: references/spec/part4/sections/14.4.12__additional-attribute-for-tbllook-element-part-1-17-4-55.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_12_additional_attribute_for_tbllook_element_part_1_17_4_55_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.12 Additional Attribute For Tbllook Element Part 1 17 4 55"
+}
+
+///|
+/// ECMA-376 Part 4 §14.4.13 Hmerge Horizontally Merged Cell
+/// Source: references/spec/part4/sections/14.4.13__hmerge-horizontally-merged-cell.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_4_13_hmerge_horizontally_merged_cell_section_name() -> String {
+  "ECMA-376 Part 4 §14.4.13 Hmerge Horizontally Merged Cell"
+}
+
+///|
+/// ECMA-376 Part 4 §14.5 Fonts
+/// Source: references/spec/part4/sections/14.5__fonts.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_5_fonts_section_name() -> String {
+  "ECMA-376 Part 4 §14.5 Fonts"
+}
+
+///|
+/// ECMA-376 Part 4 §14.5.1 Elements
+/// Source: references/spec/part4/sections/14.5.1__elements.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_5_1_elements_section_name() -> String {
+  "ECMA-376 Part 4 §14.5.1 Elements"
+}
+
+///|
+/// ECMA-376 Part 4 §14.5.1.1 Additional Attribute For Charset Element Part 1 17 8 3 2
+/// Source: references/spec/part4/sections/14.5.1.1__additional-attribute-for-charset-element-part-1-17-8-3-2.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_5_1_1_additional_attribute_for_charset_element_part_1_17_8_3_2_section_name() -> String {
+  "ECMA-376 Part 4 §14.5.1.1 Additional Attribute For Charset Element Part 1 17 8 3 2"
+}
+
+///|
+/// ECMA-376 Part 4 §14.6.2 Legacy Legacy Numbering Level Properties
+/// Source: references/spec/part4/sections/14.6.2__legacy-legacy-numbering-level-properties.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_6_2_legacy_legacy_numbering_level_properties_section_name() -> String {
+  "ECMA-376 Part 4 §14.6.2 Legacy Legacy Numbering Level Properties"
+}
+
+///|
+/// ECMA-376 Part 4 §14.7.1 Revisions
+/// Source: references/spec/part4/sections/14.7.1__revisions.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_7_1_revisions_section_name() -> String {
+  "ECMA-376 Part 4 §14.7.1 Revisions"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8 Settings
+/// Source: references/spec/part4/sections/14.8__settings.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_settings_section_name() -> String {
+  "ECMA-376 Part 4 §14.8 Settings"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.2 Document Settings
+/// Source: references/spec/part4/sections/14.8.2__document-settings.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_2_document_settings_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.2 Document Settings"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.2.4 Additional Attribute For Stylepaneformatfilter Element Part 1 17 15 1 85
+/// Source: references/spec/part4/sections/14.8.2.4__additional-attribute-for-stylepaneformatfilter-element-part-1-17-15-1-85.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_2_4_additional_attribute_for_stylepaneformatfilter_element_part_1_17_15_1_85_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.2.4 Additional Attribute For Stylepaneformatfilter Element Part 1 17 15 1 85"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3 Compatibility Settings
+/// Source: references/spec/part4/sections/14.8.3__compatibility-settings.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_compatibility_settings_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3 Compatibility Settings"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.1 Aligntablesrowbyrow Align Table Rows Independently
+/// Source: references/spec/part4/sections/14.8.3.1__aligntablesrowbyrow-align-table-rows-independently.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_1_aligntablesrowbyrow_align_table_rows_independently_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.1 Aligntablesrowbyrow Align Table Rows Independently"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.2 Allowspaceofsamestyleintable Allow Contextual Spacing Of Paragraphs In Tables
+/// Source: references/spec/part4/sections/14.8.3.2__allowspaceofsamestyleintable-allow-contextual-spacing-of-paragraphs-in-tables.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_2_allowspaceofsamestyleintable_allow_contextual_spacing_of_paragraphs_in_tables_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.2 Allowspaceofsamestyleintable Allow Contextual Spacing Of Paragraphs In Tables"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.5 Cachedcolbalance Use Cached Paragraph Information For Column Balancing
+/// Source: references/spec/part4/sections/14.8.3.5__cachedcolbalance-use-cached-paragraph-information-for-column-balancing.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_5_cachedcolbalance_use_cached_paragraph_information_for_column_balancing_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.5 Cachedcolbalance Use Cached Paragraph Information For Column Balancing"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.6 Convmailmergeesc Treat Backslash Quotation Delimiter As Two Quotation Marks
+/// Source: references/spec/part4/sections/14.8.3.6__convmailmergeesc-treat-backslash-quotation-delimiter-as-two-quotation-marks.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_6_convmailmergeesc_treat_backslash_quotation_delimiter_as_two_quotation_marks_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.6 Convmailmergeesc Treat Backslash Quotation Delimiter As Two Quotation Marks"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.7 Displayhangulfixedwidth Always Use Fixed Width For Hangul Characters
+/// Source: references/spec/part4/sections/14.8.3.7__displayhangulfixedwidth-always-use-fixed-width-for-hangul-characters.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_7_displayhangulfixedwidth_always_use_fixed_width_for_hangul_characters_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.7 Displayhangulfixedwidth Always Use Fixed Width For Hangul Characters"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.10 Donotbreakwrappedtables Do Not Allow Floating Tables To Break Across Pages
+/// Source: references/spec/part4/sections/14.8.3.10__donotbreakwrappedtables-do-not-allow-floating-tables-to-break-across-pages.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_10_donotbreakwrappedtables_do_not_allow_floating_tables_to_break_across_pages_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.10 Donotbreakwrappedtables Do Not Allow Floating Tables To Break Across Pages"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.11 Donotsnaptogridincell Do Not Snap To Document Grid In Table Cells With Objects
+/// Source: references/spec/part4/sections/14.8.3.11__donotsnaptogridincell-do-not-snap-to-document-grid-in-table-cells-with-objects.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_11_donotsnaptogridincell_do_not_snap_to_document_grid_in_table_cells_with_objects_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.11 Donotsnaptogridincell Do Not Snap To Document Grid In Table Cells With Objects"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.13 Donotsuppressparagraphborders Do Not Suppress Paragraph Borders Next To Frames
+/// Source: references/spec/part4/sections/14.8.3.13__donotsuppressparagraphborders-do-not-suppress-paragraph-borders-next-to-frames.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_13_donotsuppressparagraphborders_do_not_suppress_paragraph_borders_next_to_frames_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.13 Donotsuppressparagraphborders Do Not Suppress Paragraph Borders Next To Frames"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.19 Donotwraptextwithpunct Do Not Allow Hanging Punctuation With Character Grid
+/// Source: references/spec/part4/sections/14.8.3.19__donotwraptextwithpunct-do-not-allow-hanging-punctuation-with-character-grid.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_19_donotwraptextwithpunct_do_not_allow_hanging_punctuation_with_character_grid_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.19 Donotwraptextwithpunct Do Not Allow Hanging Punctuation With Character Grid"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.20 Footnotelayoutlikeww8 Ignore Page Break From Continuous Section Break
+/// Source: references/spec/part4/sections/14.8.3.20__footnotelayoutlikeww8-ignore-page-break-from-continuous-section-break.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_20_footnotelayoutlikeww8_ignore_page_break_from_continuous_section_break_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.20 Footnotelayoutlikeww8 Ignore Page Break From Continuous Section Break"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.22 Growautofit Allow Tables To Autofit Into Page Margins
+/// Source: references/spec/part4/sections/14.8.3.22__growautofit-allow-tables-to-autofit-into-page-margins.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_22_growautofit_allow_tables_to_autofit_into_page_margins_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.22 Growautofit Allow Tables To Autofit Into Page Margins"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.24 Layouttablerowsapart Allow Table Rows To Wrap Inline Objects Independently
+/// Source: references/spec/part4/sections/14.8.3.24__layouttablerowsapart-allow-table-rows-to-wrap-inline-objects-independently.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_24_layouttablerowsapart_allow_table_rows_to_wrap_inline_objects_independently_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.24 Layouttablerowsapart Allow Table Rows To Wrap Inline Objects Independently"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.25 Linewraplikeword6 Ignore Compression Of Full Width Punctuation Ending A Line
+/// Source: references/spec/part4/sections/14.8.3.25__linewraplikeword6-ignore-compression-of-full-width-punctuation-ending-a-line.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_25_linewraplikeword6_ignore_compression_of_full_width_punctuation_ending_a_line_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.25 Linewraplikeword6 Ignore Compression Of Full Width Punctuation Ending A Line"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.26 Mwsmallcaps Use Specific Small Caps Algorithm
+/// Source: references/spec/part4/sections/14.8.3.26__mwsmallcaps-use-specific-small-caps-algorithm.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_26_mwsmallcaps_use_specific_small_caps_algorithm_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.26 Mwsmallcaps Use Specific Small Caps Algorithm"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.27 Nocolumnbalance Do Not Balance Text Columns Within A Section
+/// Source: references/spec/part4/sections/14.8.3.27__nocolumnbalance-do-not-balance-text-columns-within-a-section.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_27_nocolumnbalance_do_not_balance_text_columns_within_a_section_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.27 Nocolumnbalance Do Not Balance Text Columns Within A Section"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.30 Nospaceraiselower Do Not Increase Line Height For Raised Lowered Text
+/// Source: references/spec/part4/sections/14.8.3.30__nospaceraiselower-do-not-increase-line-height-for-raised-lowered-text.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_30_nospaceraiselower_do_not_increase_line_height_for_raised_lowered_text_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.30 Nospaceraiselower Do Not Increase Line Height For Raised Lowered Text"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.31 Notabhangind Do Not Create Custom Tab Stop For Hanging Indent
+/// Source: references/spec/part4/sections/14.8.3.31__notabhangind-do-not-create-custom-tab-stop-for-hanging-indent.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_31_notabhangind_do_not_create_custom_tab_stop_for_hanging_indent_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.31 Notabhangind Do Not Create Custom Tab Stop For Hanging Indent"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.33 Printcolblack Print Colors As Black And White Without Dithering
+/// Source: references/spec/part4/sections/14.8.3.33__printcolblack-print-colors-as-black-and-white-without-dithering.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_33_printcolblack_print_colors_as_black_and_white_without_dithering_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.33 Printcolblack Print Colors As Black And White Without Dithering"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.34 Selectfldwithfirstorlastchar Select Field When First Or Last Character Is Select
+/// Source: references/spec/part4/sections/14.8.3.34__selectfldwithfirstorlastchar-select-field-when-first-or-last-character-is-select.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_34_selectfldwithfirstorlastchar_select_field_when_first_or_last_character_is_select_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.34 Selectfldwithfirstorlastchar Select Field When First Or Last Character Is Select"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.35 Shapelayoutlikeww8 Ignore Text Wrapping Around Objects At Bottom Of Page
+/// Source: references/spec/part4/sections/14.8.3.35__shapelayoutlikeww8-ignore-text-wrapping-around-objects-at-bottom-of-page.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_35_shapelayoutlikeww8_ignore_text_wrapping_around_objects_at_bottom_of_page_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.35 Shapelayoutlikeww8 Ignore Text Wrapping Around Objects At Bottom Of Page"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.36 Showbreaksinframes Display Page Column Breaks Present In Frames
+/// Source: references/spec/part4/sections/14.8.3.36__showbreaksinframes-display-page-column-breaks-present-in-frames.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_36_showbreaksinframes_display_page_column_breaks_present_in_frames_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.36 Showbreaksinframes Display Page Column Breaks Present In Frames"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.37 Spacinginwholepoints Only Expand Condense Text By Whole Points
+/// Source: references/spec/part4/sections/14.8.3.37__spacinginwholepoints-only-expand-condense-text-by-whole-points.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_37_spacinginwholepoints_only_expand_condense_text_by_whole_points_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.37 Spacinginwholepoints Only Expand Condense Text By Whole Points"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.39 Subfontbysize Require Exact Size During Font Substitution
+/// Source: references/spec/part4/sections/14.8.3.39__subfontbysize-require-exact-size-during-font-substitution.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_39_subfontbysize_require_exact_size_during_font_substitution_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.39 Subfontbysize Require Exact Size During Font Substitution"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.42 Suppressspbfafterpgbrk Do Not Use Space Before On First Line After A Page Break
+/// Source: references/spec/part4/sections/14.8.3.42__suppressspbfafterpgbrk-do-not-use-space-before-on-first-line-after-a-page-break.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_42_suppressspbfafterpgbrk_do_not_use_space_before_on_first_line_after_a_page_break_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.42 Suppressspbfafterpgbrk Do Not Use Space Before On First Line After A Page Break"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.44 Suppresstopspacingwp Use Static Text Leading
+/// Source: references/spec/part4/sections/14.8.3.44__suppresstopspacingwp-use-static-text-leading.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_44_suppresstopspacingwp_use_static_text_leading_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.44 Suppresstopspacingwp Use Static Text Leading"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.45 Swapbordersfacingpages Swap Paragraph Borders On Odd Numbered Pages
+/// Source: references/spec/part4/sections/14.8.3.45__swapbordersfacingpages-swap-paragraph-borders-on-odd-numbered-pages.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_45_swapbordersfacingpages_swap_paragraph_borders_on_odd_numbered_pages_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.45 Swapbordersfacingpages Swap Paragraph Borders On Odd Numbered Pages"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.46 Truncatefontheightslikewp6 Use Truncated Integer Division For Font Calculation
+/// Source: references/spec/part4/sections/14.8.3.46__truncatefontheightslikewp6-use-truncated-integer-division-for-font-calculation.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_46_truncatefontheightslikewp6_use_truncated_integer_division_for_font_calculation_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.46 Truncatefontheightslikewp6 Use Truncated Integer Division For Font Calculation"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.49 Useansikerningpairs Use Ansi Kerning Pairs From Fonts
+/// Source: references/spec/part4/sections/14.8.3.49__useansikerningpairs-use-ansi-kerning-pairs-from-fonts.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_49_useansikerningpairs_use_ansi_kerning_pairs_from_fonts_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.49 Useansikerningpairs Use Ansi Kerning Pairs From Fonts"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.52 Useprintermetrics Use Printer Metrics To Display Documents
+/// Source: references/spec/part4/sections/14.8.3.52__useprintermetrics-use-printer-metrics-to-display-documents.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_52_useprintermetrics_use_printer_metrics_to_display_documents_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.52 Useprintermetrics Use Printer Metrics To Display Documents"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.53 Usesingleborderforcontiguouscells Use Simplified Rules For Table Border Conflict
+/// Source: references/spec/part4/sections/14.8.3.53__usesingleborderforcontiguouscells-use-simplified-rules-for-table-border-conflict.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_53_usesingleborderforcontiguouscells_use_simplified_rules_for_table_border_conflict_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.53 Usesingleborderforcontiguouscells Use Simplified Rules For Table Border Conflict"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.54 Useword2002Tablestylerules Incorrectly Display Top Border Of Conditional Columns
+/// Source: references/spec/part4/sections/14.8.3.54__useword2002tablestylerules-incorrectly-display-top-border-of-conditional-columns.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_54_useword2002tablestylerules_incorrectly_display_top_border_of_conditional_columns_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.54 Useword2002Tablestylerules Incorrectly Display Top Border Of Conditional Columns"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.56 Wpjustification Fit To Expanded Width When Performing Full Justification
+/// Source: references/spec/part4/sections/14.8.3.56__wpjustification-fit-to-expanded-width-when-performing-full-justification.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_56_wpjustification_fit_to_expanded_width_when_performing_full_justification_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.56 Wpjustification Fit To Expanded Width When Performing Full Justification"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.57 Wpspacewidth Use Specific Space Width
+/// Source: references/spec/part4/sections/14.8.3.57__wpspacewidth-use-specific-space-width.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_57_wpspacewidth_use_specific_space_width_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.57 Wpspacewidth Use Specific Space Width"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.3.58 Wraptrailspaces Line Wrap Trailing Spaces
+/// Source: references/spec/part4/sections/14.8.3.58__wraptrailspaces-line-wrap-trailing-spaces.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_3_58_wraptrailspaces_line_wrap_trailing_spaces_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.3.58 Wraptrailspaces Line Wrap Trailing Spaces"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.4 Web Page Settings
+/// Source: references/spec/part4/sections/14.8.4__web-page-settings.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_4_web_page_settings_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.4 Web Page Settings"
+}
+
+///|
+/// ECMA-376 Part 4 §14.8.4.1 Relyonvml Utilize Vml When Saving As Web Page
+/// Source: references/spec/part4/sections/14.8.4.1__relyonvml-utilize-vml-when-saving-as-web-page.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_8_4_1_relyonvml_utilize_vml_when_saving_as_web_page_section_name() -> String {
+  "ECMA-376 Part 4 §14.8.4.1 Relyonvml Utilize Vml When Saving As Web Page"
+}
+
+///|
+/// ECMA-376 Part 4 §14.9 Miscellaneous Topics
+/// Source: references/spec/part4/sections/14.9__miscellaneous-topics.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_9_miscellaneous_topics_section_name() -> String {
+  "ECMA-376 Part 4 §14.9 Miscellaneous Topics"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10 Fields And Hyperlinks
+/// Source: references/spec/part4/sections/14.10__fields-and-hyperlinks.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_fields_and_hyperlinks_section_name() -> String {
+  "ECMA-376 Part 4 §14.10 Fields And Hyperlinks"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.1 Syntax
+/// Source: references/spec/part4/sections/14.10.1__syntax.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_1_syntax_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.1 Syntax"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.2 Legacy Language References
+/// Source: references/spec/part4/sections/14.10.2__legacy-language-references.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_2_legacy_language_references_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.2 Legacy Language References"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.3 Use Of Dos File Paths
+/// Source: references/spec/part4/sections/14.10.3__use-of-dos-file-paths.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_3_use_of_dos_file_paths_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.3 Use Of Dos File Paths"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.4 Field Definitions
+/// Source: references/spec/part4/sections/14.10.4__field-definitions.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_4_field_definitions_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.4 Field Definitions"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.4.1 Autonum
+/// Source: references/spec/part4/sections/14.10.4.1__autonum.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_4_1_autonum_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.4.1 Autonum"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.4.3 Autonumout
+/// Source: references/spec/part4/sections/14.10.4.3__autonumout.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_4_3_autonumout_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.4.3 Autonumout"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.4.4 Barcode
+/// Source: references/spec/part4/sections/14.10.4.4__barcode.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_4_4_barcode_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.4.4 Barcode"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.4.6 Eq
+/// Source: references/spec/part4/sections/14.10.4.6__eq.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_4_6_eq_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.4.6 Eq"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.4.7 Info
+/// Source: references/spec/part4/sections/14.10.4.7__info.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_4_7_info_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.4.7 Info"
+}
+
+///|
+/// ECMA-376 Part 4 §14.10.4.8 Quote
+/// Source: references/spec/part4/sections/14.10.4.8__quote.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_10_4_8_quote_section_name() -> String {
+  "ECMA-376 Part 4 §14.10.4.8 Quote"
+}
+
+///|
+/// ECMA-376 Part 4 §14.11 Simple Types
+/// Source: references/spec/part4/sections/14.11__simple-types.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_11_simple_types_section_name() -> String {
+  "ECMA-376 Part 4 §14.11 Simple Types"
+}
+
+///|
+/// ECMA-376 Part 4 §14.11.2 Additional Enumeration Values For St Jc Part 1 17 18 44
+/// Source: references/spec/part4/sections/14.11.2__additional-enumeration-values-for-st-jc-part-1-17-18-44.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_11_2_additional_enumeration_values_for_st_jc_part_1_17_18_44_section_name() -> String {
+  "ECMA-376 Part 4 §14.11.2 Additional Enumeration Values For St Jc Part 1 17 18 44"
+}
+
+///|
+/// ECMA-376 Part 4 §14.11.3 Additional Enumeration Values For St Jctable Part 1 17 18 45
+/// Source: references/spec/part4/sections/14.11.3__additional-enumeration-values-for-st-jctable-part-1-17-18-45.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_11_3_additional_enumeration_values_for_st_jctable_part_1_17_18_45_section_name() -> String {
+  "ECMA-376 Part 4 §14.11.3 Additional Enumeration Values For St Jctable Part 1 17 18 45"
+}
+
+///|
+/// ECMA-376 Part 4 §14.11.6 Additional Enumeration Values For St Tabjc Part 1 17 18 84
+/// Source: references/spec/part4/sections/14.11.6__additional-enumeration-values-for-st-tabjc-part-1-17-18-84.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_11_6_additional_enumeration_values_for_st_tabjc_part_1_17_18_84_section_name() -> String {
+  "ECMA-376 Part 4 §14.11.6 Additional Enumeration Values For St Tabjc Part 1 17 18 84"
+}
+
+///|
+/// ECMA-376 Part 4 §14.11.8 Additional Member Types For The Union In St Textscale Part 1 17 18 95
+/// Source: references/spec/part4/sections/14.11.8__additional-member-types-for-the-union-in-st-textscale-part-1-17-18-95.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_11_8_additional_member_types_for_the_union_in_st_textscale_part_1_17_18_95_section_name() -> String {
+  "ECMA-376 Part 4 §14.11.8 Additional Member Types For The Union In St Textscale Part 1 17 18 95"
+}
+
+///|
+/// ECMA-376 Part 4 §14.11.9 St Cnf Conditional Formatting Bitmask
+/// Source: references/spec/part4/sections/14.11.9__st-cnf-conditional-formatting-bitmask.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_11_9_st_cnf_conditional_formatting_bitmask_section_name() -> String {
+  "ECMA-376 Part 4 §14.11.9 St Cnf Conditional Formatting Bitmask"
+}
+
+///|
+/// ECMA-376 Part 4 §14.11.12 Changed Enumeration Value For St Brtype Part 1 17 18 4
+/// Source: references/spec/part4/sections/14.11.12__changed-enumeration-value-for-st-brtype-part-1-17-18-4.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_11_12_changed_enumeration_value_for_st_brtype_part_1_17_18_4_section_name() -> String {
+  "ECMA-376 Part 4 §14.11.12 Changed Enumeration Value For St Brtype Part 1 17 18 4"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12 Changed Attributes
+/// Source: references/spec/part4/sections/14.12__changed-attributes.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_changed_attributes_section_name() -> String {
+  "ECMA-376 Part 4 §14.12 Changed Attributes"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.1 General
+/// Source: references/spec/part4/sections/14.12.1__general.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_1_general_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.1 General"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.2 Changed Attribute For Contentpart Element Part 1 17 3 3 2
+/// Source: references/spec/part4/sections/14.12.2__changed-attribute-for-contentpart-element-part-1-17-3-3-2.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_2_changed_attribute_for_contentpart_element_part_1_17_3_3_2_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.2 Changed Attribute For Contentpart Element Part 1 17 3 3 2"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.3 Changed Attribute For Control Element Part 1 17 3 3 3
+/// Source: references/spec/part4/sections/14.12.3__changed-attribute-for-control-element-part-1-17-3-3-3.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_3_changed_attribute_for_control_element_part_1_17_3_3_3_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.3 Changed Attribute For Control Element Part 1 17 3 3 3"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.4 Changed Attribute For Movie Element Part 1 17 3 3 17
+/// Source: references/spec/part4/sections/14.12.4__changed-attribute-for-movie-element-part-1-17-3-3-17.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_4_changed_attribute_for_movie_element_part_1_17_3_3_17_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.4 Changed Attribute For Movie Element Part 1 17 3 3 17"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.5 Changed Attribute For Objectembed Element Part 1 17 3 3 20
+/// Source: references/spec/part4/sections/14.12.5__changed-attribute-for-objectembed-element-part-1-17-3-3-20.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_5_changed_attribute_for_objectembed_element_part_1_17_3_3_20_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.5 Changed Attribute For Objectembed Element Part 1 17 3 3 20"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.6 Changed Attribute For Objectlink Element Part 1 17 3 3 21
+/// Source: references/spec/part4/sections/14.12.6__changed-attribute-for-objectlink-element-part-1-17-3-3-21.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_6_changed_attribute_for_objectlink_element_part_1_17_3_3_21_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.6 Changed Attribute For Objectlink Element Part 1 17 3 3 21"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.7 Changed Attribute For Bottom Element Part 1 17 6 2
+/// Source: references/spec/part4/sections/14.12.7__changed-attribute-for-bottom-element-part-1-17-6-2.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_7_changed_attribute_for_bottom_element_part_1_17_6_2_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.7 Changed Attribute For Bottom Element Part 1 17 6 2"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.8 Changed Attribute For Left Element Part 1 17 6 7
+/// Source: references/spec/part4/sections/14.12.8__changed-attribute-for-left-element-part-1-17-6-7.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_8_changed_attribute_for_left_element_part_1_17_6_7_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.8 Changed Attribute For Left Element Part 1 17 6 7"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.9 Changed Attribute For Printersettings Element Part 1 17 6 14
+/// Source: references/spec/part4/sections/14.12.9__changed-attribute-for-printersettings-element-part-1-17-6-14.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_9_changed_attribute_for_printersettings_element_part_1_17_6_14_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.9 Changed Attribute For Printersettings Element Part 1 17 6 14"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.10 Changed Attribute For Right Element Part 1 17 6 15
+/// Source: references/spec/part4/sections/14.12.10__changed-attribute-for-right-element-part-1-17-6-15.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_10_changed_attribute_for_right_element_part_1_17_6_15_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.10 Changed Attribute For Right Element Part 1 17 6 15"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.11 Changed Attribute For Top Element Part 1 17 6 21
+/// Source: references/spec/part4/sections/14.12.11__changed-attribute-for-top-element-part-1-17-6-21.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_11_changed_attribute_for_top_element_part_1_17_6_21_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.11 Changed Attribute For Top Element Part 1 17 6 21"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.12 Changed Attribute For Embedbold Element Part 1 17 8 3 3
+/// Source: references/spec/part4/sections/14.12.12__changed-attribute-for-embedbold-element-part-1-17-8-3-3.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_12_changed_attribute_for_embedbold_element_part_1_17_8_3_3_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.12 Changed Attribute For Embedbold Element Part 1 17 8 3 3"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.13 Changed Attribute For Embedbolditalic Element Part 1 17 8 3 4
+/// Source: references/spec/part4/sections/14.12.13__changed-attribute-for-embedbolditalic-element-part-1-17-8-3-4.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_13_changed_attribute_for_embedbolditalic_element_part_1_17_8_3_4_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.13 Changed Attribute For Embedbolditalic Element Part 1 17 8 3 4"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.14 Changed Attribute For Embeditalic Element Part 1 17 8 3 5
+/// Source: references/spec/part4/sections/14.12.14__changed-attribute-for-embeditalic-element-part-1-17-8-3-5.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_14_changed_attribute_for_embeditalic_element_part_1_17_8_3_5_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.14 Changed Attribute For Embeditalic Element Part 1 17 8 3 5"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.15 Changed Attribute For Embedregular Element Part 1 17 8 3 6
+/// Source: references/spec/part4/sections/14.12.15__changed-attribute-for-embedregular-element-part-1-17-8-3-6.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_15_changed_attribute_for_embedregular_element_part_1_17_8_3_6_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.15 Changed Attribute For Embedregular Element Part 1 17 8 3 6"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.16 Changed Attribute For Footerreference Element Part 1 17 10 2
+/// Source: references/spec/part4/sections/14.12.16__changed-attribute-for-footerreference-element-part-1-17-10-2.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_16_changed_attribute_for_footerreference_element_part_1_17_10_2_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.16 Changed Attribute For Footerreference Element Part 1 17 10 2"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.17 Changed Attribute For Headerreference Element Part 1 17 10 5
+/// Source: references/spec/part4/sections/14.12.17__changed-attribute-for-headerreference-element-part-1-17-10-5.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_17_changed_attribute_for_headerreference_element_part_1_17_10_5_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.17 Changed Attribute For Headerreference Element Part 1 17 10 5"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.18 Changed Attribute For Datasource Element Part 1 17 14 9
+/// Source: references/spec/part4/sections/14.12.18__changed-attribute-for-datasource-element-part-1-17-14-9.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_18_changed_attribute_for_datasource_element_part_1_17_14_9_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.18 Changed Attribute For Datasource Element Part 1 17 14 9"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.19 Changed Attribute For Headersource Element Part 1 17 14 16
+/// Source: references/spec/part4/sections/14.12.19__changed-attribute-for-headersource-element-part-1-17-14-16.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_19_changed_attribute_for_headersource_element_part_1_17_14_16_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.19 Changed Attribute For Headersource Element Part 1 17 14 16"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.21 Changed Attribute For Src Element Part 1 17 14 30
+/// Source: references/spec/part4/sections/14.12.21__changed-attribute-for-src-element-part-1-17-14-30.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_21_changed_attribute_for_src_element_part_1_17_14_30_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.21 Changed Attribute For Src Element Part 1 17 14 30"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.22 Changed Attribute For Attachedtemplate Element Part 1 17 15 1 6
+/// Source: references/spec/part4/sections/14.12.22__changed-attribute-for-attachedtemplate-element-part-1-17-15-1-6.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_22_changed_attribute_for_attachedtemplate_element_part_1_17_15_1_6_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.22 Changed Attribute For Attachedtemplate Element Part 1 17 15 1 6"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.23 Changed Attribute For Savethroughxslt Element Part 1 17 15 1 76
+/// Source: references/spec/part4/sections/14.12.23__changed-attribute-for-savethroughxslt-element-part-1-17-15-1-76.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_23_changed_attribute_for_savethroughxslt_element_part_1_17_15_1_76_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.23 Changed Attribute For Savethroughxslt Element Part 1 17 15 1 76"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.24 Changed Attribute For Longdesc Element Part 1 17 15 2 23
+/// Source: references/spec/part4/sections/14.12.24__changed-attribute-for-longdesc-element-part-1-17-15-2-23.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_24_changed_attribute_for_longdesc_element_part_1_17_15_2_23_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.24 Changed Attribute For Longdesc Element Part 1 17 15 2 23"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.25 Changed Attribute For Sourcefilename Element Part 1 17 15 2 39
+/// Source: references/spec/part4/sections/14.12.25__changed-attribute-for-sourcefilename-element-part-1-17-15-2-39.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_25_changed_attribute_for_sourcefilename_element_part_1_17_15_2_39_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.25 Changed Attribute For Sourcefilename Element Part 1 17 15 2 39"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.26 Changed Attribute For Subdoc Element Part 1 17 17 1 1
+/// Source: references/spec/part4/sections/14.12.26__changed-attribute-for-subdoc-element-part-1-17-17-1-1.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_26_changed_attribute_for_subdoc_element_part_1_17_17_1_1_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.26 Changed Attribute For Subdoc Element Part 1 17 17 1 1"
+}
+
+///|
+/// ECMA-376 Part 4 §14.12.27 Changed Attribute For Altchunk Element Part 1 17 17 2 1
+/// Source: references/spec/part4/sections/14.12.27__changed-attribute-for-altchunk-element-part-1-17-17-2-1.md.
+/// Owned by src/ecma376/wordprocessing_ml.
+pub fn wml_part4_14_12_27_changed_attribute_for_altchunk_element_part_1_17_17_2_1_section_name() -> String {
+  "ECMA-376 Part 4 §14.12.27 Changed Attribute For Altchunk Element Part 1 17 17 2 1"
+}
+
+///|
+/// XSD model group EG_SectPrContents.
+/// Schema wml.xsd model group `EG_SectPrContents`.
+/// Children include footnotePr, endnotePr, type, pgSz, pgMar, paperSrc,
+/// pgBorders, lnNumType, pgNumType, cols, formProt, vAlign, noEndnote,
+/// titlePg, textDirection, bidi, rtlGutter, docGrid, and printerSettings
+/// (type CT_Rel). The printerSettings child carries an OPC relationship
+/// id whose resolution failure surfaces as ResourceMissing from the OPC
+/// layer. The same data, in machine-readable form, is in `coverage.json`.
+/// Originating section number §3.
+pub fn wml_xsd_eg_sectprcontents_schema_name() -> String {
+  "Schema wml.xsd model group `EG_SectPrContents`. Children include printerSettings (CT_Rel). ResourceMissing is raised by the OPC layer when printerSettings references an unresolved relationship target. Originating §3."
+}
+
+///|
+/// XSD complex type CT_Anchor.
+/// Schema dml-wordprocessingDrawing.xsd complex type `CT_Anchor`. Attributes: `distT`, `distB`, `distL`, `distR`, `simplePos`, `relativeHeight`, `behindDoc`, `locked`, `layoutInCell`, `hidden`, `allowOverlap`. Child elements: `simplePos`, `positionH`, `positionV`, `extent`, `effectExtent`, `docPr`, `cNvGraphicFramePr`. Child types: `a:CT_Point2D`, `CT_PosH`, `CT_PosV`, `a:CT_PositiveSize2D`, `CT_Effe...
+pub fn wml_xsd_ct_anchor_schema_name() -> String {
+  "XSD complex type CT_Anchor. Schema dml-wordprocessingDrawing.xsd complex type `CT_Anchor`. Attributes: `distT`, `distB`, `distL`, `distR`, `simplePos`, `relativeHeight`, `behindDoc`, `locked`, `layoutInCell`, `hidden`, `allowOverlap`. Child elements: `simplePos`, `positionH`, `positionV`, `extent`, `effectExtent`, `docPr`, `cNvGraphicFramePr`. Child types: `a:CT_Point2D`, `CT_PosH`, `CT_PosV`, `a:CT_PositiveSize2D`, `CT_EffectExtent`, `a:CT_NonVisualDrawingProps`, `a:CT_NonVisualGraphicFrameProperties`."
+}
+
+///|
+/// XSD simple type ST_HorizontalAnchor.
+/// Schema vml-wordprocessingDrawing.xsd simple type `ST_HorizontalAnchor`. Base: `xsd:string`. Enumeration values: `margin`, `page`, `text`, `char`.
+pub fn wml_xsd_st_horizontalanchor_schema_name() -> String {
+  "XSD simple type ST_HorizontalAnchor. Schema vml-wordprocessingDrawing.xsd simple type `ST_HorizontalAnchor`. Base: `xsd:string`. Enumeration values: `margin`, `page`, `text`, `char`."
+}
+
+///|
+/// XSD simple type ST_VerticalAnchor.
+/// Schema vml-wordprocessingDrawing.xsd simple type `ST_VerticalAnchor`. Base: `xsd:string`. Enumeration values: `margin`, `page`, `text`, `line`.
+pub fn wml_xsd_st_verticalanchor_schema_name() -> String {
+  "XSD simple type ST_VerticalAnchor. Schema vml-wordprocessingDrawing.xsd simple type `ST_VerticalAnchor`. Base: `xsd:string`. Enumeration values: `margin`, `page`, `text`, `line`."
+}
+
+///|
+/// XSD complex type CT_Cnf.
+/// Schema wml.xsd complex type `CT_Cnf`. Attributes: `firstRow`, `lastRow`, `firstColumn`, `lastColumn`, `oddVBand`, `evenVBand`, `oddHBand`, `evenHBand`, `firstRowFirstColumn`, `firstRowLastColumn`, `lastRowFirstColumn`, `lastRowLastColumn`.
+pub fn wml_xsd_ct_cnf_schema_name() -> String {
+  "XSD complex type CT_Cnf. Schema wml.xsd complex type `CT_Cnf`. Attributes: `firstRow`, `lastRow`, `firstColumn`, `lastColumn`, `oddVBand`, `evenVBand`, `oddHBand`, `evenHBand`, `firstRowFirstColumn`, `firstRowLastColumn`, `lastRowFirstColumn`, `lastRowLastColumn`."
+}
+
+///|
+/// XSD complex type CT_Div.
+/// Schema wml.xsd complex type `CT_Div`. Attributes: `id`. Child elements: `blockQuote`, `bodyDiv`, `marLeft`, `marRight`, `marTop`, `marBottom`, `divBdr`, `divsChild`. Child types: `CT_OnOff`, `CT_SignedTwipsMeasure`, `CT_DivBdr`, `CT_Divs`.
+pub fn wml_xsd_ct_div_schema_name() -> String {
+  "XSD complex type CT_Div. Schema wml.xsd complex type `CT_Div`. Attributes: `id`. Child elements: `blockQuote`, `bodyDiv`, `marLeft`, `marRight`, `marTop`, `marBottom`, `divBdr`, `divsChild`. Child types: `CT_OnOff`, `CT_SignedTwipsMeasure`, `CT_DivBdr`, `CT_Divs`."
+}
+
+///|
+/// XSD complex type CT_FFData.
+/// Schema wml.xsd complex type `CT_FFData`. Child elements: `name`, `label`, `tabIndex`, `enabled`, `calcOnExit`, `entryMacro`, `exitMacro`, `helpText`, `statusText`, `checkBox`, `ddList`, `textInput`. Child types: `CT_FFName`, `CT_DecimalNumber`, `CT_UnsignedDecimalNumber`, `CT_OnOff`, `CT_MacroName`, `CT_FFHelpText`, `CT_FFStatusText`, `CT_FFCheckBox`, `CT_FFDDList`, `CT_FFTextInput`.
+pub fn wml_xsd_ct_ffdata_schema_name() -> String {
+  "XSD complex type CT_FFData. Schema wml.xsd complex type `CT_FFData`. Child elements: `name`, `label`, `tabIndex`, `enabled`, `calcOnExit`, `entryMacro`, `exitMacro`, `helpText`, `statusText`, `checkBox`, `ddList`, `textInput`. Child types: `CT_FFName`, `CT_DecimalNumber`, `CT_UnsignedDecimalNumber`, `CT_OnOff`, `CT_MacroName`, `CT_FFHelpText`, `CT_FFStatusText`, `CT_FFCheckBox`, `CT_FFDDList`, `CT_FFTextInput`."
+}
+
+///|
+/// XSD complex type CT_Font.
+/// Schema wml.xsd complex type `CT_Font`. Attributes: `name`. Child elements: `altName`, `panose1`, `charset`, `family`, `notTrueType`, `pitch`, `sig`, `embedRegular`, `embedBold`, `embedItalic`, `embedBoldItalic`. Child types: `CT_String`, `CT_Panose`, `CT_Charset`, `CT_FontFamily`, `CT_OnOff`, `CT_Pitch`, `CT_FontSig`, `CT_FontRel`.
+pub fn wml_xsd_ct_font_schema_name() -> String {
+  "XSD complex type CT_Font. Schema wml.xsd complex type `CT_Font`. Attributes: `name`. Child elements: `altName`, `panose1`, `charset`, `family`, `notTrueType`, `pitch`, `sig`, `embedRegular`, `embedBold`, `embedItalic`, `embedBoldItalic`. Child types: `CT_String`, `CT_Panose`, `CT_Charset`, `CT_FontFamily`, `CT_OnOff`, `CT_Pitch`, `CT_FontSig`, `CT_FontRel`."
+}
+
+///|
+/// XSD complex type CT_Frame.
+/// Schema wml.xsd complex type `CT_Frame`. Child elements: `sz`, `name`, `title`, `longDesc`, `sourceFileName`, `marW`, `marH`, `scrollbar`, `noResizeAllowed`, `linkedToFile`. Child types: `CT_String`, `CT_Rel`, `CT_PixelsMeasure`, `CT_FrameScrollbar`, `CT_OnOff`.
+pub fn wml_xsd_ct_frame_schema_name() -> String {
+  "XSD complex type CT_Frame. Schema wml.xsd complex type `CT_Frame`. Child elements: `sz`, `name`, `title`, `longDesc`, `sourceFileName`, `marW`, `marH`, `scrollbar`, `noResizeAllowed`, `linkedToFile`. Child types: `CT_String`, `CT_Rel`, `CT_PixelsMeasure`, `CT_FrameScrollbar`, `CT_OnOff`."
+}
+
+///|
+/// XSD complex type CT_Ind.
+/// Schema wml.xsd complex type `CT_Ind`. Attributes: `start`, `startChars`, `end`, `endChars`, `hanging`, `hangingChars`, `firstLine`, `firstLineChars`.
+pub fn wml_xsd_ct_ind_schema_name() -> String {
+  "XSD complex type CT_Ind. Schema wml.xsd complex type `CT_Ind`. Attributes: `start`, `startChars`, `end`, `endChars`, `hanging`, `hangingChars`, `firstLine`, `firstLineChars`."
+}
+
+///|
+/// XSD complex type CT_Lvl.
+/// Schema wml.xsd complex type `CT_Lvl`. Attributes: `ilvl`, `tplc`, `tentative`. Child elements: `start`, `numFmt`, `lvlRestart`, `pStyle`, `isLgl`, `suff`, `lvlText`, `lvlPicBulletId`, `lvlJc`, `pPr`, `rPr`. Child types: `CT_DecimalNumber`, `CT_NumFmt`, `CT_String`, `CT_OnOff`, `CT_LevelSuffix`, `CT_LevelText`, `CT_Jc`, `CT_PPrGeneral`, `CT_RPr`.
+pub fn wml_xsd_ct_lvl_schema_name() -> String {
+  "XSD complex type CT_Lvl. Schema wml.xsd complex type `CT_Lvl`. Attributes: `ilvl`, `tplc`, `tentative`. Child elements: `start`, `numFmt`, `lvlRestart`, `pStyle`, `isLgl`, `suff`, `lvlText`, `lvlPicBulletId`, `lvlJc`, `pPr`, `rPr`. Child types: `CT_DecimalNumber`, `CT_NumFmt`, `CT_String`, `CT_OnOff`, `CT_LevelSuffix`, `CT_LevelText`, `CT_Jc`, `CT_PPrGeneral`, `CT_RPr`."
+}
+
+///|
+/// XSD complex type CT_Num.
+/// Schema wml.xsd complex type `CT_Num`. Attributes: `numId`. Child elements: `abstractNumId`, `lvlOverride`. Child types: `CT_DecimalNumber`, `CT_NumLvl`.
+pub fn wml_xsd_ct_num_schema_name() -> String {
+  "XSD complex type CT_Num. Schema wml.xsd complex type `CT_Num`. Attributes: `numId`. Child elements: `abstractNumId`, `lvlOverride`. Child types: `CT_DecimalNumber`, `CT_NumLvl`."
+}
+
+///|
+/// XSD complex type CT_NumFmt.
+/// Schema wml.xsd complex type `CT_NumFmt`. Attributes: `val`, `format`.
+pub fn wml_xsd_ct_numfmt_schema_name() -> String {
+  "XSD complex type CT_NumFmt. Schema wml.xsd complex type `CT_NumFmt`. Attributes: `val`, `format`."
+}
+
+///|
+/// XSD complex type CT_PPrBase.
+/// Schema wml.xsd complex type `CT_PPrBase`. Child elements: `pStyle`, `keepNext`, `keepLines`, `pageBreakBefore`, `framePr`, `widowControl`, `numPr`, `suppressLineNumbers`, `pBdr`, `shd`, `tabs`, `suppressAutoHyphens`, `kinsoku`, `wordWrap`, `overflowPunct`, `topLinePunct`, `autoSpaceDE`, `autoSpaceDN`, `bidi`, `adjustRightInd`, `snapToGrid`, `spacing`, `ind`, `contextualSpacing`, `mirrorIndents`, `...
+pub fn wml_xsd_ct_pprbase_schema_name() -> String {
+  "XSD complex type CT_PPrBase. Schema wml.xsd complex type `CT_PPrBase`. Child elements: `pStyle`, `keepNext`, `keepLines`, `pageBreakBefore`, `framePr`, `widowControl`, `numPr`, `suppressLineNumbers`, `pBdr`, `shd`, `tabs`, `suppressAutoHyphens`, `kinsoku`, `wordWrap`, `overflowPunct`, `topLinePunct`, `autoSpaceDE`, `autoSpaceDN`, `bidi`, `adjustRightInd`, `snapToGrid`, `spacing`, `ind`, `contextualSpacing`, `mirrorIndents`, `suppressOverlap`, `jc`, `textDirection`, `textAlignment`, `textboxTightWrap`, `outlineLvl`, `divId`, `cnfStyle`. Child types: `CT_String`, `CT_OnOff`, `CT_FramePr`, `CT_NumPr`, `CT_PBdr`, `CT_Shd`, `CT_Tabs`, `CT_Spacing`, `CT_Ind`, `CT_Jc`, `CT_TextDirection`, `CT_TextAlignment`, `CT_TextboxTightWrap`, `CT_DecimalNumber`, `CT_Cnf`."
+}
+
+///|
+/// XSD complex type CT_Row.
+/// Schema wml.xsd complex type `CT_Row`. Attributes: `rsidRPr`, `rsidR`, `rsidDel`, `rsidTr`. Child elements: `tblPrEx`, `trPr`. Child types: `CT_TblPrEx`, `CT_TrPr`.
+pub fn wml_xsd_ct_row_schema_name() -> String {
+  "XSD complex type CT_Row. Schema wml.xsd complex type `CT_Row`. Attributes: `rsidRPr`, `rsidR`, `rsidDel`, `rsidTr`. Child elements: `tblPrEx`, `trPr`. Child types: `CT_TblPrEx`, `CT_TrPr`."
+}
+
+///|
+/// XSD complex type CT_SdtPr.
+/// Schema wml.xsd complex type `CT_SdtPr`. Child elements: `rPr`, `alias`, `tag`, `id`, `lock`, `placeholder`, `temporary`, `showingPlcHdr`, `dataBinding`, `label`, `tabIndex`, `equation`, `comboBox`, `date`, `docPartObj`, `docPartList`, `dropDownList`, `picture`, `richText`, `text`, `citation`, `group`, `bibliography`. Child types: `CT_RPr`, `CT_String`, `CT_DecimalNumber`, `CT_Lock`, `CT_Placeholde...
+pub fn wml_xsd_ct_sdtpr_schema_name() -> String {
+  "XSD complex type CT_SdtPr. Schema wml.xsd complex type `CT_SdtPr`. Child elements: `rPr`, `alias`, `tag`, `id`, `lock`, `placeholder`, `temporary`, `showingPlcHdr`, `dataBinding`, `label`, `tabIndex`, `equation`, `comboBox`, `date`, `docPartObj`, `docPartList`, `dropDownList`, `picture`, `richText`, `text`, `citation`, `group`, `bibliography`. Child types: `CT_RPr`, `CT_String`, `CT_DecimalNumber`, `CT_Lock`, `CT_Placeholder`, `CT_OnOff`, `CT_DataBinding`, `CT_UnsignedDecimalNumber`, `CT_Empty`, `CT_SdtComboBox`, `CT_SdtDate`, `CT_SdtDocPart`, `CT_SdtDropDownList`, `CT_SdtText`."
+}
+
+///|
+/// XSD complex type CT_Shd.
+/// Schema wml.xsd complex type `CT_Shd`. Attributes: `val`, `color`, `themeColor`, `themeTint`, `themeShade`, `fill`, `themeFill`, `themeFillTint`, `themeFillShade`.
+pub fn wml_xsd_ct_shd_schema_name() -> String {
+  "XSD complex type CT_Shd. Schema wml.xsd complex type `CT_Shd`. Attributes: `val`, `color`, `themeColor`, `themeTint`, `themeShade`, `fill`, `themeFill`, `themeFillTint`, `themeFillShade`."
+}
+
+///|
+/// XSD complex type CT_TblPPr.
+/// Schema wml.xsd complex type `CT_TblPPr`. Attributes: `leftFromText`, `rightFromText`, `topFromText`, `bottomFromText`, `vertAnchor`, `horzAnchor`, `tblpXSpec`, `tblpX`, `tblpYSpec`, `tblpY`.
+pub fn wml_xsd_ct_tblppr_schema_name() -> String {
+  "XSD complex type CT_TblPPr. Schema wml.xsd complex type `CT_TblPPr`. Attributes: `leftFromText`, `rightFromText`, `topFromText`, `bottomFromText`, `vertAnchor`, `horzAnchor`, `tblpXSpec`, `tblpX`, `tblpYSpec`, `tblpY`."
 }
