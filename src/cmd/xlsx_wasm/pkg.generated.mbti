@@ -4,6 +4,14 @@ package "trkbt10/ooxml/cmd/xlsx_wasm"
 // Values
 pub fn package_name() -> String
 
+pub fn xlsx_open(Bytes) -> Int
+
+pub fn xlsx_save(Int) -> Bytes
+
+pub fn xlsx_to_html(Int) -> String
+
+pub fn xlsx_to_svg(Int) -> String
+
 // Errors
 
 // Types and methods
