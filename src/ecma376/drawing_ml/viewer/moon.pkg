@@ -1,3 +1,7 @@
 // trkbt10/ooxml/ecma376/drawing_ml/viewer
 //
 // Standalone DrawingML renderer (SVG).
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}

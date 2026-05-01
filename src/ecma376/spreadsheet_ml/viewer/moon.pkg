@@ -1,3 +1,8 @@
 // trkbt10/ooxml/ecma376/spreadsheet_ml/viewer
 //
 // SpreadsheetML context → HTML / SVG renderer.
+
+import {
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @domain,
+  "trkbt10/ooxml/xml" @xml,
+}

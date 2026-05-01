@@ -1,7 +1,46 @@
 ///|
-/// SpreadsheetML middle layer: resolved styles, evaluated shared strings, sheet index.
+/// SpreadsheetML context layer for the reader -> context -> builder/viewer
+/// pipeline.
 ///
-/// Implementation pending.
+/// The context carries OPC relationships and content types from ECMA-376 Part
+/// 2, DrawingML theme data from Part 1 §20.1, and SpreadsheetML §18 state used
+/// while resolving shared strings, styles, sheet indexes, formulas, and
+/// workbook relationships.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/spreadsheet_ml/context"
+}
+
+///|
+/// Shared parser/rendering state for SpreadsheetML §18 packages.
+pub(all) struct Context {
+  relationships : @relationships.Relationships?
+  content_types : @content_types.Types?
+  theme : @theme.CT_OfficeStyleSheet?
+  sst : @domain.CT_Sst?
+  styles : @domain.CT_Stylesheet?
+} derive(Eq, Debug)
+
+///|
+/// Create an empty SpreadsheetML context with no resolved workbook parts.
+pub fn Context::new() -> Context {
+  {
+    relationships: None,
+    content_types: None,
+    theme: None,
+    sst: None,
+    styles: None,
+  }
+}
+
+///|
+/// Resolve an OPC relationship id against the relationships part in this
+/// SpreadsheetML context.
+pub fn Context::resolve_relationship(
+  self : Context,
+  id : String,
+) -> @relationships.Relationship? {
+  match self.relationships {
+    Some(relationships) => relationships.find_by_id(id)
+    None => None
+  }
 }

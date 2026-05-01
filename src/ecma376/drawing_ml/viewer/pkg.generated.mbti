@@ -1,8 +1,16 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "trkbt10/ooxml/ecma376/drawing_ml/viewer"
 
+import {
+  "trkbt10/ooxml/xml",
+}
+
 // Values
 pub fn package_name() -> String
+
+pub fn render_html(@xml.Element) -> String
+
+pub fn render_svg(@xml.Element) -> String
 
 // Errors
 

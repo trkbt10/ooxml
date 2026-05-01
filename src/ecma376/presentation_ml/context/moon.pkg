@@ -1,3 +1,10 @@
 // trkbt10/ooxml/ecma376/presentation_ml/context
 //
 // PresentationML middle layer: resolved master/layout inheritance, placeholder tables, theme binding.
+
+import {
+  "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
+  "trkbt10/ooxml/ecma376/opc/content_types" @content_types,
+  "trkbt10/ooxml/ecma376/drawing_ml/theme" @theme,
+  "trkbt10/ooxml/ecma376/presentation_ml/domain" @domain,
+}

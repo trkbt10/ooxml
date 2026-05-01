@@ -1,3 +1,8 @@
 // trkbt10/ooxml/ecma376/office_math/viewer
 //
 // OMML → MathML / HTML renderer.
+
+import {
+  "trkbt10/ooxml/ecma376/office_math/domain" @domain,
+  "trkbt10/ooxml/xml" @xml,
+}

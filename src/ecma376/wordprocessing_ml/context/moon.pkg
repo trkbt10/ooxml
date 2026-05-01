@@ -1,3 +1,9 @@
 // trkbt10/ooxml/ecma376/wordprocessing_ml/context
 //
 // WordprocessingML middle layer: resolved style/numbering inheritance, defined sections.
+
+import {
+  "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
+  "trkbt10/ooxml/ecma376/opc/content_types" @content_types,
+  "trkbt10/ooxml/ecma376/drawing_ml/theme" @theme,
+}

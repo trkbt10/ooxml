@@ -1,3 +1,10 @@
 // trkbt10/ooxml/ecma376/spreadsheet_ml/context
 //
 // SpreadsheetML middle layer: resolved styles, evaluated shared strings, sheet index.
+
+import {
+  "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
+  "trkbt10/ooxml/ecma376/opc/content_types" @content_types,
+  "trkbt10/ooxml/ecma376/drawing_ml/theme" @theme,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @domain,
+}
