@@ -431,6 +431,19 @@ pub(all) struct CT_Grouping {
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_Chart (§21.2, dml-chart.xsd): attributes no local attributes; children title: CT_Title, autoTitleDeleted: CT_Boolean, pivotFmts: CT_PivotFmts, view3D: CT_View3D, floor: CT_Surface, sideWall: CT_Surface, backWall: CT_Surface, plotArea: CT_PlotArea, legend: CT_Legend, plotVisOnly: CT_Boolean, dispBlanksAs: CT_DispBlanksAs, showDLblsOverMax: CT_Boolean, extLst: CT_ExtensionList.
+/// XSD complex type CT_Chart: dml-chart.xsd defines CT_Chart for chart
+/// payload children including title, plotArea, legend, view3D, and extLst.
+/// CT_Chart is the chart element payload containing plot area, title, legend,
+/// 3-D view, floor, side wall, back wall, display blanks behavior, and extensions.
+/// Schema dml-chart.xsd complex type `CT_Chart` children include
+/// `{'name': 'title', 'type': 'CT_Title'}` and
+/// `{'name': 'plotArea', 'type': 'CT_PlotArea'}`.
+pub(all) struct CT_Chart {
+  element : @xml.Element
+} derive(Eq, Debug)
+
+///|
 /// XSD complex type CT_ChartLines (§21.2, dml-chart.xsd): attributes no local attributes; children spPr: a:CT_ShapeProperties.
 pub(all) struct CT_ChartLines {
   element : @xml.Element
@@ -751,19 +764,6 @@ pub(all) struct CT_Legend {
 ///|
 /// XSD complex type CT_DispBlanksAs (§21.2, dml-chart.xsd): attributes val; children no local child elements.
 pub(all) struct CT_DispBlanksAs {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_Chart (§21.2, dml-chart.xsd): attributes no local attributes; children title: CT_Title, autoTitleDeleted: CT_Boolean, pivotFmts: CT_PivotFmts, view3D: CT_View3D, floor: CT_Surface, sideWall: CT_Surface, backWall: CT_Surface, plotArea: CT_PlotArea, legend: CT_Legend, plotVisOnly: CT_Boolean, dispBlanksAs: CT_DispBlanksAs, showDLblsOverMax: CT_Boolean, extLst: CT_ExtensionList.
-/// XSD complex type CT_Chart: dml-chart.xsd defines CT_Chart for chart
-/// payload children including title, plotArea, legend, view3D, and extLst.
-/// CT_Chart is the chart element payload containing plot area, title, legend,
-/// 3-D view, floor, side wall, back wall, display blanks behavior, and extensions.
-/// Schema dml-chart.xsd complex type `CT_Chart` children include
-/// `{'name': 'title', 'type': 'CT_Title'}` and
-/// `{'name': 'plotArea', 'type': 'CT_PlotArea'}`.
-pub(all) struct CT_Chart {
   element : @xml.Element
 } derive(Eq, Debug)
 

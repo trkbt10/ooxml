@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn chart_migration_section_name() -> String
+
 pub fn chart_schema_bundles() -> Array[String]
 
 pub fn chart_section_name() -> String
