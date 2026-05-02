@@ -68,13 +68,15 @@ pub struct NamespaceContext {
 } derive(Debug)
 
 ///|
+/// W3C XML Namespaces 1.0 §3 prebound `xml` prefix namespace.
+pub fn ns_xml_1998() -> String {
+  "http://www.w3.org/XML/1998/namespace"
+}
+
+///|
 /// Create a namespace context with the predefined `xml` prefix.
 pub fn NamespaceContext::new() -> NamespaceContext {
-  {
-    scopes: [
-      [{ prefix: Some("xml"), uri: "http://www.w3.org/XML/1998/namespace" }],
-    ],
-  }
+  { scopes: [[{ prefix: Some("xml"), uri: ns_xml_1998() }]] }
 }
 
 ///|

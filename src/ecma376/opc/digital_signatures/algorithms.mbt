@@ -1,31 +1,31 @@
 ///|
 fn relationship_transform_algorithm() -> String {
-  "http://schemas.openxmlformats.org/package/2006/RelationshipTransform"
+  @opc_namespaces.ns_relationships_transform()
 }
 
 ///|
 fn c14n_algorithm() -> String {
-  "http://www.w3.org/TR/2001/REC-xml-c14n-20010315"
+  @opc_namespaces.ns_c14n()
 }
 
 ///|
 fn sha256_algorithm() -> String {
-  "http://www.w3.org/2001/04/xmlenc#sha256"
+  @opc_namespaces.ns_xmlenc_sha256()
 }
 
 ///|
 fn relationships_namespace() -> String {
-  "http://schemas.openxmlformats.org/package/2006/relationships"
+  @opc_namespaces.ns_relationships()
 }
 
 ///|
 fn digital_signature_namespace() -> String {
-  "http://schemas.openxmlformats.org/package/2006/digital-signature"
+  @opc_namespaces.ns_digital_signature()
 }
 
 ///|
 fn xmldsig_namespace_for_algorithm() -> String {
-  "http://www.w3.org/2000/09/xmldsig#"
+  @opc_namespaces.ns_xmldsig()
 }
 
 ///|
@@ -511,7 +511,7 @@ fn canonicalize_xml(bytes : Bytes) -> Bytes raise @opc_errors.SchemaViolation {
   }
   let out = StringBuilder::new()
   write_canonical_element(out, doc.root, [
-    { prefix: Some("xml"), uri: "http://www.w3.org/XML/1998/namespace" },
+    { prefix: Some("xml"), uri: @opc_namespaces.ns_xml_1998() },
   ])
   @utf8.encode(out.to_string()[:])
 }

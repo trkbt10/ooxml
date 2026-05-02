@@ -162,7 +162,7 @@ fn SignatureTime::new(format : ST_Format, value : ST_Value) -> SignatureTime {
 /// §10 Digital Signatures schema coverage is tied to this namespace because
 /// every owned opc-digSig XML reader validates elements against it.
 pub fn digital_signature_ns() -> String {
-  "http://schemas.openxmlformats.org/package/2006/digital-signature"
+  @opc_namespaces.ns_digital_signature()
 }
 
 ///|

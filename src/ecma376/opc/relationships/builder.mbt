@@ -41,11 +41,7 @@ fn relationship_to_element(value : Relationship) -> @xml.Element {
 
 ///|
 fn relationships_name(local_name : String) -> @xml.QName {
-  {
-    prefix: None,
-    local_name,
-    ns: Some("http://schemas.openxmlformats.org/package/2006/relationships"),
-  }
+  { prefix: None, local_name, ns: Some(@opc_namespaces.ns_relationships()) }
 }
 
 ///|

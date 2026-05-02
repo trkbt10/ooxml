@@ -135,5 +135,5 @@ fn is_element(element : @xml.Element, local_name : String, ns : String) -> Bool 
 
 ///|
 fn core_properties_ns() -> String {
-  "http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+  @opc_namespaces.ns_core_properties()
 }

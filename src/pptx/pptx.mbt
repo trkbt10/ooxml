@@ -43,7 +43,8 @@ pub fn open(bytes : Bytes) -> Presentation raise OpenError {
   try {
     let package = @opc.Package::open(bytes)
     let presentation_part = find_package_relationship_part(
-      package, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
+      package,
+      @opc_namespaces.relationship_type_office_document(),
       "ppt/presentation.xml",
     )
     let presentation = @pml_reader.read_presentation(

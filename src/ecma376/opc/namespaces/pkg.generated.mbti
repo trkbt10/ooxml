@@ -1,0 +1,34 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/opc/namespaces"
+
+// Values
+pub fn ns_c14n() -> String
+
+pub fn ns_content_types() -> String
+
+pub fn ns_core_properties() -> String
+
+pub fn ns_digital_signature() -> String
+
+pub fn ns_relationships() -> String
+
+pub fn ns_relationships_transform() -> String
+
+pub fn ns_spreadsheet_drawing() -> String
+
+pub fn ns_xml_1998() -> String
+
+pub fn ns_xmldsig() -> String
+
+pub fn ns_xmlenc_sha256() -> String
+
+pub fn relationship_type_office_document() -> String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

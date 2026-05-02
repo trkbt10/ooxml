@@ -1,0 +1,8 @@
+// trkbt10/ooxml/ecma376/opc/namespaces
+//
+// Namespace and relationship-type URI registry for OPC and adjacent OOXML
+// markup contracts.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}

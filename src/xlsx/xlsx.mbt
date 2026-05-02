@@ -31,7 +31,8 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
   try {
     let package = @opc.Package::open(bytes)
     let workbook_part = find_package_relationship_part(
-      package, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
+      package,
+      @opc_namespaces.relationship_type_office_document(),
       "xl/workbook.xml",
     )
     let workbook = @sml_reader.read_workbook(

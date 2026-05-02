@@ -3,6 +3,7 @@
 // Public facade for .xlsx files. Orchestrates opc + spreadsheet_ml + drawing_ml: open(bytes) → context → (save | to_html).
 
 import {
+  "trkbt10/ooxml/ecma376/opc/namespaces" @opc_namespaces,
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/ecma376/opc" @opc,
   "trkbt10/ooxml/ecma376/opc/relationships" @relationships,

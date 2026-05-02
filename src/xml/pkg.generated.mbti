@@ -6,6 +6,8 @@ import {
 }
 
 // Values
+pub fn ns_xml_1998() -> String
+
 pub fn package_name() -> String
 
 pub fn parse(Bytes) -> Document raise

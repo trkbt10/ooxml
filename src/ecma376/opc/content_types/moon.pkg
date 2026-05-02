@@ -3,6 +3,7 @@
 // [Content_Types].xml reader/builder (OPC §10.1.2).
 
 import {
+  "trkbt10/ooxml/ecma376/opc/namespaces" @opc_namespaces,
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/xml" @xml,
 }

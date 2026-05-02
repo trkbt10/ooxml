@@ -54,11 +54,7 @@ fn override_to_element(value : Override) -> @xml.Element {
 
 ///|
 fn content_types_name(local_name : String) -> @xml.QName {
-  {
-    prefix: None,
-    local_name,
-    ns: Some("http://schemas.openxmlformats.org/package/2006/content-types"),
-  }
+  { prefix: None, local_name, ns: Some(@opc_namespaces.ns_content_types()) }
 }
 
 ///|

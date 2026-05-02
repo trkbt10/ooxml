@@ -43,7 +43,8 @@ pub fn open(bytes : Bytes) -> Document raise OpenError {
   try {
     let package = @opc.Package::open(bytes)
     let main_part = find_package_relationship_part(
-      package, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
+      package,
+      @opc_namespaces.relationship_type_office_document(),
       "word/document.xml",
     )
     let main = @wml_reader.read_document(required_part(package, main_part).data)

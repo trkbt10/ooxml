@@ -133,5 +133,5 @@ fn is_element(element : @xml.Element, local_name : String, ns : String) -> Bool 
 
 ///|
 fn content_types_ns() -> String {
-  "http://schemas.openxmlformats.org/package/2006/content-types"
+  @opc_namespaces.ns_content_types()
 }

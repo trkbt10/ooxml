@@ -115,5 +115,5 @@ fn is_element(element : @xml.Element, local_name : String, ns : String) -> Bool 
 
 ///|
 fn relationships_ns() -> String {
-  "http://schemas.openxmlformats.org/package/2006/relationships"
+  @opc_namespaces.ns_relationships()
 }

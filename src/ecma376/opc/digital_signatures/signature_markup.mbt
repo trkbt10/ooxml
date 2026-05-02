@@ -435,7 +435,7 @@ pub fn write_xpath(value : XPath) -> Bytes {
 
 ///|
 fn xmldsig_ns() -> String {
-  "http://www.w3.org/2000/09/xmldsig#"
+  @opc_namespaces.ns_xmldsig()
 }
 
 ///|
