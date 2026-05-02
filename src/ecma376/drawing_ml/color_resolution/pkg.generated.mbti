@@ -1,0 +1,94 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/drawing_ml/color_resolution"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn parse_srgb_hex(String) -> Rgba8 raise @errors.SchemaViolation
+
+pub fn preset_color(String) -> Rgba8 raise @errors.SchemaViolation
+
+pub fn read_color_ref(@xml.Element) -> (ColorRef, Array[ColorTransform]) raise @errors.SchemaViolation
+
+pub fn read_color_scheme(@xml.Element) -> ColorScheme raise @errors.SchemaViolation
+
+pub fn resolve_color(ColorRef, Array[ColorTransform], ColorScheme, Rgba8?) -> Rgba8 raise @errors.SchemaViolation
+
+// Errors
+
+// Types and methods
+pub(all) enum ColorRef {
+  Srgb(Rgba8)
+  Scheme(SchemeColorVal)
+  Sys(String, Rgba8)
+  Preset(String)
+  Hsl(Int, Int, Int)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ColorScheme {
+  dk1 : Rgba8
+  lt1 : Rgba8
+  dk2 : Rgba8
+  lt2 : Rgba8
+  accent1 : Rgba8
+  accent2 : Rgba8
+  accent3 : Rgba8
+  accent4 : Rgba8
+  accent5 : Rgba8
+  accent6 : Rgba8
+  hlink : Rgba8
+  fol_hlink : Rgba8
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ColorTransform {
+  Tint(Int)
+  Shade(Int)
+  LumMod(Int)
+  LumOff(Int)
+  SatMod(Int)
+  Hue(Int)
+  HueMod(Int)
+  HueOff(Int)
+  Alpha(Int)
+  AlphaMod(Int)
+  AlphaOff(Int)
+  Gamma
+  Inv
+  Comp
+  Gray
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Rgba8 {
+  r : Int
+  g : Int
+  b : Int
+  a : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum SchemeColorVal {
+  Bg1
+  Tx1
+  Bg2
+  Tx2
+  Dk1
+  Lt1
+  Dk2
+  Lt2
+  Accent1
+  Accent2
+  Accent3
+  Accent4
+  Accent5
+  Accent6
+  Hlink
+  FolHlink
+  PhClr
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

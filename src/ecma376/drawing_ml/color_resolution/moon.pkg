@@ -1,0 +1,13 @@
+// trkbt10/ooxml/ecma376/drawing_ml/color_resolution
+//
+// ECMA-376 Part 1 §20.1.2.3 DrawingML color reference resolution.
+
+import {
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/xml" @xml,
+  "moonbitlang/core/math" @math,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"
