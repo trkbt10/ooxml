@@ -1,0 +1,8 @@
+// trkbt10/ooxml/ecma376/spreadsheet_ml/address
+//
+// SpreadsheetML §18.18 cell reference grammar: ST_CellRef, ST_Ref,
+// ST_RefA, ST_RefMode, and ST_Sqref.
+
+import {
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+}

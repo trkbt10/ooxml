@@ -1,0 +1,61 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/spreadsheet_ml/address"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+}
+
+// Values
+pub fn column_index_to_letter(Int) -> String raise @errors.SchemaViolation
+
+pub fn column_letter_to_index(String) -> Int raise @errors.SchemaViolation
+
+// Errors
+
+// Types and methods
+pub(all) struct CellAddress {
+  col_zero_based : Int
+  row_zero_based : Int
+  col_absolute : Bool
+  row_absolute : Bool
+  sheet : String?
+} derive(Eq, @debug.Debug)
+pub fn CellAddress::parse_a1(String) -> Self raise @errors.SchemaViolation
+pub fn CellAddress::parse_r1c1(String) -> Self raise @errors.SchemaViolation
+pub fn CellAddress::to_a1(Self) -> String
+pub fn CellAddress::to_r1c1(Self) -> String
+
+pub(all) struct CellRange {
+  start_col_zero_based : Int?
+  start_row_zero_based : Int?
+  end_col_zero_based : Int?
+  end_row_zero_based : Int?
+  start_col_absolute : Bool
+  start_row_absolute : Bool
+  end_col_absolute : Bool
+  end_row_absolute : Bool
+  sheet : String?
+} derive(Eq, @debug.Debug)
+pub fn CellRange::parse_a1(String) -> Self raise @errors.SchemaViolation
+pub fn CellRange::to_a1(Self) -> String
+
+type ParsedRefBody derive(Eq, @debug.Debug)
+
+pub(all) enum RefMode {
+  A1
+  R1C1
+} derive(Eq, @debug.Debug)
+
+type SheetAndBody derive(Eq, @debug.Debug)
+
+pub(all) struct Sqref {
+  ranges : Array[CellRange]
+} derive(Eq, @debug.Debug)
+pub fn Sqref::parse_a1(String) -> Self raise @errors.SchemaViolation
+pub fn Sqref::to_a1(Self) -> String
+
+// Type aliases
+
+// Traits
+
