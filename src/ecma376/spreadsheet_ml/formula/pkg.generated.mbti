@@ -23,6 +23,8 @@ pub fn parse(Array[Token]) -> FormulaAst raise @errors.SchemaViolation
 
 pub fn parse_formula(String) -> FormulaAst raise @errors.SchemaViolation
 
+pub fn register_builtin_functions(FunctionRegistry) -> Unit
+
 pub fn resolve_reference(String, EvalContext) -> FormulaValue
 
 pub fn tokenize(String) -> Array[Token] raise @errors.SchemaViolation
