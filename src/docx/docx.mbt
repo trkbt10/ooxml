@@ -217,7 +217,7 @@ fn read_header_parts(
       for rel in relationships.relationships {
         if rel.type_uri.has_suffix("/header") &&
           rel.target_mode == @relationships.TargetMode::Internal {
-          let name = resolve_target(owner, rel.target)
+          let name = @opc_part_name.resolve_target(owner, rel.target)
           match package.part(name) {
             Some(part) =>
               result.push({ name, value: @wml_reader.read_hdr(part.data) })
@@ -241,7 +241,7 @@ fn read_footer_parts(
       for rel in relationships.relationships {
         if rel.type_uri.has_suffix("/footer") &&
           rel.target_mode == @relationships.TargetMode::Internal {
-          let name = resolve_target(owner, rel.target)
+          let name = @opc_part_name.resolve_target(owner, rel.target)
           match package.part(name) {
             Some(part) =>
               result.push({ name, value: @wml_reader.read_ftr(part.data) })
@@ -288,7 +288,7 @@ fn find_package_relationship_part(
       for rel in relationships.relationships {
         if rel.type_uri == relationship_type &&
           rel.target_mode == @relationships.TargetMode::Internal {
-          return resolve_target("/", rel.target)
+          return @opc_part_name.resolve_target("/", rel.target)
         }
       }
     None => ()
@@ -343,41 +343,3 @@ fn html_element(element : @xml.Element) -> String {
 }
 
 ///|
-fn resolve_target(owner : String, target : String) -> String {
-  if target.has_prefix("/") {
-    normalize_part_name(target)
-  } else if owner == "/" || owner == "" {
-    normalize_part_name("/" + target)
-  } else {
-    let base = owner[0:last_slash(owner)].to_owned()
-    normalize_part_name(base + "/" + target)
-  }
-}
-
-///|
-fn normalize_part_name(value : String) -> String {
-  let pieces = value.split("/")
-  let out : Array[String] = []
-  for piece in pieces {
-    if piece == "" || piece == "." {
-      ()
-    } else if piece == ".." {
-      out.pop() |> ignore
-    } else {
-      out.push(piece.to_owned())
-    }
-  }
-  "/" + out.join("/")
-}
-
-///|
-fn last_slash(value : String) -> Int {
-  let chars = value.to_array()
-  let mut result = -1
-  for i in 0..<chars.length() {
-    if chars[i] == '/' {
-      result = i
-    }
-  }
-  result
-}

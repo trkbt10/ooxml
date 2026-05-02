@@ -1,0 +1,31 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/opc/part_name"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+}
+
+// Values
+pub fn last_slash(String) -> Int
+
+pub fn normalize_part_name(String) -> String raise @errors.SchemaViolation
+
+pub fn resolve_target(String, String) -> String raise @errors.SchemaViolation
+
+// Errors
+
+// Types and methods
+pub(all) struct PartName {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn PartName::__from_trusted(String) -> Self raise @errors.SchemaViolation
+pub fn PartName::is_user_creatable(Self) -> Bool
+pub fn PartName::parse(String) -> Self raise @errors.SchemaViolation
+pub fn PartName::to_string(Self) -> String
+pub fn PartName::zip_item_name(Self) -> String
+
+// Type aliases
+
+// Traits
+

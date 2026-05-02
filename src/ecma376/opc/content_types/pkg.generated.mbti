@@ -4,6 +4,7 @@ package "trkbt10/ooxml/ecma376/opc/content_types"
 import {
   "moonbitlang/core/debug",
   "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/ecma376/opc/part_name",
 }
 
 // Values
@@ -45,24 +46,19 @@ pub fn Extension::parse(String) -> Self raise @errors.SchemaViolation
 pub fn Extension::to_string(Self) -> String
 
 pub(all) struct Override {
-  part_name : PartName
+  part_name : @part_name.PartName
   content_type : ContentType
 } derive(Eq, @debug.Debug)
-
-pub(all) struct PartName {
-  value : String
-} derive(Eq, @debug.Debug)
-pub fn PartName::parse(String) -> Self raise @errors.SchemaViolation
-pub fn PartName::to_string(Self) -> String
 
 pub(all) struct Types {
   rules : Array[ContentTypeRule]
 } derive(Eq, @debug.Debug)
-pub fn Types::content_type_for_part(Self, PartName) -> ContentType?
-pub fn Types::require_digital_signature_content_types(Self, PartName, PartName, PartName?) -> Unit raise
-pub fn Types::require_part_content_type(Self, PartName, ContentType, section~ : String, path~ : String) -> Unit raise
+pub fn Types::content_type_for_part(Self, @part_name.PartName) -> ContentType?
+pub fn Types::require_digital_signature_content_types(Self, @part_name.PartName, @part_name.PartName, @part_name.PartName?) -> Unit raise
+pub fn Types::require_part_content_type(Self, @part_name.PartName, ContentType, section~ : String, path~ : String) -> Unit raise
 
 // Type aliases
+pub using @part_name {type PartName}
 
 // Traits
 

@@ -1,48 +1,8 @@
 ///|
 /// OPC §9 Thumbnails use PartName to identify the image part reached from a
-/// package or part relationship. The OPC facade maps these names for
-/// ECMA-376 Part 2 §7.3.3 Zip Item Names when deriving ZIP entries. Source:
-/// `references/spec/part2/sections/7.3.3__zip-item-names.md`. Owned by
-/// `src/ecma376/opc`.
-pub(all) struct PartName {
-  value : String
-} derive(Eq, Debug)
-
-///|
-/// Parse a package part name for OPC §9 Thumbnails. This enforces §2
-/// Conformance C2 by rejecting malformed part names that violate structural
-/// constraints, and C5 by reporting @opc_errors.SchemaViolation with the §9 section
-/// reference and local path.
-pub fn PartName::parse(
-  value : String,
-) -> PartName raise @opc_errors.SchemaViolation {
-  if !value.has_prefix("/") {
-    raise @opc_errors.SchemaViolation(
-      section="9",
-      path="PartName",
-      reason="part name must start with /",
-    )
-  }
-  if value.contains("\\") ||
-    value.contains("//") ||
-    value.has_suffix("/") ||
-    value.contains("/../") ||
-    value.contains("/./") {
-    raise @opc_errors.SchemaViolation(
-      section="9",
-      path="PartName",
-      reason="part name contains a disallowed segment",
-    )
-  }
-  { value, }
-}
-
-///|
-/// Return the OPC §6 Outputs O1 typed domain value as the lexical part-name
-/// attribute used by §9 Thumbnails relationship targets.
-pub fn PartName::to_string(self : PartName) -> String {
-  self.value
-}
+/// package or part relationship. The canonical ECMA-376 Part 2 §6.2.2.2
+/// grammar and §7.3.3 ZIP item mapping live in `src/ecma376/opc/part_name`.
+pub type PartName = @opc_part_name.PartName
 
 ///|
 /// OPC §9 Thumbnails binary image part identified by a package relationship

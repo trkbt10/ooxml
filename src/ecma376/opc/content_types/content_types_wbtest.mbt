@@ -28,7 +28,7 @@ test "default rule resolves by extension" {
       ),
     ),
   ])
-  let part = try! PartName::parse("/_rels/.rels")
+  let part = try! PartName::__from_trusted("/_rels/.rels")
   let actual = match types.content_type_for_part(part) {
     Some(t) => t.to_string()
     None => ""

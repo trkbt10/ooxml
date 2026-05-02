@@ -7,7 +7,7 @@ test "part name validation and zip item" {
     invalid
     is Err(
       @opc_errors.SchemaViolation(
-        section="9",
+        section="6.2.2.2",
         path="PartName",
         reason="part name must start with /"
       )

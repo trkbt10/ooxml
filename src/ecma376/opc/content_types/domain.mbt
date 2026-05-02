@@ -62,42 +62,9 @@ pub fn Extension::to_string(self : Extension) -> String {
 }
 
 ///|
-/// Part name used by CT_Override PartName attributes.
-pub(all) struct PartName {
-  value : String
-} derive(Eq, Debug)
-
-///|
-/// Parse a package part name for an Override rule.
-pub fn PartName::parse(
-  value : String,
-) -> PartName raise @opc_errors.SchemaViolation {
-  if !value.has_prefix("/") {
-    raise @opc_errors.SchemaViolation(
-      section="10.1",
-      path="Override/@PartName",
-      reason="part name must start with /",
-    )
-  }
-  if value.contains("\\") ||
-    value.contains("//") ||
-    value.has_suffix("/") ||
-    value.contains("/../") ||
-    value.contains("/./") {
-    raise @opc_errors.SchemaViolation(
-      section="10.1",
-      path="Override/@PartName",
-      reason="part name contains a disallowed segment",
-    )
-  }
-  { value, }
-}
-
-///|
-/// Return the lexical CT_Override PartName value.
-pub fn PartName::to_string(self : PartName) -> String {
-  self.value
-}
+/// Part name used by CT_Override PartName attributes. The canonical
+/// ECMA-376 Part 2 §6.2.2.2 grammar lives in `src/ecma376/opc/part_name`.
+pub type PartName = @opc_part_name.PartName
 
 ///|
 /// Default top-level element and CT_Default complex type from the

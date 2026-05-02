@@ -53,7 +53,7 @@ pub fn Package::open(bytes : Bytes) -> Package raise {
         }
       } else {
         let part_name = "/" + entry.name
-        let ct_part_name = @content_types.PartName::parse(part_name)
+        let ct_part_name = @content_types.PartName::__from_trusted(part_name)
         let content_type = match
           content_types.content_type_for_part(ct_part_name) {
           Some(value) => value.to_string()
@@ -102,7 +102,8 @@ pub fn Package::save(self : Package) -> Bytes raise {
     None => ()
   }
   for part in self.parts {
-    entries.push((zip_name_from_part_name(part.name), part.data))
+    let part_name = @opc_part_name.PartName::__from_trusted(part.name)
+    entries.push((part_name.zip_item_name(), part.data))
     match self.relationships(part.name) {
       Some(relationships) =>
         entries.push(
@@ -155,9 +156,7 @@ pub fn Package::relationships(
 }
 
 ///|
-fn Package::validate_relationship_targets(
-  self : Package,
-) -> Unit raise @opc_errors.ResourceMissing {
+fn Package::validate_relationship_targets(self : Package) -> Unit raise {
   match self.package_relationships {
     Some(relationships) => validate_targets(self, "/", relationships)
     None => ()
@@ -173,10 +172,10 @@ fn validate_targets(
   pkg : Package,
   owner : String,
   relationships : @relationships.Relationships,
-) -> Unit raise @opc_errors.ResourceMissing {
+) -> Unit raise {
   for relationship in relationships.relationships {
     if relationship.target_mode == @relationships.TargetMode::Internal {
-      let target = resolve_target(owner, relationship.target)
+      let target = @opc_part_name.resolve_target(owner, relationship.target)
       if pkg.part(target) is None {
         raise @opc_errors.ResourceMissing(
           section="6.4",
@@ -233,9 +232,11 @@ fn relationships_owner(name : String) -> String? {
 }
 
 ///|
-fn relationships_entry_for_part(part_name : String) -> String {
-  let zip_name = zip_name_from_part_name(part_name)
-  let slash = last_slash(zip_name)
+fn relationships_entry_for_part(
+  part_name : String,
+) -> String raise @opc_errors.SchemaViolation {
+  let zip_name = @opc_part_name.PartName::__from_trusted(part_name).zip_item_name()
+  let slash = @opc_part_name.last_slash(zip_name)
   if slash < 0 {
     "_rels/" + zip_name + ".rels"
   } else {
@@ -244,58 +245,6 @@ fn relationships_entry_for_part(part_name : String) -> String {
     zip_name[slash + 1:].to_owned() +
     ".rels"
   }
-}
-
-///|
-/// Map an OPC part name to its ECMA-376 Part 2 §7.3.3 Zip Item Names physical
-/// ZIP item name. Source anchor:
-/// references/spec/part2/sections/7.3.3__zip-item-names.md.
-fn zip_name_from_part_name(name : String) -> String {
-  if name.has_prefix("/") {
-    name[1:].to_owned()
-  } else {
-    name
-  }
-}
-
-///|
-fn resolve_target(owner : String, target : String) -> String {
-  if target.has_prefix("/") {
-    normalize_part_name(target)
-  } else if owner == "/" || owner == "" {
-    normalize_part_name("/" + target)
-  } else {
-    let base = owner[0:last_slash(owner)].to_owned()
-    normalize_part_name(base + "/" + target)
-  }
-}
-
-///|
-fn normalize_part_name(value : String) -> String {
-  let pieces = value.split("/")
-  let out : Array[String] = []
-  for piece in pieces {
-    if piece == "" || piece == "." {
-      ()
-    } else if piece == ".." {
-      out.pop() |> ignore
-    } else {
-      out.push(piece.to_owned())
-    }
-  }
-  "/" + out.join("/")
-}
-
-///|
-fn last_slash(value : String) -> Int {
-  let chars = value.to_array()
-  let mut result = -1
-  for i in 0..<chars.length() {
-    if chars[i] == '/' {
-      result = i
-    }
-  }
-  result
 }
 
 ///|

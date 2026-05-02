@@ -1,0 +1,7 @@
+// trkbt10/ooxml/ecma376/opc/part_name
+//
+// ECMA-376 Part 2 §6.2.2 part-name grammar and OPC part-name resolution.
+
+import {
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+}
