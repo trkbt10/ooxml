@@ -36,18 +36,18 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
       "xl/workbook.xml",
     )
     let workbook = @sml_reader.read_workbook(
-      required_part(package, workbook_part).data,
+      package.required_part(workbook_part, section="6.3.3", source_path="/").data,
     )
     {
       package,
       workbook_part,
       workbook,
       worksheets: read_worksheets(package, workbook_part),
-      shared_strings: read_optional(
-        package, "/xl/sharedStrings.xml", @sml_reader.read_shared_strings,
+      shared_strings: package.read_optional(
+        "/xl/sharedStrings.xml", @sml_reader.read_shared_strings,
       ),
-      styles: read_optional(
-        package, "/xl/styles.xml", @sml_reader.read_style_sheet,
+      styles: package.read_optional(
+        "/xl/styles.xml", @sml_reader.read_style_sheet,
       ),
       theme: package.part("/xl/theme/theme1.xml"),
     }
@@ -181,29 +181,6 @@ fn read_worksheets(
 }
 
 ///|
-fn[T] read_optional(
-  package : @opc.Package,
-  name : String,
-  reader : (Bytes) -> T raise,
-) -> T? raise {
-  match package.part(name) {
-    Some(part) => Some(reader(part.data))
-    None => None
-  }
-}
-
-///|
-fn required_part(
-  package : @opc.Package,
-  name : String,
-) -> @opc.PackagePart raise OpenError {
-  match package.part(name) {
-    Some(part) => part
-    None => raise OpenError(kind="ResourceMissing", path=name, reason=name)
-  }
-}
-
-///|
 fn find_package_relationship_part(
   package : @opc.Package,
   relationship_type : String,
@@ -220,36 +197,6 @@ fn find_package_relationship_part(
     None => ()
   }
   "/" + fallback
-}
-
-///|
-fn[T] @opc.Package::with_optional_part(
-  self : @opc.Package,
-  name : String,
-  value : T?,
-  writer : (T) -> Bytes,
-) -> @opc.Package {
-  match value {
-    Some(v) => self.with_part(name, writer(v))
-    None => self
-  }
-}
-
-///|
-fn @opc.Package::with_part(
-  self : @opc.Package,
-  name : String,
-  data : Bytes,
-) -> @opc.Package {
-  let parts : Array[@opc.PackagePart] = []
-  for part in self.parts {
-    if part.name == name {
-      parts.push({ name: part.name, content_type: part.content_type, data })
-    } else {
-      parts.push(part)
-    }
-  }
-  { ..self, parts, }
 }
 
 ///|

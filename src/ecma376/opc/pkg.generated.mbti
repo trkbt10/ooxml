@@ -31,8 +31,12 @@ pub(all) struct Package {
 } derive(Eq, @debug.Debug)
 pub fn Package::open(Bytes) -> Self raise
 pub fn Package::part(Self, String) -> PackagePart?
+pub fn[T] Package::read_optional(Self, String, (Bytes) -> T raise) -> T? raise
 pub fn Package::relationships(Self, String) -> @relationships.Relationships?
+pub fn Package::required_part(Self, String, section~ : String, source_path~ : String) -> PackagePart raise @errors.ResourceMissing
 pub fn Package::save(Self) -> Bytes raise
+pub fn[T] Package::with_optional_part(Self, String, T?, (T) -> Bytes) -> Self
+pub fn Package::with_part(Self, String, Bytes) -> Self
 
 pub(all) struct PackagePart {
   name : String

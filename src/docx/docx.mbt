@@ -47,33 +47,33 @@ pub fn open(bytes : Bytes) -> Document raise OpenError {
       @opc_namespaces.relationship_type_office_document(),
       "word/document.xml",
     )
-    let main = @wml_reader.read_document(required_part(package, main_part).data)
+    let main = @wml_reader.read_document(
+      package.required_part(main_part, section="6.3.3", source_path="/").data,
+    )
     {
       package,
       main_part,
       main,
       headers: read_header_parts(package, main_part),
       footers: read_footer_parts(package, main_part),
-      styles: read_optional(
-        package, "/word/styles.xml", @wml_reader.read_styles,
+      styles: package.read_optional("/word/styles.xml", @wml_reader.read_styles),
+      numbering: package.read_optional(
+        "/word/numbering.xml", @wml_reader.read_numbering,
       ),
-      numbering: read_optional(
-        package, "/word/numbering.xml", @wml_reader.read_numbering,
+      settings: package.read_optional(
+        "/word/settings.xml", @wml_reader.read_settings,
       ),
-      settings: read_optional(
-        package, "/word/settings.xml", @wml_reader.read_settings,
+      fonts: package.read_optional(
+        "/word/fontTable.xml", @wml_reader.read_fonts,
       ),
-      fonts: read_optional(
-        package, "/word/fontTable.xml", @wml_reader.read_fonts,
+      comments: package.read_optional(
+        "/word/comments.xml", @wml_reader.read_comments,
       ),
-      comments: read_optional(
-        package, "/word/comments.xml", @wml_reader.read_comments,
+      footnotes: package.read_optional(
+        "/word/footnotes.xml", @wml_reader.read_footnotes,
       ),
-      footnotes: read_optional(
-        package, "/word/footnotes.xml", @wml_reader.read_footnotes,
-      ),
-      endnotes: read_optional(
-        package, "/word/endnotes.xml", @wml_reader.read_endnotes,
+      endnotes: package.read_optional(
+        "/word/endnotes.xml", @wml_reader.read_endnotes,
       ),
     }
   } catch {
@@ -255,29 +255,6 @@ fn read_footer_parts(
 }
 
 ///|
-fn[T] read_optional(
-  package : @opc.Package,
-  name : String,
-  reader : (Bytes) -> T raise,
-) -> T? raise {
-  match package.part(name) {
-    Some(part) => Some(reader(part.data))
-    None => None
-  }
-}
-
-///|
-fn required_part(
-  package : @opc.Package,
-  name : String,
-) -> @opc.PackagePart raise OpenError {
-  match package.part(name) {
-    Some(part) => part
-    None => raise OpenError(kind="ResourceMissing", path=name, reason=name)
-  }
-}
-
-///|
 fn find_package_relationship_part(
   package : @opc.Package,
   relationship_type : String,
@@ -294,36 +271,6 @@ fn find_package_relationship_part(
     None => ()
   }
   "/" + fallback
-}
-
-///|
-fn[T] @opc.Package::with_optional_part(
-  self : @opc.Package,
-  name : String,
-  value : T?,
-  writer : (T) -> Bytes,
-) -> @opc.Package {
-  match value {
-    Some(v) => self.with_part(name, writer(v))
-    None => self
-  }
-}
-
-///|
-fn @opc.Package::with_part(
-  self : @opc.Package,
-  name : String,
-  data : Bytes,
-) -> @opc.Package {
-  let parts : Array[@opc.PackagePart] = []
-  for part in self.parts {
-    if part.name == name {
-      parts.push({ name: part.name, content_type: part.content_type, data })
-    } else {
-      parts.push(part)
-    }
-  }
-  { ..self, parts, }
 }
 
 ///|

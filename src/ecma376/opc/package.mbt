@@ -133,6 +133,70 @@ pub fn Package::part(self : Package, name : String) -> PackagePart? {
 }
 
 ///|
+/// Replace an existing part payload while preserving its part name, content
+/// type, and package entry order. ECMA-376 Part 2 §7.3.2 Mapping Part Data.
+pub fn Package::with_part(
+  self : Package,
+  name : String,
+  data : Bytes,
+) -> Package {
+  let parts : Array[PackagePart] = []
+  for part in self.parts {
+    if part.name == name {
+      parts.push({ name: part.name, content_type: part.content_type, data })
+    } else {
+      parts.push(part)
+    }
+  }
+  { ..self, parts, }
+}
+
+///|
+/// Replace an existing optional part when a value is present; leave the package
+/// unchanged when the value is absent. ECMA-376 Part 2 §7.3.2 Mapping Part Data.
+pub fn[T] Package::with_optional_part(
+  self : Package,
+  name : String,
+  value : T?,
+  writer : (T) -> Bytes,
+) -> Package {
+  match value {
+    Some(v) => self.with_part(name, writer(v))
+    None => self
+  }
+}
+
+///|
+/// Look up a part that the OPC relationship or package layer requires to be
+/// present. ECMA-376 Part 2 §6.3.3 Resolving A Pack Iri To A Resource.
+pub fn Package::required_part(
+  self : Package,
+  name : String,
+  section~ : String,
+  source_path~ : String,
+) -> PackagePart raise @opc_errors.ResourceMissing {
+  match self.part(name) {
+    Some(part) => part
+    None =>
+      raise @opc_errors.ResourceMissing(section~, path=source_path, target=name)
+  }
+}
+
+///|
+/// Parse an optional package part when it exists, otherwise return `None`.
+/// ECMA-376 Part 2 §6.3.3 Resolving A Pack Iri To A Resource.
+pub fn[T] Package::read_optional(
+  self : Package,
+  name : String,
+  reader : (Bytes) -> T raise,
+) -> T? raise {
+  match self.part(name) {
+    Some(part) => Some(reader(part.data))
+    None => None
+  }
+}
+
+///|
 /// Return package relationships for `/`, or part relationships for a part
 /// name. ECMA-376 Part 2 §6.4.2 Base Iris and §6.4.3 Examples are represented
 /// by the owner part name used later when resolving internal targets. Sources:

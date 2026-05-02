@@ -48,7 +48,7 @@ pub fn open(bytes : Bytes) -> Presentation raise OpenError {
       "ppt/presentation.xml",
     )
     let presentation = @pml_reader.read_presentation(
-      required_part(package, presentation_part).data,
+      package.required_part(presentation_part, section="6.3.3", source_path="/").data,
     )
     {
       package,
@@ -248,17 +248,6 @@ fn raw_parts_with_prefix(
 }
 
 ///|
-fn required_part(
-  package : @opc.Package,
-  name : String,
-) -> @opc.PackagePart raise OpenError {
-  match package.part(name) {
-    Some(part) => part
-    None => raise OpenError(kind="ResourceMissing", path=name, reason=name)
-  }
-}
-
-///|
 fn find_package_relationship_part(
   package : @opc.Package,
   relationship_type : String,
@@ -275,23 +264,6 @@ fn find_package_relationship_part(
     None => ()
   }
   "/" + fallback
-}
-
-///|
-fn @opc.Package::with_part(
-  self : @opc.Package,
-  name : String,
-  data : Bytes,
-) -> @opc.Package {
-  let parts : Array[@opc.PackagePart] = []
-  for part in self.parts {
-    if part.name == name {
-      parts.push({ name: part.name, content_type: part.content_type, data })
-    } else {
-      parts.push(part)
-    }
-  }
-  { ..self, parts, }
 }
 
 ///|
