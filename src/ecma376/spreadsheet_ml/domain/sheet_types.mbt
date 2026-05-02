@@ -808,7 +808,8 @@ pub fn CT_SheetView::new(element : @xml.Element) -> CT_SheetView {
 }
 
 ///|
-/// XSD complex type CT_Pane.
+/// XSD complex type CT_Pane. Attributes: xSplit, ySplit, topLeftCell,
+/// activePane, state.
 pub(all) struct CT_Pane {
   element : @xml.Element
 } derive(Eq, Debug)

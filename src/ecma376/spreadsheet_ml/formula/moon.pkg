@@ -1,7 +1,7 @@
 // trkbt10/ooxml/ecma376/spreadsheet_ml/formula
 //
-// SpreadsheetML §18.17.2 formula tokenization. Parser, AST, address parsing,
-// and evaluation are intentionally outside this package.
+// SpreadsheetML §18.17.2 formula tokenization and parsing. Address parsing and
+// evaluation are intentionally outside this package.
 
 import {
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,

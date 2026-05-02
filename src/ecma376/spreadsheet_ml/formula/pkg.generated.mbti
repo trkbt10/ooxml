@@ -7,11 +7,42 @@ import {
 }
 
 // Values
+pub fn parse(Array[Token]) -> FormulaAst raise @errors.SchemaViolation
+
+pub fn parse_formula(String) -> FormulaAst raise @errors.SchemaViolation
+
 pub fn tokenize(String) -> Array[Token] raise @errors.SchemaViolation
 
 // Errors
 
 // Types and methods
+pub(all) enum BinaryOp {
+  Add
+  Sub
+  Mul
+  Div
+  Pow
+  Concat
+  Eq
+  Neq
+  Lt
+  Gt
+  Le
+  Ge
+  Range
+  Intersect
+  Union
+} derive(Eq, @debug.Debug)
+
+pub(all) enum FormulaAst {
+  Literal(LiteralValue)
+  Reference(String)
+  Function(String, Array[FormulaAst])
+  Unary(UnaryOp, FormulaAst)
+  Binary(BinaryOp, FormulaAst, FormulaAst)
+  Array2D(Array[Array[FormulaAst]])
+} derive(Eq, @debug.Debug)
+
 pub(all) enum FormulaToken {
   Number(Double)
   StringConstant(String)
@@ -42,10 +73,23 @@ pub(all) enum FormulaToken {
   Semicolon
 } derive(Eq, @debug.Debug)
 
+pub(all) enum LiteralValue {
+  LitNumber(Double)
+  LitString(String)
+  LitBool(Bool)
+  LitError(String)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct Token {
   kind : FormulaToken
   start : Int
   end : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum UnaryOp {
+  PrefixPlus
+  PrefixMinus
+  PostfixPercent
 } derive(Eq, @debug.Debug)
 
 // Type aliases
