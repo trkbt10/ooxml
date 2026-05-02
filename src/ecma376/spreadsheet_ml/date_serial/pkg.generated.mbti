@@ -1,0 +1,39 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+}
+
+// Values
+pub fn date_time_to_serial(CalendarDateTime, DateSystem) -> Double raise @errors.SchemaViolation
+
+pub fn is_leap_year_gregorian(Int) -> Bool
+
+pub fn is_valid_serial(Double, DateSystem) -> Bool
+
+pub fn serial_to_date_time(Double, DateSystem) -> CalendarDateTime raise @errors.SchemaViolation
+
+// Errors
+
+// Types and methods
+pub(all) struct CalendarDateTime {
+  year : Int
+  month : Int
+  day : Int
+  hour : Int
+  minute : Int
+  second : Int
+  millisecond : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DateSystem {
+  Serial1900
+  Serial1904
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

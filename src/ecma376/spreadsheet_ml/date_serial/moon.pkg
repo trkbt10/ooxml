@@ -1,0 +1,8 @@
+// trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial
+//
+// SpreadsheetML §18.17.4.1 serial date-time conversion for the §18.2
+// workbookPr/@date1904 date-system selector.
+
+import {
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+}
