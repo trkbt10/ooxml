@@ -35,6 +35,48 @@ test "core properties XML round trip preserves parsed document" {
 }
 
 ///|
+test "core properties helpers expose title and keywords" {
+  let source = b(
+    "<coreProperties xmlns=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><dc:title>Quarterly Plan</dc:title><keywords><value> office </value><value>openxml</value></keywords></coreProperties>",
+  )
+  let parsed = try! read_core_properties(source)
+  assert_true(parsed.title() == Some("Quarterly Plan"))
+  assert_true(parsed.has_property("keywords"))
+  let keywords = parsed.keywords()
+  assert_true(keywords.contains("office"))
+  assert_true(keywords.contains("openxml"))
+  assert_eq(keywords.iter().collect().length(), 2)
+}
+
+///|
+test "thumbnail and package part helpers inspect bytes and names" {
+  let jpeg_name = try! PartName::parse("/docProps/thumbnail.jpeg")
+  let jpeg = read_thumbnail_part(
+    jpeg_name,
+    Bytes::from_array([b'\xFF', b'\xD8', b'\xFF', b'\xE0']),
+  )
+  assert_true(jpeg.is_jpeg())
+  assert_true(!jpeg.is_png())
+  let png = read_thumbnail_part(
+    try! PartName::parse("/docProps/thumbnail.png"),
+    Bytes::from_array([b'\x89', b'P', b'N', b'G', b'\r', b'\n', b'\x1A', b'\n']),
+  )
+  assert_true(png.is_png())
+  let package_part = try! PackagePart::new(
+    jpeg_name,
+    "application/octet-stream",
+    Bytes::from_array([b'\xFF', b'\xD8']),
+  )
+  assert_true(package_part.looks_like_thumbnail())
+  let rels = try! PackagePart::new(
+    try! PartName::__from_trusted("/word/_rels/document.xml.rels"),
+    "application/vnd.openxmlformats-package.relationships+xml",
+    b("rels"),
+  )
+  assert_true(rels.is_relationships_part())
+}
+
+///|
 test "public E3 and E4 error variants carry section context" {
   @opc_errors.require_supported_feature(
     false,

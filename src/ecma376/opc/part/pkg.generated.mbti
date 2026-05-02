@@ -48,25 +48,35 @@ pub fn write_thumbnail_part(ThumbnailPart) -> Bytes
 pub(all) struct CoreKeyword {
   value : String
 } derive(Eq, @debug.Debug)
+pub fn CoreKeyword::matches(Self, String) -> Bool
 
 pub(all) struct CoreKeywords {
   values : Array[CoreKeyword]
 } derive(Eq, @debug.Debug)
+pub fn CoreKeywords::contains(Self, String) -> Bool
+pub fn CoreKeywords::iter(Self) -> Iter[CoreKeyword]
 
 pub(all) struct CoreProperties {
   document : @xml.Document
 } derive(Eq, @debug.Debug)
+pub fn CoreProperties::has_property(Self, String) -> Bool
+pub fn CoreProperties::keywords(Self) -> CoreKeywords
+pub fn CoreProperties::title(Self) -> String?
 
 pub(all) struct PackagePart {
   name : @part_name.PartName
   content_type : String
   data : Bytes
 } derive(Eq, @debug.Debug)
+pub fn PackagePart::is_relationships_part(Self) -> Bool
+pub fn PackagePart::looks_like_thumbnail(Self) -> Bool
 
 pub(all) struct ThumbnailPart {
   name : @part_name.PartName
   data : Bytes
 } derive(Eq, @debug.Debug)
+pub fn ThumbnailPart::is_jpeg(Self) -> Bool
+pub fn ThumbnailPart::is_png(Self) -> Bool
 
 // Type aliases
 pub using @part_name {type PartName}
