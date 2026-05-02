@@ -1,0 +1,54 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/spreadsheet_ml/formula"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+}
+
+// Values
+pub fn tokenize(String) -> Array[Token] raise @errors.SchemaViolation
+
+// Errors
+
+// Types and methods
+pub(all) enum FormulaToken {
+  Number(Double)
+  StringConstant(String)
+  Boolean(Bool)
+  ErrorConst(String)
+  Plus
+  Minus
+  Star
+  Slash
+  Caret
+  Ampersand
+  Equal
+  NotEqual
+  Less
+  Greater
+  LessEqual
+  GreaterEqual
+  Percent
+  RangeColon
+  SpaceOp
+  Comma
+  Reference(String)
+  FunctionName(String)
+  LParen
+  RParen
+  LBrace
+  RBrace
+  Semicolon
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Token {
+  kind : FormulaToken
+  start : Int
+  end : Int
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+
