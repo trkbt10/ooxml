@@ -9,6 +9,13 @@ priv struct CentralEntry {
 }
 
 ///|
+priv struct Eocd {
+  entry_count : Int
+  central_size : Int
+  central_offset : Int
+}
+
+///|
 /// Reader for ZIP archives using the end-of-central-directory record.
 pub struct Reader {
   priv bytes : Bytes
@@ -23,14 +30,11 @@ pub fn Reader::new(bytes : Bytes) -> Reader {
 ///|
 /// Read all entries from the ZIP central directory.
 pub fn Reader::read(self : Reader) -> Archive raise {
-  let eocd = self.find_eocd()
-  let entry_count = read_u16(self.bytes, eocd + 10)
-  let central_size = read_u32_int(self.bytes, eocd + 12)
-  let central_offset = read_u32_int(self.bytes, eocd + 16)
-  ensure_range(self.bytes, central_offset, central_size)
+  let eocd = self.read_eocd()
+  ensure_range(self.bytes, eocd.central_offset, eocd.central_size)
   let entries : Array[Entry] = []
-  let mut offset = central_offset
-  for _ in 0..<entry_count {
+  let mut offset = eocd.central_offset
+  for _ in 0..<eocd.entry_count {
     let central = self.read_central_entry(offset)
     entries.push(self.read_local_entry(central))
     let name_len = read_u16(self.bytes, offset + 28)
@@ -38,10 +42,33 @@ pub fn Reader::read(self : Reader) -> Archive raise {
     let comment_len = read_u16(self.bytes, offset + 32)
     offset += 46 + name_len + extra_len + comment_len
   }
-  if offset != central_offset + central_size {
+  if offset != eocd.central_offset + eocd.central_size {
     raise ZipMalformed(reason="central directory size mismatch")
   }
   { entries, }
+}
+
+///|
+fn Reader::read_eocd(self : Reader) -> Eocd raise ZipMalformed {
+  let eocd = self.find_eocd()
+  let entry_count_16 = read_u16(self.bytes, eocd + 10)
+  let central_size_32 = read_u32(self.bytes, eocd + 12)
+  let central_offset_32 = read_u32(self.bytes, eocd + 16)
+  if entry_count_16 == 0xffff ||
+    central_size_32 == 0xffffffffL ||
+    central_offset_32 == 0xffffffffL {
+    self.read_zip64_eocd(eocd)
+  } else {
+    {
+      entry_count: entry_count_16,
+      central_size: checked_int64_to_int(
+        central_size_32, "central directory size",
+      ),
+      central_offset: checked_int64_to_int(
+        central_offset_32, "central directory offset",
+      ),
+    }
+  }
 }
 
 ///|
@@ -69,25 +96,62 @@ fn Reader::find_eocd(self : Reader) -> Int raise ZipMalformed {
 }
 
 ///|
+fn Reader::read_zip64_eocd(
+  self : Reader,
+  eocd : Int,
+) -> Eocd raise ZipMalformed {
+  if eocd < 20 {
+    raise ZipMalformed(reason="missing ZIP64 EOCD locator")
+  }
+  let locator = eocd - 20
+  expect_signature(self.bytes, locator, 0x07064b50L)
+  let zip64_offset = read_u64_int(self.bytes, locator + 8, "ZIP64 EOCD offset")
+  expect_signature(self.bytes, zip64_offset, 0x06064b50L)
+  ensure_range(self.bytes, zip64_offset, 56)
+  {
+    entry_count: read_u64_int(
+      self.bytes,
+      zip64_offset + 32,
+      "ZIP64 entry count",
+    ),
+    central_size: read_u64_int(
+      self.bytes,
+      zip64_offset + 40,
+      "ZIP64 central directory size",
+    ),
+    central_offset: read_u64_int(
+      self.bytes,
+      zip64_offset + 48,
+      "ZIP64 central directory offset",
+    ),
+  }
+}
+
+///|
 fn Reader::read_central_entry(
   self : Reader,
   offset : Int,
 ) -> CentralEntry raise {
   expect_signature(self.bytes, offset, 0x02014b50L)
-  let flags = read_u16(self.bytes, offset + 8)
-  if (flags & 0x0008) != 0 {
-    raise ZipMalformed(reason="data descriptors are not supported")
-  }
   let compression = compression_method(read_u16(self.bytes, offset + 10))
   let crc = read_u32(self.bytes, offset + 16)
-  let compressed_size = read_u32_int(self.bytes, offset + 20)
-  let uncompressed_size = read_u32_int(self.bytes, offset + 24)
+  let compressed_size_32 = read_u32(self.bytes, offset + 20)
+  let uncompressed_size_32 = read_u32(self.bytes, offset + 24)
   let name_len = read_u16(self.bytes, offset + 28)
   let extra_len = read_u16(self.bytes, offset + 30)
   let comment_len = read_u16(self.bytes, offset + 32)
-  let local_offset = read_u32_int(self.bytes, offset + 42)
+  let local_offset_32 = read_u32(self.bytes, offset + 42)
   ensure_range(self.bytes, offset, 46 + name_len + extra_len + comment_len)
   let name = decode_utf8(bytes_slice(self.bytes, offset + 46, name_len))
+  let sizes = read_zip64_extra(
+    self.bytes,
+    offset + 46 + name_len,
+    extra_len,
+    uncompressed_size_32,
+    compressed_size_32,
+    local_offset_32,
+  )
+  let (uncompressed_size, compressed_size, local_offset) = sizes
   { name, compression, crc, compressed_size, uncompressed_size, local_offset }
 }
 
@@ -98,9 +162,6 @@ fn Reader::read_local_entry(
 ) -> Entry raise {
   expect_signature(self.bytes, central.local_offset, 0x04034b50L)
   let flags = read_u16(self.bytes, central.local_offset + 6)
-  if (flags & 0x0008) != 0 {
-    raise ZipMalformed(reason="data descriptors are not supported")
-  }
   let local_compression = compression_method(
     read_u16(self.bytes, central.local_offset + 8),
   )
@@ -121,6 +182,9 @@ fn Reader::read_local_entry(
     )
   }
   let compressed = bytes_slice(self.bytes, data_start, central.compressed_size)
+  if (flags & 0x0008) != 0 {
+    self.read_data_descriptor(data_start + central.compressed_size, central)
+  }
   let data = match central.compression {
     Stored => compressed
     Deflate => inflate(compressed, central.uncompressed_size)
@@ -140,6 +204,83 @@ fn Reader::read_local_entry(
     compressed_size: central.compressed_size,
     uncompressed_size: central.uncompressed_size,
   }
+}
+
+///|
+fn Reader::read_data_descriptor(
+  self : Reader,
+  offset : Int,
+  central : CentralEntry,
+) -> Unit raise {
+  ensure_range(self.bytes, offset, 12)
+  let mut pos = offset
+  if read_u32(self.bytes, pos) == 0x08074b50L {
+    pos += 4
+    ensure_range(self.bytes, pos, 12)
+  }
+  let crc = read_u32(self.bytes, pos)
+  let compressed_size = read_u32_int(self.bytes, pos + 4)
+  let uncompressed_size = read_u32_int(self.bytes, pos + 8)
+  if crc != central.crc ||
+    compressed_size != central.compressed_size ||
+    uncompressed_size != central.uncompressed_size {
+    raise ZipMalformed(reason="data descriptor differs from central directory")
+  }
+}
+
+///|
+fn read_zip64_extra(
+  bytes : Bytes,
+  offset : Int,
+  len : Int,
+  uncompressed_size_32 : Int64,
+  compressed_size_32 : Int64,
+  local_offset_32 : Int64,
+) -> (Int, Int, Int) raise ZipMalformed {
+  let mut uncompressed_size = if uncompressed_size_32 == 0xffffffffL {
+    0
+  } else {
+    checked_int64_to_int(uncompressed_size_32, "uncompressed size")
+  }
+  let mut compressed_size = if compressed_size_32 == 0xffffffffL {
+    0
+  } else {
+    checked_int64_to_int(compressed_size_32, "compressed size")
+  }
+  let mut local_offset = if local_offset_32 == 0xffffffffL {
+    0
+  } else {
+    checked_int64_to_int(local_offset_32, "local offset")
+  }
+  let mut pos = offset
+  let end = offset + len
+  ensure_range(bytes, offset, len)
+  while pos + 4 <= end {
+    let header = read_u16(bytes, pos)
+    let data_len = read_u16(bytes, pos + 2)
+    pos += 4
+    if pos + data_len > end {
+      raise ZipMalformed(reason="ZIP extra field overruns central directory")
+    }
+    if header == 0x0001 {
+      let mut data_pos = pos
+      if uncompressed_size_32 == 0xffffffffL {
+        uncompressed_size = read_u64_int(
+          bytes, data_pos, "ZIP64 uncompressed size",
+        )
+        data_pos += 8
+      }
+      if compressed_size_32 == 0xffffffffL {
+        compressed_size = read_u64_int(bytes, data_pos, "ZIP64 compressed size")
+        data_pos += 8
+      }
+      if local_offset_32 == 0xffffffffL {
+        local_offset = read_u64_int(bytes, data_pos, "ZIP64 local offset")
+      }
+    }
+    pos += data_len
+  }
+  (uncompressed_size, compressed_size, local_offset)
 }
 
 ///|

@@ -1,5 +1,5 @@
 ///|
-/// Malformed ZIP structure or unsupported ZIP64/data-descriptor shape.
+/// Malformed ZIP structure or ZIP value outside the supported in-memory range.
 pub(all) suberror ZipMalformed {
   ZipMalformed(reason~ : String)
 } derive(Debug)

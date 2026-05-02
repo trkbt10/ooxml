@@ -68,7 +68,7 @@ pub fn read(bytes : Bytes) -> Archive raise {
 }
 
 ///|
-/// Write a ZIP archive using Stored entries (APPNOTE 4.3.7, 4.3.12, 4.3.16).
+/// Write a ZIP archive using Stored or Deflate entries.
 pub fn write(archive : Archive) -> Bytes raise {
   Writer::new().write(archive)
 }
@@ -171,8 +171,27 @@ fn read_u32(bytes : Bytes, offset : Int) -> Int64 raise ZipMalformed {
 ///|
 fn read_u32_int(bytes : Bytes, offset : Int) -> Int raise ZipMalformed {
   let value = read_u32(bytes, offset)
-  if value > 0x7fffffffL {
-    raise ZipMalformed(reason="ZIP32 value exceeds supported Int range")
+  checked_int64_to_int(value, "ZIP32 value")
+}
+
+///|
+fn read_u64_int(
+  bytes : Bytes,
+  offset : Int,
+  what : String,
+) -> Int raise ZipMalformed {
+  let low = read_u32(bytes, offset)
+  let high = read_u32(bytes, offset + 4)
+  if high > 0L {
+    raise ZipMalformed(reason="\{what} exceeds supported Int range")
+  }
+  checked_int64_to_int(low, what)
+}
+
+///|
+fn checked_int64_to_int(value : Int64, what : String) -> Int raise ZipMalformed {
+  if value < 0L || value > 0x7fffffffL {
+    raise ZipMalformed(reason="\{what} exceeds supported Int range")
   }
   value.to_int()
 }

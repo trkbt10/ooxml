@@ -31,6 +31,75 @@ test "read deflate entry with fixed huffman block" {
 }
 
 ///|
+test "write and read deflate entries" {
+  let data = b(
+    "<worksheet><row><c>hello hello hello</c></row><row><c>hello hello hello</c></row></worksheet>",
+  )
+  let archive : Archive = {
+    entries: [
+      {
+        name: "xl/worksheets/sheet1.xml",
+        data,
+        compression: Deflate,
+        crc32: crc32(data),
+        compressed_size: data.length(),
+        uncompressed_size: data.length(),
+      },
+    ],
+  }
+  let parsed = read(write(archive))
+  assert_eq(parsed.entries.length(), 1)
+  assert_eq(parsed.entries[0].name, "xl/worksheets/sheet1.xml")
+  assert_true(parsed.entries[0].compression == Deflate)
+  assert_true(parsed.entries[0].compressed_size < data.length())
+  assert_eq(parsed.entries[0].crc32, crc32(data))
+  assert_true(bytes_equal(parsed.entries[0].data, data))
+}
+
+///|
+test "write deflate small input may expand" {
+  let data = b("0123456789")
+  let archive : Archive = {
+    entries: [
+      {
+        name: "small.txt",
+        data,
+        compression: Deflate,
+        crc32: crc32(data),
+        compressed_size: data.length(),
+        uncompressed_size: data.length(),
+      },
+    ],
+  }
+  let parsed = read(write(archive))
+  assert_eq(parsed.entries.length(), 1)
+  assert_true(parsed.entries[0].compression == Deflate)
+  assert_true(bytes_equal(parsed.entries[0].data, data))
+}
+
+///|
+test "read entry with data descriptor" {
+  let archive = read(data_descriptor_zip()) catch {
+    ZipMalformed(reason~) => fail(reason)
+    err => raise err
+  }
+  assert_eq(archive.entries.length(), 1)
+  assert_eq(archive.entries[0].name, "a.txt")
+  assert_true(bytes_equal(archive.entries[0].data, b("abc")))
+}
+
+///|
+test "read zip64 eocd locator and extra field" {
+  let archive = read(zip64_zip()) catch {
+    ZipMalformed(reason~) => fail(reason)
+    err => raise err
+  }
+  assert_eq(archive.entries.length(), 1)
+  assert_eq(archive.entries[0].name, "z.txt")
+  assert_true(bytes_equal(archive.entries[0].data, b("zip64")))
+}
+
+///|
 test "reject crc mismatch" {
   let archive = Archive::new([("a.txt", b("abc"))])
   let encoded = write(archive)
@@ -82,4 +151,127 @@ fn fixed_deflate_zip() -> Bytes {
     b'\x00',
   ]
   @buffer.from_array(raw[:]).to_bytes()
+}
+
+///|
+fn data_descriptor_zip() -> Bytes {
+  let out = @buffer.new()
+  let name = b("a.txt")
+  let data = b("abc")
+  let crc = crc32(data)
+  write_u32(out, 0x04034b50L)
+  write_u16(out, 20)
+  write_u16(out, 0x0808)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u32(out, 0L)
+  write_u32(out, 0L)
+  write_u32(out, 0L)
+  write_u16(out, name.length())
+  write_u16(out, 0)
+  write_bytes(out, name)
+  write_bytes(out, data)
+  write_u32(out, 0x08074b50L)
+  write_u32(out, crc)
+  write_u32(out, data.length().to_int64())
+  write_u32(out, data.length().to_int64())
+  let central_offset = out.length()
+  write_u32(out, 0x02014b50L)
+  write_u16(out, 20)
+  write_u16(out, 20)
+  write_u16(out, 0x0808)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u32(out, crc)
+  write_u32(out, data.length().to_int64())
+  write_u32(out, data.length().to_int64())
+  write_u16(out, name.length())
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u32(out, 0L)
+  write_u32(out, 0L)
+  write_bytes(out, name)
+  let central_size = out.length() - central_offset
+  write_eocd(out, 1, central_size, central_offset)
+  out.to_bytes()
+}
+
+///|
+fn zip64_zip() -> Bytes {
+  let out = @buffer.new()
+  let name = b("z.txt")
+  let data = b("zip64")
+  let crc = crc32(data)
+  write_u32(out, 0x04034b50L)
+  write_u16(out, 20)
+  write_u16(out, 0x0800)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u32(out, crc)
+  write_u32(out, data.length().to_int64())
+  write_u32(out, data.length().to_int64())
+  write_u16(out, name.length())
+  write_u16(out, 0)
+  write_bytes(out, name)
+  write_bytes(out, data)
+  let central_offset = out.length()
+  write_u32(out, 0x02014b50L)
+  write_u16(out, 45)
+  write_u16(out, 45)
+  write_u16(out, 0x0800)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u32(out, crc)
+  write_u32(out, 0xffffffffL)
+  write_u32(out, 0xffffffffL)
+  write_u16(out, name.length())
+  write_u16(out, 28)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u32(out, 0L)
+  write_u32(out, 0xffffffffL)
+  write_bytes(out, name)
+  write_u16(out, 0x0001)
+  write_u16(out, 24)
+  write_u64(out, data.length())
+  write_u64(out, data.length())
+  write_u64(out, 0)
+  let central_size = out.length() - central_offset
+  let zip64_eocd_offset = out.length()
+  write_u32(out, 0x06064b50L)
+  write_u64(out, 44)
+  write_u16(out, 45)
+  write_u16(out, 45)
+  write_u32(out, 0L)
+  write_u32(out, 0L)
+  write_u64(out, 1)
+  write_u64(out, 1)
+  write_u64(out, central_size)
+  write_u64(out, central_offset)
+  write_u32(out, 0x07064b50L)
+  write_u32(out, 0L)
+  write_u64(out, zip64_eocd_offset)
+  write_u32(out, 1L)
+  write_u32(out, 0x06054b50L)
+  write_u16(out, 0)
+  write_u16(out, 0)
+  write_u16(out, 0xffff)
+  write_u16(out, 0xffff)
+  write_u32(out, 0xffffffffL)
+  write_u32(out, 0xffffffffL)
+  write_u16(out, 0)
+  out.to_bytes()
+}
+
+///|
+fn write_u64(out : @buffer.Buffer, value : Int) -> Unit {
+  write_u32(out, value.to_int64())
+  write_u32(out, 0L)
 }
