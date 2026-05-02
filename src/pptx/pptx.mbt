@@ -163,7 +163,7 @@ pub fn Presentation::to_html(self : Presentation) -> String {
 ///|
 pub fn Presentation::to_svg(self : Presentation) -> String {
   "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"450\"><text x=\"16\" y=\"32\">pptx:" +
-  escape_text(self.presentation.element.name.local_name) +
+  @xml.escape_text(self.presentation.element.name.local_name) +
   "</text></svg>"
 }
 
@@ -296,26 +296,18 @@ fn @opc.Package::with_part(
 
 ///|
 fn html_element(element : @xml.Element) -> String {
-  let name = escape_text(element.name.local_name)
+  let name = @xml.escape_text(element.name.local_name)
   let mut out = "<section data-ooxml-element=\"" + name + "\">"
   for child in element.children {
     match child {
       @xml.Element(element) => out = out + html_element(element)
-      @xml.Text(text) => out = out + escape_text(text)
-      @xml.CData(text) => out = out + escape_text(text)
+      @xml.Text(text) => out = out + @xml.escape_text(text)
+      @xml.CData(text) => out = out + @xml.escape_text(text)
       @xml.Comment(_) => ()
       @xml.ProcessingInstruction(_) => ()
     }
   }
   out + "</section>"
-}
-
-///|
-fn escape_text(value : String) -> String {
-  value
-  .replace(old="&", new="&amp;")
-  .replace(old="<", new="&lt;")
-  .replace(old=">", new="&gt;")
 }
 
 ///|

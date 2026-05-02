@@ -155,7 +155,9 @@ fn write_element_namespace_if_needed(
 }
 
 ///|
-fn escape_attribute(value : String) -> String {
+/// Escape attribute value per XML 1.0 §2.4 / §3.3.3 and OPC §6.2.5: replace
+/// all five predefined entities (`&`, `<`, `>`, `"`, `'`) with named refs.
+pub fn escape_attribute(value : String) -> String {
   let out = StringBuilder::new()
   for ch in value {
     match ch {
@@ -171,7 +173,10 @@ fn escape_attribute(value : String) -> String {
 }
 
 ///|
-fn escape_text(value : String) -> String {
+/// Escape text per XML 1.0 §2.4 and OPC §6.2.5: replace `&` with `&amp;`,
+/// `<` with `&lt;`, and split any `]]>` sequence to `]]&gt;` so it cannot
+/// terminate a CDATA section.
+pub fn escape_text(value : String) -> String {
   let out = StringBuilder::new()
   let chars = value.to_array()
   let mut i = 0
@@ -192,4 +197,56 @@ fn escape_text(value : String) -> String {
     }
   }
   out.to_string()
+}
+
+///|
+/// Escape attribute per W3C Canonical XML 1.0 §2.3 for OPC §6.2.5 XML
+/// signatures: replace `&`, `<`, `"`, tab (`&#x9;`), LF (`&#xA;`), and CR
+/// (`&#xD;`).
+pub fn escape_attribute_c14n(value : String) -> String {
+  let out = StringBuilder::new()
+  for ch in value {
+    match ch {
+      '&' => out.write_string("&amp;")
+      '<' => out.write_string("&lt;")
+      '"' => out.write_string("&quot;")
+      '\t' => out.write_string("&#x9;")
+      '\n' => out.write_string("&#xA;")
+      '\r' => out.write_string("&#xD;")
+      _ => out.write_char(ch)
+    }
+  }
+  out.to_string()
+}
+
+///|
+/// Escape text per W3C Canonical XML 1.0 §2.3 for OPC §6.2.5 XML signatures:
+/// replace `&`, `<`, `>`, and CR (`&#xD;`). Unlike plain XML serialization,
+/// C14N text mode always escapes `>`.
+pub fn escape_text_c14n(value : String) -> String {
+  let out = StringBuilder::new()
+  for ch in value {
+    match ch {
+      '&' => out.write_string("&amp;")
+      '<' => out.write_string("&lt;")
+      '>' => out.write_string("&gt;")
+      '\r' => out.write_string("&#xD;")
+      _ => out.write_char(ch)
+    }
+  }
+  out.to_string()
+}
+
+///|
+/// XML 1.0 §2.2 Char production for OPC §6.2.5 XML documents: U+0009,
+/// U+000A, U+000D, U+0020..U+D7FF, U+E000..U+FFFD, U+10000..U+10FFFF.
+/// Any other codepoint is forbidden in XML 1.0 documents.
+pub fn is_xml_char(ch : Char) -> Bool {
+  let code = ch.to_int()
+  code == 0x09 ||
+  code == 0x0A ||
+  code == 0x0D ||
+  (code >= 0x20 && code <= 0xD7FF) ||
+  (code >= 0xE000 && code <= 0xFFFD) ||
+  (code >= 0x10000 && code <= 0x10FFFF)
 }

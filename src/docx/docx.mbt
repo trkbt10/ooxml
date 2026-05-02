@@ -202,7 +202,7 @@ pub fn Document::to_html(self : Document) -> String {
 /// Convert the docx into a minimal SVG representation.
 pub fn Document::to_svg(self : Document) -> String {
   "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"200\"><text x=\"16\" y=\"32\">docx:" +
-  escape_text(self.main.element.name.local_name) +
+  @xml.escape_text(self.main.element.name.local_name) +
   "</text></svg>"
 }
 
@@ -328,26 +328,18 @@ fn @opc.Package::with_part(
 
 ///|
 fn html_element(element : @xml.Element) -> String {
-  let name = escape_text(element.name.local_name)
+  let name = @xml.escape_text(element.name.local_name)
   let mut out = "<section data-ooxml-element=\"" + name + "\">"
   for child in element.children {
     match child {
       @xml.Element(element) => out = out + html_element(element)
-      @xml.Text(text) => out = out + escape_text(text)
-      @xml.CData(text) => out = out + escape_text(text)
+      @xml.Text(text) => out = out + @xml.escape_text(text)
+      @xml.CData(text) => out = out + @xml.escape_text(text)
       @xml.Comment(_) => ()
       @xml.ProcessingInstruction(_) => ()
     }
   }
   out + "</section>"
-}
-
-///|
-fn escape_text(value : String) -> String {
-  value
-  .replace(old="&", new="&amp;")
-  .replace(old="<", new="&lt;")
-  .replace(old=">", new="&gt;")
 }
 
 ///|

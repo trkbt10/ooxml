@@ -464,16 +464,16 @@ fn write_relationships_transform_entries(
     out.write_string("<Relationship")
     if first {
       out.write_string(" xmlns=\"")
-      out.write_string(escape_canonical_attribute(relationships_namespace()))
+      out.write_string(@xml.escape_attribute_c14n(relationships_namespace()))
       out.write_string("\"")
       first = false
     }
     out.write_string(" Id=\"")
-    out.write_string(escape_canonical_attribute(entry.id))
+    out.write_string(@xml.escape_attribute_c14n(entry.id))
     out.write_string("\" Type=\"")
-    out.write_string(escape_canonical_attribute(entry.type_uri))
+    out.write_string(@xml.escape_attribute_c14n(entry.type_uri))
     out.write_string("\" Target=\"")
-    out.write_string(escape_canonical_attribute(entry.target))
+    out.write_string(@xml.escape_attribute_c14n(entry.target))
     out.write_string("\"")
     match entry.target_mode {
       Some("External") => out.write_string(" TargetMode=\"External\"")
@@ -553,7 +553,7 @@ fn write_canonical_element(
       None => out.write_string("xmlns")
     }
     out.write_string("=\"")
-    out.write_string(escape_canonical_attribute(ns.uri))
+    out.write_string(@xml.escape_attribute_c14n(ns.uri))
     out.write_string("\"")
     active.push(ns)
   }
@@ -563,7 +563,7 @@ fn write_canonical_element(
     out.write_string(" ")
     out.write_string(format_algorithm_qname(attr.name))
     out.write_string("=\"")
-    out.write_string(escape_canonical_attribute(attr.value))
+    out.write_string(@xml.escape_attribute_c14n(attr.value))
     out.write_string("\"")
   }
   out.write_string(">")
@@ -571,7 +571,7 @@ fn write_canonical_element(
     match child {
       Element(child_element) =>
         write_canonical_element(out, child_element, active)
-      Text(text) | CData(text) => out.write_string(escape_canonical_text(text))
+      Text(text) | CData(text) => out.write_string(@xml.escape_text_c14n(text))
       Comment(_) => ()
       ProcessingInstruction(pi) => {
         out.write_string("<?")
@@ -793,38 +793,6 @@ fn element_text_for_algorithm(element : @xml.Element) -> String {
     match child {
       Text(text) | CData(text) => out.write_string(text)
       _ => ()
-    }
-  }
-  out.to_string()
-}
-
-///|
-fn escape_canonical_attribute(value : String) -> String {
-  let out = StringBuilder::new()
-  for ch in value {
-    match ch {
-      '&' => out.write_string("&amp;")
-      '<' => out.write_string("&lt;")
-      '"' => out.write_string("&quot;")
-      '\t' => out.write_string("&#x9;")
-      '\n' => out.write_string("&#xA;")
-      '\r' => out.write_string("&#xD;")
-      _ => out.write_char(ch)
-    }
-  }
-  out.to_string()
-}
-
-///|
-fn escape_canonical_text(value : String) -> String {
-  let out = StringBuilder::new()
-  for ch in value {
-    match ch {
-      '&' => out.write_string("&amp;")
-      '<' => out.write_string("&lt;")
-      '>' => out.write_string("&gt;")
-      '\r' => out.write_string("&#xD;")
-      _ => out.write_char(ch)
     }
   }
   out.to_string()
