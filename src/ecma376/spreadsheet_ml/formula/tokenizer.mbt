@@ -170,12 +170,12 @@ pub fn tokenize(
           let scan = scan_reference(source, pos)
           pos = scan.end
           let upper = ascii_upper(scan.value)
-          if upper == "TRUE" {
+          if scan.function_name {
+            FunctionName(scan.value)
+          } else if upper == "TRUE" {
             Boolean(true)
           } else if upper == "FALSE" {
             Boolean(false)
-          } else if scan.function_name {
-            FunctionName(scan.value)
           } else {
             Reference(scan.value)
           }

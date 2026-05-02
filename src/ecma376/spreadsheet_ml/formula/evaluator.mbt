@@ -68,11 +68,7 @@ fn evaluate_function(
     Some(Eager(fn_impl)) => {
       let values = Array::new(capacity=args.length())
       for arg in args {
-        let value = evaluate(arg, ctx)
-        if value is VError(_) {
-          return value
-        }
-        values.push(value)
+        values.push(evaluate(arg, ctx))
       }
       fn_impl(values, ctx)
     }

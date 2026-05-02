@@ -23,6 +23,9 @@ pub fn register_builtin_functions(registry : FunctionRegistry) -> Unit {
   registry.register("PRODUCT", Eager(fn_product))
   registry.register("SUMPRODUCT", Eager(fn_sumproduct))
   register_builtin_math_functions(registry)
+  register_builtin_logical_functions(registry)
+  register_builtin_text_functions(registry)
+  register_builtin_info_functions(registry)
 }
 
 ///|
