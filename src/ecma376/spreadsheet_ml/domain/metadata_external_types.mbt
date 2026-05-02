@@ -565,7 +565,9 @@ pub fn CT_DdeItems::new(element : @xml.Element) -> CT_DdeItems {
 }
 
 ///|
-/// XSD complex type CT_DdeItem.
+/// XSD complex type CT_DdeItem. DDE item definition with attributes `name`,
+/// `ole`, `advise`, and `preferPic`, and optional `values` child element of
+/// type CT_DdeValues.
 pub(all) struct CT_DdeItem {
   element : @xml.Element
 } derive(Eq, Debug)

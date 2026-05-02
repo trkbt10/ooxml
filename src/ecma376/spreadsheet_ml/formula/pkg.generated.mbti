@@ -3,13 +3,27 @@ package "trkbt10/ooxml/ecma376/spreadsheet_ml/formula"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/hashmap",
   "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
 }
 
 // Values
+pub fn coerce_to_bool(FormulaValue) -> FormulaValue
+
+pub fn coerce_to_number(FormulaValue, @date_serial.DateSystem) -> FormulaValue
+
+pub fn coerce_to_text(FormulaValue) -> FormulaValue
+
+pub fn evaluate(FormulaAst, EvalContext) -> FormulaValue
+
 pub fn parse(Array[Token]) -> FormulaAst raise @errors.SchemaViolation
 
 pub fn parse_formula(String) -> FormulaAst raise @errors.SchemaViolation
+
+pub fn resolve_reference(String, EvalContext) -> FormulaValue
 
 pub fn tokenize(String) -> Array[Token] raise @errors.SchemaViolation
 
@@ -34,6 +48,16 @@ pub(all) enum BinaryOp {
   Union
 } derive(Eq, @debug.Debug)
 
+pub(all) struct EvalContext {
+  current_sheet : String
+  current_cell : @address.CellAddress
+  sst : @domain.CT_Sst?
+  date_system : @date_serial.DateSystem
+  registry : FunctionRegistry
+  resolve_cell : (@address.CellAddress) -> FormulaValue
+  resolve_name : (String) -> FormulaAst?
+}
+
 pub(all) enum FormulaAst {
   Literal(LiteralValue)
   Reference(String)
@@ -42,6 +66,19 @@ pub(all) enum FormulaAst {
   Binary(BinaryOp, FormulaAst, FormulaAst)
   Array2D(Array[Array[FormulaAst]])
 } derive(Eq, @debug.Debug)
+
+pub(all) enum FormulaError {
+  DivZero
+  NotApplicable
+  Name
+  NullErr
+  Num
+  Ref
+  Value
+  GettingData
+} derive(Eq, @debug.Debug)
+pub fn FormulaError::from_literal(String) -> Self?
+pub fn FormulaError::to_literal(Self) -> String
 
 pub(all) enum FormulaToken {
   Number(Double)
@@ -73,12 +110,35 @@ pub(all) enum FormulaToken {
   Semicolon
 } derive(Eq, @debug.Debug)
 
+pub(all) enum FormulaValue {
+  VNumber(Double)
+  VString(String)
+  VBool(Bool)
+  VError(FormulaError)
+  VEmpty
+  VArray(Array[Array[FormulaValue]])
+} derive(Eq, @debug.Debug)
+
+pub(all) enum FunctionDef {
+  Eager((Array[FormulaValue], EvalContext) -> FormulaValue)
+  Lazy((Array[FormulaAst], EvalContext) -> FormulaValue)
+}
+
+pub(all) struct FunctionRegistry {
+  entries : @hashmap.HashMap[String, FunctionDef]
+}
+pub fn FunctionRegistry::lookup(Self, String) -> FunctionDef?
+pub fn FunctionRegistry::new() -> Self
+pub fn FunctionRegistry::register(Self, String, FunctionDef) -> Unit
+
 pub(all) enum LiteralValue {
   LitNumber(Double)
   LitString(String)
   LitBool(Bool)
   LitError(String)
 } derive(Eq, @debug.Debug)
+
+type ReferenceRect derive(Eq, @debug.Debug)
 
 pub(all) struct Token {
   kind : FormulaToken
