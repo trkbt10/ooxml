@@ -3,6 +3,7 @@
 // ECMA-376 Part 2: Open Packaging Conventions facade. Coordinates content-types, parts and relationships into a coherent package.
 
 import {
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/zip" @zip,
   "trkbt10/ooxml/ecma376/opc/content_types" @content_types,
   "trkbt10/ooxml/ecma376/opc/relationships" @relationships,

@@ -14,7 +14,7 @@
 /// - §2 Conformance C1: read_core_properties, read_thumbnail_part, read_part,
 ///   PartName::parse, PackagePart::new, and related read_* entry points accept
 ///   every §4 schema element where permitted by opc-coreProperties.xsd.
-/// - §2 Conformance C2: readers raise SchemaViolation when occurrence,
+/// - §2 Conformance C2: readers raise @opc_errors.SchemaViolation when occurrence,
 ///   cardinality, type, required-attribute, root-name, or child-shape
 ///   structure fails.
 /// - §2 Conformance C3: writer round trips preserve attributes declared on
@@ -22,7 +22,7 @@
 /// - §2 Conformance C4: there are no §4 simple types in this schema; package
 ///   constructors still enforce lexical constraints for part names and typed
 ///   values before building the domain tree.
-/// - §2 Conformance C5: SchemaViolation carries section + path metadata using
+/// - §2 Conformance C5: @opc_errors.SchemaViolation carries section + path metadata using
 ///   the §3 section references for the failing OPC part location.
 /// - §3 TOC: §8 Core Properties, §8.1 General, §8.2 Core Properties Part,
 ///   §8.3 Core Properties Markup, §8.3.1 General (markup overview),
@@ -50,9 +50,9 @@
 /// - §7 Invariants V3: constructors normalise and materialise validated values
 ///   so consumers receive populated domain structures.
 /// - §8 Errors E1: XmlMalformed from @xml for malformed XML.
-/// - §8 Errors E2: SchemaViolation for schema, cardinality, and type failures.
-/// - §8 Errors E3: UnsupportedFeature for recognised unsupported features.
-/// - §8 Errors E4: ResourceMissing for missing OPC resources.
+/// - §8 Errors E2: @opc_errors.SchemaViolation for schema, cardinality, and type failures.
+/// - §8 Errors E3: @opc_errors.UnsupportedFeature for recognised unsupported features.
+/// - §8 Errors E4: @opc_errors.ResourceMissing for missing OPC resources.
 /// - §9 Drift hooks: coverage.json represents the §3 sections and §4
 ///   identifiers; alignment is measured against this public API doc and the
 ///   package domain types.

@@ -3,6 +3,7 @@ package "trkbt10/ooxml/ecma376/opc/content_types"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
 }
 
 // Values
@@ -16,30 +17,15 @@ pub fn package_name() -> String
 
 pub fn read_content_types(Bytes) -> Types raise
 
-pub fn require_resource(Bool, section~ : String, path~ : String, target~ : String) -> Unit raise ResourceMissing
-
-pub fn require_supported_feature(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise UnsupportedFeature
-
 pub fn write_content_types(Types) -> Bytes
 
 // Errors
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
-} derive(@debug.Debug)
-
-pub suberror SchemaViolation {
-  SchemaViolation(section~ : String, path~ : String, reason~ : String)
-} derive(@debug.Debug)
-
-pub suberror UnsupportedFeature {
-  UnsupportedFeature(section~ : String, path~ : String, reason~ : String)
-} derive(@debug.Debug)
 
 // Types and methods
 pub(all) struct ContentType {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn ContentType::parse(String) -> Self raise SchemaViolation
+pub fn ContentType::parse(String) -> Self raise @errors.SchemaViolation
 pub fn ContentType::to_string(Self) -> String
 
 pub(all) enum ContentTypeRule {
@@ -55,7 +41,7 @@ pub(all) struct Default {
 pub(all) struct Extension {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn Extension::parse(String) -> Self raise SchemaViolation
+pub fn Extension::parse(String) -> Self raise @errors.SchemaViolation
 pub fn Extension::to_string(Self) -> String
 
 pub(all) struct Override {
@@ -66,7 +52,7 @@ pub(all) struct Override {
 pub(all) struct PartName {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn PartName::parse(String) -> Self raise SchemaViolation
+pub fn PartName::parse(String) -> Self raise @errors.SchemaViolation
 pub fn PartName::to_string(Self) -> String
 
 pub(all) struct Types {

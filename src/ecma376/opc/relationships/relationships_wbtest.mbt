@@ -19,38 +19,42 @@ test "relationships reject schema violations" {
       "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"t\" Target=\"x\" TargetMode=\"Remote\"/></Relationships>",
     ),
   )
-  assert_true(invalid_mode is Err(SchemaViolation(_)))
+  assert_true(invalid_mode is Err(@opc_errors.SchemaViolation(_)))
   let duplicate = try? read_relationships(
     b(
       "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"t\" Target=\"x\"/><Relationship Id=\"rId1\" Type=\"t\" Target=\"y\"/></Relationships>",
     ),
   )
-  assert_true(duplicate is Err(SchemaViolation(_)))
+  assert_true(duplicate is Err(@opc_errors.SchemaViolation(_)))
 }
 
 ///|
 test "public relationships E3 and E4 errors carry context" {
-  require_supported_feature(
+  @opc_errors.require_supported_feature(
     false,
     section="",
     path="/Relationships",
     reason="recognized but not implemented",
   ) catch {
-    UnsupportedFeature(section="", path="/Relationships", reason=_reason) => ()
-    _ => fail("expected UnsupportedFeature")
+    @opc_errors.UnsupportedFeature(
+      section="",
+      path="/Relationships",
+      reason=_reason
+    ) => ()
+    _ => fail("expected @opc_errors.UnsupportedFeature")
   }
-  require_resource(
+  @opc_errors.require_resource(
     false,
     section="",
     path="/Relationships/Relationship",
     target="missing.xml",
   ) catch {
-    ResourceMissing(
+    @opc_errors.ResourceMissing(
       section="",
       path="/Relationships/Relationship",
       target=_target
     ) => ()
-    _ => fail("expected ResourceMissing")
+    _ => fail("expected @opc_errors.ResourceMissing")
   }
 }
 

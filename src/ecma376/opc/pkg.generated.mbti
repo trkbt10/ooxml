@@ -4,28 +4,14 @@ package "trkbt10/ooxml/ecma376/opc"
 import {
   "moonbitlang/core/debug",
   "trkbt10/ooxml/ecma376/opc/content_types",
+  "trkbt10/ooxml/ecma376/opc/errors",
   "trkbt10/ooxml/ecma376/opc/relationships",
 }
 
 // Values
 pub fn package_name() -> String
 
-pub fn require_schema(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise SchemaViolation
-
-pub fn require_supported_feature(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise UnsupportedFeature
-
 // Errors
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
-} derive(@debug.Debug)
-
-pub suberror SchemaViolation {
-  SchemaViolation(section~ : String, path~ : String, reason~ : String)
-} derive(@debug.Debug)
-
-pub suberror UnsupportedFeature {
-  UnsupportedFeature(section~ : String, path~ : String, reason~ : String)
-} derive(@debug.Debug)
 
 // Types and methods
 pub struct PackUri {
@@ -33,7 +19,7 @@ pub struct PackUri {
   part : String
 } derive(Eq)
 pub fn PackUri::compose(String, String) -> Self
-pub fn PackUri::parse(String) -> Self raise SchemaViolation
+pub fn PackUri::parse(String) -> Self raise @errors.SchemaViolation
 pub fn PackUri::to_string(Self) -> String
 
 pub(all) struct Package {

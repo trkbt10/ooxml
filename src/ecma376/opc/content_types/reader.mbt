@@ -9,7 +9,7 @@
 pub fn read_content_types(bytes : Bytes) -> Types raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "Types", content_types_ns()) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10.1",
       path="/",
       reason="expected Types in the content-types namespace",
@@ -22,7 +22,7 @@ pub fn read_content_types(bytes : Bytes) -> Types raise {
     } else if is_element(child, "Override", content_types_ns()) {
       rules.push(Override(read_override(child)))
     } else {
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="10.1",
         path="/Types/" + child.name.local_name,
         reason="Types may contain only Default or Override elements",
@@ -33,7 +33,9 @@ pub fn read_content_types(bytes : Bytes) -> Types raise {
 }
 
 ///|
-fn read_default(element : @xml.Element) -> Default raise SchemaViolation {
+fn read_default(
+  element : @xml.Element,
+) -> Default raise @opc_errors.SchemaViolation {
   ensure_no_element_children(element, "/Types/Default")
   Default::new(
     Extension::parse(
@@ -46,7 +48,9 @@ fn read_default(element : @xml.Element) -> Default raise SchemaViolation {
 }
 
 ///|
-fn read_override(element : @xml.Element) -> Override raise SchemaViolation {
+fn read_override(
+  element : @xml.Element,
+) -> Override raise @opc_errors.SchemaViolation {
   ensure_no_element_children(element, "/Types/Override")
   Override::new(
     PartName::parse(
@@ -63,11 +67,11 @@ fn required_attribute(
   element : @xml.Element,
   name : String,
   path : String,
-) -> String raise SchemaViolation {
+) -> String raise @opc_errors.SchemaViolation {
   for attr in element.attributes {
     if attr.name.local_name == name && attr.name.ns == None {
       if attr.value == "" {
-        raise SchemaViolation(
+        raise @opc_errors.SchemaViolation(
           section="10.1",
           path~,
           reason="required attribute must not be empty",
@@ -76,7 +80,7 @@ fn required_attribute(
       return attr.value
     }
   }
-  raise SchemaViolation(
+  raise @opc_errors.SchemaViolation(
     section="10.1",
     path~,
     reason="required attribute is missing",
@@ -87,10 +91,10 @@ fn required_attribute(
 fn ensure_no_element_children(
   element : @xml.Element,
   path : String,
-) -> Unit raise SchemaViolation {
+) -> Unit raise @opc_errors.SchemaViolation {
   for child in element.children {
     if child is @xml.Node::Element(nested) {
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="10.1",
         path=path + "/" + nested.name.local_name,
         reason="content-types declarations must not contain child elements",
@@ -103,14 +107,14 @@ fn ensure_no_element_children(
 fn element_children(
   element : @xml.Element,
   path : String,
-) -> Array[@xml.Element] raise SchemaViolation {
+) -> Array[@xml.Element] raise @opc_errors.SchemaViolation {
   let children : Array[@xml.Element] = []
   for child in element.children {
     match child {
       Element(element) => children.push(element)
       Text(text) | CData(text) =>
         if text.trim() != "" {
-          raise SchemaViolation(
+          raise @opc_errors.SchemaViolation(
             section="10.1",
             path~,
             reason="element-only content contains non-whitespace text",

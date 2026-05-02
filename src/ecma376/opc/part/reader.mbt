@@ -10,12 +10,12 @@ pub fn read_thumbnail_part(name : PartName, bytes : Bytes) -> ThumbnailPart {
 ///|
 /// Parses the generic §5 Inputs byte stream for an OPC part conforming to OPC
 /// §9 Thumbnails. Honours C1 by accepting the listed thumbnail part shape,
-/// C2/C5 by raising SchemaViolation with section "9", and V1 by leaving
+/// C2/C5 by raising @opc_errors.SchemaViolation with section "9", and V1 by leaving
 /// cross-package resource interpretation to the surrounding OPC resolver.
 pub fn read_part(
   name : PartName,
   bytes : Bytes,
-) -> PackagePart raise SchemaViolation {
+) -> PackagePart raise @opc_errors.SchemaViolation {
   PackagePart::new(name, "application/octet-stream", bytes)
 }
 
@@ -27,12 +27,12 @@ pub fn read_part(
 /// Extensibility is honored by retaining extension-bearing XML; §8.3.3
 /// coreProperties / CT_CoreProperties is validated as the root element. XML
 /// well-formedness failures are @xml.XmlMalformed E1; schema failures are OPC
-/// §8 E2 SchemaViolation with section metadata, and C3/V2 preserve parsed
+/// §8 E2 @opc_errors.SchemaViolation with section metadata, and C3/V2 preserve parsed
 /// attributes and child order for round-trip writing.
 pub fn read_core_properties(bytes : Bytes) -> CoreProperties raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "coreProperties", core_properties_ns()) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="9",
       path="/",
       reason="expected coreProperties in the core-properties namespace",
@@ -43,20 +43,22 @@ pub fn read_core_properties(bytes : Bytes) -> CoreProperties raise {
 }
 
 ///|
-fn validate_core_properties(root : @xml.Element) -> Unit raise SchemaViolation {
+fn validate_core_properties(
+  root : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
   let seen : Array[String] = []
   for child in root.children {
     if child is @xml.Node::Element(element) {
       let key = expanded_name(element)
       if !core_property_child_ok(element) {
-        raise SchemaViolation(
+        raise @opc_errors.SchemaViolation(
           section="9",
           path="/coreProperties/" + element.name.local_name,
           reason="element is not allowed by CT_CoreProperties",
         )
       }
       if seen.contains(key) {
-        raise SchemaViolation(
+        raise @opc_errors.SchemaViolation(
           section="9",
           path="/coreProperties/" + element.name.local_name,
           reason="CT_CoreProperties permits at most one of each child",
@@ -72,11 +74,13 @@ fn validate_core_properties(root : @xml.Element) -> Unit raise SchemaViolation {
 }
 
 ///|
-fn validate_keywords(element : @xml.Element) -> Unit raise SchemaViolation {
+fn validate_keywords(
+  element : @xml.Element,
+) -> Unit raise @opc_errors.SchemaViolation {
   for child in element.children {
     if child is @xml.Node::Element(value) {
       if !is_element(value, "value", core_properties_ns()) {
-        raise SchemaViolation(
+        raise @opc_errors.SchemaViolation(
           section="9",
           path="/coreProperties/keywords/" + value.name.local_name,
           reason="keywords may contain only CT_Keyword value elements",

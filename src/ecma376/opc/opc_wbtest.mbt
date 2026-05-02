@@ -37,7 +37,7 @@ test "open reports unresolved internal relationship target" {
     ("_rels/.rels", rels),
   ])
   let opened = try? Package::open(try! @zip.write(archive))
-  assert_true(opened is Err(ResourceMissing(_)))
+  assert_true(opened is Err(@opc_errors.ResourceMissing(_)))
 }
 
 ///|

@@ -8,12 +8,14 @@ pub(all) enum TargetMode {
 ///|
 /// Parse ST_TargetMode, rejecting values outside the Internal/External
 /// enumeration.
-pub fn TargetMode::parse(value : String) -> TargetMode raise SchemaViolation {
+pub fn TargetMode::parse(
+  value : String,
+) -> TargetMode raise @opc_errors.SchemaViolation {
   match value {
     "Internal" => Internal
     "External" => External
     _ =>
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="",
         path="Relationship/@TargetMode",
         reason="TargetMode must be Internal or External",
@@ -62,23 +64,23 @@ fn Relationship::new(
   type_uri : String,
   target : String,
   target_mode : TargetMode,
-) -> Relationship raise SchemaViolation {
+) -> Relationship raise @opc_errors.SchemaViolation {
   if id == "" {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="",
       path="Relationship/@Id",
       reason="Id is required",
     )
   }
   if type_uri == "" {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="",
       path="Relationship/@Type",
       reason="Type is required",
     )
   }
   if target == "" {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="",
       path="Relationship/@Target",
       reason="Target is required",
@@ -98,11 +100,11 @@ pub(all) struct Relationships {
 /// values.
 fn Relationships::new(
   relationships : Array[Relationship],
-) -> Relationships raise SchemaViolation {
+) -> Relationships raise @opc_errors.SchemaViolation {
   let ids : Array[String] = []
   for relationship in relationships {
     if ids.contains(relationship.id) {
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="",
         path="/Relationships/Relationship/@Id",
         reason="duplicate relationship Id",

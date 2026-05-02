@@ -11,11 +11,13 @@ pub(all) struct PartName {
 ///|
 /// Parse a package part name for OPC §9 Thumbnails. This enforces §2
 /// Conformance C2 by rejecting malformed part names that violate structural
-/// constraints, and C5 by reporting SchemaViolation with the §9 section
+/// constraints, and C5 by reporting @opc_errors.SchemaViolation with the §9 section
 /// reference and local path.
-pub fn PartName::parse(value : String) -> PartName raise SchemaViolation {
+pub fn PartName::parse(
+  value : String,
+) -> PartName raise @opc_errors.SchemaViolation {
   if !value.has_prefix("/") {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="9",
       path="PartName",
       reason="part name must start with /",
@@ -26,7 +28,7 @@ pub fn PartName::parse(value : String) -> PartName raise SchemaViolation {
     value.has_suffix("/") ||
     value.contains("/../") ||
     value.contains("/./") {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="9",
       path="PartName",
       reason="part name contains a disallowed segment",
@@ -80,9 +82,9 @@ fn PackagePart::new(
   name : PartName,
   content_type : String,
   data : Bytes,
-) -> PackagePart raise SchemaViolation {
+) -> PackagePart raise @opc_errors.SchemaViolation {
   if content_type == "" {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="9",
       path="PackagePart/@contentType",
       reason="content type must not be empty",

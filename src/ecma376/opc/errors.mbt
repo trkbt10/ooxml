@@ -1,44 +1,22 @@
 ///|
-/// OPC §8 Errors E2 package-level schema error.
-pub suberror SchemaViolation {
-  SchemaViolation(section~ : String, path~ : String, reason~ : String)
-} derive(Debug)
+/// OPC §8 Errors E2 package-level schema error; canonical type is
+/// `@opc_errors.SchemaViolation`.
+///
+/// Facade anchor: this package coordinates ZIP, content-types, and
+/// relationships into an OPC package, so its §8 helper surface is retained for
+/// callers that validate package-level §6 Pack URI and §9 package model
+/// conditions through `src/ecma376/opc`.
 
 ///|
-/// OPC §8 Errors E3 package feature error.
-pub suberror UnsupportedFeature {
-  UnsupportedFeature(section~ : String, path~ : String, reason~ : String)
-} derive(Debug)
+/// OPC §8 Errors E3 package feature error; canonical type is
+/// `@opc_errors.UnsupportedFeature`.
+///
+/// Facade anchor: recognised-but-unimplemented package behaviours remain
+/// reported as §8 E3 with the package path supplied by the caller.
 
 ///|
-/// OPC §8 Errors E4 unresolved package resource error.
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
-} derive(Debug)
-
-///|
-/// Enforce an OPC package schema condition, including ECMA-376 Part 2 §6.2.5
-/// Xml Usage constraints delegated by XML-owning OPC sub-packages.
-pub fn require_schema(
-  valid : Bool,
-  section~ : String,
-  path~ : String,
-  reason~ : String,
-) -> Unit raise SchemaViolation {
-  if !valid {
-    raise SchemaViolation(section~, path~, reason~)
-  }
-}
-
-///|
-/// Enforce an OPC package capability check.
-pub fn require_supported_feature(
-  supported : Bool,
-  section~ : String,
-  path~ : String,
-  reason~ : String,
-) -> Unit raise UnsupportedFeature {
-  if !supported {
-    raise UnsupportedFeature(section~, path~, reason~)
-  }
-}
+/// OPC §8 Errors E4 unresolved package resource error; canonical type is
+/// `@opc_errors.ResourceMissing`.
+///
+/// Facade anchor: missing physical ZIP entries, relationship targets, and
+/// package parts remain reported as §8 E4 by the package facade.

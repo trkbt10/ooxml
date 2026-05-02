@@ -51,19 +51,19 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
       theme: package.part("/xl/theme/theme1.xml"),
     }
   } catch {
-    @opc.ResourceMissing(section~, path~, target~) =>
+    @opc_errors.ResourceMissing(section~, path~, target~) =>
       raise OpenError(
         kind="ResourceMissing",
         path~,
         reason=section + ": " + target,
       )
-    @opc.SchemaViolation(section~, path~, reason~) =>
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
       raise OpenError(
         kind="SchemaViolation",
         path~,
         reason=section + ": " + reason,
       )
-    @opc.UnsupportedFeature(section~, path~, reason~) =>
+    @opc_errors.UnsupportedFeature(section~, path~, reason~) =>
       raise OpenError(
         kind="UnsupportedFeature",
         path~,

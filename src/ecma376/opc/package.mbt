@@ -58,7 +58,7 @@ pub fn Package::open(bytes : Bytes) -> Package raise {
           content_types.content_type_for_part(ct_part_name) {
           Some(value) => value.to_string()
           None =>
-            raise ResourceMissing(
+            raise @opc_errors.ResourceMissing(
               section="7.3.7",
               path="[Content_Types].xml",
               target=part_name,
@@ -157,7 +157,7 @@ pub fn Package::relationships(
 ///|
 fn Package::validate_relationship_targets(
   self : Package,
-) -> Unit raise ResourceMissing {
+) -> Unit raise @opc_errors.ResourceMissing {
   match self.package_relationships {
     Some(relationships) => validate_targets(self, "/", relationships)
     None => ()
@@ -173,12 +173,12 @@ fn validate_targets(
   pkg : Package,
   owner : String,
   relationships : @relationships.Relationships,
-) -> Unit raise ResourceMissing {
+) -> Unit raise @opc_errors.ResourceMissing {
   for relationship in relationships.relationships {
     if relationship.target_mode == @relationships.TargetMode::Internal {
       let target = resolve_target(owner, relationship.target)
       if pkg.part(target) is None {
-        raise ResourceMissing(
+        raise @opc_errors.ResourceMissing(
           section="6.4",
           path="/Relationships/Relationship[@Id='" + relationship.id + "']",
           target~,
@@ -190,18 +190,18 @@ fn validate_targets(
 
 ///|
 /// Require a ZIP entry such as §7.3.7 Mapping The Media Types Stream
-/// `[Content_Types].xml`, reporting ResourceMissing when the mapped component
+/// `[Content_Types].xml`, reporting @opc_errors.ResourceMissing when the mapped component
 /// is absent.
 fn required_entry(
   archive : @zip.Archive,
   name : String,
-) -> Bytes raise ResourceMissing {
+) -> Bytes raise @opc_errors.ResourceMissing {
   for entry in archive.entries {
     if entry.name == name {
       return entry.data
     }
   }
-  raise ResourceMissing(section="7.3.7", path=name, target=name)
+  raise @opc_errors.ResourceMissing(section="7.3.7", path=name, target=name)
 }
 
 ///|

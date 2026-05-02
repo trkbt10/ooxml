@@ -31,7 +31,7 @@ test "reject missing signature time value" {
       "<SignatureTime xmlns=\"http://schemas.openxmlformats.org/package/2006/digital-signature\"><Format>YYYY</Format></SignatureTime>",
     ),
   )
-  assert_true(invalid is Err(SchemaViolation(_)))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
 
 ///|

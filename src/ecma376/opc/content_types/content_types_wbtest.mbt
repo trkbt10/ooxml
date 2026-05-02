@@ -68,35 +68,42 @@ test "reject malformed content types xml" {
       "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default ContentType=\"application/xml\"/></Types>",
     ),
   )
-  assert_true(missing is Err(SchemaViolation(_)))
+  assert_true(missing is Err(@opc_errors.SchemaViolation(_)))
   let duplicate = try? read_content_types(
     b(
       "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"xml\" ContentType=\"text/xml\"/></Types>",
     ),
   )
-  assert_true(duplicate is Err(SchemaViolation(_)))
+  assert_true(duplicate is Err(@opc_errors.SchemaViolation(_)))
 }
 
 ///|
 test "public E3 and E4 errors carry content-types context" {
-  require_supported_feature(
+  @opc_errors.require_supported_feature(
     false,
     section="10.1",
     path="/Types",
     reason="recognized but not implemented",
   ) catch {
-    UnsupportedFeature(section="10.1", path="/Types", reason=_reason) => ()
-    _ => fail("expected UnsupportedFeature")
+    @opc_errors.UnsupportedFeature(
+      section="10.1",
+      path="/Types",
+      reason=_reason
+    ) => ()
+    _ => fail("expected @opc_errors.UnsupportedFeature")
   }
-  require_resource(
+  @opc_errors.require_resource(
     false,
     section="10.1",
     path="/Types/Override",
     target="/word/document.xml",
   ) catch {
-    ResourceMissing(section="10.1", path="/Types/Override", target=_target) =>
-      ()
-    _ => fail("expected ResourceMissing")
+    @opc_errors.ResourceMissing(
+      section="10.1",
+      path="/Types/Override",
+      target=_target
+    ) => ()
+    _ => fail("expected @opc_errors.ResourceMissing")
   }
 }
 

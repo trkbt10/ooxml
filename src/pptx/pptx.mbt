@@ -59,19 +59,19 @@ pub fn open(bytes : Bytes) -> Presentation raise OpenError {
       themes: raw_parts_with_prefix(package, "/ppt/theme/theme"),
     }
   } catch {
-    @opc.ResourceMissing(section~, path~, target~) =>
+    @opc_errors.ResourceMissing(section~, path~, target~) =>
       raise OpenError(
         kind="ResourceMissing",
         path~,
         reason=section + ": " + target,
       )
-    @opc.SchemaViolation(section~, path~, reason~) =>
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
       raise OpenError(
         kind="SchemaViolation",
         path~,
         reason=section + ": " + reason,
       )
-    @opc.UnsupportedFeature(section~, path~, reason~) =>
+    @opc_errors.UnsupportedFeature(section~, path~, reason~) =>
       raise OpenError(
         kind="UnsupportedFeature",
         path~,

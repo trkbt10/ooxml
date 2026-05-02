@@ -3,21 +3,36 @@ package "trkbt10/ooxml/ecma376/opc/part"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
   "trkbt10/ooxml/xml",
 }
 
 // Values
+pub fn opc_part_part2_8_1_general_section_name() -> String
+
+pub fn opc_part_part4_13_1_general_section_name() -> String
+
+pub fn opc_part_part4_13_2_11_custom_file_properties_part_part_1_15_2_12_2_section_name() -> String
+
+pub fn opc_part_part4_13_2_15_printer_settings_part_part_1_15_2_15_section_name() -> String
+
+pub fn opc_part_part4_13_2_2_audio_part_part_1_15_2_2_section_name() -> String
+
+pub fn opc_part_part4_13_2_4_content_part_part_1_15_2_4_section_name() -> String
+
+pub fn opc_part_part4_13_2_7_embedded_control_persistence_part_part_1_15_2_9_section_name() -> String
+
+pub fn opc_part_part4_13_2_8_embedded_object_part_part_1_15_2_10_section_name() -> String
+
+pub fn opc_part_part4_13_2_part_summary_part_1_15_2_section_name() -> String
+
 pub fn package_name() -> String
 
 pub fn read_core_properties(Bytes) -> CoreProperties raise
 
-pub fn read_part(PartName, Bytes) -> PackagePart raise SchemaViolation
+pub fn read_part(PartName, Bytes) -> PackagePart raise @errors.SchemaViolation
 
 pub fn read_thumbnail_part(PartName, Bytes) -> ThumbnailPart
-
-pub fn require_resource(Bool, section~ : String, path~ : String, target~ : String) -> Unit raise ResourceMissing
-
-pub fn require_supported_feature(Bool, section~ : String, path~ : String, reason~ : String) -> Unit raise UnsupportedFeature
 
 pub fn write_core_properties(CoreProperties) -> Bytes
 
@@ -26,17 +41,6 @@ pub fn write_part(PackagePart) -> Bytes
 pub fn write_thumbnail_part(ThumbnailPart) -> Bytes
 
 // Errors
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
-} derive(@debug.Debug)
-
-pub suberror SchemaViolation {
-  SchemaViolation(section~ : String, path~ : String, reason~ : String)
-} derive(@debug.Debug)
-
-pub suberror UnsupportedFeature {
-  UnsupportedFeature(section~ : String, path~ : String, reason~ : String)
-} derive(@debug.Debug)
 
 // Types and methods
 #alias(CT_Keyword)
@@ -61,7 +65,7 @@ pub(all) struct PackagePart {
 pub(all) struct PartName {
   value : String
 } derive(Eq, @debug.Debug)
-pub fn PartName::parse(String) -> Self raise SchemaViolation
+pub fn PartName::parse(String) -> Self raise @errors.SchemaViolation
 pub fn PartName::to_string(Self) -> String
 
 pub(all) struct ThumbnailPart {

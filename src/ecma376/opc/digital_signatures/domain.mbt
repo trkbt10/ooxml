@@ -11,9 +11,9 @@ pub(all) struct RelationshipReference {
 /// Build CT_RelationshipReference, enforcing the required SourceId attribute.
 fn RelationshipReference::new(
   source_id : String,
-) -> RelationshipReference raise SchemaViolation {
+) -> RelationshipReference raise @opc_errors.SchemaViolation {
   if source_id == "" {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10",
       path="RelationshipReference/@SourceId",
       reason="SourceId must not be empty",
@@ -35,9 +35,9 @@ pub(all) struct RelationshipsGroupReference {
 /// Build CT_RelationshipsGroupReference, enforcing the required SourceType URI.
 fn RelationshipsGroupReference::new(
   source_type : String,
-) -> RelationshipsGroupReference raise SchemaViolation {
+) -> RelationshipsGroupReference raise @opc_errors.SchemaViolation {
   if source_type == "" {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10",
       path="RelationshipsGroupReference/@SourceType",
       reason="SourceType must not be empty",
@@ -67,9 +67,11 @@ pub type Format = ST_Format
 ///
 /// Format element under SignatureTime, rejecting values outside the lexical
 /// constraint and enumeration-like token set as C4 schema violations.
-pub fn ST_Format::new(value : String) -> ST_Format raise SchemaViolation {
+pub fn ST_Format::new(
+  value : String,
+) -> ST_Format raise @opc_errors.SchemaViolation {
   if !is_signature_time_format(value) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10",
       path="SignatureTime/Format",
       reason="ST_Format does not match the allowed timestamp format tokens",
@@ -104,9 +106,11 @@ pub type Value = ST_Value
 /// Build XSD simple type ST_Value from schema opc-digSig.xsd for the §10.5.17
 /// Value element under SignatureTime, rejecting values outside the lexical
 /// constraint as C4 schema violations.
-pub fn ST_Value::new(value : String) -> ST_Value raise SchemaViolation {
+pub fn ST_Value::new(
+  value : String,
+) -> ST_Value raise @opc_errors.SchemaViolation {
   if !is_signature_time_value(value) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10",
       path="SignatureTime/Value",
       reason="ST_Value does not match the allowed timestamp lexical forms",

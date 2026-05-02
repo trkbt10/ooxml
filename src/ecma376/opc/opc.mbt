@@ -12,7 +12,7 @@
 /// - §2 Conformance C1-C5: schema acceptance, structural rejection, attribute
 ///   preservation, lexical checks, and section/path errors are delegated to the
 ///   sub-packages; Package::open and Package::save enforce the facade contract
-///   by composing those readers, writers, constructors, and ResourceMissing
+///   by composing those readers, writers, constructors, and @opc_errors.ResourceMissing
 ///   checks.
 /// - §3 TOC coverage, Part 2: §6 Abstract Package Model; §6.1 General; §6.2
 ///   Parts; §6.2.1 General; §6.2.2 Part Names; §6.2.4 Growth Hint; §6.2.5 Xml
@@ -54,7 +54,7 @@
 ///   relationship TargetMode, are materialised before consumers observe the
 ///   opened Package.
 /// - §8 Errors: this facade owns no schema error type; XmlMalformed,
-///   SchemaViolation, and ResourceMissing are delegated from sub-packages, and
+///   @opc_errors.SchemaViolation, and @opc_errors.ResourceMissing are delegated from sub-packages, and
 ///   ZIP errors come from @zip.
 /// - §9 Drift hooks: coverage.json represents §6 and §7 section headings;
 ///   alignment is measured against Package, PackagePart, PackUri, open/save,

@@ -3,7 +3,7 @@
 pub fn read_relationships(bytes : Bytes) -> Relationships raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "Relationships", relationships_ns()) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="",
       path="/",
       reason="expected Relationships in the relationships namespace",
@@ -12,7 +12,7 @@ pub fn read_relationships(bytes : Bytes) -> Relationships raise {
   let relationships : Array[Relationship] = []
   for child in element_children(doc.root, "/Relationships") {
     if !is_element(child, "Relationship", relationships_ns()) {
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="",
         path="/Relationships/" + child.name.local_name,
         reason="Relationships may contain only Relationship elements",
@@ -49,11 +49,11 @@ fn required_attribute(
   element : @xml.Element,
   name : String,
   path : String,
-) -> String raise SchemaViolation {
+) -> String raise @opc_errors.SchemaViolation {
   for attr in element.attributes {
     if attr.name.local_name == name && attr.name.ns == None {
       if attr.value == "" {
-        raise SchemaViolation(
+        raise @opc_errors.SchemaViolation(
           section="",
           path~,
           reason="required attribute must not be empty",
@@ -62,7 +62,7 @@ fn required_attribute(
       return attr.value
     }
   }
-  raise SchemaViolation(
+  raise @opc_errors.SchemaViolation(
     section="",
     path~,
     reason="required attribute is missing",
@@ -73,10 +73,10 @@ fn required_attribute(
 fn ensure_no_element_children(
   element : @xml.Element,
   path : String,
-) -> Unit raise SchemaViolation {
+) -> Unit raise @opc_errors.SchemaViolation {
   for child in element.children {
     if child is @xml.Node::Element(nested) {
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="",
         path=path + "/" + nested.name.local_name,
         reason="Relationship must not contain child elements",
@@ -89,14 +89,14 @@ fn ensure_no_element_children(
 fn element_children(
   element : @xml.Element,
   path : String,
-) -> Array[@xml.Element] raise SchemaViolation {
+) -> Array[@xml.Element] raise @opc_errors.SchemaViolation {
   let children : Array[@xml.Element] = []
   for child in element.children {
     match child {
       Element(element) => children.push(element)
       Text(text) | CData(text) =>
         if text.trim() != "" {
-          raise SchemaViolation(
+          raise @opc_errors.SchemaViolation(
             section="",
             path~,
             reason="element-only content contains non-whitespace text",

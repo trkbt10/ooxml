@@ -56,17 +56,17 @@ priv struct ReferenceProcessingData {
 pub fn apply_relationships_transform(
   source : Bytes,
   filter : Array[String]?,
-) -> Bytes raise SchemaViolation {
+) -> Bytes raise @opc_errors.SchemaViolation {
   let doc = @xml.parse(source) catch {
     _ =>
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="10.6",
         path="/",
         reason="relationships part is not well-formed XML",
       )
   }
   if !is_algorithm_element(doc.root, "Relationships", relationships_namespace()) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10.6",
       path="/",
       reason="expected Relationships in the relationships namespace",
@@ -75,7 +75,7 @@ pub fn apply_relationships_transform(
   let selected : Array[RelationshipTransformEntry] = []
   for child in algorithm_element_children(doc.root, "/Relationships", "10.6") {
     if !is_algorithm_element(child, "Relationship", relationships_namespace()) {
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="10.6",
         path="/Relationships/" + child.name.local_name,
         reason="Relationships may contain only Relationship elements",
@@ -110,7 +110,7 @@ pub fn generate_signature(
   signed_info : SignedInfo,
   resolve : (String) -> Bytes,
   sign : (Bytes) -> Bytes,
-) -> Signature raise SchemaViolation {
+) -> Signature raise @opc_errors.SchemaViolation {
   let populated_signed_info = populate_reference_digests(signed_info, resolve)
   let canonical_signed_info = canonicalize_xml(
     write_signed_info(populated_signed_info),
@@ -131,7 +131,7 @@ pub fn validate_signature(
   signature : Signature,
   resolve : (String) -> Bytes,
   verify : (Bytes, Bytes) -> Bool,
-) -> Bool raise SchemaViolation {
+) -> Bool raise @opc_errors.SchemaViolation {
   let signed_info = signature_signed_info(signature)
   let signature_value = signature_value_bytes(signature)
   let canonical_signed_info = canonicalize_xml(write_signed_info(signed_info))
@@ -154,7 +154,7 @@ pub fn validate_signature(
 fn populate_reference_digests(
   signed_info : SignedInfo,
   resolve : (String) -> Bytes,
-) -> SignedInfo raise SchemaViolation {
+) -> SignedInfo raise @opc_errors.SchemaViolation {
   let children : Array[@xml.Node] = []
   for child in signed_info.children {
     match child {
@@ -187,7 +187,7 @@ fn populate_reference_digests(
 fn apply_transforms(
   source : Bytes,
   transforms : Array[Transform],
-) -> Bytes raise SchemaViolation {
+) -> Bytes raise @opc_errors.SchemaViolation {
   let mut current = source
   for transform in transforms {
     if transform.algorithm == relationship_transform_algorithm() {
@@ -198,7 +198,7 @@ fn apply_transforms(
     } else if transform.algorithm == c14n_algorithm() {
       current = canonicalize_xml(current)
     } else {
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="10.8",
         path="/SignedInfo/Reference/Transforms/Transform/@Algorithm",
         reason="unsupported transform algorithm: " + transform.algorithm,
@@ -212,9 +212,9 @@ fn apply_transforms(
 fn digest_reference_bytes(
   bytes : Bytes,
   digest_method : DigestMethod,
-) -> String raise SchemaViolation {
+) -> String raise @opc_errors.SchemaViolation {
   if digest_method.algorithm != sha256_algorithm() {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10.8",
       path="/SignedInfo/Reference/DigestMethod/@Algorithm",
       reason="unsupported digest algorithm: " + digest_method.algorithm,
@@ -226,7 +226,7 @@ fn digest_reference_bytes(
 ///|
 fn read_reference_processing_data(
   element : @xml.Element,
-) -> ReferenceProcessingData raise SchemaViolation {
+) -> ReferenceProcessingData raise @opc_errors.SchemaViolation {
   let reference = Reference::new(
     algorithm_optional_attribute(element, "Id"),
     algorithm_optional_attribute(element, "Type"),
@@ -251,7 +251,7 @@ fn read_reference_processing_data(
               "Transform",
               xmldsig_namespace_for_algorithm(),
             ) {
-            raise SchemaViolation(
+            raise @opc_errors.SchemaViolation(
               section="10.8",
               path="/Reference/Transforms/" + transform_element.name.local_name,
               reason="Transforms may contain only Transform elements",
@@ -286,7 +286,7 @@ fn read_reference_processing_data(
   match digest_method {
     Some(value) => { reference, transforms, digest_method: value }
     None =>
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="10.8",
         path="/Reference/DigestMethod",
         reason="Reference requires a DigestMethod",
@@ -345,7 +345,7 @@ fn signed_info_element(value : SignedInfo) -> @xml.Element {
 ///|
 fn signature_signed_info(
   signature : Signature,
-) -> SignedInfo raise SchemaViolation {
+) -> SignedInfo raise @opc_errors.SchemaViolation {
   for child in signature.children {
     if child is Element(element) &&
       is_algorithm_element(
@@ -359,7 +359,7 @@ fn signature_signed_info(
       )
     }
   }
-  raise SchemaViolation(
+  raise @opc_errors.SchemaViolation(
     section="10.9",
     path="/Signature/SignedInfo",
     reason="Signature requires SignedInfo",
@@ -367,7 +367,9 @@ fn signature_signed_info(
 }
 
 ///|
-fn signature_value_bytes(signature : Signature) -> Bytes raise SchemaViolation {
+fn signature_value_bytes(
+  signature : Signature,
+) -> Bytes raise @opc_errors.SchemaViolation {
   for child in signature.children {
     if child is Element(element) &&
       is_algorithm_element(
@@ -377,7 +379,7 @@ fn signature_value_bytes(signature : Signature) -> Bytes raise SchemaViolation {
       ) {
       return @base64.decode(element_text_for_algorithm(element)[:]) catch {
         _ =>
-          raise SchemaViolation(
+          raise @opc_errors.SchemaViolation(
             section="10.9",
             path="/Signature/SignatureValue",
             reason="SignatureValue is not valid base64",
@@ -385,7 +387,7 @@ fn signature_value_bytes(signature : Signature) -> Bytes raise SchemaViolation {
       }
     }
   }
-  raise SchemaViolation(
+  raise @opc_errors.SchemaViolation(
     section="10.9",
     path="/Signature/SignatureValue",
     reason="Signature requires SignatureValue",
@@ -395,7 +397,7 @@ fn signature_value_bytes(signature : Signature) -> Bytes raise SchemaViolation {
 ///|
 fn signed_info_references(
   signed_info : SignedInfo,
-) -> Array[ReferenceProcessingData] raise SchemaViolation {
+) -> Array[ReferenceProcessingData] raise @opc_errors.SchemaViolation {
   let references : Array[ReferenceProcessingData] = []
   for child in signed_info.children {
     if child is Element(element) &&
@@ -498,10 +500,10 @@ fn sort_relationship_transform_entries(
 }
 
 ///|
-fn canonicalize_xml(bytes : Bytes) -> Bytes raise SchemaViolation {
+fn canonicalize_xml(bytes : Bytes) -> Bytes raise @opc_errors.SchemaViolation {
   let doc = @xml.parse(bytes) catch {
     _ =>
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="10.8",
         path="/",
         reason="XML input is not well-formed for canonicalization",
@@ -672,14 +674,14 @@ fn algorithm_element_children(
   element : @xml.Element,
   path : String,
   section : String,
-) -> Array[@xml.Element] raise SchemaViolation {
+) -> Array[@xml.Element] raise @opc_errors.SchemaViolation {
   let children : Array[@xml.Element] = []
   for child in element.children {
     match child {
       Element(element) => children.push(element)
       Text(text) | CData(text) =>
         if text.trim() != "" {
-          raise SchemaViolation(
+          raise @opc_errors.SchemaViolation(
             section~,
             path~,
             reason="element-only content contains non-whitespace text",
@@ -697,11 +699,11 @@ fn algorithm_required_attribute(
   name : String,
   path : String,
   section : String,
-) -> String raise SchemaViolation {
+) -> String raise @opc_errors.SchemaViolation {
   match algorithm_optional_attribute(element, name) {
     Some(value) =>
       if value == "" {
-        raise SchemaViolation(
+        raise @opc_errors.SchemaViolation(
           section~,
           path~,
           reason="required attribute is empty",
@@ -710,7 +712,7 @@ fn algorithm_required_attribute(
         value
       }
     None =>
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section~,
         path~,
         reason="required attribute is missing",

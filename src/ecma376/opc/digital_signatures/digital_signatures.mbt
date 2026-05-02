@@ -8,11 +8,11 @@
 ///
 /// §2 Conformance C1 is represented by readers for the three opc-digSig
 /// top-level elements and the W3C XML-Signature elements referenced by §10.5.
-/// C2 is represented by SchemaViolation from constructors and readers. C3 is
+/// C2 is represented by @opc_errors.SchemaViolation from constructors and readers. C3 is
 /// represented by writers preserving parsed attributes and child nodes. C4 is
 /// represented by ST_Format::new and ST_Value::new lexical checks. C5 is
-/// represented by section-bearing SchemaViolation, UnsupportedFeature, and
-/// ResourceMissing errors.
+/// represented by section-bearing @opc_errors.SchemaViolation, @opc_errors.UnsupportedFeature, and
+/// @opc_errors.ResourceMissing errors.
 ///
 /// §3 Specification Sections: §10 Digital Signatures is represented by
 /// package_name and digital_signature_ns. §10.1 General defines the digital
@@ -81,7 +81,7 @@
 /// §5 Inputs I1 are XML byte streams passed to read_* functions. I2 is the
 /// namespace context checked by digital_signature_ns and the XML-Signature
 /// namespace readers. I3 is the package-level resolver contract reported with
-/// ResourceMissing when the surrounding OPC layer cannot supply a referenced
+/// @opc_errors.ResourceMissing when the surrounding OPC layer cannot supply a referenced
 /// signature resource.
 ///
 /// §6 Outputs O1 are typed domain values: RelationshipReference,
@@ -100,12 +100,12 @@
 /// attributes and simple-type lexical constraints are checked.
 ///
 /// §8 Errors E1 XmlMalformed comes from @xml parsing and is mapped to
-/// SchemaViolation by the XML-Signature shell readers. E2 SchemaViolation
+/// @opc_errors.SchemaViolation by the XML-Signature shell readers. E2 @opc_errors.SchemaViolation
 /// reports malformed opc-digSig structure, lexical constraints, unsupported
 /// XML-Signature transform identifiers, and digest identifiers not implemented
-/// by this package. E3 UnsupportedFeature remains available for optional
+/// by this package. E3 @opc_errors.UnsupportedFeature remains available for optional
 /// ECMA-376 features outside this package's current API surface. E4
-/// ResourceMissing is the resolver error type for missing OPC signature
+/// @opc_errors.ResourceMissing is the resolver error type for missing OPC signature
 /// resources.
 ///
 /// §9 Drift Measurement Hooks are the §10 section references, schema

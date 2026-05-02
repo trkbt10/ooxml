@@ -10,7 +10,7 @@ pub fn read_relationship_reference(
 ) -> RelationshipReference raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "RelationshipReference", digital_signature_ns()) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10",
       path="/",
       reason="expected RelationshipReference in the digital-signature namespace",
@@ -36,7 +36,7 @@ pub fn read_relationships_group_reference(
       "RelationshipsGroupReference",
       digital_signature_ns(),
     ) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10",
       path="/",
       reason="expected RelationshipsGroupReference in the digital-signature namespace",
@@ -56,11 +56,11 @@ pub fn read_relationships_group_reference(
 /// Read the §5 Inputs XML byte stream for SignatureTime, CT_SignatureTime,
 /// ST_Format, and ST_Value while enforcing the opc-digSig sequence Format then
 /// Value for 7. Invariants V2 and rejecting C4 pattern violations as
-/// SchemaViolation.
+/// @opc_errors.SchemaViolation.
 pub fn read_signature_time(bytes : Bytes) -> SignatureTime raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "SignatureTime", digital_signature_ns()) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10",
       path="/",
       reason="expected SignatureTime in the digital-signature namespace",
@@ -68,7 +68,7 @@ pub fn read_signature_time(bytes : Bytes) -> SignatureTime raise {
   }
   let elements = element_children(doc.root, "/SignatureTime")
   if elements.length() != 2 {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10",
       path="/SignatureTime",
       reason="SignatureTime must contain exactly Format and Value",
@@ -76,7 +76,7 @@ pub fn read_signature_time(bytes : Bytes) -> SignatureTime raise {
   }
   if !is_element(elements[0], "Format", digital_signature_ns()) ||
     !is_element(elements[1], "Value", digital_signature_ns()) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10",
       path="/SignatureTime",
       reason="SignatureTime children must be ordered Format then Value",
@@ -104,10 +104,10 @@ fn element_text(element : @xml.Element) -> String {
 fn ensure_no_element_children(
   element : @xml.Element,
   path : String,
-) -> Unit raise SchemaViolation {
+) -> Unit raise @opc_errors.SchemaViolation {
   for child in element.children {
     if child is @xml.Node::Element(nested) {
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="10",
         path=path + "/" + nested.name.local_name,
         reason="simple-content element must not contain child elements",
@@ -120,14 +120,14 @@ fn ensure_no_element_children(
 fn element_children(
   element : @xml.Element,
   path : String,
-) -> Array[@xml.Element] raise SchemaViolation {
+) -> Array[@xml.Element] raise @opc_errors.SchemaViolation {
   let children : Array[@xml.Element] = []
   for child in element.children {
     match child {
       Element(element) => children.push(element)
       Text(text) | CData(text) =>
         if text.trim() != "" {
-          raise SchemaViolation(
+          raise @opc_errors.SchemaViolation(
             section="10",
             path~,
             reason="element-only content contains non-whitespace text",
@@ -144,11 +144,11 @@ fn required_attribute(
   element : @xml.Element,
   name : String,
   path : String,
-) -> String raise SchemaViolation {
+) -> String raise @opc_errors.SchemaViolation {
   for attr in element.attributes {
     if attr.name.local_name == name && attr.name.ns == None {
       if attr.value == "" {
-        raise SchemaViolation(
+        raise @opc_errors.SchemaViolation(
           section="10",
           path~,
           reason="required attribute must not be empty",
@@ -157,7 +157,7 @@ fn required_attribute(
       return attr.value
     }
   }
-  raise SchemaViolation(
+  raise @opc_errors.SchemaViolation(
     section="10",
     path~,
     reason="required attribute is missing",

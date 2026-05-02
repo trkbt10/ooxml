@@ -27,17 +27,21 @@ pub fn PackUri::to_string(self : PackUri) -> String {
 ///|
 /// §6.3.2 Parse a `pack://...` URI string and support ECMA-376 Part 2 §6.3.3
 /// Resolving A Pack Iri To A Resource by exposing the part component used by
-/// Package::part. Raises SchemaViolation when the input does not start with
+/// Package::part. Raises @opc_errors.SchemaViolation when the input does not start with
 /// `pack://` or has no path component. Source anchor:
 /// references/spec/part2/sections/6.3.3__resolving-a-pack-iri-to-a-resource.md.
-pub fn PackUri::parse(s : String) -> PackUri raise SchemaViolation {
+pub fn PackUri::parse(s : String) -> PackUri raise @opc_errors.SchemaViolation {
   if !s.has_prefix("pack://") {
-    raise SchemaViolation(section="6.3", path="/", reason="not a pack:// URI")
+    raise @opc_errors.SchemaViolation(
+      section="6.3",
+      path="/",
+      reason="not a pack:// URI",
+    )
   }
   let rest = s[7:].to_owned()
   let index = find_substring(rest, "/")
   if index < 0 {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="6.3.4",
       path="/",
       reason="missing part component",

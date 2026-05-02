@@ -13,7 +13,9 @@ pub fn Signature::new(id : String?, children : Array[@xml.Node]) -> Signature {
 
 ///|
 /// Read the §10.5.3 Signature Element from W3C XML-Signature XML bytes.
-pub fn read_signature(bytes : Bytes) -> Signature raise SchemaViolation {
+pub fn read_signature(
+  bytes : Bytes,
+) -> Signature raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "Signature")
   Signature::new(optional_attribute(root, "Id"), root.children)
 }
@@ -47,7 +49,9 @@ pub fn SignedInfo::new(id : String?, children : Array[@xml.Node]) -> SignedInfo 
 /// §10.5.4 SignedInfo element reader. Parses a SignedInfo XML element from
 /// W3C XML-Signature bytes, preserving canonicalization, signature method, and
 /// Reference children in the SignedInfo domain shell.
-pub fn read_signed_info(bytes : Bytes) -> SignedInfo raise SchemaViolation {
+pub fn read_signed_info(
+  bytes : Bytes,
+) -> SignedInfo raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "SignedInfo")
   SignedInfo::new(optional_attribute(root, "Id"), root.children)
 }
@@ -77,7 +81,7 @@ pub(all) struct CanonicalizationMethod {
 pub fn CanonicalizationMethod::new(
   algorithm : String,
   children : Array[@xml.Node],
-) -> CanonicalizationMethod raise SchemaViolation {
+) -> CanonicalizationMethod raise @opc_errors.SchemaViolation {
   require_non_empty_attribute(
     algorithm, "10.5.5", "CanonicalizationMethod/@Algorithm",
   )
@@ -88,7 +92,7 @@ pub fn CanonicalizationMethod::new(
 /// Read the §10.5.5 CanonicalizationMethod Element from XML-Signature bytes.
 pub fn read_canonicalization_method(
   bytes : Bytes,
-) -> CanonicalizationMethod raise SchemaViolation {
+) -> CanonicalizationMethod raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "CanonicalizationMethod")
   CanonicalizationMethod::new(
     required_attribute(root, "Algorithm", "/CanonicalizationMethod/@Algorithm"),
@@ -119,7 +123,7 @@ pub(all) struct SignatureMethod {
 pub fn SignatureMethod::new(
   algorithm : String,
   children : Array[@xml.Node],
-) -> SignatureMethod raise SchemaViolation {
+) -> SignatureMethod raise @opc_errors.SchemaViolation {
   require_non_empty_attribute(algorithm, "10.5.6", "SignatureMethod/@Algorithm")
   { algorithm, children }
 }
@@ -128,7 +132,7 @@ pub fn SignatureMethod::new(
 /// Read the §10.5.6 SignatureMethod Element from XML-Signature bytes.
 pub fn read_signature_method(
   bytes : Bytes,
-) -> SignatureMethod raise SchemaViolation {
+) -> SignatureMethod raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "SignatureMethod")
   SignatureMethod::new(
     required_attribute(root, "Algorithm", "/SignatureMethod/@Algorithm"),
@@ -169,7 +173,9 @@ pub fn Reference::new(
 
 ///|
 /// Read the §10.5.7 Reference Element from XML-Signature bytes.
-pub fn read_reference(bytes : Bytes) -> Reference raise SchemaViolation {
+pub fn read_reference(
+  bytes : Bytes,
+) -> Reference raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "Reference")
   Reference::new(
     optional_attribute(root, "Id"),
@@ -206,7 +212,7 @@ pub(all) struct Transform {
 pub fn Transform::new(
   algorithm : String,
   children : Array[@xml.Node],
-) -> Transform raise SchemaViolation {
+) -> Transform raise @opc_errors.SchemaViolation {
   require_non_empty_attribute(algorithm, "10.5.8", "Transform/@Algorithm")
   { algorithm, children }
 }
@@ -216,7 +222,9 @@ pub fn Transform::new(
 /// XML-Signature bytes, including the Algorithm attribute and optional XPath or
 /// transform-specific child content, into the Transform domain type imported
 /// through schema opc-digSig.xsd.
-pub fn read_transform(bytes : Bytes) -> Transform raise SchemaViolation {
+pub fn read_transform(
+  bytes : Bytes,
+) -> Transform raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "Transform")
   Transform::new(
     required_attribute(root, "Algorithm", "/Transform/@Algorithm"),
@@ -249,7 +257,7 @@ pub(all) struct DigestMethod {
 pub fn DigestMethod::new(
   algorithm : String,
   children : Array[@xml.Node],
-) -> DigestMethod raise SchemaViolation {
+) -> DigestMethod raise @opc_errors.SchemaViolation {
   require_non_empty_attribute(algorithm, "10.5.11", "DigestMethod/@Algorithm")
   { algorithm, children }
 }
@@ -259,7 +267,9 @@ pub fn DigestMethod::new(
 /// from XML-Signature bytes, including the required Algorithm attribute and
 /// extension children, into the DigestMethod domain type referenced by
 /// opc-digSig.xsd.
-pub fn read_digest_method(bytes : Bytes) -> DigestMethod raise SchemaViolation {
+pub fn read_digest_method(
+  bytes : Bytes,
+) -> DigestMethod raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "DigestMethod")
   DigestMethod::new(
     required_attribute(root, "Algorithm", "/DigestMethod/@Algorithm"),
@@ -297,7 +307,7 @@ pub fn Object::new(id : String?, children : Array[@xml.Node]) -> Object {
 /// §10.5.12 Object element reader. Parses an Object XML element from XML-
 /// Signature bytes, preserving the optional Id attribute and nested object
 /// children in the Object domain type used by opc-digSig.xsd.
-pub fn read_object(bytes : Bytes) -> Object raise SchemaViolation {
+pub fn read_object(bytes : Bytes) -> Object raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "Object")
   Object::new(optional_attribute(root, "Id"), root.children)
 }
@@ -331,7 +341,9 @@ pub fn Manifest::new(id : String?, children : Array[@xml.Node]) -> Manifest {
 /// §10.5.13 Manifest element reader. Parses a Manifest XML element from XML-
 /// Signature bytes, preserving the optional Id attribute and Reference child
 /// content in the Manifest domain type referenced by opc-digSig.xsd.
-pub fn read_manifest(bytes : Bytes) -> Manifest raise SchemaViolation {
+pub fn read_manifest(
+  bytes : Bytes,
+) -> Manifest raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "Manifest")
   Manifest::new(optional_attribute(root, "Id"), root.children)
 }
@@ -363,7 +375,7 @@ pub fn SignatureProperty::new(
   id : String?,
   target : String,
   children : Array[@xml.Node],
-) -> SignatureProperty raise SchemaViolation {
+) -> SignatureProperty raise @opc_errors.SchemaViolation {
   require_non_empty_attribute(target, "10.5.14", "SignatureProperty/@Target")
   { id, target, children }
 }
@@ -372,7 +384,7 @@ pub fn SignatureProperty::new(
 /// Read the §10.5.14 SignatureProperty Element from XML-Signature bytes.
 pub fn read_signature_property(
   bytes : Bytes,
-) -> SignatureProperty raise SchemaViolation {
+) -> SignatureProperty raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "SignatureProperty")
   SignatureProperty::new(
     optional_attribute(root, "Id"),
@@ -406,7 +418,7 @@ pub fn XPath::new(id : String?, children : Array[@xml.Node]) -> XPath {
 
 ///|
 /// Read the §10.5.18 XPath Element from XML-Signature bytes.
-pub fn read_xpath(bytes : Bytes) -> XPath raise SchemaViolation {
+pub fn read_xpath(bytes : Bytes) -> XPath raise @opc_errors.SchemaViolation {
   let root = read_xmldsig_root(bytes, "XPath")
   XPath::new(optional_attribute(root, "Id"), root.children)
 }
@@ -430,17 +442,17 @@ fn xmldsig_ns() -> String {
 fn read_xmldsig_root(
   bytes : Bytes,
   local_name : String,
-) -> @xml.Element raise SchemaViolation {
+) -> @xml.Element raise @opc_errors.SchemaViolation {
   let doc = @xml.parse(bytes) catch {
     _ =>
-      raise SchemaViolation(
+      raise @opc_errors.SchemaViolation(
         section="10.5",
         path="/",
         reason="input is not well-formed XML-Signature markup",
       )
   }
   if !is_element(doc.root, local_name, xmldsig_ns()) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10.5",
       path="/",
       reason="expected " + local_name + " in the XML-Signature namespace",
@@ -501,9 +513,9 @@ fn require_non_empty_attribute(
   value : String,
   section : String,
   path : String,
-) -> Unit raise SchemaViolation {
+) -> Unit raise @opc_errors.SchemaViolation {
   if value == "" {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section~,
       path~,
       reason="required attribute must not be empty",

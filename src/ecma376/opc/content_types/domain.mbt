@@ -7,9 +7,11 @@ pub(all) struct ContentType {
 
 ///|
 /// Parse ST_ContentType for Default and Override declarations.
-pub fn ContentType::parse(value : String) -> ContentType raise SchemaViolation {
+pub fn ContentType::parse(
+  value : String,
+) -> ContentType raise @opc_errors.SchemaViolation {
   if !is_content_type(value) {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10.1",
       path="ST_ContentType",
       reason="content type must be a type/subtype media type without spaces",
@@ -33,7 +35,9 @@ pub(all) struct Extension {
 
 ///|
 /// Parse ST_Extension for a Default declaration.
-pub fn Extension::parse(value : String) -> Extension raise SchemaViolation {
+pub fn Extension::parse(
+  value : String,
+) -> Extension raise @opc_errors.SchemaViolation {
   if value == "" ||
     value.contains("/") ||
     value.contains("\\") ||
@@ -42,7 +46,7 @@ pub fn Extension::parse(value : String) -> Extension raise SchemaViolation {
     value.contains("\t") ||
     value.contains("\n") ||
     value.contains("\r") {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10.1",
       path="ST_Extension",
       reason="extension must be a non-empty package extension token",
@@ -65,9 +69,11 @@ pub(all) struct PartName {
 
 ///|
 /// Parse a package part name for an Override rule.
-pub fn PartName::parse(value : String) -> PartName raise SchemaViolation {
+pub fn PartName::parse(
+  value : String,
+) -> PartName raise @opc_errors.SchemaViolation {
   if !value.has_prefix("/") {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10.1",
       path="Override/@PartName",
       reason="part name must start with /",
@@ -78,7 +84,7 @@ pub fn PartName::parse(value : String) -> PartName raise SchemaViolation {
     value.has_suffix("/") ||
     value.contains("/../") ||
     value.contains("/./") {
-    raise SchemaViolation(
+    raise @opc_errors.SchemaViolation(
       section="10.1",
       path="Override/@PartName",
       reason="part name contains a disallowed segment",
@@ -138,7 +144,9 @@ pub(all) struct Types {
 ///|
 /// Build CT_Types while preserving declaration order and checking duplicate
 /// Default/Override keys.
-fn Types::new(rules : Array[ContentTypeRule]) -> Types raise SchemaViolation {
+fn Types::new(
+  rules : Array[ContentTypeRule],
+) -> Types raise @opc_errors.SchemaViolation {
   let extensions : Array[String] = []
   let parts : Array[String] = []
   for rule in rules {
@@ -146,7 +154,7 @@ fn Types::new(rules : Array[ContentTypeRule]) -> Types raise SchemaViolation {
       Default(default) => {
         let key = default.extension.value
         if extensions.contains(key) {
-          raise SchemaViolation(
+          raise @opc_errors.SchemaViolation(
             section="10.1",
             path="/Types/Default/@Extension",
             reason="duplicate Default extension",
@@ -157,7 +165,7 @@ fn Types::new(rules : Array[ContentTypeRule]) -> Types raise SchemaViolation {
       Override(override_rule) => {
         let key = override_rule.part_name.value
         if parts.contains(key) {
-          raise SchemaViolation(
+          raise @opc_errors.SchemaViolation(
             section="10.1",
             path="/Types/Override/@PartName",
             reason="duplicate Override part name",
@@ -251,13 +259,14 @@ pub fn Types::require_part_content_type(
   match self.content_type_for_part(part_name) {
     Some(actual) =>
       if actual != expected {
-        raise SchemaViolation(
+        raise @opc_errors.SchemaViolation(
           section~,
           path~,
           reason="part content type does not match the required OPC declaration",
         )
       }
-    None => raise ResourceMissing(section~, path~, target=part_name.value)
+    None =>
+      raise @opc_errors.ResourceMissing(section~, path~, target=part_name.value)
   }
 }
 

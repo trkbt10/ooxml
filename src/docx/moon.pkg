@@ -3,6 +3,7 @@
 // Public facade for .docx files. Orchestrates opc + wordprocessing_ml + drawing_ml + office_math: open(bytes) → context → (save | to_html).
 
 import {
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/ecma376/opc" @opc,
   "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @wml,

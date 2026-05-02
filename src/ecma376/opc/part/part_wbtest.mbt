@@ -6,7 +6,7 @@ test "part name validation and zip item" {
   assert_true(
     invalid
     is Err(
-      SchemaViolation(
+      @opc_errors.SchemaViolation(
         section="9",
         path="PartName",
         reason="part name must start with /"
@@ -36,23 +36,28 @@ test "core properties XML round trip preserves parsed document" {
 
 ///|
 test "public E3 and E4 error variants carry section context" {
-  require_supported_feature(
+  @opc_errors.require_supported_feature(
     false,
     section="9",
     path="/SignatureTime",
     reason="recognized but not implemented",
   ) catch {
-    UnsupportedFeature(section="9", path="/SignatureTime", reason=_reason) => ()
-    _ => fail("expected UnsupportedFeature")
+    @opc_errors.UnsupportedFeature(
+      section="9",
+      path="/SignatureTime",
+      reason=_reason
+    ) => ()
+    _ => fail("expected @opc_errors.UnsupportedFeature")
   }
-  require_resource(
+  @opc_errors.require_resource(
     false,
     section="9",
     path="/Thumbnail",
     target="/docProps/thumbnail.jpeg",
   ) catch {
-    ResourceMissing(section="9", path="/Thumbnail", target=_target) => ()
-    _ => fail("expected ResourceMissing")
+    @opc_errors.ResourceMissing(section="9", path="/Thumbnail", target=_target) =>
+      ()
+    _ => fail("expected @opc_errors.ResourceMissing")
   }
 }
 
