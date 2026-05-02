@@ -1,0 +1,35 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/spreadsheet_ml/cell_value"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
+}
+
+// Values
+pub fn decode_cell_value(@domain.CT_Cell) -> CellValue raise @errors.SchemaViolation
+
+pub fn decode_cell_value_with_sst(@domain.CT_Cell, @domain.CT_Sst?) -> CellValue raise @errors.SchemaViolation
+
+// Errors
+
+// Types and methods
+pub(all) enum CellValue {
+  Boolean(Bool)
+  Date(@date_serial.CalendarDateTime)
+  Error(String)
+  InlineString(String)
+  Number(Double)
+  SharedStringIndex(Int)
+  FormulaString(String)
+  Empty
+} derive(Eq, @debug.Debug)
+pub fn CellValue::to_display_text(Self) -> String
+pub fn CellValue::to_number(Self, @date_serial.DateSystem) -> Double raise @errors.SchemaViolation
+
+// Type aliases
+
+// Traits
+
