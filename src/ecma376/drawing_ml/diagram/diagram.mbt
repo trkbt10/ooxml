@@ -15,3 +15,15 @@
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/drawing_ml/diagram"
 }
+
+///|
+/// ECMA-376 Part 1 §21.4 Drawingml Diagrams
+pub fn diagram_part1_21_4_drawingml_diagrams_section_name() -> String {
+  "ECMA-376 Part 1 §21.4 Drawingml Diagrams"
+}
+
+///|
+/// ECMA-376 Part 4 §12.2.3 Diagram Colors Part Part 1 14 2 3
+pub fn diagram_part4_12_2_3_diagram_colors_part_part_1_14_2_3_section_name() -> String {
+  "ECMA-376 Part 4 §12.2.3 Diagram Colors Part Part 1 14 2 3"
+}

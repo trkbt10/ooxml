@@ -319,3 +319,51 @@ pub fn pml_xsd_ct_rel_schema_name() -> String {
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/presentation_ml"
 }
+
+///|
+/// ECMA-376 Part 4 §11.2.1 Comment Authors Part Part 1 13 3 1
+pub fn pml_part4_11_2_1_comment_authors_part_part_1_13_3_1_section_name() -> String {
+  "ECMA-376 Part 4 §11.2.1 Comment Authors Part Part 1 13 3 1"
+}
+
+///|
+/// ECMA-376 Part 4 §11.2.2 Comments Part Part 1 13 3 2
+pub fn pml_part4_11_2_2_comments_part_part_1_13_3_2_section_name() -> String {
+  "ECMA-376 Part 4 §11.2.2 Comments Part Part 1 13 3 2"
+}
+
+///|
+/// ECMA-376 Part 4 §11.2.4 Notes Master Part Part 1 13 3 4
+pub fn pml_part4_11_2_4_notes_master_part_part_1_13_3_4_section_name() -> String {
+  "ECMA-376 Part 4 §11.2.4 Notes Master Part Part 1 13 3 4"
+}
+
+///|
+/// ECMA-376 Part 4 §11.2.5 Notes Slide Part Part 1 13 3 5
+pub fn pml_part4_11_2_5_notes_slide_part_part_1_13_3_5_section_name() -> String {
+  "ECMA-376 Part 4 §11.2.5 Notes Slide Part Part 1 13 3 5"
+}
+
+///|
+/// ECMA-376 Part 4 §11.2.6 Presentation Part Part 1 13 3 6
+pub fn pml_part4_11_2_6_presentation_part_part_1_13_3_6_section_name() -> String {
+  "ECMA-376 Part 4 §11.2.6 Presentation Part Part 1 13 3 6"
+}
+
+///|
+/// ECMA-376 Part 4 §11.2.8 Slide Part Part 1 13 3 8
+pub fn pml_part4_11_2_8_slide_part_part_1_13_3_8_section_name() -> String {
+  "ECMA-376 Part 4 §11.2.8 Slide Part Part 1 13 3 8"
+}
+
+///|
+/// ECMA-376 Part 4 §11.2.9 Slide Layout Part Part 1 13 3 9
+pub fn pml_part4_11_2_9_slide_layout_part_part_1_13_3_9_section_name() -> String {
+  "ECMA-376 Part 4 §11.2.9 Slide Layout Part Part 1 13 3 9"
+}
+
+///|
+/// ECMA-376 Part 4 §11.2.10 Slide Master Part Part 1 13 3 10
+pub fn pml_part4_11_2_10_slide_master_part_part_1_13_3_10_section_name() -> String {
+  "ECMA-376 Part 4 §11.2.10 Slide Master Part Part 1 13 3 10"
+}

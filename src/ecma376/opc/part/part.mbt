@@ -59,3 +59,57 @@
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/opc/part"
 }
+
+///|
+/// ECMA-376 Part 2 §8.1 General
+pub fn opc_part_part2_8_1_general_section_name() -> String {
+  "ECMA-376 Part 2 §8.1 General"
+}
+
+///|
+/// ECMA-376 Part 4 §13.1 General
+pub fn opc_part_part4_13_1_general_section_name() -> String {
+  "ECMA-376 Part 4 §13.1 General"
+}
+
+///|
+/// ECMA-376 Part 4 §13.2 Part Summary Part 1 15 2
+pub fn opc_part_part4_13_2_part_summary_part_1_15_2_section_name() -> String {
+  "ECMA-376 Part 4 §13.2 Part Summary Part 1 15 2"
+}
+
+///|
+/// ECMA-376 Part 4 §13.2.2 Audio Part Part 1 15 2 2
+pub fn opc_part_part4_13_2_2_audio_part_part_1_15_2_2_section_name() -> String {
+  "ECMA-376 Part 4 §13.2.2 Audio Part Part 1 15 2 2"
+}
+
+///|
+/// ECMA-376 Part 4 §13.2.4 Content Part Part 1 15 2 4
+pub fn opc_part_part4_13_2_4_content_part_part_1_15_2_4_section_name() -> String {
+  "ECMA-376 Part 4 §13.2.4 Content Part Part 1 15 2 4"
+}
+
+///|
+/// ECMA-376 Part 4 §13.2.7 Embedded Control Persistence Part Part 1 15 2 9
+pub fn opc_part_part4_13_2_7_embedded_control_persistence_part_part_1_15_2_9_section_name() -> String {
+  "ECMA-376 Part 4 §13.2.7 Embedded Control Persistence Part Part 1 15 2 9"
+}
+
+///|
+/// ECMA-376 Part 4 §13.2.8 Embedded Object Part Part 1 15 2 10
+pub fn opc_part_part4_13_2_8_embedded_object_part_part_1_15_2_10_section_name() -> String {
+  "ECMA-376 Part 4 §13.2.8 Embedded Object Part Part 1 15 2 10"
+}
+
+///|
+/// ECMA-376 Part 4 §13.2.11 Custom File Properties Part Part 1 15 2 12 2
+pub fn opc_part_part4_13_2_11_custom_file_properties_part_part_1_15_2_12_2_section_name() -> String {
+  "ECMA-376 Part 4 §13.2.11 Custom File Properties Part Part 1 15 2 12 2"
+}
+
+///|
+/// ECMA-376 Part 4 §13.2.15 Printer Settings Part Part 1 15 2 15
+pub fn opc_part_part4_13_2_15_printer_settings_part_part_1_15_2_15_section_name() -> String {
+  "ECMA-376 Part 4 §13.2.15 Printer Settings Part Part 1 15 2 15"
+}

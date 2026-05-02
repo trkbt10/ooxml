@@ -499,3 +499,15 @@ fn bib_name(local_name : String) -> @xml.QName {
     ns: Some("http://purl.oclc.org/ooxml/officeDocument/bibliography"),
   }
 }
+
+///|
+/// ECMA-376 Part 4 §13.2.3 Bibliography Part Part 1 15 2 3
+pub fn bibliography_part4_13_2_3_bibliography_part_part_1_15_2_3_section_name() -> String {
+  "ECMA-376 Part 4 §13.2.3 Bibliography Part Part 1 15 2 3"
+}
+
+///|
+/// ECMA-376 Part 4 §20.4.1 Changed Attribute For Sources Element Part 1 22 6 2 60
+pub fn bibliography_part4_20_4_1_changed_attribute_for_sources_element_part_1_22_6_2_60_section_name() -> String {
+  "ECMA-376 Part 4 §20.4.1 Changed Attribute For Sources Element Part 1 22 6 2 60"
+}

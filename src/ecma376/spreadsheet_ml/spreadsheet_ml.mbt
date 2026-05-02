@@ -425,3 +425,57 @@ pub(all) struct MigrationFeatureCitation {
 pub fn migration_feature_citation() -> MigrationFeatureCitation {
   { part: 4, section: "15", subject: "SpreadsheetML migration features" }
 }
+
+///|
+/// ECMA-376 Part 4 §10.2.3 Comments Part Part 1 12 3 3
+pub fn sml_part4_10_2_3_comments_part_part_1_12_3_3_section_name() -> String {
+  "ECMA-376 Part 4 §10.2.3 Comments Part Part 1 12 3 3"
+}
+
+///|
+/// ECMA-376 Part 4 §10.2.7 Dialogsheet Part Part 1 12 3 7
+pub fn sml_part4_10_2_7_dialogsheet_part_part_1_12_3_7_section_name() -> String {
+  "ECMA-376 Part 4 §10.2.7 Dialogsheet Part Part 1 12 3 7"
+}
+
+///|
+/// ECMA-376 Part 4 §10.2.8 Drawings Part Part 1 12 3 8
+pub fn sml_part4_10_2_8_drawings_part_part_1_12_3_8_section_name() -> String {
+  "ECMA-376 Part 4 §10.2.8 Drawings Part Part 1 12 3 8"
+}
+
+///|
+/// ECMA-376 Part 4 §10.2.10 Metadata Part Part 1 12 3 10
+pub fn sml_part4_10_2_10_metadata_part_part_1_12_3_10_section_name() -> String {
+  "ECMA-376 Part 4 §10.2.10 Metadata Part Part 1 12 3 10"
+}
+
+///|
+/// ECMA-376 Part 4 §10.2.16 Shared Workbook Revision Headers Part Part 1 12 3 16
+pub fn sml_part4_10_2_16_shared_workbook_revision_headers_part_part_1_12_3_16_section_name() -> String {
+  "ECMA-376 Part 4 §10.2.16 Shared Workbook Revision Headers Part Part 1 12 3 16"
+}
+
+///|
+/// ECMA-376 Part 4 §10.2.17 Shared Workbook Revision Log Part Part 1 12 3 17
+pub fn sml_part4_10_2_17_shared_workbook_revision_log_part_part_1_12_3_17_section_name() -> String {
+  "ECMA-376 Part 4 §10.2.17 Shared Workbook Revision Log Part Part 1 12 3 17"
+}
+
+///|
+/// ECMA-376 Part 4 §10.2.19 Single Cell Table Definitions Part Part 1 12 3 19
+pub fn sml_part4_10_2_19_single_cell_table_definitions_part_part_1_12_3_19_section_name() -> String {
+  "ECMA-376 Part 4 §10.2.19 Single Cell Table Definitions Part Part 1 12 3 19"
+}
+
+///|
+/// ECMA-376 Part 4 §10.2.21 Table Definition Part Part 1 12 3 21
+pub fn sml_part4_10_2_21_table_definition_part_part_1_12_3_21_section_name() -> String {
+  "ECMA-376 Part 4 §10.2.21 Table Definition Part Part 1 12 3 21"
+}
+
+///|
+/// ECMA-376 Part 4 §10.2.24 Worksheet Part Part 1 12 3 24
+pub fn sml_part4_10_2_24_worksheet_part_part_1_12_3_24_section_name() -> String {
+  "ECMA-376 Part 4 §10.2.24 Worksheet Part Part 1 12 3 24"
+}
