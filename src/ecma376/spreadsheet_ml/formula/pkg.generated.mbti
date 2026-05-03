@@ -19,6 +19,10 @@ pub fn coerce_to_text(FormulaValue) -> FormulaValue
 
 pub fn evaluate(FormulaAst, EvalContext) -> FormulaValue
 
+pub fn expand_shared_formula(@address.CellAddress, FormulaAst, @address.CellAddress) -> FormulaAst
+
+pub fn expand_shared_formula_text(@address.CellAddress, String, @address.CellAddress) -> FormulaAst raise @errors.SchemaViolation
+
 pub fn parse(Array[Token]) -> FormulaAst raise @errors.SchemaViolation
 
 pub fn parse_formula(String) -> FormulaAst raise @errors.SchemaViolation
@@ -26,6 +30,8 @@ pub fn parse_formula(String) -> FormulaAst raise @errors.SchemaViolation
 pub fn register_builtin_functions(FunctionRegistry) -> Unit
 
 pub fn resolve_reference(String, EvalContext) -> FormulaValue
+
+pub fn shift_ast(FormulaAst, Int, Int) -> FormulaAst
 
 pub fn tokenize(String) -> Array[Token] raise @errors.SchemaViolation
 
