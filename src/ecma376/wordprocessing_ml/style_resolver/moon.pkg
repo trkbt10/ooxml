@@ -1,0 +1,10 @@
+// trkbt10/ooxml/ecma376/wordprocessing_ml/style_resolver
+//
+// WordprocessingML §17.7 style inheritance resolver over §17.3 property DOM.
+
+import {
+  "moonbitlang/core/hashmap" @hashmap,
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @domain,
+  "trkbt10/ooxml/xml" @xml,
+}
