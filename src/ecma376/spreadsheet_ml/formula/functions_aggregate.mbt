@@ -29,6 +29,8 @@ pub fn register_builtin_functions(registry : FunctionRegistry) -> Unit {
   register_builtin_lookup_functions(registry)
   register_builtin_reference_functions(registry)
   register_builtin_datetime_functions(registry)
+  register_builtin_financial_functions(registry)
+  register_builtin_statistical_functions(registry)
 }
 
 ///|
