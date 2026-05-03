@@ -1,0 +1,126 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/spreadsheet_ml/autofilter"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/formula",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+
+// Errors
+
+// Types and methods
+pub(all) struct AutoFilter {
+  range : @address.CellRange
+  columns : Array[FilterColumn]
+} derive(Eq, @debug.Debug)
+pub fn AutoFilter::filter_rows(Self, Array[CandidateRow], @date_serial.DateSystem) -> Array[Int]
+pub fn AutoFilter::from_element(@xml.Element) -> Self raise @errors.SchemaViolation
+pub fn AutoFilter::row_visible(Self, CandidateRow, @date_serial.DateSystem) -> Bool
+
+pub(all) struct CandidateRow {
+  values : Array[@formula.FormulaValue]
+  row_index : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CustomCriterion {
+  operator : FilterOperator
+  value : String
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DateGroupBy {
+  Year
+  Month
+  Day
+  Hour
+  Minute
+  Second
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DateGroupItem {
+  year : Int
+  month : Int?
+  day : Int?
+  hour : Int?
+  minute : Int?
+  second : Int?
+  group_by : DateGroupBy
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DynamicFilterType {
+  Today
+  Yesterday
+  Tomorrow
+  LastWeek
+  ThisWeek
+  NextWeek
+  LastMonth
+  ThisMonth
+  NextMonth
+  LastQuarter
+  ThisQuarter
+  NextQuarter
+  LastYear
+  ThisYear
+  NextYear
+  YearToDate
+  Q1
+  Q2
+  Q3
+  Q4
+  M1
+  M2
+  M3
+  M4
+  M5
+  M6
+  M7
+  M8
+  M9
+  M10
+  M11
+  M12
+  AboveAverage
+  BelowAverage
+} derive(Eq, @debug.Debug)
+pub fn DynamicFilterType::is_average(Self) -> Bool
+
+pub(all) struct FilterColumn {
+  column_id : Int
+  hidden_button : Bool
+  rule : FilterRule
+} derive(Eq, @debug.Debug)
+
+pub(all) enum FilterOperator {
+  Equal
+  NotEqual
+  GreaterThan
+  GreaterThanOrEqual
+  LessThan
+  LessThanOrEqual
+} derive(Eq, @debug.Debug)
+pub fn FilterOperator::to_ooxml(Self) -> String
+
+pub(all) enum FilterRule {
+  Filters(Array[FilterValue], Bool)
+  CustomFilters(Array[CustomCriterion], Bool)
+  DynamicFilter(DynamicFilterType, Double?, Double?)
+  ColorFilter(Int, Bool)
+  IconFilter(String, Int)
+  Top10(Bool, Bool, Double)
+} derive(Eq, @debug.Debug)
+pub fn FilterRule::is_dynamic_filter(Self) -> Bool
+
+pub(all) enum FilterValue {
+  Literal(String)
+  DateGroup(DateGroupItem)
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits

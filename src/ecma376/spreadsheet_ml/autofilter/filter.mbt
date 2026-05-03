@@ -1,0 +1,1220 @@
+///|
+/// §18.3.2 — typed view of one cell in a candidate row, supplied to
+/// the filter evaluator. The evaluator does not fetch cell content itself.
+pub(all) struct CandidateRow {
+  values : Array[@formula.FormulaValue]
+  row_index : Int
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2.7 — typed FilterColumn rule with the 0-based `colId`, the
+/// `hiddenButton` presentation flag, and the column rule discriminator.
+pub(all) struct FilterColumn {
+  column_id : Int
+  hidden_button : Bool
+  rule : FilterRule
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2 — discriminated filter rule per the per-column XML choice.
+pub(all) enum FilterRule {
+  Filters(Array[FilterValue], Bool)
+  CustomFilters(Array[CustomCriterion], Bool)
+  DynamicFilter(DynamicFilterType, Double?, Double?)
+  ColorFilter(Int, Bool)
+  IconFilter(String, Int)
+  Top10(Bool, Bool, Double)
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2.6 and §18.3.2.4 — values inside `<filters>`.
+pub(all) enum FilterValue {
+  Literal(String)
+  DateGroup(DateGroupItem)
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2.4 — dateGroupItem value and grouping level.
+pub(all) struct DateGroupItem {
+  year : Int
+  month : Int?
+  day : Int?
+  hour : Int?
+  minute : Int?
+  second : Int?
+  group_by : DateGroupBy
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2.4 — dateTimeGrouping discriminator.
+pub(all) enum DateGroupBy {
+  Year
+  Month
+  Day
+  Hour
+  Minute
+  Second
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2.2 — customFilter comparison criterion.
+pub(all) struct CustomCriterion {
+  operator : FilterOperator
+  value : String
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2.2 — ST_FilterOperator as evaluator operators.
+pub(all) enum FilterOperator {
+  Equal
+  NotEqual
+  GreaterThan
+  GreaterThanOrEqual
+  LessThan
+  LessThanOrEqual
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2.5 — ST_DynamicFilterType as evaluator variants.
+pub(all) enum DynamicFilterType {
+  Today
+  Yesterday
+  Tomorrow
+  LastWeek
+  ThisWeek
+  NextWeek
+  LastMonth
+  ThisMonth
+  NextMonth
+  LastQuarter
+  ThisQuarter
+  NextQuarter
+  LastYear
+  ThisYear
+  NextYear
+  YearToDate
+  Q1
+  Q2
+  Q3
+  Q4
+  M1
+  M2
+  M3
+  M4
+  M5
+  M6
+  M7
+  M8
+  M9
+  M10
+  M11
+  M12
+  AboveAverage
+  BelowAverage
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2 — typed view of an autofilter (range + columns).
+pub(all) struct AutoFilter {
+  range : @address.CellRange
+  columns : Array[FilterColumn]
+} derive(Eq, Debug)
+
+///|
+/// §18.3.2.2 — return the SpreadsheetML ST_FilterOperator token for this
+/// evaluator operator.
+pub fn FilterOperator::to_ooxml(self : FilterOperator) -> String {
+  match self {
+    Equal => "equal"
+    NotEqual => "notEqual"
+    GreaterThan => "greaterThan"
+    GreaterThanOrEqual => "greaterThanOrEqual"
+    LessThan => "lessThan"
+    LessThanOrEqual => "lessThanOrEqual"
+  }
+}
+
+///|
+/// §18.3.2.5 — true for dynamic filters that require full-column numeric
+/// context rather than a date interval.
+pub fn DynamicFilterType::is_average(self : DynamicFilterType) -> Bool {
+  match self {
+    AboveAverage => true
+    BelowAverage => true
+    _ => false
+  }
+}
+
+///|
+/// §18.3.2.5 — true when this rule is a dynamicFilter XML choice.
+pub fn FilterRule::is_dynamic_filter(self : FilterRule) -> Bool {
+  match self {
+    DynamicFilter(_, _, _) => true
+    _ => false
+  }
+}
+
+///|
+/// §18.3.2.7 / §18.3.2.8 — extract an AutoFilter from a CT_AutoFilter XML
+/// element wrapper.
+pub fn AutoFilter::from_element(
+  element : @xml.Element,
+) -> AutoFilter raise @opc_errors.SchemaViolation {
+  let ref_value = require_attr(element, "ref", "autoFilter/@ref")
+  let range = @address.CellRange::parse_a1(ref_value) catch {
+    _ =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.2",
+        path="autoFilter/@ref",
+        reason="invalid ST_Ref range",
+      )
+  }
+  let columns = Array::new()
+  for child in element.children {
+    match child {
+      @xml.Node::Element(e) =>
+        if e.name.local_name == "filterColumn" {
+          columns.push(parse_filter_column(e))
+        }
+      _ => ()
+    }
+  }
+  { range, columns }
+}
+
+///|
+/// §18.3.2.7 — return true if `row` should be visible after applying every
+/// FilterColumn rule that can be evaluated without the full candidate set.
+pub fn AutoFilter::row_visible(
+  self : AutoFilter,
+  row : CandidateRow,
+  date_system : @date_serial.DateSystem,
+) -> Bool {
+  for column in self.columns {
+    let value = match row.values.get(column.column_id) {
+      Some(v) => v
+      None => @formula.FormulaValue::VEmpty
+    }
+    if !rule_visible_without_context(column.rule, value, date_system) {
+      return false
+    }
+  }
+  true
+}
+
+///|
+/// §18.3.2.10 — return visible row indices from candidate rows, including
+/// set-wide evaluation needed by top10 and average dynamic filters.
+pub fn AutoFilter::filter_rows(
+  self : AutoFilter,
+  rows : Array[CandidateRow],
+  date_system : @date_serial.DateSystem,
+) -> Array[Int] {
+  let base = Array::new()
+  for row in rows {
+    if self.row_visible(row, date_system) {
+      base.push(row)
+    }
+  }
+  let visible = Array::new()
+  for row in base {
+    if self.row_visible_with_context(row, rows, date_system) {
+      visible.push(row.row_index)
+    }
+  }
+  visible
+}
+
+///|
+fn AutoFilter::row_visible_with_context(
+  self : AutoFilter,
+  row : CandidateRow,
+  rows : Array[CandidateRow],
+  date_system : @date_serial.DateSystem,
+) -> Bool {
+  for column in self.columns {
+    let value = match row.values.get(column.column_id) {
+      Some(v) => v
+      None => @formula.FormulaValue::VEmpty
+    }
+    match column.rule {
+      Top10(top, percent, val) =>
+        if !top10_passes(
+            rows,
+            column.column_id,
+            value,
+            date_system,
+            top,
+            percent,
+            val,
+          ) {
+          return false
+        }
+      DynamicFilter(AboveAverage, _, _) =>
+        if !average_passes(rows, column.column_id, value, date_system, true) {
+          return false
+        }
+      DynamicFilter(BelowAverage, _, _) =>
+        if !average_passes(rows, column.column_id, value, date_system, false) {
+          return false
+        }
+      _ => ()
+    }
+  }
+  true
+}
+
+///|
+fn parse_filter_column(
+  element : @xml.Element,
+) -> FilterColumn raise @opc_errors.SchemaViolation {
+  let column_id = parse_required_int(element, "colId", "filterColumn/@colId")
+  let hidden_button = parse_bool_attr(element, "hiddenButton", false)
+  let mut rule : FilterRule? = None
+  for child in element.children {
+    match child {
+      @xml.Node::Element(e) =>
+        match e.name.local_name {
+          "filters" => rule = Some(parse_filters(e))
+          "customFilters" => rule = Some(parse_custom_filters(e))
+          "dynamicFilter" => rule = Some(parse_dynamic_filter(e))
+          "colorFilter" => rule = Some(parse_color_filter(e))
+          "iconFilter" => rule = Some(parse_icon_filter(e))
+          "top10" => rule = Some(parse_top10(e))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { column_id, hidden_button, rule: rule.unwrap_or(Filters([], false)) }
+}
+
+///|
+fn parse_filters(
+  element : @xml.Element,
+) -> FilterRule raise @opc_errors.SchemaViolation {
+  let blank_included = parse_bool_attr(element, "blank", false)
+  let values = Array::new()
+  for child in element.children {
+    match child {
+      @xml.Node::Element(e) =>
+        match e.name.local_name {
+          "filter" =>
+            values.push(Literal(require_attr(e, "val", "filter/@val")))
+          "dateGroupItem" => values.push(DateGroup(parse_date_group_item(e)))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  Filters(values, blank_included)
+}
+
+///|
+fn parse_custom_filters(
+  element : @xml.Element,
+) -> FilterRule raise @opc_errors.SchemaViolation {
+  let and_op = parse_bool_attr(element, "and", false)
+  let criteria = Array::new()
+  for child in element.children {
+    match child {
+      @xml.Node::Element(e) =>
+        if e.name.local_name == "customFilter" {
+          let op = parse_filter_operator(attr_or(e, "operator", "equal"))
+          let value = require_attr(e, "val", "customFilter/@val")
+          criteria.push({ operator: op, value })
+        }
+      _ => ()
+    }
+  }
+  CustomFilters(criteria, and_op)
+}
+
+///|
+fn parse_dynamic_filter(
+  element : @xml.Element,
+) -> FilterRule raise @opc_errors.SchemaViolation {
+  let kind = parse_dynamic_filter_type(
+    require_attr(element, "type", "dynamicFilter/@type"),
+  )
+  let val = parse_optional_double(element, "val", "dynamicFilter/@val")
+  let max_val = parse_optional_double(
+    element, "maxVal", "dynamicFilter/@maxVal",
+  )
+  DynamicFilter(kind, val, max_val)
+}
+
+///|
+fn parse_color_filter(
+  element : @xml.Element,
+) -> FilterRule raise @opc_errors.SchemaViolation {
+  let dxf_id = parse_required_int(element, "dxfId", "colorFilter/@dxfId")
+  let by_cell_color = parse_bool_attr(element, "cellColor", true)
+  ColorFilter(dxf_id, by_cell_color)
+}
+
+///|
+fn parse_icon_filter(
+  element : @xml.Element,
+) -> FilterRule raise @opc_errors.SchemaViolation {
+  let icon_set = require_attr(element, "iconSet", "iconFilter/@iconSet")
+  let icon_id = parse_required_int(element, "iconId", "iconFilter/@iconId")
+  IconFilter(icon_set, icon_id)
+}
+
+///|
+fn parse_top10(
+  element : @xml.Element,
+) -> FilterRule raise @opc_errors.SchemaViolation {
+  let top = parse_bool_attr(element, "top", true)
+  let percent = parse_bool_attr(element, "percent", false)
+  let val = parse_required_double(element, "val", "top10/@val")
+  Top10(top, percent, val)
+}
+
+///|
+fn parse_date_group_item(
+  element : @xml.Element,
+) -> DateGroupItem raise @opc_errors.SchemaViolation {
+  let year = parse_required_int(element, "year", "dateGroupItem/@year")
+  let month = parse_optional_int(element, "month", "dateGroupItem/@month")
+  let day = parse_optional_int(element, "day", "dateGroupItem/@day")
+  let hour = parse_optional_int(element, "hour", "dateGroupItem/@hour")
+  let minute = parse_optional_int(element, "minute", "dateGroupItem/@minute")
+  let second = parse_optional_int(element, "second", "dateGroupItem/@second")
+  let group_by = parse_date_group_by(
+    attr_or(element, "dateTimeGrouping", "year"),
+  )
+  { year, month, day, hour, minute, second, group_by }
+}
+
+///|
+fn rule_visible_without_context(
+  rule : FilterRule,
+  value : @formula.FormulaValue,
+  date_system : @date_serial.DateSystem,
+) -> Bool {
+  match rule {
+    Filters(values, blank_included) =>
+      filters_pass(value, values, blank_included, date_system)
+    CustomFilters(criteria, and_op) =>
+      custom_filters_pass(value, criteria, and_op, date_system)
+    DynamicFilter(AboveAverage, _, _) => true
+    DynamicFilter(BelowAverage, _, _) => true
+    DynamicFilter(kind, val, max_val) =>
+      dynamic_filter_pass(value, kind, val, max_val, date_system)
+    ColorFilter(_, _) => false
+    IconFilter(_, _) => false
+    Top10(_, _, _) => true
+  }
+}
+
+///|
+fn filters_pass(
+  value : @formula.FormulaValue,
+  values : Array[FilterValue],
+  blank_included : Bool,
+  date_system : @date_serial.DateSystem,
+) -> Bool {
+  if formula_is_blank(value) {
+    return blank_included
+  }
+  let text = formula_to_text(value)
+  for filter_value in values {
+    match filter_value {
+      Literal(literal) => if text == literal { return true }
+      DateGroup(group) =>
+        if date_group_matches(value, group, date_system) {
+          return true
+        }
+    }
+  }
+  false
+}
+
+///|
+fn custom_filters_pass(
+  value : @formula.FormulaValue,
+  criteria : Array[CustomCriterion],
+  and_op : Bool,
+  date_system : @date_serial.DateSystem,
+) -> Bool {
+  if criteria.length() == 0 {
+    return true
+  }
+  let mut passed = and_op
+  for criterion in criteria {
+    let current = custom_criterion_pass(value, criterion, date_system)
+    if and_op {
+      passed = passed && current
+    } else {
+      passed = passed || current
+    }
+  }
+  passed
+}
+
+///|
+fn custom_criterion_pass(
+  value : @formula.FormulaValue,
+  criterion : CustomCriterion,
+  date_system : @date_serial.DateSystem,
+) -> Bool {
+  let lhs_number = formula_to_number(value, date_system)
+  let rhs_number = parse_double(criterion.value)
+  if lhs_number is Some(left) && rhs_number is Some(right) {
+    return compare_double(left, right, criterion.operator)
+  }
+  let left = formula_to_text(value)
+  let right = criterion.value
+  if right.contains_char('*') || right.contains_char('?') {
+    let matched = wildcard_match(left, right)
+    match criterion.operator {
+      Equal => matched
+      NotEqual => !matched
+      _ => compare_string(left, right, criterion.operator)
+    }
+  } else {
+    compare_string(left, right, criterion.operator)
+  }
+}
+
+///|
+fn dynamic_filter_pass(
+  value : @formula.FormulaValue,
+  kind : DynamicFilterType,
+  val : Double?,
+  max_val : Double?,
+  date_system : @date_serial.DateSystem,
+) -> Bool {
+  if val is Some(min_value) && max_val is Some(max_value) {
+    return formula_to_number(value, date_system) is Some(n) &&
+      n >= min_value &&
+      n < max_value
+  }
+  match dynamic_interval(kind, date_system) {
+    Some((start, end)) =>
+      match formula_to_number(value, date_system) {
+        Some(n) => n >= start && n < end
+        None => false
+      }
+    None => false
+  }
+}
+
+///|
+fn average_passes(
+  rows : Array[CandidateRow],
+  column_id : Int,
+  value : @formula.FormulaValue,
+  date_system : @date_serial.DateSystem,
+  above : Bool,
+) -> Bool {
+  let values = Array::new()
+  for row in rows {
+    let cell = row.values
+      .get(column_id)
+      .unwrap_or(@formula.FormulaValue::VEmpty)
+    match formula_to_number(cell, date_system) {
+      Some(n) => values.push(n)
+      None => ()
+    }
+  }
+  if values.length() == 0 {
+    return false
+  }
+  let mut total = 0.0
+  for n in values {
+    total += n
+  }
+  match formula_to_number(value, date_system) {
+    Some(n) =>
+      if above {
+        n > total / values.length().to_double()
+      } else {
+        n < total / values.length().to_double()
+      }
+    None => false
+  }
+}
+
+///|
+fn top10_passes(
+  rows : Array[CandidateRow],
+  column_id : Int,
+  value : @formula.FormulaValue,
+  date_system : @date_serial.DateSystem,
+  top : Bool,
+  percent : Bool,
+  val : Double,
+) -> Bool {
+  let numbers = Array::new()
+  for row in rows {
+    let cell = row.values
+      .get(column_id)
+      .unwrap_or(@formula.FormulaValue::VEmpty)
+    match formula_to_number(cell, date_system) {
+      Some(n) => numbers.push(n)
+      None => ()
+    }
+  }
+  if numbers.length() == 0 {
+    return false
+  }
+  let sorted = sorted_numbers(numbers)
+  let requested = if percent {
+    (numbers.length().to_double() * val / 100.0).ceil().to_int()
+  } else {
+    val.floor().to_int()
+  }
+  let count = clamp_int(requested, 1, numbers.length())
+  let threshold = if top {
+    sorted[sorted.length() - count]
+  } else {
+    sorted[count - 1]
+  }
+  match formula_to_number(value, date_system) {
+    Some(n) => if top { n >= threshold } else { n <= threshold }
+    None => false
+  }
+}
+
+///|
+fn date_group_matches(
+  value : @formula.FormulaValue,
+  group : DateGroupItem,
+  date_system : @date_serial.DateSystem,
+) -> Bool {
+  let serial = match formula_to_number(value, date_system) {
+    Some(n) => n
+    None => return false
+  }
+  let dt = @date_serial.serial_to_date_time(serial, date_system) catch {
+    _ => return false
+  }
+  match group.group_by {
+    Year => dt.year == group.year
+    Month => dt.year == group.year && group.month == Some(dt.month)
+    Day =>
+      dt.year == group.year &&
+      group.month == Some(dt.month) &&
+      group.day == Some(dt.day)
+    Hour =>
+      dt.year == group.year &&
+      group.month == Some(dt.month) &&
+      group.day == Some(dt.day) &&
+      group.hour == Some(dt.hour)
+    Minute =>
+      dt.year == group.year &&
+      group.month == Some(dt.month) &&
+      group.day == Some(dt.day) &&
+      group.hour == Some(dt.hour) &&
+      group.minute == Some(dt.minute)
+    Second =>
+      dt.year == group.year &&
+      group.month == Some(dt.month) &&
+      group.day == Some(dt.day) &&
+      group.hour == Some(dt.hour) &&
+      group.minute == Some(dt.minute) &&
+      group.second == Some(dt.second)
+  }
+}
+
+///|
+fn dynamic_interval(
+  kind : DynamicFilterType,
+  date_system : @date_serial.DateSystem,
+) -> (Double, Double)? {
+  let today = @date_serial.serial_to_date_time(0.0, date_system) catch {
+    _ => return None
+  }
+  let today_start = serial_for_date(
+    today.year,
+    today.month,
+    today.day,
+    date_system,
+  )
+  match kind {
+    Today => Some((today_start, today_start + 1.0))
+    Yesterday => Some((today_start - 1.0, today_start))
+    Tomorrow => Some((today_start + 1.0, today_start + 2.0))
+    LastWeek => week_interval(today_start - 7.0)
+    ThisWeek => week_interval(today_start)
+    NextWeek => week_interval(today_start + 7.0)
+    LastMonth => month_interval(today.year, today.month - 1, date_system)
+    ThisMonth => month_interval(today.year, today.month, date_system)
+    NextMonth => month_interval(today.year, today.month + 1, date_system)
+    LastQuarter =>
+      quarter_interval(
+        today.year,
+        quarter_of_month(today.month) - 1,
+        date_system,
+      )
+    ThisQuarter =>
+      quarter_interval(today.year, quarter_of_month(today.month), date_system)
+    NextQuarter =>
+      quarter_interval(
+        today.year,
+        quarter_of_month(today.month) + 1,
+        date_system,
+      )
+    LastYear => year_interval(today.year - 1, date_system)
+    ThisYear => year_interval(today.year, date_system)
+    NextYear => year_interval(today.year + 1, date_system)
+    YearToDate =>
+      Some((serial_for_date(today.year, 1, 1, date_system), today_start + 1.0))
+    Q1 => quarter_interval(today.year, 1, date_system)
+    Q2 => quarter_interval(today.year, 2, date_system)
+    Q3 => quarter_interval(today.year, 3, date_system)
+    Q4 => quarter_interval(today.year, 4, date_system)
+    M1 => month_interval(today.year, 1, date_system)
+    M2 => month_interval(today.year, 2, date_system)
+    M3 => month_interval(today.year, 3, date_system)
+    M4 => month_interval(today.year, 4, date_system)
+    M5 => month_interval(today.year, 5, date_system)
+    M6 => month_interval(today.year, 6, date_system)
+    M7 => month_interval(today.year, 7, date_system)
+    M8 => month_interval(today.year, 8, date_system)
+    M9 => month_interval(today.year, 9, date_system)
+    M10 => month_interval(today.year, 10, date_system)
+    M11 => month_interval(today.year, 11, date_system)
+    M12 => month_interval(today.year, 12, date_system)
+    AboveAverage => None
+    BelowAverage => None
+  }
+}
+
+///|
+fn week_interval(day_serial : Double) -> (Double, Double)? {
+  let start = (day_serial / 7.0).floor() * 7.0
+  Some((start, start + 7.0))
+}
+
+///|
+fn month_interval(
+  year : Int,
+  month : Int,
+  date_system : @date_serial.DateSystem,
+) -> (Double, Double)? {
+  let normalized_year = year + floor_div(month - 1, 12)
+  let normalized_month = modulo(month - 1, 12) + 1
+  Some(
+    (
+      serial_for_date(normalized_year, normalized_month, 1, date_system),
+      serial_for_date(
+        normalized_year + (if normalized_month == 12 { 1 } else { 0 }),
+        if normalized_month == 12 {
+          1
+        } else {
+          normalized_month + 1
+        },
+        1,
+        date_system,
+      ),
+    ),
+  )
+}
+
+///|
+fn quarter_interval(
+  year : Int,
+  quarter : Int,
+  date_system : @date_serial.DateSystem,
+) -> (Double, Double)? {
+  let normalized_year = year + floor_div(quarter - 1, 4)
+  let normalized_quarter = modulo(quarter - 1, 4) + 1
+  let start_month = (normalized_quarter - 1) * 3 + 1
+  Some(
+    (
+      serial_for_date(normalized_year, start_month, 1, date_system),
+      serial_for_date(
+        normalized_year + (if start_month == 10 { 1 } else { 0 }),
+        if start_month == 10 {
+          1
+        } else {
+          start_month + 3
+        },
+        1,
+        date_system,
+      ),
+    ),
+  )
+}
+
+///|
+fn year_interval(
+  year : Int,
+  date_system : @date_serial.DateSystem,
+) -> (Double, Double)? {
+  Some(
+    (
+      serial_for_date(year, 1, 1, date_system),
+      serial_for_date(year + 1, 1, 1, date_system),
+    ),
+  )
+}
+
+///|
+fn serial_for_date(
+  year : Int,
+  month : Int,
+  day : Int,
+  date_system : @date_serial.DateSystem,
+) -> Double {
+  @date_serial.date_time_to_serial(
+    { year, month, day, hour: 0, minute: 0, second: 0, millisecond: 0 },
+    date_system,
+  ) catch {
+    _ => 0.0
+  }
+}
+
+///|
+fn formula_to_cell_value(
+  value : @formula.FormulaValue,
+) -> @cell_value.CellValue {
+  match value {
+    @formula.FormulaValue::VNumber(n) => @cell_value.CellValue::Number(n)
+    VString(s) => @cell_value.CellValue::FormulaString(s)
+    VBool(b) => @cell_value.CellValue::Boolean(b)
+    VEmpty => @cell_value.CellValue::Empty
+    VError(err) => @cell_value.CellValue::Error(err.to_literal())
+    VArray(rows) =>
+      match rows.get(0) {
+        Some(row) =>
+          match row.get(0) {
+            Some(cell) => formula_to_cell_value(cell)
+            None => @cell_value.CellValue::Empty
+          }
+        None => @cell_value.CellValue::Empty
+      }
+  }
+}
+
+///|
+fn formula_to_text(value : @formula.FormulaValue) -> String {
+  formula_to_cell_value(value).to_display_text()
+}
+
+///|
+fn formula_to_number(
+  value : @formula.FormulaValue,
+  date_system : @date_serial.DateSystem,
+) -> Double? {
+  let number = formula_to_cell_value(value).to_number(date_system) catch {
+    _ => return None
+  }
+  Some(number)
+}
+
+///|
+fn formula_is_blank(value : @formula.FormulaValue) -> Bool {
+  match value {
+    @formula.FormulaValue::VEmpty => true
+    VString(s) => s == ""
+    VArray(rows) =>
+      match rows.get(0) {
+        Some(row) =>
+          match row.get(0) {
+            Some(cell) => formula_is_blank(cell)
+            None => true
+          }
+        None => true
+      }
+    _ => false
+  }
+}
+
+///|
+fn compare_double(left : Double, right : Double, op : FilterOperator) -> Bool {
+  match op {
+    Equal => left == right
+    NotEqual => left != right
+    GreaterThan => left > right
+    GreaterThanOrEqual => left >= right
+    LessThan => left < right
+    LessThanOrEqual => left <= right
+  }
+}
+
+///|
+fn compare_string(left : String, right : String, op : FilterOperator) -> Bool {
+  match op {
+    Equal => left == right
+    NotEqual => left != right
+    GreaterThan => left > right
+    GreaterThanOrEqual => left >= right
+    LessThan => left < right
+    LessThanOrEqual => left <= right
+  }
+}
+
+///|
+fn wildcard_match(text : String, pattern : String) -> Bool {
+  wildcard_match_at(text, 0, pattern, 0)
+}
+
+///|
+fn wildcard_match_at(
+  text : String,
+  ti : Int,
+  pattern : String,
+  pi : Int,
+) -> Bool {
+  if pi == pattern.length() {
+    return ti == text.length()
+  }
+  if pattern.code_unit_at(pi) == '*' {
+    let mut scan = ti
+    while scan <= text.length() {
+      if wildcard_match_at(text, scan, pattern, pi + 1) {
+        return true
+      }
+      scan += 1
+    }
+    return false
+  }
+  ti < text.length() &&
+  (
+    pattern.code_unit_at(pi) == '?' ||
+    pattern.code_unit_at(pi) == text.code_unit_at(ti)
+  ) &&
+  wildcard_match_at(text, ti + 1, pattern, pi + 1)
+}
+
+///|
+fn sorted_numbers(values : Array[Double]) -> Array[Double] {
+  let out = values.copy()
+  for i in 1..<out.length() {
+    let key = out[i]
+    let mut j = i
+    while j > 0 && out[j - 1] > key {
+      out[j] = out[j - 1]
+      j -= 1
+    }
+    out[j] = key
+  }
+  out
+}
+
+///|
+fn parse_filter_operator(
+  value : String,
+) -> FilterOperator raise @opc_errors.SchemaViolation {
+  match value {
+    "equal" => Equal
+    "notEqual" => NotEqual
+    "greaterThan" => GreaterThan
+    "greaterThanOrEqual" => GreaterThanOrEqual
+    "lessThan" => LessThan
+    "lessThanOrEqual" => LessThanOrEqual
+    _ =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.2",
+        path="customFilter/@operator",
+        reason="unknown ST_FilterOperator value",
+      )
+  }
+}
+
+///|
+fn parse_dynamic_filter_type(
+  value : String,
+) -> DynamicFilterType raise @opc_errors.SchemaViolation {
+  match value {
+    "today" => Today
+    "yesterday" => Yesterday
+    "tomorrow" => Tomorrow
+    "lastWeek" => LastWeek
+    "thisWeek" => ThisWeek
+    "nextWeek" => NextWeek
+    "lastMonth" => LastMonth
+    "thisMonth" => ThisMonth
+    "nextMonth" => NextMonth
+    "lastQuarter" => LastQuarter
+    "thisQuarter" => ThisQuarter
+    "nextQuarter" => NextQuarter
+    "lastYear" => LastYear
+    "thisYear" => ThisYear
+    "nextYear" => NextYear
+    "yearToDate" => YearToDate
+    "Q1" => Q1
+    "Q2" => Q2
+    "Q3" => Q3
+    "Q4" => Q4
+    "M1" => M1
+    "M2" => M2
+    "M3" => M3
+    "M4" => M4
+    "M5" => M5
+    "M6" => M6
+    "M7" => M7
+    "M8" => M8
+    "M9" => M9
+    "M10" => M10
+    "M11" => M11
+    "M12" => M12
+    "aboveAverage" => AboveAverage
+    "belowAverage" => BelowAverage
+    _ =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.2",
+        path="dynamicFilter/@type",
+        reason="unknown ST_DynamicFilterType value",
+      )
+  }
+}
+
+///|
+fn parse_date_group_by(
+  value : String,
+) -> DateGroupBy raise @opc_errors.SchemaViolation {
+  match value {
+    "year" => Year
+    "month" => Month
+    "day" => Day
+    "hour" => Hour
+    "minute" => Minute
+    "second" => Second
+    _ =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.2",
+        path="dateGroupItem/@dateTimeGrouping",
+        reason="unknown date group level",
+      )
+  }
+}
+
+///|
+fn attr(element : @xml.Element, local_name : String) -> String? {
+  for a in element.attributes {
+    if a.name.local_name == local_name {
+      return Some(a.value)
+    }
+  }
+  None
+}
+
+///|
+fn attr_or(
+  element : @xml.Element,
+  local_name : String,
+  fallback : String,
+) -> String {
+  attr(element, local_name).unwrap_or(fallback)
+}
+
+///|
+fn require_attr(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> String raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) => value
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.2",
+        path~,
+        reason="required attribute is missing",
+      )
+  }
+}
+
+///|
+fn parse_bool_attr(
+  element : @xml.Element,
+  local_name : String,
+  fallback : Bool,
+) -> Bool {
+  match attr(element, local_name) {
+    Some("1") => true
+    Some("true") => true
+    Some("0") => false
+    Some("false") => false
+    _ => fallback
+  }
+}
+
+///|
+fn parse_required_int(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> Int raise @opc_errors.SchemaViolation {
+  match parse_int(require_attr(element, local_name, path)) {
+    Some(value) => value
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.2",
+        path~,
+        reason="integer attribute is malformed",
+      )
+  }
+}
+
+///|
+fn parse_optional_int(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> Int? raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_int(value) {
+        Some(parsed) => Some(parsed)
+        None =>
+          raise @opc_errors.SchemaViolation(
+            section="Part 1 §18.3.2",
+            path~,
+            reason="integer attribute is malformed",
+          )
+      }
+    None => None
+  }
+}
+
+///|
+fn parse_required_double(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> Double raise @opc_errors.SchemaViolation {
+  match parse_double(require_attr(element, local_name, path)) {
+    Some(value) => value
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.2",
+        path~,
+        reason="double attribute is malformed",
+      )
+  }
+}
+
+///|
+fn parse_optional_double(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> Double? raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_double(value) {
+        Some(parsed) => Some(parsed)
+        None =>
+          raise @opc_errors.SchemaViolation(
+            section="Part 1 §18.3.2",
+            path~,
+            reason="double attribute is malformed",
+          )
+      }
+    None => None
+  }
+}
+
+///|
+fn parse_int(value : String) -> Int? {
+  if value.length() == 0 {
+    return None
+  }
+  let mut sign = 1
+  let mut pos = 0
+  if value.code_unit_at(0) == '-' {
+    sign = -1
+    pos = 1
+  }
+  if pos == value.length() {
+    return None
+  }
+  let mut out = 0
+  while pos < value.length() {
+    let ch = value.code_unit_at(pos)
+    if ch < '0' || ch > '9' {
+      return None
+    }
+    out = out * 10 + (ch.to_int() - '0'.to_int())
+    pos += 1
+  }
+  Some(out * sign)
+}
+
+///|
+fn parse_double(value : String) -> Double? {
+  if value.length() == 0 {
+    return None
+  }
+  let mut sign = 1.0
+  let mut pos = 0
+  if value.code_unit_at(0) == '-' {
+    sign = -1.0
+    pos = 1
+  } else if value.code_unit_at(0) == '+' {
+    pos = 1
+  }
+  let mut whole = 0.0
+  let mut seen_digit = false
+  while pos < value.length() &&
+        value.code_unit_at(pos) >= '0' &&
+        value.code_unit_at(pos) <= '9' {
+    seen_digit = true
+    whole = whole * 10.0 +
+      (value.code_unit_at(pos).to_int() - '0'.to_int()).to_double()
+    pos += 1
+  }
+  let mut fraction = 0.0
+  let mut place = 0.1
+  if pos < value.length() && value.code_unit_at(pos) == '.' {
+    pos += 1
+    while pos < value.length() &&
+          value.code_unit_at(pos) >= '0' &&
+          value.code_unit_at(pos) <= '9' {
+      seen_digit = true
+      fraction += (value.code_unit_at(pos).to_int() - '0'.to_int()).to_double() *
+        place
+      place *= 0.1
+      pos += 1
+    }
+  }
+  if !seen_digit || pos != value.length() {
+    None
+  } else {
+    Some(sign * (whole + fraction))
+  }
+}
+
+///|
+fn floor_div(value : Int, divisor : Int) -> Int {
+  let q = value / divisor
+  let r = value % divisor
+  if r != 0 && (r < 0) != (divisor < 0) {
+    q - 1
+  } else {
+    q
+  }
+}
+
+///|
+fn modulo(value : Int, divisor : Int) -> Int {
+  let r = value % divisor
+  if r < 0 {
+    r + divisor
+  } else {
+    r
+  }
+}
+
+///|
+fn quarter_of_month(month : Int) -> Int {
+  (month - 1) / 3 + 1
+}
+
+///|
+fn clamp_int(value : Int, min : Int, max : Int) -> Int {
+  if value < min {
+    min
+  } else if value > max {
+    max
+  } else {
+    value
+  }
+}
