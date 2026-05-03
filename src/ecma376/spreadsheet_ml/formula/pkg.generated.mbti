@@ -19,6 +19,10 @@ pub fn coerce_to_text(FormulaValue) -> FormulaValue
 
 pub fn evaluate(FormulaAst, EvalContext) -> FormulaValue
 
+pub fn evaluate_cell(WorksheetSnapshot, @address.CellAddress) -> FormulaValue
+
+pub fn evaluate_sheet(WorksheetSnapshot) -> @hashmap.HashMap[String, FormulaValue]
+
 pub fn expand_shared_formula(@address.CellAddress, FormulaAst, @address.CellAddress) -> FormulaAst
 
 pub fn expand_shared_formula_text(@address.CellAddress, String, @address.CellAddress) -> FormulaAst raise @errors.SchemaViolation
@@ -159,6 +163,20 @@ pub(all) enum UnaryOp {
   PrefixMinus
   PostfixPercent
 } derive(Eq, @debug.Debug)
+
+pub(all) struct WorksheetSnapshot {
+  cells : @hashmap.HashMap[String, @domain.CT_Cell]
+  sst : @domain.CT_Sst?
+  date_system : @date_serial.DateSystem
+  shared_formulas : @hashmap.HashMap[Int, (@address.CellAddress, String)]
+  workbook_name : String?
+  current_sheet : String
+} derive(Eq, @debug.Debug)
+pub fn WorksheetSnapshot::new(String, @date_serial.DateSystem) -> Self
+pub fn WorksheetSnapshot::with_cell(Self, @address.CellAddress, @domain.CT_Cell) -> Self
+pub fn WorksheetSnapshot::with_shared_master(Self, Int, @address.CellAddress, String) -> Self
+pub fn WorksheetSnapshot::with_sst(Self, @domain.CT_Sst) -> Self
+pub fn WorksheetSnapshot::with_worksheet(Self, @domain.CT_Worksheet) -> Self
 
 // Type aliases
 
