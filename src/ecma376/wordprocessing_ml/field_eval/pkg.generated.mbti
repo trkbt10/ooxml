@@ -1,0 +1,146 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/wordprocessing_ml/field_eval"
+
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/hashmap",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn apply_general_switch(String, String) -> String
+
+pub fn apply_general_switches(String, Array[FieldSwitch]) -> String
+
+pub fn decode_field_run_sequence(Array[@xml.Element]) -> Array[DecodedField] raise @errors.SchemaViolation
+
+pub fn decode_simple_field(@domain.CT_SimpleField) -> Field raise @errors.SchemaViolation
+
+pub fn evaluate_field(Field, FieldContext, FieldRegistry) -> FieldResult
+
+pub fn field_part1_17_16_section_name() -> String
+
+pub fn format_date_time(String, @date_serial.CalendarDateTime) -> String
+
+pub fn parse_instruction(String) -> Field raise @errors.SchemaViolation
+
+pub fn tokenize_instruction(String) -> Array[InstructionToken] raise @errors.SchemaViolation
+
+// Errors
+
+// Types and methods
+pub(all) struct BookmarkValue {
+  text : String
+  page : Int
+} derive(Eq, @debug.Debug)
+pub fn BookmarkValue::new(String, Int) -> Self
+
+pub(all) struct DecodedField {
+  field : Field
+  cached_runs : Array[@xml.Element]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Field {
+  instr_text : String
+  instruction : FieldInstruction
+  arguments : Array[String]
+  switches : Array[FieldSwitch]
+} derive(Eq, @debug.Debug)
+pub fn Field::find_switch(Self, Char) -> FieldSwitch?
+
+pub(all) struct FieldContext {
+  current_page : Int
+  total_pages : Int
+  section_pages : Int
+  current_section : Int
+  current_date : @date_serial.CalendarDateTime
+  author : String?
+  title : String?
+  subject : String?
+  keywords : String?
+  comments : String?
+  filename : String?
+  last_modified_by : String?
+  revision_number : Int?
+  create_date : @date_serial.CalendarDateTime?
+  print_date : @date_serial.CalendarDateTime?
+  save_date : @date_serial.CalendarDateTime?
+  bookmarks : @hashmap.HashMap[String, BookmarkValue]
+  merge_record : @hashmap.HashMap[String, String]
+  seq_counters : @hashmap.HashMap[String, Int]
+}
+pub fn FieldContext::default(@date_serial.CalendarDateTime) -> Self
+
+type FieldFrame
+
+pub(all) enum FieldInstruction {
+  Author
+  Comments
+  CreateDate
+  Date
+  DocProperty
+  DocVariable
+  EditTime
+  FileName
+  Hyperlink
+  If
+  IncludeText
+  Keywords
+  MergeField
+  NumPages
+  Page
+  PageRef
+  PrintDate
+  Ref
+  RevNum
+  SaveDate
+  Section
+  SectionPages
+  Seq
+  Subject
+  Time
+  Title
+  UserAddress
+  UserInitials
+  UserName
+  UserDefined(String)
+  Unknown(String)
+} derive(Eq, @debug.Debug)
+pub fn FieldInstruction::canonical_name(Self) -> String
+pub fn FieldInstruction::from_name(String) -> Self
+
+pub(all) struct FieldRegistry {
+  entries : @hashmap.HashMap[String, (Field, FieldContext) -> FieldResult]
+}
+pub fn FieldRegistry::lookup(Self, String) -> ((Field, FieldContext) -> FieldResult)?
+pub fn FieldRegistry::new() -> Self
+pub fn FieldRegistry::register(Self, String, (Field, FieldContext) -> FieldResult) -> Unit
+pub fn FieldRegistry::with_builtins() -> Self
+
+pub(all) enum FieldResult {
+  Literal(String)
+  Hyperlink(String, String)
+  Number(Double)
+  DateResult(@date_serial.CalendarDateTime, String)
+  Empty
+} derive(Eq, @debug.Debug)
+pub fn FieldResult::to_text(Self) -> String
+
+pub(all) struct FieldSwitch {
+  flag : Char
+  argument : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum InstructionToken {
+  TWord(String)
+  TQuoted(String)
+  TSwitch(Char)
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+
