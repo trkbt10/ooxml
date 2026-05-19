@@ -1,0 +1,16 @@
+// trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver
+//
+// WordprocessingML §17.9 numbering inheritance: num → abstractNum →
+// lvl resolution with §17.9.8 lvlOverride wins and §17.9.21
+// numStyleLink follow-up.
+
+import {
+  "moonbitlang/core/hashmap" @hashmap,
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @domain,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"
