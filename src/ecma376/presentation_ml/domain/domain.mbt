@@ -2593,27 +2593,6 @@ pub fn CT_HeaderFooter::to_element(self : CT_HeaderFooter) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_Placeholder from pml.xsd (§19).
-pub(all) struct CT_Placeholder {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_Placeholder::new(element : @xml.Element) -> CT_Placeholder {
-  { element, }
-}
-
-///|
-pub fn CT_Placeholder::parse(element : @xml.Element) -> CT_Placeholder {
-  CT_Placeholder::new(element)
-}
-
-///|
-pub fn CT_Placeholder::to_element(self : CT_Placeholder) -> @xml.Element {
-  self.element
-}
-
-///|
 /// XSD complex type CT_ApplicationNonVisualDrawingProps from pml.xsd (§19).
 pub(all) struct CT_ApplicationNonVisualDrawingProps {
   element : @xml.Element

@@ -26,12 +26,13 @@ fn lookup_by_idx(shapes : Array[@xml.Element], target : Int?) -> @xml.Element? {
 }
 
 ///|
-/// Part 1 §19.3.1.36 ph — find the shape in `shapes` whose `<ph type="…">`
-/// matches the supplied `target`. Used for type-based fallback when an
-/// `idx` lookup fails or when the slide placeholder has no `idx`.
+/// Part 1 §19.3.1.36 ph / §19.7.10 ST_PlaceholderType — find the shape
+/// in `shapes` whose `<ph type="…">` matches the supplied `target`.
+/// Used for type-based fallback when an `idx` lookup fails or when the
+/// slide placeholder has no `idx`.
 fn lookup_by_type(
   shapes : Array[@xml.Element],
-  target : PlaceholderType?,
+  target : @domain.ST_PlaceholderType?,
 ) -> @xml.Element? {
   match target {
     None => None
@@ -41,14 +42,14 @@ fn lookup_by_type(
           Some(ph_element) =>
             match attr_local(ph_element, "type") {
               Some(text) =>
-                match try_from_attr(text) {
+                match try_type_from_attr(text) {
                   Some(value) => if value == needle { return Some(shape) }
                   None => ()
                 }
               None =>
                 // §19.7.10 — body is the implicit default when no @type
                 // is present on a master placeholder.
-                if needle == PhBody {
+                if needle == @domain.PhBody {
                   return Some(shape)
                 }
             }
@@ -66,9 +67,9 @@ fn lookup_by_type(
 /// shapes also fall back to `title` when no explicit `subTitle`
 /// master placeholder exists. All other types match identity.
 fn type_for_master_lookup(
-  layout_ph : Placeholder?,
-  slide_ph : Placeholder?,
-) -> PlaceholderType? {
+  layout_ph : @domain.CT_Placeholder?,
+  slide_ph : @domain.CT_Placeholder?,
+) -> @domain.ST_PlaceholderType? {
   let direct = match layout_ph {
     Some(ph) => ph.ph_type
     None => None
@@ -82,8 +83,8 @@ fn type_for_master_lookup(
     None => from_slide
   }
   match resolved {
-    Some(PhCtrTitle) => Some(PhTitle)
-    Some(PhSubTitle) => Some(PhTitle)
+    Some(@domain.PhCtrTitle) => Some(@domain.PhTitle)
+    Some(@domain.PhSubTitle) => Some(@domain.PhTitle)
     other => other
   }
 }
@@ -91,17 +92,17 @@ fn type_for_master_lookup(
 ///|
 /// Merge slide / layout / master placeholders into an effective view.
 /// Slide values win, then layout, then master. Defaults apply per
-/// §19.7.9 (`SizeFull`), §19.7.10 (`PhBody`), §19.3.1.36
-/// (`OrientHorz`).
+/// §19.7.9 (`PlaceholderFull`), §19.7.10 (`PhBody`), §19.3.1.36
+/// (`DirectionHorz`).
 fn merge_effective(
-  slide_ph : Placeholder?,
-  layout_ph : Placeholder?,
-  master_ph : Placeholder?,
+  slide_ph : @domain.CT_Placeholder?,
+  layout_ph : @domain.CT_Placeholder?,
+  master_ph : @domain.CT_Placeholder?,
 ) -> EffectivePlaceholder? {
   if slide_ph is None && layout_ph is None && master_ph is None {
     return None
   }
-  let layers : Array[Placeholder] = []
+  let layers : Array[@domain.CT_Placeholder] = []
   match slide_ph {
     Some(ph) => layers.push(ph)
     None => ()
@@ -115,9 +116,9 @@ fn merge_effective(
     None => ()
   }
   let idx = first_idx(layers)
-  let ph_type = first_type(layers).unwrap_or(PhBody)
-  let size = first_size(layers).unwrap_or(SizeFull)
-  let orient = first_orient(layers).unwrap_or(OrientHorz)
+  let ph_type = first_type(layers).unwrap_or(@domain.PhBody)
+  let size = first_size(layers).unwrap_or(@domain.PlaceholderFull)
+  let orient = first_orient(layers).unwrap_or(@domain.DirectionHorz)
   let has_custom_prompt = layers.iter().any(fn(ph) { ph.has_custom_prompt })
   Some({ idx, ph_type, size, orient, has_custom_prompt })
 }
@@ -132,7 +133,7 @@ fn merge_effective(
 pub fn resolve_placeholder(
   slide_shape : @xml.Element,
   chain : SlideChain,
-) -> ResolvedShape raise @opc_errors.SchemaViolation {
+) -> ResolvedShape raise @domain.SchemaViolation {
   let slide_ph = decode_shape_placeholder(slide_shape)
   let layout_shapes = chain.layout_shapes()
   let layout_shape_match = lookup_layout_shape(layout_shapes, slide_ph)
@@ -181,7 +182,7 @@ pub fn resolve_placeholder(
 /// = None) so callers can render them in document order.
 pub fn resolve_slide_shapes(
   chain : SlideChain,
-) -> Array[ResolvedShape] raise @opc_errors.SchemaViolation {
+) -> Array[ResolvedShape] raise @domain.SchemaViolation {
   let shapes = chain.slide_shapes()
   let result : Array[ResolvedShape] = []
   for shape in shapes {
@@ -193,7 +194,7 @@ pub fn resolve_slide_shapes(
 ///|
 fn lookup_layout_shape(
   layout_shapes : Array[@xml.Element],
-  slide_ph : Placeholder?,
+  slide_ph : @domain.CT_Placeholder?,
 ) -> @xml.Element? {
   match slide_ph {
     None => None
@@ -203,8 +204,8 @@ fn lookup_layout_shape(
         Some(found) => Some(found)
         None => {
           let lookup_target = match ph.ph_type {
-            Some(PhCtrTitle) => Some(PhCtrTitle)
-            Some(PhSubTitle) => Some(PhSubTitle)
+            Some(@domain.PhCtrTitle) => Some(@domain.PhCtrTitle)
+            Some(@domain.PhSubTitle) => Some(@domain.PhSubTitle)
             other => other
           }
           lookup_by_type(layout_shapes, lookup_target)
@@ -217,8 +218,8 @@ fn lookup_layout_shape(
 ///|
 fn lookup_master_shape(
   master_shapes : Array[@xml.Element],
-  layout_ph : Placeholder?,
-  slide_ph : Placeholder?,
+  layout_ph : @domain.CT_Placeholder?,
+  slide_ph : @domain.CT_Placeholder?,
 ) -> @xml.Element? {
   let layout_idx = match layout_ph {
     Some(ph) => ph.idx
@@ -249,7 +250,7 @@ fn merge_first(
 }
 
 ///|
-fn first_idx(layers : Array[Placeholder]) -> Int? {
+fn first_idx(layers : Array[@domain.CT_Placeholder]) -> Int? {
   for layer in layers {
     match layer.idx {
       Some(value) => return Some(value)
@@ -260,7 +261,9 @@ fn first_idx(layers : Array[Placeholder]) -> Int? {
 }
 
 ///|
-fn first_type(layers : Array[Placeholder]) -> PlaceholderType? {
+fn first_type(
+  layers : Array[@domain.CT_Placeholder],
+) -> @domain.ST_PlaceholderType? {
   for layer in layers {
     match layer.ph_type {
       Some(value) => return Some(value)
@@ -271,7 +274,9 @@ fn first_type(layers : Array[Placeholder]) -> PlaceholderType? {
 }
 
 ///|
-fn first_size(layers : Array[Placeholder]) -> PlaceholderSize? {
+fn first_size(
+  layers : Array[@domain.CT_Placeholder],
+) -> @domain.ST_PlaceholderSize? {
   for layer in layers {
     match layer.size {
       Some(value) => return Some(value)
@@ -282,7 +287,9 @@ fn first_size(layers : Array[Placeholder]) -> PlaceholderSize? {
 }
 
 ///|
-fn first_orient(layers : Array[Placeholder]) -> PlaceholderOrient? {
+fn first_orient(
+  layers : Array[@domain.CT_Placeholder],
+) -> @domain.ST_Direction? {
   for layer in layers {
     match layer.orient {
       Some(value) => return Some(value)
@@ -319,24 +326,29 @@ fn parse_idx_strict(text : String) -> Int? {
 }
 
 ///|
-fn try_from_attr(text : String) -> PlaceholderType? {
+/// Part 1 §19.7.10 — best-effort decode of a `p:ph/@type` lexical value
+/// to a typed `ST_PlaceholderType`. Returns `None` for unknown values
+/// so the resolver can silently skip non-conforming master shapes
+/// during fallback lookup instead of aborting the whole resolve. Strict
+/// validation lives on `@domain.CT_Placeholder::from_element`.
+fn try_type_from_attr(text : String) -> @domain.ST_PlaceholderType? {
   match text {
-    "body" => Some(PhBody)
-    "chart" => Some(PhChart)
-    "clipArt" => Some(PhClipArt)
-    "ctrTitle" => Some(PhCtrTitle)
-    "dgm" => Some(PhDgm)
-    "dt" => Some(PhDt)
-    "ftr" => Some(PhFtr)
-    "hdr" => Some(PhHdr)
-    "media" => Some(PhMedia)
-    "obj" => Some(PhObj)
-    "pic" => Some(PhPic)
-    "sldImg" => Some(PhSldImg)
-    "sldNum" => Some(PhSldNum)
-    "subTitle" => Some(PhSubTitle)
-    "tbl" => Some(PhTbl)
-    "title" => Some(PhTitle)
+    "body" => Some(@domain.PhBody)
+    "chart" => Some(@domain.PhChart)
+    "clipArt" => Some(@domain.PhClipArt)
+    "ctrTitle" => Some(@domain.PhCtrTitle)
+    "dgm" => Some(@domain.PhDgm)
+    "dt" => Some(@domain.PhDt)
+    "ftr" => Some(@domain.PhFtr)
+    "hdr" => Some(@domain.PhHdr)
+    "media" => Some(@domain.PhMedia)
+    "obj" => Some(@domain.PhObj)
+    "pic" => Some(@domain.PhPic)
+    "sldImg" => Some(@domain.PhSldImg)
+    "sldNum" => Some(@domain.PhSldNum)
+    "subTitle" => Some(@domain.PhSubTitle)
+    "tbl" => Some(@domain.PhTbl)
+    "title" => Some(@domain.PhTitle)
     _ => None
   }
 }

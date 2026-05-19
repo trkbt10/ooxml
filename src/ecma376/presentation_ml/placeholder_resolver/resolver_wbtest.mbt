@@ -38,22 +38,22 @@ fn first_slide_shape(chain : SlideChain) -> @xml.Element {
 }
 
 ///|
-test "§19.3.1.36 decode_placeholder returns typed attributes" {
+test "§19.3.1.36 CT_Placeholder::from_element returns typed attributes" {
   let element = parse_root(
     "<ph type=\"title\" idx=\"3\" sz=\"half\" orient=\"vert\" hasCustomPrompt=\"1\"/>",
   )
-  let ph = try! decode_placeholder_element(element)
+  let ph = try! @domain.CT_Placeholder::from_element(element)
   assert_eq(ph.idx, Some(3))
-  assert_true(ph.ph_type == Some(PhTitle))
-  assert_true(ph.size == Some(SizeHalf))
-  assert_true(ph.orient == Some(OrientVert))
+  assert_true(ph.ph_type == Some(@domain.PhTitle))
+  assert_true(ph.size == Some(@domain.PlaceholderHalf))
+  assert_true(ph.orient == Some(@domain.DirectionVert))
   assert_true(ph.has_custom_prompt)
 }
 
 ///|
 test "§19.3.1.36 absent attributes leave defaults" {
   let element = parse_root("<ph/>")
-  let ph = try! decode_placeholder_element(element)
+  let ph = try! @domain.CT_Placeholder::from_element(element)
   assert_eq(ph.idx, None)
   assert_true(ph.ph_type == None)
   assert_true(ph.size == None)
@@ -64,7 +64,8 @@ test "§19.3.1.36 absent attributes leave defaults" {
 
 ///|
 test "§19.7.10 ST_PlaceholderType rejects unknown lexical values" {
-  let bad = try? PlaceholderType::from_attr("bogus")
+  let element = parse_root("<ph type=\"bogus\"/>")
+  let bad = try? @domain.CT_Placeholder::from_element(element)
   assert_true(bad is Err(_))
 }
 
@@ -81,7 +82,7 @@ test "§19.3.1.36 idx match resolves slide → layout → master" {
   let resolved = try! resolve_placeholder(first_slide_shape(chain), chain)
   let effective = resolved.effective_placeholder.unwrap()
   assert_eq(effective.idx, Some(2))
-  assert_true(effective.ph_type == PhBody)
+  assert_true(effective.ph_type == @domain.PhBody)
   assert_true(resolved.layout_shape is Some(_))
   assert_true(resolved.master_shape is Some(_))
   let sp_pr = resolved.sp_pr.unwrap()
@@ -105,7 +106,7 @@ test "§19.3.1.36 type-only slide ph falls through to master" {
   let sp_pr = resolved.sp_pr.unwrap()
   assert_true(attr_local_test(sp_pr, "id") == Some("master-body"))
   assert_true(resolved.master_shape is Some(_))
-  assert_true(resolved.effective_placeholder.unwrap().ph_type == PhBody)
+  assert_true(resolved.effective_placeholder.unwrap().ph_type == @domain.PhBody)
 }
 
 ///|
@@ -124,7 +125,7 @@ test "§19.3.1.36 ctrTitle in layout inherits from master title" {
   let sp_pr = shape_sp_pr(master_shape).unwrap()
   assert_true(attr_local_test(sp_pr, "id") == Some("master-title"))
   let effective = resolved.effective_placeholder.unwrap()
-  assert_true(effective.ph_type == PhCtrTitle)
+  assert_true(effective.ph_type == @domain.PhCtrTitle)
 }
 
 ///|
@@ -141,8 +142,8 @@ test "§19.7.9 size and orient inherit from first non-empty layer" {
   let effective = resolved.effective_placeholder.unwrap()
   // Layout supplies half (slide is silent), master supplies vert
   // because layout is silent on orient.
-  assert_true(effective.size == SizeHalf)
-  assert_true(effective.orient == OrientVert)
+  assert_true(effective.size == @domain.PlaceholderHalf)
+  assert_true(effective.orient == @domain.DirectionVert)
 }
 
 ///|

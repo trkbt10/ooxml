@@ -11,6 +11,8 @@ pub fn cm_author_lst(@xml.Element) -> CT_CommentAuthorList
 
 pub fn cm_lst(@xml.Element) -> CT_CommentList
 
+pub fn ct_placeholder_section_name() -> String
+
 pub fn handout_master(@xml.Element) -> CT_HandoutMaster
 
 pub fn notes(@xml.Element) -> CT_NotesSlide
@@ -512,11 +514,14 @@ pub fn CT_PictureNonVisual::parse(@xml.Element) -> Self
 pub fn CT_PictureNonVisual::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Placeholder {
-  element : @xml.Element
+  idx : Int?
+  ph_type : ST_PlaceholderType?
+  size : ST_PlaceholderSize?
+  orient : ST_Direction?
+  has_custom_prompt : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Placeholder::new(@xml.Element) -> Self
-pub fn CT_Placeholder::parse(@xml.Element) -> Self
-pub fn CT_Placeholder::to_element(Self) -> @xml.Element
+pub fn CT_Placeholder::from_element(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Placeholder::is_default(Self) -> Bool
 
 pub(all) struct CT_Presentation {
   element : @xml.Element

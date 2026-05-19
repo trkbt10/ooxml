@@ -1,11 +1,12 @@
 // trkbt10/ooxml/ecma376/presentation_ml/placeholder_resolver
 //
 // PresentationML §19.3.1.36 ph (CT_Placeholder) inheritance: slide →
-// layout → master lookup by idx / type with the §19.7.10 Placeholder
-// Type, §19.7.9 Placeholder Size, and §19.7.2 Direction enumerations.
+// layout → master lookup by idx / type. The typed `CT_Placeholder`
+// struct, its `from_element` decoder, and the §19.7.10 / §19.7.9 /
+// §19.7.2 simple types all live in `presentation_ml/domain`; this
+// package only carries the resolver + shape navigation helpers.
 
 import {
-  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/xml" @xml,
   "trkbt10/ooxml/ecma376/presentation_ml/domain" @domain,
 }
