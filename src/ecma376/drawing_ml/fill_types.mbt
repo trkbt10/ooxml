@@ -500,7 +500,7 @@ pub(all) struct CT_StretchInfoProperties {
 ///|
 pub fn CT_StretchInfoProperties::new(
   element : @xml.Element,
-) -> CT_StretchInfoProperties {
+) -> CT_StretchInfoProperties raise SchemaViolation {
   let fill_rect = match ct_first_child(element, "fillRect") {
     Some(c) => Some(CT_RelativeRect::new(c))
     None => None

@@ -355,15 +355,25 @@ pub fn AG_Locking::attribute_names(Self) -> Array[String]
 pub fn AG_Locking::has_attribute(Self, String) -> Bool
 pub fn AG_Locking::new(@xml.Element) -> Self
 
+pub(all) enum AdjustHandle {
+  AhXY(CT_XYAdjustHandle)
+  AhPolar(CT_PolarAdjustHandle)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct CT_AdjPoint2D {
+  x : String
+  y : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AdjPoint2D::new(@xml.Element) -> Self
+pub fn CT_AdjPoint2D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AdjPoint2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AdjustHandleList {
+  handles : Array[AdjustHandle]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AdjustHandleList::new(@xml.Element) -> Self
+pub fn CT_AdjustHandleList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AdjustHandleList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AlphaBiLevelEffect {
   thresh : ST_PositiveFixedPercentage
@@ -422,9 +432,11 @@ pub fn CT_AlphaReplaceEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_AlphaReplaceEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Angle {
+  val : ST_Angle
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Angle::new(@xml.Element) -> Self
+pub fn CT_Angle::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Angle::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AnimationChartBuildProperties {
   bld : ST_AnimationChartBuildType
@@ -710,19 +722,27 @@ pub fn CT_ComplementTransform::new(@xml.Element) -> Self
 pub fn CT_ComplementTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Connection {
+  id : UInt
+  idx : UInt
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Connection::new(@xml.Element) -> Self
+pub fn CT_Connection::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Connection::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ConnectionSite {
+  pos : CT_AdjPoint2D
+  ang : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ConnectionSite::new(@xml.Element) -> Self
+pub fn CT_ConnectionSite::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ConnectionSite::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ConnectionSiteList {
+  cxn : Array[CT_ConnectionSite]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ConnectionSiteList::new(@xml.Element) -> Self
+pub fn CT_ConnectionSiteList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ConnectionSiteList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ConnectorLocking {
   element : @xml.Element
@@ -750,9 +770,16 @@ pub fn CT_CustomColorList::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomColorList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomGeometry2D {
+  av_lst : CT_GeomGuideList?
+  gd_lst : CT_GeomGuideList?
+  ah_lst : CT_AdjustHandleList?
+  cxn_lst : CT_ConnectionSiteList?
+  rect : CT_GeomRect?
+  path_lst : CT_Path2DList
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomGeometry2D::new(@xml.Element) -> Self
+pub fn CT_CustomGeometry2D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CustomGeometry2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DashStop {
   element : @xml.Element
@@ -873,9 +900,11 @@ pub(all) struct CT_FillStyleList {
 pub fn CT_FillStyleList::new(@xml.Element) -> Self
 
 pub(all) struct CT_FixedPercentage {
+  val : ST_FixedPercentage
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_FixedPercentage::new(@xml.Element) -> Self
+pub fn CT_FixedPercentage::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FixedPercentage::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FlatText {
   element : @xml.Element
@@ -919,19 +948,29 @@ pub fn CT_GammaTransform::new(@xml.Element) -> Self
 pub fn CT_GammaTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GeomGuide {
+  name : String
+  fmla : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GeomGuide::new(@xml.Element) -> Self
+pub fn CT_GeomGuide::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GeomGuide::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GeomGuideList {
+  gd : Array[CT_GeomGuide]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GeomGuideList::new(@xml.Element) -> Self
+pub fn CT_GeomGuideList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GeomGuideList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GeomRect {
+  l : String
+  t : String
+  r : String
+  b : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GeomRect::new(@xml.Element) -> Self
+pub fn CT_GeomRect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GeomRect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GlowEffect {
   color : CT_Color
@@ -1015,29 +1054,53 @@ pub(all) struct CT_GroupShapeProperties {
 pub fn CT_GroupShapeProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupTransform2D {
+  off : CT_Point2D?
+  ext : CT_PositiveSize2D?
+  ch_off : CT_Point2D?
+  ch_ext : CT_PositiveSize2D?
+  rot : ST_Angle
+  flip_h : Bool
+  flip_v : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupTransform2D::new(@xml.Element) -> Self
+pub fn CT_GroupTransform2D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GroupTransform2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GvmlConnector {
+  nv_cxn_sp_pr : CT_GvmlConnectorNonVisual
+  sp_pr : CT_ShapeProperties
+  style : CT_ShapeStyle?
+  ext_lst : CT_OfficeArtExtensionList?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GvmlConnector::new(@xml.Element) -> Self
+pub fn CT_GvmlConnector::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GvmlConnector::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GvmlConnectorNonVisual {
+  c_nv_pr : CT_NonVisualDrawingProps
+  c_nv_cxn_sp_pr : CT_NonVisualConnectorProperties
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GvmlConnectorNonVisual::new(@xml.Element) -> Self
+pub fn CT_GvmlConnectorNonVisual::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GvmlConnectorNonVisual::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GvmlGraphicFrameNonVisual {
+  c_nv_pr : CT_NonVisualDrawingProps
+  c_nv_graphic_frame_pr : CT_NonVisualGraphicFrameProperties
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GvmlGraphicFrameNonVisual::new(@xml.Element) -> Self
+pub fn CT_GvmlGraphicFrameNonVisual::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GvmlGraphicFrameNonVisual::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GvmlGraphicalObjectFrame {
+  nv_graphic_frame_pr : CT_GvmlGraphicFrameNonVisual
+  graphic : CT_GraphicalObject
+  xfrm : CT_Transform2D
+  ext_lst : CT_OfficeArtExtensionList?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GvmlGraphicalObjectFrame::new(@xml.Element) -> Self
+pub fn CT_GvmlGraphicalObjectFrame::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GvmlGraphicalObjectFrame::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GvmlGroupShape {
   element : @xml.Element
@@ -1050,24 +1113,42 @@ pub(all) struct CT_GvmlGroupShapeNonVisual {
 pub fn CT_GvmlGroupShapeNonVisual::new(@xml.Element) -> Self
 
 pub(all) struct CT_GvmlPicture {
+  nv_pic_pr : CT_GvmlPictureNonVisual
+  blip_fill : CT_BlipFillProperties
+  sp_pr : CT_ShapeProperties
+  style : CT_ShapeStyle?
+  ext_lst : CT_OfficeArtExtensionList?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GvmlPicture::new(@xml.Element) -> Self
+pub fn CT_GvmlPicture::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GvmlPicture::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GvmlPictureNonVisual {
+  c_nv_pr : CT_NonVisualDrawingProps
+  c_nv_pic_pr : CT_NonVisualPictureProperties
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GvmlPictureNonVisual::new(@xml.Element) -> Self
+pub fn CT_GvmlPictureNonVisual::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GvmlPictureNonVisual::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GvmlShape {
+  nv_sp_pr : CT_GvmlShapeNonVisual
+  sp_pr : CT_ShapeProperties
+  tx_sp : CT_GvmlTextShape?
+  style : CT_ShapeStyle?
+  ext_lst : CT_OfficeArtExtensionList?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GvmlShape::new(@xml.Element) -> Self
+pub fn CT_GvmlShape::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GvmlShape::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GvmlShapeNonVisual {
+  c_nv_pr : CT_NonVisualDrawingProps
+  c_nv_sp_pr : CT_NonVisualDrawingShapeProps
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GvmlShapeNonVisual::new(@xml.Element) -> Self
+pub fn CT_GvmlShapeNonVisual::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GvmlShapeNonVisual::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GvmlTextShape {
   element : @xml.Element
@@ -1279,44 +1360,71 @@ pub fn CT_OuterShadowEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_OuterShadowEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Path2D {
+  commands : Array[Path2DCommand]
+  w : ST_PositiveCoordinate
+  h : ST_PositiveCoordinate
+  fill : String
+  stroke : Bool
+  extrusion_ok : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Path2D::new(@xml.Element) -> Self
+pub fn CT_Path2D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Path2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Path2DArcTo {
+  w_r : String
+  h_r : String
+  st_ang : String
+  sw_ang : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Path2DArcTo::new(@xml.Element) -> Self
+pub fn CT_Path2DArcTo::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Path2DArcTo::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Path2DClose {
+  marker : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Path2DClose::new(@xml.Element) -> Self
+pub fn CT_Path2DClose::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Path2DCubicBezierTo {
+  pt0 : CT_AdjPoint2D
+  pt1 : CT_AdjPoint2D
+  pt2 : CT_AdjPoint2D
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Path2DCubicBezierTo::new(@xml.Element) -> Self
+pub fn CT_Path2DCubicBezierTo::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Path2DCubicBezierTo::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Path2DLineTo {
+  pt : CT_AdjPoint2D
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Path2DLineTo::new(@xml.Element) -> Self
+pub fn CT_Path2DLineTo::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Path2DLineTo::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Path2DList {
+  path : Array[CT_Path2D]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Path2DList::new(@xml.Element) -> Self
+pub fn CT_Path2DList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Path2DList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Path2DMoveTo {
+  pt : CT_AdjPoint2D
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Path2DMoveTo::new(@xml.Element) -> Self
+pub fn CT_Path2DMoveTo::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Path2DMoveTo::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Path2DQuadBezierTo {
+  pt0 : CT_AdjPoint2D
+  pt1 : CT_AdjPoint2D
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Path2DQuadBezierTo::new(@xml.Element) -> Self
+pub fn CT_Path2DQuadBezierTo::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Path2DQuadBezierTo::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PathShadeProperties {
   fill_to_rect : CT_RelativeRect?
@@ -1336,9 +1444,11 @@ pub fn CT_PatternFillProperties::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PatternFillProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Percentage {
+  val : ST_Percentage
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Percentage::new(@xml.Element) -> Self
+pub fn CT_Percentage::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Percentage::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PictureLocking {
   element : @xml.Element
@@ -1346,39 +1456,63 @@ pub(all) struct CT_PictureLocking {
 pub fn CT_PictureLocking::new(@xml.Element) -> Self
 
 pub(all) struct CT_Point2D {
+  x : ST_Coordinate
+  y : ST_Coordinate
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Point2D::new(@xml.Element) -> Self
+pub fn CT_Point2D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Point2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Point3D {
+  x : ST_Coordinate
+  y : ST_Coordinate
+  z : ST_Coordinate
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Point3D::new(@xml.Element) -> Self
+pub fn CT_Point3D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Point3D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PolarAdjustHandle {
+  pos : CT_AdjPoint2D
+  gd_ref_r : String?
+  min_r : String?
+  max_r : String?
+  gd_ref_ang : String?
+  min_ang : String?
+  max_ang : String?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PolarAdjustHandle::new(@xml.Element) -> Self
+pub fn CT_PolarAdjustHandle::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PolarAdjustHandle::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PositiveFixedAngle {
+  val : ST_PositiveFixedAngle
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PositiveFixedAngle::new(@xml.Element) -> Self
+pub fn CT_PositiveFixedAngle::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PositiveFixedAngle::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PositiveFixedPercentage {
+  val : ST_PositiveFixedPercentage
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PositiveFixedPercentage::new(@xml.Element) -> Self
+pub fn CT_PositiveFixedPercentage::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PositiveFixedPercentage::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PositivePercentage {
+  val : ST_PositivePercentage
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PositivePercentage::new(@xml.Element) -> Self
+pub fn CT_PositivePercentage::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PositivePercentage::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PositiveSize2D {
+  cx : ST_PositiveCoordinate
+  cy : ST_PositiveCoordinate
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PositiveSize2D::new(@xml.Element) -> Self
+pub fn CT_PositiveSize2D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PositiveSize2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PresetColor {
   val : ST_PresetColorVal
@@ -1389,9 +1523,12 @@ pub fn CT_PresetColor::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PresetColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PresetGeometry2D {
+  av_lst : CT_GeomGuideList?
+  prst : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PresetGeometry2D::new(@xml.Element) -> Self
+pub fn CT_PresetGeometry2D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PresetGeometry2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PresetLineDashProperties {
   element : @xml.Element
@@ -1409,9 +1546,12 @@ pub fn CT_PresetShadowEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PresetShadowEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PresetTextShape {
+  av_lst : CT_GeomGuideList?
+  prst : ST_TextShapeType
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PresetTextShape::new(@xml.Element) -> Self
+pub fn CT_PresetTextShape::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PresetTextShape::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_QuickTimeFile {
   r_link : String
@@ -1422,9 +1562,12 @@ pub fn CT_QuickTimeFile::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_QuickTimeFile::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Ratio {
+  n : Int64
+  d : Int64
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Ratio::new(@xml.Element) -> Self
+pub fn CT_Ratio::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Ratio::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ReflectionEffect {
   blur_rad : ST_PositiveCoordinate
@@ -1460,9 +1603,14 @@ pub fn CT_RelativeOffsetEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_RelativeOffsetEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RelativeRect {
+  l : ST_Percentage
+  t : ST_Percentage
+  r : ST_Percentage
+  b : ST_Percentage
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_RelativeRect::new(@xml.Element) -> Self
+pub fn CT_RelativeRect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RelativeRect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SRgbColor {
   val : String
@@ -1483,9 +1631,12 @@ pub fn CT_ScRgbColor::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ScRgbColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Scale2D {
+  sx : CT_Ratio
+  sy : CT_Ratio
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Scale2D::new(@xml.Element) -> Self
+pub fn CT_Scale2D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Scale2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Scene3D {
   element : @xml.Element
@@ -1535,15 +1686,19 @@ pub fn CT_SolidColorFillProperties::new(@xml.Element) -> Self raise SchemaViolat
 pub fn CT_SolidColorFillProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SphereCoords {
+  lat : ST_PositiveFixedAngle
+  lon : ST_PositiveFixedAngle
+  rev : ST_PositiveFixedAngle
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SphereCoords::new(@xml.Element) -> Self
+pub fn CT_SphereCoords::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SphereCoords::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_StretchInfoProperties {
   fill_rect : CT_RelativeRect?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_StretchInfoProperties::new(@xml.Element) -> Self
+pub fn CT_StretchInfoProperties::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_StretchInfoProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_StyleMatrix {
@@ -1821,9 +1976,15 @@ pub fn CT_TintEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TintEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Transform2D {
+  off : CT_Point2D?
+  ext : CT_PositiveSize2D?
+  rot : ST_Angle
+  flip_h : Bool
+  flip_v : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Transform2D::new(@xml.Element) -> Self
+pub fn CT_Transform2D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Transform2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TransformEffect {
   sx : ST_Percentage
@@ -1838,9 +1999,13 @@ pub fn CT_TransformEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TransformEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Vector3D {
+  dx : ST_Coordinate
+  dy : ST_Coordinate
+  dz : ST_Coordinate
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Vector3D::new(@xml.Element) -> Self
+pub fn CT_Vector3D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Vector3D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_VideoFile {
   r_link : String
@@ -1860,9 +2025,17 @@ pub fn CT_WholeE2oFormatting::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_WholeE2oFormatting::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_XYAdjustHandle {
+  pos : CT_AdjPoint2D
+  gd_ref_x : String?
+  min_x : String?
+  max_x : String?
+  gd_ref_y : String?
+  min_y : String?
+  max_y : String?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_XYAdjustHandle::new(@xml.Element) -> Self
+pub fn CT_XYAdjustHandle::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_XYAdjustHandle::to_element(Self) -> @xml.Element
 
 pub(all) struct EG_ColorChoice {
   element : @xml.Element
@@ -2045,6 +2218,15 @@ pub(all) struct EG_ThemeableFontStyles {
 pub fn EG_ThemeableFontStyles::child_names(Self) -> Array[String]
 pub fn EG_ThemeableFontStyles::has_child(Self, String) -> Bool
 pub fn EG_ThemeableFontStyles::new(@xml.Element) -> Self
+
+pub(all) enum Path2DCommand {
+  PathClose(CT_Path2DClose)
+  PathMoveTo(CT_Path2DMoveTo)
+  PathLineTo(CT_Path2DLineTo)
+  PathArcTo(CT_Path2DArcTo)
+  PathQuadBezTo(CT_Path2DQuadBezierTo)
+  PathCubicBezTo(CT_Path2DCubicBezierTo)
+} derive(Eq, @debug.Debug)
 
 pub struct ST_Angle {
   sixty_thousandths : Int
