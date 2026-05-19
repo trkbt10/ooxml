@@ -2683,281 +2683,442 @@ pub fn ST_HeightRule::new(String) -> Self raise SchemaViolation
 pub fn ST_HeightRule::parse(String) -> Self raise SchemaViolation
 pub fn ST_HeightRule::to_string(Self) -> String
 
-pub struct ST_HexColor {
-  value : String
+pub enum ST_HexColor {
+  HexColorAuto
+  HexColorRgb(Int, Int, Int)
 } derive(Eq, @debug.Debug)
 pub fn ST_HexColor::new(String) -> Self raise SchemaViolation
 pub fn ST_HexColor::parse(String) -> Self raise SchemaViolation
 pub fn ST_HexColor::to_string(Self) -> String
 
-pub struct ST_HexColorAuto {
-  value : String
+pub(all) enum ST_HexColorAuto {
+  HexColorAutoAuto
 } derive(Eq, @debug.Debug)
 pub fn ST_HexColorAuto::new(String) -> Self raise SchemaViolation
 pub fn ST_HexColorAuto::parse(String) -> Self raise SchemaViolation
 pub fn ST_HexColorAuto::to_string(Self) -> String
 
-pub struct ST_HighlightColor {
-  value : String
+pub(all) enum ST_HighlightColor {
+  HlBlack
+  HlBlue
+  HlCyan
+  HlGreen
+  HlMagenta
+  HlRed
+  HlYellow
+  HlWhite
+  HlDarkBlue
+  HlDarkCyan
+  HlDarkGreen
+  HlDarkMagenta
+  HlDarkRed
+  HlDarkYellow
+  HlDarkGray
+  HlLightGray
+  HlNone
 } derive(Eq, @debug.Debug)
 pub fn ST_HighlightColor::new(String) -> Self raise SchemaViolation
 pub fn ST_HighlightColor::parse(String) -> Self raise SchemaViolation
 pub fn ST_HighlightColor::to_string(Self) -> String
 
-pub struct ST_Hint {
-  value : String
+pub(all) enum ST_Hint {
+  HintDefault
+  HintEastAsia
 } derive(Eq, @debug.Debug)
 pub fn ST_Hint::new(String) -> Self raise SchemaViolation
 pub fn ST_Hint::parse(String) -> Self raise SchemaViolation
 pub fn ST_Hint::to_string(Self) -> String
 
-pub struct ST_HpsMeasure {
-  value : String
+pub enum ST_HpsMeasure {
+  HpsHalfPoints(UInt64)
+  HpsMeasure(WmlPositiveUniversalMeasure)
 } derive(Eq, @debug.Debug)
 pub fn ST_HpsMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_HpsMeasure::parse(String) -> Self raise SchemaViolation
 pub fn ST_HpsMeasure::to_string(Self) -> String
 
-pub struct ST_InfoTextType {
-  value : String
+pub(all) enum ST_InfoTextType {
+  InfoTextText
+  InfoTextAutoText
 } derive(Eq, @debug.Debug)
 pub fn ST_InfoTextType::new(String) -> Self raise SchemaViolation
 pub fn ST_InfoTextType::parse(String) -> Self raise SchemaViolation
 pub fn ST_InfoTextType::to_string(Self) -> String
 
-pub struct ST_Jc {
-  value : String
+pub(all) enum ST_Jc {
+  JcStart
+  JcCenter
+  JcEnd
+  JcBoth
+  JcMediumKashida
+  JcDistribute
+  JcNumTab
+  JcHighKashida
+  JcLowKashida
+  JcThaiDistribute
 } derive(Eq, @debug.Debug)
 pub fn ST_Jc::new(String) -> Self raise SchemaViolation
 pub fn ST_Jc::parse(String) -> Self raise SchemaViolation
 pub fn ST_Jc::to_string(Self) -> String
 
-pub struct ST_JcTable {
-  value : String
+pub(all) enum ST_JcTable {
+  JcTableCenter
+  JcTableEnd
+  JcTableStart
 } derive(Eq, @debug.Debug)
 pub fn ST_JcTable::new(String) -> Self raise SchemaViolation
 pub fn ST_JcTable::parse(String) -> Self raise SchemaViolation
 pub fn ST_JcTable::to_string(Self) -> String
 
-pub struct ST_LevelSuffix {
-  value : String
+pub(all) enum ST_LevelSuffix {
+  LevelSuffixTab
+  LevelSuffixSpace
+  LevelSuffixNothing
 } derive(Eq, @debug.Debug)
 pub fn ST_LevelSuffix::new(String) -> Self raise SchemaViolation
 pub fn ST_LevelSuffix::parse(String) -> Self raise SchemaViolation
 pub fn ST_LevelSuffix::to_string(Self) -> String
 
-pub struct ST_LineNumberRestart {
-  value : String
+pub(all) enum ST_LineNumberRestart {
+  LineNumberRestartNewPage
+  LineNumberRestartNewSection
+  LineNumberRestartContinuous
 } derive(Eq, @debug.Debug)
 pub fn ST_LineNumberRestart::new(String) -> Self raise SchemaViolation
 pub fn ST_LineNumberRestart::parse(String) -> Self raise SchemaViolation
 pub fn ST_LineNumberRestart::to_string(Self) -> String
 
-pub struct ST_LineSpacingRule {
-  value : String
+pub(all) enum ST_LineSpacingRule {
+  LineSpacingAuto
+  LineSpacingExact
+  LineSpacingAtLeast
 } derive(Eq, @debug.Debug)
 pub fn ST_LineSpacingRule::new(String) -> Self raise SchemaViolation
 pub fn ST_LineSpacingRule::parse(String) -> Self raise SchemaViolation
 pub fn ST_LineSpacingRule::to_string(Self) -> String
 
-pub struct ST_Lock {
-  value : String
+pub(all) enum ST_Lock {
+  LockSdtLocked
+  LockContentLocked
+  LockUnlocked
+  LockSdtContentLocked
 } derive(Eq, @debug.Debug)
 pub fn ST_Lock::new(String) -> Self raise SchemaViolation
 pub fn ST_Lock::parse(String) -> Self raise SchemaViolation
 pub fn ST_Lock::to_string(Self) -> String
 
 pub struct ST_LongHexNumber {
-  value : String
+  bytes : FixedArray[Byte]
 } derive(Eq, @debug.Debug)
+pub fn ST_LongHexNumber::byte_at(Self, Int) -> Int
 pub fn ST_LongHexNumber::new(String) -> Self raise SchemaViolation
 pub fn ST_LongHexNumber::parse(String) -> Self raise SchemaViolation
 pub fn ST_LongHexNumber::to_string(Self) -> String
 
 pub struct ST_MacroName {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_MacroName::new(String) -> Self raise SchemaViolation
 pub fn ST_MacroName::parse(String) -> Self raise SchemaViolation
 pub fn ST_MacroName::to_string(Self) -> String
 
 pub struct ST_MailMergeDataType {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_MailMergeDataType::new(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeDataType::parse(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeDataType::to_string(Self) -> String
 
-pub struct ST_MailMergeDest {
-  value : String
+pub(all) enum ST_MailMergeDest {
+  MailMergeDestNewDocument
+  MailMergeDestPrinter
+  MailMergeDestEmail
+  MailMergeDestFax
 } derive(Eq, @debug.Debug)
 pub fn ST_MailMergeDest::new(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeDest::parse(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeDest::to_string(Self) -> String
 
-pub struct ST_MailMergeDocType {
-  value : String
+pub(all) enum ST_MailMergeDocType {
+  MailMergeDocTypeCatalog
+  MailMergeDocTypeEnvelopes
+  MailMergeDocTypeMailingLabels
+  MailMergeDocTypeFormLetters
+  MailMergeDocTypeEmail
+  MailMergeDocTypeFax
 } derive(Eq, @debug.Debug)
 pub fn ST_MailMergeDocType::new(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeDocType::parse(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeDocType::to_string(Self) -> String
 
-pub struct ST_MailMergeOdsoFMDFieldType {
-  value : String
+pub(all) enum ST_MailMergeOdsoFMDFieldType {
+  MailMergeOdsoNull
+  MailMergeOdsoDbColumn
 } derive(Eq, @debug.Debug)
 pub fn ST_MailMergeOdsoFMDFieldType::new(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeOdsoFMDFieldType::parse(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeOdsoFMDFieldType::to_string(Self) -> String
 
-pub struct ST_MailMergeSourceType {
-  value : String
+pub(all) enum ST_MailMergeSourceType {
+  MailMergeSrcDatabase
+  MailMergeSrcAddressBook
+  MailMergeSrcDocument1
+  MailMergeSrcDocument2
+  MailMergeSrcText
+  MailMergeSrcEmail
+  MailMergeSrcNative
+  MailMergeSrcLegacy
+  MailMergeSrcMaster
 } derive(Eq, @debug.Debug)
 pub fn ST_MailMergeSourceType::new(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeSourceType::parse(String) -> Self raise SchemaViolation
 pub fn ST_MailMergeSourceType::to_string(Self) -> String
 
-pub struct ST_MeasurementOrPercent {
-  value : String
+pub enum ST_MeasurementOrPercent {
+  MeasOrPctPercent(Int64)
+  MeasOrPctMeasure(WmlUniversalMeasure)
 } derive(Eq, @debug.Debug)
 pub fn ST_MeasurementOrPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_MeasurementOrPercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_MeasurementOrPercent::to_string(Self) -> String
 
-pub struct ST_Merge {
-  value : String
+pub(all) enum ST_Merge {
+  MergeContinue
+  MergeRestart
 } derive(Eq, @debug.Debug)
 pub fn ST_Merge::new(String) -> Self raise SchemaViolation
 pub fn ST_Merge::parse(String) -> Self raise SchemaViolation
 pub fn ST_Merge::to_string(Self) -> String
 
-pub struct ST_MultiLevelType {
-  value : String
+pub(all) enum ST_MultiLevelType {
+  MultiLevelSingleLevel
+  MultiLevelMultilevel
+  MultiLevelHybridMultilevel
 } derive(Eq, @debug.Debug)
 pub fn ST_MultiLevelType::new(String) -> Self raise SchemaViolation
 pub fn ST_MultiLevelType::parse(String) -> Self raise SchemaViolation
 pub fn ST_MultiLevelType::to_string(Self) -> String
 
-pub struct ST_NumberFormat {
-  value : String
+pub(all) enum ST_NumberFormat {
+  NumFmtDecimal
+  NumFmtUpperRoman
+  NumFmtLowerRoman
+  NumFmtUpperLetter
+  NumFmtLowerLetter
+  NumFmtOrdinal
+  NumFmtCardinalText
+  NumFmtOrdinalText
+  NumFmtHex
+  NumFmtChicago
+  NumFmtIdeographDigital
+  NumFmtJapaneseCounting
+  NumFmtAiueo
+  NumFmtIroha
+  NumFmtDecimalFullWidth
+  NumFmtDecimalHalfWidth
+  NumFmtJapaneseLegal
+  NumFmtJapaneseDigitalTenThousand
+  NumFmtDecimalEnclosedCircle
+  NumFmtDecimalFullWidth2
+  NumFmtAiueoFullWidth
+  NumFmtIrohaFullWidth
+  NumFmtDecimalZero
+  NumFmtBullet
+  NumFmtGanada
+  NumFmtChosung
+  NumFmtDecimalEnclosedFullstop
+  NumFmtDecimalEnclosedParen
+  NumFmtDecimalEnclosedCircleChinese
+  NumFmtIdeographEnclosedCircle
+  NumFmtIdeographTraditional
+  NumFmtIdeographZodiac
+  NumFmtIdeographZodiacTraditional
+  NumFmtTaiwaneseCounting
+  NumFmtIdeographLegalTraditional
+  NumFmtTaiwaneseCountingThousand
+  NumFmtTaiwaneseDigital
+  NumFmtChineseCounting
+  NumFmtChineseLegalSimplified
+  NumFmtChineseCountingThousand
+  NumFmtKoreanDigital
+  NumFmtKoreanCounting
+  NumFmtKoreanLegal
+  NumFmtKoreanDigital2
+  NumFmtVietnameseCounting
+  NumFmtRussianLower
+  NumFmtRussianUpper
+  NumFmtNone
+  NumFmtNumberInDash
+  NumFmtHebrew1
+  NumFmtHebrew2
+  NumFmtArabicAlpha
+  NumFmtArabicAbjad
+  NumFmtHindiVowels
+  NumFmtHindiConsonants
+  NumFmtHindiNumbers
+  NumFmtHindiCounting
+  NumFmtThaiLetters
+  NumFmtThaiNumbers
+  NumFmtThaiCounting
+  NumFmtBahtText
+  NumFmtDollarText
+  NumFmtCustom
 } derive(Eq, @debug.Debug)
 pub fn ST_NumberFormat::new(String) -> Self raise SchemaViolation
 pub fn ST_NumberFormat::parse(String) -> Self raise SchemaViolation
 pub fn ST_NumberFormat::to_string(Self) -> String
 
-pub struct ST_ObjectDrawAspect {
-  value : String
+pub(all) enum ST_ObjectDrawAspect {
+  ObjectDrawAspectContent
+  ObjectDrawAspectIcon
 } derive(Eq, @debug.Debug)
 pub fn ST_ObjectDrawAspect::new(String) -> Self raise SchemaViolation
 pub fn ST_ObjectDrawAspect::parse(String) -> Self raise SchemaViolation
 pub fn ST_ObjectDrawAspect::to_string(Self) -> String
 
-pub struct ST_ObjectUpdateMode {
-  value : String
+pub(all) enum ST_ObjectUpdateMode {
+  ObjectUpdateAlways
+  ObjectUpdateOnCall
 } derive(Eq, @debug.Debug)
 pub fn ST_ObjectUpdateMode::new(String) -> Self raise SchemaViolation
 pub fn ST_ObjectUpdateMode::parse(String) -> Self raise SchemaViolation
 pub fn ST_ObjectUpdateMode::to_string(Self) -> String
 
-pub struct ST_PTabAlignment {
-  value : String
+pub(all) enum ST_PTabAlignment {
+  PTabAlignLeft
+  PTabAlignCenter
+  PTabAlignRight
 } derive(Eq, @debug.Debug)
 pub fn ST_PTabAlignment::new(String) -> Self raise SchemaViolation
 pub fn ST_PTabAlignment::parse(String) -> Self raise SchemaViolation
 pub fn ST_PTabAlignment::to_string(Self) -> String
 
-pub struct ST_PTabLeader {
-  value : String
+pub(all) enum ST_PTabLeader {
+  PTabLeaderNone
+  PTabLeaderDot
+  PTabLeaderHyphen
+  PTabLeaderUnderscore
+  PTabLeaderMiddleDot
 } derive(Eq, @debug.Debug)
 pub fn ST_PTabLeader::new(String) -> Self raise SchemaViolation
 pub fn ST_PTabLeader::parse(String) -> Self raise SchemaViolation
 pub fn ST_PTabLeader::to_string(Self) -> String
 
-pub struct ST_PTabRelativeTo {
-  value : String
+pub(all) enum ST_PTabRelativeTo {
+  PTabRelMargin
+  PTabRelIndent
 } derive(Eq, @debug.Debug)
 pub fn ST_PTabRelativeTo::new(String) -> Self raise SchemaViolation
 pub fn ST_PTabRelativeTo::parse(String) -> Self raise SchemaViolation
 pub fn ST_PTabRelativeTo::to_string(Self) -> String
 
-pub struct ST_PageBorderDisplay {
-  value : String
+pub(all) enum ST_PageBorderDisplay {
+  PageBorderDisplayAllPages
+  PageBorderDisplayFirstPage
+  PageBorderDisplayNotFirstPage
 } derive(Eq, @debug.Debug)
 pub fn ST_PageBorderDisplay::new(String) -> Self raise SchemaViolation
 pub fn ST_PageBorderDisplay::parse(String) -> Self raise SchemaViolation
 pub fn ST_PageBorderDisplay::to_string(Self) -> String
 
-pub struct ST_PageBorderOffset {
-  value : String
+pub(all) enum ST_PageBorderOffset {
+  PageBorderOffsetPage
+  PageBorderOffsetText
 } derive(Eq, @debug.Debug)
 pub fn ST_PageBorderOffset::new(String) -> Self raise SchemaViolation
 pub fn ST_PageBorderOffset::parse(String) -> Self raise SchemaViolation
 pub fn ST_PageBorderOffset::to_string(Self) -> String
 
-pub struct ST_PageBorderZOrder {
-  value : String
+pub(all) enum ST_PageBorderZOrder {
+  PageBorderZFront
+  PageBorderZBack
 } derive(Eq, @debug.Debug)
 pub fn ST_PageBorderZOrder::new(String) -> Self raise SchemaViolation
 pub fn ST_PageBorderZOrder::parse(String) -> Self raise SchemaViolation
 pub fn ST_PageBorderZOrder::to_string(Self) -> String
 
-pub struct ST_PageOrientation {
-  value : String
+pub(all) enum ST_PageOrientation {
+  PageOrientationPortrait
+  PageOrientationLandscape
 } derive(Eq, @debug.Debug)
 pub fn ST_PageOrientation::new(String) -> Self raise SchemaViolation
 pub fn ST_PageOrientation::parse(String) -> Self raise SchemaViolation
 pub fn ST_PageOrientation::to_string(Self) -> String
 
-pub struct ST_Pitch {
-  value : String
+pub(all) enum ST_Pitch {
+  PitchFixed
+  PitchVariable
+  PitchDefault
 } derive(Eq, @debug.Debug)
 pub fn ST_Pitch::new(String) -> Self raise SchemaViolation
 pub fn ST_Pitch::parse(String) -> Self raise SchemaViolation
 pub fn ST_Pitch::to_string(Self) -> String
 
 pub struct ST_PixelsMeasure {
-  value : String
+  pixels : UInt64
 } derive(Eq, @debug.Debug)
 pub fn ST_PixelsMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_PixelsMeasure::parse(String) -> Self raise SchemaViolation
 pub fn ST_PixelsMeasure::to_string(Self) -> String
+pub fn ST_PixelsMeasure::to_uint64(Self) -> UInt64
 
 pub struct ST_PointMeasure {
-  value : String
+  points : UInt64
 } derive(Eq, @debug.Debug)
 pub fn ST_PointMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_PointMeasure::parse(String) -> Self raise SchemaViolation
 pub fn ST_PointMeasure::to_string(Self) -> String
+pub fn ST_PointMeasure::to_uint64(Self) -> UInt64
 
 pub struct ST_PositionOffset {
-  value : String
+  emus : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_PositionOffset::new(String) -> Self raise SchemaViolation
 pub fn ST_PositionOffset::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositionOffset::to_int(Self) -> Int
 pub fn ST_PositionOffset::to_string(Self) -> String
 
-pub struct ST_Proof {
-  value : String
+pub(all) enum ST_Proof {
+  ProofClean
+  ProofDirty
 } derive(Eq, @debug.Debug)
 pub fn ST_Proof::new(String) -> Self raise SchemaViolation
 pub fn ST_Proof::parse(String) -> Self raise SchemaViolation
 pub fn ST_Proof::to_string(Self) -> String
 
-pub struct ST_ProofErr {
-  value : String
+pub(all) enum ST_ProofErr {
+  ProofErrSpellStart
+  ProofErrSpellEnd
+  ProofErrGramStart
+  ProofErrGramEnd
 } derive(Eq, @debug.Debug)
 pub fn ST_ProofErr::new(String) -> Self raise SchemaViolation
 pub fn ST_ProofErr::parse(String) -> Self raise SchemaViolation
 pub fn ST_ProofErr::to_string(Self) -> String
 
-pub struct ST_RelFromH {
-  value : String
+pub(all) enum ST_RelFromH {
+  RelFromHMargin
+  RelFromHPage
+  RelFromHColumn
+  RelFromHCharacter
+  RelFromHLeftMargin
+  RelFromHRightMargin
+  RelFromHInsideMargin
+  RelFromHOutsideMargin
 } derive(Eq, @debug.Debug)
 pub fn ST_RelFromH::new(String) -> Self raise SchemaViolation
 pub fn ST_RelFromH::parse(String) -> Self raise SchemaViolation
 pub fn ST_RelFromH::to_string(Self) -> String
 
-pub struct ST_RelFromV {
-  value : String
+pub(all) enum ST_RelFromV {
+  RelFromVMargin
+  RelFromVPage
+  RelFromVParagraph
+  RelFromVLine
+  RelFromVTopMargin
+  RelFromVBottomMargin
+  RelFromVInsideMargin
+  RelFromVOutsideMargin
 } derive(Eq, @debug.Debug)
 pub fn ST_RelFromV::new(String) -> Self raise SchemaViolation
 pub fn ST_RelFromV::parse(String) -> Self raise SchemaViolation
@@ -3221,6 +3382,33 @@ pub struct ST_Zoom {
 pub fn ST_Zoom::new(String) -> Self raise SchemaViolation
 pub fn ST_Zoom::parse(String) -> Self raise SchemaViolation
 pub fn ST_Zoom::to_string(Self) -> String
+
+pub struct WmlPositiveUniversalMeasure {
+  magnitude : Double
+  unit : WmlUniversalMeasureUnit
+} derive(Eq, @debug.Debug)
+pub fn WmlPositiveUniversalMeasure::magnitude(Self) -> Double
+pub fn WmlPositiveUniversalMeasure::parse(String) -> Self raise SchemaViolation
+pub fn WmlPositiveUniversalMeasure::to_string(Self) -> String
+pub fn WmlPositiveUniversalMeasure::unit_of(Self) -> WmlUniversalMeasureUnit
+
+pub struct WmlUniversalMeasure {
+  magnitude : Double
+  unit : WmlUniversalMeasureUnit
+} derive(Eq, @debug.Debug)
+pub fn WmlUniversalMeasure::magnitude(Self) -> Double
+pub fn WmlUniversalMeasure::parse(String) -> Self raise SchemaViolation
+pub fn WmlUniversalMeasure::to_string(Self) -> String
+pub fn WmlUniversalMeasure::unit_of(Self) -> WmlUniversalMeasureUnit
+
+pub(all) enum WmlUniversalMeasureUnit {
+  WmlMillimetre
+  WmlCentimetre
+  WmlInch
+  WmlPoint
+  WmlPica
+  WmlPiPoint
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

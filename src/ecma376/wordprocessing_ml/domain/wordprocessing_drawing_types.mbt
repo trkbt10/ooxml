@@ -17,11 +17,7 @@ fn wordprocessing_drawing_simple_type_values(type_name : String) -> String {
   match type_name {
     "ST_WrapText" => ";bothSides;left;right;largest;"
     "ST_AlignH" => ";left;right;center;inside;outside;"
-    "ST_RelFromH" =>
-      ";margin;page;column;character;leftMargin;rightMargin;insideMargin;outsideMargin;"
     "ST_AlignV" => ";top;bottom;center;inside;outside;"
-    "ST_RelFromV" =>
-      ";margin;page;paragraph;line;topMargin;bottomMargin;insideMargin;outsideMargin;"
     _ => ""
   }
 }
@@ -75,17 +71,20 @@ pub fn ST_WrapText::to_string(self : ST_WrapText) -> String {
 }
 
 ///|
-/// XSD simple type ST_PositionOffset from dml-wordprocessingDrawing.xsd (§20.4).
+/// XSD simple type ST_PositionOffset — Part 1 §20.4.3.3 absolute
+/// position offset (`<xsd:int>`, signed 32-bit integer in English
+/// Metric Units). Stored as a native `Int` so callers can read the
+/// offset directly without re-parsing the lexical form.
 pub struct ST_PositionOffset {
-  value : String
+  emus : Int
 } derive(Eq, Debug)
 
 ///|
+/// Part 1 §20.4.3.3 — decode the signed-integer lexical form.
 pub fn ST_PositionOffset::parse(
   s : String,
 ) -> ST_PositionOffset raise SchemaViolation {
-  validate_wordprocessing_drawing_simple_type("ST_PositionOffset", s)
-  { value: s }
+  { emus: parse_wml_signed_int("ST_PositionOffset", s) }
 }
 
 ///|
@@ -96,8 +95,15 @@ pub fn ST_PositionOffset::new(
 }
 
 ///|
+/// Render the offset back to its canonical decimal lexical form.
 pub fn ST_PositionOffset::to_string(self : ST_PositionOffset) -> String {
-  self.value
+  self.emus.to_string()
+}
+
+///|
+/// Numeric accessor — the offset in English Metric Units.
+pub fn ST_PositionOffset::to_int(self : ST_PositionOffset) -> Int {
+  self.emus
 }
 
 ///|
@@ -123,15 +129,42 @@ pub fn ST_AlignH::to_string(self : ST_AlignH) -> String {
 }
 
 ///|
-/// XSD simple type ST_RelFromH from dml-wordprocessingDrawing.xsd (§20.4).
-pub struct ST_RelFromH {
-  value : String
+/// XSD simple type ST_RelFromH — Part 1 §20.4.3.4 horizontal
+/// relative-positioning anchor enumeration. Eight lexical values as
+/// listed in dml-wordprocessingDrawing.xsd §20.4.
+pub(all) enum ST_RelFromH {
+  /// §20.4.3.4 "margin"
+  RelFromHMargin
+  /// §20.4.3.4 "page"
+  RelFromHPage
+  /// §20.4.3.4 "column"
+  RelFromHColumn
+  /// §20.4.3.4 "character"
+  RelFromHCharacter
+  /// §20.4.3.4 "leftMargin"
+  RelFromHLeftMargin
+  /// §20.4.3.4 "rightMargin"
+  RelFromHRightMargin
+  /// §20.4.3.4 "insideMargin"
+  RelFromHInsideMargin
+  /// §20.4.3.4 "outsideMargin"
+  RelFromHOutsideMargin
 } derive(Eq, Debug)
 
 ///|
+/// Part 1 §20.4.3.4 — decode the horizontal anchor lexical token.
 pub fn ST_RelFromH::parse(s : String) -> ST_RelFromH raise SchemaViolation {
-  validate_wordprocessing_drawing_simple_type("ST_RelFromH", s)
-  { value: s }
+  match s {
+    "margin" => RelFromHMargin
+    "page" => RelFromHPage
+    "column" => RelFromHColumn
+    "character" => RelFromHCharacter
+    "leftMargin" => RelFromHLeftMargin
+    "rightMargin" => RelFromHRightMargin
+    "insideMargin" => RelFromHInsideMargin
+    "outsideMargin" => RelFromHOutsideMargin
+    _ => raise_schema_violation("ST_RelFromH", s, "unknown enumeration value")
+  }
 }
 
 ///|
@@ -141,7 +174,16 @@ pub fn ST_RelFromH::new(s : String) -> ST_RelFromH raise SchemaViolation {
 
 ///|
 pub fn ST_RelFromH::to_string(self : ST_RelFromH) -> String {
-  self.value
+  match self {
+    RelFromHMargin => "margin"
+    RelFromHPage => "page"
+    RelFromHColumn => "column"
+    RelFromHCharacter => "character"
+    RelFromHLeftMargin => "leftMargin"
+    RelFromHRightMargin => "rightMargin"
+    RelFromHInsideMargin => "insideMargin"
+    RelFromHOutsideMargin => "outsideMargin"
+  }
 }
 
 ///|
@@ -167,15 +209,44 @@ pub fn ST_AlignV::to_string(self : ST_AlignV) -> String {
 }
 
 ///|
-/// XSD simple type ST_RelFromV from dml-wordprocessingDrawing.xsd (§20.4).
-pub struct ST_RelFromV {
-  value : String
+/// XSD simple type ST_RelFromV — Part 1 §20.4.3.5 vertical
+/// relative-positioning anchor enumeration. Eight lexical values per
+/// dml-wordprocessingDrawing.xsd §20.4. Variant names are prefixed
+/// `RelFromV` to avoid clashing with the horizontal counterpart's
+/// shared `margin`/`page`/`insideMargin`/`outsideMargin` tokens.
+pub(all) enum ST_RelFromV {
+  /// §20.4.3.5 "margin"
+  RelFromVMargin
+  /// §20.4.3.5 "page"
+  RelFromVPage
+  /// §20.4.3.5 "paragraph"
+  RelFromVParagraph
+  /// §20.4.3.5 "line"
+  RelFromVLine
+  /// §20.4.3.5 "topMargin"
+  RelFromVTopMargin
+  /// §20.4.3.5 "bottomMargin"
+  RelFromVBottomMargin
+  /// §20.4.3.5 "insideMargin"
+  RelFromVInsideMargin
+  /// §20.4.3.5 "outsideMargin"
+  RelFromVOutsideMargin
 } derive(Eq, Debug)
 
 ///|
+/// Part 1 §20.4.3.5 — decode the vertical anchor lexical token.
 pub fn ST_RelFromV::parse(s : String) -> ST_RelFromV raise SchemaViolation {
-  validate_wordprocessing_drawing_simple_type("ST_RelFromV", s)
-  { value: s }
+  match s {
+    "margin" => RelFromVMargin
+    "page" => RelFromVPage
+    "paragraph" => RelFromVParagraph
+    "line" => RelFromVLine
+    "topMargin" => RelFromVTopMargin
+    "bottomMargin" => RelFromVBottomMargin
+    "insideMargin" => RelFromVInsideMargin
+    "outsideMargin" => RelFromVOutsideMargin
+    _ => raise_schema_violation("ST_RelFromV", s, "unknown enumeration value")
+  }
 }
 
 ///|
@@ -185,7 +256,16 @@ pub fn ST_RelFromV::new(s : String) -> ST_RelFromV raise SchemaViolation {
 
 ///|
 pub fn ST_RelFromV::to_string(self : ST_RelFromV) -> String {
-  self.value
+  match self {
+    RelFromVMargin => "margin"
+    RelFromVPage => "page"
+    RelFromVParagraph => "paragraph"
+    RelFromVLine => "line"
+    RelFromVTopMargin => "topMargin"
+    RelFromVBottomMargin => "bottomMargin"
+    RelFromVInsideMargin => "insideMargin"
+    RelFromVOutsideMargin => "outsideMargin"
+  }
 }
 
 ///|
