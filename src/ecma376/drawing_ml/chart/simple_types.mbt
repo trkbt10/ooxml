@@ -5,7 +5,8 @@ pub suberror SchemaViolation {
 } derive(Debug)
 
 ///|
-/// XSD simple type ST_LayoutTarget (§21.2, dml-chart.xsd).
+/// XSD simple type ST_LayoutTarget — Part 1 §21.2.3.21.
+/// Restriction of xsd:string to {inner, outer}.
 pub(all) enum ST_LayoutTarget {
   LayoutTargetInner
   LayoutTargetOuter
@@ -41,7 +42,8 @@ pub fn ST_LayoutTarget::to_string(self : ST_LayoutTarget) -> String {
 }
 
 ///|
-/// XSD simple type ST_LayoutMode (§21.2, dml-chart.xsd).
+/// XSD simple type ST_LayoutMode — Part 1 §21.2.3.20.
+/// Restriction of xsd:string to {edge, factor}.
 pub(all) enum ST_LayoutMode {
   LayoutModeEdge
   LayoutModeFactor
@@ -73,72 +75,98 @@ pub fn ST_LayoutMode::to_string(self : ST_LayoutMode) -> String {
 }
 
 ///|
-/// XSD simple type ST_RotX (§21.2, dml-chart.xsd) with base xsd:byte.
+/// XSD simple type ST_RotX — Part 1 §21.2.3.38.
+/// Restriction of xsd:byte to -90..90 inclusive (X-axis rotation, degrees).
 pub struct ST_RotX {
-  value : String
+  degrees : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_RotX schema lexical value.
+/// Parse the ST_RotX schema lexical value into the typed degree count.
 pub fn ST_RotX::parse(s : String) -> ST_RotX raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_RotX", s)
-  { value: s }
+  let n = parse_signed_int("dml-chart.xsd", "ST_RotX", s)
+  if n < -90 || n > 90 {
+    invalid("dml-chart.xsd", "ST_RotX", s)
+  }
+  { degrees: n }
 }
 
 ///|
-/// Construct ST_RotX while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_RotX while enforcing the dml-chart.xsd -90..90 range.
 pub fn ST_RotX::new(s : String) -> ST_RotX raise SchemaViolation {
   ST_RotX::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_RotX.
-pub fn ST_RotX::to_string(self : ST_RotX) -> String {
-  self.value
+/// Read the rotation as a signed degree integer (-90..90).
+pub fn ST_RotX::degrees(self : ST_RotX) -> Int {
+  self.degrees
 }
 
 ///|
-/// XSD simple type ST_HPercent (§21.2, dml-chart.xsd) with base schema-restricted numeric value.
+/// Return the canonical lexical value for ST_RotX.
+pub fn ST_RotX::to_string(self : ST_RotX) -> String {
+  self.degrees.to_string()
+}
+
+///|
+/// XSD simple type ST_HPercent — Part 1 §21.2.3.19.
+/// xsd:union over ST_HPercentWithSymbol (height percentage 5%..500%).
 pub struct ST_HPercent {
-  value : String
+  percent : ST_HPercentWithSymbol
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_HPercent schema lexical value.
 pub fn ST_HPercent::parse(s : String) -> ST_HPercent raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_HPercent", s)
-  { value: s }
+  { percent: ST_HPercentWithSymbol::parse(s) }
 }
 
 ///|
-/// Construct ST_HPercent while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_HPercent while enforcing the dml-chart.xsd union.
 pub fn ST_HPercent::new(s : String) -> ST_HPercent raise SchemaViolation {
   ST_HPercent::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_HPercent.
-pub fn ST_HPercent::to_string(self : ST_HPercent) -> String {
-  self.value
+/// Read the typed height percentage integer (5..500).
+pub fn ST_HPercent::percent(self : ST_HPercent) -> Int {
+  self.percent.percent()
 }
 
 ///|
-/// XSD simple type ST_HPercentWithSymbol (§21.2, dml-chart.xsd) with base xsd:string.
+/// Return the canonical lexical value for ST_HPercent.
+pub fn ST_HPercent::to_string(self : ST_HPercent) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_HPercentWithSymbol — Part 1 §21.2.3.52.
+/// xsd:string pattern `0*(([5-9])|([1-9][0-9])|([1-4][0-9][0-9])|500)%`
+/// — percent integer between 5 and 500 followed by `%`.
 pub struct ST_HPercentWithSymbol {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_HPercentWithSymbol schema lexical value.
+/// Parse the ST_HPercentWithSymbol lexical pattern.
 pub fn ST_HPercentWithSymbol::parse(
   s : String,
 ) -> ST_HPercentWithSymbol raise SchemaViolation {
-  validate_non_empty("dml-chart.xsd", "ST_HPercentWithSymbol", s)
-  { value: s }
+  let n = parse_percent_literal(
+    "dml-chart.xsd",
+    "ST_HPercentWithSymbol",
+    s,
+    allow_negative=false,
+  )
+  if n < 5 || n > 500 {
+    invalid("dml-chart.xsd", "ST_HPercentWithSymbol", s)
+  }
+  { percent: n }
 }
 
 ///|
-/// Construct ST_HPercentWithSymbol while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_HPercentWithSymbol while enforcing the dml-chart.xsd pattern.
 pub fn ST_HPercentWithSymbol::new(
   s : String,
 ) -> ST_HPercentWithSymbol raise SchemaViolation {
@@ -146,40 +174,57 @@ pub fn ST_HPercentWithSymbol::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_HPercentWithSymbol.
-pub fn ST_HPercentWithSymbol::to_string(self : ST_HPercentWithSymbol) -> String {
-  self.value
+/// Read the typed percentage integer (5..500).
+pub fn ST_HPercentWithSymbol::percent(self : ST_HPercentWithSymbol) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_RotY (§21.2, dml-chart.xsd) with base xsd:unsignedShort.
+/// Return the canonical lexical value (no leading zeros, with `%`).
+pub fn ST_HPercentWithSymbol::to_string(self : ST_HPercentWithSymbol) -> String {
+  self.percent.to_string() + "%"
+}
+
+///|
+/// XSD simple type ST_RotY — Part 1 §21.2.3.39.
+/// Restriction of xsd:unsignedShort to 0..360 inclusive (Y-axis rotation).
 pub struct ST_RotY {
-  value : String
+  degrees : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_RotY schema lexical value.
+/// Parse the ST_RotY schema lexical value into the typed degree count.
 pub fn ST_RotY::parse(s : String) -> ST_RotY raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_RotY", s)
-  { value: s }
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_RotY", s)
+  if n < 0 || n > 360 {
+    invalid("dml-chart.xsd", "ST_RotY", s)
+  }
+  { degrees: n }
 }
 
 ///|
-/// Construct ST_RotY while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_RotY while enforcing the dml-chart.xsd 0..360 range.
 pub fn ST_RotY::new(s : String) -> ST_RotY raise SchemaViolation {
   ST_RotY::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_RotY.
-pub fn ST_RotY::to_string(self : ST_RotY) -> String {
-  self.value
+/// Read the rotation as an unsigned degree integer (0..360).
+pub fn ST_RotY::degrees(self : ST_RotY) -> Int {
+  self.degrees
 }
 
 ///|
-/// XSD simple type ST_DepthPercent (§21.2, dml-chart.xsd) with base schema-restricted numeric value.
+/// Return the canonical lexical value for ST_RotY.
+pub fn ST_RotY::to_string(self : ST_RotY) -> String {
+  self.degrees.to_string()
+}
+
+///|
+/// XSD simple type ST_DepthPercent — Part 1 §21.2.3.9.
+/// xsd:union over ST_DepthPercentWithSymbol (depth percentage 20%..2000%).
 pub struct ST_DepthPercent {
-  value : String
+  percent : ST_DepthPercentWithSymbol
 } derive(Eq, Debug)
 
 ///|
@@ -187,12 +232,11 @@ pub struct ST_DepthPercent {
 pub fn ST_DepthPercent::parse(
   s : String,
 ) -> ST_DepthPercent raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_DepthPercent", s)
-  { value: s }
+  { percent: ST_DepthPercentWithSymbol::parse(s) }
 }
 
 ///|
-/// Construct ST_DepthPercent while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_DepthPercent while enforcing the dml-chart.xsd union.
 pub fn ST_DepthPercent::new(
   s : String,
 ) -> ST_DepthPercent raise SchemaViolation {
@@ -200,28 +244,45 @@ pub fn ST_DepthPercent::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_DepthPercent.
-pub fn ST_DepthPercent::to_string(self : ST_DepthPercent) -> String {
-  self.value
+/// Read the typed depth percentage integer (20..2000).
+pub fn ST_DepthPercent::percent(self : ST_DepthPercent) -> Int {
+  self.percent.percent()
 }
 
 ///|
-/// XSD simple type ST_DepthPercentWithSymbol (§21.2, dml-chart.xsd) with base xsd:string.
+/// Return the canonical lexical value for ST_DepthPercent.
+pub fn ST_DepthPercent::to_string(self : ST_DepthPercent) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_DepthPercentWithSymbol — Part 1 §21.2.3.51.
+/// xsd:string pattern
+/// `0*(([2-9][0-9])|([1-9][0-9][0-9])|(1[0-9][0-9][0-9])|2000)%`
+/// — percent integer between 20 and 2000 followed by `%`.
 pub struct ST_DepthPercentWithSymbol {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_DepthPercentWithSymbol schema lexical value.
+/// Parse the ST_DepthPercentWithSymbol lexical pattern.
 pub fn ST_DepthPercentWithSymbol::parse(
   s : String,
 ) -> ST_DepthPercentWithSymbol raise SchemaViolation {
-  validate_non_empty("dml-chart.xsd", "ST_DepthPercentWithSymbol", s)
-  { value: s }
+  let n = parse_percent_literal(
+    "dml-chart.xsd",
+    "ST_DepthPercentWithSymbol",
+    s,
+    allow_negative=false,
+  )
+  if n < 20 || n > 2000 {
+    invalid("dml-chart.xsd", "ST_DepthPercentWithSymbol", s)
+  }
+  { percent: n }
 }
 
 ///|
-/// Construct ST_DepthPercentWithSymbol while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_DepthPercentWithSymbol while enforcing the dml-chart.xsd pattern.
 pub fn ST_DepthPercentWithSymbol::new(
   s : String,
 ) -> ST_DepthPercentWithSymbol raise SchemaViolation {
@@ -229,17 +290,26 @@ pub fn ST_DepthPercentWithSymbol::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_DepthPercentWithSymbol.
-pub fn ST_DepthPercentWithSymbol::to_string(
+/// Read the typed percentage integer (20..2000).
+pub fn ST_DepthPercentWithSymbol::percent(
   self : ST_DepthPercentWithSymbol,
-) -> String {
-  self.value
+) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_Perspective (§21.2, dml-chart.xsd) with base xsd:unsignedByte.
+/// Return the canonical lexical value (no leading zeros, with `%`).
+pub fn ST_DepthPercentWithSymbol::to_string(
+  self : ST_DepthPercentWithSymbol,
+) -> String {
+  self.percent.to_string() + "%"
+}
+
+///|
+/// XSD simple type ST_Perspective — Part 1 §21.2.3.34.
+/// Restriction of xsd:unsignedByte to 0..240 inclusive (perspective percent).
 pub struct ST_Perspective {
-  value : String
+  value : Int
 } derive(Eq, Debug)
 
 ///|
@@ -247,64 +317,82 @@ pub struct ST_Perspective {
 pub fn ST_Perspective::parse(
   s : String,
 ) -> ST_Perspective raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_Perspective", s)
-  { value: s }
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_Perspective", s)
+  if n < 0 || n > 240 {
+    invalid("dml-chart.xsd", "ST_Perspective", s)
+  }
+  { value: n }
 }
 
 ///|
-/// Construct ST_Perspective while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_Perspective while enforcing the dml-chart.xsd 0..240 range.
 pub fn ST_Perspective::new(s : String) -> ST_Perspective raise SchemaViolation {
   ST_Perspective::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_Perspective.
-pub fn ST_Perspective::to_string(self : ST_Perspective) -> String {
+/// Read the perspective percentage (0..240).
+pub fn ST_Perspective::value(self : ST_Perspective) -> Int {
   self.value
 }
 
 ///|
-/// XSD simple type ST_Thickness (§21.2, dml-chart.xsd) with base schema-restricted numeric value.
+/// Return the canonical lexical value for ST_Perspective.
+pub fn ST_Perspective::to_string(self : ST_Perspective) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_Thickness — Part 1 §21.2.3.59.
+/// xsd:union over ST_ThicknessPercent (a free `[0-9]+%` percentage).
 pub struct ST_Thickness {
-  value : String
+  percent : ST_ThicknessPercent
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_Thickness schema lexical value.
 pub fn ST_Thickness::parse(s : String) -> ST_Thickness raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_Thickness", s)
-  { value: s }
+  { percent: ST_ThicknessPercent::parse(s) }
 }
 
 ///|
-/// Construct ST_Thickness while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_Thickness while enforcing the dml-chart.xsd union.
 pub fn ST_Thickness::new(s : String) -> ST_Thickness raise SchemaViolation {
   ST_Thickness::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_Thickness.
-pub fn ST_Thickness::to_string(self : ST_Thickness) -> String {
-  self.value
+/// Read the typed thickness percentage integer.
+pub fn ST_Thickness::percent(self : ST_Thickness) -> Int {
+  self.percent.percent()
 }
 
 ///|
-/// XSD simple type ST_ThicknessPercent (§21.2, dml-chart.xsd) with base xsd:string.
+/// Return the canonical lexical value for ST_Thickness.
+pub fn ST_Thickness::to_string(self : ST_Thickness) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_ThicknessPercent — Part 1 §21.2.3.60.
+/// xsd:string pattern `([0-9]+)%` — any non-negative integer percent.
 pub struct ST_ThicknessPercent {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_ThicknessPercent schema lexical value.
+/// Parse the ST_ThicknessPercent lexical pattern.
 pub fn ST_ThicknessPercent::parse(
   s : String,
 ) -> ST_ThicknessPercent raise SchemaViolation {
-  validate_non_empty("dml-chart.xsd", "ST_ThicknessPercent", s)
-  { value: s }
+  let n = parse_percent_literal_strict_digits(
+    "dml-chart.xsd", "ST_ThicknessPercent", s,
+  )
+  { percent: n }
 }
 
 ///|
-/// Construct ST_ThicknessPercent while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_ThicknessPercent while enforcing the dml-chart.xsd pattern.
 pub fn ST_ThicknessPercent::new(
   s : String,
 ) -> ST_ThicknessPercent raise SchemaViolation {
@@ -312,53 +400,76 @@ pub fn ST_ThicknessPercent::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_ThicknessPercent.
-pub fn ST_ThicknessPercent::to_string(self : ST_ThicknessPercent) -> String {
-  self.value
+/// Read the typed thickness percentage integer.
+pub fn ST_ThicknessPercent::percent(self : ST_ThicknessPercent) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_GapAmount (§21.2, dml-chart.xsd) with base schema-restricted numeric value.
+/// Return the canonical lexical value (no leading zeros, with `%`).
+pub fn ST_ThicknessPercent::to_string(self : ST_ThicknessPercent) -> String {
+  self.percent.to_string() + "%"
+}
+
+///|
+/// XSD simple type ST_GapAmount — Part 1 §21.2.3.16.
+/// xsd:union over ST_GapAmountPercent (gap percentage 0%..500%).
 pub struct ST_GapAmount {
-  value : String
+  percent : ST_GapAmountPercent
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_GapAmount schema lexical value.
 pub fn ST_GapAmount::parse(s : String) -> ST_GapAmount raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_GapAmount", s)
-  { value: s }
+  { percent: ST_GapAmountPercent::parse(s) }
 }
 
 ///|
-/// Construct ST_GapAmount while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_GapAmount while enforcing the dml-chart.xsd union.
 pub fn ST_GapAmount::new(s : String) -> ST_GapAmount raise SchemaViolation {
   ST_GapAmount::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_GapAmount.
-pub fn ST_GapAmount::to_string(self : ST_GapAmount) -> String {
-  self.value
+/// Read the typed gap percentage integer (0..500).
+pub fn ST_GapAmount::percent(self : ST_GapAmount) -> Int {
+  self.percent.percent()
 }
 
 ///|
-/// XSD simple type ST_GapAmountPercent (§21.2, dml-chart.xsd) with base xsd:string.
+/// Return the canonical lexical value for ST_GapAmount.
+pub fn ST_GapAmount::to_string(self : ST_GapAmount) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_GapAmountPercent — Part 1 §21.2.3.53.
+/// xsd:string pattern
+/// `0*(([0-9])|([1-9][0-9])|([1-4][0-9][0-9])|500)%` — percent integer
+/// between 0 and 500 followed by `%`.
 pub struct ST_GapAmountPercent {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_GapAmountPercent schema lexical value.
+/// Parse the ST_GapAmountPercent lexical pattern.
 pub fn ST_GapAmountPercent::parse(
   s : String,
 ) -> ST_GapAmountPercent raise SchemaViolation {
-  validate_non_empty("dml-chart.xsd", "ST_GapAmountPercent", s)
-  { value: s }
+  let n = parse_percent_literal(
+    "dml-chart.xsd",
+    "ST_GapAmountPercent",
+    s,
+    allow_negative=false,
+  )
+  if n < 0 || n > 500 {
+    invalid("dml-chart.xsd", "ST_GapAmountPercent", s)
+  }
+  { percent: n }
 }
 
 ///|
-/// Construct ST_GapAmountPercent while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_GapAmountPercent while enforcing the dml-chart.xsd pattern.
 pub fn ST_GapAmountPercent::new(
   s : String,
 ) -> ST_GapAmountPercent raise SchemaViolation {
@@ -366,53 +477,75 @@ pub fn ST_GapAmountPercent::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_GapAmountPercent.
-pub fn ST_GapAmountPercent::to_string(self : ST_GapAmountPercent) -> String {
-  self.value
+/// Read the typed percentage integer (0..500).
+pub fn ST_GapAmountPercent::percent(self : ST_GapAmountPercent) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_Overlap (§21.2, dml-chart.xsd) with base schema-restricted numeric value.
+/// Return the canonical lexical value (no leading zeros, with `%`).
+pub fn ST_GapAmountPercent::to_string(self : ST_GapAmountPercent) -> String {
+  self.percent.to_string() + "%"
+}
+
+///|
+/// XSD simple type ST_Overlap — Part 1 §21.2.3.31.
+/// xsd:union over ST_OverlapPercent (overlap percentage -100%..100%).
 pub struct ST_Overlap {
-  value : String
+  percent : ST_OverlapPercent
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_Overlap schema lexical value.
 pub fn ST_Overlap::parse(s : String) -> ST_Overlap raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_Overlap", s)
-  { value: s }
+  { percent: ST_OverlapPercent::parse(s) }
 }
 
 ///|
-/// Construct ST_Overlap while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_Overlap while enforcing the dml-chart.xsd union.
 pub fn ST_Overlap::new(s : String) -> ST_Overlap raise SchemaViolation {
   ST_Overlap::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_Overlap.
-pub fn ST_Overlap::to_string(self : ST_Overlap) -> String {
-  self.value
+/// Read the typed overlap percentage integer (-100..100).
+pub fn ST_Overlap::percent(self : ST_Overlap) -> Int {
+  self.percent.percent()
 }
 
 ///|
-/// XSD simple type ST_OverlapPercent (§21.2, dml-chart.xsd) with base xsd:string.
+/// Return the canonical lexical value for ST_Overlap.
+pub fn ST_Overlap::to_string(self : ST_Overlap) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_OverlapPercent — Part 1 §21.2.3.57.
+/// xsd:string pattern `(-?0*(([0-9])|([1-9][0-9])|100))%` — signed
+/// percent integer between -100 and 100 followed by `%`.
 pub struct ST_OverlapPercent {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_OverlapPercent schema lexical value.
+/// Parse the ST_OverlapPercent lexical pattern.
 pub fn ST_OverlapPercent::parse(
   s : String,
 ) -> ST_OverlapPercent raise SchemaViolation {
-  validate_non_empty("dml-chart.xsd", "ST_OverlapPercent", s)
-  { value: s }
+  let n = parse_percent_literal(
+    "dml-chart.xsd",
+    "ST_OverlapPercent",
+    s,
+    allow_negative=true,
+  )
+  if n < -100 || n > 100 {
+    invalid("dml-chart.xsd", "ST_OverlapPercent", s)
+  }
+  { percent: n }
 }
 
 ///|
-/// Construct ST_OverlapPercent while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_OverlapPercent while enforcing the dml-chart.xsd pattern.
 pub fn ST_OverlapPercent::new(
   s : String,
 ) -> ST_OverlapPercent raise SchemaViolation {
@@ -420,15 +553,22 @@ pub fn ST_OverlapPercent::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_OverlapPercent.
-pub fn ST_OverlapPercent::to_string(self : ST_OverlapPercent) -> String {
-  self.value
+/// Read the typed percentage integer (-100..100).
+pub fn ST_OverlapPercent::percent(self : ST_OverlapPercent) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_BubbleScale (§21.2, dml-chart.xsd) with base schema-restricted numeric value.
+/// Return the canonical lexical value (no leading zeros, with `%`).
+pub fn ST_OverlapPercent::to_string(self : ST_OverlapPercent) -> String {
+  self.percent.to_string() + "%"
+}
+
+///|
+/// XSD simple type ST_BubbleScale — Part 1 §21.2.3.5.
+/// xsd:union over ST_BubbleScalePercent (bubble scale 0%..300%).
 pub struct ST_BubbleScale {
-  value : String
+  percent : ST_BubbleScalePercent
 } derive(Eq, Debug)
 
 ///|
@@ -436,39 +576,55 @@ pub struct ST_BubbleScale {
 pub fn ST_BubbleScale::parse(
   s : String,
 ) -> ST_BubbleScale raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_BubbleScale", s)
-  { value: s }
+  { percent: ST_BubbleScalePercent::parse(s) }
 }
 
 ///|
-/// Construct ST_BubbleScale while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_BubbleScale while enforcing the dml-chart.xsd union.
 pub fn ST_BubbleScale::new(s : String) -> ST_BubbleScale raise SchemaViolation {
   ST_BubbleScale::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_BubbleScale.
-pub fn ST_BubbleScale::to_string(self : ST_BubbleScale) -> String {
-  self.value
+/// Read the typed bubble scale percentage integer (0..300).
+pub fn ST_BubbleScale::percent(self : ST_BubbleScale) -> Int {
+  self.percent.percent()
 }
 
 ///|
-/// XSD simple type ST_BubbleScalePercent (§21.2, dml-chart.xsd) with base xsd:string.
+/// Return the canonical lexical value for ST_BubbleScale.
+pub fn ST_BubbleScale::to_string(self : ST_BubbleScale) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_BubbleScalePercent — Part 1 §21.2.3.58.
+/// xsd:string pattern
+/// `0*(([0-9])|([1-9][0-9])|([1-2][0-9][0-9])|300)%` — percent integer
+/// between 0 and 300 followed by `%`.
 pub struct ST_BubbleScalePercent {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_BubbleScalePercent schema lexical value.
+/// Parse the ST_BubbleScalePercent lexical pattern.
 pub fn ST_BubbleScalePercent::parse(
   s : String,
 ) -> ST_BubbleScalePercent raise SchemaViolation {
-  validate_non_empty("dml-chart.xsd", "ST_BubbleScalePercent", s)
-  { value: s }
+  let n = parse_percent_literal(
+    "dml-chart.xsd",
+    "ST_BubbleScalePercent",
+    s,
+    allow_negative=false,
+  )
+  if n < 0 || n > 300 {
+    invalid("dml-chart.xsd", "ST_BubbleScalePercent", s)
+  }
+  { percent: n }
 }
 
 ///|
-/// Construct ST_BubbleScalePercent while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_BubbleScalePercent while enforcing the dml-chart.xsd pattern.
 pub fn ST_BubbleScalePercent::new(
   s : String,
 ) -> ST_BubbleScalePercent raise SchemaViolation {
@@ -476,13 +632,20 @@ pub fn ST_BubbleScalePercent::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_BubbleScalePercent.
-pub fn ST_BubbleScalePercent::to_string(self : ST_BubbleScalePercent) -> String {
-  self.value
+/// Read the typed percentage integer (0..300).
+pub fn ST_BubbleScalePercent::percent(self : ST_BubbleScalePercent) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_SizeRepresents (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value (no leading zeros, with `%`).
+pub fn ST_BubbleScalePercent::to_string(self : ST_BubbleScalePercent) -> String {
+  self.percent.to_string() + "%"
+}
+
+///|
+/// XSD simple type ST_SizeRepresents — Part 1 §21.2.3.43.
+/// Restriction of xsd:string to {area, w}.
 pub(all) enum ST_SizeRepresents {
   SizeRepresentsArea
   SizeRepresentsW
@@ -518,9 +681,11 @@ pub fn ST_SizeRepresents::to_string(self : ST_SizeRepresents) -> String {
 }
 
 ///|
-/// XSD simple type ST_FirstSliceAng (§21.2, dml-chart.xsd) with base xsd:unsignedShort.
+/// XSD simple type ST_FirstSliceAng — Part 1 §21.2.3.15.
+/// Restriction of xsd:unsignedShort to 0..360 inclusive (degrees of the
+/// first slice in a pie chart).
 pub struct ST_FirstSliceAng {
-  value : String
+  degrees : Int
 } derive(Eq, Debug)
 
 ///|
@@ -528,12 +693,15 @@ pub struct ST_FirstSliceAng {
 pub fn ST_FirstSliceAng::parse(
   s : String,
 ) -> ST_FirstSliceAng raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_FirstSliceAng", s)
-  { value: s }
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_FirstSliceAng", s)
+  if n < 0 || n > 360 {
+    invalid("dml-chart.xsd", "ST_FirstSliceAng", s)
+  }
+  { degrees: n }
 }
 
 ///|
-/// Construct ST_FirstSliceAng while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_FirstSliceAng while enforcing the dml-chart.xsd 0..360 range.
 pub fn ST_FirstSliceAng::new(
   s : String,
 ) -> ST_FirstSliceAng raise SchemaViolation {
@@ -541,53 +709,75 @@ pub fn ST_FirstSliceAng::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_FirstSliceAng.
-pub fn ST_FirstSliceAng::to_string(self : ST_FirstSliceAng) -> String {
-  self.value
+/// Read the first-slice angle in degrees (0..360).
+pub fn ST_FirstSliceAng::degrees(self : ST_FirstSliceAng) -> Int {
+  self.degrees
 }
 
 ///|
-/// XSD simple type ST_HoleSize (§21.2, dml-chart.xsd) with base schema-restricted numeric value.
+/// Return the canonical lexical value for ST_FirstSliceAng.
+pub fn ST_FirstSliceAng::to_string(self : ST_FirstSliceAng) -> String {
+  self.degrees.to_string()
+}
+
+///|
+/// XSD simple type ST_HoleSize — Part 1 §21.2.3.18.
+/// xsd:union over ST_HoleSizePercent (doughnut hole 1%..90%).
 pub struct ST_HoleSize {
-  value : String
+  percent : ST_HoleSizePercent
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_HoleSize schema lexical value.
 pub fn ST_HoleSize::parse(s : String) -> ST_HoleSize raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_HoleSize", s)
-  { value: s }
+  { percent: ST_HoleSizePercent::parse(s) }
 }
 
 ///|
-/// Construct ST_HoleSize while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_HoleSize while enforcing the dml-chart.xsd union.
 pub fn ST_HoleSize::new(s : String) -> ST_HoleSize raise SchemaViolation {
   ST_HoleSize::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_HoleSize.
-pub fn ST_HoleSize::to_string(self : ST_HoleSize) -> String {
-  self.value
+/// Read the typed hole-size percentage integer (1..90).
+pub fn ST_HoleSize::percent(self : ST_HoleSize) -> Int {
+  self.percent.percent()
 }
 
 ///|
-/// XSD simple type ST_HoleSizePercent (§21.2, dml-chart.xsd) with base xsd:string.
+/// Return the canonical lexical value for ST_HoleSize.
+pub fn ST_HoleSize::to_string(self : ST_HoleSize) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_HoleSizePercent — Part 1 §21.2.3.55.
+/// xsd:string pattern `0*([1-9]|([1-8][0-9])|90)%` — percent integer
+/// between 1 and 90 followed by `%`.
 pub struct ST_HoleSizePercent {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_HoleSizePercent schema lexical value.
+/// Parse the ST_HoleSizePercent lexical pattern.
 pub fn ST_HoleSizePercent::parse(
   s : String,
 ) -> ST_HoleSizePercent raise SchemaViolation {
-  validate_non_empty("dml-chart.xsd", "ST_HoleSizePercent", s)
-  { value: s }
+  let n = parse_percent_literal(
+    "dml-chart.xsd",
+    "ST_HoleSizePercent",
+    s,
+    allow_negative=false,
+  )
+  if n < 1 || n > 90 {
+    invalid("dml-chart.xsd", "ST_HoleSizePercent", s)
+  }
+  { percent: n }
 }
 
 ///|
-/// Construct ST_HoleSizePercent while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_HoleSizePercent while enforcing the dml-chart.xsd pattern.
 pub fn ST_HoleSizePercent::new(
   s : String,
 ) -> ST_HoleSizePercent raise SchemaViolation {
@@ -595,13 +785,20 @@ pub fn ST_HoleSizePercent::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_HoleSizePercent.
-pub fn ST_HoleSizePercent::to_string(self : ST_HoleSizePercent) -> String {
-  self.value
+/// Read the typed percentage integer (1..90).
+pub fn ST_HoleSizePercent::percent(self : ST_HoleSizePercent) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_SplitType (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value (no leading zeros, with `%`).
+pub fn ST_HoleSizePercent::to_string(self : ST_HoleSizePercent) -> String {
+  self.percent.to_string() + "%"
+}
+
+///|
+/// XSD simple type ST_SplitType — Part 1 §21.2.3.45.
+/// Restriction of xsd:string to {auto, cust, percent, pos, val}.
 pub(all) enum ST_SplitType {
   SplitTypeAuto
   SplitTypeCust
@@ -642,9 +839,10 @@ pub fn ST_SplitType::to_string(self : ST_SplitType) -> String {
 }
 
 ///|
-/// XSD simple type ST_SecondPieSize (§21.2, dml-chart.xsd) with base schema-restricted numeric value.
+/// XSD simple type ST_SecondPieSize — Part 1 §21.2.3.41.
+/// xsd:union over ST_SecondPieSizePercent (second pie 5%..200%).
 pub struct ST_SecondPieSize {
-  value : String
+  percent : ST_SecondPieSizePercent
 } derive(Eq, Debug)
 
 ///|
@@ -652,12 +850,11 @@ pub struct ST_SecondPieSize {
 pub fn ST_SecondPieSize::parse(
   s : String,
 ) -> ST_SecondPieSize raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_SecondPieSize", s)
-  { value: s }
+  { percent: ST_SecondPieSizePercent::parse(s) }
 }
 
 ///|
-/// Construct ST_SecondPieSize while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_SecondPieSize while enforcing the dml-chart.xsd union.
 pub fn ST_SecondPieSize::new(
   s : String,
 ) -> ST_SecondPieSize raise SchemaViolation {
@@ -665,28 +862,45 @@ pub fn ST_SecondPieSize::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_SecondPieSize.
-pub fn ST_SecondPieSize::to_string(self : ST_SecondPieSize) -> String {
-  self.value
+/// Read the typed percentage integer (5..200).
+pub fn ST_SecondPieSize::percent(self : ST_SecondPieSize) -> Int {
+  self.percent.percent()
 }
 
 ///|
-/// XSD simple type ST_SecondPieSizePercent (§21.2, dml-chart.xsd) with base xsd:string.
+/// Return the canonical lexical value for ST_SecondPieSize.
+pub fn ST_SecondPieSize::to_string(self : ST_SecondPieSize) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_SecondPieSizePercent — Part 1 §21.2.3.54.
+/// xsd:string pattern
+/// `0*(([5-9])|([1-9][0-9])|(1[0-9][0-9])|200)%` — percent integer
+/// between 5 and 200 followed by `%`.
 pub struct ST_SecondPieSizePercent {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_SecondPieSizePercent schema lexical value.
+/// Parse the ST_SecondPieSizePercent lexical pattern.
 pub fn ST_SecondPieSizePercent::parse(
   s : String,
 ) -> ST_SecondPieSizePercent raise SchemaViolation {
-  validate_non_empty("dml-chart.xsd", "ST_SecondPieSizePercent", s)
-  { value: s }
+  let n = parse_percent_literal(
+    "dml-chart.xsd",
+    "ST_SecondPieSizePercent",
+    s,
+    allow_negative=false,
+  )
+  if n < 5 || n > 200 {
+    invalid("dml-chart.xsd", "ST_SecondPieSizePercent", s)
+  }
+  { percent: n }
 }
 
 ///|
-/// Construct ST_SecondPieSizePercent while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_SecondPieSizePercent while enforcing the dml-chart.xsd pattern.
 pub fn ST_SecondPieSizePercent::new(
   s : String,
 ) -> ST_SecondPieSizePercent raise SchemaViolation {
@@ -694,15 +908,22 @@ pub fn ST_SecondPieSizePercent::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_SecondPieSizePercent.
-pub fn ST_SecondPieSizePercent::to_string(
-  self : ST_SecondPieSizePercent,
-) -> String {
-  self.value
+/// Read the typed percentage integer (5..200).
+pub fn ST_SecondPieSizePercent::percent(self : ST_SecondPieSizePercent) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_LblAlgn (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value (no leading zeros, with `%`).
+pub fn ST_SecondPieSizePercent::to_string(
+  self : ST_SecondPieSizePercent,
+) -> String {
+  self.percent.to_string() + "%"
+}
+
+///|
+/// XSD simple type ST_LblAlgn — Part 1 §21.2.3.22.
+/// Restriction of xsd:string to {ctr, l, r}.
 pub(all) enum ST_LblAlgn {
   LblAlgnCtr
   LblAlgnL
@@ -737,7 +958,8 @@ pub fn ST_LblAlgn::to_string(self : ST_LblAlgn) -> String {
 }
 
 ///|
-/// XSD simple type ST_DLblPos (§21.2, dml-chart.xsd).
+/// XSD simple type ST_DLblPos — Part 1 §21.2.3.11.
+/// Restriction of xsd:string to data-label positions.
 pub(all) enum ST_DLblPos {
   DLblPosBestFit
   DLblPosB
@@ -790,7 +1012,8 @@ pub fn ST_DLblPos::to_string(self : ST_DLblPos) -> String {
 }
 
 ///|
-/// XSD simple type ST_MarkerStyle (§21.2, dml-chart.xsd).
+/// XSD simple type ST_MarkerStyle — Part 1 §21.2.3.27.
+/// Restriction of xsd:string to marker glyph names.
 pub(all) enum ST_MarkerStyle {
   MarkerStyleCircle
   MarkerStyleDash
@@ -854,32 +1077,43 @@ pub fn ST_MarkerStyle::to_string(self : ST_MarkerStyle) -> String {
 }
 
 ///|
-/// XSD simple type ST_MarkerSize (§21.2, dml-chart.xsd) with base xsd:unsignedByte.
+/// XSD simple type ST_MarkerSize — Part 1 §21.2.3.26.
+/// Restriction of xsd:unsignedByte to 2..72 inclusive (point size).
 pub struct ST_MarkerSize {
-  value : String
+  points : Int
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_MarkerSize schema lexical value.
 pub fn ST_MarkerSize::parse(s : String) -> ST_MarkerSize raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_MarkerSize", s)
-  { value: s }
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_MarkerSize", s)
+  if n < 2 || n > 72 {
+    invalid("dml-chart.xsd", "ST_MarkerSize", s)
+  }
+  { points: n }
 }
 
 ///|
-/// Construct ST_MarkerSize while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_MarkerSize while enforcing the dml-chart.xsd 2..72 range.
 pub fn ST_MarkerSize::new(s : String) -> ST_MarkerSize raise SchemaViolation {
   ST_MarkerSize::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_MarkerSize.
-pub fn ST_MarkerSize::to_string(self : ST_MarkerSize) -> String {
-  self.value
+/// Read the marker size in points (2..72).
+pub fn ST_MarkerSize::points(self : ST_MarkerSize) -> Int {
+  self.points
 }
 
 ///|
-/// XSD simple type ST_TrendlineType (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value for ST_MarkerSize.
+pub fn ST_MarkerSize::to_string(self : ST_MarkerSize) -> String {
+  self.points.to_string()
+}
+
+///|
+/// XSD simple type ST_TrendlineType — Part 1 §21.2.3.50.
+/// Restriction of xsd:string to trendline curve families.
 pub(all) enum ST_TrendlineType {
   TrendlineTypeExp
   TrendlineTypeLinear
@@ -927,57 +1161,80 @@ pub fn ST_TrendlineType::to_string(self : ST_TrendlineType) -> String {
 }
 
 ///|
-/// XSD simple type ST_Order (§21.2, dml-chart.xsd) with base xsd:unsignedByte.
+/// XSD simple type ST_Order — Part 1 §21.2.3.29.
+/// Restriction of xsd:unsignedByte to 2..6 inclusive (polynomial order).
 pub struct ST_Order {
-  value : String
+  value : Int
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_Order schema lexical value.
 pub fn ST_Order::parse(s : String) -> ST_Order raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_Order", s)
-  { value: s }
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_Order", s)
+  if n < 2 || n > 6 {
+    invalid("dml-chart.xsd", "ST_Order", s)
+  }
+  { value: n }
 }
 
 ///|
-/// Construct ST_Order while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_Order while enforcing the dml-chart.xsd 2..6 range.
 pub fn ST_Order::new(s : String) -> ST_Order raise SchemaViolation {
   ST_Order::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_Order.
-pub fn ST_Order::to_string(self : ST_Order) -> String {
+/// Read the polynomial order (2..6).
+pub fn ST_Order::value(self : ST_Order) -> Int {
   self.value
 }
 
 ///|
-/// XSD simple type ST_Period (§21.2, dml-chart.xsd) with base xsd:unsignedInt.
+/// Return the canonical lexical value for ST_Order.
+pub fn ST_Order::to_string(self : ST_Order) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_Period — Part 1 §21.2.3.33.
+/// Restriction of xsd:unsignedInt to values greater than or equal to 2
+/// (moving-average period). Stored as Int64 to cover the full
+/// unsignedInt range.
 pub struct ST_Period {
-  value : String
+  value : Int64
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_Period schema lexical value.
 pub fn ST_Period::parse(s : String) -> ST_Period raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_Period", s)
-  { value: s }
+  let n = parse_unsigned_int64("dml-chart.xsd", "ST_Period", s)
+  if n < 2L || n > 4294967295L {
+    invalid("dml-chart.xsd", "ST_Period", s)
+  }
+  { value: n }
 }
 
 ///|
-/// Construct ST_Period while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_Period while enforcing the dml-chart.xsd ≥2 floor.
 pub fn ST_Period::new(s : String) -> ST_Period raise SchemaViolation {
   ST_Period::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_Period.
-pub fn ST_Period::to_string(self : ST_Period) -> String {
+/// Read the moving-average period (≥2).
+pub fn ST_Period::value(self : ST_Period) -> Int64 {
   self.value
 }
 
 ///|
-/// XSD simple type ST_ErrDir (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value for ST_Period.
+pub fn ST_Period::to_string(self : ST_Period) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_ErrDir — Part 1 §21.2.3.13.
+/// Restriction of xsd:string to {x, y}.
 pub(all) enum ST_ErrDir {
   ErrDirX
   ErrDirY
@@ -1009,7 +1266,8 @@ pub fn ST_ErrDir::to_string(self : ST_ErrDir) -> String {
 }
 
 ///|
-/// XSD simple type ST_ErrBarType (§21.2, dml-chart.xsd).
+/// XSD simple type ST_ErrBarType — Part 1 §21.2.3.12.
+/// Restriction of xsd:string to {both, minus, plus}.
 pub(all) enum ST_ErrBarType {
   ErrBarTypeBoth
   ErrBarTypeMinus
@@ -1044,7 +1302,8 @@ pub fn ST_ErrBarType::to_string(self : ST_ErrBarType) -> String {
 }
 
 ///|
-/// XSD simple type ST_ErrValType (§21.2, dml-chart.xsd).
+/// XSD simple type ST_ErrValType — Part 1 §21.2.3.14.
+/// Restriction of xsd:string to error-bar magnitude rules.
 pub(all) enum ST_ErrValType {
   ErrValTypeCust
   ErrValTypeFixedVal
@@ -1085,7 +1344,8 @@ pub fn ST_ErrValType::to_string(self : ST_ErrValType) -> String {
 }
 
 ///|
-/// XSD simple type ST_Grouping (§21.2, dml-chart.xsd).
+/// XSD simple type ST_Grouping — Part 1 §21.2.3.17.
+/// Restriction of xsd:string to {percentStacked, standard, stacked}.
 pub(all) enum ST_Grouping {
   GroupingPercentStacked
   GroupingStandard
@@ -1120,7 +1380,8 @@ pub fn ST_Grouping::to_string(self : ST_Grouping) -> String {
 }
 
 ///|
-/// XSD simple type ST_ScatterStyle (§21.2, dml-chart.xsd).
+/// XSD simple type ST_ScatterStyle — Part 1 §21.2.3.40.
+/// Restriction of xsd:string to scatter chart styles.
 pub(all) enum ST_ScatterStyle {
   ScatterStyleNone
   ScatterStyleLine
@@ -1168,7 +1429,8 @@ pub fn ST_ScatterStyle::to_string(self : ST_ScatterStyle) -> String {
 }
 
 ///|
-/// XSD simple type ST_RadarStyle (§21.2, dml-chart.xsd).
+/// XSD simple type ST_RadarStyle — Part 1 §21.2.3.37.
+/// Restriction of xsd:string to {standard, marker, filled}.
 pub(all) enum ST_RadarStyle {
   RadarStyleStandard
   RadarStyleMarker
@@ -1203,7 +1465,8 @@ pub fn ST_RadarStyle::to_string(self : ST_RadarStyle) -> String {
 }
 
 ///|
-/// XSD simple type ST_BarGrouping (§21.2, dml-chart.xsd).
+/// XSD simple type ST_BarGrouping — Part 1 §21.2.3.4.
+/// Restriction of xsd:string to {percentStacked, clustered, standard, stacked}.
 pub(all) enum ST_BarGrouping {
   BarGroupingPercentStacked
   BarGroupingClustered
@@ -1243,7 +1506,8 @@ pub fn ST_BarGrouping::to_string(self : ST_BarGrouping) -> String {
 }
 
 ///|
-/// XSD simple type ST_BarDir (§21.2, dml-chart.xsd).
+/// XSD simple type ST_BarDir — Part 1 §21.2.3.3.
+/// Restriction of xsd:string to {bar, col}.
 pub(all) enum ST_BarDir {
   BarDirBar
   BarDirCol
@@ -1275,7 +1539,8 @@ pub fn ST_BarDir::to_string(self : ST_BarDir) -> String {
 }
 
 ///|
-/// XSD simple type ST_Shape (§21.2, dml-chart.xsd).
+/// XSD simple type ST_Shape — Part 1 §21.2.3.42.
+/// Restriction of xsd:string to 3-D data-marker shapes.
 pub(all) enum ST_Shape {
   ShapeCone
   ShapeConeToMax
@@ -1325,7 +1590,8 @@ pub fn parse_st_shape(s : String) -> ST_Shape raise SchemaViolation {
 }
 
 ///|
-/// XSD simple type ST_OfPieType (§21.2, dml-chart.xsd).
+/// XSD simple type ST_OfPieType — Part 1 §21.2.3.28.
+/// Restriction of xsd:string to {pie, bar}.
 pub(all) enum ST_OfPieType {
   OfPieTypePie
   OfPieTypeBar
@@ -1357,7 +1623,8 @@ pub fn ST_OfPieType::to_string(self : ST_OfPieType) -> String {
 }
 
 ///|
-/// XSD simple type ST_AxPos (§21.2, dml-chart.xsd).
+/// XSD simple type ST_AxPos — Part 1 §21.2.3.2.
+/// Restriction of xsd:string to {b, l, r, t}.
 pub(all) enum ST_AxPos {
   AxPosB
   AxPosL
@@ -1395,7 +1662,8 @@ pub fn ST_AxPos::to_string(self : ST_AxPos) -> String {
 }
 
 ///|
-/// XSD simple type ST_Crosses (§21.2, dml-chart.xsd).
+/// XSD simple type ST_Crosses — Part 1 §21.2.3.8.
+/// Restriction of xsd:string to {autoZero, max, min}.
 pub(all) enum ST_Crosses {
   CrossesAutoZero
   CrossesMax
@@ -1430,7 +1698,8 @@ pub fn ST_Crosses::to_string(self : ST_Crosses) -> String {
 }
 
 ///|
-/// XSD simple type ST_CrossBetween (§21.2, dml-chart.xsd).
+/// XSD simple type ST_CrossBetween — Part 1 §21.2.3.7.
+/// Restriction of xsd:string to {between, midCat}.
 pub(all) enum ST_CrossBetween {
   CrossBetweenBetween
   CrossBetweenMidCat
@@ -1466,7 +1735,10 @@ pub fn ST_CrossBetween::to_string(self : ST_CrossBetween) -> String {
 }
 
 ///|
-/// XSD simple type ST_TickMark (§21.2, dml-chart.xsd).
+/// XSD simple type ST_TickMark — Part 1 §21.2.3.48.
+/// Restriction of xsd:string to {cross, in, none, out}. The `in`
+/// variant is suffixed `Value` to avoid colliding with the Moonbit
+/// `in` keyword spelling.
 pub(all) enum ST_TickMark {
   TickMarkCross
   TickMarkInValue
@@ -1504,7 +1776,8 @@ pub fn ST_TickMark::to_string(self : ST_TickMark) -> String {
 }
 
 ///|
-/// XSD simple type ST_TickLblPos (§21.2, dml-chart.xsd).
+/// XSD simple type ST_TickLblPos — Part 1 §21.2.3.47.
+/// Restriction of xsd:string to {high, low, nextTo, none}.
 pub(all) enum ST_TickLblPos {
   TickLblPosHigh
   TickLblPosLow
@@ -1542,32 +1815,45 @@ pub fn ST_TickLblPos::to_string(self : ST_TickLblPos) -> String {
 }
 
 ///|
-/// XSD simple type ST_Skip (§21.2, dml-chart.xsd) with base xsd:unsignedInt.
+/// XSD simple type ST_Skip — Part 1 §21.2.3.44.
+/// Restriction of xsd:unsignedInt to values greater than or equal to 1
+/// (category-axis label skip). Stored as Int64 to span the full
+/// unsignedInt range.
 pub struct ST_Skip {
-  value : String
+  value : Int64
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_Skip schema lexical value.
 pub fn ST_Skip::parse(s : String) -> ST_Skip raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_Skip", s)
-  { value: s }
+  let n = parse_unsigned_int64("dml-chart.xsd", "ST_Skip", s)
+  if n < 1L || n > 4294967295L {
+    invalid("dml-chart.xsd", "ST_Skip", s)
+  }
+  { value: n }
 }
 
 ///|
-/// Construct ST_Skip while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_Skip while enforcing the dml-chart.xsd ≥1 floor.
 pub fn ST_Skip::new(s : String) -> ST_Skip raise SchemaViolation {
   ST_Skip::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_Skip.
-pub fn ST_Skip::to_string(self : ST_Skip) -> String {
+/// Read the typed label-skip count (≥1).
+pub fn ST_Skip::value(self : ST_Skip) -> Int64 {
   self.value
 }
 
 ///|
-/// XSD simple type ST_TimeUnit (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value for ST_Skip.
+pub fn ST_Skip::to_string(self : ST_Skip) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_TimeUnit — Part 1 §21.2.3.49.
+/// Restriction of xsd:string to {days, months, years}.
 pub(all) enum ST_TimeUnit {
   TimeUnitDays
   TimeUnitMonths
@@ -1602,32 +1888,43 @@ pub fn ST_TimeUnit::to_string(self : ST_TimeUnit) -> String {
 }
 
 ///|
-/// XSD simple type ST_AxisUnit (§21.2, dml-chart.xsd) with base xsd:double.
+/// XSD simple type ST_AxisUnit — Part 1 §21.2.3.1.
+/// Restriction of xsd:double to positive values (axis major/minor unit).
 pub struct ST_AxisUnit {
-  value : String
+  value : Double
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_AxisUnit schema lexical value.
 pub fn ST_AxisUnit::parse(s : String) -> ST_AxisUnit raise SchemaViolation {
-  validate_double("dml-chart.xsd", "ST_AxisUnit", s)
-  { value: s }
+  let v = parse_double("dml-chart.xsd", "ST_AxisUnit", s)
+  if !(v > 0.0) {
+    invalid("dml-chart.xsd", "ST_AxisUnit", s)
+  }
+  { value: v }
 }
 
 ///|
-/// Construct ST_AxisUnit while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_AxisUnit while enforcing the dml-chart.xsd `>0` floor.
 pub fn ST_AxisUnit::new(s : String) -> ST_AxisUnit raise SchemaViolation {
   ST_AxisUnit::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_AxisUnit.
-pub fn ST_AxisUnit::to_string(self : ST_AxisUnit) -> String {
+/// Read the axis unit value (>0).
+pub fn ST_AxisUnit::value(self : ST_AxisUnit) -> Double {
   self.value
 }
 
 ///|
-/// XSD simple type ST_BuiltInUnit (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value for ST_AxisUnit.
+pub fn ST_AxisUnit::to_string(self : ST_AxisUnit) -> String {
+  format_decimal(self.value)
+}
+
+///|
+/// XSD simple type ST_BuiltInUnit — Part 1 §21.2.3.6.
+/// Restriction of xsd:string to nine built-in unit names.
 pub(all) enum ST_BuiltInUnit {
   BuiltInUnitHundreds
   BuiltInUnitThousands
@@ -1682,7 +1979,8 @@ pub fn ST_BuiltInUnit::to_string(self : ST_BuiltInUnit) -> String {
 }
 
 ///|
-/// XSD simple type ST_PictureFormat (§21.2, dml-chart.xsd).
+/// XSD simple type ST_PictureFormat — Part 1 §21.2.3.35.
+/// Restriction of xsd:string to {stretch, stack, stackScale}.
 pub(all) enum ST_PictureFormat {
   PictureFormatStretch
   PictureFormatStack
@@ -1721,9 +2019,10 @@ pub fn ST_PictureFormat::to_string(self : ST_PictureFormat) -> String {
 }
 
 ///|
-/// XSD simple type ST_PictureStackUnit (§21.2, dml-chart.xsd) with base xsd:double.
+/// XSD simple type ST_PictureStackUnit — Part 1 §21.2.3.36.
+/// Restriction of xsd:double to positive values (picture stack unit).
 pub struct ST_PictureStackUnit {
-  value : String
+  value : Double
 } derive(Eq, Debug)
 
 ///|
@@ -1731,12 +2030,15 @@ pub struct ST_PictureStackUnit {
 pub fn ST_PictureStackUnit::parse(
   s : String,
 ) -> ST_PictureStackUnit raise SchemaViolation {
-  validate_double("dml-chart.xsd", "ST_PictureStackUnit", s)
-  { value: s }
+  let v = parse_double("dml-chart.xsd", "ST_PictureStackUnit", s)
+  if !(v > 0.0) {
+    invalid("dml-chart.xsd", "ST_PictureStackUnit", s)
+  }
+  { value: v }
 }
 
 ///|
-/// Construct ST_PictureStackUnit while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_PictureStackUnit while enforcing the dml-chart.xsd `>0` floor.
 pub fn ST_PictureStackUnit::new(
   s : String,
 ) -> ST_PictureStackUnit raise SchemaViolation {
@@ -1744,13 +2046,20 @@ pub fn ST_PictureStackUnit::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_PictureStackUnit.
-pub fn ST_PictureStackUnit::to_string(self : ST_PictureStackUnit) -> String {
+/// Read the picture stack unit value (>0).
+pub fn ST_PictureStackUnit::value(self : ST_PictureStackUnit) -> Double {
   self.value
 }
 
 ///|
-/// XSD simple type ST_Orientation (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value for ST_PictureStackUnit.
+pub fn ST_PictureStackUnit::to_string(self : ST_PictureStackUnit) -> String {
+  format_decimal(self.value)
+}
+
+///|
+/// XSD simple type ST_Orientation — Part 1 §21.2.3.30.
+/// Restriction of xsd:string to {maxMin, minMax}.
 pub(all) enum ST_Orientation {
   OrientationMaxMin
   OrientationMinMax
@@ -1784,72 +2093,99 @@ pub fn ST_Orientation::to_string(self : ST_Orientation) -> String {
 }
 
 ///|
-/// XSD simple type ST_LogBase (§21.2, dml-chart.xsd) with base xsd:double.
+/// XSD simple type ST_LogBase — Part 1 §21.2.3.25.
+/// Restriction of xsd:double to 2..1000 inclusive (axis log base).
 pub struct ST_LogBase {
-  value : String
+  value : Double
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_LogBase schema lexical value.
 pub fn ST_LogBase::parse(s : String) -> ST_LogBase raise SchemaViolation {
-  validate_double("dml-chart.xsd", "ST_LogBase", s)
-  { value: s }
+  let v = parse_double("dml-chart.xsd", "ST_LogBase", s)
+  if v < 2.0 || v > 1000.0 {
+    invalid("dml-chart.xsd", "ST_LogBase", s)
+  }
+  { value: v }
 }
 
 ///|
-/// Construct ST_LogBase while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_LogBase while enforcing the dml-chart.xsd 2..1000 range.
 pub fn ST_LogBase::new(s : String) -> ST_LogBase raise SchemaViolation {
   ST_LogBase::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_LogBase.
-pub fn ST_LogBase::to_string(self : ST_LogBase) -> String {
+/// Read the log base (2..1000).
+pub fn ST_LogBase::value(self : ST_LogBase) -> Double {
   self.value
 }
 
 ///|
-/// XSD simple type ST_LblOffset (§21.2, dml-chart.xsd) with base schema-restricted numeric value.
+/// Return the canonical lexical value for ST_LogBase.
+pub fn ST_LogBase::to_string(self : ST_LogBase) -> String {
+  format_decimal(self.value)
+}
+
+///|
+/// XSD simple type ST_LblOffset — Part 1 §21.2.3.23.
+/// xsd:union over ST_LblOffsetPercent (label offset 0%..1000%).
 pub struct ST_LblOffset {
-  value : String
+  percent : ST_LblOffsetPercent
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_LblOffset schema lexical value.
 pub fn ST_LblOffset::parse(s : String) -> ST_LblOffset raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_LblOffset", s)
-  { value: s }
+  { percent: ST_LblOffsetPercent::parse(s) }
 }
 
 ///|
-/// Construct ST_LblOffset while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_LblOffset while enforcing the dml-chart.xsd union.
 pub fn ST_LblOffset::new(s : String) -> ST_LblOffset raise SchemaViolation {
   ST_LblOffset::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_LblOffset.
-pub fn ST_LblOffset::to_string(self : ST_LblOffset) -> String {
-  self.value
+/// Read the typed label-offset percentage integer (0..1000).
+pub fn ST_LblOffset::percent(self : ST_LblOffset) -> Int {
+  self.percent.percent()
 }
 
 ///|
-/// XSD simple type ST_LblOffsetPercent (§21.2, dml-chart.xsd) with base xsd:string.
+/// Return the canonical lexical value for ST_LblOffset.
+pub fn ST_LblOffset::to_string(self : ST_LblOffset) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_LblOffsetPercent — Part 1 §21.2.3.56.
+/// xsd:string pattern
+/// `0*(([0-9])|([1-9][0-9])|([1-9][0-9][0-9])|1000)%` — percent integer
+/// between 0 and 1000 followed by `%`.
 pub struct ST_LblOffsetPercent {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_LblOffsetPercent schema lexical value.
+/// Parse the ST_LblOffsetPercent lexical pattern.
 pub fn ST_LblOffsetPercent::parse(
   s : String,
 ) -> ST_LblOffsetPercent raise SchemaViolation {
-  validate_non_empty("dml-chart.xsd", "ST_LblOffsetPercent", s)
-  { value: s }
+  let n = parse_percent_literal(
+    "dml-chart.xsd",
+    "ST_LblOffsetPercent",
+    s,
+    allow_negative=false,
+  )
+  if n < 0 || n > 1000 {
+    invalid("dml-chart.xsd", "ST_LblOffsetPercent", s)
+  }
+  { percent: n }
 }
 
 ///|
-/// Construct ST_LblOffsetPercent while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_LblOffsetPercent while enforcing the dml-chart.xsd pattern.
 pub fn ST_LblOffsetPercent::new(
   s : String,
 ) -> ST_LblOffsetPercent raise SchemaViolation {
@@ -1857,13 +2193,20 @@ pub fn ST_LblOffsetPercent::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_LblOffsetPercent.
-pub fn ST_LblOffsetPercent::to_string(self : ST_LblOffsetPercent) -> String {
-  self.value
+/// Read the typed percentage integer (0..1000).
+pub fn ST_LblOffsetPercent::percent(self : ST_LblOffsetPercent) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_LegendPos (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value (no leading zeros, with `%`).
+pub fn ST_LblOffsetPercent::to_string(self : ST_LblOffsetPercent) -> String {
+  self.percent.to_string() + "%"
+}
+
+///|
+/// XSD simple type ST_LegendPos — Part 1 §21.2.3.24.
+/// Restriction of xsd:string to {b, tr, l, r, t}.
 pub(all) enum ST_LegendPos {
   LegendPosB
   LegendPosTr
@@ -1904,7 +2247,8 @@ pub fn ST_LegendPos::to_string(self : ST_LegendPos) -> String {
 }
 
 ///|
-/// XSD simple type ST_DispBlanksAs (§21.2, dml-chart.xsd).
+/// XSD simple type ST_DispBlanksAs — Part 1 §21.2.3.10.
+/// Restriction of xsd:string to {span, gap, zero}.
 pub(all) enum ST_DispBlanksAs {
   DispBlanksAsSpan
   DispBlanksAsGap
@@ -1943,32 +2287,43 @@ pub fn ST_DispBlanksAs::to_string(self : ST_DispBlanksAs) -> String {
 }
 
 ///|
-/// XSD simple type ST_Style (§21.2, dml-chart.xsd) with base xsd:unsignedByte.
+/// XSD simple type ST_Style — Part 1 §21.2.3.46.
+/// Restriction of xsd:unsignedByte to 1..48 inclusive (chart preset).
 pub struct ST_Style {
-  value : String
+  value : Int
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_Style schema lexical value.
 pub fn ST_Style::parse(s : String) -> ST_Style raise SchemaViolation {
-  validate_number("dml-chart.xsd", "ST_Style", s)
-  { value: s }
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_Style", s)
+  if n < 1 || n > 48 {
+    invalid("dml-chart.xsd", "ST_Style", s)
+  }
+  { value: n }
 }
 
 ///|
-/// Construct ST_Style while enforcing its dml-chart.xsd lexical constraint.
+/// Construct ST_Style while enforcing the dml-chart.xsd 1..48 range.
 pub fn ST_Style::new(s : String) -> ST_Style raise SchemaViolation {
   ST_Style::parse(s)
 }
 
 ///|
-/// Return the schema lexical value for ST_Style.
-pub fn ST_Style::to_string(self : ST_Style) -> String {
+/// Read the chart style preset (1..48).
+pub fn ST_Style::value(self : ST_Style) -> Int {
   self.value
 }
 
 ///|
-/// XSD simple type ST_PageSetupOrientation (§21.2, dml-chart.xsd).
+/// Return the canonical lexical value for ST_Style.
+pub fn ST_Style::to_string(self : ST_Style) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_PageSetupOrientation — Part 1 §21.2.3.32.
+/// Restriction of xsd:string to {default, portrait, landscape}.
 pub(all) enum ST_PageSetupOrientation {
   PageSetupOrientationDefaultValue
   PageSetupOrientationPortrait
@@ -2009,9 +2364,11 @@ pub fn ST_PageSetupOrientation::to_string(
 }
 
 ///|
-/// XSD simple type ST_MarkerCoordinate (§21.3, dml-chartDrawing.xsd) with base xsd:double.
+/// XSD simple type ST_MarkerCoordinate — Part 1 §21.3.3.1.
+/// Restriction of xsd:double to 0.0..1.0 inclusive (fractional chart
+/// position used to anchor chart-drawing markers).
 pub struct ST_MarkerCoordinate {
-  value : String
+  value : Double
 } derive(Eq, Debug)
 
 ///|
@@ -2019,12 +2376,15 @@ pub struct ST_MarkerCoordinate {
 pub fn ST_MarkerCoordinate::parse(
   s : String,
 ) -> ST_MarkerCoordinate raise SchemaViolation {
-  validate_double("dml-chartDrawing.xsd", "ST_MarkerCoordinate", s)
-  { value: s }
+  let v = parse_double("dml-chartDrawing.xsd", "ST_MarkerCoordinate", s)
+  if v < 0.0 || v > 1.0 {
+    invalid("dml-chartDrawing.xsd", "ST_MarkerCoordinate", s)
+  }
+  { value: v }
 }
 
 ///|
-/// Construct ST_MarkerCoordinate while enforcing its dml-chartDrawing.xsd lexical constraint.
+/// Construct ST_MarkerCoordinate while enforcing the dml-chartDrawing.xsd 0..1 range.
 pub fn ST_MarkerCoordinate::new(
   s : String,
 ) -> ST_MarkerCoordinate raise SchemaViolation {
@@ -2032,9 +2392,15 @@ pub fn ST_MarkerCoordinate::new(
 }
 
 ///|
-/// Return the schema lexical value for ST_MarkerCoordinate.
-pub fn ST_MarkerCoordinate::to_string(self : ST_MarkerCoordinate) -> String {
+/// Read the marker coordinate as a fractional value in [0.0, 1.0].
+pub fn ST_MarkerCoordinate::value(self : ST_MarkerCoordinate) -> Double {
   self.value
+}
+
+///|
+/// Return the canonical lexical value for ST_MarkerCoordinate.
+pub fn ST_MarkerCoordinate::to_string(self : ST_MarkerCoordinate) -> String {
+  format_decimal(self.value)
 }
 
 ///|
@@ -2051,35 +2417,227 @@ fn[T] invalid(
 }
 
 ///|
-fn validate_non_empty(
+/// Parse a signed xsd:byte/xsd:short/xsd:int-style integer lexical
+/// form (optional leading `+`/`-`, decimal digits) into Int. Empty
+/// strings and non-digit characters raise.
+fn parse_signed_int(
   schema : String,
   type_name : String,
   value : String,
-) -> Unit raise SchemaViolation {
+) -> Int raise SchemaViolation {
   if value.length() == 0 {
     invalid(schema, type_name, value)
   }
-}
-
-///|
-fn validate_number(
-  schema : String,
-  type_name : String,
-  value : String,
-) -> Unit raise SchemaViolation {
-  if value.length() == 0 || !looks_like_number(value, allow_decimal=false) {
+  let mut i = 0
+  let mut negative = false
+  if value[0:1] == "-" {
+    negative = true
+    i = 1
+  } else if value[0:1] == "+" {
+    i = 1
+  }
+  if i >= value.length() {
     invalid(schema, type_name, value)
+  }
+  let mut n = 0
+  while i < value.length() {
+    let ch = value[i:i + 1]
+    if ch < "0" || ch > "9" {
+      invalid(schema, type_name, value)
+    }
+    let d = ch[0].to_int() - "0"[0].to_int()
+    n = n * 10 + d
+    i = i + 1
+  }
+  if negative {
+    -n
+  } else {
+    n
   }
 }
 
 ///|
-fn validate_double(
+/// Parse a xsd:unsignedByte/unsignedShort-style lexical integer (no
+/// sign, decimal digits) into Int. Empty strings and signs raise.
+fn parse_unsigned_int(
   schema : String,
   type_name : String,
   value : String,
-) -> Unit raise SchemaViolation {
+) -> Int raise SchemaViolation {
+  if value.length() == 0 {
+    invalid(schema, type_name, value)
+  }
+  let mut i = 0
+  let mut n = 0
+  while i < value.length() {
+    let ch = value[i:i + 1]
+    if ch < "0" || ch > "9" {
+      invalid(schema, type_name, value)
+    }
+    let d = ch[0].to_int() - "0"[0].to_int()
+    n = n * 10 + d
+    i = i + 1
+  }
+  n
+}
+
+///|
+/// Parse a xsd:unsignedInt-style lexical integer (no sign, decimal
+/// digits) into Int64 to cover the full 0..2^32-1 range.
+fn parse_unsigned_int64(
+  schema : String,
+  type_name : String,
+  value : String,
+) -> Int64 raise SchemaViolation {
+  if value.length() == 0 {
+    invalid(schema, type_name, value)
+  }
+  let mut i = 0
+  let mut n : Int64 = 0L
+  while i < value.length() {
+    let ch = value[i:i + 1]
+    if ch < "0" || ch > "9" {
+      invalid(schema, type_name, value)
+    }
+    let d = (ch[0].to_int() - "0"[0].to_int()).to_int64()
+    n = n * 10L + d
+    i = i + 1
+  }
+  n
+}
+
+///|
+/// Parse an `(optionally-signed 0-padded integer)%` lexical form into
+/// the typed percent integer. `allow_negative` mirrors the union
+/// member's regex (only ST_OverlapPercent permits a sign).
+fn parse_percent_literal(
+  schema : String,
+  type_name : String,
+  value : String,
+  allow_negative~ : Bool,
+) -> Int raise SchemaViolation {
+  let len = value.length()
+  if len < 2 || value[len - 1:len] != "%" {
+    invalid(schema, type_name, value)
+  }
+  let body = value[0:len - 1]
+  let body_len = body.length()
+  let mut i = 0
+  let mut negative = false
+  if allow_negative && body_len > 0 && body[0:1] == "-" {
+    negative = true
+    i = 1
+  }
+  // Spec patterns all permit leading zeros (`0*`). Reject if there is
+  // nothing after the sign.
+  if i >= body_len {
+    invalid(schema, type_name, value)
+  }
+  let mut n = 0
+  while i < body_len {
+    let ch = body[i:i + 1]
+    if ch < "0" || ch > "9" {
+      invalid(schema, type_name, value)
+    }
+    let d = ch[0].to_int() - "0"[0].to_int()
+    n = n * 10 + d
+    i = i + 1
+  }
+  if negative {
+    -n
+  } else {
+    n
+  }
+}
+
+///|
+/// Parse a `([0-9]+)%` lexical form (the ST_ThicknessPercent pattern —
+/// no sign, no `0*` prefix sugar special-cased; a single leading zero
+/// is permitted because `[0-9]+` admits it).
+fn parse_percent_literal_strict_digits(
+  schema : String,
+  type_name : String,
+  value : String,
+) -> Int raise SchemaViolation {
+  let len = value.length()
+  if len < 2 || value[len - 1:len] != "%" {
+    invalid(schema, type_name, value)
+  }
+  let body = value[0:len - 1]
+  let body_len = body.length()
+  if body_len == 0 {
+    invalid(schema, type_name, value)
+  }
+  let mut i = 0
+  let mut n = 0
+  while i < body_len {
+    let ch = body[i:i + 1]
+    if ch < "0" || ch > "9" {
+      invalid(schema, type_name, value)
+    }
+    let d = ch[0].to_int() - "0"[0].to_int()
+    n = n * 10 + d
+    i = i + 1
+  }
+  n
+}
+
+///|
+/// Parse a xsd:double lexical form (`[-+]?\d+(\.\d+)?`). The chart
+/// schema does not exercise the scientific-notation tail, so we stay
+/// in decimal land.
+fn parse_double(
+  schema : String,
+  type_name : String,
+  value : String,
+) -> Double raise SchemaViolation {
   if value.length() == 0 || !looks_like_number(value, allow_decimal=true) {
     invalid(schema, type_name, value)
+  }
+  let mut i = 0
+  let mut negative = false
+  if value[0:1] == "-" {
+    negative = true
+    i = 1
+  } else if value[0:1] == "+" {
+    i = 1
+  }
+  let mut whole : Int64 = 0L
+  while i < value.length() && value[i:i + 1] != "." {
+    let ch = value[i:i + 1]
+    let d = (ch[0].to_int() - "0"[0].to_int()).to_int64()
+    whole = whole * 10L + d
+    i = i + 1
+  }
+  let mut frac : Double = 0.0
+  let mut scale : Double = 1.0
+  if i < value.length() && value[i:i + 1] == "." {
+    i = i + 1
+    while i < value.length() {
+      let ch = value[i:i + 1]
+      let d = (ch[0].to_int() - "0"[0].to_int()).to_double()
+      scale = scale * 10.0
+      frac = frac + d / scale
+      i = i + 1
+    }
+  }
+  let magnitude = whole.to_double() + frac
+  if negative {
+    -magnitude
+  } else {
+    magnitude
+  }
+}
+
+///|
+/// Render a Double back to the canonical xsd:double lexical form ECMA-376
+/// emits. Mathematically integral values become bare integer strings;
+/// everything else falls through to the platform Double::to_string.
+fn format_decimal(value : Double) -> String {
+  if value == value.trunc() && value.abs() < 1.0e15 {
+    value.to_int64().to_string()
+  } else {
+    value.to_string()
   }
 }
 

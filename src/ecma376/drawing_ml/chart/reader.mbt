@@ -53,7 +53,14 @@ fn validate_chart_attributes(
       "legendPos" => ST_LegendPos::parse(value) |> ignore
       "dispBlanksAs" => ST_DispBlanksAs::parse(value) |> ignore
       "pageSetupOrientation" => ST_PageSetupOrientation::parse(value) |> ignore
-      "val" => validate_non_empty("dml-chart.xsd", "val", value)
+      "val" =>
+        if value.length() == 0 {
+          raise SchemaViolation(
+            schema="dml-chart.xsd",
+            path="val",
+            reason="invalid value: " + value,
+          )
+        }
       _ => ()
     }
   }

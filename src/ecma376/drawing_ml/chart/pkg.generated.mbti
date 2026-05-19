@@ -758,11 +758,12 @@ pub fn ST_AxPos::parse(String) -> Self raise SchemaViolation
 pub fn ST_AxPos::to_string(Self) -> String
 
 pub struct ST_AxisUnit {
-  value : String
+  value : Double
 } derive(Eq, @debug.Debug)
 pub fn ST_AxisUnit::new(String) -> Self raise SchemaViolation
 pub fn ST_AxisUnit::parse(String) -> Self raise SchemaViolation
 pub fn ST_AxisUnit::to_string(Self) -> String
+pub fn ST_AxisUnit::value(Self) -> Double
 
 pub(all) enum ST_BarDir {
   BarDirBar
@@ -783,17 +784,19 @@ pub fn ST_BarGrouping::parse(String) -> Self raise SchemaViolation
 pub fn ST_BarGrouping::to_string(Self) -> String
 
 pub struct ST_BubbleScale {
-  value : String
+  percent : ST_BubbleScalePercent
 } derive(Eq, @debug.Debug)
 pub fn ST_BubbleScale::new(String) -> Self raise SchemaViolation
 pub fn ST_BubbleScale::parse(String) -> Self raise SchemaViolation
+pub fn ST_BubbleScale::percent(Self) -> Int
 pub fn ST_BubbleScale::to_string(Self) -> String
 
 pub struct ST_BubbleScalePercent {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_BubbleScalePercent::new(String) -> Self raise SchemaViolation
 pub fn ST_BubbleScalePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_BubbleScalePercent::percent(Self) -> Int
 pub fn ST_BubbleScalePercent::to_string(Self) -> String
 
 pub(all) enum ST_BuiltInUnit {
@@ -844,17 +847,19 @@ pub fn ST_DLblPos::parse(String) -> Self raise SchemaViolation
 pub fn ST_DLblPos::to_string(Self) -> String
 
 pub struct ST_DepthPercent {
-  value : String
+  percent : ST_DepthPercentWithSymbol
 } derive(Eq, @debug.Debug)
 pub fn ST_DepthPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_DepthPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_DepthPercent::percent(Self) -> Int
 pub fn ST_DepthPercent::to_string(Self) -> String
 
 pub struct ST_DepthPercentWithSymbol {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_DepthPercentWithSymbol::new(String) -> Self raise SchemaViolation
 pub fn ST_DepthPercentWithSymbol::parse(String) -> Self raise SchemaViolation
+pub fn ST_DepthPercentWithSymbol::percent(Self) -> Int
 pub fn ST_DepthPercentWithSymbol::to_string(Self) -> String
 
 pub(all) enum ST_DispBlanksAs {
@@ -895,24 +900,27 @@ pub fn ST_ErrValType::parse(String) -> Self raise SchemaViolation
 pub fn ST_ErrValType::to_string(Self) -> String
 
 pub struct ST_FirstSliceAng {
-  value : String
+  degrees : Int
 } derive(Eq, @debug.Debug)
+pub fn ST_FirstSliceAng::degrees(Self) -> Int
 pub fn ST_FirstSliceAng::new(String) -> Self raise SchemaViolation
 pub fn ST_FirstSliceAng::parse(String) -> Self raise SchemaViolation
 pub fn ST_FirstSliceAng::to_string(Self) -> String
 
 pub struct ST_GapAmount {
-  value : String
+  percent : ST_GapAmountPercent
 } derive(Eq, @debug.Debug)
 pub fn ST_GapAmount::new(String) -> Self raise SchemaViolation
 pub fn ST_GapAmount::parse(String) -> Self raise SchemaViolation
+pub fn ST_GapAmount::percent(Self) -> Int
 pub fn ST_GapAmount::to_string(Self) -> String
 
 pub struct ST_GapAmountPercent {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_GapAmountPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_GapAmountPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_GapAmountPercent::percent(Self) -> Int
 pub fn ST_GapAmountPercent::to_string(Self) -> String
 
 pub(all) enum ST_Grouping {
@@ -925,31 +933,35 @@ pub fn ST_Grouping::parse(String) -> Self raise SchemaViolation
 pub fn ST_Grouping::to_string(Self) -> String
 
 pub struct ST_HPercent {
-  value : String
+  percent : ST_HPercentWithSymbol
 } derive(Eq, @debug.Debug)
 pub fn ST_HPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_HPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_HPercent::percent(Self) -> Int
 pub fn ST_HPercent::to_string(Self) -> String
 
 pub struct ST_HPercentWithSymbol {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_HPercentWithSymbol::new(String) -> Self raise SchemaViolation
 pub fn ST_HPercentWithSymbol::parse(String) -> Self raise SchemaViolation
+pub fn ST_HPercentWithSymbol::percent(Self) -> Int
 pub fn ST_HPercentWithSymbol::to_string(Self) -> String
 
 pub struct ST_HoleSize {
-  value : String
+  percent : ST_HoleSizePercent
 } derive(Eq, @debug.Debug)
 pub fn ST_HoleSize::new(String) -> Self raise SchemaViolation
 pub fn ST_HoleSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_HoleSize::percent(Self) -> Int
 pub fn ST_HoleSize::to_string(Self) -> String
 
 pub struct ST_HoleSizePercent {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_HoleSizePercent::new(String) -> Self raise SchemaViolation
 pub fn ST_HoleSizePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_HoleSizePercent::percent(Self) -> Int
 pub fn ST_HoleSizePercent::to_string(Self) -> String
 
 pub(all) enum ST_LayoutMode {
@@ -978,17 +990,19 @@ pub fn ST_LblAlgn::parse(String) -> Self raise SchemaViolation
 pub fn ST_LblAlgn::to_string(Self) -> String
 
 pub struct ST_LblOffset {
-  value : String
+  percent : ST_LblOffsetPercent
 } derive(Eq, @debug.Debug)
 pub fn ST_LblOffset::new(String) -> Self raise SchemaViolation
 pub fn ST_LblOffset::parse(String) -> Self raise SchemaViolation
+pub fn ST_LblOffset::percent(Self) -> Int
 pub fn ST_LblOffset::to_string(Self) -> String
 
 pub struct ST_LblOffsetPercent {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_LblOffsetPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_LblOffsetPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_LblOffsetPercent::percent(Self) -> Int
 pub fn ST_LblOffsetPercent::to_string(Self) -> String
 
 pub(all) enum ST_LegendPos {
@@ -1003,24 +1017,27 @@ pub fn ST_LegendPos::parse(String) -> Self raise SchemaViolation
 pub fn ST_LegendPos::to_string(Self) -> String
 
 pub struct ST_LogBase {
-  value : String
+  value : Double
 } derive(Eq, @debug.Debug)
 pub fn ST_LogBase::new(String) -> Self raise SchemaViolation
 pub fn ST_LogBase::parse(String) -> Self raise SchemaViolation
 pub fn ST_LogBase::to_string(Self) -> String
+pub fn ST_LogBase::value(Self) -> Double
 
 pub struct ST_MarkerCoordinate {
-  value : String
+  value : Double
 } derive(Eq, @debug.Debug)
 pub fn ST_MarkerCoordinate::new(String) -> Self raise SchemaViolation
 pub fn ST_MarkerCoordinate::parse(String) -> Self raise SchemaViolation
 pub fn ST_MarkerCoordinate::to_string(Self) -> String
+pub fn ST_MarkerCoordinate::value(Self) -> Double
 
 pub struct ST_MarkerSize {
-  value : String
+  points : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_MarkerSize::new(String) -> Self raise SchemaViolation
 pub fn ST_MarkerSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_MarkerSize::points(Self) -> Int
 pub fn ST_MarkerSize::to_string(Self) -> String
 
 pub(all) enum ST_MarkerStyle {
@@ -1050,11 +1067,12 @@ pub fn ST_OfPieType::parse(String) -> Self raise SchemaViolation
 pub fn ST_OfPieType::to_string(Self) -> String
 
 pub struct ST_Order {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_Order::new(String) -> Self raise SchemaViolation
 pub fn ST_Order::parse(String) -> Self raise SchemaViolation
 pub fn ST_Order::to_string(Self) -> String
+pub fn ST_Order::value(Self) -> Int
 
 pub(all) enum ST_Orientation {
   OrientationMaxMin
@@ -1065,17 +1083,19 @@ pub fn ST_Orientation::parse(String) -> Self raise SchemaViolation
 pub fn ST_Orientation::to_string(Self) -> String
 
 pub struct ST_Overlap {
-  value : String
+  percent : ST_OverlapPercent
 } derive(Eq, @debug.Debug)
 pub fn ST_Overlap::new(String) -> Self raise SchemaViolation
 pub fn ST_Overlap::parse(String) -> Self raise SchemaViolation
+pub fn ST_Overlap::percent(Self) -> Int
 pub fn ST_Overlap::to_string(Self) -> String
 
 pub struct ST_OverlapPercent {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_OverlapPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_OverlapPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_OverlapPercent::percent(Self) -> Int
 pub fn ST_OverlapPercent::to_string(Self) -> String
 
 pub(all) enum ST_PageSetupOrientation {
@@ -1088,18 +1108,20 @@ pub fn ST_PageSetupOrientation::parse(String) -> Self raise SchemaViolation
 pub fn ST_PageSetupOrientation::to_string(Self) -> String
 
 pub struct ST_Period {
-  value : String
+  value : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_Period::new(String) -> Self raise SchemaViolation
 pub fn ST_Period::parse(String) -> Self raise SchemaViolation
 pub fn ST_Period::to_string(Self) -> String
+pub fn ST_Period::value(Self) -> Int64
 
 pub struct ST_Perspective {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_Perspective::new(String) -> Self raise SchemaViolation
 pub fn ST_Perspective::parse(String) -> Self raise SchemaViolation
 pub fn ST_Perspective::to_string(Self) -> String
+pub fn ST_Perspective::value(Self) -> Int
 
 pub(all) enum ST_PictureFormat {
   PictureFormatStretch
@@ -1111,11 +1133,12 @@ pub fn ST_PictureFormat::parse(String) -> Self raise SchemaViolation
 pub fn ST_PictureFormat::to_string(Self) -> String
 
 pub struct ST_PictureStackUnit {
-  value : String
+  value : Double
 } derive(Eq, @debug.Debug)
 pub fn ST_PictureStackUnit::new(String) -> Self raise SchemaViolation
 pub fn ST_PictureStackUnit::parse(String) -> Self raise SchemaViolation
 pub fn ST_PictureStackUnit::to_string(Self) -> String
+pub fn ST_PictureStackUnit::value(Self) -> Double
 
 pub(all) enum ST_RadarStyle {
   RadarStyleStandard
@@ -1127,15 +1150,17 @@ pub fn ST_RadarStyle::parse(String) -> Self raise SchemaViolation
 pub fn ST_RadarStyle::to_string(Self) -> String
 
 pub struct ST_RotX {
-  value : String
+  degrees : Int
 } derive(Eq, @debug.Debug)
+pub fn ST_RotX::degrees(Self) -> Int
 pub fn ST_RotX::new(String) -> Self raise SchemaViolation
 pub fn ST_RotX::parse(String) -> Self raise SchemaViolation
 pub fn ST_RotX::to_string(Self) -> String
 
 pub struct ST_RotY {
-  value : String
+  degrees : Int
 } derive(Eq, @debug.Debug)
+pub fn ST_RotY::degrees(Self) -> Int
 pub fn ST_RotY::new(String) -> Self raise SchemaViolation
 pub fn ST_RotY::parse(String) -> Self raise SchemaViolation
 pub fn ST_RotY::to_string(Self) -> String
@@ -1153,17 +1178,19 @@ pub fn ST_ScatterStyle::parse(String) -> Self raise SchemaViolation
 pub fn ST_ScatterStyle::to_string(Self) -> String
 
 pub struct ST_SecondPieSize {
-  value : String
+  percent : ST_SecondPieSizePercent
 } derive(Eq, @debug.Debug)
 pub fn ST_SecondPieSize::new(String) -> Self raise SchemaViolation
 pub fn ST_SecondPieSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_SecondPieSize::percent(Self) -> Int
 pub fn ST_SecondPieSize::to_string(Self) -> String
 
 pub struct ST_SecondPieSizePercent {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_SecondPieSizePercent::new(String) -> Self raise SchemaViolation
 pub fn ST_SecondPieSizePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_SecondPieSizePercent::percent(Self) -> Int
 pub fn ST_SecondPieSizePercent::to_string(Self) -> String
 
 pub(all) enum ST_Shape {
@@ -1187,11 +1214,12 @@ pub fn ST_SizeRepresents::parse(String) -> Self raise SchemaViolation
 pub fn ST_SizeRepresents::to_string(Self) -> String
 
 pub struct ST_Skip {
-  value : String
+  value : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_Skip::new(String) -> Self raise SchemaViolation
 pub fn ST_Skip::parse(String) -> Self raise SchemaViolation
 pub fn ST_Skip::to_string(Self) -> String
+pub fn ST_Skip::value(Self) -> Int64
 
 pub(all) enum ST_SplitType {
   SplitTypeAuto
@@ -1205,24 +1233,27 @@ pub fn ST_SplitType::parse(String) -> Self raise SchemaViolation
 pub fn ST_SplitType::to_string(Self) -> String
 
 pub struct ST_Style {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_Style::new(String) -> Self raise SchemaViolation
 pub fn ST_Style::parse(String) -> Self raise SchemaViolation
 pub fn ST_Style::to_string(Self) -> String
+pub fn ST_Style::value(Self) -> Int
 
 pub struct ST_Thickness {
-  value : String
+  percent : ST_ThicknessPercent
 } derive(Eq, @debug.Debug)
 pub fn ST_Thickness::new(String) -> Self raise SchemaViolation
 pub fn ST_Thickness::parse(String) -> Self raise SchemaViolation
+pub fn ST_Thickness::percent(Self) -> Int
 pub fn ST_Thickness::to_string(Self) -> String
 
 pub struct ST_ThicknessPercent {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_ThicknessPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_ThicknessPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_ThicknessPercent::percent(Self) -> Int
 pub fn ST_ThicknessPercent::to_string(Self) -> String
 
 pub(all) enum ST_TickLblPos {
