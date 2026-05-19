@@ -1,0 +1,206 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/drawing_ml/effects"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/drawing_ml",
+  "trkbt10/ooxml/ecma376/drawing_ml/color_resolution",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn apply_alpha_ceiling(@color_resolution.Rgba8) -> @color_resolution.Rgba8
+
+pub fn apply_alpha_floor(@color_resolution.Rgba8) -> @color_resolution.Rgba8
+
+pub fn apply_alpha_inverse(@color_resolution.Rgba8, @color_resolution.Rgba8?) -> @color_resolution.Rgba8
+
+pub fn apply_alpha_mod_fix(@color_resolution.Rgba8, Int) -> @color_resolution.Rgba8
+
+pub fn apply_alpha_replace(@color_resolution.Rgba8, Int) -> @color_resolution.Rgba8
+
+pub fn apply_clr_change(@color_resolution.Rgba8, @color_resolution.Rgba8, @color_resolution.Rgba8, Bool) -> @color_resolution.Rgba8
+
+pub fn apply_clr_repl(@color_resolution.Rgba8, @color_resolution.Rgba8) -> @color_resolution.Rgba8
+
+pub fn apply_duotone(@color_resolution.Rgba8, @color_resolution.Rgba8, @color_resolution.Rgba8) -> @color_resolution.Rgba8
+
+pub fn apply_effects(Array[Effect], @color_resolution.Rgba8) -> ResolvedEffectChain
+
+pub fn apply_effects_to_color(Array[Effect], @color_resolution.Rgba8) -> @color_resolution.Rgba8
+
+pub fn apply_grayscale(@color_resolution.Rgba8) -> @color_resolution.Rgba8
+
+pub fn apply_hsl(@color_resolution.Rgba8, Int, Int, Int) -> @color_resolution.Rgba8
+
+pub fn apply_lum(@color_resolution.Rgba8, Int, Int) -> @color_resolution.Rgba8
+
+pub fn apply_tint(@color_resolution.Rgba8, Int, Int) -> @color_resolution.Rgba8
+
+pub fn decode_effect_children(@xml.Element, DecodeContext) -> Array[Effect] raise @errors.SchemaViolation
+
+pub fn decode_effect_element(@xml.Element, DecodeContext) -> Effect raise @errors.SchemaViolation
+
+pub fn decode_effect_list(@drawing_ml.CT_EffectList, DecodeContext) -> Array[Effect] raise @errors.SchemaViolation
+
+// Errors
+
+// Types and methods
+pub(all) enum BlendMode {
+  Over
+  Mult
+  Screen
+  Darken
+  Lighten
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DecodeContext {
+  scheme : @color_resolution.ColorScheme
+  placeholder : @color_resolution.Rgba8?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum Effect {
+  Blur(Int, Bool)
+  Glow(Int, @color_resolution.Rgba8)
+  InnerShadow(InnerShadowParams)
+  OuterShadow(OuterShadowParams)
+  PresetShadow(PresetShadowParams)
+  Reflection(ReflectionParams)
+  SoftEdge(Int)
+  Tint(Int, Int)
+  Duotone(@color_resolution.Rgba8, @color_resolution.Rgba8)
+  Lum(Int, Int)
+  Hsl(Int, Int, Int)
+  FillOverlay(BlendMode)
+  AlphaModEffect
+  AlphaModFix(Int)
+  AlphaCeiling
+  AlphaFloor
+  AlphaInverse(@color_resolution.Rgba8?)
+  AlphaReplace(Int)
+  AlphaOutset(Int)
+  AlphaBiLevel(Int)
+  BiLevel(Int)
+  Blend(BlendMode)
+  ClrChange(@color_resolution.Rgba8, @color_resolution.Rgba8, Bool)
+  ClrRepl(@color_resolution.Rgba8)
+  Grayscale
+  RelativeOffset(Int, Int)
+  Transform(TransformParams)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct InnerShadowParams {
+  blur_rad : Int
+  dist : Int
+  dir : Int
+  color : @color_resolution.Rgba8
+} derive(Eq, @debug.Debug)
+
+pub(all) struct OuterShadowParams {
+  blur_rad : Int
+  dist : Int
+  dir : Int
+  sx : Int
+  sy : Int
+  kx : Int
+  ky : Int
+  algn : ShadowAlign
+  rot_with_shape : Bool
+  color : @color_resolution.Rgba8
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PresetShadowKind {
+  Shdw1
+  Shdw2
+  Shdw3
+  Shdw4
+  Shdw5
+  Shdw6
+  Shdw7
+  Shdw8
+  Shdw9
+  Shdw10
+  Shdw11
+  Shdw12
+  Shdw13
+  Shdw14
+  Shdw15
+  Shdw16
+  Shdw17
+  Shdw18
+  Shdw19
+  Shdw20
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PresetShadowParams {
+  prst : PresetShadowKind
+  dir : Int
+  dist : Int
+  color : @color_resolution.Rgba8
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ReflectionParams {
+  blur_rad : Int
+  st_a : Int
+  st_pos : Int
+  end_a : Int
+  end_pos : Int
+  dist : Int
+  dir : Int
+  fade_dir : Int
+  sx : Int
+  sy : Int
+  kx : Int
+  ky : Int
+  algn : ShadowAlign
+  rot_with_shape : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) enum RenderEffect {
+  BlurRender(Int, Bool)
+  GlowRender(Int, @color_resolution.Rgba8)
+  InnerShadowRender(InnerShadowParams)
+  OuterShadowRender(OuterShadowParams)
+  PresetShadowRender(PresetShadowParams)
+  ReflectionRender(ReflectionParams)
+  SoftEdgeRender(Int)
+  FillOverlayRender(BlendMode)
+  BlendRender(BlendMode)
+  AlphaOutsetRender(Int)
+  AlphaBiLevelRender(Int)
+  BiLevelRender(Int)
+  RelativeOffsetRender(Int, Int)
+  TransformRender(TransformParams)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ResolvedEffectChain {
+  rendered : Array[RenderEffect]
+  final_color : @color_resolution.Rgba8
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ShadowAlign {
+  Tl
+  T
+  Tr
+  L
+  Ctr
+  R
+  Bl
+  B
+  Br
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TransformParams {
+  sx : Int
+  sy : Int
+  kx : Int
+  ky : Int
+  tx : Int
+  ty : Int
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+
