@@ -47,6 +47,16 @@ test "xlsx facade renders minimal html" {
 }
 
 ///|
+test "xlsx facade preserves cell content across two save cycles" {
+  let initial = open(fixture_bytes())
+  let cycle1 = open(initial.save())
+  let cycle2 = open(cycle1.save())
+  assert_eq(initial.worksheets.length(), cycle2.worksheets.length())
+  assert_true(cycle1.to_html().contains("Hello xlsx"))
+  assert_true(cycle2.to_html().contains("Hello xlsx"))
+}
+
+///|
 fn bytes(source : String) -> Bytes {
   @utf8.encode(source[:])
 }

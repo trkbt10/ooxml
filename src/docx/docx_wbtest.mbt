@@ -39,6 +39,21 @@ test "docx facade renders minimal html" {
 }
 
 ///|
+test "docx facade preserves text across two save cycles" {
+  let initial = open(fixture_bytes())
+  let cycle1_bytes = initial.save()
+  let cycle1 = open(cycle1_bytes)
+  let cycle2_bytes = cycle1.save()
+  let cycle2 = open(cycle2_bytes)
+  assert_true(cycle1.to_html().contains("Hello docx"))
+  assert_true(cycle2.to_html().contains("Hello docx"))
+  assert_eq(
+    initial.main.element.name.local_name,
+    cycle2.main.element.name.local_name,
+  )
+}
+
+///|
 fn bytes(source : String) -> Bytes {
   @utf8.encode(source[:])
 }

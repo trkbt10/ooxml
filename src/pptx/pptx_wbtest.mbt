@@ -47,6 +47,16 @@ test "pptx facade renders minimal html" {
 }
 
 ///|
+test "pptx facade preserves slide content across two save cycles" {
+  let initial = open(fixture_bytes())
+  let cycle1 = open(initial.save())
+  let cycle2 = open(cycle1.save())
+  assert_eq(initial.slides.length(), cycle2.slides.length())
+  assert_true(cycle1.to_html().contains("Hello pptx"))
+  assert_true(cycle2.to_html().contains("Hello pptx"))
+}
+
+///|
 fn bytes(source : String) -> Bytes {
   @utf8.encode(source[:])
 }
