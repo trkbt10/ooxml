@@ -2180,27 +2180,114 @@ fn wml_ct_chunk1_parse_uint64(
   value
 }
 
-///|
-/// XSD complex type CT_MailMergeOdsoFMDFieldType from wml.xsd (§17).
-pub(all) struct CT_MailMergeOdsoFMDFieldType {
-  element : @xml.Element
-} derive(Eq, Debug)
+// WordprocessingML chunk2 typed complex types — wml.xsd §17 CT_* wrappers
+// covering track-change markup, bookmarks, paragraph properties, embedded
+// objects, fields and hyperlinks. Each former `element : @xml.Element`
+// wrapper is replaced with a typed projection of every XSD attribute and
+// child element declared by the schema in Part 4 / wml.xsd. The source
+// `<w:...>` element is preserved alongside the typed fields so the
+// builder can still round-trip unchanged markup. Free-content groups
+// (EG_PContent, EG_BlockLevelElts, EG_ContentRunContent, …) are kept as
+// `Array[@xml.Element]` because their elemenent-level choices are
+// decoded by upstream readers; the typed projection here covers the
+// attributes and the named single-element children of each CT.
 
 ///|
-pub fn CT_MailMergeOdsoFMDFieldType::new(
+/// First direct element child of `element` with the given local name, or
+/// `None` if no such child exists. WordprocessingML attributes and child
+/// elements use the unqualified local name (`w:` prefix is namespace
+/// metadata) so a local-name match is sufficient.
+fn wml_ct_chunk2_first_child(
   element : @xml.Element,
-) -> CT_MailMergeOdsoFMDFieldType {
-  { element, }
+  local_name : String,
+) -> @xml.Element? {
+  let mut found : @xml.Element? = None
+  for child in element.children {
+    if found is None {
+      match child {
+        @xml.Node::Element(e) =>
+          if e.name.local_name == local_name {
+            found = Some(e)
+          }
+        _ => ()
+      }
+    }
+  }
+  found
 }
 
 ///|
+/// All direct element children of `element` whose local name equals
+/// `local_name`, returned in document order.
+fn wml_ct_chunk2_children(
+  element : @xml.Element,
+  local_name : String,
+) -> Array[@xml.Element] {
+  let out : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Node::Element(e) =>
+        if e.name.local_name == local_name {
+          out.push(e)
+        }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
+/// All direct element children of `element`, in document order. Used for
+/// CT types whose schema content is an `xsd:choice` over a model group
+/// (e.g. EG_PContent, EG_BlockLevelElts) where the typed projection is
+/// outside this chunk's scope.
+fn wml_ct_chunk2_element_children(
+  element : @xml.Element,
+) -> Array[@xml.Element] {
+  let out : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Node::Element(e) => out.push(e)
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
+/// XSD complex type CT_MailMergeOdsoFMDFieldType — Part 1 §17.14.33
+/// (mail-merge ODSO field-mapping `type` element). Required `@val`
+/// (ST_MailMergeOdsoFMDFieldType §17.18.55) selects the mapping kind.
+pub(all) struct CT_MailMergeOdsoFMDFieldType {
+  /// §A.1 — source element kept for builder round-trip.
+  element : @xml.Element
+  /// §17.18.55 @val (ST_MailMergeOdsoFMDFieldType) — required.
+  val : ST_MailMergeOdsoFMDFieldType
+} derive(Eq, Debug)
+
+///|
+/// XSD complex type CT_MailMergeOdsoFMDFieldType — Part 1 §17.14.33.
+pub fn CT_MailMergeOdsoFMDFieldType::new(
+  element : @xml.Element,
+) -> CT_MailMergeOdsoFMDFieldType raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_MailMergeOdsoFMDFieldType", "Part 1 §17.18.55 ST_MailMergeOdsoFMDFieldType",
+  )
+  let val = ST_MailMergeOdsoFMDFieldType::parse(raw)
+  { element, val }
+}
+
+///|
+/// XSD complex type CT_MailMergeOdsoFMDFieldType — Part 1 §17.14.33.
 pub fn CT_MailMergeOdsoFMDFieldType::parse(
   element : @xml.Element,
-) -> CT_MailMergeOdsoFMDFieldType {
+) -> CT_MailMergeOdsoFMDFieldType raise SchemaViolation {
   CT_MailMergeOdsoFMDFieldType::new(element)
 }
 
 ///|
+/// XSD complex type CT_MailMergeOdsoFMDFieldType — return the preserved
+/// element for writers.
 pub fn CT_MailMergeOdsoFMDFieldType::to_element(
   self : CT_MailMergeOdsoFMDFieldType,
 ) -> @xml.Element {
@@ -2208,17 +2295,42 @@ pub fn CT_MailMergeOdsoFMDFieldType::to_element(
 }
 
 ///|
-/// XSD complex type CT_TrackChangesView from wml.xsd (§17).
+/// XSD complex type CT_TrackChangesView — Part 1 §17.15.1.69
+/// (revisionView). Five optional ST_OnOff toggles controlling which
+/// classes of revisions are displayed: markup region, comments,
+/// insertions/deletions, formatting, and ink annotations.
 pub(all) struct CT_TrackChangesView {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.7 @markup (s:ST_OnOff) — show markup region (optional).
+  markup : Bool?
+  /// §22.9.2.7 @comments (s:ST_OnOff) — show comments (optional).
+  comments : Bool?
+  /// §22.9.2.7 @insDel (s:ST_OnOff) — show insertions/deletions (optional).
+  ins_del : Bool?
+  /// §22.9.2.7 @formatting (s:ST_OnOff) — show formatting changes (optional).
+  formatting : Bool?
+  /// §22.9.2.7 @inkAnnotations (s:ST_OnOff) — show ink annotations (optional).
+  ink_annotations : Bool?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_TrackChangesView — Part 1 §17.15.1.69.
 pub fn CT_TrackChangesView::new(element : @xml.Element) -> CT_TrackChangesView {
-  { element, }
+  let markup = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "markup"))
+  let comments = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "comments"))
+  let ins_del = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "insDel"))
+  let formatting = wml_ct_chunk1_on_off(
+    wml_ct_chunk1_attr(element, "formatting"),
+  )
+  let ink_annotations = wml_ct_chunk1_on_off(
+    wml_ct_chunk1_attr(element, "inkAnnotations"),
+  )
+  { element, markup, comments, ins_del, formatting, ink_annotations }
 }
 
 ///|
+/// XSD complex type CT_TrackChangesView — Part 1 §17.15.1.69.
 pub fn CT_TrackChangesView::parse(
   element : @xml.Element,
 ) -> CT_TrackChangesView {
@@ -2226,6 +2338,8 @@ pub fn CT_TrackChangesView::parse(
 }
 
 ///|
+/// XSD complex type CT_TrackChangesView — return the preserved element
+/// for writers.
 pub fn CT_TrackChangesView::to_element(
   self : CT_TrackChangesView,
 ) -> @xml.Element {
@@ -2233,131 +2347,274 @@ pub fn CT_TrackChangesView::to_element(
 }
 
 ///|
-/// XSD complex type CT_Kinsoku from wml.xsd (§17).
+/// XSD complex type CT_Kinsoku — Part 1 §17.3.1.16 (kinsoku Use East
+/// Asian Typography Rules for First and Last Character per Line).
+/// Required `@lang` (s:ST_Lang) names the language; required `@val`
+/// (s:ST_String) carries the kinsoku rule string.
 pub(all) struct CT_Kinsoku {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.6 @lang (s:ST_Lang) — required language code.
+  lang : String
+  /// §22.9.2.13 @val (s:ST_String) — required rule string.
+  val : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Kinsoku::new(element : @xml.Element) -> CT_Kinsoku {
-  { element, }
+/// XSD complex type CT_Kinsoku — Part 1 §17.3.1.16.
+pub fn CT_Kinsoku::new(
+  element : @xml.Element,
+) -> CT_Kinsoku raise SchemaViolation {
+  let lang = wml_ct_chunk1_required_attr(
+    element, "lang", "CT_Kinsoku", "Part 1 §22.9.2.6 s:ST_Lang",
+  )
+  let val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_Kinsoku", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  { element, lang, val }
 }
 
 ///|
-pub fn CT_Kinsoku::parse(element : @xml.Element) -> CT_Kinsoku {
+/// XSD complex type CT_Kinsoku — Part 1 §17.3.1.16.
+pub fn CT_Kinsoku::parse(
+  element : @xml.Element,
+) -> CT_Kinsoku raise SchemaViolation {
   CT_Kinsoku::new(element)
 }
 
 ///|
+/// XSD complex type CT_Kinsoku — return the preserved element for
+/// writers.
 pub fn CT_Kinsoku::to_element(self : CT_Kinsoku) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TextDirection from wml.xsd (§17).
+/// XSD complex type CT_TextDirection — Part 1 §17.3.1.41
+/// (textDirection Paragraph Text Flow Direction). Required `@val`
+/// ST_TextDirection chooses one of six tb/rl/lr/tbV/rlV/lrV flows.
 pub(all) struct CT_TextDirection {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.93 @val (ST_TextDirection) — required text-flow direction.
+  val : ST_TextDirection
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TextDirection::new(element : @xml.Element) -> CT_TextDirection {
-  { element, }
+/// XSD complex type CT_TextDirection — Part 1 §17.3.1.41.
+pub fn CT_TextDirection::new(
+  element : @xml.Element,
+) -> CT_TextDirection raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_TextDirection", "Part 1 §17.18.93 ST_TextDirection",
+  )
+  let val = ST_TextDirection::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_TextDirection::parse(element : @xml.Element) -> CT_TextDirection {
+/// XSD complex type CT_TextDirection — Part 1 §17.3.1.41.
+pub fn CT_TextDirection::parse(
+  element : @xml.Element,
+) -> CT_TextDirection raise SchemaViolation {
   CT_TextDirection::new(element)
 }
 
 ///|
+/// XSD complex type CT_TextDirection — return the preserved element for
+/// writers.
 pub fn CT_TextDirection::to_element(self : CT_TextDirection) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TextAlignment from wml.xsd (§17).
+/// XSD complex type CT_TextAlignment — Part 1 §17.3.1.39
+/// (textAlignment Vertical Character Alignment on Line). Required
+/// `@val` ST_TextAlignment ∈ {top, center, baseline, bottom, auto}.
 pub(all) struct CT_TextAlignment {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.96 @val (ST_TextAlignment) — required vertical alignment.
+  val : ST_TextAlignment
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TextAlignment::new(element : @xml.Element) -> CT_TextAlignment {
-  { element, }
+/// XSD complex type CT_TextAlignment — Part 1 §17.3.1.39.
+pub fn CT_TextAlignment::new(
+  element : @xml.Element,
+) -> CT_TextAlignment raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_TextAlignment", "Part 1 §17.18.96 ST_TextAlignment",
+  )
+  let val = ST_TextAlignment::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_TextAlignment::parse(element : @xml.Element) -> CT_TextAlignment {
+/// XSD complex type CT_TextAlignment — Part 1 §17.3.1.39.
+pub fn CT_TextAlignment::parse(
+  element : @xml.Element,
+) -> CT_TextAlignment raise SchemaViolation {
   CT_TextAlignment::new(element)
 }
 
 ///|
+/// XSD complex type CT_TextAlignment — return the preserved element for
+/// writers.
 pub fn CT_TextAlignment::to_element(self : CT_TextAlignment) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Markup from wml.xsd (§17).
+/// XSD complex type CT_Markup — Part 1 §A.1 (wml.xsd). Base type for
+/// every revision-tracking annotation that carries a numeric `@id`
+/// (ST_DecimalNumber §17.18.10) cross-referencing related range
+/// markers. Used directly by `customXmlInsRangeEnd` /
+/// `customXmlDelRangeEnd` (§17.13.5.6 / §17.13.5.4) and as the base
+/// for every other markup CT below.
 pub(all) struct CT_Markup {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Markup::new(element : @xml.Element) -> CT_Markup {
-  { element, }
+/// XSD complex type CT_Markup — Part 1 §A.1.
+pub fn CT_Markup::new(
+  element : @xml.Element,
+) -> CT_Markup raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_Markup", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  { element, id }
 }
 
 ///|
-pub fn CT_Markup::parse(element : @xml.Element) -> CT_Markup {
+/// XSD complex type CT_Markup — Part 1 §A.1.
+pub fn CT_Markup::parse(
+  element : @xml.Element,
+) -> CT_Markup raise SchemaViolation {
   CT_Markup::new(element)
 }
 
 ///|
+/// XSD complex type CT_Markup — return the preserved element for writers.
 pub fn CT_Markup::to_element(self : CT_Markup) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TrackChange from wml.xsd (§17).
+/// XSD complex type CT_TrackChange — Part 1 §A.1 (wml.xsd). Extends
+/// CT_Markup with revision authorship metadata: required `@author`
+/// (s:ST_String) and optional `@date` (ST_DateTime §17.18.9). The
+/// shared base for `ins`/`del`/`moveFrom`/`moveTo` revision elements
+/// (§17.13.5.14–28) and for the typed `…Change` records that carry
+/// previously-applied property snapshots.
 pub(all) struct CT_TrackChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TrackChange::new(element : @xml.Element) -> CT_TrackChange {
-  { element, }
+/// XSD complex type CT_TrackChange — Part 1 §A.1.
+pub fn CT_TrackChange::new(
+  element : @xml.Element,
+) -> CT_TrackChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_TrackChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_TrackChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  { element, id, author, date }
 }
 
 ///|
-pub fn CT_TrackChange::parse(element : @xml.Element) -> CT_TrackChange {
+/// XSD complex type CT_TrackChange — Part 1 §A.1.
+pub fn CT_TrackChange::parse(
+  element : @xml.Element,
+) -> CT_TrackChange raise SchemaViolation {
   CT_TrackChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_TrackChange — return the preserved element for
+/// writers.
 pub fn CT_TrackChange::to_element(self : CT_TrackChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_CellMergeTrackChange from wml.xsd (§17).
+/// XSD complex type CT_CellMergeTrackChange — Part 1 §17.13.5.3
+/// (cellMerge Vertically Merged/Split Table Cells). Extends
+/// CT_TrackChange with two optional ST_AnnotationVMerge tokens
+/// recording the merge state before and after the revision.
 pub(all) struct CT_CellMergeTrackChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// §17.18.1 @vMerge (ST_AnnotationVMerge) — optional new merge state.
+  v_merge : ST_AnnotationVMerge?
+  /// §17.18.1 @vMergeOrig (ST_AnnotationVMerge) — optional original merge state.
+  v_merge_orig : ST_AnnotationVMerge?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_CellMergeTrackChange — Part 1 §17.13.5.3.
 pub fn CT_CellMergeTrackChange::new(
   element : @xml.Element,
-) -> CT_CellMergeTrackChange {
-  { element, }
+) -> CT_CellMergeTrackChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_CellMergeTrackChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_CellMergeTrackChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let v_merge = match wml_ct_chunk1_attr(element, "vMerge") {
+    Some(text) => Some(ST_AnnotationVMerge::parse(text))
+    None => None
+  }
+  let v_merge_orig = match wml_ct_chunk1_attr(element, "vMergeOrig") {
+    Some(text) => Some(ST_AnnotationVMerge::parse(text))
+    None => None
+  }
+  { element, id, author, date, v_merge, v_merge_orig }
 }
 
 ///|
+/// XSD complex type CT_CellMergeTrackChange — Part 1 §17.13.5.3.
 pub fn CT_CellMergeTrackChange::parse(
   element : @xml.Element,
-) -> CT_CellMergeTrackChange {
+) -> CT_CellMergeTrackChange raise SchemaViolation {
   CT_CellMergeTrackChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_CellMergeTrackChange — return the preserved
+/// element for writers.
 pub fn CT_CellMergeTrackChange::to_element(
   self : CT_CellMergeTrackChange,
 ) -> @xml.Element {
@@ -2365,24 +2622,60 @@ pub fn CT_CellMergeTrackChange::to_element(
 }
 
 ///|
-/// XSD complex type CT_TrackChangeRange from wml.xsd (§17).
+/// XSD complex type CT_TrackChangeRange — Part 1 §A.1 (wml.xsd). Base
+/// for the range-marker revision elements (`moveFromRangeStart`,
+/// `moveToRangeStart`, `customXmlInsRangeStart`,
+/// `customXmlDelRangeStart`, etc., §17.13.5.21–§17.13.5.9). Extends
+/// CT_TrackChange with optional ST_DisplacedByCustomXml `@displacedByCustomXml`.
 pub(all) struct CT_TrackChangeRange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// §17.18.14 @displacedByCustomXml (ST_DisplacedByCustomXml) —
+  /// optional displacement marker.
+  displaced_by_custom_xml : ST_DisplacedByCustomXml?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TrackChangeRange::new(element : @xml.Element) -> CT_TrackChangeRange {
-  { element, }
+/// XSD complex type CT_TrackChangeRange — Part 1 §A.1.
+pub fn CT_TrackChangeRange::new(
+  element : @xml.Element,
+) -> CT_TrackChangeRange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_TrackChangeRange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_TrackChangeRange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let displaced_by_custom_xml = match
+    wml_ct_chunk1_attr(element, "displacedByCustomXml") {
+    Some(text) => Some(ST_DisplacedByCustomXml::parse(text))
+    None => None
+  }
+  { element, id, author, date, displaced_by_custom_xml }
 }
 
 ///|
+/// XSD complex type CT_TrackChangeRange — Part 1 §A.1.
 pub fn CT_TrackChangeRange::parse(
   element : @xml.Element,
-) -> CT_TrackChangeRange {
+) -> CT_TrackChangeRange raise SchemaViolation {
   CT_TrackChangeRange::new(element)
 }
 
 ///|
+/// XSD complex type CT_TrackChangeRange — return the preserved element
+/// for writers.
 pub fn CT_TrackChangeRange::to_element(
   self : CT_TrackChangeRange,
 ) -> @xml.Element {
@@ -2390,402 +2683,1079 @@ pub fn CT_TrackChangeRange::to_element(
 }
 
 ///|
-/// XSD complex type CT_MarkupRange from wml.xsd (§17).
+/// XSD complex type CT_MarkupRange — Part 1 §A.1 (wml.xsd). Base for
+/// bookmark and comment range-end markers (`bookmarkEnd`,
+/// `commentRangeStart`, `commentRangeEnd`, `moveFromRangeEnd`,
+/// `moveToRangeEnd`; §17.13.6.1, §17.13.4.3–4, §17.13.5.23/27).
+/// Extends CT_Markup with optional ST_DisplacedByCustomXml.
 pub(all) struct CT_MarkupRange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §17.18.14 @displacedByCustomXml (ST_DisplacedByCustomXml) —
+  /// optional displacement marker.
+  displaced_by_custom_xml : ST_DisplacedByCustomXml?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MarkupRange::new(element : @xml.Element) -> CT_MarkupRange {
-  { element, }
+/// XSD complex type CT_MarkupRange — Part 1 §A.1.
+pub fn CT_MarkupRange::new(
+  element : @xml.Element,
+) -> CT_MarkupRange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_MarkupRange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let displaced_by_custom_xml = match
+    wml_ct_chunk1_attr(element, "displacedByCustomXml") {
+    Some(text) => Some(ST_DisplacedByCustomXml::parse(text))
+    None => None
+  }
+  { element, id, displaced_by_custom_xml }
 }
 
 ///|
-pub fn CT_MarkupRange::parse(element : @xml.Element) -> CT_MarkupRange {
+/// XSD complex type CT_MarkupRange — Part 1 §A.1.
+pub fn CT_MarkupRange::parse(
+  element : @xml.Element,
+) -> CT_MarkupRange raise SchemaViolation {
   CT_MarkupRange::new(element)
 }
 
 ///|
+/// XSD complex type CT_MarkupRange — return the preserved element for
+/// writers.
 pub fn CT_MarkupRange::to_element(self : CT_MarkupRange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_BookmarkRange from wml.xsd (§17).
+/// XSD complex type CT_BookmarkRange — Part 1 §A.1 (wml.xsd). Extends
+/// CT_MarkupRange with optional table-column anchors (`@colFirst`,
+/// `@colLast`, both ST_DecimalNumber §17.18.10). The shared parent of
+/// `CT_Bookmark` (bookmarkStart, §17.13.6.2).
 pub(all) struct CT_BookmarkRange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §17.18.14 @displacedByCustomXml (ST_DisplacedByCustomXml) — optional.
+  displaced_by_custom_xml : ST_DisplacedByCustomXml?
+  /// §17.18.10 @colFirst (ST_DecimalNumber) — optional first-column anchor.
+  col_first : ST_DecimalNumber?
+  /// §17.18.10 @colLast (ST_DecimalNumber) — optional last-column anchor.
+  col_last : ST_DecimalNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_BookmarkRange::new(element : @xml.Element) -> CT_BookmarkRange {
-  { element, }
+/// XSD complex type CT_BookmarkRange — Part 1 §A.1.
+pub fn CT_BookmarkRange::new(
+  element : @xml.Element,
+) -> CT_BookmarkRange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_BookmarkRange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let displaced_by_custom_xml = match
+    wml_ct_chunk1_attr(element, "displacedByCustomXml") {
+    Some(text) => Some(ST_DisplacedByCustomXml::parse(text))
+    None => None
+  }
+  let col_first = match wml_ct_chunk1_attr(element, "colFirst") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let col_last = match wml_ct_chunk1_attr(element, "colLast") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  { element, id, displaced_by_custom_xml, col_first, col_last }
 }
 
 ///|
-pub fn CT_BookmarkRange::parse(element : @xml.Element) -> CT_BookmarkRange {
+/// XSD complex type CT_BookmarkRange — Part 1 §A.1.
+pub fn CT_BookmarkRange::parse(
+  element : @xml.Element,
+) -> CT_BookmarkRange raise SchemaViolation {
   CT_BookmarkRange::new(element)
 }
 
 ///|
+/// XSD complex type CT_BookmarkRange — return the preserved element for
+/// writers.
 pub fn CT_BookmarkRange::to_element(self : CT_BookmarkRange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Bookmark from wml.xsd (§17).
+/// XSD complex type CT_Bookmark — Part 1 §17.13.6.2 (bookmarkStart).
+/// Extends CT_BookmarkRange with the required `@name` (s:ST_String)
+/// that identifies the bookmark for the matching `bookmarkEnd`.
 pub(all) struct CT_Bookmark {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §17.18.14 @displacedByCustomXml (ST_DisplacedByCustomXml) — optional.
+  displaced_by_custom_xml : ST_DisplacedByCustomXml?
+  /// §17.18.10 @colFirst (ST_DecimalNumber) — optional first-column anchor.
+  col_first : ST_DecimalNumber?
+  /// §17.18.10 @colLast (ST_DecimalNumber) — optional last-column anchor.
+  col_last : ST_DecimalNumber?
+  /// §22.9.2.13 @name (s:ST_String) — required bookmark identifier.
+  name : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Bookmark::new(element : @xml.Element) -> CT_Bookmark {
-  { element, }
+/// XSD complex type CT_Bookmark — Part 1 §17.13.6.2.
+pub fn CT_Bookmark::new(
+  element : @xml.Element,
+) -> CT_Bookmark raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_Bookmark", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let displaced_by_custom_xml = match
+    wml_ct_chunk1_attr(element, "displacedByCustomXml") {
+    Some(text) => Some(ST_DisplacedByCustomXml::parse(text))
+    None => None
+  }
+  let col_first = match wml_ct_chunk1_attr(element, "colFirst") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let col_last = match wml_ct_chunk1_attr(element, "colLast") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let name = wml_ct_chunk1_required_attr(
+    element, "name", "CT_Bookmark", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  { element, id, displaced_by_custom_xml, col_first, col_last, name }
 }
 
 ///|
-pub fn CT_Bookmark::parse(element : @xml.Element) -> CT_Bookmark {
+/// XSD complex type CT_Bookmark — Part 1 §17.13.6.2.
+pub fn CT_Bookmark::parse(
+  element : @xml.Element,
+) -> CT_Bookmark raise SchemaViolation {
   CT_Bookmark::new(element)
 }
 
 ///|
+/// XSD complex type CT_Bookmark — return the preserved element for
+/// writers.
 pub fn CT_Bookmark::to_element(self : CT_Bookmark) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_MoveBookmark from wml.xsd (§17).
+/// XSD complex type CT_MoveBookmark — Part 1 §17.13.5.22/26
+/// (moveFromRangeStart, moveToRangeStart). Extends CT_Bookmark with
+/// required revision authorship (`@author` s:ST_String, `@date`
+/// ST_DateTime §17.18.9).
 pub(all) struct CT_MoveBookmark {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §17.18.14 @displacedByCustomXml (ST_DisplacedByCustomXml) — optional.
+  displaced_by_custom_xml : ST_DisplacedByCustomXml?
+  /// §17.18.10 @colFirst (ST_DecimalNumber) — optional first-column anchor.
+  col_first : ST_DecimalNumber?
+  /// §17.18.10 @colLast (ST_DecimalNumber) — optional last-column anchor.
+  col_last : ST_DecimalNumber?
+  /// §22.9.2.13 @name (s:ST_String) — required bookmark identifier.
+  name : String
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — required revision timestamp.
+  date : ST_DateTime
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MoveBookmark::new(element : @xml.Element) -> CT_MoveBookmark {
-  { element, }
+/// XSD complex type CT_MoveBookmark — Part 1 §17.13.5.22/26.
+pub fn CT_MoveBookmark::new(
+  element : @xml.Element,
+) -> CT_MoveBookmark raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_MoveBookmark", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let displaced_by_custom_xml = match
+    wml_ct_chunk1_attr(element, "displacedByCustomXml") {
+    Some(text) => Some(ST_DisplacedByCustomXml::parse(text))
+    None => None
+  }
+  let col_first = match wml_ct_chunk1_attr(element, "colFirst") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let col_last = match wml_ct_chunk1_attr(element, "colLast") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let name = wml_ct_chunk1_required_attr(
+    element, "name", "CT_MoveBookmark", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_MoveBookmark", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let raw_date = wml_ct_chunk1_required_attr(
+    element, "date", "CT_MoveBookmark", "Part 1 §17.18.9 ST_DateTime",
+  )
+  let date = ST_DateTime::parse(raw_date)
+  {
+    element,
+    id,
+    displaced_by_custom_xml,
+    col_first,
+    col_last,
+    name,
+    author,
+    date,
+  }
 }
 
 ///|
-pub fn CT_MoveBookmark::parse(element : @xml.Element) -> CT_MoveBookmark {
+/// XSD complex type CT_MoveBookmark — Part 1 §17.13.5.22/26.
+pub fn CT_MoveBookmark::parse(
+  element : @xml.Element,
+) -> CT_MoveBookmark raise SchemaViolation {
   CT_MoveBookmark::new(element)
 }
 
 ///|
+/// XSD complex type CT_MoveBookmark — return the preserved element for
+/// writers.
 pub fn CT_MoveBookmark::to_element(self : CT_MoveBookmark) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Comment from wml.xsd (§17).
+/// XSD complex type CT_Comment — Part 1 §17.13.4.2 (comment Comment
+/// Content). Extends CT_TrackChange with the comment-author initials
+/// `@initials` and a sequence of EG_BlockLevelElts children carrying
+/// the comment body. The block-level group is preserved as raw element
+/// children — typed projection of EG_BlockLevelElts is owned by the
+/// content-tree readers, not this CT.
 pub(all) struct CT_Comment {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// §22.9.2.13 @initials (s:ST_String) — optional author initials.
+  initials : String?
+  /// EG_BlockLevelElts* — zero or more block-level child elements
+  /// carrying the comment body, preserved raw.
+  block_level_elements : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Comment::new(element : @xml.Element) -> CT_Comment {
-  { element, }
+/// XSD complex type CT_Comment — Part 1 §17.13.4.2.
+pub fn CT_Comment::new(
+  element : @xml.Element,
+) -> CT_Comment raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_Comment", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_Comment", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let initials = wml_ct_chunk1_attr(element, "initials")
+  let block_level_elements = wml_ct_chunk2_element_children(element)
+  { element, id, author, date, initials, block_level_elements }
 }
 
 ///|
-pub fn CT_Comment::parse(element : @xml.Element) -> CT_Comment {
+/// XSD complex type CT_Comment — Part 1 §17.13.4.2.
+pub fn CT_Comment::parse(
+  element : @xml.Element,
+) -> CT_Comment raise SchemaViolation {
   CT_Comment::new(element)
 }
 
 ///|
+/// XSD complex type CT_Comment — return the preserved element for
+/// writers.
 pub fn CT_Comment::to_element(self : CT_Comment) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TblPrExChange from wml.xsd (§17).
+/// XSD complex type CT_TblPrExChange — Part 1 §17.13.5.35
+/// (tblPrExChange Revision Information for Table-Level Property
+/// Exceptions). Extends CT_TrackChange with a required `<tblPrEx>`
+/// (CT_TblPrExBase, §17.4.62 base) snapshot of the previously-applied
+/// table-level property exceptions.
 pub(all) struct CT_TblPrExChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// <tblPrEx> (CT_TblPrExBase) — required snapshot.
+  tbl_pr_ex : CT_TblPrExBase
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TblPrExChange::new(element : @xml.Element) -> CT_TblPrExChange {
-  { element, }
+/// XSD complex type CT_TblPrExChange — Part 1 §17.13.5.35.
+pub fn CT_TblPrExChange::new(
+  element : @xml.Element,
+) -> CT_TblPrExChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_TblPrExChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_TblPrExChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let tbl_pr_ex = match wml_ct_chunk2_first_child(element, "tblPrEx") {
+    Some(child) => CT_TblPrExBase::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_TblPrExChange", "tblPrEx", "Part 1 §17.13.5.35: required child <w:tblPrEx> is missing",
+      )
+  }
+  { element, id, author, date, tbl_pr_ex }
 }
 
 ///|
-pub fn CT_TblPrExChange::parse(element : @xml.Element) -> CT_TblPrExChange {
+/// XSD complex type CT_TblPrExChange — Part 1 §17.13.5.35.
+pub fn CT_TblPrExChange::parse(
+  element : @xml.Element,
+) -> CT_TblPrExChange raise SchemaViolation {
   CT_TblPrExChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_TblPrExChange — return the preserved element
+/// for writers.
 pub fn CT_TblPrExChange::to_element(self : CT_TblPrExChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TcPrChange from wml.xsd (§17).
+/// XSD complex type CT_TcPrChange — Part 1 §17.13.5.36 (tcPrChange
+/// Revision Information for Table Cell Properties). Extends
+/// CT_TrackChange with a required `<tcPr>` (CT_TcPrInner, §17.4.69
+/// base) snapshot of the cell properties that were active before the
+/// revision.
 pub(all) struct CT_TcPrChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// <tcPr> (CT_TcPrInner) — required snapshot.
+  tc_pr : CT_TcPrInner
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TcPrChange::new(element : @xml.Element) -> CT_TcPrChange {
-  { element, }
+/// XSD complex type CT_TcPrChange — Part 1 §17.13.5.36.
+pub fn CT_TcPrChange::new(
+  element : @xml.Element,
+) -> CT_TcPrChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_TcPrChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_TcPrChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let tc_pr = match wml_ct_chunk2_first_child(element, "tcPr") {
+    Some(child) => CT_TcPrInner::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_TcPrChange", "tcPr", "Part 1 §17.13.5.36: required child <w:tcPr> is missing",
+      )
+  }
+  { element, id, author, date, tc_pr }
 }
 
 ///|
-pub fn CT_TcPrChange::parse(element : @xml.Element) -> CT_TcPrChange {
+/// XSD complex type CT_TcPrChange — Part 1 §17.13.5.36.
+pub fn CT_TcPrChange::parse(
+  element : @xml.Element,
+) -> CT_TcPrChange raise SchemaViolation {
   CT_TcPrChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_TcPrChange — return the preserved element for
+/// writers.
 pub fn CT_TcPrChange::to_element(self : CT_TcPrChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TrPrChange from wml.xsd (§17).
+/// XSD complex type CT_TrPrChange — Part 1 §17.13.5.37 (trPrChange
+/// Revision Information for Table Row Properties). Extends
+/// CT_TrackChange with a required `<trPr>` (CT_TrPrBase, §17.4.81
+/// base) snapshot of the table-row properties active before the
+/// revision.
 pub(all) struct CT_TrPrChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// <trPr> (CT_TrPrBase) — required snapshot.
+  tr_pr : CT_TrPrBase
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TrPrChange::new(element : @xml.Element) -> CT_TrPrChange {
-  { element, }
+/// XSD complex type CT_TrPrChange — Part 1 §17.13.5.37.
+pub fn CT_TrPrChange::new(
+  element : @xml.Element,
+) -> CT_TrPrChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_TrPrChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_TrPrChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let tr_pr = match wml_ct_chunk2_first_child(element, "trPr") {
+    Some(child) => CT_TrPrBase::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_TrPrChange", "trPr", "Part 1 §17.13.5.37: required child <w:trPr> is missing",
+      )
+  }
+  { element, id, author, date, tr_pr }
 }
 
 ///|
-pub fn CT_TrPrChange::parse(element : @xml.Element) -> CT_TrPrChange {
+/// XSD complex type CT_TrPrChange — Part 1 §17.13.5.37.
+pub fn CT_TrPrChange::parse(
+  element : @xml.Element,
+) -> CT_TrPrChange raise SchemaViolation {
   CT_TrPrChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_TrPrChange — return the preserved element for
+/// writers.
 pub fn CT_TrPrChange::to_element(self : CT_TrPrChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TblGridChange from wml.xsd (§17).
+/// XSD complex type CT_TblGridChange — Part 1 §17.13.5.33
+/// (tblGridChange Revision Information for Table Grid Column
+/// Definitions). Extends CT_Markup (not CT_TrackChange — the schema
+/// does not record author/date here) with a required `<tblGrid>`
+/// (CT_TblGridBase, §17.4.49 base) snapshot of the previous grid.
 pub(all) struct CT_TblGridChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// <tblGrid> (CT_TblGridBase) — required snapshot.
+  tbl_grid : CT_TblGridBase
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TblGridChange::new(element : @xml.Element) -> CT_TblGridChange {
-  { element, }
+/// XSD complex type CT_TblGridChange — Part 1 §17.13.5.33.
+pub fn CT_TblGridChange::new(
+  element : @xml.Element,
+) -> CT_TblGridChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_TblGridChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let tbl_grid = match wml_ct_chunk2_first_child(element, "tblGrid") {
+    Some(child) => CT_TblGridBase::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_TblGridChange", "tblGrid", "Part 1 §17.13.5.33: required child <w:tblGrid> is missing",
+      )
+  }
+  { element, id, tbl_grid }
 }
 
 ///|
-pub fn CT_TblGridChange::parse(element : @xml.Element) -> CT_TblGridChange {
+/// XSD complex type CT_TblGridChange — Part 1 §17.13.5.33.
+pub fn CT_TblGridChange::parse(
+  element : @xml.Element,
+) -> CT_TblGridChange raise SchemaViolation {
   CT_TblGridChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_TblGridChange — return the preserved element
+/// for writers.
 pub fn CT_TblGridChange::to_element(self : CT_TblGridChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TblPrChange from wml.xsd (§17).
+/// XSD complex type CT_TblPrChange — Part 1 §17.13.5.34 (tblPrChange
+/// Revision Information for Table Properties). Extends CT_TrackChange
+/// with a required `<tblPr>` (CT_TblPrBase, §17.4.61 base) snapshot
+/// of the previous table-level properties.
 pub(all) struct CT_TblPrChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// <tblPr> (CT_TblPrBase) — required snapshot.
+  tbl_pr : CT_TblPrBase
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TblPrChange::new(element : @xml.Element) -> CT_TblPrChange {
-  { element, }
+/// XSD complex type CT_TblPrChange — Part 1 §17.13.5.34.
+pub fn CT_TblPrChange::new(
+  element : @xml.Element,
+) -> CT_TblPrChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_TblPrChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_TblPrChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let tbl_pr = match wml_ct_chunk2_first_child(element, "tblPr") {
+    Some(child) => CT_TblPrBase::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_TblPrChange", "tblPr", "Part 1 §17.13.5.34: required child <w:tblPr> is missing",
+      )
+  }
+  { element, id, author, date, tbl_pr }
 }
 
 ///|
-pub fn CT_TblPrChange::parse(element : @xml.Element) -> CT_TblPrChange {
+/// XSD complex type CT_TblPrChange — Part 1 §17.13.5.34.
+pub fn CT_TblPrChange::parse(
+  element : @xml.Element,
+) -> CT_TblPrChange raise SchemaViolation {
   CT_TblPrChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_TblPrChange — return the preserved element for
+/// writers.
 pub fn CT_TblPrChange::to_element(self : CT_TblPrChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SectPrChange from wml.xsd (§17).
+/// XSD complex type CT_SectPrChange — Part 1 §17.13.5.32
+/// (sectPrChange Revision Information for Section Properties). Extends
+/// CT_TrackChange with an optional `<sectPr>` (CT_SectPrBase, §17.6.18
+/// base) snapshot of the previous section properties.
 pub(all) struct CT_SectPrChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// <sectPr> (CT_SectPrBase) — optional snapshot (minOccurs=0).
+  sect_pr : CT_SectPrBase?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SectPrChange::new(element : @xml.Element) -> CT_SectPrChange {
-  { element, }
+/// XSD complex type CT_SectPrChange — Part 1 §17.13.5.32.
+pub fn CT_SectPrChange::new(
+  element : @xml.Element,
+) -> CT_SectPrChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_SectPrChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_SectPrChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let sect_pr = match wml_ct_chunk2_first_child(element, "sectPr") {
+    Some(child) => Some(CT_SectPrBase::new(child))
+    None => None
+  }
+  { element, id, author, date, sect_pr }
 }
 
 ///|
-pub fn CT_SectPrChange::parse(element : @xml.Element) -> CT_SectPrChange {
+/// XSD complex type CT_SectPrChange — Part 1 §17.13.5.32.
+pub fn CT_SectPrChange::parse(
+  element : @xml.Element,
+) -> CT_SectPrChange raise SchemaViolation {
   CT_SectPrChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_SectPrChange — return the preserved element
+/// for writers.
 pub fn CT_SectPrChange::to_element(self : CT_SectPrChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PPrChange from wml.xsd (§17).
+/// XSD complex type CT_PPrChange — Part 1 §17.13.5.29 (pPrChange
+/// Revision Information for Paragraph Properties). Extends
+/// CT_TrackChange with a required `<pPr>` (CT_PPrBase, §17.3.1.26
+/// base) snapshot of the previous paragraph properties.
 pub(all) struct CT_PPrChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// <pPr> (CT_PPrBase) — required snapshot.
+  p_pr : CT_PPrBase
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PPrChange::new(element : @xml.Element) -> CT_PPrChange {
-  { element, }
+/// XSD complex type CT_PPrChange — Part 1 §17.13.5.29.
+pub fn CT_PPrChange::new(
+  element : @xml.Element,
+) -> CT_PPrChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_PPrChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_PPrChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let p_pr = match wml_ct_chunk2_first_child(element, "pPr") {
+    Some(child) => CT_PPrBase::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_PPrChange", "pPr", "Part 1 §17.13.5.29: required child <w:pPr> is missing",
+      )
+  }
+  { element, id, author, date, p_pr }
 }
 
 ///|
-pub fn CT_PPrChange::parse(element : @xml.Element) -> CT_PPrChange {
+/// XSD complex type CT_PPrChange — Part 1 §17.13.5.29.
+pub fn CT_PPrChange::parse(
+  element : @xml.Element,
+) -> CT_PPrChange raise SchemaViolation {
   CT_PPrChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_PPrChange — return the preserved element for
+/// writers.
 pub fn CT_PPrChange::to_element(self : CT_PPrChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_RPrChange from wml.xsd (§17).
+/// XSD complex type CT_RPrChange — Part 1 §17.13.5.31 (rPrChange
+/// Revision Information for Run Properties). Extends CT_TrackChange
+/// with a required `<rPr>` (CT_RPrOriginal, §17.3.2.28 original
+/// snapshot) recording the run properties before the revision.
 pub(all) struct CT_RPrChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// <rPr> (CT_RPrOriginal) — required snapshot.
+  r_pr : CT_RPrOriginal
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RPrChange::new(element : @xml.Element) -> CT_RPrChange {
-  { element, }
+/// XSD complex type CT_RPrChange — Part 1 §17.13.5.31.
+pub fn CT_RPrChange::new(
+  element : @xml.Element,
+) -> CT_RPrChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_RPrChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_RPrChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let r_pr = match wml_ct_chunk2_first_child(element, "rPr") {
+    Some(child) => CT_RPrOriginal::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_RPrChange", "rPr", "Part 1 §17.13.5.31: required child <w:rPr> is missing",
+      )
+  }
+  { element, id, author, date, r_pr }
 }
 
 ///|
-pub fn CT_RPrChange::parse(element : @xml.Element) -> CT_RPrChange {
+/// XSD complex type CT_RPrChange — Part 1 §17.13.5.31.
+pub fn CT_RPrChange::parse(
+  element : @xml.Element,
+) -> CT_RPrChange raise SchemaViolation {
   CT_RPrChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_RPrChange — return the preserved element for
+/// writers.
 pub fn CT_RPrChange::to_element(self : CT_RPrChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_ParaRPrChange from wml.xsd (§17).
+/// XSD complex type CT_ParaRPrChange — Part 1 §17.13.5.30 (rPrChange
+/// Revision Information for Run Properties on the Paragraph Mark).
+/// Extends CT_TrackChange with a required `<rPr>` (CT_ParaRPrOriginal,
+/// §17.3.1.30 original snapshot) capturing the paragraph-mark run
+/// properties before the revision.
 pub(all) struct CT_ParaRPrChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// <rPr> (CT_ParaRPrOriginal) — required snapshot.
+  r_pr : CT_ParaRPrOriginal
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ParaRPrChange::new(element : @xml.Element) -> CT_ParaRPrChange {
-  { element, }
+/// XSD complex type CT_ParaRPrChange — Part 1 §17.13.5.30.
+pub fn CT_ParaRPrChange::new(
+  element : @xml.Element,
+) -> CT_ParaRPrChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_ParaRPrChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_ParaRPrChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let r_pr = match wml_ct_chunk2_first_child(element, "rPr") {
+    Some(child) => CT_ParaRPrOriginal::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_ParaRPrChange", "rPr", "Part 1 §17.13.5.30: required child <w:rPr> is missing",
+      )
+  }
+  { element, id, author, date, r_pr }
 }
 
 ///|
-pub fn CT_ParaRPrChange::parse(element : @xml.Element) -> CT_ParaRPrChange {
+/// XSD complex type CT_ParaRPrChange — Part 1 §17.13.5.30.
+pub fn CT_ParaRPrChange::parse(
+  element : @xml.Element,
+) -> CT_ParaRPrChange raise SchemaViolation {
   CT_ParaRPrChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_ParaRPrChange — return the preserved element for
+/// writers.
 pub fn CT_ParaRPrChange::to_element(self : CT_ParaRPrChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_RunTrackChange from wml.xsd (§17).
+/// XSD complex type CT_RunTrackChange — Part 1 §17.13.5.14/15/18
+/// (del Deleted Run Content, ins Inserted Run Content, and the math
+/// control-character revisions §17.13.5.13/16). Extends CT_TrackChange
+/// with a zero-or-more `xsd:choice` over EG_ContentRunContent and
+/// `m:EG_OMathMathElements`; the choice content is preserved as raw
+/// element children since the typed projection is owned by the
+/// content-tree readers and the office_math domain package.
 pub(all) struct CT_RunTrackChange {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — required revision identifier.
+  id : ST_DecimalNumber
+  /// §22.9.2.13 @author (s:ST_String) — required revision author.
+  author : String
+  /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
+  date : ST_DateTime?
+  /// EG_ContentRunContent ∪ m:EG_OMathMathElements * — zero or more
+  /// run-content / OMath child elements, preserved raw.
+  run_content : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RunTrackChange::new(element : @xml.Element) -> CT_RunTrackChange {
-  { element, }
+/// XSD complex type CT_RunTrackChange — Part 1 §17.13.5.14/15/18.
+pub fn CT_RunTrackChange::new(
+  element : @xml.Element,
+) -> CT_RunTrackChange raise SchemaViolation {
+  let raw_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_RunTrackChange", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let id = ST_DecimalNumber::parse(raw_id)
+  let author = wml_ct_chunk1_required_attr(
+    element, "author", "CT_RunTrackChange", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let date = match wml_ct_chunk1_attr(element, "date") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  let run_content = wml_ct_chunk2_element_children(element)
+  { element, id, author, date, run_content }
 }
 
 ///|
-pub fn CT_RunTrackChange::parse(element : @xml.Element) -> CT_RunTrackChange {
+/// XSD complex type CT_RunTrackChange — Part 1 §17.13.5.14/15/18.
+pub fn CT_RunTrackChange::parse(
+  element : @xml.Element,
+) -> CT_RunTrackChange raise SchemaViolation {
   CT_RunTrackChange::new(element)
 }
 
 ///|
+/// XSD complex type CT_RunTrackChange — return the preserved element
+/// for writers.
 pub fn CT_RunTrackChange::to_element(self : CT_RunTrackChange) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_NumPr from wml.xsd (§17).
+/// XSD complex type CT_NumPr — Part 1 §17.3.1.19 (numPr Numbering
+/// Definition Instance Reference). Three optional children: `<ilvl>`
+/// (CT_DecimalNumber list-level), `<numId>` (CT_DecimalNumber pointer
+/// to a numbering definition in numbering.xml) and `<ins>` (CT_TrackChange
+/// inserted-numbering revision marker, §17.13.5.19).
 pub(all) struct CT_NumPr {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// <ilvl> (CT_DecimalNumber) — optional list level.
+  ilvl : CT_DecimalNumber?
+  /// <numId> (CT_DecimalNumber) — optional numbering definition id.
+  num_id : CT_DecimalNumber?
+  /// <ins> (CT_TrackChange) — optional inserted-numbering revision.
+  ins : CT_TrackChange?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_NumPr::new(element : @xml.Element) -> CT_NumPr {
-  { element, }
+/// XSD complex type CT_NumPr — Part 1 §17.3.1.19.
+pub fn CT_NumPr::new(element : @xml.Element) -> CT_NumPr raise SchemaViolation {
+  let ilvl = match wml_ct_chunk2_first_child(element, "ilvl") {
+    Some(child) => Some(CT_DecimalNumber::new(child))
+    None => None
+  }
+  let num_id = match wml_ct_chunk2_first_child(element, "numId") {
+    Some(child) => Some(CT_DecimalNumber::new(child))
+    None => None
+  }
+  let ins = match wml_ct_chunk2_first_child(element, "ins") {
+    Some(child) => Some(CT_TrackChange::new(child))
+    None => None
+  }
+  { element, ilvl, num_id, ins }
 }
 
 ///|
-pub fn CT_NumPr::parse(element : @xml.Element) -> CT_NumPr {
+/// XSD complex type CT_NumPr — Part 1 §17.3.1.19.
+pub fn CT_NumPr::parse(
+  element : @xml.Element,
+) -> CT_NumPr raise SchemaViolation {
   CT_NumPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_NumPr — return the preserved element for writers.
 pub fn CT_NumPr::to_element(self : CT_NumPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PBdr from wml.xsd (§17).
+/// XSD complex type CT_PBdr — Part 1 §17.3.1.24 (pBdr Paragraph
+/// Borders). Six optional `<top>` / `<left>` / `<bottom>` / `<right>` /
+/// `<between>` / `<bar>` children, each a CT_Border (§17.3.4).
 pub(all) struct CT_PBdr {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// <top> (CT_Border) — optional top border.
+  top : CT_Border?
+  /// <left> (CT_Border) — optional leading-edge border.
+  left : CT_Border?
+  /// <bottom> (CT_Border) — optional bottom border.
+  bottom : CT_Border?
+  /// <right> (CT_Border) — optional trailing-edge border.
+  right : CT_Border?
+  /// <between> (CT_Border) — optional between-paragraph border.
+  between : CT_Border?
+  /// <bar> (CT_Border) — optional revision-bar border.
+  bar : CT_Border?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PBdr::new(element : @xml.Element) -> CT_PBdr {
-  { element, }
+/// XSD complex type CT_PBdr — Part 1 §17.3.1.24.
+pub fn CT_PBdr::new(element : @xml.Element) -> CT_PBdr raise SchemaViolation {
+  let top = match wml_ct_chunk2_first_child(element, "top") {
+    Some(child) => Some(CT_Border::new(child))
+    None => None
+  }
+  let left = match wml_ct_chunk2_first_child(element, "left") {
+    Some(child) => Some(CT_Border::new(child))
+    None => None
+  }
+  let bottom = match wml_ct_chunk2_first_child(element, "bottom") {
+    Some(child) => Some(CT_Border::new(child))
+    None => None
+  }
+  let right = match wml_ct_chunk2_first_child(element, "right") {
+    Some(child) => Some(CT_Border::new(child))
+    None => None
+  }
+  let between = match wml_ct_chunk2_first_child(element, "between") {
+    Some(child) => Some(CT_Border::new(child))
+    None => None
+  }
+  let bar = match wml_ct_chunk2_first_child(element, "bar") {
+    Some(child) => Some(CT_Border::new(child))
+    None => None
+  }
+  { element, top, left, bottom, right, between, bar }
 }
 
 ///|
-pub fn CT_PBdr::parse(element : @xml.Element) -> CT_PBdr {
+/// XSD complex type CT_PBdr — Part 1 §17.3.1.24.
+pub fn CT_PBdr::parse(element : @xml.Element) -> CT_PBdr raise SchemaViolation {
   CT_PBdr::new(element)
 }
 
 ///|
+/// XSD complex type CT_PBdr — return the preserved element for writers.
 pub fn CT_PBdr::to_element(self : CT_PBdr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Tabs from wml.xsd (§17).
+/// XSD complex type CT_Tabs — Part 1 §17.3.1.38 (tabs Set of Custom
+/// Tab Stops). One or more `<tab>` (CT_TabStop, §17.3.1.37) children
+/// listing custom tab positions; schema requires at least one.
 pub(all) struct CT_Tabs {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// <tab>+ (CT_TabStop) — one or more custom tabs.
+  tab : Array[CT_TabStop]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Tabs::new(element : @xml.Element) -> CT_Tabs {
-  { element, }
+/// XSD complex type CT_Tabs — Part 1 §17.3.1.38.
+pub fn CT_Tabs::new(element : @xml.Element) -> CT_Tabs raise SchemaViolation {
+  let tab : Array[CT_TabStop] = []
+  for child in wml_ct_chunk2_children(element, "tab") {
+    tab.push(CT_TabStop::new(child))
+  }
+  if tab.length() == 0 {
+    raise_schema_violation(
+      "CT_Tabs", "tab", "Part 1 §17.3.1.38: required minimum one <w:tab> child element is missing",
+    )
+  }
+  { element, tab }
 }
 
 ///|
-pub fn CT_Tabs::parse(element : @xml.Element) -> CT_Tabs {
+/// XSD complex type CT_Tabs — Part 1 §17.3.1.38.
+pub fn CT_Tabs::parse(element : @xml.Element) -> CT_Tabs raise SchemaViolation {
   CT_Tabs::new(element)
 }
 
 ///|
+/// XSD complex type CT_Tabs — return the preserved element for writers.
 pub fn CT_Tabs::to_element(self : CT_Tabs) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TextboxTightWrap from wml.xsd (§17).
+/// XSD complex type CT_TextboxTightWrap — Part 1 §17.3.1.40
+/// (textboxTightWrap Allow Surrounding Paragraphs to Tight Wrap to
+/// Text Box Contents). Required `@val` ST_TextboxTightWrap ∈
+/// {none, allLines, firstAndLastLine, firstLineOnly, lastLineOnly}.
 pub(all) struct CT_TextboxTightWrap {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.99 @val (ST_TextboxTightWrap) — required tight-wrap mode.
+  val : ST_TextboxTightWrap
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TextboxTightWrap::new(element : @xml.Element) -> CT_TextboxTightWrap {
-  { element, }
+/// XSD complex type CT_TextboxTightWrap — Part 1 §17.3.1.40.
+pub fn CT_TextboxTightWrap::new(
+  element : @xml.Element,
+) -> CT_TextboxTightWrap raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_TextboxTightWrap", "Part 1 §17.18.99 ST_TextboxTightWrap",
+  )
+  let val = ST_TextboxTightWrap::parse(raw)
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_TextboxTightWrap — Part 1 §17.3.1.40.
 pub fn CT_TextboxTightWrap::parse(
   element : @xml.Element,
-) -> CT_TextboxTightWrap {
+) -> CT_TextboxTightWrap raise SchemaViolation {
   CT_TextboxTightWrap::new(element)
 }
 
 ///|
+/// XSD complex type CT_TextboxTightWrap — return the preserved element
+/// for writers.
 pub fn CT_TextboxTightWrap::to_element(
   self : CT_TextboxTightWrap,
 ) -> @xml.Element {
@@ -2793,316 +3763,1014 @@ pub fn CT_TextboxTightWrap::to_element(
 }
 
 ///|
-/// XSD complex type CT_PPr from wml.xsd (§17).
+/// XSD complex type CT_PPr — Part 1 §17.3.1.25 (pPr Paragraph
+/// Properties). Extends CT_PPrBase with three additional optional
+/// trailers: `<rPr>` (CT_ParaRPr §17.3.1.30 paragraph-mark run
+/// properties), `<sectPr>` (CT_SectPr §17.6.17 inline section
+/// properties), and `<pPrChange>` (CT_PPrChange §17.13.5.29 previous
+/// paragraph-properties snapshot).
 pub(all) struct CT_PPr {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// CT_PPrBase content — preserved via the source element. The full
+  /// property-set is decoded by `base` for callers that want the
+  /// typed base view without re-parsing.
+  base : CT_PPrBase
+  /// <rPr> (CT_ParaRPr) — optional paragraph-mark run properties.
+  r_pr : CT_ParaRPr?
+  /// <sectPr> (CT_SectPr) — optional inline section properties.
+  sect_pr : CT_SectPr?
+  /// <pPrChange> (CT_PPrChange) — optional previous-properties snapshot.
+  p_pr_change : CT_PPrChange?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PPr::new(element : @xml.Element) -> CT_PPr {
-  { element, }
+/// XSD complex type CT_PPr — Part 1 §17.3.1.25.
+pub fn CT_PPr::new(element : @xml.Element) -> CT_PPr raise SchemaViolation {
+  let base = CT_PPrBase::new(element)
+  let r_pr = match wml_ct_chunk2_first_child(element, "rPr") {
+    Some(child) => Some(CT_ParaRPr::new(child))
+    None => None
+  }
+  let sect_pr = match wml_ct_chunk2_first_child(element, "sectPr") {
+    Some(child) => Some(CT_SectPr::new(child))
+    None => None
+  }
+  let p_pr_change = match wml_ct_chunk2_first_child(element, "pPrChange") {
+    Some(child) => Some(CT_PPrChange::new(child))
+    None => None
+  }
+  { element, base, r_pr, sect_pr, p_pr_change }
 }
 
 ///|
-pub fn CT_PPr::parse(element : @xml.Element) -> CT_PPr {
+/// XSD complex type CT_PPr — Part 1 §17.3.1.25.
+pub fn CT_PPr::parse(element : @xml.Element) -> CT_PPr raise SchemaViolation {
   CT_PPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_PPr — return the preserved element for writers.
 pub fn CT_PPr::to_element(self : CT_PPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PPrBase from wml.xsd (§17).
+/// XSD complex type CT_PPrBase — Part 1 §17.3.1.26 (paragraph property
+/// base type). The shared base for `<pPr>` (§17.3.1.25 CT_PPr), the
+/// document-defaults `<pPrDefault>` (§17.7.5.4 CT_PPrGeneral) and the
+/// previous-properties snapshot inside `<pPrChange>` (§17.13.5.29).
+/// Every child is optional; the table below records every element
+/// listed in the wml.xsd sequence verbatim.
 pub(all) struct CT_PPrBase {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// <pStyle> (CT_String) — §17.3.1.27 referenced paragraph-style id.
+  p_style : CT_String?
+  /// <keepNext> (CT_OnOff) — §17.3.1.15 keep-with-next flag.
+  keep_next : CT_OnOff?
+  /// <keepLines> (CT_OnOff) — §17.3.1.14 keep-lines flag.
+  keep_lines : CT_OnOff?
+  /// <pageBreakBefore> (CT_OnOff) — §17.3.1.23 page-break-before flag.
+  page_break_before : CT_OnOff?
+  /// <framePr> (CT_FramePr) — §17.3.1.11 frame properties.
+  frame_pr : CT_FramePr?
+  /// <widowControl> (CT_OnOff) — §17.3.1.44 widow/orphan-control flag.
+  widow_control : CT_OnOff?
+  /// <numPr> (CT_NumPr) — §17.3.1.19 numbering-definition reference.
+  num_pr : CT_NumPr?
+  /// <suppressLineNumbers> (CT_OnOff) — §17.3.1.34 suppress-line-numbers flag.
+  suppress_line_numbers : CT_OnOff?
+  /// <pBdr> (CT_PBdr) — §17.3.1.24 paragraph borders.
+  p_bdr : CT_PBdr?
+  /// <shd> (CT_Shd) — §17.3.5 paragraph shading.
+  shd : CT_Shd?
+  /// <tabs> (CT_Tabs) — §17.3.1.38 custom tab stops.
+  tabs : CT_Tabs?
+  /// <suppressAutoHyphens> (CT_OnOff) — §17.3.1.35.
+  suppress_auto_hyphens : CT_OnOff?
+  /// <kinsoku> (CT_OnOff) — §17.3.1.16 use East-Asian typography rules.
+  kinsoku : CT_OnOff?
+  /// <wordWrap> (CT_OnOff) — §17.3.1.45 word-wrap flag.
+  word_wrap : CT_OnOff?
+  /// <overflowPunct> (CT_OnOff) — §17.3.1.22 overflow-punctuation flag.
+  overflow_punct : CT_OnOff?
+  /// <topLinePunct> (CT_OnOff) — §17.3.1.43 top-line-punctuation flag.
+  top_line_punct : CT_OnOff?
+  /// <autoSpaceDE> (CT_OnOff) — §17.3.1.2 autospace DE flag.
+  auto_space_de : CT_OnOff?
+  /// <autoSpaceDN> (CT_OnOff) — §17.3.1.3 autospace DN flag.
+  auto_space_dn : CT_OnOff?
+  /// <bidi> (CT_OnOff) — §17.3.1.6 bidirectional flag.
+  bidi : CT_OnOff?
+  /// <adjustRightInd> (CT_OnOff) — §17.3.1.1 adjust-right-indent flag.
+  adjust_right_ind : CT_OnOff?
+  /// <snapToGrid> (CT_OnOff) — §17.3.1.32 snap-to-grid flag.
+  snap_to_grid : CT_OnOff?
+  /// <spacing> (CT_Spacing) — §17.3.1.33 spacing.
+  spacing : CT_Spacing?
+  /// <ind> (CT_Ind) — §17.3.1.12 indentation.
+  ind : CT_Ind?
+  /// <contextualSpacing> (CT_OnOff) — §17.3.1.9 contextual-spacing flag.
+  contextual_spacing : CT_OnOff?
+  /// <mirrorIndents> (CT_OnOff) — §17.3.1.18 mirror-indents flag.
+  mirror_indents : CT_OnOff?
+  /// <suppressOverlap> (CT_OnOff) — §17.3.1.36 suppress-overlap flag.
+  suppress_overlap : CT_OnOff?
+  /// <jc> (CT_Jc) — §17.3.1.13 paragraph alignment.
+  jc : CT_Jc?
+  /// <textDirection> (CT_TextDirection) — §17.3.1.41.
+  text_direction : CT_TextDirection?
+  /// <textAlignment> (CT_TextAlignment) — §17.3.1.39.
+  text_alignment : CT_TextAlignment?
+  /// <textboxTightWrap> (CT_TextboxTightWrap) — §17.3.1.40.
+  textbox_tight_wrap : CT_TextboxTightWrap?
+  /// <outlineLvl> (CT_DecimalNumber) — §17.3.1.21 outline level.
+  outline_lvl : CT_DecimalNumber?
+  /// <divId> (CT_DecimalNumber) — §17.3.1.10 HTML-div reference id.
+  div_id : CT_DecimalNumber?
+  /// <cnfStyle> (CT_Cnf) — §17.3.1.8 conditional-formatting-style toggles.
+  cnf_style : CT_Cnf?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PPrBase::new(element : @xml.Element) -> CT_PPrBase {
-  { element, }
+/// XSD complex type CT_PPrBase — Part 1 §17.3.1.26.
+pub fn CT_PPrBase::new(
+  element : @xml.Element,
+) -> CT_PPrBase raise SchemaViolation {
+  let p_style = match wml_ct_chunk2_first_child(element, "pStyle") {
+    Some(child) => Some(CT_String::new(child))
+    None => None
+  }
+  let keep_next = match wml_ct_chunk2_first_child(element, "keepNext") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let keep_lines = match wml_ct_chunk2_first_child(element, "keepLines") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let page_break_before = match
+    wml_ct_chunk2_first_child(element, "pageBreakBefore") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let frame_pr = match wml_ct_chunk2_first_child(element, "framePr") {
+    Some(child) => Some(CT_FramePr::new(child))
+    None => None
+  }
+  let widow_control = match wml_ct_chunk2_first_child(element, "widowControl") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let num_pr = match wml_ct_chunk2_first_child(element, "numPr") {
+    Some(child) => Some(CT_NumPr::new(child))
+    None => None
+  }
+  let suppress_line_numbers = match
+    wml_ct_chunk2_first_child(element, "suppressLineNumbers") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let p_bdr = match wml_ct_chunk2_first_child(element, "pBdr") {
+    Some(child) => Some(CT_PBdr::new(child))
+    None => None
+  }
+  let shd = match wml_ct_chunk2_first_child(element, "shd") {
+    Some(child) => Some(CT_Shd::new(child))
+    None => None
+  }
+  let tabs = match wml_ct_chunk2_first_child(element, "tabs") {
+    Some(child) => Some(CT_Tabs::new(child))
+    None => None
+  }
+  let suppress_auto_hyphens = match
+    wml_ct_chunk2_first_child(element, "suppressAutoHyphens") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let kinsoku = match wml_ct_chunk2_first_child(element, "kinsoku") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let word_wrap = match wml_ct_chunk2_first_child(element, "wordWrap") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let overflow_punct = match
+    wml_ct_chunk2_first_child(element, "overflowPunct") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let top_line_punct = match
+    wml_ct_chunk2_first_child(element, "topLinePunct") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let auto_space_de = match wml_ct_chunk2_first_child(element, "autoSpaceDE") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let auto_space_dn = match wml_ct_chunk2_first_child(element, "autoSpaceDN") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let bidi = match wml_ct_chunk2_first_child(element, "bidi") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let adjust_right_ind = match
+    wml_ct_chunk2_first_child(element, "adjustRightInd") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let snap_to_grid = match wml_ct_chunk2_first_child(element, "snapToGrid") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let spacing = match wml_ct_chunk2_first_child(element, "spacing") {
+    Some(child) => Some(CT_Spacing::new(child))
+    None => None
+  }
+  let ind = match wml_ct_chunk2_first_child(element, "ind") {
+    Some(child) => Some(CT_Ind::new(child))
+    None => None
+  }
+  let contextual_spacing = match
+    wml_ct_chunk2_first_child(element, "contextualSpacing") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let mirror_indents = match
+    wml_ct_chunk2_first_child(element, "mirrorIndents") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let suppress_overlap = match
+    wml_ct_chunk2_first_child(element, "suppressOverlap") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let jc = match wml_ct_chunk2_first_child(element, "jc") {
+    Some(child) => Some(CT_Jc::new(child))
+    None => None
+  }
+  let text_direction = match
+    wml_ct_chunk2_first_child(element, "textDirection") {
+    Some(child) => Some(CT_TextDirection::new(child))
+    None => None
+  }
+  let text_alignment = match
+    wml_ct_chunk2_first_child(element, "textAlignment") {
+    Some(child) => Some(CT_TextAlignment::new(child))
+    None => None
+  }
+  let textbox_tight_wrap = match
+    wml_ct_chunk2_first_child(element, "textboxTightWrap") {
+    Some(child) => Some(CT_TextboxTightWrap::new(child))
+    None => None
+  }
+  let outline_lvl = match wml_ct_chunk2_first_child(element, "outlineLvl") {
+    Some(child) => Some(CT_DecimalNumber::new(child))
+    None => None
+  }
+  let div_id = match wml_ct_chunk2_first_child(element, "divId") {
+    Some(child) => Some(CT_DecimalNumber::new(child))
+    None => None
+  }
+  let cnf_style = match wml_ct_chunk2_first_child(element, "cnfStyle") {
+    Some(child) => Some(CT_Cnf::new(child))
+    None => None
+  }
+  {
+    element,
+    p_style,
+    keep_next,
+    keep_lines,
+    page_break_before,
+    frame_pr,
+    widow_control,
+    num_pr,
+    suppress_line_numbers,
+    p_bdr,
+    shd,
+    tabs,
+    suppress_auto_hyphens,
+    kinsoku,
+    word_wrap,
+    overflow_punct,
+    top_line_punct,
+    auto_space_de,
+    auto_space_dn,
+    bidi,
+    adjust_right_ind,
+    snap_to_grid,
+    spacing,
+    ind,
+    contextual_spacing,
+    mirror_indents,
+    suppress_overlap,
+    jc,
+    text_direction,
+    text_alignment,
+    textbox_tight_wrap,
+    outline_lvl,
+    div_id,
+    cnf_style,
+  }
 }
 
 ///|
-pub fn CT_PPrBase::parse(element : @xml.Element) -> CT_PPrBase {
+/// XSD complex type CT_PPrBase — Part 1 §17.3.1.26.
+pub fn CT_PPrBase::parse(
+  element : @xml.Element,
+) -> CT_PPrBase raise SchemaViolation {
   CT_PPrBase::new(element)
 }
 
 ///|
+/// XSD complex type CT_PPrBase — return the preserved element for
+/// writers.
 pub fn CT_PPrBase::to_element(self : CT_PPrBase) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PPrGeneral from wml.xsd (§17).
+/// XSD complex type CT_PPrGeneral — Part 1 §17.7.5.4 (pPrDefault
+/// Default Paragraph Property Container). Extends CT_PPrBase with an
+/// optional trailing `<pPrChange>` (CT_PPrChange §17.13.5.29) snapshot
+/// of the previous default paragraph properties.
 pub(all) struct CT_PPrGeneral {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// CT_PPrBase content — decoded for the typed base view.
+  base : CT_PPrBase
+  /// <pPrChange> (CT_PPrChange) — optional previous-properties snapshot.
+  p_pr_change : CT_PPrChange?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PPrGeneral::new(element : @xml.Element) -> CT_PPrGeneral {
-  { element, }
+/// XSD complex type CT_PPrGeneral — Part 1 §17.7.5.4.
+pub fn CT_PPrGeneral::new(
+  element : @xml.Element,
+) -> CT_PPrGeneral raise SchemaViolation {
+  let base = CT_PPrBase::new(element)
+  let p_pr_change = match wml_ct_chunk2_first_child(element, "pPrChange") {
+    Some(child) => Some(CT_PPrChange::new(child))
+    None => None
+  }
+  { element, base, p_pr_change }
 }
 
 ///|
-pub fn CT_PPrGeneral::parse(element : @xml.Element) -> CT_PPrGeneral {
+/// XSD complex type CT_PPrGeneral — Part 1 §17.7.5.4.
+pub fn CT_PPrGeneral::parse(
+  element : @xml.Element,
+) -> CT_PPrGeneral raise SchemaViolation {
   CT_PPrGeneral::new(element)
 }
 
 ///|
+/// XSD complex type CT_PPrGeneral — return the preserved element for
+/// writers.
 pub fn CT_PPrGeneral::to_element(self : CT_PPrGeneral) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Control from wml.xsd (§17).
+/// XSD complex type CT_Control — Part 1 §17.3.3.3 (control Embedded
+/// Control). Three optional attributes: friendly `@name`, VML
+/// `@shapeid`, and the relationship `@r:id` (xsd:attribute ref="r:id")
+/// pointing at the persisted control binary.
 pub(all) struct CT_Control {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 @name (s:ST_String) — optional friendly name.
+  name : String?
+  /// §22.9.2.13 @shapeid (s:ST_String) — optional VML shape id.
+  shapeid : String?
+  /// @r:id (ST_RelationshipId) — optional relationship reference.
+  r_id : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_Control — Part 1 §17.3.3.3.
 pub fn CT_Control::new(element : @xml.Element) -> CT_Control {
-  { element, }
+  let name = wml_ct_chunk1_attr(element, "name")
+  let shapeid = wml_ct_chunk1_attr(element, "shapeid")
+  let r_id = wml_ct_chunk1_attr(element, "id")
+  { element, name, shapeid, r_id }
 }
 
 ///|
+/// XSD complex type CT_Control — Part 1 §17.3.3.3.
 pub fn CT_Control::parse(element : @xml.Element) -> CT_Control {
   CT_Control::new(element)
 }
 
 ///|
+/// XSD complex type CT_Control — return the preserved element for
+/// writers.
 pub fn CT_Control::to_element(self : CT_Control) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Background from wml.xsd (§17).
+/// XSD complex type CT_Background — Part 1 §17.2.1 (background
+/// Document Background). Optional `<drawing>` (CT_Drawing) painted
+/// behind the document body, plus four optional colour attributes:
+/// `@color` (ST_HexColor §17.18.38, schema-default `auto`),
+/// `@themeColor` (ST_ThemeColor §17.18.97), `@themeTint` /
+/// `@themeShade` (ST_UcharHexNumber §17.18.98).
 pub(all) struct CT_Background {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// <drawing> (CT_Drawing) — optional background drawing.
+  drawing : CT_Drawing?
+  /// §17.18.38 @color (ST_HexColor) — optional; default `auto`.
+  color : ST_HexColor?
+  /// §17.18.97 @themeColor (ST_ThemeColor) — optional theme reference.
+  theme_color : ST_ThemeColor?
+  /// §17.18.98 @themeTint (ST_UcharHexNumber) — optional tint.
+  theme_tint : ST_UcharHexNumber?
+  /// §17.18.98 @themeShade (ST_UcharHexNumber) — optional shade.
+  theme_shade : ST_UcharHexNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Background::new(element : @xml.Element) -> CT_Background {
-  { element, }
+/// XSD complex type CT_Background — Part 1 §17.2.1.
+pub fn CT_Background::new(
+  element : @xml.Element,
+) -> CT_Background raise SchemaViolation {
+  let drawing = match wml_ct_chunk2_first_child(element, "drawing") {
+    Some(child) => Some(CT_Drawing::new(child))
+    None => None
+  }
+  let color = match wml_ct_chunk1_attr(element, "color") {
+    Some(text) => Some(ST_HexColor::parse(text))
+    None => None
+  }
+  let theme_color = match wml_ct_chunk1_attr(element, "themeColor") {
+    Some(text) => Some(ST_ThemeColor::parse(text))
+    None => None
+  }
+  let theme_tint = match wml_ct_chunk1_attr(element, "themeTint") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let theme_shade = match wml_ct_chunk1_attr(element, "themeShade") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  { element, drawing, color, theme_color, theme_tint, theme_shade }
 }
 
 ///|
-pub fn CT_Background::parse(element : @xml.Element) -> CT_Background {
+/// XSD complex type CT_Background — Part 1 §17.2.1.
+pub fn CT_Background::parse(
+  element : @xml.Element,
+) -> CT_Background raise SchemaViolation {
   CT_Background::new(element)
 }
 
 ///|
+/// XSD complex type CT_Background — return the preserved element for
+/// writers.
 pub fn CT_Background::to_element(self : CT_Background) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Rel from wml.xsd (§17).
+/// XSD complex type CT_Rel — Part 1 §A.1 (wml.xsd, shared relationship
+/// holder used by `<movie>` inside `<object>` per §17.3.3.20). Single
+/// required `@r:id` relationship reference (ST_RelationshipId).
 pub(all) struct CT_Rel {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// @r:id (ST_RelationshipId) — required relationship reference.
+  r_id : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Rel::new(element : @xml.Element) -> CT_Rel {
-  { element, }
+/// XSD complex type CT_Rel — Part 1 §A.1.
+pub fn CT_Rel::new(element : @xml.Element) -> CT_Rel raise SchemaViolation {
+  let r_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_Rel", "Part 1 §A.1 r:id (ST_RelationshipId)",
+  )
+  { element, r_id }
 }
 
 ///|
-pub fn CT_Rel::parse(element : @xml.Element) -> CT_Rel {
+/// XSD complex type CT_Rel — Part 1 §A.1.
+pub fn CT_Rel::parse(element : @xml.Element) -> CT_Rel raise SchemaViolation {
   CT_Rel::new(element)
 }
 
 ///|
+/// XSD complex type CT_Rel — return the preserved element for writers.
 pub fn CT_Rel::to_element(self : CT_Rel) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Object from wml.xsd (§17).
+/// XSD complex type CT_Object — Part 1 §17.3.3.19 (object Embedded
+/// Object). Sequence: optional `<drawing>` (CT_Drawing) followed by an
+/// optional xsd:choice between `<control>` (CT_Control), `<objectLink>`
+/// (CT_ObjectLink), `<objectEmbed>` (CT_ObjectEmbed) and `<movie>`
+/// (CT_Rel). Two optional twip-measure size hints (`@dxaOrig`,
+/// `@dyaOrig`, s:ST_TwipsMeasure).
 pub(all) struct CT_Object {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// <drawing> (CT_Drawing) — optional drawing surrogate.
+  drawing : CT_Drawing?
+  /// <control> (CT_Control) — optional ActiveX-control child.
+  control : CT_Control?
+  /// <objectLink> (CT_ObjectLink) — optional OLE-link child.
+  object_link : CT_ObjectLink?
+  /// <objectEmbed> (CT_ObjectEmbed) — optional OLE-embed child.
+  object_embed : CT_ObjectEmbed?
+  /// <movie> (CT_Rel) — optional movie-relationship child.
+  movie : CT_Rel?
+  /// §22.9.2.10 @dxaOrig (s:ST_TwipsMeasure) — optional original width.
+  dxa_orig : String?
+  /// §22.9.2.10 @dyaOrig (s:ST_TwipsMeasure) — optional original height.
+  dya_orig : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Object::new(element : @xml.Element) -> CT_Object {
-  { element, }
+/// XSD complex type CT_Object — Part 1 §17.3.3.19.
+pub fn CT_Object::new(
+  element : @xml.Element,
+) -> CT_Object raise SchemaViolation {
+  let drawing = match wml_ct_chunk2_first_child(element, "drawing") {
+    Some(child) => Some(CT_Drawing::new(child))
+    None => None
+  }
+  let control = match wml_ct_chunk2_first_child(element, "control") {
+    Some(child) => Some(CT_Control::new(child))
+    None => None
+  }
+  let object_link = match wml_ct_chunk2_first_child(element, "objectLink") {
+    Some(child) => Some(CT_ObjectLink::new(child))
+    None => None
+  }
+  let object_embed = match wml_ct_chunk2_first_child(element, "objectEmbed") {
+    Some(child) => Some(CT_ObjectEmbed::new(child))
+    None => None
+  }
+  let movie = match wml_ct_chunk2_first_child(element, "movie") {
+    Some(child) => Some(CT_Rel::new(child))
+    None => None
+  }
+  let dxa_orig = wml_ct_chunk1_attr(element, "dxaOrig")
+  let dya_orig = wml_ct_chunk1_attr(element, "dyaOrig")
+  {
+    element,
+    drawing,
+    control,
+    object_link,
+    object_embed,
+    movie,
+    dxa_orig,
+    dya_orig,
+  }
 }
 
 ///|
-pub fn CT_Object::parse(element : @xml.Element) -> CT_Object {
+/// XSD complex type CT_Object — Part 1 §17.3.3.19.
+pub fn CT_Object::parse(
+  element : @xml.Element,
+) -> CT_Object raise SchemaViolation {
   CT_Object::new(element)
 }
 
 ///|
+/// XSD complex type CT_Object — return the preserved element for writers.
 pub fn CT_Object::to_element(self : CT_Object) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_ObjectEmbed from wml.xsd (§17).
+/// XSD complex type CT_ObjectEmbed — Part 1 §17.3.3.16 (objectEmbed
+/// Embedded Object Properties). Required `@r:id` relationship
+/// reference plus four optional attributes describing how the host
+/// should render the OLE container.
 pub(all) struct CT_ObjectEmbed {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.59 @drawAspect (ST_ObjectDrawAspect) — optional render mode.
+  draw_aspect : ST_ObjectDrawAspect?
+  /// @r:id (ST_RelationshipId) — required relationship reference.
+  r_id : String
+  /// §22.9.2.13 @progId (s:ST_String) — optional OLE programmatic id.
+  prog_id : String?
+  /// §22.9.2.13 @shapeId (s:ST_String) — optional VML shape id.
+  shape_id : String?
+  /// §22.9.2.13 @fieldCodes (s:ST_String) — optional field codes.
+  field_codes : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ObjectEmbed::new(element : @xml.Element) -> CT_ObjectEmbed {
-  { element, }
+/// XSD complex type CT_ObjectEmbed — Part 1 §17.3.3.16.
+pub fn CT_ObjectEmbed::new(
+  element : @xml.Element,
+) -> CT_ObjectEmbed raise SchemaViolation {
+  let draw_aspect = match wml_ct_chunk1_attr(element, "drawAspect") {
+    Some(text) => Some(ST_ObjectDrawAspect::parse(text))
+    None => None
+  }
+  let r_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_ObjectEmbed", "Part 1 §A.1 r:id (ST_RelationshipId)",
+  )
+  let prog_id = wml_ct_chunk1_attr(element, "progId")
+  let shape_id = wml_ct_chunk1_attr(element, "shapeId")
+  let field_codes = wml_ct_chunk1_attr(element, "fieldCodes")
+  { element, draw_aspect, r_id, prog_id, shape_id, field_codes }
 }
 
 ///|
-pub fn CT_ObjectEmbed::parse(element : @xml.Element) -> CT_ObjectEmbed {
+/// XSD complex type CT_ObjectEmbed — Part 1 §17.3.3.16.
+pub fn CT_ObjectEmbed::parse(
+  element : @xml.Element,
+) -> CT_ObjectEmbed raise SchemaViolation {
   CT_ObjectEmbed::new(element)
 }
 
 ///|
+/// XSD complex type CT_ObjectEmbed — return the preserved element for
+/// writers.
 pub fn CT_ObjectEmbed::to_element(self : CT_ObjectEmbed) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_ObjectLink from wml.xsd (§17).
+/// XSD complex type CT_ObjectLink — Part 1 §17.3.3.18 (objectLink
+/// Linked Object Properties). Extends CT_ObjectEmbed with a required
+/// `@updateMode` (ST_ObjectUpdateMode §17.18.60) and an optional
+/// `@lockedField` (s:ST_OnOff) toggle.
 pub(all) struct CT_ObjectLink {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.59 @drawAspect (ST_ObjectDrawAspect) — optional render mode.
+  draw_aspect : ST_ObjectDrawAspect?
+  /// @r:id (ST_RelationshipId) — required relationship reference.
+  r_id : String
+  /// §22.9.2.13 @progId (s:ST_String) — optional OLE programmatic id.
+  prog_id : String?
+  /// §22.9.2.13 @shapeId (s:ST_String) — optional VML shape id.
+  shape_id : String?
+  /// §22.9.2.13 @fieldCodes (s:ST_String) — optional field codes.
+  field_codes : String?
+  /// §17.18.60 @updateMode (ST_ObjectUpdateMode) — required update mode.
+  update_mode : ST_ObjectUpdateMode
+  /// §22.9.2.7 @lockedField (s:ST_OnOff) — optional locked-field flag.
+  locked_field : Bool?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ObjectLink::new(element : @xml.Element) -> CT_ObjectLink {
-  { element, }
+/// XSD complex type CT_ObjectLink — Part 1 §17.3.3.18.
+pub fn CT_ObjectLink::new(
+  element : @xml.Element,
+) -> CT_ObjectLink raise SchemaViolation {
+  let draw_aspect = match wml_ct_chunk1_attr(element, "drawAspect") {
+    Some(text) => Some(ST_ObjectDrawAspect::parse(text))
+    None => None
+  }
+  let r_id = wml_ct_chunk1_required_attr(
+    element, "id", "CT_ObjectLink", "Part 1 §A.1 r:id (ST_RelationshipId)",
+  )
+  let prog_id = wml_ct_chunk1_attr(element, "progId")
+  let shape_id = wml_ct_chunk1_attr(element, "shapeId")
+  let field_codes = wml_ct_chunk1_attr(element, "fieldCodes")
+  let raw_update_mode = wml_ct_chunk1_required_attr(
+    element, "updateMode", "CT_ObjectLink", "Part 1 §17.18.60 ST_ObjectUpdateMode",
+  )
+  let update_mode = ST_ObjectUpdateMode::parse(raw_update_mode)
+  let locked_field = wml_ct_chunk1_on_off(
+    wml_ct_chunk1_attr(element, "lockedField"),
+  )
+  {
+    element,
+    draw_aspect,
+    r_id,
+    prog_id,
+    shape_id,
+    field_codes,
+    update_mode,
+    locked_field,
+  }
 }
 
 ///|
-pub fn CT_ObjectLink::parse(element : @xml.Element) -> CT_ObjectLink {
+/// XSD complex type CT_ObjectLink — Part 1 §17.3.3.18.
+pub fn CT_ObjectLink::parse(
+  element : @xml.Element,
+) -> CT_ObjectLink raise SchemaViolation {
   CT_ObjectLink::new(element)
 }
 
 ///|
+/// XSD complex type CT_ObjectLink — return the preserved element for
+/// writers.
 pub fn CT_ObjectLink::to_element(self : CT_ObjectLink) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Drawing from wml.xsd (§17).
+/// XSD complex type CT_Drawing — Part 1 §17.3.3.9 (drawing DrawingML
+/// Object). One or more `<wp:anchor>` (CT_Anchor) and/or `<wp:inline>`
+/// (CT_Inline) child elements from the WordprocessingDrawing namespace.
+/// These DrawingML wrappers are typed in
+/// `wordprocessing_drawing_types.mbt`; here they are preserved as raw
+/// element children to avoid a cyclic dependency on the drawing
+/// reader, and the schema-mandated minimum of one occurrence is
+/// validated.
 pub(all) struct CT_Drawing {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// EG choice (`<wp:anchor>` | `<wp:inline>`)+ — preserved raw with
+  /// the matched local name so callers can route to the typed
+  /// DrawingML wrappers without re-walking the element.
+  anchors_and_inlines : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Drawing::new(element : @xml.Element) -> CT_Drawing {
-  { element, }
+/// XSD complex type CT_Drawing — Part 1 §17.3.3.9.
+pub fn CT_Drawing::new(
+  element : @xml.Element,
+) -> CT_Drawing raise SchemaViolation {
+  let collected : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Node::Element(e) => {
+        let ln = e.name.local_name
+        if ln == "anchor" || ln == "inline" {
+          collected.push(e)
+        }
+      }
+      _ => ()
+    }
+  }
+  if collected.length() == 0 {
+    raise_schema_violation(
+      "CT_Drawing", "anchor|inline", "Part 1 §17.3.3.9: required at least one <wp:anchor> or <wp:inline> child is missing",
+    )
+  }
+  { element, anchors_and_inlines: collected }
 }
 
 ///|
-pub fn CT_Drawing::parse(element : @xml.Element) -> CT_Drawing {
+/// XSD complex type CT_Drawing — Part 1 §17.3.3.9.
+pub fn CT_Drawing::parse(
+  element : @xml.Element,
+) -> CT_Drawing raise SchemaViolation {
   CT_Drawing::new(element)
 }
 
 ///|
+/// XSD complex type CT_Drawing — return the preserved element for
+/// writers.
 pub fn CT_Drawing::to_element(self : CT_Drawing) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SimpleField from wml.xsd (§17).
+/// XSD complex type CT_SimpleField — Part 1 §17.16.19 (fldSimple
+/// Simple Field). Required `@instr` (s:ST_String) carrying the field
+/// instruction text plus optional `@fldLock` and `@dirty` ST_OnOff
+/// toggles. Body content is an EG_PContent xsd:choice over inline-run
+/// content; preserved as raw element children since the typed
+/// projection is owned by the content-tree readers.
 pub(all) struct CT_SimpleField {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 @instr (s:ST_String) — required field instruction.
+  instr : String
+  /// §22.9.2.7 @fldLock (s:ST_OnOff) — optional field-lock flag.
+  fld_lock : Bool?
+  /// §22.9.2.7 @dirty (s:ST_OnOff) — optional dirty-cache flag.
+  dirty : Bool?
+  /// EG_PContent* — field body, preserved raw.
+  content : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SimpleField::new(element : @xml.Element) -> CT_SimpleField {
-  { element, }
+/// XSD complex type CT_SimpleField — Part 1 §17.16.19.
+pub fn CT_SimpleField::new(
+  element : @xml.Element,
+) -> CT_SimpleField raise SchemaViolation {
+  let instr = wml_ct_chunk1_required_attr(
+    element, "instr", "CT_SimpleField", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let fld_lock = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "fldLock"))
+  let dirty = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "dirty"))
+  let content = wml_ct_chunk2_element_children(element)
+  { element, instr, fld_lock, dirty, content }
 }
 
 ///|
-pub fn CT_SimpleField::parse(element : @xml.Element) -> CT_SimpleField {
+/// XSD complex type CT_SimpleField — Part 1 §17.16.19.
+pub fn CT_SimpleField::parse(
+  element : @xml.Element,
+) -> CT_SimpleField raise SchemaViolation {
   CT_SimpleField::new(element)
 }
 
 ///|
+/// XSD complex type CT_SimpleField — return the preserved element for
+/// writers.
 pub fn CT_SimpleField::to_element(self : CT_SimpleField) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_FFTextType from wml.xsd (§17).
+/// XSD complex type CT_FFTextType — Part 1 §17.16.32 (type Text Box
+/// Form Field Type). Required `@val` ST_FFTextType ∈ {regular,
+/// number, date, currentTime, currentDate, calculated}.
 pub(all) struct CT_FFTextType {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.32 @val (ST_FFTextType) — required form-field text type.
+  val : ST_FFTextType
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FFTextType::new(element : @xml.Element) -> CT_FFTextType {
-  { element, }
+/// XSD complex type CT_FFTextType — Part 1 §17.16.32.
+pub fn CT_FFTextType::new(
+  element : @xml.Element,
+) -> CT_FFTextType raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_FFTextType", "Part 1 §17.18.32 ST_FFTextType",
+  )
+  let val = ST_FFTextType::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_FFTextType::parse(element : @xml.Element) -> CT_FFTextType {
+/// XSD complex type CT_FFTextType — Part 1 §17.16.32.
+pub fn CT_FFTextType::parse(
+  element : @xml.Element,
+) -> CT_FFTextType raise SchemaViolation {
   CT_FFTextType::new(element)
 }
 
 ///|
+/// XSD complex type CT_FFTextType — return the preserved element for
+/// writers.
 pub fn CT_FFTextType::to_element(self : CT_FFTextType) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_FFName from wml.xsd (§17).
+/// XSD complex type CT_FFName — Part 1 §17.16.20 (name Form Field
+/// Name). Single optional `@val` (ST_FFName §17.18.30, xsd:string with
+/// `maxLength=65`) carrying the bookmark name that holds the field
+/// state.
 pub(all) struct CT_FFName {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.30 @val (ST_FFName) — optional form-field name
+  /// (xsd:string, maxLength=65). Schema does not mark @val as
+  /// required even though §17.16.20 prose treats the name as
+  /// mandatory in producers.
+  val : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FFName::new(element : @xml.Element) -> CT_FFName {
-  { element, }
+/// XSD complex type CT_FFName — Part 1 §17.16.20.
+pub fn CT_FFName::new(
+  element : @xml.Element,
+) -> CT_FFName raise SchemaViolation {
+  let val = match wml_ct_chunk1_attr(element, "val") {
+    Some(text) =>
+      if text.length() > 65 {
+        raise_schema_violation(
+          "CT_FFName", "val", "Part 1 §17.18.30 ST_FFName: value exceeds xsd:maxLength=65",
+        )
+      } else {
+        Some(text)
+      }
+    None => None
+  }
+  { element, val }
 }
 
 ///|
-pub fn CT_FFName::parse(element : @xml.Element) -> CT_FFName {
+/// XSD complex type CT_FFName — Part 1 §17.16.20.
+pub fn CT_FFName::parse(
+  element : @xml.Element,
+) -> CT_FFName raise SchemaViolation {
   CT_FFName::new(element)
 }
 
 ///|
+/// XSD complex type CT_FFName — return the preserved element for
+/// writers.
 pub fn CT_FFName::to_element(self : CT_FFName) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_FldChar from wml.xsd (§17).
+/// XSD complex type CT_FldChar — Part 1 §17.16.18 (fldChar Complex
+/// Field Character). Required `@fldCharType` ST_FldCharType ∈ {begin,
+/// separate, end}, optional `@fldLock` / `@dirty` ST_OnOff toggles,
+/// and an optional `<ffData>` (CT_FFData §17.16.17) child carried only
+/// on the begin-character of a form field.
 pub(all) struct CT_FldChar {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.33 @fldCharType (ST_FldCharType) — required field-character role.
+  fld_char_type : ST_FldCharType
+  /// §22.9.2.7 @fldLock (s:ST_OnOff) — optional field-lock flag.
+  fld_lock : Bool?
+  /// §22.9.2.7 @dirty (s:ST_OnOff) — optional dirty-cache flag.
+  dirty : Bool?
+  /// <ffData> (CT_FFData) — optional form-field properties on the
+  /// begin-character.
+  ff_data : CT_FFData?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FldChar::new(element : @xml.Element) -> CT_FldChar {
-  { element, }
+/// XSD complex type CT_FldChar — Part 1 §17.16.18.
+pub fn CT_FldChar::new(
+  element : @xml.Element,
+) -> CT_FldChar raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "fldCharType", "CT_FldChar", "Part 1 §17.18.33 ST_FldCharType",
+  )
+  let fld_char_type = ST_FldCharType::parse(raw)
+  let fld_lock = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "fldLock"))
+  let dirty = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "dirty"))
+  let ff_data = match wml_ct_chunk2_first_child(element, "ffData") {
+    Some(child) => Some(CT_FFData::new(child))
+    None => None
+  }
+  { element, fld_char_type, fld_lock, dirty, ff_data }
 }
 
 ///|
-pub fn CT_FldChar::parse(element : @xml.Element) -> CT_FldChar {
+/// XSD complex type CT_FldChar — Part 1 §17.16.18.
+pub fn CT_FldChar::parse(
+  element : @xml.Element,
+) -> CT_FldChar raise SchemaViolation {
   CT_FldChar::new(element)
 }
 
 ///|
+/// XSD complex type CT_FldChar — return the preserved element for
+/// writers.
 pub fn CT_FldChar::to_element(self : CT_FldChar) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Hyperlink from wml.xsd (§17).
+/// XSD complex type CT_Hyperlink — Part 1 §17.16.22 (hyperlink
+/// Hyperlink). Zero-or-more EG_PContent body, six optional attributes
+/// (`@tgtFrame`, `@tooltip`, `@docLocation`, `@history` ST_OnOff,
+/// `@anchor`) and an optional `@r:id` relationship reference pointing
+/// at the external link target.
 pub(all) struct CT_Hyperlink {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 @tgtFrame (s:ST_String) — optional target frame name.
+  tgt_frame : String?
+  /// §22.9.2.13 @tooltip (s:ST_String) — optional tooltip text.
+  tooltip : String?
+  /// §22.9.2.13 @docLocation (s:ST_String) — optional in-document fragment.
+  doc_location : String?
+  /// §22.9.2.7 @history (s:ST_OnOff) — optional history-tracking flag.
+  history : Bool?
+  /// §22.9.2.13 @anchor (s:ST_String) — optional bookmark anchor name.
+  anchor : String?
+  /// @r:id (ST_RelationshipId) — optional external-target relationship.
+  r_id : String?
+  /// EG_PContent* — hyperlink body, preserved raw.
+  content : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_Hyperlink — Part 1 §17.16.22.
 pub fn CT_Hyperlink::new(element : @xml.Element) -> CT_Hyperlink {
-  { element, }
+  let tgt_frame = wml_ct_chunk1_attr(element, "tgtFrame")
+  let tooltip = wml_ct_chunk1_attr(element, "tooltip")
+  let doc_location = wml_ct_chunk1_attr(element, "docLocation")
+  let history = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "history"))
+  let anchor = wml_ct_chunk1_attr(element, "anchor")
+  let r_id = wml_ct_chunk1_attr(element, "id")
+  let content = wml_ct_chunk2_element_children(element)
+  { element, tgt_frame, tooltip, doc_location, history, anchor, r_id, content }
 }
 
 ///|
+/// XSD complex type CT_Hyperlink — Part 1 §17.16.22.
 pub fn CT_Hyperlink::parse(element : @xml.Element) -> CT_Hyperlink {
   CT_Hyperlink::new(element)
 }
 
 ///|
+/// XSD complex type CT_Hyperlink — return the preserved element for
+/// writers.
 pub fn CT_Hyperlink::to_element(self : CT_Hyperlink) -> @xml.Element {
   self.element
 }

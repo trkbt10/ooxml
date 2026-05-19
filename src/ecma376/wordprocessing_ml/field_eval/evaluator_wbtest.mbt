@@ -72,7 +72,7 @@ test "§17.16.1 user-defined and unknown instruction discrimination" {
 ///|
 test "§17.16.2 decode_simple_field reads w:fldSimple/@instr" {
   let element = parse_root("<fldSimple instr=\"PAGE\"/>")
-  let field = try! decode_simple_field(@domain.CT_SimpleField::{ element, })
+  let field = try! decode_simple_field(@domain.CT_SimpleField::new(element))
   assert_true(field.instruction == Page)
 }
 
