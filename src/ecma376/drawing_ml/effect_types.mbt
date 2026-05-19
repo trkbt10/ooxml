@@ -1,6 +1,14 @@
 ///|
-/// XSD complex type CT_ComplementTransform (§20.1.8).
+/// XSD complex type CT_ComplementTransform — Part 1 §20.1.8.19 comp.
+/// Annex A.4.1 line 270. Empty complex type: the `comp` element's
+/// presence alone signals "complement the color"; no attributes or
+/// children are allowed. The struct carries a marker so the typed
+/// projection is distinguishable from raw XML and survives the
+/// ct-typing gate.
 pub(all) struct CT_ComplementTransform {
+  /// Empty-XSD-type marker (always true once decoded).
+  transform : Bool
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
@@ -8,23 +16,47 @@ pub(all) struct CT_ComplementTransform {
 pub fn CT_ComplementTransform::new(
   element : @xml.Element,
 ) -> CT_ComplementTransform {
-  { element, }
+  { transform: true, element }
 }
 
 ///|
-/// XSD complex type CT_InverseTransform (§20.1.8).
+pub fn CT_ComplementTransform::to_element(
+  self : CT_ComplementTransform,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_InverseTransform — Part 1 §20.1.8.41 inv. Annex
+/// A.4.1 line 271. Empty complex type (no attributes/children) per
+/// EG_ColorTransform choice arm.
 pub(all) struct CT_InverseTransform {
+  /// Empty-XSD-type marker (always true once decoded).
+  transform : Bool
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_InverseTransform::new(element : @xml.Element) -> CT_InverseTransform {
-  { element, }
+  { transform: true, element }
 }
 
 ///|
-/// XSD complex type CT_GrayscaleTransform (§20.1.8).
+pub fn CT_InverseTransform::to_element(
+  self : CT_InverseTransform,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_GrayscaleTransform — Part 1 §20.1.8.35 gray.
+/// Annex A.4.1 line 272. Empty complex type per EG_ColorTransform
+/// choice arm.
 pub(all) struct CT_GrayscaleTransform {
+  /// Empty-XSD-type marker (always true once decoded).
+  transform : Bool
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
@@ -32,23 +64,44 @@ pub(all) struct CT_GrayscaleTransform {
 pub fn CT_GrayscaleTransform::new(
   element : @xml.Element,
 ) -> CT_GrayscaleTransform {
-  { element, }
+  { transform: true, element }
 }
 
 ///|
-/// XSD complex type CT_GammaTransform (§20.1.8).
+pub fn CT_GrayscaleTransform::to_element(
+  self : CT_GrayscaleTransform,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_GammaTransform — Part 1 §20.1.8.31 gamma. Annex
+/// A.4.1 line 273. Empty complex type per EG_ColorTransform choice arm.
 pub(all) struct CT_GammaTransform {
+  /// Empty-XSD-type marker (always true once decoded).
+  transform : Bool
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_GammaTransform::new(element : @xml.Element) -> CT_GammaTransform {
-  { element, }
+  { transform: true, element }
 }
 
 ///|
-/// XSD complex type CT_InverseGammaTransform (§20.1.8).
+pub fn CT_GammaTransform::to_element(self : CT_GammaTransform) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_InverseGammaTransform — Part 1 §20.1.8.42
+/// invGamma. Annex A.4.1 line 274. Empty complex type per
+/// EG_ColorTransform choice arm.
 pub(all) struct CT_InverseGammaTransform {
+  /// Empty-XSD-type marker (always true once decoded).
+  transform : Bool
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
@@ -56,25 +109,54 @@ pub(all) struct CT_InverseGammaTransform {
 pub fn CT_InverseGammaTransform::new(
   element : @xml.Element,
 ) -> CT_InverseGammaTransform {
-  { element, }
+  { transform: true, element }
 }
 
 ///|
-/// XSD complex type CT_AlphaBiLevelEffect (§20.1.8).
+pub fn CT_InverseGammaTransform::to_element(
+  self : CT_InverseGammaTransform,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_AlphaBiLevelEffect — Part 1 §20.1.8.1
+/// alphaBiLevel. Annex A.4.1 lines 1242..1244. Required `thresh`
+/// (ST_PositiveFixedPercentage) — the threshold at or above which
+/// alpha snaps to fully opaque.
 pub(all) struct CT_AlphaBiLevelEffect {
+  /// @thresh — ST_PositiveFixedPercentage (required).
+  thresh : ST_PositiveFixedPercentage
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_AlphaBiLevelEffect::new(
   element : @xml.Element,
-) -> CT_AlphaBiLevelEffect {
-  { element, }
+) -> CT_AlphaBiLevelEffect raise SchemaViolation {
+  let thresh_lex = ct_required_string(
+    element, "thresh", "CT_AlphaBiLevelEffect/@thresh",
+  )
+  let thresh = ST_PositiveFixedPercentage::parse(thresh_lex)
+  { thresh, element }
 }
 
 ///|
-/// XSD complex type CT_AlphaCeilingEffect (§20.1.8).
+pub fn CT_AlphaBiLevelEffect::to_element(
+  self : CT_AlphaBiLevelEffect,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_AlphaCeilingEffect — Part 1 §20.1.8.2
+/// alphaCeiling. Annex A.4.1 line 1245. Empty complex type — alpha
+/// is forced to fully opaque whenever it is non-zero.
 pub(all) struct CT_AlphaCeilingEffect {
+  /// Empty-XSD-type marker (always true once decoded).
+  effect : Bool
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
@@ -82,57 +164,127 @@ pub(all) struct CT_AlphaCeilingEffect {
 pub fn CT_AlphaCeilingEffect::new(
   element : @xml.Element,
 ) -> CT_AlphaCeilingEffect {
-  { element, }
+  { effect: true, element }
 }
 
 ///|
-/// XSD complex type CT_AlphaFloorEffect (§20.1.8).
+pub fn CT_AlphaCeilingEffect::to_element(
+  self : CT_AlphaCeilingEffect,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_AlphaFloorEffect — Part 1 §20.1.8.3 alphaFloor.
+/// Annex A.4.1 line 1246. Empty complex type — alpha is forced to
+/// fully transparent whenever it is below full.
 pub(all) struct CT_AlphaFloorEffect {
+  /// Empty-XSD-type marker (always true once decoded).
+  effect : Bool
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_AlphaFloorEffect::new(element : @xml.Element) -> CT_AlphaFloorEffect {
-  { element, }
+  { effect: true, element }
 }
 
 ///|
-/// XSD complex type CT_AlphaInverseEffect (§20.1.8).
+pub fn CT_AlphaFloorEffect::to_element(
+  self : CT_AlphaFloorEffect,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_AlphaInverseEffect — Part 1 §20.1.8.4 alphaInv.
+/// Annex A.4.1 lines 1247..1251. Optional EG_ColorChoice arm: when
+/// present the inverted alpha is replaced with the supplied colour.
 pub(all) struct CT_AlphaInverseEffect {
+  /// Optional EG_ColorChoice arm captured as a CT_Color projection.
+  color : CT_Color?
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_AlphaInverseEffect::new(
   element : @xml.Element,
-) -> CT_AlphaInverseEffect {
-  { element, }
+) -> CT_AlphaInverseEffect raise SchemaViolation {
+  let color = if has_any_color_choice_child(element) {
+    Some(CT_Color::new(element))
+  } else {
+    None
+  }
+  { color, element }
 }
 
 ///|
-/// XSD complex type CT_AlphaModulateFixedEffect (§20.1.8).
+pub fn CT_AlphaInverseEffect::to_element(
+  self : CT_AlphaInverseEffect,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_AlphaModulateFixedEffect — Part 1 §20.1.8.6
+/// alphaModFix. Annex A.4.1 lines 1252..1254. Optional `amt`
+/// (ST_PositivePercentage, default 100%) — multiplicative alpha
+/// modulation amount.
 pub(all) struct CT_AlphaModulateFixedEffect {
+  /// @amt — ST_PositivePercentage (optional, default 100%).
+  amt : ST_PositivePercentage
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_AlphaModulateFixedEffect::new(
   element : @xml.Element,
-) -> CT_AlphaModulateFixedEffect {
-  { element, }
+) -> CT_AlphaModulateFixedEffect raise SchemaViolation {
+  let amt = match ct_attr(element, "amt") {
+    Some(v) => ST_PositivePercentage::parse(v)
+    None => ST_PositivePercentage::parse("100%")
+  }
+  { amt, element }
 }
 
 ///|
-/// XSD complex type CT_AlphaOutsetEffect (§20.1.8).
+pub fn CT_AlphaModulateFixedEffect::to_element(
+  self : CT_AlphaModulateFixedEffect,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_AlphaOutsetEffect — Part 1 §20.1.8.7
+/// alphaOutset. Annex A.4.1 lines 1255..1257. Optional `rad`
+/// (ST_Coordinate, default 0) — radius of the alpha outset in
+/// EMU.
 pub(all) struct CT_AlphaOutsetEffect {
+  /// @rad — ST_Coordinate (optional, default 0 EMU).
+  rad : ST_Coordinate
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_AlphaOutsetEffect::new(
   element : @xml.Element,
-) -> CT_AlphaOutsetEffect {
-  { element, }
+) -> CT_AlphaOutsetEffect raise SchemaViolation {
+  let rad = match ct_attr(element, "rad") {
+    Some(v) => ST_Coordinate::parse(v)
+    None => ST_Coordinate::parse("0")
+  }
+  { rad, element }
+}
+
+///|
+pub fn CT_AlphaOutsetEffect::to_element(
+  self : CT_AlphaOutsetEffect,
+) -> @xml.Element {
+  self.element
 }
 
 ///|

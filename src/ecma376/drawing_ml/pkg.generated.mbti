@@ -366,24 +366,32 @@ pub(all) struct CT_AdjustHandleList {
 pub fn CT_AdjustHandleList::new(@xml.Element) -> Self
 
 pub(all) struct CT_AlphaBiLevelEffect {
+  thresh : ST_PositiveFixedPercentage
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AlphaBiLevelEffect::new(@xml.Element) -> Self
+pub fn CT_AlphaBiLevelEffect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AlphaBiLevelEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AlphaCeilingEffect {
+  effect : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_AlphaCeilingEffect::new(@xml.Element) -> Self
+pub fn CT_AlphaCeilingEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AlphaFloorEffect {
+  effect : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_AlphaFloorEffect::new(@xml.Element) -> Self
+pub fn CT_AlphaFloorEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AlphaInverseEffect {
+  color : CT_Color?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AlphaInverseEffect::new(@xml.Element) -> Self
+pub fn CT_AlphaInverseEffect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AlphaInverseEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AlphaModulateEffect {
   element : @xml.Element
@@ -391,14 +399,18 @@ pub(all) struct CT_AlphaModulateEffect {
 pub fn CT_AlphaModulateEffect::new(@xml.Element) -> Self
 
 pub(all) struct CT_AlphaModulateFixedEffect {
+  amt : ST_PositivePercentage
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AlphaModulateFixedEffect::new(@xml.Element) -> Self
+pub fn CT_AlphaModulateFixedEffect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AlphaModulateFixedEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AlphaOutsetEffect {
+  rad : ST_Coordinate
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AlphaOutsetEffect::new(@xml.Element) -> Self
+pub fn CT_AlphaOutsetEffect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AlphaOutsetEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AlphaReplaceEffect {
   element : @xml.Element
@@ -411,49 +423,79 @@ pub(all) struct CT_Angle {
 pub fn CT_Angle::new(@xml.Element) -> Self
 
 pub(all) struct CT_AnimationChartBuildProperties {
+  bld : ST_AnimationChartBuildType
+  anim_bg : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AnimationChartBuildProperties::new(@xml.Element) -> Self
+pub fn CT_AnimationChartBuildProperties::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AnimationChartBuildProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AnimationChartElement {
+  series_idx : Int
+  category_idx : Int
+  bld_step : ST_ChartBuildStep
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AnimationChartElement::new(@xml.Element) -> Self
+pub fn CT_AnimationChartElement::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AnimationChartElement::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AnimationDgmBuildProperties {
+  bld : ST_AnimationDgmBuildType
+  rev : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AnimationDgmBuildProperties::new(@xml.Element) -> Self
+pub fn CT_AnimationDgmBuildProperties::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AnimationDgmBuildProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AnimationDgmElement {
+  id : String
+  bld_step : ST_DgmBuildStep
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AnimationDgmElement::new(@xml.Element) -> Self
+pub fn CT_AnimationDgmElement::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AnimationDgmElement::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AnimationElementChoice {
+  dgm : CT_AnimationDgmElement?
+  chart : CT_AnimationChartElement?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AnimationElementChoice::new(@xml.Element) -> Self
+pub fn CT_AnimationElementChoice::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AnimationElementChoice::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AnimationGraphicalObjectBuildProperties {
+  bld_dgm : CT_AnimationDgmBuildProperties?
+  bld_chart : CT_AnimationChartBuildProperties?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AnimationGraphicalObjectBuildProperties::new(@xml.Element) -> Self
+pub fn CT_AnimationGraphicalObjectBuildProperties::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AnimationGraphicalObjectBuildProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AudioCD {
+  st : CT_AudioCDTime?
+  end : CT_AudioCDTime?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AudioCD::new(@xml.Element) -> Self
+pub fn CT_AudioCD::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AudioCD::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AudioCDTime {
+  track : Int
+  time : UInt
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AudioCDTime::new(@xml.Element) -> Self
+pub fn CT_AudioCDTime::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AudioCDTime::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AudioFile {
+  r_link : String
+  content_type : String?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AudioFile::new(@xml.Element) -> Self
+pub fn CT_AudioFile::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AudioFile::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Backdrop {
   element : @xml.Element
@@ -497,9 +539,15 @@ pub(all) struct CT_BlendEffect {
 pub fn CT_BlendEffect::new(@xml.Element) -> Self
 
 pub(all) struct CT_Blip {
+  r_embed : String
+  r_link : String
+  cstate : ST_BlipCompression
+  effects : Array[@xml.Element]
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Blip::new(@xml.Element) -> Self
+pub fn CT_Blip::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Blip::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_BlipFillProperties {
   element : @xml.Element
@@ -522,59 +570,116 @@ pub(all) struct CT_Cell3D {
 pub fn CT_Cell3D::new(@xml.Element) -> Self
 
 pub(all) struct CT_ClipboardStyleSheet {
+  theme_elements : @xml.Element?
+  clr_map : CT_ColorMapping?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ClipboardStyleSheet::new(@xml.Element) -> Self
+pub fn CT_ClipboardStyleSheet::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ClipboardStyleSheet::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Color {
+  scrgb_clr : CT_ScRgbColor?
+  srgb_clr : CT_SRgbColor?
+  hsl_clr : CT_HslColor?
+  sys_clr : CT_SystemColor?
+  scheme_clr : CT_SchemeColor?
+  prst_clr : CT_PresetColor?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Color::new(@xml.Element) -> Self
+pub fn CT_Color::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Color::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorChangeEffect {
+  use_a : Bool
+  clr_from : CT_Color?
+  clr_to : CT_Color?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorChangeEffect::new(@xml.Element) -> Self
+pub fn CT_ColorChangeEffect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorChangeEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorMRU {
+  colors : Array[CT_Color]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorMRU::new(@xml.Element) -> Self
+pub fn CT_ColorMRU::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorMRU::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorMapping {
+  bg1 : ST_ColorSchemeIndex
+  tx1 : ST_ColorSchemeIndex
+  bg2 : ST_ColorSchemeIndex
+  tx2 : ST_ColorSchemeIndex
+  accent1 : ST_ColorSchemeIndex
+  accent2 : ST_ColorSchemeIndex
+  accent3 : ST_ColorSchemeIndex
+  accent4 : ST_ColorSchemeIndex
+  accent5 : ST_ColorSchemeIndex
+  accent6 : ST_ColorSchemeIndex
+  hlink : ST_ColorSchemeIndex
+  fol_hlink : ST_ColorSchemeIndex
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorMapping::new(@xml.Element) -> Self
+pub fn CT_ColorMapping::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorMapping::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorMappingOverride {
+  master : Bool
+  override_clr_mapping : CT_ColorMapping?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorMappingOverride::new(@xml.Element) -> Self
+pub fn CT_ColorMappingOverride::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorMappingOverride::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorReplaceEffect {
+  color : CT_Color?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorReplaceEffect::new(@xml.Element) -> Self
+pub fn CT_ColorReplaceEffect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorReplaceEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorScheme {
+  name : String
+  dk1 : CT_Color?
+  lt1 : CT_Color?
+  dk2 : CT_Color?
+  lt2 : CT_Color?
+  accent1 : CT_Color?
+  accent2 : CT_Color?
+  accent3 : CT_Color?
+  accent4 : CT_Color?
+  accent5 : CT_Color?
+  accent6 : CT_Color?
+  hlink : CT_Color?
+  fol_hlink : CT_Color?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorScheme::new(@xml.Element) -> Self
+pub fn CT_ColorScheme::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorScheme::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorSchemeAndMapping {
+  clr_scheme : CT_ColorScheme?
+  clr_map : CT_ColorMapping?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorSchemeAndMapping::new(@xml.Element) -> Self
+pub fn CT_ColorSchemeAndMapping::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorSchemeAndMapping::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorSchemeList {
+  extra_clr_scheme : Array[CT_ColorSchemeAndMapping]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorSchemeList::new(@xml.Element) -> Self
+pub fn CT_ColorSchemeList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorSchemeList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ComplementTransform {
+  transform : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_ComplementTransform::new(@xml.Element) -> Self
+pub fn CT_ComplementTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Connection {
   element : @xml.Element
@@ -602,14 +707,19 @@ pub(all) struct CT_ContentPartLocking {
 pub fn CT_ContentPartLocking::new(@xml.Element) -> Self
 
 pub(all) struct CT_CustomColor {
+  name : String
+  color : CT_Color?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomColor::new(@xml.Element) -> Self
+pub fn CT_CustomColor::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CustomColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomColorList {
+  cust_clr : Array[CT_CustomColor]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomColorList::new(@xml.Element) -> Self
+pub fn CT_CustomColorList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CustomColorList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomGeometry2D {
   element : @xml.Element
@@ -667,9 +777,12 @@ pub(all) struct CT_EffectStyleList {
 pub fn CT_EffectStyleList::new(@xml.Element) -> Self
 
 pub(all) struct CT_EmbeddedWAVAudioFile {
+  r_embed : String
+  name : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_EmbeddedWAVAudioFile::new(@xml.Element) -> Self
+pub fn CT_EmbeddedWAVAudioFile::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_EmbeddedWAVAudioFile::to_element(Self) -> @xml.Element
 
 #alias(ThemeManager)
 pub(all) struct CT_EmptyElement {
@@ -723,9 +836,11 @@ pub(all) struct CT_FontScheme {
 pub fn CT_FontScheme::new(@xml.Element) -> Self
 
 pub(all) struct CT_GammaTransform {
+  transform : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_GammaTransform::new(@xml.Element) -> Self
+pub fn CT_GammaTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GeomGuide {
   element : @xml.Element
@@ -783,9 +898,11 @@ pub(all) struct CT_GrayscaleEffect {
 pub fn CT_GrayscaleEffect::new(@xml.Element) -> Self
 
 pub(all) struct CT_GrayscaleTransform {
+  transform : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_GrayscaleTransform::new(@xml.Element) -> Self
+pub fn CT_GrayscaleTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GroupFillProperties {
   element : @xml.Element
@@ -878,9 +995,14 @@ pub(all) struct CT_Headers {
 pub fn CT_Headers::new(@xml.Element) -> Self
 
 pub(all) struct CT_HslColor {
+  hue : ST_PositiveFixedAngle
+  sat : ST_Percentage
+  lum : ST_Percentage
+  color_transforms : Array[@xml.Element]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_HslColor::new(@xml.Element) -> Self
+pub fn CT_HslColor::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_HslColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Hyperlink {
   element : @xml.Element
@@ -893,14 +1015,18 @@ pub(all) struct CT_InnerShadowEffect {
 pub fn CT_InnerShadowEffect::new(@xml.Element) -> Self
 
 pub(all) struct CT_InverseGammaTransform {
+  transform : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_InverseGammaTransform::new(@xml.Element) -> Self
+pub fn CT_InverseGammaTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_InverseTransform {
+  transform : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_InverseTransform::new(@xml.Element) -> Self
+pub fn CT_InverseTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LightRig {
   element : @xml.Element
@@ -958,9 +1084,13 @@ pub(all) struct CT_NonVisualConnectorProperties {
 pub fn CT_NonVisualConnectorProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_NonVisualContentPartProperties {
+  cp_locks : @xml.Element?
+  ext_lst : @xml.Element?
+  is_comment : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_NonVisualContentPartProperties::new(@xml.Element) -> Self
+pub fn CT_NonVisualContentPartProperties::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_NonVisualContentPartProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NonVisualDrawingProps {
   element : @xml.Element
@@ -1109,9 +1239,12 @@ pub(all) struct CT_PositiveSize2D {
 pub fn CT_PositiveSize2D::new(@xml.Element) -> Self
 
 pub(all) struct CT_PresetColor {
+  val : ST_PresetColorVal
+  color_transforms : Array[@xml.Element]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PresetColor::new(@xml.Element) -> Self
+pub fn CT_PresetColor::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PresetColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PresetGeometry2D {
   element : @xml.Element
@@ -1134,9 +1267,12 @@ pub(all) struct CT_PresetTextShape {
 pub fn CT_PresetTextShape::new(@xml.Element) -> Self
 
 pub(all) struct CT_QuickTimeFile {
+  r_link : String
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_QuickTimeFile::new(@xml.Element) -> Self
+pub fn CT_QuickTimeFile::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_QuickTimeFile::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Ratio {
   element : @xml.Element
@@ -1164,14 +1300,22 @@ pub(all) struct CT_RelativeRect {
 pub fn CT_RelativeRect::new(@xml.Element) -> Self
 
 pub(all) struct CT_SRgbColor {
+  val : String
+  color_transforms : Array[@xml.Element]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SRgbColor::new(@xml.Element) -> Self
+pub fn CT_SRgbColor::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SRgbColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ScRgbColor {
+  r : ST_Percentage
+  g : ST_Percentage
+  b : ST_Percentage
+  color_transforms : Array[@xml.Element]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ScRgbColor::new(@xml.Element) -> Self
+pub fn CT_ScRgbColor::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ScRgbColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Scale2D {
   element : @xml.Element
@@ -1184,9 +1328,12 @@ pub(all) struct CT_Scene3D {
 pub fn CT_Scene3D::new(@xml.Element) -> Self
 
 pub(all) struct CT_SchemeColor {
+  val : ST_SchemeColorVal
+  color_transforms : Array[@xml.Element]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SchemeColor::new(@xml.Element) -> Self
+pub fn CT_SchemeColor::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SchemeColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Shape3D {
   element : @xml.Element
@@ -1214,9 +1361,11 @@ pub(all) struct CT_SoftEdgesEffect {
 pub fn CT_SoftEdgesEffect::new(@xml.Element) -> Self
 
 pub(all) struct CT_SolidColorFillProperties {
+  color : CT_Color?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SolidColorFillProperties::new(@xml.Element) -> Self
+pub fn CT_SolidColorFillProperties::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SolidColorFillProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SphereCoords {
   element : @xml.Element
@@ -1244,9 +1393,13 @@ pub(all) struct CT_SupplementalFont {
 pub fn CT_SupplementalFont::new(@xml.Element) -> Self
 
 pub(all) struct CT_SystemColor {
+  val : ST_SystemColorVal
+  last_clr : String?
+  color_transforms : Array[@xml.Element]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SystemColor::new(@xml.Element) -> Self
+pub fn CT_SystemColor::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SystemColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Table {
   element : @xml.Element
@@ -1339,9 +1492,11 @@ pub(all) struct CT_TextBodyProperties {
 pub fn CT_TextBodyProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_TextBulletColorFollowText {
+  follow_text : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextBulletColorFollowText::new(@xml.Element) -> Self
+pub fn CT_TextBulletColorFollowText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextBulletSizeFollowText {
   element : @xml.Element
@@ -1494,14 +1649,21 @@ pub(all) struct CT_Vector3D {
 pub fn CT_Vector3D::new(@xml.Element) -> Self
 
 pub(all) struct CT_VideoFile {
+  r_link : String
+  content_type : String?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_VideoFile::new(@xml.Element) -> Self
+pub fn CT_VideoFile::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_VideoFile::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WholeE2oFormatting {
+  ln : @xml.Element?
+  effect_props : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_WholeE2oFormatting::new(@xml.Element) -> Self
+pub fn CT_WholeE2oFormatting::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_WholeE2oFormatting::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_XYAdjustHandle {
   element : @xml.Element
@@ -1698,6 +1860,46 @@ pub fn ST_Angle::parse(String) -> Self raise SchemaViolation
 pub fn ST_Angle::sixty_thousandths_of_degree(Self) -> Int
 pub fn ST_Angle::to_string(Self) -> String
 
+pub(all) enum ST_AnimationChartBuildType {
+  ChartBuildAllAtOnce
+  ChartBuildBySeries
+  ChartBuildByCategory
+  ChartBuildBySeriesEl
+  ChartBuildByCategoryEl
+} derive(Eq, @debug.Debug)
+pub fn ST_AnimationChartBuildType::parse(String) -> Self raise SchemaViolation
+pub fn ST_AnimationChartBuildType::to_string(Self) -> String
+
+pub(all) enum ST_AnimationDgmBuildType {
+  DgmBuildAllAtOnce
+  DgmBuildOne
+  DgmBuildLvlOne
+  DgmBuildLvlAtOnce
+} derive(Eq, @debug.Debug)
+pub fn ST_AnimationDgmBuildType::parse(String) -> Self raise SchemaViolation
+pub fn ST_AnimationDgmBuildType::to_string(Self) -> String
+
+pub(all) enum ST_BlipCompression {
+  BlipCstateEmail
+  BlipCstateScreen
+  BlipCstatePrint
+  BlipCstateHqPrint
+  BlipCstateNone
+} derive(Eq, @debug.Debug)
+pub fn ST_BlipCompression::parse(String) -> Self raise SchemaViolation
+pub fn ST_BlipCompression::to_string(Self) -> String
+
+pub(all) enum ST_ChartBuildStep {
+  ChartBuildCategory
+  ChartBuildPtInCategory
+  ChartBuildSeries
+  ChartBuildPtInSeries
+  ChartBuildAllPts
+  ChartBuildGridLegend
+} derive(Eq, @debug.Debug)
+pub fn ST_ChartBuildStep::parse(String) -> Self raise SchemaViolation
+pub fn ST_ChartBuildStep::to_string(Self) -> String
+
 pub(all) enum ST_ColorSchemeIndex {
   SchemeIdxDk1
   SchemeIdxLt1
@@ -1758,6 +1960,13 @@ pub fn ST_CoordinateUnqualified::new(String) -> Self raise SchemaViolation
 pub fn ST_CoordinateUnqualified::parse(String) -> Self raise SchemaViolation
 pub fn ST_CoordinateUnqualified::to_int64(Self) -> Int64
 pub fn ST_CoordinateUnqualified::to_string(Self) -> String
+
+pub(all) enum ST_DgmBuildStep {
+  DgmBuildSp
+  DgmBuildBg
+} derive(Eq, @debug.Debug)
+pub fn ST_DgmBuildStep::parse(String) -> Self raise SchemaViolation
+pub fn ST_DgmBuildStep::to_string(Self) -> String
 
 pub struct ST_FixedAngle {
   sixty_thousandths : Int
