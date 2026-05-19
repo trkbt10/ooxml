@@ -79,20 +79,29 @@ pub fn ST_Cnf::to_string(self : ST_Cnf) -> String {
 }
 
 ///|
-/// XSD simple type ST_TextScaleDecimal from transitional wml.xsd (Part 4 §14).
+/// XSD simple type ST_TextScaleDecimal — Part 4 §14.11.11.
+/// Restriction of xsd:integer to 0..600 (text expansion/compression
+/// percentage without the trailing `%` qualifier, a transitional addition).
 pub struct ST_TextScaleDecimal {
-  value : String
+  percent : Int
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_TextScaleDecimal lexical value (integer 0..600).
 pub fn ST_TextScaleDecimal::parse(
   s : String,
 ) -> ST_TextScaleDecimal raise SchemaViolation {
-  validate_wml_simple_type("ST_TextScaleDecimal", s)
-  { value: s }
+  let n = parse_signed_int_lexical("ST_TextScaleDecimal", s)
+  if n < 0 || n > 600 {
+    raise_schema_violation(
+      "ST_TextScaleDecimal", s, "percent outside 0..600 range",
+    )
+  }
+  { percent: n }
 }
 
 ///|
+/// Construct ST_TextScaleDecimal while enforcing the transitional 0..600 range.
 pub fn ST_TextScaleDecimal::new(
   s : String,
 ) -> ST_TextScaleDecimal raise SchemaViolation {
@@ -100,25 +109,38 @@ pub fn ST_TextScaleDecimal::new(
 }
 
 ///|
-pub fn ST_TextScaleDecimal::to_string(self : ST_TextScaleDecimal) -> String {
-  self.value
+/// Read the typed text-scale percentage integer (0..600).
+pub fn ST_TextScaleDecimal::value(self : ST_TextScaleDecimal) -> Int {
+  self.percent
 }
 
 ///|
-/// XSD simple type ST_UnqualifiedPercentage from transitional wml.xsd (Part 4 §14).
+/// Return the canonical lexical value for ST_TextScaleDecimal.
+pub fn ST_TextScaleDecimal::to_string(self : ST_TextScaleDecimal) -> String {
+  self.percent.to_string()
+}
+
+///|
+/// XSD simple type ST_UnqualifiedPercentage — Part 4 §14.11.10.
+/// Restriction of xsd:integer (a transitional percentage value without the
+/// `%` sign; CT_TblWidth uses 50ths-of-a-percent, other contexts use whole
+/// percentage points — see spec).
 pub struct ST_UnqualifiedPercentage {
-  value : String
+  value : Int
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_UnqualifiedPercentage lexical value (signed integer).
 pub fn ST_UnqualifiedPercentage::parse(
   s : String,
 ) -> ST_UnqualifiedPercentage raise SchemaViolation {
-  validate_wml_simple_type("ST_UnqualifiedPercentage", s)
-  { value: s }
+  let n = parse_signed_int_lexical("ST_UnqualifiedPercentage", s)
+  { value: n }
 }
 
 ///|
+/// Construct ST_UnqualifiedPercentage while enforcing the xsd:integer
+/// lexical form.
 pub fn ST_UnqualifiedPercentage::new(
   s : String,
 ) -> ST_UnqualifiedPercentage raise SchemaViolation {
@@ -126,10 +148,17 @@ pub fn ST_UnqualifiedPercentage::new(
 }
 
 ///|
+/// Read the typed transitional percentage integer.
+pub fn ST_UnqualifiedPercentage::value(self : ST_UnqualifiedPercentage) -> Int {
+  self.value
+}
+
+///|
+/// Return the canonical lexical value for ST_UnqualifiedPercentage.
 pub fn ST_UnqualifiedPercentage::to_string(
   self : ST_UnqualifiedPercentage,
 ) -> String {
-  self.value
+  self.value.to_string()
 }
 
 ///|

@@ -15,7 +15,6 @@ fn validate_wordprocessing_drawing_simple_type(
 ///|
 fn wordprocessing_drawing_simple_type_values(type_name : String) -> String {
   match type_name {
-    "ST_WrapText" => ";bothSides;left;right;largest;"
     "ST_AlignH" => ";left;right;center;inside;outside;"
     "ST_AlignV" => ";top;bottom;center;inside;outside;"
     _ => ""
@@ -23,20 +22,39 @@ fn wordprocessing_drawing_simple_type_values(type_name : String) -> String {
 }
 
 ///|
-/// XSD simple type ST_WrapDistance from dml-wordprocessingDrawing.xsd (§20.4).
+/// XSD simple type ST_WrapDistance — Part 1 §20.4.3.6.
+/// Restriction of xsd:unsignedInt — a one-dimensional distance stored in EMUs.
+/// Carried as Int64 because xsd:unsignedInt covers 0..2^32-1.
 pub struct ST_WrapDistance {
-  value : String
+  emus : Int64
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_WrapDistance lexical value (unsigned integer EMUs).
 pub fn ST_WrapDistance::parse(
   s : String,
 ) -> ST_WrapDistance raise SchemaViolation {
-  validate_wordprocessing_drawing_simple_type("ST_WrapDistance", s)
-  { value: s }
+  if s.length() == 0 {
+    raise_schema_violation("ST_WrapDistance", s, "empty lexical value")
+  }
+  let mut i = 0
+  let mut n : Int64 = 0L
+  while i < s.length() {
+    let ch = s[i:i + 1]
+    if ch < "0" || ch > "9" {
+      raise_schema_violation(
+        "ST_WrapDistance", s, "non-digit in unsignedInt lexical form",
+      )
+    }
+    let d = (ch[0].to_int() - "0"[0].to_int()).to_int64()
+    n = n * 10L + d
+    i = i + 1
+  }
+  { emus: n }
 }
 
 ///|
+/// Construct ST_WrapDistance while enforcing the xsd:unsignedInt lexical form.
 pub fn ST_WrapDistance::new(
   s : String,
 ) -> ST_WrapDistance raise SchemaViolation {
@@ -44,30 +62,55 @@ pub fn ST_WrapDistance::new(
 }
 
 ///|
-pub fn ST_WrapDistance::to_string(self : ST_WrapDistance) -> String {
-  self.value
+/// Read the typed distance value in EMUs.
+pub fn ST_WrapDistance::value(self : ST_WrapDistance) -> Int64 {
+  self.emus
 }
 
 ///|
-/// XSD simple type ST_WrapText from dml-wordprocessingDrawing.xsd (§20.4).
-pub struct ST_WrapText {
-  value : String
+/// Return the canonical lexical value for ST_WrapDistance.
+pub fn ST_WrapDistance::to_string(self : ST_WrapDistance) -> String {
+  self.emus.to_string()
+}
+
+///|
+/// XSD simple type ST_WrapText — Part 1 §20.4.3.7.
+/// Restriction of xsd:token to the 4-value wrap-side enumeration.
+pub(all) enum ST_WrapText {
+  WrapTextBothSides
+  WrapTextLargest
+  WrapTextLeft
+  WrapTextRight
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_WrapText schema lexical value.
 pub fn ST_WrapText::parse(s : String) -> ST_WrapText raise SchemaViolation {
-  validate_wordprocessing_drawing_simple_type("ST_WrapText", s)
-  { value: s }
+  match s {
+    "bothSides" => WrapTextBothSides
+    "largest" => WrapTextLargest
+    "left" => WrapTextLeft
+    "right" => WrapTextRight
+    _ => raise_schema_violation("ST_WrapText", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_WrapText while enforcing the dml-wordprocessingDrawing.xsd
+/// enumeration.
 pub fn ST_WrapText::new(s : String) -> ST_WrapText raise SchemaViolation {
   ST_WrapText::parse(s)
 }
 
 ///|
+/// Return the schema lexical value for ST_WrapText.
 pub fn ST_WrapText::to_string(self : ST_WrapText) -> String {
-  self.value
+  match self {
+    WrapTextBothSides => "bothSides"
+    WrapTextLargest => "largest"
+    WrapTextLeft => "left"
+    WrapTextRight => "right"
+  }
 }
 
 ///|

@@ -3445,260 +3445,454 @@ pub fn ST_RelFromV::new(String) -> Self raise SchemaViolation
 pub fn ST_RelFromV::parse(String) -> Self raise SchemaViolation
 pub fn ST_RelFromV::to_string(Self) -> String
 
-pub struct ST_RestartNumber {
-  value : String
+pub(all) enum ST_RestartNumber {
+  RestartNumberContinuous
+  RestartNumberEachPage
+  RestartNumberEachSect
 } derive(Eq, @debug.Debug)
 pub fn ST_RestartNumber::new(String) -> Self raise SchemaViolation
 pub fn ST_RestartNumber::parse(String) -> Self raise SchemaViolation
 pub fn ST_RestartNumber::to_string(Self) -> String
 
-pub struct ST_RubyAlign {
-  value : String
+pub(all) enum ST_RubyAlign {
+  RubyAlignCenter
+  RubyAlignDistributeLetter
+  RubyAlignDistributeSpace
+  RubyAlignLeft
+  RubyAlignRight
+  RubyAlignRightVertical
 } derive(Eq, @debug.Debug)
 pub fn ST_RubyAlign::new(String) -> Self raise SchemaViolation
 pub fn ST_RubyAlign::parse(String) -> Self raise SchemaViolation
 pub fn ST_RubyAlign::to_string(Self) -> String
 
-pub struct ST_SdtDateMappingType {
-  value : String
+pub(all) enum ST_SdtDateMappingType {
+  SdtDateMappingTypeDate
+  SdtDateMappingTypeDateTime
+  SdtDateMappingTypeText
 } derive(Eq, @debug.Debug)
 pub fn ST_SdtDateMappingType::new(String) -> Self raise SchemaViolation
 pub fn ST_SdtDateMappingType::parse(String) -> Self raise SchemaViolation
 pub fn ST_SdtDateMappingType::to_string(Self) -> String
 
-pub struct ST_SectionMark {
-  value : String
+pub(all) enum ST_SectionMark {
+  SectionMarkContinuous
+  SectionMarkEvenPage
+  SectionMarkNextColumn
+  SectionMarkNextPage
+  SectionMarkOddPage
 } derive(Eq, @debug.Debug)
 pub fn ST_SectionMark::new(String) -> Self raise SchemaViolation
 pub fn ST_SectionMark::parse(String) -> Self raise SchemaViolation
 pub fn ST_SectionMark::to_string(Self) -> String
 
-pub struct ST_Shd {
-  value : String
+pub(all) enum ST_Shd {
+  ShdClear
+  ShdDiagCross
+  ShdDiagStripe
+  ShdHorzCross
+  ShdHorzStripe
+  ShdNil
+  ShdPct5
+  ShdPct10
+  ShdPct12
+  ShdPct15
+  ShdPct20
+  ShdPct25
+  ShdPct30
+  ShdPct35
+  ShdPct37
+  ShdPct40
+  ShdPct45
+  ShdPct50
+  ShdPct55
+  ShdPct60
+  ShdPct62
+  ShdPct65
+  ShdPct70
+  ShdPct75
+  ShdPct80
+  ShdPct85
+  ShdPct87
+  ShdPct90
+  ShdPct95
+  ShdReverseDiagStripe
+  ShdSolid
+  ShdThinDiagCross
+  ShdThinDiagStripe
+  ShdThinHorzCross
+  ShdThinHorzStripe
+  ShdThinReverseDiagStripe
+  ShdThinVertStripe
+  ShdVertStripe
 } derive(Eq, @debug.Debug)
 pub fn ST_Shd::new(String) -> Self raise SchemaViolation
 pub fn ST_Shd::parse(String) -> Self raise SchemaViolation
 pub fn ST_Shd::to_string(Self) -> String
 
 pub struct ST_ShortHexNumber {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_ShortHexNumber::new(String) -> Self raise SchemaViolation
 pub fn ST_ShortHexNumber::parse(String) -> Self raise SchemaViolation
 pub fn ST_ShortHexNumber::to_string(Self) -> String
 
-pub struct ST_SignedHpsMeasure {
-  value : String
+pub(all) enum ST_SignedHpsMeasure {
+  SignedHpsMeasureInteger(Int)
+  SignedHpsMeasureUniversal(String)
 } derive(Eq, @debug.Debug)
 pub fn ST_SignedHpsMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_SignedHpsMeasure::parse(String) -> Self raise SchemaViolation
 pub fn ST_SignedHpsMeasure::to_string(Self) -> String
 
-pub struct ST_SignedTwipsMeasure {
-  value : String
+pub(all) enum ST_SignedTwipsMeasure {
+  SignedTwipsMeasureInteger(Int)
+  SignedTwipsMeasureUniversal(String)
 } derive(Eq, @debug.Debug)
 pub fn ST_SignedTwipsMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_SignedTwipsMeasure::parse(String) -> Self raise SchemaViolation
 pub fn ST_SignedTwipsMeasure::to_string(Self) -> String
 
-pub struct ST_StyleSort {
-  value : String
+pub(all) enum ST_StyleSort {
+  StyleSortBasedOn
+  StyleSortDefault
+  StyleSortFont
+  StyleSortName
+  StyleSortPriority
+  StyleSortType
 } derive(Eq, @debug.Debug)
 pub fn ST_StyleSort::new(String) -> Self raise SchemaViolation
 pub fn ST_StyleSort::parse(String) -> Self raise SchemaViolation
 pub fn ST_StyleSort::to_string(Self) -> String
 
-pub struct ST_StyleType {
-  value : String
+pub(all) enum ST_StyleType {
+  StyleTypeCharacter
+  StyleTypeNumbering
+  StyleTypeParagraph
+  StyleTypeTable
 } derive(Eq, @debug.Debug)
 pub fn ST_StyleType::new(String) -> Self raise SchemaViolation
 pub fn ST_StyleType::parse(String) -> Self raise SchemaViolation
 pub fn ST_StyleType::to_string(Self) -> String
 
-pub struct ST_TabJc {
-  value : String
+pub(all) enum ST_TabJc {
+  TabJcBar
+  TabJcCenter
+  TabJcClear
+  TabJcDecimal
+  TabJcEnd
+  TabJcNum
+  TabJcStart
 } derive(Eq, @debug.Debug)
 pub fn ST_TabJc::new(String) -> Self raise SchemaViolation
 pub fn ST_TabJc::parse(String) -> Self raise SchemaViolation
 pub fn ST_TabJc::to_string(Self) -> String
 
-pub struct ST_TabTlc {
-  value : String
+pub(all) enum ST_TabTlc {
+  TabTlcDot
+  TabTlcHeavy
+  TabTlcHyphen
+  TabTlcMiddleDot
+  TabTlcNone
+  TabTlcUnderscore
 } derive(Eq, @debug.Debug)
 pub fn ST_TabTlc::new(String) -> Self raise SchemaViolation
 pub fn ST_TabTlc::parse(String) -> Self raise SchemaViolation
 pub fn ST_TabTlc::to_string(Self) -> String
 
-pub struct ST_TargetScreenSz {
-  value : String
+pub(all) enum ST_TargetScreenSz {
+  TargetScreenSz544x376
+  TargetScreenSz640x480
+  TargetScreenSz720x512
+  TargetScreenSz800x600
+  TargetScreenSz1024x768
+  TargetScreenSz1152x882
+  TargetScreenSz1152x900
+  TargetScreenSz1280x1024
+  TargetScreenSz1600x1200
+  TargetScreenSz1800x1440
+  TargetScreenSz1920x1200
 } derive(Eq, @debug.Debug)
 pub fn ST_TargetScreenSz::new(String) -> Self raise SchemaViolation
 pub fn ST_TargetScreenSz::parse(String) -> Self raise SchemaViolation
 pub fn ST_TargetScreenSz::to_string(Self) -> String
 
-pub struct ST_TblLayoutType {
-  value : String
+pub(all) enum ST_TblLayoutType {
+  TblLayoutTypeAutofit
+  TblLayoutTypeFixed
 } derive(Eq, @debug.Debug)
 pub fn ST_TblLayoutType::new(String) -> Self raise SchemaViolation
 pub fn ST_TblLayoutType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TblLayoutType::to_string(Self) -> String
 
-pub struct ST_TblOverlap {
-  value : String
+pub(all) enum ST_TblOverlap {
+  TblOverlapNever
+  TblOverlapOverlap
 } derive(Eq, @debug.Debug)
 pub fn ST_TblOverlap::new(String) -> Self raise SchemaViolation
 pub fn ST_TblOverlap::parse(String) -> Self raise SchemaViolation
 pub fn ST_TblOverlap::to_string(Self) -> String
 
-pub struct ST_TblStyleOverrideType {
-  value : String
+pub(all) enum ST_TblStyleOverrideType {
+  TblStyleOverrideTypeBand1Horz
+  TblStyleOverrideTypeBand1Vert
+  TblStyleOverrideTypeBand2Horz
+  TblStyleOverrideTypeBand2Vert
+  TblStyleOverrideTypeFirstCol
+  TblStyleOverrideTypeFirstRow
+  TblStyleOverrideTypeLastCol
+  TblStyleOverrideTypeLastRow
+  TblStyleOverrideTypeNeCell
+  TblStyleOverrideTypeNwCell
+  TblStyleOverrideTypeSeCell
+  TblStyleOverrideTypeSwCell
+  TblStyleOverrideTypeWholeTable
 } derive(Eq, @debug.Debug)
 pub fn ST_TblStyleOverrideType::new(String) -> Self raise SchemaViolation
 pub fn ST_TblStyleOverrideType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TblStyleOverrideType::to_string(Self) -> String
 
-pub struct ST_TblWidth {
-  value : String
+pub(all) enum ST_TblWidth {
+  TblWidthAuto
+  TblWidthDxa
+  TblWidthNil
+  TblWidthPct
 } derive(Eq, @debug.Debug)
 pub fn ST_TblWidth::new(String) -> Self raise SchemaViolation
 pub fn ST_TblWidth::parse(String) -> Self raise SchemaViolation
 pub fn ST_TblWidth::to_string(Self) -> String
 
-pub struct ST_TextAlignment {
-  value : String
+pub(all) enum ST_TextAlignment {
+  TextAlignmentAuto
+  TextAlignmentBaseline
+  TextAlignmentBottom
+  TextAlignmentCenter
+  TextAlignmentTop
 } derive(Eq, @debug.Debug)
 pub fn ST_TextAlignment::new(String) -> Self raise SchemaViolation
 pub fn ST_TextAlignment::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextAlignment::to_string(Self) -> String
 
-pub struct ST_TextDirection {
-  value : String
+pub(all) enum ST_TextDirection {
+  TextDirectionLr
+  TextDirectionLrV
+  TextDirectionRl
+  TextDirectionRlV
+  TextDirectionTb
+  TextDirectionTbV
 } derive(Eq, @debug.Debug)
 pub fn ST_TextDirection::new(String) -> Self raise SchemaViolation
 pub fn ST_TextDirection::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextDirection::to_string(Self) -> String
 
-pub struct ST_TextEffect {
-  value : String
+pub(all) enum ST_TextEffect {
+  TextEffectAntsBlack
+  TextEffectAntsRed
+  TextEffectBlinkBackground
+  TextEffectLights
+  TextEffectNone
+  TextEffectShimmer
+  TextEffectSparkle
 } derive(Eq, @debug.Debug)
 pub fn ST_TextEffect::new(String) -> Self raise SchemaViolation
 pub fn ST_TextEffect::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextEffect::to_string(Self) -> String
 
-pub struct ST_TextScale {
-  value : String
+pub(all) enum ST_TextScale {
+  TextScalePercent(ST_TextScalePercent)
+  TextScaleDecimal(ST_TextScaleDecimal)
 } derive(Eq, @debug.Debug)
 pub fn ST_TextScale::new(String) -> Self raise SchemaViolation
 pub fn ST_TextScale::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextScale::to_string(Self) -> String
 
 pub struct ST_TextScaleDecimal {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_TextScaleDecimal::new(String) -> Self raise SchemaViolation
 pub fn ST_TextScaleDecimal::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextScaleDecimal::to_string(Self) -> String
+pub fn ST_TextScaleDecimal::value(Self) -> Int
 
 pub struct ST_TextScalePercent {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_TextScalePercent::new(String) -> Self raise SchemaViolation
 pub fn ST_TextScalePercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextScalePercent::to_string(Self) -> String
+pub fn ST_TextScalePercent::value(Self) -> Int
 
-pub struct ST_TextboxTightWrap {
-  value : String
+pub(all) enum ST_TextboxTightWrap {
+  TextboxTightWrapAllLines
+  TextboxTightWrapFirstAndLastLine
+  TextboxTightWrapFirstLineOnly
+  TextboxTightWrapLastLineOnly
+  TextboxTightWrapNone
 } derive(Eq, @debug.Debug)
 pub fn ST_TextboxTightWrap::new(String) -> Self raise SchemaViolation
 pub fn ST_TextboxTightWrap::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextboxTightWrap::to_string(Self) -> String
 
-pub struct ST_Theme {
-  value : String
+pub(all) enum ST_Theme {
+  ThemeMajorAscii
+  ThemeMajorBidi
+  ThemeMajorEastAsia
+  ThemeMajorHAnsi
+  ThemeMinorAscii
+  ThemeMinorBidi
+  ThemeMinorEastAsia
+  ThemeMinorHAnsi
 } derive(Eq, @debug.Debug)
 pub fn ST_Theme::new(String) -> Self raise SchemaViolation
 pub fn ST_Theme::parse(String) -> Self raise SchemaViolation
 pub fn ST_Theme::to_string(Self) -> String
 
-pub struct ST_ThemeColor {
-  value : String
+pub(all) enum ST_ThemeColor {
+  ThemeColorAccent1
+  ThemeColorAccent2
+  ThemeColorAccent3
+  ThemeColorAccent4
+  ThemeColorAccent5
+  ThemeColorAccent6
+  ThemeColorBackground1
+  ThemeColorBackground2
+  ThemeColorDark1
+  ThemeColorDark2
+  ThemeColorFollowedHyperlink
+  ThemeColorHyperlink
+  ThemeColorLight1
+  ThemeColorLight2
+  ThemeColorNone
+  ThemeColorText1
+  ThemeColorText2
 } derive(Eq, @debug.Debug)
 pub fn ST_ThemeColor::new(String) -> Self raise SchemaViolation
 pub fn ST_ThemeColor::parse(String) -> Self raise SchemaViolation
 pub fn ST_ThemeColor::to_string(Self) -> String
 
 pub struct ST_UcharHexNumber {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_UcharHexNumber::new(String) -> Self raise SchemaViolation
 pub fn ST_UcharHexNumber::parse(String) -> Self raise SchemaViolation
 pub fn ST_UcharHexNumber::to_string(Self) -> String
 
-pub struct ST_Underline {
-  value : String
+pub(all) enum ST_Underline {
+  UnderlineDash
+  UnderlineDashDotDotHeavy
+  UnderlineDashDotHeavy
+  UnderlineDashedHeavy
+  UnderlineDashLong
+  UnderlineDashLongHeavy
+  UnderlineDotDash
+  UnderlineDotDotDash
+  UnderlineDotted
+  UnderlineDottedHeavy
+  UnderlineDouble
+  UnderlineNone
+  UnderlineSingle
+  UnderlineThick
+  UnderlineWave
+  UnderlineWavyDouble
+  UnderlineWavyHeavy
+  UnderlineWords
 } derive(Eq, @debug.Debug)
 pub fn ST_Underline::new(String) -> Self raise SchemaViolation
 pub fn ST_Underline::parse(String) -> Self raise SchemaViolation
 pub fn ST_Underline::to_string(Self) -> String
 
 pub struct ST_UnqualifiedPercentage {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_UnqualifiedPercentage::new(String) -> Self raise SchemaViolation
 pub fn ST_UnqualifiedPercentage::parse(String) -> Self raise SchemaViolation
 pub fn ST_UnqualifiedPercentage::to_string(Self) -> String
+pub fn ST_UnqualifiedPercentage::value(Self) -> Int
 
-pub struct ST_VAnchor {
-  value : String
+pub(all) enum ST_VAnchor {
+  VAnchorMargin
+  VAnchorPage
+  VAnchorText
 } derive(Eq, @debug.Debug)
 pub fn ST_VAnchor::new(String) -> Self raise SchemaViolation
 pub fn ST_VAnchor::parse(String) -> Self raise SchemaViolation
 pub fn ST_VAnchor::to_string(Self) -> String
 
-pub struct ST_VerticalJc {
-  value : String
+pub(all) enum ST_VerticalJc {
+  VerticalJcBoth
+  VerticalJcBottom
+  VerticalJcCenter
+  VerticalJcTop
 } derive(Eq, @debug.Debug)
 pub fn ST_VerticalJc::new(String) -> Self raise SchemaViolation
 pub fn ST_VerticalJc::parse(String) -> Self raise SchemaViolation
 pub fn ST_VerticalJc::to_string(Self) -> String
 
-pub struct ST_View {
-  value : String
+pub(all) enum ST_View {
+  ViewMasterPages
+  ViewNone
+  ViewNormal
+  ViewOutline
+  ViewPrint
+  ViewWeb
 } derive(Eq, @debug.Debug)
 pub fn ST_View::new(String) -> Self raise SchemaViolation
 pub fn ST_View::parse(String) -> Self raise SchemaViolation
 pub fn ST_View::to_string(Self) -> String
 
-pub struct ST_WmlColorSchemeIndex {
-  value : String
+pub(all) enum ST_WmlColorSchemeIndex {
+  WmlColorSchemeIndexAccent1
+  WmlColorSchemeIndexAccent2
+  WmlColorSchemeIndexAccent3
+  WmlColorSchemeIndexAccent4
+  WmlColorSchemeIndexAccent5
+  WmlColorSchemeIndexAccent6
+  WmlColorSchemeIndexDark1
+  WmlColorSchemeIndexDark2
+  WmlColorSchemeIndexFollowedHyperlink
+  WmlColorSchemeIndexHyperlink
+  WmlColorSchemeIndexLight1
+  WmlColorSchemeIndexLight2
 } derive(Eq, @debug.Debug)
 pub fn ST_WmlColorSchemeIndex::new(String) -> Self raise SchemaViolation
 pub fn ST_WmlColorSchemeIndex::parse(String) -> Self raise SchemaViolation
 pub fn ST_WmlColorSchemeIndex::to_string(Self) -> String
 
-pub struct ST_Wrap {
-  value : String
+pub(all) enum ST_Wrap {
+  WrapAround
+  WrapAuto
+  WrapNone
+  WrapNotBeside
+  WrapThrough
+  WrapTight
 } derive(Eq, @debug.Debug)
 pub fn ST_Wrap::new(String) -> Self raise SchemaViolation
 pub fn ST_Wrap::parse(String) -> Self raise SchemaViolation
 pub fn ST_Wrap::to_string(Self) -> String
 
 pub struct ST_WrapDistance {
-  value : String
+  emus : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_WrapDistance::new(String) -> Self raise SchemaViolation
 pub fn ST_WrapDistance::parse(String) -> Self raise SchemaViolation
 pub fn ST_WrapDistance::to_string(Self) -> String
+pub fn ST_WrapDistance::value(Self) -> Int64
 
-pub struct ST_WrapText {
-  value : String
+pub(all) enum ST_WrapText {
+  WrapTextBothSides
+  WrapTextLargest
+  WrapTextLeft
+  WrapTextRight
 } derive(Eq, @debug.Debug)
 pub fn ST_WrapText::new(String) -> Self raise SchemaViolation
 pub fn ST_WrapText::parse(String) -> Self raise SchemaViolation
 pub fn ST_WrapText::to_string(Self) -> String
 
-pub struct ST_Zoom {
-  value : String
+pub(all) enum ST_Zoom {
+  ZoomBestFit
+  ZoomFullPage
+  ZoomNone
+  ZoomTextFit
 } derive(Eq, @debug.Debug)
 pub fn ST_Zoom::new(String) -> Self raise SchemaViolation
 pub fn ST_Zoom::parse(String) -> Self raise SchemaViolation

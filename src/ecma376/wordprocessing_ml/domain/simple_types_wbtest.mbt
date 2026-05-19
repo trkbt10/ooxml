@@ -143,6 +143,8 @@ test "ST_AlignH / ST_AlignV are typed enums" {
   assert_true((try! ST_AlignV::parse("top")) is AlignVTop)
   assert_eq((try! ST_AlignV::parse("outside")).to_string(), "outside")
 }
+
+///|
 test "WML chunk2 enumerations map lexical tokens to typed variants" {
   // §17.18.40 highlight-colour enumeration.
   assert_true((try! ST_HighlightColor::parse("darkBlue")) is HlDarkBlue)
@@ -208,9 +210,7 @@ test "WML chunk2 numeric carriers expose typed accessors" {
   assert_eq((try! ST_PointMeasure::parse("12")).to_uint64(), 12UL)
   // §17.18.51 — ST_MacroName enforces the maxLength=33 facet.
   assert_true(
-    (try? ST_MacroName::parse(
-      "ThisMacroNameIsExactlyThirtyFourLong",
-    ))
+    (try? ST_MacroName::parse("ThisMacroNameIsExactlyThirtyFourLong"))
     is Err(SchemaViolation(_)),
   )
   // §17.18.52 — ST_MailMergeDataType accepts any non-empty xsd:string
@@ -233,7 +233,5 @@ test "WML drawing chunk2 types decode positioning anchors" {
   assert_true(
     (try! ST_RelFromV::parse("outsideMargin")) is RelFromVOutsideMargin,
   )
-  assert_true(
-    (try? ST_RelFromH::parse("paragraph")) is Err(SchemaViolation(_)),
-  )
+  assert_true((try? ST_RelFromH::parse("paragraph")) is Err(SchemaViolation(_)))
 }
