@@ -632,693 +632,1756 @@ pub fn CT_DbPr::new(element : @xml.Element) -> CT_DbPr {
 }
 
 ///|
-/// XSD complex type CT_OlapPr: OLAP connection properties with local refresh, locale, row drill count, server fill, number format, font attributes.
+/// XSD complex type CT_OlapPr — Part 1 §18.13.6 (`<olapPr>` OLAP
+/// Properties). Attribute-only. Optional `@local` (xsd:boolean, default
+/// false); `@localConnection` (s:ST_Xstring); `@localRefresh`
+/// (xsd:boolean, default true); `@sendLocale` (xsd:boolean, default
+/// false); `@rowDrillCount` (xsd:unsignedInt); `@serverFill`,
+/// `@serverNumberFormat`, `@serverFont`, `@serverFontColor`
+/// (xsd:boolean, default true).
 pub(all) struct CT_OlapPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @local (xsd:boolean) — optional, default false.
+  local : Bool
+  /// @localConnection (s:ST_Xstring) — optional local connection string.
+  local_connection : String?
+  /// @localRefresh (xsd:boolean) — optional, default true.
+  local_refresh : Bool
+  /// @sendLocale (xsd:boolean) — optional, default false.
+  send_locale : Bool
+  /// @rowDrillCount (xsd:unsignedInt) — optional row drill cap.
+  row_drill_count : Int?
+  /// @serverFill (xsd:boolean) — optional, default true.
+  server_fill : Bool
+  /// @serverNumberFormat (xsd:boolean) — optional, default true.
+  server_number_format : Bool
+  /// @serverFont (xsd:boolean) — optional, default true.
+  server_font : Bool
+  /// @serverFontColor (xsd:boolean) — optional, default true.
+  server_font_color : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_OlapPr::new(element : @xml.Element) -> CT_OlapPr {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let local = attr_bool(element, "local", false)
+  let local_connection = attr(element, "localConnection")
+  let local_refresh = attr_bool(element, "localRefresh", true)
+  let send_locale = attr_bool(element, "sendLocale", false)
+  let row_drill_count = attr_uint_opt(element, "rowDrillCount")
+  let server_fill = attr_bool(element, "serverFill", true)
+  let server_number_format = attr_bool(element, "serverNumberFormat", true)
+  let server_font = attr_bool(element, "serverFont", true)
+  let server_font_color = attr_bool(element, "serverFontColor", true)
+  {
+    element,
+    local,
+    local_connection,
+    local_refresh,
+    send_locale,
+    row_drill_count,
+    server_fill,
+    server_number_format,
+    server_font,
+    server_font_color,
   }
 }
 
 ///|
-/// XSD complex type CT_WebPr: Schema sml.xsd complex type `CT_WebPr` has
-/// attributes `xml`, `sourceData`, `parsePre`, `consecutive`, `firstRow`,
-/// `xl97`, `textDates`, `xl2000`, `url`, `post`, `htmlTables`, `htmlFormat`,
-/// and `editPage`, with `tables` children; CT_WebPr and CT_WebPr::new own
-/// those web query properties.
+/// XSD complex type CT_WebPr — Part 1 §18.13.16 (`<webPr>` Web Query
+/// Properties). Sequence: optional `<tables>` (CT_Tables). Optional
+/// `@xml`, `@sourceData`, `@parsePre`, `@consecutive`, `@firstRow`,
+/// `@xl97`, `@textDates`, `@xl2000`, `@htmlTables` (xsd:boolean, default
+/// false); `@url`, `@post`, `@editPage` (s:ST_Xstring); `@htmlFormat`
+/// (ST_HtmlFmt, default `none`).
 pub(all) struct CT_WebPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <tables> (CT_Tables) — optional web-query table list.
+  tables : CT_Tables?
+  /// @xml (xsd:boolean) — optional, default false.
+  xml : Bool
+  /// @sourceData (xsd:boolean) — optional, default false.
+  source_data : Bool
+  /// @parsePre (xsd:boolean) — optional, default false.
+  parse_pre : Bool
+  /// @consecutive (xsd:boolean) — optional, default false.
+  consecutive : Bool
+  /// @firstRow (xsd:boolean) — optional, default false.
+  first_row : Bool
+  /// @xl97 (xsd:boolean) — optional, default false.
+  xl97 : Bool
+  /// @textDates (xsd:boolean) — optional, default false.
+  text_dates : Bool
+  /// @xl2000 (xsd:boolean) — optional, default false.
+  xl2000 : Bool
+  /// @url (s:ST_Xstring) — optional URL.
+  url : String?
+  /// @post (s:ST_Xstring) — optional POST body.
+  post : String?
+  /// @htmlTables (xsd:boolean) — optional, default false.
+  html_tables : Bool
+  /// @htmlFormat (ST_HtmlFmt) — optional, default `none`.
+  html_format : String
+  /// @editPage (s:ST_Xstring) — optional edit page URL.
+  edit_page : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_WebPr::new(element : @xml.Element) -> CT_WebPr {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut tables : CT_Tables? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "tables" {
+        tables = Some(CT_Tables::new(child_element))
+      }
+    }
+  }
+  let xml = attr_bool(element, "xml", false)
+  let source_data = attr_bool(element, "sourceData", false)
+  let parse_pre = attr_bool(element, "parsePre", false)
+  let consecutive = attr_bool(element, "consecutive", false)
+  let first_row = attr_bool(element, "firstRow", false)
+  let xl97 = attr_bool(element, "xl97", false)
+  let text_dates = attr_bool(element, "textDates", false)
+  let xl2000 = attr_bool(element, "xl2000", false)
+  let url = attr(element, "url")
+  let post = attr(element, "post")
+  let html_tables = attr_bool(element, "htmlTables", false)
+  let html_format = match attr(element, "htmlFormat") {
+    Some(value) => value
+    None => "none"
+  }
+  let edit_page = attr(element, "editPage")
+  {
+    element,
+    tables,
+    xml,
+    source_data,
+    parse_pre,
+    consecutive,
+    first_row,
+    xl97,
+    text_dates,
+    xl2000,
+    url,
+    post,
+    html_tables,
+    html_format,
+    edit_page,
   }
 }
 
 ///|
-/// XSD complex type CT_Parameters.
+/// XSD complex type CT_Parameters — Part 1 §18.13.7 (`<parameters>`
+/// Query Parameters). Sequence: `<parameter>+` (CT_Parameter, one or
+/// more). Optional `@count` (xsd:unsignedInt).
 pub(all) struct CT_Parameters {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <parameter>+ (CT_Parameter) — one or more parameter entries.
+  parameter : Array[CT_Parameter]
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Parameters::new(element : @xml.Element) -> CT_Parameters {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let parameter : Array[CT_Parameter] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "parameter" {
+        parameter.push(CT_Parameter::new(child_element))
+      }
+    }
   }
+  let count = attr_uint_opt(element, "count")
+  { element, parameter, count }
 }
 
 ///|
-/// XSD complex type CT_Parameter.
+/// XSD complex type CT_Parameter — Part 1 §18.13.8 (`<parameter>` Query
+/// Parameter). Attribute-only. Optional `@name` (s:ST_Xstring); `@sqlType`
+/// (xsd:int, default 0); `@parameterType` (ST_ParameterType, default
+/// `prompt`); `@refreshOnChange` (xsd:boolean, default false); `@prompt`
+/// (s:ST_Xstring); `@boolean` (xsd:boolean); `@double` (xsd:double);
+/// `@integer` (xsd:int); `@string`, `@cell` (s:ST_Xstring).
 pub(all) struct CT_Parameter {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — optional parameter name.
+  name : String?
+  /// @sqlType (xsd:int) — optional, default 0.
+  sql_type : Int
+  /// @parameterType (ST_ParameterType) — optional, default `prompt`.
+  parameter_type : String
+  /// @refreshOnChange (xsd:boolean) — optional, default false.
+  refresh_on_change : Bool
+  /// @prompt (s:ST_Xstring) — optional prompt text.
+  prompt : String?
+  /// @boolean (xsd:boolean) — optional supplied boolean value.
+  boolean : Bool?
+  /// @double (xsd:double) — optional supplied double value.
+  double : Double?
+  /// @integer (xsd:int) — optional supplied integer value.
+  integer : Int?
+  /// @string (s:ST_Xstring) — optional supplied string value.
+  string : String?
+  /// @cell (s:ST_Xstring) — optional supplied cell reference.
+  cell : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Parameter::new(element : @xml.Element) -> CT_Parameter {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = attr(element, "name")
+  let sql_type = attr_int(element, "sqlType", 0)
+  let parameter_type = match attr(element, "parameterType") {
+    Some(value) => value
+    None => "prompt"
+  }
+  let refresh_on_change = attr_bool(element, "refreshOnChange", false)
+  let prompt = attr(element, "prompt")
+  let boolean = attr_bool_opt(element, "boolean")
+  let double = attr_double_opt(element, "double")
+  let integer = attr_int_opt(element, "integer")
+  let string = attr(element, "string")
+  let cell = attr(element, "cell")
+  {
+    element,
+    name,
+    sql_type,
+    parameter_type,
+    refresh_on_change,
+    prompt,
+    boolean,
+    double,
+    integer,
+    string,
+    cell,
   }
 }
 
 ///|
-/// XSD complex type CT_TextPr.
+/// XSD complex type CT_TextPr — Part 1 §18.13.13 (`<textPr>` Text Import
+/// Properties). Sequence: optional `<textFields>` (CT_TextFields).
+/// Optional `@prompt` (xsd:boolean, default true); `@fileType`
+/// (ST_FileType, default `win`); `@characterSet` (xsd:string);
+/// `@firstRow` (xsd:unsignedInt, default 1); `@sourceFile`
+/// (s:ST_Xstring, default ""); `@delimited` (xsd:boolean, default true);
+/// `@decimal` (s:ST_Xstring, default "."); `@thousands` (s:ST_Xstring,
+/// default ","); `@tab` (xsd:boolean, default true); `@space`, `@comma`,
+/// `@semicolon`, `@consecutive` (xsd:boolean, default false);
+/// `@qualifier` (ST_Qualifier, default `doubleQuote`); `@delimiter`
+/// (s:ST_Xstring).
 pub(all) struct CT_TextPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <textFields> (CT_TextFields) — optional text field list.
+  text_fields : CT_TextFields?
+  /// @prompt (xsd:boolean) — optional, default true.
+  prompt : Bool
+  /// @fileType (ST_FileType) — optional, default `win`.
+  file_type : String
+  /// @characterSet (xsd:string) — optional character-set identifier.
+  character_set : String?
+  /// @firstRow (xsd:unsignedInt) — optional, default 1.
+  first_row : Int
+  /// @sourceFile (s:ST_Xstring) — optional, default "".
+  source_file : String
+  /// @delimited (xsd:boolean) — optional, default true.
+  delimited : Bool
+  /// @decimal (s:ST_Xstring) — optional decimal separator, default ".".
+  decimal : String
+  /// @thousands (s:ST_Xstring) — optional thousands separator, default ",".
+  thousands : String
+  /// @tab (xsd:boolean) — optional, default true.
+  tab : Bool
+  /// @space (xsd:boolean) — optional, default false.
+  space : Bool
+  /// @comma (xsd:boolean) — optional, default false.
+  comma : Bool
+  /// @semicolon (xsd:boolean) — optional, default false.
+  semicolon : Bool
+  /// @consecutive (xsd:boolean) — optional, default false.
+  consecutive : Bool
+  /// @qualifier (ST_Qualifier) — optional, default `doubleQuote`.
+  qualifier : String
+  /// @delimiter (s:ST_Xstring) — optional custom delimiter.
+  delimiter : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TextPr::new(element : @xml.Element) -> CT_TextPr {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut text_fields : CT_TextFields? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "textFields" {
+        text_fields = Some(CT_TextFields::new(child_element))
+      }
+    }
+  }
+  let prompt = attr_bool(element, "prompt", true)
+  let file_type = match attr(element, "fileType") {
+    Some(value) => value
+    None => "win"
+  }
+  let character_set = attr(element, "characterSet")
+  let first_row = attr_uint(element, "firstRow", 1)
+  let source_file = match attr(element, "sourceFile") {
+    Some(value) => value
+    None => ""
+  }
+  let delimited = attr_bool(element, "delimited", true)
+  let decimal = match attr(element, "decimal") {
+    Some(value) => value
+    None => "."
+  }
+  let thousands = match attr(element, "thousands") {
+    Some(value) => value
+    None => ","
+  }
+  let tab = attr_bool(element, "tab", true)
+  let space = attr_bool(element, "space", false)
+  let comma = attr_bool(element, "comma", false)
+  let semicolon = attr_bool(element, "semicolon", false)
+  let consecutive = attr_bool(element, "consecutive", false)
+  let qualifier = match attr(element, "qualifier") {
+    Some(value) => value
+    None => "doubleQuote"
+  }
+  let delimiter = attr(element, "delimiter")
+  {
+    element,
+    text_fields,
+    prompt,
+    file_type,
+    character_set,
+    first_row,
+    source_file,
+    delimited,
+    decimal,
+    thousands,
+    tab,
+    space,
+    comma,
+    semicolon,
+    consecutive,
+    qualifier,
+    delimiter,
   }
 }
 
 ///|
-/// XSD complex type CT_TextFields.
+/// XSD complex type CT_TextFields — Part 1 §18.13.14 (`<textFields>`
+/// Fields). Sequence: `<textField>+` (CT_TextField, one or more).
+/// Optional `@count` (xsd:unsignedInt, default 1).
 pub(all) struct CT_TextFields {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <textField>+ (CT_TextField) — one or more text field descriptors.
+  text_field : Array[CT_TextField]
+  /// @count (xsd:unsignedInt) — optional, default 1.
+  count : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TextFields::new(element : @xml.Element) -> CT_TextFields {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let text_field : Array[CT_TextField] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "textField" {
+        text_field.push(CT_TextField::new(child_element))
+      }
+    }
   }
+  let count = attr_uint(element, "count", 1)
+  { element, text_field, count }
 }
 
 ///|
-/// XSD complex type CT_TextField.
+/// XSD complex type CT_TextField — Part 1 §18.13.12 (`<textField>` Text
+/// Field). Attribute-only. Optional `@type` (ST_ExternalConnectionType,
+/// default `general`); `@position` (xsd:unsignedInt, default 0).
 pub(all) struct CT_TextField {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @type (ST_ExternalConnectionType) — optional, default `general`.
+  type_ : String
+  /// @position (xsd:unsignedInt) — optional, default 0.
+  position : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TextField::new(element : @xml.Element) -> CT_TextField {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let type_ = match attr(element, "type") {
+    Some(value) => value
+    None => "general"
   }
+  let position = attr_uint(element, "position", 0)
+  { element, type_, position }
 }
 
 ///|
-/// XSD complex type CT_Consolidation.
+/// XSD complex type CT_Consolidation — Part 1 §18.10.1.13
+/// (`<consolidation>` Pivot Cache Consolidation Source). Sequence:
+/// optional `<pages>` (CT_Pages), required `<rangeSets>` (CT_RangeSets).
+/// Optional `@autoPage` (xsd:boolean, default true).
 pub(all) struct CT_Consolidation {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <pages> (CT_Pages) — optional consolidation page list.
+  pages : CT_Pages?
+  /// <rangeSets> (CT_RangeSets) — required range set list.
+  range_sets : CT_RangeSets
+  /// @autoPage (xsd:boolean) — optional, default true.
+  auto_page : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Consolidation::new(element : @xml.Element) -> CT_Consolidation {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut pages : CT_Pages? = None
+  let mut range_sets : CT_RangeSets? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "pages" => pages = Some(CT_Pages::new(child_element))
+        "rangeSets" => range_sets = Some(CT_RangeSets::new(child_element))
+        _ => ()
+      }
+    }
   }
+  let range_sets_value = match range_sets {
+    Some(value) => value
+    None => CT_RangeSets::new(element)
+  }
+  let auto_page = attr_bool(element, "autoPage", true)
+  { element, pages, range_sets: range_sets_value, auto_page }
 }
 
 ///|
-/// XSD complex type CT_SharedItems.
+/// XSD complex type CT_SharedItems — Part 1 §18.10.1.41 (`<sharedItems>`
+/// Shared Items). Unbounded choice children: `<m>*` (CT_Missing), `<n>*`
+/// (CT_Number), `<b>*` (CT_Boolean), `<e>*` (CT_Error), `<s>*`
+/// (CT_String), `<d>*` (CT_DateTime). Optional `@containsSemiMixedTypes`,
+/// `@containsNonDate`, `@containsString` (xsd:boolean, default true);
+/// `@containsDate`, `@containsBlank`, `@containsMixedTypes`,
+/// `@containsNumber`, `@containsInteger`, `@longText` (xsd:boolean,
+/// default false); `@minValue`, `@maxValue` (xsd:double); `@minDate`,
+/// `@maxDate` (xsd:dateTime); `@count` (xsd:unsignedInt).
 pub(all) struct CT_SharedItems {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <m>* (CT_Missing) — zero or more missing entries.
+  missings : Array[CT_Missing]
+  /// <n>* (CT_Number) — zero or more number entries.
+  numbers : Array[CT_Number]
+  /// <b>* (CT_Boolean) — zero or more boolean entries.
+  booleans : Array[CT_Boolean]
+  /// <e>* (CT_Error) — zero or more error entries.
+  errors : Array[CT_Error]
+  /// <s>* (CT_String) — zero or more string entries.
+  strings : Array[CT_String]
+  /// <d>* (CT_DateTime) — zero or more dateTime entries.
+  date_times : Array[CT_DateTime]
+  /// @containsSemiMixedTypes (xsd:boolean) — optional, default true.
+  contains_semi_mixed_types : Bool
+  /// @containsNonDate (xsd:boolean) — optional, default true.
+  contains_non_date : Bool
+  /// @containsDate (xsd:boolean) — optional, default false.
+  contains_date : Bool
+  /// @containsString (xsd:boolean) — optional, default true.
+  contains_string : Bool
+  /// @containsBlank (xsd:boolean) — optional, default false.
+  contains_blank : Bool
+  /// @containsMixedTypes (xsd:boolean) — optional, default false.
+  contains_mixed_types : Bool
+  /// @containsNumber (xsd:boolean) — optional, default false.
+  contains_number : Bool
+  /// @containsInteger (xsd:boolean) — optional, default false.
+  contains_integer : Bool
+  /// @minValue (xsd:double) — optional minimum numeric value.
+  min_value : Double?
+  /// @maxValue (xsd:double) — optional maximum numeric value.
+  max_value : Double?
+  /// @minDate (xsd:dateTime) — optional minimum date.
+  min_date : String?
+  /// @maxDate (xsd:dateTime) — optional maximum date.
+  max_date : String?
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
+  /// @longText (xsd:boolean) — optional, default false.
+  long_text : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_SharedItems::new(element : @xml.Element) -> CT_SharedItems {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let missings : Array[CT_Missing] = []
+  let numbers : Array[CT_Number] = []
+  let booleans : Array[CT_Boolean] = []
+  let errors : Array[CT_Error] = []
+  let strings : Array[CT_String] = []
+  let date_times : Array[CT_DateTime] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "m" => missings.push(CT_Missing::new(child_element))
+        "n" => numbers.push(CT_Number::new(child_element))
+        "b" => booleans.push(CT_Boolean::new(child_element))
+        "e" => errors.push(CT_Error::new(child_element))
+        "s" => strings.push(CT_String::new(child_element))
+        "d" => date_times.push(CT_DateTime::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  let contains_semi_mixed_types = attr_bool(
+    element, "containsSemiMixedTypes", true,
+  )
+  let contains_non_date = attr_bool(element, "containsNonDate", true)
+  let contains_date = attr_bool(element, "containsDate", false)
+  let contains_string = attr_bool(element, "containsString", true)
+  let contains_blank = attr_bool(element, "containsBlank", false)
+  let contains_mixed_types = attr_bool(element, "containsMixedTypes", false)
+  let contains_number = attr_bool(element, "containsNumber", false)
+  let contains_integer = attr_bool(element, "containsInteger", false)
+  let min_value = attr_double_opt(element, "minValue")
+  let max_value = attr_double_opt(element, "maxValue")
+  let min_date = attr(element, "minDate")
+  let max_date = attr(element, "maxDate")
+  let count = attr_uint_opt(element, "count")
+  let long_text = attr_bool(element, "longText", false)
+  {
+    element,
+    missings,
+    numbers,
+    booleans,
+    errors,
+    strings,
+    date_times,
+    contains_semi_mixed_types,
+    contains_non_date,
+    contains_date,
+    contains_string,
+    contains_blank,
+    contains_mixed_types,
+    contains_number,
+    contains_integer,
+    min_value,
+    max_value,
+    min_date,
+    max_date,
+    count,
+    long_text,
   }
 }
 
 ///|
-/// XSD complex type CT_Missing.
+/// XSD complex type CT_Missing — Part 1 §18.10.1.46 (`<m>` Missing Item).
+/// Sequence: `<tpls>*` (CT_Tuples) shared-tuple sub-records and `<x>*`
+/// (CT_X) pivot indices. Optional `@u`, `@f` (xsd:boolean); `@c`
+/// (s:ST_Xstring) caption; `@cp` (xsd:unsignedInt) caption index;
+/// `@in` (xsd:unsignedInt); `@bc`, `@fc` (ST_UnsignedIntHex); `@i`,
+/// `@un`, `@st`, `@b` (xsd:boolean, default false).
 pub(all) struct CT_Missing {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <tpls>* (CT_Tuples) — zero or more shared-tuple sub-records.
+  tpls : Array[CT_Tuples]
+  /// <x>* (CT_X) — zero or more pivot tuple indices.
+  x : Array[CT_X]
+  /// @u (xsd:boolean) — optional unused flag.
+  u : Bool?
+  /// @f (xsd:boolean) — optional formula flag.
+  f : Bool?
+  /// @c (s:ST_Xstring) — optional caption text.
+  c : String?
+  /// @cp (xsd:unsignedInt) — optional caption shared-string index.
+  cp : Int?
+  /// @in (xsd:unsignedInt) — optional index.
+  in_ : Int?
+  /// @bc (ST_UnsignedIntHex) — optional background ARGB color.
+  bc : Int?
+  /// @fc (ST_UnsignedIntHex) — optional foreground ARGB color.
+  fc : Int?
+  /// @i (xsd:boolean) — optional, default false.
+  i : Bool
+  /// @un (xsd:boolean) — optional, default false.
+  un : Bool
+  /// @st (xsd:boolean) — optional, default false.
+  st : Bool
+  /// @b (xsd:boolean) — optional, default false.
+  b : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Missing::new(element : @xml.Element) -> CT_Missing {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let tpls : Array[CT_Tuples] = []
+  let x : Array[CT_X] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "tpls" => tpls.push(CT_Tuples::new(child_element))
+        "x" => x.push(CT_X::new(child_element))
+        _ => ()
+      }
+    }
   }
+  let u = attr_bool_opt(element, "u")
+  let f = attr_bool_opt(element, "f")
+  let c = attr(element, "c")
+  let cp = attr_uint_opt(element, "cp")
+  let in_ = attr_uint_opt(element, "in")
+  let bc = attr_hex_uint_opt(element, "bc")
+  let fc = attr_hex_uint_opt(element, "fc")
+  let i = attr_bool(element, "i", false)
+  let un = attr_bool(element, "un", false)
+  let st = attr_bool(element, "st", false)
+  let b = attr_bool(element, "b", false)
+  { element, tpls, x, u, f, c, cp, in_, bc, fc, i, un, st, b }
 }
 
 ///|
-/// XSD complex type CT_Number.
+/// XSD complex type CT_Number — Part 1 §18.10.1.69 (`<n>` Numeric Item).
+/// Sequence: `<tpls>*` (CT_Tuples) and `<x>*` (CT_X). Required `@v`
+/// (xsd:double). Optional `@u`, `@f` (xsd:boolean); `@c` (s:ST_Xstring);
+/// `@cp`, `@in` (xsd:unsignedInt); `@bc`, `@fc` (ST_UnsignedIntHex);
+/// `@i`, `@un`, `@st`, `@b` (xsd:boolean, default false).
 pub(all) struct CT_Number {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <tpls>* (CT_Tuples) — zero or more shared-tuple sub-records.
+  tpls : Array[CT_Tuples]
+  /// <x>* (CT_X) — zero or more pivot tuple indices.
+  x : Array[CT_X]
+  /// @v (xsd:double) — required numeric value.
+  v : Double
+  /// @u (xsd:boolean) — optional unused flag.
+  u : Bool?
+  /// @f (xsd:boolean) — optional formula flag.
+  f : Bool?
+  /// @c (s:ST_Xstring) — optional caption text.
+  c : String?
+  /// @cp (xsd:unsignedInt) — optional caption shared-string index.
+  cp : Int?
+  /// @in (xsd:unsignedInt) — optional index.
+  in_ : Int?
+  /// @bc (ST_UnsignedIntHex) — optional background ARGB color.
+  bc : Int?
+  /// @fc (ST_UnsignedIntHex) — optional foreground ARGB color.
+  fc : Int?
+  /// @i (xsd:boolean) — optional, default false.
+  i : Bool
+  /// @un (xsd:boolean) — optional, default false.
+  un : Bool
+  /// @st (xsd:boolean) — optional, default false.
+  st : Bool
+  /// @b (xsd:boolean) — optional, default false.
+  b : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Number::new(element : @xml.Element) -> CT_Number {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let tpls : Array[CT_Tuples] = []
+  let x : Array[CT_X] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "tpls" => tpls.push(CT_Tuples::new(child_element))
+        "x" => x.push(CT_X::new(child_element))
+        _ => ()
+      }
+    }
   }
+  let v = attr_double(element, "v", 0.0)
+  let u = attr_bool_opt(element, "u")
+  let f = attr_bool_opt(element, "f")
+  let c = attr(element, "c")
+  let cp = attr_uint_opt(element, "cp")
+  let in_ = attr_uint_opt(element, "in")
+  let bc = attr_hex_uint_opt(element, "bc")
+  let fc = attr_hex_uint_opt(element, "fc")
+  let i = attr_bool(element, "i", false)
+  let un = attr_bool(element, "un", false)
+  let st = attr_bool(element, "st", false)
+  let b = attr_bool(element, "b", false)
+  { element, tpls, x, v, u, f, c, cp, in_, bc, fc, i, un, st, b }
 }
 
 ///|
-/// XSD complex type CT_Error: Schema sml.xsd complex type `CT_Error` has
-/// attributes `v`, `u`, `f`, `c`, `cp`, `in`, `bc`, `fc`, `i`, `un`, `st`,
-/// and `b`, with `tpls` and `x` children; CT_Error and CT_Error::new own that
-/// pivot cache error item.
+/// XSD complex type CT_Error — Part 1 §18.10.1.25 (`<e>` Error Item).
+/// Sequence: optional `<tpls>` (CT_Tuples) and `<x>*` (CT_X). Required
+/// `@v` (s:ST_Xstring) error text. Optional `@u`, `@f` (xsd:boolean);
+/// `@c` (s:ST_Xstring); `@cp`, `@in` (xsd:unsignedInt); `@bc`, `@fc`
+/// (ST_UnsignedIntHex); `@i`, `@un`, `@st`, `@b` (xsd:boolean, default
+/// false).
 pub(all) struct CT_Error {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <tpls> (CT_Tuples) — optional shared-tuple sub-record.
+  tpls : CT_Tuples?
+  /// <x>* (CT_X) — zero or more pivot tuple indices.
+  x : Array[CT_X]
+  /// @v (s:ST_Xstring) — required error literal.
+  v : String
+  /// @u (xsd:boolean) — optional unused flag.
+  u : Bool?
+  /// @f (xsd:boolean) — optional formula flag.
+  f : Bool?
+  /// @c (s:ST_Xstring) — optional caption text.
+  c : String?
+  /// @cp (xsd:unsignedInt) — optional caption shared-string index.
+  cp : Int?
+  /// @in (xsd:unsignedInt) — optional index.
+  in_ : Int?
+  /// @bc (ST_UnsignedIntHex) — optional background ARGB color.
+  bc : Int?
+  /// @fc (ST_UnsignedIntHex) — optional foreground ARGB color.
+  fc : Int?
+  /// @i (xsd:boolean) — optional, default false.
+  i : Bool
+  /// @un (xsd:boolean) — optional, default false.
+  un : Bool
+  /// @st (xsd:boolean) — optional, default false.
+  st : Bool
+  /// @b (xsd:boolean) — optional, default false.
+  b : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Error::new(element : @xml.Element) -> CT_Error {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut tpls : CT_Tuples? = None
+  let x : Array[CT_X] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "tpls" => tpls = Some(CT_Tuples::new(child_element))
+        "x" => x.push(CT_X::new(child_element))
+        _ => ()
+      }
+    }
   }
+  let v = match attr(element, "v") {
+    Some(value) => value
+    None => ""
+  }
+  let u = attr_bool_opt(element, "u")
+  let f = attr_bool_opt(element, "f")
+  let c = attr(element, "c")
+  let cp = attr_uint_opt(element, "cp")
+  let in_ = attr_uint_opt(element, "in")
+  let bc = attr_hex_uint_opt(element, "bc")
+  let fc = attr_hex_uint_opt(element, "fc")
+  let i = attr_bool(element, "i", false)
+  let un = attr_bool(element, "un", false)
+  let st = attr_bool(element, "st", false)
+  let b = attr_bool(element, "b", false)
+  { element, tpls, x, v, u, f, c, cp, in_, bc, fc, i, un, st, b }
 }
 
 ///|
-/// XSD complex type CT_DateTime.
+/// XSD complex type CT_DateTime — Part 1 §18.10.1.20 (`<d>` DateTime
+/// Item). Sequence: `<x>*` (CT_X) pivot indices. Required `@v`
+/// (xsd:dateTime) date payload. Optional `@u`, `@f` (xsd:boolean); `@c`
+/// (s:ST_Xstring) caption; `@cp` (xsd:unsignedInt) caption index.
 pub(all) struct CT_DateTime {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <x>* (CT_X) — zero or more pivot tuple indices.
+  x : Array[CT_X]
+  /// @v (xsd:dateTime) — required dateTime literal.
+  v : String
+  /// @u (xsd:boolean) — optional unused flag.
+  u : Bool?
+  /// @f (xsd:boolean) — optional formula flag.
+  f : Bool?
+  /// @c (s:ST_Xstring) — optional caption text.
+  c : String?
+  /// @cp (xsd:unsignedInt) — optional caption shared-string index.
+  cp : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DateTime::new(element : @xml.Element) -> CT_DateTime {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let x : Array[CT_X] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "x" {
+        x.push(CT_X::new(child_element))
+      }
+    }
   }
+  let v = match attr(element, "v") {
+    Some(value) => value
+    None => ""
+  }
+  let u = attr_bool_opt(element, "u")
+  let f = attr_bool_opt(element, "f")
+  let c = attr(element, "c")
+  let cp = attr_uint_opt(element, "cp")
+  { element, x, v, u, f, c, cp }
 }
 
 ///|
-/// XSD complex type CT_FieldGroup.
+/// XSD complex type CT_FieldGroup — Part 1 §18.10.1.29 (`<fieldGroup>`
+/// Field Group). Sequence: optional `<rangePr>` (CT_RangePr),
+/// `<discretePr>` (CT_DiscretePr), `<groupItems>` (CT_GroupItems).
+/// Optional `@par` (xsd:unsignedInt) parent group; `@base`
+/// (xsd:unsignedInt) base field.
 pub(all) struct CT_FieldGroup {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <rangePr> (CT_RangePr) — optional range-based grouping.
+  range_pr : CT_RangePr?
+  /// <discretePr> (CT_DiscretePr) — optional discrete grouping.
+  discrete_pr : CT_DiscretePr?
+  /// <groupItems> (CT_GroupItems) — optional group item list.
+  group_items : CT_GroupItems?
+  /// @par (xsd:unsignedInt) — optional parent group index.
+  par : Int?
+  /// @base (xsd:unsignedInt) — optional base field index.
+  base : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FieldGroup::new(element : @xml.Element) -> CT_FieldGroup {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut range_pr : CT_RangePr? = None
+  let mut discrete_pr : CT_DiscretePr? = None
+  let mut group_items : CT_GroupItems? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "rangePr" => range_pr = Some(CT_RangePr::new(child_element))
+        "discretePr" => discrete_pr = Some(CT_DiscretePr::new(child_element))
+        "groupItems" => group_items = Some(CT_GroupItems::new(child_element))
+        _ => ()
+      }
+    }
   }
+  let par = attr_uint_opt(element, "par")
+  let base = attr_uint_opt(element, "base")
+  { element, range_pr, discrete_pr, group_items, par, base }
 }
 
 ///|
-/// XSD complex type CT_RangePr.
+/// XSD complex type CT_RangePr — Part 1 §18.10.1.78 (`<rangePr>` Range
+/// Grouping). Attribute-only. Optional `@autoStart`, `@autoEnd`
+/// (xsd:boolean, default true); `@groupBy` (ST_GroupBy, default `range`);
+/// `@startNum`, `@endNum` (xsd:double); `@startDate`, `@endDate`
+/// (xsd:dateTime); `@groupInterval` (xsd:double, default 1).
 pub(all) struct CT_RangePr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @autoStart (xsd:boolean) — optional, default true.
+  auto_start : Bool
+  /// @autoEnd (xsd:boolean) — optional, default true.
+  auto_end : Bool
+  /// @groupBy (ST_GroupBy) — optional, default `range`.
+  group_by : String
+  /// @startNum (xsd:double) — optional numeric start value.
+  start_num : Double?
+  /// @endNum (xsd:double) — optional numeric end value.
+  end_num : Double?
+  /// @startDate (xsd:dateTime) — optional date start value.
+  start_date : String?
+  /// @endDate (xsd:dateTime) — optional date end value.
+  end_date : String?
+  /// @groupInterval (xsd:double) — optional, default 1.
+  group_interval : Double
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_RangePr::new(element : @xml.Element) -> CT_RangePr {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let auto_start = attr_bool(element, "autoStart", true)
+  let auto_end = attr_bool(element, "autoEnd", true)
+  let group_by = match attr(element, "groupBy") {
+    Some(value) => value
+    None => "range"
+  }
+  let start_num = attr_double_opt(element, "startNum")
+  let end_num = attr_double_opt(element, "endNum")
+  let start_date = attr(element, "startDate")
+  let end_date = attr(element, "endDate")
+  let group_interval = attr_double(element, "groupInterval", 1.0)
+  {
+    element,
+    auto_start,
+    auto_end,
+    group_by,
+    start_num,
+    end_num,
+    start_date,
+    end_date,
+    group_interval,
   }
 }
 
 ///|
-/// XSD complex type CT_DiscretePr.
+/// XSD complex type CT_DiscretePr — Part 1 §18.10.1.23 (`<discretePr>`
+/// Discrete Grouping Properties). Sequence: `<x>+` (CT_Index, one or
+/// more). Optional `@count` (xsd:unsignedInt).
 pub(all) struct CT_DiscretePr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <x>+ (CT_Index) — one or more discrete index entries.
+  x : Array[CT_Index]
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DiscretePr::new(element : @xml.Element) -> CT_DiscretePr {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let x : Array[CT_Index] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "x" {
+        x.push(CT_Index::new(child_element))
+      }
+    }
   }
+  let count = attr_uint_opt(element, "count")
+  { element, x, count }
 }
 
 ///|
-/// XSD complex type CT_GroupItems.
+/// XSD complex type CT_GroupItems — Part 1 §18.10.1.31 (`<groupItems>`
+/// Group Items). Unbounded choice children: `<m>*` (CT_Missing), `<n>*`
+/// (CT_Number), `<b>*` (CT_Boolean), `<e>*` (CT_Error), `<s>*`
+/// (CT_String), `<d>*` (CT_DateTime). Optional `@count`
+/// (xsd:unsignedInt).
 pub(all) struct CT_GroupItems {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <m>* (CT_Missing) — zero or more missing entries.
+  missings : Array[CT_Missing]
+  /// <n>* (CT_Number) — zero or more number entries.
+  numbers : Array[CT_Number]
+  /// <b>* (CT_Boolean) — zero or more boolean entries.
+  booleans : Array[CT_Boolean]
+  /// <e>* (CT_Error) — zero or more error entries.
+  errors : Array[CT_Error]
+  /// <s>* (CT_String) — zero or more string entries.
+  strings : Array[CT_String]
+  /// <d>* (CT_DateTime) — zero or more dateTime entries.
+  date_times : Array[CT_DateTime]
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_GroupItems::new(element : @xml.Element) -> CT_GroupItems {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let missings : Array[CT_Missing] = []
+  let numbers : Array[CT_Number] = []
+  let booleans : Array[CT_Boolean] = []
+  let errors : Array[CT_Error] = []
+  let strings : Array[CT_String] = []
+  let date_times : Array[CT_DateTime] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "m" => missings.push(CT_Missing::new(child_element))
+        "n" => numbers.push(CT_Number::new(child_element))
+        "b" => booleans.push(CT_Boolean::new(child_element))
+        "e" => errors.push(CT_Error::new(child_element))
+        "s" => strings.push(CT_String::new(child_element))
+        "d" => date_times.push(CT_DateTime::new(child_element))
+        _ => ()
+      }
+    }
   }
+  let count = attr_uint_opt(element, "count")
+  { element, missings, numbers, booleans, errors, strings, date_times, count }
 }
 
 ///|
-/// XSD complex type CT_Record.
+/// XSD complex type CT_Record — Part 1 §18.10.1.82 (`<r>` PivotCache
+/// Record). Unbounded choice children: `<m>*` (CT_Missing), `<n>*`
+/// (CT_Number), `<b>*` (CT_Boolean), `<e>*` (CT_Error), `<s>*`
+/// (CT_String), `<d>*` (CT_DateTime), `<x>*` (CT_Index). No attributes.
 pub(all) struct CT_Record {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <m>* (CT_Missing) — zero or more missing entries.
+  missings : Array[CT_Missing]
+  /// <n>* (CT_Number) — zero or more number entries.
+  numbers : Array[CT_Number]
+  /// <b>* (CT_Boolean) — zero or more boolean entries.
+  booleans : Array[CT_Boolean]
+  /// <e>* (CT_Error) — zero or more error entries.
+  errors : Array[CT_Error]
+  /// <s>* (CT_String) — zero or more string entries.
+  strings : Array[CT_String]
+  /// <d>* (CT_DateTime) — zero or more dateTime entries.
+  date_times : Array[CT_DateTime]
+  /// <x>* (CT_Index) — zero or more shared-item index references.
+  x : Array[CT_Index]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Record::new(element : @xml.Element) -> CT_Record {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let missings : Array[CT_Missing] = []
+  let numbers : Array[CT_Number] = []
+  let booleans : Array[CT_Boolean] = []
+  let errors : Array[CT_Error] = []
+  let strings : Array[CT_String] = []
+  let date_times : Array[CT_DateTime] = []
+  let x : Array[CT_Index] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "m" => missings.push(CT_Missing::new(child_element))
+        "n" => numbers.push(CT_Number::new(child_element))
+        "b" => booleans.push(CT_Boolean::new(child_element))
+        "e" => errors.push(CT_Error::new(child_element))
+        "s" => strings.push(CT_String::new(child_element))
+        "d" => date_times.push(CT_DateTime::new(child_element))
+        "x" => x.push(CT_Index::new(child_element))
+        _ => ()
+      }
+    }
   }
+  { element, missings, numbers, booleans, errors, strings, date_times, x }
 }
 
 ///|
-/// XSD complex type CT_FieldsUsage.
+/// XSD complex type CT_FieldsUsage — Part 1 §18.10.1.27 (`<fieldsUsage>`
+/// Field Usage List). Sequence: `<fieldUsage>*` (CT_FieldUsage). Optional
+/// `@count` (xsd:unsignedInt).
 pub(all) struct CT_FieldsUsage {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <fieldUsage>* (CT_FieldUsage) — zero or more field usage entries.
+  field_usage : Array[CT_FieldUsage]
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FieldsUsage::new(element : @xml.Element) -> CT_FieldsUsage {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let field_usage : Array[CT_FieldUsage] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "fieldUsage" {
+        field_usage.push(CT_FieldUsage::new(child_element))
+      }
+    }
   }
+  let count = attr_uint_opt(element, "count")
+  { element, field_usage, count }
 }
 
 ///|
-/// XSD complex type CT_FieldUsage.
+/// XSD complex type CT_FieldUsage — Part 1 §18.10.1.26 (`<fieldUsage>`
+/// Field Usage). Attribute-only. Required `@x` (xsd:int) field index.
 pub(all) struct CT_FieldUsage {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @x (xsd:int) — required field index.
+  x : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FieldUsage::new(element : @xml.Element) -> CT_FieldUsage {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let x = attr_int(element, "x", 0)
+  { element, x }
 }
 
 ///|
-/// XSD complex type CT_GroupLevels.
+/// XSD complex type CT_GroupLevels — Part 1 §18.10.1.33 (`<groupLevels>`
+/// OLAP Grouping Levels). Sequence: `<groupLevel>+` (CT_GroupLevel, one
+/// or more). Optional `@count` (xsd:unsignedInt).
 pub(all) struct CT_GroupLevels {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <groupLevel>+ (CT_GroupLevel) — one or more group level entries.
+  group_level : Array[CT_GroupLevel]
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_GroupLevels::new(element : @xml.Element) -> CT_GroupLevels {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let group_level : Array[CT_GroupLevel] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "groupLevel" {
+        group_level.push(CT_GroupLevel::new(child_element))
+      }
+    }
   }
+  let count = attr_uint_opt(element, "count")
+  { element, group_level, count }
 }
 
 ///|
-/// XSD complex type CT_GroupLevel.
+/// XSD complex type CT_GroupLevel — Part 1 §18.10.1.32 (`<groupLevel>`
+/// OLAP Grouping Level). Sequence: optional `<groups>` (CT_Groups);
+/// optional `<extLst>` (CT_ExtensionList). Required `@uniqueName`
+/// (s:ST_Xstring), `@caption` (s:ST_Xstring). Optional `@user`,
+/// `@customRollUp` (xsd:boolean, default false).
 pub(all) struct CT_GroupLevel {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <groups> (CT_Groups) — optional group list.
+  groups : CT_Groups?
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
+  /// @uniqueName (s:ST_Xstring) — required unique name.
+  unique_name : String
+  /// @caption (s:ST_Xstring) — required caption.
+  caption : String
+  /// @user (xsd:boolean) — optional, default false.
+  user : Bool
+  /// @customRollUp (xsd:boolean) — optional, default false.
+  custom_roll_up : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_GroupLevel::new(element : @xml.Element) -> CT_GroupLevel {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut groups : CT_Groups? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "groups" => groups = Some(CT_Groups::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
   }
+  let unique_name = match attr(element, "uniqueName") {
+    Some(value) => value
+    None => ""
+  }
+  let caption = match attr(element, "caption") {
+    Some(value) => value
+    None => ""
+  }
+  let user = attr_bool(element, "user", false)
+  let custom_roll_up = attr_bool(element, "customRollUp", false)
+  { element, groups, ext_lst, unique_name, caption, user, custom_roll_up }
 }
 
 ///|
-/// XSD complex type CT_Groups.
+/// XSD complex type CT_Groups — Part 1 §18.10.1.34 (`<groups>` OLAP
+/// Level Groups). Sequence: `<group>+` (CT_LevelGroup, one or more).
+/// Optional `@count` (xsd:unsignedInt).
 pub(all) struct CT_Groups {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <group>+ (CT_LevelGroup) — one or more level groups.
+  group : Array[CT_LevelGroup]
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Groups::new(element : @xml.Element) -> CT_Groups {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let group : Array[CT_LevelGroup] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "group" {
+        group.push(CT_LevelGroup::new(child_element))
+      }
+    }
   }
+  let count = attr_uint_opt(element, "count")
+  { element, group, count }
 }
 
 ///|
-/// XSD complex type CT_LevelGroup.
+/// XSD complex type CT_LevelGroup — Part 1 §18.10.1.45 (`<group>` OLAP
+/// Level Group). Sequence: required `<groupMembers>` (CT_GroupMembers).
+/// Required `@name`, `@uniqueName`, `@caption` (s:ST_Xstring); optional
+/// `@uniqueParent` (s:ST_Xstring); `@id` (xsd:int).
 pub(all) struct CT_LevelGroup {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <groupMembers> (CT_GroupMembers) — required group member list.
+  group_members : CT_GroupMembers
+  /// @name (s:ST_Xstring) — required name.
+  name : String
+  /// @uniqueName (s:ST_Xstring) — required unique name.
+  unique_name : String
+  /// @caption (s:ST_Xstring) — required caption.
+  caption : String
+  /// @uniqueParent (s:ST_Xstring) — optional parent unique name.
+  unique_parent : String?
+  /// @id (xsd:int) — optional level group identifier.
+  id : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_LevelGroup::new(element : @xml.Element) -> CT_LevelGroup {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut group_members : CT_GroupMembers? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "groupMembers" {
+        group_members = Some(CT_GroupMembers::new(child_element))
+      }
+    }
+  }
+  let group_members_value = match group_members {
+    Some(value) => value
+    None => CT_GroupMembers::new(element)
+  }
+  let name = match attr(element, "name") {
+    Some(value) => value
+    None => ""
+  }
+  let unique_name = match attr(element, "uniqueName") {
+    Some(value) => value
+    None => ""
+  }
+  let caption = match attr(element, "caption") {
+    Some(value) => value
+    None => ""
+  }
+  let unique_parent = attr(element, "uniqueParent")
+  let id = attr_int_opt(element, "id")
+  {
+    element,
+    group_members: group_members_value,
+    name,
+    unique_name,
+    caption,
+    unique_parent,
+    id,
   }
 }
 
 ///|
-/// XSD complex type CT_ServerFormat.
+/// XSD complex type CT_ServerFormat — Part 1 §18.10.1.86
+/// (`<serverFormat>` OLAP Server Format). Attribute-only. Optional
+/// `@culture` (s:ST_Xstring); `@format` (s:ST_Xstring).
 pub(all) struct CT_ServerFormat {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @culture (s:ST_Xstring) — optional culture identifier.
+  culture : String?
+  /// @format (s:ST_Xstring) — optional format string.
+  format : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ServerFormat::new(element : @xml.Element) -> CT_ServerFormat {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let culture = attr(element, "culture")
+  let format = attr(element, "format")
+  { element, culture, format }
 }
 
 ///|
-/// XSD complex type CT_ServerFormats.
+/// XSD complex type CT_ServerFormats — Part 1 §18.10.1.87
+/// (`<serverFormats>` OLAP Server Formats). Sequence: `<serverFormat>*`
+/// (CT_ServerFormat). Optional `@count` (xsd:unsignedInt).
 pub(all) struct CT_ServerFormats {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <serverFormat>* (CT_ServerFormat) — zero or more server formats.
+  server_format : Array[CT_ServerFormat]
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ServerFormats::new(element : @xml.Element) -> CT_ServerFormats {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let server_format : Array[CT_ServerFormat] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "serverFormat" {
+        server_format.push(CT_ServerFormat::new(child_element))
+      }
+    }
   }
+  let count = attr_uint_opt(element, "count")
+  { element, server_format, count }
 }
 
 ///|
-/// XSD complex type CT_Location.
+/// XSD complex type CT_Location — Part 1 §18.10.1.49 (`<location>`
+/// PivotTable Location). Attribute-only. Required `@ref` (ST_Ref),
+/// `@firstHeaderRow`, `@firstDataRow`, `@firstDataCol`
+/// (xsd:unsignedInt). Optional `@rowPageCount`, `@colPageCount`
+/// (xsd:unsignedInt, default 0).
 pub(all) struct CT_Location {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @ref (ST_Ref) — required pivot table reference.
+  ref_ : String
+  /// @firstHeaderRow (xsd:unsignedInt) — required first header row.
+  first_header_row : Int
+  /// @firstDataRow (xsd:unsignedInt) — required first data row.
+  first_data_row : Int
+  /// @firstDataCol (xsd:unsignedInt) — required first data column.
+  first_data_col : Int
+  /// @rowPageCount (xsd:unsignedInt) — optional, default 0.
+  row_page_count : Int
+  /// @colPageCount (xsd:unsignedInt) — optional, default 0.
+  col_page_count : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Location::new(element : @xml.Element) -> CT_Location {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let ref_ = match attr(element, "ref") {
+    Some(value) => value
+    None => ""
+  }
+  let first_header_row = attr_uint(element, "firstHeaderRow", 0)
+  let first_data_row = attr_uint(element, "firstDataRow", 0)
+  let first_data_col = attr_uint(element, "firstDataCol", 0)
+  let row_page_count = attr_uint(element, "rowPageCount", 0)
+  let col_page_count = attr_uint(element, "colPageCount", 0)
+  {
+    element,
+    ref_,
+    first_header_row,
+    first_data_row,
+    first_data_col,
+    row_page_count,
+    col_page_count,
   }
 }
 
 ///|
-/// XSD complex type CT_AutoSortScope.
+/// XSD complex type CT_AutoSortScope — Part 1 §18.10.1.5
+/// (`<autoSortScope>` AutoSort Scope). Sequence: required `<pivotArea>`
+/// (CT_PivotArea). No attributes.
 pub(all) struct CT_AutoSortScope {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <pivotArea> (CT_PivotArea) — required pivot area.
+  pivot_area : CT_PivotArea
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_AutoSortScope::new(element : @xml.Element) -> CT_AutoSortScope {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut pivot_area : CT_PivotArea? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "pivotArea" {
+        pivot_area = Some(CT_PivotArea::new(child_element))
+      }
+    }
   }
+  let pivot_area_value = match pivot_area {
+    Some(value) => value
+    None => CT_PivotArea::new(element)
+  }
+  { element, pivot_area: pivot_area_value }
 }
 
 ///|
-/// XSD complex type CT_Items.
+/// XSD complex type CT_Items — Part 1 §18.10.1.40 (`<items>` Field
+/// Items). Sequence: `<item>+` (CT_Item, one or more). Optional `@count`
+/// (xsd:unsignedInt).
 pub(all) struct CT_Items {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <item>+ (CT_Item) — one or more pivot item entries.
+  item : Array[CT_Item]
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Items::new(element : @xml.Element) -> CT_Items {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let item : Array[CT_Item] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "item" {
+        item.push(CT_Item::new(child_element))
+      }
+    }
   }
+  let count = attr_uint_opt(element, "count")
+  { element, item, count }
 }
 
 ///|
-/// XSD complex type CT_Item.
+/// XSD complex type CT_Item — Part 1 §18.10.1.43 (`<item>` PivotField
+/// Item). Attribute-only. Optional `@n` (s:ST_Xstring) caption; `@t`
+/// (ST_ItemType, default `data`); `@h` (default false), `@s` (false),
+/// `@sd` (true), `@f` (false), `@m` (false), `@c` (false) (xsd:boolean);
+/// `@x` (xsd:unsignedInt); `@d` (false), `@e` (true) (xsd:boolean).
 pub(all) struct CT_Item {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @n (s:ST_Xstring) — optional caption string.
+  n : String?
+  /// @t (ST_ItemType) — optional, default `data`.
+  t : String
+  /// @h (xsd:boolean) — optional, default false (hidden).
+  h : Bool
+  /// @s (xsd:boolean) — optional, default false (set source flag).
+  s : Bool
+  /// @sd (xsd:boolean) — optional, default true (show detail).
+  sd : Bool
+  /// @f (xsd:boolean) — optional, default false (calculated).
+  f : Bool
+  /// @m (xsd:boolean) — optional, default false (missing).
+  m : Bool
+  /// @c (xsd:boolean) — optional, default false (cached approx).
+  c : Bool
+  /// @x (xsd:unsignedInt) — optional shared item index.
+  x : Int?
+  /// @d (xsd:boolean) — optional, default false (drill).
+  d : Bool
+  /// @e (xsd:boolean) — optional, default true (expand).
+  e : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Item::new(element : @xml.Element) -> CT_Item {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let n = attr(element, "n")
+  let t = match attr(element, "t") {
+    Some(value) => value
+    None => "data"
   }
+  let h = attr_bool(element, "h", false)
+  let s = attr_bool(element, "s", false)
+  let sd = attr_bool(element, "sd", true)
+  let f = attr_bool(element, "f", false)
+  let m = attr_bool(element, "m", false)
+  let c = attr_bool(element, "c", false)
+  let x = attr_uint_opt(element, "x")
+  let d = attr_bool(element, "d", false)
+  let e = attr_bool(element, "e", true)
+  { element, n, t, h, s, sd, f, m, c, x, d, e }
 }
 
 ///|
-/// XSD complex type CT_I: Schema sml.xsd complex type `CT_I` has attributes
-/// `t`, `r`, and `i`, and `x` children of type CT_X; CT_I and CT_I::new own
-/// that pivot row or column item.
+/// XSD complex type CT_I — Part 1 §18.10.1.37 (`<i>` Row Item). Sequence:
+/// `<x>*` (CT_X) zero or more member index entries. Optional `@t`
+/// (ST_ItemType, default `data`); `@r` (xsd:unsignedInt, default 0)
+/// repeated-item count; `@i` (xsd:unsignedInt, default 0) data field
+/// index.
 pub(all) struct CT_I {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <x>* (CT_X) — zero or more pivot tuple indices.
+  x : Array[CT_X]
+  /// @t (ST_ItemType) — optional, default `data`.
+  t : String
+  /// @r (xsd:unsignedInt) — optional repeated item count, default 0.
+  r : Int
+  /// @i (xsd:unsignedInt) — optional data field index, default 0.
+  i : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_I::new(element : @xml.Element) -> CT_I {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let x : Array[CT_X] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "x" {
+        x.push(CT_X::new(child_element))
+      }
+    }
   }
+  let t = match attr(element, "t") {
+    Some(value) => value
+    None => "data"
+  }
+  let r = attr_uint(element, "r", 0)
+  let i = attr_uint(element, "i", 0)
+  { element, x, t, r, i }
 }
 
 ///|
-/// XSD complex type CT_X: Schema sml.xsd complex type `CT_X` has attribute
-/// `v`; CT_X and CT_X::new own that pivot tuple index value.
+/// XSD complex type CT_X — Part 1 §18.10.1.108 (`<x>` Pivot Tuple Index).
+/// Attribute-only. Optional `@v` (xsd:int, default 0) shared-items index.
 pub(all) struct CT_X {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @v (xsd:int) — optional shared items index, default 0.
+  v : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_X::new(element : @xml.Element) -> CT_X {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let v = attr_int(element, "v", 0)
+  { element, v }
 }
 
 ///|
-/// XSD complex type CT_Field.
+/// XSD complex type CT_Field — Part 1 §18.10.1.28 (`<field>` Field
+/// Reference). Attribute-only. Required `@x` (xsd:int) field index.
 pub(all) struct CT_Field {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @x (xsd:int) — required field index.
+  x : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Field::new(element : @xml.Element) -> CT_Field {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let x = attr_int(element, "x", 0)
+  { element, x }
 }
 
 ///|
-/// XSD complex type CT_Formats.
+/// XSD complex type CT_Formats — Part 1 §18.10.1.30 (`<formats>` Pivot
+/// Formats). Sequence: `<format>+` (CT_Format, one or more). Optional
+/// `@count` (xsd:unsignedInt, default 0).
 pub(all) struct CT_Formats {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <format>+ (CT_Format) — one or more pivot format entries.
+  format : Array[CT_Format]
+  /// @count (xsd:unsignedInt) — optional, default 0.
+  count : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Formats::new(element : @xml.Element) -> CT_Formats {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let format : Array[CT_Format] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "format" {
+        format.push(CT_Format::new(child_element))
+      }
+    }
   }
+  let count = attr_uint(element, "count", 0)
+  { element, format, count }
 }
 
 ///|
-/// XSD complex type CT_Format: pivot table format with pivotArea and extLst children plus action and dxfId attributes.
+/// XSD complex type CT_Format — Part 1 §18.10.1.30 (`<format>` Pivot
+/// Format). Sequence: required `<pivotArea>` (CT_PivotArea); optional
+/// `<extLst>` (CT_ExtensionList). Optional `@action` (ST_FormatAction,
+/// default `formatting`); `@dxfId` (ST_DxfId).
 pub(all) struct CT_Format {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <pivotArea> (CT_PivotArea) — required pivot area.
+  pivot_area : CT_PivotArea
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
+  /// @action (ST_FormatAction) — optional, default `formatting`.
+  action : String
+  /// @dxfId (ST_DxfId) — optional differential format index.
+  dxf_id : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Format::new(element : @xml.Element) -> CT_Format {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut pivot_area : CT_PivotArea? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "pivotArea" => pivot_area = Some(CT_PivotArea::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
   }
+  let pivot_area_value = match pivot_area {
+    Some(value) => value
+    None => CT_PivotArea::new(element)
+  }
+  let action = match attr(element, "action") {
+    Some(value) => value
+    None => "formatting"
+  }
+  let dxf_id = attr_uint_opt(element, "dxfId")
+  { element, pivot_area: pivot_area_value, ext_lst, action, dxf_id }
 }
 
 ///|
-/// XSD complex type CT_Dimensions.
+/// XSD complex type CT_Dimensions — Part 1 §18.10.1.22 (`<dimensions>`
+/// OLAP Dimensions). Sequence: `<dimension>*` (CT_PivotDimension).
+/// Optional `@count` (xsd:unsignedInt).
 pub(all) struct CT_Dimensions {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <dimension>* (CT_PivotDimension) — zero or more dimensions.
+  dimension : Array[CT_PivotDimension]
+  /// @count (xsd:unsignedInt) — optional declared count.
+  count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Dimensions::new(element : @xml.Element) -> CT_Dimensions {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let dimension : Array[CT_PivotDimension] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "dimension" {
+        dimension.push(CT_PivotDimension::new(child_element))
+      }
+    }
   }
+  let count = attr_uint_opt(element, "count")
+  { element, dimension, count }
 }
 
 ///|
-/// XSD complex type CT_Index.
+/// XSD complex type CT_Index — Part 1 §18.10.1.38 (`<x>` Shared Items
+/// Index). Attribute-only. Required `@v` (xsd:unsignedInt) index value.
 pub(all) struct CT_Index {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @v (xsd:unsignedInt) — required shared-items index value.
+  v : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Index::new(element : @xml.Element) -> CT_Index {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let v = attr_uint(element, "v", 0)
+  { element, v }
 }
 
 ///|
-/// XSD complex type CT_DeletedField.
+/// XSD complex type CT_DeletedField — Part 1 §18.12.7 (`<deletedField>`
+/// Deleted QueryTable Field). Attribute-only. Required `@name`
+/// (s:ST_Xstring).
 pub(all) struct CT_DeletedField {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — required deleted field name.
+  name : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DeletedField::new(element : @xml.Element) -> CT_DeletedField {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = match attr(element, "name") {
+    Some(value) => value
+    None => ""
   }
+  { element, name }
 }
 
 ///|
-/// XSD complex type CT_Revisions.
+/// XSD complex type CT_Revisions — Part 1 §18.11.1.20 (`<revisions>`
+/// Revisions root). Unbounded choice children: `<rrc>*`
+/// (CT_RevisionRowColumn), `<rm>*` (CT_RevisionMove), `<rcv>*`
+/// (CT_RevisionCustomView), `<rsnm>*` (CT_RevisionSheetRename), `<ris>*`
+/// (CT_RevisionInsertSheet), `<rcc>*` (CT_RevisionCellChange), `<rfmt>*`
+/// (CT_RevisionFormatting), `<raf>*` (CT_RevisionAutoFormatting),
+/// `<rdn>*` (CT_RevisionDefinedName), `<rcmt>*` (CT_RevisionComment),
+/// `<rqt>*` (CT_RevisionQueryTableField), `<rcft>*`
+/// (CT_RevisionConflict). No attributes.
 pub(all) struct CT_Revisions {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <rrc>* (CT_RevisionRowColumn) — zero or more row/column revisions.
+  rrc : Array[CT_RevisionRowColumn]
+  /// <rm>* (CT_RevisionMove) — zero or more move revisions.
+  rm : Array[CT_RevisionMove]
+  /// <rcv>* (CT_RevisionCustomView) — zero or more custom view revisions.
+  rcv : Array[CT_RevisionCustomView]
+  /// <rsnm>* (CT_RevisionSheetRename) — zero or more sheet rename revisions.
+  rsnm : Array[CT_RevisionSheetRename]
+  /// <ris>* (CT_RevisionInsertSheet) — zero or more sheet insert revisions.
+  ris : Array[CT_RevisionInsertSheet]
+  /// <rcc>* (CT_RevisionCellChange) — zero or more cell-change revisions.
+  rcc : Array[CT_RevisionCellChange]
+  /// <rfmt>* (CT_RevisionFormatting) — zero or more formatting revisions.
+  rfmt : Array[CT_RevisionFormatting]
+  /// <raf>* (CT_RevisionAutoFormatting) — zero or more autoformatting
+  /// revisions.
+  raf : Array[CT_RevisionAutoFormatting]
+  /// <rdn>* (CT_RevisionDefinedName) — zero or more defined-name revisions.
+  rdn : Array[CT_RevisionDefinedName]
+  /// <rcmt>* (CT_RevisionComment) — zero or more comment revisions.
+  rcmt : Array[CT_RevisionComment]
+  /// <rqt>* (CT_RevisionQueryTableField) — zero or more query-table field
+  /// revisions.
+  rqt : Array[CT_RevisionQueryTableField]
+  /// <rcft>* (CT_RevisionConflict) — zero or more conflict revisions.
+  rcft : Array[CT_RevisionConflict]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Revisions::new(element : @xml.Element) -> CT_Revisions {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let rrc : Array[CT_RevisionRowColumn] = []
+  let rm : Array[CT_RevisionMove] = []
+  let rcv : Array[CT_RevisionCustomView] = []
+  let rsnm : Array[CT_RevisionSheetRename] = []
+  let ris : Array[CT_RevisionInsertSheet] = []
+  let rcc : Array[CT_RevisionCellChange] = []
+  let rfmt : Array[CT_RevisionFormatting] = []
+  let raf : Array[CT_RevisionAutoFormatting] = []
+  let rdn : Array[CT_RevisionDefinedName] = []
+  let rcmt : Array[CT_RevisionComment] = []
+  let rqt : Array[CT_RevisionQueryTableField] = []
+  let rcft : Array[CT_RevisionConflict] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "rrc" => rrc.push(CT_RevisionRowColumn::new(child_element))
+        "rm" => rm.push(CT_RevisionMove::new(child_element))
+        "rcv" => rcv.push(CT_RevisionCustomView::new(child_element))
+        "rsnm" => rsnm.push(CT_RevisionSheetRename::new(child_element))
+        "ris" => ris.push(CT_RevisionInsertSheet::new(child_element))
+        "rcc" => rcc.push(CT_RevisionCellChange::new(child_element))
+        "rfmt" => rfmt.push(CT_RevisionFormatting::new(child_element))
+        "raf" => raf.push(CT_RevisionAutoFormatting::new(child_element))
+        "rdn" => rdn.push(CT_RevisionDefinedName::new(child_element))
+        "rcmt" => rcmt.push(CT_RevisionComment::new(child_element))
+        "rqt" => rqt.push(CT_RevisionQueryTableField::new(child_element))
+        "rcft" => rcft.push(CT_RevisionConflict::new(child_element))
+        _ => ()
+      }
+    }
   }
+  { element, rrc, rm, rcv, rsnm, ris, rcc, rfmt, raf, rdn, rcmt, rqt, rcft }
 }
 
 ///|
-/// XSD complex type CT_UndoInfo.
+/// XSD complex type CT_UndoInfo — Part 1 §18.11.1.27 (`<undo>` Undo
+/// Information). Attribute-only. Required `@index` (xsd:unsignedInt),
+/// `@exp` (ST_FormulaExpression), `@dr` (ST_RefA). Optional `@ref3D`
+/// (xsd:boolean, default false); `@array` (false); `@v` (false);
+/// `@nf` (false); `@cs` (false); `@dn` (s:ST_Xstring); `@r`
+/// (ST_CellRef); `@sId` (xsd:unsignedInt).
 pub(all) struct CT_UndoInfo {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @index (xsd:unsignedInt) — required formula-record index.
+  index : Int
+  /// @exp (ST_FormulaExpression) — required expression kind.
+  exp : String
+  /// @ref3D (xsd:boolean) — optional, default false.
+  ref3_d : Bool
+  /// @array (xsd:boolean) — optional, default false.
+  array : Bool
+  /// @v (xsd:boolean) — optional, default false.
+  v : Bool
+  /// @nf (xsd:boolean) — optional, default false.
+  nf : Bool
+  /// @cs (xsd:boolean) — optional, default false.
+  cs : Bool
+  /// @dr (ST_RefA) — required dependency range reference.
+  dr : String
+  /// @dn (s:ST_Xstring) — optional defined name reference.
+  dn : String?
+  /// @r (ST_CellRef) — optional cell reference.
+  r : String?
+  /// @sId (xsd:unsignedInt) — optional sheet identifier.
+  s_id : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_UndoInfo::new(element : @xml.Element) -> CT_UndoInfo {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let index = attr_uint(element, "index", 0)
+  let exp = match attr(element, "exp") {
+    Some(value) => value
+    None => ""
   }
+  let ref3_d = attr_bool(element, "ref3D", false)
+  let array = attr_bool(element, "array", false)
+  let v = attr_bool(element, "v", false)
+  let nf = attr_bool(element, "nf", false)
+  let cs = attr_bool(element, "cs", false)
+  let dr = match attr(element, "dr") {
+    Some(value) => value
+    None => ""
+  }
+  let dn = attr(element, "dn")
+  let r = attr(element, "r")
+  let s_id = attr_uint_opt(element, "sId")
+  { element, index, exp, ref3_d, array, v, nf, cs, dr, dn, r, s_id }
 }
 
 ///|

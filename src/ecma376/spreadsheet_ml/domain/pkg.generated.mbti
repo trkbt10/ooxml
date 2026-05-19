@@ -60,6 +60,7 @@ pub(all) struct CT_AutoFilter {
 
 pub(all) struct CT_AutoSortScope {
   element : @xml.Element
+  pivot_area : CT_PivotArea
 } derive(Eq, @debug.Debug)
 pub fn CT_AutoSortScope::new(@xml.Element) -> Self
 
@@ -650,6 +651,9 @@ pub fn CT_Connections::new(@xml.Element) -> Self
 
 pub(all) struct CT_Consolidation {
   element : @xml.Element
+  pages : CT_Pages?
+  range_sets : CT_RangeSets
+  auto_page : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Consolidation::new(@xml.Element) -> Self
 
@@ -873,6 +877,12 @@ pub(all) struct CT_DateGroupItem {
 
 pub(all) struct CT_DateTime {
   element : @xml.Element
+  x : Array[CT_X]
+  v : String
+  u : Bool?
+  f : Bool?
+  c : String?
+  cp : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_DateTime::new(@xml.Element) -> Self
 
@@ -953,6 +963,7 @@ pub fn CT_DefinedNames::new(@xml.Element) -> Self
 
 pub(all) struct CT_DeletedField {
   element : @xml.Element
+  name : String
 } derive(Eq, @debug.Debug)
 pub fn CT_DeletedField::new(@xml.Element) -> Self
 
@@ -977,11 +988,15 @@ pub fn CT_Dialogsheet::new(@xml.Element) -> Self
 
 pub(all) struct CT_Dimensions {
   element : @xml.Element
+  dimension : Array[CT_PivotDimension]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_Dimensions::new(@xml.Element) -> Self
 
 pub(all) struct CT_DiscretePr {
   element : @xml.Element
+  x : Array[CT_Index]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_DiscretePr::new(@xml.Element) -> Self
 
@@ -1042,6 +1057,20 @@ pub(all) struct CT_DynamicFilter {
 
 pub(all) struct CT_Error {
   element : @xml.Element
+  tpls : CT_Tuples?
+  x : Array[CT_X]
+  v : String
+  u : Bool?
+  f : Bool?
+  c : String?
+  cp : Int?
+  in_ : Int?
+  bc : Int?
+  fc : Int?
+  i : Bool
+  un : Bool
+  st : Bool
+  b : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Error::new(@xml.Element) -> Self
 
@@ -1146,21 +1175,30 @@ pub fn CT_ExternalSheetNames::new(@xml.Element) -> Self
 
 pub(all) struct CT_Field {
   element : @xml.Element
+  x : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_Field::new(@xml.Element) -> Self
 
 pub(all) struct CT_FieldGroup {
   element : @xml.Element
+  range_pr : CT_RangePr?
+  discrete_pr : CT_DiscretePr?
+  group_items : CT_GroupItems?
+  par : Int?
+  base : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_FieldGroup::new(@xml.Element) -> Self
 
 pub(all) struct CT_FieldUsage {
   element : @xml.Element
+  x : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_FieldUsage::new(@xml.Element) -> Self
 
 pub(all) struct CT_FieldsUsage {
   element : @xml.Element
+  field_usage : Array[CT_FieldUsage]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_FieldsUsage::new(@xml.Element) -> Self
 
@@ -1288,11 +1326,17 @@ pub fn CT_Fonts::new(@xml.Element) -> Self
 
 pub(all) struct CT_Format {
   element : @xml.Element
+  pivot_area : CT_PivotArea
+  ext_lst : CT_ExtensionList?
+  action : String
+  dxf_id : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_Format::new(@xml.Element) -> Self
 
 pub(all) struct CT_Formats {
   element : @xml.Element
+  format : Array[CT_Format]
+  count : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_Formats::new(@xml.Element) -> Self
 
@@ -1345,16 +1389,31 @@ pub fn CT_GradientStop::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupItems {
   element : @xml.Element
+  missings : Array[CT_Missing]
+  numbers : Array[CT_Number]
+  booleans : Array[CT_Boolean]
+  errors : Array[CT_Error]
+  strings : Array[CT_String]
+  date_times : Array[CT_DateTime]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_GroupItems::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupLevel {
   element : @xml.Element
+  groups : CT_Groups?
+  ext_lst : CT_ExtensionList?
+  unique_name : String
+  caption : String
+  user : Bool
+  custom_roll_up : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_GroupLevel::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupLevels {
   element : @xml.Element
+  group_level : Array[CT_GroupLevel]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_GroupLevels::new(@xml.Element) -> Self
 
@@ -1374,6 +1433,8 @@ pub fn CT_GroupMembers::new(@xml.Element) -> Self
 
 pub(all) struct CT_Groups {
   element : @xml.Element
+  group : Array[CT_LevelGroup]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_Groups::new(@xml.Element) -> Self
 
@@ -1416,6 +1477,10 @@ pub fn CT_Hyperlinks::new(@xml.Element) -> Self
 
 pub(all) struct CT_I {
   element : @xml.Element
+  x : Array[CT_X]
+  t : String
+  r : Int
+  i : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_I::new(@xml.Element) -> Self
 
@@ -1443,6 +1508,7 @@ pub fn CT_IgnoredErrors::new(@xml.Element) -> Self
 
 pub(all) struct CT_Index {
   element : @xml.Element
+  v : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_Index::new(@xml.Element) -> Self
 
@@ -1470,21 +1536,46 @@ pub fn CT_IntProperty::new(@xml.Element) -> Self
 
 pub(all) struct CT_Item {
   element : @xml.Element
+  n : String?
+  t : String
+  h : Bool
+  s : Bool
+  sd : Bool
+  f : Bool
+  m : Bool
+  c : Bool
+  x : Int?
+  d : Bool
+  e : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Item::new(@xml.Element) -> Self
 
 pub(all) struct CT_Items {
   element : @xml.Element
+  item : Array[CT_Item]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_Items::new(@xml.Element) -> Self
 
 pub(all) struct CT_LevelGroup {
   element : @xml.Element
+  group_members : CT_GroupMembers
+  name : String
+  unique_name : String
+  caption : String
+  unique_parent : String?
+  id : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_LevelGroup::new(@xml.Element) -> Self
 
 pub(all) struct CT_Location {
   element : @xml.Element
+  ref_ : String
+  first_header_row : Int
+  first_data_row : Int
+  first_data_col : Int
+  row_page_count : Int
+  col_page_count : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_Location::new(@xml.Element) -> Self
 
@@ -1773,6 +1864,19 @@ pub fn CT_MetadataTypes::new(@xml.Element) -> Self
 
 pub(all) struct CT_Missing {
   element : @xml.Element
+  tpls : Array[CT_Tuples]
+  x : Array[CT_X]
+  u : Bool?
+  f : Bool?
+  c : String?
+  cp : Int?
+  in_ : Int?
+  bc : Int?
+  fc : Int?
+  i : Bool
+  un : Bool
+  st : Bool
+  b : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Missing::new(@xml.Element) -> Self
 
@@ -1792,6 +1896,20 @@ pub fn CT_NumFmts::new(@xml.Element) -> Self
 
 pub(all) struct CT_Number {
   element : @xml.Element
+  tpls : Array[CT_Tuples]
+  x : Array[CT_X]
+  v : Double
+  u : Bool?
+  f : Bool?
+  c : String?
+  cp : Int?
+  in_ : Int?
+  bc : Int?
+  fc : Int?
+  i : Bool
+  un : Bool
+  st : Bool
+  b : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Number::new(@xml.Element) -> Self
 
@@ -1811,6 +1929,15 @@ pub fn CT_ObjectPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_OlapPr {
   element : @xml.Element
+  local : Bool
+  local_connection : String?
+  local_refresh : Bool
+  send_locale : Bool
+  row_drill_count : Int?
+  server_fill : Bool
+  server_number_format : Bool
+  server_font : Bool
+  server_font_color : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_OlapPr::new(@xml.Element) -> Self
 
@@ -2004,11 +2131,23 @@ pub fn CT_Pane::new(@xml.Element) -> Self
 
 pub(all) struct CT_Parameter {
   element : @xml.Element
+  name : String?
+  sql_type : Int
+  parameter_type : String
+  refresh_on_change : Bool
+  prompt : String?
+  boolean : Bool?
+  double : Double?
+  integer : Int?
+  string : String?
+  cell : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Parameter::new(@xml.Element) -> Self
 
 pub(all) struct CT_Parameters {
   element : @xml.Element
+  parameter : Array[CT_Parameter]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_Parameters::new(@xml.Element) -> Self
 
@@ -2449,6 +2588,14 @@ pub fn CT_RPrElt::new(@xml.Element) -> Self
 
 pub(all) struct CT_RangePr {
   element : @xml.Element
+  auto_start : Bool
+  auto_end : Bool
+  group_by : String
+  start_num : Double?
+  end_num : Double?
+  start_date : String?
+  end_date : String?
+  group_interval : Double
 } derive(Eq, @debug.Debug)
 pub fn CT_RangePr::new(@xml.Element) -> Self
 
@@ -2474,6 +2621,13 @@ pub fn CT_RangeSets::new(@xml.Element) -> Self
 
 pub(all) struct CT_Record {
   element : @xml.Element
+  missings : Array[CT_Missing]
+  numbers : Array[CT_Number]
+  booleans : Array[CT_Boolean]
+  errors : Array[CT_Error]
+  strings : Array[CT_String]
+  date_times : Array[CT_DateTime]
+  x : Array[CT_Index]
 } derive(Eq, @debug.Debug)
 pub fn CT_Record::new(@xml.Element) -> Self
 
@@ -2702,6 +2856,18 @@ pub fn CT_RevisionSheetRename::new(@xml.Element) -> Self
 
 pub(all) struct CT_Revisions {
   element : @xml.Element
+  rrc : Array[CT_RevisionRowColumn]
+  rm : Array[CT_RevisionMove]
+  rcv : Array[CT_RevisionCustomView]
+  rsnm : Array[CT_RevisionSheetRename]
+  ris : Array[CT_RevisionInsertSheet]
+  rcc : Array[CT_RevisionCellChange]
+  rfmt : Array[CT_RevisionFormatting]
+  raf : Array[CT_RevisionAutoFormatting]
+  rdn : Array[CT_RevisionDefinedName]
+  rcmt : Array[CT_RevisionComment]
+  rqt : Array[CT_RevisionQueryTableField]
+  rcft : Array[CT_RevisionConflict]
 } derive(Eq, @debug.Debug)
 pub fn CT_Revisions::new(@xml.Element) -> Self
 
@@ -2795,11 +2961,15 @@ pub fn CT_Selection::new(@xml.Element) -> Self
 
 pub(all) struct CT_ServerFormat {
   element : @xml.Element
+  culture : String?
+  format : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_ServerFormat::new(@xml.Element) -> Self
 
 pub(all) struct CT_ServerFormats {
   element : @xml.Element
+  server_format : Array[CT_ServerFormat]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_ServerFormats::new(@xml.Element) -> Self
 
@@ -2824,6 +2994,26 @@ pub fn CT_Sets::new(@xml.Element) -> Self
 
 pub(all) struct CT_SharedItems {
   element : @xml.Element
+  missings : Array[CT_Missing]
+  numbers : Array[CT_Number]
+  booleans : Array[CT_Boolean]
+  errors : Array[CT_Error]
+  strings : Array[CT_String]
+  date_times : Array[CT_DateTime]
+  contains_semi_mixed_types : Bool
+  contains_non_date : Bool
+  contains_date : Bool
+  contains_string : Bool
+  contains_blank : Bool
+  contains_mixed_types : Bool
+  contains_number : Bool
+  contains_integer : Bool
+  min_value : Double?
+  max_value : Double?
+  min_date : String?
+  max_date : String?
+  count : Int?
+  long_text : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_SharedItems::new(@xml.Element) -> Self
 
@@ -3171,16 +3361,36 @@ pub fn CT_Tables::new(@xml.Element) -> Self
 
 pub(all) struct CT_TextField {
   element : @xml.Element
+  type_ : String
+  position : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_TextField::new(@xml.Element) -> Self
 
 pub(all) struct CT_TextFields {
   element : @xml.Element
+  text_field : Array[CT_TextField]
+  count : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_TextFields::new(@xml.Element) -> Self
 
 pub(all) struct CT_TextPr {
   element : @xml.Element
+  text_fields : CT_TextFields?
+  prompt : Bool
+  file_type : String
+  character_set : String?
+  first_row : Int
+  source_file : String
+  delimited : Bool
+  decimal : String
+  thousands : String
+  tab : Bool
+  space : Bool
+  comma : Bool
+  semicolon : Bool
+  consecutive : Bool
+  qualifier : String
+  delimiter : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_TextPr::new(@xml.Element) -> Self
 
@@ -3224,6 +3434,17 @@ pub fn CT_UnderlineProperty::new(@xml.Element) -> Self
 
 pub(all) struct CT_UndoInfo {
   element : @xml.Element
+  index : Int
+  exp : String
+  ref3_d : Bool
+  array : Bool
+  v : Bool
+  nf : Bool
+  cs : Bool
+  dr : String
+  dn : String?
+  r : String?
+  s_id : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_UndoInfo::new(@xml.Element) -> Self
 
@@ -3279,6 +3500,20 @@ pub fn CT_VolTypes::new(@xml.Element) -> Self
 
 pub(all) struct CT_WebPr {
   element : @xml.Element
+  tables : CT_Tables?
+  xml : Bool
+  source_data : Bool
+  parse_pre : Bool
+  consecutive : Bool
+  first_row : Bool
+  xl97 : Bool
+  text_dates : Bool
+  xl2000 : Bool
+  url : String?
+  post : String?
+  html_tables : Bool
+  html_format : String
+  edit_page : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_WebPr::new(@xml.Element) -> Self
 
@@ -3442,6 +3677,7 @@ pub fn CT_WorksheetSource::new(@xml.Element) -> Self
 
 pub(all) struct CT_X {
   element : @xml.Element
+  v : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_X::new(@xml.Element) -> Self
 
