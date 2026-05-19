@@ -190,239 +190,844 @@ pub fn AG_Type::attribute_names(Self) -> Array[String]
 pub fn AG_Type::new(@xml.Element) -> Self
 
 pub(all) struct CT_Arc {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  start_angle : String?
+  end_angle : String?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Arc::new(@xml.Element) -> Self
+pub fn CT_Arc::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Arc::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Background {
-  element : @xml.Element
+  id : String?
+  filled : Bool?
+  fillcolor : String?
+  office_attributes : Array[@xml.Attribute]
+  fill : CT_Fill?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Background::new(@xml.Element) -> Self
+pub fn CT_Background::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Background::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Callout {
-  element : @xml.Element
+  ext : ST_Ext?
+  on : Bool?
+  type_ : String?
+  gap : String?
+  angle : ST_Angle?
+  dropauto : Bool?
+  drop : ST_CalloutDrop?
+  distance : String?
+  lengthspecified : Bool?
+  length : String?
+  accentbar : Bool?
+  textborder : Bool?
+  minusx : Bool?
+  minusy : Bool?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Callout::new(@xml.Element) -> Self
+pub fn CT_Callout::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Callout::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ClipPath {
-  element : @xml.Element
+  v : String
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ClipPath::new(@xml.Element) -> Self
+pub fn CT_ClipPath::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ClipPath::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorMenu {
-  element : @xml.Element
+  ext : ST_Ext?
+  strokecolor : String?
+  fillcolor : String?
+  shadowcolor : String?
+  extrusioncolor : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorMenu::new(@xml.Element) -> Self
+pub fn CT_ColorMenu::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorMenu::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorMru {
-  element : @xml.Element
+  ext : ST_Ext?
+  colors : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorMru::new(@xml.Element) -> Self
+pub fn CT_ColorMru::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorMru::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Complex {
-  element : @xml.Element
+  ext : ST_Ext?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Complex::new(@xml.Element) -> Self
+pub fn CT_Complex::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Complex::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Curve {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  from : String?
+  control1 : String?
+  control2 : String?
+  to : String?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Curve::new(@xml.Element) -> Self
+pub fn CT_Curve::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Curve::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Diagram {
-  element : @xml.Element
+  ext : ST_Ext?
+  dgmstyle : String?
+  autoformat : Bool?
+  reverse : Bool?
+  autolayout : Bool?
+  dgmscalex : String?
+  dgmscaley : String?
+  dgmfontsize : String?
+  constrainbounds : String?
+  dgmbasetextscale : String?
+  relationtable : CT_RelationTable?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Diagram::new(@xml.Element) -> Self
+pub fn CT_Diagram::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Diagram::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Entry {
-  element : @xml.Element
+  new_id : String?
+  old_id : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Entry::new(@xml.Element) -> Self
+pub fn CT_Entry::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Entry::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EquationXml {
-  element : @xml.Element
+  content_type : ST_AlternateMathContentType?
+  any_child : @xml.Element?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_EquationXml::new(@xml.Element) -> Self
+pub fn CT_EquationXml::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_EquationXml::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Extrusion {
-  element : @xml.Element
+  ext : ST_Ext?
+  on : Bool?
+  type_ : ST_ExtrusionType?
+  render : ST_ExtrusionRender?
+  viewpointorigin : String?
+  viewpoint : String?
+  plane : ST_ExtrusionPlane?
+  skewangle : String?
+  skewamt : String?
+  foredepth : String?
+  backdepth : String?
+  orientation : String?
+  orientationangle : String?
+  lockrotationcenter : Bool?
+  autorotationcenter : Bool?
+  rotationcenter : String?
+  rotationangle : String?
+  colormode : ST_ColorMode?
+  color : String?
+  shininess : String?
+  specularity : String?
+  diffusity : String?
+  metal : Bool?
+  edge : String?
+  facet : String?
+  lightface : Bool?
+  brightness : String?
+  lightposition : String?
+  lightlevel : String?
+  lightharsh : Bool?
+  lightposition2 : String?
+  lightlevel2 : String?
+  lightharsh2 : Bool?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Extrusion::new(@xml.Element) -> Self
+pub fn CT_Extrusion::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Extrusion::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_F {
-  element : @xml.Element
+  eqn : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_F::new(@xml.Element) -> Self
+pub fn CT_F::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_F::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Fill {
-  element : @xml.Element
+  id : String?
+  type_ : ST_FillType?
+  on : Bool?
+  color : String?
+  opacity : String?
+  color2 : String?
+  src : String?
+  size : String?
+  origin : String?
+  position : String?
+  aspect : ST_ImageAspect?
+  colors : String?
+  angle : String?
+  alignshape : Bool?
+  focus : String?
+  focussize : String?
+  focusposition : String?
+  method : ST_FillMethod?
+  recolor : Bool?
+  rotate : Bool?
+  office_attributes : Array[@xml.Attribute]
+  office_fill : @xml.Element?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Fill::new(@xml.Element) -> Self
+pub fn CT_Fill::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Fill::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Formulas {
-  element : @xml.Element
+  f : Array[CT_F]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Formulas::new(@xml.Element) -> Self
+pub fn CT_Formulas::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Formulas::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Group {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  filled : Bool?
+  fillcolor : String?
+  editas : ST_EditAs?
+  office_attributes : Array[@xml.Attribute]
+  group_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Group::new(@xml.Element) -> Self
+pub fn CT_Group::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Group::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_H {
-  element : @xml.Element
+  position : String?
+  polar : String?
+  map_ : String?
+  invx : Bool?
+  invy : Bool?
+  switch_ : String?
+  xrange : String?
+  yrange : String?
+  radiusrange : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_H::new(@xml.Element) -> Self
+pub fn CT_H::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_H::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Handles {
-  element : @xml.Element
+  h : Array[CT_H]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Handles::new(@xml.Element) -> Self
+pub fn CT_Handles::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Handles::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_IdMap {
-  element : @xml.Element
+  ext : ST_Ext?
+  data : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_IdMap::new(@xml.Element) -> Self
+pub fn CT_IdMap::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_IdMap::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Image {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  src : String?
+  cropleft : String?
+  croptop : String?
+  cropright : String?
+  cropbottom : String?
+  gain : String?
+  blacklevel : String?
+  gamma : String?
+  grayscale : Bool?
+  bilevel : Bool?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Image::new(@xml.Element) -> Self
+pub fn CT_Image::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Image::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ImageData {
-  element : @xml.Element
+  id : String?
+  src : String?
+  cropleft : String?
+  croptop : String?
+  cropright : String?
+  cropbottom : String?
+  gain : String?
+  blacklevel : String?
+  gamma : String?
+  grayscale : Bool?
+  bilevel : Bool?
+  chromakey : String?
+  embosscolor : String?
+  recolortarget : String?
+  office_attributes : Array[@xml.Attribute]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ImageData::new(@xml.Element) -> Self
+pub fn CT_ImageData::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ImageData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Ink {
-  element : @xml.Element
+  i : String?
+  annotation : Bool?
+  content_type : ST_ContentType?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Ink::new(@xml.Element) -> Self
+pub fn CT_Ink::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Ink::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Line {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  from : String?
+  to : String?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Line::new(@xml.Element) -> Self
+pub fn CT_Line::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Line::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Lock {
-  element : @xml.Element
+  ext : ST_Ext?
+  position : Bool?
+  selection : Bool?
+  grouping : Bool?
+  ungrouping : Bool?
+  rotation : Bool?
+  cropping : Bool?
+  verticies : Bool?
+  adjusthandles : Bool?
+  text : Bool?
+  aspectratio : Bool?
+  shapetype : Bool?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Lock::new(@xml.Element) -> Self
+pub fn CT_Lock::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Lock::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OLEObject {
-  element : @xml.Element
+  type_ : ST_OLEType?
+  prog_id : String?
+  shape_id : String?
+  draw_aspect : ST_OLEDrawAspect?
+  object_id : String?
+  r_id : String?
+  update_mode : ST_OLEUpdateMode?
+  link_type : ST_OLELinkType?
+  locked_field : String?
+  field_codes : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_OLEObject::new(@xml.Element) -> Self
+pub fn CT_OLEObject::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_OLEObject::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Oval {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Oval::new(@xml.Element) -> Self
+pub fn CT_Oval::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Oval::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Path {
-  element : @xml.Element
+  id : String?
+  v : String?
+  limo : String?
+  textboxrect : String?
+  fillok : Bool?
+  strokeok : Bool?
+  shadowok : Bool?
+  arrowok : Bool?
+  gradientshapeok : Bool?
+  textpathok : Bool?
+  insetpenok : Bool?
+  office_attributes : Array[@xml.Attribute]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Path::new(@xml.Element) -> Self
+pub fn CT_Path::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Path::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PolyLine {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  points : String?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PolyLine::new(@xml.Element) -> Self
+pub fn CT_PolyLine::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PolyLine::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Proxy {
-  element : @xml.Element
+  start : String?
+  end : String?
+  idref : String?
+  connectloc : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Proxy::new(@xml.Element) -> Self
+pub fn CT_Proxy::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Proxy::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_R {
-  element : @xml.Element
+  id : String
+  type_ : ST_RType?
+  how : ST_How?
+  idref : String?
+  proxy : Array[CT_Proxy]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_R::new(@xml.Element) -> Self
+pub fn CT_R::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_R::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Rect {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Rect::new(@xml.Element) -> Self
+pub fn CT_Rect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Rect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RegroupTable {
-  element : @xml.Element
+  ext : ST_Ext?
+  entry : Array[CT_Entry]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_RegroupTable::new(@xml.Element) -> Self
+pub fn CT_RegroupTable::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RegroupTable::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Relation {
-  element : @xml.Element
+  ext : ST_Ext?
+  idsrc : String?
+  iddest : String?
+  idcntr : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Relation::new(@xml.Element) -> Self
+pub fn CT_Relation::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Relation::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RelationTable {
-  element : @xml.Element
+  ext : ST_Ext?
+  rel : Array[CT_Relation]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_RelationTable::new(@xml.Element) -> Self
+pub fn CT_RelationTable::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RelationTable::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RoundRect {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  arcsize : String?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_RoundRect::new(@xml.Element) -> Self
+pub fn CT_RoundRect::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RoundRect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Rules {
-  element : @xml.Element
+  ext : ST_Ext?
+  r : Array[CT_R]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Rules::new(@xml.Element) -> Self
+pub fn CT_Rules::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Rules::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Shadow {
-  element : @xml.Element
+  id : String?
+  on : Bool?
+  type_ : ST_ShadowType?
+  obscured : Bool?
+  color : String?
+  opacity : String?
+  offset : String?
+  color2 : String?
+  offset2 : String?
+  origin : String?
+  matrix : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Shadow::new(@xml.Element) -> Self
+pub fn CT_Shadow::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Shadow::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Shape {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  type_ : String?
+  adj : String?
+  path : String?
+  equationxml : String?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Shape::new(@xml.Element) -> Self
+pub fn CT_Shape::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Shape::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ShapeDefaults {
-  element : @xml.Element
+  ext : ST_Ext?
+  spidmax : String?
+  style : String?
+  fill_attr : Bool?
+  fillcolor : String?
+  stroke_attr : Bool?
+  strokecolor : String?
+  allowincell : Bool?
+  fill : CT_Fill?
+  stroke : CT_Stroke?
+  textbox : CT_Textbox?
+  shadow : CT_Shadow?
+  skew : CT_Skew?
+  extrusion : CT_Extrusion?
+  callout : CT_Callout?
+  lock : CT_Lock?
+  colormru : CT_ColorMru?
+  colormenu : CT_ColorMenu?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ShapeDefaults::new(@xml.Element) -> Self
+pub fn CT_ShapeDefaults::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ShapeDefaults::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ShapeLayout {
-  element : @xml.Element
+  ext : ST_Ext?
+  idmap : CT_IdMap?
+  regrouptable : CT_RegroupTable?
+  rules : CT_Rules?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ShapeLayout::new(@xml.Element) -> Self
+pub fn CT_ShapeLayout::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ShapeLayout::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Shapetype {
-  element : @xml.Element
+  id : String?
+  style : String?
+  href : String?
+  target : String?
+  class_ : String?
+  title : String?
+  alt : String?
+  coordsize : String?
+  coordorigin : String?
+  wrapcoords : String?
+  print : Bool?
+  opacity : String?
+  stroked : Bool?
+  strokecolor : String?
+  strokeweight : String?
+  insetpen : Bool?
+  chromakey : String?
+  filled : Bool?
+  fillcolor : String?
+  adj : String?
+  path : String?
+  master : String?
+  office_attributes : Array[@xml.Attribute]
+  shape_children : Array[@xml.Element]
+  complex : CT_Complex?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Shapetype::new(@xml.Element) -> Self
+pub fn CT_Shapetype::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Shapetype::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SignatureLine {
-  element : @xml.Element
+  ext : ST_Ext?
+  issignatureline : Bool?
+  id : String?
+  provid : String?
+  signinginstructionsset : Bool?
+  allowcomments : Bool?
+  showsigndate : Bool?
+  suggestedsigner : String?
+  suggestedsigner2 : String?
+  suggestedsigneremail : String?
+  signinginstructions : String?
+  addlxml : String?
+  sigprovurl : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SignatureLine::new(@xml.Element) -> Self
+pub fn CT_SignatureLine::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SignatureLine::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Skew {
-  element : @xml.Element
+  ext : ST_Ext?
+  id : String?
+  on : Bool?
+  offset : String?
+  origin : String?
+  matrix : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Skew::new(@xml.Element) -> Self
+pub fn CT_Skew::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Skew::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Stroke {
-  element : @xml.Element
+  id : String?
+  on : Bool?
+  weight : String?
+  color : String?
+  opacity : String?
+  linestyle : ST_StrokeLineStyle?
+  miterlimit : String?
+  joinstyle : ST_StrokeJoinStyle?
+  endcap : ST_StrokeEndCap?
+  dashstyle : String?
+  filltype : ST_FillType?
+  src : String?
+  imageaspect : ST_ImageAspect?
+  imagesize : String?
+  imagealignshape : Bool?
+  color2 : String?
+  startarrow : ST_StrokeArrowType?
+  startarrowwidth : ST_StrokeArrowWidth?
+  startarrowlength : ST_StrokeArrowLength?
+  endarrow : ST_StrokeArrowType?
+  endarrowwidth : ST_StrokeArrowWidth?
+  endarrowlength : ST_StrokeArrowLength?
+  insetpen : Bool?
+  office_attributes : Array[@xml.Attribute]
+  left : CT_StrokeChild?
+  top : CT_StrokeChild?
+  right : CT_StrokeChild?
+  bottom : CT_StrokeChild?
+  column : CT_StrokeChild?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Stroke::new(@xml.Element) -> Self
+pub fn CT_Stroke::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Stroke::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_StrokeChild {
-  element : @xml.Element
+  ext : ST_Ext?
+  on : Bool?
+  weight : String?
+  color : String?
+  color2 : String?
+  opacity : String?
+  linestyle : ST_StrokeLineStyle?
+  miterlimit : String?
+  joinstyle : ST_StrokeJoinStyle?
+  endcap : ST_StrokeEndCap?
+  dashstyle : String?
+  insetpen : Bool?
+  filltype : ST_FillType?
+  src : String?
+  imageaspect : ST_ImageAspect?
+  imagesize : String?
+  imagealignshape : Bool?
+  startarrow : ST_StrokeArrowType?
+  startarrowwidth : ST_StrokeArrowWidth?
+  startarrowlength : ST_StrokeArrowLength?
+  endarrow : ST_StrokeArrowType?
+  endarrowwidth : ST_StrokeArrowWidth?
+  endarrowlength : ST_StrokeArrowLength?
+  href : String?
+  althref : String?
+  title : String?
+  forcedash : Bool?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_StrokeChild::new(@xml.Element) -> Self
+pub fn CT_StrokeChild::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_StrokeChild::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextPath {
-  element : @xml.Element
+  id : String?
+  style : String?
+  on : Bool?
+  fitshape : Bool?
+  fitpath : Bool?
+  trim : Bool?
+  xscale : Bool?
+  string_ : String?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextPath::new(@xml.Element) -> Self
+pub fn CT_TextPath::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextPath::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Textbox {
-  element : @xml.Element
+  id : String?
+  style : String?
+  inset : String?
+  office_attributes : Array[@xml.Attribute]
+  content : @xml.Element?
+  raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Textbox::new(@xml.Element) -> Self
+pub fn CT_Textbox::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Textbox::to_element(Self) -> @xml.Element
 
 pub(all) struct EG_ShapeElements {
   element : @xml.Element
@@ -667,6 +1272,8 @@ pub struct ST_StrokeLineStyle {
 pub fn ST_StrokeLineStyle::new(String) -> Self raise SchemaViolation
 pub fn ST_StrokeLineStyle::parse(String) -> Self raise SchemaViolation
 pub fn ST_StrokeLineStyle::to_string(Self) -> String
+
+type VmlShapeCommon derive(Eq, @debug.Debug)
 
 // Type aliases
 
