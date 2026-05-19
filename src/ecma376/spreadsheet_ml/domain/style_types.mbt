@@ -7,23 +7,6 @@ pub fn style_type_group_name() -> String {
 }
 
 ///|
-/// XSD complex type CT_ColorFilter.
-pub(all) struct CT_ColorFilter {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_ColorFilter::new(element : @xml.Element) -> CT_ColorFilter {
-  let group_name = style_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
 /// XSD complex type CT_SheetProtection.
 pub(all) struct CT_SheetProtection {
   element : @xml.Element

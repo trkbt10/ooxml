@@ -24,38 +24,51 @@ fn bytes(source : String) -> Bytes {
 }
 
 ///|
+fn column(
+  id : Int,
+  hidden_button : Bool,
+  rule : @domain.CT_FilterColumn_Choice,
+) -> @domain.CT_FilterColumn {
+  { col_id: id, hidden_button, show_button: true, rule: Some(rule) }
+}
+
+///|
 test "§18.3.2 filters literal keeps exact text" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A3"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: Filters([Literal("foo")], false),
-      },
+    filter_columns: [
+      column(
+        0,
+        false,
+        Filters({
+          filters: [{ val: "foo" }],
+          date_group_items: [],
+          blank: false,
+        }),
+      ),
     ],
   }
-  assert_true(filter.row_visible(row(0, [s("foo")]), system()))
-  assert_true(!filter.row_visible(row(1, [s("bar")]), system()))
+  assert_true(row_visible(filter, row(0, [s("foo")]), system()))
+  assert_true(!row_visible(filter, row(1, [s("bar")]), system()))
 }
 
 ///|
 test "§18.3.2 filters blank_included keeps empty cells" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A3"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: Filters([Literal("foo")], true),
-      },
+    filter_columns: [
+      column(
+        0,
+        false,
+        Filters({ filters: [{ val: "foo" }], date_group_items: [], blank: true }),
+      ),
     ],
   }
   assert_true(
-    filter.row_visible(row(0, [@formula.FormulaValue::VEmpty]), system()),
+    row_visible(filter, row(0, [@formula.FormulaValue::VEmpty]), system()),
   )
-  assert_true(filter.row_visible(row(1, [s("")]), system()))
-  assert_true(!filter.row_visible(row(2, [s("bar")]), system()))
+  assert_true(row_visible(filter, row(1, [s("")]), system()))
+  assert_true(!row_visible(filter, row(2, [s("bar")]), system()))
 }
 
 ///|
@@ -72,49 +85,50 @@ test "§18.3.2 dateGroupItem year level" {
     },
     system(),
   )
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A3"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: Filters(
-          [
-            DateGroup({
+    filter_columns: [
+      column(
+        0,
+        false,
+        Filters({
+          filters: [],
+          date_group_items: [
+            {
               year: 2006,
               month: None,
               day: None,
               hour: None,
               minute: None,
               second: None,
-              group_by: Year,
-            }),
+              date_time_grouping: Year,
+            },
           ],
-          false,
-        ),
-      },
+          blank: false,
+        }),
+      ),
     ],
   }
-  assert_true(filter.row_visible(row(0, [n(serial)]), system()))
-  assert_true(!filter.row_visible(row(1, [n(0.0)]), system()))
+  assert_true(row_visible(filter, row(0, [n(serial)]), system()))
+  assert_true(!row_visible(filter, row(1, [n(0.0)]), system()))
 }
 
 ///|
 test "§18.3.2 customFilters numeric AND range" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A12"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: CustomFilters(
-          [
-            { operator: GreaterThan, value: "5" },
-            { operator: LessThan, value: "10" },
+    filter_columns: [
+      column(
+        0,
+        false,
+        CustomFilters({
+          criteria: [
+            { operator: GreaterThan, val: "5" },
+            { operator: LessThan, val: "10" },
           ],
-          true,
-        ),
-      },
+          and_op: true,
+        }),
+      ),
     ],
   }
   let rows = [
@@ -123,67 +137,69 @@ test "§18.3.2 customFilters numeric AND range" {
     row(2, [n(9.0)]),
     row(3, [n(10.0)]),
   ]
-  assert_eq(filter.filter_rows(rows, system()), [1, 2])
+  assert_eq(filter_rows(filter, rows, system()), [1, 2])
 }
 
 ///|
 test "§18.3.2 customFilters star wildcard" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A3"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: CustomFilters([{ operator: Equal, value: "*foo*" }], false),
-      },
+    filter_columns: [
+      column(
+        0,
+        false,
+        CustomFilters({
+          criteria: [{ operator: Equal, val: "*foo*" }],
+          and_op: false,
+        }),
+      ),
     ],
   }
-  assert_true(filter.row_visible(row(0, [s("before foo after")]), system()))
-  assert_true(!filter.row_visible(row(1, [s("bar")]), system()))
+  assert_true(row_visible(filter, row(0, [s("before foo after")]), system()))
+  assert_true(!row_visible(filter, row(1, [s("bar")]), system()))
 }
 
 ///|
 test "§18.3.2 customFilters question wildcard" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A3"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: CustomFilters([{ operator: Equal, value: "?bar" }], false),
-      },
+    filter_columns: [
+      column(
+        0,
+        false,
+        CustomFilters({
+          criteria: [{ operator: Equal, val: "?bar" }],
+          and_op: false,
+        }),
+      ),
     ],
   }
-  assert_true(filter.row_visible(row(0, [s("xbar")]), system()))
-  assert_true(!filter.row_visible(row(1, [s("xxbar")]), system()))
+  assert_true(row_visible(filter, row(0, [s("xbar")]), system()))
+  assert_true(!row_visible(filter, row(1, [s("xxbar")]), system()))
 }
 
 ///|
 test "§18.3.2 dynamicFilter today uses deterministic serial-zero anchor" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A3"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: DynamicFilter(Today, None, None),
-      },
+    filter_columns: [
+      column(0, false, DynamicFilter({ kind: Today, val: None, max_val: None })),
     ],
   }
-  assert_true(filter.row_visible(row(0, [n(0.25)]), system()))
-  assert_true(!filter.row_visible(row(1, [n(1.25)]), system()))
+  assert_true(row_visible(filter, row(0, [n(0.25)]), system()))
+  assert_true(!row_visible(filter, row(1, [n(1.25)]), system()))
 }
 
 ///|
 test "§18.3.2 dynamicFilter aboveAverage uses full row set" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A4"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: DynamicFilter(AboveAverage, None, None),
-      },
+    filter_columns: [
+      column(
+        0,
+        false,
+        DynamicFilter({ kind: AboveAverage, val: None, max_val: None }),
+      ),
     ],
   }
   let rows = [
@@ -192,26 +208,30 @@ test "§18.3.2 dynamicFilter aboveAverage uses full row set" {
     row(2, [n(8.0)]),
     row(3, [n(9.0)]),
   ]
-  assert_eq(filter.filter_rows(rows, system()), [2, 3])
+  assert_eq(filter_rows(filter, rows, system()), [2, 3])
 }
 
 ///|
 test "§18.3.2 colorFilter stub is false without style tags" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A1"),
-    columns: [
-      { column_id: 0, hidden_button: false, rule: ColorFilter(1, true) },
+    filter_columns: [
+      column(0, false, ColorFilter({ dxf_id: 1, cell_color: true })),
     ],
   }
-  assert_true(!filter.row_visible(row(0, [s("foo")]), system()))
+  assert_true(!row_visible(filter, row(0, [s("foo")]), system()))
 }
 
 ///|
 test "§18.3.2 top10 top three numeric values" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A5"),
-    columns: [
-      { column_id: 0, hidden_button: false, rule: Top10(true, false, 3.0) },
+    filter_columns: [
+      column(
+        0,
+        false,
+        Top10({ top: true, percent: false, val: 3.0, filter_val: None }),
+      ),
     ],
   }
   let rows = [
@@ -221,15 +241,19 @@ test "§18.3.2 top10 top three numeric values" {
     row(3, [n(7.0)]),
     row(4, [n(3.0)]),
   ]
-  assert_eq(filter.filter_rows(rows, system()), [1, 2, 3])
+  assert_eq(filter_rows(filter, rows, system()), [1, 2, 3])
 }
 
 ///|
 test "§18.3.2 top10 bottom twenty-five percent" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A8"),
-    columns: [
-      { column_id: 0, hidden_button: false, rule: Top10(false, true, 25.0) },
+    filter_columns: [
+      column(
+        0,
+        false,
+        Top10({ top: false, percent: true, val: 25.0, filter_val: None }),
+      ),
     ],
   }
   let rows = [
@@ -242,24 +266,31 @@ test "§18.3.2 top10 bottom twenty-five percent" {
     row(6, [n(2.0)]),
     row(7, [n(1.0)]),
   ]
-  assert_eq(filter.filter_rows(rows, system()), [6, 7])
+  assert_eq(filter_rows(filter, rows, system()), [6, 7])
 }
 
 ///|
 test "§18.3.2 multi-column filters intersect" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:B4"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: Filters([Literal("foo")], false),
-      },
-      {
-        column_id: 1,
-        hidden_button: false,
-        rule: CustomFilters([{ operator: GreaterThan, value: "5" }], false),
-      },
+    filter_columns: [
+      column(
+        0,
+        false,
+        Filters({
+          filters: [{ val: "foo" }],
+          date_group_items: [],
+          blank: false,
+        }),
+      ),
+      column(
+        1,
+        false,
+        CustomFilters({
+          criteria: [{ operator: GreaterThan, val: "5" }],
+          and_op: false,
+        }),
+      ),
     ],
   }
   let rows = [
@@ -267,7 +298,7 @@ test "§18.3.2 multi-column filters intersect" {
     row(1, [s("foo"), n(4.0)]),
     row(2, [s("bar"), n(9.0)]),
   ]
-  assert_eq(filter.filter_rows(rows, system()), [0])
+  assert_eq(filter_rows(filter, rows, system()), [0])
 }
 
 ///|
@@ -277,13 +308,14 @@ test "§18.3.2 from_element parses XML fragment" {
       "<autoFilter ref=\"A1:B3\"><filterColumn colId=\"1\" hiddenButton=\"1\"><customFilters and=\"1\"><customFilter operator=\"greaterThanOrEqual\" val=\"5\"/><customFilter operator=\"lessThan\" val=\"10\"/></customFilters></filterColumn></autoFilter>",
     ),
   )
-  let filter = try! AutoFilter::from_element(document.root)
+  let filter = try! parse_auto_filter(document.root)
   assert_eq(filter.range.to_a1(), "A1:B3")
-  assert_eq(filter.columns.length(), 1)
-  assert_eq(filter.columns[0].column_id, 1)
-  assert_true(filter.columns[0].hidden_button)
+  assert_eq(filter.filter_columns.length(), 1)
+  assert_eq(filter.filter_columns[0].col_id, 1)
+  assert_true(filter.filter_columns[0].hidden_button)
   assert_eq(
-    filter.filter_rows(
+    filter_rows(
+      filter,
       [row(0, [s("x"), n(5.0)]), row(1, [s("x"), n(10.0)])],
       system(),
     ),
@@ -293,16 +325,20 @@ test "§18.3.2 from_element parses XML fragment" {
 
 ///|
 test "§18.3.2 filter_rows returns sorted row indices" {
-  let filter = AutoFilter::{
+  let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A4"),
-    columns: [
-      {
-        column_id: 0,
-        hidden_button: false,
-        rule: Filters([Literal("keep")], false),
-      },
+    filter_columns: [
+      column(
+        0,
+        false,
+        Filters({
+          filters: [{ val: "keep" }],
+          date_group_items: [],
+          blank: false,
+        }),
+      ),
     ],
   }
   let rows = [row(3, [s("keep")]), row(7, [s("drop")]), row(9, [s("keep")])]
-  assert_eq(filter.filter_rows(rows, system()), [3, 9])
+  assert_eq(filter_rows(filter, rows, system()), [3, 9])
 }

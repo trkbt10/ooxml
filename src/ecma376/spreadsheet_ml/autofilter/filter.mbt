@@ -1,197 +1,50 @@
 ///|
-/// §18.3.2 — typed view of one cell in a candidate row, supplied to
-/// the filter evaluator. The evaluator does not fetch cell content itself.
+/// §18.3.2 — typed view of one cell in a candidate row, supplied to the
+/// filter evaluator. Runtime-only: no XSD analogue. The evaluator does not
+/// fetch cell content itself.
 pub(all) struct CandidateRow {
   values : Array[@formula.FormulaValue]
   row_index : Int
 } derive(Eq, Debug)
 
 ///|
-/// §18.3.2.7 — typed FilterColumn rule with the 0-based `colId`, the
-/// `hiddenButton` presentation flag, and the column rule discriminator.
-pub(all) struct FilterColumn {
-  column_id : Int
-  hidden_button : Bool
-  rule : FilterRule
-} derive(Eq, Debug)
-
-///|
-/// §18.3.2 — discriminated filter rule per the per-column XML choice.
-pub(all) enum FilterRule {
-  Filters(Array[FilterValue], Bool)
-  CustomFilters(Array[CustomCriterion], Bool)
-  DynamicFilter(DynamicFilterType, Double?, Double?)
-  ColorFilter(Int, Bool)
-  IconFilter(String, Int)
-  Top10(Bool, Bool, Double)
-} derive(Eq, Debug)
-
-///|
-/// §18.3.2.6 and §18.3.2.4 — values inside `<filters>`.
-pub(all) enum FilterValue {
-  Literal(String)
-  DateGroup(DateGroupItem)
-} derive(Eq, Debug)
-
-///|
-/// §18.3.2.4 — dateGroupItem value and grouping level.
-pub(all) struct DateGroupItem {
-  year : Int
-  month : Int?
-  day : Int?
-  hour : Int?
-  minute : Int?
-  second : Int?
-  group_by : DateGroupBy
-} derive(Eq, Debug)
-
-///|
-/// §18.3.2.4 — dateTimeGrouping discriminator.
-pub(all) enum DateGroupBy {
-  Year
-  Month
-  Day
-  Hour
-  Minute
-  Second
-} derive(Eq, Debug)
-
-///|
-/// §18.3.2.2 — customFilter comparison criterion.
-pub(all) struct CustomCriterion {
-  operator : FilterOperator
-  value : String
-} derive(Eq, Debug)
-
-///|
-/// §18.3.2.2 — ST_FilterOperator as evaluator operators.
-pub(all) enum FilterOperator {
-  Equal
-  NotEqual
-  GreaterThan
-  GreaterThanOrEqual
-  LessThan
-  LessThanOrEqual
-} derive(Eq, Debug)
-
-///|
-/// §18.3.2.5 — ST_DynamicFilterType as evaluator variants.
-pub(all) enum DynamicFilterType {
-  Today
-  Yesterday
-  Tomorrow
-  LastWeek
-  ThisWeek
-  NextWeek
-  LastMonth
-  ThisMonth
-  NextMonth
-  LastQuarter
-  ThisQuarter
-  NextQuarter
-  LastYear
-  ThisYear
-  NextYear
-  YearToDate
-  Q1
-  Q2
-  Q3
-  Q4
-  M1
-  M2
-  M3
-  M4
-  M5
-  M6
-  M7
-  M8
-  M9
-  M10
-  M11
-  M12
-  AboveAverage
-  BelowAverage
-} derive(Eq, Debug)
-
-///|
-/// §18.3.2 — typed view of an autofilter (range + columns).
-pub(all) struct AutoFilter {
-  range : @address.CellRange
-  columns : Array[FilterColumn]
-} derive(Eq, Debug)
-
-///|
-/// §18.3.2.2 — return the SpreadsheetML ST_FilterOperator token for this
-/// evaluator operator.
-pub fn FilterOperator::to_ooxml(self : FilterOperator) -> String {
-  match self {
-    Equal => "equal"
-    NotEqual => "notEqual"
-    GreaterThan => "greaterThan"
-    GreaterThanOrEqual => "greaterThanOrEqual"
-    LessThan => "lessThan"
-    LessThanOrEqual => "lessThanOrEqual"
-  }
-}
-
-///|
-/// §18.3.2.5 — true for dynamic filters that require full-column numeric
-/// context rather than a date interval.
-pub fn DynamicFilterType::is_average(self : DynamicFilterType) -> Bool {
-  match self {
-    AboveAverage => true
-    BelowAverage => true
-    _ => false
-  }
-}
-
-///|
-/// §18.3.2.5 — true when this rule is a dynamicFilter XML choice.
-pub fn FilterRule::is_dynamic_filter(self : FilterRule) -> Bool {
-  match self {
-    DynamicFilter(_, _, _) => true
-    _ => false
-  }
-}
-
-///|
-/// §18.3.2.7 / §18.3.2.8 — extract an AutoFilter from a CT_AutoFilter XML
-/// element wrapper.
-pub fn AutoFilter::from_element(
+/// §18.3.1.2 / §18.3.2.7 — decode a `<autoFilter ref="...">` XML element
+/// into the typed `@domain.CT_AutoFilter`.
+pub fn parse_auto_filter(
   element : @xml.Element,
-) -> AutoFilter raise @opc_errors.SchemaViolation {
+) -> @domain.CT_AutoFilter raise @opc_errors.SchemaViolation {
   let ref_value = require_attr(element, "ref", "autoFilter/@ref")
   let range = @address.CellRange::parse_a1(ref_value) catch {
     _ =>
       raise @opc_errors.SchemaViolation(
-        section="Part 1 §18.3.2",
+        section="Part 1 §18.3.1.2",
         path="autoFilter/@ref",
         reason="invalid ST_Ref range",
       )
   }
-  let columns = Array::new()
+  let filter_columns = Array::new()
   for child in element.children {
     match child {
       @xml.Node::Element(e) =>
         if e.name.local_name == "filterColumn" {
-          columns.push(parse_filter_column(e))
+          filter_columns.push(parse_filter_column(e))
         }
       _ => ()
     }
   }
-  { range, columns }
+  { range, filter_columns }
 }
 
 ///|
 /// §18.3.2.7 — return true if `row` should be visible after applying every
 /// FilterColumn rule that can be evaluated without the full candidate set.
-pub fn AutoFilter::row_visible(
-  self : AutoFilter,
+pub fn row_visible(
+  filter : @domain.CT_AutoFilter,
   row : CandidateRow,
   date_system : @date_serial.DateSystem,
 ) -> Bool {
-  for column in self.columns {
-    let value = match row.values.get(column.column_id) {
+  for column in filter.filter_columns {
+    let value = match row.values.get(column.col_id) {
       Some(v) => v
       None => @formula.FormulaValue::VEmpty
     }
@@ -203,22 +56,23 @@ pub fn AutoFilter::row_visible(
 }
 
 ///|
-/// §18.3.2.10 — return visible row indices from candidate rows, including
-/// set-wide evaluation needed by top10 and average dynamic filters.
-pub fn AutoFilter::filter_rows(
-  self : AutoFilter,
+/// §18.3.2.10 / §18.3.2.5 — return visible row indices from candidate rows,
+/// including set-wide evaluation needed by top10 and average dynamic
+/// filters.
+pub fn filter_rows(
+  filter : @domain.CT_AutoFilter,
   rows : Array[CandidateRow],
   date_system : @date_serial.DateSystem,
 ) -> Array[Int] {
   let base = Array::new()
   for row in rows {
-    if self.row_visible(row, date_system) {
+    if row_visible(filter, row, date_system) {
       base.push(row)
     }
   }
   let visible = Array::new()
   for row in base {
-    if self.row_visible_with_context(row, rows, date_system) {
+    if row_visible_with_context(filter, row, rows, date_system) {
       visible.push(row.row_index)
     }
   }
@@ -226,36 +80,36 @@ pub fn AutoFilter::filter_rows(
 }
 
 ///|
-fn AutoFilter::row_visible_with_context(
-  self : AutoFilter,
+fn row_visible_with_context(
+  filter : @domain.CT_AutoFilter,
   row : CandidateRow,
   rows : Array[CandidateRow],
   date_system : @date_serial.DateSystem,
 ) -> Bool {
-  for column in self.columns {
-    let value = match row.values.get(column.column_id) {
+  for column in filter.filter_columns {
+    let value = match row.values.get(column.col_id) {
       Some(v) => v
       None => @formula.FormulaValue::VEmpty
     }
     match column.rule {
-      Top10(top, percent, val) =>
-        if !top10_passes(
-            rows,
-            column.column_id,
-            value,
-            date_system,
-            top,
-            percent,
-            val,
-          ) {
+      Some(@domain.CT_FilterColumn_Choice::Top10(top10)) =>
+        if !top10_passes(rows, column.col_id, value, date_system, top10) {
           return false
         }
-      DynamicFilter(AboveAverage, _, _) =>
-        if !average_passes(rows, column.column_id, value, date_system, true) {
+      Some(
+        @domain.CT_FilterColumn_Choice::DynamicFilter(
+          { kind: AboveAverage, .. }
+        )
+      ) =>
+        if !average_passes(rows, column.col_id, value, date_system, true) {
           return false
         }
-      DynamicFilter(BelowAverage, _, _) =>
-        if !average_passes(rows, column.column_id, value, date_system, false) {
+      Some(
+        @domain.CT_FilterColumn_Choice::DynamicFilter(
+          { kind: BelowAverage, .. }
+        )
+      ) =>
+        if !average_passes(rows, column.col_id, value, date_system, false) {
           return false
         }
       _ => ()
@@ -267,73 +121,75 @@ fn AutoFilter::row_visible_with_context(
 ///|
 fn parse_filter_column(
   element : @xml.Element,
-) -> FilterColumn raise @opc_errors.SchemaViolation {
-  let column_id = parse_required_int(element, "colId", "filterColumn/@colId")
+) -> @domain.CT_FilterColumn raise @opc_errors.SchemaViolation {
+  let col_id = parse_required_int(element, "colId", "filterColumn/@colId")
   let hidden_button = parse_bool_attr(element, "hiddenButton", false)
-  let mut rule : FilterRule? = None
+  let show_button = parse_bool_attr(element, "showButton", true)
+  let mut rule : @domain.CT_FilterColumn_Choice? = None
   for child in element.children {
     match child {
       @xml.Node::Element(e) =>
         match e.name.local_name {
-          "filters" => rule = Some(parse_filters(e))
-          "customFilters" => rule = Some(parse_custom_filters(e))
-          "dynamicFilter" => rule = Some(parse_dynamic_filter(e))
-          "colorFilter" => rule = Some(parse_color_filter(e))
-          "iconFilter" => rule = Some(parse_icon_filter(e))
-          "top10" => rule = Some(parse_top10(e))
+          "filters" => rule = Some(Filters(parse_filters(e)))
+          "customFilters" => rule = Some(CustomFilters(parse_custom_filters(e)))
+          "dynamicFilter" => rule = Some(DynamicFilter(parse_dynamic_filter(e)))
+          "colorFilter" => rule = Some(ColorFilter(parse_color_filter(e)))
+          "iconFilter" => rule = Some(IconFilter(parse_icon_filter(e)))
+          "top10" => rule = Some(Top10(parse_top10(e)))
           _ => ()
         }
       _ => ()
     }
   }
-  { column_id, hidden_button, rule: rule.unwrap_or(Filters([], false)) }
+  { col_id, hidden_button, show_button, rule }
 }
 
 ///|
 fn parse_filters(
   element : @xml.Element,
-) -> FilterRule raise @opc_errors.SchemaViolation {
-  let blank_included = parse_bool_attr(element, "blank", false)
-  let values = Array::new()
+) -> @domain.CT_Filters raise @opc_errors.SchemaViolation {
+  let blank = parse_bool_attr(element, "blank", false)
+  let filters : Array[@domain.CT_Filter] = Array::new()
+  let date_group_items : Array[@domain.CT_DateGroupItem] = Array::new()
   for child in element.children {
     match child {
       @xml.Node::Element(e) =>
         match e.name.local_name {
           "filter" =>
-            values.push(Literal(require_attr(e, "val", "filter/@val")))
-          "dateGroupItem" => values.push(DateGroup(parse_date_group_item(e)))
+            filters.push({ val: require_attr(e, "val", "filter/@val") })
+          "dateGroupItem" => date_group_items.push(parse_date_group_item(e))
           _ => ()
         }
       _ => ()
     }
   }
-  Filters(values, blank_included)
+  { filters, date_group_items, blank }
 }
 
 ///|
 fn parse_custom_filters(
   element : @xml.Element,
-) -> FilterRule raise @opc_errors.SchemaViolation {
+) -> @domain.CT_CustomFilters raise @opc_errors.SchemaViolation {
   let and_op = parse_bool_attr(element, "and", false)
-  let criteria = Array::new()
+  let criteria : Array[@domain.CT_CustomFilter] = Array::new()
   for child in element.children {
     match child {
       @xml.Node::Element(e) =>
         if e.name.local_name == "customFilter" {
-          let op = parse_filter_operator(attr_or(e, "operator", "equal"))
-          let value = require_attr(e, "val", "customFilter/@val")
-          criteria.push({ operator: op, value })
+          let operator = parse_filter_operator(attr_or(e, "operator", "equal"))
+          let val = require_attr(e, "val", "customFilter/@val")
+          criteria.push({ operator, val })
         }
       _ => ()
     }
   }
-  CustomFilters(criteria, and_op)
+  { criteria, and_op }
 }
 
 ///|
 fn parse_dynamic_filter(
   element : @xml.Element,
-) -> FilterRule raise @opc_errors.SchemaViolation {
+) -> @domain.CT_DynamicFilter raise @opc_errors.SchemaViolation {
   let kind = parse_dynamic_filter_type(
     require_attr(element, "type", "dynamicFilter/@type"),
   )
@@ -341,92 +197,100 @@ fn parse_dynamic_filter(
   let max_val = parse_optional_double(
     element, "maxVal", "dynamicFilter/@maxVal",
   )
-  DynamicFilter(kind, val, max_val)
+  { kind, val, max_val }
 }
 
 ///|
 fn parse_color_filter(
   element : @xml.Element,
-) -> FilterRule raise @opc_errors.SchemaViolation {
+) -> @domain.CT_ColorFilter raise @opc_errors.SchemaViolation {
   let dxf_id = parse_required_int(element, "dxfId", "colorFilter/@dxfId")
-  let by_cell_color = parse_bool_attr(element, "cellColor", true)
-  ColorFilter(dxf_id, by_cell_color)
+  let cell_color = parse_bool_attr(element, "cellColor", true)
+  { dxf_id, cell_color }
 }
 
 ///|
 fn parse_icon_filter(
   element : @xml.Element,
-) -> FilterRule raise @opc_errors.SchemaViolation {
+) -> @domain.CT_IconFilter raise @opc_errors.SchemaViolation {
   let icon_set = require_attr(element, "iconSet", "iconFilter/@iconSet")
   let icon_id = parse_required_int(element, "iconId", "iconFilter/@iconId")
-  IconFilter(icon_set, icon_id)
+  { icon_set, icon_id }
 }
 
 ///|
 fn parse_top10(
   element : @xml.Element,
-) -> FilterRule raise @opc_errors.SchemaViolation {
+) -> @domain.CT_Top10 raise @opc_errors.SchemaViolation {
   let top = parse_bool_attr(element, "top", true)
   let percent = parse_bool_attr(element, "percent", false)
   let val = parse_required_double(element, "val", "top10/@val")
-  Top10(top, percent, val)
+  let filter_val = parse_optional_double(
+    element, "filterVal", "top10/@filterVal",
+  )
+  { top, percent, val, filter_val }
 }
 
 ///|
 fn parse_date_group_item(
   element : @xml.Element,
-) -> DateGroupItem raise @opc_errors.SchemaViolation {
+) -> @domain.CT_DateGroupItem raise @opc_errors.SchemaViolation {
   let year = parse_required_int(element, "year", "dateGroupItem/@year")
   let month = parse_optional_int(element, "month", "dateGroupItem/@month")
   let day = parse_optional_int(element, "day", "dateGroupItem/@day")
   let hour = parse_optional_int(element, "hour", "dateGroupItem/@hour")
   let minute = parse_optional_int(element, "minute", "dateGroupItem/@minute")
   let second = parse_optional_int(element, "second", "dateGroupItem/@second")
-  let group_by = parse_date_group_by(
+  let date_time_grouping = parse_date_time_grouping(
     attr_or(element, "dateTimeGrouping", "year"),
   )
-  { year, month, day, hour, minute, second, group_by }
+  { year, month, day, hour, minute, second, date_time_grouping }
 }
 
 ///|
 fn rule_visible_without_context(
-  rule : FilterRule,
+  rule : @domain.CT_FilterColumn_Choice?,
   value : @formula.FormulaValue,
   date_system : @date_serial.DateSystem,
 ) -> Bool {
   match rule {
-    Filters(values, blank_included) =>
-      filters_pass(value, values, blank_included, date_system)
-    CustomFilters(criteria, and_op) =>
-      custom_filters_pass(value, criteria, and_op, date_system)
-    DynamicFilter(AboveAverage, _, _) => true
-    DynamicFilter(BelowAverage, _, _) => true
-    DynamicFilter(kind, val, max_val) =>
-      dynamic_filter_pass(value, kind, val, max_val, date_system)
-    ColorFilter(_, _) => false
-    IconFilter(_, _) => false
-    Top10(_, _, _) => true
+    None => true
+    Some(@domain.CT_FilterColumn_Choice::Filters(filters)) =>
+      filters_pass(value, filters, date_system)
+    Some(@domain.CT_FilterColumn_Choice::CustomFilters(custom)) =>
+      custom_filters_pass(value, custom, date_system)
+    Some(
+      @domain.CT_FilterColumn_Choice::DynamicFilter({ kind: AboveAverage, .. })
+    ) => true
+    Some(
+      @domain.CT_FilterColumn_Choice::DynamicFilter({ kind: BelowAverage, .. })
+    ) => true
+    Some(@domain.CT_FilterColumn_Choice::DynamicFilter(dynamic)) =>
+      dynamic_filter_pass(value, dynamic, date_system)
+    Some(@domain.CT_FilterColumn_Choice::ColorFilter(_)) => false
+    Some(@domain.CT_FilterColumn_Choice::IconFilter(_)) => false
+    Some(@domain.CT_FilterColumn_Choice::Top10(_)) => true
   }
 }
 
 ///|
 fn filters_pass(
   value : @formula.FormulaValue,
-  values : Array[FilterValue],
-  blank_included : Bool,
+  filters : @domain.CT_Filters,
   date_system : @date_serial.DateSystem,
 ) -> Bool {
   if formula_is_blank(value) {
-    return blank_included
+    return filters.blank
   }
   let text = formula_to_text(value)
-  for filter_value in values {
-    match filter_value {
-      Literal(literal) => if text == literal { return true }
-      DateGroup(group) =>
-        if date_group_matches(value, group, date_system) {
-          return true
-        }
+  for literal in filters.filters {
+    if text == literal.val {
+      return true
+    }
+  }
+  for group in filters.date_group_items {
+    if date_group_matches(value, group, date_system) {
+      return true
     }
   }
   false
@@ -435,17 +299,16 @@ fn filters_pass(
 ///|
 fn custom_filters_pass(
   value : @formula.FormulaValue,
-  criteria : Array[CustomCriterion],
-  and_op : Bool,
+  custom : @domain.CT_CustomFilters,
   date_system : @date_serial.DateSystem,
 ) -> Bool {
-  if criteria.length() == 0 {
+  if custom.criteria.length() == 0 {
     return true
   }
-  let mut passed = and_op
-  for criterion in criteria {
+  let mut passed = custom.and_op
+  for criterion in custom.criteria {
     let current = custom_criterion_pass(value, criterion, date_system)
-    if and_op {
+    if custom.and_op {
       passed = passed && current
     } else {
       passed = passed || current
@@ -457,16 +320,16 @@ fn custom_filters_pass(
 ///|
 fn custom_criterion_pass(
   value : @formula.FormulaValue,
-  criterion : CustomCriterion,
+  criterion : @domain.CT_CustomFilter,
   date_system : @date_serial.DateSystem,
 ) -> Bool {
   let lhs_number = formula_to_number(value, date_system)
-  let rhs_number = parse_double(criterion.value)
+  let rhs_number = parse_double(criterion.val)
   if lhs_number is Some(left) && rhs_number is Some(right) {
     return compare_double(left, right, criterion.operator)
   }
   let left = formula_to_text(value)
-  let right = criterion.value
+  let right = criterion.val
   if right.contains_char('*') || right.contains_char('?') {
     let matched = wildcard_match(left, right)
     match criterion.operator {
@@ -482,17 +345,15 @@ fn custom_criterion_pass(
 ///|
 fn dynamic_filter_pass(
   value : @formula.FormulaValue,
-  kind : DynamicFilterType,
-  val : Double?,
-  max_val : Double?,
+  dynamic : @domain.CT_DynamicFilter,
   date_system : @date_serial.DateSystem,
 ) -> Bool {
-  if val is Some(min_value) && max_val is Some(max_value) {
+  if dynamic.val is Some(min_value) && dynamic.max_val is Some(max_value) {
     return formula_to_number(value, date_system) is Some(n) &&
       n >= min_value &&
       n < max_value
   }
-  match dynamic_interval(kind, date_system) {
+  match dynamic_interval(dynamic.kind, date_system) {
     Some((start, end)) =>
       match formula_to_number(value, date_system) {
         Some(n) => n >= start && n < end
@@ -544,9 +405,7 @@ fn top10_passes(
   column_id : Int,
   value : @formula.FormulaValue,
   date_system : @date_serial.DateSystem,
-  top : Bool,
-  percent : Bool,
-  val : Double,
+  top10 : @domain.CT_Top10,
 ) -> Bool {
   let numbers = Array::new()
   for row in rows {
@@ -562,19 +421,19 @@ fn top10_passes(
     return false
   }
   let sorted = sorted_numbers(numbers)
-  let requested = if percent {
-    (numbers.length().to_double() * val / 100.0).ceil().to_int()
+  let requested = if top10.percent {
+    (numbers.length().to_double() * top10.val / 100.0).ceil().to_int()
   } else {
-    val.floor().to_int()
+    top10.val.floor().to_int()
   }
   let count = clamp_int(requested, 1, numbers.length())
-  let threshold = if top {
+  let threshold = if top10.top {
     sorted[sorted.length() - count]
   } else {
     sorted[count - 1]
   }
   match formula_to_number(value, date_system) {
-    Some(n) => if top { n >= threshold } else { n <= threshold }
+    Some(n) => if top10.top { n >= threshold } else { n <= threshold }
     None => false
   }
 }
@@ -582,7 +441,7 @@ fn top10_passes(
 ///|
 fn date_group_matches(
   value : @formula.FormulaValue,
-  group : DateGroupItem,
+  group : @domain.CT_DateGroupItem,
   date_system : @date_serial.DateSystem,
 ) -> Bool {
   let serial = match formula_to_number(value, date_system) {
@@ -592,7 +451,7 @@ fn date_group_matches(
   let dt = @date_serial.serial_to_date_time(serial, date_system) catch {
     _ => return false
   }
-  match group.group_by {
+  match group.date_time_grouping {
     Year => dt.year == group.year
     Month => dt.year == group.year && group.month == Some(dt.month)
     Day =>
@@ -622,7 +481,7 @@ fn date_group_matches(
 
 ///|
 fn dynamic_interval(
-  kind : DynamicFilterType,
+  kind : @domain.ST_DynamicFilterType,
   date_system : @date_serial.DateSystem,
 ) -> (Double, Double)? {
   let today = @date_serial.serial_to_date_time(0.0, date_system) catch {
@@ -635,6 +494,7 @@ fn dynamic_interval(
     date_system,
   )
   match kind {
+    Null => None
     Today => Some((today_start, today_start + 1.0))
     Yesterday => Some((today_start - 1.0, today_start))
     Tomorrow => Some((today_start + 1.0, today_start + 2.0))
@@ -826,7 +686,11 @@ fn formula_is_blank(value : @formula.FormulaValue) -> Bool {
 }
 
 ///|
-fn compare_double(left : Double, right : Double, op : FilterOperator) -> Bool {
+fn compare_double(
+  left : Double,
+  right : Double,
+  op : @domain.ST_FilterOperator,
+) -> Bool {
   match op {
     Equal => left == right
     NotEqual => left != right
@@ -838,7 +702,11 @@ fn compare_double(left : Double, right : Double, op : FilterOperator) -> Bool {
 }
 
 ///|
-fn compare_string(left : String, right : String, op : FilterOperator) -> Bool {
+fn compare_string(
+  left : String,
+  right : String,
+  op : @domain.ST_FilterOperator,
+) -> Bool {
   match op {
     Equal => left == right
     NotEqual => left != right
@@ -900,7 +768,7 @@ fn sorted_numbers(values : Array[Double]) -> Array[Double] {
 ///|
 fn parse_filter_operator(
   value : String,
-) -> FilterOperator raise @opc_errors.SchemaViolation {
+) -> @domain.ST_FilterOperator raise @opc_errors.SchemaViolation {
   match value {
     "equal" => Equal
     "notEqual" => NotEqual
@@ -910,7 +778,7 @@ fn parse_filter_operator(
     "lessThanOrEqual" => LessThanOrEqual
     _ =>
       raise @opc_errors.SchemaViolation(
-        section="Part 1 §18.3.2",
+        section="Part 1 §18.18.31",
         path="customFilter/@operator",
         reason="unknown ST_FilterOperator value",
       )
@@ -920,8 +788,9 @@ fn parse_filter_operator(
 ///|
 fn parse_dynamic_filter_type(
   value : String,
-) -> DynamicFilterType raise @opc_errors.SchemaViolation {
+) -> @domain.ST_DynamicFilterType raise @opc_errors.SchemaViolation {
   match value {
+    "null" => Null
     "today" => Today
     "yesterday" => Yesterday
     "tomorrow" => Tomorrow
@@ -958,7 +827,7 @@ fn parse_dynamic_filter_type(
     "belowAverage" => BelowAverage
     _ =>
       raise @opc_errors.SchemaViolation(
-        section="Part 1 §18.3.2",
+        section="Part 1 §18.18.26",
         path="dynamicFilter/@type",
         reason="unknown ST_DynamicFilterType value",
       )
@@ -966,9 +835,9 @@ fn parse_dynamic_filter_type(
 }
 
 ///|
-fn parse_date_group_by(
+fn parse_date_time_grouping(
   value : String,
-) -> DateGroupBy raise @opc_errors.SchemaViolation {
+) -> @domain.ST_DateTimeGrouping raise @opc_errors.SchemaViolation {
   match value {
     "year" => Year
     "month" => Month
@@ -978,9 +847,9 @@ fn parse_date_group_by(
     "second" => Second
     _ =>
       raise @opc_errors.SchemaViolation(
-        section="Part 1 §18.3.2",
+        section="Part 1 §18.18.22",
         path="dateGroupItem/@dateTimeGrouping",
-        reason="unknown date group level",
+        reason="unknown ST_DateTimeGrouping value",
       )
   }
 }

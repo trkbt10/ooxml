@@ -8,6 +8,8 @@ import {
 }
 
 // Values
+pub fn auto_filter_type_group_name() -> String
+
 pub fn metadata_external_type_group_name() -> String
 
 pub fn package_name() -> String
@@ -51,9 +53,9 @@ pub(all) struct CT_Authors {
 pub fn CT_Authors::new(@xml.Element) -> Self
 
 pub(all) struct CT_AutoFilter {
-  element : @xml.Element
+  range : @address.CellRange
+  filter_columns : Array[CT_FilterColumn]
 } derive(Eq, @debug.Debug)
-pub fn CT_AutoFilter::new(@xml.Element) -> Self
 
 pub(all) struct CT_AutoSortScope {
   element : @xml.Element
@@ -311,9 +313,9 @@ pub(all) struct CT_Color {
 pub fn CT_Color::new(Int, Int, Int, Int) -> Self
 
 pub(all) struct CT_ColorFilter {
-  element : @xml.Element
+  dxf_id : Int
+  cell_color : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorFilter::new(@xml.Element) -> Self
 
 pub(all) struct CT_ColorScale {
   thresholds : Array[CT_Cfvo]
@@ -412,14 +414,14 @@ pub(all) struct CT_CustomChartsheetViews {
 pub fn CT_CustomChartsheetViews::new(@xml.Element) -> Self
 
 pub(all) struct CT_CustomFilter {
-  element : @xml.Element
+  operator : ST_FilterOperator
+  val : String
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomFilter::new(@xml.Element) -> Self
 
 pub(all) struct CT_CustomFilters {
-  element : @xml.Element
+  criteria : Array[CT_CustomFilter]
+  and_op : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomFilters::new(@xml.Element) -> Self
 
 pub(all) struct CT_CustomProperties {
   element : @xml.Element
@@ -498,9 +500,14 @@ pub(all) struct CT_DataValidations {
 pub fn CT_DataValidations::new(@xml.Element) -> Self
 
 pub(all) struct CT_DateGroupItem {
-  element : @xml.Element
+  year : Int
+  month : Int?
+  day : Int?
+  hour : Int?
+  minute : Int?
+  second : Int?
+  date_time_grouping : ST_DateTimeGrouping
 } derive(Eq, @debug.Debug)
-pub fn CT_DateGroupItem::new(@xml.Element) -> Self
 
 pub(all) struct CT_DateTime {
   element : @xml.Element
@@ -588,9 +595,10 @@ pub(all) struct CT_Dxfs {
 pub fn CT_Dxfs::new(@xml.Element) -> Self
 
 pub(all) struct CT_DynamicFilter {
-  element : @xml.Element
+  kind : ST_DynamicFilterType
+  val : Double?
+  max_val : Double?
 } derive(Eq, @debug.Debug)
-pub fn CT_DynamicFilter::new(@xml.Element) -> Self
 
 pub(all) struct CT_Error {
   element : @xml.Element
@@ -713,19 +721,31 @@ pub(all) struct CT_Fills {
 pub fn CT_Fills::new(@xml.Element) -> Self
 
 pub(all) struct CT_Filter {
-  element : @xml.Element
+  val : String
 } derive(Eq, @debug.Debug)
-pub fn CT_Filter::new(@xml.Element) -> Self
 
 pub(all) struct CT_FilterColumn {
-  element : @xml.Element
+  col_id : Int
+  hidden_button : Bool
+  show_button : Bool
+  rule : CT_FilterColumn_Choice?
 } derive(Eq, @debug.Debug)
-pub fn CT_FilterColumn::new(@xml.Element) -> Self
+
+pub(all) enum CT_FilterColumn_Choice {
+  Filters(CT_Filters)
+  Top10(CT_Top10)
+  CustomFilters(CT_CustomFilters)
+  DynamicFilter(CT_DynamicFilter)
+  ColorFilter(CT_ColorFilter)
+  IconFilter(CT_IconFilter)
+} derive(Eq, @debug.Debug)
+pub fn CT_FilterColumn_Choice::is_dynamic_filter(Self) -> Bool
 
 pub(all) struct CT_Filters {
-  element : @xml.Element
+  filters : Array[CT_Filter]
+  date_group_items : Array[CT_DateGroupItem]
+  blank : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Filters::new(@xml.Element) -> Self
 
 pub(all) struct CT_Font {
   element : @xml.Element
@@ -853,9 +873,9 @@ pub(all) struct CT_I {
 pub fn CT_I::new(@xml.Element) -> Self
 
 pub(all) struct CT_IconFilter {
-  element : @xml.Element
+  icon_set : String
+  icon_id : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_IconFilter::new(@xml.Element) -> Self
 
 pub(all) struct CT_IconSet {
   set_name : String
@@ -1740,9 +1760,11 @@ pub(all) struct CT_TextPr {
 pub fn CT_TextPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_Top10 {
-  element : @xml.Element
+  top : Bool
+  percent : Bool
+  val : Double
+  filter_val : Double?
 } derive(Eq, @debug.Debug)
-pub fn CT_Top10::new(@xml.Element) -> Self
 
 pub(all) struct CT_Tuple {
   element : @xml.Element
@@ -1953,6 +1975,64 @@ pub(all) enum ST_ConditionalFormattingOperator {
   OpNotContains
   OpNotEqual
 } derive(Eq, @debug.Debug)
+
+pub(all) enum ST_DateTimeGrouping {
+  Year
+  Month
+  Day
+  Hour
+  Minute
+  Second
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ST_DynamicFilterType {
+  Null
+  AboveAverage
+  BelowAverage
+  Tomorrow
+  Today
+  Yesterday
+  NextWeek
+  ThisWeek
+  LastWeek
+  NextMonth
+  ThisMonth
+  LastMonth
+  NextQuarter
+  ThisQuarter
+  LastQuarter
+  NextYear
+  ThisYear
+  LastYear
+  YearToDate
+  Q1
+  Q2
+  Q3
+  Q4
+  M1
+  M2
+  M3
+  M4
+  M5
+  M6
+  M7
+  M8
+  M9
+  M10
+  M11
+  M12
+} derive(Eq, @debug.Debug)
+pub fn ST_DynamicFilterType::is_average(Self) -> Bool
+
+pub(all) enum ST_FilterOperator {
+  Equal
+  LessThan
+  LessThanOrEqual
+  NotEqual
+  GreaterThanOrEqual
+  GreaterThan
+} derive(Eq, @debug.Debug)
+pub fn ST_FilterOperator::to_ooxml(Self) -> String
 
 pub(all) enum ST_TimePeriod {
   Today

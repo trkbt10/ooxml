@@ -7,40 +7,6 @@ pub fn sheet_type_group_name() -> String {
 }
 
 ///|
-/// XSD complex type CT_FilterColumn.
-pub(all) struct CT_FilterColumn {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_FilterColumn::new(element : @xml.Element) -> CT_FilterColumn {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
-/// XSD complex type CT_DynamicFilter.
-pub(all) struct CT_DynamicFilter {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_DynamicFilter::new(element : @xml.Element) -> CT_DynamicFilter {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
 /// XSD complex type CT_ObjectAnchor.
 pub(all) struct CT_ObjectAnchor {
   element : @xml.Element
