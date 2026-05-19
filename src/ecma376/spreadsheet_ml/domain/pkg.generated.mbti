@@ -225,6 +225,19 @@ pub fn CT_CalcChain::new(@xml.Element) -> Self
 
 pub(all) struct CT_CalcPr {
   element : @xml.Element
+  calc_id : Int?
+  calc_mode : String
+  full_calc_on_load : Bool
+  ref_mode : String
+  iterate : Bool
+  iterate_count : Int
+  iterate_delta : Double
+  full_precision : Bool
+  calc_completed : Bool
+  calc_on_save : Bool
+  concurrent_calc : Bool
+  concurrent_manual_count : Int?
+  force_full_calc : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_CalcPr::new(@xml.Element) -> Self
 
@@ -695,6 +708,7 @@ pub(all) struct CT_CustomFilters {
 
 pub(all) struct CT_CustomProperties {
   element : @xml.Element
+  custom_pr : Array[CT_CustomProperty]
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomProperties::new(@xml.Element) -> Self
 
@@ -912,11 +926,28 @@ pub fn CT_DdeValues::new(@xml.Element) -> Self
 
 pub(all) struct CT_DefinedName {
   element : @xml.Element
+  formula : String
+  name : String
+  comment : String?
+  custom_menu : String?
+  description : String?
+  help : String?
+  status_bar : String?
+  local_sheet_id : Int?
+  hidden : Bool
+  function : Bool
+  vb_procedure : Bool
+  xlm : Bool
+  function_group_id : Int?
+  shortcut_key : String?
+  publish_to_server : Bool
+  workbook_parameter : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_DefinedName::new(@xml.Element) -> Self
 
 pub(all) struct CT_DefinedNames {
   element : @xml.Element
+  defined_name : Array[CT_DefinedName]
 } derive(Eq, @debug.Debug)
 pub fn CT_DefinedNames::new(@xml.Element) -> Self
 
@@ -1135,16 +1166,31 @@ pub fn CT_FieldsUsage::new(@xml.Element) -> Self
 
 pub(all) struct CT_FileRecoveryPr {
   element : @xml.Element
+  auto_recover : Bool
+  crash_save : Bool
+  data_extract_load : Bool
+  repair_load : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_FileRecoveryPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_FileSharing {
   element : @xml.Element
+  read_only_recommended : Bool
+  user_name : String?
+  algorithm_name : String?
+  hash_value : String?
+  salt_value : String?
+  spin_count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_FileSharing::new(@xml.Element) -> Self
 
 pub(all) struct CT_FileVersion {
   element : @xml.Element
+  app_name : String?
+  last_edited : String?
+  lowest_edited : String?
+  rup_build : String?
+  code_name : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_FileVersion::new(@xml.Element) -> Self
 
@@ -1252,11 +1298,14 @@ pub fn CT_Formats::new(@xml.Element) -> Self
 
 pub(all) struct CT_FunctionGroup {
   element : @xml.Element
+  name : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_FunctionGroup::new(@xml.Element) -> Self
 
 pub(all) struct CT_FunctionGroups {
   element : @xml.Element
+  function_group : Array[CT_FunctionGroup]
+  built_in_group_count : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_FunctionGroups::new(@xml.Element) -> Self
 
@@ -1289,6 +1338,8 @@ pub fn CT_GradientFill::new(@xml.Element) -> Self
 
 pub(all) struct CT_GradientStop {
   element : @xml.Element
+  color : @xml.Element?
+  position : Double
 } derive(Eq, @debug.Debug)
 pub fn CT_GradientStop::new(@xml.Element) -> Self
 
@@ -1813,6 +1864,10 @@ pub fn CT_OleSize::new(@xml.Element) -> Self
 
 pub(all) struct CT_OutlinePr {
   element : @xml.Element
+  apply_styles : Bool
+  summary_below : Bool
+  summary_right : Bool
+  show_outline_symbols : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_OutlinePr::new(@xml.Element) -> Self
 
@@ -2437,6 +2492,15 @@ pub fn CT_ReviewedRevisions::new(@xml.Element) -> Self
 
 pub(all) struct CT_RevisionAutoFormatting {
   element : @xml.Element
+  sheet_id : Int
+  auto_format_id : Int?
+  apply_number_formats : Bool?
+  apply_border_formats : Bool?
+  apply_font_formats : Bool?
+  apply_pattern_formats : Bool?
+  apply_alignment_formats : Bool?
+  apply_width_height_formats : Bool?
+  ref_ : String
 } derive(Eq, @debug.Debug)
 pub fn CT_RevisionAutoFormatting::new(@xml.Element) -> Self
 
@@ -2466,11 +2530,26 @@ pub fn CT_RevisionCellChange::new(@xml.Element) -> Self
 
 pub(all) struct CT_RevisionComment {
   element : @xml.Element
+  sheet_id : Int
+  cell : String
+  guid : String
+  action : String
+  always_show : Bool
+  old : Bool
+  hidden_row : Bool
+  hidden_column : Bool
+  author : String
+  old_length : Int
+  new_length : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_RevisionComment::new(@xml.Element) -> Self
 
 pub(all) struct CT_RevisionConflict {
   element : @xml.Element
+  r_id : Int
+  ua : Bool
+  ra : Bool
+  sheet_id : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_RevisionConflict::new(@xml.Element) -> Self
 
@@ -2483,11 +2562,46 @@ pub fn CT_RevisionCustomView::new(@xml.Element) -> Self
 
 pub(all) struct CT_RevisionDefinedName {
   element : @xml.Element
+  formula : String?
+  old_formula : String?
+  ext_lst : CT_ExtensionList?
+  r_id : Int
+  ua : Bool
+  ra : Bool
+  local_sheet_id : Int?
+  custom_view : Bool
+  name : String
+  function : Bool
+  old_function : Bool
+  function_group_id : Int?
+  old_function_group_id : Int?
+  shortcut_key : Int?
+  old_shortcut_key : Int?
+  hidden : Bool
+  old_hidden : Bool
+  custom_menu : String?
+  old_custom_menu : String?
+  description : String?
+  old_description : String?
+  help : String?
+  old_help : String?
+  status_bar : String?
+  old_status_bar : String?
+  comment : String?
+  old_comment : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_RevisionDefinedName::new(@xml.Element) -> Self
 
 pub(all) struct CT_RevisionFormatting {
   element : @xml.Element
+  dxf : CT_Dxf?
+  ext_lst : CT_ExtensionList?
+  sheet_id : Int
+  xf_dxf : Bool
+  s : Bool
+  sqref : String
+  start : Int?
+  length : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_RevisionFormatting::new(@xml.Element) -> Self
 
@@ -2537,6 +2651,16 @@ pub fn CT_RevisionInsertSheet::new(@xml.Element) -> Self
 
 pub(all) struct CT_RevisionMove {
   element : @xml.Element
+  undo : Array[CT_UndoInfo]
+  rcc : Array[CT_RevisionCellChange]
+  rfmt : Array[CT_RevisionFormatting]
+  r_id : Int
+  ua : Bool
+  ra : Bool
+  sheet_id : Int
+  source : String
+  destination : String
+  source_sheet_id : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_RevisionMove::new(@xml.Element) -> Self
 
@@ -2705,6 +2829,11 @@ pub fn CT_SharedItems::new(@xml.Element) -> Self
 
 pub(all) struct CT_SharedUser {
   element : @xml.Element
+  ext_lst : CT_ExtensionList?
+  guid : String
+  name : String
+  id : Int
+  date_time : String
 } derive(Eq, @debug.Debug)
 pub fn CT_SharedUser::new(@xml.Element) -> Self
 
@@ -2863,21 +2992,28 @@ pub fn CT_SingleXmlCells::new(@xml.Element) -> Self
 
 pub(all) struct CT_SmartTagPr {
   element : @xml.Element
+  embed : Bool
+  show : String
 } derive(Eq, @debug.Debug)
 pub fn CT_SmartTagPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_SmartTagType {
   element : @xml.Element
+  namespace_uri : String?
+  name : String?
+  url : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_SmartTagType::new(@xml.Element) -> Self
 
 pub(all) struct CT_SmartTagTypes {
   element : @xml.Element
+  smart_tag_type : Array[CT_SmartTagType]
 } derive(Eq, @debug.Debug)
 pub fn CT_SmartTagTypes::new(@xml.Element) -> Self
 
 pub(all) struct CT_SmartTags {
   element : @xml.Element
+  cell_smart_tags : Array[CT_CellSmartTags]
 } derive(Eq, @debug.Debug)
 pub fn CT_SmartTags::new(@xml.Element) -> Self
 
@@ -3093,6 +3229,8 @@ pub fn CT_UndoInfo::new(@xml.Element) -> Self
 
 pub(all) struct CT_Users {
   element : @xml.Element
+  user_info : Array[CT_SharedUser]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_Users::new(@xml.Element) -> Self
 
@@ -3146,11 +3284,21 @@ pub fn CT_WebPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_WebPublishItem {
   element : @xml.Element
+  id : Int
+  div_id : String
+  source_type : String
+  source_ref : String?
+  source_object : String?
+  destination_file : String
+  title : String?
+  auto_republish : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_WebPublishItem::new(@xml.Element) -> Self
 
 pub(all) struct CT_WebPublishItems {
   element : @xml.Element
+  web_publish_item : Array[CT_WebPublishItem]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_WebPublishItems::new(@xml.Element) -> Self
 
@@ -3166,16 +3314,62 @@ pub fn CT_WebPublishObjects::new(@xml.Element) -> Self
 
 pub(all) struct CT_WebPublishing {
   element : @xml.Element
+  css : Bool
+  thicket : Bool
+  long_file_names : Bool
+  vml : Bool
+  allow_png : Bool
+  target_screen_size : String
+  dpi : Int
+  character_set : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_WebPublishing::new(@xml.Element) -> Self
 
 pub(all) struct CT_Workbook {
   element : @xml.Element
+  file_version : CT_FileVersion?
+  file_sharing : CT_FileSharing?
+  workbook_pr : CT_WorkbookPr?
+  workbook_protection : CT_WorkbookProtection?
+  book_views : CT_BookViews?
+  sheets : CT_Sheets?
+  function_groups : CT_FunctionGroups?
+  external_references : CT_ExternalReferences?
+  defined_names : CT_DefinedNames?
+  calc_pr : CT_CalcPr?
+  ole_size : CT_OleSize?
+  custom_workbook_views : CT_CustomWorkbookViews?
+  pivot_caches : CT_PivotCaches?
+  smart_tag_pr : CT_SmartTagPr?
+  smart_tag_types : CT_SmartTagTypes?
+  web_publishing : CT_WebPublishing?
+  file_recovery_pr : Array[CT_FileRecoveryPr]
+  web_publish_objects : CT_WebPublishObjects?
+  ext_lst : CT_ExtensionList?
+  conformance : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Workbook::new(@xml.Element) -> Self
 
 pub(all) struct CT_WorkbookPr {
   element : @xml.Element
+  date1904 : Bool
+  show_objects : String
+  show_border_unselected_tables : Bool
+  filter_privacy : Bool
+  prompted_solutions : Bool
+  show_ink_annotation : Bool
+  backup_file : Bool
+  save_external_link_values : Bool
+  update_links : String
+  code_name : String?
+  hide_pivot_field_list : Bool
+  show_pivot_chart_filter : Bool
+  allow_refresh_query : Bool
+  publish_items : Bool
+  check_compatibility : Bool
+  auto_compress_pictures : Bool
+  refresh_all_connections : Bool
+  default_theme_version : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_WorkbookPr::new(@xml.Element) -> Self
 

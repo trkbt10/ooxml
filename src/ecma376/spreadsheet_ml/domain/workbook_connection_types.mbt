@@ -2012,256 +2012,762 @@ pub fn CT_WebPublishItem::new(element : @xml.Element) -> CT_WebPublishItem {
 }
 
 ///|
-/// XSD complex type CT_GradientStop.
+/// XSD complex type CT_GradientStop — Part 1 §18.8.38 (`<stop>` Gradient
+/// Stop). Sequence: required `<color>` (CT_Color, minOccurs=1
+/// maxOccurs=1). Required `@position` (xsd:double). The domain's typed
+/// `CT_Color` is the ARGB-only conditional-formatting carrier
+/// (§18.3.1.15) constructed via `CT_Color::new(a, r, g, b)`, so the
+/// gradient stop's XML `<color>` child is preserved as its raw
+/// `@xml.Element` for byte-identical round-trip.
 pub(all) struct CT_GradientStop {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <color> (CT_Color element) — required gradient-stop colour, preserved
+  /// as the raw XML element because the typed CT_Color is the ARGB-only
+  /// (§18.3.1.15) carrier.
+  color : @xml.Element?
+  /// @position (xsd:double) — required gradient-stop position.
+  position : Double
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_GradientStop::new(element : @xml.Element) -> CT_GradientStop {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut color : @xml.Element? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "color" {
+        color = Some(child_element)
+      }
+    }
   }
+  let position = attr_double(element, "position", 0.0)
+  { element, color, position }
 }
 
 ///|
-/// XSD complex type CT_Workbook.
+/// XSD complex type CT_Workbook — Part 1 §18.2.27 (`<workbook>` Workbook
+/// root). Sequence in order: `<fileVersion>?` (CT_FileVersion),
+/// `<fileSharing>?` (CT_FileSharing), `<workbookPr>?` (CT_WorkbookPr),
+/// `<workbookProtection>?` (CT_WorkbookProtection), `<bookViews>?`
+/// (CT_BookViews), `<sheets>` (CT_Sheets, required minOccurs=1),
+/// `<functionGroups>?` (CT_FunctionGroups), `<externalReferences>?`
+/// (CT_ExternalReferences), `<definedNames>?` (CT_DefinedNames),
+/// `<calcPr>?` (CT_CalcPr), `<oleSize>?` (CT_OleSize),
+/// `<customWorkbookViews>?` (CT_CustomWorkbookViews), `<pivotCaches>?`
+/// (CT_PivotCaches), `<smartTagPr>?` (CT_SmartTagPr), `<smartTagTypes>?`
+/// (CT_SmartTagTypes), `<webPublishing>?` (CT_WebPublishing),
+/// `<fileRecoveryPr>*` (CT_FileRecoveryPr, maxOccurs=unbounded),
+/// `<webPublishObjects>?` (CT_WebPublishObjects), `<extLst>?`
+/// (CT_ExtensionList). Optional `@conformance` (s:ST_ConformanceClass).
 pub(all) struct CT_Workbook {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <fileVersion> (CT_FileVersion) — optional, the workbook file version.
+  file_version : CT_FileVersion?
+  /// <fileSharing> (CT_FileSharing) — optional file-sharing settings.
+  file_sharing : CT_FileSharing?
+  /// <workbookPr> (CT_WorkbookPr) — optional workbook properties.
+  workbook_pr : CT_WorkbookPr?
+  /// <workbookProtection> (CT_WorkbookProtection) — optional protection.
+  workbook_protection : CT_WorkbookProtection?
+  /// <bookViews> (CT_BookViews) — optional collection of workbook views.
+  book_views : CT_BookViews?
+  /// <sheets> (CT_Sheets) — required, the sheet entries.
+  sheets : CT_Sheets?
+  /// <functionGroups> (CT_FunctionGroups) — optional function-group list.
+  function_groups : CT_FunctionGroups?
+  /// <externalReferences> (CT_ExternalReferences) — optional external refs.
+  external_references : CT_ExternalReferences?
+  /// <definedNames> (CT_DefinedNames) — optional defined-name table.
+  defined_names : CT_DefinedNames?
+  /// <calcPr> (CT_CalcPr) — optional calculation properties.
+  calc_pr : CT_CalcPr?
+  /// <oleSize> (CT_OleSize) — optional embedded-object dimensions.
+  ole_size : CT_OleSize?
+  /// <customWorkbookViews> (CT_CustomWorkbookViews) — optional custom views.
+  custom_workbook_views : CT_CustomWorkbookViews?
+  /// <pivotCaches> (CT_PivotCaches) — optional pivot-cache references.
+  pivot_caches : CT_PivotCaches?
+  /// <smartTagPr> (CT_SmartTagPr) — optional smart-tag properties.
+  smart_tag_pr : CT_SmartTagPr?
+  /// <smartTagTypes> (CT_SmartTagTypes) — optional smart-tag type list.
+  smart_tag_types : CT_SmartTagTypes?
+  /// <webPublishing> (CT_WebPublishing) — optional web-publishing settings.
+  web_publishing : CT_WebPublishing?
+  /// <fileRecoveryPr>* (CT_FileRecoveryPr) — zero or more recovery hints.
+  file_recovery_pr : Array[CT_FileRecoveryPr]
+  /// <webPublishObjects> (CT_WebPublishObjects) — optional publish objects.
+  web_publish_objects : CT_WebPublishObjects?
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
+  /// @conformance (s:ST_ConformanceClass) — optional conformance class.
+  conformance : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Workbook::new(element : @xml.Element) -> CT_Workbook {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut file_version : CT_FileVersion? = None
+  let mut file_sharing : CT_FileSharing? = None
+  let mut workbook_pr : CT_WorkbookPr? = None
+  let mut workbook_protection : CT_WorkbookProtection? = None
+  let mut book_views : CT_BookViews? = None
+  let mut sheets : CT_Sheets? = None
+  let mut function_groups : CT_FunctionGroups? = None
+  let mut external_references : CT_ExternalReferences? = None
+  let mut defined_names : CT_DefinedNames? = None
+  let mut calc_pr : CT_CalcPr? = None
+  let mut ole_size : CT_OleSize? = None
+  let mut custom_workbook_views : CT_CustomWorkbookViews? = None
+  let mut pivot_caches : CT_PivotCaches? = None
+  let mut smart_tag_pr : CT_SmartTagPr? = None
+  let mut smart_tag_types : CT_SmartTagTypes? = None
+  let mut web_publishing : CT_WebPublishing? = None
+  let file_recovery_pr : Array[CT_FileRecoveryPr] = []
+  let mut web_publish_objects : CT_WebPublishObjects? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "fileVersion" => file_version = Some(CT_FileVersion::new(child_element))
+        "fileSharing" => file_sharing = Some(CT_FileSharing::new(child_element))
+        "workbookPr" => workbook_pr = Some(CT_WorkbookPr::new(child_element))
+        "workbookProtection" =>
+          workbook_protection = Some(CT_WorkbookProtection::new(child_element))
+        "bookViews" => book_views = Some(CT_BookViews::new(child_element))
+        "sheets" => sheets = Some(CT_Sheets::new(child_element))
+        "functionGroups" =>
+          function_groups = Some(CT_FunctionGroups::new(child_element))
+        "externalReferences" =>
+          external_references = Some(CT_ExternalReferences::new(child_element))
+        "definedNames" =>
+          defined_names = Some(CT_DefinedNames::new(child_element))
+        "calcPr" => calc_pr = Some(CT_CalcPr::new(child_element))
+        "oleSize" => ole_size = Some(CT_OleSize::new(child_element))
+        "customWorkbookViews" =>
+          custom_workbook_views = Some(
+            CT_CustomWorkbookViews::new(child_element),
+          )
+        "pivotCaches" => pivot_caches = Some(CT_PivotCaches::new(child_element))
+        "smartTagPr" => smart_tag_pr = Some(CT_SmartTagPr::new(child_element))
+        "smartTagTypes" =>
+          smart_tag_types = Some(CT_SmartTagTypes::new(child_element))
+        "webPublishing" =>
+          web_publishing = Some(CT_WebPublishing::new(child_element))
+        "fileRecoveryPr" =>
+          file_recovery_pr.push(CT_FileRecoveryPr::new(child_element))
+        "webPublishObjects" =>
+          web_publish_objects = Some(CT_WebPublishObjects::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  let conformance = attr(element, "conformance")
+  {
+    element,
+    file_version,
+    file_sharing,
+    workbook_pr,
+    workbook_protection,
+    book_views,
+    sheets,
+    function_groups,
+    external_references,
+    defined_names,
+    calc_pr,
+    ole_size,
+    custom_workbook_views,
+    pivot_caches,
+    smart_tag_pr,
+    smart_tag_types,
+    web_publishing,
+    file_recovery_pr,
+    web_publish_objects,
+    ext_lst,
+    conformance,
   }
 }
 
 ///|
-/// XSD complex type CT_FileVersion.
+/// XSD complex type CT_FileVersion — Part 1 §18.2.13 (`<fileVersion>`
+/// File Version). Attribute-only. Optional `@appName` (xsd:string),
+/// `@lastEdited` (xsd:string), `@lowestEdited` (xsd:string), `@rupBuild`
+/// (xsd:string), `@codeName` (s:ST_Guid). Per the strict XSD the four
+/// build identifiers are xsd:string (not numeric) so they are surfaced
+/// as `String?` to preserve loose value formats observed in real
+/// workbooks.
 pub(all) struct CT_FileVersion {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @appName (xsd:string) — optional application identifier.
+  app_name : String?
+  /// @lastEdited (xsd:string) — optional last-editor build number.
+  last_edited : String?
+  /// @lowestEdited (xsd:string) — optional lowest-editor build number.
+  lowest_edited : String?
+  /// @rupBuild (xsd:string) — optional rupture build identifier.
+  rup_build : String?
+  /// @codeName (s:ST_Guid) — optional VBA code-name GUID.
+  code_name : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FileVersion::new(element : @xml.Element) -> CT_FileVersion {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let app_name = attr(element, "appName")
+  let last_edited = attr(element, "lastEdited")
+  let lowest_edited = attr(element, "lowestEdited")
+  let rup_build = attr(element, "rupBuild")
+  let code_name = attr(element, "codeName")
+  { element, app_name, last_edited, lowest_edited, rup_build, code_name }
 }
 
 ///|
-/// XSD complex type CT_WorkbookPr.
+/// XSD complex type CT_WorkbookPr — Part 1 §18.2.28 (`<workbookPr>`
+/// Workbook Properties). Attribute-only. Optional booleans with defaults:
+/// `@date1904` (false), `@showBorderUnselectedTables` (true),
+/// `@filterPrivacy` (false), `@promptedSolutions` (false),
+/// `@showInkAnnotation` (true), `@backupFile` (false),
+/// `@saveExternalLinkValues` (true), `@hidePivotFieldList` (false),
+/// `@showPivotChartFilter` (false), `@allowRefreshQuery` (false),
+/// `@publishItems` (false), `@checkCompatibility` (false),
+/// `@autoCompressPictures` (true), `@refreshAllConnections` (false).
+/// Enumeration attrs: `@showObjects` (ST_Objects, default "all"),
+/// `@updateLinks` (ST_UpdateLinks, default "userSet"). String attrs:
+/// `@codeName` (xsd:string). Numeric: `@defaultThemeVersion`
+/// (xsd:unsignedInt, optional).
 pub(all) struct CT_WorkbookPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @date1904 (xsd:boolean) — optional, default false.
+  date1904 : Bool
+  /// @showObjects (ST_Objects) — optional, default "all".
+  show_objects : String
+  /// @showBorderUnselectedTables (xsd:boolean) — optional, default true.
+  show_border_unselected_tables : Bool
+  /// @filterPrivacy (xsd:boolean) — optional, default false.
+  filter_privacy : Bool
+  /// @promptedSolutions (xsd:boolean) — optional, default false.
+  prompted_solutions : Bool
+  /// @showInkAnnotation (xsd:boolean) — optional, default true.
+  show_ink_annotation : Bool
+  /// @backupFile (xsd:boolean) — optional, default false.
+  backup_file : Bool
+  /// @saveExternalLinkValues (xsd:boolean) — optional, default true.
+  save_external_link_values : Bool
+  /// @updateLinks (ST_UpdateLinks) — optional, default "userSet".
+  update_links : String
+  /// @codeName (xsd:string) — optional VBA code-name.
+  code_name : String?
+  /// @hidePivotFieldList (xsd:boolean) — optional, default false.
+  hide_pivot_field_list : Bool
+  /// @showPivotChartFilter (xsd:boolean) — optional, default false.
+  show_pivot_chart_filter : Bool
+  /// @allowRefreshQuery (xsd:boolean) — optional, default false.
+  allow_refresh_query : Bool
+  /// @publishItems (xsd:boolean) — optional, default false.
+  publish_items : Bool
+  /// @checkCompatibility (xsd:boolean) — optional, default false.
+  check_compatibility : Bool
+  /// @autoCompressPictures (xsd:boolean) — optional, default true.
+  auto_compress_pictures : Bool
+  /// @refreshAllConnections (xsd:boolean) — optional, default false.
+  refresh_all_connections : Bool
+  /// @defaultThemeVersion (xsd:unsignedInt) — optional default theme version.
+  default_theme_version : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_WorkbookPr::new(element : @xml.Element) -> CT_WorkbookPr {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let date1904 = attr_bool(element, "date1904", false)
+  let show_objects = match attr(element, "showObjects") {
+    Some(value) => value
+    None => "all"
+  }
+  let show_border_unselected_tables = attr_bool(
+    element, "showBorderUnselectedTables", true,
+  )
+  let filter_privacy = attr_bool(element, "filterPrivacy", false)
+  let prompted_solutions = attr_bool(element, "promptedSolutions", false)
+  let show_ink_annotation = attr_bool(element, "showInkAnnotation", true)
+  let backup_file = attr_bool(element, "backupFile", false)
+  let save_external_link_values = attr_bool(
+    element, "saveExternalLinkValues", true,
+  )
+  let update_links = match attr(element, "updateLinks") {
+    Some(value) => value
+    None => "userSet"
+  }
+  let code_name = attr(element, "codeName")
+  let hide_pivot_field_list = attr_bool(element, "hidePivotFieldList", false)
+  let show_pivot_chart_filter = attr_bool(
+    element, "showPivotChartFilter", false,
+  )
+  let allow_refresh_query = attr_bool(element, "allowRefreshQuery", false)
+  let publish_items = attr_bool(element, "publishItems", false)
+  let check_compatibility = attr_bool(element, "checkCompatibility", false)
+  let auto_compress_pictures = attr_bool(element, "autoCompressPictures", true)
+  let refresh_all_connections = attr_bool(
+    element, "refreshAllConnections", false,
+  )
+  let default_theme_version = attr_uint_opt(element, "defaultThemeVersion")
+  {
+    element,
+    date1904,
+    show_objects,
+    show_border_unselected_tables,
+    filter_privacy,
+    prompted_solutions,
+    show_ink_annotation,
+    backup_file,
+    save_external_link_values,
+    update_links,
+    code_name,
+    hide_pivot_field_list,
+    show_pivot_chart_filter,
+    allow_refresh_query,
+    publish_items,
+    check_compatibility,
+    auto_compress_pictures,
+    refresh_all_connections,
+    default_theme_version,
   }
 }
 
 ///|
-/// XSD complex type CT_SmartTagPr.
+/// XSD complex type CT_SmartTagPr — Part 1 §18.2.21 (`<smartTagPr>`
+/// Smart Tag Properties). Attribute-only. Optional `@embed`
+/// (xsd:boolean, default false); `@show` (ST_SmartTagShow, default
+/// "all").
 pub(all) struct CT_SmartTagPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @embed (xsd:boolean) — optional, default false.
+  embed : Bool
+  /// @show (ST_SmartTagShow) — optional, default "all".
+  show : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_SmartTagPr::new(element : @xml.Element) -> CT_SmartTagPr {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let embed = attr_bool(element, "embed", false)
+  let show = match attr(element, "show") {
+    Some(value) => value
+    None => "all"
   }
+  { element, embed, show }
 }
 
 ///|
-/// XSD complex type CT_SmartTagTypes.
+/// XSD complex type CT_SmartTagTypes — Part 1 §18.2.23
+/// (`<smartTagTypes>` Smart Tag Types container). Sequence:
+/// `<smartTagType>*` (CT_SmartTagType, minOccurs=0
+/// maxOccurs=unbounded). No attributes.
 pub(all) struct CT_SmartTagTypes {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <smartTagType>* (CT_SmartTagType) — zero or more smart-tag type entries.
+  smart_tag_type : Array[CT_SmartTagType]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_SmartTagTypes::new(element : @xml.Element) -> CT_SmartTagTypes {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let smart_tag_type : Array[CT_SmartTagType] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "smartTagType" {
+        smart_tag_type.push(CT_SmartTagType::new(child_element))
+      }
+    }
   }
+  { element, smart_tag_type }
 }
 
 ///|
-/// XSD complex type CT_SmartTagType.
+/// XSD complex type CT_SmartTagType — Part 1 §18.2.22 (`<smartTagType>`
+/// Smart Tag Type). Attribute-only. Optional `@namespaceUri`
+/// (s:ST_Xstring), `@name` (s:ST_Xstring), `@url` (s:ST_Xstring).
 pub(all) struct CT_SmartTagType {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @namespaceUri (s:ST_Xstring) — optional smart-tag namespace URI.
+  namespace_uri : String?
+  /// @name (s:ST_Xstring) — optional smart-tag type name.
+  name : String?
+  /// @url (s:ST_Xstring) — optional smart-tag type URL.
+  url : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_SmartTagType::new(element : @xml.Element) -> CT_SmartTagType {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let namespace_uri = attr(element, "namespaceUri")
+  let name = attr(element, "name")
+  let url = attr(element, "url")
+  { element, namespace_uri, name, url }
 }
 
 ///|
-/// XSD complex type CT_FileRecoveryPr.
+/// XSD complex type CT_FileRecoveryPr — Part 1 §18.2.11
+/// (`<fileRecoveryPr>` File Recovery Properties). Attribute-only.
+/// Optional `@autoRecover` (xsd:boolean, default true); `@crashSave`
+/// (xsd:boolean, default false); `@dataExtractLoad` (xsd:boolean,
+/// default false); `@repairLoad` (xsd:boolean, default false).
 pub(all) struct CT_FileRecoveryPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @autoRecover (xsd:boolean) — optional, default true.
+  auto_recover : Bool
+  /// @crashSave (xsd:boolean) — optional, default false.
+  crash_save : Bool
+  /// @dataExtractLoad (xsd:boolean) — optional, default false.
+  data_extract_load : Bool
+  /// @repairLoad (xsd:boolean) — optional, default false.
+  repair_load : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FileRecoveryPr::new(element : @xml.Element) -> CT_FileRecoveryPr {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let auto_recover = attr_bool(element, "autoRecover", true)
+  let crash_save = attr_bool(element, "crashSave", false)
+  let data_extract_load = attr_bool(element, "dataExtractLoad", false)
+  let repair_load = attr_bool(element, "repairLoad", false)
+  { element, auto_recover, crash_save, data_extract_load, repair_load }
 }
 
 ///|
-/// XSD complex type CT_CalcPr: workbook calculation properties with calcId, calcMode, refMode, iterate, fullPrecision, concurrentCalc, forceFullCalc attributes.
+/// XSD complex type CT_CalcPr — Part 1 §18.2.2 (`<calcPr>` Calculation
+/// Properties). Attribute-only. `@calcId` (xsd:unsignedInt) optional.
+/// `@calcMode` (ST_CalcMode, default "auto"); `@refMode` (ST_RefMode,
+/// default "A1"). Optional booleans: `@fullCalcOnLoad` (default false),
+/// `@iterate` (default false), `@fullPrecision` (default true),
+/// `@calcCompleted` (default true), `@calcOnSave` (default true),
+/// `@concurrentCalc` (default true), `@forceFullCalc` (no default).
+/// Numerics: `@iterateCount` (xsd:unsignedInt, default 100),
+/// `@iterateDelta` (xsd:double, default 0.001),
+/// `@concurrentManualCount` (xsd:unsignedInt, optional).
 pub(all) struct CT_CalcPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @calcId (xsd:unsignedInt) — optional calculation engine identifier.
+  calc_id : Int?
+  /// @calcMode (ST_CalcMode) — optional, default "auto".
+  calc_mode : String
+  /// @fullCalcOnLoad (xsd:boolean) — optional, default false.
+  full_calc_on_load : Bool
+  /// @refMode (ST_RefMode) — optional, default "A1".
+  ref_mode : String
+  /// @iterate (xsd:boolean) — optional, default false.
+  iterate : Bool
+  /// @iterateCount (xsd:unsignedInt) — optional, default 100.
+  iterate_count : Int
+  /// @iterateDelta (xsd:double) — optional, default 0.001.
+  iterate_delta : Double
+  /// @fullPrecision (xsd:boolean) — optional, default true.
+  full_precision : Bool
+  /// @calcCompleted (xsd:boolean) — optional, default true.
+  calc_completed : Bool
+  /// @calcOnSave (xsd:boolean) — optional, default true.
+  calc_on_save : Bool
+  /// @concurrentCalc (xsd:boolean) — optional, default true.
+  concurrent_calc : Bool
+  /// @concurrentManualCount (xsd:unsignedInt) — optional manual thread count.
+  concurrent_manual_count : Int?
+  /// @forceFullCalc (xsd:boolean) — optional, no default.
+  force_full_calc : Bool?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_CalcPr::new(element : @xml.Element) -> CT_CalcPr {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let calc_id = attr_uint_opt(element, "calcId")
+  let calc_mode = match attr(element, "calcMode") {
+    Some(value) => value
+    None => "auto"
+  }
+  let full_calc_on_load = attr_bool(element, "fullCalcOnLoad", false)
+  let ref_mode = match attr(element, "refMode") {
+    Some(value) => value
+    None => "A1"
+  }
+  let iterate = attr_bool(element, "iterate", false)
+  let iterate_count = attr_uint(element, "iterateCount", 100)
+  let iterate_delta = attr_double(element, "iterateDelta", 0.001)
+  let full_precision = attr_bool(element, "fullPrecision", true)
+  let calc_completed = attr_bool(element, "calcCompleted", true)
+  let calc_on_save = attr_bool(element, "calcOnSave", true)
+  let concurrent_calc = attr_bool(element, "concurrentCalc", true)
+  let concurrent_manual_count = attr_uint_opt(element, "concurrentManualCount")
+  let force_full_calc = attr_bool_opt(element, "forceFullCalc")
+  {
+    element,
+    calc_id,
+    calc_mode,
+    full_calc_on_load,
+    ref_mode,
+    iterate,
+    iterate_count,
+    iterate_delta,
+    full_precision,
+    calc_completed,
+    calc_on_save,
+    concurrent_calc,
+    concurrent_manual_count,
+    force_full_calc,
   }
 }
 
 ///|
-/// XSD complex type CT_DefinedNames.
+/// XSD complex type CT_DefinedNames — Part 1 §18.2.6 (`<definedNames>`
+/// Defined Names container). Sequence: `<definedName>*` (CT_DefinedName,
+/// minOccurs=0 maxOccurs=unbounded). No attributes.
 pub(all) struct CT_DefinedNames {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <definedName>* (CT_DefinedName) — zero or more defined-name entries.
+  defined_name : Array[CT_DefinedName]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DefinedNames::new(element : @xml.Element) -> CT_DefinedNames {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let defined_name : Array[CT_DefinedName] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "definedName" {
+        defined_name.push(CT_DefinedName::new(child_element))
+      }
+    }
   }
+  { element, defined_name }
 }
 
 ///|
-/// XSD complex type CT_DefinedName.
+/// XSD complex type CT_DefinedName — Part 1 §18.2.5 (`<definedName>`
+/// Defined Name). Simple-content extending ST_Formula (the textual
+/// formula payload). Required `@name` (s:ST_Xstring). Optional string
+/// attributes: `@comment`, `@customMenu`, `@description`, `@help`,
+/// `@statusBar`, `@shortcutKey` (s:ST_Xstring). Optional
+/// `@localSheetId` (xsd:unsignedInt) and `@functionGroupId`
+/// (xsd:unsignedInt). Optional booleans (default false): `@hidden`,
+/// `@function`, `@vbProcedure`, `@xlm`, `@publishToServer`,
+/// `@workbookParameter`.
 pub(all) struct CT_DefinedName {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// Simple-content value (ST_Formula text) — the formula payload.
+  formula : String
+  /// @name (s:ST_Xstring) — required defined-name identifier.
+  name : String
+  /// @comment (s:ST_Xstring) — optional comment.
+  comment : String?
+  /// @customMenu (s:ST_Xstring) — optional custom-menu label.
+  custom_menu : String?
+  /// @description (s:ST_Xstring) — optional description text.
+  description : String?
+  /// @help (s:ST_Xstring) — optional help text.
+  help : String?
+  /// @statusBar (s:ST_Xstring) — optional status-bar text.
+  status_bar : String?
+  /// @localSheetId (xsd:unsignedInt) — optional local sheet index.
+  local_sheet_id : Int?
+  /// @hidden (xsd:boolean) — optional, default false.
+  hidden : Bool
+  /// @function (xsd:boolean) — optional, default false.
+  function : Bool
+  /// @vbProcedure (xsd:boolean) — optional, default false.
+  vb_procedure : Bool
+  /// @xlm (xsd:boolean) — optional, default false.
+  xlm : Bool
+  /// @functionGroupId (xsd:unsignedInt) — optional function-group index.
+  function_group_id : Int?
+  /// @shortcutKey (s:ST_Xstring) — optional shortcut-key glyph.
+  shortcut_key : String?
+  /// @publishToServer (xsd:boolean) — optional, default false.
+  publish_to_server : Bool
+  /// @workbookParameter (xsd:boolean) — optional, default false.
+  workbook_parameter : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DefinedName::new(element : @xml.Element) -> CT_DefinedName {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let formula = element_text(element)
+  let name = match attr(element, "name") {
+    Some(value) => value
+    None => ""
+  }
+  let comment = attr(element, "comment")
+  let custom_menu = attr(element, "customMenu")
+  let description = attr(element, "description")
+  let help = attr(element, "help")
+  let status_bar = attr(element, "statusBar")
+  let local_sheet_id = attr_uint_opt(element, "localSheetId")
+  let hidden = attr_bool(element, "hidden", false)
+  let function = attr_bool(element, "function", false)
+  let vb_procedure = attr_bool(element, "vbProcedure", false)
+  let xlm = attr_bool(element, "xlm", false)
+  let function_group_id = attr_uint_opt(element, "functionGroupId")
+  let shortcut_key = attr(element, "shortcutKey")
+  let publish_to_server = attr_bool(element, "publishToServer", false)
+  let workbook_parameter = attr_bool(element, "workbookParameter", false)
+  {
+    element,
+    formula,
+    name,
+    comment,
+    custom_menu,
+    description,
+    help,
+    status_bar,
+    local_sheet_id,
+    hidden,
+    function,
+    vb_procedure,
+    xlm,
+    function_group_id,
+    shortcut_key,
+    publish_to_server,
+    workbook_parameter,
   }
 }
 
 ///|
-/// XSD complex type CT_FileSharing.
+/// XSD complex type CT_FileSharing — Part 1 §18.2.12 (`<fileSharing>`
+/// File Sharing). Attribute-only. Optional `@readOnlyRecommended`
+/// (xsd:boolean, default false); `@userName` (s:ST_Xstring, optional);
+/// `@algorithmName` (s:ST_Xstring); `@hashValue` (xsd:base64Binary);
+/// `@saltValue` (xsd:base64Binary); `@spinCount` (xsd:unsignedInt).
+/// Base64 values are preserved as their lexical strings because the
+/// domain does not maintain a binary decoder for the encryption salt.
 pub(all) struct CT_FileSharing {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @readOnlyRecommended (xsd:boolean) — optional, default false.
+  read_only_recommended : Bool
+  /// @userName (s:ST_Xstring) — optional sharing user-name.
+  user_name : String?
+  /// @algorithmName (s:ST_Xstring) — optional password-hash algorithm.
+  algorithm_name : String?
+  /// @hashValue (xsd:base64Binary) — optional password-hash, base64 lexical.
+  hash_value : String?
+  /// @saltValue (xsd:base64Binary) — optional password-salt, base64 lexical.
+  salt_value : String?
+  /// @spinCount (xsd:unsignedInt) — optional iteration count.
+  spin_count : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FileSharing::new(element : @xml.Element) -> CT_FileSharing {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let read_only_recommended = attr_bool(element, "readOnlyRecommended", false)
+  let user_name = attr(element, "userName")
+  let algorithm_name = attr(element, "algorithmName")
+  let hash_value = attr(element, "hashValue")
+  let salt_value = attr(element, "saltValue")
+  let spin_count = attr_uint_opt(element, "spinCount")
+  {
+    element,
+    read_only_recommended,
+    user_name,
+    algorithm_name,
+    hash_value,
+    salt_value,
+    spin_count,
   }
 }
 
 ///|
-/// XSD complex type CT_WebPublishing.
+/// XSD complex type CT_WebPublishing — Part 1 §18.2.24
+/// (`<webPublishing>` Web Publishing Properties). Attribute-only.
+/// Optional booleans with defaults: `@css` (true), `@thicket` (true),
+/// `@longFileNames` (true), `@vml` (false), `@allowPng` (false).
+/// `@targetScreenSize` (ST_TargetScreenSize, default "800x600");
+/// `@dpi` (xsd:unsignedInt, default 96); `@characterSet` (xsd:string,
+/// optional).
 pub(all) struct CT_WebPublishing {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @css (xsd:boolean) — optional, default true.
+  css : Bool
+  /// @thicket (xsd:boolean) — optional, default true.
+  thicket : Bool
+  /// @longFileNames (xsd:boolean) — optional, default true.
+  long_file_names : Bool
+  /// @vml (xsd:boolean) — optional, default false.
+  vml : Bool
+  /// @allowPng (xsd:boolean) — optional, default false.
+  allow_png : Bool
+  /// @targetScreenSize (ST_TargetScreenSize) — optional, default "800x600".
+  target_screen_size : String
+  /// @dpi (xsd:unsignedInt) — optional, default 96.
+  dpi : Int
+  /// @characterSet (xsd:string) — optional character-set name.
+  character_set : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_WebPublishing::new(element : @xml.Element) -> CT_WebPublishing {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let css = attr_bool(element, "css", true)
+  let thicket = attr_bool(element, "thicket", true)
+  let long_file_names = attr_bool(element, "longFileNames", true)
+  let vml = attr_bool(element, "vml", false)
+  let allow_png = attr_bool(element, "allowPng", false)
+  let target_screen_size = match attr(element, "targetScreenSize") {
+    Some(value) => value
+    None => "800x600"
+  }
+  let dpi = attr_uint(element, "dpi", 96)
+  let character_set = attr(element, "characterSet")
+  {
+    element,
+    css,
+    thicket,
+    long_file_names,
+    vml,
+    allow_png,
+    target_screen_size,
+    dpi,
+    character_set,
   }
 }
 
 ///|
-/// XSD complex type CT_FunctionGroups.
+/// XSD complex type CT_FunctionGroups — Part 1 §18.2.15
+/// (`<functionGroups>` Function Groups container). Sequence:
+/// `<functionGroup>*` (CT_FunctionGroup, minOccurs=0; the parent
+/// sequence carries maxOccurs="unbounded" in the strict XSD).
+/// Optional `@builtInGroupCount` (xsd:unsignedInt, default 16).
 pub(all) struct CT_FunctionGroups {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <functionGroup>* (CT_FunctionGroup) — zero or more function-group entries.
+  function_group : Array[CT_FunctionGroup]
+  /// @builtInGroupCount (xsd:unsignedInt) — optional, default 16.
+  built_in_group_count : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FunctionGroups::new(element : @xml.Element) -> CT_FunctionGroups {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let function_group : Array[CT_FunctionGroup] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "functionGroup" {
+        function_group.push(CT_FunctionGroup::new(child_element))
+      }
+    }
   }
+  let built_in_group_count = attr_uint(element, "builtInGroupCount", 16)
+  { element, function_group, built_in_group_count }
 }
 
 ///|
-/// XSD complex type CT_FunctionGroup.
+/// XSD complex type CT_FunctionGroup — Part 1 §18.2.14
+/// (`<functionGroup>` Function Group). Attribute-only. Optional
+/// `@name` (s:ST_Xstring).
 pub(all) struct CT_FunctionGroup {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — optional function-group name.
+  name : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FunctionGroup::new(element : @xml.Element) -> CT_FunctionGroup {
-  let group_name = workbook_connection_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let name = attr(element, "name")
+  { element, name }
 }
