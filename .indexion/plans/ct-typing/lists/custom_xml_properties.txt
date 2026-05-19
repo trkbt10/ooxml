@@ -1,0 +1,10 @@
+CT_DatastoreSchemaRef	src/ecma376/custom_xml_properties/custom_xml_properties.mbt
+CT_DatastoreSchemaRefs	src/ecma376/custom_xml_properties/custom_xml_properties.mbt
+CT_DatastoreItem	src/ecma376/custom_xml_properties/custom_xml_properties.mbt
+CT_Schema	src/ecma376/custom_xml_properties/custom_xml_properties.mbt
+CT_SchemaLibrary	src/ecma376/custom_xml_properties/custom_xml_properties.mbt
+CT_Property	src/ecma376/custom_xml_properties/custom_xml_properties.mbt
+CT_Properties	src/ecma376/custom_xml_properties/custom_xml_properties.mbt
+CT_VectorVariant	src/ecma376/custom_xml_properties/custom_xml_properties.mbt
+CT_VectorLpstr	src/ecma376/custom_xml_properties/custom_xml_properties.mbt
+CT_DigSigBlob	src/ecma376/custom_xml_properties/custom_xml_properties.mbt

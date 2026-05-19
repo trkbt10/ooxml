@@ -1,0 +1,1 @@
+CT_GvmlLockedCanvas	src/ecma376/drawing_ml/shape/shape.mbt

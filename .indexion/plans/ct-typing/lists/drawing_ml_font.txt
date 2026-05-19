@@ -1,0 +1,5 @@
+CT_TextFont	src/ecma376/drawing_ml/font/font_types.mbt
+CT_SupplementalFont	src/ecma376/drawing_ml/font/font_types.mbt
+CT_FontCollection	src/ecma376/drawing_ml/font/font_types.mbt
+CT_FontScheme	src/ecma376/drawing_ml/font/font_types.mbt
+CT_FontReference	src/ecma376/drawing_ml/font/font_types.mbt

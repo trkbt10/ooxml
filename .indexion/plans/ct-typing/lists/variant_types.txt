@@ -1,0 +1,6 @@
+CT_Empty	src/ecma376/variant_types/variant_types.mbt
+CT_Null	src/ecma376/variant_types/variant_types.mbt
+CT_Vector	src/ecma376/variant_types/variant_types.mbt
+CT_Array	src/ecma376/variant_types/variant_types.mbt
+CT_Variant	src/ecma376/variant_types/variant_types.mbt
+CT_Vstream	src/ecma376/variant_types/variant_types.mbt

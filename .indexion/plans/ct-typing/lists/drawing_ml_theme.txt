@@ -1,0 +1,5 @@
+CT_BaseStyles	src/ecma376/drawing_ml/theme/theme_types.mbt
+CT_OfficeStyleSheet	src/ecma376/drawing_ml/theme/theme_types.mbt
+CT_BaseStylesOverride	src/ecma376/drawing_ml/theme/theme_types.mbt
+CT_OfficeArtExtension	src/ecma376/drawing_ml/theme/theme_types.mbt
+CT_OfficeArtExtensionList	src/ecma376/drawing_ml/theme/theme_types.mbt
