@@ -1586,410 +1586,940 @@ pub fn EG_ThemeableFontStyles::has_child(Self, String) -> Bool
 pub fn EG_ThemeableFontStyles::new(@xml.Element) -> Self
 
 pub struct ST_Angle {
-  value : String
+  sixty_thousandths : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_Angle::new(String) -> Self raise SchemaViolation
 pub fn ST_Angle::parse(String) -> Self raise SchemaViolation
+pub fn ST_Angle::sixty_thousandths_of_degree(Self) -> Int
 pub fn ST_Angle::to_string(Self) -> String
 
-pub struct ST_ColorSchemeIndex {
-  value : String
+pub(all) enum ST_ColorSchemeIndex {
+  SchemeIdxDk1
+  SchemeIdxLt1
+  SchemeIdxDk2
+  SchemeIdxLt2
+  SchemeIdxAccent1
+  SchemeIdxAccent2
+  SchemeIdxAccent3
+  SchemeIdxAccent4
+  SchemeIdxAccent5
+  SchemeIdxAccent6
+  SchemeIdxHlink
+  SchemeIdxFolHlink
 } derive(Eq, @debug.Debug)
 pub fn ST_ColorSchemeIndex::new(String) -> Self raise SchemaViolation
 pub fn ST_ColorSchemeIndex::parse(String) -> Self raise SchemaViolation
 pub fn ST_ColorSchemeIndex::to_string(Self) -> String
 
-pub struct ST_CompoundLine {
-  value : String
+pub(all) enum ST_CompoundLine {
+  CompoundSng
+  CompoundDbl
+  CompoundThickThin
+  CompoundThinThick
+  CompoundTri
 } derive(Eq, @debug.Debug)
 pub fn ST_CompoundLine::new(String) -> Self raise SchemaViolation
 pub fn ST_CompoundLine::parse(String) -> Self raise SchemaViolation
 pub fn ST_CompoundLine::to_string(Self) -> String
 
-pub struct ST_Coordinate {
-  value : String
+pub(all) enum ST_Coordinate {
+  CoordEmu(ST_CoordinateUnqualified)
+  CoordMeasure(ST_UniversalMeasure)
 } derive(Eq, @debug.Debug)
 pub fn ST_Coordinate::new(String) -> Self raise SchemaViolation
 pub fn ST_Coordinate::parse(String) -> Self raise SchemaViolation
 pub fn ST_Coordinate::to_string(Self) -> String
 
-pub struct ST_Coordinate32 {
-  value : String
+pub(all) enum ST_Coordinate32 {
+  Coord32Emu(ST_Coordinate32Unqualified)
+  Coord32Measure(ST_UniversalMeasure)
 } derive(Eq, @debug.Debug)
 pub fn ST_Coordinate32::new(String) -> Self raise SchemaViolation
 pub fn ST_Coordinate32::parse(String) -> Self raise SchemaViolation
 pub fn ST_Coordinate32::to_string(Self) -> String
 
 pub struct ST_Coordinate32Unqualified {
-  value : String
+  emu : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_Coordinate32Unqualified::new(String) -> Self raise SchemaViolation
 pub fn ST_Coordinate32Unqualified::parse(String) -> Self raise SchemaViolation
+pub fn ST_Coordinate32Unqualified::to_int(Self) -> Int
 pub fn ST_Coordinate32Unqualified::to_string(Self) -> String
 
 pub struct ST_CoordinateUnqualified {
-  value : String
+  emu : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_CoordinateUnqualified::new(String) -> Self raise SchemaViolation
 pub fn ST_CoordinateUnqualified::parse(String) -> Self raise SchemaViolation
+pub fn ST_CoordinateUnqualified::to_int64(Self) -> Int64
 pub fn ST_CoordinateUnqualified::to_string(Self) -> String
 
 pub struct ST_FixedAngle {
-  value : String
+  sixty_thousandths : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_FixedAngle::new(String) -> Self raise SchemaViolation
 pub fn ST_FixedAngle::parse(String) -> Self raise SchemaViolation
+pub fn ST_FixedAngle::sixty_thousandths_of_degree(Self) -> Int
 pub fn ST_FixedAngle::to_string(Self) -> String
 
 pub struct ST_FixedPercentage {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_FixedPercentage::new(String) -> Self raise SchemaViolation
 pub fn ST_FixedPercentage::parse(String) -> Self raise SchemaViolation
+pub fn ST_FixedPercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_FixedPercentage::to_string(Self) -> String
 
-pub struct ST_FontCollectionIndex {
-  value : String
+pub(all) enum ST_FontCollectionIndex {
+  FontMajor
+  FontMinor
+  FontNone
 } derive(Eq, @debug.Debug)
 pub fn ST_FontCollectionIndex::new(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::parse(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::to_string(Self) -> String
 
-pub struct ST_LineCap {
-  value : String
+pub(all) enum ST_LineCap {
+  CapRound
+  CapSquare
+  CapFlat
 } derive(Eq, @debug.Debug)
 pub fn ST_LineCap::new(String) -> Self raise SchemaViolation
 pub fn ST_LineCap::parse(String) -> Self raise SchemaViolation
 pub fn ST_LineCap::to_string(Self) -> String
 
-pub struct ST_LineEndLength {
-  value : String
+pub(all) enum ST_LineEndLength {
+  LineEndLenSmall
+  LineEndLenMedium
+  LineEndLenLarge
 } derive(Eq, @debug.Debug)
 pub fn ST_LineEndLength::new(String) -> Self raise SchemaViolation
 pub fn ST_LineEndLength::parse(String) -> Self raise SchemaViolation
 pub fn ST_LineEndLength::to_string(Self) -> String
 
-pub struct ST_LineEndType {
-  value : String
+pub(all) enum ST_LineEndType {
+  LineEndNone
+  LineEndTriangle
+  LineEndStealth
+  LineEndDiamond
+  LineEndOval
+  LineEndArrow
 } derive(Eq, @debug.Debug)
 pub fn ST_LineEndType::new(String) -> Self raise SchemaViolation
 pub fn ST_LineEndType::parse(String) -> Self raise SchemaViolation
 pub fn ST_LineEndType::to_string(Self) -> String
 
-pub struct ST_LineEndWidth {
-  value : String
+pub(all) enum ST_LineEndWidth {
+  LineEndWidthSmall
+  LineEndWidthMedium
+  LineEndWidthLarge
 } derive(Eq, @debug.Debug)
 pub fn ST_LineEndWidth::new(String) -> Self raise SchemaViolation
 pub fn ST_LineEndWidth::parse(String) -> Self raise SchemaViolation
 pub fn ST_LineEndWidth::to_string(Self) -> String
 
-pub struct ST_PathShadeType {
-  value : String
+pub(all) enum ST_PathShadeType {
+  PathShape
+  PathCircle
+  PathRect
 } derive(Eq, @debug.Debug)
 pub fn ST_PathShadeType::new(String) -> Self raise SchemaViolation
 pub fn ST_PathShadeType::parse(String) -> Self raise SchemaViolation
 pub fn ST_PathShadeType::to_string(Self) -> String
 
-pub struct ST_PenAlignment {
-  value : String
+pub(all) enum ST_PenAlignment {
+  PenCenter
+  PenInset
 } derive(Eq, @debug.Debug)
 pub fn ST_PenAlignment::new(String) -> Self raise SchemaViolation
 pub fn ST_PenAlignment::parse(String) -> Self raise SchemaViolation
 pub fn ST_PenAlignment::to_string(Self) -> String
 
 pub struct ST_Percentage {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_Percentage::new(String) -> Self raise SchemaViolation
 pub fn ST_Percentage::parse(String) -> Self raise SchemaViolation
+pub fn ST_Percentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_Percentage::to_string(Self) -> String
 
-pub struct ST_PitchFamily {
-  value : String
+pub(all) enum ST_PitchFamily {
+  PitchFamily00
+  PitchFamily01
+  PitchFamily02
+  PitchFamily16
+  PitchFamily17
+  PitchFamily18
+  PitchFamily32
+  PitchFamily33
+  PitchFamily34
+  PitchFamily48
+  PitchFamily49
+  PitchFamily50
+  PitchFamily64
+  PitchFamily65
+  PitchFamily66
+  PitchFamily80
+  PitchFamily81
+  PitchFamily82
 } derive(Eq, @debug.Debug)
 pub fn ST_PitchFamily::new(String) -> Self raise SchemaViolation
 pub fn ST_PitchFamily::parse(String) -> Self raise SchemaViolation
 pub fn ST_PitchFamily::to_string(Self) -> String
 
 pub struct ST_PositiveCoordinate {
-  value : String
+  emu : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_PositiveCoordinate::new(String) -> Self raise SchemaViolation
 pub fn ST_PositiveCoordinate::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositiveCoordinate::to_int64(Self) -> Int64
 pub fn ST_PositiveCoordinate::to_string(Self) -> String
 
 pub struct ST_PositiveCoordinate32 {
-  value : String
+  emu : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_PositiveCoordinate32::new(String) -> Self raise SchemaViolation
 pub fn ST_PositiveCoordinate32::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositiveCoordinate32::to_int(Self) -> Int
 pub fn ST_PositiveCoordinate32::to_string(Self) -> String
 
 pub struct ST_PositiveFixedAngle {
-  value : String
+  sixty_thousandths : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_PositiveFixedAngle::new(String) -> Self raise SchemaViolation
 pub fn ST_PositiveFixedAngle::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedAngle::sixty_thousandths_of_degree(Self) -> Int
 pub fn ST_PositiveFixedAngle::to_string(Self) -> String
 
 pub struct ST_PositiveFixedPercentage {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_PositiveFixedPercentage::new(String) -> Self raise SchemaViolation
 pub fn ST_PositiveFixedPercentage::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedPercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_PositiveFixedPercentage::to_string(Self) -> String
 
 pub struct ST_PositivePercentage {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_PositivePercentage::new(String) -> Self raise SchemaViolation
 pub fn ST_PositivePercentage::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositivePercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_PositivePercentage::to_string(Self) -> String
 
-pub struct ST_PresetColorVal {
-  value : String
+pub(all) enum ST_PresetColorVal {
+  PresetAliceBlue
+  PresetAntiqueWhite
+  PresetAqua
+  PresetAquamarine
+  PresetAzure
+  PresetBeige
+  PresetBisque
+  PresetBlack
+  PresetBlanchedAlmond
+  PresetBlue
+  PresetBlueViolet
+  PresetBrown
+  PresetBurlyWood
+  PresetCadetBlue
+  PresetChartreuse
+  PresetChocolate
+  PresetCoral
+  PresetCornflowerBlue
+  PresetCornsilk
+  PresetCrimson
+  PresetCyan
+  PresetDarkBlue
+  PresetDarkCyan
+  PresetDarkGoldenrod
+  PresetDarkGray
+  PresetDarkGrey
+  PresetDarkGreen
+  PresetDarkKhaki
+  PresetDarkMagenta
+  PresetDarkOliveGreen
+  PresetDarkOrange
+  PresetDarkOrchid
+  PresetDarkRed
+  PresetDarkSalmon
+  PresetDarkSeaGreen
+  PresetDarkSlateBlue
+  PresetDarkSlateGray
+  PresetDarkSlateGrey
+  PresetDarkTurquoise
+  PresetDarkViolet
+  PresetDkBlue
+  PresetDkCyan
+  PresetDkGoldenrod
+  PresetDkGray
+  PresetDkGrey
+  PresetDkGreen
+  PresetDkKhaki
+  PresetDkMagenta
+  PresetDkOliveGreen
+  PresetDkOrange
+  PresetDkOrchid
+  PresetDkRed
+  PresetDkSalmon
+  PresetDkSeaGreen
+  PresetDkSlateBlue
+  PresetDkSlateGray
+  PresetDkSlateGrey
+  PresetDkTurquoise
+  PresetDkViolet
+  PresetDeepPink
+  PresetDeepSkyBlue
+  PresetDimGray
+  PresetDimGrey
+  PresetDodgerBlue
+  PresetFirebrick
+  PresetFloralWhite
+  PresetForestGreen
+  PresetFuchsia
+  PresetGainsboro
+  PresetGhostWhite
+  PresetGold
+  PresetGoldenrod
+  PresetGray
+  PresetGrey
+  PresetGreen
+  PresetGreenYellow
+  PresetHoneydew
+  PresetHotPink
+  PresetIndianRed
+  PresetIndigo
+  PresetIvory
+  PresetKhaki
+  PresetLavender
+  PresetLavenderBlush
+  PresetLawnGreen
+  PresetLemonChiffon
+  PresetLightBlue
+  PresetLightCoral
+  PresetLightCyan
+  PresetLightGoldenrodYellow
+  PresetLightGray
+  PresetLightGrey
+  PresetLightGreen
+  PresetLightPink
+  PresetLightSalmon
+  PresetLightSeaGreen
+  PresetLightSkyBlue
+  PresetLightSlateGray
+  PresetLightSlateGrey
+  PresetLightSteelBlue
+  PresetLightYellow
+  PresetLtBlue
+  PresetLtCoral
+  PresetLtCyan
+  PresetLtGoldenrodYellow
+  PresetLtGray
+  PresetLtGrey
+  PresetLtGreen
+  PresetLtPink
+  PresetLtSalmon
+  PresetLtSeaGreen
+  PresetLtSkyBlue
+  PresetLtSlateGray
+  PresetLtSlateGrey
+  PresetLtSteelBlue
+  PresetLtYellow
+  PresetLime
+  PresetLimeGreen
+  PresetLinen
+  PresetMagenta
+  PresetMaroon
+  PresetMedAquamarine
+  PresetMedBlue
+  PresetMedOrchid
+  PresetMedPurple
+  PresetMedSeaGreen
+  PresetMedSlateBlue
+  PresetMedSpringGreen
+  PresetMedTurquoise
+  PresetMedVioletRed
+  PresetMediumAquamarine
+  PresetMediumBlue
+  PresetMediumOrchid
+  PresetMediumPurple
+  PresetMediumSeaGreen
+  PresetMediumSlateBlue
+  PresetMediumSpringGreen
+  PresetMediumTurquoise
+  PresetMediumVioletRed
+  PresetMidnightBlue
+  PresetMintCream
+  PresetMistyRose
+  PresetMoccasin
+  PresetNavajoWhite
+  PresetNavy
+  PresetOldLace
+  PresetOlive
+  PresetOliveDrab
+  PresetOrange
+  PresetOrangeRed
+  PresetOrchid
+  PresetPaleGoldenrod
+  PresetPaleGreen
+  PresetPaleTurquoise
+  PresetPaleVioletRed
+  PresetPapayaWhip
+  PresetPeachPuff
+  PresetPeru
+  PresetPink
+  PresetPlum
+  PresetPowderBlue
+  PresetPurple
+  PresetRed
+  PresetRosyBrown
+  PresetRoyalBlue
+  PresetSaddleBrown
+  PresetSalmon
+  PresetSandyBrown
+  PresetSeaGreen
+  PresetSeaShell
+  PresetSienna
+  PresetSilver
+  PresetSkyBlue
+  PresetSlateBlue
+  PresetSlateGray
+  PresetSlateGrey
+  PresetSnow
+  PresetSpringGreen
+  PresetSteelBlue
+  PresetTan
+  PresetTeal
+  PresetThistle
+  PresetTomato
+  PresetTurquoise
+  PresetViolet
+  PresetWheat
+  PresetWhite
+  PresetWhiteSmoke
+  PresetYellow
+  PresetYellowGreen
 } derive(Eq, @debug.Debug)
 pub fn ST_PresetColorVal::new(String) -> Self raise SchemaViolation
 pub fn ST_PresetColorVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_PresetColorVal::to_string(Self) -> String
 
-pub struct ST_PresetLineDashVal {
-  value : String
+pub(all) enum ST_PresetLineDashVal {
+  DashSolid
+  DashDot
+  DashDash
+  DashLgDash
+  DashDashDot
+  DashLgDashDot
+  DashLgDashDotDot
+  DashSysDash
+  DashSysDot
+  DashSysDashDot
+  DashSysDashDotDot
 } derive(Eq, @debug.Debug)
 pub fn ST_PresetLineDashVal::new(String) -> Self raise SchemaViolation
 pub fn ST_PresetLineDashVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_PresetLineDashVal::to_string(Self) -> String
 
-pub struct ST_PresetPatternVal {
-  value : String
+pub(all) enum ST_PresetPatternVal {
+  Pct5
+  Pct10
+  Pct20
+  Pct25
+  Pct30
+  Pct40
+  Pct50
+  Pct60
+  Pct70
+  Pct75
+  Pct80
+  Pct90
+  PatHorz
+  PatVert
+  LtHorz
+  LtVert
+  DkHorz
+  DkVert
+  NarHorz
+  NarVert
+  DashHorz
+  DashVert
+  Cross
+  DnDiag
+  UpDiag
+  LtDnDiag
+  LtUpDiag
+  DkDnDiag
+  DkUpDiag
+  WdDnDiag
+  WdUpDiag
+  DashDnDiag
+  DashUpDiag
+  DiagCross
+  SmCheck
+  LgCheck
+  SmGrid
+  LgGrid
+  DotGrid
+  SmConfetti
+  LgConfetti
+  HorzBrick
+  DiagBrick
+  SolidDmnd
+  OpenDmnd
+  DotDmnd
+  Plaid
+  Sphere
+  Weave
+  Divot
+  Shingle
+  Wave
+  Trellis
+  ZigZag
 } derive(Eq, @debug.Debug)
 pub fn ST_PresetPatternVal::new(String) -> Self raise SchemaViolation
 pub fn ST_PresetPatternVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_PresetPatternVal::to_string(Self) -> String
 
-pub struct ST_RectAlignment {
-  value : String
+pub(all) enum ST_RectAlignment {
+  RectTopLeft
+  RectTop
+  RectTopRight
+  RectLeft
+  RectCenter
+  RectRight
+  RectBottomLeft
+  RectBottom
+  RectBottomRight
 } derive(Eq, @debug.Debug)
 pub fn ST_RectAlignment::new(String) -> Self raise SchemaViolation
 pub fn ST_RectAlignment::parse(String) -> Self raise SchemaViolation
 pub fn ST_RectAlignment::to_string(Self) -> String
 
-pub struct ST_SchemeColorVal {
-  value : String
+pub(all) enum ST_SchemeColorVal {
+  SchemeBg1
+  SchemeTx1
+  SchemeBg2
+  SchemeTx2
+  SchemeAccent1
+  SchemeAccent2
+  SchemeAccent3
+  SchemeAccent4
+  SchemeAccent5
+  SchemeAccent6
+  SchemeHlink
+  SchemeFolHlink
+  SchemePhClr
+  SchemeDk1
+  SchemeLt1
+  SchemeDk2
+  SchemeLt2
 } derive(Eq, @debug.Debug)
 pub fn ST_SchemeColorVal::new(String) -> Self raise SchemaViolation
 pub fn ST_SchemeColorVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_SchemeColorVal::to_string(Self) -> String
 
-pub struct ST_SystemColorVal {
-  value : String
+pub(all) enum ST_SystemColorVal {
+  SysScrollBar
+  SysBackground
+  SysActiveCaption
+  SysInactiveCaption
+  SysMenu
+  SysWindow
+  SysWindowFrame
+  SysMenuText
+  SysWindowText
+  SysCaptionText
+  SysActiveBorder
+  SysInactiveBorder
+  SysAppWorkspace
+  SysHighlight
+  SysHighlightText
+  SysBtnFace
+  SysBtnShadow
+  SysGrayText
+  SysBtnText
+  SysInactiveCaptionText
+  SysBtnHighlight
+  Sys3dDkShadow
+  Sys3dLight
+  SysInfoText
+  SysInfoBk
+  SysHotLight
+  SysGradientActiveCaption
+  SysGradientInactiveCaption
+  SysMenuHighlight
+  SysMenuBar
 } derive(Eq, @debug.Debug)
 pub fn ST_SystemColorVal::new(String) -> Self raise SchemaViolation
 pub fn ST_SystemColorVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_SystemColorVal::to_string(Self) -> String
 
-pub struct ST_TextAlignType {
-  value : String
+pub(all) enum ST_TextAlignType {
+  AlignLeft
+  AlignCenter
+  AlignRight
+  AlignJustified
+  AlignJustifiedLow
+  AlignDistributed
+  AlignThaiDistributed
 } derive(Eq, @debug.Debug)
 pub fn ST_TextAlignType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextAlignType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextAlignType::to_string(Self) -> String
 
-pub struct ST_TextAnchoringType {
-  value : String
+pub(all) enum ST_TextAnchoringType {
+  AnchorTop
+  AnchorCenter
+  AnchorBottom
+  AnchorJustified
+  AnchorDistributed
 } derive(Eq, @debug.Debug)
 pub fn ST_TextAnchoringType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextAnchoringType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextAnchoringType::to_string(Self) -> String
 
-pub struct ST_TextAutonumberScheme {
-  value : String
+pub(all) enum ST_TextAutonumberScheme {
+  AlphaLcParenBoth
+  AlphaUcParenBoth
+  AlphaLcParenR
+  AlphaUcParenR
+  AlphaLcPeriod
+  AlphaUcPeriod
+  ArabicParenBoth
+  ArabicParenR
+  ArabicPeriod
+  ArabicPlain
+  RomanLcParenBoth
+  RomanUcParenBoth
+  RomanLcParenR
+  RomanUcParenR
+  RomanLcPeriod
+  RomanUcPeriod
+  CircleNumDbPlain
+  CircleNumWdBlackPlain
+  CircleNumWdWhitePlain
+  ArabicDbPeriod
+  ArabicDbPlain
+  Ea1ChsPeriod
+  Ea1ChsPlain
+  Ea1ChtPeriod
+  Ea1ChtPlain
+  Ea1JpnChsDbPeriod
+  Ea1JpnKorPlain
+  Ea1JpnKorPeriod
+  Arabic1Minus
+  Arabic2Minus
+  Hebrew2Minus
+  ThaiAlphaPeriod
+  ThaiAlphaParenR
+  ThaiAlphaParenBoth
+  ThaiNumPeriod
+  ThaiNumParenR
+  ThaiNumParenBoth
+  HindiAlphaPeriod
+  HindiNumPeriod
+  HindiNumParenR
+  HindiAlpha1Period
 } derive(Eq, @debug.Debug)
 pub fn ST_TextAutonumberScheme::new(String) -> Self raise SchemaViolation
 pub fn ST_TextAutonumberScheme::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextAutonumberScheme::to_string(Self) -> String
 
 pub struct ST_TextBulletSize {
-  value : String
+  thousandths : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_TextBulletSize::new(String) -> Self raise SchemaViolation
 pub fn ST_TextBulletSize::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletSize::thousandths_of_percent(Self) -> Int
 pub fn ST_TextBulletSize::to_string(Self) -> String
 
 pub struct ST_TextBulletSizePercent {
-  value : String
+  percent : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_TextBulletSizePercent::new(String) -> Self raise SchemaViolation
 pub fn ST_TextBulletSizePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletSizePercent::to_int(Self) -> Int
 pub fn ST_TextBulletSizePercent::to_string(Self) -> String
 
 pub struct ST_TextBulletStartAtNum {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_TextBulletStartAtNum::new(String) -> Self raise SchemaViolation
 pub fn ST_TextBulletStartAtNum::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletStartAtNum::to_int(Self) -> Int
 pub fn ST_TextBulletStartAtNum::to_string(Self) -> String
 
-pub struct ST_TextCapsType {
-  value : String
+pub(all) enum ST_TextCapsType {
+  CapsNone
+  CapsSmall
+  CapsAll
 } derive(Eq, @debug.Debug)
 pub fn ST_TextCapsType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextCapsType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextCapsType::to_string(Self) -> String
 
 pub struct ST_TextColumnCount {
-  value : String
+  count : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_TextColumnCount::new(String) -> Self raise SchemaViolation
 pub fn ST_TextColumnCount::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextColumnCount::to_int(Self) -> Int
 pub fn ST_TextColumnCount::to_string(Self) -> String
 
-pub struct ST_TextFontAlignType {
-  value : String
+pub(all) enum ST_TextFontAlignType {
+  FontAlignAuto
+  FontAlignTop
+  FontAlignCenter
+  FontAlignBaseline
+  FontAlignBottom
 } derive(Eq, @debug.Debug)
 pub fn ST_TextFontAlignType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextFontAlignType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextFontAlignType::to_string(Self) -> String
 
 pub struct ST_TextFontScalePercentOrPercentString {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_TextFontScalePercentOrPercentString::new(String) -> Self raise SchemaViolation
 pub fn ST_TextFontScalePercentOrPercentString::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextFontScalePercentOrPercentString::thousandths_of_percent(Self) -> Int64
 pub fn ST_TextFontScalePercentOrPercentString::to_string(Self) -> String
 
 pub struct ST_TextFontSize {
-  value : String
+  hundredths_of_point : Int
 } derive(Eq, @debug.Debug)
+pub fn ST_TextFontSize::hundredths_of_point(Self) -> Int
 pub fn ST_TextFontSize::new(String) -> Self raise SchemaViolation
 pub fn ST_TextFontSize::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextFontSize::to_string(Self) -> String
 
-pub struct ST_TextHorzOverflowType {
-  value : String
+pub(all) enum ST_TextHorzOverflowType {
+  HorzOverflow
+  HorzClip
 } derive(Eq, @debug.Debug)
 pub fn ST_TextHorzOverflowType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextHorzOverflowType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextHorzOverflowType::to_string(Self) -> String
 
 pub struct ST_TextIndent {
-  value : String
+  emu : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_TextIndent::new(String) -> Self raise SchemaViolation
 pub fn ST_TextIndent::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextIndent::to_int(Self) -> Int
 pub fn ST_TextIndent::to_string(Self) -> String
 
 pub struct ST_TextIndentLevelType {
-  value : String
+  level : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_TextIndentLevelType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextIndentLevelType::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextIndentLevelType::to_int(Self) -> Int
 pub fn ST_TextIndentLevelType::to_string(Self) -> String
 
 pub struct ST_TextMargin {
-  value : String
+  emu : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_TextMargin::new(String) -> Self raise SchemaViolation
 pub fn ST_TextMargin::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextMargin::to_int(Self) -> Int
 pub fn ST_TextMargin::to_string(Self) -> String
 
 pub struct ST_TextNonNegativePoint {
-  value : String
+  hundredths_of_point : Int
 } derive(Eq, @debug.Debug)
+pub fn ST_TextNonNegativePoint::hundredths_of_point(Self) -> Int
 pub fn ST_TextNonNegativePoint::new(String) -> Self raise SchemaViolation
 pub fn ST_TextNonNegativePoint::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextNonNegativePoint::to_string(Self) -> String
 
-pub struct ST_TextPoint {
-  value : String
+pub(all) enum ST_TextPoint {
+  TextPointUnq(ST_TextPointUnqualified)
+  TextPointMeasure(ST_UniversalMeasure)
 } derive(Eq, @debug.Debug)
 pub fn ST_TextPoint::new(String) -> Self raise SchemaViolation
 pub fn ST_TextPoint::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextPoint::to_string(Self) -> String
 
 pub struct ST_TextPointUnqualified {
-  value : String
+  hundredths_of_point : Int
 } derive(Eq, @debug.Debug)
+pub fn ST_TextPointUnqualified::hundredths_of_point(Self) -> Int
 pub fn ST_TextPointUnqualified::new(String) -> Self raise SchemaViolation
 pub fn ST_TextPointUnqualified::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextPointUnqualified::to_string(Self) -> String
 
-pub struct ST_TextShapeType {
-  value : String
+pub(all) enum ST_TextShapeType {
+  TextNoShape
+  TextPlain
+  TextStop
+  TextTriangle
+  TextTriangleInverted
+  TextChevron
+  TextChevronInverted
+  TextRingInside
+  TextRingOutside
+  TextArchUp
+  TextArchDown
+  TextCircle
+  TextButton
+  TextArchUpPour
+  TextArchDownPour
+  TextCirclePour
+  TextButtonPour
+  TextCurveUp
+  TextCurveDown
+  TextCanUp
+  TextCanDown
+  TextWave1
+  TextWave2
+  TextDoubleWave1
+  TextWave4
+  TextInflate
+  TextDeflate
+  TextInflateBottom
+  TextDeflateBottom
+  TextInflateTop
+  TextDeflateTop
+  TextDeflateInflate
+  TextDeflateInflateDeflate
+  TextFadeRight
+  TextFadeLeft
+  TextFadeUp
+  TextFadeDown
+  TextSlantUp
+  TextSlantDown
+  TextCascadeUp
+  TextCascadeDown
 } derive(Eq, @debug.Debug)
 pub fn ST_TextShapeType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextShapeType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextShapeType::to_string(Self) -> String
 
 pub struct ST_TextSpacingPercentOrPercentString {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_TextSpacingPercentOrPercentString::new(String) -> Self raise SchemaViolation
 pub fn ST_TextSpacingPercentOrPercentString::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextSpacingPercentOrPercentString::thousandths_of_percent(Self) -> Int64
 pub fn ST_TextSpacingPercentOrPercentString::to_string(Self) -> String
 
 pub struct ST_TextSpacingPoint {
-  value : String
+  hundredths_of_point : Int
 } derive(Eq, @debug.Debug)
+pub fn ST_TextSpacingPoint::hundredths_of_point(Self) -> Int
 pub fn ST_TextSpacingPoint::new(String) -> Self raise SchemaViolation
 pub fn ST_TextSpacingPoint::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextSpacingPoint::to_string(Self) -> String
 
-pub struct ST_TextStrikeType {
-  value : String
+pub(all) enum ST_TextStrikeType {
+  NoStrike
+  SngStrike
+  DblStrike
 } derive(Eq, @debug.Debug)
 pub fn ST_TextStrikeType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextStrikeType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextStrikeType::to_string(Self) -> String
 
-pub struct ST_TextTabAlignType {
-  value : String
+pub(all) enum ST_TextTabAlignType {
+  TabAlignLeft
+  TabAlignCenter
+  TabAlignRight
+  TabAlignDecimal
 } derive(Eq, @debug.Debug)
 pub fn ST_TextTabAlignType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextTabAlignType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextTabAlignType::to_string(Self) -> String
 
 pub struct ST_TextTypeface {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_TextTypeface::new(String) -> Self raise SchemaViolation
 pub fn ST_TextTypeface::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextTypeface::to_string(Self) -> String
 
-pub struct ST_TextUnderlineType {
-  value : String
+pub(all) enum ST_TextUnderlineType {
+  UnderlineNone
+  UnderlineWords
+  UnderlineSng
+  UnderlineDbl
+  UnderlineHeavy
+  UnderlineDotted
+  UnderlineDottedHeavy
+  UnderlineDash
+  UnderlineDashHeavy
+  UnderlineDashLong
+  UnderlineDashLongHeavy
+  UnderlineDotDash
+  UnderlineDotDashHeavy
+  UnderlineDotDotDash
+  UnderlineDotDotDashHeavy
+  UnderlineWavy
+  UnderlineWavyHeavy
+  UnderlineWavyDbl
 } derive(Eq, @debug.Debug)
 pub fn ST_TextUnderlineType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextUnderlineType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextUnderlineType::to_string(Self) -> String
 
-pub struct ST_TextVertOverflowType {
-  value : String
+pub(all) enum ST_TextVertOverflowType {
+  VertOverflow
+  VertEllipsis
+  VertClip
 } derive(Eq, @debug.Debug)
 pub fn ST_TextVertOverflowType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextVertOverflowType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextVertOverflowType::to_string(Self) -> String
 
-pub struct ST_TextVerticalType {
-  value : String
+pub(all) enum ST_TextVerticalType {
+  TextHorz
+  TextVert
+  TextVert270
+  TextWordArtVert
+  TextEaVert
+  TextMongolianVert
+  TextWordArtVertRtl
 } derive(Eq, @debug.Debug)
 pub fn ST_TextVerticalType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextVerticalType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextVerticalType::to_string(Self) -> String
 
-pub struct ST_TextWrappingType {
-  value : String
+pub(all) enum ST_TextWrappingType {
+  WrapNone
+  WrapSquare
 } derive(Eq, @debug.Debug)
 pub fn ST_TextWrappingType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextWrappingType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextWrappingType::to_string(Self) -> String
 
-pub struct ST_TileFlipMode {
-  value : String
+pub(all) enum ST_TileFlipMode {
+  TileFlipNone
+  TileFlipX
+  TileFlipY
+  TileFlipXY
 } derive(Eq, @debug.Debug)
 pub fn ST_TileFlipMode::new(String) -> Self raise SchemaViolation
 pub fn ST_TileFlipMode::parse(String) -> Self raise SchemaViolation
 pub fn ST_TileFlipMode::to_string(Self) -> String
+
+pub struct ST_UniversalMeasure {
+  magnitude : Double
+  unit : UniversalMeasureUnit
+} derive(Eq, @debug.Debug)
+pub fn ST_UniversalMeasure::magnitude_value(Self) -> Double
+pub fn ST_UniversalMeasure::new(String) -> Self raise SchemaViolation
+pub fn ST_UniversalMeasure::to_string(Self) -> String
+pub fn ST_UniversalMeasure::unit_of(Self) -> UniversalMeasureUnit
+
+pub(all) enum UniversalMeasureUnit {
+  Millimetre
+  Centimetre
+  Inch
+  Point
+  Pica
+  PiPoint
+} derive(Eq, @debug.Debug)
+pub fn UniversalMeasureUnit::to_string(Self) -> String
 
 // Type aliases
 
