@@ -1150,406 +1150,624 @@ pub fn EG_TopLevelSlide::child_names(Self) -> Array[String]
 pub fn EG_TopLevelSlide::new(@xml.Element) -> Self
 
 pub struct ST_BookmarkIdSeed {
-  value : String
+  value : UInt
 } derive(Eq, @debug.Debug)
 pub fn ST_BookmarkIdSeed::new(String) -> Self raise SchemaViolation
 pub fn ST_BookmarkIdSeed::parse(String) -> Self raise SchemaViolation
 pub fn ST_BookmarkIdSeed::to_string(Self) -> String
+pub fn ST_BookmarkIdSeed::to_uint(Self) -> UInt
 
-pub struct ST_Direction {
-  value : String
+pub(all) enum ST_Direction {
+  DirectionHorz
+  DirectionVert
 } derive(Eq, @debug.Debug)
 pub fn ST_Direction::new(String) -> Self raise SchemaViolation
 pub fn ST_Direction::parse(String) -> Self raise SchemaViolation
 pub fn ST_Direction::to_string(Self) -> String
 
 pub struct ST_Index {
-  value : String
+  value : UInt
 } derive(Eq, @debug.Debug)
 pub fn ST_Index::new(String) -> Self raise SchemaViolation
 pub fn ST_Index::parse(String) -> Self raise SchemaViolation
 pub fn ST_Index::to_string(Self) -> String
+pub fn ST_Index::to_uint(Self) -> UInt
 
-pub struct ST_IterateType {
-  value : String
+pub(all) enum ST_IterateType {
+  IterateEl
+  IterateWd
+  IterateLt
 } derive(Eq, @debug.Debug)
 pub fn ST_IterateType::new(String) -> Self raise SchemaViolation
 pub fn ST_IterateType::parse(String) -> Self raise SchemaViolation
 pub fn ST_IterateType::to_string(Self) -> String
 
 pub struct ST_Name {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
-pub fn ST_Name::new(String) -> Self raise SchemaViolation
-pub fn ST_Name::parse(String) -> Self raise SchemaViolation
+pub fn ST_Name::new(String) -> Self
+pub fn ST_Name::parse(String) -> Self
 pub fn ST_Name::to_string(Self) -> String
 
-pub struct ST_OleObjectFollowColorScheme {
-  value : String
+pub(all) enum ST_OleObjectFollowColorScheme {
+  OleColorNone
+  OleColorFull
+  OleColorTextAndBackground
 } derive(Eq, @debug.Debug)
 pub fn ST_OleObjectFollowColorScheme::new(String) -> Self raise SchemaViolation
 pub fn ST_OleObjectFollowColorScheme::parse(String) -> Self raise SchemaViolation
 pub fn ST_OleObjectFollowColorScheme::to_string(Self) -> String
 
-pub struct ST_PhotoAlbumFrameShape {
-  value : String
+pub(all) enum ST_PhotoAlbumFrameShape {
+  FrameStyle1
+  FrameStyle2
+  FrameStyle3
+  FrameStyle4
+  FrameStyle5
+  FrameStyle6
+  FrameStyle7
 } derive(Eq, @debug.Debug)
 pub fn ST_PhotoAlbumFrameShape::new(String) -> Self raise SchemaViolation
 pub fn ST_PhotoAlbumFrameShape::parse(String) -> Self raise SchemaViolation
 pub fn ST_PhotoAlbumFrameShape::to_string(Self) -> String
 
-pub struct ST_PhotoAlbumLayout {
-  value : String
+pub(all) enum ST_PhotoAlbumLayout {
+  AlbumFitToSlide
+  Album1Pic
+  Album2Pic
+  Album4Pic
+  Album1PicTitle
+  Album2PicTitle
+  Album4PicTitle
 } derive(Eq, @debug.Debug)
 pub fn ST_PhotoAlbumLayout::new(String) -> Self raise SchemaViolation
 pub fn ST_PhotoAlbumLayout::parse(String) -> Self raise SchemaViolation
 pub fn ST_PhotoAlbumLayout::to_string(Self) -> String
 
-pub struct ST_PlaceholderSize {
-  value : String
+pub(all) enum ST_PlaceholderSize {
+  PlaceholderFull
+  PlaceholderHalf
+  PlaceholderQuarter
 } derive(Eq, @debug.Debug)
 pub fn ST_PlaceholderSize::new(String) -> Self raise SchemaViolation
 pub fn ST_PlaceholderSize::parse(String) -> Self raise SchemaViolation
 pub fn ST_PlaceholderSize::to_string(Self) -> String
 
-pub struct ST_PlaceholderType {
-  value : String
+pub(all) enum ST_PlaceholderType {
+  PhTitle
+  PhBody
+  PhCtrTitle
+  PhSubTitle
+  PhDt
+  PhSldNum
+  PhFtr
+  PhHdr
+  PhObj
+  PhChart
+  PhTbl
+  PhClipArt
+  PhDgm
+  PhMedia
+  PhSldImg
+  PhPic
 } derive(Eq, @debug.Debug)
 pub fn ST_PlaceholderType::new(String) -> Self raise SchemaViolation
 pub fn ST_PlaceholderType::parse(String) -> Self raise SchemaViolation
 pub fn ST_PlaceholderType::to_string(Self) -> String
 
-pub struct ST_PrintColorMode {
-  value : String
+pub(all) enum ST_PrintColorMode {
+  PrintBw
+  PrintGray
+  PrintClr
 } derive(Eq, @debug.Debug)
 pub fn ST_PrintColorMode::new(String) -> Self raise SchemaViolation
 pub fn ST_PrintColorMode::parse(String) -> Self raise SchemaViolation
 pub fn ST_PrintColorMode::to_string(Self) -> String
 
-pub struct ST_PrintWhat {
-  value : String
+pub(all) enum ST_PrintWhat {
+  PrintSlides
+  PrintHandouts1
+  PrintHandouts2
+  PrintHandouts3
+  PrintHandouts4
+  PrintHandouts6
+  PrintHandouts9
+  PrintNotes
+  PrintOutline
 } derive(Eq, @debug.Debug)
 pub fn ST_PrintWhat::new(String) -> Self raise SchemaViolation
 pub fn ST_PrintWhat::parse(String) -> Self raise SchemaViolation
 pub fn ST_PrintWhat::to_string(Self) -> String
 
 pub struct ST_SlideId {
-  value : String
+  value : UInt
 } derive(Eq, @debug.Debug)
 pub fn ST_SlideId::new(String) -> Self raise SchemaViolation
 pub fn ST_SlideId::parse(String) -> Self raise SchemaViolation
 pub fn ST_SlideId::to_string(Self) -> String
+pub fn ST_SlideId::to_uint(Self) -> UInt
 
 pub struct ST_SlideLayoutId {
-  value : String
+  value : UInt
 } derive(Eq, @debug.Debug)
 pub fn ST_SlideLayoutId::new(String) -> Self raise SchemaViolation
 pub fn ST_SlideLayoutId::parse(String) -> Self raise SchemaViolation
 pub fn ST_SlideLayoutId::to_string(Self) -> String
+pub fn ST_SlideLayoutId::to_uint(Self) -> UInt
 
-pub struct ST_SlideLayoutType {
-  value : String
+pub(all) enum ST_SlideLayoutType {
+  LayoutTitle
+  LayoutTx
+  LayoutTwoColTx
+  LayoutTbl
+  LayoutTxAndChart
+  LayoutChartAndTx
+  LayoutDgm
+  LayoutChart
+  LayoutTxAndClipArt
+  LayoutClipArtAndTx
+  LayoutTitleOnly
+  LayoutBlank
+  LayoutTxAndObj
+  LayoutObjAndTx
+  LayoutObjOnly
+  LayoutObj
+  LayoutTxAndMedia
+  LayoutMediaAndTx
+  LayoutObjOverTx
+  LayoutTxOverObj
+  LayoutTxAndTwoObj
+  LayoutTwoObjAndTx
+  LayoutTwoObjOverTx
+  LayoutFourObj
+  LayoutVertTx
+  LayoutClipArtAndVertTx
+  LayoutVertTitleAndTx
+  LayoutVertTitleAndTxOverChart
+  LayoutTwoObj
+  LayoutObjAndTwoObj
+  LayoutTwoObjAndObj
+  LayoutCust
+  LayoutSecHead
+  LayoutTwoTxTwoObj
+  LayoutObjTx
+  LayoutPicTx
 } derive(Eq, @debug.Debug)
 pub fn ST_SlideLayoutType::new(String) -> Self raise SchemaViolation
 pub fn ST_SlideLayoutType::parse(String) -> Self raise SchemaViolation
 pub fn ST_SlideLayoutType::to_string(Self) -> String
 
 pub struct ST_SlideMasterId {
-  value : String
+  value : UInt
 } derive(Eq, @debug.Debug)
 pub fn ST_SlideMasterId::new(String) -> Self raise SchemaViolation
 pub fn ST_SlideMasterId::parse(String) -> Self raise SchemaViolation
 pub fn ST_SlideMasterId::to_string(Self) -> String
+pub fn ST_SlideMasterId::to_uint(Self) -> UInt
 
 pub struct ST_SlideSizeCoordinate {
-  value : String
+  emu : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_SlideSizeCoordinate::new(String) -> Self raise SchemaViolation
 pub fn ST_SlideSizeCoordinate::parse(String) -> Self raise SchemaViolation
+pub fn ST_SlideSizeCoordinate::to_emu(Self) -> Int
 pub fn ST_SlideSizeCoordinate::to_string(Self) -> String
 
-pub struct ST_SlideSizeType {
-  value : String
+pub(all) enum ST_SlideSizeType {
+  SlideSizeScreen4x3
+  SlideSizeLetter
+  SlideSizeA4
+  SlideSize35mm
+  SlideSizeOverhead
+  SlideSizeBanner
+  SlideSizeCustom
+  SlideSizeLedger
+  SlideSizeA3
+  SlideSizeB4ISO
+  SlideSizeB5ISO
+  SlideSizeB4JIS
+  SlideSizeB5JIS
+  SlideSizeHagakiCard
+  SlideSizeScreen16x9
+  SlideSizeScreen16x10
 } derive(Eq, @debug.Debug)
 pub fn ST_SlideSizeType::new(String) -> Self raise SchemaViolation
 pub fn ST_SlideSizeType::parse(String) -> Self raise SchemaViolation
 pub fn ST_SlideSizeType::to_string(Self) -> String
 
-pub struct ST_SplitterBarState {
-  value : String
+pub(all) enum ST_SplitterBarState {
+  SplitterMinimized
+  SplitterRestored
+  SplitterMaximized
 } derive(Eq, @debug.Debug)
 pub fn ST_SplitterBarState::new(String) -> Self raise SchemaViolation
 pub fn ST_SplitterBarState::parse(String) -> Self raise SchemaViolation
 pub fn ST_SplitterBarState::to_string(Self) -> String
 
-pub struct ST_TLAnimateBehaviorCalcMode {
-  value : String
+pub(all) enum ST_TLAnimateBehaviorCalcMode {
+  CalcModeDiscrete
+  CalcModeLin
+  CalcModeFmla
 } derive(Eq, @debug.Debug)
 pub fn ST_TLAnimateBehaviorCalcMode::new(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateBehaviorCalcMode::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateBehaviorCalcMode::to_string(Self) -> String
 
-pub struct ST_TLAnimateBehaviorValueType {
-  value : String
+pub(all) enum ST_TLAnimateBehaviorValueType {
+  ValueTypeStr
+  ValueTypeNum
+  ValueTypeClr
 } derive(Eq, @debug.Debug)
 pub fn ST_TLAnimateBehaviorValueType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateBehaviorValueType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateBehaviorValueType::to_string(Self) -> String
 
-pub struct ST_TLAnimateColorDirection {
-  value : String
+pub(all) enum ST_TLAnimateColorDirection {
+  ColorDirCw
+  ColorDirCcw
 } derive(Eq, @debug.Debug)
 pub fn ST_TLAnimateColorDirection::new(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateColorDirection::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateColorDirection::to_string(Self) -> String
 
-pub struct ST_TLAnimateColorSpace {
-  value : String
+pub(all) enum ST_TLAnimateColorSpace {
+  ColorSpaceRgb
+  ColorSpaceHsl
 } derive(Eq, @debug.Debug)
 pub fn ST_TLAnimateColorSpace::new(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateColorSpace::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateColorSpace::to_string(Self) -> String
 
-pub struct ST_TLAnimateEffectTransition {
-  value : String
+pub(all) enum ST_TLAnimateEffectTransition {
+  EffectTransitionIn
+  EffectTransitionOut
+  EffectTransitionNone
 } derive(Eq, @debug.Debug)
 pub fn ST_TLAnimateEffectTransition::new(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateEffectTransition::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateEffectTransition::to_string(Self) -> String
 
-pub struct ST_TLAnimateMotionBehaviorOrigin {
-  value : String
+pub(all) enum ST_TLAnimateMotionBehaviorOrigin {
+  MotionOriginParent
+  MotionOriginLayout
 } derive(Eq, @debug.Debug)
 pub fn ST_TLAnimateMotionBehaviorOrigin::new(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateMotionBehaviorOrigin::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateMotionBehaviorOrigin::to_string(Self) -> String
 
-pub struct ST_TLAnimateMotionPathEditMode {
-  value : String
+pub(all) enum ST_TLAnimateMotionPathEditMode {
+  PathEditRelative
+  PathEditFixed
 } derive(Eq, @debug.Debug)
 pub fn ST_TLAnimateMotionPathEditMode::new(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateMotionPathEditMode::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLAnimateMotionPathEditMode::to_string(Self) -> String
 
-pub struct ST_TLBehaviorAccumulateType {
-  value : String
+pub(all) enum ST_TLBehaviorAccumulateType {
+  AccumulateNone
+  AccumulateAlways
 } derive(Eq, @debug.Debug)
 pub fn ST_TLBehaviorAccumulateType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLBehaviorAccumulateType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLBehaviorAccumulateType::to_string(Self) -> String
 
-pub struct ST_TLBehaviorAdditiveType {
-  value : String
+pub(all) enum ST_TLBehaviorAdditiveType {
+  AdditiveBase
+  AdditiveSum
+  AdditiveRepl
+  AdditiveMult
+  AdditiveNone
 } derive(Eq, @debug.Debug)
 pub fn ST_TLBehaviorAdditiveType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLBehaviorAdditiveType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLBehaviorAdditiveType::to_string(Self) -> String
 
-pub struct ST_TLBehaviorOverrideType {
-  value : String
+pub(all) enum ST_TLBehaviorOverrideType {
+  OverrideNormal
+  OverrideChildStyle
 } derive(Eq, @debug.Debug)
 pub fn ST_TLBehaviorOverrideType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLBehaviorOverrideType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLBehaviorOverrideType::to_string(Self) -> String
 
-pub struct ST_TLBehaviorTransformType {
-  value : String
+pub(all) enum ST_TLBehaviorTransformType {
+  TransformPt
+  TransformImg
 } derive(Eq, @debug.Debug)
 pub fn ST_TLBehaviorTransformType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLBehaviorTransformType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLBehaviorTransformType::to_string(Self) -> String
 
-pub struct ST_TLChartSubelementType {
-  value : String
+pub(all) enum ST_TLChartSubelementType {
+  ChartGridLegend
+  ChartSeries
+  ChartCategory
+  ChartPtInSeries
+  ChartPtInCategory
 } derive(Eq, @debug.Debug)
 pub fn ST_TLChartSubelementType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLChartSubelementType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLChartSubelementType::to_string(Self) -> String
 
-pub struct ST_TLCommandType {
-  value : String
+pub(all) enum ST_TLCommandType {
+  CommandEvt
+  CommandCall
+  CommandVerb
 } derive(Eq, @debug.Debug)
 pub fn ST_TLCommandType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLCommandType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLCommandType::to_string(Self) -> String
 
-pub struct ST_TLDiagramBuildType {
-  value : String
+pub(all) enum ST_TLDiagramBuildType {
+  DiagramWhole
+  DiagramDepthByNode
+  DiagramDepthByBranch
+  DiagramBreadthByNode
+  DiagramBreadthByLvl
+  DiagramCw
+  DiagramCwIn
+  DiagramCwOut
+  DiagramCcw
+  DiagramCcwIn
+  DiagramCcwOut
+  DiagramInByRing
+  DiagramOutByRing
+  DiagramUp
+  DiagramDown
+  DiagramAllAtOnce
+  DiagramCust
 } derive(Eq, @debug.Debug)
 pub fn ST_TLDiagramBuildType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLDiagramBuildType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLDiagramBuildType::to_string(Self) -> String
 
-pub struct ST_TLNextActionType {
-  value : String
+pub(all) enum ST_TLNextActionType {
+  NextActionNone
+  NextActionSeek
 } derive(Eq, @debug.Debug)
 pub fn ST_TLNextActionType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLNextActionType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLNextActionType::to_string(Self) -> String
 
-pub struct ST_TLOleChartBuildType {
-  value : String
+pub(all) enum ST_TLOleChartBuildType {
+  OleChartAllAtOnce
+  OleChartSeries
+  OleChartCategory
+  OleChartSeriesEl
+  OleChartCategoryEl
 } derive(Eq, @debug.Debug)
 pub fn ST_TLOleChartBuildType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLOleChartBuildType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLOleChartBuildType::to_string(Self) -> String
 
-pub struct ST_TLParaBuildType {
-  value : String
+pub(all) enum ST_TLParaBuildType {
+  ParaAllAtOnce
+  ParaP
+  ParaCust
+  ParaWhole
 } derive(Eq, @debug.Debug)
 pub fn ST_TLParaBuildType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLParaBuildType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLParaBuildType::to_string(Self) -> String
 
-pub struct ST_TLPreviousActionType {
-  value : String
+pub(all) enum ST_TLPreviousActionType {
+  PrevActionNone
+  PrevActionSkipTimed
 } derive(Eq, @debug.Debug)
 pub fn ST_TLPreviousActionType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLPreviousActionType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLPreviousActionType::to_string(Self) -> String
 
-pub struct ST_TLTime {
-  value : String
+pub enum ST_TLTime {
+  TLTimeIndefinite
+  TLTimeMs(UInt)
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTime::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTime::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTime::to_string(Self) -> String
 
-pub struct ST_TLTimeAnimateValueTime {
-  value : String
+pub enum ST_TLTimeAnimateValueTime {
+  AnimValuePercentage(Int64)
+  AnimValueIndefinite
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTimeAnimateValueTime::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeAnimateValueTime::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeAnimateValueTime::to_string(Self) -> String
 
-pub struct ST_TLTimeIndefinite {
-  value : String
+pub(all) enum ST_TLTimeIndefinite {
+  Indefinite
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTimeIndefinite::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeIndefinite::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeIndefinite::to_string(Self) -> String
 
-pub struct ST_TLTimeNodeFillType {
-  value : String
+pub(all) enum ST_TLTimeNodeFillType {
+  NodeFillRemove
+  NodeFillFreeze
+  NodeFillHold
+  NodeFillTransition
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTimeNodeFillType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeFillType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeFillType::to_string(Self) -> String
 
 pub struct ST_TLTimeNodeID {
-  value : String
+  value : UInt
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTimeNodeID::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeID::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeID::to_string(Self) -> String
+pub fn ST_TLTimeNodeID::to_uint(Self) -> UInt
 
-pub struct ST_TLTimeNodeMasterRelation {
-  value : String
+pub(all) enum ST_TLTimeNodeMasterRelation {
+  MasterRelSameClick
+  MasterRelLastClick
+  MasterRelNextClick
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTimeNodeMasterRelation::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeMasterRelation::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeMasterRelation::to_string(Self) -> String
 
-pub struct ST_TLTimeNodePresetClassType {
-  value : String
+pub(all) enum ST_TLTimeNodePresetClassType {
+  PresetEntr
+  PresetExit
+  PresetEmph
+  PresetPath
+  PresetVerb
+  PresetMediacall
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTimeNodePresetClassType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodePresetClassType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodePresetClassType::to_string(Self) -> String
 
-pub struct ST_TLTimeNodeRestartType {
-  value : String
+pub(all) enum ST_TLTimeNodeRestartType {
+  RestartAlways
+  RestartWhenNotActive
+  RestartNever
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTimeNodeRestartType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeRestartType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeRestartType::to_string(Self) -> String
 
-pub struct ST_TLTimeNodeSyncType {
-  value : String
+pub(all) enum ST_TLTimeNodeSyncType {
+  SyncCanSlip
+  SyncLocked
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTimeNodeSyncType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeSyncType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeSyncType::to_string(Self) -> String
 
-pub struct ST_TLTimeNodeType {
-  value : String
+pub(all) enum ST_TLTimeNodeType {
+  NodeClickEffect
+  NodeWithEffect
+  NodeAfterEffect
+  NodeMainSeq
+  NodeInteractiveSeq
+  NodeClickPar
+  NodeWithGroup
+  NodeAfterGroup
+  NodeTmRoot
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTimeNodeType::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTimeNodeType::to_string(Self) -> String
 
-pub struct ST_TLTriggerEvent {
-  value : String
+pub(all) enum ST_TLTriggerEvent {
+  TriggerOnBegin
+  TriggerOnEnd
+  TriggerBegin
+  TriggerEnd
+  TriggerOnClick
+  TriggerOnDblClick
+  TriggerOnMouseOver
+  TriggerOnMouseOut
+  TriggerOnNext
+  TriggerOnPrev
+  TriggerOnStopAudio
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTriggerEvent::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTriggerEvent::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTriggerEvent::to_string(Self) -> String
 
-pub struct ST_TLTriggerRuntimeNode {
-  value : String
+pub(all) enum ST_TLTriggerRuntimeNode {
+  RuntimeFirst
+  RuntimeLast
+  RuntimeAll
 } derive(Eq, @debug.Debug)
 pub fn ST_TLTriggerRuntimeNode::new(String) -> Self raise SchemaViolation
 pub fn ST_TLTriggerRuntimeNode::parse(String) -> Self raise SchemaViolation
 pub fn ST_TLTriggerRuntimeNode::to_string(Self) -> String
 
-pub struct ST_TransitionCornerDirectionType {
-  value : String
+pub(all) enum ST_TransitionCornerDirectionType {
+  CornerLu
+  CornerRu
+  CornerLd
+  CornerRd
 } derive(Eq, @debug.Debug)
 pub fn ST_TransitionCornerDirectionType::new(String) -> Self raise SchemaViolation
 pub fn ST_TransitionCornerDirectionType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TransitionCornerDirectionType::to_string(Self) -> String
 
-pub struct ST_TransitionEightDirectionType {
-  value : String
+pub enum ST_TransitionEightDirectionType {
+  EightCorner(ST_TransitionCornerDirectionType)
+  EightSide(ST_TransitionSideDirectionType)
 } derive(Eq, @debug.Debug)
 pub fn ST_TransitionEightDirectionType::new(String) -> Self raise SchemaViolation
 pub fn ST_TransitionEightDirectionType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TransitionEightDirectionType::to_string(Self) -> String
 
-pub struct ST_TransitionInOutDirectionType {
-  value : String
+pub(all) enum ST_TransitionInOutDirectionType {
+  InOutOut
+  InOutIn
 } derive(Eq, @debug.Debug)
 pub fn ST_TransitionInOutDirectionType::new(String) -> Self raise SchemaViolation
 pub fn ST_TransitionInOutDirectionType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TransitionInOutDirectionType::to_string(Self) -> String
 
-pub struct ST_TransitionSideDirectionType {
-  value : String
+pub(all) enum ST_TransitionSideDirectionType {
+  SideL
+  SideU
+  SideR
+  SideD
 } derive(Eq, @debug.Debug)
 pub fn ST_TransitionSideDirectionType::new(String) -> Self raise SchemaViolation
 pub fn ST_TransitionSideDirectionType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TransitionSideDirectionType::to_string(Self) -> String
 
-pub struct ST_TransitionSpeed {
-  value : String
+pub(all) enum ST_TransitionSpeed {
+  SpeedSlow
+  SpeedMed
+  SpeedFast
 } derive(Eq, @debug.Debug)
 pub fn ST_TransitionSpeed::new(String) -> Self raise SchemaViolation
 pub fn ST_TransitionSpeed::parse(String) -> Self raise SchemaViolation
 pub fn ST_TransitionSpeed::to_string(Self) -> String
 
-pub struct ST_ViewType {
-  value : String
+pub(all) enum ST_ViewType {
+  ViewSld
+  ViewSldMaster
+  ViewNotes
+  ViewHandout
+  ViewNotesMaster
+  ViewOutline
+  ViewSldSorter
+  ViewSldThumbnail
 } derive(Eq, @debug.Debug)
 pub fn ST_ViewType::new(String) -> Self raise SchemaViolation
 pub fn ST_ViewType::parse(String) -> Self raise SchemaViolation
 pub fn ST_ViewType::to_string(Self) -> String
 
-pub struct ST_WebColorType {
-  value : String
+pub(all) enum ST_WebColorType {
+  WebColorNone
+  WebColorBrowser
+  WebColorPresentationText
+  WebColorPresentationAccent
+  WebColorWhiteTextOnBlack
+  WebColorBlackTextOnWhite
 } derive(Eq, @debug.Debug)
 pub fn ST_WebColorType::new(String) -> Self raise SchemaViolation
 pub fn ST_WebColorType::parse(String) -> Self raise SchemaViolation
 pub fn ST_WebColorType::to_string(Self) -> String
 
 pub struct ST_WebEncoding {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
-pub fn ST_WebEncoding::new(String) -> Self raise SchemaViolation
-pub fn ST_WebEncoding::parse(String) -> Self raise SchemaViolation
+pub fn ST_WebEncoding::new(String) -> Self
+pub fn ST_WebEncoding::parse(String) -> Self
 pub fn ST_WebEncoding::to_string(Self) -> String
 
-pub struct ST_WebScreenSize {
-  value : String
+pub(all) enum ST_WebScreenSize {
+  WebSize544x376
+  WebSize640x480
+  WebSize720x512
+  WebSize800x600
+  WebSize1024x768
+  WebSize1152x882
+  WebSize1152x900
+  WebSize1280x1024
+  WebSize1600x1200
+  WebSize1800x1400
+  WebSize1920x1200
 } derive(Eq, @debug.Debug)
 pub fn ST_WebScreenSize::new(String) -> Self raise SchemaViolation
 pub fn ST_WebScreenSize::parse(String) -> Self raise SchemaViolation
