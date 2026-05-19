@@ -2379,19 +2379,46 @@ pub fn CT_PresentationProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_HeaderFooter from pml.xsd (§19).
+/// XSD complex type CT_HeaderFooter — Part 1 §19.3.1.25 hf. Slide-level
+/// header/footer toggle: optional `<extLst>` (CT_ExtensionListModify
+/// §19.3.1.20) plus four optional xsd:boolean attributes (`@sldNum`,
+/// `@hdr`, `@ftr`, `@dt`, each default `true`).
 pub(all) struct CT_HeaderFooter {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @sldNum (xsd:boolean, default `true`); `None` ⇔ absent.
+  sld_num : Bool?
+  /// @hdr (xsd:boolean, default `true`); `None` ⇔ absent.
+  hdr : Bool?
+  /// @ftr (xsd:boolean, default `true`); `None` ⇔ absent.
+  ftr : Bool?
+  /// @dt (xsd:boolean, default `true`); `None` ⇔ absent.
+  dt : Bool?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_HeaderFooter::new(element : @xml.Element) -> CT_HeaderFooter {
-  { element, }
+pub fn CT_HeaderFooter::parse(
+  element : @xml.Element,
+) -> CT_HeaderFooter raise SchemaViolation {
+  let sld_num = pml_optional_bool(element, "sldNum", "CT_HeaderFooter/@sldNum")
+  let hdr = pml_optional_bool(element, "hdr", "CT_HeaderFooter/@hdr")
+  let ftr = pml_optional_bool(element, "ftr", "CT_HeaderFooter/@ftr")
+  let dt = pml_optional_bool(element, "dt", "CT_HeaderFooter/@dt")
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  { element, sld_num, hdr, ftr, dt, ext_lst }
 }
 
 ///|
-pub fn CT_HeaderFooter::parse(element : @xml.Element) -> CT_HeaderFooter {
-  CT_HeaderFooter::new(element)
+pub fn CT_HeaderFooter::new(element : @xml.Element) -> CT_HeaderFooter {
+  CT_HeaderFooter::parse(element) catch {
+    _ =>
+      { element, sld_num: None, hdr: None, ftr: None, dt: None, ext_lst: None }
+  }
 }
 
 ///|
@@ -2400,23 +2427,82 @@ pub fn CT_HeaderFooter::to_element(self : CT_HeaderFooter) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_ApplicationNonVisualDrawingProps from pml.xsd (§19).
+/// XSD complex type CT_ApplicationNonVisualDrawingProps — Part 1
+/// §19.3.1.33 nvPr. Shape application non-visual properties:
+/// optional `<ph>` (CT_Placeholder §19.3.1.36); optional `a:EG_Media`
+/// model-group payload (one of `audioCd`, `wavAudioFile`, `audioFile`,
+/// `videoFile`, `quickTimeFile`; DrawingML-owned so kept as raw
+/// element); optional `<custDataLst>` (CT_CustomerDataList §19.3.1.18);
+/// optional `<extLst>` (CT_ExtensionList §19.2.1.13). Optional
+/// attributes: `@isPhoto` (xsd:boolean, default `false`), `@userDrawn`
+/// (xsd:boolean, default `false`).
 pub(all) struct CT_ApplicationNonVisualDrawingProps {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @isPhoto (xsd:boolean, default `false`).
+  is_photo : Bool?
+  /// @userDrawn (xsd:boolean, default `false`).
+  user_drawn : Bool?
+  /// <ph>? (CT_Placeholder §19.3.1.36).
+  ph : CT_Placeholder?
+  /// `a:EG_Media`? — the matched raw element (audioCd / wavAudioFile /
+  /// audioFile / videoFile / quickTimeFile) preserved verbatim because
+  /// DrawingML owns the media types.
+  media : @xml.Element?
+  /// <custDataLst>? (CT_CustomerDataList §19.3.1.18).
+  cust_data_lst : CT_CustomerDataList?
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_ApplicationNonVisualDrawingProps::parse(
+  element : @xml.Element,
+) -> CT_ApplicationNonVisualDrawingProps raise SchemaViolation {
+  let is_photo = pml_optional_bool(
+    element, "isPhoto", "CT_ApplicationNonVisualDrawingProps/@isPhoto",
+  )
+  let user_drawn = pml_optional_bool(
+    element, "userDrawn", "CT_ApplicationNonVisualDrawingProps/@userDrawn",
+  )
+  let ph = match pml_first_child(element, "ph") {
+    Some(c) => Some(CT_Placeholder::from_element(c))
+    None => None
+  }
+  let media = match
+    pml_first_choice(element, [
+      "audioCd", "wavAudioFile", "audioFile", "videoFile", "quickTimeFile",
+    ]) {
+    Some((c, _)) => Some(c)
+    None => None
+  }
+  let cust_data_lst = match pml_first_child(element, "custDataLst") {
+    Some(c) => Some(CT_CustomerDataList::parse(c))
+    None => None
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, is_photo, user_drawn, ph, media, cust_data_lst, ext_lst }
+}
 
 ///|
 pub fn CT_ApplicationNonVisualDrawingProps::new(
   element : @xml.Element,
 ) -> CT_ApplicationNonVisualDrawingProps {
-  { element, }
-}
-
-///|
-pub fn CT_ApplicationNonVisualDrawingProps::parse(
-  element : @xml.Element,
-) -> CT_ApplicationNonVisualDrawingProps {
-  CT_ApplicationNonVisualDrawingProps::new(element)
+  CT_ApplicationNonVisualDrawingProps::parse(element) catch {
+    _ =>
+      {
+        element,
+        is_photo: None,
+        user_drawn: None,
+        ph: None,
+        media: None,
+        cust_data_lst: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2427,19 +2513,70 @@ pub fn CT_ApplicationNonVisualDrawingProps::to_element(
 }
 
 ///|
-/// XSD complex type CT_ShapeNonVisual from pml.xsd (§19).
+/// XSD complex type CT_ShapeNonVisual — Part 1 §19.3.1.34 nvSpPr. Three
+/// required children carrying shape non-visual properties: `<cNvPr>`
+/// (a:CT_NonVisualDrawingProps §19.3.1.12, DrawingML-owned),
+/// `<cNvSpPr>` (a:CT_NonVisualDrawingShapeProps §19.3.1.13, DrawingML),
+/// `<nvPr>` (CT_ApplicationNonVisualDrawingProps §19.3.1.33).
 pub(all) struct CT_ShapeNonVisual {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps §19.3.1.12) — required. Kept
+  /// as raw element because CT_NonVisualDrawingProps is owned by the
+  /// DrawingML domain package.
+  c_nv_pr : @xml.Element
+  /// <cNvSpPr> (a:CT_NonVisualDrawingShapeProps §19.3.1.13) — required;
+  /// raw (DrawingML).
+  c_nv_sp_pr : @xml.Element
+  /// <nvPr> (CT_ApplicationNonVisualDrawingProps §19.3.1.33) — required.
+  nv_pr : CT_ApplicationNonVisualDrawingProps
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ShapeNonVisual::new(element : @xml.Element) -> CT_ShapeNonVisual {
-  { element, }
+pub fn CT_ShapeNonVisual::parse(
+  element : @xml.Element,
+) -> CT_ShapeNonVisual raise SchemaViolation {
+  let c_nv_pr = match pml_first_child(element, "cNvPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_ShapeNonVisual/<cNvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let c_nv_sp_pr = match pml_first_child(element, "cNvSpPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_ShapeNonVisual/<cNvSpPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let nv_pr = match pml_first_child(element, "nvPr") {
+    Some(c) => CT_ApplicationNonVisualDrawingProps::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_ShapeNonVisual/<nvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  { element, c_nv_pr, c_nv_sp_pr, nv_pr }
 }
 
 ///|
-pub fn CT_ShapeNonVisual::parse(element : @xml.Element) -> CT_ShapeNonVisual {
-  CT_ShapeNonVisual::new(element)
+pub fn CT_ShapeNonVisual::new(element : @xml.Element) -> CT_ShapeNonVisual {
+  CT_ShapeNonVisual::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_nv_pr: element,
+        c_nv_sp_pr: element,
+        nv_pr: CT_ApplicationNonVisualDrawingProps::new(element),
+      }
+  }
 }
 
 ///|
@@ -2448,22 +2585,79 @@ pub fn CT_ShapeNonVisual::to_element(self : CT_ShapeNonVisual) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_Shape: Schema pml.xsd complex type `CT_Shape` has
-/// attribute `useBgFill` and child elements `nvSpPr`, `spPr`, `style`,
-/// `txBody`, and `extLst`; CT_Shape, CT_Shape::new, CT_Shape::parse, and
-/// CT_Shape::to_element own that slide shape payload.
+/// XSD complex type CT_Shape — Part 1 §19.3.1.43 sp. A slide shape:
+/// required `<nvSpPr>` (CT_ShapeNonVisual §19.3.1.34), required
+/// `<spPr>` (a:CT_ShapeProperties §19.3.1.44, DrawingML), optional
+/// `<style>` (a:CT_ShapeStyle §19.3.1.46, DrawingML), optional
+/// `<txBody>` (a:CT_TextBody §21.1.2.2.2, DrawingML), optional
+/// `<extLst>` (CT_ExtensionListModify §19.3.1.20). Optional
+/// `@useBgFill` (xsd:boolean, default `false`).
 pub(all) struct CT_Shape {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @useBgFill (xsd:boolean, default `false`).
+  use_bg_fill : Bool?
+  /// <nvSpPr> (CT_ShapeNonVisual §19.3.1.34) — required.
+  nv_sp_pr : CT_ShapeNonVisual
+  /// <spPr> (a:CT_ShapeProperties §19.3.1.44) — required; raw element
+  /// (DrawingML-owned type).
+  sp_pr : @xml.Element
+  /// <style>? (a:CT_ShapeStyle §19.3.1.46) — raw (DrawingML).
+  style : @xml.Element?
+  /// <txBody>? (a:CT_TextBody §21.1.2.2.2) — raw (DrawingML).
+  tx_body : @xml.Element?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Shape::new(element : @xml.Element) -> CT_Shape {
-  { element, }
+pub fn CT_Shape::parse(
+  element : @xml.Element,
+) -> CT_Shape raise SchemaViolation {
+  let use_bg_fill = pml_optional_bool(
+    element, "useBgFill", "CT_Shape/@useBgFill",
+  )
+  let nv_sp_pr = match pml_first_child(element, "nvSpPr") {
+    Some(c) => CT_ShapeNonVisual::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Shape/<nvSpPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let sp_pr = match pml_first_child(element, "spPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Shape/<spPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let style = pml_first_child(element, "style")
+  let tx_body = pml_first_child(element, "txBody")
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  { element, use_bg_fill, nv_sp_pr, sp_pr, style, tx_body, ext_lst }
 }
 
 ///|
-pub fn CT_Shape::parse(element : @xml.Element) -> CT_Shape {
-  CT_Shape::new(element)
+pub fn CT_Shape::new(element : @xml.Element) -> CT_Shape {
+  CT_Shape::parse(element) catch {
+    _ =>
+      {
+        element,
+        use_bg_fill: None,
+        nv_sp_pr: CT_ShapeNonVisual::new(element),
+        sp_pr: element,
+        style: None,
+        tx_body: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2472,23 +2666,70 @@ pub fn CT_Shape::to_element(self : CT_Shape) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_ConnectorNonVisual from pml.xsd (§19).
+/// XSD complex type CT_ConnectorNonVisual — Part 1 §19.3.1.29
+/// nvCxnSpPr. Three required children: `<cNvPr>`
+/// (a:CT_NonVisualDrawingProps §19.3.1.12, DrawingML), `<cNvCxnSpPr>`
+/// (a:CT_NonVisualConnectorProperties §19.3.1.8, DrawingML), `<nvPr>`
+/// (CT_ApplicationNonVisualDrawingProps §19.3.1.33).
 pub(all) struct CT_ConnectorNonVisual {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps §19.3.1.12) — required raw element.
+  c_nv_pr : @xml.Element
+  /// <cNvCxnSpPr> (a:CT_NonVisualConnectorProperties §19.3.1.8) —
+  /// required raw element (DrawingML).
+  c_nv_cxn_sp_pr : @xml.Element
+  /// <nvPr> (CT_ApplicationNonVisualDrawingProps §19.3.1.33) — required.
+  nv_pr : CT_ApplicationNonVisualDrawingProps
 } derive(Eq, Debug)
+
+///|
+pub fn CT_ConnectorNonVisual::parse(
+  element : @xml.Element,
+) -> CT_ConnectorNonVisual raise SchemaViolation {
+  let c_nv_pr = match pml_first_child(element, "cNvPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_ConnectorNonVisual/<cNvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let c_nv_cxn_sp_pr = match pml_first_child(element, "cNvCxnSpPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_ConnectorNonVisual/<cNvCxnSpPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let nv_pr = match pml_first_child(element, "nvPr") {
+    Some(c) => CT_ApplicationNonVisualDrawingProps::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_ConnectorNonVisual/<nvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  { element, c_nv_pr, c_nv_cxn_sp_pr, nv_pr }
+}
 
 ///|
 pub fn CT_ConnectorNonVisual::new(
   element : @xml.Element,
 ) -> CT_ConnectorNonVisual {
-  { element, }
-}
-
-///|
-pub fn CT_ConnectorNonVisual::parse(
-  element : @xml.Element,
-) -> CT_ConnectorNonVisual {
-  CT_ConnectorNonVisual::new(element)
+  CT_ConnectorNonVisual::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_nv_pr: element,
+        c_nv_cxn_sp_pr: element,
+        nv_pr: CT_ApplicationNonVisualDrawingProps::new(element),
+      }
+  }
 }
 
 ///|
@@ -2499,19 +2740,66 @@ pub fn CT_ConnectorNonVisual::to_element(
 }
 
 ///|
-/// XSD complex type CT_Connector from pml.xsd (§19).
+/// XSD complex type CT_Connector — Part 1 §19.3.1.19 cxnSp. Connection
+/// shape: required `<nvCxnSpPr>` (CT_ConnectorNonVisual §19.3.1.29),
+/// required `<spPr>` (a:CT_ShapeProperties §19.3.1.44, DrawingML),
+/// optional `<style>` (a:CT_ShapeStyle §19.3.1.46, DrawingML), optional
+/// `<extLst>` (CT_ExtensionListModify §19.3.1.20).
 pub(all) struct CT_Connector {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <nvCxnSpPr> (CT_ConnectorNonVisual §19.3.1.29) — required.
+  nv_cxn_sp_pr : CT_ConnectorNonVisual
+  /// <spPr> (a:CT_ShapeProperties §19.3.1.44) — required raw element.
+  sp_pr : @xml.Element
+  /// <style>? (a:CT_ShapeStyle §19.3.1.46) — raw (DrawingML).
+  style : @xml.Element?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Connector::new(element : @xml.Element) -> CT_Connector {
-  { element, }
+pub fn CT_Connector::parse(
+  element : @xml.Element,
+) -> CT_Connector raise SchemaViolation {
+  let nv_cxn_sp_pr = match pml_first_child(element, "nvCxnSpPr") {
+    Some(c) => CT_ConnectorNonVisual::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Connector/<nvCxnSpPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let sp_pr = match pml_first_child(element, "spPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Connector/<spPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let style = pml_first_child(element, "style")
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  { element, nv_cxn_sp_pr, sp_pr, style, ext_lst }
 }
 
 ///|
-pub fn CT_Connector::parse(element : @xml.Element) -> CT_Connector {
-  CT_Connector::new(element)
+pub fn CT_Connector::new(element : @xml.Element) -> CT_Connector {
+  CT_Connector::parse(element) catch {
+    _ =>
+      {
+        element,
+        nv_cxn_sp_pr: CT_ConnectorNonVisual::new(element),
+        sp_pr: element,
+        style: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2520,21 +2808,68 @@ pub fn CT_Connector::to_element(self : CT_Connector) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_PictureNonVisual from pml.xsd (§19).
+/// XSD complex type CT_PictureNonVisual — Part 1 §19.3.1.32 nvPicPr.
+/// Three required children: `<cNvPr>` (a:CT_NonVisualDrawingProps
+/// §19.3.1.12, DrawingML), `<cNvPicPr>` (a:CT_NonVisualPictureProperties
+/// §19.3.1.11, DrawingML), `<nvPr>`
+/// (CT_ApplicationNonVisualDrawingProps §19.3.1.33).
 pub(all) struct CT_PictureNonVisual {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps §19.3.1.12) — required raw element.
+  c_nv_pr : @xml.Element
+  /// <cNvPicPr> (a:CT_NonVisualPictureProperties §19.3.1.11) — required raw
+  /// element (DrawingML).
+  c_nv_pic_pr : @xml.Element
+  /// <nvPr> (CT_ApplicationNonVisualDrawingProps §19.3.1.33) — required.
+  nv_pr : CT_ApplicationNonVisualDrawingProps
 } derive(Eq, Debug)
-
-///|
-pub fn CT_PictureNonVisual::new(element : @xml.Element) -> CT_PictureNonVisual {
-  { element, }
-}
 
 ///|
 pub fn CT_PictureNonVisual::parse(
   element : @xml.Element,
-) -> CT_PictureNonVisual {
-  CT_PictureNonVisual::new(element)
+) -> CT_PictureNonVisual raise SchemaViolation {
+  let c_nv_pr = match pml_first_child(element, "cNvPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_PictureNonVisual/<cNvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let c_nv_pic_pr = match pml_first_child(element, "cNvPicPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_PictureNonVisual/<cNvPicPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let nv_pr = match pml_first_child(element, "nvPr") {
+    Some(c) => CT_ApplicationNonVisualDrawingProps::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_PictureNonVisual/<nvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  { element, c_nv_pr, c_nv_pic_pr, nv_pr }
+}
+
+///|
+pub fn CT_PictureNonVisual::new(element : @xml.Element) -> CT_PictureNonVisual {
+  CT_PictureNonVisual::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_nv_pr: element,
+        c_nv_pic_pr: element,
+        nv_pr: CT_ApplicationNonVisualDrawingProps::new(element),
+      }
+  }
 }
 
 ///|
@@ -2545,19 +2880,79 @@ pub fn CT_PictureNonVisual::to_element(
 }
 
 ///|
-/// XSD complex type CT_Picture from pml.xsd (§19).
+/// XSD complex type CT_Picture — Part 1 §19.3.1.37 pic. Slide picture:
+/// required `<nvPicPr>` (CT_PictureNonVisual §19.3.1.32), required
+/// `<blipFill>` (a:CT_BlipFillProperties §19.3.1.4, DrawingML),
+/// required `<spPr>` (a:CT_ShapeProperties §19.3.1.44, DrawingML),
+/// optional `<style>` (a:CT_ShapeStyle §19.3.1.46, DrawingML), optional
+/// `<extLst>` (CT_ExtensionListModify §19.3.1.20).
 pub(all) struct CT_Picture {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <nvPicPr> (CT_PictureNonVisual §19.3.1.32) — required.
+  nv_pic_pr : CT_PictureNonVisual
+  /// <blipFill> (a:CT_BlipFillProperties §19.3.1.4) — required raw element.
+  blip_fill : @xml.Element
+  /// <spPr> (a:CT_ShapeProperties §19.3.1.44) — required raw element.
+  sp_pr : @xml.Element
+  /// <style>? (a:CT_ShapeStyle §19.3.1.46) — raw (DrawingML).
+  style : @xml.Element?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Picture::new(element : @xml.Element) -> CT_Picture {
-  { element, }
+pub fn CT_Picture::parse(
+  element : @xml.Element,
+) -> CT_Picture raise SchemaViolation {
+  let nv_pic_pr = match pml_first_child(element, "nvPicPr") {
+    Some(c) => CT_PictureNonVisual::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Picture/<nvPicPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let blip_fill = match pml_first_child(element, "blipFill") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Picture/<blipFill>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let sp_pr = match pml_first_child(element, "spPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Picture/<spPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let style = pml_first_child(element, "style")
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  { element, nv_pic_pr, blip_fill, sp_pr, style, ext_lst }
 }
 
 ///|
-pub fn CT_Picture::parse(element : @xml.Element) -> CT_Picture {
-  CT_Picture::new(element)
+pub fn CT_Picture::new(element : @xml.Element) -> CT_Picture {
+  CT_Picture::parse(element) catch {
+    _ =>
+      {
+        element,
+        nv_pic_pr: CT_PictureNonVisual::new(element),
+        blip_fill: element,
+        sp_pr: element,
+        style: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2566,23 +2961,72 @@ pub fn CT_Picture::to_element(self : CT_Picture) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_GraphicalObjectFrameNonVisual from pml.xsd (§19).
+/// XSD complex type CT_GraphicalObjectFrameNonVisual — Part 1
+/// §19.3.1.30 nvGraphicFramePr. Three required children: `<cNvPr>`
+/// (a:CT_NonVisualDrawingProps §19.3.1.12, DrawingML),
+/// `<cNvGraphicFramePr>` (a:CT_NonVisualGraphicFrameProperties
+/// §19.3.1.9, DrawingML), `<nvPr>` (CT_ApplicationNonVisualDrawingProps
+/// §19.3.1.33).
 pub(all) struct CT_GraphicalObjectFrameNonVisual {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps §19.3.1.12) — required raw element.
+  c_nv_pr : @xml.Element
+  /// <cNvGraphicFramePr> (a:CT_NonVisualGraphicFrameProperties §19.3.1.9)
+  /// — required raw element (DrawingML).
+  c_nv_graphic_frame_pr : @xml.Element
+  /// <nvPr> (CT_ApplicationNonVisualDrawingProps §19.3.1.33) — required.
+  nv_pr : CT_ApplicationNonVisualDrawingProps
 } derive(Eq, Debug)
+
+///|
+pub fn CT_GraphicalObjectFrameNonVisual::parse(
+  element : @xml.Element,
+) -> CT_GraphicalObjectFrameNonVisual raise SchemaViolation {
+  let c_nv_pr = match pml_first_child(element, "cNvPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GraphicalObjectFrameNonVisual/<cNvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let c_nv_graphic_frame_pr = match
+    pml_first_child(element, "cNvGraphicFramePr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GraphicalObjectFrameNonVisual/<cNvGraphicFramePr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let nv_pr = match pml_first_child(element, "nvPr") {
+    Some(c) => CT_ApplicationNonVisualDrawingProps::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GraphicalObjectFrameNonVisual/<nvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  { element, c_nv_pr, c_nv_graphic_frame_pr, nv_pr }
+}
 
 ///|
 pub fn CT_GraphicalObjectFrameNonVisual::new(
   element : @xml.Element,
 ) -> CT_GraphicalObjectFrameNonVisual {
-  { element, }
-}
-
-///|
-pub fn CT_GraphicalObjectFrameNonVisual::parse(
-  element : @xml.Element,
-) -> CT_GraphicalObjectFrameNonVisual {
-  CT_GraphicalObjectFrameNonVisual::new(element)
+  CT_GraphicalObjectFrameNonVisual::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_nv_pr: element,
+        c_nv_graphic_frame_pr: element,
+        nv_pr: CT_ApplicationNonVisualDrawingProps::new(element),
+      }
+  }
 }
 
 ///|
@@ -2593,23 +3037,84 @@ pub fn CT_GraphicalObjectFrameNonVisual::to_element(
 }
 
 ///|
-/// XSD complex type CT_GraphicalObjectFrame from pml.xsd (§19).
+/// XSD complex type CT_GraphicalObjectFrame — Part 1 §19.3.1.21
+/// graphicFrame. Required children: `<nvGraphicFramePr>`
+/// (CT_GraphicalObjectFrameNonVisual §19.3.1.30), `<xfrm>`
+/// (a:CT_Transform2D §20.1.7.6, DrawingML), `<a:graphic>`
+/// (a:CT_GraphicalObject §20.1.2.2.16, DrawingML element ref); optional
+/// `<extLst>` (CT_ExtensionListModify §19.3.1.20). Optional `@bwMode`
+/// (a:ST_BlackWhiteMode §20.1.10.10).
 pub(all) struct CT_GraphicalObjectFrame {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @bwMode (a:ST_BlackWhiteMode §20.1.10.10) — raw token preserved
+  /// because DrawingML owns ST_BlackWhiteMode.
+  bw_mode : String?
+  /// <nvGraphicFramePr> (CT_GraphicalObjectFrameNonVisual §19.3.1.30) — required.
+  nv_graphic_frame_pr : CT_GraphicalObjectFrameNonVisual
+  /// <xfrm> (a:CT_Transform2D §20.1.7.6) — required raw element (DrawingML).
+  xfrm : @xml.Element
+  /// `<a:graphic>` (a:CT_GraphicalObject §20.1.2.2.16) — required raw
+  /// element reference (DrawingML).
+  graphic : @xml.Element
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_GraphicalObjectFrame::parse(
+  element : @xml.Element,
+) -> CT_GraphicalObjectFrame raise SchemaViolation {
+  let bw_mode = pml_attr(element, "bwMode")
+  let nv_graphic_frame_pr = match pml_first_child(element, "nvGraphicFramePr") {
+    Some(c) => CT_GraphicalObjectFrameNonVisual::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GraphicalObjectFrame/<nvGraphicFramePr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let xfrm = match pml_first_child(element, "xfrm") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GraphicalObjectFrame/<xfrm>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let graphic = match pml_first_child(element, "graphic") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GraphicalObjectFrame/<a:graphic>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  { element, bw_mode, nv_graphic_frame_pr, xfrm, graphic, ext_lst }
+}
 
 ///|
 pub fn CT_GraphicalObjectFrame::new(
   element : @xml.Element,
 ) -> CT_GraphicalObjectFrame {
-  { element, }
-}
-
-///|
-pub fn CT_GraphicalObjectFrame::parse(
-  element : @xml.Element,
-) -> CT_GraphicalObjectFrame {
-  CT_GraphicalObjectFrame::new(element)
+  CT_GraphicalObjectFrame::parse(element) catch {
+    _ =>
+      {
+        element,
+        bw_mode: None,
+        nv_graphic_frame_pr: CT_GraphicalObjectFrameNonVisual::new(element),
+        xfrm: element,
+        graphic: element,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2620,23 +3125,70 @@ pub fn CT_GraphicalObjectFrame::to_element(
 }
 
 ///|
-/// XSD complex type CT_GroupShapeNonVisual from pml.xsd (§19).
+/// XSD complex type CT_GroupShapeNonVisual — Part 1 §19.3.1.31
+/// nvGrpSpPr. Three required children: `<cNvPr>`
+/// (a:CT_NonVisualDrawingProps §19.3.1.12, DrawingML), `<cNvGrpSpPr>`
+/// (a:CT_NonVisualGroupDrawingShapeProps §19.3.1.10, DrawingML),
+/// `<nvPr>` (CT_ApplicationNonVisualDrawingProps §19.3.1.33).
 pub(all) struct CT_GroupShapeNonVisual {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps §19.3.1.12) — required raw element.
+  c_nv_pr : @xml.Element
+  /// <cNvGrpSpPr> (a:CT_NonVisualGroupDrawingShapeProps §19.3.1.10) —
+  /// required raw element (DrawingML).
+  c_nv_grp_sp_pr : @xml.Element
+  /// <nvPr> (CT_ApplicationNonVisualDrawingProps §19.3.1.33) — required.
+  nv_pr : CT_ApplicationNonVisualDrawingProps
 } derive(Eq, Debug)
+
+///|
+pub fn CT_GroupShapeNonVisual::parse(
+  element : @xml.Element,
+) -> CT_GroupShapeNonVisual raise SchemaViolation {
+  let c_nv_pr = match pml_first_child(element, "cNvPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GroupShapeNonVisual/<cNvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let c_nv_grp_sp_pr = match pml_first_child(element, "cNvGrpSpPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GroupShapeNonVisual/<cNvGrpSpPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let nv_pr = match pml_first_child(element, "nvPr") {
+    Some(c) => CT_ApplicationNonVisualDrawingProps::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GroupShapeNonVisual/<nvPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  { element, c_nv_pr, c_nv_grp_sp_pr, nv_pr }
+}
 
 ///|
 pub fn CT_GroupShapeNonVisual::new(
   element : @xml.Element,
 ) -> CT_GroupShapeNonVisual {
-  { element, }
-}
-
-///|
-pub fn CT_GroupShapeNonVisual::parse(
-  element : @xml.Element,
-) -> CT_GroupShapeNonVisual {
-  CT_GroupShapeNonVisual::new(element)
+  CT_GroupShapeNonVisual::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_nv_pr: element,
+        c_nv_grp_sp_pr: element,
+        nv_pr: CT_ApplicationNonVisualDrawingProps::new(element),
+      }
+  }
 }
 
 ///|
@@ -2647,19 +3199,108 @@ pub fn CT_GroupShapeNonVisual::to_element(
 }
 
 ///|
-/// XSD complex type CT_GroupShape from pml.xsd (§19).
-pub(all) struct CT_GroupShape {
-  element : @xml.Element
+/// PmlGroupShapeChild — typed encoding of the inner `xsd:choice`
+/// (minOccurs=0, maxOccurs=unbounded) inside CT_GroupShape (§19.3.1.22
+/// grpSp). The six recognised children dispatch by local name to the
+/// matching domain type.
+pub(all) enum PmlGroupShapeChild {
+  /// `<sp>` (CT_Shape §19.3.1.43).
+  PmlGroupShapeSp(CT_Shape)
+  /// `<grpSp>` (CT_GroupShape §19.3.1.22) — recursive nested group.
+  PmlGroupShapeGrp(CT_GroupShape)
+  /// `<graphicFrame>` (CT_GraphicalObjectFrame §19.3.1.21).
+  PmlGroupShapeGraphicFrame(CT_GraphicalObjectFrame)
+  /// `<cxnSp>` (CT_Connector §19.3.1.19).
+  PmlGroupShapeCxnSp(CT_Connector)
+  /// `<pic>` (CT_Picture §19.3.1.37).
+  PmlGroupShapePic(CT_Picture)
+  /// `<contentPart>` (CT_Rel §19.3.1.14).
+  PmlGroupShapeContentPart(CT_Rel)
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GroupShape::new(element : @xml.Element) -> CT_GroupShape {
-  { element, }
+/// XSD complex type CT_GroupShape — Part 1 §19.3.1.22 grpSp. Required
+/// `<nvGrpSpPr>` (CT_GroupShapeNonVisual §19.3.1.31), required
+/// `<grpSpPr>` (a:CT_GroupShapeProperties §19.3.1.23, DrawingML),
+/// `xsd:choice` (zero or more) over `<sp>` / `<grpSp>` /
+/// `<graphicFrame>` / `<cxnSp>` / `<pic>` / `<contentPart>`, optional
+/// `<extLst>` (CT_ExtensionListModify §19.3.1.20).
+pub(all) struct CT_GroupShape {
+  /// Preserve source XML element for byte-identical round-trip.
+  element : @xml.Element
+  /// <nvGrpSpPr> (CT_GroupShapeNonVisual §19.3.1.31) — required.
+  nv_grp_sp_pr : CT_GroupShapeNonVisual
+  /// <grpSpPr> (a:CT_GroupShapeProperties §19.3.1.23) — required raw
+  /// element (DrawingML-owned).
+  grp_sp_pr : @xml.Element
+  /// xsd:choice (0..unbounded) over the six recognised shape kinds, in
+  /// document order.
+  shapes : Array[PmlGroupShapeChild]
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_GroupShape::parse(
+  element : @xml.Element,
+) -> CT_GroupShape raise SchemaViolation {
+  let nv_grp_sp_pr = match pml_first_child(element, "nvGrpSpPr") {
+    Some(c) => CT_GroupShapeNonVisual::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GroupShape/<nvGrpSpPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let grp_sp_pr = match pml_first_child(element, "grpSpPr") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_GroupShape/<grpSpPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let shapes : Array[PmlGroupShapeChild] = []
+  for child in element.children {
+    match child {
+      @xml.Element(c) =>
+        match c.name.local_name {
+          "sp" => shapes.push(PmlGroupShapeSp(CT_Shape::parse(c)))
+          "grpSp" => shapes.push(PmlGroupShapeGrp(CT_GroupShape::parse(c)))
+          "graphicFrame" =>
+            shapes.push(
+              PmlGroupShapeGraphicFrame(CT_GraphicalObjectFrame::parse(c)),
+            )
+          "cxnSp" => shapes.push(PmlGroupShapeCxnSp(CT_Connector::parse(c)))
+          "pic" => shapes.push(PmlGroupShapePic(CT_Picture::parse(c)))
+          "contentPart" =>
+            shapes.push(PmlGroupShapeContentPart(CT_Rel::parse(c)))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  { element, nv_grp_sp_pr, grp_sp_pr, shapes, ext_lst }
 }
 
 ///|
-pub fn CT_GroupShape::parse(element : @xml.Element) -> CT_GroupShape {
-  CT_GroupShape::new(element)
+pub fn CT_GroupShape::new(element : @xml.Element) -> CT_GroupShape {
+  CT_GroupShape::parse(element) catch {
+    _ =>
+      {
+        element,
+        nv_grp_sp_pr: CT_GroupShapeNonVisual::new(element),
+        grp_sp_pr: element,
+        shapes: [],
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2668,24 +3309,29 @@ pub fn CT_GroupShape::to_element(self : CT_GroupShape) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_Rel: Schema pml.xsd complex type `CT_Rel` references
-/// the `r:id` relationship attribute group; CT_Rel, CT_Rel::new,
-/// CT_Rel::parse, and CT_Rel::to_element own that relationship payload.
-/// The package also cites Schema vml-presentationDrawing.xsd complex type
-/// `CT_Rel` with attribute `id`, represented by VmlPresentationDrawing_CT_Rel
-/// in the VML presentation drawing domain file.
+/// XSD complex type CT_Rel — Part 1 §19.3.1.14 contentPart. Backs the
+/// `<contentPart>` element with a single required `@r:id`
+/// (ST_RelationshipId) attribute. (A second, namesake `CT_Rel` lives
+/// in vml-presentationDrawing.xsd and is exposed as
+/// `VmlPresentationDrawing_CT_Rel` in this package.)
 pub(all) struct CT_Rel {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @r:id (ST_RelationshipId) — required.
+  r_id : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Rel::new(element : @xml.Element) -> CT_Rel {
-  { element, }
+pub fn CT_Rel::parse(element : @xml.Element) -> CT_Rel raise SchemaViolation {
+  let r_id = pml_require_attr(element, "id", "CT_Rel/@r:id")
+  { element, r_id }
 }
 
 ///|
-pub fn CT_Rel::parse(element : @xml.Element) -> CT_Rel {
-  CT_Rel::new(element)
+pub fn CT_Rel::new(element : @xml.Element) -> CT_Rel {
+  CT_Rel::parse(element) catch {
+    _ => { element, r_id: "" }
+  }
 }
 
 ///|
@@ -2694,23 +3340,71 @@ pub fn CT_Rel::to_element(self : CT_Rel) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_BackgroundProperties from pml.xsd (§19).
+/// XSD complex type CT_BackgroundProperties — Part 1 §19.3.1.2 bgPr.
+/// Background fill: required `a:EG_FillProperties` model-group payload
+/// (one of `noFill`, `solidFill`, `gradFill`, `blipFill`, `pattFill`,
+/// `grpFill`; DrawingML-owned, kept raw), optional `a:EG_EffectProperties`
+/// (DrawingML, kept raw), optional `<extLst>` (CT_ExtensionList §19.2.1.13).
+/// Optional `@shadeToTitle` (xsd:boolean, default `false`).
 pub(all) struct CT_BackgroundProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @shadeToTitle (xsd:boolean, default `false`).
+  shade_to_title : Bool?
+  /// `a:EG_FillProperties` — the matched raw element (noFill / solidFill
+  /// / gradFill / blipFill / pattFill / grpFill); required.
+  fill : @xml.Element
+  /// `a:EG_EffectProperties`? — optional raw element (effectLst /
+  /// effectDag).
+  effect : @xml.Element?
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_BackgroundProperties::parse(
+  element : @xml.Element,
+) -> CT_BackgroundProperties raise SchemaViolation {
+  let shade_to_title = pml_optional_bool(
+    element, "shadeToTitle", "CT_BackgroundProperties/@shadeToTitle",
+  )
+  let fill = match
+    pml_first_choice(element, [
+      "noFill", "solidFill", "gradFill", "blipFill", "pattFill", "grpFill",
+    ]) {
+    Some((c, _)) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_BackgroundProperties/EG_FillProperties",
+        value="",
+        reason="required fill child missing",
+      )
+  }
+  let effect = match pml_first_choice(element, ["effectLst", "effectDag"]) {
+    Some((c, _)) => Some(c)
+    None => None
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, shade_to_title, fill, effect, ext_lst }
+}
 
 ///|
 pub fn CT_BackgroundProperties::new(
   element : @xml.Element,
 ) -> CT_BackgroundProperties {
-  { element, }
-}
-
-///|
-pub fn CT_BackgroundProperties::parse(
-  element : @xml.Element,
-) -> CT_BackgroundProperties {
-  CT_BackgroundProperties::new(element)
+  CT_BackgroundProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        shade_to_title: None,
+        fill: element,
+        effect: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2721,19 +3415,56 @@ pub fn CT_BackgroundProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_Background from pml.xsd (§19).
-pub(all) struct CT_Background {
-  element : @xml.Element
+/// PmlBackgroundChoice — typed encoding of the XSD model group
+/// EG_Background used inside CT_Background. Schema xsd:choice between
+/// `<bgPr>` (CT_BackgroundProperties §19.3.1.2) and `<bgRef>`
+/// (a:CT_StyleMatrixReference §20.1.4.2.3, DrawingML-owned — raw
+/// element).
+pub(all) enum PmlBackgroundChoice {
+  /// `<bgPr>` (CT_BackgroundProperties §19.3.1.2).
+  PmlBackgroundPr(CT_BackgroundProperties)
+  /// `<bgRef>` (a:CT_StyleMatrixReference §20.1.4.2.3) — raw element
+  /// preserved because the type is DrawingML-owned.
+  PmlBackgroundRef(@xml.Element)
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Background::new(element : @xml.Element) -> CT_Background {
-  { element, }
+/// XSD complex type CT_Background — Part 1 §19.3.1.1 bg. Required
+/// EG_Background model-group (PmlBackgroundChoice) plus optional
+/// `@bwMode` (a:ST_BlackWhiteMode §20.1.10.10, default `"white"`).
+pub(all) struct CT_Background {
+  /// Preserve source XML element for byte-identical round-trip.
+  element : @xml.Element
+  /// @bwMode (a:ST_BlackWhiteMode §20.1.10.10) — raw token preserved
+  /// because DrawingML owns ST_BlackWhiteMode.
+  bw_mode : String?
+  /// PmlBackgroundChoice — required (one of `<bgPr>` / `<bgRef>`).
+  background : PmlBackgroundChoice
+} derive(Eq, Debug)
+
+///|
+pub fn CT_Background::parse(
+  element : @xml.Element,
+) -> CT_Background raise SchemaViolation {
+  let bw_mode = pml_attr(element, "bwMode")
+  let background = match pml_first_choice(element, ["bgPr", "bgRef"]) {
+    Some((c, "bgPr")) => PmlBackgroundPr(CT_BackgroundProperties::parse(c))
+    Some((c, "bgRef")) => PmlBackgroundRef(c)
+    _ =>
+      raise SchemaViolation(
+        type_name="CT_Background/EG_Background",
+        value="",
+        reason="required xsd:choice missing",
+      )
+  }
+  { element, bw_mode, background }
 }
 
 ///|
-pub fn CT_Background::parse(element : @xml.Element) -> CT_Background {
-  CT_Background::new(element)
+pub fn CT_Background::new(element : @xml.Element) -> CT_Background {
+  CT_Background::parse(element) catch {
+    _ => { element, bw_mode: None, background: PmlBackgroundRef(element) }
+  }
 }
 
 ///|
@@ -2742,19 +3473,76 @@ pub fn CT_Background::to_element(self : CT_Background) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_CommonSlideData from pml.xsd (§19).
+/// XSD complex type CT_CommonSlideData — Part 1 §19.3.1.16 cSld. Slide
+/// content backbone: optional `<bg>` (CT_Background §19.3.1.1),
+/// required `<spTree>` (CT_GroupShape §19.3.1.22, slide shape tree),
+/// optional `<custDataLst>` (CT_CustomerDataList §19.3.1.18), optional
+/// `<controls>` (CT_ControlList §19.3.1.15), optional `<extLst>`
+/// (CT_ExtensionList §19.2.1.13). Optional `@name` (xsd:string, default `""`).
 pub(all) struct CT_CommonSlideData {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (xsd:string, default `""`).
+  name : String?
+  /// <bg>? (CT_Background §19.3.1.1).
+  bg : CT_Background?
+  /// <spTree> (CT_GroupShape §19.3.1.22) — required slide shape tree.
+  sp_tree : CT_GroupShape
+  /// <custDataLst>? (CT_CustomerDataList §19.3.1.18).
+  cust_data_lst : CT_CustomerDataList?
+  /// <controls>? (CT_ControlList §19.3.1.15).
+  controls : CT_ControlList?
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CommonSlideData::new(element : @xml.Element) -> CT_CommonSlideData {
-  { element, }
+pub fn CT_CommonSlideData::parse(
+  element : @xml.Element,
+) -> CT_CommonSlideData raise SchemaViolation {
+  let name = pml_attr(element, "name")
+  let bg = match pml_first_child(element, "bg") {
+    Some(c) => Some(CT_Background::parse(c))
+    None => None
+  }
+  let sp_tree = match pml_first_child(element, "spTree") {
+    Some(c) => CT_GroupShape::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_CommonSlideData/<spTree>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let cust_data_lst = match pml_first_child(element, "custDataLst") {
+    Some(c) => Some(CT_CustomerDataList::parse(c))
+    None => None
+  }
+  let controls = match pml_first_child(element, "controls") {
+    Some(c) => Some(CT_ControlList::parse(c))
+    None => None
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, name, bg, sp_tree, cust_data_lst, controls, ext_lst }
 }
 
 ///|
-pub fn CT_CommonSlideData::parse(element : @xml.Element) -> CT_CommonSlideData {
-  CT_CommonSlideData::new(element)
+pub fn CT_CommonSlideData::new(element : @xml.Element) -> CT_CommonSlideData {
+  CT_CommonSlideData::parse(element) catch {
+    _ =>
+      {
+        element,
+        name: None,
+        bg: None,
+        sp_tree: CT_GroupShape::new(element),
+        cust_data_lst: None,
+        controls: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2765,19 +3553,98 @@ pub fn CT_CommonSlideData::to_element(
 }
 
 ///|
-/// XSD complex type CT_Slide from pml.xsd (§19).
+/// XSD complex type CT_Slide — Part 1 §19.3.1.38 sld. Slide root.
+/// Required `<cSld>` (CT_CommonSlideData §19.3.1.16); optional
+/// EG_ChildSlide group (`<clrMapOvr>` raw — DrawingML); optional
+/// `<transition>` (CT_SlideTransition §19.5.50), `<timing>`
+/// (CT_SlideTiming §19.5.49), `<extLst>` (CT_ExtensionListModify
+/// §19.3.1.20). Optional AG_ChildSlide attributes (`@showMasterSp`,
+/// `@showMasterPhAnim`, each xsd:boolean default `true`) plus `@show`
+/// (xsd:boolean, default `true`).
 pub(all) struct CT_Slide {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @showMasterSp (AG_ChildSlide, xsd:boolean default `true`).
+  show_master_sp : Bool?
+  /// @showMasterPhAnim (AG_ChildSlide, xsd:boolean default `true`).
+  show_master_ph_anim : Bool?
+  /// @show (xsd:boolean, default `true`).
+  show : Bool?
+  /// <cSld> (CT_CommonSlideData §19.3.1.16) — required.
+  c_sld : CT_CommonSlideData
+  /// EG_ChildSlide `<clrMapOvr>`? (a:CT_ColorMappingOverride §19.3.1.7)
+  /// — raw element (DrawingML).
+  clr_map_ovr : @xml.Element?
+  /// <transition>? (CT_SlideTransition §19.5.50).
+  transition : CT_SlideTransition?
+  /// <timing>? (CT_SlideTiming §19.5.49).
+  timing : CT_SlideTiming?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Slide::new(element : @xml.Element) -> CT_Slide {
-  { element, }
+pub fn CT_Slide::parse(
+  element : @xml.Element,
+) -> CT_Slide raise SchemaViolation {
+  let show_master_sp = pml_optional_bool(
+    element, "showMasterSp", "CT_Slide/@showMasterSp",
+  )
+  let show_master_ph_anim = pml_optional_bool(
+    element, "showMasterPhAnim", "CT_Slide/@showMasterPhAnim",
+  )
+  let show = pml_optional_bool(element, "show", "CT_Slide/@show")
+  let c_sld = match pml_first_child(element, "cSld") {
+    Some(c) => CT_CommonSlideData::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Slide/<cSld>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let clr_map_ovr = pml_first_child(element, "clrMapOvr")
+  let transition = match pml_first_child(element, "transition") {
+    Some(c) => Some(CT_SlideTransition::parse(c))
+    None => None
+  }
+  let timing = match pml_first_child(element, "timing") {
+    Some(c) => Some(CT_SlideTiming::new(c))
+    None => None
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  {
+    element,
+    show_master_sp,
+    show_master_ph_anim,
+    show,
+    c_sld,
+    clr_map_ovr,
+    transition,
+    timing,
+    ext_lst,
+  }
 }
 
 ///|
-pub fn CT_Slide::parse(element : @xml.Element) -> CT_Slide {
-  CT_Slide::new(element)
+pub fn CT_Slide::new(element : @xml.Element) -> CT_Slide {
+  CT_Slide::parse(element) catch {
+    _ =>
+      {
+        element,
+        show_master_sp: None,
+        show_master_ph_anim: None,
+        show: None,
+        c_sld: CT_CommonSlideData::new(element),
+        clr_map_ovr: None,
+        transition: None,
+        timing: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2786,19 +3653,130 @@ pub fn CT_Slide::to_element(self : CT_Slide) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_SlideLayout from pml.xsd (§19).
+/// XSD complex type CT_SlideLayout — Part 1 §19.3.1.39 sldLayout. Slide
+/// layout root. Required `<cSld>` (CT_CommonSlideData §19.3.1.16);
+/// optional EG_ChildSlide `<clrMapOvr>` (raw — DrawingML); optional
+/// `<transition>` (CT_SlideTransition §19.5.50), `<timing>`
+/// (CT_SlideTiming §19.5.49), `<hf>` (CT_HeaderFooter §19.3.1.25),
+/// `<extLst>` (CT_ExtensionListModify §19.3.1.20). Optional
+/// AG_ChildSlide attributes plus `@matchingName` (xsd:string default
+/// `""`), `@type` (ST_SlideLayoutType §19.7.15 default `cust`),
+/// `@preserve` (xsd:boolean default `false`), `@userDrawn` (xsd:boolean
+/// default `false`).
 pub(all) struct CT_SlideLayout {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @showMasterSp (AG_ChildSlide, xsd:boolean default `true`).
+  show_master_sp : Bool?
+  /// @showMasterPhAnim (AG_ChildSlide, xsd:boolean default `true`).
+  show_master_ph_anim : Bool?
+  /// @matchingName (xsd:string, default `""`).
+  matching_name : String?
+  /// @type (ST_SlideLayoutType §19.7.15, default `cust`).
+  layout_type : ST_SlideLayoutType?
+  /// @preserve (xsd:boolean, default `false`).
+  preserve : Bool?
+  /// @userDrawn (xsd:boolean, default `false`).
+  user_drawn : Bool?
+  /// <cSld> (CT_CommonSlideData §19.3.1.16) — required.
+  c_sld : CT_CommonSlideData
+  /// EG_ChildSlide `<clrMapOvr>`? (a:CT_ColorMappingOverride §19.3.1.7)
+  /// — raw element (DrawingML).
+  clr_map_ovr : @xml.Element?
+  /// <transition>? (CT_SlideTransition §19.5.50).
+  transition : CT_SlideTransition?
+  /// <timing>? (CT_SlideTiming §19.5.49).
+  timing : CT_SlideTiming?
+  /// <hf>? (CT_HeaderFooter §19.3.1.25).
+  hf : CT_HeaderFooter?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SlideLayout::new(element : @xml.Element) -> CT_SlideLayout {
-  { element, }
+pub fn CT_SlideLayout::parse(
+  element : @xml.Element,
+) -> CT_SlideLayout raise SchemaViolation {
+  let show_master_sp = pml_optional_bool(
+    element, "showMasterSp", "CT_SlideLayout/@showMasterSp",
+  )
+  let show_master_ph_anim = pml_optional_bool(
+    element, "showMasterPhAnim", "CT_SlideLayout/@showMasterPhAnim",
+  )
+  let matching_name = pml_attr(element, "matchingName")
+  let layout_type = match pml_attr(element, "type") {
+    Some(v) => Some(ST_SlideLayoutType::parse(v))
+    None => None
+  }
+  let preserve = pml_optional_bool(
+    element, "preserve", "CT_SlideLayout/@preserve",
+  )
+  let user_drawn = pml_optional_bool(
+    element, "userDrawn", "CT_SlideLayout/@userDrawn",
+  )
+  let c_sld = match pml_first_child(element, "cSld") {
+    Some(c) => CT_CommonSlideData::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_SlideLayout/<cSld>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let clr_map_ovr = pml_first_child(element, "clrMapOvr")
+  let transition = match pml_first_child(element, "transition") {
+    Some(c) => Some(CT_SlideTransition::parse(c))
+    None => None
+  }
+  let timing = match pml_first_child(element, "timing") {
+    Some(c) => Some(CT_SlideTiming::new(c))
+    None => None
+  }
+  let hf = match pml_first_child(element, "hf") {
+    Some(c) => Some(CT_HeaderFooter::parse(c))
+    None => None
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  {
+    element,
+    show_master_sp,
+    show_master_ph_anim,
+    matching_name,
+    layout_type,
+    preserve,
+    user_drawn,
+    c_sld,
+    clr_map_ovr,
+    transition,
+    timing,
+    hf,
+    ext_lst,
+  }
 }
 
 ///|
-pub fn CT_SlideLayout::parse(element : @xml.Element) -> CT_SlideLayout {
-  CT_SlideLayout::new(element)
+pub fn CT_SlideLayout::new(element : @xml.Element) -> CT_SlideLayout {
+  CT_SlideLayout::parse(element) catch {
+    _ =>
+      {
+        element,
+        show_master_sp: None,
+        show_master_ph_anim: None,
+        matching_name: None,
+        layout_type: None,
+        preserve: None,
+        user_drawn: None,
+        c_sld: CT_CommonSlideData::new(element),
+        clr_map_ovr: None,
+        transition: None,
+        timing: None,
+        hf: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2807,23 +3785,52 @@ pub fn CT_SlideLayout::to_element(self : CT_SlideLayout) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_SlideMasterTextStyles from pml.xsd (§19).
+/// XSD complex type CT_SlideMasterTextStyles — Part 1 §19.3.1.52
+/// txStyles. Sequence of three optional `<titleStyle>` / `<bodyStyle>`
+/// / `<otherStyle>` children (each a:CT_TextListStyle §21.1.2.4.12,
+/// DrawingML-owned — kept raw) plus optional `<extLst>`
+/// (CT_ExtensionList §19.2.1.13).
 pub(all) struct CT_SlideMasterTextStyles {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <titleStyle>? (a:CT_TextListStyle §21.1.2.4.12) — raw (DrawingML).
+  title_style : @xml.Element?
+  /// <bodyStyle>? (a:CT_TextListStyle §21.1.2.4.12) — raw (DrawingML).
+  body_style : @xml.Element?
+  /// <otherStyle>? (a:CT_TextListStyle §21.1.2.4.12) — raw (DrawingML).
+  other_style : @xml.Element?
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_SlideMasterTextStyles::parse(
+  element : @xml.Element,
+) -> CT_SlideMasterTextStyles raise SchemaViolation {
+  let title_style = pml_first_child(element, "titleStyle")
+  let body_style = pml_first_child(element, "bodyStyle")
+  let other_style = pml_first_child(element, "otherStyle")
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, title_style, body_style, other_style, ext_lst }
+}
 
 ///|
 pub fn CT_SlideMasterTextStyles::new(
   element : @xml.Element,
 ) -> CT_SlideMasterTextStyles {
-  { element, }
-}
-
-///|
-pub fn CT_SlideMasterTextStyles::parse(
-  element : @xml.Element,
-) -> CT_SlideMasterTextStyles {
-  CT_SlideMasterTextStyles::new(element)
+  CT_SlideMasterTextStyles::parse(element) catch {
+    _ =>
+      {
+        element,
+        title_style: None,
+        body_style: None,
+        other_style: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2834,23 +3841,44 @@ pub fn CT_SlideMasterTextStyles::to_element(
 }
 
 ///|
-/// XSD complex type CT_SlideLayoutIdListEntry from pml.xsd (§19).
+/// XSD complex type CT_SlideLayoutIdListEntry — Part 1 §19.3.1.40
+/// sldLayoutId. Optional `<extLst>` (CT_ExtensionList §19.2.1.13);
+/// optional `@id` (ST_SlideLayoutId §19.7.14 — xsd:unsignedInt with
+/// minInclusive 2147483648); required `@r:id` (ST_RelationshipId).
 pub(all) struct CT_SlideLayoutIdListEntry {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @id (ST_SlideLayoutId §19.7.14) — optional.
+  id : ST_SlideLayoutId?
+  /// @r:id (ST_RelationshipId) — required.
+  r_id : String
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_SlideLayoutIdListEntry::parse(
+  element : @xml.Element,
+) -> CT_SlideLayoutIdListEntry raise SchemaViolation {
+  let id = match pml_attr(element, "id") {
+    Some(v) => Some(ST_SlideLayoutId::parse(v))
+    None => None
+  }
+  let r_id = pml_require_attr(element, "id", "CT_SlideLayoutIdListEntry/@r:id")
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, id, r_id, ext_lst }
+}
 
 ///|
 pub fn CT_SlideLayoutIdListEntry::new(
   element : @xml.Element,
 ) -> CT_SlideLayoutIdListEntry {
-  { element, }
-}
-
-///|
-pub fn CT_SlideLayoutIdListEntry::parse(
-  element : @xml.Element,
-) -> CT_SlideLayoutIdListEntry {
-  CT_SlideLayoutIdListEntry::new(element)
+  CT_SlideLayoutIdListEntry::parse(element) catch {
+    _ => { element, id: None, r_id: "", ext_lst: None }
+  }
 }
 
 ///|
@@ -2861,23 +3889,34 @@ pub fn CT_SlideLayoutIdListEntry::to_element(
 }
 
 ///|
-/// XSD complex type CT_SlideLayoutIdList from pml.xsd (§19).
+/// XSD complex type CT_SlideLayoutIdList — Part 1 §19.3.1.41
+/// sldLayoutIdLst. Zero or more `<sldLayoutId>`
+/// (CT_SlideLayoutIdListEntry §19.3.1.40) entries.
 pub(all) struct CT_SlideLayoutIdList {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <sldLayoutId>* (CT_SlideLayoutIdListEntry §19.3.1.40) — zero or more.
+  sld_layout_id : Array[CT_SlideLayoutIdListEntry]
 } derive(Eq, Debug)
+
+///|
+pub fn CT_SlideLayoutIdList::parse(
+  element : @xml.Element,
+) -> CT_SlideLayoutIdList raise SchemaViolation {
+  let sld_layout_id : Array[CT_SlideLayoutIdListEntry] = []
+  for child in pml_children(element, "sldLayoutId") {
+    sld_layout_id.push(CT_SlideLayoutIdListEntry::parse(child))
+  }
+  { element, sld_layout_id }
+}
 
 ///|
 pub fn CT_SlideLayoutIdList::new(
   element : @xml.Element,
 ) -> CT_SlideLayoutIdList {
-  { element, }
-}
-
-///|
-pub fn CT_SlideLayoutIdList::parse(
-  element : @xml.Element,
-) -> CT_SlideLayoutIdList {
-  CT_SlideLayoutIdList::new(element)
+  CT_SlideLayoutIdList::parse(element) catch {
+    _ => { element, sld_layout_id: [] }
+  }
 }
 
 ///|
@@ -2888,19 +3927,119 @@ pub fn CT_SlideLayoutIdList::to_element(
 }
 
 ///|
-/// XSD complex type CT_SlideMaster from pml.xsd (§19).
+/// XSD complex type CT_SlideMaster — Part 1 §19.3.1.42 sldMaster. Slide
+/// master root. Required `<cSld>` (CT_CommonSlideData §19.3.1.16);
+/// required EG_TopLevelSlide `<clrMap>` (a:CT_ColorMapping §19.3.1.6,
+/// DrawingML — raw); optional `<sldLayoutIdLst>` (CT_SlideLayoutIdList
+/// §19.3.1.41), `<transition>` (CT_SlideTransition §19.5.50),
+/// `<timing>` (CT_SlideTiming §19.5.49), `<hf>` (CT_HeaderFooter
+/// §19.3.1.25), `<txStyles>` (CT_SlideMasterTextStyles §19.3.1.52),
+/// `<extLst>` (CT_ExtensionListModify §19.3.1.20). Optional `@preserve`
+/// (xsd:boolean, default `false`).
 pub(all) struct CT_SlideMaster {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @preserve (xsd:boolean, default `false`).
+  preserve : Bool?
+  /// <cSld> (CT_CommonSlideData §19.3.1.16) — required.
+  c_sld : CT_CommonSlideData
+  /// EG_TopLevelSlide `<clrMap>` (a:CT_ColorMapping §19.3.1.6) —
+  /// required raw element (DrawingML).
+  clr_map : @xml.Element
+  /// <sldLayoutIdLst>? (CT_SlideLayoutIdList §19.3.1.41).
+  sld_layout_id_lst : CT_SlideLayoutIdList?
+  /// <transition>? (CT_SlideTransition §19.5.50).
+  transition : CT_SlideTransition?
+  /// <timing>? (CT_SlideTiming §19.5.49).
+  timing : CT_SlideTiming?
+  /// <hf>? (CT_HeaderFooter §19.3.1.25).
+  hf : CT_HeaderFooter?
+  /// <txStyles>? (CT_SlideMasterTextStyles §19.3.1.52).
+  tx_styles : CT_SlideMasterTextStyles?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SlideMaster::new(element : @xml.Element) -> CT_SlideMaster {
-  { element, }
+pub fn CT_SlideMaster::parse(
+  element : @xml.Element,
+) -> CT_SlideMaster raise SchemaViolation {
+  let preserve = pml_optional_bool(
+    element, "preserve", "CT_SlideMaster/@preserve",
+  )
+  let c_sld = match pml_first_child(element, "cSld") {
+    Some(c) => CT_CommonSlideData::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_SlideMaster/<cSld>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let clr_map = match pml_first_child(element, "clrMap") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_SlideMaster/<clrMap>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let sld_layout_id_lst = match pml_first_child(element, "sldLayoutIdLst") {
+    Some(c) => Some(CT_SlideLayoutIdList::parse(c))
+    None => None
+  }
+  let transition = match pml_first_child(element, "transition") {
+    Some(c) => Some(CT_SlideTransition::parse(c))
+    None => None
+  }
+  let timing = match pml_first_child(element, "timing") {
+    Some(c) => Some(CT_SlideTiming::new(c))
+    None => None
+  }
+  let hf = match pml_first_child(element, "hf") {
+    Some(c) => Some(CT_HeaderFooter::parse(c))
+    None => None
+  }
+  let tx_styles = match pml_first_child(element, "txStyles") {
+    Some(c) => Some(CT_SlideMasterTextStyles::parse(c))
+    None => None
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  {
+    element,
+    preserve,
+    c_sld,
+    clr_map,
+    sld_layout_id_lst,
+    transition,
+    timing,
+    hf,
+    tx_styles,
+    ext_lst,
+  }
 }
 
 ///|
-pub fn CT_SlideMaster::parse(element : @xml.Element) -> CT_SlideMaster {
-  CT_SlideMaster::new(element)
+pub fn CT_SlideMaster::new(element : @xml.Element) -> CT_SlideMaster {
+  CT_SlideMaster::parse(element) catch {
+    _ =>
+      {
+        element,
+        preserve: None,
+        c_sld: CT_CommonSlideData::new(element),
+        clr_map: element,
+        sld_layout_id_lst: None,
+        transition: None,
+        timing: None,
+        hf: None,
+        tx_styles: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2909,19 +4048,70 @@ pub fn CT_SlideMaster::to_element(self : CT_SlideMaster) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_HandoutMaster from pml.xsd (§19).
+/// XSD complex type CT_HandoutMaster — Part 1 §19.3.1.24
+/// handoutMaster. Required `<cSld>` (CT_CommonSlideData §19.3.1.16);
+/// required EG_TopLevelSlide `<clrMap>` (a:CT_ColorMapping §19.3.1.6,
+/// DrawingML — raw); optional `<hf>` (CT_HeaderFooter §19.3.1.25),
+/// `<extLst>` (CT_ExtensionListModify §19.3.1.20).
 pub(all) struct CT_HandoutMaster {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cSld> (CT_CommonSlideData §19.3.1.16) — required.
+  c_sld : CT_CommonSlideData
+  /// EG_TopLevelSlide `<clrMap>` (a:CT_ColorMapping §19.3.1.6) —
+  /// required raw element (DrawingML).
+  clr_map : @xml.Element
+  /// <hf>? (CT_HeaderFooter §19.3.1.25).
+  hf : CT_HeaderFooter?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_HandoutMaster::new(element : @xml.Element) -> CT_HandoutMaster {
-  { element, }
+pub fn CT_HandoutMaster::parse(
+  element : @xml.Element,
+) -> CT_HandoutMaster raise SchemaViolation {
+  let c_sld = match pml_first_child(element, "cSld") {
+    Some(c) => CT_CommonSlideData::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_HandoutMaster/<cSld>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let clr_map = match pml_first_child(element, "clrMap") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_HandoutMaster/<clrMap>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let hf = match pml_first_child(element, "hf") {
+    Some(c) => Some(CT_HeaderFooter::parse(c))
+    None => None
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  { element, c_sld, clr_map, hf, ext_lst }
 }
 
 ///|
-pub fn CT_HandoutMaster::parse(element : @xml.Element) -> CT_HandoutMaster {
-  CT_HandoutMaster::new(element)
+pub fn CT_HandoutMaster::new(element : @xml.Element) -> CT_HandoutMaster {
+  CT_HandoutMaster::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_sld: CT_CommonSlideData::new(element),
+        clr_map: element,
+        hf: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2930,19 +4120,75 @@ pub fn CT_HandoutMaster::to_element(self : CT_HandoutMaster) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_NotesMaster from pml.xsd (§19).
+/// XSD complex type CT_NotesMaster — Part 1 §19.3.1.27 notesMaster.
+/// Required `<cSld>` (CT_CommonSlideData §19.3.1.16); required
+/// EG_TopLevelSlide `<clrMap>` (a:CT_ColorMapping §19.3.1.6,
+/// DrawingML — raw); optional `<hf>` (CT_HeaderFooter §19.3.1.25),
+/// `<notesStyle>` (a:CT_TextListStyle §21.1.2.4.12, DrawingML — raw),
+/// `<extLst>` (CT_ExtensionListModify §19.3.1.20).
 pub(all) struct CT_NotesMaster {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cSld> (CT_CommonSlideData §19.3.1.16) — required.
+  c_sld : CT_CommonSlideData
+  /// EG_TopLevelSlide `<clrMap>` (a:CT_ColorMapping §19.3.1.6) —
+  /// required raw element (DrawingML).
+  clr_map : @xml.Element
+  /// <hf>? (CT_HeaderFooter §19.3.1.25).
+  hf : CT_HeaderFooter?
+  /// <notesStyle>? (a:CT_TextListStyle §21.1.2.4.12) — raw (DrawingML).
+  notes_style : @xml.Element?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_NotesMaster::new(element : @xml.Element) -> CT_NotesMaster {
-  { element, }
+pub fn CT_NotesMaster::parse(
+  element : @xml.Element,
+) -> CT_NotesMaster raise SchemaViolation {
+  let c_sld = match pml_first_child(element, "cSld") {
+    Some(c) => CT_CommonSlideData::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_NotesMaster/<cSld>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let clr_map = match pml_first_child(element, "clrMap") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_NotesMaster/<clrMap>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let hf = match pml_first_child(element, "hf") {
+    Some(c) => Some(CT_HeaderFooter::parse(c))
+    None => None
+  }
+  let notes_style = pml_first_child(element, "notesStyle")
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  { element, c_sld, clr_map, hf, notes_style, ext_lst }
 }
 
 ///|
-pub fn CT_NotesMaster::parse(element : @xml.Element) -> CT_NotesMaster {
-  CT_NotesMaster::new(element)
+pub fn CT_NotesMaster::new(element : @xml.Element) -> CT_NotesMaster {
+  CT_NotesMaster::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_sld: CT_CommonSlideData::new(element),
+        clr_map: element,
+        hf: None,
+        notes_style: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2951,19 +4197,68 @@ pub fn CT_NotesMaster::to_element(self : CT_NotesMaster) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_NotesSlide from pml.xsd (§19).
+/// XSD complex type CT_NotesSlide — Part 1 §19.3.1.26 notes. Notes
+/// slide root. Required `<cSld>` (CT_CommonSlideData §19.3.1.16);
+/// optional EG_ChildSlide `<clrMapOvr>` (raw — DrawingML), `<extLst>`
+/// (CT_ExtensionListModify §19.3.1.20). Optional AG_ChildSlide
+/// attributes `@showMasterSp` / `@showMasterPhAnim` (xsd:boolean each
+/// default `true`).
 pub(all) struct CT_NotesSlide {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @showMasterSp (AG_ChildSlide, xsd:boolean default `true`).
+  show_master_sp : Bool?
+  /// @showMasterPhAnim (AG_ChildSlide, xsd:boolean default `true`).
+  show_master_ph_anim : Bool?
+  /// <cSld> (CT_CommonSlideData §19.3.1.16) — required.
+  c_sld : CT_CommonSlideData
+  /// EG_ChildSlide `<clrMapOvr>`? (a:CT_ColorMappingOverride §19.3.1.7)
+  /// — raw element (DrawingML).
+  clr_map_ovr : @xml.Element?
+  /// <extLst>? (CT_ExtensionListModify §19.3.1.20).
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_NotesSlide::new(element : @xml.Element) -> CT_NotesSlide {
-  { element, }
+pub fn CT_NotesSlide::parse(
+  element : @xml.Element,
+) -> CT_NotesSlide raise SchemaViolation {
+  let show_master_sp = pml_optional_bool(
+    element, "showMasterSp", "CT_NotesSlide/@showMasterSp",
+  )
+  let show_master_ph_anim = pml_optional_bool(
+    element, "showMasterPhAnim", "CT_NotesSlide/@showMasterPhAnim",
+  )
+  let c_sld = match pml_first_child(element, "cSld") {
+    Some(c) => CT_CommonSlideData::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_NotesSlide/<cSld>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let clr_map_ovr = pml_first_child(element, "clrMapOvr")
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionListModify::parse(c))
+    None => None
+  }
+  { element, show_master_sp, show_master_ph_anim, c_sld, clr_map_ovr, ext_lst }
 }
 
 ///|
-pub fn CT_NotesSlide::parse(element : @xml.Element) -> CT_NotesSlide {
-  CT_NotesSlide::new(element)
+pub fn CT_NotesSlide::new(element : @xml.Element) -> CT_NotesSlide {
+  CT_NotesSlide::parse(element) catch {
+    _ =>
+      {
+        element,
+        show_master_sp: None,
+        show_master_ph_anim: None,
+        c_sld: CT_CommonSlideData::new(element),
+        clr_map_ovr: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2972,23 +4267,65 @@ pub fn CT_NotesSlide::to_element(self : CT_NotesSlide) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_SlideSyncProperties from pml.xsd (§19).
+/// XSD complex type CT_SlideSyncProperties — Part 1 §19.6.1 sldSyncPr.
+/// Slide synchronisation root. Optional `<extLst>` (CT_ExtensionList
+/// §19.2.1.13). Required attributes `@serverSldId` (xsd:string),
+/// `@serverSldModifiedTime` (xsd:dateTime), `@clientInsertedTime`
+/// (xsd:dateTime). The dateTime values are preserved as their lexical
+/// strings because the kernel does not have a calendar type.
 pub(all) struct CT_SlideSyncProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @serverSldId (xsd:string) — required.
+  server_sld_id : String
+  /// @serverSldModifiedTime (xsd:dateTime) — required (lexical form).
+  server_sld_modified_time : String
+  /// @clientInsertedTime (xsd:dateTime) — required (lexical form).
+  client_inserted_time : String
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_SlideSyncProperties::parse(
+  element : @xml.Element,
+) -> CT_SlideSyncProperties raise SchemaViolation {
+  let server_sld_id = pml_require_attr(
+    element, "serverSldId", "CT_SlideSyncProperties/@serverSldId",
+  )
+  let server_sld_modified_time = pml_require_attr(
+    element, "serverSldModifiedTime", "CT_SlideSyncProperties/@serverSldModifiedTime",
+  )
+  let client_inserted_time = pml_require_attr(
+    element, "clientInsertedTime", "CT_SlideSyncProperties/@clientInsertedTime",
+  )
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  {
+    element,
+    server_sld_id,
+    server_sld_modified_time,
+    client_inserted_time,
+    ext_lst,
+  }
+}
 
 ///|
 pub fn CT_SlideSyncProperties::new(
   element : @xml.Element,
 ) -> CT_SlideSyncProperties {
-  { element, }
-}
-
-///|
-pub fn CT_SlideSyncProperties::parse(
-  element : @xml.Element,
-) -> CT_SlideSyncProperties {
-  CT_SlideSyncProperties::new(element)
+  CT_SlideSyncProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        server_sld_id: "",
+        server_sld_modified_time: "",
+        client_inserted_time: "",
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -2999,19 +4336,32 @@ pub fn CT_SlideSyncProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_StringTag from pml.xsd (§19).
+/// XSD complex type CT_StringTag — Part 1 §19.3.3.1 tag. Programmable
+/// extensibility tag carrying two required xsd:string attributes:
+/// `@name`, `@val`.
 pub(all) struct CT_StringTag {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (xsd:string) — required.
+  name : String
+  /// @val (xsd:string) — required.
+  val : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_StringTag::new(element : @xml.Element) -> CT_StringTag {
-  { element, }
+pub fn CT_StringTag::parse(
+  element : @xml.Element,
+) -> CT_StringTag raise SchemaViolation {
+  let name = pml_require_attr(element, "name", "CT_StringTag/@name")
+  let val = pml_require_attr(element, "val", "CT_StringTag/@val")
+  { element, name, val }
 }
 
 ///|
-pub fn CT_StringTag::parse(element : @xml.Element) -> CT_StringTag {
-  CT_StringTag::new(element)
+pub fn CT_StringTag::new(element : @xml.Element) -> CT_StringTag {
+  CT_StringTag::parse(element) catch {
+    _ => { element, name: "", val: "" }
+  }
 }
 
 ///|
@@ -3020,19 +4370,31 @@ pub fn CT_StringTag::to_element(self : CT_StringTag) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_TagList from pml.xsd (§19).
+/// XSD complex type CT_TagList — Part 1 §19.3.3.2 tagLst. Sequence of
+/// zero or more `<tag>` (CT_StringTag §19.3.3.1) entries.
 pub(all) struct CT_TagList {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <tag>* (CT_StringTag §19.3.3.1) — zero or more.
+  tag : Array[CT_StringTag]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TagList::new(element : @xml.Element) -> CT_TagList {
-  { element, }
+pub fn CT_TagList::parse(
+  element : @xml.Element,
+) -> CT_TagList raise SchemaViolation {
+  let tag : Array[CT_StringTag] = []
+  for child in pml_children(element, "tag") {
+    tag.push(CT_StringTag::parse(child))
+  }
+  { element, tag }
 }
 
 ///|
-pub fn CT_TagList::parse(element : @xml.Element) -> CT_TagList {
-  CT_TagList::new(element)
+pub fn CT_TagList::new(element : @xml.Element) -> CT_TagList {
+  CT_TagList::parse(element) catch {
+    _ => { element, tag: [] }
+  }
 }
 
 ///|
@@ -3041,23 +4403,38 @@ pub fn CT_TagList::to_element(self : CT_TagList) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_NormalViewPortion from pml.xsd (§19).
+/// XSD complex type CT_NormalViewPortion — Part 1 §19.2.2.11
+/// restoredLeft / §19.2.2.12 restoredTop. Required `@sz`
+/// (a:ST_PositiveFixedPercentage §20.1.10.45, raw lexical form
+/// preserved as String); optional `@autoAdjust` (xsd:boolean, default
+/// `true`).
 pub(all) struct CT_NormalViewPortion {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @sz (a:ST_PositiveFixedPercentage §20.1.10.45) — required lexical form.
+  sz : String
+  /// @autoAdjust (xsd:boolean, default `true`).
+  auto_adjust : Bool?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_NormalViewPortion::parse(
+  element : @xml.Element,
+) -> CT_NormalViewPortion raise SchemaViolation {
+  let sz = pml_require_attr(element, "sz", "CT_NormalViewPortion/@sz")
+  let auto_adjust = pml_optional_bool(
+    element, "autoAdjust", "CT_NormalViewPortion/@autoAdjust",
+  )
+  { element, sz, auto_adjust }
+}
 
 ///|
 pub fn CT_NormalViewPortion::new(
   element : @xml.Element,
 ) -> CT_NormalViewPortion {
-  { element, }
-}
-
-///|
-pub fn CT_NormalViewPortion::parse(
-  element : @xml.Element,
-) -> CT_NormalViewPortion {
-  CT_NormalViewPortion::new(element)
+  CT_NormalViewPortion::parse(element) catch {
+    _ => { element, sz: "", auto_adjust: None }
+  }
 }
 
 ///|
@@ -3068,23 +4445,110 @@ pub fn CT_NormalViewPortion::to_element(
 }
 
 ///|
-/// XSD complex type CT_NormalViewProperties from pml.xsd (§19).
+/// XSD complex type CT_NormalViewProperties — Part 1 §19.2.2.6
+/// normalViewPr. Required `<restoredLeft>` (CT_NormalViewPortion
+/// §19.2.2.11) and `<restoredTop>` (CT_NormalViewPortion §19.2.2.12);
+/// optional `<extLst>` (CT_ExtensionList §19.2.1.13). Optional
+/// attributes `@showOutlineIcons` (xsd:boolean default `true`),
+/// `@snapVertSplitter` (xsd:boolean default `false`), `@vertBarState`
+/// (ST_SplitterBarState §19.7.19 default `restored`), `@horzBarState`
+/// (ST_SplitterBarState §19.7.19 default `restored`),
+/// `@preferSingleView` (xsd:boolean default `false`).
 pub(all) struct CT_NormalViewProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @showOutlineIcons (xsd:boolean, default `true`).
+  show_outline_icons : Bool?
+  /// @snapVertSplitter (xsd:boolean, default `false`).
+  snap_vert_splitter : Bool?
+  /// @vertBarState (ST_SplitterBarState §19.7.19, default `restored`).
+  vert_bar_state : ST_SplitterBarState?
+  /// @horzBarState (ST_SplitterBarState §19.7.19, default `restored`).
+  horz_bar_state : ST_SplitterBarState?
+  /// @preferSingleView (xsd:boolean, default `false`).
+  prefer_single_view : Bool?
+  /// <restoredLeft> (CT_NormalViewPortion §19.2.2.11) — required.
+  restored_left : CT_NormalViewPortion
+  /// <restoredTop> (CT_NormalViewPortion §19.2.2.12) — required.
+  restored_top : CT_NormalViewPortion
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_NormalViewProperties::parse(
+  element : @xml.Element,
+) -> CT_NormalViewProperties raise SchemaViolation {
+  let show_outline_icons = pml_optional_bool(
+    element, "showOutlineIcons", "CT_NormalViewProperties/@showOutlineIcons",
+  )
+  let snap_vert_splitter = pml_optional_bool(
+    element, "snapVertSplitter", "CT_NormalViewProperties/@snapVertSplitter",
+  )
+  let vert_bar_state = match pml_attr(element, "vertBarState") {
+    Some(v) => Some(ST_SplitterBarState::parse(v))
+    None => None
+  }
+  let horz_bar_state = match pml_attr(element, "horzBarState") {
+    Some(v) => Some(ST_SplitterBarState::parse(v))
+    None => None
+  }
+  let prefer_single_view = pml_optional_bool(
+    element, "preferSingleView", "CT_NormalViewProperties/@preferSingleView",
+  )
+  let restored_left = match pml_first_child(element, "restoredLeft") {
+    Some(c) => CT_NormalViewPortion::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_NormalViewProperties/<restoredLeft>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let restored_top = match pml_first_child(element, "restoredTop") {
+    Some(c) => CT_NormalViewPortion::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_NormalViewProperties/<restoredTop>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  {
+    element,
+    show_outline_icons,
+    snap_vert_splitter,
+    vert_bar_state,
+    horz_bar_state,
+    prefer_single_view,
+    restored_left,
+    restored_top,
+    ext_lst,
+  }
+}
 
 ///|
 pub fn CT_NormalViewProperties::new(
   element : @xml.Element,
 ) -> CT_NormalViewProperties {
-  { element, }
-}
-
-///|
-pub fn CT_NormalViewProperties::parse(
-  element : @xml.Element,
-) -> CT_NormalViewProperties {
-  CT_NormalViewProperties::new(element)
+  CT_NormalViewProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        show_outline_icons: None,
+        snap_vert_splitter: None,
+        vert_bar_state: None,
+        horz_bar_state: None,
+        prefer_single_view: None,
+        restored_left: CT_NormalViewPortion::new(element),
+        restored_top: CT_NormalViewPortion::new(element),
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -3095,23 +4559,56 @@ pub fn CT_NormalViewProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_CommonViewProperties from pml.xsd (§19).
+/// XSD complex type CT_CommonViewProperties — Part 1 §19.2.2.2 cViewPr.
+/// Required `<scale>` (a:CT_Scale2D §20.1.7.5, DrawingML — raw),
+/// `<origin>` (a:CT_Point2D §20.1.2.2.30, DrawingML — raw); optional
+/// `@varScale` (xsd:boolean, default `false`).
 pub(all) struct CT_CommonViewProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @varScale (xsd:boolean, default `false`).
+  var_scale : Bool?
+  /// <scale> (a:CT_Scale2D §20.1.7.5) — required raw element (DrawingML).
+  scale : @xml.Element
+  /// <origin> (a:CT_Point2D §20.1.2.2.30) — required raw element (DrawingML).
+  origin : @xml.Element
 } derive(Eq, Debug)
+
+///|
+pub fn CT_CommonViewProperties::parse(
+  element : @xml.Element,
+) -> CT_CommonViewProperties raise SchemaViolation {
+  let var_scale = pml_optional_bool(
+    element, "varScale", "CT_CommonViewProperties/@varScale",
+  )
+  let scale = match pml_first_child(element, "scale") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_CommonViewProperties/<scale>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let origin = match pml_first_child(element, "origin") {
+    Some(c) => c
+    None =>
+      raise SchemaViolation(
+        type_name="CT_CommonViewProperties/<origin>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  { element, var_scale, scale, origin }
+}
 
 ///|
 pub fn CT_CommonViewProperties::new(
   element : @xml.Element,
 ) -> CT_CommonViewProperties {
-  { element, }
-}
-
-///|
-pub fn CT_CommonViewProperties::parse(
-  element : @xml.Element,
-) -> CT_CommonViewProperties {
-  CT_CommonViewProperties::new(element)
+  CT_CommonViewProperties::parse(element) catch {
+    _ => { element, var_scale: None, scale: element, origin: element }
+  }
 }
 
 ///|
@@ -3122,23 +4619,50 @@ pub fn CT_CommonViewProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_NotesTextViewProperties from pml.xsd (§19).
+/// XSD complex type CT_NotesTextViewProperties — Part 1 §19.2.2.7
+/// notesTextViewPr. Required `<cViewPr>` (CT_CommonViewProperties
+/// §19.2.2.2); optional `<extLst>` (CT_ExtensionList §19.2.1.13).
 pub(all) struct CT_NotesTextViewProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cViewPr> (CT_CommonViewProperties §19.2.2.2) — required.
+  c_view_pr : CT_CommonViewProperties
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_NotesTextViewProperties::parse(
+  element : @xml.Element,
+) -> CT_NotesTextViewProperties raise SchemaViolation {
+  let c_view_pr = match pml_first_child(element, "cViewPr") {
+    Some(c) => CT_CommonViewProperties::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_NotesTextViewProperties/<cViewPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, c_view_pr, ext_lst }
+}
 
 ///|
 pub fn CT_NotesTextViewProperties::new(
   element : @xml.Element,
 ) -> CT_NotesTextViewProperties {
-  { element, }
-}
-
-///|
-pub fn CT_NotesTextViewProperties::parse(
-  element : @xml.Element,
-) -> CT_NotesTextViewProperties {
-  CT_NotesTextViewProperties::new(element)
+  CT_NotesTextViewProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_view_pr: CT_CommonViewProperties::new(element),
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -3149,23 +4673,36 @@ pub fn CT_NotesTextViewProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_OutlineViewSlideEntry from pml.xsd (§19).
+/// XSD complex type CT_OutlineViewSlideEntry — Part 1 §19.2.2.14 sld
+/// (outline view). Required `@r:id` (ST_RelationshipId); optional
+/// `@collapse` (xsd:boolean, default `false`).
 pub(all) struct CT_OutlineViewSlideEntry {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @r:id (ST_RelationshipId) — required.
+  r_id : String
+  /// @collapse (xsd:boolean, default `false`).
+  collapse : Bool?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_OutlineViewSlideEntry::parse(
+  element : @xml.Element,
+) -> CT_OutlineViewSlideEntry raise SchemaViolation {
+  let r_id = pml_require_attr(element, "id", "CT_OutlineViewSlideEntry/@r:id")
+  let collapse = pml_optional_bool(
+    element, "collapse", "CT_OutlineViewSlideEntry/@collapse",
+  )
+  { element, r_id, collapse }
+}
 
 ///|
 pub fn CT_OutlineViewSlideEntry::new(
   element : @xml.Element,
 ) -> CT_OutlineViewSlideEntry {
-  { element, }
-}
-
-///|
-pub fn CT_OutlineViewSlideEntry::parse(
-  element : @xml.Element,
-) -> CT_OutlineViewSlideEntry {
-  CT_OutlineViewSlideEntry::new(element)
+  CT_OutlineViewSlideEntry::parse(element) catch {
+    _ => { element, r_id: "", collapse: None }
+  }
 }
 
 ///|
@@ -3176,23 +4713,33 @@ pub fn CT_OutlineViewSlideEntry::to_element(
 }
 
 ///|
-/// XSD complex type CT_OutlineViewSlideList from pml.xsd (§19).
+/// XSD complex type CT_OutlineViewSlideList — Part 1 §19.2.2.15 sldLst.
+/// Zero or more `<sld>` (CT_OutlineViewSlideEntry §19.2.2.14) entries.
 pub(all) struct CT_OutlineViewSlideList {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <sld>* (CT_OutlineViewSlideEntry §19.2.2.14) — zero or more.
+  sld : Array[CT_OutlineViewSlideEntry]
 } derive(Eq, Debug)
+
+///|
+pub fn CT_OutlineViewSlideList::parse(
+  element : @xml.Element,
+) -> CT_OutlineViewSlideList raise SchemaViolation {
+  let sld : Array[CT_OutlineViewSlideEntry] = []
+  for child in pml_children(element, "sld") {
+    sld.push(CT_OutlineViewSlideEntry::parse(child))
+  }
+  { element, sld }
+}
 
 ///|
 pub fn CT_OutlineViewSlideList::new(
   element : @xml.Element,
 ) -> CT_OutlineViewSlideList {
-  { element, }
-}
-
-///|
-pub fn CT_OutlineViewSlideList::parse(
-  element : @xml.Element,
-) -> CT_OutlineViewSlideList {
-  CT_OutlineViewSlideList::new(element)
+  CT_OutlineViewSlideList::parse(element) catch {
+    _ => { element, sld: [] }
+  }
 }
 
 ///|
@@ -3203,23 +4750,58 @@ pub fn CT_OutlineViewSlideList::to_element(
 }
 
 ///|
-/// XSD complex type CT_OutlineViewProperties from pml.xsd (§19).
+/// XSD complex type CT_OutlineViewProperties — Part 1 §19.2.2.10
+/// outlineViewPr. Required `<cViewPr>` (CT_CommonViewProperties
+/// §19.2.2.2); optional `<sldLst>` (CT_OutlineViewSlideList §19.2.2.15),
+/// `<extLst>` (CT_ExtensionList §19.2.1.13).
 pub(all) struct CT_OutlineViewProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cViewPr> (CT_CommonViewProperties §19.2.2.2) — required.
+  c_view_pr : CT_CommonViewProperties
+  /// <sldLst>? (CT_OutlineViewSlideList §19.2.2.15).
+  sld_lst : CT_OutlineViewSlideList?
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_OutlineViewProperties::parse(
+  element : @xml.Element,
+) -> CT_OutlineViewProperties raise SchemaViolation {
+  let c_view_pr = match pml_first_child(element, "cViewPr") {
+    Some(c) => CT_CommonViewProperties::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_OutlineViewProperties/<cViewPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let sld_lst = match pml_first_child(element, "sldLst") {
+    Some(c) => Some(CT_OutlineViewSlideList::parse(c))
+    None => None
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, c_view_pr, sld_lst, ext_lst }
+}
 
 ///|
 pub fn CT_OutlineViewProperties::new(
   element : @xml.Element,
 ) -> CT_OutlineViewProperties {
-  { element, }
-}
-
-///|
-pub fn CT_OutlineViewProperties::parse(
-  element : @xml.Element,
-) -> CT_OutlineViewProperties {
-  CT_OutlineViewProperties::new(element)
+  CT_OutlineViewProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_view_pr: CT_CommonViewProperties::new(element),
+        sld_lst: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -3230,23 +4812,57 @@ pub fn CT_OutlineViewProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_SlideSorterViewProperties from pml.xsd (§19).
+/// XSD complex type CT_SlideSorterViewProperties — Part 1 §19.2.2.17
+/// sorterViewPr. Required `<cViewPr>` (CT_CommonViewProperties
+/// §19.2.2.2); optional `<extLst>` (CT_ExtensionList §19.2.1.13).
+/// Optional `@showFormatting` (xsd:boolean, default `true`).
 pub(all) struct CT_SlideSorterViewProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @showFormatting (xsd:boolean, default `true`).
+  show_formatting : Bool?
+  /// <cViewPr> (CT_CommonViewProperties §19.2.2.2) — required.
+  c_view_pr : CT_CommonViewProperties
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_SlideSorterViewProperties::parse(
+  element : @xml.Element,
+) -> CT_SlideSorterViewProperties raise SchemaViolation {
+  let show_formatting = pml_optional_bool(
+    element, "showFormatting", "CT_SlideSorterViewProperties/@showFormatting",
+  )
+  let c_view_pr = match pml_first_child(element, "cViewPr") {
+    Some(c) => CT_CommonViewProperties::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_SlideSorterViewProperties/<cViewPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, show_formatting, c_view_pr, ext_lst }
+}
 
 ///|
 pub fn CT_SlideSorterViewProperties::new(
   element : @xml.Element,
 ) -> CT_SlideSorterViewProperties {
-  { element, }
-}
-
-///|
-pub fn CT_SlideSorterViewProperties::parse(
-  element : @xml.Element,
-) -> CT_SlideSorterViewProperties {
-  CT_SlideSorterViewProperties::new(element)
+  CT_SlideSorterViewProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        show_formatting: None,
+        c_view_pr: CT_CommonViewProperties::new(element),
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -3257,19 +4873,36 @@ pub fn CT_SlideSorterViewProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_Guide from pml.xsd (§19).
+/// XSD complex type CT_Guide — Part 1 §19.2.2.4 guide. A single guide
+/// line. Optional `@orient` (ST_Direction §19.7.2, default `vert`);
+/// optional `@pos` (a:ST_Coordinate32 §20.1.10.18, lexical form
+/// preserved as String, default `"0"`).
 pub(all) struct CT_Guide {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @orient (ST_Direction §19.7.2, default `vert`).
+  orient : ST_Direction?
+  /// @pos (a:ST_Coordinate32 §20.1.10.18) — raw lexical form preserved.
+  pos : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Guide::new(element : @xml.Element) -> CT_Guide {
-  { element, }
+pub fn CT_Guide::parse(
+  element : @xml.Element,
+) -> CT_Guide raise SchemaViolation {
+  let orient = match pml_attr(element, "orient") {
+    Some(v) => Some(ST_Direction::parse(v))
+    None => None
+  }
+  let pos = pml_attr(element, "pos")
+  { element, orient, pos }
 }
 
 ///|
-pub fn CT_Guide::parse(element : @xml.Element) -> CT_Guide {
-  CT_Guide::new(element)
+pub fn CT_Guide::new(element : @xml.Element) -> CT_Guide {
+  CT_Guide::parse(element) catch {
+    _ => { element, orient: None, pos: None }
+  }
 }
 
 ///|
@@ -3278,19 +4911,31 @@ pub fn CT_Guide::to_element(self : CT_Guide) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_GuideList from pml.xsd (§19).
+/// XSD complex type CT_GuideList — Part 1 §19.2.2.5 guideLst. Optional
+/// sequence of zero or more `<guide>` (CT_Guide §19.2.2.4) entries.
 pub(all) struct CT_GuideList {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <guide>* (CT_Guide §19.2.2.4) — zero or more.
+  guide : Array[CT_Guide]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GuideList::new(element : @xml.Element) -> CT_GuideList {
-  { element, }
+pub fn CT_GuideList::parse(
+  element : @xml.Element,
+) -> CT_GuideList raise SchemaViolation {
+  let guide : Array[CT_Guide] = []
+  for child in pml_children(element, "guide") {
+    guide.push(CT_Guide::parse(child))
+  }
+  { element, guide }
 }
 
 ///|
-pub fn CT_GuideList::parse(element : @xml.Element) -> CT_GuideList {
-  CT_GuideList::new(element)
+pub fn CT_GuideList::new(element : @xml.Element) -> CT_GuideList {
+  CT_GuideList::parse(element) catch {
+    _ => { element, guide: [] }
+  }
 }
 
 ///|
@@ -3299,23 +4944,70 @@ pub fn CT_GuideList::to_element(self : CT_GuideList) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_CommonSlideViewProperties from pml.xsd (§19).
+/// XSD complex type CT_CommonSlideViewProperties — Part 1 §19.2.2.1
+/// cSldViewPr. Required `<cViewPr>` (CT_CommonViewProperties §19.2.2.2)
+/// and optional `<guideLst>` (CT_GuideList §19.2.2.5). Optional
+/// xsd:boolean attributes `@snapToGrid` (default `true`),
+/// `@snapToObjects` (default `false`), `@showGuides` (default `false`).
 pub(all) struct CT_CommonSlideViewProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @snapToGrid (xsd:boolean, default `true`).
+  snap_to_grid : Bool?
+  /// @snapToObjects (xsd:boolean, default `false`).
+  snap_to_objects : Bool?
+  /// @showGuides (xsd:boolean, default `false`).
+  show_guides : Bool?
+  /// <cViewPr> (CT_CommonViewProperties §19.2.2.2) — required.
+  c_view_pr : CT_CommonViewProperties
+  /// <guideLst>? (CT_GuideList §19.2.2.5).
+  guide_lst : CT_GuideList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_CommonSlideViewProperties::parse(
+  element : @xml.Element,
+) -> CT_CommonSlideViewProperties raise SchemaViolation {
+  let snap_to_grid = pml_optional_bool(
+    element, "snapToGrid", "CT_CommonSlideViewProperties/@snapToGrid",
+  )
+  let snap_to_objects = pml_optional_bool(
+    element, "snapToObjects", "CT_CommonSlideViewProperties/@snapToObjects",
+  )
+  let show_guides = pml_optional_bool(
+    element, "showGuides", "CT_CommonSlideViewProperties/@showGuides",
+  )
+  let c_view_pr = match pml_first_child(element, "cViewPr") {
+    Some(c) => CT_CommonViewProperties::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_CommonSlideViewProperties/<cViewPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let guide_lst = match pml_first_child(element, "guideLst") {
+    Some(c) => Some(CT_GuideList::parse(c))
+    None => None
+  }
+  { element, snap_to_grid, snap_to_objects, show_guides, c_view_pr, guide_lst }
+}
 
 ///|
 pub fn CT_CommonSlideViewProperties::new(
   element : @xml.Element,
 ) -> CT_CommonSlideViewProperties {
-  { element, }
-}
-
-///|
-pub fn CT_CommonSlideViewProperties::parse(
-  element : @xml.Element,
-) -> CT_CommonSlideViewProperties {
-  CT_CommonSlideViewProperties::new(element)
+  CT_CommonSlideViewProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        snap_to_grid: None,
+        snap_to_objects: None,
+        show_guides: None,
+        c_view_pr: CT_CommonViewProperties::new(element),
+        guide_lst: None,
+      }
+  }
 }
 
 ///|
@@ -3326,23 +5018,50 @@ pub fn CT_CommonSlideViewProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_SlideViewProperties from pml.xsd (§19).
+/// XSD complex type CT_SlideViewProperties — Part 1 §19.2.2.16
+/// slideViewPr. Required `<cSldViewPr>` (CT_CommonSlideViewProperties
+/// §19.2.2.1); optional `<extLst>` (CT_ExtensionList §19.2.1.13).
 pub(all) struct CT_SlideViewProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cSldViewPr> (CT_CommonSlideViewProperties §19.2.2.1) — required.
+  c_sld_view_pr : CT_CommonSlideViewProperties
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_SlideViewProperties::parse(
+  element : @xml.Element,
+) -> CT_SlideViewProperties raise SchemaViolation {
+  let c_sld_view_pr = match pml_first_child(element, "cSldViewPr") {
+    Some(c) => CT_CommonSlideViewProperties::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_SlideViewProperties/<cSldViewPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, c_sld_view_pr, ext_lst }
+}
 
 ///|
 pub fn CT_SlideViewProperties::new(
   element : @xml.Element,
 ) -> CT_SlideViewProperties {
-  { element, }
-}
-
-///|
-pub fn CT_SlideViewProperties::parse(
-  element : @xml.Element,
-) -> CT_SlideViewProperties {
-  CT_SlideViewProperties::new(element)
+  CT_SlideViewProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_sld_view_pr: CT_CommonSlideViewProperties::new(element),
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -3353,23 +5072,50 @@ pub fn CT_SlideViewProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_NotesViewProperties from pml.xsd (§19).
+/// XSD complex type CT_NotesViewProperties — Part 1 §19.2.2.8
+/// notesViewPr. Required `<cSldViewPr>` (CT_CommonSlideViewProperties
+/// §19.2.2.1); optional `<extLst>` (CT_ExtensionList §19.2.1.13).
 pub(all) struct CT_NotesViewProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <cSldViewPr> (CT_CommonSlideViewProperties §19.2.2.1) — required.
+  c_sld_view_pr : CT_CommonSlideViewProperties
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_NotesViewProperties::parse(
+  element : @xml.Element,
+) -> CT_NotesViewProperties raise SchemaViolation {
+  let c_sld_view_pr = match pml_first_child(element, "cSldViewPr") {
+    Some(c) => CT_CommonSlideViewProperties::parse(c)
+    None =>
+      raise SchemaViolation(
+        type_name="CT_NotesViewProperties/<cSldViewPr>",
+        value="",
+        reason="required child missing",
+      )
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  { element, c_sld_view_pr, ext_lst }
+}
 
 ///|
 pub fn CT_NotesViewProperties::new(
   element : @xml.Element,
 ) -> CT_NotesViewProperties {
-  { element, }
-}
-
-///|
-pub fn CT_NotesViewProperties::parse(
-  element : @xml.Element,
-) -> CT_NotesViewProperties {
-  CT_NotesViewProperties::new(element)
+  CT_NotesViewProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        c_sld_view_pr: CT_CommonSlideViewProperties::new(element),
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -3380,19 +5126,114 @@ pub fn CT_NotesViewProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_ViewProperties from pml.xsd (§19).
+/// XSD complex type CT_ViewProperties — Part 1 §19.2.2.18 viewPr.
+/// Optional sequence over `<normalViewPr>` (CT_NormalViewProperties
+/// §19.2.2.6), `<slideViewPr>` (CT_SlideViewProperties §19.2.2.16),
+/// `<outlineViewPr>` (CT_OutlineViewProperties §19.2.2.10),
+/// `<notesTextViewPr>` (CT_NotesTextViewProperties §19.2.2.7),
+/// `<sorterViewPr>` (CT_SlideSorterViewProperties §19.2.2.17),
+/// `<notesViewPr>` (CT_NotesViewProperties §19.2.2.8), `<gridSpacing>`
+/// (a:CT_PositiveSize2D §20.1.7.3, DrawingML — raw), `<extLst>`
+/// (CT_ExtensionList §19.2.1.13). Optional `@lastView` (ST_ViewType
+/// §19.7.55, default `sldView`), `@showComments` (xsd:boolean default `true`).
 pub(all) struct CT_ViewProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @lastView (ST_ViewType §19.7.55, default `sldView`).
+  last_view : ST_ViewType?
+  /// @showComments (xsd:boolean, default `true`).
+  show_comments : Bool?
+  /// <normalViewPr>? (CT_NormalViewProperties §19.2.2.6).
+  normal_view_pr : CT_NormalViewProperties?
+  /// <slideViewPr>? (CT_SlideViewProperties §19.2.2.16).
+  slide_view_pr : CT_SlideViewProperties?
+  /// <outlineViewPr>? (CT_OutlineViewProperties §19.2.2.10).
+  outline_view_pr : CT_OutlineViewProperties?
+  /// <notesTextViewPr>? (CT_NotesTextViewProperties §19.2.2.7).
+  notes_text_view_pr : CT_NotesTextViewProperties?
+  /// <sorterViewPr>? (CT_SlideSorterViewProperties §19.2.2.17).
+  sorter_view_pr : CT_SlideSorterViewProperties?
+  /// <notesViewPr>? (CT_NotesViewProperties §19.2.2.8).
+  notes_view_pr : CT_NotesViewProperties?
+  /// <gridSpacing>? (a:CT_PositiveSize2D §20.1.7.3) — raw (DrawingML).
+  grid_spacing : @xml.Element?
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ViewProperties::new(element : @xml.Element) -> CT_ViewProperties {
-  { element, }
+pub fn CT_ViewProperties::parse(
+  element : @xml.Element,
+) -> CT_ViewProperties raise SchemaViolation {
+  let last_view = match pml_attr(element, "lastView") {
+    Some(v) => Some(ST_ViewType::parse(v))
+    None => None
+  }
+  let show_comments = pml_optional_bool(
+    element, "showComments", "CT_ViewProperties/@showComments",
+  )
+  let normal_view_pr = match pml_first_child(element, "normalViewPr") {
+    Some(c) => Some(CT_NormalViewProperties::parse(c))
+    None => None
+  }
+  let slide_view_pr = match pml_first_child(element, "slideViewPr") {
+    Some(c) => Some(CT_SlideViewProperties::parse(c))
+    None => None
+  }
+  let outline_view_pr = match pml_first_child(element, "outlineViewPr") {
+    Some(c) => Some(CT_OutlineViewProperties::parse(c))
+    None => None
+  }
+  let notes_text_view_pr = match pml_first_child(element, "notesTextViewPr") {
+    Some(c) => Some(CT_NotesTextViewProperties::parse(c))
+    None => None
+  }
+  let sorter_view_pr = match pml_first_child(element, "sorterViewPr") {
+    Some(c) => Some(CT_SlideSorterViewProperties::parse(c))
+    None => None
+  }
+  let notes_view_pr = match pml_first_child(element, "notesViewPr") {
+    Some(c) => Some(CT_NotesViewProperties::parse(c))
+    None => None
+  }
+  let grid_spacing = pml_first_child(element, "gridSpacing")
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  {
+    element,
+    last_view,
+    show_comments,
+    normal_view_pr,
+    slide_view_pr,
+    outline_view_pr,
+    notes_text_view_pr,
+    sorter_view_pr,
+    notes_view_pr,
+    grid_spacing,
+    ext_lst,
+  }
 }
 
 ///|
-pub fn CT_ViewProperties::parse(element : @xml.Element) -> CT_ViewProperties {
-  CT_ViewProperties::new(element)
+pub fn CT_ViewProperties::new(element : @xml.Element) -> CT_ViewProperties {
+  CT_ViewProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        last_view: None,
+        show_comments: None,
+        normal_view_pr: None,
+        slide_view_pr: None,
+        outline_view_pr: None,
+        notes_text_view_pr: None,
+        sorter_view_pr: None,
+        notes_view_pr: None,
+        grid_spacing: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|
@@ -3401,19 +5242,112 @@ pub fn CT_ViewProperties::to_element(self : CT_ViewProperties) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_WebProperties from pml.xsd (Part 4 §16).
+/// XSD complex type CT_WebProperties — Part 4 §16.3.1.2 webPr.
+/// Web-publish configuration. Optional `<extLst>` (CT_ExtensionList
+/// §19.2.1.13). Optional attributes: `@showAnimation` (xsd:boolean
+/// default `false`), `@resizeGraphics` (xsd:boolean default `true`),
+/// `@allowPng` (xsd:boolean default `false`), `@relyOnVml` (xsd:boolean
+/// default `false`), `@organizeInFolders` (xsd:boolean default `true`),
+/// `@useLongFilenames` (xsd:boolean default `true`), `@imgSz`
+/// (ST_WebScreenSize §16.5.x default `800x600`), `@encoding`
+/// (ST_WebEncoding xsd:string default `""`), `@clr` (ST_WebColorType
+/// §16.5.1 default `whiteTextOnBlack`).
 pub(all) struct CT_WebProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @showAnimation (xsd:boolean, default `false`).
+  show_animation : Bool?
+  /// @resizeGraphics (xsd:boolean, default `true`).
+  resize_graphics : Bool?
+  /// @allowPng (xsd:boolean, default `false`).
+  allow_png : Bool?
+  /// @relyOnVml (xsd:boolean, default `false`).
+  rely_on_vml : Bool?
+  /// @organizeInFolders (xsd:boolean, default `true`).
+  organize_in_folders : Bool?
+  /// @useLongFilenames (xsd:boolean, default `true`).
+  use_long_filenames : Bool?
+  /// @imgSz (ST_WebScreenSize, default `800x600`).
+  img_sz : ST_WebScreenSize?
+  /// @encoding (ST_WebEncoding xsd:string, default `""`).
+  encoding : ST_WebEncoding?
+  /// @clr (ST_WebColorType §16.5.1, default `whiteTextOnBlack`).
+  clr : ST_WebColorType?
+  /// <extLst>? (CT_ExtensionList §19.2.1.13).
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_WebProperties::new(element : @xml.Element) -> CT_WebProperties {
-  { element, }
+pub fn CT_WebProperties::parse(
+  element : @xml.Element,
+) -> CT_WebProperties raise SchemaViolation {
+  let show_animation = pml_optional_bool(
+    element, "showAnimation", "CT_WebProperties/@showAnimation",
+  )
+  let resize_graphics = pml_optional_bool(
+    element, "resizeGraphics", "CT_WebProperties/@resizeGraphics",
+  )
+  let allow_png = pml_optional_bool(
+    element, "allowPng", "CT_WebProperties/@allowPng",
+  )
+  let rely_on_vml = pml_optional_bool(
+    element, "relyOnVml", "CT_WebProperties/@relyOnVml",
+  )
+  let organize_in_folders = pml_optional_bool(
+    element, "organizeInFolders", "CT_WebProperties/@organizeInFolders",
+  )
+  let use_long_filenames = pml_optional_bool(
+    element, "useLongFilenames", "CT_WebProperties/@useLongFilenames",
+  )
+  let img_sz = match pml_attr(element, "imgSz") {
+    Some(v) => Some(ST_WebScreenSize::parse(v))
+    None => None
+  }
+  let encoding = match pml_attr(element, "encoding") {
+    Some(v) => Some(ST_WebEncoding::parse(v))
+    None => None
+  }
+  let clr = match pml_attr(element, "clr") {
+    Some(v) => Some(ST_WebColorType::parse(v))
+    None => None
+  }
+  let ext_lst = match pml_first_child(element, "extLst") {
+    Some(c) => Some(CT_ExtensionList::parse(c))
+    None => None
+  }
+  {
+    element,
+    show_animation,
+    resize_graphics,
+    allow_png,
+    rely_on_vml,
+    organize_in_folders,
+    use_long_filenames,
+    img_sz,
+    encoding,
+    clr,
+    ext_lst,
+  }
 }
 
 ///|
-pub fn CT_WebProperties::parse(element : @xml.Element) -> CT_WebProperties {
-  CT_WebProperties::new(element)
+pub fn CT_WebProperties::new(element : @xml.Element) -> CT_WebProperties {
+  CT_WebProperties::parse(element) catch {
+    _ =>
+      {
+        element,
+        show_animation: None,
+        resize_graphics: None,
+        allow_png: None,
+        rely_on_vml: None,
+        organize_in_folders: None,
+        use_long_filenames: None,
+        img_sz: None,
+        encoding: None,
+        clr: None,
+        ext_lst: None,
+      }
+  }
 }
 
 ///|

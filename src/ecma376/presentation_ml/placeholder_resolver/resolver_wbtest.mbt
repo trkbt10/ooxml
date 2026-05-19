@@ -13,7 +13,7 @@ fn build_slide(shapes_xml : String) -> @domain.CT_Slide {
   let root = parse_root(
     "<sld><cSld><spTree>" + shapes_xml + "</spTree></cSld></sld>",
   )
-  @domain.CT_Slide::{ element: root }
+  @domain.CT_Slide::new(root)
 }
 
 ///|
@@ -21,7 +21,7 @@ fn build_layout(shapes_xml : String) -> @domain.CT_SlideLayout {
   let root = parse_root(
     "<sldLayout><cSld><spTree>" + shapes_xml + "</spTree></cSld></sldLayout>",
   )
-  @domain.CT_SlideLayout::{ element: root }
+  @domain.CT_SlideLayout::new(root)
 }
 
 ///|
@@ -29,7 +29,7 @@ fn build_master(shapes_xml : String) -> @domain.CT_SlideMaster {
   let root = parse_root(
     "<sldMaster><cSld><spTree>" + shapes_xml + "</spTree></cSld></sldMaster>",
   )
-  @domain.CT_SlideMaster::{ element: root }
+  @domain.CT_SlideMaster::new(root)
 }
 
 ///|
