@@ -13,11 +13,11 @@ pub fn eg_o_math_math_elements(@xml.Element) -> EG_OMathMathElements
 
 pub fn eg_script_style(@xml.Element) -> EG_ScriptStyle
 
-pub fn math_pr(@xml.Element) -> CT_MathPr
+pub fn math_pr(@xml.Element) -> CT_MathPr raise SchemaViolation
 
 pub fn o_math(@xml.Element) -> CT_OMath
 
-pub fn o_math_para(@xml.Element) -> CT_OMathPara
+pub fn o_math_para(@xml.Element) -> CT_OMathPara raise SchemaViolation
 
 pub fn package_name() -> String
 
@@ -99,14 +99,16 @@ pub fn CT_BoxPr::child_names(Self) -> Array[String]
 pub fn CT_BoxPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_BreakBin {
+  val : ST_BreakBin?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_BreakBin::new(@xml.Element) -> Self
+pub fn CT_BreakBin::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_BreakBinSub {
+  val : ST_BreakBinSub?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_BreakBinSub::new(@xml.Element) -> Self
+pub fn CT_BreakBinSub::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Char {
   val : ST_Char
@@ -196,14 +198,20 @@ pub(all) struct CT_FuncPr {
 pub fn CT_FuncPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupChr {
+  group_chr_pr : CT_GroupChrPr?
+  e : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupChr::new(@xml.Element) -> Self
+pub fn CT_GroupChr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GroupChrPr {
+  chr : CT_Char?
+  pos : CT_TopBot?
+  vert_jc : CT_TopBot?
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupChrPr::new(@xml.Element) -> Self
+pub fn CT_GroupChrPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Integer2 {
   val : ST_Integer2
@@ -224,58 +232,82 @@ pub(all) struct CT_LimLoc {
 pub fn CT_LimLoc::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_LimLow {
+  lim_low_pr : CT_LimLowPr?
+  e : CT_OMathArg
+  lim : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_LimLow::new(@xml.Element) -> Self
+pub fn CT_LimLow::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_LimLowPr {
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_LimLowPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_LimUpp {
+  lim_upp_pr : CT_LimUppPr?
+  e : CT_OMathArg
+  lim : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_LimUpp::new(@xml.Element) -> Self
+pub fn CT_LimUpp::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_LimUppPr {
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_LimUppPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_M {
+  m_pr : CT_MPr?
+  mr : Array[CT_MR]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_M::child_names(Self) -> Array[String]
-pub fn CT_M::new(@xml.Element) -> Self
+pub fn CT_M::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_MC {
+  mc_pr : CT_MCPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_MC::child_names(Self) -> Array[String]
-pub fn CT_MC::new(@xml.Element) -> Self
+pub fn CT_MC::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_MCPr {
+  count : CT_Integer255?
+  mc_jc : CT_XAlign?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_MCPr::child_names(Self) -> Array[String]
-pub fn CT_MCPr::new(@xml.Element) -> Self
+pub fn CT_MCPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_MCS {
+  mc : Array[CT_MC]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_MCS::new(@xml.Element) -> Self
+pub fn CT_MCS::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_MPr {
+  base_jc : CT_YAlign?
+  plc_hide : CT_OnOff?
+  r_sp_rule : CT_SpacingRule?
+  c_gp_rule : CT_SpacingRule?
+  r_sp : CT_UnSignedInteger?
+  c_sp : CT_UnSignedInteger?
+  c_gp : CT_UnSignedInteger?
+  mcs : CT_MCS?
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_MPr::child_names(Self) -> Array[String]
-pub fn CT_MPr::new(@xml.Element) -> Self
+pub fn CT_MPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_MR {
+  e : Array[CT_OMathArg]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_MR::new(@xml.Element) -> Self
+pub fn CT_MR::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ManualBreak {
   aln_at : ST_Integer255?
@@ -284,22 +316,49 @@ pub(all) struct CT_ManualBreak {
 pub fn CT_ManualBreak::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_MathPr {
+  math_font : CT_String?
+  brk_bin : CT_BreakBin?
+  brk_bin_sub : CT_BreakBinSub?
+  small_frac : CT_OnOff?
+  disp_def : CT_OnOff?
+  l_margin : CT_TwipsMeasure?
+  r_margin : CT_TwipsMeasure?
+  def_jc : CT_OMathJc?
+  pre_sp : CT_TwipsMeasure?
+  post_sp : CT_TwipsMeasure?
+  inter_sp : CT_TwipsMeasure?
+  intra_sp : CT_TwipsMeasure?
+  wrap_indent : CT_TwipsMeasure?
+  wrap_right : CT_OnOff?
+  int_lim : CT_LimLoc?
+  nary_lim : CT_LimLoc?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_MathPr::child_names(Self) -> Array[String]
-pub fn CT_MathPr::new(@xml.Element) -> Self
+pub fn CT_MathPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Nary {
+  nary_pr : CT_NaryPr?
+  sub : CT_OMathArg
+  sup : CT_OMathArg
+  e : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Nary::new(@xml.Element) -> Self
+pub fn CT_Nary::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_NaryPr {
+  chr : CT_Char?
+  lim_loc : CT_LimLoc?
+  grow : CT_OnOff?
+  sub_hide : CT_OnOff?
+  sup_hide : CT_OnOff?
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_NaryPr::new(@xml.Element) -> Self
+pub fn CT_NaryPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_OMath {
+  omml_elements : Array[EG_OMathElements]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_OMath::children(Self) -> Array[EG_OMathElements]
@@ -307,29 +366,37 @@ pub fn CT_OMath::new(@xml.Element) -> Self
 pub fn CT_OMath::schema_type_name(Self) -> String
 
 pub(all) struct CT_OMathArg {
+  arg_pr : CT_OMathArgPr?
+  omml_elements : Array[EG_OMathElements]
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_OMathArg::new(@xml.Element) -> Self
+pub fn CT_OMathArg::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_OMathArgPr {
+  arg_sz : CT_Integer2?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_OMathArgPr::new(@xml.Element) -> Self
+pub fn CT_OMathArgPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_OMathJc {
+  val : ST_Jc?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_OMathJc::new(@xml.Element) -> Self
+pub fn CT_OMathJc::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_OMathPara {
+  o_math_para_pr : CT_OMathParaPr?
+  o_math : Array[CT_OMath]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_OMathPara::new(@xml.Element) -> Self
+pub fn CT_OMathPara::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_OMathParaPr {
+  jc : CT_OMathJc?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_OMathParaPr::new(@xml.Element) -> Self
+pub fn CT_OMathParaPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_OnOff {
   val : String?
@@ -339,11 +406,19 @@ pub(all) struct CT_OnOff {
 pub fn CT_OnOff::new(@xml.Element) -> Self
 
 pub(all) struct CT_Phant {
+  phant_pr : CT_PhantPr?
+  e : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Phant::new(@xml.Element) -> Self
+pub fn CT_Phant::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PhantPr {
+  show : CT_OnOff?
+  zero_wid : CT_OnOff?
+  zero_asc : CT_OnOff?
+  zero_desc : CT_OnOff?
+  transp : CT_OnOff?
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_PhantPr::new(@xml.Element) -> Self
@@ -370,52 +445,76 @@ pub fn CT_RPR::child_names(Self) -> Array[String]
 pub fn CT_RPR::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Rad {
+  rad_pr : CT_RadPr?
+  deg : CT_OMathArg
+  e : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Rad::new(@xml.Element) -> Self
+pub fn CT_Rad::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_RadPr {
+  deg_hide : CT_OnOff?
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_RadPr::child_names(Self) -> Array[String]
 pub fn CT_RadPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_SPre {
+  s_pre_pr : CT_SPrePr?
+  sub : CT_OMathArg
+  sup : CT_OMathArg
+  e : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SPre::new(@xml.Element) -> Self
+pub fn CT_SPre::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SPrePr {
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SPrePr::new(@xml.Element) -> Self
 
 pub(all) struct CT_SSub {
+  s_sub_pr : CT_SSubPr?
+  e : CT_OMathArg
+  sub : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SSub::new(@xml.Element) -> Self
+pub fn CT_SSub::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SSubPr {
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SSubPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_SSubSup {
+  s_sub_sup_pr : CT_SSubSupPr?
+  e : CT_OMathArg
+  sub : CT_OMathArg
+  sup : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SSubSup::new(@xml.Element) -> Self
+pub fn CT_SSubSup::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SSubSupPr {
+  aln_scr : CT_OnOff?
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SSubSupPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_SSup {
+  s_sup_pr : CT_SSupPr?
+  e : CT_OMathArg
+  sup : CT_OMathArg
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SSup::new(@xml.Element) -> Self
+pub fn CT_SSup::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SSupPr {
+  ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SSupPr::new(@xml.Element) -> Self
@@ -464,9 +563,10 @@ pub(all) struct CT_TopBot {
 pub fn CT_TopBot::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_TwipsMeasure {
+  val : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TwipsMeasure::new(@xml.Element) -> Self
+pub fn CT_TwipsMeasure::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_UnSignedInteger {
   val : ST_UnSignedInteger

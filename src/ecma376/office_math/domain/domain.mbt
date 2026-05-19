@@ -1232,14 +1232,7 @@ pub fn CT_Func::new(element : @xml.Element) -> CT_Func raise SchemaViolation {
 ///|
 /// Return child elements selected through EG_OMathElements for this oMath zone.
 pub fn CT_OMath::children(self : CT_OMath) -> Array[EG_OMathElements] {
-  let children : Array[EG_OMathElements] = []
-  for child in self.element.children {
-    match child {
-      Element(element) => children.push(EG_OMathElements::new(element))
-      _ => ()
-    }
-  }
-  children
+  self.omml_elements
 }
 
 ///|
@@ -1280,13 +1273,15 @@ pub fn o_math(element : @xml.Element) -> CT_OMath {
 
 ///|
 /// Construct top-level XSD element oMathPara as CT_OMathPara (§22.1).
-pub fn o_math_para(element : @xml.Element) -> CT_OMathPara {
+pub fn o_math_para(
+  element : @xml.Element,
+) -> CT_OMathPara raise SchemaViolation {
   CT_OMathPara::new(element)
 }
 
 ///|
 /// Construct top-level XSD element mathPr as CT_MathPr (§22.1).
-pub fn math_pr(element : @xml.Element) -> CT_MathPr {
+pub fn math_pr(element : @xml.Element) -> CT_MathPr raise SchemaViolation {
   CT_MathPr::new(element)
 }
 
@@ -1485,483 +1480,1524 @@ fn xml_space(element : @xml.Element) -> String? {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// Chunk 2 element-only wrappers below remain untouched. They will be typed
-// by the chunk2 sub-agent in a separate commit.
+// Chunk 2 typed CT_X structs.
+//
+// Each typed field mirrors an XSD attribute or child element from
+// shared-math.xsd. The raw `element` field is preserved alongside the
+// typed fields so that builder/round-trip writers can continue to emit
+// the source XML verbatim, while typed callers consume the parsed
+// projection.
+//
+// `new` parses required attributes via their ST_X simple-type parser
+// (raising SchemaViolation on lexical / facet violations) and walks the
+// children once, dispatching by local name into the typed slots. Required
+// child elements raise SchemaViolation when missing. Optional ones bind
+// to `None` / empty arrays.
 // ────────────────────────────────────────────────────────────────────────────
 
 ///|
-/// XSD complex type CT_GroupChrPr (§22.1.x).
-/// OMML group character properties.
+/// XSD complex type CT_GroupChrPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_GroupChrPr`. Child elements:
+/// `chr`, `pos`, `vertJc`, `ctrlPr`. Child types: `CT_Char`, `CT_TopBot`,
+/// `CT_CtrlPr`.
+/// Group-character properties (§22.1.2.42 groupChrPr).
 pub(all) struct CT_GroupChrPr {
+  /// <chr> (CT_Char, optional) — group character (§22.1.2.20).
+  chr : CT_Char?
+  /// <pos> (CT_TopBot, optional) — group character position (§22.1.2.84).
+  pos : CT_TopBot?
+  /// <vertJc> (CT_TopBot, optional) — vertical justification of the
+  /// argument relative to the group character (§22.1.2.119).
+  vert_jc : CT_TopBot?
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_GroupChrPr from its OMML XML element.
-pub fn CT_GroupChrPr::new(element : @xml.Element) -> CT_GroupChrPr {
-  { element, }
+/// Construct CT_GroupChrPr by routing each optional child to its slot.
+pub fn CT_GroupChrPr::new(
+  element : @xml.Element,
+) -> CT_GroupChrPr raise SchemaViolation {
+  let mut chr : CT_Char? = None
+  let mut pos : CT_TopBot? = None
+  let mut vert_jc : CT_TopBot? = None
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "chr" => chr = Some(CT_Char::new(e))
+          "pos" => pos = Some(CT_TopBot::new(e))
+          "vertJc" => vert_jc = Some(CT_TopBot::new(e))
+          "ctrlPr" => ctrl_pr = Some(CT_CtrlPr::new(e))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { chr, pos, vert_jc, ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_GroupChr (§22.1.x).
-/// OMML group character object.
+/// XSD complex type CT_GroupChr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_GroupChr`. Child elements:
+/// `groupChrPr`, `e`. Child types: `CT_GroupChrPr`, `CT_OMathArg`.
+/// Group-character object (§22.1.2.41 groupChr) with optional properties
+/// and a required CT_OMathArg base.
 pub(all) struct CT_GroupChr {
+  /// <groupChrPr> (CT_GroupChrPr, optional) — group-character properties.
+  group_chr_pr : CT_GroupChrPr?
+  /// <e> (CT_OMathArg, required) — base argument under the group character.
+  e : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_GroupChr from its OMML XML element.
-pub fn CT_GroupChr::new(element : @xml.Element) -> CT_GroupChr {
-  { element, }
+/// Construct CT_GroupChr; raises SchemaViolation when the mandatory `e`
+/// argument is missing.
+pub fn CT_GroupChr::new(
+  element : @xml.Element,
+) -> CT_GroupChr raise SchemaViolation {
+  let mut group_chr_pr : CT_GroupChrPr? = None
+  let mut e_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "groupChrPr" => group_chr_pr = Some(CT_GroupChrPr::new(child_element))
+          "e" => if e_element is None { e_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_GroupChr/e", value="")
+  }
+  { group_chr_pr, e, element }
 }
 
 ///|
-/// XSD complex type CT_LimLowPr (§22.1.x).
-/// OMML lower-limit properties.
+/// XSD complex type CT_LimLowPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_LimLowPr`. Child elements:
+/// `ctrlPr`. Child types: `CT_CtrlPr`.
+/// Lower-limit properties (§22.1.2.60 limLowPr).
 pub(all) struct CT_LimLowPr {
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_LimLowPr from its OMML XML element.
+/// Construct CT_LimLowPr by binding the optional ctrlPr child.
 pub fn CT_LimLowPr::new(element : @xml.Element) -> CT_LimLowPr {
-  { element, }
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "ctrlPr" {
+          ctrl_pr = Some(CT_CtrlPr::new(e))
+        }
+      _ => ()
+    }
+  }
+  { ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_LimLow (§22.1.x).
-/// OMML lower-limit object.
+/// XSD complex type CT_LimLow — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_LimLow`. Child elements:
+/// `limLowPr`, `e`, `lim`. Child types: `CT_LimLowPr`, `CT_OMathArg`.
+/// Lower-limit object (§22.1.2.59 limLow) with required base and limit
+/// arguments.
 pub(all) struct CT_LimLow {
+  /// <limLowPr> (CT_LimLowPr, optional) — lower-limit properties.
+  lim_low_pr : CT_LimLowPr?
+  /// <e> (CT_OMathArg, required) — base argument above the limit.
+  e : CT_OMathArg
+  /// <lim> (CT_OMathArg, required) — limit argument below the base.
+  lim : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_LimLow from its OMML XML element.
-pub fn CT_LimLow::new(element : @xml.Element) -> CT_LimLow {
-  { element, }
+/// Construct CT_LimLow; raises SchemaViolation when either `e` or `lim`
+/// is missing.
+pub fn CT_LimLow::new(
+  element : @xml.Element,
+) -> CT_LimLow raise SchemaViolation {
+  let mut lim_low_pr : CT_LimLowPr? = None
+  let mut e_element : @xml.Element? = None
+  let mut lim_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "limLowPr" => lim_low_pr = Some(CT_LimLowPr::new(child_element))
+          "e" => if e_element is None { e_element = Some(child_element) }
+          "lim" => if lim_element is None { lim_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_LimLow/e", value="")
+  }
+  let lim = match lim_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_LimLow/lim", value="")
+  }
+  { lim_low_pr, e, lim, element }
 }
 
 ///|
-/// XSD complex type CT_LimUppPr (§22.1.x).
-/// OMML upper-limit properties.
+/// XSD complex type CT_LimUppPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_LimUppPr`. Child elements:
+/// `ctrlPr`. Child types: `CT_CtrlPr`.
+/// Upper-limit properties (§22.1.2.62 limUppPr).
 pub(all) struct CT_LimUppPr {
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_LimUppPr from its OMML XML element.
+/// Construct CT_LimUppPr by binding the optional ctrlPr child.
 pub fn CT_LimUppPr::new(element : @xml.Element) -> CT_LimUppPr {
-  { element, }
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "ctrlPr" {
+          ctrl_pr = Some(CT_CtrlPr::new(e))
+        }
+      _ => ()
+    }
+  }
+  { ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_LimUpp (§22.1.x).
-/// OMML upper-limit object.
+/// XSD complex type CT_LimUpp — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_LimUpp`. Child elements:
+/// `limUppPr`, `e`, `lim`. Child types: `CT_LimUppPr`, `CT_OMathArg`.
+/// Upper-limit object (§22.1.2.61 limUpp) with required base and limit
+/// arguments.
 pub(all) struct CT_LimUpp {
+  /// <limUppPr> (CT_LimUppPr, optional) — upper-limit properties.
+  lim_upp_pr : CT_LimUppPr?
+  /// <e> (CT_OMathArg, required) — base argument below the limit.
+  e : CT_OMathArg
+  /// <lim> (CT_OMathArg, required) — limit argument above the base.
+  lim : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_LimUpp from its OMML XML element.
-pub fn CT_LimUpp::new(element : @xml.Element) -> CT_LimUpp {
-  { element, }
+/// Construct CT_LimUpp; raises SchemaViolation when either `e` or `lim`
+/// is missing.
+pub fn CT_LimUpp::new(
+  element : @xml.Element,
+) -> CT_LimUpp raise SchemaViolation {
+  let mut lim_upp_pr : CT_LimUppPr? = None
+  let mut e_element : @xml.Element? = None
+  let mut lim_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "limUppPr" => lim_upp_pr = Some(CT_LimUppPr::new(child_element))
+          "e" => if e_element is None { e_element = Some(child_element) }
+          "lim" => if lim_element is None { lim_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_LimUpp/e", value="")
+  }
+  let lim = match lim_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_LimUpp/lim", value="")
+  }
+  { lim_upp_pr, e, lim, element }
 }
 
 ///|
-/// XSD complex type CT_MCPr with count CT_Integer255 and mcJc CT_XAlign children (§22.1.x).
-/// OMML matrix column properties with count and mcJc children.
+/// XSD complex type CT_MCPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_MCPr`. Child elements: `count`,
+/// `mcJc`. Child types: `CT_Integer255`, `CT_XAlign`.
+/// Matrix-column properties (§22.1.2.66 mcPr).
 pub(all) struct CT_MCPr {
+  /// <count> (CT_Integer255, optional) — matrix-column count in [1, 255]
+  /// (§22.1.2.21).
+  count : CT_Integer255?
+  /// <mcJc> (CT_XAlign, optional) — matrix-column justification
+  /// (§22.1.2.65).
+  mc_jc : CT_XAlign?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_MCPr from its OMML XML element.
-pub fn CT_MCPr::new(element : @xml.Element) -> CT_MCPr {
-  { element, }
+/// Construct CT_MCPr by binding the optional count and mcJc children.
+pub fn CT_MCPr::new(element : @xml.Element) -> CT_MCPr raise SchemaViolation {
+  let mut count : CT_Integer255? = None
+  let mut mc_jc : CT_XAlign? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "count" => count = Some(CT_Integer255::new(e))
+          "mcJc" => mc_jc = Some(CT_XAlign::new(e))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { count, mc_jc, element }
 }
 
 ///|
-/// Schema shared-math.xsd complex type CT_MC with mcPr CT_MCPr child (§22.1.x).
-/// OMML matrix column.
+/// XSD complex type CT_MC — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_MC`. Child elements: `mcPr`.
+/// Child types: `CT_MCPr`.
+/// Matrix-column descriptor (§22.1.2.64 mc).
 pub(all) struct CT_MC {
+  /// <mcPr> (CT_MCPr, optional) — matrix-column properties.
+  mc_pr : CT_MCPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_MC from its OMML XML element.
-pub fn CT_MC::new(element : @xml.Element) -> CT_MC {
-  { element, }
+/// Construct CT_MC by binding the optional mcPr child.
+pub fn CT_MC::new(element : @xml.Element) -> CT_MC raise SchemaViolation {
+  let mut mc_pr : CT_MCPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "mcPr" {
+          mc_pr = Some(CT_MCPr::new(e))
+        }
+      _ => ()
+    }
+  }
+  { mc_pr, element }
 }
 
 ///|
-/// XSD complex type CT_MCS (§22.1.x).
-/// OMML matrix column set with mc children.
+/// XSD complex type CT_MCS — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_MCS`. Child elements: `mc`.
+/// Child types: `CT_MC`.
+/// Matrix-column set (§22.1.2.67 mcs) with one or more `mc` descriptors.
 pub(all) struct CT_MCS {
+  /// <mc>* (CT_MC, one or more by schema; preserved as Array so callers
+  /// can surface zero-descriptor input rather than this constructor
+  /// raising during best-effort tree construction).
+  mc : Array[CT_MC]
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_MCS from its OMML XML element.
-pub fn CT_MCS::new(element : @xml.Element) -> CT_MCS {
-  { element, }
+/// Construct CT_MCS by collecting every `mc` child into the matrix-column
+/// descriptor array.
+pub fn CT_MCS::new(element : @xml.Element) -> CT_MCS raise SchemaViolation {
+  let mc : Array[CT_MC] = []
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        if child_element.name.local_name == "mc" {
+          mc.push(CT_MC::new(child_element))
+        }
+      _ => ()
+    }
+  }
+  { mc, element }
 }
 
 ///|
-/// Schema shared-math.xsd complex type CT_MPr with baseJc CT_YAlign,
-/// plcHide CT_OnOff, rSpRule CT_SpacingRule, cGpRule CT_SpacingRule,
-/// rSp CT_UnSignedInteger, cSp CT_UnSignedInteger, cGp CT_UnSignedInteger,
-/// mcs CT_MCS, and ctrlPr CT_CtrlPr children (§22.1.x).
-/// OMML matrix properties with baseJc, plcHide, spacing, mcs, and ctrlPr children.
+/// XSD complex type CT_MPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_MPr`. Child elements: `baseJc`,
+/// `plcHide`, `rSpRule`, `cGpRule`, `rSp`, `cSp`, `cGp`, `mcs`, `ctrlPr`.
+/// Child types: `CT_YAlign`, `CT_OnOff`, `CT_SpacingRule`,
+/// `CT_UnSignedInteger`, `CT_MCS`, `CT_CtrlPr`.
+/// Matrix properties (§22.1.2.69 mPr).
 pub(all) struct CT_MPr {
+  /// <baseJc> (CT_YAlign, optional) — matrix-row base justification
+  /// (§22.1.2.9).
+  base_jc : CT_YAlign?
+  /// <plcHide> (CT_OnOff, optional) — hide placeholder flag (§22.1.2.83).
+  plc_hide : CT_OnOff?
+  /// <rSpRule> (CT_SpacingRule, optional) — row-spacing rule
+  /// (§22.1.2.93).
+  r_sp_rule : CT_SpacingRule?
+  /// <cGpRule> (CT_SpacingRule, optional) — column-gap spacing rule
+  /// (§22.1.2.19).
+  c_gp_rule : CT_SpacingRule?
+  /// <rSp> (CT_UnSignedInteger, optional) — row-spacing value
+  /// (§22.1.2.92).
+  r_sp : CT_UnSignedInteger?
+  /// <cSp> (CT_UnSignedInteger, optional) — column-spacing value
+  /// (§22.1.2.22).
+  c_sp : CT_UnSignedInteger?
+  /// <cGp> (CT_UnSignedInteger, optional) — column-gap value
+  /// (§22.1.2.18).
+  c_gp : CT_UnSignedInteger?
+  /// <mcs> (CT_MCS, optional) — matrix-column descriptor set
+  /// (§22.1.2.67).
+  mcs : CT_MCS?
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_MPr from its OMML XML element.
-pub fn CT_MPr::new(element : @xml.Element) -> CT_MPr {
-  { element, }
+/// Construct CT_MPr by routing each optional child to its slot.
+pub fn CT_MPr::new(element : @xml.Element) -> CT_MPr raise SchemaViolation {
+  let mut base_jc : CT_YAlign? = None
+  let mut plc_hide : CT_OnOff? = None
+  let mut r_sp_rule : CT_SpacingRule? = None
+  let mut c_gp_rule : CT_SpacingRule? = None
+  let mut r_sp : CT_UnSignedInteger? = None
+  let mut c_sp : CT_UnSignedInteger? = None
+  let mut c_gp : CT_UnSignedInteger? = None
+  let mut mcs : CT_MCS? = None
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "baseJc" => base_jc = Some(CT_YAlign::new(e))
+          "plcHide" => plc_hide = Some(CT_OnOff::new(e))
+          "rSpRule" => r_sp_rule = Some(CT_SpacingRule::new(e))
+          "cGpRule" => c_gp_rule = Some(CT_SpacingRule::new(e))
+          "rSp" => r_sp = Some(CT_UnSignedInteger::new(e))
+          "cSp" => c_sp = Some(CT_UnSignedInteger::new(e))
+          "cGp" => c_gp = Some(CT_UnSignedInteger::new(e))
+          "mcs" => mcs = Some(CT_MCS::new(e))
+          "ctrlPr" => ctrl_pr = Some(CT_CtrlPr::new(e))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  {
+    base_jc,
+    plc_hide,
+    r_sp_rule,
+    c_gp_rule,
+    r_sp,
+    c_sp,
+    c_gp,
+    mcs,
+    ctrl_pr,
+    element,
+  }
 }
 
 ///|
-/// XSD complex type CT_MR with e CT_OMathArg matrix row children (§22.1.x).
-/// OMML matrix row.
+/// XSD complex type CT_MR — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_MR`. Child elements: `e`.
+/// Child types: `CT_OMathArg`.
+/// Matrix row (§22.1.2.68 mr) with one or more matrix-cell arguments.
 pub(all) struct CT_MR {
+  /// <e>* (CT_OMathArg, one or more by schema; preserved as Array so
+  /// callers can surface zero-cell input rather than this constructor
+  /// raising during best-effort tree construction).
+  e : Array[CT_OMathArg]
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_MR from its OMML XML element.
-pub fn CT_MR::new(element : @xml.Element) -> CT_MR {
-  { element, }
+/// Construct CT_MR by collecting every `e` child into the cell array.
+pub fn CT_MR::new(element : @xml.Element) -> CT_MR raise SchemaViolation {
+  let e : Array[CT_OMathArg] = []
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        if child_element.name.local_name == "e" {
+          e.push(CT_OMathArg::new(child_element))
+        }
+      _ => ()
+    }
+  }
+  { e, element }
 }
 
 ///|
-/// Schema shared-math.xsd complex type CT_M with mPr CT_MPr and mr CT_MR
-/// children (§22.1.x).
-/// OMML matrix object with mPr and mr children.
+/// XSD complex type CT_M — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_M`. Child elements: `mPr`,
+/// `mr`. Child types: `CT_MPr`, `CT_MR`.
+/// Matrix object (§22.1.2.63 m) with optional properties and one or more
+/// matrix rows.
 pub(all) struct CT_M {
+  /// <mPr> (CT_MPr, optional) — matrix properties.
+  m_pr : CT_MPr?
+  /// <mr>* (CT_MR, one or more by schema; preserved as Array so callers
+  /// can surface zero-row input rather than this constructor raising
+  /// during best-effort tree construction).
+  mr : Array[CT_MR]
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_M from its OMML XML element.
-pub fn CT_M::new(element : @xml.Element) -> CT_M {
-  { element, }
+/// Construct CT_M by collecting every `mr` child and binding the optional
+/// mPr properties.
+pub fn CT_M::new(element : @xml.Element) -> CT_M raise SchemaViolation {
+  let mut m_pr : CT_MPr? = None
+  let mr : Array[CT_MR] = []
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "mPr" => m_pr = Some(CT_MPr::new(child_element))
+          "mr" => mr.push(CT_MR::new(child_element))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { m_pr, mr, element }
 }
 
 ///|
-/// XSD complex type CT_NaryPr (§22.1.x).
-/// OMML n-ary operator properties.
+/// XSD complex type CT_NaryPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_NaryPr`. Child elements: `chr`,
+/// `limLoc`, `grow`, `subHide`, `supHide`, `ctrlPr`. Child types:
+/// `CT_Char`, `CT_LimLoc`, `CT_OnOff`, `CT_CtrlPr`.
+/// N-ary-operator properties (§22.1.2.71 naryPr).
 pub(all) struct CT_NaryPr {
+  /// <chr> (CT_Char, optional) — n-ary operator character (§22.1.2.20).
+  chr : CT_Char?
+  /// <limLoc> (CT_LimLoc, optional) — sub/sup limit location
+  /// (§22.1.2.57).
+  lim_loc : CT_LimLoc?
+  /// <grow> (CT_OnOff, optional) — grow operator to enclosed argument
+  /// (§22.1.2.43).
+  grow : CT_OnOff?
+  /// <subHide> (CT_OnOff, optional) — hide subscript flag (§22.1.2.113).
+  sub_hide : CT_OnOff?
+  /// <supHide> (CT_OnOff, optional) — hide superscript flag
+  /// (§22.1.2.115).
+  sup_hide : CT_OnOff?
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_NaryPr from its OMML XML element.
-pub fn CT_NaryPr::new(element : @xml.Element) -> CT_NaryPr {
-  { element, }
+/// Construct CT_NaryPr by routing each optional child to its slot.
+pub fn CT_NaryPr::new(
+  element : @xml.Element,
+) -> CT_NaryPr raise SchemaViolation {
+  let mut chr : CT_Char? = None
+  let mut lim_loc : CT_LimLoc? = None
+  let mut grow : CT_OnOff? = None
+  let mut sub_hide : CT_OnOff? = None
+  let mut sup_hide : CT_OnOff? = None
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "chr" => chr = Some(CT_Char::new(e))
+          "limLoc" => lim_loc = Some(CT_LimLoc::new(e))
+          "grow" => grow = Some(CT_OnOff::new(e))
+          "subHide" => sub_hide = Some(CT_OnOff::new(e))
+          "supHide" => sup_hide = Some(CT_OnOff::new(e))
+          "ctrlPr" => ctrl_pr = Some(CT_CtrlPr::new(e))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { chr, lim_loc, grow, sub_hide, sup_hide, ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_Nary (§22.1.x).
-/// OMML n-ary operator object with naryPr, sub, sup, and e children.
+/// XSD complex type CT_Nary — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_Nary`. Child elements:
+/// `naryPr`, `sub`, `sup`, `e`. Child types: `CT_NaryPr`, `CT_OMathArg`.
+/// N-ary-operator object (§22.1.2.70 nary) with required lower, upper,
+/// and base arguments.
 pub(all) struct CT_Nary {
+  /// <naryPr> (CT_NaryPr, optional) — n-ary-operator properties.
+  nary_pr : CT_NaryPr?
+  /// <sub> (CT_OMathArg, required) — lower-bound argument
+  /// (§22.1.2.112).
+  sub : CT_OMathArg
+  /// <sup> (CT_OMathArg, required) — upper-bound argument
+  /// (§22.1.2.114).
+  sup : CT_OMathArg
+  /// <e> (CT_OMathArg, required) — operand argument.
+  e : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_Nary from its OMML XML element.
-pub fn CT_Nary::new(element : @xml.Element) -> CT_Nary {
-  { element, }
+/// Construct CT_Nary; raises SchemaViolation when any of `sub`, `sup`, or
+/// `e` is missing.
+pub fn CT_Nary::new(element : @xml.Element) -> CT_Nary raise SchemaViolation {
+  let mut nary_pr : CT_NaryPr? = None
+  let mut sub_element : @xml.Element? = None
+  let mut sup_element : @xml.Element? = None
+  let mut e_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "naryPr" => nary_pr = Some(CT_NaryPr::new(child_element))
+          "sub" => if sub_element is None { sub_element = Some(child_element) }
+          "sup" => if sup_element is None { sup_element = Some(child_element) }
+          "e" => if e_element is None { e_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let sub = match sub_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_Nary/sub", value="")
+  }
+  let sup = match sup_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_Nary/sup", value="")
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_Nary/e", value="")
+  }
+  { nary_pr, sub, sup, e, element }
 }
 
 ///|
-/// XSD complex type CT_PhantPr (§22.1.x).
-/// OMML phantom properties.
+/// XSD complex type CT_PhantPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_PhantPr`. Child elements:
+/// `show`, `zeroWid`, `zeroAsc`, `zeroDesc`, `transp`, `ctrlPr`. Child
+/// types: `CT_OnOff`, `CT_CtrlPr`.
+/// Phantom properties (§22.1.2.82 phantPr).
 pub(all) struct CT_PhantPr {
+  /// <show> (CT_OnOff, optional) — render phantom visibly (§22.1.2.98).
+  show : CT_OnOff?
+  /// <zeroWid> (CT_OnOff, optional) — zero-width phantom (§22.1.2.124).
+  zero_wid : CT_OnOff?
+  /// <zeroAsc> (CT_OnOff, optional) — zero-ascent phantom (§22.1.2.122).
+  zero_asc : CT_OnOff?
+  /// <zeroDesc> (CT_OnOff, optional) — zero-descent phantom
+  /// (§22.1.2.123).
+  zero_desc : CT_OnOff?
+  /// <transp> (CT_OnOff, optional) — transparent phantom (§22.1.2.117).
+  transp : CT_OnOff?
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_PhantPr from its OMML XML element.
+/// Construct CT_PhantPr by routing each optional child to its slot. Every
+/// child is CT_OnOff or CT_CtrlPr, whose `new` functions never raise, so
+/// this constructor stays infallible.
 pub fn CT_PhantPr::new(element : @xml.Element) -> CT_PhantPr {
-  { element, }
+  let mut show : CT_OnOff? = None
+  let mut zero_wid : CT_OnOff? = None
+  let mut zero_asc : CT_OnOff? = None
+  let mut zero_desc : CT_OnOff? = None
+  let mut transp : CT_OnOff? = None
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "show" => show = Some(CT_OnOff::new(e))
+          "zeroWid" => zero_wid = Some(CT_OnOff::new(e))
+          "zeroAsc" => zero_asc = Some(CT_OnOff::new(e))
+          "zeroDesc" => zero_desc = Some(CT_OnOff::new(e))
+          "transp" => transp = Some(CT_OnOff::new(e))
+          "ctrlPr" => ctrl_pr = Some(CT_CtrlPr::new(e))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { show, zero_wid, zero_asc, zero_desc, transp, ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_Phant (§22.1.x).
-/// OMML phantom object.
+/// XSD complex type CT_Phant — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_Phant`. Child elements:
+/// `phantPr`, `e`. Child types: `CT_PhantPr`, `CT_OMathArg`.
+/// Phantom object (§22.1.2.81 phant) with optional properties and a
+/// required argument.
 pub(all) struct CT_Phant {
+  /// <phantPr> (CT_PhantPr, optional) — phantom properties.
+  phant_pr : CT_PhantPr?
+  /// <e> (CT_OMathArg, required) — argument inside the phantom.
+  e : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_Phant from its OMML XML element.
-pub fn CT_Phant::new(element : @xml.Element) -> CT_Phant {
-  { element, }
+/// Construct CT_Phant; raises SchemaViolation when the mandatory `e`
+/// argument is missing.
+pub fn CT_Phant::new(element : @xml.Element) -> CT_Phant raise SchemaViolation {
+  let mut phant_pr : CT_PhantPr? = None
+  let mut e_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "phantPr" => phant_pr = Some(CT_PhantPr::new(child_element))
+          "e" => if e_element is None { e_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_Phant/e", value="")
+  }
+  { phant_pr, e, element }
 }
 
 ///|
-/// XSD complex type CT_RadPr with degHide CT_OnOff and ctrlPr CT_CtrlPr children (§22.1.x).
-/// OMML radical properties with degHide and ctrlPr children.
+/// XSD complex type CT_RadPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_RadPr`. Child elements:
+/// `degHide`, `ctrlPr`. Child types: `CT_OnOff`, `CT_CtrlPr`.
+/// Radical properties (§22.1.2.90 radPr).
 pub(all) struct CT_RadPr {
+  /// <degHide> (CT_OnOff, optional) — hide-degree flag (§22.1.2.27).
+  deg_hide : CT_OnOff?
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_RadPr from its OMML XML element.
+/// Construct CT_RadPr by binding the optional degHide and ctrlPr
+/// children. Every child is CT_OnOff or CT_CtrlPr, whose `new` functions
+/// never raise, so this constructor stays infallible.
 pub fn CT_RadPr::new(element : @xml.Element) -> CT_RadPr {
-  { element, }
+  let mut deg_hide : CT_OnOff? = None
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "degHide" => deg_hide = Some(CT_OnOff::new(e))
+          "ctrlPr" => ctrl_pr = Some(CT_CtrlPr::new(e))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { deg_hide, ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_Rad (§22.1.x).
-/// OMML radical object with radPr, deg, and e children.
+/// XSD complex type CT_Rad — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_Rad`. Child elements: `radPr`,
+/// `deg`, `e`. Child types: `CT_RadPr`, `CT_OMathArg`.
+/// Radical object (§22.1.2.89 rad) with required degree and radicand
+/// arguments.
 pub(all) struct CT_Rad {
+  /// <radPr> (CT_RadPr, optional) — radical properties.
+  rad_pr : CT_RadPr?
+  /// <deg> (CT_OMathArg, required) — degree argument (§22.1.2.26).
+  deg : CT_OMathArg
+  /// <e> (CT_OMathArg, required) — radicand argument.
+  e : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_Rad from its OMML XML element.
-pub fn CT_Rad::new(element : @xml.Element) -> CT_Rad {
-  { element, }
+/// Construct CT_Rad; raises SchemaViolation when either `deg` or `e` is
+/// missing.
+pub fn CT_Rad::new(element : @xml.Element) -> CT_Rad raise SchemaViolation {
+  let mut rad_pr : CT_RadPr? = None
+  let mut deg_element : @xml.Element? = None
+  let mut e_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "radPr" => rad_pr = Some(CT_RadPr::new(child_element))
+          "deg" => if deg_element is None { deg_element = Some(child_element) }
+          "e" => if e_element is None { e_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let deg = match deg_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_Rad/deg", value="")
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_Rad/e", value="")
+  }
+  { rad_pr, deg, e, element }
 }
 
 ///|
-/// XSD complex type CT_SPrePr (§22.1.x).
-/// OMML prescript properties.
+/// XSD complex type CT_SPrePr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_SPrePr`. Child elements:
+/// `ctrlPr`. Child types: `CT_CtrlPr`.
+/// Prescript-pair properties (§22.1.2.100 sPrePr).
 pub(all) struct CT_SPrePr {
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_SPrePr from its OMML XML element.
+/// Construct CT_SPrePr by binding the optional ctrlPr child.
 pub fn CT_SPrePr::new(element : @xml.Element) -> CT_SPrePr {
-  { element, }
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "ctrlPr" {
+          ctrl_pr = Some(CT_CtrlPr::new(e))
+        }
+      _ => ()
+    }
+  }
+  { ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_SPre (§22.1.x).
-/// OMML prescript object with sPrePr, sub, sup, and e children.
+/// XSD complex type CT_SPre — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_SPre`. Child elements:
+/// `sPrePr`, `sub`, `sup`, `e`. Child types: `CT_SPrePr`, `CT_OMathArg`.
+/// Prescript-pair object (§22.1.2.99 sPre) with required subscript,
+/// superscript, and base arguments.
 pub(all) struct CT_SPre {
+  /// <sPrePr> (CT_SPrePr, optional) — prescript-pair properties.
+  s_pre_pr : CT_SPrePr?
+  /// <sub> (CT_OMathArg, required) — prescript subscript argument
+  /// (§22.1.2.112).
+  sub : CT_OMathArg
+  /// <sup> (CT_OMathArg, required) — prescript superscript argument
+  /// (§22.1.2.114).
+  sup : CT_OMathArg
+  /// <e> (CT_OMathArg, required) — base argument carrying the
+  /// prescripts.
+  e : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_SPre from its OMML XML element.
-pub fn CT_SPre::new(element : @xml.Element) -> CT_SPre {
-  { element, }
+/// Construct CT_SPre; raises SchemaViolation when any of `sub`, `sup`,
+/// or `e` is missing.
+pub fn CT_SPre::new(element : @xml.Element) -> CT_SPre raise SchemaViolation {
+  let mut s_pre_pr : CT_SPrePr? = None
+  let mut sub_element : @xml.Element? = None
+  let mut sup_element : @xml.Element? = None
+  let mut e_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "sPrePr" => s_pre_pr = Some(CT_SPrePr::new(child_element))
+          "sub" => if sub_element is None { sub_element = Some(child_element) }
+          "sup" => if sup_element is None { sup_element = Some(child_element) }
+          "e" => if e_element is None { e_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let sub = match sub_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SPre/sub", value="")
+  }
+  let sup = match sup_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SPre/sup", value="")
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SPre/e", value="")
+  }
+  { s_pre_pr, sub, sup, e, element }
 }
 
 ///|
-/// XSD complex type CT_SSubPr (§22.1.x).
-/// OMML subscript properties.
+/// XSD complex type CT_SSubPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_SSubPr`. Child elements:
+/// `ctrlPr`. Child types: `CT_CtrlPr`.
+/// Subscript-pair properties (§22.1.2.103 sSubPr).
 pub(all) struct CT_SSubPr {
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_SSubPr from its OMML XML element.
+/// Construct CT_SSubPr by binding the optional ctrlPr child.
 pub fn CT_SSubPr::new(element : @xml.Element) -> CT_SSubPr {
-  { element, }
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "ctrlPr" {
+          ctrl_pr = Some(CT_CtrlPr::new(e))
+        }
+      _ => ()
+    }
+  }
+  { ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_SSub (§22.1.x).
-/// OMML subscript object with sSubPr, e, and sub children.
+/// XSD complex type CT_SSub — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_SSub`. Child elements:
+/// `sSubPr`, `e`, `sub`. Child types: `CT_SSubPr`, `CT_OMathArg`.
+/// Subscript-pair object (§22.1.2.102 sSub) with required base and
+/// subscript arguments.
 pub(all) struct CT_SSub {
+  /// <sSubPr> (CT_SSubPr, optional) — subscript-pair properties.
+  s_sub_pr : CT_SSubPr?
+  /// <e> (CT_OMathArg, required) — base argument.
+  e : CT_OMathArg
+  /// <sub> (CT_OMathArg, required) — subscript argument (§22.1.2.112).
+  sub : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_SSub from its OMML XML element.
-pub fn CT_SSub::new(element : @xml.Element) -> CT_SSub {
-  { element, }
+/// Construct CT_SSub; raises SchemaViolation when either `e` or `sub` is
+/// missing.
+pub fn CT_SSub::new(element : @xml.Element) -> CT_SSub raise SchemaViolation {
+  let mut s_sub_pr : CT_SSubPr? = None
+  let mut e_element : @xml.Element? = None
+  let mut sub_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "sSubPr" => s_sub_pr = Some(CT_SSubPr::new(child_element))
+          "e" => if e_element is None { e_element = Some(child_element) }
+          "sub" => if sub_element is None { sub_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SSub/e", value="")
+  }
+  let sub = match sub_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SSub/sub", value="")
+  }
+  { s_sub_pr, e, sub, element }
 }
 
 ///|
-/// XSD complex type CT_SSubSupPr (§22.1.x).
-/// OMML sub-superscript properties.
+/// XSD complex type CT_SSubSupPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_SSubSupPr`. Child elements:
+/// `alnScr`, `ctrlPr`. Child types: `CT_OnOff`, `CT_CtrlPr`.
+/// Subscript-superscript-pair properties (§22.1.2.105 sSubSupPr).
 pub(all) struct CT_SSubSupPr {
+  /// <alnScr> (CT_OnOff, optional) — align-scripts flag (§22.1.2.4).
+  aln_scr : CT_OnOff?
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_SSubSupPr from its OMML XML element.
+/// Construct CT_SSubSupPr by routing each optional child to its slot.
+/// Every child is CT_OnOff or CT_CtrlPr, whose `new` functions never
+/// raise, so this constructor stays infallible.
 pub fn CT_SSubSupPr::new(element : @xml.Element) -> CT_SSubSupPr {
-  { element, }
+  let mut aln_scr : CT_OnOff? = None
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "alnScr" => aln_scr = Some(CT_OnOff::new(e))
+          "ctrlPr" => ctrl_pr = Some(CT_CtrlPr::new(e))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { aln_scr, ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_SSubSup (§22.1.x).
-/// OMML sub-superscript object.
+/// XSD complex type CT_SSubSup — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_SSubSup`. Child elements:
+/// `sSubSupPr`, `e`, `sub`, `sup`. Child types: `CT_SSubSupPr`,
+/// `CT_OMathArg`.
+/// Subscript-superscript-pair object (§22.1.2.104 sSubSup) with required
+/// base, subscript, and superscript arguments.
 pub(all) struct CT_SSubSup {
+  /// <sSubSupPr> (CT_SSubSupPr, optional) — subscript-superscript-pair
+  /// properties.
+  s_sub_sup_pr : CT_SSubSupPr?
+  /// <e> (CT_OMathArg, required) — base argument.
+  e : CT_OMathArg
+  /// <sub> (CT_OMathArg, required) — subscript argument (§22.1.2.112).
+  sub : CT_OMathArg
+  /// <sup> (CT_OMathArg, required) — superscript argument
+  /// (§22.1.2.114).
+  sup : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_SSubSup from its OMML XML element.
-pub fn CT_SSubSup::new(element : @xml.Element) -> CT_SSubSup {
-  { element, }
+/// Construct CT_SSubSup; raises SchemaViolation when any of `e`, `sub`,
+/// or `sup` is missing.
+pub fn CT_SSubSup::new(
+  element : @xml.Element,
+) -> CT_SSubSup raise SchemaViolation {
+  let mut s_sub_sup_pr : CT_SSubSupPr? = None
+  let mut e_element : @xml.Element? = None
+  let mut sub_element : @xml.Element? = None
+  let mut sup_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "sSubSupPr" => s_sub_sup_pr = Some(CT_SSubSupPr::new(child_element))
+          "e" => if e_element is None { e_element = Some(child_element) }
+          "sub" => if sub_element is None { sub_element = Some(child_element) }
+          "sup" => if sup_element is None { sup_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SSubSup/e", value="")
+  }
+  let sub = match sub_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SSubSup/sub", value="")
+  }
+  let sup = match sup_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SSubSup/sup", value="")
+  }
+  { s_sub_sup_pr, e, sub, sup, element }
 }
 
 ///|
-/// XSD complex type CT_SSupPr (§22.1.x).
-/// OMML superscript properties.
+/// XSD complex type CT_SSupPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_SSupPr`. Child elements:
+/// `ctrlPr`. Child types: `CT_CtrlPr`.
+/// Superscript-pair properties (§22.1.2.106 sSupPr).
 pub(all) struct CT_SSupPr {
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_SSupPr from its OMML XML element.
+/// Construct CT_SSupPr by binding the optional ctrlPr child.
 pub fn CT_SSupPr::new(element : @xml.Element) -> CT_SSupPr {
-  { element, }
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "ctrlPr" {
+          ctrl_pr = Some(CT_CtrlPr::new(e))
+        }
+      _ => ()
+    }
+  }
+  { ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_SSup (§22.1.x).
-/// OMML superscript object with sSupPr, e, and sup children.
+/// XSD complex type CT_SSup — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_SSup`. Child elements:
+/// `sSupPr`, `e`, `sup`. Child types: `CT_SSupPr`, `CT_OMathArg`.
+/// Superscript-pair object (§22.1.2.105 sSup) with required base and
+/// superscript arguments.
 pub(all) struct CT_SSup {
+  /// <sSupPr> (CT_SSupPr, optional) — superscript-pair properties.
+  s_sup_pr : CT_SSupPr?
+  /// <e> (CT_OMathArg, required) — base argument.
+  e : CT_OMathArg
+  /// <sup> (CT_OMathArg, required) — superscript argument (§22.1.2.114).
+  sup : CT_OMathArg
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_SSup from its OMML XML element.
-pub fn CT_SSup::new(element : @xml.Element) -> CT_SSup {
-  { element, }
+/// Construct CT_SSup; raises SchemaViolation when either `e` or `sup` is
+/// missing.
+pub fn CT_SSup::new(element : @xml.Element) -> CT_SSup raise SchemaViolation {
+  let mut s_sup_pr : CT_SSupPr? = None
+  let mut e_element : @xml.Element? = None
+  let mut sup_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "sSupPr" => s_sup_pr = Some(CT_SSupPr::new(child_element))
+          "e" => if e_element is None { e_element = Some(child_element) }
+          "sup" => if sup_element is None { sup_element = Some(child_element) }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let e = match e_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SSup/e", value="")
+  }
+  let sup = match sup_element {
+    Some(child_element) => CT_OMathArg::new(child_element)
+    None => raise SchemaViolation(type_name="CT_SSup/sup", value="")
+  }
+  { s_sup_pr, e, sup, element }
 }
 
 ///|
-/// XSD complex type CT_OMathArgPr (§22.1.x).
-/// OMML math argument properties.
+/// XSD complex type CT_OMathArgPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_OMathArgPr`. Child elements:
+/// `argSz`. Child types: `CT_Integer2`.
+/// Math-argument properties (§22.1.2.5 argPr).
 pub(all) struct CT_OMathArgPr {
+  /// <argSz> (CT_Integer2, optional) — argument size in [-2, +2]
+  /// (§22.1.2.6).
+  arg_sz : CT_Integer2?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_OMathArgPr from its OMML XML element.
-pub fn CT_OMathArgPr::new(element : @xml.Element) -> CT_OMathArgPr {
-  { element, }
+/// Construct CT_OMathArgPr by binding the optional argSz child.
+pub fn CT_OMathArgPr::new(
+  element : @xml.Element,
+) -> CT_OMathArgPr raise SchemaViolation {
+  let mut arg_sz : CT_Integer2? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "argSz" {
+          arg_sz = Some(CT_Integer2::new(e))
+        }
+      _ => ()
+    }
+  }
+  { arg_sz, element }
 }
 
 ///|
-/// XSD complex type CT_OMathArg (§22.1.x).
-/// OMML math argument.
+/// XSD complex type CT_OMathArg — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_OMathArg`. Child elements:
+/// `argPr`, EG_OMathElements*, `ctrlPr`. Child types: `CT_OMathArgPr`,
+/// `EG_OMathElements`, `CT_CtrlPr`.
+/// Math argument (§22.1.2.3 argument) carrying optional properties, a
+/// repeating EG_OMathElements choice, and optional control properties.
 pub(all) struct CT_OMathArg {
+  /// <argPr> (CT_OMathArgPr, optional) — math-argument properties.
+  arg_pr : CT_OMathArgPr?
+  /// EG_OMathElements*, zero or more — the math/paragraph content of the
+  /// argument, dispatched element-by-element into the model group.
+  omml_elements : Array[EG_OMathElements]
+  /// <ctrlPr> (CT_CtrlPr, optional) — control properties.
+  ctrl_pr : CT_CtrlPr?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_OMathArg from its OMML XML element.
-pub fn CT_OMathArg::new(element : @xml.Element) -> CT_OMathArg {
-  { element, }
+/// Construct CT_OMathArg by binding argPr / ctrlPr children and routing
+/// every EG_OMathElements choice child through the model group wrapper.
+pub fn CT_OMathArg::new(
+  element : @xml.Element,
+) -> CT_OMathArg raise SchemaViolation {
+  let mut arg_pr : CT_OMathArgPr? = None
+  let omml_elements : Array[EG_OMathElements] = []
+  let mut ctrl_pr : CT_CtrlPr? = None
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "argPr" => arg_pr = Some(CT_OMathArgPr::new(child_element))
+          "ctrlPr" => ctrl_pr = Some(CT_CtrlPr::new(child_element))
+          _ => omml_elements.push(EG_OMathElements::new(child_element))
+        }
+      _ => ()
+    }
+  }
+  { arg_pr, omml_elements, ctrl_pr, element }
 }
 
 ///|
-/// XSD complex type CT_OMathJc (§22.1.x).
-/// OMML math justification property.
+/// XSD complex type CT_OMathJc — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_OMathJc`. Attributes: `val`.
+/// Math-paragraph justification (§22.1.2.50 jc) carrying the ST_Jc
+/// enumeration of left / right / center / centerGroup.
 pub(all) struct CT_OMathJc {
+  /// @val (ST_Jc, optional) — None when the attribute is absent.
+  val : ST_Jc?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_OMathJc from its OMML XML element.
-pub fn CT_OMathJc::new(element : @xml.Element) -> CT_OMathJc {
-  { element, }
+/// Construct CT_OMathJc by parsing the optional `val` attribute against
+/// ST_Jc.
+pub fn CT_OMathJc::new(
+  element : @xml.Element,
+) -> CT_OMathJc raise SchemaViolation {
+  let val = match attr_value(element, "val") {
+    Some(v) => Some(ST_Jc::parse(v))
+    None => None
+  }
+  { val, element }
 }
 
 ///|
-/// XSD complex type CT_OMathParaPr (§22.1.x).
-/// OMML math paragraph properties.
+/// XSD complex type CT_OMathParaPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_OMathParaPr`. Child elements:
+/// `jc`. Child types: `CT_OMathJc`.
+/// Math-paragraph properties (§22.1.2.78 oMathParaPr).
 pub(all) struct CT_OMathParaPr {
+  /// <jc> (CT_OMathJc, optional) — math-paragraph justification
+  /// (§22.1.2.50).
+  jc : CT_OMathJc?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_OMathParaPr from its OMML XML element.
-pub fn CT_OMathParaPr::new(element : @xml.Element) -> CT_OMathParaPr {
-  { element, }
+/// Construct CT_OMathParaPr by binding the optional jc child.
+pub fn CT_OMathParaPr::new(
+  element : @xml.Element,
+) -> CT_OMathParaPr raise SchemaViolation {
+  let mut jc : CT_OMathJc? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "jc" {
+          jc = Some(CT_OMathJc::new(e))
+        }
+      _ => ()
+    }
+  }
+  { jc, element }
 }
 
 ///|
-/// XSD complex type CT_TwipsMeasure (§22.1.x).
-/// OMML twips measure property.
+/// XSD complex type CT_TwipsMeasure — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_TwipsMeasure`. Attributes:
+/// `val`.
+/// Twips measure (§22.1.2 — used by lMargin, rMargin, preSp, postSp,
+/// interSp, intraSp, wrapIndent). The `val` lexical form is preserved as
+/// String because the s:ST_TwipsMeasure union lives in the shared simple
+/// types package (kept out of office_math/domain to avoid a cross-package
+/// import cycle).
 pub(all) struct CT_TwipsMeasure {
+  /// @val (s:ST_TwipsMeasure, required) — twips-measure lexical token.
+  val : String
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_TwipsMeasure from its OMML XML element.
-pub fn CT_TwipsMeasure::new(element : @xml.Element) -> CT_TwipsMeasure {
-  { element, }
+/// Construct CT_TwipsMeasure by capturing the required `val` attribute.
+pub fn CT_TwipsMeasure::new(
+  element : @xml.Element,
+) -> CT_TwipsMeasure raise SchemaViolation {
+  { val: require_attr(element, "val", "CT_TwipsMeasure"), element }
 }
 
 ///|
-/// XSD complex type CT_BreakBin (§22.1.x).
-/// OMML binary operator break property.
+/// XSD complex type CT_BreakBin — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_BreakBin`. Attributes: `val`.
+/// Binary-operator break property (§22.1.2.16 brkBin) carrying the
+/// ST_BreakBin enumeration of before / after / repeat.
 pub(all) struct CT_BreakBin {
+  /// @val (ST_BreakBin, optional) — None when the attribute is absent.
+  val : ST_BreakBin?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_BreakBin from its OMML XML element.
-pub fn CT_BreakBin::new(element : @xml.Element) -> CT_BreakBin {
-  { element, }
+/// Construct CT_BreakBin by parsing the optional `val` attribute against
+/// ST_BreakBin.
+pub fn CT_BreakBin::new(
+  element : @xml.Element,
+) -> CT_BreakBin raise SchemaViolation {
+  let val = match attr_value(element, "val") {
+    Some(v) => Some(ST_BreakBin::parse(v))
+    None => None
+  }
+  { val, element }
 }
 
 ///|
-/// XSD complex type CT_BreakBinSub (§22.1.x).
-/// OMML binary subtraction break property.
+/// XSD complex type CT_BreakBinSub — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_BreakBinSub`. Attributes:
+/// `val`.
+/// Binary-subtraction break property (§22.1.2.17 brkBinSub) carrying the
+/// ST_BreakBinSub enumeration of -- / -+ / +-.
 pub(all) struct CT_BreakBinSub {
+  /// @val (ST_BreakBinSub, optional) — None when the attribute is
+  /// absent.
+  val : ST_BreakBinSub?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_BreakBinSub from its OMML XML element.
-pub fn CT_BreakBinSub::new(element : @xml.Element) -> CT_BreakBinSub {
-  { element, }
+/// Construct CT_BreakBinSub by parsing the optional `val` attribute
+/// against ST_BreakBinSub.
+pub fn CT_BreakBinSub::new(
+  element : @xml.Element,
+) -> CT_BreakBinSub raise SchemaViolation {
+  let val = match attr_value(element, "val") {
+    Some(v) => Some(ST_BreakBinSub::parse(v))
+    None => None
+  }
+  { val, element }
 }
 
 ///|
-/// Schema shared-math.xsd complex type CT_MathPr with mathFont CT_String,
-/// brkBin CT_BreakBin, brkBinSub CT_BreakBinSub, smallFrac CT_OnOff,
-/// dispDef CT_OnOff, margin and spacing CT_TwipsMeasure children, defJc
-/// CT_OMathJc, wrapRight CT_OnOff, intLim CT_LimLoc, and naryLim CT_LimLoc
-/// children (§22.1.x).
-/// OMML document math properties with mathFont, margins, spacing, defaults, intLim, and naryLim children.
+/// XSD complex type CT_MathPr — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_MathPr`. Child elements:
+/// `mathFont`, `brkBin`, `brkBinSub`, `smallFrac`, `dispDef`, `lMargin`,
+/// `rMargin`, `defJc`, `preSp`, `postSp`, `interSp`, `intraSp`,
+/// `wrapIndent` | `wrapRight`, `intLim`, `naryLim`. Child types:
+/// `CT_String`, `CT_BreakBin`, `CT_BreakBinSub`, `CT_OnOff`,
+/// `CT_TwipsMeasure`, `CT_OMathJc`, `CT_LimLoc`.
+/// Document math properties (§22.1.2.66 mathPr). The wrapIndent /
+/// wrapRight pair lives in an XSD choice so both branches appear as
+/// separate optional fields, with at most one of them populated per
+/// document.
 pub(all) struct CT_MathPr {
+  /// <mathFont> (CT_String, optional) — math font (§22.1.2.62
+  /// mathFont).
+  math_font : CT_String?
+  /// <brkBin> (CT_BreakBin, optional) — binary-operator break
+  /// (§22.1.2.16).
+  brk_bin : CT_BreakBin?
+  /// <brkBinSub> (CT_BreakBinSub, optional) — binary-subtraction break
+  /// (§22.1.2.17).
+  brk_bin_sub : CT_BreakBinSub?
+  /// <smallFrac> (CT_OnOff, optional) — use small fraction in inline
+  /// math (§22.1.2.103).
+  small_frac : CT_OnOff?
+  /// <dispDef> (CT_OnOff, optional) — use display defaults
+  /// (§22.1.2.30).
+  disp_def : CT_OnOff?
+  /// <lMargin> (CT_TwipsMeasure, optional) — left margin (§22.1.2.58).
+  l_margin : CT_TwipsMeasure?
+  /// <rMargin> (CT_TwipsMeasure, optional) — right margin
+  /// (§22.1.2.91).
+  r_margin : CT_TwipsMeasure?
+  /// <defJc> (CT_OMathJc, optional) — default justification
+  /// (§22.1.2.25).
+  def_jc : CT_OMathJc?
+  /// <preSp> (CT_TwipsMeasure, optional) — pre-equation spacing
+  /// (§22.1.2.86).
+  pre_sp : CT_TwipsMeasure?
+  /// <postSp> (CT_TwipsMeasure, optional) — post-equation spacing
+  /// (§22.1.2.85).
+  post_sp : CT_TwipsMeasure?
+  /// <interSp> (CT_TwipsMeasure, optional) — inter-equation spacing
+  /// (§22.1.2.48).
+  inter_sp : CT_TwipsMeasure?
+  /// <intraSp> (CT_TwipsMeasure, optional) — intra-equation spacing
+  /// (§22.1.2.49).
+  intra_sp : CT_TwipsMeasure?
+  /// <wrapIndent> (CT_TwipsMeasure, optional) — wrap-indent measure
+  /// (§22.1.2.120). Choice branch with <wrapRight>.
+  wrap_indent : CT_TwipsMeasure?
+  /// <wrapRight> (CT_OnOff, optional) — wrap-right flag (§22.1.2.121).
+  /// Choice branch with <wrapIndent>.
+  wrap_right : CT_OnOff?
+  /// <intLim> (CT_LimLoc, optional) — integral limit location
+  /// (§22.1.2.51).
+  int_lim : CT_LimLoc?
+  /// <naryLim> (CT_LimLoc, optional) — n-ary limit location
+  /// (§22.1.2.72).
+  nary_lim : CT_LimLoc?
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_MathPr from its OMML XML element.
-pub fn CT_MathPr::new(element : @xml.Element) -> CT_MathPr {
-  { element, }
+/// Construct CT_MathPr by routing each optional child to its slot.
+pub fn CT_MathPr::new(
+  element : @xml.Element,
+) -> CT_MathPr raise SchemaViolation {
+  let mut math_font : CT_String? = None
+  let mut brk_bin : CT_BreakBin? = None
+  let mut brk_bin_sub : CT_BreakBinSub? = None
+  let mut small_frac : CT_OnOff? = None
+  let mut disp_def : CT_OnOff? = None
+  let mut l_margin : CT_TwipsMeasure? = None
+  let mut r_margin : CT_TwipsMeasure? = None
+  let mut def_jc : CT_OMathJc? = None
+  let mut pre_sp : CT_TwipsMeasure? = None
+  let mut post_sp : CT_TwipsMeasure? = None
+  let mut inter_sp : CT_TwipsMeasure? = None
+  let mut intra_sp : CT_TwipsMeasure? = None
+  let mut wrap_indent : CT_TwipsMeasure? = None
+  let mut wrap_right : CT_OnOff? = None
+  let mut int_lim : CT_LimLoc? = None
+  let mut nary_lim : CT_LimLoc? = None
+  for child in element.children {
+    match child {
+      Element(e) =>
+        match e.name.local_name {
+          "mathFont" => math_font = Some(CT_String::new(e))
+          "brkBin" => brk_bin = Some(CT_BreakBin::new(e))
+          "brkBinSub" => brk_bin_sub = Some(CT_BreakBinSub::new(e))
+          "smallFrac" => small_frac = Some(CT_OnOff::new(e))
+          "dispDef" => disp_def = Some(CT_OnOff::new(e))
+          "lMargin" => l_margin = Some(CT_TwipsMeasure::new(e))
+          "rMargin" => r_margin = Some(CT_TwipsMeasure::new(e))
+          "defJc" => def_jc = Some(CT_OMathJc::new(e))
+          "preSp" => pre_sp = Some(CT_TwipsMeasure::new(e))
+          "postSp" => post_sp = Some(CT_TwipsMeasure::new(e))
+          "interSp" => inter_sp = Some(CT_TwipsMeasure::new(e))
+          "intraSp" => intra_sp = Some(CT_TwipsMeasure::new(e))
+          "wrapIndent" => wrap_indent = Some(CT_TwipsMeasure::new(e))
+          "wrapRight" => wrap_right = Some(CT_OnOff::new(e))
+          "intLim" => int_lim = Some(CT_LimLoc::new(e))
+          "naryLim" => nary_lim = Some(CT_LimLoc::new(e))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  {
+    math_font,
+    brk_bin,
+    brk_bin_sub,
+    small_frac,
+    disp_def,
+    l_margin,
+    r_margin,
+    def_jc,
+    pre_sp,
+    post_sp,
+    inter_sp,
+    intra_sp,
+    wrap_indent,
+    wrap_right,
+    int_lim,
+    nary_lim,
+    element,
+  }
 }
 
 ///|
-/// XSD complex type CT_OMathPara (§22.1.x).
-/// OMML math paragraph containing one or more math zones.
+/// XSD complex type CT_OMathPara — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_OMathPara`. Child elements:
+/// `oMathParaPr`, `oMath`. Child types: `CT_OMathParaPr`, `CT_OMath`.
+/// Math-paragraph object (§22.1.2.77 oMathPara) carrying optional
+/// paragraph properties and one or more child math zones.
 pub(all) struct CT_OMathPara {
+  /// <oMathParaPr> (CT_OMathParaPr, optional) — math-paragraph
+  /// properties.
+  o_math_para_pr : CT_OMathParaPr?
+  /// <oMath>* (CT_OMath, one or more by schema; preserved as Array so
+  /// callers can surface zero-math-zone input rather than this
+  /// constructor raising during best-effort tree construction).
+  o_math : Array[CT_OMath]
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_OMathPara from its OMML XML element.
-pub fn CT_OMathPara::new(element : @xml.Element) -> CT_OMathPara {
-  { element, }
+/// Construct CT_OMathPara by collecting every `oMath` child and binding
+/// the optional `oMathParaPr` properties.
+pub fn CT_OMathPara::new(
+  element : @xml.Element,
+) -> CT_OMathPara raise SchemaViolation {
+  let mut o_math_para_pr : CT_OMathParaPr? = None
+  let o_math : Array[CT_OMath] = []
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match child_element.name.local_name {
+          "oMathParaPr" =>
+            o_math_para_pr = Some(CT_OMathParaPr::new(child_element))
+          "oMath" => o_math.push(CT_OMath::new(child_element))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { o_math_para_pr, o_math, element }
 }
 
 ///|
-/// Schema shared-math.xsd complex type CT_OMath for the top-level oMath
-/// element, carrying EG_OMathElements children (§22.1.x).
-/// OMML inline or display math zone containing EG_OMathElements children.
+/// XSD complex type CT_OMath — Part 1 §22.1.
+/// Schema shared-math.xsd complex type `CT_OMath`. Child elements:
+/// EG_OMathElements*. Child types: `EG_OMathElements`.
+/// Top-level math zone (§22.1.2.77 oMath) carrying a repeating
+/// EG_OMathElements choice. The model-group classification is deferred
+/// to EG_OMathElements::math_element, so this constructor stays
+/// infallible.
 pub(all) struct CT_OMath {
+  /// EG_OMathElements*, zero or more — the math/paragraph content of the
+  /// zone, dispatched element-by-element into the model group.
+  omml_elements : Array[EG_OMathElements]
+  /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_OMath from its OMML XML element.
+/// Construct CT_OMath by walking every element child through the
+/// EG_OMathElements wrapper.
 pub fn CT_OMath::new(element : @xml.Element) -> CT_OMath {
-  { element, }
+  let omml_elements : Array[EG_OMathElements] = []
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        omml_elements.push(EG_OMathElements::new(child_element))
+      _ => ()
+    }
+  }
+  { omml_elements, element }
 }
