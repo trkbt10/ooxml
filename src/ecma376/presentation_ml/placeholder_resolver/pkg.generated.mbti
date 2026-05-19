@@ -1,0 +1,113 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/presentation_ml/placeholder_resolver"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/ecma376/presentation_ml/domain",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn common_slide_data(@xml.Element) -> @xml.Element?
+
+pub fn decode_placeholder(@domain.CT_Placeholder) -> Placeholder raise @errors.SchemaViolation
+
+pub fn decode_placeholder_element(@xml.Element) -> Placeholder raise @errors.SchemaViolation
+
+pub fn decode_shape_placeholder(@xml.Element) -> Placeholder? raise @errors.SchemaViolation
+
+pub fn find_shape_ph(@xml.Element) -> @xml.Element?
+
+pub fn placeholder_part1_19_3_1_36_section_name() -> String
+
+pub fn resolve_placeholder(@xml.Element, SlideChain) -> ResolvedShape raise @errors.SchemaViolation
+
+pub fn resolve_slide_shapes(SlideChain) -> Array[ResolvedShape] raise @errors.SchemaViolation
+
+pub fn shape_nv_sp_pr(@xml.Element) -> @xml.Element?
+
+pub fn shape_sp_pr(@xml.Element) -> @xml.Element?
+
+pub fn shape_tree_shapes(@xml.Element) -> Array[@xml.Element]
+
+pub fn shape_tx_body(@xml.Element) -> @xml.Element?
+
+// Errors
+
+// Types and methods
+pub(all) struct EffectivePlaceholder {
+  idx : Int?
+  ph_type : PlaceholderType
+  size : PlaceholderSize
+  orient : PlaceholderOrient
+  has_custom_prompt : Bool
+} derive(Eq, @debug.Debug)
+pub fn EffectivePlaceholder::section_name(Self) -> String
+
+pub(all) struct Placeholder {
+  idx : Int?
+  ph_type : PlaceholderType?
+  size : PlaceholderSize?
+  orient : PlaceholderOrient?
+  has_custom_prompt : Bool
+} derive(Eq, @debug.Debug)
+pub fn Placeholder::is_default(Self) -> Bool
+
+pub(all) enum PlaceholderOrient {
+  OrientHorz
+  OrientVert
+} derive(Eq, @debug.Debug)
+pub fn PlaceholderOrient::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) enum PlaceholderSize {
+  SizeFull
+  SizeHalf
+  SizeQuarter
+} derive(Eq, @debug.Debug)
+pub fn PlaceholderSize::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) enum PlaceholderType {
+  PhBody
+  PhChart
+  PhClipArt
+  PhCtrTitle
+  PhDgm
+  PhDt
+  PhFtr
+  PhHdr
+  PhMedia
+  PhObj
+  PhPic
+  PhSldImg
+  PhSldNum
+  PhSubTitle
+  PhTbl
+  PhTitle
+} derive(Eq, @debug.Debug)
+pub fn PlaceholderType::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) struct ResolvedShape {
+  slide_shape : @xml.Element?
+  layout_shape : @xml.Element?
+  master_shape : @xml.Element?
+  effective_placeholder : EffectivePlaceholder?
+  sp_pr : @xml.Element?
+  tx_body : @xml.Element?
+  nv_sp_pr : @xml.Element?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SlideChain {
+  slide : @domain.CT_Slide?
+  layout : @domain.CT_SlideLayout?
+  master : @domain.CT_SlideMaster
+} derive(Eq, @debug.Debug)
+pub fn SlideChain::from_parts(@domain.CT_SlideMaster, @domain.CT_SlideLayout?, @domain.CT_Slide?) -> Self
+pub fn SlideChain::layout_shapes(Self) -> Array[@xml.Element]
+pub fn SlideChain::master_shapes(Self) -> Array[@xml.Element]
+pub fn SlideChain::slide_shapes(Self) -> Array[@xml.Element]
+
+// Type aliases
+
+// Traits
+
