@@ -408,7 +408,9 @@ pub(all) struct CT_DocPartTypes {
 ///|
 /// XSD complex type CT_DocPartTypes — Part 1 §17.12.6. Decode the
 /// optional `@all` boolean and gather the `<w:type>` children.
-pub fn CT_DocPartTypes::new(element : @xml.Element) -> CT_DocPartTypes {
+pub fn CT_DocPartTypes::new(
+  element : @xml.Element,
+) -> CT_DocPartTypes raise SchemaViolation {
   let all = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "all"))
   let types : Array[CT_DocPartType] = []
   for child in wml_ct_chunk2_children(element, "type") {
@@ -419,7 +421,9 @@ pub fn CT_DocPartTypes::new(element : @xml.Element) -> CT_DocPartTypes {
 
 ///|
 /// XSD complex type CT_DocPartTypes — Part 1 §17.12.6.
-pub fn CT_DocPartTypes::parse(element : @xml.Element) -> CT_DocPartTypes {
+pub fn CT_DocPartTypes::parse(
+  element : @xml.Element,
+) -> CT_DocPartTypes raise SchemaViolation {
   CT_DocPartTypes::new(element)
 }
 
