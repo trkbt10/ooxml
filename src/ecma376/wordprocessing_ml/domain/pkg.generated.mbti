@@ -3,6 +3,7 @@ package "trkbt10/ooxml/ecma376/wordprocessing_ml/domain"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/hashmap",
   "trkbt10/ooxml/xml",
 }
 
@@ -39,7 +40,7 @@ pub fn recipients(@xml.Element) -> CT_Recipients
 
 pub fn settings(@xml.Element) -> CT_Settings
 
-pub fn styles(@xml.Element) -> CT_Styles
+pub fn styles(@xml.Element) -> CT_Styles raise SchemaViolation
 
 pub fn txbx_content(@xml.Element) -> CT_TxbxContent
 
@@ -1710,10 +1711,22 @@ pub fn CT_String::parse(@xml.Element) -> Self
 pub fn CT_String::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Style {
+  style_id : StyleId
+  style_type : ST_StyleType
+  name : String?
+  based_on : StyleId?
+  next : StyleId?
+  linked_to : StyleId?
+  is_default : Bool
+  p_pr : @xml.Element?
+  r_pr : @xml.Element?
+  tbl_pr : @xml.Element?
+  tr_pr : @xml.Element?
+  tc_pr : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Style::new(@xml.Element) -> Self
-pub fn CT_Style::parse(@xml.Element) -> Self
+pub fn CT_Style::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Style::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Style::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_StylePaneFilter {
@@ -1731,11 +1744,17 @@ pub fn CT_StyleSort::parse(@xml.Element) -> Self
 pub fn CT_StyleSort::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Styles {
+  styles : @hashmap.HashMap[String, CT_Style]
+  doc_default_p_pr : @xml.Element?
+  doc_default_r_pr : @xml.Element?
   element : @xml.Element
-} derive(Eq, @debug.Debug)
-pub fn CT_Styles::new(@xml.Element) -> Self
-pub fn CT_Styles::parse(@xml.Element) -> Self
+}
+pub fn CT_Styles::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Styles::parse(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Styles::resolve_chain(Self, StyleId) -> Array[CT_Style]
 pub fn CT_Styles::to_element(Self) -> @xml.Element
+pub impl Eq for CT_Styles
+pub impl @debug.Debug for CT_Styles
 
 pub(all) struct CT_Sym {
   element : @xml.Element
@@ -3911,6 +3930,10 @@ pub(all) enum ST_Zoom {
 pub fn ST_Zoom::new(String) -> Self raise SchemaViolation
 pub fn ST_Zoom::parse(String) -> Self raise SchemaViolation
 pub fn ST_Zoom::to_string(Self) -> String
+
+pub(all) struct StyleId {
+  value : String
+} derive(Eq, @debug.Debug)
 
 pub struct WmlPositiveUniversalMeasure {
   magnitude : Double

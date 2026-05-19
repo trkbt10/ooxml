@@ -3,5 +3,7 @@
 // WordprocessingML domain: w:document, w:body, w:p, w:r, w:tbl, w:sectPr, styles, numbering.
 
 import {
+  "moonbitlang/core/debug" @debug,
+  "moonbitlang/core/hashmap" @hashmap,
   "trkbt10/ooxml/xml" @xml,
 }

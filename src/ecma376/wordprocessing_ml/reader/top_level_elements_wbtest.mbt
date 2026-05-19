@@ -13,7 +13,10 @@ test "WML top-level readers round trip through builders" {
     1,
   )
   let styles = read_styles(
-    bytes("<w:styles xmlns:w=\"urn:w\"><w:style/></w:styles>"),
+    bytes(
+      // §17.7.4.17 requires w:styleId and w:type on a CT_Style child.
+      "<w:styles xmlns:w=\"urn:w\"><w:style w:styleId=\"Body\" w:type=\"paragraph\"/></w:styles>",
+    ),
   )
   assert_eq(
     read_styles(@builder.write_styles(styles)).element.name.local_name,

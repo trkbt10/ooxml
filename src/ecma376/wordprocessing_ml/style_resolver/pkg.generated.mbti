@@ -3,13 +3,16 @@ package "trkbt10/ooxml/ecma376/wordprocessing_ml/style_resolver"
 
 import {
   "moonbitlang/core/debug",
-  "moonbitlang/core/hashmap",
-  "trkbt10/ooxml/ecma376/opc/errors",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
   "trkbt10/ooxml/xml",
 }
 
 // Values
+pub fn effective_properties(@domain.CT_Styles, @domain.StyleId) -> EffectiveProperties
+
+pub fn resolve_paragraph(@domain.CT_Styles, @xml.Element?) -> EffectiveProperties
+
+pub fn resolve_run(@domain.CT_Styles, @xml.Element?) -> EffectiveProperties
 
 // Errors
 
@@ -20,45 +23,6 @@ pub(all) struct EffectiveProperties {
   tbl_pr : @xml.Element?
   tr_pr : @xml.Element?
   tc_pr : @xml.Element?
-} derive(Eq, @debug.Debug)
-
-pub(all) struct Style {
-  style_id : StyleId
-  style_type : StyleType
-  name : String?
-  based_on : StyleId?
-  next : StyleId?
-  linked_to : StyleId?
-  is_default : Bool
-  p_pr : @xml.Element?
-  r_pr : @xml.Element?
-  tbl_pr : @xml.Element?
-  tr_pr : @xml.Element?
-  tc_pr : @xml.Element?
-} derive(Eq, @debug.Debug)
-pub fn Style::from_element(@xml.Element) -> Self raise @errors.SchemaViolation
-
-pub(all) struct StyleId {
-  value : String
-} derive(Eq, @debug.Debug)
-
-pub(all) struct StyleTable {
-  styles : @hashmap.HashMap[String, Style]
-  doc_default_p_pr : @xml.Element?
-  doc_default_r_pr : @xml.Element?
-}
-pub fn StyleTable::effective_properties(Self, StyleId) -> EffectiveProperties
-pub fn StyleTable::from_ct_styles(@domain.CT_Styles) -> Self raise @errors.SchemaViolation
-pub fn StyleTable::from_element(@xml.Element) -> Self raise @errors.SchemaViolation
-pub fn StyleTable::resolve_chain(Self, StyleId) -> Array[Style]
-pub fn StyleTable::resolve_paragraph(Self, @xml.Element?) -> EffectiveProperties
-pub fn StyleTable::resolve_run(Self, @xml.Element?) -> EffectiveProperties
-
-pub(all) enum StyleType {
-  Paragraph
-  Character
-  Table
-  Numbering
 } derive(Eq, @debug.Debug)
 
 // Type aliases

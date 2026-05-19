@@ -337,27 +337,6 @@ pub fn CT_Numbering::to_element(self : CT_Numbering) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_Style from wml.xsd (§17).
-pub(all) struct CT_Style {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_Style::new(element : @xml.Element) -> CT_Style {
-  { element, }
-}
-
-///|
-pub fn CT_Style::parse(element : @xml.Element) -> CT_Style {
-  CT_Style::new(element)
-}
-
-///|
-pub fn CT_Style::to_element(self : CT_Style) -> @xml.Element {
-  self.element
-}
-
-///|
 /// XSD complex type CT_LsdException from wml.xsd (§17).
 pub(all) struct CT_LsdException {
   element : @xml.Element
@@ -399,23 +378,5 @@ pub fn CT_LatentStyles::to_element(self : CT_LatentStyles) -> @xml.Element {
   self.element
 }
 
-///|
-/// XSD complex type CT_Styles from wml.xsd (§17).
-pub(all) struct CT_Styles {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_Styles::new(element : @xml.Element) -> CT_Styles {
-  { element, }
-}
-
-///|
-pub fn CT_Styles::parse(element : @xml.Element) -> CT_Styles {
-  CT_Styles::new(element)
-}
-
-///|
-pub fn CT_Styles::to_element(self : CT_Styles) -> @xml.Element {
-  self.element
-}
+// CT_Style and CT_Styles moved to style_types.mbt as the typed view
+// required by §17.7 (Style Definitions) and §17.7.4.17 / §17.7.4.18.

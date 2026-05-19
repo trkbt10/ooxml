@@ -47,20 +47,40 @@ fn style(
 ///|
 fn styles(
   children : Array[@xml.Node],
-) -> StyleTable raise @opc_errors.SchemaViolation {
-  StyleTable::from_element(elem("styles", children~))
+) -> @domain.CT_Styles raise @domain.SchemaViolation {
+  @domain.CT_Styles::parse(elem("styles", children~))
 }
 
 ///|
 fn prop_value(property : @xml.Element?, local_name : String) -> String? {
   match property {
     Some(element) =>
-      match child_element(element, local_name) {
-        Some(child) => attr_value(child, "val")
-        None => None
-      }
+      // Local re-implementation of child-and-val lookup to keep the
+      // wbtest decoupled from the resolver's private helpers.
+      first_child_attr_val(element, local_name)
     None => None
   }
+}
+
+///|
+fn first_child_attr_val(element : @xml.Element, child_name : String) -> String? {
+  let mut found : String? = None
+  for node in element.children {
+    if found is None {
+      match node {
+        @xml.Element(child) =>
+          if child.name.local_name == child_name {
+            for attr in child.attributes {
+              if found is None && attr.name.local_name == "val" {
+                found = Some(attr.value)
+              }
+            }
+          }
+        _ => ()
+      }
+    }
+  }
+  found
 }
 
 ///|
@@ -70,7 +90,7 @@ test "single style with no basedOn resolves direct properties" {
       child("pPr", children=[child("jc", attributes=[attr("val", "left")])]),
     ]),
   ])
-  let effective = table.effective_properties({ value: "Body" })
+  let effective = effective_properties(table, { value: "Body" })
   assert_true(prop_value(effective.p_pr, "jc") == Some("left"))
   assert_eq(table.resolve_chain({ value: "Body" }).length(), 1)
 }
@@ -126,7 +146,7 @@ test "docDefaults apply as implicit paragraph and run base" {
     ),
     style("Body", "paragraph"),
   ])
-  let effective = table.effective_properties({ value: "Body" })
+  let effective = effective_properties(table, { value: "Body" })
   assert_true(prop_value(effective.p_pr, "spacing") == Some("240"))
   assert_true(prop_value(effective.r_pr, "b") == Some("1"))
 }
@@ -145,7 +165,7 @@ test "derived paragraph property replaces base property by local name" {
       child("pPr", children=[child("jc", attributes=[attr("val", "right")])]),
     ]),
   ])
-  let effective = table.effective_properties({ value: "Derived" })
+  let effective = effective_properties(table, { value: "Derived" })
   assert_true(prop_value(effective.p_pr, "jc") == Some("right"))
   assert_true(prop_value(effective.p_pr, "spacing") == Some("120"))
 }
@@ -186,7 +206,7 @@ test "direct paragraph override wins over inherited style property" {
     child("pStyle", attributes=[attr("val", "Body")]),
     child("jc", attributes=[attr("val", "center")]),
   ])
-  let effective = table.resolve_paragraph(Some(direct))
+  let effective = resolve_paragraph(table, Some(direct))
   assert_true(prop_value(effective.p_pr, "jc") == Some("center"))
 }
 
@@ -217,10 +237,18 @@ test "style type discriminator parses all four style families" {
     style("T", "table"),
     style("N", "numbering"),
   ])
-  assert_true(table.styles.get("P").unwrap().style_type == Paragraph)
-  assert_true(table.styles.get("C").unwrap().style_type == Character)
-  assert_true(table.styles.get("T").unwrap().style_type == Table)
-  assert_true(table.styles.get("N").unwrap().style_type == Numbering)
+  assert_true(
+    table.styles.get("P").unwrap().style_type == @domain.StyleTypeParagraph,
+  )
+  assert_true(
+    table.styles.get("C").unwrap().style_type == @domain.StyleTypeCharacter,
+  )
+  assert_true(
+    table.styles.get("T").unwrap().style_type == @domain.StyleTypeTable,
+  )
+  assert_true(
+    table.styles.get("N").unwrap().style_type == @domain.StyleTypeNumbering,
+  )
 }
 
 ///|
@@ -234,7 +262,7 @@ test "direct run override wins over inherited run style property" {
     child("rStyle", attributes=[attr("val", "Emphasis")]),
     child("color", attributes=[attr("val", "FF0000")]),
   ])
-  let effective = table.resolve_run(Some(direct))
+  let effective = resolve_run(table, Some(direct))
   assert_true(prop_value(effective.r_pr, "color") == Some("FF0000"))
 }
 
@@ -251,10 +279,9 @@ test "default attribute and display name are extracted" {
 }
 
 ///|
-test "CT_Styles wrapper can be resolved without changing domain shape" {
+test "domain CT_Styles round-trips through the resolver" {
   let wrapper = @domain.CT_Styles::new(
     elem("styles", children=[style("Wrapped", "paragraph")]),
   )
-  let table = StyleTable::from_ct_styles(wrapper)
-  assert_eq(table.resolve_chain({ value: "Wrapped" }).length(), 1)
+  assert_eq(wrapper.resolve_chain({ value: "Wrapped" }).length(), 1)
 }

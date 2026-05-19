@@ -59,8 +59,10 @@ pub fn numbering(element : @xml.Element) -> CT_Numbering {
 }
 
 ///|
-/// Construct top-level XSD element styles as CT_Styles (§17).
-pub fn styles(element : @xml.Element) -> CT_Styles {
+/// Construct top-level XSD element styles as CT_Styles (§17.7.4.18).
+/// Raises SchemaViolation when any `<w:style>` child fails the
+/// CT_Style contract (missing styleId or unknown ST_StyleType).
+pub fn styles(element : @xml.Element) -> CT_Styles raise SchemaViolation {
   CT_Styles::new(element)
 }
 
