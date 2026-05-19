@@ -7,6 +7,10 @@ import {
 }
 
 // Values
+pub fn diagram_part1_21_4_drawingml_diagrams_section_name() -> String
+
+pub fn diagram_part4_12_2_3_diagram_colors_part_part_1_14_2_3_section_name() -> String
+
 pub fn new_ag_iterator_attributes() -> AG_IteratorAttributes
 
 pub fn new_colors_def(@xml.Element) -> CT_ColorTransform

@@ -118,6 +118,24 @@ pub fn sml_18_6_calculation_chain_section_name() -> String
 
 pub fn sml_18_7_comments_section_name() -> String
 
+pub fn sml_part4_10_2_10_metadata_part_part_1_12_3_10_section_name() -> String
+
+pub fn sml_part4_10_2_16_shared_workbook_revision_headers_part_part_1_12_3_16_section_name() -> String
+
+pub fn sml_part4_10_2_17_shared_workbook_revision_log_part_part_1_12_3_17_section_name() -> String
+
+pub fn sml_part4_10_2_19_single_cell_table_definitions_part_part_1_12_3_19_section_name() -> String
+
+pub fn sml_part4_10_2_21_table_definition_part_part_1_12_3_21_section_name() -> String
+
+pub fn sml_part4_10_2_24_worksheet_part_part_1_12_3_24_section_name() -> String
+
+pub fn sml_part4_10_2_3_comments_part_part_1_12_3_3_section_name() -> String
+
+pub fn sml_part4_10_2_7_dialogsheet_part_part_1_12_3_7_section_name() -> String
+
+pub fn sml_part4_10_2_8_drawings_part_part_1_12_3_8_section_name() -> String
+
 pub fn sml_xsd_eg_extensionlist_schema_name() -> String
 
 // Errors

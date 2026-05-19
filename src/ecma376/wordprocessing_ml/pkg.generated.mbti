@@ -256,7 +256,41 @@ pub fn wml_part4_14_8_settings_section_name() -> String
 
 pub fn wml_part4_14_9_miscellaneous_topics_section_name() -> String
 
+pub fn wml_xsd_ct_anchor_schema_name() -> String
+
+pub fn wml_xsd_ct_cnf_schema_name() -> String
+
+pub fn wml_xsd_ct_div_schema_name() -> String
+
+pub fn wml_xsd_ct_ffdata_schema_name() -> String
+
+pub fn wml_xsd_ct_font_schema_name() -> String
+
+pub fn wml_xsd_ct_frame_schema_name() -> String
+
+pub fn wml_xsd_ct_ind_schema_name() -> String
+
+pub fn wml_xsd_ct_lvl_schema_name() -> String
+
+pub fn wml_xsd_ct_num_schema_name() -> String
+
+pub fn wml_xsd_ct_numfmt_schema_name() -> String
+
+pub fn wml_xsd_ct_pprbase_schema_name() -> String
+
+pub fn wml_xsd_ct_row_schema_name() -> String
+
+pub fn wml_xsd_ct_sdtpr_schema_name() -> String
+
+pub fn wml_xsd_ct_shd_schema_name() -> String
+
+pub fn wml_xsd_ct_tblppr_schema_name() -> String
+
 pub fn wml_xsd_eg_sectprcontents_schema_name() -> String
+
+pub fn wml_xsd_st_horizontalanchor_schema_name() -> String
+
+pub fn wml_xsd_st_verticalanchor_schema_name() -> String
 
 // Errors
 

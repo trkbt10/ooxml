@@ -1,0 +1,16 @@
+// trkbt10/ooxml/ecma376/spreadsheet_ml/cf_rule_eval
+//
+// SpreadsheetML §18.3.1.10 cfRule / §18.3.1.18 conditionalFormatting
+// rule evaluation. Decodes CT_CfRule attributes per §18.18.12 ST_CfType,
+// §18.18.15 ST_ConditionalFormattingOperator, §18.18.82 ST_TimePeriod
+// and evaluates rules against typed FormulaValue cells.
+
+import {
+  "moonbitlang/core/strconv" @strconv,
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @domain,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/address" @address,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial" @date_serial,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/formula" @formula,
+}
