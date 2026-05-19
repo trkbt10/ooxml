@@ -95,6 +95,8 @@ pub fn CT_AbstractNum::parse(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_AltChunk {
   element : @xml.Element
+  alt_chunk_pr : CT_AltChunkPr?
+  r_id : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_AltChunk::new(@xml.Element) -> Self
 pub fn CT_AltChunk::parse(@xml.Element) -> Self
@@ -102,6 +104,7 @@ pub fn CT_AltChunk::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AltChunkPr {
   element : @xml.Element
+  match_src : CT_OnOff?
 } derive(Eq, @debug.Debug)
 pub fn CT_AltChunkPr::new(@xml.Element) -> Self
 pub fn CT_AltChunkPr::parse(@xml.Element) -> Self
@@ -216,16 +219,30 @@ pub fn CT_Border::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_BottomPageBorder {
   element : @xml.Element
+  val : ST_Border
+  color : ST_HexColor?
+  theme_color : ST_ThemeColor?
+  theme_tint : ST_UcharHexNumber?
+  theme_shade : ST_UcharHexNumber?
+  sz : ST_EighthPointMeasure?
+  space : ST_PointMeasure?
+  shadow : Bool?
+  frame : Bool?
+  r_id : String?
+  r_bottom_left : String?
+  r_bottom_right : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_BottomPageBorder::new(@xml.Element) -> Self
-pub fn CT_BottomPageBorder::parse(@xml.Element) -> Self
+pub fn CT_BottomPageBorder::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_BottomPageBorder::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_BottomPageBorder::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Br {
   element : @xml.Element
+  type_ : ST_BrType?
+  clear : ST_BrClear?
 } derive(Eq, @debug.Debug)
-pub fn CT_Br::new(@xml.Element) -> Self
-pub fn CT_Br::parse(@xml.Element) -> Self
+pub fn CT_Br::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Br::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Br::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CalendarType {
@@ -304,6 +321,8 @@ pub fn CT_ColorSchemeMapping::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Column {
   element : @xml.Element
+  w : String?
+  space : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Column::new(@xml.Element) -> Self
 pub fn CT_Column::parse(@xml.Element) -> Self
@@ -311,9 +330,14 @@ pub fn CT_Column::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Columns {
   element : @xml.Element
+  equal_width : Bool?
+  space : String?
+  num : ST_DecimalNumber?
+  sep : Bool?
+  cols : Array[CT_Column]
 } derive(Eq, @debug.Debug)
-pub fn CT_Columns::new(@xml.Element) -> Self
-pub fn CT_Columns::parse(@xml.Element) -> Self
+pub fn CT_Columns::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Columns::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Columns::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Comment {
@@ -454,9 +478,12 @@ pub fn CT_DocDefaults::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocGrid {
   element : @xml.Element
+  type_ : ST_DocGrid?
+  line_pitch : ST_DecimalNumber?
+  char_space : ST_DecimalNumber?
 } derive(Eq, @debug.Debug)
-pub fn CT_DocGrid::new(@xml.Element) -> Self
-pub fn CT_DocGrid::parse(@xml.Element) -> Self
+pub fn CT_DocGrid::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocGrid::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocGrid::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPart {
@@ -655,30 +682,55 @@ pub fn CT_Endnotes::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FFCheckBox {
   element : @xml.Element
+  size : CT_FFCheckBoxSize?
+  default_ : CT_OnOff?
+  checked : CT_OnOff?
 } derive(Eq, @debug.Debug)
-pub fn CT_FFCheckBox::new(@xml.Element) -> Self
-pub fn CT_FFCheckBox::parse(@xml.Element) -> Self
+pub fn CT_FFCheckBox::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FFCheckBox::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FFCheckBox::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_FFCheckBoxSize {
+  CT_FFCheckBoxSize_Size(CT_HpsMeasure)
+  CT_FFCheckBoxSize_SizeAuto(CT_OnOff)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_FFDDList {
   element : @xml.Element
+  result : CT_DecimalNumber?
+  default_ : CT_DecimalNumber?
+  list_entry : Array[CT_String]
 } derive(Eq, @debug.Debug)
-pub fn CT_FFDDList::new(@xml.Element) -> Self
-pub fn CT_FFDDList::parse(@xml.Element) -> Self
+pub fn CT_FFDDList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FFDDList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FFDDList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FFData {
   element : @xml.Element
+  names : Array[CT_FFName]
+  labels : Array[CT_DecimalNumber]
+  tab_index : Array[CT_UnsignedDecimalNumber]
+  enabled : Array[CT_OnOff]
+  calc_on_exit : Array[CT_OnOff]
+  entry_macro : Array[CT_MacroName]
+  exit_macro : Array[CT_MacroName]
+  help_text : Array[CT_FFHelpText]
+  status_text : Array[CT_FFStatusText]
+  check_box : CT_FFCheckBox?
+  dd_list : CT_FFDDList?
+  text_input : CT_FFTextInput?
 } derive(Eq, @debug.Debug)
-pub fn CT_FFData::new(@xml.Element) -> Self
-pub fn CT_FFData::parse(@xml.Element) -> Self
+pub fn CT_FFData::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FFData::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FFData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FFHelpText {
   element : @xml.Element
+  type_ : ST_InfoTextType?
+  val : ST_FFHelpTextVal?
 } derive(Eq, @debug.Debug)
-pub fn CT_FFHelpText::new(@xml.Element) -> Self
-pub fn CT_FFHelpText::parse(@xml.Element) -> Self
+pub fn CT_FFHelpText::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FFHelpText::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FFHelpText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FFName {
@@ -691,16 +743,22 @@ pub fn CT_FFName::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FFStatusText {
   element : @xml.Element
+  type_ : ST_InfoTextType?
+  val : ST_FFStatusTextVal?
 } derive(Eq, @debug.Debug)
-pub fn CT_FFStatusText::new(@xml.Element) -> Self
-pub fn CT_FFStatusText::parse(@xml.Element) -> Self
+pub fn CT_FFStatusText::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FFStatusText::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FFStatusText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FFTextInput {
   element : @xml.Element
+  type_ : CT_FFTextType?
+  default_ : CT_String?
+  max_length : CT_DecimalNumber?
+  format : CT_String?
 } derive(Eq, @debug.Debug)
-pub fn CT_FFTextInput::new(@xml.Element) -> Self
-pub fn CT_FFTextInput::parse(@xml.Element) -> Self
+pub fn CT_FFTextInput::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FFTextInput::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FFTextInput::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FFTextType {
@@ -761,9 +819,18 @@ pub fn CT_FontSig::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Fonts {
   element : @xml.Element
+  hint : ST_Hint?
+  ascii : String?
+  h_ansi : String?
+  east_asia : String?
+  cs : String?
+  ascii_theme : ST_Theme?
+  h_ansi_theme : ST_Theme?
+  east_asia_theme : ST_Theme?
+  cstheme : ST_Theme?
 } derive(Eq, @debug.Debug)
-pub fn CT_Fonts::new(@xml.Element) -> Self
-pub fn CT_Fonts::parse(@xml.Element) -> Self
+pub fn CT_Fonts::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Fonts::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Fonts::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FontsList {
@@ -910,6 +977,7 @@ pub fn CT_HMerge::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HdrFtr {
   element : @xml.Element
+  block_level_elts : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
 pub fn CT_HdrFtr::new(@xml.Element) -> Self
 pub fn CT_HdrFtr::parse(@xml.Element) -> Self
@@ -917,9 +985,11 @@ pub fn CT_HdrFtr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HdrFtrRef {
   element : @xml.Element
+  type_ : ST_HdrFtr
+  r_id : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_HdrFtrRef::new(@xml.Element) -> Self
-pub fn CT_HdrFtrRef::parse(@xml.Element) -> Self
+pub fn CT_HdrFtrRef::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_HdrFtrRef::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_HdrFtrRef::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Headers {
@@ -1058,9 +1128,13 @@ pub fn CT_LevelText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LineNumber {
   element : @xml.Element
+  count_by : ST_DecimalNumber?
+  start : ST_DecimalNumber?
+  distance : String?
+  restart : ST_LineNumberRestart?
 } derive(Eq, @debug.Debug)
-pub fn CT_LineNumber::new(@xml.Element) -> Self
-pub fn CT_LineNumber::parse(@xml.Element) -> Self
+pub fn CT_LineNumber::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_LineNumber::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_LineNumber::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LinkedTextboxInformation {
@@ -1189,6 +1263,8 @@ pub fn CT_MarkupRange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_MathCtrlDel {
   element : @xml.Element
+  track_change : CT_TrackChange
+  r_pr : CT_RPr?
 } derive(Eq, @debug.Debug)
 pub fn CT_MathCtrlDel::new(@xml.Element) -> Self
 pub fn CT_MathCtrlDel::parse(@xml.Element) -> Self
@@ -1196,10 +1272,17 @@ pub fn CT_MathCtrlDel::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_MathCtrlIns {
   element : @xml.Element
+  track_change : CT_TrackChange
+  choice : CT_MathCtrlInsChoice?
 } derive(Eq, @debug.Debug)
 pub fn CT_MathCtrlIns::new(@xml.Element) -> Self
 pub fn CT_MathCtrlIns::parse(@xml.Element) -> Self
 pub fn CT_MathCtrlIns::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_MathCtrlInsChoice {
+  CT_MathCtrlInsChoice_Del(CT_RPrChange)
+  CT_MathCtrlInsChoice_RPr(CT_RPr)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_MoveBookmark {
   element : @xml.Element
@@ -1447,44 +1530,79 @@ pub fn CT_PPrGeneral::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PTab {
   element : @xml.Element
+  alignment : ST_PTabAlignment
+  relative_to : ST_PTabRelativeTo
+  leader : ST_PTabLeader
 } derive(Eq, @debug.Debug)
-pub fn CT_PTab::new(@xml.Element) -> Self
-pub fn CT_PTab::parse(@xml.Element) -> Self
+pub fn CT_PTab::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PTab::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PTab::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PageBorder {
   element : @xml.Element
+  val : ST_Border
+  color : ST_HexColor?
+  theme_color : ST_ThemeColor?
+  theme_tint : ST_UcharHexNumber?
+  theme_shade : ST_UcharHexNumber?
+  sz : ST_EighthPointMeasure?
+  space : ST_PointMeasure?
+  shadow : Bool?
+  frame : Bool?
+  r_id : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_PageBorder::new(@xml.Element) -> Self
-pub fn CT_PageBorder::parse(@xml.Element) -> Self
+pub fn CT_PageBorder::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PageBorder::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PageBorder::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PageBorders {
   element : @xml.Element
+  z_order : ST_PageBorderZOrder?
+  display : ST_PageBorderDisplay?
+  offset_from : ST_PageBorderOffset?
+  top : CT_TopPageBorder?
+  left : CT_PageBorder?
+  bottom : CT_BottomPageBorder?
+  right : CT_PageBorder?
 } derive(Eq, @debug.Debug)
-pub fn CT_PageBorders::new(@xml.Element) -> Self
-pub fn CT_PageBorders::parse(@xml.Element) -> Self
+pub fn CT_PageBorders::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PageBorders::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PageBorders::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PageMar {
   element : @xml.Element
+  top : ST_SignedTwipsMeasure
+  right : String
+  bottom : ST_SignedTwipsMeasure
+  left : String
+  header : String
+  footer : String
+  gutter : String
 } derive(Eq, @debug.Debug)
-pub fn CT_PageMar::new(@xml.Element) -> Self
-pub fn CT_PageMar::parse(@xml.Element) -> Self
+pub fn CT_PageMar::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PageMar::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PageMar::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PageNumber {
   element : @xml.Element
+  fmt : ST_NumberFormat?
+  start : ST_DecimalNumber?
+  chap_style : ST_DecimalNumber?
+  chap_sep : ST_ChapterSep?
 } derive(Eq, @debug.Debug)
-pub fn CT_PageNumber::new(@xml.Element) -> Self
-pub fn CT_PageNumber::parse(@xml.Element) -> Self
+pub fn CT_PageNumber::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PageNumber::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PageNumber::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PageSz {
   element : @xml.Element
+  w : String?
+  h : String?
+  orient : ST_PageOrientation?
+  code : ST_DecimalNumber?
 } derive(Eq, @debug.Debug)
-pub fn CT_PageSz::new(@xml.Element) -> Self
-pub fn CT_PageSz::parse(@xml.Element) -> Self
+pub fn CT_PageSz::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PageSz::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PageSz::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Panose {
@@ -1496,13 +1614,21 @@ pub fn CT_Panose::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PaperSource {
   element : @xml.Element
+  first : ST_DecimalNumber?
+  other : ST_DecimalNumber?
 } derive(Eq, @debug.Debug)
-pub fn CT_PaperSource::new(@xml.Element) -> Self
-pub fn CT_PaperSource::parse(@xml.Element) -> Self
+pub fn CT_PaperSource::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PaperSource::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PaperSource::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ParaRPr {
   element : @xml.Element
+  ins : CT_TrackChange?
+  del : CT_TrackChange?
+  move_from : CT_TrackChange?
+  move_to : CT_TrackChange?
+  base : Array[@xml.Element]
+  r_pr_change : CT_ParaRPrChange?
 } derive(Eq, @debug.Debug)
 pub fn CT_ParaRPr::new(@xml.Element) -> Self
 pub fn CT_ParaRPr::parse(@xml.Element) -> Self
@@ -1521,6 +1647,11 @@ pub fn CT_ParaRPrChange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ParaRPrOriginal {
   element : @xml.Element
+  ins : CT_TrackChange?
+  del : CT_TrackChange?
+  move_from : CT_TrackChange?
+  move_to : CT_TrackChange?
+  base : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
 pub fn CT_ParaRPrOriginal::new(@xml.Element) -> Self
 pub fn CT_ParaRPrOriginal::parse(@xml.Element) -> Self
@@ -1528,16 +1659,24 @@ pub fn CT_ParaRPrOriginal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Perm {
   element : @xml.Element
+  id : String
+  displaced_by_custom_xml : ST_DisplacedByCustomXml?
 } derive(Eq, @debug.Debug)
-pub fn CT_Perm::new(@xml.Element) -> Self
-pub fn CT_Perm::parse(@xml.Element) -> Self
+pub fn CT_Perm::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Perm::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Perm::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PermStart {
   element : @xml.Element
+  id : String
+  displaced_by_custom_xml : ST_DisplacedByCustomXml?
+  ed_grp : ST_EdGrp?
+  ed : String?
+  col_first : ST_DecimalNumber?
+  col_last : ST_DecimalNumber?
 } derive(Eq, @debug.Debug)
-pub fn CT_PermStart::new(@xml.Element) -> Self
-pub fn CT_PermStart::parse(@xml.Element) -> Self
+pub fn CT_PermStart::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PermStart::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PermStart::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Picture {
@@ -1594,20 +1733,28 @@ pub fn CT_Proof::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ProofErr {
   element : @xml.Element
+  type_ : ST_ProofErr
 } derive(Eq, @debug.Debug)
-pub fn CT_ProofErr::new(@xml.Element) -> Self
-pub fn CT_ProofErr::parse(@xml.Element) -> Self
+pub fn CT_ProofErr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ProofErr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ProofErr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_R {
   element : @xml.Element
+  rsid_rpr : ST_LongHexNumber?
+  rsid_del : ST_LongHexNumber?
+  rsid_r : ST_LongHexNumber?
+  r_pr : CT_RPr?
+  inner_content : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
-pub fn CT_R::new(@xml.Element) -> Self
-pub fn CT_R::parse(@xml.Element) -> Self
+pub fn CT_R::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_R::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_R::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RPr {
   element : @xml.Element
+  base : Array[@xml.Element]
+  r_pr_change : CT_RPrChange?
 } derive(Eq, @debug.Debug)
 pub fn CT_RPr::new(@xml.Element) -> Self
 pub fn CT_RPr::parse(@xml.Element) -> Self
@@ -1633,6 +1780,7 @@ pub fn CT_RPrDefault::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RPrOriginal {
   element : @xml.Element
+  base : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
 pub fn CT_RPrOriginal::new(@xml.Element) -> Self
 pub fn CT_RPrOriginal::parse(@xml.Element) -> Self
@@ -1683,9 +1831,10 @@ pub fn CT_Ruby::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RubyAlign {
   element : @xml.Element
+  val : ST_RubyAlign
 } derive(Eq, @debug.Debug)
-pub fn CT_RubyAlign::new(@xml.Element) -> Self
-pub fn CT_RubyAlign::parse(@xml.Element) -> Self
+pub fn CT_RubyAlign::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RubyAlign::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_RubyAlign::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RubyContent {
@@ -1697,9 +1846,15 @@ pub fn CT_RubyContent::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RubyPr {
   element : @xml.Element
+  ruby_align : CT_RubyAlign
+  hps : CT_HpsMeasure
+  hps_raise : CT_HpsMeasure
+  hps_base_text : CT_HpsMeasure
+  lid : CT_Lang
+  dirty : CT_OnOff?
 } derive(Eq, @debug.Debug)
-pub fn CT_RubyPr::new(@xml.Element) -> Self
-pub fn CT_RubyPr::parse(@xml.Element) -> Self
+pub fn CT_RubyPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RubyPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_RubyPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RunTrackChange {
@@ -1841,16 +1996,29 @@ pub fn CT_SdtText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SectPr {
   element : @xml.Element
+  rsid_rpr : ST_LongHexNumber?
+  rsid_del : ST_LongHexNumber?
+  rsid_r : ST_LongHexNumber?
+  rsid_sect : ST_LongHexNumber?
+  header_references : Array[CT_HdrFtrRef]
+  footer_references : Array[CT_HdrFtrRef]
+  contents : Array[@xml.Element]
+  sect_pr_change : CT_SectPrChange?
 } derive(Eq, @debug.Debug)
-pub fn CT_SectPr::new(@xml.Element) -> Self
-pub fn CT_SectPr::parse(@xml.Element) -> Self
+pub fn CT_SectPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SectPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SectPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SectPrBase {
   element : @xml.Element
+  rsid_rpr : ST_LongHexNumber?
+  rsid_del : ST_LongHexNumber?
+  rsid_r : ST_LongHexNumber?
+  rsid_sect : ST_LongHexNumber?
+  contents : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
-pub fn CT_SectPrBase::new(@xml.Element) -> Self
-pub fn CT_SectPrBase::parse(@xml.Element) -> Self
+pub fn CT_SectPrBase::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SectPrBase::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SectPrBase::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SectPrChange {
@@ -1866,9 +2034,10 @@ pub fn CT_SectPrChange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SectType {
   element : @xml.Element
+  val : ST_SectionMark?
 } derive(Eq, @debug.Debug)
-pub fn CT_SectType::new(@xml.Element) -> Self
-pub fn CT_SectType::parse(@xml.Element) -> Self
+pub fn CT_SectType::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SectType::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SectType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Settings {
@@ -2020,9 +2189,11 @@ pub impl @debug.Debug for CT_Styles
 
 pub(all) struct CT_Sym {
   element : @xml.Element
+  font : String?
+  char_ : ST_ShortHexNumber?
 } derive(Eq, @debug.Debug)
-pub fn CT_Sym::new(@xml.Element) -> Self
-pub fn CT_Sym::parse(@xml.Element) -> Self
+pub fn CT_Sym::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Sym::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Sym::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TabStop {
@@ -2248,6 +2419,8 @@ pub fn CT_TcPrInner::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Text {
   element : @xml.Element
+  value : String
+  xml_space : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Text::new(@xml.Element) -> Self
 pub fn CT_Text::parse(@xml.Element) -> Self
@@ -2302,9 +2475,21 @@ pub fn CT_TextboxTightWrap::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TopPageBorder {
   element : @xml.Element
+  val : ST_Border
+  color : ST_HexColor?
+  theme_color : ST_ThemeColor?
+  theme_tint : ST_UcharHexNumber?
+  theme_shade : ST_UcharHexNumber?
+  sz : ST_EighthPointMeasure?
+  space : ST_PointMeasure?
+  shadow : Bool?
+  frame : Bool?
+  r_id : String?
+  r_top_left : String?
+  r_top_right : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_TopPageBorder::new(@xml.Element) -> Self
-pub fn CT_TopPageBorder::parse(@xml.Element) -> Self
+pub fn CT_TopPageBorder::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TopPageBorder::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TopPageBorder::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TrPr {
@@ -2424,9 +2609,10 @@ pub fn CT_VerticalAlignRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_VerticalJc {
   element : @xml.Element
+  val : ST_VerticalJc
 } derive(Eq, @debug.Debug)
-pub fn CT_VerticalJc::new(@xml.Element) -> Self
-pub fn CT_VerticalJc::parse(@xml.Element) -> Self
+pub fn CT_VerticalJc::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_VerticalJc::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_VerticalJc::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_View {

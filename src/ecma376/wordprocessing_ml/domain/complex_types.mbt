@@ -4776,276 +4776,864 @@ pub fn CT_Hyperlink::to_element(self : CT_Hyperlink) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_FFData from wml.xsd (§17).
+/// XSD complex type CT_FFData — Part 1 §17.16.17 ffData. Form-field data
+/// container expressed as an `xsd:choice maxOccurs="unbounded"` of typed
+/// child elements: required `<name>` (CT_FFName §17.16.20), optional
+/// `<label>` / `<tabIndex>` (numeric tab order), required `<enabled>` /
+/// `<calcOnExit>` (boolean state flags via CT_OnOff), optional
+/// `<entryMacro>` / `<exitMacro>` (CT_MacroName §17.18.51), optional
+/// `<helpText>` / `<statusText>` (CT_FFHelpText / CT_FFStatusText below),
+/// and exactly one of `<checkBox>` / `<ddList>` / `<textInput>` per
+/// §17.16.7 / §17.16.10 / §17.16.32. The element has no XSD attributes.
 pub(all) struct CT_FFData {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// `<name>` (CT_FFName §17.16.20) — required form field name.
+  names : Array[CT_FFName]
+  /// `<label>` (CT_DecimalNumber §17.16.18) — optional label index list.
+  labels : Array[CT_DecimalNumber]
+  /// `<tabIndex>` (CT_UnsignedDecimalNumber §17.16.31) — optional list.
+  tab_index : Array[CT_UnsignedDecimalNumber]
+  /// `<enabled>` (CT_OnOff §17.16.16) — required state toggle list.
+  enabled : Array[CT_OnOff]
+  /// `<calcOnExit>` (CT_OnOff §17.16.6) — required recalculation toggle list.
+  calc_on_exit : Array[CT_OnOff]
+  /// `<entryMacro>` (CT_MacroName §17.16.15) — optional on-entry macro list.
+  entry_macro : Array[CT_MacroName]
+  /// `<exitMacro>` (CT_MacroName §17.16.16) — optional on-exit macro list.
+  exit_macro : Array[CT_MacroName]
+  /// `<helpText>` (CT_FFHelpText §17.16.19) — optional help-text overrides.
+  help_text : Array[CT_FFHelpText]
+  /// `<statusText>` (CT_FFStatusText §17.16.30) — optional status text.
+  status_text : Array[CT_FFStatusText]
+  /// `<checkBox>` (CT_FFCheckBox §17.16.7) — at most one per ffData.
+  check_box : CT_FFCheckBox?
+  /// `<ddList>` (CT_FFDDList §17.16.10) — at most one per ffData.
+  dd_list : CT_FFDDList?
+  /// `<textInput>` (CT_FFTextInput §17.16.32) — at most one per ffData.
+  text_input : CT_FFTextInput?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FFData::new(element : @xml.Element) -> CT_FFData {
-  { element, }
+/// XSD complex type CT_FFData — Part 1 §17.16.17. Decode each typed child
+/// element collection; the inner `xsd:choice` of `<checkBox>/<ddList>/
+/// <textInput>` is realised as three optional fields because the outer
+/// `xsd:choice maxOccurs="unbounded"` admits at most one occurrence of
+/// each branch.
+pub fn CT_FFData::new(
+  element : @xml.Element,
+) -> CT_FFData raise SchemaViolation {
+  let names = []
+  let labels = []
+  let tab_index = []
+  let enabled = []
+  let calc_on_exit = []
+  let entry_macro = []
+  let exit_macro = []
+  let help_text = []
+  let status_text = []
+  let mut check_box : CT_FFCheckBox? = None
+  let mut dd_list : CT_FFDDList? = None
+  let mut text_input : CT_FFTextInput? = None
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        match e.name.local_name {
+          "name" => names.push(CT_FFName::new(e))
+          "label" => labels.push(CT_DecimalNumber::new(e))
+          "tabIndex" => tab_index.push(CT_UnsignedDecimalNumber::new(e))
+          "enabled" => enabled.push(CT_OnOff::new(e))
+          "calcOnExit" => calc_on_exit.push(CT_OnOff::new(e))
+          "entryMacro" => entry_macro.push(CT_MacroName::new(e))
+          "exitMacro" => exit_macro.push(CT_MacroName::new(e))
+          "helpText" => help_text.push(CT_FFHelpText::new(e))
+          "statusText" => status_text.push(CT_FFStatusText::new(e))
+          "checkBox" =>
+            if check_box is None {
+              check_box = Some(CT_FFCheckBox::new(e))
+            }
+          "ddList" => if dd_list is None { dd_list = Some(CT_FFDDList::new(e)) }
+          "textInput" =>
+            if text_input is None {
+              text_input = Some(CT_FFTextInput::new(e))
+            }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  {
+    element,
+    names,
+    labels,
+    tab_index,
+    enabled,
+    calc_on_exit,
+    entry_macro,
+    exit_macro,
+    help_text,
+    status_text,
+    check_box,
+    dd_list,
+    text_input,
+  }
 }
 
 ///|
-pub fn CT_FFData::parse(element : @xml.Element) -> CT_FFData {
+/// XSD complex type CT_FFData — Part 1 §17.16.17.
+pub fn CT_FFData::parse(
+  element : @xml.Element,
+) -> CT_FFData raise SchemaViolation {
   CT_FFData::new(element)
 }
 
 ///|
+/// XSD complex type CT_FFData — return the preserved element for writers.
 pub fn CT_FFData::to_element(self : CT_FFData) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_FFHelpText from wml.xsd (§17).
+/// XSD complex type CT_FFHelpText — Part 1 §17.16.19 helpText. Two optional
+/// attributes: `@type` (ST_InfoTextType §17.18.49) selecting `text` or
+/// `autoText` provenance, and `@val` (ST_FFHelpTextVal §17.18.25, max
+/// 256 characters) carrying the help text payload.
 pub(all) struct CT_FFHelpText {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.49 @type (ST_InfoTextType) — optional. `None` ⇒ schema-default
+  /// `text` per Part 1 §17.16.19 prose.
+  type_ : ST_InfoTextType?
+  /// §17.18.25 @val (ST_FFHelpTextVal) — optional help-text payload.
+  val : ST_FFHelpTextVal?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FFHelpText::new(element : @xml.Element) -> CT_FFHelpText {
-  { element, }
+/// XSD complex type CT_FFHelpText — Part 1 §17.16.19.
+pub fn CT_FFHelpText::new(
+  element : @xml.Element,
+) -> CT_FFHelpText raise SchemaViolation {
+  let type_ = match wml_ct_chunk3_attr(element, "type") {
+    Some(text) => Some(ST_InfoTextType::parse(text))
+    None => None
+  }
+  let val = match wml_ct_chunk3_attr(element, "val") {
+    Some(text) => Some(ST_FFHelpTextVal::parse(text))
+    None => None
+  }
+  { element, type_, val }
 }
 
 ///|
-pub fn CT_FFHelpText::parse(element : @xml.Element) -> CT_FFHelpText {
+/// XSD complex type CT_FFHelpText — Part 1 §17.16.19.
+pub fn CT_FFHelpText::parse(
+  element : @xml.Element,
+) -> CT_FFHelpText raise SchemaViolation {
   CT_FFHelpText::new(element)
 }
 
 ///|
+/// XSD complex type CT_FFHelpText — return the preserved element for writers.
 pub fn CT_FFHelpText::to_element(self : CT_FFHelpText) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_FFStatusText from wml.xsd (§17).
+/// XSD complex type CT_FFStatusText — Part 1 §17.16.30 statusText. Two
+/// optional attributes: `@type` (ST_InfoTextType §17.18.49) and `@val`
+/// (ST_FFStatusTextVal §17.18.27, max 140 characters).
 pub(all) struct CT_FFStatusText {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.49 @type (ST_InfoTextType) — optional.
+  type_ : ST_InfoTextType?
+  /// §17.18.27 @val (ST_FFStatusTextVal) — optional status payload.
+  val : ST_FFStatusTextVal?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FFStatusText::new(element : @xml.Element) -> CT_FFStatusText {
-  { element, }
+/// XSD complex type CT_FFStatusText — Part 1 §17.16.30.
+pub fn CT_FFStatusText::new(
+  element : @xml.Element,
+) -> CT_FFStatusText raise SchemaViolation {
+  let type_ = match wml_ct_chunk3_attr(element, "type") {
+    Some(text) => Some(ST_InfoTextType::parse(text))
+    None => None
+  }
+  let val = match wml_ct_chunk3_attr(element, "val") {
+    Some(text) => Some(ST_FFStatusTextVal::parse(text))
+    None => None
+  }
+  { element, type_, val }
 }
 
 ///|
-pub fn CT_FFStatusText::parse(element : @xml.Element) -> CT_FFStatusText {
+/// XSD complex type CT_FFStatusText — Part 1 §17.16.30.
+pub fn CT_FFStatusText::parse(
+  element : @xml.Element,
+) -> CT_FFStatusText raise SchemaViolation {
   CT_FFStatusText::new(element)
 }
 
 ///|
+/// XSD complex type CT_FFStatusText — return the preserved element for writers.
 pub fn CT_FFStatusText::to_element(self : CT_FFStatusText) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_FFCheckBox from wml.xsd (§17).
-pub(all) struct CT_FFCheckBox {
-  element : @xml.Element
+/// XSD complex type CT_FFCheckBox — Part 1 §17.16.7 checkBox. An xsd:choice
+/// between `<size>` (CT_HpsMeasure §17.16.27, half-point sizing) and
+/// `<sizeAuto>` (CT_OnOff §17.16.28, automatic sizing flag), followed by
+/// optional `<default>` (CT_OnOff §17.16.9, initial state) and `<checked>`
+/// (CT_OnOff §17.16.8, current state). The first xsd:choice is required
+/// (no minOccurs="0"); the typed enum models both branches.
+pub(all) enum CT_FFCheckBoxSize {
+  /// §17.16.27 `<size>` — explicit half-point sizing.
+  CT_FFCheckBoxSize_Size(CT_HpsMeasure)
+  /// §17.16.28 `<sizeAuto>` — automatic sizing flag.
+  CT_FFCheckBoxSize_SizeAuto(CT_OnOff)
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FFCheckBox::new(element : @xml.Element) -> CT_FFCheckBox {
-  { element, }
+/// XSD complex type CT_FFCheckBox — Part 1 §17.16.7. See enum above for the
+/// xsd:choice modelling.
+pub(all) struct CT_FFCheckBox {
+  /// Source element kept for builder round-trip.
+  element : @xml.Element
+  /// Required xsd:choice between `<size>` and `<sizeAuto>`.
+  size : CT_FFCheckBoxSize?
+  /// §17.16.9 `<default>` (CT_OnOff) — optional initial state.
+  default_ : CT_OnOff?
+  /// §17.16.8 `<checked>` (CT_OnOff) — optional current checked state.
+  checked : CT_OnOff?
+} derive(Eq, Debug)
+
+///|
+/// XSD complex type CT_FFCheckBox — Part 1 §17.16.7. Decode the required
+/// xsd:choice followed by the two optional follow-on children.
+pub fn CT_FFCheckBox::new(
+  element : @xml.Element,
+) -> CT_FFCheckBox raise SchemaViolation {
+  let size = match wml_ct_chunk3_first_choice(element, ["size", "sizeAuto"]) {
+    Some((e, "size")) => Some(CT_FFCheckBoxSize_Size(CT_HpsMeasure::new(e)))
+    Some((e, "sizeAuto")) => Some(CT_FFCheckBoxSize_SizeAuto(CT_OnOff::new(e)))
+    Some(_) => None
+    None => None
+  }
+  let default_ = match wml_ct_chunk3_first_child(element, "default") {
+    Some(e) => Some(CT_OnOff::new(e))
+    None => None
+  }
+  let checked = match wml_ct_chunk3_first_child(element, "checked") {
+    Some(e) => Some(CT_OnOff::new(e))
+    None => None
+  }
+  { element, size, default_, checked }
 }
 
 ///|
-pub fn CT_FFCheckBox::parse(element : @xml.Element) -> CT_FFCheckBox {
+/// XSD complex type CT_FFCheckBox — Part 1 §17.16.7.
+pub fn CT_FFCheckBox::parse(
+  element : @xml.Element,
+) -> CT_FFCheckBox raise SchemaViolation {
   CT_FFCheckBox::new(element)
 }
 
 ///|
+/// XSD complex type CT_FFCheckBox — return the preserved element for writers.
 pub fn CT_FFCheckBox::to_element(self : CT_FFCheckBox) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_FFDDList from wml.xsd (§17).
+/// XSD complex type CT_FFDDList — Part 1 §17.16.10 ddList. Drop-down list
+/// payload: optional `<result>` (CT_DecimalNumber §17.16.25 — selected
+/// index), optional `<default>` (CT_DecimalNumber §17.16.9 — initial
+/// index), zero-or-more `<listEntry>` (CT_String §17.16.21).
 pub(all) struct CT_FFDDList {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.16.25 `<result>` (CT_DecimalNumber) — optional selected entry index.
+  result : CT_DecimalNumber?
+  /// §17.16.9 `<default>` (CT_DecimalNumber) — optional initial index.
+  default_ : CT_DecimalNumber?
+  /// §17.16.21 `<listEntry>` (CT_String) — list entries in document order.
+  list_entry : Array[CT_String]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FFDDList::new(element : @xml.Element) -> CT_FFDDList {
-  { element, }
+/// XSD complex type CT_FFDDList — Part 1 §17.16.10.
+pub fn CT_FFDDList::new(
+  element : @xml.Element,
+) -> CT_FFDDList raise SchemaViolation {
+  let result = match wml_ct_chunk3_first_child(element, "result") {
+    Some(e) => Some(CT_DecimalNumber::new(e))
+    None => None
+  }
+  let default_ = match wml_ct_chunk3_first_child(element, "default") {
+    Some(e) => Some(CT_DecimalNumber::new(e))
+    None => None
+  }
+  let list_entry = []
+  for e in wml_ct_chunk3_children(element, "listEntry") {
+    list_entry.push(CT_String::new(e))
+  }
+  { element, result, default_, list_entry }
 }
 
 ///|
-pub fn CT_FFDDList::parse(element : @xml.Element) -> CT_FFDDList {
+/// XSD complex type CT_FFDDList — Part 1 §17.16.10.
+pub fn CT_FFDDList::parse(
+  element : @xml.Element,
+) -> CT_FFDDList raise SchemaViolation {
   CT_FFDDList::new(element)
 }
 
 ///|
+/// XSD complex type CT_FFDDList — return the preserved element for writers.
 pub fn CT_FFDDList::to_element(self : CT_FFDDList) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_FFTextInput from wml.xsd (§17).
+/// XSD complex type CT_FFTextInput — Part 1 §17.16.32 textInput. Form-text
+/// payload: optional `<type>` (CT_FFTextType §17.16.34 selecting one of
+/// regular/number/date/currentTime/currentDate/calculated), optional
+/// `<default>` (CT_String §17.16.9 default text), optional `<maxLength>`
+/// (CT_DecimalNumber §17.16.22), optional `<format>` (CT_String §17.16.18
+/// numeric/date format string).
 pub(all) struct CT_FFTextInput {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.16.34 `<type>` (CT_FFTextType) — optional input mode.
+  type_ : CT_FFTextType?
+  /// §17.16.9 `<default>` (CT_String) — optional default text.
+  default_ : CT_String?
+  /// §17.16.22 `<maxLength>` (CT_DecimalNumber) — optional length cap.
+  max_length : CT_DecimalNumber?
+  /// §17.16.18 `<format>` (CT_String) — optional format mask.
+  format : CT_String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FFTextInput::new(element : @xml.Element) -> CT_FFTextInput {
-  { element, }
+/// XSD complex type CT_FFTextInput — Part 1 §17.16.32.
+pub fn CT_FFTextInput::new(
+  element : @xml.Element,
+) -> CT_FFTextInput raise SchemaViolation {
+  let type_ = match wml_ct_chunk3_first_child(element, "type") {
+    Some(e) => Some(CT_FFTextType::new(e))
+    None => None
+  }
+  let default_ = match wml_ct_chunk3_first_child(element, "default") {
+    Some(e) => Some(CT_String::new(e))
+    None => None
+  }
+  let max_length = match wml_ct_chunk3_first_child(element, "maxLength") {
+    Some(e) => Some(CT_DecimalNumber::new(e))
+    None => None
+  }
+  let format = match wml_ct_chunk3_first_child(element, "format") {
+    Some(e) => Some(CT_String::new(e))
+    None => None
+  }
+  { element, type_, default_, max_length, format }
 }
 
 ///|
-pub fn CT_FFTextInput::parse(element : @xml.Element) -> CT_FFTextInput {
+/// XSD complex type CT_FFTextInput — Part 1 §17.16.32.
+pub fn CT_FFTextInput::parse(
+  element : @xml.Element,
+) -> CT_FFTextInput raise SchemaViolation {
   CT_FFTextInput::new(element)
 }
 
 ///|
+/// XSD complex type CT_FFTextInput — return the preserved element for writers.
 pub fn CT_FFTextInput::to_element(self : CT_FFTextInput) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SectType from wml.xsd (§17).
+/// XSD complex type CT_SectType — Part 1 §17.6.22 type. Section type
+/// descriptor with a single optional `@val` (ST_SectionMark §17.18.74)
+/// selecting one of nextPage / nextColumn / continuous / evenPage /
+/// oddPage. The schema default when omitted is `nextPage` per
+/// §17.6.22 prose.
 pub(all) struct CT_SectType {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.74 @val (ST_SectionMark) — optional section-break kind.
+  val : ST_SectionMark?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SectType::new(element : @xml.Element) -> CT_SectType {
-  { element, }
+/// XSD complex type CT_SectType — Part 1 §17.6.22.
+pub fn CT_SectType::new(
+  element : @xml.Element,
+) -> CT_SectType raise SchemaViolation {
+  let val = match wml_ct_chunk3_attr(element, "val") {
+    Some(text) => Some(ST_SectionMark::parse(text))
+    None => None
+  }
+  { element, val }
 }
 
 ///|
-pub fn CT_SectType::parse(element : @xml.Element) -> CT_SectType {
+/// XSD complex type CT_SectType — Part 1 §17.6.22.
+pub fn CT_SectType::parse(
+  element : @xml.Element,
+) -> CT_SectType raise SchemaViolation {
   CT_SectType::new(element)
 }
 
 ///|
+/// XSD complex type CT_SectType — return the preserved element for writers.
 pub fn CT_SectType::to_element(self : CT_SectType) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PaperSource from wml.xsd (§17).
+/// XSD complex type CT_PaperSource — Part 1 §17.6.15 paperSrc. Two optional
+/// ST_DecimalNumber bin-id attributes selecting the printer paper source.
 pub(all) struct CT_PaperSource {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @first (ST_DecimalNumber) — optional first-page bin id.
+  first : ST_DecimalNumber?
+  /// §17.18.10 @other (ST_DecimalNumber) — optional continuation-page bin id.
+  other : ST_DecimalNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PaperSource::new(element : @xml.Element) -> CT_PaperSource {
-  { element, }
+/// XSD complex type CT_PaperSource — Part 1 §17.6.15.
+pub fn CT_PaperSource::new(
+  element : @xml.Element,
+) -> CT_PaperSource raise SchemaViolation {
+  let first = match wml_ct_chunk3_attr(element, "first") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let other = match wml_ct_chunk3_attr(element, "other") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  { element, first, other }
 }
 
 ///|
-pub fn CT_PaperSource::parse(element : @xml.Element) -> CT_PaperSource {
+/// XSD complex type CT_PaperSource — Part 1 §17.6.15.
+pub fn CT_PaperSource::parse(
+  element : @xml.Element,
+) -> CT_PaperSource raise SchemaViolation {
   CT_PaperSource::new(element)
 }
 
 ///|
+/// XSD complex type CT_PaperSource — return the preserved element for writers.
 pub fn CT_PaperSource::to_element(self : CT_PaperSource) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PageSz from wml.xsd (§17).
+/// XSD complex type CT_PageSz — Part 1 §17.6.17 pgSz. Page-size descriptor:
+/// optional width / height (`@w`, `@h`) typed as the shared
+/// s:ST_TwipsMeasure lexical form (§22.9.2.14), optional `@orient`
+/// (ST_PageOrientation §17.18.64 — portrait / landscape), optional
+/// `@code` (ST_DecimalNumber §17.18.10 — printer paper-code).
 pub(all) struct CT_PageSz {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.14 @w (s:ST_TwipsMeasure) — optional page width (lexical form).
+  w : String?
+  /// §22.9.2.14 @h (s:ST_TwipsMeasure) — optional page height (lexical form).
+  h : String?
+  /// §17.18.64 @orient (ST_PageOrientation) — optional orientation.
+  orient : ST_PageOrientation?
+  /// §17.18.10 @code (ST_DecimalNumber) — optional printer paper-code.
+  code : ST_DecimalNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageSz::new(element : @xml.Element) -> CT_PageSz {
-  { element, }
+/// XSD complex type CT_PageSz — Part 1 §17.6.17.
+pub fn CT_PageSz::new(
+  element : @xml.Element,
+) -> CT_PageSz raise SchemaViolation {
+  let w = wml_ct_chunk3_attr(element, "w")
+  let h = wml_ct_chunk3_attr(element, "h")
+  let orient = match wml_ct_chunk3_attr(element, "orient") {
+    Some(text) => Some(ST_PageOrientation::parse(text))
+    None => None
+  }
+  let code = match wml_ct_chunk3_attr(element, "code") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  { element, w, h, orient, code }
 }
 
 ///|
-pub fn CT_PageSz::parse(element : @xml.Element) -> CT_PageSz {
+/// XSD complex type CT_PageSz — Part 1 §17.6.17.
+pub fn CT_PageSz::parse(
+  element : @xml.Element,
+) -> CT_PageSz raise SchemaViolation {
   CT_PageSz::new(element)
 }
 
 ///|
+/// XSD complex type CT_PageSz — return the preserved element for writers.
 pub fn CT_PageSz::to_element(self : CT_PageSz) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PageMar from wml.xsd (§17).
+/// XSD complex type CT_PageMar — Part 1 §17.6.11 pgMar. Page-margin
+/// descriptor: seven required attributes covering top / right / bottom /
+/// left margins (top and bottom typed as ST_SignedTwipsMeasure §17.18.81;
+/// right and left as the shared s:ST_TwipsMeasure §22.9.2.14), header /
+/// footer offsets (s:ST_TwipsMeasure), gutter offset (s:ST_TwipsMeasure).
 pub(all) struct CT_PageMar {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.81 @top (ST_SignedTwipsMeasure) — required top margin.
+  top : ST_SignedTwipsMeasure
+  /// §22.9.2.14 @right (s:ST_TwipsMeasure) — required right margin (lexical).
+  right : String
+  /// §17.18.81 @bottom (ST_SignedTwipsMeasure) — required bottom margin.
+  bottom : ST_SignedTwipsMeasure
+  /// §22.9.2.14 @left (s:ST_TwipsMeasure) — required left margin (lexical).
+  left : String
+  /// §22.9.2.14 @header (s:ST_TwipsMeasure) — required header offset.
+  header : String
+  /// §22.9.2.14 @footer (s:ST_TwipsMeasure) — required footer offset.
+  footer : String
+  /// §22.9.2.14 @gutter (s:ST_TwipsMeasure) — required gutter offset.
+  gutter : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageMar::new(element : @xml.Element) -> CT_PageMar {
-  { element, }
+/// XSD complex type CT_PageMar — Part 1 §17.6.11. Decode all seven required
+/// margin / offset attributes.
+pub fn CT_PageMar::new(
+  element : @xml.Element,
+) -> CT_PageMar raise SchemaViolation {
+  let top_raw = wml_ct_chunk3_required_attr(
+    element, "top", "CT_PageMar", "Part 1 §17.6.11 ST_SignedTwipsMeasure",
+  )
+  let top = ST_SignedTwipsMeasure::parse(top_raw)
+  let right = wml_ct_chunk3_required_attr(
+    element, "right", "CT_PageMar", "Part 1 §17.6.11 s:ST_TwipsMeasure",
+  )
+  let bottom_raw = wml_ct_chunk3_required_attr(
+    element, "bottom", "CT_PageMar", "Part 1 §17.6.11 ST_SignedTwipsMeasure",
+  )
+  let bottom = ST_SignedTwipsMeasure::parse(bottom_raw)
+  let left = wml_ct_chunk3_required_attr(
+    element, "left", "CT_PageMar", "Part 1 §17.6.11 s:ST_TwipsMeasure",
+  )
+  let header = wml_ct_chunk3_required_attr(
+    element, "header", "CT_PageMar", "Part 1 §17.6.11 s:ST_TwipsMeasure",
+  )
+  let footer = wml_ct_chunk3_required_attr(
+    element, "footer", "CT_PageMar", "Part 1 §17.6.11 s:ST_TwipsMeasure",
+  )
+  let gutter = wml_ct_chunk3_required_attr(
+    element, "gutter", "CT_PageMar", "Part 1 §17.6.11 s:ST_TwipsMeasure",
+  )
+  { element, top, right, bottom, left, header, footer, gutter }
 }
 
 ///|
-pub fn CT_PageMar::parse(element : @xml.Element) -> CT_PageMar {
+/// XSD complex type CT_PageMar — Part 1 §17.6.11.
+pub fn CT_PageMar::parse(
+  element : @xml.Element,
+) -> CT_PageMar raise SchemaViolation {
   CT_PageMar::new(element)
 }
 
 ///|
+/// XSD complex type CT_PageMar — return the preserved element for writers.
 pub fn CT_PageMar::to_element(self : CT_PageMar) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PageBorders from wml.xsd (§17).
+/// XSD complex type CT_PageBorders — Part 1 §17.6.10 pgBorders. Page-border
+/// container with up to four side-border children and three optional
+/// presentation attributes: `@zOrder` (ST_PageBorderZOrder §17.18.65 —
+/// front / back; default `front`), `@display` (ST_PageBorderDisplay
+/// §17.18.62 — allPages / firstPage / notFirstPage), `@offsetFrom`
+/// (ST_PageBorderOffset §17.18.63 — page / text; default `text`).
 pub(all) struct CT_PageBorders {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.65 @zOrder (ST_PageBorderZOrder) — optional; `None` ⇒ schema-default `front`.
+  z_order : ST_PageBorderZOrder?
+  /// §17.18.62 @display (ST_PageBorderDisplay) — optional.
+  display : ST_PageBorderDisplay?
+  /// §17.18.63 @offsetFrom (ST_PageBorderOffset) — optional; `None` ⇒ schema-default `text`.
+  offset_from : ST_PageBorderOffset?
+  /// §17.6.27 `<top>` (CT_TopPageBorder) — optional top border.
+  top : CT_TopPageBorder?
+  /// §17.6.9 `<left>` (CT_PageBorder) — optional left border.
+  left : CT_PageBorder?
+  /// §17.6.2 `<bottom>` (CT_BottomPageBorder) — optional bottom border.
+  bottom : CT_BottomPageBorder?
+  /// §17.6.21 `<right>` (CT_PageBorder) — optional right border.
+  right : CT_PageBorder?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageBorders::new(element : @xml.Element) -> CT_PageBorders {
-  { element, }
+/// XSD complex type CT_PageBorders — Part 1 §17.6.10.
+pub fn CT_PageBorders::new(
+  element : @xml.Element,
+) -> CT_PageBorders raise SchemaViolation {
+  let z_order = match wml_ct_chunk3_attr(element, "zOrder") {
+    Some(text) => Some(ST_PageBorderZOrder::parse(text))
+    None => None
+  }
+  let display = match wml_ct_chunk3_attr(element, "display") {
+    Some(text) => Some(ST_PageBorderDisplay::parse(text))
+    None => None
+  }
+  let offset_from = match wml_ct_chunk3_attr(element, "offsetFrom") {
+    Some(text) => Some(ST_PageBorderOffset::parse(text))
+    None => None
+  }
+  let top = match wml_ct_chunk3_first_child(element, "top") {
+    Some(e) => Some(CT_TopPageBorder::new(e))
+    None => None
+  }
+  let left = match wml_ct_chunk3_first_child(element, "left") {
+    Some(e) => Some(CT_PageBorder::new(e))
+    None => None
+  }
+  let bottom = match wml_ct_chunk3_first_child(element, "bottom") {
+    Some(e) => Some(CT_BottomPageBorder::new(e))
+    None => None
+  }
+  let right = match wml_ct_chunk3_first_child(element, "right") {
+    Some(e) => Some(CT_PageBorder::new(e))
+    None => None
+  }
+  { element, z_order, display, offset_from, top, left, bottom, right }
 }
 
 ///|
-pub fn CT_PageBorders::parse(element : @xml.Element) -> CT_PageBorders {
+/// XSD complex type CT_PageBorders — Part 1 §17.6.10.
+pub fn CT_PageBorders::parse(
+  element : @xml.Element,
+) -> CT_PageBorders raise SchemaViolation {
   CT_PageBorders::new(element)
 }
 
 ///|
+/// XSD complex type CT_PageBorders — return the preserved element for writers.
 pub fn CT_PageBorders::to_element(self : CT_PageBorders) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PageBorder from wml.xsd (§17).
+/// XSD complex type CT_PageBorder — Part 1 §17.6.9 left / §17.6.21 right.
+/// `xsd:complexContent` extension of CT_Border (§17.3.4) adding an optional
+/// `@r:id` relationship reference for picture-art borders.
 pub(all) struct CT_PageBorder {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.2 @val (ST_Border) — required border style inherited from CT_Border.
+  val : ST_Border
+  /// §17.18.38 @color (ST_HexColor) — optional inherited colour.
+  color : ST_HexColor?
+  /// §17.18.97 @themeColor (ST_ThemeColor) — optional inherited theme colour.
+  theme_color : ST_ThemeColor?
+  /// §17.18.98 @themeTint (ST_UcharHexNumber) — optional inherited tint.
+  theme_tint : ST_UcharHexNumber?
+  /// §17.18.98 @themeShade (ST_UcharHexNumber) — optional inherited shade.
+  theme_shade : ST_UcharHexNumber?
+  /// §17.18.23 @sz (ST_EighthPointMeasure) — optional inherited width.
+  sz : ST_EighthPointMeasure?
+  /// §17.18.68 @space (ST_PointMeasure) — optional inherited spacing.
+  space : ST_PointMeasure?
+  /// §22.9.2.7 @shadow (s:ST_OnOff) — optional inherited drop-shadow flag.
+  shadow : Bool?
+  /// §22.9.2.7 @frame (s:ST_OnOff) — optional inherited frame flag.
+  frame : Bool?
+  /// §A.6.7 @r:id (relationship reference) — optional picture-art border image.
+  r_id : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageBorder::new(element : @xml.Element) -> CT_PageBorder {
-  { element, }
+/// XSD complex type CT_PageBorder — Part 1 §17.6.9.
+pub fn CT_PageBorder::new(
+  element : @xml.Element,
+) -> CT_PageBorder raise SchemaViolation {
+  let raw_val = wml_ct_chunk3_required_attr(
+    element, "val", "CT_PageBorder", "Part 1 §17.18.2 ST_Border",
+  )
+  let val = ST_Border::parse(raw_val)
+  let color = match wml_ct_chunk3_attr(element, "color") {
+    Some(text) => Some(ST_HexColor::parse(text))
+    None => None
+  }
+  let theme_color = match wml_ct_chunk3_attr(element, "themeColor") {
+    Some(text) => Some(ST_ThemeColor::parse(text))
+    None => None
+  }
+  let theme_tint = match wml_ct_chunk3_attr(element, "themeTint") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let theme_shade = match wml_ct_chunk3_attr(element, "themeShade") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let sz = match wml_ct_chunk3_attr(element, "sz") {
+    Some(text) => Some(ST_EighthPointMeasure::parse(text))
+    None => None
+  }
+  let space = match wml_ct_chunk3_attr(element, "space") {
+    Some(text) => Some(ST_PointMeasure::parse(text))
+    None => None
+  }
+  let shadow = wml_ct_chunk3_on_off(wml_ct_chunk3_attr(element, "shadow"))
+  let frame = wml_ct_chunk3_on_off(wml_ct_chunk3_attr(element, "frame"))
+  let r_id = wml_ct_chunk3_attr_ns(element, wml_ct_chunk3_ns_r(), "id")
+  {
+    element,
+    val,
+    color,
+    theme_color,
+    theme_tint,
+    theme_shade,
+    sz,
+    space,
+    shadow,
+    frame,
+    r_id,
+  }
 }
 
 ///|
-pub fn CT_PageBorder::parse(element : @xml.Element) -> CT_PageBorder {
+/// XSD complex type CT_PageBorder — Part 1 §17.6.9.
+pub fn CT_PageBorder::parse(
+  element : @xml.Element,
+) -> CT_PageBorder raise SchemaViolation {
   CT_PageBorder::new(element)
 }
 
 ///|
+/// XSD complex type CT_PageBorder — return the preserved element for writers.
 pub fn CT_PageBorder::to_element(self : CT_PageBorder) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_BottomPageBorder from wml.xsd (§17).
+/// XSD complex type CT_BottomPageBorder — Part 1 §17.6.2 bottom.
+/// `xsd:complexContent` extension of CT_PageBorder (§17.6.9) adding two
+/// optional relationship-id attributes for picture-art borders located at
+/// the page's bottom-left / bottom-right corners.
 pub(all) struct CT_BottomPageBorder {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.2 @val (ST_Border) — required border style (inherited).
+  val : ST_Border
+  /// §17.18.38 @color (ST_HexColor) — optional inherited colour.
+  color : ST_HexColor?
+  /// §17.18.97 @themeColor — optional inherited theme colour.
+  theme_color : ST_ThemeColor?
+  /// §17.18.98 @themeTint — optional inherited tint.
+  theme_tint : ST_UcharHexNumber?
+  /// §17.18.98 @themeShade — optional inherited shade.
+  theme_shade : ST_UcharHexNumber?
+  /// §17.18.23 @sz — optional inherited width.
+  sz : ST_EighthPointMeasure?
+  /// §17.18.68 @space — optional inherited spacing.
+  space : ST_PointMeasure?
+  /// §22.9.2.7 @shadow — optional inherited drop-shadow flag.
+  shadow : Bool?
+  /// §22.9.2.7 @frame — optional inherited frame flag.
+  frame : Bool?
+  /// §A.6.7 @r:id — optional inherited relationship reference.
+  r_id : String?
+  /// §A.6.7 @r:bottomLeft — optional bottom-left corner relationship.
+  r_bottom_left : String?
+  /// §A.6.7 @r:bottomRight — optional bottom-right corner relationship.
+  r_bottom_right : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_BottomPageBorder::new(element : @xml.Element) -> CT_BottomPageBorder {
-  { element, }
+/// XSD complex type CT_BottomPageBorder — Part 1 §17.6.2.
+pub fn CT_BottomPageBorder::new(
+  element : @xml.Element,
+) -> CT_BottomPageBorder raise SchemaViolation {
+  let raw_val = wml_ct_chunk3_required_attr(
+    element, "val", "CT_BottomPageBorder", "Part 1 §17.18.2 ST_Border",
+  )
+  let val = ST_Border::parse(raw_val)
+  let color = match wml_ct_chunk3_attr(element, "color") {
+    Some(text) => Some(ST_HexColor::parse(text))
+    None => None
+  }
+  let theme_color = match wml_ct_chunk3_attr(element, "themeColor") {
+    Some(text) => Some(ST_ThemeColor::parse(text))
+    None => None
+  }
+  let theme_tint = match wml_ct_chunk3_attr(element, "themeTint") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let theme_shade = match wml_ct_chunk3_attr(element, "themeShade") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let sz = match wml_ct_chunk3_attr(element, "sz") {
+    Some(text) => Some(ST_EighthPointMeasure::parse(text))
+    None => None
+  }
+  let space = match wml_ct_chunk3_attr(element, "space") {
+    Some(text) => Some(ST_PointMeasure::parse(text))
+    None => None
+  }
+  let shadow = wml_ct_chunk3_on_off(wml_ct_chunk3_attr(element, "shadow"))
+  let frame = wml_ct_chunk3_on_off(wml_ct_chunk3_attr(element, "frame"))
+  let r_id = wml_ct_chunk3_attr_ns(element, wml_ct_chunk3_ns_r(), "id")
+  let r_bottom_left = wml_ct_chunk3_attr_ns(
+    element,
+    wml_ct_chunk3_ns_r(),
+    "bottomLeft",
+  )
+  let r_bottom_right = wml_ct_chunk3_attr_ns(
+    element,
+    wml_ct_chunk3_ns_r(),
+    "bottomRight",
+  )
+  {
+    element,
+    val,
+    color,
+    theme_color,
+    theme_tint,
+    theme_shade,
+    sz,
+    space,
+    shadow,
+    frame,
+    r_id,
+    r_bottom_left,
+    r_bottom_right,
+  }
 }
 
 ///|
+/// XSD complex type CT_BottomPageBorder — Part 1 §17.6.2.
 pub fn CT_BottomPageBorder::parse(
   element : @xml.Element,
-) -> CT_BottomPageBorder {
+) -> CT_BottomPageBorder raise SchemaViolation {
   CT_BottomPageBorder::new(element)
 }
 
 ///|
+/// XSD complex type CT_BottomPageBorder — return the preserved element for writers.
 pub fn CT_BottomPageBorder::to_element(
   self : CT_BottomPageBorder,
 ) -> @xml.Element {
@@ -5053,526 +5641,1350 @@ pub fn CT_BottomPageBorder::to_element(
 }
 
 ///|
-/// XSD complex type CT_TopPageBorder from wml.xsd (§17).
+/// XSD complex type CT_TopPageBorder — Part 1 §17.6.27 top.
+/// `xsd:complexContent` extension of CT_PageBorder (§17.6.9) adding two
+/// optional relationship-id attributes for picture-art borders at the
+/// page's top-left / top-right corners.
 pub(all) struct CT_TopPageBorder {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.2 @val (ST_Border) — required border style (inherited).
+  val : ST_Border
+  /// §17.18.38 @color — optional inherited colour.
+  color : ST_HexColor?
+  /// §17.18.97 @themeColor — optional inherited theme colour.
+  theme_color : ST_ThemeColor?
+  /// §17.18.98 @themeTint — optional inherited tint.
+  theme_tint : ST_UcharHexNumber?
+  /// §17.18.98 @themeShade — optional inherited shade.
+  theme_shade : ST_UcharHexNumber?
+  /// §17.18.23 @sz — optional inherited width.
+  sz : ST_EighthPointMeasure?
+  /// §17.18.68 @space — optional inherited spacing.
+  space : ST_PointMeasure?
+  /// §22.9.2.7 @shadow — optional inherited drop-shadow flag.
+  shadow : Bool?
+  /// §22.9.2.7 @frame — optional inherited frame flag.
+  frame : Bool?
+  /// §A.6.7 @r:id — optional inherited relationship reference.
+  r_id : String?
+  /// §A.6.7 @r:topLeft — optional top-left corner relationship.
+  r_top_left : String?
+  /// §A.6.7 @r:topRight — optional top-right corner relationship.
+  r_top_right : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TopPageBorder::new(element : @xml.Element) -> CT_TopPageBorder {
-  { element, }
+/// XSD complex type CT_TopPageBorder — Part 1 §17.6.27.
+pub fn CT_TopPageBorder::new(
+  element : @xml.Element,
+) -> CT_TopPageBorder raise SchemaViolation {
+  let raw_val = wml_ct_chunk3_required_attr(
+    element, "val", "CT_TopPageBorder", "Part 1 §17.18.2 ST_Border",
+  )
+  let val = ST_Border::parse(raw_val)
+  let color = match wml_ct_chunk3_attr(element, "color") {
+    Some(text) => Some(ST_HexColor::parse(text))
+    None => None
+  }
+  let theme_color = match wml_ct_chunk3_attr(element, "themeColor") {
+    Some(text) => Some(ST_ThemeColor::parse(text))
+    None => None
+  }
+  let theme_tint = match wml_ct_chunk3_attr(element, "themeTint") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let theme_shade = match wml_ct_chunk3_attr(element, "themeShade") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let sz = match wml_ct_chunk3_attr(element, "sz") {
+    Some(text) => Some(ST_EighthPointMeasure::parse(text))
+    None => None
+  }
+  let space = match wml_ct_chunk3_attr(element, "space") {
+    Some(text) => Some(ST_PointMeasure::parse(text))
+    None => None
+  }
+  let shadow = wml_ct_chunk3_on_off(wml_ct_chunk3_attr(element, "shadow"))
+  let frame = wml_ct_chunk3_on_off(wml_ct_chunk3_attr(element, "frame"))
+  let r_id = wml_ct_chunk3_attr_ns(element, wml_ct_chunk3_ns_r(), "id")
+  let r_top_left = wml_ct_chunk3_attr_ns(
+    element,
+    wml_ct_chunk3_ns_r(),
+    "topLeft",
+  )
+  let r_top_right = wml_ct_chunk3_attr_ns(
+    element,
+    wml_ct_chunk3_ns_r(),
+    "topRight",
+  )
+  {
+    element,
+    val,
+    color,
+    theme_color,
+    theme_tint,
+    theme_shade,
+    sz,
+    space,
+    shadow,
+    frame,
+    r_id,
+    r_top_left,
+    r_top_right,
+  }
 }
 
 ///|
-pub fn CT_TopPageBorder::parse(element : @xml.Element) -> CT_TopPageBorder {
+/// XSD complex type CT_TopPageBorder — Part 1 §17.6.27.
+pub fn CT_TopPageBorder::parse(
+  element : @xml.Element,
+) -> CT_TopPageBorder raise SchemaViolation {
   CT_TopPageBorder::new(element)
 }
 
 ///|
+/// XSD complex type CT_TopPageBorder — return the preserved element for writers.
 pub fn CT_TopPageBorder::to_element(self : CT_TopPageBorder) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_LineNumber from wml.xsd (§17).
+/// XSD complex type CT_LineNumber — Part 1 §17.6.8 lnNumType. Line-numbering
+/// configuration with four optional attributes: `@countBy`
+/// (ST_DecimalNumber §17.18.10 — line increment), `@start`
+/// (ST_DecimalNumber default `1`), `@distance` (s:ST_TwipsMeasure
+/// §22.9.2.14 — gutter offset), `@restart` (ST_LineNumberRestart
+/// §17.18.51 default `newPage`).
 pub(all) struct CT_LineNumber {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @countBy (ST_DecimalNumber) — optional line increment.
+  count_by : ST_DecimalNumber?
+  /// §17.18.10 @start (ST_DecimalNumber) — optional; `None` ⇒ schema-default `1`.
+  start : ST_DecimalNumber?
+  /// §22.9.2.14 @distance (s:ST_TwipsMeasure) — optional offset (lexical form).
+  distance : String?
+  /// §17.18.51 @restart (ST_LineNumberRestart) — optional; `None` ⇒ schema-default `newPage`.
+  restart : ST_LineNumberRestart?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_LineNumber::new(element : @xml.Element) -> CT_LineNumber {
-  { element, }
+/// XSD complex type CT_LineNumber — Part 1 §17.6.8.
+pub fn CT_LineNumber::new(
+  element : @xml.Element,
+) -> CT_LineNumber raise SchemaViolation {
+  let count_by = match wml_ct_chunk3_attr(element, "countBy") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let start = match wml_ct_chunk3_attr(element, "start") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let distance = wml_ct_chunk3_attr(element, "distance")
+  let restart = match wml_ct_chunk3_attr(element, "restart") {
+    Some(text) => Some(ST_LineNumberRestart::parse(text))
+    None => None
+  }
+  { element, count_by, start, distance, restart }
 }
 
 ///|
-pub fn CT_LineNumber::parse(element : @xml.Element) -> CT_LineNumber {
+/// XSD complex type CT_LineNumber — Part 1 §17.6.8.
+pub fn CT_LineNumber::parse(
+  element : @xml.Element,
+) -> CT_LineNumber raise SchemaViolation {
   CT_LineNumber::new(element)
 }
 
 ///|
+/// XSD complex type CT_LineNumber — return the preserved element for writers.
 pub fn CT_LineNumber::to_element(self : CT_LineNumber) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PageNumber from wml.xsd (§17).
+/// XSD complex type CT_PageNumber — Part 1 §17.6.12 pgNumType. Page-number
+/// configuration with four optional attributes: `@fmt`
+/// (ST_NumberFormat §17.18.59 default `decimal`), `@start`
+/// (ST_DecimalNumber §17.18.10), `@chapStyle` (ST_DecimalNumber —
+/// chapter heading style id), `@chapSep` (ST_ChapterSep §17.18.5
+/// default `hyphen`).
 pub(all) struct CT_PageNumber {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.59 @fmt (ST_NumberFormat) — optional; `None` ⇒ schema-default `decimal`.
+  fmt : ST_NumberFormat?
+  /// §17.18.10 @start (ST_DecimalNumber) — optional initial page number.
+  start : ST_DecimalNumber?
+  /// §17.18.10 @chapStyle (ST_DecimalNumber) — optional chapter style id.
+  chap_style : ST_DecimalNumber?
+  /// §17.18.5 @chapSep (ST_ChapterSep) — optional; `None` ⇒ schema-default `hyphen`.
+  chap_sep : ST_ChapterSep?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageNumber::new(element : @xml.Element) -> CT_PageNumber {
-  { element, }
+/// XSD complex type CT_PageNumber — Part 1 §17.6.12.
+pub fn CT_PageNumber::new(
+  element : @xml.Element,
+) -> CT_PageNumber raise SchemaViolation {
+  let fmt = match wml_ct_chunk3_attr(element, "fmt") {
+    Some(text) => Some(ST_NumberFormat::parse(text))
+    None => None
+  }
+  let start = match wml_ct_chunk3_attr(element, "start") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let chap_style = match wml_ct_chunk3_attr(element, "chapStyle") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let chap_sep = match wml_ct_chunk3_attr(element, "chapSep") {
+    Some(text) => Some(ST_ChapterSep::parse(text))
+    None => None
+  }
+  { element, fmt, start, chap_style, chap_sep }
 }
 
 ///|
-pub fn CT_PageNumber::parse(element : @xml.Element) -> CT_PageNumber {
+/// XSD complex type CT_PageNumber — Part 1 §17.6.12.
+pub fn CT_PageNumber::parse(
+  element : @xml.Element,
+) -> CT_PageNumber raise SchemaViolation {
   CT_PageNumber::new(element)
 }
 
 ///|
+/// XSD complex type CT_PageNumber — return the preserved element for writers.
 pub fn CT_PageNumber::to_element(self : CT_PageNumber) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Column from wml.xsd (§17).
+/// XSD complex type CT_Column — Part 1 §17.6.3 col. Single-column descriptor
+/// with two optional s:ST_TwipsMeasure attributes: `@w` (column width)
+/// and `@space` (inter-column gap, default `0`). Stored as lexical forms
+/// because the shared simple type lives outside the WML domain package.
 pub(all) struct CT_Column {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.14 @w (s:ST_TwipsMeasure) — optional column width (lexical).
+  w : String?
+  /// §22.9.2.14 @space (s:ST_TwipsMeasure) — optional gap; `None` ⇒ schema-default `0`.
+  space : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_Column — Part 1 §17.6.3.
 pub fn CT_Column::new(element : @xml.Element) -> CT_Column {
-  { element, }
+  let w = wml_ct_chunk3_attr(element, "w")
+  let space = wml_ct_chunk3_attr(element, "space")
+  { element, w, space }
 }
 
 ///|
+/// XSD complex type CT_Column — Part 1 §17.6.3.
 pub fn CT_Column::parse(element : @xml.Element) -> CT_Column {
   CT_Column::new(element)
 }
 
 ///|
+/// XSD complex type CT_Column — return the preserved element for writers.
 pub fn CT_Column::to_element(self : CT_Column) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Columns from wml.xsd (§17).
+/// XSD complex type CT_Columns — Part 1 §17.6.4 cols. Multi-column container
+/// with an optional `<col>` (CT_Column §17.6.3) sequence (maxOccurs="45")
+/// and four optional attributes: `@equalWidth` (s:ST_OnOff §22.9.2.7),
+/// `@space` (s:ST_TwipsMeasure §22.9.2.14 default `720` twips), `@num`
+/// (ST_DecimalNumber §17.18.10 default `1`), `@sep` (s:ST_OnOff).
 pub(all) struct CT_Columns {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.7 @equalWidth (s:ST_OnOff) — optional equal-width flag.
+  equal_width : Bool?
+  /// §22.9.2.14 @space (s:ST_TwipsMeasure) — optional default gap; `None` ⇒ schema-default `720`.
+  space : String?
+  /// §17.18.10 @num (ST_DecimalNumber) — optional column count; `None` ⇒ schema-default `1`.
+  num : ST_DecimalNumber?
+  /// §22.9.2.7 @sep (s:ST_OnOff) — optional separator-rule flag.
+  sep : Bool?
+  /// §17.6.3 `<col>` (CT_Column) — explicit column descriptors (max 45).
+  cols : Array[CT_Column]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Columns::new(element : @xml.Element) -> CT_Columns {
-  { element, }
+/// XSD complex type CT_Columns — Part 1 §17.6.4.
+pub fn CT_Columns::new(
+  element : @xml.Element,
+) -> CT_Columns raise SchemaViolation {
+  let equal_width = wml_ct_chunk3_on_off(
+    wml_ct_chunk3_attr(element, "equalWidth"),
+  )
+  let space = wml_ct_chunk3_attr(element, "space")
+  let num = match wml_ct_chunk3_attr(element, "num") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let sep = wml_ct_chunk3_on_off(wml_ct_chunk3_attr(element, "sep"))
+  let cols = []
+  for child in wml_ct_chunk3_children(element, "col") {
+    cols.push(CT_Column::new(child))
+  }
+  { element, equal_width, space, num, sep, cols }
 }
 
 ///|
-pub fn CT_Columns::parse(element : @xml.Element) -> CT_Columns {
+/// XSD complex type CT_Columns — Part 1 §17.6.4.
+pub fn CT_Columns::parse(
+  element : @xml.Element,
+) -> CT_Columns raise SchemaViolation {
   CT_Columns::new(element)
 }
 
 ///|
+/// XSD complex type CT_Columns — return the preserved element for writers.
 pub fn CT_Columns::to_element(self : CT_Columns) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_VerticalJc from wml.xsd (§17).
+/// XSD complex type CT_VerticalJc — Part 1 §17.6.23 vAlign. Section vertical
+/// alignment with a required `@val` (ST_VerticalJc §17.18.84 — top /
+/// center / both / bottom).
 pub(all) struct CT_VerticalJc {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.84 @val (ST_VerticalJc) — required alignment.
+  val : ST_VerticalJc
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_VerticalJc::new(element : @xml.Element) -> CT_VerticalJc {
-  { element, }
+/// XSD complex type CT_VerticalJc — Part 1 §17.6.23.
+pub fn CT_VerticalJc::new(
+  element : @xml.Element,
+) -> CT_VerticalJc raise SchemaViolation {
+  let raw = wml_ct_chunk3_required_attr(
+    element, "val", "CT_VerticalJc", "Part 1 §17.18.84 ST_VerticalJc",
+  )
+  let val = ST_VerticalJc::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_VerticalJc::parse(element : @xml.Element) -> CT_VerticalJc {
+/// XSD complex type CT_VerticalJc — Part 1 §17.6.23.
+pub fn CT_VerticalJc::parse(
+  element : @xml.Element,
+) -> CT_VerticalJc raise SchemaViolation {
   CT_VerticalJc::new(element)
 }
 
 ///|
+/// XSD complex type CT_VerticalJc — return the preserved element for writers.
 pub fn CT_VerticalJc::to_element(self : CT_VerticalJc) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_DocGrid from wml.xsd (§17).
+/// XSD complex type CT_DocGrid — Part 1 §17.6.5 docGrid. Document grid
+/// descriptor with three optional attributes: `@type` (ST_DocGrid
+/// §17.18.14), `@linePitch` (ST_DecimalNumber §17.18.10), `@charSpace`
+/// (ST_DecimalNumber §17.18.10).
 pub(all) struct CT_DocGrid {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.14 @type (ST_DocGrid) — optional grid kind.
+  type_ : ST_DocGrid?
+  /// §17.18.10 @linePitch (ST_DecimalNumber) — optional line height.
+  line_pitch : ST_DecimalNumber?
+  /// §17.18.10 @charSpace (ST_DecimalNumber) — optional character spacing.
+  char_space : ST_DecimalNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocGrid::new(element : @xml.Element) -> CT_DocGrid {
-  { element, }
+/// XSD complex type CT_DocGrid — Part 1 §17.6.5.
+pub fn CT_DocGrid::new(
+  element : @xml.Element,
+) -> CT_DocGrid raise SchemaViolation {
+  let type_ = match wml_ct_chunk3_attr(element, "type") {
+    Some(text) => Some(ST_DocGrid::parse(text))
+    None => None
+  }
+  let line_pitch = match wml_ct_chunk3_attr(element, "linePitch") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let char_space = match wml_ct_chunk3_attr(element, "charSpace") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  { element, type_, line_pitch, char_space }
 }
 
 ///|
-pub fn CT_DocGrid::parse(element : @xml.Element) -> CT_DocGrid {
+/// XSD complex type CT_DocGrid — Part 1 §17.6.5.
+pub fn CT_DocGrid::parse(
+  element : @xml.Element,
+) -> CT_DocGrid raise SchemaViolation {
   CT_DocGrid::new(element)
 }
 
 ///|
+/// XSD complex type CT_DocGrid — return the preserved element for writers.
 pub fn CT_DocGrid::to_element(self : CT_DocGrid) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_HdrFtrRef from wml.xsd (§17).
+/// XSD complex type CT_HdrFtrRef — Part 1 §17.10.5 headerReference /
+/// §17.10.3 footerReference. `xsd:complexContent` extension of CT_Rel
+/// (§22.2 r:id reference) adding a required `@type` (ST_HdrFtr §17.18.36
+/// — even / default / first) selecting the header/footer applicability.
 pub(all) struct CT_HdrFtrRef {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.36 @type (ST_HdrFtr) — required applicability selector.
+  type_ : ST_HdrFtr
+  /// §A.6.7 @r:id — required relationship reference inherited from CT_Rel.
+  r_id : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_HdrFtrRef::new(element : @xml.Element) -> CT_HdrFtrRef {
-  { element, }
+/// XSD complex type CT_HdrFtrRef — Part 1 §17.10.5.
+pub fn CT_HdrFtrRef::new(
+  element : @xml.Element,
+) -> CT_HdrFtrRef raise SchemaViolation {
+  let raw_type = wml_ct_chunk3_required_attr(
+    element, "type", "CT_HdrFtrRef", "Part 1 §17.18.36 ST_HdrFtr",
+  )
+  let type_ = ST_HdrFtr::parse(raw_type)
+  let r_id = wml_ct_chunk3_attr_ns(element, wml_ct_chunk3_ns_r(), "id")
+  { element, type_, r_id }
 }
 
 ///|
-pub fn CT_HdrFtrRef::parse(element : @xml.Element) -> CT_HdrFtrRef {
+/// XSD complex type CT_HdrFtrRef — Part 1 §17.10.5.
+pub fn CT_HdrFtrRef::parse(
+  element : @xml.Element,
+) -> CT_HdrFtrRef raise SchemaViolation {
   CT_HdrFtrRef::new(element)
 }
 
 ///|
+/// XSD complex type CT_HdrFtrRef — return the preserved element for writers.
 pub fn CT_HdrFtrRef::to_element(self : CT_HdrFtrRef) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_HdrFtr from wml.xsd (§17).
+/// XSD complex type CT_HdrFtr — Part 1 §17.10.4 hdr / §17.10.2 ftr.
+/// Header / footer body content: one-or-more EG_BlockLevelElts (§A.1
+/// model group, materialised as `Array[@xml.Element]` because the group
+/// spans every WordprocessingML block-level construct and is parsed
+/// lazily by callers). The element has no XSD attributes.
 pub(all) struct CT_HdrFtr {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// EG_BlockLevelElts payload — raw block-level child elements in document order.
+  block_level_elts : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_HdrFtr — Part 1 §17.10.4.
 pub fn CT_HdrFtr::new(element : @xml.Element) -> CT_HdrFtr {
-  { element, }
+  let block_level_elts : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => block_level_elts.push(e)
+      _ => ()
+    }
+  }
+  { element, block_level_elts }
 }
 
 ///|
+/// XSD complex type CT_HdrFtr — Part 1 §17.10.4.
 pub fn CT_HdrFtr::parse(element : @xml.Element) -> CT_HdrFtr {
   CT_HdrFtr::new(element)
 }
 
 ///|
+/// XSD complex type CT_HdrFtr — return the preserved element for writers.
 pub fn CT_HdrFtr::to_element(self : CT_HdrFtr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SectPrBase from wml.xsd (§17).
+/// XSD complex type CT_SectPrBase — Part 1 §17.6.18 sectPr (legacy base).
+/// Section-properties base type. Carries the EG_SectPrContents model group
+/// (§A.1 — twenty optional ordered children covering footnotePr / endnotePr /
+/// type / pgSz / pgMar / paperSrc / pgBorders / lnNumType / pgNumType /
+/// cols / formProt / vAlign / noEndnote / titlePg / textDirection / bidi /
+/// rtlGutter / docGrid / printerSettings) plus AG_SectPrAttributes
+/// (rsidRPr / rsidDel / rsidR / rsidSect — all ST_LongHexNumber §17.18.50).
+/// The model-group children are stored as raw element references because
+/// most of their typed structs remain in chunk2.
 pub(all) struct CT_SectPrBase {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.50 @rsidRPr (ST_LongHexNumber) — optional run-property rsid.
+  rsid_rpr : ST_LongHexNumber?
+  /// §17.18.50 @rsidDel (ST_LongHexNumber) — optional deletion rsid.
+  rsid_del : ST_LongHexNumber?
+  /// §17.18.50 @rsidR (ST_LongHexNumber) — optional run rsid.
+  rsid_r : ST_LongHexNumber?
+  /// §17.18.50 @rsidSect (ST_LongHexNumber) — optional section-properties rsid.
+  rsid_sect : ST_LongHexNumber?
+  /// EG_SectPrContents children captured in document order; per-element
+  /// typing is provided by chunk1/chunk3 typed structs as appropriate.
+  contents : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SectPrBase::new(element : @xml.Element) -> CT_SectPrBase {
-  { element, }
+/// XSD complex type CT_SectPrBase — Part 1 §17.6.18 (legacy base).
+pub fn CT_SectPrBase::new(
+  element : @xml.Element,
+) -> CT_SectPrBase raise SchemaViolation {
+  let rsid_rpr = match wml_ct_chunk3_attr(element, "rsidRPr") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_del = match wml_ct_chunk3_attr(element, "rsidDel") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_r = match wml_ct_chunk3_attr(element, "rsidR") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_sect = match wml_ct_chunk3_attr(element, "rsidSect") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let contents : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => contents.push(e)
+      _ => ()
+    }
+  }
+  { element, rsid_rpr, rsid_del, rsid_r, rsid_sect, contents }
 }
 
 ///|
-pub fn CT_SectPrBase::parse(element : @xml.Element) -> CT_SectPrBase {
+/// XSD complex type CT_SectPrBase — Part 1 §17.6.18.
+pub fn CT_SectPrBase::parse(
+  element : @xml.Element,
+) -> CT_SectPrBase raise SchemaViolation {
   CT_SectPrBase::new(element)
 }
 
 ///|
+/// XSD complex type CT_SectPrBase — return the preserved element for writers.
 pub fn CT_SectPrBase::to_element(self : CT_SectPrBase) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SectPr from wml.xsd (§17).
+/// XSD complex type CT_SectPr — Part 1 §17.6.18 sectPr. Section-properties
+/// type: EG_HdrFtrReferences (minOccurs=0 maxOccurs=6 — alternating
+/// header / footer references), EG_SectPrContents (see CT_SectPrBase),
+/// optional `<sectPrChange>` (CT_SectPrChange §17.13.5.34), plus
+/// AG_SectPrAttributes (rsidRPr / rsidDel / rsidR / rsidSect).
 pub(all) struct CT_SectPr {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.50 @rsidRPr (ST_LongHexNumber) — optional run-property rsid.
+  rsid_rpr : ST_LongHexNumber?
+  /// §17.18.50 @rsidDel (ST_LongHexNumber) — optional deletion rsid.
+  rsid_del : ST_LongHexNumber?
+  /// §17.18.50 @rsidR (ST_LongHexNumber) — optional run rsid.
+  rsid_r : ST_LongHexNumber?
+  /// §17.18.50 @rsidSect (ST_LongHexNumber) — optional section rsid.
+  rsid_sect : ST_LongHexNumber?
+  /// EG_HdrFtrReferences `<headerReference>` (CT_HdrFtrRef) entries.
+  header_references : Array[CT_HdrFtrRef]
+  /// EG_HdrFtrReferences `<footerReference>` (CT_HdrFtrRef) entries.
+  footer_references : Array[CT_HdrFtrRef]
+  /// EG_SectPrContents children captured in document order.
+  contents : Array[@xml.Element]
+  /// §17.13.5.34 `<sectPrChange>` (CT_SectPrChange) — optional revision marker.
+  sect_pr_change : CT_SectPrChange?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SectPr::new(element : @xml.Element) -> CT_SectPr {
-  { element, }
+/// XSD complex type CT_SectPr — Part 1 §17.6.18.
+pub fn CT_SectPr::new(
+  element : @xml.Element,
+) -> CT_SectPr raise SchemaViolation {
+  let rsid_rpr = match wml_ct_chunk3_attr(element, "rsidRPr") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_del = match wml_ct_chunk3_attr(element, "rsidDel") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_r = match wml_ct_chunk3_attr(element, "rsidR") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_sect = match wml_ct_chunk3_attr(element, "rsidSect") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let header_references = []
+  for e in wml_ct_chunk3_children(element, "headerReference") {
+    header_references.push(CT_HdrFtrRef::new(e))
+  }
+  let footer_references = []
+  for e in wml_ct_chunk3_children(element, "footerReference") {
+    footer_references.push(CT_HdrFtrRef::new(e))
+  }
+  let contents : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => {
+        let ln = e.name.local_name
+        let is_handled = ln == "headerReference" ||
+          ln == "footerReference" ||
+          ln == "sectPrChange"
+        if not(is_handled) {
+          contents.push(e)
+        }
+      }
+      _ => ()
+    }
+  }
+  let sect_pr_change = match
+    wml_ct_chunk3_first_child(element, "sectPrChange") {
+    Some(e) => Some(CT_SectPrChange::new(e))
+    None => None
+  }
+  {
+    element,
+    rsid_rpr,
+    rsid_del,
+    rsid_r,
+    rsid_sect,
+    header_references,
+    footer_references,
+    contents,
+    sect_pr_change,
+  }
 }
 
 ///|
-pub fn CT_SectPr::parse(element : @xml.Element) -> CT_SectPr {
+/// XSD complex type CT_SectPr — Part 1 §17.6.18.
+pub fn CT_SectPr::parse(
+  element : @xml.Element,
+) -> CT_SectPr raise SchemaViolation {
   CT_SectPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_SectPr — return the preserved element for writers.
 pub fn CT_SectPr::to_element(self : CT_SectPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Br from wml.xsd (§17).
+/// XSD complex type CT_Br — Part 1 §17.3.3.1 br. Run-level break element
+/// with two optional attributes: `@type` (ST_BrType §17.18.3 — page /
+/// column / textWrapping) and `@clear` (ST_BrClear §17.18.4 — none /
+/// left / right / all, used when `@type="textWrapping"`).
 pub(all) struct CT_Br {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.3 @type (ST_BrType) — optional break kind.
+  type_ : ST_BrType?
+  /// §17.18.4 @clear (ST_BrClear) — optional text-wrap clear policy.
+  clear : ST_BrClear?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Br::new(element : @xml.Element) -> CT_Br {
-  { element, }
+/// XSD complex type CT_Br — Part 1 §17.3.3.1.
+pub fn CT_Br::new(element : @xml.Element) -> CT_Br raise SchemaViolation {
+  let type_ = match wml_ct_chunk3_attr(element, "type") {
+    Some(text) => Some(ST_BrType::parse(text))
+    None => None
+  }
+  let clear = match wml_ct_chunk3_attr(element, "clear") {
+    Some(text) => Some(ST_BrClear::parse(text))
+    None => None
+  }
+  { element, type_, clear }
 }
 
 ///|
-pub fn CT_Br::parse(element : @xml.Element) -> CT_Br {
+/// XSD complex type CT_Br — Part 1 §17.3.3.1.
+pub fn CT_Br::parse(element : @xml.Element) -> CT_Br raise SchemaViolation {
   CT_Br::new(element)
 }
 
 ///|
+/// XSD complex type CT_Br — return the preserved element for writers.
 pub fn CT_Br::to_element(self : CT_Br) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PTab from wml.xsd (§17).
+/// XSD complex type CT_PTab — Part 1 §17.3.3.23 ptab. Custom-tab descriptor
+/// with three required attributes: `@alignment` (ST_PTabAlignment §17.18.69
+/// — left / center / right), `@relativeTo` (ST_PTabRelativeTo §17.18.71 —
+/// margin / indent), `@leader` (ST_PTabLeader §17.18.70 — none / dot /
+/// hyphen / underscore / middleDot).
 pub(all) struct CT_PTab {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.69 @alignment (ST_PTabAlignment) — required alignment.
+  alignment : ST_PTabAlignment
+  /// §17.18.71 @relativeTo (ST_PTabRelativeTo) — required relative-to anchor.
+  relative_to : ST_PTabRelativeTo
+  /// §17.18.70 @leader (ST_PTabLeader) — required leader glyph.
+  leader : ST_PTabLeader
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PTab::new(element : @xml.Element) -> CT_PTab {
-  { element, }
+/// XSD complex type CT_PTab — Part 1 §17.3.3.23.
+pub fn CT_PTab::new(element : @xml.Element) -> CT_PTab raise SchemaViolation {
+  let raw_alignment = wml_ct_chunk3_required_attr(
+    element, "alignment", "CT_PTab", "Part 1 §17.18.69 ST_PTabAlignment",
+  )
+  let alignment = ST_PTabAlignment::parse(raw_alignment)
+  let raw_relative_to = wml_ct_chunk3_required_attr(
+    element, "relativeTo", "CT_PTab", "Part 1 §17.18.71 ST_PTabRelativeTo",
+  )
+  let relative_to = ST_PTabRelativeTo::parse(raw_relative_to)
+  let raw_leader = wml_ct_chunk3_required_attr(
+    element, "leader", "CT_PTab", "Part 1 §17.18.70 ST_PTabLeader",
+  )
+  let leader = ST_PTabLeader::parse(raw_leader)
+  { element, alignment, relative_to, leader }
 }
 
 ///|
-pub fn CT_PTab::parse(element : @xml.Element) -> CT_PTab {
+/// XSD complex type CT_PTab — Part 1 §17.3.3.23.
+pub fn CT_PTab::parse(element : @xml.Element) -> CT_PTab raise SchemaViolation {
   CT_PTab::new(element)
 }
 
 ///|
+/// XSD complex type CT_PTab — return the preserved element for writers.
 pub fn CT_PTab::to_element(self : CT_PTab) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Sym from wml.xsd (§17).
+/// XSD complex type CT_Sym — Part 1 §17.3.3.30 sym. Symbol-character run
+/// content with two optional attributes: `@font` (s:ST_String — typeface
+/// name) and `@char` (ST_ShortHexNumber §17.18.79 — four hex digit
+/// codepoint).
 pub(all) struct CT_Sym {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 @font (s:ST_String) — optional font face name.
+  font : String?
+  /// §17.18.79 @char (ST_ShortHexNumber) — optional codepoint.
+  char_ : ST_ShortHexNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Sym::new(element : @xml.Element) -> CT_Sym {
-  { element, }
+/// XSD complex type CT_Sym — Part 1 §17.3.3.30.
+pub fn CT_Sym::new(element : @xml.Element) -> CT_Sym raise SchemaViolation {
+  let font = wml_ct_chunk3_attr(element, "font")
+  let char_ = match wml_ct_chunk3_attr(element, "char") {
+    Some(text) => Some(ST_ShortHexNumber::parse(text))
+    None => None
+  }
+  { element, font, char_ }
 }
 
 ///|
-pub fn CT_Sym::parse(element : @xml.Element) -> CT_Sym {
+/// XSD complex type CT_Sym — Part 1 §17.3.3.30.
+pub fn CT_Sym::parse(element : @xml.Element) -> CT_Sym raise SchemaViolation {
   CT_Sym::new(element)
 }
 
 ///|
+/// XSD complex type CT_Sym — return the preserved element for writers.
 pub fn CT_Sym::to_element(self : CT_Sym) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_ProofErr from wml.xsd (§17).
+/// XSD complex type CT_ProofErr — Part 1 §17.13.8.1 proofErr. Marker for a
+/// spelling or grammar boundary. Single required `@type` attribute
+/// (ST_ProofErr §17.18.72 — spellStart / spellEnd / gramStart / gramEnd).
 pub(all) struct CT_ProofErr {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.72 @type (ST_ProofErr) — required boundary kind.
+  type_ : ST_ProofErr
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ProofErr::new(element : @xml.Element) -> CT_ProofErr {
-  { element, }
+/// XSD complex type CT_ProofErr — Part 1 §17.13.8.1.
+pub fn CT_ProofErr::new(
+  element : @xml.Element,
+) -> CT_ProofErr raise SchemaViolation {
+  let raw = wml_ct_chunk3_required_attr(
+    element, "type", "CT_ProofErr", "Part 1 §17.18.72 ST_ProofErr",
+  )
+  let type_ = ST_ProofErr::parse(raw)
+  { element, type_ }
 }
 
 ///|
-pub fn CT_ProofErr::parse(element : @xml.Element) -> CT_ProofErr {
+/// XSD complex type CT_ProofErr — Part 1 §17.13.8.1.
+pub fn CT_ProofErr::parse(
+  element : @xml.Element,
+) -> CT_ProofErr raise SchemaViolation {
   CT_ProofErr::new(element)
 }
 
 ///|
+/// XSD complex type CT_ProofErr — return the preserved element for writers.
 pub fn CT_ProofErr::to_element(self : CT_ProofErr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Perm from wml.xsd (§17).
+/// XSD complex type CT_Perm — Part 1 §17.13.7.2 permEnd / permStart base.
+/// Permission-range marker with required `@id` (s:ST_String — range id)
+/// and optional `@displacedByCustomXml` (ST_DisplacedByCustomXml §17.18.13
+/// — next / prev).
 pub(all) struct CT_Perm {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 @id (s:ST_String) — required range id.
+  id : String
+  /// §17.18.13 @displacedByCustomXml (ST_DisplacedByCustomXml) — optional.
+  displaced_by_custom_xml : ST_DisplacedByCustomXml?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Perm::new(element : @xml.Element) -> CT_Perm {
-  { element, }
+/// XSD complex type CT_Perm — Part 1 §17.13.7.2.
+pub fn CT_Perm::new(element : @xml.Element) -> CT_Perm raise SchemaViolation {
+  let id = wml_ct_chunk3_required_attr(
+    element, "id", "CT_Perm", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let displaced_by_custom_xml = match
+    wml_ct_chunk3_attr(element, "displacedByCustomXml") {
+    Some(text) => Some(ST_DisplacedByCustomXml::parse(text))
+    None => None
+  }
+  { element, id, displaced_by_custom_xml }
 }
 
 ///|
-pub fn CT_Perm::parse(element : @xml.Element) -> CT_Perm {
+/// XSD complex type CT_Perm — Part 1 §17.13.7.2.
+pub fn CT_Perm::parse(element : @xml.Element) -> CT_Perm raise SchemaViolation {
   CT_Perm::new(element)
 }
 
 ///|
+/// XSD complex type CT_Perm — return the preserved element for writers.
 pub fn CT_Perm::to_element(self : CT_Perm) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_PermStart from wml.xsd (§17).
+/// XSD complex type CT_PermStart — Part 1 §17.13.7.3 permStart.
+/// `xsd:complexContent` extension of CT_Perm (§17.13.7.2) adding four
+/// optional attributes: `@edGrp` (ST_EdGrp §17.18.17 — granted group),
+/// `@ed` (s:ST_String — granted user), `@colFirst` / `@colLast`
+/// (ST_DecimalNumber §17.18.10 — table column range).
 pub(all) struct CT_PermStart {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 @id (s:ST_String) — required range id (inherited from CT_Perm).
+  id : String
+  /// §17.18.13 @displacedByCustomXml (ST_DisplacedByCustomXml) — optional (inherited).
+  displaced_by_custom_xml : ST_DisplacedByCustomXml?
+  /// §17.18.17 @edGrp (ST_EdGrp) — optional granted editor group.
+  ed_grp : ST_EdGrp?
+  /// §22.9.2.13 @ed (s:ST_String) — optional granted editor user.
+  ed : String?
+  /// §17.18.10 @colFirst (ST_DecimalNumber) — optional first column id.
+  col_first : ST_DecimalNumber?
+  /// §17.18.10 @colLast (ST_DecimalNumber) — optional last column id.
+  col_last : ST_DecimalNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PermStart::new(element : @xml.Element) -> CT_PermStart {
-  { element, }
+/// XSD complex type CT_PermStart — Part 1 §17.13.7.3.
+pub fn CT_PermStart::new(
+  element : @xml.Element,
+) -> CT_PermStart raise SchemaViolation {
+  let id = wml_ct_chunk3_required_attr(
+    element, "id", "CT_PermStart", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let displaced_by_custom_xml = match
+    wml_ct_chunk3_attr(element, "displacedByCustomXml") {
+    Some(text) => Some(ST_DisplacedByCustomXml::parse(text))
+    None => None
+  }
+  let ed_grp = match wml_ct_chunk3_attr(element, "edGrp") {
+    Some(text) => Some(ST_EdGrp::parse(text))
+    None => None
+  }
+  let ed = wml_ct_chunk3_attr(element, "ed")
+  let col_first = match wml_ct_chunk3_attr(element, "colFirst") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let col_last = match wml_ct_chunk3_attr(element, "colLast") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  { element, id, displaced_by_custom_xml, ed_grp, ed, col_first, col_last }
 }
 
 ///|
-pub fn CT_PermStart::parse(element : @xml.Element) -> CT_PermStart {
+/// XSD complex type CT_PermStart — Part 1 §17.13.7.3.
+pub fn CT_PermStart::parse(
+  element : @xml.Element,
+) -> CT_PermStart raise SchemaViolation {
   CT_PermStart::new(element)
 }
 
 ///|
+/// XSD complex type CT_PermStart — return the preserved element for writers.
 pub fn CT_PermStart::to_element(self : CT_PermStart) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Text from wml.xsd (§17).
+/// XSD complex type CT_Text — Part 1 §17.3.3.31 t / §17.3.3.4 delText etc.
+/// `xsd:simpleContent` extension of s:ST_String — the element body carries
+/// the text. Optional `@xml:space` attribute selects whitespace handling
+/// (preserve / default per W3C XML 1.0 §2.10).
 pub(all) struct CT_Text {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 simple-content payload — the concatenated text / CDATA value.
+  value : String
+  /// @xml:space — optional whitespace policy.
+  xml_space : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_Text — Part 1 §17.3.3.31.
 pub fn CT_Text::new(element : @xml.Element) -> CT_Text {
-  { element, }
+  let value = wml_ct_chunk3_text_value(element)
+  let xml_space = wml_ct_chunk3_attr(element, "space")
+  { element, value, xml_space }
 }
 
 ///|
+/// XSD complex type CT_Text — Part 1 §17.3.3.31.
 pub fn CT_Text::parse(element : @xml.Element) -> CT_Text {
   CT_Text::new(element)
 }
 
 ///|
+/// XSD complex type CT_Text — return the preserved element for writers.
 pub fn CT_Text::to_element(self : CT_Text) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_R from wml.xsd (§17).
+/// XSD complex type CT_R — Part 1 §17.3.2.25 r. WordprocessingML run
+/// container: optional `<rPr>` (CT_RPr §17.3.2.27) and the
+/// EG_RunInnerContent model-group sequence (§A.1 — `br`, `t`,
+/// `contentPart`, `delText`, `instrText`, `delInstrText`, `noBreakHyphen`,
+/// `softHyphen`, date / month / year tokens, refs, `sym`, `pgNum`, `cr`,
+/// `tab`, `object`, `pict`, `fldChar`, `ruby`, footnote/endnote
+/// references, `commentReference`, `drawing`, `ptab`,
+/// `lastRenderedPageBreak`). Three optional rsid attributes:
+/// `@rsidRPr` / `@rsidDel` / `@rsidR` (ST_LongHexNumber §17.18.50).
 pub(all) struct CT_R {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.50 @rsidRPr (ST_LongHexNumber) — optional run-property rsid.
+  rsid_rpr : ST_LongHexNumber?
+  /// §17.18.50 @rsidDel (ST_LongHexNumber) — optional deletion rsid.
+  rsid_del : ST_LongHexNumber?
+  /// §17.18.50 @rsidR (ST_LongHexNumber) — optional run rsid.
+  rsid_r : ST_LongHexNumber?
+  /// §17.3.2.27 `<rPr>` (CT_RPr) — optional run properties.
+  r_pr : CT_RPr?
+  /// EG_RunInnerContent child elements in document order (raw, because the
+  /// group spans 30+ heterogeneous element types — typed projections
+  /// remain the responsibility of higher-layer reader.mbt code).
+  inner_content : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_R::new(element : @xml.Element) -> CT_R {
-  { element, }
+/// XSD complex type CT_R — Part 1 §17.3.2.25.
+pub fn CT_R::new(element : @xml.Element) -> CT_R raise SchemaViolation {
+  let rsid_rpr = match wml_ct_chunk3_attr(element, "rsidRPr") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_del = match wml_ct_chunk3_attr(element, "rsidDel") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_r = match wml_ct_chunk3_attr(element, "rsidR") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let r_pr = match wml_ct_chunk3_first_child(element, "rPr") {
+    Some(e) => Some(CT_RPr::new(e))
+    None => None
+  }
+  let inner_content : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => if e.name.local_name != "rPr" { inner_content.push(e) }
+      _ => ()
+    }
+  }
+  { element, rsid_rpr, rsid_del, rsid_r, r_pr, inner_content }
 }
 
 ///|
-pub fn CT_R::parse(element : @xml.Element) -> CT_R {
+/// XSD complex type CT_R — Part 1 §17.3.2.25.
+pub fn CT_R::parse(element : @xml.Element) -> CT_R raise SchemaViolation {
   CT_R::new(element)
 }
 
 ///|
+/// XSD complex type CT_R — return the preserved element for writers.
 pub fn CT_R::to_element(self : CT_R) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Fonts from wml.xsd (§17).
+/// XSD complex type CT_Fonts — Part 1 §17.3.2.26 rFonts. Run typeface
+/// descriptor with nine optional attributes covering hint, explicit
+/// face names (ASCII / hAnsi / EastAsia / Complex Script), and the
+/// theme-derived counterparts (asciiTheme / hAnsiTheme / eastAsiaTheme /
+/// cstheme).
 pub(all) struct CT_Fonts {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.39 @hint (ST_Hint) — optional run-font hint.
+  hint : ST_Hint?
+  /// §22.9.2.13 @ascii (s:ST_String) — optional ASCII face name.
+  ascii : String?
+  /// §22.9.2.13 @hAnsi (s:ST_String) — optional High-ANSI face name.
+  h_ansi : String?
+  /// §22.9.2.13 @eastAsia (s:ST_String) — optional East-Asian face name.
+  east_asia : String?
+  /// §22.9.2.13 @cs (s:ST_String) — optional Complex-Script face name.
+  cs : String?
+  /// §17.18.96 @asciiTheme (ST_Theme) — optional theme-derived ASCII font.
+  ascii_theme : ST_Theme?
+  /// §17.18.96 @hAnsiTheme (ST_Theme) — optional theme-derived High-ANSI font.
+  h_ansi_theme : ST_Theme?
+  /// §17.18.96 @eastAsiaTheme (ST_Theme) — optional theme-derived East-Asian font.
+  east_asia_theme : ST_Theme?
+  /// §17.18.96 @cstheme (ST_Theme) — optional theme-derived Complex-Script font.
+  cstheme : ST_Theme?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Fonts::new(element : @xml.Element) -> CT_Fonts {
-  { element, }
+/// XSD complex type CT_Fonts — Part 1 §17.3.2.26.
+pub fn CT_Fonts::new(element : @xml.Element) -> CT_Fonts raise SchemaViolation {
+  let hint = match wml_ct_chunk3_attr(element, "hint") {
+    Some(text) => Some(ST_Hint::parse(text))
+    None => None
+  }
+  let ascii = wml_ct_chunk3_attr(element, "ascii")
+  let h_ansi = wml_ct_chunk3_attr(element, "hAnsi")
+  let east_asia = wml_ct_chunk3_attr(element, "eastAsia")
+  let cs = wml_ct_chunk3_attr(element, "cs")
+  let ascii_theme = match wml_ct_chunk3_attr(element, "asciiTheme") {
+    Some(text) => Some(ST_Theme::parse(text))
+    None => None
+  }
+  let h_ansi_theme = match wml_ct_chunk3_attr(element, "hAnsiTheme") {
+    Some(text) => Some(ST_Theme::parse(text))
+    None => None
+  }
+  let east_asia_theme = match wml_ct_chunk3_attr(element, "eastAsiaTheme") {
+    Some(text) => Some(ST_Theme::parse(text))
+    None => None
+  }
+  let cstheme = match wml_ct_chunk3_attr(element, "cstheme") {
+    Some(text) => Some(ST_Theme::parse(text))
+    None => None
+  }
+  {
+    element,
+    hint,
+    ascii,
+    h_ansi,
+    east_asia,
+    cs,
+    ascii_theme,
+    h_ansi_theme,
+    east_asia_theme,
+    cstheme,
+  }
 }
 
 ///|
-pub fn CT_Fonts::parse(element : @xml.Element) -> CT_Fonts {
+/// XSD complex type CT_Fonts — Part 1 §17.3.2.26.
+pub fn CT_Fonts::parse(
+  element : @xml.Element,
+) -> CT_Fonts raise SchemaViolation {
   CT_Fonts::new(element)
 }
 
 ///|
+/// XSD complex type CT_Fonts — return the preserved element for writers.
 pub fn CT_Fonts::to_element(self : CT_Fonts) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_RPr from wml.xsd (§17).
+/// XSD complex type CT_RPr — Part 1 §17.3.2.27 rPr. Run-properties payload:
+/// EG_RPrContent which is EG_RPrBase (the 39 run-property elements from
+/// `<rStyle>` through `<oMath>`) plus an optional `<rPrChange>`
+/// (CT_RPrChange §17.13.5.31). The base-group children are kept as
+/// `Array[@xml.Element]` because chunk2 still owns their typed structs.
 pub(all) struct CT_RPr {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// EG_RPrBase child elements in document order (raw — typed in chunk1/chunk2/chunk3).
+  base : Array[@xml.Element]
+  /// §17.13.5.31 `<rPrChange>` (CT_RPrChange) — optional revision marker.
+  r_pr_change : CT_RPrChange?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_RPr — Part 1 §17.3.2.27.
 pub fn CT_RPr::new(element : @xml.Element) -> CT_RPr {
-  { element, }
+  let base : Array[@xml.Element] = []
+  let mut r_pr_change : CT_RPrChange? = None
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        if e.name.local_name == "rPrChange" {
+          if r_pr_change is None {
+            r_pr_change = Some(CT_RPrChange::new(e))
+          }
+        } else {
+          base.push(e)
+        }
+      _ => ()
+    }
+  }
+  { element, base, r_pr_change }
 }
 
 ///|
+/// XSD complex type CT_RPr — Part 1 §17.3.2.27.
 pub fn CT_RPr::parse(element : @xml.Element) -> CT_RPr {
   CT_RPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_RPr — return the preserved element for writers.
 pub fn CT_RPr::to_element(self : CT_RPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_MathCtrlIns from wml.xsd (§17).
-pub(all) struct CT_MathCtrlIns {
-  element : @xml.Element
+/// XSD complex type CT_MathCtrlIns — Part 1 §17.3.2.16 oMath insert.
+/// `xsd:complexContent` extension of CT_TrackChange (§17.13.5.13) adding
+/// an optional xsd:choice between `<del>` (CT_RPrChange §17.13.5.31) and
+/// `<rPr>` (CT_RPr §17.3.2.27).
+pub(all) enum CT_MathCtrlInsChoice {
+  /// §17.13.5.31 `<del>` (CT_RPrChange) branch of the xsd:choice.
+  CT_MathCtrlInsChoice_Del(CT_RPrChange)
+  /// §17.3.2.27 `<rPr>` (CT_RPr) branch of the xsd:choice.
+  CT_MathCtrlInsChoice_RPr(CT_RPr)
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_MathCtrlIns — Part 1 §17.3.2.16.
+pub(all) struct CT_MathCtrlIns {
+  /// Source element kept for builder round-trip.
+  element : @xml.Element
+  /// CT_TrackChange base — captured as the source element because chunk2
+  /// still owns the typed projection.
+  track_change : CT_TrackChange
+  /// Optional `<del>`/`<rPr>` xsd:choice payload (minOccurs=0).
+  choice : CT_MathCtrlInsChoice?
+} derive(Eq, Debug)
+
+///|
+/// XSD complex type CT_MathCtrlIns — Part 1 §17.3.2.16.
 pub fn CT_MathCtrlIns::new(element : @xml.Element) -> CT_MathCtrlIns {
-  { element, }
+  let track_change = CT_TrackChange::new(element)
+  let choice = match wml_ct_chunk3_first_choice(element, ["del", "rPr"]) {
+    Some((e, "del")) => Some(CT_MathCtrlInsChoice_Del(CT_RPrChange::new(e)))
+    Some((e, "rPr")) => Some(CT_MathCtrlInsChoice_RPr(CT_RPr::new(e)))
+    Some(_) => None
+    None => None
+  }
+  { element, track_change, choice }
 }
 
 ///|
+/// XSD complex type CT_MathCtrlIns — Part 1 §17.3.2.16.
 pub fn CT_MathCtrlIns::parse(element : @xml.Element) -> CT_MathCtrlIns {
   CT_MathCtrlIns::new(element)
 }
 
 ///|
+/// XSD complex type CT_MathCtrlIns — return the preserved element for writers.
 pub fn CT_MathCtrlIns::to_element(self : CT_MathCtrlIns) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_MathCtrlDel from wml.xsd (§17).
+/// XSD complex type CT_MathCtrlDel — Part 1 §17.3.2.15 oMath delete.
+/// `xsd:complexContent` extension of CT_TrackChange (§17.13.5.13) adding
+/// an optional `<rPr>` (CT_RPr §17.3.2.27) via xsd:choice (minOccurs=0).
 pub(all) struct CT_MathCtrlDel {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// CT_TrackChange base — captured as the source element because chunk2
+  /// still owns the typed projection.
+  track_change : CT_TrackChange
+  /// §17.3.2.27 `<rPr>` (CT_RPr) — optional xsd:choice payload.
+  r_pr : CT_RPr?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_MathCtrlDel — Part 1 §17.3.2.15.
 pub fn CT_MathCtrlDel::new(element : @xml.Element) -> CT_MathCtrlDel {
-  { element, }
+  let track_change = CT_TrackChange::new(element)
+  let r_pr = match wml_ct_chunk3_first_child(element, "rPr") {
+    Some(e) => Some(CT_RPr::new(e))
+    None => None
+  }
+  { element, track_change, r_pr }
 }
 
 ///|
+/// XSD complex type CT_MathCtrlDel — Part 1 §17.3.2.15.
 pub fn CT_MathCtrlDel::parse(element : @xml.Element) -> CT_MathCtrlDel {
   CT_MathCtrlDel::new(element)
 }
 
 ///|
+/// XSD complex type CT_MathCtrlDel — return the preserved element for writers.
 pub fn CT_MathCtrlDel::to_element(self : CT_MathCtrlDel) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_RPrOriginal from wml.xsd (§17).
+/// XSD complex type CT_RPrOriginal — Part 1 §17.13.5.32 rPr (revision base
+/// snapshot inside CT_RPrChange). The body is the EG_RPrBase model group
+/// (zero-or-more run-property elements, captured here as raw elements
+/// because the typed projections are owned by chunks 1/2). No attributes.
 pub(all) struct CT_RPrOriginal {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// EG_RPrBase children in document order.
+  base : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_RPrOriginal — Part 1 §17.13.5.32.
 pub fn CT_RPrOriginal::new(element : @xml.Element) -> CT_RPrOriginal {
-  { element, }
+  let base : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => base.push(e)
+      _ => ()
+    }
+  }
+  { element, base }
 }
 
 ///|
+/// XSD complex type CT_RPrOriginal — Part 1 §17.13.5.32.
 pub fn CT_RPrOriginal::parse(element : @xml.Element) -> CT_RPrOriginal {
   CT_RPrOriginal::new(element)
 }
 
 ///|
+/// XSD complex type CT_RPrOriginal — return the preserved element for writers.
 pub fn CT_RPrOriginal::to_element(self : CT_RPrOriginal) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_ParaRPrOriginal from wml.xsd (§17).
+/// XSD complex type CT_ParaRPrOriginal — Part 1 §17.13.5.21 rPr (paragraph
+/// revision base snapshot inside CT_ParaRPrChange). The body is the
+/// EG_ParaRPrTrackChanges group (`<ins>`, `<del>`, `<moveFrom>`,
+/// `<moveTo>` — each CT_TrackChange) followed by EG_RPrBase (raw
+/// run-property elements). No attributes.
 pub(all) struct CT_ParaRPrOriginal {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.13.5.21 `<ins>` (CT_TrackChange) — optional insert revision marker.
+  ins : CT_TrackChange?
+  /// §17.13.5.21 `<del>` (CT_TrackChange) — optional delete revision marker.
+  del : CT_TrackChange?
+  /// §17.13.5.21 `<moveFrom>` (CT_TrackChange) — optional move-source marker.
+  move_from : CT_TrackChange?
+  /// §17.13.5.21 `<moveTo>` (CT_TrackChange) — optional move-target marker.
+  move_to : CT_TrackChange?
+  /// EG_RPrBase children in document order.
+  base : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_ParaRPrOriginal — Part 1 §17.13.5.21.
 pub fn CT_ParaRPrOriginal::new(element : @xml.Element) -> CT_ParaRPrOriginal {
-  { element, }
+  let ins = match wml_ct_chunk3_first_child(element, "ins") {
+    Some(e) => Some(CT_TrackChange::new(e))
+    None => None
+  }
+  let del = match wml_ct_chunk3_first_child(element, "del") {
+    Some(e) => Some(CT_TrackChange::new(e))
+    None => None
+  }
+  let move_from = match wml_ct_chunk3_first_child(element, "moveFrom") {
+    Some(e) => Some(CT_TrackChange::new(e))
+    None => None
+  }
+  let move_to = match wml_ct_chunk3_first_child(element, "moveTo") {
+    Some(e) => Some(CT_TrackChange::new(e))
+    None => None
+  }
+  let base : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => {
+        let ln = e.name.local_name
+        let is_track = ln == "ins" ||
+          ln == "del" ||
+          ln == "moveFrom" ||
+          ln == "moveTo"
+        if not(is_track) {
+          base.push(e)
+        }
+      }
+      _ => ()
+    }
+  }
+  { element, ins, del, move_from, move_to, base }
 }
 
 ///|
+/// XSD complex type CT_ParaRPrOriginal — Part 1 §17.13.5.21.
 pub fn CT_ParaRPrOriginal::parse(element : @xml.Element) -> CT_ParaRPrOriginal {
   CT_ParaRPrOriginal::new(element)
 }
 
 ///|
+/// XSD complex type CT_ParaRPrOriginal — return the preserved element for writers.
 pub fn CT_ParaRPrOriginal::to_element(
   self : CT_ParaRPrOriginal,
 ) -> @xml.Element {
@@ -5580,106 +6992,276 @@ pub fn CT_ParaRPrOriginal::to_element(
 }
 
 ///|
-/// XSD complex type CT_ParaRPr from wml.xsd (§17).
+/// XSD complex type CT_ParaRPr — Part 1 §17.3.1.29 rPr (inside paragraph
+/// properties). Same EG_ParaRPrTrackChanges + EG_RPrBase as
+/// CT_ParaRPrOriginal plus an optional `<rPrChange>` (CT_ParaRPrChange
+/// §17.13.5.30).
 pub(all) struct CT_ParaRPr {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.13.5.21 `<ins>` — optional insert revision marker.
+  ins : CT_TrackChange?
+  /// §17.13.5.21 `<del>` — optional delete revision marker.
+  del : CT_TrackChange?
+  /// §17.13.5.21 `<moveFrom>` — optional move-source revision marker.
+  move_from : CT_TrackChange?
+  /// §17.13.5.21 `<moveTo>` — optional move-target revision marker.
+  move_to : CT_TrackChange?
+  /// EG_RPrBase children in document order.
+  base : Array[@xml.Element]
+  /// §17.13.5.30 `<rPrChange>` (CT_ParaRPrChange) — optional revision marker.
+  r_pr_change : CT_ParaRPrChange?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_ParaRPr — Part 1 §17.3.1.29.
 pub fn CT_ParaRPr::new(element : @xml.Element) -> CT_ParaRPr {
-  { element, }
+  let ins = match wml_ct_chunk3_first_child(element, "ins") {
+    Some(e) => Some(CT_TrackChange::new(e))
+    None => None
+  }
+  let del = match wml_ct_chunk3_first_child(element, "del") {
+    Some(e) => Some(CT_TrackChange::new(e))
+    None => None
+  }
+  let move_from = match wml_ct_chunk3_first_child(element, "moveFrom") {
+    Some(e) => Some(CT_TrackChange::new(e))
+    None => None
+  }
+  let move_to = match wml_ct_chunk3_first_child(element, "moveTo") {
+    Some(e) => Some(CT_TrackChange::new(e))
+    None => None
+  }
+  let r_pr_change = match wml_ct_chunk3_first_child(element, "rPrChange") {
+    Some(e) => Some(CT_ParaRPrChange::new(e))
+    None => None
+  }
+  let base : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => {
+        let ln = e.name.local_name
+        let is_track = ln == "ins" ||
+          ln == "del" ||
+          ln == "moveFrom" ||
+          ln == "moveTo" ||
+          ln == "rPrChange"
+        if not(is_track) {
+          base.push(e)
+        }
+      }
+      _ => ()
+    }
+  }
+  { element, ins, del, move_from, move_to, base, r_pr_change }
 }
 
 ///|
+/// XSD complex type CT_ParaRPr — Part 1 §17.3.1.29.
 pub fn CT_ParaRPr::parse(element : @xml.Element) -> CT_ParaRPr {
   CT_ParaRPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_ParaRPr — return the preserved element for writers.
 pub fn CT_ParaRPr::to_element(self : CT_ParaRPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_AltChunk from wml.xsd (§17).
+/// XSD complex type CT_AltChunk — Part 1 §17.17.2.1 altChunk. External-
+/// content insertion point with an optional `<altChunkPr>`
+/// (CT_AltChunkPr §17.17.2.2) child and an optional `@r:id`
+/// relationship reference to the alternate content stream.
 pub(all) struct CT_AltChunk {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.17.2.2 `<altChunkPr>` (CT_AltChunkPr) — optional properties.
+  alt_chunk_pr : CT_AltChunkPr?
+  /// §A.6.7 @r:id — optional relationship reference.
+  r_id : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_AltChunk — Part 1 §17.17.2.1.
 pub fn CT_AltChunk::new(element : @xml.Element) -> CT_AltChunk {
-  { element, }
+  let alt_chunk_pr = match wml_ct_chunk3_first_child(element, "altChunkPr") {
+    Some(e) => Some(CT_AltChunkPr::new(e))
+    None => None
+  }
+  let r_id = wml_ct_chunk3_attr_ns(element, wml_ct_chunk3_ns_r(), "id")
+  { element, alt_chunk_pr, r_id }
 }
 
 ///|
+/// XSD complex type CT_AltChunk — Part 1 §17.17.2.1.
 pub fn CT_AltChunk::parse(element : @xml.Element) -> CT_AltChunk {
   CT_AltChunk::new(element)
 }
 
 ///|
+/// XSD complex type CT_AltChunk — return the preserved element for writers.
 pub fn CT_AltChunk::to_element(self : CT_AltChunk) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_AltChunkPr from wml.xsd (§17).
+/// XSD complex type CT_AltChunkPr — Part 1 §17.17.2.2 altChunkPr. Alternate
+/// content properties carrying a single optional `<matchSrc>`
+/// (CT_OnOff §17.17.2.3) flag.
 pub(all) struct CT_AltChunkPr {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.17.2.3 `<matchSrc>` (CT_OnOff) — optional match-source toggle.
+  match_src : CT_OnOff?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_AltChunkPr — Part 1 §17.17.2.2.
 pub fn CT_AltChunkPr::new(element : @xml.Element) -> CT_AltChunkPr {
-  { element, }
+  let match_src = match wml_ct_chunk3_first_child(element, "matchSrc") {
+    Some(e) => Some(CT_OnOff::new(e))
+    None => None
+  }
+  { element, match_src }
 }
 
 ///|
+/// XSD complex type CT_AltChunkPr — Part 1 §17.17.2.2.
 pub fn CT_AltChunkPr::parse(element : @xml.Element) -> CT_AltChunkPr {
   CT_AltChunkPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_AltChunkPr — return the preserved element for writers.
 pub fn CT_AltChunkPr::to_element(self : CT_AltChunkPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_RubyAlign from wml.xsd (§17).
+/// XSD complex type CT_RubyAlign — Part 1 §17.3.3.27 rubyAlign. Ruby
+/// alignment descriptor with a required `@val` (ST_RubyAlign §17.18.78
+/// — center / distributeLetter / distributeSpace / left / right /
+/// rightVertical).
 pub(all) struct CT_RubyAlign {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.78 @val (ST_RubyAlign) — required alignment.
+  val : ST_RubyAlign
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RubyAlign::new(element : @xml.Element) -> CT_RubyAlign {
-  { element, }
+/// XSD complex type CT_RubyAlign — Part 1 §17.3.3.27.
+pub fn CT_RubyAlign::new(
+  element : @xml.Element,
+) -> CT_RubyAlign raise SchemaViolation {
+  let raw = wml_ct_chunk3_required_attr(
+    element, "val", "CT_RubyAlign", "Part 1 §17.18.78 ST_RubyAlign",
+  )
+  let val = ST_RubyAlign::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_RubyAlign::parse(element : @xml.Element) -> CT_RubyAlign {
+/// XSD complex type CT_RubyAlign — Part 1 §17.3.3.27.
+pub fn CT_RubyAlign::parse(
+  element : @xml.Element,
+) -> CT_RubyAlign raise SchemaViolation {
   CT_RubyAlign::new(element)
 }
 
 ///|
+/// XSD complex type CT_RubyAlign — return the preserved element for writers.
 pub fn CT_RubyAlign::to_element(self : CT_RubyAlign) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_RubyPr from wml.xsd (§17).
+/// XSD complex type CT_RubyPr — Part 1 §17.3.3.28 rubyPr. Ruby presentation
+/// descriptor: required `<rubyAlign>` (CT_RubyAlign §17.3.3.27), required
+/// `<hps>` / `<hpsRaise>` / `<hpsBaseText>` (CT_HpsMeasure §17.18.42),
+/// required `<lid>` (CT_Lang §17.18.46), optional `<dirty>`
+/// (CT_OnOff §17.17.4 — proofing-dirty flag). No attributes.
 pub(all) struct CT_RubyPr {
+  /// Source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.3.3.27 `<rubyAlign>` (CT_RubyAlign) — required alignment.
+  ruby_align : CT_RubyAlign
+  /// §17.18.42 `<hps>` (CT_HpsMeasure) — required ruby font size.
+  hps : CT_HpsMeasure
+  /// §17.18.42 `<hpsRaise>` (CT_HpsMeasure) — required ruby raise distance.
+  hps_raise : CT_HpsMeasure
+  /// §17.18.42 `<hpsBaseText>` (CT_HpsMeasure) — required base text size.
+  hps_base_text : CT_HpsMeasure
+  /// §17.18.46 `<lid>` (CT_Lang) — required ruby language.
+  lid : CT_Lang
+  /// §17.17.4 `<dirty>` (CT_OnOff) — optional proofing-dirty flag.
+  dirty : CT_OnOff?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RubyPr::new(element : @xml.Element) -> CT_RubyPr {
-  { element, }
+/// XSD complex type CT_RubyPr — Part 1 §17.3.3.28.
+pub fn CT_RubyPr::new(
+  element : @xml.Element,
+) -> CT_RubyPr raise SchemaViolation {
+  let ruby_align_e = match wml_ct_chunk3_first_child(element, "rubyAlign") {
+    Some(e) => e
+    None =>
+      raise_schema_violation(
+        "CT_RubyPr", "rubyAlign", "Part 1 §17.3.3.28: required child <rubyAlign> is missing",
+      )
+  }
+  let ruby_align = CT_RubyAlign::new(ruby_align_e)
+  let hps_e = match wml_ct_chunk3_first_child(element, "hps") {
+    Some(e) => e
+    None =>
+      raise_schema_violation(
+        "CT_RubyPr", "hps", "Part 1 §17.3.3.28: required child <hps> is missing",
+      )
+  }
+  let hps = CT_HpsMeasure::new(hps_e)
+  let hps_raise_e = match wml_ct_chunk3_first_child(element, "hpsRaise") {
+    Some(e) => e
+    None =>
+      raise_schema_violation(
+        "CT_RubyPr", "hpsRaise", "Part 1 §17.3.3.28: required child <hpsRaise> is missing",
+      )
+  }
+  let hps_raise = CT_HpsMeasure::new(hps_raise_e)
+  let hps_base_text_e = match
+    wml_ct_chunk3_first_child(element, "hpsBaseText") {
+    Some(e) => e
+    None =>
+      raise_schema_violation(
+        "CT_RubyPr", "hpsBaseText", "Part 1 §17.3.3.28: required child <hpsBaseText> is missing",
+      )
+  }
+  let hps_base_text = CT_HpsMeasure::new(hps_base_text_e)
+  let lid_e = match wml_ct_chunk3_first_child(element, "lid") {
+    Some(e) => e
+    None =>
+      raise_schema_violation(
+        "CT_RubyPr", "lid", "Part 1 §17.3.3.28: required child <lid> is missing",
+      )
+  }
+  let lid = CT_Lang::new(lid_e)
+  let dirty = match wml_ct_chunk3_first_child(element, "dirty") {
+    Some(e) => Some(CT_OnOff::new(e))
+    None => None
+  }
+  { element, ruby_align, hps, hps_raise, hps_base_text, lid, dirty }
 }
 
 ///|
-pub fn CT_RubyPr::parse(element : @xml.Element) -> CT_RubyPr {
+/// XSD complex type CT_RubyPr — Part 1 §17.3.3.28.
+pub fn CT_RubyPr::parse(
+  element : @xml.Element,
+) -> CT_RubyPr raise SchemaViolation {
   CT_RubyPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_RubyPr — return the preserved element for writers.
 pub fn CT_RubyPr::to_element(self : CT_RubyPr) -> @xml.Element {
   self.element
 }
@@ -6406,4 +7988,154 @@ pub fn CT_P::parse(element : @xml.Element) -> CT_P {
 ///|
 pub fn CT_P::to_element(self : CT_P) -> @xml.Element {
   self.element
+}
+
+// =============================================================================
+// WordprocessingML chunk3 typed-promotion helpers — wml.xsd §17 form-field /
+// section / run / ruby complex types listed in
+// `.indexion/plans/ct-typing/lists/wml/chunk3.txt`. Helper names are prefixed
+// `wml_ct_chunk3_` to stay disjoint from the chunk1 helpers above so each
+// chunk owns its lookup utilities. WordprocessingML attributes use the `w`
+// namespace prefix at the wire level but the schema's local-name lookup is
+// what the wml.xsd grammar binds, so all helpers match by local name only.
+// =============================================================================
+
+///|
+/// First-attribute lookup by local name (chunk3).
+fn wml_ct_chunk3_attr(element : @xml.Element, local_name : String) -> String? {
+  for a in element.attributes {
+    if a.name.local_name == local_name {
+      return Some(a.value)
+    }
+  }
+  None
+}
+
+///|
+/// First-attribute lookup that additionally matches an exact namespace URI on
+/// the attribute QName. Used for `r:id`, `r:bottomLeft`, etc. where the
+/// `r:` prefix is the only meaningful disambiguator from a no-namespace
+/// local-name collision.
+fn wml_ct_chunk3_attr_ns(
+  element : @xml.Element,
+  ns : String,
+  local_name : String,
+) -> String? {
+  for a in element.attributes {
+    if a.name.local_name == local_name && a.name.ns is Some(uri) && uri == ns {
+      return Some(a.value)
+    }
+  }
+  None
+}
+
+///|
+/// Required attribute lookup. Raises SchemaViolation with `CT_X/@foo`
+/// canonical anchor when the attribute is missing.
+fn wml_ct_chunk3_required_attr(
+  element : @xml.Element,
+  local_name : String,
+  type_name : String,
+  context : String,
+) -> String raise SchemaViolation {
+  match wml_ct_chunk3_attr(element, local_name) {
+    Some(v) => v
+    None =>
+      raise_schema_violation(
+        type_name,
+        local_name,
+        context + ": required attribute @" + local_name + " is missing",
+      )
+  }
+}
+
+///|
+/// Decode an optional ST_OnOff lexical token (§22.9.2.7) — chunk3 mirror of
+/// the chunk1 helper. Returns `None` when the attribute is absent.
+fn wml_ct_chunk3_on_off(value : String?) -> Bool? {
+  match value {
+    Some("1") | Some("true") | Some("on") => Some(true)
+    Some("0") | Some("false") | Some("off") => Some(false)
+    Some(_) => Some(false)
+    None => None
+  }
+}
+
+///|
+/// First element child whose local name equals `local_name`. Used to read
+/// optional / required single-child elements per `xsd:sequence` ordering.
+fn wml_ct_chunk3_first_child(
+  element : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  for child in element.children {
+    match child {
+      @xml.Element(e) => if e.name.local_name == local_name { return Some(e) }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+/// All direct element children whose local name equals `local_name`,
+/// preserving document order. Used to read `maxOccurs="unbounded"` payloads.
+fn wml_ct_chunk3_children(
+  element : @xml.Element,
+  local_name : String,
+) -> Array[@xml.Element] {
+  let out : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => if e.name.local_name == local_name { out.push(e) }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
+/// First element child whose local name is one of `local_names`. Returns the
+/// matched element and the canonical local-name. Used for `xsd:choice`
+/// branches such as `<size>/<sizeAuto>`.
+fn wml_ct_chunk3_first_choice(
+  element : @xml.Element,
+  local_names : Array[String],
+) -> (@xml.Element, String)? {
+  for child in element.children {
+    match child {
+      @xml.Element(e) => {
+        let ln = e.name.local_name
+        for candidate in local_names {
+          if ln == candidate {
+            return Some((e, candidate))
+          }
+        }
+      }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+/// Concatenate Text / CData node children into a single string. Used for
+/// CT_Text and other `xsd:simpleContent` extensions of `s:ST_String`.
+fn wml_ct_chunk3_text_value(element : @xml.Element) -> String {
+  let buf = StringBuilder::new()
+  for child in element.children {
+    match child {
+      @xml.Text(t) => buf.write_string(t)
+      @xml.CData(t) => buf.write_string(t)
+      _ => ()
+    }
+  }
+  buf.to_string()
+}
+
+///|
+/// Resolved `r` (relationships) namespace URI per ECMA-376 Part 1 §A.6.7.
+/// Matches the namespace used for `r:id`, `r:bottomLeft`, `r:topLeft`, etc.
+fn wml_ct_chunk3_ns_r() -> String {
+  "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 }
