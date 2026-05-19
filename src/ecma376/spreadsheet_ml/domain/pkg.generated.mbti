@@ -105,6 +105,11 @@ pub fn CT_Borders::new(@xml.Element) -> Self
 
 pub(all) struct CT_Break {
   element : @xml.Element
+  id : Int
+  min : Int
+  max : Int
+  man : Bool
+  pt : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Break::new(@xml.Element) -> Self
 
@@ -237,6 +242,16 @@ pub fn CT_CalculatedMembers::new(@xml.Element) -> Self
 
 pub(all) struct CT_Cell {
   element : @xml.Element
+  f : CT_CellFormula?
+  v : String?
+  is_ : CT_Rst?
+  ext_lst : CT_ExtensionList?
+  r : String?
+  s : Int
+  t : String
+  cm : Int
+  vm : Int
+  ph : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Cell::new(@xml.Element) -> Self
 
@@ -247,6 +262,19 @@ pub fn CT_CellAlignment::new(@xml.Element) -> Self
 
 pub(all) struct CT_CellFormula {
   element : @xml.Element
+  formula : String
+  t : String
+  aca : Bool
+  ref_ : String?
+  dt2_d : Bool
+  dtr : Bool
+  del1 : Bool
+  del2 : Bool
+  r1 : String?
+  r2 : String?
+  ca : Bool
+  si : Int?
+  bx : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_CellFormula::new(@xml.Element) -> Self
 
@@ -257,16 +285,24 @@ pub fn CT_CellProtection::new(@xml.Element) -> Self
 
 pub(all) struct CT_CellSmartTag {
   element : @xml.Element
+  cell_smart_tag_prs : Array[CT_CellSmartTagPr]
+  type_ : Int
+  deleted : Bool
+  xml_based : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_CellSmartTag::new(@xml.Element) -> Self
 
 pub(all) struct CT_CellSmartTagPr {
   element : @xml.Element
+  key : String
+  val : String
 } derive(Eq, @debug.Debug)
 pub fn CT_CellSmartTagPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_CellSmartTags {
   element : @xml.Element
+  cell_smart_tags : Array[CT_CellSmartTag]
+  r : String
 } derive(Eq, @debug.Debug)
 pub fn CT_CellSmartTags::new(@xml.Element) -> Self
 
@@ -287,11 +323,13 @@ pub fn CT_CellStyles::new(@xml.Element) -> Self
 
 pub(all) struct CT_CellWatch {
   element : @xml.Element
+  r : String
 } derive(Eq, @debug.Debug)
 pub fn CT_CellWatch::new(@xml.Element) -> Self
 
 pub(all) struct CT_CellWatches {
   element : @xml.Element
+  cell_watches : Array[CT_CellWatch]
 } derive(Eq, @debug.Debug)
 pub fn CT_CellWatches::new(@xml.Element) -> Self
 
@@ -339,6 +377,18 @@ pub fn CT_ChartFormats::new(@xml.Element) -> Self
 
 pub(all) struct CT_Chartsheet {
   element : @xml.Element
+  sheet_pr : CT_ChartsheetPr?
+  sheet_views : CT_ChartsheetViews?
+  sheet_protection : CT_ChartsheetProtection?
+  custom_sheet_views : CT_CustomChartsheetViews?
+  page_margins : CT_PageMargins?
+  page_setup : CT_CsPageSetup?
+  header_footer : CT_HeaderFooter?
+  drawing : CT_Drawing?
+  drawing_hf : CT_DrawingHF?
+  picture : CT_SheetBackgroundPicture?
+  web_publish_items : CT_WebPublishItems?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_Chartsheet::new(@xml.Element) -> Self
 
@@ -364,6 +414,16 @@ pub fn CT_ChartsheetViews::new(@xml.Element) -> Self
 
 pub(all) struct CT_Col {
   element : @xml.Element
+  min : Int
+  max : Int
+  width : Double?
+  style : Int
+  hidden : Bool
+  best_fit : Bool
+  custom_width : Bool
+  phonetic : Bool
+  outline_level : Int
+  collapsed : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Col::new(@xml.Element) -> Self
 
@@ -404,6 +464,7 @@ pub fn CT_Colors::new(@xml.Element) -> Self
 
 pub(all) struct CT_Cols {
   element : @xml.Element
+  cols : Array[CT_Col]
 } derive(Eq, @debug.Debug)
 pub fn CT_Cols::new(@xml.Element) -> Self
 
@@ -523,11 +584,42 @@ pub fn CT_CustomProperty::new(@xml.Element) -> Self
 
 pub(all) struct CT_CustomSheetView {
   element : @xml.Element
+  pane : CT_Pane?
+  selection : CT_Selection?
+  row_breaks : CT_PageBreak?
+  col_breaks : CT_PageBreak?
+  page_margins : CT_PageMargins?
+  print_options : CT_PrintOptions?
+  page_setup : CT_PageSetup?
+  header_footer : CT_HeaderFooter?
+  auto_filter : @xml.Element?
+  ext_lst : CT_ExtensionList?
+  guid : String
+  scale : Int
+  color_id : Int
+  show_page_breaks : Bool
+  show_formulas : Bool
+  show_grid_lines : Bool
+  show_row_col : Bool
+  outline_symbols : Bool
+  zero_values : Bool
+  fit_to_page : Bool
+  print_area : Bool
+  filter : Bool
+  show_auto_filter : Bool
+  hidden_rows : Bool
+  hidden_columns : Bool
+  state : String
+  filter_unique : Bool
+  view : String
+  show_ruler : Bool
+  top_left_cell : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomSheetView::new(@xml.Element) -> Self
 
 pub(all) struct CT_CustomSheetViews {
   element : @xml.Element
+  custom_sheet_views : Array[CT_CustomSheetView]
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomSheetViews::new(@xml.Element) -> Self
 
@@ -554,6 +646,11 @@ pub fn CT_DataBinding::new(@xml.Element) -> Self
 
 pub(all) struct CT_DataConsolidate {
   element : @xml.Element
+  data_refs : CT_DataRefs?
+  function : String
+  start_labels : Bool
+  top_labels : Bool
+  link : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_DataConsolidate::new(@xml.Element) -> Self
 
@@ -569,21 +666,47 @@ pub fn CT_DataFields::new(@xml.Element) -> Self
 
 pub(all) struct CT_DataRef {
   element : @xml.Element
+  ref_ : String?
+  name : String?
+  sheet : String?
+  r_id : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_DataRef::new(@xml.Element) -> Self
 
 pub(all) struct CT_DataRefs {
   element : @xml.Element
+  data_refs : Array[CT_DataRef]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_DataRefs::new(@xml.Element) -> Self
 
 pub(all) struct CT_DataValidation {
   element : @xml.Element
+  formula1 : String?
+  formula2 : String?
+  type_ : String
+  error_style : String
+  ime_mode : String
+  operator : String
+  allow_blank : Bool
+  show_drop_down : Bool
+  show_input_message : Bool
+  show_error_message : Bool
+  error_title : String?
+  error : String?
+  prompt_title : String?
+  prompt : String?
+  sqref : String
 } derive(Eq, @debug.Debug)
 pub fn CT_DataValidation::new(@xml.Element) -> Self
 
 pub(all) struct CT_DataValidations {
   element : @xml.Element
+  data_validations : Array[CT_DataValidation]
+  disable_prompts : Bool
+  x_window : Int?
+  y_window : Int?
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_DataValidations::new(@xml.Element) -> Self
 
@@ -678,11 +801,31 @@ pub fn CT_DiscretePr::new(@xml.Element) -> Self
 
 pub(all) struct CT_Drawing {
   element : @xml.Element
+  r_id : String
 } derive(Eq, @debug.Debug)
 pub fn CT_Drawing::new(@xml.Element) -> Self
 
 pub(all) struct CT_DrawingHF {
   element : @xml.Element
+  r_id : String
+  lho : Int?
+  lhe : Int?
+  lhf : Int?
+  cho : Int?
+  che : Int?
+  chf : Int?
+  rho : Int?
+  rhe : Int?
+  rhf : Int?
+  lfo : Int?
+  lfe : Int?
+  lff : Int?
+  cfo : Int?
+  cfe : Int?
+  cff : Int?
+  rfo : Int?
+  rfe : Int?
+  rff : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_DrawingHF::new(@xml.Element) -> Self
 
@@ -986,6 +1129,16 @@ pub fn CT_Groups::new(@xml.Element) -> Self
 
 pub(all) struct CT_HeaderFooter {
   element : @xml.Element
+  odd_header : String?
+  odd_footer : String?
+  even_header : String?
+  even_footer : String?
+  first_header : String?
+  first_footer : String?
+  different_odd_even : Bool
+  different_first : Bool
+  scale_with_doc : Bool
+  align_with_margins : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_HeaderFooter::new(@xml.Element) -> Self
 
@@ -997,11 +1150,17 @@ pub fn CT_HierarchyUsage::new(@xml.Element) -> Self
 
 pub(all) struct CT_Hyperlink {
   element : @xml.Element
+  ref_ : String
+  r_id : String?
+  location : String?
+  tooltip : String?
+  display : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Hyperlink::new(@xml.Element) -> Self
 
 pub(all) struct CT_Hyperlinks {
   element : @xml.Element
+  hyperlinks : Array[CT_Hyperlink]
 } derive(Eq, @debug.Debug)
 pub fn CT_Hyperlinks::new(@xml.Element) -> Self
 
@@ -1044,6 +1203,11 @@ pub fn CT_IndexedColors::new(@xml.Element) -> Self
 
 pub(all) struct CT_InputCells {
   element : @xml.Element
+  r : String
+  deleted : Bool
+  undone : Bool
+  val : String
+  num_fmt_id : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_InputCells::new(@xml.Element) -> Self
 
@@ -1232,11 +1396,14 @@ pub fn CT_Members::new(@xml.Element) -> Self
 
 pub(all) struct CT_MergeCell {
   element : @xml.Element
+  ref_ : String
 } derive(Eq, @debug.Debug)
 pub fn CT_MergeCell::new(@xml.Element) -> Self
 
 pub(all) struct CT_MergeCells {
   element : @xml.Element
+  merge_cells : Array[CT_MergeCell]
+  count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_MergeCells::new(@xml.Element) -> Self
 
@@ -1456,6 +1623,9 @@ pub fn CT_PCDSDTCEntries::new(@xml.Element) -> Self
 
 pub(all) struct CT_PageBreak {
   element : @xml.Element
+  brks : Array[CT_Break]
+  count : Int
+  manual_break_count : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_PageBreak::new(@xml.Element) -> Self
 
@@ -1476,6 +1646,12 @@ pub fn CT_PageItem::new(@xml.Element) -> Self
 
 pub(all) struct CT_PageMargins {
   element : @xml.Element
+  left : Double
+  right : Double
+  top : Double
+  bottom : Double
+  header : Double
+  footer : Double
 } derive(Eq, @debug.Debug)
 pub fn CT_PageMargins::new(@xml.Element) -> Self
 
@@ -1517,6 +1693,11 @@ pub fn CT_Pages::new(@xml.Element) -> Self
 
 pub(all) struct CT_Pane {
   element : @xml.Element
+  x_split : Double
+  y_split : Double
+  top_left_cell : String?
+  active_pane : String
+  state : String
 } derive(Eq, @debug.Debug)
 pub fn CT_Pane::new(@xml.Element) -> Self
 
@@ -1819,16 +2000,29 @@ pub fn CT_PivotTableStyle::new(@xml.Element) -> Self
 
 pub(all) struct CT_PrintOptions {
   element : @xml.Element
+  horizontal_centered : Bool
+  vertical_centered : Bool
+  headings : Bool
+  grid_lines : Bool
+  grid_lines_set : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_PrintOptions::new(@xml.Element) -> Self
 
 pub(all) struct CT_ProtectedRange {
   element : @xml.Element
+  security_descriptors : Array[String]
+  sqref : String
+  name : String
+  algorithm_name : String?
+  hash_value : String?
+  salt_value : String?
+  spin_count : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_ProtectedRange::new(@xml.Element) -> Self
 
 pub(all) struct CT_ProtectedRanges {
   element : @xml.Element
+  protected_ranges : Array[CT_ProtectedRange]
 } derive(Eq, @debug.Debug)
 pub fn CT_ProtectedRanges::new(@xml.Element) -> Self
 
@@ -2054,6 +2248,20 @@ pub fn CT_RgbColor::new(@xml.Element) -> Self
 
 pub(all) struct CT_Row {
   element : @xml.Element
+  cells : Array[CT_Cell]
+  ext_lst : CT_ExtensionList?
+  r : Int?
+  spans : String?
+  s : Int
+  custom_format : Bool
+  ht : Double?
+  hidden : Bool
+  custom_height : Bool
+  outline_level : Int
+  collapsed : Bool
+  thick_top : Bool
+  thick_bot : Bool
+  ph : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Row::new(@xml.Element) -> Self
 
@@ -2077,11 +2285,22 @@ pub fn CT_Rst::to_plain_text(Self) -> String
 
 pub(all) struct CT_Scenario {
   element : @xml.Element
+  input_cells : Array[CT_InputCells]
+  name : String
+  locked : Bool
+  hidden : Bool
+  count : Int?
+  user : String?
+  comment : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Scenario::new(@xml.Element) -> Self
 
 pub(all) struct CT_Scenarios {
   element : @xml.Element
+  scenarios : Array[CT_Scenario]
+  current : Int?
+  show : Int?
+  sqref : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Scenarios::new(@xml.Element) -> Self
 
@@ -2096,6 +2315,10 @@ pub fn CT_Schema::new(@xml.Element) -> Self
 
 pub(all) struct CT_Selection {
   element : @xml.Element
+  pane : String
+  active_cell : String?
+  active_cell_id : Int
+  sqref : String
 } derive(Eq, @debug.Debug)
 pub fn CT_Selection::new(@xml.Element) -> Self
 
@@ -2160,6 +2383,7 @@ pub fn CT_SheetData::new(@xml.Element) -> Self
 
 pub(all) struct CT_SheetDimension {
   element : @xml.Element
+  ref_ : String
 } derive(Eq, @debug.Debug)
 pub fn CT_SheetDimension::new(@xml.Element) -> Self
 
@@ -2182,6 +2406,18 @@ pub fn CT_SheetIdMap::new(@xml.Element) -> Self
 
 pub(all) struct CT_SheetPr {
   element : @xml.Element
+  tab_color : @xml.Element?
+  outline_pr : CT_OutlinePr?
+  page_set_up_pr : CT_PageSetUpPr?
+  sync_horizontal : Bool
+  sync_vertical : Bool
+  sync_ref : String?
+  transition_evaluation : Bool
+  transition_entry : Bool
+  published : Bool
+  code_name : String?
+  filter_mode : Bool
+  enable_format_conditions_calculation : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_SheetPr::new(@xml.Element) -> Self
 
@@ -2192,11 +2428,36 @@ pub fn CT_SheetProtection::new(@xml.Element) -> Self
 
 pub(all) struct CT_SheetView {
   element : @xml.Element
+  pane : CT_Pane?
+  selections : Array[CT_Selection]
+  pivot_selections : Array[CT_PivotSelection]
+  ext_lst : CT_ExtensionList?
+  window_protection : Bool
+  show_formulas : Bool
+  show_grid_lines : Bool
+  show_row_col_headers : Bool
+  show_zeros : Bool
+  right_to_left : Bool
+  tab_selected : Bool
+  show_ruler : Bool
+  show_outline_symbols : Bool
+  default_grid_color : Bool
+  show_white_space : Bool
+  view : String
+  top_left_cell : String?
+  color_id : Int
+  zoom_scale : Int
+  zoom_scale_normal : Int
+  zoom_scale_sheet_layout_view : Int
+  zoom_scale_page_layout_view : Int
+  workbook_view_id : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_SheetView::new(@xml.Element) -> Self
 
 pub(all) struct CT_SheetViews {
   element : @xml.Element
+  sheet_views : Array[CT_SheetView]
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_SheetViews::new(@xml.Element) -> Self
 
