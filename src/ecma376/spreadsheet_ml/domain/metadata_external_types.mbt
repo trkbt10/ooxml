@@ -1,5 +1,10 @@
 ///|
-/// SpreadsheetML metadata external types wrappers generated from sml.xsd complex type identifiers.
+/// SpreadsheetML metadata, external-link, and XML-mapping typed domain
+/// wrappers from sml.xsd. CT_X identifiers in this file bind the
+/// ECMA-376 Part 1 §18.5 / §18.9 / §18.11 / §18.14 / §18.15 / §18.16
+/// complex types with typed attribute and child fields. The source
+/// `@xml.Element` is preserved on every record so the builder can emit
+/// byte-identical round-trip output via `value.element`.
 
 ///|
 pub fn metadata_external_type_group_name() -> String {
@@ -7,700 +12,1432 @@ pub fn metadata_external_type_group_name() -> String {
 }
 
 ///|
-/// XSD complex type CT_MapInfo.
+/// XSD complex type CT_MapInfo — Part 1 §18.16.3. Schema sml.xsd complex
+/// type `CT_MapInfo`. Attributes: `SelectionNamespaces`. Child elements:
+/// `Schema`, `Map`. Child types: `CT_Schema`, `CT_Map`. XML mapping
+/// wrapper with required `SelectionNamespaces` attribute and unbounded
+/// child sequences `<Schema>` (CT_Schema) and `<Map>` (CT_Map).
 pub(all) struct CT_MapInfo {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @SelectionNamespaces (xsd:string) — required.
+  selection_namespaces : String
+  /// <Schema>+ (CT_Schema) — one or more.
+  schemas : Array[CT_Schema]
+  /// <Map>+ (CT_Map) — one or more.
+  maps : Array[CT_Map]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MapInfo::new(element : @xml.Element) -> CT_MapInfo {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let selection_namespaces = match attr(element, "SelectionNamespaces") {
+    Some(value) => value
+    None => ""
   }
+  let schemas : Array[CT_Schema] = []
+  let maps : Array[CT_Map] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "Schema" => schemas.push(CT_Schema::new(child_element))
+        "Map" => maps.push(CT_Map::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  { element, selection_namespaces, schemas, maps }
 }
 
 ///|
-/// XSD complex type CT_Schema.
+/// XSD complex type CT_Schema — Part 1 §18.16.4. Schema sml.xsd complex
+/// type `CT_Schema`. Attributes: `ID`, `SchemaRef`, `Namespace`,
+/// `SchemaLanguage`.
 pub(all) struct CT_Schema {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @ID (xsd:string) — required.
+  id : String
+  /// @SchemaRef (xsd:string) — optional.
+  schema_ref : String?
+  /// @Namespace (xsd:string) — optional.
+  namespace : String?
+  /// @SchemaLanguage (xsd:token) — optional.
+  schema_language : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Schema::new(element : @xml.Element) -> CT_Schema {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let id = match attr(element, "ID") {
+    Some(value) => value
+    None => ""
+  }
+  {
+    element,
+    id,
+    schema_ref: attr(element, "SchemaRef"),
+    namespace: attr(element, "Namespace"),
+    schema_language: attr(element, "SchemaLanguage"),
   }
 }
 
 ///|
-/// XSD complex type CT_Map: custom XML map with DataBinding child and ID, Name, RootElement, SchemaID, import/export validation attributes.
+/// XSD complex type CT_Map — Part 1 §18.16.2. Custom XML map. Required
+/// attributes `ID` (xsd:unsignedInt), `Name`, `RootElement`, `SchemaID`
+/// (xsd:string), and boolean flags `ShowImportExportValidationErrors`,
+/// `AutoFit`, `Append`, `PreserveSortAFLayout`, `PreserveFormat`.
+/// Optional `<DataBinding>` child (CT_DataBinding).
 pub(all) struct CT_Map {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @ID (xsd:unsignedInt) — required.
+  id : Int
+  /// @Name (xsd:string) — required.
+  name : String
+  /// @RootElement (xsd:string) — required.
+  root_element : String
+  /// @SchemaID (xsd:string) — required.
+  schema_id : String
+  /// @ShowImportExportValidationErrors (xsd:boolean) — required.
+  show_import_export_validation_errors : Bool
+  /// @AutoFit (xsd:boolean) — required.
+  auto_fit : Bool
+  /// @Append (xsd:boolean) — required.
+  append : Bool
+  /// @PreserveSortAFLayout (xsd:boolean) — required.
+  preserve_sort_af_layout : Bool
+  /// @PreserveFormat (xsd:boolean) — required.
+  preserve_format : Bool
+  /// <DataBinding> (CT_DataBinding) — optional.
+  data_binding : CT_DataBinding?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Map::new(element : @xml.Element) -> CT_Map {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let id = attr_uint(element, "ID", 0)
+  let name = match attr(element, "Name") {
+    Some(v) => v
+    None => ""
+  }
+  let root_element = match attr(element, "RootElement") {
+    Some(v) => v
+    None => ""
+  }
+  let schema_id = match attr(element, "SchemaID") {
+    Some(v) => v
+    None => ""
+  }
+  let show_import_export_validation_errors = attr_bool(
+    element, "ShowImportExportValidationErrors", false,
+  )
+  let auto_fit = attr_bool(element, "AutoFit", false)
+  let append = attr_bool(element, "Append", false)
+  let preserve_sort_af_layout = attr_bool(
+    element, "PreserveSortAFLayout", false,
+  )
+  let preserve_format = attr_bool(element, "PreserveFormat", false)
+  let mut data_binding : CT_DataBinding? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "DataBinding" {
+        data_binding = Some(CT_DataBinding::new(child_element))
+      }
+    }
+  }
+  {
+    element,
+    id,
+    name,
+    root_element,
+    schema_id,
+    show_import_export_validation_errors,
+    auto_fit,
+    append,
+    preserve_sort_af_layout,
+    preserve_format,
+    data_binding,
   }
 }
 
 ///|
-/// XSD complex type CT_Boolean.
+/// XSD complex type CT_Boolean — Part 1 §18.10.1.2 (b). PivotTable shared
+/// boolean carrier: required `@v` (xsd:boolean) and optional `@u`, `@f`
+/// (xsd:boolean), `@c` (s:ST_Xstring), `@cp` (xsd:unsignedInt). Sequence
+/// holds optional repeated `<x>` (CT_X) child indices.
 pub(all) struct CT_Boolean {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @v (xsd:boolean) — required.
+  v : Bool
+  /// @u (xsd:boolean) — optional.
+  u : Bool?
+  /// @f (xsd:boolean) — optional.
+  f : Bool?
+  /// @c (s:ST_Xstring) — optional caption.
+  c : String?
+  /// @cp (xsd:unsignedInt) — optional property index.
+  cp : Int?
+  /// <x>* (CT_X) — zero or more pivot tuple indices.
+  x : Array[CT_X]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Boolean::new(element : @xml.Element) -> CT_Boolean {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let v = attr_bool(element, "v", false)
+  let u = attr_bool_opt(element, "u")
+  let f = attr_bool_opt(element, "f")
+  let c = attr(element, "c")
+  let cp = attr_uint_opt(element, "cp")
+  let x : Array[CT_X] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "x" {
+        x.push(CT_X::new(child_element))
+      }
+    }
   }
+  { element, v, u, f, c, cp, x }
 }
 
 ///|
-/// XSD complex type CT_SheetIdMap.
+/// XSD complex type CT_SheetIdMap — Part 1 §18.11.1.24. Sheet-id map used
+/// in revision logs. Optional `@count` (xsd:unsignedInt) and one or more
+/// `<sheetId>` (CT_SheetId) child entries.
 pub(all) struct CT_SheetIdMap {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional.
+  count : Int?
+  /// <sheetId>+ (CT_SheetId) — one or more.
+  sheet_ids : Array[CT_SheetId]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_SheetIdMap::new(element : @xml.Element) -> CT_SheetIdMap {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint_opt(element, "count")
+  let sheet_ids : Array[CT_SheetId] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "sheetId" {
+        sheet_ids.push(CT_SheetId::new(child_element))
+      }
+    }
   }
+  { element, count, sheet_ids }
 }
 
 ///|
-/// XSD complex type CT_OleObjects.
+/// XSD complex type CT_OleObjects — Part 1 §18.3.1.60. Worksheet OLE-object
+/// container: one or more `<oleObject>` (CT_OleObject) children.
 pub(all) struct CT_OleObjects {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <oleObject>+ (CT_OleObject) — one or more.
+  ole_objects : Array[CT_OleObject]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_OleObjects::new(element : @xml.Element) -> CT_OleObjects {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let ole_objects : Array[CT_OleObject] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "oleObject" {
+        ole_objects.push(CT_OleObject::new(child_element))
+      }
+    }
   }
+  { element, ole_objects }
 }
 
 ///|
-/// XSD complex type CT_OleObject.
+/// XSD complex type CT_OleObject — Part 1 §18.3.1.59. Embedded OLE object
+/// descriptor. Required `@shapeId` (xsd:unsignedInt); optional `@progId`
+/// (xsd:string), `@dvAspect` (ST_DvAspect, default DVASPECT_CONTENT),
+/// `@link` (s:ST_Xstring), `@oleUpdate` (ST_OleUpdate), `@autoLoad`
+/// (xsd:boolean, default false), and `@r:id`. Optional `<objectPr>` child
+/// (CT_ObjectPr).
 pub(all) struct CT_OleObject {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @progId (xsd:string) — optional.
+  prog_id : String?
+  /// @dvAspect (ST_DvAspect) — optional, default DVASPECT_CONTENT.
+  dv_aspect : String?
+  /// @link (s:ST_Xstring) — optional.
+  link : String?
+  /// @oleUpdate (ST_OleUpdate) — optional.
+  ole_update : String?
+  /// @autoLoad (xsd:boolean) — optional, default false.
+  auto_load : Bool
+  /// @shapeId (xsd:unsignedInt) — required.
+  shape_id : Int
+  /// @r:id (relationship id) — optional.
+  r_id : String?
+  /// <objectPr> (CT_ObjectPr) — optional.
+  object_pr : CT_ObjectPr?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_OleObject::new(element : @xml.Element) -> CT_OleObject {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let prog_id = attr(element, "progId")
+  let dv_aspect = attr(element, "dvAspect")
+  let link = attr(element, "link")
+  let ole_update = attr(element, "oleUpdate")
+  let auto_load = attr_bool(element, "autoLoad", false)
+  let shape_id = attr_uint(element, "shapeId", 0)
+  let r_id = attr_with_ns(element, "id")
+  let mut object_pr : CT_ObjectPr? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "objectPr" {
+        object_pr = Some(CT_ObjectPr::new(child_element))
+      }
+    }
+  }
+  {
+    element,
+    prog_id,
+    dv_aspect,
+    link,
+    ole_update,
+    auto_load,
+    shape_id,
+    r_id,
+    object_pr,
   }
 }
 
 ///|
-/// XSD complex type CT_Metadata.
+/// XSD complex type CT_Metadata — Part 1 §18.9.8. Workbook metadata root.
+/// Optional ordered children: `<metadataTypes>` (CT_MetadataTypes),
+/// `<metadataStrings>` (CT_MetadataStrings), `<mdxMetadata>`
+/// (CT_MdxMetadata), `<futureMetadata>*` (CT_FutureMetadata),
+/// `<cellMetadata>` (CT_MetadataBlocks), `<valueMetadata>` (CT_MetadataBlocks),
+/// and `<extLst>` (CT_ExtensionList).
 pub(all) struct CT_Metadata {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <metadataTypes> (CT_MetadataTypes) — optional.
+  metadata_types : CT_MetadataTypes?
+  /// <metadataStrings> (CT_MetadataStrings) — optional.
+  metadata_strings : CT_MetadataStrings?
+  /// <mdxMetadata> (CT_MdxMetadata) — optional.
+  mdx_metadata : CT_MdxMetadata?
+  /// <futureMetadata>* (CT_FutureMetadata) — zero or more.
+  future_metadata : Array[CT_FutureMetadata]
+  /// <cellMetadata> (CT_MetadataBlocks) — optional.
+  cell_metadata : CT_MetadataBlocks?
+  /// <valueMetadata> (CT_MetadataBlocks) — optional.
+  value_metadata : CT_MetadataBlocks?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Metadata::new(element : @xml.Element) -> CT_Metadata {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut metadata_types : CT_MetadataTypes? = None
+  let mut metadata_strings : CT_MetadataStrings? = None
+  let mut mdx_metadata : CT_MdxMetadata? = None
+  let future_metadata : Array[CT_FutureMetadata] = []
+  let mut cell_metadata : CT_MetadataBlocks? = None
+  let mut value_metadata : CT_MetadataBlocks? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "metadataTypes" =>
+          metadata_types = Some(CT_MetadataTypes::new(child_element))
+        "metadataStrings" =>
+          metadata_strings = Some(CT_MetadataStrings::new(child_element))
+        "mdxMetadata" => mdx_metadata = Some(CT_MdxMetadata::new(child_element))
+        "futureMetadata" =>
+          future_metadata.push(CT_FutureMetadata::new(child_element))
+        "cellMetadata" =>
+          cell_metadata = Some(CT_MetadataBlocks::new(child_element))
+        "valueMetadata" =>
+          value_metadata = Some(CT_MetadataBlocks::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    metadata_types,
+    metadata_strings,
+    mdx_metadata,
+    future_metadata,
+    cell_metadata,
+    value_metadata,
+    ext_lst,
   }
 }
 
 ///|
-/// XSD complex type CT_MetadataTypes.
+/// XSD complex type CT_MetadataTypes — Part 1 §18.9.11. Optional `@count`
+/// (xsd:unsignedInt, default 0) and one or more `<metadataType>` children.
 pub(all) struct CT_MetadataTypes {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional, default 0.
+  count : Int
+  /// <metadataType>+ (CT_MetadataType) — one or more.
+  metadata_types : Array[CT_MetadataType]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MetadataTypes::new(element : @xml.Element) -> CT_MetadataTypes {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint(element, "count", 0)
+  let metadata_types : Array[CT_MetadataType] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "metadataType" {
+        metadata_types.push(CT_MetadataType::new(child_element))
+      }
+    }
   }
+  { element, count, metadata_types }
 }
 
 ///|
-/// XSD complex type CT_MetadataType.
+/// XSD complex type CT_MetadataType — Part 1 §18.9.10. Required `@name`
+/// (s:ST_Xstring) and `@minSupportedVersion` (xsd:unsignedInt); twenty-six
+/// optional xsd:boolean flags (default false) covering metadata operation
+/// behaviours (`ghostRow`, `ghostCol`, `edit`, `delete`, `copy`,
+/// `pasteAll`, `pasteFormulas`, `pasteValues`, `pasteFormats`,
+/// `pasteComments`, `pasteDataValidation`, `pasteBorders`,
+/// `pasteColWidths`, `pasteNumberFormats`, `merge`, `splitFirst`,
+/// `splitAll`, `rowColShift`, `clearAll`, `clearFormats`, `clearContents`,
+/// `clearComments`, `assign`, `coerce`, `adjust`, `cellMeta`).
 pub(all) struct CT_MetadataType {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — required.
+  name : String
+  /// @minSupportedVersion (xsd:unsignedInt) — required.
+  min_supported_version : Int
+  /// @ghostRow (xsd:boolean) — optional, default false.
+  ghost_row : Bool
+  /// @ghostCol (xsd:boolean) — optional, default false.
+  ghost_col : Bool
+  /// @edit (xsd:boolean) — optional, default false.
+  edit : Bool
+  /// @delete (xsd:boolean) — optional, default false.
+  delete : Bool
+  /// @copy (xsd:boolean) — optional, default false.
+  copy : Bool
+  /// @pasteAll (xsd:boolean) — optional, default false.
+  paste_all : Bool
+  /// @pasteFormulas (xsd:boolean) — optional, default false.
+  paste_formulas : Bool
+  /// @pasteValues (xsd:boolean) — optional, default false.
+  paste_values : Bool
+  /// @pasteFormats (xsd:boolean) — optional, default false.
+  paste_formats : Bool
+  /// @pasteComments (xsd:boolean) — optional, default false.
+  paste_comments : Bool
+  /// @pasteDataValidation (xsd:boolean) — optional, default false.
+  paste_data_validation : Bool
+  /// @pasteBorders (xsd:boolean) — optional, default false.
+  paste_borders : Bool
+  /// @pasteColWidths (xsd:boolean) — optional, default false.
+  paste_col_widths : Bool
+  /// @pasteNumberFormats (xsd:boolean) — optional, default false.
+  paste_number_formats : Bool
+  /// @merge (xsd:boolean) — optional, default false.
+  merge : Bool
+  /// @splitFirst (xsd:boolean) — optional, default false.
+  split_first : Bool
+  /// @splitAll (xsd:boolean) — optional, default false.
+  split_all : Bool
+  /// @rowColShift (xsd:boolean) — optional, default false.
+  row_col_shift : Bool
+  /// @clearAll (xsd:boolean) — optional, default false.
+  clear_all : Bool
+  /// @clearFormats (xsd:boolean) — optional, default false.
+  clear_formats : Bool
+  /// @clearContents (xsd:boolean) — optional, default false.
+  clear_contents : Bool
+  /// @clearComments (xsd:boolean) — optional, default false.
+  clear_comments : Bool
+  /// @assign (xsd:boolean) — optional, default false.
+  assign : Bool
+  /// @coerce (xsd:boolean) — optional, default false.
+  coerce : Bool
+  /// @adjust (xsd:boolean) — optional, default false.
+  adjust : Bool
+  /// @cellMeta (xsd:boolean) — optional, default false.
+  cell_meta : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MetadataType::new(element : @xml.Element) -> CT_MetadataType {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = match attr(element, "name") {
+    Some(v) => v
+    None => ""
+  }
+  let min_supported_version = attr_uint(element, "minSupportedVersion", 0)
+  {
+    element,
+    name,
+    min_supported_version,
+    ghost_row: attr_bool(element, "ghostRow", false),
+    ghost_col: attr_bool(element, "ghostCol", false),
+    edit: attr_bool(element, "edit", false),
+    delete: attr_bool(element, "delete", false),
+    copy: attr_bool(element, "copy", false),
+    paste_all: attr_bool(element, "pasteAll", false),
+    paste_formulas: attr_bool(element, "pasteFormulas", false),
+    paste_values: attr_bool(element, "pasteValues", false),
+    paste_formats: attr_bool(element, "pasteFormats", false),
+    paste_comments: attr_bool(element, "pasteComments", false),
+    paste_data_validation: attr_bool(element, "pasteDataValidation", false),
+    paste_borders: attr_bool(element, "pasteBorders", false),
+    paste_col_widths: attr_bool(element, "pasteColWidths", false),
+    paste_number_formats: attr_bool(element, "pasteNumberFormats", false),
+    merge: attr_bool(element, "merge", false),
+    split_first: attr_bool(element, "splitFirst", false),
+    split_all: attr_bool(element, "splitAll", false),
+    row_col_shift: attr_bool(element, "rowColShift", false),
+    clear_all: attr_bool(element, "clearAll", false),
+    clear_formats: attr_bool(element, "clearFormats", false),
+    clear_contents: attr_bool(element, "clearContents", false),
+    clear_comments: attr_bool(element, "clearComments", false),
+    assign: attr_bool(element, "assign", false),
+    coerce: attr_bool(element, "coerce", false),
+    adjust: attr_bool(element, "adjust", false),
+    cell_meta: attr_bool(element, "cellMeta", false),
   }
 }
 
 ///|
-/// XSD complex type CT_MetadataBlocks.
+/// XSD complex type CT_MetadataBlocks — Part 1 §18.9.3 (cellMetadata
+/// element). Optional `@count` (xsd:unsignedInt, default 0) and one or
+/// more `<bk>` (CT_MetadataBlock) children.
 pub(all) struct CT_MetadataBlocks {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional, default 0.
+  count : Int
+  /// <bk>+ (CT_MetadataBlock) — one or more.
+  blocks : Array[CT_MetadataBlock]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MetadataBlocks::new(element : @xml.Element) -> CT_MetadataBlocks {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint(element, "count", 0)
+  let blocks : Array[CT_MetadataBlock] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "bk" {
+        blocks.push(CT_MetadataBlock::new(child_element))
+      }
+    }
   }
+  { element, count, blocks }
 }
 
 ///|
-/// XSD complex type CT_MetadataBlock.
+/// XSD complex type CT_MetadataBlock — Part 1 §18.9.1 (bk Metadata
+/// Block). Required sequence of one or more `<rc>` (CT_MetadataRecord)
+/// children.
 pub(all) struct CT_MetadataBlock {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <rc>+ (CT_MetadataRecord) — one or more.
+  records : Array[CT_MetadataRecord]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MetadataBlock::new(element : @xml.Element) -> CT_MetadataBlock {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let records : Array[CT_MetadataRecord] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "rc" {
+        records.push(CT_MetadataRecord::new(child_element))
+      }
+    }
   }
+  { element, records }
 }
 
 ///|
-/// XSD complex type CT_MetadataRecord.
+/// XSD complex type CT_MetadataRecord — Part 1 §18.9.15 (rc). Required
+/// attributes `@t` (xsd:unsignedInt, metadata-type index) and `@v`
+/// (xsd:unsignedInt, value-store index).
 pub(all) struct CT_MetadataRecord {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @t (xsd:unsignedInt) — required.
+  t : Int
+  /// @v (xsd:unsignedInt) — required.
+  v : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MetadataRecord::new(element : @xml.Element) -> CT_MetadataRecord {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let t = attr_uint(element, "t", 0)
+  let v = attr_uint(element, "v", 0)
+  { element, t, v }
 }
 
 ///|
-/// XSD complex type CT_FutureMetadata.
+/// XSD complex type CT_FutureMetadata — Part 1 §18.9.4. Forward-compat
+/// metadata-block bundle. Required `@name` (s:ST_Xstring); optional
+/// `@count` (xsd:unsignedInt, default 0). Children: zero or more `<bk>`
+/// (CT_FutureMetadataBlock) plus an optional `<extLst>`.
 pub(all) struct CT_FutureMetadata {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — required.
+  name : String
+  /// @count (xsd:unsignedInt) — optional, default 0.
+  count : Int
+  /// <bk>* (CT_FutureMetadataBlock) — zero or more.
+  blocks : Array[CT_FutureMetadataBlock]
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FutureMetadata::new(element : @xml.Element) -> CT_FutureMetadata {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = match attr(element, "name") {
+    Some(v) => v
+    None => ""
   }
+  let count = attr_uint(element, "count", 0)
+  let blocks : Array[CT_FutureMetadataBlock] = []
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "bk" => blocks.push(CT_FutureMetadataBlock::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  { element, name, count, blocks, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_FutureMetadataBlock.
+/// XSD complex type CT_FutureMetadataBlock — Part 1 §18.9.2 (bk Future
+/// Metadata Block). Single optional `<extLst>` child carrying the
+/// extension payload; no attributes.
 pub(all) struct CT_FutureMetadataBlock {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_FutureMetadataBlock::new(
   element : @xml.Element,
 ) -> CT_FutureMetadataBlock {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "extLst" {
+        ext_lst = Some(CT_ExtensionList::new(child_element))
+      }
+    }
   }
+  { element, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_MetadataStringIndex.
+/// XSD complex type CT_MetadataStringIndex — Part 1 §18.9.13 (n Member
+/// Unique Name Index). Required `@x` (xsd:unsignedInt, index into the
+/// metadataStrings store); optional `@s` (xsd:boolean, default false,
+/// "string store" flag).
 pub(all) struct CT_MetadataStringIndex {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @x (xsd:unsignedInt) — required.
+  x : Int
+  /// @s (xsd:boolean) — optional, default false.
+  s : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MetadataStringIndex::new(
   element : @xml.Element,
 ) -> CT_MetadataStringIndex {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let x = attr_uint(element, "x", 0)
+  let s = attr_bool(element, "s", false)
+  { element, x, s }
 }
 
 ///|
-/// XSD complex type CT_MetadataStrings.
+/// XSD complex type CT_MetadataStrings — Part 1 §18.9.9. Metadata string
+/// store. Optional `@count` (xsd:unsignedInt, default 0) and one or more
+/// `<s>` (CT_XStringElement) children.
 pub(all) struct CT_MetadataStrings {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional, default 0.
+  count : Int
+  /// <s>+ (CT_XStringElement) — one or more.
+  strings : Array[CT_XStringElement]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MetadataStrings::new(element : @xml.Element) -> CT_MetadataStrings {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint(element, "count", 0)
+  let strings : Array[CT_XStringElement] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "s" {
+        strings.push(CT_XStringElement::new(child_element))
+      }
+    }
   }
+  { element, count, strings }
 }
 
 ///|
-/// XSD complex type CT_SingleXmlCells.
+/// XSD complex type CT_SingleXmlCells — Part 1 §18.5.2.2. Unbounded
+/// sequence of `<singleXmlCell>` (CT_SingleXmlCell) children.
 pub(all) struct CT_SingleXmlCells {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <singleXmlCell>* (CT_SingleXmlCell) — zero or more (XSD maxOccurs=unbounded).
+  single_xml_cells : Array[CT_SingleXmlCell]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_SingleXmlCells::new(element : @xml.Element) -> CT_SingleXmlCells {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let single_xml_cells : Array[CT_SingleXmlCell] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "singleXmlCell" {
+        single_xml_cells.push(CT_SingleXmlCell::new(child_element))
+      }
+    }
   }
+  { element, single_xml_cells }
 }
 
 ///|
-/// XSD complex type CT_SingleXmlCell.
+/// XSD complex type CT_SingleXmlCell — Part 1 §18.5.2.1. Single-cell XML
+/// map binding. Required `@id` (xsd:unsignedInt), `@r` (ST_CellRef),
+/// `@connectionId` (xsd:unsignedInt). Children: required `<xmlCellPr>`
+/// (CT_XmlCellPr) and optional `<extLst>` (CT_ExtensionList).
 pub(all) struct CT_SingleXmlCell {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @id (xsd:unsignedInt) — required.
+  id : Int
+  /// @r (ST_CellRef) — required.
+  r : String
+  /// @connectionId (xsd:unsignedInt) — required.
+  connection_id : Int
+  /// <xmlCellPr> (CT_XmlCellPr) — required.
+  xml_cell_pr : CT_XmlCellPr?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_SingleXmlCell::new(element : @xml.Element) -> CT_SingleXmlCell {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let id = attr_uint(element, "id", 0)
+  let r = match attr(element, "r") {
+    Some(v) => v
+    None => ""
   }
+  let connection_id = attr_uint(element, "connectionId", 0)
+  let mut xml_cell_pr : CT_XmlCellPr? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "xmlCellPr" => xml_cell_pr = Some(CT_XmlCellPr::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  { element, id, r, connection_id, xml_cell_pr, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_XmlCellPr.
+/// XSD complex type CT_XmlCellPr — Part 1 §18.5.2.3 (xmlCellPr Cell
+/// Properties). Required `@id` (xsd:unsignedInt); optional `@uniqueName`
+/// (s:ST_Xstring). Children: required `<xmlPr>` (CT_XmlPr) and optional
+/// `<extLst>` (CT_ExtensionList).
 pub(all) struct CT_XmlCellPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @id (xsd:unsignedInt) — required.
+  id : Int
+  /// @uniqueName (s:ST_Xstring) — optional.
+  unique_name : String?
+  /// <xmlPr> (CT_XmlPr) — required.
+  xml_pr : CT_XmlPr?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_XmlCellPr::new(element : @xml.Element) -> CT_XmlCellPr {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let id = attr_uint(element, "id", 0)
+  let unique_name = attr(element, "uniqueName")
+  let mut xml_pr : CT_XmlPr? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "xmlPr" => xml_pr = Some(CT_XmlPr::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
   }
+  { element, id, unique_name, xml_pr, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_XmlPr.
+/// XSD complex type CT_XmlPr — Part 1 §18.5.2.4 (xmlPr Column XML
+/// Properties). Required `@mapId` (xsd:unsignedInt), `@xpath`
+/// (s:ST_Xstring), `@xmlDataType` (ST_XmlDataType). Optional `<extLst>`
+/// (CT_ExtensionList) child.
 pub(all) struct CT_XmlPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @mapId (xsd:unsignedInt) — required.
+  map_id : Int
+  /// @xpath (s:ST_Xstring) — required.
+  xpath : String
+  /// @xmlDataType (ST_XmlDataType) — required.
+  xml_data_type : String
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_XmlPr::new(element : @xml.Element) -> CT_XmlPr {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let map_id = attr_uint(element, "mapId", 0)
+  let xpath = match attr(element, "xpath") {
+    Some(v) => v
+    None => ""
   }
+  let xml_data_type = match attr(element, "xmlDataType") {
+    Some(v) => v
+    None => ""
+  }
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "extLst" {
+        ext_lst = Some(CT_ExtensionList::new(child_element))
+      }
+    }
+  }
+  { element, map_id, xpath, xml_data_type, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_ExternalLink.
+/// XSD complex type CT_ExternalLink — Part 1 §18.14.8 (externalLink
+/// External Reference). xsd:choice between `<externalBook>`
+/// (CT_ExternalBook), `<ddeLink>` (CT_DdeLink), and `<oleLink>`
+/// (CT_OleLink); plus optional `<extLst>` (CT_ExtensionList).
 pub(all) struct CT_ExternalLink {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <externalBook> (CT_ExternalBook) — choice option.
+  external_book : CT_ExternalBook?
+  /// <ddeLink> (CT_DdeLink) — choice option.
+  dde_link : CT_DdeLink?
+  /// <oleLink> (CT_OleLink) — choice option.
+  ole_link : CT_OleLink?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalLink::new(element : @xml.Element) -> CT_ExternalLink {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut external_book : CT_ExternalBook? = None
+  let mut dde_link : CT_DdeLink? = None
+  let mut ole_link : CT_OleLink? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "externalBook" =>
+          external_book = Some(CT_ExternalBook::new(child_element))
+        "ddeLink" => dde_link = Some(CT_DdeLink::new(child_element))
+        "oleLink" => ole_link = Some(CT_OleLink::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
   }
+  { element, external_book, dde_link, ole_link, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_ExternalBook.
+/// XSD complex type CT_ExternalBook — Part 1 §18.14.7. Required `@r:id`
+/// reference to the linked workbook part. Optional children
+/// `<sheetNames>` (CT_ExternalSheetNames), `<definedNames>`
+/// (CT_ExternalDefinedNames), and `<sheetDataSet>`
+/// (CT_ExternalSheetDataSet).
 pub(all) struct CT_ExternalBook {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @r:id (relationship id) — required.
+  r_id : String
+  /// <sheetNames> (CT_ExternalSheetNames) — optional.
+  sheet_names : CT_ExternalSheetNames?
+  /// <definedNames> (CT_ExternalDefinedNames) — optional.
+  defined_names : CT_ExternalDefinedNames?
+  /// <sheetDataSet> (CT_ExternalSheetDataSet) — optional.
+  sheet_data_set : CT_ExternalSheetDataSet?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalBook::new(element : @xml.Element) -> CT_ExternalBook {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let r_id = match attr_with_ns(element, "id") {
+    Some(v) => v
+    None => ""
   }
+  let mut sheet_names : CT_ExternalSheetNames? = None
+  let mut defined_names : CT_ExternalDefinedNames? = None
+  let mut sheet_data_set : CT_ExternalSheetDataSet? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "sheetNames" =>
+          sheet_names = Some(CT_ExternalSheetNames::new(child_element))
+        "definedNames" =>
+          defined_names = Some(CT_ExternalDefinedNames::new(child_element))
+        "sheetDataSet" =>
+          sheet_data_set = Some(CT_ExternalSheetDataSet::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  { element, r_id, sheet_names, defined_names, sheet_data_set }
 }
 
 ///|
-/// XSD complex type CT_ExternalSheetNames.
+/// XSD complex type CT_ExternalSheetNames — Part 1 §18.14.16
+/// (sheetNames Supporting Workbook Sheet Names). One or more
+/// `<sheetName>` (CT_ExternalSheetName) children.
 pub(all) struct CT_ExternalSheetNames {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <sheetName>+ (CT_ExternalSheetName) — one or more.
+  sheet_names : Array[CT_ExternalSheetName]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalSheetNames::new(
   element : @xml.Element,
 ) -> CT_ExternalSheetNames {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let sheet_names : Array[CT_ExternalSheetName] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "sheetName" {
+        sheet_names.push(CT_ExternalSheetName::new(child_element))
+      }
+    }
   }
+  { element, sheet_names }
 }
 
 ///|
-/// XSD complex type CT_ExternalSheetName.
+/// XSD complex type CT_ExternalSheetName — Part 1 §18.14.15 (sheetName
+/// Sheet Name). Single optional `@val` (s:ST_Xstring) attribute carrying
+/// the linked sheet name.
 pub(all) struct CT_ExternalSheetName {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @val (s:ST_Xstring) — optional.
+  val : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalSheetName::new(
   element : @xml.Element,
 ) -> CT_ExternalSheetName {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let val = attr(element, "val")
+  { element, val }
 }
 
 ///|
-/// XSD complex type CT_ExternalDefinedNames.
+/// XSD complex type CT_ExternalDefinedNames — Part 1 §18.14.6
+/// (definedNames Named Links). Zero or more `<definedName>`
+/// (CT_ExternalDefinedName) children.
 pub(all) struct CT_ExternalDefinedNames {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <definedName>* (CT_ExternalDefinedName) — zero or more.
+  defined_names : Array[CT_ExternalDefinedName]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalDefinedNames::new(
   element : @xml.Element,
 ) -> CT_ExternalDefinedNames {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let defined_names : Array[CT_ExternalDefinedName] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "definedName" {
+        defined_names.push(CT_ExternalDefinedName::new(child_element))
+      }
+    }
   }
+  { element, defined_names }
 }
 
 ///|
-/// XSD complex type CT_ExternalDefinedName.
+/// XSD complex type CT_ExternalDefinedName — Part 1 §18.14.5
+/// (definedName Defined Name). Required `@name` (s:ST_Xstring); optional
+/// `@refersTo` (s:ST_Xstring) and `@sheetId` (xsd:unsignedInt).
 pub(all) struct CT_ExternalDefinedName {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — required.
+  name : String
+  /// @refersTo (s:ST_Xstring) — optional.
+  refers_to : String?
+  /// @sheetId (xsd:unsignedInt) — optional.
+  sheet_id : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalDefinedName::new(
   element : @xml.Element,
 ) -> CT_ExternalDefinedName {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = match attr(element, "name") {
+    Some(v) => v
+    None => ""
   }
+  let refers_to = attr(element, "refersTo")
+  let sheet_id = attr_uint_opt(element, "sheetId")
+  { element, name, refers_to, sheet_id }
 }
 
 ///|
-/// XSD complex type CT_ExternalSheetData.
+/// XSD complex type CT_ExternalSheetData — Part 1 §18.14.13 (sheetData
+/// External Sheet Data Set). Required `@sheetId` (xsd:unsignedInt) and
+/// optional `@refreshError` (xsd:boolean, default false); zero or more
+/// `<row>` (CT_ExternalRow) children.
 pub(all) struct CT_ExternalSheetData {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @sheetId (xsd:unsignedInt) — required.
+  sheet_id : Int
+  /// @refreshError (xsd:boolean) — optional, default false.
+  refresh_error : Bool
+  /// <row>* (CT_ExternalRow) — zero or more.
+  rows : Array[CT_ExternalRow]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalSheetData::new(
   element : @xml.Element,
 ) -> CT_ExternalSheetData {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let sheet_id = attr_uint(element, "sheetId", 0)
+  let refresh_error = attr_bool(element, "refreshError", false)
+  let rows : Array[CT_ExternalRow] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "row" {
+        rows.push(CT_ExternalRow::new(child_element))
+      }
+    }
   }
+  { element, sheet_id, refresh_error, rows }
 }
 
 ///|
-/// XSD complex type CT_ExternalRow.
+/// XSD complex type CT_ExternalRow — Part 1 §18.14.12 (row). Required
+/// `@r` (xsd:unsignedInt, row index); zero or more `<cell>`
+/// (CT_ExternalCell) children.
 pub(all) struct CT_ExternalRow {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @r (xsd:unsignedInt) — required.
+  r : Int
+  /// <cell>* (CT_ExternalCell) — zero or more.
+  cells : Array[CT_ExternalCell]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalRow::new(element : @xml.Element) -> CT_ExternalRow {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let r = attr_uint(element, "r", 0)
+  let cells : Array[CT_ExternalCell] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "cell" {
+        cells.push(CT_ExternalCell::new(child_element))
+      }
+    }
   }
+  { element, r, cells }
 }
 
 ///|
-/// XSD complex type CT_ExternalCell.
+/// XSD complex type CT_ExternalCell — Part 1 §18.14.1 (cell External
+/// Cell Data). Optional `@r` (ST_CellRef), `@t` (ST_CellType, default
+/// `n`), `@vm` (xsd:unsignedInt, default 0). Optional `<v>` (s:ST_Xstring)
+/// value child.
 pub(all) struct CT_ExternalCell {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @r (ST_CellRef) — optional.
+  r : String?
+  /// @t (ST_CellType) — optional, default "n".
+  t : String
+  /// @vm (xsd:unsignedInt) — optional, default 0.
+  vm : Int
+  /// <v> (s:ST_Xstring) — optional.
+  v : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalCell::new(element : @xml.Element) -> CT_ExternalCell {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let r = attr(element, "r")
+  let t = match attr(element, "t") {
+    Some(v) => v
+    None => "n"
   }
+  let vm = attr_uint(element, "vm", 0)
+  let mut v : String? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "v" {
+        v = Some(element_text(child_element))
+      }
+    }
+  }
+  { element, r, t, vm, v }
 }
 
 ///|
-/// XSD complex type CT_DdeLink.
+/// XSD complex type CT_DdeLink — Part 1 §18.14.4 (ddeLink DDE
+/// Connection). Required `@ddeService` and `@ddeTopic` (s:ST_Xstring);
+/// optional `<ddeItems>` (CT_DdeItems) child.
 pub(all) struct CT_DdeLink {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @ddeService (s:ST_Xstring) — required.
+  dde_service : String
+  /// @ddeTopic (s:ST_Xstring) — required.
+  dde_topic : String
+  /// <ddeItems> (CT_DdeItems) — optional.
+  dde_items : CT_DdeItems?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DdeLink::new(element : @xml.Element) -> CT_DdeLink {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let dde_service = match attr(element, "ddeService") {
+    Some(v) => v
+    None => ""
   }
+  let dde_topic = match attr(element, "ddeTopic") {
+    Some(v) => v
+    None => ""
+  }
+  let mut dde_items : CT_DdeItems? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "ddeItems" {
+        dde_items = Some(CT_DdeItems::new(child_element))
+      }
+    }
+  }
+  { element, dde_service, dde_topic, dde_items }
 }
 
 ///|
-/// XSD complex type CT_DdeItems.
+/// XSD complex type CT_DdeItems — Part 1 §18.14.3 (ddeItems DDE Items
+/// Collection). Zero or more `<ddeItem>` (CT_DdeItem) children.
 pub(all) struct CT_DdeItems {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <ddeItem>* (CT_DdeItem) — zero or more.
+  dde_items : Array[CT_DdeItem]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DdeItems::new(element : @xml.Element) -> CT_DdeItems {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let dde_items : Array[CT_DdeItem] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "ddeItem" {
+        dde_items.push(CT_DdeItem::new(child_element))
+      }
+    }
   }
+  { element, dde_items }
 }
 
 ///|
-/// XSD complex type CT_DdeItem. DDE item definition with attributes `name`,
-/// `ole`, `advise`, and `preferPic`, and optional `values` child element of
-/// type CT_DdeValues.
+/// XSD complex type CT_DdeItem — Part 1 §18.14.2 (ddeItem DDE Item
+/// Definition). Optional `@name` (s:ST_Xstring, default "0"), `@ole`,
+/// `@advise`, `@preferPic` (xsd:boolean, default false); optional
+/// `<values>` (CT_DdeValues) child.
 pub(all) struct CT_DdeItem {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — optional, default "0".
+  name : String
+  /// @ole (xsd:boolean) — optional, default false.
+  ole : Bool
+  /// @advise (xsd:boolean) — optional, default false.
+  advise : Bool
+  /// @preferPic (xsd:boolean) — optional, default false.
+  prefer_pic : Bool
+  /// <values> (CT_DdeValues) — optional.
+  values : CT_DdeValues?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DdeItem::new(element : @xml.Element) -> CT_DdeItem {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = match attr(element, "name") {
+    Some(v) => v
+    None => "0"
   }
+  let ole = attr_bool(element, "ole", false)
+  let advise = attr_bool(element, "advise", false)
+  let prefer_pic = attr_bool(element, "preferPic", false)
+  let mut values : CT_DdeValues? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "values" {
+        values = Some(CT_DdeValues::new(child_element))
+      }
+    }
+  }
+  { element, name, ole, advise, prefer_pic, values }
 }
 
 ///|
-/// XSD complex type CT_DdeValues.
+/// XSD complex type CT_DdeValues — Part 1 §18.14.19 (values DDE Name
+/// Values). Optional `@rows` and `@cols` (xsd:unsignedInt, default 1);
+/// one or more `<value>` (CT_DdeValue) children.
 pub(all) struct CT_DdeValues {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @rows (xsd:unsignedInt) — optional, default 1.
+  rows : Int
+  /// @cols (xsd:unsignedInt) — optional, default 1.
+  cols : Int
+  /// <value>+ (CT_DdeValue) — one or more.
+  values : Array[CT_DdeValue]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DdeValues::new(element : @xml.Element) -> CT_DdeValues {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let rows = attr_uint(element, "rows", 1)
+  let cols = attr_uint(element, "cols", 1)
+  let values : Array[CT_DdeValue] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "value" {
+        values.push(CT_DdeValue::new(child_element))
+      }
+    }
   }
+  { element, rows, cols, values }
 }
 
 ///|
-/// XSD complex type CT_DdeValue.
+/// XSD complex type CT_DdeValue — Part 1 §18.14.18 (value). Optional
+/// `@t` (ST_DdeValueType, default `n`); required `<val>` (s:ST_Xstring)
+/// child carrying the literal payload.
 pub(all) struct CT_DdeValue {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @t (ST_DdeValueType) — optional, default "n".
+  t : String
+  /// <val> (s:ST_Xstring) — required text payload.
+  val : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_DdeValue::new(element : @xml.Element) -> CT_DdeValue {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let t = match attr(element, "t") {
+    Some(v) => v
+    None => "n"
   }
+  let mut val = ""
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "val" {
+        val = element_text(child_element)
+      }
+    }
+  }
+  { element, t, val }
 }
 
 ///|
-/// XSD complex type CT_OleLink.
+/// XSD complex type CT_OleLink — Part 1 §18.14.11 (oleLink Generic
+/// Object Link Connection). Required `@r:id` reference and `@progId`
+/// (s:ST_Xstring); optional `<oleItems>` (CT_OleItems) child.
 pub(all) struct CT_OleLink {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @r:id (relationship id) — required.
+  r_id : String
+  /// @progId (s:ST_Xstring) — required.
+  prog_id : String
+  /// <oleItems> (CT_OleItems) — optional.
+  ole_items : CT_OleItems?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_OleLink::new(element : @xml.Element) -> CT_OleLink {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let r_id = match attr_with_ns(element, "id") {
+    Some(v) => v
+    None => ""
   }
+  let prog_id = match attr(element, "progId") {
+    Some(v) => v
+    None => ""
+  }
+  let mut ole_items : CT_OleItems? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "oleItems" {
+        ole_items = Some(CT_OleItems::new(child_element))
+      }
+    }
+  }
+  { element, r_id, prog_id, ole_items }
 }
 
 ///|
-/// XSD complex type CT_OleItems.
+/// XSD complex type CT_OleItems — Part 1 §18.14.10 (oleItems Object
+/// Link Items). Zero or more `<oleItem>` (CT_OleItem) children.
 pub(all) struct CT_OleItems {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <oleItem>* (CT_OleItem) — zero or more.
+  ole_items : Array[CT_OleItem]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_OleItems::new(element : @xml.Element) -> CT_OleItems {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let ole_items : Array[CT_OleItem] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "oleItem" {
+        ole_items.push(CT_OleItem::new(child_element))
+      }
+    }
   }
+  { element, ole_items }
 }
 
 ///|
-/// XSD complex type CT_OleItem.
+/// XSD complex type CT_OleItem — Part 1 §18.14.9 (oleItem Object Link
+/// Item). Required `@name` (s:ST_Xstring); optional `@icon`, `@advise`,
+/// `@preferPic` (xsd:boolean, default false).
 pub(all) struct CT_OleItem {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — required.
+  name : String
+  /// @icon (xsd:boolean) — optional, default false.
+  icon : Bool
+  /// @advise (xsd:boolean) — optional, default false.
+  advise : Bool
+  /// @preferPic (xsd:boolean) — optional, default false.
+  prefer_pic : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_OleItem::new(element : @xml.Element) -> CT_OleItem {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = match attr(element, "name") {
+    Some(v) => v
+    None => ""
   }
+  let icon = attr_bool(element, "icon", false)
+  let advise = attr_bool(element, "advise", false)
+  let prefer_pic = attr_bool(element, "preferPic", false)
+  { element, name, icon, advise, prefer_pic }
 }
 
 ///|
-/// XSD complex type CT_XmlColumnPr.
+/// XSD complex type CT_XmlColumnPr — Part 1 §18.5.1.7 (xmlColumnPr XML
+/// Column Properties). Required `@mapId` (xsd:unsignedInt), `@xpath`
+/// (s:ST_Xstring), `@xmlDataType` (ST_XmlDataType); optional
+/// `@denormalized` (xsd:boolean, default false). Optional `<extLst>`
+/// (CT_ExtensionList) child.
 pub(all) struct CT_XmlColumnPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @mapId (xsd:unsignedInt) — required.
+  map_id : Int
+  /// @xpath (s:ST_Xstring) — required.
+  xpath : String
+  /// @denormalized (xsd:boolean) — optional, default false.
+  denormalized : Bool
+  /// @xmlDataType (ST_XmlDataType) — required.
+  xml_data_type : String
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_XmlColumnPr::new(element : @xml.Element) -> CT_XmlColumnPr {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let map_id = attr_uint(element, "mapId", 0)
+  let xpath = match attr(element, "xpath") {
+    Some(v) => v
+    None => ""
   }
+  let denormalized = attr_bool(element, "denormalized", false)
+  let xml_data_type = match attr(element, "xmlDataType") {
+    Some(v) => v
+    None => ""
+  }
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "extLst" {
+        ext_lst = Some(CT_ExtensionList::new(child_element))
+      }
+    }
+  }
+  { element, map_id, xpath, denormalized, xml_data_type, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_VolTypes.
+/// XSD complex type CT_VolTypes — Part 1 §18.15.6 (volTypes Volatile
+/// Dependency Types). One or more `<volType>` (CT_VolType) children plus
+/// optional `<extLst>` (CT_ExtensionList).
 pub(all) struct CT_VolTypes {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <volType>+ (CT_VolType) — one or more.
+  vol_types : Array[CT_VolType]
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_VolTypes::new(element : @xml.Element) -> CT_VolTypes {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let vol_types : Array[CT_VolType] = []
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "volType" => vol_types.push(CT_VolType::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
   }
+  { element, vol_types, ext_lst }
 }
+
+// =============================================================================
+// chunk2 wrappers — preserve untouched until chunk2 sub-agent owns them.
+// =============================================================================
 
 ///|
 /// XSD complex type CT_VolType.
@@ -823,4 +1560,147 @@ pub fn CT_OleSize::new(element : @xml.Element) -> CT_OleSize {
   } else {
     { element, }
   }
+}
+
+// =============================================================================
+// private parse helpers
+// =============================================================================
+
+///|
+/// Look up an attribute by local name, ignoring namespace prefix.
+fn attr(element : @xml.Element, local_name : String) -> String? {
+  for attribute in element.attributes {
+    if attribute.name.local_name == local_name {
+      return Some(attribute.value)
+    }
+  }
+  None
+}
+
+///|
+/// Look up an attribute by local name where the attribute is expected to
+/// carry a prefix (e.g. `r:id`). The lookup matches the local name with
+/// a non-empty prefix to disambiguate from unprefixed siblings.
+fn attr_with_ns(element : @xml.Element, local_name : String) -> String? {
+  for attribute in element.attributes {
+    if attribute.name.local_name == local_name &&
+      attribute.name.prefix is Some(_) {
+      return Some(attribute.value)
+    }
+  }
+  // Fall back to plain local-name match in case the document elided the prefix.
+  attr(element, local_name)
+}
+
+///|
+/// Parse an attribute as xsd:unsignedInt (non-negative). Returns the
+/// supplied default when the attribute is missing or unparseable.
+fn attr_uint(element : @xml.Element, local_name : String, default : Int) -> Int {
+  match attr_uint_opt(element, local_name) {
+    Some(n) => n
+    None => default
+  }
+}
+
+///|
+/// Parse an attribute as xsd:unsignedInt and return None when absent or
+/// unparseable. Negative values are rejected per the XSD facet.
+fn attr_uint_opt(element : @xml.Element, local_name : String) -> Int? {
+  match attr(element, local_name) {
+    Some(value) => parse_uint_text(value)
+    None => None
+  }
+}
+
+///|
+/// Helper: parse a non-negative integer per xsd:unsignedInt. Whitespace
+/// is trimmed; leading-sign / empty / negative tokens are rejected.
+fn parse_uint_text(text : String) -> Int? {
+  let trimmed = trim_whitespace(text)
+  if trimmed.length() == 0 {
+    return None
+  }
+  try {
+    let value : Int64 = @strconv.from_str(trimmed)
+    let n = value.to_int()
+    if n < 0 {
+      None
+    } else {
+      Some(n)
+    }
+  } catch {
+    _ => None
+  }
+}
+
+///|
+/// Trim ASCII whitespace from both ends per XSD §3 collapse-whitespace.
+fn trim_whitespace(text : String) -> String {
+  let len = text.length()
+  let mut start = 0
+  let mut stop = len
+  while start < stop {
+    let c = text.code_unit_at(start).to_int()
+    if c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D {
+      start = start + 1
+    } else {
+      break
+    }
+  }
+  while stop > start {
+    let c = text.code_unit_at(stop - 1).to_int()
+    if c == 0x20 || c == 0x09 || c == 0x0A || c == 0x0D {
+      stop = stop - 1
+    } else {
+      break
+    }
+  }
+  text.substring(start~, end=stop)
+}
+
+///|
+/// Parse an attribute as xsd:boolean using the lexical forms permitted by
+/// W3C XML Schema (`1`/`0`/`true`/`false`). Returns `default` when the
+/// attribute is missing or unparseable.
+fn attr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool {
+  match attr(element, local_name) {
+    Some("1") => true
+    Some("true") => true
+    Some("0") => false
+    Some("false") => false
+    Some(_) => default
+    None => default
+  }
+}
+
+///|
+/// Parse an attribute as xsd:boolean and return None when absent.
+fn attr_bool_opt(element : @xml.Element, local_name : String) -> Bool? {
+  match attr(element, local_name) {
+    Some("1") => Some(true)
+    Some("true") => Some(true)
+    Some("0") => Some(false)
+    Some("false") => Some(false)
+    Some(_) => None
+    None => None
+  }
+}
+
+///|
+/// Concatenate the text and CDATA descendants of an element. Comments and
+/// processing instructions are skipped per XSD §3 simpleContent rules.
+fn element_text(element : @xml.Element) -> String {
+  let buf = StringBuilder::new()
+  for child in element.children {
+    match child {
+      @xml.Node::Text(text) => buf.write_string(text)
+      @xml.Node::CData(text) => buf.write_string(text)
+      _ => ()
+    }
+  }
+  buf.to_string()
 }

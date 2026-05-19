@@ -74,6 +74,12 @@ pub fn CT_BookViews::new(@xml.Element) -> Self
 
 pub(all) struct CT_Boolean {
   element : @xml.Element
+  v : Bool
+  u : Bool?
+  f : Bool?
+  c : String?
+  cp : Int?
+  x : Array[CT_X]
 } derive(Eq, @debug.Debug)
 pub fn CT_Boolean::new(@xml.Element) -> Self
 
@@ -521,26 +527,40 @@ pub fn CT_DbPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_DdeItem {
   element : @xml.Element
+  name : String
+  ole : Bool
+  advise : Bool
+  prefer_pic : Bool
+  values : CT_DdeValues?
 } derive(Eq, @debug.Debug)
 pub fn CT_DdeItem::new(@xml.Element) -> Self
 
 pub(all) struct CT_DdeItems {
   element : @xml.Element
+  dde_items : Array[CT_DdeItem]
 } derive(Eq, @debug.Debug)
 pub fn CT_DdeItems::new(@xml.Element) -> Self
 
 pub(all) struct CT_DdeLink {
   element : @xml.Element
+  dde_service : String
+  dde_topic : String
+  dde_items : CT_DdeItems?
 } derive(Eq, @debug.Debug)
 pub fn CT_DdeLink::new(@xml.Element) -> Self
 
 pub(all) struct CT_DdeValue {
   element : @xml.Element
+  t : String
+  val : String
 } derive(Eq, @debug.Debug)
 pub fn CT_DdeValue::new(@xml.Element) -> Self
 
 pub(all) struct CT_DdeValues {
   element : @xml.Element
+  rows : Int
+  cols : Int
+  values : Array[CT_DdeValue]
 } derive(Eq, @debug.Debug)
 pub fn CT_DdeValues::new(@xml.Element) -> Self
 
@@ -617,26 +637,42 @@ pub fn CT_ExtensionList::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalBook {
   element : @xml.Element
+  r_id : String
+  sheet_names : CT_ExternalSheetNames?
+  defined_names : CT_ExternalDefinedNames?
+  sheet_data_set : CT_ExternalSheetDataSet?
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalBook::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalCell {
   element : @xml.Element
+  r : String?
+  t : String
+  vm : Int
+  v : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalCell::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalDefinedName {
   element : @xml.Element
+  name : String
+  refers_to : String?
+  sheet_id : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalDefinedName::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalDefinedNames {
   element : @xml.Element
+  defined_names : Array[CT_ExternalDefinedName]
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalDefinedNames::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalLink {
   element : @xml.Element
+  external_book : CT_ExternalBook?
+  dde_link : CT_DdeLink?
+  ole_link : CT_OleLink?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalLink::new(@xml.Element) -> Self
 
@@ -652,11 +688,16 @@ pub fn CT_ExternalReferences::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalRow {
   element : @xml.Element
+  r : Int
+  cells : Array[CT_ExternalCell]
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalRow::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalSheetData {
   element : @xml.Element
+  sheet_id : Int
+  refresh_error : Bool
+  rows : Array[CT_ExternalRow]
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalSheetData::new(@xml.Element) -> Self
 
@@ -667,11 +708,13 @@ pub fn CT_ExternalSheetDataSet::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalSheetName {
   element : @xml.Element
+  val : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalSheetName::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalSheetNames {
   element : @xml.Element
+  sheet_names : Array[CT_ExternalSheetName]
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalSheetNames::new(@xml.Element) -> Self
 
@@ -799,11 +842,16 @@ pub fn CT_FunctionGroups::new(@xml.Element) -> Self
 
 pub(all) struct CT_FutureMetadata {
   element : @xml.Element
+  name : String
+  count : Int
+  blocks : Array[CT_FutureMetadataBlock]
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_FutureMetadata::new(@xml.Element) -> Self
 
 pub(all) struct CT_FutureMetadataBlock {
   element : @xml.Element
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_FutureMetadataBlock::new(@xml.Element) -> Self
 
@@ -946,11 +994,24 @@ pub fn CT_Macrosheet::new(@xml.Element) -> Self
 
 pub(all) struct CT_Map {
   element : @xml.Element
+  id : Int
+  name : String
+  root_element : String
+  schema_id : String
+  show_import_export_validation_errors : Bool
+  auto_fit : Bool
+  append : Bool
+  preserve_sort_af_layout : Bool
+  preserve_format : Bool
+  data_binding : CT_DataBinding?
 } derive(Eq, @debug.Debug)
 pub fn CT_Map::new(@xml.Element) -> Self
 
 pub(all) struct CT_MapInfo {
   element : @xml.Element
+  selection_namespaces : String
+  schemas : Array[CT_Schema]
+  maps : Array[CT_Map]
 } derive(Eq, @debug.Debug)
 pub fn CT_MapInfo::new(@xml.Element) -> Self
 
@@ -1036,41 +1097,87 @@ pub fn CT_MergeCells::new(@xml.Element) -> Self
 
 pub(all) struct CT_Metadata {
   element : @xml.Element
+  metadata_types : CT_MetadataTypes?
+  metadata_strings : CT_MetadataStrings?
+  mdx_metadata : CT_MdxMetadata?
+  future_metadata : Array[CT_FutureMetadata]
+  cell_metadata : CT_MetadataBlocks?
+  value_metadata : CT_MetadataBlocks?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_Metadata::new(@xml.Element) -> Self
 
 pub(all) struct CT_MetadataBlock {
   element : @xml.Element
+  records : Array[CT_MetadataRecord]
 } derive(Eq, @debug.Debug)
 pub fn CT_MetadataBlock::new(@xml.Element) -> Self
 
 pub(all) struct CT_MetadataBlocks {
   element : @xml.Element
+  count : Int
+  blocks : Array[CT_MetadataBlock]
 } derive(Eq, @debug.Debug)
 pub fn CT_MetadataBlocks::new(@xml.Element) -> Self
 
 pub(all) struct CT_MetadataRecord {
   element : @xml.Element
+  t : Int
+  v : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_MetadataRecord::new(@xml.Element) -> Self
 
 pub(all) struct CT_MetadataStringIndex {
   element : @xml.Element
+  x : Int
+  s : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_MetadataStringIndex::new(@xml.Element) -> Self
 
 pub(all) struct CT_MetadataStrings {
   element : @xml.Element
+  count : Int
+  strings : Array[CT_XStringElement]
 } derive(Eq, @debug.Debug)
 pub fn CT_MetadataStrings::new(@xml.Element) -> Self
 
 pub(all) struct CT_MetadataType {
   element : @xml.Element
+  name : String
+  min_supported_version : Int
+  ghost_row : Bool
+  ghost_col : Bool
+  edit : Bool
+  delete : Bool
+  copy : Bool
+  paste_all : Bool
+  paste_formulas : Bool
+  paste_values : Bool
+  paste_formats : Bool
+  paste_comments : Bool
+  paste_data_validation : Bool
+  paste_borders : Bool
+  paste_col_widths : Bool
+  paste_number_formats : Bool
+  merge : Bool
+  split_first : Bool
+  split_all : Bool
+  row_col_shift : Bool
+  clear_all : Bool
+  clear_formats : Bool
+  clear_contents : Bool
+  clear_comments : Bool
+  assign : Bool
+  coerce : Bool
+  adjust : Bool
+  cell_meta : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_MetadataType::new(@xml.Element) -> Self
 
 pub(all) struct CT_MetadataTypes {
   element : @xml.Element
+  count : Int
+  metadata_types : Array[CT_MetadataType]
 } derive(Eq, @debug.Debug)
 pub fn CT_MetadataTypes::new(@xml.Element) -> Self
 
@@ -1111,26 +1218,43 @@ pub fn CT_OlapPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_OleItem {
   element : @xml.Element
+  name : String
+  icon : Bool
+  advise : Bool
+  prefer_pic : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_OleItem::new(@xml.Element) -> Self
 
 pub(all) struct CT_OleItems {
   element : @xml.Element
+  ole_items : Array[CT_OleItem]
 } derive(Eq, @debug.Debug)
 pub fn CT_OleItems::new(@xml.Element) -> Self
 
 pub(all) struct CT_OleLink {
   element : @xml.Element
+  r_id : String
+  prog_id : String
+  ole_items : CT_OleItems?
 } derive(Eq, @debug.Debug)
 pub fn CT_OleLink::new(@xml.Element) -> Self
 
 pub(all) struct CT_OleObject {
   element : @xml.Element
+  prog_id : String?
+  dv_aspect : String?
+  link : String?
+  ole_update : String?
+  auto_load : Bool
+  shape_id : Int
+  r_id : String?
+  object_pr : CT_ObjectPr?
 } derive(Eq, @debug.Debug)
 pub fn CT_OleObject::new(@xml.Element) -> Self
 
 pub(all) struct CT_OleObjects {
   element : @xml.Element
+  ole_objects : Array[CT_OleObject]
 } derive(Eq, @debug.Debug)
 pub fn CT_OleObjects::new(@xml.Element) -> Self
 
@@ -1523,6 +1647,10 @@ pub fn CT_Scenarios::new(@xml.Element) -> Self
 
 pub(all) struct CT_Schema {
   element : @xml.Element
+  id : String
+  schema_ref : String?
+  namespace : String?
+  schema_language : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Schema::new(@xml.Element) -> Self
 
@@ -1598,6 +1726,8 @@ pub fn CT_SheetId::new(@xml.Element) -> Self
 
 pub(all) struct CT_SheetIdMap {
   element : @xml.Element
+  count : Int?
+  sheet_ids : Array[CT_SheetId]
 } derive(Eq, @debug.Debug)
 pub fn CT_SheetIdMap::new(@xml.Element) -> Self
 
@@ -1628,11 +1758,17 @@ pub fn CT_Sheets::new(@xml.Element) -> Self
 
 pub(all) struct CT_SingleXmlCell {
   element : @xml.Element
+  id : Int
+  r : String
+  connection_id : Int
+  xml_cell_pr : CT_XmlCellPr?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_SingleXmlCell::new(@xml.Element) -> Self
 
 pub(all) struct CT_SingleXmlCells {
   element : @xml.Element
+  single_xml_cells : Array[CT_SingleXmlCell]
 } derive(Eq, @debug.Debug)
 pub fn CT_SingleXmlCells::new(@xml.Element) -> Self
 
@@ -1823,6 +1959,8 @@ pub fn CT_VolType::new(@xml.Element) -> Self
 
 pub(all) struct CT_VolTypes {
   element : @xml.Element
+  vol_types : Array[CT_VolType]
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_VolTypes::new(@xml.Element) -> Self
 
@@ -1898,16 +2036,29 @@ pub fn CT_Xf::new(@xml.Element) -> Self
 
 pub(all) struct CT_XmlCellPr {
   element : @xml.Element
+  id : Int
+  unique_name : String?
+  xml_pr : CT_XmlPr?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_XmlCellPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_XmlColumnPr {
   element : @xml.Element
+  map_id : Int
+  xpath : String
+  denormalized : Bool
+  xml_data_type : String
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_XmlColumnPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_XmlPr {
   element : @xml.Element
+  map_id : Int
+  xpath : String
+  xml_data_type : String
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_XmlPr::new(@xml.Element) -> Self
 
