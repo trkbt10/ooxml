@@ -110,26 +110,77 @@ pub fn CT_Break::new(@xml.Element) -> Self
 
 pub(all) struct CT_CacheField {
   element : @xml.Element
+  name : String
+  caption : String?
+  property_name : String?
+  server_field : Bool
+  unique_list : Bool
+  num_fmt_id : String?
+  formula : String?
+  sql_type : Int
+  hierarchy : Int
+  level : Int
+  database_field : Bool
+  mapping_count : Int?
+  member_property_field : Bool
+  shared_items : CT_SharedItems?
+  field_group : CT_FieldGroup?
+  mp_maps : Array[CT_X]
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_CacheField::new(@xml.Element) -> Self
 
 pub(all) struct CT_CacheFields {
   element : @xml.Element
+  count : Int?
+  cache_fields : Array[CT_CacheField]
 } derive(Eq, @debug.Debug)
 pub fn CT_CacheFields::new(@xml.Element) -> Self
 
 pub(all) struct CT_CacheHierarchies {
   element : @xml.Element
+  count : Int?
+  cache_hierarchies : Array[CT_CacheHierarchy]
 } derive(Eq, @debug.Debug)
 pub fn CT_CacheHierarchies::new(@xml.Element) -> Self
 
 pub(all) struct CT_CacheHierarchy {
   element : @xml.Element
+  unique_name : String
+  caption : String?
+  measure : Bool
+  set_ : Bool
+  parent_set : Int?
+  icon_set : Int
+  attribute : Bool
+  time : Bool
+  key_attribute : Bool
+  default_member_unique_name : String?
+  all_unique_name : String?
+  all_caption : String?
+  dimension_unique_name : String?
+  display_folder : String?
+  measure_group : String?
+  measures : Bool
+  count : Int
+  one_field : Bool
+  member_value_datatype : Int?
+  unbalanced : Bool?
+  unbalanced_group : Bool?
+  hidden : Bool
+  fields_usage : CT_FieldsUsage?
+  group_levels : CT_GroupLevels?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_CacheHierarchy::new(@xml.Element) -> Self
 
 pub(all) struct CT_CacheSource {
   element : @xml.Element
+  type_ : String
+  connection_id : Int
+  worksheet_source : CT_WorksheetSource?
+  consolidation : CT_Consolidation?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_CacheSource::new(@xml.Element) -> Self
 
@@ -150,21 +201,37 @@ pub fn CT_CalcPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_CalculatedItem {
   element : @xml.Element
+  field : Int?
+  formula : String?
+  pivot_area : CT_PivotArea?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_CalculatedItem::new(@xml.Element) -> Self
 
 pub(all) struct CT_CalculatedItems {
   element : @xml.Element
+  count : Int?
+  calculated_items : Array[CT_CalculatedItem]
 } derive(Eq, @debug.Debug)
 pub fn CT_CalculatedItems::new(@xml.Element) -> Self
 
 pub(all) struct CT_CalculatedMember {
   element : @xml.Element
+  name : String
+  mdx : String
+  member_name : String?
+  hierarchy : String?
+  parent : String?
+  solve_order : Int
+  set_ : Bool
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_CalculatedMember::new(@xml.Element) -> Self
 
 pub(all) struct CT_CalculatedMembers {
   element : @xml.Element
+  count : Int?
+  calculated_members : Array[CT_CalculatedMember]
 } derive(Eq, @debug.Debug)
 pub fn CT_CalculatedMembers::new(@xml.Element) -> Self
 
@@ -678,11 +745,13 @@ pub fn CT_ExternalLink::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalReference {
   element : @xml.Element
+  r_id : String
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalReference::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalReferences {
   element : @xml.Element
+  external_references : Array[CT_ExternalReference]
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalReferences::new(@xml.Element) -> Self
 
@@ -882,11 +951,15 @@ pub fn CT_GroupLevels::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupMember {
   element : @xml.Element
+  unique_name : String
+  group : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_GroupMember::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupMembers {
   element : @xml.Element
+  count : Int?
+  group_members : Array[CT_GroupMember]
 } derive(Eq, @debug.Debug)
 pub fn CT_GroupMembers::new(@xml.Element) -> Self
 
@@ -1260,6 +1333,7 @@ pub fn CT_OleObjects::new(@xml.Element) -> Self
 
 pub(all) struct CT_OleSize {
   element : @xml.Element
+  ref_ : String
 } derive(Eq, @debug.Debug)
 pub fn CT_OleSize::new(@xml.Element) -> Self
 
@@ -1270,21 +1344,41 @@ pub fn CT_OutlinePr::new(@xml.Element) -> Self
 
 pub(all) struct CT_PCDKPI {
   element : @xml.Element
+  unique_name : String
+  caption : String?
+  display_folder : String?
+  measure_group : String?
+  parent : String?
+  value : String
+  goal : String?
+  status : String?
+  trend : String?
+  weight : String?
+  time : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_PCDKPI::new(@xml.Element) -> Self
 
 pub(all) struct CT_PCDKPIs {
   element : @xml.Element
+  count : Int?
+  kpis : Array[CT_PCDKPI]
 } derive(Eq, @debug.Debug)
 pub fn CT_PCDKPIs::new(@xml.Element) -> Self
 
 pub(all) struct CT_PCDSCPage {
   element : @xml.Element
+  count : Int?
+  page_items : Array[CT_PageItem]
 } derive(Eq, @debug.Debug)
 pub fn CT_PCDSCPage::new(@xml.Element) -> Self
 
 pub(all) struct CT_PCDSDTCEntries {
   element : @xml.Element
+  count : Int?
+  missings : Array[CT_Missing]
+  numbers : Array[CT_Number]
+  errors : Array[CT_Error]
+  strings : Array[CT_String]
 } derive(Eq, @debug.Debug)
 pub fn CT_PCDSDTCEntries::new(@xml.Element) -> Self
 
@@ -1375,6 +1469,8 @@ pub fn CT_PivotAreaReferences::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotAreas {
   element : @xml.Element
+  count : Int?
+  pivot_areas : Array[CT_PivotArea]
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotAreas::new(@xml.Element) -> Self
 
@@ -1385,11 +1481,43 @@ pub fn CT_PivotCache::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotCacheDefinition {
   element : @xml.Element
+  r_id : String?
+  invalid : Bool
+  save_data : Bool
+  refresh_on_load : Bool
+  optimize_memory : Bool
+  enable_refresh : Bool
+  refreshed_by : String?
+  refreshed_date_iso : String?
+  background_query : Bool
+  missing_items_limit : Int?
+  created_version : Int
+  refreshed_version : Int
+  min_refreshable_version : Int
+  record_count : Int?
+  upgrade_on_refresh : Bool
+  tuple_cache_attr : Bool
+  support_subquery : Bool
+  support_advanced_drill : Bool
+  cache_source : CT_CacheSource?
+  cache_fields : CT_CacheFields?
+  cache_hierarchies : CT_CacheHierarchies?
+  kpis : CT_PCDKPIs?
+  tuple_cache : CT_TupleCache?
+  calculated_items : CT_CalculatedItems?
+  calculated_members : CT_CalculatedMembers?
+  dimensions : CT_Dimensions?
+  measure_groups : CT_MeasureGroups?
+  maps : CT_MeasureDimensionMaps?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotCacheDefinition::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotCacheRecords {
   element : @xml.Element
+  count : Int?
+  records : Array[CT_Record]
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotCacheRecords::new(@xml.Element) -> Self
 
@@ -1405,11 +1533,64 @@ pub fn CT_PivotDimension::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotField {
   element : @xml.Element
+  name : String?
+  axis : String?
+  data_field : Bool
+  subtotal_caption : String?
+  show_drop_downs : Bool
+  hidden_level : Bool
+  unique_member_property : String?
+  compact : Bool
+  all_drilled : Bool
+  num_fmt_id : String?
+  outline : Bool
+  subtotal_top : Bool
+  drag_to_row : Bool
+  drag_to_col : Bool
+  multiple_item_selection_allowed : Bool
+  drag_to_page : Bool
+  drag_to_data : Bool
+  drag_off : Bool
+  show_all : Bool
+  insert_blank_row : Bool
+  server_field : Bool
+  insert_page_break : Bool
+  auto_show : Bool
+  top_auto_show : Bool
+  hide_new_items : Bool
+  measure_filter : Bool
+  include_new_items_in_filter : Bool
+  item_page_count : Int
+  sort_type : String?
+  data_source_sort : Bool?
+  non_auto_sort_default : Bool
+  rank_by : Int?
+  default_subtotal : Bool
+  sum_subtotal : Bool
+  count_a_subtotal : Bool
+  avg_subtotal : Bool
+  max_subtotal : Bool
+  min_subtotal : Bool
+  product_subtotal : Bool
+  count_subtotal : Bool
+  std_dev_subtotal : Bool
+  std_dev_p_subtotal : Bool
+  var_subtotal : Bool
+  var_p_subtotal : Bool
+  show_prop_cell : Bool
+  show_prop_tip : Bool
+  show_prop_as_caption : Bool
+  default_attribute_drill_state : Bool
+  items : CT_Items?
+  auto_sort_scope : CT_AutoSortScope?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotField::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotFields {
   element : @xml.Element
+  count : Int?
+  pivot_fields : Array[CT_PivotField]
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotFields::new(@xml.Element) -> Self
 
@@ -1425,11 +1606,27 @@ pub fn CT_PivotFilters::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotHierarchies {
   element : @xml.Element
+  count : Int?
+  pivot_hierarchies : Array[CT_PivotHierarchy]
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotHierarchies::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotHierarchy {
   element : @xml.Element
+  outline : Bool
+  multiple_item_selection_allowed : Bool
+  subtotal_top : Bool
+  show_in_field_list : Bool
+  drag_to_row : Bool
+  drag_to_col : Bool
+  drag_to_page : Bool
+  drag_to_data : Bool
+  drag_off : Bool
+  include_new_items_in_filter : Bool
+  caption : String?
+  mps : CT_MemberProperties?
+  members : Array[CT_Members]
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotHierarchy::new(@xml.Element) -> Self
 
@@ -1460,11 +1657,15 @@ pub fn CT_ProtectedRanges::new(@xml.Element) -> Self
 
 pub(all) struct CT_Query {
   element : @xml.Element
+  mdx : String
+  tpls : CT_Tuples?
 } derive(Eq, @debug.Debug)
 pub fn CT_Query::new(@xml.Element) -> Self
 
 pub(all) struct CT_QueryCache {
   element : @xml.Element
+  count : Int?
+  queries : Array[CT_Query]
 } derive(Eq, @debug.Debug)
 pub fn CT_QueryCache::new(@xml.Element) -> Self
 
@@ -1511,11 +1712,21 @@ pub fn CT_RangePr::new(@xml.Element) -> Self
 
 pub(all) struct CT_RangeSet {
   element : @xml.Element
+  i1 : Int?
+  i2 : Int?
+  i3 : Int?
+  i4 : Int?
+  ref_ : String?
+  name : String?
+  sheet : String?
+  r_id : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_RangeSet::new(@xml.Element) -> Self
 
 pub(all) struct CT_RangeSets {
   element : @xml.Element
+  count : Int?
+  range_sets : Array[CT_RangeSet]
 } derive(Eq, @debug.Debug)
 pub fn CT_RangeSets::new(@xml.Element) -> Self
 
@@ -1626,6 +1837,8 @@ pub fn CT_RowFields::new(@xml.Element) -> Self
 
 pub(all) struct CT_RowHierarchiesUsage {
   element : @xml.Element
+  count : Int?
+  row_hierarchy_usages : Array[CT_HierarchyUsage]
 } derive(Eq, @debug.Debug)
 pub fn CT_RowHierarchiesUsage::new(@xml.Element) -> Self
 
@@ -1671,11 +1884,20 @@ pub fn CT_ServerFormats::new(@xml.Element) -> Self
 
 pub(all) struct CT_Set {
   element : @xml.Element
+  count : Int?
+  max_rank : Int
+  set_definition : String
+  sort_type : String?
+  query_failed : Bool
+  tpls : Array[CT_Tuples]
+  sort_by_tuple : CT_Tuples?
 } derive(Eq, @debug.Debug)
 pub fn CT_Set::new(@xml.Element) -> Self
 
 pub(all) struct CT_Sets {
   element : @xml.Element
+  count : Int?
+  sets : Array[CT_Set]
 } derive(Eq, @debug.Debug)
 pub fn CT_Sets::new(@xml.Element) -> Self
 
@@ -1904,16 +2126,26 @@ pub(all) struct CT_Top10 {
 
 pub(all) struct CT_Tuple {
   element : @xml.Element
+  fld : Int?
+  hier : Int?
+  item : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_Tuple::new(@xml.Element) -> Self
 
 pub(all) struct CT_TupleCache {
   element : @xml.Element
+  entries : CT_PCDSDTCEntries?
+  sets : CT_Sets?
+  query_cache : CT_QueryCache?
+  server_formats : CT_ServerFormats?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_TupleCache::new(@xml.Element) -> Self
 
 pub(all) struct CT_Tuples {
   element : @xml.Element
+  c : Int?
+  tpls : Array[CT_Tuple]
 } derive(Eq, @debug.Debug)
 pub fn CT_Tuples::new(@xml.Element) -> Self
 
@@ -1939,21 +2171,31 @@ pub fn CT_VerticalAlignFontProperty::new(@xml.Element) -> Self
 
 pub(all) struct CT_VolMain {
   element : @xml.Element
+  first : String
+  tps : Array[CT_VolTopic]
 } derive(Eq, @debug.Debug)
 pub fn CT_VolMain::new(@xml.Element) -> Self
 
 pub(all) struct CT_VolTopic {
   element : @xml.Element
+  t : String?
+  v : String
+  stps : Array[String]
+  trs : Array[CT_VolTopicRef]
 } derive(Eq, @debug.Debug)
 pub fn CT_VolTopic::new(@xml.Element) -> Self
 
 pub(all) struct CT_VolTopicRef {
   element : @xml.Element
+  r : String
+  s : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_VolTopicRef::new(@xml.Element) -> Self
 
 pub(all) struct CT_VolType {
   element : @xml.Element
+  type_ : String
+  mains : Array[CT_VolMain]
 } derive(Eq, @debug.Debug)
 pub fn CT_VolType::new(@xml.Element) -> Self
 
@@ -2069,6 +2311,84 @@ pub fn CT_colItems::new(@xml.Element) -> Self
 
 pub(all) struct CT_pivotTableDefinition {
   element : @xml.Element
+  name : String
+  cache_id : Int
+  data_on_rows : Bool
+  data_position : Int?
+  data_caption : String
+  grand_total_caption : String?
+  error_caption : String?
+  show_error : Bool
+  missing_caption : String?
+  show_missing : Bool
+  page_style : String?
+  pivot_table_style : String?
+  vacated_style : String?
+  tag : String?
+  updated_version : Int
+  min_refreshable_version : Int
+  asterisk_totals : Bool
+  show_items : Bool
+  edit_data : Bool
+  disable_field_list : Bool
+  show_calc_mbrs : Bool
+  visual_totals : Bool
+  show_multiple_label : Bool
+  show_data_drop_down : Bool
+  show_drill : Bool
+  print_drill : Bool
+  show_member_property_tips : Bool
+  show_data_tips : Bool
+  enable_wizard : Bool
+  enable_drill : Bool
+  enable_field_properties : Bool
+  preserve_formatting : Bool
+  use_auto_formatting : Bool
+  page_wrap : Int
+  page_over_then_down : Bool
+  subtotal_hidden_items : Bool
+  row_grand_totals : Bool
+  col_grand_totals : Bool
+  field_print_titles : Bool
+  item_print_titles : Bool
+  merge_item : Bool
+  show_drop_zones : Bool
+  created_version : Int
+  indent : Int
+  show_empty_row : Bool
+  show_empty_col : Bool
+  show_headers : Bool
+  compact : Bool
+  outline : Bool
+  outline_data : Bool
+  compact_data : Bool
+  published : Bool
+  grid_drop_zones : Bool
+  immersive : Bool
+  multiple_field_filters : Bool
+  chart_format : Int
+  row_header_caption : String?
+  col_header_caption : String?
+  field_list_sort_ascending : Bool
+  mdx_subqueries : Bool
+  custom_list_sort : Bool
+  location : CT_Location?
+  pivot_fields : CT_PivotFields?
+  row_fields : CT_RowFields?
+  row_items : CT_rowItems?
+  col_fields : CT_ColFields?
+  col_items : CT_colItems?
+  page_fields : CT_PageFields?
+  data_fields : CT_DataFields?
+  formats : CT_Formats?
+  conditional_formats : CT_ConditionalFormats?
+  chart_formats : CT_ChartFormats?
+  pivot_hierarchies : CT_PivotHierarchies?
+  pivot_table_style_info : CT_PivotTableStyle?
+  filters : CT_PivotFilters?
+  row_hierarchies_usage : CT_RowHierarchiesUsage?
+  col_hierarchies_usage : CT_ColHierarchiesUsage?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_pivotTableDefinition::new(@xml.Element) -> Self
 

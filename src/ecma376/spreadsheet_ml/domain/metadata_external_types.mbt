@@ -1436,130 +1436,200 @@ pub fn CT_VolTypes::new(element : @xml.Element) -> CT_VolTypes {
 }
 
 // =============================================================================
-// chunk2 wrappers — preserve untouched until chunk2 sub-agent owns them.
+// chunk2 typed wrappers — XSD complex types now carry every spec-defined
+// attribute and child element. Reader/builder still access `.element` for
+// byte-identical round-trip, so the raw element is preserved on each record.
 // =============================================================================
 
 ///|
-/// XSD complex type CT_VolType.
+/// XSD complex type CT_VolType — Part 1 §18.15.5. Volatile-dependency type
+/// entry: required `@type` (ST_VolDepType ∈ {realTimeData, olapFunctions}),
+/// and one or more `<main>` (CT_VolMain) children describing the dependent
+/// topics for the named function group.
 pub(all) struct CT_VolType {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @type (ST_VolDepType) — required. Lexical value preserved.
+  type_ : String
+  /// <main>+ (CT_VolMain) — one or more.
+  mains : Array[CT_VolMain]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_VolType::new(element : @xml.Element) -> CT_VolType {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let type_ = match attr(element, "type") {
+    Some(value) => value
+    None => ""
   }
+  let mains : Array[CT_VolMain] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "main" {
+        mains.push(CT_VolMain::new(child_element))
+      }
+    }
+  }
+  { element, type_, mains }
 }
 
 ///|
-/// XSD complex type CT_VolMain.
+/// XSD complex type CT_VolMain — Part 1 §18.15.1. Volatile-dependency main
+/// entry: required `@first` (s:ST_Xstring) holding the head topic value
+/// and one or more `<tp>` (CT_VolTopic) children describing the dependent
+/// topic chain.
 pub(all) struct CT_VolMain {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @first (s:ST_Xstring) — required.
+  first : String
+  /// <tp>+ (CT_VolTopic) — one or more topics.
+  tps : Array[CT_VolTopic]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_VolMain::new(element : @xml.Element) -> CT_VolMain {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let first = match attr(element, "first") {
+    Some(value) => value
+    None => ""
   }
+  let tps : Array[CT_VolTopic] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "tp" {
+        tps.push(CT_VolTopic::new(child_element))
+      }
+    }
+  }
+  { element, first, tps }
 }
 
 ///|
-/// XSD complex type CT_VolTopic.
+/// XSD complex type CT_VolTopic — Part 1 §18.15.3 (tp). Volatile-dependency
+/// topic: optional `@t` (ST_VolValueType ∈ {b,n,e,s}, default "n"), a
+/// required `<v>` (s:ST_Xstring) value child, an optional sequence of
+/// `<stp>` (s:ST_Xstring) sub-topic strings, and one or more `<tr>`
+/// (CT_VolTopicRef) references.
 pub(all) struct CT_VolTopic {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @t (ST_VolValueType) — optional, default "n". Lexical preserved.
+  t : String?
+  /// <v> (s:ST_Xstring) — required value text.
+  v : String
+  /// <stp>* (s:ST_Xstring) — zero or more sub-topic strings.
+  stps : Array[String]
+  /// <tr>+ (CT_VolTopicRef) — one or more topic references.
+  trs : Array[CT_VolTopicRef]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_VolTopic::new(element : @xml.Element) -> CT_VolTopic {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let t = attr(element, "t")
+  let mut v = ""
+  let stps : Array[String] = []
+  let trs : Array[CT_VolTopicRef] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "v" => v = element_text(child_element)
+        "stp" => stps.push(element_text(child_element))
+        "tr" => trs.push(CT_VolTopicRef::new(child_element))
+        _ => ()
+      }
+    }
   }
+  { element, t, v, stps, trs }
 }
 
 ///|
-/// XSD complex type CT_VolTopicRef.
+/// XSD complex type CT_VolTopicRef — Part 1 §18.15.4 (tr). Volatile-dependency
+/// topic reference: required `@r` (ST_CellRef) cell reference and required
+/// `@s` (xsd:unsignedInt) sheet-id index. No child elements.
 pub(all) struct CT_VolTopicRef {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @r (ST_CellRef) — required cell reference.
+  r : String
+  /// @s (xsd:unsignedInt) — required sheet-id index.
+  s : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_VolTopicRef::new(element : @xml.Element) -> CT_VolTopicRef {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let r = match attr(element, "r") {
+    Some(value) => value
+    None => ""
   }
+  let s = attr_uint(element, "s", 0)
+  { element, r, s }
 }
 
 ///|
-/// XSD complex type CT_ExternalReferences.
+/// XSD complex type CT_ExternalReferences — Part 1 §18.2.9. Workbook-level
+/// container of external-workbook relationships: one or more
+/// `<externalReference>` (CT_ExternalReference) children. No attributes.
 pub(all) struct CT_ExternalReferences {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <externalReference>+ (CT_ExternalReference) — one or more.
+  external_references : Array[CT_ExternalReference]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalReferences::new(
   element : @xml.Element,
 ) -> CT_ExternalReferences {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let external_references : Array[CT_ExternalReference] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "externalReference" {
+        external_references.push(CT_ExternalReference::new(child_element))
+      }
+    }
   }
+  { element, external_references }
 }
 
 ///|
-/// XSD complex type CT_ExternalReference.
+/// XSD complex type CT_ExternalReference — Part 1 §18.2.8. Reference to an
+/// external workbook part: required `@r:id` carrying the relationship id
+/// targeting the external-link part. No child elements.
 pub(all) struct CT_ExternalReference {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @r:id (relationship id) — required.
+  r_id : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalReference::new(
   element : @xml.Element,
 ) -> CT_ExternalReference {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let r_id = match attr_with_ns(element, "id") {
+    Some(value) => value
+    None => ""
   }
+  { element, r_id }
 }
 
 ///|
-/// XSD complex type CT_OleSize.
+/// XSD complex type CT_OleSize — Part 1 §18.2.16. Embedded OLE-object size
+/// hint: required `@ref` (ST_Ref) cell-range reference that defines the
+/// embedded object's visible area on the active sheet. No child elements.
 pub(all) struct CT_OleSize {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @ref (ST_Ref) — required cell-range reference.
+  ref_ : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_OleSize::new(element : @xml.Element) -> CT_OleSize {
-  let group_name = metadata_external_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let ref_ = match attr(element, "ref") {
+    Some(value) => value
+    None => ""
   }
+  { element, ref_ }
 }
 
 // =============================================================================
@@ -1609,6 +1679,42 @@ fn attr_uint_opt(element : @xml.Element, local_name : String) -> Int? {
   match attr(element, local_name) {
     Some(value) => parse_uint_text(value)
     None => None
+  }
+}
+
+///|
+/// Parse an attribute as xsd:int (signed). Returns the supplied default
+/// when the attribute is missing or unparseable.
+fn attr_int(element : @xml.Element, local_name : String, default : Int) -> Int {
+  match attr_int_opt(element, local_name) {
+    Some(n) => n
+    None => default
+  }
+}
+
+///|
+/// Parse an attribute as xsd:int (signed) and return None when absent or
+/// unparseable.
+fn attr_int_opt(element : @xml.Element, local_name : String) -> Int? {
+  match attr(element, local_name) {
+    Some(value) => parse_int_text(value)
+    None => None
+  }
+}
+
+///|
+/// Helper: parse a signed integer per xsd:int. Whitespace is trimmed;
+/// empty tokens are rejected.
+fn parse_int_text(text : String) -> Int? {
+  let trimmed = trim_whitespace(text)
+  if trimmed.length() == 0 {
+    return None
+  }
+  try {
+    let value : Int64 = @strconv.from_str(trimmed)
+    Some(value.to_int())
+  } catch {
+    _ => None
   }
 }
 
