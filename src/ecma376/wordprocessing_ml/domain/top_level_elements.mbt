@@ -47,13 +47,23 @@ pub fn ftr(element : @xml.Element) -> CT_HdrFtr {
 
 ///|
 /// Construct top-level XSD element settings as CT_Settings (§17).
-pub fn settings(element : @xml.Element) -> CT_Settings {
+/// Raises SchemaViolation when the document settings body contains a
+/// child whose typed projection violates §17.15.1.78 (e.g. CT_View,
+/// CT_MailMerge, CT_DocProtect or CT_ReadingModeInkLockDown reject the
+/// child's attribute/element shape).
+pub fn settings(element : @xml.Element) -> CT_Settings raise SchemaViolation {
   CT_Settings::new(element)
 }
 
 ///|
 /// Construct top-level XSD element webSettings as CT_WebSettings (§17).
-pub fn web_settings(element : @xml.Element) -> CT_WebSettings {
+/// Raises SchemaViolation when the web settings body contains a child
+/// whose typed projection violates §11.5 (e.g. CT_Frameset, CT_Frame,
+/// CT_TargetScreenSz or CT_Divs reject the child's attribute/element
+/// shape).
+pub fn web_settings(
+  element : @xml.Element,
+) -> CT_WebSettings raise SchemaViolation {
   CT_WebSettings::new(element)
 }
 

@@ -40,13 +40,13 @@ pub fn[T] raise_schema_violation(String, String, String) -> T raise SchemaViolat
 
 pub fn recipients(@xml.Element) -> CT_Recipients raise SchemaViolation
 
-pub fn settings(@xml.Element) -> CT_Settings
+pub fn settings(@xml.Element) -> CT_Settings raise SchemaViolation
 
 pub fn styles(@xml.Element) -> CT_Styles raise SchemaViolation
 
 pub fn txbx_content(@xml.Element) -> CT_TxbxContent
 
-pub fn web_settings(@xml.Element) -> CT_WebSettings
+pub fn web_settings(@xml.Element) -> CT_WebSettings raise SchemaViolation
 
 pub fn wgp(@xml.Element) -> CT_WordprocessingGroup
 
@@ -136,16 +136,19 @@ pub fn CT_Attr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AutoCaption {
   element : @xml.Element
+  name : String
+  caption : String
 } derive(Eq, @debug.Debug)
-pub fn CT_AutoCaption::new(@xml.Element) -> Self
-pub fn CT_AutoCaption::parse(@xml.Element) -> Self
+pub fn CT_AutoCaption::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AutoCaption::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_AutoCaption::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AutoCaptions {
   element : @xml.Element
+  auto_caption : Array[CT_AutoCaption]
 } derive(Eq, @debug.Debug)
-pub fn CT_AutoCaptions::new(@xml.Element) -> Self
-pub fn CT_AutoCaptions::parse(@xml.Element) -> Self
+pub fn CT_AutoCaptions::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AutoCaptions::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_AutoCaptions::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Background {
@@ -263,16 +266,25 @@ pub fn CT_CalendarType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Caption {
   element : @xml.Element
+  name : String
+  pos : ST_CaptionPos?
+  chap_num : Bool?
+  heading : ST_DecimalNumber?
+  no_label : Bool?
+  num_fmt : ST_NumberFormat?
+  sep : ST_ChapterSep?
 } derive(Eq, @debug.Debug)
-pub fn CT_Caption::new(@xml.Element) -> Self
-pub fn CT_Caption::parse(@xml.Element) -> Self
+pub fn CT_Caption::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Caption::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Caption::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Captions {
   element : @xml.Element
+  caption : Array[CT_Caption]
+  auto_captions : CT_AutoCaptions?
 } derive(Eq, @debug.Debug)
-pub fn CT_Captions::new(@xml.Element) -> Self
-pub fn CT_Captions::parse(@xml.Element) -> Self
+pub fn CT_Captions::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Captions::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Captions::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CellMergeTrackChange {
@@ -289,9 +301,10 @@ pub fn CT_CellMergeTrackChange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CharacterSpacing {
   element : @xml.Element
+  val : ST_CharacterSpacing
 } derive(Eq, @debug.Debug)
-pub fn CT_CharacterSpacing::new(@xml.Element) -> Self
-pub fn CT_CharacterSpacing::parse(@xml.Element) -> Self
+pub fn CT_CharacterSpacing::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CharacterSpacing::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CharacterSpacing::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Charset {
@@ -305,6 +318,18 @@ pub fn CT_Charset::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Cnf {
   element : @xml.Element
+  first_row : Bool?
+  last_row : Bool?
+  first_column : Bool?
+  last_column : Bool?
+  odd_v_band : Bool?
+  even_v_band : Bool?
+  odd_h_band : Bool?
+  even_h_band : Bool?
+  first_row_first_column : Bool?
+  first_row_last_column : Bool?
+  last_row_first_column : Bool?
+  last_row_last_column : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_Cnf::new(@xml.Element) -> Self
 pub fn CT_Cnf::parse(@xml.Element) -> Self
@@ -323,9 +348,21 @@ pub fn CT_Color::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ColorSchemeMapping {
   element : @xml.Element
+  bg1 : ST_WmlColorSchemeIndex?
+  t1 : ST_WmlColorSchemeIndex?
+  bg2 : ST_WmlColorSchemeIndex?
+  t2 : ST_WmlColorSchemeIndex?
+  accent1 : ST_WmlColorSchemeIndex?
+  accent2 : ST_WmlColorSchemeIndex?
+  accent3 : ST_WmlColorSchemeIndex?
+  accent4 : ST_WmlColorSchemeIndex?
+  accent5 : ST_WmlColorSchemeIndex?
+  accent6 : ST_WmlColorSchemeIndex?
+  hyperlink : ST_WmlColorSchemeIndex?
+  followed_hyperlink : ST_WmlColorSchemeIndex?
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorSchemeMapping::new(@xml.Element) -> Self
-pub fn CT_ColorSchemeMapping::parse(@xml.Element) -> Self
+pub fn CT_ColorSchemeMapping::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorSchemeMapping::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ColorSchemeMapping::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Column {
@@ -371,6 +408,14 @@ pub fn CT_Comments::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Compat {
   element : @xml.Element
+  space_for_ul : CT_OnOff?
+  balance_single_byte_double_byte_width : CT_OnOff?
+  do_not_leave_backslash_alone : CT_OnOff?
+  ul_trail_space : CT_OnOff?
+  do_not_expand_shift_return : CT_OnOff?
+  adjust_line_height_in_table : CT_OnOff?
+  apply_breaking_rules : CT_OnOff?
+  compat_setting : Array[CT_CompatSetting]
 } derive(Eq, @debug.Debug)
 pub fn CT_Compat::new(@xml.Element) -> Self
 pub fn CT_Compat::parse(@xml.Element) -> Self
@@ -378,6 +423,9 @@ pub fn CT_Compat::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CompatSetting {
   element : @xml.Element
+  name : String?
+  uri : String?
+  val : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_CompatSetting::new(@xml.Element) -> Self
 pub fn CT_CompatSetting::parse(@xml.Element) -> Self
@@ -483,23 +531,37 @@ pub fn CT_DirContentRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Div {
   element : @xml.Element
+  id : ST_DecimalNumber
+  block_quote : CT_OnOff?
+  body_div : CT_OnOff?
+  mar_left : CT_SignedTwipsMeasure
+  mar_right : CT_SignedTwipsMeasure
+  mar_top : CT_SignedTwipsMeasure
+  mar_bottom : CT_SignedTwipsMeasure
+  div_bdr : CT_DivBdr?
+  divs_child : Array[CT_Divs]
 } derive(Eq, @debug.Debug)
-pub fn CT_Div::new(@xml.Element) -> Self
-pub fn CT_Div::parse(@xml.Element) -> Self
+pub fn CT_Div::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Div::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Div::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DivBdr {
   element : @xml.Element
+  top : CT_Border?
+  left : CT_Border?
+  bottom : CT_Border?
+  right : CT_Border?
 } derive(Eq, @debug.Debug)
-pub fn CT_DivBdr::new(@xml.Element) -> Self
-pub fn CT_DivBdr::parse(@xml.Element) -> Self
+pub fn CT_DivBdr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DivBdr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DivBdr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Divs {
   element : @xml.Element
+  divs : Array[CT_Div]
 } derive(Eq, @debug.Debug)
-pub fn CT_Divs::new(@xml.Element) -> Self
-pub fn CT_Divs::parse(@xml.Element) -> Self
+pub fn CT_Divs::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Divs::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Divs::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocDefaults {
@@ -599,8 +661,8 @@ pub(all) struct CT_DocPartTypes {
   all : Bool?
   types : Array[CT_DocPartType]
 } derive(Eq, @debug.Debug)
-pub fn CT_DocPartTypes::new(@xml.Element) -> Self
-pub fn CT_DocPartTypes::parse(@xml.Element) -> Self
+pub fn CT_DocPartTypes::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocPartTypes::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocPartTypes::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocParts {
@@ -623,9 +685,11 @@ pub fn CT_DocProtect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocRsids {
   element : @xml.Element
+  rsid_root : CT_LongHexNumber?
+  rsid : Array[CT_LongHexNumber]
 } derive(Eq, @debug.Debug)
-pub fn CT_DocRsids::new(@xml.Element) -> Self
-pub fn CT_DocRsids::parse(@xml.Element) -> Self
+pub fn CT_DocRsids::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocRsids::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocRsids::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocType {
@@ -638,16 +702,19 @@ pub fn CT_DocType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocVar {
   element : @xml.Element
+  name : String
+  val : String
 } derive(Eq, @debug.Debug)
-pub fn CT_DocVar::new(@xml.Element) -> Self
-pub fn CT_DocVar::parse(@xml.Element) -> Self
+pub fn CT_DocVar::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocVar::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocVar::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocVars {
   element : @xml.Element
+  doc_var : Array[CT_DocVar]
 } derive(Eq, @debug.Debug)
-pub fn CT_DocVars::new(@xml.Element) -> Self
-pub fn CT_DocVars::parse(@xml.Element) -> Self
+pub fn CT_DocVars::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocVars::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocVars::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Document {
@@ -943,16 +1010,27 @@ pub fn CT_Footnotes::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Frame {
   element : @xml.Element
+  sz : CT_String?
+  name : CT_String?
+  title : CT_String?
+  long_desc : CT_Rel?
+  source_file_name : CT_Rel?
+  mar_w : CT_PixelsMeasure?
+  mar_h : CT_PixelsMeasure?
+  scrollbar : CT_FrameScrollbar?
+  no_resize_allowed : CT_OnOff?
+  linked_to_file : CT_OnOff?
 } derive(Eq, @debug.Debug)
-pub fn CT_Frame::new(@xml.Element) -> Self
-pub fn CT_Frame::parse(@xml.Element) -> Self
+pub fn CT_Frame::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Frame::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Frame::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FrameLayout {
   element : @xml.Element
+  val : ST_FrameLayout
 } derive(Eq, @debug.Debug)
-pub fn CT_FrameLayout::new(@xml.Element) -> Self
-pub fn CT_FrameLayout::parse(@xml.Element) -> Self
+pub fn CT_FrameLayout::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FrameLayout::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FrameLayout::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FramePr {
@@ -979,23 +1057,34 @@ pub fn CT_FramePr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FrameScrollbar {
   element : @xml.Element
+  val : ST_FrameScrollbar
 } derive(Eq, @debug.Debug)
-pub fn CT_FrameScrollbar::new(@xml.Element) -> Self
-pub fn CT_FrameScrollbar::parse(@xml.Element) -> Self
+pub fn CT_FrameScrollbar::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FrameScrollbar::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FrameScrollbar::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Frameset {
   element : @xml.Element
+  sz : CT_String?
+  frameset_splitbar : CT_FramesetSplitbar?
+  frame_layout : CT_FrameLayout?
+  title : CT_String?
+  framesets : Array[CT_Frameset]
+  frames : Array[CT_Frame]
 } derive(Eq, @debug.Debug)
-pub fn CT_Frameset::new(@xml.Element) -> Self
-pub fn CT_Frameset::parse(@xml.Element) -> Self
+pub fn CT_Frameset::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Frameset::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Frameset::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FramesetSplitbar {
   element : @xml.Element
+  w : CT_TwipsMeasure?
+  color : CT_Color?
+  no_border : CT_OnOff?
+  flat_borders : CT_OnOff?
 } derive(Eq, @debug.Debug)
-pub fn CT_FramesetSplitbar::new(@xml.Element) -> Self
-pub fn CT_FramesetSplitbar::parse(@xml.Element) -> Self
+pub fn CT_FramesetSplitbar::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FramesetSplitbar::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FramesetSplitbar::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FtnDocProps {
@@ -1332,9 +1421,25 @@ pub fn CT_MacroName::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_MailMerge {
   element : @xml.Element
+  main_document_type : CT_MailMergeDocType
+  link_to_query : CT_OnOff?
+  data_type : CT_MailMergeDataType
+  connect_string : CT_String?
+  query : CT_String?
+  data_source : CT_Rel?
+  header_source : CT_Rel?
+  do_not_suppress_blank_lines : CT_OnOff?
+  destination : CT_MailMergeDest?
+  address_field_name : CT_String?
+  mail_subject : CT_String?
+  mail_as_attachment : CT_OnOff?
+  view_merged_data : CT_OnOff?
+  active_record : CT_DecimalNumber?
+  check_errors : CT_DecimalNumber?
+  odso : CT_Odso?
 } derive(Eq, @debug.Debug)
-pub fn CT_MailMerge::new(@xml.Element) -> Self
-pub fn CT_MailMerge::parse(@xml.Element) -> Self
+pub fn CT_MailMerge::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_MailMerge::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_MailMerge::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_MailMergeDataType {
@@ -1371,9 +1476,10 @@ pub fn CT_MailMergeOdsoFMDFieldType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_MailMergeSourceType {
   element : @xml.Element
+  val : ST_MailMergeSourceType
 } derive(Eq, @debug.Debug)
-pub fn CT_MailMergeSourceType::new(@xml.Element) -> Self
-pub fn CT_MailMergeSourceType::parse(@xml.Element) -> Self
+pub fn CT_MailMergeSourceType::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_MailMergeSourceType::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_MailMergeSourceType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Markup {
@@ -1541,16 +1647,30 @@ pub fn CT_ObjectLink::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Odso {
   element : @xml.Element
+  udl : CT_String?
+  table : CT_String?
+  src : CT_Rel?
+  col_delim : CT_DecimalNumber?
+  type_ : CT_MailMergeSourceType?
+  f_hdr : CT_OnOff?
+  field_map_data : Array[CT_OdsoFieldMapData]
+  recipient_data : Array[CT_Rel]
 } derive(Eq, @debug.Debug)
-pub fn CT_Odso::new(@xml.Element) -> Self
-pub fn CT_Odso::parse(@xml.Element) -> Self
+pub fn CT_Odso::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Odso::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Odso::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OdsoFieldMapData {
   element : @xml.Element
+  type_ : CT_MailMergeOdsoFMDFieldType?
+  name : CT_String?
+  mapped_name : CT_String?
+  column : CT_DecimalNumber?
+  lid : CT_Lang?
+  dynamic_address : CT_OnOff?
 } derive(Eq, @debug.Debug)
-pub fn CT_OdsoFieldMapData::new(@xml.Element) -> Self
-pub fn CT_OdsoFieldMapData::parse(@xml.Element) -> Self
+pub fn CT_OdsoFieldMapData::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_OdsoFieldMapData::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_OdsoFieldMapData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OnOff {
@@ -1563,6 +1683,8 @@ pub fn CT_OnOff::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OptimizeForBrowser {
   element : @xml.Element
+  base : CT_OnOff
+  target : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_OptimizeForBrowser::new(@xml.Element) -> Self
 pub fn CT_OptimizeForBrowser::parse(@xml.Element) -> Self
@@ -1938,9 +2060,13 @@ pub fn CT_RPrOriginal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ReadingModeInkLockDown {
   element : @xml.Element
+  actual_pg : Bool
+  w : ST_PixelsMeasure
+  h : ST_PixelsMeasure
+  font_sz : ST_DecimalNumberOrPercent
 } derive(Eq, @debug.Debug)
-pub fn CT_ReadingModeInkLockDown::new(@xml.Element) -> Self
-pub fn CT_ReadingModeInkLockDown::parse(@xml.Element) -> Self
+pub fn CT_ReadingModeInkLockDown::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ReadingModeInkLockDown::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ReadingModeInkLockDown::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RecipientData {
@@ -2028,6 +2154,8 @@ pub fn CT_RunTrackChange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SaveThroughXslt {
   element : @xml.Element
+  r_id : String?
+  solution_id : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_SaveThroughXslt::new(@xml.Element) -> Self
 pub fn CT_SaveThroughXslt::parse(@xml.Element) -> Self
@@ -2260,9 +2388,105 @@ pub fn CT_SectType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Settings {
   element : @xml.Element
+  write_protection : CT_WriteProtection?
+  view : CT_View?
+  zoom : CT_Zoom?
+  remove_personal_information : CT_OnOff?
+  remove_date_and_time : CT_OnOff?
+  do_not_display_page_boundaries : CT_OnOff?
+  display_background_shape : CT_OnOff?
+  print_post_script_over_text : CT_OnOff?
+  print_fractional_character_width : CT_OnOff?
+  print_forms_data : CT_OnOff?
+  embed_true_type_fonts : CT_OnOff?
+  embed_system_fonts : CT_OnOff?
+  save_subset_fonts : CT_OnOff?
+  save_forms_data : CT_OnOff?
+  mirror_margins : CT_OnOff?
+  align_borders_and_edges : CT_OnOff?
+  borders_do_not_surround_header : CT_OnOff?
+  borders_do_not_surround_footer : CT_OnOff?
+  gutter_at_top : CT_OnOff?
+  hide_spelling_errors : CT_OnOff?
+  hide_grammatical_errors : CT_OnOff?
+  active_writing_style : Array[CT_WritingStyle]
+  proof_state : CT_Proof?
+  forms_design : CT_OnOff?
+  attached_template : CT_Rel?
+  link_styles : CT_OnOff?
+  style_pane_format_filter : CT_StylePaneFilter?
+  style_pane_sort_method : CT_StyleSort?
+  document_type : CT_DocType?
+  mail_merge : CT_MailMerge?
+  revision_view : CT_TrackChangesView?
+  track_revisions : CT_OnOff?
+  do_not_track_moves : CT_OnOff?
+  do_not_track_formatting : CT_OnOff?
+  document_protection : CT_DocProtect?
+  auto_format_override : CT_OnOff?
+  style_lock_theme : CT_OnOff?
+  style_lock_qf_set : CT_OnOff?
+  default_tab_stop : CT_TwipsMeasure?
+  auto_hyphenation : CT_OnOff?
+  consecutive_hyphen_limit : CT_DecimalNumber?
+  hyphenation_zone : CT_TwipsMeasure?
+  do_not_hyphenate_caps : CT_OnOff?
+  show_envelope : CT_OnOff?
+  summary_length : CT_DecimalNumberOrPrecent?
+  click_and_type_style : CT_String?
+  default_table_style : CT_String?
+  even_and_odd_headers : CT_OnOff?
+  book_fold_rev_printing : CT_OnOff?
+  book_fold_printing : CT_OnOff?
+  book_fold_printing_sheets : CT_DecimalNumber?
+  drawing_grid_horizontal_spacing : CT_TwipsMeasure?
+  drawing_grid_vertical_spacing : CT_TwipsMeasure?
+  display_horizontal_drawing_grid_every : CT_DecimalNumber?
+  display_vertical_drawing_grid_every : CT_DecimalNumber?
+  do_not_use_margins_for_drawing_grid_origin : CT_OnOff?
+  drawing_grid_horizontal_origin : CT_TwipsMeasure?
+  drawing_grid_vertical_origin : CT_TwipsMeasure?
+  do_not_shade_form_data : CT_OnOff?
+  no_punctuation_kerning : CT_OnOff?
+  character_spacing_control : CT_CharacterSpacing?
+  print_two_on_one : CT_OnOff?
+  strict_first_and_last_chars : CT_OnOff?
+  no_line_breaks_after : CT_Kinsoku?
+  no_line_breaks_before : CT_Kinsoku?
+  save_preview_picture : CT_OnOff?
+  do_not_validate_against_schema : CT_OnOff?
+  save_invalid_xml : CT_OnOff?
+  ignore_mixed_content : CT_OnOff?
+  always_show_placeholder_text : CT_OnOff?
+  do_not_demarcate_invalid_xml : CT_OnOff?
+  save_xml_data_only : CT_OnOff?
+  use_xslt_when_saving : CT_OnOff?
+  save_through_xslt : CT_SaveThroughXslt?
+  show_xml_tags : CT_OnOff?
+  always_merge_empty_namespace : CT_OnOff?
+  update_fields : CT_OnOff?
+  footnote_pr : CT_FtnDocProps?
+  endnote_pr : CT_EdnDocProps?
+  compat : CT_Compat?
+  doc_vars : CT_DocVars?
+  rsids : CT_DocRsids?
+  math_pr : Array[@xml.Element]
+  attached_schema : Array[CT_String]
+  theme_font_lang : CT_Language?
+  clr_scheme_mapping : CT_ColorSchemeMapping?
+  do_not_include_subdocs_in_stats : CT_OnOff?
+  do_not_auto_compress_pictures : CT_OnOff?
+  force_upgrade : CT_Empty?
+  captions : CT_Captions?
+  read_mode_ink_lock_down : CT_ReadingModeInkLockDown?
+  smart_tag_type : Array[CT_SmartTagType]
+  schema_library : Array[@xml.Element]
+  do_not_embed_smart_tags : CT_OnOff?
+  decimal_symbol : CT_String?
+  list_separator : CT_String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Settings::new(@xml.Element) -> Self
-pub fn CT_Settings::parse(@xml.Element) -> Self
+pub fn CT_Settings::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Settings::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Settings::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ShapeDefaults {
@@ -2458,9 +2682,10 @@ pub fn CT_Tabs::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TargetScreenSz {
   element : @xml.Element
+  val : ST_TargetScreenSz
 } derive(Eq, @debug.Debug)
-pub fn CT_TargetScreenSz::new(@xml.Element) -> Self
-pub fn CT_TargetScreenSz::parse(@xml.Element) -> Self
+pub fn CT_TargetScreenSz::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TargetScreenSz::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TargetScreenSz::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Tbl {
@@ -2486,13 +2711,16 @@ pub fn CT_TblCellMar::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TblGrid {
   element : @xml.Element
+  grid_cols : Array[CT_TblGridCol]
+  tbl_grid_change : CT_TblGridChange?
 } derive(Eq, @debug.Debug)
-pub fn CT_TblGrid::new(@xml.Element) -> Self
-pub fn CT_TblGrid::parse(@xml.Element) -> Self
+pub fn CT_TblGrid::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TblGrid::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TblGrid::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TblGridBase {
   element : @xml.Element
+  grid_cols : Array[CT_TblGridCol]
 } derive(Eq, @debug.Debug)
 pub fn CT_TblGridBase::new(@xml.Element) -> Self
 pub fn CT_TblGridBase::parse(@xml.Element) -> Self
@@ -2509,6 +2737,7 @@ pub fn CT_TblGridChange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TblGridCol {
   element : @xml.Element
+  w : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_TblGridCol::new(@xml.Element) -> Self
 pub fn CT_TblGridCol::parse(@xml.Element) -> Self
@@ -2601,44 +2830,76 @@ pub fn CT_TblStylePr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TblWidth {
   element : @xml.Element
+  w : ST_MeasurementOrPercent?
+  type_ : ST_TblWidth?
 } derive(Eq, @debug.Debug)
-pub fn CT_TblWidth::new(@xml.Element) -> Self
-pub fn CT_TblWidth::parse(@xml.Element) -> Self
+pub fn CT_TblWidth::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TblWidth::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TblWidth::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Tc {
   element : @xml.Element
+  id : String?
+  tc_pr : CT_TcPr?
+  block_level_elements : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
-pub fn CT_Tc::new(@xml.Element) -> Self
-pub fn CT_Tc::parse(@xml.Element) -> Self
+pub fn CT_Tc::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Tc::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Tc::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TcBorders {
   element : @xml.Element
+  top : CT_Border?
+  start : CT_Border?
+  bottom : CT_Border?
+  end_ : CT_Border?
+  inside_h : CT_Border?
+  inside_v : CT_Border?
+  tl2br : CT_Border?
+  tr2bl : CT_Border?
 } derive(Eq, @debug.Debug)
-pub fn CT_TcBorders::new(@xml.Element) -> Self
-pub fn CT_TcBorders::parse(@xml.Element) -> Self
+pub fn CT_TcBorders::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TcBorders::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TcBorders::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TcMar {
   element : @xml.Element
+  top : CT_TblWidth?
+  start : CT_TblWidth?
+  bottom : CT_TblWidth?
+  end_ : CT_TblWidth?
 } derive(Eq, @debug.Debug)
-pub fn CT_TcMar::new(@xml.Element) -> Self
-pub fn CT_TcMar::parse(@xml.Element) -> Self
+pub fn CT_TcMar::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TcMar::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TcMar::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TcPr {
   element : @xml.Element
+  inner : CT_TcPrInner
+  tc_pr_change : CT_TcPrChange?
 } derive(Eq, @debug.Debug)
-pub fn CT_TcPr::new(@xml.Element) -> Self
-pub fn CT_TcPr::parse(@xml.Element) -> Self
+pub fn CT_TcPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TcPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TcPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TcPrBase {
   element : @xml.Element
+  cnf_style : CT_Cnf?
+  tc_w : CT_TblWidth?
+  grid_span : CT_DecimalNumber?
+  v_merge : CT_VMerge?
+  tc_borders : CT_TcBorders?
+  shd : CT_Shd?
+  no_wrap : CT_OnOff?
+  tc_mar : CT_TcMar?
+  text_direction : CT_TextDirection?
+  tc_fit_text : CT_OnOff?
+  v_align : CT_VerticalJc?
+  hide_mark : CT_OnOff?
+  headers : CT_Headers?
 } derive(Eq, @debug.Debug)
-pub fn CT_TcPrBase::new(@xml.Element) -> Self
-pub fn CT_TcPrBase::parse(@xml.Element) -> Self
+pub fn CT_TcPrBase::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TcPrBase::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TcPrBase::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TcPrChange {
@@ -2654,9 +2915,11 @@ pub fn CT_TcPrChange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TcPrInner {
   element : @xml.Element
+  base : CT_TcPrBase
+  cell_markup_elements : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
-pub fn CT_TcPrInner::new(@xml.Element) -> Self
-pub fn CT_TcPrInner::parse(@xml.Element) -> Self
+pub fn CT_TcPrInner::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TcPrInner::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TcPrInner::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Text {
@@ -2743,9 +3006,21 @@ pub fn CT_TrPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TrPrBase {
   element : @xml.Element
+  cnf_style : CT_Cnf?
+  div_id : CT_DecimalNumber?
+  grid_before : CT_DecimalNumber?
+  grid_after : CT_DecimalNumber?
+  w_before : CT_TblWidth?
+  w_after : CT_TblWidth?
+  cant_split : CT_OnOff?
+  tr_height : CT_Height?
+  tbl_header : CT_OnOff?
+  tbl_cell_spacing : CT_TblWidth?
+  jc : CT_JcTable?
+  hidden : CT_OnOff?
 } derive(Eq, @debug.Debug)
-pub fn CT_TrPrBase::new(@xml.Element) -> Self
-pub fn CT_TrPrBase::parse(@xml.Element) -> Self
+pub fn CT_TrPrBase::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TrPrBase::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TrPrBase::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TrPrChange {
@@ -2836,9 +3111,10 @@ pub fn CT_UnsignedDecimalNumber::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_VMerge {
   element : @xml.Element
+  val : ST_Merge?
 } derive(Eq, @debug.Debug)
-pub fn CT_VMerge::new(@xml.Element) -> Self
-pub fn CT_VMerge::parse(@xml.Element) -> Self
+pub fn CT_VMerge::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_VMerge::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_VMerge::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_VerticalAlignRun {
@@ -2867,9 +3143,21 @@ pub fn CT_View::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WebSettings {
   element : @xml.Element
+  frameset : CT_Frameset?
+  divs : CT_Divs?
+  encoding : CT_String?
+  optimize_for_browser : CT_OptimizeForBrowser?
+  allow_png : CT_OnOff?
+  do_not_rely_on_css : CT_OnOff?
+  do_not_save_as_single_file : CT_OnOff?
+  do_not_organize_in_folder : CT_OnOff?
+  do_not_use_long_file_names : CT_OnOff?
+  pixels_per_inch : CT_DecimalNumber?
+  target_screen_sz : CT_TargetScreenSz?
+  save_smart_tags_as_xml : CT_OnOff?
 } derive(Eq, @debug.Debug)
-pub fn CT_WebSettings::new(@xml.Element) -> Self
-pub fn CT_WebSettings::parse(@xml.Element) -> Self
+pub fn CT_WebSettings::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_WebSettings::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_WebSettings::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WordprocessingCanvas {
@@ -2958,6 +3246,7 @@ pub fn CT_WrapTopBottom::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WriteProtection {
   element : @xml.Element
+  recommended : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_WriteProtection::new(@xml.Element) -> Self
 pub fn CT_WriteProtection::parse(@xml.Element) -> Self
