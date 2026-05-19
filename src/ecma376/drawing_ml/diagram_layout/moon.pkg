@@ -1,0 +1,20 @@
+// trkbt10/ooxml/ecma376/drawing_ml/diagram_layout
+//
+// ECMA-376 Part 1 §21.4 DrawingML SmartArt layout algorithm. The
+// package decodes a `CT_DiagramDefinition` + `CT_DataModel` into
+// typed values and runs the canonical lin / snake / cycle /
+// hier / pyra algorithms against the data model to emit a
+// per-data-point `NodeBounds` (rectangle + `PresetShape`)
+// suitable for downstream renderers.
+
+import {
+  "moonbitlang/core/strconv" @strconv,
+  "trkbt10/ooxml/ecma376/drawing_ml/diagram" @domain,
+  "trkbt10/ooxml/ecma376/drawing_ml/preset_geometry" @preset_geometry,
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/xml" @xml,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"

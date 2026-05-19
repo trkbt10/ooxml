@@ -1,0 +1,318 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/drawing_ml/diagram_layout"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/drawing_ml/diagram",
+  "trkbt10/ooxml/ecma376/drawing_ml/preset_geometry",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn apply_margins(BoundsRect, Array[Constraint]) -> BoundsRect
+
+pub fn apply_pres_of(LayoutNode, BoundsRect, EvalContext) -> Unit
+
+pub fn attribute(@xml.Element, String) -> String?
+
+pub fn axis_select(AxisType, ElementType, EvalContext) -> Array[DiagramPoint]
+
+pub fn children_of(String, DataModel) -> Array[DiagramPoint]
+
+pub fn collect_effective_children(Array[LayoutChild], EvalContext) -> Array[ExpandedChild]
+
+pub fn constraint_value(Array[Constraint], ConstraintKind) -> Double
+
+pub fn decode_algorithm(@xml.Element) -> Algorithm raise @errors.SchemaViolation
+
+pub fn decode_choose(@xml.Element) -> Array[ChooseBranch] raise @errors.SchemaViolation
+
+pub fn decode_connection(@xml.Element) -> DiagramConnection raise @errors.SchemaViolation
+
+pub fn decode_constraint(@xml.Element) -> Constraint raise @errors.SchemaViolation
+
+pub fn decode_constraint_list(@xml.Element, Array[Constraint]) -> Unit raise @errors.SchemaViolation
+
+pub fn decode_data_model(@diagram.CT_DataModel) -> DataModel raise @errors.SchemaViolation
+
+pub fn decode_diagram_definition(@diagram.CT_DiagramDefinition) -> DiagramDefinition raise @errors.SchemaViolation
+
+pub fn decode_for_each(@xml.Element) -> ForEachSpec raise @errors.SchemaViolation
+
+pub fn decode_layout_node(@xml.Element) -> LayoutNode raise @errors.SchemaViolation
+
+pub fn decode_point(@xml.Element) -> DiagramPoint raise @errors.SchemaViolation
+
+pub fn decode_pres_of(@xml.Element) -> PresOfSpec raise @errors.SchemaViolation
+
+pub fn decode_shape(@xml.Element) -> Shape
+
+pub fn descendants_of(String, DataModel) -> Array[DiagramPoint]
+
+pub fn diagram_layout_part1_21_4_section_name() -> String
+
+pub fn dispatch_algorithm(AlgorithmType, Algorithm, Array[Constraint], BoundsRect, Array[ExpandedChild]) -> Unit
+
+pub fn double_min(Double, Double) -> Double
+
+pub fn effective_algorithm(AlgorithmType) -> AlgorithmType
+
+pub fn evaluate_choose(Array[ChooseBranch], EvalContext) -> Array[LayoutChild]
+
+pub fn evaluate_for_each(ForEachSpec, EvalContext, Array[ExpandedChild]) -> Unit
+
+pub fn find_root_point_id(DataModel) -> String?
+
+pub fn first_child_by_local_name(@xml.Element, String) -> @xml.Element?
+
+pub fn int_ceil_sqrt(Int) -> Int
+
+pub fn layout_cycle(BoundsRect, Int) -> Array[BoundsRect]
+
+pub fn layout_hier(BoundsRect, Int) -> (BoundsRect, Array[BoundsRect])
+
+pub fn layout_lin(BoundsRect, Algorithm, Array[Constraint], Int) -> Array[BoundsRect]
+
+pub fn layout_pyra(BoundsRect, Array[Constraint], Int) -> Array[BoundsRect]
+
+pub fn layout_snake(BoundsRect, Algorithm, Array[Constraint], Int) -> Array[BoundsRect]
+
+pub fn parse_double_string(String, String) -> Double raise @errors.SchemaViolation
+
+pub fn parse_int_attr(@xml.Element, String) -> Int? raise @errors.SchemaViolation
+
+pub fn parse_int_string(String, String) -> Int raise @errors.SchemaViolation
+
+pub fn pyra_top_fraction(Array[Constraint]) -> Double
+
+pub fn root_points(DataModel) -> Array[DiagramPoint]
+
+pub fn sibling_spacing(Array[Constraint]) -> Double
+
+pub fn walk_layout_node(LayoutNode, BoundsRect, EvalContext) -> Unit
+
+// Errors
+
+// Types and methods
+pub(all) struct Algorithm {
+  kind : AlgorithmType
+  params : Array[(String, String)]
+} derive(Eq, @debug.Debug)
+pub fn Algorithm::param(Self, String) -> String?
+
+pub(all) enum AlgorithmType {
+  AlgComposite
+  AlgConn
+  AlgCycle
+  AlgHierChild
+  AlgHierRoot
+  AlgLin
+  AlgPyra
+  AlgSnake
+  AlgSp
+  AlgTx
+} derive(Eq, @debug.Debug)
+pub fn AlgorithmType::from_attr(String) -> Self raise @errors.SchemaViolation
+pub fn AlgorithmType::is_supported(Self) -> Bool
+
+pub(all) enum AxisType {
+  AxisSelf
+  AxisCh
+  AxisDes
+  AxisDesOrSelf
+  AxisPar
+  AxisAncst
+  AxisAncstOrSelf
+  AxisFollowSib
+  AxisPrecedSib
+  AxisFollow
+  AxisPreced
+  AxisRoot
+  AxisNone
+} derive(Eq, @debug.Debug)
+pub fn AxisType::from_attr(String) -> Self
+
+pub(all) struct BoundsRect {
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ChooseBranch {
+  name : String
+  is_else : Bool
+  func : FunctionType?
+  arg : String?
+  axis : AxisType
+  pt_type : ElementType
+  op : FunctionOp?
+  val : String?
+  body : Array[LayoutChild]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Constraint {
+  kind : ConstraintKind
+  for_target : String?
+  for_name : String?
+  ref_for_target : String?
+  ref_for_name : String?
+  op : FunctionOp?
+  val : Double?
+  fact : Double?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ConstraintKind {
+  ConstrW
+  ConstrH
+  ConstrL
+  ConstrT
+  ConstrR
+  ConstrB
+  ConstrLMarg
+  ConstrRMarg
+  ConstrTMarg
+  ConstrBMarg
+  ConstrSp
+  ConstrSibSp
+  ConstrWOff
+  ConstrHOff
+  ConstrPyraAcctRatio
+  ConstrOther(String)
+} derive(Eq, @debug.Debug)
+pub fn ConstraintKind::from_attr(String) -> Self
+
+pub(all) struct DataModel {
+  points : Array[DiagramPoint]
+  connections : Array[DiagramConnection]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DiagramConnection {
+  id : String?
+  src_id : String
+  dest_id : String
+  src_ord : Int
+  dest_ord : Int
+  cxn_type : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DiagramDefinition {
+  unique_id : String?
+  min_ver : String?
+  def_style : String?
+  root : LayoutNode
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DiagramLayoutEngine {
+  tag : Int
+} derive(Eq, @debug.Debug)
+pub fn DiagramLayoutEngine::apply(Self, DiagramDefinition, DataModel, BoundsRect) -> Array[NodeBounds]
+pub fn DiagramLayoutEngine::new() -> Self
+
+pub(all) struct DiagramPoint {
+  id : String
+  point_type : String
+  parent_id : String?
+  text : String?
+  pr_set : @xml.Element?
+  sp_pr : @xml.Element?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ElementType {
+  ElNode
+  ElParTrans
+  ElSibTrans
+  ElAsst
+  ElNonAsst
+  ElDoc
+  ElPres
+  ElAll
+  ElOther(String)
+} derive(Eq, @debug.Debug)
+pub fn ElementType::from_attr(String) -> Self
+
+pub(all) struct EvalContext {
+  data_model : DataModel
+  context_id : String
+  depth : Int
+  results : Array[NodeBounds]
+}
+
+pub(all) struct ExpandedChild {
+  node : LayoutNode
+  context : EvalContext
+}
+
+pub(all) struct ForEachSpec {
+  name : String
+  axis : AxisType
+  pt_type : ElementType
+  cnt : Int?
+  st : Int
+  step : Int
+  body : Array[LayoutChild]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum FunctionOp {
+  OpEqu
+  OpNeq
+  OpGt
+  OpGte
+  OpGteValue
+  OpLte
+} derive(Eq, @debug.Debug)
+pub fn FunctionOp::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) enum FunctionType {
+  FnCnt
+  FnDepth
+  FnMaxDepth
+  FnPos
+  FnPosEven
+  FnPosOdd
+  FnRevPos
+  FnVar
+} derive(Eq, @debug.Debug)
+pub fn FunctionType::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) enum LayoutChild {
+  LcNode(LayoutNode)
+  LcChoose(Array[ChooseBranch])
+  LcForEach(ForEachSpec)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct LayoutNode {
+  name : String
+  style_lbl : String?
+  ch_order : String?
+  algorithm : Algorithm?
+  shape : Shape?
+  pres_of : PresOfSpec?
+  constraints : Array[Constraint]
+  children : Array[LayoutChild]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct NodeBounds {
+  point_id : String
+  bounds : BoundsRect
+  shape : @preset_geometry.PresetShape
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PresOfSpec {
+  axis : AxisType
+  pt_type : ElementType
+  cnt : Int?
+  st : Int
+  step : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct Shape {
+  preset : @preset_geometry.PresetShape?
+  hide_geom : Bool
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+
