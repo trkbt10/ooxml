@@ -8,6 +8,7 @@ import {
   "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/formula",
+  "trkbt10/ooxml/xml",
 }
 
 // Values
@@ -15,162 +16,49 @@ pub fn cf_rule_part1_18_3_1_10_section_name() -> String
 
 pub fn cf_rule_part1_18_3_1_18_section_name() -> String
 
-pub fn decode_cf_block(@domain.CT_ConditionalFormatting) -> CfBlock raise @errors.SchemaViolation
+pub fn decode_cf_block(@xml.Element) -> @domain.CT_ConditionalFormatting raise @errors.SchemaViolation
 
-pub fn decode_cf_rule(@domain.CT_CfRule) -> CfRule raise @errors.SchemaViolation
+pub fn decode_cf_operator(String) -> @domain.ST_ConditionalFormattingOperator raise @errors.SchemaViolation
 
-pub fn evaluate_bar_ratio(CfDataBar, @formula.FormulaValue, Array[@formula.FormulaValue]) -> Double?
+pub fn decode_cf_rule(@xml.Element) -> @domain.CT_CfRule raise @errors.SchemaViolation
 
-pub fn evaluate_bucket(CfRule, @formula.FormulaValue, Array[@formula.FormulaValue]) -> Int?
+pub fn decode_cf_type(String) -> @domain.ST_CfType raise @errors.SchemaViolation
 
-pub fn evaluate_cf_block(CfBlock, Array[(@address.CellAddress, @formula.FormulaValue)], CfEvalContext) -> Array[CfHit]
+pub fn decode_cfvo_type(String) -> @domain.ST_CfvoType raise @errors.SchemaViolation
 
-pub fn evaluate_color_scale(CfColorScale, @formula.FormulaValue, Array[@formula.FormulaValue]) -> CfArgb?
+pub fn decode_time_period(String) -> @domain.ST_TimePeriod raise @errors.SchemaViolation
 
-pub fn evaluate_icon_bucket(CfIconSet, @formula.FormulaValue, Array[@formula.FormulaValue]) -> Int?
+pub fn evaluate_bar_ratio(@domain.CT_DataBar, @formula.FormulaValue, Array[@formula.FormulaValue]) -> Double?
 
-pub fn evaluate_rule(CfRule, @formula.FormulaValue, Array[@formula.FormulaValue], CfEvalContext) -> Bool
+pub fn evaluate_bucket(@domain.CT_CfRule, @formula.FormulaValue, Array[@formula.FormulaValue]) -> Int?
+
+pub fn evaluate_cf_block(@domain.CT_ConditionalFormatting, Array[(@address.CellAddress, @formula.FormulaValue)], EvalContext) -> Array[MatchHit]
+
+pub fn evaluate_color_scale(@domain.CT_ColorScale, @formula.FormulaValue, Array[@formula.FormulaValue]) -> @domain.CT_Color?
+
+pub fn evaluate_icon_bucket(@domain.CT_IconSet, @formula.FormulaValue, Array[@formula.FormulaValue]) -> Int?
+
+pub fn evaluate_rule(@domain.CT_CfRule, @formula.FormulaValue, Array[@formula.FormulaValue], EvalContext) -> Bool
 
 // Errors
 
 // Types and methods
-pub(all) struct CfArgb {
-  alpha : Int
-  red : Int
-  green : Int
-  blue : Int
-} derive(Eq, @debug.Debug)
-pub fn CfArgb::new(Int, Int, Int, Int) -> Self
-
-pub(all) struct CfBlock {
-  pivot : Bool
-  sqref : @address.Sqref
-  rules : Array[CfRule]
-} derive(Eq, @debug.Debug)
-
-pub(all) struct CfColorScale {
-  thresholds : Array[CfvoThreshold]
-  colors : Array[CfArgb]
-} derive(Eq, @debug.Debug)
-
-pub(all) struct CfDataBar {
-  min_threshold : CfvoThreshold
-  max_threshold : CfvoThreshold
-  color : CfArgb
-} derive(Eq, @debug.Debug)
-
-pub(all) struct CfEvalContext {
+pub(all) struct EvalContext {
   today : @date_serial.CalendarDateTime
   date_system : @date_serial.DateSystem
   evaluate_formula : (String) -> @formula.FormulaValue
 }
-pub fn CfEvalContext::new(@date_serial.CalendarDateTime, @date_serial.DateSystem, (String) -> @formula.FormulaValue) -> Self
+pub fn EvalContext::new(@date_serial.CalendarDateTime, @date_serial.DateSystem, (String) -> @formula.FormulaValue) -> Self
 
-pub(all) struct CfHit {
+pub(all) struct MatchHit {
   cell : @address.CellAddress
   rule_priority : Int
-  cf_type : CfType
+  cf_type : @domain.ST_CfType
   dxf_id : Int?
-  argb : CfArgb?
+  argb : @domain.CT_Color?
   bar_ratio : Double?
   icon_index : Int?
 } derive(Eq, @debug.Debug)
-
-pub(all) struct CfIconSet {
-  set_name : String
-  thresholds : Array[CfvoThreshold]
-  reverse : Bool
-  show_value : Bool
-} derive(Eq, @debug.Debug)
-
-pub(all) enum CfOperator {
-  OpBeginsWith
-  OpBetween
-  OpContainsText
-  OpEndsWith
-  OpEqual
-  OpGreaterThan
-  OpGreaterThanOrEqual
-  OpLessThan
-  OpLessThanOrEqual
-  OpNotBetween
-  OpNotContains
-  OpNotEqual
-} derive(Eq, @debug.Debug)
-pub fn CfOperator::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) struct CfRule {
-  cf_type : CfType
-  dxf_id : Int?
-  priority : Int
-  stop_if_true : Bool
-  operator : CfOperator?
-  text : String?
-  time_period : TimePeriod?
-  rank : Int?
-  bottom : Bool
-  percent : Bool
-  above_average : Bool
-  equal_average : Bool
-  std_dev : Int?
-  formulas : Array[String]
-  color_scale : CfColorScale?
-  data_bar : CfDataBar?
-  icon_set : CfIconSet?
-} derive(Eq, @debug.Debug)
-pub fn CfRule::has_dxf(Self) -> Bool
-pub fn CfRule::is_population_rule(Self) -> Bool
-
-pub(all) enum CfType {
-  AboveAverage
-  BeginsWith
-  CellIs
-  ColorScale
-  ContainsBlanks
-  ContainsErrors
-  ContainsText
-  DataBar
-  DuplicateValues
-  EndsWith
-  Expression
-  IconSet
-  NotContainsBlanks
-  NotContainsErrors
-  NotContainsText
-  TimePeriod
-  Top10
-  UniqueValues
-} derive(Eq, @debug.Debug)
-pub fn CfType::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) struct CfvoThreshold {
-  kind : CfvoType
-  value_text : String?
-} derive(Eq, @debug.Debug)
-
-pub(all) enum CfvoType {
-  CfvoNum
-  CfvoMin
-  CfvoMax
-  CfvoPercent
-  CfvoPercentile
-  CfvoFormula
-} derive(Eq, @debug.Debug)
-pub fn CfvoType::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) enum TimePeriod {
-  Today
-  Yesterday
-  Tomorrow
-  Last7Days
-  LastWeek
-  ThisWeek
-  NextWeek
-  LastMonth
-  ThisMonth
-  NextMonth
-} derive(Eq, @debug.Debug)
-pub fn TimePeriod::from_attr(String) -> Self raise @errors.SchemaViolation
 
 // Type aliases
 

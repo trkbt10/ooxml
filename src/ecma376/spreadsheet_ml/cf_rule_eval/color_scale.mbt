@@ -7,21 +7,21 @@
 /// literal double for the v1 evaluator (a TODO in the design file
 /// notes that full formula evaluation remains future work).
 fn resolve_cfvo_value(
-  cfvo : CfvoThreshold,
+  cfvo : @domain.CT_Cfvo,
   numeric_population : Array[Double],
 ) -> Double {
   match cfvo.kind {
-    CfvoMin => array_min_or_zero(numeric_population)
-    CfvoMax => array_max_or_zero(numeric_population)
-    CfvoNum => parse_double_lenient_or_zero(cfvo.value_text)
-    CfvoFormula => parse_double_lenient_or_zero(cfvo.value_text)
-    CfvoPercent => {
+    @domain.CfvoMin => array_min_or_zero(numeric_population)
+    @domain.CfvoMax => array_max_or_zero(numeric_population)
+    @domain.CfvoNum => parse_double_lenient_or_zero(cfvo.value_text)
+    @domain.CfvoFormula => parse_double_lenient_or_zero(cfvo.value_text)
+    @domain.CfvoPercent => {
       let pct = parse_double_lenient_or_zero(cfvo.value_text)
       let lo = array_min_or_zero(numeric_population)
       let hi = array_max_or_zero(numeric_population)
       lo + (hi - lo) * (pct / 100.0)
     }
-    CfvoPercentile =>
+    @domain.CfvoPercentile =>
       percentile(
         numeric_population,
         parse_double_lenient_or_zero(cfvo.value_text) / 100.0,
@@ -78,10 +78,10 @@ fn array_max_or_zero(values : Array[Double]) -> Double {
 /// value (e.g. text or error), matching Excel's behaviour of
 /// suppressing the scale color for non-numeric cells.
 pub fn evaluate_color_scale(
-  scale : CfColorScale,
+  scale : @domain.CT_ColorScale,
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
-) -> CfArgb? {
+) -> @domain.CT_Color? {
   let cell_number = match to_number_opt(cell) {
     Some(n) => n
     None => return None
@@ -116,7 +116,7 @@ pub fn evaluate_color_scale(
 /// cell is non-numeric. Values below min collapse to 0, above max
 /// saturate at 1, matching Excel's data bar rendering.
 pub fn evaluate_bar_ratio(
-  bar : CfDataBar,
+  bar : @domain.CT_DataBar,
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
 ) -> Double? {
@@ -147,7 +147,7 @@ pub fn evaluate_bar_ratio(
 /// after resolution, so the lowest icon is bucket 0; when @reverse is
 /// true the bucket index is flipped so the highest icon becomes 0.
 pub fn evaluate_icon_bucket(
-  icon_set : CfIconSet,
+  icon_set : @domain.CT_IconSet,
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
 ) -> Int? {
@@ -175,7 +175,11 @@ pub fn evaluate_icon_bucket(
 }
 
 ///|
-fn blend_argb(a : CfArgb, b : CfArgb, progress : Double) -> CfArgb {
+fn blend_argb(
+  a : @domain.CT_Color,
+  b : @domain.CT_Color,
+  progress : Double,
+) -> @domain.CT_Color {
   let p = if progress < 0.0 {
     0.0
   } else if progress > 1.0 {
@@ -183,7 +187,7 @@ fn blend_argb(a : CfArgb, b : CfArgb, progress : Double) -> CfArgb {
   } else {
     progress
   }
-  CfArgb::new(
+  @domain.CT_Color::new(
     blend_channel(a.alpha, b.alpha, p),
     blend_channel(a.red, b.red, p),
     blend_channel(a.green, b.green, p),

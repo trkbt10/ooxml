@@ -3,6 +3,7 @@ package "trkbt10/ooxml/ecma376/spreadsheet_ml/domain"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
   "trkbt10/ooxml/xml",
 }
 
@@ -225,14 +226,31 @@ pub(all) struct CT_CellXfs {
 pub fn CT_CellXfs::new(@xml.Element) -> Self
 
 pub(all) struct CT_CfRule {
-  element : @xml.Element
+  cf_type : ST_CfType
+  dxf_id : Int?
+  priority : Int
+  stop_if_true : Bool
+  operator : ST_ConditionalFormattingOperator?
+  text : String?
+  time_period : ST_TimePeriod?
+  rank : Int?
+  bottom : Bool
+  percent : Bool
+  above_average : Bool
+  equal_average : Bool
+  std_dev : Int?
+  formulas : Array[String]
+  color_scale : CT_ColorScale?
+  data_bar : CT_DataBar?
+  icon_set : CT_IconSet?
 } derive(Eq, @debug.Debug)
-pub fn CT_CfRule::new(@xml.Element) -> Self
+pub fn CT_CfRule::has_dxf(Self) -> Bool
+pub fn CT_CfRule::is_population_rule(Self) -> Bool
 
 pub(all) struct CT_Cfvo {
-  element : @xml.Element
+  kind : ST_CfvoType
+  value_text : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Cfvo::new(@xml.Element) -> Self
 
 pub(all) struct CT_ChartFormat {
   element : @xml.Element
@@ -285,9 +303,12 @@ pub(all) struct CT_ColHierarchiesUsage {
 pub fn CT_ColHierarchiesUsage::new(@xml.Element) -> Self
 
 pub(all) struct CT_Color {
-  element : @xml.Element
+  alpha : Int
+  red : Int
+  green : Int
+  blue : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_Color::new(@xml.Element) -> Self
+pub fn CT_Color::new(Int, Int, Int, Int) -> Self
 
 pub(all) struct CT_ColorFilter {
   element : @xml.Element
@@ -295,9 +316,9 @@ pub(all) struct CT_ColorFilter {
 pub fn CT_ColorFilter::new(@xml.Element) -> Self
 
 pub(all) struct CT_ColorScale {
-  element : @xml.Element
+  thresholds : Array[CT_Cfvo]
+  colors : Array[CT_Color]
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorScale::new(@xml.Element) -> Self
 
 pub(all) struct CT_Colors {
   element : @xml.Element
@@ -340,9 +361,10 @@ pub(all) struct CT_ConditionalFormats {
 pub fn CT_ConditionalFormats::new(@xml.Element) -> Self
 
 pub(all) struct CT_ConditionalFormatting {
-  element : @xml.Element
+  pivot : Bool
+  sqref : @address.Sqref
+  rules : Array[CT_CfRule]
 } derive(Eq, @debug.Debug)
-pub fn CT_ConditionalFormatting::new(@xml.Element) -> Self
 
 pub(all) struct CT_Connection {
   element : @xml.Element
@@ -430,9 +452,10 @@ pub(all) struct CT_CustomWorkbookViews {
 pub fn CT_CustomWorkbookViews::new(@xml.Element) -> Self
 
 pub(all) struct CT_DataBar {
-  element : @xml.Element
+  min_threshold : CT_Cfvo
+  max_threshold : CT_Cfvo
+  color : CT_Color
 } derive(Eq, @debug.Debug)
-pub fn CT_DataBar::new(@xml.Element) -> Self
 
 pub(all) struct CT_DataBinding {
   element : @xml.Element
@@ -835,9 +858,11 @@ pub(all) struct CT_IconFilter {
 pub fn CT_IconFilter::new(@xml.Element) -> Self
 
 pub(all) struct CT_IconSet {
-  element : @xml.Element
+  set_name : String
+  thresholds : Array[CT_Cfvo]
+  reverse : Bool
+  show_value : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_IconSet::new(@xml.Element) -> Self
 
 pub(all) struct CT_IgnoredError {
   element : @xml.Element
@@ -1883,6 +1908,64 @@ pub(all) struct EG_ExtensionList {
   ext : Array[CT_Extension]
 } derive(Eq, @debug.Debug)
 pub fn EG_ExtensionList::new(Array[CT_Extension]) -> Self
+
+pub(all) enum ST_CfType {
+  AboveAverage
+  BeginsWith
+  CellIs
+  ColorScale
+  ContainsBlanks
+  ContainsErrors
+  ContainsText
+  DataBar
+  DuplicateValues
+  EndsWith
+  Expression
+  IconSet
+  NotContainsBlanks
+  NotContainsErrors
+  NotContainsText
+  TimePeriod
+  Top10
+  UniqueValues
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ST_CfvoType {
+  CfvoNum
+  CfvoMin
+  CfvoMax
+  CfvoPercent
+  CfvoPercentile
+  CfvoFormula
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ST_ConditionalFormattingOperator {
+  OpBeginsWith
+  OpBetween
+  OpContainsText
+  OpEndsWith
+  OpEqual
+  OpGreaterThan
+  OpGreaterThanOrEqual
+  OpLessThan
+  OpLessThanOrEqual
+  OpNotBetween
+  OpNotContains
+  OpNotEqual
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ST_TimePeriod {
+  Today
+  Yesterday
+  Tomorrow
+  Last7Days
+  LastWeek
+  ThisWeek
+  NextWeek
+  LastMonth
+  ThisMonth
+  NextMonth
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

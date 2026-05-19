@@ -191,16 +191,17 @@ fn trim_whitespace(text : String) -> String {
 /// `cellis_match` directly).
 fn compare_with_operator(
   cell : @formula.FormulaValue,
-  op : CfOperator,
+  op : @domain.ST_ConditionalFormattingOperator,
   rhs : @formula.FormulaValue,
 ) -> Bool {
   match op {
-    OpEqual => equals_loose(cell, rhs)
-    OpNotEqual => !equals_loose(cell, rhs)
-    OpGreaterThan => greater_than(cell, rhs)
-    OpGreaterThanOrEqual => greater_than(cell, rhs) || equals_loose(cell, rhs)
-    OpLessThan => less_than(cell, rhs)
-    OpLessThanOrEqual => less_than(cell, rhs) || equals_loose(cell, rhs)
+    @domain.OpEqual => equals_loose(cell, rhs)
+    @domain.OpNotEqual => !equals_loose(cell, rhs)
+    @domain.OpGreaterThan => greater_than(cell, rhs)
+    @domain.OpGreaterThanOrEqual =>
+      greater_than(cell, rhs) || equals_loose(cell, rhs)
+    @domain.OpLessThan => less_than(cell, rhs)
+    @domain.OpLessThanOrEqual => less_than(cell, rhs) || equals_loose(cell, rhs)
     _ => false
   }
 }
@@ -279,32 +280,32 @@ fn compare_strings_ci(a : String, b : String) -> Int {
 /// `formulas` list supplies the comparison RHS; between needs two.
 fn cellis_match(
   cell : @formula.FormulaValue,
-  op : CfOperator,
+  op : @domain.ST_ConditionalFormattingOperator,
   rhs_first : @formula.FormulaValue,
   rhs_second : @formula.FormulaValue?,
 ) -> Bool {
   match op {
-    OpBetween =>
+    @domain.OpBetween =>
       match rhs_second {
         Some(b) =>
           (greater_than(cell, rhs_first) || equals_loose(cell, rhs_first)) &&
           (less_than(cell, b) || equals_loose(cell, b))
         None => false
       }
-    OpNotBetween =>
+    @domain.OpNotBetween =>
       match rhs_second {
         Some(b) =>
           !((greater_than(cell, rhs_first) || equals_loose(cell, rhs_first)) &&
           (less_than(cell, b) || equals_loose(cell, b)))
         None => false
       }
-    OpContainsText =>
+    @domain.OpContainsText =>
       contains_ci(to_display_string(cell), to_display_string(rhs_first))
-    OpNotContains =>
+    @domain.OpNotContains =>
       !contains_ci(to_display_string(cell), to_display_string(rhs_first))
-    OpBeginsWith =>
+    @domain.OpBeginsWith =>
       starts_with_ci(to_display_string(cell), to_display_string(rhs_first))
-    OpEndsWith =>
+    @domain.OpEndsWith =>
       ends_with_ci(to_display_string(cell), to_display_string(rhs_first))
     _ => compare_with_operator(cell, op, rhs_first)
   }

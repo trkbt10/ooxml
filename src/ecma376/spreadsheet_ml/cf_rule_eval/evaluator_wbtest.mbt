@@ -32,21 +32,17 @@ fn fixed_today(
 fn context(
   today : @date_serial.CalendarDateTime,
   evaluate_formula : (String) -> @formula.FormulaValue,
-) -> CfEvalContext {
-  CfEvalContext::new(
-    today,
-    @date_serial.DateSystem::Serial1900,
-    evaluate_formula,
-  )
+) -> EvalContext {
+  EvalContext::new(today, @date_serial.DateSystem::Serial1900, evaluate_formula)
 }
 
 ///|
 fn rule_for_test(
-  cf_type : CfType,
+  cf_type : @domain.ST_CfType,
   priority : Int,
-  customize : (CfRule) -> CfRule,
-) -> CfRule {
-  let base : CfRule = {
+  customize : (@domain.CT_CfRule) -> @domain.CT_CfRule,
+) -> @domain.CT_CfRule {
+  let base : @domain.CT_CfRule = {
     cf_type,
     dxf_id: Some(0),
     priority,
@@ -70,8 +66,8 @@ fn rule_for_test(
 
 ///|
 test "§18.3.1.10 cellIs greaterThan picks numbers above the literal" {
-  let rule = rule_for_test(CellIs, 1, fn(base) {
-    { ..base, operator: Some(OpGreaterThan), formulas: ["0.5"] }
+  let rule = rule_for_test(@domain.CellIs, 1, fn(base) {
+    { ..base, operator: Some(@domain.OpGreaterThan), formulas: ["0.5"] }
   })
   let formula_eval = fn(_text : String) { @formula.FormulaValue::VNumber(0.5) }
   let ctx = context(fixed_today(2026, 5, 19), formula_eval)
@@ -81,8 +77,8 @@ test "§18.3.1.10 cellIs greaterThan picks numbers above the literal" {
 
 ///|
 test "§18.18.15 cellIs between is inclusive" {
-  let rule = rule_for_test(CellIs, 1, fn(base) {
-    { ..base, operator: Some(OpBetween), formulas: ["1", "5"] }
+  let rule = rule_for_test(@domain.CellIs, 1, fn(base) {
+    { ..base, operator: Some(@domain.OpBetween), formulas: ["1", "5"] }
   })
   let formula_eval = fn(text : String) {
     if text == "1" {
@@ -100,7 +96,7 @@ test "§18.18.15 cellIs between is inclusive" {
 
 ///|
 test "§18.18.12 containsText is case-insensitive" {
-  let rule = rule_for_test(ContainsText, 1, fn(base) {
+  let rule = rule_for_test(@domain.ContainsText, 1, fn(base) {
     { ..base, text: Some("foo") }
   })
   let ctx = context(fixed_today(2026, 5, 19), no_formula())
@@ -111,10 +107,10 @@ test "§18.18.12 containsText is case-insensitive" {
 
 ///|
 test "§18.18.12 beginsWith and endsWith" {
-  let begins = rule_for_test(BeginsWith, 1, fn(base) {
+  let begins = rule_for_test(@domain.BeginsWith, 1, fn(base) {
     { ..base, text: Some("Mr") }
   })
-  let ends = rule_for_test(EndsWith, 1, fn(base) {
+  let ends = rule_for_test(@domain.EndsWith, 1, fn(base) {
     { ..base, text: Some("son") }
   })
   let ctx = context(fixed_today(2026, 5, 19), no_formula())
@@ -127,8 +123,8 @@ test "§18.18.12 beginsWith and endsWith" {
 
 ///|
 test "§18.18.12 containsBlanks and notContainsBlanks" {
-  let blanks = rule_for_test(ContainsBlanks, 1, fn(base) { base })
-  let not_blanks = rule_for_test(NotContainsBlanks, 1, fn(base) { base })
+  let blanks = rule_for_test(@domain.ContainsBlanks, 1, fn(base) { base })
+  let not_blanks = rule_for_test(@domain.NotContainsBlanks, 1, fn(base) { base })
   let ctx = context(fixed_today(2026, 5, 19), no_formula())
   assert_true(evaluate_rule(blanks, @formula.FormulaValue::VEmpty, [], ctx))
   assert_true(evaluate_rule(blanks, s("   "), [], ctx))
@@ -141,7 +137,7 @@ test "§18.18.12 containsBlanks and notContainsBlanks" {
 
 ///|
 test "§18.18.12 containsErrors flags VError" {
-  let rule = rule_for_test(ContainsErrors, 1, fn(base) { base })
+  let rule = rule_for_test(@domain.ContainsErrors, 1, fn(base) { base })
   let ctx = context(fixed_today(2026, 5, 19), no_formula())
   assert_true(evaluate_rule(rule, err("#DIV/0!"), [], ctx))
   assert_true(!evaluate_rule(rule, n(1.0), [], ctx))
@@ -150,8 +146,8 @@ test "§18.18.12 containsErrors flags VError" {
 ///|
 test "§18.18.12 duplicateValues and uniqueValues" {
   let pop = [n(1.0), n(2.0), n(2.0), n(3.0)]
-  let dup = rule_for_test(DuplicateValues, 1, fn(base) { base })
-  let uniq = rule_for_test(UniqueValues, 1, fn(base) { base })
+  let dup = rule_for_test(@domain.DuplicateValues, 1, fn(base) { base })
+  let uniq = rule_for_test(@domain.UniqueValues, 1, fn(base) { base })
   let ctx = context(fixed_today(2026, 5, 19), no_formula())
   assert_true(evaluate_rule(dup, n(2.0), pop, ctx))
   assert_true(!evaluate_rule(dup, n(1.0), pop, ctx))
@@ -162,8 +158,10 @@ test "§18.18.12 duplicateValues and uniqueValues" {
 ///|
 test "§18.18.12 top10 selects top N (and bottom variant)" {
   let pop = [n(10.0), n(20.0), n(30.0), n(40.0), n(50.0)]
-  let top2 = rule_for_test(Top10, 1, fn(base) { { ..base, rank: Some(2) } })
-  let bottom2 = rule_for_test(Top10, 1, fn(base) {
+  let top2 = rule_for_test(@domain.Top10, 1, fn(base) {
+    { ..base, rank: Some(2) }
+  })
+  let bottom2 = rule_for_test(@domain.Top10, 1, fn(base) {
     { ..base, rank: Some(2), bottom: true }
   })
   let ctx = context(fixed_today(2026, 5, 19), no_formula())
@@ -190,7 +188,7 @@ test "§18.18.12 top10 percent" {
     n(10.0),
   ]
   // 20% of 10 = 2 cells
-  let rule = rule_for_test(Top10, 1, fn(base) {
+  let rule = rule_for_test(@domain.Top10, 1, fn(base) {
     { ..base, rank: Some(20), percent: true }
   })
   let ctx = context(fixed_today(2026, 5, 19), no_formula())
@@ -202,10 +200,10 @@ test "§18.18.12 top10 percent" {
 ///|
 test "§18.18.12 aboveAverage exclusive vs inclusive" {
   let pop = [n(2.0), n(4.0), n(6.0)] // mean = 4
-  let above = rule_for_test(AboveAverage, 1, fn(base) {
+  let above = rule_for_test(@domain.AboveAverage, 1, fn(base) {
     { ..base, above_average: true, equal_average: false }
   })
-  let at_or_above = rule_for_test(AboveAverage, 1, fn(base) {
+  let at_or_above = rule_for_test(@domain.AboveAverage, 1, fn(base) {
     { ..base, above_average: true, equal_average: true }
   })
   let ctx = context(fixed_today(2026, 5, 19), no_formula())
@@ -218,7 +216,7 @@ test "§18.18.12 aboveAverage exclusive vs inclusive" {
 ///|
 test "§18.18.12 aboveAverage with stdDev shifts threshold" {
   let pop = [n(0.0), n(2.0), n(4.0), n(6.0), n(8.0)] // mean = 4, sd ≈ 2.83
-  let rule = rule_for_test(AboveAverage, 1, fn(base) {
+  let rule = rule_for_test(@domain.AboveAverage, 1, fn(base) {
     { ..base, above_average: true, std_dev: Some(1) }
   })
   let ctx = context(fixed_today(2026, 5, 19), no_formula())
@@ -234,14 +232,14 @@ test "§18.18.82 timePeriod today / yesterday / last7Days" {
     today,
     @date_serial.DateSystem::Serial1900,
   )
-  let today_rule = rule_for_test(TimePeriod, 1, fn(base) {
-    { ..base, time_period: Some(Today) }
+  let today_rule = rule_for_test(@domain.TimePeriod, 1, fn(base) {
+    { ..base, time_period: Some(@domain.Today) }
   })
-  let yesterday_rule = rule_for_test(TimePeriod, 1, fn(base) {
-    { ..base, time_period: Some(Yesterday) }
+  let yesterday_rule = rule_for_test(@domain.TimePeriod, 1, fn(base) {
+    { ..base, time_period: Some(@domain.Yesterday) }
   })
-  let last7_rule = rule_for_test(TimePeriod, 1, fn(base) {
-    { ..base, time_period: Some(Last7Days) }
+  let last7_rule = rule_for_test(@domain.TimePeriod, 1, fn(base) {
+    { ..base, time_period: Some(@domain.Last7Days) }
   })
   let ctx = context(today, no_formula())
   assert_true(evaluate_rule(today_rule, n(today_serial), [], ctx))
@@ -259,10 +257,10 @@ test "§18.18.12 expression uses the evaluator callback" {
       @formula.FormulaValue::VBool(false)
     }
   }
-  let true_rule = rule_for_test(Expression, 1, fn(base) {
+  let true_rule = rule_for_test(@domain.Expression, 1, fn(base) {
     { ..base, formulas: ["TRUE_BRANCH"] }
   })
-  let false_rule = rule_for_test(Expression, 1, fn(base) {
+  let false_rule = rule_for_test(@domain.Expression, 1, fn(base) {
     { ..base, formulas: ["FALSE_BRANCH"] }
   })
   let ctx = context(fixed_today(2026, 5, 19), formula_eval)
@@ -272,12 +270,15 @@ test "§18.18.12 expression uses the evaluator callback" {
 
 ///|
 test "§18.3.1.16 colorScale interpolates between stops" {
-  let scale : CfColorScale = {
+  let scale : @domain.CT_ColorScale = {
     thresholds: [
-      { kind: CfvoMin, value_text: None },
-      { kind: CfvoMax, value_text: None },
+      { kind: @domain.CfvoMin, value_text: None },
+      { kind: @domain.CfvoMax, value_text: None },
     ],
-    colors: [CfArgb::new(255, 0, 0, 0), CfArgb::new(255, 255, 255, 255)],
+    colors: [
+      @domain.CT_Color::new(255, 0, 0, 0),
+      @domain.CT_Color::new(255, 255, 255, 255),
+    ],
   }
   let pop = [n(0.0), n(50.0), n(100.0)]
   let mid = evaluate_color_scale(scale, n(50.0), pop).unwrap()
@@ -293,10 +294,10 @@ test "§18.3.1.16 colorScale interpolates between stops" {
 
 ///|
 test "§18.3.1.28 dataBar ratio saturates outside min/max" {
-  let bar : CfDataBar = {
-    min_threshold: { kind: CfvoNum, value_text: Some("0") },
-    max_threshold: { kind: CfvoNum, value_text: Some("100") },
-    color: CfArgb::new(255, 0, 0, 255),
+  let bar : @domain.CT_DataBar = {
+    min_threshold: { kind: @domain.CfvoNum, value_text: Some("0") },
+    max_threshold: { kind: @domain.CfvoNum, value_text: Some("100") },
+    color: @domain.CT_Color::new(255, 0, 0, 255),
   }
   assert_eq(evaluate_bar_ratio(bar, n(-5.0), []).unwrap(), 0.0)
   assert_eq(evaluate_bar_ratio(bar, n(200.0), []).unwrap(), 1.0)
@@ -306,12 +307,12 @@ test "§18.3.1.28 dataBar ratio saturates outside min/max" {
 
 ///|
 test "§18.3.1.49 iconSet bucket forward and reverse" {
-  let icon : CfIconSet = {
+  let icon : @domain.CT_IconSet = {
     set_name: "3TrafficLights1",
     thresholds: [
-      { kind: CfvoPercent, value_text: Some("0") },
-      { kind: CfvoPercent, value_text: Some("33") },
-      { kind: CfvoPercent, value_text: Some("67") },
+      { kind: @domain.CfvoPercent, value_text: Some("0") },
+      { kind: @domain.CfvoPercent, value_text: Some("33") },
+      { kind: @domain.CfvoPercent, value_text: Some("67") },
     ],
     reverse: false,
     show_value: true,
@@ -320,25 +321,30 @@ test "§18.3.1.49 iconSet bucket forward and reverse" {
   assert_eq(evaluate_icon_bucket(icon, n(10.0), pop).unwrap(), 0)
   assert_eq(evaluate_icon_bucket(icon, n(40.0), pop).unwrap(), 1)
   assert_eq(evaluate_icon_bucket(icon, n(80.0), pop).unwrap(), 2)
-  let reversed : CfIconSet = { ..icon, reverse: true }
+  let reversed : @domain.CT_IconSet = { ..icon, reverse: true }
   assert_eq(evaluate_icon_bucket(reversed, n(10.0), pop).unwrap(), 2)
 }
 
 ///|
 test "§18.3.1.10 evaluate_cf_block respects priority and stopIfTrue" {
-  let rule_high = rule_for_test(CellIs, 1, fn(base) {
+  let rule_high = rule_for_test(@domain.CellIs, 1, fn(base) {
     {
       ..base,
-      operator: Some(OpGreaterThan),
+      operator: Some(@domain.OpGreaterThan),
       formulas: ["50"],
       dxf_id: Some(7),
       stop_if_true: true,
     }
   })
-  let rule_low = rule_for_test(CellIs, 2, fn(base) {
-    { ..base, operator: Some(OpGreaterThan), formulas: ["10"], dxf_id: Some(8) }
+  let rule_low = rule_for_test(@domain.CellIs, 2, fn(base) {
+    {
+      ..base,
+      operator: Some(@domain.OpGreaterThan),
+      formulas: ["10"],
+      dxf_id: Some(8),
+    }
   })
-  let block : CfBlock = {
+  let block : @domain.CT_ConditionalFormatting = {
     pivot: false,
     sqref: try! @address.Sqref::parse_a1("A1:A3"),
     rules: [rule_high, rule_low],
@@ -376,30 +382,30 @@ test "§18.3.1.10 evaluate_cf_block respects priority and stopIfTrue" {
 }
 
 ///|
-test "§18.18.12 CfType::from_attr rejects bogus values" {
-  let bad = try? CfType::from_attr("notARealType")
+test "§18.18.12 decode_cf_type rejects bogus values" {
+  let bad = try? decode_cf_type("notARealType")
   assert_true(bad is Err(_))
 }
 
 ///|
-test "§18.18.15 CfOperator::from_attr handles all 12 values" {
-  let mappings : Array[(String, CfOperator)] = [
-    ("beginsWith", OpBeginsWith),
-    ("between", OpBetween),
-    ("containsText", OpContainsText),
-    ("endsWith", OpEndsWith),
-    ("equal", OpEqual),
-    ("greaterThan", OpGreaterThan),
-    ("greaterThanOrEqual", OpGreaterThanOrEqual),
-    ("lessThan", OpLessThan),
-    ("lessThanOrEqual", OpLessThanOrEqual),
-    ("notBetween", OpNotBetween),
-    ("notContains", OpNotContains),
-    ("notEqual", OpNotEqual),
+test "§18.18.15 decode_cf_operator handles all 12 values" {
+  let mappings : Array[(String, @domain.ST_ConditionalFormattingOperator)] = [
+    ("beginsWith", @domain.OpBeginsWith),
+    ("between", @domain.OpBetween),
+    ("containsText", @domain.OpContainsText),
+    ("endsWith", @domain.OpEndsWith),
+    ("equal", @domain.OpEqual),
+    ("greaterThan", @domain.OpGreaterThan),
+    ("greaterThanOrEqual", @domain.OpGreaterThanOrEqual),
+    ("lessThan", @domain.OpLessThan),
+    ("lessThanOrEqual", @domain.OpLessThanOrEqual),
+    ("notBetween", @domain.OpNotBetween),
+    ("notContains", @domain.OpNotContains),
+    ("notEqual", @domain.OpNotEqual),
   ]
   for entry in mappings {
     let (lex, expected) = entry
-    let got = try! CfOperator::from_attr(lex)
+    let got = try! decode_cf_operator(lex)
     assert_true(got == expected)
   }
 }

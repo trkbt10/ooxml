@@ -1019,23 +1019,6 @@ pub fn CT_PageSetUpPr::new(element : @xml.Element) -> CT_PageSetUpPr {
 }
 
 ///|
-/// XSD complex type CT_IconSet.
-pub(all) struct CT_IconSet {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_IconSet::new(element : @xml.Element) -> CT_IconSet {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
 /// XSD complex type CT_PageSetup.
 pub(all) struct CT_PageSetup {
   element : @xml.Element

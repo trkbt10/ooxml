@@ -1,22 +1,22 @@
 ///|
-/// Part 1 §18.3.1.18 conditionalFormatting — decode the outer CT_ConditionalFormatting
-/// element into a typed `CfBlock` whose rules are sorted ascending by
-/// `@priority`. The `@sqref` attribute is parsed through `@address`.
+/// Part 1 §18.3.1.18 conditionalFormatting — decode the outer
+/// CT_ConditionalFormatting element into a typed
+/// `@domain.CT_ConditionalFormatting` whose rules are sorted ascending
+/// by `@priority`. The `@sqref` attribute is parsed through `@address`.
 pub fn decode_cf_block(
-  block : @domain.CT_ConditionalFormatting,
-) -> CfBlock raise @opc_errors.SchemaViolation {
-  let element = block.element
+  element : @xml.Element,
+) -> @domain.CT_ConditionalFormatting raise @opc_errors.SchemaViolation {
   let pivot = decode_bool_attr(element, "pivot", false)
   let sqref_text = require_attr(
     element, "sqref", "conditionalFormatting/@sqref",
   )
   let sqref = @address.Sqref::parse_a1(sqref_text)
-  let rules : Array[CfRule] = []
+  let rules : Array[@domain.CT_CfRule] = []
   for child in element.children {
     match child {
       @xml.Element(child_element) =>
         if child_element.name.local_name == "cfRule" {
-          rules.push(decode_cf_rule(@domain.CT_CfRule::new(child_element)))
+          rules.push(decode_cf_rule(child_element))
         }
       _ => ()
     }
@@ -35,16 +35,15 @@ pub fn decode_cf_block(
 
 ///|
 /// Part 1 §18.3.1.10 cfRule — decode a CT_CfRule element into the
-/// typed `CfRule` carrying every attribute defined in the section
-/// table (type, dxfId, priority, stopIfTrue, aboveAverage, percent,
-/// bottom, operator, text, timePeriod, rank, stdDev, equalAverage) and
-/// the child `<formula>` / `<colorScale>` / `<dataBar>` / `<iconSet>`
-/// elements.
+/// typed `@domain.CT_CfRule` carrying every attribute defined in the
+/// section table (type, dxfId, priority, stopIfTrue, aboveAverage,
+/// percent, bottom, operator, text, timePeriod, rank, stdDev,
+/// equalAverage) and the child `<formula>` / `<colorScale>` /
+/// `<dataBar>` / `<iconSet>` elements.
 pub fn decode_cf_rule(
-  rule : @domain.CT_CfRule,
-) -> CfRule raise @opc_errors.SchemaViolation {
-  let element = rule.element
-  let cf_type = CfType::from_attr(require_attr(element, "type", "cfRule/@type"))
+  element : @xml.Element,
+) -> @domain.CT_CfRule raise @opc_errors.SchemaViolation {
+  let cf_type = decode_cf_type(require_attr(element, "type", "cfRule/@type"))
   let priority = decode_required_int(element, "priority", "cfRule/@priority")
   let dxf_id = decode_optional_int(element, "dxfId", "cfRule/@dxfId")
   let stop_if_true = decode_bool_attr(element, "stopIfTrue", false)
@@ -52,21 +51,22 @@ pub fn decode_cf_rule(
   let equal_average = decode_bool_attr(element, "equalAverage", false)
   let percent = decode_bool_attr(element, "percent", false)
   let bottom = decode_bool_attr(element, "bottom", false)
-  let operator : CfOperator? = match attr(element, "operator") {
-    Some(value) => Some(CfOperator::from_attr(value))
+  let operator : @domain.ST_ConditionalFormattingOperator? = match
+    attr(element, "operator") {
+    Some(value) => Some(decode_cf_operator(value))
     None => None
   }
-  let time_period : TimePeriod? = match attr(element, "timePeriod") {
-    Some(value) => Some(TimePeriod::from_attr(value))
+  let time_period : @domain.ST_TimePeriod? = match attr(element, "timePeriod") {
+    Some(value) => Some(decode_time_period(value))
     None => None
   }
   let rank = decode_optional_int(element, "rank", "cfRule/@rank")
   let std_dev = decode_optional_int(element, "stdDev", "cfRule/@stdDev")
   let text = attr(element, "text")
   let formulas : Array[String] = []
-  let mut color_scale : CfColorScale? = None
-  let mut data_bar : CfDataBar? = None
-  let mut icon_set : CfIconSet? = None
+  let mut color_scale : @domain.CT_ColorScale? = None
+  let mut data_bar : @domain.CT_DataBar? = None
+  let mut icon_set : @domain.CT_IconSet? = None
   for child in element.children {
     match child {
       @xml.Element(child_element) => {
@@ -110,9 +110,9 @@ pub fn decode_cf_rule(
 /// the first cfvo pairs with the first color, second with second, etc.
 fn decode_color_scale(
   element : @xml.Element,
-) -> CfColorScale raise @opc_errors.SchemaViolation {
-  let thresholds : Array[CfvoThreshold] = []
-  let colors : Array[CfArgb] = []
+) -> @domain.CT_ColorScale raise @opc_errors.SchemaViolation {
+  let thresholds : Array[@domain.CT_Cfvo] = []
+  let colors : Array[@domain.CT_Color] = []
   for child in element.children {
     match child {
       @xml.Element(child_element) => {
@@ -150,9 +150,9 @@ fn decode_color_scale(
 /// the evaluator only needs the thresholds and color.
 fn decode_data_bar(
   element : @xml.Element,
-) -> CfDataBar raise @opc_errors.SchemaViolation {
-  let thresholds : Array[CfvoThreshold] = []
-  let mut color_value : CfArgb? = None
+) -> @domain.CT_DataBar raise @opc_errors.SchemaViolation {
+  let thresholds : Array[@domain.CT_Cfvo] = []
+  let mut color_value : @domain.CT_Color? = None
   for child in element.children {
     match child {
       @xml.Element(child_element) => {
@@ -190,11 +190,11 @@ fn decode_data_bar(
 /// thresholds, and the `reverse` / `showValue` presentation flags.
 fn decode_icon_set(
   element : @xml.Element,
-) -> CfIconSet raise @opc_errors.SchemaViolation {
+) -> @domain.CT_IconSet raise @opc_errors.SchemaViolation {
   let set_name = attr_or(element, "iconSet", "3TrafficLights1")
   let reverse = decode_bool_attr(element, "reverse", false)
   let show_value = decode_bool_attr(element, "showValue", true)
-  let thresholds : Array[CfvoThreshold] = []
+  let thresholds : Array[@domain.CT_Cfvo] = []
   for child in element.children {
     match child {
       @xml.Element(child_element) =>
@@ -221,11 +221,11 @@ fn decode_icon_set(
 /// `min`, `max`.
 fn decode_cfvo(
   element : @xml.Element,
-) -> CfvoThreshold raise @opc_errors.SchemaViolation {
-  let kind = CfvoType::from_attr(require_attr(element, "type", "cfvo/@type"))
+) -> @domain.CT_Cfvo raise @opc_errors.SchemaViolation {
+  let kind = decode_cfvo_type(require_attr(element, "type", "cfvo/@type"))
   let value_text = attr(element, "val")
   match kind {
-    CfvoMin | CfvoMax => ()
+    @domain.CfvoMin | @domain.CfvoMax => ()
     _ =>
       if value_text is None {
         raise @opc_errors.SchemaViolation(
@@ -241,14 +241,14 @@ fn decode_cfvo(
 }
 
 ///|
-fn kind_to_lexical(kind : CfvoType) -> String {
+fn kind_to_lexical(kind : @domain.ST_CfvoType) -> String {
   match kind {
-    CfvoNum => "num"
-    CfvoMin => "min"
-    CfvoMax => "max"
-    CfvoPercent => "percent"
-    CfvoPercentile => "percentile"
-    CfvoFormula => "formula"
+    @domain.CfvoNum => "num"
+    @domain.CfvoMin => "min"
+    @domain.CfvoMax => "max"
+    @domain.CfvoPercent => "percent"
+    @domain.CfvoPercentile => "percentile"
+    @domain.CfvoFormula => "formula"
   }
 }
 
@@ -260,15 +260,17 @@ fn kind_to_lexical(kind : CfvoType) -> String {
 /// theme colors as @rgb hex strings).
 fn decode_color(
   element : @xml.Element,
-) -> CfArgb raise @opc_errors.SchemaViolation {
+) -> @domain.CT_Color raise @opc_errors.SchemaViolation {
   match attr(element, "rgb") {
     Some(value) => parse_argb_hex(value)
-    None => CfArgb::new(255, 0, 0, 0)
+    None => @domain.CT_Color::new(255, 0, 0, 0)
   }
 }
 
 ///|
-fn parse_argb_hex(value : String) -> CfArgb raise @opc_errors.SchemaViolation {
+fn parse_argb_hex(
+  value : String,
+) -> @domain.CT_Color raise @opc_errors.SchemaViolation {
   if value.length() != 8 {
     raise @opc_errors.SchemaViolation(
       section="Part 1 §18.3.1.15",
@@ -280,7 +282,7 @@ fn parse_argb_hex(value : String) -> CfArgb raise @opc_errors.SchemaViolation {
   let red = hex_pair(value, 2)
   let green = hex_pair(value, 4)
   let blue = hex_pair(value, 6)
-  CfArgb::new(alpha, red, green, blue)
+  @domain.CT_Color::new(alpha, red, green, blue)
 }
 
 ///|

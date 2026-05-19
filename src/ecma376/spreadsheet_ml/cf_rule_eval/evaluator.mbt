@@ -5,28 +5,30 @@
 /// derive thresholds; cellIs / text predicate / blank / error /
 /// timePeriod / expression rules ignore the population.
 pub fn evaluate_rule(
-  rule : CfRule,
+  rule : @domain.CT_CfRule,
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
-  ctx : CfEvalContext,
+  ctx : EvalContext,
 ) -> Bool {
   match rule.cf_type {
-    CellIs => evaluate_cellis(rule, cell, ctx)
-    ContainsText => evaluate_text_predicate(rule, cell, contains_text_match)
-    NotContainsText => !evaluate_text_predicate(rule, cell, contains_text_match)
-    BeginsWith => evaluate_text_predicate(rule, cell, begins_with_match)
-    EndsWith => evaluate_text_predicate(rule, cell, ends_with_match)
-    ContainsBlanks => is_blank_value(cell)
-    NotContainsBlanks => !is_blank_value(cell)
-    ContainsErrors => is_error_value(cell)
-    NotContainsErrors => !is_error_value(cell)
-    DuplicateValues => occurrence_of(cell, population) > 1
-    UniqueValues => occurrence_of(cell, population) == 1
-    Top10 => evaluate_top10(rule, cell, population)
-    AboveAverage => evaluate_above_average(rule, cell, population)
-    TimePeriod => evaluate_time_period(rule, cell, ctx)
-    Expression => evaluate_expression(rule, ctx)
-    ColorScale | DataBar | IconSet =>
+    @domain.CellIs => evaluate_cellis(rule, cell, ctx)
+    @domain.ContainsText =>
+      evaluate_text_predicate(rule, cell, contains_text_match)
+    @domain.NotContainsText =>
+      !evaluate_text_predicate(rule, cell, contains_text_match)
+    @domain.BeginsWith => evaluate_text_predicate(rule, cell, begins_with_match)
+    @domain.EndsWith => evaluate_text_predicate(rule, cell, ends_with_match)
+    @domain.ContainsBlanks => is_blank_value(cell)
+    @domain.NotContainsBlanks => !is_blank_value(cell)
+    @domain.ContainsErrors => is_error_value(cell)
+    @domain.NotContainsErrors => !is_error_value(cell)
+    @domain.DuplicateValues => occurrence_of(cell, population) > 1
+    @domain.UniqueValues => occurrence_of(cell, population) == 1
+    @domain.Top10 => evaluate_top10(rule, cell, population)
+    @domain.AboveAverage => evaluate_above_average(rule, cell, population)
+    @domain.TimePeriod => evaluate_time_period(rule, cell, ctx)
+    @domain.Expression => evaluate_expression(rule, ctx)
+    @domain.ColorScale | @domain.DataBar | @domain.IconSet =>
       match to_number_opt(cell) {
         Some(_) => true
         None => false
@@ -51,7 +53,7 @@ fn ends_with_match(haystack : String, needle : String) -> Bool {
 
 ///|
 fn evaluate_text_predicate(
-  rule : CfRule,
+  rule : @domain.CT_CfRule,
   cell : @formula.FormulaValue,
   matcher : (String, String) -> Bool,
 ) -> Bool {
@@ -68,9 +70,9 @@ fn evaluate_text_predicate(
 
 ///|
 fn evaluate_cellis(
-  rule : CfRule,
+  rule : @domain.CT_CfRule,
   cell : @formula.FormulaValue,
-  ctx : CfEvalContext,
+  ctx : EvalContext,
 ) -> Bool {
   let op = match rule.operator {
     Some(o) => o
@@ -93,7 +95,7 @@ fn evaluate_cellis(
 
 ///|
 fn evaluate_top10(
-  rule : CfRule,
+  rule : @domain.CT_CfRule,
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
 ) -> Bool {
@@ -123,7 +125,7 @@ fn evaluate_top10(
 
 ///|
 fn evaluate_above_average(
-  rule : CfRule,
+  rule : @domain.CT_CfRule,
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
 ) -> Bool {
@@ -162,9 +164,9 @@ fn evaluate_above_average(
 
 ///|
 fn evaluate_time_period(
-  rule : CfRule,
+  rule : @domain.CT_CfRule,
   cell : @formula.FormulaValue,
-  ctx : CfEvalContext,
+  ctx : EvalContext,
 ) -> Bool {
   let period = match rule.time_period {
     Some(p) => p
@@ -190,16 +192,16 @@ fn evaluate_time_period(
   }
   let diff_days = serial.trunc().to_int() - today_serial.trunc().to_int()
   match period {
-    Today => diff_days == 0
-    Yesterday => diff_days == -1
-    Tomorrow => diff_days == 1
-    Last7Days => diff_days <= 0 && diff_days >= -6
-    LastWeek => same_iso_week_offset(ctx.today, cell_date, -1)
-    ThisWeek => same_iso_week_offset(ctx.today, cell_date, 0)
-    NextWeek => same_iso_week_offset(ctx.today, cell_date, 1)
-    LastMonth => same_month_offset(ctx.today, cell_date, -1)
-    ThisMonth => same_month_offset(ctx.today, cell_date, 0)
-    NextMonth => same_month_offset(ctx.today, cell_date, 1)
+    @domain.Today => diff_days == 0
+    @domain.Yesterday => diff_days == -1
+    @domain.Tomorrow => diff_days == 1
+    @domain.Last7Days => diff_days <= 0 && diff_days >= -6
+    @domain.LastWeek => same_iso_week_offset(ctx.today, cell_date, -1)
+    @domain.ThisWeek => same_iso_week_offset(ctx.today, cell_date, 0)
+    @domain.NextWeek => same_iso_week_offset(ctx.today, cell_date, 1)
+    @domain.LastMonth => same_month_offset(ctx.today, cell_date, -1)
+    @domain.ThisMonth => same_month_offset(ctx.today, cell_date, 0)
+    @domain.NextMonth => same_month_offset(ctx.today, cell_date, 1)
   }
 }
 
@@ -251,7 +253,7 @@ fn julian_day_number(year : Int, month : Int, day : Int) -> Int {
 }
 
 ///|
-fn evaluate_expression(rule : CfRule, ctx : CfEvalContext) -> Bool {
+fn evaluate_expression(rule : @domain.CT_CfRule, ctx : EvalContext) -> Bool {
   let text = match rule.formulas.get(0) {
     Some(t) => t
     None => return false
@@ -289,12 +291,12 @@ fn occurrence_of(
 /// no numeric value. Useful for renderers that pre-resolve theme
 /// colors and want the segment index rather than the blended ARGB.
 pub fn evaluate_bucket(
-  rule : CfRule,
+  rule : @domain.CT_CfRule,
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
 ) -> Int? {
   match rule.cf_type {
-    ColorScale =>
+    @domain.ColorScale =>
       match rule.color_scale {
         Some(scale) => {
           let cell_number = match to_number_opt(cell) {
@@ -313,7 +315,7 @@ pub fn evaluate_bucket(
         }
         None => None
       }
-    IconSet =>
+    @domain.IconSet =>
       match rule.icon_set {
         Some(icon_set) => evaluate_icon_bucket(icon_set, cell, population)
         None => None
@@ -324,21 +326,22 @@ pub fn evaluate_bucket(
 
 ///|
 /// Part 1 §18.3.1.10 / §18.3.1.18 — evaluate every rule in a
-/// CfBlock against the supplied cell snapshot and return one CfHit
-/// per (cell, matched rule) pair. Rules are scanned in ascending
-/// priority order (already pre-sorted by `decode_cf_block`); when a
-/// rule's @stopIfTrue is set and the rule matches a cell, no
-/// lower-precedence rules are recorded for that cell.
+/// `CT_ConditionalFormatting` against the supplied cell snapshot and
+/// return one `MatchHit` per (cell, matched rule) pair. Rules are
+/// scanned in ascending priority order (already pre-sorted by
+/// `decode_cf_block`); when a rule's @stopIfTrue is set and the rule
+/// matches a cell, no lower-precedence rules are recorded for that
+/// cell.
 pub fn evaluate_cf_block(
-  block : CfBlock,
+  block : @domain.CT_ConditionalFormatting,
   cells : Array[(@address.CellAddress, @formula.FormulaValue)],
-  ctx : CfEvalContext,
-) -> Array[CfHit] {
+  ctx : EvalContext,
+) -> Array[MatchHit] {
   let population : Array[@formula.FormulaValue] = []
   for entry in cells {
     population.push(entry.1)
   }
-  let hits : Array[CfHit] = []
+  let hits : Array[MatchHit] = []
   let stopped : Array[Bool] = Array::make(cells.length(), false)
   for rule in block.rules {
     for i in 0..<cells.length() {
@@ -348,7 +351,7 @@ pub fn evaluate_cf_block(
       let (address, value) = cells[i]
       if evaluate_rule(rule, value, population, ctx) {
         let argb = match rule.cf_type {
-          ColorScale =>
+          @domain.ColorScale =>
             match rule.color_scale {
               Some(scale) => evaluate_color_scale(scale, value, population)
               None => None
@@ -356,7 +359,7 @@ pub fn evaluate_cf_block(
           _ => None
         }
         let bar_ratio = match rule.cf_type {
-          DataBar =>
+          @domain.DataBar =>
             match rule.data_bar {
               Some(bar) => evaluate_bar_ratio(bar, value, population)
               None => None
@@ -364,7 +367,7 @@ pub fn evaluate_cf_block(
           _ => None
         }
         let icon_index = match rule.cf_type {
-          IconSet =>
+          @domain.IconSet =>
             match rule.icon_set {
               Some(set) => evaluate_icon_bucket(set, value, population)
               None => None

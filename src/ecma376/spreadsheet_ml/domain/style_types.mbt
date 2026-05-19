@@ -24,23 +24,6 @@ pub fn CT_ColorFilter::new(element : @xml.Element) -> CT_ColorFilter {
 }
 
 ///|
-/// XSD complex type CT_ColorScale.
-pub(all) struct CT_ColorScale {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_ColorScale::new(element : @xml.Element) -> CT_ColorScale {
-  let group_name = style_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
 /// XSD complex type CT_SheetProtection.
 pub(all) struct CT_SheetProtection {
   element : @xml.Element
@@ -237,23 +220,6 @@ pub(all) struct CT_PatternFill {
 
 ///|
 pub fn CT_PatternFill::new(element : @xml.Element) -> CT_PatternFill {
-  let group_name = style_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
-/// XSD complex type CT_Color.
-pub(all) struct CT_Color {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_Color::new(element : @xml.Element) -> CT_Color {
   let group_name = style_type_group_name()
   let local_name = element.name.local_name
   if group_name.length() > 0 || local_name.length() > 0 {

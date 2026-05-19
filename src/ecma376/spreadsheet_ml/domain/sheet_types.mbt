@@ -1115,42 +1115,6 @@ pub fn CT_DataValidation::new(element : @xml.Element) -> CT_DataValidation {
 }
 
 ///|
-/// XSD complex type CT_ConditionalFormatting.
-pub(all) struct CT_ConditionalFormatting {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_ConditionalFormatting::new(
-  element : @xml.Element,
-) -> CT_ConditionalFormatting {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
-/// XSD complex type CT_CfRule.
-pub(all) struct CT_CfRule {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_CfRule::new(element : @xml.Element) -> CT_CfRule {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
 /// XSD complex type CT_Hyperlinks.
 pub(all) struct CT_Hyperlinks {
   element : @xml.Element
@@ -1192,40 +1156,6 @@ pub(all) struct CT_CellFormula {
 
 ///|
 pub fn CT_CellFormula::new(element : @xml.Element) -> CT_CellFormula {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
-/// XSD complex type CT_DataBar.
-pub(all) struct CT_DataBar {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_DataBar::new(element : @xml.Element) -> CT_DataBar {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
-}
-
-///|
-/// XSD complex type CT_Cfvo.
-pub(all) struct CT_Cfvo {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_Cfvo::new(element : @xml.Element) -> CT_Cfvo {
   let group_name = sheet_type_group_name()
   let local_name = element.name.local_name
   if group_name.length() > 0 || local_name.length() > 0 {
