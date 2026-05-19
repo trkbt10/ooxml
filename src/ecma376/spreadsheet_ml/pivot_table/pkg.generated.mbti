@@ -1,0 +1,256 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/spreadsheet_ml/pivot_table"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/formula",
+}
+
+// Values
+pub fn aggregate(Array[@formula.FormulaValue], DataConsolidateFunction) -> @formula.FormulaValue
+
+pub fn coerce_value_to_number(@formula.FormulaValue) -> Double?
+
+pub fn data_consolidate_function_part1_18_18_17_section_name() -> String
+
+pub fn decode_pivot_cache_definition(@domain.CT_PivotCacheDefinition) -> PivotCacheDefinition raise @errors.SchemaViolation
+
+pub fn decode_pivot_cache_records(@domain.CT_PivotCacheRecords, Array[CacheField]) -> PivotCacheRecords raise @errors.SchemaViolation
+
+pub fn decode_pivot_table_definition(@domain.CT_pivotTableDefinition) -> PivotTableDefinition raise @errors.SchemaViolation
+
+pub fn materialize_pivot_table(PivotTableDefinition, PivotCacheDefinition, PivotCacheRecords) -> PivotMaterialization raise @errors.SchemaViolation
+
+pub fn pivot_cache_definition_part1_18_10_1_67_section_name() -> String
+
+pub fn pivot_cache_records_part1_18_10_1_68_section_name() -> String
+
+pub fn pivot_record_cell_shared_index(PivotRecordCell) -> Int?
+
+pub fn pivot_record_cell_to_formula_value(PivotRecordCell, CacheField) -> @formula.FormulaValue raise @errors.SchemaViolation
+
+pub fn pivot_table_definition_part1_18_10_1_73_section_name() -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct CacheField {
+  name : String
+  caption : String?
+  num_fmt_id : Int?
+  database_field : Bool
+  formula : String?
+  shared_items : SharedItems
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CacheSource {
+  source_type : String
+  connection_id : Int?
+  worksheet_source : WorksheetSource?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum DataConsolidateFunction {
+  Average
+  Count
+  CountNums
+  Max
+  Min
+  Product
+  StdDev
+  StdDevP
+  Sum
+  Var
+  VarP
+} derive(Eq, @debug.Debug)
+pub fn DataConsolidateFunction::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) struct DataFieldDef {
+  name : String?
+  fld : Int
+  subtotal : DataConsolidateFunction
+  base_field : Int?
+  base_item : Int?
+  num_fmt_id : Int?
+  show_data_as : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum ItemType {
+  Data
+  Default
+  Sum
+  CountA
+  Avg
+  Max
+  Min
+  Product
+  Count
+  StdDev
+  StdDevP
+  Var
+  VarP
+  Grand
+  Blank
+} derive(Eq, @debug.Debug)
+pub fn ItemType::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) struct PageFieldDef {
+  fld : Int
+  item : Int?
+  hier : Int?
+  name : String?
+  caption : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PivotAxis {
+  AxisRow
+  AxisCol
+  AxisPage
+  AxisValues
+} derive(Eq, @debug.Debug)
+pub fn PivotAxis::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) struct PivotAxisItem {
+  repeat_count : Int
+  item_type : ItemType?
+  data_field_index : Int?
+  item_indices : Array[Int]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PivotAxisKey {
+  Items(Array[Int])
+  RowGrand
+  ColGrand
+} derive(Eq, @debug.Debug)
+pub fn PivotAxisKey::is_grand(Self) -> Bool
+pub fn PivotAxisKey::serialize(Self) -> String
+
+pub(all) struct PivotCacheDefinition {
+  cache_source : CacheSource
+  cache_fields : Array[CacheField]
+  refreshed_by : String?
+  refreshed_date_iso : String?
+  record_count : Int?
+  created_version : Int?
+  refreshed_version : Int?
+  min_refreshable_version : Int?
+  save_data : Bool
+  invalid : Bool
+  refresh_on_load : Bool
+} derive(Eq, @debug.Debug)
+pub fn PivotCacheDefinition::field_count(Self) -> Int
+
+pub(all) struct PivotCacheRecords {
+  count : Int?
+  rows : Array[PivotCacheRow]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PivotCacheRow {
+  cells : Array[PivotRecordCell]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PivotFieldDef {
+  axis : PivotAxis?
+  data_field : Bool
+  include_new_items_in_filter : Bool
+  name : String?
+  subtotal_top : Bool
+  default_subtotal : Bool
+  items : Array[PivotItemDef]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PivotItemDef {
+  item_index : Int?
+  item_type : ItemType?
+  hidden : Bool
+  caption : String?
+  character : Bool
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PivotLocation {
+  ref_range : @address.CellRange
+  first_header_row : Int
+  first_data_row : Int
+  first_data_col : Int
+  row_page_count : Int
+  col_page_count : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PivotMaterialization {
+  row_keys : Array[PivotAxisKey]
+  col_keys : Array[PivotAxisKey]
+  cells : Array[PivotResultCell]
+  data_field_count : Int
+} derive(Eq, @debug.Debug)
+pub fn PivotMaterialization::find(Self, PivotAxisKey, PivotAxisKey, Int) -> PivotResultCell?
+
+pub(all) enum PivotRecordCell {
+  RefShared(Int)
+  Inline(SharedItemValue)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PivotResultCell {
+  row_key : PivotAxisKey
+  col_key : PivotAxisKey
+  data_field_index : Int
+  aggregated_value : @formula.FormulaValue
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PivotTableDefinition {
+  name : String
+  data_caption : String?
+  cache_id : Int?
+  row_grand_totals : Bool
+  col_grand_totals : Bool
+  data_on_rows : Bool
+  location : PivotLocation?
+  pivot_fields : Array[PivotFieldDef]
+  row_fields : Array[Int]
+  col_fields : Array[Int]
+  row_items : Array[PivotAxisItem]
+  col_items : Array[PivotAxisItem]
+  page_fields : Array[PageFieldDef]
+  data_fields : Array[DataFieldDef]
+} derive(Eq, @debug.Debug)
+pub fn PivotTableDefinition::aggregation_function_for(Self, Int) -> DataConsolidateFunction
+
+pub(all) enum SharedItemValue {
+  SharedString(String)
+  SharedNumber(Double)
+  SharedBool(Bool)
+  SharedDate(String)
+  SharedError(String)
+  SharedMissing
+} derive(Eq, @debug.Debug)
+pub fn SharedItemValue::to_formula_value(Self) -> @formula.FormulaValue
+
+pub(all) struct SharedItems {
+  items : Array[SharedItemValue]
+  contains_blank : Bool
+  contains_date : Bool
+  contains_integer : Bool
+  contains_mixed_types : Bool
+  contains_non_date : Bool
+  contains_number : Bool
+  contains_semi_mixed_types : Bool
+  contains_string : Bool
+  long_text : Bool
+  min_value : Double?
+  max_value : Double?
+  min_date : String?
+  max_date : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct WorksheetSource {
+  sheet : String?
+  name : String?
+  ref_range : @address.CellRange?
+  relationship_id : String?
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

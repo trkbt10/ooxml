@@ -1,0 +1,22 @@
+// trkbt10/ooxml/ecma376/spreadsheet_ml/pivot_table
+//
+// SpreadsheetML §18.10 PivotTable materialization. Decodes
+// CT_PivotCacheDefinition (§18.10.1.67), CT_PivotCacheRecords
+// (§18.10.1.68), and CT_pivotTableDefinition (§18.10.1.73), then
+// runs `ST_DataConsolidateFunction` (§18.18.17) aggregation across
+// the cached records to produce a 2-D `(row axis key, col axis key,
+// data field index) -> aggregated value` matrix.
+
+import {
+  "moonbitlang/core/hashmap" @hashmap,
+  "moonbitlang/core/strconv" @strconv,
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @domain,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/address" @address,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/formula" @formula,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"
