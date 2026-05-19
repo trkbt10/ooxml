@@ -1,6 +1,10 @@
 ///|
 /// Construct top-level XSD element recipients as CT_Recipients (§17).
-pub fn recipients(element : @xml.Element) -> CT_Recipients {
+/// Raises SchemaViolation when a `<w:recipientData>` child is missing a
+/// required field per Part 1 §17.14.30 / §17.14.31.
+pub fn recipients(
+  element : @xml.Element,
+) -> CT_Recipients raise SchemaViolation {
   CT_Recipients::new(element)
 }
 
@@ -14,14 +18,18 @@ pub fn comments(element : @xml.Element) -> CT_Comments raise SchemaViolation {
 }
 
 ///|
-/// Construct top-level XSD element footnotes as CT_Footnotes (§17).
-pub fn footnotes(element : @xml.Element) -> CT_Footnotes {
+/// Construct top-level XSD element footnotes as CT_Footnotes (§17.11.16).
+/// Raises SchemaViolation when a footnote's required `@id` is missing
+/// or malformed per the typed CT_FtnEdn contract.
+pub fn footnotes(element : @xml.Element) -> CT_Footnotes raise SchemaViolation {
   CT_Footnotes::new(element)
 }
 
 ///|
-/// Construct top-level XSD element endnotes as CT_Endnotes (§17).
-pub fn endnotes(element : @xml.Element) -> CT_Endnotes {
+/// Construct top-level XSD element endnotes as CT_Endnotes (§17.11.9).
+/// Raises SchemaViolation when an endnote's required `@id` is missing
+/// or malformed per the typed CT_FtnEdn contract.
+pub fn endnotes(element : @xml.Element) -> CT_Endnotes raise SchemaViolation {
   CT_Endnotes::new(element)
 }
 
@@ -50,8 +58,10 @@ pub fn web_settings(element : @xml.Element) -> CT_WebSettings {
 }
 
 ///|
-/// Construct top-level XSD element fonts as CT_FontsList (§17).
-pub fn fonts(element : @xml.Element) -> CT_FontsList {
+/// Construct top-level XSD element fonts as CT_FontsList (§17.8.2.11).
+/// Raises SchemaViolation when a `<w:font>` child is missing its
+/// required `@name` or has a malformed typed descriptor per CT_Font.
+pub fn fonts(element : @xml.Element) -> CT_FontsList raise SchemaViolation {
   CT_FontsList::new(element)
 }
 
@@ -72,13 +82,20 @@ pub fn styles(element : @xml.Element) -> CT_Styles raise SchemaViolation {
 }
 
 ///|
-/// Construct top-level XSD element document as CT_Document (§17).
-pub fn document(element : @xml.Element) -> CT_Document {
+/// Construct top-level XSD element document as CT_Document (§17.2.4).
+/// Raises SchemaViolation when the optional `<w:background>` or
+/// `<w:body>` payload contains a typed sub-tree that violates its
+/// CT_X contract.
+pub fn document(element : @xml.Element) -> CT_Document raise SchemaViolation {
   CT_Document::new(element)
 }
 
 ///|
-/// Construct top-level XSD element glossaryDocument as CT_GlossaryDocument (§11).
-pub fn glossary_document(element : @xml.Element) -> CT_GlossaryDocument {
+/// Construct top-level XSD element glossaryDocument as CT_GlossaryDocument
+/// (§11.3.5). Raises SchemaViolation when the optional `<w:docParts>`
+/// payload violates the CT_DocParts contract.
+pub fn glossary_document(
+  element : @xml.Element,
+) -> CT_GlossaryDocument raise SchemaViolation {
   CT_GlossaryDocument::new(element)
 }

@@ -391,17 +391,34 @@ pub fn CT_DocPartType::to_element(self : CT_DocPartType) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_DocPartTypes from wml.xsd (§17).
+/// XSD complex type CT_DocPartTypes — Part 1 §17.12.6. Glossary
+/// document-part type filter: an `xsd:choice` payload of one-or-more
+/// `<w:type>` children (CT_DocPartType per §17.12.5) plus an optional
+/// `@all` (ST_OnOff §22.9.2.7) flag marking the entry as applicable to
+/// every type.
 pub(all) struct CT_DocPartTypes {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.7 @all (s:ST_OnOff) — optional flag; `None` means absent.
+  all : Bool?
+  /// §17.12.5 `<w:type>` (CT_DocPartType)+ — one or more type children.
+  types : Array[CT_DocPartType]
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_DocPartTypes — Part 1 §17.12.6. Decode the
+/// optional `@all` boolean and gather the `<w:type>` children.
 pub fn CT_DocPartTypes::new(element : @xml.Element) -> CT_DocPartTypes {
-  { element, }
+  let all = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "all"))
+  let types : Array[CT_DocPartType] = []
+  for child in wml_ct_chunk2_children(element, "type") {
+    types.push(CT_DocPartType::new(child))
+  }
+  { element, all, types }
 }
 
 ///|
+/// XSD complex type CT_DocPartTypes — Part 1 §17.12.6.
 pub fn CT_DocPartTypes::parse(element : @xml.Element) -> CT_DocPartTypes {
   CT_DocPartTypes::new(element)
 }
@@ -412,18 +429,34 @@ pub fn CT_DocPartTypes::to_element(self : CT_DocPartTypes) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_DocPartGallery from wml.xsd (§17).
+/// XSD complex type CT_DocPartGallery — Part 1 §17.12.7. Required
+/// `@val` (ST_DocPartGallery §17.18.20) selects one of the predefined
+/// glossary-document gallery buckets (cover page, headers, footers, …).
 pub(all) struct CT_DocPartGallery {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.20 @val (ST_DocPartGallery) — required gallery selector.
+  val : ST_DocPartGallery
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocPartGallery::new(element : @xml.Element) -> CT_DocPartGallery {
-  { element, }
+/// XSD complex type CT_DocPartGallery — Part 1 §17.12.7. Decode the
+/// required `@val` ST_DocPartGallery token.
+pub fn CT_DocPartGallery::new(
+  element : @xml.Element,
+) -> CT_DocPartGallery raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_DocPartGallery", "Part 1 §17.18.20 ST_DocPartGallery",
+  )
+  let val = ST_DocPartGallery::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_DocPartGallery::parse(element : @xml.Element) -> CT_DocPartGallery {
+/// XSD complex type CT_DocPartGallery — Part 1 §17.12.7.
+pub fn CT_DocPartGallery::parse(
+  element : @xml.Element,
+) -> CT_DocPartGallery raise SchemaViolation {
   CT_DocPartGallery::new(element)
 }
 
@@ -433,18 +466,48 @@ pub fn CT_DocPartGallery::to_element(self : CT_DocPartGallery) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_DocPartCategory from wml.xsd (§17).
+/// XSD complex type CT_DocPartCategory — Part 1 §17.12.4. Glossary
+/// document-part category: required `<w:name>` (CT_String per
+/// §22.9.2.13) plus required `<w:gallery>` (CT_DocPartGallery per
+/// §17.12.7).
 pub(all) struct CT_DocPartCategory {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 `<w:name>` (CT_String) — required category name.
+  name : CT_String
+  /// §17.12.7 `<w:gallery>` (CT_DocPartGallery) — required gallery binding.
+  gallery : CT_DocPartGallery
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocPartCategory::new(element : @xml.Element) -> CT_DocPartCategory {
-  { element, }
+/// XSD complex type CT_DocPartCategory — Part 1 §17.12.4. Decode the
+/// required `<w:name>` and `<w:gallery>` children and propagate
+/// SchemaViolation when either is missing or malformed.
+pub fn CT_DocPartCategory::new(
+  element : @xml.Element,
+) -> CT_DocPartCategory raise SchemaViolation {
+  let name = match wml_ct_chunk2_first_child(element, "name") {
+    Some(child) => CT_String::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_DocPartCategory", "name", "Part 1 §17.12.4: required child <w:name> is missing",
+      )
+  }
+  let gallery = match wml_ct_chunk2_first_child(element, "gallery") {
+    Some(child) => CT_DocPartGallery::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_DocPartCategory", "gallery", "Part 1 §17.12.4: required child <w:gallery> is missing",
+      )
+  }
+  { element, name, gallery }
 }
 
 ///|
-pub fn CT_DocPartCategory::parse(element : @xml.Element) -> CT_DocPartCategory {
+/// XSD complex type CT_DocPartCategory — Part 1 §17.12.4.
+pub fn CT_DocPartCategory::parse(
+  element : @xml.Element,
+) -> CT_DocPartCategory raise SchemaViolation {
   CT_DocPartCategory::new(element)
 }
 
@@ -456,18 +519,37 @@ pub fn CT_DocPartCategory::to_element(
 }
 
 ///|
-/// XSD complex type CT_DocPartName from wml.xsd (§17).
+/// XSD complex type CT_DocPartName — Part 1 §17.12.8. Required `@val`
+/// (s:ST_String) names the glossary entry; optional `@decorated`
+/// (s:ST_OnOff §22.9.2.7) flags whether the entry should preserve
+/// formatting decorations.
 pub(all) struct CT_DocPartName {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 @val (s:ST_String) — required glossary entry name.
+  val : String
+  /// §22.9.2.7 @decorated (s:ST_OnOff) — optional decorated flag.
+  decorated : Bool?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocPartName::new(element : @xml.Element) -> CT_DocPartName {
-  { element, }
+/// XSD complex type CT_DocPartName — Part 1 §17.12.8. Decode the
+/// required `@val` string and optional `@decorated` ST_OnOff.
+pub fn CT_DocPartName::new(
+  element : @xml.Element,
+) -> CT_DocPartName raise SchemaViolation {
+  let val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_DocPartName", "Part 1 §22.9.2.13 s:ST_String",
+  )
+  let decorated = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "decorated"))
+  { element, val, decorated }
 }
 
 ///|
-pub fn CT_DocPartName::parse(element : @xml.Element) -> CT_DocPartName {
+/// XSD complex type CT_DocPartName — Part 1 §17.12.8.
+pub fn CT_DocPartName::parse(
+  element : @xml.Element,
+) -> CT_DocPartName raise SchemaViolation {
   CT_DocPartName::new(element)
 }
 
@@ -477,18 +559,78 @@ pub fn CT_DocPartName::to_element(self : CT_DocPartName) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_DocPartPr from wml.xsd (§17).
+/// XSD complex type CT_DocPartPr — Part 1 §17.12.9. Glossary-entry
+/// properties: required `<w:name>` (CT_DocPartName per §17.12.8) plus
+/// six optional descriptors carried in an `xsd:all` group — `<w:style>`
+/// (CT_String, §22.9.2.13), `<w:category>` (CT_DocPartCategory per
+/// §17.12.4), `<w:types>` (CT_DocPartTypes per §17.12.6), `<w:behaviors>`
+/// (CT_DocPartBehaviors per §17.12.2), `<w:description>` (CT_String per
+/// §22.9.2.13) and `<w:guid>` (CT_Guid per §22.9.2.3).
 pub(all) struct CT_DocPartPr {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.12.8 `<w:name>` (CT_DocPartName) — required entry name.
+  name : CT_DocPartName
+  /// §22.9.2.13 `<w:style>` (CT_String) — optional style reference.
+  style : CT_String?
+  /// §17.12.4 `<w:category>` (CT_DocPartCategory) — optional category binding.
+  category : CT_DocPartCategory?
+  /// §17.12.6 `<w:types>` (CT_DocPartTypes) — optional type filter.
+  types : CT_DocPartTypes?
+  /// §17.12.2 `<w:behaviors>` (CT_DocPartBehaviors) — optional behaviour set.
+  behaviors : CT_DocPartBehaviors?
+  /// §22.9.2.13 `<w:description>` (CT_String) — optional description.
+  description : CT_String?
+  /// §22.9.2.3 `<w:guid>` (CT_Guid) — optional persistent GUID.
+  guid : CT_Guid?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocPartPr::new(element : @xml.Element) -> CT_DocPartPr {
-  { element, }
+/// XSD complex type CT_DocPartPr — Part 1 §17.12.9. Decode every
+/// member of the `xsd:all` group; the required `<w:name>` triggers a
+/// SchemaViolation when missing.
+pub fn CT_DocPartPr::new(
+  element : @xml.Element,
+) -> CT_DocPartPr raise SchemaViolation {
+  let name = match wml_ct_chunk2_first_child(element, "name") {
+    Some(child) => CT_DocPartName::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_DocPartPr", "name", "Part 1 §17.12.9: required child <w:name> is missing",
+      )
+  }
+  let style = match wml_ct_chunk2_first_child(element, "style") {
+    Some(child) => Some(CT_String::new(child))
+    None => None
+  }
+  let category = match wml_ct_chunk2_first_child(element, "category") {
+    Some(child) => Some(CT_DocPartCategory::new(child))
+    None => None
+  }
+  let types = match wml_ct_chunk2_first_child(element, "types") {
+    Some(child) => Some(CT_DocPartTypes::new(child))
+    None => None
+  }
+  let behaviors = match wml_ct_chunk2_first_child(element, "behaviors") {
+    Some(child) => Some(CT_DocPartBehaviors::new(child))
+    None => None
+  }
+  let description = match wml_ct_chunk2_first_child(element, "description") {
+    Some(child) => Some(CT_String::new(child))
+    None => None
+  }
+  let guid = match wml_ct_chunk2_first_child(element, "guid") {
+    Some(child) => Some(CT_Guid::new(child))
+    None => None
+  }
+  { element, name, style, category, types, behaviors, description, guid }
 }
 
 ///|
-pub fn CT_DocPartPr::parse(element : @xml.Element) -> CT_DocPartPr {
+/// XSD complex type CT_DocPartPr — Part 1 §17.12.9.
+pub fn CT_DocPartPr::parse(
+  element : @xml.Element,
+) -> CT_DocPartPr raise SchemaViolation {
   CT_DocPartPr::new(element)
 }
 
@@ -498,18 +640,42 @@ pub fn CT_DocPartPr::to_element(self : CT_DocPartPr) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_DocPart from wml.xsd (§17).
+/// XSD complex type CT_DocPart — Part 1 §17.12.3. Glossary-document
+/// entry: optional `<w:docPartPr>` (CT_DocPartPr per §17.12.9) followed
+/// by optional `<w:docPartBody>` (CT_Body per §17.2.2) carrying the
+/// entry payload.
 pub(all) struct CT_DocPart {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.12.9 `<w:docPartPr>` (CT_DocPartPr) — optional entry metadata.
+  doc_part_pr : CT_DocPartPr?
+  /// §17.2.2 `<w:docPartBody>` (CT_Body) — optional entry body.
+  doc_part_body : CT_Body?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocPart::new(element : @xml.Element) -> CT_DocPart {
-  { element, }
+/// XSD complex type CT_DocPart — Part 1 §17.12.3. Decode the two
+/// optional sequence children, propagating SchemaViolation from the
+/// typed `<w:docPartPr>` constructor when present.
+pub fn CT_DocPart::new(
+  element : @xml.Element,
+) -> CT_DocPart raise SchemaViolation {
+  let doc_part_pr = match wml_ct_chunk2_first_child(element, "docPartPr") {
+    Some(child) => Some(CT_DocPartPr::new(child))
+    None => None
+  }
+  let doc_part_body = match wml_ct_chunk2_first_child(element, "docPartBody") {
+    Some(child) => Some(CT_Body::new(child))
+    None => None
+  }
+  { element, doc_part_pr, doc_part_body }
 }
 
 ///|
-pub fn CT_DocPart::parse(element : @xml.Element) -> CT_DocPart {
+/// XSD complex type CT_DocPart — Part 1 §17.12.3.
+pub fn CT_DocPart::parse(
+  element : @xml.Element,
+) -> CT_DocPart raise SchemaViolation {
   CT_DocPart::new(element)
 }
 
@@ -519,18 +685,35 @@ pub fn CT_DocPart::to_element(self : CT_DocPart) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_DocParts from wml.xsd (§17).
+/// XSD complex type CT_DocParts — Part 1 §17.12.10. Glossary container
+/// holding one-or-more `<w:docPart>` children (CT_DocPart per §17.12.3)
+/// under an `xsd:choice`.
 pub(all) struct CT_DocParts {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.12.3 `<w:docPart>` (CT_DocPart)+ — one or more glossary entries.
+  doc_parts : Array[CT_DocPart]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocParts::new(element : @xml.Element) -> CT_DocParts {
-  { element, }
+/// XSD complex type CT_DocParts — Part 1 §17.12.10. Decode each
+/// `<w:docPart>` child, propagating SchemaViolation from the typed
+/// constructor.
+pub fn CT_DocParts::new(
+  element : @xml.Element,
+) -> CT_DocParts raise SchemaViolation {
+  let doc_parts : Array[CT_DocPart] = []
+  for child in wml_ct_chunk2_children(element, "docPart") {
+    doc_parts.push(CT_DocPart::new(child))
+  }
+  { element, doc_parts }
 }
 
 ///|
-pub fn CT_DocParts::parse(element : @xml.Element) -> CT_DocParts {
+/// XSD complex type CT_DocParts — Part 1 §17.12.10.
+pub fn CT_DocParts::parse(
+  element : @xml.Element,
+) -> CT_DocParts raise SchemaViolation {
   CT_DocParts::new(element)
 }
 
@@ -540,18 +723,35 @@ pub fn CT_DocParts::to_element(self : CT_DocParts) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_DocumentBase from wml.xsd (§17).
+/// XSD complex type CT_DocumentBase — Part 1 §17.2.3. Shared base for
+/// `<w:document>` and `<w:glossaryDocument>`: optional `<w:background>`
+/// (CT_Background per §17.2.1) carries page-wide background visuals.
 pub(all) struct CT_DocumentBase {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.2.1 `<w:background>` (CT_Background) — optional background graphic.
+  background : CT_Background?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocumentBase::new(element : @xml.Element) -> CT_DocumentBase {
-  { element, }
+/// XSD complex type CT_DocumentBase — Part 1 §17.2.3. Decode the
+/// optional `<w:background>` child and propagate SchemaViolation from
+/// the typed CT_Background constructor.
+pub fn CT_DocumentBase::new(
+  element : @xml.Element,
+) -> CT_DocumentBase raise SchemaViolation {
+  let background = match wml_ct_chunk2_first_child(element, "background") {
+    Some(child) => Some(CT_Background::new(child))
+    None => None
+  }
+  { element, background }
 }
 
 ///|
-pub fn CT_DocumentBase::parse(element : @xml.Element) -> CT_DocumentBase {
+/// XSD complex type CT_DocumentBase — Part 1 §17.2.3.
+pub fn CT_DocumentBase::parse(
+  element : @xml.Element,
+) -> CT_DocumentBase raise SchemaViolation {
   CT_DocumentBase::new(element)
 }
 
@@ -561,18 +761,45 @@ pub fn CT_DocumentBase::to_element(self : CT_DocumentBase) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_Document from wml.xsd (§17).
+/// XSD complex type CT_Document — Part 1 §17.2.4. Extends CT_DocumentBase
+/// (§17.2.3) with an optional `<w:body>` (CT_Body per §17.2.2) carrying
+/// the main document content and an optional `@conformance`
+/// (s:ST_ConformanceClass §22.9.2.2) declaring `strict` / `transitional`.
 pub(all) struct CT_Document {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.2.1 `<w:background>` (CT_Background) — inherited from CT_DocumentBase.
+  background : CT_Background?
+  /// §17.2.2 `<w:body>` (CT_Body) — optional main body content.
+  body : CT_Body?
+  /// §22.9.2.2 @conformance (s:ST_ConformanceClass) — optional conformance class.
+  conformance : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Document::new(element : @xml.Element) -> CT_Document {
-  { element, }
+/// XSD complex type CT_Document — Part 1 §17.2.4. Decode the inherited
+/// optional `<w:background>` (CT_DocumentBase), optional `<w:body>` and
+/// the optional `@conformance` attribute.
+pub fn CT_Document::new(
+  element : @xml.Element,
+) -> CT_Document raise SchemaViolation {
+  let background = match wml_ct_chunk2_first_child(element, "background") {
+    Some(child) => Some(CT_Background::new(child))
+    None => None
+  }
+  let body = match wml_ct_chunk2_first_child(element, "body") {
+    Some(child) => Some(CT_Body::new(child))
+    None => None
+  }
+  let conformance = wml_ct_chunk1_attr(element, "conformance")
+  { element, background, body, conformance }
 }
 
 ///|
-pub fn CT_Document::parse(element : @xml.Element) -> CT_Document {
+/// XSD complex type CT_Document — Part 1 §17.2.4.
+pub fn CT_Document::parse(
+  element : @xml.Element,
+) -> CT_Document raise SchemaViolation {
   CT_Document::new(element)
 }
 
@@ -582,20 +809,41 @@ pub fn CT_Document::to_element(self : CT_Document) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_GlossaryDocument from wml.xsd (§17).
+/// XSD complex type CT_GlossaryDocument — Part 1 §11.3.5. Extends
+/// CT_DocumentBase (§17.2.3) with an optional `<w:docParts>` container
+/// (CT_DocParts per §17.12.10) carrying the glossary entries.
 pub(all) struct CT_GlossaryDocument {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.2.1 `<w:background>` (CT_Background) — inherited from CT_DocumentBase.
+  background : CT_Background?
+  /// §17.12.10 `<w:docParts>` (CT_DocParts) — optional glossary entry list.
+  doc_parts : CT_DocParts?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GlossaryDocument::new(element : @xml.Element) -> CT_GlossaryDocument {
-  { element, }
+/// XSD complex type CT_GlossaryDocument — Part 1 §11.3.5. Decode the
+/// inherited `<w:background>` (CT_DocumentBase) and the optional
+/// `<w:docParts>` glossary container.
+pub fn CT_GlossaryDocument::new(
+  element : @xml.Element,
+) -> CT_GlossaryDocument raise SchemaViolation {
+  let background = match wml_ct_chunk2_first_child(element, "background") {
+    Some(child) => Some(CT_Background::new(child))
+    None => None
+  }
+  let doc_parts = match wml_ct_chunk2_first_child(element, "docParts") {
+    Some(child) => Some(CT_DocParts::new(child))
+    None => None
+  }
+  { element, background, doc_parts }
 }
 
 ///|
+/// XSD complex type CT_GlossaryDocument — Part 1 §11.3.5.
 pub fn CT_GlossaryDocument::parse(
   element : @xml.Element,
-) -> CT_GlossaryDocument {
+) -> CT_GlossaryDocument raise SchemaViolation {
   CT_GlossaryDocument::new(element)
 }
 

@@ -14,17 +14,17 @@ pub let cnf_bit_count : Int
 
 pub fn comments(@xml.Element) -> CT_Comments raise SchemaViolation
 
-pub fn document(@xml.Element) -> CT_Document
+pub fn document(@xml.Element) -> CT_Document raise SchemaViolation
 
-pub fn endnotes(@xml.Element) -> CT_Endnotes
+pub fn endnotes(@xml.Element) -> CT_Endnotes raise SchemaViolation
 
-pub fn fonts(@xml.Element) -> CT_FontsList
+pub fn fonts(@xml.Element) -> CT_FontsList raise SchemaViolation
 
-pub fn footnotes(@xml.Element) -> CT_Footnotes
+pub fn footnotes(@xml.Element) -> CT_Footnotes raise SchemaViolation
 
 pub fn ftr(@xml.Element) -> CT_HdrFtr
 
-pub fn glossary_document(@xml.Element) -> CT_GlossaryDocument
+pub fn glossary_document(@xml.Element) -> CT_GlossaryDocument raise SchemaViolation
 
 pub fn hdr(@xml.Element) -> CT_HdrFtr
 
@@ -38,7 +38,7 @@ pub fn package_name() -> String
 
 pub fn[T] raise_schema_violation(String, String, String) -> T raise SchemaViolation
 
-pub fn recipients(@xml.Element) -> CT_Recipients
+pub fn recipients(@xml.Element) -> CT_Recipients raise SchemaViolation
 
 pub fn settings(@xml.Element) -> CT_Settings
 
@@ -504,9 +504,11 @@ pub fn CT_Divs::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocDefaults {
   element : @xml.Element
+  r_pr_default : CT_RPrDefault?
+  p_pr_default : CT_PPrDefault?
 } derive(Eq, @debug.Debug)
-pub fn CT_DocDefaults::new(@xml.Element) -> Self
-pub fn CT_DocDefaults::parse(@xml.Element) -> Self
+pub fn CT_DocDefaults::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocDefaults::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocDefaults::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocGrid {
@@ -521,9 +523,11 @@ pub fn CT_DocGrid::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPart {
   element : @xml.Element
+  doc_part_pr : CT_DocPartPr?
+  doc_part_body : CT_Body?
 } derive(Eq, @debug.Debug)
-pub fn CT_DocPart::new(@xml.Element) -> Self
-pub fn CT_DocPart::parse(@xml.Element) -> Self
+pub fn CT_DocPart::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocPart::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocPart::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartBehavior {
@@ -544,30 +548,42 @@ pub fn CT_DocPartBehaviors::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartCategory {
   element : @xml.Element
+  name : CT_String
+  gallery : CT_DocPartGallery
 } derive(Eq, @debug.Debug)
-pub fn CT_DocPartCategory::new(@xml.Element) -> Self
-pub fn CT_DocPartCategory::parse(@xml.Element) -> Self
+pub fn CT_DocPartCategory::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocPartCategory::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocPartCategory::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartGallery {
   element : @xml.Element
+  val : ST_DocPartGallery
 } derive(Eq, @debug.Debug)
-pub fn CT_DocPartGallery::new(@xml.Element) -> Self
-pub fn CT_DocPartGallery::parse(@xml.Element) -> Self
+pub fn CT_DocPartGallery::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocPartGallery::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocPartGallery::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartName {
   element : @xml.Element
+  val : String
+  decorated : Bool?
 } derive(Eq, @debug.Debug)
-pub fn CT_DocPartName::new(@xml.Element) -> Self
-pub fn CT_DocPartName::parse(@xml.Element) -> Self
+pub fn CT_DocPartName::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocPartName::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocPartName::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartPr {
   element : @xml.Element
+  name : CT_DocPartName
+  style : CT_String?
+  category : CT_DocPartCategory?
+  types : CT_DocPartTypes?
+  behaviors : CT_DocPartBehaviors?
+  description : CT_String?
+  guid : CT_Guid?
 } derive(Eq, @debug.Debug)
-pub fn CT_DocPartPr::new(@xml.Element) -> Self
-pub fn CT_DocPartPr::parse(@xml.Element) -> Self
+pub fn CT_DocPartPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocPartPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocPartPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartType {
@@ -580,6 +596,8 @@ pub fn CT_DocPartType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartTypes {
   element : @xml.Element
+  all : Bool?
+  types : Array[CT_DocPartType]
 } derive(Eq, @debug.Debug)
 pub fn CT_DocPartTypes::new(@xml.Element) -> Self
 pub fn CT_DocPartTypes::parse(@xml.Element) -> Self
@@ -587,9 +605,10 @@ pub fn CT_DocPartTypes::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocParts {
   element : @xml.Element
+  doc_parts : Array[CT_DocPart]
 } derive(Eq, @debug.Debug)
-pub fn CT_DocParts::new(@xml.Element) -> Self
-pub fn CT_DocParts::parse(@xml.Element) -> Self
+pub fn CT_DocParts::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocParts::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocParts::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocProtect {
@@ -633,16 +652,20 @@ pub fn CT_DocVars::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Document {
   element : @xml.Element
+  background : CT_Background?
+  body : CT_Body?
+  conformance : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Document::new(@xml.Element) -> Self
-pub fn CT_Document::parse(@xml.Element) -> Self
+pub fn CT_Document::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Document::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Document::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocumentBase {
   element : @xml.Element
+  background : CT_Background?
 } derive(Eq, @debug.Debug)
-pub fn CT_DocumentBase::new(@xml.Element) -> Self
-pub fn CT_DocumentBase::parse(@xml.Element) -> Self
+pub fn CT_DocumentBase::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocumentBase::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocumentBase::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Drawing {
@@ -667,23 +690,33 @@ pub fn CT_EastAsianLayout::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EdnDocProps {
   element : @xml.Element
+  pos : CT_EdnPos?
+  num_fmt : CT_NumFmt?
+  num_start : CT_DecimalNumber?
+  num_restart : CT_NumRestart?
+  endnotes : Array[CT_FtnEdnSepRef]
 } derive(Eq, @debug.Debug)
-pub fn CT_EdnDocProps::new(@xml.Element) -> Self
-pub fn CT_EdnDocProps::parse(@xml.Element) -> Self
+pub fn CT_EdnDocProps::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_EdnDocProps::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_EdnDocProps::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EdnPos {
   element : @xml.Element
+  val : ST_EdnPos
 } derive(Eq, @debug.Debug)
-pub fn CT_EdnPos::new(@xml.Element) -> Self
-pub fn CT_EdnPos::parse(@xml.Element) -> Self
+pub fn CT_EdnPos::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_EdnPos::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_EdnPos::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EdnProps {
   element : @xml.Element
+  pos : CT_EdnPos?
+  num_fmt : CT_NumFmt?
+  num_start : CT_DecimalNumber?
+  num_restart : CT_NumRestart?
 } derive(Eq, @debug.Debug)
-pub fn CT_EdnProps::new(@xml.Element) -> Self
-pub fn CT_EdnProps::parse(@xml.Element) -> Self
+pub fn CT_EdnProps::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_EdnProps::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_EdnProps::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EffectExtent {
@@ -711,9 +744,10 @@ pub fn CT_Empty::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Endnotes {
   element : @xml.Element
+  endnotes : Array[CT_FtnEdn]
 } derive(Eq, @debug.Debug)
-pub fn CT_Endnotes::new(@xml.Element) -> Self
-pub fn CT_Endnotes::parse(@xml.Element) -> Self
+pub fn CT_Endnotes::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Endnotes::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Endnotes::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FFCheckBox {
@@ -827,30 +861,52 @@ pub fn CT_FldChar::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Font {
   element : @xml.Element
+  name : String
+  alt_name : CT_String?
+  panose1 : CT_Panose?
+  charset : CT_Charset?
+  family : CT_FontFamily?
+  not_true_type : CT_OnOff?
+  pitch : CT_Pitch?
+  sig : CT_FontSig?
+  embed_regular : CT_FontRel?
+  embed_bold : CT_FontRel?
+  embed_italic : CT_FontRel?
+  embed_bold_italic : CT_FontRel?
 } derive(Eq, @debug.Debug)
-pub fn CT_Font::new(@xml.Element) -> Self
-pub fn CT_Font::parse(@xml.Element) -> Self
+pub fn CT_Font::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Font::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Font::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FontFamily {
   element : @xml.Element
+  val : ST_FontFamily
 } derive(Eq, @debug.Debug)
-pub fn CT_FontFamily::new(@xml.Element) -> Self
-pub fn CT_FontFamily::parse(@xml.Element) -> Self
+pub fn CT_FontFamily::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FontFamily::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FontFamily::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FontRel {
   element : @xml.Element
+  r_id : String
+  font_key : String?
+  subsetted : Bool?
 } derive(Eq, @debug.Debug)
-pub fn CT_FontRel::new(@xml.Element) -> Self
-pub fn CT_FontRel::parse(@xml.Element) -> Self
+pub fn CT_FontRel::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FontRel::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FontRel::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FontSig {
   element : @xml.Element
+  usb0 : ST_LongHexNumber
+  usb1 : ST_LongHexNumber
+  usb2 : ST_LongHexNumber
+  usb3 : ST_LongHexNumber
+  csb0 : ST_LongHexNumber
+  csb1 : ST_LongHexNumber
 } derive(Eq, @debug.Debug)
-pub fn CT_FontSig::new(@xml.Element) -> Self
-pub fn CT_FontSig::parse(@xml.Element) -> Self
+pub fn CT_FontSig::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FontSig::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FontSig::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Fonts {
@@ -871,16 +927,18 @@ pub fn CT_Fonts::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FontsList {
   element : @xml.Element
+  fonts : Array[CT_Font]
 } derive(Eq, @debug.Debug)
-pub fn CT_FontsList::new(@xml.Element) -> Self
-pub fn CT_FontsList::parse(@xml.Element) -> Self
+pub fn CT_FontsList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FontsList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FontsList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Footnotes {
   element : @xml.Element
+  footnotes : Array[CT_FtnEdn]
 } derive(Eq, @debug.Debug)
-pub fn CT_Footnotes::new(@xml.Element) -> Self
-pub fn CT_Footnotes::parse(@xml.Element) -> Self
+pub fn CT_Footnotes::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Footnotes::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Footnotes::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Frame {
@@ -942,51 +1000,69 @@ pub fn CT_FramesetSplitbar::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FtnDocProps {
   element : @xml.Element
+  pos : CT_FtnPos?
+  num_fmt : CT_NumFmt?
+  num_start : CT_DecimalNumber?
+  num_restart : CT_NumRestart?
+  footnotes : Array[CT_FtnEdnSepRef]
 } derive(Eq, @debug.Debug)
-pub fn CT_FtnDocProps::new(@xml.Element) -> Self
-pub fn CT_FtnDocProps::parse(@xml.Element) -> Self
+pub fn CT_FtnDocProps::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FtnDocProps::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FtnDocProps::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FtnEdn {
   element : @xml.Element
+  id : ST_DecimalNumber
+  ftn_edn_type : ST_FtnEdn?
+  block_level_elements : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
-pub fn CT_FtnEdn::new(@xml.Element) -> Self
-pub fn CT_FtnEdn::parse(@xml.Element) -> Self
+pub fn CT_FtnEdn::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FtnEdn::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FtnEdn::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FtnEdnRef {
   element : @xml.Element
+  id : ST_DecimalNumber
+  custom_mark_follows : Bool?
 } derive(Eq, @debug.Debug)
-pub fn CT_FtnEdnRef::new(@xml.Element) -> Self
-pub fn CT_FtnEdnRef::parse(@xml.Element) -> Self
+pub fn CT_FtnEdnRef::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FtnEdnRef::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FtnEdnRef::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FtnEdnSepRef {
   element : @xml.Element
+  id : ST_DecimalNumber
 } derive(Eq, @debug.Debug)
-pub fn CT_FtnEdnSepRef::new(@xml.Element) -> Self
-pub fn CT_FtnEdnSepRef::parse(@xml.Element) -> Self
+pub fn CT_FtnEdnSepRef::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FtnEdnSepRef::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FtnEdnSepRef::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FtnPos {
   element : @xml.Element
+  val : ST_FtnPos
 } derive(Eq, @debug.Debug)
-pub fn CT_FtnPos::new(@xml.Element) -> Self
-pub fn CT_FtnPos::parse(@xml.Element) -> Self
+pub fn CT_FtnPos::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FtnPos::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FtnPos::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FtnProps {
   element : @xml.Element
+  pos : CT_FtnPos?
+  num_fmt : CT_NumFmt?
+  num_start : CT_DecimalNumber?
+  num_restart : CT_NumRestart?
 } derive(Eq, @debug.Debug)
-pub fn CT_FtnProps::new(@xml.Element) -> Self
-pub fn CT_FtnProps::parse(@xml.Element) -> Self
+pub fn CT_FtnProps::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FtnProps::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FtnProps::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GlossaryDocument {
   element : @xml.Element
+  background : CT_Background?
+  doc_parts : CT_DocParts?
 } derive(Eq, @debug.Debug)
-pub fn CT_GlossaryDocument::new(@xml.Element) -> Self
-pub fn CT_GlossaryDocument::parse(@xml.Element) -> Self
+pub fn CT_GlossaryDocument::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_GlossaryDocument::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_GlossaryDocument::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GraphicFrame {
@@ -1146,20 +1222,30 @@ pub fn CT_Language::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LatentStyles {
   element : @xml.Element
+  def_locked_state : Bool?
+  def_ui_priority : ST_DecimalNumber?
+  def_semi_hidden : Bool?
+  def_unhide_when_used : Bool?
+  def_q_format : Bool?
+  count : ST_DecimalNumber?
+  lsd_exceptions : Array[CT_LsdException]
 } derive(Eq, @debug.Debug)
-pub fn CT_LatentStyles::new(@xml.Element) -> Self
-pub fn CT_LatentStyles::parse(@xml.Element) -> Self
+pub fn CT_LatentStyles::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_LatentStyles::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_LatentStyles::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LevelSuffix {
   element : @xml.Element
+  val : ST_LevelSuffix
 } derive(Eq, @debug.Debug)
-pub fn CT_LevelSuffix::new(@xml.Element) -> Self
-pub fn CT_LevelSuffix::parse(@xml.Element) -> Self
+pub fn CT_LevelSuffix::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_LevelSuffix::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_LevelSuffix::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LevelText {
   element : @xml.Element
+  val : String?
+  null_ : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_LevelText::new(@xml.Element) -> Self
 pub fn CT_LevelText::parse(@xml.Element) -> Self
@@ -1201,9 +1287,15 @@ pub fn CT_LongHexNumber::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LsdException {
   element : @xml.Element
+  name : String
+  locked : Bool?
+  ui_priority : ST_DecimalNumber?
+  semi_hidden : Bool?
+  unhide_when_used : Bool?
+  q_format : Bool?
 } derive(Eq, @debug.Debug)
-pub fn CT_LsdException::new(@xml.Element) -> Self
-pub fn CT_LsdException::parse(@xml.Element) -> Self
+pub fn CT_LsdException::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_LsdException::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_LsdException::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Lvl {
@@ -1340,9 +1432,10 @@ pub fn CT_MoveBookmark::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_MultiLevelType {
   element : @xml.Element
+  val : ST_MultiLevelType
 } derive(Eq, @debug.Debug)
-pub fn CT_MultiLevelType::new(@xml.Element) -> Self
-pub fn CT_MultiLevelType::parse(@xml.Element) -> Self
+pub fn CT_MultiLevelType::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_MultiLevelType::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_MultiLevelType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Num {
@@ -1354,9 +1447,11 @@ pub fn CT_Num::parse(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_NumFmt {
   element : @xml.Element
+  val : ST_NumberFormat
+  format : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_NumFmt::new(@xml.Element) -> Self
-pub fn CT_NumFmt::parse(@xml.Element) -> Self
+pub fn CT_NumFmt::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_NumFmt::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_NumFmt::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NumLvl {
@@ -1368,9 +1463,11 @@ pub fn CT_NumLvl::parse(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_NumPicBullet {
   element : @xml.Element
+  num_pic_bullet_id : ST_DecimalNumber
+  drawing : CT_Drawing
 } derive(Eq, @debug.Debug)
-pub fn CT_NumPicBullet::new(@xml.Element) -> Self
-pub fn CT_NumPicBullet::parse(@xml.Element) -> Self
+pub fn CT_NumPicBullet::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_NumPicBullet::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_NumPicBullet::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NumPr {
@@ -1385,9 +1482,10 @@ pub fn CT_NumPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NumRestart {
   element : @xml.Element
+  val : ST_RestartNumber
 } derive(Eq, @debug.Debug)
-pub fn CT_NumRestart::new(@xml.Element) -> Self
-pub fn CT_NumRestart::parse(@xml.Element) -> Self
+pub fn CT_NumRestart::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_NumRestart::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_NumRestart::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Numbering {
@@ -1561,9 +1659,10 @@ pub fn CT_PPrChange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PPrDefault {
   element : @xml.Element
+  p_pr : CT_PPrGeneral?
 } derive(Eq, @debug.Debug)
-pub fn CT_PPrDefault::new(@xml.Element) -> Self
-pub fn CT_PPrDefault::parse(@xml.Element) -> Self
+pub fn CT_PPrDefault::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PPrDefault::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PPrDefault::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PPrGeneral {
@@ -1654,9 +1753,10 @@ pub fn CT_PageSz::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Panose {
   element : @xml.Element
+  val : String
 } derive(Eq, @debug.Debug)
-pub fn CT_Panose::new(@xml.Element) -> Self
-pub fn CT_Panose::parse(@xml.Element) -> Self
+pub fn CT_Panose::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Panose::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Panose::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PaperSource {
@@ -1735,9 +1835,10 @@ pub fn CT_Picture::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Pitch {
   element : @xml.Element
+  val : ST_Pitch
 } derive(Eq, @debug.Debug)
-pub fn CT_Pitch::new(@xml.Element) -> Self
-pub fn CT_Pitch::parse(@xml.Element) -> Self
+pub fn CT_Pitch::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Pitch::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Pitch::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PixelsMeasure {
@@ -1821,9 +1922,10 @@ pub fn CT_RPrChange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RPrDefault {
   element : @xml.Element
+  r_pr : CT_RPr?
 } derive(Eq, @debug.Debug)
-pub fn CT_RPrDefault::new(@xml.Element) -> Self
-pub fn CT_RPrDefault::parse(@xml.Element) -> Self
+pub fn CT_RPrDefault::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RPrDefault::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_RPrDefault::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RPrOriginal {
@@ -1843,16 +1945,20 @@ pub fn CT_ReadingModeInkLockDown::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RecipientData {
   element : @xml.Element
+  active : CT_OnOff?
+  column : CT_DecimalNumber
+  unique_tag : CT_Base64Binary
 } derive(Eq, @debug.Debug)
-pub fn CT_RecipientData::new(@xml.Element) -> Self
-pub fn CT_RecipientData::parse(@xml.Element) -> Self
+pub fn CT_RecipientData::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RecipientData::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_RecipientData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Recipients {
   element : @xml.Element
+  recipient_data : Array[CT_RecipientData]
 } derive(Eq, @debug.Debug)
-pub fn CT_Recipients::new(@xml.Element) -> Self
-pub fn CT_Recipients::parse(@xml.Element) -> Self
+pub fn CT_Recipients::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Recipients::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Recipients::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Rel {
@@ -2282,6 +2388,21 @@ pub fn CT_Style::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_StylePaneFilter {
   element : @xml.Element
+  all_styles : Bool?
+  custom_styles : Bool?
+  latent_styles : Bool?
+  styles_in_use : Bool?
+  heading_styles : Bool?
+  numbering_styles : Bool?
+  table_styles : Bool?
+  direct_formatting_on_runs : Bool?
+  direct_formatting_on_paragraphs : Bool?
+  direct_formatting_on_numbering : Bool?
+  direct_formatting_on_tables : Bool?
+  clear_formatting : Bool?
+  top3_heading_styles : Bool?
+  visible_styles : Bool?
+  alternate_style_names : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_StylePaneFilter::new(@xml.Element) -> Self
 pub fn CT_StylePaneFilter::parse(@xml.Element) -> Self
@@ -2289,9 +2410,10 @@ pub fn CT_StylePaneFilter::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_StyleSort {
   element : @xml.Element
+  val : ST_StyleSort
 } derive(Eq, @debug.Debug)
-pub fn CT_StyleSort::new(@xml.Element) -> Self
-pub fn CT_StyleSort::parse(@xml.Element) -> Self
+pub fn CT_StyleSort::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_StyleSort::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_StyleSort::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Styles {

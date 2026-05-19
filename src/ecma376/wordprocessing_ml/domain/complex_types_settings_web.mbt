@@ -1,16 +1,55 @@
 ///|
-/// XSD complex type CT_RecipientData from wml.xsd (§17).
+/// XSD complex type CT_RecipientData — Part 1 §17.14.30 (recipientData
+/// Mail Merge Single Recipient Data). Sequence: optional `<w:active>`
+/// (CT_OnOff per §17.17.4) marking whether the recipient is selected,
+/// required `<w:column>` (CT_DecimalNumber per §17.18.10) naming the
+/// data-source column index and required `<w:uniqueTag>`
+/// (CT_Base64Binary per §17.14.31) carrying the recipient's unique
+/// identifier as a base64 binary value.
 pub(all) struct CT_RecipientData {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.17.4 `<w:active>` (CT_OnOff) — optional selected-flag child.
+  active : CT_OnOff?
+  /// §17.18.10 `<w:column>` (CT_DecimalNumber) — required column index.
+  column : CT_DecimalNumber
+  /// §17.14.31 `<w:uniqueTag>` (CT_Base64Binary) — required unique identifier.
+  unique_tag : CT_Base64Binary
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RecipientData::new(element : @xml.Element) -> CT_RecipientData {
-  { element, }
+/// XSD complex type CT_RecipientData — Part 1 §17.14.30. Decode the
+/// optional `<w:active>` and both required children, raising
+/// SchemaViolation when either required child is absent or invalid.
+pub fn CT_RecipientData::new(
+  element : @xml.Element,
+) -> CT_RecipientData raise SchemaViolation {
+  let active = match wml_ct_chunk2_first_child(element, "active") {
+    Some(child) => Some(CT_OnOff::new(child))
+    None => None
+  }
+  let column = match wml_ct_chunk2_first_child(element, "column") {
+    Some(child) => CT_DecimalNumber::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_RecipientData", "column", "Part 1 §17.14.30: required child <w:column> is missing",
+      )
+  }
+  let unique_tag = match wml_ct_chunk2_first_child(element, "uniqueTag") {
+    Some(child) => CT_Base64Binary::new(child)
+    None =>
+      raise_schema_violation(
+        "CT_RecipientData", "uniqueTag", "Part 1 §17.14.30: required child <w:uniqueTag> is missing",
+      )
+  }
+  { element, active, column, unique_tag }
 }
 
 ///|
-pub fn CT_RecipientData::parse(element : @xml.Element) -> CT_RecipientData {
+/// XSD complex type CT_RecipientData — Part 1 §17.14.30.
+pub fn CT_RecipientData::parse(
+  element : @xml.Element,
+) -> CT_RecipientData raise SchemaViolation {
   CT_RecipientData::new(element)
 }
 
@@ -20,18 +59,35 @@ pub fn CT_RecipientData::to_element(self : CT_RecipientData) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_Recipients from wml.xsd (§17).
+/// XSD complex type CT_Recipients — Part 1 §17.14.31 (recipients Mail
+/// Merge Recipient Information). Sequence container holding one or
+/// more `<w:recipientData>` children (CT_RecipientData per §17.14.30).
 pub(all) struct CT_Recipients {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.14.30 `<w:recipientData>` (CT_RecipientData)+ — recipient entries.
+  recipient_data : Array[CT_RecipientData]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Recipients::new(element : @xml.Element) -> CT_Recipients {
-  { element, }
+/// XSD complex type CT_Recipients — Part 1 §17.14.31. Decode each
+/// `<w:recipientData>` child, propagating SchemaViolation from the
+/// typed CT_RecipientData constructor.
+pub fn CT_Recipients::new(
+  element : @xml.Element,
+) -> CT_Recipients raise SchemaViolation {
+  let recipient_data : Array[CT_RecipientData] = []
+  for child in wml_ct_chunk2_children(element, "recipientData") {
+    recipient_data.push(CT_RecipientData::new(child))
+  }
+  { element, recipient_data }
 }
 
 ///|
-pub fn CT_Recipients::parse(element : @xml.Element) -> CT_Recipients {
+/// XSD complex type CT_Recipients — Part 1 §17.14.31.
+pub fn CT_Recipients::parse(
+  element : @xml.Element,
+) -> CT_Recipients raise SchemaViolation {
   CT_Recipients::new(element)
 }
 
