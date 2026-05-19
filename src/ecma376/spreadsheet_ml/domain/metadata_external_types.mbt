@@ -1812,42 +1812,6 @@ fn element_text(element : @xml.Element) -> String {
 }
 
 ///|
-/// Parse an attribute as xsd:int (signed). Returns None when the
-/// attribute is missing or unparseable. Sign is preserved.
-fn attr_int_opt(element : @xml.Element, local_name : String) -> Int? {
-  match attr(element, local_name) {
-    Some(value) => parse_int_text(value)
-    None => None
-  }
-}
-
-///|
-/// Parse an attribute as xsd:int (signed) with a default fallback.
-fn attr_int(element : @xml.Element, local_name : String, default : Int) -> Int {
-  match attr_int_opt(element, local_name) {
-    Some(n) => n
-    None => default
-  }
-}
-
-///|
-/// Helper: parse a signed integer per xsd:int. Whitespace is trimmed;
-/// empty / non-digit tokens are rejected. Both `+` and `-` prefixes are
-/// accepted per XSD §3.3.17 lexical form.
-fn parse_int_text(text : String) -> Int? {
-  let trimmed = trim_whitespace(text)
-  if trimmed.length() == 0 {
-    return None
-  }
-  try {
-    let value : Int64 = @strconv.from_str(trimmed)
-    Some(value.to_int())
-  } catch {
-    _ => None
-  }
-}
-
-///|
 /// Parse an attribute as a hex-encoded unsigned integer
 /// (ST_UnsignedIntHex from sml.xsd, four-byte fixed length). Returns
 /// None when absent or malformed.
