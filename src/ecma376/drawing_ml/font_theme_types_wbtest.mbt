@@ -12,9 +12,12 @@ test "round-trip text font" {
 
 ///|
 test "round-trip font scheme" {
+  // Each <a:majorFont>/<a:minorFont> requires <latin>, <ea>, <cs>
+  // children per dml-main.xsd CT_FontCollection (Annex A.4.1 lines
+  // 118..126); test fixture extended to satisfy the typed projection.
   let value = read_font_scheme(
     bytes(
-      "<a:fontScheme xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\" name=\"Office\"><a:majorFont><a:latin typeface=\"Aptos Display\"/><a:ea typeface=\"East Asian\"/></a:majorFont><a:minorFont><a:latin typeface=\"Aptos\"/></a:minorFont></a:fontScheme>",
+      "<a:fontScheme xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\" name=\"Office\"><a:majorFont><a:latin typeface=\"Aptos Display\"/><a:ea typeface=\"East Asian\"/><a:cs typeface=\"Complex Script\"/></a:majorFont><a:minorFont><a:latin typeface=\"Aptos\"/><a:ea typeface=\"East Asian\"/><a:cs typeface=\"Complex Script\"/></a:minorFont></a:fontScheme>",
     ),
   )
   assert_eq(value.element.name.local_name, "fontScheme")
@@ -24,9 +27,13 @@ test "round-trip font scheme" {
 
 ///|
 test "round-trip theme" {
+  // CT_BaseStyles requires clrScheme + fontScheme + fmtScheme per
+  // dml-main.xsd (Annex A.4.1 lines 173..180), and each font
+  // collection requires latin/ea/cs children; fixture expanded to
+  // satisfy the typed projection.
   let value = read_theme(
     bytes(
-      "<a:theme xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\" name=\"Office\"><a:themeElements><a:clrScheme name=\"Office\"><a:dk1><a:sysClr val=\"windowText\" lastClr=\"000000\"/></a:dk1></a:clrScheme><a:fontScheme name=\"Office\"><a:majorFont><a:latin typeface=\"Aptos Display\"/></a:majorFont><a:minorFont><a:latin typeface=\"Aptos\"/></a:minorFont></a:fontScheme></a:themeElements></a:theme>",
+      "<a:theme xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\" name=\"Office\"><a:themeElements><a:clrScheme name=\"Office\"><a:dk1><a:sysClr val=\"windowText\" lastClr=\"000000\"/></a:dk1></a:clrScheme><a:fontScheme name=\"Office\"><a:majorFont><a:latin typeface=\"Aptos Display\"/><a:ea typeface=\"East Asian\"/><a:cs typeface=\"Complex Script\"/></a:majorFont><a:minorFont><a:latin typeface=\"Aptos\"/><a:ea typeface=\"East Asian\"/><a:cs typeface=\"Complex Script\"/></a:minorFont></a:fontScheme><a:fmtScheme/></a:themeElements></a:theme>",
     ),
   )
   assert_eq(value.element.name.local_name, "theme")

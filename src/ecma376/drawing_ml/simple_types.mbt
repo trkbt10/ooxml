@@ -2880,6 +2880,198 @@ pub fn ST_PresetLineDashVal::to_string(self : ST_PresetLineDashVal) -> String {
   }
 }
 
+///|
+/// XSD simple type ST_BlendMode — Part 1 §20.1.10.11. Composition mode
+/// for the `blend` (§20.1.8.12) and `fillOverlay` (§20.1.8.29) effects.
+pub(all) enum ST_BlendMode {
+  /// §20.1.10.11 "over"
+  BlendOver
+  /// §20.1.10.11 "mult"
+  BlendMult
+  /// §20.1.10.11 "screen"
+  BlendScreen
+  /// §20.1.10.11 "darken"
+  BlendDarken
+  /// §20.1.10.11 "lighten"
+  BlendLighten
+} derive(Eq, Debug)
+
+///|
+pub fn ST_BlendMode::parse(s : String) -> ST_BlendMode raise SchemaViolation {
+  match s {
+    "over" => BlendOver
+    "mult" => BlendMult
+    "screen" => BlendScreen
+    "darken" => BlendDarken
+    "lighten" => BlendLighten
+    _ => enum_violation("ST_BlendMode")
+  }
+}
+
+///|
+pub fn ST_BlendMode::new(s : String) -> ST_BlendMode raise SchemaViolation {
+  ST_BlendMode::parse(s)
+}
+
+///|
+pub fn ST_BlendMode::to_string(self : ST_BlendMode) -> String {
+  match self {
+    BlendOver => "over"
+    BlendMult => "mult"
+    BlendScreen => "screen"
+    BlendDarken => "darken"
+    BlendLighten => "lighten"
+  }
+}
+
+///|
+/// XSD simple type ST_EffectContainerType — Part 1 §20.1.10.24. Selects
+/// whether a `CT_EffectContainer` aggregates sibling effects (`sib`) or
+/// child effects in tree order (`tree`).
+pub(all) enum ST_EffectContainerType {
+  /// §20.1.10.24 "sib"
+  EffectContainerSib
+  /// §20.1.10.24 "tree"
+  EffectContainerTree
+} derive(Eq, Debug)
+
+///|
+pub fn ST_EffectContainerType::parse(
+  s : String,
+) -> ST_EffectContainerType raise SchemaViolation {
+  match s {
+    "sib" => EffectContainerSib
+    "tree" => EffectContainerTree
+    _ => enum_violation("ST_EffectContainerType")
+  }
+}
+
+///|
+pub fn ST_EffectContainerType::new(
+  s : String,
+) -> ST_EffectContainerType raise SchemaViolation {
+  ST_EffectContainerType::parse(s)
+}
+
+///|
+pub fn ST_EffectContainerType::to_string(
+  self : ST_EffectContainerType,
+) -> String {
+  match self {
+    EffectContainerSib => "sib"
+    EffectContainerTree => "tree"
+  }
+}
+
+///|
+/// XSD simple type ST_PresetShadowVal — Part 1 §20.1.10.52. Enumerates
+/// the twenty named preset shadow styles used by `prstShdw`
+/// (§20.1.8.49) via its `prst` attribute.
+pub(all) enum ST_PresetShadowVal {
+  /// §20.1.10.52 "shdw1"
+  PresetShadow1
+  /// §20.1.10.52 "shdw2"
+  PresetShadow2
+  /// §20.1.10.52 "shdw3"
+  PresetShadow3
+  /// §20.1.10.52 "shdw4"
+  PresetShadow4
+  /// §20.1.10.52 "shdw5"
+  PresetShadow5
+  /// §20.1.10.52 "shdw6"
+  PresetShadow6
+  /// §20.1.10.52 "shdw7"
+  PresetShadow7
+  /// §20.1.10.52 "shdw8"
+  PresetShadow8
+  /// §20.1.10.52 "shdw9"
+  PresetShadow9
+  /// §20.1.10.52 "shdw10"
+  PresetShadow10
+  /// §20.1.10.52 "shdw11"
+  PresetShadow11
+  /// §20.1.10.52 "shdw12"
+  PresetShadow12
+  /// §20.1.10.52 "shdw13"
+  PresetShadow13
+  /// §20.1.10.52 "shdw14"
+  PresetShadow14
+  /// §20.1.10.52 "shdw15"
+  PresetShadow15
+  /// §20.1.10.52 "shdw16"
+  PresetShadow16
+  /// §20.1.10.52 "shdw17"
+  PresetShadow17
+  /// §20.1.10.52 "shdw18"
+  PresetShadow18
+  /// §20.1.10.52 "shdw19"
+  PresetShadow19
+  /// §20.1.10.52 "shdw20"
+  PresetShadow20
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PresetShadowVal::parse(
+  s : String,
+) -> ST_PresetShadowVal raise SchemaViolation {
+  match s {
+    "shdw1" => PresetShadow1
+    "shdw2" => PresetShadow2
+    "shdw3" => PresetShadow3
+    "shdw4" => PresetShadow4
+    "shdw5" => PresetShadow5
+    "shdw6" => PresetShadow6
+    "shdw7" => PresetShadow7
+    "shdw8" => PresetShadow8
+    "shdw9" => PresetShadow9
+    "shdw10" => PresetShadow10
+    "shdw11" => PresetShadow11
+    "shdw12" => PresetShadow12
+    "shdw13" => PresetShadow13
+    "shdw14" => PresetShadow14
+    "shdw15" => PresetShadow15
+    "shdw16" => PresetShadow16
+    "shdw17" => PresetShadow17
+    "shdw18" => PresetShadow18
+    "shdw19" => PresetShadow19
+    "shdw20" => PresetShadow20
+    _ => enum_violation("ST_PresetShadowVal")
+  }
+}
+
+///|
+pub fn ST_PresetShadowVal::new(
+  s : String,
+) -> ST_PresetShadowVal raise SchemaViolation {
+  ST_PresetShadowVal::parse(s)
+}
+
+///|
+pub fn ST_PresetShadowVal::to_string(self : ST_PresetShadowVal) -> String {
+  match self {
+    PresetShadow1 => "shdw1"
+    PresetShadow2 => "shdw2"
+    PresetShadow3 => "shdw3"
+    PresetShadow4 => "shdw4"
+    PresetShadow5 => "shdw5"
+    PresetShadow6 => "shdw6"
+    PresetShadow7 => "shdw7"
+    PresetShadow8 => "shdw8"
+    PresetShadow9 => "shdw9"
+    PresetShadow10 => "shdw10"
+    PresetShadow11 => "shdw11"
+    PresetShadow12 => "shdw12"
+    PresetShadow13 => "shdw13"
+    PresetShadow14 => "shdw14"
+    PresetShadow15 => "shdw15"
+    PresetShadow16 => "shdw16"
+    PresetShadow17 => "shdw17"
+    PresetShadow18 => "shdw18"
+    PresetShadow19 => "shdw19"
+    PresetShadow20 => "shdw20"
+  }
+}
+
 // === Private helpers ===
 
 ///|

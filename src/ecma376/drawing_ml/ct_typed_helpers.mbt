@@ -146,6 +146,25 @@ fn ct_parse_ubyte_lex(
 }
 
 ///|
+/// Parse a lexical xsd:byte value (signed 8-bit, -128..127). Raises
+/// SchemaViolation on invalid form or out-of-range value. Accepts an
+/// optional leading sign.
+fn ct_parse_byte_lex(
+  value : String,
+  path : String,
+) -> Int raise SchemaViolation {
+  let n = ct_parse_int_lex(value, path)
+  if n < -128 || n > 127 {
+    raise SchemaViolation(
+      schema="dml-main.xsd",
+      path~,
+      reason="xsd:byte out of range: " + value,
+    )
+  }
+  n
+}
+
+///|
 /// Parse a lexical xsd:boolean value. Accepts the four canonical forms
 /// `true`, `false`, `1`, `0` per the XSD §3.2.2 specification.
 fn ct_parse_bool_lex(
