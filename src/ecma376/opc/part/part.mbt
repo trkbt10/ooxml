@@ -38,8 +38,8 @@
 /// - §5 Inputs I3: package resource resolution is delegated to ecma376/opc via
 ///   require_resource.
 /// - §6 Outputs O1: typed domain value tree for every §4 element and
-///   attribute represented by PartName, PackagePart, CoreProperties,
-///   CoreKeyword, CoreKeywords, and ThumbnailPart.
+///   attribute represented by PartName, PackagePart, CT_CoreProperties,
+///   CT_Keyword, CT_Keywords, and ThumbnailPart.
 /// - §6 Outputs O2: XML byte stream that re-validates against
 ///   opc-coreProperties.xsd from write_core_properties and
 ///   write_thumbnail_part.

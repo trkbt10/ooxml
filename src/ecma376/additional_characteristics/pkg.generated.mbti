@@ -14,6 +14,20 @@ pub suberror SchemaViolation {
 } derive(@debug.Debug)
 
 // Types and methods
+pub(all) struct CT_AdditionalCharacteristics {
+  characteristics : Array[CT_Characteristic]
+} derive(Eq, @debug.Debug)
+pub fn CT_AdditionalCharacteristics::iter(Self) -> Iter[CT_Characteristic]
+pub fn CT_AdditionalCharacteristics::new(Array[CT_Characteristic]) -> Self
+
+pub(all) struct CT_Characteristic {
+  name : String
+  relation : ST_Relation
+  val : String
+  vocabulary : String?
+} derive(Eq, @debug.Debug)
+pub fn CT_Characteristic::new(name~ : String, relation~ : ST_Relation, val~ : String, vocabulary? : String?) -> Self raise SchemaViolation
+
 pub(all) enum ST_Relation {
   Ge
   Le

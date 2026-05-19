@@ -1,6 +1,6 @@
 ///|
 /// Write the §6 Outputs O2 XML byte stream for CT_Relationships.
-pub fn write_relationships(value : Relationships) -> Bytes {
+pub fn write_relationships(value : CT_Relationships) -> Bytes {
   @xml.write({
     declaration: Some(default_xml_declaration()),
     doctype: None,
@@ -14,7 +14,7 @@ pub fn write_relationships(value : Relationships) -> Bytes {
 
 ///|
 fn relationships_to_nodes(
-  relationships : Array[Relationship],
+  relationships : Array[CT_Relationship],
 ) -> Array[@xml.Node] {
   let nodes : Array[@xml.Node] = []
   for relationship in relationships {
@@ -24,7 +24,7 @@ fn relationships_to_nodes(
 }
 
 ///|
-fn relationship_to_element(value : Relationship) -> @xml.Element {
+fn relationship_to_element(value : CT_Relationship) -> @xml.Element {
   let attributes : Array[@xml.Attribute] = [
     { name: unqualified_name("Id"), value: value.id },
     { name: unqualified_name("Type"), value: value.type_uri },

@@ -358,6 +358,53 @@ pub fn ST_RelFromV::to_string(self : ST_RelFromV) -> String {
 }
 
 ///|
+/// XSD complex type CT_AnchorLock — Part 4 §A.7.3 (vml-wordprocessingDrawing).
+/// Empty content model for the §19.3.2.1 `w10:anchorlock` element which signals
+/// that a VML shape anchor cannot be relocated by consumers.
+pub(all) struct CT_AnchorLock {
+  element : @xml.Element
+} derive(Eq, Debug)
+
+///|
+pub fn CT_AnchorLock::new(element : @xml.Element) -> CT_AnchorLock {
+  { element, }
+}
+
+///|
+pub fn CT_AnchorLock::parse(element : @xml.Element) -> CT_AnchorLock {
+  CT_AnchorLock::new(element)
+}
+
+///|
+pub fn CT_AnchorLock::to_element(self : CT_AnchorLock) -> @xml.Element {
+  self.element
+}
+
+///|
+/// XSD complex type CT_Wrap — Part 4 §A.7.3 (vml-wordprocessingDrawing).
+/// Empty-content element with the §19.3.2.6 `w10:wrap` attributes `type`,
+/// `side`, `anchorx`, and `anchory` describing how a VML shape interacts with
+/// surrounding text.
+pub(all) struct CT_Wrap {
+  element : @xml.Element
+} derive(Eq, Debug)
+
+///|
+pub fn CT_Wrap::new(element : @xml.Element) -> CT_Wrap {
+  { element, }
+}
+
+///|
+pub fn CT_Wrap::parse(element : @xml.Element) -> CT_Wrap {
+  CT_Wrap::new(element)
+}
+
+///|
+pub fn CT_Wrap::to_element(self : CT_Wrap) -> @xml.Element {
+  self.element
+}
+
+///|
 /// XSD complex type CT_EffectExtent from dml-wordprocessingDrawing.xsd (§20.4).
 pub(all) struct CT_EffectExtent {
   element : @xml.Element

@@ -119,14 +119,10 @@ pub fn PackagePart::looks_like_thumbnail(self : PackagePart) -> Bool {
 }
 
 ///|
-/// CT_Keyword value from schema bundle opc-coreProperties.xsd in the
-/// http://schemas.openxmlformats.org/package/2006/metadata/core-properties
-/// target namespace. It contributes to ECMA-376 Part 2 §8.3.1 General Core
-/// Properties Markup through the coreProperties top-level element and the
-/// CT_Keywords container. Source anchor:
-/// references/spec/part2/sections/8.3.1__general.md, owned by
-/// src/ecma376/opc/part.
-pub(all) struct CoreKeyword {
+/// XSD complex type CT_Keyword — ECMA-376 Part 2 §8.3.4 Core Property
+/// Elements / Annex C opc-coreProperties.xsd. Single keyword value within the
+/// CT_Keywords container.
+pub(all) struct CT_Keyword {
   value : String
 } derive(Eq, Debug)
 
@@ -134,7 +130,7 @@ pub(all) struct CoreKeyword {
 /// ECMA-376 Part 2 §8.3.4 Core Property Elements defines `keywords` values
 /// through CT_Keyword entries; this helper performs a case-sensitive token
 /// comparison while ignoring leading and trailing XML text whitespace.
-pub fn CoreKeyword::matches(self : CoreKeyword, value : String) -> Bool {
+pub fn CT_Keyword::matches(self : CT_Keyword, value : String) -> Bool {
   let own = trim_xml_space(self.value)
   let requested = trim_xml_space(value)
   if own.length() != requested.length() {
@@ -153,25 +149,19 @@ pub fn CoreKeyword::matches(self : CoreKeyword, value : String) -> Bool {
 }
 
 ///|
-/// XSD complex type CT_Keyword is the opc-coreProperties.xsd wrapper for one
-/// CoreKeyword value.
-pub type CT_Keyword = CoreKeyword
-
-///|
-/// CT_Keywords container from schema bundle opc-coreProperties.xsd in the
-/// http://schemas.openxmlformats.org/package/2006/metadata/core-properties
-/// target namespace. The values array preserves the CT_Keyword value sequence
-/// exposed by the coreProperties element.
-pub(all) struct CoreKeywords {
-  values : Array[CoreKeyword]
+/// XSD complex type CT_Keywords — ECMA-376 Part 2 §8.3.4 Core Property
+/// Elements / Annex C opc-coreProperties.xsd. Container for the schema
+/// sequence of CT_Keyword entries exposed by the coreProperties element.
+pub(all) struct CT_Keywords {
+  values : Array[CT_Keyword]
 } derive(Eq, Debug)
 
 ///|
 /// ECMA-376 Part 2 §8.3.4 Core Property Elements stores the `keywords`
 /// property as CT_Keywords/CT_Keyword values; this iterator exposes the
 /// schema sequence while preserving source order.
-pub fn CoreKeywords::iter(self : CoreKeywords) -> Iter[CoreKeyword] {
-  let copied : Array[CoreKeyword] = []
+pub fn CT_Keywords::iter(self : CT_Keywords) -> Iter[CT_Keyword] {
+  let copied : Array[CT_Keyword] = []
   for keyword in self.values {
     if trim_xml_space(keyword.value) != "" {
       copied.push(keyword)
@@ -183,8 +173,8 @@ pub fn CoreKeywords::iter(self : CoreKeywords) -> Iter[CoreKeyword] {
 ///|
 /// ECMA-376 Part 2 §8.3.4 Core Property Elements uses `keywords` as a
 /// searchable package metadata property; this helper scans CT_Keyword entries
-/// with the same XML text whitespace trimming as CoreKeyword::matches.
-pub fn CoreKeywords::contains(self : CoreKeywords, value : String) -> Bool {
+/// with the same XML text whitespace trimming as CT_Keyword::matches.
+pub fn CT_Keywords::contains(self : CT_Keywords, value : String) -> Bool {
   let mut found = false
   for keyword in self.values {
     if keyword.matches(value) {
@@ -195,16 +185,13 @@ pub fn CoreKeywords::contains(self : CoreKeywords, value : String) -> Bool {
 }
 
 ///|
-/// ECMA-376 Part 2 §8.1 General Core Properties domain value for the package
-/// metadata part. ECMA-376 Part 2 §8.3.1 General is the Core Properties
-/// Markup overview for the `coreProperties` root. ECMA-376 Part 2 §8.3.2
-/// Support For Versioning And Extensibility is represented by preserving the
-/// versioning and extensibility markup carried by the parsed XML document.
-/// Source anchor: references/spec/part2/sections/8.3.2__support-for-versioning-and-extensibility.md,
-/// owned by src/ecma376/opc/part. §8.3.3 coreProperties element /
-/// CT_CoreProperties preserve attributes and child ordering for read/write
-/// round trip.
-pub(all) struct CoreProperties {
+/// XSD complex type CT_CoreProperties — ECMA-376 Part 2 §8.3.3 coreProperties
+/// / Annex C opc-coreProperties.xsd. Wrapper around the parsed coreProperties
+/// document; preserves attributes and child order for read/write round trip.
+/// ECMA-376 Part 2 §8.1 General Core Properties owns the metadata part and
+/// §8.3.1 General supplies the markup overview; §8.3.2 Support For Versioning
+/// And Extensibility is satisfied by retaining extension-bearing XML.
+pub(all) struct CT_CoreProperties {
   document : @xml.Document
 } derive(Eq, Debug)
 
@@ -214,7 +201,7 @@ pub(all) struct CoreProperties {
 /// and §8.3.2 versioning/extensibility allowance. Source anchor:
 /// references/spec/part2/sections/8.3.1__general.md, owned by
 /// src/ecma376/opc/part.
-fn CoreProperties::new(document : @xml.Document) -> CoreProperties {
+fn CT_CoreProperties::new(document : @xml.Document) -> CT_CoreProperties {
   { document, }
 }
 
@@ -222,7 +209,7 @@ fn CoreProperties::new(document : @xml.Document) -> CoreProperties {
 /// ECMA-376 Part 2 §8.3.3 coreProperties and §8.3.4 Core Property Elements
 /// define the Dublin Core `title` child; this helper walks the XML DOM root
 /// children and returns the title element text when it is present.
-pub fn CoreProperties::title(self : CoreProperties) -> String? {
+pub fn CT_CoreProperties::title(self : CT_CoreProperties) -> String? {
   let mut result : String? = None
   for child in self.document.root.children {
     if child is @xml.Node::Element(element) {
@@ -239,8 +226,8 @@ pub fn CoreProperties::title(self : CoreProperties) -> String? {
 /// `keywords` child from opc-coreProperties.xsd; this helper locates that
 /// element in the core-properties namespace and materializes its CT_Keyword
 /// value children.
-pub fn CoreProperties::keywords(self : CoreProperties) -> CoreKeywords {
-  let values : Array[CoreKeyword] = []
+pub fn CT_CoreProperties::keywords(self : CT_CoreProperties) -> CT_Keywords {
+  let values : Array[CT_Keyword] = []
   for child in self.document.root.children {
     if child is @xml.Node::Element(element) {
       if element.name.local_name == "keywords" &&
@@ -256,8 +243,8 @@ pub fn CoreProperties::keywords(self : CoreProperties) -> CoreKeywords {
 /// ECMA-376 Part 2 §8.3.4 Core Property Elements allows single-valued core
 /// properties under CT_CoreProperties; this helper reports whether a named
 /// element exists in the parsed coreProperties root.
-pub fn CoreProperties::has_property(
-  self : CoreProperties,
+pub fn CT_CoreProperties::has_property(
+  self : CT_CoreProperties,
   local_name : String,
 ) -> Bool {
   let mut found = false
@@ -274,7 +261,7 @@ pub fn CoreProperties::has_property(
 ///|
 fn collect_keyword_values(
   element : @xml.Element,
-  out : Array[CoreKeyword],
+  out : Array[CT_Keyword],
 ) -> Unit {
   for child in element.children {
     if child is @xml.Node::Element(value_element) {

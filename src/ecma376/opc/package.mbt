@@ -19,10 +19,10 @@ pub(all) struct PackagePart {
 /// represented by the ZIP entry table, content-types table, and relationships
 /// tables that determine which physical items hold OPC parts.
 pub(all) struct Package {
-  content_types : @content_types.Types
+  content_types : @content_types.CT_Types
   parts : Array[PackagePart]
-  package_relationships : @relationships.Relationships?
-  part_relationships : Array[(String, @relationships.Relationships)]
+  package_relationships : @relationships.CT_Relationships?
+  part_relationships : Array[(String, @relationships.CT_Relationships)]
   entry_order : Array[String]
 } derive(Eq, Debug)
 
@@ -39,8 +39,8 @@ pub fn Package::open(bytes : Bytes) -> Package raise {
   let content_types_bytes = required_entry(archive, "[Content_Types].xml")
   let content_types = @content_types.read_content_types(content_types_bytes)
   let parts : Array[PackagePart] = []
-  let part_relationships : Array[(String, @relationships.Relationships)] = []
-  let mut package_relationships : @relationships.Relationships? = None
+  let part_relationships : Array[(String, @relationships.CT_Relationships)] = []
+  let mut package_relationships : @relationships.CT_Relationships? = None
   let entry_order : Array[String] = []
   for entry in archive.entries {
     entry_order.push(entry.name)
@@ -205,7 +205,7 @@ pub fn[T] Package::read_optional(
 pub fn Package::relationships(
   self : Package,
   name : String,
-) -> @relationships.Relationships? {
+) -> @relationships.CT_Relationships? {
   if name == "/" || name == "" {
     self.package_relationships
   } else {
@@ -235,7 +235,7 @@ fn Package::validate_relationship_targets(self : Package) -> Unit raise {
 fn validate_targets(
   pkg : Package,
   owner : String,
-  relationships : @relationships.Relationships,
+  relationships : @relationships.CT_Relationships,
 ) -> Unit raise {
   for relationship in relationships.relationships {
     if relationship.target_mode == @relationships.TargetMode::Internal {

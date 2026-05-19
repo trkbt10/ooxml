@@ -1,6 +1,6 @@
 ///|
 test "signature time round trip identity" {
-  let signature_time = SignatureTime::new(
+  let signature_time = CT_SignatureTime::new(
     try! ST_Format::new("YYYY-MM-DDThh:mm:ssTZD"),
     try! ST_Value::new("2026-04-30T00:00:00Z"),
   )
@@ -10,12 +10,12 @@ test "signature time round trip identity" {
 
 ///|
 test "digital signature references round trip identity" {
-  let reference = try! RelationshipReference::new("rId5")
+  let reference = try! CT_RelationshipReference::new("rId5")
   let parsed_reference = try! read_relationship_reference(
     write_relationship_reference(reference),
   )
   assert_true(parsed_reference == reference)
-  let group = try! RelationshipsGroupReference::new(
+  let group = try! CT_RelationshipsGroupReference::new(
     "http://schemas.openxmlformats.org/officeDocument/2006/relationships/metadata/core-properties",
   )
   let parsed_group = try! read_relationships_group_reference(

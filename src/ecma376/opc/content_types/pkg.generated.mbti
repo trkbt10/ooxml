@@ -16,13 +16,30 @@ pub fn digital_signature_xml_signature_content_type() -> ContentType
 
 pub fn package_name() -> String
 
-pub fn read_content_types(Bytes) -> Types raise
+pub fn read_content_types(Bytes) -> CT_Types raise
 
-pub fn write_content_types(Types) -> Bytes
+pub fn write_content_types(CT_Types) -> Bytes
 
 // Errors
 
 // Types and methods
+pub(all) struct CT_Default {
+  extension : Extension
+  content_type : ContentType
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Override {
+  part_name : @part_name.PartName
+  content_type : ContentType
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_Types {
+  rules : Array[ContentTypeRule]
+} derive(Eq, @debug.Debug)
+pub fn CT_Types::content_type_for_part(Self, @part_name.PartName) -> ContentType?
+pub fn CT_Types::require_digital_signature_content_types(Self, @part_name.PartName, @part_name.PartName, @part_name.PartName?) -> Unit raise
+pub fn CT_Types::require_part_content_type(Self, @part_name.PartName, ContentType, section~ : String, path~ : String) -> Unit raise
+
 pub(all) struct ContentType {
   value : String
 } derive(Eq, @debug.Debug)
@@ -30,13 +47,8 @@ pub fn ContentType::parse(String) -> Self raise @errors.SchemaViolation
 pub fn ContentType::to_string(Self) -> String
 
 pub(all) enum ContentTypeRule {
-  Default(Default)
-  Override(Override)
-} derive(Eq, @debug.Debug)
-
-pub(all) struct Default {
-  extension : Extension
-  content_type : ContentType
+  Default(CT_Default)
+  Override(CT_Override)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct Extension {
@@ -44,18 +56,6 @@ pub(all) struct Extension {
 } derive(Eq, @debug.Debug)
 pub fn Extension::parse(String) -> Self raise @errors.SchemaViolation
 pub fn Extension::to_string(Self) -> String
-
-pub(all) struct Override {
-  part_name : @part_name.PartName
-  content_type : ContentType
-} derive(Eq, @debug.Debug)
-
-pub(all) struct Types {
-  rules : Array[ContentTypeRule]
-} derive(Eq, @debug.Debug)
-pub fn Types::content_type_for_part(Self, @part_name.PartName) -> ContentType?
-pub fn Types::require_digital_signature_content_types(Self, @part_name.PartName, @part_name.PartName, @part_name.PartName?) -> Unit raise
-pub fn Types::require_part_content_type(Self, @part_name.PartName, ContentType, section~ : String, path~ : String) -> Unit raise
 
 // Type aliases
 pub using @part_name {type PartName}

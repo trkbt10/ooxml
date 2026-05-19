@@ -9,10 +9,10 @@
 ///   shared-relationshipReference.xsd.
 /// - §2 Conformance C1: read_relationships accepts every §4 element where the
 ///   schema permits it: Relationship and Relationships.
-/// - §2 Conformance C2: TargetMode::parse, Relationship::new,
-///   Relationships::new, and read_relationships raise @opc_errors.SchemaViolation for
-///   structural failures, duplicate Id values, missing attributes, and invalid
-///   lexical values.
+/// - §2 Conformance C2: TargetMode::parse, CT_Relationship::new,
+///   CT_Relationships::new, and read_relationships raise
+///   @opc_errors.SchemaViolation for structural failures, duplicate Id values,
+///   missing attributes, and invalid lexical values.
 /// - §2 Conformance C3: writer round trips preserve relationship attributes
 ///   and relationship child order.
 /// - §2 Conformance C4: ST_TargetMode and ST_RelationshipId constructors

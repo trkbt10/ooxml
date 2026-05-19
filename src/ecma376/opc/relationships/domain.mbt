@@ -49,8 +49,10 @@ pub fn RelationshipId::to_string(self : RelationshipId) -> String {
 }
 
 ///|
-/// Relationship top-level element and CT_Relationship complex type.
-pub(all) struct Relationship {
+/// XSD complex type CT_Relationship — ECMA-376 Part 2 §9.3 Relationships Part
+/// / Annex C opc-relationships.xsd. Single relationship entry carrying the
+/// required Id, Type, Target attributes and an optional TargetMode.
+pub(all) struct CT_Relationship {
   id : String
   type_uri : String
   target : String
@@ -59,12 +61,12 @@ pub(all) struct Relationship {
 
 ///|
 /// Build CT_Relationship with required Id, Type, and Target attributes.
-fn Relationship::new(
+fn CT_Relationship::new(
   id : String,
   type_uri : String,
   target : String,
   target_mode : TargetMode,
-) -> Relationship raise @opc_errors.SchemaViolation {
+) -> CT_Relationship raise @opc_errors.SchemaViolation {
   if id == "" {
     raise @opc_errors.SchemaViolation(
       section="",
@@ -90,17 +92,19 @@ fn Relationship::new(
 }
 
 ///|
-/// Relationships top-level element and CT_Relationships complex type.
-pub(all) struct Relationships {
-  relationships : Array[Relationship]
+/// XSD complex type CT_Relationships — ECMA-376 Part 2 §9.3 Relationships
+/// Part / Annex C opc-relationships.xsd. Root of `.rels` parts holding an
+/// ordered sequence of CT_Relationship children with unique Id values.
+pub(all) struct CT_Relationships {
+  relationships : Array[CT_Relationship]
 } derive(Eq, Debug)
 
 ///|
 /// Build CT_Relationships while preserving order and rejecting duplicate Id
 /// values.
-fn Relationships::new(
-  relationships : Array[Relationship],
-) -> Relationships raise @opc_errors.SchemaViolation {
+fn CT_Relationships::new(
+  relationships : Array[CT_Relationship],
+) -> CT_Relationships raise @opc_errors.SchemaViolation {
   let ids : Array[String] = []
   for relationship in relationships {
     if ids.contains(relationship.id) {
@@ -117,10 +121,10 @@ fn Relationships::new(
 
 ///|
 /// Find a CT_Relationship by Id.
-pub fn Relationships::find_by_id(
-  self : Relationships,
+pub fn CT_Relationships::find_by_id(
+  self : CT_Relationships,
   id : String,
-) -> Relationship? {
+) -> CT_Relationship? {
   for relationship in self.relationships {
     if relationship.id == id {
       return Some(relationship)

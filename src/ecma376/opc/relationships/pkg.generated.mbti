@@ -9,30 +9,30 @@ import {
 // Values
 pub fn package_name() -> String
 
-pub fn read_relationships(Bytes) -> Relationships raise
+pub fn read_relationships(Bytes) -> CT_Relationships raise
 
-pub fn write_relationships(Relationships) -> Bytes
+pub fn write_relationships(CT_Relationships) -> Bytes
 
 // Errors
 
 // Types and methods
-pub(all) struct Relationship {
+pub(all) struct CT_Relationship {
   id : String
   type_uri : String
   target : String
   target_mode : TargetMode
 } derive(Eq, @debug.Debug)
 
+pub(all) struct CT_Relationships {
+  relationships : Array[CT_Relationship]
+} derive(Eq, @debug.Debug)
+pub fn CT_Relationships::find_by_id(Self, String) -> CT_Relationship?
+
 pub struct RelationshipId {
   value : String
 } derive(Eq)
 pub fn RelationshipId::new(String) -> Self
 pub fn RelationshipId::to_string(Self) -> String
-
-pub(all) struct Relationships {
-  relationships : Array[Relationship]
-} derive(Eq, @debug.Debug)
-pub fn Relationships::find_by_id(Self, String) -> Relationship?
 
 pub(all) enum TargetMode {
   Internal

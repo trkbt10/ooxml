@@ -18,9 +18,9 @@ test "content types round trip preserves rules" {
 
 ///|
 test "default rule resolves by extension" {
-  let types = try! Types::new([
+  let types = try! CT_Types::new([
     Default(
-      Default::new(
+      CT_Default::new(
         try! Extension::parse("rels"),
         try! ContentType::parse(
           "application/vnd.openxmlformats-package.relationships+xml",
@@ -47,12 +47,17 @@ test "digital signature content type validation" {
   let cert = try! PartName::parse(
     "/package/services/digital-signature/certificate/cert1.crt",
   )
-  let types = try! Types::new([
-    Override(Override::new(origin, digital_signature_origin_content_type())),
+  let types = try! CT_Types::new([
+    Override(CT_Override::new(origin, digital_signature_origin_content_type())),
     Override(
-      Override::new(signature, digital_signature_xml_signature_content_type()),
+      CT_Override::new(
+        signature,
+        digital_signature_xml_signature_content_type(),
+      ),
     ),
-    Override(Override::new(cert, digital_signature_certificate_content_type())),
+    Override(
+      CT_Override::new(cert, digital_signature_certificate_content_type()),
+    ),
   ])
   try! types.require_digital_signature_content_types(
     origin,

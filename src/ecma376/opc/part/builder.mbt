@@ -15,6 +15,6 @@ pub fn write_part(value : PackagePart) -> Bytes {
 ///|
 /// OPC §6 Outputs O1/O2 round-trip writer for coreProperties and
 /// CT_CoreProperties XML, preserving the parsed document and its attributes.
-pub fn write_core_properties(value : CoreProperties) -> Bytes {
+pub fn write_core_properties(value : CT_CoreProperties) -> Bytes {
   @xml.write(value.document)
 }

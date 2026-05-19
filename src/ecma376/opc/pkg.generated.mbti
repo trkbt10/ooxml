@@ -23,16 +23,16 @@ pub fn PackUri::parse(String) -> Self raise @errors.SchemaViolation
 pub fn PackUri::to_string(Self) -> String
 
 pub(all) struct Package {
-  content_types : @content_types.Types
+  content_types : @content_types.CT_Types
   parts : Array[PackagePart]
-  package_relationships : @relationships.Relationships?
-  part_relationships : Array[(String, @relationships.Relationships)]
+  package_relationships : @relationships.CT_Relationships?
+  part_relationships : Array[(String, @relationships.CT_Relationships)]
   entry_order : Array[String]
 } derive(Eq, @debug.Debug)
 pub fn Package::open(Bytes) -> Self raise
 pub fn Package::part(Self, String) -> PackagePart?
 pub fn[T] Package::read_optional(Self, String, (Bytes) -> T raise) -> T? raise
-pub fn Package::relationships(Self, String) -> @relationships.Relationships?
+pub fn Package::relationships(Self, String) -> @relationships.CT_Relationships?
 pub fn Package::required_part(Self, String, section~ : String, source_path~ : String) -> PackagePart raise @errors.ResourceMissing
 pub fn Package::save(Self) -> Bytes raise
 pub fn[T] Package::with_optional_part(Self, String, T?, (T) -> Bytes) -> Self

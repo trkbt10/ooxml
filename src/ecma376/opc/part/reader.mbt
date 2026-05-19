@@ -29,7 +29,7 @@ pub fn read_part(
 /// well-formedness failures are @xml.XmlMalformed E1; schema failures are OPC
 /// §8 E2 @opc_errors.SchemaViolation with section metadata, and C3/V2 preserve parsed
 /// attributes and child order for round-trip writing.
-pub fn read_core_properties(bytes : Bytes) -> CoreProperties raise {
+pub fn read_core_properties(bytes : Bytes) -> CT_CoreProperties raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "coreProperties", core_properties_ns()) {
     raise @opc_errors.SchemaViolation(
@@ -39,7 +39,7 @@ pub fn read_core_properties(bytes : Bytes) -> CoreProperties raise {
     )
   }
   validate_core_properties(doc.root)
-  CoreProperties::new(doc)
+  CT_CoreProperties::new(doc)
 }
 
 ///|

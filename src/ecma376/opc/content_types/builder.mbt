@@ -1,9 +1,9 @@
 ///|
 /// Write the §6 Outputs O2 XML byte stream for `[Content_Types].xml` from the
-/// O1 Types domain tree. The emitted CT_Types document preserves the stored
+/// O1 CT_Types domain tree. The emitted CT_Types document preserves the stored
 /// Default and Override order required by §7 Invariants V2 so later OPC
 /// package save/open cycles can rediscover §10 digital-signature content.
-pub fn write_content_types(value : Types) -> Bytes {
+pub fn write_content_types(value : CT_Types) -> Bytes {
   @xml.write({
     declaration: Some(default_xml_declaration()),
     doctype: None,
@@ -29,7 +29,7 @@ fn rules_to_nodes(rules : Array[ContentTypeRule]) -> Array[@xml.Node] {
 }
 
 ///|
-fn default_to_element(value : Default) -> @xml.Element {
+fn default_to_element(value : CT_Default) -> @xml.Element {
   {
     name: content_types_name("Default"),
     attributes: [
@@ -41,7 +41,7 @@ fn default_to_element(value : Default) -> @xml.Element {
 }
 
 ///|
-fn override_to_element(value : Override) -> @xml.Element {
+fn override_to_element(value : CT_Override) -> @xml.Element {
   {
     name: content_types_name("Override"),
     attributes: [

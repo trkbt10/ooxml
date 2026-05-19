@@ -1,17 +1,16 @@
 ///|
-/// 1. Scope domain value for the §10.5.9 RelationshipReference element and
-/// CT_RelationshipReference from schema bundle opc-digSig.xsd in the
-/// http://schemas.openxmlformats.org/package/2006/digital-signature target
-/// namespace.
-pub(all) struct RelationshipReference {
+/// XSD complex type CT_RelationshipReference — ECMA-376 Part 2 §10.5.9 /
+/// Annex C opc-digSig.xsd. Carries the package relationship `SourceId` that
+/// the digital signature pipeline binds to a transformed payload.
+pub(all) struct CT_RelationshipReference {
   source_id : String
 } derive(Eq, Debug)
 
 ///|
 /// Build CT_RelationshipReference, enforcing the required SourceId attribute.
-fn RelationshipReference::new(
+fn CT_RelationshipReference::new(
   source_id : String,
-) -> RelationshipReference raise @opc_errors.SchemaViolation {
+) -> CT_RelationshipReference raise @opc_errors.SchemaViolation {
   if source_id == "" {
     raise @opc_errors.SchemaViolation(
       section="10",
@@ -23,19 +22,18 @@ fn RelationshipReference::new(
 }
 
 ///|
-/// 1. Scope domain value for the §10.5.10 RelationshipsGroupReference element and
-/// CT_RelationshipsGroupReference from schema bundle opc-digSig.xsd in the
-/// http://schemas.openxmlformats.org/package/2006/digital-signature target
-/// namespace.
-pub(all) struct RelationshipsGroupReference {
+/// XSD complex type CT_RelationshipsGroupReference — ECMA-376 Part 2 §10.5.10
+/// / Annex C opc-digSig.xsd. Carries the package relationship `SourceType`
+/// URI used to address an entire relationship group.
+pub(all) struct CT_RelationshipsGroupReference {
   source_type : String
 } derive(Eq, Debug)
 
 ///|
 /// Build CT_RelationshipsGroupReference, enforcing the required SourceType URI.
-fn RelationshipsGroupReference::new(
+fn CT_RelationshipsGroupReference::new(
   source_type : String,
-) -> RelationshipsGroupReference raise @opc_errors.SchemaViolation {
+) -> CT_RelationshipsGroupReference raise @opc_errors.SchemaViolation {
   if source_type == "" {
     raise @opc_errors.SchemaViolation(
       section="10",
@@ -127,20 +125,21 @@ pub fn ST_Value::to_string(self : ST_Value) -> String {
 }
 
 ///|
-/// 1. Scope domain value for the §10.5.15 SignatureTime element and
-/// CT_SignatureTime from schema bundle
-/// opc-digSig.xsd in the
-/// http://schemas.openxmlformats.org/package/2006/digital-signature target
-/// namespace; the builder preserves V2 child order by writing Format before
-/// Value.
-pub(all) struct SignatureTime {
+/// XSD complex type CT_SignatureTime — ECMA-376 Part 2 §10.5.15 / Annex C
+/// opc-digSig.xsd. Carries the Format/Value ordered child pair (§7 V2) for the
+/// signing-time markup; the builder preserves the schema order by writing
+/// Format before Value.
+pub(all) struct CT_SignatureTime {
   format : ST_Format
   value : ST_Value
 } derive(Eq, Debug)
 
 ///|
 /// Build CT_SignatureTime.
-fn SignatureTime::new(format : ST_Format, value : ST_Value) -> SignatureTime {
+fn CT_SignatureTime::new(
+  format : ST_Format,
+  value : ST_Value,
+) -> CT_SignatureTime {
   { format, value }
 }
 

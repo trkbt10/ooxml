@@ -15,14 +15,14 @@ pub fn package_name() -> String
 
 // Types and methods
 pub(all) struct Context {
-  relationships : @relationships.Relationships?
-  content_types : @content_types.Types?
+  relationships : @relationships.CT_Relationships?
+  content_types : @content_types.CT_Types?
   theme : @theme.CT_OfficeStyleSheet?
   current_style_id : String?
   current_numbering_id : String?
 } derive(Eq, @debug.Debug)
 pub fn Context::new() -> Self
-pub fn Context::resolve_relationship(Self, String) -> @relationships.Relationship?
+pub fn Context::resolve_relationship(Self, String) -> @relationships.CT_Relationship?
 
 // Type aliases
 

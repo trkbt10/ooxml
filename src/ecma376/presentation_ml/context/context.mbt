@@ -13,8 +13,8 @@ pub fn package_name() -> String {
 ///|
 /// Shared parser/rendering state for PresentationML §19 packages.
 pub(all) struct Context {
-  relationships : @relationships.Relationships?
-  content_types : @content_types.Types?
+  relationships : @relationships.CT_Relationships?
+  content_types : @content_types.CT_Types?
   theme : @theme.CT_OfficeStyleSheet?
   slide_master : @domain.CT_SlideMaster?
   slide_layout : @domain.CT_SlideLayout?
@@ -38,7 +38,7 @@ pub fn Context::new() -> Context {
 pub fn Context::resolve_relationship(
   self : Context,
   id : String,
-) -> @relationships.Relationship? {
+) -> @relationships.CT_Relationship? {
   match self.relationships {
     Some(relationships) => relationships.find_by_id(id)
     None => None

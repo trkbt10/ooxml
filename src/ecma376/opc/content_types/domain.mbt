@@ -67,53 +67,62 @@ pub fn Extension::to_string(self : Extension) -> String {
 pub type PartName = @opc_part_name.PartName
 
 ///|
-/// Default top-level element and CT_Default complex type from the
-/// opc-contentTypes Schema Facts inventory.
-pub(all) struct Default {
+/// XSD complex type CT_Default — ECMA-376 Part 2 §10.1.2.2 / Annex C
+/// opc-contentTypes.xsd. Default top-level rule that binds a part-name
+/// extension to a registered content type.
+pub(all) struct CT_Default {
   extension : Extension
   content_type : ContentType
 } derive(Eq, Debug)
 
 ///|
 /// Build CT_Default from validated ST_Extension and ST_ContentType values.
-fn Default::new(extension : Extension, content_type : ContentType) -> Default {
+fn CT_Default::new(
+  extension : Extension,
+  content_type : ContentType,
+) -> CT_Default {
   { extension, content_type }
 }
 
 ///|
-/// Override top-level element and CT_Override complex type from the
-/// opc-contentTypes Schema Facts inventory.
-pub(all) struct Override {
+/// XSD complex type CT_Override — ECMA-376 Part 2 §10.1.2.3 / Annex C
+/// opc-contentTypes.xsd. Override top-level rule that binds a specific part
+/// name to its content type.
+pub(all) struct CT_Override {
   part_name : PartName
   content_type : ContentType
 } derive(Eq, Debug)
 
 ///|
 /// Build CT_Override from validated PartName and ST_ContentType values.
-fn Override::new(part_name : PartName, content_type : ContentType) -> Override {
+fn CT_Override::new(
+  part_name : PartName,
+  content_type : ContentType,
+) -> CT_Override {
   { part_name, content_type }
 }
 
 ///|
 /// Rule alternatives allowed inside CT_Types.
 pub(all) enum ContentTypeRule {
-  Default(Default)
-  Override(Override)
+  Default(CT_Default)
+  Override(CT_Override)
 } derive(Eq, Debug)
 
 ///|
-/// Types top-level element and CT_Types complex type from the
-/// opc-contentTypes Schema Facts inventory.
-pub(all) struct Types {
+/// XSD complex type CT_Types — ECMA-376 Part 2 §10.1.2.1 / Annex C
+/// opc-contentTypes.xsd. Root of `[Content_Types].xml` with the schema-ordered
+/// sequence of CT_Default and CT_Override children.
+pub(all) struct CT_Types {
   rules : Array[ContentTypeRule]
 } derive(Eq, Debug)
 
 ///|
 /// Build CT_Types while preserving declaration order and checking duplicate
 /// Default/Override keys.
-fn Types::new(
+fn CT_Types::new(
   rules : Array[ContentTypeRule],
-) -> Types raise @opc_errors.SchemaViolation {
+) -> CT_Types raise @opc_errors.SchemaViolation {
   let extensions : Array[String] = []
   let parts : Array[String] = []
   for rule in rules {
@@ -149,8 +158,8 @@ fn Types::new(
 /// Return the content type for a part, first using CT_Override and then the
 /// CT_Default extension fallback. This accessor is the typed O1 query surface
 /// the top-level OPC package uses before dispatching part payload readers.
-pub fn Types::content_type_for_part(
-  self : Types,
+pub fn CT_Types::content_type_for_part(
+  self : CT_Types,
   part_name : PartName,
 ) -> ContentType? {
   for rule in self.rules {
@@ -182,8 +191,8 @@ pub fn Types::content_type_for_part(
 ///|
 /// Media type registry helper consumed by ecma376/opc/digital_signatures to
 /// validate the digital-signature content types in `[Content_Types].xml`.
-pub fn Types::require_digital_signature_content_types(
-  self : Types,
+pub fn CT_Types::require_digital_signature_content_types(
+  self : CT_Types,
   origin_part : PartName,
   signature_part : PartName,
   certificate_part : PartName?,
@@ -216,8 +225,8 @@ pub fn Types::require_digital_signature_content_types(
 /// Require a concrete content type for a package part, surfacing E4 when the
 /// part has no Default or Override rule and E2 when the resolved media type is
 /// not the expected §10 package-part type.
-pub fn Types::require_part_content_type(
-  self : Types,
+pub fn CT_Types::require_part_content_type(
+  self : CT_Types,
   part_name : PartName,
   expected : ContentType,
   section~ : String,

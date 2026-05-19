@@ -32,3 +32,11 @@ test "WML schema-tail complex type wrappers preserve source elements" {
   let settings = CT_Settings::new(wml_test_element("settings"))
   assert_eq(settings.to_element().name.local_name, "settings")
 }
+
+///|
+test "VML wordprocessingDrawing CT_AnchorLock and CT_Wrap preserve source elements" {
+  let anchor_lock = CT_AnchorLock::parse(wml_test_element("anchorlock"))
+  assert_eq(anchor_lock.to_element().name.local_name, "anchorlock")
+  let wrap = CT_Wrap::parse(wml_test_element("wrap"))
+  assert_eq(wrap.to_element().name.local_name, "wrap")
+}

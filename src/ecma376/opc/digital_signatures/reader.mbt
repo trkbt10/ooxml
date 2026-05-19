@@ -7,7 +7,7 @@
 /// accepts the RelationshipReference element and CT_RelationshipReference.
 pub fn read_relationship_reference(
   bytes : Bytes,
-) -> RelationshipReference raise {
+) -> CT_RelationshipReference raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "RelationshipReference", digital_signature_ns()) {
     raise @opc_errors.SchemaViolation(
@@ -17,7 +17,7 @@ pub fn read_relationship_reference(
     )
   }
   ensure_no_element_children(doc.root, "/RelationshipReference")
-  RelationshipReference::new(
+  CT_RelationshipReference::new(
     required_attribute(doc.root, "SourceId", "/RelationshipReference/@SourceId"),
   )
 }
@@ -29,7 +29,7 @@ pub fn read_relationship_reference(
 /// signature target namespace from §4 Schema Facts.
 pub fn read_relationships_group_reference(
   bytes : Bytes,
-) -> RelationshipsGroupReference raise {
+) -> CT_RelationshipsGroupReference raise {
   let doc = @xml.parse(bytes)
   if !is_element(
       doc.root,
@@ -43,7 +43,7 @@ pub fn read_relationships_group_reference(
     )
   }
   ensure_no_element_children(doc.root, "/RelationshipsGroupReference")
-  RelationshipsGroupReference::new(
+  CT_RelationshipsGroupReference::new(
     required_attribute(
       doc.root,
       "SourceType",
@@ -57,7 +57,7 @@ pub fn read_relationships_group_reference(
 /// ST_Format, and ST_Value while enforcing the opc-digSig sequence Format then
 /// Value for 7. Invariants V2 and rejecting C4 pattern violations as
 /// @opc_errors.SchemaViolation.
-pub fn read_signature_time(bytes : Bytes) -> SignatureTime raise {
+pub fn read_signature_time(bytes : Bytes) -> CT_SignatureTime raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "SignatureTime", digital_signature_ns()) {
     raise @opc_errors.SchemaViolation(
@@ -82,7 +82,7 @@ pub fn read_signature_time(bytes : Bytes) -> SignatureTime raise {
       reason="SignatureTime children must be ordered Format then Value",
     )
   }
-  SignatureTime::new(
+  CT_SignatureTime::new(
     ST_Format::new(element_text(elements[0])),
     ST_Value::new(element_text(elements[1])),
   )

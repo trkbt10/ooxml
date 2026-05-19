@@ -29,13 +29,13 @@ pub fn opc_part_part4_13_2_part_summary_part_1_15_2_section_name() -> String
 
 pub fn package_name() -> String
 
-pub fn read_core_properties(Bytes) -> CoreProperties raise
+pub fn read_core_properties(Bytes) -> CT_CoreProperties raise
 
 pub fn read_part(@part_name.PartName, Bytes) -> PackagePart raise @errors.SchemaViolation
 
 pub fn read_thumbnail_part(@part_name.PartName, Bytes) -> ThumbnailPart
 
-pub fn write_core_properties(CoreProperties) -> Bytes
+pub fn write_core_properties(CT_CoreProperties) -> Bytes
 
 pub fn write_part(PackagePart) -> Bytes
 
@@ -44,24 +44,23 @@ pub fn write_thumbnail_part(ThumbnailPart) -> Bytes
 // Errors
 
 // Types and methods
-#alias(CT_Keyword)
-pub(all) struct CoreKeyword {
-  value : String
-} derive(Eq, @debug.Debug)
-pub fn CoreKeyword::matches(Self, String) -> Bool
-
-pub(all) struct CoreKeywords {
-  values : Array[CoreKeyword]
-} derive(Eq, @debug.Debug)
-pub fn CoreKeywords::contains(Self, String) -> Bool
-pub fn CoreKeywords::iter(Self) -> Iter[CoreKeyword]
-
-pub(all) struct CoreProperties {
+pub(all) struct CT_CoreProperties {
   document : @xml.Document
 } derive(Eq, @debug.Debug)
-pub fn CoreProperties::has_property(Self, String) -> Bool
-pub fn CoreProperties::keywords(Self) -> CoreKeywords
-pub fn CoreProperties::title(Self) -> String?
+pub fn CT_CoreProperties::has_property(Self, String) -> Bool
+pub fn CT_CoreProperties::keywords(Self) -> CT_Keywords
+pub fn CT_CoreProperties::title(Self) -> String?
+
+pub(all) struct CT_Keyword {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn CT_Keyword::matches(Self, String) -> Bool
+
+pub(all) struct CT_Keywords {
+  values : Array[CT_Keyword]
+} derive(Eq, @debug.Debug)
+pub fn CT_Keywords::contains(Self, String) -> Bool
+pub fn CT_Keywords::iter(Self) -> Iter[CT_Keyword]
 
 pub(all) struct PackagePart {
   name : @part_name.PartName

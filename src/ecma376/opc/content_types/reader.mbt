@@ -6,7 +6,7 @@
 /// content types for §10.4.2 Digital Signature Origin part, §10.4.3 Digital
 /// Signature XML Signature part, and §10.4.4 Digital Signature Certificate
 /// part without parsing those payloads inline.
-pub fn read_content_types(bytes : Bytes) -> Types raise {
+pub fn read_content_types(bytes : Bytes) -> CT_Types raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "Types", content_types_ns()) {
     raise @opc_errors.SchemaViolation(
@@ -29,15 +29,15 @@ pub fn read_content_types(bytes : Bytes) -> Types raise {
       )
     }
   }
-  Types::new(rules)
+  CT_Types::new(rules)
 }
 
 ///|
 fn read_default(
   element : @xml.Element,
-) -> Default raise @opc_errors.SchemaViolation {
+) -> CT_Default raise @opc_errors.SchemaViolation {
   ensure_no_element_children(element, "/Types/Default")
-  Default::new(
+  CT_Default::new(
     Extension::parse(
       required_attribute(element, "Extension", "/Types/Default/@Extension"),
     ),
@@ -50,9 +50,9 @@ fn read_default(
 ///|
 fn read_override(
   element : @xml.Element,
-) -> Override raise @opc_errors.SchemaViolation {
+) -> CT_Override raise @opc_errors.SchemaViolation {
   ensure_no_element_children(element, "/Types/Override")
-  Override::new(
+  CT_Override::new(
     PartName::parse(
       required_attribute(element, "PartName", "/Types/Override/@PartName"),
     ),

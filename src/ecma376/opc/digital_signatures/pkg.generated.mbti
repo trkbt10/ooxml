@@ -26,9 +26,9 @@ pub fn read_object(Bytes) -> Object raise @errors.SchemaViolation
 
 pub fn read_reference(Bytes) -> Reference raise @errors.SchemaViolation
 
-pub fn read_relationship_reference(Bytes) -> RelationshipReference raise
+pub fn read_relationship_reference(Bytes) -> CT_RelationshipReference raise
 
-pub fn read_relationships_group_reference(Bytes) -> RelationshipsGroupReference raise
+pub fn read_relationships_group_reference(Bytes) -> CT_RelationshipsGroupReference raise
 
 pub fn read_signature(Bytes) -> Signature raise @errors.SchemaViolation
 
@@ -36,7 +36,7 @@ pub fn read_signature_method(Bytes) -> SignatureMethod raise @errors.SchemaViola
 
 pub fn read_signature_property(Bytes) -> SignatureProperty raise @errors.SchemaViolation
 
-pub fn read_signature_time(Bytes) -> SignatureTime raise
+pub fn read_signature_time(Bytes) -> CT_SignatureTime raise
 
 pub fn read_signed_info(Bytes) -> SignedInfo raise @errors.SchemaViolation
 
@@ -56,9 +56,9 @@ pub fn write_object(Object) -> Bytes
 
 pub fn write_reference(Reference) -> Bytes
 
-pub fn write_relationship_reference(RelationshipReference) -> Bytes
+pub fn write_relationship_reference(CT_RelationshipReference) -> Bytes
 
-pub fn write_relationships_group_reference(RelationshipsGroupReference) -> Bytes
+pub fn write_relationships_group_reference(CT_RelationshipsGroupReference) -> Bytes
 
 pub fn write_signature(Signature) -> Bytes
 
@@ -66,7 +66,7 @@ pub fn write_signature_method(SignatureMethod) -> Bytes
 
 pub fn write_signature_property(SignatureProperty) -> Bytes
 
-pub fn write_signature_time(SignatureTime) -> Bytes
+pub fn write_signature_time(CT_SignatureTime) -> Bytes
 
 pub fn write_signed_info(SignedInfo) -> Bytes
 
@@ -77,6 +77,19 @@ pub fn write_xpath(XPath) -> Bytes
 // Errors
 
 // Types and methods
+pub(all) struct CT_RelationshipReference {
+  source_id : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_RelationshipsGroupReference {
+  source_type : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct CT_SignatureTime {
+  format : ST_Format
+  value : ST_Value
+} derive(Eq, @debug.Debug)
+
 pub(all) struct CanonicalizationMethod {
   algorithm : String
   children : Array[@xml.Node]
@@ -108,14 +121,6 @@ pub(all) struct Reference {
   children : Array[@xml.Node]
 } derive(Eq, @debug.Debug)
 pub fn Reference::new(String?, String?, String?, Array[@xml.Node]) -> Self
-
-pub(all) struct RelationshipReference {
-  source_id : String
-} derive(Eq, @debug.Debug)
-
-pub(all) struct RelationshipsGroupReference {
-  source_type : String
-} derive(Eq, @debug.Debug)
 
 #alias(Format)
 pub(all) struct ST_Format {
@@ -149,11 +154,6 @@ pub(all) struct SignatureProperty {
   children : Array[@xml.Node]
 } derive(Eq, @debug.Debug)
 pub fn SignatureProperty::new(String?, String, Array[@xml.Node]) -> Self raise @errors.SchemaViolation
-
-pub(all) struct SignatureTime {
-  format : ST_Format
-  value : ST_Value
-} derive(Eq, @debug.Debug)
 
 pub(all) struct SignedInfo {
   id : String?

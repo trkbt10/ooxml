@@ -2,7 +2,7 @@
 /// 6. Outputs writer for the opc-digSig RelationshipReference top-level
 /// element and CT_RelationshipReference XML. It converts the O1 typed domain
 /// value into an O2 XML byte stream that re-validates against the XSD schema.
-pub fn write_relationship_reference(value : RelationshipReference) -> Bytes {
+pub fn write_relationship_reference(value : CT_RelationshipReference) -> Bytes {
   @xml.write({
     declaration: Some(default_xml_declaration()),
     doctype: None,
@@ -24,7 +24,7 @@ pub fn write_relationship_reference(value : RelationshipReference) -> Bytes {
 /// RelationshipsGroupReference top-level element and
 /// CT_RelationshipsGroupReference XML.
 pub fn write_relationships_group_reference(
-  value : RelationshipsGroupReference,
+  value : CT_RelationshipsGroupReference,
 ) -> Bytes {
   @xml.write({
     declaration: Some(default_xml_declaration()),
@@ -47,7 +47,7 @@ pub fn write_relationships_group_reference(
 /// ST_Value XML. It emits the O2 XML byte stream in schema order from the O1
 /// typed domain value and preserves round-trip identity for parsed
 /// element/attribute data.
-pub fn write_signature_time(value : SignatureTime) -> Bytes {
+pub fn write_signature_time(value : CT_SignatureTime) -> Bytes {
   let doc : @xml.Document = {
     declaration: Some(default_xml_declaration()),
     doctype: None,

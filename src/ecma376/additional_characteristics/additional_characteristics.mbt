@@ -51,3 +51,57 @@ pub fn ST_Relation::to_string(self : ST_Relation) -> String {
     Eq => "eq"
   }
 }
+
+///|
+/// XSD complex type CT_Characteristic — Part 1 §22.6.2.2 / Annex A.6.7. A
+/// single entry in the additionalCharacteristics root carrying the required
+/// `name`, `relation`, `val` attributes and an optional `vocabulary` URI.
+pub(all) struct CT_Characteristic {
+  name : String
+  relation : ST_Relation
+  val : String
+  vocabulary : String?
+} derive(Eq, Debug)
+
+///|
+/// Build CT_Characteristic, enforcing the required attribute set defined by
+/// shared-additionalCharacteristics.xsd (§22.6.2.2).
+pub fn CT_Characteristic::new(
+  name~ : String,
+  relation~ : ST_Relation,
+  val~ : String,
+  vocabulary? : String? = None,
+) -> CT_Characteristic raise SchemaViolation {
+  if name.length() == 0 {
+    raise SchemaViolation(type_name="CT_Characteristic/@name", value=name)
+  }
+  if val.length() == 0 {
+    raise SchemaViolation(type_name="CT_Characteristic/@val", value=val)
+  }
+  { name, relation, val, vocabulary }
+}
+
+///|
+/// XSD complex type CT_AdditionalCharacteristics — Part 1 §22.6.2.1 / Annex
+/// A.6.7. Root of the additionalCharacteristics document with zero or more
+/// CT_Characteristic children, preserving schema order.
+pub(all) struct CT_AdditionalCharacteristics {
+  characteristics : Array[CT_Characteristic]
+} derive(Eq, Debug)
+
+///|
+/// Build CT_AdditionalCharacteristics from a possibly empty characteristic
+/// sequence; sequence order is preserved for §22.6.2.1 conformance.
+pub fn CT_AdditionalCharacteristics::new(
+  characteristics : Array[CT_Characteristic],
+) -> CT_AdditionalCharacteristics {
+  { characteristics, }
+}
+
+///|
+/// Iterate the CT_Characteristic children in document order.
+pub fn CT_AdditionalCharacteristics::iter(
+  self : CT_AdditionalCharacteristics,
+) -> Iter[CT_Characteristic] {
+  self.characteristics.iter()
+}

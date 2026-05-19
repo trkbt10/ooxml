@@ -1,6 +1,6 @@
 ///|
 /// Read a `.rels` §5 Inputs XML byte stream into CT_Relationships.
-pub fn read_relationships(bytes : Bytes) -> Relationships raise {
+pub fn read_relationships(bytes : Bytes) -> CT_Relationships raise {
   let doc = @xml.parse(bytes)
   if !is_element(doc.root, "Relationships", relationships_ns()) {
     raise @opc_errors.SchemaViolation(
@@ -9,7 +9,7 @@ pub fn read_relationships(bytes : Bytes) -> Relationships raise {
       reason="expected Relationships in the relationships namespace",
     )
   }
-  let relationships : Array[Relationship] = []
+  let relationships : Array[CT_Relationship] = []
   for child in element_children(doc.root, "/Relationships") {
     if !is_element(child, "Relationship", relationships_ns()) {
       raise @opc_errors.SchemaViolation(
@@ -20,13 +20,13 @@ pub fn read_relationships(bytes : Bytes) -> Relationships raise {
     }
     relationships.push(read_relationship(child))
   }
-  Relationships::new(relationships)
+  CT_Relationships::new(relationships)
 }
 
 ///|
-fn read_relationship(element : @xml.Element) -> Relationship raise {
+fn read_relationship(element : @xml.Element) -> CT_Relationship raise {
   ensure_no_element_children(element, "/Relationships/Relationship")
-  Relationship::new(
+  CT_Relationship::new(
     required_attribute(element, "Id", "/Relationships/Relationship/@Id"),
     required_attribute(element, "Type", "/Relationships/Relationship/@Type"),
     required_attribute(element, "Target", "/Relationships/Relationship/@Target"),
