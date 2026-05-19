@@ -7283,110 +7283,212 @@ pub fn CT_RubyPr::to_element(self : CT_RubyPr) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_RubyContent from wml.xsd (§17).
+/// XSD complex type CT_RubyContent — Part 1 §17.3.3.24 rt (Phonetic Guide
+/// Text) and §17.3.3.27 rubyBase (Phonetic Guide Base Text). Both `rt` and
+/// `rubyBase` reuse this type. Wraps a single reference to model group
+/// EG_RubyContent with `minOccurs="0" maxOccurs="unbounded"` — the choice
+/// among `<r>` (CT_R), EG_RunLevelElts members and EG_MathContent members.
+/// No attributes.
 pub(all) struct CT_RubyContent {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.3.3.24/§17.3.3.27 EG_RubyContent* — zero or more ruby-content
+  /// children (runs, run-level marks or math content) preserved in
+  /// document order via the model-group wrapper.
+  ruby_content : EG_RubyContent
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_RubyContent — Part 1 §17.3.3.24 / §17.3.3.27. Decode
+/// the EG_RubyContent* children by collecting every element child.
 pub fn CT_RubyContent::new(element : @xml.Element) -> CT_RubyContent {
-  { element, }
+  let elements = wml_ct_chunk4_element_children(element)
+  { element, ruby_content: EG_RubyContent::new(elements) }
 }
 
 ///|
+/// XSD complex type CT_RubyContent — Part 1 §17.3.3.24 / §17.3.3.27.
 pub fn CT_RubyContent::parse(element : @xml.Element) -> CT_RubyContent {
   CT_RubyContent::new(element)
 }
 
 ///|
+/// XSD complex type CT_RubyContent — return the preserved element for writers.
 pub fn CT_RubyContent::to_element(self : CT_RubyContent) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Ruby from wml.xsd (§17).
+/// XSD complex type CT_Ruby — Part 1 §17.3.3.25 ruby (Phonetic Guide).
+/// Wraps an `xsd:sequence` of three required children: `<rubyPr>`
+/// (CT_RubyPr §17.3.3.28), `<rt>` (CT_RubyContent §17.3.3.24) and
+/// `<rubyBase>` (CT_RubyContent §17.3.3.27). No attributes.
 pub(all) struct CT_Ruby {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.3.3.28 `<rubyPr>` (CT_RubyPr) — required ruby presentation
+  /// properties (alignment, sizes, language, dirty flag).
+  ruby_pr : CT_RubyPr
+  /// §17.3.3.24 `<rt>` (CT_RubyContent) — required phonetic-guide text.
+  rt : CT_RubyContent
+  /// §17.3.3.27 `<rubyBase>` (CT_RubyContent) — required base text.
+  ruby_base : CT_RubyContent
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Ruby::new(element : @xml.Element) -> CT_Ruby {
-  { element, }
+/// XSD complex type CT_Ruby — Part 1 §17.3.3.25. Decode the three required
+/// children, raising SchemaViolation when any is missing or when the
+/// `<rubyPr>` decoder rejects its own contents.
+pub fn CT_Ruby::new(element : @xml.Element) -> CT_Ruby raise SchemaViolation {
+  let ruby_pr_e = match wml_ct_chunk4_first_child(element, "rubyPr") {
+    Some(e) => e
+    None =>
+      raise_schema_violation(
+        "CT_Ruby", "rubyPr", "Part 1 §17.3.3.25: required child <rubyPr> is missing",
+      )
+  }
+  let ruby_pr = CT_RubyPr::new(ruby_pr_e)
+  let rt_e = match wml_ct_chunk4_first_child(element, "rt") {
+    Some(e) => e
+    None =>
+      raise_schema_violation(
+        "CT_Ruby", "rt", "Part 1 §17.3.3.25: required child <rt> is missing",
+      )
+  }
+  let rt = CT_RubyContent::new(rt_e)
+  let ruby_base_e = match wml_ct_chunk4_first_child(element, "rubyBase") {
+    Some(e) => e
+    None =>
+      raise_schema_violation(
+        "CT_Ruby", "rubyBase", "Part 1 §17.3.3.25: required child <rubyBase> is missing",
+      )
+  }
+  let ruby_base = CT_RubyContent::new(ruby_base_e)
+  { element, ruby_pr, rt, ruby_base }
 }
 
 ///|
-pub fn CT_Ruby::parse(element : @xml.Element) -> CT_Ruby {
+/// XSD complex type CT_Ruby — Part 1 §17.3.3.25.
+pub fn CT_Ruby::parse(element : @xml.Element) -> CT_Ruby raise SchemaViolation {
   CT_Ruby::new(element)
 }
 
 ///|
+/// XSD complex type CT_Ruby — return the preserved element for writers.
 pub fn CT_Ruby::to_element(self : CT_Ruby) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Lock from wml.xsd (§17).
+/// XSD complex type CT_Lock — Part 1 §17.5.2.23 lock (Locking Setting).
+/// Carries one optional `@val` (ST_Lock §17.18.49) selecting the SDT
+/// locking semantics: `sdtLocked` / `contentLocked` / `unlocked` /
+/// `sdtContentLocked`. No children.
 pub(all) struct CT_Lock {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.49 @val (ST_Lock) — optional locking-behavior enumeration.
+  val : ST_Lock?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Lock::new(element : @xml.Element) -> CT_Lock {
-  { element, }
+/// XSD complex type CT_Lock — Part 1 §17.5.2.23. Decode the optional
+/// ST_Lock `@val` attribute.
+pub fn CT_Lock::new(element : @xml.Element) -> CT_Lock raise SchemaViolation {
+  let val = match wml_ct_chunk4_attr(element, "val") {
+    Some(text) => Some(ST_Lock::parse(text))
+    None => None
+  }
+  { element, val }
 }
 
 ///|
-pub fn CT_Lock::parse(element : @xml.Element) -> CT_Lock {
+/// XSD complex type CT_Lock — Part 1 §17.5.2.23.
+pub fn CT_Lock::parse(element : @xml.Element) -> CT_Lock raise SchemaViolation {
   CT_Lock::new(element)
 }
 
 ///|
+/// XSD complex type CT_Lock — return the preserved element for writers.
 pub fn CT_Lock::to_element(self : CT_Lock) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtListItem from wml.xsd (§17).
+/// XSD complex type CT_SdtListItem — Part 1 §17.5.2.21 listItem (Combo Box
+/// List Item) and §17.5.2.22 listItem (Drop-Down List Item). Two optional
+/// attributes (both s:ST_String): `@displayText` carries the user-visible
+/// label and `@value` carries the underlying value persisted when the
+/// item is selected. No children.
 pub(all) struct CT_SdtListItem {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.21/.22 @displayText (s:ST_String) — optional display label.
+  display_text : String?
+  /// §17.5.2.21/.22 @value (s:ST_String) — optional persisted value.
+  value : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SdtListItem — Part 1 §17.5.2.21 / §17.5.2.22. Decode
+/// the optional `@displayText` and `@value` attributes verbatim.
 pub fn CT_SdtListItem::new(element : @xml.Element) -> CT_SdtListItem {
-  { element, }
+  let display_text = wml_ct_chunk4_attr(element, "displayText")
+  let value = wml_ct_chunk4_attr(element, "value")
+  { element, display_text, value }
 }
 
 ///|
+/// XSD complex type CT_SdtListItem — Part 1 §17.5.2.21 / §17.5.2.22.
 pub fn CT_SdtListItem::parse(element : @xml.Element) -> CT_SdtListItem {
   CT_SdtListItem::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtListItem — return the preserved element for writers.
 pub fn CT_SdtListItem::to_element(self : CT_SdtListItem) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtDateMappingType from wml.xsd (§17).
+/// XSD complex type CT_SdtDateMappingType — Part 1 §17.5.2.40
+/// storeMappedDataAs (Custom XML Data Date Storage Format). Carries one
+/// optional `@val` (ST_SdtDateMappingType §17.18.76) selecting how the
+/// SDT date value is persisted into mapped custom XML data: `text` for the
+/// formatted string, `date` for an xsd:date and `dateTime` for an
+/// xsd:dateTime. No children.
 pub(all) struct CT_SdtDateMappingType {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.76 @val (ST_SdtDateMappingType) — optional storage-format
+  /// enumeration.
+  val : ST_SdtDateMappingType?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SdtDateMappingType — Part 1 §17.5.2.40. Decode the
+/// optional ST_SdtDateMappingType `@val` attribute.
 pub fn CT_SdtDateMappingType::new(
   element : @xml.Element,
-) -> CT_SdtDateMappingType {
-  { element, }
+) -> CT_SdtDateMappingType raise SchemaViolation {
+  let val = match wml_ct_chunk4_attr(element, "val") {
+    Some(text) => Some(ST_SdtDateMappingType::parse(text))
+    None => None
+  }
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_SdtDateMappingType — Part 1 §17.5.2.40.
 pub fn CT_SdtDateMappingType::parse(
   element : @xml.Element,
-) -> CT_SdtDateMappingType {
+) -> CT_SdtDateMappingType raise SchemaViolation {
   CT_SdtDateMappingType::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtDateMappingType — return the preserved element for
+/// writers.
 pub fn CT_SdtDateMappingType::to_element(
   self : CT_SdtDateMappingType,
 ) -> @xml.Element {
@@ -7394,106 +7496,251 @@ pub fn CT_SdtDateMappingType::to_element(
 }
 
 ///|
-/// XSD complex type CT_CalendarType from wml.xsd (§17).
+/// XSD complex type CT_CalendarType — Part 1 §17.5.2.3 calendar (Date
+/// Picker Calendar Type). Carries one optional `@val`
+/// (s:ST_CalendarType §22.9.2.4) selecting the calendar system used by
+/// the date-picker SDT (gregorian, gregorianUs, hijri, etc.). No
+/// children. Because `s:ST_CalendarType` lives in the shared simple-types
+/// package (`@ecma376/simple_types`) which the WML domain package does
+/// not import, the lexical value is preserved verbatim; the canonical
+/// enumeration check resides in the shared package and is enforced when
+/// callers materialise the value through it.
 pub(all) struct CT_CalendarType {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.4 @val (s:ST_CalendarType) — optional calendar-system token,
+  /// preserved as the schema lexical form for cross-package validation.
+  val : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_CalendarType — Part 1 §17.5.2.3. Decode the optional
+/// `@val` attribute as its lexical form.
 pub fn CT_CalendarType::new(element : @xml.Element) -> CT_CalendarType {
-  { element, }
+  let val = wml_ct_chunk4_attr(element, "val")
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_CalendarType — Part 1 §17.5.2.3.
 pub fn CT_CalendarType::parse(element : @xml.Element) -> CT_CalendarType {
   CT_CalendarType::new(element)
 }
 
 ///|
+/// XSD complex type CT_CalendarType — return the preserved element for writers.
 pub fn CT_CalendarType::to_element(self : CT_CalendarType) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtDate from wml.xsd (§17).
+/// XSD complex type CT_SdtDate — Part 1 §17.5.2.7 date (Date Structured
+/// Document Tag). Wraps an `xsd:sequence` of four optional children:
+/// `<dateFormat>` (CT_String §17.5.2.8), `<lid>` (CT_Lang §17.5.2.20),
+/// `<storeMappedDataAs>` (CT_SdtDateMappingType §17.5.2.40) and
+/// `<calendar>` (CT_CalendarType §17.5.2.3). Carries one optional
+/// `@fullDate` (ST_DateTime §17.18.20) holding the user-picked timestamp.
 pub(all) struct CT_SdtDate {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.8 `<dateFormat>` (CT_String) — optional display mask.
+  date_format : CT_String?
+  /// §17.5.2.20 `<lid>` (CT_Lang) — optional date-picker language id.
+  lid : CT_Lang?
+  /// §17.5.2.40 `<storeMappedDataAs>` (CT_SdtDateMappingType) — optional
+  /// storage-format selector for mapped custom XML data.
+  store_mapped_data_as : CT_SdtDateMappingType?
+  /// §17.5.2.3 `<calendar>` (CT_CalendarType) — optional calendar system.
+  calendar : CT_CalendarType?
+  /// §17.18.20 @fullDate (ST_DateTime) — optional user-picked timestamp.
+  full_date : ST_DateTime?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SdtDate::new(element : @xml.Element) -> CT_SdtDate {
-  { element, }
+/// XSD complex type CT_SdtDate — Part 1 §17.5.2.7. Decode the optional
+/// `@fullDate` attribute and the four optional typed children.
+pub fn CT_SdtDate::new(
+  element : @xml.Element,
+) -> CT_SdtDate raise SchemaViolation {
+  let date_format = match wml_ct_chunk4_first_child(element, "dateFormat") {
+    Some(e) => Some(CT_String::new(e))
+    None => None
+  }
+  let lid = match wml_ct_chunk4_first_child(element, "lid") {
+    Some(e) => Some(CT_Lang::new(e))
+    None => None
+  }
+  let store_mapped_data_as = match
+    wml_ct_chunk4_first_child(element, "storeMappedDataAs") {
+    Some(e) => Some(CT_SdtDateMappingType::new(e))
+    None => None
+  }
+  let calendar = match wml_ct_chunk4_first_child(element, "calendar") {
+    Some(e) => Some(CT_CalendarType::new(e))
+    None => None
+  }
+  let full_date = match wml_ct_chunk4_attr(element, "fullDate") {
+    Some(text) => Some(ST_DateTime::parse(text))
+    None => None
+  }
+  { element, date_format, lid, store_mapped_data_as, calendar, full_date }
 }
 
 ///|
-pub fn CT_SdtDate::parse(element : @xml.Element) -> CT_SdtDate {
+/// XSD complex type CT_SdtDate — Part 1 §17.5.2.7.
+pub fn CT_SdtDate::parse(
+  element : @xml.Element,
+) -> CT_SdtDate raise SchemaViolation {
   CT_SdtDate::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtDate — return the preserved element for writers.
 pub fn CT_SdtDate::to_element(self : CT_SdtDate) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtComboBox from wml.xsd (§17).
+/// XSD complex type CT_SdtComboBox — Part 1 §17.5.2.5 comboBox (Combo Box
+/// Structured Document Tag). Wraps an `xsd:sequence` of `<listItem>`
+/// (CT_SdtListItem §17.5.2.21) with `minOccurs="0" maxOccurs="unbounded"`
+/// followed by an optional `@lastValue` (s:ST_String, default `""`)
+/// recording the most recent persisted selection.
 pub(all) struct CT_SdtComboBox {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.21 `<listItem>`* (CT_SdtListItem) — zero or more combo-box
+  /// items (display text + persisted value).
+  list_item : Array[CT_SdtListItem]
+  /// §17.5.2.5 @lastValue (s:ST_String, default `""`) — optional most
+  /// recently persisted selection. `None` means the attribute was omitted
+  /// and the schema default of empty-string applies.
+  last_value : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SdtComboBox — Part 1 §17.5.2.5. Decode each
+/// `<listItem>` (CT_SdtListItem) child and the optional `@lastValue`
+/// attribute.
 pub fn CT_SdtComboBox::new(element : @xml.Element) -> CT_SdtComboBox {
-  { element, }
+  let list_item_elements = wml_ct_chunk4_children(element, "listItem")
+  let list_item : Array[CT_SdtListItem] = []
+  for e in list_item_elements {
+    list_item.push(CT_SdtListItem::new(e))
+  }
+  let last_value = wml_ct_chunk4_attr(element, "lastValue")
+  { element, list_item, last_value }
 }
 
 ///|
+/// XSD complex type CT_SdtComboBox — Part 1 §17.5.2.5.
 pub fn CT_SdtComboBox::parse(element : @xml.Element) -> CT_SdtComboBox {
   CT_SdtComboBox::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtComboBox — return the preserved element for writers.
 pub fn CT_SdtComboBox::to_element(self : CT_SdtComboBox) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtDocPart from wml.xsd (§17).
+/// XSD complex type CT_SdtDocPart — Part 1 §17.5.2.12 docPartList (Document
+/// Part Gallery Structured Document Tag) and §17.5.2.13 docPartObj
+/// (Built-In Document Part Structured Document Tag). Wraps an
+/// `xsd:sequence` of three optional children: `<docPartGallery>`
+/// (CT_String §17.5.2.11), `<docPartCategory>` (CT_String §17.5.2.10)
+/// and `<docPartUnique>` (CT_OnOff §17.5.2.14). No attributes.
 pub(all) struct CT_SdtDocPart {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.11 `<docPartGallery>` (CT_String) — optional gallery filter
+  /// for the document-part picker.
+  doc_part_gallery : CT_String?
+  /// §17.5.2.10 `<docPartCategory>` (CT_String) — optional category filter.
+  doc_part_category : CT_String?
+  /// §17.5.2.14 `<docPartUnique>` (CT_OnOff) — optional flag marking the
+  /// SDT as referring to a built-in document part.
+  doc_part_unique : CT_OnOff?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SdtDocPart::new(element : @xml.Element) -> CT_SdtDocPart {
-  { element, }
+/// XSD complex type CT_SdtDocPart — Part 1 §17.5.2.12 / §17.5.2.13. Decode
+/// the three optional typed children.
+pub fn CT_SdtDocPart::new(
+  element : @xml.Element,
+) -> CT_SdtDocPart raise SchemaViolation {
+  let doc_part_gallery = match
+    wml_ct_chunk4_first_child(element, "docPartGallery") {
+    Some(e) => Some(CT_String::new(e))
+    None => None
+  }
+  let doc_part_category = match
+    wml_ct_chunk4_first_child(element, "docPartCategory") {
+    Some(e) => Some(CT_String::new(e))
+    None => None
+  }
+  let doc_part_unique = match
+    wml_ct_chunk4_first_child(element, "docPartUnique") {
+    Some(e) => Some(CT_OnOff::new(e))
+    None => None
+  }
+  { element, doc_part_gallery, doc_part_category, doc_part_unique }
 }
 
 ///|
-pub fn CT_SdtDocPart::parse(element : @xml.Element) -> CT_SdtDocPart {
+/// XSD complex type CT_SdtDocPart — Part 1 §17.5.2.12 / §17.5.2.13.
+pub fn CT_SdtDocPart::parse(
+  element : @xml.Element,
+) -> CT_SdtDocPart raise SchemaViolation {
   CT_SdtDocPart::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtDocPart — return the preserved element for writers.
 pub fn CT_SdtDocPart::to_element(self : CT_SdtDocPart) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtDropDownList from wml.xsd (§17).
+/// XSD complex type CT_SdtDropDownList — Part 1 §17.5.2.15 dropDownList
+/// (Drop-Down List Structured Document Tag). Wraps an `xsd:sequence` of
+/// `<listItem>` (CT_SdtListItem §17.5.2.22) with `minOccurs="0"
+/// maxOccurs="unbounded"` followed by an optional `@lastValue`
+/// (s:ST_String, default `""`) recording the most recent persisted choice.
 pub(all) struct CT_SdtDropDownList {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.22 `<listItem>`* (CT_SdtListItem) — zero or more drop-down
+  /// items (display text + persisted value).
+  list_item : Array[CT_SdtListItem]
+  /// §17.5.2.15 @lastValue (s:ST_String, default `""`) — optional most
+  /// recently persisted selection. `None` signals the schema default.
+  last_value : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SdtDropDownList — Part 1 §17.5.2.15. Decode each
+/// `<listItem>` (CT_SdtListItem) child and the optional `@lastValue`.
 pub fn CT_SdtDropDownList::new(element : @xml.Element) -> CT_SdtDropDownList {
-  { element, }
+  let list_item_elements = wml_ct_chunk4_children(element, "listItem")
+  let list_item : Array[CT_SdtListItem] = []
+  for e in list_item_elements {
+    list_item.push(CT_SdtListItem::new(e))
+  }
+  let last_value = wml_ct_chunk4_attr(element, "lastValue")
+  { element, list_item, last_value }
 }
 
 ///|
+/// XSD complex type CT_SdtDropDownList — Part 1 §17.5.2.15.
 pub fn CT_SdtDropDownList::parse(element : @xml.Element) -> CT_SdtDropDownList {
   CT_SdtDropDownList::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtDropDownList — return the preserved element for
+/// writers.
 pub fn CT_SdtDropDownList::to_element(
   self : CT_SdtDropDownList,
 ) -> @xml.Element {
@@ -7501,190 +7748,530 @@ pub fn CT_SdtDropDownList::to_element(
 }
 
 ///|
-/// XSD complex type CT_Placeholder from wml.xsd (§17).
+/// XSD complex type CT_Placeholder — Part 1 §17.5.2.25 placeholder
+/// (Structured Document Tag Placeholder Text). Wraps an `xsd:sequence`
+/// with a single required `<docPart>` (CT_String §17.5.2.9) carrying the
+/// glossary-document entry name that supplies the placeholder text. No
+/// attributes.
 pub(all) struct CT_Placeholder {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.9 `<docPart>` (CT_String) — required glossary-document entry
+  /// name. The `@val` carried by the CT_String supplies the entry id.
+  doc_part : CT_String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Placeholder::new(element : @xml.Element) -> CT_Placeholder {
-  { element, }
+/// XSD complex type CT_Placeholder — Part 1 §17.5.2.25. Decode the required
+/// `<docPart>` (CT_String) child, raising SchemaViolation if missing.
+pub fn CT_Placeholder::new(
+  element : @xml.Element,
+) -> CT_Placeholder raise SchemaViolation {
+  let doc_part_e = match wml_ct_chunk4_first_child(element, "docPart") {
+    Some(e) => e
+    None =>
+      raise_schema_violation(
+        "CT_Placeholder", "docPart", "Part 1 §17.5.2.25: required child <docPart> is missing",
+      )
+  }
+  let doc_part = CT_String::new(doc_part_e)
+  { element, doc_part }
 }
 
 ///|
-pub fn CT_Placeholder::parse(element : @xml.Element) -> CT_Placeholder {
+/// XSD complex type CT_Placeholder — Part 1 §17.5.2.25.
+pub fn CT_Placeholder::parse(
+  element : @xml.Element,
+) -> CT_Placeholder raise SchemaViolation {
   CT_Placeholder::new(element)
 }
 
 ///|
+/// XSD complex type CT_Placeholder — return the preserved element for writers.
 pub fn CT_Placeholder::to_element(self : CT_Placeholder) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtText from wml.xsd (§17).
+/// XSD complex type CT_SdtText — Part 1 §17.5.2.44 text (Plain Text
+/// Structured Document Tag). Carries one optional `@multiLine`
+/// (s:ST_OnOff §22.9.2.7) toggling whether the plain-text SDT can hold
+/// multiple paragraphs. No children.
 pub(all) struct CT_SdtText {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.7 @multiLine (s:ST_OnOff) — optional flag. `None` means the
+  /// attribute was omitted, in which case the SDT is single-line per
+  /// §17.5.2.44 prose.
+  multi_line : Bool?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SdtText — Part 1 §17.5.2.44. Decode the optional
+/// ST_OnOff `@multiLine` attribute.
 pub fn CT_SdtText::new(element : @xml.Element) -> CT_SdtText {
-  { element, }
+  let multi_line = wml_ct_chunk4_on_off(
+    wml_ct_chunk4_attr(element, "multiLine"),
+  )
+  { element, multi_line }
 }
 
 ///|
+/// XSD complex type CT_SdtText — Part 1 §17.5.2.44.
 pub fn CT_SdtText::parse(element : @xml.Element) -> CT_SdtText {
   CT_SdtText::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtText — return the preserved element for writers.
 pub fn CT_SdtText::to_element(self : CT_SdtText) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_DataBinding from wml.xsd (§17).
+/// XSD complex type CT_DataBinding — Part 1 §17.5.2.6 dataBinding (XML
+/// Mapping). Carries three attributes (all s:ST_String):
+/// `@prefixMappings` (optional XPath namespace prefix bindings),
+/// `@xpath` (required XPath expression locating the bound node) and
+/// `@storeItemID` (required identifier for the custom XML data store).
+/// No children.
 pub(all) struct CT_DataBinding {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.6 @prefixMappings (s:ST_String) — optional XPath namespace
+  /// prefix bindings (e.g. `xmlns:ns0='http://example/'`).
+  prefix_mappings : String?
+  /// §17.5.2.6 @xpath (s:ST_String) — required XPath expression locating
+  /// the bound node within the mapped custom XML data store.
+  xpath : String
+  /// §17.5.2.6 @storeItemID (s:ST_String) — required identifier for the
+  /// custom XML data store hosting the bound element.
+  store_item_id : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DataBinding::new(element : @xml.Element) -> CT_DataBinding {
-  { element, }
+/// XSD complex type CT_DataBinding — Part 1 §17.5.2.6. Decode the optional
+/// `@prefixMappings` and the required `@xpath` / `@storeItemID`.
+pub fn CT_DataBinding::new(
+  element : @xml.Element,
+) -> CT_DataBinding raise SchemaViolation {
+  let prefix_mappings = wml_ct_chunk4_attr(element, "prefixMappings")
+  let xpath = wml_ct_chunk4_required_attr(
+    element, "xpath", "CT_DataBinding", "Part 1 §17.5.2.6 s:ST_String",
+  )
+  let store_item_id = wml_ct_chunk4_required_attr(
+    element, "storeItemID", "CT_DataBinding", "Part 1 §17.5.2.6 s:ST_String",
+  )
+  { element, prefix_mappings, xpath, store_item_id }
 }
 
 ///|
-pub fn CT_DataBinding::parse(element : @xml.Element) -> CT_DataBinding {
+/// XSD complex type CT_DataBinding — Part 1 §17.5.2.6.
+pub fn CT_DataBinding::parse(
+  element : @xml.Element,
+) -> CT_DataBinding raise SchemaViolation {
   CT_DataBinding::new(element)
 }
 
 ///|
+/// XSD complex type CT_DataBinding — return the preserved element for writers.
 pub fn CT_DataBinding::to_element(self : CT_DataBinding) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtPr from wml.xsd (§17).
-pub(all) struct CT_SdtPr {
-  element : @xml.Element
+/// XSD complex type CT_SdtPr — Part 1 §17.5.2.38 sdtPr (Structured Document
+/// Tag Properties). The `xsd:choice minOccurs="0" maxOccurs="1"` at the
+/// tail of the sequence selects which SDT subtype carries auxiliary
+/// state. Each branch maps to a §17.5.2 element: `equation`/`picture`/
+/// `richText`/`citation`/`group`/`bibliography` (CT_Empty flags),
+/// `comboBox` (CT_SdtComboBox §17.5.2.5), `date` (CT_SdtDate §17.5.2.7),
+/// `docPartObj`/`docPartList` (CT_SdtDocPart §17.5.2.12/13),
+/// `dropDownList` (CT_SdtDropDownList §17.5.2.15) and `text`
+/// (CT_SdtText §17.5.2.44).
+pub(all) enum CT_SdtPrChoice {
+  /// §17.5.2.16 `<equation>` (CT_Empty) — equation SDT marker.
+  CT_SdtPrChoice_Equation(CT_Empty)
+  /// §17.5.2.5 `<comboBox>` (CT_SdtComboBox) — combo-box SDT properties.
+  CT_SdtPrChoice_ComboBox(CT_SdtComboBox)
+  /// §17.5.2.7 `<date>` (CT_SdtDate) — date-picker SDT properties.
+  CT_SdtPrChoice_Date(CT_SdtDate)
+  /// §17.5.2.13 `<docPartObj>` (CT_SdtDocPart) — built-in document part
+  /// SDT properties.
+  CT_SdtPrChoice_DocPartObj(CT_SdtDocPart)
+  /// §17.5.2.12 `<docPartList>` (CT_SdtDocPart) — gallery document part
+  /// SDT properties.
+  CT_SdtPrChoice_DocPartList(CT_SdtDocPart)
+  /// §17.5.2.15 `<dropDownList>` (CT_SdtDropDownList) — drop-down SDT
+  /// properties.
+  CT_SdtPrChoice_DropDownList(CT_SdtDropDownList)
+  /// §17.5.2.24 `<picture>` (CT_Empty) — picture SDT marker.
+  CT_SdtPrChoice_Picture(CT_Empty)
+  /// §17.5.2.26 `<richText>` (CT_Empty) — rich-text SDT marker.
+  CT_SdtPrChoice_RichText(CT_Empty)
+  /// §17.5.2.44 `<text>` (CT_SdtText) — plain-text SDT properties.
+  CT_SdtPrChoice_Text(CT_SdtText)
+  /// §17.5.2.4 `<citation>` (CT_Empty) — citation SDT marker.
+  CT_SdtPrChoice_Citation(CT_Empty)
+  /// §17.5.2.17 `<group>` (CT_Empty) — group SDT marker.
+  CT_SdtPrChoice_Group(CT_Empty)
+  /// §17.5.2.2 `<bibliography>` (CT_Empty) — bibliography SDT marker.
+  CT_SdtPrChoice_Bibliography(CT_Empty)
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SdtPr::new(element : @xml.Element) -> CT_SdtPr {
-  { element, }
+/// XSD complex type CT_SdtPr — Part 1 §17.5.2.38 sdtPr. The `xsd:sequence`
+/// hosts eleven leading optional children (rPr, alias, tag, id, lock,
+/// placeholder, temporary, showingPlcHdr, dataBinding, label, tabIndex)
+/// followed by the optional tail `xsd:choice` describing the SDT subtype.
+/// All children are optional per the schema; the typed projection
+/// captures each separately to keep ordering explicit.
+pub(all) struct CT_SdtPr {
+  /// §A.1 — source element kept for builder round-trip.
+  element : @xml.Element
+  /// §17.5.2.27 `<rPr>` (CT_RPr) — optional run properties applied to the
+  /// SDT contents while it is displayed.
+  r_pr : CT_RPr?
+  /// §17.5.2.1 `<alias>` (CT_String) — optional friendly name shown in
+  /// the SDT UI.
+  alias_ : CT_String?
+  /// §17.5.2.42 `<tag>` (CT_String) — optional programmatic tag.
+  tag : CT_String?
+  /// §17.5.2.18 `<id>` (CT_DecimalNumber) — optional unique identifier.
+  id : CT_DecimalNumber?
+  /// §17.5.2.23 `<lock>` (CT_Lock) — optional locking setting.
+  lock : CT_Lock?
+  /// §17.5.2.25 `<placeholder>` (CT_Placeholder) — optional placeholder
+  /// glossary entry reference.
+  placeholder : CT_Placeholder?
+  /// §17.5.2.43 `<temporary>` (CT_OnOff) — optional "remove when edited"
+  /// flag.
+  temporary : CT_OnOff?
+  /// §17.5.2.39 `<showingPlcHdr>` (CT_OnOff) — optional flag indicating
+  /// the SDT is currently displaying placeholder text.
+  showing_plc_hdr : CT_OnOff?
+  /// §17.5.2.6 `<dataBinding>` (CT_DataBinding) — optional XML data
+  /// binding.
+  data_binding : CT_DataBinding?
+  /// §17.5.2.19 `<label>` (CT_DecimalNumber) — optional UI label id.
+  label : CT_DecimalNumber?
+  /// §17.5.2.41 `<tabIndex>` (CT_UnsignedDecimalNumber) — optional
+  /// navigation order index.
+  tab_index : CT_UnsignedDecimalNumber?
+  /// `xsd:choice minOccurs="0" maxOccurs="1"` — optional SDT subtype
+  /// branch (see CT_SdtPrChoice).
+  choice : CT_SdtPrChoice?
+} derive(Eq, Debug)
+
+///|
+/// XSD complex type CT_SdtPr — Part 1 §17.5.2.38. Decode each of the eleven
+/// leading typed optionals and the tail `xsd:choice` SDT-subtype branch.
+pub fn CT_SdtPr::new(element : @xml.Element) -> CT_SdtPr raise SchemaViolation {
+  let r_pr = match wml_ct_chunk4_first_child(element, "rPr") {
+    Some(e) => Some(CT_RPr::new(e))
+    None => None
+  }
+  let alias_ = match wml_ct_chunk4_first_child(element, "alias") {
+    Some(e) => Some(CT_String::new(e))
+    None => None
+  }
+  let tag = match wml_ct_chunk4_first_child(element, "tag") {
+    Some(e) => Some(CT_String::new(e))
+    None => None
+  }
+  let id = match wml_ct_chunk4_first_child(element, "id") {
+    Some(e) => Some(CT_DecimalNumber::new(e))
+    None => None
+  }
+  let lock = match wml_ct_chunk4_first_child(element, "lock") {
+    Some(e) => Some(CT_Lock::new(e))
+    None => None
+  }
+  let placeholder = match wml_ct_chunk4_first_child(element, "placeholder") {
+    Some(e) => Some(CT_Placeholder::new(e))
+    None => None
+  }
+  let temporary = match wml_ct_chunk4_first_child(element, "temporary") {
+    Some(e) => Some(CT_OnOff::new(e))
+    None => None
+  }
+  let showing_plc_hdr = match
+    wml_ct_chunk4_first_child(element, "showingPlcHdr") {
+    Some(e) => Some(CT_OnOff::new(e))
+    None => None
+  }
+  let data_binding = match wml_ct_chunk4_first_child(element, "dataBinding") {
+    Some(e) => Some(CT_DataBinding::new(e))
+    None => None
+  }
+  let label = match wml_ct_chunk4_first_child(element, "label") {
+    Some(e) => Some(CT_DecimalNumber::new(e))
+    None => None
+  }
+  let tab_index = match wml_ct_chunk4_first_child(element, "tabIndex") {
+    Some(e) => Some(CT_UnsignedDecimalNumber::new(e))
+    None => None
+  }
+  let choice = match
+    wml_ct_chunk4_first_choice(element, [
+      "equation", "comboBox", "date", "docPartObj", "docPartList", "dropDownList",
+      "picture", "richText", "text", "citation", "group", "bibliography",
+    ]) {
+    Some((e, "equation")) => Some(CT_SdtPrChoice_Equation(CT_Empty::new(e)))
+    Some((e, "comboBox")) =>
+      Some(CT_SdtPrChoice_ComboBox(CT_SdtComboBox::new(e)))
+    Some((e, "date")) => Some(CT_SdtPrChoice_Date(CT_SdtDate::new(e)))
+    Some((e, "docPartObj")) =>
+      Some(CT_SdtPrChoice_DocPartObj(CT_SdtDocPart::new(e)))
+    Some((e, "docPartList")) =>
+      Some(CT_SdtPrChoice_DocPartList(CT_SdtDocPart::new(e)))
+    Some((e, "dropDownList")) =>
+      Some(CT_SdtPrChoice_DropDownList(CT_SdtDropDownList::new(e)))
+    Some((e, "picture")) => Some(CT_SdtPrChoice_Picture(CT_Empty::new(e)))
+    Some((e, "richText")) => Some(CT_SdtPrChoice_RichText(CT_Empty::new(e)))
+    Some((e, "text")) => Some(CT_SdtPrChoice_Text(CT_SdtText::new(e)))
+    Some((e, "citation")) => Some(CT_SdtPrChoice_Citation(CT_Empty::new(e)))
+    Some((e, "group")) => Some(CT_SdtPrChoice_Group(CT_Empty::new(e)))
+    Some((e, "bibliography")) =>
+      Some(CT_SdtPrChoice_Bibliography(CT_Empty::new(e)))
+    Some(_) => None
+    None => None
+  }
+  {
+    element,
+    r_pr,
+    alias_,
+    tag,
+    id,
+    lock,
+    placeholder,
+    temporary,
+    showing_plc_hdr,
+    data_binding,
+    label,
+    tab_index,
+    choice,
+  }
 }
 
 ///|
-pub fn CT_SdtPr::parse(element : @xml.Element) -> CT_SdtPr {
+/// XSD complex type CT_SdtPr — Part 1 §17.5.2.38.
+pub fn CT_SdtPr::parse(
+  element : @xml.Element,
+) -> CT_SdtPr raise SchemaViolation {
   CT_SdtPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtPr — return the preserved element for writers.
 pub fn CT_SdtPr::to_element(self : CT_SdtPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtEndPr from wml.xsd (§17).
+/// XSD complex type CT_SdtEndPr — Part 1 §17.5.2.37 sdtEndPr (Structured
+/// Document Tag End Character Properties). Wraps an `xsd:choice
+/// maxOccurs="unbounded"` whose only declared branch is `<rPr>`
+/// (CT_RPr §17.5.2.28). The schema therefore admits zero or more `<rPr>`
+/// children carrying run properties for the SDT end-character region.
+/// No attributes.
 pub(all) struct CT_SdtEndPr {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.28 `<rPr>`* (CT_RPr) — zero or more end-character run
+  /// property carriers in document order.
+  r_pr : Array[CT_RPr]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SdtEndPr::new(element : @xml.Element) -> CT_SdtEndPr {
-  { element, }
+/// XSD complex type CT_SdtEndPr — Part 1 §17.5.2.37. Decode each `<rPr>`
+/// child via CT_RPr::new, which raises SchemaViolation for malformed
+/// run-property children.
+pub fn CT_SdtEndPr::new(
+  element : @xml.Element,
+) -> CT_SdtEndPr raise SchemaViolation {
+  let r_pr_elements = wml_ct_chunk4_children(element, "rPr")
+  let r_pr : Array[CT_RPr] = []
+  for e in r_pr_elements {
+    r_pr.push(CT_RPr::new(e))
+  }
+  { element, r_pr }
 }
 
 ///|
-pub fn CT_SdtEndPr::parse(element : @xml.Element) -> CT_SdtEndPr {
+/// XSD complex type CT_SdtEndPr — Part 1 §17.5.2.37.
+pub fn CT_SdtEndPr::parse(
+  element : @xml.Element,
+) -> CT_SdtEndPr raise SchemaViolation {
   CT_SdtEndPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtEndPr — return the preserved element for writers.
 pub fn CT_SdtEndPr::to_element(self : CT_SdtEndPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_DirContentRun from wml.xsd (§17).
+/// XSD complex type CT_DirContentRun — Part 1 §17.3.2.8 dir (Bidirectional
+/// Embedding Level). Carries an optional `@val` (ST_Direction §17.18.12)
+/// selecting `ltr` / `rtl` for the embedded run, plus the group
+/// EG_PContent with `minOccurs="0" maxOccurs="unbounded"` carrying the
+/// nested paragraph content. The EG_PContent members are preserved as
+/// the typed model-group wrapper so paragraph-content readers can
+/// dispatch on the projected member set.
 pub(all) struct CT_DirContentRun {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.12 @val (ST_Direction) — optional embedded direction.
+  val : ST_Direction?
+  /// §17.3.2.8 EG_PContent* — zero or more nested paragraph-content
+  /// children preserved in document order via the model-group wrapper.
+  p_content : EG_PContent
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DirContentRun::new(element : @xml.Element) -> CT_DirContentRun {
-  { element, }
+/// XSD complex type CT_DirContentRun — Part 1 §17.3.2.8. Decode the optional
+/// `@val` (ST_Direction) and the EG_PContent* children.
+pub fn CT_DirContentRun::new(
+  element : @xml.Element,
+) -> CT_DirContentRun raise SchemaViolation {
+  let val = match wml_ct_chunk4_attr(element, "val") {
+    Some(text) => Some(ST_Direction::parse(text))
+    None => None
+  }
+  let p_content = EG_PContent::new(wml_ct_chunk4_element_children(element))
+  { element, val, p_content }
 }
 
 ///|
-pub fn CT_DirContentRun::parse(element : @xml.Element) -> CT_DirContentRun {
+/// XSD complex type CT_DirContentRun — Part 1 §17.3.2.8.
+pub fn CT_DirContentRun::parse(
+  element : @xml.Element,
+) -> CT_DirContentRun raise SchemaViolation {
   CT_DirContentRun::new(element)
 }
 
 ///|
+/// XSD complex type CT_DirContentRun — return the preserved element for
+/// writers.
 pub fn CT_DirContentRun::to_element(self : CT_DirContentRun) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_BdoContentRun from wml.xsd (§17).
+/// XSD complex type CT_BdoContentRun — Part 1 §17.3.2.3 bdo (Bidirectional
+/// Override). Carries an optional `@val` (ST_Direction §17.18.12)
+/// selecting `ltr` / `rtl` for the BDO override, plus the group
+/// EG_PContent with `minOccurs="0" maxOccurs="unbounded"` carrying the
+/// overridden paragraph content.
 pub(all) struct CT_BdoContentRun {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.12 @val (ST_Direction) — optional override direction.
+  val : ST_Direction?
+  /// §17.3.2.3 EG_PContent* — zero or more overridden paragraph-content
+  /// children preserved in document order via the model-group wrapper.
+  p_content : EG_PContent
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_BdoContentRun::new(element : @xml.Element) -> CT_BdoContentRun {
-  { element, }
+/// XSD complex type CT_BdoContentRun — Part 1 §17.3.2.3. Decode the optional
+/// `@val` (ST_Direction) and the EG_PContent* children.
+pub fn CT_BdoContentRun::new(
+  element : @xml.Element,
+) -> CT_BdoContentRun raise SchemaViolation {
+  let val = match wml_ct_chunk4_attr(element, "val") {
+    Some(text) => Some(ST_Direction::parse(text))
+    None => None
+  }
+  let p_content = EG_PContent::new(wml_ct_chunk4_element_children(element))
+  { element, val, p_content }
 }
 
 ///|
-pub fn CT_BdoContentRun::parse(element : @xml.Element) -> CT_BdoContentRun {
+/// XSD complex type CT_BdoContentRun — Part 1 §17.3.2.3.
+pub fn CT_BdoContentRun::parse(
+  element : @xml.Element,
+) -> CT_BdoContentRun raise SchemaViolation {
   CT_BdoContentRun::new(element)
 }
 
 ///|
+/// XSD complex type CT_BdoContentRun — return the preserved element for
+/// writers.
 pub fn CT_BdoContentRun::to_element(self : CT_BdoContentRun) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtContentRun from wml.xsd (§17).
+/// XSD complex type CT_SdtContentRun — Part 1 §17.5.2.36 sdtContent
+/// (Inline-Level Structured Document Tag Content). Wraps the group
+/// EG_PContent with `minOccurs="0" maxOccurs="unbounded"` carrying the
+/// SDT inline contents. No attributes.
 pub(all) struct CT_SdtContentRun {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.36 EG_PContent* — zero or more inline-content children
+  /// preserved in document order via the model-group wrapper.
+  p_content : EG_PContent
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SdtContentRun — Part 1 §17.5.2.36. Decode each
+/// EG_PContent member as a raw element child of the SDT content wrapper.
 pub fn CT_SdtContentRun::new(element : @xml.Element) -> CT_SdtContentRun {
-  { element, }
+  let p_content = EG_PContent::new(wml_ct_chunk4_element_children(element))
+  { element, p_content }
 }
 
 ///|
+/// XSD complex type CT_SdtContentRun — Part 1 §17.5.2.36.
 pub fn CT_SdtContentRun::parse(element : @xml.Element) -> CT_SdtContentRun {
   CT_SdtContentRun::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtContentRun — return the preserved element for
+/// writers.
 pub fn CT_SdtContentRun::to_element(self : CT_SdtContentRun) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtContentBlock from wml.xsd (§17).
+/// XSD complex type CT_SdtContentBlock — Part 1 §17.5.2.34 sdtContent
+/// (Block-Level Structured Document Tag Content). Wraps the group
+/// EG_ContentBlockContent with `minOccurs="0" maxOccurs="unbounded"`
+/// carrying nested custom-XML blocks, SDT blocks, paragraphs, tables
+/// and EG_RunLevelElts marks. No attributes.
 pub(all) struct CT_SdtContentBlock {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.34 EG_ContentBlockContent* — zero or more block-content
+  /// children preserved in document order via the model-group wrapper.
+  content_block_content : EG_ContentBlockContent
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SdtContentBlock — Part 1 §17.5.2.34. Decode each
+/// EG_ContentBlockContent member as a raw element child of the SDT
+/// content wrapper.
 pub fn CT_SdtContentBlock::new(element : @xml.Element) -> CT_SdtContentBlock {
-  { element, }
+  let content_block_content = EG_ContentBlockContent::new(
+    wml_ct_chunk4_element_children(element),
+  )
+  { element, content_block_content }
 }
 
 ///|
+/// XSD complex type CT_SdtContentBlock — Part 1 §17.5.2.34.
 pub fn CT_SdtContentBlock::parse(element : @xml.Element) -> CT_SdtContentBlock {
   CT_SdtContentBlock::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtContentBlock — return the preserved element for
+/// writers.
 pub fn CT_SdtContentBlock::to_element(
   self : CT_SdtContentBlock,
 ) -> @xml.Element {
@@ -7692,316 +8279,874 @@ pub fn CT_SdtContentBlock::to_element(
 }
 
 ///|
-/// XSD complex type CT_SdtContentRow from wml.xsd (§17).
+/// XSD complex type CT_SdtContentRow — Part 1 §17.5.2.35 sdtContent (Row-
+/// Level Structured Document Tag Content). Wraps the group
+/// EG_ContentRowContent with `minOccurs="0" maxOccurs="unbounded"`
+/// carrying nested rows, custom-XML rows, SDT rows and EG_RunLevelElts
+/// marks. No attributes.
 pub(all) struct CT_SdtContentRow {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.35 EG_ContentRowContent* — zero or more row-content children
+  /// preserved in document order via the model-group wrapper.
+  content_row_content : EG_ContentRowContent
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SdtContentRow — Part 1 §17.5.2.35. Decode each
+/// EG_ContentRowContent member as a raw element child of the SDT
+/// content wrapper.
 pub fn CT_SdtContentRow::new(element : @xml.Element) -> CT_SdtContentRow {
-  { element, }
+  let content_row_content = EG_ContentRowContent::new(
+    wml_ct_chunk4_element_children(element),
+  )
+  { element, content_row_content }
 }
 
 ///|
+/// XSD complex type CT_SdtContentRow — Part 1 §17.5.2.35.
 pub fn CT_SdtContentRow::parse(element : @xml.Element) -> CT_SdtContentRow {
   CT_SdtContentRow::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtContentRow — return the preserved element for
+/// writers.
 pub fn CT_SdtContentRow::to_element(self : CT_SdtContentRow) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtContentCell from wml.xsd (§17).
+/// XSD complex type CT_SdtContentCell — Part 1 §17.5.2.33 sdtContent
+/// (Cell-Level Structured Document Tag Content). Wraps the group
+/// EG_ContentCellContent with `minOccurs="0" maxOccurs="unbounded"`
+/// carrying nested table cells, custom-XML cells, SDT cells and
+/// EG_RunLevelElts marks. No attributes.
 pub(all) struct CT_SdtContentCell {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.33 EG_ContentCellContent* — zero or more cell-content
+  /// children preserved in document order via the model-group wrapper.
+  content_cell_content : EG_ContentCellContent
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SdtContentCell — Part 1 §17.5.2.33. Decode each
+/// EG_ContentCellContent member as a raw element child of the SDT
+/// content wrapper.
 pub fn CT_SdtContentCell::new(element : @xml.Element) -> CT_SdtContentCell {
-  { element, }
+  let content_cell_content = EG_ContentCellContent::new(
+    wml_ct_chunk4_element_children(element),
+  )
+  { element, content_cell_content }
 }
 
 ///|
+/// XSD complex type CT_SdtContentCell — Part 1 §17.5.2.33.
 pub fn CT_SdtContentCell::parse(element : @xml.Element) -> CT_SdtContentCell {
   CT_SdtContentCell::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtContentCell — return the preserved element for
+/// writers.
 pub fn CT_SdtContentCell::to_element(self : CT_SdtContentCell) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtBlock from wml.xsd (§17).
+/// XSD complex type CT_SdtBlock — Part 1 §17.5.2.29 sdt (Block-Level
+/// Structured Document Tag). Wraps an `xsd:sequence` of three optional
+/// children: `<sdtPr>` (CT_SdtPr §17.5.2.38), `<sdtEndPr>` (CT_SdtEndPr
+/// §17.5.2.37) and `<sdtContent>` (CT_SdtContentBlock §17.5.2.34). No
+/// attributes.
 pub(all) struct CT_SdtBlock {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.38 `<sdtPr>` (CT_SdtPr) — optional SDT properties.
+  sdt_pr : CT_SdtPr?
+  /// §17.5.2.37 `<sdtEndPr>` (CT_SdtEndPr) — optional end-character
+  /// run properties.
+  sdt_end_pr : CT_SdtEndPr?
+  /// §17.5.2.34 `<sdtContent>` (CT_SdtContentBlock) — optional content
+  /// payload using block-level model.
+  sdt_content : CT_SdtContentBlock?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SdtBlock::new(element : @xml.Element) -> CT_SdtBlock {
-  { element, }
+/// XSD complex type CT_SdtBlock — Part 1 §17.5.2.29. Decode the three
+/// optional typed children; CT_SdtPr / CT_SdtEndPr raise SchemaViolation
+/// for malformed nested content.
+pub fn CT_SdtBlock::new(
+  element : @xml.Element,
+) -> CT_SdtBlock raise SchemaViolation {
+  let sdt_pr = match wml_ct_chunk4_first_child(element, "sdtPr") {
+    Some(e) => Some(CT_SdtPr::new(e))
+    None => None
+  }
+  let sdt_end_pr = match wml_ct_chunk4_first_child(element, "sdtEndPr") {
+    Some(e) => Some(CT_SdtEndPr::new(e))
+    None => None
+  }
+  let sdt_content = match wml_ct_chunk4_first_child(element, "sdtContent") {
+    Some(e) => Some(CT_SdtContentBlock::new(e))
+    None => None
+  }
+  { element, sdt_pr, sdt_end_pr, sdt_content }
 }
 
 ///|
-pub fn CT_SdtBlock::parse(element : @xml.Element) -> CT_SdtBlock {
+/// XSD complex type CT_SdtBlock — Part 1 §17.5.2.29.
+pub fn CT_SdtBlock::parse(
+  element : @xml.Element,
+) -> CT_SdtBlock raise SchemaViolation {
   CT_SdtBlock::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtBlock — return the preserved element for writers.
 pub fn CT_SdtBlock::to_element(self : CT_SdtBlock) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtRun from wml.xsd (§17).
+/// XSD complex type CT_SdtRun — Part 1 §17.5.2.31 sdt (Inline-Level
+/// Structured Document Tag). Wraps an `xsd:sequence` of three optional
+/// children: `<sdtPr>` (CT_SdtPr §17.5.2.38), `<sdtEndPr>` (CT_SdtEndPr
+/// §17.5.2.37) and `<sdtContent>` (CT_SdtContentRun §17.5.2.36). No
+/// attributes.
 pub(all) struct CT_SdtRun {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.38 `<sdtPr>` (CT_SdtPr) — optional SDT properties.
+  sdt_pr : CT_SdtPr?
+  /// §17.5.2.37 `<sdtEndPr>` (CT_SdtEndPr) — optional end-character
+  /// run properties.
+  sdt_end_pr : CT_SdtEndPr?
+  /// §17.5.2.36 `<sdtContent>` (CT_SdtContentRun) — optional content
+  /// payload using inline-level model.
+  sdt_content : CT_SdtContentRun?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SdtRun::new(element : @xml.Element) -> CT_SdtRun {
-  { element, }
+/// XSD complex type CT_SdtRun — Part 1 §17.5.2.31. Decode the three optional
+/// typed children; CT_SdtPr / CT_SdtEndPr raise SchemaViolation for
+/// malformed nested content.
+pub fn CT_SdtRun::new(
+  element : @xml.Element,
+) -> CT_SdtRun raise SchemaViolation {
+  let sdt_pr = match wml_ct_chunk4_first_child(element, "sdtPr") {
+    Some(e) => Some(CT_SdtPr::new(e))
+    None => None
+  }
+  let sdt_end_pr = match wml_ct_chunk4_first_child(element, "sdtEndPr") {
+    Some(e) => Some(CT_SdtEndPr::new(e))
+    None => None
+  }
+  let sdt_content = match wml_ct_chunk4_first_child(element, "sdtContent") {
+    Some(e) => Some(CT_SdtContentRun::new(e))
+    None => None
+  }
+  { element, sdt_pr, sdt_end_pr, sdt_content }
 }
 
 ///|
-pub fn CT_SdtRun::parse(element : @xml.Element) -> CT_SdtRun {
+/// XSD complex type CT_SdtRun — Part 1 §17.5.2.31.
+pub fn CT_SdtRun::parse(
+  element : @xml.Element,
+) -> CT_SdtRun raise SchemaViolation {
   CT_SdtRun::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtRun — return the preserved element for writers.
 pub fn CT_SdtRun::to_element(self : CT_SdtRun) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtCell from wml.xsd (§17).
+/// XSD complex type CT_SdtCell — Part 1 §17.5.2.32 sdt (Cell-Level
+/// Structured Document Tag). Wraps an `xsd:sequence` of three optional
+/// children: `<sdtPr>` (CT_SdtPr §17.5.2.38), `<sdtEndPr>` (CT_SdtEndPr
+/// §17.5.2.37) and `<sdtContent>` (CT_SdtContentCell §17.5.2.33). No
+/// attributes.
 pub(all) struct CT_SdtCell {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.38 `<sdtPr>` (CT_SdtPr) — optional SDT properties.
+  sdt_pr : CT_SdtPr?
+  /// §17.5.2.37 `<sdtEndPr>` (CT_SdtEndPr) — optional end-character
+  /// run properties.
+  sdt_end_pr : CT_SdtEndPr?
+  /// §17.5.2.33 `<sdtContent>` (CT_SdtContentCell) — optional content
+  /// payload using cell-level model.
+  sdt_content : CT_SdtContentCell?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SdtCell::new(element : @xml.Element) -> CT_SdtCell {
-  { element, }
+/// XSD complex type CT_SdtCell — Part 1 §17.5.2.32. Decode the three
+/// optional typed children; CT_SdtPr / CT_SdtEndPr raise SchemaViolation
+/// for malformed nested content.
+pub fn CT_SdtCell::new(
+  element : @xml.Element,
+) -> CT_SdtCell raise SchemaViolation {
+  let sdt_pr = match wml_ct_chunk4_first_child(element, "sdtPr") {
+    Some(e) => Some(CT_SdtPr::new(e))
+    None => None
+  }
+  let sdt_end_pr = match wml_ct_chunk4_first_child(element, "sdtEndPr") {
+    Some(e) => Some(CT_SdtEndPr::new(e))
+    None => None
+  }
+  let sdt_content = match wml_ct_chunk4_first_child(element, "sdtContent") {
+    Some(e) => Some(CT_SdtContentCell::new(e))
+    None => None
+  }
+  { element, sdt_pr, sdt_end_pr, sdt_content }
 }
 
 ///|
-pub fn CT_SdtCell::parse(element : @xml.Element) -> CT_SdtCell {
+/// XSD complex type CT_SdtCell — Part 1 §17.5.2.32.
+pub fn CT_SdtCell::parse(
+  element : @xml.Element,
+) -> CT_SdtCell raise SchemaViolation {
   CT_SdtCell::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtCell — return the preserved element for writers.
 pub fn CT_SdtCell::to_element(self : CT_SdtCell) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SdtRow from wml.xsd (§17).
+/// XSD complex type CT_SdtRow — Part 1 §17.5.2.30 sdt (Row-Level Structured
+/// Document Tag). Wraps an `xsd:sequence` of three optional children:
+/// `<sdtPr>` (CT_SdtPr §17.5.2.38), `<sdtEndPr>` (CT_SdtEndPr §17.5.2.37)
+/// and `<sdtContent>` (CT_SdtContentRow §17.5.2.35). No attributes.
 pub(all) struct CT_SdtRow {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.2.38 `<sdtPr>` (CT_SdtPr) — optional SDT properties.
+  sdt_pr : CT_SdtPr?
+  /// §17.5.2.37 `<sdtEndPr>` (CT_SdtEndPr) — optional end-character
+  /// run properties.
+  sdt_end_pr : CT_SdtEndPr?
+  /// §17.5.2.35 `<sdtContent>` (CT_SdtContentRow) — optional content
+  /// payload using row-level model.
+  sdt_content : CT_SdtContentRow?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SdtRow::new(element : @xml.Element) -> CT_SdtRow {
-  { element, }
+/// XSD complex type CT_SdtRow — Part 1 §17.5.2.30. Decode the three
+/// optional typed children; CT_SdtPr / CT_SdtEndPr raise SchemaViolation
+/// for malformed nested content.
+pub fn CT_SdtRow::new(
+  element : @xml.Element,
+) -> CT_SdtRow raise SchemaViolation {
+  let sdt_pr = match wml_ct_chunk4_first_child(element, "sdtPr") {
+    Some(e) => Some(CT_SdtPr::new(e))
+    None => None
+  }
+  let sdt_end_pr = match wml_ct_chunk4_first_child(element, "sdtEndPr") {
+    Some(e) => Some(CT_SdtEndPr::new(e))
+    None => None
+  }
+  let sdt_content = match wml_ct_chunk4_first_child(element, "sdtContent") {
+    Some(e) => Some(CT_SdtContentRow::new(e))
+    None => None
+  }
+  { element, sdt_pr, sdt_end_pr, sdt_content }
 }
 
 ///|
-pub fn CT_SdtRow::parse(element : @xml.Element) -> CT_SdtRow {
+/// XSD complex type CT_SdtRow — Part 1 §17.5.2.30.
+pub fn CT_SdtRow::parse(
+  element : @xml.Element,
+) -> CT_SdtRow raise SchemaViolation {
   CT_SdtRow::new(element)
 }
 
 ///|
+/// XSD complex type CT_SdtRow — return the preserved element for writers.
 pub fn CT_SdtRow::to_element(self : CT_SdtRow) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Attr from wml.xsd (§17).
+/// XSD complex type CT_Attr — Part 1 §17.5.1.1 attr (Custom XML Attribute)
+/// and §17.5.1.2 attr (Smart Tag Property). Both reuse this type. Carries
+/// three attributes (all s:ST_String): `@uri` (optional namespace URI),
+/// `@name` (required custom-XML / smart-tag local name) and `@val`
+/// (required attribute value). No children.
 pub(all) struct CT_Attr {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.1.1/.2 @uri (s:ST_String) — optional namespace URI of the
+  /// custom-XML attribute or smart-tag property.
+  uri : String?
+  /// §17.5.1.1/.2 @name (s:ST_String) — required local name.
+  name : String
+  /// §17.5.1.1/.2 @val (s:ST_String) — required attribute value.
+  val : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Attr::new(element : @xml.Element) -> CT_Attr {
-  { element, }
+/// XSD complex type CT_Attr — Part 1 §17.5.1.1 / §17.5.1.2. Decode the
+/// optional `@uri` and the required `@name` / `@val` attributes.
+pub fn CT_Attr::new(element : @xml.Element) -> CT_Attr raise SchemaViolation {
+  let uri = wml_ct_chunk4_attr(element, "uri")
+  let name = wml_ct_chunk4_required_attr(
+    element, "name", "CT_Attr", "Part 1 §17.5.1.1 s:ST_String",
+  )
+  let val = wml_ct_chunk4_required_attr(
+    element, "val", "CT_Attr", "Part 1 §17.5.1.1 s:ST_String",
+  )
+  { element, uri, name, val }
 }
 
 ///|
-pub fn CT_Attr::parse(element : @xml.Element) -> CT_Attr {
+/// XSD complex type CT_Attr — Part 1 §17.5.1.1 / §17.5.1.2.
+pub fn CT_Attr::parse(element : @xml.Element) -> CT_Attr raise SchemaViolation {
   CT_Attr::new(element)
 }
 
 ///|
+/// XSD complex type CT_Attr — return the preserved element for writers.
 pub fn CT_Attr::to_element(self : CT_Attr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_CustomXmlRun from wml.xsd (§17).
+/// XSD complex type CT_CustomXmlRun — Part 1 §17.5.1.3 customXml (Inline-
+/// Level Custom XML Element). Wraps an `xsd:sequence` of optional
+/// `<customXmlPr>` (CT_CustomXmlPr §17.5.1.7) followed by EG_PContent
+/// with `minOccurs="0" maxOccurs="unbounded"` carrying the wrapped run
+/// content. Two attributes (both s:ST_String): `@uri` (optional custom
+/// XML namespace) and `@element` (required custom XML local name,
+/// s:ST_XmlName lexical form).
 pub(all) struct CT_CustomXmlRun {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.1.7 `<customXmlPr>` (CT_CustomXmlPr) — optional custom XML
+  /// element properties (placeholder text + attribute list).
+  custom_xml_pr : CT_CustomXmlPr?
+  /// §17.5.1.3 EG_PContent* — zero or more wrapped paragraph-content
+  /// children preserved in document order via the model-group wrapper.
+  p_content : EG_PContent
+  /// §17.5.1.3 @uri (s:ST_String) — optional custom XML namespace URI.
+  uri : String?
+  /// §17.5.1.3 @element (s:ST_XmlName lexical form) — required custom XML
+  /// local name. Preserved as raw string; XML name well-formedness is
+  /// enforced by the source XML parser.
+  element_name : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CustomXmlRun::new(element : @xml.Element) -> CT_CustomXmlRun {
-  { element, }
+/// XSD complex type CT_CustomXmlRun — Part 1 §17.5.1.3. Decode the optional
+/// `<customXmlPr>` and required `@element` attribute (raises when
+/// missing), preserving the rest of the children as EG_PContent.
+pub fn CT_CustomXmlRun::new(
+  element : @xml.Element,
+) -> CT_CustomXmlRun raise SchemaViolation {
+  let custom_xml_pr = match wml_ct_chunk4_first_child(element, "customXmlPr") {
+    Some(e) => Some(CT_CustomXmlPr::new(e))
+    None => None
+  }
+  let p_content_elements : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        if e.name.local_name != "customXmlPr" {
+          p_content_elements.push(e)
+        }
+      _ => ()
+    }
+  }
+  let p_content = EG_PContent::new(p_content_elements)
+  let uri = wml_ct_chunk4_attr(element, "uri")
+  let element_name = wml_ct_chunk4_required_attr(
+    element, "element", "CT_CustomXmlRun", "Part 1 §17.5.1.3 s:ST_XmlName",
+  )
+  { element, custom_xml_pr, p_content, uri, element_name }
 }
 
 ///|
-pub fn CT_CustomXmlRun::parse(element : @xml.Element) -> CT_CustomXmlRun {
+/// XSD complex type CT_CustomXmlRun — Part 1 §17.5.1.3.
+pub fn CT_CustomXmlRun::parse(
+  element : @xml.Element,
+) -> CT_CustomXmlRun raise SchemaViolation {
   CT_CustomXmlRun::new(element)
 }
 
 ///|
+/// XSD complex type CT_CustomXmlRun — return the preserved element for
+/// writers.
 pub fn CT_CustomXmlRun::to_element(self : CT_CustomXmlRun) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SmartTagRun from wml.xsd (§17).
+/// XSD complex type CT_SmartTagRun — Part 1 §17.5.1.9 smartTag (Inline-Level
+/// Smart Tag). Wraps an `xsd:sequence` of optional `<smartTagPr>`
+/// (CT_SmartTagPr §17.5.1.10) followed by EG_PContent with
+/// `minOccurs="0" maxOccurs="unbounded"` carrying the recognised run
+/// content. Two attributes (both s:ST_String): `@uri` (optional smart-
+/// tag namespace) and `@element` (required smart-tag local name,
+/// s:ST_XmlName lexical form).
 pub(all) struct CT_SmartTagRun {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.1.10 `<smartTagPr>` (CT_SmartTagPr) — optional smart-tag
+  /// properties (attribute list).
+  smart_tag_pr : CT_SmartTagPr?
+  /// §17.5.1.9 EG_PContent* — zero or more recognised paragraph-content
+  /// children preserved in document order via the model-group wrapper.
+  p_content : EG_PContent
+  /// §17.5.1.9 @uri (s:ST_String) — optional smart-tag namespace URI.
+  uri : String?
+  /// §17.5.1.9 @element (s:ST_XmlName lexical form) — required smart-tag
+  /// local name. Preserved as raw string; XML name well-formedness is
+  /// enforced by the source XML parser.
+  element_name : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SmartTagRun::new(element : @xml.Element) -> CT_SmartTagRun {
-  { element, }
+/// XSD complex type CT_SmartTagRun — Part 1 §17.5.1.9. Decode the optional
+/// `<smartTagPr>` and required `@element` attribute (raises when
+/// missing), preserving the rest of the children as EG_PContent.
+pub fn CT_SmartTagRun::new(
+  element : @xml.Element,
+) -> CT_SmartTagRun raise SchemaViolation {
+  let smart_tag_pr = match wml_ct_chunk4_first_child(element, "smartTagPr") {
+    Some(e) => Some(CT_SmartTagPr::new(e))
+    None => None
+  }
+  let p_content_elements : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        if e.name.local_name != "smartTagPr" {
+          p_content_elements.push(e)
+        }
+      _ => ()
+    }
+  }
+  let p_content = EG_PContent::new(p_content_elements)
+  let uri = wml_ct_chunk4_attr(element, "uri")
+  let element_name = wml_ct_chunk4_required_attr(
+    element, "element", "CT_SmartTagRun", "Part 1 §17.5.1.9 s:ST_XmlName",
+  )
+  { element, smart_tag_pr, p_content, uri, element_name }
 }
 
 ///|
-pub fn CT_SmartTagRun::parse(element : @xml.Element) -> CT_SmartTagRun {
+/// XSD complex type CT_SmartTagRun — Part 1 §17.5.1.9.
+pub fn CT_SmartTagRun::parse(
+  element : @xml.Element,
+) -> CT_SmartTagRun raise SchemaViolation {
   CT_SmartTagRun::new(element)
 }
 
 ///|
+/// XSD complex type CT_SmartTagRun — return the preserved element for
+/// writers.
 pub fn CT_SmartTagRun::to_element(self : CT_SmartTagRun) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_CustomXmlBlock from wml.xsd (§17).
+/// XSD complex type CT_CustomXmlBlock — Part 1 §17.5.1.6 customXml (Block-
+/// Level Custom XML Element). Wraps an `xsd:sequence` of optional
+/// `<customXmlPr>` (CT_CustomXmlPr §17.5.1.7) followed by
+/// EG_ContentBlockContent with `minOccurs="0" maxOccurs="unbounded"`
+/// carrying the wrapped block-level content. Two attributes (both
+/// s:ST_String): `@uri` (optional custom XML namespace) and `@element`
+/// (required custom XML local name, s:ST_XmlName lexical form).
 pub(all) struct CT_CustomXmlBlock {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.1.7 `<customXmlPr>` (CT_CustomXmlPr) — optional custom XML
+  /// element properties (placeholder + attribute list).
+  custom_xml_pr : CT_CustomXmlPr?
+  /// §17.5.1.6 EG_ContentBlockContent* — zero or more wrapped block-level
+  /// children preserved in document order via the model-group wrapper.
+  content_block_content : EG_ContentBlockContent
+  /// §17.5.1.6 @uri (s:ST_String) — optional custom XML namespace URI.
+  uri : String?
+  /// §17.5.1.6 @element (s:ST_XmlName lexical form) — required custom XML
+  /// local name.
+  element_name : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CustomXmlBlock::new(element : @xml.Element) -> CT_CustomXmlBlock {
-  { element, }
+/// XSD complex type CT_CustomXmlBlock — Part 1 §17.5.1.6. Decode the
+/// optional `<customXmlPr>`, the required `@element` attribute and
+/// every block-level child as EG_ContentBlockContent.
+pub fn CT_CustomXmlBlock::new(
+  element : @xml.Element,
+) -> CT_CustomXmlBlock raise SchemaViolation {
+  let custom_xml_pr = match wml_ct_chunk4_first_child(element, "customXmlPr") {
+    Some(e) => Some(CT_CustomXmlPr::new(e))
+    None => None
+  }
+  let content_elements : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        if e.name.local_name != "customXmlPr" {
+          content_elements.push(e)
+        }
+      _ => ()
+    }
+  }
+  let content_block_content = EG_ContentBlockContent::new(content_elements)
+  let uri = wml_ct_chunk4_attr(element, "uri")
+  let element_name = wml_ct_chunk4_required_attr(
+    element, "element", "CT_CustomXmlBlock", "Part 1 §17.5.1.6 s:ST_XmlName",
+  )
+  { element, custom_xml_pr, content_block_content, uri, element_name }
 }
 
 ///|
-pub fn CT_CustomXmlBlock::parse(element : @xml.Element) -> CT_CustomXmlBlock {
+/// XSD complex type CT_CustomXmlBlock — Part 1 §17.5.1.6.
+pub fn CT_CustomXmlBlock::parse(
+  element : @xml.Element,
+) -> CT_CustomXmlBlock raise SchemaViolation {
   CT_CustomXmlBlock::new(element)
 }
 
 ///|
+/// XSD complex type CT_CustomXmlBlock — return the preserved element for
+/// writers.
 pub fn CT_CustomXmlBlock::to_element(self : CT_CustomXmlBlock) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_CustomXmlPr from wml.xsd (§17).
+/// XSD complex type CT_CustomXmlPr — Part 1 §17.5.1.7 customXmlPr (Custom
+/// XML Element Properties). Wraps an `xsd:sequence` of an optional
+/// `<placeholder>` (CT_String §17.5.1.8 carrying the placeholder text in
+/// `@val`) followed by zero or more `<attr>` (CT_Attr §17.5.1.1) custom-
+/// XML attribute children. No attributes on the wrapper itself.
 pub(all) struct CT_CustomXmlPr {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.1.8 `<placeholder>` (CT_String) — optional placeholder text
+  /// surfaced when the custom-XML element is empty.
+  placeholder : CT_String?
+  /// §17.5.1.1 `<attr>`* (CT_Attr) — zero or more custom-XML attribute
+  /// declarations. Each carries the required `@name` / `@val` plus an
+  /// optional `@uri` validated by CT_Attr::new.
+  attr : Array[CT_Attr]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CustomXmlPr::new(element : @xml.Element) -> CT_CustomXmlPr {
-  { element, }
+/// XSD complex type CT_CustomXmlPr — Part 1 §17.5.1.7. Decode the optional
+/// `<placeholder>` and each `<attr>` (CT_Attr) child; CT_Attr::new
+/// raises SchemaViolation when a required `@name` / `@val` is missing.
+pub fn CT_CustomXmlPr::new(
+  element : @xml.Element,
+) -> CT_CustomXmlPr raise SchemaViolation {
+  let placeholder = match wml_ct_chunk4_first_child(element, "placeholder") {
+    Some(e) => Some(CT_String::new(e))
+    None => None
+  }
+  let attr_elements = wml_ct_chunk4_children(element, "attr")
+  let attr : Array[CT_Attr] = []
+  for e in attr_elements {
+    attr.push(CT_Attr::new(e))
+  }
+  { element, placeholder, attr }
 }
 
 ///|
-pub fn CT_CustomXmlPr::parse(element : @xml.Element) -> CT_CustomXmlPr {
+/// XSD complex type CT_CustomXmlPr — Part 1 §17.5.1.7.
+pub fn CT_CustomXmlPr::parse(
+  element : @xml.Element,
+) -> CT_CustomXmlPr raise SchemaViolation {
   CT_CustomXmlPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_CustomXmlPr — return the preserved element for
+/// writers.
 pub fn CT_CustomXmlPr::to_element(self : CT_CustomXmlPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_CustomXmlRow from wml.xsd (§17).
+/// XSD complex type CT_CustomXmlRow — Part 1 §17.5.1.5 customXml (Row-
+/// Level Custom XML Element). Wraps an `xsd:sequence` of optional
+/// `<customXmlPr>` (CT_CustomXmlPr §17.5.1.7) followed by
+/// EG_ContentRowContent with `minOccurs="0" maxOccurs="unbounded"`
+/// carrying the wrapped row-level content. Two attributes (both
+/// s:ST_String): `@uri` (optional custom XML namespace) and `@element`
+/// (required custom XML local name, s:ST_XmlName lexical form).
 pub(all) struct CT_CustomXmlRow {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.1.7 `<customXmlPr>` (CT_CustomXmlPr) — optional custom XML
+  /// element properties.
+  custom_xml_pr : CT_CustomXmlPr?
+  /// §17.5.1.5 EG_ContentRowContent* — zero or more wrapped row-level
+  /// children preserved in document order via the model-group wrapper.
+  content_row_content : EG_ContentRowContent
+  /// §17.5.1.5 @uri (s:ST_String) — optional custom XML namespace URI.
+  uri : String?
+  /// §17.5.1.5 @element (s:ST_XmlName lexical form) — required custom XML
+  /// local name.
+  element_name : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CustomXmlRow::new(element : @xml.Element) -> CT_CustomXmlRow {
-  { element, }
+/// XSD complex type CT_CustomXmlRow — Part 1 §17.5.1.5. Decode the optional
+/// `<customXmlPr>`, the required `@element` attribute and every row-level
+/// child as EG_ContentRowContent.
+pub fn CT_CustomXmlRow::new(
+  element : @xml.Element,
+) -> CT_CustomXmlRow raise SchemaViolation {
+  let custom_xml_pr = match wml_ct_chunk4_first_child(element, "customXmlPr") {
+    Some(e) => Some(CT_CustomXmlPr::new(e))
+    None => None
+  }
+  let content_elements : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        if e.name.local_name != "customXmlPr" {
+          content_elements.push(e)
+        }
+      _ => ()
+    }
+  }
+  let content_row_content = EG_ContentRowContent::new(content_elements)
+  let uri = wml_ct_chunk4_attr(element, "uri")
+  let element_name = wml_ct_chunk4_required_attr(
+    element, "element", "CT_CustomXmlRow", "Part 1 §17.5.1.5 s:ST_XmlName",
+  )
+  { element, custom_xml_pr, content_row_content, uri, element_name }
 }
 
 ///|
-pub fn CT_CustomXmlRow::parse(element : @xml.Element) -> CT_CustomXmlRow {
+/// XSD complex type CT_CustomXmlRow — Part 1 §17.5.1.5.
+pub fn CT_CustomXmlRow::parse(
+  element : @xml.Element,
+) -> CT_CustomXmlRow raise SchemaViolation {
   CT_CustomXmlRow::new(element)
 }
 
 ///|
+/// XSD complex type CT_CustomXmlRow — return the preserved element for
+/// writers.
 pub fn CT_CustomXmlRow::to_element(self : CT_CustomXmlRow) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_CustomXmlCell from wml.xsd (§17).
+/// XSD complex type CT_CustomXmlCell — Part 1 §17.5.1.4 customXml (Cell-
+/// Level Custom XML Element). Wraps an `xsd:sequence` of optional
+/// `<customXmlPr>` (CT_CustomXmlPr §17.5.1.7) followed by
+/// EG_ContentCellContent with `minOccurs="0" maxOccurs="unbounded"`
+/// carrying the wrapped cell-level content. Two attributes (both
+/// s:ST_String): `@uri` (optional custom XML namespace) and `@element`
+/// (required custom XML local name, s:ST_XmlName lexical form).
 pub(all) struct CT_CustomXmlCell {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.1.7 `<customXmlPr>` (CT_CustomXmlPr) — optional custom XML
+  /// element properties.
+  custom_xml_pr : CT_CustomXmlPr?
+  /// §17.5.1.4 EG_ContentCellContent* — zero or more wrapped cell-level
+  /// children preserved in document order via the model-group wrapper.
+  content_cell_content : EG_ContentCellContent
+  /// §17.5.1.4 @uri (s:ST_String) — optional custom XML namespace URI.
+  uri : String?
+  /// §17.5.1.4 @element (s:ST_XmlName lexical form) — required custom XML
+  /// local name.
+  element_name : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CustomXmlCell::new(element : @xml.Element) -> CT_CustomXmlCell {
-  { element, }
+/// XSD complex type CT_CustomXmlCell — Part 1 §17.5.1.4. Decode the optional
+/// `<customXmlPr>`, the required `@element` attribute and every cell-level
+/// child as EG_ContentCellContent.
+pub fn CT_CustomXmlCell::new(
+  element : @xml.Element,
+) -> CT_CustomXmlCell raise SchemaViolation {
+  let custom_xml_pr = match wml_ct_chunk4_first_child(element, "customXmlPr") {
+    Some(e) => Some(CT_CustomXmlPr::new(e))
+    None => None
+  }
+  let content_elements : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        if e.name.local_name != "customXmlPr" {
+          content_elements.push(e)
+        }
+      _ => ()
+    }
+  }
+  let content_cell_content = EG_ContentCellContent::new(content_elements)
+  let uri = wml_ct_chunk4_attr(element, "uri")
+  let element_name = wml_ct_chunk4_required_attr(
+    element, "element", "CT_CustomXmlCell", "Part 1 §17.5.1.4 s:ST_XmlName",
+  )
+  { element, custom_xml_pr, content_cell_content, uri, element_name }
 }
 
 ///|
-pub fn CT_CustomXmlCell::parse(element : @xml.Element) -> CT_CustomXmlCell {
+/// XSD complex type CT_CustomXmlCell — Part 1 §17.5.1.4.
+pub fn CT_CustomXmlCell::parse(
+  element : @xml.Element,
+) -> CT_CustomXmlCell raise SchemaViolation {
   CT_CustomXmlCell::new(element)
 }
 
 ///|
+/// XSD complex type CT_CustomXmlCell — return the preserved element for
+/// writers.
 pub fn CT_CustomXmlCell::to_element(self : CT_CustomXmlCell) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SmartTagPr from wml.xsd (§17).
+/// XSD complex type CT_SmartTagPr — Part 1 §17.5.1.10 smartTagPr (Smart Tag
+/// Properties). Wraps an `xsd:sequence` of zero or more `<attr>` (CT_Attr
+/// §17.5.1.2) smart-tag property children. No attributes on the wrapper.
 pub(all) struct CT_SmartTagPr {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.5.1.2 `<attr>`* (CT_Attr) — zero or more smart-tag properties.
+  /// Each carries the required `@name` / `@val` plus an optional `@uri`
+  /// validated by CT_Attr::new.
+  attr : Array[CT_Attr]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SmartTagPr::new(element : @xml.Element) -> CT_SmartTagPr {
-  { element, }
+/// XSD complex type CT_SmartTagPr — Part 1 §17.5.1.10. Decode each `<attr>`
+/// (CT_Attr) child; CT_Attr::new raises SchemaViolation when a required
+/// `@name` / `@val` is missing.
+pub fn CT_SmartTagPr::new(
+  element : @xml.Element,
+) -> CT_SmartTagPr raise SchemaViolation {
+  let attr_elements = wml_ct_chunk4_children(element, "attr")
+  let attr : Array[CT_Attr] = []
+  for e in attr_elements {
+    attr.push(CT_Attr::new(e))
+  }
+  { element, attr }
 }
 
 ///|
-pub fn CT_SmartTagPr::parse(element : @xml.Element) -> CT_SmartTagPr {
+/// XSD complex type CT_SmartTagPr — Part 1 §17.5.1.10.
+pub fn CT_SmartTagPr::parse(
+  element : @xml.Element,
+) -> CT_SmartTagPr raise SchemaViolation {
   CT_SmartTagPr::new(element)
 }
 
 ///|
+/// XSD complex type CT_SmartTagPr — return the preserved element for writers.
 pub fn CT_SmartTagPr::to_element(self : CT_SmartTagPr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_P from wml.xsd (§17).
+/// XSD complex type CT_P — Part 1 §17.3.1.22 p (Paragraph). Wraps an
+/// `xsd:sequence` of an optional `<pPr>` (CT_PPr §17.3.1.26) followed by
+/// the model group EG_PContent with `minOccurs="0" maxOccurs="unbounded"`
+/// carrying the paragraph's run / field / hyperlink / sub-doc content.
+/// Five optional revision-id attributes (all ST_LongHexNumber §17.18.50)
+/// stamp the source revision identifiers for the run-property snapshot,
+/// the run itself, the deletion mark, the paragraph properties and the
+/// default run, respectively. The EG_PContent members are preserved as
+/// the typed model-group wrapper so paragraph-content readers can
+/// dispatch on the projected member set.
 pub(all) struct CT_P {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.3.1.26 `<pPr>` (CT_PPr) — optional paragraph properties carrier.
+  p_pr : CT_PPr?
+  /// §17.3.1.22 EG_PContent* — zero or more paragraph-content children
+  /// preserved in document order via the model-group wrapper.
+  p_content : EG_PContent
+  /// §17.18.50 @rsidRPr (ST_LongHexNumber) — optional run-property
+  /// revision id, preserved verbatim as eight hex digits.
+  rsid_r_pr : ST_LongHexNumber?
+  /// §17.18.50 @rsidR (ST_LongHexNumber) — optional run revision id.
+  rsid_r : ST_LongHexNumber?
+  /// §17.18.50 @rsidDel (ST_LongHexNumber) — optional deletion revision id.
+  rsid_del : ST_LongHexNumber?
+  /// §17.18.50 @rsidP (ST_LongHexNumber) — optional paragraph-property
+  /// revision id.
+  rsid_p : ST_LongHexNumber?
+  /// §17.18.50 @rsidRDefault (ST_LongHexNumber) — optional default-run
+  /// revision id.
+  rsid_r_default : ST_LongHexNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_P::new(element : @xml.Element) -> CT_P {
-  { element, }
+/// XSD complex type CT_P — Part 1 §17.3.1.22. Decode the optional `<pPr>`,
+/// every other element child as EG_PContent and the five optional
+/// ST_LongHexNumber revision-id attributes.
+pub fn CT_P::new(element : @xml.Element) -> CT_P raise SchemaViolation {
+  let p_pr = match wml_ct_chunk4_first_child(element, "pPr") {
+    Some(e) => Some(CT_PPr::new(e))
+    None => None
+  }
+  let p_content_elements : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) =>
+        if e.name.local_name != "pPr" {
+          p_content_elements.push(e)
+        }
+      _ => ()
+    }
+  }
+  let p_content = EG_PContent::new(p_content_elements)
+  let rsid_r_pr = match wml_ct_chunk4_attr(element, "rsidRPr") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_r = match wml_ct_chunk4_attr(element, "rsidR") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_del = match wml_ct_chunk4_attr(element, "rsidDel") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_p = match wml_ct_chunk4_attr(element, "rsidP") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  let rsid_r_default = match wml_ct_chunk4_attr(element, "rsidRDefault") {
+    Some(text) => Some(ST_LongHexNumber::parse(text))
+    None => None
+  }
+  {
+    element,
+    p_pr,
+    p_content,
+    rsid_r_pr,
+    rsid_r,
+    rsid_del,
+    rsid_p,
+    rsid_r_default,
+  }
 }
 
 ///|
-pub fn CT_P::parse(element : @xml.Element) -> CT_P {
+/// XSD complex type CT_P — Part 1 §17.3.1.22.
+pub fn CT_P::parse(element : @xml.Element) -> CT_P raise SchemaViolation {
   CT_P::new(element)
 }
 
 ///|
+/// XSD complex type CT_P — return the preserved element for writers.
 pub fn CT_P::to_element(self : CT_P) -> @xml.Element {
   self.element
 }
@@ -8154,4 +9299,133 @@ fn wml_ct_chunk3_text_value(element : @xml.Element) -> String {
 /// Matches the namespace used for `r:id`, `r:bottomLeft`, `r:topLeft`, etc.
 fn wml_ct_chunk3_ns_r() -> String {
   "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+}
+
+// =============================================================================
+// WordprocessingML chunk4 typed-promotion helpers — wml.xsd §17 SDT, custom
+// XML, smart-tag, ruby, paragraph, body, comments and glossary-document
+// complex types listed in
+// `.indexion/plans/ct-typing/lists/wml/chunk4.txt`. Helper names are prefixed
+// `wml_ct_chunk4_` to stay disjoint from chunks 1/2/3 above so each chunk
+// owns its lookup utilities. WordprocessingML attributes use the `w`
+// namespace prefix at the wire level but the schema's local-name lookup is
+// what the wml.xsd grammar binds, so all helpers match by local name only.
+// =============================================================================
+
+///|
+/// First-attribute lookup by local name (chunk4).
+fn wml_ct_chunk4_attr(element : @xml.Element, local_name : String) -> String? {
+  for a in element.attributes {
+    if a.name.local_name == local_name {
+      return Some(a.value)
+    }
+  }
+  None
+}
+
+///|
+/// Required attribute lookup. Raises SchemaViolation with `CT_X/@foo`
+/// canonical anchor when the attribute is missing.
+fn wml_ct_chunk4_required_attr(
+  element : @xml.Element,
+  local_name : String,
+  type_name : String,
+  context : String,
+) -> String raise SchemaViolation {
+  match wml_ct_chunk4_attr(element, local_name) {
+    Some(v) => v
+    None =>
+      raise_schema_violation(
+        type_name,
+        local_name,
+        context + ": required attribute @" + local_name + " is missing",
+      )
+  }
+}
+
+///|
+/// Decode an optional ST_OnOff lexical token (§22.9.2.7) — chunk4 mirror of
+/// the chunk1/3 helpers. Returns `None` when the attribute is absent.
+fn wml_ct_chunk4_on_off(value : String?) -> Bool? {
+  match value {
+    Some("1") | Some("true") | Some("on") => Some(true)
+    Some("0") | Some("false") | Some("off") => Some(false)
+    Some(_) => Some(false)
+    None => None
+  }
+}
+
+///|
+/// First element child whose local name equals `local_name`. Used to read
+/// optional / required single-child elements per `xsd:sequence` ordering.
+fn wml_ct_chunk4_first_child(
+  element : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  for child in element.children {
+    match child {
+      @xml.Element(e) => if e.name.local_name == local_name { return Some(e) }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+/// All direct element children whose local name equals `local_name`,
+/// preserving document order. Used to read `maxOccurs="unbounded"` payloads.
+fn wml_ct_chunk4_children(
+  element : @xml.Element,
+  local_name : String,
+) -> Array[@xml.Element] {
+  let out : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => if e.name.local_name == local_name { out.push(e) }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
+/// First element child whose local name is one of `local_names`. Returns the
+/// matched element and the canonical local-name. Used for `xsd:choice`
+/// branches such as the CT_SdtPr equation/comboBox/date/... selector.
+fn wml_ct_chunk4_first_choice(
+  element : @xml.Element,
+  local_names : Array[String],
+) -> (@xml.Element, String)? {
+  for child in element.children {
+    match child {
+      @xml.Element(e) => {
+        let ln = e.name.local_name
+        for candidate in local_names {
+          if ln == candidate {
+            return Some((e, candidate))
+          }
+        }
+      }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+/// All direct element children of `element`, in document order. Used for
+/// CT types whose schema content is an `xsd:choice` over a model group
+/// (e.g. EG_PContent, EG_RubyContent, EG_ContentBlockContent) where the
+/// typed projection is owned by readers downstream of this CT.
+fn wml_ct_chunk4_element_children(
+  element : @xml.Element,
+) -> Array[@xml.Element] {
+  let out : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      @xml.Element(e) => out.push(e)
+      _ => ()
+    }
+  }
+  out
 }

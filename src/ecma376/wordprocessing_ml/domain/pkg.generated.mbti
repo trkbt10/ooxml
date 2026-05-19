@@ -12,7 +12,7 @@ pub fn anchor(@xml.Element) -> CT_Anchor
 
 pub let cnf_bit_count : Int
 
-pub fn comments(@xml.Element) -> CT_Comments
+pub fn comments(@xml.Element) -> CT_Comments raise SchemaViolation
 
 pub fn document(@xml.Element) -> CT_Document
 
@@ -126,9 +126,12 @@ pub fn CT_AnchorLock::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Attr {
   element : @xml.Element
+  uri : String?
+  name : String
+  val : String
 } derive(Eq, @debug.Debug)
-pub fn CT_Attr::new(@xml.Element) -> Self
-pub fn CT_Attr::parse(@xml.Element) -> Self
+pub fn CT_Attr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Attr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Attr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AutoCaption {
@@ -159,23 +162,28 @@ pub fn CT_Background::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Base64Binary {
   element : @xml.Element
+  val : String
 } derive(Eq, @debug.Debug)
-pub fn CT_Base64Binary::new(@xml.Element) -> Self
-pub fn CT_Base64Binary::parse(@xml.Element) -> Self
+pub fn CT_Base64Binary::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Base64Binary::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Base64Binary::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_BdoContentRun {
   element : @xml.Element
+  val : ST_Direction?
+  p_content : EG_PContent
 } derive(Eq, @debug.Debug)
-pub fn CT_BdoContentRun::new(@xml.Element) -> Self
-pub fn CT_BdoContentRun::parse(@xml.Element) -> Self
+pub fn CT_BdoContentRun::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_BdoContentRun::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_BdoContentRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Body {
   element : @xml.Element
+  block_level_elts : EG_BlockLevelElts
+  sect_pr : CT_SectPr?
 } derive(Eq, @debug.Debug)
-pub fn CT_Body::new(@xml.Element) -> Self
-pub fn CT_Body::parse(@xml.Element) -> Self
+pub fn CT_Body::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Body::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Body::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Bookmark {
@@ -247,6 +255,7 @@ pub fn CT_Br::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CalendarType {
   element : @xml.Element
+  val : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_CalendarType::new(@xml.Element) -> Self
 pub fn CT_CalendarType::parse(@xml.Element) -> Self
@@ -354,9 +363,10 @@ pub fn CT_Comment::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Comments {
   element : @xml.Element
+  comment : Array[CT_Comment]
 } derive(Eq, @debug.Debug)
-pub fn CT_Comments::new(@xml.Element) -> Self
-pub fn CT_Comments::parse(@xml.Element) -> Self
+pub fn CT_Comments::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Comments::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Comments::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Compat {
@@ -385,44 +395,65 @@ pub fn CT_Control::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomXmlBlock {
   element : @xml.Element
+  custom_xml_pr : CT_CustomXmlPr?
+  content_block_content : EG_ContentBlockContent
+  uri : String?
+  element_name : String
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomXmlBlock::new(@xml.Element) -> Self
-pub fn CT_CustomXmlBlock::parse(@xml.Element) -> Self
+pub fn CT_CustomXmlBlock::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CustomXmlBlock::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomXmlBlock::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomXmlCell {
   element : @xml.Element
+  custom_xml_pr : CT_CustomXmlPr?
+  content_cell_content : EG_ContentCellContent
+  uri : String?
+  element_name : String
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomXmlCell::new(@xml.Element) -> Self
-pub fn CT_CustomXmlCell::parse(@xml.Element) -> Self
+pub fn CT_CustomXmlCell::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CustomXmlCell::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomXmlCell::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomXmlPr {
   element : @xml.Element
+  placeholder : CT_String?
+  attr : Array[CT_Attr]
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomXmlPr::new(@xml.Element) -> Self
-pub fn CT_CustomXmlPr::parse(@xml.Element) -> Self
+pub fn CT_CustomXmlPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CustomXmlPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomXmlPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomXmlRow {
   element : @xml.Element
+  custom_xml_pr : CT_CustomXmlPr?
+  content_row_content : EG_ContentRowContent
+  uri : String?
+  element_name : String
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomXmlRow::new(@xml.Element) -> Self
-pub fn CT_CustomXmlRow::parse(@xml.Element) -> Self
+pub fn CT_CustomXmlRow::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CustomXmlRow::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomXmlRow::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomXmlRun {
   element : @xml.Element
+  custom_xml_pr : CT_CustomXmlPr?
+  p_content : EG_PContent
+  uri : String?
+  element_name : String
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomXmlRun::new(@xml.Element) -> Self
-pub fn CT_CustomXmlRun::parse(@xml.Element) -> Self
+pub fn CT_CustomXmlRun::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CustomXmlRun::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomXmlRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DataBinding {
   element : @xml.Element
+  prefix_mappings : String?
+  xpath : String
+  store_item_id : String
 } derive(Eq, @debug.Debug)
-pub fn CT_DataBinding::new(@xml.Element) -> Self
-pub fn CT_DataBinding::parse(@xml.Element) -> Self
+pub fn CT_DataBinding::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DataBinding::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DataBinding::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DecimalNumber {
@@ -443,9 +474,11 @@ pub fn CT_DecimalNumberOrPrecent::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DirContentRun {
   element : @xml.Element
+  val : ST_Direction?
+  p_content : EG_PContent
 } derive(Eq, @debug.Debug)
-pub fn CT_DirContentRun::new(@xml.Element) -> Self
-pub fn CT_DirContentRun::parse(@xml.Element) -> Self
+pub fn CT_DirContentRun::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DirContentRun::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DirContentRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Div {
@@ -495,16 +528,18 @@ pub fn CT_DocPart::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartBehavior {
   element : @xml.Element
+  val : ST_DocPartBehavior
 } derive(Eq, @debug.Debug)
-pub fn CT_DocPartBehavior::new(@xml.Element) -> Self
-pub fn CT_DocPartBehavior::parse(@xml.Element) -> Self
+pub fn CT_DocPartBehavior::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocPartBehavior::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocPartBehavior::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartBehaviors {
   element : @xml.Element
+  behavior : Array[CT_DocPartBehavior]
 } derive(Eq, @debug.Debug)
-pub fn CT_DocPartBehaviors::new(@xml.Element) -> Self
-pub fn CT_DocPartBehaviors::parse(@xml.Element) -> Self
+pub fn CT_DocPartBehaviors::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocPartBehaviors::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocPartBehaviors::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartCategory {
@@ -537,9 +572,10 @@ pub fn CT_DocPartPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartType {
   element : @xml.Element
+  val : ST_DocPartType
 } derive(Eq, @debug.Debug)
-pub fn CT_DocPartType::new(@xml.Element) -> Self
-pub fn CT_DocPartType::parse(@xml.Element) -> Self
+pub fn CT_DocPartType::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DocPartType::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DocPartType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DocPartTypes {
@@ -994,16 +1030,19 @@ pub fn CT_HdrFtrRef::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Headers {
   element : @xml.Element
+  header : Array[CT_String]
 } derive(Eq, @debug.Debug)
-pub fn CT_Headers::new(@xml.Element) -> Self
-pub fn CT_Headers::parse(@xml.Element) -> Self
+pub fn CT_Headers::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Headers::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Headers::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Height {
   element : @xml.Element
+  val : String?
+  h_rule : ST_HeightRule?
 } derive(Eq, @debug.Debug)
-pub fn CT_Height::new(@xml.Element) -> Self
-pub fn CT_Height::parse(@xml.Element) -> Self
+pub fn CT_Height::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Height::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Height::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Highlight {
@@ -1146,9 +1185,10 @@ pub fn CT_LinkedTextboxInformation::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Lock {
   element : @xml.Element
+  val : ST_Lock?
 } derive(Eq, @debug.Debug)
-pub fn CT_Lock::new(@xml.Element) -> Self
-pub fn CT_Lock::parse(@xml.Element) -> Self
+pub fn CT_Lock::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Lock::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Lock::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LongHexNumber {
@@ -1432,9 +1472,16 @@ pub fn CT_OptimizeForBrowser::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_P {
   element : @xml.Element
+  p_pr : CT_PPr?
+  p_content : EG_PContent
+  rsid_r_pr : ST_LongHexNumber?
+  rsid_r : ST_LongHexNumber?
+  rsid_del : ST_LongHexNumber?
+  rsid_p : ST_LongHexNumber?
+  rsid_r_default : ST_LongHexNumber?
 } derive(Eq, @debug.Debug)
-pub fn CT_P::new(@xml.Element) -> Self
-pub fn CT_P::parse(@xml.Element) -> Self
+pub fn CT_P::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_P::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_P::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PBdr {
@@ -1703,9 +1750,10 @@ pub fn CT_PixelsMeasure::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Placeholder {
   element : @xml.Element
+  doc_part : CT_String
 } derive(Eq, @debug.Debug)
-pub fn CT_Placeholder::new(@xml.Element) -> Self
-pub fn CT_Placeholder::parse(@xml.Element) -> Self
+pub fn CT_Placeholder::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Placeholder::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Placeholder::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PosH {
@@ -1824,9 +1872,12 @@ pub fn CT_Row::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Ruby {
   element : @xml.Element
+  ruby_pr : CT_RubyPr
+  rt : CT_RubyContent
+  ruby_base : CT_RubyContent
 } derive(Eq, @debug.Debug)
-pub fn CT_Ruby::new(@xml.Element) -> Self
-pub fn CT_Ruby::parse(@xml.Element) -> Self
+pub fn CT_Ruby::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Ruby::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Ruby::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RubyAlign {
@@ -1839,6 +1890,7 @@ pub fn CT_RubyAlign::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RubyContent {
   element : @xml.Element
+  ruby_content : EG_RubyContent
 } derive(Eq, @debug.Debug)
 pub fn CT_RubyContent::new(@xml.Element) -> Self
 pub fn CT_RubyContent::parse(@xml.Element) -> Self
@@ -1877,20 +1929,28 @@ pub fn CT_SaveThroughXslt::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtBlock {
   element : @xml.Element
+  sdt_pr : CT_SdtPr?
+  sdt_end_pr : CT_SdtEndPr?
+  sdt_content : CT_SdtContentBlock?
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtBlock::new(@xml.Element) -> Self
-pub fn CT_SdtBlock::parse(@xml.Element) -> Self
+pub fn CT_SdtBlock::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtBlock::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtBlock::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtCell {
   element : @xml.Element
+  sdt_pr : CT_SdtPr?
+  sdt_end_pr : CT_SdtEndPr?
+  sdt_content : CT_SdtContentCell?
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtCell::new(@xml.Element) -> Self
-pub fn CT_SdtCell::parse(@xml.Element) -> Self
+pub fn CT_SdtCell::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtCell::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtCell::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtComboBox {
   element : @xml.Element
+  list_item : Array[CT_SdtListItem]
+  last_value : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_SdtComboBox::new(@xml.Element) -> Self
 pub fn CT_SdtComboBox::parse(@xml.Element) -> Self
@@ -1898,6 +1958,7 @@ pub fn CT_SdtComboBox::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtContentBlock {
   element : @xml.Element
+  content_block_content : EG_ContentBlockContent
 } derive(Eq, @debug.Debug)
 pub fn CT_SdtContentBlock::new(@xml.Element) -> Self
 pub fn CT_SdtContentBlock::parse(@xml.Element) -> Self
@@ -1905,6 +1966,7 @@ pub fn CT_SdtContentBlock::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtContentCell {
   element : @xml.Element
+  content_cell_content : EG_ContentCellContent
 } derive(Eq, @debug.Debug)
 pub fn CT_SdtContentCell::new(@xml.Element) -> Self
 pub fn CT_SdtContentCell::parse(@xml.Element) -> Self
@@ -1912,6 +1974,7 @@ pub fn CT_SdtContentCell::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtContentRow {
   element : @xml.Element
+  content_row_content : EG_ContentRowContent
 } derive(Eq, @debug.Debug)
 pub fn CT_SdtContentRow::new(@xml.Element) -> Self
 pub fn CT_SdtContentRow::parse(@xml.Element) -> Self
@@ -1919,6 +1982,7 @@ pub fn CT_SdtContentRow::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtContentRun {
   element : @xml.Element
+  p_content : EG_PContent
 } derive(Eq, @debug.Debug)
 pub fn CT_SdtContentRun::new(@xml.Element) -> Self
 pub fn CT_SdtContentRun::parse(@xml.Element) -> Self
@@ -1926,27 +1990,38 @@ pub fn CT_SdtContentRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtDate {
   element : @xml.Element
+  date_format : CT_String?
+  lid : CT_Lang?
+  store_mapped_data_as : CT_SdtDateMappingType?
+  calendar : CT_CalendarType?
+  full_date : ST_DateTime?
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtDate::new(@xml.Element) -> Self
-pub fn CT_SdtDate::parse(@xml.Element) -> Self
+pub fn CT_SdtDate::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtDate::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtDate::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtDateMappingType {
   element : @xml.Element
+  val : ST_SdtDateMappingType?
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtDateMappingType::new(@xml.Element) -> Self
-pub fn CT_SdtDateMappingType::parse(@xml.Element) -> Self
+pub fn CT_SdtDateMappingType::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtDateMappingType::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtDateMappingType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtDocPart {
   element : @xml.Element
+  doc_part_gallery : CT_String?
+  doc_part_category : CT_String?
+  doc_part_unique : CT_OnOff?
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtDocPart::new(@xml.Element) -> Self
-pub fn CT_SdtDocPart::parse(@xml.Element) -> Self
+pub fn CT_SdtDocPart::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtDocPart::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtDocPart::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtDropDownList {
   element : @xml.Element
+  list_item : Array[CT_SdtListItem]
+  last_value : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_SdtDropDownList::new(@xml.Element) -> Self
 pub fn CT_SdtDropDownList::parse(@xml.Element) -> Self
@@ -1954,13 +2029,16 @@ pub fn CT_SdtDropDownList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtEndPr {
   element : @xml.Element
+  r_pr : Array[CT_RPr]
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtEndPr::new(@xml.Element) -> Self
-pub fn CT_SdtEndPr::parse(@xml.Element) -> Self
+pub fn CT_SdtEndPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtEndPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtEndPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtListItem {
   element : @xml.Element
+  display_text : String?
+  value : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_SdtListItem::new(@xml.Element) -> Self
 pub fn CT_SdtListItem::parse(@xml.Element) -> Self
@@ -1968,27 +2046,61 @@ pub fn CT_SdtListItem::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtPr {
   element : @xml.Element
+  r_pr : CT_RPr?
+  alias_ : CT_String?
+  tag : CT_String?
+  id : CT_DecimalNumber?
+  lock : CT_Lock?
+  placeholder : CT_Placeholder?
+  temporary : CT_OnOff?
+  showing_plc_hdr : CT_OnOff?
+  data_binding : CT_DataBinding?
+  label : CT_DecimalNumber?
+  tab_index : CT_UnsignedDecimalNumber?
+  choice : CT_SdtPrChoice?
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtPr::new(@xml.Element) -> Self
-pub fn CT_SdtPr::parse(@xml.Element) -> Self
+pub fn CT_SdtPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtPr::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_SdtPrChoice {
+  CT_SdtPrChoice_Equation(CT_Empty)
+  CT_SdtPrChoice_ComboBox(CT_SdtComboBox)
+  CT_SdtPrChoice_Date(CT_SdtDate)
+  CT_SdtPrChoice_DocPartObj(CT_SdtDocPart)
+  CT_SdtPrChoice_DocPartList(CT_SdtDocPart)
+  CT_SdtPrChoice_DropDownList(CT_SdtDropDownList)
+  CT_SdtPrChoice_Picture(CT_Empty)
+  CT_SdtPrChoice_RichText(CT_Empty)
+  CT_SdtPrChoice_Text(CT_SdtText)
+  CT_SdtPrChoice_Citation(CT_Empty)
+  CT_SdtPrChoice_Group(CT_Empty)
+  CT_SdtPrChoice_Bibliography(CT_Empty)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_SdtRow {
   element : @xml.Element
+  sdt_pr : CT_SdtPr?
+  sdt_end_pr : CT_SdtEndPr?
+  sdt_content : CT_SdtContentRow?
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtRow::new(@xml.Element) -> Self
-pub fn CT_SdtRow::parse(@xml.Element) -> Self
+pub fn CT_SdtRow::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtRow::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtRow::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtRun {
   element : @xml.Element
+  sdt_pr : CT_SdtPr?
+  sdt_end_pr : CT_SdtEndPr?
+  sdt_content : CT_SdtContentRun?
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtRun::new(@xml.Element) -> Self
-pub fn CT_SdtRun::parse(@xml.Element) -> Self
+pub fn CT_SdtRun::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtRun::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtText {
   element : @xml.Element
+  multi_line : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_SdtText::new(@xml.Element) -> Self
 pub fn CT_SdtText::parse(@xml.Element) -> Self
@@ -2099,20 +2211,28 @@ pub fn CT_SimpleField::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SmartTagPr {
   element : @xml.Element
+  attr : Array[CT_Attr]
 } derive(Eq, @debug.Debug)
-pub fn CT_SmartTagPr::new(@xml.Element) -> Self
-pub fn CT_SmartTagPr::parse(@xml.Element) -> Self
+pub fn CT_SmartTagPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SmartTagPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SmartTagPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SmartTagRun {
   element : @xml.Element
+  smart_tag_pr : CT_SmartTagPr?
+  p_content : EG_PContent
+  uri : String?
+  element_name : String
 } derive(Eq, @debug.Debug)
-pub fn CT_SmartTagRun::new(@xml.Element) -> Self
-pub fn CT_SmartTagRun::parse(@xml.Element) -> Self
+pub fn CT_SmartTagRun::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SmartTagRun::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SmartTagRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SmartTagType {
   element : @xml.Element
+  namespaceuri : String?
+  name : String?
+  url : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_SmartTagType::new(@xml.Element) -> Self
 pub fn CT_SmartTagType::parse(@xml.Element) -> Self

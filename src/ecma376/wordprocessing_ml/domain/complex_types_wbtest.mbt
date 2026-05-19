@@ -37,7 +37,7 @@ fn wml_test_element_with_val(local_name : String, val : String) -> @xml.Element 
 
 ///|
 test "WML complex type wrappers preserve source elements" {
-  let p = CT_P::parse(wml_test_element("p"))
+  let p = try! CT_P::parse(wml_test_element("p"))
   assert_eq(p.to_element().name.local_name, "p")
   let r = CT_R::parse(wml_test_element("r"))
   assert_eq(r.to_element().name.local_name, "r")

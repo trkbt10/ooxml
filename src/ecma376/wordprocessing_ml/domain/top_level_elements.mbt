@@ -5,8 +5,11 @@ pub fn recipients(element : @xml.Element) -> CT_Recipients {
 }
 
 ///|
-/// Construct top-level XSD element comments as CT_Comments (§17).
-pub fn comments(element : @xml.Element) -> CT_Comments {
+/// Construct top-level XSD element comments as CT_Comments (§17.13.4.6).
+/// Decoding the children may raise `SchemaViolation` when a required
+/// `<comment>` `@id` / `@author` attribute is missing or malformed (per
+/// the CT_Comment §17.13.4.2 contract).
+pub fn comments(element : @xml.Element) -> CT_Comments raise SchemaViolation {
   CT_Comments::new(element)
 }
 
