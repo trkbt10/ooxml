@@ -4,7 +4,7 @@ pub fn read_colors_def(bytes : Bytes) -> ColorsDef raise {
   let root = @xml.parse(bytes).root
   require_local(root, "colorsDef", "colorsDef")
   validate_diagram_element(root)
-  { element: root }
+  CT_ColorTransform::new(root)
 }
 
 ///|
@@ -13,7 +13,7 @@ pub fn read_colors_def_hdr(bytes : Bytes) -> ColorsDefHdr raise {
   let root = @xml.parse(bytes).root
   require_local(root, "colorsDefHdr", "colorsDefHdr")
   validate_diagram_element(root)
-  { element: root }
+  CT_ColorTransformHeader::new(root)
 }
 
 ///|
@@ -22,7 +22,7 @@ pub fn read_colors_def_hdr_lst(bytes : Bytes) -> ColorsDefHdrLst raise {
   let root = @xml.parse(bytes).root
   require_local(root, "colorsDefHdrLst", "colorsDefHdrLst")
   validate_diagram_element(root)
-  { element: root }
+  CT_ColorTransformHeaderLst::new(root)
 }
 
 ///|
@@ -31,7 +31,7 @@ pub fn read_data_model(bytes : Bytes) -> DataModel raise {
   let root = @xml.parse(bytes).root
   require_local(root, "dataModel", "dataModel")
   validate_diagram_element(root)
-  { element: root }
+  CT_DataModel::new(root)
 }
 
 ///|
@@ -40,7 +40,7 @@ pub fn read_layout_def(bytes : Bytes) -> LayoutDef raise {
   let root = @xml.parse(bytes).root
   require_local(root, "layoutDef", "layoutDef")
   validate_diagram_element(root)
-  { element: root }
+  CT_DiagramDefinition::new(root)
 }
 
 ///|
@@ -49,7 +49,7 @@ pub fn read_layout_def_hdr(bytes : Bytes) -> LayoutDefHdr raise {
   let root = @xml.parse(bytes).root
   require_local(root, "layoutDefHdr", "layoutDefHdr")
   validate_diagram_element(root)
-  { element: root }
+  CT_DiagramDefinitionHeader::new(root)
 }
 
 ///|
@@ -58,7 +58,7 @@ pub fn read_layout_def_hdr_lst(bytes : Bytes) -> LayoutDefHdrLst raise {
   let root = @xml.parse(bytes).root
   require_local(root, "layoutDefHdrLst", "layoutDefHdrLst")
   validate_diagram_element(root)
-  { element: root }
+  CT_DiagramDefinitionHeaderLst::new(root)
 }
 
 ///|
@@ -67,7 +67,7 @@ pub fn read_rel_ids(bytes : Bytes) -> RelIds raise {
   let root = @xml.parse(bytes).root
   require_local(root, "relIds", "relIds")
   validate_diagram_element(root)
-  { element: root }
+  CT_RelIds::new(root)
 }
 
 ///|
@@ -76,7 +76,7 @@ pub fn read_style_def(bytes : Bytes) -> StyleDef raise {
   let root = @xml.parse(bytes).root
   require_local(root, "styleDef", "styleDef")
   validate_diagram_element(root)
-  { element: root }
+  CT_StyleDefinition::new(root)
 }
 
 ///|
@@ -85,7 +85,7 @@ pub fn read_style_def_hdr(bytes : Bytes) -> StyleDefHdr raise {
   let root = @xml.parse(bytes).root
   require_local(root, "styleDefHdr", "styleDefHdr")
   validate_diagram_element(root)
-  { element: root }
+  CT_StyleDefinitionHeader::new(root)
 }
 
 ///|
@@ -94,7 +94,7 @@ pub fn read_style_def_hdr_lst(bytes : Bytes) -> StyleDefHdrLst raise {
   let root = @xml.parse(bytes).root
   require_local(root, "styleDefHdrLst", "styleDefHdrLst")
   validate_diagram_element(root)
-  { element: root }
+  CT_StyleDefinitionHeaderLst::new(root)
 }
 
 ///|

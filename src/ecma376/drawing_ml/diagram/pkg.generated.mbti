@@ -13,35 +13,35 @@ pub fn diagram_part4_12_2_3_diagram_colors_part_part_1_14_2_3_section_name() -> 
 
 pub fn new_ag_iterator_attributes() -> AG_IteratorAttributes
 
-pub fn new_colors_def(@xml.Element) -> CT_ColorTransform
+pub fn new_colors_def(@xml.Element) -> CT_ColorTransform raise SchemaViolation
 
-pub fn new_colors_def_hdr(@xml.Element) -> CT_ColorTransformHeader
+pub fn new_colors_def_hdr(@xml.Element) -> CT_ColorTransformHeader raise SchemaViolation
 
-pub fn new_colors_def_hdr_lst(@xml.Element) -> CT_ColorTransformHeaderLst
+pub fn new_colors_def_hdr_lst(@xml.Element) -> CT_ColorTransformHeaderLst raise SchemaViolation
 
-pub fn new_ct_adj(@xml.Element) -> CT_Adj
+pub fn new_ct_adj(@xml.Element) -> CT_Adj raise SchemaViolation
 
-pub fn new_ct_cxn(@xml.Element) -> CT_Cxn
+pub fn new_ct_cxn(@xml.Element) -> CT_Cxn raise SchemaViolation
 
-pub fn new_ct_pt(@xml.Element) -> CT_Pt
+pub fn new_ct_pt(@xml.Element) -> CT_Pt raise SchemaViolation
 
-pub fn new_ct_when(@xml.Element) -> CT_When
+pub fn new_ct_when(@xml.Element) -> CT_When raise SchemaViolation
 
-pub fn new_data_model(@xml.Element) -> CT_DataModel
+pub fn new_data_model(@xml.Element) -> CT_DataModel raise SchemaViolation
 
-pub fn new_layout_def(@xml.Element) -> CT_DiagramDefinition
+pub fn new_layout_def(@xml.Element) -> CT_DiagramDefinition raise SchemaViolation
 
-pub fn new_layout_def_hdr(@xml.Element) -> CT_DiagramDefinitionHeader
+pub fn new_layout_def_hdr(@xml.Element) -> CT_DiagramDefinitionHeader raise SchemaViolation
 
-pub fn new_layout_def_hdr_lst(@xml.Element) -> CT_DiagramDefinitionHeaderLst
+pub fn new_layout_def_hdr_lst(@xml.Element) -> CT_DiagramDefinitionHeaderLst raise SchemaViolation
 
-pub fn new_rel_ids(@xml.Element) -> CT_RelIds
+pub fn new_rel_ids(@xml.Element) -> CT_RelIds raise SchemaViolation
 
-pub fn new_style_def(@xml.Element) -> CT_StyleDefinition
+pub fn new_style_def(@xml.Element) -> CT_StyleDefinition raise SchemaViolation
 
-pub fn new_style_def_hdr(@xml.Element) -> CT_StyleDefinitionHeader
+pub fn new_style_def_hdr(@xml.Element) -> CT_StyleDefinitionHeader raise SchemaViolation
 
-pub fn new_style_def_hdr_lst(@xml.Element) -> CT_StyleDefinitionHeaderLst
+pub fn new_style_def_hdr_lst(@xml.Element) -> CT_StyleDefinitionHeaderLst raise SchemaViolation
 
 pub fn package_name() -> String
 
@@ -124,310 +124,642 @@ pub(all) struct AG_IteratorAttributes {
 pub fn AG_IteratorAttributes::empty() -> Self
 
 pub(all) struct CT_Adj {
+  idx : ST_Index1
+  val : Double
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Adj::idx(Self) -> String?
-pub fn CT_Adj::new(@xml.Element) -> Self
+pub fn CT_Adj::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Adj::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AdjLst {
+  adj : Array[CT_Adj]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AdjLst::new(@xml.Element) -> Self
+pub fn CT_AdjLst::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AdjLst::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Algorithm {
+  type_ : ST_AlgorithmType
+  rev : UInt
+  param : Array[CT_Parameter]
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Algorithm::new(@xml.Element) -> Self
+pub fn CT_Algorithm::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Algorithm::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AnimLvl {
+  val : ST_AnimLvlStr
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AnimLvl::new(@xml.Element) -> Self
+pub fn CT_AnimLvl::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AnimLvl::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_AnimOne {
+  val : ST_AnimOneStr
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_AnimOne::new(@xml.Element) -> Self
+pub fn CT_AnimOne::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_AnimOne::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_BulletEnabled {
+  val : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_BulletEnabled::new(@xml.Element) -> Self
+pub fn CT_BulletEnabled::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_BulletEnabled::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CTCategories {
+  cat : Array[CT_CTCategory]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_CTCategories::new(@xml.Element) -> Self
+pub fn CT_CTCategories::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CTCategories::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CTCategory {
+  type_ : String
+  pri : UInt
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_CTCategory::new(@xml.Element) -> Self
+pub fn CT_CTCategory::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CTCategory::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CTDescription {
+  lang : String
+  val : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_CTDescription::new(@xml.Element) -> Self
+pub fn CT_CTDescription::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CTDescription::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CTName {
+  lang : String
+  val : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_CTName::new(@xml.Element) -> Self
+pub fn CT_CTName::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CTName::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CTStyleLabel {
+  name : String
+  fill_clr_lst : CT_Colors?
+  lin_clr_lst : CT_Colors?
+  effect_clr_lst : CT_Colors?
+  tx_lin_clr_lst : CT_Colors?
+  tx_fill_clr_lst : CT_Colors?
+  tx_effect_clr_lst : CT_Colors?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_CTStyleLabel::new(@xml.Element) -> Self
+pub fn CT_CTStyleLabel::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CTStyleLabel::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Categories {
+  cat : Array[CT_Category]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Categories::new(@xml.Element) -> Self
+pub fn CT_Categories::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Categories::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Category {
+  type_ : String
+  pri : UInt
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Category::new(@xml.Element) -> Self
+pub fn CT_Category::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Category::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ChildMax {
+  val : ST_NodeCount
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ChildMax::new(@xml.Element) -> Self
+pub fn CT_ChildMax::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ChildMax::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ChildPref {
+  val : ST_NodeCount
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ChildPref::new(@xml.Element) -> Self
+pub fn CT_ChildPref::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ChildPref::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Choose {
+  name : String
+  if_ : Array[CT_When]
+  else_ : CT_Otherwise?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Choose::new(@xml.Element) -> Self
+pub fn CT_Choose::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Choose::to_element(Self) -> @xml.Element
 
 #alias(ColorsDef)
 pub(all) struct CT_ColorTransform {
+  unique_id : String
+  min_ver : String?
+  title : Array[CT_CTName]
+  desc : Array[CT_CTDescription]
+  cat_lst : CT_CTCategories?
+  style_lbl : Array[CT_CTStyleLabel]
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorTransform::new(@xml.Element) -> Self
+pub fn CT_ColorTransform::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorTransform::to_element(Self) -> @xml.Element
 
 #alias(ColorsDefHdr)
 pub(all) struct CT_ColorTransformHeader {
+  unique_id : String
+  min_ver : String?
+  res_id : Int
+  title : Array[CT_CTName]
+  desc : Array[CT_CTDescription]
+  cat_lst : CT_CTCategories?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorTransformHeader::new(@xml.Element) -> Self
+pub fn CT_ColorTransformHeader::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorTransformHeader::to_element(Self) -> @xml.Element
 
 #alias(ColorsDefHdrLst)
 pub(all) struct CT_ColorTransformHeaderLst {
+  colors_def_hdr : Array[CT_ColorTransformHeader]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorTransformHeaderLst::new(@xml.Element) -> Self
+pub fn CT_ColorTransformHeaderLst::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ColorTransformHeaderLst::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Colors {
+  meth : ST_ClrAppMethod
+  hue_dir : ST_HueDir
+  color_choices : Array[@xml.Element]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Colors::new(@xml.Element) -> Self
+pub fn CT_Colors::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Colors::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Constraint {
+  type_ : ST_ConstraintType
+  for_ : ST_ConstraintRelationship
+  for_name : String
+  pt_type : ST_ElementType
+  ref_type : ST_ConstraintType
+  ref_for : ST_ConstraintRelationship
+  ref_for_name : String
+  ref_pt_type : ST_ElementType
+  op : ST_BoolOperator
+  val : Double
+  fact : Double
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Constraint::new(@xml.Element) -> Self
+pub fn CT_Constraint::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Constraint::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Constraints {
+  constr : Array[CT_Constraint]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Constraints::new(@xml.Element) -> Self
+pub fn CT_Constraints::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Constraints::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Cxn {
+  model_id : ST_ModelId
+  type_ : ST_CxnType
+  src_id : ST_ModelId
+  dest_id : ST_ModelId
+  src_ord : UInt
+  dest_ord : UInt
+  par_trans_id : ST_ModelId
+  sib_trans_id : ST_ModelId
+  pres_id : String
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Cxn::model_id(Self) -> String?
-pub fn CT_Cxn::new(@xml.Element) -> Self
+pub fn CT_Cxn::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Cxn::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CxnList {
+  cxn : Array[CT_Cxn]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_CxnList::new(@xml.Element) -> Self
+pub fn CT_CxnList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_CxnList::to_element(Self) -> @xml.Element
 
 #alias(DataModel)
 pub(all) struct CT_DataModel {
+  pt_lst : CT_PtList
+  cxn_lst : CT_CxnList?
+  bg : @xml.Element?
+  whole : @xml.Element?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_DataModel::new(@xml.Element) -> Self
+pub fn CT_DataModel::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DataModel::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Description {
+  lang : String
+  val : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Description::new(@xml.Element) -> Self
+pub fn CT_Description::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Description::to_element(Self) -> @xml.Element
 
 #alias(LayoutDef)
 pub(all) struct CT_DiagramDefinition {
+  unique_id : String
+  min_ver : String?
+  def_style : String
+  title : Array[CT_Name]
+  desc : Array[CT_Description]
+  cat_lst : CT_Categories?
+  samp_data : CT_SampleData?
+  style_data : CT_SampleData?
+  clr_data : CT_SampleData?
+  layout_node : Array[CT_LayoutNode]
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_DiagramDefinition::new(@xml.Element) -> Self
+pub fn CT_DiagramDefinition::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DiagramDefinition::to_element(Self) -> @xml.Element
 
 #alias(LayoutDefHdr)
 pub(all) struct CT_DiagramDefinitionHeader {
+  unique_id : String
+  min_ver : String?
+  def_style : String
+  res_id : Int
+  title : Array[CT_Name]
+  desc : Array[CT_Description]
+  cat_lst : CT_Categories?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_DiagramDefinitionHeader::new(@xml.Element) -> Self
+pub fn CT_DiagramDefinitionHeader::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DiagramDefinitionHeader::to_element(Self) -> @xml.Element
 
 #alias(LayoutDefHdrLst)
 pub(all) struct CT_DiagramDefinitionHeaderLst {
+  layout_def_hdr : Array[CT_DiagramDefinitionHeader]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_DiagramDefinitionHeaderLst::new(@xml.Element) -> Self
+pub fn CT_DiagramDefinitionHeaderLst::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DiagramDefinitionHeaderLst::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Direction {
+  val : ST_Direction
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Direction::new(@xml.Element) -> Self
+pub fn CT_Direction::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Direction::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ElemPropSet {
+  pres_assoc_id : ST_ModelId?
+  pres_name : String?
+  pres_style_lbl : String?
+  pres_style_idx : Int?
+  pres_style_cnt : Int?
+  lo_type_id : String?
+  lo_cat_id : String?
+  qs_type_id : String?
+  qs_cat_id : String?
+  cs_type_id : String?
+  cs_cat_id : String?
+  coherent3d_off : Bool?
+  phldr_t : String?
+  phldr : Bool?
+  cust_ang : Int?
+  cust_flip_vert : Bool?
+  cust_flip_hor : Bool?
+  cust_sz_x : Int?
+  cust_sz_y : Int?
+  cust_scale_x : ST_PrSetCustVal?
+  cust_scale_y : ST_PrSetCustVal?
+  cust_t : Bool?
+  cust_lin_fact_x : ST_PrSetCustVal?
+  cust_lin_fact_y : ST_PrSetCustVal?
+  cust_lin_fact_neighbor_x : ST_PrSetCustVal?
+  cust_lin_fact_neighbor_y : ST_PrSetCustVal?
+  cust_rad_scale_rad : ST_PrSetCustVal?
+  cust_rad_scale_inc : ST_PrSetCustVal?
+  pres_layout_vars : CT_LayoutVariablePropertySet?
+  style : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ElemPropSet::new(@xml.Element) -> Self
+pub fn CT_ElemPropSet::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ElemPropSet::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ForEach {
+  name : String
+  ref_ : String
+  axis : ST_AxisTypes
+  pt_type : ST_ElementTypes
+  hide_last_trans : ST_Booleans
+  st : ST_Ints
+  cnt : ST_UnsignedInts
+  step : ST_Ints
+  alg : CT_Algorithm?
+  shape : CT_Shape?
+  pres_of : CT_PresentationOf?
+  constr_lst : CT_Constraints?
+  rule_lst : CT_Rules?
+  for_each : Array[CT_ForEach]
+  layout_node : Array[CT_LayoutNode]
+  choose : Array[CT_Choose]
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ForEach::new(@xml.Element) -> Self
+pub fn CT_ForEach::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ForEach::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HierBranchStyle {
+  val : ST_HierBranchStyle
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_HierBranchStyle::new(@xml.Element) -> Self
+pub fn CT_HierBranchStyle::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_HierBranchStyle::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LayoutNode {
+  name : String
+  style_lbl : String
+  ch_order : ST_ChildOrderType
+  move_with : String
+  alg : CT_Algorithm?
+  shape : CT_Shape?
+  pres_of : CT_PresentationOf?
+  constr_lst : CT_Constraints?
+  rule_lst : CT_Rules?
+  var_lst : CT_LayoutVariablePropertySet?
+  for_each : Array[CT_ForEach]
+  layout_node : Array[CT_LayoutNode]
+  choose : Array[CT_Choose]
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_LayoutNode::new(@xml.Element) -> Self
+pub fn CT_LayoutNode::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_LayoutNode::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LayoutVariablePropertySet {
+  org_chart : CT_OrgChart?
+  ch_max : CT_ChildMax?
+  ch_pref : CT_ChildPref?
+  bullet_enabled : CT_BulletEnabled?
+  dir : CT_Direction?
+  hier_branch : CT_HierBranchStyle?
+  anim_one : CT_AnimOne?
+  anim_lvl : CT_AnimLvl?
+  resize_handles : CT_ResizeHandles?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_LayoutVariablePropertySet::new(@xml.Element) -> Self
+pub fn CT_LayoutVariablePropertySet::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_LayoutVariablePropertySet::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Name {
+  lang : String
+  val : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Name::new(@xml.Element) -> Self
-pub fn CT_Name::val(Self) -> String?
+pub fn CT_Name::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Name::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NumericRule {
+  type_ : ST_ConstraintType
+  for_ : ST_ConstraintRelationship
+  for_name : String
+  pt_type : ST_ElementType
+  val : Double?
+  fact : Double?
+  max : Double?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_NumericRule::new(@xml.Element) -> Self
+pub fn CT_NumericRule::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_NumericRule::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OrgChart {
+  val : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_OrgChart::new(@xml.Element) -> Self
+pub fn CT_OrgChart::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_OrgChart::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Otherwise {
+  name : String
+  alg : CT_Algorithm?
+  shape : CT_Shape?
+  pres_of : CT_PresentationOf?
+  constr_lst : CT_Constraints?
+  rule_lst : CT_Rules?
+  for_each : Array[CT_ForEach]
+  layout_node : Array[CT_LayoutNode]
+  choose : Array[CT_Choose]
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Otherwise::new(@xml.Element) -> Self
+pub fn CT_Otherwise::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Otherwise::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Parameter {
+  type_ : ST_ParameterId
+  val : ST_ParameterVal
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Parameter::new(@xml.Element) -> Self
+pub fn CT_Parameter::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Parameter::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PresentationOf {
+  axis : ST_AxisTypes
+  pt_type : ST_ElementTypes
+  hide_last_trans : ST_Booleans
+  st : ST_Ints
+  cnt : ST_UnsignedInts
+  step : ST_Ints
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PresentationOf::new(@xml.Element) -> Self
+pub fn CT_PresentationOf::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PresentationOf::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Pt {
+  model_id : ST_ModelId
+  type_ : ST_PtType
+  cxn_id : ST_ModelId
+  pr_set : CT_ElemPropSet?
+  sp_pr : @xml.Element?
+  t : @xml.Element?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Pt::model_id(Self) -> String?
-pub fn CT_Pt::new(@xml.Element) -> Self
+pub fn CT_Pt::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Pt::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PtList {
+  pt : Array[CT_Pt]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PtList::new(@xml.Element) -> Self
+pub fn CT_PtList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_PtList::to_element(Self) -> @xml.Element
 
 #alias(RelIds)
 pub(all) struct CT_RelIds {
+  dm : String
+  lo : String
+  qs : String
+  cs : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_RelIds::new(@xml.Element) -> Self
+pub fn CT_RelIds::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RelIds::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ResizeHandles {
+  val : ST_ResizeHandlesStr
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ResizeHandles::new(@xml.Element) -> Self
+pub fn CT_ResizeHandles::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ResizeHandles::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Rules {
+  rule : Array[CT_NumericRule]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Rules::new(@xml.Element) -> Self
+pub fn CT_Rules::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Rules::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SDCategories {
+  cat : Array[CT_SDCategory]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SDCategories::new(@xml.Element) -> Self
+pub fn CT_SDCategories::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SDCategories::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SDCategory {
+  type_ : String
+  pri : UInt
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SDCategory::new(@xml.Element) -> Self
+pub fn CT_SDCategory::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SDCategory::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SDDescription {
+  lang : String
+  val : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SDDescription::new(@xml.Element) -> Self
+pub fn CT_SDDescription::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SDDescription::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SDName {
+  lang : String
+  val : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SDName::new(@xml.Element) -> Self
+pub fn CT_SDName::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SDName::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SampleData {
+  use_def : Bool
+  data_model : CT_DataModel?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SampleData::new(@xml.Element) -> Self
+pub fn CT_SampleData::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SampleData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Shape {
+  rot : Double
+  type_ : ST_LayoutShapeType
+  blip : String?
+  z_order_off : Int
+  hide_geom : Bool
+  lk_tx_entry : Bool
+  blip_phldr : Bool
+  adj_lst : CT_AdjLst?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Shape::new(@xml.Element) -> Self
+pub fn CT_Shape::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Shape::to_element(Self) -> @xml.Element
 
 #alias(StyleDef)
 pub(all) struct CT_StyleDefinition {
+  unique_id : String
+  min_ver : String?
+  title : Array[CT_SDName]
+  desc : Array[CT_SDDescription]
+  cat_lst : CT_SDCategories?
+  scene3d : @xml.Element?
+  style_lbl : Array[CT_StyleLabel]
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_StyleDefinition::new(@xml.Element) -> Self
+pub fn CT_StyleDefinition::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_StyleDefinition::to_element(Self) -> @xml.Element
 
 #alias(StyleDefHdr)
 pub(all) struct CT_StyleDefinitionHeader {
+  unique_id : String
+  min_ver : String?
+  res_id : Int
+  title : Array[CT_SDName]
+  desc : Array[CT_SDDescription]
+  cat_lst : CT_SDCategories?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_StyleDefinitionHeader::new(@xml.Element) -> Self
+pub fn CT_StyleDefinitionHeader::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_StyleDefinitionHeader::to_element(Self) -> @xml.Element
 
 #alias(StyleDefHdrLst)
 pub(all) struct CT_StyleDefinitionHeaderLst {
+  style_def_hdr : Array[CT_StyleDefinitionHeader]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_StyleDefinitionHeaderLst::new(@xml.Element) -> Self
+pub fn CT_StyleDefinitionHeaderLst::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_StyleDefinitionHeaderLst::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_StyleLabel {
+  name : String
+  scene3d : @xml.Element?
+  sp3d : @xml.Element?
+  tx_pr : CT_TextProps?
+  style : @xml.Element?
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_StyleLabel::new(@xml.Element) -> Self
+pub fn CT_StyleLabel::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_StyleLabel::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextProps {
+  text3d : Array[@xml.Element]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextProps::new(@xml.Element) -> Self
+pub fn CT_TextProps::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextProps::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_When {
+  name : String
+  axis : ST_AxisTypes
+  pt_type : ST_ElementTypes
+  hide_last_trans : ST_Booleans
+  st : ST_Ints
+  cnt : ST_UnsignedInts
+  step : ST_Ints
+  func : ST_FunctionType
+  arg : ST_FunctionArgument?
+  op : ST_FunctionOperator
+  val : ST_FunctionValue
+  alg : CT_Algorithm?
+  shape : CT_Shape?
+  pres_of : CT_PresentationOf?
+  constr_lst : CT_Constraints?
+  rule_lst : CT_Rules?
+  for_each : Array[CT_ForEach]
+  layout_node : Array[CT_LayoutNode]
+  choose : Array[CT_Choose]
+  ext_lst : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_When::func(Self) -> String?
-pub fn CT_When::new(@xml.Element) -> Self
+pub fn CT_When::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_When::to_element(Self) -> @xml.Element
 
 pub(all) enum ST_AlgorithmType {
   AlgorithmTypeComposite

@@ -14,7 +14,7 @@ fn parse_root(source : String) -> @xml.Element {
 /// Build a typed `DiagramDefinition` from a layoutDef XML literal.
 fn definition(source : String) -> DiagramDefinition {
   let element = parse_root(source)
-  let wrapper = @domain.CT_DiagramDefinition::new(element)
+  let wrapper = try! @domain.CT_DiagramDefinition::new(element)
   try! decode_diagram_definition(wrapper)
 }
 
@@ -22,7 +22,7 @@ fn definition(source : String) -> DiagramDefinition {
 /// Build a typed `DataModel` from a dataModel XML literal.
 fn data_model(source : String) -> DataModel {
   let element = parse_root(source)
-  let wrapper = @domain.CT_DataModel::new(element)
+  let wrapper = try! @domain.CT_DataModel::new(element)
   try! decode_data_model(wrapper)
 }
 
@@ -396,7 +396,7 @@ test "§21.4.2.16 decode_diagram_definition reads layoutDef attributes" {
 ///|
 test "§21.4.2.16 decode_diagram_definition rejects missing layoutNode" {
   let element = parse_root("<layoutDef uniqueId=\"urn:test\"/>")
-  let wrapper = @domain.CT_DiagramDefinition::new(element)
+  let wrapper = try! @domain.CT_DiagramDefinition::new(element)
   let bad = try? decode_diagram_definition(wrapper)
   assert_true(bad is Err(_))
 }
