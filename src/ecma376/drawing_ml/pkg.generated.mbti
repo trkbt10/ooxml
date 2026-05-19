@@ -410,6 +410,36 @@ pub(all) struct CT_Angle {
 } derive(Eq, @debug.Debug)
 pub fn CT_Angle::new(@xml.Element) -> Self
 
+pub(all) struct CT_AnimationChartBuildProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AnimationChartBuildProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_AnimationChartElement {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AnimationChartElement::new(@xml.Element) -> Self
+
+pub(all) struct CT_AnimationDgmBuildProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AnimationDgmBuildProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_AnimationDgmElement {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AnimationDgmElement::new(@xml.Element) -> Self
+
+pub(all) struct CT_AnimationElementChoice {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AnimationElementChoice::new(@xml.Element) -> Self
+
+pub(all) struct CT_AnimationGraphicalObjectBuildProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_AnimationGraphicalObjectBuildProperties::new(@xml.Element) -> Self
+
 pub(all) struct CT_AudioCD {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -490,6 +520,11 @@ pub(all) struct CT_Cell3D {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Cell3D::new(@xml.Element) -> Self
+
+pub(all) struct CT_ClipboardStyleSheet {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_ClipboardStyleSheet::new(@xml.Element) -> Self
 
 pub(all) struct CT_Color {
   element : @xml.Element
@@ -772,6 +807,66 @@ pub(all) struct CT_GroupTransform2D {
 } derive(Eq, @debug.Debug)
 pub fn CT_GroupTransform2D::new(@xml.Element) -> Self
 
+pub(all) struct CT_GvmlConnector {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlConnector::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlConnectorNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlConnectorNonVisual::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlGraphicFrameNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlGraphicFrameNonVisual::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlGraphicalObjectFrame {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlGraphicalObjectFrame::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlGroupShape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlGroupShape::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlGroupShapeNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlGroupShapeNonVisual::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlPicture {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlPicture::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlPictureNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlPictureNonVisual::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlShape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlShape::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlShapeNonVisual {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlShapeNonVisual::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlTextShape {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlTextShape::new(@xml.Element) -> Self
+
+pub(all) struct CT_GvmlUseShapeRectangle {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_GvmlUseShapeRectangle::new(@xml.Element) -> Self
+
 pub(all) struct CT_HSLEffect {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -861,6 +956,11 @@ pub(all) struct CT_NonVisualConnectorProperties {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_NonVisualConnectorProperties::new(@xml.Element) -> Self
+
+pub(all) struct CT_NonVisualContentPartProperties {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_NonVisualContentPartProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_NonVisualDrawingProps {
   element : @xml.Element
@@ -1397,6 +1497,11 @@ pub(all) struct CT_VideoFile {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_VideoFile::new(@xml.Element) -> Self
+
+pub(all) struct CT_WholeE2oFormatting {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_WholeE2oFormatting::new(@xml.Element) -> Self
 
 pub(all) struct CT_XYAdjustHandle {
   element : @xml.Element
