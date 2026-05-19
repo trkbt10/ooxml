@@ -36,9 +36,11 @@ test "round-trip shape3d" {
 
 ///|
 test "round-trip style matrix" {
+  // Schema-compliant minimal Office fmtScheme: every list element must
+  // appear three or more times per dml-main.xsd lines 142..162.
   let value = read_style_matrix(
     bytes(
-      "<a:fmtScheme xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\" name=\"Office\"><a:fillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w=\"9525\"/></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/><a:scene3d><a:camera prst=\"orthographicFront\"/><a:lightRig rig=\"threePt\" dir=\"t\"/></a:scene3d><a:sp3d/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:noFill/></a:bgFillStyleLst></a:fmtScheme>",
+      "<a:fmtScheme xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\" name=\"Office\"><a:fillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w=\"9525\"/><a:ln w=\"19050\"/><a:ln w=\"25400\"/></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/><a:scene3d><a:camera prst=\"orthographicFront\"/><a:lightRig rig=\"threePt\" dir=\"t\"/></a:scene3d><a:sp3d/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:noFill/><a:noFill/><a:noFill/></a:bgFillStyleLst></a:fmtScheme>",
     ),
   )
   assert_eq(value.element.name.local_name, "fmtScheme")

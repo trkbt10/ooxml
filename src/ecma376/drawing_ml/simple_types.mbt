@@ -3221,6 +3221,738 @@ pub fn ST_LineWidth::to_int(self : ST_LineWidth) -> Int {
   self.emu
 }
 
+///|
+/// XSD simple type ST_BevelPresetType — Part 1 §20.1.10.9. Enumeration
+/// of preset 3-D bevel geometries used by `CT_Bevel/@prst` and
+/// derivative `bevelT` / `bevelB` element references.
+pub(all) enum ST_BevelPresetType {
+  /// §20.1.10.9 "relaxedInset"
+  BevelRelaxedInset
+  /// §20.1.10.9 "circle"
+  BevelCircle
+  /// §20.1.10.9 "slope"
+  BevelSlope
+  /// §20.1.10.9 "cross"
+  BevelCross
+  /// §20.1.10.9 "angle"
+  BevelAngle
+  /// §20.1.10.9 "softRound"
+  BevelSoftRound
+  /// §20.1.10.9 "convex"
+  BevelConvex
+  /// §20.1.10.9 "coolSlant"
+  BevelCoolSlant
+  /// §20.1.10.9 "divot"
+  BevelDivot
+  /// §20.1.10.9 "riblet"
+  BevelRiblet
+  /// §20.1.10.9 "hardEdge"
+  BevelHardEdge
+  /// §20.1.10.9 "artDeco"
+  BevelArtDeco
+} derive(Eq, Debug)
+
+///|
+pub fn ST_BevelPresetType::parse(
+  s : String,
+) -> ST_BevelPresetType raise SchemaViolation {
+  match s {
+    "relaxedInset" => BevelRelaxedInset
+    "circle" => BevelCircle
+    "slope" => BevelSlope
+    "cross" => BevelCross
+    "angle" => BevelAngle
+    "softRound" => BevelSoftRound
+    "convex" => BevelConvex
+    "coolSlant" => BevelCoolSlant
+    "divot" => BevelDivot
+    "riblet" => BevelRiblet
+    "hardEdge" => BevelHardEdge
+    "artDeco" => BevelArtDeco
+    _ => enum_violation("ST_BevelPresetType")
+  }
+}
+
+///|
+pub fn ST_BevelPresetType::new(
+  s : String,
+) -> ST_BevelPresetType raise SchemaViolation {
+  ST_BevelPresetType::parse(s)
+}
+
+///|
+pub fn ST_BevelPresetType::to_string(self : ST_BevelPresetType) -> String {
+  match self {
+    BevelRelaxedInset => "relaxedInset"
+    BevelCircle => "circle"
+    BevelSlope => "slope"
+    BevelCross => "cross"
+    BevelAngle => "angle"
+    BevelSoftRound => "softRound"
+    BevelConvex => "convex"
+    BevelCoolSlant => "coolSlant"
+    BevelDivot => "divot"
+    BevelRiblet => "riblet"
+    BevelHardEdge => "hardEdge"
+    BevelArtDeco => "artDeco"
+  }
+}
+
+///|
+/// XSD simple type ST_PresetMaterialType — Part 1 §20.1.10.50. Enumeration
+/// of 3-D material presets used by `CT_Shape3D/@prstMaterial` and
+/// `CT_Cell3D/@prstMaterial`.
+pub(all) enum ST_PresetMaterialType {
+  /// §20.1.10.50 "legacyMatte"
+  MaterialLegacyMatte
+  /// §20.1.10.50 "legacyPlastic"
+  MaterialLegacyPlastic
+  /// §20.1.10.50 "legacyMetal"
+  MaterialLegacyMetal
+  /// §20.1.10.50 "legacyWireframe"
+  MaterialLegacyWireframe
+  /// §20.1.10.50 "matte"
+  MaterialMatte
+  /// §20.1.10.50 "plastic"
+  MaterialPlastic
+  /// §20.1.10.50 "metal"
+  MaterialMetal
+  /// §20.1.10.50 "warmMatte"
+  MaterialWarmMatte
+  /// §20.1.10.50 "translucentPowder"
+  MaterialTranslucentPowder
+  /// §20.1.10.50 "powder"
+  MaterialPowder
+  /// §20.1.10.50 "dkEdge"
+  MaterialDkEdge
+  /// §20.1.10.50 "softEdge"
+  MaterialSoftEdge
+  /// §20.1.10.50 "clear"
+  MaterialClear
+  /// §20.1.10.50 "flat"
+  MaterialFlat
+  /// §20.1.10.50 "softmetal"
+  MaterialSoftMetal
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PresetMaterialType::parse(
+  s : String,
+) -> ST_PresetMaterialType raise SchemaViolation {
+  match s {
+    "legacyMatte" => MaterialLegacyMatte
+    "legacyPlastic" => MaterialLegacyPlastic
+    "legacyMetal" => MaterialLegacyMetal
+    "legacyWireframe" => MaterialLegacyWireframe
+    "matte" => MaterialMatte
+    "plastic" => MaterialPlastic
+    "metal" => MaterialMetal
+    "warmMatte" => MaterialWarmMatte
+    "translucentPowder" => MaterialTranslucentPowder
+    "powder" => MaterialPowder
+    "dkEdge" => MaterialDkEdge
+    "softEdge" => MaterialSoftEdge
+    "clear" => MaterialClear
+    "flat" => MaterialFlat
+    "softmetal" => MaterialSoftMetal
+    _ => enum_violation("ST_PresetMaterialType")
+  }
+}
+
+///|
+pub fn ST_PresetMaterialType::new(
+  s : String,
+) -> ST_PresetMaterialType raise SchemaViolation {
+  ST_PresetMaterialType::parse(s)
+}
+
+///|
+pub fn ST_PresetMaterialType::to_string(self : ST_PresetMaterialType) -> String {
+  match self {
+    MaterialLegacyMatte => "legacyMatte"
+    MaterialLegacyPlastic => "legacyPlastic"
+    MaterialLegacyMetal => "legacyMetal"
+    MaterialLegacyWireframe => "legacyWireframe"
+    MaterialMatte => "matte"
+    MaterialPlastic => "plastic"
+    MaterialMetal => "metal"
+    MaterialWarmMatte => "warmMatte"
+    MaterialTranslucentPowder => "translucentPowder"
+    MaterialPowder => "powder"
+    MaterialDkEdge => "dkEdge"
+    MaterialSoftEdge => "softEdge"
+    MaterialClear => "clear"
+    MaterialFlat => "flat"
+    MaterialSoftMetal => "softmetal"
+  }
+}
+
+///|
+/// XSD simple type ST_PresetCameraType — Part 1 §20.1.10.49. Enumeration
+/// of preset 3-D camera positions used by `CT_Camera/@prst`.
+pub(all) enum ST_PresetCameraType {
+  /// §20.1.10.49 "legacyObliqueTopLeft"
+  CameraLegacyObliqueTopLeft
+  /// §20.1.10.49 "legacyObliqueTop"
+  CameraLegacyObliqueTop
+  /// §20.1.10.49 "legacyObliqueTopRight"
+  CameraLegacyObliqueTopRight
+  /// §20.1.10.49 "legacyObliqueLeft"
+  CameraLegacyObliqueLeft
+  /// §20.1.10.49 "legacyObliqueFront"
+  CameraLegacyObliqueFront
+  /// §20.1.10.49 "legacyObliqueRight"
+  CameraLegacyObliqueRight
+  /// §20.1.10.49 "legacyObliqueBottomLeft"
+  CameraLegacyObliqueBottomLeft
+  /// §20.1.10.49 "legacyObliqueBottom"
+  CameraLegacyObliqueBottom
+  /// §20.1.10.49 "legacyObliqueBottomRight"
+  CameraLegacyObliqueBottomRight
+  /// §20.1.10.49 "legacyPerspectiveTopLeft"
+  CameraLegacyPerspectiveTopLeft
+  /// §20.1.10.49 "legacyPerspectiveTop"
+  CameraLegacyPerspectiveTop
+  /// §20.1.10.49 "legacyPerspectiveTopRight"
+  CameraLegacyPerspectiveTopRight
+  /// §20.1.10.49 "legacyPerspectiveLeft"
+  CameraLegacyPerspectiveLeft
+  /// §20.1.10.49 "legacyPerspectiveFront"
+  CameraLegacyPerspectiveFront
+  /// §20.1.10.49 "legacyPerspectiveRight"
+  CameraLegacyPerspectiveRight
+  /// §20.1.10.49 "legacyPerspectiveBottomLeft"
+  CameraLegacyPerspectiveBottomLeft
+  /// §20.1.10.49 "legacyPerspectiveBottom"
+  CameraLegacyPerspectiveBottom
+  /// §20.1.10.49 "legacyPerspectiveBottomRight"
+  CameraLegacyPerspectiveBottomRight
+  /// §20.1.10.49 "orthographicFront"
+  CameraOrthographicFront
+  /// §20.1.10.49 "isometricTopUp"
+  CameraIsometricTopUp
+  /// §20.1.10.49 "isometricTopDown"
+  CameraIsometricTopDown
+  /// §20.1.10.49 "isometricBottomUp"
+  CameraIsometricBottomUp
+  /// §20.1.10.49 "isometricBottomDown"
+  CameraIsometricBottomDown
+  /// §20.1.10.49 "isometricLeftUp"
+  CameraIsometricLeftUp
+  /// §20.1.10.49 "isometricLeftDown"
+  CameraIsometricLeftDown
+  /// §20.1.10.49 "isometricRightUp"
+  CameraIsometricRightUp
+  /// §20.1.10.49 "isometricRightDown"
+  CameraIsometricRightDown
+  /// §20.1.10.49 "isometricOffAxis1Left"
+  CameraIsometricOffAxis1Left
+  /// §20.1.10.49 "isometricOffAxis1Right"
+  CameraIsometricOffAxis1Right
+  /// §20.1.10.49 "isometricOffAxis1Top"
+  CameraIsometricOffAxis1Top
+  /// §20.1.10.49 "isometricOffAxis2Left"
+  CameraIsometricOffAxis2Left
+  /// §20.1.10.49 "isometricOffAxis2Right"
+  CameraIsometricOffAxis2Right
+  /// §20.1.10.49 "isometricOffAxis2Top"
+  CameraIsometricOffAxis2Top
+  /// §20.1.10.49 "isometricOffAxis3Left"
+  CameraIsometricOffAxis3Left
+  /// §20.1.10.49 "isometricOffAxis3Right"
+  CameraIsometricOffAxis3Right
+  /// §20.1.10.49 "isometricOffAxis3Bottom"
+  CameraIsometricOffAxis3Bottom
+  /// §20.1.10.49 "isometricOffAxis4Left"
+  CameraIsometricOffAxis4Left
+  /// §20.1.10.49 "isometricOffAxis4Right"
+  CameraIsometricOffAxis4Right
+  /// §20.1.10.49 "isometricOffAxis4Bottom"
+  CameraIsometricOffAxis4Bottom
+  /// §20.1.10.49 "obliqueTopLeft"
+  CameraObliqueTopLeft
+  /// §20.1.10.49 "obliqueTop"
+  CameraObliqueTop
+  /// §20.1.10.49 "obliqueTopRight"
+  CameraObliqueTopRight
+  /// §20.1.10.49 "obliqueLeft"
+  CameraObliqueLeft
+  /// §20.1.10.49 "obliqueRight"
+  CameraObliqueRight
+  /// §20.1.10.49 "obliqueBottomLeft"
+  CameraObliqueBottomLeft
+  /// §20.1.10.49 "obliqueBottom"
+  CameraObliqueBottom
+  /// §20.1.10.49 "obliqueBottomRight"
+  CameraObliqueBottomRight
+  /// §20.1.10.49 "perspectiveFront"
+  CameraPerspectiveFront
+  /// §20.1.10.49 "perspectiveLeft"
+  CameraPerspectiveLeft
+  /// §20.1.10.49 "perspectiveRight"
+  CameraPerspectiveRight
+  /// §20.1.10.49 "perspectiveAbove"
+  CameraPerspectiveAbove
+  /// §20.1.10.49 "perspectiveBelow"
+  CameraPerspectiveBelow
+  /// §20.1.10.49 "perspectiveAboveLeftFacing"
+  CameraPerspectiveAboveLeftFacing
+  /// §20.1.10.49 "perspectiveAboveRightFacing"
+  CameraPerspectiveAboveRightFacing
+  /// §20.1.10.49 "perspectiveContrastingLeftFacing"
+  CameraPerspectiveContrastingLeftFacing
+  /// §20.1.10.49 "perspectiveContrastingRightFacing"
+  CameraPerspectiveContrastingRightFacing
+  /// §20.1.10.49 "perspectiveHeroicLeftFacing"
+  CameraPerspectiveHeroicLeftFacing
+  /// §20.1.10.49 "perspectiveHeroicRightFacing"
+  CameraPerspectiveHeroicRightFacing
+  /// §20.1.10.49 "perspectiveHeroicExtremeLeftFacing"
+  CameraPerspectiveHeroicExtremeLeftFacing
+  /// §20.1.10.49 "perspectiveHeroicExtremeRightFacing"
+  CameraPerspectiveHeroicExtremeRightFacing
+  /// §20.1.10.49 "perspectiveRelaxed"
+  CameraPerspectiveRelaxed
+  /// §20.1.10.49 "perspectiveRelaxedModerately"
+  CameraPerspectiveRelaxedModerately
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PresetCameraType::parse(
+  s : String,
+) -> ST_PresetCameraType raise SchemaViolation {
+  match s {
+    "legacyObliqueTopLeft" => CameraLegacyObliqueTopLeft
+    "legacyObliqueTop" => CameraLegacyObliqueTop
+    "legacyObliqueTopRight" => CameraLegacyObliqueTopRight
+    "legacyObliqueLeft" => CameraLegacyObliqueLeft
+    "legacyObliqueFront" => CameraLegacyObliqueFront
+    "legacyObliqueRight" => CameraLegacyObliqueRight
+    "legacyObliqueBottomLeft" => CameraLegacyObliqueBottomLeft
+    "legacyObliqueBottom" => CameraLegacyObliqueBottom
+    "legacyObliqueBottomRight" => CameraLegacyObliqueBottomRight
+    "legacyPerspectiveTopLeft" => CameraLegacyPerspectiveTopLeft
+    "legacyPerspectiveTop" => CameraLegacyPerspectiveTop
+    "legacyPerspectiveTopRight" => CameraLegacyPerspectiveTopRight
+    "legacyPerspectiveLeft" => CameraLegacyPerspectiveLeft
+    "legacyPerspectiveFront" => CameraLegacyPerspectiveFront
+    "legacyPerspectiveRight" => CameraLegacyPerspectiveRight
+    "legacyPerspectiveBottomLeft" => CameraLegacyPerspectiveBottomLeft
+    "legacyPerspectiveBottom" => CameraLegacyPerspectiveBottom
+    "legacyPerspectiveBottomRight" => CameraLegacyPerspectiveBottomRight
+    "orthographicFront" => CameraOrthographicFront
+    "isometricTopUp" => CameraIsometricTopUp
+    "isometricTopDown" => CameraIsometricTopDown
+    "isometricBottomUp" => CameraIsometricBottomUp
+    "isometricBottomDown" => CameraIsometricBottomDown
+    "isometricLeftUp" => CameraIsometricLeftUp
+    "isometricLeftDown" => CameraIsometricLeftDown
+    "isometricRightUp" => CameraIsometricRightUp
+    "isometricRightDown" => CameraIsometricRightDown
+    "isometricOffAxis1Left" => CameraIsometricOffAxis1Left
+    "isometricOffAxis1Right" => CameraIsometricOffAxis1Right
+    "isometricOffAxis1Top" => CameraIsometricOffAxis1Top
+    "isometricOffAxis2Left" => CameraIsometricOffAxis2Left
+    "isometricOffAxis2Right" => CameraIsometricOffAxis2Right
+    "isometricOffAxis2Top" => CameraIsometricOffAxis2Top
+    "isometricOffAxis3Left" => CameraIsometricOffAxis3Left
+    "isometricOffAxis3Right" => CameraIsometricOffAxis3Right
+    "isometricOffAxis3Bottom" => CameraIsometricOffAxis3Bottom
+    "isometricOffAxis4Left" => CameraIsometricOffAxis4Left
+    "isometricOffAxis4Right" => CameraIsometricOffAxis4Right
+    "isometricOffAxis4Bottom" => CameraIsometricOffAxis4Bottom
+    "obliqueTopLeft" => CameraObliqueTopLeft
+    "obliqueTop" => CameraObliqueTop
+    "obliqueTopRight" => CameraObliqueTopRight
+    "obliqueLeft" => CameraObliqueLeft
+    "obliqueRight" => CameraObliqueRight
+    "obliqueBottomLeft" => CameraObliqueBottomLeft
+    "obliqueBottom" => CameraObliqueBottom
+    "obliqueBottomRight" => CameraObliqueBottomRight
+    "perspectiveFront" => CameraPerspectiveFront
+    "perspectiveLeft" => CameraPerspectiveLeft
+    "perspectiveRight" => CameraPerspectiveRight
+    "perspectiveAbove" => CameraPerspectiveAbove
+    "perspectiveBelow" => CameraPerspectiveBelow
+    "perspectiveAboveLeftFacing" => CameraPerspectiveAboveLeftFacing
+    "perspectiveAboveRightFacing" => CameraPerspectiveAboveRightFacing
+    "perspectiveContrastingLeftFacing" => CameraPerspectiveContrastingLeftFacing
+    "perspectiveContrastingRightFacing" =>
+      CameraPerspectiveContrastingRightFacing
+    "perspectiveHeroicLeftFacing" => CameraPerspectiveHeroicLeftFacing
+    "perspectiveHeroicRightFacing" => CameraPerspectiveHeroicRightFacing
+    "perspectiveHeroicExtremeLeftFacing" =>
+      CameraPerspectiveHeroicExtremeLeftFacing
+    "perspectiveHeroicExtremeRightFacing" =>
+      CameraPerspectiveHeroicExtremeRightFacing
+    "perspectiveRelaxed" => CameraPerspectiveRelaxed
+    "perspectiveRelaxedModerately" => CameraPerspectiveRelaxedModerately
+    _ => enum_violation("ST_PresetCameraType")
+  }
+}
+
+///|
+pub fn ST_PresetCameraType::new(
+  s : String,
+) -> ST_PresetCameraType raise SchemaViolation {
+  ST_PresetCameraType::parse(s)
+}
+
+///|
+pub fn ST_PresetCameraType::to_string(self : ST_PresetCameraType) -> String {
+  match self {
+    CameraLegacyObliqueTopLeft => "legacyObliqueTopLeft"
+    CameraLegacyObliqueTop => "legacyObliqueTop"
+    CameraLegacyObliqueTopRight => "legacyObliqueTopRight"
+    CameraLegacyObliqueLeft => "legacyObliqueLeft"
+    CameraLegacyObliqueFront => "legacyObliqueFront"
+    CameraLegacyObliqueRight => "legacyObliqueRight"
+    CameraLegacyObliqueBottomLeft => "legacyObliqueBottomLeft"
+    CameraLegacyObliqueBottom => "legacyObliqueBottom"
+    CameraLegacyObliqueBottomRight => "legacyObliqueBottomRight"
+    CameraLegacyPerspectiveTopLeft => "legacyPerspectiveTopLeft"
+    CameraLegacyPerspectiveTop => "legacyPerspectiveTop"
+    CameraLegacyPerspectiveTopRight => "legacyPerspectiveTopRight"
+    CameraLegacyPerspectiveLeft => "legacyPerspectiveLeft"
+    CameraLegacyPerspectiveFront => "legacyPerspectiveFront"
+    CameraLegacyPerspectiveRight => "legacyPerspectiveRight"
+    CameraLegacyPerspectiveBottomLeft => "legacyPerspectiveBottomLeft"
+    CameraLegacyPerspectiveBottom => "legacyPerspectiveBottom"
+    CameraLegacyPerspectiveBottomRight => "legacyPerspectiveBottomRight"
+    CameraOrthographicFront => "orthographicFront"
+    CameraIsometricTopUp => "isometricTopUp"
+    CameraIsometricTopDown => "isometricTopDown"
+    CameraIsometricBottomUp => "isometricBottomUp"
+    CameraIsometricBottomDown => "isometricBottomDown"
+    CameraIsometricLeftUp => "isometricLeftUp"
+    CameraIsometricLeftDown => "isometricLeftDown"
+    CameraIsometricRightUp => "isometricRightUp"
+    CameraIsometricRightDown => "isometricRightDown"
+    CameraIsometricOffAxis1Left => "isometricOffAxis1Left"
+    CameraIsometricOffAxis1Right => "isometricOffAxis1Right"
+    CameraIsometricOffAxis1Top => "isometricOffAxis1Top"
+    CameraIsometricOffAxis2Left => "isometricOffAxis2Left"
+    CameraIsometricOffAxis2Right => "isometricOffAxis2Right"
+    CameraIsometricOffAxis2Top => "isometricOffAxis2Top"
+    CameraIsometricOffAxis3Left => "isometricOffAxis3Left"
+    CameraIsometricOffAxis3Right => "isometricOffAxis3Right"
+    CameraIsometricOffAxis3Bottom => "isometricOffAxis3Bottom"
+    CameraIsometricOffAxis4Left => "isometricOffAxis4Left"
+    CameraIsometricOffAxis4Right => "isometricOffAxis4Right"
+    CameraIsometricOffAxis4Bottom => "isometricOffAxis4Bottom"
+    CameraObliqueTopLeft => "obliqueTopLeft"
+    CameraObliqueTop => "obliqueTop"
+    CameraObliqueTopRight => "obliqueTopRight"
+    CameraObliqueLeft => "obliqueLeft"
+    CameraObliqueRight => "obliqueRight"
+    CameraObliqueBottomLeft => "obliqueBottomLeft"
+    CameraObliqueBottom => "obliqueBottom"
+    CameraObliqueBottomRight => "obliqueBottomRight"
+    CameraPerspectiveFront => "perspectiveFront"
+    CameraPerspectiveLeft => "perspectiveLeft"
+    CameraPerspectiveRight => "perspectiveRight"
+    CameraPerspectiveAbove => "perspectiveAbove"
+    CameraPerspectiveBelow => "perspectiveBelow"
+    CameraPerspectiveAboveLeftFacing => "perspectiveAboveLeftFacing"
+    CameraPerspectiveAboveRightFacing => "perspectiveAboveRightFacing"
+    CameraPerspectiveContrastingLeftFacing => "perspectiveContrastingLeftFacing"
+    CameraPerspectiveContrastingRightFacing =>
+      "perspectiveContrastingRightFacing"
+    CameraPerspectiveHeroicLeftFacing => "perspectiveHeroicLeftFacing"
+    CameraPerspectiveHeroicRightFacing => "perspectiveHeroicRightFacing"
+    CameraPerspectiveHeroicExtremeLeftFacing =>
+      "perspectiveHeroicExtremeLeftFacing"
+    CameraPerspectiveHeroicExtremeRightFacing =>
+      "perspectiveHeroicExtremeRightFacing"
+    CameraPerspectiveRelaxed => "perspectiveRelaxed"
+    CameraPerspectiveRelaxedModerately => "perspectiveRelaxedModerately"
+  }
+}
+
+///|
+/// XSD simple type ST_LightRigDirection — Part 1 §20.1.10.27. Enumeration
+/// of 3-D light rig source-direction tokens used by `CT_LightRig/@dir`.
+pub(all) enum ST_LightRigDirection {
+  /// §20.1.10.27 "tl"
+  LightDirTL
+  /// §20.1.10.27 "t"
+  LightDirT
+  /// §20.1.10.27 "tr"
+  LightDirTR
+  /// §20.1.10.27 "l"
+  LightDirL
+  /// §20.1.10.27 "r"
+  LightDirR
+  /// §20.1.10.27 "bl"
+  LightDirBL
+  /// §20.1.10.27 "b"
+  LightDirB
+  /// §20.1.10.27 "br"
+  LightDirBR
+} derive(Eq, Debug)
+
+///|
+pub fn ST_LightRigDirection::parse(
+  s : String,
+) -> ST_LightRigDirection raise SchemaViolation {
+  match s {
+    "tl" => LightDirTL
+    "t" => LightDirT
+    "tr" => LightDirTR
+    "l" => LightDirL
+    "r" => LightDirR
+    "bl" => LightDirBL
+    "b" => LightDirB
+    "br" => LightDirBR
+    _ => enum_violation("ST_LightRigDirection")
+  }
+}
+
+///|
+pub fn ST_LightRigDirection::new(
+  s : String,
+) -> ST_LightRigDirection raise SchemaViolation {
+  ST_LightRigDirection::parse(s)
+}
+
+///|
+pub fn ST_LightRigDirection::to_string(self : ST_LightRigDirection) -> String {
+  match self {
+    LightDirTL => "tl"
+    LightDirT => "t"
+    LightDirTR => "tr"
+    LightDirL => "l"
+    LightDirR => "r"
+    LightDirBL => "bl"
+    LightDirB => "b"
+    LightDirBR => "br"
+  }
+}
+
+///|
+/// XSD simple type ST_LightRigType — Part 1 §20.1.10.28. Enumeration of
+/// 3-D light-rig presets used by `CT_LightRig/@rig`.
+pub(all) enum ST_LightRigType {
+  /// §20.1.10.28 "legacyFlat1"
+  LightRigLegacyFlat1
+  /// §20.1.10.28 "legacyFlat2"
+  LightRigLegacyFlat2
+  /// §20.1.10.28 "legacyFlat3"
+  LightRigLegacyFlat3
+  /// §20.1.10.28 "legacyFlat4"
+  LightRigLegacyFlat4
+  /// §20.1.10.28 "legacyNormal1"
+  LightRigLegacyNormal1
+  /// §20.1.10.28 "legacyNormal2"
+  LightRigLegacyNormal2
+  /// §20.1.10.28 "legacyNormal3"
+  LightRigLegacyNormal3
+  /// §20.1.10.28 "legacyNormal4"
+  LightRigLegacyNormal4
+  /// §20.1.10.28 "legacyHarsh1"
+  LightRigLegacyHarsh1
+  /// §20.1.10.28 "legacyHarsh2"
+  LightRigLegacyHarsh2
+  /// §20.1.10.28 "legacyHarsh3"
+  LightRigLegacyHarsh3
+  /// §20.1.10.28 "legacyHarsh4"
+  LightRigLegacyHarsh4
+  /// §20.1.10.28 "threePt"
+  LightRigThreePt
+  /// §20.1.10.28 "balanced"
+  LightRigBalanced
+  /// §20.1.10.28 "soft"
+  LightRigSoft
+  /// §20.1.10.28 "harsh"
+  LightRigHarsh
+  /// §20.1.10.28 "flood"
+  LightRigFlood
+  /// §20.1.10.28 "contrasting"
+  LightRigContrasting
+  /// §20.1.10.28 "morning"
+  LightRigMorning
+  /// §20.1.10.28 "sunrise"
+  LightRigSunrise
+  /// §20.1.10.28 "sunset"
+  LightRigSunset
+  /// §20.1.10.28 "chilly"
+  LightRigChilly
+  /// §20.1.10.28 "freezing"
+  LightRigFreezing
+  /// §20.1.10.28 "flat"
+  LightRigFlat
+  /// §20.1.10.28 "twoPt"
+  LightRigTwoPt
+  /// §20.1.10.28 "glow"
+  LightRigGlow
+  /// §20.1.10.28 "brightRoom"
+  LightRigBrightRoom
+} derive(Eq, Debug)
+
+///|
+pub fn ST_LightRigType::parse(
+  s : String,
+) -> ST_LightRigType raise SchemaViolation {
+  match s {
+    "legacyFlat1" => LightRigLegacyFlat1
+    "legacyFlat2" => LightRigLegacyFlat2
+    "legacyFlat3" => LightRigLegacyFlat3
+    "legacyFlat4" => LightRigLegacyFlat4
+    "legacyNormal1" => LightRigLegacyNormal1
+    "legacyNormal2" => LightRigLegacyNormal2
+    "legacyNormal3" => LightRigLegacyNormal3
+    "legacyNormal4" => LightRigLegacyNormal4
+    "legacyHarsh1" => LightRigLegacyHarsh1
+    "legacyHarsh2" => LightRigLegacyHarsh2
+    "legacyHarsh3" => LightRigLegacyHarsh3
+    "legacyHarsh4" => LightRigLegacyHarsh4
+    "threePt" => LightRigThreePt
+    "balanced" => LightRigBalanced
+    "soft" => LightRigSoft
+    "harsh" => LightRigHarsh
+    "flood" => LightRigFlood
+    "contrasting" => LightRigContrasting
+    "morning" => LightRigMorning
+    "sunrise" => LightRigSunrise
+    "sunset" => LightRigSunset
+    "chilly" => LightRigChilly
+    "freezing" => LightRigFreezing
+    "flat" => LightRigFlat
+    "twoPt" => LightRigTwoPt
+    "glow" => LightRigGlow
+    "brightRoom" => LightRigBrightRoom
+    _ => enum_violation("ST_LightRigType")
+  }
+}
+
+///|
+pub fn ST_LightRigType::new(
+  s : String,
+) -> ST_LightRigType raise SchemaViolation {
+  ST_LightRigType::parse(s)
+}
+
+///|
+pub fn ST_LightRigType::to_string(self : ST_LightRigType) -> String {
+  match self {
+    LightRigLegacyFlat1 => "legacyFlat1"
+    LightRigLegacyFlat2 => "legacyFlat2"
+    LightRigLegacyFlat3 => "legacyFlat3"
+    LightRigLegacyFlat4 => "legacyFlat4"
+    LightRigLegacyNormal1 => "legacyNormal1"
+    LightRigLegacyNormal2 => "legacyNormal2"
+    LightRigLegacyNormal3 => "legacyNormal3"
+    LightRigLegacyNormal4 => "legacyNormal4"
+    LightRigLegacyHarsh1 => "legacyHarsh1"
+    LightRigLegacyHarsh2 => "legacyHarsh2"
+    LightRigLegacyHarsh3 => "legacyHarsh3"
+    LightRigLegacyHarsh4 => "legacyHarsh4"
+    LightRigThreePt => "threePt"
+    LightRigBalanced => "balanced"
+    LightRigSoft => "soft"
+    LightRigHarsh => "harsh"
+    LightRigFlood => "flood"
+    LightRigContrasting => "contrasting"
+    LightRigMorning => "morning"
+    LightRigSunrise => "sunrise"
+    LightRigSunset => "sunset"
+    LightRigChilly => "chilly"
+    LightRigFreezing => "freezing"
+    LightRigFlat => "flat"
+    LightRigTwoPt => "twoPt"
+    LightRigGlow => "glow"
+    LightRigBrightRoom => "brightRoom"
+  }
+}
+
+///|
+/// XSD simple type ST_FOVAngle — Part 1 §20.1.10.24. Restriction of
+/// `ST_Angle` to 0 ≤ value ≤ 10 800 000 (i.e. 0°..180° measured in
+/// 60 000ths of a degree). Used by `CT_Camera/@fov`.
+pub struct ST_FOVAngle {
+  sixty_thousandths : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_FOVAngle::parse(s : String) -> ST_FOVAngle raise SchemaViolation {
+  let v = parse_int_or_violate("ST_FOVAngle", s)
+  if v < 0 || v > 10800000 {
+    measure_violation("ST_FOVAngle")
+  }
+  { sixty_thousandths: v }
+}
+
+///|
+pub fn ST_FOVAngle::new(s : String) -> ST_FOVAngle raise SchemaViolation {
+  ST_FOVAngle::parse(s)
+}
+
+///|
+pub fn ST_FOVAngle::to_string(self : ST_FOVAngle) -> String {
+  self.sixty_thousandths.to_string()
+}
+
+///|
+pub fn ST_FOVAngle::sixty_thousandths_of_degree(self : ST_FOVAngle) -> Int {
+  self.sixty_thousandths
+}
+
+///|
+/// XSD simple type ST_StyleMatrixColumnIndex — Part 1 §20.1.10.79.
+/// Restriction of `xsd:unsignedInt`. Used by `CT_StyleMatrixReference/@idx`
+/// to address columns within a `CT_StyleMatrix` style list.
+pub struct ST_StyleMatrixColumnIndex {
+  /// Raw lexical xsd:unsignedInt value.
+  idx : UInt
+} derive(Eq, Debug)
+
+///|
+pub fn ST_StyleMatrixColumnIndex::parse(
+  s : String,
+) -> ST_StyleMatrixColumnIndex raise SchemaViolation {
+  if s.length() == 0 {
+    raise SchemaViolation(
+      schema="dml-main.xsd",
+      path="ST_StyleMatrixColumnIndex",
+      reason="empty xsd:unsignedInt lexical form",
+    )
+  }
+  let mut acc : UInt = 0U
+  for i in 0..<s.length() {
+    let code = s.code_unit_at(i).to_int()
+    if code < '0'.to_int() || code > '9'.to_int() {
+      raise SchemaViolation(
+        schema="dml-main.xsd",
+        path="ST_StyleMatrixColumnIndex",
+        reason="invalid xsd:unsignedInt lexical form: " + s,
+      )
+    }
+    acc = acc * 10U + (code - '0'.to_int()).reinterpret_as_uint()
+  }
+  { idx: acc }
+}
+
+///|
+pub fn ST_StyleMatrixColumnIndex::new(
+  s : String,
+) -> ST_StyleMatrixColumnIndex raise SchemaViolation {
+  ST_StyleMatrixColumnIndex::parse(s)
+}
+
+///|
+pub fn ST_StyleMatrixColumnIndex::to_string(
+  self : ST_StyleMatrixColumnIndex,
+) -> String {
+  self.idx.to_string()
+}
+
+///|
+pub fn ST_StyleMatrixColumnIndex::to_uint(
+  self : ST_StyleMatrixColumnIndex,
+) -> UInt {
+  self.idx
+}
+
 // === Private helpers ===
 
 ///|

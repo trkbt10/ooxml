@@ -514,19 +514,29 @@ pub fn CT_AudioFile::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_AudioFile::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Backdrop {
+  anchor : CT_Point3D
+  norm : CT_Vector3D
+  up : CT_Vector3D
+  ext_lst : CT_OfficeArtExtensionList?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Backdrop::new(@xml.Element) -> Self
+pub fn CT_Backdrop::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Backdrop::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_BackgroundFillStyleList {
+  entries : Array[CT_FillStyleList_Entry]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_BackgroundFillStyleList::new(@xml.Element) -> Self
+pub fn CT_BackgroundFillStyleList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_BackgroundFillStyleList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_BackgroundFormatting {
+  fill : CT_FillProperties?
+  effect : CT_EffectProperties?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_BackgroundFormatting::new(@xml.Element) -> Self
+pub fn CT_BackgroundFormatting::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_BackgroundFormatting::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_BaseStyles {
   clr_scheme : @xml.Element
@@ -549,9 +559,13 @@ pub fn CT_BaseStylesOverride::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_BaseStylesOverride::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Bevel {
+  w : ST_PositiveCoordinate
+  h : ST_PositiveCoordinate
+  prst : ST_BevelPresetType
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Bevel::new(@xml.Element) -> Self
+pub fn CT_Bevel::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Bevel::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_BiLevelEffect {
   thresh : ST_PositiveFixedPercentage
@@ -600,14 +614,24 @@ pub fn CT_BlurEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_BlurEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Camera {
+  rot : CT_SphereCoords?
+  prst : ST_PresetCameraType
+  fov : ST_FOVAngle?
+  zoom : ST_PositivePercentage
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Camera::new(@xml.Element) -> Self
+pub fn CT_Camera::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Camera::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Cell3D {
+  bevel : CT_Bevel
+  light_rig : CT_LightRig?
+  ext_lst : CT_OfficeArtExtensionList?
+  prst_material : ST_PresetMaterialType
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Cell3D::new(@xml.Element) -> Self
+pub fn CT_Cell3D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Cell3D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ClipboardStyleSheet {
   theme_elements : @xml.Element?
@@ -821,9 +845,15 @@ pub fn CT_DashStopList::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DashStopList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DefaultShapeDefinition {
+  sp_pr : CT_ShapeProperties
+  body_pr : CT_TextBodyProperties
+  lst_style : CT_TextListStyle
+  style : CT_ShapeStyle?
+  ext_lst : CT_OfficeArtExtensionList?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_DefaultShapeDefinition::new(@xml.Element) -> Self
+pub fn CT_DefaultShapeDefinition::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_DefaultShapeDefinition::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_DuotoneEffect {
   colors : Array[CT_Color]
@@ -871,14 +901,20 @@ pub fn CT_EffectReference::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_EffectReference::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EffectStyleItem {
+  effect : CT_EffectProperties
+  scene3d : CT_Scene3D?
+  sp3d : CT_Shape3D?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_EffectStyleItem::new(@xml.Element) -> Self
+pub fn CT_EffectStyleItem::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_EffectStyleItem::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EffectStyleList {
+  entries : Array[CT_EffectStyleItem]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_EffectStyleList::new(@xml.Element) -> Self
+pub fn CT_EffectStyleList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_EffectStyleList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EmbeddedWAVAudioFile {
   r_embed : String
@@ -924,9 +960,20 @@ pub fn CT_FillProperties::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FillProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FillStyleList {
+  entries : Array[CT_FillStyleList_Entry]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_FillStyleList::new(@xml.Element) -> Self
+pub fn CT_FillStyleList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FillStyleList::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_FillStyleList_Entry {
+  FillStyleNone(CT_NoFillProperties)
+  FillStyleSolid(CT_SolidColorFillProperties)
+  FillStyleGradient(CT_GradientFillProperties)
+  FillStyleBlip(CT_BlipFillProperties)
+  FillStylePattern(CT_PatternFillProperties)
+  FillStyleGroup(CT_GroupFillProperties)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_FixedPercentage {
   val : ST_FixedPercentage
@@ -936,9 +983,11 @@ pub fn CT_FixedPercentage::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FixedPercentage::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FlatText {
+  z : ST_Coordinate
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_FlatText::new(@xml.Element) -> Self
+pub fn CT_FlatText::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_FlatText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_FontCollection {
   latin : CT_TextFont
@@ -1248,9 +1297,11 @@ pub fn CT_HSLEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_HSLEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Headers {
+  headers : Array[String]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Headers::new(@xml.Element) -> Self
+pub fn CT_Headers::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HslColor {
   hue : ST_PositiveFixedAngle
@@ -1303,9 +1354,13 @@ pub fn CT_InverseTransform::new(@xml.Element) -> Self
 pub fn CT_InverseTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LightRig {
+  rot : CT_SphereCoords?
+  rig : ST_LightRigType
+  dir : ST_LightRigDirection
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_LightRig::new(@xml.Element) -> Self
+pub fn CT_LightRig::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_LightRig::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LineEndProperties {
   end_type : ST_LineEndType
@@ -1360,9 +1415,11 @@ pub fn CT_LineProperties::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_LineProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LineStyleList {
+  entries : Array[CT_LineProperties]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_LineStyleList::new(@xml.Element) -> Self
+pub fn CT_LineStyleList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_LineStyleList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_LinearShadeProperties {
   ang : ST_PositiveFixedAngle?
@@ -1455,9 +1512,14 @@ pub fn CT_NonVisualPictureProperties::new(@xml.Element) -> Self raise SchemaViol
 pub fn CT_NonVisualPictureProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ObjectStyleDefaults {
+  sp_def : CT_DefaultShapeDefinition?
+  ln_def : CT_DefaultShapeDefinition?
+  tx_def : CT_DefaultShapeDefinition?
+  ext_lst : CT_OfficeArtExtensionList?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ObjectStyleDefaults::new(@xml.Element) -> Self
+pub fn CT_ObjectStyleDefaults::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ObjectStyleDefaults::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OfficeArtExtension {
   uri : String
@@ -1749,9 +1811,12 @@ pub fn CT_ReflectionEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ReflectionEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RegularTextRun {
+  r_pr : CT_TextCharacterProperties?
+  t : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_RegularTextRun::new(@xml.Element) -> Self
+pub fn CT_RegularTextRun::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RegularTextRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RelativeOffsetEffect {
   tx : ST_Percentage
@@ -1798,9 +1863,14 @@ pub fn CT_Scale2D::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Scale2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Scene3D {
+  camera : CT_Camera
+  light_rig : CT_LightRig
+  backdrop : CT_Backdrop?
+  ext_lst : CT_OfficeArtExtensionList?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Scene3D::new(@xml.Element) -> Self
+pub fn CT_Scene3D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Scene3D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SchemeColor {
   val : ST_SchemeColorVal
@@ -1811,9 +1881,19 @@ pub fn CT_SchemeColor::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SchemeColor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Shape3D {
+  bevel_t : CT_Bevel?
+  bevel_b : CT_Bevel?
+  extrusion_clr : CT_Color?
+  contour_clr : CT_Color?
+  ext_lst : CT_OfficeArtExtensionList?
+  z : ST_Coordinate
+  extrusion_h : ST_PositiveCoordinate
+  contour_w : ST_PositiveCoordinate
+  prst_material : ST_PresetMaterialType
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Shape3D::new(@xml.Element) -> Self
+pub fn CT_Shape3D::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Shape3D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ShapeLocking {
   ext_lst : CT_OfficeArtExtensionList?
@@ -1856,9 +1936,14 @@ pub fn CT_ShapeProperties::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ShapeProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ShapeStyle {
+  ln_ref : CT_StyleMatrixReference
+  fill_ref : CT_StyleMatrixReference
+  effect_ref : CT_StyleMatrixReference
+  font_ref : CT_FontReference
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ShapeStyle::new(@xml.Element) -> Self
+pub fn CT_ShapeStyle::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ShapeStyle::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SoftEdgesEffect {
   rad : ST_PositiveCoordinate
@@ -1891,14 +1976,23 @@ pub fn CT_StretchInfoProperties::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_StretchInfoProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_StyleMatrix {
+  fill_style_lst : CT_FillStyleList
+  ln_style_lst : CT_LineStyleList
+  effect_style_lst : CT_EffectStyleList
+  bg_fill_style_lst : CT_BackgroundFillStyleList
+  name : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_StyleMatrix::new(@xml.Element) -> Self
+pub fn CT_StyleMatrix::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_StyleMatrix::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_StyleMatrixReference {
+  color : CT_Color?
+  idx : ST_StyleMatrixColumnIndex
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_StyleMatrixReference::new(@xml.Element) -> Self
+pub fn CT_StyleMatrixReference::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_StyleMatrixReference::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SupplementalFont {
   script : String
@@ -2104,24 +2198,69 @@ pub fn CT_TableStyleTextStyle::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TableStyleTextStyle::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextAutonumberBullet {
+  type_ : ST_TextAutonumberScheme
+  start_at : ST_TextBulletStartAtNum
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextAutonumberBullet::new(@xml.Element) -> Self
+pub fn CT_TextAutonumberBullet::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextAutonumberBullet::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextBlipBullet {
+  blip : CT_Blip
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextBlipBullet::new(@xml.Element) -> Self
+pub fn CT_TextBlipBullet::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextBlipBullet::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextBody {
+  body_pr : CT_TextBodyProperties
+  lst_style : CT_TextListStyle?
+  paragraphs : Array[CT_TextParagraph]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextBody::new(@xml.Element) -> Self
+pub fn CT_TextBody::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextBody::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextBodyProperties {
+  prst_tx_warp : CT_PresetTextShape?
+  autofit : CT_TextBodyProperties_Autofit?
+  scene3d : CT_Scene3D?
+  text3d : CT_TextBodyProperties_Text3D?
+  ext_lst : CT_OfficeArtExtensionList?
+  rot : ST_Angle?
+  spc_first_last_para : Bool?
+  vert_overflow : ST_TextVertOverflowType?
+  horz_overflow : ST_TextHorzOverflowType?
+  vert : ST_TextVerticalType?
+  wrap : ST_TextWrappingType?
+  l_ins : ST_Coordinate32?
+  t_ins : ST_Coordinate32?
+  r_ins : ST_Coordinate32?
+  b_ins : ST_Coordinate32?
+  num_col : ST_TextColumnCount?
+  spc_col : ST_PositiveCoordinate32?
+  rtl_col : Bool?
+  from_word_art : Bool?
+  anchor : ST_TextAnchoringType?
+  anchor_ctr : Bool?
+  force_aa : Bool?
+  upright : Bool
+  compat_ln_spc : Bool?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextBodyProperties::new(@xml.Element) -> Self
+pub fn CT_TextBodyProperties::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextBodyProperties::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_TextBodyProperties_Autofit {
+  TextAutofitNone(CT_TextNoAutofit)
+  TextAutofitNormal(CT_TextNormalAutofit)
+  TextAutofitShape(CT_TextShapeAutofit)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CT_TextBodyProperties_Text3D {
+  Text3DShape(CT_Shape3D)
+  Text3DFlat(CT_FlatText)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TextBulletColorFollowText {
   follow_text : Bool
@@ -2131,39 +2270,99 @@ pub fn CT_TextBulletColorFollowText::new(@xml.Element) -> Self
 pub fn CT_TextBulletColorFollowText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextBulletSizeFollowText {
+  follow : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextBulletSizeFollowText::new(@xml.Element) -> Self
+pub fn CT_TextBulletSizeFollowText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextBulletSizePercent {
+  val : ST_TextBulletSizePercent
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextBulletSizePercent::new(@xml.Element) -> Self
+pub fn CT_TextBulletSizePercent::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextBulletSizePercent::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextBulletSizePoint {
+  val : ST_TextFontSize
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextBulletSizePoint::new(@xml.Element) -> Self
+pub fn CT_TextBulletSizePoint::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextBulletSizePoint::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextBulletTypefaceFollowText {
+  follow : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextBulletTypefaceFollowText::new(@xml.Element) -> Self
+pub fn CT_TextBulletTypefaceFollowText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextCharBullet {
+  char : String
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextCharBullet::new(@xml.Element) -> Self
+pub fn CT_TextCharBullet::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextCharBullet::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextCharacterProperties {
+  ln : CT_LineProperties?
+  fill : CT_FillProperties?
+  effect : CT_EffectProperties?
+  highlight : CT_Color?
+  underline_line : CT_TextCharacterProperties_UnderlineLine?
+  underline_fill : CT_TextCharacterProperties_UnderlineFill?
+  latin : CT_TextFont?
+  ea : CT_TextFont?
+  cs : CT_TextFont?
+  sym : CT_TextFont?
+  hlink_click : CT_Hyperlink?
+  hlink_mouse_over : CT_Hyperlink?
+  rtl : @xml.Element?
+  ext_lst : CT_OfficeArtExtensionList?
+  kumimoji : Bool?
+  lang : String?
+  alt_lang : String?
+  sz : ST_TextFontSize?
+  b : Bool?
+  i : Bool?
+  u : ST_TextUnderlineType?
+  strike : ST_TextStrikeType?
+  kern : ST_TextNonNegativePoint?
+  cap : ST_TextCapsType
+  spc : ST_TextPoint?
+  normalize_h : Bool?
+  baseline : ST_Percentage?
+  no_proof : Bool?
+  dirty : Bool
+  err : Bool
+  smt_clean : Bool
+  smt_id : UInt
+  bmk : String?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextCharacterProperties::new(@xml.Element) -> Self
+pub fn CT_TextCharacterProperties::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextCharacterProperties::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_TextCharacterProperties_UnderlineFill {
+  UnderlineFillFollow(CT_TextUnderlineFillFollowText)
+  UnderlineFillExplicit(CT_TextUnderlineFillGroupWrapper)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CT_TextCharacterProperties_UnderlineLine {
+  UnderlineLineFollow(CT_TextUnderlineLineFollowText)
+  UnderlineLineExplicit(CT_LineProperties)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TextField {
+  r_pr : CT_TextCharacterProperties?
+  p_pr : CT_TextParagraphProperties?
+  t : String?
+  id : String
+  type_ : String?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextField::new(@xml.Element) -> Self
+pub fn CT_TextField::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextField::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextFont {
   typeface : ST_TextTypeface
@@ -2176,9 +2375,11 @@ pub fn CT_TextFont::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TextFont::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextLineBreak {
+  r_pr : CT_TextCharacterProperties?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextLineBreak::new(@xml.Element) -> Self
+pub fn CT_TextLineBreak::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextLineBreak::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextListStyle {
   def_p_pr : CT_TextParagraphProperties?
@@ -2198,14 +2399,18 @@ pub fn CT_TextListStyle::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TextListStyle::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextNoAutofit {
+  autofit : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextNoAutofit::new(@xml.Element) -> Self
+pub fn CT_TextNoAutofit::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextNoBullet {
+  none_bullet : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextNoBullet::new(@xml.Element) -> Self
+pub fn CT_TextNoBullet::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextNormalAutofit {
   font_scale : ST_TextFontScalePercentOrPercentString
@@ -2221,13 +2426,58 @@ pub(all) struct CT_TextParagraph {
   end_para_r_pr : CT_TextCharacterProperties?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextParagraph::new(@xml.Element) -> Self
+pub fn CT_TextParagraph::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TextParagraph::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextParagraphProperties {
+  ln_spc : CT_TextSpacing?
+  spc_bef : CT_TextSpacing?
+  spc_aft : CT_TextSpacing?
+  bullet_color : CT_TextParagraphProperties_BulletColor?
+  bullet_size : CT_TextParagraphProperties_BulletSize?
+  bullet_typeface : CT_TextParagraphProperties_BulletTypeface?
+  bullet : CT_TextParagraphProperties_Bullet?
+  tab_lst : CT_TextTabStopList?
+  def_r_pr : CT_TextCharacterProperties?
+  ext_lst : CT_OfficeArtExtensionList?
+  mar_l : ST_TextMargin?
+  mar_r : ST_TextMargin?
+  lvl : ST_TextIndentLevelType?
+  indent : ST_TextIndent?
+  algn : ST_TextAlignType?
+  def_tab_sz : ST_Coordinate32?
+  rtl : Bool?
+  ea_ln_brk : Bool?
+  font_algn : ST_TextFontAlignType?
+  latin_ln_brk : Bool?
+  hanging_punct : Bool?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextParagraphProperties::new(@xml.Element) -> Self
+pub fn CT_TextParagraphProperties::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextParagraphProperties::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_TextParagraphProperties_Bullet {
+  BulletNone(CT_TextNoBullet)
+  BulletAutoNum(CT_TextAutonumberBullet)
+  BulletChar(CT_TextCharBullet)
+  BulletBlip(CT_TextBlipBullet)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CT_TextParagraphProperties_BulletColor {
+  BulletColorFollow(@xml.Element)
+  BulletColorExplicit(CT_Color)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CT_TextParagraphProperties_BulletSize {
+  BulletSizeFollow(CT_TextBulletSizeFollowText)
+  BulletSizePercent(CT_TextBulletSizePercent)
+  BulletSizePoint(CT_TextBulletSizePoint)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum CT_TextParagraphProperties_BulletTypeface {
+  BulletTypefaceFollow(CT_TextBulletTypefaceFollowText)
+  BulletTypefaceExplicit(CT_TextFont)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum CT_TextParagraph_Run {
   TextRunRegular(CT_RegularTextRun)
@@ -2236,54 +2486,82 @@ pub(all) enum CT_TextParagraph_Run {
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TextShapeAutofit {
+  autofit : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextShapeAutofit::new(@xml.Element) -> Self
+pub fn CT_TextShapeAutofit::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextSpacing {
+  spc_pct : CT_TextSpacingPercent?
+  spc_pts : CT_TextSpacingPoint?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextSpacing::new(@xml.Element) -> Self
+pub fn CT_TextSpacing::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextSpacing::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextSpacingPercent {
+  val : ST_TextSpacingPercentOrPercentString
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextSpacingPercent::new(@xml.Element) -> Self
+pub fn CT_TextSpacingPercent::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextSpacingPercent::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextSpacingPoint {
+  val : ST_TextSpacingPoint
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextSpacingPoint::new(@xml.Element) -> Self
+pub fn CT_TextSpacingPoint::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextSpacingPoint::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextTabStop {
+  pos : ST_Coordinate32?
+  algn : ST_TextTabAlignType?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextTabStop::new(@xml.Element) -> Self
+pub fn CT_TextTabStop::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextTabStop::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextTabStopList {
+  tabs : Array[CT_TextTabStop]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextTabStopList::new(@xml.Element) -> Self
+pub fn CT_TextTabStopList::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextTabStopList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextUnderlineFillFollowText {
+  follow : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextUnderlineFillFollowText::new(@xml.Element) -> Self
+pub fn CT_TextUnderlineFillFollowText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextUnderlineFillGroupWrapper {
+  no_fill : CT_NoFillProperties?
+  solid_fill : CT_SolidColorFillProperties?
+  grad_fill : CT_GradientFillProperties?
+  blip_fill : CT_BlipFillProperties?
+  patt_fill : CT_PatternFillProperties?
+  grp_fill : CT_GroupFillProperties?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_TextUnderlineFillGroupWrapper::new(@xml.Element) -> Self
+pub fn CT_TextUnderlineFillGroupWrapper::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TextUnderlineFillGroupWrapper::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TextUnderlineLineFollowText {
+  follow : Bool
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_TextUnderlineLineFollowText::new(@xml.Element) -> Self
+pub fn CT_TextUnderlineLineFollowText::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ThemeableLineStyle {
+  ln : CT_LineProperties?
+  ln_ref : CT_StyleMatrixReference?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_ThemeableLineStyle::new(@xml.Element) -> Self
+pub fn CT_ThemeableLineStyle::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ThemeableLineStyle::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TileInfoProperties {
   tx : ST_Coordinate?
@@ -2594,6 +2872,24 @@ pub(all) enum ST_AnimationDgmBuildType {
 pub fn ST_AnimationDgmBuildType::parse(String) -> Self raise SchemaViolation
 pub fn ST_AnimationDgmBuildType::to_string(Self) -> String
 
+pub(all) enum ST_BevelPresetType {
+  BevelRelaxedInset
+  BevelCircle
+  BevelSlope
+  BevelCross
+  BevelAngle
+  BevelSoftRound
+  BevelConvex
+  BevelCoolSlant
+  BevelDivot
+  BevelRiblet
+  BevelHardEdge
+  BevelArtDeco
+} derive(Eq, @debug.Debug)
+pub fn ST_BevelPresetType::new(String) -> Self raise SchemaViolation
+pub fn ST_BevelPresetType::parse(String) -> Self raise SchemaViolation
+pub fn ST_BevelPresetType::to_string(Self) -> String
+
 pub(all) enum ST_BlackWhiteMode {
   BwModeClr
   BwModeAuto
@@ -2719,6 +3015,14 @@ pub fn ST_EffectContainerType::new(String) -> Self raise SchemaViolation
 pub fn ST_EffectContainerType::parse(String) -> Self raise SchemaViolation
 pub fn ST_EffectContainerType::to_string(Self) -> String
 
+pub struct ST_FOVAngle {
+  sixty_thousandths : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_FOVAngle::new(String) -> Self raise SchemaViolation
+pub fn ST_FOVAngle::parse(String) -> Self raise SchemaViolation
+pub fn ST_FOVAngle::sixty_thousandths_of_degree(Self) -> Int
+pub fn ST_FOVAngle::to_string(Self) -> String
+
 pub struct ST_FixedAngle {
   sixty_thousandths : Int
 } derive(Eq, @debug.Debug)
@@ -2743,6 +3047,53 @@ pub(all) enum ST_FontCollectionIndex {
 pub fn ST_FontCollectionIndex::new(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::parse(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::to_string(Self) -> String
+
+pub(all) enum ST_LightRigDirection {
+  LightDirTL
+  LightDirT
+  LightDirTR
+  LightDirL
+  LightDirR
+  LightDirBL
+  LightDirB
+  LightDirBR
+} derive(Eq, @debug.Debug)
+pub fn ST_LightRigDirection::new(String) -> Self raise SchemaViolation
+pub fn ST_LightRigDirection::parse(String) -> Self raise SchemaViolation
+pub fn ST_LightRigDirection::to_string(Self) -> String
+
+pub(all) enum ST_LightRigType {
+  LightRigLegacyFlat1
+  LightRigLegacyFlat2
+  LightRigLegacyFlat3
+  LightRigLegacyFlat4
+  LightRigLegacyNormal1
+  LightRigLegacyNormal2
+  LightRigLegacyNormal3
+  LightRigLegacyNormal4
+  LightRigLegacyHarsh1
+  LightRigLegacyHarsh2
+  LightRigLegacyHarsh3
+  LightRigLegacyHarsh4
+  LightRigThreePt
+  LightRigBalanced
+  LightRigSoft
+  LightRigHarsh
+  LightRigFlood
+  LightRigContrasting
+  LightRigMorning
+  LightRigSunrise
+  LightRigSunset
+  LightRigChilly
+  LightRigFreezing
+  LightRigFlat
+  LightRigTwoPt
+  LightRigGlow
+  LightRigBrightRoom
+} derive(Eq, @debug.Debug)
+pub fn ST_LightRigType::new(String) -> Self raise SchemaViolation
+pub fn ST_LightRigType::parse(String) -> Self raise SchemaViolation
+pub fn ST_LightRigType::to_string(Self) -> String
 
 pub(all) enum ST_LineCap {
   CapRound
@@ -2888,6 +3239,74 @@ pub fn ST_PositivePercentage::new(String) -> Self raise SchemaViolation
 pub fn ST_PositivePercentage::parse(String) -> Self raise SchemaViolation
 pub fn ST_PositivePercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_PositivePercentage::to_string(Self) -> String
+
+pub(all) enum ST_PresetCameraType {
+  CameraLegacyObliqueTopLeft
+  CameraLegacyObliqueTop
+  CameraLegacyObliqueTopRight
+  CameraLegacyObliqueLeft
+  CameraLegacyObliqueFront
+  CameraLegacyObliqueRight
+  CameraLegacyObliqueBottomLeft
+  CameraLegacyObliqueBottom
+  CameraLegacyObliqueBottomRight
+  CameraLegacyPerspectiveTopLeft
+  CameraLegacyPerspectiveTop
+  CameraLegacyPerspectiveTopRight
+  CameraLegacyPerspectiveLeft
+  CameraLegacyPerspectiveFront
+  CameraLegacyPerspectiveRight
+  CameraLegacyPerspectiveBottomLeft
+  CameraLegacyPerspectiveBottom
+  CameraLegacyPerspectiveBottomRight
+  CameraOrthographicFront
+  CameraIsometricTopUp
+  CameraIsometricTopDown
+  CameraIsometricBottomUp
+  CameraIsometricBottomDown
+  CameraIsometricLeftUp
+  CameraIsometricLeftDown
+  CameraIsometricRightUp
+  CameraIsometricRightDown
+  CameraIsometricOffAxis1Left
+  CameraIsometricOffAxis1Right
+  CameraIsometricOffAxis1Top
+  CameraIsometricOffAxis2Left
+  CameraIsometricOffAxis2Right
+  CameraIsometricOffAxis2Top
+  CameraIsometricOffAxis3Left
+  CameraIsometricOffAxis3Right
+  CameraIsometricOffAxis3Bottom
+  CameraIsometricOffAxis4Left
+  CameraIsometricOffAxis4Right
+  CameraIsometricOffAxis4Bottom
+  CameraObliqueTopLeft
+  CameraObliqueTop
+  CameraObliqueTopRight
+  CameraObliqueLeft
+  CameraObliqueRight
+  CameraObliqueBottomLeft
+  CameraObliqueBottom
+  CameraObliqueBottomRight
+  CameraPerspectiveFront
+  CameraPerspectiveLeft
+  CameraPerspectiveRight
+  CameraPerspectiveAbove
+  CameraPerspectiveBelow
+  CameraPerspectiveAboveLeftFacing
+  CameraPerspectiveAboveRightFacing
+  CameraPerspectiveContrastingLeftFacing
+  CameraPerspectiveContrastingRightFacing
+  CameraPerspectiveHeroicLeftFacing
+  CameraPerspectiveHeroicRightFacing
+  CameraPerspectiveHeroicExtremeLeftFacing
+  CameraPerspectiveHeroicExtremeRightFacing
+  CameraPerspectiveRelaxed
+  CameraPerspectiveRelaxedModerately
+} derive(Eq, @debug.Debug)
+pub fn ST_PresetCameraType::new(String) -> Self raise SchemaViolation
+pub fn ST_PresetCameraType::parse(String) -> Self raise SchemaViolation
+pub fn ST_PresetCameraType::to_string(Self) -> String
 
 pub(all) enum ST_PresetColorVal {
   PresetAliceBlue
@@ -3102,6 +3521,27 @@ pub fn ST_PresetLineDashVal::new(String) -> Self raise SchemaViolation
 pub fn ST_PresetLineDashVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_PresetLineDashVal::to_string(Self) -> String
 
+pub(all) enum ST_PresetMaterialType {
+  MaterialLegacyMatte
+  MaterialLegacyPlastic
+  MaterialLegacyMetal
+  MaterialLegacyWireframe
+  MaterialMatte
+  MaterialPlastic
+  MaterialMetal
+  MaterialWarmMatte
+  MaterialTranslucentPowder
+  MaterialPowder
+  MaterialDkEdge
+  MaterialSoftEdge
+  MaterialClear
+  MaterialFlat
+  MaterialSoftMetal
+} derive(Eq, @debug.Debug)
+pub fn ST_PresetMaterialType::new(String) -> Self raise SchemaViolation
+pub fn ST_PresetMaterialType::parse(String) -> Self raise SchemaViolation
+pub fn ST_PresetMaterialType::to_string(Self) -> String
+
 pub(all) enum ST_PresetPatternVal {
   Pct5
   Pct10
@@ -3225,6 +3665,14 @@ pub(all) enum ST_SchemeColorVal {
 pub fn ST_SchemeColorVal::new(String) -> Self raise SchemaViolation
 pub fn ST_SchemeColorVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_SchemeColorVal::to_string(Self) -> String
+
+pub struct ST_StyleMatrixColumnIndex {
+  idx : UInt
+} derive(Eq, @debug.Debug)
+pub fn ST_StyleMatrixColumnIndex::new(String) -> Self raise SchemaViolation
+pub fn ST_StyleMatrixColumnIndex::parse(String) -> Self raise SchemaViolation
+pub fn ST_StyleMatrixColumnIndex::to_string(Self) -> String
+pub fn ST_StyleMatrixColumnIndex::to_uint(Self) -> UInt
 
 pub(all) enum ST_SystemColorVal {
   SysScrollBar
