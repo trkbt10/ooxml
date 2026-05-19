@@ -48,8 +48,15 @@ pub suberror SchemaViolation {
 
 // Types and methods
 pub(all) struct CT_AbsSizeAnchor {
-  element : @xml.Element
+  from_ : @xml.Element
+  ext : @xml.Element
+  sp : @xml.Element?
+  grp_sp : CT_GroupShape?
+  graphic_frame : CT_GraphicFrame?
+  cxn_sp : CT_Connector?
+  pic : CT_Picture?
 } derive(Eq, @debug.Debug)
+pub fn CT_AbsSizeAnchor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Area3DChart {
   grouping : CT_Grouping?
@@ -223,21 +230,44 @@ pub(all) struct CT_BuiltInUnit {
 pub fn CT_BuiltInUnit::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_CatAx {
-  element : @xml.Element
+  ax_id : CT_UnsignedInt
+  scaling : CT_Scaling
+  delete : CT_Boolean?
+  ax_pos : @xml.Element
+  major_gridlines : CT_ChartLines?
+  minor_gridlines : CT_ChartLines?
+  title : CT_Title?
+  num_fmt : CT_NumFmt?
+  major_tick_mark : @xml.Element?
+  minor_tick_mark : @xml.Element?
+  tick_lbl_pos : @xml.Element?
+  sp_pr : @xml.Element?
+  tx_pr : @xml.Element?
+  cross_ax : CT_UnsignedInt
+  crosses : @xml.Element?
+  crosses_at : CT_Double?
+  auto : CT_Boolean?
+  lbl_algn : CT_LblAlgn?
+  lbl_offset : CT_LblOffset?
+  tick_lbl_skip : @xml.Element?
+  tick_mark_skip : @xml.Element?
+  no_multi_lvl_lbl : CT_Boolean?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_CatAx::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Chart {
   title : CT_Title?
   auto_title_deleted : CT_Boolean?
-  pivot_fmts : @xml.Element?
+  pivot_fmts : CT_PivotFmts?
   view_3d : CT_View3D?
   floor : CT_Surface?
   side_wall : CT_Surface?
   back_wall : CT_Surface?
-  plot_area : @xml.Element
-  legend : @xml.Element?
+  plot_area : CT_PlotArea
+  legend : CT_Legend?
   plot_vis_only : CT_Boolean?
-  disp_blanks_as : @xml.Element?
+  disp_blanks_as : CT_DispBlanksAs?
   show_d_lbls_over_max : CT_Boolean?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
@@ -250,16 +280,37 @@ pub(all) struct CT_ChartLines {
 pub fn CT_ChartLines::new(@xml.Element) -> Self
 
 pub(all) struct CT_ChartSpace {
-  element : @xml.Element
+  date_1904 : CT_Boolean?
+  lang : CT_TextLanguageID?
+  rounded_corners : CT_Boolean?
+  style : CT_Style?
+  clr_map_ovr : @xml.Element?
+  pivot_source : CT_PivotSource?
+  protection : CT_Protection?
+  chart : CT_Chart
+  sp_pr : @xml.Element?
+  tx_pr : @xml.Element?
+  external_data : CT_ExternalData?
+  print_settings : CT_PrintSettings?
+  user_shapes : CT_RelId?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_ChartSpace::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Connector {
-  element : @xml.Element
+  macro_ : String?
+  f_published : Bool?
+  nv_cxn_sp_pr : CT_ConnectorNonVisual
+  sp_pr : @xml.Element
+  style : @xml.Element?
 } derive(Eq, @debug.Debug)
+pub fn CT_Connector::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ConnectorNonVisual {
-  element : @xml.Element
+  c_nv_pr : @xml.Element
+  c_nv_cxn_sp_pr : @xml.Element
 } derive(Eq, @debug.Debug)
+pub fn CT_ConnectorNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_CrossBetween {
   val : ST_CrossBetween
@@ -345,8 +396,32 @@ pub(all) struct CT_DTable {
 pub fn CT_DTable::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_DateAx {
-  element : @xml.Element
+  ax_id : CT_UnsignedInt
+  scaling : CT_Scaling
+  delete : CT_Boolean?
+  ax_pos : @xml.Element
+  major_gridlines : CT_ChartLines?
+  minor_gridlines : CT_ChartLines?
+  title : CT_Title?
+  num_fmt : CT_NumFmt?
+  major_tick_mark : @xml.Element?
+  minor_tick_mark : @xml.Element?
+  tick_lbl_pos : @xml.Element?
+  sp_pr : @xml.Element?
+  tx_pr : @xml.Element?
+  cross_ax : CT_UnsignedInt
+  crosses : @xml.Element?
+  crosses_at : CT_Double?
+  auto : CT_Boolean?
+  lbl_offset : CT_LblOffset?
+  base_time_unit : @xml.Element?
+  major_unit : @xml.Element?
+  major_time_unit : @xml.Element?
+  minor_unit : @xml.Element?
+  minor_time_unit : @xml.Element?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_DateAx::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_DepthPercent {
   val : ST_DepthPercent?
@@ -354,12 +429,17 @@ pub(all) struct CT_DepthPercent {
 pub fn CT_DepthPercent::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_DispBlanksAs {
-  element : @xml.Element
+  val : ST_DispBlanksAs?
 } derive(Eq, @debug.Debug)
+pub fn CT_DispBlanksAs::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_DispUnits {
-  element : @xml.Element
+  cust_unit : CT_Double?
+  built_in_unit : @xml.Element?
+  disp_units_lbl : @xml.Element?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_DispUnits::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_DispUnitsLbl {
   layout : CT_Layout?
@@ -367,7 +447,6 @@ pub(all) struct CT_DispUnitsLbl {
   sp_pr : @xml.Element?
   tx_pr : @xml.Element?
 } derive(Eq, @debug.Debug)
-pub fn CT_DispUnitsLbl::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Double {
   val : Double
@@ -385,8 +464,10 @@ pub(all) struct CT_DoughnutChart {
 pub fn CT_DoughnutChart::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Drawing {
-  element : @xml.Element
+  rel_size_anchor : Array[CT_RelSizeAnchor]
+  abs_size_anchor : Array[CT_AbsSizeAnchor]
 } derive(Eq, @debug.Debug)
+pub fn CT_Drawing::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ErrBarType {
   val : ST_ErrBarType?
@@ -428,8 +509,10 @@ pub(all) struct CT_ExtensionList {
 pub fn CT_ExtensionList::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalData {
-  element : @xml.Element
+  r_id : String
+  auto_update : CT_Boolean?
 } derive(Eq, @debug.Debug)
+pub fn CT_ExternalData::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_FirstSliceAng {
   val : ST_FirstSliceAng?
@@ -442,20 +525,36 @@ pub(all) struct CT_GapAmount {
 pub fn CT_GapAmount::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GraphicFrame {
-  element : @xml.Element
+  macro_ : String?
+  f_published : Bool?
+  nv_graphic_frame_pr : CT_GraphicFrameNonVisual
+  xfrm : @xml.Element
+  graphic : @xml.Element
 } derive(Eq, @debug.Debug)
+pub fn CT_GraphicFrame::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GraphicFrameNonVisual {
-  element : @xml.Element
+  c_nv_pr : @xml.Element
+  c_nv_graphic_frame_pr : @xml.Element
 } derive(Eq, @debug.Debug)
+pub fn CT_GraphicFrameNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GroupShape {
-  element : @xml.Element
+  nv_grp_sp_pr : CT_GroupShapeNonVisual
+  grp_sp_pr : @xml.Element
+  sp : Array[@xml.Element]
+  grp_sp : Array[CT_GroupShape]
+  graphic_frame : Array[CT_GraphicFrame]
+  cxn_sp : Array[CT_Connector]
+  pic : Array[CT_Picture]
 } derive(Eq, @debug.Debug)
+pub fn CT_GroupShape::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GroupShapeNonVisual {
-  element : @xml.Element
+  c_nv_pr : @xml.Element
+  c_nv_grp_sp_pr : @xml.Element
 } derive(Eq, @debug.Debug)
+pub fn CT_GroupShapeNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Grouping {
   val : ST_Grouping?
@@ -468,8 +567,17 @@ pub(all) struct CT_HPercent {
 pub fn CT_HPercent::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_HeaderFooter {
-  element : @xml.Element
+  align_with_margins : Bool?
+  different_odd_even : Bool?
+  different_first : Bool?
+  odd_header : String?
+  odd_footer : String?
+  even_header : String?
+  even_footer : String?
+  first_header : String?
+  first_footer : String?
 } derive(Eq, @debug.Debug)
+pub fn CT_HeaderFooter::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_HoleSize {
   val : ST_HoleSize?
@@ -498,20 +606,33 @@ pub(all) struct CT_LblAlgn {
 pub fn CT_LblAlgn::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_LblOffset {
-  element : @xml.Element
+  val : ST_LblOffset?
 } derive(Eq, @debug.Debug)
+pub fn CT_LblOffset::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Legend {
-  element : @xml.Element
+  legend_pos : CT_LegendPos?
+  legend_entry : Array[CT_LegendEntry]
+  layout : CT_Layout?
+  overlay : CT_Boolean?
+  sp_pr : @xml.Element?
+  tx_pr : @xml.Element?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_Legend::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_LegendEntry {
-  element : @xml.Element
+  idx : CT_UnsignedInt
+  delete : CT_Boolean?
+  tx_pr : @xml.Element?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_LegendEntry::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_LegendPos {
-  element : @xml.Element
+  val : ST_LegendPos?
 } derive(Eq, @debug.Debug)
+pub fn CT_LegendPos::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Line3DChart {
   grouping : CT_Grouping
@@ -558,8 +679,9 @@ pub(all) struct CT_LineSer {
 pub fn CT_LineSer::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_LogBase {
-  element : @xml.Element
+  val : ST_LogBase
 } derive(Eq, @debug.Debug)
+pub fn CT_LogBase::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Lvl {
   pt : Array[CT_StrVal]
@@ -672,8 +794,9 @@ pub(all) struct CT_Order {
 pub fn CT_Order::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Orientation {
-  element : @xml.Element
+  val : ST_Orientation?
 } derive(Eq, @debug.Debug)
+pub fn CT_Orientation::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Overlap {
   val : ST_Overlap?
@@ -681,12 +804,29 @@ pub(all) struct CT_Overlap {
 pub fn CT_Overlap::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PageMargins {
-  element : @xml.Element
+  l : Double
+  r : Double
+  t : Double
+  b : Double
+  header : Double
+  footer : Double
 } derive(Eq, @debug.Debug)
+pub fn CT_PageMargins::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PageSetup {
-  element : @xml.Element
+  paper_size : Int64?
+  paper_height : String?
+  paper_width : String?
+  first_page_number : Int64?
+  orientation : ST_PageSetupOrientation?
+  black_and_white : Bool?
+  draft : Bool?
+  use_first_page_number : Bool?
+  horizontal_dpi : Int?
+  vertical_dpi : Int?
+  copies : Int64?
 } derive(Eq, @debug.Debug)
+pub fn CT_PageSetup::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Period {
   val : ST_Period?
@@ -699,8 +839,14 @@ pub(all) struct CT_Perspective {
 pub fn CT_Perspective::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Picture {
-  element : @xml.Element
+  macro_ : String?
+  f_published : Bool?
+  nv_pic_pr : CT_PictureNonVisual
+  blip_fill : @xml.Element
+  sp_pr : @xml.Element
+  style : @xml.Element?
 } derive(Eq, @debug.Debug)
+pub fn CT_Picture::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PictureFormat {
   val : ST_PictureFormat
@@ -708,8 +854,10 @@ pub(all) struct CT_PictureFormat {
 pub fn CT_PictureFormat::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PictureNonVisual {
-  element : @xml.Element
+  c_nv_pr : @xml.Element
+  c_nv_pic_pr : @xml.Element
 } derive(Eq, @debug.Debug)
+pub fn CT_PictureNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PictureOptions {
   apply_to_front : CT_Boolean?
@@ -757,28 +905,70 @@ pub(all) struct CT_PieSer {
 pub fn CT_PieSer::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PivotFmt {
-  element : @xml.Element
+  idx : CT_UnsignedInt
+  sp_pr : @xml.Element?
+  tx_pr : @xml.Element?
+  marker : CT_Marker?
+  d_lbl : CT_DLbl?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_PivotFmt::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PivotFmts {
-  element : @xml.Element
+  pivot_fmt : Array[CT_PivotFmt]
 } derive(Eq, @debug.Debug)
+pub fn CT_PivotFmts::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PivotSource {
-  element : @xml.Element
+  name : String
+  fmt_id : CT_UnsignedInt
+  ext_lst : Array[CT_ExtensionList]
 } derive(Eq, @debug.Debug)
+pub fn CT_PivotSource::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PlotArea {
-  element : @xml.Element
+  layout : CT_Layout?
+  area_chart : Array[@xml.Element]
+  area_3d_chart : Array[@xml.Element]
+  line_chart : Array[@xml.Element]
+  line_3d_chart : Array[@xml.Element]
+  stock_chart : Array[@xml.Element]
+  radar_chart : Array[@xml.Element]
+  scatter_chart : Array[@xml.Element]
+  pie_chart : Array[@xml.Element]
+  pie_3d_chart : Array[@xml.Element]
+  doughnut_chart : Array[@xml.Element]
+  bar_chart : Array[@xml.Element]
+  bar_3d_chart : Array[@xml.Element]
+  of_pie_chart : Array[@xml.Element]
+  surface_chart : Array[@xml.Element]
+  surface_3d_chart : Array[@xml.Element]
+  bubble_chart : Array[@xml.Element]
+  val_ax : Array[CT_ValAx]
+  cat_ax : Array[CT_CatAx]
+  date_ax : Array[CT_DateAx]
+  ser_ax : Array[CT_SerAx]
+  d_table : CT_DTable?
+  sp_pr : @xml.Element?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_PlotArea::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PrintSettings {
-  element : @xml.Element
+  header_footer : CT_HeaderFooter?
+  page_margins : CT_PageMargins?
+  page_setup : CT_PageSetup?
 } derive(Eq, @debug.Debug)
+pub fn CT_PrintSettings::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Protection {
-  element : @xml.Element
+  chart_object : CT_Boolean?
+  data : CT_Boolean?
+  formatting : CT_Boolean?
+  selection : CT_Boolean?
+  user_interface : CT_Boolean?
 } derive(Eq, @debug.Debug)
+pub fn CT_Protection::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_RadarChart {
   radar_style : CT_RadarStyle
@@ -815,8 +1005,15 @@ pub(all) struct CT_RelId {
 pub fn CT_RelId::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_RelSizeAnchor {
-  element : @xml.Element
+  from_ : @xml.Element
+  to_ : @xml.Element
+  sp : @xml.Element?
+  grp_sp : CT_GroupShape?
+  graphic_frame : CT_GraphicFrame?
+  cxn_sp : CT_Connector?
+  pic : CT_Picture?
 } derive(Eq, @debug.Debug)
+pub fn CT_RelSizeAnchor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_RotX {
   val : ST_RotX?
@@ -829,8 +1026,13 @@ pub(all) struct CT_RotY {
 pub fn CT_RotY::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Scaling {
-  element : @xml.Element
+  log_base : CT_LogBase?
+  orientation : CT_Orientation?
+  max : CT_Double?
+  min : CT_Double?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_Scaling::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ScatterChart {
   scatter_style : CT_ScatterStyle
@@ -870,8 +1072,27 @@ pub(all) struct CT_SecondPieSize {
 pub fn CT_SecondPieSize::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SerAx {
-  element : @xml.Element
+  ax_id : CT_UnsignedInt
+  scaling : CT_Scaling
+  delete : CT_Boolean?
+  ax_pos : @xml.Element
+  major_gridlines : CT_ChartLines?
+  minor_gridlines : CT_ChartLines?
+  title : CT_Title?
+  num_fmt : CT_NumFmt?
+  major_tick_mark : @xml.Element?
+  minor_tick_mark : @xml.Element?
+  tick_lbl_pos : @xml.Element?
+  sp_pr : @xml.Element?
+  tx_pr : @xml.Element?
+  cross_ax : CT_UnsignedInt
+  crosses : @xml.Element?
+  crosses_at : CT_Double?
+  tick_lbl_skip : @xml.Element?
+  tick_mark_skip : @xml.Element?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_SerAx::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) enum CT_SerTx {
   SerTxRef(CT_StrRef)
@@ -885,8 +1106,10 @@ pub(all) struct CT_Shape {
 pub fn CT_Shape::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ShapeNonVisual {
-  element : @xml.Element
+  c_nv_pr : @xml.Element
+  c_nv_sp_pr : @xml.Element
 } derive(Eq, @debug.Debug)
+pub fn CT_ShapeNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SizeRepresents {
   val : ST_SizeRepresents?
@@ -935,8 +1158,9 @@ pub(all) struct CT_StrVal {
 pub fn CT_StrVal::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Style {
-  element : @xml.Element
+  val : ST_Style
 } derive(Eq, @debug.Debug)
+pub fn CT_Style::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Surface {
   thickness : CT_Thickness?
@@ -1066,8 +1290,29 @@ pub(all) struct CT_UpDownBars {
 pub fn CT_UpDownBars::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ValAx {
-  element : @xml.Element
+  ax_id : CT_UnsignedInt
+  scaling : CT_Scaling
+  delete : CT_Boolean?
+  ax_pos : @xml.Element
+  major_gridlines : CT_ChartLines?
+  minor_gridlines : CT_ChartLines?
+  title : CT_Title?
+  num_fmt : CT_NumFmt?
+  major_tick_mark : @xml.Element?
+  minor_tick_mark : @xml.Element?
+  tick_lbl_pos : @xml.Element?
+  sp_pr : @xml.Element?
+  tx_pr : @xml.Element?
+  cross_ax : CT_UnsignedInt
+  crosses : @xml.Element?
+  crosses_at : CT_Double?
+  cross_between : @xml.Element?
+  major_unit : @xml.Element?
+  minor_unit : @xml.Element?
+  disp_units : CT_DispUnits?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
+pub fn CT_ValAx::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_View3D {
   rot_x : CT_RotX?

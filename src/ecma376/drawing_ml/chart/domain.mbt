@@ -208,6 +208,56 @@ fn parse_xsd_unsigned_int(
 }
 
 ///|
+/// Decode an xsd:int attribute body (signed 32-bit, -2_147_483_648..2_147_483_647).
+fn parse_xsd_int(path : String, value : String) -> Int raise SchemaViolation {
+  if value.length() == 0 {
+    raise SchemaViolation(
+      schema="dml-chart.xsd",
+      path~,
+      reason="invalid xsd:int: empty",
+    )
+  }
+  let mut i = 0
+  let mut negative = false
+  if value[0:1] == "-" {
+    negative = true
+    i = 1
+  } else if value[0:1] == "+" {
+    i = 1
+  }
+  if i >= value.length() {
+    raise SchemaViolation(
+      schema="dml-chart.xsd",
+      path~,
+      reason="invalid xsd:int: " + value,
+    )
+  }
+  let mut n : Int64 = 0L
+  while i < value.length() {
+    let ch = value[i:i + 1]
+    if ch < "0" || ch > "9" {
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path~,
+        reason="invalid xsd:int: " + value,
+      )
+    }
+    let d = (ch[0].to_int() - "0"[0].to_int()).to_int64()
+    n = n * 10L + d
+    i = i + 1
+  }
+  let signed = if negative { -n } else { n }
+  if signed < -2147483648L || signed > 2147483647L {
+    raise SchemaViolation(
+      schema="dml-chart.xsd",
+      path~,
+      reason="xsd:int out of range: " + value,
+    )
+  }
+  signed.to_int()
+}
+
+///|
 /// Decode the textual content of a child element (concatenated `Text`
 /// and `CData` nodes). Empty strings come back as `""`.
 fn element_text(element : @xml.Element) -> String {
@@ -3270,17 +3320,16 @@ pub fn CT_Grouping::new(
 
 ///|
 /// XSD complex type CT_Chart — Part 1 §21.2.2.27 (dml-chart.xsd) chart.
-/// Sequence: optional title, autoTitleDeleted, pivotFmts (chunk3 wrapper,
-/// raw), view3D, floor, sideWall, backWall, then required plotArea (chunk3
-/// wrapper, raw), then optional legend (chunk3, raw), plotVisOnly,
-/// dispBlanksAs (chunk3, raw), showDLblsOverMax, extLst.
+/// Sequence: optional title, autoTitleDeleted, pivotFmts, view3D, floor,
+/// sideWall, backWall, then required plotArea, then optional legend,
+/// plotVisOnly, dispBlanksAs, showDLblsOverMax, extLst.
 pub(all) struct CT_Chart {
   /// <title> (CT_Title) — optional.
   title : CT_Title?
   /// <autoTitleDeleted> (CT_Boolean) — optional.
   auto_title_deleted : CT_Boolean?
-  /// <pivotFmts> (CT_PivotFmts, chunk3) preserved as raw element.
-  pivot_fmts : @xml.Element?
+  /// <pivotFmts> (CT_PivotFmts) — optional.
+  pivot_fmts : CT_PivotFmts?
   /// <view3D> (CT_View3D) — optional.
   view_3d : CT_View3D?
   /// <floor> (CT_Surface) — optional.
@@ -3289,15 +3338,14 @@ pub(all) struct CT_Chart {
   side_wall : CT_Surface?
   /// <backWall> (CT_Surface) — optional.
   back_wall : CT_Surface?
-  /// <plotArea> (CT_PlotArea, chunk3) — required, preserved as raw element
-  /// until chunk3 lands.
-  plot_area : @xml.Element
-  /// <legend> (CT_Legend, chunk3) preserved as raw element.
-  legend : @xml.Element?
+  /// <plotArea> (CT_PlotArea) — required.
+  plot_area : CT_PlotArea
+  /// <legend> (CT_Legend) — optional.
+  legend : CT_Legend?
   /// <plotVisOnly> (CT_Boolean) — optional.
   plot_vis_only : CT_Boolean?
-  /// <dispBlanksAs> (CT_DispBlanksAs, chunk3) preserved as raw element.
-  disp_blanks_as : @xml.Element?
+  /// <dispBlanksAs> (CT_DispBlanksAs) — optional.
+  disp_blanks_as : CT_DispBlanksAs?
   /// <showDLblsOverMax> (CT_Boolean) — optional.
   show_d_lbls_over_max : CT_Boolean?
   /// <extLst> (CT_ExtensionList) — optional.
@@ -4772,124 +4820,1106 @@ pub(all) struct CT_DispUnitsLbl {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DispUnitsLbl::new(
+/// XSD complex type CT_DispUnits — Part 1 §21.2.2.49 (dml-chart.xsd) dispUnits.
+/// Sequence: choice of `custUnit` (CT_Double) or `builtInUnit` (CT_BuiltInUnit),
+/// then optional `dispUnitsLbl` and `extLst`. The XSD `<xsd:choice>` is unbounded
+/// minOccurs implicit 1, but `CT_BuiltInUnit` remains a chunk3 wrapper preserved
+/// as raw `@xml.Element` until that batch types it.
+pub(all) struct CT_DispUnits {
+  /// <custUnit> (CT_Double) — choice branch, optional in either branch.
+  cust_unit : CT_Double?
+  /// <builtInUnit> (CT_BuiltInUnit, chunk3 wrapper) preserved as raw element.
+  built_in_unit : @xml.Element?
+  /// <dispUnitsLbl> (CT_DispUnitsLbl, chunk3 wrapper) preserved as raw element.
+  disp_units_lbl : @xml.Element?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_DispUnits::new(
   element : @xml.Element,
-) -> CT_DispUnitsLbl raise SchemaViolation {
+) -> CT_DispUnits raise SchemaViolation {
+  let cust_unit = match first_child_named(element, "custUnit") {
+    Some(child) => Some(CT_Double::new(child))
+    None => None
+  }
+  let built_in_unit = first_child_named(element, "builtInUnit")
+  let disp_units_lbl = first_child_named(element, "dispUnitsLbl")
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  { cust_unit, built_in_unit, disp_units_lbl, ext_lst }
+}
+
+///|
+/// XSD complex type CT_Orientation — Part 1 §21.2.2.130 (dml-chart.xsd) orientation.
+/// Single optional `val` attribute (ST_Orientation; schema default `minMax`).
+pub(all) struct CT_Orientation {
+  /// @val (ST_Orientation) — optional, schema default `minMax`.
+  val : ST_Orientation?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_Orientation::new(
+  element : @xml.Element,
+) -> CT_Orientation raise SchemaViolation {
+  let val = match attr_value(element, "val") {
+    Some(text) => Some(ST_Orientation::parse(text))
+    None => None
+  }
+  { val, }
+}
+
+///|
+/// XSD complex type CT_LogBase — Part 1 §21.2.2.105 (dml-chart.xsd) logBase.
+/// Required `val` (ST_LogBase; xsd:double restricted to 2..1000).
+pub(all) struct CT_LogBase {
+  /// @val (ST_LogBase) — required.
+  val : ST_LogBase
+} derive(Eq, Debug)
+
+///|
+pub fn CT_LogBase::new(
+  element : @xml.Element,
+) -> CT_LogBase raise SchemaViolation {
+  let raw = match attr_value(element, "val") {
+    Some(v) => v
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_LogBase/@val",
+        reason="required attribute missing",
+      )
+  }
+  { val: ST_LogBase::parse(raw) }
+}
+
+///|
+/// XSD complex type CT_Scaling — Part 1 §21.2.2.176 (dml-chart.xsd) scaling.
+/// Sequence: optional logBase, orientation, max (CT_Double), min (CT_Double), extLst.
+pub(all) struct CT_Scaling {
+  /// <logBase> (CT_LogBase) — optional.
+  log_base : CT_LogBase?
+  /// <orientation> (CT_Orientation) — optional.
+  orientation : CT_Orientation?
+  /// <max> (CT_Double) — optional.
+  max : CT_Double?
+  /// <min> (CT_Double) — optional.
+  min : CT_Double?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_Scaling::new(
+  element : @xml.Element,
+) -> CT_Scaling raise SchemaViolation {
+  let log_base = match first_child_named(element, "logBase") {
+    Some(child) => Some(CT_LogBase::new(child))
+    None => None
+  }
+  let orientation = match first_child_named(element, "orientation") {
+    Some(child) => Some(CT_Orientation::new(child))
+    None => None
+  }
+  let max = match first_child_named(element, "max") {
+    Some(child) => Some(CT_Double::new(child))
+    None => None
+  }
+  let min = match first_child_named(element, "min") {
+    Some(child) => Some(CT_Double::new(child))
+    None => None
+  }
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  { log_base, orientation, max, min, ext_lst }
+}
+
+///|
+/// XSD complex type CT_LblOffset — Part 1 §21.2.2.95 (dml-chart.xsd) lblOffset.
+/// Single optional `val` attribute (ST_LblOffset; default `100%`).
+pub(all) struct CT_LblOffset {
+  /// @val (ST_LblOffset) — optional, schema default `100%`.
+  val : ST_LblOffset?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_LblOffset::new(
+  element : @xml.Element,
+) -> CT_LblOffset raise SchemaViolation {
+  let val = match attr_value(element, "val") {
+    Some(text) => Some(ST_LblOffset::parse(text))
+    None => None
+  }
+  { val, }
+}
+
+///|
+/// XSD complex type CT_CatAx — Part 1 §21.2.2.25 (dml-chart.xsd) catAx.
+/// Sequence: EG_AxShared group (axId, scaling, delete, axPos, majorGridlines,
+/// minorGridlines, title, numFmt, majorTickMark, minorTickMark, tickLblPos,
+/// spPr, txPr, crossAx, then optional choice crosses/crossesAt) followed by
+/// auto, lblAlgn, lblOffset, tickLblSkip, tickMarkSkip, noMultiLvlLbl, extLst.
+/// `CT_AxPos`, `CT_ChartLines`, `CT_TickMark`, `CT_TickLblPos`, `CT_Skip`, and
+/// `CT_Crosses` remain chunk3 wrappers preserved as raw `@xml.Element`.
+pub(all) struct CT_CatAx {
+  /// <axId> (CT_UnsignedInt) — required.
+  ax_id : CT_UnsignedInt
+  /// <scaling> (CT_Scaling) — required.
+  scaling : CT_Scaling
+  /// <delete> (CT_Boolean) — optional.
+  delete : CT_Boolean?
+  /// <axPos> (CT_AxPos, chunk3 wrapper) — required, preserved as raw element.
+  ax_pos : @xml.Element
+  /// <majorGridlines> (CT_ChartLines) — optional.
+  major_gridlines : CT_ChartLines?
+  /// <minorGridlines> (CT_ChartLines) — optional.
+  minor_gridlines : CT_ChartLines?
+  /// <title> (CT_Title) — optional.
+  title : CT_Title?
+  /// <numFmt> (CT_NumFmt) — optional.
+  num_fmt : CT_NumFmt?
+  /// <majorTickMark> (CT_TickMark, chunk3) preserved as raw element.
+  major_tick_mark : @xml.Element?
+  /// <minorTickMark> (CT_TickMark, chunk3) preserved as raw element.
+  minor_tick_mark : @xml.Element?
+  /// <tickLblPos> (CT_TickLblPos, chunk3) preserved as raw element.
+  tick_lbl_pos : @xml.Element?
+  /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
+  sp_pr : @xml.Element?
+  /// <txPr> (a:CT_TextBody) preserved as raw element.
+  tx_pr : @xml.Element?
+  /// <crossAx> (CT_UnsignedInt) — required.
+  cross_ax : CT_UnsignedInt
+  /// <crosses> (CT_Crosses, chunk3) — choice branch, preserved as raw element.
+  crosses : @xml.Element?
+  /// <crossesAt> (CT_Double) — choice branch, optional.
+  crosses_at : CT_Double?
+  /// <auto> (CT_Boolean) — optional.
+  auto : CT_Boolean?
+  /// <lblAlgn> (CT_LblAlgn) — optional.
+  lbl_algn : CT_LblAlgn?
+  /// <lblOffset> (CT_LblOffset) — optional.
+  lbl_offset : CT_LblOffset?
+  /// <tickLblSkip> (CT_Skip, chunk3) preserved as raw element.
+  tick_lbl_skip : @xml.Element?
+  /// <tickMarkSkip> (CT_Skip, chunk3) preserved as raw element.
+  tick_mark_skip : @xml.Element?
+  /// <noMultiLvlLbl> (CT_Boolean) — optional.
+  no_multi_lvl_lbl : CT_Boolean?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_CatAx::new(element : @xml.Element) -> CT_CatAx raise SchemaViolation {
+  let ax_id_element = match first_child_named(element, "axId") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_CatAx/axId",
+        reason="required child missing",
+      )
+  }
+  let ax_id = CT_UnsignedInt::new(ax_id_element)
+  let scaling_element = match first_child_named(element, "scaling") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_CatAx/scaling",
+        reason="required child missing",
+      )
+  }
+  let scaling = CT_Scaling::new(scaling_element)
+  let delete = match first_child_named(element, "delete") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let ax_pos = match first_child_named(element, "axPos") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_CatAx/axPos",
+        reason="required child missing",
+      )
+  }
+  let major_gridlines = match first_child_named(element, "majorGridlines") {
+    Some(child) => Some(CT_ChartLines::new(child))
+    None => None
+  }
+  let minor_gridlines = match first_child_named(element, "minorGridlines") {
+    Some(child) => Some(CT_ChartLines::new(child))
+    None => None
+  }
+  let title = match first_child_named(element, "title") {
+    Some(child) => Some(CT_Title::new(child))
+    None => None
+  }
+  let num_fmt = match first_child_named(element, "numFmt") {
+    Some(child) => Some(CT_NumFmt::new(child))
+    None => None
+  }
+  let major_tick_mark = first_child_named(element, "majorTickMark")
+  let minor_tick_mark = first_child_named(element, "minorTickMark")
+  let tick_lbl_pos = first_child_named(element, "tickLblPos")
+  let sp_pr = first_child_named(element, "spPr")
+  let tx_pr = first_child_named(element, "txPr")
+  let cross_ax_element = match first_child_named(element, "crossAx") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_CatAx/crossAx",
+        reason="required child missing",
+      )
+  }
+  let cross_ax = CT_UnsignedInt::new(cross_ax_element)
+  let crosses = first_child_named(element, "crosses")
+  let crosses_at = match first_child_named(element, "crossesAt") {
+    Some(child) => Some(CT_Double::new(child))
+    None => None
+  }
+  let auto = match first_child_named(element, "auto") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let lbl_algn = match first_child_named(element, "lblAlgn") {
+    Some(child) => Some(CT_LblAlgn::new(child))
+    None => None
+  }
+  let lbl_offset = match first_child_named(element, "lblOffset") {
+    Some(child) => Some(CT_LblOffset::new(child))
+    None => None
+  }
+  let tick_lbl_skip = first_child_named(element, "tickLblSkip")
+  let tick_mark_skip = first_child_named(element, "tickMarkSkip")
+  let no_multi_lvl_lbl = match first_child_named(element, "noMultiLvlLbl") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  {
+    ax_id,
+    scaling,
+    delete,
+    ax_pos,
+    major_gridlines,
+    minor_gridlines,
+    title,
+    num_fmt,
+    major_tick_mark,
+    minor_tick_mark,
+    tick_lbl_pos,
+    sp_pr,
+    tx_pr,
+    cross_ax,
+    crosses,
+    crosses_at,
+    auto,
+    lbl_algn,
+    lbl_offset,
+    tick_lbl_skip,
+    tick_mark_skip,
+    no_multi_lvl_lbl,
+    ext_lst,
+  }
+}
+
+///|
+/// XSD complex type CT_DateAx — Part 1 §21.2.2.39 (dml-chart.xsd) dateAx.
+/// Sequence: EG_AxShared followed by auto, lblOffset, baseTimeUnit, majorUnit,
+/// majorTimeUnit, minorUnit, minorTimeUnit, extLst. `CT_AxPos`, `CT_TickMark`,
+/// `CT_TickLblPos`, `CT_Crosses`, `CT_TimeUnit`, `CT_AxisUnit` are chunk3
+/// wrappers preserved as raw `@xml.Element`.
+pub(all) struct CT_DateAx {
+  /// <axId> (CT_UnsignedInt) — required.
+  ax_id : CT_UnsignedInt
+  /// <scaling> (CT_Scaling) — required.
+  scaling : CT_Scaling
+  /// <delete> (CT_Boolean) — optional.
+  delete : CT_Boolean?
+  /// <axPos> (CT_AxPos, chunk3) — required, preserved as raw element.
+  ax_pos : @xml.Element
+  /// <majorGridlines> (CT_ChartLines) — optional.
+  major_gridlines : CT_ChartLines?
+  /// <minorGridlines> (CT_ChartLines) — optional.
+  minor_gridlines : CT_ChartLines?
+  /// <title> (CT_Title) — optional.
+  title : CT_Title?
+  /// <numFmt> (CT_NumFmt) — optional.
+  num_fmt : CT_NumFmt?
+  /// <majorTickMark> (CT_TickMark, chunk3) preserved as raw element.
+  major_tick_mark : @xml.Element?
+  /// <minorTickMark> (CT_TickMark, chunk3) preserved as raw element.
+  minor_tick_mark : @xml.Element?
+  /// <tickLblPos> (CT_TickLblPos, chunk3) preserved as raw element.
+  tick_lbl_pos : @xml.Element?
+  /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
+  sp_pr : @xml.Element?
+  /// <txPr> (a:CT_TextBody) preserved as raw element.
+  tx_pr : @xml.Element?
+  /// <crossAx> (CT_UnsignedInt) — required.
+  cross_ax : CT_UnsignedInt
+  /// <crosses> (CT_Crosses, chunk3) — choice branch, preserved as raw element.
+  crosses : @xml.Element?
+  /// <crossesAt> (CT_Double) — choice branch, optional.
+  crosses_at : CT_Double?
+  /// <auto> (CT_Boolean) — optional.
+  auto : CT_Boolean?
+  /// <lblOffset> (CT_LblOffset) — optional.
+  lbl_offset : CT_LblOffset?
+  /// <baseTimeUnit> (CT_TimeUnit, chunk3) preserved as raw element.
+  base_time_unit : @xml.Element?
+  /// <majorUnit> (CT_AxisUnit, chunk3) preserved as raw element.
+  major_unit : @xml.Element?
+  /// <majorTimeUnit> (CT_TimeUnit, chunk3) preserved as raw element.
+  major_time_unit : @xml.Element?
+  /// <minorUnit> (CT_AxisUnit, chunk3) preserved as raw element.
+  minor_unit : @xml.Element?
+  /// <minorTimeUnit> (CT_TimeUnit, chunk3) preserved as raw element.
+  minor_time_unit : @xml.Element?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_DateAx::new(
+  element : @xml.Element,
+) -> CT_DateAx raise SchemaViolation {
+  let ax_id_element = match first_child_named(element, "axId") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_DateAx/axId",
+        reason="required child missing",
+      )
+  }
+  let ax_id = CT_UnsignedInt::new(ax_id_element)
+  let scaling_element = match first_child_named(element, "scaling") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_DateAx/scaling",
+        reason="required child missing",
+      )
+  }
+  let scaling = CT_Scaling::new(scaling_element)
+  let delete = match first_child_named(element, "delete") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let ax_pos = match first_child_named(element, "axPos") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_DateAx/axPos",
+        reason="required child missing",
+      )
+  }
+  let major_gridlines = match first_child_named(element, "majorGridlines") {
+    Some(child) => Some(CT_ChartLines::new(child))
+    None => None
+  }
+  let minor_gridlines = match first_child_named(element, "minorGridlines") {
+    Some(child) => Some(CT_ChartLines::new(child))
+    None => None
+  }
+  let title = match first_child_named(element, "title") {
+    Some(child) => Some(CT_Title::new(child))
+    None => None
+  }
+  let num_fmt = match first_child_named(element, "numFmt") {
+    Some(child) => Some(CT_NumFmt::new(child))
+    None => None
+  }
+  let major_tick_mark = first_child_named(element, "majorTickMark")
+  let minor_tick_mark = first_child_named(element, "minorTickMark")
+  let tick_lbl_pos = first_child_named(element, "tickLblPos")
+  let sp_pr = first_child_named(element, "spPr")
+  let tx_pr = first_child_named(element, "txPr")
+  let cross_ax_element = match first_child_named(element, "crossAx") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_DateAx/crossAx",
+        reason="required child missing",
+      )
+  }
+  let cross_ax = CT_UnsignedInt::new(cross_ax_element)
+  let crosses = first_child_named(element, "crosses")
+  let crosses_at = match first_child_named(element, "crossesAt") {
+    Some(child) => Some(CT_Double::new(child))
+    None => None
+  }
+  let auto = match first_child_named(element, "auto") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let lbl_offset = match first_child_named(element, "lblOffset") {
+    Some(child) => Some(CT_LblOffset::new(child))
+    None => None
+  }
+  let base_time_unit = first_child_named(element, "baseTimeUnit")
+  let major_unit = first_child_named(element, "majorUnit")
+  let major_time_unit = first_child_named(element, "majorTimeUnit")
+  let minor_unit = first_child_named(element, "minorUnit")
+  let minor_time_unit = first_child_named(element, "minorTimeUnit")
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  {
+    ax_id,
+    scaling,
+    delete,
+    ax_pos,
+    major_gridlines,
+    minor_gridlines,
+    title,
+    num_fmt,
+    major_tick_mark,
+    minor_tick_mark,
+    tick_lbl_pos,
+    sp_pr,
+    tx_pr,
+    cross_ax,
+    crosses,
+    crosses_at,
+    auto,
+    lbl_offset,
+    base_time_unit,
+    major_unit,
+    major_time_unit,
+    minor_unit,
+    minor_time_unit,
+    ext_lst,
+  }
+}
+
+///|
+/// XSD complex type CT_SerAx — Part 1 §21.2.2.184 (dml-chart.xsd) serAx.
+/// Sequence: EG_AxShared followed by tickLblSkip, tickMarkSkip, extLst. Chunk3
+/// wrappers (`CT_AxPos`, `CT_TickMark`, `CT_TickLblPos`, `CT_Skip`,
+/// `CT_Crosses`) are preserved as raw `@xml.Element`.
+pub(all) struct CT_SerAx {
+  /// <axId> (CT_UnsignedInt) — required.
+  ax_id : CT_UnsignedInt
+  /// <scaling> (CT_Scaling) — required.
+  scaling : CT_Scaling
+  /// <delete> (CT_Boolean) — optional.
+  delete : CT_Boolean?
+  /// <axPos> (CT_AxPos, chunk3) — required, preserved as raw element.
+  ax_pos : @xml.Element
+  /// <majorGridlines> (CT_ChartLines) — optional.
+  major_gridlines : CT_ChartLines?
+  /// <minorGridlines> (CT_ChartLines) — optional.
+  minor_gridlines : CT_ChartLines?
+  /// <title> (CT_Title) — optional.
+  title : CT_Title?
+  /// <numFmt> (CT_NumFmt) — optional.
+  num_fmt : CT_NumFmt?
+  /// <majorTickMark> (CT_TickMark, chunk3) preserved as raw element.
+  major_tick_mark : @xml.Element?
+  /// <minorTickMark> (CT_TickMark, chunk3) preserved as raw element.
+  minor_tick_mark : @xml.Element?
+  /// <tickLblPos> (CT_TickLblPos, chunk3) preserved as raw element.
+  tick_lbl_pos : @xml.Element?
+  /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
+  sp_pr : @xml.Element?
+  /// <txPr> (a:CT_TextBody) preserved as raw element.
+  tx_pr : @xml.Element?
+  /// <crossAx> (CT_UnsignedInt) — required.
+  cross_ax : CT_UnsignedInt
+  /// <crosses> (CT_Crosses, chunk3) — choice branch, preserved as raw element.
+  crosses : @xml.Element?
+  /// <crossesAt> (CT_Double) — choice branch, optional.
+  crosses_at : CT_Double?
+  /// <tickLblSkip> (CT_Skip, chunk3) preserved as raw element.
+  tick_lbl_skip : @xml.Element?
+  /// <tickMarkSkip> (CT_Skip, chunk3) preserved as raw element.
+  tick_mark_skip : @xml.Element?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_SerAx::new(element : @xml.Element) -> CT_SerAx raise SchemaViolation {
+  let ax_id_element = match first_child_named(element, "axId") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_SerAx/axId",
+        reason="required child missing",
+      )
+  }
+  let ax_id = CT_UnsignedInt::new(ax_id_element)
+  let scaling_element = match first_child_named(element, "scaling") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_SerAx/scaling",
+        reason="required child missing",
+      )
+  }
+  let scaling = CT_Scaling::new(scaling_element)
+  let delete = match first_child_named(element, "delete") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let ax_pos = match first_child_named(element, "axPos") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_SerAx/axPos",
+        reason="required child missing",
+      )
+  }
+  let major_gridlines = match first_child_named(element, "majorGridlines") {
+    Some(child) => Some(CT_ChartLines::new(child))
+    None => None
+  }
+  let minor_gridlines = match first_child_named(element, "minorGridlines") {
+    Some(child) => Some(CT_ChartLines::new(child))
+    None => None
+  }
+  let title = match first_child_named(element, "title") {
+    Some(child) => Some(CT_Title::new(child))
+    None => None
+  }
+  let num_fmt = match first_child_named(element, "numFmt") {
+    Some(child) => Some(CT_NumFmt::new(child))
+    None => None
+  }
+  let major_tick_mark = first_child_named(element, "majorTickMark")
+  let minor_tick_mark = first_child_named(element, "minorTickMark")
+  let tick_lbl_pos = first_child_named(element, "tickLblPos")
+  let sp_pr = first_child_named(element, "spPr")
+  let tx_pr = first_child_named(element, "txPr")
+  let cross_ax_element = match first_child_named(element, "crossAx") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_SerAx/crossAx",
+        reason="required child missing",
+      )
+  }
+  let cross_ax = CT_UnsignedInt::new(cross_ax_element)
+  let crosses = first_child_named(element, "crosses")
+  let crosses_at = match first_child_named(element, "crossesAt") {
+    Some(child) => Some(CT_Double::new(child))
+    None => None
+  }
+  let tick_lbl_skip = first_child_named(element, "tickLblSkip")
+  let tick_mark_skip = first_child_named(element, "tickMarkSkip")
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  {
+    ax_id,
+    scaling,
+    delete,
+    ax_pos,
+    major_gridlines,
+    minor_gridlines,
+    title,
+    num_fmt,
+    major_tick_mark,
+    minor_tick_mark,
+    tick_lbl_pos,
+    sp_pr,
+    tx_pr,
+    cross_ax,
+    crosses,
+    crosses_at,
+    tick_lbl_skip,
+    tick_mark_skip,
+    ext_lst,
+  }
+}
+
+///|
+/// XSD complex type CT_ValAx — Part 1 §21.2.2.226 (dml-chart.xsd) valAx.
+/// Sequence: EG_AxShared followed by crossBetween, majorUnit, minorUnit,
+/// dispUnits, extLst. Chunk3 wrappers (`CT_AxPos`, `CT_TickMark`,
+/// `CT_TickLblPos`, `CT_CrossBetween`, `CT_Crosses`, `CT_AxisUnit`) preserved
+/// as raw `@xml.Element`.
+pub(all) struct CT_ValAx {
+  /// <axId> (CT_UnsignedInt) — required.
+  ax_id : CT_UnsignedInt
+  /// <scaling> (CT_Scaling) — required.
+  scaling : CT_Scaling
+  /// <delete> (CT_Boolean) — optional.
+  delete : CT_Boolean?
+  /// <axPos> (CT_AxPos, chunk3) — required, preserved as raw element.
+  ax_pos : @xml.Element
+  /// <majorGridlines> (CT_ChartLines) — optional.
+  major_gridlines : CT_ChartLines?
+  /// <minorGridlines> (CT_ChartLines) — optional.
+  minor_gridlines : CT_ChartLines?
+  /// <title> (CT_Title) — optional.
+  title : CT_Title?
+  /// <numFmt> (CT_NumFmt) — optional.
+  num_fmt : CT_NumFmt?
+  /// <majorTickMark> (CT_TickMark, chunk3) preserved as raw element.
+  major_tick_mark : @xml.Element?
+  /// <minorTickMark> (CT_TickMark, chunk3) preserved as raw element.
+  minor_tick_mark : @xml.Element?
+  /// <tickLblPos> (CT_TickLblPos, chunk3) preserved as raw element.
+  tick_lbl_pos : @xml.Element?
+  /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
+  sp_pr : @xml.Element?
+  /// <txPr> (a:CT_TextBody) preserved as raw element.
+  tx_pr : @xml.Element?
+  /// <crossAx> (CT_UnsignedInt) — required.
+  cross_ax : CT_UnsignedInt
+  /// <crosses> (CT_Crosses, chunk3) — choice branch, preserved as raw element.
+  crosses : @xml.Element?
+  /// <crossesAt> (CT_Double) — choice branch, optional.
+  crosses_at : CT_Double?
+  /// <crossBetween> (CT_CrossBetween, chunk3) preserved as raw element.
+  cross_between : @xml.Element?
+  /// <majorUnit> (CT_AxisUnit, chunk3) preserved as raw element.
+  major_unit : @xml.Element?
+  /// <minorUnit> (CT_AxisUnit, chunk3) preserved as raw element.
+  minor_unit : @xml.Element?
+  /// <dispUnits> (CT_DispUnits) — optional.
+  disp_units : CT_DispUnits?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_ValAx::new(element : @xml.Element) -> CT_ValAx raise SchemaViolation {
+  let ax_id_element = match first_child_named(element, "axId") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_ValAx/axId",
+        reason="required child missing",
+      )
+  }
+  let ax_id = CT_UnsignedInt::new(ax_id_element)
+  let scaling_element = match first_child_named(element, "scaling") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_ValAx/scaling",
+        reason="required child missing",
+      )
+  }
+  let scaling = CT_Scaling::new(scaling_element)
+  let delete = match first_child_named(element, "delete") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let ax_pos = match first_child_named(element, "axPos") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_ValAx/axPos",
+        reason="required child missing",
+      )
+  }
+  let major_gridlines = match first_child_named(element, "majorGridlines") {
+    Some(child) => Some(CT_ChartLines::new(child))
+    None => None
+  }
+  let minor_gridlines = match first_child_named(element, "minorGridlines") {
+    Some(child) => Some(CT_ChartLines::new(child))
+    None => None
+  }
+  let title = match first_child_named(element, "title") {
+    Some(child) => Some(CT_Title::new(child))
+    None => None
+  }
+  let num_fmt = match first_child_named(element, "numFmt") {
+    Some(child) => Some(CT_NumFmt::new(child))
+    None => None
+  }
+  let major_tick_mark = first_child_named(element, "majorTickMark")
+  let minor_tick_mark = first_child_named(element, "minorTickMark")
+  let tick_lbl_pos = first_child_named(element, "tickLblPos")
+  let sp_pr = first_child_named(element, "spPr")
+  let tx_pr = first_child_named(element, "txPr")
+  let cross_ax_element = match first_child_named(element, "crossAx") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_ValAx/crossAx",
+        reason="required child missing",
+      )
+  }
+  let cross_ax = CT_UnsignedInt::new(cross_ax_element)
+  let crosses = first_child_named(element, "crosses")
+  let crosses_at = match first_child_named(element, "crossesAt") {
+    Some(child) => Some(CT_Double::new(child))
+    None => None
+  }
+  let cross_between = first_child_named(element, "crossBetween")
+  let major_unit = first_child_named(element, "majorUnit")
+  let minor_unit = first_child_named(element, "minorUnit")
+  let disp_units = match first_child_named(element, "dispUnits") {
+    Some(child) => Some(CT_DispUnits::new(child))
+    None => None
+  }
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  {
+    ax_id,
+    scaling,
+    delete,
+    ax_pos,
+    major_gridlines,
+    minor_gridlines,
+    title,
+    num_fmt,
+    major_tick_mark,
+    minor_tick_mark,
+    tick_lbl_pos,
+    sp_pr,
+    tx_pr,
+    cross_ax,
+    crosses,
+    crosses_at,
+    cross_between,
+    major_unit,
+    minor_unit,
+    disp_units,
+    ext_lst,
+  }
+}
+
+///|
+/// XSD complex type CT_PlotArea — Part 1 §21.2.2.145 (dml-chart.xsd) plotArea.
+/// Sequence: optional layout; then a required choice of one-or-more chart
+/// elements (areaChart..bubbleChart, all chunk3 wrappers preserved raw); then
+/// an optional zero-or-more choice of axis elements (valAx, catAx, dateAx,
+/// serAx); then optional dTable, spPr, extLst.
+pub(all) struct CT_PlotArea {
+  /// <layout> (CT_Layout) — optional.
+  layout : CT_Layout?
+  /// <areaChart> (CT_AreaChart, chunk3) zero-or-more, preserved as raw element.
+  area_chart : Array[@xml.Element]
+  /// <area3DChart> (CT_Area3DChart, chunk3) zero-or-more, preserved as raw element.
+  area_3d_chart : Array[@xml.Element]
+  /// <lineChart> (CT_LineChart, chunk3) zero-or-more, preserved as raw element.
+  line_chart : Array[@xml.Element]
+  /// <line3DChart> (CT_Line3DChart, chunk3) zero-or-more, preserved as raw element.
+  line_3d_chart : Array[@xml.Element]
+  /// <stockChart> (CT_StockChart, chunk3) zero-or-more, preserved as raw element.
+  stock_chart : Array[@xml.Element]
+  /// <radarChart> (CT_RadarChart, chunk3) zero-or-more, preserved as raw element.
+  radar_chart : Array[@xml.Element]
+  /// <scatterChart> (CT_ScatterChart, chunk3) zero-or-more, preserved as raw element.
+  scatter_chart : Array[@xml.Element]
+  /// <pieChart> (CT_PieChart, chunk3) zero-or-more, preserved as raw element.
+  pie_chart : Array[@xml.Element]
+  /// <pie3DChart> (CT_Pie3DChart, chunk3) zero-or-more, preserved as raw element.
+  pie_3d_chart : Array[@xml.Element]
+  /// <doughnutChart> (CT_DoughnutChart, chunk3) zero-or-more, preserved as raw element.
+  doughnut_chart : Array[@xml.Element]
+  /// <barChart> (CT_BarChart, chunk3) zero-or-more, preserved as raw element.
+  bar_chart : Array[@xml.Element]
+  /// <bar3DChart> (CT_Bar3DChart, chunk3) zero-or-more, preserved as raw element.
+  bar_3d_chart : Array[@xml.Element]
+  /// <ofPieChart> (CT_OfPieChart, chunk3) zero-or-more, preserved as raw element.
+  of_pie_chart : Array[@xml.Element]
+  /// <surfaceChart> (CT_SurfaceChart, chunk3) zero-or-more, preserved as raw element.
+  surface_chart : Array[@xml.Element]
+  /// <surface3DChart> (CT_Surface3DChart, chunk3) zero-or-more, preserved as raw element.
+  surface_3d_chart : Array[@xml.Element]
+  /// <bubbleChart> (CT_BubbleChart, chunk3) zero-or-more, preserved as raw element.
+  bubble_chart : Array[@xml.Element]
+  /// <valAx> (CT_ValAx) zero-or-more.
+  val_ax : Array[CT_ValAx]
+  /// <catAx> (CT_CatAx) zero-or-more.
+  cat_ax : Array[CT_CatAx]
+  /// <dateAx> (CT_DateAx) zero-or-more.
+  date_ax : Array[CT_DateAx]
+  /// <serAx> (CT_SerAx) zero-or-more.
+  ser_ax : Array[CT_SerAx]
+  /// <dTable> (CT_DTable) — optional.
+  d_table : CT_DTable?
+  /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
+  sp_pr : @xml.Element?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_PlotArea::new(
+  element : @xml.Element,
+) -> CT_PlotArea raise SchemaViolation {
   let layout = match first_child_named(element, "layout") {
     Some(child) => Some(CT_Layout::new(child))
     None => None
   }
-  let tx = match first_child_named(element, "tx") {
-    Some(child) => Some(CT_Tx::new(child))
+  let area_chart = children_named(element, "areaChart")
+  let area_3d_chart = children_named(element, "area3DChart")
+  let line_chart = children_named(element, "lineChart")
+  let line_3d_chart = children_named(element, "line3DChart")
+  let stock_chart = children_named(element, "stockChart")
+  let radar_chart = children_named(element, "radarChart")
+  let scatter_chart = children_named(element, "scatterChart")
+  let pie_chart = children_named(element, "pieChart")
+  let pie_3d_chart = children_named(element, "pie3DChart")
+  let doughnut_chart = children_named(element, "doughnutChart")
+  let bar_chart = children_named(element, "barChart")
+  let bar_3d_chart = children_named(element, "bar3DChart")
+  let of_pie_chart = children_named(element, "ofPieChart")
+  let surface_chart = children_named(element, "surfaceChart")
+  let surface_3d_chart = children_named(element, "surface3DChart")
+  let bubble_chart = children_named(element, "bubbleChart")
+  let val_ax = []
+  for child in children_named(element, "valAx") {
+    val_ax.push(CT_ValAx::new(child))
+  }
+  let cat_ax = []
+  for child in children_named(element, "catAx") {
+    cat_ax.push(CT_CatAx::new(child))
+  }
+  let date_ax = []
+  for child in children_named(element, "dateAx") {
+    date_ax.push(CT_DateAx::new(child))
+  }
+  let ser_ax = []
+  for child in children_named(element, "serAx") {
+    ser_ax.push(CT_SerAx::new(child))
+  }
+  let d_table = match first_child_named(element, "dTable") {
+    Some(child) => Some(CT_DTable::new(child))
+    None => None
+  }
+  let sp_pr = first_child_named(element, "spPr")
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  {
+    layout,
+    area_chart,
+    area_3d_chart,
+    line_chart,
+    line_3d_chart,
+    stock_chart,
+    radar_chart,
+    scatter_chart,
+    pie_chart,
+    pie_3d_chart,
+    doughnut_chart,
+    bar_chart,
+    bar_3d_chart,
+    of_pie_chart,
+    surface_chart,
+    surface_3d_chart,
+    bubble_chart,
+    val_ax,
+    cat_ax,
+    date_ax,
+    ser_ax,
+    d_table,
+    sp_pr,
+    ext_lst,
+  }
+}
+
+///|
+/// XSD complex type CT_PivotFmt — Part 1 §21.2.2.142 (dml-chart.xsd) pivotFmt.
+/// Sequence: required `idx`, optional `spPr`, `txPr`, `marker`, `dLbl`, `extLst`.
+pub(all) struct CT_PivotFmt {
+  /// <idx> (CT_UnsignedInt) — required.
+  idx : CT_UnsignedInt
+  /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
+  sp_pr : @xml.Element?
+  /// <txPr> (a:CT_TextBody) preserved as raw element.
+  tx_pr : @xml.Element?
+  /// <marker> (CT_Marker) — optional.
+  marker : CT_Marker?
+  /// <dLbl> (CT_DLbl) — optional.
+  d_lbl : CT_DLbl?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_PivotFmt::new(
+  element : @xml.Element,
+) -> CT_PivotFmt raise SchemaViolation {
+  let idx_element = match first_child_named(element, "idx") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_PivotFmt/idx",
+        reason="required child missing",
+      )
+  }
+  let idx = CT_UnsignedInt::new(idx_element)
+  let sp_pr = first_child_named(element, "spPr")
+  let tx_pr = first_child_named(element, "txPr")
+  let marker = match first_child_named(element, "marker") {
+    Some(child) => Some(CT_Marker::new(child))
+    None => None
+  }
+  let d_lbl = match first_child_named(element, "dLbl") {
+    Some(child) => Some(CT_DLbl::new(child))
+    None => None
+  }
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  { idx, sp_pr, tx_pr, marker, d_lbl, ext_lst }
+}
+
+///|
+/// XSD complex type CT_PivotFmts — Part 1 §21.2.2.143 (dml-chart.xsd) pivotFmts.
+/// Sequence of zero-or-more `pivotFmt` children.
+pub(all) struct CT_PivotFmts {
+  /// <pivotFmt> (CT_PivotFmt) — zero or more.
+  pivot_fmt : Array[CT_PivotFmt]
+} derive(Eq, Debug)
+
+///|
+pub fn CT_PivotFmts::new(
+  element : @xml.Element,
+) -> CT_PivotFmts raise SchemaViolation {
+  let pivot_fmt = []
+  for child in children_named(element, "pivotFmt") {
+    pivot_fmt.push(CT_PivotFmt::new(child))
+  }
+  { pivot_fmt, }
+}
+
+///|
+/// XSD complex type CT_LegendPos — Part 1 §21.2.2.102 (dml-chart.xsd) legendPos.
+/// Single optional `val` attribute (ST_LegendPos; schema default `r`).
+pub(all) struct CT_LegendPos {
+  /// @val (ST_LegendPos) — optional, schema default `r`.
+  val : ST_LegendPos?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_LegendPos::new(
+  element : @xml.Element,
+) -> CT_LegendPos raise SchemaViolation {
+  let val = match attr_value(element, "val") {
+    Some(text) => Some(ST_LegendPos::parse(text))
+    None => None
+  }
+  { val, }
+}
+
+///|
+/// XSD complex type CT_LegendEntry — Part 1 §21.2.2.101 (dml-chart.xsd)
+/// legendEntry. Sequence: required `idx`, then a choice of `delete` (boolean)
+/// or `EG_LegendEntryData` (an inlined optional `txPr`), then optional `extLst`.
+pub(all) struct CT_LegendEntry {
+  /// <idx> (CT_UnsignedInt) — required.
+  idx : CT_UnsignedInt
+  /// <delete> (CT_Boolean) — choice branch, optional.
+  delete : CT_Boolean?
+  /// <txPr> (a:CT_TextBody, from EG_LegendEntryData) — choice branch,
+  /// preserved as raw element.
+  tx_pr : @xml.Element?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_LegendEntry::new(
+  element : @xml.Element,
+) -> CT_LegendEntry raise SchemaViolation {
+  let idx_element = match first_child_named(element, "idx") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_LegendEntry/idx",
+        reason="required child missing",
+      )
+  }
+  let idx = CT_UnsignedInt::new(idx_element)
+  let delete = match first_child_named(element, "delete") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let tx_pr = first_child_named(element, "txPr")
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  { idx, delete, tx_pr, ext_lst }
+}
+
+///|
+/// XSD complex type CT_Legend — Part 1 §21.2.2.100 (dml-chart.xsd) legend.
+/// Sequence: optional legendPos, zero-or-more legendEntry, optional layout,
+/// overlay, spPr, txPr, extLst.
+pub(all) struct CT_Legend {
+  /// <legendPos> (CT_LegendPos) — optional.
+  legend_pos : CT_LegendPos?
+  /// <legendEntry> (CT_LegendEntry) — zero or more.
+  legend_entry : Array[CT_LegendEntry]
+  /// <layout> (CT_Layout) — optional.
+  layout : CT_Layout?
+  /// <overlay> (CT_Boolean) — optional.
+  overlay : CT_Boolean?
+  /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
+  sp_pr : @xml.Element?
+  /// <txPr> (a:CT_TextBody) preserved as raw element.
+  tx_pr : @xml.Element?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
+} derive(Eq, Debug)
+
+///|
+pub fn CT_Legend::new(
+  element : @xml.Element,
+) -> CT_Legend raise SchemaViolation {
+  let legend_pos = match first_child_named(element, "legendPos") {
+    Some(child) => Some(CT_LegendPos::new(child))
+    None => None
+  }
+  let legend_entry = []
+  for child in children_named(element, "legendEntry") {
+    legend_entry.push(CT_LegendEntry::new(child))
+  }
+  let layout = match first_child_named(element, "layout") {
+    Some(child) => Some(CT_Layout::new(child))
+    None => None
+  }
+  let overlay = match first_child_named(element, "overlay") {
+    Some(child) => Some(CT_Boolean::new(child))
     None => None
   }
   let sp_pr = first_child_named(element, "spPr")
   let tx_pr = first_child_named(element, "txPr")
-  { layout, tx, sp_pr, tx_pr }
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  { legend_pos, legend_entry, layout, overlay, sp_pr, tx_pr, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_DispUnits (§21.2, dml-chart.xsd): attributes no local attributes; children custUnit: CT_Double, builtInUnit: CT_BuiltInUnit, dispUnitsLbl: CT_DispUnitsLbl, extLst: CT_ExtensionList.
-pub(all) struct CT_DispUnits {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_Orientation (§21.2, dml-chart.xsd): attributes val; children no local child elements.
-pub(all) struct CT_Orientation {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_LogBase (§21.2, dml-chart.xsd): attributes val; children no local child elements.
-pub(all) struct CT_LogBase {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_Scaling (§21.2, dml-chart.xsd): attributes no local attributes; children logBase: CT_LogBase, orientation: CT_Orientation, max: CT_Double, min: CT_Double, extLst: CT_ExtensionList.
-pub(all) struct CT_Scaling {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_LblOffset (§21.2, dml-chart.xsd): attributes val; children no local child elements.
-pub(all) struct CT_LblOffset {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_CatAx (§21.2, dml-chart.xsd): attributes no local attributes; children auto: CT_Boolean, lblAlgn: CT_LblAlgn, lblOffset: CT_LblOffset, tickLblSkip: CT_Skip, tickMarkSkip: CT_Skip, noMultiLvlLbl: CT_Boolean, extLst: CT_ExtensionList.
-pub(all) struct CT_CatAx {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_DateAx (§21.2, dml-chart.xsd): attributes no local attributes; children auto: CT_Boolean, lblOffset: CT_LblOffset, baseTimeUnit: CT_TimeUnit, majorUnit: CT_AxisUnit, majorTimeUnit: CT_TimeUnit, minorUnit: CT_AxisUnit, minorTimeUnit: CT_TimeUnit, extLst: CT_ExtensionList.
-pub(all) struct CT_DateAx {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_SerAx (§21.2, dml-chart.xsd): attributes no local attributes; children tickLblSkip: CT_Skip, tickMarkSkip: CT_Skip, extLst: CT_ExtensionList.
-pub(all) struct CT_SerAx {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_ValAx (§21.2, dml-chart.xsd): attributes no local attributes; children crossBetween: CT_CrossBetween, majorUnit: CT_AxisUnit, minorUnit: CT_AxisUnit, dispUnits: CT_DispUnits, extLst: CT_ExtensionList.
-pub(all) struct CT_ValAx {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_PlotArea (§21.2, dml-chart.xsd): attributes no local attributes; children layout: CT_Layout, areaChart: CT_AreaChart, area3DChart: CT_Area3DChart, lineChart: CT_LineChart, line3DChart: CT_Line3DChart, stockChart: CT_StockChart, radarChart: CT_RadarChart, scatterChart: CT_ScatterChart, pieChart: CT_PieChart, pie3DChart: CT_Pie3DChart, doughnutChart: CT_DoughnutChart, barChart: CT_BarChart, bar3DChart: CT_Bar3DChart, ofPieChart: CT_OfPieChart, surfaceChart: CT_SurfaceChart, surface3DChart: CT_Surface3DChart, bubbleChart: CT_BubbleChart, valAx: CT_ValAx, catAx: CT_CatAx, dateAx: CT_DateAx, serAx: CT_SerAx, dTable: CT_DTable, spPr: a:CT_ShapeProperties, extLst: CT_ExtensionList.
-pub(all) struct CT_PlotArea {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_PivotFmt (§21.2, dml-chart.xsd): attributes no local attributes; children idx: CT_UnsignedInt, spPr: a:CT_ShapeProperties, txPr: a:CT_TextBody, marker: CT_Marker, dLbl: CT_DLbl, extLst: CT_ExtensionList.
-pub(all) struct CT_PivotFmt {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_PivotFmts (§21.2, dml-chart.xsd): attributes no local attributes; children pivotFmt: CT_PivotFmt.
-pub(all) struct CT_PivotFmts {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_LegendPos (§21.2, dml-chart.xsd): attributes val; children no local child elements.
-pub(all) struct CT_LegendPos {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_LegendEntry (§21.2, dml-chart.xsd): attributes no local attributes; children idx: CT_UnsignedInt, delete: CT_Boolean, extLst: CT_ExtensionList.
-pub(all) struct CT_LegendEntry {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_Legend (§21.2, dml-chart.xsd): attributes no local attributes; children legendPos: CT_LegendPos, legendEntry: CT_LegendEntry, layout: CT_Layout, overlay: CT_Boolean, spPr: a:CT_ShapeProperties, txPr: a:CT_TextBody, extLst: CT_ExtensionList.
-pub(all) struct CT_Legend {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-/// XSD complex type CT_DispBlanksAs (§21.2, dml-chart.xsd): attributes val; children no local child elements.
+/// XSD complex type CT_DispBlanksAs — Part 1 §21.2.2.48 (dml-chart.xsd)
+/// dispBlanksAs. Single optional `val` (ST_DispBlanksAs; schema default `zero`).
 pub(all) struct CT_DispBlanksAs {
-  element : @xml.Element
+  /// @val (ST_DispBlanksAs) — optional, schema default `zero`.
+  val : ST_DispBlanksAs?
 } derive(Eq, Debug)
+
+///|
+pub fn CT_DispBlanksAs::new(
+  element : @xml.Element,
+) -> CT_DispBlanksAs raise SchemaViolation {
+  let val = match attr_value(element, "val") {
+    Some(text) => Some(ST_DispBlanksAs::parse(text))
+    None => None
+  }
+  { val, }
+}
 
 ///|
 /// Construct CT_Chart from a parsed chart element by walking the typed
 /// children defined in dml-chart.xsd. `plotArea` is required; absence
-/// raises `SchemaViolation`. Chunk3 wrappers (`pivotFmts`, `plotArea`,
-/// `legend`, `dispBlanksAs`) are preserved as raw `@xml.Element` until the
-/// chunk3 typing batch lands.
+/// raises `SchemaViolation`.
 pub fn CT_Chart::new(element : @xml.Element) -> CT_Chart raise SchemaViolation {
   let title = match first_child_named(element, "title") {
     Some(child) => Some(CT_Title::new(child))
@@ -4900,7 +5930,10 @@ pub fn CT_Chart::new(element : @xml.Element) -> CT_Chart raise SchemaViolation {
     Some(child) => Some(CT_Boolean::new(child))
     None => None
   }
-  let pivot_fmts = first_child_named(element, "pivotFmts")
+  let pivot_fmts = match first_child_named(element, "pivotFmts") {
+    Some(child) => Some(CT_PivotFmts::new(child))
+    None => None
+  }
   let view_3d = match first_child_named(element, "view3D") {
     Some(child) => Some(CT_View3D::new(child))
     None => None
@@ -4917,7 +5950,7 @@ pub fn CT_Chart::new(element : @xml.Element) -> CT_Chart raise SchemaViolation {
     Some(child) => Some(CT_Surface::new(child))
     None => None
   }
-  let plot_area = match first_child_named(element, "plotArea") {
+  let plot_area_element = match first_child_named(element, "plotArea") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -4926,12 +5959,19 @@ pub fn CT_Chart::new(element : @xml.Element) -> CT_Chart raise SchemaViolation {
         reason="required child missing",
       )
   }
-  let legend = first_child_named(element, "legend")
+  let plot_area = CT_PlotArea::new(plot_area_element)
+  let legend = match first_child_named(element, "legend") {
+    Some(child) => Some(CT_Legend::new(child))
+    None => None
+  }
   let plot_vis_only = match first_child_named(element, "plotVisOnly") {
     Some(child) => Some(CT_Boolean::new(child))
     None => None
   }
-  let disp_blanks_as = first_child_named(element, "dispBlanksAs")
+  let disp_blanks_as = match first_child_named(element, "dispBlanksAs") {
+    Some(child) => Some(CT_DispBlanksAs::new(child))
+    None => None
+  }
   let show_d_lbls_over_max = match
     first_child_named(element, "showDLblsOverMax") {
     Some(child) => Some(CT_Boolean::new(child))
@@ -4972,140 +6012,1116 @@ pub fn parse_ct_chart_element(
 /// Always `true` because `CT_Chart::new` enforces the required `plotArea`
 /// child; the accessor exists for spec-conformance probes.
 pub fn CT_Chart::has_plot_area(self : CT_Chart) -> Bool {
-  self.plot_area.name.local_name == "plotArea"
+  let _ = self
+  true
 }
 
 ///|
-/// XSD complex type CT_Style (§21.2, dml-chart.xsd): attributes val; children no local child elements.
+/// XSD complex type CT_Style — Part 1 §21.2.2.196 (dml-chart.xsd) style.
+/// Single required `val` attribute (ST_Style; chart style preset 1..48).
 pub(all) struct CT_Style {
-  element : @xml.Element
+  /// @val (ST_Style) — required.
+  val : ST_Style
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_PivotSource (§21.2, dml-chart.xsd): attributes no local attributes; children name: s:ST_Xstring, fmtId: CT_UnsignedInt, extLst: CT_ExtensionList.
+pub fn CT_Style::new(element : @xml.Element) -> CT_Style raise SchemaViolation {
+  let raw = match attr_value(element, "val") {
+    Some(v) => v
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_Style/@val",
+        reason="required attribute missing",
+      )
+  }
+  { val: ST_Style::parse(raw) }
+}
+
+///|
+/// XSD complex type CT_PivotSource — Part 1 §21.2.2.144 (dml-chart.xsd)
+/// pivotSource. Sequence: required `name` (s:ST_Xstring text) and `fmtId`,
+/// then zero-or-more `extLst` (the XSD declares `maxOccurs="unbounded"` for
+/// extLst here, unusual but explicit).
 pub(all) struct CT_PivotSource {
-  element : @xml.Element
+  /// <name> (s:ST_Xstring) — required text payload.
+  name : String
+  /// <fmtId> (CT_UnsignedInt) — required.
+  fmt_id : CT_UnsignedInt
+  /// <extLst> (CT_ExtensionList) — zero or more (XSD `maxOccurs="unbounded"`).
+  ext_lst : Array[CT_ExtensionList]
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Protection (§21.2, dml-chart.xsd): attributes no local attributes; children chartObject: CT_Boolean, data: CT_Boolean, formatting: CT_Boolean, selection: CT_Boolean, userInterface: CT_Boolean.
+pub fn CT_PivotSource::new(
+  element : @xml.Element,
+) -> CT_PivotSource raise SchemaViolation {
+  let name_element = match first_child_named(element, "name") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_PivotSource/name",
+        reason="required child missing",
+      )
+  }
+  let name = element_text(name_element)
+  let fmt_id_element = match first_child_named(element, "fmtId") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_PivotSource/fmtId",
+        reason="required child missing",
+      )
+  }
+  let fmt_id = CT_UnsignedInt::new(fmt_id_element)
+  let ext_lst = []
+  for child in children_named(element, "extLst") {
+    ext_lst.push(CT_ExtensionList::new(child))
+  }
+  { name, fmt_id, ext_lst }
+}
+
+///|
+/// XSD complex type CT_Protection — Part 1 §21.2.2.156 (dml-chart.xsd)
+/// protection. Sequence of five optional booleans: chartObject, data,
+/// formatting, selection, userInterface.
 pub(all) struct CT_Protection {
-  element : @xml.Element
+  /// <chartObject> (CT_Boolean) — optional.
+  chart_object : CT_Boolean?
+  /// <data> (CT_Boolean) — optional.
+  data : CT_Boolean?
+  /// <formatting> (CT_Boolean) — optional.
+  formatting : CT_Boolean?
+  /// <selection> (CT_Boolean) — optional.
+  selection : CT_Boolean?
+  /// <userInterface> (CT_Boolean) — optional.
+  user_interface : CT_Boolean?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_HeaderFooter (§21.2, dml-chart.xsd): attributes alignWithMargins, differentOddEven, differentFirst; children oddHeader: s:ST_Xstring, oddFooter: s:ST_Xstring, evenHeader: s:ST_Xstring, evenFooter: s:ST_Xstring, firstHeader: s:ST_Xstring, firstFooter: s:ST_Xstring.
+pub fn CT_Protection::new(
+  element : @xml.Element,
+) -> CT_Protection raise SchemaViolation {
+  let chart_object = match first_child_named(element, "chartObject") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let data = match first_child_named(element, "data") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let formatting = match first_child_named(element, "formatting") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let selection = match first_child_named(element, "selection") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let user_interface = match first_child_named(element, "userInterface") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  { chart_object, data, formatting, selection, user_interface }
+}
+
+///|
+/// XSD complex type CT_HeaderFooter — Part 1 §21.2.2.81 (dml-chart.xsd)
+/// headerFooter. Attributes alignWithMargins (default true), differentOddEven
+/// (default false), differentFirst (default false). Sequence: optional
+/// oddHeader, oddFooter, evenHeader, evenFooter, firstHeader, firstFooter
+/// (all s:ST_Xstring text payloads).
 pub(all) struct CT_HeaderFooter {
-  element : @xml.Element
+  /// @alignWithMargins (xsd:boolean) — optional, schema default `true`.
+  align_with_margins : Bool?
+  /// @differentOddEven (xsd:boolean) — optional, schema default `false`.
+  different_odd_even : Bool?
+  /// @differentFirst (xsd:boolean) — optional, schema default `false`.
+  different_first : Bool?
+  /// <oddHeader> (s:ST_Xstring) — optional text payload.
+  odd_header : String?
+  /// <oddFooter> (s:ST_Xstring) — optional text payload.
+  odd_footer : String?
+  /// <evenHeader> (s:ST_Xstring) — optional text payload.
+  even_header : String?
+  /// <evenFooter> (s:ST_Xstring) — optional text payload.
+  even_footer : String?
+  /// <firstHeader> (s:ST_Xstring) — optional text payload.
+  first_header : String?
+  /// <firstFooter> (s:ST_Xstring) — optional text payload.
+  first_footer : String?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_PageMargins (§21.2, dml-chart.xsd): attributes l, r, t, b, header, footer; children no local child elements.
+pub fn CT_HeaderFooter::new(
+  element : @xml.Element,
+) -> CT_HeaderFooter raise SchemaViolation {
+  let align_with_margins = match attr_value(element, "alignWithMargins") {
+    Some(text) =>
+      Some(parse_xsd_boolean("CT_HeaderFooter/@alignWithMargins", text))
+    None => None
+  }
+  let different_odd_even = match attr_value(element, "differentOddEven") {
+    Some(text) =>
+      Some(parse_xsd_boolean("CT_HeaderFooter/@differentOddEven", text))
+    None => None
+  }
+  let different_first = match attr_value(element, "differentFirst") {
+    Some(text) =>
+      Some(parse_xsd_boolean("CT_HeaderFooter/@differentFirst", text))
+    None => None
+  }
+  let odd_header = first_child_named(element, "oddHeader").map(element_text)
+  let odd_footer = first_child_named(element, "oddFooter").map(element_text)
+  let even_header = first_child_named(element, "evenHeader").map(element_text)
+  let even_footer = first_child_named(element, "evenFooter").map(element_text)
+  let first_header = first_child_named(element, "firstHeader").map(element_text)
+  let first_footer = first_child_named(element, "firstFooter").map(element_text)
+  {
+    align_with_margins,
+    different_odd_even,
+    different_first,
+    odd_header,
+    odd_footer,
+    even_header,
+    even_footer,
+    first_header,
+    first_footer,
+  }
+}
+
+///|
+/// XSD complex type CT_PageMargins — Part 1 §21.2.2.133 (dml-chart.xsd)
+/// pageMargins. Six required xsd:double attributes: l, r, t, b, header, footer.
 pub(all) struct CT_PageMargins {
-  element : @xml.Element
+  /// @l (xsd:double) — required, left margin.
+  l : Double
+  /// @r (xsd:double) — required, right margin.
+  r : Double
+  /// @t (xsd:double) — required, top margin.
+  t : Double
+  /// @b (xsd:double) — required, bottom margin.
+  b : Double
+  /// @header (xsd:double) — required, header margin.
+  header : Double
+  /// @footer (xsd:double) — required, footer margin.
+  footer : Double
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_ExternalData (§21.2, dml-chart.xsd): attributes r:id; children autoUpdate: CT_Boolean.
+pub fn CT_PageMargins::new(
+  element : @xml.Element,
+) -> CT_PageMargins raise SchemaViolation {
+  let l_raw = match attr_value(element, "l") {
+    Some(v) => v
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_PageMargins/@l",
+        reason="required attribute missing",
+      )
+  }
+  let l = parse_xsd_double("CT_PageMargins/@l", l_raw)
+  let r_raw = match attr_value(element, "r") {
+    Some(v) => v
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_PageMargins/@r",
+        reason="required attribute missing",
+      )
+  }
+  let r = parse_xsd_double("CT_PageMargins/@r", r_raw)
+  let t_raw = match attr_value(element, "t") {
+    Some(v) => v
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_PageMargins/@t",
+        reason="required attribute missing",
+      )
+  }
+  let t = parse_xsd_double("CT_PageMargins/@t", t_raw)
+  let b_raw = match attr_value(element, "b") {
+    Some(v) => v
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_PageMargins/@b",
+        reason="required attribute missing",
+      )
+  }
+  let b = parse_xsd_double("CT_PageMargins/@b", b_raw)
+  let header_raw = match attr_value(element, "header") {
+    Some(v) => v
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_PageMargins/@header",
+        reason="required attribute missing",
+      )
+  }
+  let header = parse_xsd_double("CT_PageMargins/@header", header_raw)
+  let footer_raw = match attr_value(element, "footer") {
+    Some(v) => v
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_PageMargins/@footer",
+        reason="required attribute missing",
+      )
+  }
+  let footer = parse_xsd_double("CT_PageMargins/@footer", footer_raw)
+  { l, r, t, b, header, footer }
+}
+
+///|
+/// XSD complex type CT_ExternalData — Part 1 §21.2.2.64 (dml-chart.xsd)
+/// externalData. Required `r:id` relationship attribute; optional `autoUpdate`
+/// child boolean.
 pub(all) struct CT_ExternalData {
-  element : @xml.Element
+  /// @r:id (`xmlns:r="http://purl.oclc.org/ooxml/officeDocument/relationships"`) — required.
+  r_id : String
+  /// <autoUpdate> (CT_Boolean) — optional.
+  auto_update : CT_Boolean?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_PageSetup (§21.2, dml-chart.xsd): attributes paperSize, paperHeight, paperWidth, firstPageNumber, orientation, blackAndWhite, draft, useFirstPageNumber, horizontalDpi, verticalDpi, copies; children no local child elements.
+pub fn CT_ExternalData::new(
+  element : @xml.Element,
+) -> CT_ExternalData raise SchemaViolation {
+  let ns = relationships_namespace()
+  let raw = match attr_value_ns(element, ns, "id") {
+    Some(v) => v
+    None =>
+      match attr_value(element, "id") {
+        Some(v) => v
+        None =>
+          raise SchemaViolation(
+            schema="dml-chart.xsd",
+            path="CT_ExternalData/@r:id",
+            reason="required attribute missing",
+          )
+      }
+  }
+  let auto_update = match first_child_named(element, "autoUpdate") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  { r_id: raw, auto_update }
+}
+
+///|
+/// XSD complex type CT_PageSetup — Part 1 §21.2.2.134 (dml-chart.xsd)
+/// pageSetup. Eleven optional attributes (no child elements). `paperHeight`
+/// and `paperWidth` use the schema simple type
+/// `s:ST_PositiveUniversalMeasure`; this package keeps them as raw lexical
+/// strings to avoid pulling in the shared simple_types package from chunk1.
 pub(all) struct CT_PageSetup {
-  element : @xml.Element
+  /// @paperSize (xsd:unsignedInt) — optional, schema default `1`.
+  paper_size : Int64?
+  /// @paperHeight (s:ST_PositiveUniversalMeasure) — optional, raw lexical.
+  paper_height : String?
+  /// @paperWidth (s:ST_PositiveUniversalMeasure) — optional, raw lexical.
+  paper_width : String?
+  /// @firstPageNumber (xsd:unsignedInt) — optional, schema default `1`.
+  first_page_number : Int64?
+  /// @orientation (ST_PageSetupOrientation) — optional, schema default `default`.
+  orientation : ST_PageSetupOrientation?
+  /// @blackAndWhite (xsd:boolean) — optional, schema default `false`.
+  black_and_white : Bool?
+  /// @draft (xsd:boolean) — optional, schema default `false`.
+  draft : Bool?
+  /// @useFirstPageNumber (xsd:boolean) — optional, schema default `false`.
+  use_first_page_number : Bool?
+  /// @horizontalDpi (xsd:int) — optional, schema default `600`.
+  horizontal_dpi : Int?
+  /// @verticalDpi (xsd:int) — optional, schema default `600`.
+  vertical_dpi : Int?
+  /// @copies (xsd:unsignedInt) — optional, schema default `1`.
+  copies : Int64?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_PrintSettings (§21.2, dml-chart.xsd): attributes no local attributes; children headerFooter: CT_HeaderFooter, pageMargins: CT_PageMargins, pageSetup: CT_PageSetup.
+pub fn CT_PageSetup::new(
+  element : @xml.Element,
+) -> CT_PageSetup raise SchemaViolation {
+  let paper_size = match attr_value(element, "paperSize") {
+    Some(text) => Some(parse_xsd_unsigned_int("CT_PageSetup/@paperSize", text))
+    None => None
+  }
+  let paper_height = attr_value(element, "paperHeight")
+  let paper_width = attr_value(element, "paperWidth")
+  let first_page_number = match attr_value(element, "firstPageNumber") {
+    Some(text) =>
+      Some(parse_xsd_unsigned_int("CT_PageSetup/@firstPageNumber", text))
+    None => None
+  }
+  let orientation = match attr_value(element, "orientation") {
+    Some(text) => Some(ST_PageSetupOrientation::parse(text))
+    None => None
+  }
+  let black_and_white = match attr_value(element, "blackAndWhite") {
+    Some(text) => Some(parse_xsd_boolean("CT_PageSetup/@blackAndWhite", text))
+    None => None
+  }
+  let draft = match attr_value(element, "draft") {
+    Some(text) => Some(parse_xsd_boolean("CT_PageSetup/@draft", text))
+    None => None
+  }
+  let use_first_page_number = match attr_value(element, "useFirstPageNumber") {
+    Some(text) =>
+      Some(parse_xsd_boolean("CT_PageSetup/@useFirstPageNumber", text))
+    None => None
+  }
+  let horizontal_dpi = match attr_value(element, "horizontalDpi") {
+    Some(text) => Some(parse_xsd_int("CT_PageSetup/@horizontalDpi", text))
+    None => None
+  }
+  let vertical_dpi = match attr_value(element, "verticalDpi") {
+    Some(text) => Some(parse_xsd_int("CT_PageSetup/@verticalDpi", text))
+    None => None
+  }
+  let copies = match attr_value(element, "copies") {
+    Some(text) => Some(parse_xsd_unsigned_int("CT_PageSetup/@copies", text))
+    None => None
+  }
+  {
+    paper_size,
+    paper_height,
+    paper_width,
+    first_page_number,
+    orientation,
+    black_and_white,
+    draft,
+    use_first_page_number,
+    horizontal_dpi,
+    vertical_dpi,
+    copies,
+  }
+}
+
+///|
+/// XSD complex type CT_PrintSettings — Part 1 §21.2.2.155 (dml-chart.xsd)
+/// printSettings. Sequence of three optional children: headerFooter,
+/// pageMargins, pageSetup.
 pub(all) struct CT_PrintSettings {
-  element : @xml.Element
+  /// <headerFooter> (CT_HeaderFooter) — optional.
+  header_footer : CT_HeaderFooter?
+  /// <pageMargins> (CT_PageMargins) — optional.
+  page_margins : CT_PageMargins?
+  /// <pageSetup> (CT_PageSetup) — optional.
+  page_setup : CT_PageSetup?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_ChartSpace (§21.2, dml-chart.xsd): attributes no local attributes; children date1904: CT_Boolean, lang: CT_TextLanguageID, roundedCorners: CT_Boolean, style: CT_Style, clrMapOvr: a:CT_ColorMapping, pivotSource: CT_PivotSource, protection: CT_Protection, chart: CT_Chart, spPr: a:CT_ShapeProperties, txPr: a:CT_TextBody, externalData: CT_ExternalData, printSettings: CT_PrintSettings, userShapes: CT_RelId, extLst: CT_ExtensionList.
+pub fn CT_PrintSettings::new(
+  element : @xml.Element,
+) -> CT_PrintSettings raise SchemaViolation {
+  let header_footer = match first_child_named(element, "headerFooter") {
+    Some(child) => Some(CT_HeaderFooter::new(child))
+    None => None
+  }
+  let page_margins = match first_child_named(element, "pageMargins") {
+    Some(child) => Some(CT_PageMargins::new(child))
+    None => None
+  }
+  let page_setup = match first_child_named(element, "pageSetup") {
+    Some(child) => Some(CT_PageSetup::new(child))
+    None => None
+  }
+  { header_footer, page_margins, page_setup }
+}
+
+///|
+/// XSD complex type CT_ChartSpace — Part 1 §21.2.2.29 (dml-chart.xsd)
+/// chartSpace. Sequence: optional date1904, lang, roundedCorners, style,
+/// clrMapOvr (a:CT_ColorMapping, raw), pivotSource, protection, then required
+/// chart, then optional spPr, txPr, externalData, printSettings,
+/// userShapes (CT_RelId), extLst.
 pub(all) struct CT_ChartSpace {
-  element : @xml.Element
+  /// <date1904> (CT_Boolean) — optional.
+  date_1904 : CT_Boolean?
+  /// <lang> (CT_TextLanguageID) — optional.
+  lang : CT_TextLanguageID?
+  /// <roundedCorners> (CT_Boolean) — optional.
+  rounded_corners : CT_Boolean?
+  /// <style> (CT_Style) — optional.
+  style : CT_Style?
+  /// <clrMapOvr> (a:CT_ColorMapping) preserved as raw element.
+  clr_map_ovr : @xml.Element?
+  /// <pivotSource> (CT_PivotSource) — optional.
+  pivot_source : CT_PivotSource?
+  /// <protection> (CT_Protection) — optional.
+  protection : CT_Protection?
+  /// <chart> (CT_Chart) — required.
+  chart : CT_Chart
+  /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
+  sp_pr : @xml.Element?
+  /// <txPr> (a:CT_TextBody) preserved as raw element.
+  tx_pr : @xml.Element?
+  /// <externalData> (CT_ExternalData) — optional.
+  external_data : CT_ExternalData?
+  /// <printSettings> (CT_PrintSettings) — optional.
+  print_settings : CT_PrintSettings?
+  /// <userShapes> (CT_RelId) — optional.
+  user_shapes : CT_RelId?
+  /// <extLst> (CT_ExtensionList) — optional.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_ShapeNonVisual (§21.3, dml-chartDrawing.xsd): attributes no local attributes; children cNvPr: a:CT_NonVisualDrawingProps, cNvSpPr: a:CT_NonVisualDrawingShapeProps.
+pub fn CT_ChartSpace::new(
+  element : @xml.Element,
+) -> CT_ChartSpace raise SchemaViolation {
+  let date_1904 = match first_child_named(element, "date1904") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let lang = match first_child_named(element, "lang") {
+    Some(child) => Some(CT_TextLanguageID::new(child))
+    None => None
+  }
+  let rounded_corners = match first_child_named(element, "roundedCorners") {
+    Some(child) => Some(CT_Boolean::new(child))
+    None => None
+  }
+  let style = match first_child_named(element, "style") {
+    Some(child) => Some(CT_Style::new(child))
+    None => None
+  }
+  let clr_map_ovr = first_child_named(element, "clrMapOvr")
+  let pivot_source = match first_child_named(element, "pivotSource") {
+    Some(child) => Some(CT_PivotSource::new(child))
+    None => None
+  }
+  let protection = match first_child_named(element, "protection") {
+    Some(child) => Some(CT_Protection::new(child))
+    None => None
+  }
+  let chart_element = match first_child_named(element, "chart") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chart.xsd",
+        path="CT_ChartSpace/chart",
+        reason="required child missing",
+      )
+  }
+  let chart = CT_Chart::new(chart_element)
+  let sp_pr = first_child_named(element, "spPr")
+  let tx_pr = first_child_named(element, "txPr")
+  let external_data = match first_child_named(element, "externalData") {
+    Some(child) => Some(CT_ExternalData::new(child))
+    None => None
+  }
+  let print_settings = match first_child_named(element, "printSettings") {
+    Some(child) => Some(CT_PrintSettings::new(child))
+    None => None
+  }
+  let user_shapes = match first_child_named(element, "userShapes") {
+    Some(child) => Some(CT_RelId::new(child))
+    None => None
+  }
+  let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
+  {
+    date_1904,
+    lang,
+    rounded_corners,
+    style,
+    clr_map_ovr,
+    pivot_source,
+    protection,
+    chart,
+    sp_pr,
+    tx_pr,
+    external_data,
+    print_settings,
+    user_shapes,
+    ext_lst,
+  }
+}
+
+///|
+/// XSD complex type CT_ShapeNonVisual — Part 1 §21.3.2.10 (dml-chartDrawing.xsd)
+/// nvSpPr. Sequence of two required drawingml/main elements; both preserved as
+/// raw `@xml.Element` since cross-package typing of `a:CT_NonVisualDrawingProps`
+/// / `a:CT_NonVisualDrawingShapeProps` is out of scope here.
 pub(all) struct CT_ShapeNonVisual {
-  element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
+  c_nv_pr : @xml.Element
+  /// <cNvSpPr> (a:CT_NonVisualDrawingShapeProps) — required, preserved as raw element.
+  c_nv_sp_pr : @xml.Element
 } derive(Eq, Debug)
+
+///|
+pub fn CT_ShapeNonVisual::new(
+  element : @xml.Element,
+) -> CT_ShapeNonVisual raise SchemaViolation {
+  let c_nv_pr = match first_child_named(element, "cNvPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_ShapeNonVisual/cNvPr",
+        reason="required child missing",
+      )
+  }
+  let c_nv_sp_pr = match first_child_named(element, "cNvSpPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_ShapeNonVisual/cNvSpPr",
+        reason="required child missing",
+      )
+  }
+  { c_nv_pr, c_nv_sp_pr }
+}
 
 ///|
 /// XSD complex type CT_Shape is also present in dml-chartDrawing.xsd (§21.3); this shared holder captures the parsed element for both schema bundles.
 
 ///|
-/// XSD complex type CT_ConnectorNonVisual (§21.3, dml-chartDrawing.xsd): attributes no local attributes; children cNvPr: a:CT_NonVisualDrawingProps, cNvCxnSpPr: a:CT_NonVisualConnectorProperties.
+/// XSD complex type CT_ConnectorNonVisual — Part 1 §21.3.2.7 (dml-chartDrawing.xsd)
+/// nvCxnSpPr. Sequence of two required drawingml/main elements preserved raw.
 pub(all) struct CT_ConnectorNonVisual {
-  element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
+  c_nv_pr : @xml.Element
+  /// <cNvCxnSpPr> (a:CT_NonVisualConnectorProperties) — required, preserved as raw element.
+  c_nv_cxn_sp_pr : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Connector (§21.3, dml-chartDrawing.xsd): attributes macro, fPublished; children nvCxnSpPr: CT_ConnectorNonVisual, spPr: a:CT_ShapeProperties, style: a:CT_ShapeStyle.
+pub fn CT_ConnectorNonVisual::new(
+  element : @xml.Element,
+) -> CT_ConnectorNonVisual raise SchemaViolation {
+  let c_nv_pr = match first_child_named(element, "cNvPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_ConnectorNonVisual/cNvPr",
+        reason="required child missing",
+      )
+  }
+  let c_nv_cxn_sp_pr = match first_child_named(element, "cNvCxnSpPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_ConnectorNonVisual/cNvCxnSpPr",
+        reason="required child missing",
+      )
+  }
+  { c_nv_pr, c_nv_cxn_sp_pr }
+}
+
+///|
+/// XSD complex type CT_Connector — Part 1 §21.3.2.3 (dml-chartDrawing.xsd)
+/// cxnSp. Sequence: required nvCxnSpPr, required spPr (raw), optional style
+/// (raw). Optional `macro` and `fPublished` attributes (`fPublished` default
+/// `false`).
 pub(all) struct CT_Connector {
-  element : @xml.Element
+  /// @macro (xsd:string) — optional.
+  macro_ : String?
+  /// @fPublished (xsd:boolean) — optional, schema default `false`.
+  f_published : Bool?
+  /// <nvCxnSpPr> (CT_ConnectorNonVisual) — required.
+  nv_cxn_sp_pr : CT_ConnectorNonVisual
+  /// <spPr> (a:CT_ShapeProperties) — required, preserved as raw element.
+  sp_pr : @xml.Element
+  /// <style> (a:CT_ShapeStyle) — optional, preserved as raw element.
+  style : @xml.Element?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_PictureNonVisual (§21.3, dml-chartDrawing.xsd): attributes no local attributes; children cNvPr: a:CT_NonVisualDrawingProps, cNvPicPr: a:CT_NonVisualPictureProperties.
+pub fn CT_Connector::new(
+  element : @xml.Element,
+) -> CT_Connector raise SchemaViolation {
+  let macro_ = attr_value(element, "macro")
+  let f_published = match attr_value(element, "fPublished") {
+    Some(text) => Some(parse_xsd_boolean("CT_Connector/@fPublished", text))
+    None => None
+  }
+  let nv_cxn_sp_pr_element = match first_child_named(element, "nvCxnSpPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_Connector/nvCxnSpPr",
+        reason="required child missing",
+      )
+  }
+  let nv_cxn_sp_pr = CT_ConnectorNonVisual::new(nv_cxn_sp_pr_element)
+  let sp_pr = match first_child_named(element, "spPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_Connector/spPr",
+        reason="required child missing",
+      )
+  }
+  let style = first_child_named(element, "style")
+  { macro_, f_published, nv_cxn_sp_pr, sp_pr, style }
+}
+
+///|
+/// XSD complex type CT_PictureNonVisual — Part 1 §21.3.2.8 (dml-chartDrawing.xsd)
+/// nvPicPr. Sequence of two required drawingml/main elements preserved raw.
 pub(all) struct CT_PictureNonVisual {
-  element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
+  c_nv_pr : @xml.Element
+  /// <cNvPicPr> (a:CT_NonVisualPictureProperties) — required, preserved as raw element.
+  c_nv_pic_pr : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Picture (§21.3, dml-chartDrawing.xsd): attributes macro, fPublished; children nvPicPr: CT_PictureNonVisual, blipFill: a:CT_BlipFillProperties, spPr: a:CT_ShapeProperties, style: a:CT_ShapeStyle.
+pub fn CT_PictureNonVisual::new(
+  element : @xml.Element,
+) -> CT_PictureNonVisual raise SchemaViolation {
+  let c_nv_pr = match first_child_named(element, "cNvPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_PictureNonVisual/cNvPr",
+        reason="required child missing",
+      )
+  }
+  let c_nv_pic_pr = match first_child_named(element, "cNvPicPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_PictureNonVisual/cNvPicPr",
+        reason="required child missing",
+      )
+  }
+  { c_nv_pr, c_nv_pic_pr }
+}
+
+///|
+/// XSD complex type CT_Picture — Part 1 §21.3.2.11 (dml-chartDrawing.xsd)
+/// pic. Sequence: required nvPicPr, required blipFill (raw), required spPr
+/// (raw), optional style (raw). Optional `macro` (default empty string) and
+/// `fPublished` (default `false`) attributes.
 pub(all) struct CT_Picture {
-  element : @xml.Element
+  /// @macro (xsd:string) — optional, schema default `""`.
+  macro_ : String?
+  /// @fPublished (xsd:boolean) — optional, schema default `false`.
+  f_published : Bool?
+  /// <nvPicPr> (CT_PictureNonVisual) — required.
+  nv_pic_pr : CT_PictureNonVisual
+  /// <blipFill> (a:CT_BlipFillProperties) — required, preserved as raw element.
+  blip_fill : @xml.Element
+  /// <spPr> (a:CT_ShapeProperties) — required, preserved as raw element.
+  sp_pr : @xml.Element
+  /// <style> (a:CT_ShapeStyle) — optional, preserved as raw element.
+  style : @xml.Element?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_GraphicFrameNonVisual (§21.3, dml-chartDrawing.xsd): attributes no local attributes; children cNvPr: a:CT_NonVisualDrawingProps, cNvGraphicFramePr: a:CT_NonVisualGraphicFrameProperties.
+pub fn CT_Picture::new(
+  element : @xml.Element,
+) -> CT_Picture raise SchemaViolation {
+  let macro_ = attr_value(element, "macro")
+  let f_published = match attr_value(element, "fPublished") {
+    Some(text) => Some(parse_xsd_boolean("CT_Picture/@fPublished", text))
+    None => None
+  }
+  let nv_pic_pr_element = match first_child_named(element, "nvPicPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_Picture/nvPicPr",
+        reason="required child missing",
+      )
+  }
+  let nv_pic_pr = CT_PictureNonVisual::new(nv_pic_pr_element)
+  let blip_fill = match first_child_named(element, "blipFill") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_Picture/blipFill",
+        reason="required child missing",
+      )
+  }
+  let sp_pr = match first_child_named(element, "spPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_Picture/spPr",
+        reason="required child missing",
+      )
+  }
+  let style = first_child_named(element, "style")
+  { macro_, f_published, nv_pic_pr, blip_fill, sp_pr, style }
+}
+
+///|
+/// XSD complex type CT_GraphicFrameNonVisual — Part 1 §21.3.2.6
+/// (dml-chartDrawing.xsd) nvGraphicFramePr. Sequence of two required
+/// drawingml/main elements preserved raw.
 pub(all) struct CT_GraphicFrameNonVisual {
-  element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
+  c_nv_pr : @xml.Element
+  /// <cNvGraphicFramePr> (a:CT_NonVisualGraphicFrameProperties) — required, preserved as raw element.
+  c_nv_graphic_frame_pr : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_GraphicFrame (§21.3, dml-chartDrawing.xsd): attributes macro, fPublished; children nvGraphicFramePr: CT_GraphicFrameNonVisual, xfrm: a:CT_Transform2D, a:graphic.
+pub fn CT_GraphicFrameNonVisual::new(
+  element : @xml.Element,
+) -> CT_GraphicFrameNonVisual raise SchemaViolation {
+  let c_nv_pr = match first_child_named(element, "cNvPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_GraphicFrameNonVisual/cNvPr",
+        reason="required child missing",
+      )
+  }
+  let c_nv_graphic_frame_pr = match
+    first_child_named(element, "cNvGraphicFramePr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_GraphicFrameNonVisual/cNvGraphicFramePr",
+        reason="required child missing",
+      )
+  }
+  { c_nv_pr, c_nv_graphic_frame_pr }
+}
+
+///|
+/// XSD complex type CT_GraphicFrame — Part 1 §21.3.2.5 (dml-chartDrawing.xsd)
+/// graphicFrame. Sequence: required nvGraphicFramePr, required xfrm (raw),
+/// required a:graphic (raw). Optional `macro` and `fPublished` (default
+/// `false`) attributes.
 pub(all) struct CT_GraphicFrame {
-  element : @xml.Element
+  /// @macro (xsd:string) — optional.
+  macro_ : String?
+  /// @fPublished (xsd:boolean) — optional, schema default `false`.
+  f_published : Bool?
+  /// <nvGraphicFramePr> (CT_GraphicFrameNonVisual) — required.
+  nv_graphic_frame_pr : CT_GraphicFrameNonVisual
+  /// <xfrm> (a:CT_Transform2D) — required, preserved as raw element.
+  xfrm : @xml.Element
+  /// <a:graphic> (a:CT_GraphicalObject ref) — required, preserved as raw element.
+  graphic : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_GroupShapeNonVisual (§21.3, dml-chartDrawing.xsd): attributes no local attributes; children cNvPr: a:CT_NonVisualDrawingProps, cNvGrpSpPr: a:CT_NonVisualGroupDrawingShapeProps.
+pub fn CT_GraphicFrame::new(
+  element : @xml.Element,
+) -> CT_GraphicFrame raise SchemaViolation {
+  let macro_ = attr_value(element, "macro")
+  let f_published = match attr_value(element, "fPublished") {
+    Some(text) => Some(parse_xsd_boolean("CT_GraphicFrame/@fPublished", text))
+    None => None
+  }
+  let nv_graphic_frame_pr_element = match
+    first_child_named(element, "nvGraphicFramePr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_GraphicFrame/nvGraphicFramePr",
+        reason="required child missing",
+      )
+  }
+  let nv_graphic_frame_pr = CT_GraphicFrameNonVisual::new(
+    nv_graphic_frame_pr_element,
+  )
+  let xfrm = match first_child_named(element, "xfrm") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_GraphicFrame/xfrm",
+        reason="required child missing",
+      )
+  }
+  let graphic = match first_child_named(element, "graphic") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_GraphicFrame/a:graphic",
+        reason="required child missing",
+      )
+  }
+  { macro_, f_published, nv_graphic_frame_pr, xfrm, graphic }
+}
+
+///|
+/// XSD complex type CT_GroupShapeNonVisual — Part 1 §21.3.2.9 (dml-chartDrawing.xsd)
+/// nvGrpSpPr. Sequence of two required drawingml/main elements preserved raw.
 pub(all) struct CT_GroupShapeNonVisual {
-  element : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
+  c_nv_pr : @xml.Element
+  /// <cNvGrpSpPr> (a:CT_NonVisualGroupDrawingShapeProps) — required, preserved as raw element.
+  c_nv_grp_sp_pr : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_GroupShape (§21.3, dml-chartDrawing.xsd): attributes no local attributes; children nvGrpSpPr: CT_GroupShapeNonVisual, grpSpPr: a:CT_GroupShapeProperties, sp: CT_Shape, grpSp: CT_GroupShape, graphicFrame: CT_GraphicFrame, cxnSp: CT_Connector, pic: CT_Picture.
+pub fn CT_GroupShapeNonVisual::new(
+  element : @xml.Element,
+) -> CT_GroupShapeNonVisual raise SchemaViolation {
+  let c_nv_pr = match first_child_named(element, "cNvPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_GroupShapeNonVisual/cNvPr",
+        reason="required child missing",
+      )
+  }
+  let c_nv_grp_sp_pr = match first_child_named(element, "cNvGrpSpPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_GroupShapeNonVisual/cNvGrpSpPr",
+        reason="required child missing",
+      )
+  }
+  { c_nv_pr, c_nv_grp_sp_pr }
+}
+
+///|
+/// XSD complex type CT_GroupShape — Part 1 §21.3.2.4 (dml-chartDrawing.xsd)
+/// grpSp. Sequence: required nvGrpSpPr, required grpSpPr (raw), then an
+/// unbounded `<xsd:choice>` of sp / grpSp / graphicFrame / cxnSp / pic. `sp`
+/// (CT_Shape) is a chunk3 wrapper preserved as raw element; `grpSp`
+/// (CT_GroupShape) is recursively typed.
 pub(all) struct CT_GroupShape {
-  element : @xml.Element
+  /// <nvGrpSpPr> (CT_GroupShapeNonVisual) — required.
+  nv_grp_sp_pr : CT_GroupShapeNonVisual
+  /// <grpSpPr> (a:CT_GroupShapeProperties) — required, preserved as raw element.
+  grp_sp_pr : @xml.Element
+  /// <sp> (CT_Shape, chunk3 wrapper) zero-or-more, preserved as raw element.
+  sp : Array[@xml.Element]
+  /// <grpSp> (CT_GroupShape) zero-or-more, recursively typed.
+  grp_sp : Array[CT_GroupShape]
+  /// <graphicFrame> (CT_GraphicFrame) zero-or-more.
+  graphic_frame : Array[CT_GraphicFrame]
+  /// <cxnSp> (CT_Connector) zero-or-more.
+  cxn_sp : Array[CT_Connector]
+  /// <pic> (CT_Picture) zero-or-more.
+  pic : Array[CT_Picture]
 } derive(Eq, Debug)
+
+///|
+pub fn CT_GroupShape::new(
+  element : @xml.Element,
+) -> CT_GroupShape raise SchemaViolation {
+  let nv_grp_sp_pr_element = match first_child_named(element, "nvGrpSpPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_GroupShape/nvGrpSpPr",
+        reason="required child missing",
+      )
+  }
+  let nv_grp_sp_pr = CT_GroupShapeNonVisual::new(nv_grp_sp_pr_element)
+  let grp_sp_pr = match first_child_named(element, "grpSpPr") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_GroupShape/grpSpPr",
+        reason="required child missing",
+      )
+  }
+  let sp = children_named(element, "sp")
+  let grp_sp = []
+  for child in children_named(element, "grpSp") {
+    grp_sp.push(CT_GroupShape::new(child))
+  }
+  let graphic_frame = []
+  for child in children_named(element, "graphicFrame") {
+    graphic_frame.push(CT_GraphicFrame::new(child))
+  }
+  let cxn_sp = []
+  for child in children_named(element, "cxnSp") {
+    cxn_sp.push(CT_Connector::new(child))
+  }
+  let pic = []
+  for child in children_named(element, "pic") {
+    pic.push(CT_Picture::new(child))
+  }
+  { nv_grp_sp_pr, grp_sp_pr, sp, grp_sp, graphic_frame, cxn_sp, pic }
+}
 
 ///|
 /// XSD complex type CT_Marker is also present in dml-chartDrawing.xsd (§21.3); this shared holder captures the parsed element for both schema bundles.
 
 ///|
-/// XSD complex type CT_RelSizeAnchor (§21.3, dml-chartDrawing.xsd): attributes no local attributes; children from: CT_Marker, to: CT_Marker.
+/// XSD complex type CT_RelSizeAnchor — Part 1 §21.3.2.18
+/// (dml-chartDrawing.xsd) relSizeAnchor. Sequence: required `from` and `to`
+/// markers, followed by the EG_ObjectChoices group (a required choice of one
+/// sp / grpSp / graphicFrame / cxnSp / pic). The two markers reuse the
+/// chartDrawing-flavoured CT_Marker which is still a chunk3 wrapper holding
+/// `x`/`y` ST_MarkerCoordinate children — preserved as raw `@xml.Element`.
 pub(all) struct CT_RelSizeAnchor {
-  element : @xml.Element
+  /// <from> (CT_Marker, chartDrawing) — required, preserved as raw element.
+  from_ : @xml.Element
+  /// <to> (CT_Marker, chartDrawing) — required, preserved as raw element.
+  to_ : @xml.Element
+  /// <sp> (CT_Shape, chunk3) — choice branch, preserved as raw element.
+  sp : @xml.Element?
+  /// <grpSp> (CT_GroupShape) — choice branch.
+  grp_sp : CT_GroupShape?
+  /// <graphicFrame> (CT_GraphicFrame) — choice branch.
+  graphic_frame : CT_GraphicFrame?
+  /// <cxnSp> (CT_Connector) — choice branch.
+  cxn_sp : CT_Connector?
+  /// <pic> (CT_Picture) — choice branch.
+  pic : CT_Picture?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_AbsSizeAnchor (§21.3, dml-chartDrawing.xsd): attributes no local attributes; children from: CT_Marker, ext: a:CT_PositiveSize2D.
+pub fn CT_RelSizeAnchor::new(
+  element : @xml.Element,
+) -> CT_RelSizeAnchor raise SchemaViolation {
+  let from_ = match first_child_named(element, "from") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_RelSizeAnchor/from",
+        reason="required child missing",
+      )
+  }
+  let to_ = match first_child_named(element, "to") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_RelSizeAnchor/to",
+        reason="required child missing",
+      )
+  }
+  let sp = first_child_named(element, "sp")
+  let grp_sp = match first_child_named(element, "grpSp") {
+    Some(child) => Some(CT_GroupShape::new(child))
+    None => None
+  }
+  let graphic_frame = match first_child_named(element, "graphicFrame") {
+    Some(child) => Some(CT_GraphicFrame::new(child))
+    None => None
+  }
+  let cxn_sp = match first_child_named(element, "cxnSp") {
+    Some(child) => Some(CT_Connector::new(child))
+    None => None
+  }
+  let pic = match first_child_named(element, "pic") {
+    Some(child) => Some(CT_Picture::new(child))
+    None => None
+  }
+  { from_, to_, sp, grp_sp, graphic_frame, cxn_sp, pic }
+}
+
+///|
+/// XSD complex type CT_AbsSizeAnchor — Part 1 §21.3.2.1 (dml-chartDrawing.xsd)
+/// absSizeAnchor. Sequence: required `from` marker, required `ext`
+/// (a:CT_PositiveSize2D raw), followed by the EG_ObjectChoices choice.
 pub(all) struct CT_AbsSizeAnchor {
-  element : @xml.Element
+  /// <from> (CT_Marker, chartDrawing) — required, preserved as raw element.
+  from_ : @xml.Element
+  /// <ext> (a:CT_PositiveSize2D) — required, preserved as raw element.
+  ext : @xml.Element
+  /// <sp> (CT_Shape, chunk3) — choice branch, preserved as raw element.
+  sp : @xml.Element?
+  /// <grpSp> (CT_GroupShape) — choice branch.
+  grp_sp : CT_GroupShape?
+  /// <graphicFrame> (CT_GraphicFrame) — choice branch.
+  graphic_frame : CT_GraphicFrame?
+  /// <cxnSp> (CT_Connector) — choice branch.
+  cxn_sp : CT_Connector?
+  /// <pic> (CT_Picture) — choice branch.
+  pic : CT_Picture?
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Drawing (§21.3, dml-chartDrawing.xsd): attributes no local attributes; children no local child elements.
+pub fn CT_AbsSizeAnchor::new(
+  element : @xml.Element,
+) -> CT_AbsSizeAnchor raise SchemaViolation {
+  let from_ = match first_child_named(element, "from") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_AbsSizeAnchor/from",
+        reason="required child missing",
+      )
+  }
+  let ext = match first_child_named(element, "ext") {
+    Some(child) => child
+    None =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path="CT_AbsSizeAnchor/ext",
+        reason="required child missing",
+      )
+  }
+  let sp = first_child_named(element, "sp")
+  let grp_sp = match first_child_named(element, "grpSp") {
+    Some(child) => Some(CT_GroupShape::new(child))
+    None => None
+  }
+  let graphic_frame = match first_child_named(element, "graphicFrame") {
+    Some(child) => Some(CT_GraphicFrame::new(child))
+    None => None
+  }
+  let cxn_sp = match first_child_named(element, "cxnSp") {
+    Some(child) => Some(CT_Connector::new(child))
+    None => None
+  }
+  let pic = match first_child_named(element, "pic") {
+    Some(child) => Some(CT_Picture::new(child))
+    None => None
+  }
+  { from_, ext, sp, grp_sp, graphic_frame, cxn_sp, pic }
+}
+
+///|
+/// XSD complex type CT_Drawing — Part 1 §21.3.2.2 (dml-chartDrawing.xsd) the
+/// `userShapes` payload. Sequence is an EG_Anchor group (choice of
+/// `relSizeAnchor` or `absSizeAnchor`) repeated zero-or-more times. Anchor
+/// occurrences preserve document order in `anchors`.
 pub(all) struct CT_Drawing {
-  element : @xml.Element
+  /// <relSizeAnchor> (CT_RelSizeAnchor) zero-or-more.
+  rel_size_anchor : Array[CT_RelSizeAnchor]
+  /// <absSizeAnchor> (CT_AbsSizeAnchor) zero-or-more.
+  abs_size_anchor : Array[CT_AbsSizeAnchor]
 } derive(Eq, Debug)
+
+///|
+pub fn CT_Drawing::new(
+  element : @xml.Element,
+) -> CT_Drawing raise SchemaViolation {
+  let rel_size_anchor = []
+  for child in children_named(element, "relSizeAnchor") {
+    rel_size_anchor.push(CT_RelSizeAnchor::new(child))
+  }
+  let abs_size_anchor = []
+  for child in children_named(element, "absSizeAnchor") {
+    abs_size_anchor.push(CT_AbsSizeAnchor::new(child))
+  }
+  { rel_size_anchor, abs_size_anchor }
+}
 
 ///|
 /// XSD top-level element chartSpace (§21.2, dml-chart.xsd) with type CT_ChartSpace.
