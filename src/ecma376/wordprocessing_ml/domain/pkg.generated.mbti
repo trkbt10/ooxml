@@ -9,6 +9,8 @@ import {
 // Values
 pub fn anchor(@xml.Element) -> CT_Anchor
 
+pub let cnf_bit_count : Int
+
 pub fn comments(@xml.Element) -> CT_Comments
 
 pub fn document(@xml.Element) -> CT_Document
@@ -2403,281 +2405,600 @@ pub fn EG_WrapType::contains(Self, String) -> Bool
 pub fn EG_WrapType::count(Self) -> Int
 pub fn EG_WrapType::new(Array[@xml.Element]) -> Self
 
-pub struct ST_AlignH {
-  value : String
+pub(all) enum ST_AlignH {
+  AlignHLeft
+  AlignHRight
+  AlignHCenter
+  AlignHInside
+  AlignHOutside
 } derive(Eq, @debug.Debug)
 pub fn ST_AlignH::new(String) -> Self raise SchemaViolation
 pub fn ST_AlignH::parse(String) -> Self raise SchemaViolation
 pub fn ST_AlignH::to_string(Self) -> String
 
-pub struct ST_AlignV {
-  value : String
+pub(all) enum ST_AlignV {
+  AlignVTop
+  AlignVBottom
+  AlignVCenter
+  AlignVInside
+  AlignVOutside
 } derive(Eq, @debug.Debug)
 pub fn ST_AlignV::new(String) -> Self raise SchemaViolation
 pub fn ST_AlignV::parse(String) -> Self raise SchemaViolation
 pub fn ST_AlignV::to_string(Self) -> String
 
-pub struct ST_AnnotationVMerge {
-  value : String
+pub(all) enum ST_AnnotationVMerge {
+  AnnotationVMergeCont
+  AnnotationVMergeRest
 } derive(Eq, @debug.Debug)
 pub fn ST_AnnotationVMerge::new(String) -> Self raise SchemaViolation
 pub fn ST_AnnotationVMerge::parse(String) -> Self raise SchemaViolation
 pub fn ST_AnnotationVMerge::to_string(Self) -> String
 
-pub struct ST_Border {
-  value : String
+pub(all) enum ST_Border {
+  BorderNil
+  BorderNone
+  BorderSingle
+  BorderThick
+  BorderDouble
+  BorderDotted
+  BorderDashed
+  BorderDotDash
+  BorderDotDotDash
+  BorderTriple
+  BorderThinThickSmallGap
+  BorderThickThinSmallGap
+  BorderThinThickThinSmallGap
+  BorderThinThickMediumGap
+  BorderThickThinMediumGap
+  BorderThinThickThinMediumGap
+  BorderThinThickLargeGap
+  BorderThickThinLargeGap
+  BorderThinThickThinLargeGap
+  BorderWave
+  BorderDoubleWave
+  BorderDashSmallGap
+  BorderDashDotStroked
+  BorderThreeDEmboss
+  BorderThreeDEngrave
+  BorderOutset
+  BorderInset
+  BorderApples
+  BorderArchedScallops
+  BorderBabyPacifier
+  BorderBabyRattle
+  BorderBalloons3Colors
+  BorderBalloonsHotAir
+  BorderBasicBlackDashes
+  BorderBasicBlackDots
+  BorderBasicBlackSquares
+  BorderBasicThinLines
+  BorderBasicWhiteDashes
+  BorderBasicWhiteDots
+  BorderBasicWhiteSquares
+  BorderBasicWideInline
+  BorderBasicWideMidline
+  BorderBasicWideOutline
+  BorderBats
+  BorderBirds
+  BorderBirdsFlight
+  BorderCabins
+  BorderCakeSlice
+  BorderCandyCorn
+  BorderCelticKnotwork
+  BorderCertificateBanner
+  BorderChainLink
+  BorderChampagneBottle
+  BorderCheckedBarBlack
+  BorderCheckedBarColor
+  BorderCheckered
+  BorderChristmasTree
+  BorderCirclesLines
+  BorderCirclesRectangles
+  BorderClassicalWave
+  BorderClocks
+  BorderCompass
+  BorderConfetti
+  BorderConfettiGrays
+  BorderConfettiOutline
+  BorderConfettiStreamers
+  BorderConfettiWhite
+  BorderCornerTriangles
+  BorderCouponCutoutDashes
+  BorderCouponCutoutDots
+  BorderCrazyMaze
+  BorderCreaturesButterfly
+  BorderCreaturesFish
+  BorderCreaturesInsects
+  BorderCreaturesLadyBug
+  BorderCrossStitch
+  BorderCup
+  BorderDecoArch
+  BorderDecoArchColor
+  BorderDecoBlocks
+  BorderDiamondsGray
+  BorderDoubleD
+  BorderDoubleDiamonds
+  BorderEarth1
+  BorderEarth2
+  BorderEarth3
+  BorderEclipsingSquares1
+  BorderEclipsingSquares2
+  BorderEggsBlack
+  BorderFans
+  BorderFilm
+  BorderFirecrackers
+  BorderFlowersBlockPrint
+  BorderFlowersDaisies
+  BorderFlowersModern1
+  BorderFlowersModern2
+  BorderFlowersPansy
+  BorderFlowersRedRose
+  BorderFlowersRoses
+  BorderFlowersTeacup
+  BorderFlowersTiny
+  BorderGems
+  BorderGingerbreadMan
+  BorderGradient
+  BorderHandmade1
+  BorderHandmade2
+  BorderHeartBalloon
+  BorderHeartGray
+  BorderHearts
+  BorderHeebieJeebies
+  BorderHolly
+  BorderHouseFunky
+  BorderHypnotic
+  BorderIceCreamCones
+  BorderLightBulb
+  BorderLightning1
+  BorderLightning2
+  BorderMapPins
+  BorderMapleLeaf
+  BorderMapleMuffins
+  BorderMarquee
+  BorderMarqueeToothed
+  BorderMoons
+  BorderMosaic
+  BorderMusicNotes
+  BorderNorthwest
+  BorderOvals
+  BorderPackages
+  BorderPalmsBlack
+  BorderPalmsColor
+  BorderPaperClips
+  BorderPapyrus
+  BorderPartyFavor
+  BorderPartyGlass
+  BorderPencils
+  BorderPeople
+  BorderPeopleWaving
+  BorderPeopleHats
+  BorderPoinsettias
+  BorderPostageStamp
+  BorderPumpkin1
+  BorderPushPinNote2
+  BorderPushPinNote1
+  BorderPyramids
+  BorderPyramidsAbove
+  BorderQuadrants
+  BorderRings
+  BorderSafari
+  BorderSawtooth
+  BorderSawtoothGray
+  BorderScaredCat
+  BorderSeattle
+  BorderShadowedSquares
+  BorderSharksTeeth
+  BorderShorebirdTracks
+  BorderSkyrocket
+  BorderSnowflakeFancy
+  BorderSnowflakes
+  BorderSombrero
+  BorderSouthwest
+  BorderStars
+  BorderStarsTop
+  BorderStars3d
+  BorderStarsBlack
+  BorderStarsShadowed
+  BorderSun
+  BorderSwirligig
+  BorderTornPaper
+  BorderTornPaperBlack
+  BorderTrees
+  BorderTriangleParty
+  BorderTriangles
+  BorderTriangle1
+  BorderTriangle2
+  BorderTriangleCircle1
+  BorderTriangleCircle2
+  BorderShapes1
+  BorderShapes2
+  BorderTwistedLines1
+  BorderTwistedLines2
+  BorderVine
+  BorderWaveline
+  BorderWeavingAngles
+  BorderWeavingBraid
+  BorderWeavingRibbon
+  BorderWeavingStrips
+  BorderWhiteFlowers
+  BorderWoodwork
+  BorderXIllusions
+  BorderZanyTriangles
+  BorderZigZag
+  BorderZigZagStitch
+  BorderCustom
 } derive(Eq, @debug.Debug)
 pub fn ST_Border::new(String) -> Self raise SchemaViolation
 pub fn ST_Border::parse(String) -> Self raise SchemaViolation
 pub fn ST_Border::to_string(Self) -> String
 
-pub struct ST_BrClear {
-  value : String
+pub(all) enum ST_BrClear {
+  BrClearNone
+  BrClearLeft
+  BrClearRight
+  BrClearAll
 } derive(Eq, @debug.Debug)
 pub fn ST_BrClear::new(String) -> Self raise SchemaViolation
 pub fn ST_BrClear::parse(String) -> Self raise SchemaViolation
 pub fn ST_BrClear::to_string(Self) -> String
 
-pub struct ST_BrType {
-  value : String
+pub(all) enum ST_BrType {
+  BrTypePage
+  BrTypeColumn
+  BrTypeTextWrapping
 } derive(Eq, @debug.Debug)
 pub fn ST_BrType::new(String) -> Self raise SchemaViolation
 pub fn ST_BrType::parse(String) -> Self raise SchemaViolation
 pub fn ST_BrType::to_string(Self) -> String
 
-pub struct ST_CaptionPos {
-  value : String
+pub(all) enum ST_CaptionPos {
+  CaptionPosAbove
+  CaptionPosBelow
+  CaptionPosLeft
+  CaptionPosRight
 } derive(Eq, @debug.Debug)
 pub fn ST_CaptionPos::new(String) -> Self raise SchemaViolation
 pub fn ST_CaptionPos::parse(String) -> Self raise SchemaViolation
 pub fn ST_CaptionPos::to_string(Self) -> String
 
-pub struct ST_ChapterSep {
-  value : String
+pub(all) enum ST_ChapterSep {
+  ChapterSepHyphen
+  ChapterSepPeriod
+  ChapterSepColon
+  ChapterSepEmDash
+  ChapterSepEnDash
 } derive(Eq, @debug.Debug)
 pub fn ST_ChapterSep::new(String) -> Self raise SchemaViolation
 pub fn ST_ChapterSep::parse(String) -> Self raise SchemaViolation
 pub fn ST_ChapterSep::to_string(Self) -> String
 
-pub struct ST_CharacterSpacing {
-  value : String
+pub(all) enum ST_CharacterSpacing {
+  CharacterSpacingDoNotCompress
+  CharacterSpacingCompressPunctuation
+  CharacterSpacingCompressPunctuationAndJapaneseKana
 } derive(Eq, @debug.Debug)
 pub fn ST_CharacterSpacing::new(String) -> Self raise SchemaViolation
 pub fn ST_CharacterSpacing::parse(String) -> Self raise SchemaViolation
 pub fn ST_CharacterSpacing::to_string(Self) -> String
 
 pub struct ST_Cnf {
-  value : String
+  bitmask : Int
 } derive(Eq, @debug.Debug)
+pub fn ST_Cnf::bit(Self, Int) -> Bool
+pub fn ST_Cnf::bitmask(Self) -> Int
 pub fn ST_Cnf::new(String) -> Self raise SchemaViolation
 pub fn ST_Cnf::parse(String) -> Self raise SchemaViolation
 pub fn ST_Cnf::to_string(Self) -> String
 
-pub struct ST_CombineBrackets {
-  value : String
+pub(all) enum ST_CombineBrackets {
+  CombineBracketsNone
+  CombineBracketsRound
+  CombineBracketsSquare
+  CombineBracketsAngle
+  CombineBracketsCurly
 } derive(Eq, @debug.Debug)
 pub fn ST_CombineBrackets::new(String) -> Self raise SchemaViolation
 pub fn ST_CombineBrackets::parse(String) -> Self raise SchemaViolation
 pub fn ST_CombineBrackets::to_string(Self) -> String
 
 pub struct ST_DateTime {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_DateTime::new(String) -> Self raise SchemaViolation
 pub fn ST_DateTime::parse(String) -> Self raise SchemaViolation
 pub fn ST_DateTime::to_string(Self) -> String
 
 pub struct ST_DecimalNumber {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_DecimalNumber::new(String) -> Self raise SchemaViolation
 pub fn ST_DecimalNumber::parse(String) -> Self raise SchemaViolation
 pub fn ST_DecimalNumber::to_string(Self) -> String
+pub fn ST_DecimalNumber::value(Self) -> Int
 
-pub struct ST_DecimalNumberOrPercent {
-  value : String
+pub(all) enum ST_DecimalNumberOrPercent {
+  DecimalNumberOrPercentDecimal(Int)
+  DecimalNumberOrPercentPercentage(String)
 } derive(Eq, @debug.Debug)
 pub fn ST_DecimalNumberOrPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_DecimalNumberOrPercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_DecimalNumberOrPercent::to_string(Self) -> String
 
-pub struct ST_Direction {
-  value : String
+pub(all) enum ST_Direction {
+  DirectionLtr
+  DirectionRtl
 } derive(Eq, @debug.Debug)
 pub fn ST_Direction::new(String) -> Self raise SchemaViolation
 pub fn ST_Direction::parse(String) -> Self raise SchemaViolation
 pub fn ST_Direction::to_string(Self) -> String
 
-pub struct ST_DisplacedByCustomXml {
-  value : String
+pub(all) enum ST_DisplacedByCustomXml {
+  DisplacedByCustomXmlNext
+  DisplacedByCustomXmlPrev
 } derive(Eq, @debug.Debug)
 pub fn ST_DisplacedByCustomXml::new(String) -> Self raise SchemaViolation
 pub fn ST_DisplacedByCustomXml::parse(String) -> Self raise SchemaViolation
 pub fn ST_DisplacedByCustomXml::to_string(Self) -> String
 
-pub struct ST_DocGrid {
-  value : String
+pub(all) enum ST_DocGrid {
+  DocGridDefault
+  DocGridLines
+  DocGridLinesAndChars
+  DocGridSnapToChars
 } derive(Eq, @debug.Debug)
 pub fn ST_DocGrid::new(String) -> Self raise SchemaViolation
 pub fn ST_DocGrid::parse(String) -> Self raise SchemaViolation
 pub fn ST_DocGrid::to_string(Self) -> String
 
-pub struct ST_DocPartBehavior {
-  value : String
+pub(all) enum ST_DocPartBehavior {
+  DocPartBehaviorContent
+  DocPartBehaviorP
+  DocPartBehaviorPg
 } derive(Eq, @debug.Debug)
 pub fn ST_DocPartBehavior::new(String) -> Self raise SchemaViolation
 pub fn ST_DocPartBehavior::parse(String) -> Self raise SchemaViolation
 pub fn ST_DocPartBehavior::to_string(Self) -> String
 
-pub struct ST_DocPartGallery {
-  value : String
+pub(all) enum ST_DocPartGallery {
+  DocPartGalleryPlaceholder
+  DocPartGalleryAny
+  DocPartGalleryDefault
+  DocPartGalleryDocParts
+  DocPartGalleryCoverPg
+  DocPartGalleryEq
+  DocPartGalleryFtrs
+  DocPartGalleryHdrs
+  DocPartGalleryPgNum
+  DocPartGalleryTbls
+  DocPartGalleryWatermarks
+  DocPartGalleryAutoTxt
+  DocPartGalleryTxtBox
+  DocPartGalleryPgNumT
+  DocPartGalleryPgNumB
+  DocPartGalleryPgNumMargins
+  DocPartGalleryTblOfContents
+  DocPartGalleryBib
+  DocPartGalleryCustQuickParts
+  DocPartGalleryCustCoverPg
+  DocPartGalleryCustEq
+  DocPartGalleryCustFtrs
+  DocPartGalleryCustHdrs
+  DocPartGalleryCustPgNum
+  DocPartGalleryCustTbls
+  DocPartGalleryCustWatermarks
+  DocPartGalleryCustAutoTxt
+  DocPartGalleryCustTxtBox
+  DocPartGalleryCustPgNumT
+  DocPartGalleryCustPgNumB
+  DocPartGalleryCustPgNumMargins
+  DocPartGalleryCustTblOfContents
+  DocPartGalleryCustBib
+  DocPartGalleryCustom1
+  DocPartGalleryCustom2
+  DocPartGalleryCustom3
+  DocPartGalleryCustom4
+  DocPartGalleryCustom5
 } derive(Eq, @debug.Debug)
 pub fn ST_DocPartGallery::new(String) -> Self raise SchemaViolation
 pub fn ST_DocPartGallery::parse(String) -> Self raise SchemaViolation
 pub fn ST_DocPartGallery::to_string(Self) -> String
 
-pub struct ST_DocPartType {
-  value : String
+pub(all) enum ST_DocPartType {
+  DocPartTypeNone
+  DocPartTypeNormal
+  DocPartTypeAutoExp
+  DocPartTypeToolbar
+  DocPartTypeSpeller
+  DocPartTypeFormFld
+  DocPartTypeBbPlcHdr
 } derive(Eq, @debug.Debug)
 pub fn ST_DocPartType::new(String) -> Self raise SchemaViolation
 pub fn ST_DocPartType::parse(String) -> Self raise SchemaViolation
 pub fn ST_DocPartType::to_string(Self) -> String
 
-pub struct ST_DocProtect {
-  value : String
+pub(all) enum ST_DocProtect {
+  DocProtectNone
+  DocProtectReadOnly
+  DocProtectComments
+  DocProtectTrackedChanges
+  DocProtectForms
 } derive(Eq, @debug.Debug)
 pub fn ST_DocProtect::new(String) -> Self raise SchemaViolation
 pub fn ST_DocProtect::parse(String) -> Self raise SchemaViolation
 pub fn ST_DocProtect::to_string(Self) -> String
 
 pub struct ST_DocType {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_DocType::new(String) -> Self raise SchemaViolation
 pub fn ST_DocType::parse(String) -> Self raise SchemaViolation
 pub fn ST_DocType::to_string(Self) -> String
 
-pub struct ST_DropCap {
-  value : String
+pub(all) enum ST_DropCap {
+  DropCapNone
+  DropCapDrop
+  DropCapMargin
 } derive(Eq, @debug.Debug)
 pub fn ST_DropCap::new(String) -> Self raise SchemaViolation
 pub fn ST_DropCap::parse(String) -> Self raise SchemaViolation
 pub fn ST_DropCap::to_string(Self) -> String
 
-pub struct ST_EdGrp {
-  value : String
+pub(all) enum ST_EdGrp {
+  EdGrpNone
+  EdGrpEveryone
+  EdGrpAdministrators
+  EdGrpContributors
+  EdGrpEditors
+  EdGrpOwners
+  EdGrpCurrent
 } derive(Eq, @debug.Debug)
 pub fn ST_EdGrp::new(String) -> Self raise SchemaViolation
 pub fn ST_EdGrp::parse(String) -> Self raise SchemaViolation
 pub fn ST_EdGrp::to_string(Self) -> String
 
-pub struct ST_EdnPos {
-  value : String
+pub(all) enum ST_EdnPos {
+  EdnPosSectEnd
+  EdnPosDocEnd
 } derive(Eq, @debug.Debug)
 pub fn ST_EdnPos::new(String) -> Self raise SchemaViolation
 pub fn ST_EdnPos::parse(String) -> Self raise SchemaViolation
 pub fn ST_EdnPos::to_string(Self) -> String
 
 pub struct ST_EighthPointMeasure {
-  value : String
+  eighth_points : UInt64
 } derive(Eq, @debug.Debug)
+pub fn ST_EighthPointMeasure::eighth_points(Self) -> UInt64
 pub fn ST_EighthPointMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_EighthPointMeasure::parse(String) -> Self raise SchemaViolation
 pub fn ST_EighthPointMeasure::to_string(Self) -> String
 
-pub struct ST_Em {
-  value : String
+pub(all) enum ST_Em {
+  EmCircle
+  EmComma
+  EmDot
+  EmNone
+  EmUnderDot
 } derive(Eq, @debug.Debug)
 pub fn ST_Em::new(String) -> Self raise SchemaViolation
 pub fn ST_Em::parse(String) -> Self raise SchemaViolation
 pub fn ST_Em::to_string(Self) -> String
 
 pub struct ST_FFHelpTextVal {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_FFHelpTextVal::new(String) -> Self raise SchemaViolation
 pub fn ST_FFHelpTextVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_FFHelpTextVal::to_string(Self) -> String
 
 pub struct ST_FFName {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_FFName::new(String) -> Self raise SchemaViolation
 pub fn ST_FFName::parse(String) -> Self raise SchemaViolation
 pub fn ST_FFName::to_string(Self) -> String
 
 pub struct ST_FFStatusTextVal {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_FFStatusTextVal::new(String) -> Self raise SchemaViolation
 pub fn ST_FFStatusTextVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_FFStatusTextVal::to_string(Self) -> String
 
-pub struct ST_FFTextType {
-  value : String
+pub(all) enum ST_FFTextType {
+  FFTextTypeRegular
+  FFTextTypeNumber
+  FFTextTypeDate
+  FFTextTypeCurrentTime
+  FFTextTypeCurrentDate
+  FFTextTypeCalculated
 } derive(Eq, @debug.Debug)
 pub fn ST_FFTextType::new(String) -> Self raise SchemaViolation
 pub fn ST_FFTextType::parse(String) -> Self raise SchemaViolation
 pub fn ST_FFTextType::to_string(Self) -> String
 
-pub struct ST_FldCharType {
-  value : String
+pub(all) enum ST_FldCharType {
+  FldCharTypeBegin
+  FldCharTypeSeparate
+  FldCharTypeEnd
 } derive(Eq, @debug.Debug)
 pub fn ST_FldCharType::new(String) -> Self raise SchemaViolation
 pub fn ST_FldCharType::parse(String) -> Self raise SchemaViolation
 pub fn ST_FldCharType::to_string(Self) -> String
 
-pub struct ST_FontFamily {
-  value : String
+pub(all) enum ST_FontFamily {
+  FontFamilyDecorative
+  FontFamilyModern
+  FontFamilyRoman
+  FontFamilyScript
+  FontFamilySwiss
+  FontFamilyAuto
 } derive(Eq, @debug.Debug)
 pub fn ST_FontFamily::new(String) -> Self raise SchemaViolation
 pub fn ST_FontFamily::parse(String) -> Self raise SchemaViolation
 pub fn ST_FontFamily::to_string(Self) -> String
 
-pub struct ST_FrameLayout {
-  value : String
+pub(all) enum ST_FrameLayout {
+  FrameLayoutRows
+  FrameLayoutCols
+  FrameLayoutNone
 } derive(Eq, @debug.Debug)
 pub fn ST_FrameLayout::new(String) -> Self raise SchemaViolation
 pub fn ST_FrameLayout::parse(String) -> Self raise SchemaViolation
 pub fn ST_FrameLayout::to_string(Self) -> String
 
-pub struct ST_FrameScrollbar {
-  value : String
+pub(all) enum ST_FrameScrollbar {
+  FrameScrollbarOn
+  FrameScrollbarOff
+  FrameScrollbarAuto
 } derive(Eq, @debug.Debug)
 pub fn ST_FrameScrollbar::new(String) -> Self raise SchemaViolation
 pub fn ST_FrameScrollbar::parse(String) -> Self raise SchemaViolation
 pub fn ST_FrameScrollbar::to_string(Self) -> String
 
-pub struct ST_FtnEdn {
-  value : String
+pub(all) enum ST_FtnEdn {
+  FtnEdnNormal
+  FtnEdnSeparator
+  FtnEdnContinuationSeparator
+  FtnEdnContinuationNotice
 } derive(Eq, @debug.Debug)
 pub fn ST_FtnEdn::new(String) -> Self raise SchemaViolation
 pub fn ST_FtnEdn::parse(String) -> Self raise SchemaViolation
 pub fn ST_FtnEdn::to_string(Self) -> String
 
-pub struct ST_FtnPos {
-  value : String
+pub(all) enum ST_FtnPos {
+  FtnPosPageBottom
+  FtnPosBeneathText
+  FtnPosSectEnd
+  FtnPosDocEnd
 } derive(Eq, @debug.Debug)
 pub fn ST_FtnPos::new(String) -> Self raise SchemaViolation
 pub fn ST_FtnPos::parse(String) -> Self raise SchemaViolation
 pub fn ST_FtnPos::to_string(Self) -> String
 
-pub struct ST_HAnchor {
-  value : String
+pub(all) enum ST_HAnchor {
+  HAnchorText
+  HAnchorMargin
+  HAnchorPage
 } derive(Eq, @debug.Debug)
 pub fn ST_HAnchor::new(String) -> Self raise SchemaViolation
 pub fn ST_HAnchor::parse(String) -> Self raise SchemaViolation
 pub fn ST_HAnchor::to_string(Self) -> String
 
-pub struct ST_HdrFtr {
-  value : String
+pub(all) enum ST_HdrFtr {
+  HdrFtrEven
+  HdrFtrDefault
+  HdrFtrFirst
 } derive(Eq, @debug.Debug)
 pub fn ST_HdrFtr::new(String) -> Self raise SchemaViolation
 pub fn ST_HdrFtr::parse(String) -> Self raise SchemaViolation
 pub fn ST_HdrFtr::to_string(Self) -> String
 
-pub struct ST_HeightRule {
-  value : String
+pub(all) enum ST_HeightRule {
+  HeightRuleAuto
+  HeightRuleExact
+  HeightRuleAtLeast
 } derive(Eq, @debug.Debug)
 pub fn ST_HeightRule::new(String) -> Self raise SchemaViolation
 pub fn ST_HeightRule::parse(String) -> Self raise SchemaViolation

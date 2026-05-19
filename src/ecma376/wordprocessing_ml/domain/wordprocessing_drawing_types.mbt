@@ -107,25 +107,48 @@ pub fn ST_PositionOffset::to_int(self : ST_PositionOffset) -> Int {
 }
 
 ///|
-/// XSD simple type ST_AlignH from dml-wordprocessingDrawing.xsd (§20.4).
-pub struct ST_AlignH {
-  value : String
+/// XSD simple type ST_AlignH — Part 1 §20.4.3.1.
+/// Restriction of xsd:token to {left, right, center, inside, outside},
+/// the horizontal alignment positions relative to the parent
+/// alignment base.
+pub(all) enum ST_AlignH {
+  AlignHLeft
+  AlignHRight
+  AlignHCenter
+  AlignHInside
+  AlignHOutside
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_AlignH schema lexical value.
 pub fn ST_AlignH::parse(s : String) -> ST_AlignH raise SchemaViolation {
-  validate_wordprocessing_drawing_simple_type("ST_AlignH", s)
-  { value: s }
+  match s {
+    "left" => AlignHLeft
+    "right" => AlignHRight
+    "center" => AlignHCenter
+    "inside" => AlignHInside
+    "outside" => AlignHOutside
+    _ => raise_schema_violation("ST_AlignH", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_AlignH while enforcing the
+/// dml-wordprocessingDrawing.xsd enumeration.
 pub fn ST_AlignH::new(s : String) -> ST_AlignH raise SchemaViolation {
   ST_AlignH::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_AlignH.
 pub fn ST_AlignH::to_string(self : ST_AlignH) -> String {
-  self.value
+  match self {
+    AlignHLeft => "left"
+    AlignHRight => "right"
+    AlignHCenter => "center"
+    AlignHInside => "inside"
+    AlignHOutside => "outside"
+  }
 }
 
 ///|
@@ -187,25 +210,48 @@ pub fn ST_RelFromH::to_string(self : ST_RelFromH) -> String {
 }
 
 ///|
-/// XSD simple type ST_AlignV from dml-wordprocessingDrawing.xsd (§20.4).
-pub struct ST_AlignV {
-  value : String
+/// XSD simple type ST_AlignV — Part 1 §20.4.3.2.
+/// Restriction of xsd:token to {top, bottom, center, inside, outside},
+/// the vertical alignment positions relative to the parent alignment
+/// base.
+pub(all) enum ST_AlignV {
+  AlignVTop
+  AlignVBottom
+  AlignVCenter
+  AlignVInside
+  AlignVOutside
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_AlignV schema lexical value.
 pub fn ST_AlignV::parse(s : String) -> ST_AlignV raise SchemaViolation {
-  validate_wordprocessing_drawing_simple_type("ST_AlignV", s)
-  { value: s }
+  match s {
+    "top" => AlignVTop
+    "bottom" => AlignVBottom
+    "center" => AlignVCenter
+    "inside" => AlignVInside
+    "outside" => AlignVOutside
+    _ => raise_schema_violation("ST_AlignV", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_AlignV while enforcing the
+/// dml-wordprocessingDrawing.xsd enumeration.
 pub fn ST_AlignV::new(s : String) -> ST_AlignV raise SchemaViolation {
   ST_AlignV::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_AlignV.
 pub fn ST_AlignV::to_string(self : ST_AlignV) -> String {
-  self.value
+  match self {
+    AlignVTop => "top"
+    AlignVBottom => "bottom"
+    AlignVCenter => "center"
+    AlignVInside => "inside"
+    AlignVOutside => "outside"
+  }
 }
 
 ///|

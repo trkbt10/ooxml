@@ -34,75 +34,126 @@ fn wml_simple_type_values(type_name : String) -> String {
       ";single;words;double;thick;dotted;dottedHeavy;dash;dashedHeavy;dashLong;dashLongHeavy;dotDash;dashDotHeavy;dotDotDash;dashDotDotHeavy;wave;wavyHeavy;wavyDouble;none;"
     "ST_TextEffect" =>
       ";blinkBackground;lights;antsBlack;antsRed;shimmer;sparkle;none;"
-    "ST_Border" =>
-      ";nil;none;single;thick;double;dotted;dashed;dotDash;dotDotDash;triple;thinThickSmallGap;thickThinSmallGap;thinThickThinSmallGap;thinThickMediumGap;thickThinMediumGap;thinThickThinMediumGap;thinThickLargeGap;thickThinLargeGap;thinThickThinLargeGap;wave;doubleWave;dashSmallGap;dashDotStroked;threeDEmboss;threeDEngrave;outset;inset;apples;archedScallops;babyPacifier;babyRattle;balloons3Colors;balloonsHotAir;basicBlackDashes;basicBlackDots;basicBlackSquares;basicThinLines;basicWhiteDashes;basicWhiteDots;basicWhiteSquares;basicWideInline;basicWideMidline;basicWideOutline;bats;birds;birdsFlight;cabins;cakeSlice;candyCorn;celticKnotwork;certificateBanner;chainLink;champagneBottle;checkedBarBlack;checkedBarColor;checkered;christmasTree;circlesLines;circlesRectangles;classicalWave;clocks;compass;confetti;confettiGrays;confettiOutline;confettiStreamers;confettiWhite;cornerTriangles;couponCutoutDashes;couponCutoutDots;crazyMaze;creaturesButterfly;creaturesFish;creaturesInsects;creaturesLadyBug;crossStitch;cup;decoArch;decoArchColor;decoBlocks;diamondsGray;doubleD;doubleDiamonds;earth1;earth2;earth3;eclipsingSquares1;eclipsingSquares2;eggsBlack;fans;film;firecrackers;flowersBlockPrint;flowersDaisies;flowersModern1;flowersModern2;flowersPansy;flowersRedRose;flowersRoses;flowersTeacup;flowersTiny;gems;gingerbreadMan;gradient;handmade1;handmade2;heartBalloon;heartGray;hearts;heebieJeebies;holly;houseFunky;hypnotic;iceCreamCones;lightBulb;lightning1;lightning2;mapPins;mapleLeaf;mapleMuffins;marquee;marqueeToothed;moons;mosaic;musicNotes;northwest;ovals;packages;palmsBlack;palmsColor;paperClips;papyrus;partyFavor;partyGlass;pencils;people;peopleWaving;peopleHats;poinsettias;postageStamp;pumpkin1;pushPinNote2;pushPinNote1;pyramids;pyramidsAbove;quadrants;rings;safari;sawtooth;sawtoothGray;scaredCat;seattle;shadowedSquares;sharksTeeth;shorebirdTracks;skyrocket;snowflakeFancy;snowflakes;sombrero;southwest;stars;starsTop;stars3d;starsBlack;starsShadowed;sun;swirligig;tornPaper;tornPaperBlack;trees;triangleParty;triangles;triangle1;triangle2;triangleCircle1;triangleCircle2;shapes1;shapes2;twistedLines1;twistedLines2;vine;waveline;weavingAngles;weavingBraid;weavingRibbon;weavingStrips;whiteFlowers;woodwork;xIllusions;zanyTriangles;zigZag;zigZagStitch;custom;"
     "ST_Shd" =>
       ";nil;clear;solid;horzStripe;vertStripe;reverseDiagStripe;diagStripe;horzCross;diagCross;thinHorzStripe;thinVertStripe;thinReverseDiagStripe;thinDiagStripe;thinHorzCross;thinDiagCross;pct5;pct10;pct12;pct15;pct20;pct25;pct30;pct35;pct37;pct40;pct45;pct50;pct55;pct60;pct62;pct65;pct70;pct75;pct80;pct85;pct87;pct90;pct95;"
-    "ST_Em" => ";none;dot;comma;circle;underDot;"
-    "ST_CombineBrackets" => ";none;round;square;angle;curly;"
-    "ST_HeightRule" => ";auto;exact;atLeast;"
     "ST_Wrap" => ";auto;notBeside;around;tight;through;none;"
     "ST_VAnchor" => ";text;margin;page;"
-    "ST_HAnchor" => ";text;margin;page;"
-    "ST_DropCap" => ";none;drop;margin;"
     "ST_TabJc" => ";clear;start;center;end;decimal;bar;num;"
     "ST_TabTlc" => ";none;dot;hyphen;underscore;heavy;middleDot;"
     "ST_View" => ";none;print;outline;masterPages;normal;web;"
     "ST_Zoom" => ";none;fullPage;bestFit;textFit;"
+    "ST_Proof" => ";clean;dirty;"
+    "ST_MailMergeDocType" =>
+      ";catalog;envelopes;mailingLabels;formLetters;email;fax;"
+    "ST_MailMergeDest" => ";newDocument;printer;email;fax;"
+    "ST_MailMergeOdsoFMDFieldType" => ";null;dbColumn;"
     "ST_DocProtect" => ";none;readOnly;comments;trackedChanges;forms;"
     "ST_TextDirection" => ";tb;rl;lr;tbV;rlV;lrV;"
     "ST_TextAlignment" => ";top;center;baseline;bottom;auto;"
-    "ST_DisplacedByCustomXml" => ";next;prev;"
-    "ST_AnnotationVMerge" => ";cont;rest;"
     "ST_TextboxTightWrap" =>
       ";none;allLines;firstAndLastLine;firstLineOnly;lastLineOnly;"
-    "ST_FldCharType" => ";begin;separate;end;"
-    "ST_FFTextType" =>
-      ";regular;number;date;currentTime;currentDate;calculated;"
-    "ST_SectionMark" => ";nextPage;nextColumn;continuous;evenPage;oddPage;"
-    "ST_ChapterSep" => ";hyphen;period;colon;emDash;enDash;"
-    "ST_VerticalJc" => ";top;center;both;bottom;"
-    "ST_DocGrid" => ";default;lines;linesAndChars;snapToChars;"
-    "ST_HdrFtr" => ";even;default;first;"
-    "ST_FtnEdn" => ";normal;separator;continuationSeparator;continuationNotice;"
-    "ST_BrType" => ";page;column;textWrapping;"
-    "ST_BrClear" => ";none;left;right;all;"
-    "ST_EdGrp" =>
-      ";none;everyone;administrators;contributors;editors;owners;current;"
+    "ST_ObjectDrawAspect" => ";content;icon;"
+    "ST_ObjectUpdateMode" => ";always;onCall;"
+    "ST_InfoTextType" => ";text;autoText;"
+    "ST_NumberFormat" =>
+      ";decimal;upperRoman;lowerRoman;upperLetter;lowerLetter;ordinal;cardinalText;ordinalText;hex;chicago;ideographDigital;japaneseCounting;aiueo;iroha;decimalFullWidth;decimalHalfWidth;japaneseLegal;japaneseDigitalTenThousand;decimalEnclosedCircle;decimalFullWidth2;aiueoFullWidth;irohaFullWidth;decimalZero;bullet;ganada;chosung;decimalEnclosedFullstop;decimalEnclosedParen;decimalEnclosedCircleChinese;ideographEnclosedCircle;ideographTraditional;ideographZodiac;ideographZodiacTraditional;taiwaneseCounting;ideographLegalTraditional;taiwaneseCountingThousand;taiwaneseDigital;chineseCounting;chineseLegalSimplified;chineseCountingThousand;koreanDigital;koreanCounting;koreanLegal;koreanDigital2;vietnameseCounting;russianLower;russianUpper;none;numberInDash;hebrew1;hebrew2;arabicAlpha;arabicAbjad;hindiVowels;hindiConsonants;hindiNumbers;hindiCounting;thaiLetters;thaiNumbers;thaiCounting;bahtText;dollarText;custom;"
+    "ST_PageOrientation" => ";portrait;landscape;"
+    "ST_PageBorderZOrder" => ";front;back;"
+    "ST_PageBorderDisplay" => ";allPages;firstPage;notFirstPage;"
+    "ST_PageBorderOffset" => ";page;text;"
+    "ST_LineNumberRestart" => ";newPage;newSection;continuous;"
+    "ST_PTabAlignment" => ";left;center;right;"
+    "ST_PTabRelativeTo" => ";margin;indent;"
+    "ST_PTabLeader" => ";none;dot;hyphen;underscore;middleDot;"
+    "ST_ProofErr" => ";spellStart;spellEnd;gramStart;gramEnd;"
+    "ST_Hint" => ";default;eastAsia;"
     "ST_Theme" =>
       ";majorEastAsia;majorBidi;majorAscii;majorHAnsi;minorEastAsia;minorBidi;minorAscii;minorHAnsi;"
     "ST_RubyAlign" =>
       ";center;distributeLetter;distributeSpace;left;right;rightVertical;"
     "ST_SdtDateMappingType" => ";text;date;dateTime;"
-    "ST_Direction" => ";ltr;rtl;"
     "ST_TblWidth" => ";nil;pct;dxa;auto;"
     "ST_TblLayoutType" => ";fixed;autofit;"
     "ST_TblOverlap" => ";never;overlap;"
-    "ST_FtnPos" => ";pageBottom;beneathText;sectEnd;docEnd;"
-    "ST_EdnPos" => ";sectEnd;docEnd;"
     "ST_RestartNumber" => ";continuous;eachSect;eachPage;"
     "ST_TargetScreenSz" =>
       ";544x376;640x480;720x512;800x600;1024x768;1152x882;1152x900;1280x1024;1600x1200;1800x1440;1920x1200;"
-    "ST_CharacterSpacing" =>
-      ";doNotCompress;compressPunctuation;compressPunctuationAndJapaneseKana;"
     "ST_WmlColorSchemeIndex" =>
       ";dark1;light1;dark2;light2;accent1;accent2;accent3;accent4;accent5;accent6;hyperlink;followedHyperlink;"
     "ST_StyleSort" => ";name;priority;default;font;basedOn;type;"
-    "ST_FrameScrollbar" => ";on;off;auto;"
-    "ST_FrameLayout" => ";rows;cols;none;"
+    "ST_LevelSuffix" => ";tab;space;nothing;"
+    "ST_MultiLevelType" => ";singleLevel;multilevel;hybridMultilevel;"
     "ST_TblStyleOverrideType" =>
       ";wholeTable;firstRow;lastRow;firstCol;lastCol;band1Vert;band2Vert;band1Horz;band2Horz;neCell;nwCell;seCell;swCell;"
     "ST_StyleType" => ";paragraph;character;table;numbering;"
+    "ST_Pitch" => ";fixed;variable;default;"
     "ST_FontFamily" => ";decorative;modern;roman;script;swiss;auto;"
     "ST_ThemeColor" =>
       ";dark1;light1;dark2;light2;accent1;accent2;accent3;accent4;accent5;accent6;hyperlink;followedHyperlink;none;background1;text1;background2;text2;"
-    "ST_DocPartBehavior" => ";content;p;pg;"
-    "ST_DocPartType" => ";none;normal;autoExp;toolbar;speller;formFld;bbPlcHdr;"
-    "ST_DocPartGallery" =>
-      ";placeholder;any;default;docParts;coverPg;eq;ftrs;hdrs;pgNum;tbls;watermarks;autoTxt;txtBox;pgNumT;pgNumB;pgNumMargins;tblOfContents;bib;custQuickParts;custCoverPg;custEq;custFtrs;custHdrs;custPgNum;custTbls;custWatermarks;custAutoTxt;custTxtBox;custPgNumT;custPgNumB;custPgNumMargins;custTblOfContents;custBib;custom1;custom2;custom3;custom4;custom5;"
-    "ST_CaptionPos" => ";above;below;left;right;"
     _ => ""
   }
+}
+
+///|
+/// Parse an xsd:integer lexical (optional leading `+`/`-`, decimal digits)
+/// into Int. Empty strings and non-digit characters raise.
+fn parse_signed_int_lexical(
+  type_name : String,
+  value : String,
+) -> Int raise SchemaViolation {
+  if value.length() == 0 {
+    invalid_simple_type(type_name, value, "empty lexical value")
+  }
+  let mut i = 0
+  let mut negative = false
+  if value[0:1] == "-" {
+    negative = true
+    i = 1
+  } else if value[0:1] == "+" {
+    i = 1
+  }
+  if i >= value.length() {
+    invalid_simple_type(type_name, value, "missing decimal digits")
+  }
+  let mut n = 0
+  while i < value.length() {
+    let ch = value[i:i + 1]
+    if ch < "0" || ch > "9" {
+      invalid_simple_type(type_name, value, "non-digit character")
+    }
+    let d = ch[0].to_int() - "0"[0].to_int()
+    n = n * 10 + d
+    i = i + 1
+  }
+  if negative {
+    -n
+  } else {
+    n
+  }
+}
+
+///|
+/// Parse a xsd:unsignedInt-style lexical integer (no sign, decimal digits)
+/// into UInt64 to cover the full 0..2^32-1 range of XSD unsignedInt.
+fn parse_unsigned_int64_lexical(
+  type_name : String,
+  value : String,
+) -> UInt64 raise SchemaViolation {
+  if value.length() == 0 {
+    invalid_simple_type(type_name, value, "empty lexical value")
+  }
+  let mut i = 0
+  let mut n : UInt64 = 0UL
+  while i < value.length() {
+    let ch = value[i:i + 1]
+    if ch < "0" || ch > "9" {
+      invalid_simple_type(type_name, value, "non-digit character")
+    }
+    let d = (ch[0].to_int() - "0"[0].to_int()).to_uint64()
+    n = n * 10UL + d
+    i = i + 1
+  }
+  n
 }
 
 ///|
@@ -207,48 +258,24 @@ pub fn ST_UcharHexNumber::to_string(self : ST_UcharHexNumber) -> String {
 }
 
 ///|
-/// XSD simple type ST_DecimalNumberOrPercent from wml.xsd (§17.18).
-pub struct ST_DecimalNumberOrPercent {
-  value : String
-} derive(Eq, Debug)
-
-///|
-pub fn ST_DecimalNumberOrPercent::parse(
-  s : String,
-) -> ST_DecimalNumberOrPercent raise SchemaViolation {
-  validate_wml_simple_type("ST_DecimalNumberOrPercent", s)
-  { value: s }
-}
-
-///|
-pub fn ST_DecimalNumberOrPercent::new(
-  s : String,
-) -> ST_DecimalNumberOrPercent raise SchemaViolation {
-  ST_DecimalNumberOrPercent::parse(s)
-}
-
-///|
-pub fn ST_DecimalNumberOrPercent::to_string(
-  self : ST_DecimalNumberOrPercent,
-) -> String {
-  self.value
-}
-
-///|
-/// XSD simple type ST_DecimalNumber from wml.xsd (§17.18).
+/// XSD simple type ST_DecimalNumber — Part 1 §17.18.10.
+/// Restriction of xsd:integer; stored as the typed signed integer.
 pub struct ST_DecimalNumber {
-  value : String
+  value : Int
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DecimalNumber schema lexical value into the typed
+/// signed integer.
 pub fn ST_DecimalNumber::parse(
   s : String,
 ) -> ST_DecimalNumber raise SchemaViolation {
-  validate_wml_simple_type("ST_DecimalNumber", s)
-  { value: s }
+  { value: parse_signed_int_lexical("ST_DecimalNumber", s) }
 }
 
 ///|
+/// Construct ST_DecimalNumber while enforcing the xsd:integer lexical
+/// form.
 pub fn ST_DecimalNumber::new(
   s : String,
 ) -> ST_DecimalNumber raise SchemaViolation {
@@ -256,8 +283,99 @@ pub fn ST_DecimalNumber::new(
 }
 
 ///|
-pub fn ST_DecimalNumber::to_string(self : ST_DecimalNumber) -> String {
+/// Read the typed signed integer.
+pub fn ST_DecimalNumber::value(self : ST_DecimalNumber) -> Int {
   self.value
+}
+
+///|
+/// Return the canonical lexical value (no leading zeros, optional `-`).
+pub fn ST_DecimalNumber::to_string(self : ST_DecimalNumber) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_DecimalNumberOrPercent — Part 1 §17.18.11.
+/// xsd:union over { ST_DecimalNumber (§17.18.10), ST_Percentage
+/// (§22.9.2.9) }. Part 4 §14.11.1 adds ST_UnqualifiedPercentage
+/// (transitional). Stored as a typed discriminated union of the
+/// permitted member types.
+pub(all) enum ST_DecimalNumberOrPercent {
+  DecimalNumberOrPercentDecimal(Int)
+  /// ST_Percentage lexical body `-?[0-9]+(\.[0-9]+)?%` carried as the
+  /// raw lexical form (round-trip preserves the producer's precision).
+  DecimalNumberOrPercentPercentage(String)
+} derive(Eq, Debug)
+
+///|
+/// Parse the ST_DecimalNumberOrPercent schema lexical value into the
+/// typed union. A trailing `%` selects ST_Percentage; otherwise the
+/// lexical form must satisfy ST_DecimalNumber's xsd:integer.
+pub fn ST_DecimalNumberOrPercent::parse(
+  s : String,
+) -> ST_DecimalNumberOrPercent raise SchemaViolation {
+  if s.length() == 0 {
+    invalid_simple_type("ST_DecimalNumberOrPercent", s, "empty lexical value")
+  }
+  if s[s.length() - 1:s.length()] == "%" {
+    // Validate ST_Percentage pattern: `-?[0-9]+(\.[0-9]+)?%`.
+    let body = s[0:s.length() - 1]
+    let mut i = 0
+    if body.length() > 0 && body[0:1] == "-" {
+      i = 1
+    }
+    if i >= body.length() {
+      invalid_simple_type(
+        "ST_DecimalNumberOrPercent", s, "missing digits before %",
+      )
+    }
+    let mut saw_digit = false
+    let mut saw_dot = false
+    while i < body.length() {
+      let ch = body[i:i + 1]
+      if ch >= "0" && ch <= "9" {
+        saw_digit = true
+      } else if ch == "." && !saw_dot && saw_digit {
+        saw_dot = true
+        saw_digit = false
+      } else {
+        invalid_simple_type(
+          "ST_DecimalNumberOrPercent", s, "invalid percentage lexical",
+        )
+      }
+      i = i + 1
+    }
+    if !saw_digit {
+      invalid_simple_type(
+        "ST_DecimalNumberOrPercent", s, "missing digits in fractional part",
+      )
+    }
+    DecimalNumberOrPercentPercentage(s)
+  } else {
+    DecimalNumberOrPercentDecimal(
+      parse_signed_int_lexical("ST_DecimalNumberOrPercent", s),
+    )
+  }
+}
+
+///|
+/// Construct ST_DecimalNumberOrPercent while enforcing the union
+/// membership constraints.
+pub fn ST_DecimalNumberOrPercent::new(
+  s : String,
+) -> ST_DecimalNumberOrPercent raise SchemaViolation {
+  ST_DecimalNumberOrPercent::parse(s)
+}
+
+///|
+/// Return the canonical lexical value matching the chosen union arm.
+pub fn ST_DecimalNumberOrPercent::to_string(
+  self : ST_DecimalNumberOrPercent,
+) -> String {
+  match self {
+    DecimalNumberOrPercentDecimal(n) => n.to_string()
+    DecimalNumberOrPercentPercentage(text) => text
+  }
 }
 
 ///|
@@ -395,25 +513,93 @@ pub fn ST_SignedHpsMeasure::to_string(self : ST_SignedHpsMeasure) -> String {
 }
 
 ///|
-/// XSD simple type ST_DateTime from wml.xsd (§17.18).
+/// XSD simple type ST_DateTime — Part 1 §17.18.9.
+/// Restriction of xsd:dateTime; stored as the schema lexical form so
+/// callers can preserve sub-second precision and the time-zone offset
+/// chosen by the producer.
 pub struct ST_DateTime {
-  value : String
+  lexical : String
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DateTime schema lexical value. The XML Schema
+/// dateTime grammar requires a `YYYY-MM-DDThh:mm:ss(.s+)?` body with
+/// an optional `Z` or `±hh:mm` timezone suffix.
 pub fn ST_DateTime::parse(s : String) -> ST_DateTime raise SchemaViolation {
-  validate_wml_simple_type("ST_DateTime", s)
-  { value: s }
+  if s.length() == 0 {
+    invalid_simple_type("ST_DateTime", s, "empty lexical value")
+  }
+  // Minimum xsd:dateTime is "YYYY-MM-DDThh:mm:ss" (19 chars).
+  if s.length() < 19 {
+    invalid_simple_type("ST_DateTime", s, "too short for xsd:dateTime")
+  }
+  fn digit(idx : Int) -> Bool {
+    let ch = s[idx:idx + 1]
+    ch >= "0" && ch <= "9"
+  }
+
+  if !(digit(0) && digit(1) && digit(2) && digit(3)) ||
+    s[4:5] != "-" ||
+    !(digit(5) && digit(6)) ||
+    s[7:8] != "-" ||
+    !(digit(8) && digit(9)) ||
+    s[10:11] != "T" ||
+    !(digit(11) && digit(12)) ||
+    s[13:14] != ":" ||
+    !(digit(14) && digit(15)) ||
+    s[16:17] != ":" ||
+    !(digit(17) && digit(18)) {
+    invalid_simple_type("ST_DateTime", s, "not an xsd:dateTime lexical form")
+  }
+  // After the seconds, allow `.fraction`, then optional zone.
+  let mut i = 19
+  if i < s.length() && s[i:i + 1] == "." {
+    i = i + 1
+    let mut frac = 0
+    while i < s.length() {
+      let ch = s[i:i + 1]
+      if ch >= "0" && ch <= "9" {
+        frac = frac + 1
+        i = i + 1
+      } else {
+        break
+      }
+    }
+    if frac == 0 {
+      invalid_simple_type("ST_DateTime", s, "fractional part has no digits")
+    }
+  }
+  if i < s.length() {
+    let zone = s[i:s.length()]
+    if zone == "Z" {
+      ()
+    } else if zone.length() == 6 &&
+      (zone[0:1] == "+" || zone[0:1] == "-") &&
+      zone[3:4] == ":" {
+      for k in [1, 2, 4, 5] {
+        let ch = zone[k:k + 1]
+        if ch < "0" || ch > "9" {
+          invalid_simple_type("ST_DateTime", s, "bad time-zone offset")
+        }
+      }
+    } else {
+      invalid_simple_type("ST_DateTime", s, "trailing chars after seconds")
+    }
+  }
+  { lexical: s }
 }
 
 ///|
+/// Construct ST_DateTime while enforcing the xsd:dateTime lexical
+/// grammar.
 pub fn ST_DateTime::new(s : String) -> ST_DateTime raise SchemaViolation {
   ST_DateTime::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value (round-trip preserved).
 pub fn ST_DateTime::to_string(self : ST_DateTime) -> String {
-  self.value
+  self.lexical
 }
 
 ///|
@@ -451,20 +637,26 @@ pub fn ST_MacroName::to_string(self : ST_MacroName) -> String {
 }
 
 ///|
-/// XSD simple type ST_EighthPointMeasure from wml.xsd (§17.18).
+/// XSD simple type ST_EighthPointMeasure — Part 1 §17.18.23.
+/// Restriction of ST_UnsignedDecimalNumber (Part 1 §22.9.2.16); the
+/// magnitude is interpreted as eighths of a point (1/576 inch). Stored
+/// as the typed UInt64 count of eighths-of-a-point.
 pub struct ST_EighthPointMeasure {
-  value : String
+  eighth_points : UInt64
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_EighthPointMeasure schema lexical value into the
+/// typed eighth-point count.
 pub fn ST_EighthPointMeasure::parse(
   s : String,
 ) -> ST_EighthPointMeasure raise SchemaViolation {
-  validate_wml_simple_type("ST_EighthPointMeasure", s)
-  { value: s }
+  { eighth_points: parse_unsigned_int64_lexical("ST_EighthPointMeasure", s) }
 }
 
 ///|
+/// Construct ST_EighthPointMeasure while enforcing the
+/// ST_UnsignedDecimalNumber lexical form.
 pub fn ST_EighthPointMeasure::new(
   s : String,
 ) -> ST_EighthPointMeasure raise SchemaViolation {
@@ -472,8 +664,17 @@ pub fn ST_EighthPointMeasure::new(
 }
 
 ///|
+/// Read the typed magnitude in eighths of a point.
+pub fn ST_EighthPointMeasure::eighth_points(
+  self : ST_EighthPointMeasure,
+) -> UInt64 {
+  self.eighth_points
+}
+
+///|
+/// Return the canonical lexical value (no leading zeros, no sign).
 pub fn ST_EighthPointMeasure::to_string(self : ST_EighthPointMeasure) -> String {
-  self.value
+  self.eighth_points.to_string()
 }
 
 ///|
@@ -790,25 +991,613 @@ pub fn ST_TextEffect::to_string(self : ST_TextEffect) -> String {
 }
 
 ///|
-/// XSD simple type ST_Border from wml.xsd (§17.18).
-pub struct ST_Border {
-  value : String
+/// XSD simple type ST_Border — Part 1 §17.18.2.
+/// Restriction of xsd:string covering both the line border styles
+/// (`nil`..`inset`) and the page-level art border catalogue
+/// (`apples`..`zigZagStitch`), plus the producer-defined `custom`
+/// sentinel. Variant names use the `Border` prefix to avoid clashing
+/// with similarly-named enumerations elsewhere in this package.
+pub(all) enum ST_Border {
+  BorderNil
+  BorderNone
+  BorderSingle
+  BorderThick
+  BorderDouble
+  BorderDotted
+  BorderDashed
+  BorderDotDash
+  BorderDotDotDash
+  BorderTriple
+  BorderThinThickSmallGap
+  BorderThickThinSmallGap
+  BorderThinThickThinSmallGap
+  BorderThinThickMediumGap
+  BorderThickThinMediumGap
+  BorderThinThickThinMediumGap
+  BorderThinThickLargeGap
+  BorderThickThinLargeGap
+  BorderThinThickThinLargeGap
+  BorderWave
+  BorderDoubleWave
+  BorderDashSmallGap
+  BorderDashDotStroked
+  BorderThreeDEmboss
+  BorderThreeDEngrave
+  BorderOutset
+  BorderInset
+  BorderApples
+  BorderArchedScallops
+  BorderBabyPacifier
+  BorderBabyRattle
+  BorderBalloons3Colors
+  BorderBalloonsHotAir
+  BorderBasicBlackDashes
+  BorderBasicBlackDots
+  BorderBasicBlackSquares
+  BorderBasicThinLines
+  BorderBasicWhiteDashes
+  BorderBasicWhiteDots
+  BorderBasicWhiteSquares
+  BorderBasicWideInline
+  BorderBasicWideMidline
+  BorderBasicWideOutline
+  BorderBats
+  BorderBirds
+  BorderBirdsFlight
+  BorderCabins
+  BorderCakeSlice
+  BorderCandyCorn
+  BorderCelticKnotwork
+  BorderCertificateBanner
+  BorderChainLink
+  BorderChampagneBottle
+  BorderCheckedBarBlack
+  BorderCheckedBarColor
+  BorderCheckered
+  BorderChristmasTree
+  BorderCirclesLines
+  BorderCirclesRectangles
+  BorderClassicalWave
+  BorderClocks
+  BorderCompass
+  BorderConfetti
+  BorderConfettiGrays
+  BorderConfettiOutline
+  BorderConfettiStreamers
+  BorderConfettiWhite
+  BorderCornerTriangles
+  BorderCouponCutoutDashes
+  BorderCouponCutoutDots
+  BorderCrazyMaze
+  BorderCreaturesButterfly
+  BorderCreaturesFish
+  BorderCreaturesInsects
+  BorderCreaturesLadyBug
+  BorderCrossStitch
+  BorderCup
+  BorderDecoArch
+  BorderDecoArchColor
+  BorderDecoBlocks
+  BorderDiamondsGray
+  BorderDoubleD
+  BorderDoubleDiamonds
+  BorderEarth1
+  BorderEarth2
+  BorderEarth3
+  BorderEclipsingSquares1
+  BorderEclipsingSquares2
+  BorderEggsBlack
+  BorderFans
+  BorderFilm
+  BorderFirecrackers
+  BorderFlowersBlockPrint
+  BorderFlowersDaisies
+  BorderFlowersModern1
+  BorderFlowersModern2
+  BorderFlowersPansy
+  BorderFlowersRedRose
+  BorderFlowersRoses
+  BorderFlowersTeacup
+  BorderFlowersTiny
+  BorderGems
+  BorderGingerbreadMan
+  BorderGradient
+  BorderHandmade1
+  BorderHandmade2
+  BorderHeartBalloon
+  BorderHeartGray
+  BorderHearts
+  BorderHeebieJeebies
+  BorderHolly
+  BorderHouseFunky
+  BorderHypnotic
+  BorderIceCreamCones
+  BorderLightBulb
+  BorderLightning1
+  BorderLightning2
+  BorderMapPins
+  BorderMapleLeaf
+  BorderMapleMuffins
+  BorderMarquee
+  BorderMarqueeToothed
+  BorderMoons
+  BorderMosaic
+  BorderMusicNotes
+  BorderNorthwest
+  BorderOvals
+  BorderPackages
+  BorderPalmsBlack
+  BorderPalmsColor
+  BorderPaperClips
+  BorderPapyrus
+  BorderPartyFavor
+  BorderPartyGlass
+  BorderPencils
+  BorderPeople
+  BorderPeopleWaving
+  BorderPeopleHats
+  BorderPoinsettias
+  BorderPostageStamp
+  BorderPumpkin1
+  BorderPushPinNote2
+  BorderPushPinNote1
+  BorderPyramids
+  BorderPyramidsAbove
+  BorderQuadrants
+  BorderRings
+  BorderSafari
+  BorderSawtooth
+  BorderSawtoothGray
+  BorderScaredCat
+  BorderSeattle
+  BorderShadowedSquares
+  BorderSharksTeeth
+  BorderShorebirdTracks
+  BorderSkyrocket
+  BorderSnowflakeFancy
+  BorderSnowflakes
+  BorderSombrero
+  BorderSouthwest
+  BorderStars
+  BorderStarsTop
+  BorderStars3d
+  BorderStarsBlack
+  BorderStarsShadowed
+  BorderSun
+  BorderSwirligig
+  BorderTornPaper
+  BorderTornPaperBlack
+  BorderTrees
+  BorderTriangleParty
+  BorderTriangles
+  BorderTriangle1
+  BorderTriangle2
+  BorderTriangleCircle1
+  BorderTriangleCircle2
+  BorderShapes1
+  BorderShapes2
+  BorderTwistedLines1
+  BorderTwistedLines2
+  BorderVine
+  BorderWaveline
+  BorderWeavingAngles
+  BorderWeavingBraid
+  BorderWeavingRibbon
+  BorderWeavingStrips
+  BorderWhiteFlowers
+  BorderWoodwork
+  BorderXIllusions
+  BorderZanyTriangles
+  BorderZigZag
+  BorderZigZagStitch
+  BorderCustom
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_Border schema lexical value.
 pub fn ST_Border::parse(s : String) -> ST_Border raise SchemaViolation {
-  validate_wml_simple_type("ST_Border", s)
-  { value: s }
+  match s {
+    "nil" => BorderNil
+    "none" => BorderNone
+    "single" => BorderSingle
+    "thick" => BorderThick
+    "double" => BorderDouble
+    "dotted" => BorderDotted
+    "dashed" => BorderDashed
+    "dotDash" => BorderDotDash
+    "dotDotDash" => BorderDotDotDash
+    "triple" => BorderTriple
+    "thinThickSmallGap" => BorderThinThickSmallGap
+    "thickThinSmallGap" => BorderThickThinSmallGap
+    "thinThickThinSmallGap" => BorderThinThickThinSmallGap
+    "thinThickMediumGap" => BorderThinThickMediumGap
+    "thickThinMediumGap" => BorderThickThinMediumGap
+    "thinThickThinMediumGap" => BorderThinThickThinMediumGap
+    "thinThickLargeGap" => BorderThinThickLargeGap
+    "thickThinLargeGap" => BorderThickThinLargeGap
+    "thinThickThinLargeGap" => BorderThinThickThinLargeGap
+    "wave" => BorderWave
+    "doubleWave" => BorderDoubleWave
+    "dashSmallGap" => BorderDashSmallGap
+    "dashDotStroked" => BorderDashDotStroked
+    "threeDEmboss" => BorderThreeDEmboss
+    "threeDEngrave" => BorderThreeDEngrave
+    "outset" => BorderOutset
+    "inset" => BorderInset
+    "apples" => BorderApples
+    "archedScallops" => BorderArchedScallops
+    "babyPacifier" => BorderBabyPacifier
+    "babyRattle" => BorderBabyRattle
+    "balloons3Colors" => BorderBalloons3Colors
+    "balloonsHotAir" => BorderBalloonsHotAir
+    "basicBlackDashes" => BorderBasicBlackDashes
+    "basicBlackDots" => BorderBasicBlackDots
+    "basicBlackSquares" => BorderBasicBlackSquares
+    "basicThinLines" => BorderBasicThinLines
+    "basicWhiteDashes" => BorderBasicWhiteDashes
+    "basicWhiteDots" => BorderBasicWhiteDots
+    "basicWhiteSquares" => BorderBasicWhiteSquares
+    "basicWideInline" => BorderBasicWideInline
+    "basicWideMidline" => BorderBasicWideMidline
+    "basicWideOutline" => BorderBasicWideOutline
+    "bats" => BorderBats
+    "birds" => BorderBirds
+    "birdsFlight" => BorderBirdsFlight
+    "cabins" => BorderCabins
+    "cakeSlice" => BorderCakeSlice
+    "candyCorn" => BorderCandyCorn
+    "celticKnotwork" => BorderCelticKnotwork
+    "certificateBanner" => BorderCertificateBanner
+    "chainLink" => BorderChainLink
+    "champagneBottle" => BorderChampagneBottle
+    "checkedBarBlack" => BorderCheckedBarBlack
+    "checkedBarColor" => BorderCheckedBarColor
+    "checkered" => BorderCheckered
+    "christmasTree" => BorderChristmasTree
+    "circlesLines" => BorderCirclesLines
+    "circlesRectangles" => BorderCirclesRectangles
+    "classicalWave" => BorderClassicalWave
+    "clocks" => BorderClocks
+    "compass" => BorderCompass
+    "confetti" => BorderConfetti
+    "confettiGrays" => BorderConfettiGrays
+    "confettiOutline" => BorderConfettiOutline
+    "confettiStreamers" => BorderConfettiStreamers
+    "confettiWhite" => BorderConfettiWhite
+    "cornerTriangles" => BorderCornerTriangles
+    "couponCutoutDashes" => BorderCouponCutoutDashes
+    "couponCutoutDots" => BorderCouponCutoutDots
+    "crazyMaze" => BorderCrazyMaze
+    "creaturesButterfly" => BorderCreaturesButterfly
+    "creaturesFish" => BorderCreaturesFish
+    "creaturesInsects" => BorderCreaturesInsects
+    "creaturesLadyBug" => BorderCreaturesLadyBug
+    "crossStitch" => BorderCrossStitch
+    "cup" => BorderCup
+    "decoArch" => BorderDecoArch
+    "decoArchColor" => BorderDecoArchColor
+    "decoBlocks" => BorderDecoBlocks
+    "diamondsGray" => BorderDiamondsGray
+    "doubleD" => BorderDoubleD
+    "doubleDiamonds" => BorderDoubleDiamonds
+    "earth1" => BorderEarth1
+    "earth2" => BorderEarth2
+    "earth3" => BorderEarth3
+    "eclipsingSquares1" => BorderEclipsingSquares1
+    "eclipsingSquares2" => BorderEclipsingSquares2
+    "eggsBlack" => BorderEggsBlack
+    "fans" => BorderFans
+    "film" => BorderFilm
+    "firecrackers" => BorderFirecrackers
+    "flowersBlockPrint" => BorderFlowersBlockPrint
+    "flowersDaisies" => BorderFlowersDaisies
+    "flowersModern1" => BorderFlowersModern1
+    "flowersModern2" => BorderFlowersModern2
+    "flowersPansy" => BorderFlowersPansy
+    "flowersRedRose" => BorderFlowersRedRose
+    "flowersRoses" => BorderFlowersRoses
+    "flowersTeacup" => BorderFlowersTeacup
+    "flowersTiny" => BorderFlowersTiny
+    "gems" => BorderGems
+    "gingerbreadMan" => BorderGingerbreadMan
+    "gradient" => BorderGradient
+    "handmade1" => BorderHandmade1
+    "handmade2" => BorderHandmade2
+    "heartBalloon" => BorderHeartBalloon
+    "heartGray" => BorderHeartGray
+    "hearts" => BorderHearts
+    "heebieJeebies" => BorderHeebieJeebies
+    "holly" => BorderHolly
+    "houseFunky" => BorderHouseFunky
+    "hypnotic" => BorderHypnotic
+    "iceCreamCones" => BorderIceCreamCones
+    "lightBulb" => BorderLightBulb
+    "lightning1" => BorderLightning1
+    "lightning2" => BorderLightning2
+    "mapPins" => BorderMapPins
+    "mapleLeaf" => BorderMapleLeaf
+    "mapleMuffins" => BorderMapleMuffins
+    "marquee" => BorderMarquee
+    "marqueeToothed" => BorderMarqueeToothed
+    "moons" => BorderMoons
+    "mosaic" => BorderMosaic
+    "musicNotes" => BorderMusicNotes
+    "northwest" => BorderNorthwest
+    "ovals" => BorderOvals
+    "packages" => BorderPackages
+    "palmsBlack" => BorderPalmsBlack
+    "palmsColor" => BorderPalmsColor
+    "paperClips" => BorderPaperClips
+    "papyrus" => BorderPapyrus
+    "partyFavor" => BorderPartyFavor
+    "partyGlass" => BorderPartyGlass
+    "pencils" => BorderPencils
+    "people" => BorderPeople
+    "peopleWaving" => BorderPeopleWaving
+    "peopleHats" => BorderPeopleHats
+    "poinsettias" => BorderPoinsettias
+    "postageStamp" => BorderPostageStamp
+    "pumpkin1" => BorderPumpkin1
+    "pushPinNote2" => BorderPushPinNote2
+    "pushPinNote1" => BorderPushPinNote1
+    "pyramids" => BorderPyramids
+    "pyramidsAbove" => BorderPyramidsAbove
+    "quadrants" => BorderQuadrants
+    "rings" => BorderRings
+    "safari" => BorderSafari
+    "sawtooth" => BorderSawtooth
+    "sawtoothGray" => BorderSawtoothGray
+    "scaredCat" => BorderScaredCat
+    "seattle" => BorderSeattle
+    "shadowedSquares" => BorderShadowedSquares
+    "sharksTeeth" => BorderSharksTeeth
+    "shorebirdTracks" => BorderShorebirdTracks
+    "skyrocket" => BorderSkyrocket
+    "snowflakeFancy" => BorderSnowflakeFancy
+    "snowflakes" => BorderSnowflakes
+    "sombrero" => BorderSombrero
+    "southwest" => BorderSouthwest
+    "stars" => BorderStars
+    "starsTop" => BorderStarsTop
+    "stars3d" => BorderStars3d
+    "starsBlack" => BorderStarsBlack
+    "starsShadowed" => BorderStarsShadowed
+    "sun" => BorderSun
+    "swirligig" => BorderSwirligig
+    "tornPaper" => BorderTornPaper
+    "tornPaperBlack" => BorderTornPaperBlack
+    "trees" => BorderTrees
+    "triangleParty" => BorderTriangleParty
+    "triangles" => BorderTriangles
+    "triangle1" => BorderTriangle1
+    "triangle2" => BorderTriangle2
+    "triangleCircle1" => BorderTriangleCircle1
+    "triangleCircle2" => BorderTriangleCircle2
+    "shapes1" => BorderShapes1
+    "shapes2" => BorderShapes2
+    "twistedLines1" => BorderTwistedLines1
+    "twistedLines2" => BorderTwistedLines2
+    "vine" => BorderVine
+    "waveline" => BorderWaveline
+    "weavingAngles" => BorderWeavingAngles
+    "weavingBraid" => BorderWeavingBraid
+    "weavingRibbon" => BorderWeavingRibbon
+    "weavingStrips" => BorderWeavingStrips
+    "whiteFlowers" => BorderWhiteFlowers
+    "woodwork" => BorderWoodwork
+    "xIllusions" => BorderXIllusions
+    "zanyTriangles" => BorderZanyTriangles
+    "zigZag" => BorderZigZag
+    "zigZagStitch" => BorderZigZagStitch
+    "custom" => BorderCustom
+    _ => invalid_simple_type("ST_Border", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_Border while enforcing the wml.xsd enumeration.
 pub fn ST_Border::new(s : String) -> ST_Border raise SchemaViolation {
   ST_Border::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_Border.
 pub fn ST_Border::to_string(self : ST_Border) -> String {
-  self.value
+  match self {
+    BorderNil => "nil"
+    BorderNone => "none"
+    BorderSingle => "single"
+    BorderThick => "thick"
+    BorderDouble => "double"
+    BorderDotted => "dotted"
+    BorderDashed => "dashed"
+    BorderDotDash => "dotDash"
+    BorderDotDotDash => "dotDotDash"
+    BorderTriple => "triple"
+    BorderThinThickSmallGap => "thinThickSmallGap"
+    BorderThickThinSmallGap => "thickThinSmallGap"
+    BorderThinThickThinSmallGap => "thinThickThinSmallGap"
+    BorderThinThickMediumGap => "thinThickMediumGap"
+    BorderThickThinMediumGap => "thickThinMediumGap"
+    BorderThinThickThinMediumGap => "thinThickThinMediumGap"
+    BorderThinThickLargeGap => "thinThickLargeGap"
+    BorderThickThinLargeGap => "thickThinLargeGap"
+    BorderThinThickThinLargeGap => "thinThickThinLargeGap"
+    BorderWave => "wave"
+    BorderDoubleWave => "doubleWave"
+    BorderDashSmallGap => "dashSmallGap"
+    BorderDashDotStroked => "dashDotStroked"
+    BorderThreeDEmboss => "threeDEmboss"
+    BorderThreeDEngrave => "threeDEngrave"
+    BorderOutset => "outset"
+    BorderInset => "inset"
+    BorderApples => "apples"
+    BorderArchedScallops => "archedScallops"
+    BorderBabyPacifier => "babyPacifier"
+    BorderBabyRattle => "babyRattle"
+    BorderBalloons3Colors => "balloons3Colors"
+    BorderBalloonsHotAir => "balloonsHotAir"
+    BorderBasicBlackDashes => "basicBlackDashes"
+    BorderBasicBlackDots => "basicBlackDots"
+    BorderBasicBlackSquares => "basicBlackSquares"
+    BorderBasicThinLines => "basicThinLines"
+    BorderBasicWhiteDashes => "basicWhiteDashes"
+    BorderBasicWhiteDots => "basicWhiteDots"
+    BorderBasicWhiteSquares => "basicWhiteSquares"
+    BorderBasicWideInline => "basicWideInline"
+    BorderBasicWideMidline => "basicWideMidline"
+    BorderBasicWideOutline => "basicWideOutline"
+    BorderBats => "bats"
+    BorderBirds => "birds"
+    BorderBirdsFlight => "birdsFlight"
+    BorderCabins => "cabins"
+    BorderCakeSlice => "cakeSlice"
+    BorderCandyCorn => "candyCorn"
+    BorderCelticKnotwork => "celticKnotwork"
+    BorderCertificateBanner => "certificateBanner"
+    BorderChainLink => "chainLink"
+    BorderChampagneBottle => "champagneBottle"
+    BorderCheckedBarBlack => "checkedBarBlack"
+    BorderCheckedBarColor => "checkedBarColor"
+    BorderCheckered => "checkered"
+    BorderChristmasTree => "christmasTree"
+    BorderCirclesLines => "circlesLines"
+    BorderCirclesRectangles => "circlesRectangles"
+    BorderClassicalWave => "classicalWave"
+    BorderClocks => "clocks"
+    BorderCompass => "compass"
+    BorderConfetti => "confetti"
+    BorderConfettiGrays => "confettiGrays"
+    BorderConfettiOutline => "confettiOutline"
+    BorderConfettiStreamers => "confettiStreamers"
+    BorderConfettiWhite => "confettiWhite"
+    BorderCornerTriangles => "cornerTriangles"
+    BorderCouponCutoutDashes => "couponCutoutDashes"
+    BorderCouponCutoutDots => "couponCutoutDots"
+    BorderCrazyMaze => "crazyMaze"
+    BorderCreaturesButterfly => "creaturesButterfly"
+    BorderCreaturesFish => "creaturesFish"
+    BorderCreaturesInsects => "creaturesInsects"
+    BorderCreaturesLadyBug => "creaturesLadyBug"
+    BorderCrossStitch => "crossStitch"
+    BorderCup => "cup"
+    BorderDecoArch => "decoArch"
+    BorderDecoArchColor => "decoArchColor"
+    BorderDecoBlocks => "decoBlocks"
+    BorderDiamondsGray => "diamondsGray"
+    BorderDoubleD => "doubleD"
+    BorderDoubleDiamonds => "doubleDiamonds"
+    BorderEarth1 => "earth1"
+    BorderEarth2 => "earth2"
+    BorderEarth3 => "earth3"
+    BorderEclipsingSquares1 => "eclipsingSquares1"
+    BorderEclipsingSquares2 => "eclipsingSquares2"
+    BorderEggsBlack => "eggsBlack"
+    BorderFans => "fans"
+    BorderFilm => "film"
+    BorderFirecrackers => "firecrackers"
+    BorderFlowersBlockPrint => "flowersBlockPrint"
+    BorderFlowersDaisies => "flowersDaisies"
+    BorderFlowersModern1 => "flowersModern1"
+    BorderFlowersModern2 => "flowersModern2"
+    BorderFlowersPansy => "flowersPansy"
+    BorderFlowersRedRose => "flowersRedRose"
+    BorderFlowersRoses => "flowersRoses"
+    BorderFlowersTeacup => "flowersTeacup"
+    BorderFlowersTiny => "flowersTiny"
+    BorderGems => "gems"
+    BorderGingerbreadMan => "gingerbreadMan"
+    BorderGradient => "gradient"
+    BorderHandmade1 => "handmade1"
+    BorderHandmade2 => "handmade2"
+    BorderHeartBalloon => "heartBalloon"
+    BorderHeartGray => "heartGray"
+    BorderHearts => "hearts"
+    BorderHeebieJeebies => "heebieJeebies"
+    BorderHolly => "holly"
+    BorderHouseFunky => "houseFunky"
+    BorderHypnotic => "hypnotic"
+    BorderIceCreamCones => "iceCreamCones"
+    BorderLightBulb => "lightBulb"
+    BorderLightning1 => "lightning1"
+    BorderLightning2 => "lightning2"
+    BorderMapPins => "mapPins"
+    BorderMapleLeaf => "mapleLeaf"
+    BorderMapleMuffins => "mapleMuffins"
+    BorderMarquee => "marquee"
+    BorderMarqueeToothed => "marqueeToothed"
+    BorderMoons => "moons"
+    BorderMosaic => "mosaic"
+    BorderMusicNotes => "musicNotes"
+    BorderNorthwest => "northwest"
+    BorderOvals => "ovals"
+    BorderPackages => "packages"
+    BorderPalmsBlack => "palmsBlack"
+    BorderPalmsColor => "palmsColor"
+    BorderPaperClips => "paperClips"
+    BorderPapyrus => "papyrus"
+    BorderPartyFavor => "partyFavor"
+    BorderPartyGlass => "partyGlass"
+    BorderPencils => "pencils"
+    BorderPeople => "people"
+    BorderPeopleWaving => "peopleWaving"
+    BorderPeopleHats => "peopleHats"
+    BorderPoinsettias => "poinsettias"
+    BorderPostageStamp => "postageStamp"
+    BorderPumpkin1 => "pumpkin1"
+    BorderPushPinNote2 => "pushPinNote2"
+    BorderPushPinNote1 => "pushPinNote1"
+    BorderPyramids => "pyramids"
+    BorderPyramidsAbove => "pyramidsAbove"
+    BorderQuadrants => "quadrants"
+    BorderRings => "rings"
+    BorderSafari => "safari"
+    BorderSawtooth => "sawtooth"
+    BorderSawtoothGray => "sawtoothGray"
+    BorderScaredCat => "scaredCat"
+    BorderSeattle => "seattle"
+    BorderShadowedSquares => "shadowedSquares"
+    BorderSharksTeeth => "sharksTeeth"
+    BorderShorebirdTracks => "shorebirdTracks"
+    BorderSkyrocket => "skyrocket"
+    BorderSnowflakeFancy => "snowflakeFancy"
+    BorderSnowflakes => "snowflakes"
+    BorderSombrero => "sombrero"
+    BorderSouthwest => "southwest"
+    BorderStars => "stars"
+    BorderStarsTop => "starsTop"
+    BorderStars3d => "stars3d"
+    BorderStarsBlack => "starsBlack"
+    BorderStarsShadowed => "starsShadowed"
+    BorderSun => "sun"
+    BorderSwirligig => "swirligig"
+    BorderTornPaper => "tornPaper"
+    BorderTornPaperBlack => "tornPaperBlack"
+    BorderTrees => "trees"
+    BorderTriangleParty => "triangleParty"
+    BorderTriangles => "triangles"
+    BorderTriangle1 => "triangle1"
+    BorderTriangle2 => "triangle2"
+    BorderTriangleCircle1 => "triangleCircle1"
+    BorderTriangleCircle2 => "triangleCircle2"
+    BorderShapes1 => "shapes1"
+    BorderShapes2 => "shapes2"
+    BorderTwistedLines1 => "twistedLines1"
+    BorderTwistedLines2 => "twistedLines2"
+    BorderVine => "vine"
+    BorderWaveline => "waveline"
+    BorderWeavingAngles => "weavingAngles"
+    BorderWeavingBraid => "weavingBraid"
+    BorderWeavingRibbon => "weavingRibbon"
+    BorderWeavingStrips => "weavingStrips"
+    BorderWhiteFlowers => "whiteFlowers"
+    BorderWoodwork => "woodwork"
+    BorderXIllusions => "xIllusions"
+    BorderZanyTriangles => "zanyTriangles"
+    BorderZigZag => "zigZag"
+    BorderZigZagStitch => "zigZagStitch"
+    BorderCustom => "custom"
+  }
 }
 
 ///|
@@ -834,42 +1623,79 @@ pub fn ST_Shd::to_string(self : ST_Shd) -> String {
 }
 
 ///|
-/// XSD simple type ST_Em from wml.xsd (§17.18).
-pub struct ST_Em {
-  value : String
+/// XSD simple type ST_Em — Part 1 §17.18.24.
+/// Restriction of xsd:string to the emphasis-mark catalogue
+/// {circle, comma, dot, none, underDot}.
+pub(all) enum ST_Em {
+  EmCircle
+  EmComma
+  EmDot
+  EmNone
+  EmUnderDot
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_Em schema lexical value.
 pub fn ST_Em::parse(s : String) -> ST_Em raise SchemaViolation {
-  validate_wml_simple_type("ST_Em", s)
-  { value: s }
+  match s {
+    "circle" => EmCircle
+    "comma" => EmComma
+    "dot" => EmDot
+    "none" => EmNone
+    "underDot" => EmUnderDot
+    _ => invalid_simple_type("ST_Em", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_Em while enforcing the wml.xsd enumeration.
 pub fn ST_Em::new(s : String) -> ST_Em raise SchemaViolation {
   ST_Em::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_Em.
 pub fn ST_Em::to_string(self : ST_Em) -> String {
-  self.value
+  match self {
+    EmCircle => "circle"
+    EmComma => "comma"
+    EmDot => "dot"
+    EmNone => "none"
+    EmUnderDot => "underDot"
+  }
 }
 
 ///|
-/// XSD simple type ST_CombineBrackets from wml.xsd (§17.18).
-pub struct ST_CombineBrackets {
-  value : String
+/// XSD simple type ST_CombineBrackets — Part 1 §17.18.8.
+/// Restriction of xsd:string to the bracket catalogue
+/// {none, round, square, angle, curly} used to wrap two-lines-in-one runs.
+pub(all) enum ST_CombineBrackets {
+  CombineBracketsNone
+  CombineBracketsRound
+  CombineBracketsSquare
+  CombineBracketsAngle
+  CombineBracketsCurly
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_CombineBrackets schema lexical value.
 pub fn ST_CombineBrackets::parse(
   s : String,
 ) -> ST_CombineBrackets raise SchemaViolation {
-  validate_wml_simple_type("ST_CombineBrackets", s)
-  { value: s }
+  match s {
+    "none" => CombineBracketsNone
+    "round" => CombineBracketsRound
+    "square" => CombineBracketsSquare
+    "angle" => CombineBracketsAngle
+    "curly" => CombineBracketsCurly
+    _ =>
+      invalid_simple_type("ST_CombineBrackets", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_CombineBrackets while enforcing the wml.xsd
+/// enumeration.
 pub fn ST_CombineBrackets::new(
   s : String,
 ) -> ST_CombineBrackets raise SchemaViolation {
@@ -877,30 +1703,52 @@ pub fn ST_CombineBrackets::new(
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_CombineBrackets.
 pub fn ST_CombineBrackets::to_string(self : ST_CombineBrackets) -> String {
-  self.value
+  match self {
+    CombineBracketsNone => "none"
+    CombineBracketsRound => "round"
+    CombineBracketsSquare => "square"
+    CombineBracketsAngle => "angle"
+    CombineBracketsCurly => "curly"
+  }
 }
 
 ///|
-/// XSD simple type ST_HeightRule from wml.xsd (§17.18).
-pub struct ST_HeightRule {
-  value : String
+/// XSD simple type ST_HeightRule — Part 1 §17.18.37.
+/// Restriction of xsd:string to {auto, exact, atLeast}, the
+/// table-row height-resolution policies.
+pub(all) enum ST_HeightRule {
+  HeightRuleAuto
+  HeightRuleExact
+  HeightRuleAtLeast
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_HeightRule schema lexical value.
 pub fn ST_HeightRule::parse(s : String) -> ST_HeightRule raise SchemaViolation {
-  validate_wml_simple_type("ST_HeightRule", s)
-  { value: s }
+  match s {
+    "auto" => HeightRuleAuto
+    "exact" => HeightRuleExact
+    "atLeast" => HeightRuleAtLeast
+    _ => invalid_simple_type("ST_HeightRule", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_HeightRule while enforcing the wml.xsd enumeration.
 pub fn ST_HeightRule::new(s : String) -> ST_HeightRule raise SchemaViolation {
   ST_HeightRule::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_HeightRule.
 pub fn ST_HeightRule::to_string(self : ST_HeightRule) -> String {
-  self.value
+  match self {
+    HeightRuleAuto => "auto"
+    HeightRuleExact => "exact"
+    HeightRuleAtLeast => "atLeast"
+  }
 }
 
 ///|
@@ -948,47 +1796,77 @@ pub fn ST_VAnchor::to_string(self : ST_VAnchor) -> String {
 }
 
 ///|
-/// XSD simple type ST_HAnchor from wml.xsd (§17.18).
-pub struct ST_HAnchor {
-  value : String
+/// XSD simple type ST_HAnchor — Part 1 §17.18.35.
+/// Restriction of xsd:string to {text, margin, page}, identifying the
+/// horizontal anchor base for a floating object.
+pub(all) enum ST_HAnchor {
+  HAnchorText
+  HAnchorMargin
+  HAnchorPage
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_HAnchor schema lexical value.
 pub fn ST_HAnchor::parse(s : String) -> ST_HAnchor raise SchemaViolation {
-  validate_wml_simple_type("ST_HAnchor", s)
-  { value: s }
+  match s {
+    "text" => HAnchorText
+    "margin" => HAnchorMargin
+    "page" => HAnchorPage
+    _ => invalid_simple_type("ST_HAnchor", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_HAnchor while enforcing the wml.xsd enumeration.
 pub fn ST_HAnchor::new(s : String) -> ST_HAnchor raise SchemaViolation {
   ST_HAnchor::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_HAnchor.
 pub fn ST_HAnchor::to_string(self : ST_HAnchor) -> String {
-  self.value
+  match self {
+    HAnchorText => "text"
+    HAnchorMargin => "margin"
+    HAnchorPage => "page"
+  }
 }
 
 ///|
-/// XSD simple type ST_DropCap from wml.xsd (§17.18).
-pub struct ST_DropCap {
-  value : String
+/// XSD simple type ST_DropCap — Part 1 §17.18.20.
+/// Restriction of xsd:string to {none, drop, margin}, the drop-cap
+/// frame positioning options.
+pub(all) enum ST_DropCap {
+  DropCapNone
+  DropCapDrop
+  DropCapMargin
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DropCap schema lexical value.
 pub fn ST_DropCap::parse(s : String) -> ST_DropCap raise SchemaViolation {
-  validate_wml_simple_type("ST_DropCap", s)
-  { value: s }
+  match s {
+    "none" => DropCapNone
+    "drop" => DropCapDrop
+    "margin" => DropCapMargin
+    _ => invalid_simple_type("ST_DropCap", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_DropCap while enforcing the wml.xsd enumeration.
 pub fn ST_DropCap::new(s : String) -> ST_DropCap raise SchemaViolation {
   ST_DropCap::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_DropCap.
 pub fn ST_DropCap::to_string(self : ST_DropCap) -> String {
-  self.value
+  match self {
+    DropCapNone => "none"
+    DropCapDrop => "drop"
+    DropCapMargin => "margin"
+  }
 }
 
 ///|
@@ -1259,47 +2137,80 @@ pub fn ST_Proof::to_string(self : ST_Proof) -> String {
 }
 
 ///|
-/// XSD simple type ST_DocType from wml.xsd (§17.18).
+/// XSD simple type ST_DocType — Part 1 §17.18.19.
+/// Restriction of xsd:string with no enumeration: the Part 1 spec
+/// merely *reserves* {eMail, letter, notSpecified} as well-known
+/// classifications but allows any producer-defined token (the Part 4
+/// transitional XSD adds no restriction either). Stored as the raw
+/// lexical form, which is preserved verbatim across round-trips.
 pub struct ST_DocType {
-  value : String
+  lexical : String
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DocType schema lexical value. The grammar is open;
+/// only the non-empty restriction is enforced here.
 pub fn ST_DocType::parse(s : String) -> ST_DocType raise SchemaViolation {
-  validate_wml_simple_type("ST_DocType", s)
-  { value: s }
+  if s.length() == 0 {
+    invalid_simple_type("ST_DocType", s, "empty lexical value")
+  }
+  { lexical: s }
 }
 
 ///|
+/// Construct ST_DocType while enforcing the xsd:string lexical
+/// guarantee (non-empty).
 pub fn ST_DocType::new(s : String) -> ST_DocType raise SchemaViolation {
   ST_DocType::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value (round-trip preserved).
 pub fn ST_DocType::to_string(self : ST_DocType) -> String {
-  self.value
+  self.lexical
 }
 
 ///|
-/// XSD simple type ST_DocProtect from wml.xsd (§17.18).
-pub struct ST_DocProtect {
-  value : String
+/// XSD simple type ST_DocProtect — Part 1 §17.18.18.
+/// Restriction of xsd:string to the editing-restriction catalogue
+/// {none, readOnly, comments, trackedChanges, forms}.
+pub(all) enum ST_DocProtect {
+  DocProtectNone
+  DocProtectReadOnly
+  DocProtectComments
+  DocProtectTrackedChanges
+  DocProtectForms
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DocProtect schema lexical value.
 pub fn ST_DocProtect::parse(s : String) -> ST_DocProtect raise SchemaViolation {
-  validate_wml_simple_type("ST_DocProtect", s)
-  { value: s }
+  match s {
+    "none" => DocProtectNone
+    "readOnly" => DocProtectReadOnly
+    "comments" => DocProtectComments
+    "trackedChanges" => DocProtectTrackedChanges
+    "forms" => DocProtectForms
+    _ => invalid_simple_type("ST_DocProtect", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_DocProtect while enforcing the wml.xsd enumeration.
 pub fn ST_DocProtect::new(s : String) -> ST_DocProtect raise SchemaViolation {
   ST_DocProtect::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_DocProtect.
 pub fn ST_DocProtect::to_string(self : ST_DocProtect) -> String {
-  self.value
+  match self {
+    DocProtectNone => "none"
+    DocProtectReadOnly => "readOnly"
+    DocProtectComments => "comments"
+    DocProtectTrackedChanges => "trackedChanges"
+    DocProtectForms => "forms"
+  }
 }
 
 ///|
@@ -1532,20 +2443,32 @@ pub fn ST_TextAlignment::to_string(self : ST_TextAlignment) -> String {
 }
 
 ///|
-/// XSD simple type ST_DisplacedByCustomXml from wml.xsd (§17.18).
-pub struct ST_DisplacedByCustomXml {
-  value : String
+/// XSD simple type ST_DisplacedByCustomXml — Part 1 §17.18.13.
+/// Restriction of xsd:string to {next, prev}, identifying which
+/// custom-XML markup element displaces the parent annotation.
+pub(all) enum ST_DisplacedByCustomXml {
+  DisplacedByCustomXmlNext
+  DisplacedByCustomXmlPrev
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DisplacedByCustomXml schema lexical value.
 pub fn ST_DisplacedByCustomXml::parse(
   s : String,
 ) -> ST_DisplacedByCustomXml raise SchemaViolation {
-  validate_wml_simple_type("ST_DisplacedByCustomXml", s)
-  { value: s }
+  match s {
+    "next" => DisplacedByCustomXmlNext
+    "prev" => DisplacedByCustomXmlPrev
+    _ =>
+      invalid_simple_type(
+        "ST_DisplacedByCustomXml", s, "unknown enumeration value",
+      )
+  }
 }
 
 ///|
+/// Construct ST_DisplacedByCustomXml while enforcing the wml.xsd
+/// enumeration.
 pub fn ST_DisplacedByCustomXml::new(
   s : String,
 ) -> ST_DisplacedByCustomXml raise SchemaViolation {
@@ -1553,27 +2476,41 @@ pub fn ST_DisplacedByCustomXml::new(
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_DisplacedByCustomXml.
 pub fn ST_DisplacedByCustomXml::to_string(
   self : ST_DisplacedByCustomXml,
 ) -> String {
-  self.value
+  match self {
+    DisplacedByCustomXmlNext => "next"
+    DisplacedByCustomXmlPrev => "prev"
+  }
 }
 
 ///|
-/// XSD simple type ST_AnnotationVMerge from wml.xsd (§17.18).
-pub struct ST_AnnotationVMerge {
-  value : String
+/// XSD simple type ST_AnnotationVMerge — Part 1 §17.18.1.
+/// Restriction of xsd:string to {cont, rest}, recording table-cell
+/// vertical merge revision intent.
+pub(all) enum ST_AnnotationVMerge {
+  AnnotationVMergeCont
+  AnnotationVMergeRest
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_AnnotationVMerge schema lexical value.
 pub fn ST_AnnotationVMerge::parse(
   s : String,
 ) -> ST_AnnotationVMerge raise SchemaViolation {
-  validate_wml_simple_type("ST_AnnotationVMerge", s)
-  { value: s }
+  match s {
+    "cont" => AnnotationVMergeCont
+    "rest" => AnnotationVMergeRest
+    _ =>
+      invalid_simple_type("ST_AnnotationVMerge", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_AnnotationVMerge while enforcing the wml.xsd
+/// enumeration.
 pub fn ST_AnnotationVMerge::new(
   s : String,
 ) -> ST_AnnotationVMerge raise SchemaViolation {
@@ -1581,8 +2518,12 @@ pub fn ST_AnnotationVMerge::new(
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_AnnotationVMerge.
 pub fn ST_AnnotationVMerge::to_string(self : ST_AnnotationVMerge) -> String {
-  self.value
+  match self {
+    AnnotationVMergeCont => "cont"
+    AnnotationVMergeRest => "rest"
+  }
 }
 
 ///|
@@ -1688,27 +2629,42 @@ pub fn ST_ObjectUpdateMode::to_string(self : ST_ObjectUpdateMode) -> String {
 }
 
 ///|
-/// XSD simple type ST_FldCharType from wml.xsd (§17.18).
-pub struct ST_FldCharType {
-  value : String
+/// XSD simple type ST_FldCharType — Part 1 §17.18.29.
+/// Restriction of xsd:string to the complex-field character role
+/// catalogue {begin, separate, end}.
+pub(all) enum ST_FldCharType {
+  FldCharTypeBegin
+  FldCharTypeSeparate
+  FldCharTypeEnd
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FldCharType schema lexical value.
 pub fn ST_FldCharType::parse(
   s : String,
 ) -> ST_FldCharType raise SchemaViolation {
-  validate_wml_simple_type("ST_FldCharType", s)
-  { value: s }
+  match s {
+    "begin" => FldCharTypeBegin
+    "separate" => FldCharTypeSeparate
+    "end" => FldCharTypeEnd
+    _ => invalid_simple_type("ST_FldCharType", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_FldCharType while enforcing the wml.xsd enumeration.
 pub fn ST_FldCharType::new(s : String) -> ST_FldCharType raise SchemaViolation {
   ST_FldCharType::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FldCharType.
 pub fn ST_FldCharType::to_string(self : ST_FldCharType) -> String {
-  self.value
+  match self {
+    FldCharTypeBegin => "begin"
+    FldCharTypeSeparate => "separate"
+    FldCharTypeEnd => "end"
+  }
 }
 
 ///|
@@ -1749,20 +2705,33 @@ pub fn ST_InfoTextType::to_string(self : ST_InfoTextType) -> String {
 }
 
 ///|
-/// XSD simple type ST_FFHelpTextVal from wml.xsd (§17.18).
+/// XSD simple type ST_FFHelpTextVal — Part 1 §17.18.25.
+/// Restriction of xsd:string with a maxLength of 256 Unicode scalar
+/// values; stored as the schema lexical form (round-trip preserved).
 pub struct ST_FFHelpTextVal {
-  value : String
+  lexical : String
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FFHelpTextVal schema lexical value, enforcing the
+/// 256-character upper bound.
 pub fn ST_FFHelpTextVal::parse(
   s : String,
 ) -> ST_FFHelpTextVal raise SchemaViolation {
-  validate_wml_simple_type("ST_FFHelpTextVal", s)
-  { value: s }
+  if s.length() == 0 {
+    invalid_simple_type("ST_FFHelpTextVal", s, "empty lexical value")
+  }
+  if s.length() > 256 {
+    invalid_simple_type(
+      "ST_FFHelpTextVal", s, "lexical value exceeds 256 Unicode scalar values",
+    )
+  }
+  { lexical: s }
 }
 
 ///|
+/// Construct ST_FFHelpTextVal while enforcing the wml.xsd maxLength
+/// restriction.
 pub fn ST_FFHelpTextVal::new(
   s : String,
 ) -> ST_FFHelpTextVal raise SchemaViolation {
@@ -1770,25 +2739,39 @@ pub fn ST_FFHelpTextVal::new(
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FFHelpTextVal.
 pub fn ST_FFHelpTextVal::to_string(self : ST_FFHelpTextVal) -> String {
-  self.value
+  self.lexical
 }
 
 ///|
-/// XSD simple type ST_FFStatusTextVal from wml.xsd (§17.18).
+/// XSD simple type ST_FFStatusTextVal — Part 1 §17.18.27.
+/// Restriction of xsd:string with a maxLength of 140 characters;
+/// stored as the schema lexical form (round-trip preserved).
 pub struct ST_FFStatusTextVal {
-  value : String
+  lexical : String
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FFStatusTextVal schema lexical value, enforcing the
+/// 140-character upper bound.
 pub fn ST_FFStatusTextVal::parse(
   s : String,
 ) -> ST_FFStatusTextVal raise SchemaViolation {
-  validate_wml_simple_type("ST_FFStatusTextVal", s)
-  { value: s }
+  if s.length() == 0 {
+    invalid_simple_type("ST_FFStatusTextVal", s, "empty lexical value")
+  }
+  if s.length() > 140 {
+    invalid_simple_type(
+      "ST_FFStatusTextVal", s, "lexical value exceeds 140 characters",
+    )
+  }
+  { lexical: s }
 }
 
 ///|
+/// Construct ST_FFStatusTextVal while enforcing the wml.xsd maxLength
+/// restriction.
 pub fn ST_FFStatusTextVal::new(
   s : String,
 ) -> ST_FFStatusTextVal raise SchemaViolation {
@@ -1796,52 +2779,91 @@ pub fn ST_FFStatusTextVal::new(
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FFStatusTextVal.
 pub fn ST_FFStatusTextVal::to_string(self : ST_FFStatusTextVal) -> String {
-  self.value
+  self.lexical
 }
 
 ///|
-/// XSD simple type ST_FFName from wml.xsd (§17.18).
+/// XSD simple type ST_FFName — Part 1 §17.18.26.
+/// Restriction of xsd:string with a maxLength of 65 Unicode scalar
+/// values; stored as the schema lexical form (round-trip preserved).
 pub struct ST_FFName {
-  value : String
+  lexical : String
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FFName schema lexical value, enforcing the 65-character
+/// upper bound.
 pub fn ST_FFName::parse(s : String) -> ST_FFName raise SchemaViolation {
-  validate_wml_simple_type("ST_FFName", s)
-  { value: s }
+  if s.length() == 0 {
+    invalid_simple_type("ST_FFName", s, "empty lexical value")
+  }
+  if s.length() > 65 {
+    invalid_simple_type(
+      "ST_FFName", s, "lexical value exceeds 65 Unicode scalar values",
+    )
+  }
+  { lexical: s }
 }
 
 ///|
+/// Construct ST_FFName while enforcing the wml.xsd maxLength restriction.
 pub fn ST_FFName::new(s : String) -> ST_FFName raise SchemaViolation {
   ST_FFName::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FFName.
 pub fn ST_FFName::to_string(self : ST_FFName) -> String {
-  self.value
+  self.lexical
 }
 
 ///|
-/// XSD simple type ST_FFTextType from wml.xsd (§17.18).
-pub struct ST_FFTextType {
-  value : String
+/// XSD simple type ST_FFTextType — Part 1 §17.18.28.
+/// Restriction of xsd:string to the text-box form-field type
+/// catalogue {regular, number, date, currentTime, currentDate,
+/// calculated}.
+pub(all) enum ST_FFTextType {
+  FFTextTypeRegular
+  FFTextTypeNumber
+  FFTextTypeDate
+  FFTextTypeCurrentTime
+  FFTextTypeCurrentDate
+  FFTextTypeCalculated
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FFTextType schema lexical value.
 pub fn ST_FFTextType::parse(s : String) -> ST_FFTextType raise SchemaViolation {
-  validate_wml_simple_type("ST_FFTextType", s)
-  { value: s }
+  match s {
+    "regular" => FFTextTypeRegular
+    "number" => FFTextTypeNumber
+    "date" => FFTextTypeDate
+    "currentTime" => FFTextTypeCurrentTime
+    "currentDate" => FFTextTypeCurrentDate
+    "calculated" => FFTextTypeCalculated
+    _ => invalid_simple_type("ST_FFTextType", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_FFTextType while enforcing the wml.xsd enumeration.
 pub fn ST_FFTextType::new(s : String) -> ST_FFTextType raise SchemaViolation {
   ST_FFTextType::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FFTextType.
 pub fn ST_FFTextType::to_string(self : ST_FFTextType) -> String {
-  self.value
+  match self {
+    FFTextTypeRegular => "regular"
+    FFTextTypeNumber => "number"
+    FFTextTypeDate => "date"
+    FFTextTypeCurrentTime => "currentTime"
+    FFTextTypeCurrentDate => "currentDate"
+    FFTextTypeCalculated => "calculated"
+  }
 }
 
 ///|
@@ -2309,25 +3331,46 @@ pub fn ST_PageBorderOffset::to_string(self : ST_PageBorderOffset) -> String {
 }
 
 ///|
-/// XSD simple type ST_ChapterSep from wml.xsd (§17.18).
-pub struct ST_ChapterSep {
-  value : String
+/// XSD simple type ST_ChapterSep — Part 1 §17.18.6.
+/// Restriction of xsd:string to the chapter-separator catalogue
+/// {hyphen, period, colon, emDash, enDash}.
+pub(all) enum ST_ChapterSep {
+  ChapterSepHyphen
+  ChapterSepPeriod
+  ChapterSepColon
+  ChapterSepEmDash
+  ChapterSepEnDash
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_ChapterSep schema lexical value.
 pub fn ST_ChapterSep::parse(s : String) -> ST_ChapterSep raise SchemaViolation {
-  validate_wml_simple_type("ST_ChapterSep", s)
-  { value: s }
+  match s {
+    "hyphen" => ChapterSepHyphen
+    "period" => ChapterSepPeriod
+    "colon" => ChapterSepColon
+    "emDash" => ChapterSepEmDash
+    "enDash" => ChapterSepEnDash
+    _ => invalid_simple_type("ST_ChapterSep", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_ChapterSep while enforcing the wml.xsd enumeration.
 pub fn ST_ChapterSep::new(s : String) -> ST_ChapterSep raise SchemaViolation {
   ST_ChapterSep::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_ChapterSep.
 pub fn ST_ChapterSep::to_string(self : ST_ChapterSep) -> String {
-  self.value
+  match self {
+    ChapterSepHyphen => "hyphen"
+    ChapterSepPeriod => "period"
+    ChapterSepColon => "colon"
+    ChapterSepEmDash => "emDash"
+    ChapterSepEnDash => "enDash"
+  }
 }
 
 ///|
@@ -2397,113 +3440,199 @@ pub fn ST_VerticalJc::to_string(self : ST_VerticalJc) -> String {
 }
 
 ///|
-/// XSD simple type ST_DocGrid from wml.xsd (§17.18).
-pub struct ST_DocGrid {
-  value : String
+/// XSD simple type ST_DocGrid — Part 1 §17.18.14.
+/// Restriction of xsd:string to the document-grid kinds
+/// {default, lines, linesAndChars, snapToChars}.
+pub(all) enum ST_DocGrid {
+  DocGridDefault
+  DocGridLines
+  DocGridLinesAndChars
+  DocGridSnapToChars
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DocGrid schema lexical value.
 pub fn ST_DocGrid::parse(s : String) -> ST_DocGrid raise SchemaViolation {
-  validate_wml_simple_type("ST_DocGrid", s)
-  { value: s }
+  match s {
+    "default" => DocGridDefault
+    "lines" => DocGridLines
+    "linesAndChars" => DocGridLinesAndChars
+    "snapToChars" => DocGridSnapToChars
+    _ => invalid_simple_type("ST_DocGrid", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_DocGrid while enforcing the wml.xsd enumeration.
 pub fn ST_DocGrid::new(s : String) -> ST_DocGrid raise SchemaViolation {
   ST_DocGrid::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_DocGrid.
 pub fn ST_DocGrid::to_string(self : ST_DocGrid) -> String {
-  self.value
+  match self {
+    DocGridDefault => "default"
+    DocGridLines => "lines"
+    DocGridLinesAndChars => "linesAndChars"
+    DocGridSnapToChars => "snapToChars"
+  }
 }
 
 ///|
-/// XSD simple type ST_HdrFtr from wml.xsd (§17.18).
-pub struct ST_HdrFtr {
-  value : String
+/// XSD simple type ST_HdrFtr — Part 1 §17.18.36.
+/// Restriction of xsd:string to {even, default, first}, selecting
+/// which pages of a section use the parent header/footer reference.
+pub(all) enum ST_HdrFtr {
+  HdrFtrEven
+  HdrFtrDefault
+  HdrFtrFirst
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_HdrFtr schema lexical value.
 pub fn ST_HdrFtr::parse(s : String) -> ST_HdrFtr raise SchemaViolation {
-  validate_wml_simple_type("ST_HdrFtr", s)
-  { value: s }
+  match s {
+    "even" => HdrFtrEven
+    "default" => HdrFtrDefault
+    "first" => HdrFtrFirst
+    _ => invalid_simple_type("ST_HdrFtr", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_HdrFtr while enforcing the wml.xsd enumeration.
 pub fn ST_HdrFtr::new(s : String) -> ST_HdrFtr raise SchemaViolation {
   ST_HdrFtr::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_HdrFtr.
 pub fn ST_HdrFtr::to_string(self : ST_HdrFtr) -> String {
-  self.value
+  match self {
+    HdrFtrEven => "even"
+    HdrFtrDefault => "default"
+    HdrFtrFirst => "first"
+  }
 }
 
 ///|
-/// XSD simple type ST_FtnEdn from wml.xsd (§17.18).
-pub struct ST_FtnEdn {
-  value : String
+/// XSD simple type ST_FtnEdn — Part 1 §17.18.33.
+/// Restriction of xsd:string to the footnote/endnote role catalogue
+/// {normal, separator, continuationSeparator, continuationNotice}.
+pub(all) enum ST_FtnEdn {
+  FtnEdnNormal
+  FtnEdnSeparator
+  FtnEdnContinuationSeparator
+  FtnEdnContinuationNotice
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FtnEdn schema lexical value.
 pub fn ST_FtnEdn::parse(s : String) -> ST_FtnEdn raise SchemaViolation {
-  validate_wml_simple_type("ST_FtnEdn", s)
-  { value: s }
+  match s {
+    "normal" => FtnEdnNormal
+    "separator" => FtnEdnSeparator
+    "continuationSeparator" => FtnEdnContinuationSeparator
+    "continuationNotice" => FtnEdnContinuationNotice
+    _ => invalid_simple_type("ST_FtnEdn", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_FtnEdn while enforcing the wml.xsd enumeration.
 pub fn ST_FtnEdn::new(s : String) -> ST_FtnEdn raise SchemaViolation {
   ST_FtnEdn::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FtnEdn.
 pub fn ST_FtnEdn::to_string(self : ST_FtnEdn) -> String {
-  self.value
+  match self {
+    FtnEdnNormal => "normal"
+    FtnEdnSeparator => "separator"
+    FtnEdnContinuationSeparator => "continuationSeparator"
+    FtnEdnContinuationNotice => "continuationNotice"
+  }
 }
 
 ///|
-/// XSD simple type ST_BrType from wml.xsd (§17.18).
-pub struct ST_BrType {
-  value : String
+/// XSD simple type ST_BrType — Part 1 §17.18.4.
+/// Restriction of xsd:string to {page, column, textWrapping}, the
+/// manual line/column/page break kinds. Part 4 §14.11.12 changes the
+/// transitional enumeration vocabulary slightly but those compatibility
+/// aliases are absorbed by callers, not the simple type itself.
+pub(all) enum ST_BrType {
+  BrTypePage
+  BrTypeColumn
+  BrTypeTextWrapping
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_BrType schema lexical value.
 pub fn ST_BrType::parse(s : String) -> ST_BrType raise SchemaViolation {
-  validate_wml_simple_type("ST_BrType", s)
-  { value: s }
+  match s {
+    "page" => BrTypePage
+    "column" => BrTypeColumn
+    "textWrapping" => BrTypeTextWrapping
+    _ => invalid_simple_type("ST_BrType", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_BrType while enforcing the wml.xsd enumeration.
 pub fn ST_BrType::new(s : String) -> ST_BrType raise SchemaViolation {
   ST_BrType::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_BrType.
 pub fn ST_BrType::to_string(self : ST_BrType) -> String {
-  self.value
+  match self {
+    BrTypePage => "page"
+    BrTypeColumn => "column"
+    BrTypeTextWrapping => "textWrapping"
+  }
 }
 
 ///|
-/// XSD simple type ST_BrClear from wml.xsd (§17.18).
-pub struct ST_BrClear {
-  value : String
+/// XSD simple type ST_BrClear — Part 1 §17.18.3.
+/// Restriction of xsd:string to {none, left, right, all}, the text
+/// wrapping break restart strategies that complement ST_BrType.
+pub(all) enum ST_BrClear {
+  BrClearNone
+  BrClearLeft
+  BrClearRight
+  BrClearAll
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_BrClear schema lexical value.
 pub fn ST_BrClear::parse(s : String) -> ST_BrClear raise SchemaViolation {
-  validate_wml_simple_type("ST_BrClear", s)
-  { value: s }
+  match s {
+    "none" => BrClearNone
+    "left" => BrClearLeft
+    "right" => BrClearRight
+    "all" => BrClearAll
+    _ => invalid_simple_type("ST_BrClear", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_BrClear while enforcing the wml.xsd enumeration.
 pub fn ST_BrClear::new(s : String) -> ST_BrClear raise SchemaViolation {
   ST_BrClear::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_BrClear.
 pub fn ST_BrClear::to_string(self : ST_BrClear) -> String {
-  self.value
+  match self {
+    BrClearNone => "none"
+    BrClearLeft => "left"
+    BrClearRight => "right"
+    BrClearAll => "all"
+  }
 }
 
 ///|
@@ -2672,25 +3801,53 @@ pub fn ST_ProofErr::to_string(self : ST_ProofErr) -> String {
 }
 
 ///|
-/// XSD simple type ST_EdGrp from wml.xsd (§17.18).
-pub struct ST_EdGrp {
-  value : String
+/// XSD simple type ST_EdGrp — Part 1 §17.18.21.
+/// Restriction of xsd:string to the range-permission editing-group
+/// catalogue {none, everyone, administrators, contributors, editors,
+/// owners, current}.
+pub(all) enum ST_EdGrp {
+  EdGrpNone
+  EdGrpEveryone
+  EdGrpAdministrators
+  EdGrpContributors
+  EdGrpEditors
+  EdGrpOwners
+  EdGrpCurrent
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_EdGrp schema lexical value.
 pub fn ST_EdGrp::parse(s : String) -> ST_EdGrp raise SchemaViolation {
-  validate_wml_simple_type("ST_EdGrp", s)
-  { value: s }
+  match s {
+    "none" => EdGrpNone
+    "everyone" => EdGrpEveryone
+    "administrators" => EdGrpAdministrators
+    "contributors" => EdGrpContributors
+    "editors" => EdGrpEditors
+    "owners" => EdGrpOwners
+    "current" => EdGrpCurrent
+    _ => invalid_simple_type("ST_EdGrp", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_EdGrp while enforcing the wml.xsd enumeration.
 pub fn ST_EdGrp::new(s : String) -> ST_EdGrp raise SchemaViolation {
   ST_EdGrp::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_EdGrp.
 pub fn ST_EdGrp::to_string(self : ST_EdGrp) -> String {
-  self.value
+  match self {
+    EdGrpNone => "none"
+    EdGrpEveryone => "everyone"
+    EdGrpAdministrators => "administrators"
+    EdGrpContributors => "contributors"
+    EdGrpEditors => "editors"
+    EdGrpOwners => "owners"
+    EdGrpCurrent => "current"
+  }
 }
 
 ///|
@@ -2840,25 +3997,37 @@ pub fn ST_SdtDateMappingType::to_string(self : ST_SdtDateMappingType) -> String 
 }
 
 ///|
-/// XSD simple type ST_Direction from wml.xsd (§17.18).
-pub struct ST_Direction {
-  value : String
+/// XSD simple type ST_Direction — Part 1 §17.18.12.
+/// Restriction of xsd:string to {ltr, rtl}, encoding the bidirectional
+/// reading direction selected by the parent element.
+pub(all) enum ST_Direction {
+  DirectionLtr
+  DirectionRtl
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_Direction schema lexical value.
 pub fn ST_Direction::parse(s : String) -> ST_Direction raise SchemaViolation {
-  validate_wml_simple_type("ST_Direction", s)
-  { value: s }
+  match s {
+    "ltr" => DirectionLtr
+    "rtl" => DirectionRtl
+    _ => invalid_simple_type("ST_Direction", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_Direction while enforcing the wml.xsd enumeration.
 pub fn ST_Direction::new(s : String) -> ST_Direction raise SchemaViolation {
   ST_Direction::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_Direction.
 pub fn ST_Direction::to_string(self : ST_Direction) -> String {
-  self.value
+  match self {
+    DirectionLtr => "ltr"
+    DirectionRtl => "rtl"
+  }
 }
 
 ///|
@@ -3017,47 +4186,77 @@ pub fn ST_TblOverlap::to_string(self : ST_TblOverlap) -> String {
 }
 
 ///|
-/// XSD simple type ST_FtnPos from wml.xsd (§17.18).
-pub struct ST_FtnPos {
-  value : String
+/// XSD simple type ST_FtnPos — Part 1 §17.18.34.
+/// Restriction of xsd:string to the footnote-positioning catalogue
+/// {pageBottom, beneathText, sectEnd, docEnd}.
+pub(all) enum ST_FtnPos {
+  FtnPosPageBottom
+  FtnPosBeneathText
+  FtnPosSectEnd
+  FtnPosDocEnd
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FtnPos schema lexical value.
 pub fn ST_FtnPos::parse(s : String) -> ST_FtnPos raise SchemaViolation {
-  validate_wml_simple_type("ST_FtnPos", s)
-  { value: s }
+  match s {
+    "pageBottom" => FtnPosPageBottom
+    "beneathText" => FtnPosBeneathText
+    "sectEnd" => FtnPosSectEnd
+    "docEnd" => FtnPosDocEnd
+    _ => invalid_simple_type("ST_FtnPos", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_FtnPos while enforcing the wml.xsd enumeration.
 pub fn ST_FtnPos::new(s : String) -> ST_FtnPos raise SchemaViolation {
   ST_FtnPos::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FtnPos.
 pub fn ST_FtnPos::to_string(self : ST_FtnPos) -> String {
-  self.value
+  match self {
+    FtnPosPageBottom => "pageBottom"
+    FtnPosBeneathText => "beneathText"
+    FtnPosSectEnd => "sectEnd"
+    FtnPosDocEnd => "docEnd"
+  }
 }
 
 ///|
-/// XSD simple type ST_EdnPos from wml.xsd (§17.18).
-pub struct ST_EdnPos {
-  value : String
+/// XSD simple type ST_EdnPos — Part 1 §17.18.22.
+/// Restriction of xsd:string to {sectEnd, docEnd}, identifying the
+/// endnote positioning scope.
+pub(all) enum ST_EdnPos {
+  EdnPosSectEnd
+  EdnPosDocEnd
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_EdnPos schema lexical value.
 pub fn ST_EdnPos::parse(s : String) -> ST_EdnPos raise SchemaViolation {
-  validate_wml_simple_type("ST_EdnPos", s)
-  { value: s }
+  match s {
+    "sectEnd" => EdnPosSectEnd
+    "docEnd" => EdnPosDocEnd
+    _ => invalid_simple_type("ST_EdnPos", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_EdnPos while enforcing the wml.xsd enumeration.
 pub fn ST_EdnPos::new(s : String) -> ST_EdnPos raise SchemaViolation {
   ST_EdnPos::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_EdnPos.
 pub fn ST_EdnPos::to_string(self : ST_EdnPos) -> String {
-  self.value
+  match self {
+    EdnPosSectEnd => "sectEnd"
+    EdnPosDocEnd => "docEnd"
+  }
 }
 
 ///|
@@ -3183,20 +4382,34 @@ pub fn ST_TargetScreenSz::to_string(self : ST_TargetScreenSz) -> String {
 }
 
 ///|
-/// XSD simple type ST_CharacterSpacing from wml.xsd (§17.18).
-pub struct ST_CharacterSpacing {
-  value : String
+/// XSD simple type ST_CharacterSpacing — Part 1 §17.18.7.
+/// Restriction of xsd:string to the full-width whitespace compression
+/// policies {doNotCompress, compressPunctuation,
+/// compressPunctuationAndJapaneseKana}.
+pub(all) enum ST_CharacterSpacing {
+  CharacterSpacingDoNotCompress
+  CharacterSpacingCompressPunctuation
+  CharacterSpacingCompressPunctuationAndJapaneseKana
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_CharacterSpacing schema lexical value.
 pub fn ST_CharacterSpacing::parse(
   s : String,
 ) -> ST_CharacterSpacing raise SchemaViolation {
-  validate_wml_simple_type("ST_CharacterSpacing", s)
-  { value: s }
+  match s {
+    "doNotCompress" => CharacterSpacingDoNotCompress
+    "compressPunctuation" => CharacterSpacingCompressPunctuation
+    "compressPunctuationAndJapaneseKana" =>
+      CharacterSpacingCompressPunctuationAndJapaneseKana
+    _ =>
+      invalid_simple_type("ST_CharacterSpacing", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_CharacterSpacing while enforcing the wml.xsd
+/// enumeration.
 pub fn ST_CharacterSpacing::new(
   s : String,
 ) -> ST_CharacterSpacing raise SchemaViolation {
@@ -3204,8 +4417,14 @@ pub fn ST_CharacterSpacing::new(
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_CharacterSpacing.
 pub fn ST_CharacterSpacing::to_string(self : ST_CharacterSpacing) -> String {
-  self.value
+  match self {
+    CharacterSpacingDoNotCompress => "doNotCompress"
+    CharacterSpacingCompressPunctuation => "compressPunctuation"
+    CharacterSpacingCompressPunctuationAndJapaneseKana =>
+      "compressPunctuationAndJapaneseKana"
+  }
 }
 
 ///|
@@ -3259,20 +4478,32 @@ pub fn ST_StyleSort::to_string(self : ST_StyleSort) -> String {
 }
 
 ///|
-/// XSD simple type ST_FrameScrollbar from wml.xsd (§17.18).
-pub struct ST_FrameScrollbar {
-  value : String
+/// XSD simple type ST_FrameScrollbar — Part 1 §17.18.32.
+/// Restriction of xsd:string to {on, off, auto}, the per-frame
+/// scrollbar visibility policy.
+pub(all) enum ST_FrameScrollbar {
+  FrameScrollbarOn
+  FrameScrollbarOff
+  FrameScrollbarAuto
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FrameScrollbar schema lexical value.
 pub fn ST_FrameScrollbar::parse(
   s : String,
 ) -> ST_FrameScrollbar raise SchemaViolation {
-  validate_wml_simple_type("ST_FrameScrollbar", s)
-  { value: s }
+  match s {
+    "on" => FrameScrollbarOn
+    "off" => FrameScrollbarOff
+    "auto" => FrameScrollbarAuto
+    _ =>
+      invalid_simple_type("ST_FrameScrollbar", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_FrameScrollbar while enforcing the wml.xsd
+/// enumeration.
 pub fn ST_FrameScrollbar::new(
   s : String,
 ) -> ST_FrameScrollbar raise SchemaViolation {
@@ -3280,32 +4511,52 @@ pub fn ST_FrameScrollbar::new(
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FrameScrollbar.
 pub fn ST_FrameScrollbar::to_string(self : ST_FrameScrollbar) -> String {
-  self.value
+  match self {
+    FrameScrollbarOn => "on"
+    FrameScrollbarOff => "off"
+    FrameScrollbarAuto => "auto"
+  }
 }
 
 ///|
-/// XSD simple type ST_FrameLayout from wml.xsd (§17.18).
-pub struct ST_FrameLayout {
-  value : String
+/// XSD simple type ST_FrameLayout — Part 1 §17.18.31.
+/// Restriction of xsd:string to {rows, cols, none}, the frameset
+/// stacking direction (or the "no frames" sentinel).
+pub(all) enum ST_FrameLayout {
+  FrameLayoutRows
+  FrameLayoutCols
+  FrameLayoutNone
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FrameLayout schema lexical value.
 pub fn ST_FrameLayout::parse(
   s : String,
 ) -> ST_FrameLayout raise SchemaViolation {
-  validate_wml_simple_type("ST_FrameLayout", s)
-  { value: s }
+  match s {
+    "rows" => FrameLayoutRows
+    "cols" => FrameLayoutCols
+    "none" => FrameLayoutNone
+    _ => invalid_simple_type("ST_FrameLayout", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_FrameLayout while enforcing the wml.xsd enumeration.
 pub fn ST_FrameLayout::new(s : String) -> ST_FrameLayout raise SchemaViolation {
   ST_FrameLayout::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FrameLayout.
 pub fn ST_FrameLayout::to_string(self : ST_FrameLayout) -> String {
-  self.value
+  match self {
+    FrameLayoutRows => "rows"
+    FrameLayoutCols => "cols"
+    FrameLayoutNone => "none"
+  }
 }
 
 ///|
@@ -3440,25 +4691,49 @@ pub fn ST_StyleType::to_string(self : ST_StyleType) -> String {
 }
 
 ///|
-/// XSD simple type ST_FontFamily from wml.xsd (§17.18).
-pub struct ST_FontFamily {
-  value : String
+/// XSD simple type ST_FontFamily — Part 1 §17.18.30.
+/// Restriction of xsd:string to the font-family classification
+/// {decorative, modern, roman, script, swiss, auto}.
+pub(all) enum ST_FontFamily {
+  FontFamilyDecorative
+  FontFamilyModern
+  FontFamilyRoman
+  FontFamilyScript
+  FontFamilySwiss
+  FontFamilyAuto
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_FontFamily schema lexical value.
 pub fn ST_FontFamily::parse(s : String) -> ST_FontFamily raise SchemaViolation {
-  validate_wml_simple_type("ST_FontFamily", s)
-  { value: s }
+  match s {
+    "decorative" => FontFamilyDecorative
+    "modern" => FontFamilyModern
+    "roman" => FontFamilyRoman
+    "script" => FontFamilyScript
+    "swiss" => FontFamilySwiss
+    "auto" => FontFamilyAuto
+    _ => invalid_simple_type("ST_FontFamily", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_FontFamily while enforcing the wml.xsd enumeration.
 pub fn ST_FontFamily::new(s : String) -> ST_FontFamily raise SchemaViolation {
   ST_FontFamily::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_FontFamily.
 pub fn ST_FontFamily::to_string(self : ST_FontFamily) -> String {
-  self.value
+  match self {
+    FontFamilyDecorative => "decorative"
+    FontFamilyModern => "modern"
+    FontFamilyRoman => "roman"
+    FontFamilyScript => "script"
+    FontFamilySwiss => "swiss"
+    FontFamilyAuto => "auto"
+  }
 }
 
 ///|
@@ -3520,20 +4795,32 @@ pub fn ST_ThemeColor::to_string(self : ST_ThemeColor) -> String {
 }
 
 ///|
-/// XSD simple type ST_DocPartBehavior from wml.xsd (§17.18).
-pub struct ST_DocPartBehavior {
-  value : String
+/// XSD simple type ST_DocPartBehavior — Part 1 §17.18.15.
+/// Restriction of xsd:string to {content, p, pg}, the glossary-entry
+/// insertion behaviors.
+pub(all) enum ST_DocPartBehavior {
+  DocPartBehaviorContent
+  DocPartBehaviorP
+  DocPartBehaviorPg
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DocPartBehavior schema lexical value.
 pub fn ST_DocPartBehavior::parse(
   s : String,
 ) -> ST_DocPartBehavior raise SchemaViolation {
-  validate_wml_simple_type("ST_DocPartBehavior", s)
-  { value: s }
+  match s {
+    "content" => DocPartBehaviorContent
+    "p" => DocPartBehaviorP
+    "pg" => DocPartBehaviorPg
+    _ =>
+      invalid_simple_type("ST_DocPartBehavior", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_DocPartBehavior while enforcing the wml.xsd
+/// enumeration.
 pub fn ST_DocPartBehavior::new(
   s : String,
 ) -> ST_DocPartBehavior raise SchemaViolation {
@@ -3541,49 +4828,165 @@ pub fn ST_DocPartBehavior::new(
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_DocPartBehavior.
 pub fn ST_DocPartBehavior::to_string(self : ST_DocPartBehavior) -> String {
-  self.value
+  match self {
+    DocPartBehaviorContent => "content"
+    DocPartBehaviorP => "p"
+    DocPartBehaviorPg => "pg"
+  }
 }
 
 ///|
-/// XSD simple type ST_DocPartType from wml.xsd (§17.18).
-pub struct ST_DocPartType {
-  value : String
+/// XSD simple type ST_DocPartType — Part 1 §17.18.17.
+/// Restriction of xsd:string to the glossary-entry type catalogue
+/// {none, normal, autoExp, toolbar, speller, formFld, bbPlcHdr}.
+pub(all) enum ST_DocPartType {
+  DocPartTypeNone
+  DocPartTypeNormal
+  DocPartTypeAutoExp
+  DocPartTypeToolbar
+  DocPartTypeSpeller
+  DocPartTypeFormFld
+  DocPartTypeBbPlcHdr
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DocPartType schema lexical value.
 pub fn ST_DocPartType::parse(
   s : String,
 ) -> ST_DocPartType raise SchemaViolation {
-  validate_wml_simple_type("ST_DocPartType", s)
-  { value: s }
+  match s {
+    "none" => DocPartTypeNone
+    "normal" => DocPartTypeNormal
+    "autoExp" => DocPartTypeAutoExp
+    "toolbar" => DocPartTypeToolbar
+    "speller" => DocPartTypeSpeller
+    "formFld" => DocPartTypeFormFld
+    "bbPlcHdr" => DocPartTypeBbPlcHdr
+    _ => invalid_simple_type("ST_DocPartType", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_DocPartType while enforcing the wml.xsd enumeration.
 pub fn ST_DocPartType::new(s : String) -> ST_DocPartType raise SchemaViolation {
   ST_DocPartType::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_DocPartType.
 pub fn ST_DocPartType::to_string(self : ST_DocPartType) -> String {
-  self.value
+  match self {
+    DocPartTypeNone => "none"
+    DocPartTypeNormal => "normal"
+    DocPartTypeAutoExp => "autoExp"
+    DocPartTypeToolbar => "toolbar"
+    DocPartTypeSpeller => "speller"
+    DocPartTypeFormFld => "formFld"
+    DocPartTypeBbPlcHdr => "bbPlcHdr"
+  }
 }
 
 ///|
-/// XSD simple type ST_DocPartGallery from wml.xsd (§17.18).
-pub struct ST_DocPartGallery {
-  value : String
+/// XSD simple type ST_DocPartGallery — Part 1 §17.18.16.
+/// Restriction of xsd:string to the glossary-entry gallery catalogue
+/// covering well-known galleries (cover pages, equations, headers,
+/// page numbers, etc.) along with the `custom1`..`custom5`
+/// producer-defined slots.
+pub(all) enum ST_DocPartGallery {
+  DocPartGalleryPlaceholder
+  DocPartGalleryAny
+  DocPartGalleryDefault
+  DocPartGalleryDocParts
+  DocPartGalleryCoverPg
+  DocPartGalleryEq
+  DocPartGalleryFtrs
+  DocPartGalleryHdrs
+  DocPartGalleryPgNum
+  DocPartGalleryTbls
+  DocPartGalleryWatermarks
+  DocPartGalleryAutoTxt
+  DocPartGalleryTxtBox
+  DocPartGalleryPgNumT
+  DocPartGalleryPgNumB
+  DocPartGalleryPgNumMargins
+  DocPartGalleryTblOfContents
+  DocPartGalleryBib
+  DocPartGalleryCustQuickParts
+  DocPartGalleryCustCoverPg
+  DocPartGalleryCustEq
+  DocPartGalleryCustFtrs
+  DocPartGalleryCustHdrs
+  DocPartGalleryCustPgNum
+  DocPartGalleryCustTbls
+  DocPartGalleryCustWatermarks
+  DocPartGalleryCustAutoTxt
+  DocPartGalleryCustTxtBox
+  DocPartGalleryCustPgNumT
+  DocPartGalleryCustPgNumB
+  DocPartGalleryCustPgNumMargins
+  DocPartGalleryCustTblOfContents
+  DocPartGalleryCustBib
+  DocPartGalleryCustom1
+  DocPartGalleryCustom2
+  DocPartGalleryCustom3
+  DocPartGalleryCustom4
+  DocPartGalleryCustom5
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_DocPartGallery schema lexical value.
 pub fn ST_DocPartGallery::parse(
   s : String,
 ) -> ST_DocPartGallery raise SchemaViolation {
-  validate_wml_simple_type("ST_DocPartGallery", s)
-  { value: s }
+  match s {
+    "placeholder" => DocPartGalleryPlaceholder
+    "any" => DocPartGalleryAny
+    "default" => DocPartGalleryDefault
+    "docParts" => DocPartGalleryDocParts
+    "coverPg" => DocPartGalleryCoverPg
+    "eq" => DocPartGalleryEq
+    "ftrs" => DocPartGalleryFtrs
+    "hdrs" => DocPartGalleryHdrs
+    "pgNum" => DocPartGalleryPgNum
+    "tbls" => DocPartGalleryTbls
+    "watermarks" => DocPartGalleryWatermarks
+    "autoTxt" => DocPartGalleryAutoTxt
+    "txtBox" => DocPartGalleryTxtBox
+    "pgNumT" => DocPartGalleryPgNumT
+    "pgNumB" => DocPartGalleryPgNumB
+    "pgNumMargins" => DocPartGalleryPgNumMargins
+    "tblOfContents" => DocPartGalleryTblOfContents
+    "bib" => DocPartGalleryBib
+    "custQuickParts" => DocPartGalleryCustQuickParts
+    "custCoverPg" => DocPartGalleryCustCoverPg
+    "custEq" => DocPartGalleryCustEq
+    "custFtrs" => DocPartGalleryCustFtrs
+    "custHdrs" => DocPartGalleryCustHdrs
+    "custPgNum" => DocPartGalleryCustPgNum
+    "custTbls" => DocPartGalleryCustTbls
+    "custWatermarks" => DocPartGalleryCustWatermarks
+    "custAutoTxt" => DocPartGalleryCustAutoTxt
+    "custTxtBox" => DocPartGalleryCustTxtBox
+    "custPgNumT" => DocPartGalleryCustPgNumT
+    "custPgNumB" => DocPartGalleryCustPgNumB
+    "custPgNumMargins" => DocPartGalleryCustPgNumMargins
+    "custTblOfContents" => DocPartGalleryCustTblOfContents
+    "custBib" => DocPartGalleryCustBib
+    "custom1" => DocPartGalleryCustom1
+    "custom2" => DocPartGalleryCustom2
+    "custom3" => DocPartGalleryCustom3
+    "custom4" => DocPartGalleryCustom4
+    "custom5" => DocPartGalleryCustom5
+    _ =>
+      invalid_simple_type("ST_DocPartGallery", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_DocPartGallery while enforcing the wml.xsd
+/// enumeration.
 pub fn ST_DocPartGallery::new(
   s : String,
 ) -> ST_DocPartGallery raise SchemaViolation {
@@ -3591,30 +4994,89 @@ pub fn ST_DocPartGallery::new(
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_DocPartGallery.
 pub fn ST_DocPartGallery::to_string(self : ST_DocPartGallery) -> String {
-  self.value
+  match self {
+    DocPartGalleryPlaceholder => "placeholder"
+    DocPartGalleryAny => "any"
+    DocPartGalleryDefault => "default"
+    DocPartGalleryDocParts => "docParts"
+    DocPartGalleryCoverPg => "coverPg"
+    DocPartGalleryEq => "eq"
+    DocPartGalleryFtrs => "ftrs"
+    DocPartGalleryHdrs => "hdrs"
+    DocPartGalleryPgNum => "pgNum"
+    DocPartGalleryTbls => "tbls"
+    DocPartGalleryWatermarks => "watermarks"
+    DocPartGalleryAutoTxt => "autoTxt"
+    DocPartGalleryTxtBox => "txtBox"
+    DocPartGalleryPgNumT => "pgNumT"
+    DocPartGalleryPgNumB => "pgNumB"
+    DocPartGalleryPgNumMargins => "pgNumMargins"
+    DocPartGalleryTblOfContents => "tblOfContents"
+    DocPartGalleryBib => "bib"
+    DocPartGalleryCustQuickParts => "custQuickParts"
+    DocPartGalleryCustCoverPg => "custCoverPg"
+    DocPartGalleryCustEq => "custEq"
+    DocPartGalleryCustFtrs => "custFtrs"
+    DocPartGalleryCustHdrs => "custHdrs"
+    DocPartGalleryCustPgNum => "custPgNum"
+    DocPartGalleryCustTbls => "custTbls"
+    DocPartGalleryCustWatermarks => "custWatermarks"
+    DocPartGalleryCustAutoTxt => "custAutoTxt"
+    DocPartGalleryCustTxtBox => "custTxtBox"
+    DocPartGalleryCustPgNumT => "custPgNumT"
+    DocPartGalleryCustPgNumB => "custPgNumB"
+    DocPartGalleryCustPgNumMargins => "custPgNumMargins"
+    DocPartGalleryCustTblOfContents => "custTblOfContents"
+    DocPartGalleryCustBib => "custBib"
+    DocPartGalleryCustom1 => "custom1"
+    DocPartGalleryCustom2 => "custom2"
+    DocPartGalleryCustom3 => "custom3"
+    DocPartGalleryCustom4 => "custom4"
+    DocPartGalleryCustom5 => "custom5"
+  }
 }
 
 ///|
-/// XSD simple type ST_CaptionPos from wml.xsd (§17.18).
-pub struct ST_CaptionPos {
-  value : String
+/// XSD simple type ST_CaptionPos — Part 1 §17.18.5.
+/// Restriction of xsd:string to {above, below, left, right}, the
+/// automatic-caption positioning options relative to the captioned
+/// object.
+pub(all) enum ST_CaptionPos {
+  CaptionPosAbove
+  CaptionPosBelow
+  CaptionPosLeft
+  CaptionPosRight
 } derive(Eq, Debug)
 
 ///|
+/// Parse the ST_CaptionPos schema lexical value.
 pub fn ST_CaptionPos::parse(s : String) -> ST_CaptionPos raise SchemaViolation {
-  validate_wml_simple_type("ST_CaptionPos", s)
-  { value: s }
+  match s {
+    "above" => CaptionPosAbove
+    "below" => CaptionPosBelow
+    "left" => CaptionPosLeft
+    "right" => CaptionPosRight
+    _ => invalid_simple_type("ST_CaptionPos", s, "unknown enumeration value")
+  }
 }
 
 ///|
+/// Construct ST_CaptionPos while enforcing the wml.xsd enumeration.
 pub fn ST_CaptionPos::new(s : String) -> ST_CaptionPos raise SchemaViolation {
   ST_CaptionPos::parse(s)
 }
 
 ///|
+/// Return the canonical schema lexical value for ST_CaptionPos.
 pub fn ST_CaptionPos::to_string(self : ST_CaptionPos) -> String {
-  self.value
+  match self {
+    CaptionPosAbove => "above"
+    CaptionPosBelow => "below"
+    CaptionPosLeft => "left"
+    CaptionPosRight => "right"
+  }
 }
 
 // === Typed-measure carriers used by chunk2 unions ===

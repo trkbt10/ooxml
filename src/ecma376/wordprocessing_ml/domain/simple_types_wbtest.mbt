@@ -27,6 +27,122 @@ test "WML simple types reject empty lexical values" {
 }
 
 ///|
+test "ST_DecimalNumber stores the typed signed integer" {
+  let positive = try! ST_DecimalNumber::parse("1512645511")
+  assert_eq(positive.value(), 1512645511)
+  let negative = try! ST_DecimalNumber::parse("-7")
+  assert_eq(negative.value(), -7)
+  assert_eq(negative.to_string(), "-7")
+  assert_true((try? ST_DecimalNumber::parse("3.14")) is Err(SchemaViolation(_)))
+}
+
+///|
+test "ST_DecimalNumberOrPercent discriminates Integer vs Percentage" {
+  let dec = try! ST_DecimalNumberOrPercent::parse("42")
+  assert_true(dec is DecimalNumberOrPercentDecimal(42))
+  let pct = try! ST_DecimalNumberOrPercent::parse("33.3%")
+  assert_true(pct is DecimalNumberOrPercentPercentage("33.3%"))
+  assert_eq(pct.to_string(), "33.3%")
+  assert_true(
+    (try? ST_DecimalNumberOrPercent::parse("%")) is Err(SchemaViolation(_)),
+  )
+}
+
+///|
+test "ST_EighthPointMeasure exposes typed UInt64 magnitude" {
+  let m = try! ST_EighthPointMeasure::parse("24")
+  assert_eq(m.eighth_points(), 24UL)
+  assert_eq(m.to_string(), "24")
+  assert_true(
+    (try? ST_EighthPointMeasure::parse("-2")) is Err(SchemaViolation(_)),
+  )
+}
+
+///|
+test "ST_BrType / ST_BrClear / ST_HeightRule are typed enums" {
+  assert_true((try! ST_BrType::parse("textWrapping")) is BrTypeTextWrapping)
+  assert_eq((try! ST_BrType::parse("page")).to_string(), "page")
+  assert_true((try? ST_BrType::parse("pages")) is Err(SchemaViolation(_)))
+  assert_true((try! ST_BrClear::parse("all")) is BrClearAll)
+  assert_true((try! ST_HeightRule::parse("atLeast")) is HeightRuleAtLeast)
+}
+
+///|
+test "ST_Border captures both line and art border styles" {
+  assert_true((try! ST_Border::parse("single")) is BorderSingle)
+  assert_true((try! ST_Border::parse("apples")) is BorderApples)
+  assert_true((try! ST_Border::parse("custom")) is BorderCustom)
+  assert_eq(
+    (try! ST_Border::parse("thinThickThinLargeGap")).to_string(),
+    "thinThickThinLargeGap",
+  )
+  assert_true((try? ST_Border::parse("foo")) is Err(SchemaViolation(_)))
+}
+
+///|
+test "ST_DateTime accepts UTC / offset / fractional seconds" {
+  assert_eq(
+    (try! ST_DateTime::parse("2026-05-01T12:34:56Z")).to_string(),
+    "2026-05-01T12:34:56Z",
+  )
+  assert_eq(
+    (try! ST_DateTime::parse("2026-05-01T12:34:56+09:00")).to_string(),
+    "2026-05-01T12:34:56+09:00",
+  )
+  assert_eq(
+    (try! ST_DateTime::parse("2026-05-01T12:34:56.789Z")).to_string(),
+    "2026-05-01T12:34:56.789Z",
+  )
+  assert_true(
+    (try? ST_DateTime::parse("2026/05/01")) is Err(SchemaViolation(_)),
+  )
+}
+
+///|
+test "ST_FFName / ST_FFHelpTextVal / ST_FFStatusTextVal enforce max length" {
+  assert_true(
+    (try? ST_FFName::parse("a".repeat(66))) is Err(SchemaViolation(_)),
+  )
+  assert_true(
+    (try? ST_FFHelpTextVal::parse("h".repeat(257))) is Err(SchemaViolation(_)),
+  )
+  assert_true(
+    (try? ST_FFStatusTextVal::parse("s".repeat(141))) is Err(SchemaViolation(_)),
+  )
+}
+
+///|
+test "ST_DocType accepts arbitrary non-empty xsd:string" {
+  assert_eq((try! ST_DocType::parse("letter")).to_string(), "letter")
+  assert_eq(
+    (try! ST_DocType::parse("custom-classification")).to_string(),
+    "custom-classification",
+  )
+  assert_true((try? ST_DocType::parse("")) is Err(SchemaViolation(_)))
+}
+
+///|
+test "ST_Cnf decodes the Part 4 §14.11.9 bitmask" {
+  let mask = try! ST_Cnf::parse("101000000100")
+  // Per spec: bit 0 = first row, bit 2 = first column, bit 9 = NW cell.
+  assert_true(mask.bit(0))
+  assert_false(mask.bit(1))
+  assert_true(mask.bit(2))
+  assert_true(mask.bit(9))
+  assert_false(mask.bit(11))
+  assert_eq(mask.to_string(), "101000000100")
+  assert_true((try? ST_Cnf::parse("10101")) is Err(SchemaViolation(_)))
+  assert_true((try? ST_Cnf::parse("10101010101A")) is Err(SchemaViolation(_)))
+}
+
+///|
+test "ST_AlignH / ST_AlignV are typed enums" {
+  assert_true((try! ST_AlignH::parse("center")) is AlignHCenter)
+  assert_eq((try! ST_AlignH::parse("inside")).to_string(), "inside")
+  assert_true((try? ST_AlignH::parse("middle")) is Err(SchemaViolation(_)))
+  assert_true((try! ST_AlignV::parse("top")) is AlignVTop)
+  assert_eq((try! ST_AlignV::parse("outside")).to_string(), "outside")
+}
 test "WML chunk2 enumerations map lexical tokens to typed variants" {
   // §17.18.40 highlight-colour enumeration.
   assert_true((try! ST_HighlightColor::parse("darkBlue")) is HlDarkBlue)

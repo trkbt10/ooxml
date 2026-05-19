@@ -1,23 +1,81 @@
 ///|
-/// XSD simple type ST_Cnf from transitional wml.xsd (Part 4 §14).
+/// XSD simple type ST_Cnf — Part 4 §14.11.9.
+/// Restriction of xsd:string with length = 12 and pattern `[01]*`,
+/// encoding twelve boolean conditional-formatting flags (firstRow,
+/// lastRow, firstColumn, lastColumn, band1Vert, band2Vert,
+/// band1Horz, band2Horz, NE cell, NW cell, SE cell, SW cell). The
+/// typed representation stores the bitmask as an Int (12 bits ≤ Int)
+/// with bit 0 = firstRow (reading the lexical string right-to-left,
+/// as the spec defines).
 pub struct ST_Cnf {
-  value : String
+  bitmask : Int
 } derive(Eq, Debug)
 
 ///|
+/// The exact bit-count required by the Part 4 §14.11.9 lexical
+/// pattern.
+pub let cnf_bit_count : Int = 12
+
+///|
+/// Parse the ST_Cnf schema lexical value into the typed 12-bit
+/// bitmask.
 pub fn ST_Cnf::parse(s : String) -> ST_Cnf raise SchemaViolation {
-  validate_wml_simple_type("ST_Cnf", s)
-  { value: s }
+  if s.length() != cnf_bit_count {
+    raise_schema_violation("ST_Cnf", s, "lexical value must have length 12")
+  }
+  let mut bitmask = 0
+  // Per Part 4 §14.11.9: "reading from the first character position
+  // right" — character 0 is the lowest-order property (firstRow).
+  for i = 0; i < cnf_bit_count; i = i + 1 {
+    let ch = s[i:i + 1]
+    if ch == "1" {
+      bitmask = bitmask + (1 << i)
+    } else if ch != "0" {
+      raise_schema_violation(
+        "ST_Cnf", s, "lexical value must match pattern [01]{12}",
+      )
+    }
+  }
+  { bitmask, }
 }
 
 ///|
+/// Construct ST_Cnf while enforcing the length-12 `[01]*` pattern.
 pub fn ST_Cnf::new(s : String) -> ST_Cnf raise SchemaViolation {
   ST_Cnf::parse(s)
 }
 
 ///|
+/// Read the typed 12-bit bitmask. Bit 0 corresponds to the leftmost
+/// character of the lexical form (the firstRow flag).
+pub fn ST_Cnf::bitmask(self : ST_Cnf) -> Int {
+  self.bitmask
+}
+
+///|
+/// True iff the conditional-formatting bit at `index` is set
+/// (`0 ≤ index < 12`). Out-of-range indices return false.
+pub fn ST_Cnf::bit(self : ST_Cnf, index : Int) -> Bool {
+  if index < 0 || index >= cnf_bit_count {
+    false
+  } else {
+    ((self.bitmask >> index) & 1) == 1
+  }
+}
+
+///|
+/// Render the typed bitmask back to its canonical length-12 lexical
+/// form (character 0 carries bit 0).
 pub fn ST_Cnf::to_string(self : ST_Cnf) -> String {
-  self.value
+  let buf = StringBuilder::new()
+  for i = 0; i < cnf_bit_count; i = i + 1 {
+    if ((self.bitmask >> i) & 1) == 1 {
+      buf.write_string("1")
+    } else {
+      buf.write_string("0")
+    }
+  }
+  buf.to_string()
 }
 
 ///|
