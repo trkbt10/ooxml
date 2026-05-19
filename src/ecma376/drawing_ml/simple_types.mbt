@@ -3072,6 +3072,155 @@ pub fn ST_PresetShadowVal::to_string(self : ST_PresetShadowVal) -> String {
   }
 }
 
+///|
+/// XSD simple type ST_BlackWhiteMode — Part 1 §20.1.10.10. Enumeration of
+/// colour rendering modes used by `bwMode` attributes on shape /
+/// group-shape property containers.
+pub(all) enum ST_BlackWhiteMode {
+  /// §20.1.10.10 "clr"
+  BwModeClr
+  /// §20.1.10.10 "auto"
+  BwModeAuto
+  /// §20.1.10.10 "gray"
+  BwModeGray
+  /// §20.1.10.10 "ltGray"
+  BwModeLtGray
+  /// §20.1.10.10 "invGray"
+  BwModeInvGray
+  /// §20.1.10.10 "grayWhite"
+  BwModeGrayWhite
+  /// §20.1.10.10 "blackGray"
+  BwModeBlackGray
+  /// §20.1.10.10 "blackWhite"
+  BwModeBlackWhite
+  /// §20.1.10.10 "black"
+  BwModeBlack
+  /// §20.1.10.10 "white"
+  BwModeWhite
+  /// §20.1.10.10 "hidden"
+  BwModeHidden
+} derive(Eq, Debug)
+
+///|
+pub fn ST_BlackWhiteMode::parse(
+  s : String,
+) -> ST_BlackWhiteMode raise SchemaViolation {
+  match s {
+    "clr" => BwModeClr
+    "auto" => BwModeAuto
+    "gray" => BwModeGray
+    "ltGray" => BwModeLtGray
+    "invGray" => BwModeInvGray
+    "grayWhite" => BwModeGrayWhite
+    "blackGray" => BwModeBlackGray
+    "blackWhite" => BwModeBlackWhite
+    "black" => BwModeBlack
+    "white" => BwModeWhite
+    "hidden" => BwModeHidden
+    _ => enum_violation("ST_BlackWhiteMode")
+  }
+}
+
+///|
+pub fn ST_BlackWhiteMode::new(
+  s : String,
+) -> ST_BlackWhiteMode raise SchemaViolation {
+  ST_BlackWhiteMode::parse(s)
+}
+
+///|
+pub fn ST_BlackWhiteMode::to_string(self : ST_BlackWhiteMode) -> String {
+  match self {
+    BwModeClr => "clr"
+    BwModeAuto => "auto"
+    BwModeGray => "gray"
+    BwModeLtGray => "ltGray"
+    BwModeInvGray => "invGray"
+    BwModeGrayWhite => "grayWhite"
+    BwModeBlackGray => "blackGray"
+    BwModeBlackWhite => "blackWhite"
+    BwModeBlack => "black"
+    BwModeWhite => "white"
+    BwModeHidden => "hidden"
+  }
+}
+
+///|
+/// XSD simple type ST_OnOffStyleType — Part 1 §20.1.10.41. Three-state
+/// override used by `CT_TableStyleTextStyle` attributes `b` / `i` so a
+/// table style can force bold / italic on, off, or fall back to the
+/// theme default.
+pub(all) enum ST_OnOffStyleType {
+  /// §20.1.10.41 "on"
+  OnOffStyleOn
+  /// §20.1.10.41 "off"
+  OnOffStyleOff
+  /// §20.1.10.41 "def"
+  OnOffStyleDef
+} derive(Eq, Debug)
+
+///|
+pub fn ST_OnOffStyleType::parse(
+  s : String,
+) -> ST_OnOffStyleType raise SchemaViolation {
+  match s {
+    "on" => OnOffStyleOn
+    "off" => OnOffStyleOff
+    "def" => OnOffStyleDef
+    _ => enum_violation("ST_OnOffStyleType")
+  }
+}
+
+///|
+pub fn ST_OnOffStyleType::new(
+  s : String,
+) -> ST_OnOffStyleType raise SchemaViolation {
+  ST_OnOffStyleType::parse(s)
+}
+
+///|
+pub fn ST_OnOffStyleType::to_string(self : ST_OnOffStyleType) -> String {
+  match self {
+    OnOffStyleOn => "on"
+    OnOffStyleOff => "off"
+    OnOffStyleDef => "def"
+  }
+}
+
+///|
+/// XSD simple type ST_LineWidth — Part 1 §20.1.10.34. A restriction of
+/// `ST_Coordinate32Unqualified` (xsd:int EMU magnitude) bounded to the
+/// closed interval `[0, 20116800]`. Used by `CT_LineProperties/@w` to
+/// express line stroke width in EMU.
+pub struct ST_LineWidth {
+  /// Raw lexical EMU value (xsd:int).
+  emu : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_LineWidth::parse(s : String) -> ST_LineWidth raise SchemaViolation {
+  let v = parse_int_or_violate("ST_LineWidth", s)
+  if v < 0 || v > 20116800 {
+    measure_violation("ST_LineWidth")
+  }
+  { emu: v }
+}
+
+///|
+pub fn ST_LineWidth::new(s : String) -> ST_LineWidth raise SchemaViolation {
+  ST_LineWidth::parse(s)
+}
+
+///|
+pub fn ST_LineWidth::to_string(self : ST_LineWidth) -> String {
+  self.emu.to_string()
+}
+
+///|
+pub fn ST_LineWidth::to_int(self : ST_LineWidth) -> Int {
+  self.emu
+}
+
 // === Private helpers ===
 
 ///|

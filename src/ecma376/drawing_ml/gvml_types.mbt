@@ -476,60 +476,204 @@ pub fn CT_GvmlGraphicalObjectFrame::to_element(
 
 ///|
 /// XSD complex type CT_GvmlGroupShapeNonVisual — Part 1 §20.1.2.2.27
-/// nvGrpSpPr (Non-Visual Properties for a Group Shape). Sequence: cNvPr
-/// (CT_NonVisualDrawingProps), cNvGrpSpPr
-/// (CT_NonVisualGroupDrawingShapeProps). Annex A.4.1 line 1015. Owned
-/// by chunk4; kept as an element-only wrapper here.
+/// nvGrpSpPr (Non-Visual Properties for a Group Shape). Sequence:
+/// `cNvPr` (CT_NonVisualDrawingProps, required), `cNvGrpSpPr`
+/// (CT_NonVisualGroupDrawingShapeProps, required). Annex A.4.1 lines
+/// 1011..1016. No attributes.
 pub(all) struct CT_GvmlGroupShapeNonVisual {
+  /// <cNvPr> (CT_NonVisualDrawingProps) — required.
+  c_nv_pr : CT_NonVisualDrawingProps
+  /// <cNvGrpSpPr> (CT_NonVisualGroupDrawingShapeProps) — required.
+  c_nv_grp_sp_pr : CT_NonVisualGroupDrawingShapeProps
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_GvmlGroupShapeNonVisual::new(
   element : @xml.Element,
-) -> CT_GvmlGroupShapeNonVisual {
-  { element, }
+) -> CT_GvmlGroupShapeNonVisual raise SchemaViolation {
+  let c_nv_pr = match ct_first_child(element, "cNvPr") {
+    Some(c) => CT_NonVisualDrawingProps::new(c)
+    None =>
+      raise SchemaViolation(
+        schema="dml-main.xsd",
+        path="CT_GvmlGroupShapeNonVisual/cNvPr",
+        reason="missing required cNvPr child element",
+      )
+  }
+  let c_nv_grp_sp_pr = match ct_first_child(element, "cNvGrpSpPr") {
+    Some(c) => CT_NonVisualGroupDrawingShapeProps::new(c)
+    None =>
+      raise SchemaViolation(
+        schema="dml-main.xsd",
+        path="CT_GvmlGroupShapeNonVisual/cNvGrpSpPr",
+        reason="missing required cNvGrpSpPr child element",
+      )
+  }
+  { c_nv_pr, c_nv_grp_sp_pr, element }
 }
 
 ///|
-/// XSD complex type CT_GvmlGroupShape — Part 1 §20.1.2.2.20 grpSp (Group
-/// Shape). Sequence: nvGrpSpPr (CT_GvmlGroupShapeNonVisual), grpSpPr
-/// (CT_GroupShapeProperties), choice (txSp/sp/cxnSp/pic/graphicFrame/grpSp)
-/// 0..unbounded, extLst? (CT_OfficeArtExtensionList). Annex A.4.1 line
-/// 1022; reused by lockedCanvas (§20.3) and PresentationML spTree
-/// (§19.3.1.45). Owned by chunk4 (the recursive `grpSp` choice
-/// references CT_GvmlGroupShape itself); kept as an element-only
-/// wrapper here.
+pub fn CT_GvmlGroupShapeNonVisual::to_element(
+  self : CT_GvmlGroupShapeNonVisual,
+) -> @xml.Element {
+  self.element
+}
+
+///|
+/// EG_GvmlGroupShapeChildren choice (Part 1 §20.1.2.2.20 grpSp,
+/// `xsd:choice minOccurs="0" maxOccurs="unbounded"`). Captured as a
+/// tagged projection so CT_GvmlGroupShape can preserve document order
+/// of nested visual children.
+pub(all) enum EG_GvmlGroupShapeChild {
+  /// <txSp> (CT_GvmlTextShape).
+  GvmlChildTxSp(CT_GvmlTextShape)
+  /// <sp> (CT_GvmlShape).
+  GvmlChildSp(CT_GvmlShape)
+  /// <cxnSp> (CT_GvmlConnector).
+  GvmlChildCxnSp(CT_GvmlConnector)
+  /// <pic> (CT_GvmlPicture).
+  GvmlChildPic(CT_GvmlPicture)
+  /// <graphicFrame> (CT_GvmlGraphicalObjectFrame).
+  GvmlChildGraphicFrame(CT_GvmlGraphicalObjectFrame)
+  /// <grpSp> (CT_GvmlGroupShape) — recursive nested group.
+  GvmlChildGrpSp(CT_GvmlGroupShape)
+} derive(Eq, Debug)
+
+///|
+/// XSD complex type CT_GvmlGroupShape — Part 1 §20.1.2.2.20 grpSp
+/// (Group Shape). Sequence: `nvGrpSpPr` (CT_GvmlGroupShapeNonVisual,
+/// required), `grpSpPr` (CT_GroupShapeProperties, required), choice
+/// (`txSp` | `sp` | `cxnSp` | `pic` | `graphicFrame` | `grpSp` — zero
+/// or more in document order), `extLst` (CT_OfficeArtExtensionList,
+/// optional). Annex A.4.1 lines 1018..1032; reused by lockedCanvas
+/// (§20.3) and PresentationML spTree (§19.3.1.45). No attributes.
 pub(all) struct CT_GvmlGroupShape {
+  /// <nvGrpSpPr> (CT_GvmlGroupShapeNonVisual) — required.
+  nv_grp_sp_pr : CT_GvmlGroupShapeNonVisual
+  /// <grpSpPr> (CT_GroupShapeProperties) — required.
+  grp_sp_pr : CT_GroupShapeProperties
+  /// EG_GvmlGroupShapeChildren choice* — zero or more nested visual
+  /// children in document order.
+  children : Array[EG_GvmlGroupShapeChild]
+  /// <extLst> (CT_OfficeArtExtensionList) — optional.
+  ext_lst : CT_OfficeArtExtensionList?
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GvmlGroupShape::new(element : @xml.Element) -> CT_GvmlGroupShape {
-  { element, }
+pub fn CT_GvmlGroupShape::new(
+  element : @xml.Element,
+) -> CT_GvmlGroupShape raise SchemaViolation {
+  let nv_grp_sp_pr = match ct_first_child(element, "nvGrpSpPr") {
+    Some(c) => CT_GvmlGroupShapeNonVisual::new(c)
+    None =>
+      raise SchemaViolation(
+        schema="dml-main.xsd",
+        path="CT_GvmlGroupShape/nvGrpSpPr",
+        reason="missing required nvGrpSpPr child element",
+      )
+  }
+  let grp_sp_pr = match ct_first_child(element, "grpSpPr") {
+    Some(c) => CT_GroupShapeProperties::new(c)
+    None =>
+      raise SchemaViolation(
+        schema="dml-main.xsd",
+        path="CT_GvmlGroupShape/grpSpPr",
+        reason="missing required grpSpPr child element",
+      )
+  }
+  let children : Array[EG_GvmlGroupShapeChild] = []
+  for node in element.children {
+    match node {
+      @xml.Element(child) =>
+        match child.name.local_name {
+          "txSp" => children.push(GvmlChildTxSp(CT_GvmlTextShape::new(child)))
+          "sp" => children.push(GvmlChildSp(CT_GvmlShape::new(child)))
+          "cxnSp" => children.push(GvmlChildCxnSp(CT_GvmlConnector::new(child)))
+          "pic" => children.push(GvmlChildPic(CT_GvmlPicture::new(child)))
+          "graphicFrame" =>
+            children.push(
+              GvmlChildGraphicFrame(CT_GvmlGraphicalObjectFrame::new(child)),
+            )
+          "grpSp" =>
+            children.push(GvmlChildGrpSp(CT_GvmlGroupShape::new(child)))
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  let ext_lst = match ct_first_child(element, "extLst") {
+    Some(c) => Some(CT_OfficeArtExtensionList::new(c))
+    None => None
+  }
+  { nv_grp_sp_pr, grp_sp_pr, children, ext_lst, element }
+}
+
+///|
+pub fn CT_GvmlGroupShape::to_element(self : CT_GvmlGroupShape) -> @xml.Element {
+  self.element
 }
 
 ///|
 /// XSD complex type CT_GvmlTextShape — Part 1 §20.1.2.2.41 txSp (Text
-/// Shape). Sequence: txBody (CT_TextBody), choice (useSpRect
-/// (CT_GvmlUseShapeRectangle) | xfrm (CT_Transform2D)), extLst?
-/// (CT_OfficeArtExtensionList). Annex A.4.1 line 940. Owned by chunk4;
-/// kept as an element-only wrapper here.
+/// Shape). Sequence: `txBody` (CT_TextBody, required), choice
+/// (`useSpRect` CT_GvmlUseShapeRectangle | `xfrm` CT_Transform2D),
+/// `extLst` (CT_OfficeArtExtensionList, optional). Annex A.4.1 lines
+/// 939..948. No attributes.
 pub(all) struct CT_GvmlTextShape {
+  /// <txBody> (CT_TextBody) — required.
+  tx_body : CT_TextBody
+  /// <useSpRect> (CT_GvmlUseShapeRectangle) — required choice arm.
+  use_sp_rect : CT_GvmlUseShapeRectangle?
+  /// <xfrm> (CT_Transform2D) — required choice arm.
+  xfrm : CT_Transform2D?
+  /// <extLst> (CT_OfficeArtExtensionList) — optional.
+  ext_lst : CT_OfficeArtExtensionList?
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GvmlTextShape::new(element : @xml.Element) -> CT_GvmlTextShape {
-  { element, }
+pub fn CT_GvmlTextShape::new(
+  element : @xml.Element,
+) -> CT_GvmlTextShape raise SchemaViolation {
+  let tx_body = match ct_first_child(element, "txBody") {
+    Some(c) => CT_TextBody::new(c)
+    None =>
+      raise SchemaViolation(
+        schema="dml-main.xsd",
+        path="CT_GvmlTextShape/txBody",
+        reason="missing required txBody child element",
+      )
+  }
+  let use_sp_rect = ct_first_child(element, "useSpRect").map(
+    CT_GvmlUseShapeRectangle::new,
+  )
+  let xfrm = ct_first_child(element, "xfrm").map(CT_Transform2D::new)
+  let ext_lst = match ct_first_child(element, "extLst") {
+    Some(c) => Some(CT_OfficeArtExtensionList::new(c))
+    None => None
+  }
+  { tx_body, use_sp_rect, xfrm, ext_lst, element }
+}
+
+///|
+pub fn CT_GvmlTextShape::to_element(self : CT_GvmlTextShape) -> @xml.Element {
+  self.element
 }
 
 ///|
 /// XSD complex type CT_GvmlUseShapeRectangle — Part 1 §20.1.2.2.42
-/// useSpRect (Use Shape Text Rectangle). Empty complex type — no
-/// attributes or children. Annex A.4.1 line 939. Owned by chunk4; kept
-/// as an element-only wrapper here.
+/// useSpRect (Use Shape Text Rectangle). Annex A.4.1 line 938. Empty
+/// complex type — presence of `useSpRect` alone selects "use the
+/// containing shape's text rectangle" for the parent text shape.
 pub(all) struct CT_GvmlUseShapeRectangle {
+  /// Empty-XSD-type marker (always true once decoded).
+  use_sp_rect : Bool
+  /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
 
@@ -537,5 +681,12 @@ pub(all) struct CT_GvmlUseShapeRectangle {
 pub fn CT_GvmlUseShapeRectangle::new(
   element : @xml.Element,
 ) -> CT_GvmlUseShapeRectangle {
-  { element, }
+  { use_sp_rect: true, element }
+}
+
+///|
+pub fn CT_GvmlUseShapeRectangle::to_element(
+  self : CT_GvmlUseShapeRectangle,
+) -> @xml.Element {
+  self.element
 }

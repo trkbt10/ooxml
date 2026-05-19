@@ -26,7 +26,7 @@ test "round-trip drawing table" {
 test "round-trip table style list" {
   let value = read_table_style_list(
     bytes(
-      "<a:tblStyleLst xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\" def=\"{11111111-1111-1111-1111-111111111111}\"><a:tblStyle styleId=\"{22222222-2222-2222-2222-222222222222}\" styleName=\"Plain\"><a:wholeTbl><a:tcTxStyle b=\"1\" i=\"0\"/><a:tcStyle><a:tcBdr/></a:tcStyle></a:wholeTbl></a:tblStyle></a:tblStyleLst>",
+      "<a:tblStyleLst xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\" def=\"{11111111-1111-1111-1111-111111111111}\"><a:tblStyle styleId=\"{22222222-2222-2222-2222-222222222222}\" styleName=\"Plain\"><a:wholeTbl><a:tcTxStyle b=\"on\" i=\"off\"/><a:tcStyle><a:tcBdr/></a:tcStyle></a:wholeTbl></a:tblStyle></a:tblStyleLst>",
     ),
   )
   assert_eq(value.element.name.local_name, "tblStyleLst")
