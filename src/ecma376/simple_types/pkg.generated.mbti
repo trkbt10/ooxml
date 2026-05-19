@@ -41,25 +41,32 @@ pub fn ST_ConformanceClass::new(String) -> Self raise SchemaViolation
 pub fn ST_ConformanceClass::to_string(Self) -> String
 
 pub struct ST_FixedPercentage {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_FixedPercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_FixedPercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_FixedPercentage::to_string(Self) -> String
 
 pub struct ST_Guid {
-  value : String
+  bytes : FixedArray[Byte]
 } derive(Eq, @debug.Debug)
+pub fn ST_Guid::byte_at(Self, Int) -> Int
 pub fn ST_Guid::new(String) -> Self raise SchemaViolation
 pub fn ST_Guid::to_string(Self) -> String
 
 pub struct ST_HexColorRGB {
-  value : String
+  red : Int
+  green : Int
+  blue : Int
 } derive(Eq, @debug.Debug)
+pub fn ST_HexColorRGB::b(Self) -> Int
+pub fn ST_HexColorRGB::g(Self) -> Int
 pub fn ST_HexColorRGB::new(String) -> Self raise SchemaViolation
+pub fn ST_HexColorRGB::r(Self) -> Int
 pub fn ST_HexColorRGB::to_string(Self) -> String
 
 pub struct ST_Lang {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_Lang::new(String) -> Self raise SchemaViolation
 pub fn ST_Lang::to_string(Self) -> String
@@ -72,58 +79,70 @@ pub fn ST_OnOff::to_bool(Self) -> Bool
 pub fn ST_OnOff::to_string(Self) -> String
 
 pub struct ST_Panose {
-  value : String
+  bytes : FixedArray[Byte]
 } derive(Eq, @debug.Debug)
+pub fn ST_Panose::byte_at(Self, Int) -> Int
 pub fn ST_Panose::new(String) -> Self raise SchemaViolation
 pub fn ST_Panose::to_string(Self) -> String
 
 pub struct ST_Percentage {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_Percentage::new(String) -> Self raise SchemaViolation
+pub fn ST_Percentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_Percentage::to_string(Self) -> String
 
 pub struct ST_PositiveFixedPercentage {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_PositiveFixedPercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedPercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_PositiveFixedPercentage::to_string(Self) -> String
 
 pub struct ST_PositivePercentage {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_PositivePercentage::new(String) -> Self raise SchemaViolation
+pub fn ST_PositivePercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_PositivePercentage::to_string(Self) -> String
 
 pub struct ST_PositiveUniversalMeasure {
-  value : String
+  magnitude : Double
+  unit : UniversalMeasureUnit
 } derive(Eq, @debug.Debug)
 pub fn ST_PositiveUniversalMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_PositiveUniversalMeasure::to_string(Self) -> String
+pub fn ST_PositiveUniversalMeasure::unit_of(Self) -> UniversalMeasureUnit
+pub fn ST_PositiveUniversalMeasure::value(Self) -> Double
 
 pub struct ST_String {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
-pub fn ST_String::new(String) -> Self raise SchemaViolation
+pub fn ST_String::new(String) -> Self
 pub fn ST_String::to_string(Self) -> String
 
-pub struct ST_TwipsMeasure {
-  value : String
+pub enum ST_TwipsMeasure {
+  Twips(UInt64)
+  Measure(ST_PositiveUniversalMeasure)
 } derive(Eq, @debug.Debug)
 pub fn ST_TwipsMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_TwipsMeasure::to_string(Self) -> String
 
 pub struct ST_UniversalMeasure {
-  value : String
+  magnitude : Double
+  unit : UniversalMeasureUnit
 } derive(Eq, @debug.Debug)
 pub fn ST_UniversalMeasure::new(String) -> Self raise SchemaViolation
 pub fn ST_UniversalMeasure::to_string(Self) -> String
+pub fn ST_UniversalMeasure::unit_of(Self) -> UniversalMeasureUnit
+pub fn ST_UniversalMeasure::value(Self) -> Double
 
 pub struct ST_UnsignedDecimalNumber {
-  value : String
+  value : UInt64
 } derive(Eq, @debug.Debug)
 pub fn ST_UnsignedDecimalNumber::new(String) -> Self raise SchemaViolation
 pub fn ST_UnsignedDecimalNumber::to_string(Self) -> String
+pub fn ST_UnsignedDecimalNumber::to_uint64(Self) -> UInt64
 
 pub(all) enum ST_VerticalAlignRun {
   Baseline
@@ -144,15 +163,15 @@ pub fn ST_XAlign::new(String) -> Self raise SchemaViolation
 pub fn ST_XAlign::to_string(Self) -> String
 
 pub struct ST_XmlName {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
 pub fn ST_XmlName::new(String) -> Self raise SchemaViolation
 pub fn ST_XmlName::to_string(Self) -> String
 
 pub struct ST_Xstring {
-  value : String
+  lexical : String
 } derive(Eq, @debug.Debug)
-pub fn ST_Xstring::new(String) -> Self raise SchemaViolation
+pub fn ST_Xstring::new(String) -> Self
 pub fn ST_Xstring::to_string(Self) -> String
 
 pub(all) enum ST_YAlign {
@@ -165,6 +184,17 @@ pub(all) enum ST_YAlign {
 } derive(Eq, @debug.Debug)
 pub fn ST_YAlign::new(String) -> Self raise SchemaViolation
 pub fn ST_YAlign::to_string(Self) -> String
+
+pub(all) enum UniversalMeasureUnit {
+  Millimetre
+  Centimetre
+  Inch
+  Point
+  Pica
+  PiPoint
+} derive(Eq, @debug.Debug)
+pub fn UniversalMeasureUnit::from_lexical(String) -> Self raise SchemaViolation
+pub fn UniversalMeasureUnit::to_string(Self) -> String
 
 // Type aliases
 

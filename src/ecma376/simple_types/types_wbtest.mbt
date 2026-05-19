@@ -1,24 +1,37 @@
 ///|
-test "ST_Lang accepts xsd:string values" {
+test "ST_Lang validates xsd:language lexical form (BCP-47)" {
   assert_eq((try! ST_Lang::new("en-US")).to_string(), "en-US")
-  assert_eq((try! ST_Lang::new("")).to_string(), "")
+  assert_eq((try! ST_Lang::new("ja")).to_string(), "ja")
+  // §22.9.2.6 xsd:language pattern requires a leading letter.
+  let empty = try? ST_Lang::new("")
+  assert_true(empty is Err(SchemaViolation(_)))
+  let digits = try? ST_Lang::new("1234")
+  assert_true(digits is Err(SchemaViolation(_)))
 }
 
 ///|
-test "ST_HexColorRGB validates fixed hex length" {
-  assert_eq((try! ST_HexColorRGB::new("A1b2C3")).to_string(), "A1b2C3")
+test "ST_HexColorRGB decodes RGB channels and renders canonical uppercase" {
+  let color = try! ST_HexColorRGB::new("A1b2C3")
+  assert_eq(color.r(), 0xA1)
+  assert_eq(color.g(), 0xB2)
+  assert_eq(color.b(), 0xC3)
+  // Canonical lexical form is uppercase six-hex-digit.
+  assert_eq(color.to_string(), "A1B2C3")
   let invalid = try? ST_HexColorRGB::new("A1b2CG")
   assert_true(invalid is Err(SchemaViolation(_)))
+  let short = try? ST_HexColorRGB::new("A1B2C")
+  assert_true(short is Err(SchemaViolation(_)))
 }
 
 ///|
-test "ST_Panose validates fixed hex length" {
-  assert_eq(
-    (try! ST_Panose::new("00112233445566778899")).to_string(),
-    "00112233445566778899",
-  )
-  let invalid = try? ST_Panose::new("0011223344556677889")
-  assert_true(invalid is Err(SchemaViolation(_)))
+test "ST_Panose decodes ten classification bytes" {
+  let panose = try! ST_Panose::new("00112233445566778899")
+  assert_eq(panose.byte_at(0), 0x00)
+  assert_eq(panose.byte_at(4), 0x44)
+  assert_eq(panose.byte_at(9), 0x99)
+  assert_eq(panose.to_string(), "00112233445566778899")
+  let short = try? ST_Panose::new("0011223344556677889")
+  assert_true(short is Err(SchemaViolation(_)))
 }
 
 ///|
@@ -32,11 +45,13 @@ test "ST_CalendarType validates enumeration" {
 }
 
 ///|
-test "ST_Guid validates brace-delimited hexadecimal UUID" {
-  assert_eq(
-    (try! ST_Guid::new("{00112233-4455-6677-8899-AABBCCDDEEFF}")).to_string(),
-    "{00112233-4455-6677-8899-AABBCCDDEEFF}",
-  )
+test "ST_Guid decodes 16 raw bytes and renders canonical lexical form" {
+  let guid = try! ST_Guid::new("{00112233-4455-6677-8899-AABBCCDDEEFF}")
+  assert_eq(guid.byte_at(0), 0x00)
+  assert_eq(guid.byte_at(3), 0x33)
+  assert_eq(guid.byte_at(4), 0x44)
+  assert_eq(guid.byte_at(15), 0xFF)
+  assert_eq(guid.to_string(), "{00112233-4455-6677-8899-AABBCCDDEEFF}")
   let invalid = try? ST_Guid::new("00112233-4455-6677-8899-AABBCCDDEEFF")
   assert_true(invalid is Err(SchemaViolation(_)))
 }
@@ -51,8 +66,8 @@ test "ST_OnOff parses schema boolean spellings" {
 
 ///|
 test "ST_String accepts xsd:string values" {
-  assert_eq((try! ST_String::new("plain text")).to_string(), "plain text")
-  assert_eq((try! ST_String::new("")).to_string(), "")
+  assert_eq(ST_String::new("plain text").to_string(), "plain text")
+  assert_eq(ST_String::new("").to_string(), "")
 }
 
 ///|
@@ -63,19 +78,35 @@ test "ST_XmlName validates NCName lexical form" {
 }
 
 ///|
-test "ST_UnsignedDecimalNumber validates unsignedLong range" {
-  assert_eq(
-    (try! ST_UnsignedDecimalNumber::new("18446744073709551615")).to_string(),
-    "18446744073709551615",
-  )
+test "ST_UnsignedDecimalNumber decodes to UInt64" {
+  let v = try! ST_UnsignedDecimalNumber::new("18446744073709551615")
+  assert_eq(v.to_uint64(), 18446744073709551615UL)
+  assert_eq(v.to_string(), "18446744073709551615")
+  let small = try! ST_UnsignedDecimalNumber::new("0")
+  assert_eq(small.to_uint64(), 0UL)
   let invalid = try? ST_UnsignedDecimalNumber::new("18446744073709551616")
   assert_true(invalid is Err(SchemaViolation(_)))
+  let negative = try? ST_UnsignedDecimalNumber::new("-1")
+  assert_true(negative is Err(SchemaViolation(_)))
 }
 
 ///|
-test "ST_TwipsMeasure accepts unsigned decimals or positive universal measures" {
-  assert_eq((try! ST_TwipsMeasure::new("1440")).to_string(), "1440")
-  assert_eq((try! ST_TwipsMeasure::new("12.5pt")).to_string(), "12.5pt")
+test "ST_TwipsMeasure discriminates twips vs universal measure" {
+  let twips = try! ST_TwipsMeasure::new("1440")
+  match twips {
+    Twips(value) => assert_eq(value, 1440UL)
+    _ => assert_true(false)
+  }
+  assert_eq(twips.to_string(), "1440")
+  let measure = try! ST_TwipsMeasure::new("12.5pt")
+  match measure {
+    Measure(m) => {
+      assert_eq(m.value(), 12.5)
+      assert_true(m.unit_of() == Point)
+    }
+    _ => assert_true(false)
+  }
+  assert_eq(measure.to_string(), "12.5pt")
   let invalid = try? ST_TwipsMeasure::new("-1pt")
   assert_true(invalid is Err(SchemaViolation(_)))
 }
@@ -92,8 +123,8 @@ test "ST_VerticalAlignRun validates enumeration" {
 
 ///|
 test "ST_Xstring accepts xsd:string values" {
-  assert_eq((try! ST_Xstring::new("_x0041_")).to_string(), "_x0041_")
-  assert_eq((try! ST_Xstring::new("")).to_string(), "")
+  assert_eq(ST_Xstring::new("_x0041_").to_string(), "_x0041_")
+  assert_eq(ST_Xstring::new("").to_string(), "")
 }
 
 ///|
@@ -118,43 +149,62 @@ test "ST_ConformanceClass validates enumeration" {
 }
 
 ///|
-test "ST_UniversalMeasure validates signed decimal measures" {
-  assert_eq((try! ST_UniversalMeasure::new("-12.5mm")).to_string(), "-12.5mm")
+test "ST_UniversalMeasure decodes signed magnitude + unit" {
+  let m = try! ST_UniversalMeasure::new("-12.5mm")
+  assert_eq(m.value(), -12.5)
+  assert_true(m.unit_of() == Millimetre)
+  assert_eq(m.to_string(), "-12.5mm")
   let invalid = try? ST_UniversalMeasure::new("12px")
   assert_true(invalid is Err(SchemaViolation(_)))
 }
 
 ///|
-test "ST_PositiveUniversalMeasure rejects negative measures" {
-  assert_eq((try! ST_PositiveUniversalMeasure::new("0cm")).to_string(), "0cm")
+test "ST_PositiveUniversalMeasure rejects negative magnitudes" {
+  let m = try! ST_PositiveUniversalMeasure::new("0cm")
+  assert_eq(m.value(), 0.0)
+  assert_true(m.unit_of() == Centimetre)
+  assert_eq(m.to_string(), "0cm")
   let invalid = try? ST_PositiveUniversalMeasure::new("-0.1cm")
   assert_true(invalid is Err(SchemaViolation(_)))
 }
 
 ///|
-test "ST_Percentage validates signed decimal percent" {
-  assert_eq((try! ST_Percentage::new("-12.5%")).to_string(), "-12.5%")
+test "ST_Percentage decodes signed decimal percent at 1000ths precision" {
+  let p = try! ST_Percentage::new("-12.5%")
+  assert_eq(p.thousandths_of_percent(), -12500L)
+  assert_eq(p.to_string(), "-12.5%")
+  let zero = try! ST_Percentage::new("0%")
+  assert_eq(zero.thousandths_of_percent(), 0L)
+  assert_eq(zero.to_string(), "0%")
   let invalid = try? ST_Percentage::new("12.5")
   assert_true(invalid is Err(SchemaViolation(_)))
 }
 
 ///|
-test "ST_FixedPercentage validates signed range" {
-  assert_eq((try! ST_FixedPercentage::new("-100.0%")).to_string(), "-100.0%")
+test "ST_FixedPercentage validates signed range [-100, 100]" {
+  let p = try! ST_FixedPercentage::new("-100.0%")
+  assert_eq(p.thousandths_of_percent(), -100000L)
+  assert_eq(p.to_string(), "-100%")
   let invalid = try? ST_FixedPercentage::new("100.1%")
   assert_true(invalid is Err(SchemaViolation(_)))
 }
 
 ///|
 test "ST_PositivePercentage rejects negative values" {
-  assert_eq((try! ST_PositivePercentage::new("12.5%")).to_string(), "12.5%")
+  let p = try! ST_PositivePercentage::new("12.5%")
+  assert_eq(p.thousandths_of_percent(), 12500L)
+  assert_eq(p.to_string(), "12.5%")
   let invalid = try? ST_PositivePercentage::new("-0.1%")
   assert_true(invalid is Err(SchemaViolation(_)))
 }
 
 ///|
 test "ST_PositiveFixedPercentage validates non-negative fixed range" {
-  assert_eq((try! ST_PositiveFixedPercentage::new("100%")).to_string(), "100%")
+  let p = try! ST_PositiveFixedPercentage::new("100%")
+  assert_eq(p.thousandths_of_percent(), 100000L)
+  assert_eq(p.to_string(), "100%")
   let invalid = try? ST_PositiveFixedPercentage::new("-1%")
   assert_true(invalid is Err(SchemaViolation(_)))
+  let too_high = try? ST_PositiveFixedPercentage::new("100.1%")
+  assert_true(too_high is Err(SchemaViolation(_)))
 }
