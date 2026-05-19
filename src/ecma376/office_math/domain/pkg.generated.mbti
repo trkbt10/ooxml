@@ -442,9 +442,10 @@ pub fn ST_BreakBinSub::parse(String) -> Self raise SchemaViolation
 pub fn ST_BreakBinSub::to_string(Self) -> String
 
 pub struct ST_Char {
-  value : String
+  character : Char
 } derive(Eq, @debug.Debug)
 pub fn ST_Char::parse(String) -> Self raise SchemaViolation
+pub fn ST_Char::to_char(Self) -> Char
 pub fn ST_Char::to_string(Self) -> String
 
 pub(all) enum ST_FType {
@@ -457,15 +458,17 @@ pub fn ST_FType::parse(String) -> Self raise SchemaViolation
 pub fn ST_FType::to_string(Self) -> String
 
 pub struct ST_Integer2 {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_Integer2::parse(String) -> Self raise SchemaViolation
+pub fn ST_Integer2::to_int(Self) -> Int
 pub fn ST_Integer2::to_string(Self) -> String
 
 pub struct ST_Integer255 {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_Integer255::parse(String) -> Self raise SchemaViolation
+pub fn ST_Integer255::to_int(Self) -> Int
 pub fn ST_Integer255::to_string(Self) -> String
 
 pub(all) enum ST_Jc {
@@ -503,9 +506,10 @@ pub fn ST_Shp::parse(String) -> Self raise SchemaViolation
 pub fn ST_Shp::to_string(Self) -> String
 
 pub struct ST_SpacingRule {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_SpacingRule::parse(String) -> Self raise SchemaViolation
+pub fn ST_SpacingRule::to_int(Self) -> Int
 pub fn ST_SpacingRule::to_string(Self) -> String
 
 pub(all) enum ST_Style {
@@ -525,10 +529,11 @@ pub fn ST_TopBot::parse(String) -> Self raise SchemaViolation
 pub fn ST_TopBot::to_string(Self) -> String
 
 pub struct ST_UnSignedInteger {
-  value : String
+  value : UInt
 } derive(Eq, @debug.Debug)
 pub fn ST_UnSignedInteger::parse(String) -> Self raise SchemaViolation
 pub fn ST_UnSignedInteger::to_string(Self) -> String
+pub fn ST_UnSignedInteger::to_uint(Self) -> UInt
 
 // Type aliases
 

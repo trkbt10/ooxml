@@ -5,93 +5,164 @@ pub(all) suberror SchemaViolation {
 } derive(Debug)
 
 ///|
-/// XSD simple type ST_Integer255 (§22.1.x).
-pub struct ST_Integer255 {
-  value : String
+/// XSD simple type ST_Char — Part 1 §22.1.3.3 single-character string
+/// (xsd:string restricted to maximum length 1). The character is stored
+/// as a typed `Char` (Unicode scalar value), not the raw lexical string,
+/// so callers can interrogate the character without re-parsing.
+pub struct ST_Char {
+  character : Char
 } derive(Eq, Debug)
 
 ///|
-pub fn ST_Integer255::parse(s : String) -> ST_Integer255 raise SchemaViolation {
-  validate_int("ST_Integer255", s)
-  { value: s }
+/// Part 1 §22.1.3.3 — decode the lexical form to a single Unicode
+/// scalar. Empty strings and strings holding more than one Unicode
+/// character (including BMP code units that aren't surrogate-paired
+/// with their other half) are rejected per the "max length 1" facet.
+pub fn ST_Char::parse(s : String) -> ST_Char raise SchemaViolation {
+  match decode_single_char(s) {
+    Some(ch) => { character: ch }
+    None => invalid("ST_Char", s)
+  }
 }
 
 ///|
-pub fn ST_Integer255::to_string(self : ST_Integer255) -> String {
-  self.value
+/// Render the single character back to its canonical lexical form.
+pub fn ST_Char::to_string(self : ST_Char) -> String {
+  self.character.to_string()
 }
 
 ///|
-/// XSD simple type ST_Integer2 (§22.1.x).
+/// Accessor — the wrapped Unicode scalar.
+pub fn ST_Char::to_char(self : ST_Char) -> Char {
+  self.character
+}
+
+///|
+/// XSD simple type ST_Integer2 — Part 1 §22.1.3.5 xsd:integer
+/// restricted to the closed range [-2, +2]. Stored as a native `Int`
+/// so callers do not have to re-parse the lexical form.
 pub struct ST_Integer2 {
-  value : String
+  value : Int
 } derive(Eq, Debug)
 
 ///|
+/// Part 1 §22.1.3.5 — decode the signed-integer lexical form, raising
+/// when the value falls outside [-2, +2].
 pub fn ST_Integer2::parse(s : String) -> ST_Integer2 raise SchemaViolation {
-  validate_int("ST_Integer2", s)
-  { value: s }
+  let value = parse_signed_int("ST_Integer2", s)
+  if value < -2 || value > 2 {
+    invalid("ST_Integer2", s)
+  }
+  { value, }
 }
 
 ///|
+/// Render the integer back to its canonical lexical form (no leading
+/// `+`, matching xsd:integer's canonical representation).
 pub fn ST_Integer2::to_string(self : ST_Integer2) -> String {
+  self.value.to_string()
+}
+
+///|
+/// Numeric accessor.
+pub fn ST_Integer2::to_int(self : ST_Integer2) -> Int {
   self.value
 }
 
 ///|
-/// XSD simple type ST_SpacingRule (§22.1.x).
-pub struct ST_SpacingRule {
-  value : String
+/// XSD simple type ST_Integer255 — Part 1 §22.1.3.6 xsd:integer
+/// restricted to the closed range [1, 255]. Stored as a native `Int`.
+pub struct ST_Integer255 {
+  value : Int
 } derive(Eq, Debug)
 
 ///|
+/// Part 1 §22.1.3.6 — decode the signed-integer lexical form, raising
+/// when the value falls outside [1, 255].
+pub fn ST_Integer255::parse(s : String) -> ST_Integer255 raise SchemaViolation {
+  let value = parse_signed_int("ST_Integer255", s)
+  if value < 1 || value > 255 {
+    invalid("ST_Integer255", s)
+  }
+  { value, }
+}
+
+///|
+/// Render the integer back to its canonical lexical form.
+pub fn ST_Integer255::to_string(self : ST_Integer255) -> String {
+  self.value.to_string()
+}
+
+///|
+/// Numeric accessor.
+pub fn ST_Integer255::to_int(self : ST_Integer255) -> Int {
+  self.value
+}
+
+///|
+/// XSD simple type ST_SpacingRule — Part 1 §22.1.3.11 xsd:integer
+/// restricted to the closed range [0, 4] (the five matrix row-spacing
+/// rules). Stored as a native `Int`.
+pub struct ST_SpacingRule {
+  value : Int
+} derive(Eq, Debug)
+
+///|
+/// Part 1 §22.1.3.11 — decode the signed-integer lexical form, raising
+/// when the value falls outside [0, 4].
 pub fn ST_SpacingRule::parse(
   s : String,
 ) -> ST_SpacingRule raise SchemaViolation {
-  validate_int("ST_SpacingRule", s)
-  { value: s }
+  let value = parse_signed_int("ST_SpacingRule", s)
+  if value < 0 || value > 4 {
+    invalid("ST_SpacingRule", s)
+  }
+  { value, }
 }
 
 ///|
+/// Render the integer back to its canonical lexical form.
 pub fn ST_SpacingRule::to_string(self : ST_SpacingRule) -> String {
+  self.value.to_string()
+}
+
+///|
+/// Numeric accessor.
+pub fn ST_SpacingRule::to_int(self : ST_SpacingRule) -> Int {
   self.value
 }
 
 ///|
-/// XSD simple type ST_UnSignedInteger (§22.1.x).
+/// XSD simple type ST_UnSignedInteger — Part 1 §22.1.3.14
+/// xsd:unsignedInt (0 to 2^32 − 1). Stored as a native `UInt` so
+/// callers can do arithmetic without re-parsing the lexical form.
 pub struct ST_UnSignedInteger {
-  value : String
+  value : UInt
 } derive(Eq, Debug)
 
 ///|
+/// Part 1 §22.1.3.14 — decode the unsigned-integer lexical form.
 pub fn ST_UnSignedInteger::parse(
   s : String,
 ) -> ST_UnSignedInteger raise SchemaViolation {
-  validate_unsigned_int("ST_UnSignedInteger", s)
-  { value: s }
-}
-
-///|
-pub fn ST_UnSignedInteger::to_string(self : ST_UnSignedInteger) -> String {
-  self.value
-}
-
-///|
-/// XSD simple type ST_Char (§22.1.x).
-pub struct ST_Char {
-  value : String
-} derive(Eq, Debug)
-
-///|
-pub fn ST_Char::parse(s : String) -> ST_Char raise SchemaViolation {
-  if s.length() == 0 {
-    invalid("ST_Char", s)
+  if !is_unsigned_int_lexical(s) {
+    invalid("ST_UnSignedInteger", s)
   }
-  { value: s }
+  match parse_uint32(s) {
+    Some(value) => { value, }
+    None => invalid("ST_UnSignedInteger", s)
+  }
 }
 
 ///|
-pub fn ST_Char::to_string(self : ST_Char) -> String {
+/// Render the value back to its canonical decimal lexical form.
+pub fn ST_UnSignedInteger::to_string(self : ST_UnSignedInteger) -> String {
+  self.value.to_string()
+}
+
+///|
+/// Numeric accessor.
+pub fn ST_UnSignedInteger::to_uint(self : ST_UnSignedInteger) -> UInt {
   self.value
 }
 
@@ -358,24 +429,45 @@ fn[T] invalid(type_name : String, value : String) -> T raise SchemaViolation {
 }
 
 ///|
-fn validate_int(type_name : String, s : String) -> Unit raise SchemaViolation {
-  if !is_int(s) {
-    invalid(type_name, s)
+/// Decode a string to a single Unicode scalar value, returning None
+/// when the string is empty or contains more than one Unicode
+/// character. Handles UTF-16 surrogate pairs so that non-BMP scalars
+/// (encoded as two code units in MoonBit's UTF-16 String) still count
+/// as one logical character.
+fn decode_single_char(s : String) -> Char? {
+  let len = s.length()
+  if len == 0 {
+    None
+  } else {
+    let first = s.code_unit_at(0).to_int()
+    if first >= 0xD800 && first <= 0xDBFF {
+      // High surrogate — expect a low surrogate to complete the pair.
+      if len != 2 {
+        None
+      } else {
+        let second = s.code_unit_at(1).to_int()
+        if second < 0xDC00 || second > 0xDFFF {
+          None
+        } else {
+          let scalar = 0x10000 + (first - 0xD800) * 0x400 + (second - 0xDC00)
+          Some(scalar.unsafe_to_char())
+        }
+      }
+    } else if first >= 0xDC00 && first <= 0xDFFF {
+      // Stray low surrogate is not a valid character.
+      None
+    } else if len != 1 {
+      None
+    } else {
+      Some(first.unsafe_to_char())
+    }
   }
 }
 
 ///|
-fn validate_unsigned_int(
-  type_name : String,
-  s : String,
-) -> Unit raise SchemaViolation {
-  if !is_unsigned_int(s) {
-    invalid(type_name, s)
-  }
-}
-
-///|
-fn is_int(s : String) -> Bool {
+/// Lexical check for xsd:integer: optional sign followed by one or
+/// more ASCII decimal digits.
+fn is_signed_int_lexical(s : String) -> Bool {
   if s.length() == 0 {
     false
   } else {
@@ -383,21 +475,91 @@ fn is_int(s : String) -> Bool {
     if s[0:1] == "-" || s[0:1] == "+" {
       start = 1
     }
-    start < s.length() && digits(s, start, s.length())
+    start < s.length() && all_digits(s, start, s.length())
   }
 }
 
 ///|
-fn is_unsigned_int(s : String) -> Bool {
-  s.length() > 0 && digits(s, 0, s.length())
+/// Lexical check for xsd:unsignedInt: one or more ASCII decimal
+/// digits (no sign).
+fn is_unsigned_int_lexical(s : String) -> Bool {
+  s.length() > 0 && all_digits(s, 0, s.length())
 }
 
 ///|
-fn digits(s : String, start : Int, end : Int) -> Bool {
+fn all_digits(s : String, start : Int, end : Int) -> Bool {
   let mut ok = start >= 0 && end <= s.length() && start < end
   for i in start..<end {
     let ch = s[i:i + 1]
     ok = ok && ch >= "0" && ch <= "9"
   }
   ok
+}
+
+///|
+/// Decode an xsd:integer lexical form to a native Int, raising on any
+/// lexical mismatch. Numeric overflow (beyond Int's 32-bit range) also
+/// raises so that downstream code never silently mis-stores a value.
+fn parse_signed_int(
+  type_name : String,
+  s : String,
+) -> Int raise SchemaViolation {
+  if !is_signed_int_lexical(s) {
+    invalid(type_name, s)
+  }
+  let mut start = 0
+  let mut negative = false
+  if s[0:1] == "-" {
+    negative = true
+    start = 1
+  } else if s[0:1] == "+" {
+    start = 1
+  }
+  // Detect overflow: 2^31 = 2147483648 (10 digits). Anything longer
+  // than 10 digits is guaranteed overflow.
+  let digit_count = s.length() - start
+  if digit_count > 10 {
+    invalid(type_name, s)
+  }
+  let mut acc : Int64 = 0L
+  for i in start..<s.length() {
+    let d = (s.code_unit_at(i).to_int() - 0x30).to_int64()
+    acc = acc * 10L + d
+  }
+  let limit_positive : Int64 = 2147483647L
+  let limit_negative : Int64 = 2147483648L
+  if negative {
+    if acc > limit_negative {
+      invalid(type_name, s)
+    }
+    (-acc).to_int()
+  } else {
+    if acc > limit_positive {
+      invalid(type_name, s)
+    }
+    acc.to_int()
+  }
+}
+
+///|
+/// Decode an xsd:unsignedInt lexical form (already validated as
+/// digits-only by the caller) to a UInt, returning None on overflow.
+fn parse_uint32(s : String) -> UInt? {
+  // 2^32 − 1 = 4294967295 (10 digits). Strings longer than 10 digits
+  // are guaranteed to overflow.
+  if s.length() > 10 {
+    None
+  } else {
+    let mut acc : UInt64 = 0UL
+    for i in 0..<s.length() {
+      let d = (s.code_unit_at(i).to_int() - 0x30).to_uint64()
+      acc = acc * 10UL + d
+    }
+    let limit : UInt64 = 4294967295UL
+    if acc > limit {
+      None
+    } else {
+      Some(acc.to_uint())
+    }
+  }
 }
