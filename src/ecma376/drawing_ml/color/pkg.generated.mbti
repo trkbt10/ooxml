@@ -49,96 +49,145 @@ pub suberror SchemaViolation {
 // Types and methods
 pub(all) struct CT_Color {
   element : @xml.Element
+  color_child_name : String
 } derive(Eq, @debug.Debug)
-pub fn CT_Color::new(@xml.Element) -> Self
+pub fn CT_Color::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ColorChangeEffect {
   element : @xml.Element
+  clr_from_child_name : String
+  clr_to_child_name : String
+  use_a : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_ColorChangeEffect::new(@xml.Element) -> Self
 
 pub(all) struct CT_ColorMRU {
   element : @xml.Element
+  color_child_names : Array[String]
 } derive(Eq, @debug.Debug)
 pub fn CT_ColorMRU::new(@xml.Element) -> Self
 
 pub(all) struct CT_ColorMapping {
   element : @xml.Element
+  bg1 : String
+  tx1 : String
+  bg2 : String
+  tx2 : String
+  accent1 : String
+  accent2 : String
+  accent3 : String
+  accent4 : String
+  accent5 : String
+  accent6 : String
+  hlink : String
+  fol_hlink : String
+  has_ext_lst : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorMapping::new(@xml.Element) -> Self
+pub fn CT_ColorMapping::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ColorMappingOverride {
   element : @xml.Element
+  is_master : Bool
+  is_override : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorMappingOverride::new(@xml.Element) -> Self
+pub fn CT_ColorMappingOverride::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ColorReplaceEffect {
   element : @xml.Element
+  color_child_name : String
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorReplaceEffect::new(@xml.Element) -> Self
+pub fn CT_ColorReplaceEffect::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ColorScheme {
   element : @xml.Element
+  name : String
+  slot_names : Array[String]
+  has_ext_lst : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_ColorScheme::new(@xml.Element) -> Self
+pub fn CT_ColorScheme::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ColorSchemeAndMapping {
   element : @xml.Element
+  clr_scheme_child_name : String
+  has_clr_map : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_ColorSchemeAndMapping::new(@xml.Element) -> Self
 
 pub(all) struct CT_ColorSchemeList {
   element : @xml.Element
+  extra_scheme_count : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_ColorSchemeList::new(@xml.Element) -> Self
 
 pub(all) struct CT_CustomColor {
   element : @xml.Element
+  name : String?
+  color_child_name : String
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomColor::new(@xml.Element) -> Self
+pub fn CT_CustomColor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_CustomColorList {
   element : @xml.Element
+  custom_color_count : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomColorList::new(@xml.Element) -> Self
 
 pub(all) struct CT_HslColor {
   element : @xml.Element
+  hue : String
+  sat : String
+  lum : String
+  transform_names : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn CT_HslColor::new(@xml.Element) -> Self
+pub fn CT_HslColor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PresetColor {
   element : @xml.Element
+  val : String
+  transform_names : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn CT_PresetColor::new(@xml.Element) -> Self
+pub fn CT_PresetColor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SRgbColor {
   element : @xml.Element
+  val : String
+  transform_names : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn CT_SRgbColor::new(@xml.Element) -> Self
+pub fn CT_SRgbColor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ScRgbColor {
   element : @xml.Element
+  r : String
+  g : String
+  b : String
+  transform_names : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn CT_ScRgbColor::new(@xml.Element) -> Self
+pub fn CT_ScRgbColor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SchemeColor {
   element : @xml.Element
+  val : String
+  transform_names : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn CT_SchemeColor::new(@xml.Element) -> Self
+pub fn CT_SchemeColor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SolidColorFillProperties {
   element : @xml.Element
+  color_child_name : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_SolidColorFillProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_SystemColor {
   element : @xml.Element
+  val : String
+  last_clr : String?
+  transform_names : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn CT_SystemColor::new(@xml.Element) -> Self
+pub fn CT_SystemColor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_TextBulletColorFollowText {
   element : @xml.Element
+  is_empty : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_TextBulletColorFollowText::new(@xml.Element) -> Self
 

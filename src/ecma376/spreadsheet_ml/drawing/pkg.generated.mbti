@@ -33,79 +33,157 @@ pub suberror SchemaViolation {
 // Types and methods
 pub(all) struct CT_AbsoluteAnchor {
   element : @xml.Element
+  pos_child_name : String
+  ext_child_name : String
+  object_choice_child_name : String
+  client_data_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_AbsoluteAnchor::new(@xml.Element) -> Self
 
 pub(all) struct CT_AnchorClientData {
   element : @xml.Element
+  f_locks_with_sheet : String?
+  f_prints_with_sheet : String?
 } derive(Eq, @debug.Debug)
+pub fn CT_AnchorClientData::new(@xml.Element) -> Self
 
 #alias(ClientData)
 pub(all) struct CT_ClientData {
   element : @xml.Element
+  object_type : String
+  child_names : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CT_ClientData::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Connector {
   element : @xml.Element
+  nv_cxn_sp_pr_child_name : String
+  sp_pr_child_name : String
+  has_style : Bool
+  macro_ : String?
+  f_published : String?
 } derive(Eq, @debug.Debug)
+pub fn CT_Connector::new(@xml.Element) -> Self
 
 pub(all) struct CT_ConnectorNonVisual {
   element : @xml.Element
+  c_nv_pr_child_name : String
+  c_nv_cxn_sp_pr_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_ConnectorNonVisual::new(@xml.Element) -> Self
 
 #alias(WsDr)
 pub(all) struct CT_Drawing {
   element : @xml.Element
+  anchor_child_names : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CT_Drawing::new(@xml.Element) -> Self
 
 pub(all) struct CT_GraphicalObjectFrame {
   element : @xml.Element
+  nv_graphic_frame_pr_child_name : String
+  xfrm_child_name : String
+  graphic_child_name : String
+  macro_ : String?
+  f_published : String?
 } derive(Eq, @debug.Debug)
+pub fn CT_GraphicalObjectFrame::new(@xml.Element) -> Self
 
 pub(all) struct CT_GraphicalObjectFrameNonVisual {
   element : @xml.Element
+  c_nv_pr_child_name : String
+  c_nv_graphic_frame_pr_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_GraphicalObjectFrameNonVisual::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupShape {
   element : @xml.Element
+  nv_grp_sp_pr_child_name : String
+  grp_sp_pr_child_name : String
+  shape_child_names : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CT_GroupShape::new(@xml.Element) -> Self
 
 pub(all) struct CT_GroupShapeNonVisual {
   element : @xml.Element
+  c_nv_pr_child_name : String
+  c_nv_grp_sp_pr_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_GroupShapeNonVisual::new(@xml.Element) -> Self
 
 #alias(From)
 #alias(To)
 pub(all) struct CT_Marker {
   element : @xml.Element
+  col : String
+  col_off : String
+  row : String
+  row_off : String
 } derive(Eq, @debug.Debug)
+pub fn CT_Marker::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_OneCellAnchor {
   element : @xml.Element
+  from_child_name : String
+  ext_child_name : String
+  object_choice_child_name : String
+  client_data_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_OneCellAnchor::new(@xml.Element) -> Self
 
 pub(all) struct CT_Picture {
   element : @xml.Element
+  nv_pic_pr_child_name : String
+  blip_fill_child_name : String
+  sp_pr_child_name : String
+  has_style : Bool
+  macro_ : String?
+  f_published : String?
 } derive(Eq, @debug.Debug)
+pub fn CT_Picture::new(@xml.Element) -> Self
 
 pub(all) struct CT_PictureNonVisual {
   element : @xml.Element
+  c_nv_pr_child_name : String
+  c_nv_pic_pr_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_PictureNonVisual::new(@xml.Element) -> Self
 
 pub(all) struct CT_Rel {
   element : @xml.Element
+  r_id : String
 } derive(Eq, @debug.Debug)
+pub fn CT_Rel::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Shape {
   element : @xml.Element
+  nv_sp_pr_child_name : String
+  sp_pr_child_name : String
+  has_style : Bool
+  has_tx_body : Bool
+  macro_ : String?
+  textlink : String?
+  f_locks_text : String?
+  f_published : String?
 } derive(Eq, @debug.Debug)
+pub fn CT_Shape::new(@xml.Element) -> Self
 
 pub(all) struct CT_ShapeNonVisual {
   element : @xml.Element
+  c_nv_pr_child_name : String
+  c_nv_sp_pr_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_ShapeNonVisual::new(@xml.Element) -> Self
 
 pub(all) struct CT_TwoCellAnchor {
   element : @xml.Element
+  from_child_name : String
+  to_child_name : String
+  object_choice_child_name : String
+  client_data_child_name : String
+  edit_as : String?
 } derive(Eq, @debug.Debug)
+pub fn CT_TwoCellAnchor::new(@xml.Element) -> Self
 
 pub(all) enum EG_Anchor {
   TwoCellAnchor(CT_TwoCellAnchor)

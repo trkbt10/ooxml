@@ -38,46 +38,74 @@ pub suberror SchemaViolation {
 #alias(DatastoreItem)
 pub(all) struct CT_DatastoreItem {
   element : @xml.Element
+  item_id : String
+  schema_refs : CT_DatastoreSchemaRefs?
 } derive(Eq, @debug.Debug)
+pub fn CT_DatastoreItem::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_DatastoreSchemaRef {
   element : @xml.Element
+  uri : String
 } derive(Eq, @debug.Debug)
+pub fn CT_DatastoreSchemaRef::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_DatastoreSchemaRefs {
   element : @xml.Element
+  schema_refs : Array[CT_DatastoreSchemaRef]
 } derive(Eq, @debug.Debug)
+pub fn CT_DatastoreSchemaRefs::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_DigSigBlob {
   element : @xml.Element
+  blob_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_DigSigBlob::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(CustomProperties)
 #alias(ExtendedProperties)
 pub(all) struct CT_Properties {
   element : @xml.Element
+  child_names : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CT_Properties::new(@xml.Element) -> Self
 
 pub(all) struct CT_Property {
   element : @xml.Element
+  fmtid : String
+  pid : String
+  name : String?
+  link_target : String?
+  payload_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_Property::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Schema {
   element : @xml.Element
+  uri : String?
+  manifest_location : String?
+  schema_location : String?
+  schema_language : String?
 } derive(Eq, @debug.Debug)
+pub fn CT_Schema::new(@xml.Element) -> Self
 
 #alias(SchemaLibrary)
 pub(all) struct CT_SchemaLibrary {
   element : @xml.Element
+  schemas : Array[CT_Schema]
 } derive(Eq, @debug.Debug)
+pub fn CT_SchemaLibrary::new(@xml.Element) -> Self
 
 pub(all) struct CT_VectorLpstr {
   element : @xml.Element
+  vector_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_VectorLpstr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_VectorVariant {
   element : @xml.Element
+  vector_child_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_VectorVariant::new(@xml.Element) -> Self raise SchemaViolation
 
 // Type aliases
 

@@ -109,40 +109,162 @@ pub(all) struct VariantAtom {
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Empty from shared-documentPropertiesVariantTypes.xsd.
+/// XSD complex type CT_Empty — Part 1 §22.4.2.9. Empty element with no
+/// attributes and no children; preserves source element for round-trip.
 pub(all) struct CT_Empty {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// Sentinel marking empty content (xsd:complexType CT_Empty has no payload).
+  is_empty : Bool
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Null from shared-documentPropertiesVariantTypes.xsd.
+/// Construct CT_Empty from its source XML element.
+pub fn CT_Empty::new(element : @xml.Element) -> CT_Empty {
+  { element, is_empty: true }
+}
+
+///|
+/// XSD complex type CT_Null — Part 1 §22.4.2.19. Empty element with no
+/// attributes and no children; preserves source element for round-trip.
 pub(all) struct CT_Null {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// Sentinel marking null content (xsd:complexType CT_Null has no payload).
+  is_null : Bool
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Vector from shared-documentPropertiesVariantTypes.xsd.
+/// Construct CT_Null from its source XML element.
+pub fn CT_Null::new(element : @xml.Element) -> CT_Null {
+  { element, is_null: true }
+}
+
+///|
+/// XSD complex type CT_Vector — Part 1 §22.4.2.33. Required attributes
+/// `baseType` (ST_VectorBaseType) and `size` (xsd:unsignedInt) plus an
+/// unbounded choice of variant payload elements.
 pub(all) struct CT_Vector {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @baseType (ST_VectorBaseType) — required.
+  base_type : ST_VectorBaseType
+  /// @size (xsd:unsignedInt) — required.
+  size : String
+  /// Vector item element local names in document order.
+  item_names : Array[String]
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Array from shared-documentPropertiesVariantTypes.xsd.
+/// Construct CT_Vector by parsing attributes and items from the XML element.
+pub fn CT_Vector::new(
+  element : @xml.Element,
+) -> CT_Vector raise SchemaViolation {
+  let base_type_value = require_attr(element, "baseType", "vector/@baseType")
+  let base_type = ST_VectorBaseType::new(base_type_value)
+  let size = require_attr(element, "size", "vector/@size")
+  let item_names : Array[String] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      item_names.push(child_element.name.local_name)
+    }
+  }
+  { element, base_type, size, item_names }
+}
+
+///|
+/// XSD complex type CT_Array — Part 1 §22.4.2.1. Required attributes
+/// `lBounds`, `uBounds` (xsd:int) and `baseType` (ST_ArrayBaseType) plus an
+/// unbounded choice of variant payload elements.
 pub(all) struct CT_Array {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @lBounds (xsd:int) — required.
+  l_bounds : String
+  /// @uBounds (xsd:int) — required.
+  u_bounds : String
+  /// @baseType (ST_ArrayBaseType) — required.
+  base_type : ST_ArrayBaseType
+  /// Array item element local names in document order.
+  item_names : Array[String]
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Variant from shared-documentPropertiesVariantTypes.xsd.
+/// Construct CT_Array by parsing attributes and items from the XML element.
+pub fn CT_Array::new(element : @xml.Element) -> CT_Array raise SchemaViolation {
+  let l_bounds = require_attr(element, "lBounds", "array/@lBounds")
+  let u_bounds = require_attr(element, "uBounds", "array/@uBounds")
+  let base_type_value = require_attr(element, "baseType", "array/@baseType")
+  let base_type = ST_ArrayBaseType::new(base_type_value)
+  let item_names : Array[String] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      item_names.push(child_element.name.local_name)
+    }
+  }
+  { element, l_bounds, u_bounds, base_type, item_names }
+}
+
+///|
+/// XSD complex type CT_Variant — Part 1 §22.4.2.32. Single-choice payload of
+/// one variant element from the §22.4 family.
 pub(all) struct CT_Variant {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// Local name of the chosen variant payload element.
+  payload_name : String
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Vstream from shared-documentPropertiesVariantTypes.xsd.
+/// Construct CT_Variant by extracting the single payload child name.
+pub fn CT_Variant::new(
+  element : @xml.Element,
+) -> CT_Variant raise SchemaViolation {
+  let mut payload : String? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match payload {
+        Some(_) =>
+          raise SchemaViolation(
+            schema="shared-documentPropertiesVariantTypes.xsd",
+            path="variant",
+            reason="CT_Variant must contain exactly one child",
+          )
+        None => payload = Some(child_element.name.local_name)
+      }
+    }
+  }
+  let payload_name = match payload {
+    Some(name) => name
+    None =>
+      raise SchemaViolation(
+        schema="shared-documentPropertiesVariantTypes.xsd",
+        path="variant",
+        reason="CT_Variant requires one child element",
+      )
+  }
+  { element, payload_name }
+}
+
+///|
+/// XSD complex type CT_Vstream — Part 1 §22.4.2.34. xsd:base64Binary
+/// extension with optional `version` attribute (ST_Guid).
 pub(all) struct CT_Vstream {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @version (s:ST_Guid) — optional.
+  version : String?
+  /// Base64 binary text content.
+  content : String
 } derive(Eq, Debug)
+
+///|
+/// Construct CT_Vstream by parsing optional version attribute and text body.
+pub fn CT_Vstream::new(element : @xml.Element) -> CT_Vstream {
+  let version = attr(element, "version")
+  let content = text(element)
+  { element, version, content }
+}
 
 ///|
 /// Variant value union for §22.4 top-level variant flavours.
@@ -324,7 +446,7 @@ pub type VstreamElement = CT_Vstream
 pub fn read_variant(bytes : Bytes) -> VariantElement raise {
   let root = @xml.parse(bytes).root
   require_local(root, "variant", "variant")
-  { element: root }
+  CT_Variant::new(root)
 }
 
 ///|
@@ -338,11 +460,7 @@ pub fn write_variant(value : VariantElement) -> Bytes {
 pub fn read_vector(bytes : Bytes) -> VectorElement raise {
   let root = @xml.parse(bytes).root
   require_local(root, "vector", "vector")
-  match attr(root, "baseType") {
-    Some(value) => ST_VectorBaseType::new(value) |> ignore
-    None => ()
-  }
-  { element: root }
+  CT_Vector::new(root)
 }
 
 ///|
@@ -370,7 +488,7 @@ pub fn variant_from_element(
   element : @xml.Element,
 ) -> Variant raise SchemaViolation {
   match element.name.local_name {
-    "array" => VtArray({ element, })
+    "array" => VtArray(CT_Array::new(element))
     "blob" => VtBlob({ element, })
     "bool" => VtBool({ element, })
     "bstr" => VtBstr({ element, })
@@ -378,7 +496,7 @@ pub fn variant_from_element(
     "cy" => VtCy({ element, })
     "date" => VtDate({ element, })
     "decimal" => VtDecimal({ element, })
-    "empty" => VtEmpty({ element, })
+    "empty" => VtEmpty(CT_Empty::new(element))
     "error" => VtError({ element, })
     "filetime" => VtFiletime({ element, })
     "i1" => VtI1({ element, })
@@ -388,7 +506,7 @@ pub fn variant_from_element(
     "int" => VtInt({ element, })
     "lpstr" => VtLpstr({ element, })
     "lpwstr" => VtLpwstr({ element, })
-    "null" => VtNull({ element, })
+    "null" => VtNull(CT_Null::new(element))
     "oblob" => VtOblob({ element, })
     "ostorage" => VtOstorage({ element, })
     "ostream" => VtOstream({ element, })
@@ -401,9 +519,9 @@ pub fn variant_from_element(
     "ui4" => VtUi4({ element, })
     "ui8" => VtUi8({ element, })
     "uint" => VtUint({ element, })
-    "variant" => VtVariant({ element, })
-    "vector" => VtVector({ element, })
-    "vstream" => VtVstream({ element, })
+    "variant" => VtVariant(CT_Variant::new(element))
+    "vector" => VtVector(CT_Vector::new(element))
+    "vstream" => VtVstream(CT_Vstream::new(element))
     _ =>
       raise SchemaViolation(
         schema="shared-documentPropertiesVariantTypes.xsd",
@@ -467,6 +585,36 @@ fn attr(element : @xml.Element, local_name : String) -> String? {
     }
   }
   None
+}
+
+///|
+fn require_attr(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> String raise SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) => value
+    None =>
+      raise SchemaViolation(
+        schema="shared-documentPropertiesVariantTypes.xsd",
+        path~,
+        reason="required attribute missing",
+      )
+  }
+}
+
+///|
+fn text(element : @xml.Element) -> String {
+  let out = StringBuilder::new()
+  for child in element.children {
+    match child {
+      @xml.Node::Text(value) | @xml.Node::CData(value) =>
+        out.write_string(value)
+      _ => ()
+    }
+  }
+  out.to_string()
 }
 
 ///|

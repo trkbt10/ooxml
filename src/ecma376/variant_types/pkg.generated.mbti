@@ -36,32 +36,50 @@ pub suberror SchemaViolation {
 #alias(ArrayElement)
 pub(all) struct CT_Array {
   element : @xml.Element
+  l_bounds : String
+  u_bounds : String
+  base_type : ST_ArrayBaseType
+  item_names : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CT_Array::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(EmptyElement)
 pub(all) struct CT_Empty {
   element : @xml.Element
+  is_empty : Bool
 } derive(Eq, @debug.Debug)
+pub fn CT_Empty::new(@xml.Element) -> Self
 
 #alias(NullElement)
 pub(all) struct CT_Null {
   element : @xml.Element
+  is_null : Bool
 } derive(Eq, @debug.Debug)
+pub fn CT_Null::new(@xml.Element) -> Self
 
 #alias(VariantElement)
 pub(all) struct CT_Variant {
   element : @xml.Element
+  payload_name : String
 } derive(Eq, @debug.Debug)
+pub fn CT_Variant::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(VectorElement)
 pub(all) struct CT_Vector {
   element : @xml.Element
+  base_type : ST_VectorBaseType
+  size : String
+  item_names : Array[String]
 } derive(Eq, @debug.Debug)
+pub fn CT_Vector::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(VstreamElement)
 pub(all) struct CT_Vstream {
   element : @xml.Element
+  version : String?
+  content : String
 } derive(Eq, @debug.Debug)
+pub fn CT_Vstream::new(@xml.Element) -> Self
 
 pub struct ST_ArrayBaseType {
   value : String

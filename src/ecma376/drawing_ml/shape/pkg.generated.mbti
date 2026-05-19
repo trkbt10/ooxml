@@ -21,6 +21,10 @@ pub suberror SchemaViolation {
 // Types and methods
 pub(all) struct CT_GvmlLockedCanvas {
   element : @xml.Element
+  nv_grp_sp_pr_child_name : String
+  grp_sp_pr_child_name : String
+  content_child_names : Array[String]
+  has_ext_lst : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_GvmlLockedCanvas::new(@xml.Element) -> Self raise SchemaViolation
 

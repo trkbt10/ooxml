@@ -25,28 +25,45 @@ pub suberror SchemaViolation {
 // Types and methods
 pub(all) struct CT_FontCollection {
   element : @xml.Element
+  latin_child_name : String
+  ea_child_name : String
+  cs_child_name : String
+  supplemental_count : Int
+  has_ext_lst : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_FontCollection::new(@xml.Element) -> Self
 
 pub(all) struct CT_FontReference {
   element : @xml.Element
+  idx : String
+  color_choice_child_name : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_FontReference::new(@xml.Element) -> Self
+pub fn CT_FontReference::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_FontScheme {
   element : @xml.Element
+  name : String
+  major_font_child_name : String
+  minor_font_child_name : String
+  has_ext_lst : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_FontScheme::new(@xml.Element) -> Self
+pub fn CT_FontScheme::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SupplementalFont {
   element : @xml.Element
+  script : String
+  typeface : String
 } derive(Eq, @debug.Debug)
-pub fn CT_SupplementalFont::new(@xml.Element) -> Self
+pub fn CT_SupplementalFont::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_TextFont {
   element : @xml.Element
+  typeface : String
+  panose : String?
+  pitch_family : String?
+  charset : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_TextFont::new(@xml.Element) -> Self
+pub fn CT_TextFont::new(@xml.Element) -> Self raise SchemaViolation
 
 pub struct ST_PitchFamily {
   value : String

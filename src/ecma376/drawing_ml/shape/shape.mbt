@@ -22,13 +22,24 @@ pub suberror SchemaViolation {
 } derive(Debug)
 
 ///|
-/// DrawingML lockedCanvas top-level element from dml-lockedCanvas.xsd.
-///
-/// The schema declares lockedCanvas as a:CT_GvmlGroupShape. This wrapper keeps
-/// the source XML element so callers can inspect or pass through the DrawingML
-/// Main group-shape children and attributes without losing namespace data.
+/// XSD complex type CT_GvmlLockedCanvas — Part 1 §20.3.2.1. The
+/// dml-lockedCanvas.xsd `lockedCanvas` element binds to `a:CT_GvmlGroupShape`,
+/// which requires `<nvGrpSpPr>` (CT_GvmlGroupShapeNonVisual) and `<grpSpPr>`
+/// (CT_GroupShapeProperties) children plus an unbounded choice of nested
+/// `txSp`, `sp`, `cxnSp`, `pic`, `graphicFrame`, or `grpSp` content and an
+/// optional `<extLst>` (CT_OfficeArtExtensionList).
 pub(all) struct CT_GvmlLockedCanvas {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <nvGrpSpPr> (CT_GvmlGroupShapeNonVisual) — required.
+  nv_grp_sp_pr_child_name : String
+  /// <grpSpPr> (CT_GroupShapeProperties) — required.
+  grp_sp_pr_child_name : String
+  /// Local names of nested group-content children (txSp/sp/cxnSp/pic/
+  /// graphicFrame/grpSp), zero or more in document order.
+  content_child_names : Array[String]
+  /// <extLst> (CT_OfficeArtExtensionList) — optional.
+  has_ext_lst : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -43,7 +54,29 @@ pub fn CT_GvmlLockedCanvas::new(
       reason="expected lockedCanvas top-level element",
     )
   }
-  { element, }
+  let mut nv = ""
+  let mut grp = ""
+  let content : Array[String] = []
+  let mut has_ext = false
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "nvGrpSpPr" => nv = "nvGrpSpPr"
+        "grpSpPr" => grp = "grpSpPr"
+        "txSp" | "sp" | "cxnSp" | "pic" | "graphicFrame" | "grpSp" =>
+          content.push(child_element.name.local_name)
+        "extLst" => has_ext = true
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    nv_grp_sp_pr_child_name: nv,
+    grp_sp_pr_child_name: grp,
+    content_child_names: content,
+    has_ext_lst: has_ext,
+  }
 }
 
 ///|

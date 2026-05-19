@@ -29,29 +29,45 @@ pub suberror SchemaViolation {
 // Types and methods
 pub(all) struct CT_BaseStyles {
   element : @xml.Element
+  clr_scheme_child_name : String
+  font_scheme_child_name : String
+  fmt_scheme_child_name : String
+  has_ext_lst : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_BaseStyles::new(@xml.Element) -> Self
 
 #alias(ThemeOverride)
 pub(all) struct CT_BaseStylesOverride {
   element : @xml.Element
+  has_clr_scheme : Bool
+  has_font_scheme : Bool
+  has_fmt_scheme : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_BaseStylesOverride::new(@xml.Element) -> Self
 
 pub(all) struct CT_OfficeArtExtension {
   element : @xml.Element
+  uri : String
+  payload_names : Array[String]
 } derive(Eq, @debug.Debug)
-pub fn CT_OfficeArtExtension::new(@xml.Element) -> Self
+pub fn CT_OfficeArtExtension::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(ThemeManager)
 pub(all) struct CT_OfficeArtExtensionList {
   element : @xml.Element
+  extension_count : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_OfficeArtExtensionList::new(@xml.Element) -> Self
 
 #alias(Theme)
 pub(all) struct CT_OfficeStyleSheet {
   element : @xml.Element
+  name : String?
+  theme_elements_child_name : String
+  has_object_defaults : Bool
+  has_extra_clr_scheme_lst : Bool
+  has_cust_clr_lst : Bool
+  has_ext_lst : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_OfficeStyleSheet::new(@xml.Element) -> Self
 
