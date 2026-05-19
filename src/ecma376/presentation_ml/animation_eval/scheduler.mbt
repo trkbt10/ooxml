@@ -37,9 +37,10 @@ pub fn TimingEngine::schedule(self : TimingEngine) -> Array[Event] {
 
 ///|
 /// Snapshot the timeline at `target_time_ms` and return every leaf
-/// behaviour currently active. Behaviours whose `fill` is `Remove`
-/// (the default) disappear after their end time; `Hold` / `Freeze` /
-/// `Transition` keep emitting with `progress = 1.0`.
+/// behaviour currently active. Behaviours whose `fill` is
+/// `NodeFillRemove` (the default) disappear after their end time;
+/// `NodeFillHold` / `NodeFillFreeze` / `NodeFillTransition` keep
+/// emitting with `progress = 1.0`.
 pub fn TimingEngine::animate(
   self : TimingEngine,
   target_time_ms : Int,
@@ -63,11 +64,9 @@ pub fn TimingEngine::animate(
     }
     let single_dur = single_duration(placement.node)
     let fill = placement.node.fill
-    let repeat = placement.node.repeat_count
-    let iterations = match repeat {
-      None => 1
-      Some(rc) => rc.iterations()
-    }
+    let iterations = @domain.ct_tl_common_time_node_repeat_iterations(
+      placement.node.repeat_count,
+    )
     let total_dur = if single_dur <= 0 {
       0
     } else if iterations < 0 {
@@ -91,7 +90,7 @@ pub fn TimingEngine::animate(
     let past_end = single_dur > 0 && elapsed > effective_end
     if past_end {
       match fill {
-        Some(FillRemove) => continue
+        Some(@domain.NodeFillRemove) => continue
         None => continue
         _ => ()
       }
@@ -132,7 +131,7 @@ pub fn TimingEngine::animate(
 /// public call. `end_ms` is materialised for completeness even
 /// when `animate` recomputes its own end from `repeat_count`.
 priv struct Placement {
-  node : TimeNode
+  node : @domain.CT_TLCommonTimeNodeData
   start_ms : Int
   end_ms : Int?
   conditional : Bool
@@ -144,7 +143,7 @@ priv struct Placement {
 /// the node (or `None` when the node has indefinite duration or its
 /// start is conditional).
 fn place_node(
-  node : TimeNode,
+  node : @domain.CT_TLCommonTimeNodeData,
   base_ms : Int,
   events : Array[Event],
   parent_conditional : Bool,
@@ -194,7 +193,7 @@ fn place_node(
 
 ///|
 fn place_children(
-  node : TimeNode,
+  node : @domain.CT_TLCommonTimeNodeData,
   base_ms : Int,
   events : Array[Event],
   parent_conditional : Bool,
@@ -203,9 +202,9 @@ fn place_children(
   if node.children.length() == 0 {
     return None
   }
-  match node.kind {
+  match node.node_kind {
     // All children start at base_ms; node end is the max child end.
-    Par => {
+    @domain.TimeNodePar => {
       let mut max_end : Int? = None
       for child in node.children {
         let end = place_node(
@@ -219,7 +218,7 @@ fn place_children(
       }
       max_end
     }
-    Seq | Excl => {
+    @domain.TimeNodeSeq | @domain.TimeNodeExcl => {
       let mut cursor = base_ms
       let mut last_end : Int? = None
       for child in node.children {
@@ -258,7 +257,7 @@ fn place_children(
 
 ///|
 fn emit_keypoint_events(
-  node : TimeNode,
+  node : @domain.CT_TLCommonTimeNodeData,
   start_ms : Int,
   single_dur : Int,
   events : Array[Event],
@@ -310,7 +309,9 @@ fn emit_keypoint_events(
 }
 
 ///|
-fn endpoint_pair(common : BehaviorCommon) -> (AnimVariant, AnimVariant)? {
+fn endpoint_pair(
+  common : @domain.CT_TLCommonBehaviorData,
+) -> (@domain.CT_TLAnimVariant, @domain.CT_TLAnimVariant)? {
   match (common.from_value, common.to_value) {
     (Some(f), Some(t)) => Some((f, t))
     (None, Some(t)) =>
@@ -324,20 +325,20 @@ fn endpoint_pair(common : BehaviorCommon) -> (AnimVariant, AnimVariant)? {
 }
 
 ///|
-fn default_for(value : AnimVariant) -> AnimVariant {
+fn default_for(value : @domain.CT_TLAnimVariant) -> @domain.CT_TLAnimVariant {
   match value {
-    BoolVariant(_) => BoolVariant(false)
-    IntVariant(_) => IntVariant(0)
-    FloatVariant(_) => FloatVariant(0.0)
-    StringVariant(_) => StringVariant("")
-    ColorVariant(c) => ColorVariant(c)
+    @domain.AnimVariantBool(_) => @domain.AnimVariantBool(false)
+    @domain.AnimVariantInt(_) => @domain.AnimVariantInt(0)
+    @domain.AnimVariantFloat(_) => @domain.AnimVariantFloat(0.0)
+    @domain.AnimVariantString(_) => @domain.AnimVariantString("")
+    @domain.AnimVariantColor(c) => @domain.AnimVariantColor(c)
   }
 }
 
 ///|
 fn emit_active(
-  node : TimeNode,
-  common : BehaviorCommon,
+  node : @domain.CT_TLCommonTimeNodeData,
+  common : @domain.CT_TLCommonBehaviorData,
   eased_progress : Double,
   local_progress : Double,
   active : Array[ActiveBehavior],
@@ -345,7 +346,7 @@ fn emit_active(
   let _ = local_progress
   let calc_mode = match common.calc_mode {
     Some(c) => c
-    None => CalcLinear
+    None => @domain.CalcModeLin
   }
   let attr_names = if common.attr_names.length() == 0 {
     [""]
@@ -382,7 +383,7 @@ fn emit_active(
 
 ///|
 fn compute_progress(
-  node : TimeNode,
+  node : @domain.CT_TLCommonTimeNodeData,
   single_dur : Int,
   elapsed : Int,
   past_end : Bool,
@@ -401,42 +402,50 @@ fn compute_progress(
 }
 
 ///|
-fn single_duration(node : TimeNode) -> Int {
+fn single_duration(node : @domain.CT_TLCommonTimeNodeData) -> Int {
   match node.duration {
-    Some(Ms(n)) => n
-    Some(Indefinite) => 0
+    Some(@domain.TLTimeMs(n)) => n.reinterpret_as_int()
+    Some(@domain.TLTimeIndefinite) => 0
     None =>
-      match node.kind {
-        SetLeaf(_) => 0
+      match node.node_kind {
+        @domain.TimeNodeSet(_) => 0
         _ => 0
       }
   }
 }
 
 ///|
-fn total_duration_ms(node : TimeNode, single_dur : Int) -> Int {
+fn total_duration_ms(
+  node : @domain.CT_TLCommonTimeNodeData,
+  single_dur : Int,
+) -> Int {
   if single_dur <= 0 {
     return 0
   }
-  let iterations = match node.repeat_count {
-    None => 1
-    Some(Iterations(n)) => n
-    Some(RepeatIndefinite) => 1
+  let iterations = @domain.ct_tl_common_time_node_repeat_iterations(
+    node.repeat_count,
+  )
+  let normalised_iters = if iterations < 0 { 1 } else { iterations }
+  let cycles = if node.auto_reverse {
+    normalised_iters * 2
+  } else {
+    normalised_iters
   }
-  let cycles = if node.auto_reverse { iterations * 2 } else { iterations }
   single_dur * cycles
 }
 
 ///|
-fn static_start_delay(node : TimeNode) -> Int {
-  let mut delay = match node.delay {
-    Some(Ms(n)) => n
-    _ => 0
-  }
+fn static_start_delay(node : @domain.CT_TLCommonTimeNodeData) -> Int {
+  let mut delay = 0
   for cond in node.start_conditions {
     if cond.is_static() {
       match cond.delay {
-        Some(Ms(n)) => if n > delay { delay = n }
+        Some(@domain.TLTimeMs(n)) => {
+          let v = n.reinterpret_as_int()
+          if v > delay {
+            delay = v
+          }
+        }
         _ => ()
       }
     }
@@ -445,7 +454,7 @@ fn static_start_delay(node : TimeNode) -> Int {
 }
 
 ///|
-fn node_is_conditional(node : TimeNode) -> Bool {
+fn node_is_conditional(node : @domain.CT_TLCommonTimeNodeData) -> Bool {
   if node.start_conditions.length() == 0 {
     return false
   }
@@ -462,7 +471,9 @@ fn node_is_conditional(node : TimeNode) -> Bool {
 }
 
 ///|
-fn first_runtime_condition(node : TimeNode) -> TimeCondition {
+fn first_runtime_condition(
+  node : @domain.CT_TLCommonTimeNodeData,
+) -> @domain.CT_TLTimeCondition {
   for cond in node.start_conditions {
     if !cond.is_static() {
       return cond

@@ -1,7 +1,8 @@
 ///|
 /// Part 1 §19.5 timing — decode a `<p:timing>` element (already
 /// wrapped as `CT_SlideTiming`) into a typed `Timeline`. Walks
-/// `<p:tnLst>` and turns each child time-node into a `TimeNode`.
+/// `<p:tnLst>` and turns each child time-node into a
+/// `CT_TLCommonTimeNodeData` (the schema's typed cTn).
 pub fn decode_timing(
   timing : @domain.CT_SlideTiming,
 ) -> Timeline raise @opc_errors.SchemaViolation {
@@ -19,8 +20,8 @@ pub fn decode_timing(
 /// recursively by `decode_time_node` for child time-node lists.
 pub fn decode_time_node_list(
   list : @xml.Element,
-) -> Array[TimeNode] raise @opc_errors.SchemaViolation {
-  let result : Array[TimeNode] = []
+) -> Array[@domain.CT_TLCommonTimeNodeData] raise @opc_errors.SchemaViolation {
+  let result : Array[@domain.CT_TLCommonTimeNodeData] = []
   for child in list.children {
     match child {
       @xml.Element(element) => result.push(decode_time_node(element))
@@ -37,7 +38,7 @@ pub fn decode_time_node_list(
 /// / repeatCount / nodeType / presetClass / presetID / autoRev).
 pub fn decode_time_node(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   let kind_local = element.name.local_name
   match kind_local {
     "par" => decode_par(element)
@@ -63,65 +64,26 @@ pub fn decode_time_node(
 /// Decode a `<p:par>` (CT_TLTimeNodeParallel) element.
 pub fn decode_par(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
-  let common = decode_common_time_node_data(element, Par)
-  common
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  decode_common_time_node_data(element, @domain.TimeNodePar)
 }
 
 ///|
 /// Decode a `<p:seq>` (CT_TLTimeNodeSequence) element.
 pub fn decode_seq(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   // seq carries prevCondLst / nextCondLst directly as siblings of
   // cTn. We merge them into the resulting node so consumers can
   // inspect the sequence-level navigation conditions.
-  let mut node = decode_common_time_node_data(element, Seq)
+  let mut node = decode_common_time_node_data(element, @domain.TimeNodeSeq)
   let prev = decode_condition_list(element, "prevCondLst")
   let next = decode_condition_list(element, "nextCondLst")
   if prev.length() > 0 {
-    node = {
-      node_id: node.node_id,
-      node_type: node.node_type,
-      preset_class: node.preset_class,
-      preset_id: node.preset_id,
-      duration: node.duration,
-      delay: node.delay,
-      restart: node.restart,
-      fill: node.fill,
-      repeat_count: node.repeat_count,
-      accel: node.accel,
-      decel: node.decel,
-      auto_reverse: node.auto_reverse,
-      start_conditions: node.start_conditions,
-      end_conditions: node.end_conditions,
-      next_conditions: node.next_conditions,
-      prev_conditions: prev,
-      kind: node.kind,
-      children: node.children,
-    }
+    node = with_prev_conditions(node, prev)
   }
   if next.length() > 0 {
-    node = {
-      node_id: node.node_id,
-      node_type: node.node_type,
-      preset_class: node.preset_class,
-      preset_id: node.preset_id,
-      duration: node.duration,
-      delay: node.delay,
-      restart: node.restart,
-      fill: node.fill,
-      repeat_count: node.repeat_count,
-      accel: node.accel,
-      decel: node.decel,
-      auto_reverse: node.auto_reverse,
-      start_conditions: node.start_conditions,
-      end_conditions: node.end_conditions,
-      next_conditions: next,
-      prev_conditions: node.prev_conditions,
-      kind: node.kind,
-      children: node.children,
-    }
+    node = with_next_conditions(node, next)
   }
   node
 }
@@ -130,79 +92,101 @@ pub fn decode_seq(
 /// Decode a `<p:excl>` (CT_TLTimeNodeExclusive) element.
 pub fn decode_excl(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
-  decode_common_time_node_data(element, Excl)
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  decode_common_time_node_data(element, @domain.TimeNodeExcl)
 }
 
 ///|
 /// Decode an `<p:anim>` (CT_TLAnimateBehavior) element.
 pub fn decode_anim(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   let common = decode_behavior_common(element)
   let calc = attr_local(element, "calcmode")
   let value_type = attr_local(element, "valueType")
   let merged = with_anim_attrs(common, calc, value_type, element)
-  let leaf = AnimateLeaf({ common: merged })
-  decode_common_time_node_data(element, leaf)
+  let behaviour : @domain.CT_TLAnimateBehavior = { common: merged }
+  decode_common_time_node_data(element, @domain.TimeNodeAnimate(behaviour))
 }
 
 ///|
 /// Decode an `<p:animClr>` (CT_TLAnimateColorBehavior) element.
 pub fn decode_anim_clr(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
-  let common = decode_behavior_common(element)
-  let common = with_endpoint_color(common, element, "from")
-  let common = with_endpoint_color(common, element, "to")
-  let common = with_endpoint_color(common, element, "by")
-  let color_space = attr_local(element, "clrSpc")
-  let direction = attr_local(element, "dir")
-  let leaf = AnimateColorLeaf({ common, color_space, direction })
-  decode_common_time_node_data(element, leaf)
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  let common0 = decode_behavior_common(element)
+  let common1 = with_endpoint_color(common0, element, "from")
+  let common2 = with_endpoint_color(common1, element, "to")
+  let common = with_endpoint_color(common2, element, "by")
+  let color_space = match attr_local(element, "clrSpc") {
+    Some(text) => Some(parse_st_color_space(text))
+    None => None
+  }
+  let direction = match attr_local(element, "dir") {
+    Some(text) => Some(parse_st_color_direction(text))
+    None => None
+  }
+  let behaviour : @domain.CT_TLAnimateColorBehavior = {
+    common,
+    color_space,
+    direction,
+  }
+  decode_common_time_node_data(element, @domain.TimeNodeAnimateColor(behaviour))
 }
 
 ///|
 /// Decode an `<p:animMotion>` (CT_TLAnimateMotionBehavior) element.
 pub fn decode_anim_motion(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   let common = decode_behavior_common(element)
-  let origin = attr_local(element, "origin")
+  let origin = match attr_local(element, "origin") {
+    Some(text) => Some(parse_st_motion_origin(text))
+    None => None
+  }
   let path = attr_local(element, "path")
-  let path_edit_mode = attr_local(element, "pathEditMode")
+  let path_edit_mode = match attr_local(element, "pathEditMode") {
+    Some(text) => Some(parse_st_path_edit_mode(text))
+    None => None
+  }
   let r_ang = match attr_local(element, "rAng") {
     Some(text) => parse_double(text)
     None => None
   }
   let pts_types = attr_local(element, "ptsTypes")
-  let leaf = AnimateMotionLeaf({
+  let behaviour : @domain.CT_TLAnimateMotionBehavior = {
     common,
     origin,
     path,
     path_edit_mode,
     r_ang,
     pts_types,
-  })
-  decode_common_time_node_data(element, leaf)
+  }
+  decode_common_time_node_data(
+    element,
+    @domain.TimeNodeAnimateMotion(behaviour),
+  )
 }
 
 ///|
 /// Decode an `<p:animRot>` (CT_TLAnimateRotationBehavior) element.
 pub fn decode_anim_rot(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   let common = decode_behavior_common(element)
   let merged = with_from_to_by(common, element)
-  let leaf = AnimateRotationLeaf({ common: merged })
-  decode_common_time_node_data(element, leaf)
+  let behaviour : @domain.CT_TLAnimateRotationBehavior = { common: merged }
+  decode_common_time_node_data(
+    element,
+    @domain.TimeNodeAnimateRotation(behaviour),
+  )
 }
 
 ///|
 /// Decode an `<p:animScale>` (CT_TLAnimateScaleBehavior) element.
 pub fn decode_anim_scale(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   let common = decode_behavior_common(element)
   let merged = with_from_to_by(common, element)
   let zoom_contents = match attr_local(element, "zoomContents") {
@@ -212,45 +196,55 @@ pub fn decode_anim_scale(
     Some("false") => Some(false)
     _ => None
   }
-  let leaf = AnimateScaleLeaf({ common: merged, zoom_contents })
-  decode_common_time_node_data(element, leaf)
+  let behaviour : @domain.CT_TLAnimateScaleBehavior = {
+    common: merged,
+    zoom_contents,
+  }
+  decode_common_time_node_data(element, @domain.TimeNodeAnimateScale(behaviour))
 }
 
 ///|
 /// Decode a `<p:set>` (CT_TLSetBehavior) element.
 pub fn decode_set(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
-  let common = decode_behavior_common(element)
-  let common = with_to_variant(common, element)
-  let leaf = SetLeaf({ common, })
-  decode_common_time_node_data(element, leaf)
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  let common0 = decode_behavior_common(element)
+  let common = with_to_variant(common0, element)
+  let behaviour : @domain.CT_TLSetBehavior = { common, }
+  decode_common_time_node_data(element, @domain.TimeNodeSet(behaviour))
 }
 
 ///|
 /// Decode a `<p:cmd>` (CT_TLCommandBehavior) element.
 pub fn decode_cmd(
   element : @xml.Element,
-) -> TimeNode raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   let common = decode_behavior_common(element)
-  let command_type = attr_local(element, "type")
+  let command_type = match attr_local(element, "type") {
+    Some(text) => Some(parse_st_command_type(text))
+    None => None
+  }
   let command_value = attr_local(element, "cmd")
-  let leaf = CommandLeaf({ common, command_type, command_value })
-  decode_common_time_node_data(element, leaf)
+  let behaviour : @domain.CT_TLCommandBehavior = {
+    common,
+    command_type,
+    command_value,
+  }
+  decode_common_time_node_data(element, @domain.TimeNodeCommand(behaviour))
 }
 
 ///|
 /// Decode the common cTn child of a time-node element. Returns a
-/// `TimeNode` whose `kind` is set to the supplied container/leaf
-/// discriminator and whose attributes / children come from the cTn.
-/// For container kinds (par / seq / excl) the cTn is a direct
-/// child; for leaf behaviours (anim / animClr / animMotion /
+/// `CT_TLCommonTimeNodeData` whose `node_kind` is set to the supplied
+/// container/leaf discriminator and whose attributes / children come
+/// from the cTn. For container kinds (par / seq / excl) the cTn is a
+/// direct child; for leaf behaviours (anim / animClr / animMotion /
 /// animRot / animScale / set / cmd) the cTn lives inside the
 /// `<p:cBhvr>` wrapper.
 fn decode_common_time_node_data(
   element : @xml.Element,
-  kind : TimeNodeKind,
-) -> TimeNode raise @opc_errors.SchemaViolation {
+  kind : @domain.CT_TLCommonTimeNodeKind,
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
   let c_tn = match find_ctn(element) {
     Some(t) => Some(t)
     None => first_child_by_local_name(element, "cTn")
@@ -275,7 +269,7 @@ fn decode_common_time_node_data(
   let node_type = match c_tn {
     Some(t) =>
       match attr_local(t, "nodeType") {
-        Some(text) => Some(NodeType::from_attr(text))
+        Some(text) => Some(parse_st_node_type(text))
         None => None
       }
     None => None
@@ -283,7 +277,7 @@ fn decode_common_time_node_data(
   let preset_class = match c_tn {
     Some(t) =>
       match attr_local(t, "presetClass") {
-        Some(text) => Some(PresetClass::from_attr(text))
+        Some(text) => Some(parse_st_preset_class(text))
         None => None
       }
     None => None
@@ -299,15 +293,7 @@ fn decode_common_time_node_data(
   let duration = match c_tn {
     Some(t) =>
       match attr_local(t, "dur") {
-        Some(text) => TimeValue::from_attr(text)
-        None => None
-      }
-    None => None
-  }
-  let delay = match c_tn {
-    Some(t) =>
-      match attr_local(t, "delay") {
-        Some(text) => TimeValue::from_attr(text)
+        Some(text) => parse_st_tl_time_opt(text, "cTn/@dur")
         None => None
       }
     None => None
@@ -315,7 +301,7 @@ fn decode_common_time_node_data(
   let restart = match c_tn {
     Some(t) =>
       match attr_local(t, "restart") {
-        Some(text) => Some(RestartType::from_attr(text))
+        Some(text) => Some(parse_st_restart_type(text))
         None => None
       }
     None => None
@@ -323,7 +309,7 @@ fn decode_common_time_node_data(
   let fill = match c_tn {
     Some(t) =>
       match attr_local(t, "fill") {
-        Some(text) => Some(FillType::from_attr(text))
+        Some(text) => Some(parse_st_fill_type(text))
         None => None
       }
     None => None
@@ -331,7 +317,7 @@ fn decode_common_time_node_data(
   let repeat_count = match c_tn {
     Some(t) =>
       match attr_local(t, "repeatCount") {
-        Some(text) => RepeatCount::from_attr(text)
+        Some(text) => parse_st_tl_time_opt(text, "cTn/@repeatCount")
         None => None
       }
     None => None
@@ -378,7 +364,6 @@ fn decode_common_time_node_data(
     preset_class,
     preset_id,
     duration,
-    delay,
     restart,
     fill,
     repeat_count,
@@ -389,8 +374,64 @@ fn decode_common_time_node_data(
     end_conditions,
     next_conditions: [],
     prev_conditions: [],
-    kind,
+    node_kind: kind,
     children,
+  }
+}
+
+///|
+/// Re-create a `CT_TLCommonTimeNodeData` with the supplied
+/// `prev_conditions` and all other fields preserved.
+fn with_prev_conditions(
+  node : @domain.CT_TLCommonTimeNodeData,
+  prev : Array[@domain.CT_TLTimeCondition],
+) -> @domain.CT_TLCommonTimeNodeData {
+  {
+    node_id: node.node_id,
+    node_type: node.node_type,
+    preset_class: node.preset_class,
+    preset_id: node.preset_id,
+    duration: node.duration,
+    restart: node.restart,
+    fill: node.fill,
+    repeat_count: node.repeat_count,
+    accel: node.accel,
+    decel: node.decel,
+    auto_reverse: node.auto_reverse,
+    start_conditions: node.start_conditions,
+    end_conditions: node.end_conditions,
+    next_conditions: node.next_conditions,
+    prev_conditions: prev,
+    node_kind: node.node_kind,
+    children: node.children,
+  }
+}
+
+///|
+/// Re-create a `CT_TLCommonTimeNodeData` with the supplied
+/// `next_conditions` and all other fields preserved.
+fn with_next_conditions(
+  node : @domain.CT_TLCommonTimeNodeData,
+  next : Array[@domain.CT_TLTimeCondition],
+) -> @domain.CT_TLCommonTimeNodeData {
+  {
+    node_id: node.node_id,
+    node_type: node.node_type,
+    preset_class: node.preset_class,
+    preset_id: node.preset_id,
+    duration: node.duration,
+    restart: node.restart,
+    fill: node.fill,
+    repeat_count: node.repeat_count,
+    accel: node.accel,
+    decel: node.decel,
+    auto_reverse: node.auto_reverse,
+    start_conditions: node.start_conditions,
+    end_conditions: node.end_conditions,
+    next_conditions: next,
+    prev_conditions: node.prev_conditions,
+    node_kind: node.node_kind,
+    children: node.children,
   }
 }
 
@@ -398,7 +439,7 @@ fn decode_common_time_node_data(
 /// Walk a cTn's `<p:childTnLst>` and return the decoded children.
 fn decode_child_time_nodes(
   c_tn : @xml.Element,
-) -> Array[TimeNode] raise @opc_errors.SchemaViolation {
+) -> Array[@domain.CT_TLCommonTimeNodeData] raise @opc_errors.SchemaViolation {
   let list = first_child_by_local_name(c_tn, "childTnLst")
   match list {
     Some(l) => decode_time_node_list(l)
@@ -412,8 +453,8 @@ fn decode_child_time_nodes(
 fn decode_condition_list(
   parent : @xml.Element,
   local_name : String,
-) -> Array[TimeCondition] raise @opc_errors.SchemaViolation {
-  let result : Array[TimeCondition] = []
+) -> Array[@domain.CT_TLTimeCondition] raise @opc_errors.SchemaViolation {
+  let result : Array[@domain.CT_TLTimeCondition] = []
   match first_child_by_local_name(parent, local_name) {
     Some(list) =>
       for child in list.children {
@@ -431,16 +472,16 @@ fn decode_condition_list(
 }
 
 ///|
-/// Decode a single `<p:cond>` element.
+/// Decode a single `<p:cond>` (CT_TLTimeCondition §19.5.31) element.
 pub fn decode_condition(
   element : @xml.Element,
-) -> TimeCondition raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLTimeCondition raise @opc_errors.SchemaViolation {
   let delay = match attr_local(element, "delay") {
-    Some(text) => TimeValue::from_attr(text)
+    Some(text) => parse_st_tl_time_opt(text, "cond/@delay")
     None => None
   }
   let event = match attr_local(element, "evt") {
-    Some(text) => Some(TriggerEvent::from_attr(text))
+    Some(text) => Some(parse_st_trigger_event(text))
     None => None
   }
   let (target_shape_id, target_runtime_node_id) = decode_cond_target(element)
@@ -495,19 +536,19 @@ fn decode_sp_tgt_shape_id(
 ///|
 /// Decode the shared cBhvr block carried by every leaf behaviour.
 /// The cBhvr is a direct child of the behaviour element. The
-/// resulting BehaviorCommon is later folded with leaf-specific
-/// from/to/by attributes by `with_anim_attrs` / `with_from_to_by` /
-/// `with_to_variant` helpers.
+/// resulting `CT_TLCommonBehaviorData` is later folded with leaf-
+/// specific from/to/by attributes by `with_anim_attrs` /
+/// `with_from_to_by` / `with_to_variant` helpers.
 pub fn decode_cbhvr(
   element : @xml.Element,
-) -> BehaviorCommon raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonBehaviorData raise @opc_errors.SchemaViolation {
   decode_behavior_common(element)
 }
 
 ///|
 fn decode_behavior_common(
   element : @xml.Element,
-) -> BehaviorCommon raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonBehaviorData raise @opc_errors.SchemaViolation {
   let cbhvr = first_child_by_local_name(element, "cBhvr")
   match cbhvr {
     Some(c) => decode_cbhvr_inner(c)
@@ -532,13 +573,13 @@ fn decode_behavior_common(
 ///|
 fn decode_cbhvr_inner(
   cbhvr : @xml.Element,
-) -> BehaviorCommon raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonBehaviorData raise @opc_errors.SchemaViolation {
   let additive = match attr_local(cbhvr, "additive") {
-    Some(text) => Some(AdditiveType::from_attr(text))
+    Some(text) => Some(parse_st_additive_type(text))
     None => None
   }
   let accumulate = match attr_local(cbhvr, "accumulate") {
-    Some(text) => Some(AccumulateType::from_attr(text))
+    Some(text) => Some(parse_st_accumulate_type(text))
     None => None
   }
   let target_shape_id = match first_child_by_local_name(cbhvr, "tgtEl") {
@@ -597,25 +638,25 @@ fn text_of(element : @xml.Element) -> String {
 
 ///|
 /// Fold the anim-specific from/to/by/calcmode/valueType attributes
-/// plus the tavLst keypoints into the BehaviorCommon. Called by
+/// plus the tavLst keypoints into the common record. Called by
 /// `decode_anim` after the cBhvr is decoded.
 fn with_anim_attrs(
-  common : BehaviorCommon,
+  common : @domain.CT_TLCommonBehaviorData,
   calc : String?,
   value_type : String?,
   element : @xml.Element,
-) -> BehaviorCommon raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonBehaviorData raise @opc_errors.SchemaViolation {
   let calc_mode = match calc {
-    Some(text) => Some(CalcMode::from_attr(text))
+    Some(text) => Some(parse_st_calc_mode(text))
     None => None
   }
   let value_type_enum = match value_type {
-    Some(text) => Some(ValueType::from_attr(text))
+    Some(text) => Some(parse_st_value_type(text))
     None => None
   }
-  let vt : ValueType = match value_type_enum {
+  let vt : @domain.ST_TLAnimateBehaviorValueType = match value_type_enum {
     Some(t) => t
-    None => ValString
+    None => ValueTypeStr
   }
   let from_value = match attr_local(element, "from") {
     Some(text) => Some(variant_from_attr(text, vt))
@@ -646,30 +687,30 @@ fn with_anim_attrs(
 
 ///|
 fn with_from_to_by(
-  common : BehaviorCommon,
+  common : @domain.CT_TLCommonBehaviorData,
   element : @xml.Element,
-) -> BehaviorCommon {
+) -> @domain.CT_TLCommonBehaviorData {
   let from_value = match attr_local(element, "from") {
     Some(text) =>
       match parse_double(text) {
-        Some(d) => Some(FloatVariant(d))
-        None => Some(StringVariant(text))
+        Some(d) => Some(@domain.AnimVariantFloat(d))
+        None => Some(@domain.AnimVariantString(text))
       }
     None => None
   }
   let to_value = match attr_local(element, "to") {
     Some(text) =>
       match parse_double(text) {
-        Some(d) => Some(FloatVariant(d))
-        None => Some(StringVariant(text))
+        Some(d) => Some(@domain.AnimVariantFloat(d))
+        None => Some(@domain.AnimVariantString(text))
       }
     None => None
   }
   let by_value = match attr_local(element, "by") {
     Some(text) =>
       match parse_double(text) {
-        Some(d) => Some(FloatVariant(d))
-        None => Some(StringVariant(text))
+        Some(d) => Some(@domain.AnimVariantFloat(d))
+        None => Some(@domain.AnimVariantString(text))
       }
     None => None
   }
@@ -693,9 +734,9 @@ fn with_from_to_by(
 /// child is one of `<p:strVal>`, `<p:intVal>`, `<p:fltVal>`,
 /// `<p:boolVal>`, `<p:clrVal>`.
 fn with_to_variant(
-  common : BehaviorCommon,
+  common : @domain.CT_TLCommonBehaviorData,
   element : @xml.Element,
-) -> BehaviorCommon raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLCommonBehaviorData raise @opc_errors.SchemaViolation {
   let to_element = first_child_by_local_name(element, "to")
   let to_value = match to_element {
     Some(t) => decode_anim_variant(t)
@@ -721,10 +762,10 @@ fn with_to_variant(
 /// endpoint so renderers can re-parse them through the DML colour
 /// resolver.
 fn with_endpoint_color(
-  common : BehaviorCommon,
+  common : @domain.CT_TLCommonBehaviorData,
   element : @xml.Element,
   local_name : String,
-) -> BehaviorCommon {
+) -> @domain.CT_TLCommonBehaviorData {
   let endpoint = first_child_by_local_name(element, local_name)
   match endpoint {
     None => common
@@ -737,7 +778,7 @@ fn with_endpoint_color(
             attr_names: common.attr_names,
             additive: common.additive,
             accumulate: common.accumulate,
-            from_value: Some(ColorVariant(payload)),
+            from_value: Some(@domain.AnimVariantColor(payload)),
             to_value: common.to_value,
             by_value: common.by_value,
             tav_list: common.tav_list,
@@ -751,7 +792,7 @@ fn with_endpoint_color(
             additive: common.additive,
             accumulate: common.accumulate,
             from_value: common.from_value,
-            to_value: Some(ColorVariant(payload)),
+            to_value: Some(@domain.AnimVariantColor(payload)),
             by_value: common.by_value,
             tav_list: common.tav_list,
             calc_mode: common.calc_mode,
@@ -765,7 +806,7 @@ fn with_endpoint_color(
             accumulate: common.accumulate,
             from_value: common.from_value,
             to_value: common.to_value,
-            by_value: Some(ColorVariant(payload)),
+            by_value: Some(@domain.AnimVariantColor(payload)),
             tav_list: common.tav_list,
             calc_mode: common.calc_mode,
             value_type: common.value_type,
@@ -798,13 +839,14 @@ fn serialise_color_endpoint(endpoint : @xml.Element) -> String {
 }
 
 ///|
-/// Decode a `<p:tavLst>` keypoint list under an anim/animRot/animScale
-/// element. Returns an empty array when the list is absent.
+/// Decode a `<p:tavLst>` (CT_TLTimeAnimateValueList §19.5.80)
+/// keypoint list under an anim/animRot/animScale element. Returns an
+/// empty array when the list is absent.
 fn decode_tav_list(
   element : @xml.Element,
-) -> Array[Tav] raise @opc_errors.SchemaViolation {
+) -> Array[@domain.CT_TLTimeAnimateValue] raise @opc_errors.SchemaViolation {
   let list = first_child_by_local_name(element, "tavLst")
-  let result : Array[Tav] = []
+  let result : Array[@domain.CT_TLTimeAnimateValue] = []
   match list {
     Some(l) =>
       for child in l.children {
@@ -822,11 +864,12 @@ fn decode_tav_list(
 }
 
 ///|
-/// Decode a single `<p:tav>` keypoint. `tm` is either `indefinite`
-/// or a percentage / unsignedInt; we always normalise to 0..1.
+/// Decode a single `<p:tav>` (CT_TLTimeAnimateValue §19.5.79)
+/// keypoint. `tm` is either `indefinite`, a percentage, or an
+/// unsignedInt; we always normalise to `[0.0, 1.0]`.
 pub fn decode_tav(
   element : @xml.Element,
-) -> Tav raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLTimeAnimateValue raise @opc_errors.SchemaViolation {
   let tm = attr_local(element, "tm")
   let tm_percent = match tm {
     Some(text) => parse_tav_time(text)
@@ -837,16 +880,20 @@ pub fn decode_tav(
     Some(v) => decode_anim_variant(v)
     None => None
   }
-  { tm_percent, value }
+  let fmla = match attr_local(element, "fmla") {
+    Some(text) => text
+    None => ""
+  }
+  { tm_percent, value, fmla }
 }
 
 ///|
-/// Decode a `<p:val>` element (CT_TLAnimVariant). The child element
-/// (`<p:boolVal>` / `<p:intVal>` / `<p:fltVal>` / `<p:strVal>` /
-/// `<p:clrVal>`) selects the variant.
+/// Decode a `<p:val>` (CT_TLAnimVariant §19.5.92) element. The child
+/// element (`<p:boolVal>` / `<p:intVal>` / `<p:fltVal>` / `<p:strVal>`
+/// / `<p:clrVal>`) selects the variant.
 pub fn decode_anim_variant(
   val_element : @xml.Element,
-) -> AnimVariant? raise @opc_errors.SchemaViolation {
+) -> @domain.CT_TLAnimVariant? raise @opc_errors.SchemaViolation {
   for child in val_element.children {
     match child {
       @xml.Element(element) => {
@@ -855,17 +902,17 @@ pub fn decode_anim_variant(
         return match kind_local {
           "boolVal" =>
             match value {
-              Some("1") => Some(BoolVariant(true))
-              Some("true") => Some(BoolVariant(true))
-              Some("0") => Some(BoolVariant(false))
-              Some("false") => Some(BoolVariant(false))
+              Some("1") => Some(@domain.AnimVariantBool(true))
+              Some("true") => Some(@domain.AnimVariantBool(true))
+              Some("0") => Some(@domain.AnimVariantBool(false))
+              Some("false") => Some(@domain.AnimVariantBool(false))
               _ => None
             }
           "intVal" =>
             match value {
               Some(text) =>
                 match parse_signed_int(text) {
-                  Some(n) => Some(IntVariant(n))
+                  Some(n) => Some(@domain.AnimVariantInt(n))
                   None =>
                     raise @opc_errors.SchemaViolation(
                       section=animation_section,
@@ -879,7 +926,7 @@ pub fn decode_anim_variant(
             match value {
               Some(text) =>
                 match parse_double(text) {
-                  Some(d) => Some(FloatVariant(d))
+                  Some(d) => Some(@domain.AnimVariantFloat(d))
                   None =>
                     raise @opc_errors.SchemaViolation(
                       section=animation_section,
@@ -891,10 +938,13 @@ pub fn decode_anim_variant(
             }
           "strVal" =>
             match value {
-              Some(text) => Some(StringVariant(text))
+              Some(text) => Some(@domain.AnimVariantString(text))
               None => None
             }
-          "clrVal" => Some(ColorVariant(serialise_color_endpoint(val_element)))
+          "clrVal" =>
+            Some(
+              @domain.AnimVariantColor(serialise_color_endpoint(val_element)),
+            )
           _ => None
         }
       }
@@ -905,15 +955,18 @@ pub fn decode_anim_variant(
 }
 
 ///|
-fn variant_from_attr(text : String, value_type : ValueType) -> AnimVariant {
+fn variant_from_attr(
+  text : String,
+  value_type : @domain.ST_TLAnimateBehaviorValueType,
+) -> @domain.CT_TLAnimVariant {
   match value_type {
-    ValNumber =>
+    ValueTypeNum =>
       match parse_double(text) {
-        Some(d) => FloatVariant(d)
-        None => StringVariant(text)
+        Some(d) => @domain.AnimVariantFloat(d)
+        None => @domain.AnimVariantString(text)
       }
-    ValString => StringVariant(text)
-    ValColor => ColorVariant(text)
+    ValueTypeStr => @domain.AnimVariantString(text)
+    ValueTypeClr => @domain.AnimVariantColor(text)
   }
 }
 
@@ -1042,4 +1095,224 @@ fn attr_local(element : @xml.Element, local_name : String) -> String? {
     }
   }
   None
+}
+
+// === ST_* lexical wrappers ================================================
+//
+// Bridge from the `@domain.SchemaViolation` raised by the typed ST_*
+// parsers to the `@opc_errors.SchemaViolation` the timing engine
+// surfaces. Each helper re-raises with the spec section anchor and
+// the originating attribute path.
+
+///|
+fn raise_schema(
+  path : String,
+  err : @domain.SchemaViolation,
+) -> Unit raise @opc_errors.SchemaViolation {
+  let @domain.SchemaViolation(type_name~, value~, reason~) = err
+  raise @opc_errors.SchemaViolation(
+    section=animation_section,
+    path~,
+    reason=reason + " (ST=" + type_name + ", value=" + value + ")",
+  )
+}
+
+///|
+fn parse_st_tl_time_opt(
+  text : String,
+  path : String,
+) -> @domain.ST_TLTime? raise @opc_errors.SchemaViolation {
+  let trimmed = trim_whitespace(text)
+  if trimmed.length() == 0 {
+    return None
+  }
+  match (try? @domain.ST_TLTime::parse(trimmed)) {
+    Ok(v) => Some(v)
+    Err(e) => {
+      raise_schema(path, e)
+      None
+    }
+  }
+}
+
+///|
+fn parse_st_fill_type(
+  text : String,
+) -> @domain.ST_TLTimeNodeFillType raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLTimeNodeFillType::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("cTn/@fill", e)
+      @domain.NodeFillRemove
+    }
+  }
+}
+
+///|
+fn parse_st_restart_type(
+  text : String,
+) -> @domain.ST_TLTimeNodeRestartType raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLTimeNodeRestartType::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("cTn/@restart", e)
+      @domain.RestartAlways
+    }
+  }
+}
+
+///|
+fn parse_st_node_type(
+  text : String,
+) -> @domain.ST_TLTimeNodeType raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLTimeNodeType::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("cTn/@nodeType", e)
+      @domain.NodeTmRoot
+    }
+  }
+}
+
+///|
+fn parse_st_preset_class(
+  text : String,
+) -> @domain.ST_TLTimeNodePresetClassType raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLTimeNodePresetClassType::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("cTn/@presetClass", e)
+      @domain.PresetEntr
+    }
+  }
+}
+
+///|
+fn parse_st_calc_mode(
+  text : String,
+) -> @domain.ST_TLAnimateBehaviorCalcMode raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLAnimateBehaviorCalcMode::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("anim/@calcmode", e)
+      @domain.CalcModeLin
+    }
+  }
+}
+
+///|
+fn parse_st_value_type(
+  text : String,
+) -> @domain.ST_TLAnimateBehaviorValueType raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLAnimateBehaviorValueType::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("anim/@valueType", e)
+      @domain.ValueTypeStr
+    }
+  }
+}
+
+///|
+fn parse_st_additive_type(
+  text : String,
+) -> @domain.ST_TLBehaviorAdditiveType raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLBehaviorAdditiveType::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("cBhvr/@additive", e)
+      @domain.AdditiveNone
+    }
+  }
+}
+
+///|
+fn parse_st_accumulate_type(
+  text : String,
+) -> @domain.ST_TLBehaviorAccumulateType raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLBehaviorAccumulateType::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("cBhvr/@accumulate", e)
+      @domain.AccumulateNone
+    }
+  }
+}
+
+///|
+fn parse_st_trigger_event(
+  text : String,
+) -> @domain.ST_TLTriggerEvent raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLTriggerEvent::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("cond/@evt", e)
+      @domain.TriggerBegin
+    }
+  }
+}
+
+///|
+fn parse_st_color_space(
+  text : String,
+) -> @domain.ST_TLAnimateColorSpace raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLAnimateColorSpace::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("animClr/@clrSpc", e)
+      @domain.ColorSpaceRgb
+    }
+  }
+}
+
+///|
+fn parse_st_color_direction(
+  text : String,
+) -> @domain.ST_TLAnimateColorDirection raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLAnimateColorDirection::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("animClr/@dir", e)
+      @domain.ColorDirCw
+    }
+  }
+}
+
+///|
+fn parse_st_motion_origin(
+  text : String,
+) -> @domain.ST_TLAnimateMotionBehaviorOrigin raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLAnimateMotionBehaviorOrigin::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("animMotion/@origin", e)
+      @domain.MotionOriginParent
+    }
+  }
+}
+
+///|
+fn parse_st_path_edit_mode(
+  text : String,
+) -> @domain.ST_TLAnimateMotionPathEditMode raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLAnimateMotionPathEditMode::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("animMotion/@pathEditMode", e)
+      @domain.PathEditRelative
+    }
+  }
+}
+
+///|
+fn parse_st_command_type(
+  text : String,
+) -> @domain.ST_TLCommandType raise @opc_errors.SchemaViolation {
+  match (try? @domain.ST_TLCommandType::parse(text)) {
+    Ok(v) => v
+    Err(e) => {
+      raise_schema("cmd/@type", e)
+      @domain.CommandCall
+    }
+  }
 }

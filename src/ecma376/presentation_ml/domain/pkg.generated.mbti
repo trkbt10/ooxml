@@ -13,6 +13,8 @@ pub fn cm_lst(@xml.Element) -> CT_CommentList
 
 pub fn ct_placeholder_section_name() -> String
 
+pub fn ct_tl_common_time_node_repeat_iterations(ST_TLTime?) -> Int
+
 pub fn handout_master(@xml.Element) -> CT_HandoutMaster
 
 pub fn notes(@xml.Element) -> CT_NotesSlide
@@ -36,6 +38,8 @@ pub fn sld_layout(@xml.Element) -> CT_SlideLayout
 pub fn sld_master(@xml.Element) -> CT_SlideMaster
 
 pub fn sld_sync_pr(@xml.Element) -> CT_SlideSyncProperties
+
+pub fn st_tl_trigger_event_is_runtime(ST_TLTriggerEvent) -> Bool
 
 pub fn tag_lst(@xml.Element) -> CT_TagList
 
@@ -740,12 +744,14 @@ pub fn CT_StringTag::new(@xml.Element) -> Self
 pub fn CT_StringTag::parse(@xml.Element) -> Self
 pub fn CT_StringTag::to_element(Self) -> @xml.Element
 
-pub(all) struct CT_TLAnimVariant {
-  element : @xml.Element
+pub(all) enum CT_TLAnimVariant {
+  AnimVariantBool(Bool)
+  AnimVariantInt(Int)
+  AnimVariantFloat(Double)
+  AnimVariantString(String)
+  AnimVariantColor(String)
 } derive(Eq, @debug.Debug)
-pub fn CT_TLAnimVariant::new(@xml.Element) -> Self
-pub fn CT_TLAnimVariant::parse(@xml.Element) -> Self
-pub fn CT_TLAnimVariant::to_element(Self) -> @xml.Element
+pub fn CT_TLAnimVariant::as_double(Self) -> Double?
 
 pub(all) struct CT_TLAnimVariantBooleanVal {
   element : @xml.Element
@@ -776,18 +782,14 @@ pub fn CT_TLAnimVariantStringVal::parse(@xml.Element) -> Self
 pub fn CT_TLAnimVariantStringVal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimateBehavior {
-  element : @xml.Element
+  common : CT_TLCommonBehaviorData
 } derive(Eq, @debug.Debug)
-pub fn CT_TLAnimateBehavior::new(@xml.Element) -> Self
-pub fn CT_TLAnimateBehavior::parse(@xml.Element) -> Self
-pub fn CT_TLAnimateBehavior::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimateColorBehavior {
-  element : @xml.Element
+  common : CT_TLCommonBehaviorData
+  color_space : ST_TLAnimateColorSpace?
+  direction : ST_TLAnimateColorDirection?
 } derive(Eq, @debug.Debug)
-pub fn CT_TLAnimateColorBehavior::new(@xml.Element) -> Self
-pub fn CT_TLAnimateColorBehavior::parse(@xml.Element) -> Self
-pub fn CT_TLAnimateColorBehavior::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimateEffectBehavior {
   element : @xml.Element
@@ -797,25 +799,22 @@ pub fn CT_TLAnimateEffectBehavior::parse(@xml.Element) -> Self
 pub fn CT_TLAnimateEffectBehavior::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimateMotionBehavior {
-  element : @xml.Element
+  common : CT_TLCommonBehaviorData
+  origin : ST_TLAnimateMotionBehaviorOrigin?
+  path : String?
+  path_edit_mode : ST_TLAnimateMotionPathEditMode?
+  r_ang : Double?
+  pts_types : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_TLAnimateMotionBehavior::new(@xml.Element) -> Self
-pub fn CT_TLAnimateMotionBehavior::parse(@xml.Element) -> Self
-pub fn CT_TLAnimateMotionBehavior::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimateRotationBehavior {
-  element : @xml.Element
+  common : CT_TLCommonBehaviorData
 } derive(Eq, @debug.Debug)
-pub fn CT_TLAnimateRotationBehavior::new(@xml.Element) -> Self
-pub fn CT_TLAnimateRotationBehavior::parse(@xml.Element) -> Self
-pub fn CT_TLAnimateRotationBehavior::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimateScaleBehavior {
-  element : @xml.Element
+  common : CT_TLCommonBehaviorData
+  zoom_contents : Bool?
 } derive(Eq, @debug.Debug)
-pub fn CT_TLAnimateScaleBehavior::new(@xml.Element) -> Self
-pub fn CT_TLAnimateScaleBehavior::parse(@xml.Element) -> Self
-pub fn CT_TLAnimateScaleBehavior::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLBehaviorAttributeNameList {
   element : @xml.Element
@@ -860,18 +859,24 @@ pub fn CT_TLByRgbColorTransform::parse(@xml.Element) -> Self
 pub fn CT_TLByRgbColorTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLCommandBehavior {
-  element : @xml.Element
+  common : CT_TLCommonBehaviorData
+  command_type : ST_TLCommandType?
+  command_value : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_TLCommandBehavior::new(@xml.Element) -> Self
-pub fn CT_TLCommandBehavior::parse(@xml.Element) -> Self
-pub fn CT_TLCommandBehavior::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLCommonBehaviorData {
-  element : @xml.Element
+  target_shape_id : Int?
+  attr_names : Array[String]
+  additive : ST_TLBehaviorAdditiveType?
+  accumulate : ST_TLBehaviorAccumulateType?
+  from_value : CT_TLAnimVariant?
+  to_value : CT_TLAnimVariant?
+  by_value : CT_TLAnimVariant?
+  tav_list : Array[CT_TLTimeAnimateValue]
+  calc_mode : ST_TLAnimateBehaviorCalcMode?
+  value_type : ST_TLAnimateBehaviorValueType?
 } derive(Eq, @debug.Debug)
-pub fn CT_TLCommonBehaviorData::new(@xml.Element) -> Self
-pub fn CT_TLCommonBehaviorData::parse(@xml.Element) -> Self
-pub fn CT_TLCommonBehaviorData::to_element(Self) -> @xml.Element
+pub fn CT_TLCommonBehaviorData::is_empty(Self) -> Bool
 
 pub(all) struct CT_TLCommonMediaNodeData {
   element : @xml.Element
@@ -881,11 +886,39 @@ pub fn CT_TLCommonMediaNodeData::parse(@xml.Element) -> Self
 pub fn CT_TLCommonMediaNodeData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLCommonTimeNodeData {
-  element : @xml.Element
+  node_id : Int
+  node_type : ST_TLTimeNodeType?
+  preset_class : ST_TLTimeNodePresetClassType?
+  preset_id : Int?
+  duration : ST_TLTime?
+  restart : ST_TLTimeNodeRestartType?
+  fill : ST_TLTimeNodeFillType?
+  repeat_count : ST_TLTime?
+  accel : Double
+  decel : Double
+  auto_reverse : Bool
+  start_conditions : Array[CT_TLTimeCondition]
+  end_conditions : Array[CT_TLTimeCondition]
+  next_conditions : Array[CT_TLTimeCondition]
+  prev_conditions : Array[CT_TLTimeCondition]
+  node_kind : CT_TLCommonTimeNodeKind
+  children : Array[CT_TLCommonTimeNodeData]
 } derive(Eq, @debug.Debug)
-pub fn CT_TLCommonTimeNodeData::new(@xml.Element) -> Self
-pub fn CT_TLCommonTimeNodeData::parse(@xml.Element) -> Self
-pub fn CT_TLCommonTimeNodeData::to_element(Self) -> @xml.Element
+pub fn CT_TLCommonTimeNodeData::behavior_common(Self) -> CT_TLCommonBehaviorData?
+pub fn CT_TLCommonTimeNodeData::is_leaf(Self) -> Bool
+
+pub(all) enum CT_TLCommonTimeNodeKind {
+  TimeNodePar
+  TimeNodeSeq
+  TimeNodeExcl
+  TimeNodeAnimate(CT_TLAnimateBehavior)
+  TimeNodeAnimateColor(CT_TLAnimateColorBehavior)
+  TimeNodeAnimateMotion(CT_TLAnimateMotionBehavior)
+  TimeNodeAnimateRotation(CT_TLAnimateRotationBehavior)
+  TimeNodeAnimateScale(CT_TLAnimateScaleBehavior)
+  TimeNodeSet(CT_TLSetBehavior)
+  TimeNodeCommand(CT_TLCommandBehavior)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TLGraphicalObjectBuild {
   element : @xml.Element
@@ -951,11 +984,8 @@ pub fn CT_TLPoint::parse(@xml.Element) -> Self
 pub fn CT_TLPoint::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLSetBehavior {
-  element : @xml.Element
+  common : CT_TLCommonBehaviorData
 } derive(Eq, @debug.Debug)
-pub fn CT_TLSetBehavior::new(@xml.Element) -> Self
-pub fn CT_TLSetBehavior::parse(@xml.Element) -> Self
-pub fn CT_TLSetBehavior::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLShapeTargetElement {
   element : @xml.Element
@@ -993,32 +1023,18 @@ pub fn CT_TLTextTargetElement::parse(@xml.Element) -> Self
 pub fn CT_TLTextTargetElement::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLTimeAnimateValue {
-  element : @xml.Element
+  tm_percent : Double?
+  value : CT_TLAnimVariant?
+  fmla : String
 } derive(Eq, @debug.Debug)
-pub fn CT_TLTimeAnimateValue::new(@xml.Element) -> Self
-pub fn CT_TLTimeAnimateValue::parse(@xml.Element) -> Self
-pub fn CT_TLTimeAnimateValue::to_element(Self) -> @xml.Element
-
-pub(all) struct CT_TLTimeAnimateValueList {
-  element : @xml.Element
-} derive(Eq, @debug.Debug)
-pub fn CT_TLTimeAnimateValueList::new(@xml.Element) -> Self
-pub fn CT_TLTimeAnimateValueList::parse(@xml.Element) -> Self
-pub fn CT_TLTimeAnimateValueList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLTimeCondition {
-  element : @xml.Element
+  delay : ST_TLTime?
+  event : ST_TLTriggerEvent?
+  target_shape_id : Int?
+  target_runtime_node_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_TLTimeCondition::new(@xml.Element) -> Self
-pub fn CT_TLTimeCondition::parse(@xml.Element) -> Self
-pub fn CT_TLTimeCondition::to_element(Self) -> @xml.Element
-
-pub(all) struct CT_TLTimeConditionList {
-  element : @xml.Element
-} derive(Eq, @debug.Debug)
-pub fn CT_TLTimeConditionList::new(@xml.Element) -> Self
-pub fn CT_TLTimeConditionList::parse(@xml.Element) -> Self
-pub fn CT_TLTimeConditionList::to_element(Self) -> @xml.Element
+pub fn CT_TLTimeCondition::is_static(Self) -> Bool
 
 pub(all) struct CT_TLTimeNodeExclusive {
   element : @xml.Element
@@ -1075,13 +1091,6 @@ pub(all) struct CT_TagsData {
 pub fn CT_TagsData::new(@xml.Element) -> Self
 pub fn CT_TagsData::parse(@xml.Element) -> Self
 pub fn CT_TagsData::to_element(Self) -> @xml.Element
-
-pub(all) struct CT_TimeNodeList {
-  element : @xml.Element
-} derive(Eq, @debug.Debug)
-pub fn CT_TimeNodeList::new(@xml.Element) -> Self
-pub fn CT_TimeNodeList::parse(@xml.Element) -> Self
-pub fn CT_TimeNodeList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TransitionSoundAction {
   element : @xml.Element

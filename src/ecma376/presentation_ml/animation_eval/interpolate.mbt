@@ -52,16 +52,15 @@ pub fn ease_progress(
 /// every repeat (so the caller can honour `fill`).
 pub fn effective_progress(
   raw_progress : Double,
-  repeat_count : RepeatCount?,
+  repeat_count : @domain.ST_TLTime?,
   auto_reverse : Bool,
 ) -> (Double, Bool) {
   if raw_progress < 0.0 {
     return (0.0, false)
   }
-  let iterations = match repeat_count {
-    None => 1
-    Some(rc) => rc.iterations()
-  }
+  let iterations = @domain.ct_tl_common_time_node_repeat_iterations(
+    repeat_count,
+  )
   if iterations == 1 && !auto_reverse {
     if raw_progress > 1.0 {
       return (1.0, true)
@@ -90,52 +89,52 @@ pub fn effective_progress(
 
 ///|
 /// Interpolate a numeric value across two adjacent tav keypoints
-/// using the calc mode. For `CalcDiscrete` the lower keypoint's
-/// value is returned; for `CalcLinear` / `CalcFormula` (treated as
+/// using the calc mode. For `CalcModeDiscrete` the lower keypoint's
+/// value is returned; for `CalcModeLin` / `CalcModeFmla` (treated as
 /// linear when no formula is present) a linear ramp is applied.
 pub fn interpolate_numeric_tav(
   low_value : Double,
   high_value : Double,
   local_progress : Double,
-  calc_mode : CalcMode,
+  calc_mode : @domain.ST_TLAnimateBehaviorCalcMode,
 ) -> Double {
   match calc_mode {
-    CalcDiscrete => low_value
+    @domain.CalcModeDiscrete => low_value
     _ => low_value + (high_value - low_value) * local_progress
   }
 }
 
 ///|
-/// Interpolate two `AnimVariant`s using the supplied calc mode and
-/// local progress. Numeric variants interpolate linearly; non-
+/// Interpolate two `CT_TLAnimVariant`s using the supplied calc mode
+/// and local progress. Numeric variants interpolate linearly; non-
 /// numeric variants step from the low value to the high value at
 /// progress=1.
 pub fn interpolate_variant(
-  low : AnimVariant,
-  high : AnimVariant,
+  low : @domain.CT_TLAnimVariant,
+  high : @domain.CT_TLAnimVariant,
   local_progress : Double,
-  calc_mode : CalcMode,
-) -> AnimVariant {
+  calc_mode : @domain.ST_TLAnimateBehaviorCalcMode,
+) -> @domain.CT_TLAnimVariant {
   let lo_opt = low.as_double()
   let hi_opt = high.as_double()
   match (lo_opt, hi_opt) {
     (Some(lo), Some(hi)) => {
       let value = interpolate_numeric_tav(lo, hi, local_progress, calc_mode)
       match low {
-        IntVariant(_) =>
+        @domain.AnimVariantInt(_) =>
           match high {
-            IntVariant(_) => IntVariant(value.to_int())
-            _ => FloatVariant(value)
+            @domain.AnimVariantInt(_) => @domain.AnimVariantInt(value.to_int())
+            _ => @domain.AnimVariantFloat(value)
           }
-        FloatVariant(_) => FloatVariant(value)
-        _ => FloatVariant(value)
+        @domain.AnimVariantFloat(_) => @domain.AnimVariantFloat(value)
+        _ => @domain.AnimVariantFloat(value)
       }
     }
     _ =>
       // Non-numeric pair: step. Honour discrete by sticking to the
       // low value; honour linear by switching at progress >= 1.0.
       match calc_mode {
-        CalcDiscrete => low
+        @domain.CalcModeDiscrete => low
         _ => if local_progress >= 1.0 { high } else { low }
       }
   }
@@ -146,11 +145,11 @@ pub fn interpolate_variant(
 /// the interpolated variant and the absolute keypoint progress so
 /// callers can report it.
 pub fn evaluate_tav_list(
-  tav_list : Array[Tav],
+  tav_list : Array[@domain.CT_TLTimeAnimateValue],
   local_progress : Double,
-  calc_mode : CalcMode,
-) -> AnimVariant? {
-  let usable : Array[Tav] = []
+  calc_mode : @domain.ST_TLAnimateBehaviorCalcMode,
+) -> @domain.CT_TLAnimVariant? {
+  let usable : Array[@domain.CT_TLTimeAnimateValue] = []
   for tav in tav_list {
     match (tav.tm_percent, tav.value) {
       (Some(_), Some(_)) => usable.push(tav)

@@ -11,120 +11,59 @@ import {
 // Values
 pub fn animation_part1_19_5_section_name() -> String
 
-pub fn decode_anim(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_anim(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_anim_clr(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_anim_clr(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_anim_motion(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_anim_motion(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_anim_rot(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_anim_rot(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_anim_scale(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_anim_scale(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_anim_variant(@xml.Element) -> AnimVariant? raise @errors.SchemaViolation
+pub fn decode_anim_variant(@xml.Element) -> @domain.CT_TLAnimVariant? raise @errors.SchemaViolation
 
-pub fn decode_cbhvr(@xml.Element) -> BehaviorCommon raise @errors.SchemaViolation
+pub fn decode_cbhvr(@xml.Element) -> @domain.CT_TLCommonBehaviorData raise @errors.SchemaViolation
 
-pub fn decode_cmd(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_cmd(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_condition(@xml.Element) -> TimeCondition raise @errors.SchemaViolation
+pub fn decode_condition(@xml.Element) -> @domain.CT_TLTimeCondition raise @errors.SchemaViolation
 
-pub fn decode_excl(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_excl(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_par(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_par(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_seq(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_seq(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_set(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_set(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_tav(@xml.Element) -> Tav raise @errors.SchemaViolation
+pub fn decode_tav(@xml.Element) -> @domain.CT_TLTimeAnimateValue raise @errors.SchemaViolation
 
-pub fn decode_time_node(@xml.Element) -> TimeNode raise @errors.SchemaViolation
+pub fn decode_time_node(@xml.Element) -> @domain.CT_TLCommonTimeNodeData raise @errors.SchemaViolation
 
-pub fn decode_time_node_list(@xml.Element) -> Array[TimeNode] raise @errors.SchemaViolation
+pub fn decode_time_node_list(@xml.Element) -> Array[@domain.CT_TLCommonTimeNodeData] raise @errors.SchemaViolation
 
 pub fn decode_timing(@domain.CT_SlideTiming) -> Timeline raise @errors.SchemaViolation
 
 pub fn ease_progress(Double, Double, Double) -> Double
 
-pub fn effective_progress(Double, RepeatCount?, Bool) -> (Double, Bool)
+pub fn effective_progress(Double, @domain.ST_TLTime?, Bool) -> (Double, Bool)
 
-pub fn evaluate_tav_list(Array[Tav], Double, CalcMode) -> AnimVariant?
+pub fn evaluate_tav_list(Array[@domain.CT_TLTimeAnimateValue], Double, @domain.ST_TLAnimateBehaviorCalcMode) -> @domain.CT_TLAnimVariant?
 
-pub fn interpolate_numeric_tav(Double, Double, Double, CalcMode) -> Double
+pub fn interpolate_numeric_tav(Double, Double, Double, @domain.ST_TLAnimateBehaviorCalcMode) -> Double
 
-pub fn interpolate_variant(AnimVariant, AnimVariant, Double, CalcMode) -> AnimVariant
+pub fn interpolate_variant(@domain.CT_TLAnimVariant, @domain.CT_TLAnimVariant, Double, @domain.ST_TLAnimateBehaviorCalcMode) -> @domain.CT_TLAnimVariant
 
 // Errors
 
 // Types and methods
-pub(all) enum AccumulateType {
-  AccumulateAlways
-  AccumulateNone
-} derive(Eq, @debug.Debug)
-pub fn AccumulateType::from_attr(String) -> Self raise @errors.SchemaViolation
-
 pub(all) struct ActiveBehavior {
   node_id : Int
   target_shape_id : Int?
   attr_name : String
-  value : AnimVariant
+  value : @domain.CT_TLAnimVariant
   progress : Double
-} derive(Eq, @debug.Debug)
-
-pub(all) enum AdditiveType {
-  AdditiveBase
-  AdditiveMultiply
-  AdditiveNone
-  AdditiveReplace
-  AdditiveSum
-} derive(Eq, @debug.Debug)
-pub fn AdditiveType::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) enum AnimVariant {
-  BoolVariant(Bool)
-  IntVariant(Int)
-  FloatVariant(Double)
-  StringVariant(String)
-  ColorVariant(String)
-} derive(Eq, @debug.Debug)
-pub fn AnimVariant::as_double(Self) -> Double?
-
-pub(all) struct AnimateBehavior {
-  common : BehaviorCommon
-} derive(Eq, @debug.Debug)
-
-pub(all) struct AnimateColorBehavior {
-  common : BehaviorCommon
-  color_space : String?
-  direction : String?
-} derive(Eq, @debug.Debug)
-
-pub(all) struct BehaviorCommon {
-  target_shape_id : Int?
-  attr_names : Array[String]
-  additive : AdditiveType?
-  accumulate : AccumulateType?
-  from_value : AnimVariant?
-  to_value : AnimVariant?
-  by_value : AnimVariant?
-  tav_list : Array[Tav]
-  calc_mode : CalcMode?
-  value_type : ValueType?
-} derive(Eq, @debug.Debug)
-pub fn BehaviorCommon::is_empty(Self) -> Bool
-
-pub(all) enum CalcMode {
-  CalcDiscrete
-  CalcLinear
-  CalcFormula
-} derive(Eq, @debug.Debug)
-pub fn CalcMode::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) struct CommandBehavior {
-  common : BehaviorCommon
-  command_type : String?
-  command_value : String?
 } derive(Eq, @debug.Debug)
 
 pub(all) struct Event {
@@ -136,136 +75,14 @@ pub(all) struct Event {
 pub(all) enum EventKind {
   EventStart
   EventEnd
-  EventPropertyAt(String, AnimVariant, Double)
-  EventConditionalStart(TimeCondition)
+  EventPropertyAt(String, @domain.CT_TLAnimVariant, Double)
+  EventConditionalStart(@domain.CT_TLTimeCondition)
 } derive(Eq, @debug.Debug)
-
-pub(all) enum FillType {
-  FillHold
-  FillRemove
-  FillFreeze
-  FillTransition
-} derive(Eq, @debug.Debug)
-pub fn FillType::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) struct MotionBehavior {
-  common : BehaviorCommon
-  origin : String?
-  path : String?
-  path_edit_mode : String?
-  r_ang : Double?
-  pts_types : String?
-} derive(Eq, @debug.Debug)
-
-pub(all) enum NodeType {
-  NodeTmRoot
-  NodeMainSeq
-  NodeClickEffect
-  NodeClickPar
-  NodeWithEffect
-  NodeAfterEffect
-  NodeWithGroup
-  NodeAfterGroup
-  NodeInteractiveSeq
-} derive(Eq, @debug.Debug)
-pub fn NodeType::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) enum PresetClass {
-  PresetEntrance
-  PresetExit
-  PresetEmphasis
-  PresetPath
-  PresetVerb
-  PresetMediaCall
-} derive(Eq, @debug.Debug)
-pub fn PresetClass::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) enum RepeatCount {
-  Iterations(Int)
-  RepeatIndefinite
-} derive(Eq, @debug.Debug)
-pub fn RepeatCount::from_attr(String) -> Self? raise @errors.SchemaViolation
-pub fn RepeatCount::iterations(Self) -> Int
-
-pub(all) enum RestartType {
-  RestartAlways
-  RestartNever
-  RestartWhenNotActive
-} derive(Eq, @debug.Debug)
-pub fn RestartType::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) struct RotationBehavior {
-  common : BehaviorCommon
-} derive(Eq, @debug.Debug)
-
-pub(all) struct ScaleBehavior {
-  common : BehaviorCommon
-  zoom_contents : Bool?
-} derive(Eq, @debug.Debug)
-
-pub(all) struct SetBehavior {
-  common : BehaviorCommon
-} derive(Eq, @debug.Debug)
-
-pub(all) struct Tav {
-  tm_percent : Double?
-  value : AnimVariant?
-} derive(Eq, @debug.Debug)
-
-pub(all) struct TimeCondition {
-  delay : TimeValue?
-  event : TriggerEvent?
-  target_shape_id : Int?
-  target_runtime_node_id : Int?
-} derive(Eq, @debug.Debug)
-pub fn TimeCondition::is_static(Self) -> Bool
-
-pub(all) struct TimeNode {
-  node_id : Int
-  node_type : NodeType?
-  preset_class : PresetClass?
-  preset_id : Int?
-  duration : TimeValue?
-  delay : TimeValue?
-  restart : RestartType?
-  fill : FillType?
-  repeat_count : RepeatCount?
-  accel : Double
-  decel : Double
-  auto_reverse : Bool
-  start_conditions : Array[TimeCondition]
-  end_conditions : Array[TimeCondition]
-  next_conditions : Array[TimeCondition]
-  prev_conditions : Array[TimeCondition]
-  kind : TimeNodeKind
-  children : Array[TimeNode]
-} derive(Eq, @debug.Debug)
-pub fn TimeNode::behavior_common(Self) -> BehaviorCommon?
-pub fn TimeNode::is_leaf(Self) -> Bool
-
-pub(all) enum TimeNodeKind {
-  Par
-  Seq
-  Excl
-  AnimateLeaf(AnimateBehavior)
-  AnimateColorLeaf(AnimateColorBehavior)
-  AnimateMotionLeaf(MotionBehavior)
-  AnimateRotationLeaf(RotationBehavior)
-  AnimateScaleLeaf(ScaleBehavior)
-  SetLeaf(SetBehavior)
-  CommandLeaf(CommandBehavior)
-} derive(Eq, @debug.Debug)
-
-pub(all) enum TimeValue {
-  Indefinite
-  Ms(Int)
-} derive(Eq, @debug.Debug)
-pub fn TimeValue::from_attr(String) -> Self? raise @errors.SchemaViolation
 
 pub(all) struct Timeline {
-  roots : Array[TimeNode]
+  roots : Array[@domain.CT_TLCommonTimeNodeData]
 } derive(Eq, @debug.Debug)
-pub fn Timeline::flatten_leaves(Self) -> Array[TimeNode]
+pub fn Timeline::flatten_leaves(Self) -> Array[@domain.CT_TLCommonTimeNodeData]
 
 pub(all) struct TimingEngine {
   timeline : Timeline
@@ -273,29 +90,6 @@ pub(all) struct TimingEngine {
 pub fn TimingEngine::animate(Self, Int) -> Array[ActiveBehavior]
 pub fn TimingEngine::new(Timeline) -> Self
 pub fn TimingEngine::schedule(Self) -> Array[Event]
-
-pub(all) enum TriggerEvent {
-  EvtBegin
-  EvtEnd
-  EvtOnBegin
-  EvtOnEnd
-  EvtOnClick
-  EvtOnDblClick
-  EvtOnMouseOver
-  EvtOnMouseOut
-  EvtOnNext
-  EvtOnPrev
-  EvtOnStopAudio
-} derive(Eq, @debug.Debug)
-pub fn TriggerEvent::from_attr(String) -> Self raise @errors.SchemaViolation
-pub fn TriggerEvent::is_runtime(Self) -> Bool
-
-pub(all) enum ValueType {
-  ValColor
-  ValNumber
-  ValString
-} derive(Eq, @debug.Debug)
-pub fn ValueType::from_attr(String) -> Self raise @errors.SchemaViolation
 
 // Type aliases
 

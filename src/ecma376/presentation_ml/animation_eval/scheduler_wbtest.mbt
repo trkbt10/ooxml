@@ -15,7 +15,7 @@ fn build_timing(timing_xml : String) -> @domain.CT_SlideTiming {
 }
 
 ///|
-fn root_node(timeline : Timeline) -> TimeNode {
+fn root_node(timeline : Timeline) -> @domain.CT_TLCommonTimeNodeData {
   timeline.roots[0]
 }
 
@@ -28,7 +28,7 @@ test "§19.5 par container with two set children" {
   let timeline = try! decode_timing(build_timing(xml))
   let root = root_node(timeline)
   assert_eq(root.node_id, 1)
-  assert_true(root.kind is Par)
+  assert_true(root.node_kind is @domain.TimeNodePar)
   assert_eq(root.children.length(), 2)
   let first = root.children[0]
   let second = root.children[1]
@@ -86,7 +86,7 @@ test "§19.5.31 clickEffect surfaces ConditionalStart" {
     match event.kind {
       EventConditionalStart(cond) => {
         found = true
-        assert_true(cond.event == Some(EvtOnClick))
+        assert_true(cond.event == Some(@domain.TriggerOnClick))
         assert_true(cond.target_shape_id == Some(5))
       }
       _ => ()
@@ -183,10 +183,10 @@ test "§19.5 animation_part1_19_5_section_name citation" {
 
 ///|
 test "§19.7.38 ST_TLTime decoder accepts indefinite and milliseconds" {
-  let indef = try! TimeValue::from_attr("indefinite")
-  assert_true(indef == Some(Indefinite))
-  let ms = try! TimeValue::from_attr("2500")
-  assert_true(ms == Some(Ms(2500)))
-  let bad = try? TimeValue::from_attr("nope")
+  let indef = try! @domain.ST_TLTime::parse("indefinite")
+  assert_eq(indef.to_string(), "indefinite")
+  let ms = try! @domain.ST_TLTime::parse("2500")
+  assert_eq(ms.to_string(), "2500")
+  let bad = try? @domain.ST_TLTime::parse("nope")
   assert_true(bad is Err(_))
 }
