@@ -158,18 +158,33 @@ pub fn ST_CxnType::to_string(self : ST_CxnType) -> String {
 }
 
 ///|
-/// XSD simple type ST_LayoutShapeType (§21.4.x).
-pub struct ST_LayoutShapeType {
-  value : String
+/// XSD simple type ST_LayoutShapeType — Part 1 §21.4.7.41. Lexical union of
+/// ST_OutputShapeType (§21.4.7.48, "none" | "conn") and DrawingML
+/// ST_ShapeType (§20.1.10.56, the preset-geometry token set). The
+/// `Output` variant holds the typed enum from this package; the
+/// `Preset` variant holds the §20.1.10.56 token verbatim because that
+/// vocabulary lives in the drawing_ml package and is not importable
+/// here without crossing the diagram package boundary.
+pub(all) enum ST_LayoutShapeType {
+  LayoutShapeTypeOutput(ST_OutputShapeType)
+  LayoutShapeTypePreset(String)
 } derive(Eq, Debug)
 
 ///|
-/// Parse the ST_LayoutShapeType schema lexical value.
+/// Parse the ST_LayoutShapeType schema lexical value. Try the typed
+/// ST_OutputShapeType branch first; otherwise accept any non-empty
+/// xsd:token as an ST_ShapeType preset name.
 pub fn ST_LayoutShapeType::parse(
   s : String,
 ) -> ST_LayoutShapeType raise SchemaViolation {
-  validate_ST_LayoutShapeType(s)
-  { value: s }
+  if s.length() == 0 {
+    invalid("ST_LayoutShapeType", s)
+  }
+  match s {
+    "none" => LayoutShapeTypeOutput(OutputShapeTypeNone)
+    "conn" => LayoutShapeTypeOutput(OutputShapeTypeConn)
+    _ => LayoutShapeTypePreset(s)
+  }
 }
 
 ///|
@@ -183,20 +198,31 @@ pub fn ST_LayoutShapeType::new(
 ///|
 /// Return the schema lexical value for ST_LayoutShapeType.
 pub fn ST_LayoutShapeType::to_string(self : ST_LayoutShapeType) -> String {
-  self.value
+  match self {
+    LayoutShapeTypeOutput(v) => v.to_string()
+    LayoutShapeTypePreset(s) => s
+  }
 }
 
 ///|
-/// XSD simple type ST_Index1 (§21.4.x).
+/// XSD simple type ST_Index1 — Part 1 §21.4.7.39. xsd:unsignedInt
+/// restricted by minInclusive=1, so it stores a positive unsigned
+/// integer in the closed range [1, 2^32 - 1].
 pub struct ST_Index1 {
-  value : String
+  value : UInt
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_Index1 schema lexical value.
 pub fn ST_Index1::parse(s : String) -> ST_Index1 raise SchemaViolation {
-  validate_ST_Index1(s)
-  { value: s }
+  if !is_unsigned_int(s) {
+    invalid("ST_Index1", s)
+  }
+  let value = parse_uint(s, "ST_Index1")
+  if value == 0U {
+    invalid("ST_Index1", s)
+  }
+  { value, }
 }
 
 ///|
@@ -208,13 +234,64 @@ pub fn ST_Index1::new(s : String) -> ST_Index1 raise SchemaViolation {
 ///|
 /// Return the schema lexical value for ST_Index1.
 pub fn ST_Index1::to_string(self : ST_Index1) -> String {
-  self.value
+  self.value.to_string()
 }
 
 ///|
-/// XSD simple type ST_ParameterVal (§21.4.x).
-pub struct ST_ParameterVal {
-  value : String
+/// XSD simple type ST_ParameterVal — Part 1 §21.4.7.50. Lexical union
+/// of every diagram parameter enumeration plus the W3C XML Schema
+/// boolean / int / double / string member types. The variants below
+/// follow the xsd:union memberTypes order in Annex A.5.3
+/// (DiagramHorizontalAlignment, VerticalAlignment, ChildDirection,
+/// ChildAlignment, SecondaryChildAlignment, LinearDirection,
+/// SecondaryLinearDirection, StartingElement, BendPoint,
+/// ConnectorRouting, ArrowheadStyle, ConnectorDimension, RotationPath,
+/// CenterShapeMapping, NodeHorizontalAlignment, NodeVerticalAlignment,
+/// FallbackDimension, TextDirection, PyramidAccentPosition,
+/// PyramidAccentTextMargin, TextBlockDirection, TextAnchorHorizontal,
+/// TextAnchorVertical, DiagramTextAlignment, AutoTextRotation,
+/// GrowDirection, FlowDirection, ContinueDirection, Breakpoint,
+/// Offset, HierarchyAlignment, xsd:int, xsd:double, xsd:boolean,
+/// xsd:string, ConnectorPoint). The xsd:string fallback only fires
+/// after every typed branch has been tried so the typed variants take
+/// precedence.
+pub(all) enum ST_ParameterVal {
+  ParameterValDiagramHorizontalAlignment(ST_DiagramHorizontalAlignment)
+  ParameterValVerticalAlignment(ST_VerticalAlignment)
+  ParameterValChildDirection(ST_ChildDirection)
+  ParameterValChildAlignment(ST_ChildAlignment)
+  ParameterValSecondaryChildAlignment(ST_SecondaryChildAlignment)
+  ParameterValLinearDirection(ST_LinearDirection)
+  ParameterValSecondaryLinearDirection(ST_SecondaryLinearDirection)
+  ParameterValStartingElement(ST_StartingElement)
+  ParameterValBendPoint(ST_BendPoint)
+  ParameterValConnectorRouting(ST_ConnectorRouting)
+  ParameterValArrowheadStyle(ST_ArrowheadStyle)
+  ParameterValConnectorDimension(ST_ConnectorDimension)
+  ParameterValRotationPath(ST_RotationPath)
+  ParameterValCenterShapeMapping(ST_CenterShapeMapping)
+  ParameterValNodeHorizontalAlignment(ST_NodeHorizontalAlignment)
+  ParameterValNodeVerticalAlignment(ST_NodeVerticalAlignment)
+  ParameterValFallbackDimension(ST_FallbackDimension)
+  ParameterValTextDirection(ST_TextDirection)
+  ParameterValPyramidAccentPosition(ST_PyramidAccentPosition)
+  ParameterValPyramidAccentTextMargin(ST_PyramidAccentTextMargin)
+  ParameterValTextBlockDirection(ST_TextBlockDirection)
+  ParameterValTextAnchorHorizontal(ST_TextAnchorHorizontal)
+  ParameterValTextAnchorVertical(ST_TextAnchorVertical)
+  ParameterValDiagramTextAlignment(ST_DiagramTextAlignment)
+  ParameterValAutoTextRotation(ST_AutoTextRotation)
+  ParameterValGrowDirection(ST_GrowDirection)
+  ParameterValFlowDirection(ST_FlowDirection)
+  ParameterValContinueDirection(ST_ContinueDirection)
+  ParameterValBreakpoint(ST_Breakpoint)
+  ParameterValOffset(ST_Offset)
+  ParameterValHierarchyAlignment(ST_HierarchyAlignment)
+  ParameterValConnectorPoint(ST_ConnectorPoint)
+  ParameterValBool(Bool)
+  ParameterValInt(Int)
+  ParameterValDouble(String)
+  ParameterValString(String)
 } derive(Eq, Debug)
 
 ///|
@@ -222,8 +299,151 @@ pub struct ST_ParameterVal {
 pub fn ST_ParameterVal::parse(
   s : String,
 ) -> ST_ParameterVal raise SchemaViolation {
-  validate_ST_ParameterVal(s)
-  { value: s }
+  if s.length() == 0 {
+    invalid("ST_ParameterVal", s)
+  }
+  // Try typed enum branches first; on success, return that variant.
+  match (try? ST_DiagramHorizontalAlignment::parse(s)) {
+    Ok(v) => return ParameterValDiagramHorizontalAlignment(v)
+    Err(_) => ()
+  }
+  match (try? ST_VerticalAlignment::parse(s)) {
+    Ok(v) => return ParameterValVerticalAlignment(v)
+    Err(_) => ()
+  }
+  match (try? ST_ChildDirection::parse(s)) {
+    Ok(v) => return ParameterValChildDirection(v)
+    Err(_) => ()
+  }
+  match (try? ST_ChildAlignment::parse(s)) {
+    Ok(v) => return ParameterValChildAlignment(v)
+    Err(_) => ()
+  }
+  match (try? ST_SecondaryChildAlignment::parse(s)) {
+    Ok(v) => return ParameterValSecondaryChildAlignment(v)
+    Err(_) => ()
+  }
+  match (try? ST_LinearDirection::parse(s)) {
+    Ok(v) => return ParameterValLinearDirection(v)
+    Err(_) => ()
+  }
+  match (try? ST_SecondaryLinearDirection::parse(s)) {
+    Ok(v) => return ParameterValSecondaryLinearDirection(v)
+    Err(_) => ()
+  }
+  match (try? ST_StartingElement::parse(s)) {
+    Ok(v) => return ParameterValStartingElement(v)
+    Err(_) => ()
+  }
+  match (try? ST_BendPoint::parse(s)) {
+    Ok(v) => return ParameterValBendPoint(v)
+    Err(_) => ()
+  }
+  match (try? ST_ConnectorRouting::parse(s)) {
+    Ok(v) => return ParameterValConnectorRouting(v)
+    Err(_) => ()
+  }
+  match (try? ST_ArrowheadStyle::parse(s)) {
+    Ok(v) => return ParameterValArrowheadStyle(v)
+    Err(_) => ()
+  }
+  match (try? ST_ConnectorDimension::parse(s)) {
+    Ok(v) => return ParameterValConnectorDimension(v)
+    Err(_) => ()
+  }
+  match (try? ST_RotationPath::parse(s)) {
+    Ok(v) => return ParameterValRotationPath(v)
+    Err(_) => ()
+  }
+  match (try? ST_CenterShapeMapping::parse(s)) {
+    Ok(v) => return ParameterValCenterShapeMapping(v)
+    Err(_) => ()
+  }
+  match (try? ST_NodeHorizontalAlignment::parse(s)) {
+    Ok(v) => return ParameterValNodeHorizontalAlignment(v)
+    Err(_) => ()
+  }
+  match (try? ST_NodeVerticalAlignment::parse(s)) {
+    Ok(v) => return ParameterValNodeVerticalAlignment(v)
+    Err(_) => ()
+  }
+  match (try? ST_FallbackDimension::parse(s)) {
+    Ok(v) => return ParameterValFallbackDimension(v)
+    Err(_) => ()
+  }
+  match (try? ST_TextDirection::parse(s)) {
+    Ok(v) => return ParameterValTextDirection(v)
+    Err(_) => ()
+  }
+  match (try? ST_PyramidAccentPosition::parse(s)) {
+    Ok(v) => return ParameterValPyramidAccentPosition(v)
+    Err(_) => ()
+  }
+  match (try? ST_PyramidAccentTextMargin::parse(s)) {
+    Ok(v) => return ParameterValPyramidAccentTextMargin(v)
+    Err(_) => ()
+  }
+  match (try? ST_TextBlockDirection::parse(s)) {
+    Ok(v) => return ParameterValTextBlockDirection(v)
+    Err(_) => ()
+  }
+  match (try? ST_TextAnchorHorizontal::parse(s)) {
+    Ok(v) => return ParameterValTextAnchorHorizontal(v)
+    Err(_) => ()
+  }
+  match (try? ST_TextAnchorVertical::parse(s)) {
+    Ok(v) => return ParameterValTextAnchorVertical(v)
+    Err(_) => ()
+  }
+  match (try? ST_DiagramTextAlignment::parse(s)) {
+    Ok(v) => return ParameterValDiagramTextAlignment(v)
+    Err(_) => ()
+  }
+  match (try? ST_AutoTextRotation::parse(s)) {
+    Ok(v) => return ParameterValAutoTextRotation(v)
+    Err(_) => ()
+  }
+  match (try? ST_GrowDirection::parse(s)) {
+    Ok(v) => return ParameterValGrowDirection(v)
+    Err(_) => ()
+  }
+  match (try? ST_FlowDirection::parse(s)) {
+    Ok(v) => return ParameterValFlowDirection(v)
+    Err(_) => ()
+  }
+  match (try? ST_ContinueDirection::parse(s)) {
+    Ok(v) => return ParameterValContinueDirection(v)
+    Err(_) => ()
+  }
+  match (try? ST_Breakpoint::parse(s)) {
+    Ok(v) => return ParameterValBreakpoint(v)
+    Err(_) => ()
+  }
+  match (try? ST_Offset::parse(s)) {
+    Ok(v) => return ParameterValOffset(v)
+    Err(_) => ()
+  }
+  match (try? ST_HierarchyAlignment::parse(s)) {
+    Ok(v) => return ParameterValHierarchyAlignment(v)
+    Err(_) => ()
+  }
+  match (try? ST_ConnectorPoint::parse(s)) {
+    Ok(v) => return ParameterValConnectorPoint(v)
+    Err(_) => ()
+  }
+  if s == "true" || s == "1" {
+    return ParameterValBool(true)
+  }
+  if s == "false" || s == "0" {
+    return ParameterValBool(false)
+  }
+  if is_int(s) {
+    return ParameterValInt(parse_int(s, "ST_ParameterVal"))
+  }
+  if is_double(s) {
+    return ParameterValDouble(s)
+  }
+  ParameterValString(s)
 }
 
 ///|
@@ -237,20 +457,73 @@ pub fn ST_ParameterVal::new(
 ///|
 /// Return the schema lexical value for ST_ParameterVal.
 pub fn ST_ParameterVal::to_string(self : ST_ParameterVal) -> String {
-  self.value
+  match self {
+    ParameterValDiagramHorizontalAlignment(v) => v.to_string()
+    ParameterValVerticalAlignment(v) => v.to_string()
+    ParameterValChildDirection(v) => v.to_string()
+    ParameterValChildAlignment(v) => v.to_string()
+    ParameterValSecondaryChildAlignment(v) => v.to_string()
+    ParameterValLinearDirection(v) => v.to_string()
+    ParameterValSecondaryLinearDirection(v) => v.to_string()
+    ParameterValStartingElement(v) => v.to_string()
+    ParameterValBendPoint(v) => v.to_string()
+    ParameterValConnectorRouting(v) => v.to_string()
+    ParameterValArrowheadStyle(v) => v.to_string()
+    ParameterValConnectorDimension(v) => v.to_string()
+    ParameterValRotationPath(v) => v.to_string()
+    ParameterValCenterShapeMapping(v) => v.to_string()
+    ParameterValNodeHorizontalAlignment(v) => v.to_string()
+    ParameterValNodeVerticalAlignment(v) => v.to_string()
+    ParameterValFallbackDimension(v) => v.to_string()
+    ParameterValTextDirection(v) => v.to_string()
+    ParameterValPyramidAccentPosition(v) => v.to_string()
+    ParameterValPyramidAccentTextMargin(v) => v.to_string()
+    ParameterValTextBlockDirection(v) => v.to_string()
+    ParameterValTextAnchorHorizontal(v) => v.to_string()
+    ParameterValTextAnchorVertical(v) => v.to_string()
+    ParameterValDiagramTextAlignment(v) => v.to_string()
+    ParameterValAutoTextRotation(v) => v.to_string()
+    ParameterValGrowDirection(v) => v.to_string()
+    ParameterValFlowDirection(v) => v.to_string()
+    ParameterValContinueDirection(v) => v.to_string()
+    ParameterValBreakpoint(v) => v.to_string()
+    ParameterValOffset(v) => v.to_string()
+    ParameterValHierarchyAlignment(v) => v.to_string()
+    ParameterValConnectorPoint(v) => v.to_string()
+    ParameterValBool(true) => "true"
+    ParameterValBool(false) => "false"
+    ParameterValInt(v) => v.to_string()
+    ParameterValDouble(s) => s
+    ParameterValString(s) => s
+  }
 }
 
 ///|
-/// XSD simple type ST_ModelId (§21.4.x).
-pub struct ST_ModelId {
-  value : String
+/// XSD simple type ST_ModelId — Part 1 §21.4.7.43. Lexical union of
+/// xsd:int and the shared ST_Guid type (§22.9.2.4, the
+/// brace-delimited UUID form). The `Int` variant holds the parsed
+/// xsd:int value; the `Guid` variant preserves the original
+/// `{HHHHHHHH-HHHH-HHHH-HHHH-HHHHHHHHHHHH}` lexical form because
+/// ST_Guid's typed encoding lives in the shared simple_types package
+/// and is not imported here.
+pub(all) enum ST_ModelId {
+  ModelIdInt(Int)
+  ModelIdGuid(String)
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_ModelId schema lexical value.
 pub fn ST_ModelId::parse(s : String) -> ST_ModelId raise SchemaViolation {
-  validate_ST_ModelId(s)
-  { value: s }
+  if s.length() == 0 {
+    invalid("ST_ModelId", s)
+  }
+  if is_int(s) {
+    return ModelIdInt(parse_int(s, "ST_ModelId"))
+  }
+  if is_guid(s) {
+    return ModelIdGuid(s)
+  }
+  invalid("ST_ModelId", s)
 }
 
 ///|
@@ -262,13 +535,22 @@ pub fn ST_ModelId::new(s : String) -> ST_ModelId raise SchemaViolation {
 ///|
 /// Return the schema lexical value for ST_ModelId.
 pub fn ST_ModelId::to_string(self : ST_ModelId) -> String {
-  self.value
+  match self {
+    ModelIdInt(v) => v.to_string()
+    ModelIdGuid(s) => s
+  }
 }
 
 ///|
-/// XSD simple type ST_PrSetCustVal (§21.4.x).
+/// XSD simple type ST_PrSetCustVal — Part 1 §21.4.7.66. Lexical union
+/// of the shared ST_Percentage type (§22.9.2.9, `<decimal>%`). Stored
+/// as the signed decimal magnitude scaled by 1000 — matching
+/// ST_Percentage's canonical thousandths-of-percent encoding — so
+/// callers compare and round-trip at integer precision without
+/// re-parsing the lexical form.
 pub struct ST_PrSetCustVal {
-  value : String
+  /// 1000ths of a percent. e.g. "12.345%" -> 12345.
+  thousandths : Int64
 } derive(Eq, Debug)
 
 ///|
@@ -276,8 +558,12 @@ pub struct ST_PrSetCustVal {
 pub fn ST_PrSetCustVal::parse(
   s : String,
 ) -> ST_PrSetCustVal raise SchemaViolation {
-  validate_ST_PrSetCustVal(s)
-  { value: s }
+  if !is_percentage_lexical(s) {
+    invalid("ST_PrSetCustVal", s)
+  }
+  let magnitude = s.unsafe_substring(start=0, end=s.length() - 1)
+  let thousandths = parse_decimal_scaled(magnitude, 3, "ST_PrSetCustVal")
+  { thousandths, }
 }
 
 ///|
@@ -291,7 +577,13 @@ pub fn ST_PrSetCustVal::new(
 ///|
 /// Return the schema lexical value for ST_PrSetCustVal.
 pub fn ST_PrSetCustVal::to_string(self : ST_PrSetCustVal) -> String {
-  self.value
+  format_scaled_decimal(self.thousandths, 3) + "%"
+}
+
+///|
+/// Numeric accessor for downstream calculations.
+pub fn ST_PrSetCustVal::thousandths_of_percent(self : ST_PrSetCustVal) -> Int64 {
+  self.thousandths
 }
 
 ///|
@@ -442,16 +734,24 @@ pub fn ST_AnimLvlStr::to_string(self : ST_AnimLvlStr) -> String {
 }
 
 ///|
-/// XSD simple type ST_NodeCount (§21.4.x).
+/// XSD simple type ST_NodeCount — Part 1 §21.4.7.44. xsd:int
+/// restricted by minInclusive=-1; the spec text notes that -1 carries
+/// the sentinel meaning "unbounded".
 pub struct ST_NodeCount {
-  value : String
+  value : Int
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_NodeCount schema lexical value.
 pub fn ST_NodeCount::parse(s : String) -> ST_NodeCount raise SchemaViolation {
-  validate_ST_NodeCount(s)
-  { value: s }
+  if !is_int(s) {
+    invalid("ST_NodeCount", s)
+  }
+  let value = parse_int(s, "ST_NodeCount")
+  if value < -1 {
+    invalid("ST_NodeCount", s)
+  }
+  { value, }
 }
 
 ///|
@@ -463,7 +763,7 @@ pub fn ST_NodeCount::new(s : String) -> ST_NodeCount raise SchemaViolation {
 ///|
 /// Return the schema lexical value for ST_NodeCount.
 pub fn ST_NodeCount::to_string(self : ST_NodeCount) -> String {
-  self.value
+  self.value.to_string()
 }
 
 ///|
@@ -628,16 +928,18 @@ pub fn ST_AxisType::to_string(self : ST_AxisType) -> String {
 }
 
 ///|
-/// XSD simple type ST_AxisTypes (§21.4.x).
+/// XSD simple type ST_AxisTypes — Part 1 §21.4.7.7. xsd:list whose
+/// itemType is ST_AxisType (§21.4.7.6). The whitespace-separated
+/// lexical form is decoded into the parsed item enum values.
 pub struct ST_AxisTypes {
-  value : String
+  values : Array[ST_AxisType]
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_AxisTypes schema lexical value.
 pub fn ST_AxisTypes::parse(s : String) -> ST_AxisTypes raise SchemaViolation {
-  validate_ST_AxisTypes(s)
-  { value: s }
+  let values = parse_typed_list("ST_AxisTypes", s, ST_AxisType::parse)
+  { values, }
 }
 
 ///|
@@ -649,7 +951,7 @@ pub fn ST_AxisTypes::new(s : String) -> ST_AxisTypes raise SchemaViolation {
 ///|
 /// Return the schema lexical value for ST_AxisTypes.
 pub fn ST_AxisTypes::to_string(self : ST_AxisTypes) -> String {
-  self.value
+  format_typed_list(self.values, fn(item) { item.to_string() })
 }
 
 ///|
@@ -1052,9 +1354,11 @@ pub fn ST_ElementType::to_string(self : ST_ElementType) -> String {
 }
 
 ///|
-/// XSD simple type ST_ElementTypes (§21.4.x).
+/// XSD simple type ST_ElementTypes — Part 1 §21.4.7.28. xsd:list whose
+/// itemType is ST_ElementType (§21.4.7.27). The whitespace-separated
+/// lexical form is decoded into the parsed item enum values.
 pub struct ST_ElementTypes {
-  value : String
+  values : Array[ST_ElementType]
 } derive(Eq, Debug)
 
 ///|
@@ -1062,8 +1366,8 @@ pub struct ST_ElementTypes {
 pub fn ST_ElementTypes::parse(
   s : String,
 ) -> ST_ElementTypes raise SchemaViolation {
-  validate_ST_ElementTypes(s)
-  { value: s }
+  let values = parse_typed_list("ST_ElementTypes", s, ST_ElementType::parse)
+  { values, }
 }
 
 ///|
@@ -1077,7 +1381,7 @@ pub fn ST_ElementTypes::new(
 ///|
 /// Return the schema lexical value for ST_ElementTypes.
 pub fn ST_ElementTypes::to_string(self : ST_ElementTypes) -> String {
-  self.value
+  format_typed_list(self.values, fn(item) { item.to_string() })
 }
 
 ///|
@@ -1274,16 +1578,23 @@ pub fn ST_ParameterId::to_string(self : ST_ParameterId) -> String {
 }
 
 ///|
-/// XSD simple type ST_Ints (§21.4): value type exposes ST_Ints for a dml-diagram.xsd whitespace-separated xsd:int list.
+/// XSD simple type ST_Ints — Part 1 §21.4.7.40. xsd:list whose
+/// itemType is xsd:int. The whitespace-separated lexical form is
+/// decoded into typed signed 32-bit integer items.
 pub struct ST_Ints {
-  value : String
+  values : Array[Int]
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_Ints schema lexical value.
 pub fn ST_Ints::parse(s : String) -> ST_Ints raise SchemaViolation {
-  validate_ST_Ints(s)
-  { value: s }
+  let values = parse_typed_list("ST_Ints", s, fn(item) {
+    if !is_int(item) {
+      invalid("ST_Ints", s)
+    }
+    parse_int(item, "ST_Ints")
+  })
+  { values, }
 }
 
 ///|
@@ -1295,13 +1606,15 @@ pub fn ST_Ints::new(s : String) -> ST_Ints raise SchemaViolation {
 ///|
 /// Return the schema lexical value for ST_Ints.
 pub fn ST_Ints::to_string(self : ST_Ints) -> String {
-  self.value
+  format_typed_list(self.values, fn(v) { v.to_string() })
 }
 
 ///|
-/// XSD simple type ST_UnsignedInts (§21.4.x).
+/// XSD simple type ST_UnsignedInts — Part 1 §21.4.7.63. xsd:list whose
+/// itemType is xsd:unsignedInt. The whitespace-separated lexical form
+/// is decoded into typed unsigned 32-bit integer items.
 pub struct ST_UnsignedInts {
-  value : String
+  values : Array[UInt]
 } derive(Eq, Debug)
 
 ///|
@@ -1309,8 +1622,13 @@ pub struct ST_UnsignedInts {
 pub fn ST_UnsignedInts::parse(
   s : String,
 ) -> ST_UnsignedInts raise SchemaViolation {
-  validate_ST_UnsignedInts(s)
-  { value: s }
+  let values = parse_typed_list("ST_UnsignedInts", s, fn(item) {
+    if !is_unsigned_int(item) {
+      invalid("ST_UnsignedInts", s)
+    }
+    parse_uint(item, "ST_UnsignedInts")
+  })
+  { values, }
 }
 
 ///|
@@ -1324,20 +1642,30 @@ pub fn ST_UnsignedInts::new(
 ///|
 /// Return the schema lexical value for ST_UnsignedInts.
 pub fn ST_UnsignedInts::to_string(self : ST_UnsignedInts) -> String {
-  self.value
+  format_typed_list(self.values, fn(v) { v.to_string() })
 }
 
 ///|
-/// XSD simple type ST_Booleans (§21.4.x).
+/// XSD simple type ST_Booleans — Part 1 §21.4.7.9. xsd:list whose
+/// itemType is xsd:boolean. Each whitespace-separated item is decoded
+/// into a typed Bool; both `true`/`false` and `1`/`0` lexical forms
+/// are accepted on parse, and `to_string` renders the canonical
+/// `true`/`false` forms.
 pub struct ST_Booleans {
-  value : String
+  values : Array[Bool]
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_Booleans schema lexical value.
 pub fn ST_Booleans::parse(s : String) -> ST_Booleans raise SchemaViolation {
-  validate_ST_Booleans(s)
-  { value: s }
+  let values = parse_typed_list("ST_Booleans", s, fn(item) {
+    match item {
+      "true" | "1" => true
+      "false" | "0" => false
+      _ => invalid("ST_Booleans", s)
+    }
+  })
+  { values, }
 }
 
 ///|
@@ -1349,7 +1677,7 @@ pub fn ST_Booleans::new(s : String) -> ST_Booleans raise SchemaViolation {
 ///|
 /// Return the schema lexical value for ST_Booleans.
 pub fn ST_Booleans::to_string(self : ST_Booleans) -> String {
-  self.value
+  format_typed_list(self.values, fn(v) { if v { "true" } else { "false" } })
 }
 
 ///|
@@ -2763,9 +3091,22 @@ pub fn ST_HierarchyAlignment::to_string(self : ST_HierarchyAlignment) -> String 
 }
 
 ///|
-/// XSD simple type ST_FunctionValue (§21.4.x).
-pub struct ST_FunctionValue {
-  value : String
+/// XSD simple type ST_FunctionValue — Part 1 §21.4.7.34. Lexical union
+/// of (in Annex A.5.3 order) xsd:int, xsd:boolean, ST_Direction
+/// (§21.4.7.26), ST_HierBranchStyle (§21.4.7.37), ST_AnimOneStr
+/// (§21.4.7.3), ST_AnimLvlStr (§21.4.7.2), and ST_ResizeHandlesStr
+/// (§21.4.7.54). Disambiguation: xsd:int wins over the enum branches
+/// when the literal parses as a signed integer; xsd:boolean wins over
+/// `true`/`false`/`1`/`0` because every enum member type is a token
+/// vocabulary disjoint from those tokens.
+pub(all) enum ST_FunctionValue {
+  FunctionValueInt(Int)
+  FunctionValueBool(Bool)
+  FunctionValueDirection(ST_Direction)
+  FunctionValueHierBranchStyle(ST_HierBranchStyle)
+  FunctionValueAnimOneStr(ST_AnimOneStr)
+  FunctionValueAnimLvlStr(ST_AnimLvlStr)
+  FunctionValueResizeHandlesStr(ST_ResizeHandlesStr)
 } derive(Eq, Debug)
 
 ///|
@@ -2773,8 +3114,39 @@ pub struct ST_FunctionValue {
 pub fn ST_FunctionValue::parse(
   s : String,
 ) -> ST_FunctionValue raise SchemaViolation {
-  validate_ST_FunctionValue(s)
-  { value: s }
+  if s.length() == 0 {
+    invalid("ST_FunctionValue", s)
+  }
+  if is_int(s) {
+    return FunctionValueInt(parse_int(s, "ST_FunctionValue"))
+  }
+  if s == "true" || s == "1" {
+    return FunctionValueBool(true)
+  }
+  if s == "false" || s == "0" {
+    return FunctionValueBool(false)
+  }
+  match (try? ST_Direction::parse(s)) {
+    Ok(v) => return FunctionValueDirection(v)
+    Err(_) => ()
+  }
+  match (try? ST_HierBranchStyle::parse(s)) {
+    Ok(v) => return FunctionValueHierBranchStyle(v)
+    Err(_) => ()
+  }
+  match (try? ST_AnimOneStr::parse(s)) {
+    Ok(v) => return FunctionValueAnimOneStr(v)
+    Err(_) => ()
+  }
+  match (try? ST_AnimLvlStr::parse(s)) {
+    Ok(v) => return FunctionValueAnimLvlStr(v)
+    Err(_) => ()
+  }
+  match (try? ST_ResizeHandlesStr::parse(s)) {
+    Ok(v) => return FunctionValueResizeHandlesStr(v)
+    Err(_) => ()
+  }
+  invalid("ST_FunctionValue", s)
 }
 
 ///|
@@ -2788,7 +3160,16 @@ pub fn ST_FunctionValue::new(
 ///|
 /// Return the schema lexical value for ST_FunctionValue.
 pub fn ST_FunctionValue::to_string(self : ST_FunctionValue) -> String {
-  self.value
+  match self {
+    FunctionValueInt(v) => v.to_string()
+    FunctionValueBool(true) => "true"
+    FunctionValueBool(false) => "false"
+    FunctionValueDirection(v) => v.to_string()
+    FunctionValueHierBranchStyle(v) => v.to_string()
+    FunctionValueAnimOneStr(v) => v.to_string()
+    FunctionValueAnimLvlStr(v) => v.to_string()
+    FunctionValueResizeHandlesStr(v) => v.to_string()
+  }
 }
 
 ///|
@@ -2852,9 +3233,11 @@ pub fn ST_VariableType::to_string(self : ST_VariableType) -> String {
 }
 
 ///|
-/// XSD simple type ST_FunctionArgument (§21.4.x).
-pub struct ST_FunctionArgument {
-  value : String
+/// XSD simple type ST_FunctionArgument — Part 1 §21.4.7.31. xsd:union
+/// whose only memberType is ST_VariableType (§21.4.7.64), so every
+/// valid value is one of that enum's lexical tokens.
+pub(all) enum ST_FunctionArgument {
+  FunctionArgumentVariable(ST_VariableType)
 } derive(Eq, Debug)
 
 ///|
@@ -2862,8 +3245,10 @@ pub struct ST_FunctionArgument {
 pub fn ST_FunctionArgument::parse(
   s : String,
 ) -> ST_FunctionArgument raise SchemaViolation {
-  validate_ST_FunctionArgument(s)
-  { value: s }
+  match (try? ST_VariableType::parse(s)) {
+    Ok(v) => FunctionArgumentVariable(v)
+    Err(_) => invalid("ST_FunctionArgument", s)
+  }
 }
 
 ///|
@@ -2877,7 +3262,9 @@ pub fn ST_FunctionArgument::new(
 ///|
 /// Return the schema lexical value for ST_FunctionArgument.
 pub fn ST_FunctionArgument::to_string(self : ST_FunctionArgument) -> String {
-  self.value
+  match self {
+    FunctionArgumentVariable(v) => v.to_string()
+  }
 }
 
 ///|
@@ -2926,125 +3313,48 @@ fn[T] invalid(type_name : String, value : String) -> T raise SchemaViolation {
 }
 
 ///|
-fn validate_ST_LayoutShapeType(s : String) -> Unit raise SchemaViolation {
-  if s.length() == 0 {
-    invalid("ST_LayoutShapeType", s)
-  }
-}
-
-///|
-fn validate_ST_Index1(s : String) -> Unit raise SchemaViolation {
-  if !is_unsigned_int(s) || numeric_is_zero(s) {
-    invalid("ST_Index1", s)
-  }
-}
-
-///|
-fn validate_ST_ParameterVal(s : String) -> Unit raise SchemaViolation {
-  if s.length() == 0 {
-    invalid("ST_ParameterVal", s)
-  }
-}
-
-///|
-fn validate_ST_ModelId(s : String) -> Unit raise SchemaViolation {
-  if s.length() == 0 {
-    invalid("ST_ModelId", s)
-  }
-}
-
-///|
-fn validate_ST_PrSetCustVal(s : String) -> Unit raise SchemaViolation {
-  if s.length() == 0 {
-    invalid("ST_PrSetCustVal", s)
-  }
-}
-
-///|
-fn validate_ST_NodeCount(s : String) -> Unit raise SchemaViolation {
-  if !is_int(s) {
-    invalid("ST_NodeCount", s)
-  }
-}
-
-///|
-fn validate_ST_AxisTypes(s : String) -> Unit raise SchemaViolation {
-  validate_enum_list("ST_AxisTypes", s, ST_AxisType::parse)
-}
-
-///|
-fn validate_ST_ElementTypes(s : String) -> Unit raise SchemaViolation {
-  validate_enum_list("ST_ElementTypes", s, ST_ElementType::parse)
-}
-
-///|
-fn validate_ST_Ints(s : String) -> Unit raise SchemaViolation {
-  validate_list("ST_Ints", s, is_int)
-}
-
-///|
-fn validate_ST_UnsignedInts(s : String) -> Unit raise SchemaViolation {
-  validate_list("ST_UnsignedInts", s, is_unsigned_int)
-}
-
-///|
-fn validate_ST_Booleans(s : String) -> Unit raise SchemaViolation {
-  validate_list("ST_Booleans", s, is_bool_token)
-}
-
-///|
-fn validate_ST_FunctionValue(s : String) -> Unit raise SchemaViolation {
-  if s.length() == 0 {
-    invalid("ST_FunctionValue", s)
-  }
-}
-
-///|
-fn validate_ST_FunctionArgument(s : String) -> Unit raise SchemaViolation {
-  ST_VariableType::parse(s) |> ignore
-}
-
-///|
-fn[T] validate_enum_list(
+/// Decode an xsd:list lexical form ("a b c") into a typed item array.
+/// Empty lists raise SchemaViolation in line with xsd:list semantics
+/// requiring at least one item, and the per-item `parser` enforces the
+/// itemType constraint.
+fn[T] parse_typed_list(
   type_name : String,
   s : String,
   parser : (String) -> T raise SchemaViolation,
-) -> Unit raise SchemaViolation {
+) -> Array[T] raise SchemaViolation {
   let parts = s.split(" ")
-  let mut count = 0
+  let items : Array[T] = []
   for part in parts {
-    count = count + 1
-    if part.length() == 0 {
-      invalid(type_name, s)
-    }
-    parser(part.to_owned()) |> ignore
-  }
-  if count == 0 {
-    invalid(type_name, s)
-  }
-}
-
-///|
-fn validate_list(
-  type_name : String,
-  s : String,
-  pred : (String) -> Bool,
-) -> Unit raise SchemaViolation {
-  let parts = s.split(" ")
-  let mut count = 0
-  for part in parts {
-    count = count + 1
     let value = part.to_owned()
-    if value.length() == 0 || !pred(value) {
+    if value.length() == 0 {
       invalid(type_name, s)
     }
+    items.push(parser(value))
   }
-  if count == 0 {
+  if items.length() == 0 {
     invalid(type_name, s)
   }
+  items
 }
 
 ///|
+/// Render a typed item array back to the canonical xsd:list lexical
+/// form by joining the per-item `formatter` output with single spaces.
+fn[T] format_typed_list(items : Array[T], formatter : (T) -> String) -> String {
+  let buf = StringBuilder::new()
+  let mut first = true
+  for item in items {
+    if !first {
+      buf.write_char(' ')
+    }
+    first = false
+    buf.write_string(formatter(item))
+  }
+  buf.to_string()
+}
+
+///|
+/// Lexical predicate for xsd:int: optional sign followed by digits.
 fn is_int(s : String) -> Bool {
   if s.length() == 0 {
     false
@@ -3058,22 +3368,114 @@ fn is_int(s : String) -> Bool {
 }
 
 ///|
+/// Lexical predicate for xsd:unsignedInt: at least one digit, no sign.
 fn is_unsigned_int(s : String) -> Bool {
   s.length() > 0 && digits(s, 0, s.length())
 }
 
 ///|
-fn numeric_is_zero(s : String) -> Bool {
-  let mut ok = true
-  for i in 0..<s.length() {
-    ok = ok && s[i:i + 1] == "0"
+/// Lexical predicate for xsd:double restricted to the common decimal
+/// subset used by DiagramML attributes — optional sign, integer part,
+/// optional fractional part. Excludes scientific notation and special
+/// values (INF/NaN) because the spec attributes never carry them.
+fn is_double(s : String) -> Bool {
+  if s.length() == 0 {
+    return false
   }
-  ok
+  let mut i = 0
+  if s[0:1] == "-" || s[0:1] == "+" {
+    i = 1
+  }
+  let start = i
+  let mut digit_count = 0
+  while i < s.length() && s[i:i + 1] >= "0" && s[i:i + 1] <= "9" {
+    digit_count = digit_count + 1
+    i = i + 1
+  }
+  if i < s.length() && s[i:i + 1] == "." {
+    i = i + 1
+    while i < s.length() && s[i:i + 1] >= "0" && s[i:i + 1] <= "9" {
+      digit_count = digit_count + 1
+      i = i + 1
+    }
+  }
+  if digit_count == 0 {
+    return false
+  }
+  i == s.length() && start < s.length()
 }
 
 ///|
-fn is_bool_token(s : String) -> Bool {
-  s == "true" || s == "false" || s == "1" || s == "0"
+/// Lexical predicate for ST_Percentage (§22.9.2.9): `<decimal>%` with
+/// optional sign, at least one digit, and an optional fractional part.
+fn is_percentage_lexical(s : String) -> Bool {
+  if s.length() < 2 {
+    return false
+  }
+  if s[s.length() - 1:s.length()] != "%" {
+    return false
+  }
+  is_decimal(s.unsafe_substring(start=0, end=s.length() - 1))
+}
+
+///|
+/// Lexical predicate for ST_Guid (§22.9.2.4): brace-delimited UUID
+/// with the canonical 4-2-2-2-6 hex grouping
+/// `{HHHHHHHH-HHHH-HHHH-HHHH-HHHHHHHHHHHH}`.
+fn is_guid(s : String) -> Bool {
+  if s.length() != 38 {
+    return false
+  }
+  if s[0:1] != "{" || s[37:38] != "}" {
+    return false
+  }
+  if s[9:10] != "-" || s[14:15] != "-" || s[19:20] != "-" || s[24:25] != "-" {
+    return false
+  }
+  let groups = [(1, 9), (10, 14), (15, 19), (20, 24), (25, 37)]
+  for entry in groups {
+    let (start, end) = entry
+    for i in start..<end {
+      if !is_hex_digit(s[i:i + 1]) {
+        return false
+      }
+    }
+  }
+  true
+}
+
+///|
+fn is_hex_digit(ch : StringView) -> Bool {
+  (ch >= "0" && ch <= "9") ||
+  (ch >= "a" && ch <= "f") ||
+  (ch >= "A" && ch <= "F")
+}
+
+///|
+/// Lexical predicate for xsd:decimal: optional sign, at least one
+/// digit, optional fractional part. Matches the magnitude portion of
+/// an ST_Percentage lexical form.
+fn is_decimal(s : String) -> Bool {
+  if s.length() == 0 {
+    return false
+  }
+  let mut i = 0
+  if s[0:1] == "-" || s[0:1] == "+" {
+    i = 1
+  }
+  let mut digit_count = 0
+  while i < s.length() && s[i:i + 1] >= "0" && s[i:i + 1] <= "9" {
+    digit_count = digit_count + 1
+    i = i + 1
+  }
+  if i < s.length() && s[i:i + 1] == "." {
+    i = i + 1
+    while i < s.length() && s[i:i + 1] >= "0" && s[i:i + 1] <= "9" {
+      digit_count = digit_count + 1
+      i = i + 1
+    }
+  }
+  digit_count > 0 && i == s.length()
 }
 
 ///|
@@ -3084,6 +3486,160 @@ fn digits(s : String, start : Int, end : Int) -> Bool {
     ok = ok && ch >= "0" && ch <= "9"
   }
   ok
+}
+
+///|
+/// Parse an xsd:int lexical form into a signed 32-bit Int. The caller
+/// must have already validated the lexical form (e.g. via `is_int`);
+/// any conversion failure is reported via SchemaViolation.
+fn parse_int(s : String, type_name : String) -> Int raise SchemaViolation {
+  let mut i = 0
+  let mut negative = false
+  if s.length() > 0 && s[0:1] == "-" {
+    negative = true
+    i = 1
+  } else if s.length() > 0 && s[0:1] == "+" {
+    i = 1
+  }
+  let mut value = 0
+  while i < s.length() {
+    let digit = s[i:i + 1][0].to_int() - "0"[0].to_int()
+    if digit < 0 || digit > 9 {
+      invalid(type_name, s)
+    }
+    value = value * 10 + digit
+    i = i + 1
+  }
+  if negative {
+    -value
+  } else {
+    value
+  }
+}
+
+///|
+/// Parse an xsd:unsignedInt lexical form into a UInt. The caller must
+/// have already validated the lexical form via `is_unsigned_int`.
+fn parse_uint(s : String, type_name : String) -> UInt raise SchemaViolation {
+  if s.length() == 0 {
+    invalid(type_name, s)
+  }
+  let mut value : UInt = 0U
+  for i in 0..<s.length() {
+    let digit = s[i:i + 1][0].to_int() - "0"[0].to_int()
+    if digit < 0 || digit > 9 {
+      invalid(type_name, s)
+    }
+    value = value * 10U + digit.reinterpret_as_uint()
+  }
+  value
+}
+
+///|
+/// Convert a signed decimal magnitude string into the integer scaled
+/// by 10^`scale`. e.g. parse_decimal_scaled("12.345", 3, _) -> 12345.
+/// The fractional part is padded with zeros or rejected when it is
+/// longer than `scale` so the encoding stays lossless.
+fn parse_decimal_scaled(
+  s : String,
+  scale : Int,
+  type_name : String,
+) -> Int64 raise SchemaViolation {
+  if s.length() == 0 {
+    invalid(type_name, s)
+  }
+  let mut i = 0
+  let mut negative = false
+  if s[0:1] == "-" {
+    negative = true
+    i = 1
+  } else if s[0:1] == "+" {
+    i = 1
+  }
+  let mut int_part : Int64 = 0L
+  let mut int_digits = 0
+  while i < s.length() && s[i:i + 1] != "." {
+    let digit = s[i:i + 1][0].to_int() - "0"[0].to_int()
+    if digit < 0 || digit > 9 {
+      invalid(type_name, s)
+    }
+    int_part = int_part * 10L + digit.to_int64()
+    int_digits = int_digits + 1
+    i = i + 1
+  }
+  let mut frac_part : Int64 = 0L
+  let mut frac_digits = 0
+  if i < s.length() && s[i:i + 1] == "." {
+    i = i + 1
+    while i < s.length() {
+      let digit = s[i:i + 1][0].to_int() - "0"[0].to_int()
+      if digit < 0 || digit > 9 {
+        invalid(type_name, s)
+      }
+      if frac_digits >= scale {
+        if digit != 0 {
+          invalid(type_name, s)
+        }
+      } else {
+        frac_part = frac_part * 10L + digit.to_int64()
+      }
+      frac_digits = frac_digits + 1
+      i = i + 1
+    }
+  }
+  if int_digits + frac_digits == 0 {
+    invalid(type_name, s)
+  }
+  let used_digits = if frac_digits > scale { scale } else { frac_digits }
+  let mut multiplier : Int64 = 1L
+  for _ in 0..<(scale - used_digits) {
+    multiplier = multiplier * 10L
+  }
+  frac_part = frac_part * multiplier
+  let mut scale_pow : Int64 = 1L
+  for _ in 0..<scale {
+    scale_pow = scale_pow * 10L
+  }
+  let magnitude = int_part * scale_pow + frac_part
+  if negative {
+    -magnitude
+  } else {
+    magnitude
+  }
+}
+
+///|
+/// Render a scaled integer back to its decimal lexical form with the
+/// canonical sign placement. Trailing fractional zeros are trimmed,
+/// and an empty fractional part is dropped (i.e. `0` not `0.`).
+fn format_scaled_decimal(value : Int64, scale : Int) -> String {
+  let mut magnitude = value
+  let buf = StringBuilder::new()
+  if magnitude < 0L {
+    buf.write_char('-')
+    magnitude = -magnitude
+  }
+  let mut scale_pow : Int64 = 1L
+  for _ in 0..<scale {
+    scale_pow = scale_pow * 10L
+  }
+  let int_part = magnitude / scale_pow
+  let frac_part = magnitude % scale_pow
+  buf.write_string(int_part.to_string())
+  if frac_part != 0L {
+    buf.write_char('.')
+    let frac_str = frac_part.to_string()
+    for _ in 0..<(scale - frac_str.length()) {
+      buf.write_char('0')
+    }
+    // Trim trailing zeros from the fractional segment.
+    let mut end = frac_str.length()
+    while end > 0 && frac_str[end - 1:end] == "0" {
+      end = end - 1
+    }
+    buf.write_string(frac_str.unsafe_substring(start=0, end~))
+  }
+  buf.to_string()
 }
 
 ///|

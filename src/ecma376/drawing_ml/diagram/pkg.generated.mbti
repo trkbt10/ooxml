@@ -501,7 +501,7 @@ pub fn ST_AxisType::parse(String) -> Self raise SchemaViolation
 pub fn ST_AxisType::to_string(Self) -> String
 
 pub struct ST_AxisTypes {
-  value : String
+  values : Array[ST_AxisType]
 } derive(Eq, @debug.Debug)
 pub fn ST_AxisTypes::new(String) -> Self raise SchemaViolation
 pub fn ST_AxisTypes::parse(String) -> Self raise SchemaViolation
@@ -527,7 +527,7 @@ pub fn ST_BoolOperator::parse(String) -> Self raise SchemaViolation
 pub fn ST_BoolOperator::to_string(Self) -> String
 
 pub struct ST_Booleans {
-  value : String
+  values : Array[Bool]
 } derive(Eq, @debug.Debug)
 pub fn ST_Booleans::new(String) -> Self raise SchemaViolation
 pub fn ST_Booleans::parse(String) -> Self raise SchemaViolation
@@ -762,7 +762,7 @@ pub fn ST_ElementType::parse(String) -> Self raise SchemaViolation
 pub fn ST_ElementType::to_string(Self) -> String
 
 pub struct ST_ElementTypes {
-  value : String
+  values : Array[ST_ElementType]
 } derive(Eq, @debug.Debug)
 pub fn ST_ElementTypes::new(String) -> Self raise SchemaViolation
 pub fn ST_ElementTypes::parse(String) -> Self raise SchemaViolation
@@ -784,8 +784,8 @@ pub fn ST_FlowDirection::new(String) -> Self raise SchemaViolation
 pub fn ST_FlowDirection::parse(String) -> Self raise SchemaViolation
 pub fn ST_FlowDirection::to_string(Self) -> String
 
-pub struct ST_FunctionArgument {
-  value : String
+pub(all) enum ST_FunctionArgument {
+  FunctionArgumentVariable(ST_VariableType)
 } derive(Eq, @debug.Debug)
 pub fn ST_FunctionArgument::new(String) -> Self raise SchemaViolation
 pub fn ST_FunctionArgument::parse(String) -> Self raise SchemaViolation
@@ -817,8 +817,14 @@ pub fn ST_FunctionType::new(String) -> Self raise SchemaViolation
 pub fn ST_FunctionType::parse(String) -> Self raise SchemaViolation
 pub fn ST_FunctionType::to_string(Self) -> String
 
-pub struct ST_FunctionValue {
-  value : String
+pub(all) enum ST_FunctionValue {
+  FunctionValueInt(Int)
+  FunctionValueBool(Bool)
+  FunctionValueDirection(ST_Direction)
+  FunctionValueHierBranchStyle(ST_HierBranchStyle)
+  FunctionValueAnimOneStr(ST_AnimOneStr)
+  FunctionValueAnimLvlStr(ST_AnimLvlStr)
+  FunctionValueResizeHandlesStr(ST_ResizeHandlesStr)
 } derive(Eq, @debug.Debug)
 pub fn ST_FunctionValue::new(String) -> Self raise SchemaViolation
 pub fn ST_FunctionValue::parse(String) -> Self raise SchemaViolation
@@ -876,21 +882,22 @@ pub fn ST_HueDir::parse(String) -> Self raise SchemaViolation
 pub fn ST_HueDir::to_string(Self) -> String
 
 pub struct ST_Index1 {
-  value : String
+  value : UInt
 } derive(Eq, @debug.Debug)
 pub fn ST_Index1::new(String) -> Self raise SchemaViolation
 pub fn ST_Index1::parse(String) -> Self raise SchemaViolation
 pub fn ST_Index1::to_string(Self) -> String
 
 pub struct ST_Ints {
-  value : String
+  values : Array[Int]
 } derive(Eq, @debug.Debug)
 pub fn ST_Ints::new(String) -> Self raise SchemaViolation
 pub fn ST_Ints::parse(String) -> Self raise SchemaViolation
 pub fn ST_Ints::to_string(Self) -> String
 
-pub struct ST_LayoutShapeType {
-  value : String
+pub(all) enum ST_LayoutShapeType {
+  LayoutShapeTypeOutput(ST_OutputShapeType)
+  LayoutShapeTypePreset(String)
 } derive(Eq, @debug.Debug)
 pub fn ST_LayoutShapeType::new(String) -> Self raise SchemaViolation
 pub fn ST_LayoutShapeType::parse(String) -> Self raise SchemaViolation
@@ -906,15 +913,16 @@ pub fn ST_LinearDirection::new(String) -> Self raise SchemaViolation
 pub fn ST_LinearDirection::parse(String) -> Self raise SchemaViolation
 pub fn ST_LinearDirection::to_string(Self) -> String
 
-pub struct ST_ModelId {
-  value : String
+pub(all) enum ST_ModelId {
+  ModelIdInt(Int)
+  ModelIdGuid(String)
 } derive(Eq, @debug.Debug)
 pub fn ST_ModelId::new(String) -> Self raise SchemaViolation
 pub fn ST_ModelId::parse(String) -> Self raise SchemaViolation
 pub fn ST_ModelId::to_string(Self) -> String
 
 pub struct ST_NodeCount {
-  value : String
+  value : Int
 } derive(Eq, @debug.Debug)
 pub fn ST_NodeCount::new(String) -> Self raise SchemaViolation
 pub fn ST_NodeCount::parse(String) -> Self raise SchemaViolation
@@ -1015,18 +1023,54 @@ pub fn ST_ParameterId::new(String) -> Self raise SchemaViolation
 pub fn ST_ParameterId::parse(String) -> Self raise SchemaViolation
 pub fn ST_ParameterId::to_string(Self) -> String
 
-pub struct ST_ParameterVal {
-  value : String
+pub(all) enum ST_ParameterVal {
+  ParameterValDiagramHorizontalAlignment(ST_DiagramHorizontalAlignment)
+  ParameterValVerticalAlignment(ST_VerticalAlignment)
+  ParameterValChildDirection(ST_ChildDirection)
+  ParameterValChildAlignment(ST_ChildAlignment)
+  ParameterValSecondaryChildAlignment(ST_SecondaryChildAlignment)
+  ParameterValLinearDirection(ST_LinearDirection)
+  ParameterValSecondaryLinearDirection(ST_SecondaryLinearDirection)
+  ParameterValStartingElement(ST_StartingElement)
+  ParameterValBendPoint(ST_BendPoint)
+  ParameterValConnectorRouting(ST_ConnectorRouting)
+  ParameterValArrowheadStyle(ST_ArrowheadStyle)
+  ParameterValConnectorDimension(ST_ConnectorDimension)
+  ParameterValRotationPath(ST_RotationPath)
+  ParameterValCenterShapeMapping(ST_CenterShapeMapping)
+  ParameterValNodeHorizontalAlignment(ST_NodeHorizontalAlignment)
+  ParameterValNodeVerticalAlignment(ST_NodeVerticalAlignment)
+  ParameterValFallbackDimension(ST_FallbackDimension)
+  ParameterValTextDirection(ST_TextDirection)
+  ParameterValPyramidAccentPosition(ST_PyramidAccentPosition)
+  ParameterValPyramidAccentTextMargin(ST_PyramidAccentTextMargin)
+  ParameterValTextBlockDirection(ST_TextBlockDirection)
+  ParameterValTextAnchorHorizontal(ST_TextAnchorHorizontal)
+  ParameterValTextAnchorVertical(ST_TextAnchorVertical)
+  ParameterValDiagramTextAlignment(ST_DiagramTextAlignment)
+  ParameterValAutoTextRotation(ST_AutoTextRotation)
+  ParameterValGrowDirection(ST_GrowDirection)
+  ParameterValFlowDirection(ST_FlowDirection)
+  ParameterValContinueDirection(ST_ContinueDirection)
+  ParameterValBreakpoint(ST_Breakpoint)
+  ParameterValOffset(ST_Offset)
+  ParameterValHierarchyAlignment(ST_HierarchyAlignment)
+  ParameterValConnectorPoint(ST_ConnectorPoint)
+  ParameterValBool(Bool)
+  ParameterValInt(Int)
+  ParameterValDouble(String)
+  ParameterValString(String)
 } derive(Eq, @debug.Debug)
 pub fn ST_ParameterVal::new(String) -> Self raise SchemaViolation
 pub fn ST_ParameterVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_ParameterVal::to_string(Self) -> String
 
 pub struct ST_PrSetCustVal {
-  value : String
+  thousandths : Int64
 } derive(Eq, @debug.Debug)
 pub fn ST_PrSetCustVal::new(String) -> Self raise SchemaViolation
 pub fn ST_PrSetCustVal::parse(String) -> Self raise SchemaViolation
+pub fn ST_PrSetCustVal::thousandths_of_percent(Self) -> Int64
 pub fn ST_PrSetCustVal::to_string(Self) -> String
 
 pub(all) enum ST_PtType {
@@ -1137,7 +1181,7 @@ pub fn ST_TextDirection::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextDirection::to_string(Self) -> String
 
 pub struct ST_UnsignedInts {
-  value : String
+  values : Array[UInt]
 } derive(Eq, @debug.Debug)
 pub fn ST_UnsignedInts::new(String) -> Self raise SchemaViolation
 pub fn ST_UnsignedInts::parse(String) -> Self raise SchemaViolation

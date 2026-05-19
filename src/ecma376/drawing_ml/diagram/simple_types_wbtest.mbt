@@ -63,12 +63,27 @@ test "ST_CxnType rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_LayoutShapeType parses and formats one valid lexical value" {
-  assert_eq(ST_LayoutShapeType::parse("rect").to_string(), "rect")
+test "ST_LayoutShapeType parses §21.4.7.41 ST_OutputShapeType branch" {
+  let value = ST_LayoutShapeType::parse("conn")
+  match value {
+    LayoutShapeTypeOutput(OutputShapeTypeConn) => ()
+    _ => fail("expected LayoutShapeTypeOutput(OutputShapeTypeConn)")
+  }
+  assert_eq(value.to_string(), "conn")
 }
 
 ///|
-test "ST_LayoutShapeType rejects one invalid lexical value" {
+test "ST_LayoutShapeType parses §21.4.7.41 ST_ShapeType preset branch" {
+  let value = ST_LayoutShapeType::parse("rect")
+  match value {
+    LayoutShapeTypePreset(token) => assert_eq(token, "rect")
+    _ => fail("expected LayoutShapeTypePreset")
+  }
+  assert_eq(value.to_string(), "rect")
+}
+
+///|
+test "ST_LayoutShapeType rejects empty token per §21.4.7.41" {
   try {
     ST_LayoutShapeType::parse("") |> ignore
     fail("expected ST_LayoutShapeType rejection")
@@ -79,12 +94,25 @@ test "ST_LayoutShapeType rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_Index1 parses and formats one valid lexical value" {
-  assert_eq(ST_Index1::parse("1").to_string(), "1")
+test "ST_Index1 parses §21.4.7.39 unsignedInt with minInclusive=1" {
+  let value = ST_Index1::parse("42")
+  assert_eq(value.value, 42U)
+  assert_eq(value.to_string(), "42")
 }
 
 ///|
-test "ST_Index1 rejects one invalid lexical value" {
+test "ST_Index1 rejects zero per §21.4.7.39 minInclusive=1" {
+  try {
+    ST_Index1::parse("0") |> ignore
+    fail("expected ST_Index1 rejection for 0")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
+}
+
+///|
+test "ST_Index1 rejects empty lexical value per §21.4.7.39" {
   try {
     ST_Index1::parse("") |> ignore
     fail("expected ST_Index1 rejection")
@@ -95,12 +123,40 @@ test "ST_Index1 rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_ParameterVal parses and formats one valid lexical value" {
-  assert_eq(ST_ParameterVal::parse("42").to_string(), "42")
+test "ST_ParameterVal parses §21.4.7.50 typed enum branch" {
+  let value = ST_ParameterVal::parse("ctr")
+  match value {
+    ParameterValDiagramHorizontalAlignment(DiagramHorizontalAlignmentCtr) => ()
+    _ =>
+      fail(
+        "expected ParameterValDiagramHorizontalAlignment(DiagramHorizontalAlignmentCtr)",
+      )
+  }
+  assert_eq(value.to_string(), "ctr")
 }
 
 ///|
-test "ST_ParameterVal rejects one invalid lexical value" {
+test "ST_ParameterVal parses §21.4.7.50 xsd:int branch" {
+  let value = ST_ParameterVal::parse("42")
+  match value {
+    ParameterValInt(n) => assert_eq(n, 42)
+    _ => fail("expected ParameterValInt(42)")
+  }
+  assert_eq(value.to_string(), "42")
+}
+
+///|
+test "ST_ParameterVal parses §21.4.7.50 xsd:boolean branch" {
+  let value = ST_ParameterVal::parse("true")
+  match value {
+    ParameterValBool(true) => ()
+    _ => fail("expected ParameterValBool(true)")
+  }
+  assert_eq(value.to_string(), "true")
+}
+
+///|
+test "ST_ParameterVal rejects empty token per §21.4.7.50" {
   try {
     ST_ParameterVal::parse("") |> ignore
     fail("expected ST_ParameterVal rejection")
@@ -111,12 +167,28 @@ test "ST_ParameterVal rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_ModelId parses and formats one valid lexical value" {
-  assert_eq(ST_ModelId::parse("1").to_string(), "1")
+test "ST_ModelId parses §21.4.7.43 xsd:int branch" {
+  let value = ST_ModelId::parse("123")
+  match value {
+    ModelIdInt(n) => assert_eq(n, 123)
+    _ => fail("expected ModelIdInt(123)")
+  }
+  assert_eq(value.to_string(), "123")
 }
 
 ///|
-test "ST_ModelId rejects one invalid lexical value" {
+test "ST_ModelId parses §21.4.7.43 ST_Guid branch" {
+  let lex = "{12345678-1234-1234-1234-1234567890AB}"
+  let value = ST_ModelId::parse(lex)
+  match value {
+    ModelIdGuid(g) => assert_eq(g, lex)
+    _ => fail("expected ModelIdGuid")
+  }
+  assert_eq(value.to_string(), lex)
+}
+
+///|
+test "ST_ModelId rejects non-int non-guid lexical value per §21.4.7.43" {
   try {
     ST_ModelId::parse("") |> ignore
     fail("expected ST_ModelId rejection")
@@ -127,12 +199,28 @@ test "ST_ModelId rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_PrSetCustVal parses and formats one valid lexical value" {
-  assert_eq(ST_PrSetCustVal::parse("50%").to_string(), "50%")
+test "ST_PrSetCustVal parses §21.4.7.66 ST_Percentage lexical form" {
+  let value = ST_PrSetCustVal::parse("50%")
+  assert_eq(value.thousandths_of_percent(), 50000L)
+  assert_eq(value.to_string(), "50%")
 }
 
 ///|
-test "ST_PrSetCustVal rejects one invalid lexical value" {
+test "ST_PrSetCustVal preserves fractional thousandths per §21.4.7.66" {
+  let value = ST_PrSetCustVal::parse("12.345%")
+  assert_eq(value.thousandths_of_percent(), 12345L)
+  assert_eq(value.to_string(), "12.345%")
+}
+
+///|
+test "ST_PrSetCustVal preserves negative percentages per §21.4.7.66" {
+  let value = ST_PrSetCustVal::parse("-25.5%")
+  assert_eq(value.thousandths_of_percent(), -25500L)
+  assert_eq(value.to_string(), "-25.5%")
+}
+
+///|
+test "ST_PrSetCustVal rejects empty lexical value per §21.4.7.66" {
   try {
     ST_PrSetCustVal::parse("") |> ignore
     fail("expected ST_PrSetCustVal rejection")
@@ -207,12 +295,32 @@ test "ST_AnimLvlStr rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_NodeCount parses and formats one valid lexical value" {
-  assert_eq(ST_NodeCount::parse("-1").to_string(), "-1")
+test "ST_NodeCount parses §21.4.7.44 sentinel -1 (unbounded)" {
+  let value = ST_NodeCount::parse("-1")
+  assert_eq(value.value, -1)
+  assert_eq(value.to_string(), "-1")
 }
 
 ///|
-test "ST_NodeCount rejects one invalid lexical value" {
+test "ST_NodeCount parses §21.4.7.44 non-negative integer" {
+  let value = ST_NodeCount::parse("17")
+  assert_eq(value.value, 17)
+  assert_eq(value.to_string(), "17")
+}
+
+///|
+test "ST_NodeCount rejects values below -1 per §21.4.7.44" {
+  try {
+    ST_NodeCount::parse("-2") |> ignore
+    fail("expected ST_NodeCount rejection for -2")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
+}
+
+///|
+test "ST_NodeCount rejects empty lexical value per §21.4.7.44" {
   try {
     ST_NodeCount::parse("") |> ignore
     fail("expected ST_NodeCount rejection")
@@ -271,15 +379,30 @@ test "ST_AxisType rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_AxisTypes parses and formats one valid lexical value" {
-  assert_eq(ST_AxisTypes::parse("self ch").to_string(), "self ch")
+test "ST_AxisTypes parses §21.4.7.7 list of ST_AxisType" {
+  let value = ST_AxisTypes::parse("self ch")
+  assert_eq(value.values.length(), 2)
+  assert_eq(value.values[0].to_string(), "self")
+  assert_eq(value.values[1].to_string(), "ch")
+  assert_eq(value.to_string(), "self ch")
 }
 
 ///|
-test "ST_AxisTypes rejects one invalid lexical value" {
+test "ST_AxisTypes rejects empty list per §21.4.7.7" {
   try {
     ST_AxisTypes::parse("") |> ignore
     fail("expected ST_AxisTypes rejection")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
+}
+
+///|
+test "ST_AxisTypes rejects unknown axis token per §21.4.7.7" {
+  try {
+    ST_AxisTypes::parse("self bogus") |> ignore
+    fail("expected ST_AxisTypes rejection for unknown token")
   } catch {
     SchemaViolation(_) => ()
     _ => fail("expected SchemaViolation")
@@ -367,15 +490,30 @@ test "ST_ElementType rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_ElementTypes parses and formats one valid lexical value" {
-  assert_eq(ST_ElementTypes::parse("all node").to_string(), "all node")
+test "ST_ElementTypes parses §21.4.7.28 list of ST_ElementType" {
+  let value = ST_ElementTypes::parse("all node")
+  assert_eq(value.values.length(), 2)
+  assert_eq(value.values[0].to_string(), "all")
+  assert_eq(value.values[1].to_string(), "node")
+  assert_eq(value.to_string(), "all node")
 }
 
 ///|
-test "ST_ElementTypes rejects one invalid lexical value" {
+test "ST_ElementTypes rejects empty list per §21.4.7.28" {
   try {
     ST_ElementTypes::parse("") |> ignore
     fail("expected ST_ElementTypes rejection")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
+}
+
+///|
+test "ST_ElementTypes rejects unknown element token per §21.4.7.28" {
+  try {
+    ST_ElementTypes::parse("all bogus") |> ignore
+    fail("expected ST_ElementTypes rejection for unknown token")
   } catch {
     SchemaViolation(_) => ()
     _ => fail("expected SchemaViolation")
@@ -399,12 +537,17 @@ test "ST_ParameterId rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_Ints parses and formats one valid lexical value" {
-  assert_eq(ST_Ints::parse("1 -2 3").to_string(), "1 -2 3")
+test "ST_Ints parses §21.4.7.40 whitespace-separated xsd:int list" {
+  let value = ST_Ints::parse("1 -2 3")
+  assert_eq(value.values.length(), 3)
+  assert_eq(value.values[0], 1)
+  assert_eq(value.values[1], -2)
+  assert_eq(value.values[2], 3)
+  assert_eq(value.to_string(), "1 -2 3")
 }
 
 ///|
-test "ST_Ints rejects one invalid lexical value" {
+test "ST_Ints rejects empty list per §21.4.7.40" {
   try {
     ST_Ints::parse("") |> ignore
     fail("expected ST_Ints rejection")
@@ -415,12 +558,28 @@ test "ST_Ints rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_UnsignedInts parses and formats one valid lexical value" {
-  assert_eq(ST_UnsignedInts::parse("0 1 2").to_string(), "0 1 2")
+test "ST_Ints rejects non-integer item per §21.4.7.40" {
+  try {
+    ST_Ints::parse("1 abc") |> ignore
+    fail("expected ST_Ints rejection for non-int")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
 }
 
 ///|
-test "ST_UnsignedInts rejects one invalid lexical value" {
+test "ST_UnsignedInts parses §21.4.7.63 whitespace-separated xsd:unsignedInt list" {
+  let value = ST_UnsignedInts::parse("0 1 2")
+  assert_eq(value.values.length(), 3)
+  assert_eq(value.values[0], 0U)
+  assert_eq(value.values[1], 1U)
+  assert_eq(value.values[2], 2U)
+  assert_eq(value.to_string(), "0 1 2")
+}
+
+///|
+test "ST_UnsignedInts rejects empty list per §21.4.7.63" {
   try {
     ST_UnsignedInts::parse("") |> ignore
     fail("expected ST_UnsignedInts rejection")
@@ -431,15 +590,46 @@ test "ST_UnsignedInts rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_Booleans parses and formats one valid lexical value" {
-  assert_eq(ST_Booleans::parse("true false 1 0").to_string(), "true false 1 0")
+test "ST_UnsignedInts rejects signed item per §21.4.7.63" {
+  try {
+    ST_UnsignedInts::parse("1 -2") |> ignore
+    fail("expected ST_UnsignedInts rejection for signed item")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
 }
 
 ///|
-test "ST_Booleans rejects one invalid lexical value" {
+test "ST_Booleans parses §21.4.7.9 list of xsd:boolean (canonical and numeric forms)" {
+  let value = ST_Booleans::parse("true false 1 0")
+  assert_eq(value.values.length(), 4)
+  assert_eq(value.values[0], true)
+  assert_eq(value.values[1], false)
+  assert_eq(value.values[2], true)
+  assert_eq(value.values[3], false)
+  // Canonical lexical form: true/false; round-trip is via re-parse.
+  assert_eq(value.to_string(), "true false true false")
+  let reparsed = ST_Booleans::parse(value.to_string())
+  assert_eq(reparsed.values, value.values)
+}
+
+///|
+test "ST_Booleans rejects empty list per §21.4.7.9" {
   try {
     ST_Booleans::parse("") |> ignore
     fail("expected ST_Booleans rejection")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
+}
+
+///|
+test "ST_Booleans rejects non-boolean token per §21.4.7.9" {
+  try {
+    ST_Booleans::parse("true maybe") |> ignore
+    fail("expected ST_Booleans rejection for non-boolean")
   } catch {
     SchemaViolation(_) => ()
     _ => fail("expected SchemaViolation")
@@ -991,12 +1181,58 @@ test "ST_HierarchyAlignment rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_FunctionValue parses and formats one valid lexical value" {
-  assert_eq(ST_FunctionValue::parse("true").to_string(), "true")
+test "ST_FunctionValue parses §21.4.7.34 xsd:int branch" {
+  let value = ST_FunctionValue::parse("7")
+  match value {
+    FunctionValueInt(n) => assert_eq(n, 7)
+    _ => fail("expected FunctionValueInt(7)")
+  }
+  assert_eq(value.to_string(), "7")
 }
 
 ///|
-test "ST_FunctionValue rejects one invalid lexical value" {
+test "ST_FunctionValue parses §21.4.7.34 xsd:boolean branch" {
+  let value = ST_FunctionValue::parse("true")
+  match value {
+    FunctionValueBool(true) => ()
+    _ => fail("expected FunctionValueBool(true)")
+  }
+  assert_eq(value.to_string(), "true")
+}
+
+///|
+test "ST_FunctionValue parses §21.4.7.34 ST_Direction branch" {
+  let value = ST_FunctionValue::parse("norm")
+  match value {
+    FunctionValueDirection(DirectionNorm) => ()
+    _ => fail("expected FunctionValueDirection(DirectionNorm)")
+  }
+  assert_eq(value.to_string(), "norm")
+}
+
+///|
+test "ST_FunctionValue parses §21.4.7.34 ST_ResizeHandlesStr branch" {
+  let value = ST_FunctionValue::parse("exact")
+  match value {
+    FunctionValueResizeHandlesStr(ResizeHandlesStrExact) => ()
+    _ => fail("expected FunctionValueResizeHandlesStr(ResizeHandlesStrExact)")
+  }
+  assert_eq(value.to_string(), "exact")
+}
+
+///|
+test "ST_FunctionValue rejects out-of-vocabulary token per §21.4.7.34" {
+  try {
+    ST_FunctionValue::parse("__invalid__") |> ignore
+    fail("expected ST_FunctionValue rejection")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
+}
+
+///|
+test "ST_FunctionValue rejects empty lexical value per §21.4.7.34" {
   try {
     ST_FunctionValue::parse("") |> ignore
     fail("expected ST_FunctionValue rejection")
@@ -1023,14 +1259,30 @@ test "ST_VariableType rejects one invalid lexical value" {
 }
 
 ///|
-test "ST_FunctionArgument parses and formats one valid lexical value" {
-  assert_eq(ST_FunctionArgument::parse("orgChart").to_string(), "orgChart")
+test "ST_FunctionArgument parses §21.4.7.31 ST_VariableType branch" {
+  let value = ST_FunctionArgument::parse("orgChart")
+  match value {
+    FunctionArgumentVariable(VariableTypeOrgChart) => ()
+    _ => fail("expected FunctionArgumentVariable(VariableTypeOrgChart)")
+  }
+  assert_eq(value.to_string(), "orgChart")
 }
 
 ///|
-test "ST_FunctionArgument rejects one invalid lexical value" {
+test "ST_FunctionArgument rejects empty token per §21.4.7.31" {
   try {
     ST_FunctionArgument::parse("") |> ignore
+    fail("expected ST_FunctionArgument rejection")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
+}
+
+///|
+test "ST_FunctionArgument rejects unknown variable token per §21.4.7.31" {
+  try {
+    ST_FunctionArgument::parse("__invalid__") |> ignore
     fail("expected ST_FunctionArgument rejection")
   } catch {
     SchemaViolation(_) => ()
