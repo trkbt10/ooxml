@@ -1,15 +1,15 @@
 ///|
 /// Part 1 §19.5 timing — decode a `<p:timing>` element (already
-/// wrapped as `CT_SlideTiming`) into a typed `Timeline`. Walks
-/// `<p:tnLst>` and turns each child time-node into a
+/// wrapped as `CT_SlideTiming`) into a typed `Timeline`. Walks the
+/// typed `<p:tnLst>` time-node children (CT_TimeNodeList §19.5.86)
+/// already surfaced on `CT_SlideTiming` and turns each into a
 /// `CT_TLCommonTimeNodeData` (the schema's typed cTn).
 pub fn decode_timing(
   timing : @domain.CT_SlideTiming,
 ) -> Timeline raise @opc_errors.SchemaViolation {
-  let tn_list = first_child_by_local_name(timing.element, "tnLst")
-  let roots = match tn_list {
-    Some(list) => decode_time_node_list(list)
-    None => []
+  let roots : Array[@domain.CT_TLCommonTimeNodeData] = []
+  for element in timing.tnLst {
+    roots.push(decode_time_node(element))
   }
   { roots, }
 }

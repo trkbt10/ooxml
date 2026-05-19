@@ -98,11 +98,20 @@ pub fn CT_BackgroundProperties::parse(@xml.Element) -> Self
 pub fn CT_BackgroundProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_BuildList {
-  element : @xml.Element
+  entries : Array[CT_BuildListEntry]
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_BuildList::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_BuildList::new(@xml.Element) -> Self
 pub fn CT_BuildList::parse(@xml.Element) -> Self
 pub fn CT_BuildList::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_BuildListEntry {
+  BuildEntryParagraph(CT_TLBuildParagraph)
+  BuildEntryDiagram(CT_TLBuildDiagram)
+  BuildEntryOleChart(CT_TLOleBuildChart)
+  BuildEntryGraphic(CT_TLGraphicalObjectBuild)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_Comment {
   element : @xml.Element
@@ -182,8 +191,10 @@ pub fn CT_ControlList::parse(@xml.Element) -> Self
 pub fn CT_ControlList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CornerDirectionTransition {
-  element : @xml.Element
+  dir : ST_TransitionCornerDirectionType?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_CornerDirectionTransition::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CornerDirectionTransition::new(@xml.Element) -> Self
 pub fn CT_CornerDirectionTransition::parse(@xml.Element) -> Self
 pub fn CT_CornerDirectionTransition::to_element(Self) -> @xml.Element
@@ -224,8 +235,10 @@ pub fn CT_CustomerDataList::parse(@xml.Element) -> Self
 pub fn CT_CustomerDataList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EightDirectionTransition {
-  element : @xml.Element
+  dir : ST_TransitionEightDirectionType?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_EightDirectionTransition::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_EightDirectionTransition::new(@xml.Element) -> Self
 pub fn CT_EightDirectionTransition::parse(@xml.Element) -> Self
 pub fn CT_EightDirectionTransition::to_element(Self) -> @xml.Element
@@ -357,8 +370,10 @@ pub fn CT_HtmlPublishProperties::parse(@xml.Element) -> Self
 pub fn CT_HtmlPublishProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_InOutTransition {
-  element : @xml.Element
+  dir : ST_TransitionInOutDirectionType?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_InOutTransition::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_InOutTransition::new(@xml.Element) -> Self
 pub fn CT_InOutTransition::parse(@xml.Element) -> Self
 pub fn CT_InOutTransition::to_element(Self) -> @xml.Element
@@ -462,15 +477,19 @@ pub fn CT_OleObjectLink::parse(@xml.Element) -> Self
 pub fn CT_OleObjectLink::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OptionalBlackTransition {
-  element : @xml.Element
+  thru_blk : Bool?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_OptionalBlackTransition::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_OptionalBlackTransition::new(@xml.Element) -> Self
 pub fn CT_OptionalBlackTransition::parse(@xml.Element) -> Self
 pub fn CT_OptionalBlackTransition::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OrientationTransition {
-  element : @xml.Element
+  dir : ST_Direction?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_OrientationTransition::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_OrientationTransition::new(@xml.Element) -> Self
 pub fn CT_OrientationTransition::parse(@xml.Element) -> Self
 pub fn CT_OrientationTransition::to_element(Self) -> @xml.Element
@@ -591,8 +610,10 @@ pub fn CT_ShowProperties::parse(@xml.Element) -> Self
 pub fn CT_ShowProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SideDirectionTransition {
-  element : @xml.Element
+  dir : ST_TransitionSideDirectionType?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_SideDirectionTransition::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SideDirectionTransition::new(@xml.Element) -> Self
 pub fn CT_SideDirectionTransition::parse(@xml.Element) -> Self
 pub fn CT_SideDirectionTransition::to_element(Self) -> @xml.Element
@@ -703,18 +724,54 @@ pub fn CT_SlideSyncProperties::parse(@xml.Element) -> Self
 pub fn CT_SlideSyncProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideTiming {
-  element : @xml.Element
+  tnLst : Array[@xml.Element]
+  bldLst : CT_BuildList?
+  extLst : @xml.Element?
+  element_name : @xml.QName
+  tnLst_name : @xml.QName?
 } derive(Eq, @debug.Debug)
+pub fn CT_SlideTiming::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SlideTiming::new(@xml.Element) -> Self
 pub fn CT_SlideTiming::parse(@xml.Element) -> Self
 pub fn CT_SlideTiming::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideTransition {
-  element : @xml.Element
+  effect : CT_SlideTransitionEffect?
+  sndAc : CT_TransitionSoundAction?
+  extLst : @xml.Element?
+  spd : ST_TransitionSpeed?
+  adv_click : Bool?
+  adv_tm : UInt?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_SlideTransition::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SlideTransition::new(@xml.Element) -> Self
 pub fn CT_SlideTransition::parse(@xml.Element) -> Self
 pub fn CT_SlideTransition::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_SlideTransitionEffect {
+  TransitionBlinds(CT_OrientationTransition)
+  TransitionChecker(CT_OrientationTransition)
+  TransitionCircle(@xml.QName)
+  TransitionDissolve(@xml.QName)
+  TransitionComb(CT_OrientationTransition)
+  TransitionCover(CT_EightDirectionTransition)
+  TransitionCut(CT_OptionalBlackTransition)
+  TransitionDiamond(@xml.QName)
+  TransitionFade(CT_OptionalBlackTransition)
+  TransitionNewsflash(@xml.QName)
+  TransitionPlus(@xml.QName)
+  TransitionPull(CT_EightDirectionTransition)
+  TransitionPush(CT_SideDirectionTransition)
+  TransitionRandom(@xml.QName)
+  TransitionRandomBar(CT_OrientationTransition)
+  TransitionSplit(CT_SplitTransition)
+  TransitionStrips(CT_CornerDirectionTransition)
+  TransitionWedge(@xml.QName)
+  TransitionWheel(CT_WheelTransition)
+  TransitionWipe(CT_SideDirectionTransition)
+  TransitionZoom(CT_InOutTransition)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_SlideViewProperties {
   element : @xml.Element
@@ -731,8 +788,11 @@ pub fn CT_SmartTags::parse(@xml.Element) -> Self
 pub fn CT_SmartTags::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SplitTransition {
-  element : @xml.Element
+  orient : ST_Direction?
+  dir : ST_TransitionInOutDirectionType?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_SplitTransition::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SplitTransition::new(@xml.Element) -> Self
 pub fn CT_SplitTransition::parse(@xml.Element) -> Self
 pub fn CT_SplitTransition::to_element(Self) -> @xml.Element
@@ -754,29 +814,37 @@ pub(all) enum CT_TLAnimVariant {
 pub fn CT_TLAnimVariant::as_double(Self) -> Double?
 
 pub(all) struct CT_TLAnimVariantBooleanVal {
-  element : @xml.Element
+  val : Bool
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLAnimVariantBooleanVal::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLAnimVariantBooleanVal::new(@xml.Element) -> Self
 pub fn CT_TLAnimVariantBooleanVal::parse(@xml.Element) -> Self
 pub fn CT_TLAnimVariantBooleanVal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimVariantFloatVal {
-  element : @xml.Element
+  val : Double
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLAnimVariantFloatVal::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLAnimVariantFloatVal::new(@xml.Element) -> Self
 pub fn CT_TLAnimVariantFloatVal::parse(@xml.Element) -> Self
 pub fn CT_TLAnimVariantFloatVal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimVariantIntegerVal {
-  element : @xml.Element
+  val : Int
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLAnimVariantIntegerVal::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLAnimVariantIntegerVal::new(@xml.Element) -> Self
 pub fn CT_TLAnimVariantIntegerVal::parse(@xml.Element) -> Self
 pub fn CT_TLAnimVariantIntegerVal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimVariantStringVal {
-  element : @xml.Element
+  val : String
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLAnimVariantStringVal::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLAnimVariantStringVal::new(@xml.Element) -> Self
 pub fn CT_TLAnimVariantStringVal::parse(@xml.Element) -> Self
 pub fn CT_TLAnimVariantStringVal::to_element(Self) -> @xml.Element
@@ -792,8 +860,14 @@ pub(all) struct CT_TLAnimateColorBehavior {
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TLAnimateEffectBehavior {
-  element : @xml.Element
+  cBhvr : @xml.Element
+  progress : @xml.Element?
+  transition : ST_TLAnimateEffectTransition?
+  filter : String?
+  pr_lst : String?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLAnimateEffectBehavior::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLAnimateEffectBehavior::new(@xml.Element) -> Self
 pub fn CT_TLAnimateEffectBehavior::parse(@xml.Element) -> Self
 pub fn CT_TLAnimateEffectBehavior::to_element(Self) -> @xml.Element
@@ -817,43 +891,76 @@ pub(all) struct CT_TLAnimateScaleBehavior {
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TLBehaviorAttributeNameList {
-  element : @xml.Element
+  attr_names : Array[String]
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLBehaviorAttributeNameList::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLBehaviorAttributeNameList::new(@xml.Element) -> Self
 pub fn CT_TLBehaviorAttributeNameList::parse(@xml.Element) -> Self
 pub fn CT_TLBehaviorAttributeNameList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLBuildDiagram {
-  element : @xml.Element
+  spid : String
+  grp_id : UInt
+  ui_expand : Bool?
+  bld : ST_TLDiagramBuildType?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLBuildDiagram::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLBuildDiagram::new(@xml.Element) -> Self
 pub fn CT_TLBuildDiagram::parse(@xml.Element) -> Self
 pub fn CT_TLBuildDiagram::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLBuildParagraph {
-  element : @xml.Element
+  tmplLst : CT_TLTemplateList?
+  spid : String
+  grp_id : UInt
+  ui_expand : Bool?
+  build : ST_TLParaBuildType?
+  bld_lvl : UInt?
+  anim_bg : Bool?
+  auto_update_anim_bg : Bool?
+  rev : Bool?
+  adv_auto : ST_TLTime?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLBuildParagraph::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLBuildParagraph::new(@xml.Element) -> Self
 pub fn CT_TLBuildParagraph::parse(@xml.Element) -> Self
 pub fn CT_TLBuildParagraph::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLByAnimateColorTransform {
-  element : @xml.Element
+  choice : CT_TLByAnimateColorTransformChoice
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLByAnimateColorTransform::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLByAnimateColorTransform::new(@xml.Element) -> Self
 pub fn CT_TLByAnimateColorTransform::parse(@xml.Element) -> Self
 pub fn CT_TLByAnimateColorTransform::to_element(Self) -> @xml.Element
 
-pub(all) struct CT_TLByHslColorTransform {
-  element : @xml.Element
+pub(all) enum CT_TLByAnimateColorTransformChoice {
+  ByColorRgb(CT_TLByRgbColorTransform)
+  ByColorHsl(CT_TLByHslColorTransform)
 } derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TLByHslColorTransform {
+  h : String
+  s : String
+  l : String
+  element_name : @xml.QName
+} derive(Eq, @debug.Debug)
+pub fn CT_TLByHslColorTransform::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLByHslColorTransform::new(@xml.Element) -> Self
 pub fn CT_TLByHslColorTransform::parse(@xml.Element) -> Self
 pub fn CT_TLByHslColorTransform::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLByRgbColorTransform {
-  element : @xml.Element
+  r : String
+  g : String
+  b : String
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLByRgbColorTransform::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLByRgbColorTransform::new(@xml.Element) -> Self
 pub fn CT_TLByRgbColorTransform::parse(@xml.Element) -> Self
 pub fn CT_TLByRgbColorTransform::to_element(Self) -> @xml.Element
@@ -879,8 +986,15 @@ pub(all) struct CT_TLCommonBehaviorData {
 pub fn CT_TLCommonBehaviorData::is_empty(Self) -> Bool
 
 pub(all) struct CT_TLCommonMediaNodeData {
-  element : @xml.Element
+  cTn : @xml.Element
+  tgtEl : CT_TLTimeTargetElement
+  vol : String?
+  mute : Bool?
+  num_sld : UInt?
+  show_when_stopped : Bool?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLCommonMediaNodeData::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLCommonMediaNodeData::new(@xml.Element) -> Self
 pub fn CT_TLCommonMediaNodeData::parse(@xml.Element) -> Self
 pub fn CT_TLCommonMediaNodeData::to_element(Self) -> @xml.Element
@@ -921,64 +1035,105 @@ pub(all) enum CT_TLCommonTimeNodeKind {
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TLGraphicalObjectBuild {
-  element : @xml.Element
+  choice : CT_TLGraphicalObjectBuildChoice
+  spid : String
+  grp_id : UInt
+  ui_expand : Bool?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLGraphicalObjectBuild::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLGraphicalObjectBuild::new(@xml.Element) -> Self
 pub fn CT_TLGraphicalObjectBuild::parse(@xml.Element) -> Self
 pub fn CT_TLGraphicalObjectBuild::to_element(Self) -> @xml.Element
 
-pub(all) struct CT_TLIterateData {
-  element : @xml.Element
+pub(all) enum CT_TLGraphicalObjectBuildChoice {
+  GraphicBuildAsOne(@xml.QName)
+  GraphicBuildSub(@xml.Element)
 } derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TLIterateData {
+  interval : CT_TLIterateDataInterval
+  iterate_type : ST_IterateType?
+  backwards : Bool?
+  element_name : @xml.QName
+} derive(Eq, @debug.Debug)
+pub fn CT_TLIterateData::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLIterateData::new(@xml.Element) -> Self
 pub fn CT_TLIterateData::parse(@xml.Element) -> Self
 pub fn CT_TLIterateData::to_element(Self) -> @xml.Element
 
-pub(all) struct CT_TLIterateIntervalPercentage {
-  element : @xml.Element
+pub(all) enum CT_TLIterateDataInterval {
+  IterateAbs(CT_TLIterateIntervalTime)
+  IteratePct(CT_TLIterateIntervalPercentage)
 } derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TLIterateIntervalPercentage {
+  val : String
+  element_name : @xml.QName
+} derive(Eq, @debug.Debug)
+pub fn CT_TLIterateIntervalPercentage::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLIterateIntervalPercentage::new(@xml.Element) -> Self
 pub fn CT_TLIterateIntervalPercentage::parse(@xml.Element) -> Self
 pub fn CT_TLIterateIntervalPercentage::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLIterateIntervalTime {
-  element : @xml.Element
+  val : ST_TLTime
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLIterateIntervalTime::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLIterateIntervalTime::new(@xml.Element) -> Self
 pub fn CT_TLIterateIntervalTime::parse(@xml.Element) -> Self
 pub fn CT_TLIterateIntervalTime::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLMediaNodeAudio {
-  element : @xml.Element
+  cMediaNode : CT_TLCommonMediaNodeData
+  is_narration : Bool?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLMediaNodeAudio::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLMediaNodeAudio::new(@xml.Element) -> Self
 pub fn CT_TLMediaNodeAudio::parse(@xml.Element) -> Self
 pub fn CT_TLMediaNodeAudio::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLMediaNodeVideo {
-  element : @xml.Element
+  cMediaNode : CT_TLCommonMediaNodeData
+  full_scrn : Bool?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLMediaNodeVideo::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLMediaNodeVideo::new(@xml.Element) -> Self
 pub fn CT_TLMediaNodeVideo::parse(@xml.Element) -> Self
 pub fn CT_TLMediaNodeVideo::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLOleBuildChart {
-  element : @xml.Element
+  spid : String
+  grp_id : UInt
+  ui_expand : Bool?
+  bld : ST_TLOleChartBuildType?
+  anim_bg : Bool?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLOleBuildChart::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLOleBuildChart::new(@xml.Element) -> Self
 pub fn CT_TLOleBuildChart::parse(@xml.Element) -> Self
 pub fn CT_TLOleBuildChart::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLOleChartTargetElement {
-  element : @xml.Element
+  chart_type : ST_TLChartSubelementType
+  lvl : UInt?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLOleChartTargetElement::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLOleChartTargetElement::new(@xml.Element) -> Self
 pub fn CT_TLOleChartTargetElement::parse(@xml.Element) -> Self
 pub fn CT_TLOleChartTargetElement::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLPoint {
-  element : @xml.Element
+  x : String
+  y : String
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLPoint::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLPoint::new(@xml.Element) -> Self
 pub fn CT_TLPoint::parse(@xml.Element) -> Self
 pub fn CT_TLPoint::to_element(Self) -> @xml.Element
@@ -988,39 +1143,65 @@ pub(all) struct CT_TLSetBehavior {
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TLShapeTargetElement {
-  element : @xml.Element
+  spid : String
+  child : CT_TLShapeTargetElementChild?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLShapeTargetElement::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLShapeTargetElement::new(@xml.Element) -> Self
 pub fn CT_TLShapeTargetElement::parse(@xml.Element) -> Self
 pub fn CT_TLShapeTargetElement::to_element(Self) -> @xml.Element
 
-pub(all) struct CT_TLSubShapeId {
-  element : @xml.Element
+pub(all) enum CT_TLShapeTargetElementChild {
+  ShapeTargetBg(@xml.QName)
+  ShapeTargetSubSp(CT_TLSubShapeId)
+  ShapeTargetOleChartEl(CT_TLOleChartTargetElement)
+  ShapeTargetTxEl(CT_TLTextTargetElement)
+  ShapeTargetGraphicEl(@xml.Element)
 } derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TLSubShapeId {
+  spid : String
+  element_name : @xml.QName
+} derive(Eq, @debug.Debug)
+pub fn CT_TLSubShapeId::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLSubShapeId::new(@xml.Element) -> Self
 pub fn CT_TLSubShapeId::parse(@xml.Element) -> Self
 pub fn CT_TLSubShapeId::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLTemplate {
-  element : @xml.Element
+  tnLst : Array[@xml.Element]
+  lvl : UInt?
+  element_name : @xml.QName
+  tnLst_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLTemplate::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLTemplate::new(@xml.Element) -> Self
 pub fn CT_TLTemplate::parse(@xml.Element) -> Self
 pub fn CT_TLTemplate::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLTemplateList {
-  element : @xml.Element
+  templates : Array[CT_TLTemplate]
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLTemplateList::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLTemplateList::new(@xml.Element) -> Self
 pub fn CT_TLTemplateList::parse(@xml.Element) -> Self
 pub fn CT_TLTemplateList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLTextTargetElement {
-  element : @xml.Element
+  range : CT_TLTextTargetElementRange?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLTextTargetElement::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLTextTargetElement::new(@xml.Element) -> Self
 pub fn CT_TLTextTargetElement::parse(@xml.Element) -> Self
 pub fn CT_TLTextTargetElement::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_TLTextTargetElementRange {
+  TextTargetCharRg(@xml.Element)
+  TextTargetPRg(@xml.Element)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TLTimeAnimateValue {
   tm_percent : Double?
@@ -1037,43 +1218,67 @@ pub(all) struct CT_TLTimeCondition {
 pub fn CT_TLTimeCondition::is_static(Self) -> Bool
 
 pub(all) struct CT_TLTimeNodeExclusive {
-  element : @xml.Element
+  cTn : @xml.Element
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLTimeNodeExclusive::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLTimeNodeExclusive::new(@xml.Element) -> Self
 pub fn CT_TLTimeNodeExclusive::parse(@xml.Element) -> Self
 pub fn CT_TLTimeNodeExclusive::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLTimeNodeParallel {
-  element : @xml.Element
+  cTn : @xml.Element
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLTimeNodeParallel::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLTimeNodeParallel::new(@xml.Element) -> Self
 pub fn CT_TLTimeNodeParallel::parse(@xml.Element) -> Self
 pub fn CT_TLTimeNodeParallel::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLTimeNodeSequence {
-  element : @xml.Element
+  cTn : @xml.Element
+  prev_cond_lst : @xml.Element?
+  next_cond_lst : @xml.Element?
+  concurrent : Bool?
+  prev_ac : ST_TLPreviousActionType?
+  next_ac : ST_TLNextActionType?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLTimeNodeSequence::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLTimeNodeSequence::new(@xml.Element) -> Self
 pub fn CT_TLTimeNodeSequence::parse(@xml.Element) -> Self
 pub fn CT_TLTimeNodeSequence::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLTimeTargetElement {
-  element : @xml.Element
+  choice : CT_TLTimeTargetElementChoice
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLTimeTargetElement::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLTimeTargetElement::new(@xml.Element) -> Self
 pub fn CT_TLTimeTargetElement::parse(@xml.Element) -> Self
 pub fn CT_TLTimeTargetElement::to_element(Self) -> @xml.Element
 
-pub(all) struct CT_TLTriggerRuntimeNode {
-  element : @xml.Element
+pub(all) enum CT_TLTimeTargetElementChoice {
+  TimeTargetSld(@xml.QName)
+  TimeTargetSnd(@xml.Element)
+  TimeTargetSp(CT_TLShapeTargetElement)
+  TimeTargetInk(CT_TLSubShapeId)
 } derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TLTriggerRuntimeNode {
+  val : ST_TLTriggerRuntimeNode
+  element_name : @xml.QName
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTriggerRuntimeNode::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLTriggerRuntimeNode::new(@xml.Element) -> Self
 pub fn CT_TLTriggerRuntimeNode::parse(@xml.Element) -> Self
 pub fn CT_TLTriggerRuntimeNode::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLTriggerTimeNodeID {
-  element : @xml.Element
+  val : ST_TLTimeNodeID
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TLTriggerTimeNodeID::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLTriggerTimeNodeID::new(@xml.Element) -> Self
 pub fn CT_TLTriggerTimeNodeID::parse(@xml.Element) -> Self
 pub fn CT_TLTriggerTimeNodeID::to_element(Self) -> @xml.Element
@@ -1093,15 +1298,25 @@ pub fn CT_TagsData::parse(@xml.Element) -> Self
 pub fn CT_TagsData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TransitionSoundAction {
-  element : @xml.Element
+  choice : CT_TransitionSoundActionChoice
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_TransitionSoundAction::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TransitionSoundAction::new(@xml.Element) -> Self
 pub fn CT_TransitionSoundAction::parse(@xml.Element) -> Self
 pub fn CT_TransitionSoundAction::to_element(Self) -> @xml.Element
 
-pub(all) struct CT_TransitionStartSoundAction {
-  element : @xml.Element
+pub(all) enum CT_TransitionSoundActionChoice {
+  TransitionSoundStart(CT_TransitionStartSoundAction)
+  TransitionSoundEnd(@xml.QName)
 } derive(Eq, @debug.Debug)
+
+pub(all) struct CT_TransitionStartSoundAction {
+  snd : @xml.Element
+  loop_ : Bool?
+  element_name : @xml.QName
+} derive(Eq, @debug.Debug)
+pub fn CT_TransitionStartSoundAction::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TransitionStartSoundAction::new(@xml.Element) -> Self
 pub fn CT_TransitionStartSoundAction::parse(@xml.Element) -> Self
 pub fn CT_TransitionStartSoundAction::to_element(Self) -> @xml.Element
@@ -1121,8 +1336,10 @@ pub fn CT_WebProperties::parse(@xml.Element) -> Self
 pub fn CT_WebProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WheelTransition {
-  element : @xml.Element
+  spokes : UInt?
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
+pub fn CT_WheelTransition::from_element(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_WheelTransition::new(@xml.Element) -> Self
 pub fn CT_WheelTransition::parse(@xml.Element) -> Self
 pub fn CT_WheelTransition::to_element(Self) -> @xml.Element

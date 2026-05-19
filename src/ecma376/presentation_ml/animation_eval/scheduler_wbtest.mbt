@@ -11,7 +11,7 @@ fn parse_root(source : String) -> @xml.Element {
 ///|
 fn build_timing(timing_xml : String) -> @domain.CT_SlideTiming {
   let root = parse_root(timing_xml)
-  @domain.CT_SlideTiming::{ element: root }
+  @domain.CT_SlideTiming::new(root)
 }
 
 ///|
