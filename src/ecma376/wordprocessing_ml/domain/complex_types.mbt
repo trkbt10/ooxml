@@ -1,129 +1,253 @@
+// WordprocessingML chunk1 typed complex types — wml.xsd §17 shared CT_*
+// wrappers that previously held only `element : @xml.Element` are
+// re-projected here as typed views of every XSD attribute and child
+// element listed in the schema. The source `<w:...>` element is kept
+// alongside the typed fields so the builder can round-trip unchanged
+// markup, but the typed fields are now the source-of-truth for
+// schema-aware callers.
+
 ///|
-/// XSD complex type CT_Empty from wml.xsd (§17).
+/// XSD complex type CT_Empty — Part 1 §A.1 (wml.xsd). The empty complex
+/// type carries neither attributes nor children, so its only spec-
+/// typed information is the QName of the element it backs (see
+/// §17.17.4 prose for typical usage as a flag element). The QName is
+/// captured up-front so callers can switch on the source element
+/// without re-walking the preserved XML.
 pub(all) struct CT_Empty {
+  /// §A.1 — qualified name of the source element. CT_Empty backs many
+  /// distinct `<w:.../>` flags; the QName is the only spec-derived
+  /// information available because the type itself has no content.
+  name : @xml.QName
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_Empty — Part 1 §A.1. The empty complex type
+/// admits no attributes and no children, so the constructor records
+/// the QName and preserves the source element.
 pub fn CT_Empty::new(element : @xml.Element) -> CT_Empty {
-  { element, }
+  { name: element.name, element }
 }
 
 ///|
+/// XSD complex type CT_Empty — Part 1 §A.1. Decoding is total because
+/// no schema content has to be validated.
 pub fn CT_Empty::parse(element : @xml.Element) -> CT_Empty {
   CT_Empty::new(element)
 }
 
 ///|
+/// XSD complex type CT_Empty — return the preserved element for
+/// writers.
 pub fn CT_Empty::to_element(self : CT_Empty) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_OnOff from wml.xsd (§17).
+/// XSD complex type CT_OnOff — Part 1 §17.17.4 Boolean Property. The
+/// shared boolean-flag complex type used throughout WordprocessingML
+/// for elements such as `<w:b/>`, `<w:i/>`, `<w:keepLines/>`. The
+/// optional `@val` is an ST_OnOff token (§22.9.2.7) decoded as a
+/// typed bool with `true` as the spec-default when the attribute is
+/// omitted.
 pub(all) struct CT_OnOff {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.17.4 @val (ST_OnOff). `None` means the attribute was omitted;
+  /// the spec default for that case is the property being applied
+  /// (`true`).
+  val : Bool?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_OnOff — Part 1 §17.17.4. Decode the optional
+/// ST_OnOff `@val` attribute and preserve the source element.
 pub fn CT_OnOff::new(element : @xml.Element) -> CT_OnOff {
-  { element, }
+  let val = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "val"))
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_OnOff — Part 1 §17.17.4. Schema-validating
+/// decoder; the parse function is total because every ST_OnOff
+/// lexical token (including `0/1/on/off/true/false`) is admissible
+/// per §22.9.2.7 and unknown spellings are tolerated by writers.
 pub fn CT_OnOff::parse(element : @xml.Element) -> CT_OnOff {
   CT_OnOff::new(element)
 }
 
 ///|
+/// XSD complex type CT_OnOff — return the preserved element for
+/// writers.
 pub fn CT_OnOff::to_element(self : CT_OnOff) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_LongHexNumber from wml.xsd (§17).
+/// XSD complex type CT_LongHexNumber — Part 1 §A.1, simple type
+/// ST_LongHexNumber documented at §17.18.50. Carries a required
+/// eight-hex-digit `@val` attribute used by settings/numbering rsid
+/// records.
 pub(all) struct CT_LongHexNumber {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.50 @val (ST_LongHexNumber) — eight hex digits, required.
+  val : ST_LongHexNumber
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_LongHexNumber::new(element : @xml.Element) -> CT_LongHexNumber {
-  { element, }
+/// XSD complex type CT_LongHexNumber — Part 1 §17.18.50. Decode the
+/// required eight-hex-digit `@val` attribute.
+pub fn CT_LongHexNumber::new(
+  element : @xml.Element,
+) -> CT_LongHexNumber raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_LongHexNumber", "Part 1 §17.18.50 ST_LongHexNumber",
+  )
+  let val = ST_LongHexNumber::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_LongHexNumber::parse(element : @xml.Element) -> CT_LongHexNumber {
+/// XSD complex type CT_LongHexNumber — Part 1 §17.18.50. Equivalent to
+/// `new` for spec-strict decoding.
+pub fn CT_LongHexNumber::parse(
+  element : @xml.Element,
+) -> CT_LongHexNumber raise SchemaViolation {
   CT_LongHexNumber::new(element)
 }
 
 ///|
+/// XSD complex type CT_LongHexNumber — return the preserved element
+/// for writers.
 pub fn CT_LongHexNumber::to_element(self : CT_LongHexNumber) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Charset from wml.xsd (§17).
+/// XSD complex type CT_Charset — Part 1 §A.1, simple type
+/// ST_UcharHexNumber documented at §17.18.98. Two optional
+/// attributes: `@val` (one-octet hex code page, ST_UcharHexNumber)
+/// and `@characterSet` (xsd:string, defaults to `"ISO-8859-1"`).
 pub(all) struct CT_Charset {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.98 @val (ST_UcharHexNumber) — code-page octet, optional.
+  val : ST_UcharHexNumber?
+  /// §A.1 @characterSet (s:ST_String) — IANA charset, optional;
+  /// `None` means the schema-default `ISO-8859-1` applies.
+  character_set : String?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Charset::new(element : @xml.Element) -> CT_Charset {
-  { element, }
+/// XSD complex type CT_Charset — Part 1 §17.18.98. Decode the optional
+/// `@val` and `@characterSet` attributes.
+pub fn CT_Charset::new(
+  element : @xml.Element,
+) -> CT_Charset raise SchemaViolation {
+  let val = match wml_ct_chunk1_attr(element, "val") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let character_set = wml_ct_chunk1_attr(element, "characterSet")
+  { element, val, character_set }
 }
 
 ///|
-pub fn CT_Charset::parse(element : @xml.Element) -> CT_Charset {
+/// XSD complex type CT_Charset — Part 1 §17.18.98. Equivalent to
+/// `new`.
+pub fn CT_Charset::parse(
+  element : @xml.Element,
+) -> CT_Charset raise SchemaViolation {
   CT_Charset::new(element)
 }
 
 ///|
+/// XSD complex type CT_Charset — return the preserved element for
+/// writers.
 pub fn CT_Charset::to_element(self : CT_Charset) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_DecimalNumber from wml.xsd (§17).
+/// XSD complex type CT_DecimalNumber — Part 1 §A.1, simple type
+/// ST_DecimalNumber documented at §17.18.10. Carries a required
+/// xsd:integer `@val` used throughout WordprocessingML for typed
+/// counter / id elements.
 pub(all) struct CT_DecimalNumber {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @val (ST_DecimalNumber) — signed integer, required.
+  val : ST_DecimalNumber
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DecimalNumber::new(element : @xml.Element) -> CT_DecimalNumber {
-  { element, }
+/// XSD complex type CT_DecimalNumber — Part 1 §17.18.10. Decode the
+/// required xsd:integer `@val` attribute.
+pub fn CT_DecimalNumber::new(
+  element : @xml.Element,
+) -> CT_DecimalNumber raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_DecimalNumber", "Part 1 §17.18.10 ST_DecimalNumber",
+  )
+  let val = ST_DecimalNumber::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_DecimalNumber::parse(element : @xml.Element) -> CT_DecimalNumber {
+/// XSD complex type CT_DecimalNumber — Part 1 §17.18.10.
+pub fn CT_DecimalNumber::parse(
+  element : @xml.Element,
+) -> CT_DecimalNumber raise SchemaViolation {
   CT_DecimalNumber::new(element)
 }
 
 ///|
+/// XSD complex type CT_DecimalNumber — return the preserved element
+/// for writers.
 pub fn CT_DecimalNumber::to_element(self : CT_DecimalNumber) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_UnsignedDecimalNumber from wml.xsd (§17).
+/// XSD complex type CT_UnsignedDecimalNumber — Part 1 §A.1, simple
+/// type ST_UnsignedDecimalNumber documented in Part 1 §22.9.2.16. The
+/// required `@val` is decoded as an `UInt64` so id / index attributes
+/// keep their non-negative semantics.
 pub(all) struct CT_UnsignedDecimalNumber {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.16 @val (s:ST_UnsignedDecimalNumber) — unsigned long, required.
+  val : UInt64
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_UnsignedDecimalNumber — Part 1 §22.9.2.16.
+/// Decode the required unsigned-long `@val` attribute.
 pub fn CT_UnsignedDecimalNumber::new(
   element : @xml.Element,
-) -> CT_UnsignedDecimalNumber {
-  { element, }
+) -> CT_UnsignedDecimalNumber raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_UnsignedDecimalNumber", "Part 1 §22.9.2.16 ST_UnsignedDecimalNumber",
+  )
+  let val = wml_ct_chunk1_parse_uint64(
+    raw, "CT_UnsignedDecimalNumber", "val", "Part 1 §22.9.2.16 ST_UnsignedDecimalNumber",
+  )
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_UnsignedDecimalNumber — Part 1 §22.9.2.16.
 pub fn CT_UnsignedDecimalNumber::parse(
   element : @xml.Element,
-) -> CT_UnsignedDecimalNumber {
+) -> CT_UnsignedDecimalNumber raise SchemaViolation {
   CT_UnsignedDecimalNumber::new(element)
 }
 
 ///|
+/// XSD complex type CT_UnsignedDecimalNumber — return the preserved
+/// element for writers.
 pub fn CT_UnsignedDecimalNumber::to_element(
   self : CT_UnsignedDecimalNumber,
 ) -> @xml.Element {
@@ -131,26 +255,41 @@ pub fn CT_UnsignedDecimalNumber::to_element(
 }
 
 ///|
-/// XSD complex type CT_DecimalNumberOrPrecent from wml.xsd (§17).
+/// XSD complex type CT_DecimalNumberOrPrecent — Part 1 §A.1; the typed
+/// `@val` is the union ST_DecimalNumberOrPercent (Part 1 §17.18.11).
+/// Note the misspelt schema name (`Precent`) is preserved verbatim per
+/// wml.xsd. Used by §17.15.1.94 `zoom/@percent`.
 pub(all) struct CT_DecimalNumberOrPrecent {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.11 @val (ST_DecimalNumberOrPercent) — integer or
+  /// `N%` lexical form, required.
+  val : ST_DecimalNumberOrPercent
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_DecimalNumberOrPrecent — Part 1 §17.18.11.
 pub fn CT_DecimalNumberOrPrecent::new(
   element : @xml.Element,
-) -> CT_DecimalNumberOrPrecent {
-  { element, }
+) -> CT_DecimalNumberOrPrecent raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_DecimalNumberOrPrecent", "Part 1 §17.18.11 ST_DecimalNumberOrPercent",
+  )
+  let val = ST_DecimalNumberOrPercent::parse(raw)
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_DecimalNumberOrPrecent — Part 1 §17.18.11.
 pub fn CT_DecimalNumberOrPrecent::parse(
   element : @xml.Element,
-) -> CT_DecimalNumberOrPrecent {
+) -> CT_DecimalNumberOrPrecent raise SchemaViolation {
   CT_DecimalNumberOrPrecent::new(element)
 }
 
 ///|
+/// XSD complex type CT_DecimalNumberOrPrecent — return the preserved
+/// element for writers.
 pub fn CT_DecimalNumberOrPrecent::to_element(
   self : CT_DecimalNumberOrPrecent,
 ) -> @xml.Element {
@@ -158,47 +297,79 @@ pub fn CT_DecimalNumberOrPrecent::to_element(
 }
 
 ///|
-/// XSD complex type CT_TwipsMeasure from wml.xsd (§17).
+/// XSD complex type CT_TwipsMeasure — Part 1 §A.1; the typed `@val` is
+/// the union ST_TwipsMeasure (Part 1 §22.9.2.10). Stored as the raw
+/// lexical form so callers can either treat the value as twentieths-
+/// of-a-point or as a universal-measure literal.
 pub(all) struct CT_TwipsMeasure {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.10 @val (s:ST_TwipsMeasure) — required.
+  val : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TwipsMeasure::new(element : @xml.Element) -> CT_TwipsMeasure {
-  { element, }
+/// XSD complex type CT_TwipsMeasure — Part 1 §22.9.2.10. Decode the
+/// required ST_TwipsMeasure `@val` attribute as its lexical form.
+pub fn CT_TwipsMeasure::new(
+  element : @xml.Element,
+) -> CT_TwipsMeasure raise SchemaViolation {
+  let val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_TwipsMeasure", "Part 1 §22.9.2.10 ST_TwipsMeasure",
+  )
+  { element, val }
 }
 
 ///|
-pub fn CT_TwipsMeasure::parse(element : @xml.Element) -> CT_TwipsMeasure {
+/// XSD complex type CT_TwipsMeasure — Part 1 §22.9.2.10.
+pub fn CT_TwipsMeasure::parse(
+  element : @xml.Element,
+) -> CT_TwipsMeasure raise SchemaViolation {
   CT_TwipsMeasure::new(element)
 }
 
 ///|
+/// XSD complex type CT_TwipsMeasure — return the preserved element
+/// for writers.
 pub fn CT_TwipsMeasure::to_element(self : CT_TwipsMeasure) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SignedTwipsMeasure from wml.xsd (§17).
+/// XSD complex type CT_SignedTwipsMeasure — Part 1 §A.1; the typed
+/// `@val` is the union ST_SignedTwipsMeasure (Part 1 §17.18.81). The
+/// typed form preserves either the signed-twip integer branch or the
+/// signed universal-measure branch.
 pub(all) struct CT_SignedTwipsMeasure {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.81 @val (ST_SignedTwipsMeasure) — required.
+  val : ST_SignedTwipsMeasure
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_SignedTwipsMeasure — Part 1 §17.18.81.
 pub fn CT_SignedTwipsMeasure::new(
   element : @xml.Element,
-) -> CT_SignedTwipsMeasure {
-  { element, }
+) -> CT_SignedTwipsMeasure raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_SignedTwipsMeasure", "Part 1 §17.18.81 ST_SignedTwipsMeasure",
+  )
+  let val = ST_SignedTwipsMeasure::parse(raw)
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_SignedTwipsMeasure — Part 1 §17.18.81.
 pub fn CT_SignedTwipsMeasure::parse(
   element : @xml.Element,
-) -> CT_SignedTwipsMeasure {
+) -> CT_SignedTwipsMeasure raise SchemaViolation {
   CT_SignedTwipsMeasure::new(element)
 }
 
 ///|
+/// XSD complex type CT_SignedTwipsMeasure — return the preserved
+/// element for writers.
 pub fn CT_SignedTwipsMeasure::to_element(
   self : CT_SignedTwipsMeasure,
 ) -> @xml.Element {
@@ -206,66 +377,117 @@ pub fn CT_SignedTwipsMeasure::to_element(
 }
 
 ///|
-/// XSD complex type CT_PixelsMeasure from wml.xsd (§17).
+/// XSD complex type CT_PixelsMeasure — Part 1 §A.1, simple type
+/// ST_PixelsMeasure documented at §17.18.67. Required `@val` carries
+/// the unsigned pixel count used by frame sizing
+/// (§17.15.2.16 `frame/marW`, §17.15.2.17 `frame/marH`).
 pub(all) struct CT_PixelsMeasure {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.67 @val (ST_PixelsMeasure) — pixel count, required.
+  val : ST_PixelsMeasure
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PixelsMeasure::new(element : @xml.Element) -> CT_PixelsMeasure {
-  { element, }
+/// XSD complex type CT_PixelsMeasure — Part 1 §17.18.67.
+pub fn CT_PixelsMeasure::new(
+  element : @xml.Element,
+) -> CT_PixelsMeasure raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_PixelsMeasure", "Part 1 §17.18.67 ST_PixelsMeasure",
+  )
+  let val = ST_PixelsMeasure::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_PixelsMeasure::parse(element : @xml.Element) -> CT_PixelsMeasure {
+/// XSD complex type CT_PixelsMeasure — Part 1 §17.18.67.
+pub fn CT_PixelsMeasure::parse(
+  element : @xml.Element,
+) -> CT_PixelsMeasure raise SchemaViolation {
   CT_PixelsMeasure::new(element)
 }
 
 ///|
+/// XSD complex type CT_PixelsMeasure — return the preserved element
+/// for writers.
 pub fn CT_PixelsMeasure::to_element(self : CT_PixelsMeasure) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_HpsMeasure from wml.xsd (§17).
+/// XSD complex type CT_HpsMeasure — Part 1 §A.1; the typed `@val` is
+/// the union ST_HpsMeasure (Part 1 §17.18.42). Used by run-font sizing
+/// elements `<w:sz>` (§17.3.2.38) and `<w:szCs>` (§17.3.2.39).
 pub(all) struct CT_HpsMeasure {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.42 @val (s:ST_HpsMeasure) — half-points, required.
+  val : ST_HpsMeasure
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_HpsMeasure::new(element : @xml.Element) -> CT_HpsMeasure {
-  { element, }
+/// XSD complex type CT_HpsMeasure — Part 1 §17.18.42.
+pub fn CT_HpsMeasure::new(
+  element : @xml.Element,
+) -> CT_HpsMeasure raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_HpsMeasure", "Part 1 §17.18.42 ST_HpsMeasure",
+  )
+  let val = ST_HpsMeasure::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_HpsMeasure::parse(element : @xml.Element) -> CT_HpsMeasure {
+/// XSD complex type CT_HpsMeasure — Part 1 §17.18.42.
+pub fn CT_HpsMeasure::parse(
+  element : @xml.Element,
+) -> CT_HpsMeasure raise SchemaViolation {
   CT_HpsMeasure::new(element)
 }
 
 ///|
+/// XSD complex type CT_HpsMeasure — return the preserved element for
+/// writers.
 pub fn CT_HpsMeasure::to_element(self : CT_HpsMeasure) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_SignedHpsMeasure from wml.xsd (§17).
+/// XSD complex type CT_SignedHpsMeasure — Part 1 §A.1; the typed
+/// `@val` is the union ST_SignedHpsMeasure (Part 1 §17.18.80). Used
+/// by `<w:position>` (§17.3.2.24) which raises/lowers run text by a
+/// signed half-point displacement.
 pub(all) struct CT_SignedHpsMeasure {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.80 @val (ST_SignedHpsMeasure) — required.
+  val : ST_SignedHpsMeasure
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SignedHpsMeasure::new(element : @xml.Element) -> CT_SignedHpsMeasure {
-  { element, }
+/// XSD complex type CT_SignedHpsMeasure — Part 1 §17.18.80.
+pub fn CT_SignedHpsMeasure::new(
+  element : @xml.Element,
+) -> CT_SignedHpsMeasure raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_SignedHpsMeasure", "Part 1 §17.18.80 ST_SignedHpsMeasure",
+  )
+  let val = ST_SignedHpsMeasure::parse(raw)
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_SignedHpsMeasure — Part 1 §17.18.80.
 pub fn CT_SignedHpsMeasure::parse(
   element : @xml.Element,
-) -> CT_SignedHpsMeasure {
+) -> CT_SignedHpsMeasure raise SchemaViolation {
   CT_SignedHpsMeasure::new(element)
 }
 
 ///|
+/// XSD complex type CT_SignedHpsMeasure — return the preserved element
+/// for writers.
 pub fn CT_SignedHpsMeasure::to_element(
   self : CT_SignedHpsMeasure,
 ) -> @xml.Element {
@@ -273,255 +495,599 @@ pub fn CT_SignedHpsMeasure::to_element(
 }
 
 ///|
-/// XSD complex type CT_MacroName from wml.xsd (§17).
+/// XSD complex type CT_MacroName — Part 1 §A.1, simple type
+/// ST_MacroName documented at §17.18.51. Carries a required
+/// xsd:string `@val` length-limited to 33 characters; used by form-
+/// field entry/exit macros (§17.16.10 `<w:entryMacro>`, §17.16.13
+/// `<w:exitMacro>`).
 pub(all) struct CT_MacroName {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.51 @val (ST_MacroName) — macro name, required.
+  val : ST_MacroName
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MacroName::new(element : @xml.Element) -> CT_MacroName {
-  { element, }
+/// XSD complex type CT_MacroName — Part 1 §17.18.51.
+pub fn CT_MacroName::new(
+  element : @xml.Element,
+) -> CT_MacroName raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_MacroName", "Part 1 §17.18.51 ST_MacroName",
+  )
+  let val = ST_MacroName::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_MacroName::parse(element : @xml.Element) -> CT_MacroName {
+/// XSD complex type CT_MacroName — Part 1 §17.18.51.
+pub fn CT_MacroName::parse(
+  element : @xml.Element,
+) -> CT_MacroName raise SchemaViolation {
   CT_MacroName::new(element)
 }
 
 ///|
+/// XSD complex type CT_MacroName — return the preserved element for
+/// writers.
 pub fn CT_MacroName::to_element(self : CT_MacroName) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_String from wml.xsd (§17).
+/// XSD complex type CT_String — Part 1 §A.1; the typed `@val` is
+/// Part 1 §22.9.2.13 ST_String. The shared single-attribute string
+/// carrier used by §17.7.4.17 `style/@styleId`-bearing children
+/// (alias, basedOn, link, next, name, …) and many settings elements.
 pub(all) struct CT_String {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.13 @val (s:ST_String) — required string.
+  val : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_String::new(element : @xml.Element) -> CT_String {
-  { element, }
+/// XSD complex type CT_String — Part 1 §22.9.2.13.
+pub fn CT_String::new(
+  element : @xml.Element,
+) -> CT_String raise SchemaViolation {
+  let val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_String", "Part 1 §22.9.2.13 ST_String",
+  )
+  { element, val }
 }
 
 ///|
-pub fn CT_String::parse(element : @xml.Element) -> CT_String {
+/// XSD complex type CT_String — Part 1 §22.9.2.13.
+pub fn CT_String::parse(
+  element : @xml.Element,
+) -> CT_String raise SchemaViolation {
   CT_String::new(element)
 }
 
 ///|
+/// XSD complex type CT_String — return the preserved element for
+/// writers.
 pub fn CT_String::to_element(self : CT_String) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TextScale from wml.xsd (§17).
+/// XSD complex type CT_TextScale — Part 1 §17.3.2.43 w (expanded /
+/// compressed text). Optional `@val` carrying the
+/// ST_TextScale union (Part 1 §17.18.95).
 pub(all) struct CT_TextScale {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.95 @val (ST_TextScale) — optional percent or decimal.
+  val : ST_TextScale?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TextScale::new(element : @xml.Element) -> CT_TextScale {
-  { element, }
+/// XSD complex type CT_TextScale — Part 1 §17.18.95.
+pub fn CT_TextScale::new(
+  element : @xml.Element,
+) -> CT_TextScale raise SchemaViolation {
+  let val = match wml_ct_chunk1_attr(element, "val") {
+    Some(text) => Some(ST_TextScale::parse(text))
+    None => None
+  }
+  { element, val }
 }
 
 ///|
-pub fn CT_TextScale::parse(element : @xml.Element) -> CT_TextScale {
+/// XSD complex type CT_TextScale — Part 1 §17.18.95.
+pub fn CT_TextScale::parse(
+  element : @xml.Element,
+) -> CT_TextScale raise SchemaViolation {
   CT_TextScale::new(element)
 }
 
 ///|
+/// XSD complex type CT_TextScale — return the preserved element for
+/// writers.
 pub fn CT_TextScale::to_element(self : CT_TextScale) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Highlight from wml.xsd (§17).
+/// XSD complex type CT_Highlight — Part 1 §17.3.2.15 highlight. The
+/// required `@val` is one of the seventeen ST_HighlightColor tokens
+/// (Part 1 §17.18.40).
 pub(all) struct CT_Highlight {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.40 @val (ST_HighlightColor) — highlight swatch, required.
+  val : ST_HighlightColor
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Highlight::new(element : @xml.Element) -> CT_Highlight {
-  { element, }
+/// XSD complex type CT_Highlight — Part 1 §17.18.40.
+pub fn CT_Highlight::new(
+  element : @xml.Element,
+) -> CT_Highlight raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_Highlight", "Part 1 §17.18.40 ST_HighlightColor",
+  )
+  let val = ST_HighlightColor::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_Highlight::parse(element : @xml.Element) -> CT_Highlight {
+/// XSD complex type CT_Highlight — Part 1 §17.18.40.
+pub fn CT_Highlight::parse(
+  element : @xml.Element,
+) -> CT_Highlight raise SchemaViolation {
   CT_Highlight::new(element)
 }
 
 ///|
+/// XSD complex type CT_Highlight — return the preserved element for
+/// writers.
 pub fn CT_Highlight::to_element(self : CT_Highlight) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Color from wml.xsd (§17).
+/// XSD complex type CT_Color — Part 1 §17.3.2.6 color (run content
+/// colour). Required `@val` (ST_HexColor — §17.18.38) plus optional
+/// theme tinting attributes (`@themeColor` ST_ThemeColor §17.18.97,
+/// `@themeTint` / `@themeShade` ST_UcharHexNumber §17.18.98).
 pub(all) struct CT_Color {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.38 @val (ST_HexColor) — RGB or `auto`, required.
+  val : ST_HexColor
+  /// §17.18.97 @themeColor (ST_ThemeColor) — optional theme override.
+  theme_color : ST_ThemeColor?
+  /// §17.18.98 @themeTint (ST_UcharHexNumber) — optional brighten.
+  theme_tint : ST_UcharHexNumber?
+  /// §17.18.98 @themeShade (ST_UcharHexNumber) — optional darken.
+  theme_shade : ST_UcharHexNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Color::new(element : @xml.Element) -> CT_Color {
-  { element, }
+/// XSD complex type CT_Color — Part 1 §17.3.2.6.
+pub fn CT_Color::new(element : @xml.Element) -> CT_Color raise SchemaViolation {
+  let raw_val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_Color", "Part 1 §17.18.38 ST_HexColor",
+  )
+  let val = ST_HexColor::parse(raw_val)
+  let theme_color = match wml_ct_chunk1_attr(element, "themeColor") {
+    Some(text) => Some(ST_ThemeColor::parse(text))
+    None => None
+  }
+  let theme_tint = match wml_ct_chunk1_attr(element, "themeTint") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let theme_shade = match wml_ct_chunk1_attr(element, "themeShade") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  { element, val, theme_color, theme_tint, theme_shade }
 }
 
 ///|
-pub fn CT_Color::parse(element : @xml.Element) -> CT_Color {
+/// XSD complex type CT_Color — Part 1 §17.3.2.6.
+pub fn CT_Color::parse(
+  element : @xml.Element,
+) -> CT_Color raise SchemaViolation {
   CT_Color::new(element)
 }
 
 ///|
+/// XSD complex type CT_Color — return the preserved element for
+/// writers.
 pub fn CT_Color::to_element(self : CT_Color) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Lang from wml.xsd (§17).
+/// XSD complex type CT_Lang — Part 1 §A.1; the typed `@val` is the
+/// BCP-47 ST_Lang (Part 1 §22.9.2.6). Used by document-level
+/// presentation language hints (§17.15.1.55 `themeFontLang/@val`).
 pub(all) struct CT_Lang {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.6 @val (s:ST_Lang) — BCP-47 tag, required.
+  val : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Lang::new(element : @xml.Element) -> CT_Lang {
-  { element, }
+/// XSD complex type CT_Lang — Part 1 §22.9.2.6.
+pub fn CT_Lang::new(element : @xml.Element) -> CT_Lang raise SchemaViolation {
+  let val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_Lang", "Part 1 §22.9.2.6 ST_Lang",
+  )
+  { element, val }
 }
 
 ///|
-pub fn CT_Lang::parse(element : @xml.Element) -> CT_Lang {
+/// XSD complex type CT_Lang — Part 1 §22.9.2.6.
+pub fn CT_Lang::parse(element : @xml.Element) -> CT_Lang raise SchemaViolation {
   CT_Lang::new(element)
 }
 
 ///|
+/// XSD complex type CT_Lang — return the preserved element for
+/// writers.
 pub fn CT_Lang::to_element(self : CT_Lang) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Guid from wml.xsd (§17).
+/// XSD complex type CT_Guid — Part 1 §A.1; the typed `@val` is the
+/// brace-delimited GUID ST_Guid (Part 1 §22.9.2.3). Optional per the
+/// wml.xsd schema and used by `<w:nsid>` (§17.9.14) and similar
+/// markers.
 pub(all) struct CT_Guid {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.3 @val (s:ST_Guid) — optional GUID.
+  val : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_Guid — Part 1 §22.9.2.3.
 pub fn CT_Guid::new(element : @xml.Element) -> CT_Guid {
-  { element, }
+  let val = wml_ct_chunk1_attr(element, "val")
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_Guid — Part 1 §22.9.2.3.
 pub fn CT_Guid::parse(element : @xml.Element) -> CT_Guid {
   CT_Guid::new(element)
 }
 
 ///|
+/// XSD complex type CT_Guid — return the preserved element for
+/// writers.
 pub fn CT_Guid::to_element(self : CT_Guid) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Underline from wml.xsd (§17).
+/// XSD complex type CT_Underline — Part 1 §17.3.2.40 u. Optional
+/// `@val` ST_Underline (Part 1 §17.18.99); colour attributes (ST_HexColor
+/// §17.18.38 — schema-default `auto`) and the trio of theme overrides
+/// (`@themeColor`, `@themeTint`, `@themeShade`).
 pub(all) struct CT_Underline {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.99 @val (ST_Underline) — optional underline pattern.
+  val : ST_Underline?
+  /// §17.18.38 @color (ST_HexColor) — optional; `None` ⇒ schema-default `auto`.
+  color : ST_HexColor?
+  /// §17.18.97 @themeColor (ST_ThemeColor) — optional.
+  theme_color : ST_ThemeColor?
+  /// §17.18.98 @themeTint (ST_UcharHexNumber) — optional.
+  theme_tint : ST_UcharHexNumber?
+  /// §17.18.98 @themeShade (ST_UcharHexNumber) — optional.
+  theme_shade : ST_UcharHexNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Underline::new(element : @xml.Element) -> CT_Underline {
-  { element, }
+/// XSD complex type CT_Underline — Part 1 §17.3.2.40.
+pub fn CT_Underline::new(
+  element : @xml.Element,
+) -> CT_Underline raise SchemaViolation {
+  let val = match wml_ct_chunk1_attr(element, "val") {
+    Some(text) => Some(ST_Underline::parse(text))
+    None => None
+  }
+  let color = match wml_ct_chunk1_attr(element, "color") {
+    Some(text) => Some(ST_HexColor::parse(text))
+    None => None
+  }
+  let theme_color = match wml_ct_chunk1_attr(element, "themeColor") {
+    Some(text) => Some(ST_ThemeColor::parse(text))
+    None => None
+  }
+  let theme_tint = match wml_ct_chunk1_attr(element, "themeTint") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let theme_shade = match wml_ct_chunk1_attr(element, "themeShade") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  { element, val, color, theme_color, theme_tint, theme_shade }
 }
 
 ///|
-pub fn CT_Underline::parse(element : @xml.Element) -> CT_Underline {
+/// XSD complex type CT_Underline — Part 1 §17.3.2.40.
+pub fn CT_Underline::parse(
+  element : @xml.Element,
+) -> CT_Underline raise SchemaViolation {
   CT_Underline::new(element)
 }
 
 ///|
+/// XSD complex type CT_Underline — return the preserved element for
+/// writers.
 pub fn CT_Underline::to_element(self : CT_Underline) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TextEffect from wml.xsd (§17).
+/// XSD complex type CT_TextEffect — Part 1 §17.3.2.11 effect. Required
+/// `@val` ST_TextEffect (Part 1 §17.18.94) — the legacy animated text
+/// effect token.
 pub(all) struct CT_TextEffect {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.94 @val (ST_TextEffect) — required animation token.
+  val : ST_TextEffect
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TextEffect::new(element : @xml.Element) -> CT_TextEffect {
-  { element, }
+/// XSD complex type CT_TextEffect — Part 1 §17.18.94.
+pub fn CT_TextEffect::new(
+  element : @xml.Element,
+) -> CT_TextEffect raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_TextEffect", "Part 1 §17.18.94 ST_TextEffect",
+  )
+  let val = ST_TextEffect::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_TextEffect::parse(element : @xml.Element) -> CT_TextEffect {
+/// XSD complex type CT_TextEffect — Part 1 §17.18.94.
+pub fn CT_TextEffect::parse(
+  element : @xml.Element,
+) -> CT_TextEffect raise SchemaViolation {
   CT_TextEffect::new(element)
 }
 
 ///|
+/// XSD complex type CT_TextEffect — return the preserved element for
+/// writers.
 pub fn CT_TextEffect::to_element(self : CT_TextEffect) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Border from wml.xsd (§17).
+/// XSD complex type CT_Border — Part 1 §17.3.4 Border Properties.
+/// Required `@val` (ST_Border §17.18.2) plus optional colour /
+/// theme / sizing / spacing / shadow / frame attributes. The schema
+/// defaults `@color` to `auto` and `@space` to `0` when omitted.
 pub(all) struct CT_Border {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.2 @val (ST_Border) — required border style.
+  val : ST_Border
+  /// §17.18.38 @color (ST_HexColor) — optional; `None` ⇒ schema-default `auto`.
+  color : ST_HexColor?
+  /// §17.18.97 @themeColor (ST_ThemeColor) — optional.
+  theme_color : ST_ThemeColor?
+  /// §17.18.98 @themeTint (ST_UcharHexNumber) — optional.
+  theme_tint : ST_UcharHexNumber?
+  /// §17.18.98 @themeShade (ST_UcharHexNumber) — optional.
+  theme_shade : ST_UcharHexNumber?
+  /// §17.18.23 @sz (ST_EighthPointMeasure) — optional width in eighths
+  /// of a point.
+  sz : ST_EighthPointMeasure?
+  /// §17.18.68 @space (ST_PointMeasure) — optional spacing in points;
+  /// `None` ⇒ schema-default `0`.
+  space : ST_PointMeasure?
+  /// §22.9.2.7 @shadow (s:ST_OnOff) — optional drop-shadow flag.
+  shadow : Bool?
+  /// §22.9.2.7 @frame (s:ST_OnOff) — optional frame-flag.
+  frame : Bool?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Border::new(element : @xml.Element) -> CT_Border {
-  { element, }
+/// XSD complex type CT_Border — Part 1 §17.3.4.
+pub fn CT_Border::new(
+  element : @xml.Element,
+) -> CT_Border raise SchemaViolation {
+  let raw_val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_Border", "Part 1 §17.18.2 ST_Border",
+  )
+  let val = ST_Border::parse(raw_val)
+  let color = match wml_ct_chunk1_attr(element, "color") {
+    Some(text) => Some(ST_HexColor::parse(text))
+    None => None
+  }
+  let theme_color = match wml_ct_chunk1_attr(element, "themeColor") {
+    Some(text) => Some(ST_ThemeColor::parse(text))
+    None => None
+  }
+  let theme_tint = match wml_ct_chunk1_attr(element, "themeTint") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let theme_shade = match wml_ct_chunk1_attr(element, "themeShade") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let sz = match wml_ct_chunk1_attr(element, "sz") {
+    Some(text) => Some(ST_EighthPointMeasure::parse(text))
+    None => None
+  }
+  let space = match wml_ct_chunk1_attr(element, "space") {
+    Some(text) => Some(ST_PointMeasure::parse(text))
+    None => None
+  }
+  let shadow = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "shadow"))
+  let frame = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "frame"))
+  {
+    element,
+    val,
+    color,
+    theme_color,
+    theme_tint,
+    theme_shade,
+    sz,
+    space,
+    shadow,
+    frame,
+  }
 }
 
 ///|
-pub fn CT_Border::parse(element : @xml.Element) -> CT_Border {
+/// XSD complex type CT_Border — Part 1 §17.3.4.
+pub fn CT_Border::parse(
+  element : @xml.Element,
+) -> CT_Border raise SchemaViolation {
   CT_Border::new(element)
 }
 
 ///|
+/// XSD complex type CT_Border — return the preserved element for
+/// writers.
 pub fn CT_Border::to_element(self : CT_Border) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Shd from wml.xsd (§17).
+/// XSD complex type CT_Shd — Part 1 §17.3.5 Shading Properties.
+/// Required `@val` (ST_Shd §17.18.78) plus optional foreground and
+/// fill colour attributes with their theme overrides.
 pub(all) struct CT_Shd {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.78 @val (ST_Shd) — shading pattern, required.
+  val : ST_Shd
+  /// §17.18.38 @color (ST_HexColor) — optional foreground colour.
+  color : ST_HexColor?
+  /// §17.18.97 @themeColor (ST_ThemeColor) — optional.
+  theme_color : ST_ThemeColor?
+  /// §17.18.98 @themeTint (ST_UcharHexNumber) — optional.
+  theme_tint : ST_UcharHexNumber?
+  /// §17.18.98 @themeShade (ST_UcharHexNumber) — optional.
+  theme_shade : ST_UcharHexNumber?
+  /// §17.18.38 @fill (ST_HexColor) — optional background colour.
+  fill : ST_HexColor?
+  /// §17.18.97 @themeFill (ST_ThemeColor) — optional.
+  theme_fill : ST_ThemeColor?
+  /// §17.18.98 @themeFillTint (ST_UcharHexNumber) — optional.
+  theme_fill_tint : ST_UcharHexNumber?
+  /// §17.18.98 @themeFillShade (ST_UcharHexNumber) — optional.
+  theme_fill_shade : ST_UcharHexNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Shd::new(element : @xml.Element) -> CT_Shd {
-  { element, }
+/// XSD complex type CT_Shd — Part 1 §17.3.5.
+pub fn CT_Shd::new(element : @xml.Element) -> CT_Shd raise SchemaViolation {
+  let raw_val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_Shd", "Part 1 §17.18.78 ST_Shd",
+  )
+  let val = ST_Shd::parse(raw_val)
+  let color = match wml_ct_chunk1_attr(element, "color") {
+    Some(text) => Some(ST_HexColor::parse(text))
+    None => None
+  }
+  let theme_color = match wml_ct_chunk1_attr(element, "themeColor") {
+    Some(text) => Some(ST_ThemeColor::parse(text))
+    None => None
+  }
+  let theme_tint = match wml_ct_chunk1_attr(element, "themeTint") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let theme_shade = match wml_ct_chunk1_attr(element, "themeShade") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let fill = match wml_ct_chunk1_attr(element, "fill") {
+    Some(text) => Some(ST_HexColor::parse(text))
+    None => None
+  }
+  let theme_fill = match wml_ct_chunk1_attr(element, "themeFill") {
+    Some(text) => Some(ST_ThemeColor::parse(text))
+    None => None
+  }
+  let theme_fill_tint = match wml_ct_chunk1_attr(element, "themeFillTint") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  let theme_fill_shade = match wml_ct_chunk1_attr(element, "themeFillShade") {
+    Some(text) => Some(ST_UcharHexNumber::parse(text))
+    None => None
+  }
+  {
+    element,
+    val,
+    color,
+    theme_color,
+    theme_tint,
+    theme_shade,
+    fill,
+    theme_fill,
+    theme_fill_tint,
+    theme_fill_shade,
+  }
 }
 
 ///|
-pub fn CT_Shd::parse(element : @xml.Element) -> CT_Shd {
+/// XSD complex type CT_Shd — Part 1 §17.3.5.
+pub fn CT_Shd::parse(element : @xml.Element) -> CT_Shd raise SchemaViolation {
   CT_Shd::new(element)
 }
 
 ///|
+/// XSD complex type CT_Shd — return the preserved element for writers.
 pub fn CT_Shd::to_element(self : CT_Shd) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_VerticalAlignRun from wml.xsd (§17).
+/// XSD complex type CT_VerticalAlignRun — Part 1 §17.3.2.42 vertAlign.
+/// Required `@val` ST_VerticalAlignRun (Part 1 §22.9.2.8) selecting
+/// baseline / subscript / superscript text positioning.
 pub(all) struct CT_VerticalAlignRun {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.8 @val (s:ST_VerticalAlignRun) — required token.
+  val : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_VerticalAlignRun::new(element : @xml.Element) -> CT_VerticalAlignRun {
-  { element, }
+/// XSD complex type CT_VerticalAlignRun — Part 1 §22.9.2.8.
+pub fn CT_VerticalAlignRun::new(
+  element : @xml.Element,
+) -> CT_VerticalAlignRun raise SchemaViolation {
+  let val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_VerticalAlignRun", "Part 1 §22.9.2.8 ST_VerticalAlignRun",
+  )
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_VerticalAlignRun — Part 1 §22.9.2.8.
 pub fn CT_VerticalAlignRun::parse(
   element : @xml.Element,
-) -> CT_VerticalAlignRun {
+) -> CT_VerticalAlignRun raise SchemaViolation {
   CT_VerticalAlignRun::new(element)
 }
 
 ///|
+/// XSD complex type CT_VerticalAlignRun — return the preserved element
+/// for writers.
 pub fn CT_VerticalAlignRun::to_element(
   self : CT_VerticalAlignRun,
 ) -> @xml.Element {
@@ -529,85 +1095,172 @@ pub fn CT_VerticalAlignRun::to_element(
 }
 
 ///|
-/// XSD complex type CT_FitText from wml.xsd (§17).
+/// XSD complex type CT_FitText — Part 1 §17.3.2.14 fitText. Required
+/// `@val` (s:ST_TwipsMeasure §22.9.2.10) sets the target width; the
+/// optional `@id` (ST_DecimalNumber §17.18.10) groups multiple
+/// fitText runs.
 pub(all) struct CT_FitText {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.10 @val (s:ST_TwipsMeasure) — required target width.
+  val : String
+  /// §17.18.10 @id (ST_DecimalNumber) — optional grouping identifier.
+  id : ST_DecimalNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FitText::new(element : @xml.Element) -> CT_FitText {
-  { element, }
+/// XSD complex type CT_FitText — Part 1 §17.3.2.14.
+pub fn CT_FitText::new(
+  element : @xml.Element,
+) -> CT_FitText raise SchemaViolation {
+  let val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_FitText", "Part 1 §22.9.2.10 ST_TwipsMeasure",
+  )
+  let id = match wml_ct_chunk1_attr(element, "id") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  { element, val, id }
 }
 
 ///|
-pub fn CT_FitText::parse(element : @xml.Element) -> CT_FitText {
+/// XSD complex type CT_FitText — Part 1 §17.3.2.14.
+pub fn CT_FitText::parse(
+  element : @xml.Element,
+) -> CT_FitText raise SchemaViolation {
   CT_FitText::new(element)
 }
 
 ///|
+/// XSD complex type CT_FitText — return the preserved element for
+/// writers.
 pub fn CT_FitText::to_element(self : CT_FitText) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Em from wml.xsd (§17).
+/// XSD complex type CT_Em — Part 1 §17.3.2.12 em (emphasis mark).
+/// Required `@val` ST_Em (Part 1 §17.18.24) selecting the mark glyph.
 pub(all) struct CT_Em {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.24 @val (ST_Em) — emphasis mark token, required.
+  val : ST_Em
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Em::new(element : @xml.Element) -> CT_Em {
-  { element, }
+/// XSD complex type CT_Em — Part 1 §17.3.2.12.
+pub fn CT_Em::new(element : @xml.Element) -> CT_Em raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_Em", "Part 1 §17.18.24 ST_Em",
+  )
+  let val = ST_Em::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_Em::parse(element : @xml.Element) -> CT_Em {
+/// XSD complex type CT_Em — Part 1 §17.3.2.12.
+pub fn CT_Em::parse(element : @xml.Element) -> CT_Em raise SchemaViolation {
   CT_Em::new(element)
 }
 
 ///|
+/// XSD complex type CT_Em — return the preserved element for writers.
 pub fn CT_Em::to_element(self : CT_Em) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Language from wml.xsd (§17).
+/// XSD complex type CT_Language — Part 1 §17.3.2.20 lang. Optional
+/// `@val` (Latin-script BCP-47), `@eastAsia` (East Asian), and `@bidi`
+/// (right-to-left) ST_Lang tokens. All three are §22.9.2.6.
 pub(all) struct CT_Language {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.6 @val (s:ST_Lang) — Latin BCP-47 tag, optional.
+  val : String?
+  /// §22.9.2.6 @eastAsia (s:ST_Lang) — East Asian BCP-47 tag, optional.
+  east_asia : String?
+  /// §22.9.2.6 @bidi (s:ST_Lang) — Right-to-left BCP-47 tag, optional.
+  bidi : String?
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_Language — Part 1 §17.3.2.20.
 pub fn CT_Language::new(element : @xml.Element) -> CT_Language {
-  { element, }
+  let val = wml_ct_chunk1_attr(element, "val")
+  let east_asia = wml_ct_chunk1_attr(element, "eastAsia")
+  let bidi = wml_ct_chunk1_attr(element, "bidi")
+  { element, val, east_asia, bidi }
 }
 
 ///|
+/// XSD complex type CT_Language — Part 1 §17.3.2.20.
 pub fn CT_Language::parse(element : @xml.Element) -> CT_Language {
   CT_Language::new(element)
 }
 
 ///|
+/// XSD complex type CT_Language — return the preserved element for
+/// writers.
 pub fn CT_Language::to_element(self : CT_Language) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_EastAsianLayout from wml.xsd (§17).
+/// XSD complex type CT_EastAsianLayout — Part 1 §17.3.2.10
+/// eastAsianLayout. Optional `@id` (ST_DecimalNumber §17.18.10),
+/// `@combine` (s:ST_OnOff §22.9.2.7), `@combineBrackets`
+/// (ST_CombineBrackets §17.18.7), `@vert` and `@vertCompress`
+/// (s:ST_OnOff §22.9.2.7).
 pub(all) struct CT_EastAsianLayout {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.10 @id (ST_DecimalNumber) — optional combine-run identifier.
+  id : ST_DecimalNumber?
+  /// §22.9.2.7 @combine (s:ST_OnOff) — optional combine flag.
+  combine : Bool?
+  /// §17.18.7 @combineBrackets (ST_CombineBrackets) — optional
+  /// enclosing bracket choice.
+  combine_brackets : ST_CombineBrackets?
+  /// §22.9.2.7 @vert (s:ST_OnOff) — optional vertical-text flag.
+  vert : Bool?
+  /// §22.9.2.7 @vertCompress (s:ST_OnOff) — optional half-width compress.
+  vert_compress : Bool?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_EastAsianLayout::new(element : @xml.Element) -> CT_EastAsianLayout {
-  { element, }
+/// XSD complex type CT_EastAsianLayout — Part 1 §17.3.2.10.
+pub fn CT_EastAsianLayout::new(
+  element : @xml.Element,
+) -> CT_EastAsianLayout raise SchemaViolation {
+  let id = match wml_ct_chunk1_attr(element, "id") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let combine = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "combine"))
+  let combine_brackets = match wml_ct_chunk1_attr(element, "combineBrackets") {
+    Some(text) => Some(ST_CombineBrackets::parse(text))
+    None => None
+  }
+  let vert = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "vert"))
+  let vert_compress = wml_ct_chunk1_on_off(
+    wml_ct_chunk1_attr(element, "vertCompress"),
+  )
+  { element, id, combine, combine_brackets, vert, vert_compress }
 }
 
 ///|
-pub fn CT_EastAsianLayout::parse(element : @xml.Element) -> CT_EastAsianLayout {
+/// XSD complex type CT_EastAsianLayout — Part 1 §17.3.2.10.
+pub fn CT_EastAsianLayout::parse(
+  element : @xml.Element,
+) -> CT_EastAsianLayout raise SchemaViolation {
   CT_EastAsianLayout::new(element)
 }
 
 ///|
+/// XSD complex type CT_EastAsianLayout — return the preserved element
+/// for writers.
 pub fn CT_EastAsianLayout::to_element(
   self : CT_EastAsianLayout,
 ) -> @xml.Element {
@@ -615,276 +1268,743 @@ pub fn CT_EastAsianLayout::to_element(
 }
 
 ///|
-/// XSD complex type CT_FramePr from wml.xsd (§17).
+/// XSD complex type CT_FramePr — Part 1 §17.3.1.11 framePr (text
+/// frame). Aggregates fifteen optional sizing / positioning
+/// attributes per the schema; see linked simple-type sections in each
+/// field doc.
 pub(all) struct CT_FramePr {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.20 @dropCap (ST_DropCap) — optional drop-cap mode.
+  drop_cap : ST_DropCap?
+  /// §17.18.10 @lines (ST_DecimalNumber) — optional drop-cap line count.
+  lines : ST_DecimalNumber?
+  /// §22.9.2.10 @w (s:ST_TwipsMeasure) — optional frame width.
+  w : String?
+  /// §22.9.2.10 @h (s:ST_TwipsMeasure) — optional frame height.
+  h : String?
+  /// §22.9.2.10 @vSpace (s:ST_TwipsMeasure) — optional vertical
+  /// padding around the frame.
+  v_space : String?
+  /// §22.9.2.10 @hSpace (s:ST_TwipsMeasure) — optional horizontal
+  /// padding around the frame.
+  h_space : String?
+  /// §17.18.104 @wrap (ST_Wrap) — optional text-wrap mode.
+  wrap : ST_Wrap?
+  /// §17.18.35 @hAnchor (ST_HAnchor) — optional horizontal anchor.
+  h_anchor : ST_HAnchor?
+  /// §17.18.100 @vAnchor (ST_VAnchor) — optional vertical anchor.
+  v_anchor : ST_VAnchor?
+  /// §17.18.81 @x (ST_SignedTwipsMeasure) — optional X offset.
+  x : ST_SignedTwipsMeasure?
+  /// §22.9.2.18 @xAlign (s:ST_XAlign) — optional horizontal alignment.
+  x_align : String?
+  /// §17.18.81 @y (ST_SignedTwipsMeasure) — optional Y offset.
+  y : ST_SignedTwipsMeasure?
+  /// §22.9.2.19 @yAlign (s:ST_YAlign) — optional vertical alignment.
+  y_align : String?
+  /// §17.18.37 @hRule (ST_HeightRule) — optional row-height rule.
+  h_rule : ST_HeightRule?
+  /// §22.9.2.7 @anchorLock (s:ST_OnOff) — optional anchor-lock flag.
+  anchor_lock : Bool?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FramePr::new(element : @xml.Element) -> CT_FramePr {
-  { element, }
+/// XSD complex type CT_FramePr — Part 1 §17.3.1.11.
+pub fn CT_FramePr::new(
+  element : @xml.Element,
+) -> CT_FramePr raise SchemaViolation {
+  let drop_cap = match wml_ct_chunk1_attr(element, "dropCap") {
+    Some(text) => Some(ST_DropCap::parse(text))
+    None => None
+  }
+  let lines = match wml_ct_chunk1_attr(element, "lines") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let w = wml_ct_chunk1_attr(element, "w")
+  let h = wml_ct_chunk1_attr(element, "h")
+  let v_space = wml_ct_chunk1_attr(element, "vSpace")
+  let h_space = wml_ct_chunk1_attr(element, "hSpace")
+  let wrap = match wml_ct_chunk1_attr(element, "wrap") {
+    Some(text) => Some(ST_Wrap::parse(text))
+    None => None
+  }
+  let h_anchor = match wml_ct_chunk1_attr(element, "hAnchor") {
+    Some(text) => Some(ST_HAnchor::parse(text))
+    None => None
+  }
+  let v_anchor = match wml_ct_chunk1_attr(element, "vAnchor") {
+    Some(text) => Some(ST_VAnchor::parse(text))
+    None => None
+  }
+  let x = match wml_ct_chunk1_attr(element, "x") {
+    Some(text) => Some(ST_SignedTwipsMeasure::parse(text))
+    None => None
+  }
+  let x_align = wml_ct_chunk1_attr(element, "xAlign")
+  let y = match wml_ct_chunk1_attr(element, "y") {
+    Some(text) => Some(ST_SignedTwipsMeasure::parse(text))
+    None => None
+  }
+  let y_align = wml_ct_chunk1_attr(element, "yAlign")
+  let h_rule = match wml_ct_chunk1_attr(element, "hRule") {
+    Some(text) => Some(ST_HeightRule::parse(text))
+    None => None
+  }
+  let anchor_lock = wml_ct_chunk1_on_off(
+    wml_ct_chunk1_attr(element, "anchorLock"),
+  )
+  {
+    element,
+    drop_cap,
+    lines,
+    w,
+    h,
+    v_space,
+    h_space,
+    wrap,
+    h_anchor,
+    v_anchor,
+    x,
+    x_align,
+    y,
+    y_align,
+    h_rule,
+    anchor_lock,
+  }
 }
 
 ///|
-pub fn CT_FramePr::parse(element : @xml.Element) -> CT_FramePr {
+/// XSD complex type CT_FramePr — Part 1 §17.3.1.11.
+pub fn CT_FramePr::parse(
+  element : @xml.Element,
+) -> CT_FramePr raise SchemaViolation {
   CT_FramePr::new(element)
 }
 
 ///|
+/// XSD complex type CT_FramePr — return the preserved element for
+/// writers.
 pub fn CT_FramePr::to_element(self : CT_FramePr) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_TabStop from wml.xsd (§17).
+/// XSD complex type CT_TabStop — Part 1 §17.3.1.37 tab. Required `@val`
+/// ST_TabJc (Part 1 §17.18.84) and `@pos` (ST_SignedTwipsMeasure,
+/// §17.18.81); optional `@leader` ST_TabTlc (Part 1 §17.18.85).
 pub(all) struct CT_TabStop {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.84 @val (ST_TabJc) — alignment kind, required.
+  val : ST_TabJc
+  /// §17.18.85 @leader (ST_TabTlc) — optional leader fill.
+  leader : ST_TabTlc?
+  /// §17.18.81 @pos (ST_SignedTwipsMeasure) — anchor position, required.
+  pos : ST_SignedTwipsMeasure
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TabStop::new(element : @xml.Element) -> CT_TabStop {
-  { element, }
+/// XSD complex type CT_TabStop — Part 1 §17.3.1.37.
+pub fn CT_TabStop::new(
+  element : @xml.Element,
+) -> CT_TabStop raise SchemaViolation {
+  let raw_val = wml_ct_chunk1_required_attr(
+    element, "val", "CT_TabStop", "Part 1 §17.18.84 ST_TabJc",
+  )
+  let val = ST_TabJc::parse(raw_val)
+  let leader = match wml_ct_chunk1_attr(element, "leader") {
+    Some(text) => Some(ST_TabTlc::parse(text))
+    None => None
+  }
+  let raw_pos = wml_ct_chunk1_required_attr(
+    element, "pos", "CT_TabStop", "Part 1 §17.18.81 ST_SignedTwipsMeasure",
+  )
+  let pos = ST_SignedTwipsMeasure::parse(raw_pos)
+  { element, val, leader, pos }
 }
 
 ///|
-pub fn CT_TabStop::parse(element : @xml.Element) -> CT_TabStop {
+/// XSD complex type CT_TabStop — Part 1 §17.3.1.37.
+pub fn CT_TabStop::parse(
+  element : @xml.Element,
+) -> CT_TabStop raise SchemaViolation {
   CT_TabStop::new(element)
 }
 
 ///|
+/// XSD complex type CT_TabStop — return the preserved element for
+/// writers.
 pub fn CT_TabStop::to_element(self : CT_TabStop) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Spacing from wml.xsd (§17).
+/// XSD complex type CT_Spacing — Part 1 §17.3.1.33 spacing. Eight
+/// optional attributes governing inter-paragraph spacing and the
+/// `@line` / `@lineRule` line-spacing pair. Schema defaults `@before` /
+/// `@after` / `@beforeLines` / `@afterLines` / `@line` to `0`,
+/// `@beforeAutospacing` / `@afterAutospacing` to `off`, and
+/// `@lineRule` to `auto` when omitted.
 pub(all) struct CT_Spacing {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.10 @before (s:ST_TwipsMeasure) — optional pre-paragraph spacing.
+  before : String?
+  /// §17.18.10 @beforeLines (ST_DecimalNumber) — optional pre lines count.
+  before_lines : ST_DecimalNumber?
+  /// §22.9.2.7 @beforeAutospacing (s:ST_OnOff) — optional autospacing flag.
+  before_autospacing : Bool?
+  /// §22.9.2.10 @after (s:ST_TwipsMeasure) — optional post-paragraph spacing.
+  after : String?
+  /// §17.18.10 @afterLines (ST_DecimalNumber) — optional post lines count.
+  after_lines : ST_DecimalNumber?
+  /// §22.9.2.7 @afterAutospacing (s:ST_OnOff) — optional autospacing flag.
+  after_autospacing : Bool?
+  /// §17.18.81 @line (ST_SignedTwipsMeasure) — optional line spacing.
+  line : ST_SignedTwipsMeasure?
+  /// §17.18.46 @lineRule (ST_LineSpacingRule) — optional line-rule mode.
+  line_rule : ST_LineSpacingRule?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Spacing::new(element : @xml.Element) -> CT_Spacing {
-  { element, }
+/// XSD complex type CT_Spacing — Part 1 §17.3.1.33.
+pub fn CT_Spacing::new(
+  element : @xml.Element,
+) -> CT_Spacing raise SchemaViolation {
+  let before = wml_ct_chunk1_attr(element, "before")
+  let before_lines = match wml_ct_chunk1_attr(element, "beforeLines") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let before_autospacing = wml_ct_chunk1_on_off(
+    wml_ct_chunk1_attr(element, "beforeAutospacing"),
+  )
+  let after = wml_ct_chunk1_attr(element, "after")
+  let after_lines = match wml_ct_chunk1_attr(element, "afterLines") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let after_autospacing = wml_ct_chunk1_on_off(
+    wml_ct_chunk1_attr(element, "afterAutospacing"),
+  )
+  let line = match wml_ct_chunk1_attr(element, "line") {
+    Some(text) => Some(ST_SignedTwipsMeasure::parse(text))
+    None => None
+  }
+  let line_rule = match wml_ct_chunk1_attr(element, "lineRule") {
+    Some(text) => Some(ST_LineSpacingRule::parse(text))
+    None => None
+  }
+  {
+    element,
+    before,
+    before_lines,
+    before_autospacing,
+    after,
+    after_lines,
+    after_autospacing,
+    line,
+    line_rule,
+  }
 }
 
 ///|
-pub fn CT_Spacing::parse(element : @xml.Element) -> CT_Spacing {
+/// XSD complex type CT_Spacing — Part 1 §17.3.1.33.
+pub fn CT_Spacing::parse(
+  element : @xml.Element,
+) -> CT_Spacing raise SchemaViolation {
   CT_Spacing::new(element)
 }
 
 ///|
+/// XSD complex type CT_Spacing — return the preserved element for
+/// writers.
 pub fn CT_Spacing::to_element(self : CT_Spacing) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Ind from wml.xsd (§17).
+/// XSD complex type CT_Ind — Part 1 §17.3.1.12 ind (paragraph
+/// indentation). Twelve optional indent attributes split between the
+/// strict (`start` / `end`) and transitional (`left` / `right`) names
+/// — both forms are preserved here so the resolver can prefer the
+/// strict names while still round-tripping legacy markup.
 pub(all) struct CT_Ind {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.81 @start (ST_SignedTwipsMeasure) — optional strict-name start indent.
+  start : ST_SignedTwipsMeasure?
+  /// §17.18.10 @startChars (ST_DecimalNumber) — optional CJK char count.
+  start_chars : ST_DecimalNumber?
+  /// §17.18.81 @end (ST_SignedTwipsMeasure) — optional strict-name end indent.
+  end : ST_SignedTwipsMeasure?
+  /// §17.18.10 @endChars (ST_DecimalNumber) — optional CJK char count.
+  end_chars : ST_DecimalNumber?
+  /// §17.18.81 @left (ST_SignedTwipsMeasure) — optional transitional left indent.
+  left : ST_SignedTwipsMeasure?
+  /// §17.18.10 @leftChars (ST_DecimalNumber) — optional CJK char count.
+  left_chars : ST_DecimalNumber?
+  /// §17.18.81 @right (ST_SignedTwipsMeasure) — optional transitional right indent.
+  right : ST_SignedTwipsMeasure?
+  /// §17.18.10 @rightChars (ST_DecimalNumber) — optional CJK char count.
+  right_chars : ST_DecimalNumber?
+  /// §22.9.2.10 @hanging (s:ST_TwipsMeasure) — optional hanging indent.
+  hanging : String?
+  /// §17.18.10 @hangingChars (ST_DecimalNumber) — optional CJK char count.
+  hanging_chars : ST_DecimalNumber?
+  /// §22.9.2.10 @firstLine (s:ST_TwipsMeasure) — optional first-line indent.
+  first_line : String?
+  /// §17.18.10 @firstLineChars (ST_DecimalNumber) — optional CJK char count.
+  first_line_chars : ST_DecimalNumber?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Ind::new(element : @xml.Element) -> CT_Ind {
-  { element, }
+/// XSD complex type CT_Ind — Part 1 §17.3.1.12.
+pub fn CT_Ind::new(element : @xml.Element) -> CT_Ind raise SchemaViolation {
+  let start = match wml_ct_chunk1_attr(element, "start") {
+    Some(text) => Some(ST_SignedTwipsMeasure::parse(text))
+    None => None
+  }
+  let start_chars = match wml_ct_chunk1_attr(element, "startChars") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let end = match wml_ct_chunk1_attr(element, "end") {
+    Some(text) => Some(ST_SignedTwipsMeasure::parse(text))
+    None => None
+  }
+  let end_chars = match wml_ct_chunk1_attr(element, "endChars") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let left = match wml_ct_chunk1_attr(element, "left") {
+    Some(text) => Some(ST_SignedTwipsMeasure::parse(text))
+    None => None
+  }
+  let left_chars = match wml_ct_chunk1_attr(element, "leftChars") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let right = match wml_ct_chunk1_attr(element, "right") {
+    Some(text) => Some(ST_SignedTwipsMeasure::parse(text))
+    None => None
+  }
+  let right_chars = match wml_ct_chunk1_attr(element, "rightChars") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let hanging = wml_ct_chunk1_attr(element, "hanging")
+  let hanging_chars = match wml_ct_chunk1_attr(element, "hangingChars") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  let first_line = wml_ct_chunk1_attr(element, "firstLine")
+  let first_line_chars = match wml_ct_chunk1_attr(element, "firstLineChars") {
+    Some(text) => Some(ST_DecimalNumber::parse(text))
+    None => None
+  }
+  {
+    element,
+    start,
+    start_chars,
+    end,
+    end_chars,
+    left,
+    left_chars,
+    right,
+    right_chars,
+    hanging,
+    hanging_chars,
+    first_line,
+    first_line_chars,
+  }
 }
 
 ///|
-pub fn CT_Ind::parse(element : @xml.Element) -> CT_Ind {
+/// XSD complex type CT_Ind — Part 1 §17.3.1.12.
+pub fn CT_Ind::parse(element : @xml.Element) -> CT_Ind raise SchemaViolation {
   CT_Ind::new(element)
 }
 
 ///|
+/// XSD complex type CT_Ind — return the preserved element for writers.
 pub fn CT_Ind::to_element(self : CT_Ind) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Jc from wml.xsd (§17).
+/// XSD complex type CT_Jc — Part 1 §17.3.1.13 jc (paragraph
+/// alignment). Required `@val` ST_Jc (Part 1 §17.18.44).
 pub(all) struct CT_Jc {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.44 @val (ST_Jc) — alignment token, required.
+  val : ST_Jc
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Jc::new(element : @xml.Element) -> CT_Jc {
-  { element, }
+/// XSD complex type CT_Jc — Part 1 §17.3.1.13.
+pub fn CT_Jc::new(element : @xml.Element) -> CT_Jc raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_Jc", "Part 1 §17.18.44 ST_Jc",
+  )
+  let val = ST_Jc::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_Jc::parse(element : @xml.Element) -> CT_Jc {
+/// XSD complex type CT_Jc — Part 1 §17.3.1.13.
+pub fn CT_Jc::parse(element : @xml.Element) -> CT_Jc raise SchemaViolation {
   CT_Jc::new(element)
 }
 
 ///|
+/// XSD complex type CT_Jc — return the preserved element for writers.
 pub fn CT_Jc::to_element(self : CT_Jc) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_JcTable from wml.xsd (§17).
+/// XSD complex type CT_JcTable — Part 1 §A.1; the typed `@val` is
+/// ST_JcTable (Part 1 §17.18.45). Used by table-level alignment
+/// elements such as §17.4.30 `<w:jc>` inside `<w:tblPr>`.
 pub(all) struct CT_JcTable {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.45 @val (ST_JcTable) — table alignment token, required.
+  val : ST_JcTable
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_JcTable::new(element : @xml.Element) -> CT_JcTable {
-  { element, }
+/// XSD complex type CT_JcTable — Part 1 §17.18.45.
+pub fn CT_JcTable::new(
+  element : @xml.Element,
+) -> CT_JcTable raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_JcTable", "Part 1 §17.18.45 ST_JcTable",
+  )
+  let val = ST_JcTable::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_JcTable::parse(element : @xml.Element) -> CT_JcTable {
+/// XSD complex type CT_JcTable — Part 1 §17.18.45.
+pub fn CT_JcTable::parse(
+  element : @xml.Element,
+) -> CT_JcTable raise SchemaViolation {
   CT_JcTable::new(element)
 }
 
 ///|
+/// XSD complex type CT_JcTable — return the preserved element for
+/// writers.
 pub fn CT_JcTable::to_element(self : CT_JcTable) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_View from wml.xsd (§17).
+/// XSD complex type CT_View — Part 1 §17.15.1.92 view (document view
+/// setting). Required `@val` ST_View (Part 1 §17.18.102).
 pub(all) struct CT_View {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.102 @val (ST_View) — view mode token, required.
+  val : ST_View
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_View::new(element : @xml.Element) -> CT_View {
-  { element, }
+/// XSD complex type CT_View — Part 1 §17.15.1.92.
+pub fn CT_View::new(element : @xml.Element) -> CT_View raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_View", "Part 1 §17.18.102 ST_View",
+  )
+  let val = ST_View::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_View::parse(element : @xml.Element) -> CT_View {
+/// XSD complex type CT_View — Part 1 §17.15.1.92.
+pub fn CT_View::parse(element : @xml.Element) -> CT_View raise SchemaViolation {
   CT_View::new(element)
 }
 
 ///|
+/// XSD complex type CT_View — return the preserved element for
+/// writers.
 pub fn CT_View::to_element(self : CT_View) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Zoom from wml.xsd (§17).
+/// XSD complex type CT_Zoom — Part 1 §17.15.1.94 zoom (magnification).
+/// Optional `@val` ST_Zoom (Part 1 §17.18.105) preset and required
+/// `@percent` ST_DecimalNumberOrPercent (§17.18.11).
 pub(all) struct CT_Zoom {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.105 @val (ST_Zoom) — optional preset token.
+  val : ST_Zoom?
+  /// §17.18.11 @percent (ST_DecimalNumberOrPercent) — required magnification.
+  percent : ST_DecimalNumberOrPercent
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Zoom::new(element : @xml.Element) -> CT_Zoom {
-  { element, }
+/// XSD complex type CT_Zoom — Part 1 §17.15.1.94.
+pub fn CT_Zoom::new(element : @xml.Element) -> CT_Zoom raise SchemaViolation {
+  let val = match wml_ct_chunk1_attr(element, "val") {
+    Some(text) => Some(ST_Zoom::parse(text))
+    None => None
+  }
+  let raw_percent = wml_ct_chunk1_required_attr(
+    element, "percent", "CT_Zoom", "Part 1 §17.18.11 ST_DecimalNumberOrPercent",
+  )
+  let percent = ST_DecimalNumberOrPercent::parse(raw_percent)
+  { element, val, percent }
 }
 
 ///|
-pub fn CT_Zoom::parse(element : @xml.Element) -> CT_Zoom {
+/// XSD complex type CT_Zoom — Part 1 §17.15.1.94.
+pub fn CT_Zoom::parse(element : @xml.Element) -> CT_Zoom raise SchemaViolation {
   CT_Zoom::new(element)
 }
 
 ///|
+/// XSD complex type CT_Zoom — return the preserved element for
+/// writers.
 pub fn CT_Zoom::to_element(self : CT_Zoom) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_WritingStyle from wml.xsd (§17).
+/// XSD complex type CT_WritingStyle — Part 1 §17.15.1.62 activeWritingStyle.
+/// Six attributes describing a third-party proofing tool registration;
+/// `@lang` / `@vendorID` / `@dllVersion` / `@checkStyle` / `@appName`
+/// are required, `@nlCheck` (s:ST_OnOff §22.9.2.7) is optional with
+/// schema-default `off`.
 pub(all) struct CT_WritingStyle {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §22.9.2.6 @lang (s:ST_Lang) — required BCP-47 tag.
+  lang : String
+  /// §22.9.2.13 @vendorID (s:ST_String) — required vendor identifier.
+  vendor_id : String
+  /// §22.9.2.13 @dllVersion (s:ST_String) — required engine version.
+  dll_version : String
+  /// §22.9.2.7 @nlCheck (s:ST_OnOff) — optional `None` ⇒ schema-default `false`.
+  nl_check : Bool?
+  /// §22.9.2.7 @checkStyle (s:ST_OnOff) — required style-check flag.
+  check_style : Bool
+  /// §22.9.2.13 @appName (s:ST_String) — required application name.
+  app_name : String
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_WritingStyle::new(element : @xml.Element) -> CT_WritingStyle {
-  { element, }
+/// XSD complex type CT_WritingStyle — Part 1 §17.15.1.62.
+pub fn CT_WritingStyle::new(
+  element : @xml.Element,
+) -> CT_WritingStyle raise SchemaViolation {
+  let lang = wml_ct_chunk1_required_attr(
+    element, "lang", "CT_WritingStyle", "Part 1 §22.9.2.6 ST_Lang",
+  )
+  let vendor_id = wml_ct_chunk1_required_attr(
+    element, "vendorID", "CT_WritingStyle", "Part 1 §22.9.2.13 ST_String",
+  )
+  let dll_version = wml_ct_chunk1_required_attr(
+    element, "dllVersion", "CT_WritingStyle", "Part 1 §22.9.2.13 ST_String",
+  )
+  let nl_check = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "nlCheck"))
+  let raw_check_style = wml_ct_chunk1_required_attr(
+    element, "checkStyle", "CT_WritingStyle", "Part 1 §22.9.2.7 ST_OnOff",
+  )
+  let check_style = wml_ct_chunk1_on_off_required(raw_check_style)
+  let app_name = wml_ct_chunk1_required_attr(
+    element, "appName", "CT_WritingStyle", "Part 1 §22.9.2.13 ST_String",
+  )
+  { element, lang, vendor_id, dll_version, nl_check, check_style, app_name }
 }
 
 ///|
-pub fn CT_WritingStyle::parse(element : @xml.Element) -> CT_WritingStyle {
+/// XSD complex type CT_WritingStyle — Part 1 §17.15.1.62.
+pub fn CT_WritingStyle::parse(
+  element : @xml.Element,
+) -> CT_WritingStyle raise SchemaViolation {
   CT_WritingStyle::new(element)
 }
 
 ///|
+/// XSD complex type CT_WritingStyle — return the preserved element for
+/// writers.
 pub fn CT_WritingStyle::to_element(self : CT_WritingStyle) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_Proof from wml.xsd (§17).
+/// XSD complex type CT_Proof — Part 1 §17.15.1.65 proofState. Optional
+/// `@spelling` and `@grammar` ST_Proof (Part 1 §17.18.69) tokens.
 pub(all) struct CT_Proof {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.69 @spelling (ST_Proof) — optional spell-check state.
+  spelling : ST_Proof?
+  /// §17.18.69 @grammar (ST_Proof) — optional grammar-check state.
+  grammar : ST_Proof?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Proof::new(element : @xml.Element) -> CT_Proof {
-  { element, }
+/// XSD complex type CT_Proof — Part 1 §17.15.1.65.
+pub fn CT_Proof::new(element : @xml.Element) -> CT_Proof raise SchemaViolation {
+  let spelling = match wml_ct_chunk1_attr(element, "spelling") {
+    Some(text) => Some(ST_Proof::parse(text))
+    None => None
+  }
+  let grammar = match wml_ct_chunk1_attr(element, "grammar") {
+    Some(text) => Some(ST_Proof::parse(text))
+    None => None
+  }
+  { element, spelling, grammar }
 }
 
 ///|
-pub fn CT_Proof::parse(element : @xml.Element) -> CT_Proof {
+/// XSD complex type CT_Proof — Part 1 §17.15.1.65.
+pub fn CT_Proof::parse(
+  element : @xml.Element,
+) -> CT_Proof raise SchemaViolation {
   CT_Proof::new(element)
 }
 
 ///|
+/// XSD complex type CT_Proof — return the preserved element for
+/// writers.
 pub fn CT_Proof::to_element(self : CT_Proof) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_DocType from wml.xsd (§17).
+/// XSD complex type CT_DocType — Part 1 §17.15.1.30 documentType.
+/// Required `@val` ST_DocType (Part 1 §17.18.19), a free-form
+/// classification string.
 pub(all) struct CT_DocType {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.19 @val (ST_DocType) — required classification string.
+  val : ST_DocType
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocType::new(element : @xml.Element) -> CT_DocType {
-  { element, }
+/// XSD complex type CT_DocType — Part 1 §17.15.1.30.
+pub fn CT_DocType::new(
+  element : @xml.Element,
+) -> CT_DocType raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_DocType", "Part 1 §17.18.19 ST_DocType",
+  )
+  let val = ST_DocType::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_DocType::parse(element : @xml.Element) -> CT_DocType {
+/// XSD complex type CT_DocType — Part 1 §17.15.1.30.
+pub fn CT_DocType::parse(
+  element : @xml.Element,
+) -> CT_DocType raise SchemaViolation {
   CT_DocType::new(element)
 }
 
 ///|
+/// XSD complex type CT_DocType — return the preserved element for
+/// writers.
 pub fn CT_DocType::to_element(self : CT_DocType) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_DocProtect from wml.xsd (§17).
+/// XSD complex type CT_DocProtect — Part 1 §17.15.1.29
+/// documentProtection. Optional `@edit` ST_DocProtect (§17.18.18),
+/// `@formatting` and `@enforcement` ST_OnOff (§22.9.2.7), plus the
+/// password attribute groups AG_Password (§17.15.1.29) and
+/// AG_TransitionalPassword (Part 4 §14.7.3). Only the named typed
+/// attributes are stored; the optional password fields are kept on
+/// the preserved element so writers round-trip them verbatim.
 pub(all) struct CT_DocProtect {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.18 @edit (ST_DocProtect) — optional edit-restriction kind.
+  edit : ST_DocProtect?
+  /// §22.9.2.7 @formatting (s:ST_OnOff) — optional formatting-lock flag.
+  formatting : Bool?
+  /// §22.9.2.7 @enforcement (s:ST_OnOff) — optional enforcement flag.
+  enforcement : Bool?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DocProtect::new(element : @xml.Element) -> CT_DocProtect {
-  { element, }
+/// XSD complex type CT_DocProtect — Part 1 §17.15.1.29.
+pub fn CT_DocProtect::new(
+  element : @xml.Element,
+) -> CT_DocProtect raise SchemaViolation {
+  let edit = match wml_ct_chunk1_attr(element, "edit") {
+    Some(text) => Some(ST_DocProtect::parse(text))
+    None => None
+  }
+  let formatting = wml_ct_chunk1_on_off(
+    wml_ct_chunk1_attr(element, "formatting"),
+  )
+  let enforcement = wml_ct_chunk1_on_off(
+    wml_ct_chunk1_attr(element, "enforcement"),
+  )
+  { element, edit, formatting, enforcement }
 }
 
 ///|
-pub fn CT_DocProtect::parse(element : @xml.Element) -> CT_DocProtect {
+/// XSD complex type CT_DocProtect — Part 1 §17.15.1.29.
+pub fn CT_DocProtect::parse(
+  element : @xml.Element,
+) -> CT_DocProtect raise SchemaViolation {
   CT_DocProtect::new(element)
 }
 
 ///|
+/// XSD complex type CT_DocProtect — return the preserved element for
+/// writers.
 pub fn CT_DocProtect::to_element(self : CT_DocProtect) -> @xml.Element {
   self.element
 }
 
 ///|
-/// XSD complex type CT_MailMergeDocType from wml.xsd (§17).
+/// XSD complex type CT_MailMergeDocType — Part 1 §17.14.22
+/// mainDocumentType (mail-merge source document kind). Required `@val`
+/// ST_MailMergeDocType (Part 1 §17.18.54).
 pub(all) struct CT_MailMergeDocType {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.54 @val (ST_MailMergeDocType) — required kind token.
+  val : ST_MailMergeDocType
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MailMergeDocType::new(element : @xml.Element) -> CT_MailMergeDocType {
-  { element, }
+/// XSD complex type CT_MailMergeDocType — Part 1 §17.14.22.
+pub fn CT_MailMergeDocType::new(
+  element : @xml.Element,
+) -> CT_MailMergeDocType raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_MailMergeDocType", "Part 1 §17.18.54 ST_MailMergeDocType",
+  )
+  let val = ST_MailMergeDocType::parse(raw)
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_MailMergeDocType — Part 1 §17.14.22.
 pub fn CT_MailMergeDocType::parse(
   element : @xml.Element,
-) -> CT_MailMergeDocType {
+) -> CT_MailMergeDocType raise SchemaViolation {
   CT_MailMergeDocType::new(element)
 }
 
 ///|
+/// XSD complex type CT_MailMergeDocType — return the preserved element
+/// for writers.
 pub fn CT_MailMergeDocType::to_element(
   self : CT_MailMergeDocType,
 ) -> @xml.Element {
@@ -892,26 +2012,39 @@ pub fn CT_MailMergeDocType::to_element(
 }
 
 ///|
-/// XSD complex type CT_MailMergeDataType from wml.xsd (§17).
+/// XSD complex type CT_MailMergeDataType — Part 1 §17.14.10 dataType.
+/// Required `@val` ST_MailMergeDataType (Part 1 §17.18.52) — a
+/// free-form data-source type token.
 pub(all) struct CT_MailMergeDataType {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.52 @val (ST_MailMergeDataType) — required string.
+  val : ST_MailMergeDataType
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_MailMergeDataType — Part 1 §17.14.10.
 pub fn CT_MailMergeDataType::new(
   element : @xml.Element,
-) -> CT_MailMergeDataType {
-  { element, }
+) -> CT_MailMergeDataType raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_MailMergeDataType", "Part 1 §17.18.52 ST_MailMergeDataType",
+  )
+  let val = ST_MailMergeDataType::parse(raw)
+  { element, val }
 }
 
 ///|
+/// XSD complex type CT_MailMergeDataType — Part 1 §17.14.10.
 pub fn CT_MailMergeDataType::parse(
   element : @xml.Element,
-) -> CT_MailMergeDataType {
+) -> CT_MailMergeDataType raise SchemaViolation {
   CT_MailMergeDataType::new(element)
 }
 
 ///|
+/// XSD complex type CT_MailMergeDataType — return the preserved
+/// element for writers.
 pub fn CT_MailMergeDataType::to_element(
   self : CT_MailMergeDataType,
 ) -> @xml.Element {
@@ -919,24 +2052,132 @@ pub fn CT_MailMergeDataType::to_element(
 }
 
 ///|
-/// XSD complex type CT_MailMergeDest from wml.xsd (§17).
+/// XSD complex type CT_MailMergeDest — Part 1 §17.14.11 destination.
+/// Required `@val` ST_MailMergeDest (Part 1 §17.18.53) selecting the
+/// merge output sink.
 pub(all) struct CT_MailMergeDest {
+  /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
+  /// §17.18.53 @val (ST_MailMergeDest) — required destination token.
+  val : ST_MailMergeDest
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MailMergeDest::new(element : @xml.Element) -> CT_MailMergeDest {
-  { element, }
+/// XSD complex type CT_MailMergeDest — Part 1 §17.14.11.
+pub fn CT_MailMergeDest::new(
+  element : @xml.Element,
+) -> CT_MailMergeDest raise SchemaViolation {
+  let raw = wml_ct_chunk1_required_attr(
+    element, "val", "CT_MailMergeDest", "Part 1 §17.18.53 ST_MailMergeDest",
+  )
+  let val = ST_MailMergeDest::parse(raw)
+  { element, val }
 }
 
 ///|
-pub fn CT_MailMergeDest::parse(element : @xml.Element) -> CT_MailMergeDest {
+/// XSD complex type CT_MailMergeDest — Part 1 §17.14.11.
+pub fn CT_MailMergeDest::parse(
+  element : @xml.Element,
+) -> CT_MailMergeDest raise SchemaViolation {
   CT_MailMergeDest::new(element)
 }
 
 ///|
+/// XSD complex type CT_MailMergeDest — return the preserved element
+/// for writers.
 pub fn CT_MailMergeDest::to_element(self : CT_MailMergeDest) -> @xml.Element {
   self.element
+}
+
+///|
+/// Read an attribute by local name. The WordprocessingML elements live
+/// in the `w` namespace but most carry the `w:` prefix; matching by
+/// local name only avoids prefix-lookup churn.
+fn wml_ct_chunk1_attr(element : @xml.Element, local_name : String) -> String? {
+  let mut found : String? = None
+  for attribute in element.attributes {
+    if found is None && attribute.name.local_name == local_name {
+      found = Some(attribute.value)
+    }
+  }
+  found
+}
+
+///|
+/// Read a required attribute and raise SchemaViolation when missing.
+fn wml_ct_chunk1_required_attr(
+  element : @xml.Element,
+  local_name : String,
+  type_name : String,
+  context : String,
+) -> String raise SchemaViolation {
+  match wml_ct_chunk1_attr(element, local_name) {
+    Some(text) => text
+    None =>
+      raise_schema_violation(
+        type_name,
+        local_name,
+        context + ": required attribute @" + local_name + " is missing",
+      )
+  }
+}
+
+///|
+/// Decode an optional ST_OnOff lexical token (§22.9.2.7). Returns
+/// `None` when the attribute was omitted and `Some(bool)` otherwise.
+/// All four schema-permitted spellings (`0/1`, `on/off`, `true/false`)
+/// are accepted; unknown tokens fall back to `false` to mirror legacy
+/// writer leniency (per §17.17.4 prose).
+fn wml_ct_chunk1_on_off(value : String?) -> Bool? {
+  match value {
+    Some("1") | Some("true") | Some("on") => Some(true)
+    Some("0") | Some("false") | Some("off") => Some(false)
+    Some(_) => Some(false)
+    None => None
+  }
+}
+
+///|
+/// Decode a required ST_OnOff lexical token (§22.9.2.7). Mirrors
+/// `wml_ct_chunk1_on_off` but unwraps; callers ensure the source
+/// attribute existed.
+fn wml_ct_chunk1_on_off_required(value : String) -> Bool {
+  match value {
+    "1" | "true" | "on" => true
+    "0" | "false" | "off" => false
+    _ => false
+  }
+}
+
+///|
+/// Parse a non-negative decimal lexical value into UInt64; raise
+/// SchemaViolation on malformed input.
+fn wml_ct_chunk1_parse_uint64(
+  text : String,
+  type_name : String,
+  attr_name : String,
+  context : String,
+) -> UInt64 raise SchemaViolation {
+  if text.length() == 0 {
+    raise_schema_violation(
+      type_name,
+      attr_name,
+      context + ": empty lexical value",
+    )
+  }
+  let mut value : UInt64 = 0
+  for i in 0..<text.length() {
+    let unit = text.code_unit_at(i).to_int()
+    if unit < 0x30 || unit > 0x39 {
+      raise_schema_violation(
+        type_name,
+        attr_name,
+        context + ": expected unsigned decimal digits, got " + text,
+      )
+    }
+    value = value * 10 + (unit - 0x30).to_uint64()
+  }
+  value
 }
 
 ///|

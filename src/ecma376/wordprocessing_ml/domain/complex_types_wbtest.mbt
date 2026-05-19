@@ -12,13 +12,40 @@ fn wml_test_element(local_name : String) -> @xml.Element {
 }
 
 ///|
+fn wml_test_element_with_val(local_name : String, val : String) -> @xml.Element {
+  {
+    name: {
+      prefix: Some("w"),
+      local_name,
+      ns: Some("http://schemas.openxmlformats.org/wordprocessingml/2006/main"),
+    },
+    attributes: [
+      {
+        name: {
+          prefix: Some("w"),
+          local_name: "val",
+          ns: Some(
+            "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
+          ),
+        },
+        value: val,
+      },
+    ],
+    children: [],
+  }
+}
+
+///|
 test "WML complex type wrappers preserve source elements" {
   let p = CT_P::parse(wml_test_element("p"))
   assert_eq(p.to_element().name.local_name, "p")
   let r = CT_R::parse(wml_test_element("r"))
   assert_eq(r.to_element().name.local_name, "r")
-  let style = CT_String::new(wml_test_element("styleId"))
+  let style = try! CT_String::new(
+    wml_test_element_with_val("styleId", "Heading1"),
+  )
   assert_eq(style.to_element().name.local_name, "styleId")
+  assert_eq(style.val, "Heading1")
 }
 
 ///|
