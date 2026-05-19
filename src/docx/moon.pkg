@@ -11,6 +11,9 @@ import {
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @wml,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/reader" @wml_reader,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/builder" @wml_builder,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/style_resolver" @wml_style_resolver,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver" @wml_numbering,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/field_eval" @wml_field_eval,
   "trkbt10/ooxml/xml" @xml,
   "trkbt10/ooxml/zip" @zip,
 }

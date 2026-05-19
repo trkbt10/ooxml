@@ -5,6 +5,10 @@ import {
   "moonbitlang/core/debug",
   "trkbt10/ooxml/ecma376/opc",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/field_eval",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/style_resolver",
+  "trkbt10/ooxml/xml",
 }
 
 // Values
@@ -32,6 +36,12 @@ pub(all) struct Document {
   footnotes : @domain.CT_Footnotes?
   endnotes : @domain.CT_Endnotes?
 } derive(Eq, @debug.Debug)
+pub fn Document::decode_simple_field(Self, @domain.CT_SimpleField) -> @field_eval.Field raise OpenError
+pub fn Document::evaluate_simple_field(Self, @domain.CT_SimpleField, @field_eval.FieldContext, @field_eval.FieldRegistry) -> @field_eval.FieldResult raise OpenError
+pub fn Document::resolve_paragraph_numbering(Self, @xml.Element) -> @numbering_resolver.ResolvedLvl?
+pub fn Document::resolve_paragraph_style(Self, @xml.Element?) -> @style_resolver.EffectiveProperties?
+pub fn Document::resolve_run_style(Self, @xml.Element?) -> @style_resolver.EffectiveProperties?
+pub fn Document::resolve_style_by_id(Self, @domain.StyleId) -> @style_resolver.EffectiveProperties?
 pub fn Document::save(Self) -> Bytes
 pub fn Document::to_html(Self) -> String
 pub fn Document::to_svg(Self) -> String

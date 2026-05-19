@@ -290,3 +290,94 @@ fn html_element(element : @xml.Element) -> String {
 }
 
 ///|
+/// Resolve a paragraph's effective properties through the §17.7
+/// style-inheritance chain. Returns the merged pPr/rPr that applies
+/// after walking pStyle → basedOn → docDefaults and overlaying any
+/// direct pPr on the paragraph.
+pub fn Document::resolve_paragraph_style(
+  self : Document,
+  direct_p_pr : @xml.Element?,
+) -> @wml_style_resolver.EffectiveProperties? {
+  match self.styles {
+    Some(table) =>
+      Some(@wml_style_resolver.resolve_paragraph(table, direct_p_pr))
+    None => None
+  }
+}
+
+///|
+/// Resolve a run's effective properties through the §17.7
+/// style-inheritance chain. Walks rStyle → basedOn → docDefaults and
+/// overlays any direct rPr.
+pub fn Document::resolve_run_style(
+  self : Document,
+  direct_r_pr : @xml.Element?,
+) -> @wml_style_resolver.EffectiveProperties? {
+  match self.styles {
+    Some(table) => Some(@wml_style_resolver.resolve_run(table, direct_r_pr))
+    None => None
+  }
+}
+
+///|
+/// Resolve the effective properties for a named style following the
+/// §17.7.4.17 basedOn chain (`pStyle/@val` → CT_Style → CT_DocDefaults).
+pub fn Document::resolve_style_by_id(
+  self : Document,
+  style_id : @wml.StyleId,
+) -> @wml_style_resolver.EffectiveProperties? {
+  match self.styles {
+    Some(table) =>
+      Some(@wml_style_resolver.effective_properties(table, style_id))
+    None => None
+  }
+}
+
+///|
+/// Resolve a paragraph's §17.9 numbering level. Walks numId →
+/// abstractNumId → lvl with §17.9.8 lvlOverride wins applied;
+/// returns None when no `<w:numPr>` is present or the document has
+/// no numbering part.
+pub fn Document::resolve_paragraph_numbering(
+  self : Document,
+  num_pr : @xml.Element,
+) -> @wml_numbering.ResolvedLvl? {
+  match self.numbering {
+    Some(table) => @wml_numbering.level_for_paragraph(table, num_pr)
+    None => None
+  }
+}
+
+///|
+/// Decode a `<w:fldSimple>` field (§17.16.19) into the
+/// field-evaluation surface form.
+pub fn Document::decode_simple_field(
+  self : Document,
+  field : @wml.CT_SimpleField,
+) -> @wml_field_eval.Field raise OpenError {
+  let _ = self
+  @wml_field_eval.decode_simple_field(field) catch {
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
+      raise OpenError(
+        kind="SchemaViolation",
+        path~,
+        reason=section + ": " + reason,
+      )
+  }
+}
+
+///|
+/// Evaluate a `<w:fldSimple>` field (§17.16.18-19) against the
+/// document's resolution context. Returns the rendered field result
+/// (text + formatting).
+pub fn Document::evaluate_simple_field(
+  self : Document,
+  field : @wml.CT_SimpleField,
+  ctx : @wml_field_eval.FieldContext,
+  registry : @wml_field_eval.FieldRegistry,
+) -> @wml_field_eval.FieldResult raise OpenError {
+  let decoded = self.decode_simple_field(field)
+  @wml_field_eval.evaluate_field(decoded, ctx, registry)
+}
+
+///|

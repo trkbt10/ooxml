@@ -216,3 +216,99 @@ fn html_element(element : @xml.Element) -> String {
 }
 
 ///|
+/// Evaluate a §18.3.1.10 conditional-formatting block over the given
+/// cells. The cells must already be value-resolved (e.g. through the
+/// reader's cell decoder); cf_rule_eval returns the per-cell match
+/// records (rule + bucket).
+pub fn Workbook::evaluate_conditional_formatting(
+  self : Workbook,
+  block : @sml.CT_ConditionalFormatting,
+  cells : Array[(@sml_address.CellAddress, @sml_formula.FormulaValue)],
+  ctx : @sml_cf_eval.EvalContext,
+) -> Array[@sml_cf_eval.MatchHit] {
+  let _ = self
+  @sml_cf_eval.evaluate_cf_block(block, cells, ctx)
+}
+
+///|
+/// Parse a §18.3.1.2 `<autoFilter>` element into its typed
+/// CT_AutoFilter projection.
+pub fn Workbook::parse_auto_filter(
+  self : Workbook,
+  element : @xml.Element,
+) -> @sml.CT_AutoFilter raise OpenError {
+  let _ = self
+  @sml_autofilter.parse_auto_filter(element) catch {
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
+      raise OpenError(
+        kind="SchemaViolation",
+        path~,
+        reason=section + ": " + reason,
+      )
+  }
+}
+
+///|
+/// Evaluate row visibility under §18.3.2 autoFilter rules. Returns
+/// `true` if the row satisfies every active FilterColumn condition.
+pub fn Workbook::auto_filter_row_visible(
+  self : Workbook,
+  filter : @sml.CT_AutoFilter,
+  row : @sml_autofilter.CandidateRow,
+  date_system : @sml_date_serial.DateSystem,
+) -> Bool {
+  let _ = self
+  @sml_autofilter.row_visible(filter, row, date_system)
+}
+
+///|
+/// Materialize a pivot table per §18.10. Combines a pivot definition
+/// (§18.10.1) with its cache definition (§18.10.16) and records
+/// (§18.10.18) to produce the row/column matrix and aggregated cells.
+pub fn Workbook::materialize_pivot_table(
+  self : Workbook,
+  definition : @sml_pivot.PivotTableDefinition,
+  cache : @sml_pivot.PivotCacheDefinition,
+  records : @sml_pivot.PivotCacheRecords,
+) -> @sml_pivot.PivotMaterialization raise OpenError {
+  let _ = self
+  @sml_pivot.materialize_pivot_table(definition, cache, records) catch {
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
+      raise OpenError(
+        kind="SchemaViolation",
+        path~,
+        reason=section + ": " + reason,
+      )
+  }
+}
+
+///|
+/// Parse a formula string per §18.17 grammar into a typed AST.
+pub fn Workbook::parse_formula(
+  self : Workbook,
+  source : String,
+) -> @sml_formula.FormulaAst raise OpenError {
+  let _ = self
+  @sml_formula.parse_formula(source) catch {
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
+      raise OpenError(
+        kind="SchemaViolation",
+        path~,
+        reason=section + ": " + reason,
+      )
+  }
+}
+
+///|
+/// Evaluate a parsed formula AST under the given evaluation context.
+/// Returns a FormulaValue (number/text/bool/error/array).
+pub fn Workbook::evaluate_formula(
+  self : Workbook,
+  ast : @sml_formula.FormulaAst,
+  ctx : @sml_formula.EvalContext,
+) -> @sml_formula.FormulaValue {
+  let _ = self
+  @sml_formula.evaluate(ast, ctx)
+}
+
+///|

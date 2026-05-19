@@ -11,6 +11,8 @@ import {
   "trkbt10/ooxml/ecma376/presentation_ml/domain" @pml,
   "trkbt10/ooxml/ecma376/presentation_ml/reader" @pml_reader,
   "trkbt10/ooxml/ecma376/presentation_ml/builder" @pml_builder,
+  "trkbt10/ooxml/ecma376/presentation_ml/animation_eval" @pml_animation,
+  "trkbt10/ooxml/ecma376/presentation_ml/placeholder_resolver" @pml_placeholder,
   "trkbt10/ooxml/xml" @xml,
   "trkbt10/ooxml/zip" @zip,
 }

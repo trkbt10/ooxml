@@ -283,3 +283,64 @@ fn html_element(element : @xml.Element) -> String {
 }
 
 ///|
+/// Build a §19.3.1.36 placeholder-inheritance chain (master ← layout ← slide)
+/// from the three CT parts that participate in inheritance.
+pub fn Presentation::slide_chain(
+  self : Presentation,
+  master : @pml.CT_SlideMaster,
+  layout : @pml.CT_SlideLayout?,
+  slide : @pml.CT_Slide?,
+) -> @pml_placeholder.SlideChain {
+  let _ = self
+  @pml_placeholder.SlideChain::from_parts(master, layout, slide)
+}
+
+///|
+/// Resolve the §19.3.1.36 placeholder-inheritance chain to produce the
+/// effective shape list for a slide (each ResolvedShape carries the
+/// shape element plus its inherited placeholder properties).
+pub fn Presentation::resolve_slide_shapes(
+  self : Presentation,
+  chain : @pml_placeholder.SlideChain,
+) -> Array[@pml_placeholder.ResolvedShape] raise OpenError {
+  let _ = self
+  @pml_placeholder.resolve_slide_shapes(chain) catch {
+    @pml.SchemaViolation(type_name~, value~, reason~) =>
+      raise OpenError(
+        kind="SchemaViolation",
+        path=type_name,
+        reason=value + ": " + reason,
+      )
+  }
+}
+
+///|
+/// Decode the §19.5.93 animation timing tree from a slide's `<p:timing>`.
+/// Produces a Timeline that the TimingEngine can schedule.
+pub fn Presentation::decode_timing(
+  self : Presentation,
+  timing : @pml.CT_SlideTiming,
+) -> @pml_animation.Timeline raise OpenError {
+  let _ = self
+  @pml_animation.decode_timing(timing) catch {
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
+      raise OpenError(
+        kind="SchemaViolation",
+        path~,
+        reason=section + ": " + reason,
+      )
+  }
+}
+
+///|
+/// Schedule a decoded animation timeline. Returns the ordered list of
+/// fire events with their absolute times in milliseconds.
+pub fn Presentation::schedule_animation(
+  self : Presentation,
+  timeline : @pml_animation.Timeline,
+) -> Array[@pml_animation.Event] {
+  let _ = self
+  @pml_animation.TimingEngine::new(timeline).schedule()
+}
+
+///|
