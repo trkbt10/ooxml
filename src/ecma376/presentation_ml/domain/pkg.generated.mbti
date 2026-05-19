@@ -115,30 +115,44 @@ pub(all) enum CT_BuildListEntry {
 
 pub(all) struct CT_Comment {
   element : @xml.Element
+  author_id : UInt
+  dt : String?
+  idx : ST_Index
+  pos : @xml.Element
+  text : String
+  ext_lst : CT_ExtensionListModify?
 } derive(Eq, @debug.Debug)
 pub fn CT_Comment::new(@xml.Element) -> Self
-pub fn CT_Comment::parse(@xml.Element) -> Self
+pub fn CT_Comment::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Comment::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CommentAuthor {
   element : @xml.Element
+  id : UInt
+  name : ST_Name
+  initials : ST_Name
+  last_idx : UInt
+  clr_idx : UInt
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_CommentAuthor::new(@xml.Element) -> Self
-pub fn CT_CommentAuthor::parse(@xml.Element) -> Self
+pub fn CT_CommentAuthor::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CommentAuthor::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CommentAuthorList {
   element : @xml.Element
+  cm_author : Array[CT_CommentAuthor]
 } derive(Eq, @debug.Debug)
 pub fn CT_CommentAuthorList::new(@xml.Element) -> Self
-pub fn CT_CommentAuthorList::parse(@xml.Element) -> Self
+pub fn CT_CommentAuthorList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CommentAuthorList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CommentList {
   element : @xml.Element
+  cm : Array[CT_Comment]
 } derive(Eq, @debug.Debug)
 pub fn CT_CommentList::new(@xml.Element) -> Self
-pub fn CT_CommentList::parse(@xml.Element) -> Self
+pub fn CT_CommentList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CommentList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CommonSlideData {
@@ -178,16 +192,23 @@ pub fn CT_ConnectorNonVisual::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Control {
   element : @xml.Element
+  name : String?
+  show_as_icon : Bool?
+  r_id : String?
+  img_w : UInt?
+  img_h : UInt?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_Control::new(@xml.Element) -> Self
-pub fn CT_Control::parse(@xml.Element) -> Self
+pub fn CT_Control::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Control::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ControlList {
   element : @xml.Element
+  control : Array[CT_Control]
 } derive(Eq, @debug.Debug)
 pub fn CT_ControlList::new(@xml.Element) -> Self
-pub fn CT_ControlList::parse(@xml.Element) -> Self
+pub fn CT_ControlList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ControlList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CornerDirectionTransition {
@@ -201,37 +222,46 @@ pub fn CT_CornerDirectionTransition::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomShow {
   element : @xml.Element
+  name : ST_Name
+  id : UInt
+  sld_lst : CT_SlideRelationshipList
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomShow::new(@xml.Element) -> Self
-pub fn CT_CustomShow::parse(@xml.Element) -> Self
+pub fn CT_CustomShow::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomShow::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomShowId {
   element : @xml.Element
+  id : UInt
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomShowId::new(@xml.Element) -> Self
-pub fn CT_CustomShowId::parse(@xml.Element) -> Self
+pub fn CT_CustomShowId::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomShowId::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomShowList {
   element : @xml.Element
+  cust_show : Array[CT_CustomShow]
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomShowList::new(@xml.Element) -> Self
-pub fn CT_CustomShowList::parse(@xml.Element) -> Self
+pub fn CT_CustomShowList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomShowList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomerData {
   element : @xml.Element
+  r_id : String
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomerData::new(@xml.Element) -> Self
-pub fn CT_CustomerData::parse(@xml.Element) -> Self
+pub fn CT_CustomerData::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomerData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_CustomerDataList {
   element : @xml.Element
+  cust_data : Array[CT_CustomerData]
+  tags : CT_TagsData?
 } derive(Eq, @debug.Debug)
 pub fn CT_CustomerDataList::new(@xml.Element) -> Self
-pub fn CT_CustomerDataList::parse(@xml.Element) -> Self
+pub fn CT_CustomerDataList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_CustomerDataList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EightDirectionTransition {
@@ -245,27 +275,34 @@ pub fn CT_EightDirectionTransition::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EmbeddedFontDataId {
   element : @xml.Element
+  r_id : String
 } derive(Eq, @debug.Debug)
 pub fn CT_EmbeddedFontDataId::new(@xml.Element) -> Self
-pub fn CT_EmbeddedFontDataId::parse(@xml.Element) -> Self
+pub fn CT_EmbeddedFontDataId::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_EmbeddedFontDataId::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EmbeddedFontList {
   element : @xml.Element
+  embedded_font : Array[CT_EmbeddedFontListEntry]
 } derive(Eq, @debug.Debug)
 pub fn CT_EmbeddedFontList::new(@xml.Element) -> Self
-pub fn CT_EmbeddedFontList::parse(@xml.Element) -> Self
+pub fn CT_EmbeddedFontList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_EmbeddedFontList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EmbeddedFontListEntry {
   element : @xml.Element
+  font : @xml.Element
+  regular : CT_EmbeddedFontDataId?
+  bold : CT_EmbeddedFontDataId?
+  italic : CT_EmbeddedFontDataId?
+  bold_italic : CT_EmbeddedFontDataId?
 } derive(Eq, @debug.Debug)
 pub fn CT_EmbeddedFontListEntry::new(@xml.Element) -> Self
-pub fn CT_EmbeddedFontListEntry::parse(@xml.Element) -> Self
+pub fn CT_EmbeddedFontListEntry::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_EmbeddedFontListEntry::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Empty {
-  element : @xml.Element
+  element_name : @xml.QName
 } derive(Eq, @debug.Debug)
 pub fn CT_Empty::new(@xml.Element) -> Self
 pub fn CT_Empty::parse(@xml.Element) -> Self
@@ -273,23 +310,27 @@ pub fn CT_Empty::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Extension {
   element : @xml.Element
+  uri : String
 } derive(Eq, @debug.Debug)
 pub fn CT_Extension::new(@xml.Element) -> Self
-pub fn CT_Extension::parse(@xml.Element) -> Self
+pub fn CT_Extension::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Extension::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ExtensionList {
   element : @xml.Element
+  ext : Array[CT_Extension]
 } derive(Eq, @debug.Debug)
 pub fn CT_ExtensionList::new(@xml.Element) -> Self
-pub fn CT_ExtensionList::parse(@xml.Element) -> Self
+pub fn CT_ExtensionList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ExtensionList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ExtensionListModify {
   element : @xml.Element
+  ext : Array[CT_Extension]
+  mod_ : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_ExtensionListModify::new(@xml.Element) -> Self
-pub fn CT_ExtensionListModify::parse(@xml.Element) -> Self
+pub fn CT_ExtensionListModify::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ExtensionListModify::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_GraphicalObjectFrame {
@@ -343,16 +384,19 @@ pub fn CT_HandoutMaster::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HandoutMasterIdList {
   element : @xml.Element
+  handout_master_id : CT_HandoutMasterIdListEntry?
 } derive(Eq, @debug.Debug)
 pub fn CT_HandoutMasterIdList::new(@xml.Element) -> Self
-pub fn CT_HandoutMasterIdList::parse(@xml.Element) -> Self
+pub fn CT_HandoutMasterIdList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_HandoutMasterIdList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HandoutMasterIdListEntry {
   element : @xml.Element
+  r_id : String
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_HandoutMasterIdListEntry::new(@xml.Element) -> Self
-pub fn CT_HandoutMasterIdListEntry::parse(@xml.Element) -> Self
+pub fn CT_HandoutMasterIdListEntry::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_HandoutMasterIdListEntry::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HeaderFooter {
@@ -364,9 +408,15 @@ pub fn CT_HeaderFooter::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HtmlPublishProperties {
   element : @xml.Element
+  show_speaker_notes : Bool?
+  target : String?
+  title : String?
+  r_id : String
+  slide_list_choice : PmlSlideListChoice
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_HtmlPublishProperties::new(@xml.Element) -> Self
-pub fn CT_HtmlPublishProperties::parse(@xml.Element) -> Self
+pub fn CT_HtmlPublishProperties::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_HtmlPublishProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_InOutTransition {
@@ -380,23 +430,32 @@ pub fn CT_InOutTransition::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_IndexRange {
   element : @xml.Element
+  st : ST_Index
+  end_index : ST_Index
 } derive(Eq, @debug.Debug)
 pub fn CT_IndexRange::new(@xml.Element) -> Self
-pub fn CT_IndexRange::parse(@xml.Element) -> Self
+pub fn CT_IndexRange::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_IndexRange::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Kinsoku {
   element : @xml.Element
+  lang : String?
+  inval_st_chars : String
+  inval_end_chars : String
 } derive(Eq, @debug.Debug)
 pub fn CT_Kinsoku::new(@xml.Element) -> Self
-pub fn CT_Kinsoku::parse(@xml.Element) -> Self
+pub fn CT_Kinsoku::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Kinsoku::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ModifyVerifier {
   element : @xml.Element
+  algorithm_name : String?
+  hash_value : String?
+  salt_value : String?
+  spin_value : UInt?
 } derive(Eq, @debug.Debug)
 pub fn CT_ModifyVerifier::new(@xml.Element) -> Self
-pub fn CT_ModifyVerifier::parse(@xml.Element) -> Self
+pub fn CT_ModifyVerifier::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ModifyVerifier::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NormalViewPortion {
@@ -422,16 +481,19 @@ pub fn CT_NotesMaster::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NotesMasterIdList {
   element : @xml.Element
+  notes_master_id : CT_NotesMasterIdListEntry?
 } derive(Eq, @debug.Debug)
 pub fn CT_NotesMasterIdList::new(@xml.Element) -> Self
-pub fn CT_NotesMasterIdList::parse(@xml.Element) -> Self
+pub fn CT_NotesMasterIdList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_NotesMasterIdList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NotesMasterIdListEntry {
   element : @xml.Element
+  r_id : String
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_NotesMasterIdListEntry::new(@xml.Element) -> Self
-pub fn CT_NotesMasterIdListEntry::parse(@xml.Element) -> Self
+pub fn CT_NotesMasterIdListEntry::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_NotesMasterIdListEntry::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NotesSlide {
@@ -457,24 +519,40 @@ pub fn CT_NotesViewProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OleObject {
   element : @xml.Element
+  name : String?
+  show_as_icon : Bool?
+  r_id : String?
+  img_w : UInt?
+  img_h : UInt?
+  prog_id : String?
+  choice : CT_OleObject_Choice
 } derive(Eq, @debug.Debug)
 pub fn CT_OleObject::new(@xml.Element) -> Self
-pub fn CT_OleObject::parse(@xml.Element) -> Self
+pub fn CT_OleObject::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_OleObject::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OleObjectEmbed {
   element : @xml.Element
+  follow_color_scheme : ST_OleObjectFollowColorScheme?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_OleObjectEmbed::new(@xml.Element) -> Self
-pub fn CT_OleObjectEmbed::parse(@xml.Element) -> Self
+pub fn CT_OleObjectEmbed::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_OleObjectEmbed::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_OleObjectLink {
   element : @xml.Element
+  update_automatic : Bool?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_OleObjectLink::new(@xml.Element) -> Self
-pub fn CT_OleObjectLink::parse(@xml.Element) -> Self
+pub fn CT_OleObjectLink::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_OleObjectLink::to_element(Self) -> @xml.Element
+
+pub(all) enum CT_OleObject_Choice {
+  OleEmbed(CT_OleObjectEmbed)
+  OleLink(CT_OleObjectLink)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct CT_OptionalBlackTransition {
   thru_blk : Bool?
@@ -517,9 +595,14 @@ pub fn CT_OutlineViewSlideList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PhotoAlbum {
   element : @xml.Element
+  bw : Bool?
+  show_captions : Bool?
+  layout : ST_PhotoAlbumLayout?
+  frame : ST_PhotoAlbumFrameShape?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PhotoAlbum::new(@xml.Element) -> Self
-pub fn CT_PhotoAlbum::parse(@xml.Element) -> Self
+pub fn CT_PhotoAlbum::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PhotoAlbum::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Picture {
@@ -548,23 +631,60 @@ pub fn CT_Placeholder::is_default(Self) -> Bool
 
 pub(all) struct CT_Presentation {
   element : @xml.Element
+  server_zoom : String?
+  first_slide_num : Int?
+  show_special_pls_on_title_sld : Bool?
+  rtl : Bool?
+  remove_personal_info_on_save : Bool?
+  compat_mode : Bool?
+  strict_first_and_last_chars : Bool?
+  embed_true_type_fonts : Bool?
+  save_subset_fonts : Bool?
+  auto_compress_pictures : Bool?
+  bookmark_id_seed : ST_BookmarkIdSeed?
+  conformance : String?
+  sld_master_id_lst : CT_SlideMasterIdList?
+  notes_master_id_lst : CT_NotesMasterIdList?
+  handout_master_id_lst : CT_HandoutMasterIdList?
+  sld_id_lst : CT_SlideIdList?
+  sld_sz : CT_SlideSize?
+  notes_sz : @xml.Element
+  smart_tags : CT_SmartTags?
+  embedded_font_lst : CT_EmbeddedFontList?
+  cust_show_lst : CT_CustomShowList?
+  photo_album : CT_PhotoAlbum?
+  cust_data_lst : CT_CustomerDataList?
+  kinsoku : CT_Kinsoku?
+  default_text_style : @xml.Element?
+  modify_verifier : CT_ModifyVerifier?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_Presentation::new(@xml.Element) -> Self
-pub fn CT_Presentation::parse(@xml.Element) -> Self
+pub fn CT_Presentation::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Presentation::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PresentationProperties {
   element : @xml.Element
+  prn_pr : CT_PrintProperties?
+  show_pr : CT_ShowProperties?
+  clr_mru : @xml.Element?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PresentationProperties::new(@xml.Element) -> Self
-pub fn CT_PresentationProperties::parse(@xml.Element) -> Self
+pub fn CT_PresentationProperties::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PresentationProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PrintProperties {
   element : @xml.Element
+  prn_what : ST_PrintWhat?
+  clr_mode : ST_PrintColorMode?
+  hidden_slides : Bool?
+  scale_to_fit_paper : Bool?
+  frame_slides : Bool?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PrintProperties::new(@xml.Element) -> Self
-pub fn CT_PrintProperties::parse(@xml.Element) -> Self
+pub fn CT_PrintProperties::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_PrintProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Rel {
@@ -590,23 +710,33 @@ pub fn CT_ShapeNonVisual::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ShowInfoBrowse {
   element : @xml.Element
+  show_scrollbar : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_ShowInfoBrowse::new(@xml.Element) -> Self
-pub fn CT_ShowInfoBrowse::parse(@xml.Element) -> Self
+pub fn CT_ShowInfoBrowse::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ShowInfoBrowse::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ShowInfoKiosk {
   element : @xml.Element
+  restart : UInt?
 } derive(Eq, @debug.Debug)
 pub fn CT_ShowInfoKiosk::new(@xml.Element) -> Self
-pub fn CT_ShowInfoKiosk::parse(@xml.Element) -> Self
+pub fn CT_ShowInfoKiosk::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ShowInfoKiosk::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ShowProperties {
   element : @xml.Element
+  loop_ : Bool?
+  show_narration : Bool?
+  show_animation : Bool?
+  use_timings : Bool?
+  show_type : PmlShowType?
+  slide_list_choice : PmlSlideListChoice?
+  pen_clr : @xml.Element?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_ShowProperties::new(@xml.Element) -> Self
-pub fn CT_ShowProperties::parse(@xml.Element) -> Self
+pub fn CT_ShowProperties::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ShowProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SideDirectionTransition {
@@ -627,16 +757,20 @@ pub fn CT_Slide::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideIdList {
   element : @xml.Element
+  sld_id : Array[CT_SlideIdListEntry]
 } derive(Eq, @debug.Debug)
 pub fn CT_SlideIdList::new(@xml.Element) -> Self
-pub fn CT_SlideIdList::parse(@xml.Element) -> Self
+pub fn CT_SlideIdList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SlideIdList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideIdListEntry {
   element : @xml.Element
+  id : ST_SlideId
+  r_id : String
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_SlideIdListEntry::new(@xml.Element) -> Self
-pub fn CT_SlideIdListEntry::parse(@xml.Element) -> Self
+pub fn CT_SlideIdListEntry::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SlideIdListEntry::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideLayout {
@@ -669,16 +803,20 @@ pub fn CT_SlideMaster::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideMasterIdList {
   element : @xml.Element
+  sld_master_id : Array[CT_SlideMasterIdListEntry]
 } derive(Eq, @debug.Debug)
 pub fn CT_SlideMasterIdList::new(@xml.Element) -> Self
-pub fn CT_SlideMasterIdList::parse(@xml.Element) -> Self
+pub fn CT_SlideMasterIdList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SlideMasterIdList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideMasterIdListEntry {
   element : @xml.Element
+  id : ST_SlideMasterId?
+  r_id : String
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_SlideMasterIdListEntry::new(@xml.Element) -> Self
-pub fn CT_SlideMasterIdListEntry::parse(@xml.Element) -> Self
+pub fn CT_SlideMasterIdListEntry::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SlideMasterIdListEntry::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideMasterTextStyles {
@@ -690,23 +828,28 @@ pub fn CT_SlideMasterTextStyles::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideRelationshipList {
   element : @xml.Element
+  sld : Array[CT_SlideRelationshipListEntry]
 } derive(Eq, @debug.Debug)
 pub fn CT_SlideRelationshipList::new(@xml.Element) -> Self
-pub fn CT_SlideRelationshipList::parse(@xml.Element) -> Self
+pub fn CT_SlideRelationshipList::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SlideRelationshipList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideRelationshipListEntry {
   element : @xml.Element
+  r_id : String
 } derive(Eq, @debug.Debug)
 pub fn CT_SlideRelationshipListEntry::new(@xml.Element) -> Self
-pub fn CT_SlideRelationshipListEntry::parse(@xml.Element) -> Self
+pub fn CT_SlideRelationshipListEntry::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SlideRelationshipListEntry::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideSize {
   element : @xml.Element
+  cx : ST_SlideSizeCoordinate
+  cy : ST_SlideSizeCoordinate
+  size_type : ST_SlideSizeType?
 } derive(Eq, @debug.Debug)
 pub fn CT_SlideSize::new(@xml.Element) -> Self
-pub fn CT_SlideSize::parse(@xml.Element) -> Self
+pub fn CT_SlideSize::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SlideSize::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SlideSorterViewProperties {
@@ -782,9 +925,10 @@ pub fn CT_SlideViewProperties::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SmartTags {
   element : @xml.Element
+  r_id : String
 } derive(Eq, @debug.Debug)
 pub fn CT_SmartTags::new(@xml.Element) -> Self
-pub fn CT_SmartTags::parse(@xml.Element) -> Self
+pub fn CT_SmartTags::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SmartTags::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SplitTransition {
@@ -1292,9 +1436,10 @@ pub fn CT_TagList::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TagsData {
   element : @xml.Element
+  r_id : String
 } derive(Eq, @debug.Debug)
 pub fn CT_TagsData::new(@xml.Element) -> Self
-pub fn CT_TagsData::parse(@xml.Element) -> Self
+pub fn CT_TagsData::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TagsData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TransitionSoundAction {
@@ -1379,6 +1524,18 @@ pub(all) struct EG_TopLevelSlide {
 } derive(Eq, @debug.Debug)
 pub fn EG_TopLevelSlide::child_names(Self) -> Array[String]
 pub fn EG_TopLevelSlide::new(@xml.Element) -> Self
+
+pub(all) enum PmlShowType {
+  PmlShowTypePresent(CT_Empty)
+  PmlShowTypeBrowse(CT_ShowInfoBrowse)
+  PmlShowTypeKiosk(CT_ShowInfoKiosk)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PmlSlideListChoice {
+  PmlSlideListAll(CT_Empty)
+  PmlSlideListRange(CT_IndexRange)
+  PmlSlideListCustomShow(CT_CustomShowId)
+} derive(Eq, @debug.Debug)
 
 pub struct ST_BookmarkIdSeed {
   value : UInt
