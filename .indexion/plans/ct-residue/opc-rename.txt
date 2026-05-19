@@ -1,0 +1,16 @@
+# OPC 11 件 — 既存実装は CT_ prefix なしの命名。仕様準拠で rename する。
+# content_types
+Default            → CT_Default
+Override           → CT_Override
+Types              → CT_Types
+# digital_signatures
+RelationshipReference            → CT_RelationshipReference
+RelationshipsGroupReference      → CT_RelationshipsGroupReference
+SignatureTime                    → CT_SignatureTime
+# part
+CoreProperties     → CT_CoreProperties
+Keyword            → CT_Keyword
+Keywords           → CT_Keywords
+# relationships
+Relationship       → CT_Relationship
+Relationships      → CT_Relationships
