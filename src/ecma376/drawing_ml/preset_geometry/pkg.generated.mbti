@@ -1,0 +1,323 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/drawing_ml/preset_geometry"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn build_callout1(Int, Int) -> ShapeGeometry
+
+pub fn build_callout2(Int, Int) -> ShapeGeometry
+
+pub fn build_callout3(Int, Int) -> ShapeGeometry
+
+pub fn build_cloud(Int, Int) -> ShapeGeometry
+
+pub fn build_diamond(Int, Int) -> ShapeGeometry
+
+pub fn build_divide(Int, Int) -> ShapeGeometry
+
+pub fn build_down_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_ellipse(Int, Int) -> ShapeGeometry
+
+pub fn build_equal(Int, Int) -> ShapeGeometry
+
+pub fn build_geometry(PresetShape, Int, Int) -> ShapeGeometry
+
+pub fn build_heart(Int, Int) -> ShapeGeometry
+
+pub fn build_left_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_left_right_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_minus(Int, Int) -> ShapeGeometry
+
+pub fn build_multiply(Int, Int) -> ShapeGeometry
+
+pub fn build_parallelogram(Int, Int) -> ShapeGeometry
+
+pub fn build_plaque(Int, Int) -> ShapeGeometry
+
+pub fn build_plus(Int, Int) -> ShapeGeometry
+
+pub fn build_rect(Int, Int) -> ShapeGeometry
+
+pub fn build_regular_polygon(Int, Int, Int) -> ShapeGeometry
+
+pub fn build_right_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_right_triangle(Int, Int) -> ShapeGeometry
+
+pub fn build_round_rect(Int, Int) -> ShapeGeometry
+
+pub fn build_smiley_face(Int, Int) -> ShapeGeometry
+
+pub fn build_star(Int, Int, Int) -> ShapeGeometry
+
+pub fn build_trapezoid(Int, Int) -> ShapeGeometry
+
+pub fn build_triangle(Int, Int) -> ShapeGeometry
+
+pub fn build_up_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_up_down_arrow(Int, Int) -> ShapeGeometry
+
+pub fn decode_adjustment(@xml.Element) -> Adjustment raise @errors.SchemaViolation
+
+pub fn decode_preset_geometry(@xml.Element) -> PresetGeometry raise @errors.SchemaViolation
+
+pub fn flowchart_family_section() -> String
+
+pub fn parse_val_formula(String) -> Int?
+
+pub fn preset_geometry_part1_20_1_10_56_section_name() -> String
+
+pub fn rectangular_fallback(Int, Int) -> ShapeGeometry
+
+pub fn supports(PresetShape) -> Bool
+
+// Errors
+
+// Types and methods
+pub(all) struct Adjustment {
+  name : String
+  raw_formula : String
+  value : Int?
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PathCommand {
+  MoveTo(Int, Int)
+  LineTo(Int, Int)
+  QuadTo(Int, Int, Int, Int)
+  CurveTo(Int, Int, Int, Int, Int, Int)
+  ArcTo(Int, Int, Int, Bool, Bool, Int, Int)
+  ClosePath
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PresetGeometry {
+  shape : PresetShape
+  adjustments : Array[Adjustment]
+} derive(Eq, @debug.Debug)
+
+pub(all) enum PresetShape {
+  ShapeLine
+  ShapeLineInv
+  ShapeTriangle
+  ShapeRtTriangle
+  ShapeRect
+  ShapeDiamond
+  ShapeParallelogram
+  ShapeTrapezoid
+  ShapeNonIsoscelesTrapezoid
+  ShapePentagon
+  ShapeHexagon
+  ShapeHeptagon
+  ShapeOctagon
+  ShapeDecagon
+  ShapeDodecagon
+  ShapeStar4
+  ShapeStar5
+  ShapeStar6
+  ShapeStar7
+  ShapeStar8
+  ShapeStar10
+  ShapeStar12
+  ShapeStar16
+  ShapeStar24
+  ShapeStar32
+  ShapeRoundRect
+  ShapeRound1Rect
+  ShapeRound2SameRect
+  ShapeRound2DiagRect
+  ShapeSnipRoundRect
+  ShapeSnip1Rect
+  ShapeSnip2SameRect
+  ShapeSnip2DiagRect
+  ShapePlaque
+  ShapeEllipse
+  ShapeTeardrop
+  ShapeHomePlate
+  ShapeChevron
+  ShapePieWedge
+  ShapePie
+  ShapeBlockArc
+  ShapeDonut
+  ShapeNoSmoking
+  ShapeRightArrow
+  ShapeLeftArrow
+  ShapeUpArrow
+  ShapeDownArrow
+  ShapeStripedRightArrow
+  ShapeNotchedRightArrow
+  ShapeBentUpArrow
+  ShapeLeftRightArrow
+  ShapeUpDownArrow
+  ShapeLeftUpArrow
+  ShapeLeftRightUpArrow
+  ShapeQuadArrow
+  ShapeLeftArrowCallout
+  ShapeRightArrowCallout
+  ShapeUpArrowCallout
+  ShapeDownArrowCallout
+  ShapeLeftRightArrowCallout
+  ShapeUpDownArrowCallout
+  ShapeQuadArrowCallout
+  ShapeBentArrow
+  ShapeUturnArrow
+  ShapeCircularArrow
+  ShapeLeftCircularArrow
+  ShapeLeftRightCircularArrow
+  ShapeCurvedRightArrow
+  ShapeCurvedLeftArrow
+  ShapeCurvedUpArrow
+  ShapeCurvedDownArrow
+  ShapeSwooshArrow
+  ShapeCube
+  ShapeCan
+  ShapeLightningBolt
+  ShapeHeart
+  ShapeSun
+  ShapeMoon
+  ShapeSmileyFace
+  ShapeIrregularSeal1
+  ShapeIrregularSeal2
+  ShapeFoldedCorner
+  ShapeBevel
+  ShapeFrame
+  ShapeHalfFrame
+  ShapeCorner
+  ShapeDiagStripe
+  ShapeChord
+  ShapeArc
+  ShapeLeftBracket
+  ShapeRightBracket
+  ShapeLeftBrace
+  ShapeRightBrace
+  ShapeBracketPair
+  ShapeBracePair
+  ShapeStraightConnector1
+  ShapeBentConnector2
+  ShapeBentConnector3
+  ShapeBentConnector4
+  ShapeBentConnector5
+  ShapeCurvedConnector2
+  ShapeCurvedConnector3
+  ShapeCurvedConnector4
+  ShapeCurvedConnector5
+  ShapeCallout1
+  ShapeCallout2
+  ShapeCallout3
+  ShapeAccentCallout1
+  ShapeAccentCallout2
+  ShapeAccentCallout3
+  ShapeBorderCallout1
+  ShapeBorderCallout2
+  ShapeBorderCallout3
+  ShapeAccentBorderCallout1
+  ShapeAccentBorderCallout2
+  ShapeAccentBorderCallout3
+  ShapeWedgeRectCallout
+  ShapeWedgeRoundRectCallout
+  ShapeWedgeEllipseCallout
+  ShapeCloudCallout
+  ShapeCloud
+  ShapeRibbon
+  ShapeRibbon2
+  ShapeEllipseRibbon
+  ShapeEllipseRibbon2
+  ShapeLeftRightRibbon
+  ShapeVerticalScroll
+  ShapeHorizontalScroll
+  ShapeWave
+  ShapeDoubleWave
+  ShapePlus
+  ShapeFlowChartProcess
+  ShapeFlowChartDecision
+  ShapeFlowChartInputOutput
+  ShapeFlowChartPredefinedProcess
+  ShapeFlowChartInternalStorage
+  ShapeFlowChartDocument
+  ShapeFlowChartMultidocument
+  ShapeFlowChartTerminator
+  ShapeFlowChartPreparation
+  ShapeFlowChartManualInput
+  ShapeFlowChartManualOperation
+  ShapeFlowChartConnector
+  ShapeFlowChartPunchedCard
+  ShapeFlowChartPunchedTape
+  ShapeFlowChartSummingJunction
+  ShapeFlowChartOr
+  ShapeFlowChartCollate
+  ShapeFlowChartSort
+  ShapeFlowChartExtract
+  ShapeFlowChartMerge
+  ShapeFlowChartOfflineStorage
+  ShapeFlowChartOnlineStorage
+  ShapeFlowChartMagneticTape
+  ShapeFlowChartMagneticDisk
+  ShapeFlowChartMagneticDrum
+  ShapeFlowChartDisplay
+  ShapeFlowChartDelay
+  ShapeFlowChartAlternateProcess
+  ShapeFlowChartOffpageConnector
+  ShapeActionButtonBlank
+  ShapeActionButtonHome
+  ShapeActionButtonHelp
+  ShapeActionButtonInformation
+  ShapeActionButtonForwardNext
+  ShapeActionButtonBackPrevious
+  ShapeActionButtonEnd
+  ShapeActionButtonBeginning
+  ShapeActionButtonReturn
+  ShapeActionButtonDocument
+  ShapeActionButtonSound
+  ShapeActionButtonMovie
+  ShapeGear6
+  ShapeGear9
+  ShapeFunnel
+  ShapeMathPlus
+  ShapeMathMinus
+  ShapeMathMultiply
+  ShapeMathDivide
+  ShapeMathEqual
+  ShapeMathNotEqual
+  ShapeCornerTabs
+  ShapeSquareTabs
+  ShapePlaqueTabs
+  ShapeChartX
+  ShapeChartStar
+  ShapeChartPlus
+} derive(Eq, @debug.Debug)
+pub fn PresetShape::family(Self) -> PresetShapeFamily
+pub fn PresetShape::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) enum PresetShapeFamily {
+  FamilyRectangular
+  FamilyArrow
+  FamilyCallout
+  FamilyStar
+  FamilyFlowChart
+  FamilyActionButton
+  FamilyConnector
+  FamilyBracket
+  FamilyMath
+  FamilyBanner
+  FamilyMisc
+} derive(Eq, @debug.Debug)
+
+pub(all) struct ShapeGeometry {
+  commands : Array[PathCommand]
+  width : Int
+  height : Int
+} derive(Eq, @debug.Debug)
+pub fn ShapeGeometry::command_count(Self) -> Int
+pub fn ShapeGeometry::is_closed(Self) -> Bool
+
+// Type aliases
+
+// Traits
+

@@ -1,0 +1,16 @@
+// trkbt10/ooxml/ecma376/drawing_ml/preset_geometry
+//
+// ECMA-376 Part 1 §20.1.9.18 prstGeom (CT_PresetGeometry2D) preset
+// shape geometry generation: ST_ShapeType decoder (§20.1.10.56),
+// CT_GeomGuide avLst adjustment decoder (§20.1.9), and per-shape
+// path-command constructors that materialise the preset geometry on
+// a virtual width × height bounding box for downstream renderers.
+
+import {
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/xml" @xml,
+}
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+} for "wbtest"
