@@ -5,12 +5,14 @@
 
 import {
   "moonbitlang/core/env" @env,
+  "moonbitlang/core/strconv" @strconv,
   "moonbitlang/x/fs" @fs,
   "trkbt10/ooxml" @ooxml,
   "trkbt10/ooxml/docx" @docx,
   "trkbt10/ooxml/ecma376/opc" @opc,
   "trkbt10/ooxml/pptx" @pptx,
   "trkbt10/ooxml/xlsx" @xlsx,
+  "trkbt10/ooxml/xml" @xml,
 }
 
 options(
