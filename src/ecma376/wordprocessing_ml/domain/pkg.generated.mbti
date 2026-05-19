@@ -30,7 +30,9 @@ pub fn hdr(@xml.Element) -> CT_HdrFtr
 
 pub fn inline(@xml.Element) -> CT_Inline
 
-pub fn numbering(@xml.Element) -> CT_Numbering
+pub fn numbering(@xml.Element) -> CT_Numbering raise SchemaViolation
+
+pub fn numbering_parse_int(String) -> Int?
 
 pub fn package_name() -> String
 
@@ -80,11 +82,16 @@ pub fn AG_TransitionalPassword::has_attribute(Self, String) -> Bool
 pub fn AG_TransitionalPassword::new(@xml.Element) -> Self
 
 pub(all) struct CT_AbstractNum {
-  element : @xml.Element
+  abstract_num_id : Int
+  multi_level_type : ST_MultiLevelType?
+  name : String?
+  nsid : String?
+  tmpl : String?
+  style_link : String?
+  num_style_link : String?
+  lvls : Array[CT_Lvl]
 } derive(Eq, @debug.Debug)
-pub fn CT_AbstractNum::new(@xml.Element) -> Self
-pub fn CT_AbstractNum::parse(@xml.Element) -> Self
-pub fn CT_AbstractNum::to_element(Self) -> @xml.Element
+pub fn CT_AbstractNum::parse(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_AltChunk {
   element : @xml.Element
@@ -976,11 +983,21 @@ pub fn CT_LsdException::parse(@xml.Element) -> Self
 pub fn CT_LsdException::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Lvl {
-  element : @xml.Element
+  ilvl : Int
+  start : Int?
+  num_fmt : ST_NumberFormat?
+  lvl_text : String?
+  lvl_jc : ST_Jc?
+  lvl_restart : Int?
+  p_style : String?
+  suff : ST_LevelSuffix?
+  is_lgl : Bool
+  lvl_pic_bullet_id : Int?
+  p_pr_element : @xml.Element?
+  r_pr_element : @xml.Element?
 } derive(Eq, @debug.Debug)
-pub fn CT_Lvl::new(@xml.Element) -> Self
-pub fn CT_Lvl::parse(@xml.Element) -> Self
-pub fn CT_Lvl::to_element(Self) -> @xml.Element
+pub fn CT_Lvl::has_pic_bullet(Self) -> Bool
+pub fn CT_Lvl::parse(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_LvlLegacy {
   element : @xml.Element
@@ -1081,11 +1098,11 @@ pub fn CT_MultiLevelType::parse(@xml.Element) -> Self
 pub fn CT_MultiLevelType::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Num {
-  element : @xml.Element
+  num_id : Int
+  abstract_num_id : Int
+  lvl_overrides : Array[CT_NumLvl]
 } derive(Eq, @debug.Debug)
-pub fn CT_Num::new(@xml.Element) -> Self
-pub fn CT_Num::parse(@xml.Element) -> Self
-pub fn CT_Num::to_element(Self) -> @xml.Element
+pub fn CT_Num::parse(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_NumFmt {
   element : @xml.Element
@@ -1095,11 +1112,11 @@ pub fn CT_NumFmt::parse(@xml.Element) -> Self
 pub fn CT_NumFmt::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_NumLvl {
-  element : @xml.Element
+  ilvl : Int
+  start_override : Int?
+  lvl : CT_Lvl?
 } derive(Eq, @debug.Debug)
-pub fn CT_NumLvl::new(@xml.Element) -> Self
-pub fn CT_NumLvl::parse(@xml.Element) -> Self
-pub fn CT_NumLvl::to_element(Self) -> @xml.Element
+pub fn CT_NumLvl::parse(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_NumPicBullet {
   element : @xml.Element
@@ -1124,10 +1141,14 @@ pub fn CT_NumRestart::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Numbering {
   element : @xml.Element
-} derive(Eq, @debug.Debug)
-pub fn CT_Numbering::new(@xml.Element) -> Self
-pub fn CT_Numbering::parse(@xml.Element) -> Self
+  abstract_nums : @hashmap.HashMap[Int, CT_AbstractNum]
+  nums : @hashmap.HashMap[Int, CT_Num]
+  pic_bullets : @hashmap.HashMap[Int, @xml.Element]
+}
+pub fn CT_Numbering::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Numbering::to_element(Self) -> @xml.Element
+pub impl Eq for CT_Numbering
+pub impl @debug.Debug for CT_Numbering
 
 pub(all) struct CT_Object {
   element : @xml.Element
@@ -3318,6 +3339,7 @@ pub(all) enum ST_NumberFormat {
   NumFmtDollarText
   NumFmtCustom
 } derive(Eq, @debug.Debug)
+pub fn ST_NumberFormat::format(Self, Int) -> String
 pub fn ST_NumberFormat::new(String) -> Self raise SchemaViolation
 pub fn ST_NumberFormat::parse(String) -> Self raise SchemaViolation
 pub fn ST_NumberFormat::to_string(Self) -> String

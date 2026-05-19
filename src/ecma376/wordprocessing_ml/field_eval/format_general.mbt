@@ -7,8 +7,8 @@
 /// - `Arabic`, `ArabicDash`, `Roman`, `roman`, `AlphabeticUpper`,
 ///   `alphabetic`, `CardText`, `OrdText`, `Ordinal`, `Hex`,
 ///   `DollarText` — numeric formats (delegated to
-///   `@numbering_resolver.NumFormat::format` so this evaluator does
-///   not duplicate the roman / letter / ordinal logic).
+///   `@domain.ST_NumberFormat::format` so this evaluator does not
+///   duplicate the roman / letter / ordinal logic).
 /// - `MERGEFORMAT`, `CHARFORMAT` — no-ops at the text level
 ///   (they tell the renderer to inherit formatting from the field
 ///   result or the field code respectively).
@@ -21,19 +21,16 @@ pub fn apply_general_switch(value : String, switch_arg : String) -> String {
     "Lower" => value.to_lower()
     "FirstCap" => first_cap(value)
     "Caps" => caps_each_word(value)
-    "Arabic" => format_number_switch(value, @numbering_resolver.NfDecimal)
+    "Arabic" => format_number_switch(value, @domain.NumFmtDecimal)
     "ArabicDash" =>
-      "- " + format_number_switch(value, @numbering_resolver.NfDecimal) + " -"
-    "Roman" => format_number_switch(value, @numbering_resolver.NfUpperRoman)
-    "roman" => format_number_switch(value, @numbering_resolver.NfLowerRoman)
-    "AlphabeticUpper" =>
-      format_number_switch(value, @numbering_resolver.NfUpperLetter)
-    "alphabetic" =>
-      format_number_switch(value, @numbering_resolver.NfLowerLetter)
-    "CardText" =>
-      format_number_switch(value, @numbering_resolver.NfCardinalText)
-    "OrdText" => format_number_switch(value, @numbering_resolver.NfOrdinalText)
-    "Ordinal" => format_number_switch(value, @numbering_resolver.NfOrdinal)
+      "- " + format_number_switch(value, @domain.NumFmtDecimal) + " -"
+    "Roman" => format_number_switch(value, @domain.NumFmtUpperRoman)
+    "roman" => format_number_switch(value, @domain.NumFmtLowerRoman)
+    "AlphabeticUpper" => format_number_switch(value, @domain.NumFmtUpperLetter)
+    "alphabetic" => format_number_switch(value, @domain.NumFmtLowerLetter)
+    "CardText" => format_number_switch(value, @domain.NumFmtCardinalText)
+    "OrdText" => format_number_switch(value, @domain.NumFmtOrdinalText)
+    "Ordinal" => format_number_switch(value, @domain.NumFmtOrdinal)
     "Hex" => format_hex(value)
     "DollarText" => format_dollar_text(value)
     "MERGEFORMAT" => value
@@ -119,7 +116,7 @@ fn ascii_lower(unit : Int) -> Int {
 ///|
 fn format_number_switch(
   value : String,
-  format : @numbering_resolver.NumFormat,
+  format : @domain.ST_NumberFormat,
 ) -> String {
   match parse_int_lenient(value) {
     Some(n) => format.format(n)
@@ -167,7 +164,7 @@ fn int_to_hex(value : Int) -> String {
 ///|
 fn format_dollar_text(value : String) -> String {
   match parse_int_lenient(value) {
-    Some(n) => @numbering_resolver.NfCardinalText.format(n) + " and 00/100"
+    Some(n) => @domain.NumFmtCardinalText.format(n) + " and 00/100"
     None => value
   }
 }

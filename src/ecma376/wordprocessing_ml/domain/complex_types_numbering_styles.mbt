@@ -211,27 +211,6 @@ pub fn CT_LevelText::to_element(self : CT_LevelText) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_Lvl from wml.xsd (§17).
-pub(all) struct CT_Lvl {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_Lvl::new(element : @xml.Element) -> CT_Lvl {
-  { element, }
-}
-
-///|
-pub fn CT_Lvl::parse(element : @xml.Element) -> CT_Lvl {
-  CT_Lvl::new(element)
-}
-
-///|
-pub fn CT_Lvl::to_element(self : CT_Lvl) -> @xml.Element {
-  self.element
-}
-
-///|
 /// XSD complex type CT_MultiLevelType from wml.xsd (§17).
 pub(all) struct CT_MultiLevelType {
   element : @xml.Element
@@ -249,90 +228,6 @@ pub fn CT_MultiLevelType::parse(element : @xml.Element) -> CT_MultiLevelType {
 
 ///|
 pub fn CT_MultiLevelType::to_element(self : CT_MultiLevelType) -> @xml.Element {
-  self.element
-}
-
-///|
-/// XSD complex type CT_AbstractNum from wml.xsd (§17).
-pub(all) struct CT_AbstractNum {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_AbstractNum::new(element : @xml.Element) -> CT_AbstractNum {
-  { element, }
-}
-
-///|
-pub fn CT_AbstractNum::parse(element : @xml.Element) -> CT_AbstractNum {
-  CT_AbstractNum::new(element)
-}
-
-///|
-pub fn CT_AbstractNum::to_element(self : CT_AbstractNum) -> @xml.Element {
-  self.element
-}
-
-///|
-/// XSD complex type CT_NumLvl from wml.xsd (§17).
-pub(all) struct CT_NumLvl {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_NumLvl::new(element : @xml.Element) -> CT_NumLvl {
-  { element, }
-}
-
-///|
-pub fn CT_NumLvl::parse(element : @xml.Element) -> CT_NumLvl {
-  CT_NumLvl::new(element)
-}
-
-///|
-pub fn CT_NumLvl::to_element(self : CT_NumLvl) -> @xml.Element {
-  self.element
-}
-
-///|
-/// XSD complex type CT_Num from wml.xsd (§17).
-pub(all) struct CT_Num {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_Num::new(element : @xml.Element) -> CT_Num {
-  { element, }
-}
-
-///|
-pub fn CT_Num::parse(element : @xml.Element) -> CT_Num {
-  CT_Num::new(element)
-}
-
-///|
-pub fn CT_Num::to_element(self : CT_Num) -> @xml.Element {
-  self.element
-}
-
-///|
-/// XSD complex type CT_Numbering from wml.xsd (§17).
-pub(all) struct CT_Numbering {
-  element : @xml.Element
-} derive(Eq, Debug)
-
-///|
-pub fn CT_Numbering::new(element : @xml.Element) -> CT_Numbering {
-  { element, }
-}
-
-///|
-pub fn CT_Numbering::parse(element : @xml.Element) -> CT_Numbering {
-  CT_Numbering::new(element)
-}
-
-///|
-pub fn CT_Numbering::to_element(self : CT_Numbering) -> @xml.Element {
   self.element
 }
 

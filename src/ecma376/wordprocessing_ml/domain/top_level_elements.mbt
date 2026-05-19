@@ -53,9 +53,11 @@ pub fn fonts(element : @xml.Element) -> CT_FontsList {
 }
 
 ///|
-/// Construct top-level XSD element numbering as CT_Numbering (§17).
-pub fn numbering(element : @xml.Element) -> CT_Numbering {
-  CT_Numbering::new(element)
+/// Construct top-level XSD element numbering as CT_Numbering (§17.9.16).
+/// Decoding the children may raise `SchemaViolation` when a required
+/// attribute is missing or malformed.
+pub fn numbering(element : @xml.Element) -> CT_Numbering raise SchemaViolation {
+  CT_Numbering::parse(element)
 }
 
 ///|

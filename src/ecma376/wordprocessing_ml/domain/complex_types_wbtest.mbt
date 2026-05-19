@@ -27,7 +27,7 @@ test "WML schema-tail complex type wrappers preserve source elements" {
   assert_eq(document.to_element().name.local_name, "document")
   let styles = CT_Styles::new(wml_test_element("styles"))
   assert_eq(styles.to_element().name.local_name, "styles")
-  let numbering = CT_Numbering::parse(wml_test_element("numbering"))
+  let numbering = try! CT_Numbering::parse(wml_test_element("numbering"))
   assert_eq(numbering.to_element().name.local_name, "numbering")
   let settings = CT_Settings::new(wml_test_element("settings"))
   assert_eq(settings.to_element().name.local_name, "settings")

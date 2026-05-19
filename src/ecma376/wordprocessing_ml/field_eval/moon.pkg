@@ -12,7 +12,6 @@ import {
   "trkbt10/ooxml/xml" @xml,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @domain,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial" @date_serial,
-  "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver" @numbering_resolver,
 }
 
 import {

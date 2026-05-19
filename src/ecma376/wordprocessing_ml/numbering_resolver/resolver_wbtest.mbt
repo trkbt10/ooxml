@@ -9,7 +9,7 @@ fn parse_root(source : String) -> @xml.Element {
 }
 
 ///|
-fn sample_numbering() -> @domain.CT_Numbering {
+fn sample_numbering() -> @domain.CT_Numbering raise {
   let xml = "<numbering>" +
     "<abstractNum abstractNumId=\"0\"><multiLevelType val=\"multilevel\"/>" +
     "<lvl ilvl=\"0\"><start val=\"1\"/><numFmt val=\"decimal\"/><lvlText val=\"%1.\"/></lvl>" +
@@ -26,25 +26,25 @@ fn sample_numbering() -> @domain.CT_Numbering {
     "</num>" +
     "<num numId=\"3\"><abstractNumId val=\"8\"/></num>" +
     "</numbering>"
-  @domain.CT_Numbering::{ element: parse_root(xml) }
+  @domain.CT_Numbering::parse(parse_root(xml))
 }
 
 ///|
-test "§17.9.6 decode_lvl populates every typed field" {
+test "§17.9.6 CT_Lvl::parse populates every typed field" {
   let lvl_xml = "<lvl ilvl=\"2\"><start val=\"3\"/><numFmt val=\"upperRoman\"/>" +
     "<lvlText val=\"%3.\"/><lvlJc val=\"end\"/><lvlRestart val=\"1\"/>" +
     "<pStyle val=\"H3\"/><suff val=\"space\"/><isLgl/>" +
     "<lvlPicBulletId val=\"7\"/>" +
     "<pPr><ind start=\"720\"/></pPr><rPr><b/></rPr></lvl>"
-  let lvl = try! decode_lvl(@domain.CT_Lvl::{ element: parse_root(lvl_xml) })
+  let lvl = try! @domain.CT_Lvl::parse(parse_root(lvl_xml))
   assert_eq(lvl.ilvl, 2)
   assert_eq(lvl.start, Some(3))
-  assert_true(lvl.num_fmt == Some(NfUpperRoman))
+  assert_true(lvl.num_fmt == Some(@domain.NumFmtUpperRoman))
   assert_eq(lvl.lvl_text, Some("%3."))
-  assert_true(lvl.lvl_jc == Some(JcEnd))
+  assert_true(lvl.lvl_jc == Some(@domain.JcEnd))
   assert_eq(lvl.lvl_restart, Some(1))
   assert_eq(lvl.p_style, Some("H3"))
-  assert_true(lvl.suff == Some(SuffSpace))
+  assert_true(lvl.suff == Some(@domain.LevelSuffixSpace))
   assert_true(lvl.is_lgl)
   assert_eq(lvl.lvl_pic_bullet_id, Some(7))
   assert_true(lvl.p_pr_element is Some(_))
@@ -53,8 +53,8 @@ test "§17.9.6 decode_lvl populates every typed field" {
 }
 
 ///|
-test "§17.9.15 decode_num parses abstractNumId + overrides" {
-  let table = try! NumberingTable::from_numbering(sample_numbering())
+test "§17.9.15 CT_Num::parse via CT_Numbering reads abstractNumId + overrides" {
+  let table = try! sample_numbering()
   let num2 = table.nums.get(2).unwrap()
   assert_eq(num2.abstract_num_id, 0)
   assert_eq(num2.lvl_overrides.length(), 2)
@@ -68,17 +68,17 @@ test "§17.9.15 decode_num parses abstractNumId + overrides" {
 
 ///|
 test "§17.9 resolve_level reads abstractNum directly" {
-  let table = try! NumberingTable::from_numbering(sample_numbering())
-  let resolved = table.resolve_level(1, 0).unwrap()
+  let table = try! sample_numbering()
+  let resolved = resolve_level(table, 1, 0).unwrap()
   assert_eq(resolved.lvl.ilvl, 0)
   assert_true(resolved.origin == SourceAbstract)
-  assert_true(resolved.lvl.num_fmt == Some(NfDecimal))
+  assert_true(resolved.lvl.num_fmt == Some(@domain.NumFmtDecimal))
 }
 
 ///|
 test "§17.9.8 lvlOverride wins over abstract" {
-  let table = try! NumberingTable::from_numbering(sample_numbering())
-  let resolved = table.resolve_level(2, 0).unwrap()
+  let table = try! sample_numbering()
+  let resolved = resolve_level(table, 2, 0).unwrap()
   assert_true(resolved.origin == SourceOverride)
   assert_eq(resolved.lvl.start, Some(4))
   assert_eq(resolved.lvl.lvl_text, Some("%1)"))
@@ -86,45 +86,48 @@ test "§17.9.8 lvlOverride wins over abstract" {
 
 ///|
 test "§17.9.8 startOverride re-uses abstract lvl with new start" {
-  let table = try! NumberingTable::from_numbering(sample_numbering())
-  let resolved = table.resolve_level(2, 1).unwrap()
+  let table = try! sample_numbering()
+  let resolved = resolve_level(table, 2, 1).unwrap()
   assert_true(resolved.origin == SourceOverride)
   assert_eq(resolved.lvl.start, Some(10))
-  assert_true(resolved.lvl.num_fmt == Some(NfLowerLetter))
+  assert_true(resolved.lvl.num_fmt == Some(@domain.NumFmtLowerLetter))
 }
 
 ///|
 test "§17.9.21 numStyleLink resolves through styleLink" {
-  let table = try! NumberingTable::from_numbering(sample_numbering())
-  let resolved = table.resolve_level(3, 0).unwrap()
+  let table = try! sample_numbering()
+  let resolved = resolve_level(table, 3, 0).unwrap()
   assert_true(resolved.origin == SourceLinkedAbstract)
-  assert_true(resolved.lvl.num_fmt == Some(NfUpperRoman))
+  assert_true(resolved.lvl.num_fmt == Some(@domain.NumFmtUpperRoman))
   assert_eq(resolved.lvl.start, Some(5))
 }
 
 ///|
-test "§17.18.59 NumFormat::format covers decimal / roman / letter / ordinal" {
-  assert_eq(NfDecimal.format(7), "7")
-  assert_eq(NfDecimalZero.format(7), "07")
-  assert_eq(NfDecimalZero.format(15), "15")
-  assert_eq(NfUpperRoman.format(4), "IV")
-  assert_eq(NfLowerRoman.format(9), "ix")
-  assert_eq(NfUpperLetter.format(1), "A")
-  assert_eq(NfUpperLetter.format(27), "AA")
-  assert_eq(NfLowerLetter.format(28), "ab")
-  assert_eq(NfOrdinal.format(1), "1st")
-  assert_eq(NfOrdinal.format(11), "11th")
-  assert_eq(NfOrdinal.format(22), "22nd")
-  assert_eq(NfCardinalText.format(3), "Three")
-  assert_eq(NfOrdinalText.format(3), "Third")
-  assert_eq(NfBullet.format(7), "")
-  assert_eq(NfNone.format(7), "")
+test "§17.18.59 ST_NumberFormat::format covers decimal / roman / letter / ordinal" {
+  assert_eq(@domain.NumFmtDecimal.format(7), "7")
+  assert_eq(@domain.NumFmtDecimalZero.format(7), "07")
+  assert_eq(@domain.NumFmtDecimalZero.format(15), "15")
+  assert_eq(@domain.NumFmtUpperRoman.format(4), "IV")
+  assert_eq(@domain.NumFmtLowerRoman.format(9), "ix")
+  assert_eq(@domain.NumFmtUpperLetter.format(1), "A")
+  assert_eq(@domain.NumFmtUpperLetter.format(27), "AA")
+  assert_eq(@domain.NumFmtLowerLetter.format(28), "ab")
+  assert_eq(@domain.NumFmtOrdinal.format(1), "1st")
+  assert_eq(@domain.NumFmtOrdinal.format(11), "11th")
+  assert_eq(@domain.NumFmtOrdinal.format(22), "22nd")
+  assert_eq(@domain.NumFmtCardinalText.format(3), "Three")
+  assert_eq(@domain.NumFmtOrdinalText.format(3), "Third")
+  assert_eq(@domain.NumFmtBullet.format(7), "")
+  assert_eq(@domain.NumFmtNone.format(7), "")
 }
 
 ///|
 test "§17.9.11 format_lvl_text substitutes %N placeholders" {
   let counters = [3, 5]
-  let formats = [NfDecimal, NfDecimal]
+  let formats : Array[@domain.ST_NumberFormat] = [
+    @domain.NumFmtDecimal,
+    @domain.NumFmtDecimal,
+  ]
   assert_eq(format_lvl_text("%1.%2.", counters, formats), "3.5.")
   assert_eq(format_lvl_text("%1)", counters, formats), "3)")
   assert_eq(
@@ -132,19 +135,25 @@ test "§17.9.11 format_lvl_text substitutes %N placeholders" {
     "%1 is literal",
   )
   // Roman + letter
-  let formats2 = [NfUpperRoman, NfLowerLetter]
+  let formats2 : Array[@domain.ST_NumberFormat] = [
+    @domain.NumFmtUpperRoman,
+    @domain.NumFmtLowerLetter,
+  ]
   assert_eq(format_lvl_text("%1.%2", [4, 2], formats2), "IV.b")
   // Out-of-range level index leaves zero counter
-  assert_eq(format_lvl_text("%9", [1], [NfDecimal]), "0")
+  let fallback_formats : Array[@domain.ST_NumberFormat] = [
+    @domain.NumFmtDecimal,
+  ]
+  assert_eq(format_lvl_text("%9", [1], fallback_formats), "0")
 }
 
 ///|
 test "§17.9 level_for_paragraph reads numId + ilvl" {
-  let table = try! NumberingTable::from_numbering(sample_numbering())
+  let table = try! sample_numbering()
   let num_pr_element = parse_root(
     "<numPr><ilvl val=\"1\"/><numId val=\"2\"/></numPr>",
   )
-  let resolved = table.level_for_paragraph(num_pr_element).unwrap()
+  let resolved = level_for_paragraph(table, num_pr_element).unwrap()
   assert_eq(resolved.lvl.ilvl, 1)
   assert_true(resolved.origin == SourceOverride)
 }

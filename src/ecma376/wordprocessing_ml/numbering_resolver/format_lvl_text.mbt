@@ -2,14 +2,14 @@
 /// Part 1 §17.9.11 lvlText — substitute `%N` placeholders in the
 /// template with the formatted counter value for 1-based level `N`.
 /// `counters[i]` holds the current counter value for `ilvl = i`.
-/// `formats[i]` holds the NumFormat to apply to that counter when
-/// formatting; absent / out-of-range formats fall back to `NfDecimal`.
+/// `formats[i]` holds the §17.18.59 ST_NumberFormat to apply to that
+/// counter; absent / out-of-range formats fall back to `NumFmtDecimal`.
 /// `%%` collapses to literal `%`; trailing `%` with no digit is left
 /// as-is.
 pub fn format_lvl_text(
   template : String,
   counters : Array[Int],
-  formats : Array[NumFormat],
+  formats : Array[@domain.ST_NumberFormat],
 ) -> String {
   let buf = StringBuilder::new()
   let mut i = 0
@@ -35,7 +35,7 @@ pub fn format_lvl_text(
           let fmt = if level_index >= 0 && level_index < formats.length() {
             formats[level_index]
           } else {
-            NfDecimal
+            @domain.NumFmtDecimal
           }
           buf.write_string(fmt.format(value))
           i = i + 2

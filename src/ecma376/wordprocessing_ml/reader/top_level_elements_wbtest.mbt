@@ -22,8 +22,13 @@ test "WML top-level readers round trip through builders" {
     read_styles(@builder.write_styles(styles)).element.name.local_name,
     "styles",
   )
+  // Numbering uses CT_Numbering::parse which enforces §17.9.15
+  // num/@numId + abstractNumId; provide a complete num so the
+  // round-trip exercises the typed decoder.
   let numbering = read_numbering(
-    bytes("<w:numbering xmlns:w=\"urn:w\"><w:num/></w:numbering>"),
+    bytes(
+      "<w:numbering xmlns:w=\"urn:w\"><w:num w:numId=\"1\"><w:abstractNumId w:val=\"0\"/></w:num></w:numbering>",
+    ),
   )
   assert_eq(
     read_numbering(@builder.write_numbering(numbering)).element.children.length(),

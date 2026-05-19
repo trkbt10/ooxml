@@ -1,0 +1,497 @@
+// WordprocessingML §17.9 numbering — typed views of the CT_*
+// complex types that drive the num → abstractNum → lvl resolution
+// pipeline. These structs replace the element-only wrappers
+// previously defined alongside CT_NumFmt et al.; the underlying
+// `@xml.Element` is preserved on the top-level CT_Numbering so the
+// builder can round-trip the source XML unchanged.
+
+///|
+/// XSD complex type CT_Lvl — Part 1 §17.9.6 lvl. Single numbering
+/// level definition: ilvl, start, numFmt (ST_NumberFormat), lvlText
+/// template, justification (ST_Jc), restart marker, paragraph style
+/// link, suffix (ST_LevelSuffix), `isLgl` flag, picture bullet link,
+/// and the pPr / rPr property children preserved as raw elements so
+/// the renderer can merge them with paragraph / run properties.
+pub(all) struct CT_Lvl {
+  /// §17.9.6 lvl/@ilvl — zero-based numbering level index.
+  ilvl : Int
+  /// §17.9.25 start — initial counter value for this level.
+  start : Int?
+  /// §17.9.17 numFmt — counter format (ST_NumberFormat lexical token).
+  num_fmt : ST_NumberFormat?
+  /// §17.9.11 lvlText — counter template (`%N` placeholders).
+  lvl_text : String?
+  /// §17.9.7 lvlJc — horizontal alignment of the level marker.
+  lvl_jc : ST_Jc?
+  /// §17.9.10 lvlRestart — outer level whose change restarts this counter.
+  lvl_restart : Int?
+  /// §17.9.23 pStyle — paragraph style linked to this level.
+  p_style : String?
+  /// §17.9.28 suff — character placed after the level marker.
+  suff : ST_LevelSuffix?
+  /// §17.9.4 isLgl — render parent counters using decimal regardless of numFmt.
+  is_lgl : Bool
+  /// §17.9.9 lvlPicBulletId — index into the numPicBullet table.
+  lvl_pic_bullet_id : Int?
+  /// §17.9.22 pPr — paragraph property carrier element (untyped).
+  p_pr_element : @xml.Element?
+  /// §17.9.24 rPr — run property carrier element (untyped).
+  r_pr_element : @xml.Element?
+} derive(Eq, Debug)
+
+///|
+/// CT_Lvl::has_pic_bullet — true when `lvl_pic_bullet_id` is set;
+/// useful for renderers that swap the lvlText for a picture glyph.
+pub fn CT_Lvl::has_pic_bullet(self : CT_Lvl) -> Bool {
+  match self.lvl_pic_bullet_id {
+    Some(id) => if id >= 0 { true } else { false }
+    None => false
+  }
+}
+
+///|
+/// XSD complex type CT_Lvl — Part 1 §17.9.6 lvl. Decode a `<w:lvl>`
+/// element into the typed view. Children unknown to the resolver are
+/// ignored so vendor extensions do not break the pipeline.
+pub fn CT_Lvl::parse(element : @xml.Element) -> CT_Lvl raise SchemaViolation {
+  let ilvl = numbering_required_int(element, "ilvl", "lvl/@ilvl")
+  let mut start : Int? = None
+  let mut num_fmt : ST_NumberFormat? = None
+  let mut lvl_text : String? = None
+  let mut lvl_jc : ST_Jc? = None
+  let mut lvl_restart : Int? = None
+  let mut p_style : String? = None
+  let mut suff : ST_LevelSuffix? = None
+  let mut is_lgl = false
+  let mut lvl_pic_bullet_id : Int? = None
+  let mut p_pr_element : @xml.Element? = None
+  let mut r_pr_element : @xml.Element? = None
+  for child in element.children {
+    match child {
+      @xml.Element(child_element) => {
+        let local = child_element.name.local_name
+        if local == "start" {
+          match numbering_attr(child_element, "val") {
+            Some(value) => start = numbering_parse_int(value)
+            None => ()
+          }
+        } else if local == "numFmt" {
+          match numbering_attr(child_element, "val") {
+            Some(value) => num_fmt = Some(ST_NumberFormat::parse(value))
+            None => ()
+          }
+        } else if local == "lvlText" {
+          lvl_text = numbering_attr(child_element, "val")
+        } else if local == "lvlJc" {
+          match numbering_attr(child_element, "val") {
+            Some(value) => lvl_jc = Some(ST_Jc::parse(normalise_lvl_jc(value)))
+            None => ()
+          }
+        } else if local == "lvlRestart" {
+          match numbering_attr(child_element, "val") {
+            Some(value) => lvl_restart = numbering_parse_int(value)
+            None => ()
+          }
+        } else if local == "pStyle" {
+          p_style = numbering_attr(child_element, "val")
+        } else if local == "suff" {
+          match numbering_attr(child_element, "val") {
+            Some(value) => suff = Some(ST_LevelSuffix::parse(value))
+            None => ()
+          }
+        } else if local == "isLgl" {
+          is_lgl = true
+        } else if local == "lvlPicBulletId" {
+          match numbering_attr(child_element, "val") {
+            Some(value) => lvl_pic_bullet_id = numbering_parse_int(value)
+            None => ()
+          }
+        } else if local == "pPr" {
+          p_pr_element = Some(child_element)
+        } else if local == "rPr" {
+          r_pr_element = Some(child_element)
+        }
+      }
+      _ => ()
+    }
+  }
+  {
+    ilvl,
+    start,
+    num_fmt,
+    lvl_text,
+    lvl_jc,
+    lvl_restart,
+    p_style,
+    suff,
+    is_lgl,
+    lvl_pic_bullet_id,
+    p_pr_element,
+    r_pr_element,
+  }
+}
+
+///|
+/// XSD complex type CT_NumLvl — Part 1 §17.9.8 lvlOverride. A
+/// per-ilvl override carried on a CT_Num; either a startOverride
+/// (§17.9.26) replacing the abstract level's start value or a full
+/// substitute lvl (§17.9.5).
+pub(all) struct CT_NumLvl {
+  /// §17.9.8 lvlOverride/@ilvl — target numbering level.
+  ilvl : Int
+  /// §17.9.26 startOverride — replacement starting value.
+  start_override : Int?
+  /// §17.9.5 lvl — replacement level definition.
+  lvl : CT_Lvl?
+} derive(Eq, Debug)
+
+///|
+/// XSD complex type CT_NumLvl — Part 1 §17.9.8 lvlOverride. Decode a
+/// `<w:lvlOverride>` element.
+pub fn CT_NumLvl::parse(
+  element : @xml.Element,
+) -> CT_NumLvl raise SchemaViolation {
+  let ilvl = numbering_required_int(element, "ilvl", "lvlOverride/@ilvl")
+  let mut start_override : Int? = None
+  let mut lvl : CT_Lvl? = None
+  for child in element.children {
+    match child {
+      @xml.Element(child_element) => {
+        let local = child_element.name.local_name
+        if local == "startOverride" {
+          start_override = Some(
+            numbering_required_int(
+              child_element, "val", "lvlOverride/startOverride/@val",
+            ),
+          )
+        } else if local == "lvl" {
+          lvl = Some(CT_Lvl::parse(child_element))
+        }
+      }
+      _ => ()
+    }
+  }
+  { ilvl, start_override, lvl }
+}
+
+///|
+/// XSD complex type CT_AbstractNum — Part 1 §17.9.1 abstractNum. The
+/// abstract numbering definition; lvls are returned sorted ascending
+/// by `ilvl` so callers can binary-search if they want.
+pub(all) struct CT_AbstractNum {
+  /// §17.9.1 abstractNum/@abstractNumId — abstract definition id.
+  abstract_num_id : Int
+  /// §17.9.12 multiLevelType — abstract definition kind hint.
+  multi_level_type : ST_MultiLevelType?
+  /// §17.9.13 name — display name for the abstract definition.
+  name : String?
+  /// §17.9.14 nsid — identifier shared across copies of the same definition.
+  nsid : String?
+  /// §17.9.29 tmpl — template code (Word internal hash).
+  tmpl : String?
+  /// §17.9.27 styleLink — the style id this definition supplies.
+  style_link : String?
+  /// §17.9.21 numStyleLink — link to another abstractNum via styleLink.
+  num_style_link : String?
+  /// §17.9.6 lvl children, sorted ascending by `ilvl`.
+  lvls : Array[CT_Lvl]
+} derive(Eq, Debug)
+
+///|
+/// XSD complex type CT_AbstractNum — Part 1 §17.9.1. Decode the
+/// `<w:abstractNum>` element. Children unknown to the resolver are
+/// ignored.
+pub fn CT_AbstractNum::parse(
+  element : @xml.Element,
+) -> CT_AbstractNum raise SchemaViolation {
+  let abstract_num_id = numbering_required_int(
+    element, "abstractNumId", "abstractNum/@abstractNumId",
+  )
+  let mut multi_level_type : ST_MultiLevelType? = None
+  let mut name : String? = None
+  let mut nsid : String? = None
+  let mut tmpl : String? = None
+  let mut style_link : String? = None
+  let mut num_style_link : String? = None
+  let lvls : Array[CT_Lvl] = []
+  for child in element.children {
+    match child {
+      @xml.Element(child_element) => {
+        let local = child_element.name.local_name
+        if local == "multiLevelType" {
+          match numbering_attr(child_element, "val") {
+            Some(value) =>
+              multi_level_type = Some(ST_MultiLevelType::parse(value))
+            None => ()
+          }
+        } else if local == "name" {
+          name = numbering_attr(child_element, "val")
+        } else if local == "nsid" {
+          nsid = numbering_attr(child_element, "val")
+        } else if local == "tmpl" {
+          tmpl = numbering_attr(child_element, "val")
+        } else if local == "styleLink" {
+          style_link = numbering_attr(child_element, "val")
+        } else if local == "numStyleLink" {
+          num_style_link = numbering_attr(child_element, "val")
+        } else if local == "lvl" {
+          lvls.push(CT_Lvl::parse(child_element))
+        }
+      }
+      _ => ()
+    }
+  }
+  lvls.sort_by(fn(a, b) {
+    if a.ilvl < b.ilvl {
+      -1
+    } else if a.ilvl > b.ilvl {
+      1
+    } else {
+      0
+    }
+  })
+  {
+    abstract_num_id,
+    multi_level_type,
+    name,
+    nsid,
+    tmpl,
+    style_link,
+    num_style_link,
+    lvls,
+  }
+}
+
+///|
+/// XSD complex type CT_Num — Part 1 §17.9.15 num. A numbering
+/// definition instance: carries `numId` (referenced from
+/// `p/pPr/numPr/numId`), the link to its `abstractNumId`, and zero or
+/// more `lvlOverride` (CT_NumLvl) entries.
+pub(all) struct CT_Num {
+  /// §17.9.15 num/@numId — instance id.
+  num_id : Int
+  /// §17.9.2 abstractNumId/@val — id of the abstract definition referenced.
+  abstract_num_id : Int
+  /// §17.9.8 lvlOverride children — per-level overrides applied on top
+  /// of the referenced abstract definition.
+  lvl_overrides : Array[CT_NumLvl]
+} derive(Eq, Debug)
+
+///|
+/// XSD complex type CT_Num — Part 1 §17.9.15. Decode the `<w:num>`
+/// element. The required `abstractNumId` child must be present;
+/// missing causes a schema violation.
+pub fn CT_Num::parse(element : @xml.Element) -> CT_Num raise SchemaViolation {
+  let num_id = numbering_required_int(element, "numId", "num/@numId")
+  let mut abstract_num_id_opt : Int? = None
+  let lvl_overrides : Array[CT_NumLvl] = []
+  for child in element.children {
+    match child {
+      @xml.Element(child_element) => {
+        let local = child_element.name.local_name
+        if local == "abstractNumId" {
+          abstract_num_id_opt = Some(
+            numbering_required_int(
+              child_element, "val", "num/abstractNumId/@val",
+            ),
+          )
+        } else if local == "lvlOverride" {
+          lvl_overrides.push(CT_NumLvl::parse(child_element))
+        }
+      }
+      _ => ()
+    }
+  }
+  let abstract_num_id = match abstract_num_id_opt {
+    Some(value) => value
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Num",
+        value="",
+        reason="Part 1 §17.9.15 num: required child abstractNumId is missing",
+      )
+  }
+  { num_id, abstract_num_id, lvl_overrides }
+}
+
+///|
+/// XSD complex type CT_Numbering — Part 1 §17.9.16 numbering. The
+/// root of the numbering table: every abstractNum keyed by
+/// `abstractNumId`, every num keyed by `numId`, and the picture
+/// bullets indexed by `numPicBulletId`. The original `<w:numbering>`
+/// element is preserved so the builder can round-trip the source XML
+/// unchanged.
+pub(all) struct CT_Numbering {
+  /// Original `<w:numbering>` element for round-tripping.
+  element : @xml.Element
+  /// §17.9.1 abstractNum children, keyed by `abstractNumId`.
+  abstract_nums : @hashmap.HashMap[Int, CT_AbstractNum]
+  /// §17.9.15 num children, keyed by `numId`.
+  nums : @hashmap.HashMap[Int, CT_Num]
+  /// §17.9.20 numPicBullet children, keyed by `numPicBulletId`.
+  pic_bullets : @hashmap.HashMap[Int, @xml.Element]
+}
+
+///|
+/// `@hashmap.HashMap` implements neither `Eq` nor `Debug`, so
+/// `CT_Numbering` cannot use `derive(Eq, Debug)`. Equality is decided
+/// by the underlying `<w:numbering>` source element — the index maps
+/// are derived state.
+pub impl Eq for CT_Numbering with equal(self, other) {
+  self.element == other.element
+}
+
+///|
+pub impl @debug.Debug for CT_Numbering with to_repr(self) {
+  @debug.Debug::to_repr(self.element)
+}
+
+///|
+/// XSD complex type CT_Numbering — Part 1 §17.9.16. Decode the
+/// `<w:numbering>` element into the indexed typed view.
+pub fn CT_Numbering::parse(
+  element : @xml.Element,
+) -> CT_Numbering raise SchemaViolation {
+  let abstract_nums : @hashmap.HashMap[Int, CT_AbstractNum] = @hashmap.HashMap::new()
+  let nums : @hashmap.HashMap[Int, CT_Num] = @hashmap.HashMap::new()
+  let pic_bullets : @hashmap.HashMap[Int, @xml.Element] = @hashmap.HashMap::new()
+  for child in element.children {
+    match child {
+      @xml.Element(child_element) => {
+        let name = child_element.name.local_name
+        if name == "abstractNum" {
+          let abs = CT_AbstractNum::parse(child_element)
+          abstract_nums.set(abs.abstract_num_id, abs)
+        } else if name == "num" {
+          let num = CT_Num::parse(child_element)
+          nums.set(num.num_id, num)
+        } else if name == "numPicBullet" {
+          let id = numbering_required_int(
+            child_element, "numPicBulletId", "numPicBullet/@numPicBulletId",
+          )
+          pic_bullets.set(id, child_element)
+        }
+      }
+      _ => ()
+    }
+  }
+  { element, abstract_nums, nums, pic_bullets }
+}
+
+///|
+/// XSD complex type CT_Numbering — Part 1 §17.9.16. Return the
+/// original `<w:numbering>` element for the builder.
+pub fn CT_Numbering::to_element(self : CT_Numbering) -> @xml.Element {
+  self.element
+}
+
+///|
+/// Read a `val` attribute by local name. The numbering elements live
+/// in the WordprocessingML namespace but most carry the `w:` prefix;
+/// matching by local name only avoids prefix lookup churn.
+fn numbering_attr(element : @xml.Element, local_name : String) -> String? {
+  for a in element.attributes {
+    if a.name.local_name == local_name {
+      return Some(a.value)
+    }
+  }
+  None
+}
+
+///|
+/// Read a required integer attribute; raise SchemaViolation if the
+/// attribute is missing or its value does not parse as a decimal
+/// integer.
+fn numbering_required_int(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> Int raise SchemaViolation {
+  let value = match numbering_attr(element, local_name) {
+    Some(text) => text
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Numbering",
+        value=path,
+        reason="Part 1 §17.9: required attribute is missing",
+      )
+  }
+  match numbering_parse_int(value) {
+    Some(n) => n
+    None =>
+      raise SchemaViolation(
+        type_name="CT_Numbering",
+        value=path,
+        reason="Part 1 §17.9: integer attribute is malformed: " + value,
+      )
+  }
+}
+
+///|
+/// Parse a decimal integer with optional leading sign and surrounding
+/// whitespace; return None on any malformed input.
+pub fn numbering_parse_int(text : String) -> Int? {
+  let trimmed = numbering_trim_whitespace(text)
+  if trimmed.length() == 0 {
+    return None
+  }
+  let mut start_index = 0
+  let mut negative = false
+  let first = trimmed.code_unit_at(0).to_int()
+  if first == 0x2D {
+    negative = true
+    start_index = 1
+  } else if first == 0x2B {
+    start_index = 1
+  }
+  if start_index >= trimmed.length() {
+    return None
+  }
+  let mut value = 0
+  for i in start_index..<trimmed.length() {
+    let unit = trimmed.code_unit_at(i).to_int()
+    if unit < 0x30 || unit > 0x39 {
+      return None
+    }
+    value = value * 10 + (unit - 0x30)
+  }
+  if negative {
+    Some(-value)
+  } else {
+    Some(value)
+  }
+}
+
+///|
+fn numbering_trim_whitespace(text : String) -> String {
+  let mut start = 0
+  while start < text.length() {
+    let unit = text.code_unit_at(start).to_int()
+    if unit != 0x20 && unit != 0x09 && unit != 0x0A && unit != 0x0D {
+      break
+    }
+    start = start + 1
+  }
+  let mut end = text.length()
+  while end > start {
+    let unit = text.code_unit_at(end - 1).to_int()
+    if unit != 0x20 && unit != 0x09 && unit != 0x0A && unit != 0x0D {
+      break
+    }
+    end = end - 1
+  }
+  text.unsafe_substring(start~, end~)
+}
+
+///|
+/// Part 1 §17.18.44 — collapse the legacy `left` / `right` aliases for
+/// ST_Jc to the canonical `start` / `end` tokens. Word emits the
+/// legacy spellings frequently enough that strict ST_Jc::parse on
+/// numbering levels would reject otherwise valid documents.
+fn normalise_lvl_jc(value : String) -> String {
+  match value {
+    "left" => "start"
+    "right" => "end"
+    _ => value
+  }
+}

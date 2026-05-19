@@ -1,6 +1,15 @@
+// Part 1 §17.9 numbering inheritance: num -> abstractNum -> lvl
+// resolution with §17.9.8 lvlOverride wins and §17.9.21 numStyleLink
+// follow-up. Operates on `@domain.CT_Numbering` typed view.
+//
+// These resolvers are free functions because §17.9 resolution is an
+// evaluator concern, not a spec-defined CT_Numbering operation; the
+// CT_* typed views in `@domain` only carry the inline-decoded child
+// state.
+
 ///|
 /// Part 1 §17.9 — resolve `(numId, ilvl)` to a `ResolvedLvl` by
-/// chasing the num → abstractNum → optional numStyleLink chain. The
+/// chasing the num -> abstractNum -> optional numStyleLink chain. The
 /// resolution order is, per §17.9.8 / §17.9.15:
 ///
 /// 1. If the num carries a matching `lvlOverride` with a `lvl` body,
@@ -13,12 +22,12 @@
 /// 4. Else, if the abstract definition has `numStyleLink`, follow it
 ///    to another abstract definition whose `styleLink` matches and
 ///    return that definition's lvl (origin = SourceLinkedAbstract).
-pub fn NumberingTable::resolve_level(
-  self : NumberingTable,
+pub fn resolve_level(
+  table : @domain.CT_Numbering,
   num_id : Int,
   ilvl : Int,
 ) -> ResolvedLvl? {
-  let num = match self.nums.get(num_id) {
+  let num = match table.nums.get(num_id) {
     Some(value) => value
     None => return None
   }
@@ -29,7 +38,7 @@ pub fn NumberingTable::resolve_level(
         None =>
           match ovr.start_override {
             Some(start_value) =>
-              match self.find_abstract_lvl(num.abstract_num_id, ilvl) {
+              match find_abstract_lvl(table, num.abstract_num_id, ilvl) {
                 Some(abs_lvl) =>
                   return Some({
                     lvl: { ..abs_lvl, start: Some(start_value) },
@@ -42,17 +51,17 @@ pub fn NumberingTable::resolve_level(
       }
     }
   }
-  match self.find_abstract_lvl(num.abstract_num_id, ilvl) {
+  match find_abstract_lvl(table, num.abstract_num_id, ilvl) {
     Some(lvl) => return Some({ lvl, origin: SourceAbstract })
     None => ()
   }
-  let abs = match self.abstract_nums.get(num.abstract_num_id) {
+  let abs = match table.abstract_nums.get(num.abstract_num_id) {
     Some(value) => value
     None => return None
   }
   match abs.num_style_link {
     Some(style_id) =>
-      match self.find_abstract_by_style_link(style_id) {
+      match find_abstract_by_style_link(table, style_id) {
         Some(linked) =>
           match find_lvl(linked.lvls, ilvl) {
             Some(lvl) => Some({ lvl, origin: SourceLinkedAbstract })
@@ -68,26 +77,26 @@ pub fn NumberingTable::resolve_level(
 /// Return the abstract numbering definition referenced by `numId` (one
 /// link hop). Used by clients that want to inspect the
 /// `multiLevelType` or the full `lvls` array.
-pub fn NumberingTable::abstract_for_num(
-  self : NumberingTable,
+pub fn abstract_for_num(
+  table : @domain.CT_Numbering,
   num_id : Int,
-) -> AbstractNum? {
-  let num = match self.nums.get(num_id) {
+) -> @domain.CT_AbstractNum? {
+  let num = match table.nums.get(num_id) {
     Some(value) => value
     None => return None
   }
-  self.abstract_nums.get(num.abstract_num_id)
+  table.abstract_nums.get(num.abstract_num_id)
 }
 
 ///|
 /// Find the abstract definition's lvl whose `ilvl` matches `target`.
 /// Helper used by `resolve_level`.
-fn NumberingTable::find_abstract_lvl(
-  self : NumberingTable,
+fn find_abstract_lvl(
+  table : @domain.CT_Numbering,
   abstract_num_id : Int,
   target : Int,
-) -> Lvl? {
-  let abs = match self.abstract_nums.get(abstract_num_id) {
+) -> @domain.CT_Lvl? {
+  let abs = match table.abstract_nums.get(abstract_num_id) {
     Some(value) => value
     None => return None
   }
@@ -95,12 +104,12 @@ fn NumberingTable::find_abstract_lvl(
 }
 
 ///|
-fn NumberingTable::find_abstract_by_style_link(
-  self : NumberingTable,
+fn find_abstract_by_style_link(
+  table : @domain.CT_Numbering,
   style_id : String,
-) -> AbstractNum? {
-  let mut found : AbstractNum? = None
-  for entry in self.abstract_nums {
+) -> @domain.CT_AbstractNum? {
+  let mut found : @domain.CT_AbstractNum? = None
+  for entry in table.abstract_nums {
     let (_, abs) = entry
     match abs.style_link {
       Some(link) => if link == style_id { found = Some(abs) }
@@ -111,7 +120,7 @@ fn NumberingTable::find_abstract_by_style_link(
 }
 
 ///|
-fn find_lvl(lvls : Array[Lvl], target : Int) -> Lvl? {
+fn find_lvl(lvls : Array[@domain.CT_Lvl], target : Int) -> @domain.CT_Lvl? {
   for lvl in lvls {
     if lvl.ilvl == target {
       return Some(lvl)
@@ -124,8 +133,8 @@ fn find_lvl(lvls : Array[Lvl], target : Int) -> Lvl? {
 /// Convenience: read a paragraph's `numPr` (numId + ilvl) and return
 /// the resolved level. `num_pr` is the `p:pPr/p:numPr` element from
 /// §17.3.1.19; missing or malformed children yield `None`.
-pub fn NumberingTable::level_for_paragraph(
-  self : NumberingTable,
+pub fn level_for_paragraph(
+  table : @domain.CT_Numbering,
   num_pr : @xml.Element,
 ) -> ResolvedLvl? {
   let mut num_id_opt : Int? = None
@@ -151,13 +160,15 @@ pub fn NumberingTable::level_for_paragraph(
     Some(value) => value
     None => 0
   }
-  self.resolve_level(num_id, ilvl)
+  resolve_level(table, num_id, ilvl)
 }
 
 ///|
 fn paragraph_val_int(element : @xml.Element) -> Int? {
-  match attr(element, "val") {
-    Some(text) => parse_int(text)
-    None => None
+  for a in element.attributes {
+    if a.name.local_name == "val" {
+      return @domain.numbering_parse_int(a.value)
+    }
   }
+  None
 }

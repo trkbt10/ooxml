@@ -2,11 +2,12 @@
 //
 // WordprocessingML §17.9 numbering inheritance: num → abstractNum →
 // lvl resolution with §17.9.8 lvlOverride wins and §17.9.21
-// numStyleLink follow-up.
+// numStyleLink follow-up. CT_*/ST_* types live in
+// `@wordprocessing_ml/domain`; this package keeps the resolver
+// pipeline, the §17.9.11 lvlText formatter, and runtime provenance
+// markers.
 
 import {
-  "moonbitlang/core/hashmap" @hashmap,
-  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/xml" @xml,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @domain,
 }

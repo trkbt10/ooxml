@@ -3,123 +3,40 @@ package "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver"
 
 import {
   "moonbitlang/core/debug",
-  "moonbitlang/core/hashmap",
-  "trkbt10/ooxml/ecma376/opc/errors",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
   "trkbt10/ooxml/xml",
 }
 
 // Values
-pub fn decode_abstract_num(@domain.CT_AbstractNum) -> AbstractNum raise @errors.SchemaViolation
+pub fn abstract_for_num(@domain.CT_Numbering, Int) -> @domain.CT_AbstractNum?
 
-pub fn decode_lvl(@domain.CT_Lvl) -> Lvl raise @errors.SchemaViolation
+pub fn decode_abstract_num(@xml.Element) -> @domain.CT_AbstractNum raise @domain.SchemaViolation
 
-pub fn decode_num(@domain.CT_Num) -> Num raise @errors.SchemaViolation
+pub fn decode_lvl(@xml.Element) -> @domain.CT_Lvl raise @domain.SchemaViolation
 
-pub fn format_lvl_text(String, Array[Int], Array[NumFormat]) -> String
+pub fn decode_num(@xml.Element) -> @domain.CT_Num raise @domain.SchemaViolation
+
+pub fn decode_numbering(@xml.Element) -> @domain.CT_Numbering raise @domain.SchemaViolation
+
+pub fn format_lvl_text(String, Array[Int], Array[@domain.ST_NumberFormat]) -> String
+
+pub fn level_for_paragraph(@domain.CT_Numbering, @xml.Element) -> ResolvedLvl?
 
 pub fn numbering_part1_17_9_section_name() -> String
+
+pub fn resolve_level(@domain.CT_Numbering, Int, Int) -> ResolvedLvl?
 
 // Errors
 
 // Types and methods
-pub(all) struct AbstractNum {
-  abstract_num_id : Int
-  multi_level_type : MultiLevelType?
-  name : String?
-  nsid : String?
-  tmpl : String?
-  style_link : String?
-  num_style_link : String?
-  lvls : Array[Lvl]
-} derive(Eq, @debug.Debug)
-
 pub(all) enum LevelOrigin {
   SourceOverride
   SourceAbstract
   SourceLinkedAbstract
 } derive(Eq, @debug.Debug)
 
-pub(all) struct Lvl {
-  ilvl : Int
-  start : Int?
-  num_fmt : NumFormat?
-  lvl_text : String?
-  lvl_jc : LvlJustification?
-  lvl_restart : Int?
-  p_style : String?
-  suff : LvlSuffix?
-  is_lgl : Bool
-  lvl_pic_bullet_id : Int?
-  p_pr_element : @xml.Element?
-  r_pr_element : @xml.Element?
-} derive(Eq, @debug.Debug)
-pub fn Lvl::has_pic_bullet(Self) -> Bool
-
-pub(all) enum LvlJustification {
-  JcStart
-  JcCenter
-  JcEnd
-  JcBoth
-  JcNum
-} derive(Eq, @debug.Debug)
-pub fn LvlJustification::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) struct LvlOverride {
-  ilvl : Int
-  start_override : Int?
-  lvl : Lvl?
-} derive(Eq, @debug.Debug)
-
-pub(all) enum LvlSuffix {
-  SuffTab
-  SuffSpace
-  SuffNothing
-} derive(Eq, @debug.Debug)
-pub fn LvlSuffix::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) enum MultiLevelType {
-  MltSingleLevel
-  MltMultilevel
-  MltHybridMultilevel
-} derive(Eq, @debug.Debug)
-pub fn MultiLevelType::from_attr(String) -> Self raise @errors.SchemaViolation
-
-pub(all) struct Num {
-  num_id : Int
-  abstract_num_id : Int
-  lvl_overrides : Array[LvlOverride]
-} derive(Eq, @debug.Debug)
-
-pub(all) enum NumFormat {
-  NfDecimal
-  NfUpperRoman
-  NfLowerRoman
-  NfUpperLetter
-  NfLowerLetter
-  NfOrdinal
-  NfCardinalText
-  NfOrdinalText
-  NfBullet
-  NfNone
-  NfDecimalZero
-} derive(Eq, @debug.Debug)
-pub fn NumFormat::format(Self, Int) -> String
-pub fn NumFormat::from_attr(String) -> Self
-pub fn NumFormat::from_attr_strict(String) -> Self raise @errors.SchemaViolation
-
-pub(all) struct NumberingTable {
-  abstract_nums : @hashmap.HashMap[Int, AbstractNum]
-  nums : @hashmap.HashMap[Int, Num]
-  pic_bullets : @hashmap.HashMap[Int, @xml.Element]
-}
-pub fn NumberingTable::abstract_for_num(Self, Int) -> AbstractNum?
-pub fn NumberingTable::from_numbering(@domain.CT_Numbering) -> Self raise @errors.SchemaViolation
-pub fn NumberingTable::level_for_paragraph(Self, @xml.Element) -> ResolvedLvl?
-pub fn NumberingTable::resolve_level(Self, Int, Int) -> ResolvedLvl?
-
 pub(all) struct ResolvedLvl {
-  lvl : Lvl
+  lvl : @domain.CT_Lvl
   origin : LevelOrigin
 } derive(Eq, @debug.Debug)
 
