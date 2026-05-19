@@ -39,6 +39,22 @@ test "docx facade renders minimal html" {
 }
 
 ///|
+test "docx facade appends paragraph and round-trips" {
+  let document = open(fixture_bytes())
+  let with_para = try? document.append_paragraph("appended line")
+  match with_para {
+    Ok(modified) => {
+      let saved = modified.save()
+      let reopened = open(saved)
+      assert_true(reopened.to_html().contains("appended line"))
+      // original 'Hello docx' still present
+      assert_true(reopened.to_html().contains("Hello docx"))
+    }
+    Err(_) => assert_true(false)
+  }
+}
+
+///|
 test "docx facade preserves text across two save cycles" {
   let initial = open(fixture_bytes())
   let cycle1_bytes = initial.save()

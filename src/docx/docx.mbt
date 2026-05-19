@@ -381,3 +381,112 @@ pub fn Document::evaluate_simple_field(
 }
 
 ///|
+/// Append a §17.3.1.22 `<w:p>` paragraph containing a single text run
+/// at the end of the document body. Returns a new Document with the
+/// appended paragraph; the original Document is unchanged. The runs
+/// receive no run properties (`<w:rPr>`); use the typed-CT-edit path
+/// if more elaborate formatting is required.
+pub fn Document::append_paragraph(
+  self : Document,
+  text : String,
+) -> Document raise OpenError {
+  match self.main.body {
+    None =>
+      raise OpenError(
+        kind="UnsupportedFeature",
+        path="document",
+        reason="document has no body to append into",
+      )
+    Some(body) => {
+      let w_name = build_w_qname
+      let t_element : @xml.Element = {
+        name: w_name("t"),
+        attributes: [],
+        children: [@xml.Node::Text(text)],
+      }
+      let r_element : @xml.Element = {
+        name: w_name("r"),
+        attributes: [],
+        children: [@xml.Node::Element(t_element)],
+      }
+      let p_element : @xml.Element = {
+        name: w_name("p"),
+        attributes: [],
+        children: [@xml.Node::Element(r_element)],
+      }
+      // Append the new paragraph to both the typed projection and the
+      // source element. Builder writes value.element rather than typed
+      // fields, so the element-level mutation is what survives a
+      // save/re-open round-trip.
+      let new_elements : Array[@xml.Element] = []
+      for e in body.block_level_elts.elements {
+        new_elements.push(e)
+      }
+      new_elements.push(p_element)
+      let new_block_level = @wml.EG_BlockLevelElts::new(new_elements)
+      let new_body_children : Array[@xml.Node] = []
+      for child in body.element.children {
+        new_body_children.push(child)
+      }
+      new_body_children.push(@xml.Node::Element(p_element))
+      let new_body_element : @xml.Element = {
+        name: body.element.name,
+        attributes: body.element.attributes,
+        children: new_body_children,
+      }
+      let new_body : @wml.CT_Body = {
+        element: new_body_element,
+        block_level_elts: new_block_level,
+        sect_pr: body.sect_pr,
+      }
+      let new_doc_children : Array[@xml.Node] = []
+      for child in self.main.element.children {
+        match child {
+          @xml.Element(e) =>
+            if e.name.local_name == "body" {
+              new_doc_children.push(@xml.Node::Element(new_body_element))
+            } else {
+              new_doc_children.push(@xml.Node::Element(e))
+            }
+          other => new_doc_children.push(other)
+        }
+      }
+      let new_doc_element : @xml.Element = {
+        name: self.main.element.name,
+        attributes: self.main.element.attributes,
+        children: new_doc_children,
+      }
+      let new_document : @wml.CT_Document = {
+        element: new_doc_element,
+        background: self.main.background,
+        body: Some(new_body),
+        conformance: self.main.conformance,
+      }
+      {
+        package: self.package,
+        main_part: self.main_part,
+        main: new_document,
+        headers: self.headers,
+        footers: self.footers,
+        styles: self.styles,
+        numbering: self.numbering,
+        settings: self.settings,
+        fonts: self.fonts,
+        comments: self.comments,
+        footnotes: self.footnotes,
+        endnotes: self.endnotes,
+      }
+    }
+  }
+}
+
+///|
+fn build_w_qname(local_name : String) -> @xml.QName {
+  {
+    prefix: Some("w"),
+    local_name,
+    ns: Some("http://schemas.openxmlformats.org/wordprocessingml/2006/main"),
+  }
+}
+
+///|
