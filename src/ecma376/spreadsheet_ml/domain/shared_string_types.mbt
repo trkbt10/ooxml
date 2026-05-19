@@ -172,110 +172,222 @@ pub fn CT_PhoneticRun::new(element : @xml.Element) -> CT_PhoneticRun {
 }
 
 ///|
-/// XSD complex type CT_RElt.
+/// XSD complex type CT_RElt — Part 1 §18.4.4 (`<r>` Rich Text Run). A
+/// rich-text run carries an optional `<rPr>` (CT_RPrElt) formatting block
+/// followed by a required `<t>` (s:ST_Xstring) text payload.
 pub(all) struct CT_RElt {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <rPr> (CT_RPrElt) — optional run-property formatting block.
+  r_pr : CT_RPrElt?
+  /// <t> (s:ST_Xstring) — required text content.
+  t : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_RElt::new(element : @xml.Element) -> CT_RElt {
-  let group_name = shared_string_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut r_pr : CT_RPrElt? = None
+  let mut t : String = ""
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "rPr" => r_pr = Some(CT_RPrElt::new(child_element))
+        "t" => t = element_text(child_element)
+        _ => ()
+      }
+    }
   }
+  { element, r_pr, t }
 }
 
 ///|
-/// XSD complex type CT_RPrElt: rich text run properties with font, charset, family, bold, italic, strike, color, size, underline, vertical alignment, scheme children.
+/// XSD complex type CT_RPrElt — Part 1 §18.4.7 (`<rPr>` Run Properties).
+/// Unbounded choice of font / formatting child elements. Each variant
+/// records zero or more occurrences (the XSD permits repetition under
+/// `<xsd:choice maxOccurs="unbounded">`) so we preserve every observed
+/// child in a per-name array. Per the XSD, all child elements are
+/// optional within the choice.
 pub(all) struct CT_RPrElt {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <rFont>* (CT_FontName) — zero or more rFont entries.
+  r_font : Array[@xml.Element]
+  /// <charset>* (CT_IntProperty) — zero or more charset entries.
+  charset : Array[@xml.Element]
+  /// <family>* (CT_IntProperty) — zero or more family entries.
+  family : Array[@xml.Element]
+  /// <b>* (CT_BooleanProperty) — zero or more bold entries.
+  b : Array[@xml.Element]
+  /// <i>* (CT_BooleanProperty) — zero or more italic entries.
+  i : Array[@xml.Element]
+  /// <strike>* (CT_BooleanProperty) — zero or more strike entries.
+  strike : Array[@xml.Element]
+  /// <outline>* (CT_BooleanProperty) — zero or more outline entries.
+  outline : Array[@xml.Element]
+  /// <shadow>* (CT_BooleanProperty) — zero or more shadow entries.
+  shadow : Array[@xml.Element]
+  /// <condense>* (CT_BooleanProperty) — zero or more condense entries.
+  condense : Array[@xml.Element]
+  /// <extend>* (CT_BooleanProperty) — zero or more extend entries.
+  extend : Array[@xml.Element]
+  /// <color>* (CT_Color) — zero or more color entries.
+  color : Array[@xml.Element]
+  /// <sz>* (CT_FontSize) — zero or more size entries.
+  sz : Array[@xml.Element]
+  /// <u>* (CT_UnderlineProperty) — zero or more underline entries.
+  u : Array[@xml.Element]
+  /// <vertAlign>* (CT_VerticalAlignFontProperty) — zero or more vertical
+  /// alignment entries.
+  vert_align : Array[@xml.Element]
+  /// <scheme>* (CT_FontScheme) — zero or more scheme entries.
+  scheme : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_RPrElt::new(element : @xml.Element) -> CT_RPrElt {
-  let group_name = shared_string_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let r_font : Array[@xml.Element] = []
+  let charset : Array[@xml.Element] = []
+  let family : Array[@xml.Element] = []
+  let b : Array[@xml.Element] = []
+  let i : Array[@xml.Element] = []
+  let strike : Array[@xml.Element] = []
+  let outline : Array[@xml.Element] = []
+  let shadow : Array[@xml.Element] = []
+  let condense : Array[@xml.Element] = []
+  let extend : Array[@xml.Element] = []
+  let color : Array[@xml.Element] = []
+  let sz : Array[@xml.Element] = []
+  let u : Array[@xml.Element] = []
+  let vert_align : Array[@xml.Element] = []
+  let scheme : Array[@xml.Element] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "rFont" => r_font.push(child_element)
+        "charset" => charset.push(child_element)
+        "family" => family.push(child_element)
+        "b" => b.push(child_element)
+        "i" => i.push(child_element)
+        "strike" => strike.push(child_element)
+        "outline" => outline.push(child_element)
+        "shadow" => shadow.push(child_element)
+        "condense" => condense.push(child_element)
+        "extend" => extend.push(child_element)
+        "color" => color.push(child_element)
+        "sz" => sz.push(child_element)
+        "u" => u.push(child_element)
+        "vertAlign" => vert_align.push(child_element)
+        "scheme" => scheme.push(child_element)
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    r_font,
+    charset,
+    family,
+    b,
+    i,
+    strike,
+    outline,
+    shadow,
+    condense,
+    extend,
+    color,
+    sz,
+    u,
+    vert_align,
+    scheme,
   }
 }
 
 ///|
-/// XSD complex type CT_Rst.
+/// XSD complex type CT_Rst — Part 1 §18.4.8 (`<si>` String Item). A
+/// shared-string-table entry. Sequence children: optional `<t>` plain
+/// text payload, an unbounded list of `<r>` rich-text runs (CT_RElt),
+/// an unbounded list of `<rPh>` phonetic runs (CT_PhoneticRun), and an
+/// optional `<phoneticPr>` (CT_PhoneticPr) phonetic-property block.
 pub(all) struct CT_Rst {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <t> (s:ST_Xstring) — optional plain-text payload.
+  t : String?
+  /// <r>* (CT_RElt) — zero or more rich-text runs.
+  r : Array[CT_RElt]
+  /// <rPh>* (CT_PhoneticRun) — zero or more phonetic runs.
+  r_ph : Array[CT_PhoneticRun]
+  /// <phoneticPr> (CT_PhoneticPr) — optional phonetic-property block.
+  phonetic_pr : CT_PhoneticPr?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Rst::new(element : @xml.Element) -> CT_Rst {
-  let group_name = shared_string_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut t : String? = None
+  let r : Array[CT_RElt] = []
+  let r_ph : Array[CT_PhoneticRun] = []
+  let mut phonetic_pr : CT_PhoneticPr? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "t" => t = Some(element_text(child_element))
+        "r" => r.push(CT_RElt::new(child_element))
+        "rPh" => r_ph.push(CT_PhoneticRun::new(child_element))
+        "phoneticPr" => phonetic_pr = Some(CT_PhoneticPr::new(child_element))
+        _ => ()
+      }
+    }
   }
+  { element, t, r, r_ph, phonetic_pr }
 }
 
 ///|
-/// XSD complex type CT_PhoneticPr.
+/// XSD complex type CT_PhoneticPr — Part 1 §18.4.3 (`<phoneticPr>`).
+/// Attribute-only complex type that records phonetic-text rendering
+/// preferences. Required `@fontId` (ST_FontId, font-table reference);
+/// optional `@type` (ST_PhoneticType, default `fullwidthKatakana`) and
+/// `@alignment` (ST_PhoneticAlignment, default `left`).
 pub(all) struct CT_PhoneticPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @fontId (ST_FontId / xsd:unsignedInt) — required font-table reference.
+  font_id : Int
+  /// @type (ST_PhoneticType) — optional rendering style; default
+  /// `fullwidthKatakana` per the XSD.
+  type_ : String
+  /// @alignment (ST_PhoneticAlignment) — optional alignment; default
+  /// `left` per the XSD.
+  alignment : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PhoneticPr::new(element : @xml.Element) -> CT_PhoneticPr {
-  let group_name = shared_string_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let font_id = attr_uint(element, "fontId", 0)
+  let type_ = match attr(element, "type") {
+    Some(value) => value
+    None => "fullwidthKatakana"
   }
-}
-
-///|
-fn shared_string_is_element(
-  element : @xml.Element,
-  local_name : String,
-) -> Bool {
-  element.name.local_name == local_name
-}
-
-///|
-fn shared_string_text_element_value(element : @xml.Element) -> String {
-  let mut out = ""
-  for child in element.children {
-    match child {
-      @xml.Node::Text(value) => out = out + value
-      @xml.Node::CData(value) => out = out + value
-      _ => ()
-    }
+  let alignment = match attr(element, "alignment") {
+    Some(value) => value
+    None => "left"
   }
-  out
+  { element, font_id, type_, alignment }
 }
 
 ///|
 /// §18.4 — concatenate the rich-text run elements of CT_Rst into the
-/// plain-text string value the cell would display. Joins each CT_RElt
-/// `t` (text) child verbatim, dropping rPr formatting markup.
+/// plain-text string value the cell would display. Uses the typed `<t>`
+/// payload when present, otherwise walks the typed `<r>` rich-text run
+/// array and concatenates each CT_RElt's text content; `<rPr>` formatting
+/// markup is intentionally dropped.
 pub fn CT_Rst::to_plain_text(self : CT_Rst) -> String {
   let mut out = ""
-  for child in self.element.children {
-    match child {
-      @xml.Node::Element(element) =>
-        if shared_string_is_element(element, "t") {
-          out = out + shared_string_text_element_value(element)
-        } else if shared_string_is_element(element, "r") {
-          out = out + CT_RElt::new(element).to_plain_text()
-        }
-      _ => ()
-    }
+  match self.t {
+    Some(text) => out = out + text
+    None => ()
+  }
+  for run in self.r {
+    out = out + run.to_plain_text()
   }
   out
 }
@@ -311,19 +423,9 @@ pub fn CT_Sst::count(self : CT_Sst) -> Int {
 }
 
 ///|
-/// §18.4 — extract plain text from the rich-text run element. The
-/// run's text is in the `<t>` child; rPr formatting markup is ignored
-/// for the purposes of cell-display value computation.
+/// §18.4 — extract plain text from the rich-text run element. The run's
+/// typed `<t>` text payload is returned verbatim. The `<rPr>` formatting
+/// block is ignored for the purposes of cell-display value computation.
 pub fn CT_RElt::to_plain_text(self : CT_RElt) -> String {
-  let mut out = ""
-  for child in self.element.children {
-    match child {
-      @xml.Node::Element(element) =>
-        if shared_string_is_element(element, "t") {
-          out = out + shared_string_text_element_value(element)
-        }
-      _ => ()
-    }
-  }
-  out
+  self.t
 }
