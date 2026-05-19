@@ -1810,3 +1810,116 @@ fn element_text(element : @xml.Element) -> String {
   }
   buf.to_string()
 }
+
+///|
+/// Parse an attribute as xsd:int (signed). Returns None when the
+/// attribute is missing or unparseable. Sign is preserved.
+fn attr_int_opt(element : @xml.Element, local_name : String) -> Int? {
+  match attr(element, local_name) {
+    Some(value) => parse_int_text(value)
+    None => None
+  }
+}
+
+///|
+/// Parse an attribute as xsd:int (signed) with a default fallback.
+fn attr_int(element : @xml.Element, local_name : String, default : Int) -> Int {
+  match attr_int_opt(element, local_name) {
+    Some(n) => n
+    None => default
+  }
+}
+
+///|
+/// Helper: parse a signed integer per xsd:int. Whitespace is trimmed;
+/// empty / non-digit tokens are rejected. Both `+` and `-` prefixes are
+/// accepted per XSD §3.3.17 lexical form.
+fn parse_int_text(text : String) -> Int? {
+  let trimmed = trim_whitespace(text)
+  if trimmed.length() == 0 {
+    return None
+  }
+  try {
+    let value : Int64 = @strconv.from_str(trimmed)
+    Some(value.to_int())
+  } catch {
+    _ => None
+  }
+}
+
+///|
+/// Parse an attribute as a hex-encoded unsigned integer
+/// (ST_UnsignedIntHex from sml.xsd, four-byte fixed length). Returns
+/// None when absent or malformed.
+fn attr_hex_uint_opt(element : @xml.Element, local_name : String) -> Int? {
+  match attr(element, local_name) {
+    Some(value) => parse_hex_uint_text(value)
+    None => None
+  }
+}
+
+///|
+/// Helper: parse a hex-encoded unsigned integer. Accepts both upper and
+/// lower-case hex digits. Up to eight hex digits (xsd:hexBinary length=4)
+/// pack into a single Int payload. Returns None on empty / non-hex input.
+fn parse_hex_uint_text(text : String) -> Int? {
+  let trimmed = trim_whitespace(text)
+  let len = trimmed.length()
+  if len == 0 || len > 8 {
+    return None
+  }
+  let mut acc : Int = 0
+  for index in 0..<len {
+    let ch = trimmed.code_unit_at(index).to_int()
+    let digit = if ch >= '0'.to_int() && ch <= '9'.to_int() {
+      ch - '0'.to_int()
+    } else if ch >= 'a'.to_int() && ch <= 'f'.to_int() {
+      ch - 'a'.to_int() + 10
+    } else if ch >= 'A'.to_int() && ch <= 'F'.to_int() {
+      ch - 'A'.to_int() + 10
+    } else {
+      return None
+    }
+    acc = acc * 16 + digit
+  }
+  Some(acc)
+}
+
+///|
+/// Parse an attribute as xsd:double. Returns None when absent or
+/// unparseable. Both signs and exponent forms accepted per XSD §3.2.5.
+fn attr_double_opt(element : @xml.Element, local_name : String) -> Double? {
+  match attr(element, local_name) {
+    Some(value) => parse_double_text(value)
+    None => None
+  }
+}
+
+///|
+/// Parse an attribute as xsd:double with a default fallback.
+fn attr_double(
+  element : @xml.Element,
+  local_name : String,
+  default : Double,
+) -> Double {
+  match attr_double_opt(element, local_name) {
+    Some(d) => d
+    None => default
+  }
+}
+
+///|
+/// Helper: parse a floating-point value per xsd:double. Whitespace is
+/// trimmed; empty tokens are rejected.
+fn parse_double_text(text : String) -> Double? {
+  let trimmed = trim_whitespace(text)
+  if trimmed.length() == 0 {
+    return None
+  }
+  try {
+    let value : Double = @strconv.from_str(trimmed)
+    Some(value)
+  } catch {
+    _ => None
+  }
+}

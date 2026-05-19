@@ -374,6 +374,8 @@ pub fn CT_ColFields::new(@xml.Element) -> Self
 
 pub(all) struct CT_ColHierarchiesUsage {
   element : @xml.Element
+  count : Int?
+  col_hierarchy_usage : Array[CT_HierarchyUsage]
 } derive(Eq, @debug.Debug)
 pub fn CT_ColHierarchiesUsage::new(@xml.Element) -> Self
 
@@ -473,6 +475,19 @@ pub fn CT_Controls::new(@xml.Element) -> Self
 
 pub(all) struct CT_CsPageSetup {
   element : @xml.Element
+  paper_size : Int
+  paper_height : String?
+  paper_width : String?
+  first_page_number : Int
+  orientation : String
+  use_printer_defaults : Bool
+  black_and_white : Bool
+  draft : Bool
+  use_first_page_number : Bool
+  horizontal_dpi : Int
+  vertical_dpi : Int
+  copies : Int
+  r_id : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_CsPageSetup::new(@xml.Element) -> Self
 
@@ -772,6 +787,7 @@ pub fn CT_ExternalSheetData::new(@xml.Element) -> Self
 
 pub(all) struct CT_ExternalSheetDataSet {
   element : @xml.Element
+  sheet_data : Array[CT_ExternalSheetData]
 } derive(Eq, @debug.Debug)
 pub fn CT_ExternalSheetDataSet::new(@xml.Element) -> Self
 
@@ -975,6 +991,7 @@ pub fn CT_HeaderFooter::new(@xml.Element) -> Self
 
 pub(all) struct CT_HierarchyUsage {
   element : @xml.Element
+  hierarchy_usage : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_HierarchyUsage::new(@xml.Element) -> Self
 
@@ -1090,71 +1107,126 @@ pub fn CT_MapInfo::new(@xml.Element) -> Self
 
 pub(all) struct CT_Mdx {
   element : @xml.Element
+  n : Int
+  f : String
+  choice : CT_Mdx_Choice?
 } derive(Eq, @debug.Debug)
 pub fn CT_Mdx::new(@xml.Element) -> Self
 
 pub(all) struct CT_MdxKPI {
   element : @xml.Element
+  n : Int
+  np : Int
+  p : String
 } derive(Eq, @debug.Debug)
 pub fn CT_MdxKPI::new(@xml.Element) -> Self
 
 pub(all) struct CT_MdxMemeberProp {
   element : @xml.Element
+  n : Int
+  np : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_MdxMemeberProp::new(@xml.Element) -> Self
 
 pub(all) struct CT_MdxMetadata {
   element : @xml.Element
+  count : Int
+  mdx : Array[CT_Mdx]
 } derive(Eq, @debug.Debug)
 pub fn CT_MdxMetadata::new(@xml.Element) -> Self
 
 pub(all) struct CT_MdxSet {
   element : @xml.Element
+  ns : Int
+  c : Int
+  o : String
+  n : Array[CT_MetadataStringIndex]
 } derive(Eq, @debug.Debug)
 pub fn CT_MdxSet::new(@xml.Element) -> Self
 
 pub(all) struct CT_MdxTuple {
   element : @xml.Element
+  c : Int
+  ct : String?
+  si : Int?
+  fi : Int?
+  bc : Int?
+  fc : Int?
+  i : Bool
+  u : Bool
+  st : Bool
+  b : Bool
+  n : Array[CT_MetadataStringIndex]
 } derive(Eq, @debug.Debug)
 pub fn CT_MdxTuple::new(@xml.Element) -> Self
 
+pub(all) enum CT_Mdx_Choice {
+  T(CT_MdxTuple)
+  Ms(CT_MdxSet)
+  P(CT_MdxMemeberProp)
+  K(CT_MdxKPI)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct CT_MeasureDimensionMap {
   element : @xml.Element
+  measure_group : Int?
+  dimension : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_MeasureDimensionMap::new(@xml.Element) -> Self
 
 pub(all) struct CT_MeasureDimensionMaps {
   element : @xml.Element
+  count : Int?
+  map : Array[CT_MeasureDimensionMap]
 } derive(Eq, @debug.Debug)
 pub fn CT_MeasureDimensionMaps::new(@xml.Element) -> Self
 
 pub(all) struct CT_MeasureGroup {
   element : @xml.Element
+  name : String
+  caption : String
 } derive(Eq, @debug.Debug)
 pub fn CT_MeasureGroup::new(@xml.Element) -> Self
 
 pub(all) struct CT_MeasureGroups {
   element : @xml.Element
+  count : Int?
+  measure_group : Array[CT_MeasureGroup]
 } derive(Eq, @debug.Debug)
 pub fn CT_MeasureGroups::new(@xml.Element) -> Self
 
 pub(all) struct CT_Member {
   element : @xml.Element
+  name : String
 } derive(Eq, @debug.Debug)
 pub fn CT_Member::new(@xml.Element) -> Self
 
 pub(all) struct CT_MemberProperties {
   element : @xml.Element
+  count : Int?
+  mp : Array[CT_MemberProperty]
 } derive(Eq, @debug.Debug)
 pub fn CT_MemberProperties::new(@xml.Element) -> Self
 
 pub(all) struct CT_MemberProperty {
   element : @xml.Element
+  name : String?
+  show_cell : Bool
+  show_tip : Bool
+  show_as_caption : Bool
+  name_len : Int?
+  p_pos : Int?
+  p_len : Int?
+  level : Int?
+  field : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_MemberProperty::new(@xml.Element) -> Self
 
 pub(all) struct CT_Members {
   element : @xml.Element
+  count : Int?
+  level : Int?
+  member : Array[CT_Member]
 } derive(Eq, @debug.Debug)
 pub fn CT_Members::new(@xml.Element) -> Self
 
@@ -1409,11 +1481,32 @@ pub fn CT_PageMargins::new(@xml.Element) -> Self
 
 pub(all) struct CT_PageSetUpPr {
   element : @xml.Element
+  auto_page_breaks : Bool
+  fit_to_page : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_PageSetUpPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_PageSetup {
   element : @xml.Element
+  paper_size : Int
+  paper_height : String?
+  paper_width : String?
+  scale : Int
+  first_page_number : Int
+  fit_to_width : Int
+  fit_to_height : Int
+  page_order : String
+  orientation : String
+  use_printer_defaults : Bool
+  black_and_white : Bool
+  draft : Bool
+  cell_comments : String
+  use_first_page_number : Bool
+  errors : String
+  horizontal_dpi : Int
+  vertical_dpi : Int
+  copies : Int
+  r_id : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_PageSetup::new(@xml.Element) -> Self
 
@@ -1449,21 +1542,59 @@ pub fn CT_PhoneticPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_PhoneticRun {
   element : @xml.Element
+  sb : Int
+  eb : Int
+  t : String
 } derive(Eq, @debug.Debug)
 pub fn CT_PhoneticRun::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotArea {
   element : @xml.Element
+  field : Int?
+  type_ : String
+  data_only : Bool
+  label_only : Bool
+  grand_row : Bool
+  grand_col : Bool
+  cache_index : Bool
+  outline : Bool
+  offset : String?
+  collapsed_levels_are_subtotals : Bool
+  axis : String?
+  field_position : Int?
+  references : CT_PivotAreaReferences?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotArea::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotAreaReference {
   element : @xml.Element
+  field : Int?
+  count : Int?
+  selected : Bool
+  by_position : Bool
+  relative : Bool
+  default_subtotal : Bool
+  sum_subtotal : Bool
+  count_a_subtotal : Bool
+  avg_subtotal : Bool
+  max_subtotal : Bool
+  min_subtotal : Bool
+  product_subtotal : Bool
+  count_subtotal : Bool
+  std_dev_subtotal : Bool
+  std_dev_p_subtotal : Bool
+  var_subtotal : Bool
+  var_p_subtotal : Bool
+  x : Array[CT_Index]
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotAreaReference::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotAreaReferences {
   element : @xml.Element
+  count : Int?
+  reference : Array[CT_PivotAreaReference]
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotAreaReferences::new(@xml.Element) -> Self
 
@@ -1476,6 +1607,8 @@ pub fn CT_PivotAreas::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotCache {
   element : @xml.Element
+  cache_id : Int
+  r_id : String
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotCache::new(@xml.Element) -> Self
 
@@ -1523,11 +1656,16 @@ pub fn CT_PivotCacheRecords::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotCaches {
   element : @xml.Element
+  pivot_cache : Array[CT_PivotCache]
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotCaches::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotDimension {
   element : @xml.Element
+  measure : Bool
+  name : String
+  unique_name : String
+  caption : String
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotDimension::new(@xml.Element) -> Self
 
@@ -1596,11 +1734,26 @@ pub fn CT_PivotFields::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotFilter {
   element : @xml.Element
+  fld : Int
+  mp_fld : Int?
+  type_ : String
+  eval_order : Int
+  id : Int
+  i_measure_hier : Int?
+  i_measure_fld : Int?
+  name : String?
+  description : String?
+  string_value1 : String?
+  string_value2 : String?
+  auto_filter : @xml.Element?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotFilter::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotFilters {
   element : @xml.Element
+  count : Int
+  filter : Array[CT_PivotFilter]
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotFilters::new(@xml.Element) -> Self
 
@@ -1632,11 +1785,35 @@ pub fn CT_PivotHierarchy::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotSelection {
   element : @xml.Element
+  pane : String
+  show_header : Bool
+  label : Bool
+  data : Bool
+  extendable : Bool
+  count : Int
+  axis : String?
+  dimension : Int
+  start : Int
+  min_ : Int
+  max_ : Int
+  active_row : Int
+  active_col : Int
+  previous_row : Int
+  previous_col : Int
+  click : Int
+  r_id : String?
+  pivot_area : CT_PivotArea?
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotSelection::new(@xml.Element) -> Self
 
 pub(all) struct CT_PivotTableStyle {
   element : @xml.Element
+  name : String?
+  show_row_headers : Bool?
+  show_col_headers : Bool?
+  show_row_stripes : Bool?
+  show_col_stripes : Bool?
+  show_last_column : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_PivotTableStyle::new(@xml.Element) -> Self
 
@@ -1671,26 +1848,73 @@ pub fn CT_QueryCache::new(@xml.Element) -> Self
 
 pub(all) struct CT_QueryTable {
   element : @xml.Element
+  name : String
+  headers : Bool
+  row_numbers : Bool
+  disable_refresh : Bool
+  background_refresh : Bool
+  first_background_refresh : Bool
+  refresh_on_load : Bool
+  grow_shrink_type : String
+  fill_formulas : Bool
+  remove_data_on_save : Bool
+  disable_edit : Bool
+  preserve_formatting : Bool
+  adjust_column_width : Bool
+  intermediate : Bool
+  connection_id : Int
+  auto_format_id : Int?
+  apply_number_formats : Bool?
+  apply_border_formats : Bool?
+  apply_font_formats : Bool?
+  apply_pattern_formats : Bool?
+  apply_alignment_formats : Bool?
+  apply_width_height_formats : Bool?
+  query_table_refresh : CT_QueryTableRefresh?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_QueryTable::new(@xml.Element) -> Self
 
 pub(all) struct CT_QueryTableDeletedFields {
   element : @xml.Element
+  count : Int?
+  deleted_field : Array[CT_DeletedField]
 } derive(Eq, @debug.Debug)
 pub fn CT_QueryTableDeletedFields::new(@xml.Element) -> Self
 
 pub(all) struct CT_QueryTableField {
   element : @xml.Element
+  id : Int
+  name : String?
+  data_bound : Bool
+  row_numbers : Bool
+  fill_formulas : Bool
+  clipped : Bool
+  table_column_id : Int
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_QueryTableField::new(@xml.Element) -> Self
 
 pub(all) struct CT_QueryTableFields {
   element : @xml.Element
+  count : Int
+  query_table_field : Array[CT_QueryTableField]
 } derive(Eq, @debug.Debug)
 pub fn CT_QueryTableFields::new(@xml.Element) -> Self
 
 pub(all) struct CT_QueryTableRefresh {
   element : @xml.Element
+  preserve_sort_filter_layout : Bool
+  field_id_wrapped : Bool
+  headers_in_last_refresh : Bool
+  minimum_version : Int
+  next_id : Int
+  unbound_columns_left : Int
+  unbound_columns_right : Int
+  query_table_fields : CT_QueryTableFields?
+  query_table_deleted_fields : CT_QueryTableDeletedFields?
+  sort_state : CT_SortState?
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_QueryTableRefresh::new(@xml.Element) -> Self
 
@@ -1802,6 +2026,9 @@ pub fn CT_RevisionMove::new(@xml.Element) -> Self
 
 pub(all) struct CT_RevisionQueryTableField {
   element : @xml.Element
+  sheet_id : Int
+  ref_ : String
+  field_id : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_RevisionQueryTableField::new(@xml.Element) -> Self
 
@@ -2026,6 +2253,10 @@ pub fn CT_SortState::new(@xml.Element) -> Self
 
 pub(all) struct CT_Sst {
   element : @xml.Element
+  count_attr : Int?
+  unique_count : Int?
+  si_entries : Array[CT_Rst]
+  ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_Sst::count(Self) -> Int
 pub fn CT_Sst::entries(Self) -> Array[CT_Rst]
@@ -2034,6 +2265,20 @@ pub fn CT_Sst::new(@xml.Element) -> Self
 
 pub(all) struct CT_String {
   element : @xml.Element
+  v : String
+  u : Bool?
+  f : Bool?
+  c : String?
+  cp : Int?
+  in_ : Int?
+  bc : Int?
+  fc : Int?
+  i : Bool
+  un : Bool
+  st : Bool
+  b : Bool
+  tpls : Array[CT_Tuples]
+  x : Array[CT_X]
 } derive(Eq, @debug.Debug)
 pub fn CT_String::new(@xml.Element) -> Self
 
@@ -2268,6 +2513,7 @@ pub fn CT_X::new(@xml.Element) -> Self
 
 pub(all) struct CT_XStringElement {
   element : @xml.Element
+  v : String
 } derive(Eq, @debug.Debug)
 pub fn CT_XStringElement::new(@xml.Element) -> Self
 

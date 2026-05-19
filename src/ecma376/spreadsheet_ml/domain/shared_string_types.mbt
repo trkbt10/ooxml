@@ -1,5 +1,10 @@
 ///|
-/// SpreadsheetML shared string types wrappers generated from sml.xsd complex type identifiers.
+/// SpreadsheetML shared string typed domain wrappers from sml.xsd. CT_*
+/// identifiers in this file bind the ECMA-376 Part 1 §18.4 (shared string
+/// table) and §18.10 (pivot string item) complex types with typed attribute
+/// and child fields. The source `@xml.Element` is preserved on every typed
+/// record so the builder can emit byte-identical round-trip output via
+/// `value.element`.
 
 ///|
 pub fn shared_string_type_group_name() -> String {
@@ -7,74 +12,163 @@ pub fn shared_string_type_group_name() -> String {
 }
 
 ///|
-/// XSD complex type CT_XStringElement.
+/// XSD complex type CT_XStringElement — Part 1 §18.10.1.6 (`<n>` / `<m>` /
+/// `<e>` named element forms inside pivot cache definitions and metadata
+/// string tables). Single required `@v` attribute of type `s:ST_Xstring`.
 pub(all) struct CT_XStringElement {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @v (s:ST_Xstring) — required.
+  v : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_XStringElement::new(element : @xml.Element) -> CT_XStringElement {
-  let group_name = shared_string_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let v = match attr(element, "v") {
+    Some(value) => value
+    None => ""
   }
+  { element, v }
 }
 
 ///|
-/// XSD complex type CT_String: Schema sml.xsd complex type `CT_String` has
-/// attributes `v`, `u`, `f`, `c`, `cp`, `in`, `bc`, `fc`, `i`, `un`, `st`,
-/// and `b`, with `tpls` and `x` children; CT_String and CT_String::new own
-/// that pivot cache string item.
+/// XSD complex type CT_String — Part 1 §18.10.1.79. Pivot cache string
+/// item. Required `@v` (s:ST_Xstring). Optional formatting / property
+/// attributes `@u` (xsd:boolean), `@f` (xsd:boolean), `@c` (s:ST_Xstring),
+/// `@cp` (xsd:unsignedInt), `@in` (xsd:unsignedInt), `@bc`
+/// (ST_UnsignedIntHex), `@fc` (ST_UnsignedIntHex), `@i` (xsd:boolean,
+/// default false), `@un` (xsd:boolean, default false), `@st` (xsd:boolean,
+/// default false), `@b` (xsd:boolean, default false). Sequence children:
+/// `<tpls>*` (CT_Tuples), `<x>*` (CT_X).
 pub(all) struct CT_String {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @v (s:ST_Xstring) — required string payload.
+  v : String
+  /// @u (xsd:boolean) — optional unused flag.
+  u : Bool?
+  /// @f (xsd:boolean) — optional calculated flag.
+  f : Bool?
+  /// @c (s:ST_Xstring) — optional caption.
+  c : String?
+  /// @cp (xsd:unsignedInt) — optional cache property index.
+  cp : Int?
+  /// @in (xsd:unsignedInt) — optional member-property index.
+  in_ : Int?
+  /// @bc (ST_UnsignedIntHex) — optional background ARGB color.
+  bc : Int?
+  /// @fc (ST_UnsignedIntHex) — optional foreground ARGB color.
+  fc : Int?
+  /// @i (xsd:boolean) — optional, default false.
+  i : Bool
+  /// @un (xsd:boolean) — optional, default false.
+  un : Bool
+  /// @st (xsd:boolean) — optional, default false.
+  st : Bool
+  /// @b (xsd:boolean) — optional, default false.
+  b : Bool
+  /// <tpls>* (CT_Tuples) — zero or more shared-tuple sub-records.
+  tpls : Array[CT_Tuples]
+  /// <x>* (CT_X) — zero or more pivot tuple indices.
+  x : Array[CT_X]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_String::new(element : @xml.Element) -> CT_String {
-  let group_name = shared_string_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let v = match attr(element, "v") {
+    Some(value) => value
+    None => ""
   }
+  let u = attr_bool_opt(element, "u")
+  let f = attr_bool_opt(element, "f")
+  let c = attr(element, "c")
+  let cp = attr_uint_opt(element, "cp")
+  let in_ = attr_uint_opt(element, "in")
+  let bc = attr_hex_uint_opt(element, "bc")
+  let fc = attr_hex_uint_opt(element, "fc")
+  let i = attr_bool(element, "i", false)
+  let un = attr_bool(element, "un", false)
+  let st = attr_bool(element, "st", false)
+  let b = attr_bool(element, "b", false)
+  let tpls : Array[CT_Tuples] = []
+  let x : Array[CT_X] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "tpls" => tpls.push(CT_Tuples::new(child_element))
+        "x" => x.push(CT_X::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  { element, v, u, f, c, cp, in_, bc, fc, i, un, st, b, tpls, x }
 }
 
 ///|
-/// XSD complex type CT_Sst.
+/// XSD complex type CT_Sst — Part 1 §18.4.9. Shared string table. Optional
+/// `@count` (xsd:unsignedInt, header total) and `@uniqueCount`
+/// (xsd:unsignedInt, distinct count). Sequence: `<si>*` (CT_Rst) string
+/// items and optional `<extLst>` (CT_ExtensionList).
 pub(all) struct CT_Sst {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional aggregate count across the
+  /// workbook, may differ from `si_entries.length()` per §18.4.9.
+  count_attr : Int?
+  /// @uniqueCount (xsd:unsignedInt) — optional distinct entry count.
+  unique_count : Int?
+  /// <si>* (CT_Rst) — zero or more shared string items in document order.
+  si_entries : Array[CT_Rst]
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Sst::new(element : @xml.Element) -> CT_Sst {
-  let group_name = shared_string_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count_attr = attr_uint_opt(element, "count")
+  let unique_count = attr_uint_opt(element, "uniqueCount")
+  let si_entries : Array[CT_Rst] = []
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "si" => si_entries.push(CT_Rst::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
   }
+  { element, count_attr, unique_count, si_entries, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_PhoneticRun.
+/// XSD complex type CT_PhoneticRun — Part 1 §18.4.6. Phonetic guide run.
+/// Required `@sb` (xsd:unsignedInt, start byte) and `@eb` (xsd:unsignedInt,
+/// end byte). Single mandatory `<t>` (s:ST_Xstring) text child.
 pub(all) struct CT_PhoneticRun {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @sb (xsd:unsignedInt) — required start byte index in base text.
+  sb : Int
+  /// @eb (xsd:unsignedInt) — required end byte index in base text.
+  eb : Int
+  /// <t> (s:ST_Xstring) — required phonetic text content.
+  t : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PhoneticRun::new(element : @xml.Element) -> CT_PhoneticRun {
-  let group_name = shared_string_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let sb = attr_uint(element, "sb", 0)
+  let eb = attr_uint(element, "eb", 0)
+  let mut t = ""
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "t" {
+        t = element_text(child_element)
+      }
+    }
   }
+  { element, sb, eb, t }
 }
 
 ///|
@@ -192,17 +286,7 @@ pub fn CT_Rst::to_plain_text(self : CT_Rst) -> String {
 /// `<si>` child of `<sst>`. Iterates element children once and skips
 /// foreign or whitespace nodes.
 pub fn CT_Sst::entries(self : CT_Sst) -> Array[CT_Rst] {
-  let entries : Array[CT_Rst] = []
-  for child in self.element.children {
-    match child {
-      @xml.Node::Element(element) =>
-        if shared_string_is_element(element, "si") {
-          entries.push(CT_Rst::new(element))
-        }
-      _ => ()
-    }
-  }
-  entries
+  self.si_entries
 }
 
 ///|
@@ -213,7 +297,7 @@ pub fn CT_Sst::lookup(self : CT_Sst, index : Int) -> String? {
   if index < 0 {
     None
   } else {
-    match self.entries().get(index) {
+    match self.si_entries.get(index) {
       Some(entry) => Some(entry.to_plain_text())
       None => None
     }
@@ -223,17 +307,7 @@ pub fn CT_Sst::lookup(self : CT_Sst, index : Int) -> String? {
 ///|
 /// §18.4 — number of entries in the shared string table.
 pub fn CT_Sst::count(self : CT_Sst) -> Int {
-  let mut count = 0
-  for child in self.element.children {
-    match child {
-      @xml.Node::Element(element) =>
-        if shared_string_is_element(element, "si") {
-          count += 1
-        }
-      _ => ()
-    }
-  }
-  count
+  self.si_entries.length()
 }
 
 ///|

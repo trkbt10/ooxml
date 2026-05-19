@@ -1,5 +1,9 @@
 ///|
-/// SpreadsheetML pivot types wrappers generated from sml.xsd complex type identifiers.
+/// SpreadsheetML pivot typed domain wrappers from sml.xsd. CT_*
+/// identifiers in this file bind the ECMA-376 Part 1 §18.10 (pivot
+/// table / pivot cache) and §18.12 (query table) complex types. The
+/// source `@xml.Element` is preserved on every typed record so the
+/// builder can emit byte-identical round-trip output via `value.element`.
 
 ///|
 pub fn pivot_type_group_name() -> String {
@@ -2057,631 +2061,1697 @@ pub fn CT_RowHierarchiesUsage::new(
 }
 
 ///|
-/// XSD complex type CT_ColHierarchiesUsage.
+/// XSD complex type CT_ColHierarchiesUsage — Part 1 §18.10.1.14. Column
+/// hierarchies usage container. Optional `@count` (xsd:unsignedInt) and
+/// one or more `<colHierarchyUsage>` (CT_HierarchyUsage) children.
 pub(all) struct CT_ColHierarchiesUsage {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional aggregate count.
+  count : Int?
+  /// <colHierarchyUsage>+ (CT_HierarchyUsage) — one or more entries.
+  col_hierarchy_usage : Array[CT_HierarchyUsage]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ColHierarchiesUsage::new(
   element : @xml.Element,
 ) -> CT_ColHierarchiesUsage {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint_opt(element, "count")
+  let col_hierarchy_usage : Array[CT_HierarchyUsage] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "colHierarchyUsage" {
+        col_hierarchy_usage.push(CT_HierarchyUsage::new(child_element))
+      }
+    }
   }
+  { element, count, col_hierarchy_usage }
 }
 
 ///|
-/// XSD complex type CT_HierarchyUsage.
+/// XSD complex type CT_HierarchyUsage — Part 1 §18.10.1.40. Pivot-table
+/// hierarchy usage entry. Single required `@hierarchyUsage` (xsd:int)
+/// referencing a cache hierarchy slot.
 pub(all) struct CT_HierarchyUsage {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @hierarchyUsage (xsd:int) — required cache hierarchy reference.
+  hierarchy_usage : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_HierarchyUsage::new(element : @xml.Element) -> CT_HierarchyUsage {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let hierarchy_usage = attr_int(element, "hierarchyUsage", 0)
+  { element, hierarchy_usage }
 }
 
 ///|
-/// XSD complex type CT_MemberProperties.
+/// XSD complex type CT_MemberProperties — Part 1 §18.10.1.55. Container
+/// for OLAP member-property elements. Optional `@count` (xsd:unsignedInt)
+/// and one or more `<mp>` (CT_MemberProperty) children.
 pub(all) struct CT_MemberProperties {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional aggregate count.
+  count : Int?
+  /// <mp>+ (CT_MemberProperty) — one or more member property entries.
+  mp : Array[CT_MemberProperty]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MemberProperties::new(element : @xml.Element) -> CT_MemberProperties {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint_opt(element, "count")
+  let mp : Array[CT_MemberProperty] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "mp" {
+        mp.push(CT_MemberProperty::new(child_element))
+      }
+    }
   }
+  { element, count, mp }
 }
 
 ///|
-/// XSD complex type CT_MemberProperty.
+/// XSD complex type CT_MemberProperty — Part 1 §18.10.1.56. OLAP member
+/// property reference on a pivot field. Required `@field` (xsd:unsignedInt)
+/// links to the parent cache field; the optional `@name` (s:ST_Xstring),
+/// presentation flags `@showCell`, `@showTip`, `@showAsCaption`
+/// (xsd:boolean, default false), and source-layout fields `@nameLen`,
+/// `@pPos`, `@pLen`, `@level` (xsd:unsignedInt) are all optional.
 pub(all) struct CT_MemberProperty {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — optional caption.
+  name : String?
+  /// @showCell (xsd:boolean) — optional, default false.
+  show_cell : Bool
+  /// @showTip (xsd:boolean) — optional, default false.
+  show_tip : Bool
+  /// @showAsCaption (xsd:boolean) — optional, default false.
+  show_as_caption : Bool
+  /// @nameLen (xsd:unsignedInt) — optional name length hint.
+  name_len : Int?
+  /// @pPos (xsd:unsignedInt) — optional source position.
+  p_pos : Int?
+  /// @pLen (xsd:unsignedInt) — optional source length.
+  p_len : Int?
+  /// @level (xsd:unsignedInt) — optional cache hierarchy level.
+  level : Int?
+  /// @field (xsd:unsignedInt) — required parent field reference.
+  field : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MemberProperty::new(element : @xml.Element) -> CT_MemberProperty {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = attr(element, "name")
+  let show_cell = attr_bool(element, "showCell", false)
+  let show_tip = attr_bool(element, "showTip", false)
+  let show_as_caption = attr_bool(element, "showAsCaption", false)
+  let name_len = attr_uint_opt(element, "nameLen")
+  let p_pos = attr_uint_opt(element, "pPos")
+  let p_len = attr_uint_opt(element, "pLen")
+  let level = attr_uint_opt(element, "level")
+  let field = attr_uint(element, "field", 0)
+  {
+    element,
+    name,
+    show_cell,
+    show_tip,
+    show_as_caption,
+    name_len,
+    p_pos,
+    p_len,
+    level,
+    field,
   }
 }
 
 ///|
-/// XSD complex type CT_Members.
+/// XSD complex type CT_Members — Part 1 §18.10.1.57. OLAP member set
+/// container. Optional `@count` (xsd:unsignedInt) and `@level`
+/// (xsd:unsignedInt). Sequence of one or more `<member>` (CT_Member)
+/// children.
 pub(all) struct CT_Members {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional aggregate count.
+  count : Int?
+  /// @level (xsd:unsignedInt) — optional cache hierarchy level.
+  level : Int?
+  /// <member>+ (CT_Member) — one or more member entries.
+  member : Array[CT_Member]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Members::new(element : @xml.Element) -> CT_Members {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint_opt(element, "count")
+  let level = attr_uint_opt(element, "level")
+  let member : Array[CT_Member] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "member" {
+        member.push(CT_Member::new(child_element))
+      }
+    }
   }
+  { element, count, level, member }
 }
 
 ///|
-/// XSD complex type CT_Member.
+/// XSD complex type CT_Member — Part 1 §18.10.1.54. Single OLAP member
+/// entry. Required `@name` (s:ST_Xstring) caption.
 pub(all) struct CT_Member {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — required member caption.
+  name : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Member::new(element : @xml.Element) -> CT_Member {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = match attr(element, "name") {
+    Some(value) => value
+    None => ""
   }
+  { element, name }
 }
 
 ///|
-/// XSD complex type CT_PivotDimension.
+/// XSD complex type CT_PivotDimension — Part 1 §18.10.1.64. OLAP cube
+/// dimension descriptor. Optional `@measure` (xsd:boolean, default false)
+/// marks measure dimensions; required `@name`, `@uniqueName`, `@caption`
+/// (s:ST_Xstring) name the dimension.
 pub(all) struct CT_PivotDimension {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @measure (xsd:boolean) — optional, default false.
+  measure : Bool
+  /// @name (s:ST_Xstring) — required dimension name.
+  name : String
+  /// @uniqueName (s:ST_Xstring) — required MDX unique name.
+  unique_name : String
+  /// @caption (s:ST_Xstring) — required display caption.
+  caption : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotDimension::new(element : @xml.Element) -> CT_PivotDimension {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let measure = attr_bool(element, "measure", false)
+  let name = match attr(element, "name") {
+    Some(value) => value
+    None => ""
   }
+  let unique_name = match attr(element, "uniqueName") {
+    Some(value) => value
+    None => ""
+  }
+  let caption = match attr(element, "caption") {
+    Some(value) => value
+    None => ""
+  }
+  { element, measure, name, unique_name, caption }
 }
 
 ///|
-/// XSD complex type CT_MeasureGroups.
+/// XSD complex type CT_MeasureGroups — Part 1 §18.10.1.51. Container for
+/// OLAP measure-group descriptors. Optional `@count` (xsd:unsignedInt)
+/// and zero or more `<measureGroup>` (CT_MeasureGroup) children.
 pub(all) struct CT_MeasureGroups {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional aggregate count.
+  count : Int?
+  /// <measureGroup>* (CT_MeasureGroup) — zero or more entries.
+  measure_group : Array[CT_MeasureGroup]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MeasureGroups::new(element : @xml.Element) -> CT_MeasureGroups {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint_opt(element, "count")
+  let measure_group : Array[CT_MeasureGroup] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "measureGroup" {
+        measure_group.push(CT_MeasureGroup::new(child_element))
+      }
+    }
   }
+  { element, count, measure_group }
 }
 
 ///|
-/// XSD complex type CT_MeasureDimensionMaps.
+/// XSD complex type CT_MeasureDimensionMaps — Part 1 §18.10.1.49. Container
+/// linking OLAP measures to dimensions. Optional `@count`
+/// (xsd:unsignedInt) and zero or more `<map>` (CT_MeasureDimensionMap)
+/// children.
 pub(all) struct CT_MeasureDimensionMaps {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional aggregate count.
+  count : Int?
+  /// <map>* (CT_MeasureDimensionMap) — zero or more measure→dimension
+  /// linkages.
+  map : Array[CT_MeasureDimensionMap]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MeasureDimensionMaps::new(
   element : @xml.Element,
 ) -> CT_MeasureDimensionMaps {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint_opt(element, "count")
+  let map : Array[CT_MeasureDimensionMap] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "map" {
+        map.push(CT_MeasureDimensionMap::new(child_element))
+      }
+    }
   }
+  { element, count, map }
 }
 
 ///|
-/// XSD complex type CT_MeasureGroup.
+/// XSD complex type CT_MeasureGroup — Part 1 §18.10.1.50. OLAP measure
+/// group descriptor. Required `@name` (s:ST_Xstring) and `@caption`
+/// (s:ST_Xstring).
 pub(all) struct CT_MeasureGroup {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — required measure group name.
+  name : String
+  /// @caption (s:ST_Xstring) — required display caption.
+  caption : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MeasureGroup::new(element : @xml.Element) -> CT_MeasureGroup {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = match attr(element, "name") {
+    Some(value) => value
+    None => ""
   }
+  let caption = match attr(element, "caption") {
+    Some(value) => value
+    None => ""
+  }
+  { element, name, caption }
 }
 
 ///|
-/// XSD complex type CT_MeasureDimensionMap.
+/// XSD complex type CT_MeasureDimensionMap — Part 1 §18.10.1.48. OLAP
+/// measure-to-dimension binding. Optional `@measureGroup`
+/// (xsd:unsignedInt) and `@dimension` (xsd:unsignedInt) reference the
+/// parent CT_MeasureGroups / CT_PivotDimension slots respectively.
 pub(all) struct CT_MeasureDimensionMap {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @measureGroup (xsd:unsignedInt) — optional measure group index.
+  measure_group : Int?
+  /// @dimension (xsd:unsignedInt) — optional dimension index.
+  dimension : Int?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MeasureDimensionMap::new(
   element : @xml.Element,
 ) -> CT_MeasureDimensionMap {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let measure_group = attr_uint_opt(element, "measureGroup")
+  let dimension = attr_uint_opt(element, "dimension")
+  { element, measure_group, dimension }
 }
 
 ///|
-/// XSD complex type CT_PivotTableStyle.
+/// XSD complex type CT_PivotTableStyle — Part 1 §18.10.1.74. Pivot table
+/// presentation style overrides. All attributes optional: `@name`
+/// (xsd:string) names the referenced table style; `@showRowHeaders`,
+/// `@showColHeaders`, `@showRowStripes`, `@showColStripes`,
+/// `@showLastColumn` (xsd:boolean) toggle row/column emphasis.
 pub(all) struct CT_PivotTableStyle {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (xsd:string) — optional referenced TableStyle name.
+  name : String?
+  /// @showRowHeaders (xsd:boolean) — optional.
+  show_row_headers : Bool?
+  /// @showColHeaders (xsd:boolean) — optional.
+  show_col_headers : Bool?
+  /// @showRowStripes (xsd:boolean) — optional.
+  show_row_stripes : Bool?
+  /// @showColStripes (xsd:boolean) — optional.
+  show_col_stripes : Bool?
+  /// @showLastColumn (xsd:boolean) — optional.
+  show_last_column : Bool?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotTableStyle::new(element : @xml.Element) -> CT_PivotTableStyle {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = attr(element, "name")
+  let show_row_headers = attr_bool_opt(element, "showRowHeaders")
+  let show_col_headers = attr_bool_opt(element, "showColHeaders")
+  let show_row_stripes = attr_bool_opt(element, "showRowStripes")
+  let show_col_stripes = attr_bool_opt(element, "showColStripes")
+  let show_last_column = attr_bool_opt(element, "showLastColumn")
+  {
+    element,
+    name,
+    show_row_headers,
+    show_col_headers,
+    show_row_stripes,
+    show_col_stripes,
+    show_last_column,
   }
 }
 
 ///|
-/// XSD complex type CT_PivotFilters.
+/// XSD complex type CT_PivotFilters — Part 1 §18.10.1.69. Container for
+/// pivot-table filter rules. Optional `@count` (xsd:unsignedInt, default
+/// 0) and zero or more `<filter>` (CT_PivotFilter) children.
 pub(all) struct CT_PivotFilters {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional, default 0.
+  count : Int
+  /// <filter>* (CT_PivotFilter) — zero or more pivot filter entries.
+  filter : Array[CT_PivotFilter]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotFilters::new(element : @xml.Element) -> CT_PivotFilters {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint(element, "count", 0)
+  let filter : Array[CT_PivotFilter] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "filter" {
+        filter.push(CT_PivotFilter::new(child_element))
+      }
+    }
   }
+  { element, count, filter }
 }
 
 ///|
-/// XSD complex type CT_PivotFilter.
+/// XSD complex type CT_PivotFilter — Part 1 §18.10.1.68. Single pivot
+/// filter rule. Required `@fld` (xsd:unsignedInt) target field, `@type`
+/// (ST_PivotFilterType lexical token), `@id` (xsd:unsignedInt) unique id.
+/// Optional `@mpFld`, `@iMeasureHier`, `@iMeasureFld` (xsd:unsignedInt)
+/// linkages; `@evalOrder` (xsd:int, default 0) sequencing; descriptive
+/// `@name`, `@description`, `@stringValue1`, `@stringValue2`
+/// (s:ST_Xstring). Sequence child `<autoFilter>` (CT_AutoFilter) carries
+/// the underlying AutoFilter rule, with optional `<extLst>`
+/// (CT_ExtensionList). The autoFilter child stays as a raw
+/// `@xml.Element` so callers may pipe it through `@autofilter`'s typed
+/// parser as needed.
 pub(all) struct CT_PivotFilter {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @fld (xsd:unsignedInt) — required parent field index.
+  fld : Int
+  /// @mpFld (xsd:unsignedInt) — optional member-property field index.
+  mp_fld : Int?
+  /// @type (ST_PivotFilterType) — required filter kind token.
+  type_ : String
+  /// @evalOrder (xsd:int) — optional evaluation order, default 0.
+  eval_order : Int
+  /// @id (xsd:unsignedInt) — required unique filter id.
+  id : Int
+  /// @iMeasureHier (xsd:unsignedInt) — optional measure hierarchy index.
+  i_measure_hier : Int?
+  /// @iMeasureFld (xsd:unsignedInt) — optional measure field index.
+  i_measure_fld : Int?
+  /// @name (s:ST_Xstring) — optional caption.
+  name : String?
+  /// @description (s:ST_Xstring) — optional description.
+  description : String?
+  /// @stringValue1 (s:ST_Xstring) — optional comparand 1.
+  string_value1 : String?
+  /// @stringValue2 (s:ST_Xstring) — optional comparand 2 (between forms).
+  string_value2 : String?
+  /// <autoFilter> (CT_AutoFilter) — required AutoFilter payload retained
+  /// as a raw element for downstream typed parsing in `@autofilter`.
+  auto_filter : @xml.Element?
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotFilter::new(element : @xml.Element) -> CT_PivotFilter {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let fld = attr_uint(element, "fld", 0)
+  let mp_fld = attr_uint_opt(element, "mpFld")
+  let type_ = match attr(element, "type") {
+    Some(value) => value
+    None => ""
+  }
+  let eval_order = attr_int(element, "evalOrder", 0)
+  let id = attr_uint(element, "id", 0)
+  let i_measure_hier = attr_uint_opt(element, "iMeasureHier")
+  let i_measure_fld = attr_uint_opt(element, "iMeasureFld")
+  let name = attr(element, "name")
+  let description = attr(element, "description")
+  let string_value1 = attr(element, "stringValue1")
+  let string_value2 = attr(element, "stringValue2")
+  let mut auto_filter : @xml.Element? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "autoFilter" => auto_filter = Some(child_element)
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    fld,
+    mp_fld,
+    type_,
+    eval_order,
+    id,
+    i_measure_hier,
+    i_measure_fld,
+    name,
+    description,
+    string_value1,
+    string_value2,
+    auto_filter,
+    ext_lst,
   }
 }
 
 ///|
-/// XSD complex type CT_PivotArea.
+/// XSD complex type CT_PivotArea — Part 1 §18.10.1.65. Pivot area
+/// descriptor used by formats / styles / selections. Optional `@field`
+/// (xsd:int) target field, `@type` (ST_PivotAreaType lexical token,
+/// default "normal"), `@dataOnly` (xsd:boolean, default true),
+/// `@labelOnly` / `@grandRow` / `@grandCol` / `@cacheIndex`
+/// (xsd:boolean, default false), `@outline` (xsd:boolean, default true),
+/// `@offset` (ST_Ref), `@collapsedLevelsAreSubtotals` (xsd:boolean,
+/// default false), `@axis` (ST_Axis lexical token), `@fieldPosition`
+/// (xsd:unsignedInt). Sequence children: `<references>`
+/// (CT_PivotAreaReferences) and `<extLst>` (CT_ExtensionList).
 pub(all) struct CT_PivotArea {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @field (xsd:int) — optional pivot field index.
+  field : Int?
+  /// @type (ST_PivotAreaType) — optional, default "normal".
+  type_ : String
+  /// @dataOnly (xsd:boolean) — optional, default true.
+  data_only : Bool
+  /// @labelOnly (xsd:boolean) — optional, default false.
+  label_only : Bool
+  /// @grandRow (xsd:boolean) — optional, default false.
+  grand_row : Bool
+  /// @grandCol (xsd:boolean) — optional, default false.
+  grand_col : Bool
+  /// @cacheIndex (xsd:boolean) — optional, default false.
+  cache_index : Bool
+  /// @outline (xsd:boolean) — optional, default true.
+  outline : Bool
+  /// @offset (ST_Ref) — optional A1 offset.
+  offset : String?
+  /// @collapsedLevelsAreSubtotals (xsd:boolean) — optional, default false.
+  collapsed_levels_are_subtotals : Bool
+  /// @axis (ST_Axis) — optional axis token (axisRow/axisCol/axisPage/axisValues).
+  axis : String?
+  /// @fieldPosition (xsd:unsignedInt) — optional field position.
+  field_position : Int?
+  /// <references> (CT_PivotAreaReferences) — optional reference list.
+  references : CT_PivotAreaReferences?
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotArea::new(element : @xml.Element) -> CT_PivotArea {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let field = attr_int_opt(element, "field")
+  let type_ = match attr(element, "type") {
+    Some(value) => value
+    None => "normal"
+  }
+  let data_only = attr_bool(element, "dataOnly", true)
+  let label_only = attr_bool(element, "labelOnly", false)
+  let grand_row = attr_bool(element, "grandRow", false)
+  let grand_col = attr_bool(element, "grandCol", false)
+  let cache_index = attr_bool(element, "cacheIndex", false)
+  let outline = attr_bool(element, "outline", true)
+  let offset = attr(element, "offset")
+  let collapsed_levels_are_subtotals = attr_bool(
+    element, "collapsedLevelsAreSubtotals", false,
+  )
+  let axis = attr(element, "axis")
+  let field_position = attr_uint_opt(element, "fieldPosition")
+  let mut references : CT_PivotAreaReferences? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "references" =>
+          references = Some(CT_PivotAreaReferences::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    field,
+    type_,
+    data_only,
+    label_only,
+    grand_row,
+    grand_col,
+    cache_index,
+    outline,
+    offset,
+    collapsed_levels_are_subtotals,
+    axis,
+    field_position,
+    references,
+    ext_lst,
   }
 }
 
 ///|
-/// XSD complex type CT_PivotAreaReferences.
+/// XSD complex type CT_PivotAreaReferences — Part 1 §18.10.1.67. Container
+/// for pivot-area reference entries. Optional `@count` (xsd:unsignedInt)
+/// and one or more `<reference>` (CT_PivotAreaReference) children.
 pub(all) struct CT_PivotAreaReferences {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional aggregate count.
+  count : Int?
+  /// <reference>+ (CT_PivotAreaReference) — one or more reference entries.
+  reference : Array[CT_PivotAreaReference]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotAreaReferences::new(
   element : @xml.Element,
 ) -> CT_PivotAreaReferences {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint_opt(element, "count")
+  let reference : Array[CT_PivotAreaReference] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "reference" {
+        reference.push(CT_PivotAreaReference::new(child_element))
+      }
+    }
   }
+  { element, count, reference }
 }
 
 ///|
-/// XSD complex type CT_PivotAreaReference.
+/// XSD complex type CT_PivotAreaReference — Part 1 §18.10.1.66. Single
+/// pivot area reference. Optional `@field` (xsd:unsignedInt) target field
+/// and `@count` (xsd:unsignedInt) child count. Boolean flags `@selected`
+/// (default true), `@byPosition`, `@relative`, `@defaultSubtotal`,
+/// `@sumSubtotal`, `@countASubtotal`, `@avgSubtotal`, `@maxSubtotal`,
+/// `@minSubtotal`, `@productSubtotal`, `@countSubtotal`,
+/// `@stdDevSubtotal`, `@stdDevPSubtotal`, `@varSubtotal`,
+/// `@varPSubtotal` (default false). Sequence children: zero or more
+/// `<x>` (CT_Index) item references and optional `<extLst>`
+/// (CT_ExtensionList).
 pub(all) struct CT_PivotAreaReference {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @field (xsd:unsignedInt) — optional pivot field index.
+  field : Int?
+  /// @count (xsd:unsignedInt) — optional child count.
+  count : Int?
+  /// @selected (xsd:boolean) — optional, default true.
+  selected : Bool
+  /// @byPosition (xsd:boolean) — optional, default false.
+  by_position : Bool
+  /// @relative (xsd:boolean) — optional, default false.
+  relative : Bool
+  /// @defaultSubtotal (xsd:boolean) — optional, default false.
+  default_subtotal : Bool
+  /// @sumSubtotal (xsd:boolean) — optional, default false.
+  sum_subtotal : Bool
+  /// @countASubtotal (xsd:boolean) — optional, default false.
+  count_a_subtotal : Bool
+  /// @avgSubtotal (xsd:boolean) — optional, default false.
+  avg_subtotal : Bool
+  /// @maxSubtotal (xsd:boolean) — optional, default false.
+  max_subtotal : Bool
+  /// @minSubtotal (xsd:boolean) — optional, default false.
+  min_subtotal : Bool
+  /// @productSubtotal (xsd:boolean) — optional, default false.
+  product_subtotal : Bool
+  /// @countSubtotal (xsd:boolean) — optional, default false.
+  count_subtotal : Bool
+  /// @stdDevSubtotal (xsd:boolean) — optional, default false.
+  std_dev_subtotal : Bool
+  /// @stdDevPSubtotal (xsd:boolean) — optional, default false.
+  std_dev_p_subtotal : Bool
+  /// @varSubtotal (xsd:boolean) — optional, default false.
+  var_subtotal : Bool
+  /// @varPSubtotal (xsd:boolean) — optional, default false.
+  var_p_subtotal : Bool
+  /// <x>* (CT_Index) — zero or more item index references.
+  x : Array[CT_Index]
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotAreaReference::new(
   element : @xml.Element,
 ) -> CT_PivotAreaReference {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let field = attr_uint_opt(element, "field")
+  let count = attr_uint_opt(element, "count")
+  let selected = attr_bool(element, "selected", true)
+  let by_position = attr_bool(element, "byPosition", false)
+  let relative = attr_bool(element, "relative", false)
+  let default_subtotal = attr_bool(element, "defaultSubtotal", false)
+  let sum_subtotal = attr_bool(element, "sumSubtotal", false)
+  let count_a_subtotal = attr_bool(element, "countASubtotal", false)
+  let avg_subtotal = attr_bool(element, "avgSubtotal", false)
+  let max_subtotal = attr_bool(element, "maxSubtotal", false)
+  let min_subtotal = attr_bool(element, "minSubtotal", false)
+  let product_subtotal = attr_bool(element, "productSubtotal", false)
+  let count_subtotal = attr_bool(element, "countSubtotal", false)
+  let std_dev_subtotal = attr_bool(element, "stdDevSubtotal", false)
+  let std_dev_p_subtotal = attr_bool(element, "stdDevPSubtotal", false)
+  let var_subtotal = attr_bool(element, "varSubtotal", false)
+  let var_p_subtotal = attr_bool(element, "varPSubtotal", false)
+  let x : Array[CT_Index] = []
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "x" => x.push(CT_Index::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    field,
+    count,
+    selected,
+    by_position,
+    relative,
+    default_subtotal,
+    sum_subtotal,
+    count_a_subtotal,
+    avg_subtotal,
+    max_subtotal,
+    min_subtotal,
+    product_subtotal,
+    count_subtotal,
+    std_dev_subtotal,
+    std_dev_p_subtotal,
+    var_subtotal,
+    var_p_subtotal,
+    x,
+    ext_lst,
   }
 }
 
 ///|
-/// XSD complex type CT_QueryTable.
+/// XSD complex type CT_QueryTable — Part 1 §18.12.5. External query table.
+/// Required `@name` (s:ST_Xstring) and `@connectionId` (xsd:unsignedInt)
+/// referencing CT_Connections. Optional behaviour flags `@headers`
+/// (default true), `@rowNumbers`, `@disableRefresh`, `@backgroundRefresh`
+/// (default true), `@firstBackgroundRefresh`, `@refreshOnLoad`,
+/// `@growShrinkType` (ST_GrowShrinkType, default "insertDelete"),
+/// `@fillFormulas`, `@removeDataOnSave`, `@disableEdit`,
+/// `@preserveFormatting` (default true), `@adjustColumnWidth` (default
+/// true), `@intermediate` (xsd:boolean). The AG_AutoFormat attribute
+/// group adds optional `@autoFormatId` (xsd:unsignedInt) and five
+/// `@apply*Formats` (xsd:boolean) booleans. Sequence: optional
+/// `<queryTableRefresh>` (CT_QueryTableRefresh) and `<extLst>`
+/// (CT_ExtensionList).
 pub(all) struct CT_QueryTable {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (s:ST_Xstring) — required query table name.
+  name : String
+  /// @headers (xsd:boolean) — optional, default true.
+  headers : Bool
+  /// @rowNumbers (xsd:boolean) — optional, default false.
+  row_numbers : Bool
+  /// @disableRefresh (xsd:boolean) — optional, default false.
+  disable_refresh : Bool
+  /// @backgroundRefresh (xsd:boolean) — optional, default true.
+  background_refresh : Bool
+  /// @firstBackgroundRefresh (xsd:boolean) — optional, default false.
+  first_background_refresh : Bool
+  /// @refreshOnLoad (xsd:boolean) — optional, default false.
+  refresh_on_load : Bool
+  /// @growShrinkType (ST_GrowShrinkType) — optional, default "insertDelete".
+  grow_shrink_type : String
+  /// @fillFormulas (xsd:boolean) — optional, default false.
+  fill_formulas : Bool
+  /// @removeDataOnSave (xsd:boolean) — optional, default false.
+  remove_data_on_save : Bool
+  /// @disableEdit (xsd:boolean) — optional, default false.
+  disable_edit : Bool
+  /// @preserveFormatting (xsd:boolean) — optional, default true.
+  preserve_formatting : Bool
+  /// @adjustColumnWidth (xsd:boolean) — optional, default true.
+  adjust_column_width : Bool
+  /// @intermediate (xsd:boolean) — optional, default false.
+  intermediate : Bool
+  /// @connectionId (xsd:unsignedInt) — required connection reference.
+  connection_id : Int
+  /// AG_AutoFormat @autoFormatId (xsd:unsignedInt) — optional.
+  auto_format_id : Int?
+  /// AG_AutoFormat @applyNumberFormats (xsd:boolean) — optional.
+  apply_number_formats : Bool?
+  /// AG_AutoFormat @applyBorderFormats (xsd:boolean) — optional.
+  apply_border_formats : Bool?
+  /// AG_AutoFormat @applyFontFormats (xsd:boolean) — optional.
+  apply_font_formats : Bool?
+  /// AG_AutoFormat @applyPatternFormats (xsd:boolean) — optional.
+  apply_pattern_formats : Bool?
+  /// AG_AutoFormat @applyAlignmentFormats (xsd:boolean) — optional.
+  apply_alignment_formats : Bool?
+  /// AG_AutoFormat @applyWidthHeightFormats (xsd:boolean) — optional.
+  apply_width_height_formats : Bool?
+  /// <queryTableRefresh> (CT_QueryTableRefresh) — optional refresh metadata.
+  query_table_refresh : CT_QueryTableRefresh?
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_QueryTable::new(element : @xml.Element) -> CT_QueryTable {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let name = match attr(element, "name") {
+    Some(value) => value
+    None => ""
+  }
+  let headers = attr_bool(element, "headers", true)
+  let row_numbers = attr_bool(element, "rowNumbers", false)
+  let disable_refresh = attr_bool(element, "disableRefresh", false)
+  let background_refresh = attr_bool(element, "backgroundRefresh", true)
+  let first_background_refresh = attr_bool(
+    element, "firstBackgroundRefresh", false,
+  )
+  let refresh_on_load = attr_bool(element, "refreshOnLoad", false)
+  let grow_shrink_type = match attr(element, "growShrinkType") {
+    Some(value) => value
+    None => "insertDelete"
+  }
+  let fill_formulas = attr_bool(element, "fillFormulas", false)
+  let remove_data_on_save = attr_bool(element, "removeDataOnSave", false)
+  let disable_edit = attr_bool(element, "disableEdit", false)
+  let preserve_formatting = attr_bool(element, "preserveFormatting", true)
+  let adjust_column_width = attr_bool(element, "adjustColumnWidth", true)
+  let intermediate = attr_bool(element, "intermediate", false)
+  let connection_id = attr_uint(element, "connectionId", 0)
+  let auto_format_id = attr_uint_opt(element, "autoFormatId")
+  let apply_number_formats = attr_bool_opt(element, "applyNumberFormats")
+  let apply_border_formats = attr_bool_opt(element, "applyBorderFormats")
+  let apply_font_formats = attr_bool_opt(element, "applyFontFormats")
+  let apply_pattern_formats = attr_bool_opt(element, "applyPatternFormats")
+  let apply_alignment_formats = attr_bool_opt(element, "applyAlignmentFormats")
+  let apply_width_height_formats = attr_bool_opt(
+    element, "applyWidthHeightFormats",
+  )
+  let mut query_table_refresh : CT_QueryTableRefresh? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "queryTableRefresh" =>
+          query_table_refresh = Some(CT_QueryTableRefresh::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    name,
+    headers,
+    row_numbers,
+    disable_refresh,
+    background_refresh,
+    first_background_refresh,
+    refresh_on_load,
+    grow_shrink_type,
+    fill_formulas,
+    remove_data_on_save,
+    disable_edit,
+    preserve_formatting,
+    adjust_column_width,
+    intermediate,
+    connection_id,
+    auto_format_id,
+    apply_number_formats,
+    apply_border_formats,
+    apply_font_formats,
+    apply_pattern_formats,
+    apply_alignment_formats,
+    apply_width_height_formats,
+    query_table_refresh,
+    ext_lst,
   }
 }
 
 ///|
-/// XSD complex type CT_QueryTableRefresh.
+/// XSD complex type CT_QueryTableRefresh — Part 1 §18.12.7. Query table
+/// refresh metadata. Optional flags `@preserveSortFilterLayout` (default
+/// true), `@fieldIdWrapped`, `@headersInLastRefresh` (default true),
+/// `@minimumVersion` (xsd:unsignedByte, default 0), `@nextId`
+/// (xsd:unsignedInt, default 1), `@unboundColumnsLeft` /
+/// `@unboundColumnsRight` (xsd:unsignedInt, default 0). Sequence:
+/// required `<queryTableFields>` (CT_QueryTableFields), optional
+/// `<queryTableDeletedFields>` (CT_QueryTableDeletedFields), `<sortState>`
+/// (CT_SortState), and `<extLst>` (CT_ExtensionList).
 pub(all) struct CT_QueryTableRefresh {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @preserveSortFilterLayout (xsd:boolean) — optional, default true.
+  preserve_sort_filter_layout : Bool
+  /// @fieldIdWrapped (xsd:boolean) — optional, default false.
+  field_id_wrapped : Bool
+  /// @headersInLastRefresh (xsd:boolean) — optional, default true.
+  headers_in_last_refresh : Bool
+  /// @minimumVersion (xsd:unsignedByte) — optional, default 0.
+  minimum_version : Int
+  /// @nextId (xsd:unsignedInt) — optional, default 1.
+  next_id : Int
+  /// @unboundColumnsLeft (xsd:unsignedInt) — optional, default 0.
+  unbound_columns_left : Int
+  /// @unboundColumnsRight (xsd:unsignedInt) — optional, default 0.
+  unbound_columns_right : Int
+  /// <queryTableFields> (CT_QueryTableFields) — required field set.
+  query_table_fields : CT_QueryTableFields?
+  /// <queryTableDeletedFields> (CT_QueryTableDeletedFields) — optional.
+  query_table_deleted_fields : CT_QueryTableDeletedFields?
+  /// <sortState> (CT_SortState) — optional sort state metadata.
+  sort_state : CT_SortState?
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_QueryTableRefresh::new(
   element : @xml.Element,
 ) -> CT_QueryTableRefresh {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let preserve_sort_filter_layout = attr_bool(
+    element, "preserveSortFilterLayout", true,
+  )
+  let field_id_wrapped = attr_bool(element, "fieldIdWrapped", false)
+  let headers_in_last_refresh = attr_bool(element, "headersInLastRefresh", true)
+  let minimum_version = attr_uint(element, "minimumVersion", 0)
+  let next_id = attr_uint(element, "nextId", 1)
+  let unbound_columns_left = attr_uint(element, "unboundColumnsLeft", 0)
+  let unbound_columns_right = attr_uint(element, "unboundColumnsRight", 0)
+  let mut query_table_fields : CT_QueryTableFields? = None
+  let mut query_table_deleted_fields : CT_QueryTableDeletedFields? = None
+  let mut sort_state : CT_SortState? = None
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "queryTableFields" =>
+          query_table_fields = Some(CT_QueryTableFields::new(child_element))
+        "queryTableDeletedFields" =>
+          query_table_deleted_fields = Some(
+            CT_QueryTableDeletedFields::new(child_element),
+          )
+        "sortState" => sort_state = Some(CT_SortState::new(child_element))
+        "extLst" => ext_lst = Some(CT_ExtensionList::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    preserve_sort_filter_layout,
+    field_id_wrapped,
+    headers_in_last_refresh,
+    minimum_version,
+    next_id,
+    unbound_columns_left,
+    unbound_columns_right,
+    query_table_fields,
+    query_table_deleted_fields,
+    sort_state,
+    ext_lst,
   }
 }
 
 ///|
-/// XSD complex type CT_QueryTableDeletedFields.
+/// XSD complex type CT_QueryTableDeletedFields — Part 1 §18.12.6. Tracks
+/// query table columns deleted since the last refresh. Optional `@count`
+/// (xsd:unsignedInt) and one or more `<deletedField>` (CT_DeletedField)
+/// children.
 pub(all) struct CT_QueryTableDeletedFields {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional aggregate count.
+  count : Int?
+  /// <deletedField>+ (CT_DeletedField) — one or more deleted-field entries.
+  deleted_field : Array[CT_DeletedField]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_QueryTableDeletedFields::new(
   element : @xml.Element,
 ) -> CT_QueryTableDeletedFields {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint_opt(element, "count")
+  let deleted_field : Array[CT_DeletedField] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "deletedField" {
+        deleted_field.push(CT_DeletedField::new(child_element))
+      }
+    }
   }
+  { element, count, deleted_field }
 }
 
 ///|
-/// XSD complex type CT_QueryTableFields.
+/// XSD complex type CT_QueryTableFields — Part 1 §18.12.8. Container for
+/// query table columns. Optional `@count` (xsd:unsignedInt, default 0)
+/// and zero or more `<queryTableField>` (CT_QueryTableField) children.
 pub(all) struct CT_QueryTableFields {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional, default 0.
+  count : Int
+  /// <queryTableField>* (CT_QueryTableField) — zero or more field entries.
+  query_table_field : Array[CT_QueryTableField]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_QueryTableFields::new(element : @xml.Element) -> CT_QueryTableFields {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint(element, "count", 0)
+  let query_table_field : Array[CT_QueryTableField] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "queryTableField" {
+        query_table_field.push(CT_QueryTableField::new(child_element))
+      }
+    }
   }
+  { element, count, query_table_field }
 }
 
 ///|
-/// XSD complex type CT_QueryTableField.
+/// XSD complex type CT_QueryTableField — Part 1 §18.12.4. Single column
+/// inside a query table. Required `@id` (xsd:unsignedInt). Optional
+/// `@name` (s:ST_Xstring), `@dataBound` (xsd:boolean, default true),
+/// `@rowNumbers`, `@fillFormulas`, `@clipped` (xsd:boolean, default
+/// false), `@tableColumnId` (xsd:unsignedInt, default 0). Sequence:
+/// optional `<extLst>` (CT_ExtensionList).
 pub(all) struct CT_QueryTableField {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @id (xsd:unsignedInt) — required field id.
+  id : Int
+  /// @name (s:ST_Xstring) — optional caption.
+  name : String?
+  /// @dataBound (xsd:boolean) — optional, default true.
+  data_bound : Bool
+  /// @rowNumbers (xsd:boolean) — optional, default false.
+  row_numbers : Bool
+  /// @fillFormulas (xsd:boolean) — optional, default false.
+  fill_formulas : Bool
+  /// @clipped (xsd:boolean) — optional, default false.
+  clipped : Bool
+  /// @tableColumnId (xsd:unsignedInt) — optional, default 0.
+  table_column_id : Int
+  /// <extLst> (CT_ExtensionList) — optional extension list.
+  ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_QueryTableField::new(element : @xml.Element) -> CT_QueryTableField {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let id = attr_uint(element, "id", 0)
+  let name = attr(element, "name")
+  let data_bound = attr_bool(element, "dataBound", true)
+  let row_numbers = attr_bool(element, "rowNumbers", false)
+  let fill_formulas = attr_bool(element, "fillFormulas", false)
+  let clipped = attr_bool(element, "clipped", false)
+  let table_column_id = attr_uint(element, "tableColumnId", 0)
+  let mut ext_lst : CT_ExtensionList? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "extLst" {
+        ext_lst = Some(CT_ExtensionList::new(child_element))
+      }
+    }
+  }
+  {
+    element,
+    id,
+    name,
+    data_bound,
+    row_numbers,
+    fill_formulas,
+    clipped,
+    table_column_id,
+    ext_lst,
   }
 }
 
 ///|
-/// XSD complex type CT_RevisionQueryTableField.
+/// XSD complex type CT_RevisionQueryTableField — Part 1 §18.11.1.16.
+/// Shared workbook revision entry tracking a query table field change.
+/// Required `@sheetId` (xsd:unsignedInt) target sheet, `@ref` (ST_Ref)
+/// affected range, `@fieldId` (xsd:unsignedInt) query table column id.
 pub(all) struct CT_RevisionQueryTableField {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @sheetId (xsd:unsignedInt) — required sheet reference.
+  sheet_id : Int
+  /// @ref (ST_Ref) — required A1 range affected.
+  ref_ : String
+  /// @fieldId (xsd:unsignedInt) — required query table field id.
+  field_id : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_RevisionQueryTableField::new(
   element : @xml.Element,
 ) -> CT_RevisionQueryTableField {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let sheet_id = attr_uint(element, "sheetId", 0)
+  let ref_ = match attr(element, "ref") {
+    Some(value) => value
+    None => ""
   }
+  let field_id = attr_uint(element, "fieldId", 0)
+  { element, sheet_id, ref_, field_id }
 }
 
 ///|
-/// XSD complex type CT_PivotSelection.
+/// XSD complex type CT_PivotSelection — Part 1 §18.18.71 (referenced
+/// from §18.3.1.74). Pivot view selection state. All attributes optional:
+/// `@pane` (ST_Pane lexical token, default "topLeft"); booleans
+/// `@showHeader`, `@label`, `@data`, `@extendable` (default false);
+/// counters `@count`, `@dimension`, `@start`, `@min`, `@max`,
+/// `@activeRow`, `@activeCol`, `@previousRow`, `@previousCol`, `@click`
+/// (xsd:unsignedInt, default 0); `@axis` (ST_Axis lexical token); and
+/// optional relationship `r:id`. Sequence: required `<pivotArea>`
+/// (CT_PivotArea) selection geometry.
 pub(all) struct CT_PivotSelection {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @pane (ST_Pane) — optional, default "topLeft".
+  pane : String
+  /// @showHeader (xsd:boolean) — optional, default false.
+  show_header : Bool
+  /// @label (xsd:boolean) — optional, default false.
+  label : Bool
+  /// @data (xsd:boolean) — optional, default false.
+  data : Bool
+  /// @extendable (xsd:boolean) — optional, default false.
+  extendable : Bool
+  /// @count (xsd:unsignedInt) — optional, default 0.
+  count : Int
+  /// @axis (ST_Axis) — optional axis token.
+  axis : String?
+  /// @dimension (xsd:unsignedInt) — optional, default 0.
+  dimension : Int
+  /// @start (xsd:unsignedInt) — optional, default 0.
+  start : Int
+  /// @min (xsd:unsignedInt) — optional, default 0.
+  min_ : Int
+  /// @max (xsd:unsignedInt) — optional, default 0.
+  max_ : Int
+  /// @activeRow (xsd:unsignedInt) — optional, default 0.
+  active_row : Int
+  /// @activeCol (xsd:unsignedInt) — optional, default 0.
+  active_col : Int
+  /// @previousRow (xsd:unsignedInt) — optional, default 0.
+  previous_row : Int
+  /// @previousCol (xsd:unsignedInt) — optional, default 0.
+  previous_col : Int
+  /// @click (xsd:unsignedInt) — optional, default 0.
+  click : Int
+  /// @r:id (relationship reference) — optional rId pointer.
+  r_id : String?
+  /// <pivotArea> (CT_PivotArea) — required selection geometry.
+  pivot_area : CT_PivotArea?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotSelection::new(element : @xml.Element) -> CT_PivotSelection {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let pane = match attr(element, "pane") {
+    Some(value) => value
+    None => "topLeft"
+  }
+  let show_header = attr_bool(element, "showHeader", false)
+  let label = attr_bool(element, "label", false)
+  let data = attr_bool(element, "data", false)
+  let extendable = attr_bool(element, "extendable", false)
+  let count = attr_uint(element, "count", 0)
+  let axis = attr(element, "axis")
+  let dimension = attr_uint(element, "dimension", 0)
+  let start = attr_uint(element, "start", 0)
+  let min_ = attr_uint(element, "min", 0)
+  let max_ = attr_uint(element, "max", 0)
+  let active_row = attr_uint(element, "activeRow", 0)
+  let active_col = attr_uint(element, "activeCol", 0)
+  let previous_row = attr_uint(element, "previousRow", 0)
+  let previous_col = attr_uint(element, "previousCol", 0)
+  let click = attr_uint(element, "click", 0)
+  let r_id = attr_with_ns(element, "id")
+  let mut pivot_area : CT_PivotArea? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "pivotArea" {
+        pivot_area = Some(CT_PivotArea::new(child_element))
+      }
+    }
+  }
+  {
+    element,
+    pane,
+    show_header,
+    label,
+    data,
+    extendable,
+    count,
+    axis,
+    dimension,
+    start,
+    min_,
+    max_,
+    active_row,
+    active_col,
+    previous_row,
+    previous_col,
+    click,
+    r_id,
+    pivot_area,
   }
 }
 
 ///|
-/// XSD complex type CT_PageSetUpPr.
+/// XSD complex type CT_PageSetUpPr — Part 1 §18.3.1.60. SheetPr page-setup
+/// hints. Optional `@autoPageBreaks` (xsd:boolean, default true) and
+/// `@fitToPage` (xsd:boolean, default false).
 pub(all) struct CT_PageSetUpPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @autoPageBreaks (xsd:boolean) — optional, default true.
+  auto_page_breaks : Bool
+  /// @fitToPage (xsd:boolean) — optional, default false.
+  fit_to_page : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PageSetUpPr::new(element : @xml.Element) -> CT_PageSetUpPr {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let auto_page_breaks = attr_bool(element, "autoPageBreaks", true)
+  let fit_to_page = attr_bool(element, "fitToPage", false)
+  { element, auto_page_breaks, fit_to_page }
 }
 
 ///|
-/// XSD complex type CT_PageSetup.
+/// XSD complex type CT_PageSetup — Part 1 §18.3.1.63. Worksheet page setup.
+/// All attributes optional: `@paperSize` (xsd:unsignedInt, default 1),
+/// `@paperHeight` / `@paperWidth` (s:ST_PositiveUniversalMeasure custom
+/// paper override), `@scale` (xsd:unsignedInt, default 100),
+/// `@firstPageNumber` (default 1), `@fitToWidth`, `@fitToHeight`
+/// (default 1), `@pageOrder` (ST_PageOrder, default "downThenOver"),
+/// `@orientation` (ST_Orientation, default "default"),
+/// `@usePrinterDefaults` (default true), `@blackAndWhite`, `@draft`
+/// (default false), `@cellComments` (ST_CellComments, default "none"),
+/// `@useFirstPageNumber` (default false), `@errors` (ST_PrintError,
+/// default "displayed"), `@horizontalDpi` / `@verticalDpi` (default
+/// 600), `@copies` (default 1), and optional relationship `r:id`.
 pub(all) struct CT_PageSetup {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @paperSize (xsd:unsignedInt) — optional, default 1.
+  paper_size : Int
+  /// @paperHeight (s:ST_PositiveUniversalMeasure) — optional custom paper height.
+  paper_height : String?
+  /// @paperWidth (s:ST_PositiveUniversalMeasure) — optional custom paper width.
+  paper_width : String?
+  /// @scale (xsd:unsignedInt) — optional, default 100.
+  scale : Int
+  /// @firstPageNumber (xsd:unsignedInt) — optional, default 1.
+  first_page_number : Int
+  /// @fitToWidth (xsd:unsignedInt) — optional, default 1.
+  fit_to_width : Int
+  /// @fitToHeight (xsd:unsignedInt) — optional, default 1.
+  fit_to_height : Int
+  /// @pageOrder (ST_PageOrder) — optional, default "downThenOver".
+  page_order : String
+  /// @orientation (ST_Orientation) — optional, default "default".
+  orientation : String
+  /// @usePrinterDefaults (xsd:boolean) — optional, default true.
+  use_printer_defaults : Bool
+  /// @blackAndWhite (xsd:boolean) — optional, default false.
+  black_and_white : Bool
+  /// @draft (xsd:boolean) — optional, default false.
+  draft : Bool
+  /// @cellComments (ST_CellComments) — optional, default "none".
+  cell_comments : String
+  /// @useFirstPageNumber (xsd:boolean) — optional, default false.
+  use_first_page_number : Bool
+  /// @errors (ST_PrintError) — optional, default "displayed".
+  errors : String
+  /// @horizontalDpi (xsd:unsignedInt) — optional, default 600.
+  horizontal_dpi : Int
+  /// @verticalDpi (xsd:unsignedInt) — optional, default 600.
+  vertical_dpi : Int
+  /// @copies (xsd:unsignedInt) — optional, default 1.
+  copies : Int
+  /// @r:id (relationship reference) — optional rId pointer.
+  r_id : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PageSetup::new(element : @xml.Element) -> CT_PageSetup {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let paper_size = attr_uint(element, "paperSize", 1)
+  let paper_height = attr(element, "paperHeight")
+  let paper_width = attr(element, "paperWidth")
+  let scale = attr_uint(element, "scale", 100)
+  let first_page_number = attr_uint(element, "firstPageNumber", 1)
+  let fit_to_width = attr_uint(element, "fitToWidth", 1)
+  let fit_to_height = attr_uint(element, "fitToHeight", 1)
+  let page_order = match attr(element, "pageOrder") {
+    Some(value) => value
+    None => "downThenOver"
+  }
+  let orientation = match attr(element, "orientation") {
+    Some(value) => value
+    None => "default"
+  }
+  let use_printer_defaults = attr_bool(element, "usePrinterDefaults", true)
+  let black_and_white = attr_bool(element, "blackAndWhite", false)
+  let draft = attr_bool(element, "draft", false)
+  let cell_comments = match attr(element, "cellComments") {
+    Some(value) => value
+    None => "none"
+  }
+  let use_first_page_number = attr_bool(element, "useFirstPageNumber", false)
+  let errors = match attr(element, "errors") {
+    Some(value) => value
+    None => "displayed"
+  }
+  let horizontal_dpi = attr_uint(element, "horizontalDpi", 600)
+  let vertical_dpi = attr_uint(element, "verticalDpi", 600)
+  let copies = attr_uint(element, "copies", 1)
+  let r_id = attr_with_ns(element, "id")
+  {
+    element,
+    paper_size,
+    paper_height,
+    paper_width,
+    scale,
+    first_page_number,
+    fit_to_width,
+    fit_to_height,
+    page_order,
+    orientation,
+    use_printer_defaults,
+    black_and_white,
+    draft,
+    cell_comments,
+    use_first_page_number,
+    errors,
+    horizontal_dpi,
+    vertical_dpi,
+    copies,
+    r_id,
   }
 }
 
 ///|
-/// XSD complex type CT_CsPageSetup.
+/// XSD complex type CT_CsPageSetup — Part 1 §18.3.1.13. Chartsheet page
+/// setup (subset of CT_PageSetup without paging/print-cell-comments).
+/// All attributes optional: `@paperSize` (xsd:unsignedInt, default 1),
+/// `@paperHeight`, `@paperWidth` (s:ST_PositiveUniversalMeasure),
+/// `@firstPageNumber` (default 1), `@orientation` (ST_Orientation,
+/// default "default"), `@usePrinterDefaults` (default true),
+/// `@blackAndWhite`, `@draft` (default false), `@useFirstPageNumber`
+/// (default false), `@horizontalDpi`, `@verticalDpi` (default 600),
+/// `@copies` (default 1), and optional relationship `r:id`.
 pub(all) struct CT_CsPageSetup {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @paperSize (xsd:unsignedInt) — optional, default 1.
+  paper_size : Int
+  /// @paperHeight (s:ST_PositiveUniversalMeasure) — optional.
+  paper_height : String?
+  /// @paperWidth (s:ST_PositiveUniversalMeasure) — optional.
+  paper_width : String?
+  /// @firstPageNumber (xsd:unsignedInt) — optional, default 1.
+  first_page_number : Int
+  /// @orientation (ST_Orientation) — optional, default "default".
+  orientation : String
+  /// @usePrinterDefaults (xsd:boolean) — optional, default true.
+  use_printer_defaults : Bool
+  /// @blackAndWhite (xsd:boolean) — optional, default false.
+  black_and_white : Bool
+  /// @draft (xsd:boolean) — optional, default false.
+  draft : Bool
+  /// @useFirstPageNumber (xsd:boolean) — optional, default false.
+  use_first_page_number : Bool
+  /// @horizontalDpi (xsd:unsignedInt) — optional, default 600.
+  horizontal_dpi : Int
+  /// @verticalDpi (xsd:unsignedInt) — optional, default 600.
+  vertical_dpi : Int
+  /// @copies (xsd:unsignedInt) — optional, default 1.
+  copies : Int
+  /// @r:id (relationship reference) — optional rId pointer.
+  r_id : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_CsPageSetup::new(element : @xml.Element) -> CT_CsPageSetup {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let paper_size = attr_uint(element, "paperSize", 1)
+  let paper_height = attr(element, "paperHeight")
+  let paper_width = attr(element, "paperWidth")
+  let first_page_number = attr_uint(element, "firstPageNumber", 1)
+  let orientation = match attr(element, "orientation") {
+    Some(value) => value
+    None => "default"
+  }
+  let use_printer_defaults = attr_bool(element, "usePrinterDefaults", true)
+  let black_and_white = attr_bool(element, "blackAndWhite", false)
+  let draft = attr_bool(element, "draft", false)
+  let use_first_page_number = attr_bool(element, "useFirstPageNumber", false)
+  let horizontal_dpi = attr_uint(element, "horizontalDpi", 600)
+  let vertical_dpi = attr_uint(element, "verticalDpi", 600)
+  let copies = attr_uint(element, "copies", 1)
+  let r_id = attr_with_ns(element, "id")
+  {
+    element,
+    paper_size,
+    paper_height,
+    paper_width,
+    first_page_number,
+    orientation,
+    use_printer_defaults,
+    black_and_white,
+    draft,
+    use_first_page_number,
+    horizontal_dpi,
+    vertical_dpi,
+    copies,
+    r_id,
   }
 }
 
 ///|
-/// XSD complex type CT_MdxMetadata.
+/// XSD complex type CT_MdxMetadata — Part 1 §18.9.7. MDX metadata
+/// container inside CT_Metadata. Optional `@count` (xsd:unsignedInt,
+/// default 0) and one or more `<mdx>` (CT_Mdx) children.
 pub(all) struct CT_MdxMetadata {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — optional, default 0.
+  count : Int
+  /// <mdx>+ (CT_Mdx) — one or more MDX metadata records.
+  mdx : Array[CT_Mdx]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MdxMetadata::new(element : @xml.Element) -> CT_MdxMetadata {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let count = attr_uint(element, "count", 0)
+  let mdx : Array[CT_Mdx] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "mdx" {
+        mdx.push(CT_Mdx::new(child_element))
+      }
+    }
   }
+  { element, count, mdx }
 }
 
 ///|
-/// XSD complex type CT_Mdx.
+/// XSD complex type CT_Mdx — Part 1 §18.9.5. Single MDX metadata record.
+/// Required `@n` (xsd:unsignedInt) MDX metadata index and `@f`
+/// (ST_MdxFunctionType: `m`, `v`, `s`, `c`, `r`, `p`, `k`) function
+/// kind. Choice of exactly one of `<t>` (CT_MdxTuple), `<ms>`
+/// (CT_MdxSet), `<p>` (CT_MdxMemeberProp), `<k>` (CT_MdxKPI), preserved
+/// as the populated variant of CT_Mdx_Choice.
 pub(all) struct CT_Mdx {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @n (xsd:unsignedInt) — required MDX metadata index.
+  n : Int
+  /// @f (ST_MdxFunctionType) — required function kind token.
+  f : String
+  /// Required choice variant.
+  choice : CT_Mdx_Choice?
+} derive(Eq, Debug)
+
+///|
+/// XSD `<xsd:choice>` inside CT_Mdx — Part 1 §18.9.5. Exactly one of
+/// `<t>` (CT_MdxTuple), `<ms>` (CT_MdxSet), `<p>` (CT_MdxMemeberProp),
+/// `<k>` (CT_MdxKPI).
+pub(all) enum CT_Mdx_Choice {
+  T(CT_MdxTuple)
+  Ms(CT_MdxSet)
+  P(CT_MdxMemeberProp)
+  K(CT_MdxKPI)
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Mdx::new(element : @xml.Element) -> CT_Mdx {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let n = attr_uint(element, "n", 0)
+  let f = match attr(element, "f") {
+    Some(value) => value
+    None => ""
   }
+  let mut choice : CT_Mdx_Choice? = None
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "t" => choice = Some(CT_Mdx_Choice::T(CT_MdxTuple::new(child_element)))
+        "ms" => choice = Some(CT_Mdx_Choice::Ms(CT_MdxSet::new(child_element)))
+        "p" =>
+          choice = Some(CT_Mdx_Choice::P(CT_MdxMemeberProp::new(child_element)))
+        "k" => choice = Some(CT_Mdx_Choice::K(CT_MdxKPI::new(child_element)))
+        _ => ()
+      }
+    }
+  }
+  { element, n, f, choice }
 }
 
 ///|
-/// XSD complex type CT_MdxTuple.
+/// XSD complex type CT_MdxTuple — Part 1 §18.9.9. MDX tuple metadata.
+/// Optional `@c` (xsd:unsignedInt, default 0) cube count, `@ct`
+/// (s:ST_Xstring) cube text, `@si` (xsd:unsignedInt) string index,
+/// `@fi` (xsd:unsignedInt) format index, `@bc` (ST_UnsignedIntHex)
+/// background ARGB, `@fc` (ST_UnsignedIntHex) foreground ARGB, and
+/// formatting flags `@i`, `@u`, `@st`, `@b` (xsd:boolean, default
+/// false). Sequence: zero or more `<n>` (CT_MetadataStringIndex)
+/// children that name the tuple members.
 pub(all) struct CT_MdxTuple {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @c (xsd:unsignedInt) — optional, default 0.
+  c : Int
+  /// @ct (s:ST_Xstring) — optional cube text.
+  ct : String?
+  /// @si (xsd:unsignedInt) — optional string index.
+  si : Int?
+  /// @fi (xsd:unsignedInt) — optional format index.
+  fi : Int?
+  /// @bc (ST_UnsignedIntHex) — optional background ARGB.
+  bc : Int?
+  /// @fc (ST_UnsignedIntHex) — optional foreground ARGB.
+  fc : Int?
+  /// @i (xsd:boolean) — optional italic, default false.
+  i : Bool
+  /// @u (xsd:boolean) — optional underline, default false.
+  u : Bool
+  /// @st (xsd:boolean) — optional strike-through, default false.
+  st : Bool
+  /// @b (xsd:boolean) — optional bold, default false.
+  b : Bool
+  /// <n>* (CT_MetadataStringIndex) — zero or more member name indices.
+  n : Array[CT_MetadataStringIndex]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MdxTuple::new(element : @xml.Element) -> CT_MdxTuple {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let c = attr_uint(element, "c", 0)
+  let ct = attr(element, "ct")
+  let si = attr_uint_opt(element, "si")
+  let fi = attr_uint_opt(element, "fi")
+  let bc = attr_hex_uint_opt(element, "bc")
+  let fc = attr_hex_uint_opt(element, "fc")
+  let i = attr_bool(element, "i", false)
+  let u = attr_bool(element, "u", false)
+  let st = attr_bool(element, "st", false)
+  let b = attr_bool(element, "b", false)
+  let n : Array[CT_MetadataStringIndex] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "n" {
+        n.push(CT_MetadataStringIndex::new(child_element))
+      }
+    }
   }
+  { element, c, ct, si, fi, bc, fc, i, u, st, b, n }
 }
 
 ///|
-/// XSD complex type CT_MdxSet.
+/// XSD complex type CT_MdxSet — Part 1 §18.9.8. MDX set metadata.
+/// Required `@ns` (xsd:unsignedInt) parent set reference. Optional `@c`
+/// (xsd:unsignedInt, default 0) count and `@o` (ST_MdxSetOrder, default
+/// "u") order token from {`u`, `a`, `d`, `aa`, `ad`, `na`, `nd`}.
+/// Sequence: zero or more `<n>` (CT_MetadataStringIndex) members.
 pub(all) struct CT_MdxSet {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @ns (xsd:unsignedInt) — required parent set reference.
+  ns : Int
+  /// @c (xsd:unsignedInt) — optional, default 0.
+  c : Int
+  /// @o (ST_MdxSetOrder) — optional ordering token, default "u".
+  o : String
+  /// <n>* (CT_MetadataStringIndex) — zero or more member name indices.
+  n : Array[CT_MetadataStringIndex]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MdxSet::new(element : @xml.Element) -> CT_MdxSet {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let ns = attr_uint(element, "ns", 0)
+  let c = attr_uint(element, "c", 0)
+  let o = match attr(element, "o") {
+    Some(value) => value
+    None => "u"
   }
+  let n : Array[CT_MetadataStringIndex] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "n" {
+        n.push(CT_MetadataStringIndex::new(child_element))
+      }
+    }
+  }
+  { element, ns, c, o, n }
 }
 
 ///|
-/// XSD complex type CT_MdxMemeberProp.
+/// XSD complex type CT_MdxMemeberProp — Part 1 §18.9.6. MDX member
+/// property metadata. Required `@n` (xsd:unsignedInt) name index and
+/// `@np` (xsd:unsignedInt) property index. (XSD spelling "Memeber"
+/// preserved verbatim.)
 pub(all) struct CT_MdxMemeberProp {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @n (xsd:unsignedInt) — required name index.
+  n : Int
+  /// @np (xsd:unsignedInt) — required property index.
+  np : Int
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MdxMemeberProp::new(element : @xml.Element) -> CT_MdxMemeberProp {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  let n = attr_uint(element, "n", 0)
+  let np = attr_uint(element, "np", 0)
+  { element, n, np }
 }
 
 ///|
-/// XSD complex type CT_MdxKPI.
+/// XSD complex type CT_MdxKPI — Part 1 §18.9.4. MDX KPI metadata.
+/// Required `@n` (xsd:unsignedInt) name index, `@np` (xsd:unsignedInt)
+/// property index, and `@p` (ST_MdxKPIProperty token from
+/// {`v`, `g`, `s`, `t`, `w`, `m`}).
 pub(all) struct CT_MdxKPI {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @n (xsd:unsignedInt) — required name index.
+  n : Int
+  /// @np (xsd:unsignedInt) — required property index.
+  np : Int
+  /// @p (ST_MdxKPIProperty) — required KPI property selector token.
+  p : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MdxKPI::new(element : @xml.Element) -> CT_MdxKPI {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let n = attr_uint(element, "n", 0)
+  let np = attr_uint(element, "np", 0)
+  let p = match attr(element, "p") {
+    Some(value) => value
+    None => ""
   }
+  { element, n, np, p }
 }
 
 ///|
-/// XSD complex type CT_ExternalSheetDataSet.
+/// XSD complex type CT_ExternalSheetDataSet — Part 1 §18.14.7. Container
+/// for cached external workbook sheet data. Sequence: one or more
+/// `<sheetData>` (CT_ExternalSheetData) children. No attributes.
 pub(all) struct CT_ExternalSheetDataSet {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <sheetData>+ (CT_ExternalSheetData) — one or more cached sheet snapshots.
+  sheet_data : Array[CT_ExternalSheetData]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ExternalSheetDataSet::new(
   element : @xml.Element,
 ) -> CT_ExternalSheetDataSet {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let sheet_data : Array[CT_ExternalSheetData] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "sheetData" {
+        sheet_data.push(CT_ExternalSheetData::new(child_element))
+      }
+    }
   }
+  { element, sheet_data }
 }
 
 ///|
-/// XSD complex type CT_PivotCaches.
+/// XSD complex type CT_PivotCaches — Part 1 §18.2.19. Workbook-level
+/// container for pivot cache references. Sequence: one or more
+/// `<pivotCache>` (CT_PivotCache) children. No attributes.
 pub(all) struct CT_PivotCaches {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// <pivotCache>+ (CT_PivotCache) — one or more pivot cache entries.
+  pivot_cache : Array[CT_PivotCache]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotCaches::new(element : @xml.Element) -> CT_PivotCaches {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let pivot_cache : Array[CT_PivotCache] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "pivotCache" {
+        pivot_cache.push(CT_PivotCache::new(child_element))
+      }
+    }
   }
+  { element, pivot_cache }
 }
 
 ///|
-/// XSD complex type CT_PivotCache.
+/// XSD complex type CT_PivotCache — Part 1 §18.2.18. Single pivot cache
+/// reference inside CT_PivotCaches. Required `@cacheId` (xsd:unsignedInt)
+/// workbook-unique cache slot and `r:id` (relationship reference)
+/// pointing at the cache definition part.
 pub(all) struct CT_PivotCache {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @cacheId (xsd:unsignedInt) — required workbook-unique cache id.
+  cache_id : Int
+  /// @r:id (relationship reference) — required rId pointer to the cache
+  /// definition part.
+  r_id : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PivotCache::new(element : @xml.Element) -> CT_PivotCache {
-  let group_name = pivot_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let cache_id = attr_uint(element, "cacheId", 0)
+  let r_id = match attr_with_ns(element, "id") {
+    Some(value) => value
+    None => ""
   }
+  { element, cache_id, r_id }
 }
