@@ -3,6 +3,7 @@
 // WordprocessingML context → HTML / SVG / ASCII renderer.
 
 import {
+  "moonbitlang/core/strconv" @strconv,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @domain,
   "trkbt10/ooxml/xml" @xml,
 }
