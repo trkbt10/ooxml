@@ -1266,8 +1266,8 @@ pub(all) struct CT_MathCtrlDel {
   track_change : CT_TrackChange
   r_pr : CT_RPr?
 } derive(Eq, @debug.Debug)
-pub fn CT_MathCtrlDel::new(@xml.Element) -> Self
-pub fn CT_MathCtrlDel::parse(@xml.Element) -> Self
+pub fn CT_MathCtrlDel::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_MathCtrlDel::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_MathCtrlDel::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_MathCtrlIns {
@@ -1275,8 +1275,8 @@ pub(all) struct CT_MathCtrlIns {
   track_change : CT_TrackChange
   choice : CT_MathCtrlInsChoice?
 } derive(Eq, @debug.Debug)
-pub fn CT_MathCtrlIns::new(@xml.Element) -> Self
-pub fn CT_MathCtrlIns::parse(@xml.Element) -> Self
+pub fn CT_MathCtrlIns::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_MathCtrlIns::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_MathCtrlIns::to_element(Self) -> @xml.Element
 
 pub(all) enum CT_MathCtrlInsChoice {
@@ -1630,8 +1630,8 @@ pub(all) struct CT_ParaRPr {
   base : Array[@xml.Element]
   r_pr_change : CT_ParaRPrChange?
 } derive(Eq, @debug.Debug)
-pub fn CT_ParaRPr::new(@xml.Element) -> Self
-pub fn CT_ParaRPr::parse(@xml.Element) -> Self
+pub fn CT_ParaRPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ParaRPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ParaRPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ParaRPrChange {
@@ -1653,8 +1653,8 @@ pub(all) struct CT_ParaRPrOriginal {
   move_to : CT_TrackChange?
   base : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
-pub fn CT_ParaRPrOriginal::new(@xml.Element) -> Self
-pub fn CT_ParaRPrOriginal::parse(@xml.Element) -> Self
+pub fn CT_ParaRPrOriginal::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ParaRPrOriginal::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ParaRPrOriginal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Perm {
@@ -1756,8 +1756,8 @@ pub(all) struct CT_RPr {
   base : Array[@xml.Element]
   r_pr_change : CT_RPrChange?
 } derive(Eq, @debug.Debug)
-pub fn CT_RPr::new(@xml.Element) -> Self
-pub fn CT_RPr::parse(@xml.Element) -> Self
+pub fn CT_RPr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RPr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_RPr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RPrChange {

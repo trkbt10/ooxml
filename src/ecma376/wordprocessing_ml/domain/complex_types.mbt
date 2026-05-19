@@ -6764,7 +6764,7 @@ pub(all) struct CT_RPr {
 
 ///|
 /// XSD complex type CT_RPr — Part 1 §17.3.2.27.
-pub fn CT_RPr::new(element : @xml.Element) -> CT_RPr {
+pub fn CT_RPr::new(element : @xml.Element) -> CT_RPr raise SchemaViolation {
   let base : Array[@xml.Element] = []
   let mut r_pr_change : CT_RPrChange? = None
   for child in element.children {
@@ -6785,7 +6785,7 @@ pub fn CT_RPr::new(element : @xml.Element) -> CT_RPr {
 
 ///|
 /// XSD complex type CT_RPr — Part 1 §17.3.2.27.
-pub fn CT_RPr::parse(element : @xml.Element) -> CT_RPr {
+pub fn CT_RPr::parse(element : @xml.Element) -> CT_RPr raise SchemaViolation {
   CT_RPr::new(element)
 }
 
@@ -6821,7 +6821,9 @@ pub(all) struct CT_MathCtrlIns {
 
 ///|
 /// XSD complex type CT_MathCtrlIns — Part 1 §17.3.2.16.
-pub fn CT_MathCtrlIns::new(element : @xml.Element) -> CT_MathCtrlIns {
+pub fn CT_MathCtrlIns::new(
+  element : @xml.Element,
+) -> CT_MathCtrlIns raise SchemaViolation {
   let track_change = CT_TrackChange::new(element)
   let choice = match wml_ct_chunk3_first_choice(element, ["del", "rPr"]) {
     Some((e, "del")) => Some(CT_MathCtrlInsChoice_Del(CT_RPrChange::new(e)))
@@ -6834,7 +6836,9 @@ pub fn CT_MathCtrlIns::new(element : @xml.Element) -> CT_MathCtrlIns {
 
 ///|
 /// XSD complex type CT_MathCtrlIns — Part 1 §17.3.2.16.
-pub fn CT_MathCtrlIns::parse(element : @xml.Element) -> CT_MathCtrlIns {
+pub fn CT_MathCtrlIns::parse(
+  element : @xml.Element,
+) -> CT_MathCtrlIns raise SchemaViolation {
   CT_MathCtrlIns::new(element)
 }
 
@@ -6860,7 +6864,9 @@ pub(all) struct CT_MathCtrlDel {
 
 ///|
 /// XSD complex type CT_MathCtrlDel — Part 1 §17.3.2.15.
-pub fn CT_MathCtrlDel::new(element : @xml.Element) -> CT_MathCtrlDel {
+pub fn CT_MathCtrlDel::new(
+  element : @xml.Element,
+) -> CT_MathCtrlDel raise SchemaViolation {
   let track_change = CT_TrackChange::new(element)
   let r_pr = match wml_ct_chunk3_first_child(element, "rPr") {
     Some(e) => Some(CT_RPr::new(e))
@@ -6871,7 +6877,9 @@ pub fn CT_MathCtrlDel::new(element : @xml.Element) -> CT_MathCtrlDel {
 
 ///|
 /// XSD complex type CT_MathCtrlDel — Part 1 §17.3.2.15.
-pub fn CT_MathCtrlDel::parse(element : @xml.Element) -> CT_MathCtrlDel {
+pub fn CT_MathCtrlDel::parse(
+  element : @xml.Element,
+) -> CT_MathCtrlDel raise SchemaViolation {
   CT_MathCtrlDel::new(element)
 }
 
@@ -6941,7 +6949,9 @@ pub(all) struct CT_ParaRPrOriginal {
 
 ///|
 /// XSD complex type CT_ParaRPrOriginal — Part 1 §17.13.5.21.
-pub fn CT_ParaRPrOriginal::new(element : @xml.Element) -> CT_ParaRPrOriginal {
+pub fn CT_ParaRPrOriginal::new(
+  element : @xml.Element,
+) -> CT_ParaRPrOriginal raise SchemaViolation {
   let ins = match wml_ct_chunk3_first_child(element, "ins") {
     Some(e) => Some(CT_TrackChange::new(e))
     None => None
@@ -6979,7 +6989,9 @@ pub fn CT_ParaRPrOriginal::new(element : @xml.Element) -> CT_ParaRPrOriginal {
 
 ///|
 /// XSD complex type CT_ParaRPrOriginal — Part 1 §17.13.5.21.
-pub fn CT_ParaRPrOriginal::parse(element : @xml.Element) -> CT_ParaRPrOriginal {
+pub fn CT_ParaRPrOriginal::parse(
+  element : @xml.Element,
+) -> CT_ParaRPrOriginal raise SchemaViolation {
   CT_ParaRPrOriginal::new(element)
 }
 
@@ -7015,7 +7027,9 @@ pub(all) struct CT_ParaRPr {
 
 ///|
 /// XSD complex type CT_ParaRPr — Part 1 §17.3.1.29.
-pub fn CT_ParaRPr::new(element : @xml.Element) -> CT_ParaRPr {
+pub fn CT_ParaRPr::new(
+  element : @xml.Element,
+) -> CT_ParaRPr raise SchemaViolation {
   let ins = match wml_ct_chunk3_first_child(element, "ins") {
     Some(e) => Some(CT_TrackChange::new(e))
     None => None
@@ -7058,7 +7072,9 @@ pub fn CT_ParaRPr::new(element : @xml.Element) -> CT_ParaRPr {
 
 ///|
 /// XSD complex type CT_ParaRPr — Part 1 §17.3.1.29.
-pub fn CT_ParaRPr::parse(element : @xml.Element) -> CT_ParaRPr {
+pub fn CT_ParaRPr::parse(
+  element : @xml.Element,
+) -> CT_ParaRPr raise SchemaViolation {
   CT_ParaRPr::new(element)
 }
 

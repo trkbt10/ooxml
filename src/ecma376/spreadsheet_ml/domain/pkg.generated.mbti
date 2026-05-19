@@ -2770,6 +2770,7 @@ pub fn CT_TableFormula::new(@xml.Element) -> Self
 
 pub(all) struct CT_TableMissing {
   element : @xml.Element
+  present : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_TableMissing::new(@xml.Element) -> Self
 
