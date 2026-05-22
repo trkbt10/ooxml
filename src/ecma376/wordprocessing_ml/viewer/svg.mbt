@@ -259,6 +259,10 @@ priv struct RunSpan {
   /// image_height_px)` at the span's baseline rather than text.
   /// `None` for plain text runs.
   inline_image : InlineImage?
+  /// §22.1.2.77 `<m:oMath>` Office Math payload — when present the
+  /// renderer emits the pre-laid-out SVG `<g>` for the equation at
+  /// the span's baseline rather than text. `None` for non-math runs.
+  math : MathPayload?
   /// §17.3.2.42 `<w:vertAlign w:val="…">`. "baseline" (default) keeps
   /// the glyph on the line baseline; "superscript" lifts it;
   /// "subscript" drops it. The emitter scales the font down and
@@ -354,6 +358,20 @@ priv struct InlineImage {
   /// inline images.
   position_h_relative : String
   position_v_relative : String
+}
+
+///|
+/// Office Math payload captured during span collection.  The
+/// `office_math` SVG renderer lays the `<m:oMath>` tree out into a
+/// self-contained `<g>` (no MathML, no `<foreignObject>`); the span
+/// reserves `width_px` and the emitter translates the group to the
+/// line baseline.  `ascent` / `descent` measure the painted extent
+/// above / below the math baseline.
+priv struct MathPayload {
+  group : @xml.Element
+  width_px : Double
+  ascent_px : Double
+  descent_px : Double
 }
 
 ///|
@@ -2221,6 +2239,7 @@ fn resolve_run_props(
     highlight,
     width_px: 0.0,
     inline_image: None,
+    math: None,
     vertical_align,
     letter_spacing_px,
     caps,
@@ -2337,6 +2356,7 @@ fn default_run_template() -> RunSpan {
     highlight: "",
     width_px: 0.0,
     inline_image: None,
+    math: None,
     vertical_align: "baseline",
     letter_spacing_px: 0.0,
     caps: false,
@@ -2353,6 +2373,23 @@ fn default_run_template() -> RunSpan {
     kern_half_points: 0.0,
     lang: "",
     bar_tab: false,
+  }
+}
+
+///|
+/// Derive the run template for an Office Math zone.  OMML runs carry
+/// no `<w:rPr>` of their own in the WML sense, so the equation
+/// borrows the font / size / colour of the first `<w:r>` sibling in
+/// `parent` (the enclosing paragraph or wrapper); when the paragraph
+/// has no run, the document default template is used.
+fn math_run_template(
+  parent : @xml.Element,
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
+) -> RunSpan {
+  match first_child_named(parent, "r") {
+    Some(r) => resolve_run_props(r, theme_map~, font_map~)
+    None => default_run_template()
   }
 }
 
@@ -2427,6 +2464,31 @@ fn collect_paragraph_spans_into(
               theme_map~,
               font_map~,
             )
+          // §22.1.2.77 `<m:oMath>` — an inline Office Math zone.
+          // Lay it out to a self-contained SVG `<g>` at the
+          // surrounding run's font size and emit one math span.
+          // The font / colour come from the first `<w:r>` of the
+          // paragraph (or the document defaults when there is
+          // none) so the equation matches the body text.
+          "oMath" => {
+            let template = math_run_template(parent, theme_map~, font_map~)
+            emit_omath_span(e, template, spans)
+          }
+          // §22.1.2.78 `<m:oMathPara>` — a paragraph-level math
+          // wrapper holding one or more `<m:oMath>` children;
+          // emit each as its own math span.
+          "oMathPara" => {
+            let template = math_run_template(parent, theme_map~, font_map~)
+            for math_child in e.children {
+              match math_child {
+                Element(me) =>
+                  if me.name.local_name == "oMath" {
+                    emit_omath_span(me, template, spans)
+                  }
+                _ => ()
+              }
+            }
+          }
           "ins" | "moveTo" => {
             // §17.13.5.18 `<w:ins>` / §17.13.5.27 `<w:moveTo>` —
             // inserted text.  Word's default visualisation is an
@@ -3058,7 +3120,7 @@ fn apply_hyperlink_styling(span : RunSpan, enabled : Bool) -> RunSpan {
 ///|
 /// Build a RunSpan with `text` and `width_px` from a template.
 fn with_text(template : RunSpan, text : String, width : Double) -> RunSpan {
-  { ..template, text, width_px: width, inline_image: None }
+  { ..template, text, width_px: width, inline_image: None, math: None }
 }
 
 ///|
@@ -3068,7 +3130,57 @@ fn with_text(template : RunSpan, text : String, width : Double) -> RunSpan {
 /// so the paragraph emitter can lay the picture out at the line
 /// baseline.
 fn with_inline_image(template : RunSpan, image : InlineImage) -> RunSpan {
-  { ..template, text: "", width_px: image.width_px, inline_image: Some(image) }
+  {
+    ..template,
+    text: "",
+    width_px: image.width_px,
+    inline_image: Some(image),
+    math: None,
+  }
+}
+
+///|
+/// Build a RunSpan carrying an Office Math payload from a template.
+/// The span reserves the math fragment's width; the emitter draws
+/// the pre-laid-out `<g>` at the line baseline.
+fn with_math(template : RunSpan, math : MathPayload) -> RunSpan {
+  {
+    ..template,
+    text: "",
+    width_px: math.width_px,
+    inline_image: None,
+    math: Some(math),
+  }
+}
+
+///|
+/// §22.1.2.77 `<m:oMath>` — lay the Office Math tree out into a
+/// self-contained SVG `<g>` (via the `office_math` SVG renderer) and
+/// push it as one math span.  The fragment is rendered at the run
+/// template's font size so the equation matches the surrounding body
+/// text; its colour follows the run colour (defaulting to black).
+fn emit_omath_span(
+  o_math : @xml.Element,
+  template : RunSpan,
+  spans : Array[RunSpan],
+) -> Unit {
+  let color = if template.color.length() > 0 {
+    template.color
+  } else {
+    "#000000"
+  }
+  let rendered = @omml_viewer.render_svg(
+    @omml.CT_OMath::new(o_math),
+    font_size_pt=template.font_size_pt,
+    color~,
+  )
+  let payload = {
+    group: rendered.group,
+    width_px: rendered.width,
+    ascent_px: rendered.ascent,
+    descent_px: rendered.descent,
+  }
+  spans.push(with_math(template, payload))
 }
 
 ///|
@@ -3173,6 +3285,32 @@ fn layout_paragraph(
       0.8
     }
     let baseline = current_y + lh_pt * @glyph.pt_to_px * ascender
+    // §22.1.2.77 — an Office Math fragment is laid out around its
+    // own baseline; a tall equation (fraction, n-ary, matrix) can
+    // need more head- and foot-room than the text line box. Grow
+    // the line so every math span fits: push the baseline down by
+    // any ascent overflow above `y_top`, and extend the height by
+    // any descent overflow below the natural line bottom.
+    let mut extra_above = 0.0
+    let mut extra_below = 0.0
+    for s in line_spans {
+      match s.math {
+        Some(math) => {
+          let above = math.ascent_px - (baseline - current_y)
+          if above > extra_above {
+            extra_above = above
+          }
+          let below = math.descent_px -
+            (current_y + line_height - baseline)
+          if below > extra_below {
+            extra_below = below
+          }
+        }
+        None => ()
+      }
+    }
+    let baseline = baseline + extra_above
+    let line_height = line_height + extra_above + extra_below
     let line_width = sum_span_widths(line_spans)
     let available = if idx == 0 { first_line_w } else { next_line_w }
     let base_x = props.margin_left + line_indent
@@ -3803,6 +3941,13 @@ fn chars_to_string(chars : Array[Char]) -> String {
 /// instruct the caller to start a new line between word groups when
 /// needed.
 fn break_span_by_words(span : RunSpan, first_avail : Double) -> Array[RunSpan] {
+  // An Office Math fragment or an inline image is an indivisible
+  // box — it carries no breakable text. Returning it whole keeps
+  // the caller's force-fit path (`used.val == 0.0`) from dropping
+  // it when it is wider than the remaining line budget.
+  if span.math is Some(_) || span.inline_image is Some(_) {
+    return [span]
+  }
   let segments = split_into_segments(span.text)
   let pieces : Array[RunSpan] = []
   let cur_chars : Array[Char] = []
@@ -4930,6 +5075,34 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
         }
         out.push(
           @markup.elem_ns("image", @markup.svg_ns, img_attrs, img_children),
+        )
+        x_cursor = x_cursor + span.width_px
+        continue
+      }
+      None => ()
+    }
+    // §22.1.2.77 Office Math — the `<g>` is laid out with the math
+    // baseline at y = 0; translate it to the line's baseline at the
+    // running x cursor, then advance the cursor by the reserved
+    // width.
+    match span.math {
+      Some(math) => {
+        out.push(
+          @markup.elem_ns(
+            "g",
+            @markup.svg_ns,
+            [
+              @markup.attr(
+                "transform",
+                "translate(" +
+                fmt_double(x_cursor) +
+                "," +
+                fmt_double(line.y_baseline) +
+                ")",
+              ),
+            ],
+            [@xml.Node::Element(math.group)],
+          ),
         )
         x_cursor = x_cursor + span.width_px
         continue

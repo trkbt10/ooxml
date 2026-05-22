@@ -252,9 +252,11 @@ test "build_geometry flowChartConnector delegates to ellipse" {
 }
 
 ///|
-test "build_geometry fallback used for unsupported preset" {
-  // `swooshArrow` still has no faithful generator.
-  let g = build_geometry(ShapeSwooshArrow, 100, 100)
+test "rectangular_fallback emits the canonical bounding rectangle" {
+  // Every ST_ShapeType preset now has a faithful generator, so the
+  // fallback path is exercised by calling `rectangular_fallback`
+  // directly — it backs any future preset that lacks a generator.
+  let g = rectangular_fallback(100, 100)
   assert_eq(g.command_count(), 5)
   assert_true(g.is_closed())
   assert_true(g.commands[0] is MoveTo(0, 0))
@@ -284,8 +286,11 @@ test "supports() reports faithful coverage for the canonical 30+" {
   // Faithful generators now cover the gear / seal / curved-arrow set.
   assert_true(supports(ShapeFunnel))
   assert_true(supports(ShapeGear6))
-  // Not supported: should fall back.
-  assert_true(!supports(ShapeSwooshArrow))
+  // The full ST_ShapeType enumeration is now faithfully covered,
+  // including the formerly-approximated swoosh / circular arrows.
+  assert_true(supports(ShapeSwooshArrow))
+  assert_true(supports(ShapeLeftCircularArrow))
+  assert_true(supports(ShapeLeftRightCircularArrow))
 }
 
 ///|
@@ -485,13 +490,21 @@ test "build_geometry chartStar emits four marker bands" {
 }
 
 ///|
-/// §20.1.10.56 — a preset still without a faithful generator (e.g.
-/// `swooshArrow`) falls back to the bounding-box rectangle and
-/// `supports` reports `false`.
-test "build_geometry unmapped preset still uses rectangular fallback" {
-  let g = build_geometry(ShapeSwooshArrow, 200, 100)
-  assert_eq(g.command_count(), 5)
-  assert_false(supports(ShapeSwooshArrow))
+/// §20.1.10.56 swooshArrow / leftCircularArrow / leftRightCircularArrow
+/// — the final preset family. swoosh is a faithful tapered polygon;
+/// the circular arrows are documented silhouette approximations.
+test "build_geometry covers the swoosh / circular-arrow family" {
+  let sw = build_geometry(ShapeSwooshArrow, 200, 100)
+  assert_true(sw.is_closed())
+  assert_true(supports(ShapeSwooshArrow))
+  // 2 quad curves + 4 line segments + move + close.
+  assert_eq(sw.command_count(), 8)
+  let lc = build_geometry(ShapeLeftCircularArrow, 120, 120)
+  assert_true(lc.is_closed())
+  assert_true(supports(ShapeLeftCircularArrow))
+  let lr = build_geometry(ShapeLeftRightCircularArrow, 120, 120)
+  assert_true(lr.is_closed())
+  assert_true(supports(ShapeLeftRightCircularArrow))
 }
 
 ///|

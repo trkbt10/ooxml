@@ -8,7 +8,69 @@ import {
 }
 
 // Values
+pub fn build_accent_border_callout1(Int, Int) -> ShapeGeometry
+
+pub fn build_accent_border_callout2(Int, Int) -> ShapeGeometry
+
+pub fn build_accent_border_callout3(Int, Int) -> ShapeGeometry
+
+pub fn build_accent_callout1(Int, Int) -> ShapeGeometry
+
+pub fn build_accent_callout2(Int, Int) -> ShapeGeometry
+
+pub fn build_accent_callout3(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_back_previous(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_beginning(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_blank(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_document(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_end(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_forward_next(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_help(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_home(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_information(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_movie(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_return(Int, Int) -> ShapeGeometry
+
+pub fn build_action_button_sound(Int, Int) -> ShapeGeometry
+
+pub fn build_arc(Int, Int) -> ShapeGeometry
+
+pub fn build_bent_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_bent_connector2(Int, Int) -> ShapeGeometry
+
+pub fn build_bent_connector3(Int, Int) -> ShapeGeometry
+
+pub fn build_bent_connector4(Int, Int) -> ShapeGeometry
+
+pub fn build_bent_connector5(Int, Int) -> ShapeGeometry
+
+pub fn build_bent_up_arrow(Int, Int) -> ShapeGeometry
+
 pub fn build_bevel(Int, Int) -> ShapeGeometry
+
+pub fn build_block_arc(Int, Int) -> ShapeGeometry
+
+pub fn build_border_callout1(Int, Int) -> ShapeGeometry
+
+pub fn build_border_callout2(Int, Int) -> ShapeGeometry
+
+pub fn build_border_callout3(Int, Int) -> ShapeGeometry
+
+pub fn build_brace_pair(Int, Int) -> ShapeGeometry
+
+pub fn build_bracket_pair(Int, Int) -> ShapeGeometry
 
 pub fn build_callout1(Int, Int) -> ShapeGeometry
 
@@ -26,11 +88,35 @@ pub fn build_chart_x(Int, Int) -> ShapeGeometry
 
 pub fn build_chevron(Int, Int) -> ShapeGeometry
 
+pub fn build_chord(Int, Int) -> ShapeGeometry
+
+pub fn build_circular_arrow(Int, Int) -> ShapeGeometry
+
 pub fn build_cloud(Int, Int) -> ShapeGeometry
+
+pub fn build_cloud_callout(Int, Int) -> ShapeGeometry
 
 pub fn build_corner(Int, Int) -> ShapeGeometry
 
+pub fn build_corner_tabs(Int, Int) -> ShapeGeometry
+
 pub fn build_cube(Int, Int) -> ShapeGeometry
+
+pub fn build_curved_connector2(Int, Int) -> ShapeGeometry
+
+pub fn build_curved_connector3(Int, Int) -> ShapeGeometry
+
+pub fn build_curved_connector4(Int, Int) -> ShapeGeometry
+
+pub fn build_curved_connector5(Int, Int) -> ShapeGeometry
+
+pub fn build_curved_down_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_curved_left_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_curved_right_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_curved_up_arrow(Int, Int) -> ShapeGeometry
 
 pub fn build_diag_stripe(Int, Int) -> ShapeGeometry
 
@@ -38,15 +124,73 @@ pub fn build_diamond(Int, Int) -> ShapeGeometry
 
 pub fn build_divide(Int, Int) -> ShapeGeometry
 
+pub fn build_donut(Int, Int) -> ShapeGeometry
+
+pub fn build_double_wave(Int, Int) -> ShapeGeometry
+
 pub fn build_down_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_down_arrow_callout(Int, Int) -> ShapeGeometry
 
 pub fn build_ellipse(Int, Int) -> ShapeGeometry
 
+pub fn build_ellipse_ribbon(Int, Int) -> ShapeGeometry
+
+pub fn build_ellipse_ribbon2(Int, Int) -> ShapeGeometry
+
 pub fn build_equal(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_collate(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_delay(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_display(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_document(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_extract(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_magnetic_disk(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_magnetic_drum(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_magnetic_tape(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_manual_input(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_manual_operation(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_merge(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_multidocument(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_offline_storage(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_offpage_connector(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_online_storage(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_or(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_preparation(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_punched_card(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_punched_tape(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_sort(Int, Int) -> ShapeGeometry
+
+pub fn build_flow_chart_summing_junction(Int, Int) -> ShapeGeometry
 
 pub fn build_folded_corner(Int, Int) -> ShapeGeometry
 
 pub fn build_frame(Int, Int) -> ShapeGeometry
+
+pub fn build_funnel(Int, Int) -> ShapeGeometry
+
+pub fn build_gear6(Int, Int) -> ShapeGeometry
+
+pub fn build_gear9(Int, Int) -> ShapeGeometry
 
 pub fn build_geometry(PresetShape, Int, Int) -> ShapeGeometry
 
@@ -56,33 +200,119 @@ pub fn build_heart(Int, Int) -> ShapeGeometry
 
 pub fn build_home_plate(Int, Int) -> ShapeGeometry
 
+pub fn build_horizontal_scroll(Int, Int) -> ShapeGeometry
+
+pub fn build_irregular_seal1(Int, Int) -> ShapeGeometry
+
+pub fn build_irregular_seal2(Int, Int) -> ShapeGeometry
+
 pub fn build_left_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_left_arrow_callout(Int, Int) -> ShapeGeometry
+
+pub fn build_left_brace(Int, Int) -> ShapeGeometry
+
+pub fn build_left_bracket(Int, Int) -> ShapeGeometry
+
+pub fn build_left_circular_arrow(Int, Int) -> ShapeGeometry
 
 pub fn build_left_right_arrow(Int, Int) -> ShapeGeometry
 
+pub fn build_left_right_arrow_callout(Int, Int) -> ShapeGeometry
+
+pub fn build_left_right_circular_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_left_right_ribbon(Int, Int) -> ShapeGeometry
+
+pub fn build_left_right_up_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_left_up_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_lightning_bolt(Int, Int) -> ShapeGeometry
+
+pub fn build_line(Int, Int) -> ShapeGeometry
+
+pub fn build_line_inv(Int, Int) -> ShapeGeometry
+
+pub fn build_math_not_equal(Int, Int) -> ShapeGeometry
+
 pub fn build_minus(Int, Int) -> ShapeGeometry
+
+pub fn build_moon(Int, Int) -> ShapeGeometry
 
 pub fn build_multiply(Int, Int) -> ShapeGeometry
 
+pub fn build_no_smoking(Int, Int) -> ShapeGeometry
+
+pub fn build_non_isosceles_trapezoid(Int, Int) -> ShapeGeometry
+
+pub fn build_notched_right_arrow(Int, Int) -> ShapeGeometry
+
 pub fn build_parallelogram(Int, Int) -> ShapeGeometry
+
+pub fn build_pie(Int, Int) -> ShapeGeometry
+
+pub fn build_pie_wedge(Int, Int) -> ShapeGeometry
 
 pub fn build_plaque(Int, Int) -> ShapeGeometry
 
+pub fn build_plaque_tabs(Int, Int) -> ShapeGeometry
+
 pub fn build_plus(Int, Int) -> ShapeGeometry
+
+pub fn build_quad_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_quad_arrow_callout(Int, Int) -> ShapeGeometry
 
 pub fn build_rect(Int, Int) -> ShapeGeometry
 
 pub fn build_regular_polygon(Int, Int, Int) -> ShapeGeometry
 
+pub fn build_ribbon(Int, Int) -> ShapeGeometry
+
+pub fn build_ribbon2(Int, Int) -> ShapeGeometry
+
 pub fn build_right_arrow(Int, Int) -> ShapeGeometry
 
+pub fn build_right_arrow_callout(Int, Int) -> ShapeGeometry
+
+pub fn build_right_brace(Int, Int) -> ShapeGeometry
+
+pub fn build_right_bracket(Int, Int) -> ShapeGeometry
+
 pub fn build_right_triangle(Int, Int) -> ShapeGeometry
+
+pub fn build_round1_rect(Int, Int) -> ShapeGeometry
+
+pub fn build_round2_diag_rect(Int, Int) -> ShapeGeometry
+
+pub fn build_round2_same_rect(Int, Int) -> ShapeGeometry
 
 pub fn build_round_rect(Int, Int) -> ShapeGeometry
 
 pub fn build_smiley_face(Int, Int) -> ShapeGeometry
 
+pub fn build_snip1_rect(Int, Int) -> ShapeGeometry
+
+pub fn build_snip2_diag_rect(Int, Int) -> ShapeGeometry
+
+pub fn build_snip2_same_rect(Int, Int) -> ShapeGeometry
+
+pub fn build_snip_round_rect(Int, Int) -> ShapeGeometry
+
+pub fn build_square_tabs(Int, Int) -> ShapeGeometry
+
 pub fn build_star(Int, Int, Int) -> ShapeGeometry
+
+pub fn build_straight_connector1(Int, Int) -> ShapeGeometry
+
+pub fn build_striped_right_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_sun(Int, Int) -> ShapeGeometry
+
+pub fn build_swoosh_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_teardrop(Int, Int) -> ShapeGeometry
 
 pub fn build_trapezoid(Int, Int) -> ShapeGeometry
 
@@ -90,7 +320,23 @@ pub fn build_triangle(Int, Int) -> ShapeGeometry
 
 pub fn build_up_arrow(Int, Int) -> ShapeGeometry
 
+pub fn build_up_arrow_callout(Int, Int) -> ShapeGeometry
+
 pub fn build_up_down_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_up_down_arrow_callout(Int, Int) -> ShapeGeometry
+
+pub fn build_uturn_arrow(Int, Int) -> ShapeGeometry
+
+pub fn build_vertical_scroll(Int, Int) -> ShapeGeometry
+
+pub fn build_wave(Int, Int) -> ShapeGeometry
+
+pub fn build_wedge_ellipse_callout(Int, Int) -> ShapeGeometry
+
+pub fn build_wedge_rect_callout(Int, Int) -> ShapeGeometry
+
+pub fn build_wedge_round_rect_callout(Int, Int) -> ShapeGeometry
 
 pub fn decode_adjustment(@xml.Element) -> Adjustment raise @errors.SchemaViolation
 

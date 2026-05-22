@@ -240,3 +240,42 @@ test "layout_text_body lays out a single short line" {
   // Baseline must be positive (above 0 in SVG y-down coordinates).
   assert_true(result.paragraphs[0].lines[0].y > 0.0)
 }
+
+///|
+/// §21.1.2.1.32 hindiAlphaPeriod — Hindi vowels (§17.18.59
+/// `hindiVowels`, 37-glyph set U+0915–U+0939) with the repeated-
+/// letter algorithm: 1 → first glyph, 37 → last, 38 → doubled first.
+test "format_auto_number — Hindi vowel alphabetic numbering" {
+  // U+0915 क, U+0939 ह.
+  inspect(format_auto_number("hindiAlphaPeriod", 1), content="क.")
+  inspect(format_auto_number("hindiAlphaPeriod", 37), content="ह.")
+  // 38 wraps: the first glyph written twice.
+  inspect(format_auto_number("hindiAlphaPeriod", 38), content="कक.")
+}
+
+///|
+/// §21.1.2.1.32 hindiAlpha1Period — Hindi consonants (§17.18.59
+/// `hindiConsonants`, 18-glyph set: U+0905–U+0914 then U+0905+U+0902
+/// and U+0905+U+0903).
+test "format_auto_number — Hindi consonant alphabetic numbering" {
+  // U+0905 अ, U+0914 औ.
+  inspect(format_auto_number("hindiAlpha1Period", 1), content="अ.")
+  inspect(format_auto_number("hindiAlpha1Period", 16), content="औ.")
+  // Position 17 is U+0905 combined with U+0902.
+  inspect(format_auto_number("hindiAlpha1Period", 17), content="अं.")
+  // 19 wraps past the 18-glyph set: first glyph doubled.
+  inspect(format_auto_number("hindiAlpha1Period", 19), content="अअ.")
+}
+
+///|
+/// §21.1.2.1.32 thaiAlpha* — Thai letters (§17.18.59 `thaiLetters`,
+/// 41-glyph set: U+0E01, U+0E02, U+0E04, U+0E07–U+0E23, U+0E25,
+/// U+0E27–U+0E2E).
+test "format_auto_number — Thai letter alphabetic numbering" {
+  // U+0E01 ก, U+0E02 ข, U+0E04 ค.
+  inspect(format_auto_number("thaiAlphaPeriod", 1), content="ก.")
+  inspect(format_auto_number("thaiAlphaParenR", 2), content="ข)")
+  inspect(format_auto_number("thaiAlphaParenBoth", 3), content="(ค)")
+  // 42 wraps past the 41-glyph set: first glyph doubled.
+  inspect(format_auto_number("thaiAlphaPeriod", 42), content="กก.")
+}

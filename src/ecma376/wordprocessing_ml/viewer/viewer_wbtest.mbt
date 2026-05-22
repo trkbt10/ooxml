@@ -4885,3 +4885,125 @@ test "render_svg draws even/odd headers when evenAndOddHeaders set" {
   // Page 2 (even) → even header.
   assert_true(result.pages[1].svg.contains("EVEN HEADER"))
 }
+
+///|
+/// §22.1.2.77 `<m:oMath>` — an inline Office Math zone inside a
+/// paragraph is rendered to pure SVG (a self-contained `<g>`), with
+/// no `<foreignObject>` and no MathML.  The equation's glyphs and
+/// structural primitives surface directly in the page SVG.
+test "render_svg renders inline OMML as pure SVG" {
+  // <w:p>
+  //   <w:r><w:t>E=</w:t></w:r>
+  //   <m:oMath>
+  //     <m:f><m:num><m:r><m:t>a</m:t></m:r></m:num>
+  //         <m:den><m:r><m:t>b</m:t></m:r></m:den></m:f>
+  //   </m:oMath>
+  // </w:p>
+  let omml_run = fn(text : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("r"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("t"),
+          attributes: [],
+          children: [@xml.Node::Text(text)],
+        }),
+      ],
+    })
+  }
+  let omml_elem = fn(tag : String, children : Array[@xml.Node]) -> @xml.Node {
+    @xml.Node::Element({ name: name(tag), attributes: [], children })
+  }
+  let frac = omml_elem("f", [
+    omml_elem("num", [omml_run("a")]),
+    omml_elem("den", [omml_run("b")]),
+  ])
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("t"),
+                    attributes: [],
+                    children: [@xml.Node::Text("E=")],
+                  }),
+                ],
+              }),
+              omml_elem("oMath", [frac]),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  // The math fragment carries the omml-svg marker.
+  assert_true(svg.contains("data-ooxml=\"omml-svg\""))
+  // The body text and the equation's glyphs both surface.
+  assert_true(svg.contains(">E=</text>"))
+  assert_true(svg.contains(">a</text>"))
+  assert_true(svg.contains(">b</text>"))
+  // The fraction draws a rule rect — pure SVG, no MathML / no
+  // <foreignObject> fallback.
+  assert_true(svg.contains("<rect"))
+  assert_false(svg.contains("foreignObject"))
+  assert_false(svg.contains("<math"))
+}
+
+///|
+/// §22.1.2.78 `<m:oMathPara>` — a paragraph-level math wrapper is
+/// rendered: each nested `<m:oMath>` becomes its own SVG `<g>`.
+test "render_svg renders OMML paragraph wrapper as pure SVG" {
+  let omml_run = fn(text : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("r"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("t"),
+          attributes: [],
+          children: [@xml.Node::Text(text)],
+        }),
+      ],
+    })
+  }
+  let omml_elem = fn(tag : String, children : Array[@xml.Node]) -> @xml.Node {
+    @xml.Node::Element({ name: name(tag), attributes: [], children })
+  }
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              omml_elem("oMathPara", [omml_elem("oMath", [omml_run("y")])]),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  assert_true(svg.contains("data-ooxml=\"omml-svg\""))
+  assert_true(svg.contains(">y</text>"))
+  assert_false(svg.contains("foreignObject"))
+}

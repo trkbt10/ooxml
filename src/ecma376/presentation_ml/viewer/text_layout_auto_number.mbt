@@ -1,9 +1,10 @@
 // @source web-pptx packages/@aurochs-renderer/pptx/src/text-layout/auto-number.ts
 //
 // `<a:buAutoNum type="..." startAt="...">` formatter.  Mirrors all
-// ECMA-376 §21.1.2.1.32 (ST_TextAutonumberScheme) values supported by
-// the TS reference.  East-Asian / Hindi / Thai schemes fall back to
-// Arabic numerals — the TS code does the same.
+// ECMA-376 §21.1.2.1.32 (ST_TextAutonumberScheme) values.  Hindi and
+// Thai alphabetic schemes use the §17.18.59 repeated-letter algorithm
+// over their respective Devanagari / Thai character sets; East-Asian
+// schemes resolve to CJK numerals.
 
 ///|
 /// Convert a positive integer 1-3999 to lowercase Roman numerals.
@@ -126,6 +127,94 @@ fn to_thai_digits(num : Int) -> String {
 /// occupy U+0966 (zero) through U+096F (nine).
 fn to_devanagari_digits(num : Int) -> String {
   substitute_decimal_digits(num, 0x0966)
+}
+
+///|
+/// ECMA-376 §17.18.59 — the "repeated letter" numbering algorithm
+/// shared by `hindiConsonants`, `hindiVowels` and `thaiLetters`.
+///
+/// Given an ordered character set of `size` glyphs, value `num` is
+/// rendered by: repeatedly subtracting `size` until the remainder is
+/// in `[1, size]`, then writing the glyph at that position once for
+/// the base occurrence plus once more for each subtraction. So values
+/// 1..size are single glyphs, size+1..2·size are doubled glyphs, etc.
+/// `num <= 0` falls back to the decimal form so the list still reads
+/// sequentially.
+fn repeated_letter_numeral(num : Int, charset : Array[Int]) -> String {
+  let size = charset.length()
+  if num <= 0 || size == 0 {
+    return num.to_string()
+  }
+  let mut remainder = num
+  let mut repeats = 1
+  while remainder > size {
+    remainder = remainder - size
+    repeats = repeats + 1
+  }
+  let glyph = Char::from_int(charset[remainder - 1])
+  let out = StringBuilder::new()
+  for _ in 0..<repeats {
+    out.write_char(glyph)
+  }
+  out.to_string()
+}
+
+///|
+/// ECMA-376 §17.18.59 `hindiConsonants` — the 18-glyph Hindi
+/// consonant set: U+0905–U+0914 (16 code points) followed by U+0905
+/// combined with U+0902 and U+0905 combined with U+0903. The two
+/// combined positions are emitted as two-character sequences.
+fn hindi_consonant_numeral(num : Int) -> String {
+  let size = 18
+  if num <= 0 {
+    return num.to_string()
+  }
+  let mut remainder = num
+  let mut repeats = 1
+  while remainder > size {
+    remainder = remainder - size
+    repeats = repeats + 1
+  }
+  // Positions 1–16 → U+0905..U+0914; 17 → U+0905 U+0902; 18 → U+0905 U+0903.
+  let unit = if remainder <= 16 {
+    let cp = 0x0905 + (remainder - 1)
+    Char::from_int(cp).to_string()
+  } else if remainder == 17 {
+    Char::from_int(0x0905).to_string() + Char::from_int(0x0902).to_string()
+  } else {
+    Char::from_int(0x0905).to_string() + Char::from_int(0x0903).to_string()
+  }
+  let out = StringBuilder::new()
+  for _ in 0..<repeats {
+    out.write_string(unit)
+  }
+  out.to_string()
+}
+
+///|
+/// ECMA-376 §17.18.59 `hindiVowels` — the 37-glyph Hindi vowel set
+/// occupies the contiguous block U+0915–U+0939.
+fn hindi_vowel_numeral(num : Int) -> String {
+  let charset : Array[Int] = []
+  for cp in 0x0915..=0x0939 {
+    charset.push(cp)
+  }
+  repeated_letter_numeral(num, charset)
+}
+
+///|
+/// ECMA-376 §17.18.59 `thaiLetters` — the 41-glyph Thai letter set:
+/// U+0E01, U+0E02, U+0E04, U+0E07–U+0E23, U+0E25, U+0E27–U+0E2E.
+fn thai_letter_numeral(num : Int) -> String {
+  let charset : Array[Int] = [0x0E01, 0x0E02, 0x0E04]
+  for cp in 0x0E07..=0x0E23 {
+    charset.push(cp)
+  }
+  charset.push(0x0E25)
+  for cp in 0x0E27..=0x0E2E {
+    charset.push(cp)
+  }
+  repeated_letter_numeral(num, charset)
 }
 
 ///|
@@ -333,21 +422,24 @@ pub fn format_auto_number(
     // substitution and are rendered exactly.
     "hindiNumPeriod" => to_devanagari_digits(num) + "."
     "hindiNumParenR" => to_devanagari_digits(num) + ")"
-    // Hindi alphabetic variants — hindiAlpha* require a Devanagari
-    // alphabetic-numeral (consonant) table the viewer does not yet
-    // implement; surfaced as plain Arabic with the spec suffix.
-    "hindiAlpha1Period" | "hindiAlphaPeriod" => num.to_string() + "."
+    // Hindi alphabetic variants — §21.1.2.1.32 distinguishes
+    // `hindiAlpha1Period` ("Hindi alphabet period - consonants")
+    // from `hindiAlphaPeriod` ("Hindi alphabet period - vowels").
+    // Both use the §17.18.59 repeated-letter algorithm over their
+    // respective Devanagari character sets.
+    "hindiAlpha1Period" => hindi_consonant_numeral(num) + "."
+    "hindiAlphaPeriod" => hindi_vowel_numeral(num) + "."
     // Thai numeric variants — §21.1.2.1.32 thaiNum* use the Thai
     // digit block (U+0E50-0E59); pure digit substitution.
     "thaiNumParenBoth" => "(" + to_thai_digits(num) + ")"
     "thaiNumParenR" => to_thai_digits(num) + ")"
     "thaiNumPeriod" => to_thai_digits(num) + "."
-    // Thai alphabetic variants — thaiAlpha* require a Thai
-    // consonant-numeral table not yet implemented; degraded to
-    // plain Arabic with the spec suffix.
-    "thaiAlphaParenBoth" => "(" + num.to_string() + ")"
-    "thaiAlphaParenR" => num.to_string() + ")"
-    "thaiAlphaPeriod" => num.to_string() + "."
+    // Thai alphabetic variants — §21.1.2.1.32 thaiAlpha* use the
+    // §17.18.59 `thaiLetters` 41-glyph set with the repeated-letter
+    // algorithm.
+    "thaiAlphaParenBoth" => "(" + thai_letter_numeral(num) + ")"
+    "thaiAlphaParenR" => thai_letter_numeral(num) + ")"
+    "thaiAlphaPeriod" => thai_letter_numeral(num) + "."
     // §21.1.2.1.32 — schema violation: unknown scheme. Render the
     // numeric value with no decoration so the list is still
     // sequential; the scheme name should already have been
