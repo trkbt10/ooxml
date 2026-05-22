@@ -3,8 +3,7 @@
 /// pipeline.
 ///
 /// render_svg walks a DrawingML element tree and emits a small SVG inspection
-/// view for shape/text content. render_html wraps that SVG for consumers that
-/// expect an HTML renderer entry point.
+/// view for shape/text content.
 ///
 /// The output is built as a structured `@xml.Element` tree and
 /// serialised once via the shared `@markup` package, so no markup
@@ -36,17 +35,6 @@ fn build_svg_element(domain : @xml.Element) -> @xml.Element {
 /// Render a DrawingML element tree as a minimal SVG inspection view.
 pub fn render_svg(domain : @xml.Element) -> String {
   @markup.serialize_svg(build_svg_element(domain))
-}
-
-///|
-/// Render a DrawingML element tree as minimal HTML containing SVG.
-pub fn render_html(domain : @xml.Element) -> String {
-  let div : @xml.Element = {
-    name: @markup.qname("div"),
-    attributes: [@markup.attr("data-ooxml", "dml")],
-    children: [@xml.Node::Element(build_svg_element(domain))],
-  }
-  @markup.serialize(div)
 }
 
 ///|

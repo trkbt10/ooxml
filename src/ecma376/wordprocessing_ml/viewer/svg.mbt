@@ -11,6 +11,51 @@
 // twips / 20 * 96 / 72 = twips / 15).
 
 ///|
+/// The package identifier.
+pub fn package_name() -> String {
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/viewer"
+}
+
+///|
+/// First direct child element of `element` with the given local
+/// name, or None.
+fn first_child_named(element : @xml.Element, name : String) -> @xml.Element? {
+  for child in element.children {
+    match child {
+      Element(e) => if e.name.local_name == name { return Some(e) }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+/// Value of the first attribute of `element` with the given local
+/// name, or None.
+fn attr_value(element : @xml.Element, local_name : String) -> String? {
+  for attr in element.attributes {
+    if attr.name.local_name == local_name {
+      return Some(attr.value)
+    }
+  }
+  None
+}
+
+///|
+/// Concatenate every descendant text / CData node of `element`.
+fn text_content(element : @xml.Element) -> String {
+  let out = StringBuilder::new()
+  for child in element.children {
+    match child {
+      Text(text) | CData(text) => out.write_string(text)
+      Element(element) => out.write_string(text_content(element))
+      _ => ()
+    }
+  }
+  out.to_string()
+}
+
+///|
 /// SVG render result for one page.
 /// @source web-pptx page-render.ts:18-25 (PageRenderResult)
 pub struct PageRenderResult {

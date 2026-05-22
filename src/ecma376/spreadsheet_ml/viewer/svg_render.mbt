@@ -7,11 +7,16 @@
 // math mirror the TypeScript implementation so the two renderers agree
 // on layout / output.
 //
-// The renderer walks the worksheet's raw XML element (parallel to the
-// existing render_html implementation in viewer.mbt) so that it does
+// The renderer walks the worksheet's raw XML element so that it does
 // not need to track the typed-domain accessor names exhaustively.
 // @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/sheet-renderer.ts
 // =============================================================================
+
+///|
+/// The package identifier.
+pub fn package_name() -> String {
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/viewer"
+}
 
 ///|
 /// Options controlling sheet → SVG rendering.  Mirrors

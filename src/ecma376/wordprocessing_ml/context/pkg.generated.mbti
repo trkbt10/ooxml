@@ -47,8 +47,6 @@ pub fn Document::resolve_paragraph_style(Self, @xml.Element?) -> @style_resolver
 pub fn Document::resolve_run_style(Self, @xml.Element?) -> @style_resolver.EffectiveProperties?
 pub fn Document::resolve_style_by_id(Self, @domain.StyleId) -> @style_resolver.EffectiveProperties?
 pub fn Document::save(Self) -> Bytes
-pub fn Document::to_html(Self) -> String
-pub fn Document::to_styled_html(Self) -> String
 pub fn Document::to_svg(Self) -> String
 
 pub(all) struct FooterPart {

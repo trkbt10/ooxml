@@ -1,12 +1,11 @@
 ///|
-/// Structured markup construction for the viewer renderers.
+/// Structured markup construction for the SVG renderers.
 ///
-/// The renderers build their SVG / MathML / HTML output as an
-/// `@xml.Element` tree and serialise it once via `serialize` /
-/// `serialize_svg`.  Serialisation delegates to `@xml.write`,
-/// which escapes every attribute value and text node, so no
-/// OOXML payload can break out of its element / attribute
-/// context.  No output XML is ever assembled by string
+/// The renderers build their SVG output as an `@xml.Element` tree
+/// and serialise it once via `serialize_svg`.  Serialisation
+/// delegates to `@xml.write`, which escapes every attribute value
+/// and text node, so no OOXML payload can break out of its element
+/// / attribute context.  No output XML is ever assembled by string
 /// concatenation.
 
 ///|
@@ -17,19 +16,12 @@
 pub let svg_ns : String = "http://www.w3.org/2000/svg"
 
 ///|
-/// The XHTML namespace URI.  Used for HTML output that is itself
-/// XML-well-formed (the viewers emit XML-syntax HTML).
-pub let xhtml_ns : String = "http://www.w3.org/1999/xhtml"
-
-///|
 /// The XLink namespace URI (used by SVG `xlink:href`).
 pub let xlink_ns : String = "http://www.w3.org/1999/xlink"
 
 ///|
-/// Build a `QName` with no prefix and no namespace.  Use for
-/// MathML (inline-embedded; the host `<math>` default namespace
-/// governs the subtree) and for HTML fragment elements.
-pub fn qname(name : String) -> @xml.QName {
+/// Build a `QName` with no prefix and no namespace.
+fn qname(name : String) -> @xml.QName {
   { prefix: None, local_name: name, ns: None }
 }
 
@@ -60,16 +52,6 @@ pub fn attr_ns(
   value : String,
 ) -> @xml.Attribute {
   { name: { prefix: Some(prefix), local_name: name, ns: Some(ns) }, value }
-}
-
-///|
-/// Build an element node with no namespace.
-pub fn elem(
-  tag : String,
-  attrs : Array[@xml.Attribute],
-  children : Array[@xml.Node],
-) -> @xml.Node {
-  @xml.Node::Element({ name: qname(tag), attributes: attrs, children })
 }
 
 ///|

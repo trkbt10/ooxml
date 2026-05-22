@@ -8,8 +8,7 @@
 /// - `pptx_open(bytes)` to parse a `.pptx` presentation.
 /// - `pptx_save(handle)` to serialize the parsed presentation back to OOXML
 ///   bytes.
-/// - `pptx_to_html(handle)` to convert the presentation to HTML.
-/// - `pptx_to_svg(handle)` to convert slides and drawing content to SVG.
+/// - `pptx_to_svg(handle)` to render slides and drawing content to SVG.
 ///
 /// The callable names are enabled by this package's `moon.pkg`
 /// `link.wasm-gc.exports` list. npm consumers call these exports through the
@@ -46,18 +45,9 @@ pub fn pptx_save(handle : Int) -> Bytes {
 }
 
 ///|
-/// Convert a stored `.pptx` presentation to HTML for npm-side preview and
-/// export flows. Invalid handles return an empty string.
-pub fn pptx_to_html(handle : Int) -> String {
-  match pptx_presentation(handle) {
-    Some(presentation) => presentation.to_html()
-    None => ""
-  }
-}
-
-///|
-/// Convert slides and drawing content from a stored `.pptx` presentation to
-/// SVG for npm-side rendering. Invalid handles return an empty string.
+/// Render slides and drawing content from a stored `.pptx` presentation
+/// to SVG for npm-side preview and export flows. Invalid handles return
+/// an empty string.
 pub fn pptx_to_svg(handle : Int) -> String {
   match pptx_presentation(handle) {
     Some(presentation) => presentation.to_svg()

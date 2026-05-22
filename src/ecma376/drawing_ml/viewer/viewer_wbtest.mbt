@@ -17,16 +17,11 @@ test "DrawingML viewer renders svg text" {
     ],
   }
   let svg = render_svg(shape)
-  let html = render_html(shape)
   assert_true(svg.contains("<svg"))
   assert_true(svg.contains("Shape"))
-  assert_true(html.contains("data-ooxml=\"dml\""))
+  assert_true(svg.contains("data-ooxml=\"dml\""))
   // The SVG namespace is declared on the `<svg>` element.
   assert_true(svg.contains("xmlns=\"http://www.w3.org/2000/svg\""))
-  // In the HTML wrapper the SVG subtree still carries its own
-  // namespace declaration even though the host `<div>` has none.
-  assert_true(html.contains("<div data-ooxml=\"dml\">"))
-  assert_true(html.contains("xmlns=\"http://www.w3.org/2000/svg\""))
 }
 
 ///|

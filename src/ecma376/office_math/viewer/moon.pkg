@@ -1,9 +1,8 @@
 // trkbt10/ooxml/ecma376/office_math/viewer
 //
-// OMML → MathML / HTML / SVG renderer.
+// OMML → SVG renderer.
 
 import {
-  "moonbitlang/core/strconv" @strconv,
   "trkbt10/ooxml/ecma376/office_math/domain" @domain,
   "trkbt10/ooxml/util/glyph" @glyph,
   "trkbt10/ooxml/util/markup" @markup,

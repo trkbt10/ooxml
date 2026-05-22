@@ -70,11 +70,7 @@ pub fn render_fill_attr(@xml.Element, SvgDefsCollector, ColorResolveContext, sha
 
 pub fn render_graphic_frame_table_svg(@xml.Element, Double, Double, ColorResolveContext, SvgDefsCollector) -> Array[@xml.Node]
 
-pub fn render_html(@domain.CT_Slide) -> String
-
 pub fn render_preset_geometry(@xml.Element, Double, Double) -> String?
-
-pub fn render_styled_html(@domain.CT_Slide) -> String
 
 pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, theme? : @theme.CT_OfficeStyleSheet?, chain? : @placeholder_resolver.SlideChain?) -> String
 

@@ -12,7 +12,6 @@ options(
         "xlsx_package_name:package_name",
         "xlsx_open",
         "xlsx_save",
-        "xlsx_to_html",
         "xlsx_to_svg",
       ],
     },

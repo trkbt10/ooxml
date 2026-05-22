@@ -1,8 +1,8 @@
 ///|
 /// PresentationML context — parser-built Presentation tree plus IO
-/// (open / save) and render queries (to_html / to_styled_html /
-/// to_svg / to_image). Mutating operations are in the sibling
-/// `edit/` package and consume this context.
+/// (open / save) and render queries (to_svg / to_svg_for_slide).
+/// Mutating operations are in the sibling `edit/` package and
+/// consume this context.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/presentation_ml/context"
 }
@@ -169,40 +169,6 @@ pub fn Presentation::save(self : Presentation) -> Bytes {
   saved.save() catch {
     _ => @pml_builder.write_presentation(self.presentation)
   }
-}
-
-///|
-pub fn Presentation::to_html(self : Presentation) -> String {
-  let mut out = "<main data-ooxml=\"pptx\">"
-  out = out + html_element(self.presentation.element)
-  for slide in self.slides {
-    out = out +
-      "<section class=\"slide\">" +
-      html_element(slide.value.element) +
-      "</section>"
-  }
-  out + "</main>"
-}
-
-///|
-/// Convert the presentation into a §19 styled HTML representation.
-/// Each slide's CT_Slide tree is rendered through the viewer's
-/// render_styled_html mapping (a:pPr/a:rPr → inline CSS for
-/// text-align / b / i / u / color / sz). The output wraps each slide
-/// in `<section class="slide">`.
-pub fn Presentation::to_styled_html(self : Presentation) -> String {
-  let mut out = "<article data-ooxml=\"pptx\" data-style=\"resolved\">"
-  let mut i = 0
-  for slide in self.slides {
-    i = i + 1
-    out = out +
-      "<section class=\"slide\" data-slide-index=\"" +
-      i.to_string() +
-      "\">"
-    out = out + @pml_viewer.render_styled_html(slide.value)
-    out = out + "</section>"
-  }
-  out + "</article>"
 }
 
 ///|
@@ -686,22 +652,6 @@ fn find_package_relationship_part(
     None => ()
   }
   "/" + fallback
-}
-
-///|
-fn html_element(element : @xml.Element) -> String {
-  let name = @xml.escape_text(element.name.local_name)
-  let mut out = "<section data-ooxml-element=\"" + name + "\">"
-  for child in element.children {
-    match child {
-      @xml.Element(element) => out = out + html_element(element)
-      @xml.Text(text) => out = out + @xml.escape_text(text)
-      @xml.CData(text) => out = out + @xml.escape_text(text)
-      @xml.Comment(_) => ()
-      @xml.ProcessingInstruction(_) => ()
-    }
-  }
-  out + "</section>"
 }
 
 ///|

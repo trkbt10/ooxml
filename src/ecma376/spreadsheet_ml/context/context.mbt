@@ -159,42 +159,6 @@ pub fn Workbook::save(self : Workbook) -> Bytes {
 }
 
 ///|
-pub fn Workbook::to_html(self : Workbook) -> String {
-  let mut out = "<table data-ooxml=\"xlsx\"><tbody><tr><td>"
-  out = out + html_element(self.workbook.element)
-  for worksheet in self.worksheets {
-    out = out + html_element(worksheet.value.element)
-  }
-  out + "</td></tr></tbody></table>"
-}
-
-///|
-/// Convert the workbook into a §18 styled HTML representation. Each
-/// worksheet's CT_Worksheet tree is rendered with shared-string
-/// resolution applied (looking up `@t="s"` cell values in the
-/// workbook-level §18.4 CT_Sst when present). The output wraps each
-/// worksheet's rendered table in a `<section class="sheet">`.
-pub fn Workbook::to_styled_html(self : Workbook) -> String {
-  let mut out = "<article data-ooxml=\"xlsx\" data-style=\"resolved\">"
-  let mut i = 0
-  for worksheet in self.worksheets {
-    i = i + 1
-    out = out +
-      "<section class=\"sheet\" data-sheet-index=\"" +
-      i.to_string() +
-      "\">"
-    out = out +
-      (match self.shared_strings {
-        Some(sst) =>
-          @sml_viewer.render_html_with_shared_strings(worksheet.value, sst)
-        None => @sml_viewer.render_html(worksheet.value)
-      })
-    out = out + "</section>"
-  }
-  out + "</article>"
-}
-
-///|
 /// Render every worksheet as its own §18.3 CT_Worksheet SVG via
 /// `@sml_viewer.render_svg`, concatenating the resulting `<svg>`
 /// documents in workbook order. Shared strings (§18.4 CT_Sst), when
@@ -445,22 +409,6 @@ fn find_package_relationship_part(
     None => ()
   }
   "/" + fallback
-}
-
-///|
-fn html_element(element : @xml.Element) -> String {
-  let name = @xml.escape_text(element.name.local_name)
-  let mut out = "<section data-ooxml-element=\"" + name + "\">"
-  for child in element.children {
-    match child {
-      @xml.Element(element) => out = out + html_element(element)
-      @xml.Text(text) => out = out + @xml.escape_text(text)
-      @xml.CData(text) => out = out + @xml.escape_text(text)
-      @xml.Comment(_) => ()
-      @xml.ProcessingInstruction(_) => ()
-    }
-  }
-  out + "</section>"
 }
 
 ///|

@@ -18,10 +18,6 @@ pub fn parse_xsd_boolean(String?) -> Bool?
 
 pub fn parse_xsd_boolean_or(String?, Bool) -> Bool
 
-pub fn render_html(@domain.CT_Worksheet) -> String
-
-pub fn render_html_with_shared_strings(@domain.CT_Worksheet, @domain.CT_Sst) -> String
-
 pub fn render_preset_shape_d(String, Double, Double) -> String?
 
 pub fn render_svg(@domain.CT_Worksheet, shared_strings? : @domain.CT_Sst?, options? : SheetRenderOptions, drawing? : @drawing.CT_Drawing?, image_resolver? : (String) -> String?, styles? : @domain.CT_Stylesheet?, theme? : @xml.Element?, date1904? : Bool, id_prefix? : String) -> SheetSvgResult

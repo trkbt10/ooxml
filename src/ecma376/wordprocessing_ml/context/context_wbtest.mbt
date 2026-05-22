@@ -32,10 +32,10 @@ test "wordprocessing_ml context opens and saves minimal package" {
 }
 
 ///|
-test "wordprocessing_ml context renders minimal html" {
-  let html = open(fixture_bytes()).to_html()
-  assert_true(html.contains("data-ooxml=\"docx\""))
-  assert_true(html.contains("Hello docx"))
+test "wordprocessing_ml context renders minimal svg" {
+  let svg = open(fixture_bytes()).to_svg()
+  assert_true(svg.contains("data-ooxml=\"wml\""))
+  assert_true(svg.contains("Hello docx"))
 }
 
 ///|
@@ -46,21 +46,12 @@ test "wordprocessing_ml context appends paragraph and round-trips" {
     Ok(modified) => {
       let saved = modified.save()
       let reopened = open(saved)
-      assert_true(reopened.to_html().contains("appended line"))
+      assert_true(reopened.to_svg().contains("appended line"))
       // original 'Hello docx' still present
-      assert_true(reopened.to_html().contains("Hello docx"))
+      assert_true(reopened.to_svg().contains("Hello docx"))
     }
     Err(_) => assert_true(false)
   }
-}
-
-///|
-test "wordprocessing_ml context to_styled_html emits resolved-style article" {
-  let document = open(fixture_bytes())
-  let styled = document.to_styled_html()
-  assert_true(styled.contains("data-ooxml=\"docx\""))
-  assert_true(styled.contains("data-style=\"resolved\""))
-  assert_true(styled.contains("Hello docx"))
 }
 
 ///|
@@ -69,9 +60,9 @@ test "wordprocessing_ml context set_paragraph_text rewrites the run text" {
   let modified = try? @wml_edit.set_paragraph_text(document, 0, "rewritten")
   match modified {
     Ok(d) => {
-      let html = open(d.save()).to_html()
-      assert_true(html.contains("rewritten"))
-      assert_true(!html.contains("Hello docx"))
+      let svg = open(d.save()).to_svg()
+      assert_true(svg.contains("rewritten"))
+      assert_true(!svg.contains("Hello docx"))
     }
     Err(_) => assert_true(false)
   }
@@ -120,9 +111,9 @@ test "wordprocessing_ml context insert_paragraph_at inserts at position 0" {
   let modified = try? @wml_edit.insert_paragraph_at(document, 0, "first-line")
   match modified {
     Ok(d) => {
-      let html = open(d.save()).to_html()
-      assert_true(html.contains("first-line"))
-      assert_true(html.contains("Hello docx"))
+      let svg = open(d.save()).to_svg()
+      assert_true(svg.contains("first-line"))
+      assert_true(svg.contains("Hello docx"))
     }
     Err(_) => assert_true(false)
   }
@@ -149,7 +140,7 @@ test "wordprocessing_ml context remove_paragraph drops a body child and round-tr
           }
           assert_eq(after_count, before_count - 1)
           let reopened = open(d2.save())
-          assert_true(!reopened.to_html().contains("temporary"))
+          assert_true(!reopened.to_svg().contains("temporary"))
         }
         Err(_) => assert_true(false)
       }
@@ -176,8 +167,8 @@ test "wordprocessing_ml context preserves text across two save cycles" {
   let cycle1 = open(cycle1_bytes)
   let cycle2_bytes = cycle1.save()
   let cycle2 = open(cycle2_bytes)
-  assert_true(cycle1.to_html().contains("Hello docx"))
-  assert_true(cycle2.to_html().contains("Hello docx"))
+  assert_true(cycle1.to_svg().contains("Hello docx"))
+  assert_true(cycle2.to_svg().contains("Hello docx"))
   assert_eq(
     initial.main.element.name.local_name,
     cycle2.main.element.name.local_name,
@@ -320,14 +311,14 @@ test "wml edit §17.13.5 accept_revisions drops <w:del> and unwraps <w:ins>" {
   let accepted = try? @wml_edit.accept_revisions(document)
   match accepted {
     Ok(d) => {
-      let html = open(d.save()).to_html()
+      let svg = open(d.save()).to_svg()
       // Inserted text survives.
-      assert_true(html.contains("inserted "))
+      assert_true(svg.contains("inserted "))
       // Untouched text survives.
-      assert_true(html.contains("keep "))
-      assert_true(html.contains("tail"))
+      assert_true(svg.contains("keep "))
+      assert_true(svg.contains("tail"))
       // Deleted text is gone.
-      assert_false(html.contains("struck"))
+      assert_false(svg.contains("struck"))
     }
     Err(_) => abort("accept_revisions failed")
   }
@@ -343,14 +334,14 @@ test "wml edit §17.13.5 reject_revisions drops <w:ins> and unwraps <w:del>" {
   let rejected = try? @wml_edit.reject_revisions(document)
   match rejected {
     Ok(d) => {
-      let html = open(d.save()).to_html()
+      let svg = open(d.save()).to_svg()
       // Inserted text is gone.
-      assert_false(html.contains("inserted"))
+      assert_false(svg.contains("inserted"))
       // Untouched text and tail survive.
-      assert_true(html.contains("keep "))
-      assert_true(html.contains("tail"))
+      assert_true(svg.contains("keep "))
+      assert_true(svg.contains("tail"))
       // Previously-struck text is restored (delText → t rename).
-      assert_true(html.contains("struck "))
+      assert_true(svg.contains("struck "))
     }
     Err(_) => abort("reject_revisions failed")
   }

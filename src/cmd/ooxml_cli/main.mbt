@@ -16,8 +16,6 @@ fn main {
       "help" => print_help()
       "info" => run_info(args)
       "open" => run_open(args)
-      "html" => run_html(args)
-      "styled-html" => run_styled_html(args)
       "svg" => run_svg(args)
       "save" => run_save(args)
       "list" => run_list(args)
@@ -55,11 +53,7 @@ fn print_help() -> Unit {
   println("Commands:")
   println("  info <file>             detect format and print summary")
   println("  open <file>             parse and assert round-trip")
-  println("  html <file>             convert to HTML and print to stdout")
-  println(
-    "  styled-html <file>      convert to style-aware HTML and print to stdout",
-  )
-  println("  svg <file>              convert to SVG and print to stdout")
+  println("  svg <file>              render to SVG and print to stdout")
   println("  save <file> <output>    round-trip parse and re-emit")
   println("  list <file>             list top-level structural items")
   println(
@@ -200,25 +194,6 @@ fn run_open(args : Array[String]) -> Unit {
       }
     } catch {
       _ => println("error: failed to open file")
-    }
-  }
-}
-
-///|
-fn run_html(args : Array[String]) -> Unit {
-  if args.length() != 3 {
-    print_usage_error("html expects <file>")
-  } else {
-    try {
-      let path = args[2]
-      let bytes = @fs.read_file_to_bytes(path)
-      match detect_format(path, bytes) {
-        Docx => println(@wml_context.open(bytes).to_html())
-        Xlsx => println(@sml_context.open(bytes).to_html())
-        Pptx => println(@pml_context.open(bytes).to_html())
-      }
-    } catch {
-      _ => println("error: failed to convert file to HTML")
     }
   }
 }
@@ -503,25 +478,6 @@ fn show_xml_outline(element : @xml.Element, depth : Int) -> Unit {
     match child {
       @xml.Element(e) => show_xml_outline(e, depth + 1)
       _ => ()
-    }
-  }
-}
-
-///|
-fn run_styled_html(args : Array[String]) -> Unit {
-  if args.length() != 3 {
-    print_usage_error("styled-html expects <file>")
-  } else {
-    try {
-      let path = args[2]
-      let bytes = @fs.read_file_to_bytes(path)
-      match detect_format(path, bytes) {
-        Docx => println(@wml_context.open(bytes).to_styled_html())
-        Xlsx => println(@sml_context.open(bytes).to_styled_html())
-        Pptx => println(@pml_context.open(bytes).to_styled_html())
-      }
-    } catch {
-      _ => println("error: failed to convert file to styled HTML")
     }
   }
 }

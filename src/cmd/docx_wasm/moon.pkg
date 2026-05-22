@@ -18,7 +18,6 @@ options(
         "docx_package_name:package_name",
         "docx_open",
         "docx_save",
-        "docx_to_html",
         "docx_to_svg",
       ],
     },

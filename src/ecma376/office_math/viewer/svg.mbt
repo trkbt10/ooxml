@@ -1,12 +1,12 @@
 ///|
-/// Office Math §22.1 — pure-SVG renderer.
+/// Office Math §22.1 — SVG renderer.
 ///
 /// `render_svg` walks a `CT_OMath` domain tree and lays it out
 /// geometrically into SVG primitives (`<text>`, `<line>`, `<rect>`,
-/// `<path>`).  Unlike `render_mathml` it produces no MathML and
-/// needs no `<foreignObject>`: the result is a self-contained
-/// `<g>` element a host SVG renderer (the WordprocessingML SVG
-/// viewer) can translate to any baseline.
+/// `<path>`).  SVG is the package's only output form: the result is
+/// a self-contained `<g>` element a host SVG renderer (the
+/// WordprocessingML SVG viewer) can translate to any baseline — no
+/// MathML, no `<foreignObject>`.
 ///
 /// Layout model
 /// ------------
@@ -1524,11 +1524,68 @@ fn stretch_glyph(glyph : String, target_width : Double, ctx : MathCtx) -> MathBo
 }
 
 // ---------------------------------------------------------------
-// Shared attribute / text helpers.
-//
-// `mattr`, `text_node`, `text_content`, `read_val`, `val_is_on` are
-// defined in `viewer.mbt`; only `num` is SVG-specific.
+// Attribute / text helpers.
 // ---------------------------------------------------------------
+
+///|
+/// The package identifier.
+pub fn package_name() -> String {
+  "trkbt10/ooxml/ecma376/office_math/viewer"
+}
+
+///|
+/// Build an SVG attribute (name + value); the value is escaped by
+/// the serialiser, never here.
+fn mattr(name : String, value : String) -> @xml.Attribute {
+  @markup.attr(name, value)
+}
+
+///|
+/// Wrap a raw string as an XML text node.
+fn text_node(value : String) -> @xml.Node {
+  @markup.text(value)
+}
+
+///|
+/// Concatenate every descendant text node of `element`.
+fn text_content(element : @xml.Element) -> String {
+  let out = StringBuilder::new()
+  for child in element.children {
+    match child {
+      Text(text) | CData(text) => out.write_string(text)
+      Element(child_el) => out.write_string(text_content(child_el))
+      _ => ()
+    }
+  }
+  out.to_string()
+}
+
+///|
+/// Read the `@m:val` attribute of `el`, or "" when absent.
+fn read_val(el : @xml.Element) -> String {
+  let mut v = ""
+  for a in el.attributes {
+    if a.name.local_name == "val" {
+      v = a.value
+    }
+  }
+  v
+}
+
+///|
+/// True when `el` carries a `CT_OnOff`-style true value.  When
+/// `default_on` is true an element with no `@val` counts as ON
+/// (the CT_OnOff default); otherwise an absent `@val` is OFF.
+/// An explicit `@val` always wins over `default_on`.
+fn val_is_on(el : @xml.Element, default_on~ : Bool = false) -> Bool {
+  let mut result = default_on
+  for a in el.attributes {
+    if a.name.local_name == "val" {
+      result = a.value == "1" || a.value == "true" || a.value == "on"
+    }
+  }
+  result
+}
 
 ///|
 /// Format a Double for an SVG coordinate / length attribute: integer

@@ -12,7 +12,6 @@ options(
         "pptx_package_name:package_name",
         "pptx_open",
         "pptx_save",
-        "pptx_to_html",
         "pptx_to_svg",
       ],
     },

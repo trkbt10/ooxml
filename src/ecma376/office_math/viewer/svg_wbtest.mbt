@@ -7,6 +7,12 @@
 // element / attribute tokens.
 
 ///|
+/// Build an unprefixed `@xml.QName` from a local name.
+fn name(local_name : String) -> @xml.QName {
+  { prefix: None, local_name, ns: None }
+}
+
+///|
 /// Serialise a rendered math `<g>` to an SVG string for assertions.
 fn svg_string(m : MathSvg) -> String {
   @markup.serialize_svg(m.group)

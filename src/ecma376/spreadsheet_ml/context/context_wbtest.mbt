@@ -40,10 +40,44 @@ test "spreadsheet_ml context opens and saves minimal package" {
 }
 
 ///|
-test "spreadsheet_ml context renders minimal html" {
-  let html = open(fixture_bytes()).to_html()
-  assert_true(html.contains("data-ooxml=\"xlsx\""))
-  assert_true(html.contains("Hello xlsx"))
+/// Concatenate every text / CData node reachable under `element`.
+fn element_text(element : @xml.Element) -> String {
+  let out = StringBuilder::new()
+  for child in element.children {
+    match child {
+      @xml.Text(t) | @xml.CData(t) => out.write_string(t)
+      @xml.Element(e) => out.write_string(element_text(e))
+      _ => ()
+    }
+  }
+  out.to_string()
+}
+
+///|
+/// True when any worksheet of `workbook` carries `needle` somewhere in
+/// its cell content.  Cell text is read straight from the typed
+/// worksheet tree (`<c>/<v>` / inline strings) rather than from
+/// rendered output, so the assertion verifies the document model the
+/// edit produced — independent of how the SVG renderer lays a sparse
+/// synthetic sheet out.
+fn workbook_contains_text(workbook : Workbook, needle : String) -> Bool {
+  for worksheet in workbook.worksheets {
+    if element_text(worksheet.value.element).contains(needle) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+test "spreadsheet_ml context renders minimal svg" {
+  // The minimal fixture is a sparse synthetic sheet; assert the SVG
+  // renderer produces a well-formed `<svg>` document for it.
+  let svg = open(fixture_bytes()).to_svg()
+  assert_true(svg.contains("<svg "))
+  assert_true(svg.contains("viewBox="))
+  // The cell value survives in the typed worksheet model.
+  assert_true(workbook_contains_text(open(fixture_bytes()), "Hello xlsx"))
 }
 
 ///|
@@ -93,23 +127,12 @@ test "spreadsheet_ml context set_cell_value round-trips through save/open" {
     Ok(workbook) => {
       let saved = workbook.save()
       let reopened = open(saved)
-      let html = reopened.to_html()
-      assert_true(html.contains("appended-cell"))
+      assert_true(workbook_contains_text(reopened, "appended-cell"))
       // original Hello xlsx still present
-      assert_true(html.contains("Hello xlsx"))
+      assert_true(workbook_contains_text(reopened, "Hello xlsx"))
     }
     Err(_) => assert_true(false)
   }
-}
-
-///|
-test "spreadsheet_ml context to_styled_html emits sheet sections with shared strings off" {
-  let workbook = open(fixture_bytes())
-  let styled = workbook.to_styled_html()
-  assert_true(styled.contains("data-ooxml=\"xlsx\""))
-  assert_true(styled.contains("data-style=\"resolved\""))
-  assert_true(styled.contains("data-sheet-index=\"1\""))
-  assert_true(styled.contains("Hello xlsx"))
 }
 
 ///|
@@ -153,13 +176,13 @@ test "spreadsheet_ml context clear_cell removes a cell and round-trips" {
   let with_cell = try? @sml_edit.set_cell_value(initial, 0, "B5", "to-clear")
   match with_cell {
     Ok(w1) => {
-      assert_true(w1.to_html().contains("to-clear"))
+      assert_true(workbook_contains_text(w1, "to-clear"))
       let cleared = try? @sml_edit.clear_cell(w1, 0, "B5")
       match cleared {
         Ok(w2) => {
           let saved = w2.save()
           let reopened = open(saved)
-          assert_true(!reopened.to_html().contains("to-clear"))
+          assert_true(!workbook_contains_text(reopened, "to-clear"))
         }
         Err(_) => assert_true(false)
       }
@@ -175,7 +198,7 @@ test "spreadsheet_ml context set_cell_formula writes <f> and round-trips" {
   match modified {
     Ok(w) => {
       let reopened = open(w.save())
-      assert_true(reopened.to_html().contains("SUM(A1:A2)"))
+      assert_true(workbook_contains_text(reopened, "SUM(A1:A2)"))
     }
     Err(_) => assert_true(false)
   }
@@ -301,8 +324,8 @@ test "spreadsheet_ml context preserves cell content across two save cycles" {
   let cycle1 = open(initial.save())
   let cycle2 = open(cycle1.save())
   assert_eq(initial.worksheets.length(), cycle2.worksheets.length())
-  assert_true(cycle1.to_html().contains("Hello xlsx"))
-  assert_true(cycle2.to_html().contains("Hello xlsx"))
+  assert_true(workbook_contains_text(cycle1, "Hello xlsx"))
+  assert_true(workbook_contains_text(cycle2, "Hello xlsx"))
 }
 
 ///|

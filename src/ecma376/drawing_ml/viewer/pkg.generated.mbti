@@ -8,8 +8,6 @@ import {
 // Values
 pub fn package_name() -> String
 
-pub fn render_html(@xml.Element) -> String
-
 pub fn render_svg(@xml.Element) -> String
 
 // Errors

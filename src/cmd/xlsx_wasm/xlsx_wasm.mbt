@@ -7,8 +7,7 @@
 /// - `xlsx_package_name()` to identify the underlying facade package.
 /// - `xlsx_open(bytes)` to parse a `.xlsx` workbook.
 /// - `xlsx_save(handle)` to serialize the parsed workbook back to OOXML bytes.
-/// - `xlsx_to_html(handle)` to convert the workbook to HTML.
-/// - `xlsx_to_svg(handle)` to convert drawing and chart content to SVG.
+/// - `xlsx_to_svg(handle)` to render the workbook to SVG.
 ///
 /// The callable names are enabled by this package's `moon.pkg`
 /// `link.wasm-gc.exports` list. npm consumers call these exports through the
@@ -45,18 +44,8 @@ pub fn xlsx_save(handle : Int) -> Bytes {
 }
 
 ///|
-/// Convert a stored `.xlsx` workbook to HTML for npm-side preview and export
-/// flows. Invalid handles return an empty string.
-pub fn xlsx_to_html(handle : Int) -> String {
-  match xlsx_workbook(handle) {
-    Some(workbook) => workbook.to_html()
-    None => ""
-  }
-}
-
-///|
-/// Convert drawing and chart content from a stored `.xlsx` workbook to SVG for
-/// npm-side rendering. Invalid handles return an empty string.
+/// Render a stored `.xlsx` workbook to SVG for npm-side preview and
+/// export flows. Invalid handles return an empty string.
 pub fn xlsx_to_svg(handle : Int) -> String {
   match xlsx_workbook(handle) {
     Some(workbook) => workbook.to_svg()

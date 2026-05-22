@@ -225,26 +225,6 @@ pub fn Document::save(self : Document) -> Bytes {
 }
 
 ///|
-/// Convert the docx into a minimal HTML representation.
-pub fn Document::to_html(self : Document) -> String {
-  "<article data-ooxml=\"docx\">" +
-  html_element(self.main.element) +
-  "</article>"
-}
-
-///|
-/// Convert the docx into a §17 styled HTML representation, mapping
-/// the resolved `<w:pPr>` / `<w:rPr>` properties (jc / b / i / u /
-/// strike / color / sz) to inline CSS. The output is a single
-/// `<article>` element wrapping the viewer's render_styled_html
-/// output.
-pub fn Document::to_styled_html(self : Document) -> String {
-  "<article data-ooxml=\"docx\" data-style=\"resolved\">" +
-  @wml_viewer.render_styled_html(self.main) +
-  "</article>"
-}
-
-///|
 /// Convert the docx into an SVG representation. Headers / footers
 /// referenced from the section's `<w:headerReference>` /
 /// `<w:footerReference>` (type="default") are resolved through the
@@ -769,22 +749,6 @@ fn find_package_relationship_part(
     None => ()
   }
   "/" + fallback
-}
-
-///|
-fn html_element(element : @xml.Element) -> String {
-  let name = @xml.escape_text(element.name.local_name)
-  let mut out = "<section data-ooxml-element=\"" + name + "\">"
-  for child in element.children {
-    match child {
-      @xml.Element(element) => out = out + html_element(element)
-      @xml.Text(text) => out = out + @xml.escape_text(text)
-      @xml.CData(text) => out = out + @xml.escape_text(text)
-      @xml.Comment(_) => ()
-      @xml.ProcessingInstruction(_) => ()
-    }
-  }
-  out + "</section>"
 }
 
 ///|

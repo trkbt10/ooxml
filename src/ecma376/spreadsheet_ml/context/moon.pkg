@@ -1,7 +1,7 @@
 // trkbt10/ooxml/ecma376/spreadsheet_ml/context
 //
 // SpreadsheetML context — parser-built Workbook tree + IO (open /
-// save) + render queries (to_html / to_styled_html / to_svg). Pure
+// save) + render queries (to_svg). Pure
 // reader/builder/render direction. Mutating helpers live in the
 // sibling `edit/` package.
 

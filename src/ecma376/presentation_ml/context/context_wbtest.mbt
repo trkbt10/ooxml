@@ -40,10 +40,68 @@ test "presentation_ml context opens and saves minimal package" {
 }
 
 ///|
-test "presentation_ml context renders minimal html" {
-  let html = open(fixture_bytes()).to_html()
-  assert_true(html.contains("data-ooxml=\"pptx\""))
-  assert_true(html.contains("Hello pptx"))
+/// Concatenate the text content of every `<text>` element in an SVG
+/// string.  The SVG renderer lays a run out into one `<text>` per
+/// laid-out glyph segment, so a logical word is split across several
+/// elements; this helper rejoins them so a test can assert on the
+/// rendered text without depending on element boundaries.
+fn svg_text_content(svg : String) -> String {
+  let out = StringBuilder::new()
+  let mut i = 0
+  let n = svg.length()
+  while i < n {
+    // Find the next "<text" ... ">" open tag.
+    match find_from(svg, "<text", i) {
+      None => break
+      Some(tag_start) => {
+        match find_from(svg, ">", tag_start) {
+          None => break
+          Some(gt) => {
+            let content_start = gt + 1
+            match find_from(svg, "</text>", content_start) {
+              None => break
+              Some(close) => {
+                out.write_string(svg[content_start:close].to_string())
+                i = close + 7
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  out.to_string()
+}
+
+///|
+/// Index of the first occurrence of `needle` in `haystack` at or
+/// after `from`, or None.
+fn find_from(haystack : String, needle : String, from : Int) -> Int? {
+  let hn = haystack.length()
+  let nn = needle.length()
+  if nn == 0 {
+    return Some(from)
+  }
+  let mut i = from
+  while i + nn <= hn {
+    let mut j = 0
+    while j < nn && haystack.code_unit_at(i + j) == needle.code_unit_at(j) {
+      j = j + 1
+    }
+    if j == nn {
+      return Some(i)
+    }
+    i = i + 1
+  }
+  None
+}
+
+///|
+test "presentation_ml context renders minimal svg" {
+  let svg = open(fixture_bytes()).to_svg()
+  // The SVG renderer splits a run into per-glyph <text> elements;
+  // verify the rejoined rendered text carries the slide content.
+  assert_true(svg_text_content(svg).contains("Hello pptx"))
 }
 
 ///|
@@ -56,22 +114,12 @@ test "presentation_ml context append_text_to_slide round-trips through save/open
     Ok(presentation) => {
       let saved = presentation.save()
       let reopened = open(saved)
-      let html = reopened.to_html()
-      assert_true(html.contains("appended-pptx-text"))
-      assert_true(html.contains("Hello pptx"))
+      let text = svg_text_content(reopened.to_svg())
+      assert_true(text.contains("appended-pptx-text"))
+      assert_true(text.contains("Hello pptx"))
     }
     Err(_) => assert_true(false)
   }
-}
-
-///|
-test "presentation_ml context to_styled_html emits slide sections" {
-  let presentation = open(fixture_bytes())
-  let styled = presentation.to_styled_html()
-  assert_true(styled.contains("data-ooxml=\"pptx\""))
-  assert_true(styled.contains("data-style=\"resolved\""))
-  assert_true(styled.contains("data-slide-index=\"1\""))
-  assert_true(styled.contains("Hello pptx"))
 }
 
 ///|
@@ -149,7 +197,7 @@ test "presentation_ml context add_textbox appends sp to spTree" {
   match modified {
     Ok(p) => {
       let reopened = open(p.save())
-      assert_true(reopened.to_html().contains("boxed text"))
+      assert_true(svg_text_content(reopened.to_svg()).contains("boxed text"))
     }
     Err(_) => assert_true(false)
   }
@@ -193,7 +241,7 @@ test "presentation_ml context remove_shape drops a direct spTree child" {
       match removed {
         Ok(p2) => {
           let reopened = open(p2.save())
-          assert_true(!reopened.to_html().contains("to-remove"))
+          assert_true(!svg_text_content(reopened.to_svg()).contains("to-remove"))
         }
         Err(_) => assert_true(false)
       }
@@ -259,8 +307,8 @@ test "presentation_ml context preserves slide content across two save cycles" {
   let cycle1 = open(initial.save())
   let cycle2 = open(cycle1.save())
   assert_eq(initial.slides.length(), cycle2.slides.length())
-  assert_true(cycle1.to_html().contains("Hello pptx"))
-  assert_true(cycle2.to_html().contains("Hello pptx"))
+  assert_true(svg_text_content(cycle1.to_svg()).contains("Hello pptx"))
+  assert_true(svg_text_content(cycle2.to_svg()).contains("Hello pptx"))
 }
 
 ///|

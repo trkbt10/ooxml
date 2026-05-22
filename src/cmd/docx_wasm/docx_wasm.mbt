@@ -7,8 +7,7 @@
 /// - `docx_package_name()` to identify the underlying facade package.
 /// - `docx_open(bytes)` to parse a `.docx` file.
 /// - `docx_save(handle)` to serialize the parsed document back to OOXML bytes.
-/// - `docx_to_html(handle)` to convert the document to HTML.
-/// - `docx_to_svg(handle)` to convert drawing content to SVG.
+/// - `docx_to_svg(handle)` to render the document to SVG.
 ///
 /// The callable names are enabled by this package's `moon.pkg`
 /// `link.wasm-gc.exports` list. npm consumers call these exports through the
@@ -45,18 +44,8 @@ pub fn docx_save(handle : Int) -> Bytes {
 }
 
 ///|
-/// Convert a stored `.docx` document to HTML for npm-side preview and export
-/// flows. Invalid handles return an empty string.
-pub fn docx_to_html(handle : Int) -> String {
-  match docx_document(handle) {
-    Some(document) => document.to_html()
-    None => ""
-  }
-}
-
-///|
-/// Convert drawing content from a stored `.docx` document to SVG for
-/// npm-side rendering. Invalid handles return an empty string.
+/// Render a stored `.docx` document to SVG for npm-side preview and
+/// export flows. Invalid handles return an empty string.
 pub fn docx_to_svg(handle : Int) -> String {
   match docx_document(handle) {
     Some(document) => document.to_svg()

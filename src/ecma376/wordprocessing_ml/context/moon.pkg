@@ -1,7 +1,7 @@
 // trkbt10/ooxml/ecma376/wordprocessing_ml/context
 //
 // WordprocessingML context — parser-built Document tree + IO (open
-// / save) + render queries (to_html / to_styled_html / to_svg) +
+// / save) + render queries (to_svg) +
 // pure read APIs (resolve_paragraph_style / resolve_run_style /
 // resolve_style_by_id / resolve_paragraph_numbering /
 // decode_simple_field / evaluate_simple_field /

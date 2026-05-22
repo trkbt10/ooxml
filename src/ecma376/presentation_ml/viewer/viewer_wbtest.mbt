@@ -4,39 +4,120 @@ fn name(local_name : String) -> @xml.QName {
 }
 
 ///|
+/// Index of the first occurrence of `needle` in `haystack` at or
+/// after `from`, or None.
+fn find_from(haystack : String, needle : String, from : Int) -> Int? {
+  let hn = haystack.length()
+  let nn = needle.length()
+  if nn == 0 {
+    return Some(from)
+  }
+  let mut i = from
+  while i + nn <= hn {
+    let mut j = 0
+    while j < nn && haystack.code_unit_at(i + j) == needle.code_unit_at(j) {
+      j = j + 1
+    }
+    if j == nn {
+      return Some(i)
+    }
+    i = i + 1
+  }
+  None
+}
+
+///|
+/// Concatenate the text content of every `<text>` element in an SVG
+/// string.  The SVG renderer lays a run out into one `<text>` per
+/// glyph segment, so a logical word is split across several
+/// elements; this helper rejoins them so a test can assert on the
+/// rendered text without depending on element boundaries.
+fn svg_text_content(svg : String) -> String {
+  let out = StringBuilder::new()
+  let mut i = 0
+  let n = svg.length()
+  while i < n {
+    match find_from(svg, "<text", i) {
+      None => break
+      Some(tag_start) =>
+        match find_from(svg, ">", tag_start) {
+          None => break
+          Some(gt) => {
+            let content_start = gt + 1
+            match find_from(svg, "</text>", content_start) {
+              None => break
+              Some(close) => {
+                out.write_string(svg[content_start:close].to_string())
+                i = close + 7
+              }
+            }
+          }
+        }
+    }
+  }
+  out.to_string()
+}
+
+///|
 test "PresentationML viewer renders slide text" {
-  let slide = @domain.CT_Slide::new({
-    name: name("sld"),
+  // §19.3.1.x — a slide carries its shapes under <cSld>/<spTree>;
+  // a shape's text lives in <txBody>/<p>/<r>/<t>.
+  let run : @xml.Node = @xml.Node::Element({
+    name: name("r"),
     attributes: [],
     children: [
       @xml.Node::Element({
-        name: name("sp"),
+        name: name("t"),
+        attributes: [],
+        children: [@xml.Node::Text("Title")],
+      }),
+    ],
+  })
+  let sp : @xml.Node = @xml.Node::Element({
+    name: name("sp"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("txBody"),
         attributes: [],
         children: [
           @xml.Node::Element({
+            name: name("bodyPr"),
+            attributes: [],
+            children: [],
+          }),
+          @xml.Node::Element({
             name: name("p"),
             attributes: [],
-            children: [
-              @xml.Node::Element({
-                name: name("r"),
-                attributes: [],
-                children: [
-                  @xml.Node::Element({
-                    name: name("t"),
-                    attributes: [],
-                    children: [@xml.Node::Text("Title")],
-                  }),
-                ],
-              }),
-            ],
+            children: [run],
           }),
         ],
       }),
     ],
   })
-  let html = render_html(slide)
-  assert_true(html.contains("data-ooxml=\"pml\""))
-  assert_true(html.contains("<p>Title</p>"))
+  let slide = @domain.CT_Slide::new({
+    name: name("sld"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("cSld"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("spTree"),
+            attributes: [],
+            children: [sp],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(slide)
+  assert_true(svg.contains("<svg "))
+  assert_true(svg.contains("data-ooxml=\"pml\""))
+  // The renderer splits a run into per-glyph <text> elements;
+  // verify the rejoined rendered text carries the slide content.
+  assert_true(svg_text_content(svg).contains("Title"))
 }
 
 ///|

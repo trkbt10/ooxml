@@ -9,10 +9,6 @@ import {
 // Values
 pub fn package_name() -> String
 
-pub fn render_html(@domain.CT_OMath) -> String
-
-pub fn render_mathml(@domain.CT_OMath) -> @xml.Element
-
 pub fn render_svg(@domain.CT_OMath, font_size_pt? : Double, color? : String) -> MathSvg
 
 // Errors
