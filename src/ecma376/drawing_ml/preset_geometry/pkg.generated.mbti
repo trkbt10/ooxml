@@ -8,13 +8,31 @@ import {
 }
 
 // Values
+pub fn build_bevel(Int, Int) -> ShapeGeometry
+
 pub fn build_callout1(Int, Int) -> ShapeGeometry
 
 pub fn build_callout2(Int, Int) -> ShapeGeometry
 
 pub fn build_callout3(Int, Int) -> ShapeGeometry
 
+pub fn build_can(Int, Int) -> ShapeGeometry
+
+pub fn build_chart_plus(Int, Int) -> ShapeGeometry
+
+pub fn build_chart_star(Int, Int) -> ShapeGeometry
+
+pub fn build_chart_x(Int, Int) -> ShapeGeometry
+
+pub fn build_chevron(Int, Int) -> ShapeGeometry
+
 pub fn build_cloud(Int, Int) -> ShapeGeometry
+
+pub fn build_corner(Int, Int) -> ShapeGeometry
+
+pub fn build_cube(Int, Int) -> ShapeGeometry
+
+pub fn build_diag_stripe(Int, Int) -> ShapeGeometry
 
 pub fn build_diamond(Int, Int) -> ShapeGeometry
 
@@ -26,9 +44,17 @@ pub fn build_ellipse(Int, Int) -> ShapeGeometry
 
 pub fn build_equal(Int, Int) -> ShapeGeometry
 
+pub fn build_folded_corner(Int, Int) -> ShapeGeometry
+
+pub fn build_frame(Int, Int) -> ShapeGeometry
+
 pub fn build_geometry(PresetShape, Int, Int) -> ShapeGeometry
 
+pub fn build_half_frame(Int, Int) -> ShapeGeometry
+
 pub fn build_heart(Int, Int) -> ShapeGeometry
+
+pub fn build_home_plate(Int, Int) -> ShapeGeometry
 
 pub fn build_left_arrow(Int, Int) -> ShapeGeometry
 
