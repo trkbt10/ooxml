@@ -104,6 +104,12 @@ pub fn render_svg(
   /// are interpreted relative to 1904-01-01 instead of
   /// 1900-01-01.  Defaults to `false` (1900 system).
   date1904? : Bool = false,
+  /// A namespace prefix for every generated SVG `id` (clip paths,
+  /// gradients, patterns). When several sheets are concatenated into
+  /// one document each must pass a distinct prefix so per-cell ids
+  /// such as `clip_B2` do not collide across sheets. Empty for a
+  /// single-sheet render.
+  id_prefix? : String = "",
 ) -> SheetSvgResult {
   // §18.2.28 — pick the date system once for the whole sheet.
   let date_system = if date1904 {
@@ -213,13 +219,16 @@ pub fn render_svg(
           shared_strings,
           theme_map~,
         )
+        // Namespaced id key for the cell's fill defs — `id_prefix`
+        // keeps it unique once several sheets share a document.
+        let fill_id_key = id_prefix + cell_ref
         let fill_nodes : Array[@xml.Node] = match style.fill {
           FillNone => []
           FillSolid(color) => render_cell_fill_solid(cl, color)
           FillPattern(name, fg, bg) =>
-            render_cell_fill_pattern(cl, name, fg, bg)
+            render_cell_fill_pattern(fill_id_key, cl, name, fg, bg)
           FillGradient(grad_type, degree, stops) =>
-            render_cell_fill_gradient(cl, grad_type, degree, stops)
+            render_cell_fill_gradient(fill_id_key, cl, grad_type, degree, stops)
         }
         for n in fill_nodes {
           cell_fills.push(n)
@@ -358,6 +367,8 @@ pub fn render_svg(
             }
             for
               n in render_cell_text_offset(
+                id_prefix,
+                cell_ref,
                 cl,
                 text,
                 text_style,
@@ -3841,7 +3852,7 @@ fn contains_date_token(format_code : String) -> Bool {
   while i < format_code.length() {
     let c = format_code.code_unit_at(i).to_int()
     if c == 0x22 {
-      in_quote = !(in_quote)
+      in_quote = !in_quote
       i = i + 1
       continue
     }
@@ -3874,7 +3885,7 @@ fn contains_date_token(format_code : String) -> Bool {
           first == 0x4D ||
           first == 0x73 ||
           first == 0x53
-        if !(is_hms) {
+        if !is_hms {
           is_elapsed = false
         } else {
           let mut q = body_start + 1
@@ -3899,7 +3910,7 @@ fn contains_date_token(format_code : String) -> Bool {
       i = i + 1
       continue
     }
-    if !(in_quote) {
+    if !in_quote {
       // §18.8.30 date/time tokens — case-insensitive per
       // §18.17.4.1.
       if c == 0x6D || c == 0x4D {
@@ -4312,12 +4323,12 @@ fn split_format_sections(format_code : String) -> Array[String] {
     let c = format_code.code_unit_at(i).to_int()
     if c == 0x22 {
       // '"' — toggle quote
-      in_quote = !(in_quote)
+      in_quote = !in_quote
       buf.write_char(c.to_char().unwrap())
     } else if c == 0x5C && i + 1 < format_code.length() {
       // backslash-escape: keep both chars together
       buf.write_char(c.to_char().unwrap())
-    } else if c == 0x3B && !(in_quote) {
+    } else if c == 0x3B && !in_quote {
       // ';' delimiter
       out.push(buf.to_string())
       buf.reset()
@@ -4581,7 +4592,7 @@ fn apply_fraction_format_section(value : Double, section : String) -> String {
     if c == 0x3F || c == 0x30 || c == 0x23 {
       // Determine which slot we're in by comparing j to slash_pos.
       if j < slash_pos {
-        if has_integer_slot && !(emitted_int) {
+        if has_integer_slot && !emitted_int {
           if int_part == 0 && num != 0 {
             // Standard fraction form: when the integer is 0 and
             // there IS a fractional part, leave the integer slot
@@ -4602,7 +4613,7 @@ fn apply_fraction_format_section(value : Double, section : String) -> String {
           }
           continue
         }
-        if !(emitted_num) {
+        if !emitted_num {
           // Numerator.  Right-align in the slot using leading
           // spaces (?-placeholders) so the alignment matches
           // Excel's behaviour.
@@ -4628,7 +4639,7 @@ fn apply_fraction_format_section(value : Double, section : String) -> String {
         continue
       } else {
         // Past the slash → denominator slot.
-        if !(emitted_den) {
+        if !emitted_den {
           let raw = den.to_string()
           let mut pad = den_digits - raw.length()
           while pad > 0 {
@@ -4655,7 +4666,7 @@ fn apply_fraction_format_section(value : Double, section : String) -> String {
     if j == slash_pos + 1 || (j > slash_pos && c >= 0x30 && c <= 0x39) {
       // Walk past the literal integer denominator we already
       // emitted, replacing it with our `den`.
-      if !(emitted_den) {
+      if !emitted_den {
         buf.write_string(den.to_string())
         emitted_den = true
       }
@@ -4941,7 +4952,7 @@ fn apply_format_section(value : Double, section : String) -> String {
     }
     if c == 0x30 || c == 0x23 || c == 0x2C {
       // placeholder run — emit integer portion once.
-      if !(emitted_int) {
+      if !emitted_int {
         buf.write_string(int_with_sep)
         emitted_int = true
       }
@@ -4963,7 +4974,7 @@ fn apply_format_section(value : Double, section : String) -> String {
       j = j + 1
       // Fractional placeholders — substitute the fraction string
       // once and skip them.
-      if !(emitted_frac) && frac_str.length() > 0 {
+      if !emitted_frac && frac_str.length() > 0 {
         buf.write_string(frac_str)
         emitted_frac = true
       }
@@ -5359,6 +5370,7 @@ fn render_data_bar(
 /// radial path is fully implemented. The gradient `id` is derived
 /// from the cell layout coordinates so it is stable + unique.
 fn render_cell_fill_gradient(
+  id_key : String,
   layout : CellLayout,
   grad_type : String,
   degree : Double,
@@ -5367,15 +5379,10 @@ fn render_cell_fill_gradient(
   if stops.length() == 0 {
     return []
   }
-  // Stable id from cell position. The id includes the
-  // gradient type so two cells with the same coords but
-  // different gradients don't collide.
-  let id = "grad_" +
-    format_d(layout.x).replace(old=".", new="_") +
-    "_" +
-    format_d(layout.y).replace(old=".", new="_") +
-    "_" +
-    grad_type
+  // Stable id from the namespaced cell reference; the gradient type
+  // is appended so a cell carrying more than one gradient still gets
+  // distinct ids.
+  let id = "grad_" + id_key + "_" + grad_type
   // Linear-gradient angle: §18.8.24 @degree is the rotation
   // measured clockwise from the positive x-axis.
   let angle_rad = degree * 3.141592653589793 / 180.0
@@ -5434,20 +5441,16 @@ fn render_cell_fill_gradient(
 /// has no geometry mapping yet we fall back to a flat `fg` rect +
 /// metadata so the cell still picks up the intended hue.
 fn render_cell_fill_pattern(
+  id_key : String,
   layout : CellLayout,
   pattern_name : String,
   fg : String,
   bg : String,
 ) -> Array[@xml.Node] {
   let bg_color = if bg.length() > 0 { bg } else { "#FFFFFF" }
-  // Stable id from coords + pattern name so two cells with the
-  // same pattern get distinct defs (cell coords differ).
-  let id = "pat_" +
-    format_d(layout.x).replace(old=".", new="_") +
-    "_" +
-    format_d(layout.y).replace(old=".", new="_") +
-    "_" +
-    pattern_name
+  // Stable id from the namespaced cell reference + pattern name so a
+  // cell carrying more than one pattern still gets distinct defs.
+  let id = "pat_" + id_key + "_" + pattern_name
   let pattern_def = build_pattern_def(id, pattern_name, fg, bg_color)
   match pattern_def {
     None => {
@@ -6025,6 +6028,8 @@ fn render_cell_icon_metadata(
 /// so the `general` horizontal alignment resolves correctly per
 /// §18.18.40.
 fn render_cell_text_offset(
+  id_prefix : String,
+  cell_ref : String,
   layout : CellLayout,
   text : String,
   style : ResolvedCellStyle,
@@ -6032,7 +6037,7 @@ fn render_cell_text_offset(
   cell_t? : String? = None,
 ) -> Array[@xml.Node] {
   if offset_x == 0.0 {
-    return render_cell_text(layout, text, style, cell_t~)
+    return render_cell_text(id_prefix, cell_ref, layout, text, style, cell_t~)
   }
   let offset_layout : CellLayout = {
     x: layout.x + offset_x,
@@ -6044,7 +6049,43 @@ fn render_cell_text_offset(
     is_merge_origin: layout.is_merge_origin,
     is_hidden_by_merge: layout.is_hidden_by_merge,
   }
-  render_cell_text(offset_layout, text, style, cell_t~)
+  render_cell_text(id_prefix, cell_ref, offset_layout, text, style, cell_t~)
+}
+
+///|
+/// Build a per-cell `<clipPath>` keyed on the cell reference.
+/// Returns the `<defs>` node carrying the clip path and the
+/// `url(#id)` reference string to attach to the cell's `<text>`.
+///
+/// Mirrors `renderCellText` in
+/// `@aurochs-renderer/xlsx/src/svg/cell-renderer.ts:308-318`, which
+/// wraps every cell's text in a `<clipPath>` so overlong content is
+/// bounded to the cell instead of bleeding across the grid. The id
+/// derives from the §18.17.7 A1-style cell reference (e.g. `clip_B7`)
+/// so every cell gets a unique, stable clip-path id — a coordinate-
+/// derived key collides whenever two cells share a pixel origin.
+fn cell_text_clip(
+  id_prefix : String,
+  cell_ref : String,
+  layout : CellLayout,
+) -> (@xml.Node, String) {
+  // Cell references are `[A-Z]+[0-9]+` — already a valid id token.
+  // The `id_prefix` keeps ids distinct when several sheets share a
+  // document.
+  let id = id_prefix + "clip_" + cell_ref
+  let rect = svg_elem(
+    "rect",
+    [
+      svg_attr("x", format_d(layout.x)),
+      svg_attr("y", format_d(layout.y)),
+      svg_attr("width", format_d(layout.width)),
+      svg_attr("height", format_d(layout.height)),
+    ],
+    [],
+  )
+  let clip_path = svg_elem("clipPath", [svg_attr("id", id)], [rect])
+  let defs = svg_elem("defs", [], [clip_path])
+  (defs, "url(#" + id + ")")
 }
 
 ///|
@@ -6054,6 +6095,8 @@ fn render_cell_text_offset(
 /// `general` horizontal alignment resolves per §18.18.40.
 /// @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/cell-renderer.ts:293
 fn render_cell_text(
+  id_prefix : String,
+  cell_ref : String,
   layout : CellLayout,
   text : String,
   style : ResolvedCellStyle,
@@ -6073,13 +6116,19 @@ fn render_cell_text(
     padding,
   )
   if style.alignment.wrap_text && layout.width > 0.0 {
-    return render_wrapped_text(layout, text, style, tx, anchor)
+    return render_wrapped_text(
+      id_prefix, cell_ref, layout, text, style, tx, anchor,
+    )
   }
+  // §18.3.1.4 — clip the cell text to the cell rectangle so a long
+  // string does not bleed into neighbouring cells.
+  let (clip_defs, clip_ref) = cell_text_clip(id_prefix, cell_ref, layout)
   let attrs : Array[@xml.Attribute] = [
     svg_attr("x", format_d(tx)),
     svg_attr("y", format_d(ty)),
     svg_attr("text-anchor", anchor),
     svg_attr("dominant-baseline", baseline),
+    svg_attr("clip-path", clip_ref),
   ]
   // §18.18.40 — surface the resolved ST_HorizontalAlignment as a
   // spec-anchored data attribute so consumers can apply alignment
@@ -6136,7 +6185,7 @@ fn render_cell_text(
     )
   }
   append_font_attrs(attrs, style.font)
-  [svg_elem("text", attrs, [svg_text(text)])]
+  [clip_defs, svg_elem("text", attrs, [svg_text(text)])]
 }
 
 ///|
@@ -6145,6 +6194,8 @@ fn render_cell_text(
 /// each paragraph at `width / (font_size * 0.6)` characters.
 /// @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/cell-renderer.ts:392
 fn render_wrapped_text(
+  id_prefix : String,
+  cell_ref : String,
   layout : CellLayout,
   text : String,
   style : ResolvedCellStyle,
@@ -6161,7 +6212,13 @@ fn render_wrapped_text(
   }
   let padding = 2.0
   let start_y = layout.y + font_size + padding
-  let attrs : Array[@xml.Attribute] = [svg_attr("text-anchor", anchor)]
+  // §18.3.1.4 — clip wrapped text to the cell rectangle as well so
+  // lines exceeding the cell height do not overflow the grid.
+  let (clip_defs, clip_ref) = cell_text_clip(id_prefix, cell_ref, layout)
+  let attrs : Array[@xml.Attribute] = [
+    svg_attr("text-anchor", anchor),
+    svg_attr("clip-path", clip_ref),
+  ]
   append_font_attrs(attrs, style.font)
   let tspans : Array[@xml.Node] = []
   for i, line in lines {
@@ -6183,7 +6240,7 @@ fn render_wrapped_text(
       )
     }
   }
-  [svg_elem("text", attrs, tspans)]
+  [clip_defs, svg_elem("text", attrs, tspans)]
 }
 
 ///|

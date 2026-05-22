@@ -228,10 +228,13 @@ pub fn Workbook::to_svg(self : Workbook) -> String {
     Some(pr) => pr.date1904
     None => false
   }
-  for worksheet in self.worksheets {
+  for sheet_index, worksheet in self.worksheets {
     let image_resolver = build_drawing_image_resolver(
       self.package, worksheet.drawing_part,
     )
+    // Each sheet's SVG ids are namespaced with the sheet index so
+    // per-cell ids (clip paths, defs) stay unique once the sheets
+    // are concatenated into a single document.
     let result = @sml_viewer.render_svg(
       worksheet.value,
       shared_strings=self.shared_strings,
@@ -240,6 +243,7 @@ pub fn Workbook::to_svg(self : Workbook) -> String {
       styles=self.styles,
       theme=theme_root,
       date1904~,
+      id_prefix="s" + sheet_index.to_string() + "-",
     )
     buf.write_string(result.svg)
   }

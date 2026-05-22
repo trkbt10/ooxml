@@ -251,16 +251,21 @@ pub fn Document::to_styled_html(self : Document) -> String {
 /// main-part relationships, parsed, and drawn inside each page's
 /// top / bottom margin band per §17.10.
 pub fn Document::to_svg(self : Document) -> String {
-  let (header_blocks, footer_blocks) = resolve_default_header_footer_blocks(
-    self,
-  )
+  let deco = resolve_header_footer_decoration(self)
   let image_resolver = build_document_image_resolver(
-    self.package, self.main_part,
+    self.package,
+    self.main_part,
   )
   let result = @wml_viewer.render_svg(
     self.main,
-    header_blocks~,
-    footer_blocks~,
+    header_blocks=deco.header_default,
+    footer_blocks=deco.footer_default,
+    header_blocks_first=deco.header_first,
+    header_blocks_even=deco.header_even,
+    footer_blocks_first=deco.footer_first,
+    footer_blocks_even=deco.footer_even,
+    title_pg=deco.title_pg,
+    even_and_odd_headers=deco.even_and_odd,
     image_resolver~,
     styles=self.styles,
     numbering=self.numbering,
@@ -298,9 +303,7 @@ fn build_document_image_resolver(
           if rel.id == rid &&
             rel.target_mode == @relationships.TargetMode::Internal &&
             rel.type_uri.has_suffix("/image") {
-            let resolved = (try? @opc_part_name.resolve_target(
-              part, rel.target,
-            ))
+            let resolved = try? @opc_part_name.resolve_target(part, rel.target)
             match resolved {
               Ok(image_name) =>
                 match pkg.part(image_name) {
@@ -373,26 +376,56 @@ fn document_mime_for_target(target : String) -> String {
 }
 
 ///|
-/// Locate the §17.10 `default` header and footer for the section
-/// trailing the body. Returns typed projections of their block-level
-/// child elements ready for the viewer pipeline. When the section
-/// declares no default header/footer (e.g. only `first` / `even`
-/// variants), the returned arrays are empty and the viewer renders
-/// pages without decoration.
-fn resolve_default_header_footer_blocks(
-  doc : Document,
-) -> (Array[@wml.EG_BlockLevelElts], Array[@wml.EG_BlockLevelElts]) {
+/// §17.10 page decoration resolved from the trailing section: the
+/// `default` / `first` / `even` header and footer block streams plus
+/// the two §17.10.1 toggles (`<w:titlePg>` and `<w:evenAndOddHeaders>`)
+/// that select between them. Empty streams mean the section declares
+/// no part of that reference type.
+struct ResolvedDecoration {
+  header_default : Array[@wml.EG_BlockLevelElts]
+  header_first : Array[@wml.EG_BlockLevelElts]
+  header_even : Array[@wml.EG_BlockLevelElts]
+  footer_default : Array[@wml.EG_BlockLevelElts]
+  footer_first : Array[@wml.EG_BlockLevelElts]
+  footer_even : Array[@wml.EG_BlockLevelElts]
+  title_pg : Bool
+  even_and_odd : Bool
+}
+
+///|
+/// An empty decoration set — used when the document has no body /
+/// section / relationships.
+fn ResolvedDecoration::empty() -> ResolvedDecoration {
+  {
+    header_default: [],
+    header_first: [],
+    header_even: [],
+    footer_default: [],
+    footer_first: [],
+    footer_even: [],
+    title_pg: false,
+    even_and_odd: false,
+  }
+}
+
+///|
+/// Resolve the §17.10 header / footer parts for the section trailing
+/// the body. Each of the three §17.10.1 reference types (`default`,
+/// `first`, `even`) is resolved separately, and the §17.6.6
+/// `<w:titlePg>` / §17.10.1 `<w:evenAndOddHeaders>` toggles are read
+/// so the viewer can pick the right stream per page.
+fn resolve_header_footer_decoration(doc : Document) -> ResolvedDecoration {
   let main_rels = match doc.package.relationships(doc.main_part) {
     Some(r) => r
-    None => return ([], [])
+    None => return ResolvedDecoration::empty()
   }
   let body = match find_child_local(doc.main.element, "body") {
     Some(b) => b
-    None => return ([], [])
+    None => return ResolvedDecoration::empty()
   }
   let sect_pr = match find_trailing_sect_pr(body) {
     Some(s) => s
-    None => return ([], [])
+    None => return ResolvedDecoration::empty()
   }
   let header_index : Array[(String, Array[@wml.EG_BlockLevelElts])] = []
   for h in doc.headers {
@@ -402,21 +435,52 @@ fn resolve_default_header_footer_blocks(
   for f in doc.footers {
     footer_index.push((f.name, f.value.block_level_elts))
   }
-  let header = resolve_first_reference_blocks(
-    sect_pr,
-    "headerReference",
-    header_index,
-    main_rels,
-    doc.main_part,
-  )
-  let footer = resolve_first_reference_blocks(
-    sect_pr,
-    "footerReference",
-    footer_index,
-    main_rels,
-    doc.main_part,
-  )
-  (header, footer)
+  let resolve = fn(local : String, type_ : String, idx) {
+    resolve_reference_blocks(
+      sect_pr,
+      local,
+      type_,
+      idx,
+      main_rels,
+      doc.main_part,
+    )
+  }
+  // §17.6.6 — `<w:titlePg>` (no `@val` / `@val` truthy ⇒ on).
+  let title_pg = match find_child_local(sect_pr, "titlePg") {
+    Some(tp) => attr_on_off(tp)
+    None => false
+  }
+  // §17.10.1 — `<w:evenAndOddHeaders>` lives in the settings part.
+  let even_and_odd = match doc.settings {
+    Some(s) =>
+      match find_child_local(s.element, "evenAndOddHeaders") {
+        Some(e) => attr_on_off(e)
+        None => false
+      }
+    None => false
+  }
+  {
+    header_default: resolve("headerReference", "default", header_index),
+    header_first: resolve("headerReference", "first", header_index),
+    header_even: resolve("headerReference", "even", header_index),
+    footer_default: resolve("footerReference", "default", footer_index),
+    footer_first: resolve("footerReference", "first", footer_index),
+    footer_even: resolve("footerReference", "even", footer_index),
+    title_pg,
+    even_and_odd,
+  }
+}
+
+///|
+/// §17.17.4 ST_OnOff — read an element's `@w:val`: absent or one of
+/// `1` / `true` / `on` ⇒ `true`, `0` / `false` / `off` ⇒ `false`.
+/// Toggle elements such as `<w:titlePg>` carry no value when on.
+fn attr_on_off(el : @xml.Element) -> Bool {
+  match attr_local(el, "val") {
+    None => true
+    Some("0") | Some("false") | Some("off") => false
+    Some(_) => true
+  }
 }
 
 ///|
@@ -452,12 +516,14 @@ fn find_trailing_sect_pr(body : @xml.Element) -> @xml.Element? {
 
 ///|
 /// Scan a `<w:sectPr>` for a `<w:headerReference>` / `<w:footerReference>`
-/// whose `@w:type` is `"default"` (or unset → default), resolve its
+/// whose §17.10.1 `@w:type` matches `want_type` (`default` / `first` /
+/// `even`; an unset `@type` is treated as `default`), resolve its
 /// `r:id` to a part name, then locate the matching `HeaderPart` /
 /// `FooterPart` and return its block-level children.
-fn resolve_first_reference_blocks(
+fn resolve_reference_blocks(
   sect_pr : @xml.Element,
   local_name : String,
+  want_type : String,
   parts : Array[(String, Array[@wml.EG_BlockLevelElts])],
   rels : @relationships.CT_Relationships,
   owner : String,
@@ -470,7 +536,7 @@ fn resolve_first_reference_blocks(
             Some(v) => v
             None => "default"
           }
-          if type_ == "default" {
+          if type_ == want_type {
             match attr_rid(elt) {
               Some(rid) =>
                 match resolve_rid_target(rels, rid, owner) {
@@ -635,7 +701,8 @@ fn load_theme_root(
         if rel.type_uri.has_suffix("/theme") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let resolved = try? @opc_part_name.resolve_target(
-            main_part, rel.target,
+            main_part,
+            rel.target,
           )
           match resolved {
             Ok(name) => {
@@ -677,7 +744,9 @@ fn read_theme_root(bytes : Bytes) -> @xml.Element raise {
     raise @opc_errors.SchemaViolation(
       section="20.1.6.9",
       path="/word/theme/theme1.xml",
-      reason="root element must be <a:theme>, observed <" + root.name.local_name + ">",
+      reason="root element must be <a:theme>, observed <" +
+        root.name.local_name +
+        ">",
     )
   }
   root

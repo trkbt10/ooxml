@@ -126,3 +126,60 @@ test "blipFill with resolver emits image pattern def" {
   inspect(defs.defs.length(), content="1")
   assert_true(defs.to_defs_element().contains("data:image/png;base64,AAAA"))
 }
+
+///|
+/// §20.1.8.47 `<a:pattFill prst="cross">` — a cross-hatch preset
+/// builds a `<pattern>` def with the foreground rules and a
+/// `url(#id)` fill reference.
+test "pattFill cross builds a pattern def with fg rules" {
+  let fg = fill_make_elt("fgClr", [], [
+    fill_make_elt("srgbClr", [("val", "FF0000")], []),
+  ])
+  let bg = fill_make_elt("bgClr", [], [
+    fill_make_elt("srgbClr", [("val", "FFFFFF")], []),
+  ])
+  let patt = fill_make_elt("pattFill", [("prst", "cross")], [fg, bg])
+  let defs = SvgDefsCollector::new()
+  let ctx = ColorResolveContext::empty()
+  let r = render_fill_attr(patt, defs, ctx)
+  inspect(r.attr_value, content="url(#shape-patt-0)")
+  inspect(defs.defs.length(), content="1")
+  let defs_str = defs.to_defs_element()
+  assert_true(defs_str.contains("<pattern"))
+  // Cross-hatch is two strokes in the foreground colour.
+  assert_true(defs_str.contains("#ff0000"))
+  assert_true(defs_str.contains("<line"))
+}
+
+///|
+/// §20.1.10.51 `<a:pattFill prst="pct25">` — a percentage-density
+/// preset renders a centred dot tile.
+test "pattFill pct25 builds a dotted pattern def" {
+  let fg = fill_make_elt("fgClr", [], [
+    fill_make_elt("srgbClr", [("val", "000000")], []),
+  ])
+  let patt = fill_make_elt("pattFill", [("prst", "pct25")], [fg])
+  let defs = SvgDefsCollector::new()
+  let ctx = ColorResolveContext::empty()
+  let r = render_fill_attr(patt, defs, ctx)
+  inspect(r.attr_value, content="url(#shape-patt-0)")
+  let defs_str = defs.to_defs_element()
+  assert_true(defs_str.contains("<pattern"))
+  assert_true(defs_str.contains("<circle"))
+}
+
+///|
+/// §20.1.8.47 — a `<a:pattFill>` whose `@prst` geometry is not yet
+/// mapped falls back to the foreground colour as a flat fill (no
+/// `<pattern>` def) so the shape stays visible.
+test "pattFill unmapped preset falls back to flat fg colour" {
+  let fg = fill_make_elt("fgClr", [], [
+    fill_make_elt("srgbClr", [("val", "00FF00")], []),
+  ])
+  let patt = fill_make_elt("pattFill", [("prst", "sphere")], [fg])
+  let defs = SvgDefsCollector::new()
+  let ctx = ColorResolveContext::empty()
+  let r = render_fill_attr(patt, defs, ctx)
+  inspect(r.attr_value, content="#00ff00")
+  inspect(defs.defs.length(), content="0")
+}

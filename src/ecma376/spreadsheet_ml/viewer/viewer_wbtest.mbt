@@ -3542,3 +3542,62 @@ test "SpreadsheetML viewer §18.2.28 date1904 flag shifts date epoch" {
   let svg_1904 = render_svg(worksheet, styles=Some(stylesheet), date1904=true).svg
   assert_false(svg_1900 == svg_1904)
 }
+
+///|
+/// §18.3.1.4 — cell text is clipped to the cell rectangle via a
+/// `<clipPath>` so an overlong string cannot bleed into adjacent
+/// cells. Mirrors `renderCellText` in web-pptx
+/// `@aurochs-renderer/xlsx/src/svg/cell-renderer.ts:308-318`.
+test "SpreadsheetML SVG renderer clips cell text to the cell rect" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            {
+              let attrs : Array[@xml.Attribute] = [
+                { name: name("r"), value: "A1" },
+                { name: name("t"), value: "inlineStr" },
+              ]
+              @xml.Node::Element({
+                name: name("c"),
+                attributes: attrs,
+                children: [
+                  @xml.Node::Element({
+                    name: name("is"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("t"),
+                        attributes: [],
+                        children: [
+                          @xml.Node::Text(
+                            "A very long cell string that would overflow",
+                          ),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              })
+            },
+          ]),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(worksheet).svg
+  // The cell text carries a clip-path reference, and a matching
+  // <clipPath> definition is emitted.
+  assert_true(svg.contains("<clipPath "))
+  assert_true(svg.contains("clip-path=\"url(#clip_"))
+}

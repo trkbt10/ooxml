@@ -167,9 +167,7 @@ fn render_grad_fill_def(
 ///|
 /// Build the `<stop offset="..%" stop-color="#hex" [stop-opacity]/>`
 /// nodes for a gradient stop list.
-fn build_stop_nodes(
-  stops : Array[GradientStopValue],
-) -> Array[@xml.Node] {
+fn build_stop_nodes(stops : Array[GradientStopValue]) -> Array[@xml.Node] {
   let nodes : Array[@xml.Node] = []
   for stop in stops {
     let attrs : Array[@xml.Attribute] = [
@@ -182,6 +180,246 @@ fn build_stop_nodes(
     nodes.push(@markup.elem_ns("stop", @markup.svg_ns, attrs, []))
   }
   nodes
+}
+
+///|
+/// Resolve the `<a:fgClr>` / `<a:bgClr>` colour of an `<a:pattFill>`.
+/// Each is a wrapper carrying one EG_ColorChoice element; returns the
+/// CSS colour string or the supplied fallback when absent.
+fn patt_fill_color(
+  patt_fill : @xml.Element,
+  child_local : String,
+  fallback : String,
+  ctx : ColorResolveContext,
+) -> String {
+  match child_by_local(patt_fill, child_local) {
+    None => fallback
+    Some(wrapper) =>
+      match resolve_solid_fill(wrapper, ctx~) {
+        Some(rc) => format_resolved_color(rc)
+        None => fallback
+      }
+  }
+}
+
+///|
+/// §20.1.10.51 — the percentage-density (`pct5` … `pct90`) preset
+/// patterns map to a dot fraction in [0, 1]; `None` for any other
+/// preset name.
+fn pattern_pct_density(prst : String) -> Double? {
+  match prst {
+    "pct5" => Some(0.05)
+    "pct10" => Some(0.1)
+    "pct20" => Some(0.2)
+    "pct25" => Some(0.25)
+    "pct30" => Some(0.3)
+    "pct40" => Some(0.4)
+    "pct50" => Some(0.5)
+    "pct60" => Some(0.6)
+    "pct70" => Some(0.7)
+    "pct75" => Some(0.75)
+    "pct80" => Some(0.8)
+    "pct90" => Some(0.9)
+    _ => None
+  }
+}
+
+///|
+/// Build the geometry child nodes of a §20.1.8.47 pattern tile for a
+/// recognised `@prst`. The tile is an 8×8 user-space cell; `fg` paints
+/// the marks. Returns `None` for an unmapped preset so the caller can
+/// fall back to a flat foreground fill.
+///
+/// Covered families (the geometric basis of ST_PresetPatternVal):
+///   - percentage dots (`pct5` … `pct90`)
+///   - horizontal / vertical rules (`horz`, `vert`, `ltHorz`, `dkHorz`,
+///     `ltVert`, `dkVert`, `narHorz`, `narVert`)
+///   - diagonal rules (`ltDnDiag`, `ltUpDiag`, `dkDnDiag`, `dkUpDiag`,
+///     `wdDnDiag`, `wdUpDiag`)
+///   - cross-hatch (`cross`, `diagCross`)
+///   - grids / checks (`smGrid`, `lgGrid`, `dotGrid`, `smCheck`,
+///     `lgCheck`)
+fn pattern_tile_marks(prst : String, fg : String) -> Array[@xml.Node]? {
+  fn line(x1 : Double, y1 : Double, x2 : Double, y2 : Double, w : Double) {
+    @markup.elem_ns(
+      "line",
+      @markup.svg_ns,
+      [
+        @markup.attr("x1", x1.to_string()),
+        @markup.attr("y1", y1.to_string()),
+        @markup.attr("x2", x2.to_string()),
+        @markup.attr("y2", y2.to_string()),
+        @markup.attr("stroke", fg),
+        @markup.attr("stroke-width", w.to_string()),
+      ],
+      [],
+    )
+  }
+
+  fn dot(cx : Double, cy : Double, r : Double) {
+    @markup.elem_ns(
+      "circle",
+      @markup.svg_ns,
+      [
+        @markup.attr("cx", cx.to_string()),
+        @markup.attr("cy", cy.to_string()),
+        @markup.attr("r", r.to_string()),
+        @markup.attr("fill", fg),
+      ],
+      [],
+    )
+  }
+
+  // Percentage-density presets — a single centred dot whose radius
+  // grows with the density fraction (area ∝ fraction over the 8×8
+  // cell, capped so high percentages still read as a pattern).
+  match pattern_pct_density(prst) {
+    Some(frac) => {
+      let r = (frac * 64.0 / 3.14159).sqrt().min(3.6)
+      return Some([dot(4.0, 4.0, r)])
+    }
+    None => ()
+  }
+  match prst {
+    // Horizontal rules — `lt`/`dk`/`nar` vary the stroke weight.
+    "horz" | "ltHorz" => Some([line(0.0, 4.0, 8.0, 4.0, 1.0)])
+    "dkHorz" => Some([line(0.0, 4.0, 8.0, 4.0, 2.5)])
+    "narHorz" =>
+      Some([line(0.0, 2.0, 8.0, 2.0, 1.0), line(0.0, 6.0, 8.0, 6.0, 1.0)])
+    // Vertical rules.
+    "vert" | "ltVert" => Some([line(4.0, 0.0, 4.0, 8.0, 1.0)])
+    "dkVert" => Some([line(4.0, 0.0, 4.0, 8.0, 2.5)])
+    "narVert" =>
+      Some([line(2.0, 0.0, 2.0, 8.0, 1.0), line(6.0, 0.0, 6.0, 8.0, 1.0)])
+    // Down-diagonal rules (top-left → bottom-right). Two extra
+    // segments stitch the tile edges so the line is continuous when
+    // the pattern repeats.
+    "ltDnDiag" | "dnDiag" =>
+      Some([
+        line(0.0, 0.0, 8.0, 8.0, 1.0),
+        line(-8.0, 0.0, 8.0, 16.0, 1.0),
+        line(0.0, -8.0, 16.0, 8.0, 1.0),
+      ])
+    "dkDnDiag" | "wdDnDiag" =>
+      Some([
+        line(0.0, 0.0, 8.0, 8.0, 2.5),
+        line(-8.0, 0.0, 8.0, 16.0, 2.5),
+        line(0.0, -8.0, 16.0, 8.0, 2.5),
+      ])
+    // Up-diagonal rules (bottom-left → top-right).
+    "ltUpDiag" | "upDiag" =>
+      Some([
+        line(0.0, 8.0, 8.0, 0.0, 1.0),
+        line(-8.0, 8.0, 8.0, -8.0, 1.0),
+        line(0.0, 16.0, 16.0, 0.0, 1.0),
+      ])
+    "dkUpDiag" | "wdUpDiag" =>
+      Some([
+        line(0.0, 8.0, 8.0, 0.0, 2.5),
+        line(-8.0, 8.0, 8.0, -8.0, 2.5),
+        line(0.0, 16.0, 16.0, 0.0, 2.5),
+      ])
+    // Cross-hatch — horizontal + vertical.
+    "cross" | "smGrid" =>
+      Some([line(0.0, 4.0, 8.0, 4.0, 1.0), line(4.0, 0.0, 4.0, 8.0, 1.0)])
+    "lgGrid" =>
+      Some([line(0.0, 0.0, 8.0, 0.0, 1.0), line(0.0, 0.0, 0.0, 8.0, 1.0)])
+    // Diagonal cross-hatch.
+    "diagCross" =>
+      Some([
+        line(0.0, 0.0, 8.0, 8.0, 1.0),
+        line(-8.0, 0.0, 8.0, 16.0, 1.0),
+        line(0.0, -8.0, 16.0, 8.0, 1.0),
+        line(0.0, 8.0, 8.0, 0.0, 1.0),
+        line(-8.0, 8.0, 8.0, -8.0, 1.0),
+        line(0.0, 16.0, 16.0, 0.0, 1.0),
+      ])
+    // Dotted grid — a dot at each tile corner.
+    "dotGrid" => Some([dot(0.0, 0.0, 1.0)])
+    // Small / large checker — a filled quadrant.
+    "smCheck" | "lgCheck" =>
+      Some([
+        @markup.elem_ns(
+          "rect",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", "0"),
+            @markup.attr("y", "0"),
+            @markup.attr("width", "4"),
+            @markup.attr("height", "4"),
+            @markup.attr("fill", fg),
+          ],
+          [],
+        ),
+        @markup.elem_ns(
+          "rect",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", "4"),
+            @markup.attr("y", "4"),
+            @markup.attr("width", "4"),
+            @markup.attr("height", "4"),
+            @markup.attr("fill", fg),
+          ],
+          [],
+        ),
+      ])
+    _ => None
+  }
+}
+
+///|
+/// Render an `<a:pattFill>` to an SVG `<pattern>` def. Returns `None`
+/// when `@prst` is absent or its geometry is not yet mapped, so the
+/// caller falls back to a flat foreground fill.
+/// @source web-pptx packages/@aurochs-renderer/pptx/src/svg/fill.ts:100
+fn render_patt_fill_def(
+  patt_fill : @xml.Element,
+  pattern_id : String,
+  ctx : ColorResolveContext,
+) -> @xml.Node? {
+  let prst = match attr_value(patt_fill, "prst") {
+    Some(v) => v
+    None => return None
+  }
+  let fg = patt_fill_color(patt_fill, "fgClr", "#000000", ctx)
+  let bg = patt_fill_color(patt_fill, "bgClr", "#ffffff", ctx)
+  let marks = match pattern_tile_marks(prst, fg) {
+    Some(m) => m
+    None => return None
+  }
+  // The tile is an 8×8 user-space cell painted with the background
+  // panel first, then the foreground marks.
+  let children : Array[@xml.Node] = [
+    @markup.elem_ns(
+      "rect",
+      @markup.svg_ns,
+      [
+        @markup.attr("x", "0"),
+        @markup.attr("y", "0"),
+        @markup.attr("width", "8"),
+        @markup.attr("height", "8"),
+        @markup.attr("fill", bg),
+      ],
+      [],
+    ),
+  ]
+  for m in marks {
+    children.push(m)
+  }
+  Some(
+    @markup.elem_ns(
+      "pattern",
+      @markup.svg_ns,
+      [
+        @markup.attr("id", pattern_id),
+        @markup.attr("patternUnits", "userSpaceOnUse"),
+        @markup.attr("width", "8"),
+        @markup.attr("height", "8"),
+      ],
+      children,
+    ),
+  )
 }
 
 ///|
@@ -208,8 +446,7 @@ pub fn render_fill_attr(
     "noFill" => { attr_value: "none", is_no_fill: true }
     "solidFill" =>
       match resolve_solid_fill(fill_element, ctx~) {
-        Some(rc) =>
-          { attr_value: format_resolved_color(rc), is_no_fill: false }
+        Some(rc) => { attr_value: format_resolved_color(rc), is_no_fill: false }
         None => { attr_value: "none", is_no_fill: false }
       }
     "gradFill" => {
@@ -226,19 +463,28 @@ pub fn render_fill_attr(
       render_blip_fill(
         fill_element, defs, shape_width, shape_height, image_resolver,
       )
-    "pattFill" =>
-      // §20.1.8.47 `<a:pattFill>` — the pattern's foreground /
-      // background colours are spec-mandated to come from
-      // `<a:fgClr>` and `<a:bgClr>` children, and the geometry
-      // from `@prst`.  Until the full tile-generator lands the
-      // renderer surfaces only the foreground colour so the
-      // shape stays visible; the spec-defined pattern identity
-      // is preserved on the source DOM for round-trip.
-      match resolve_solid_fill(fill_element, ctx~) {
-        Some(rc) =>
-          { attr_value: format_resolved_color(rc), is_no_fill: false }
-        None => { attr_value: "none", is_no_fill: false }
+    "pattFill" => {
+      // §20.1.8.47 `<a:pattFill>` — `@prst` (ST_PresetPatternVal,
+      // §20.1.10.51) names the tile geometry; `<a:fgClr>` paints
+      // the marks and `<a:bgClr>` the panel. Build an SVG
+      // `<pattern>` def for the recognised geometry families; an
+      // unmapped preset falls back to the foreground colour so the
+      // shape still picks up the intended hue.
+      let id = defs.next_id("shape-patt")
+      match render_patt_fill_def(fill_element, id, ctx) {
+        Some(def) => {
+          defs.add_def(def)
+          { attr_value: "url(#" + id + ")", is_no_fill: false }
+        }
+        None => {
+          // Unmapped preset / missing `@prst` — fall back to the
+          // `<a:fgClr>` colour so the shape still picks up the
+          // pattern's intended hue rather than vanishing.
+          let fg = patt_fill_color(fill_element, "fgClr", "none", ctx)
+          { attr_value: fg, is_no_fill: false }
+        }
       }
+    }
     "grpFill" =>
       // §20.1.8.35 `<a:grpFill>` — inherit the fill from the
       // containing group.  Until the group-level fill cascade

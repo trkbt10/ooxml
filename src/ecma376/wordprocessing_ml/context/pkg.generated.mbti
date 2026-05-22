@@ -61,6 +61,8 @@ pub(all) struct HeaderPart {
   value : @domain.CT_HdrFtr
 } derive(Eq, @debug.Debug)
 
+type ResolvedDecoration
+
 // Type aliases
 
 // Traits

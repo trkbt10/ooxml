@@ -540,10 +540,7 @@ test "render_svg emits paragraph shading rect from <w:shd>" {
                 children: [
                   @xml.Node::Element({
                     name: name("shd"),
-                    attributes: [
-                      attr("val", "clear"),
-                      attr("fill", "FFFF00"),
-                    ],
+                    attributes: [attr("val", "clear"), attr("fill", "FFFF00")],
                     children: [],
                   }),
                 ],
@@ -966,10 +963,7 @@ test "render_svg honours <w:spacing line lineRule='auto'>" {
           children: [
             @xml.Node::Element({
               name: name("spacing"),
-              attributes: [
-                attr("line", line_val),
-                attr("lineRule", "auto"),
-              ],
+              attributes: [attr("line", line_val), attr("lineRule", "auto")],
               children: [],
             }),
           ],
@@ -1235,11 +1229,9 @@ test "render_svg emits outline/shadow/em effects" {
     let rpr_children : Array[@xml.Node] = []
     for entry in toggles {
       let (lname, atts) = entry
-      rpr_children.push(@xml.Node::Element({
-        name: name(lname),
-        attributes: atts,
-        children: [],
-      }))
+      rpr_children.push(
+        @xml.Node::Element({ name: name(lname), attributes: atts, children: [] }),
+      )
     }
     @xml.Node::Element({
       name: name("r"),
@@ -1352,31 +1344,37 @@ test "render_svg honours <w:pageBreakBefore>" {
   let make_para = fn(text : String, page_break : Bool) -> @xml.Node {
     let pPr_children : Array[@xml.Node] = []
     if page_break {
-      pPr_children.push(@xml.Node::Element({
-        name: name("pageBreakBefore"),
-        attributes: [],
-        children: [],
-      }))
+      pPr_children.push(
+        @xml.Node::Element({
+          name: name("pageBreakBefore"),
+          attributes: [],
+          children: [],
+        }),
+      )
     }
     let children : Array[@xml.Node] = []
     if pPr_children.length() > 0 {
-      children.push(@xml.Node::Element({
-        name: name("pPr"),
-        attributes: [],
-        children: pPr_children,
-      }))
-    }
-    children.push(@xml.Node::Element({
-      name: name("r"),
-      attributes: [],
-      children: [
+      children.push(
         @xml.Node::Element({
-          name: name("t"),
+          name: name("pPr"),
           attributes: [],
-          children: [@xml.Node::Text(text)],
+          children: pPr_children,
         }),
-      ],
-    }))
+      )
+    }
+    children.push(
+      @xml.Node::Element({
+        name: name("r"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("t"),
+            attributes: [],
+            children: [@xml.Node::Text(text)],
+          }),
+        ],
+      }),
+    )
     @xml.Node::Element({ name: name("p"), attributes: [], children })
   }
   let document = @domain.CT_Document::new({
@@ -1409,11 +1407,13 @@ test "render_svg honours <w:br w:type='page'>" {
       }),
     ]
     if with_break {
-      r_children.push(@xml.Node::Element({
-        name: name("br"),
-        attributes: [attr("type", "page")],
-        children: [],
-      }))
+      r_children.push(
+        @xml.Node::Element({
+          name: name("br"),
+          attributes: [attr("type", "page")],
+          children: [],
+        }),
+      )
     }
     @xml.Node::Element({
       name: name("p"),
@@ -1434,10 +1434,7 @@ test "render_svg honours <w:br w:type='page'>" {
       @xml.Node::Element({
         name: name("body"),
         attributes: [],
-        children: [
-          make_para("Page1", true),
-          make_para("Page2", false),
-        ],
+        children: [make_para("Page1", true), make_para("Page2", false)],
       }),
     ],
   })
@@ -1460,10 +1457,7 @@ test "render_svg cascades through CT_Styles for pStyle" {
     children: [
       @xml.Node::Element({
         name: name("style"),
-        attributes: [
-          attr("type", "paragraph"),
-          attr("styleId", "Heading1"),
-        ],
+        attributes: [attr("type", "paragraph"), attr("styleId", "Heading1")],
         children: [
           @xml.Node::Element({
             name: name("rPr"),
@@ -1566,10 +1560,7 @@ test "render_svg cascades docDefaults + basedOn chain through styles" {
       }),
       @xml.Node::Element({
         name: name("style"),
-        attributes: [
-          attr("type", "paragraph"),
-          attr("styleId", "Body"),
-        ],
+        attributes: [attr("type", "paragraph"), attr("styleId", "Body")],
         children: [
           @xml.Node::Element({
             name: name("rPr"),
@@ -1586,10 +1577,7 @@ test "render_svg cascades docDefaults + basedOn chain through styles" {
       }),
       @xml.Node::Element({
         name: name("style"),
-        attributes: [
-          attr("type", "paragraph"),
-          attr("styleId", "Body2"),
-        ],
+        attributes: [attr("type", "paragraph"), attr("styleId", "Body2")],
         children: [
           @xml.Node::Element({
             name: name("basedOn"),
@@ -1720,10 +1708,7 @@ test "render_svg resolves <w:numPr> via CT_Numbering lvlText counters" {
   let numbering_element : @xml.Element = {
     name: name("numbering"),
     attributes: [],
-    children: [
-      @xml.Node::Element(abstract_num),
-      @xml.Node::Element(num_el),
-    ],
+    children: [@xml.Node::Element(abstract_num), @xml.Node::Element(num_el)],
   }
   let numbering = @domain.CT_Numbering::parse(numbering_element)
   let make_item = fn(text : String) -> @xml.Node {
@@ -1774,11 +1759,7 @@ test "render_svg resolves <w:numPr> via CT_Numbering lvlText counters" {
       @xml.Node::Element({
         name: name("body"),
         attributes: [],
-        children: [
-          make_item("Alpha"),
-          make_item("Beta"),
-          make_item("Gamma"),
-        ],
+        children: [make_item("Alpha"), make_item("Beta"), make_item("Gamma")],
       }),
     ],
   })
@@ -1891,18 +1872,12 @@ test "render_svg reserves inline width from <w:drawing><wp:extent>" {
         children: [
           @xml.Node::Element({
             name: name("extent"),
-            attributes: [
-              attr("cx", "914400"),
-              attr("cy", "457200"),
-            ],
+            attributes: [attr("cx", "914400"), attr("cy", "457200")],
             children: [],
           }),
           @xml.Node::Element({
             name: name("docPr"),
-            attributes: [
-              attr("id", "1"),
-              attr("name", "Picture"),
-            ],
+            attributes: [attr("id", "1"), attr("name", "Picture")],
             children: [],
           }),
           @xml.Node::Element({
@@ -1995,10 +1970,7 @@ test "render_svg emits <image> for inline <w:drawing> via image_resolver" {
         children: [
           @xml.Node::Element({
             name: name("extent"),
-            attributes: [
-              attr("cx", "914400"),
-              attr("cy", "914400"),
-            ],
+            attributes: [attr("cx", "914400"), attr("cy", "914400")],
             children: [],
           }),
           @xml.Node::Element({
@@ -2091,10 +2063,7 @@ test "render_svg honours explicit <w:tabs> stop" {
                     children: [
                       @xml.Node::Element({
                         name: name("tab"),
-                        attributes: [
-                          attr("val", "start"),
-                          attr("pos", "1440"),
-                        ],
+                        attributes: [attr("val", "start"), attr("pos", "1440")],
                         children: [],
                       }),
                     ],
@@ -2748,11 +2717,7 @@ test "wml viewer §17.13.5 ins/del/moveTo/moveFrom emit semantic wrappers" {
       ],
       children: [run],
     })
-    @xml.Node::Element({
-      name: name("p"),
-      attributes: [],
-      children: [rev],
-    })
+    @xml.Node::Element({ name: name("p"), attributes: [], children: [rev] })
   }
   let document = @domain.CT_Document::new({
     name: name("document"),
@@ -2980,11 +2945,7 @@ test "wml viewer §17.16.22 hyperlink rels_resolver replaces href" {
         name: name("body"),
         attributes: [],
         children: [
-          @xml.Node::Element({
-            name: name("p"),
-            attributes: [],
-            children: [hl],
-          }),
+          @xml.Node::Element({ name: name("p"), attributes: [], children: [hl] }),
         ],
       }),
     ],
@@ -3041,10 +3002,7 @@ test "render_svg resolves rFonts asciiTheme through fontScheme" {
   let font_scheme : @xml.Element = {
     name: name("fontScheme"),
     attributes: [{ name: name("name"), value: "TestScheme" }],
-    children: [
-      @xml.Node::Element(major_font),
-      @xml.Node::Element(minor_font),
-    ],
+    children: [@xml.Node::Element(major_font), @xml.Node::Element(minor_font)],
   }
   let theme_elts : @xml.Element = {
     name: name("themeElements"),
@@ -3125,7 +3083,11 @@ test "wml viewer §17.16.5.2 fldChar cached result renders, instrText dropped" {
   //   <w:r><w:t>42</w:t></w:r>  <-- cached result
   //   <w:r><w:fldChar w:fldCharType="end"/></w:r>
   // </w:p>
-  let run_with = fn(local : String, attrs : Array[@xml.Attribute], text : String) -> @xml.Node {
+  let run_with = fn(
+    local : String,
+    attrs : Array[@xml.Attribute],
+    text : String,
+  ) -> @xml.Node {
     @xml.Node::Element({
       name: name("r"),
       attributes: [],
@@ -3133,7 +3095,11 @@ test "wml viewer §17.16.5.2 fldChar cached result renders, instrText dropped" {
         @xml.Node::Element({
           name: name(local),
           attributes: attrs,
-          children: if text == "" { [] } else { [@xml.Node::Text(text)] },
+          children: if text == "" {
+            []
+          } else {
+            [@xml.Node::Text(text)]
+          },
         }),
       ],
     })
@@ -3150,11 +3116,23 @@ test "wml viewer §17.16.5.2 fldChar cached result renders, instrText dropped" {
             name: name("p"),
             attributes: [],
             children: [
-              run_with("fldChar", [{ name: name("fldCharType"), value: "begin" }], ""),
+              run_with(
+                "fldChar",
+                [{ name: name("fldCharType"), value: "begin" }],
+                "",
+              ),
               run_with("instrText", [], " PAGE "),
-              run_with("fldChar", [{ name: name("fldCharType"), value: "separate" }], ""),
+              run_with(
+                "fldChar",
+                [{ name: name("fldCharType"), value: "separate" }],
+                "",
+              ),
               run_with("t", [], "42"),
-              run_with("fldChar", [{ name: name("fldCharType"), value: "end" }], ""),
+              run_with(
+                "fldChar",
+                [{ name: name("fldCharType"), value: "end" }],
+                "",
+              ),
             ],
           }),
         ],
@@ -3177,11 +3155,7 @@ test "wml viewer §17.16.5.2 fldChar cached result renders, instrText dropped" {
 /// can substitute live values.
 test "wml viewer §17.3.3 page/date sentinels emit data-ooxml markers" {
   let mk_inline = fn(local : String) -> @xml.Node {
-    @xml.Node::Element({
-      name: name(local),
-      attributes: [],
-      children: [],
-    })
+    @xml.Node::Element({ name: name(local), attributes: [], children: [] })
   }
   let document = @domain.CT_Document::new({
     name: name("document"),
@@ -3300,7 +3274,10 @@ test "wml viewer §20.4.2.3 wp:anchor wrap+position surface as data-ooxml-*" {
   let blip : @xml.Node = @xml.Node::Element({
     name: name("blip"),
     attributes: [
-      { name: { prefix: Some("r"), local_name: "embed", ns: None }, value: "rId1" },
+      {
+        name: { prefix: Some("r"), local_name: "embed", ns: None },
+        value: "rId1",
+      },
     ],
     children: [],
   })
@@ -3442,7 +3419,10 @@ test "wml viewer §20.4.2.3 wp:anchor wrap+position surface as data-ooxml-*" {
 /// the HTML viewer so consumers can substitute the resolved
 /// reference / draw separators / position positional tabs.
 test "wml viewer §17.11 / §17.3.1 inline sentinels emit data-ooxml markers" {
-  let mk_inline = fn(local : String, attrs : Array[@xml.Attribute]) -> @xml.Node {
+  let mk_inline = fn(
+    local : String,
+    attrs : Array[@xml.Attribute],
+  ) -> @xml.Node {
     @xml.Node::Element({ name: name(local), attributes: attrs, children: [] })
   }
   let document = @domain.CT_Document::new({
@@ -3898,10 +3878,7 @@ test "wml viewer §17.18.87 right-justified tab end-aligns following text" {
                     children: [
                       @xml.Node::Element({
                         name: name("tab"),
-                        attributes: [
-                          attr("val", "end"),
-                          attr("pos", "8640"),
-                        ],
+                        attributes: [attr("val", "end"), attr("pos", "8640")],
                         children: [],
                       }),
                     ],
@@ -3945,8 +3922,9 @@ test "wml viewer §17.18.87 right-justified tab end-aligns following text" {
   // the post-tab text element appears at an x significantly LESS
   // than 576 (left-aligned would put it AT 576).  Without the fix
   // it would render at "x=\"576" — with the fix x is well before.
-  assert_false(page.svg.contains(">of 10</text>") &&
-    page.svg.contains("x=\"576\""))
+  assert_false(
+    page.svg.contains(">of 10</text>") && page.svg.contains("x=\"576\""),
+  )
 }
 
 ///|
@@ -3960,11 +3938,7 @@ test "wml viewer §17.3.2.13 caps run emits uppercase + measures cased width" {
     name: name("rPr"),
     attributes: [],
     children: [
-      @xml.Node::Element({
-        name: name("caps"),
-        attributes: [],
-        children: [],
-      }),
+      @xml.Node::Element({ name: name("caps"), attributes: [], children: [] }),
     ],
   }
   let document = @domain.CT_Document::new({
@@ -4203,11 +4177,13 @@ test "wml viewer §17.3.1.9 contextualSpacing suppresses same-style gap" {
       }),
     ]
     if with_cs {
-      p_pr_children.push(@xml.Node::Element({
-        name: name("contextualSpacing"),
-        attributes: [],
-        children: [],
-      }))
+      p_pr_children.push(
+        @xml.Node::Element({
+          name: name("contextualSpacing"),
+          attributes: [],
+          children: [],
+        }),
+      )
     }
     @xml.Node::Element({
       name: name("p"),
@@ -4438,4 +4414,474 @@ test "wml viewer §17.3.3.1 br clear surfaces as data-ooxml-br-clear" {
   // A plain `<w:br>` with no @clear stays bare; the XML writer emits
   // it as the self-closing `<br/>` (XML-syntax HTML).
   assert_true(html.contains("<br/>"))
+}
+
+///|
+/// §17.6.4 `<w:cols w:num="2">` — a two-column section flows the
+/// block stream into two columns. The same content flowed into two
+/// columns occupies strictly fewer pages than the single-column
+/// baseline, since each page now carries two columns of paragraphs.
+test "render_svg flows paragraphs into two columns (§17.6.4)" {
+  let make_para = fn(text : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text(text)],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  // Build a body from the same paragraph stream under a given
+  // `<w:cols w:num>`. A `num` of 1 is the single-column baseline.
+  let build_doc = fn(cols_num : Int) -> @domain.CT_Document raise {
+    let paras : Array[@xml.Node] = []
+    for i in 0..<120 {
+      paras.push(make_para("Paragraph line " + i.to_string()))
+    }
+    paras.push(
+      @xml.Node::Element({
+        name: name("sectPr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("cols"),
+            attributes: [
+              attr("num", cols_num.to_string()),
+              attr("space", "720"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    )
+    @domain.CT_Document::new({
+      name: name("document"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("body"),
+          attributes: [],
+          children: paras,
+        }),
+      ],
+    })
+  }
+  let one_col = render_svg(build_doc(1))
+  let two_col = render_svg(build_doc(2))
+  // The multi-column descriptor is surfaced on the root <svg>.
+  assert_true(two_col.pages[0].svg.contains("data-ooxml-cols-num=\"2\""))
+  // Two columns per page ⇒ strictly fewer pages than one column.
+  assert_true(two_col.total_pages < one_col.total_pages)
+}
+
+///|
+/// §17.3.3.1 `<w:br w:type="column"/>` — inside a multi-column
+/// section a column break advances the flow to the next column even
+/// though the current column still has vertical room. The two
+/// paragraphs land in different columns of the same page.
+test "render_svg honours <w:br w:type='column'> in a 2-col section" {
+  let make_para = fn(text : String, with_break : Bool) -> @xml.Node {
+    let r_children : Array[@xml.Node] = [
+      @xml.Node::Element({
+        name: name("t"),
+        attributes: [],
+        children: [@xml.Node::Text(text)],
+      }),
+    ]
+    if with_break {
+      r_children.push(
+        @xml.Node::Element({
+          name: name("br"),
+          attributes: [attr("type", "column")],
+          children: [],
+        }),
+      )
+    }
+    @xml.Node::Element({
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: r_children,
+        }),
+      ],
+    })
+  }
+  let sect = @xml.Node::Element({
+    name: name("sectPr"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("cols"),
+        attributes: [attr("num", "2"), attr("space", "720")],
+        children: [],
+      }),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          make_para("ColumnOne", true),
+          make_para("ColumnTwo", false),
+          sect,
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(document)
+  // Both paragraphs stay on page 1 — the column break advanced from
+  // column 0 to column 1 rather than opening a new page.
+  assert_eq(result.total_pages, 1)
+  assert_true(result.pages[0].svg.contains("ColumnOne"))
+  assert_true(result.pages[0].svg.contains("ColumnTwo"))
+}
+
+///|
+/// §17.6.4 `<w:cols w:sep="1">` — when the separator flag is set the
+/// page emits a thin vertical `<line>` rule between the columns.
+test "render_svg draws a column separator for <w:cols w:sep='1'>" {
+  let para = @xml.Node::Element({
+    name: name("p"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("r"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("t"),
+            attributes: [],
+            children: [@xml.Node::Text("Body")],
+          }),
+        ],
+      }),
+    ],
+  })
+  let sect = @xml.Node::Element({
+    name: name("sectPr"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("cols"),
+        attributes: [attr("num", "2"), attr("space", "720"), attr("sep", "1")],
+        children: [],
+      }),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [para, sect],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  assert_true(svg.contains("data-ooxml-cols-sep=\"1\""))
+  // One inter-column gutter ⇒ exactly one separator <line>.
+  assert_true(svg.contains("<line "))
+}
+
+///|
+/// §17.6.3 / §17.6.4 `<w:cols w:equalWidth="0">` — explicit per-
+/// column `<w:col w:w w:space>` geometry sizes columns individually.
+/// A wide first column followed by a narrow second column places the
+/// second column far enough right that its paragraphs are offset by
+/// the first column's full width plus the declared gap.
+test "render_svg honours unequal <w:col> widths (§17.6.3)" {
+  let make_para = fn(text : String, with_break : Bool) -> @xml.Node {
+    let r_children : Array[@xml.Node] = [
+      @xml.Node::Element({
+        name: name("t"),
+        attributes: [],
+        children: [@xml.Node::Text(text)],
+      }),
+    ]
+    if with_break {
+      r_children.push(
+        @xml.Node::Element({
+          name: name("br"),
+          attributes: [attr("type", "column")],
+          children: [],
+        }),
+      )
+    }
+    @xml.Node::Element({
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: r_children,
+        }),
+      ],
+    })
+  }
+  // Wide column (6000 twips = 400 px) + 720-twip gap (48 px) +
+  // narrow column (2000 twips). With a 1-inch (96 px) left margin
+  // the narrow column starts at 96 + 400 + 48 = 544 px.
+  let sect = @xml.Node::Element({
+    name: name("sectPr"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("cols"),
+        attributes: [attr("num", "2"), attr("equalWidth", "0")],
+        children: [
+          @xml.Node::Element({
+            name: name("col"),
+            attributes: [attr("w", "6000"), attr("space", "720")],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("col"),
+            attributes: [attr("w", "2000")],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          make_para("WideCol", true),
+          make_para("NarrowCol", false),
+          sect,
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(document)
+  // Both paragraphs stay on one page across the two unequal columns.
+  assert_eq(result.total_pages, 1)
+  let svg = result.pages[0].svg
+  assert_true(svg.contains("WideCol"))
+  assert_true(svg.contains("NarrowCol"))
+  // The narrow column's <text> is positioned at x = 544 px.
+  assert_true(svg.contains("x=\"544"))
+}
+
+///|
+/// §17.6.6 `<w:titlePg>` / §17.10.1 — when a section declares a
+/// first-page header, page 1 draws the `first`-type header and the
+/// remaining pages draw the `default`-type header.
+test "render_svg draws a distinct first-page header for titlePg" {
+  let para_with_break = fn(text : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text(text)],
+            }),
+            @xml.Node::Element({
+              name: name("br"),
+              attributes: [attr("type", "page")],
+              children: [],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  let body_para = fn(text : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text(text)],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  // A header part is a list of block-level <w:p> elements; build a
+  // distinct one-paragraph header for the `first` and `default`
+  // reference types.
+  let header_para = fn(text : String) -> @xml.Element {
+    {
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text(text)],
+            }),
+          ],
+        }),
+      ],
+    }
+  }
+  let first_header = @domain.collect_block_level_elements([
+    header_para("FIRST PAGE HEADER"),
+  ])
+  let default_header = @domain.collect_block_level_elements([
+    header_para("DEFAULT HEADER"),
+  ])
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [para_with_break("Page one body"), body_para("Page two body")],
+      }),
+    ],
+  })
+  let result = render_svg(
+    document,
+    header_blocks=default_header,
+    header_blocks_first=first_header,
+    title_pg=true,
+  )
+  assert_eq(result.total_pages, 2)
+  // Page 1 carries the first-page header, not the default one.
+  assert_true(result.pages[0].svg.contains("FIRST PAGE HEADER"))
+  assert_false(result.pages[0].svg.contains("DEFAULT HEADER"))
+  // Page 2 carries the default header.
+  assert_true(result.pages[1].svg.contains("DEFAULT HEADER"))
+  assert_false(result.pages[1].svg.contains("FIRST PAGE HEADER"))
+}
+
+///|
+/// §17.10.1 `<w:evenAndOddHeaders>` — even pages draw the `even`-type
+/// header while odd pages draw the `default`-type header.
+test "render_svg draws even/odd headers when evenAndOddHeaders set" {
+  let para_with_break = fn(text : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text(text)],
+            }),
+            @xml.Node::Element({
+              name: name("br"),
+              attributes: [attr("type", "page")],
+              children: [],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  let body_para = fn(text : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text(text)],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  let header_para = fn(text : String) -> @xml.Element {
+    {
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text(text)],
+            }),
+          ],
+        }),
+      ],
+    }
+  }
+  let default_header = @domain.collect_block_level_elements([
+    header_para("ODD HEADER"),
+  ])
+  let even_header = @domain.collect_block_level_elements([
+    header_para("EVEN HEADER"),
+  ])
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [para_with_break("Page one"), body_para("Page two")],
+      }),
+    ],
+  })
+  let result = render_svg(
+    document,
+    header_blocks=default_header,
+    header_blocks_even=even_header,
+    even_and_odd_headers=true,
+  )
+  assert_eq(result.total_pages, 2)
+  // Page 1 (odd) → default header.
+  assert_true(result.pages[0].svg.contains("ODD HEADER"))
+  // Page 2 (even) → even header.
+  assert_true(result.pages[1].svg.contains("EVEN HEADER"))
 }

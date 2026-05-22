@@ -135,6 +135,98 @@ priv struct PageConfig {
   /// §17.6.4 `<w:cols @sep>` — whether to draw a vertical separator
   /// line between columns.
   cols_sep : Bool
+  /// §17.6.3 `<w:col>` — explicit per-column geometry used when the
+  /// section declares `<w:cols w:equalWidth="0">` with individual
+  /// `<w:col w:w w:space>` children. Each pair is
+  /// `(width_px, trailing_space_px)`. Empty when the columns are
+  /// equal-width (the common case), in which case the geometry is
+  /// derived from `cols_num` / `cols_space`.
+  cols_explicit : Array[(Double, Double)]
+}
+
+///|
+/// §17.10 page decoration — the header / footer block streams for a
+/// section, split by the three §17.10.1 reference types (`default`,
+/// `first`, `even`) plus the two toggles that select between them.
+///
+/// `headers_for` / `footers_for` resolve the correct stream for a
+/// given 0-based page index, applying the ECMA-376 §17.10.1 cascade:
+///   - page 1 (`titlePg` set)            → `first`, else `default`
+///   - even-numbered page (`evenOdd` set) → `even`, else `default`
+///   - otherwise                          → `default`
+priv struct PageDecoration {
+  header_default : Array[@xml.Element]
+  header_first : Array[@xml.Element]
+  header_even : Array[@xml.Element]
+  footer_default : Array[@xml.Element]
+  footer_first : Array[@xml.Element]
+  footer_even : Array[@xml.Element]
+  /// §17.6.6 `<w:titlePg>` — the section has a distinct first-page
+  /// header / footer.
+  title_pg : Bool
+  /// §17.10.1 `<w:evenAndOddHeaders>` (document setting) — odd and
+  /// even pages carry distinct headers / footers.
+  even_and_odd : Bool
+}
+
+///|
+/// An empty decoration set — the renderer draws no header / footer.
+fn PageDecoration::empty() -> PageDecoration {
+  {
+    header_default: [],
+    header_first: [],
+    header_even: [],
+    footer_default: [],
+    footer_first: [],
+    footer_even: [],
+    title_pg: false,
+    even_and_odd: false,
+  }
+}
+
+///|
+/// §17.10.1 — the header block stream for the 0-based `page_index`.
+/// `first` / `even` fall back to `default` when the section declares
+/// no part of that type.
+fn PageDecoration::headers_for(
+  self : PageDecoration,
+  page_index : Int,
+) -> Array[@xml.Element] {
+  if self.title_pg && page_index == 0 {
+    if self.header_first.length() > 0 {
+      return self.header_first
+    }
+    return self.header_default
+  }
+  // A 0-based index of 1, 3, 5… is a 1-based even page (2, 4, 6…).
+  if self.even_and_odd && page_index % 2 == 1 {
+    if self.header_even.length() > 0 {
+      return self.header_even
+    }
+    return self.header_default
+  }
+  self.header_default
+}
+
+///|
+/// §17.10.1 — the footer block stream for the 0-based `page_index`.
+fn PageDecoration::footers_for(
+  self : PageDecoration,
+  page_index : Int,
+) -> Array[@xml.Element] {
+  if self.title_pg && page_index == 0 {
+    if self.footer_first.length() > 0 {
+      return self.footer_first
+    }
+    return self.footer_default
+  }
+  if self.even_and_odd && page_index % 2 == 1 {
+    if self.footer_even.length() > 0 {
+      return self.footer_even
+    }
+    return self.footer_default
+  }
+  self.footer_default
 }
 
 ///|
@@ -348,6 +440,13 @@ priv struct LaidParagraph {
   /// originating page (no split) and start a fresh page for the
   /// next block.
   page_break_after : Bool
+  /// §17.3.3.1 `<w:r><w:br w:type="column"/>` — when any run inside
+  /// the paragraph carries an explicit column break, the page flow
+  /// closes the current column after emitting this paragraph and
+  /// continues the stream in the next column (or, past the last
+  /// column, on a fresh page). Honoured only when the section
+  /// declares `<w:cols w:num>` greater than 1; otherwise inert.
+  column_break_after : Bool
   /// §17.3.1.9 `<w:contextualSpacing>` toggle, carried so the
   /// block collector can suppress inter-paragraph spacing.
   contextual_spacing : Bool
@@ -492,10 +591,7 @@ fn CellMargins::default_() -> CellMargins {
 /// element's per-side `<w:top|left|start|bottom|right|end w:w="…"
 /// w:type="dxa">` children and overlay them onto `base`. dxa values
 /// are twips (1/20 pt); `auto` and unsupported types are ignored.
-fn overlay_cell_margins(
-  base : CellMargins,
-  mar : @xml.Element,
-) -> CellMargins {
+fn overlay_cell_margins(base : CellMargins, mar : @xml.Element) -> CellMargins {
   let read_side = fn(child_name : String, fallback : Double) -> Double {
     match first_child_named(mar, child_name) {
       None => fallback
@@ -608,6 +704,23 @@ pub fn render_svg(
   domain : @domain.CT_Document,
   header_blocks? : Array[@domain.EG_BlockLevelElts] = [],
   footer_blocks? : Array[@domain.EG_BlockLevelElts] = [],
+  /// §17.10.1 type="first" — the §17.6.6 `<w:titlePg>` first-page
+  /// header. Empty when the section declares no first-page header;
+  /// the renderer then falls back to `header_blocks`.
+  header_blocks_first? : Array[@domain.EG_BlockLevelElts] = [],
+  /// §17.10.1 type="even" — the even-page header used when the
+  /// document sets `<w:evenAndOddHeaders>`.
+  header_blocks_even? : Array[@domain.EG_BlockLevelElts] = [],
+  /// §17.10.1 type="first" — the first-page footer.
+  footer_blocks_first? : Array[@domain.EG_BlockLevelElts] = [],
+  /// §17.10.1 type="even" — the even-page footer.
+  footer_blocks_even? : Array[@domain.EG_BlockLevelElts] = [],
+  /// §17.6.6 `<w:titlePg>` — when `true` the first page uses the
+  /// `first`-type header / footer.
+  title_pg? : Bool = false,
+  /// §17.10.1 `<w:evenAndOddHeaders>` — when `true` even pages use
+  /// the `even`-type header / footer.
+  even_and_odd_headers? : Bool = false,
   image_resolver? : (String) -> ResolvedImage? = _ => None,
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
@@ -635,17 +748,31 @@ pub fn render_svg(
   // unbox each typed block-level projection through its
   // `source_element()` accessor so the legacy emit/flow code paths
   // keep operating on raw `@xml.Element` arrays.
-  let header_raw : Array[@xml.Element] = []
-  for b in header_blocks {
-    header_raw.push(b.source_element())
+  let unbox = fn(blocks : Array[@domain.EG_BlockLevelElts]) {
+    let raw : Array[@xml.Element] = []
+    for b in blocks {
+      raw.push(b.source_element())
+    }
+    raw
   }
-  let footer_raw : Array[@xml.Element] = []
-  for b in footer_blocks {
-    footer_raw.push(b.source_element())
+  let decoration = PageDecoration::{
+    header_default: unbox(header_blocks),
+    header_first: unbox(header_blocks_first),
+    header_even: unbox(header_blocks_even),
+    footer_default: unbox(footer_blocks),
+    footer_first: unbox(footer_blocks_first),
+    footer_even: unbox(footer_blocks_even),
+    title_pg,
+    even_and_odd: even_and_odd_headers,
   }
   render_svg_raw(
-    domain, header_raw, footer_raw, image_resolver, styles, numbering,
-    theme_map~, font_map~,
+    domain,
+    decoration,
+    image_resolver,
+    styles,
+    numbering,
+    theme_map~,
+    font_map~,
   )
 }
 
@@ -655,13 +782,12 @@ pub fn render_svg(
 /// the public API.
 fn render_svg_raw(
   domain : @domain.CT_Document,
-  header_blocks : Array[@xml.Element],
-  footer_blocks : Array[@xml.Element],
+  decoration : PageDecoration,
   image_resolver : (String) -> ResolvedImage?,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
-  theme_map~ : ThemeColorMap = ThemeColorMap::empty(),
-  font_map~ : ThemeFontMap = ThemeFontMap::empty(),
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> DocumentSvgResult {
   let warnings : Array[String] = []
   let body = first_child_named(domain.element, "body")
@@ -671,7 +797,13 @@ fn render_svg_raw(
       let cfg = default_page_config()
       let page = AssembledPage::{ paragraphs: [], tables: [] }
       let svg = emit_page_svg_with_decoration(
-        page, cfg, header_blocks, footer_blocks, warnings, image_resolver, styles,
+        page,
+        cfg,
+        decoration.headers_for(0),
+        decoration.footers_for(0),
+        warnings,
+        image_resolver,
+        styles,
       )
       let pages = [
         PageRenderResult::{
@@ -686,8 +818,7 @@ fn render_svg_raw(
       render_body_to_svg(
         body_el,
         warnings,
-        header_blocks,
-        footer_blocks,
+        decoration,
         image_resolver,
         domain.element,
         styles,
@@ -707,14 +838,13 @@ fn render_svg_raw(
 fn render_body_to_svg(
   body : @xml.Element,
   warnings : Array[String],
-  header_blocks : Array[@xml.Element],
-  footer_blocks : Array[@xml.Element],
+  decoration : PageDecoration,
   image_resolver : (String) -> ResolvedImage?,
   document_root : @xml.Element,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
-  theme_map~ : ThemeColorMap = ThemeColorMap::empty(),
-  font_map~ : ThemeFontMap = ThemeFontMap::empty(),
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> DocumentSvgResult {
   // 1. Resolve page configuration from <w:sectPr>.
   let cfg_base = resolve_page_config(body)
@@ -726,21 +856,42 @@ fn render_body_to_svg(
     0.0,
   )
 
+  // §17.6.4 — when the section declares more than one column, each
+  // block is measured at the per-column width so line breaking wraps
+  // inside the narrower flow rectangle. `column_width_of` derives the
+  // measurement width; single-column sections fall back to the full
+  // content width.
+  let layout_width = column_width_of(cfg, content_width)
+
   // 2. Walk body, emitting a FlowBlock per <w:p> / <w:tbl>.
   let blocks = collect_blocks(
-    body, content_width, warnings, image_resolver, styles, numbering, theme_map~,
+    body,
+    layout_width,
+    warnings,
+    image_resolver,
+    styles,
+    numbering,
+    theme_map~,
     font_map~,
   )
 
   // 3. Flow blocks into pages.
   let pages = flow_into_pages(blocks, cfg)
 
-  // 4. Emit SVG per page.
+  // 4. Emit SVG per page. §17.10.1 — the header / footer stream is
+  // selected per page index so `titlePg` / `evenAndOddHeaders`
+  // documents draw the right first / even / default decoration.
   let rendered : Array[PageRenderResult] = []
-  for page in pages {
+  for page_index, page in pages {
     rendered.push(PageRenderResult::{
       svg: emit_page_svg_with_decoration(
-        page, cfg, header_blocks, footer_blocks, warnings, image_resolver, styles,
+        page,
+        cfg,
+        decoration.headers_for(page_index),
+        decoration.footers_for(page_index),
+        warnings,
+        image_resolver,
+        styles,
       ),
       width: cfg.page_width,
       height: cfg.page_height,
@@ -781,6 +932,7 @@ fn default_page_config() -> PageConfig {
     cols_num: 1,
     cols_space: 0.0,
     cols_sep: false,
+    cols_explicit: [],
   }
 }
 
@@ -835,25 +987,30 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
           cfg = {
             ..cfg,
             page_border_top: parse_border_side(
-              first_child_named(bdr, "top"), none,
+              first_child_named(bdr, "top"),
+              none,
             ),
             page_border_left: parse_border_side(
-              first_child_named(bdr, "left"), none,
+              first_child_named(bdr, "left"),
+              none,
             ),
             page_border_bottom: parse_border_side(
-              first_child_named(bdr, "bottom"), none,
+              first_child_named(bdr, "bottom"),
+              none,
             ),
             page_border_right: parse_border_side(
-              first_child_named(bdr, "right"), none,
+              first_child_named(bdr, "right"),
+              none,
             ),
           }
         }
       }
-      // §17.6.4 `<w:cols num="N" space="..." sep="1|0">` — multi-column
-      // layout descriptor.  We surface count + spacing + separator
-      // as data attributes on the page SVG; full re-flow into N
-      // text columns is a follow-up — single-column flow remains
-      // the default layout.
+      // §17.6.4 `<w:cols num="N" space="..." sep="1|0"
+      // equalWidth="…">` — multi-column layout descriptor. Drives the
+      // column-aware re-flow in `flow_into_pages`, the separator
+      // rules in `build_page_body_nodes`, and the SVG data
+      // attributes. When `equalWidth="0"` the explicit `<w:col>`
+      // children carry per-column widths.
       match first_child_named(sp, "cols") {
         None => ()
         Some(cols) => {
@@ -861,11 +1018,46 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
           let space = parse_double_attr(cols, "space", 0.0)
           let sep_str = attr_value(cols, "sep").unwrap_or("0")
           let sep = sep_str == "1" || sep_str == "true"
+          // §17.6.4 @equalWidth — defaults to `true`. The explicit
+          // `<w:col>` geometry is honoured only when it is `false`
+          // (`"0"` / `"false"`) AND `<w:col>` children are present.
+          let equal_width = match attr_value(cols, "equalWidth") {
+            Some("0") | Some("false") => false
+            _ => true
+          }
+          let explicit : Array[(Double, Double)] = []
+          if not(equal_width) {
+            for child in cols.children {
+              match child {
+                Element(e) =>
+                  if e.name.local_name == "col" {
+                    // §17.6.3 — `@w` width and `@space` trailing gap,
+                    // both s:ST_TwipsMeasure. `@space` defaults to 0.
+                    let w = parse_double_attr(e, "w", 0.0) * TWIPS_TO_PX
+                    let sp_gap = parse_double_attr(e, "space", 0.0) *
+                      TWIPS_TO_PX
+                    explicit.push((w, sp_gap))
+                  }
+                _ => ()
+              }
+            }
+          }
+          // §17.6.4 — `@num` governs the column count, but a section
+          // with explicit `<w:col>` children is sized by that list,
+          // so fall back to its length when `@num` is absent / stale.
+          let resolved_num = if explicit.length() > 0 {
+            explicit.length()
+          } else if num < 1 {
+            1
+          } else {
+            num
+          }
           cfg = {
             ..cfg,
-            cols_num: if num < 1 { 1 } else { num },
+            cols_num: resolved_num,
             cols_space: space * TWIPS_TO_PX,
             cols_sep: sep,
+            cols_explicit: explicit,
           }
         }
       }
@@ -962,8 +1154,8 @@ fn collect_blocks(
   image_resolver : (String) -> ResolvedImage?,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
-  theme_map~ : ThemeColorMap = ThemeColorMap::empty(),
-  font_map~ : ThemeFontMap = ThemeFontMap::empty(),
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
   // §17.9 — numbering counter state: maps `(num_id, ilvl)` to current
@@ -979,7 +1171,10 @@ fn collect_blocks(
               resolved, numbering, counters,
             )
             let para = layout_paragraph(
-              with_marker, content_width, image_resolver, theme_map~,
+              with_marker,
+              content_width,
+              image_resolver,
+              theme_map~,
               font_map~,
             )
             blocks.push(ParaBlock(para))
@@ -1133,14 +1328,15 @@ fn apply_numbering_marker(
   for c in p_pr.children {
     new_p_pr_children.push(c)
   }
-  new_p_pr_children.push(@xml.Node::Element({
-    name: { prefix: None, local_name: "__bulletMarker", ns: None },
-    attributes: [{
-      name: { prefix: None, local_name: "val", ns: None },
-      value: marker,
-    }],
-    children: [],
-  }))
+  new_p_pr_children.push(
+    @xml.Node::Element({
+      name: { prefix: None, local_name: "__bulletMarker", ns: None },
+      attributes: [
+        { name: { prefix: None, local_name: "val", ns: None }, value: marker },
+      ],
+      children: [],
+    }),
+  )
   let new_p_pr : @xml.Element = {
     name: p_pr.name,
     attributes: p_pr.attributes,
@@ -1209,7 +1405,7 @@ fn apply_styles_to_paragraph(
         match child {
           Element(e) =>
             if e.name.local_name == "pPr" {
-              if !(p_pr_emitted) {
+              if !p_pr_emitted {
                 match resolved_p.p_pr {
                   Some(merged) => new_children.push(@xml.Node::Element(merged))
                   None => new_children.push(child)
@@ -1217,16 +1413,18 @@ fn apply_styles_to_paragraph(
                 p_pr_emitted = true
               }
             } else if e.name.local_name == "r" {
-              new_children.push(@xml.Node::Element(
-                apply_styles_to_run(e, table, paragraph_r_pr_base),
-              ))
+              new_children.push(
+                @xml.Node::Element(
+                  apply_styles_to_run(e, table, paragraph_r_pr_base),
+                ),
+              )
             } else {
               new_children.push(child)
             }
           _ => new_children.push(child)
         }
       }
-      if !(p_pr_emitted) {
+      if !p_pr_emitted {
         // Inject the resolved pPr (from doc defaults / referenced
         // style) when the paragraph had no direct `<w:pPr>` so the
         // viewer picks up cascaded properties.
@@ -1236,7 +1434,11 @@ fn apply_styles_to_paragraph(
             for n in new_children {
               injected.push(n)
             }
-            return { name: p.name, attributes: p.attributes, children: injected }
+            return {
+              name: p.name,
+              attributes: p.attributes,
+              children: injected,
+            }
           }
           None => ()
         }
@@ -1269,7 +1471,7 @@ fn apply_styles_to_run(
     match child {
       Element(e) =>
         if e.name.local_name == "rPr" {
-          if !(r_pr_emitted) {
+          if !r_pr_emitted {
             match final_r_pr {
               Some(merged) => new_children.push(@xml.Node::Element(merged))
               None => new_children.push(child)
@@ -1282,7 +1484,7 @@ fn apply_styles_to_run(
       _ => new_children.push(child)
     }
   }
-  if !(r_pr_emitted) {
+  if !r_pr_emitted {
     match final_r_pr {
       Some(merged) => {
         let injected : Array[@xml.Node] = [@xml.Node::Element(merged)]
@@ -1326,7 +1528,7 @@ fn merge_run_pr_with_base(
       for node in b.children {
         match node {
           Element(child) =>
-            if !(overridden.contains(child.name.local_name)) {
+            if !overridden.contains(child.name.local_name) {
               children.push(node)
             }
           _ => children.push(node)
@@ -1348,7 +1550,7 @@ fn merge_run_pr_with_base(
 /// Resolve §17.3.1 paragraph properties from <w:pPr>.
 fn resolve_para_props(
   p : @xml.Element,
-  theme_map~ : ThemeColorMap = ThemeColorMap::empty(),
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
 ) -> ParaProps {
   let mut alignment = "left"
   let mut margin_left = 0.0
@@ -1379,8 +1581,11 @@ fn resolve_para_props(
                 "right" | "end" => "right"
                 "center" => "center"
                 "both" | "distribute" | "justify" => "justify"
-                "mediumKashida" | "highKashida" | "lowKashida"
-                | "thaiDistribute" | "numTab" => "justify"
+                "mediumKashida"
+                | "highKashida"
+                | "lowKashida"
+                | "thaiDistribute"
+                | "numTab" => "justify"
                 // Spec violation: unknown ST_Jc value. Default to
                 // left so layout is still possible; consumer can
                 // detect via the typed cascade.
@@ -1546,9 +1751,7 @@ fn resolve_para_props(
                     None => (true, "left")
                   }
                   if kept {
-                    let pos_twips = parse_double_attr(
-                      tab_el, "pos", 0.0,
-                    )
+                    let pos_twips = parse_double_attr(tab_el, "pos", 0.0)
                     if pos_twips > 0.0 {
                       tab_stops.push((pos_twips * TWIPS_TO_PX, val_kind))
                     }
@@ -1592,7 +1795,8 @@ fn resolve_para_props(
           let theme_color = attr_value(shd, "themeFill")
           let theme_tint = attr_value(shd, "themeFillTint")
           let theme_shade = attr_value(shd, "themeFillShade")
-          match resolve_themed_color(
+          match
+            resolve_themed_color(
               base, theme_color, theme_tint, theme_shade, theme_map,
             ) {
             Some(hex) => "#" + hex
@@ -1668,8 +1872,8 @@ fn resolve_para_props(
 /// the consumer passed `theme=Some(t)`).
 fn resolve_run_props(
   r : @xml.Element,
-  theme_map~ : ThemeColorMap = ThemeColorMap::empty(),
-  font_map~ : ThemeFontMap = ThemeFontMap::empty(),
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> RunSpan {
   let mut font_family = DEFAULT_FONT_FAMILY
   let mut font_size_pt = DEFAULT_FONT_SIZE_PT
@@ -1791,13 +1995,19 @@ fn resolve_run_props(
       match first_child_named(r_pr, "color") {
         Some(c_el) => {
           let base = match attr_value(c_el, "val") {
-            Some(v) => if v != "auto" && v.length() > 0 { Some(v) } else { None }
+            Some(v) =>
+              if v != "auto" && v.length() > 0 {
+                Some(v)
+              } else {
+                None
+              }
             None => None
           }
           let theme_color = attr_value(c_el, "themeColor")
           let theme_tint = attr_value(c_el, "themeTint")
           let theme_shade = attr_value(c_el, "themeShade")
-          match resolve_themed_color(
+          match
+            resolve_themed_color(
               base, theme_color, theme_tint, theme_shade, theme_map,
             ) {
             Some(hex) => color = "#" + hex
@@ -2056,8 +2266,8 @@ fn has_toggle(r_pr : @xml.Element, name : String) -> Bool {
 fn collect_paragraph_spans(
   p : @xml.Element,
   image_resolver : (String) -> ResolvedImage?,
-  theme_map~ : ThemeColorMap = ThemeColorMap::empty(),
-  font_map~ : ThemeFontMap = ThemeFontMap::empty(),
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Array[RunSpan] {
   let spans : Array[RunSpan] = []
   // §17.9.20 `<w:pPr><w:numPr>` — when the paragraph references a
@@ -2099,7 +2309,14 @@ fn collect_paragraph_spans(
       spans.push(with_text(template, marker, w))
     }
   }
-  collect_paragraph_spans_into(p, false, spans, image_resolver, theme_map~, font_map~)
+  collect_paragraph_spans_into(
+    p,
+    false,
+    spans,
+    image_resolver,
+    theme_map~,
+    font_map~,
+  )
   spans
 }
 
@@ -2153,21 +2370,33 @@ fn collect_paragraph_spans_into(
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
   image_resolver : (String) -> ResolvedImage?,
-  theme_map~ : ThemeColorMap = ThemeColorMap::empty(),
-  font_map~ : ThemeFontMap = ThemeFontMap::empty(),
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Unit {
   for child in parent.children {
     match child {
       Element(e) =>
         match e.name.local_name {
           "r" =>
-            emit_run_spans(e, hyperlink_styling, spans, image_resolver, theme_map~, font_map~)
+            emit_run_spans(
+              e,
+              hyperlink_styling,
+              spans,
+              image_resolver,
+              theme_map~,
+              font_map~,
+            )
           "hyperlink" =>
             // §17.16.22 hyperlink — descend with hyperlink styling on.
             collect_paragraph_spans_into(
-              e, true, spans, image_resolver, theme_map~, font_map~,
+              e,
+              true,
+              spans,
+              image_resolver,
+              theme_map~,
+              font_map~,
             )
-          "fldSimple" => {
+          "fldSimple" =>
             // §17.16.19 `<w:fldSimple>` — field with literal
             // instruction.  Word stores the field result as
             // ordinary runs inside `<w:fldSimple>`, so descending
@@ -2180,14 +2409,23 @@ fn collect_paragraph_spans_into(
             // documents whose `<w:settings>/<w:updateFields>`
             // is unset.
             collect_paragraph_spans_into(
-              e, hyperlink_styling, spans, image_resolver, theme_map~, font_map~,
+              e,
+              hyperlink_styling,
+              spans,
+              image_resolver,
+              theme_map~,
+              font_map~,
             )
-          }
           "smartTag" | "customXml" | "sdt" | "sdtContent" =>
             // §17.5.1.13 smartTag + §17.5.2.x SDT wrappers —
             // descend transparently.
             collect_paragraph_spans_into(
-              e, hyperlink_styling, spans, image_resolver, theme_map~, font_map~,
+              e,
+              hyperlink_styling,
+              spans,
+              image_resolver,
+              theme_map~,
+              font_map~,
             )
           "ins" | "moveTo" => {
             // §17.13.5.18 `<w:ins>` / §17.13.5.27 `<w:moveTo>` —
@@ -2198,7 +2436,12 @@ fn collect_paragraph_spans_into(
             // consumers that need to colour by author.
             let start = spans.length()
             collect_paragraph_spans_into(
-              e, hyperlink_styling, spans, image_resolver, theme_map~, font_map~,
+              e,
+              hyperlink_styling,
+              spans,
+              image_resolver,
+              theme_map~,
+              font_map~,
             )
             for i in start..<spans.length() {
               spans[i] = { ..spans[i], underline: true }
@@ -2209,7 +2452,12 @@ fn collect_paragraph_spans_into(
             // deleted text.  Spec visualisation is strike-through.
             let start = spans.length()
             collect_paragraph_spans_into(
-              e, hyperlink_styling, spans, image_resolver, theme_map~, font_map~,
+              e,
+              hyperlink_styling,
+              spans,
+              image_resolver,
+              theme_map~,
+              font_map~,
             )
             for i in start..<spans.length() {
               spans[i] = { ..spans[i], strike: true }
@@ -2231,8 +2479,8 @@ fn emit_run_spans(
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
   image_resolver : (String) -> ResolvedImage?,
-  theme_map~ : ThemeColorMap = ThemeColorMap::empty(),
-  font_map~ : ThemeFontMap = ThemeFontMap::empty(),
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Unit {
   // §17.3.2.43 vanish + §17.3.2.49 webHidden — hidden runs are
   // suppressed from the rendered output entirely. We still parse
@@ -2255,32 +2503,37 @@ fn emit_run_spans(
             let text = text_content(re)
             if text.length() > 0 {
               let w = measure_run_text(text, template)
-              spans.push(apply_hyperlink_styling(
-                with_text(template, text, w),
-                hyperlink_styling,
-              ))
+              spans.push(
+                apply_hyperlink_styling(
+                  with_text(template, text, w),
+                  hyperlink_styling,
+                ),
+              )
             }
           }
-          "tab" => {
+          "tab" =>
             // §17.3.1.38 `<w:tab>` — emit a sentinel span with text
             // `"\t"` and zero width. `layout_paragraph` resolves the
             // actual jump width against `<w:pPr><w:tabs>` (or a
             // default 0.5-inch grid) after the spans for the line
             // are known.
-            spans.push(apply_hyperlink_styling(
-              with_text(template, "\t", 0.0),
-              hyperlink_styling,
-            ))
-          }
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, "\t", 0.0),
+                hyperlink_styling,
+              ),
+            )
           "br" | "cr" => {
             // §17.3.3.1 br + §17.3.3.4 cr — explicit line break.
             // Emit a sentinel zero-width span whose text starts with
             // "\n" so the line breaker closes the current line.
             let w = 0.0
-            spans.push(apply_hyperlink_styling(
-              with_text(template, "\n", w),
-              hyperlink_styling,
-            ))
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, "\n", w),
+                hyperlink_styling,
+              ),
+            )
           }
           "noBreakHyphen" => {
             // §17.3.3.18 noBreakHyphen — emit a non-breaking hyphen
@@ -2289,19 +2542,20 @@ fn emit_run_spans(
             // width is realistic.
             let text = "\u{2011}"
             let w = measure_run_text(text, template)
-            spans.push(apply_hyperlink_styling(
-              with_text(template, text, w),
-              hyperlink_styling,
-            ))
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, text, w),
+                hyperlink_styling,
+              ),
+            )
           }
-          "softHyphen" => {
+          "softHyphen" =>
             // §17.3.3.29 softHyphen — pure layout hint. The visible
             // glyph appears only when the line breaks at that
             // position; we don't perform that optimisation today, so
             // the element collapses to zero width and emits nothing.
             ()
-          }
-          "sym" => {
+          "sym" =>
             // §17.3.3.30 sym — Symbol-font glyph reference. The
             // `@char` attribute is a hex code-point; `@font` selects
             // the typeface. Emit the resulting character so renderers
@@ -2311,17 +2565,20 @@ fn emit_run_spans(
               Some((ch, font)) => {
                 let w = measure_run_text(ch, template)
                 let with_font = with_text(template, ch, w)
-                let sym_span = { ..with_font, font_family: font, inline_image: None }
-                spans.push(apply_hyperlink_styling(
-                  sym_span, hyperlink_styling,
-                ))
+                let sym_span = {
+                  ..with_font,
+                  font_family: font,
+                  inline_image: None,
+                }
+                spans.push(apply_hyperlink_styling(sym_span, hyperlink_styling))
               }
               None => ()
             }
-          }
           "drawing" =>
-            emit_drawing_span(re, template, hyperlink_styling, spans, image_resolver)
-          "object" | "pict" => {
+            emit_drawing_span(
+              re, template, hyperlink_styling, spans, image_resolver,
+            )
+          "object" | "pict" =>
             // §17.3.3.19 `<w:object>` / §17.3.3.21 `<w:pict>` — legacy
             // OLE / VML containers. Modern Word writes both with a
             // child `<w:drawing>` carrying the actual preview blip;
@@ -2333,18 +2590,18 @@ fn emit_run_spans(
                 )
               None => ()
             }
-          }
-          "lastRenderedPageBreak" => {
+          "lastRenderedPageBreak" =>
             // §17.3.3.13 — Word writes this hint at the position
             // where the last save's pagination broke a line.  It
             // is purely informational; surface it as a sentinel
             // span (newline + zero width) so the line breaker
             // honours the hint, mirroring `<w:br type="page"/>`.
-            spans.push(apply_hyperlink_styling(
-              with_text(template, "\n", 0.0),
-              hyperlink_styling,
-            ))
-          }
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, "\n", 0.0),
+                hyperlink_styling,
+              ),
+            )
           "pgNum" => {
             // §17.3.3.22 — page-number sentinel.  The header /
             // footer evaluator substitutes the live page index
@@ -2353,23 +2610,31 @@ fn emit_run_spans(
             // preserved.
             let placeholder = "#"
             let w = measure_run_text(placeholder, template)
-            spans.push(apply_hyperlink_styling(
-              with_text(template, placeholder, w),
-              hyperlink_styling,
-            ))
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, placeholder, w),
+                hyperlink_styling,
+              ),
+            )
           }
           // §17.3.3.31-.36 — date sentinels.  Like `pgNum`, the
           // header/footer evaluator substitutes the live date at
           // render time; emit a single-char placeholder so the
           // source position survives.
-          "dayShort" | "dayLong" | "monthShort" | "monthLong"
-          | "yearShort" | "yearLong" => {
+          "dayShort"
+          | "dayLong"
+          | "monthShort"
+          | "monthLong"
+          | "yearShort"
+          | "yearLong" => {
             let placeholder = "#"
             let w = measure_run_text(placeholder, template)
-            spans.push(apply_hyperlink_styling(
-              with_text(template, placeholder, w),
-              hyperlink_styling,
-            ))
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, placeholder, w),
+                hyperlink_styling,
+              ),
+            )
           }
           // §17.11.7 `<w:footnoteRef>` / §17.11.14 `<w:endnoteRef>`
           // — auto-numbered reference mark inside a footnote /
@@ -2379,10 +2644,12 @@ fn emit_run_spans(
           "footnoteRef" | "endnoteRef" => {
             let placeholder = "*"
             let w = measure_run_text(placeholder, template)
-            spans.push(apply_hyperlink_styling(
-              with_text(template, placeholder, w),
-              hyperlink_styling,
-            ))
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, placeholder, w),
+                hyperlink_styling,
+              ),
+            )
           }
           // §17.11.14 `<w:footnoteReference>` / §17.11.7 `<w:endnoteReference>`
           // — pointer from the body into the footnote/endnote
@@ -2392,10 +2659,12 @@ fn emit_run_spans(
           "footnoteReference" | "endnoteReference" => {
             let placeholder = "*"
             let w = measure_run_text(placeholder, template)
-            spans.push(apply_hyperlink_styling(
-              with_text(template, placeholder, w),
-              hyperlink_styling,
-            ))
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, placeholder, w),
+                hyperlink_styling,
+              ),
+            )
           }
           // §17.11.x `<w:separator>` / `<w:continuationSeparator>`
           // — footnote-body separator runs.  Each renders as a
@@ -2410,29 +2679,31 @@ fn emit_run_spans(
           "annotationRef" => {
             let placeholder = "*"
             let w = measure_run_text(placeholder, template)
-            spans.push(apply_hyperlink_styling(
-              with_text(template, placeholder, w),
-              hyperlink_styling,
-            ))
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, placeholder, w),
+                hyperlink_styling,
+              ),
+            )
           }
           // §17.3.1.x `<w:ptab>` — positional tab (alignment-
           // dependent jump within a paragraph).  Treat as a normal
           // tab; the proper jump target requires the paragraph's
           // alignment which the run dispatcher doesn't see.
-          "ptab" => {
-            spans.push(apply_hyperlink_styling(
-              with_text(template, "\t", 0.0),
-              hyperlink_styling,
-            ))
-          }
+          "ptab" =>
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, "\t", 0.0),
+                hyperlink_styling,
+              ),
+            )
           _ => ()
         }
       Text(t) | CData(t) => {
         let w = measure_run_text(t, template)
-        spans.push(apply_hyperlink_styling(
-          with_text(template, t, w),
-          hyperlink_styling,
-        ))
+        spans.push(
+          apply_hyperlink_styling(with_text(template, t, w), hyperlink_styling),
+        )
       }
       _ => ()
     }
@@ -2462,8 +2733,7 @@ fn build_inline_image(
     None => ""
     Some(r) =>
       match image_resolver(r) {
-        Some(img) =>
-          "data:" + img.mime_type + ";base64," + img.base64_data
+        Some(img) => "data:" + img.mime_type + ";base64," + img.base64_data
         None => ""
       }
   }
@@ -2508,11 +2778,7 @@ fn extract_anchor_info(drawing : @xml.Element) -> AnchorInfo {
       Element(c) =>
         if c.name.local_name == "anchor" {
           match attr_value(c, "behindDoc") {
-            Some(v) =>
-              info = {
-                ..info,
-                behind_doc: v == "1" || v == "true",
-              }
+            Some(v) => info = { ..info, behind_doc: v == "1" || v == "true" }
             None => ()
           }
           // Wrap mode: one of <wp:wrapSquare/>, <wp:wrapTight/>,
@@ -2533,14 +2799,12 @@ fn extract_anchor_info(drawing : @xml.Element) -> AnchorInfo {
                   info = { ..info, wrap_mode: "Through" }
                 } else if local == "positionH" {
                   match attr_value(e, "relativeFrom") {
-                    Some(rel) =>
-                      info = { ..info, position_h_relative: rel }
+                    Some(rel) => info = { ..info, position_h_relative: rel }
                     None => ()
                   }
                 } else if local == "positionV" {
                   match attr_value(e, "relativeFrom") {
-                    Some(rel) =>
-                      info = { ..info, position_v_relative: rel }
+                    Some(rel) => info = { ..info, position_v_relative: rel }
                     None => ()
                   }
                 }
@@ -2698,17 +2962,21 @@ fn emit_drawing_span(
 ) -> Unit {
   match build_inline_image(drawing, image_resolver) {
     Some(img) =>
-      spans.push(apply_hyperlink_styling(
-        with_inline_image(template, img),
-        hyperlink_styling,
-      ))
+      spans.push(
+        apply_hyperlink_styling(
+          with_inline_image(template, img),
+          hyperlink_styling,
+        ),
+      )
     None => {
       let w_px = drawing_extent_width_px(drawing)
       if w_px > 0.0 {
-        spans.push(apply_hyperlink_styling(
-          with_text(template, " ", w_px),
-          hyperlink_styling,
-        ))
+        spans.push(
+          apply_hyperlink_styling(
+            with_text(template, " ", w_px),
+            hyperlink_styling,
+          ),
+        )
       }
     }
   }
@@ -2772,7 +3040,7 @@ fn parse_hex_int(s : String) -> Int {
 /// resolution takes over. The previous hardcoded `#0563c1` was a
 /// Word-specific convention with no ECMA-376 anchor.
 fn apply_hyperlink_styling(span : RunSpan, enabled : Bool) -> RunSpan {
-  if !(enabled) {
+  if !enabled {
     span
   } else {
     {
@@ -2799,16 +3067,8 @@ fn with_text(template : RunSpan, text : String, width : Double) -> RunSpan {
 /// resolved data URI (or empty when no `image_resolver` was supplied)
 /// so the paragraph emitter can lay the picture out at the line
 /// baseline.
-fn with_inline_image(
-  template : RunSpan,
-  image : InlineImage,
-) -> RunSpan {
-  {
-    ..template,
-    text: "",
-    width_px: image.width_px,
-    inline_image: Some(image),
-  }
+fn with_inline_image(template : RunSpan, image : InlineImage) -> RunSpan {
+  { ..template, text: "", width_px: image.width_px, inline_image: Some(image) }
 }
 
 ///|
@@ -2823,11 +3083,7 @@ fn with_inline_image(
 /// near the lowercase advance), so we measure the as-authored
 /// text for smallCaps.
 fn measure_run_text(text : String, template : RunSpan) -> Double {
-  let measured_text = if template.caps {
-    to_upper_ascii(text)
-  } else {
-    text
-  }
+  let measured_text = if template.caps { to_upper_ascii(text) } else { text }
   @glyph.estimate_text_width_fallback(
     measured_text,
     font_size_pt=template.font_size_pt,
@@ -2866,8 +3122,8 @@ fn layout_paragraph(
   p : @xml.Element,
   content_width : Double,
   image_resolver : (String) -> ResolvedImage?,
-  theme_map~ : ThemeColorMap = ThemeColorMap::empty(),
-  font_map~ : ThemeFontMap = ThemeFontMap::empty(),
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> LaidParagraph {
   let props = resolve_para_props(p, theme_map~)
   let spans = collect_paragraph_spans(p, image_resolver, theme_map~, font_map~)
@@ -2946,6 +3202,7 @@ fn layout_paragraph(
     border_right: props.border_right,
     page_break_before: props.page_break_before,
     page_break_after: has_page_break_run(p),
+    column_break_after: has_column_break_run(p),
     contextual_spacing: props.contextual_spacing,
     p_style: props.p_style,
     space_before: props.space_before,
@@ -3022,9 +3279,9 @@ fn has_page_break_run(p : @xml.Element) -> Bool {
 }
 
 ///|
-/// §17.3.3.1 — convenience used by paragraph metadata emission so
-/// the consumer knows a column break is requested even though the
-/// viewer's single-column flow does not honour it.
+/// §17.3.3.1 — `true` when any run inside the paragraph carries an
+/// explicit `<w:br w:type="column"/>`. Drives the column advance in
+/// `flow_into_pages` for sections whose `<w:cols w:num>` exceeds 1.
 fn has_column_break_run(p : @xml.Element) -> Bool {
   // §17.18.3 ST_BrType — 3 spec values + BreakNone.
   match first_break_kind(p) {
@@ -3098,7 +3355,11 @@ fn resolve_table_borders_from_pr(
 fn resolve_tbl_style_context(
   tbl : @xml.Element,
   styles : @domain.CT_Styles?,
-) -> (@style_resolver.ResolvedTableStyle, @style_resolver.TblLook, @xml.Element?) {
+) -> (
+  @style_resolver.ResolvedTableStyle,
+  @style_resolver.TblLook,
+  @xml.Element?,
+) {
   let direct_tbl_pr = first_child_named(tbl, "tblPr")
   let tbl_style_id : @domain.StyleId? = match direct_tbl_pr {
     None => None
@@ -3113,8 +3374,7 @@ fn resolve_tbl_style_context(
       }
   }
   let resolved_style = match (styles, tbl_style_id) {
-    (Some(table), Some(id)) =>
-      @style_resolver.resolve_table_style(table, id)
+    (Some(table), Some(id)) => @style_resolver.resolve_table_style(table, id)
     _ => empty_resolved_table_style()
   }
   let tbl_look : @style_resolver.TblLook = match direct_tbl_pr {
@@ -3127,7 +3387,8 @@ fn resolve_tbl_style_context(
   }
   let effective_tbl_pr = @style_resolver.merge_property_element_pub(
     @style_resolver.merge_property_element_pub(
-      resolved_style.base.tbl_pr, resolved_style.whole_table.tbl_pr,
+      resolved_style.base.tbl_pr,
+      resolved_style.whole_table.tbl_pr,
     ),
     direct_tbl_pr,
   )
@@ -3138,6 +3399,7 @@ fn resolve_tbl_style_context(
 /// Build an empty `ResolvedTableStyle` — used when the table has no
 /// `<w:tblStyle>` reference (so the cascade collapses to direct-only
 /// formatting).
+
 ///|
 /// §17.4.85 `<w:vMerge>` classification. Three states cover the
 /// spec's `restart` / `continue` enumeration plus the implicit
@@ -3204,10 +3466,7 @@ fn empty_resolved_table_style() -> @style_resolver.ResolvedTableStyle {
 /// element is absent so callers can preserve the previous default
 /// (e.g. inherited table-wide borders or the legacy 1px gray frame).
 /// `@val="none" | "nil"` collapses to `BorderSide::none()`.
-fn parse_border_side(
-  el : @xml.Element?,
-  fallback : BorderSide,
-) -> BorderSide {
+fn parse_border_side(el : @xml.Element?, fallback : BorderSide) -> BorderSide {
   match el {
     None => fallback
     Some(side) => {
@@ -3224,12 +3483,7 @@ fn parse_border_side(
       // text colour) takes over. The previous "#666666" was a
       // viewer-side decision with no spec basis.
       let color_hex = match attr_value(side, "color") {
-        Some(v) =>
-          if v == "auto" || v.length() == 0 {
-            ""
-          } else {
-            "#" + v
-          }
+        Some(v) => if v == "auto" || v.length() == 0 { "" } else { "#" + v }
         None => ""
       }
       // §17.18.5 ST_EighthPointMeasure — width is in eighths of a
@@ -3241,11 +3495,10 @@ fn parse_border_side(
         None => 1.0
         Some(v) =>
           match (try? @strconv.parse_double(v)) {
-            Ok(eighths) =>
-              {
-                let pt = eighths / 8.0
-                pt * 96.0 / 72.0
-              }
+            Ok(eighths) => {
+              let pt = eighths / 8.0
+              pt * 96.0 / 72.0
+            }
             Err(_) => 1.0
           }
       }
@@ -3291,12 +3544,12 @@ fn resolve_tab_spans(
       let advance = match kind {
         "center" => {
           let half = following_width / 2.0
-          ((target - half) - cursor).max(0.0)
+          (target - half - cursor).max(0.0)
         }
-        "right" => ((target - following_width) - cursor).max(0.0)
+        "right" => (target - following_width - cursor).max(0.0)
         "decimal" => {
           let prefix = decimal_prefix_width(spans, i + 1)
-          ((target - prefix) - cursor).max(0.0)
+          (target - prefix - cursor).max(0.0)
         }
         "bar" => 0.0
         _ => (target - cursor).max(0.0)
@@ -3322,10 +3575,7 @@ fn resolve_tab_spans(
 /// Sum the widths of every run from `start` until the next tab
 /// sentinel or end-of-line.  Used to compute the alignment-aware
 /// advance per §17.18.87.
-fn peek_following_width(
-  spans : Array[RunSpan],
-  start : Int,
-) -> Double {
+fn peek_following_width(spans : Array[RunSpan], start : Int) -> Double {
   let mut w = 0.0
   let mut i = start
   while i < spans.length() {
@@ -3343,10 +3593,7 @@ fn peek_following_width(
 /// §17.18.87 — for `decimal` tab justification, measure the width
 /// of the text up to (and not including) the first decimal point.
 /// Falls back to the full following width when no `.` appears.
-fn decimal_prefix_width(
-  spans : Array[RunSpan],
-  start : Int,
-) -> Double {
+fn decimal_prefix_width(spans : Array[RunSpan], start : Int) -> Double {
   let mut w = 0.0
   let mut i = start
   while i < spans.length() {
@@ -3838,8 +4085,12 @@ fn layout_table(
               let theme_color = attr_value(shd, "themeFill")
               let theme_tint = attr_value(shd, "themeFillTint")
               let theme_shade = attr_value(shd, "themeFillShade")
-              match resolve_themed_color(
-                  base, theme_color, theme_tint, theme_shade,
+              match
+                resolve_themed_color(
+                  base,
+                  theme_color,
+                  theme_tint,
+                  theme_shade,
                   ThemeColorMap::empty(),
                 ) {
                 Some(hex) => background = "#" + hex
@@ -3985,8 +4236,7 @@ fn layout_table(
               // the @val attribute is ignored.
               match h_rule {
                 "exact" => row_height = h_px
-                "atLeast" =>
-                  if h_px > row_height { row_height = h_px }
+                "atLeast" => if h_px > row_height { row_height = h_px }
                 "auto" => () // content-driven, no override
                 // Schema violation — treat as the spec default
                 // "auto" so layout still completes.
@@ -4001,10 +4251,7 @@ fn layout_table(
     // After we know row_height, normalize cell heights.
     let normalized : Array[LaidTableCell] = []
     for c in cells {
-      normalized.push({
-        ..c,
-        height: row_height,
-      })
+      normalized.push({ ..c, height: row_height })
     }
     laid_rows.push({ height: row_height, cells: normalized })
     // §17.4.85 — every active vMerge anchor whose column did not see
@@ -4053,13 +4300,85 @@ fn layout_table(
 // =============================================================================
 
 ///|
+/// §17.6.3 / §17.6.4 — the per-column geometry of the section's
+/// content rectangle as a list of `(x_origin, width)` pairs in CSS
+/// pixels, one entry per column, left-to-right.
+///
+/// Two layout modes:
+///   - Equal-width (`<w:cols w:num="N" w:space="S">`, the default):
+///     N columns of `(content_width - (N-1)*S) / N`, each gap S.
+///   - Explicit (`<w:cols w:equalWidth="0">` with `<w:col>` children,
+///     §17.6.3): each column takes its own `@w`; the `@space` on a
+///     `<w:col>` is the gap *after* that column.
+///
+/// Single-column sections return one full-width entry so callers can
+/// treat every section uniformly.
+fn column_geometry(
+  cfg : PageConfig,
+  content_width : Double,
+) -> Array[(Double, Double)] {
+  let out : Array[(Double, Double)] = []
+  if cfg.cols_num <= 1 {
+    out.push((cfg.margin_left, content_width))
+    return out
+  }
+  if cfg.cols_explicit.length() > 0 {
+    // §17.6.3 — explicit per-column widths; each column's trailing
+    // `@space` advances the running x origin.
+    let mut x = cfg.margin_left
+    for i in 0..<cfg.cols_explicit.length() {
+      let (w, sp) = cfg.cols_explicit[i]
+      out.push((x, w))
+      x = x + w + sp
+    }
+    return out
+  }
+  // Equal-width: divide the content rectangle into `cols_num` equal
+  // columns separated by `cols_space` gutters.
+  let gutters = cfg.cols_space * (cfg.cols_num - 1).to_double()
+  let w = ((content_width - gutters) / cfg.cols_num.to_double()).max(0.0)
+  for i in 0..<cfg.cols_num {
+    out.push((cfg.margin_left + i.to_double() * (w + cfg.cols_space), w))
+  }
+  out
+}
+
+///|
+/// §17.6.4 — the measurement width passed to `collect_blocks` so line
+/// breaking wraps inside the flow rectangle. Equal-width sections
+/// have one width for every column; for explicit `<w:col>` sections
+/// the *narrowest* column is used so a measured line never overflows
+/// any column it might land in (the engine measures the block stream
+/// once rather than re-measuring per column).
+fn column_width_of(cfg : PageConfig, content_width : Double) -> Double {
+  let geom = column_geometry(cfg, content_width)
+  if geom.length() == 0 {
+    return content_width
+  }
+  let mut min_w = geom[0].1
+  for entry in geom {
+    if entry.1 < min_w {
+      min_w = entry.1
+    }
+  }
+  min_w
+}
+
+///|
 /// Split blocks into pages.  @source page-flow.ts:923 (flowIntoPages).
-/// This is a simplified flow that:
-///   - Starts each page at margin_top.
-///   - Adds a block; if it doesn't fit, starts a new page first.
-///   - Does not currently split paragraphs across pages (matches the
-///     keepTogether path of the reference; widow/orphan splitting would
-///     need per-line accounting).
+///
+/// Single-column sections (`<w:cols w:num>` ≤ 1 or absent) flow each
+/// block top-to-bottom, opening a fresh page when the next block does
+/// not fit or a page break is requested.
+///
+/// Multi-column sections (§17.6.4) flow the same block stream into N
+/// columns: a block that overflows the current column advances to the
+/// next column, and overflowing the last column opens a new page.
+/// `<w:br w:type="column"/>` forces the advance early.
+///
+/// This is a block-granular flow — paragraphs are not split across a
+/// column or page boundary (it matches the keepTogether path of the
+/// reference; widow/orphan splitting would need per-line accounting).
 fn flow_into_pages(
   blocks : Array[FlowBlock],
   cfg : PageConfig,
@@ -4068,8 +4387,18 @@ fn flow_into_pages(
   let content_height = (cfg.page_height - cfg.margin_top - cfg.margin_bottom).max(
     0.0,
   )
+  let content_width = (cfg.page_width - cfg.margin_left - cfg.margin_right).max(
+    0.0,
+  )
+  // §17.6.3 / §17.6.4 — per-column `(x_origin, width)` geometry; one
+  // entry per column. `column_count` is its length.
+  let geometry = column_geometry(cfg, content_width)
+  let column_count = geometry.length()
   let mut cur_paragraphs : Array[LaidParagraph] = []
   let mut cur_tables : Array[LaidTable] = []
+  // The column currently being filled (0-based) and the running y
+  // cursor inside that column.
+  let mut cur_column = 0
   let mut cur_y = cfg.margin_top
   fn push_page() {
     let p : Array[LaidParagraph] = []
@@ -4081,6 +4410,32 @@ fn flow_into_pages(
       t.push(x)
     }
     pages.push({ paragraphs: p, tables: t })
+  }
+
+  let has_content = fn() {
+    cur_paragraphs.length() > 0 || cur_tables.length() > 0
+  }
+  // Close the current column. If columns remain, advance to the next
+  // one and reset the y cursor; otherwise close the page.
+  fn advance_column() {
+    if cur_column + 1 < column_count {
+      cur_column = cur_column + 1
+      cur_y = cfg.margin_top
+    } else {
+      push_page()
+      cur_paragraphs = []
+      cur_tables = []
+      cur_column = 0
+      cur_y = cfg.margin_top
+    }
+  }
+  // A page break always closes the whole page regardless of column.
+  fn break_page() {
+    push_page()
+    cur_paragraphs = []
+    cur_tables = []
+    cur_column = 0
+    cur_y = cfg.margin_top
   }
 
   for block in blocks {
@@ -4095,38 +4450,39 @@ fn flow_into_pages(
       ParaBlock(p) => p.page_break_before
       TableBlock(_) => false
     }
-    if (force_break || block_h > remaining) &&
-      (cur_paragraphs.length() > 0 || cur_tables.length() > 0) {
-      // Close current page and start a new one.
-      push_page()
-      cur_paragraphs = []
-      cur_tables = []
-      cur_y = cfg.margin_top
+    if force_break && has_content() {
+      break_page()
+    } else if block_h > remaining && has_content() {
+      // Block overflows the current column: advance to the next
+      // column (multi-column) or the next page (single-column).
+      advance_column()
     }
+    let col_x = geometry[cur_column].0
     match block {
       ParaBlock(p) => {
         // Adjust paragraph absolute Y by offsetting each line.
-        let adjusted = offset_paragraph(p, cfg.margin_left, cur_y)
+        let adjusted = offset_paragraph(p, col_x, cur_y)
         cur_paragraphs.push(adjusted)
         cur_y = cur_y + p.height
         // §17.3.3.1 — page break after this paragraph when any run
         // carried `<w:br w:type="page"/>`.
         if p.page_break_after {
-          push_page()
-          cur_paragraphs = []
-          cur_tables = []
-          cur_y = cfg.margin_top
+          break_page()
+        } else if p.column_break_after && column_count > 1 {
+          // §17.3.3.1 — column break advances to the next column
+          // (or page when this is the last column).
+          advance_column()
         }
       }
       TableBlock(t) => {
-        let adjusted = offset_table(t, cfg.margin_left, cur_y)
+        let adjusted = offset_table(t, col_x, cur_y)
         cur_tables.push(adjusted)
         cur_y = cur_y + t.height + BLOCK_GAP_PX
       }
     }
   }
   // Final page.
-  if cur_paragraphs.length() > 0 || cur_tables.length() > 0 {
+  if has_content() {
     push_page()
   }
   // Empty document: emit a single blank page.
@@ -4154,7 +4510,7 @@ fn offset_paragraph(
       width: l.width,
     })
   }
-  { ..p, lines }
+  { ..p, lines, }
 }
 
 ///|
@@ -4194,11 +4550,7 @@ fn offset_table(t : LaidTable, dx : Double, dy : Double) -> LaidTable {
         inner_paras.push(abs_para)
         local_y = local_y + p.height
       }
-      cells.push({
-        ..c,
-        x: dx + t.x + c.x,
-        paragraphs: inner_paras,
-      })
+      cells.push({ ..c, x: dx + t.x + c.x, paragraphs: inner_paras })
     }
     rows.push({ height: r.height, cells })
     row_y = row_y + r.height
@@ -4244,16 +4596,19 @@ fn emit_page_svg_with_decoration(
       header_blocks, content_width, warnings, image_resolver, styles,
     )
     let group_children = build_decoration_block_nodes(blocks)
-    children.push(@markup.elem_ns(
-      "g",
-      @markup.svg_ns,
-      [
-        @markup.attr(
-          "transform", "translate(" + fmt_double(cfg.margin_left) + ", 0)",
-        ),
-      ],
-      group_children,
-    ))
+    children.push(
+      @markup.elem_ns(
+        "g",
+        @markup.svg_ns,
+        [
+          @markup.attr(
+            "transform",
+            "translate(" + fmt_double(cfg.margin_left) + ", 0)",
+          ),
+        ],
+        group_children,
+      ),
+    )
   }
   if footer_blocks.length() > 0 {
     let blocks = collect_blocks_from_elements(
@@ -4262,21 +4617,23 @@ fn emit_page_svg_with_decoration(
     let group_children = build_decoration_block_nodes(blocks)
     // Footer goes inside the bottom-margin band.
     let footer_y = cfg.page_height - cfg.margin_bottom
-    children.push(@markup.elem_ns(
-      "g",
-      @markup.svg_ns,
-      [
-        @markup.attr(
-          "transform",
-          "translate(" +
-          fmt_double(cfg.margin_left) +
-          ", " +
-          fmt_double(footer_y) +
-          ")",
-        ),
-      ],
-      group_children,
-    ))
+    children.push(
+      @markup.elem_ns(
+        "g",
+        @markup.svg_ns,
+        [
+          @markup.attr(
+            "transform",
+            "translate(" +
+            fmt_double(cfg.margin_left) +
+            ", " +
+            fmt_double(footer_y) +
+            ")",
+          ),
+        ],
+        group_children,
+      ),
+    )
   }
   @markup.serialize_svg(build_svg_element(cfg, children))
 }
@@ -4284,9 +4641,7 @@ fn emit_page_svg_with_decoration(
 ///|
 /// Flow a header / footer block stream into SVG node children,
 /// translating each block down by the running cursor.
-fn build_decoration_block_nodes(
-  blocks : Array[FlowBlock],
-) -> Array[@xml.Node] {
+fn build_decoration_block_nodes(blocks : Array[FlowBlock]) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
   let mut cursor = 0.0
   for b in blocks {
@@ -4350,18 +4705,17 @@ fn build_svg_element(
   let attrs : Array[@xml.Attribute] = [
     @markup.attr("width", fmt_double(w)),
     @markup.attr("height", fmt_double(h)),
-    @markup.attr(
-      "viewBox", "0 0 " + fmt_double(w) + " " + fmt_double(h),
-    ),
+    @markup.attr("viewBox", "0 0 " + fmt_double(w) + " " + fmt_double(h)),
     @markup.attr("data-ooxml", "wml"),
   ]
-  // §17.6.4 `<w:cols>` — surface multi-column descriptor as
-  // data attributes; consumers wanting CSS columns can read
-  // them, and the viewer's single-column flow remains the
-  // default render until full re-flow is implemented.
+  // §17.6.4 `<w:cols>` — surface the multi-column descriptor as
+  // data attributes alongside the column-aware re-flow performed by
+  // `flow_into_pages`, so CSS-column consumers can still read it.
   if cfg.cols_num > 1 {
     attrs.push(@markup.attr("data-ooxml-cols-num", cfg.cols_num.to_string()))
-    attrs.push(@markup.attr("data-ooxml-cols-space", fmt_double(cfg.cols_space)))
+    attrs.push(
+      @markup.attr("data-ooxml-cols-space", fmt_double(cfg.cols_space)),
+    )
     if cfg.cols_sep {
       attrs.push(@markup.attr("data-ooxml-cols-sep", "1"))
     }
@@ -4385,18 +4739,20 @@ fn build_page_body_nodes(
   // An empty page_background means no background was declared and
   // the page MUST remain transparent per spec.
   if cfg.page_background.length() > 0 {
-    out.push(@markup.elem_ns(
-      "rect",
-      @markup.svg_ns,
-      [
-        @markup.attr("x", "0"),
-        @markup.attr("y", "0"),
-        @markup.attr("width", fmt_double(w)),
-        @markup.attr("height", fmt_double(h)),
-        @markup.attr("fill", cfg.page_background),
-      ],
-      [],
-    ))
+    out.push(
+      @markup.elem_ns(
+        "rect",
+        @markup.svg_ns,
+        [
+          @markup.attr("x", "0"),
+          @markup.attr("y", "0"),
+          @markup.attr("width", fmt_double(w)),
+          @markup.attr("height", fmt_double(h)),
+          @markup.attr("fill", cfg.page_background),
+        ],
+        [],
+      ),
+    )
   }
   // Tables (under text).
   for t in page.tables {
@@ -4421,6 +4777,36 @@ fn build_page_body_nodes(
   append_border_line_nodes(out, cfg.page_border_bottom, x0, y1, x1, y1)
   append_border_line_nodes(out, cfg.page_border_left, x0, y0, x0, y1)
   append_border_line_nodes(out, cfg.page_border_right, x1, y0, x1, y1)
+  // §17.6.4 `<w:cols w:sep="1">` — draw a thin vertical rule down the
+  // centre of each inter-column gutter, spanning the content height.
+  if cfg.cols_num > 1 && cfg.cols_sep {
+    let content_width = (cfg.page_width - cfg.margin_left - cfg.margin_right).max(
+      0.0,
+    )
+    let geometry = column_geometry(cfg, content_width)
+    for idx in 1..<geometry.length() {
+      // Gutter `idx` lies between column `idx-1`'s right edge and
+      // column `idx`'s left edge; the rule sits at its midpoint.
+      let (prev_x, prev_w) = geometry[idx - 1]
+      let cur_x = geometry[idx].0
+      let sep_x = (prev_x + prev_w + cur_x) / 2.0
+      out.push(
+        @markup.elem_ns(
+          "line",
+          @markup.svg_ns,
+          [
+            @markup.attr("x1", fmt_double(sep_x)),
+            @markup.attr("y1", fmt_double(y0)),
+            @markup.attr("x2", fmt_double(sep_x)),
+            @markup.attr("y2", fmt_double(y1)),
+            @markup.attr("stroke", "#000000"),
+            @markup.attr("stroke-width", "0.5"),
+          ],
+          [],
+        ),
+      )
+    }
+  }
   out
 }
 
@@ -4459,18 +4845,20 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
   match bbox {
     Some((min_x, min_y, max_x, max_y)) =>
       if p.background.length() > 0 {
-        out.push(@markup.elem_ns(
-          "rect",
-          @markup.svg_ns,
-          [
-            @markup.attr("x", fmt_double(min_x)),
-            @markup.attr("y", fmt_double(min_y)),
-            @markup.attr("width", fmt_double(max_x - min_x)),
-            @markup.attr("height", fmt_double(max_y - min_y)),
-            @markup.attr("fill", p.background),
-          ],
-          [],
-        ))
+        out.push(
+          @markup.elem_ns(
+            "rect",
+            @markup.svg_ns,
+            [
+              @markup.attr("x", fmt_double(min_x)),
+              @markup.attr("y", fmt_double(min_y)),
+              @markup.attr("width", fmt_double(max_x - min_x)),
+              @markup.attr("height", fmt_double(max_y - min_y)),
+              @markup.attr("fill", p.background),
+            ],
+            [],
+          ),
+        )
       }
     None => ()
   }
@@ -4523,22 +4911,26 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
           img_attrs.push(@markup.attr("data-ooxml-behind-doc", "1"))
         }
         if img.position_h_relative.length() > 0 {
-          img_attrs.push(@markup.attr(
-            "data-ooxml-pos-h-rel", img.position_h_relative,
-          ))
+          img_attrs.push(
+            @markup.attr("data-ooxml-pos-h-rel", img.position_h_relative),
+          )
         }
         if img.position_v_relative.length() > 0 {
-          img_attrs.push(@markup.attr(
-            "data-ooxml-pos-v-rel", img.position_v_relative,
-          ))
+          img_attrs.push(
+            @markup.attr("data-ooxml-pos-v-rel", img.position_v_relative),
+          )
         }
         let img_children : Array[@xml.Node] = []
         if img.alt_text.length() > 0 {
-          img_children.push(@markup.elem_ns(
-            "title", @markup.svg_ns, [], [@markup.text(img.alt_text)],
-          ))
+          img_children.push(
+            @markup.elem_ns("title", @markup.svg_ns, [], [
+              @markup.text(img.alt_text),
+            ]),
+          )
         }
-        out.push(@markup.elem_ns("image", @markup.svg_ns, img_attrs, img_children))
+        out.push(
+          @markup.elem_ns("image", @markup.svg_ns, img_attrs, img_children),
+        )
         x_cursor = x_cursor + span.width_px
         continue
       }
@@ -4557,38 +4949,42 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
       } else {
         "#000000"
       }
-      out.push(@markup.elem_ns(
-        "line",
-        @markup.svg_ns,
-        [
-          @markup.attr("x1", fmt_double(x_cursor)),
-          @markup.attr("y1", fmt_double(line.y_top)),
-          @markup.attr("x2", fmt_double(x_cursor)),
-          @markup.attr("y2", fmt_double(line.y_top + line.height)),
-          @markup.attr("stroke", bar_color),
-          @markup.attr("stroke-width", "1"),
-          @markup.attr("data-ooxml-tab", "bar"),
-        ],
-        [],
-      ))
+      out.push(
+        @markup.elem_ns(
+          "line",
+          @markup.svg_ns,
+          [
+            @markup.attr("x1", fmt_double(x_cursor)),
+            @markup.attr("y1", fmt_double(line.y_top)),
+            @markup.attr("x2", fmt_double(x_cursor)),
+            @markup.attr("y2", fmt_double(line.y_top + line.height)),
+            @markup.attr("stroke", bar_color),
+            @markup.attr("stroke-width", "1"),
+            @markup.attr("data-ooxml-tab", "bar"),
+          ],
+          [],
+        ),
+      )
       x_cursor = x_cursor + span.width_px
       continue
     }
     // Highlight rect (background) below the glyph.
     if span.highlight.length() > 0 {
       let hex = highlight_name_to_hex(span.highlight)
-      out.push(@markup.elem_ns(
-        "rect",
-        @markup.svg_ns,
-        [
-          @markup.attr("x", fmt_double(x_cursor)),
-          @markup.attr("y", fmt_double(line.y_top)),
-          @markup.attr("width", fmt_double(span.width_px)),
-          @markup.attr("height", fmt_double(line.height)),
-          @markup.attr("fill", hex),
-        ],
-        [],
-      ))
+      out.push(
+        @markup.elem_ns(
+          "rect",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", fmt_double(x_cursor)),
+            @markup.attr("y", fmt_double(line.y_top)),
+            @markup.attr("width", fmt_double(span.width_px)),
+            @markup.attr("height", fmt_double(line.height)),
+            @markup.attr("fill", hex),
+          ],
+          [],
+        ),
+      )
     }
     // §17.3.2.4 `<w:bdr>` run border — single rect around the span
     // glyph bbox. Skipped when the run hasn't declared a border or
@@ -4603,20 +4999,22 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
       } else {
         span.border.color_hex
       }
-      out.push(@markup.elem_ns(
-        "rect",
-        @markup.svg_ns,
-        [
-          @markup.attr("x", fmt_double(x_cursor)),
-          @markup.attr("y", fmt_double(line.y_top)),
-          @markup.attr("width", fmt_double(span.width_px)),
-          @markup.attr("height", fmt_double(line.height)),
-          @markup.attr("fill", "none"),
-          @markup.attr("stroke", bdr_stroke),
-          @markup.attr("stroke-width", fmt_double(span.border.width_px)),
-        ],
-        [],
-      ))
+      out.push(
+        @markup.elem_ns(
+          "rect",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", fmt_double(x_cursor)),
+            @markup.attr("y", fmt_double(line.y_top)),
+            @markup.attr("width", fmt_double(span.width_px)),
+            @markup.attr("height", fmt_double(line.height)),
+            @markup.attr("fill", "none"),
+            @markup.attr("stroke", bdr_stroke),
+            @markup.attr("stroke-width", fmt_double(span.border.width_px)),
+          ],
+          [],
+        ),
+      )
     }
     out.push(build_span_text_node(span, line, x_cursor))
     x_cursor = x_cursor + span.width_px
@@ -4673,22 +5071,24 @@ fn build_span_text_node(
   // declared start x.
   if span.scale_pct != 100.0 && span.scale_pct > 0.0 {
     let factor = span.scale_pct / 100.0
-    attrs.push(@markup.attr(
-      "transform",
-      "translate(" +
-      fmt_double(x_cursor) +
-      ", 0) scale(" +
-      fmt_double(factor) +
-      ", 1) translate(-" +
-      fmt_double(x_cursor) +
-      ", 0)",
-    ))
+    attrs.push(
+      @markup.attr(
+        "transform",
+        "translate(" +
+        fmt_double(x_cursor) +
+        ", 0) scale(" +
+        fmt_double(factor) +
+        ", 1) translate(-" +
+        fmt_double(x_cursor) +
+        ", 0)",
+      ),
+    )
   }
   // §17.3.2.36 character spacing — emit CSS letter-spacing.
   if span.letter_spacing_px != 0.0 {
-    attrs.push(@markup.attr(
-      "letter-spacing", fmt_double(span.letter_spacing_px) + "px",
-    ))
+    attrs.push(
+      @markup.attr("letter-spacing", fmt_double(span.letter_spacing_px) + "px"),
+    )
   }
   // §17.3.2.13 caps + §17.3.2.33 smallCaps + §17.3.2.31 shadow
   // + §17.3.2.12 emphasis — wrap into the SVG `style` attribute.
@@ -4757,9 +5157,9 @@ fn build_span_text_node(
   // the SVG `kerning="auto"` hint so renderers that support
   // pair-kerning enable it.
   if span.kern_half_points > 0.0 {
-    attrs.push(@markup.attr(
-      "data-ooxml-kern", fmt_double(span.kern_half_points),
-    ))
+    attrs.push(
+      @markup.attr("data-ooxml-kern", fmt_double(span.kern_half_points)),
+    )
     // §17.3.2.20 — threshold is in half-points; the run's
     // font_size_pt is in points, so compare against
     // kern_half_points / 2.
@@ -4771,9 +5171,7 @@ fn build_span_text_node(
   // the standard `xml:lang` attribute and a `data-ooxml-lang`
   // mirror so locale-aware consumers can act on it.
   if span.lang.length() > 0 {
-    attrs.push(@markup.attr_ns(
-      "xml", "lang", @xml.ns_xml_1998(), span.lang,
-    ))
+    attrs.push(@markup.attr_ns("xml", "lang", @xml.ns_xml_1998(), span.lang))
     attrs.push(@markup.attr("data-ooxml-lang", span.lang))
   }
   // §17.3.2.23 outline — text outline (stroke + fill). Painted
@@ -4855,19 +5253,21 @@ fn build_table_nodes(t : LaidTable) -> Array[@xml.Node] {
       // paragraph offset above already implements the visual shift.
       if c.v_align != "top" {
         let cell_top = cell_top_y(c)
-        out.push(@markup.elem_ns(
-          "rect",
-          @markup.svg_ns,
-          [
-            @markup.attr("x", fmt_double(c.x)),
-            @markup.attr("y", fmt_double(cell_top)),
-            @markup.attr("width", fmt_double(c.width)),
-            @markup.attr("height", fmt_double(c.height)),
-            @markup.attr("fill", "transparent"),
-            @markup.attr("data-ooxml-v-align", c.v_align),
-          ],
-          [],
-        ))
+        out.push(
+          @markup.elem_ns(
+            "rect",
+            @markup.svg_ns,
+            [
+              @markup.attr("x", fmt_double(c.x)),
+              @markup.attr("y", fmt_double(cell_top)),
+              @markup.attr("width", fmt_double(c.width)),
+              @markup.attr("height", fmt_double(c.height)),
+              @markup.attr("fill", "transparent"),
+              @markup.attr("data-ooxml-v-align", c.v_align),
+            ],
+            [],
+          ),
+        )
       }
       // Background fill (if any).
       if c.background.length() > 0 {
@@ -4876,18 +5276,20 @@ fn build_table_nodes(t : LaidTable) -> Array[@xml.Node] {
         // to using cell.height as full row height starting at the
         // first paragraph's top.
         let cell_top = cell_top_y(c)
-        out.push(@markup.elem_ns(
-          "rect",
-          @markup.svg_ns,
-          [
-            @markup.attr("x", fmt_double(c.x)),
-            @markup.attr("y", fmt_double(cell_top)),
-            @markup.attr("width", fmt_double(c.width)),
-            @markup.attr("height", fmt_double(c.height)),
-            @markup.attr("fill", c.background),
-          ],
-          [],
-        ))
+        out.push(
+          @markup.elem_ns(
+            "rect",
+            @markup.svg_ns,
+            [
+              @markup.attr("x", fmt_double(c.x)),
+              @markup.attr("y", fmt_double(cell_top)),
+              @markup.attr("width", fmt_double(c.width)),
+              @markup.attr("height", fmt_double(c.height)),
+              @markup.attr("fill", c.background),
+            ],
+            [],
+          ),
+        )
       }
       // §17.4.59 per-side borders. We emit four `<line>` segments
       // rather than a single rect so each side can carry its own
@@ -4898,15 +5300,37 @@ fn build_table_nodes(t : LaidTable) -> Array[@xml.Node] {
       let cx_right = c.x + c.width
       let cy_top = cell_top
       let cy_bottom = cell_top + c.height
-      append_border_line_nodes(out, c.border_top, cx_left, cy_top, cx_right, cy_top)
       append_border_line_nodes(
-        out, c.border_bottom, cx_left, cy_bottom, cx_right, cy_bottom,
+        out,
+        c.border_top,
+        cx_left,
+        cy_top,
+        cx_right,
+        cy_top,
       )
       append_border_line_nodes(
-        out, c.border_left, cx_left, cy_top, cx_left, cy_bottom,
+        out,
+        c.border_bottom,
+        cx_left,
+        cy_bottom,
+        cx_right,
+        cy_bottom,
       )
       append_border_line_nodes(
-        out, c.border_right, cx_right, cy_top, cx_right, cy_bottom,
+        out,
+        c.border_left,
+        cx_left,
+        cy_top,
+        cx_left,
+        cy_bottom,
+      )
+      append_border_line_nodes(
+        out,
+        c.border_right,
+        cx_right,
+        cy_top,
+        cx_right,
+        cy_bottom,
       )
       // Cell paragraphs (already at absolute coordinates).
       for p in c.paragraphs {
@@ -4944,45 +5368,100 @@ fn append_border_line_nodes(
       // a one-pixel gap; the offset steps perpendicular to the
       // line so horizontal and vertical sides keep parity.
       let (ox, oy) = if x1 == x2 { (1.0, 0.0) } else { (0.0, 1.0) }
-      out.push(single_border_line_node(
-        x1 - ox, y1 - oy, x2 - ox, y2 - oy, side.color_hex,
-        side.width_px / 2.0, "",
-      ))
-      out.push(single_border_line_node(
-        x1 + ox, y1 + oy, x2 + ox, y2 + oy, side.color_hex,
-        side.width_px / 2.0, "",
-      ))
+      out.push(
+        single_border_line_node(
+          x1 - ox,
+          y1 - oy,
+          x2 - ox,
+          y2 - oy,
+          side.color_hex,
+          side.width_px / 2.0,
+          "",
+        ),
+      )
+      out.push(
+        single_border_line_node(
+          x1 + ox,
+          y1 + oy,
+          x2 + ox,
+          y2 + oy,
+          side.color_hex,
+          side.width_px / 2.0,
+          "",
+        ),
+      )
     }
     BorderTriple => {
       // Three parallel hairlines centred on the line.
       let (ox, oy) = if x1 == x2 { (1.5, 0.0) } else { (0.0, 1.5) }
       let third = side.width_px / 3.0
-      out.push(single_border_line_node(
-        x1 - ox, y1 - oy, x2 - ox, y2 - oy, side.color_hex, third, "",
-      ))
-      out.push(single_border_line_node(
-        x1, y1, x2, y2, side.color_hex, third, "",
-      ))
-      out.push(single_border_line_node(
-        x1 + ox, y1 + oy, x2 + ox, y2 + oy, side.color_hex, third, "",
-      ))
+      out.push(
+        single_border_line_node(
+          x1 - ox,
+          y1 - oy,
+          x2 - ox,
+          y2 - oy,
+          side.color_hex,
+          third,
+          "",
+        ),
+      )
+      out.push(
+        single_border_line_node(x1, y1, x2, y2, side.color_hex, third, ""),
+      )
+      out.push(
+        single_border_line_node(
+          x1 + ox,
+          y1 + oy,
+          x2 + ox,
+          y2 + oy,
+          side.color_hex,
+          third,
+          "",
+        ),
+      )
     }
     BorderDashed(dash) =>
-      out.push(single_border_line_node(
-        x1, y1, x2, y2, side.color_hex, side.width_px, dash,
-      ))
+      out.push(
+        single_border_line_node(
+          x1,
+          y1,
+          x2,
+          y2,
+          side.color_hex,
+          side.width_px,
+          dash,
+        ),
+      )
     BorderArt(name) =>
       // §17.18.3 art borders — surface the spec value as metadata
       // and fall through to a plain stroke so the consumer can
       // replace the line with the real ornamental pattern.
-      out.push(border_line_node_with_attr(
-        x1, y1, x2, y2, side.color_hex, side.width_px, "",
-        "data-ooxml-bdr-art", name,
-      ))
+      out.push(
+        border_line_node_with_attr(
+          x1,
+          y1,
+          x2,
+          y2,
+          side.color_hex,
+          side.width_px,
+          "",
+          "data-ooxml-bdr-art",
+          name,
+        ),
+      )
     BorderPlain =>
-      out.push(single_border_line_node(
-        x1, y1, x2, y2, side.color_hex, side.width_px, "",
-      ))
+      out.push(
+        single_border_line_node(
+          x1,
+          y1,
+          x2,
+          y2,
+          side.color_hex,
+          side.width_px,
+          "",
+        ),
+      )
   }
 }
 
@@ -5041,52 +5520,176 @@ fn border_style_kind(style : String) -> BorderStyleKind {
     "threeDEmboss" | "threeDEngrave" | "outset" | "inset" => BorderPlain
     // §17.18.3 art borders — every ornamental pattern surfaces
     // through the `BorderArt` arm with its spec name preserved.
-    "apples" | "archedScallops" | "babyPacifier" | "babyRattle"
-    | "balloons3Colors" | "balloonsHotAir" | "basicBlackDashes"
-    | "basicBlackDots" | "basicBlackSquares" | "basicThinLines"
-    | "basicWhiteDashes" | "basicWhiteDots" | "basicWhiteSquares"
-    | "basicWideInline" | "basicWideMidline" | "basicWideOutline"
-    | "bats" | "birds" | "birdsFlight" | "cabins" | "cakeSlice"
-    | "candyCorn" | "celticKnotwork" | "certificateBanner"
-    | "chainLink" | "champagneBottle" | "checkedBarBlack"
-    | "checkedBarColor" | "checkered" | "christmasTree"
-    | "circlesLines" | "circlesRectangles" | "classicalWave"
-    | "clocks" | "compass" | "confetti" | "confettiGrays"
-    | "confettiOutline" | "confettiStreamers" | "confettiWhite"
-    | "cornerTriangles" | "couponCutoutDashes" | "couponCutoutDots"
-    | "crazyMaze" | "creaturesButterfly" | "creaturesFish"
-    | "creaturesInsects" | "creaturesLadyBug" | "crossStitch"
-    | "cup" | "decoArch" | "decoArchColor" | "decoBlocks"
-    | "diamondsGray" | "doubleD" | "doubleDiamonds" | "earth1"
-    | "earth2" | "earth3" | "eclipsingSquares1" | "eclipsingSquares2"
-    | "eggsBlack" | "fans" | "film" | "firecrackers"
-    | "flowersBlockPrint" | "flowersDaisies" | "flowersModern1"
-    | "flowersModern2" | "flowersPansy" | "flowersRedRose"
-    | "flowersRoses" | "flowersTeacup" | "flowersTiny" | "gems"
-    | "gingerbreadMan" | "gradient" | "handmade1" | "handmade2"
-    | "heartBalloon" | "heartGray" | "hearts" | "heebieJeebies"
-    | "holly" | "houseFunky" | "hypnotic" | "iceCreamCones"
-    | "lightBulb" | "lightning1" | "lightning2" | "mapPins"
-    | "mapleLeaf" | "mapleMuffins" | "marquee" | "marqueeToothed"
-    | "moons" | "mosaic" | "musicNotes" | "northwest" | "ovals"
-    | "packages" | "palmsBlack" | "palmsColor" | "paperClips"
-    | "papyrus" | "partyFavor" | "partyGlass" | "pencils"
-    | "people" | "peopleHats" | "peopleWaving" | "pinkPattern"
-    | "plaque" | "poinsettias" | "postageStamp" | "pumpkin1"
-    | "pushPinNote2" | "pushPinNote1" | "pyramids" | "pyramidsAbove"
-    | "quadrants" | "rings" | "safari" | "sawtooth"
-    | "sawtoothGray" | "scaredCat" | "seattle" | "semicirclesShape"
-    | "shadowedSquares" | "sharksTeeth" | "shorebirdTracks"
-    | "skyrocket" | "snowflakeFancy" | "snowflakes" | "sombrero"
-    | "southwest" | "stars" | "starsBlack" | "starsShadowed"
-    | "starsTop" | "stars3d" | "starsTop3d" | "starsTraditional3d"
-    | "sun" | "swirligig" | "tornPaper" | "tornPaperBlack"
-    | "trees" | "triangleParty" | "triangles" | "triangle1"
-    | "tribal1" | "tribal2" | "tribal3" | "tribal4" | "tribal5"
-    | "tribal6" | "twistedLines1" | "twistedLines2" | "vine"
-    | "waveline" | "weavingAngles" | "weavingBraid"
-    | "weavingRibbon" | "weavingStrips" | "whiteFlowers"
-    | "woodwork" | "xIllusions" | "zanyTriangles" | "zigZag"
+    "apples"
+    | "archedScallops"
+    | "babyPacifier"
+    | "babyRattle"
+    | "balloons3Colors"
+    | "balloonsHotAir"
+    | "basicBlackDashes"
+    | "basicBlackDots"
+    | "basicBlackSquares"
+    | "basicThinLines"
+    | "basicWhiteDashes"
+    | "basicWhiteDots"
+    | "basicWhiteSquares"
+    | "basicWideInline"
+    | "basicWideMidline"
+    | "basicWideOutline"
+    | "bats"
+    | "birds"
+    | "birdsFlight"
+    | "cabins"
+    | "cakeSlice"
+    | "candyCorn"
+    | "celticKnotwork"
+    | "certificateBanner"
+    | "chainLink"
+    | "champagneBottle"
+    | "checkedBarBlack"
+    | "checkedBarColor"
+    | "checkered"
+    | "christmasTree"
+    | "circlesLines"
+    | "circlesRectangles"
+    | "classicalWave"
+    | "clocks"
+    | "compass"
+    | "confetti"
+    | "confettiGrays"
+    | "confettiOutline"
+    | "confettiStreamers"
+    | "confettiWhite"
+    | "cornerTriangles"
+    | "couponCutoutDashes"
+    | "couponCutoutDots"
+    | "crazyMaze"
+    | "creaturesButterfly"
+    | "creaturesFish"
+    | "creaturesInsects"
+    | "creaturesLadyBug"
+    | "crossStitch"
+    | "cup"
+    | "decoArch"
+    | "decoArchColor"
+    | "decoBlocks"
+    | "diamondsGray"
+    | "doubleD"
+    | "doubleDiamonds"
+    | "earth1"
+    | "earth2"
+    | "earth3"
+    | "eclipsingSquares1"
+    | "eclipsingSquares2"
+    | "eggsBlack"
+    | "fans"
+    | "film"
+    | "firecrackers"
+    | "flowersBlockPrint"
+    | "flowersDaisies"
+    | "flowersModern1"
+    | "flowersModern2"
+    | "flowersPansy"
+    | "flowersRedRose"
+    | "flowersRoses"
+    | "flowersTeacup"
+    | "flowersTiny"
+    | "gems"
+    | "gingerbreadMan"
+    | "gradient"
+    | "handmade1"
+    | "handmade2"
+    | "heartBalloon"
+    | "heartGray"
+    | "hearts"
+    | "heebieJeebies"
+    | "holly"
+    | "houseFunky"
+    | "hypnotic"
+    | "iceCreamCones"
+    | "lightBulb"
+    | "lightning1"
+    | "lightning2"
+    | "mapPins"
+    | "mapleLeaf"
+    | "mapleMuffins"
+    | "marquee"
+    | "marqueeToothed"
+    | "moons"
+    | "mosaic"
+    | "musicNotes"
+    | "northwest"
+    | "ovals"
+    | "packages"
+    | "palmsBlack"
+    | "palmsColor"
+    | "paperClips"
+    | "papyrus"
+    | "partyFavor"
+    | "partyGlass"
+    | "pencils"
+    | "people"
+    | "peopleHats"
+    | "peopleWaving"
+    | "pinkPattern"
+    | "plaque"
+    | "poinsettias"
+    | "postageStamp"
+    | "pumpkin1"
+    | "pushPinNote2"
+    | "pushPinNote1"
+    | "pyramids"
+    | "pyramidsAbove"
+    | "quadrants"
+    | "rings"
+    | "safari"
+    | "sawtooth"
+    | "sawtoothGray"
+    | "scaredCat"
+    | "seattle"
+    | "semicirclesShape"
+    | "shadowedSquares"
+    | "sharksTeeth"
+    | "shorebirdTracks"
+    | "skyrocket"
+    | "snowflakeFancy"
+    | "snowflakes"
+    | "sombrero"
+    | "southwest"
+    | "stars"
+    | "starsBlack"
+    | "starsShadowed"
+    | "starsTop"
+    | "stars3d"
+    | "starsTop3d"
+    | "starsTraditional3d"
+    | "sun"
+    | "swirligig"
+    | "tornPaper"
+    | "tornPaperBlack"
+    | "trees"
+    | "triangleParty"
+    | "triangles"
+    | "triangle1"
+    | "tribal1"
+    | "tribal2"
+    | "tribal3"
+    | "tribal4"
+    | "tribal5"
+    | "tribal6"
+    | "twistedLines1"
+    | "twistedLines2"
+    | "vine"
+    | "waveline"
+    | "weavingAngles"
+    | "weavingBraid"
+    | "weavingRibbon"
+    | "weavingStrips"
+    | "whiteFlowers"
+    | "woodwork"
+    | "xIllusions"
+    | "zanyTriangles"
+    | "zigZag"
     | "zigZagStitch" => BorderArt(style)
     // Spec violation: unknown / non-listed value. Render as a
     // plain stroke so the rectangle is still visible; consumers

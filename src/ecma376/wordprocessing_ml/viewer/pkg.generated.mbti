@@ -21,7 +21,7 @@ pub fn render_html(@domain.CT_Document, rels_resolver? : (String) -> String?) ->
 
 pub fn render_styled_html(@domain.CT_Document, rels_resolver? : (String) -> String?) -> String
 
-pub fn render_svg(@domain.CT_Document, header_blocks? : Array[@domain.EG_BlockLevelElts], footer_blocks? : Array[@domain.EG_BlockLevelElts], image_resolver? : (String) -> ResolvedImage?, styles? : @domain.CT_Styles?, numbering? : @domain.CT_Numbering?, theme? : @xml.Element?) -> DocumentSvgResult
+pub fn render_svg(@domain.CT_Document, header_blocks? : Array[@domain.EG_BlockLevelElts], footer_blocks? : Array[@domain.EG_BlockLevelElts], header_blocks_first? : Array[@domain.EG_BlockLevelElts], header_blocks_even? : Array[@domain.EG_BlockLevelElts], footer_blocks_first? : Array[@domain.EG_BlockLevelElts], footer_blocks_even? : Array[@domain.EG_BlockLevelElts], title_pg? : Bool, even_and_odd_headers? : Bool, image_resolver? : (String) -> ResolvedImage?, styles? : @domain.CT_Styles?, numbering? : @domain.CT_Numbering?, theme? : @xml.Element?) -> DocumentSvgResult
 
 pub fn resolve_themed_color(String?, String?, String?, String?, ThemeColorMap) -> String?
 

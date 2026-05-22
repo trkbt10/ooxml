@@ -489,3 +489,49 @@ test "xlsx context to_svg renders each worksheet via @sml_viewer" {
 fn bytes(source : String) -> Bytes {
   @utf8.encode(source[:])
 }
+
+///|
+/// §18.3.1.4 — `Workbook::to_svg` concatenates one `<svg>` per sheet.
+/// Each sheet's generated ids (clip paths, gradient / pattern defs)
+/// must be namespaced so they stay globally unique once concatenated;
+/// a duplicate `id` would make every `url(#…)` reference resolve to
+/// the first match. Renders the real multi-sheet PivotTableFormats
+/// fixture and asserts every `clip_*` id is unique.
+test "spreadsheet_ml to_svg keeps per-sheet ids unique" {
+  let svg = try {
+    let bytes = @fs.read_file_to_bytes(
+      "references/raw/ecma376-1/OfficeOpenXML-SpreadsheetMLStyles/PivotTableFormats.xlsx",
+    )
+    Some(open(bytes).to_svg())
+  } catch {
+    _ => None
+  }
+  match svg {
+    None => () // Fixture unavailable — skip.
+    Some(text) => {
+      // Split on the `id="` marker; every segment after the first
+      // begins with an id value terminated by the next `"`. Collect
+      // the `clip_*` ids and verify none repeats across the
+      // concatenated multi-sheet document.
+      let seen : Map[String, Bool] = Map::new()
+      let mut dup_found = false
+      let segments = text.split("id=\"").collect()
+      for i in 1..<segments.length() {
+        let seg = segments[i].to_string()
+        let id_value = match seg.split("\"").collect() {
+          parts => if parts.length() > 0 { parts[0].to_string() } else { "" }
+        }
+        if id_value.contains("clip_") {
+          if seen.get(id_value) is Some(_) {
+            dup_found = true
+          }
+          seen.set(id_value, true)
+        }
+      }
+      // The fixture has multiple sheets — at least one clip id must
+      // have been emitted, and none may repeat.
+      assert_true(seen.size() > 0)
+      assert_false(dup_found)
+    }
+  }
+}
