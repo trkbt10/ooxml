@@ -33,7 +33,7 @@ fn build_master(shapes_xml : String) -> @domain.CT_SlideMaster {
 }
 
 ///|
-fn first_slide_shape(chain : SlideChain) -> @xml.Element {
+fn first_slide_shape(chain : SlideChain) -> @domain.CT_Shape {
   chain.slide_shapes()[0]
 }
 
@@ -71,9 +71,9 @@ test "§19.7.10 ST_PlaceholderType rejects unknown lexical values" {
 
 ///|
 test "§19.3.1.36 idx match resolves slide → layout → master" {
-  let slide_xml = "<sp><nvSpPr><nvPr><ph idx=\"2\"/></nvPr></nvSpPr><spPr id=\"slide\"/><txBody id=\"slide\"/></sp>"
-  let layout_xml = "<sp><nvSpPr><nvPr><ph idx=\"2\" type=\"body\"/></nvPr></nvSpPr><spPr id=\"layout\"/></sp>"
-  let master_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr id=\"master\"/></sp>"
+  let slide_xml = "<sp><nvSpPr><nvPr><ph idx=\"2\"/></nvPr></nvSpPr><spPr/></sp>"
+  let layout_xml = "<sp><nvSpPr><nvPr><ph idx=\"2\" type=\"body\"/></nvPr></nvSpPr><spPr/></sp>"
+  let master_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr/></sp>"
   let chain = SlideChain::from_parts(
     build_master(master_xml),
     Some(build_layout(layout_xml)),
@@ -85,15 +85,16 @@ test "§19.3.1.36 idx match resolves slide → layout → master" {
   assert_true(effective.ph_type == @domain.PhBody)
   assert_true(resolved.layout_shape is Some(_))
   assert_true(resolved.master_shape is Some(_))
-  let sp_pr = resolved.sp_pr.unwrap()
-  assert_true(attr_local_test(sp_pr, "id") == Some("slide"))
+  // Slide always wins for sp_pr inheritance; layout / master fields
+  // are exposed for callers that need to merge attributes themselves.
+  assert_true(resolved.sp_pr is Some(_))
 }
 
 ///|
 test "§19.3.1.36 type-only slide ph falls through to master" {
-  let slide_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><txBody id=\"slide-body\"/></sp>"
-  let layout_xml = "<sp><nvSpPr><nvPr><ph type=\"title\" idx=\"1\"/></nvPr></nvSpPr><spPr id=\"layout-title\"/></sp>"
-  let master_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr id=\"master-body\"/></sp>"
+  let slide_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr/></sp>"
+  let layout_xml = "<sp><nvSpPr><nvPr><ph type=\"title\" idx=\"1\"/></nvPr></nvSpPr><spPr/></sp>"
+  let master_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr/></sp>"
   let chain = SlideChain::from_parts(
     build_master(master_xml),
     Some(build_layout(layout_xml)),
@@ -102,9 +103,7 @@ test "§19.3.1.36 type-only slide ph falls through to master" {
   let resolved = try! resolve_placeholder(first_slide_shape(chain), chain)
   // Layout has no `body` placeholder, so layout_shape is None.
   assert_true(resolved.layout_shape is None)
-  // Master `body` shape supplies the spPr.
-  let sp_pr = resolved.sp_pr.unwrap()
-  assert_true(attr_local_test(sp_pr, "id") == Some("master-body"))
+  // Master `body` shape is resolved by type fallback.
   assert_true(resolved.master_shape is Some(_))
   assert_true(resolved.effective_placeholder.unwrap().ph_type == @domain.PhBody)
 }
@@ -122,7 +121,7 @@ test "§19.3.1.36 ctrTitle in layout inherits from master title" {
   let resolved = try! resolve_placeholder(first_slide_shape(chain), chain)
   assert_true(resolved.layout_shape is Some(_))
   let master_shape = resolved.master_shape.unwrap()
-  let sp_pr = shape_sp_pr(master_shape).unwrap()
+  let sp_pr = shape_sp_pr(master_shape.element).unwrap()
   assert_true(attr_local_test(sp_pr, "id") == Some("master-title"))
   let effective = resolved.effective_placeholder.unwrap()
   assert_true(effective.ph_type == @domain.PhCtrTitle)
@@ -155,8 +154,10 @@ test "§19.3.1.36 missing slide / layout still resolves master ph" {
   assert_eq(chain.master_shapes().length(), 1)
   // Building a fake "slide" with just the master shape exercises the
   // resolver for layout-less chains (e.g. previewing the master).
-  let synthetic = parse_root(
-    "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr></sp>",
+  let synthetic = @domain.CT_Shape::new(
+    parse_root(
+      "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr/></sp>",
+    ),
   )
   let resolved = try! resolve_placeholder(synthetic, chain)
   assert_true(resolved.layout_shape is None)

@@ -10,9 +10,17 @@ import {
 // Values
 pub fn effective_properties(@domain.CT_Styles, @domain.StyleId) -> EffectiveProperties
 
+pub fn merge_effective_pub(EffectiveProperties, EffectiveProperties) -> EffectiveProperties
+
+pub fn merge_property_element_pub(@xml.Element?, @xml.Element?) -> @xml.Element?
+
+pub fn resolve_cell(ResolvedTableStyle, TblLook, Int, Int, Int, Int, @xml.Element?, @xml.Element?, @xml.Element?, @xml.Element?) -> EffectiveProperties
+
 pub fn resolve_paragraph(@domain.CT_Styles, @xml.Element?) -> EffectiveProperties
 
 pub fn resolve_run(@domain.CT_Styles, @xml.Element?) -> EffectiveProperties
+
+pub fn resolve_table_style(@domain.CT_Styles, @domain.StyleId) -> ResolvedTableStyle
 
 // Errors
 
@@ -24,6 +32,34 @@ pub(all) struct EffectiveProperties {
   tr_pr : @xml.Element?
   tc_pr : @xml.Element?
 } derive(Eq, @debug.Debug)
+
+pub(all) struct ResolvedTableStyle {
+  base : EffectiveProperties
+  whole_table : EffectiveProperties
+  first_row : EffectiveProperties
+  last_row : EffectiveProperties
+  first_col : EffectiveProperties
+  last_col : EffectiveProperties
+  band1_horz : EffectiveProperties
+  band2_horz : EffectiveProperties
+  band1_vert : EffectiveProperties
+  band2_vert : EffectiveProperties
+  nw_cell : EffectiveProperties
+  ne_cell : EffectiveProperties
+  sw_cell : EffectiveProperties
+  se_cell : EffectiveProperties
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TblLook {
+  first_row : Bool
+  last_row : Bool
+  first_column : Bool
+  last_column : Bool
+  no_h_band : Bool
+  no_v_band : Bool
+} derive(Eq, @debug.Debug)
+pub fn TblLook::default_() -> Self
+pub fn TblLook::from_element(@xml.Element) -> Self
 
 // Type aliases
 

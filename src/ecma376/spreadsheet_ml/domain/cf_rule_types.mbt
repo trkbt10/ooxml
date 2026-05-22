@@ -5,8 +5,10 @@
 /// ST_CfvoType / ST_TimePeriod) family. Decoders and evaluators in
 /// `cf_rule_eval` consume the typed records defined here, so the
 /// spec-mandated `CT_CfRule`, `CT_ConditionalFormatting`, `CT_ColorScale`,
-/// `CT_DataBar`, `CT_IconSet`, `CT_Cfvo`, `CT_Color` identifiers stay
-/// canonical in `@domain`.
+/// `CT_DataBar`, `CT_IconSet`, `CT_Cfvo` identifiers stay canonical
+/// in `@domain`. The internal ARGB tuple used during cf evaluation
+/// is `CT_ColorArgb` (different from the schema CT_Color in
+/// style_types.mbt).
 
 ///|
 /// XSD simple type ST_CfType — Part 1 §18.18.12. Conditional format rule
@@ -115,11 +117,15 @@ pub(all) struct CT_Cfvo {
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Color — Part 1 §18.3.1.15 (ARGB-only carrier for
-/// conditional formatting). The conditional formatting evaluator
-/// consumes resolved ARGB tuples; theme/indexed/tint lookups happen in
-/// the renderer before this carrier is constructed.
-pub(all) struct CT_Color {
+/// Domain-internal ARGB tuple used by the conditional-formatting
+/// evaluator (§18.3.1.10 / §18.3.1.16 / §18.3.1.28). This is *not* the
+/// schema CT_Color (§18.8.3) — that's `CT_Color` in style_types.mbt
+/// and carries five attributes (auto/indexed/rgb/theme/tint). The
+/// cf-eval pipeline pre-resolves all theme/indexed/tint lookups
+/// during decode (see cf_rule_eval/decode.mbt::parse_argb_hex) and
+/// only ever materialises this 4-channel carrier for blending and
+/// bucket selection.
+pub(all) struct CT_ColorArgb {
   alpha : Int
   red : Int
   green : Int
@@ -127,15 +133,15 @@ pub(all) struct CT_Color {
 } derive(Eq, Debug)
 
 ///|
-/// CT_Color::new — construct a clamped ARGB tuple. Each channel is
+/// CT_ColorArgb::new — construct a clamped ARGB tuple. Each channel is
 /// forced into the 0..255 range so interpolation cannot escape the
 /// spec gamut of §18.3.1.15.
-pub fn CT_Color::new(
+pub fn CT_ColorArgb::new(
   alpha : Int,
   red : Int,
   green : Int,
   blue : Int,
-) -> CT_Color {
+) -> CT_ColorArgb {
   let clamp = fn(x : Int) -> Int {
     if x < 0 {
       0
@@ -161,16 +167,24 @@ pub fn CT_Color::new(
 /// stops.
 pub(all) struct CT_ColorScale {
   thresholds : Array[CT_Cfvo]
-  colors : Array[CT_Color]
+  colors : Array[CT_ColorArgb]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_DataBar — Part 1 §18.3.1.28. Bar length
-/// thresholds (min/max cfvo pair) and bar fill color.
+/// thresholds (min/max cfvo pair) plus bar fill color. The spec
+/// also defines several `@*Color`, `@axisPosition`, `@direction`,
+/// `@showValue`, `@minLength`, `@maxLength`, `@gradient`,
+/// `@border` attributes; the viewer surfaces these via the raw
+/// `element` until a typed projection is wired in.
 pub(all) struct CT_DataBar {
+  /// Source element preserved so renderers can read the §18.3.1.28
+  /// attributes the typed projection does not yet capture
+  /// (negativeFillColor / axisPosition / direction / etc.).
+  element : @xml.Element
   min_threshold : CT_Cfvo
   max_threshold : CT_Cfvo
-  color : CT_Color
+  color : CT_ColorArgb
 } derive(Eq, Debug)
 
 ///|

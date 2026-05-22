@@ -474,32 +474,33 @@ pub(all) struct CT_R {
   /// <t>* (CT_Text, zero or more) — run text nodes from the
   /// inner-content choice.
   t : Array[CT_Text]
-  /// EG_RPr and EG_RunInnerContent passthrough children preserved as raw
-  /// XML; they round-trip through the writer without being typed here.
-  inner_content : Array[@xml.Element]
   /// Source XML element preserved for round-trip writers.
   element : @xml.Element
 } derive(Eq, Debug)
 
 ///|
-/// Construct CT_R by routing children into the typed slots (rPr, t) and
-/// keeping any other element children as raw passthrough nodes.
+/// Construct CT_R by routing children into the typed slots (rPr, t).
+/// Unknown child elements raise `SchemaViolation` so callers can't
+/// silently round-trip schema-illegal content through this projection.
 pub fn CT_R::new(element : @xml.Element) -> CT_R raise SchemaViolation {
   let mut r_pr : CT_RPR? = None
   let t : Array[CT_Text] = []
-  let inner_content : Array[@xml.Element] = []
   for child in element.children {
     match child {
       Element(e) =>
         match e.name.local_name {
           "rPr" => r_pr = Some(CT_RPR::new(e))
           "t" => t.push(CT_Text::new(e))
-          _ => inner_content.push(e)
+          other =>
+            raise SchemaViolation(
+              type_name="CT_R/" + other,
+              value="unknown child element in shared-math.xsd CT_R content model",
+            )
         }
       _ => ()
     }
   }
-  { r_pr, t, inner_content, element }
+  { r_pr, t, element }
 }
 
 ///|
@@ -507,10 +508,15 @@ pub fn CT_R::new(element : @xml.Element) -> CT_R raise SchemaViolation {
 /// Schema shared-math.xsd complex type `CT_CtrlPr`.
 /// Control properties for OMML structural objects (§22.1.2.23 ctrlPr).
 /// The EG_RPrMath children belong to the wordprocessing_ml run-property
-/// group, so their typed projection lives in that package; here they are
-/// preserved as raw XML for round-trip.
+/// group whose typed projection lives in
+/// `@wordprocessing_ml/domain`. Including that package here would
+/// invert the dependency (WML domain imports office_math), so the
+/// children are preserved as foreign-namespace raw `@xml.Element`s by
+/// schema design and consumers cast through the WML projection on
+/// demand.
 pub(all) struct CT_CtrlPr {
-  /// w:EG_RPrMath passthrough children preserved as raw XML.
+  /// w:EG_RPrMath passthrough children preserved as raw XML (WML
+  /// run-property group, projected by the WML domain).
   r_pr_math : Array[@xml.Element]
   /// Source XML element preserved for round-trip writers.
   element : @xml.Element

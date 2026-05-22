@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/wordprocessing_ml/edit"
+
+import {
+  "trkbt10/ooxml/ecma376/opc",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/context",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn accept_revisions(@context.Document) -> @context.Document raise @context.OpenError
+
+pub fn append_paragraph(@context.Document, String) -> @context.Document raise @context.OpenError
+
+pub fn append_table(@context.Document, Int, Int) -> @context.Document raise @context.OpenError
+
+pub fn edit_main(@context.Document, (@xml.Element) -> @xml.Element) -> @context.Document raise @context.OpenError
+
+pub fn edit_numbering(@context.Document, (@xml.Element) -> @xml.Element) -> @context.Document raise @context.OpenError
+
+pub fn edit_paragraph(@context.Document, Int, (@xml.Element) -> @xml.Element) -> @context.Document raise @context.OpenError
+
+pub fn edit_styles(@context.Document, (@xml.Element) -> @xml.Element) -> @context.Document raise @context.OpenError
+
+pub fn insert_hyperlink(@context.Document, Int, String, String) -> @context.Document raise @context.OpenError
+
+pub fn insert_paragraph_at(@context.Document, Int, String) -> @context.Document raise @context.OpenError
+
+pub fn insert_picture(@context.Document, Int, Bytes, String, Int, Int) -> @context.Document raise @context.OpenError
+
+pub fn package_name() -> String
+
+pub fn reject_revisions(@context.Document) -> @context.Document raise @context.OpenError
+
+pub fn remove_paragraph(@context.Document, Int) -> @context.Document raise @context.OpenError
+
+pub fn remove_table(@context.Document, Int) -> @context.Document raise @context.OpenError
+
+pub fn set_paragraph_alignment(@context.Document, Int, String) -> @context.Document raise @context.OpenError
+
+pub fn set_paragraph_style(@context.Document, Int, String) -> @context.Document raise @context.OpenError
+
+pub fn set_paragraph_text(@context.Document, Int, String) -> @context.Document raise @context.OpenError
+
+pub fn set_run_bold(@context.Document, Int, Int, Bool) -> @context.Document raise @context.OpenError
+
+pub fn set_run_color(@context.Document, Int, Int, String) -> @context.Document raise @context.OpenError
+
+pub fn set_run_font_size(@context.Document, Int, Int, Int) -> @context.Document raise @context.OpenError
+
+pub fn with_package(@context.Document, @opc.Package) -> @context.Document
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

@@ -417,6 +417,13 @@ fn worksheet_eval_key_for_store(address : @address.CellAddress) -> String {
 }
 
 ///|
+/// §18.18.62 — the column index of a well-formed CellAddress
+/// (the dispatch only fires from CellAddress::parse paths that
+/// reject negative columns) is always in 0..16383, so the
+/// `column_index_to_letter` raise path is unreachable in
+/// practice.  The defensive empty-string fallback is preserved
+/// only so a hand-built CellAddress with a negative column
+/// fails loudly downstream rather than crashing the eval loop.
 fn worksheet_eval_unqualified_key(address : @address.CellAddress) -> String {
   (@address.column_index_to_letter(address.col_zero_based) catch { _ => "" }) +
   (address.row_zero_based + 1).to_string()

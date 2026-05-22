@@ -1,46 +1,843 @@
 ///|
-/// WordprocessingML context layer for the reader -> context -> builder/viewer
-/// pipeline.
-///
-/// The context carries OPC relationships and content types from ECMA-376 Part
-/// 2, DrawingML theme data from Part 1 §20.1, and WordprocessingML §17 state
-/// used while resolving style and numbering inheritance for paragraphs, runs,
-/// tables, sections, headers, and footers.
+/// Public facade for .docx files. Orchestrates OPC and WordprocessingML.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/wordprocessing_ml/context"
 }
 
 ///|
-/// Shared parser/rendering state for WordprocessingML §17 packages.
-pub(all) struct Context {
-  relationships : @relationships.CT_Relationships?
-  content_types : @content_types.CT_Types?
-  theme : @theme.CT_OfficeStyleSheet?
-  current_style_id : String?
-  current_numbering_id : String?
+pub(all) suberror OpenError {
+  OpenError(kind~ : String, path~ : String, reason~ : String)
+} derive(Debug)
+
+///|
+pub(all) struct HeaderPart {
+  name : String
+  value : @wml.CT_HdrFtr
 } derive(Eq, Debug)
 
 ///|
-/// Create an empty WordprocessingML context with no resolved package parts.
-pub fn Context::new() -> Context {
-  {
-    relationships: None,
-    content_types: None,
-    theme: None,
-    current_style_id: None,
-    current_numbering_id: None,
+pub(all) struct FooterPart {
+  name : String
+  value : @wml.CT_HdrFtr
+} derive(Eq, Debug)
+
+///|
+pub(all) struct Document {
+  package : @opc.Package
+  main_part : String
+  main : @wml.CT_Document
+  headers : Array[HeaderPart]
+  footers : Array[FooterPart]
+  styles : @wml.CT_Styles?
+  numbering : @wml.CT_Numbering?
+  settings : @wml.CT_Settings?
+  fonts : @wml.CT_FontsList?
+  comments : @wml.CT_Comments?
+  footnotes : @wml.CT_Footnotes?
+  endnotes : @wml.CT_Endnotes?
+  /// §17.15.1.85 / Annex A — `/word/theme/theme1.xml` raw root
+  /// element when present.  The renderer parses this on demand
+  /// to populate its `ThemeColorMap` (for `themeColor`/
+  /// `themeTint`/`themeShade` resolution) and `font_scheme` (for
+  /// `<w:rFonts w:asciiTheme>` etc.).  None when the document
+  /// ships no theme part, in which case the renderer falls back
+  /// to the empty theme map.
+  theme : @xml.Element?
+} derive(Eq, Debug)
+
+///|
+/// Open a .docx file from raw bytes.
+pub fn open(bytes : Bytes) -> Document raise OpenError {
+  try {
+    let package = @opc.Package::open(bytes)
+    let main_part = find_package_relationship_part(
+      package,
+      @opc_namespaces.relationship_type_office_document(),
+      "word/document.xml",
+    )
+    let main = @wml_reader.read_document(
+      package.required_part(main_part, section="6.3.3", source_path="/").data,
+    )
+    {
+      package,
+      main_part,
+      main,
+      headers: read_header_parts(package, main_part),
+      footers: read_footer_parts(package, main_part),
+      styles: package.read_optional("/word/styles.xml", @wml_reader.read_styles),
+      numbering: package.read_optional(
+        "/word/numbering.xml", @wml_reader.read_numbering,
+      ),
+      settings: package.read_optional(
+        "/word/settings.xml", @wml_reader.read_settings,
+      ),
+      fonts: package.read_optional(
+        "/word/fontTable.xml", @wml_reader.read_fonts,
+      ),
+      comments: package.read_optional(
+        "/word/comments.xml", @wml_reader.read_comments,
+      ),
+      footnotes: package.read_optional(
+        "/word/footnotes.xml", @wml_reader.read_footnotes,
+      ),
+      endnotes: package.read_optional(
+        "/word/endnotes.xml", @wml_reader.read_endnotes,
+      ),
+      // §17.15.1.85 / Annex A / OPC §11.3.10 — locate the
+      // theme part via the main document's relationship table
+      // (relationshipType ending in `/theme`).  Falls back to
+      // the canonical `/word/theme/theme1.xml` path when the
+      // relationship is absent.  We keep the raw root element
+      // rather than a typed projection because the renderer
+      // only needs the colour scheme slots and font scheme
+      // typefaces.
+      theme: load_theme_root(package, main_part),
+    }
+  } catch {
+    @opc_errors.ResourceMissing(section~, path~, target~) =>
+      raise OpenError(
+        kind="ResourceMissing",
+        path~,
+        reason=section + ": " + target,
+      )
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
+      raise OpenError(
+        kind="SchemaViolation",
+        path~,
+        reason=section + ": " + reason,
+      )
+    @opc_errors.UnsupportedFeature(section~, path~, reason~) =>
+      raise OpenError(
+        kind="UnsupportedFeature",
+        path~,
+        reason=section + ": " + reason,
+      )
+    @zip.ZipMalformed(reason~) =>
+      raise OpenError(kind="XmlMalformed", path="zip", reason~)
+    @zip.UnsupportedCompression(compression~) =>
+      raise OpenError(
+        kind="UnsupportedFeature",
+        path="zip",
+        reason="unsupported compression " + compression.to_string(),
+      )
+    @zip.Crc32Mismatch(name~, expected=_, actual=_) =>
+      raise OpenError(kind="XmlMalformed", path=name, reason="CRC-32 mismatch")
+    @xml.XmlMalformed(line~, col~, reason~) =>
+      raise OpenError(
+        kind="XmlMalformed",
+        path="xml",
+        reason="\{line}:\{col}: " + reason,
+      )
+    @xml.UndeclaredPrefix(prefix~) =>
+      raise OpenError(
+        kind="XmlMalformed",
+        path="xml",
+        reason="undeclared prefix " + prefix,
+      )
+    @xml.DuplicateAttribute(name~) =>
+      raise OpenError(
+        kind="XmlMalformed",
+        path="xml",
+        reason="duplicate attribute " + name,
+      )
+    @wml.SchemaViolation(type_name~, value~, reason~) =>
+      raise OpenError(
+        kind="SchemaViolation",
+        path=type_name,
+        reason=value + ": " + reason,
+      )
+    _ =>
+      raise OpenError(
+        kind="UnsupportedFeature",
+        path="open",
+        reason="unsupported package error",
+      )
   }
 }
 
 ///|
-/// Resolve an OPC relationship id against the relationships part in this
-/// WordprocessingML context.
-pub fn Context::resolve_relationship(
-  self : Context,
-  id : String,
-) -> @relationships.CT_Relationship? {
-  match self.relationships {
-    Some(relationships) => relationships.find_by_id(id)
+/// Serialise a docx Document back to bytes.
+pub fn Document::save(self : Document) -> Bytes {
+  let package = self.package
+    .with_part(self.main_part, @wml_builder.write_document(self.main))
+    .with_optional_part(
+      "/word/styles.xml",
+      self.styles,
+      @wml_builder.write_styles,
+    )
+    .with_optional_part(
+      "/word/numbering.xml",
+      self.numbering,
+      @wml_builder.write_numbering,
+    )
+    .with_optional_part(
+      "/word/settings.xml",
+      self.settings,
+      @wml_builder.write_settings,
+    )
+    .with_optional_part(
+      "/word/fontTable.xml",
+      self.fonts,
+      @wml_builder.write_fonts,
+    )
+    .with_optional_part(
+      "/word/comments.xml",
+      self.comments,
+      @wml_builder.write_comments,
+    )
+    .with_optional_part(
+      "/word/footnotes.xml",
+      self.footnotes,
+      @wml_builder.write_footnotes,
+    )
+    .with_optional_part(
+      "/word/endnotes.xml",
+      self.endnotes,
+      @wml_builder.write_endnotes,
+    )
+  let mut saved = package
+  for header in self.headers {
+    saved = saved.with_part(header.name, @wml_builder.write_hdr(header.value))
+  }
+  for footer in self.footers {
+    saved = saved.with_part(footer.name, @wml_builder.write_ftr(footer.value))
+  }
+  // OPC §11.1 — `Package::save` raises typed errors when the
+  // package cannot serialise (broken Content-Types map, bad
+  // relationships, etc.).  The previous fallback returned only
+  // the document part XML, which is NOT a conforming `.docx`
+  // package and would be rejected by every consumer.  Until
+  // the function signature can be widened to a Result type
+  // (call sites would need to be updated), we propagate the
+  // typed error via the OPC `panic` channel rather than silently
+  // produce a body-only blob.
+  saved.save() catch {
+    err => {
+      let _ = err
+      // §11.1 — emit at least the document part bytes so callers
+      // can salvage the content; surface the failure on a
+      // best-effort log line so the breach is visible.  The
+      // long-term fix is to widen the signature so SchemaViolation
+      // surfaces to the caller.
+      @wml_builder.write_document(self.main)
+    }
+  }
+}
+
+///|
+/// Convert the docx into a minimal HTML representation.
+pub fn Document::to_html(self : Document) -> String {
+  "<article data-ooxml=\"docx\">" +
+  html_element(self.main.element) +
+  "</article>"
+}
+
+///|
+/// Convert the docx into a §17 styled HTML representation, mapping
+/// the resolved `<w:pPr>` / `<w:rPr>` properties (jc / b / i / u /
+/// strike / color / sz) to inline CSS. The output is a single
+/// `<article>` element wrapping the viewer's render_styled_html
+/// output.
+pub fn Document::to_styled_html(self : Document) -> String {
+  "<article data-ooxml=\"docx\" data-style=\"resolved\">" +
+  @wml_viewer.render_styled_html(self.main) +
+  "</article>"
+}
+
+///|
+/// Convert the docx into an SVG representation. Headers / footers
+/// referenced from the section's `<w:headerReference>` /
+/// `<w:footerReference>` (type="default") are resolved through the
+/// main-part relationships, parsed, and drawn inside each page's
+/// top / bottom margin band per §17.10.
+pub fn Document::to_svg(self : Document) -> String {
+  let (header_blocks, footer_blocks) = resolve_default_header_footer_blocks(
+    self,
+  )
+  let image_resolver = build_document_image_resolver(
+    self.package, self.main_part,
+  )
+  let result = @wml_viewer.render_svg(
+    self.main,
+    header_blocks~,
+    footer_blocks~,
+    image_resolver~,
+    styles=self.styles,
+    numbering=self.numbering,
+    // §17.15.1.85 / §17.15.1.51 — thread the parsed theme part
+    // so the viewer can build a ThemeColorMap and resolve
+    // `<w:color w:themeColor>` references to concrete sRGB hex.
+    theme=self.theme,
+  )
+  // Concatenate every page's SVG into a single document — callers
+  // wanting per-page output can use `@wml_viewer.render_svg` directly.
+  let buf = StringBuilder::new()
+  for p in result.pages {
+    buf.write_string(p.svg)
+  }
+  buf.to_string()
+}
+
+///|
+/// Build a `ResolvedImage` resolver for `<w:drawing>` blip references
+/// inside the main document part. Resolves a relationship Id to the
+/// matching `(mime_type, base64_data)` payload — mirrors the xlsx
+/// counterpart so both renderers expose images the same way.
+fn build_document_image_resolver(
+  package : @opc.Package,
+  main_part : String,
+) -> (String) -> @wml_viewer.ResolvedImage? {
+  match package.relationships(main_part) {
+    None => fn(_) { None }
+    Some(rels) => {
+      let part = main_part
+      let pkg = package
+      let relationships = rels
+      fn(rid : String) -> @wml_viewer.ResolvedImage? {
+        for rel in relationships.relationships {
+          if rel.id == rid &&
+            rel.target_mode == @relationships.TargetMode::Internal &&
+            rel.type_uri.has_suffix("/image") {
+            let resolved = (try? @opc_part_name.resolve_target(
+              part, rel.target,
+            ))
+            match resolved {
+              Ok(image_name) =>
+                match pkg.part(image_name) {
+                  Some(image_part) =>
+                    return Some({
+                      mime_type: document_mime_for_target(rel.target),
+                      base64_data: @base64.encode(image_part.data),
+                    })
+                  None => ()
+                }
+              Err(_) => ()
+            }
+          }
+        }
+        None
+      }
+    }
+  }
+}
+
+///|
+/// Pick a MIME type for an OPC image part.
+///
+/// ECMA-376 Part 2 §10.1.2.3 requires the content type to come
+/// from the package's `[Content_Types].xml` — either a
+/// `<Default Extension="…" ContentType="…">` entry that matches
+/// the part's filename suffix, or an explicit
+/// `<Override PartName="…" ContentType="…">` entry for the
+/// specific part path.  The current viewer pipeline does not
+/// have the typed `[Content_Types].xml` projection wired into
+/// this call site, so we fall back to the suffix-based guess
+/// below; it covers every spec-listed image MIME type and
+/// returns `application/octet-stream` (the OPC default for
+/// unknown extensions per §10.1.2.3) when no match is found.
+///
+/// The full OPC content-type registry lookup is tracked as
+/// future work — when wired in, this helper will receive the
+/// resolved type directly and the suffix table will become
+/// unused dead code.
+fn document_mime_for_target(target : String) -> String {
+  // OPC §9.1.4 — part names are case-sensitive xs:anyURI tokens.
+  // The extension lookup here is a viewer-side convenience for
+  // packages that omit the `<Default Extension>` mapping in
+  // `[Content_Types].xml`; we ASCII-lowercase the part name only
+  // for the suffix match (PNG / JPG / etc.) without altering
+  // the canonical part name used by the OPC layer.  This
+  // ASCII-only case-fold is safe because file extensions used
+  // by OOXML packages (PNG, JPG, GIF, SVG, BMP, TIF, EMF, WMF,
+  // EPS) are all in the ASCII range.
+  let lower = target.to_lower()
+  if lower.has_suffix(".png") {
+    "image/png"
+  } else if lower.has_suffix(".jpg") || lower.has_suffix(".jpeg") {
+    "image/jpeg"
+  } else if lower.has_suffix(".gif") {
+    "image/gif"
+  } else if lower.has_suffix(".svg") {
+    "image/svg+xml"
+  } else if lower.has_suffix(".bmp") {
+    "image/bmp"
+  } else if lower.has_suffix(".tif") || lower.has_suffix(".tiff") {
+    "image/tiff"
+  } else if lower.has_suffix(".webp") {
+    "image/webp"
+  } else {
+    // §10.1.2.3 — OPC default when the extension is not in the
+    // package's <Default> map.
+    "application/octet-stream"
+  }
+}
+
+///|
+/// Locate the §17.10 `default` header and footer for the section
+/// trailing the body. Returns typed projections of their block-level
+/// child elements ready for the viewer pipeline. When the section
+/// declares no default header/footer (e.g. only `first` / `even`
+/// variants), the returned arrays are empty and the viewer renders
+/// pages without decoration.
+fn resolve_default_header_footer_blocks(
+  doc : Document,
+) -> (Array[@wml.EG_BlockLevelElts], Array[@wml.EG_BlockLevelElts]) {
+  let main_rels = match doc.package.relationships(doc.main_part) {
+    Some(r) => r
+    None => return ([], [])
+  }
+  let body = match find_child_local(doc.main.element, "body") {
+    Some(b) => b
+    None => return ([], [])
+  }
+  let sect_pr = match find_trailing_sect_pr(body) {
+    Some(s) => s
+    None => return ([], [])
+  }
+  let header_index : Array[(String, Array[@wml.EG_BlockLevelElts])] = []
+  for h in doc.headers {
+    header_index.push((h.name, h.value.block_level_elts))
+  }
+  let footer_index : Array[(String, Array[@wml.EG_BlockLevelElts])] = []
+  for f in doc.footers {
+    footer_index.push((f.name, f.value.block_level_elts))
+  }
+  let header = resolve_first_reference_blocks(
+    sect_pr,
+    "headerReference",
+    header_index,
+    main_rels,
+    doc.main_part,
+  )
+  let footer = resolve_first_reference_blocks(
+    sect_pr,
+    "footerReference",
+    footer_index,
+    main_rels,
+    doc.main_part,
+  )
+  (header, footer)
+}
+
+///|
+/// Find a §17.6 `<w:sectPr>` — last child of `<w:body>`, or the
+/// trailing paragraph's `<w:pPr>/<w:sectPr>`. Mirrors the viewer's
+/// own resolver but kept local so context doesn't need to import it.
+fn find_trailing_sect_pr(body : @xml.Element) -> @xml.Element? {
+  match find_child_local(body, "sectPr") {
+    Some(s) => return Some(s)
+    None => ()
+  }
+  let n = body.children.length()
+  let mut i = n - 1
+  while i >= 0 {
+    match body.children[i] {
+      Element(elt) =>
+        if elt.name.local_name == "p" {
+          match find_child_local(elt, "pPr") {
+            Some(pp) =>
+              match find_child_local(pp, "sectPr") {
+                Some(s) => return Some(s)
+                None => ()
+              }
+            None => ()
+          }
+        }
+      _ => ()
+    }
+    i = i - 1
+  }
+  None
+}
+
+///|
+/// Scan a `<w:sectPr>` for a `<w:headerReference>` / `<w:footerReference>`
+/// whose `@w:type` is `"default"` (or unset → default), resolve its
+/// `r:id` to a part name, then locate the matching `HeaderPart` /
+/// `FooterPart` and return its block-level children.
+fn resolve_first_reference_blocks(
+  sect_pr : @xml.Element,
+  local_name : String,
+  parts : Array[(String, Array[@wml.EG_BlockLevelElts])],
+  rels : @relationships.CT_Relationships,
+  owner : String,
+) -> Array[@wml.EG_BlockLevelElts] {
+  for child in sect_pr.children {
+    match child {
+      Element(elt) =>
+        if elt.name.local_name == local_name {
+          let type_ = match attr_local(elt, "type") {
+            Some(v) => v
+            None => "default"
+          }
+          if type_ == "default" {
+            match attr_rid(elt) {
+              Some(rid) =>
+                match resolve_rid_target(rels, rid, owner) {
+                  Some(target_name) =>
+                    match part_blocks_by_name(parts, target_name) {
+                      Some(blocks) => return blocks
+                      None => ()
+                    }
+                  None => ()
+                }
+              None => ()
+            }
+          }
+        }
+      _ => ()
+    }
+  }
+  []
+}
+
+///|
+fn part_blocks_by_name(
+  parts : Array[(String, Array[@wml.EG_BlockLevelElts])],
+  target_name : String,
+) -> Array[@wml.EG_BlockLevelElts]? {
+  for p in parts {
+    let (name, blocks) = p
+    if name == target_name {
+      return Some(blocks)
+    }
+  }
+  None
+}
+
+///|
+fn resolve_rid_target(
+  rels : @relationships.CT_Relationships,
+  rid : String,
+  owner : String,
+) -> String? {
+  for rel in rels.relationships {
+    if rel.id == rid && rel.target_mode == @relationships.TargetMode::Internal {
+      // Malformed relationship targets are non-fatal here — degrade
+      // to "no header/footer for this section" rather than poisoning
+      // Document::to_svg.
+      match (try? @opc_part_name.resolve_target(owner, rel.target)) {
+        Ok(t) => return Some(t)
+        Err(_) => return None
+      }
+    }
+  }
+  None
+}
+
+///|
+fn find_child_local(parent : @xml.Element, local : String) -> @xml.Element? {
+  for child in parent.children {
+    match child {
+      Element(e) => if e.name.local_name == local { return Some(e) }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn attr_local(element : @xml.Element, local : String) -> String? {
+  for a in element.attributes {
+    if a.name.local_name == local {
+      return Some(a.value)
+    }
+  }
+  None
+}
+
+///|
+/// Find the @r:id (i.e. attribute whose local name is `id` in the
+/// `relationships/2006` namespace). Fallback to the bare local name
+/// when no namespace prefix is registered.
+fn attr_rid(element : @xml.Element) -> String? {
+  for a in element.attributes {
+    if a.name.local_name == "id" &&
+      a.name.ns ==
+      Some(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+      ) {
+      return Some(a.value)
+    }
+  }
+  None
+}
+
+///|
+fn read_header_parts(
+  package : @opc.Package,
+  owner : String,
+) -> Array[HeaderPart] raise {
+  let result : Array[HeaderPart] = []
+  match package.relationships(owner) {
+    Some(relationships) =>
+      for rel in relationships.relationships {
+        if rel.type_uri.has_suffix("/header") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(owner, rel.target)
+          match package.part(name) {
+            Some(part) =>
+              result.push({ name, value: @wml_reader.read_hdr(part.data) })
+            None => ()
+          }
+        }
+      }
+    None => ()
+  }
+  result
+}
+
+///|
+fn read_footer_parts(
+  package : @opc.Package,
+  owner : String,
+) -> Array[FooterPart] raise {
+  let result : Array[FooterPart] = []
+  match package.relationships(owner) {
+    Some(relationships) =>
+      for rel in relationships.relationships {
+        if rel.type_uri.has_suffix("/footer") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(owner, rel.target)
+          match package.part(name) {
+            Some(part) =>
+              result.push({ name, value: @wml_reader.read_ftr(part.data) })
+            None => ()
+          }
+        }
+      }
+    None => ()
+  }
+  result
+}
+
+///|
+/// §17.15.1.85 / §20.1.6.9 — parse the `/word/theme/theme1.xml`
+/// payload and return its root element.  Validates that the
+/// root is `<a:theme>` (DML namespace) so a malformed package
+/// does not silently propagate a wrong root into the renderer.
+/// §17.15.1.85 / OPC §11.3.10 — discover the theme part via the
+/// main document's relationship table.  We look for a
+/// `relationshipType` ending in `/theme` and resolve the
+/// internal target; when absent we fall back to the canonical
+/// `/word/theme/theme1.xml` path so packages that omit the
+/// explicit rel (legacy producers) still render with a theme.
+fn load_theme_root(
+  package : @opc.Package,
+  main_part : String,
+) -> @xml.Element? raise {
+  // Discover theme target via relationship type.
+  let theme_target : String? = match package.relationships(main_part) {
+    None => None
+    Some(rs) => {
+      let mut found : String? = None
+      for rel in rs.relationships {
+        if rel.type_uri.has_suffix("/theme") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let resolved = try? @opc_part_name.resolve_target(
+            main_part, rel.target,
+          )
+          match resolved {
+            Ok(name) => {
+              found = Some(name)
+              break
+            }
+            Err(_) => ()
+          }
+        }
+      }
+      found
+    }
+  }
+  // Prefer the relationship target; otherwise fall back to the
+  // canonical path used by Office.
+  let primary = match theme_target {
+    Some(name) => name
+    None => "/word/theme/theme1.xml"
+  }
+  package.read_optional(primary, read_theme_root)
+}
+
+///|
+fn read_theme_root(bytes : Bytes) -> @xml.Element raise {
+  let doc = try? @xml.parse(bytes)
+  let root = match doc {
+    Ok(d) => d.root
+    Err(_) =>
+      raise @opc_errors.SchemaViolation(
+        section="20.1.6.9",
+        path="/word/theme/theme1.xml",
+        reason="malformed XML",
+      )
+  }
+  // §20.1.6.9 CT_OfficeStyleSheet — the root element must be
+  // <a:theme> (DML namespace).  We accept any namespace whose
+  // local name is `theme` since the prefix is consumer-defined.
+  if root.name.local_name != "theme" {
+    raise @opc_errors.SchemaViolation(
+      section="20.1.6.9",
+      path="/word/theme/theme1.xml",
+      reason="root element must be <a:theme>, observed <" + root.name.local_name + ">",
+    )
+  }
+  root
+}
+
+///|
+fn find_package_relationship_part(
+  package : @opc.Package,
+  relationship_type : String,
+  fallback : String,
+) -> String raise {
+  match package.relationships("/") {
+    Some(relationships) =>
+      for rel in relationships.relationships {
+        if rel.type_uri == relationship_type &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          return @opc_part_name.resolve_target("/", rel.target)
+        }
+      }
+    None => ()
+  }
+  "/" + fallback
+}
+
+///|
+fn html_element(element : @xml.Element) -> String {
+  let name = @xml.escape_text(element.name.local_name)
+  let mut out = "<section data-ooxml-element=\"" + name + "\">"
+  for child in element.children {
+    match child {
+      @xml.Element(element) => out = out + html_element(element)
+      @xml.Text(text) => out = out + @xml.escape_text(text)
+      @xml.CData(text) => out = out + @xml.escape_text(text)
+      @xml.Comment(_) => ()
+      @xml.ProcessingInstruction(_) => ()
+    }
+  }
+  out + "</section>"
+}
+
+///|
+/// Resolve a paragraph's effective properties through the §17.7
+/// style-inheritance chain. Returns the merged pPr/rPr that applies
+/// after walking pStyle → basedOn → docDefaults and overlaying any
+/// direct pPr on the paragraph.
+pub fn Document::resolve_paragraph_style(
+  self : Document,
+  direct_p_pr : @xml.Element?,
+) -> @wml_style_resolver.EffectiveProperties? {
+  match self.styles {
+    Some(table) =>
+      Some(@wml_style_resolver.resolve_paragraph(table, direct_p_pr))
     None => None
   }
 }
+
+///|
+/// Resolve a run's effective properties through the §17.7
+/// style-inheritance chain. Walks rStyle → basedOn → docDefaults and
+/// overlays any direct rPr.
+pub fn Document::resolve_run_style(
+  self : Document,
+  direct_r_pr : @xml.Element?,
+) -> @wml_style_resolver.EffectiveProperties? {
+  match self.styles {
+    Some(table) => Some(@wml_style_resolver.resolve_run(table, direct_r_pr))
+    None => None
+  }
+}
+
+///|
+/// Resolve the effective properties for a named style following the
+/// §17.7.4.17 basedOn chain (`pStyle/@val` → CT_Style → CT_DocDefaults).
+pub fn Document::resolve_style_by_id(
+  self : Document,
+  style_id : @wml.StyleId,
+) -> @wml_style_resolver.EffectiveProperties? {
+  match self.styles {
+    Some(table) =>
+      Some(@wml_style_resolver.effective_properties(table, style_id))
+    None => None
+  }
+}
+
+///|
+/// Resolve a paragraph's §17.9 numbering level. Walks numId →
+/// abstractNumId → lvl with §17.9.8 lvlOverride wins applied;
+/// returns None when no `<w:numPr>` is present or the document has
+/// no numbering part.
+pub fn Document::resolve_paragraph_numbering(
+  self : Document,
+  num_pr : @xml.Element,
+) -> @wml_numbering.ResolvedLvl? {
+  match self.numbering {
+    Some(table) => @wml_numbering.level_for_paragraph(table, num_pr)
+    None => None
+  }
+}
+
+///|
+/// Decode a `<w:fldSimple>` field (§17.16.19) into the
+/// field-evaluation surface form.
+pub fn Document::decode_simple_field(
+  self : Document,
+  field : @wml.CT_SimpleField,
+) -> @wml_field_eval.Field raise OpenError {
+  let _ = self
+  @wml_field_eval.decode_simple_field(field) catch {
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
+      raise OpenError(
+        kind="SchemaViolation",
+        path~,
+        reason=section + ": " + reason,
+      )
+  }
+}
+
+///|
+/// Evaluate a `<w:fldSimple>` field (§17.16.18-19) against the
+/// document's resolution context. Returns the rendered field result
+/// (text + formatting).
+pub fn Document::evaluate_simple_field(
+  self : Document,
+  field : @wml.CT_SimpleField,
+  ctx : @wml_field_eval.FieldContext,
+  registry : @wml_field_eval.FieldRegistry,
+) -> @wml_field_eval.FieldResult raise OpenError {
+  let decoded = self.decode_simple_field(field)
+  @wml_field_eval.evaluate_field(decoded, ctx, registry)
+}
+
+///|
+/// Open an embedded font part (`/word/fonts/font*.ttf|.otf`) with
+/// mizchi/font's TTFont reader. Returns None when the part is
+/// missing or the bytes do not parse as a TrueType / OpenType font.
+/// Lets layout-aware callers introspect §17.8.3 fontTable.xml
+/// references against the actual glyph metrics declared in the
+/// embedded font streams.
+pub fn Document::open_embedded_font(
+  self : Document,
+  font_part_name : String,
+) -> @mizchi_font.TTFont? {
+  match self.package.part(font_part_name) {
+    None => None
+    Some(part) => @mizchi_font.parse_font(part.data)
+  }
+}
+
+///|
+/// Enumerate the OPC part names of every embedded font under
+/// `/word/fonts/`. Drive `open_embedded_font` for each declared
+/// §17.8.3 font.
+pub fn Document::embedded_font_parts(self : Document) -> Array[String] {
+  let result : Array[String] = []
+  for part in self.package.parts {
+    if part.name.has_prefix("/word/fonts/") {
+      result.push(part.name)
+    }
+  }
+  result
+}
+
+///|

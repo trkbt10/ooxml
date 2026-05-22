@@ -55,12 +55,20 @@ test "collect VML model group child names" {
       "<v:shape xmlns:v=\"urn:schemas-microsoft-com:vml\"><v:path/><v:fill/><v:stroke/></v:shape>",
     ),
   )
-  let names = EG_ShapeElements::new(value.raw_element).child_names()
-  assert_eq(names.length(), 3)
-  assert_eq(names[0], "path")
-  // Also assert typed children are preserved on CT_Shape directly.
+  // Typed projection: VmlShapeChild::Path / Fill / Stroke in order.
   assert_eq(value.shape_children.length(), 3)
-  assert_eq(value.shape_children[0].name.local_name, "path")
+  match value.shape_children[0] {
+    Path(_) => assert_true(true)
+    _ => fail("expected Path(_) at index 0")
+  }
+  match value.shape_children[1] {
+    Fill(_) => assert_true(true)
+    _ => fail("expected Fill(_) at index 1")
+  }
+  match value.shape_children[2] {
+    Stroke(_) => assert_true(true)
+    _ => fail("expected Stroke(_) at index 2")
+  }
 }
 
 ///|

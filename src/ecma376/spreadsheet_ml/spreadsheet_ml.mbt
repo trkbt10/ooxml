@@ -404,6 +404,94 @@ pub fn sml_xsd_eg_extensionlist_schema_name() -> String {
 }
 
 ///|
+/// XSD complex type CT_Color.  Schema row for the §18.3.1.15 raw
+/// schema type backing `<color>` color descriptors throughout
+/// SpreadsheetML.  Distinct from `@domain.CT_Color` which is the
+/// conditional-formatting resolved-ARGB carrier (§18.8.43); this
+/// accessor exposes the raw attribute surface for SDD vocabulary
+/// alignment.
+pub fn sml_xsd_ct_color_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_Color`. Attributes: `auto`, `indexed`, `rgb`, `theme`, `tint`."
+}
+
+///|
+/// XSD complex type CT_Fills.  Schema row for the §18.8.21 fills
+/// container.
+pub fn sml_xsd_ct_fills_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_Fills`. Attributes: `count`. Child elements: `fill`. Child types: `CT_Fill`."
+}
+
+///|
+/// XSD complex type CT_Filter.  Schema row for the §18.3.2.6 filter
+/// literal value.
+pub fn sml_xsd_ct_filter_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_Filter`. Attributes: `val`."
+}
+
+///|
+/// XSD complex type CT_Fonts.  Schema row for the §18.8.23 fonts
+/// container.
+pub fn sml_xsd_ct_fonts_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_Fonts`. Attributes: `count`. Child elements: `font`. Child types: `CT_Font`."
+}
+
+///|
+/// XSD complex type CT_I.  Schema row for the §18.10.1.37 `<i>` row
+/// item.
+pub fn sml_xsd_ct_i_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_I`. Attributes: `t`, `r`, `i`. Child elements: `x`. Child types: `CT_X`."
+}
+
+///|
+/// XSD complex type CT_MdxSet.  Schema row for the §18.9.8 MDX set
+/// metadata.
+pub fn sml_xsd_ct_mdxset_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_MdxSet`. Attributes: `ns`, `c`, `o`. Child elements: `n`. Child types: `CT_MetadataStringIndex`."
+}
+
+///|
+/// XSD complex type CT_NumFmts.  Schema row for the §18.8.31 numFmts
+/// container.
+pub fn sml_xsd_ct_numfmts_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_NumFmts`. Attributes: `count`. Child elements: `numFmt`. Child types: `CT_NumFmt`."
+}
+
+///|
+/// XSD complex type CT_OlapPr.  Schema row for the §18.13.6 OLAP
+/// properties.
+pub fn sml_xsd_ct_olappr_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_OlapPr`. Attributes: `local`, `localConnection`, `localRefresh`, `sendLocale`, `rowDrillCount`, `serverFill`, `serverNumberFormat`, `serverFont`, `serverFontColor`."
+}
+
+///|
+/// XSD complex type CT_Sets.  Schema row for the §18.10.1.88 OLAP
+/// sets list.
+pub fn sml_xsd_ct_sets_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_Sets`. Attributes: `count`. Child elements: `set`. Child types: `CT_Set`."
+}
+
+///|
+/// XSD complex type CT_Top10.  Schema row for the §18.3.2.10 top10
+/// filter.
+pub fn sml_xsd_ct_top10_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_Top10`. Attributes: `top`, `percent`, `val`, `filterVal`."
+}
+
+///|
+/// XSD complex type CT_WebPr.  Schema row for the §18.13.16 web query
+/// properties.
+pub fn sml_xsd_ct_webpr_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_WebPr`. Attributes: `xml`, `sourceData`, `parsePre`, `consecutive`, `firstRow`, `xl97`, `textDates`, `xl2000`, `url`, `post`, `htmlTables`, `htmlFormat`, `editPage`. Child elements: `tables`. Child types: `CT_Tables`."
+}
+
+///|
+/// XSD complex type CT_Schema.  Schema row for the §18.16.4 custom
+/// XML schema descriptor used by CT_MapInfo.
+pub fn sml_xsd_ct_schema_schema_name() -> String {
+  "Schema sml.xsd complex type `CT_Schema`. Attributes: `ID`, `SchemaRef`, `Namespace`, `SchemaLanguage`."
+}
+
+///|
 /// §11 Errors: this package raises SchemaViolation for §4 XSD violations;
 /// ResourceMissing is propagated from the OPC layer (`src/ecma376/opc`)
 /// when a relationship target referenced by a workbook part cannot be

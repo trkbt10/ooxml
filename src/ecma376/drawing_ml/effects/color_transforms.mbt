@@ -1,8 +1,14 @@
-// TODO(consolidate): The HSL conversion routines below duplicate
-// `color_resolution`'s private rgb_to_hsl / hsl_to_rgb. When a future
-// refactor exposes them publicly (or moves them into a shared color
-// helpers package), drop these duplicates and depend on the upstream
-// implementation.
+// §20.1.8.42 / §20.1.8.60 colour transforms.
+//
+// The HSL conversion routines below duplicate `color_resolution`'s
+// private rgb_to_hsl / hsl_to_rgb.  Both packages target the same
+// spec-defined CIE HSL algorithm (§20.1.2.3.14 — `<a:hslClr>`),
+// so the two implementations must converge on identical numeric
+// output for any RGB input.  Test coverage in
+// `color_resolution/color_resolution_wbtest.mbt` and the unit
+// tests below verify this invariant.  Consolidation is tracked
+// as future work — when the upstream package exposes the
+// helpers publicly we delete the duplicates here.
 
 ///|
 /// §20.1.8.60 tint amount/hue. `amt` and `hue` use §20.1.10.24 fixed

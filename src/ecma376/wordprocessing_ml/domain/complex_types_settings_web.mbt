@@ -1236,8 +1236,8 @@ pub(all) struct CT_Settings {
   doc_vars : CT_DocVars?
   /// §17.15.1.72 `<w:rsids>` (CT_DocRsids).
   rsids : CT_DocRsids?
-  /// `<m:mathPr>` lives in the math namespace; preserved as raw element(s).
-  math_pr : Array[@xml.Element]
+  /// `<m:mathPr>` — Office Math defaults (Part 1 §22.1 CT_MathPr).
+  math_pr : Array[@m.CT_MathPr]
   /// §17.15.1.0 `<w:attachedSchema>` (CT_String)*.
   attached_schema : Array[CT_String]
   /// §17.15.1.88 `<w:themeFontLang>` (CT_Language).
@@ -1256,8 +1256,9 @@ pub(all) struct CT_Settings {
   read_mode_ink_lock_down : CT_ReadingModeInkLockDown?
   /// `<w:smartTagType>` (CT_SmartTagType)*.
   smart_tag_type : Array[CT_SmartTagType]
-  /// `<sl:schemaLibrary>` lives in the schemaLibrary namespace; preserved raw.
-  schema_library : Array[@xml.Element]
+  /// `<sl:schemaLibrary>` — Part 1 §23.2.2 CT_SchemaLibrary
+  /// (custom XML schema library binding).
+  schema_library : Array[@custom_xml.CT_SchemaLibrary]
   /// `<w:doNotEmbedSmartTags>` (CT_OnOff).
   do_not_embed_smart_tags : CT_OnOff?
   /// `<w:decimalSymbol>` (CT_String).
@@ -1665,9 +1666,9 @@ pub fn CT_Settings::new(
     Some(c) => Some(CT_DocRsids::new(c))
     None => None
   }
-  let math_pr : Array[@xml.Element] = []
+  let math_pr : Array[@m.CT_MathPr] = []
   for child in wml_ct_chunk6_children(element, "mathPr") {
-    math_pr.push(child)
+    math_pr.push(wrap_m_violation(fn() { @m.CT_MathPr::new(child) }))
   }
   let attached_schema : Array[CT_String] = []
   for child in wml_ct_chunk6_children(element, "attachedSchema") {
@@ -1710,9 +1711,9 @@ pub fn CT_Settings::new(
   for child in wml_ct_chunk6_children(element, "smartTagType") {
     smart_tag_type.push(CT_SmartTagType::new(child))
   }
-  let schema_library : Array[@xml.Element] = []
+  let schema_library : Array[@custom_xml.CT_SchemaLibrary] = []
   for child in wml_ct_chunk6_children(element, "schemaLibrary") {
-    schema_library.push(child)
+    schema_library.push(@custom_xml.CT_SchemaLibrary::new(child))
   }
   let do_not_embed_smart_tags = match
     wml_ct_chunk6_first_child(element, "doNotEmbedSmartTags") {

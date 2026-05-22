@@ -27,3 +27,10 @@ pub fn diagram_part1_21_4_drawingml_diagrams_section_name() -> String {
 pub fn diagram_part4_12_2_3_diagram_colors_part_part_1_14_2_3_section_name() -> String {
   "ECMA-376 Part 4 §12.2.3 Diagram Colors Part Part 1 14 2 3"
 }
+
+///|
+/// Return the XSD simple type ST_Ints schema row owned by this package.
+/// Schema dml-diagram.xsd simple type `ST_Ints`.
+pub fn diagram_xsd_st_ints_schema_name() -> String {
+  "Schema dml-diagram.xsd simple type `ST_Ints`."
+}

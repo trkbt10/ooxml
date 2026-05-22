@@ -1,0 +1,26 @@
+// trkbt10/ooxml/util/glyph
+//
+// Font metrics for text width estimation, kerning, CJK detection, and
+// ascender ratios.
+//
+// Two measurement modes:
+//   1. Real TTF measurement via mizchi/font (preferred — call
+//      `make_font_measurer(bytes)` then `font_measurer.measure_text(...)`).
+//   2. Statistical fallback (used when no font file is provided)
+//      — `measure_text_width(...)` uses pre-computed per-glyph em-ratio
+//      tables matching web-pptx's `@aurochs/glyph` metrics submodule.
+//
+// Reference (statistical tables):
+//   /Users/terukichi/Workspaces/trkbt10/web-pptx/packages/
+//     @aurochs/glyph/src/metrics/*
+//
+// Reference (TTF parser):
+//   mizchi/font::TTFont (parse_font, glyph_index, glyph_metrics)
+
+import {
+  "mizchi/font" @font,
+}
+
+import {
+  "moonbitlang/x/fs" @fs,
+} for "wbtest"

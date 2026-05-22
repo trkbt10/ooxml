@@ -7,7 +7,7 @@
 // flat (no namespace prefix) so that the JS wrapper can re-namespace them.
 
 import {
-  "trkbt10/ooxml/docx" @docx,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/context" @wml_context,
 }
 
 options(

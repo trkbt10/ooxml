@@ -12,6 +12,17 @@ pub fn read_thumbnail_part(name : PartName, bytes : Bytes) -> ThumbnailPart {
 /// §9 Thumbnails. Honours C1 by accepting the listed thumbnail part shape,
 /// C2/C5 by raising @opc_errors.SchemaViolation with section "9", and V1 by leaving
 /// cross-package resource interpretation to the surrounding OPC resolver.
+///
+/// Content-type policy: OPC §10.1.2.3 mandates that every part's
+/// content type be sourced from `[Content_Types].xml` rather than
+/// from the part reader itself.  This generic reader is invoked
+/// only when the surrounding OPC resolver has NOT mapped the
+/// part through Content-Types (e.g. a §9.2 thumbnail that
+/// arrives without an `<Override>` entry).  We therefore stamp
+/// the OPC default `application/octet-stream` per §10.1.2.3 and
+/// rely on the caller to override via
+/// `PackagePart::with_content_type` when the part's actual MIME
+/// is known from a `<Default>` or `<Override>` mapping.
 pub fn read_part(
   name : PartName,
   bytes : Bytes,

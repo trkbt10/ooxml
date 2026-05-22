@@ -1,0 +1,22 @@
+// trkbt10/ooxml/util/markup
+//
+// Structured markup construction for the viewer renderers.
+//
+// Every viewer (WordprocessingML / SpreadsheetML / PresentationML
+// / OfficeMath) emits an XML-family output: SVG, HTML-embedded
+// MathML, or HTML.  Rather than concatenating tag strings — which
+// is both error-prone and an injection hazard whenever an OOXML
+// payload (`<w:t>` text, a colour string, a hyperlink target …)
+// reaches the output — the renderers build a structured
+// `@xml.Element` tree and serialise it exactly once through this
+// package.
+//
+// Serialisation delegates to `@xml.write`, the audited writer in
+// the `xml` package: it escapes every attribute value (all five
+// XML predefined entities) and every text node.  The output is
+// therefore injection-safe by construction.
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+  "trkbt10/ooxml/xml" @xml,
+}

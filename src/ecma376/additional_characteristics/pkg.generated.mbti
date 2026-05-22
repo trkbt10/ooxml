@@ -8,6 +8,10 @@ import {
 // Values
 pub fn package_name() -> String
 
+pub fn read_additional_characteristics(Bytes) -> CT_AdditionalCharacteristics raise
+
+pub fn write_additional_characteristics(CT_AdditionalCharacteristics) -> Bytes
+
 // Errors
 pub suberror SchemaViolation {
   SchemaViolation(type_name~ : String, value~ : String)

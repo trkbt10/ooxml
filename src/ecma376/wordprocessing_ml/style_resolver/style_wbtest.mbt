@@ -285,3 +285,106 @@ test "domain CT_Styles round-trips through the resolver" {
   )
   assert_eq(wrapper.resolve_chain({ value: "Wrapped" }).length(), 1)
 }
+
+///|
+/// §17.7.6 — a table-style with a `<w:tblStylePr w:type="firstRow">`
+/// must contribute its `<w:tcPr>` overrides to the first-row cell
+/// when `tbl_look.first_row` is true, and must NOT contribute it to
+/// the second-row cell.
+test "table_style resolves §17.7.6 firstRow override gated by tblLook" {
+  // <w:style w:styleId="TblA" w:type="table">
+  //   <w:tcPr><w:shd w:val="clear" w:fill="EEEEEE"/></w:tcPr>
+  //   <w:tblStylePr w:type="firstRow">
+  //     <w:tcPr><w:shd w:val="clear" w:fill="FF0000"/></w:tcPr>
+  //   </w:tblStylePr>
+  // </w:style>
+  let tc_pr_base = child("tcPr", children=[
+    child("shd", attributes=[attr("val", "clear"), attr("fill", "EEEEEE")]),
+  ])
+  let tc_pr_first_row = child("tcPr", children=[
+    child("shd", attributes=[attr("val", "clear"), attr("fill", "FF0000")]),
+  ])
+  let style_a = style("TblA", "table", children=[
+    tc_pr_base,
+    child("tblStylePr", attributes=[attr("type", "firstRow")], children=[
+      tc_pr_first_row,
+    ]),
+  ])
+  let table = styles([style_a])
+  let resolved = resolve_table_style(table, { value: "TblA" })
+  let tbl_look = TblLook::default_()
+  // Row 0, col 0 in a 2x2 table — firstRow + firstColumn buckets
+  // both qualify, plus the wholeTable + base; first_row override
+  // should layer onto base tcPr so the fill becomes FF0000.
+  let row0 = resolve_cell(
+    resolved, tbl_look, 0, 0, 2, 2, None, None, None, None,
+  )
+  assert_true(prop_value(row0.tc_pr, "shd") == Some("clear"))
+  let shd0 = first_child_named(row0.tc_pr, "shd")
+  assert_true(
+    shd0.bind(fn(e) { attr_value_local(e, "fill") }) == Some("FF0000"),
+  )
+  // Row 1, col 0 — not firstRow, so the override must NOT apply;
+  // the base tcPr.shd survives with fill=EEEEEE.
+  let row1 = resolve_cell(
+    resolved, tbl_look, 1, 0, 2, 2, None, None, None, None,
+  )
+  let shd1 = first_child_named(row1.tc_pr, "shd")
+  assert_true(
+    shd1.bind(fn(e) { attr_value_local(e, "fill") }) == Some("EEEEEE"),
+  )
+}
+
+///|
+/// §17.4.6 — `<w:tblLook>` legacy hex mask "04A0" must set
+/// firstRow + firstColumn + no_h_band + no_v_band per the spec
+/// bit layout.
+test "tblLook decodes the legacy 0x04A0 hex mask" {
+  let tbl_look_el : @xml.Element = elem(
+    "tblLook",
+    attributes=[attr("val", "04A0")],
+  )
+  let tl = TblLook::from_element(tbl_look_el)
+  // 0x04A0 = 0x0400 (noVBand) | 0x0080 (firstColumn) | 0x0020 (firstRow)
+  inspect(tl.first_row, content="true")
+  inspect(tl.last_row, content="false")
+  inspect(tl.first_column, content="true")
+  inspect(tl.last_column, content="false")
+  inspect(tl.no_h_band, content="false")
+  inspect(tl.no_v_band, content="true")
+}
+
+///|
+/// Helper — return the first child element of `parent` with the
+/// given local name.
+fn first_child_named(
+  parent : @xml.Element?,
+  local_name : String,
+) -> @xml.Element? {
+  match parent {
+    None => None
+    Some(p) => {
+      for node in p.children {
+        match node {
+          @xml.Element(child) =>
+            if child.name.local_name == local_name {
+              return Some(child)
+            }
+          _ => ()
+        }
+      }
+      None
+    }
+  }
+}
+
+///|
+/// Helper — first attribute value by local name.
+fn attr_value_local(element : @xml.Element, local_name : String) -> String? {
+  for a in element.attributes {
+    if a.name.local_name == local_name {
+      return Some(a.value)
+    }
+  }
+  None
+}

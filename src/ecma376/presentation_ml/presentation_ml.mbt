@@ -305,10 +305,34 @@ pub fn vml_presentation_drawing_ct_rel_schema_name() -> String {
 }
 
 ///|
+/// Return the vml-presentationDrawing.xsd CT_Empty schema row owned by
+/// this package.  Schema vml-presentationDrawing.xsd complex type
+/// `CT_Empty` is the legacy VML marker type — `<xsd:complexType
+/// name="CT_Empty"/>` with zero attributes and zero children.  Used by
+/// VML-era presentation drawings as a placeholder for empty marker
+/// elements.  This package preserves the QName for round-trip output;
+/// see also pml.xsd's CT_Empty (§A.3) which is the canonical complex
+/// type CT_Empty for §19 PresentationML.
+pub fn vml_presentation_drawing_ct_empty_schema_name() -> String {
+  "Schema vml-presentationDrawing.xsd complex type `CT_Empty`."
+}
+
+///|
 /// XSD complex type CT_Rel
 /// Schema pml.xsd complex type `CT_Rel`. Attribute groups referenced: `r:id`.
 pub fn pml_xsd_ct_rel_schema_name() -> String {
   "Schema pml.xsd complex type `CT_Rel`. Attribute groups referenced: `r:id`."
+}
+
+///|
+/// XSD complex type CT_Empty
+/// Schema pml.xsd complex type `CT_Empty`.  Zero attributes, zero
+/// children — backs PresentationML marker elements such as
+/// `<p:sldAll>`, `<p:present>`, `<p:bg>`, `<p:bldAsOne>`, the §19.5.50
+/// preset transitions, and the §19.5.69 `<p:sldTgt>` placeholder.  The
+/// typed mirror lives in `@domain.CT_Empty` (Part 1 §A.3 pml.xsd annex).
+pub fn pml_xsd_ct_empty_schema_name() -> String {
+  "Schema pml.xsd complex type `CT_Empty`."
 }
 
 ///|

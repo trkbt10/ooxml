@@ -14,11 +14,11 @@
 /// `link.wasm-gc.exports` list. npm consumers call these exports through the
 /// JavaScript core wrapper rather than importing the MoonBit facade directly.
 pub fn package_name() -> String {
-  @xlsx.package_name()
+  @sml_context.package_name()
 }
 
 ///|
-let xlsx_workbooks : Ref[Array[@xlsx.Workbook]] = { val: [] }
+let xlsx_workbooks : Ref[Array[@sml_context.Workbook]] = { val: [] }
 
 ///|
 /// Parse `.xlsx` OOXML bytes and store the resulting workbook in the wasm
@@ -26,7 +26,7 @@ let xlsx_workbooks : Ref[Array[@xlsx.Workbook]] = { val: [] }
 /// failure.
 pub fn xlsx_open(bytes : Bytes) -> Int {
   try {
-    let workbook = @xlsx.open(bytes)
+    let workbook = @sml_context.open(bytes)
     xlsx_workbooks.val.push(workbook)
     xlsx_workbooks.val.length()
   } catch {
@@ -65,7 +65,7 @@ pub fn xlsx_to_svg(handle : Int) -> String {
 }
 
 ///|
-fn xlsx_workbook(handle : Int) -> @xlsx.Workbook? {
+fn xlsx_workbook(handle : Int) -> @sml_context.Workbook? {
   if handle <= 0 {
     None
   } else {

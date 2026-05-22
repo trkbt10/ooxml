@@ -16,11 +16,33 @@ test "read and write DML marker from element" {
 
 ///|
 test "read and write DML worksheet drawing with anchors" {
+  // §20.5.2.23 CT_OneCellAnchor requires an EG_ObjectChoices child
+  // (sp / grpSp / graphicFrame / cxnSp / pic / contentPart). We use a
+  // minimal <xdr:sp> with the required @id / @name on cNvPr and an
+  // empty spPr / nvSpPr to satisfy the schema.
   let xml = bytes(
-    "<xdr:wsDr xmlns:xdr=\"http://purl.oclc.org/ooxml/drawingml/spreadsheetDrawing\"><xdr:oneCellAnchor><xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:ext cx=\"1\" cy=\"1\"/><xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>",
+    "<xdr:wsDr xmlns:xdr=\"http://purl.oclc.org/ooxml/drawingml/spreadsheetDrawing\" xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\">" +
+    "<xdr:oneCellAnchor>" +
+    "<xdr:from><xdr:col>0</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>" +
+    "<xdr:ext cx=\"1\" cy=\"1\"/>" +
+    "<xdr:sp><xdr:nvSpPr><xdr:cNvPr id=\"1\" name=\"s\"/><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr/></xdr:sp>" +
+    "<xdr:clientData/>" +
+    "</xdr:oneCellAnchor>" +
+    "</xdr:wsDr>",
   )
   let drawing = read_ws_dr(xml)
   assert_eq(drawing.element.name.local_name, "wsDr")
+  assert_eq(drawing.anchors.length(), 1)
+  // Verify the typed projection — we expect a OneCellAnchor with an
+  // Sp choice (not just "we remembered the local name").
+  match drawing.anchors[0] {
+    OneCellAnchor(a) =>
+      match a.object_choice {
+        Sp(_) => assert_true(true)
+        _ => fail("expected Sp(...) inside OneCellAnchor")
+      }
+    _ => fail("expected OneCellAnchor")
+  }
   let reparsed = read_ws_dr(write_ws_dr(drawing))
   assert_eq(reparsed.element.children.length(), 1)
 }

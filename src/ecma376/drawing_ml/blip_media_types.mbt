@@ -197,14 +197,30 @@ pub fn CT_EmbeddedWAVAudioFile::to_element(
 
 ///|
 /// XSD complex type CT_Blip — Part 1 §20.1.8.13 blip. Annex A.4.1
-/// lines 1475..1501. Carries AG_Blob attributes (`r:embed` and
-/// `r:link`, both optional and defaulting to empty string), the
-/// optional `cstate` (ST_BlipCompression, default `none`), an
-/// unbounded choice of in-place pixel effects (`alphaBiLevel`,
-/// `alphaCeiling`, `alphaFloor`, `alphaInv`, `alphaMod`,
-/// `alphaModFix`, `alphaRepl`, `biLevel`, `blur`, `clrChange`,
-/// `clrRepl`, `duotone`, `fillOverlay`, `grayscl`, `hsl`, `lum`,
-/// `tint`) and the optional `extLst`.
+/// lines 1475..1501. The blip's choice is a 17-arm subset of the
+/// effect-element family; we capture it via the typed `BlipEffect`
+/// sum so callers branch on the exact effect arm.
+pub(all) enum BlipEffect {
+  AlphaBiLevel(CT_AlphaBiLevelEffect)
+  AlphaCeiling(CT_AlphaCeilingEffect)
+  AlphaFloor(CT_AlphaFloorEffect)
+  AlphaInv(CT_AlphaInverseEffect)
+  AlphaMod(CT_AlphaModulateEffect)
+  AlphaModFix(CT_AlphaModulateFixedEffect)
+  AlphaRepl(CT_AlphaReplaceEffect)
+  BiLevel(CT_BiLevelEffect)
+  Blur(CT_BlurEffect)
+  ClrChange(CT_ColorChangeEffect)
+  ClrRepl(CT_ColorReplaceEffect)
+  Duotone(CT_DuotoneEffect)
+  FillOverlay(CT_FillOverlayEffect)
+  Grayscl(CT_GrayscaleEffect)
+  Hsl(CT_HSLEffect)
+  Lum(CT_LuminanceEffect)
+  Tint(CT_TintEffect)
+} derive(Eq, Debug)
+
+///|
 pub(all) struct CT_Blip {
   /// @r:embed (optional, default "").
   r_embed : String
@@ -212,16 +228,40 @@ pub(all) struct CT_Blip {
   r_link : String
   /// @cstate (ST_BlipCompression, optional, default none).
   cstate : ST_BlipCompression
-  /// Effect children captured in document order. Each entry is the
-  /// raw `@xml.Element` so the typed effect projections owned by the
-  /// `drawing_ml/effects` package can re-decode them through the
-  /// existing decode pipeline.
-  effects : Array[@xml.Element]
-  /// <extLst> child (CT_OfficeArtExtensionList, optional). Raw element.
-  ext_lst : @xml.Element?
+  /// Effect children in document order — typed per the 17-arm
+  /// CT_Blip choice (Annex A.4.1 lines 1478..1495).
+  effects : Array[BlipEffect]
+  /// <extLst> (CT_OfficeArtExtensionList, optional).
+  ext_lst : CT_OfficeArtExtensionList?
   /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
+
+///|
+fn parse_blip_effect_child(
+  element : @xml.Element,
+) -> BlipEffect? raise SchemaViolation {
+  match element.name.local_name {
+    "alphaBiLevel" => Some(AlphaBiLevel(CT_AlphaBiLevelEffect::new(element)))
+    "alphaCeiling" => Some(AlphaCeiling(CT_AlphaCeilingEffect::new(element)))
+    "alphaFloor" => Some(AlphaFloor(CT_AlphaFloorEffect::new(element)))
+    "alphaInv" => Some(AlphaInv(CT_AlphaInverseEffect::new(element)))
+    "alphaMod" => Some(AlphaMod(CT_AlphaModulateEffect::new(element)))
+    "alphaModFix" => Some(AlphaModFix(CT_AlphaModulateFixedEffect::new(element)))
+    "alphaRepl" => Some(AlphaRepl(CT_AlphaReplaceEffect::new(element)))
+    "biLevel" => Some(BiLevel(CT_BiLevelEffect::new(element)))
+    "blur" => Some(Blur(CT_BlurEffect::new(element)))
+    "clrChange" => Some(ClrChange(CT_ColorChangeEffect::new(element)))
+    "clrRepl" => Some(ClrRepl(CT_ColorReplaceEffect::new(element)))
+    "duotone" => Some(Duotone(CT_DuotoneEffect::new(element)))
+    "fillOverlay" => Some(FillOverlay(CT_FillOverlayEffect::new(element)))
+    "grayscl" => Some(Grayscl(CT_GrayscaleEffect::new(element)))
+    "hsl" => Some(Hsl(CT_HSLEffect::new(element)))
+    "lum" => Some(Lum(CT_LuminanceEffect::new(element)))
+    "tint" => Some(Tint(CT_TintEffect::new(element)))
+    _ => None
+  }
+}
 
 ///|
 pub fn CT_Blip::new(element : @xml.Element) -> CT_Blip raise SchemaViolation {
@@ -231,36 +271,21 @@ pub fn CT_Blip::new(element : @xml.Element) -> CT_Blip raise SchemaViolation {
     Some(v) => ST_BlipCompression::parse(v)
     None => BlipCstateNone
   }
-  let effects : Array[@xml.Element] = []
+  let effects : Array[BlipEffect] = []
   for node in element.children {
     match node {
-      @xml.Element(child) => {
-        let name = child.name.local_name
-        match name {
-          "alphaBiLevel"
-          | "alphaCeiling"
-          | "alphaFloor"
-          | "alphaInv"
-          | "alphaMod"
-          | "alphaModFix"
-          | "alphaRepl"
-          | "biLevel"
-          | "blur"
-          | "clrChange"
-          | "clrRepl"
-          | "duotone"
-          | "fillOverlay"
-          | "grayscl"
-          | "hsl"
-          | "lum"
-          | "tint" => effects.push(child)
-          _ => ()
+      @xml.Element(child) =>
+        match parse_blip_effect_child(child) {
+          Some(e) => effects.push(e)
+          None => ()
         }
-      }
       _ => ()
     }
   }
-  let ext_lst = ct_first_child(element, "extLst")
+  let ext_lst = match ct_first_child(element, "extLst") {
+    Some(e) => Some(CT_OfficeArtExtensionList::new(e))
+    None => None
+  }
   { r_embed, r_link, cstate, effects, ext_lst, element }
 }
 

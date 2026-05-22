@@ -1,0 +1,74 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/spreadsheet_ml/edit"
+
+import {
+  "trkbt10/ooxml/ecma376/opc",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/context",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn append_sheet(@context.Workbook, String) -> @context.Workbook raise @context.OpenError
+
+pub fn bind_cell_style(@context.Workbook, Int, String, Int) -> @context.Workbook raise @context.OpenError
+
+pub fn clear_auto_filter(@context.Workbook, Int) -> @context.Workbook raise @context.OpenError
+
+pub fn clear_cell(@context.Workbook, Int, String) -> @context.Workbook raise @context.OpenError
+
+pub fn edit_styles(@context.Workbook, (@xml.Element) -> @xml.Element) -> @context.Workbook
+
+pub fn edit_workbook(@context.Workbook, (@xml.Element) -> @xml.Element) -> @context.Workbook
+
+pub fn edit_worksheet(@context.Workbook, Int, (@xml.Element) -> @xml.Element) -> @context.Workbook raise @context.OpenError
+
+pub fn insert_column(@context.Workbook, Int, Int) -> @context.Workbook raise @context.OpenError
+
+pub fn insert_row(@context.Workbook, Int, Int) -> @context.Workbook raise @context.OpenError
+
+pub fn merge_cells(@context.Workbook, Int, String) -> @context.Workbook raise @context.OpenError
+
+pub fn package_name() -> String
+
+pub fn remove_column(@context.Workbook, Int, Int) -> @context.Workbook raise @context.OpenError
+
+pub fn remove_row(@context.Workbook, Int, Int) -> @context.Workbook raise @context.OpenError
+
+pub fn remove_sheet(@context.Workbook, Int) -> @context.Workbook raise @context.OpenError
+
+pub fn rename_sheet(@context.Workbook, Int, String) -> @context.Workbook raise @context.OpenError
+
+pub fn set_auto_filter(@context.Workbook, Int, String) -> @context.Workbook raise @context.OpenError
+
+pub fn set_cell_fill(@context.Workbook, Int, String, String) -> @context.Workbook raise @context.OpenError
+
+pub fn set_cell_font(@context.Workbook, Int, String, String, Int) -> @context.Workbook raise @context.OpenError
+
+pub fn set_cell_formula(@context.Workbook, Int, String, String) -> @context.Workbook raise @context.OpenError
+
+pub fn set_cell_number_format(@context.Workbook, Int, String, String) -> @context.Workbook raise @context.OpenError
+
+pub fn set_cell_style(@context.Workbook, Int, String, Int) -> @context.Workbook raise @context.OpenError
+
+pub fn set_cell_value(@context.Workbook, Int, String, String) -> @context.Workbook raise @context.OpenError
+
+pub fn set_column_width(@context.Workbook, Int, Int, Double) -> @context.Workbook raise @context.OpenError
+
+pub fn set_row_height(@context.Workbook, Int, Int, Double) -> @context.Workbook raise @context.OpenError
+
+pub fn set_row_hidden(@context.Workbook, Int, Int, Bool) -> @context.Workbook raise @context.OpenError
+
+pub fn set_sheet_visible(@context.Workbook, Int, String) -> @context.Workbook raise @context.OpenError
+
+pub fn unmerge_cells(@context.Workbook, Int, String) -> @context.Workbook raise @context.OpenError
+
+pub fn with_package(@context.Workbook, @opc.Package) -> @context.Workbook
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

@@ -1,0 +1,102 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/util/glyph"
+
+import {
+  "mizchi/font",
+}
+
+// Values
+pub fn calculate_char_width(Char, prev_char? : Char?, font_size_pt~ : Double, font_family~ : String?, font_weight? : Int) -> CharWidthResult
+
+pub fn calibri_metrics() -> FontMetrics
+
+pub fn common_kerning_pairs() -> Map[String, Double]
+
+pub fn default_char_widths() -> Map[Char, Double]
+
+pub fn estimate_text_width_fallback(String, font_size_pt~ : Double, letter_spacing_px~ : Double, font_family~ : String?, font_weight? : Int) -> Double
+
+pub fn get_ascender_ratio(String?) -> Double
+
+pub fn get_char_width(Char, String?, Bool, font_weight? : Int) -> Double
+
+pub fn get_font_category(String?) -> FontCategory
+
+pub fn get_font_metrics(String?) -> FontMetrics
+
+pub fn get_kerning_adjustment(String, String?) -> Double
+
+pub fn get_kerning_for_text(String, String?) -> Array[Double]
+
+pub fn is_cjk_char(Char) -> Bool
+
+pub fn is_cjk_code_point(Int) -> Bool
+
+pub fn is_monospace(String?) -> Bool
+
+pub fn make_font_measurer(Bytes) -> FontMeasurer?
+
+pub fn measure_text_detailed(String, font_size_pt~ : Double, letter_spacing_px~ : Double, font_family~ : String?, font_weight? : Int) -> DetailedMeasurement
+
+pub fn measure_text_width(String, font_size_pt~ : Double, letter_spacing_px~ : Double, font_family~ : String?, font_weight? : Int, measurer? : FontMeasurer?) -> Double
+
+pub fn pixels_to_points(Double) -> Double
+
+pub fn points_to_pixels(Double) -> Double
+
+pub let pt_to_px : Double
+
+pub let px_to_pt : Double
+
+pub fn sans_serif_kerning() -> Map[String, Double]
+
+pub fn serif_kerning() -> Map[String, Double]
+
+// Errors
+
+// Types and methods
+pub struct CharWidthResult {
+  width : Double
+  kerning_adjust : Double
+  total_width : Double
+}
+
+pub struct DetailedMeasurement {
+  total_width : Double
+  char_widths : Array[CharWidthResult]
+  positions : Array[Double]
+}
+
+pub(all) enum FontCategory {
+  SansSerif
+  Serif
+  Monospace
+  CJK
+} derive(Eq, Show)
+
+pub struct FontMeasurer {
+  ttfont : @font.TTFont
+  units_per_em : Int
+}
+pub fn FontMeasurer::ascender_ratio(Self) -> Double
+pub fn FontMeasurer::char_advance(Self, Char, font_size_pt~ : Double) -> Double
+pub fn FontMeasurer::descender_ratio(Self) -> Double
+pub fn FontMeasurer::glyph_index(Self, Int) -> Int
+pub fn FontMeasurer::kerning_adjust(Self, Char, Char, font_size_pt~ : Double) -> Double
+pub fn FontMeasurer::line_gap_ratio(Self) -> Double
+pub fn FontMeasurer::measure_text(Self, String, font_size_pt~ : Double, letter_spacing_px? : Double) -> Double
+
+pub struct FontMetrics {
+  latin_average : Double
+  cjk_average : Double
+  char_widths : Map[Char, Double]
+  kerning : Map[String, Double]
+  ascender_ratio : Double?
+  width_scale : Double?
+  bold_width_scale : Double?
+}
+
+// Type aliases
+
+// Traits
+

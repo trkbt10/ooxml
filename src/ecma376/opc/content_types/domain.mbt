@@ -162,30 +162,57 @@ pub fn CT_Types::content_type_for_part(
   self : CT_Types,
   part_name : PartName,
 ) -> ContentType? {
+  // Part 2 §10.1.2.2.2 — the Override `PartName` comparison
+  // "shall be case-insensitive ASCII".
+  let target_lower = ascii_lower(part_name.value)
   for rule in self.rules {
     match rule {
       Override(override_rule) =>
-        if override_rule.part_name == part_name {
+        if ascii_lower(override_rule.part_name.value) == target_lower {
           return Some(override_rule.content_type)
         }
       _ => ()
     }
   }
+  // Part 2 §10.1.2.2.1 — the extension comparison against a
+  // CT_Default rule "shall be case-insensitive ASCII".  A part
+  // `photo.JPEG` must match `<Default Extension="jpeg">`.
   let extension = extension_from_part_name(part_name.value)
   match extension {
-    Some(extension) =>
+    Some(extension) => {
+      let ext_lower = ascii_lower(extension)
       for rule in self.rules {
         match rule {
           Default(default) =>
-            if default.extension.value == extension {
+            if ascii_lower(default.extension.value) == ext_lower {
               return Some(default.content_type)
             }
           _ => ()
         }
       }
+    }
     None => ()
   }
   None
+}
+
+///|
+/// Part 2 §10.1.2.2 — lowercase the ASCII letters of a string.
+/// Used for the case-insensitive extension comparison; non-ASCII
+/// code units are passed through unchanged.
+fn ascii_lower(s : String) -> String {
+  let buf = StringBuilder::new()
+  let mut i = 0
+  while i < s.length() {
+    let c = s.code_unit_at(i).to_int()
+    if c >= 0x41 && c <= 0x5A {
+      buf.write_char((c + 0x20).to_char().unwrap())
+    } else {
+      buf.write_char(c.to_char().unwrap())
+    }
+    i = i + 1
+  }
+  buf.to_string()
 }
 
 ///|

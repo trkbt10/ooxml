@@ -3,6 +3,7 @@ package "trkbt10/ooxml/ecma376/drawing_ml/theme"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/drawing_ml",
   "trkbt10/ooxml/xml",
 }
 
@@ -29,47 +30,47 @@ pub suberror SchemaViolation {
 // Types and methods
 pub(all) struct CT_BaseStyles {
   element : @xml.Element
-  clr_scheme_child_name : String
-  font_scheme_child_name : String
-  fmt_scheme_child_name : String
-  has_ext_lst : Bool
+  clr_scheme : @drawing_ml.CT_ColorScheme
+  font_scheme : @drawing_ml.CT_FontScheme
+  fmt_scheme : @drawing_ml.CT_StyleMatrix
+  ext_lst : @drawing_ml.CT_OfficeArtExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_BaseStyles::new(@xml.Element) -> Self
+pub fn CT_BaseStyles::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(ThemeOverride)
 pub(all) struct CT_BaseStylesOverride {
   element : @xml.Element
-  has_clr_scheme : Bool
-  has_font_scheme : Bool
-  has_fmt_scheme : Bool
+  clr_scheme : @drawing_ml.CT_ColorScheme?
+  font_scheme : @drawing_ml.CT_FontScheme?
+  fmt_scheme : @drawing_ml.CT_StyleMatrix?
 } derive(Eq, @debug.Debug)
-pub fn CT_BaseStylesOverride::new(@xml.Element) -> Self
+pub fn CT_BaseStylesOverride::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_OfficeArtExtension {
   element : @xml.Element
   uri : String
-  payload_names : Array[String]
+  payload : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
 pub fn CT_OfficeArtExtension::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(ThemeManager)
 pub(all) struct CT_OfficeArtExtensionList {
   element : @xml.Element
-  extension_count : Int
+  extensions : Array[CT_OfficeArtExtension]
 } derive(Eq, @debug.Debug)
-pub fn CT_OfficeArtExtensionList::new(@xml.Element) -> Self
+pub fn CT_OfficeArtExtensionList::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(Theme)
 pub(all) struct CT_OfficeStyleSheet {
   element : @xml.Element
   name : String?
-  theme_elements_child_name : String
-  has_object_defaults : Bool
-  has_extra_clr_scheme_lst : Bool
-  has_cust_clr_lst : Bool
-  has_ext_lst : Bool
+  theme_elements : CT_BaseStyles
+  object_defaults : @drawing_ml.CT_ObjectStyleDefaults?
+  extra_clr_scheme_lst : @drawing_ml.CT_ColorSchemeList?
+  cust_clr_lst : @drawing_ml.CT_CustomColorList?
+  ext_lst : @drawing_ml.CT_OfficeArtExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_OfficeStyleSheet::new(@xml.Element) -> Self
+pub fn CT_OfficeStyleSheet::new(@xml.Element) -> Self raise SchemaViolation
 
 // Type aliases
 

@@ -149,6 +149,17 @@ pub fn CellAddress::parse_r1c1(
 /// [Example: an absolute column and row formats as `$A$1`. end example]
 /// [Example: a sheet name containing spaces is single-quoted. end example]
 pub fn CellAddress::to_a1(self : CellAddress) -> String {
+  // §18.18.62 ST_CellRef — the column index of a well-formed
+  // CellAddress is always in 0..16383 (Excel's 16384-column
+  // limit), and `column_index_to_letter` only raises for
+  // negative inputs.  The CellAddress reader rejects negatives
+  // upstream, so the catch path here is unreachable for any
+  // CellAddress that came through `CellAddress::parse`.  We
+  // preserve the catch as a defensive zero-arm — the silent
+  // empty-string substitution would produce malformed refs
+  // like `$1`, so any future caller that hand-builds a
+  // CellAddress with a negative column will see the empty
+  // letter immediately rather than later.
   format_sheet(self.sheet) +
   (if self.col_absolute { "$" } else { "" }) +
   (column_index_to_letter(self.col_zero_based) catch { _ => "" }) +

@@ -243,17 +243,16 @@ pub fn CT_LvlLegacy::to_element(self : CT_LvlLegacy) -> @xml.Element {
 ///|
 /// XSD complex type CT_Picture — Part 4 §14 transitional wml.xsd
 /// (picture VML / OLE container under `<w:object>`). Sequence:
-///   (any[vml] | any[office])* — opaque legacy VML / office-extension
-///                                payload (Array[@xml.Element]) preserved
-///                                so the writer can round-trip the
-///                                vendor-specific markup unchanged;
+///   (any[vml] | any[office])* — typed VML shape-element children
+///                                (vml-main + vml-officeDrawing +
+///                                vml-wordprocessingDrawing arms);
 ///   `<movie>`?   (CT_Rel)     — optional movie relationship;
 ///   `<control>`? (CT_Control) — optional ActiveX control reference.
 pub(all) struct CT_Picture {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
-  /// Opaque VML / `o:` office-namespace children in document order.
-  any_legacy : Array[@xml.Element]
+  /// Typed VML / o: / w10: shape-element children in document order.
+  any_legacy : Array[@vml.VmlShapeChild]
   /// §17.3.3.14 `<movie>`? — movie relationship.
   movie : CT_Rel?
   /// §17.3.3.4 `<control>`? — ActiveX control reference.
@@ -264,13 +263,18 @@ pub(all) struct CT_Picture {
 pub fn CT_Picture::new(
   element : @xml.Element,
 ) -> CT_Picture raise SchemaViolation {
-  let any_legacy : Array[@xml.Element] = []
+  let any_legacy : Array[@vml.VmlShapeChild] = []
   for child in element.children {
     match child {
       @xml.Element(e) => {
         let ln = e.name.local_name
         if ln != "movie" && ln != "control" {
-          any_legacy.push(e)
+          any_legacy.push(
+            wrap_vml_violation(
+              fn() { @vml.parse_vml_shape_child(e) },
+              "CT_Picture/legacy",
+            ),
+          )
         }
       }
       _ => ()
@@ -288,6 +292,22 @@ pub fn CT_Picture::new(
 }
 
 ///|
+/// Bridge `@vml.SchemaViolation` into our local WML SchemaViolation.
+fn wrap_vml_violation[T](
+  body : () -> T raise @vml.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @vml.SchemaViolation(schema=_, path=p, reason~) =>
+      raise SchemaViolation(
+        type_name=path,
+        value=p,
+        reason~,
+      )
+  }
+}
+
+///|
 pub fn CT_Picture::parse(
   element : @xml.Element,
 ) -> CT_Picture raise SchemaViolation {
@@ -301,23 +321,32 @@ pub fn CT_Picture::to_element(self : CT_Picture) -> @xml.Element {
 
 ///|
 /// XSD complex type CT_ShapeDefaults — Part 4 §14 transitional wml.xsd
-/// (shapeDefaults VML shape-defaults container). The schema content is
-/// `xsd:choice maxOccurs="unbounded"` over `xsd:any` from the legacy
-/// `o:` (office) namespace — surfaced here as `Array[@xml.Element]` so
-/// the writer can preserve vendor-extension payloads verbatim.
+/// (shapeDefaults VML shape-defaults container). The schema content
+/// is `xsd:choice maxOccurs="unbounded"` over `xsd:any` from the
+/// `v:` and `o:` namespaces — projected to the typed
+/// `@vml.VmlShapeChild` sum so every shape-element arm is preserved
+/// with full validation.
 pub(all) struct CT_ShapeDefaults {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
-  /// Any-namespace VML / office children in document order.
-  any_office : Array[@xml.Element]
+  /// Typed VML / o: children in document order.
+  any_office : Array[@vml.VmlShapeChild]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ShapeDefaults::new(element : @xml.Element) -> CT_ShapeDefaults {
-  let any_office : Array[@xml.Element] = []
+pub fn CT_ShapeDefaults::new(
+  element : @xml.Element,
+) -> CT_ShapeDefaults raise SchemaViolation {
+  let any_office : Array[@vml.VmlShapeChild] = []
   for child in element.children {
     match child {
-      @xml.Element(e) => any_office.push(e)
+      @xml.Element(e) =>
+        any_office.push(
+          wrap_vml_violation(
+            fn() { @vml.parse_vml_shape_child(e) },
+            "CT_ShapeDefaults",
+          ),
+        )
       _ => ()
     }
   }
@@ -325,7 +354,9 @@ pub fn CT_ShapeDefaults::new(element : @xml.Element) -> CT_ShapeDefaults {
 }
 
 ///|
-pub fn CT_ShapeDefaults::parse(element : @xml.Element) -> CT_ShapeDefaults {
+pub fn CT_ShapeDefaults::parse(
+  element : @xml.Element,
+) -> CT_ShapeDefaults raise SchemaViolation {
   CT_ShapeDefaults::new(element)
 }
 
@@ -426,6 +457,8 @@ pub fn AG_TransitionalPassword::has_attribute(
 
 ///|
 /// Construct top-level transitional wml.xsd element txbxContent as CT_TxbxContent (Part 4 §14).
-pub fn txbx_content(element : @xml.Element) -> CT_TxbxContent {
+pub fn txbx_content(
+  element : @xml.Element,
+) -> CT_TxbxContent raise SchemaViolation {
   CT_TxbxContent::new(element)
 }

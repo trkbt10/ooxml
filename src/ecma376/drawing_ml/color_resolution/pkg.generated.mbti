@@ -27,6 +27,7 @@ pub(all) enum ColorRef {
   Sys(String, Rgba8)
   Preset(String)
   Hsl(Int, Int, Int)
+  ScRgb(Rgba8)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct ColorScheme {

@@ -176,6 +176,13 @@ fn evaluate_time_period(
     Some(n) => n
     None => return false
   }
+  // §18.3.1.10 timePeriod — when the cell's serial is outside
+  // the §18.17.4 serial-date epoch (EpochOutOfRange) the cell
+  // cannot satisfy any time-window predicate, so the rule does
+  // NOT match.  Treating the conversion failure as "no match"
+  // is the spec-permitted safe default; the data fault itself
+  // is preserved on the cell's @v attribute for upstream
+  // diagnostics.
   let cell_date = try
     @date_serial.serial_to_date_time(serial, ctx.date_system)
   catch {
@@ -183,6 +190,8 @@ fn evaluate_time_period(
   } noraise {
     parsed => parsed
   }
+  // Same defensive handling for the "today" anchor — a corrupt
+  // calendar context cannot satisfy any time-window predicate.
   let today_serial = try
     @date_serial.date_time_to_serial(ctx.today, ctx.date_system)
   catch {
@@ -206,9 +215,16 @@ fn evaluate_time_period(
 }
 
 ///|
-/// Compute the ISO week offset between two CalendarDateTime values.
-/// Returns true when `cell` falls in the week that is `offset` weeks
-/// from `today`. Week is anchored Sunday..Saturday per Excel default.
+/// Compute the Sunday-anchored week offset between two
+/// CalendarDateTime values.  Returns true when `cell` falls in
+/// the week that is `offset` weeks from `today`.
+///
+/// §18.3.1.10 `timePeriod` does not pin a week-start day; Excel
+/// uses Sunday..Saturday weeks by default (matching §22.4.2.1
+/// ST_Workday's `firstDayOfWeek="0"` ≡ Sunday convention).  The
+/// function name retains "iso" for source-history continuity but
+/// the algorithm is Sunday-anchored, NOT ISO-8601 (which would
+/// be Monday-anchored).
 fn same_iso_week_offset(
   today : @date_serial.CalendarDateTime,
   cell : @date_serial.CalendarDateTime,

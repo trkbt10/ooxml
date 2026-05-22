@@ -35,13 +35,13 @@ pub fn endnotes(element : @xml.Element) -> CT_Endnotes raise SchemaViolation {
 
 ///|
 /// Construct top-level XSD element hdr as CT_HdrFtr (§17).
-pub fn hdr(element : @xml.Element) -> CT_HdrFtr {
+pub fn hdr(element : @xml.Element) -> CT_HdrFtr raise SchemaViolation {
   CT_HdrFtr::new(element)
 }
 
 ///|
 /// Construct top-level XSD element ftr as CT_HdrFtr (§17).
-pub fn ftr(element : @xml.Element) -> CT_HdrFtr {
+pub fn ftr(element : @xml.Element) -> CT_HdrFtr raise SchemaViolation {
   CT_HdrFtr::new(element)
 }
 

@@ -1305,3 +1305,39 @@ test "ST_OutputShapeType rejects one invalid lexical value" {
     _ => fail("expected SchemaViolation")
   }
 }
+
+///|
+/// Part 1 §21.4.x ST_AlgorithmType — every one of the 10 enum
+/// values MUST be a distinct variant that round-trips through
+/// parse/to_string.  This guards against regressions where
+/// `conn` / `sp` / `lin` collide onto the same variant during
+/// layout dispatch (Round 14 audit #320).
+test "ST_AlgorithmType ten enum variants are distinct and round-trip" {
+  // Round-trip each lexical value.
+  let lexicals = [
+    "composite", "conn", "cycle", "hierChild", "hierRoot",
+    "pyra", "lin", "sp", "tx", "snake",
+  ]
+  let parsed : Array[ST_AlgorithmType] = []
+  for s in lexicals {
+    let v = ST_AlgorithmType::parse(s)
+    assert_eq(v.to_string(), s)
+    parsed.push(v)
+  }
+  // Distinctness: every pair MUST compare unequal.
+  for i in 0..<parsed.length() {
+    for j in 0..<parsed.length() {
+      if i != j {
+        if parsed[i] == parsed[j] {
+          fail(
+            "ST_AlgorithmType variants " +
+            i.to_string() +
+            " and " +
+            j.to_string() +
+            " unexpectedly equal",
+          )
+        }
+      }
+    }
+  }
+}

@@ -15,6 +15,18 @@
 ///
 /// Returns the input unchanged when the switch argument is not
 /// recognised.
+///
+/// Case-folding policy for `Upper`, `Lower`, `FirstCap`, `Caps`:
+/// §17.16.4.3 describes the transforms as Word-locale-aware
+/// operations (Turkish dotted-i, German ß, etc.).  MoonBit's
+/// `to_upper` / `to_lower` are ASCII-only, so values outside the
+/// ASCII range survive unchanged — this is a documented
+/// limitation matching the same constraint observed in
+/// `presentation_ml/viewer/viewer.mbt:simple_to_upper`.  Locale-
+/// aware case folding requires a Unicode database that is out
+/// of scope for the viewer; consumers needing correct casing
+/// for non-ASCII content can apply their own ICU-based pass
+/// after the field evaluator runs.
 pub fn apply_general_switch(value : String, switch_arg : String) -> String {
   match switch_arg {
     "Upper" => value.to_upper()
@@ -76,6 +88,15 @@ fn first_cap(value : String) -> String {
 }
 
 ///|
+/// §17.16.4.3 `\* Caps` — title-case each word.  Word treats
+/// every whitespace boundary as a word break; real Word also
+/// honours Unicode `White_Space` (U+00A0, U+3000, em-dash) and
+/// punctuation boundaries, but for the viewer's plain-text
+/// field result we accept only ASCII whitespace (space / tab /
+/// LF / CR) as the word delimiter.  Documented as an ASCII-only
+/// restriction mirroring the spec's locale-defined semantics
+/// (§17.16.4.3 leaves the exact word-break table to the
+/// consumer's locale).
 fn caps_each_word(value : String) -> String {
   let buf = StringBuilder::new()
   let mut at_word_start = true

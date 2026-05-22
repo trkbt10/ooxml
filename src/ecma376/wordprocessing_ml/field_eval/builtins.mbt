@@ -32,7 +32,42 @@ pub fn FieldRegistry::with_builtins() -> FieldRegistry {
   registry.register("USERADDRESS", evaluate_user_address)
   registry.register("USERINITIALS", evaluate_user_initials)
   registry.register("USERNAME", evaluate_user_name)
+  // §17.16.5.66 TOC — table-of-contents field. The rendered
+  // content is the cached runs assembled by Word, NOT something
+  // the evaluator can synthesise without a full document scan.
+  // Return Empty so the caller's cached-run fallback wins.
+  registry.register("TOC", evaluate_empty_field)
+  // §17.16.5.65 TC — TOC entry marker. Spec: emits NO visible
+  // text; the TOC field reads these to assemble its result.
+  registry.register("TC", evaluate_empty_field)
+  // §17.16.5.34 INDEX — same shape as TOC; cached runs hold the result.
+  registry.register("INDEX", evaluate_empty_field)
+  // §17.16.5.84 XE — index entry marker; emits no visible text.
+  registry.register("XE", evaluate_empty_field)
+  // §17.16.5.71 STYLEREF — references the nearest paragraph
+  // applying the named style.  Cached runs hold the resolved
+  // reference; without re-walking the document we defer.
+  registry.register("STYLEREF", evaluate_empty_field)
+  // §17.16.5.49 NOTEREF — references a footnote/endnote mark.
+  // Cached runs hold the resolved mark number.
+  registry.register("NOTEREF", evaluate_empty_field)
+  // §17.16.5.30 FORMTEXT, §17.16.5.31 FORMCHECKBOX,
+  // §17.16.5.32 FORMDROPDOWN — form-field placeholders. The
+  // cached runs hold the user's current input; preserve them.
+  registry.register("FORMTEXT", evaluate_empty_field)
+  registry.register("FORMCHECKBOX", evaluate_empty_field)
+  registry.register("FORMDROPDOWN", evaluate_empty_field)
   registry
+}
+
+///|
+/// §17.16.5 — evaluator that returns `Empty` so the renderer's
+/// cached-run fallback takes over.  Used for structural fields
+/// (TOC, TC, INDEX, XE, STYLEREF, NOTEREF, FORM*) whose visible
+/// text is assembled by Word ahead of time and stored as cached
+/// runs between fldChar separate/end.
+fn evaluate_empty_field(_field : Field, _ctx : FieldContext) -> FieldResult {
+  Empty
 }
 
 ///|

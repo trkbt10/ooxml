@@ -266,7 +266,11 @@ pub fn wml_xsd_ct_ffdata_schema_name() -> String
 
 pub fn wml_xsd_ct_font_schema_name() -> String
 
+pub fn wml_xsd_ct_fontsig_schema_name() -> String
+
 pub fn wml_xsd_ct_frame_schema_name() -> String
+
+pub fn wml_xsd_ct_hdrftr_schema_name() -> String
 
 pub fn wml_xsd_ct_ind_schema_name() -> String
 
@@ -276,9 +280,19 @@ pub fn wml_xsd_ct_num_schema_name() -> String
 
 pub fn wml_xsd_ct_numfmt_schema_name() -> String
 
+pub fn wml_xsd_ct_pagemar_schema_name() -> String
+
+pub fn wml_xsd_ct_pagesz_schema_name() -> String
+
 pub fn wml_xsd_ct_pprbase_schema_name() -> String
 
+pub fn wml_xsd_ct_ptab_schema_name() -> String
+
+pub fn wml_xsd_ct_rel_schema_name() -> String
+
 pub fn wml_xsd_ct_row_schema_name() -> String
+
+pub fn wml_xsd_ct_rpr_schema_name() -> String
 
 pub fn wml_xsd_ct_sdtpr_schema_name() -> String
 

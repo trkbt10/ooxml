@@ -815,9 +815,10 @@ pub(all) struct CT_WrapPath {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
   /// §20.4.2.15 `<start>` (a:CT_Point2D) — required first vertex.
-  start : @xml.Element
-  /// §20.4.2.13 `<lineTo>` (a:CT_Point2D) — at least two further vertices.
-  line_to : Array[@xml.Element]
+  start : @a.CT_Point2D
+  /// §20.4.2.13 `<lineTo>` (a:CT_Point2D) — at least two further
+  /// vertices.
+  line_to : Array[@a.CT_Point2D]
   /// §20.4.2.16 @edited (xsd:boolean) — optional edit flag.
   edited : Bool?
 } derive(Eq, Debug)
@@ -826,17 +827,27 @@ pub(all) struct CT_WrapPath {
 pub fn CT_WrapPath::new(
   element : @xml.Element,
 ) -> CT_WrapPath raise SchemaViolation {
-  let start = match wml_ct_chunk4_first_child(element, "start") {
+  let start_el = match wml_ct_chunk4_first_child(element, "start") {
     Some(child) => child
     None =>
       raise_schema_violation(
         "CT_WrapPath", "start", "Part 1 §20.4.2.16: required <wp:start> missing",
       )
   }
-  let line_to = wml_ct_chunk4_children(element, "lineTo")
-  if line_to.length() < 2 {
+  let start = wrap_a_violation(
+    fn() { @a.CT_Point2D::new(start_el) },
+    "CT_WrapPath/start",
+  )
+  let line_to_raw = wml_ct_chunk4_children(element, "lineTo")
+  if line_to_raw.length() < 2 {
     raise_schema_violation(
       "CT_WrapPath", "lineTo", "Part 1 §20.4.2.16: at least two <wp:lineTo> vertices required",
+    )
+  }
+  let line_to : Array[@a.CT_Point2D] = []
+  for p in line_to_raw {
+    line_to.push(
+      wrap_a_violation(fn() { @a.CT_Point2D::new(p) }, "CT_WrapPath/lineTo"),
     )
   }
   let edited = match wml_ct_chunk4_attr(element, "edited") {
@@ -1457,32 +1468,37 @@ pub fn CT_Anchor::to_element(self : CT_Anchor) -> @xml.Element {
 
 ///|
 /// XSD complex type CT_TxbxContent — Part 1 §20.4.2.22
-/// (dml-wordprocessingDrawing.xsd `CT_TxbxContent`) and the transitional
-/// Part 4 §14 mirror. Wraps `xsd:group ref="w:EG_BlockLevelElts"
-/// minOccurs="1" maxOccurs="unbounded"` — block-level content owned by
-/// upstream WordprocessingML readers. The typed projection surfaces the
-/// model-group children as `Array[@xml.Element]` in document order.
+/// (dml-wordprocessingDrawing.xsd `CT_TxbxContent`). Wraps
+/// `xsd:group ref="w:EG_BlockLevelElts" minOccurs="1"
+/// maxOccurs="unbounded"` — typed block-level children in document
+/// order.
 pub(all) struct CT_TxbxContent {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
-  /// EG_BlockLevelElts (1..unbounded) — raw block-level children.
-  block_level_elts : Array[@xml.Element]
+  /// §17.2.2 EG_BlockLevelElts (1..unbounded) — typed block-level
+  /// projections in document order.
+  block_level_elts : Array[EG_BlockLevelElts]
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TxbxContent::new(element : @xml.Element) -> CT_TxbxContent {
-  let block_level_elts : Array[@xml.Element] = []
+pub fn CT_TxbxContent::new(
+  element : @xml.Element,
+) -> CT_TxbxContent raise SchemaViolation {
+  let raw : Array[@xml.Element] = []
   for child in element.children {
     match child {
-      @xml.Element(e) => block_level_elts.push(e)
+      @xml.Element(e) => raw.push(e)
       _ => ()
     }
   }
+  let block_level_elts = collect_block_level_elements(raw)
   { element, block_level_elts }
 }
 
 ///|
-pub fn CT_TxbxContent::parse(element : @xml.Element) -> CT_TxbxContent {
+pub fn CT_TxbxContent::parse(
+  element : @xml.Element,
+) -> CT_TxbxContent raise SchemaViolation {
   CT_TxbxContent::new(element)
 }
 
@@ -1876,64 +1892,134 @@ pub fn CT_WordprocessingContentPart::to_element(
 }
 
 ///|
+/// XSD model group choice for `<wp:wgp>` body — Part 1 §20.4.2.28.
+/// Each entry surfaces the typed projection of the chosen child
+/// element (wsp / grpSp / graphicFrame / dpct:pic / contentPart).
+pub(all) enum WpGroupChild {
+  /// <wp:wsp> — CT_WordprocessingShape.
+  Wsp(CT_WordprocessingShape)
+  /// <wp:grpSp> — CT_WordprocessingGroup (recursive).
+  GrpSp(CT_WordprocessingGroup)
+  /// <wp:graphicFrame> — CT_GraphicFrame.
+  GraphicFrame(CT_GraphicFrame)
+  /// <dpct:pic> — drawing_ml/picture CT_Picture.
+  Pic(@dml_pic.CT_Picture)
+  /// <wp:contentPart> — CT_WordprocessingContentPart.
+  ContentPart(CT_WordprocessingContentPart)
+} derive(Eq, Debug)
+
+///|
 /// XSD complex type CT_WordprocessingGroup — Part 1 §20.4.2.28
-/// (dml-wordprocessingDrawing.xsd `CT_WordprocessingGroup`). Sequence:
-/// optional `<cNvPr>` (raw), required `<cNvGrpSpPr>` (raw), required
-/// `<grpSpPr>` (raw), an xsd:choice (`<wsp>`|`<grpSp>`|`<graphicFrame>`|
-/// `<dpct:pic>`|`<contentPart>`) with `maxOccurs="unbounded"`, then an
-/// optional `<extLst>` (raw). The body group is surfaced as
-/// `Array[@xml.Element]` in document order — typed expansion lives at
-/// upstream drawing readers.
+/// (dml-wordprocessingDrawing.xsd `CT_WordprocessingGroup`).
 pub(all) struct CT_WordprocessingGroup {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
-  /// §20.4.2.5 `<cNvPr>` — optional non-visual drawing properties (raw).
-  c_nv_pr : @xml.Element?
-  /// §20.4.2.4 `<cNvGrpSpPr>` (a:CT_NonVisualGroupDrawingShapeProps) — required.
-  c_nv_grp_sp_pr : @xml.Element
+  /// §20.4.2.5 `<cNvPr>` (a:CT_NonVisualDrawingProps) — optional.
+  c_nv_pr : @a.CT_NonVisualDrawingProps?
+  /// §20.4.2.4 `<cNvGrpSpPr>` (a:CT_NonVisualGroupDrawingShapeProps)
+  /// — required.
+  c_nv_grp_sp_pr : @a.CT_NonVisualGroupDrawingShapeProps
   /// §20.1.2.2.18 `<grpSpPr>` (a:CT_GroupShapeProperties) — required.
-  grp_sp_pr : @xml.Element
-  /// xsd:choice body — wsp / grpSp / graphicFrame / pic / contentPart in
-  /// document order (Array[@xml.Element]).
-  group_body : Array[@xml.Element]
-  /// §20.1.2.2.15 `<extLst>` — optional extension list (raw).
-  ext_lst : @xml.Element?
+  grp_sp_pr : @a.CT_GroupShapeProperties
+  /// xsd:choice body — typed projections of wsp / grpSp /
+  /// graphicFrame / dpct:pic / contentPart in document order.
+  group_body : Array[WpGroupChild]
+  /// §20.1.2.2.15 `<extLst>` (a:CT_OfficeArtExtensionList) — optional.
+  ext_lst : @a.CT_OfficeArtExtensionList?
 } derive(Eq, Debug)
+
+///|
+/// Bridge `@dml_pic.SchemaViolation` into our local SchemaViolation.
+fn wrap_dml_pic_violation[T](
+  body : () -> T raise @dml_pic.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @dml_pic.SchemaViolation(_) =>
+      raise SchemaViolation(
+        type_name=path,
+        value="",
+        reason="dml-picture.xsd child failed validation",
+      )
+  }
+}
 
 ///|
 pub fn CT_WordprocessingGroup::new(
   element : @xml.Element,
 ) -> CT_WordprocessingGroup raise SchemaViolation {
-  let c_nv_pr = wml_ct_chunk4_first_child(element, "cNvPr")
-  let c_nv_grp_sp_pr = match wml_ct_chunk4_first_child(element, "cNvGrpSpPr") {
+  let c_nv_pr = match wml_ct_chunk4_first_child(element, "cNvPr") {
+    Some(c) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_NonVisualDrawingProps::new(c) },
+          "CT_WordprocessingGroup/cNvPr",
+        ),
+      )
+    None => None
+  }
+  let c_nv_grp_sp_pr_el = match wml_ct_chunk4_first_child(element, "cNvGrpSpPr") {
     Some(child) => child
     None =>
       raise_schema_violation(
         "CT_WordprocessingGroup", "cNvGrpSpPr", "Part 1 §20.4.2.28: required <wp:cNvGrpSpPr> child missing",
       )
   }
-  let grp_sp_pr = match wml_ct_chunk4_first_child(element, "grpSpPr") {
+  let c_nv_grp_sp_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualGroupDrawingShapeProps::new(c_nv_grp_sp_pr_el) },
+    "CT_WordprocessingGroup/cNvGrpSpPr",
+  )
+  let grp_sp_pr_el = match wml_ct_chunk4_first_child(element, "grpSpPr") {
     Some(child) => child
     None =>
       raise_schema_violation(
         "CT_WordprocessingGroup", "grpSpPr", "Part 1 §20.4.2.28: required <wp:grpSpPr> child missing",
       )
   }
-  // Body = every direct element child that is not the leading
-  // cNvPr/cNvGrpSpPr/grpSpPr spine and not the trailing extLst, in
-  // document order.
-  let group_body : Array[@xml.Element] = []
+  let grp_sp_pr = wrap_a_violation(
+    fn() { @a.CT_GroupShapeProperties::new(grp_sp_pr_el) },
+    "CT_WordprocessingGroup/grpSpPr",
+  )
+  let group_body : Array[WpGroupChild] = []
   for child in element.children {
     match child {
       @xml.Element(e) =>
         match e.name.local_name {
           "cNvPr" | "cNvGrpSpPr" | "grpSpPr" | "extLst" => ()
-          _ => group_body.push(e)
+          "wsp" => group_body.push(Wsp(CT_WordprocessingShape::new(e)))
+          "grpSp" => group_body.push(GrpSp(CT_WordprocessingGroup::new(e)))
+          "graphicFrame" => group_body.push(GraphicFrame(CT_GraphicFrame::new(e)))
+          "pic" =>
+            group_body.push(
+              Pic(
+                wrap_dml_pic_violation(
+                  fn() { @dml_pic.CT_Picture::new(e) },
+                  "CT_WordprocessingGroup/pic",
+                ),
+              ),
+            )
+          "contentPart" =>
+            group_body.push(ContentPart(CT_WordprocessingContentPart::new(e)))
+          other =>
+            raise SchemaViolation(
+              type_name="CT_WordprocessingGroup",
+              value=other,
+              reason="Part 1 §20.4.2.28: unknown group body child element",
+            )
         }
       _ => ()
     }
   }
-  let ext_lst = wml_ct_chunk4_first_child(element, "extLst")
+  let ext_lst = match wml_ct_chunk4_first_child(element, "extLst") {
+    Some(c) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_OfficeArtExtensionList::new(c) },
+          "CT_WordprocessingGroup/extLst",
+        ),
+      )
+    None => None
+  }
   { element, c_nv_pr, c_nv_grp_sp_pr, grp_sp_pr, group_body, ext_lst }
 }
 
@@ -1952,52 +2038,109 @@ pub fn CT_WordprocessingGroup::to_element(
 }
 
 ///|
+/// XSD model group choice for `<wp:wpc>` body — Part 1 §20.4.2.29.
+pub(all) enum WpCanvasChild {
+  /// <wp:wsp> — CT_WordprocessingShape.
+  Wsp(CT_WordprocessingShape)
+  /// <dpct:pic> — drawing_ml/picture CT_Picture.
+  Pic(@dml_pic.CT_Picture)
+  /// <wp:contentPart> — CT_WordprocessingContentPart.
+  ContentPart(CT_WordprocessingContentPart)
+  /// <wp:wgp> — CT_WordprocessingGroup.
+  Wgp(CT_WordprocessingGroup)
+  /// <wp:graphicFrame> — CT_GraphicFrame.
+  GraphicFrame(CT_GraphicFrame)
+} derive(Eq, Debug)
+
+///|
 /// XSD complex type CT_WordprocessingCanvas — Part 1 §20.4.2.29
-/// (dml-wordprocessingDrawing.xsd `CT_WordprocessingCanvas`). Sequence:
-/// optional `<bg>` (a:CT_BackgroundFormatting — raw), optional
-/// `<whole>` (a:CT_WholeE2oFormatting — raw), an xsd:choice
-/// (`<wsp>`|`<dpct:pic>`|`<contentPart>`|`<wgp>`|`<graphicFrame>`) with
-/// `maxOccurs="unbounded"`, then an optional `<extLst>` (raw). The
-/// choice body is surfaced as `Array[@xml.Element]` in document order.
+/// (dml-wordprocessingDrawing.xsd `CT_WordprocessingCanvas`).
 pub(all) struct CT_WordprocessingCanvas {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
   /// §20.1.2.2.4 `<bg>` (a:CT_BackgroundFormatting) — optional.
-  bg : @xml.Element?
+  bg : @a.CT_BackgroundFormatting?
   /// §20.1.2.2.34 `<whole>` (a:CT_WholeE2oFormatting) — optional.
-  whole : @xml.Element?
-  /// xsd:choice body — wsp / pic / contentPart / wgp / graphicFrame in
-  /// document order (Array[@xml.Element]).
-  canvas_body : Array[@xml.Element]
-  /// §20.1.2.2.15 `<extLst>` — optional extension list (raw).
-  ext_lst : @xml.Element?
+  whole : @a.CT_WholeE2oFormatting?
+  /// xsd:choice body — typed projections of wsp / dpct:pic /
+  /// contentPart / wgp / graphicFrame in document order.
+  canvas_body : Array[WpCanvasChild]
+  /// §20.1.2.2.15 `<extLst>` (a:CT_OfficeArtExtensionList) — optional.
+  ext_lst : @a.CT_OfficeArtExtensionList?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_WordprocessingCanvas::new(
   element : @xml.Element,
-) -> CT_WordprocessingCanvas {
-  let bg = wml_ct_chunk4_first_child(element, "bg")
-  let whole = wml_ct_chunk4_first_child(element, "whole")
-  let canvas_body : Array[@xml.Element] = []
+) -> CT_WordprocessingCanvas raise SchemaViolation {
+  let bg = match wml_ct_chunk4_first_child(element, "bg") {
+    Some(c) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_BackgroundFormatting::new(c) },
+          "CT_WordprocessingCanvas/bg",
+        ),
+      )
+    None => None
+  }
+  let whole = match wml_ct_chunk4_first_child(element, "whole") {
+    Some(c) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_WholeE2oFormatting::new(c) },
+          "CT_WordprocessingCanvas/whole",
+        ),
+      )
+    None => None
+  }
+  let canvas_body : Array[WpCanvasChild] = []
   for child in element.children {
     match child {
       @xml.Element(e) =>
         match e.name.local_name {
           "bg" | "whole" | "extLst" => ()
-          _ => canvas_body.push(e)
+          "wsp" => canvas_body.push(Wsp(CT_WordprocessingShape::new(e)))
+          "pic" =>
+            canvas_body.push(
+              Pic(
+                wrap_dml_pic_violation(
+                  fn() { @dml_pic.CT_Picture::new(e) },
+                  "CT_WordprocessingCanvas/pic",
+                ),
+              ),
+            )
+          "contentPart" =>
+            canvas_body.push(ContentPart(CT_WordprocessingContentPart::new(e)))
+          "wgp" => canvas_body.push(Wgp(CT_WordprocessingGroup::new(e)))
+          "graphicFrame" =>
+            canvas_body.push(GraphicFrame(CT_GraphicFrame::new(e)))
+          other =>
+            raise SchemaViolation(
+              type_name="CT_WordprocessingCanvas",
+              value=other,
+              reason="Part 1 §20.4.2.29: unknown canvas body child element",
+            )
         }
       _ => ()
     }
   }
-  let ext_lst = wml_ct_chunk4_first_child(element, "extLst")
+  let ext_lst = match wml_ct_chunk4_first_child(element, "extLst") {
+    Some(c) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_OfficeArtExtensionList::new(c) },
+          "CT_WordprocessingCanvas/extLst",
+        ),
+      )
+    None => None
+  }
   { element, bg, whole, canvas_body, ext_lst }
 }
 
 ///|
 pub fn CT_WordprocessingCanvas::parse(
   element : @xml.Element,
-) -> CT_WordprocessingCanvas {
+) -> CT_WordprocessingCanvas raise SchemaViolation {
   CT_WordprocessingCanvas::new(element)
 }
 
@@ -2009,28 +2152,60 @@ pub fn CT_WordprocessingCanvas::to_element(
 }
 
 ///|
-/// XSD model group EG_WrapType from dml-wordprocessingDrawing.xsd (§20.4).
-pub(all) struct EG_WrapType {
-  elements : Array[@xml.Element]
+/// XSD model group EG_WrapType — dml-wordprocessingDrawing.xsd (§20.4).
+/// Required choice of one wrap-mode child: wrapNone / wrapSquare /
+/// wrapTight / wrapThrough / wrapTopAndBottom.
+pub(all) enum EG_WrapType {
+  WrapNone(CT_WrapNone)
+  WrapSquare(CT_WrapSquare)
+  WrapTight(CT_WrapTight)
+  WrapThrough(CT_WrapThrough)
+  WrapTopAndBottom(CT_WrapTopBottom)
 } derive(Eq, Debug)
 
 ///|
-pub fn EG_WrapType::new(elements : Array[@xml.Element]) -> EG_WrapType {
-  { elements, }
+pub fn parse_wrap_type_child(
+  element : @xml.Element,
+) -> EG_WrapType? raise SchemaViolation {
+  match element.name.local_name {
+    "wrapNone" => Some(WrapNone(CT_WrapNone::new(element)))
+    "wrapSquare" => Some(WrapSquare(CT_WrapSquare::new(element)))
+    "wrapTight" => Some(WrapTight(CT_WrapTight::new(element)))
+    "wrapThrough" => Some(WrapThrough(CT_WrapThrough::new(element)))
+    "wrapTopAndBottom" => Some(WrapTopAndBottom(CT_WrapTopBottom::new(element)))
+    _ => None
+  }
 }
 
 ///|
-pub fn EG_WrapType::count(self : EG_WrapType) -> Int {
-  self.elements.length()
-}
-
-///|
-pub fn EG_WrapType::contains(self : EG_WrapType, local_name : String) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
+pub fn find_wrap_type_child(
+  element : @xml.Element,
+) -> EG_WrapType? raise SchemaViolation {
+  for child in element.children {
+    if child is @xml.Node::Element(e) {
+      match parse_wrap_type_child(e) {
+        Some(w) => return Some(w)
+        None => ()
+      }
     }
   }
-  found
+  None
+}
+
+///|
+/// Bridge `@a.SchemaViolation` into the local one so DrawingML
+/// projections (CT_Point2D, CT_PositiveSize2D, CT_GraphicalObject,
+/// etc.) raise this package's SchemaViolation when consumed.
+fn wrap_a_violation[T](
+  body : () -> T raise @a.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @a.SchemaViolation(schema=_, path=p, reason~) =>
+      raise SchemaViolation(
+        type_name=path + " (" + p + ")",
+        value="",
+        reason~,
+      )
+  }
 }

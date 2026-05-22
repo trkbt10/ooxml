@@ -15,11 +15,11 @@
 /// `link.wasm-gc.exports` list. npm consumers call these exports through the
 /// JavaScript core wrapper rather than importing the MoonBit facade directly.
 pub fn package_name() -> String {
-  @pptx.package_name()
+  @pml_context.package_name()
 }
 
 ///|
-let pptx_presentations : Ref[Array[@pptx.Presentation]] = { val: [] }
+let pptx_presentations : Ref[Array[@pml_context.Presentation]] = { val: [] }
 
 ///|
 /// Parse `.pptx` OOXML bytes and store the resulting presentation in the wasm
@@ -27,7 +27,7 @@ let pptx_presentations : Ref[Array[@pptx.Presentation]] = { val: [] }
 /// failure.
 pub fn pptx_open(bytes : Bytes) -> Int {
   try {
-    let presentation = @pptx.open(bytes)
+    let presentation = @pml_context.open(bytes)
     pptx_presentations.val.push(presentation)
     pptx_presentations.val.length()
   } catch {
@@ -66,7 +66,7 @@ pub fn pptx_to_svg(handle : Int) -> String {
 }
 
 ///|
-fn pptx_presentation(handle : Int) -> @pptx.Presentation? {
+fn pptx_presentation(handle : Int) -> @pml_context.Presentation? {
   if handle <= 0 {
     None
   } else {

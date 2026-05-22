@@ -92,106 +92,16 @@ pub fn ST_EditAs::to_string(self : ST_EditAs) -> String {
 
 ///|
 /// XSD simple type ST_CF from vml-spreadsheetDrawing.xsd.
-/// Schema vml-spreadsheetDrawing.xsd simple type ST_CF uses xsd:string.
-/// Public value type ST_CF exposes the legacy string control-format value.
-pub struct ST_CF {
-  value : String
-} derive(Eq, Debug)
+/// VML spreadsheet-drawing primitives (`x:ClientData`, ST_ObjectType,
+/// ST_CF, ClientDataChild) moved to the dedicated
+/// `trkbt10/ooxml/ecma376/drawing_ml/vml_excel` package, since they
+/// belong to vml-spreadsheetDrawing.xsd not dml-spreadsheetDrawing.xsd.
+/// Re-exported here through type aliases so existing consumers of
+/// this module keep compiling unchanged.
+pub typealias @vml_excel.ST_CF as ST_CF
 
 ///|
-/// Construct ST_CF as an xsd:string-compatible legacy VML value.
-/// Schema vml-spreadsheetDrawing.xsd simple type ST_CF.
-pub fn ST_CF::new(s : String) -> ST_CF {
-  { value: s }
-}
-
-///|
-/// Return the lexical ST_CF value.
-pub fn ST_CF::to_string(self : ST_CF) -> String {
-  self.value
-}
-
-///|
-/// XSD simple type ST_ObjectType from vml-spreadsheetDrawing.xsd.
-pub(all) enum ST_ObjectType {
-  Button
-  Checkbox
-  Dialog
-  Drop
-  Edit
-  GBox
-  Label
-  LineA
-  List
-  Movie
-  Note
-  Pict
-  Radio
-  RectA
-  Scroll
-  Spin
-  Shape
-  Group
-  Rect
-} derive(Eq, Debug)
-
-///|
-/// Construct ST_ObjectType from its VML spreadsheet drawing enumeration.
-pub fn ST_ObjectType::new(s : String) -> ST_ObjectType raise SchemaViolation {
-  match s {
-    "Button" => Button
-    "Checkbox" => Checkbox
-    "Dialog" => Dialog
-    "Drop" => Drop
-    "Edit" => Edit
-    "GBox" => GBox
-    "Label" => Label
-    "LineA" => LineA
-    "List" => List
-    "Movie" => Movie
-    "Note" => Note
-    "Pict" => Pict
-    "Radio" => Radio
-    "RectA" => RectA
-    "Scroll" => Scroll
-    "Spin" => Spin
-    "Shape" => Shape
-    "Group" => Group
-    "Rect" => Rect
-    _ =>
-      raise SchemaViolation(
-        schema="vml-spreadsheetDrawing.xsd",
-        path="ST_ObjectType",
-        reason="invalid enumeration value",
-      )
-  }
-}
-
-///|
-/// Return the lexical ST_ObjectType value.
-pub fn ST_ObjectType::to_string(self : ST_ObjectType) -> String {
-  match self {
-    Button => "Button"
-    Checkbox => "Checkbox"
-    Dialog => "Dialog"
-    Drop => "Drop"
-    Edit => "Edit"
-    GBox => "GBox"
-    Label => "Label"
-    LineA => "LineA"
-    List => "List"
-    Movie => "Movie"
-    Note => "Note"
-    Pict => "Pict"
-    Radio => "Radio"
-    RectA => "RectA"
-    Scroll => "Scroll"
-    Spin => "Spin"
-    Shape => "Shape"
-    Group => "Group"
-    Rect => "Rect"
-  }
-}
+pub typealias @vml_excel.ST_ObjectType as ST_ObjectType
 
 ///|
 /// XSD complex type CT_AnchorClientData — Part 1 §20.5.2.3. Optional
@@ -224,26 +134,31 @@ pub(all) struct CT_ShapeNonVisual {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
-  c_nv_pr_child_name : String
+  c_nv_pr : @a.CT_NonVisualDrawingProps
   /// <cNvSpPr> (a:CT_NonVisualDrawingShapeProps) — required.
-  c_nv_sp_pr_child_name : String
+  c_nv_sp_pr : @a.CT_NonVisualDrawingShapeProps
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_ShapeNonVisual from its source XML element.
-pub fn CT_ShapeNonVisual::new(element : @xml.Element) -> CT_ShapeNonVisual {
-  let mut cn = ""
-  let mut sp = ""
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "cNvPr" => cn = "cNvPr"
-        "cNvSpPr" => sp = "cNvSpPr"
-        _ => ()
-      }
-    }
-  }
-  { element, c_nv_pr_child_name: cn, c_nv_sp_pr_child_name: sp }
+pub fn CT_ShapeNonVisual::new(
+  element : @xml.Element,
+) -> CT_ShapeNonVisual raise SchemaViolation {
+  let c_nv_pr_el = required_child(
+    element, "cNvPr", "CT_ShapeNonVisual/cNvPr",
+  )
+  let c_nv_sp_pr_el = required_child(
+    element, "cNvSpPr", "CT_ShapeNonVisual/cNvSpPr",
+  )
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_ShapeNonVisual/cNvPr",
+  )
+  let c_nv_sp_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingShapeProps::new(c_nv_sp_pr_el) },
+    "CT_ShapeNonVisual/cNvSpPr",
+  )
+  { element, c_nv_pr, c_nv_sp_pr }
 }
 
 ///|
@@ -256,13 +171,13 @@ pub(all) struct CT_Shape {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <nvSpPr> (CT_ShapeNonVisual) — required.
-  nv_sp_pr_child_name : String
+  nv_sp_pr : CT_ShapeNonVisual
   /// <spPr> (a:CT_ShapeProperties) — required.
-  sp_pr_child_name : String
+  sp_pr : @a.CT_ShapeProperties
   /// <style> (a:CT_ShapeStyle) — optional.
-  has_style : Bool
+  style : @a.CT_ShapeStyle?
   /// <txBody> (a:CT_TextBody) — optional.
-  has_tx_body : Bool
+  tx_body : @a.CT_TextBody?
   /// @macro (xsd:string) — optional.
   macro_ : String?
   /// @textlink (xsd:string) — optional.
@@ -275,28 +190,30 @@ pub(all) struct CT_Shape {
 
 ///|
 /// Construct CT_Shape from its source XML element.
-pub fn CT_Shape::new(element : @xml.Element) -> CT_Shape {
-  let mut nv = ""
-  let mut sp = ""
-  let mut style = false
-  let mut tx = false
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "nvSpPr" => nv = "nvSpPr"
-        "spPr" => sp = "spPr"
-        "style" => style = true
-        "txBody" => tx = true
-        _ => ()
-      }
-    }
+pub fn CT_Shape::new(element : @xml.Element) -> CT_Shape raise SchemaViolation {
+  let nv_sp_pr_el = required_child(element, "nvSpPr", "CT_Shape/nvSpPr")
+  let sp_pr_el = required_child(element, "spPr", "CT_Shape/spPr")
+  let nv_sp_pr = CT_ShapeNonVisual::new(nv_sp_pr_el)
+  let sp_pr = wrap_a_violation(
+    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    "CT_Shape/spPr",
+  )
+  let style = match optional_child(element, "style") {
+    None => None
+    Some(e) =>
+      Some(wrap_a_violation(fn() { @a.CT_ShapeStyle::new(e) }, "CT_Shape/style"))
+  }
+  let tx_body = match optional_child(element, "txBody") {
+    None => None
+    Some(e) =>
+      Some(wrap_a_violation(fn() { @a.CT_TextBody::new(e) }, "CT_Shape/txBody"))
   }
   {
     element,
-    nv_sp_pr_child_name: nv,
-    sp_pr_child_name: sp,
-    has_style: style,
-    has_tx_body: tx,
+    nv_sp_pr,
+    sp_pr,
+    style,
+    tx_body,
     macro_: attr(element, "macro"),
     textlink: attr(element, "textlink"),
     f_locks_text: attr(element, "fLocksText"),
@@ -312,28 +229,31 @@ pub(all) struct CT_ConnectorNonVisual {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
-  c_nv_pr_child_name : String
+  c_nv_pr : @a.CT_NonVisualDrawingProps
   /// <cNvCxnSpPr> (a:CT_NonVisualConnectorProperties) — required.
-  c_nv_cxn_sp_pr_child_name : String
+  c_nv_cxn_sp_pr : @a.CT_NonVisualConnectorProperties
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_ConnectorNonVisual from its source XML element.
 pub fn CT_ConnectorNonVisual::new(
   element : @xml.Element,
-) -> CT_ConnectorNonVisual {
-  let mut cn = ""
-  let mut cxn = ""
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "cNvPr" => cn = "cNvPr"
-        "cNvCxnSpPr" => cxn = "cNvCxnSpPr"
-        _ => ()
-      }
-    }
-  }
-  { element, c_nv_pr_child_name: cn, c_nv_cxn_sp_pr_child_name: cxn }
+) -> CT_ConnectorNonVisual raise SchemaViolation {
+  let c_nv_pr_el = required_child(
+    element, "cNvPr", "CT_ConnectorNonVisual/cNvPr",
+  )
+  let c_nv_cxn_sp_pr_el = required_child(
+    element, "cNvCxnSpPr", "CT_ConnectorNonVisual/cNvCxnSpPr",
+  )
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_ConnectorNonVisual/cNvPr",
+  )
+  let c_nv_cxn_sp_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualConnectorProperties::new(c_nv_cxn_sp_pr_el) },
+    "CT_ConnectorNonVisual/cNvCxnSpPr",
+  )
+  { element, c_nv_pr, c_nv_cxn_sp_pr }
 }
 
 ///|
@@ -345,11 +265,11 @@ pub(all) struct CT_Connector {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <nvCxnSpPr> (CT_ConnectorNonVisual) — required.
-  nv_cxn_sp_pr_child_name : String
+  nv_cxn_sp_pr : CT_ConnectorNonVisual
   /// <spPr> (a:CT_ShapeProperties) — required.
-  sp_pr_child_name : String
+  sp_pr : @a.CT_ShapeProperties
   /// <style> (a:CT_ShapeStyle) — optional.
-  has_style : Bool
+  style : @a.CT_ShapeStyle?
   /// @macro (xsd:string) — optional.
   macro_ : String?
   /// @fPublished (xsd:boolean) — optional, default "false".
@@ -358,25 +278,28 @@ pub(all) struct CT_Connector {
 
 ///|
 /// Construct CT_Connector from its source XML element.
-pub fn CT_Connector::new(element : @xml.Element) -> CT_Connector {
-  let mut nv = ""
-  let mut sp = ""
-  let mut style = false
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "nvCxnSpPr" => nv = "nvCxnSpPr"
-        "spPr" => sp = "spPr"
-        "style" => style = true
-        _ => ()
-      }
-    }
+pub fn CT_Connector::new(
+  element : @xml.Element,
+) -> CT_Connector raise SchemaViolation {
+  let nv_el = required_child(element, "nvCxnSpPr", "CT_Connector/nvCxnSpPr")
+  let sp_pr_el = required_child(element, "spPr", "CT_Connector/spPr")
+  let nv_cxn_sp_pr = CT_ConnectorNonVisual::new(nv_el)
+  let sp_pr = wrap_a_violation(
+    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    "CT_Connector/spPr",
+  )
+  let style = match optional_child(element, "style") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(e) }, "CT_Connector/style"),
+      )
   }
   {
     element,
-    nv_cxn_sp_pr_child_name: nv,
-    sp_pr_child_name: sp,
-    has_style: style,
+    nv_cxn_sp_pr,
+    sp_pr,
+    style,
     macro_: attr(element, "macro"),
     f_published: attr(element, "fPublished"),
   }
@@ -390,26 +313,31 @@ pub(all) struct CT_PictureNonVisual {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
-  c_nv_pr_child_name : String
+  c_nv_pr : @a.CT_NonVisualDrawingProps
   /// <cNvPicPr> (a:CT_NonVisualPictureProperties) — required.
-  c_nv_pic_pr_child_name : String
+  c_nv_pic_pr : @a.CT_NonVisualPictureProperties
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_PictureNonVisual from its source XML element.
-pub fn CT_PictureNonVisual::new(element : @xml.Element) -> CT_PictureNonVisual {
-  let mut cn = ""
-  let mut pic = ""
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "cNvPr" => cn = "cNvPr"
-        "cNvPicPr" => pic = "cNvPicPr"
-        _ => ()
-      }
-    }
-  }
-  { element, c_nv_pr_child_name: cn, c_nv_pic_pr_child_name: pic }
+pub fn CT_PictureNonVisual::new(
+  element : @xml.Element,
+) -> CT_PictureNonVisual raise SchemaViolation {
+  let c_nv_pr_el = required_child(
+    element, "cNvPr", "CT_PictureNonVisual/cNvPr",
+  )
+  let c_nv_pic_pr_el = required_child(
+    element, "cNvPicPr", "CT_PictureNonVisual/cNvPicPr",
+  )
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_PictureNonVisual/cNvPr",
+  )
+  let c_nv_pic_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualPictureProperties::new(c_nv_pic_pr_el) },
+    "CT_PictureNonVisual/cNvPicPr",
+  )
+  { element, c_nv_pr, c_nv_pic_pr }
 }
 
 ///|
@@ -422,13 +350,13 @@ pub(all) struct CT_Picture {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <nvPicPr> (CT_PictureNonVisual) — required.
-  nv_pic_pr_child_name : String
+  nv_pic_pr : CT_PictureNonVisual
   /// <blipFill> (a:CT_BlipFillProperties) — required.
-  blip_fill_child_name : String
+  blip_fill : @a.CT_BlipFillProperties
   /// <spPr> (a:CT_ShapeProperties) — required.
-  sp_pr_child_name : String
+  sp_pr : @a.CT_ShapeProperties
   /// <style> (a:CT_ShapeStyle) — optional.
-  has_style : Bool
+  style : @a.CT_ShapeStyle?
   /// @macro (xsd:string) — optional, default "".
   macro_ : String?
   /// @fPublished (xsd:boolean) — optional, default "false".
@@ -437,28 +365,34 @@ pub(all) struct CT_Picture {
 
 ///|
 /// Construct CT_Picture from its source XML element.
-pub fn CT_Picture::new(element : @xml.Element) -> CT_Picture {
-  let mut nv = ""
-  let mut blip = ""
-  let mut sp = ""
-  let mut style = false
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "nvPicPr" => nv = "nvPicPr"
-        "blipFill" => blip = "blipFill"
-        "spPr" => sp = "spPr"
-        "style" => style = true
-        _ => ()
-      }
-    }
+pub fn CT_Picture::new(
+  element : @xml.Element,
+) -> CT_Picture raise SchemaViolation {
+  let nv_el = required_child(element, "nvPicPr", "CT_Picture/nvPicPr")
+  let blip_el = required_child(element, "blipFill", "CT_Picture/blipFill")
+  let sp_pr_el = required_child(element, "spPr", "CT_Picture/spPr")
+  let nv_pic_pr = CT_PictureNonVisual::new(nv_el)
+  let blip_fill = wrap_a_violation(
+    fn() { @a.CT_BlipFillProperties::new(blip_el) },
+    "CT_Picture/blipFill",
+  )
+  let sp_pr = wrap_a_violation(
+    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    "CT_Picture/spPr",
+  )
+  let style = match optional_child(element, "style") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(e) }, "CT_Picture/style"),
+      )
   }
   {
     element,
-    nv_pic_pr_child_name: nv,
-    blip_fill_child_name: blip,
-    sp_pr_child_name: sp,
-    has_style: style,
+    nv_pic_pr,
+    blip_fill,
+    sp_pr,
+    style,
     macro_: attr(element, "macro"),
     f_published: attr(element, "fPublished"),
   }
@@ -471,28 +405,34 @@ pub(all) struct CT_GraphicalObjectFrameNonVisual {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
-  c_nv_pr_child_name : String
+  c_nv_pr : @a.CT_NonVisualDrawingProps
   /// <cNvGraphicFramePr> (a:CT_NonVisualGraphicFrameProperties) — required.
-  c_nv_graphic_frame_pr_child_name : String
+  c_nv_graphic_frame_pr : @a.CT_NonVisualGraphicFrameProperties
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_GraphicalObjectFrameNonVisual from its source XML element.
 pub fn CT_GraphicalObjectFrameNonVisual::new(
   element : @xml.Element,
-) -> CT_GraphicalObjectFrameNonVisual {
-  let mut cn = ""
-  let mut gf = ""
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "cNvPr" => cn = "cNvPr"
-        "cNvGraphicFramePr" => gf = "cNvGraphicFramePr"
-        _ => ()
-      }
-    }
-  }
-  { element, c_nv_pr_child_name: cn, c_nv_graphic_frame_pr_child_name: gf }
+) -> CT_GraphicalObjectFrameNonVisual raise SchemaViolation {
+  let c_nv_pr_el = required_child(
+    element, "cNvPr", "CT_GraphicalObjectFrameNonVisual/cNvPr",
+  )
+  let c_nv_graphic_frame_pr_el = required_child(
+    element, "cNvGraphicFramePr",
+    "CT_GraphicalObjectFrameNonVisual/cNvGraphicFramePr",
+  )
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_GraphicalObjectFrameNonVisual/cNvPr",
+  )
+  let c_nv_graphic_frame_pr = wrap_a_violation(
+    fn() {
+      @a.CT_NonVisualGraphicFrameProperties::new(c_nv_graphic_frame_pr_el)
+    },
+    "CT_GraphicalObjectFrameNonVisual/cNvGraphicFramePr",
+  )
+  { element, c_nv_pr, c_nv_graphic_frame_pr }
 }
 
 ///|
@@ -504,11 +444,11 @@ pub(all) struct CT_GraphicalObjectFrame {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <nvGraphicFramePr> (CT_GraphicalObjectFrameNonVisual) — required.
-  nv_graphic_frame_pr_child_name : String
+  nv_graphic_frame_pr : CT_GraphicalObjectFrameNonVisual
   /// <xfrm> (a:CT_Transform2D) — required.
-  xfrm_child_name : String
+  xfrm : @a.CT_Transform2D
   /// <a:graphic> — required.
-  graphic_child_name : String
+  graphic : @a.CT_GraphicalObject
   /// @macro (xsd:string) — optional.
   macro_ : String?
   /// @fPublished (xsd:boolean) — optional, default "false".
@@ -519,25 +459,28 @@ pub(all) struct CT_GraphicalObjectFrame {
 /// Construct CT_GraphicalObjectFrame from its source XML element.
 pub fn CT_GraphicalObjectFrame::new(
   element : @xml.Element,
-) -> CT_GraphicalObjectFrame {
-  let mut nv = ""
-  let mut xfrm = ""
-  let mut graphic = ""
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "nvGraphicFramePr" => nv = "nvGraphicFramePr"
-        "xfrm" => xfrm = "xfrm"
-        "graphic" => graphic = "graphic"
-        _ => ()
-      }
-    }
-  }
+) -> CT_GraphicalObjectFrame raise SchemaViolation {
+  let nv_el = required_child(
+    element, "nvGraphicFramePr", "CT_GraphicalObjectFrame/nvGraphicFramePr",
+  )
+  let xfrm_el = required_child(element, "xfrm", "CT_GraphicalObjectFrame/xfrm")
+  let graphic_el = required_child(
+    element, "graphic", "CT_GraphicalObjectFrame/graphic",
+  )
+  let nv_graphic_frame_pr = CT_GraphicalObjectFrameNonVisual::new(nv_el)
+  let xfrm = wrap_a_violation(
+    fn() { @a.CT_Transform2D::new(xfrm_el) },
+    "CT_GraphicalObjectFrame/xfrm",
+  )
+  let graphic = wrap_a_violation(
+    fn() { @a.CT_GraphicalObject::new(graphic_el) },
+    "CT_GraphicalObjectFrame/graphic",
+  )
   {
     element,
-    nv_graphic_frame_pr_child_name: nv,
-    xfrm_child_name: xfrm,
-    graphic_child_name: graphic,
+    nv_graphic_frame_pr,
+    xfrm,
+    graphic,
     macro_: attr(element, "macro"),
     f_published: attr(element, "fPublished"),
   }
@@ -551,28 +494,31 @@ pub(all) struct CT_GroupShapeNonVisual {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
-  c_nv_pr_child_name : String
+  c_nv_pr : @a.CT_NonVisualDrawingProps
   /// <cNvGrpSpPr> (a:CT_NonVisualGroupDrawingShapeProps) — required.
-  c_nv_grp_sp_pr_child_name : String
+  c_nv_grp_sp_pr : @a.CT_NonVisualGroupDrawingShapeProps
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_GroupShapeNonVisual from its source XML element.
 pub fn CT_GroupShapeNonVisual::new(
   element : @xml.Element,
-) -> CT_GroupShapeNonVisual {
-  let mut cn = ""
-  let mut grp = ""
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "cNvPr" => cn = "cNvPr"
-        "cNvGrpSpPr" => grp = "cNvGrpSpPr"
-        _ => ()
-      }
-    }
-  }
-  { element, c_nv_pr_child_name: cn, c_nv_grp_sp_pr_child_name: grp }
+) -> CT_GroupShapeNonVisual raise SchemaViolation {
+  let c_nv_pr_el = required_child(
+    element, "cNvPr", "CT_GroupShapeNonVisual/cNvPr",
+  )
+  let c_nv_grp_sp_pr_el = required_child(
+    element, "cNvGrpSpPr", "CT_GroupShapeNonVisual/cNvGrpSpPr",
+  )
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_GroupShapeNonVisual/cNvPr",
+  )
+  let c_nv_grp_sp_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualGroupDrawingShapeProps::new(c_nv_grp_sp_pr_el) },
+    "CT_GroupShapeNonVisual/cNvGrpSpPr",
+  )
+  { element, c_nv_pr, c_nv_grp_sp_pr }
 }
 
 ///|
@@ -583,36 +529,42 @@ pub(all) struct CT_GroupShape {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <nvGrpSpPr> (CT_GroupShapeNonVisual) — required.
-  nv_grp_sp_pr_child_name : String
+  nv_grp_sp_pr : CT_GroupShapeNonVisual
   /// <grpSpPr> (a:CT_GroupShapeProperties) — required.
-  grp_sp_pr_child_name : String
-  /// Local names of nested shape-content children in document order.
-  shape_child_names : Array[String]
+  grp_sp_pr : @a.CT_GroupShapeProperties
+  /// EG_ObjectChoices children in document order — the §20.5.2.17
+  /// unbounded shape choice (sp / grpSp / graphicFrame / cxnSp / pic).
+  shapes : Array[EG_ObjectChoices]
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_GroupShape from its source XML element.
-pub fn CT_GroupShape::new(element : @xml.Element) -> CT_GroupShape {
-  let mut nv = ""
-  let mut grp = ""
-  let names : Array[String] = []
+pub fn CT_GroupShape::new(
+  element : @xml.Element,
+) -> CT_GroupShape raise SchemaViolation {
+  let nv_el = required_child(element, "nvGrpSpPr", "CT_GroupShape/nvGrpSpPr")
+  let grp_el = required_child(element, "grpSpPr", "CT_GroupShape/grpSpPr")
+  let nv_grp_sp_pr = CT_GroupShapeNonVisual::new(nv_el)
+  let grp_sp_pr = wrap_a_violation(
+    fn() { @a.CT_GroupShapeProperties::new(grp_el) },
+    "CT_GroupShape/grpSpPr",
+  )
+  let shapes : Array[EG_ObjectChoices] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
       let name = child_element.name.local_name
       match name {
-        "nvGrpSpPr" => nv = "nvGrpSpPr"
-        "grpSpPr" => grp = "grpSpPr"
-        "sp" | "grpSp" | "graphicFrame" | "cxnSp" | "pic" => names.push(name)
+        "sp" => shapes.push(Sp(CT_Shape::new(child_element)))
+        "grpSp" => shapes.push(GrpSp(CT_GroupShape::new(child_element)))
+        "graphicFrame" =>
+          shapes.push(GraphicFrame(CT_GraphicalObjectFrame::new(child_element)))
+        "cxnSp" => shapes.push(CxnSp(CT_Connector::new(child_element)))
+        "pic" => shapes.push(Pic(CT_Picture::new(child_element)))
         _ => ()
       }
     }
   }
-  {
-    element,
-    nv_grp_sp_pr_child_name: nv,
-    grp_sp_pr_child_name: grp,
-    shape_child_names: names,
-  }
+  { element, nv_grp_sp_pr, grp_sp_pr, shapes }
 }
 
 ///|
@@ -673,46 +625,37 @@ pub(all) struct CT_TwoCellAnchor {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <from> (CT_Marker) — required.
-  from_child_name : String
+  from : CT_Marker
   /// <to> (CT_Marker) — required.
-  to_child_name : String
-  /// Local name of the EG_ObjectChoices child (sp/grpSp/graphicFrame/cxnSp/
-  /// pic/contentPart).
-  object_choice_child_name : String
+  to : CT_Marker
+  /// EG_ObjectChoices group child (sp / grpSp / graphicFrame / cxnSp /
+  /// pic / contentPart). Per §20.5.2.34 the choice is required.
+  object_choice : EG_ObjectChoices
   /// <clientData> (CT_AnchorClientData) — required.
-  client_data_child_name : String
+  client_data : CT_AnchorClientData
   /// @editAs (ST_EditAs) — optional, default "twoCell".
-  edit_as : String?
+  edit_as : ST_EditAs?
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_TwoCellAnchor from its source XML element.
-pub fn CT_TwoCellAnchor::new(element : @xml.Element) -> CT_TwoCellAnchor {
-  let mut from = ""
-  let mut to = ""
-  let mut choice = ""
-  let mut client = ""
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      let name = child_element.name.local_name
-      match name {
-        "from" => from = "from"
-        "to" => to = "to"
-        "clientData" => client = "clientData"
-        "sp" | "grpSp" | "graphicFrame" | "cxnSp" | "pic" | "contentPart" =>
-          choice = name
-        _ => ()
-      }
-    }
+pub fn CT_TwoCellAnchor::new(
+  element : @xml.Element,
+) -> CT_TwoCellAnchor raise SchemaViolation {
+  let from_el = required_child(element, "from", "CT_TwoCellAnchor/from")
+  let to_el = required_child(element, "to", "CT_TwoCellAnchor/to")
+  let client_el = required_child(
+    element, "clientData", "CT_TwoCellAnchor/clientData",
+  )
+  let from = CT_Marker::new(from_el)
+  let to = CT_Marker::new(to_el)
+  let client_data = CT_AnchorClientData::new(client_el)
+  let object_choice = read_object_choice(element, "CT_TwoCellAnchor")
+  let edit_as = match attr(element, "editAs") {
+    None => None
+    Some(v) => Some(ST_EditAs::new(v))
   }
-  {
-    element,
-    from_child_name: from,
-    to_child_name: to,
-    object_choice_child_name: choice,
-    client_data_child_name: client,
-    edit_as: attr(element, "editAs"),
-  }
+  { element, from, to, object_choice, client_data, edit_as }
 }
 
 ///|
@@ -723,42 +666,33 @@ pub(all) struct CT_OneCellAnchor {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <from> (CT_Marker) — required.
-  from_child_name : String
+  from : CT_Marker
   /// <ext> (a:CT_PositiveSize2D) — required.
-  ext_child_name : String
-  /// Local name of the EG_ObjectChoices child.
-  object_choice_child_name : String
+  ext : @a.CT_PositiveSize2D
+  /// EG_ObjectChoices group child.
+  object_choice : EG_ObjectChoices
   /// <clientData> (CT_AnchorClientData) — required.
-  client_data_child_name : String
+  client_data : CT_AnchorClientData
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_OneCellAnchor from its source XML element.
-pub fn CT_OneCellAnchor::new(element : @xml.Element) -> CT_OneCellAnchor {
-  let mut from = ""
-  let mut ext = ""
-  let mut choice = ""
-  let mut client = ""
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      let name = child_element.name.local_name
-      match name {
-        "from" => from = "from"
-        "ext" => ext = "ext"
-        "clientData" => client = "clientData"
-        "sp" | "grpSp" | "graphicFrame" | "cxnSp" | "pic" | "contentPart" =>
-          choice = name
-        _ => ()
-      }
-    }
-  }
-  {
-    element,
-    from_child_name: from,
-    ext_child_name: ext,
-    object_choice_child_name: choice,
-    client_data_child_name: client,
-  }
+pub fn CT_OneCellAnchor::new(
+  element : @xml.Element,
+) -> CT_OneCellAnchor raise SchemaViolation {
+  let from_el = required_child(element, "from", "CT_OneCellAnchor/from")
+  let ext_el = required_child(element, "ext", "CT_OneCellAnchor/ext")
+  let client_el = required_child(
+    element, "clientData", "CT_OneCellAnchor/clientData",
+  )
+  let from = CT_Marker::new(from_el)
+  let ext = wrap_a_violation(
+    fn() { @a.CT_PositiveSize2D::new(ext_el) },
+    "CT_OneCellAnchor/ext",
+  )
+  let client_data = CT_AnchorClientData::new(client_el)
+  let object_choice = read_object_choice(element, "CT_OneCellAnchor")
+  { element, from, ext, object_choice, client_data }
 }
 
 ///|
@@ -769,42 +703,36 @@ pub(all) struct CT_AbsoluteAnchor {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <pos> (a:CT_Point2D) — required.
-  pos_child_name : String
+  pos : @a.CT_Point2D
   /// <ext> (a:CT_PositiveSize2D) — required.
-  ext_child_name : String
-  /// Local name of the EG_ObjectChoices child.
-  object_choice_child_name : String
+  ext : @a.CT_PositiveSize2D
+  /// EG_ObjectChoices group child.
+  object_choice : EG_ObjectChoices
   /// <clientData> (CT_AnchorClientData) — required.
-  client_data_child_name : String
+  client_data : CT_AnchorClientData
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_AbsoluteAnchor from its source XML element.
-pub fn CT_AbsoluteAnchor::new(element : @xml.Element) -> CT_AbsoluteAnchor {
-  let mut pos = ""
-  let mut ext = ""
-  let mut choice = ""
-  let mut client = ""
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      let name = child_element.name.local_name
-      match name {
-        "pos" => pos = "pos"
-        "ext" => ext = "ext"
-        "clientData" => client = "clientData"
-        "sp" | "grpSp" | "graphicFrame" | "cxnSp" | "pic" | "contentPart" =>
-          choice = name
-        _ => ()
-      }
-    }
-  }
-  {
-    element,
-    pos_child_name: pos,
-    ext_child_name: ext,
-    object_choice_child_name: choice,
-    client_data_child_name: client,
-  }
+pub fn CT_AbsoluteAnchor::new(
+  element : @xml.Element,
+) -> CT_AbsoluteAnchor raise SchemaViolation {
+  let pos_el = required_child(element, "pos", "CT_AbsoluteAnchor/pos")
+  let ext_el = required_child(element, "ext", "CT_AbsoluteAnchor/ext")
+  let client_el = required_child(
+    element, "clientData", "CT_AbsoluteAnchor/clientData",
+  )
+  let pos = wrap_a_violation(
+    fn() { @a.CT_Point2D::new(pos_el) },
+    "CT_AbsoluteAnchor/pos",
+  )
+  let ext = wrap_a_violation(
+    fn() { @a.CT_PositiveSize2D::new(ext_el) },
+    "CT_AbsoluteAnchor/ext",
+  )
+  let client_data = CT_AnchorClientData::new(client_el)
+  let object_choice = read_object_choice(element, "CT_AbsoluteAnchor")
+  { element, pos, ext, object_choice, client_data }
 }
 
 ///|
@@ -814,24 +742,30 @@ pub fn CT_AbsoluteAnchor::new(element : @xml.Element) -> CT_AbsoluteAnchor {
 pub(all) struct CT_Drawing {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
-  /// Local names of EG_Anchor children in document order.
-  anchor_child_names : Array[String]
+  /// EG_Anchor children in document order — twoCellAnchor /
+  /// oneCellAnchor / absoluteAnchor per §20.5.2.35.
+  anchors : Array[EG_Anchor]
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_Drawing from its source XML element.
-pub fn CT_Drawing::new(element : @xml.Element) -> CT_Drawing {
-  let names : Array[String] = []
+pub fn CT_Drawing::new(element : @xml.Element) -> CT_Drawing raise SchemaViolation {
+  let anchors : Array[EG_Anchor] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
       let name = child_element.name.local_name
       match name {
-        "twoCellAnchor" | "oneCellAnchor" | "absoluteAnchor" => names.push(name)
+        "twoCellAnchor" =>
+          anchors.push(TwoCellAnchor(CT_TwoCellAnchor::new(child_element)))
+        "oneCellAnchor" =>
+          anchors.push(OneCellAnchor(CT_OneCellAnchor::new(child_element)))
+        "absoluteAnchor" =>
+          anchors.push(AbsoluteAnchor(CT_AbsoluteAnchor::new(child_element)))
         _ => ()
       }
     }
   }
-  { element, anchor_child_names: names }
+  { element, anchors }
 }
 
 ///|
@@ -865,40 +799,17 @@ pub type To = CT_Marker
 /// XSD element wsDr in dml-spreadsheetDrawing.xsd.
 pub type WsDr = CT_Drawing
 
-///|
-/// XSD complex type CT_ClientData from vml-spreadsheetDrawing.xsd — Part 4
-/// §14.4.2.12. Required `ObjectType` attribute (ST_ObjectType); unbounded
-/// choice of legacy VML form-control child elements stored as a raw name list.
-pub(all) struct CT_ClientData {
-  /// Preserve source XML element for byte-identical round-trip.
-  element : @xml.Element
-  /// @ObjectType (ST_ObjectType) — required.
-  object_type : String
-  /// Local names of VML control-state children in document order.
-  child_names : Array[String]
-} derive(Eq, Debug)
+/// VML CT_ClientData / ClientDataChild / ClientData live in the
+/// vml-spreadsheetDrawing.xsd schema, which is owned by the dedicated
+/// `drawing_ml/vml_excel` package. Aliased here so consumers don't
+/// need to re-import.
+pub typealias @vml_excel.ClientDataChild as ClientDataChild
 
 ///|
-/// Construct CT_ClientData from its source XML element.
-pub fn CT_ClientData::new(
-  element : @xml.Element,
-) -> CT_ClientData raise SchemaViolation {
-  let object_type_value = require_attr(
-    element, "ObjectType", "CT_ClientData/@ObjectType",
-  )
-  ST_ObjectType::new(object_type_value) |> ignore
-  let child_names : Array[String] = []
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      child_names.push(child_element.name.local_name)
-    }
-  }
-  { element, object_type: object_type_value, child_names }
-}
+pub typealias @vml_excel.CT_ClientData as CT_ClientData
 
 ///|
-/// XSD element ClientData in vml-spreadsheetDrawing.xsd.
-pub type ClientData = CT_ClientData
+pub typealias @vml_excel.ClientData as ClientData
 
 ///|
 /// Read top-level XSD element from as CT_Marker.
@@ -944,16 +855,17 @@ pub fn write_ws_dr(value : WsDr) -> Bytes {
 
 ///|
 /// Read top-level XSD element ClientData as CT_ClientData.
+///
+/// Delegates to the dedicated vml-spreadsheetDrawing.xsd reader in
+/// `drawing_ml/vml_excel`.
 pub fn read_client_data(bytes : Bytes) -> ClientData raise {
-  let root = @xml.parse(bytes).root
-  require_local(root, "ClientData", "ClientData", "vml-spreadsheetDrawing.xsd")
-  CT_ClientData::new(root)
+  @vml_excel.read_client_data(bytes)
 }
 
 ///|
 /// Write top-level XSD element ClientData.
 pub fn write_client_data(value : ClientData) -> Bytes {
-  write_element(value.element)
+  @vml_excel.write_client_data(value)
 }
 
 ///|
@@ -1049,6 +961,97 @@ fn require_local(
 ) -> Unit raise SchemaViolation {
   if element.name.local_name != local_name {
     raise SchemaViolation(schema~, path~, reason="unexpected element name")
+  }
+}
+
+///|
+/// Locate a required child element by local name. Mirrors the
+/// `required_child_text` helper but returns the element itself so
+/// callers can hand it to the typed @a.CT_*::new constructors.
+fn required_child(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> @xml.Element raise SchemaViolation {
+  for child in element.children {
+    match child {
+      @xml.Node::Element(child_element) =>
+        if child_element.name.local_name == local_name {
+          return child_element
+        }
+      _ => ()
+    }
+  }
+  raise SchemaViolation(
+    schema="dml-spreadsheetDrawing.xsd",
+    path~,
+    reason="required child element is missing",
+  )
+}
+
+///|
+/// Locate an optional child element by local name.
+fn optional_child(
+  element : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  for child in element.children {
+    match child {
+      @xml.Node::Element(child_element) =>
+        if child_element.name.local_name == local_name {
+          return Some(child_element)
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+/// Read the EG_ObjectChoices group child (§20.5 — the required
+/// sp/grpSp/graphicFrame/cxnSp/pic/contentPart choice that appears
+/// inside each anchor). Returns the typed projection.
+fn read_object_choice(
+  element : @xml.Element,
+  path_prefix : String,
+) -> EG_ObjectChoices raise SchemaViolation {
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      match child_element.name.local_name {
+        "sp" => return Sp(CT_Shape::new(child_element))
+        "grpSp" => return GrpSp(CT_GroupShape::new(child_element))
+        "graphicFrame" =>
+          return GraphicFrame(CT_GraphicalObjectFrame::new(child_element))
+        "cxnSp" => return CxnSp(CT_Connector::new(child_element))
+        "pic" => return Pic(CT_Picture::new(child_element))
+        "contentPart" => return ContentPart(CT_Rel::new(child_element))
+        _ => ()
+      }
+    }
+  }
+  raise SchemaViolation(
+    schema="dml-spreadsheetDrawing.xsd",
+    path=path_prefix + "/EG_ObjectChoices",
+    reason="required object choice child element is missing",
+  )
+}
+
+///|
+/// Run a callable that produces an `@a.CT_*` projection, mapping the
+/// drawing_ml package's SchemaViolation into our own so the
+/// spreadsheet_ml drawing reader stays self-contained at the public
+/// API.
+fn wrap_a_violation[T](
+  body : () -> T raise @a.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @a.SchemaViolation(schema=_, path=p, reason~) =>
+      raise SchemaViolation(
+        schema="dml-spreadsheetDrawing.xsd",
+        path=path + " (" + p + ")",
+        reason~,
+      )
   }
 }
 

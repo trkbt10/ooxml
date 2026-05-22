@@ -3,16 +3,83 @@ package "trkbt10/ooxml/ecma376/wordprocessing_ml/viewer"
 
 import {
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
+  "trkbt10/ooxml/xml",
 }
 
 // Values
 pub fn package_name() -> String
 
-pub fn render_html(@domain.CT_Document) -> String
+pub fn parse_clr_scheme(@xml.Element) -> ThemeColorMap
+
+pub fn parse_font_scheme(@xml.Element?) -> ThemeFontMap
+
+pub fn parse_xsd_on_off(String?) -> Bool?
+
+pub fn parse_xsd_on_off_or(String?, Bool) -> Bool
+
+pub fn render_html(@domain.CT_Document, rels_resolver? : (String) -> String?) -> String
+
+pub fn render_styled_html(@domain.CT_Document, rels_resolver? : (String) -> String?) -> String
+
+pub fn render_svg(@domain.CT_Document, header_blocks? : Array[@domain.EG_BlockLevelElts], footer_blocks? : Array[@domain.EG_BlockLevelElts], image_resolver? : (String) -> ResolvedImage?, styles? : @domain.CT_Styles?, numbering? : @domain.CT_Numbering?, theme? : @xml.Element?) -> DocumentSvgResult
+
+pub fn resolve_themed_color(String?, String?, String?, String?, ThemeColorMap) -> String?
 
 // Errors
 
 // Types and methods
+type BorderStyleKind
+
+type BreakKind
+
+type CellMargins
+
+pub struct DocumentSvgResult {
+  pages : Array[PageRenderResult]
+  total_pages : Int
+  warnings : Array[String]
+}
+
+pub struct PageRenderResult {
+  svg : String
+  width : Double
+  height : Double
+}
+
+pub(all) struct ResolvedImage {
+  mime_type : String
+  base64_data : String
+}
+
+pub(all) struct ThemeColorMap {
+  dark1 : String?
+  light1 : String?
+  dark2 : String?
+  light2 : String?
+  accent1 : String?
+  accent2 : String?
+  accent3 : String?
+  accent4 : String?
+  accent5 : String?
+  accent6 : String?
+  hyperlink : String?
+  followed_hyperlink : String?
+}
+pub fn ThemeColorMap::empty() -> Self
+pub fn ThemeColorMap::lookup(Self, String) -> String?
+
+pub(all) struct ThemeFontMap {
+  major_latin : String?
+  major_ea : String?
+  major_cs : String?
+  minor_latin : String?
+  minor_ea : String?
+  minor_cs : String?
+}
+pub fn ThemeFontMap::empty() -> Self
+pub fn ThemeFontMap::lookup(Self, String) -> String?
+
+type VMergeState derive(Eq)
 
 // Type aliases
 

@@ -942,16 +942,23 @@ fn flatten_values(value : FormulaValue) -> Array[FormulaValue] {
 fn parse_criterion(value : FormulaValue, ctx : EvalContext) -> FormulaValue {
   match value.first_scalar() {
     VString(text) => {
-      let s = text.trim().to_owned()
+      // §18.17.7 SUMIF / COUNTIF — the criterion text preserves
+      // whitespace inside the literal portion (Excel matches
+      // `" hello"` against the literal leading space).  We
+      // therefore inspect the raw text for an operator prefix
+      // without trimming.  The numeric operand parser strips
+      // trailing/leading whitespace internally because it
+      // recognises Excel's tolerant numeric input (e.g. `"1 "`
+      // is the same as `"1"`).
       let ops = [">=", "<=", "<>", ">", "<", "="]
       for op in ops {
-        if string_has_prefix(s, op) {
-          let body = s.unsafe_substring(start=op.length(), end=s.length())
+        if string_has_prefix(text, op) {
+          let body = text.unsafe_substring(start=op.length(), end=text.length())
           let parsed = parse_criterion_operand(body, ctx)
           return VArray([[VString(op), parsed]])
         }
       }
-      VArray([[VString("="), parse_criterion_operand(s, ctx)]])
+      VArray([[VString("="), parse_criterion_operand(text, ctx)]])
     }
     VError(err) => VError(err)
     other => VArray([[VString("="), other]])
@@ -960,6 +967,12 @@ fn parse_criterion(value : FormulaValue, ctx : EvalContext) -> FormulaValue {
 
 ///|
 fn parse_criterion_operand(text : String, ctx : EvalContext) -> FormulaValue {
+  // §18.17.7 — numeric criterion operands inherit Excel's
+  // tolerant numeric input rules, which include trimming
+  // surrounding whitespace.  When the operand fails to parse
+  // as a number we return the *original* text (with whitespace
+  // intact) so the downstream string-comparison path sees the
+  // criterion exactly as authored.
   let number : Double = try @strconv.from_str(text.trim().to_owned()) catch {
     _ => return VString(text)
   } noraise {

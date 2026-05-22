@@ -2,19 +2,389 @@
 package "trkbt10/ooxml/ecma376/presentation_ml/viewer"
 
 import {
+  "trkbt10/ooxml/ecma376/drawing_ml/theme",
   "trkbt10/ooxml/ecma376/presentation_ml/domain",
+  "trkbt10/ooxml/ecma376/presentation_ml/placeholder_resolver",
+  "trkbt10/ooxml/util/glyph",
+  "trkbt10/ooxml/xml",
 }
 
 // Values
+pub fn angle_units_to_degrees(Double) -> Double
+
+pub fn break_into_lines(Array[MeasuredSpan], Double, Double, TextWrapping) -> LineBreakResult
+
+pub fn build_line_marker_attrs(@xml.Element, Double, String, SvgDefsCollector) -> LineMarkerEmission
+
+pub fn create_guide_context(Double, Double, adjust_values? : Array[AdjustValue]) -> Map[String, Double]
+
+pub let default_font_size_pt : Double
+
+pub fn degrees_to_angle_units(Double) -> Double
+
+pub fn estimate_bullet_width(String, Double, String, measurer? : @glyph.FontMeasurer?) -> Double
+
+pub fn evaluate_expression(String, Map[String, Double]) -> Double
+
+pub fn evaluate_guides(Array[GuideEntry], Map[String, Double]) -> Unit
+
+pub fn fill_to_rect_to_radial_center(Double, Double, Double, Double) -> (Double, Double)
+
+pub fn format_auto_number(String, Int, start_at? : Int) -> String
+
+pub fn format_resolved_color(ResolvedColor) -> String
+
+pub fn get_line_max_font_info(Array[MeasuredSpan]) -> LineFontInfo
+
+pub fn get_line_max_font_size(Array[MeasuredSpan]) -> Double
+
+pub fn get_line_width(Array[MeasuredSpan]) -> Double
+
+pub fn get_radial_gradient_coords(radial_center? : (Double, Double)?, extended? : Bool) -> RadialGradientCoords
+
+pub fn get_scheme_color(String, String?, ColorResolveContext) -> String?
+
+pub fn has_3d_effects(@xml.Element) -> Bool
+
+pub fn layout_text_body(LayoutInput, measurer? : @glyph.FontMeasurer?) -> LayoutResult
+
+pub fn measure_span(LayoutSpan, measurer? : @glyph.FontMeasurer?) -> MeasuredSpan
+
+pub fn measure_spans(Array[LayoutSpan], measurer? : @glyph.FontMeasurer?) -> Array[MeasuredSpan]
+
+pub fn normalize_angle(Double) -> Double
+
+pub fn ooxml_angle_to_svg_linear_gradient(Double) -> LinearGradientCoords
+
 pub fn package_name() -> String
 
+pub fn parse_xsd_boolean(String?) -> Bool?
+
+pub fn parse_xsd_boolean_or(String?, Bool) -> Bool
+
+pub fn render_3d_effects(@xml.Element, String, String, Double, Double) -> Effects3d
+
+pub fn render_effects_filter_attr(@xml.Element, String, ColorResolveContext, SvgDefsCollector) -> Array[@xml.Attribute]
+
+pub fn render_fill_attr(@xml.Element, SvgDefsCollector, ColorResolveContext, shape_width? : Double, shape_height? : Double, image_resolver? : (String) -> ResolvedImage?) -> FillAttrResult
+
+pub fn render_graphic_frame_table_svg(@xml.Element, Double, Double, ColorResolveContext, SvgDefsCollector) -> Array[@xml.Node]
+
 pub fn render_html(@domain.CT_Slide) -> String
+
+pub fn render_preset_geometry(@xml.Element, Double, Double) -> String?
+
+pub fn render_styled_html(@domain.CT_Slide) -> String
+
+pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, theme? : @theme.CT_OfficeStyleSheet?, chain? : @placeholder_resolver.SlideChain?) -> String
+
+pub fn resolve_solid_fill(@xml.Element, ph_clr? : String?, ctx~ : ColorResolveContext) -> ResolvedColor?
 
 // Errors
 
 // Types and methods
+pub struct AdjustValue {
+  name : String
+  value : Double
+}
+
+type ArrowCmd
+
+pub(all) enum AutoFitConfig {
+  AutoFitNone
+  AutoFitShape
+  AutoFitNormal(Double, Double)
+}
+
+pub struct BulletConfig {
+  char : String
+  font_size : Double
+  color : String
+  font_family : String
+  image_url : String?
+}
+
+pub struct ColorResolveContext {
+  color_map : Map[String, String]
+  color_map_override : Map[String, String]?
+  color_scheme : Map[String, String]
+  ph_clr : String?
+  major_font : Map[String, String]
+  minor_font : Map[String, String]
+}
+pub fn ColorResolveContext::empty() -> Self
+pub fn ColorResolveContext::resolve_theme_typeface(Self, String) -> String?
+pub fn ColorResolveContext::with_color_scheme(Self, Map[String, String]) -> Self
+pub fn ColorResolveContext::with_font_scheme(Self, Map[String, String], Map[String, String]) -> Self
+pub fn ColorResolveContext::with_maps(Self, Map[String, String], Map[String, String]?) -> Self
+pub fn ColorResolveContext::with_ph_clr(Self, String) -> Self
+
+pub struct Effects3d {
+  transform_attrs : Array[@xml.Attribute]
+  extrusion : @xml.Node?
+  bevel : @xml.Node?
+  gradient_def : @xml.Node?
+}
+
+pub struct FillAttrResult {
+  attr_value : String
+  is_no_fill : Bool
+}
+
+pub(all) enum FontAlignment {
+  FontAlignAuto
+  FontAlignTop
+  FontAlignCenter
+  FontAlignBase
+  FontAlignBottom
+} derive(Eq, Show)
+
+type GradientStopValue
+
+type GroupTransformData
+
+pub struct GuideEntry {
+  name : String
+  formula : String
+}
+
+pub struct LayoutInput {
+  text_box : TextBoxConfig
+  paragraphs : Array[LayoutParagraphInput]
+}
+
+pub struct LayoutLine {
+  spans : Array[PositionedSpan]
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+}
+
+pub struct LayoutParagraphInput {
+  spans : Array[LayoutSpan]
+  alignment : TextAlign
+  margin_left : Double
+  indent : Double
+  margin_right : Double
+  space_before : Double
+  space_after : Double
+  line_spacing : LineSpacing?
+  bullet : BulletConfig?
+  font_alignment : FontAlignment
+  default_tab_size : Double
+  tab_stops : Array[LayoutTabStop]
+  ea_line_break : Bool
+  latin_line_break : Bool
+  hanging_punctuation : Bool
+  end_para_font_size : Double?
+}
+
+pub struct LayoutParagraphResult {
+  lines : Array[LayoutLine]
+  alignment : TextAlign
+  bullet : BulletConfig?
+  bullet_width : Double
+  font_alignment : FontAlignment
+}
+
+pub struct LayoutResult {
+  paragraphs : Array[LayoutParagraphResult]
+  total_height : Double
+  y_offset : Double
+}
+
+pub struct LayoutSpan {
+  text : String
+  font_size : Double
+  font_family : String
+  font_family_east_asian : String?
+  font_family_complex_script : String?
+  font_family_symbol : String?
+  font_weight : Int
+  font_style : String
+  text_decoration : String?
+  color : String
+  vertical_align : String
+  baseline_pct : Double
+  letter_spacing : Double
+  is_break : Bool
+  direction : String
+  highlight_color : String?
+  text_transform : String?
+  link_id : String?
+  link_tooltip : String?
+  mouse_over_link_id : String?
+  mouse_over_link_tooltip : String?
+  bookmark : String?
+  text_outline : TextOutlineConfig?
+  text_fill : TextFillConfig?
+  kerning : Double?
+  underline_color : String?
+}
+
+pub struct LayoutTabStop {
+  position : Double
+  alignment : TextAlign
+}
+
+pub struct LineBreakResult {
+  lines : Array[Array[MeasuredSpan]]
+  line_heights : Array[Double]
+}
+
+type LineBuilder
+
+pub struct LineFontInfo {
+  font_size : Double
+  font_family : String
+}
+
+pub struct LineMarkerEmission {
+  marker_start_attrs : Array[@xml.Attribute]
+  marker_end_attrs : Array[@xml.Attribute]
+}
+
+pub(all) enum LineSpacing {
+  LineSpacingPercent(Double)
+  LineSpacingPoints(Double)
+}
+
+pub struct LinearGradientCoords {
+  x1 : Double
+  y1 : Double
+  x2 : Double
+  y2 : Double
+}
+
+pub struct MeasuredSpan {
+  span : LayoutSpan
+  width : Double
+}
+
+pub struct PositionedSpan {
+  span : LayoutSpan
+  width : Double
+  dx : Double
+}
+
+pub struct RadialGradientCoords {
+  cx : Double
+  cy : Double
+  r : Double
+  fx : Double?
+  fy : Double?
+}
+
+pub struct ResolvedColor {
+  hex : String
+  alpha : Double
+}
+
+pub(all) struct ResolvedImage {
+  mime_type : String
+  base64_data : String
+}
+
+type SvgDefsCollector
+
+pub(all) enum TextAlign {
+  AlignLeft
+  AlignCenter
+  AlignRight
+  AlignJustify
+  AlignJustifyLow
+  AlignDistributed
+  AlignThaiDistributed
+  AlignDecimal
+} derive(Eq, Show)
+
+pub(all) enum TextAnchor {
+  AnchorTop
+  AnchorCenter
+  AnchorBottom
+  AnchorJustified
+  AnchorDistributed
+} derive(Eq, Show)
+
+pub struct TextBoxConfig {
+  width : Double
+  height : Double
+  inset_left : Double
+  inset_right : Double
+  inset_top : Double
+  inset_bottom : Double
+  anchor : TextAnchor
+  anchor_center : Bool
+  wrap_mode : TextWrapping
+  auto_fit : AutoFitConfig
+  horz_overflow : TextOverflow
+  vert_overflow : TextVerticalOverflow
+  compat_ln_spc : Bool
+  force_aa : Bool
+  rtl_col : Bool
+  spc_first_last_para : Bool
+  upright : Bool
+  vertical_type : TextVerticalType
+}
+
+pub(all) enum TextFillConfig {
+  TextFillSolid(String, Double)
+  TextFillNone
+  TextFillGradient(Array[TextGradientStop], Double, Bool)
+  TextFillPattern(String, String)
+  TextFillImage(String)
+}
+
+pub struct TextGradientStop {
+  position : Double
+  color : String
+  alpha : Double
+}
+
+pub struct TextOutlineConfig {
+  width : Double
+  color : String
+  cap : String
+  join : String
+}
+
+pub(all) enum TextOverflow {
+  OverflowAllow
+  OverflowClip
+} derive(Eq, Show)
+
+pub(all) enum TextVerticalOverflow {
+  VertOverflowAllow
+  VertOverflowEllipsis
+  VertOverflowClip
+} derive(Eq, Show)
+
+pub(all) enum TextVerticalType {
+  VertHorz
+  VertVert
+  VertEastAsianVert
+  VertVert270
+  VertWordArtVert
+  VertMongolianVert
+  VertWordArtVertRtl
+} derive(Eq, Show)
+
+pub(all) enum TextWrapping {
+  WrapNone
+  WrapSquare
+} derive(Eq, Show)
+
+type Transform3d
+
+type TransformData
 
 // Type aliases
+pub type ColorMap = Map[String, String]
+
+pub type ColorScheme = Map[String, String]
+
+pub type GuideContext = Map[String, Double]
 
 // Traits
 

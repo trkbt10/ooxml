@@ -632,9 +632,13 @@ pub fn CT_DbPr::new(element : @xml.Element) -> CT_DbPr {
 }
 
 ///|
+/// Schema sml.xsd complex type `CT_OlapPr`. Attributes: `local`,
+/// `localConnection`, `localRefresh`, `sendLocale`, `rowDrillCount`,
+/// `serverFill`, `serverNumberFormat`, `serverFont`, `serverFontColor`.
+///
 /// XSD complex type CT_OlapPr — Part 1 §18.13.6 (`<olapPr>` OLAP
-/// Properties). Attribute-only. Optional `@local` (xsd:boolean, default
-/// false); `@localConnection` (s:ST_Xstring); `@localRefresh`
+/// Properties). Attribute-only. Optional `@local` (xsd:boolean,
+/// default false); `@localConnection` (s:ST_Xstring); `@localRefresh`
 /// (xsd:boolean, default true); `@sendLocale` (xsd:boolean, default
 /// false); `@rowDrillCount` (xsd:unsignedInt); `@serverFill`,
 /// `@serverNumberFormat`, `@serverFont`, `@serverFontColor`
@@ -688,12 +692,17 @@ pub fn CT_OlapPr::new(element : @xml.Element) -> CT_OlapPr {
 }
 
 ///|
+/// Schema sml.xsd complex type `CT_WebPr`. Attributes: `xml`,
+/// `sourceData`, `parsePre`, `consecutive`, `firstRow`, `xl97`,
+/// `textDates`, `xl2000`, `url`, `post`, `htmlTables`, `htmlFormat`,
+/// `editPage`. Child elements: `tables`. Child types: `CT_Tables`.
+///
 /// XSD complex type CT_WebPr — Part 1 §18.13.16 (`<webPr>` Web Query
 /// Properties). Sequence: optional `<tables>` (CT_Tables). Optional
 /// `@xml`, `@sourceData`, `@parsePre`, `@consecutive`, `@firstRow`,
-/// `@xl97`, `@textDates`, `@xl2000`, `@htmlTables` (xsd:boolean, default
-/// false); `@url`, `@post`, `@editPage` (s:ST_Xstring); `@htmlFormat`
-/// (ST_HtmlFmt, default `none`).
+/// `@xl97`, `@textDates`, `@xl2000`, `@htmlTables` (xsd:boolean,
+/// default false); `@url`, `@post`, `@editPage` (s:ST_Xstring);
+/// `@htmlFormat` (ST_HtmlFmt, default `none`).
 pub(all) struct CT_WebPr {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -1246,6 +1255,9 @@ pub fn CT_Missing::new(element : @xml.Element) -> CT_Missing {
 /// (xsd:double). Optional `@u`, `@f` (xsd:boolean); `@c` (s:ST_Xstring);
 /// `@cp`, `@in` (xsd:unsignedInt); `@bc`, `@fc` (ST_UnsignedIntHex);
 /// `@i`, `@un`, `@st`, `@b` (xsd:boolean, default false).
+/// Schema sml.xsd complex type `CT_Number`. Attributes: `v`, `u`, `f`,
+/// `c`, `cp`, `in`, `bc`, `fc`, `i`, `un`, `st`, `b`. Child elements:
+/// `tpls`, `x`. Child types: `CT_Tuples`, `CT_X`.
 pub(all) struct CT_Number {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -1314,6 +1326,9 @@ pub fn CT_Number::new(element : @xml.Element) -> CT_Number {
 /// `@c` (s:ST_Xstring); `@cp`, `@in` (xsd:unsignedInt); `@bc`, `@fc`
 /// (ST_UnsignedIntHex); `@i`, `@un`, `@st`, `@b` (xsd:boolean, default
 /// false).
+/// Schema sml.xsd complex type `CT_Error`. Attributes: `v`, `u`, `f`,
+/// `c`, `cp`, `in`, `bc`, `fc`, `i`, `un`, `st`, `b`. Child elements:
+/// `tpls`, `x`. Child types: `CT_Tuples`, `CT_X`.
 pub(all) struct CT_Error {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -1765,6 +1780,8 @@ pub fn CT_GroupLevel::new(element : @xml.Element) -> CT_GroupLevel {
 /// XSD complex type CT_Groups — Part 1 §18.10.1.34 (`<groups>` OLAP
 /// Level Groups). Sequence: `<group>+` (CT_LevelGroup, one or more).
 /// Optional `@count` (xsd:unsignedInt).
+/// Schema sml.xsd complex type `CT_Groups`. Attributes: `count`. Child
+/// elements: `group`. Child types: `CT_LevelGroup`.
 pub(all) struct CT_Groups {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -2049,11 +2066,14 @@ pub fn CT_Item::new(element : @xml.Element) -> CT_Item {
 }
 
 ///|
-/// XSD complex type CT_I — Part 1 §18.10.1.37 (`<i>` Row Item). Sequence:
-/// `<x>*` (CT_X) zero or more member index entries. Optional `@t`
-/// (ST_ItemType, default `data`); `@r` (xsd:unsignedInt, default 0)
-/// repeated-item count; `@i` (xsd:unsignedInt, default 0) data field
-/// index.
+/// Schema sml.xsd complex type `CT_I`. Attributes: `t`, `r`, `i`.
+/// Child elements: `x`. Child types: `CT_X`.
+///
+/// XSD complex type CT_I — Part 1 §18.10.1.37 (`<i>` Row Item).
+/// Sequence: `<x>*` (CT_X) zero or more member index entries.
+/// Optional `@t` (ST_ItemType, default `data`); `@r` (xsd:unsignedInt,
+/// default 0) repeated-item count; `@i` (xsd:unsignedInt, default 0)
+/// data field index.
 pub(all) struct CT_I {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -2089,6 +2109,7 @@ pub fn CT_I::new(element : @xml.Element) -> CT_I {
 ///|
 /// XSD complex type CT_X — Part 1 §18.10.1.108 (`<x>` Pivot Tuple Index).
 /// Attribute-only. Optional `@v` (xsd:int, default 0) shared-items index.
+/// Schema sml.xsd complex type `CT_X`. Attributes: `v`.
 pub(all) struct CT_X {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -2105,6 +2126,7 @@ pub fn CT_X::new(element : @xml.Element) -> CT_X {
 ///|
 /// XSD complex type CT_Field — Part 1 §18.10.1.28 (`<field>` Field
 /// Reference). Attribute-only. Required `@x` (xsd:int) field index.
+/// Schema sml.xsd complex type `CT_Field`. Attributes: `x`.
 pub(all) struct CT_Field {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -2218,6 +2240,7 @@ pub fn CT_Dimensions::new(element : @xml.Element) -> CT_Dimensions {
 ///|
 /// XSD complex type CT_Index — Part 1 §18.10.1.38 (`<x>` Shared Items
 /// Index). Attribute-only. Required `@v` (xsd:unsignedInt) index value.
+/// Schema sml.xsd complex type `CT_Index`. Attributes: `v`.
 pub(all) struct CT_Index {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element

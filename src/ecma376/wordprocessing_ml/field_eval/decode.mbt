@@ -20,13 +20,13 @@ pub fn decode_simple_field(
 
 ///|
 /// Part 1 §17.16.2 — paired `(Field, cached_runs)` returned by the
-/// `w:fldChar` decoder. `cached_runs` is the slice of `w:r` elements
-/// that appeared between `w:fldCharType="separate"` and
+/// `w:fldChar` decoder. `cached_runs` is the slice of `w:r` CT_R
+/// projections that appeared between `w:fldCharType="separate"` and
 /// `w:fldCharType="end"`; renderers can drop back to these runs when
 /// the evaluator declines to produce a result.
 pub(all) struct DecodedField {
   field : Field
-  cached_runs : Array[@xml.Element]
+  cached_runs : Array[@domain.CT_R]
 } derive(Eq, Debug)
 
 ///|
@@ -35,13 +35,13 @@ pub(all) struct DecodedField {
 /// is decoded first and its decoded form is appended to the outer
 /// list. Mismatched begin / end markers raise SchemaViolation.
 pub fn decode_field_run_sequence(
-  runs : Array[@xml.Element],
+  runs : Array[@domain.CT_R],
 ) -> Array[DecodedField] raise @opc_errors.SchemaViolation {
   let result : Array[DecodedField] = []
   let stack : Array[FieldFrame] = []
   for run in runs {
     let mut contains_field_marker = false
-    for child in run.children {
+    for child in run.element.children {
       match child {
         @xml.Element(child_element) => {
           let local = child_element.name.local_name
@@ -97,7 +97,7 @@ pub fn decode_field_run_sequence(
 ///|
 struct FieldFrame {
   instr_buf : StringBuilder
-  cached_runs : Array[@xml.Element]
+  cached_runs : Array[@domain.CT_R]
   mut past_separate : Bool
 }
 

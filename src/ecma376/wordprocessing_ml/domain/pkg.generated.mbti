@@ -4,6 +4,10 @@ package "trkbt10/ooxml/ecma376/wordprocessing_ml/domain"
 import {
   "moonbitlang/core/debug",
   "moonbitlang/core/hashmap",
+  "trkbt10/ooxml/ecma376/custom_xml_properties",
+  "trkbt10/ooxml/ecma376/drawing_ml",
+  "trkbt10/ooxml/ecma376/drawing_ml/picture",
+  "trkbt10/ooxml/ecma376/drawing_ml/vml",
   "trkbt10/ooxml/xml",
 }
 
@@ -12,21 +16,63 @@ pub fn anchor(@xml.Element) -> CT_Anchor raise SchemaViolation
 
 pub let cnf_bit_count : Int
 
+pub fn collect_block_level_chunk(Array[@xml.Element]) -> Array[EG_BlockLevelChunkElts] raise SchemaViolation
+
+pub fn collect_block_level_elements(Array[@xml.Element]) -> Array[EG_BlockLevelElts] raise SchemaViolation
+
+pub fn collect_cell_markup_elements(Array[@xml.Element]) -> Array[EG_CellMarkupElements] raise SchemaViolation
+
+pub fn collect_content_block_content(Array[@xml.Element]) -> Array[EG_ContentBlockContent] raise SchemaViolation
+
+pub fn collect_content_cell_content(Array[@xml.Element]) -> Array[EG_ContentCellContent] raise SchemaViolation
+
+pub fn collect_content_row_content(Array[@xml.Element]) -> Array[EG_ContentRowContent] raise SchemaViolation
+
+pub fn collect_content_run_content(Array[@xml.Element]) -> Array[EG_ContentRunContent] raise SchemaViolation
+
+pub fn collect_content_run_content_base(Array[@xml.Element]) -> Array[EG_ContentRunContentBase] raise SchemaViolation
+
+pub fn collect_hdr_ftr_references(Array[@xml.Element]) -> Array[EG_HdrFtrReferences] raise SchemaViolation
+
+pub fn collect_math_content(Array[@xml.Element]) -> Array[EG_MathContent] raise SchemaViolation
+
+pub fn collect_pcontent(Array[@xml.Element]) -> Array[EG_PContent] raise SchemaViolation
+
+pub fn collect_pcontent_base(Array[@xml.Element]) -> Array[EG_PContentBase] raise SchemaViolation
+
+pub fn collect_pcontent_math(Array[@xml.Element]) -> Array[EG_PContentMath] raise SchemaViolation
+
+pub fn collect_range_markup_elements(Array[@xml.Element]) -> Array[EG_RangeMarkupElements] raise SchemaViolation
+
+pub fn collect_rpr_base_elements(Array[@xml.Element]) -> Array[EG_RPrBase] raise SchemaViolation
+
+pub fn collect_rpr_math_elements(Array[@xml.Element]) -> Array[EG_RPrMath] raise SchemaViolation
+
+pub fn collect_ruby_content(Array[@xml.Element]) -> Array[EG_RubyContent] raise SchemaViolation
+
+pub fn collect_run_inner_content(Array[@xml.Element]) -> Array[EG_RunInnerContent] raise SchemaViolation
+
+pub fn collect_run_level_elements(Array[@xml.Element]) -> Array[EG_RunLevelElts] raise SchemaViolation
+
 pub fn comments(@xml.Element) -> CT_Comments raise SchemaViolation
+
+pub fn decode_sect_pr_contents(@xml.Element) -> EG_SectPrContents raise SchemaViolation
 
 pub fn document(@xml.Element) -> CT_Document raise SchemaViolation
 
 pub fn endnotes(@xml.Element) -> CT_Endnotes raise SchemaViolation
 
+pub fn find_wrap_type_child(@xml.Element) -> EG_WrapType? raise SchemaViolation
+
 pub fn fonts(@xml.Element) -> CT_FontsList raise SchemaViolation
 
 pub fn footnotes(@xml.Element) -> CT_Footnotes raise SchemaViolation
 
-pub fn ftr(@xml.Element) -> CT_HdrFtr
+pub fn ftr(@xml.Element) -> CT_HdrFtr raise SchemaViolation
 
 pub fn glossary_document(@xml.Element) -> CT_GlossaryDocument raise SchemaViolation
 
-pub fn hdr(@xml.Element) -> CT_HdrFtr
+pub fn hdr(@xml.Element) -> CT_HdrFtr raise SchemaViolation
 
 pub fn inline(@xml.Element) -> CT_Inline raise SchemaViolation
 
@@ -36,6 +82,46 @@ pub fn numbering_parse_int(String) -> Int?
 
 pub fn package_name() -> String
 
+pub fn parse_block_level_chunk_element(@xml.Element) -> EG_BlockLevelChunkElts? raise SchemaViolation
+
+pub fn parse_block_level_element(@xml.Element) -> EG_BlockLevelElts? raise SchemaViolation
+
+pub fn parse_cell_markup_element(@xml.Element) -> EG_CellMarkupElements? raise SchemaViolation
+
+pub fn parse_content_block_content_element(@xml.Element) -> EG_ContentBlockContent? raise SchemaViolation
+
+pub fn parse_content_cell_content_element(@xml.Element) -> EG_ContentCellContent? raise SchemaViolation
+
+pub fn parse_content_row_content_element(@xml.Element) -> EG_ContentRowContent? raise SchemaViolation
+
+pub fn parse_content_run_content_base_element(@xml.Element) -> EG_ContentRunContentBase? raise SchemaViolation
+
+pub fn parse_content_run_content_element(@xml.Element) -> EG_ContentRunContent? raise SchemaViolation
+
+pub fn parse_hdr_ftr_reference_element(@xml.Element) -> EG_HdrFtrReferences? raise SchemaViolation
+
+pub fn parse_math_content_element(@xml.Element) -> EG_MathContent? raise SchemaViolation
+
+pub fn parse_pcontent_base_element(@xml.Element) -> EG_PContentBase? raise SchemaViolation
+
+pub fn parse_pcontent_element(@xml.Element) -> EG_PContent? raise SchemaViolation
+
+pub fn parse_pcontent_math_element(@xml.Element) -> EG_PContentMath? raise SchemaViolation
+
+pub fn parse_range_markup_element(@xml.Element) -> EG_RangeMarkupElements? raise SchemaViolation
+
+pub fn parse_rpr_base_element(@xml.Element) -> EG_RPrBase? raise SchemaViolation
+
+pub fn parse_rpr_math_element(@xml.Element) -> EG_RPrMath? raise SchemaViolation
+
+pub fn parse_ruby_content_element(@xml.Element) -> EG_RubyContent? raise SchemaViolation
+
+pub fn parse_run_inner_content_element(@xml.Element) -> EG_RunInnerContent? raise SchemaViolation
+
+pub fn parse_run_level_element(@xml.Element) -> EG_RunLevelElts? raise SchemaViolation
+
+pub fn parse_wrap_type_child(@xml.Element) -> EG_WrapType? raise SchemaViolation
+
 pub fn[T] raise_schema_violation(String, String, String) -> T raise SchemaViolation
 
 pub fn recipients(@xml.Element) -> CT_Recipients raise SchemaViolation
@@ -44,13 +130,13 @@ pub fn settings(@xml.Element) -> CT_Settings raise SchemaViolation
 
 pub fn styles(@xml.Element) -> CT_Styles raise SchemaViolation
 
-pub fn txbx_content(@xml.Element) -> CT_TxbxContent
+pub fn txbx_content(@xml.Element) -> CT_TxbxContent raise SchemaViolation
 
 pub fn web_settings(@xml.Element) -> CT_WebSettings raise SchemaViolation
 
 pub fn wgp(@xml.Element) -> CT_WordprocessingGroup raise SchemaViolation
 
-pub fn wpc(@xml.Element) -> CT_WordprocessingCanvas
+pub fn wpc(@xml.Element) -> CT_WordprocessingCanvas raise SchemaViolation
 
 pub fn wsp(@xml.Element) -> CT_WordprocessingShape raise SchemaViolation
 
@@ -196,7 +282,7 @@ pub fn CT_Base64Binary::to_element(Self) -> @xml.Element
 pub(all) struct CT_BdoContentRun {
   element : @xml.Element
   val : ST_Direction?
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
 } derive(Eq, @debug.Debug)
 pub fn CT_BdoContentRun::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_BdoContentRun::parse(@xml.Element) -> Self raise SchemaViolation
@@ -204,7 +290,7 @@ pub fn CT_BdoContentRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Body {
   element : @xml.Element
-  block_level_elts : EG_BlockLevelElts
+  block_level_elts : Array[EG_BlockLevelElts]
   sect_pr : CT_SectPr?
 } derive(Eq, @debug.Debug)
 pub fn CT_Body::new(@xml.Element) -> Self raise SchemaViolation
@@ -414,7 +500,7 @@ pub(all) struct CT_Comment {
   author : String
   date : ST_DateTime?
   initials : String?
-  block_level_elements : Array[@xml.Element]
+  block_level_elements : Array[EG_BlockLevelElts]
 } derive(Eq, @debug.Debug)
 pub fn CT_Comment::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Comment::parse(@xml.Element) -> Self raise SchemaViolation
@@ -466,7 +552,7 @@ pub fn CT_Control::to_element(Self) -> @xml.Element
 pub(all) struct CT_CustomXmlBlock {
   element : @xml.Element
   custom_xml_pr : CT_CustomXmlPr?
-  content_block_content : EG_ContentBlockContent
+  content_block_content : Array[EG_ContentBlockContent]
   uri : String?
   element_name : String
 } derive(Eq, @debug.Debug)
@@ -477,7 +563,7 @@ pub fn CT_CustomXmlBlock::to_element(Self) -> @xml.Element
 pub(all) struct CT_CustomXmlCell {
   element : @xml.Element
   custom_xml_pr : CT_CustomXmlPr?
-  content_cell_content : EG_ContentCellContent
+  content_cell_content : Array[EG_ContentCellContent]
   uri : String?
   element_name : String
 } derive(Eq, @debug.Debug)
@@ -497,7 +583,7 @@ pub fn CT_CustomXmlPr::to_element(Self) -> @xml.Element
 pub(all) struct CT_CustomXmlRow {
   element : @xml.Element
   custom_xml_pr : CT_CustomXmlPr?
-  content_row_content : EG_ContentRowContent
+  content_row_content : Array[EG_ContentRowContent]
   uri : String?
   element_name : String
 } derive(Eq, @debug.Debug)
@@ -508,7 +594,7 @@ pub fn CT_CustomXmlRow::to_element(Self) -> @xml.Element
 pub(all) struct CT_CustomXmlRun {
   element : @xml.Element
   custom_xml_pr : CT_CustomXmlPr?
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
   uri : String?
   element_name : String
 } derive(Eq, @debug.Debug)
@@ -545,7 +631,7 @@ pub fn CT_DecimalNumberOrPrecent::to_element(Self) -> @xml.Element
 pub(all) struct CT_DirContentRun {
   element : @xml.Element
   val : ST_Direction?
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
 } derive(Eq, @debug.Debug)
 pub fn CT_DirContentRun::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DirContentRun::parse(@xml.Element) -> Self raise SchemaViolation
@@ -759,7 +845,7 @@ pub fn CT_DocumentBase::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Drawing {
   element : @xml.Element
-  anchors_and_inlines : Array[@xml.Element]
+  anchors_and_inlines : Array[WpDrawingChild]
 } derive(Eq, @debug.Debug)
 pub fn CT_Drawing::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Drawing::parse(@xml.Element) -> Self raise SchemaViolation
@@ -1129,7 +1215,7 @@ pub(all) struct CT_FtnEdn {
   element : @xml.Element
   id : ST_DecimalNumber
   ftn_edn_type : ST_FtnEdn?
-  block_level_elements : Array[@xml.Element]
+  block_level_elements : Array[EG_BlockLevelElts]
 } derive(Eq, @debug.Debug)
 pub fn CT_FtnEdn::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FtnEdn::parse(@xml.Element) -> Self raise SchemaViolation
@@ -1210,10 +1296,10 @@ pub fn CT_HMerge::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HdrFtr {
   element : @xml.Element
-  block_level_elts : Array[@xml.Element]
+  block_level_elts : Array[EG_BlockLevelElts]
 } derive(Eq, @debug.Debug)
-pub fn CT_HdrFtr::new(@xml.Element) -> Self
-pub fn CT_HdrFtr::parse(@xml.Element) -> Self
+pub fn CT_HdrFtr::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_HdrFtr::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_HdrFtr::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_HdrFtrRef {
@@ -1266,10 +1352,10 @@ pub(all) struct CT_Hyperlink {
   history : Bool?
   anchor : String?
   r_id : String?
-  content : Array[@xml.Element]
+  content : Array[EG_PContent]
 } derive(Eq, @debug.Debug)
-pub fn CT_Hyperlink::new(@xml.Element) -> Self
-pub fn CT_Hyperlink::parse(@xml.Element) -> Self
+pub fn CT_Hyperlink::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Hyperlink::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Hyperlink::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Ind {
@@ -1740,7 +1826,7 @@ pub fn CT_OptimizeForBrowser::to_element(Self) -> @xml.Element
 pub(all) struct CT_P {
   element : @xml.Element
   p_pr : CT_PPr?
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
   rsid_r_pr : ST_LongHexNumber?
   rsid_r : ST_LongHexNumber?
   rsid_del : ST_LongHexNumber?
@@ -1943,7 +2029,7 @@ pub(all) struct CT_ParaRPr {
   del : CT_TrackChange?
   move_from : CT_TrackChange?
   move_to : CT_TrackChange?
-  base : Array[@xml.Element]
+  base : Array[EG_RPrBase]
   r_pr_change : CT_ParaRPrChange?
 } derive(Eq, @debug.Debug)
 pub fn CT_ParaRPr::new(@xml.Element) -> Self raise SchemaViolation
@@ -1967,7 +2053,7 @@ pub(all) struct CT_ParaRPrOriginal {
   del : CT_TrackChange?
   move_from : CT_TrackChange?
   move_to : CT_TrackChange?
-  base : Array[@xml.Element]
+  base : Array[EG_RPrBase]
 } derive(Eq, @debug.Debug)
 pub fn CT_ParaRPrOriginal::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ParaRPrOriginal::parse(@xml.Element) -> Self raise SchemaViolation
@@ -1997,7 +2083,7 @@ pub fn CT_PermStart::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Picture {
   element : @xml.Element
-  any_legacy : Array[@xml.Element]
+  any_legacy : Array[@vml.VmlShapeChild]
   movie : CT_Rel?
   control : CT_Control?
 } derive(Eq, @debug.Debug)
@@ -2072,7 +2158,7 @@ pub(all) struct CT_R {
   rsid_del : ST_LongHexNumber?
   rsid_r : ST_LongHexNumber?
   r_pr : CT_RPr?
-  inner_content : Array[@xml.Element]
+  inner_content : Array[EG_RunInnerContent]
 } derive(Eq, @debug.Debug)
 pub fn CT_R::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_R::parse(@xml.Element) -> Self raise SchemaViolation
@@ -2080,7 +2166,7 @@ pub fn CT_R::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RPr {
   element : @xml.Element
-  base : Array[@xml.Element]
+  base : Array[EG_RPrBase]
   r_pr_change : CT_RPrChange?
 } derive(Eq, @debug.Debug)
 pub fn CT_RPr::new(@xml.Element) -> Self raise SchemaViolation
@@ -2108,10 +2194,10 @@ pub fn CT_RPrDefault::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RPrOriginal {
   element : @xml.Element
-  base : Array[@xml.Element]
+  base : Array[EG_RPrBase]
 } derive(Eq, @debug.Debug)
-pub fn CT_RPrOriginal::new(@xml.Element) -> Self
-pub fn CT_RPrOriginal::parse(@xml.Element) -> Self
+pub fn CT_RPrOriginal::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RPrOriginal::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_RPrOriginal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ReadingModeInkLockDown {
@@ -2155,7 +2241,7 @@ pub(all) struct CT_Row {
   element : @xml.Element
   tbl_pr_ex : CT_TblPrEx?
   tr_pr : CT_TrPr?
-  content_cell_content : Array[@xml.Element]
+  content_cell_content : Array[EG_ContentCellContent]
   rsid_r_pr : ST_LongHexNumber?
   rsid_r : ST_LongHexNumber?
   rsid_del : ST_LongHexNumber?
@@ -2185,10 +2271,10 @@ pub fn CT_RubyAlign::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RubyContent {
   element : @xml.Element
-  ruby_content : EG_RubyContent
+  ruby_content : Array[EG_RubyContent]
 } derive(Eq, @debug.Debug)
-pub fn CT_RubyContent::new(@xml.Element) -> Self
-pub fn CT_RubyContent::parse(@xml.Element) -> Self
+pub fn CT_RubyContent::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_RubyContent::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_RubyContent::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_RubyPr {
@@ -2209,7 +2295,7 @@ pub(all) struct CT_RunTrackChange {
   id : ST_DecimalNumber
   author : String
   date : ST_DateTime?
-  run_content : Array[@xml.Element]
+  run_content : Array[RunTrackChangeChild]
 } derive(Eq, @debug.Debug)
 pub fn CT_RunTrackChange::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_RunTrackChange::parse(@xml.Element) -> Self raise SchemaViolation
@@ -2255,34 +2341,34 @@ pub fn CT_SdtComboBox::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtContentBlock {
   element : @xml.Element
-  content_block_content : EG_ContentBlockContent
+  content_block_content : Array[EG_ContentBlockContent]
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtContentBlock::new(@xml.Element) -> Self
-pub fn CT_SdtContentBlock::parse(@xml.Element) -> Self
+pub fn CT_SdtContentBlock::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtContentBlock::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtContentBlock::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtContentCell {
   element : @xml.Element
-  content_cell_content : EG_ContentCellContent
+  content_cell_content : Array[EG_ContentCellContent]
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtContentCell::new(@xml.Element) -> Self
-pub fn CT_SdtContentCell::parse(@xml.Element) -> Self
+pub fn CT_SdtContentCell::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtContentCell::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtContentCell::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtContentRow {
   element : @xml.Element
-  content_row_content : EG_ContentRowContent
+  content_row_content : Array[EG_ContentRowContent]
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtContentRow::new(@xml.Element) -> Self
-pub fn CT_SdtContentRow::parse(@xml.Element) -> Self
+pub fn CT_SdtContentRow::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtContentRow::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtContentRow::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtContentRun {
   element : @xml.Element
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
 } derive(Eq, @debug.Debug)
-pub fn CT_SdtContentRun::new(@xml.Element) -> Self
-pub fn CT_SdtContentRun::parse(@xml.Element) -> Self
+pub fn CT_SdtContentRun::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_SdtContentRun::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SdtContentRun::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SdtDate {
@@ -2411,7 +2497,7 @@ pub(all) struct CT_SectPr {
   rsid_sect : ST_LongHexNumber?
   header_references : Array[CT_HdrFtrRef]
   footer_references : Array[CT_HdrFtrRef]
-  contents : Array[@xml.Element]
+  contents : EG_SectPrContents
   sect_pr_change : CT_SectPrChange?
 } derive(Eq, @debug.Debug)
 pub fn CT_SectPr::new(@xml.Element) -> Self raise SchemaViolation
@@ -2424,7 +2510,7 @@ pub(all) struct CT_SectPrBase {
   rsid_del : ST_LongHexNumber?
   rsid_r : ST_LongHexNumber?
   rsid_sect : ST_LongHexNumber?
-  contents : Array[@xml.Element]
+  contents : EG_SectPrContents
 } derive(Eq, @debug.Debug)
 pub fn CT_SectPrBase::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SectPrBase::parse(@xml.Element) -> Self raise SchemaViolation
@@ -2533,7 +2619,7 @@ pub(all) struct CT_Settings {
   compat : CT_Compat?
   doc_vars : CT_DocVars?
   rsids : CT_DocRsids?
-  math_pr : Array[@xml.Element]
+  math_pr : Array[@trkbt10/ooxml/ecma376/office_math/domain.CT_MathPr]
   attached_schema : Array[CT_String]
   theme_font_lang : CT_Language?
   clr_scheme_mapping : CT_ColorSchemeMapping?
@@ -2543,7 +2629,7 @@ pub(all) struct CT_Settings {
   captions : CT_Captions?
   read_mode_ink_lock_down : CT_ReadingModeInkLockDown?
   smart_tag_type : Array[CT_SmartTagType]
-  schema_library : Array[@xml.Element]
+  schema_library : Array[@custom_xml_properties.CT_SchemaLibrary]
   do_not_embed_smart_tags : CT_OnOff?
   decimal_symbol : CT_String?
   list_separator : CT_String?
@@ -2554,10 +2640,10 @@ pub fn CT_Settings::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_ShapeDefaults {
   element : @xml.Element
-  any_office : Array[@xml.Element]
+  any_office : Array[@vml.VmlShapeChild]
 } derive(Eq, @debug.Debug)
-pub fn CT_ShapeDefaults::new(@xml.Element) -> Self
-pub fn CT_ShapeDefaults::parse(@xml.Element) -> Self
+pub fn CT_ShapeDefaults::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_ShapeDefaults::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_ShapeDefaults::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Shd {
@@ -2597,7 +2683,7 @@ pub(all) struct CT_SimpleField {
   instr : String
   fld_lock : Bool?
   dirty : Bool?
-  content : Array[@xml.Element]
+  content : Array[EG_PContent]
 } derive(Eq, @debug.Debug)
 pub fn CT_SimpleField::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_SimpleField::parse(@xml.Element) -> Self raise SchemaViolation
@@ -2614,7 +2700,7 @@ pub fn CT_SmartTagPr::to_element(Self) -> @xml.Element
 pub(all) struct CT_SmartTagRun {
   element : @xml.Element
   smart_tag_pr : CT_SmartTagPr?
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
   uri : String?
   element_name : String
 } derive(Eq, @debug.Debug)
@@ -2754,10 +2840,10 @@ pub fn CT_TargetScreenSz::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Tbl {
   element : @xml.Element
-  range_markup_elements : Array[@xml.Element]
+  range_markup_elements : Array[EG_RangeMarkupElements]
   tbl_pr : CT_TblPr
   tbl_grid : CT_TblGrid
-  content_row_content : Array[@xml.Element]
+  content_row_content : Array[EG_ContentRowContent]
 } derive(Eq, @debug.Debug)
 pub fn CT_Tbl::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Tbl::parse(@xml.Element) -> Self raise SchemaViolation
@@ -2996,7 +3082,7 @@ pub fn CT_TblWidth::to_element(Self) -> @xml.Element
 pub(all) struct CT_Tc {
   element : @xml.Element
   tc_pr : CT_TcPr?
-  block_level_elts : Array[@xml.Element]
+  block_level_elts : Array[EG_BlockLevelElts]
   id : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Tc::new(@xml.Element) -> Self raise SchemaViolation
@@ -3044,7 +3130,7 @@ pub(all) struct CT_TcPr {
   v_align : CT_VerticalJc?
   hide_mark : CT_OnOff?
   headers : CT_Headers?
-  cell_markup_elements : Array[@xml.Element]
+  cell_markup_elements : Array[EG_CellMarkupElements]
   tc_pr_change : CT_TcPrChange?
 } derive(Eq, @debug.Debug)
 pub fn CT_TcPr::new(@xml.Element) -> Self raise SchemaViolation
@@ -3097,7 +3183,7 @@ pub(all) struct CT_TcPrInner {
   v_align : CT_VerticalJc?
   hide_mark : CT_OnOff?
   headers : CT_Headers?
-  cell_markup_elements : Array[@xml.Element]
+  cell_markup_elements : Array[EG_CellMarkupElements]
 } derive(Eq, @debug.Debug)
 pub fn CT_TcPrInner::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TcPrInner::parse(@xml.Element) -> Self raise SchemaViolation
@@ -3287,10 +3373,10 @@ pub fn CT_TwipsMeasure::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TxbxContent {
   element : @xml.Element
-  block_level_elts : Array[@xml.Element]
+  block_level_elts : Array[EG_BlockLevelElts]
 } derive(Eq, @debug.Debug)
-pub fn CT_TxbxContent::new(@xml.Element) -> Self
-pub fn CT_TxbxContent::parse(@xml.Element) -> Self
+pub fn CT_TxbxContent::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TxbxContent::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TxbxContent::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Underline {
@@ -3366,13 +3452,13 @@ pub fn CT_WebSettings::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WordprocessingCanvas {
   element : @xml.Element
-  bg : @xml.Element?
-  whole : @xml.Element?
-  canvas_body : Array[@xml.Element]
-  ext_lst : @xml.Element?
+  bg : @drawing_ml.CT_BackgroundFormatting?
+  whole : @drawing_ml.CT_WholeE2oFormatting?
+  canvas_body : Array[WpCanvasChild]
+  ext_lst : @drawing_ml.CT_OfficeArtExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_WordprocessingCanvas::new(@xml.Element) -> Self
-pub fn CT_WordprocessingCanvas::parse(@xml.Element) -> Self
+pub fn CT_WordprocessingCanvas::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_WordprocessingCanvas::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_WordprocessingCanvas::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WordprocessingContentPart {
@@ -3398,11 +3484,11 @@ pub fn CT_WordprocessingContentPartNonVisual::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WordprocessingGroup {
   element : @xml.Element
-  c_nv_pr : @xml.Element?
-  c_nv_grp_sp_pr : @xml.Element
-  grp_sp_pr : @xml.Element
-  group_body : Array[@xml.Element]
-  ext_lst : @xml.Element?
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps?
+  c_nv_grp_sp_pr : @drawing_ml.CT_NonVisualGroupDrawingShapeProps
+  grp_sp_pr : @drawing_ml.CT_GroupShapeProperties
+  group_body : Array[WpGroupChild]
+  ext_lst : @drawing_ml.CT_OfficeArtExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_WordprocessingGroup::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_WordprocessingGroup::parse(@xml.Element) -> Self raise SchemaViolation
@@ -3446,8 +3532,8 @@ pub fn CT_WrapNone::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_WrapPath {
   element : @xml.Element
-  start : @xml.Element
-  line_to : Array[@xml.Element]
+  start : @drawing_ml.CT_Point2D
+  line_to : Array[@drawing_ml.CT_Point2D]
   edited : Bool?
 } derive(Eq, @debug.Debug)
 pub fn CT_WrapPath::new(@xml.Element) -> Self raise SchemaViolation
@@ -3529,204 +3615,268 @@ pub fn CT_Zoom::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Zoom::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Zoom::to_element(Self) -> @xml.Element
 
-pub(all) struct EG_BlockLevelChunkElts {
-  elements : Array[@xml.Element]
+pub(all) enum EG_BlockLevelChunkElts {
+  ContentBlock(EG_ContentBlockContent)
 } derive(Eq, @debug.Debug)
-pub fn EG_BlockLevelChunkElts::contains(Self, String) -> Bool
-pub fn EG_BlockLevelChunkElts::count(Self) -> Int
-pub fn EG_BlockLevelChunkElts::member_names(Self) -> Array[String]
-pub fn EG_BlockLevelChunkElts::new(Array[@xml.Element]) -> Self
+pub fn EG_BlockLevelChunkElts::source_element(Self) -> @xml.Element
 
-pub(all) struct EG_BlockLevelElts {
-  elements : Array[@xml.Element]
+pub(all) enum EG_BlockLevelElts {
+  Chunk(EG_BlockLevelChunkElts)
+  AltChunk(CT_AltChunk)
 } derive(Eq, @debug.Debug)
-pub fn EG_BlockLevelElts::contains(Self, String) -> Bool
-pub fn EG_BlockLevelElts::count(Self) -> Int
-pub fn EG_BlockLevelElts::member_names(Self) -> Array[String]
-pub fn EG_BlockLevelElts::new(Array[@xml.Element]) -> Self
+pub fn EG_BlockLevelElts::source_element(Self) -> @xml.Element
 
-pub(all) struct EG_CellMarkupElements {
-  elements : Array[@xml.Element]
+pub(all) enum EG_CellMarkupElements {
+  CellIns(CT_TrackChange)
+  CellDel(CT_TrackChange)
+  CellMerge(CT_CellMergeTrackChange)
 } derive(Eq, @debug.Debug)
-pub fn EG_CellMarkupElements::contains(Self, String) -> Bool
-pub fn EG_CellMarkupElements::count(Self) -> Int
-pub fn EG_CellMarkupElements::member_names(Self) -> Array[String]
-pub fn EG_CellMarkupElements::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_ContentBlockContent {
-  elements : Array[@xml.Element]
+pub(all) enum EG_ContentBlockContent {
+  CustomXml(CT_CustomXmlBlock)
+  Sdt(CT_SdtBlock)
+  P(CT_P)
+  Tbl(CT_Tbl)
+  RunLevel(EG_RunLevelElts)
 } derive(Eq, @debug.Debug)
-pub fn EG_ContentBlockContent::contains(Self, String) -> Bool
-pub fn EG_ContentBlockContent::count(Self) -> Int
-pub fn EG_ContentBlockContent::member_names(Self) -> Array[String]
-pub fn EG_ContentBlockContent::new(Array[@xml.Element]) -> Self
+pub fn EG_ContentBlockContent::source_element(Self) -> @xml.Element
 
-pub(all) struct EG_ContentCellContent {
-  elements : Array[@xml.Element]
+pub(all) enum EG_ContentCellContent {
+  Tc(CT_Tc)
+  CustomXml(CT_CustomXmlCell)
+  Sdt(CT_SdtCell)
+  RunLevel(EG_RunLevelElts)
 } derive(Eq, @debug.Debug)
-pub fn EG_ContentCellContent::contains(Self, String) -> Bool
-pub fn EG_ContentCellContent::count(Self) -> Int
-pub fn EG_ContentCellContent::member_names(Self) -> Array[String]
-pub fn EG_ContentCellContent::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_ContentRowContent {
-  elements : Array[@xml.Element]
+pub(all) enum EG_ContentRowContent {
+  Tr(CT_Row)
+  CustomXml(CT_CustomXmlRow)
+  Sdt(CT_SdtRow)
+  RunLevel(EG_RunLevelElts)
 } derive(Eq, @debug.Debug)
-pub fn EG_ContentRowContent::contains(Self, String) -> Bool
-pub fn EG_ContentRowContent::count(Self) -> Int
-pub fn EG_ContentRowContent::member_names(Self) -> Array[String]
-pub fn EG_ContentRowContent::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_ContentRunContent {
-  elements : Array[@xml.Element]
+pub(all) enum EG_ContentRunContent {
+  CustomXml(CT_CustomXmlRun)
+  SmartTag(CT_SmartTagRun)
+  Sdt(CT_SdtRun)
+  Dir(CT_DirContentRun)
+  Bdo(CT_BdoContentRun)
+  R(CT_R)
+  RunLevel(EG_RunLevelElts)
 } derive(Eq, @debug.Debug)
-pub fn EG_ContentRunContent::contains(Self, String) -> Bool
-pub fn EG_ContentRunContent::count(Self) -> Int
-pub fn EG_ContentRunContent::member_names(Self) -> Array[String]
-pub fn EG_ContentRunContent::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_ContentRunContentBase {
-  elements : Array[@xml.Element]
+pub(all) enum EG_ContentRunContentBase {
+  SmartTag(CT_SmartTagRun)
+  Sdt(CT_SdtRun)
+  RunLevel(EG_RunLevelElts)
 } derive(Eq, @debug.Debug)
-pub fn EG_ContentRunContentBase::contains(Self, String) -> Bool
-pub fn EG_ContentRunContentBase::count(Self) -> Int
-pub fn EG_ContentRunContentBase::member_names(Self) -> Array[String]
-pub fn EG_ContentRunContentBase::new(Array[@xml.Element]) -> Self
 
 pub(all) struct EG_FtnEdnNumProps {
-  elements : Array[@xml.Element]
+  num_start : CT_DecimalNumber?
+  num_restart : CT_NumRestart?
 } derive(Eq, @debug.Debug)
-pub fn EG_FtnEdnNumProps::contains(Self, String) -> Bool
-pub fn EG_FtnEdnNumProps::count(Self) -> Int
-pub fn EG_FtnEdnNumProps::member_names(Self) -> Array[String]
-pub fn EG_FtnEdnNumProps::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_HdrFtrReferences {
-  elements : Array[@xml.Element]
+pub(all) enum EG_HdrFtrReferences {
+  HeaderReference(CT_HdrFtrRef)
+  FooterReference(CT_HdrFtrRef)
 } derive(Eq, @debug.Debug)
-pub fn EG_HdrFtrReferences::contains(Self, String) -> Bool
-pub fn EG_HdrFtrReferences::count(Self) -> Int
-pub fn EG_HdrFtrReferences::member_names(Self) -> Array[String]
-pub fn EG_HdrFtrReferences::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_MathContent {
-  elements : Array[@xml.Element]
+pub(all) enum EG_MathContent {
+  OMathPara(@trkbt10/ooxml/ecma376/office_math/domain.CT_OMathPara)
+  OMath(@trkbt10/ooxml/ecma376/office_math/domain.CT_OMath)
 } derive(Eq, @debug.Debug)
-pub fn EG_MathContent::contains(Self, String) -> Bool
-pub fn EG_MathContent::count(Self) -> Int
-pub fn EG_MathContent::member_names(Self) -> Array[String]
-pub fn EG_MathContent::new(Array[@xml.Element]) -> Self
+pub fn EG_MathContent::source_element(Self) -> @xml.Element
 
-pub(all) struct EG_PContent {
-  elements : Array[@xml.Element]
+pub(all) enum EG_PContent {
+  RunContent(EG_ContentRunContent)
+  FldSimple(CT_SimpleField)
+  Hyperlink(CT_Hyperlink)
+  SubDoc(CT_Rel)
 } derive(Eq, @debug.Debug)
-pub fn EG_PContent::contains(Self, String) -> Bool
-pub fn EG_PContent::count(Self) -> Int
-pub fn EG_PContent::member_names(Self) -> Array[String]
-pub fn EG_PContent::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_PContentBase {
-  elements : Array[@xml.Element]
+pub(all) enum EG_PContentBase {
+  CustomXml(CT_CustomXmlRun)
+  FldSimple(CT_SimpleField)
+  Hyperlink(CT_Hyperlink)
 } derive(Eq, @debug.Debug)
-pub fn EG_PContentBase::contains(Self, String) -> Bool
-pub fn EG_PContentBase::count(Self) -> Int
-pub fn EG_PContentBase::member_names(Self) -> Array[String]
-pub fn EG_PContentBase::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_PContentMath {
-  elements : Array[@xml.Element]
+pub(all) enum EG_PContentMath {
+  Base(EG_PContentBase)
+  RunContentBase(EG_ContentRunContentBase)
 } derive(Eq, @debug.Debug)
-pub fn EG_PContentMath::contains(Self, String) -> Bool
-pub fn EG_PContentMath::count(Self) -> Int
-pub fn EG_PContentMath::member_names(Self) -> Array[String]
-pub fn EG_PContentMath::new(Array[@xml.Element]) -> Self
 
 pub(all) struct EG_ParaRPrTrackChanges {
-  elements : Array[@xml.Element]
+  ins : CT_TrackChange?
+  del : CT_TrackChange?
+  move_from : CT_TrackChange?
+  move_to : CT_TrackChange?
 } derive(Eq, @debug.Debug)
-pub fn EG_ParaRPrTrackChanges::contains(Self, String) -> Bool
-pub fn EG_ParaRPrTrackChanges::count(Self) -> Int
-pub fn EG_ParaRPrTrackChanges::member_names(Self) -> Array[String]
-pub fn EG_ParaRPrTrackChanges::new(Array[@xml.Element]) -> Self
 
 pub(all) struct EG_RPr {
-  elements : Array[@xml.Element]
+  r_pr : CT_RPr?
 } derive(Eq, @debug.Debug)
-pub fn EG_RPr::contains(Self, String) -> Bool
-pub fn EG_RPr::count(Self) -> Int
-pub fn EG_RPr::member_names(Self) -> Array[String]
-pub fn EG_RPr::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_RPrBase {
-  elements : Array[@xml.Element]
+pub(all) enum EG_RPrBase {
+  RStyle(CT_String)
+  RFonts(CT_Fonts)
+  B(CT_OnOff)
+  BCs(CT_OnOff)
+  I(CT_OnOff)
+  ICs(CT_OnOff)
+  Caps(CT_OnOff)
+  SmallCaps(CT_OnOff)
+  Strike(CT_OnOff)
+  Dstrike(CT_OnOff)
+  Outline(CT_OnOff)
+  Shadow(CT_OnOff)
+  Emboss(CT_OnOff)
+  Imprint(CT_OnOff)
+  NoProof(CT_OnOff)
+  SnapToGrid(CT_OnOff)
+  Vanish(CT_OnOff)
+  WebHidden(CT_OnOff)
+  Color(CT_Color)
+  Spacing(CT_SignedTwipsMeasure)
+  W(CT_TextScale)
+  Kern(CT_HpsMeasure)
+  Position(CT_SignedHpsMeasure)
+  Sz(CT_HpsMeasure)
+  SzCs(CT_HpsMeasure)
+  Highlight(CT_Highlight)
+  U(CT_Underline)
+  Effect(CT_TextEffect)
+  Bdr(CT_Border)
+  Shd(CT_Shd)
+  FitText(CT_FitText)
+  VertAlign(CT_VerticalAlignRun)
+  Rtl(CT_OnOff)
+  Cs(CT_OnOff)
+  Em(CT_Em)
+  Lang(CT_Language)
+  EastAsianLayout(CT_EastAsianLayout)
+  SpecVanish(CT_OnOff)
+  OMath(CT_OnOff)
 } derive(Eq, @debug.Debug)
-pub fn EG_RPrBase::contains(Self, String) -> Bool
-pub fn EG_RPrBase::count(Self) -> Int
-pub fn EG_RPrBase::member_names(Self) -> Array[String]
-pub fn EG_RPrBase::new(Array[@xml.Element]) -> Self
 
 pub(all) struct EG_RPrContent {
-  elements : Array[@xml.Element]
+  bases : Array[EG_RPrBase]
+  r_pr_change : CT_RPrChange?
 } derive(Eq, @debug.Debug)
-pub fn EG_RPrContent::contains(Self, String) -> Bool
-pub fn EG_RPrContent::count(Self) -> Int
-pub fn EG_RPrContent::member_names(Self) -> Array[String]
-pub fn EG_RPrContent::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_RPrMath {
-  elements : Array[@xml.Element]
+pub(all) enum EG_RPrMath {
+  RPr(CT_RPr)
+  MathIns(CT_MathCtrlIns)
+  MathDel(CT_MathCtrlDel)
 } derive(Eq, @debug.Debug)
-pub fn EG_RPrMath::contains(Self, String) -> Bool
-pub fn EG_RPrMath::count(Self) -> Int
-pub fn EG_RPrMath::member_names(Self) -> Array[String]
-pub fn EG_RPrMath::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_RangeMarkupElements {
-  elements : Array[@xml.Element]
+pub(all) enum EG_RangeMarkupElements {
+  BookmarkStart(CT_Bookmark)
+  BookmarkEnd(CT_MarkupRange)
+  MoveFromRangeStart(CT_MoveBookmark)
+  MoveFromRangeEnd(CT_MarkupRange)
+  MoveToRangeStart(CT_MoveBookmark)
+  MoveToRangeEnd(CT_MarkupRange)
+  CommentRangeStart(CT_MarkupRange)
+  CommentRangeEnd(CT_MarkupRange)
+  CustomXmlInsRangeStart(CT_TrackChange)
+  CustomXmlInsRangeEnd(CT_Markup)
+  CustomXmlDelRangeStart(CT_TrackChange)
+  CustomXmlDelRangeEnd(CT_Markup)
+  CustomXmlMoveFromRangeStart(CT_TrackChange)
+  CustomXmlMoveFromRangeEnd(CT_Markup)
+  CustomXmlMoveToRangeStart(CT_TrackChange)
+  CustomXmlMoveToRangeEnd(CT_Markup)
 } derive(Eq, @debug.Debug)
-pub fn EG_RangeMarkupElements::contains(Self, String) -> Bool
-pub fn EG_RangeMarkupElements::count(Self) -> Int
-pub fn EG_RangeMarkupElements::member_names(Self) -> Array[String]
-pub fn EG_RangeMarkupElements::new(Array[@xml.Element]) -> Self
+pub fn EG_RangeMarkupElements::source_element(Self) -> @xml.Element
 
-pub(all) struct EG_RubyContent {
-  elements : Array[@xml.Element]
+pub(all) enum EG_RubyContent {
+  R(CT_R)
+  RunLevel(EG_RunLevelElts)
 } derive(Eq, @debug.Debug)
-pub fn EG_RubyContent::contains(Self, String) -> Bool
-pub fn EG_RubyContent::count(Self) -> Int
-pub fn EG_RubyContent::member_names(Self) -> Array[String]
-pub fn EG_RubyContent::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_RunInnerContent {
-  elements : Array[@xml.Element]
+pub(all) enum EG_RunInnerContent {
+  Br(CT_Br)
+  T(CT_Text)
+  ContentPart(CT_Rel)
+  DelText(CT_Text)
+  InstrText(CT_Text)
+  DelInstrText(CT_Text)
+  NoBreakHyphen(CT_Empty)
+  SoftHyphen(CT_Empty)
+  DayShort(CT_Empty)
+  MonthShort(CT_Empty)
+  YearShort(CT_Empty)
+  DayLong(CT_Empty)
+  MonthLong(CT_Empty)
+  YearLong(CT_Empty)
+  AnnotationRef(CT_Empty)
+  FootnoteRef(CT_Empty)
+  EndnoteRef(CT_Empty)
+  Separator(CT_Empty)
+  ContinuationSeparator(CT_Empty)
+  Sym(CT_Sym)
+  PgNum(CT_Empty)
+  Cr(CT_Empty)
+  Tab(CT_Empty)
+  Object(CT_Object)
+  Pict(CT_Picture)
+  FldChar(CT_FldChar)
+  Ruby(CT_Ruby)
+  FootnoteReference(CT_FtnEdnRef)
+  EndnoteReference(CT_FtnEdnRef)
+  CommentReference(CT_Markup)
+  Drawing(CT_Drawing)
+  Ptab(CT_PTab)
+  LastRenderedPageBreak(CT_Empty)
 } derive(Eq, @debug.Debug)
-pub fn EG_RunInnerContent::contains(Self, String) -> Bool
-pub fn EG_RunInnerContent::count(Self) -> Int
-pub fn EG_RunInnerContent::member_names(Self) -> Array[String]
-pub fn EG_RunInnerContent::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_RunLevelElts {
-  elements : Array[@xml.Element]
+pub(all) enum EG_RunLevelElts {
+  ProofErr(CT_ProofErr)
+  PermStart(CT_PermStart)
+  PermEnd(CT_Perm)
+  RangeMarkup(EG_RangeMarkupElements)
+  Ins(CT_RunTrackChange)
+  Del(CT_RunTrackChange)
+  MoveFrom(CT_RunTrackChange)
+  MoveTo(CT_RunTrackChange)
+  MathContent(EG_MathContent)
 } derive(Eq, @debug.Debug)
-pub fn EG_RunLevelElts::contains(Self, String) -> Bool
-pub fn EG_RunLevelElts::count(Self) -> Int
-pub fn EG_RunLevelElts::member_names(Self) -> Array[String]
-pub fn EG_RunLevelElts::new(Array[@xml.Element]) -> Self
+pub fn EG_RunLevelElts::source_element(Self) -> @xml.Element
 
 pub(all) struct EG_SectPrContents {
-  elements : Array[@xml.Element]
+  footnote_pr : CT_FtnProps?
+  endnote_pr : CT_EdnProps?
+  type_ : CT_SectType?
+  pg_sz : CT_PageSz?
+  pg_mar : CT_PageMar?
+  paper_src : CT_PaperSource?
+  pg_borders : CT_PageBorders?
+  ln_num_type : CT_LineNumber?
+  pg_num_type : CT_PageNumber?
+  cols : CT_Columns?
+  form_prot : CT_OnOff?
+  v_align : CT_VerticalJc?
+  no_endnote : CT_OnOff?
+  title_pg : CT_OnOff?
+  text_direction : CT_TextDirection?
+  bidi : CT_OnOff?
+  rtl_gutter : CT_OnOff?
+  doc_grid : CT_DocGrid?
+  printer_settings : CT_Rel?
 } derive(Eq, @debug.Debug)
-pub fn EG_SectPrContents::contains(Self, String) -> Bool
-pub fn EG_SectPrContents::count(Self) -> Int
-pub fn EG_SectPrContents::member_names(Self) -> Array[String]
-pub fn EG_SectPrContents::new(Array[@xml.Element]) -> Self
 
-pub(all) struct EG_WrapType {
-  elements : Array[@xml.Element]
+pub(all) enum EG_WrapType {
+  WrapNone(CT_WrapNone)
+  WrapSquare(CT_WrapSquare)
+  WrapTight(CT_WrapTight)
+  WrapThrough(CT_WrapThrough)
+  WrapTopAndBottom(CT_WrapTopBottom)
 } derive(Eq, @debug.Debug)
-pub fn EG_WrapType::contains(Self, String) -> Bool
-pub fn EG_WrapType::count(Self) -> Int
-pub fn EG_WrapType::new(Array[@xml.Element]) -> Self
+
+pub(all) enum RunTrackChangeChild {
+  RunContent(EG_ContentRunContent)
+  Math(@trkbt10/ooxml/ecma376/office_math/domain.EG_OMathMathElements)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum ST_AlignH {
   AlignHLeft
@@ -5288,6 +5438,27 @@ pub(all) enum WmlUniversalMeasureUnit {
   WmlPoint
   WmlPica
   WmlPiPoint
+} derive(Eq, @debug.Debug)
+
+pub(all) enum WpCanvasChild {
+  Wsp(CT_WordprocessingShape)
+  Pic(@picture.CT_Picture)
+  ContentPart(CT_WordprocessingContentPart)
+  Wgp(CT_WordprocessingGroup)
+  GraphicFrame(CT_GraphicFrame)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum WpDrawingChild {
+  Anchor(CT_Anchor)
+  Inline(CT_Inline)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum WpGroupChild {
+  Wsp(CT_WordprocessingShape)
+  GrpSp(CT_WordprocessingGroup)
+  GraphicFrame(CT_GraphicFrame)
+  Pic(@picture.CT_Picture)
+  ContentPart(CT_WordprocessingContentPart)
 } derive(Eq, @debug.Debug)
 
 // Type aliases

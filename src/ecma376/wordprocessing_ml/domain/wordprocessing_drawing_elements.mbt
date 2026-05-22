@@ -1,7 +1,9 @@
 ///|
 /// Construct top-level dml-wordprocessingDrawing element wpc as
 /// CT_WordprocessingCanvas (§20.4.2.29).
-pub fn wpc(element : @xml.Element) -> CT_WordprocessingCanvas {
+pub fn wpc(
+  element : @xml.Element,
+) -> CT_WordprocessingCanvas raise SchemaViolation {
   CT_WordprocessingCanvas::new(element)
 }
 

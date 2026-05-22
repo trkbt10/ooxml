@@ -14,11 +14,11 @@
 /// `link.wasm-gc.exports` list. npm consumers call these exports through the
 /// JavaScript core wrapper rather than importing the MoonBit facade directly.
 pub fn package_name() -> String {
-  @docx.package_name()
+  @wml_context.package_name()
 }
 
 ///|
-let docx_documents : Ref[Array[@docx.Document]] = { val: [] }
+let docx_documents : Ref[Array[@wml_context.Document]] = { val: [] }
 
 ///|
 /// Parse `.docx` OOXML bytes and store the resulting document in the wasm
@@ -26,7 +26,7 @@ let docx_documents : Ref[Array[@docx.Document]] = { val: [] }
 /// failure.
 pub fn docx_open(bytes : Bytes) -> Int {
   try {
-    let document = @docx.open(bytes)
+    let document = @wml_context.open(bytes)
     docx_documents.val.push(document)
     docx_documents.val.length()
   } catch {
@@ -65,7 +65,7 @@ pub fn docx_to_svg(handle : Int) -> String {
 }
 
 ///|
-fn docx_document(handle : Int) -> @docx.Document? {
+fn docx_document(handle : Int) -> @wml_context.Document? {
   if handle <= 0 {
     None
   } else {

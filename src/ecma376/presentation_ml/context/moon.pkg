@@ -1,10 +1,35 @@
 // trkbt10/ooxml/ecma376/presentation_ml/context
 //
-// PresentationML middle layer: resolved master/layout inheritance, placeholder tables, theme binding.
+// PresentationML context module. The context holds a parser-built
+// Presentation tree (OPC package + typed CT_* projection) and exposes
+// thread-of-truth IO: open(bytes) → Context, save(self) → bytes, plus
+// pure read/render queries (to_html, to_styled_html, to_svg_for_slide,
+// to_image_for_slide). All mutating operations live in the sibling
+// `edit/` package and consume this context. The render direction is
+// strictly parser → context → renderer; mutation is also context-only.
 
 import {
+  "trkbt10/ooxml/ecma376/opc/namespaces" @opc_namespaces,
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/ecma376/opc/part_name" @opc_part_name,
+  "trkbt10/ooxml/ecma376/opc" @opc,
   "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
-  "trkbt10/ooxml/ecma376/opc/content_types" @content_types,
+  "trkbt10/ooxml/ecma376/presentation_ml/domain" @pml,
+  "trkbt10/ooxml/ecma376/presentation_ml/reader" @pml_reader,
+  "trkbt10/ooxml/ecma376/presentation_ml/builder" @pml_builder,
+  "trkbt10/ooxml/ecma376/presentation_ml/animation_eval" @pml_animation,
+  "trkbt10/ooxml/ecma376/presentation_ml/placeholder_resolver" @pml_placeholder,
+  "trkbt10/ooxml/ecma376/presentation_ml/viewer" @pml_viewer,
   "trkbt10/ooxml/ecma376/drawing_ml/theme" @theme,
-  "trkbt10/ooxml/ecma376/presentation_ml/domain" @domain,
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/zip" @zip,
+  "trkbt10/ooxml/util/base64" @base64,
+  "trkbt10/ooxml/edit" @edit,
+  "mizchi/svg" @mizchi_svg,
+  "moonbitlang/core/strconv" @strconv,
 }
+
+import {
+  "moonbitlang/core/encoding/utf8" @utf8,
+  "trkbt10/ooxml/ecma376/presentation_ml/edit" @pml_edit,
+} for "wbtest"

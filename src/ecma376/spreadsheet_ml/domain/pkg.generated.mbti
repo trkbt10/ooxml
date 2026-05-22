@@ -3,12 +3,21 @@ package "trkbt10/ooxml/ecma376/spreadsheet_ml/domain"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
   "trkbt10/ooxml/xml",
 }
 
 // Values
 pub fn auto_filter_type_group_name() -> String
+
+pub fn decode_cf_operator(String) -> ST_ConditionalFormattingOperator raise @errors.SchemaViolation
+
+pub fn decode_cf_type(String) -> ST_CfType raise @errors.SchemaViolation
+
+pub fn decode_cfvo_type(String) -> ST_CfvoType raise @errors.SchemaViolation
+
+pub fn decode_time_period(String) -> ST_TimePeriod raise @errors.SchemaViolation
 
 pub fn metadata_external_type_group_name() -> String
 
@@ -108,7 +117,7 @@ pub fn CT_Border::new(@xml.Element) -> Self
 
 pub(all) struct CT_BorderPr {
   element : @xml.Element
-  color : @xml.Element?
+  color : CT_Color?
   style : String
 } derive(Eq, @debug.Debug)
 pub fn CT_BorderPr::new(@xml.Element) -> Self
@@ -421,11 +430,13 @@ pub(all) struct CT_CfRule {
 } derive(Eq, @debug.Debug)
 pub fn CT_CfRule::has_dxf(Self) -> Bool
 pub fn CT_CfRule::is_population_rule(Self) -> Bool
+pub fn CT_CfRule::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Cfvo {
   kind : ST_CfvoType
   value_text : String?
 } derive(Eq, @debug.Debug)
+pub fn CT_Cfvo::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ChartFormat {
   element : @xml.Element
@@ -516,12 +527,22 @@ pub(all) struct CT_ColHierarchiesUsage {
 pub fn CT_ColHierarchiesUsage::new(@xml.Element) -> Self
 
 pub(all) struct CT_Color {
+  element : @xml.Element
+  auto_ : Bool
+  indexed : Int?
+  rgb : String?
+  theme : Int?
+  tint : Double
+} derive(Eq, @debug.Debug)
+pub fn CT_Color::new(@xml.Element) -> Self
+
+pub(all) struct CT_ColorArgb {
   alpha : Int
   red : Int
   green : Int
   blue : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_Color::new(Int, Int, Int, Int) -> Self
+pub fn CT_ColorArgb::new(Int, Int, Int, Int) -> Self
 
 pub(all) struct CT_ColorFilter {
   dxf_id : Int
@@ -530,8 +551,9 @@ pub(all) struct CT_ColorFilter {
 
 pub(all) struct CT_ColorScale {
   thresholds : Array[CT_Cfvo]
-  colors : Array[CT_Color]
+  colors : Array[CT_ColorArgb]
 } derive(Eq, @debug.Debug)
+pub fn CT_ColorScale::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Colors {
   element : @xml.Element
@@ -611,6 +633,7 @@ pub(all) struct CT_ConditionalFormatting {
   sqref : @address.Sqref
   rules : Array[CT_CfRule]
 } derive(Eq, @debug.Debug)
+pub fn CT_ConditionalFormatting::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Connection {
   element : @xml.Element
@@ -773,10 +796,12 @@ pub(all) struct CT_CustomWorkbookViews {
 pub fn CT_CustomWorkbookViews::new(@xml.Element) -> Self
 
 pub(all) struct CT_DataBar {
+  element : @xml.Element
   min_threshold : CT_Cfvo
   max_threshold : CT_Cfvo
-  color : CT_Color
+  color : CT_ColorArgb
 } derive(Eq, @debug.Debug)
+pub fn CT_DataBar::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DataBinding {
   element : @xml.Element
@@ -1285,7 +1310,7 @@ pub(all) struct CT_Font {
   shadow : Array[CT_BooleanProperty]
   condense : Array[CT_BooleanProperty]
   extend : Array[CT_BooleanProperty]
-  color : Array[@xml.Element]
+  color : Array[CT_Color]
   sz : Array[CT_FontSize]
   u : Array[CT_UnderlineProperty]
   vert_align : Array[CT_VerticalAlignFontProperty]
@@ -1495,6 +1520,7 @@ pub(all) struct CT_IconSet {
   reverse : Bool
   show_value : Bool
 } derive(Eq, @debug.Debug)
+pub fn CT_IconSet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_IgnoredError {
   element : @xml.Element
@@ -1557,6 +1583,12 @@ pub(all) struct CT_Items {
 } derive(Eq, @debug.Debug)
 pub fn CT_Items::new(@xml.Element) -> Self
 
+pub(all) struct CT_LegacyDrawing {
+  element : @xml.Element
+  r_id : String
+} derive(Eq, @debug.Debug)
+pub fn CT_LegacyDrawing::new(@xml.Element) -> Self
+
 pub(all) struct CT_LevelGroup {
   element : @xml.Element
   group_members : CT_GroupMembers
@@ -1581,7 +1613,7 @@ pub fn CT_Location::new(@xml.Element) -> Self
 
 pub(all) struct CT_MRUColors {
   element : @xml.Element
-  color : Array[@xml.Element]
+  color : Array[CT_Color]
 } derive(Eq, @debug.Debug)
 pub fn CT_MRUColors::new(@xml.Element) -> Self
 
@@ -1599,7 +1631,7 @@ pub(all) struct CT_Macrosheet {
   data_consolidate : CT_DataConsolidate?
   custom_sheet_views : CT_CustomSheetViews?
   phonetic_pr : CT_PhoneticPr?
-  conditional_formatting : Array[@xml.Element]
+  conditional_formatting : Array[CT_ConditionalFormatting]
   print_options : CT_PrintOptions?
   page_margins : CT_PageMargins?
   page_setup : @xml.Element?
@@ -1613,7 +1645,7 @@ pub(all) struct CT_Macrosheet {
   ole_objects : CT_OleObjects?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_Macrosheet::new(@xml.Element) -> Self
+pub fn CT_Macrosheet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Map {
   element : @xml.Element
@@ -2568,21 +2600,21 @@ pub fn CT_RElt::to_plain_text(Self) -> String
 
 pub(all) struct CT_RPrElt {
   element : @xml.Element
-  r_font : Array[@xml.Element]
-  charset : Array[@xml.Element]
-  family : Array[@xml.Element]
-  b : Array[@xml.Element]
-  i : Array[@xml.Element]
-  strike : Array[@xml.Element]
-  outline : Array[@xml.Element]
-  shadow : Array[@xml.Element]
-  condense : Array[@xml.Element]
-  extend : Array[@xml.Element]
-  color : Array[@xml.Element]
-  sz : Array[@xml.Element]
-  u : Array[@xml.Element]
-  vert_align : Array[@xml.Element]
-  scheme : Array[@xml.Element]
+  r_font : Array[CT_FontName]
+  charset : Array[CT_IntProperty]
+  family : Array[CT_IntProperty]
+  b : Array[CT_BooleanProperty]
+  i : Array[CT_BooleanProperty]
+  strike : Array[CT_BooleanProperty]
+  outline : Array[CT_BooleanProperty]
+  shadow : Array[CT_BooleanProperty]
+  condense : Array[CT_BooleanProperty]
+  extend : Array[CT_BooleanProperty]
+  color : Array[CT_Color]
+  sz : Array[CT_FontSize]
+  u : Array[CT_UnderlineProperty]
+  vert_align : Array[CT_VerticalAlignFontProperty]
+  scheme : Array[CT_FontScheme]
 } derive(Eq, @debug.Debug)
 pub fn CT_RPrElt::new(@xml.Element) -> Self
 
@@ -2918,6 +2950,7 @@ pub(all) struct CT_Rst {
   phonetic_pr : CT_PhoneticPr?
 } derive(Eq, @debug.Debug)
 pub fn CT_Rst::new(@xml.Element) -> Self
+pub fn CT_Rst::phonetic_text(Self) -> String
 pub fn CT_Rst::to_plain_text(Self) -> String
 
 pub(all) struct CT_Scenario {
@@ -3642,7 +3675,7 @@ pub(all) struct CT_Worksheet {
   custom_sheet_views : CT_CustomSheetViews?
   merge_cells : CT_MergeCells?
   phonetic_pr : CT_PhoneticPr?
-  conditional_formatting : Array[@xml.Element]
+  conditional_formatting : Array[CT_ConditionalFormatting]
   data_validations : CT_DataValidations?
   hyperlinks : CT_Hyperlinks?
   print_options : CT_PrintOptions?
@@ -3664,7 +3697,7 @@ pub(all) struct CT_Worksheet {
   table_parts : CT_TableParts?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_Worksheet::new(@xml.Element) -> Self
+pub fn CT_Worksheet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_WorksheetSource {
   element : @xml.Element

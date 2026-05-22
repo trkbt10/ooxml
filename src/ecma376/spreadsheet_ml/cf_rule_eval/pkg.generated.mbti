@@ -34,7 +34,7 @@ pub fn evaluate_bucket(@domain.CT_CfRule, @formula.FormulaValue, Array[@formula.
 
 pub fn evaluate_cf_block(@domain.CT_ConditionalFormatting, Array[(@address.CellAddress, @formula.FormulaValue)], EvalContext) -> Array[MatchHit]
 
-pub fn evaluate_color_scale(@domain.CT_ColorScale, @formula.FormulaValue, Array[@formula.FormulaValue]) -> @domain.CT_Color?
+pub fn evaluate_color_scale(@domain.CT_ColorScale, @formula.FormulaValue, Array[@formula.FormulaValue]) -> @domain.CT_ColorArgb?
 
 pub fn evaluate_icon_bucket(@domain.CT_IconSet, @formula.FormulaValue, Array[@formula.FormulaValue]) -> Int?
 
@@ -55,7 +55,7 @@ pub(all) struct MatchHit {
   rule_priority : Int
   cf_type : @domain.ST_CfType
   dxf_id : Int?
-  argb : @domain.CT_Color?
+  argb : @domain.CT_ColorArgb?
   bar_ratio : Double?
   icon_index : Int?
 } derive(Eq, @debug.Debug)

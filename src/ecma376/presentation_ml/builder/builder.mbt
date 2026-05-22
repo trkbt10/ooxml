@@ -107,6 +107,18 @@ pub fn write_vml_presentation_drawing_textdata(
 }
 
 ///|
+/// ECMA-376 Part 2 §10.1 / OPC §10.1.2 — every package part is
+/// XML 1.0 with explicit declaration; PowerPoint's strict
+/// validator expects the UTF-8 encoding + `standalone="yes"`
+/// prolog on every emitted part.
 fn write_element(element : @xml.Element) -> Bytes {
-  @xml.write({ declaration: None, doctype: None, root: element })
+  @xml.write({
+    declaration: Some({
+      version: "1.0",
+      encoding: Some("UTF-8"),
+      standalone: Some(true),
+    }),
+    doctype: None,
+    root: element,
+  })
 }

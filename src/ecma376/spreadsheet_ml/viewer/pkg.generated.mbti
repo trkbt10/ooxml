@@ -3,16 +3,91 @@ package "trkbt10/ooxml/ecma376/spreadsheet_ml/viewer"
 
 import {
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/drawing",
+  "trkbt10/ooxml/xml",
 }
 
 // Values
+pub fn default_render_options() -> SheetRenderOptions
+
 pub fn package_name() -> String
 
+pub fn parse_sml_clr_scheme(@xml.Element) -> SmlThemeColorMap
+
+pub fn parse_xsd_boolean(String?) -> Bool?
+
+pub fn parse_xsd_boolean_or(String?, Bool) -> Bool
+
 pub fn render_html(@domain.CT_Worksheet) -> String
+
+pub fn render_html_with_shared_strings(@domain.CT_Worksheet, @domain.CT_Sst) -> String
+
+pub fn render_preset_shape_d(String, Double, Double) -> String?
+
+pub fn render_svg(@domain.CT_Worksheet, shared_strings? : @domain.CT_Sst?, options? : SheetRenderOptions, drawing? : @drawing.CT_Drawing?, image_resolver? : (String) -> String?, styles? : @domain.CT_Stylesheet?, theme? : @xml.Element?, date1904? : Bool) -> SheetSvgResult
+
+pub fn resolve_sml_color(@domain.CT_Color, SmlThemeColorMap) -> String?
 
 // Errors
 
 // Types and methods
+type CellLayout
+
+type ColumnDef
+
+type DrawingBounds
+
+type MergeInfo
+
+type PopulationStats
+
+type ResolvedAlignment
+
+type ResolvedBorder
+
+type ResolvedBorderEdge
+
+type ResolvedCellStyle
+
+pub(all) enum ResolvedFill {
+  FillNone
+  FillSolid(String)
+  FillPattern(String, String, String)
+  FillGradient(String, Double, Array[(Double, String)])
+} derive(Eq)
+
+type ResolvedFont
+
+type SheetLayout
+
+type SheetPaneInfo
+
+pub(all) struct SheetRenderOptions {
+  scale : Double
+  default_row_height : Double
+  default_column_width : Double
+  show_grid_lines : Bool
+  show_row_headers : Bool
+  show_column_headers : Bool
+  header_size : Double
+  default_font_family : String
+  default_font_size : Double
+  grid_line_color : String
+  background_color : String
+}
+
+pub(all) struct SheetSvgResult {
+  svg : String
+  width : Double
+  height : Double
+  warnings : Array[String]
+}
+
+pub(all) struct SmlThemeColorMap {
+  slots : Array[String?]
+}
+pub fn SmlThemeColorMap::empty() -> Self
+pub fn SmlThemeColorMap::lookup(Self, Int) -> String?
 
 // Type aliases
 

@@ -3,13 +3,15 @@ package "trkbt10/ooxml/ecma376/spreadsheet_ml/drawing"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/drawing_ml",
+  "trkbt10/ooxml/ecma376/drawing_ml/vml_excel",
   "trkbt10/ooxml/xml",
 }
 
 // Values
 pub fn package_name() -> String
 
-pub fn read_client_data(Bytes) -> CT_ClientData raise
+pub fn read_client_data(Bytes) -> @vml_excel.CT_ClientData raise
 
 pub fn read_from(Bytes) -> CT_Marker raise
 
@@ -17,7 +19,7 @@ pub fn read_to(Bytes) -> CT_Marker raise
 
 pub fn read_ws_dr(Bytes) -> CT_Drawing raise
 
-pub fn write_client_data(CT_ClientData) -> Bytes
+pub fn write_client_data(@vml_excel.CT_ClientData) -> Bytes
 
 pub fn write_from(CT_Marker) -> Bytes
 
@@ -33,12 +35,12 @@ pub suberror SchemaViolation {
 // Types and methods
 pub(all) struct CT_AbsoluteAnchor {
   element : @xml.Element
-  pos_child_name : String
-  ext_child_name : String
-  object_choice_child_name : String
-  client_data_child_name : String
+  pos : @drawing_ml.CT_Point2D
+  ext : @drawing_ml.CT_PositiveSize2D
+  object_choice : EG_ObjectChoices
+  client_data : CT_AnchorClientData
 } derive(Eq, @debug.Debug)
-pub fn CT_AbsoluteAnchor::new(@xml.Element) -> Self
+pub fn CT_AbsoluteAnchor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_AnchorClientData {
   element : @xml.Element
@@ -47,69 +49,61 @@ pub(all) struct CT_AnchorClientData {
 } derive(Eq, @debug.Debug)
 pub fn CT_AnchorClientData::new(@xml.Element) -> Self
 
-#alias(ClientData)
-pub(all) struct CT_ClientData {
-  element : @xml.Element
-  object_type : String
-  child_names : Array[String]
-} derive(Eq, @debug.Debug)
-pub fn CT_ClientData::new(@xml.Element) -> Self raise SchemaViolation
-
 pub(all) struct CT_Connector {
   element : @xml.Element
-  nv_cxn_sp_pr_child_name : String
-  sp_pr_child_name : String
-  has_style : Bool
+  nv_cxn_sp_pr : CT_ConnectorNonVisual
+  sp_pr : @drawing_ml.CT_ShapeProperties
+  style : @drawing_ml.CT_ShapeStyle?
   macro_ : String?
   f_published : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Connector::new(@xml.Element) -> Self
+pub fn CT_Connector::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ConnectorNonVisual {
   element : @xml.Element
-  c_nv_pr_child_name : String
-  c_nv_cxn_sp_pr_child_name : String
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_cxn_sp_pr : @drawing_ml.CT_NonVisualConnectorProperties
 } derive(Eq, @debug.Debug)
-pub fn CT_ConnectorNonVisual::new(@xml.Element) -> Self
+pub fn CT_ConnectorNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(WsDr)
 pub(all) struct CT_Drawing {
   element : @xml.Element
-  anchor_child_names : Array[String]
+  anchors : Array[EG_Anchor]
 } derive(Eq, @debug.Debug)
-pub fn CT_Drawing::new(@xml.Element) -> Self
+pub fn CT_Drawing::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GraphicalObjectFrame {
   element : @xml.Element
-  nv_graphic_frame_pr_child_name : String
-  xfrm_child_name : String
-  graphic_child_name : String
+  nv_graphic_frame_pr : CT_GraphicalObjectFrameNonVisual
+  xfrm : @drawing_ml.CT_Transform2D
+  graphic : @drawing_ml.CT_GraphicalObject
   macro_ : String?
   f_published : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_GraphicalObjectFrame::new(@xml.Element) -> Self
+pub fn CT_GraphicalObjectFrame::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GraphicalObjectFrameNonVisual {
   element : @xml.Element
-  c_nv_pr_child_name : String
-  c_nv_graphic_frame_pr_child_name : String
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_graphic_frame_pr : @drawing_ml.CT_NonVisualGraphicFrameProperties
 } derive(Eq, @debug.Debug)
-pub fn CT_GraphicalObjectFrameNonVisual::new(@xml.Element) -> Self
+pub fn CT_GraphicalObjectFrameNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GroupShape {
   element : @xml.Element
-  nv_grp_sp_pr_child_name : String
-  grp_sp_pr_child_name : String
-  shape_child_names : Array[String]
+  nv_grp_sp_pr : CT_GroupShapeNonVisual
+  grp_sp_pr : @drawing_ml.CT_GroupShapeProperties
+  shapes : Array[EG_ObjectChoices]
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupShape::new(@xml.Element) -> Self
+pub fn CT_GroupShape::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GroupShapeNonVisual {
   element : @xml.Element
-  c_nv_pr_child_name : String
-  c_nv_grp_sp_pr_child_name : String
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_grp_sp_pr : @drawing_ml.CT_NonVisualGroupDrawingShapeProps
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupShapeNonVisual::new(@xml.Element) -> Self
+pub fn CT_GroupShapeNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 #alias(From)
 #alias(To)
@@ -124,30 +118,30 @@ pub fn CT_Marker::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_OneCellAnchor {
   element : @xml.Element
-  from_child_name : String
-  ext_child_name : String
-  object_choice_child_name : String
-  client_data_child_name : String
+  from : CT_Marker
+  ext : @drawing_ml.CT_PositiveSize2D
+  object_choice : EG_ObjectChoices
+  client_data : CT_AnchorClientData
 } derive(Eq, @debug.Debug)
-pub fn CT_OneCellAnchor::new(@xml.Element) -> Self
+pub fn CT_OneCellAnchor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Picture {
   element : @xml.Element
-  nv_pic_pr_child_name : String
-  blip_fill_child_name : String
-  sp_pr_child_name : String
-  has_style : Bool
+  nv_pic_pr : CT_PictureNonVisual
+  blip_fill : @drawing_ml.CT_BlipFillProperties
+  sp_pr : @drawing_ml.CT_ShapeProperties
+  style : @drawing_ml.CT_ShapeStyle?
   macro_ : String?
   f_published : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Picture::new(@xml.Element) -> Self
+pub fn CT_Picture::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PictureNonVisual {
   element : @xml.Element
-  c_nv_pr_child_name : String
-  c_nv_pic_pr_child_name : String
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_pic_pr : @drawing_ml.CT_NonVisualPictureProperties
 } derive(Eq, @debug.Debug)
-pub fn CT_PictureNonVisual::new(@xml.Element) -> Self
+pub fn CT_PictureNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Rel {
   element : @xml.Element
@@ -157,33 +151,33 @@ pub fn CT_Rel::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Shape {
   element : @xml.Element
-  nv_sp_pr_child_name : String
-  sp_pr_child_name : String
-  has_style : Bool
-  has_tx_body : Bool
+  nv_sp_pr : CT_ShapeNonVisual
+  sp_pr : @drawing_ml.CT_ShapeProperties
+  style : @drawing_ml.CT_ShapeStyle?
+  tx_body : @drawing_ml.CT_TextBody?
   macro_ : String?
   textlink : String?
   f_locks_text : String?
   f_published : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Shape::new(@xml.Element) -> Self
+pub fn CT_Shape::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ShapeNonVisual {
   element : @xml.Element
-  c_nv_pr_child_name : String
-  c_nv_sp_pr_child_name : String
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_sp_pr : @drawing_ml.CT_NonVisualDrawingShapeProps
 } derive(Eq, @debug.Debug)
-pub fn CT_ShapeNonVisual::new(@xml.Element) -> Self
+pub fn CT_ShapeNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_TwoCellAnchor {
   element : @xml.Element
-  from_child_name : String
-  to_child_name : String
-  object_choice_child_name : String
-  client_data_child_name : String
-  edit_as : String?
+  from : CT_Marker
+  to : CT_Marker
+  object_choice : EG_ObjectChoices
+  client_data : CT_AnchorClientData
+  edit_as : ST_EditAs?
 } derive(Eq, @debug.Debug)
-pub fn CT_TwoCellAnchor::new(@xml.Element) -> Self
+pub fn CT_TwoCellAnchor::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) enum EG_Anchor {
   TwoCellAnchor(CT_TwoCellAnchor)
@@ -200,12 +194,6 @@ pub(all) enum EG_ObjectChoices {
   ContentPart(CT_Rel)
 } derive(Eq, @debug.Debug)
 
-pub struct ST_CF {
-  value : String
-} derive(Eq, @debug.Debug)
-pub fn ST_CF::new(String) -> Self
-pub fn ST_CF::to_string(Self) -> String
-
 pub struct ST_ColID {
   value : String
 } derive(Eq, @debug.Debug)
@@ -220,30 +208,6 @@ pub(all) enum ST_EditAs {
 pub fn ST_EditAs::new(String) -> Self raise SchemaViolation
 pub fn ST_EditAs::to_string(Self) -> String
 
-pub(all) enum ST_ObjectType {
-  Button
-  Checkbox
-  Dialog
-  Drop
-  Edit
-  GBox
-  Label
-  LineA
-  List
-  Movie
-  Note
-  Pict
-  Radio
-  RectA
-  Scroll
-  Spin
-  Shape
-  Group
-  Rect
-} derive(Eq, @debug.Debug)
-pub fn ST_ObjectType::new(String) -> Self raise SchemaViolation
-pub fn ST_ObjectType::to_string(Self) -> String
-
 pub struct ST_RowID {
   value : String
 } derive(Eq, @debug.Debug)
@@ -251,6 +215,15 @@ pub fn ST_RowID::new(String) -> Self raise SchemaViolation
 pub fn ST_RowID::to_string(Self) -> String
 
 // Type aliases
+pub using @vml_excel {type CT_ClientData}
+
+pub using @vml_excel {type CT_ClientData as ClientData}
+
+pub using @vml_excel {type ClientDataChild}
+
+pub using @vml_excel {type ST_CF}
+
+pub using @vml_excel {type ST_ObjectType}
 
 // Traits
 

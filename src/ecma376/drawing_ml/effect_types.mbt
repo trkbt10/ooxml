@@ -1096,14 +1096,12 @@ pub fn CT_EffectReference::to_element(
 ///|
 /// XSD complex type CT_EffectContainer — Part 1 §20.1.8.20 cont. Annex
 /// A.4.1 lines 1655..1659. Aggregates the EG_Effect choice group
-/// (zero or more effect children, raw `@xml.Element`s) plus two
-/// optional attributes: `type` (ST_EffectContainerType, default sib)
-/// and `name` (xsd:token, optional).
+/// (zero or more, typed via the `EG_Effect` sum) plus two optional
+/// attributes: `type` (ST_EffectContainerType, default sib) and
+/// `name` (xsd:token, optional).
 pub(all) struct CT_EffectContainer {
-  /// EG_Effect choice group (zero or more). Each entry is the raw
-  /// child element so the typed effect projections owned by other
-  /// sections can re-decode them as needed.
-  effects : Array[@xml.Element]
+  /// EG_Effect choice group, typed per Annex A.4.1 lines 1620..1654.
+  effects : Array[EG_Effect]
   /// @type — ST_EffectContainerType (optional, default sib).
   type_ : ST_EffectContainerType
   /// @name — xsd:token (optional).
@@ -1116,13 +1114,7 @@ pub(all) struct CT_EffectContainer {
 pub fn CT_EffectContainer::new(
   element : @xml.Element,
 ) -> CT_EffectContainer raise SchemaViolation {
-  let effects : Array[@xml.Element] = []
-  for node in element.children {
-    match node {
-      @xml.Element(child) => effects.push(child)
-      _ => ()
-    }
-  }
+  let effects = collect_effects(element)
   let type_ = match ct_attr(element, "type") {
     Some(v) => ST_EffectContainerType::parse(v)
     None => EffectContainerSib

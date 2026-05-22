@@ -42,19 +42,19 @@ pub fn EffectivePlaceholder::section_name(
 
 ///|
 /// Result of resolving a single slide shape against its layout / master
-/// chain. The element references survive so callers can pass them into
-/// the DML inheritance pass (spPr / txBody / nvSpPr merge).
+/// chain. The CT_Shape projections survive so callers can pass them
+/// into the DML inheritance pass (spPr / txBody / nvSpPr merge).
 ///
 /// `effective_placeholder` is `Some` when the shape is a placeholder
 /// (its `nvSpPr/nvPr/ph` is non-empty) and `None` for ordinary shapes.
 pub(all) struct ResolvedShape {
-  slide_shape : @xml.Element?
-  layout_shape : @xml.Element?
-  master_shape : @xml.Element?
+  slide_shape : @domain.CT_Shape?
+  layout_shape : @domain.CT_Shape?
+  master_shape : @domain.CT_Shape?
   effective_placeholder : EffectivePlaceholder?
-  sp_pr : @xml.Element?
-  tx_body : @xml.Element?
-  nv_sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
+  tx_body : @a.CT_TextBody?
+  nv_sp_pr : @domain.CT_ShapeNonVisual?
 } derive(Eq, Debug)
 
 ///|

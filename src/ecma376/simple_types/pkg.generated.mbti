@@ -8,12 +8,34 @@ import {
 // Values
 pub fn package_name() -> String
 
+pub fn simple_types_xsd_st_guid_schema_name() -> String
+
+pub fn simple_types_xsd_st_lang_schema_name() -> String
+
+pub fn simple_types_xsd_st_xalign_schema_name() -> String
+
 // Errors
 pub suberror SchemaViolation {
   SchemaViolation(type_name~ : String, value~ : String)
 } derive(@debug.Debug)
 
 // Types and methods
+pub(all) enum ST_AlgClass {
+  AlgClassHash
+  AlgClassCustom
+} derive(Eq, @debug.Debug)
+pub fn ST_AlgClass::new(String) -> Self raise SchemaViolation
+pub fn ST_AlgClass::parse(String) -> Self raise SchemaViolation
+pub fn ST_AlgClass::to_string(Self) -> String
+
+pub(all) enum ST_AlgType {
+  AlgTypeAny
+  AlgTypeCustom
+} derive(Eq, @debug.Debug)
+pub fn ST_AlgType::new(String) -> Self raise SchemaViolation
+pub fn ST_AlgType::parse(String) -> Self raise SchemaViolation
+pub fn ST_AlgType::to_string(Self) -> String
+
 pub(all) enum ST_CalendarType {
   Gregorian
   GregorianUs
@@ -33,12 +55,27 @@ pub(all) enum ST_CalendarType {
 pub fn ST_CalendarType::new(String) -> Self raise SchemaViolation
 pub fn ST_CalendarType::to_string(Self) -> String
 
+pub struct ST_ColorType {
+  lexical : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ColorType::new(String) -> Self
+pub fn ST_ColorType::to_string(Self) -> String
+
 pub(all) enum ST_ConformanceClass {
   Strict
   Transitional
 } derive(Eq, @debug.Debug)
 pub fn ST_ConformanceClass::new(String) -> Self raise SchemaViolation
 pub fn ST_ConformanceClass::to_string(Self) -> String
+
+pub(all) enum ST_CryptProv {
+  CryptProvRsaAes
+  CryptProvRsaFull
+  CryptProvCustom
+} derive(Eq, @debug.Debug)
+pub fn ST_CryptProv::new(String) -> Self raise SchemaViolation
+pub fn ST_CryptProv::parse(String) -> Self raise SchemaViolation
+pub fn ST_CryptProv::to_string(Self) -> String
 
 pub struct ST_FixedPercentage {
   thousandths : Int64
@@ -77,6 +114,15 @@ pub struct ST_OnOff {
 pub fn ST_OnOff::new(String) -> Self raise SchemaViolation
 pub fn ST_OnOff::to_bool(Self) -> Bool
 pub fn ST_OnOff::to_string(Self) -> String
+
+pub(all) enum ST_OnOff1 {
+  OnOff1On
+  OnOff1Off
+} derive(Eq, @debug.Debug)
+pub fn ST_OnOff1::new(String) -> Self raise SchemaViolation
+pub fn ST_OnOff1::parse(String) -> Self raise SchemaViolation
+pub fn ST_OnOff1::to_bool(Self) -> Bool
+pub fn ST_OnOff1::to_string(Self) -> String
 
 pub struct ST_Panose {
   bytes : FixedArray[Byte]
@@ -120,6 +166,31 @@ pub struct ST_String {
 } derive(Eq, @debug.Debug)
 pub fn ST_String::new(String) -> Self
 pub fn ST_String::to_string(Self) -> String
+
+pub(all) enum ST_TrueFalse {
+  TrueFalseT
+  TrueFalseF
+  TrueFalseTrue
+  TrueFalseFalse
+} derive(Eq, @debug.Debug)
+pub fn ST_TrueFalse::new(String) -> Self raise SchemaViolation
+pub fn ST_TrueFalse::parse(String) -> Self raise SchemaViolation
+pub fn ST_TrueFalse::to_bool(Self) -> Bool
+pub fn ST_TrueFalse::to_string(Self) -> String
+
+pub(all) enum ST_TrueFalseBlank {
+  TrueFalseBlankT
+  TrueFalseBlankF
+  TrueFalseBlankTrue
+  TrueFalseBlankFalse
+  TrueFalseBlankBlank
+  TrueFalseBlankCapTrue
+  TrueFalseBlankCapFalse
+} derive(Eq, @debug.Debug)
+pub fn ST_TrueFalseBlank::new(String) -> Self raise SchemaViolation
+pub fn ST_TrueFalseBlank::parse(String) -> Self raise SchemaViolation
+pub fn ST_TrueFalseBlank::to_bool(Self) -> Bool
+pub fn ST_TrueFalseBlank::to_string(Self) -> String
 
 pub enum ST_TwipsMeasure {
   Twips(UInt64)

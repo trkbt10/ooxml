@@ -53,3 +53,11 @@
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/opc/relationships"
 }
+
+///|
+/// ECMA-376 Part 2 §6.5.1 General.
+/// Source: `references/spec/part2/sections/6.5.1__general.md`. Owned by
+/// `src/ecma376/opc/relationships`.
+pub fn opc_relationships_part2_6_5_1_general_section_name() -> String {
+  "ECMA-376 Part 2 §6.5.1 General"
+}

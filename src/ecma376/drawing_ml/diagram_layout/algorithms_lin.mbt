@@ -133,11 +133,15 @@ pub fn sibling_spacing(constraints : Array[Constraint]) -> Double {
 }
 
 ///|
-/// Parse a positive integer string into an `Int`, returning the
-/// fallback value when the string is empty, malformed, or
-/// non-positive. Used by the snake column-count override to
-/// tolerate `bkpt` values like "ctr" / "off" that are valid in
-/// the spec but irrelevant to integer dispatch.
+/// §21.4.7.4 ST_DiagramBkpt — the `bkpt` parameter is the union
+/// of `xsd:int` (column-count override) and the enum literals
+/// `"ctr"` / `"off"` (centring / disable hints).  This helper
+/// extracts the integer branch and returns `fallback` for the
+/// enum literals; the caller's snake-layout heuristic uses
+/// `fallback = 0` to mean "no explicit column count requested",
+/// letting `ceil_sqrt` pick the column count from the child
+/// count.  Schema-violating non-numeric / non-`ctr`/`off`
+/// values land in the same fallback path.
 fn parse_positive_int_or(value : String, fallback : Int) -> Int {
   let mut i = 0
   let mut acc = 0

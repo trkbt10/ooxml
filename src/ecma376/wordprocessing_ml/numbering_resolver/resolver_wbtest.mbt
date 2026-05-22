@@ -162,3 +162,42 @@ test "§17.9 level_for_paragraph reads numId + ilvl" {
 test "§17.9 numbering_part1_17_9_section_name citation" {
   assert_eq(numbering_part1_17_9_section_name(), "Part 1 §17.9")
 }
+
+///|
+/// §17.9.21 — chain of numStyleLinks of length 2.  abstract 9 links
+/// to style "ListA" → abstract 10 (no concrete lvl, links to "ListB")
+/// → abstract 11 (concrete lvl, decimal "%1)").  The resolver MUST
+/// walk both hops and return the lvl from abstract 11.
+test "§17.9.21 numStyleLink follows chain of length 2" {
+  let xml = "<numbering>" +
+    "<abstractNum abstractNumId=\"9\"><numStyleLink val=\"ListA\"/></abstractNum>" +
+    "<abstractNum abstractNumId=\"10\"><styleLink val=\"ListA\"/>" +
+    "<numStyleLink val=\"ListB\"/></abstractNum>" +
+    "<abstractNum abstractNumId=\"11\"><styleLink val=\"ListB\"/>" +
+    "<lvl ilvl=\"0\"><start val=\"3\"/><numFmt val=\"decimal\"/><lvlText val=\"%1)\"/></lvl>" +
+    "</abstractNum>" +
+    "<num numId=\"9\"><abstractNumId val=\"9\"/></num>" +
+    "</numbering>"
+  let table = try! @domain.CT_Numbering::parse(parse_root(xml))
+  let resolved = resolve_level(table, 9, 0).unwrap()
+  assert_true(resolved.origin == SourceLinkedAbstract)
+  assert_true(resolved.lvl.num_fmt == Some(@domain.NumFmtDecimal))
+  assert_eq(resolved.lvl.start, Some(3))
+}
+
+///|
+/// §17.9.21 — cyclic numStyleLink chain (abstract A ↔ abstract B).
+/// The resolver MUST detect the cycle and return None rather than
+/// looping forever.
+test "§17.9.21 numStyleLink cycle terminates with None" {
+  let xml = "<numbering>" +
+    "<abstractNum abstractNumId=\"20\"><styleLink val=\"X\"/>" +
+    "<numStyleLink val=\"Y\"/></abstractNum>" +
+    "<abstractNum abstractNumId=\"21\"><styleLink val=\"Y\"/>" +
+    "<numStyleLink val=\"X\"/></abstractNum>" +
+    "<num numId=\"20\"><abstractNumId val=\"20\"/></num>" +
+    "</numbering>"
+  let table = try! @domain.CT_Numbering::parse(parse_root(xml))
+  let resolved = resolve_level(table, 20, 0)
+  assert_true(resolved is None)
+}

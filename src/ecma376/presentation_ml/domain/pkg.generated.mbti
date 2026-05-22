@@ -31,6 +31,8 @@ pub fn presentation_pr(@xml.Element) -> CT_PresentationProperties
 
 pub fn raise_schema_violation(String, String, String) -> Unit raise SchemaViolation
 
+pub fn[T] schema_violation(String, String, String) -> T raise SchemaViolation
+
 pub fn sld(@xml.Element) -> CT_Slide
 
 pub fn sld_layout(@xml.Element) -> CT_SlideLayout
@@ -1509,6 +1511,11 @@ pub(all) struct CT_TLTimeAnimateValue {
   fmla : String
 } derive(Eq, @debug.Debug)
 
+pub(all) struct CT_TLTimeAnimateValueList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeAnimateValueList::new(@xml.Element) -> Self
+
 pub(all) struct CT_TLTimeCondition {
   delay : ST_TLTime?
   event : ST_TLTriggerEvent?
@@ -1516,6 +1523,11 @@ pub(all) struct CT_TLTimeCondition {
   target_runtime_node_id : Int?
 } derive(Eq, @debug.Debug)
 pub fn CT_TLTimeCondition::is_static(Self) -> Bool
+
+pub(all) struct CT_TLTimeConditionList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TLTimeConditionList::new(@xml.Element) -> Self
 
 pub(all) struct CT_TLTimeNodeExclusive {
   cTn : @xml.Element
@@ -1598,6 +1610,11 @@ pub(all) struct CT_TagsData {
 pub fn CT_TagsData::new(@xml.Element) -> Self
 pub fn CT_TagsData::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TagsData::to_element(Self) -> @xml.Element
+
+pub(all) struct CT_TimeNodeList {
+  element : @xml.Element
+} derive(Eq, @debug.Debug)
+pub fn CT_TimeNodeList::new(@xml.Element) -> Self
 
 pub(all) struct CT_TransitionSoundAction {
   choice : CT_TransitionSoundActionChoice

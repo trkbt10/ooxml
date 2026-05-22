@@ -15,7 +15,7 @@ fn worksheet_eval_test_sst(source : String) -> @domain.CT_Sst {
 
 ///|
 fn worksheet_eval_test_worksheet(source : String) -> @domain.CT_Worksheet {
-  @domain.CT_Worksheet::new(
+  try! @domain.CT_Worksheet::new(
     try! @xml.parse(worksheet_eval_test_bytes(source)).root,
   )
 }

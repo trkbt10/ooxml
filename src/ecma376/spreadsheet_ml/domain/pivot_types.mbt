@@ -935,9 +935,12 @@ pub fn CT_Tuple::new(element : @xml.Element) -> CT_Tuple {
 }
 
 ///|
-/// XSD complex type CT_Sets — Part 1 §18.10.1.88 (sets parent). OLAP set
-/// list: optional `@count` (xsd:unsignedInt) and one or more `<set>`
-/// (CT_Set) children.
+/// Schema sml.xsd complex type `CT_Sets`. Attributes: `count`. Child
+/// elements: `set`. Child types: `CT_Set`.
+///
+/// XSD complex type CT_Sets — Part 1 §18.10.1.88 (sets parent). OLAP
+/// set list: optional `@count` (xsd:unsignedInt) and one or more
+/// `<set>` (CT_Set) children.
 pub(all) struct CT_Sets {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -1051,6 +1054,8 @@ pub fn CT_QueryCache::new(element : @xml.Element) -> CT_QueryCache {
 /// XSD complex type CT_Query — Part 1 §18.10.1.75 (query). OLAP query
 /// entry: required `@mdx` (s:ST_Xstring) MDX text; optional `<tpls>`
 /// (CT_Tuples) child supplying the tuple bindings.
+/// Schema sml.xsd complex type `CT_Query`. Attributes: `mdx`. Child
+/// elements: `tpls`. Child types: `CT_Tuples`.
 pub(all) struct CT_Query {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -2222,6 +2227,7 @@ pub fn CT_Members::new(element : @xml.Element) -> CT_Members {
 ///|
 /// XSD complex type CT_Member — Part 1 §18.10.1.54. Single OLAP member
 /// entry. Required `@name` (s:ST_Xstring) caption.
+/// Schema sml.xsd complex type `CT_Member`. Attributes: `name`.
 pub(all) struct CT_Member {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -3596,11 +3602,15 @@ pub fn CT_MdxTuple::new(element : @xml.Element) -> CT_MdxTuple {
 }
 
 ///|
+/// Schema sml.xsd complex type `CT_MdxSet`. Attributes: `ns`, `c`,
+/// `o`. Child elements: `n`. Child types: `CT_MetadataStringIndex`.
+///
 /// XSD complex type CT_MdxSet — Part 1 §18.9.8. MDX set metadata.
-/// Required `@ns` (xsd:unsignedInt) parent set reference. Optional `@c`
-/// (xsd:unsignedInt, default 0) count and `@o` (ST_MdxSetOrder, default
-/// "u") order token from {`u`, `a`, `d`, `aa`, `ad`, `na`, `nd`}.
-/// Sequence: zero or more `<n>` (CT_MetadataStringIndex) members.
+/// Required `@ns` (xsd:unsignedInt) parent set reference. Optional
+/// `@c` (xsd:unsignedInt, default 0) count and `@o` (ST_MdxSetOrder,
+/// default "u") order token from {`u`, `a`, `d`, `aa`, `ad`, `na`,
+/// `nd`}. Sequence: zero or more `<n>` (CT_MetadataStringIndex)
+/// members.
 pub(all) struct CT_MdxSet {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -3659,6 +3669,7 @@ pub fn CT_MdxMemeberProp::new(element : @xml.Element) -> CT_MdxMemeberProp {
 /// Required `@n` (xsd:unsignedInt) name index, `@np` (xsd:unsignedInt)
 /// property index, and `@p` (ST_MdxKPIProperty token from
 /// {`v`, `g`, `s`, `t`, `w`, `m`}).
+/// Schema sml.xsd complex type `CT_MdxKPI`. Attributes: `n`, `np`, `p`.
 pub(all) struct CT_MdxKPI {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element

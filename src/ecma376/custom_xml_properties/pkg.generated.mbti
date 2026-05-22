@@ -7,6 +7,12 @@ import {
 }
 
 // Values
+pub fn custom_xml_properties_part1_23_1_table_of_contents_section_name() -> String
+
+pub fn custom_xml_properties_part1_23_2_elements_section_name() -> String
+
+pub fn custom_xml_properties_xsd_ct_vectorvariant_schema_name() -> String
+
 pub fn package_name() -> String
 
 pub fn read_custom_properties(Bytes) -> CT_Properties raise

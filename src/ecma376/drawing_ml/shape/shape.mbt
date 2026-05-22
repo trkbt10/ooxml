@@ -28,18 +28,31 @@ pub suberror SchemaViolation {
 /// (CT_GroupShapeProperties) children plus an unbounded choice of nested
 /// `txSp`, `sp`, `cxnSp`, `pic`, `graphicFrame`, or `grpSp` content and an
 /// optional `<extLst>` (CT_OfficeArtExtensionList).
+/// EG_ShapeGroupContent variant — the choice column inside
+/// CT_GvmlGroupShape per §20.1.2.2.32. We mirror the @a.CT_Gvml*
+/// types from the drawing_ml main package.
+pub(all) enum GvmlGroupContent {
+  TxSp(@a.CT_GvmlTextShape)
+  Sp(@a.CT_GvmlShape)
+  CxnSp(@a.CT_GvmlConnector)
+  Pic(@a.CT_GvmlPicture)
+  GraphicFrame(@a.CT_GvmlGraphicalObjectFrame)
+  GrpSp(@a.CT_GvmlGroupShape)
+} derive(Eq, Debug)
+
+///|
 pub(all) struct CT_GvmlLockedCanvas {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <nvGrpSpPr> (CT_GvmlGroupShapeNonVisual) — required.
-  nv_grp_sp_pr_child_name : String
+  nv_grp_sp_pr : @a.CT_GvmlGroupShapeNonVisual
   /// <grpSpPr> (CT_GroupShapeProperties) — required.
-  grp_sp_pr_child_name : String
-  /// Local names of nested group-content children (txSp/sp/cxnSp/pic/
-  /// graphicFrame/grpSp), zero or more in document order.
-  content_child_names : Array[String]
+  grp_sp_pr : @a.CT_GroupShapeProperties
+  /// Nested group-content children in document order — the
+  /// EG_ShapeGroupContent unbounded choice (§20.1.2.2.32).
+  contents : Array[GvmlGroupContent]
   /// <extLst> (CT_OfficeArtExtensionList) — optional.
-  has_ext_lst : Bool
+  ext_lst : @a.CT_OfficeArtExtensionList?
 } derive(Eq, Debug)
 
 ///|
@@ -54,28 +67,127 @@ pub fn CT_GvmlLockedCanvas::new(
       reason="expected lockedCanvas top-level element",
     )
   }
-  let mut nv = ""
-  let mut grp = ""
-  let content : Array[String] = []
-  let mut has_ext = false
+  let nv_el = required_child(
+    element, "nvGrpSpPr", "CT_GvmlLockedCanvas/nvGrpSpPr",
+  )
+  let grp_el = required_child(element, "grpSpPr", "CT_GvmlLockedCanvas/grpSpPr")
+  let nv_grp_sp_pr = wrap_a_violation(
+    fn() { @a.CT_GvmlGroupShapeNonVisual::new(nv_el) },
+    "CT_GvmlLockedCanvas/nvGrpSpPr",
+  )
+  let grp_sp_pr = wrap_a_violation(
+    fn() { @a.CT_GroupShapeProperties::new(grp_el) },
+    "CT_GvmlLockedCanvas/grpSpPr",
+  )
+  let contents : Array[GvmlGroupContent] = []
+  let mut ext_lst : @a.CT_OfficeArtExtensionList? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
       match child_element.name.local_name {
-        "nvGrpSpPr" => nv = "nvGrpSpPr"
-        "grpSpPr" => grp = "grpSpPr"
-        "txSp" | "sp" | "cxnSp" | "pic" | "graphicFrame" | "grpSp" =>
-          content.push(child_element.name.local_name)
-        "extLst" => has_ext = true
+        "txSp" =>
+          contents.push(
+            TxSp(
+              wrap_a_violation(
+                fn() { @a.CT_GvmlTextShape::new(child_element) },
+                "CT_GvmlLockedCanvas/txSp",
+              ),
+            ),
+          )
+        "sp" =>
+          contents.push(
+            Sp(
+              wrap_a_violation(
+                fn() { @a.CT_GvmlShape::new(child_element) },
+                "CT_GvmlLockedCanvas/sp",
+              ),
+            ),
+          )
+        "cxnSp" =>
+          contents.push(
+            CxnSp(
+              wrap_a_violation(
+                fn() { @a.CT_GvmlConnector::new(child_element) },
+                "CT_GvmlLockedCanvas/cxnSp",
+              ),
+            ),
+          )
+        "pic" =>
+          contents.push(
+            Pic(
+              wrap_a_violation(
+                fn() { @a.CT_GvmlPicture::new(child_element) },
+                "CT_GvmlLockedCanvas/pic",
+              ),
+            ),
+          )
+        "graphicFrame" =>
+          contents.push(
+            GraphicFrame(
+              wrap_a_violation(
+                fn() { @a.CT_GvmlGraphicalObjectFrame::new(child_element) },
+                "CT_GvmlLockedCanvas/graphicFrame",
+              ),
+            ),
+          )
+        "grpSp" =>
+          contents.push(
+            GrpSp(
+              wrap_a_violation(
+                fn() { @a.CT_GvmlGroupShape::new(child_element) },
+                "CT_GvmlLockedCanvas/grpSp",
+              ),
+            ),
+          )
+        "extLst" =>
+          ext_lst = Some(
+            wrap_a_violation(
+              fn() { @a.CT_OfficeArtExtensionList::new(child_element) },
+              "CT_GvmlLockedCanvas/extLst",
+            ),
+          )
         _ => ()
       }
     }
   }
-  {
-    element,
-    nv_grp_sp_pr_child_name: nv,
-    grp_sp_pr_child_name: grp,
-    content_child_names: content,
-    has_ext_lst: has_ext,
+  { element, nv_grp_sp_pr, grp_sp_pr, contents, ext_lst }
+}
+
+///|
+/// Locate a required child element by local name.
+fn required_child(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> @xml.Element raise SchemaViolation {
+  for child in element.children {
+    match child {
+      @xml.Node::Element(child_element) =>
+        if child_element.name.local_name == local_name {
+          return child_element
+        }
+      _ => ()
+    }
+  }
+  raise SchemaViolation(
+    schema="dml-lockedCanvas.xsd",
+    path~,
+    reason="required child element is missing",
+  )
+}
+
+///|
+/// Bridge @a.SchemaViolation into our local one.
+fn wrap_a_violation[T](
+  body : () -> T raise @a.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @a.SchemaViolation(schema=_, path=p, reason~) =>
+      raise SchemaViolation(
+        schema="dml-lockedCanvas.xsd",
+        path=path + " (" + p + ")",
+        reason~,
+      )
   }
 }
 

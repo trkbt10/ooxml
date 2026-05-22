@@ -5,17 +5,18 @@ pub fn package_name() -> String {
 }
 
 ///|
-/// XSD complex type CT_Empty — Part 1 §A.3 (pml.xsd annex). The schema
-/// definition is literally `<xsd:complexType name="CT_Empty"/>`: zero
-/// attributes and zero children. CT_Empty is reused as the body of
-/// many marker elements — `<p:sldAll>` (§19.2.1.32), `<p:present>`
-/// (§19.2.1.25), `<p:bg>` (§19.5.10 timing), `<p:bldAsOne>`
-/// (§19.5.15), `<p:sldTgt>` (§19.5.69), and the §19.5.50 preset
-/// transitions (`<p:circle>`, `<p:diamond>`, `<p:dissolve>`,
-/// `<p:newsflash>`, `<p:plus>`, `<p:random>`, `<p:wedge>`). The only
-/// information a typed view must preserve is the element's QName so
-/// the writer can round-trip the original tag regardless of which
-/// slot the type occupies.
+/// Schema pml.xsd complex type CT_Empty — Part 1 §A.3 (pml.xsd
+/// annex). The schema pml.xsd definition is literally
+/// `<xsd:complexType name="CT_Empty"/>`: zero attributes and zero
+/// children.  CT_Empty is reused as the body of many marker
+/// elements — `<p:sldAll>` (§19.2.1.32), `<p:present>` (§19.2.1.25),
+/// `<p:bg>` (§19.5.10 timing), `<p:bldAsOne>` (§19.5.15),
+/// `<p:sldTgt>` (§19.5.69), and the §19.5.50 preset transitions
+/// (`<p:circle>`, `<p:diamond>`, `<p:dissolve>`, `<p:newsflash>`,
+/// `<p:plus>`, `<p:random>`, `<p:wedge>`). The only information a
+/// typed view must preserve is the element's QName so the writer
+/// can round-trip the original tag regardless of which slot the
+/// type occupies.
 pub(all) struct CT_Empty {
   /// Source-element QName preserved for round-trip. CT_Empty has no
   /// attributes or children per pml.xsd, so this is the typed
@@ -4873,10 +4874,11 @@ pub fn CT_SlideSorterViewProperties::to_element(
 }
 
 ///|
-/// XSD complex type CT_Guide — Part 1 §19.2.2.4 guide. A single guide
-/// line. Optional `@orient` (ST_Direction §19.7.2, default `vert`);
-/// optional `@pos` (a:ST_Coordinate32 §20.1.10.18, lexical form
-/// preserved as String, default `"0"`).
+/// Schema pml.xsd complex type CT_Guide — Part 1 §19.2.2.4 guide.
+/// A single guide line.  Attributes: `orient`, `pos`.  Optional
+/// `@orient` (ST_Direction §19.7.2, default `vert`); optional
+/// `@pos` (a:ST_Coordinate32 §20.1.10.18, lexical form preserved as
+/// String, default `"0"`).
 pub(all) struct CT_Guide {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element

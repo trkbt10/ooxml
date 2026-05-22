@@ -23,3 +23,27 @@
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/simple_types"
 }
+
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_Guid`. Base:
+/// `xsd:token`.  Lexical form: `{HHHHHHHH-HHHH-HHHH-HHHH-HHHHHHHHHHHH}`
+/// with uppercase hex.  See `ST_Guid::new` / `ST_Guid::parse` in
+/// `types.mbt`.
+pub fn simple_types_xsd_st_guid_schema_name() -> String {
+  "Schema shared-commonSimpleTypes.xsd simple type `ST_Guid`. Base: `xsd:token`."
+}
+
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_Lang`. Base:
+/// `xsd:string`.  Language code per RFC 4646 / BCP 47.
+pub fn simple_types_xsd_st_lang_schema_name() -> String {
+  "Schema shared-commonSimpleTypes.xsd simple type `ST_Lang`. Base: `xsd:string`."
+}
+
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_XAlign`. Base:
+/// `xsd:string`. Enumeration values: `left`, `center`, `right`,
+/// `inside`, `outside`.
+pub fn simple_types_xsd_st_xalign_schema_name() -> String {
+  "Schema shared-commonSimpleTypes.xsd simple type `ST_XAlign`. Base: `xsd:string`. Enumeration values: `left`, `center`, `right`, `inside`, `outside`."
+}

@@ -135,6 +135,18 @@ fn merge_effective(
 }
 
 ///|
+/// §17.7 / §17.3 — public wrapper around the property-element merge
+/// rule used by the style cascade. Exposed so per-cell table-style
+/// resolution can reuse the same precedence (`derived` wins on
+/// per-child override; base children survive when not redeclared).
+pub fn merge_property_element_pub(
+  base : @xml.Element?,
+  derived : @xml.Element?,
+) -> @xml.Element? {
+  merge_property_element(base, derived)
+}
+
+///|
 fn merge_property_element(
   base : @xml.Element?,
   derived : @xml.Element?,

@@ -1477,6 +1477,8 @@ pub fn CT_VolType::new(element : @xml.Element) -> CT_VolType {
 /// entry: required `@first` (s:ST_Xstring) holding the head topic value
 /// and one or more `<tp>` (CT_VolTopic) children describing the dependent
 /// topic chain.
+/// Schema sml.xsd complex type `CT_VolMain`. Attributes: `first`. Child
+/// elements: `tp`. Child types: `CT_VolTopic`.
 pub(all) struct CT_VolMain {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element

@@ -1,0 +1,242 @@
+// White-box tests for the text-layout engine and its companion
+// modules (measurer / line breaker / auto-number).
+
+///|
+/// Build a plain LayoutSpan for testing.
+fn tl_make_span(
+  text : String,
+  font_size? : Double = 18.0,
+  font_family? : String = "Calibri",
+) -> LayoutSpan {
+  {
+    text,
+    font_size,
+    font_family,
+    font_family_east_asian: None,
+    font_family_complex_script: None,
+    font_family_symbol: None,
+    font_weight: 400,
+    font_style: "normal",
+    text_decoration: None,
+    color: "#000000",
+    vertical_align: "baseline",
+    baseline_pct: 0.0,
+    letter_spacing: 0.0,
+    is_break: false,
+    direction: "ltr",
+    highlight_color: None,
+    text_transform: None,
+    link_id: None,
+    link_tooltip: None,
+    mouse_over_link_id: None,
+    mouse_over_link_tooltip: None,
+    bookmark: None,
+    text_outline: None,
+    text_fill: None,
+    kerning: None,
+    underline_color: None,
+  }
+}
+
+///|
+test "measure_span on a non-empty Calibri ASCII string" {
+  let s = tl_make_span("Hello", font_size=24.0)
+  let m = measure_span(s)
+  assert_true(m.width > 0.0)
+}
+
+///|
+test "measure_span returns 0 for a line break" {
+  let s : LayoutSpan = { ..tl_make_span(""), is_break: true }
+  let m = measure_span(s)
+  inspect(m.width, content="0")
+}
+
+///|
+test "format_auto_number — arabic period" {
+  inspect(format_auto_number("arabicPeriod", 1), content="1.")
+  inspect(format_auto_number("arabicPeriod", 5), content="5.")
+  inspect(format_auto_number("arabicPeriod", 1, start_at=10), content="10.")
+}
+
+///|
+test "format_auto_number — roman lowercase" {
+  inspect(format_auto_number("romanLcParenR", 1), content="i)")
+  inspect(format_auto_number("romanLcParenR", 4), content="iv)")
+  inspect(format_auto_number("romanLcParenR", 9), content="ix)")
+}
+
+///|
+test "format_auto_number — alphabetic upper" {
+  inspect(format_auto_number("alphaUcPeriod", 1), content="A.")
+  inspect(format_auto_number("alphaUcPeriod", 26), content="Z.")
+  inspect(format_auto_number("alphaUcPeriod", 27), content="AA.")
+}
+
+///|
+test "format_auto_number — circled numbers" {
+  // U+2460 = ①, codepoint 9312
+  inspect(format_auto_number("circleNumDbPlain", 1), content="①")
+  inspect(format_auto_number("circleNumDbPlain", 20), content="⑳")
+  // Out-of-range falls back to plain integer.
+  inspect(format_auto_number("circleNumDbPlain", 21), content="21")
+}
+
+///|
+test "format_auto_number — Thai numeric digit substitution" {
+  // §21.1.2.1.32 thaiNum* — Thai digits U+0E50..U+0E59.
+  // 1 -> ๑, 5 -> ๕, 12 -> ๑๒.
+  inspect(format_auto_number("thaiNumPeriod", 1), content="๑.")
+  inspect(format_auto_number("thaiNumParenR", 5), content="๕)")
+  inspect(format_auto_number("thaiNumParenBoth", 12), content="(๑๒)")
+}
+
+///|
+test "format_auto_number — Hindi numeric digit substitution" {
+  // §21.1.2.1.32 hindiNum* — Devanagari digits U+0966..U+096F.
+  // 1 -> १, 7 -> ७, 23 -> २३.
+  inspect(format_auto_number("hindiNumPeriod", 1), content="१.")
+  inspect(format_auto_number("hindiNumParenR", 7), content="७)")
+  inspect(format_auto_number("hindiNumPeriod", 23), content="२३.")
+}
+
+///|
+test "format_auto_number — Hebrew gematria numerals" {
+  // §21.1.2.1.32 hebrew*Minus — Hebrew alphabetic numbering.
+  // 1 -> א with geresh, then the scheme's trailing minus.
+  inspect(format_auto_number("hebrew1Minus", 1), content="א׳-")
+  // 11 -> yod(10) + alef(1), gershayim before the final letter.
+  inspect(format_auto_number("hebrew2Minus", 11), content="י״א-")
+  // 15 and 16 are special-cased to 9+6 / 9+7 by convention.
+  inspect(format_auto_number("hebrew1Minus", 15), content="ט״ו-")
+  inspect(format_auto_number("hebrew1Minus", 16), content="ט״ז-")
+  // 123 -> qof(100) + kaf(20) + gimel(3).
+  inspect(format_auto_number("hebrew2Minus", 123), content="קכ״ג-")
+  // 500 -> tav(400) + qof(100).
+  inspect(format_auto_number("hebrew1Minus", 500), content="ת״ק-")
+}
+
+///|
+test "format_auto_number — CJK ideographic numerals (Chinese)" {
+  // §21.1.2.1.32 ea1Chs / ea1Cht — Chinese orthography.
+  inspect(format_auto_number("ea1ChsPlain", 1), content="一")
+  inspect(format_auto_number("ea1ChsPlain", 10), content="十")
+  inspect(format_auto_number("ea1ChsPlain", 11), content="十一")
+  inspect(format_auto_number("ea1ChsPlain", 20), content="二十")
+  inspect(format_auto_number("ea1ChsPeriod", 99), content="九十九.")
+  // The hundreds digit is always written; 100 -> 一百.
+  inspect(format_auto_number("ea1ChsPlain", 100), content="一百")
+  // Interior zero: 105 -> 一百〇五 (zero glyph fills the empty tens).
+  inspect(format_auto_number("ea1ChsPlain", 105), content="一百〇五")
+  // A tens place of 1 inside a larger number is written 一十.
+  inspect(format_auto_number("ea1ChtPlain", 110), content="一百一十")
+  inspect(format_auto_number("ea1ChsPeriod", 123), content="一百二十三.")
+  inspect(format_auto_number("ea1ChtPeriod", 999), content="九百九十九.")
+}
+
+///|
+test "format_auto_number — CJK ideographic numerals (Japanese)" {
+  // §21.1.2.1.32 ea1Jpn* — Japanese / Korean orthography: a
+  // leading 1 in the hundreds / tens place is elided and no
+  // interior zero glyph is written.
+  inspect(format_auto_number("ea1JpnKorPlain", 10), content="十")
+  inspect(format_auto_number("ea1JpnKorPeriod", 100), content="百.")
+  // 105 -> 百五 (no interior zero), 110 -> 百十 (no 一 before 十).
+  inspect(format_auto_number("ea1JpnKorPlain", 105), content="百五")
+  inspect(format_auto_number("ea1JpnKorPlain", 110), content="百十")
+  inspect(format_auto_number("ea1JpnChsDbPeriod", 123), content="百二十三.")
+  inspect(
+    format_auto_number("ea1JpnKorPlainPeriod", 999), content="九百九十九.",
+  )
+}
+
+///|
+test "format_auto_number — unknown scheme falls back" {
+  // §21.1.2.1.32 — schema violation; we render the numeric value
+  // with no decoration since we cannot infer which separator the
+  // unknown scheme intended.  The raw scheme name should be
+  // surfaced upstream as data-ooxml-bullet-scheme metadata.
+  inspect(format_auto_number("notAScheme", 7), content="7")
+}
+
+///|
+test "break_into_lines respects explicit line breaks" {
+  let a = tl_make_span("Hello", font_size=18.0)
+  let b : LayoutSpan = { ..tl_make_span("", font_size=18.0), is_break: true }
+  let c = tl_make_span("World", font_size=18.0)
+  let result = break_into_lines(
+    measure_spans([a, b, c]),
+    1000.0, // first_line_width
+    1000.0, // next_line_width
+    WrapSquare,
+  )
+  // Two lines: ["Hello"], ["World"]
+  inspect(result.lines.length(), content="2")
+}
+
+///|
+test "break_into_lines wraps long text" {
+  // A very wide text on a very narrow box must wrap.
+  let s = tl_make_span(
+    "The quick brown fox jumps over the lazy dog",
+    font_size=24.0,
+  )
+  let result = break_into_lines(
+    measure_spans([s]),
+    50.0, // narrow first_line_width
+    50.0,
+    WrapSquare,
+  )
+  assert_true(result.lines.length() > 1)
+}
+
+///|
+test "layout_text_body lays out a single short line" {
+  let s = tl_make_span("Hello", font_size=24.0)
+  let para : LayoutParagraphInput = {
+    spans: [s],
+    alignment: AlignLeft,
+    margin_left: 0.0,
+    indent: 0.0,
+    margin_right: 0.0,
+    space_before: 0.0,
+    space_after: 0.0,
+    line_spacing: None,
+    bullet: None,
+    font_alignment: FontAlignBase,
+    default_tab_size: 36.0,
+    tab_stops: [],
+    ea_line_break: true,
+    latin_line_break: true,
+    hanging_punctuation: false,
+    end_para_font_size: None,
+  }
+  let input : LayoutInput = {
+    text_box: {
+      width: 200.0,
+      height: 100.0,
+      inset_left: 0.0,
+      inset_right: 0.0,
+      inset_top: 0.0,
+      inset_bottom: 0.0,
+      anchor: AnchorTop,
+      anchor_center: false,
+      wrap_mode: WrapSquare,
+      auto_fit: AutoFitNone,
+      horz_overflow: OverflowAllow,
+      vert_overflow: VertOverflowAllow,
+      compat_ln_spc: false,
+      force_aa: false,
+      rtl_col: false,
+      spc_first_last_para: false,
+      upright: false,
+      vertical_type: VertHorz,
+    },
+    paragraphs: [para],
+  }
+  let result = layout_text_body(input)
+  inspect(result.paragraphs.length(), content="1")
+  inspect(result.paragraphs[0].lines.length(), content="1")
+  // Baseline must be positive (above 0 in SVG y-down coordinates).
+  assert_true(result.paragraphs[0].lines[0].y > 0.0)
+}

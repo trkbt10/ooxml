@@ -6,4 +6,9 @@ import {
   "moonbitlang/core/debug" @debug,
   "moonbitlang/core/hashmap" @hashmap,
   "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/ecma376/office_math/domain" @m,
+  "trkbt10/ooxml/ecma376/drawing_ml" @a,
+  "trkbt10/ooxml/ecma376/drawing_ml/picture" @dml_pic,
+  "trkbt10/ooxml/ecma376/drawing_ml/vml" @vml,
+  "trkbt10/ooxml/ecma376/custom_xml_properties" @custom_xml,
 }

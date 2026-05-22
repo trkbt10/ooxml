@@ -2,7 +2,9 @@
   "name": "trkbt10/ooxml",
   "version": "0.1.0",
   "deps": {
-    "moonbitlang/x": "0.4.43"
+    "moonbitlang/x": "0.4.43",
+    "mizchi/svg": "0.2.1",
+    "mizchi/font": "0.7.3"
   },
   "readme": "README.mbt.md",
   "repository": "",

@@ -120,15 +120,15 @@ pub fn CT_CTCategories::to_element(self : CT_CTCategories) -> @xml.Element {
 /// (fillClrLst, linClrLst, effectClrLst, txLinClrLst, txFillClrLst,
 /// txEffectClrLst). Attributes: meth (ST_ClrAppMethod, optional
 /// default="span"), hueDir (ST_HueDir, optional default="cw").
-/// Children: a:EG_ColorChoice* preserved as raw XML elements because
-/// dml-main owns the typed CT_ColorChoice mapping.
+/// Children: a:EG_ColorChoice* projected via the typed
+/// `@a.EG_ColorChoice` sum from dml-main.
 pub(all) struct CT_Colors {
   /// @meth — ST_ClrAppMethod (optional, default span).
   meth : ST_ClrAppMethod
   /// @hueDir — ST_HueDir (optional, default cw).
   hue_dir : ST_HueDir
-  /// <a:EG_ColorChoice> children preserved as raw elements.
-  color_choices : Array[@xml.Element]
+  /// <a:EG_ColorChoice> children typed via the dml-main projection.
+  color_choices : Array[@a.EG_ColorChoice]
   /// Preserved source element for builder round-trip.
   element : @xml.Element
 } derive(Eq, Debug)
@@ -145,8 +145,32 @@ pub fn CT_Colors::new(
     Some(v) => ST_HueDir::parse(v)
     None => HueDirCw
   }
-  let color_choices = element_children(element)
+  let color_choices : Array[@a.EG_ColorChoice] = []
+  for child in element_children(element) {
+    match
+      wrap_a_color_violation(fn() { @a.parse_color_choice_child(child) }) {
+      Some(c) => color_choices.push(c)
+      None => ()
+    }
+  }
   { meth, hue_dir, color_choices, element }
+}
+
+///|
+/// Bridge `@a.SchemaViolation` (DrawingML) into the local diagram
+/// SchemaViolation so EG_ColorChoice arms can be constructed without
+/// leaking the foreign error type.
+fn wrap_a_color_violation[T](
+  body : () -> T raise @a.SchemaViolation,
+) -> T raise SchemaViolation {
+  body() catch {
+    @a.SchemaViolation(_) =>
+      raise SchemaViolation(
+        schema="dml-diagram.xsd",
+        path="CT_Colors/EG_ColorChoice",
+        reason="dml-main color choice arm failed validation",
+      )
+  }
 }
 
 ///|

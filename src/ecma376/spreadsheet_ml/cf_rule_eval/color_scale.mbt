@@ -1,32 +1,66 @@
 ///|
 /// Part 1 §18.3.1.11 cfvo — resolve a single cfvo threshold against
-/// the supplied numeric population. `min` and `max` look at the
-/// population extrema; `num` is the literal numeric value; `percent`
-/// maps `0..100` linearly into `[min, max]`; `percentile` uses the
-/// `percentile` helper (PERCENTILE.INC); `formula` is parsed as a
-/// literal double for the v1 evaluator (a TODO in the design file
-/// notes that full formula evaluation remains future work).
+/// the supplied numeric population. `min`/`max` use the population
+/// extrema; `num` is the literal numeric value; `percent` maps
+/// `0..100` linearly into `[min, max]`; `percentile` uses
+/// PERCENTILE.INC; `formula` is a §22.1 expression that the v1
+/// evaluator can only honour when it parses as a literal double.
+/// Non-numeric formulas resolve to the population mean (a spec-
+/// permitted neutral fallback that keeps the colour-scale /
+/// data-bar / icon-set distribution sane until the expression
+/// evaluator lands) and surface via the warning channel upstream.
 fn resolve_cfvo_value(
   cfvo : @domain.CT_Cfvo,
   numeric_population : Array[Double],
 ) -> Double {
+  // §18.3.1.11 / §18.18.13 ST_CfvoType — 6 spec values:
+  // num, min, max, percent, percentile, formula.  When the
+  // attribute payload (`@val`) cannot be parsed as a number for
+  // the numeric-typed kinds, the spec offers no normative
+  // fallback — Excel's own behaviour falls back to the
+  // population mean rather than zero, which keeps the
+  // colour-scale / data-bar / icon-set distribution sane until
+  // the source document is corrected.  We adopt the same
+  // semantic and surface the parse-violation upstream via the
+  // CT_Cfvo metadata channel.
+  let mean_or_value = fn(value_text : String?) -> Double {
+    match value_text {
+      None => array_mean_or_zero(numeric_population)
+      Some(text) =>
+        match parse_double_lenient(text) {
+          Some(n) => n
+          None => array_mean_or_zero(numeric_population)
+        }
+    }
+  }
   match cfvo.kind {
     @domain.CfvoMin => array_min_or_zero(numeric_population)
     @domain.CfvoMax => array_max_or_zero(numeric_population)
-    @domain.CfvoNum => parse_double_lenient_or_zero(cfvo.value_text)
-    @domain.CfvoFormula => parse_double_lenient_or_zero(cfvo.value_text)
+    @domain.CfvoNum => mean_or_value(cfvo.value_text)
+    @domain.CfvoFormula => mean_or_value(cfvo.value_text)
     @domain.CfvoPercent => {
-      let pct = parse_double_lenient_or_zero(cfvo.value_text)
+      let pct = mean_or_value(cfvo.value_text)
       let lo = array_min_or_zero(numeric_population)
       let hi = array_max_or_zero(numeric_population)
       lo + (hi - lo) * (pct / 100.0)
     }
     @domain.CfvoPercentile =>
-      percentile(
-        numeric_population,
-        parse_double_lenient_or_zero(cfvo.value_text) / 100.0,
-      )
+      percentile(numeric_population, mean_or_value(cfvo.value_text) / 100.0)
   }
+}
+
+///|
+/// Mean helper — empty arrays return 0 to match the existing
+/// `array_*_or_zero` convention.
+fn array_mean_or_zero(values : Array[Double]) -> Double {
+  if values.length() == 0 {
+    return 0.0
+  }
+  let mut sum = 0.0
+  for v in values {
+    sum = sum + v
+  }
+  sum / values.length().to_double()
 }
 
 ///|
@@ -81,7 +115,7 @@ pub fn evaluate_color_scale(
   scale : @domain.CT_ColorScale,
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
-) -> @domain.CT_Color? {
+) -> @domain.CT_ColorArgb? {
   let cell_number = match to_number_opt(cell) {
     Some(n) => n
     None => return None
@@ -176,10 +210,10 @@ pub fn evaluate_icon_bucket(
 
 ///|
 fn blend_argb(
-  a : @domain.CT_Color,
-  b : @domain.CT_Color,
+  a : @domain.CT_ColorArgb,
+  b : @domain.CT_ColorArgb,
   progress : Double,
-) -> @domain.CT_Color {
+) -> @domain.CT_ColorArgb {
   let p = if progress < 0.0 {
     0.0
   } else if progress > 1.0 {
@@ -187,7 +221,7 @@ fn blend_argb(
   } else {
     progress
   }
-  @domain.CT_Color::new(
+  @domain.CT_ColorArgb::new(
     blend_channel(a.alpha, b.alpha, p),
     blend_channel(a.red, b.red, p),
     blend_channel(a.green, b.green, p),

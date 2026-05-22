@@ -2951,9 +2951,10 @@ pub(all) struct CT_Comment {
   date : ST_DateTime?
   /// §22.9.2.13 @initials (s:ST_String) — optional author initials.
   initials : String?
-  /// EG_BlockLevelElts* — zero or more block-level child elements
-  /// carrying the comment body, preserved raw.
-  block_level_elements : Array[@xml.Element]
+  /// §17.2.2 EG_BlockLevelElts* — zero or more block-level child
+  /// elements (paragraphs / tables / SDT / custom-XML / run-level marks)
+  /// carrying the comment body, typed per Annex A.4.3 wml.xsd.
+  block_level_elements : Array[EG_BlockLevelElts]
 } derive(Eq, Debug)
 
 ///|
@@ -2973,7 +2974,9 @@ pub fn CT_Comment::new(
     None => None
   }
   let initials = wml_ct_chunk1_attr(element, "initials")
-  let block_level_elements = wml_ct_chunk2_element_children(element)
+  let block_level_elements = collect_block_level_elements(
+    wml_ct_chunk2_element_children(element),
+  )
   { element, id, author, date, initials, block_level_elements }
 }
 
@@ -3522,6 +3525,18 @@ pub fn CT_ParaRPrChange::to_element(self : CT_ParaRPrChange) -> @xml.Element {
 /// `m:EG_OMathMathElements`; the choice content is preserved as raw
 /// element children since the typed projection is owned by the
 /// content-tree readers and the office_math domain package.
+/// Per-child entry of CT_RunTrackChange's content choice. The schema
+/// declares an unbounded choice of EG_ContentRunContent + m:EG_OMathMathElements;
+/// we surface both arms as typed projections.
+pub(all) enum RunTrackChangeChild {
+  /// EG_ContentRunContent arm — runs, smart tags, sdt, custom XML,
+  /// run-level marks, etc.
+  RunContent(EG_ContentRunContent)
+  /// m:EG_OMathMathElements arm — OMML math elements.
+  Math(@m.EG_OMathMathElements)
+} derive(Eq, Debug)
+
+///|
 pub(all) struct CT_RunTrackChange {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
@@ -3531,9 +3546,9 @@ pub(all) struct CT_RunTrackChange {
   author : String
   /// §17.18.9 @date (ST_DateTime) — optional revision timestamp.
   date : ST_DateTime?
-  /// EG_ContentRunContent ∪ m:EG_OMathMathElements * — zero or more
-  /// run-content / OMath child elements, preserved raw.
-  run_content : Array[@xml.Element]
+  /// §17.13.5.14/15/18 EG_ContentRunContent ∪ m:EG_OMathMathElements *
+  /// — typed run-content / OMath child elements in document order.
+  run_content : Array[RunTrackChangeChild]
 } derive(Eq, Debug)
 
 ///|
@@ -3552,7 +3567,18 @@ pub fn CT_RunTrackChange::new(
     Some(text) => Some(ST_DateTime::parse(text))
     None => None
   }
-  let run_content = wml_ct_chunk2_element_children(element)
+  let run_content : Array[RunTrackChangeChild] = []
+  for raw in wml_ct_chunk2_element_children(element) {
+    match parse_content_run_content_element(raw) {
+      Some(r) => run_content.push(RunContent(r))
+      None =>
+        // Not an EG_ContentRunContent arm — assume OMML m:* element.
+        // EG_OMathMathElements::new currently preserves the raw
+        // element; the typed projection lives in the office_math
+        // package and decodes m:f / m:rad / m:nary / etc. there.
+        run_content.push(Math(@m.EG_OMathMathElements::new(raw)))
+    }
+  }
   { element, id, author, date, run_content }
 }
 
@@ -4479,20 +4505,21 @@ pub fn CT_ObjectLink::to_element(self : CT_ObjectLink) -> @xml.Element {
 
 ///|
 /// XSD complex type CT_Drawing — Part 1 §17.3.3.9 (drawing DrawingML
-/// Object). One or more `<wp:anchor>` (CT_Anchor) and/or `<wp:inline>`
-/// (CT_Inline) child elements from the WordprocessingDrawing namespace.
-/// These DrawingML wrappers are typed in
-/// `wordprocessing_drawing_types.mbt`; here they are preserved as raw
-/// element children to avoid a cyclic dependency on the drawing
-/// reader, and the schema-mandated minimum of one occurrence is
-/// validated.
+/// Object). Required choice of `<wp:anchor>` (CT_Anchor) or
+/// `<wp:inline>` (CT_Inline) child elements, one or more in
+/// document order.
+pub(all) enum WpDrawingChild {
+  Anchor(CT_Anchor)
+  Inline(CT_Inline)
+} derive(Eq, Debug)
+
+///|
 pub(all) struct CT_Drawing {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
-  /// EG choice (`<wp:anchor>` | `<wp:inline>`)+ — preserved raw with
-  /// the matched local name so callers can route to the typed
-  /// DrawingML wrappers without re-walking the element.
-  anchors_and_inlines : Array[@xml.Element]
+  /// §17.3.3.9 (`<wp:anchor>` | `<wp:inline>`)+ — typed wp drawing
+  /// children in document order.
+  anchors_and_inlines : Array[WpDrawingChild]
 } derive(Eq, Debug)
 
 ///|
@@ -4500,13 +4527,15 @@ pub(all) struct CT_Drawing {
 pub fn CT_Drawing::new(
   element : @xml.Element,
 ) -> CT_Drawing raise SchemaViolation {
-  let collected : Array[@xml.Element] = []
+  let collected : Array[WpDrawingChild] = []
   for child in element.children {
     match child {
       @xml.Node::Element(e) => {
         let ln = e.name.local_name
-        if ln == "anchor" || ln == "inline" {
-          collected.push(e)
+        if ln == "anchor" {
+          collected.push(Anchor(CT_Anchor::new(e)))
+        } else if ln == "inline" {
+          collected.push(Inline(CT_Inline::new(e)))
         }
       }
       _ => ()
@@ -4551,8 +4580,9 @@ pub(all) struct CT_SimpleField {
   fld_lock : Bool?
   /// §22.9.2.7 @dirty (s:ST_OnOff) — optional dirty-cache flag.
   dirty : Bool?
-  /// EG_PContent* — field body, preserved raw.
-  content : Array[@xml.Element]
+  /// §17.16.19 EG_PContent* — field body, typed per the wml.xsd
+  /// paragraph-content model group.
+  content : Array[EG_PContent]
 } derive(Eq, Debug)
 
 ///|
@@ -4565,7 +4595,7 @@ pub fn CT_SimpleField::new(
   )
   let fld_lock = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "fldLock"))
   let dirty = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "dirty"))
-  let content = wml_ct_chunk2_element_children(element)
+  let content = collect_pcontent(wml_ct_chunk2_element_children(element))
   { element, instr, fld_lock, dirty, content }
 }
 
@@ -4745,26 +4775,30 @@ pub(all) struct CT_Hyperlink {
   anchor : String?
   /// @r:id (ST_RelationshipId) — optional external-target relationship.
   r_id : String?
-  /// EG_PContent* — hyperlink body, preserved raw.
-  content : Array[@xml.Element]
+  /// §17.16.22 EG_PContent* — hyperlink body, typed per wml.xsd.
+  content : Array[EG_PContent]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_Hyperlink — Part 1 §17.16.22.
-pub fn CT_Hyperlink::new(element : @xml.Element) -> CT_Hyperlink {
+pub fn CT_Hyperlink::new(
+  element : @xml.Element,
+) -> CT_Hyperlink raise SchemaViolation {
   let tgt_frame = wml_ct_chunk1_attr(element, "tgtFrame")
   let tooltip = wml_ct_chunk1_attr(element, "tooltip")
   let doc_location = wml_ct_chunk1_attr(element, "docLocation")
   let history = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "history"))
   let anchor = wml_ct_chunk1_attr(element, "anchor")
   let r_id = wml_ct_chunk1_attr(element, "id")
-  let content = wml_ct_chunk2_element_children(element)
+  let content = collect_pcontent(wml_ct_chunk2_element_children(element))
   { element, tgt_frame, tooltip, doc_location, history, anchor, r_id, content }
 }
 
 ///|
 /// XSD complex type CT_Hyperlink — Part 1 §17.16.22.
-pub fn CT_Hyperlink::parse(element : @xml.Element) -> CT_Hyperlink {
+pub fn CT_Hyperlink::parse(
+  element : @xml.Element,
+) -> CT_Hyperlink raise SchemaViolation {
   CT_Hyperlink::new(element)
 }
 
@@ -6084,33 +6118,36 @@ pub fn CT_HdrFtrRef::to_element(self : CT_HdrFtrRef) -> @xml.Element {
 
 ///|
 /// XSD complex type CT_HdrFtr — Part 1 §17.10.4 hdr / §17.10.2 ftr.
-/// Header / footer body content: one-or-more EG_BlockLevelElts (§A.1
-/// model group, materialised as `Array[@xml.Element]` because the group
-/// spans every WordprocessingML block-level construct and is parsed
-/// lazily by callers). The element has no XSD attributes.
+/// Header / footer body content: zero or more EG_BlockLevelElts
+/// (paragraphs / tables / SDT / custom-XML / run-level marks), typed
+/// per Annex A.4.3 wml.xsd. The element has no XSD attributes.
 pub(all) struct CT_HdrFtr {
   /// Source element kept for builder round-trip.
   element : @xml.Element
-  /// EG_BlockLevelElts payload — raw block-level child elements in document order.
-  block_level_elts : Array[@xml.Element]
+  /// §17.2.2 EG_BlockLevelElts payload — typed block-level child
+  /// projections in document order.
+  block_level_elts : Array[EG_BlockLevelElts]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_HdrFtr — Part 1 §17.10.4.
-pub fn CT_HdrFtr::new(element : @xml.Element) -> CT_HdrFtr {
-  let block_level_elts : Array[@xml.Element] = []
+pub fn CT_HdrFtr::new(element : @xml.Element) -> CT_HdrFtr raise SchemaViolation {
+  let raw : Array[@xml.Element] = []
   for child in element.children {
     match child {
-      @xml.Element(e) => block_level_elts.push(e)
+      @xml.Element(e) => raw.push(e)
       _ => ()
     }
   }
+  let block_level_elts = collect_block_level_elements(raw)
   { element, block_level_elts }
 }
 
 ///|
 /// XSD complex type CT_HdrFtr — Part 1 §17.10.4.
-pub fn CT_HdrFtr::parse(element : @xml.Element) -> CT_HdrFtr {
+pub fn CT_HdrFtr::parse(
+  element : @xml.Element,
+) -> CT_HdrFtr raise SchemaViolation {
   CT_HdrFtr::new(element)
 }
 
@@ -6141,9 +6178,8 @@ pub(all) struct CT_SectPrBase {
   rsid_r : ST_LongHexNumber?
   /// §17.18.50 @rsidSect (ST_LongHexNumber) — optional section-properties rsid.
   rsid_sect : ST_LongHexNumber?
-  /// EG_SectPrContents children captured in document order; per-element
-  /// typing is provided by chunk1/chunk3 typed structs as appropriate.
-  contents : Array[@xml.Element]
+  /// §17.6.18 EG_SectPrContents — typed section property sequence.
+  contents : EG_SectPrContents
 } derive(Eq, Debug)
 
 ///|
@@ -6167,13 +6203,7 @@ pub fn CT_SectPrBase::new(
     Some(text) => Some(ST_LongHexNumber::parse(text))
     None => None
   }
-  let contents : Array[@xml.Element] = []
-  for child in element.children {
-    match child {
-      @xml.Element(e) => contents.push(e)
-      _ => ()
-    }
-  }
+  let contents = decode_sect_pr_contents(element)
   { element, rsid_rpr, rsid_del, rsid_r, rsid_sect, contents }
 }
 
@@ -6212,8 +6242,8 @@ pub(all) struct CT_SectPr {
   header_references : Array[CT_HdrFtrRef]
   /// EG_HdrFtrReferences `<footerReference>` (CT_HdrFtrRef) entries.
   footer_references : Array[CT_HdrFtrRef]
-  /// EG_SectPrContents children captured in document order.
-  contents : Array[@xml.Element]
+  /// §17.6.18 EG_SectPrContents — typed section property sequence.
+  contents : EG_SectPrContents
   /// §17.13.5.34 `<sectPrChange>` (CT_SectPrChange) — optional revision marker.
   sect_pr_change : CT_SectPrChange?
 } derive(Eq, Debug)
@@ -6247,21 +6277,7 @@ pub fn CT_SectPr::new(
   for e in wml_ct_chunk3_children(element, "footerReference") {
     footer_references.push(CT_HdrFtrRef::new(e))
   }
-  let contents : Array[@xml.Element] = []
-  for child in element.children {
-    match child {
-      @xml.Element(e) => {
-        let ln = e.name.local_name
-        let is_handled = ln == "headerReference" ||
-          ln == "footerReference" ||
-          ln == "sectPrChange"
-        if not(is_handled) {
-          contents.push(e)
-        }
-      }
-      _ => ()
-    }
-  }
+  let contents = decode_sect_pr_contents(element)
   let sect_pr_change = match
     wml_ct_chunk3_first_child(element, "sectPrChange") {
     Some(e) => Some(CT_SectPrChange::new(e))
@@ -6616,10 +6632,10 @@ pub(all) struct CT_R {
   rsid_r : ST_LongHexNumber?
   /// §17.3.2.27 `<rPr>` (CT_RPr) — optional run properties.
   r_pr : CT_RPr?
-  /// EG_RunInnerContent child elements in document order (raw, because the
-  /// group spans 30+ heterogeneous element types — typed projections
-  /// remain the responsibility of higher-layer reader.mbt code).
-  inner_content : Array[@xml.Element]
+  /// §17.3.1 EG_RunInnerContent — typed run inner content children in
+  /// document order. Each entry is one of the 32 schema arms (br, t,
+  /// drawing, sym, pict, ...).
+  inner_content : Array[EG_RunInnerContent]
 } derive(Eq, Debug)
 
 ///|
@@ -6641,13 +6657,14 @@ pub fn CT_R::new(element : @xml.Element) -> CT_R raise SchemaViolation {
     Some(e) => Some(CT_RPr::new(e))
     None => None
   }
-  let inner_content : Array[@xml.Element] = []
+  let raw_children : Array[@xml.Element] = []
   for child in element.children {
     match child {
-      @xml.Element(e) => if e.name.local_name != "rPr" { inner_content.push(e) }
+      @xml.Element(e) => if e.name.local_name != "rPr" { raw_children.push(e) }
       _ => ()
     }
   }
+  let inner_content = collect_run_inner_content(raw_children)
   { element, rsid_rpr, rsid_del, rsid_r, r_pr, inner_content }
 }
 
@@ -6756,8 +6773,9 @@ pub fn CT_Fonts::to_element(self : CT_Fonts) -> @xml.Element {
 pub(all) struct CT_RPr {
   /// Source element kept for builder round-trip.
   element : @xml.Element
-  /// EG_RPrBase child elements in document order (raw — typed in chunk1/chunk2/chunk3).
-  base : Array[@xml.Element]
+  /// §17.3.2.30 EG_RPrBase — typed run-property projections in
+  /// document order (rStyle / rFonts / b / i / color / sz / ...).
+  base : Array[EG_RPrBase]
   /// §17.13.5.31 `<rPrChange>` (CT_RPrChange) — optional revision marker.
   r_pr_change : CT_RPrChange?
 } derive(Eq, Debug)
@@ -6765,7 +6783,7 @@ pub(all) struct CT_RPr {
 ///|
 /// XSD complex type CT_RPr — Part 1 §17.3.2.27.
 pub fn CT_RPr::new(element : @xml.Element) -> CT_RPr raise SchemaViolation {
-  let base : Array[@xml.Element] = []
+  let raw : Array[@xml.Element] = []
   let mut r_pr_change : CT_RPrChange? = None
   for child in element.children {
     match child {
@@ -6775,11 +6793,12 @@ pub fn CT_RPr::new(element : @xml.Element) -> CT_RPr raise SchemaViolation {
             r_pr_change = Some(CT_RPrChange::new(e))
           }
         } else {
-          base.push(e)
+          raw.push(e)
         }
       _ => ()
     }
   }
+  let base = collect_rpr_base_elements(raw)
   { element, base, r_pr_change }
 }
 
@@ -6890,33 +6909,39 @@ pub fn CT_MathCtrlDel::to_element(self : CT_MathCtrlDel) -> @xml.Element {
 }
 
 ///|
-/// XSD complex type CT_RPrOriginal — Part 1 §17.13.5.32 rPr (revision base
-/// snapshot inside CT_RPrChange). The body is the EG_RPrBase model group
-/// (zero-or-more run-property elements, captured here as raw elements
-/// because the typed projections are owned by chunks 1/2). No attributes.
+/// XSD complex type CT_RPrOriginal — Part 1 §17.13.5.32 rPr (revision
+/// base snapshot inside CT_RPrChange). The body is the EG_RPrBase
+/// model group (zero-or-more typed run-property projections). No
+/// attributes.
 pub(all) struct CT_RPrOriginal {
   /// Source element kept for builder round-trip.
   element : @xml.Element
-  /// EG_RPrBase children in document order.
-  base : Array[@xml.Element]
+  /// §17.3.2.30 EG_RPrBase — typed run-property projections in
+  /// document order.
+  base : Array[EG_RPrBase]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_RPrOriginal — Part 1 §17.13.5.32.
-pub fn CT_RPrOriginal::new(element : @xml.Element) -> CT_RPrOriginal {
-  let base : Array[@xml.Element] = []
+pub fn CT_RPrOriginal::new(
+  element : @xml.Element,
+) -> CT_RPrOriginal raise SchemaViolation {
+  let raw : Array[@xml.Element] = []
   for child in element.children {
     match child {
-      @xml.Element(e) => base.push(e)
+      @xml.Element(e) => raw.push(e)
       _ => ()
     }
   }
+  let base = collect_rpr_base_elements(raw)
   { element, base }
 }
 
 ///|
 /// XSD complex type CT_RPrOriginal — Part 1 §17.13.5.32.
-pub fn CT_RPrOriginal::parse(element : @xml.Element) -> CT_RPrOriginal {
+pub fn CT_RPrOriginal::parse(
+  element : @xml.Element,
+) -> CT_RPrOriginal raise SchemaViolation {
   CT_RPrOriginal::new(element)
 }
 
@@ -6943,8 +6968,8 @@ pub(all) struct CT_ParaRPrOriginal {
   move_from : CT_TrackChange?
   /// §17.13.5.21 `<moveTo>` (CT_TrackChange) — optional move-target marker.
   move_to : CT_TrackChange?
-  /// EG_RPrBase children in document order.
-  base : Array[@xml.Element]
+  /// §17.3.2.30 EG_RPrBase — typed run-property projections.
+  base : Array[EG_RPrBase]
 } derive(Eq, Debug)
 
 ///|
@@ -6968,7 +6993,7 @@ pub fn CT_ParaRPrOriginal::new(
     Some(e) => Some(CT_TrackChange::new(e))
     None => None
   }
-  let base : Array[@xml.Element] = []
+  let raw : Array[@xml.Element] = []
   for child in element.children {
     match child {
       @xml.Element(e) => {
@@ -6978,12 +7003,13 @@ pub fn CT_ParaRPrOriginal::new(
           ln == "moveFrom" ||
           ln == "moveTo"
         if not(is_track) {
-          base.push(e)
+          raw.push(e)
         }
       }
       _ => ()
     }
   }
+  let base = collect_rpr_base_elements(raw)
   { element, ins, del, move_from, move_to, base }
 }
 
@@ -7019,8 +7045,8 @@ pub(all) struct CT_ParaRPr {
   move_from : CT_TrackChange?
   /// §17.13.5.21 `<moveTo>` — optional move-target revision marker.
   move_to : CT_TrackChange?
-  /// EG_RPrBase children in document order.
-  base : Array[@xml.Element]
+  /// §17.3.2.30 EG_RPrBase — typed run-property projections.
+  base : Array[EG_RPrBase]
   /// §17.13.5.30 `<rPrChange>` (CT_ParaRPrChange) — optional revision marker.
   r_pr_change : CT_ParaRPrChange?
 } derive(Eq, Debug)
@@ -7050,7 +7076,7 @@ pub fn CT_ParaRPr::new(
     Some(e) => Some(CT_ParaRPrChange::new(e))
     None => None
   }
-  let base : Array[@xml.Element] = []
+  let raw : Array[@xml.Element] = []
   for child in element.children {
     match child {
       @xml.Element(e) => {
@@ -7061,12 +7087,13 @@ pub fn CT_ParaRPr::new(
           ln == "moveTo" ||
           ln == "rPrChange"
         if not(is_track) {
-          base.push(e)
+          raw.push(e)
         }
       }
       _ => ()
     }
   }
+  let base = collect_rpr_base_elements(raw)
   { element, ins, del, move_from, move_to, base, r_pr_change }
 }
 
@@ -7295,20 +7322,24 @@ pub(all) struct CT_RubyContent {
   /// §17.3.3.24/§17.3.3.27 EG_RubyContent* — zero or more ruby-content
   /// children (runs, run-level marks or math content) preserved in
   /// document order via the model-group wrapper.
-  ruby_content : EG_RubyContent
+  ruby_content : Array[EG_RubyContent]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_RubyContent — Part 1 §17.3.3.24 / §17.3.3.27. Decode
 /// the EG_RubyContent* children by collecting every element child.
-pub fn CT_RubyContent::new(element : @xml.Element) -> CT_RubyContent {
+pub fn CT_RubyContent::new(
+  element : @xml.Element,
+) -> CT_RubyContent raise SchemaViolation {
   let elements = wml_ct_chunk4_element_children(element)
-  { element, ruby_content: EG_RubyContent::new(elements) }
+  { element, ruby_content: collect_ruby_content(elements) }
 }
 
 ///|
 /// XSD complex type CT_RubyContent — Part 1 §17.3.3.24 / §17.3.3.27.
-pub fn CT_RubyContent::parse(element : @xml.Element) -> CT_RubyContent {
+pub fn CT_RubyContent::parse(
+  element : @xml.Element,
+) -> CT_RubyContent raise SchemaViolation {
   CT_RubyContent::new(element)
 }
 
@@ -8127,7 +8158,7 @@ pub(all) struct CT_DirContentRun {
   val : ST_Direction?
   /// §17.3.2.8 EG_PContent* — zero or more nested paragraph-content
   /// children preserved in document order via the model-group wrapper.
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
 } derive(Eq, Debug)
 
 ///|
@@ -8140,7 +8171,7 @@ pub fn CT_DirContentRun::new(
     Some(text) => Some(ST_Direction::parse(text))
     None => None
   }
-  let p_content = EG_PContent::new(wml_ct_chunk4_element_children(element))
+  let p_content = collect_pcontent(wml_ct_chunk4_element_children(element))
   { element, val, p_content }
 }
 
@@ -8172,7 +8203,7 @@ pub(all) struct CT_BdoContentRun {
   val : ST_Direction?
   /// §17.3.2.3 EG_PContent* — zero or more overridden paragraph-content
   /// children preserved in document order via the model-group wrapper.
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
 } derive(Eq, Debug)
 
 ///|
@@ -8185,7 +8216,7 @@ pub fn CT_BdoContentRun::new(
     Some(text) => Some(ST_Direction::parse(text))
     None => None
   }
-  let p_content = EG_PContent::new(wml_ct_chunk4_element_children(element))
+  let p_content = collect_pcontent(wml_ct_chunk4_element_children(element))
   { element, val, p_content }
 }
 
@@ -8214,20 +8245,24 @@ pub(all) struct CT_SdtContentRun {
   element : @xml.Element
   /// §17.5.2.36 EG_PContent* — zero or more inline-content children
   /// preserved in document order via the model-group wrapper.
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_SdtContentRun — Part 1 §17.5.2.36. Decode each
 /// EG_PContent member as a raw element child of the SDT content wrapper.
-pub fn CT_SdtContentRun::new(element : @xml.Element) -> CT_SdtContentRun {
-  let p_content = EG_PContent::new(wml_ct_chunk4_element_children(element))
+pub fn CT_SdtContentRun::new(
+  element : @xml.Element,
+) -> CT_SdtContentRun raise SchemaViolation {
+  let p_content = collect_pcontent(wml_ct_chunk4_element_children(element))
   { element, p_content }
 }
 
 ///|
 /// XSD complex type CT_SdtContentRun — Part 1 §17.5.2.36.
-pub fn CT_SdtContentRun::parse(element : @xml.Element) -> CT_SdtContentRun {
+pub fn CT_SdtContentRun::parse(
+  element : @xml.Element,
+) -> CT_SdtContentRun raise SchemaViolation {
   CT_SdtContentRun::new(element)
 }
 
@@ -8249,15 +8284,17 @@ pub(all) struct CT_SdtContentBlock {
   element : @xml.Element
   /// §17.5.2.34 EG_ContentBlockContent* — zero or more block-content
   /// children preserved in document order via the model-group wrapper.
-  content_block_content : EG_ContentBlockContent
+  content_block_content : Array[EG_ContentBlockContent]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_SdtContentBlock — Part 1 §17.5.2.34. Decode each
 /// EG_ContentBlockContent member as a raw element child of the SDT
 /// content wrapper.
-pub fn CT_SdtContentBlock::new(element : @xml.Element) -> CT_SdtContentBlock {
-  let content_block_content = EG_ContentBlockContent::new(
+pub fn CT_SdtContentBlock::new(
+  element : @xml.Element,
+) -> CT_SdtContentBlock raise SchemaViolation {
+  let content_block_content = collect_content_block_content(
     wml_ct_chunk4_element_children(element),
   )
   { element, content_block_content }
@@ -8265,7 +8302,9 @@ pub fn CT_SdtContentBlock::new(element : @xml.Element) -> CT_SdtContentBlock {
 
 ///|
 /// XSD complex type CT_SdtContentBlock — Part 1 §17.5.2.34.
-pub fn CT_SdtContentBlock::parse(element : @xml.Element) -> CT_SdtContentBlock {
+pub fn CT_SdtContentBlock::parse(
+  element : @xml.Element,
+) -> CT_SdtContentBlock raise SchemaViolation {
   CT_SdtContentBlock::new(element)
 }
 
@@ -8289,15 +8328,17 @@ pub(all) struct CT_SdtContentRow {
   element : @xml.Element
   /// §17.5.2.35 EG_ContentRowContent* — zero or more row-content children
   /// preserved in document order via the model-group wrapper.
-  content_row_content : EG_ContentRowContent
+  content_row_content : Array[EG_ContentRowContent]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_SdtContentRow — Part 1 §17.5.2.35. Decode each
 /// EG_ContentRowContent member as a raw element child of the SDT
 /// content wrapper.
-pub fn CT_SdtContentRow::new(element : @xml.Element) -> CT_SdtContentRow {
-  let content_row_content = EG_ContentRowContent::new(
+pub fn CT_SdtContentRow::new(
+  element : @xml.Element,
+) -> CT_SdtContentRow raise SchemaViolation {
+  let content_row_content = collect_content_row_content(
     wml_ct_chunk4_element_children(element),
   )
   { element, content_row_content }
@@ -8305,7 +8346,9 @@ pub fn CT_SdtContentRow::new(element : @xml.Element) -> CT_SdtContentRow {
 
 ///|
 /// XSD complex type CT_SdtContentRow — Part 1 §17.5.2.35.
-pub fn CT_SdtContentRow::parse(element : @xml.Element) -> CT_SdtContentRow {
+pub fn CT_SdtContentRow::parse(
+  element : @xml.Element,
+) -> CT_SdtContentRow raise SchemaViolation {
   CT_SdtContentRow::new(element)
 }
 
@@ -8327,15 +8370,17 @@ pub(all) struct CT_SdtContentCell {
   element : @xml.Element
   /// §17.5.2.33 EG_ContentCellContent* — zero or more cell-content
   /// children preserved in document order via the model-group wrapper.
-  content_cell_content : EG_ContentCellContent
+  content_cell_content : Array[EG_ContentCellContent]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_SdtContentCell — Part 1 §17.5.2.33. Decode each
 /// EG_ContentCellContent member as a raw element child of the SDT
 /// content wrapper.
-pub fn CT_SdtContentCell::new(element : @xml.Element) -> CT_SdtContentCell {
-  let content_cell_content = EG_ContentCellContent::new(
+pub fn CT_SdtContentCell::new(
+  element : @xml.Element,
+) -> CT_SdtContentCell raise SchemaViolation {
+  let content_cell_content = collect_content_cell_content(
     wml_ct_chunk4_element_children(element),
   )
   { element, content_cell_content }
@@ -8343,7 +8388,9 @@ pub fn CT_SdtContentCell::new(element : @xml.Element) -> CT_SdtContentCell {
 
 ///|
 /// XSD complex type CT_SdtContentCell — Part 1 §17.5.2.33.
-pub fn CT_SdtContentCell::parse(element : @xml.Element) -> CT_SdtContentCell {
+pub fn CT_SdtContentCell::parse(
+  element : @xml.Element,
+) -> CT_SdtContentCell raise SchemaViolation {
   CT_SdtContentCell::new(element)
 }
 
@@ -8633,7 +8680,7 @@ pub(all) struct CT_CustomXmlRun {
   custom_xml_pr : CT_CustomXmlPr?
   /// §17.5.1.3 EG_PContent* — zero or more wrapped paragraph-content
   /// children preserved in document order via the model-group wrapper.
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
   /// §17.5.1.3 @uri (s:ST_String) — optional custom XML namespace URI.
   uri : String?
   /// §17.5.1.3 @element (s:ST_XmlName lexical form) — required custom XML
@@ -8663,7 +8710,7 @@ pub fn CT_CustomXmlRun::new(
       _ => ()
     }
   }
-  let p_content = EG_PContent::new(p_content_elements)
+  let p_content = collect_pcontent(p_content_elements)
   let uri = wml_ct_chunk4_attr(element, "uri")
   let element_name = wml_ct_chunk4_required_attr(
     element, "element", "CT_CustomXmlRun", "Part 1 §17.5.1.3 s:ST_XmlName",
@@ -8702,7 +8749,7 @@ pub(all) struct CT_SmartTagRun {
   smart_tag_pr : CT_SmartTagPr?
   /// §17.5.1.9 EG_PContent* — zero or more recognised paragraph-content
   /// children preserved in document order via the model-group wrapper.
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
   /// §17.5.1.9 @uri (s:ST_String) — optional smart-tag namespace URI.
   uri : String?
   /// §17.5.1.9 @element (s:ST_XmlName lexical form) — required smart-tag
@@ -8732,7 +8779,7 @@ pub fn CT_SmartTagRun::new(
       _ => ()
     }
   }
-  let p_content = EG_PContent::new(p_content_elements)
+  let p_content = collect_pcontent(p_content_elements)
   let uri = wml_ct_chunk4_attr(element, "uri")
   let element_name = wml_ct_chunk4_required_attr(
     element, "element", "CT_SmartTagRun", "Part 1 §17.5.1.9 s:ST_XmlName",
@@ -8771,7 +8818,7 @@ pub(all) struct CT_CustomXmlBlock {
   custom_xml_pr : CT_CustomXmlPr?
   /// §17.5.1.6 EG_ContentBlockContent* — zero or more wrapped block-level
   /// children preserved in document order via the model-group wrapper.
-  content_block_content : EG_ContentBlockContent
+  content_block_content : Array[EG_ContentBlockContent]
   /// §17.5.1.6 @uri (s:ST_String) — optional custom XML namespace URI.
   uri : String?
   /// §17.5.1.6 @element (s:ST_XmlName lexical form) — required custom XML
@@ -8800,7 +8847,7 @@ pub fn CT_CustomXmlBlock::new(
       _ => ()
     }
   }
-  let content_block_content = EG_ContentBlockContent::new(content_elements)
+  let content_block_content = collect_content_block_content(content_elements)
   let uri = wml_ct_chunk4_attr(element, "uri")
   let element_name = wml_ct_chunk4_required_attr(
     element, "element", "CT_CustomXmlBlock", "Part 1 §17.5.1.6 s:ST_XmlName",
@@ -8891,7 +8938,7 @@ pub(all) struct CT_CustomXmlRow {
   custom_xml_pr : CT_CustomXmlPr?
   /// §17.5.1.5 EG_ContentRowContent* — zero or more wrapped row-level
   /// children preserved in document order via the model-group wrapper.
-  content_row_content : EG_ContentRowContent
+  content_row_content : Array[EG_ContentRowContent]
   /// §17.5.1.5 @uri (s:ST_String) — optional custom XML namespace URI.
   uri : String?
   /// §17.5.1.5 @element (s:ST_XmlName lexical form) — required custom XML
@@ -8920,7 +8967,7 @@ pub fn CT_CustomXmlRow::new(
       _ => ()
     }
   }
-  let content_row_content = EG_ContentRowContent::new(content_elements)
+  let content_row_content = collect_content_row_content(content_elements)
   let uri = wml_ct_chunk4_attr(element, "uri")
   let element_name = wml_ct_chunk4_required_attr(
     element, "element", "CT_CustomXmlRow", "Part 1 §17.5.1.5 s:ST_XmlName",
@@ -8959,7 +9006,7 @@ pub(all) struct CT_CustomXmlCell {
   custom_xml_pr : CT_CustomXmlPr?
   /// §17.5.1.4 EG_ContentCellContent* — zero or more wrapped cell-level
   /// children preserved in document order via the model-group wrapper.
-  content_cell_content : EG_ContentCellContent
+  content_cell_content : Array[EG_ContentCellContent]
   /// §17.5.1.4 @uri (s:ST_String) — optional custom XML namespace URI.
   uri : String?
   /// §17.5.1.4 @element (s:ST_XmlName lexical form) — required custom XML
@@ -8988,7 +9035,7 @@ pub fn CT_CustomXmlCell::new(
       _ => ()
     }
   }
-  let content_cell_content = EG_ContentCellContent::new(content_elements)
+  let content_cell_content = collect_content_cell_content(content_elements)
   let uri = wml_ct_chunk4_attr(element, "uri")
   let element_name = wml_ct_chunk4_required_attr(
     element, "element", "CT_CustomXmlCell", "Part 1 §17.5.1.4 s:ST_XmlName",
@@ -9071,7 +9118,7 @@ pub(all) struct CT_P {
   p_pr : CT_PPr?
   /// §17.3.1.22 EG_PContent* — zero or more paragraph-content children
   /// preserved in document order via the model-group wrapper.
-  p_content : EG_PContent
+  p_content : Array[EG_PContent]
   /// §17.18.50 @rsidRPr (ST_LongHexNumber) — optional run-property
   /// revision id, preserved verbatim as eight hex digits.
   rsid_r_pr : ST_LongHexNumber?
@@ -9106,7 +9153,7 @@ pub fn CT_P::new(element : @xml.Element) -> CT_P raise SchemaViolation {
       _ => ()
     }
   }
-  let p_content = EG_PContent::new(p_content_elements)
+  let p_content = collect_pcontent(p_content_elements)
   let rsid_r_pr = match wml_ct_chunk4_attr(element, "rsidRPr") {
     Some(text) => Some(ST_LongHexNumber::parse(text))
     None => None

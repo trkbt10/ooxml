@@ -21,10 +21,13 @@
 //   CT_ColorSchemeAndMapping    lines 2309..2314
 //   CT_ColorSchemeList          lines 2315..2320
 //   CT_TextBulletColorFollowText line 2711
+//   EG_ColorTransform           lines  56..84 (the 28-arm choice
+//                                            shared by every CT_*Color)
 //
 // Each typed projection captures the schema-mandated attributes and
 // child elements while preserving the source `@xml.Element` for
 // builder round-trip (ct-typing protocol).
+
 
 ///|
 /// XSD complex type CT_Color — Part 1 §20.1.2.3.5 (color choice
@@ -95,8 +98,11 @@ pub(all) struct CT_ScRgbColor {
   g : ST_Percentage
   /// @b — ST_Percentage (required).
   b : ST_Percentage
-  /// EG_ColorTransform children in document order (raw elements).
-  color_transforms : Array[@xml.Element]
+  /// EG_ColorTransform children in document order — typed per
+  /// Annex A.4.1 lines 56..84. Unknown / future-extension children
+  /// (xsd:any) are silently skipped; known ones with malformed
+  /// attributes raise SchemaViolation at construction time.
+  color_transforms : Array[EG_ColorTransform]
   /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
@@ -111,7 +117,7 @@ pub fn CT_ScRgbColor::new(
   let r = ST_Percentage::parse(r_lex)
   let g = ST_Percentage::parse(g_lex)
   let b = ST_Percentage::parse(b_lex)
-  let color_transforms = collect_color_transform_children(element)
+  let color_transforms = collect_color_transforms(element)
   { r, g, b, color_transforms, element }
 }
 
@@ -127,8 +133,11 @@ pub fn CT_ScRgbColor::to_element(self : CT_ScRgbColor) -> @xml.Element {
 pub(all) struct CT_SRgbColor {
   /// @val — s:ST_HexColorRGB (required, RRGGBB hex lexical form).
   val : String
-  /// EG_ColorTransform children in document order (raw elements).
-  color_transforms : Array[@xml.Element]
+  /// EG_ColorTransform children in document order — typed per
+  /// Annex A.4.1 lines 56..84. Unknown / future-extension children
+  /// (xsd:any) are silently skipped; known ones with malformed
+  /// attributes raise SchemaViolation at construction time.
+  color_transforms : Array[EG_ColorTransform]
   /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
@@ -138,7 +147,7 @@ pub fn CT_SRgbColor::new(
   element : @xml.Element,
 ) -> CT_SRgbColor raise SchemaViolation {
   let val = ct_required_string(element, "val", "CT_SRgbColor/@val")
-  let color_transforms = collect_color_transform_children(element)
+  let color_transforms = collect_color_transforms(element)
   { val, color_transforms, element }
 }
 
@@ -158,8 +167,11 @@ pub(all) struct CT_HslColor {
   sat : ST_Percentage
   /// @lum — ST_Percentage (required).
   lum : ST_Percentage
-  /// EG_ColorTransform children in document order (raw elements).
-  color_transforms : Array[@xml.Element]
+  /// EG_ColorTransform children in document order — typed per
+  /// Annex A.4.1 lines 56..84. Unknown / future-extension children
+  /// (xsd:any) are silently skipped; known ones with malformed
+  /// attributes raise SchemaViolation at construction time.
+  color_transforms : Array[EG_ColorTransform]
   /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
@@ -174,7 +186,7 @@ pub fn CT_HslColor::new(
   let hue = ST_PositiveFixedAngle::parse(hue_lex)
   let sat = ST_Percentage::parse(sat_lex)
   let lum = ST_Percentage::parse(lum_lex)
-  let color_transforms = collect_color_transform_children(element)
+  let color_transforms = collect_color_transforms(element)
   { hue, sat, lum, color_transforms, element }
 }
 
@@ -194,8 +206,11 @@ pub(all) struct CT_SystemColor {
   /// @lastClr — s:ST_HexColorRGB (optional). When present this is the
   /// most-recently-resolved RGB snapshot of the system color.
   last_clr : String?
-  /// EG_ColorTransform children in document order (raw elements).
-  color_transforms : Array[@xml.Element]
+  /// EG_ColorTransform children in document order — typed per
+  /// Annex A.4.1 lines 56..84. Unknown / future-extension children
+  /// (xsd:any) are silently skipped; known ones with malformed
+  /// attributes raise SchemaViolation at construction time.
+  color_transforms : Array[EG_ColorTransform]
   /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
@@ -207,7 +222,7 @@ pub fn CT_SystemColor::new(
   let val_lex = ct_required_string(element, "val", "CT_SystemColor/@val")
   let val = ST_SystemColorVal::parse(val_lex)
   let last_clr = ct_attr(element, "lastClr")
-  let color_transforms = collect_color_transform_children(element)
+  let color_transforms = collect_color_transforms(element)
   { val, last_clr, color_transforms, element }
 }
 
@@ -223,8 +238,11 @@ pub fn CT_SystemColor::to_element(self : CT_SystemColor) -> @xml.Element {
 pub(all) struct CT_SchemeColor {
   /// @val — ST_SchemeColorVal (required).
   val : ST_SchemeColorVal
-  /// EG_ColorTransform children in document order (raw elements).
-  color_transforms : Array[@xml.Element]
+  /// EG_ColorTransform children in document order — typed per
+  /// Annex A.4.1 lines 56..84. Unknown / future-extension children
+  /// (xsd:any) are silently skipped; known ones with malformed
+  /// attributes raise SchemaViolation at construction time.
+  color_transforms : Array[EG_ColorTransform]
   /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
@@ -235,7 +253,7 @@ pub fn CT_SchemeColor::new(
 ) -> CT_SchemeColor raise SchemaViolation {
   let val_lex = ct_required_string(element, "val", "CT_SchemeColor/@val")
   let val = ST_SchemeColorVal::parse(val_lex)
-  let color_transforms = collect_color_transform_children(element)
+  let color_transforms = collect_color_transforms(element)
   { val, color_transforms, element }
 }
 
@@ -251,8 +269,11 @@ pub fn CT_SchemeColor::to_element(self : CT_SchemeColor) -> @xml.Element {
 pub(all) struct CT_PresetColor {
   /// @val — ST_PresetColorVal (required).
   val : ST_PresetColorVal
-  /// EG_ColorTransform children in document order (raw elements).
-  color_transforms : Array[@xml.Element]
+  /// EG_ColorTransform children in document order — typed per
+  /// Annex A.4.1 lines 56..84. Unknown / future-extension children
+  /// (xsd:any) are silently skipped; known ones with malformed
+  /// attributes raise SchemaViolation at construction time.
+  color_transforms : Array[EG_ColorTransform]
   /// Preserved source element for round-trip writing.
   element : @xml.Element
 } derive(Eq, Debug)
@@ -263,7 +284,7 @@ pub fn CT_PresetColor::new(
 ) -> CT_PresetColor raise SchemaViolation {
   let val_lex = ct_required_string(element, "val", "CT_PresetColor/@val")
   let val = ST_PresetColorVal::parse(val_lex)
-  let color_transforms = collect_color_transform_children(element)
+  let color_transforms = collect_color_transforms(element)
   { val, color_transforms, element }
 }
 
@@ -796,62 +817,6 @@ pub fn CT_TextBulletColorFollowText::to_element(
   self.element
 }
 
-///|
-/// Internal: list of EG_ColorTransform child local names per Annex
-/// A.4.1 lines 275..305 (EG_ColorTransform choice). The typed
-/// projection for each transform lives in the
-/// `drawing_ml/effects/color_transforms.mbt` module owned by a
-/// later chunk; here we just preserve them as raw elements.
-fn is_color_transform_local_name(name : String) -> Bool {
-  match name {
-    "tint"
-    | "shade"
-    | "comp"
-    | "inv"
-    | "gray"
-    | "alpha"
-    | "alphaOff"
-    | "alphaMod"
-    | "hue"
-    | "hueOff"
-    | "hueMod"
-    | "sat"
-    | "satOff"
-    | "satMod"
-    | "lum"
-    | "lumOff"
-    | "lumMod"
-    | "red"
-    | "redOff"
-    | "redMod"
-    | "green"
-    | "greenOff"
-    | "greenMod"
-    | "blue"
-    | "blueOff"
-    | "blueMod"
-    | "gamma"
-    | "invGamma" => true
-    _ => false
-  }
-}
-
-///|
-fn collect_color_transform_children(
-  element : @xml.Element,
-) -> Array[@xml.Element] {
-  let result : Array[@xml.Element] = []
-  for node in element.children {
-    match node {
-      @xml.Element(child) =>
-        if is_color_transform_local_name(child.name.local_name) {
-          result.push(child)
-        }
-      _ => ()
-    }
-  }
-  result
-}
 
 ///|
 /// Internal: EG_ColorChoice child local names per Annex A.4.1 lines

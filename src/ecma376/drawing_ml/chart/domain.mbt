@@ -739,8 +739,8 @@ pub fn CT_StrRef::new(
 pub(all) struct CT_Tx {
   /// <strRef> (CT_StrRef) — string reference choice branch.
   str_ref : CT_StrRef?
-  /// <rich> (a:CT_TextBody) — rich text body choice branch (raw element).
-  rich : @xml.Element?
+  /// <rich> (a:CT_TextBody) — rich text body choice branch.
+  rich : @a.CT_TextBody?
 } derive(Eq, Debug)
 
 ///|
@@ -749,7 +749,13 @@ pub fn CT_Tx::new(element : @xml.Element) -> CT_Tx raise SchemaViolation {
     Some(child) => { str_ref: Some(CT_StrRef::new(child)), rich: None }
     None =>
       match first_child_named(element, "rich") {
-        Some(child) => { str_ref: None, rich: Some(child) }
+        Some(child) =>
+          {
+            str_ref: None,
+            rich: Some(
+              wrap_a_violation(fn() { @a.CT_TextBody::new(child) }, "CT_Tx/rich"),
+            ),
+          }
         None =>
           raise SchemaViolation(
             schema="dml-chart.xsd",
@@ -1148,9 +1154,9 @@ pub(all) struct CT_Title {
   /// <overlay> (CT_Boolean) — optional.
   overlay : CT_Boolean?
   /// <spPr> (a:CT_ShapeProperties, drawingml/main) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody, drawingml/main) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -1169,8 +1175,8 @@ pub fn CT_Title::new(element : @xml.Element) -> CT_Title raise SchemaViolation {
     Some(child) => Some(CT_Boolean::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   { tx, layout, overlay, sp_pr, tx_pr, ext_lst }
 }
@@ -1366,10 +1372,10 @@ pub(all) struct CT_Surface {
   /// <thickness> (CT_Thickness) — optional.
   thickness : CT_Thickness?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <pictureOptions> (CT_PictureOptions) preserved as raw element until
   /// the chunk2 typed wrapper lands.
-  picture_options : @xml.Element?
+  picture_options : CT_PictureOptions?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -1382,8 +1388,11 @@ pub fn CT_Surface::new(
     Some(child) => Some(CT_Thickness::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
-  let picture_options = first_child_named(element, "pictureOptions")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let picture_options = match first_child_named(element, "pictureOptions") {
+    Some(c) => Some(CT_PictureOptions::new(c))
+    None => None
+  }
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   { thickness, sp_pr, picture_options, ext_lst }
 }
@@ -1436,9 +1445,9 @@ pub(all) struct CT_DTable {
   /// <showKeys> (CT_Boolean) — optional.
   show_keys : CT_Boolean?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -1463,8 +1472,8 @@ pub fn CT_DTable::new(
     Some(child) => Some(CT_Boolean::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   {
     show_horz_border,
@@ -1776,9 +1785,9 @@ pub(all) struct CT_DLbl {
   /// <numFmt> (CT_NumFmt) — EG_DLblShared member, optional.
   num_fmt : CT_NumFmt?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <dLblPos> (CT_DLblPos) — EG_DLblShared member, optional.
   d_lbl_pos : CT_DLblPos?
   /// <showLegendKey> (CT_Boolean) — optional.
@@ -1827,8 +1836,8 @@ pub fn CT_DLbl::new(element : @xml.Element) -> CT_DLbl raise SchemaViolation {
     Some(child) => Some(CT_NumFmt::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let d_lbl_pos = match first_child_named(element, "dLblPos") {
     Some(child) => Some(CT_DLblPos::new(child))
     None => None
@@ -1892,9 +1901,9 @@ pub(all) struct CT_DLbls {
   /// <numFmt> (CT_NumFmt) — EG_DLblShared member, optional.
   num_fmt : CT_NumFmt?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <dLblPos> (CT_DLblPos) — EG_DLblShared member, optional.
   d_lbl_pos : CT_DLblPos?
   /// <showLegendKey> (CT_Boolean) — optional.
@@ -1933,8 +1942,8 @@ pub fn CT_DLbls::new(element : @xml.Element) -> CT_DLbls raise SchemaViolation {
     Some(child) => Some(CT_NumFmt::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let d_lbl_pos = match first_child_named(element, "dLblPos") {
     Some(child) => Some(CT_DLblPos::new(child))
     None => None
@@ -2045,7 +2054,7 @@ pub(all) struct CT_Marker {
   /// <size> (CT_MarkerSize) — optional.
   size : CT_MarkerSize?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -2062,7 +2071,7 @@ pub fn CT_Marker::new(
     Some(child) => Some(CT_MarkerSize::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   { symbol, size, sp_pr, ext_lst }
 }
@@ -2084,9 +2093,9 @@ pub(all) struct CT_DPt {
   /// <explosion> (CT_UnsignedInt) — optional.
   explosion : CT_UnsignedInt?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <pictureOptions> (CT_PictureOptions, chunk3) preserved as raw element.
-  picture_options : @xml.Element?
+  picture_options : CT_PictureOptions?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -2120,8 +2129,11 @@ pub fn CT_DPt::new(element : @xml.Element) -> CT_DPt raise SchemaViolation {
     Some(child) => Some(CT_UnsignedInt::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
-  let picture_options = first_child_named(element, "pictureOptions")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let picture_options = match first_child_named(element, "pictureOptions") {
+    Some(c) => Some(CT_PictureOptions::new(c))
+    None => None
+  }
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   {
     idx,
@@ -2201,9 +2213,9 @@ pub(all) struct CT_TrendlineLbl {
   /// <numFmt> (CT_NumFmt) — optional.
   num_fmt : CT_NumFmt?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -2224,8 +2236,8 @@ pub fn CT_TrendlineLbl::new(
     Some(child) => Some(CT_NumFmt::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   { layout, tx, num_fmt, sp_pr, tx_pr, ext_lst }
 }
@@ -2239,7 +2251,7 @@ pub(all) struct CT_Trendline {
   /// <name> (xsd:string) — optional.
   name : String?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <trendlineType> (CT_TrendlineType) — required.
   trendline_type : CT_TrendlineType
   /// <order> (CT_Order) — optional.
@@ -2267,7 +2279,7 @@ pub fn CT_Trendline::new(
   element : @xml.Element,
 ) -> CT_Trendline raise SchemaViolation {
   let name = first_child_named(element, "name").map(element_text)
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let trendline_type_element = match
     first_child_named(element, "trendlineType") {
     Some(child) => child
@@ -2410,7 +2422,7 @@ pub(all) struct CT_ErrBars {
   /// <val> (CT_Double) — optional.
   val : CT_Double?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -2459,7 +2471,7 @@ pub fn CT_ErrBars::new(
     Some(child) => Some(CT_Double::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   {
     err_dir,
@@ -2479,12 +2491,14 @@ pub fn CT_ErrBars::new(
 /// / §21.2.2.55 downBars. Sequence with optional `spPr`.
 pub(all) struct CT_UpDownBar {
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_UpDownBar::new(element : @xml.Element) -> CT_UpDownBar {
-  let sp_pr = first_child_named(element, "spPr")
+pub fn CT_UpDownBar::new(
+  element : @xml.Element,
+) -> CT_UpDownBar raise SchemaViolation {
+  let sp_pr = chart_a_sp_pr_opt(element)
   { sp_pr, }
 }
 
@@ -2529,7 +2543,7 @@ pub(all) struct CT_LineSer {
   /// <tx> (CT_SerTx) — optional (EG_SerShared).
   tx : CT_SerTx?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <marker> (CT_Marker) — optional.
   marker : CT_Marker?
   /// <dPt> (CT_DPt) — zero or more.
@@ -2578,7 +2592,7 @@ pub fn CT_LineSer::new(
     Some(child) => Some(CT_SerTx::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let marker = match first_child_named(element, "marker") {
     Some(child) => Some(CT_Marker::new(child))
     None => None
@@ -2641,7 +2655,7 @@ pub(all) struct CT_ScatterSer {
   /// <tx> (CT_SerTx) — optional.
   tx : CT_SerTx?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <marker> (CT_Marker) — optional.
   marker : CT_Marker?
   /// <dPt> (CT_DPt) — zero or more.
@@ -2690,7 +2704,7 @@ pub fn CT_ScatterSer::new(
     Some(child) => Some(CT_SerTx::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let marker = match first_child_named(element, "marker") {
     Some(child) => Some(CT_Marker::new(child))
     None => None
@@ -2753,7 +2767,7 @@ pub(all) struct CT_RadarSer {
   /// <tx> (CT_SerTx) — optional.
   tx : CT_SerTx?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <marker> (CT_Marker) — optional.
   marker : CT_Marker?
   /// <dPt> (CT_DPt) — zero or more.
@@ -2796,7 +2810,7 @@ pub fn CT_RadarSer::new(
     Some(child) => Some(CT_SerTx::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let marker = match first_child_named(element, "marker") {
     Some(child) => Some(CT_Marker::new(child))
     None => None
@@ -2834,11 +2848,11 @@ pub(all) struct CT_BarSer {
   /// <tx> (CT_SerTx) — optional.
   tx : CT_SerTx?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <invertIfNegative> (CT_Boolean) — optional.
   invert_if_negative : CT_Boolean?
   /// <pictureOptions> (CT_PictureOptions, chunk3) preserved as raw element.
-  picture_options : @xml.Element?
+  picture_options : CT_PictureOptions?
   /// <dPt> (CT_DPt) — zero or more.
   d_pt : Array[CT_DPt]
   /// <dLbls> (CT_DLbls) — optional.
@@ -2885,13 +2899,16 @@ pub fn CT_BarSer::new(
     Some(child) => Some(CT_SerTx::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let invert_if_negative = match
     first_child_named(element, "invertIfNegative") {
     Some(child) => Some(CT_Boolean::new(child))
     None => None
   }
-  let picture_options = first_child_named(element, "pictureOptions")
+  let picture_options = match first_child_named(element, "pictureOptions") {
+    Some(c) => Some(CT_PictureOptions::new(c))
+    None => None
+  }
   let d_pt = []
   for child in children_named(element, "dPt") {
     d_pt.push(CT_DPt::new(child))
@@ -2948,9 +2965,9 @@ pub(all) struct CT_AreaSer {
   /// <tx> (CT_SerTx) — optional.
   tx : CT_SerTx?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <pictureOptions> (CT_PictureOptions, chunk3) preserved as raw element.
-  picture_options : @xml.Element?
+  picture_options : CT_PictureOptions?
   /// <dPt> (CT_DPt) — zero or more.
   d_pt : Array[CT_DPt]
   /// <dLbls> (CT_DLbls) — optional.
@@ -2995,8 +3012,11 @@ pub fn CT_AreaSer::new(
     Some(child) => Some(CT_SerTx::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
-  let picture_options = first_child_named(element, "pictureOptions")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let picture_options = match first_child_named(element, "pictureOptions") {
+    Some(c) => Some(CT_PictureOptions::new(c))
+    None => None
+  }
   let d_pt = []
   for child in children_named(element, "dPt") {
     d_pt.push(CT_DPt::new(child))
@@ -3050,7 +3070,7 @@ pub(all) struct CT_PieSer {
   /// <tx> (CT_SerTx) — optional.
   tx : CT_SerTx?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <explosion> (CT_UnsignedInt) — optional.
   explosion : CT_UnsignedInt?
   /// <dPt> (CT_DPt) — zero or more.
@@ -3093,7 +3113,7 @@ pub fn CT_PieSer::new(
     Some(child) => Some(CT_SerTx::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let explosion = match first_child_named(element, "explosion") {
     Some(child) => Some(CT_UnsignedInt::new(child))
     None => None
@@ -3130,7 +3150,7 @@ pub(all) struct CT_BubbleSer {
   /// <tx> (CT_SerTx) — optional.
   tx : CT_SerTx?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <invertIfNegative> (CT_Boolean) — optional.
   invert_if_negative : CT_Boolean?
   /// <dPt> (CT_DPt) — zero or more.
@@ -3181,7 +3201,7 @@ pub fn CT_BubbleSer::new(
     Some(child) => Some(CT_SerTx::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let invert_if_negative = match
     first_child_named(element, "invertIfNegative") {
     Some(child) => Some(CT_Boolean::new(child))
@@ -3249,7 +3269,7 @@ pub(all) struct CT_SurfaceSer {
   /// <tx> (CT_SerTx) — optional.
   tx : CT_SerTx?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <cat> (CT_AxDataSource) — optional.
   cat : CT_AxDataSource?
   /// <val> (CT_NumDataSource) — optional.
@@ -3286,7 +3306,7 @@ pub fn CT_SurfaceSer::new(
     Some(child) => Some(CT_SerTx::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let cat = match first_child_named(element, "cat") {
     Some(child) => Some(CT_AxDataSource::new(child))
     None => None
@@ -3358,12 +3378,14 @@ pub(all) struct CT_Chart {
 /// serLines / leaderLines). Sequence with optional `spPr`.
 pub(all) struct CT_ChartLines {
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ChartLines::new(element : @xml.Element) -> CT_ChartLines {
-  let sp_pr = first_child_named(element, "spPr")
+pub fn CT_ChartLines::new(
+  element : @xml.Element,
+) -> CT_ChartLines raise SchemaViolation {
+  let sp_pr = chart_a_sp_pr_opt(element)
   { sp_pr, }
 }
 
@@ -4381,7 +4403,7 @@ pub(all) struct CT_BandFmt {
   /// <idx> (CT_UnsignedInt) — required.
   idx : CT_UnsignedInt
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
 } derive(Eq, Debug)
 
 ///|
@@ -4398,7 +4420,7 @@ pub fn CT_BandFmt::new(
       )
   }
   let idx = CT_UnsignedInt::new(idx_element)
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   { idx, sp_pr }
 }
 
@@ -4814,9 +4836,9 @@ pub(all) struct CT_DispUnitsLbl {
   /// <tx> (CT_Tx) — optional.
   tx : CT_Tx?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
 } derive(Eq, Debug)
 
 ///|
@@ -4984,9 +5006,9 @@ pub(all) struct CT_CatAx {
   /// <tickLblPos> (CT_TickLblPos, chunk3) preserved as raw element.
   tick_lbl_pos : @xml.Element?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <crossAx> (CT_UnsignedInt) — required.
   cross_ax : CT_UnsignedInt
   /// <crosses> (CT_Crosses, chunk3) — choice branch, preserved as raw element.
@@ -5063,8 +5085,8 @@ pub fn CT_CatAx::new(element : @xml.Element) -> CT_CatAx raise SchemaViolation {
   let major_tick_mark = first_child_named(element, "majorTickMark")
   let minor_tick_mark = first_child_named(element, "minorTickMark")
   let tick_lbl_pos = first_child_named(element, "tickLblPos")
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let cross_ax_element = match first_child_named(element, "crossAx") {
     Some(child) => child
     None =>
@@ -5156,9 +5178,9 @@ pub(all) struct CT_DateAx {
   /// <tickLblPos> (CT_TickLblPos, chunk3) preserved as raw element.
   tick_lbl_pos : @xml.Element?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <crossAx> (CT_UnsignedInt) — required.
   cross_ax : CT_UnsignedInt
   /// <crosses> (CT_Crosses, chunk3) — choice branch, preserved as raw element.
@@ -5239,8 +5261,8 @@ pub fn CT_DateAx::new(
   let major_tick_mark = first_child_named(element, "majorTickMark")
   let minor_tick_mark = first_child_named(element, "minorTickMark")
   let tick_lbl_pos = first_child_named(element, "tickLblPos")
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let cross_ax_element = match first_child_named(element, "crossAx") {
     Some(child) => child
     None =>
@@ -5327,9 +5349,9 @@ pub(all) struct CT_SerAx {
   /// <tickLblPos> (CT_TickLblPos, chunk3) preserved as raw element.
   tick_lbl_pos : @xml.Element?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <crossAx> (CT_UnsignedInt) — required.
   cross_ax : CT_UnsignedInt
   /// <crosses> (CT_Crosses, chunk3) — choice branch, preserved as raw element.
@@ -5398,8 +5420,8 @@ pub fn CT_SerAx::new(element : @xml.Element) -> CT_SerAx raise SchemaViolation {
   let major_tick_mark = first_child_named(element, "majorTickMark")
   let minor_tick_mark = first_child_named(element, "minorTickMark")
   let tick_lbl_pos = first_child_named(element, "tickLblPos")
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let cross_ax_element = match first_child_named(element, "crossAx") {
     Some(child) => child
     None =>
@@ -5471,9 +5493,9 @@ pub(all) struct CT_ValAx {
   /// <tickLblPos> (CT_TickLblPos, chunk3) preserved as raw element.
   tick_lbl_pos : @xml.Element?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <crossAx> (CT_UnsignedInt) — required.
   cross_ax : CT_UnsignedInt
   /// <crosses> (CT_Crosses, chunk3) — choice branch, preserved as raw element.
@@ -5546,8 +5568,8 @@ pub fn CT_ValAx::new(element : @xml.Element) -> CT_ValAx raise SchemaViolation {
   let major_tick_mark = first_child_named(element, "majorTickMark")
   let minor_tick_mark = first_child_named(element, "minorTickMark")
   let tick_lbl_pos = first_child_named(element, "tickLblPos")
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let cross_ax_element = match first_child_named(element, "crossAx") {
     Some(child) => child
     None =>
@@ -5605,38 +5627,38 @@ pub fn CT_ValAx::new(element : @xml.Element) -> CT_ValAx raise SchemaViolation {
 pub(all) struct CT_PlotArea {
   /// <layout> (CT_Layout) — optional.
   layout : CT_Layout?
-  /// <areaChart> (CT_AreaChart, chunk3) zero-or-more, preserved as raw element.
-  area_chart : Array[@xml.Element]
-  /// <area3DChart> (CT_Area3DChart, chunk3) zero-or-more, preserved as raw element.
-  area_3d_chart : Array[@xml.Element]
-  /// <lineChart> (CT_LineChart, chunk3) zero-or-more, preserved as raw element.
-  line_chart : Array[@xml.Element]
-  /// <line3DChart> (CT_Line3DChart, chunk3) zero-or-more, preserved as raw element.
-  line_3d_chart : Array[@xml.Element]
-  /// <stockChart> (CT_StockChart, chunk3) zero-or-more, preserved as raw element.
-  stock_chart : Array[@xml.Element]
-  /// <radarChart> (CT_RadarChart, chunk3) zero-or-more, preserved as raw element.
-  radar_chart : Array[@xml.Element]
-  /// <scatterChart> (CT_ScatterChart, chunk3) zero-or-more, preserved as raw element.
-  scatter_chart : Array[@xml.Element]
-  /// <pieChart> (CT_PieChart, chunk3) zero-or-more, preserved as raw element.
-  pie_chart : Array[@xml.Element]
-  /// <pie3DChart> (CT_Pie3DChart, chunk3) zero-or-more, preserved as raw element.
-  pie_3d_chart : Array[@xml.Element]
-  /// <doughnutChart> (CT_DoughnutChart, chunk3) zero-or-more, preserved as raw element.
-  doughnut_chart : Array[@xml.Element]
-  /// <barChart> (CT_BarChart, chunk3) zero-or-more, preserved as raw element.
-  bar_chart : Array[@xml.Element]
-  /// <bar3DChart> (CT_Bar3DChart, chunk3) zero-or-more, preserved as raw element.
-  bar_3d_chart : Array[@xml.Element]
-  /// <ofPieChart> (CT_OfPieChart, chunk3) zero-or-more, preserved as raw element.
-  of_pie_chart : Array[@xml.Element]
-  /// <surfaceChart> (CT_SurfaceChart, chunk3) zero-or-more, preserved as raw element.
-  surface_chart : Array[@xml.Element]
-  /// <surface3DChart> (CT_Surface3DChart, chunk3) zero-or-more, preserved as raw element.
-  surface_3d_chart : Array[@xml.Element]
-  /// <bubbleChart> (CT_BubbleChart, chunk3) zero-or-more, preserved as raw element.
-  bubble_chart : Array[@xml.Element]
+  /// <areaChart> (CT_AreaChart) zero-or-more.
+  area_chart : Array[CT_AreaChart]
+  /// <area3DChart> (CT_Area3DChart) zero-or-more.
+  area_3d_chart : Array[CT_Area3DChart]
+  /// <lineChart> (CT_LineChart) zero-or-more.
+  line_chart : Array[CT_LineChart]
+  /// <line3DChart> (CT_Line3DChart) zero-or-more.
+  line_3d_chart : Array[CT_Line3DChart]
+  /// <stockChart> (CT_StockChart) zero-or-more.
+  stock_chart : Array[CT_StockChart]
+  /// <radarChart> (CT_RadarChart) zero-or-more.
+  radar_chart : Array[CT_RadarChart]
+  /// <scatterChart> (CT_ScatterChart) zero-or-more.
+  scatter_chart : Array[CT_ScatterChart]
+  /// <pieChart> (CT_PieChart) zero-or-more.
+  pie_chart : Array[CT_PieChart]
+  /// <pie3DChart> (CT_Pie3DChart) zero-or-more.
+  pie_3d_chart : Array[CT_Pie3DChart]
+  /// <doughnutChart> (CT_DoughnutChart) zero-or-more.
+  doughnut_chart : Array[CT_DoughnutChart]
+  /// <barChart> (CT_BarChart) zero-or-more.
+  bar_chart : Array[CT_BarChart]
+  /// <bar3DChart> (CT_Bar3DChart) zero-or-more.
+  bar_3d_chart : Array[CT_Bar3DChart]
+  /// <ofPieChart> (CT_OfPieChart) zero-or-more.
+  of_pie_chart : Array[CT_OfPieChart]
+  /// <surfaceChart> (CT_SurfaceChart) zero-or-more.
+  surface_chart : Array[CT_SurfaceChart]
+  /// <surface3DChart> (CT_Surface3DChart) zero-or-more.
+  surface_3d_chart : Array[CT_Surface3DChart]
+  /// <bubbleChart> (CT_BubbleChart) zero-or-more.
+  bubble_chart : Array[CT_BubbleChart]
   /// <valAx> (CT_ValAx) zero-or-more.
   val_ax : Array[CT_ValAx]
   /// <catAx> (CT_CatAx) zero-or-more.
@@ -5648,7 +5670,7 @@ pub(all) struct CT_PlotArea {
   /// <dTable> (CT_DTable) — optional.
   d_table : CT_DTable?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -5661,22 +5683,70 @@ pub fn CT_PlotArea::new(
     Some(child) => Some(CT_Layout::new(child))
     None => None
   }
-  let area_chart = children_named(element, "areaChart")
-  let area_3d_chart = children_named(element, "area3DChart")
-  let line_chart = children_named(element, "lineChart")
-  let line_3d_chart = children_named(element, "line3DChart")
-  let stock_chart = children_named(element, "stockChart")
-  let radar_chart = children_named(element, "radarChart")
-  let scatter_chart = children_named(element, "scatterChart")
-  let pie_chart = children_named(element, "pieChart")
-  let pie_3d_chart = children_named(element, "pie3DChart")
-  let doughnut_chart = children_named(element, "doughnutChart")
-  let bar_chart = children_named(element, "barChart")
-  let bar_3d_chart = children_named(element, "bar3DChart")
-  let of_pie_chart = children_named(element, "ofPieChart")
-  let surface_chart = children_named(element, "surfaceChart")
-  let surface_3d_chart = children_named(element, "surface3DChart")
-  let bubble_chart = children_named(element, "bubbleChart")
+  let area_chart : Array[CT_AreaChart] = []
+  for child in children_named(element, "areaChart") {
+    area_chart.push(CT_AreaChart::new(child))
+  }
+  let area_3d_chart : Array[CT_Area3DChart] = []
+  for child in children_named(element, "area3DChart") {
+    area_3d_chart.push(CT_Area3DChart::new(child))
+  }
+  let line_chart : Array[CT_LineChart] = []
+  for child in children_named(element, "lineChart") {
+    line_chart.push(CT_LineChart::new(child))
+  }
+  let line_3d_chart : Array[CT_Line3DChart] = []
+  for child in children_named(element, "line3DChart") {
+    line_3d_chart.push(CT_Line3DChart::new(child))
+  }
+  let stock_chart : Array[CT_StockChart] = []
+  for child in children_named(element, "stockChart") {
+    stock_chart.push(CT_StockChart::new(child))
+  }
+  let radar_chart : Array[CT_RadarChart] = []
+  for child in children_named(element, "radarChart") {
+    radar_chart.push(CT_RadarChart::new(child))
+  }
+  let scatter_chart : Array[CT_ScatterChart] = []
+  for child in children_named(element, "scatterChart") {
+    scatter_chart.push(CT_ScatterChart::new(child))
+  }
+  let pie_chart : Array[CT_PieChart] = []
+  for child in children_named(element, "pieChart") {
+    pie_chart.push(CT_PieChart::new(child))
+  }
+  let pie_3d_chart : Array[CT_Pie3DChart] = []
+  for child in children_named(element, "pie3DChart") {
+    pie_3d_chart.push(CT_Pie3DChart::new(child))
+  }
+  let doughnut_chart : Array[CT_DoughnutChart] = []
+  for child in children_named(element, "doughnutChart") {
+    doughnut_chart.push(CT_DoughnutChart::new(child))
+  }
+  let bar_chart : Array[CT_BarChart] = []
+  for child in children_named(element, "barChart") {
+    bar_chart.push(CT_BarChart::new(child))
+  }
+  let bar_3d_chart : Array[CT_Bar3DChart] = []
+  for child in children_named(element, "bar3DChart") {
+    bar_3d_chart.push(CT_Bar3DChart::new(child))
+  }
+  let of_pie_chart : Array[CT_OfPieChart] = []
+  for child in children_named(element, "ofPieChart") {
+    of_pie_chart.push(CT_OfPieChart::new(child))
+  }
+  let surface_chart : Array[CT_SurfaceChart] = []
+  for child in children_named(element, "surfaceChart") {
+    surface_chart.push(CT_SurfaceChart::new(child))
+  }
+  let surface_3d_chart : Array[CT_Surface3DChart] = []
+  for child in children_named(element, "surface3DChart") {
+    surface_3d_chart.push(CT_Surface3DChart::new(child))
+  }
+  let bubble_chart : Array[CT_BubbleChart] = []
+  for child in children_named(element, "bubbleChart") {
+    bubble_chart.push(CT_BubbleChart::new(child))
+  }
   let val_ax = []
   for child in children_named(element, "valAx") {
     val_ax.push(CT_ValAx::new(child))
@@ -5697,7 +5767,7 @@ pub fn CT_PlotArea::new(
     Some(child) => Some(CT_DTable::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   {
     layout,
@@ -5734,9 +5804,9 @@ pub(all) struct CT_PivotFmt {
   /// <idx> (CT_UnsignedInt) — required.
   idx : CT_UnsignedInt
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <marker> (CT_Marker) — optional.
   marker : CT_Marker?
   /// <dLbl> (CT_DLbl) — optional.
@@ -5759,8 +5829,8 @@ pub fn CT_PivotFmt::new(
       )
   }
   let idx = CT_UnsignedInt::new(idx_element)
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let marker = match first_child_named(element, "marker") {
     Some(child) => Some(CT_Marker::new(child))
     None => None
@@ -5822,7 +5892,7 @@ pub(all) struct CT_LegendEntry {
   delete : CT_Boolean?
   /// <txPr> (a:CT_TextBody, from EG_LegendEntryData) — choice branch,
   /// preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -5845,7 +5915,7 @@ pub fn CT_LegendEntry::new(
     Some(child) => Some(CT_Boolean::new(child))
     None => None
   }
-  let tx_pr = first_child_named(element, "txPr")
+  let tx_pr = chart_a_tx_pr_opt(element)
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   { idx, delete, tx_pr, ext_lst }
 }
@@ -5864,9 +5934,9 @@ pub(all) struct CT_Legend {
   /// <overlay> (CT_Boolean) — optional.
   overlay : CT_Boolean?
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <extLst> (CT_ExtensionList) — optional.
   ext_lst : CT_ExtensionList?
 } derive(Eq, Debug)
@@ -5891,8 +5961,8 @@ pub fn CT_Legend::new(
     Some(child) => Some(CT_Boolean::new(child))
     None => None
   }
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let ext_lst = first_child_named(element, "extLst").map(CT_ExtensionList::new)
   { legend_pos, legend_entry, layout, overlay, sp_pr, tx_pr, ext_lst }
 }
@@ -6459,9 +6529,9 @@ pub(all) struct CT_ChartSpace {
   /// <chart> (CT_Chart) — required.
   chart : CT_Chart
   /// <spPr> (a:CT_ShapeProperties) preserved as raw element.
-  sp_pr : @xml.Element?
+  sp_pr : @a.CT_ShapeProperties?
   /// <txPr> (a:CT_TextBody) preserved as raw element.
-  tx_pr : @xml.Element?
+  tx_pr : @a.CT_TextBody?
   /// <externalData> (CT_ExternalData) — optional.
   external_data : CT_ExternalData?
   /// <printSettings> (CT_PrintSettings) — optional.
@@ -6511,8 +6581,8 @@ pub fn CT_ChartSpace::new(
       )
   }
   let chart = CT_Chart::new(chart_element)
-  let sp_pr = first_child_named(element, "spPr")
-  let tx_pr = first_child_named(element, "txPr")
+  let sp_pr = chart_a_sp_pr_opt(element)
+  let tx_pr = chart_a_tx_pr_opt(element)
   let external_data = match first_child_named(element, "externalData") {
     Some(child) => Some(CT_ExternalData::new(child))
     None => None
@@ -6550,17 +6620,17 @@ pub fn CT_ChartSpace::new(
 /// raw `@xml.Element` since cross-package typing of `a:CT_NonVisualDrawingProps`
 /// / `a:CT_NonVisualDrawingShapeProps` is out of scope here.
 pub(all) struct CT_ShapeNonVisual {
-  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
-  c_nv_pr : @xml.Element
-  /// <cNvSpPr> (a:CT_NonVisualDrawingShapeProps) — required, preserved as raw element.
-  c_nv_sp_pr : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
+  c_nv_pr : @a.CT_NonVisualDrawingProps
+  /// <cNvSpPr> (a:CT_NonVisualDrawingShapeProps) — required.
+  c_nv_sp_pr : @a.CT_NonVisualDrawingShapeProps
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ShapeNonVisual::new(
   element : @xml.Element,
 ) -> CT_ShapeNonVisual raise SchemaViolation {
-  let c_nv_pr = match first_child_named(element, "cNvPr") {
+  let c_nv_pr_el = match first_child_named(element, "cNvPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6569,7 +6639,7 @@ pub fn CT_ShapeNonVisual::new(
         reason="required child missing",
       )
   }
-  let c_nv_sp_pr = match first_child_named(element, "cNvSpPr") {
+  let c_nv_sp_pr_el = match first_child_named(element, "cNvSpPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6578,6 +6648,14 @@ pub fn CT_ShapeNonVisual::new(
         reason="required child missing",
       )
   }
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_ShapeNonVisual/cNvPr",
+  )
+  let c_nv_sp_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingShapeProps::new(c_nv_sp_pr_el) },
+    "CT_ShapeNonVisual/cNvSpPr",
+  )
   { c_nv_pr, c_nv_sp_pr }
 }
 
@@ -6588,17 +6666,17 @@ pub fn CT_ShapeNonVisual::new(
 /// XSD complex type CT_ConnectorNonVisual — Part 1 §21.3.2.7 (dml-chartDrawing.xsd)
 /// nvCxnSpPr. Sequence of two required drawingml/main elements preserved raw.
 pub(all) struct CT_ConnectorNonVisual {
-  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
-  c_nv_pr : @xml.Element
-  /// <cNvCxnSpPr> (a:CT_NonVisualConnectorProperties) — required, preserved as raw element.
-  c_nv_cxn_sp_pr : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
+  c_nv_pr : @a.CT_NonVisualDrawingProps
+  /// <cNvCxnSpPr> (a:CT_NonVisualConnectorProperties) — required.
+  c_nv_cxn_sp_pr : @a.CT_NonVisualConnectorProperties
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ConnectorNonVisual::new(
   element : @xml.Element,
 ) -> CT_ConnectorNonVisual raise SchemaViolation {
-  let c_nv_pr = match first_child_named(element, "cNvPr") {
+  let c_nv_pr_el = match first_child_named(element, "cNvPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6607,7 +6685,7 @@ pub fn CT_ConnectorNonVisual::new(
         reason="required child missing",
       )
   }
-  let c_nv_cxn_sp_pr = match first_child_named(element, "cNvCxnSpPr") {
+  let c_nv_cxn_sp_pr_el = match first_child_named(element, "cNvCxnSpPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6616,6 +6694,14 @@ pub fn CT_ConnectorNonVisual::new(
         reason="required child missing",
       )
   }
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_ConnectorNonVisual/cNvPr",
+  )
+  let c_nv_cxn_sp_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualConnectorProperties::new(c_nv_cxn_sp_pr_el) },
+    "CT_ConnectorNonVisual/cNvCxnSpPr",
+  )
   { c_nv_pr, c_nv_cxn_sp_pr }
 }
 
@@ -6631,10 +6717,10 @@ pub(all) struct CT_Connector {
   f_published : Bool?
   /// <nvCxnSpPr> (CT_ConnectorNonVisual) — required.
   nv_cxn_sp_pr : CT_ConnectorNonVisual
-  /// <spPr> (a:CT_ShapeProperties) — required, preserved as raw element.
-  sp_pr : @xml.Element
-  /// <style> (a:CT_ShapeStyle) — optional, preserved as raw element.
-  style : @xml.Element?
+  /// <spPr> (a:CT_ShapeProperties) — required.
+  sp_pr : @a.CT_ShapeProperties
+  /// <style> (a:CT_ShapeStyle) — optional.
+  style : @a.CT_ShapeStyle?
 } derive(Eq, Debug)
 
 ///|
@@ -6656,7 +6742,7 @@ pub fn CT_Connector::new(
       )
   }
   let nv_cxn_sp_pr = CT_ConnectorNonVisual::new(nv_cxn_sp_pr_element)
-  let sp_pr = match first_child_named(element, "spPr") {
+  let sp_pr_el = match first_child_named(element, "spPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6665,7 +6751,17 @@ pub fn CT_Connector::new(
         reason="required child missing",
       )
   }
-  let style = first_child_named(element, "style")
+  let sp_pr = wrap_a_violation(
+    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    "CT_Connector/spPr",
+  )
+  let style = match first_child_named(element, "style") {
+    None => None
+    Some(c) =>
+      Some(
+        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(c) }, "CT_Connector/style"),
+      )
+  }
   { macro_, f_published, nv_cxn_sp_pr, sp_pr, style }
 }
 
@@ -6673,17 +6769,17 @@ pub fn CT_Connector::new(
 /// XSD complex type CT_PictureNonVisual — Part 1 §21.3.2.8 (dml-chartDrawing.xsd)
 /// nvPicPr. Sequence of two required drawingml/main elements preserved raw.
 pub(all) struct CT_PictureNonVisual {
-  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
-  c_nv_pr : @xml.Element
-  /// <cNvPicPr> (a:CT_NonVisualPictureProperties) — required, preserved as raw element.
-  c_nv_pic_pr : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
+  c_nv_pr : @a.CT_NonVisualDrawingProps
+  /// <cNvPicPr> (a:CT_NonVisualPictureProperties) — required.
+  c_nv_pic_pr : @a.CT_NonVisualPictureProperties
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_PictureNonVisual::new(
   element : @xml.Element,
 ) -> CT_PictureNonVisual raise SchemaViolation {
-  let c_nv_pr = match first_child_named(element, "cNvPr") {
+  let c_nv_pr_el = match first_child_named(element, "cNvPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6692,7 +6788,7 @@ pub fn CT_PictureNonVisual::new(
         reason="required child missing",
       )
   }
-  let c_nv_pic_pr = match first_child_named(element, "cNvPicPr") {
+  let c_nv_pic_pr_el = match first_child_named(element, "cNvPicPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6701,6 +6797,14 @@ pub fn CT_PictureNonVisual::new(
         reason="required child missing",
       )
   }
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_PictureNonVisual/cNvPr",
+  )
+  let c_nv_pic_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualPictureProperties::new(c_nv_pic_pr_el) },
+    "CT_PictureNonVisual/cNvPicPr",
+  )
   { c_nv_pr, c_nv_pic_pr }
 }
 
@@ -6716,12 +6820,12 @@ pub(all) struct CT_Picture {
   f_published : Bool?
   /// <nvPicPr> (CT_PictureNonVisual) — required.
   nv_pic_pr : CT_PictureNonVisual
-  /// <blipFill> (a:CT_BlipFillProperties) — required, preserved as raw element.
-  blip_fill : @xml.Element
-  /// <spPr> (a:CT_ShapeProperties) — required, preserved as raw element.
-  sp_pr : @xml.Element
-  /// <style> (a:CT_ShapeStyle) — optional, preserved as raw element.
-  style : @xml.Element?
+  /// <blipFill> (a:CT_BlipFillProperties) — required.
+  blip_fill : @a.CT_BlipFillProperties
+  /// <spPr> (a:CT_ShapeProperties) — required.
+  sp_pr : @a.CT_ShapeProperties
+  /// <style> (a:CT_ShapeStyle) — optional.
+  style : @a.CT_ShapeStyle?
 } derive(Eq, Debug)
 
 ///|
@@ -6743,7 +6847,7 @@ pub fn CT_Picture::new(
       )
   }
   let nv_pic_pr = CT_PictureNonVisual::new(nv_pic_pr_element)
-  let blip_fill = match first_child_named(element, "blipFill") {
+  let blip_fill_el = match first_child_named(element, "blipFill") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6752,7 +6856,7 @@ pub fn CT_Picture::new(
         reason="required child missing",
       )
   }
-  let sp_pr = match first_child_named(element, "spPr") {
+  let sp_pr_el = match first_child_named(element, "spPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6761,7 +6865,21 @@ pub fn CT_Picture::new(
         reason="required child missing",
       )
   }
-  let style = first_child_named(element, "style")
+  let blip_fill = wrap_a_violation(
+    fn() { @a.CT_BlipFillProperties::new(blip_fill_el) },
+    "CT_Picture/blipFill",
+  )
+  let sp_pr = wrap_a_violation(
+    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    "CT_Picture/spPr",
+  )
+  let style = match first_child_named(element, "style") {
+    None => None
+    Some(c) =>
+      Some(
+        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(c) }, "CT_Picture/style"),
+      )
+  }
   { macro_, f_published, nv_pic_pr, blip_fill, sp_pr, style }
 }
 
@@ -6770,17 +6888,17 @@ pub fn CT_Picture::new(
 /// (dml-chartDrawing.xsd) nvGraphicFramePr. Sequence of two required
 /// drawingml/main elements preserved raw.
 pub(all) struct CT_GraphicFrameNonVisual {
-  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
-  c_nv_pr : @xml.Element
-  /// <cNvGraphicFramePr> (a:CT_NonVisualGraphicFrameProperties) — required, preserved as raw element.
-  c_nv_graphic_frame_pr : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
+  c_nv_pr : @a.CT_NonVisualDrawingProps
+  /// <cNvGraphicFramePr> (a:CT_NonVisualGraphicFrameProperties) — required.
+  c_nv_graphic_frame_pr : @a.CT_NonVisualGraphicFrameProperties
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_GraphicFrameNonVisual::new(
   element : @xml.Element,
 ) -> CT_GraphicFrameNonVisual raise SchemaViolation {
-  let c_nv_pr = match first_child_named(element, "cNvPr") {
+  let c_nv_pr_el = match first_child_named(element, "cNvPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6789,7 +6907,7 @@ pub fn CT_GraphicFrameNonVisual::new(
         reason="required child missing",
       )
   }
-  let c_nv_graphic_frame_pr = match
+  let c_nv_graphic_frame_pr_el = match
     first_child_named(element, "cNvGraphicFramePr") {
     Some(child) => child
     None =>
@@ -6799,6 +6917,16 @@ pub fn CT_GraphicFrameNonVisual::new(
         reason="required child missing",
       )
   }
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_GraphicFrameNonVisual/cNvPr",
+  )
+  let c_nv_graphic_frame_pr = wrap_a_violation(
+    fn() {
+      @a.CT_NonVisualGraphicFrameProperties::new(c_nv_graphic_frame_pr_el)
+    },
+    "CT_GraphicFrameNonVisual/cNvGraphicFramePr",
+  )
   { c_nv_pr, c_nv_graphic_frame_pr }
 }
 
@@ -6814,10 +6942,10 @@ pub(all) struct CT_GraphicFrame {
   f_published : Bool?
   /// <nvGraphicFramePr> (CT_GraphicFrameNonVisual) — required.
   nv_graphic_frame_pr : CT_GraphicFrameNonVisual
-  /// <xfrm> (a:CT_Transform2D) — required, preserved as raw element.
-  xfrm : @xml.Element
-  /// <a:graphic> (a:CT_GraphicalObject ref) — required, preserved as raw element.
-  graphic : @xml.Element
+  /// <xfrm> (a:CT_Transform2D) — required.
+  xfrm : @a.CT_Transform2D
+  /// <a:graphic> (a:CT_GraphicalObject) — required.
+  graphic : @a.CT_GraphicalObject
 } derive(Eq, Debug)
 
 ///|
@@ -6842,7 +6970,7 @@ pub fn CT_GraphicFrame::new(
   let nv_graphic_frame_pr = CT_GraphicFrameNonVisual::new(
     nv_graphic_frame_pr_element,
   )
-  let xfrm = match first_child_named(element, "xfrm") {
+  let xfrm_el = match first_child_named(element, "xfrm") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6851,7 +6979,7 @@ pub fn CT_GraphicFrame::new(
         reason="required child missing",
       )
   }
-  let graphic = match first_child_named(element, "graphic") {
+  let graphic_el = match first_child_named(element, "graphic") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6860,6 +6988,14 @@ pub fn CT_GraphicFrame::new(
         reason="required child missing",
       )
   }
+  let xfrm = wrap_a_violation(
+    fn() { @a.CT_Transform2D::new(xfrm_el) },
+    "CT_GraphicFrame/xfrm",
+  )
+  let graphic = wrap_a_violation(
+    fn() { @a.CT_GraphicalObject::new(graphic_el) },
+    "CT_GraphicFrame/graphic",
+  )
   { macro_, f_published, nv_graphic_frame_pr, xfrm, graphic }
 }
 
@@ -6867,17 +7003,17 @@ pub fn CT_GraphicFrame::new(
 /// XSD complex type CT_GroupShapeNonVisual — Part 1 §21.3.2.9 (dml-chartDrawing.xsd)
 /// nvGrpSpPr. Sequence of two required drawingml/main elements preserved raw.
 pub(all) struct CT_GroupShapeNonVisual {
-  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required, preserved as raw element.
-  c_nv_pr : @xml.Element
-  /// <cNvGrpSpPr> (a:CT_NonVisualGroupDrawingShapeProps) — required, preserved as raw element.
-  c_nv_grp_sp_pr : @xml.Element
+  /// <cNvPr> (a:CT_NonVisualDrawingProps) — required.
+  c_nv_pr : @a.CT_NonVisualDrawingProps
+  /// <cNvGrpSpPr> (a:CT_NonVisualGroupDrawingShapeProps) — required.
+  c_nv_grp_sp_pr : @a.CT_NonVisualGroupDrawingShapeProps
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_GroupShapeNonVisual::new(
   element : @xml.Element,
 ) -> CT_GroupShapeNonVisual raise SchemaViolation {
-  let c_nv_pr = match first_child_named(element, "cNvPr") {
+  let c_nv_pr_el = match first_child_named(element, "cNvPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6886,7 +7022,7 @@ pub fn CT_GroupShapeNonVisual::new(
         reason="required child missing",
       )
   }
-  let c_nv_grp_sp_pr = match first_child_named(element, "cNvGrpSpPr") {
+  let c_nv_grp_sp_pr_el = match first_child_named(element, "cNvGrpSpPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6895,7 +7031,31 @@ pub fn CT_GroupShapeNonVisual::new(
         reason="required child missing",
       )
   }
+  let c_nv_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    "CT_GroupShapeNonVisual/cNvPr",
+  )
+  let c_nv_grp_sp_pr = wrap_a_violation(
+    fn() { @a.CT_NonVisualGroupDrawingShapeProps::new(c_nv_grp_sp_pr_el) },
+    "CT_GroupShapeNonVisual/cNvGrpSpPr",
+  )
   { c_nv_pr, c_nv_grp_sp_pr }
+}
+
+///|
+/// Bridge @a.SchemaViolation into the chart's local SchemaViolation.
+fn wrap_a_violation[T](
+  body : () -> T raise @a.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @a.SchemaViolation(schema=_, path=p, reason~) =>
+      raise SchemaViolation(
+        schema="dml-chartDrawing.xsd",
+        path=path + " (" + p + ")",
+        reason~,
+      )
+  }
 }
 
 ///|
@@ -6907,10 +7067,10 @@ pub fn CT_GroupShapeNonVisual::new(
 pub(all) struct CT_GroupShape {
   /// <nvGrpSpPr> (CT_GroupShapeNonVisual) — required.
   nv_grp_sp_pr : CT_GroupShapeNonVisual
-  /// <grpSpPr> (a:CT_GroupShapeProperties) — required, preserved as raw element.
-  grp_sp_pr : @xml.Element
-  /// <sp> (CT_Shape, chunk3 wrapper) zero-or-more, preserved as raw element.
-  sp : Array[@xml.Element]
+  /// <grpSpPr> (a:CT_GroupShapeProperties) — required.
+  grp_sp_pr : @a.CT_GroupShapeProperties
+  /// <sp> (CT_Shape) zero-or-more.
+  sp : Array[CT_Shape]
   /// <grpSp> (CT_GroupShape) zero-or-more, recursively typed.
   grp_sp : Array[CT_GroupShape]
   /// <graphicFrame> (CT_GraphicFrame) zero-or-more.
@@ -6935,7 +7095,7 @@ pub fn CT_GroupShape::new(
       )
   }
   let nv_grp_sp_pr = CT_GroupShapeNonVisual::new(nv_grp_sp_pr_element)
-  let grp_sp_pr = match first_child_named(element, "grpSpPr") {
+  let grp_sp_pr_el = match first_child_named(element, "grpSpPr") {
     Some(child) => child
     None =>
       raise SchemaViolation(
@@ -6944,7 +7104,14 @@ pub fn CT_GroupShape::new(
         reason="required child missing",
       )
   }
-  let sp = children_named(element, "sp")
+  let grp_sp_pr = wrap_a_violation(
+    fn() { @a.CT_GroupShapeProperties::new(grp_sp_pr_el) },
+    "CT_GroupShape/grpSpPr",
+  )
+  let sp : Array[CT_Shape] = []
+  for child in children_named(element, "sp") {
+    sp.push(CT_Shape::new(child))
+  }
   let grp_sp = []
   for child in children_named(element, "grpSp") {
     grp_sp.push(CT_GroupShape::new(child))
@@ -7148,4 +7315,30 @@ pub fn chart_schema_bundles() -> Array[String] {
   bundles.push("dml-chart.xsd")
   bundles.push("dml-chartDrawing.xsd")
   bundles
+}
+
+///|
+/// Read an optional `<a:spPr>` child as the typed @a.CT_ShapeProperties
+/// projection. Returns `None` when absent.
+fn chart_a_sp_pr_opt(
+  element : @xml.Element,
+) -> @a.CT_ShapeProperties? raise SchemaViolation {
+  match first_child_named(element, "spPr") {
+    None => None
+    Some(e) =>
+      Some(wrap_a_violation(fn() { @a.CT_ShapeProperties::new(e) }, "spPr"))
+  }
+}
+
+///|
+/// Read an optional `<a:txPr>` child as the typed @a.CT_TextBody
+/// projection. Returns `None` when absent.
+fn chart_a_tx_pr_opt(
+  element : @xml.Element,
+) -> @a.CT_TextBody? raise SchemaViolation {
+  match first_child_named(element, "txPr") {
+    None => None
+    Some(e) =>
+      Some(wrap_a_violation(fn() { @a.CT_TextBody::new(e) }, "txPr"))
+  }
 }

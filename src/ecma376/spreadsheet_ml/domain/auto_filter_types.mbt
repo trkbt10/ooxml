@@ -132,8 +132,10 @@ pub(all) struct CT_DateGroupItem {
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Filter — Part 1 §18.3.2.6. A single filter literal
-/// value carried by `<filter val="..."/>` inside `<filters>`.
+/// Schema sml.xsd complex type `CT_Filter`. Attributes: `val`.
+///
+/// XSD complex type CT_Filter — Part 1 §18.3.2.6. A single filter
+/// literal value carried by `<filter val="..."/>` inside `<filters>`.
 pub(all) struct CT_Filter {
   val : String
 } derive(Eq, Debug)
@@ -196,10 +198,13 @@ pub(all) struct CT_IconFilter {
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_Top10 — Part 1 §18.3.2.10. `top` (default `true`)
-/// selects top vs bottom ordering; `percent` (default `false`) selects
-/// percent vs item count; `val` is the required threshold; `filter_val` is
-/// the optional cached comparison value.
+/// Schema sml.xsd complex type `CT_Top10`. Attributes: `top`,
+/// `percent`, `val`, `filterVal`.
+///
+/// XSD complex type CT_Top10 — Part 1 §18.3.2.10. `top` (default
+/// `true`) selects top vs bottom ordering; `percent` (default `false`)
+/// selects percent vs item count; `val` is the required threshold;
+/// `filter_val` is the optional cached comparison value.
 pub(all) struct CT_Top10 {
   top : Bool
   percent : Bool

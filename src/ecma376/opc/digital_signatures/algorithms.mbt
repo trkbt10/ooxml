@@ -209,6 +209,18 @@ fn apply_transforms(
 }
 
 ///|
+/// §10.5 / Part 2 §B — compute the Reference's digest.
+///
+/// XML-Signature §4.3.3.6 registers SHA-1 / SHA-256 / SHA-384 /
+/// SHA-512 (plus the legacy MD5).  Office authoring tools used
+/// SHA-1 for backward compatibility through Office 2007, then
+/// SHA-256 from Office 2010 onwards.  This implementation
+/// supports SHA-256 only because the `@crypto` dependency only
+/// exposes that algorithm; SHA-1 / SHA-384 / SHA-512 round-trips
+/// raise SchemaViolation upstream.  Extending to the full
+/// registry is tracked as Round 12 #291 — once `@crypto` ships
+/// the additional hash functions this dispatch becomes a
+/// straightforward match on `digest_method.algorithm`.
 fn digest_reference_bytes(
   bytes : Bytes,
   digest_method : DigestMethod,
@@ -217,7 +229,7 @@ fn digest_reference_bytes(
     raise @opc_errors.SchemaViolation(
       section="10.8",
       path="/SignedInfo/Reference/DigestMethod/@Algorithm",
-      reason="unsupported digest algorithm: " + digest_method.algorithm,
+      reason="unsupported digest algorithm (only SHA-256 is implemented): " + digest_method.algorithm,
     )
   }
   @base64.encode(@crypto.sha256(bytes).unsafe_reinterpret_as_bytes()[:])

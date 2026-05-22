@@ -2,27 +2,64 @@
 package "trkbt10/ooxml/ecma376/wordprocessing_ml/context"
 
 import {
+  "mizchi/font",
   "moonbitlang/core/debug",
-  "trkbt10/ooxml/ecma376/drawing_ml/theme",
-  "trkbt10/ooxml/ecma376/opc/content_types",
-  "trkbt10/ooxml/ecma376/opc/relationships",
+  "trkbt10/ooxml/ecma376/opc",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/field_eval",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/style_resolver",
+  "trkbt10/ooxml/xml",
 }
 
 // Values
+pub fn open(Bytes) -> Document raise OpenError
+
 pub fn package_name() -> String
 
 // Errors
+pub(all) suberror OpenError {
+  OpenError(kind~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
-pub(all) struct Context {
-  relationships : @relationships.CT_Relationships?
-  content_types : @content_types.CT_Types?
-  theme : @theme.CT_OfficeStyleSheet?
-  current_style_id : String?
-  current_numbering_id : String?
+pub(all) struct Document {
+  package : @opc.Package
+  main_part : String
+  main : @domain.CT_Document
+  headers : Array[HeaderPart]
+  footers : Array[FooterPart]
+  styles : @domain.CT_Styles?
+  numbering : @domain.CT_Numbering?
+  settings : @domain.CT_Settings?
+  fonts : @domain.CT_FontsList?
+  comments : @domain.CT_Comments?
+  footnotes : @domain.CT_Footnotes?
+  endnotes : @domain.CT_Endnotes?
+  theme : @xml.Element?
 } derive(Eq, @debug.Debug)
-pub fn Context::new() -> Self
-pub fn Context::resolve_relationship(Self, String) -> @relationships.CT_Relationship?
+pub fn Document::decode_simple_field(Self, @domain.CT_SimpleField) -> @field_eval.Field raise OpenError
+pub fn Document::embedded_font_parts(Self) -> Array[String]
+pub fn Document::evaluate_simple_field(Self, @domain.CT_SimpleField, @field_eval.FieldContext, @field_eval.FieldRegistry) -> @field_eval.FieldResult raise OpenError
+pub fn Document::open_embedded_font(Self, String) -> @font.TTFont?
+pub fn Document::resolve_paragraph_numbering(Self, @xml.Element) -> @numbering_resolver.ResolvedLvl?
+pub fn Document::resolve_paragraph_style(Self, @xml.Element?) -> @style_resolver.EffectiveProperties?
+pub fn Document::resolve_run_style(Self, @xml.Element?) -> @style_resolver.EffectiveProperties?
+pub fn Document::resolve_style_by_id(Self, @domain.StyleId) -> @style_resolver.EffectiveProperties?
+pub fn Document::save(Self) -> Bytes
+pub fn Document::to_html(Self) -> String
+pub fn Document::to_styled_html(Self) -> String
+pub fn Document::to_svg(Self) -> String
+
+pub(all) struct FooterPart {
+  name : String
+  value : @domain.CT_HdrFtr
+} derive(Eq, @debug.Debug)
+
+pub(all) struct HeaderPart {
+  name : String
+  value : @domain.CT_HdrFtr
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

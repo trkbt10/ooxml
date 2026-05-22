@@ -2404,6 +2404,295 @@ pub fn ST_MarkerCoordinate::to_string(self : ST_MarkerCoordinate) -> String {
 }
 
 ///|
+/// XSD simple type ST_BubbleScaleUInt — Part 1 §21.2 (dml-chart.xsd).
+/// Restriction of xsd:unsignedInt to 0..300 inclusive (bubble-chart
+/// size scale in raw percent points; the ST_BubbleScale union also
+/// admits the `<integer>%` lexical branch).
+pub struct ST_BubbleScaleUInt {
+  value : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_BubbleScaleUInt::parse(
+  s : String,
+) -> ST_BubbleScaleUInt raise SchemaViolation {
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_BubbleScaleUInt", s)
+  if n > 300 {
+    invalid("dml-chart.xsd", "ST_BubbleScaleUInt", s)
+  }
+  { value: n }
+}
+
+///|
+pub fn ST_BubbleScaleUInt::new(
+  s : String,
+) -> ST_BubbleScaleUInt raise SchemaViolation {
+  ST_BubbleScaleUInt::parse(s)
+}
+
+///|
+pub fn ST_BubbleScaleUInt::value(self : ST_BubbleScaleUInt) -> Int {
+  self.value
+}
+
+///|
+pub fn ST_BubbleScaleUInt::to_string(self : ST_BubbleScaleUInt) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_DepthPercentUShort — Part 1 §21.2 (dml-chart.xsd).
+/// Restriction of xsd:unsignedShort to 20..2000 inclusive (3D chart
+/// depth percent as a raw integer).
+pub struct ST_DepthPercentUShort {
+  value : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_DepthPercentUShort::parse(
+  s : String,
+) -> ST_DepthPercentUShort raise SchemaViolation {
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_DepthPercentUShort", s)
+  if n < 20 || n > 2000 {
+    invalid("dml-chart.xsd", "ST_DepthPercentUShort", s)
+  }
+  { value: n }
+}
+
+///|
+pub fn ST_DepthPercentUShort::new(
+  s : String,
+) -> ST_DepthPercentUShort raise SchemaViolation {
+  ST_DepthPercentUShort::parse(s)
+}
+
+///|
+pub fn ST_DepthPercentUShort::value(self : ST_DepthPercentUShort) -> Int {
+  self.value
+}
+
+///|
+pub fn ST_DepthPercentUShort::to_string(self : ST_DepthPercentUShort) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_GapAmountUShort — Part 1 §21.2 (dml-chart.xsd).
+/// Restriction of xsd:unsignedShort to 0..500 inclusive (bar/column
+/// chart gap percent as a raw integer).
+pub struct ST_GapAmountUShort {
+  value : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_GapAmountUShort::parse(
+  s : String,
+) -> ST_GapAmountUShort raise SchemaViolation {
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_GapAmountUShort", s)
+  if n > 500 {
+    invalid("dml-chart.xsd", "ST_GapAmountUShort", s)
+  }
+  { value: n }
+}
+
+///|
+pub fn ST_GapAmountUShort::new(
+  s : String,
+) -> ST_GapAmountUShort raise SchemaViolation {
+  ST_GapAmountUShort::parse(s)
+}
+
+///|
+pub fn ST_GapAmountUShort::value(self : ST_GapAmountUShort) -> Int {
+  self.value
+}
+
+///|
+pub fn ST_GapAmountUShort::to_string(self : ST_GapAmountUShort) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_HPercentUShort — Part 1 §21.2 (dml-chart.xsd).
+/// Restriction of xsd:unsignedShort to 5..500 inclusive (height percent
+/// as a raw integer).
+pub struct ST_HPercentUShort {
+  value : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_HPercentUShort::parse(
+  s : String,
+) -> ST_HPercentUShort raise SchemaViolation {
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_HPercentUShort", s)
+  if n < 5 || n > 500 {
+    invalid("dml-chart.xsd", "ST_HPercentUShort", s)
+  }
+  { value: n }
+}
+
+///|
+pub fn ST_HPercentUShort::new(
+  s : String,
+) -> ST_HPercentUShort raise SchemaViolation {
+  ST_HPercentUShort::parse(s)
+}
+
+///|
+pub fn ST_HPercentUShort::value(self : ST_HPercentUShort) -> Int {
+  self.value
+}
+
+///|
+pub fn ST_HPercentUShort::to_string(self : ST_HPercentUShort) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_HoleSizeUByte — Part 1 §21.2 (dml-chart.xsd).
+/// Restriction of xsd:unsignedByte to 1..90 inclusive (doughnut chart
+/// hole size percent as a raw integer).
+pub struct ST_HoleSizeUByte {
+  value : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_HoleSizeUByte::parse(
+  s : String,
+) -> ST_HoleSizeUByte raise SchemaViolation {
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_HoleSizeUByte", s)
+  if n < 1 || n > 90 {
+    invalid("dml-chart.xsd", "ST_HoleSizeUByte", s)
+  }
+  { value: n }
+}
+
+///|
+pub fn ST_HoleSizeUByte::new(
+  s : String,
+) -> ST_HoleSizeUByte raise SchemaViolation {
+  ST_HoleSizeUByte::parse(s)
+}
+
+///|
+pub fn ST_HoleSizeUByte::value(self : ST_HoleSizeUByte) -> Int {
+  self.value
+}
+
+///|
+pub fn ST_HoleSizeUByte::to_string(self : ST_HoleSizeUByte) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_LblOffsetUShort — Part 1 §21.2 (dml-chart.xsd).
+/// Restriction of xsd:unsignedShort to 0..1000 inclusive (axis label
+/// offset percent as a raw integer).
+pub struct ST_LblOffsetUShort {
+  value : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_LblOffsetUShort::parse(
+  s : String,
+) -> ST_LblOffsetUShort raise SchemaViolation {
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_LblOffsetUShort", s)
+  if n > 1000 {
+    invalid("dml-chart.xsd", "ST_LblOffsetUShort", s)
+  }
+  { value: n }
+}
+
+///|
+pub fn ST_LblOffsetUShort::new(
+  s : String,
+) -> ST_LblOffsetUShort raise SchemaViolation {
+  ST_LblOffsetUShort::parse(s)
+}
+
+///|
+pub fn ST_LblOffsetUShort::value(self : ST_LblOffsetUShort) -> Int {
+  self.value
+}
+
+///|
+pub fn ST_LblOffsetUShort::to_string(self : ST_LblOffsetUShort) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_OverlapByte — Part 1 §21.2 (dml-chart.xsd).
+/// Restriction of xsd:byte to -100..100 inclusive (bar/column series
+/// overlap percent as a raw signed integer).
+pub struct ST_OverlapByte {
+  value : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_OverlapByte::parse(
+  s : String,
+) -> ST_OverlapByte raise SchemaViolation {
+  let n = parse_signed_int("dml-chart.xsd", "ST_OverlapByte", s)
+  if n < -100 || n > 100 {
+    invalid("dml-chart.xsd", "ST_OverlapByte", s)
+  }
+  { value: n }
+}
+
+///|
+pub fn ST_OverlapByte::new(s : String) -> ST_OverlapByte raise SchemaViolation {
+  ST_OverlapByte::parse(s)
+}
+
+///|
+pub fn ST_OverlapByte::value(self : ST_OverlapByte) -> Int {
+  self.value
+}
+
+///|
+pub fn ST_OverlapByte::to_string(self : ST_OverlapByte) -> String {
+  self.value.to_string()
+}
+
+///|
+/// XSD simple type ST_SecondPieSizeUShort — Part 1 §21.2 (dml-chart.xsd).
+/// Restriction of xsd:unsignedShort to 5..200 inclusive (pie-of-pie /
+/// bar-of-pie second-plot size percent as a raw integer).
+pub struct ST_SecondPieSizeUShort {
+  value : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_SecondPieSizeUShort::parse(
+  s : String,
+) -> ST_SecondPieSizeUShort raise SchemaViolation {
+  let n = parse_unsigned_int("dml-chart.xsd", "ST_SecondPieSizeUShort", s)
+  if n < 5 || n > 200 {
+    invalid("dml-chart.xsd", "ST_SecondPieSizeUShort", s)
+  }
+  { value: n }
+}
+
+///|
+pub fn ST_SecondPieSizeUShort::new(
+  s : String,
+) -> ST_SecondPieSizeUShort raise SchemaViolation {
+  ST_SecondPieSizeUShort::parse(s)
+}
+
+///|
+pub fn ST_SecondPieSizeUShort::value(self : ST_SecondPieSizeUShort) -> Int {
+  self.value
+}
+
+///|
+pub fn ST_SecondPieSizeUShort::to_string(
+  self : ST_SecondPieSizeUShort,
+) -> String {
+  self.value.to_string()
+}
+
+///|
 fn[T] invalid(
   schema : String,
   type_name : String,

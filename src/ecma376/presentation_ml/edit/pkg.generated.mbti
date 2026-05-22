@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/presentation_ml/edit"
+
+import {
+  "trkbt10/ooxml/ecma376/opc",
+  "trkbt10/ooxml/ecma376/presentation_ml/context",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn add_connector(@context.Presentation, Int, String, Int, Int, Int, Int) -> @context.Presentation raise @context.OpenError
+
+pub fn add_picture(@context.Presentation, Int, Bytes, String, Int, Int, Int, Int) -> @context.Presentation raise @context.OpenError
+
+pub fn add_textbox(@context.Presentation, Int, Int, Int, Int, Int, String) -> @context.Presentation raise @context.OpenError
+
+pub fn append_slide(@context.Presentation) -> @context.Presentation raise @context.OpenError
+
+pub fn append_text_to_slide(@context.Presentation, Int, String) -> @context.Presentation raise @context.OpenError
+
+pub fn duplicate_slide(@context.Presentation, Int) -> @context.Presentation raise @context.OpenError
+
+pub fn edit_presentation(@context.Presentation, (@xml.Element) -> @xml.Element) -> @context.Presentation
+
+pub fn edit_slide(@context.Presentation, Int, (@xml.Element) -> @xml.Element) -> @context.Presentation raise @context.OpenError
+
+pub fn edit_text_run(@context.Presentation, Int, Int, Int, Int, (@xml.Element) -> @xml.Element) -> @context.Presentation raise @context.OpenError
+
+pub fn package_name() -> String
+
+pub fn remove_shape(@context.Presentation, Int, Int) -> @context.Presentation raise @context.OpenError
+
+pub fn remove_slide(@context.Presentation, Int) -> @context.Presentation raise @context.OpenError
+
+pub fn reorder_slides(@context.Presentation, Int, Int) -> @context.Presentation raise @context.OpenError
+
+pub fn replace_text_in_run(@context.Presentation, Int, Int, Int, Int, String) -> @context.Presentation raise @context.OpenError
+
+pub fn set_shape_xfrm(@context.Presentation, Int, Int, Int, Int, Int, Int) -> @context.Presentation raise @context.OpenError
+
+pub fn set_slide_background(@context.Presentation, Int, String) -> @context.Presentation raise @context.OpenError
+
+pub fn set_slide_layout(@context.Presentation, Int, Int) -> @context.Presentation raise @context.OpenError
+
+pub fn set_text_bold(@context.Presentation, Int, Int, Int, Int, Bool) -> @context.Presentation raise @context.OpenError
+
+pub fn set_text_color(@context.Presentation, Int, Int, Int, Int, String) -> @context.Presentation raise @context.OpenError
+
+pub fn set_text_font_size(@context.Presentation, Int, Int, Int, Int, Int) -> @context.Presentation raise @context.OpenError
+
+pub fn with_package(@context.Presentation, @opc.Package) -> @context.Presentation
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

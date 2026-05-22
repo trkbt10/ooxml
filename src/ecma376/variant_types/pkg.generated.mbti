@@ -9,11 +9,75 @@ import {
 // Values
 pub fn package_name() -> String
 
+pub fn read_array(Bytes) -> CT_Array raise
+
+pub fn read_blob(Bytes) -> VariantAtom raise
+
+pub fn read_bool(Bytes) -> VariantAtom raise
+
+pub fn read_bstr(Bytes) -> VariantAtom raise
+
+pub fn read_clsid(Bytes) -> VariantAtom raise
+
+pub fn read_cy(Bytes) -> VariantAtom raise
+
+pub fn read_date(Bytes) -> VariantAtom raise
+
+pub fn read_decimal(Bytes) -> VariantAtom raise
+
+pub fn read_empty(Bytes) -> CT_Empty raise
+
+pub fn read_error(Bytes) -> VariantAtom raise
+
+pub fn read_filetime(Bytes) -> VariantAtom raise
+
+pub fn read_i1(Bytes) -> VariantAtom raise
+
+pub fn read_i2(Bytes) -> VariantAtom raise
+
+pub fn read_i4(Bytes) -> VariantAtom raise
+
+pub fn read_i8(Bytes) -> VariantAtom raise
+
+pub fn read_int(Bytes) -> VariantAtom raise
+
+pub fn read_lpstr(Bytes) -> VariantAtom raise
+
+pub fn read_lpwstr(Bytes) -> VariantAtom raise
+
+pub fn read_null(Bytes) -> CT_Null raise
+
+pub fn read_oblob(Bytes) -> VariantAtom raise
+
+pub fn read_ostorage(Bytes) -> VariantAtom raise
+
+pub fn read_ostream(Bytes) -> VariantAtom raise
+
+pub fn read_r4(Bytes) -> VariantAtom raise
+
+pub fn read_r8(Bytes) -> VariantAtom raise
+
+pub fn read_storage(Bytes) -> VariantAtom raise
+
+pub fn read_stream(Bytes) -> VariantAtom raise
+
+pub fn read_ui1(Bytes) -> VariantAtom raise
+
+pub fn read_ui2(Bytes) -> VariantAtom raise
+
+pub fn read_ui4(Bytes) -> VariantAtom raise
+
+pub fn read_ui8(Bytes) -> VariantAtom raise
+
+pub fn read_uint(Bytes) -> VariantAtom raise
+
 pub fn read_value(Bytes) -> Variant raise
 
 pub fn read_variant(Bytes) -> CT_Variant raise
 
 pub fn read_vector(Bytes) -> CT_Vector raise
+
+pub fn read_vstream(Bytes) -> CT_Vstream raise
 
 pub fn variant_from_element(@xml.Element) -> Variant raise SchemaViolation
 

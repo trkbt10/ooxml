@@ -29,6 +29,7 @@ pub(all) struct CT_Picture {
   blip_fill : @xml.Element
   sp_pr : @xml.Element
 } derive(Eq, @debug.Debug)
+pub fn CT_Picture::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PictureNonVisual {
   c_nv_pr : @xml.Element

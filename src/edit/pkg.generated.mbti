@@ -1,0 +1,59 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/edit"
+
+import {
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn append_child(@xml.Element, @xml.Node) -> @xml.Element
+
+pub fn attribute(@xml.Element, @xml.QName) -> String?
+
+pub fn attribute_by_local_name(@xml.Element, String) -> String?
+
+pub fn by_local_name(String) -> (@xml.Element) -> Bool
+
+pub fn by_local_name_with_attr(String, String, String) -> (@xml.Element) -> Bool
+
+pub fn by_qname(String, String) -> (@xml.Element) -> Bool
+
+pub fn direct_children(@xml.Element, (@xml.Element) -> Bool) -> Array[@xml.Element]
+
+pub fn empty_element(@xml.QName, String) -> @xml.Element
+
+pub fn find_all(@xml.Element, (@xml.Element) -> Bool) -> Array[@xml.Element]
+
+pub fn find_first(@xml.Element, (@xml.Element) -> Bool) -> @xml.Element?
+
+pub fn insert_child(@xml.Element, Int, @xml.Node) -> @xml.Element
+
+pub fn map_subtree(@xml.Element, (@xml.Element) -> @xml.Element) -> @xml.Element
+
+pub fn needs_xml_space_preserve(String) -> Bool
+
+pub fn qname_like(@xml.QName, String) -> @xml.QName
+
+pub fn remove_attribute(@xml.Element, @xml.QName) -> @xml.Element
+
+pub fn remove_children(@xml.Element, (@xml.Element) -> Bool) -> @xml.Element
+
+pub fn replace_children(@xml.Element, (@xml.Element) -> Bool, @xml.Element) -> @xml.Element
+
+pub fn set_attribute(@xml.Element, @xml.Attribute) -> @xml.Element
+
+pub fn text_content(@xml.Element) -> String
+
+pub fn unprefixed_attribute(String, String) -> @xml.Attribute
+
+pub fn update_first(@xml.Element, (@xml.Element) -> Bool, (@xml.Element) -> @xml.Element) -> @xml.Element
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+pub type ElementPredicate = (@xml.Element) -> Bool
+
+// Traits
+

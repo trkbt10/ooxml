@@ -17,6 +17,23 @@ let days_unix_to_1900_base : Int = days_from_civil(1899, 12, 30)
 let days_unix_to_1904_base : Int = days_from_civil(1904, 1, 1)
 
 ///|
+/// §18.17.4.1 — serial bounds derived from the proleptic
+/// Gregorian calendar range 0001-01-01..9999-12-31 (the spec
+/// permits any date in this window):
+///
+///   serial1900_min = days_from_civil(   1, 1, 1) - 1
+///                  = -693593.0
+///   serial1900_max = days_from_civil(9999,12,31) + (1 - 1/86_400_000)
+///                  = 2958465 + 0.9999884... ≈ 2958465.9999884
+///   serial1904_min = serial1900_min - days_from_civil(1904, 1, 1)
+///                  = -695055.0
+///   serial1904_max = serial1900_max - days_from_civil(1904, 1, 1)
+///                  ≈ 2957003.9999884
+///
+/// The 0.9999884... fractional cap is `1 − 1ms` expressed as a
+/// fraction of a day (`1 − 1/86_400_000 ≈ 0.99998842592...`)
+/// which keeps the round-trip from `DateTime` to serial and
+/// back from rolling over to the next day at exactly midnight.
 let serial1900_min = -693593.0
 
 ///|

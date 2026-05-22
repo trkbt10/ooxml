@@ -40,6 +40,9 @@ pub fn CT_XStringElement::new(element : @xml.Element) -> CT_XStringElement {
 /// default false), `@un` (xsd:boolean, default false), `@st` (xsd:boolean,
 /// default false), `@b` (xsd:boolean, default false). Sequence children:
 /// `<tpls>*` (CT_Tuples), `<x>*` (CT_X).
+/// Schema sml.xsd complex type `CT_String`. Attributes: `v`, `u`, `f`,
+/// `c`, `cp`, `in`, `bc`, `fc`, `i`, `un`, `st`, `b`. Child elements:
+/// `tpls`, `x`. Child types: `CT_Tuples`, `CT_X`.
 pub(all) struct CT_String {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -175,6 +178,8 @@ pub fn CT_PhoneticRun::new(element : @xml.Element) -> CT_PhoneticRun {
 /// XSD complex type CT_RElt — Part 1 §18.4.4 (`<r>` Rich Text Run). A
 /// rich-text run carries an optional `<rPr>` (CT_RPrElt) formatting block
 /// followed by a required `<t>` (s:ST_Xstring) text payload.
+/// Schema sml.xsd complex type `CT_RElt`. Child elements: `rPr`, `t`.
+/// Child types: `CT_RPrElt`, `s:ST_Xstring`.
 pub(all) struct CT_RElt {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -211,73 +216,74 @@ pub(all) struct CT_RPrElt {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <rFont>* (CT_FontName) — zero or more rFont entries.
-  r_font : Array[@xml.Element]
+  r_font : Array[CT_FontName]
   /// <charset>* (CT_IntProperty) — zero or more charset entries.
-  charset : Array[@xml.Element]
+  charset : Array[CT_IntProperty]
   /// <family>* (CT_IntProperty) — zero or more family entries.
-  family : Array[@xml.Element]
+  family : Array[CT_IntProperty]
   /// <b>* (CT_BooleanProperty) — zero or more bold entries.
-  b : Array[@xml.Element]
+  b : Array[CT_BooleanProperty]
   /// <i>* (CT_BooleanProperty) — zero or more italic entries.
-  i : Array[@xml.Element]
+  i : Array[CT_BooleanProperty]
   /// <strike>* (CT_BooleanProperty) — zero or more strike entries.
-  strike : Array[@xml.Element]
+  strike : Array[CT_BooleanProperty]
   /// <outline>* (CT_BooleanProperty) — zero or more outline entries.
-  outline : Array[@xml.Element]
+  outline : Array[CT_BooleanProperty]
   /// <shadow>* (CT_BooleanProperty) — zero or more shadow entries.
-  shadow : Array[@xml.Element]
+  shadow : Array[CT_BooleanProperty]
   /// <condense>* (CT_BooleanProperty) — zero or more condense entries.
-  condense : Array[@xml.Element]
+  condense : Array[CT_BooleanProperty]
   /// <extend>* (CT_BooleanProperty) — zero or more extend entries.
-  extend : Array[@xml.Element]
+  extend : Array[CT_BooleanProperty]
   /// <color>* (CT_Color) — zero or more color entries.
-  color : Array[@xml.Element]
+  color : Array[CT_Color]
   /// <sz>* (CT_FontSize) — zero or more size entries.
-  sz : Array[@xml.Element]
+  sz : Array[CT_FontSize]
   /// <u>* (CT_UnderlineProperty) — zero or more underline entries.
-  u : Array[@xml.Element]
+  u : Array[CT_UnderlineProperty]
   /// <vertAlign>* (CT_VerticalAlignFontProperty) — zero or more vertical
   /// alignment entries.
-  vert_align : Array[@xml.Element]
+  vert_align : Array[CT_VerticalAlignFontProperty]
   /// <scheme>* (CT_FontScheme) — zero or more scheme entries.
-  scheme : Array[@xml.Element]
+  scheme : Array[CT_FontScheme]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_RPrElt::new(element : @xml.Element) -> CT_RPrElt {
-  let r_font : Array[@xml.Element] = []
-  let charset : Array[@xml.Element] = []
-  let family : Array[@xml.Element] = []
-  let b : Array[@xml.Element] = []
-  let i : Array[@xml.Element] = []
-  let strike : Array[@xml.Element] = []
-  let outline : Array[@xml.Element] = []
-  let shadow : Array[@xml.Element] = []
-  let condense : Array[@xml.Element] = []
-  let extend : Array[@xml.Element] = []
-  let color : Array[@xml.Element] = []
-  let sz : Array[@xml.Element] = []
-  let u : Array[@xml.Element] = []
-  let vert_align : Array[@xml.Element] = []
-  let scheme : Array[@xml.Element] = []
+  let r_font : Array[CT_FontName] = []
+  let charset : Array[CT_IntProperty] = []
+  let family : Array[CT_IntProperty] = []
+  let b : Array[CT_BooleanProperty] = []
+  let i : Array[CT_BooleanProperty] = []
+  let strike : Array[CT_BooleanProperty] = []
+  let outline : Array[CT_BooleanProperty] = []
+  let shadow : Array[CT_BooleanProperty] = []
+  let condense : Array[CT_BooleanProperty] = []
+  let extend : Array[CT_BooleanProperty] = []
+  let color : Array[CT_Color] = []
+  let sz : Array[CT_FontSize] = []
+  let u : Array[CT_UnderlineProperty] = []
+  let vert_align : Array[CT_VerticalAlignFontProperty] = []
+  let scheme : Array[CT_FontScheme] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
       match child_element.name.local_name {
-        "rFont" => r_font.push(child_element)
-        "charset" => charset.push(child_element)
-        "family" => family.push(child_element)
-        "b" => b.push(child_element)
-        "i" => i.push(child_element)
-        "strike" => strike.push(child_element)
-        "outline" => outline.push(child_element)
-        "shadow" => shadow.push(child_element)
-        "condense" => condense.push(child_element)
-        "extend" => extend.push(child_element)
-        "color" => color.push(child_element)
-        "sz" => sz.push(child_element)
-        "u" => u.push(child_element)
-        "vertAlign" => vert_align.push(child_element)
-        "scheme" => scheme.push(child_element)
+        "rFont" => r_font.push(CT_FontName::new(child_element))
+        "charset" => charset.push(CT_IntProperty::new(child_element))
+        "family" => family.push(CT_IntProperty::new(child_element))
+        "b" => b.push(CT_BooleanProperty::new(child_element))
+        "i" => i.push(CT_BooleanProperty::new(child_element))
+        "strike" => strike.push(CT_BooleanProperty::new(child_element))
+        "outline" => outline.push(CT_BooleanProperty::new(child_element))
+        "shadow" => shadow.push(CT_BooleanProperty::new(child_element))
+        "condense" => condense.push(CT_BooleanProperty::new(child_element))
+        "extend" => extend.push(CT_BooleanProperty::new(child_element))
+        "color" => color.push(CT_Color::new(child_element))
+        "sz" => sz.push(CT_FontSize::new(child_element))
+        "u" => u.push(CT_UnderlineProperty::new(child_element))
+        "vertAlign" =>
+          vert_align.push(CT_VerticalAlignFontProperty::new(child_element))
+        "scheme" => scheme.push(CT_FontScheme::new(child_element))
         _ => ()
       }
     }
@@ -388,6 +394,20 @@ pub fn CT_Rst::to_plain_text(self : CT_Rst) -> String {
   }
   for run in self.r {
     out = out + run.to_plain_text()
+  }
+  out
+}
+
+///|
+/// §18.4.6 — concatenate the phonetic-guide (`<rPh>`) runs of a
+/// CT_Rst into a single furigana string in document order.
+/// Returns the empty string when the entry carries no phonetic
+/// runs.  Consumers render this as ruby text above the base
+/// `to_plain_text()` value.
+pub fn CT_Rst::phonetic_text(self : CT_Rst) -> String {
+  let mut out = ""
+  for run in self.r_ph {
+    out = out + run.t
   }
   out
 }

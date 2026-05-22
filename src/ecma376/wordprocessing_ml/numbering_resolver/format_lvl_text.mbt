@@ -45,6 +45,24 @@ pub fn format_lvl_text(
         }
       }
     } else {
+      // §17.9.11 lvlText — the template is xsd:string, which is
+      // UTF-16 in MoonBit; supplementary-plane characters (emoji
+      // bullets, CJK characters above U+FFFF) are encoded as a
+      // high-surrogate (0xD800..0xDBFF) + low-surrogate
+      // (0xDC00..0xDFFF) pair.  When we see a high surrogate at
+      // position `i`, consume the next code unit together so the
+      // pair becomes a single Unicode code point.  Lone
+      // surrogates (schema violation) are written verbatim so
+      // the round-trip surfaces the breach upstream.
+      if unit >= 0xD800 && unit <= 0xDBFF && i + 1 < template.length() {
+        let low = template.code_unit_at(i + 1).to_int()
+        if low >= 0xDC00 && low <= 0xDFFF {
+          let code_point = 0x10000 + ((unit - 0xD800) * 0x400) + (low - 0xDC00)
+          buf.write_char(Char::from_int(code_point))
+          i = i + 2
+          continue
+        }
+      }
       buf.write_char(unit.to_char().unwrap())
       i = i + 1
     }

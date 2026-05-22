@@ -98,7 +98,11 @@ pub fn pml_part4_11_2_8_slide_part_part_1_13_3_8_section_name() -> String
 
 pub fn pml_part4_11_2_9_slide_layout_part_part_1_13_3_9_section_name() -> String
 
+pub fn pml_xsd_ct_empty_schema_name() -> String
+
 pub fn pml_xsd_ct_rel_schema_name() -> String
+
+pub fn vml_presentation_drawing_ct_empty_schema_name() -> String
 
 pub fn vml_presentation_drawing_ct_rel_schema_name() -> String
 

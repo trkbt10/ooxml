@@ -837,3 +837,66 @@ pub fn ST_OLEUpdateMode::new(
 pub fn ST_OLEUpdateMode::to_string(self : ST_OLEUpdateMode) -> String {
   self.value
 }
+
+///|
+/// XSD simple type ST_BorderType from vml-wordprocessingDrawing.xsd
+/// (Part 4 §14.3.2.6 wrap parent border).  Enumeration values:
+/// none, single, thick, double, hairline, dot, dash, dotDash,
+/// dashDotDot, triple, thinThickSmall, thickThinSmall,
+/// thickBetweenThinSmall, thinThick, thickThin, thickBetweenThin,
+/// thinThickLarge, thickThinLarge, thickBetweenThinLarge, wave,
+/// doubleWave, dashedSmall, dashDotStroked, threeDEmboss, threeDEngrave,
+/// HTMLOutset, HTMLInset.
+pub struct ST_BorderType {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_BorderType::parse(s : String) -> ST_BorderType raise SchemaViolation {
+  validate_token("ST_BorderType", s, [
+    "none", "single", "thick", "double", "hairline", "dot", "dash", "dotDash", "dashDotDot",
+    "triple", "thinThickSmall", "thickThinSmall", "thickBetweenThinSmall", "thinThick",
+    "thickThin", "thickBetweenThin", "thinThickLarge", "thickThinLarge", "thickBetweenThinLarge",
+    "wave", "doubleWave", "dashedSmall", "dashDotStroked", "threeDEmboss", "threeDEngrave",
+    "HTMLOutset", "HTMLInset",
+  ])
+  { value: s }
+}
+
+///|
+pub fn ST_BorderType::new(s : String) -> ST_BorderType raise SchemaViolation {
+  ST_BorderType::parse(s)
+}
+
+///|
+pub fn ST_BorderType::to_string(self : ST_BorderType) -> String {
+  self.value
+}
+
+///|
+/// XSD simple type ST_BorderShadow from vml-wordprocessingDrawing.xsd
+/// (Part 4 §14.3.2.6 wrap parent border shadow).  Enumeration values:
+/// t, true, f, false.
+pub struct ST_BorderShadow {
+  value : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_BorderShadow::parse(
+  s : String,
+) -> ST_BorderShadow raise SchemaViolation {
+  validate_token("ST_BorderShadow", s, ["t", "true", "f", "false"])
+  { value: s }
+}
+
+///|
+pub fn ST_BorderShadow::new(
+  s : String,
+) -> ST_BorderShadow raise SchemaViolation {
+  ST_BorderShadow::parse(s)
+}
+
+///|
+pub fn ST_BorderShadow::to_string(self : ST_BorderShadow) -> String {
+  self.value
+}

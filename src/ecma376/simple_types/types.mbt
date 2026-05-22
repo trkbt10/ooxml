@@ -854,6 +854,294 @@ pub fn ST_PositiveFixedPercentage::thousandths_of_percent(
   self.thousandths
 }
 
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_AlgClass` —
+/// §22.9.2 hash-algorithm class enumeration. Base `xsd:string`.
+/// Enumeration values: `hash`, `custom`.
+pub(all) enum ST_AlgClass {
+  /// Algorithm class denoting a cryptographic hash function.
+  AlgClassHash
+  /// Algorithm class delegated to a producer-specific definition.
+  AlgClassCustom
+} derive(Eq, Debug)
+
+///|
+/// Parse the ST_AlgClass lexical token, rejecting anything outside the
+/// schema-permitted enumeration.
+pub fn ST_AlgClass::parse(s : String) -> ST_AlgClass raise SchemaViolation {
+  match s {
+    "hash" => AlgClassHash
+    "custom" => AlgClassCustom
+    _ => violation("ST_AlgClass", s)
+  }
+}
+
+///|
+pub fn ST_AlgClass::new(s : String) -> ST_AlgClass raise SchemaViolation {
+  ST_AlgClass::parse(s)
+}
+
+///|
+pub fn ST_AlgClass::to_string(self : ST_AlgClass) -> String {
+  match self {
+    AlgClassHash => "hash"
+    AlgClassCustom => "custom"
+  }
+}
+
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_AlgType` —
+/// §22.9.2 hash-algorithm type enumeration. Base `xsd:string`.
+/// Enumeration values: `typeAny`, `custom`.
+pub(all) enum ST_AlgType {
+  /// Producer/consumer accepts any algorithm advertised by the file.
+  AlgTypeAny
+  /// Algorithm whose type is delegated to a producer-specific definition.
+  AlgTypeCustom
+} derive(Eq, Debug)
+
+///|
+pub fn ST_AlgType::parse(s : String) -> ST_AlgType raise SchemaViolation {
+  match s {
+    "typeAny" => AlgTypeAny
+    "custom" => AlgTypeCustom
+    _ => violation("ST_AlgType", s)
+  }
+}
+
+///|
+pub fn ST_AlgType::new(s : String) -> ST_AlgType raise SchemaViolation {
+  ST_AlgType::parse(s)
+}
+
+///|
+pub fn ST_AlgType::to_string(self : ST_AlgType) -> String {
+  match self {
+    AlgTypeAny => "typeAny"
+    AlgTypeCustom => "custom"
+  }
+}
+
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_CryptProv` —
+/// §22.9.2 cryptographic-service-provider class enumeration. Base
+/// `xsd:string`. Enumeration values: `rsaAES`, `rsaFull`, `custom`.
+pub(all) enum ST_CryptProv {
+  /// RSA + AES (Microsoft Enhanced RSA and AES Cryptographic Provider).
+  CryptProvRsaAes
+  /// RSA Full (Microsoft Base / Enhanced Cryptographic Provider).
+  CryptProvRsaFull
+  /// Producer-specific custom provider.
+  CryptProvCustom
+} derive(Eq, Debug)
+
+///|
+pub fn ST_CryptProv::parse(s : String) -> ST_CryptProv raise SchemaViolation {
+  match s {
+    "rsaAES" => CryptProvRsaAes
+    "rsaFull" => CryptProvRsaFull
+    "custom" => CryptProvCustom
+    _ => violation("ST_CryptProv", s)
+  }
+}
+
+///|
+pub fn ST_CryptProv::new(s : String) -> ST_CryptProv raise SchemaViolation {
+  ST_CryptProv::parse(s)
+}
+
+///|
+pub fn ST_CryptProv::to_string(self : ST_CryptProv) -> String {
+  match self {
+    CryptProvRsaAes => "rsaAES"
+    CryptProvRsaFull => "rsaFull"
+    CryptProvCustom => "custom"
+  }
+}
+
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_ColorType` —
+/// §22.9.2 colour-token carrier. Base `xsd:string` (no further
+/// restriction); the lexical form is preserved verbatim so callers can
+/// distinguish a spec-typed colour string from an arbitrary String.
+pub struct ST_ColorType {
+  lexical : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_ColorType::new(s : String) -> ST_ColorType {
+  { lexical: s }
+}
+
+///|
+pub fn ST_ColorType::to_string(self : ST_ColorType) -> String {
+  self.lexical
+}
+
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_OnOff1` —
+/// §22.9.2 on/off lexical-only twin of ST_OnOff. Base `xsd:string`.
+/// Enumeration values: `on`, `off`. (ST_OnOff itself is the union over
+/// xsd:boolean and ST_OnOff1.)
+pub(all) enum ST_OnOff1 {
+  /// Lexical "on" — the truthy branch.
+  OnOff1On
+  /// Lexical "off" — the falsy branch.
+  OnOff1Off
+} derive(Eq, Debug)
+
+///|
+pub fn ST_OnOff1::parse(s : String) -> ST_OnOff1 raise SchemaViolation {
+  match s {
+    "on" => OnOff1On
+    "off" => OnOff1Off
+    _ => violation("ST_OnOff1", s)
+  }
+}
+
+///|
+pub fn ST_OnOff1::new(s : String) -> ST_OnOff1 raise SchemaViolation {
+  ST_OnOff1::parse(s)
+}
+
+///|
+pub fn ST_OnOff1::to_bool(self : ST_OnOff1) -> Bool {
+  match self {
+    OnOff1On => true
+    OnOff1Off => false
+  }
+}
+
+///|
+pub fn ST_OnOff1::to_string(self : ST_OnOff1) -> String {
+  match self {
+    OnOff1On => "on"
+    OnOff1Off => "off"
+  }
+}
+
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_TrueFalse` —
+/// §22.9.2 case-sensitive boolean lexical token. Base `xsd:string`.
+/// Enumeration values: `t`, `f`, `true`, `false`. The short forms are
+/// the canonical lexical output of legacy VML attributes.
+pub(all) enum ST_TrueFalse {
+  /// Lexical "t" — short truthy form.
+  TrueFalseT
+  /// Lexical "f" — short falsy form.
+  TrueFalseF
+  /// Lexical "true" — long truthy form.
+  TrueFalseTrue
+  /// Lexical "false" — long falsy form.
+  TrueFalseFalse
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TrueFalse::parse(s : String) -> ST_TrueFalse raise SchemaViolation {
+  match s {
+    "t" => TrueFalseT
+    "f" => TrueFalseF
+    "true" => TrueFalseTrue
+    "false" => TrueFalseFalse
+    _ => violation("ST_TrueFalse", s)
+  }
+}
+
+///|
+pub fn ST_TrueFalse::new(s : String) -> ST_TrueFalse raise SchemaViolation {
+  ST_TrueFalse::parse(s)
+}
+
+///|
+pub fn ST_TrueFalse::to_bool(self : ST_TrueFalse) -> Bool {
+  match self {
+    TrueFalseT | TrueFalseTrue => true
+    TrueFalseF | TrueFalseFalse => false
+  }
+}
+
+///|
+pub fn ST_TrueFalse::to_string(self : ST_TrueFalse) -> String {
+  match self {
+    TrueFalseT => "t"
+    TrueFalseF => "f"
+    TrueFalseTrue => "true"
+    TrueFalseFalse => "false"
+  }
+}
+
+///|
+/// Schema shared-commonSimpleTypes.xsd simple type `ST_TrueFalseBlank` —
+/// §22.9.2 case-sensitive boolean lexical token with empty + capitalised
+/// extensions. Base `xsd:string`. Enumeration values: `t`, `f`, `true`,
+/// `false`, ``, `True`, `False`. The empty string is the spec-mandated
+/// blank carrier used by VML for "no explicit value supplied".
+pub(all) enum ST_TrueFalseBlank {
+  /// Lexical "t" — short truthy form.
+  TrueFalseBlankT
+  /// Lexical "f" — short falsy form.
+  TrueFalseBlankF
+  /// Lexical "true" — long truthy form.
+  TrueFalseBlankTrue
+  /// Lexical "false" — long falsy form.
+  TrueFalseBlankFalse
+  /// Empty lexical — VML "no explicit value" carrier.
+  TrueFalseBlankBlank
+  /// Lexical "True" — Pascal-case truthy form.
+  TrueFalseBlankCapTrue
+  /// Lexical "False" — Pascal-case falsy form.
+  TrueFalseBlankCapFalse
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TrueFalseBlank::parse(
+  s : String,
+) -> ST_TrueFalseBlank raise SchemaViolation {
+  match s {
+    "t" => TrueFalseBlankT
+    "f" => TrueFalseBlankF
+    "true" => TrueFalseBlankTrue
+    "false" => TrueFalseBlankFalse
+    "" => TrueFalseBlankBlank
+    "True" => TrueFalseBlankCapTrue
+    "False" => TrueFalseBlankCapFalse
+    _ => violation("ST_TrueFalseBlank", s)
+  }
+}
+
+///|
+pub fn ST_TrueFalseBlank::new(
+  s : String,
+) -> ST_TrueFalseBlank raise SchemaViolation {
+  ST_TrueFalseBlank::parse(s)
+}
+
+///|
+/// Project the blank/capitalised lexical variants to a Bool. Blank is
+/// treated as `false` per legacy VML "missing value" semantics.
+pub fn ST_TrueFalseBlank::to_bool(self : ST_TrueFalseBlank) -> Bool {
+  match self {
+    TrueFalseBlankT | TrueFalseBlankTrue | TrueFalseBlankCapTrue => true
+    TrueFalseBlankF
+    | TrueFalseBlankFalse
+    | TrueFalseBlankCapFalse
+    | TrueFalseBlankBlank => false
+  }
+}
+
+///|
+pub fn ST_TrueFalseBlank::to_string(self : ST_TrueFalseBlank) -> String {
+  match self {
+    TrueFalseBlankT => "t"
+    TrueFalseBlankF => "f"
+    TrueFalseBlankTrue => "true"
+    TrueFalseBlankFalse => "false"
+    TrueFalseBlankBlank => ""
+    TrueFalseBlankCapTrue => "True"
+    TrueFalseBlankCapFalse => "False"
+  }
+}
+
 // === Private helpers ===
 
 ///|

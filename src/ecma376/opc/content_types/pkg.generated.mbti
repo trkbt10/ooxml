@@ -14,6 +14,8 @@ pub fn digital_signature_origin_content_type() -> ContentType
 
 pub fn digital_signature_xml_signature_content_type() -> ContentType
 
+pub fn opc_content_types_part2_6_2_3_media_types_section_name() -> String
+
 pub fn package_name() -> String
 
 pub fn read_content_types(Bytes) -> CT_Types raise

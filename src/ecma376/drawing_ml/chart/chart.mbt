@@ -29,3 +29,49 @@ pub fn chart_section_name() -> String {
 pub fn chart_migration_section_name() -> String {
   "ECMA-376 Part 4 §18.1 Drawingml Charts"
 }
+
+///|
+/// Return the XSD complex type CT_DLblPos schema row owned by this package.
+/// Schema dml-chart.xsd complex type `CT_DLblPos`. Attributes: `val`.
+pub fn chart_xsd_ct_dlblpos_schema_name() -> String {
+  "Schema dml-chart.xsd complex type `CT_DLblPos`. Attributes: `val`."
+}
+
+///|
+/// Return the XSD complex type CT_NumData schema row owned by this package.
+/// Schema dml-chart.xsd complex type `CT_NumData`. Child elements:
+/// `formatCode`, `ptCount`, `pt`, `extLst`. Child types: `s:ST_Xstring`,
+/// `CT_UnsignedInt`, `CT_NumVal`, `CT_ExtensionList`.
+pub fn chart_xsd_ct_numdata_schema_name() -> String {
+  "Schema dml-chart.xsd complex type `CT_NumData`. Child elements: `formatCode`, `ptCount`, `pt`, `extLst`. Child types: `s:ST_Xstring`, `CT_UnsignedInt`, `CT_NumVal`, `CT_ExtensionList`."
+}
+
+///|
+/// Return the XSD complex type CT_RotX schema row owned by this package.
+/// Schema dml-chart.xsd complex type `CT_RotX`. Attributes: `val`.
+pub fn chart_xsd_ct_rotx_schema_name() -> String {
+  "Schema dml-chart.xsd complex type `CT_RotX`. Attributes: `val`."
+}
+
+///|
+/// Return the XSD complex type CT_RotY schema row owned by this package.
+/// Schema dml-chart.xsd complex type `CT_RotY`. Attributes: `val`.
+pub fn chart_xsd_ct_roty_schema_name() -> String {
+  "Schema dml-chart.xsd complex type `CT_RotY`. Attributes: `val`."
+}
+
+///|
+/// Return the XSD complex type CT_Shape (dml-chart.xsd) schema row owned by
+/// this package.
+/// Schema dml-chart.xsd complex type `CT_Shape`. Attributes: `val`.
+pub fn chart_xsd_ct_shape_dml_chart_schema_name() -> String {
+  "Schema dml-chart.xsd complex type `CT_Shape`. Attributes: `val`."
+}
+
+///|
+/// Return the XSD complex type CT_Tx schema row owned by this package.
+/// Schema dml-chart.xsd complex type `CT_Tx`. Child elements: `strRef`, `rich`.
+/// Child types: `CT_StrRef`, `a:CT_TextBody`.
+pub fn chart_xsd_ct_tx_schema_name() -> String {
+  "Schema dml-chart.xsd complex type `CT_Tx`. Child elements: `strRef`, `rich`. Child types: `CT_StrRef`, `a:CT_TextBody`."
+}

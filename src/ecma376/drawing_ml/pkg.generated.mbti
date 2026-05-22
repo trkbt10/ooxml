@@ -7,6 +7,10 @@ import {
 }
 
 // Values
+pub fn collect_color_transforms(@xml.Element) -> Array[EG_ColorTransform] raise SchemaViolation
+
+pub fn collect_effects(@xml.Element) -> Array[EG_Effect] raise SchemaViolation
+
 pub fn dml_14_1_glossary_of_drawingml_specific_terms_section_name() -> String
 
 pub fn dml_14_2_part_summary_section_name() -> String
@@ -177,7 +181,85 @@ pub fn dml_simple_type_st_linecap_name() -> String
 
 pub fn dml_simple_type_st_pathfillmode_name() -> String
 
+pub fn dml_vml_main_ct_fill_schema_name() -> String
+
+pub fn dml_vml_main_element_fill_schema_name() -> String
+
+pub fn find_color_choice_child(@xml.Element) -> EG_ColorChoice? raise SchemaViolation
+
+pub fn find_effect_properties_child(@xml.Element) -> EG_EffectProperties? raise SchemaViolation
+
+pub fn find_fill_mode_properties_child(@xml.Element) -> EG_FillModeProperties? raise SchemaViolation
+
+pub fn find_fill_properties_child(@xml.Element) -> EG_FillProperties? raise SchemaViolation
+
+pub fn find_geometry_child(@xml.Element) -> EG_Geometry? raise SchemaViolation
+
+pub fn find_line_dash_properties_child(@xml.Element) -> EG_LineDashProperties? raise SchemaViolation
+
+pub fn find_line_fill_properties_child(@xml.Element) -> EG_LineFillProperties? raise SchemaViolation
+
+pub fn find_line_join_properties_child(@xml.Element) -> EG_LineJoinProperties? raise SchemaViolation
+
+pub fn find_media_child(@xml.Element) -> EG_Media? raise SchemaViolation
+
+pub fn find_shade_properties_child(@xml.Element) -> EG_ShadeProperties? raise SchemaViolation
+
+pub fn find_text3d_child(@xml.Element) -> EG_Text3D? raise SchemaViolation
+
+pub fn find_text_autofit_child(@xml.Element) -> EG_TextAutofit? raise SchemaViolation
+
+pub fn find_text_geometry_child(@xml.Element) -> EG_TextGeometry? raise SchemaViolation
+
 pub fn package_name() -> String
+
+pub fn parse_color_choice_child(@xml.Element) -> EG_ColorChoice? raise SchemaViolation
+
+pub fn parse_color_transform_child(@xml.Element) -> EG_ColorTransform? raise SchemaViolation
+
+pub fn parse_effect_child(@xml.Element) -> EG_Effect? raise SchemaViolation
+
+pub fn parse_effect_properties_child(@xml.Element) -> EG_EffectProperties? raise SchemaViolation
+
+pub fn parse_fill_mode_properties_child(@xml.Element) -> EG_FillModeProperties? raise SchemaViolation
+
+pub fn parse_fill_properties_child(@xml.Element) -> EG_FillProperties? raise SchemaViolation
+
+pub fn parse_geometry_child(@xml.Element) -> EG_Geometry? raise SchemaViolation
+
+pub fn parse_line_dash_properties_child(@xml.Element) -> EG_LineDashProperties? raise SchemaViolation
+
+pub fn parse_line_fill_properties_child(@xml.Element) -> EG_LineFillProperties? raise SchemaViolation
+
+pub fn parse_line_join_properties_child(@xml.Element) -> EG_LineJoinProperties? raise SchemaViolation
+
+pub fn parse_media_child(@xml.Element) -> EG_Media? raise SchemaViolation
+
+pub fn parse_shade_properties_child(@xml.Element) -> EG_ShadeProperties? raise SchemaViolation
+
+pub fn parse_text3d_child(@xml.Element) -> EG_Text3D? raise SchemaViolation
+
+pub fn parse_text_autofit_child(@xml.Element) -> EG_TextAutofit? raise SchemaViolation
+
+pub fn parse_text_bullet_child(@xml.Element) -> EG_TextBullet? raise SchemaViolation
+
+pub fn parse_text_bullet_color_child(@xml.Element) -> EG_TextBulletColor? raise SchemaViolation
+
+pub fn parse_text_bullet_size_child(@xml.Element) -> EG_TextBulletSize? raise SchemaViolation
+
+pub fn parse_text_bullet_typeface_child(@xml.Element) -> EG_TextBulletTypeface? raise SchemaViolation
+
+pub fn parse_text_geometry_child(@xml.Element) -> EG_TextGeometry? raise SchemaViolation
+
+pub fn parse_text_underline_fill_child(@xml.Element) -> EG_TextUnderlineFill? raise SchemaViolation
+
+pub fn parse_text_underline_line_child(@xml.Element) -> EG_TextUnderlineLine? raise SchemaViolation
+
+pub fn parse_themeable_effect_style_child(@xml.Element) -> EG_ThemeableEffectStyle? raise SchemaViolation
+
+pub fn parse_themeable_fill_style_child(@xml.Element) -> EG_ThemeableFillStyle? raise SchemaViolation
+
+pub fn parse_themeable_font_styles_child(@xml.Element) -> EG_ThemeableFontStyles? raise SchemaViolation
 
 pub fn read_bevel(Bytes) -> CT_Bevel raise
 
@@ -358,6 +440,26 @@ pub fn AG_Locking::new(@xml.Element) -> Self
 pub(all) enum AdjustHandle {
   AhXY(CT_XYAdjustHandle)
   AhPolar(CT_PolarAdjustHandle)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum BlipEffect {
+  AlphaBiLevel(CT_AlphaBiLevelEffect)
+  AlphaCeiling(CT_AlphaCeilingEffect)
+  AlphaFloor(CT_AlphaFloorEffect)
+  AlphaInv(CT_AlphaInverseEffect)
+  AlphaMod(CT_AlphaModulateEffect)
+  AlphaModFix(CT_AlphaModulateFixedEffect)
+  AlphaRepl(CT_AlphaReplaceEffect)
+  BiLevel(CT_BiLevelEffect)
+  Blur(CT_BlurEffect)
+  ClrChange(CT_ColorChangeEffect)
+  ClrRepl(CT_ColorReplaceEffect)
+  Duotone(CT_DuotoneEffect)
+  FillOverlay(CT_FillOverlayEffect)
+  Grayscl(CT_GrayscaleEffect)
+  Hsl(CT_HSLEffect)
+  Lum(CT_LuminanceEffect)
+  Tint(CT_TintEffect)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CT_AdjPoint2D {
@@ -586,8 +688,8 @@ pub(all) struct CT_Blip {
   r_embed : String
   r_link : String
   cstate : ST_BlipCompression
-  effects : Array[@xml.Element]
-  ext_lst : @xml.Element?
+  effects : Array[BlipEffect]
+  ext_lst : CT_OfficeArtExtensionList?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Blip::new(@xml.Element) -> Self raise SchemaViolation
@@ -863,7 +965,7 @@ pub fn CT_DuotoneEffect::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_DuotoneEffect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EffectContainer {
-  effects : Array[@xml.Element]
+  effects : Array[EG_Effect]
   type_ : ST_EffectContainerType
   name : String?
   element : @xml.Element
@@ -1307,7 +1409,7 @@ pub(all) struct CT_HslColor {
   hue : ST_PositiveFixedAngle
   sat : ST_Percentage
   lum : ST_Percentage
-  color_transforms : Array[@xml.Element]
+  color_transforms : Array[EG_ColorTransform]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_HslColor::new(@xml.Element) -> Self raise SchemaViolation
@@ -1735,7 +1837,7 @@ pub fn CT_PositiveSize2D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_PresetColor {
   val : ST_PresetColorVal
-  color_transforms : Array[@xml.Element]
+  color_transforms : Array[EG_ColorTransform]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_PresetColor::new(@xml.Element) -> Self raise SchemaViolation
@@ -1838,7 +1940,7 @@ pub fn CT_RelativeRect::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SRgbColor {
   val : String
-  color_transforms : Array[@xml.Element]
+  color_transforms : Array[EG_ColorTransform]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SRgbColor::new(@xml.Element) -> Self raise SchemaViolation
@@ -1848,7 +1950,7 @@ pub(all) struct CT_ScRgbColor {
   r : ST_Percentage
   g : ST_Percentage
   b : ST_Percentage
-  color_transforms : Array[@xml.Element]
+  color_transforms : Array[EG_ColorTransform]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_ScRgbColor::new(@xml.Element) -> Self raise SchemaViolation
@@ -1874,7 +1976,7 @@ pub fn CT_Scene3D::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_SchemeColor {
   val : ST_SchemeColorVal
-  color_transforms : Array[@xml.Element]
+  color_transforms : Array[EG_ColorTransform]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SchemeColor::new(@xml.Element) -> Self raise SchemaViolation
@@ -2005,7 +2107,7 @@ pub fn CT_SupplementalFont::to_element(Self) -> @xml.Element
 pub(all) struct CT_SystemColor {
   val : ST_SystemColorVal
   last_clr : String?
-  color_transforms : Array[@xml.Element]
+  color_transforms : Array[EG_ColorTransform]
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_SystemColor::new(@xml.Element) -> Self raise SchemaViolation
@@ -2645,54 +2747,102 @@ pub(all) struct CT_XYAdjustHandle {
 pub fn CT_XYAdjustHandle::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_XYAdjustHandle::to_element(Self) -> @xml.Element
 
-pub(all) struct EG_ColorChoice {
-  element : @xml.Element
+pub(all) enum EG_ColorChoice {
+  ScrgbClr(CT_ScRgbColor)
+  SrgbClr(CT_SRgbColor)
+  HslClr(CT_HslColor)
+  SysClr(CT_SystemColor)
+  SchemeClr(CT_SchemeColor)
+  PrstClr(CT_PresetColor)
 } derive(Eq, @debug.Debug)
-pub fn EG_ColorChoice::child_names(Self) -> Array[String]
-pub fn EG_ColorChoice::has_child(Self, String) -> Bool
-pub fn EG_ColorChoice::new(@xml.Element) -> Self
 
-pub(all) struct EG_ColorTransform {
-  element : @xml.Element
+pub(all) enum EG_ColorTransform {
+  Tint(CT_PositiveFixedPercentage)
+  Shade(CT_PositiveFixedPercentage)
+  Comp(CT_ComplementTransform)
+  Inv(CT_InverseTransform)
+  Gray(CT_GrayscaleTransform)
+  Alpha(CT_PositiveFixedPercentage)
+  AlphaOff(CT_FixedPercentage)
+  AlphaMod(CT_PositivePercentage)
+  Hue(CT_PositiveFixedAngle)
+  HueOff(CT_Angle)
+  HueMod(CT_PositivePercentage)
+  Sat(CT_Percentage)
+  SatOff(CT_Percentage)
+  SatMod(CT_Percentage)
+  Lum(CT_Percentage)
+  LumOff(CT_Percentage)
+  LumMod(CT_Percentage)
+  Red(CT_Percentage)
+  RedOff(CT_Percentage)
+  RedMod(CT_Percentage)
+  Green(CT_Percentage)
+  GreenOff(CT_Percentage)
+  GreenMod(CT_Percentage)
+  Blue(CT_Percentage)
+  BlueOff(CT_Percentage)
+  BlueMod(CT_Percentage)
+  Gamma(CT_GammaTransform)
+  InvGamma(CT_InverseGammaTransform)
 } derive(Eq, @debug.Debug)
-pub fn EG_ColorTransform::child_names(Self) -> Array[String]
-pub fn EG_ColorTransform::has_child(Self, String) -> Bool
-pub fn EG_ColorTransform::new(@xml.Element) -> Self
 
-pub(all) struct EG_Effect {
-  element : @xml.Element
+pub(all) enum EG_Effect {
+  Cont(CT_EffectContainer)
+  Effect(CT_EffectReference)
+  AlphaBiLevel(CT_AlphaBiLevelEffect)
+  AlphaCeiling(CT_AlphaCeilingEffect)
+  AlphaFloor(CT_AlphaFloorEffect)
+  AlphaInv(CT_AlphaInverseEffect)
+  AlphaMod(CT_AlphaModulateEffect)
+  AlphaModFix(CT_AlphaModulateFixedEffect)
+  AlphaOutset(CT_AlphaOutsetEffect)
+  AlphaRepl(CT_AlphaReplaceEffect)
+  BiLevel(CT_BiLevelEffect)
+  Blend(CT_BlendEffect)
+  Blur(CT_BlurEffect)
+  ClrChange(CT_ColorChangeEffect)
+  ClrRepl(CT_ColorReplaceEffect)
+  Duotone(CT_DuotoneEffect)
+  Fill(CT_FillEffect)
+  FillOverlay(CT_FillOverlayEffect)
+  Glow(CT_GlowEffect)
+  Grayscl(CT_GrayscaleEffect)
+  Hsl(CT_HSLEffect)
+  InnerShdw(CT_InnerShadowEffect)
+  Lum(CT_LuminanceEffect)
+  OuterShdw(CT_OuterShadowEffect)
+  PrstShdw(CT_PresetShadowEffect)
+  Reflection(CT_ReflectionEffect)
+  RelOff(CT_RelativeOffsetEffect)
+  SoftEdge(CT_SoftEdgesEffect)
+  Tint(CT_TintEffect)
+  Xfrm(CT_TransformEffect)
 } derive(Eq, @debug.Debug)
-pub fn EG_Effect::child_names(Self) -> Array[String]
-pub fn EG_Effect::has_child(Self, String) -> Bool
-pub fn EG_Effect::new(@xml.Element) -> Self
 
-pub(all) struct EG_EffectProperties {
-  element : @xml.Element
+pub(all) enum EG_EffectProperties {
+  EffectLst(CT_EffectList)
+  EffectDag(CT_EffectContainer)
 } derive(Eq, @debug.Debug)
-pub fn EG_EffectProperties::child_names(Self) -> Array[String]
-pub fn EG_EffectProperties::has_child(Self, String) -> Bool
-pub fn EG_EffectProperties::new(@xml.Element) -> Self
 
-pub(all) struct EG_FillModeProperties {
-  element : @xml.Element
+pub(all) enum EG_FillModeProperties {
+  Tile(CT_TileInfoProperties)
+  Stretch(CT_StretchInfoProperties)
 } derive(Eq, @debug.Debug)
-pub fn EG_FillModeProperties::child_names(Self) -> Array[String]
-pub fn EG_FillModeProperties::has_child(Self, String) -> Bool
-pub fn EG_FillModeProperties::new(@xml.Element) -> Self
 
-pub(all) struct EG_FillProperties {
-  element : @xml.Element
+pub(all) enum EG_FillProperties {
+  NoFill(CT_NoFillProperties)
+  SolidFill(CT_SolidColorFillProperties)
+  GradFill(CT_GradientFillProperties)
+  BlipFill(CT_BlipFillProperties)
+  PattFill(CT_PatternFillProperties)
+  GrpFill(CT_GroupFillProperties)
 } derive(Eq, @debug.Debug)
-pub fn EG_FillProperties::child_names(Self) -> Array[String]
-pub fn EG_FillProperties::has_child(Self, String) -> Bool
-pub fn EG_FillProperties::new(@xml.Element) -> Self
 
-pub(all) struct EG_Geometry {
-  element : @xml.Element
+pub(all) enum EG_Geometry {
+  CustGeom(CT_CustomGeometry2D)
+  PrstGeom(CT_PresetGeometry2D)
 } derive(Eq, @debug.Debug)
-pub fn EG_Geometry::child_names(Self) -> Array[String]
-pub fn EG_Geometry::has_child(Self, String) -> Bool
-pub fn EG_Geometry::new(@xml.Element) -> Self
 
 pub(all) enum EG_GvmlGroupShapeChild {
   GvmlChildTxSp(CT_GvmlTextShape)
@@ -2703,138 +2853,105 @@ pub(all) enum EG_GvmlGroupShapeChild {
   GvmlChildGrpSp(CT_GvmlGroupShape)
 } derive(Eq, @debug.Debug)
 
-pub(all) struct EG_LineDashProperties {
-  element : @xml.Element
+pub(all) enum EG_LineDashProperties {
+  PrstDash(CT_PresetLineDashProperties)
+  CustDash(CT_DashStopList)
 } derive(Eq, @debug.Debug)
-pub fn EG_LineDashProperties::child_names(Self) -> Array[String]
-pub fn EG_LineDashProperties::has_child(Self, String) -> Bool
-pub fn EG_LineDashProperties::new(@xml.Element) -> Self
 
-pub(all) struct EG_LineFillProperties {
-  element : @xml.Element
+pub(all) enum EG_LineFillProperties {
+  NoFill(CT_NoFillProperties)
+  SolidFill(CT_SolidColorFillProperties)
+  GradFill(CT_GradientFillProperties)
+  PattFill(CT_PatternFillProperties)
 } derive(Eq, @debug.Debug)
-pub fn EG_LineFillProperties::child_names(Self) -> Array[String]
-pub fn EG_LineFillProperties::has_child(Self, String) -> Bool
-pub fn EG_LineFillProperties::new(@xml.Element) -> Self
 
-pub(all) struct EG_LineJoinProperties {
-  element : @xml.Element
+pub(all) enum EG_LineJoinProperties {
+  Round(CT_LineJoinRound)
+  Bevel(CT_LineJoinBevel)
+  Miter(CT_LineJoinMiterProperties)
 } derive(Eq, @debug.Debug)
-pub fn EG_LineJoinProperties::child_names(Self) -> Array[String]
-pub fn EG_LineJoinProperties::has_child(Self, String) -> Bool
-pub fn EG_LineJoinProperties::new(@xml.Element) -> Self
 
-pub(all) struct EG_Media {
-  element : @xml.Element
+pub(all) enum EG_Media {
+  AudioCd(CT_AudioCD)
+  WavAudioFile(CT_EmbeddedWAVAudioFile)
+  AudioFile(CT_AudioFile)
+  VideoFile(CT_VideoFile)
+  QuickTimeFile(CT_QuickTimeFile)
 } derive(Eq, @debug.Debug)
-pub fn EG_Media::child_names(Self) -> Array[String]
-pub fn EG_Media::has_child(Self, String) -> Bool
-pub fn EG_Media::new(@xml.Element) -> Self
 
 pub(all) struct EG_OfficeArtExtensionList {
-  element : @xml.Element
+  extensions : Array[CT_OfficeArtExtension]
 } derive(Eq, @debug.Debug)
-pub fn EG_OfficeArtExtensionList::child_names(Self) -> Array[String]
-pub fn EG_OfficeArtExtensionList::has_child(Self, String) -> Bool
-pub fn EG_OfficeArtExtensionList::new(@xml.Element) -> Self
+pub fn EG_OfficeArtExtensionList::new(@xml.Element) -> Self raise SchemaViolation
 
-pub(all) struct EG_ShadeProperties {
-  element : @xml.Element
+pub(all) enum EG_ShadeProperties {
+  Lin(CT_LinearShadeProperties)
+  Path(CT_PathShadeProperties)
 } derive(Eq, @debug.Debug)
-pub fn EG_ShadeProperties::child_names(Self) -> Array[String]
-pub fn EG_ShadeProperties::has_child(Self, String) -> Bool
-pub fn EG_ShadeProperties::new(@xml.Element) -> Self
 
-pub(all) struct EG_Text3D {
-  element : @xml.Element
+pub(all) enum EG_Text3D {
+  Sp3d(CT_Shape3D)
+  FlatTx(CT_FlatText)
 } derive(Eq, @debug.Debug)
-pub fn EG_Text3D::child_names(Self) -> Array[String]
-pub fn EG_Text3D::has_child(Self, String) -> Bool
-pub fn EG_Text3D::new(@xml.Element) -> Self
 
-pub(all) struct EG_TextAutofit {
-  element : @xml.Element
+pub(all) enum EG_TextAutofit {
+  NoAutofit(CT_TextNoAutofit)
+  NormAutofit(CT_TextNormalAutofit)
+  SpAutoFit(CT_TextShapeAutofit)
 } derive(Eq, @debug.Debug)
-pub fn EG_TextAutofit::child_names(Self) -> Array[String]
-pub fn EG_TextAutofit::has_child(Self, String) -> Bool
-pub fn EG_TextAutofit::new(@xml.Element) -> Self
 
-pub(all) struct EG_TextBullet {
-  element : @xml.Element
+pub(all) enum EG_TextBullet {
+  BuNone(CT_TextNoBullet)
+  BuAutoNum(CT_TextAutonumberBullet)
+  BuChar(CT_TextCharBullet)
+  BuBlip(CT_TextBlipBullet)
 } derive(Eq, @debug.Debug)
-pub fn EG_TextBullet::child_names(Self) -> Array[String]
-pub fn EG_TextBullet::has_child(Self, String) -> Bool
-pub fn EG_TextBullet::new(@xml.Element) -> Self
 
-pub(all) struct EG_TextBulletColor {
-  element : @xml.Element
+pub(all) enum EG_TextBulletColor {
+  BuClrTx(CT_TextBulletColorFollowText)
+  BuClr(CT_Color)
 } derive(Eq, @debug.Debug)
-pub fn EG_TextBulletColor::child_names(Self) -> Array[String]
-pub fn EG_TextBulletColor::has_child(Self, String) -> Bool
-pub fn EG_TextBulletColor::new(@xml.Element) -> Self
 
-pub(all) struct EG_TextBulletSize {
-  element : @xml.Element
+pub(all) enum EG_TextBulletSize {
+  BuSzTx(CT_TextBulletSizeFollowText)
+  BuSzPct(CT_TextBulletSizePercent)
+  BuSzPts(CT_TextBulletSizePoint)
 } derive(Eq, @debug.Debug)
-pub fn EG_TextBulletSize::child_names(Self) -> Array[String]
-pub fn EG_TextBulletSize::has_child(Self, String) -> Bool
-pub fn EG_TextBulletSize::new(@xml.Element) -> Self
 
-pub(all) struct EG_TextBulletTypeface {
-  element : @xml.Element
+pub(all) enum EG_TextBulletTypeface {
+  BuFontTx(CT_TextBulletTypefaceFollowText)
+  BuFont(CT_TextFont)
 } derive(Eq, @debug.Debug)
-pub fn EG_TextBulletTypeface::child_names(Self) -> Array[String]
-pub fn EG_TextBulletTypeface::has_child(Self, String) -> Bool
-pub fn EG_TextBulletTypeface::new(@xml.Element) -> Self
 
-pub(all) struct EG_TextGeometry {
-  element : @xml.Element
+pub(all) enum EG_TextGeometry {
+  CustGeom(CT_CustomGeometry2D)
+  PrstTxWarp(CT_PresetTextShape)
 } derive(Eq, @debug.Debug)
-pub fn EG_TextGeometry::child_names(Self) -> Array[String]
-pub fn EG_TextGeometry::has_child(Self, String) -> Bool
-pub fn EG_TextGeometry::new(@xml.Element) -> Self
 
-pub(all) struct EG_TextRun {
-  element : @xml.Element
+pub(all) enum EG_TextUnderlineFill {
+  UFillTx(CT_TextUnderlineFillFollowText)
+  UFill(CT_TextUnderlineFillGroupWrapper)
 } derive(Eq, @debug.Debug)
-pub fn EG_TextRun::child_names(Self) -> Array[String]
-pub fn EG_TextRun::has_child(Self, String) -> Bool
-pub fn EG_TextRun::new(@xml.Element) -> Self
 
-pub(all) struct EG_TextUnderlineFill {
-  element : @xml.Element
+pub(all) enum EG_TextUnderlineLine {
+  ULnTx(CT_TextUnderlineLineFollowText)
+  ULn(CT_LineProperties)
 } derive(Eq, @debug.Debug)
-pub fn EG_TextUnderlineFill::child_names(Self) -> Array[String]
-pub fn EG_TextUnderlineFill::has_child(Self, String) -> Bool
-pub fn EG_TextUnderlineFill::new(@xml.Element) -> Self
 
-pub(all) struct EG_TextUnderlineLine {
-  element : @xml.Element
+pub(all) enum EG_ThemeableEffectStyle {
+  Effect(CT_EffectProperties)
+  EffectRef(CT_StyleMatrixReference)
 } derive(Eq, @debug.Debug)
-pub fn EG_TextUnderlineLine::child_names(Self) -> Array[String]
-pub fn EG_TextUnderlineLine::has_child(Self, String) -> Bool
-pub fn EG_TextUnderlineLine::new(@xml.Element) -> Self
 
-pub(all) struct EG_ThemeableEffectStyle {
-  element : @xml.Element
+pub(all) enum EG_ThemeableFillStyle {
+  Fill(CT_FillProperties)
+  FillRef(CT_StyleMatrixReference)
 } derive(Eq, @debug.Debug)
-pub fn EG_ThemeableEffectStyle::child_names(Self) -> Array[String]
-pub fn EG_ThemeableEffectStyle::has_child(Self, String) -> Bool
-pub fn EG_ThemeableEffectStyle::new(@xml.Element) -> Self
 
-pub(all) struct EG_ThemeableFillStyle {
-  element : @xml.Element
+pub(all) enum EG_ThemeableFontStyles {
+  Font(CT_FontCollection)
+  FontRef(CT_FontReference)
 } derive(Eq, @debug.Debug)
-pub fn EG_ThemeableFillStyle::child_names(Self) -> Array[String]
-pub fn EG_ThemeableFillStyle::has_child(Self, String) -> Bool
-pub fn EG_ThemeableFillStyle::new(@xml.Element) -> Self
-
-pub(all) struct EG_ThemeableFontStyles {
-  element : @xml.Element
-} derive(Eq, @debug.Debug)
-pub fn EG_ThemeableFontStyles::child_names(Self) -> Array[String]
-pub fn EG_ThemeableFontStyles::has_child(Self, String) -> Bool
-pub fn EG_ThemeableFontStyles::new(@xml.Element) -> Self
 
 pub(all) enum Path2DCommand {
   PathClose(CT_Path2DClose)
@@ -2845,6 +2962,22 @@ pub(all) enum Path2DCommand {
   PathCubicBezTo(CT_Path2DCubicBezierTo)
 } derive(Eq, @debug.Debug)
 
+pub(all) enum ST_AdjAngle {
+  AdjAngleValue(ST_Angle)
+  AdjAngleGuide(ST_GeomGuideName)
+} derive(Eq, @debug.Debug)
+pub fn ST_AdjAngle::new(String) -> Self raise SchemaViolation
+pub fn ST_AdjAngle::parse(String) -> Self raise SchemaViolation
+pub fn ST_AdjAngle::to_string(Self) -> String
+
+pub(all) enum ST_AdjCoordinate {
+  AdjCoord(ST_Coordinate)
+  AdjGuide(ST_GeomGuideName)
+} derive(Eq, @debug.Debug)
+pub fn ST_AdjCoordinate::new(String) -> Self raise SchemaViolation
+pub fn ST_AdjCoordinate::parse(String) -> Self raise SchemaViolation
+pub fn ST_AdjCoordinate::to_string(Self) -> String
+
 pub struct ST_Angle {
   sixty_thousandths : Int
 } derive(Eq, @debug.Debug)
@@ -2852,6 +2985,13 @@ pub fn ST_Angle::new(String) -> Self raise SchemaViolation
 pub fn ST_Angle::parse(String) -> Self raise SchemaViolation
 pub fn ST_Angle::sixty_thousandths_of_degree(Self) -> Int
 pub fn ST_Angle::to_string(Self) -> String
+
+pub(all) enum ST_AnimationBuildType {
+  AnimBuildAllAtOnce
+} derive(Eq, @debug.Debug)
+pub fn ST_AnimationBuildType::new(String) -> Self raise SchemaViolation
+pub fn ST_AnimationBuildType::parse(String) -> Self raise SchemaViolation
+pub fn ST_AnimationBuildType::to_string(Self) -> String
 
 pub(all) enum ST_AnimationChartBuildType {
   ChartBuildAllAtOnce
@@ -2863,6 +3003,16 @@ pub(all) enum ST_AnimationChartBuildType {
 pub fn ST_AnimationChartBuildType::parse(String) -> Self raise SchemaViolation
 pub fn ST_AnimationChartBuildType::to_string(Self) -> String
 
+pub(all) enum ST_AnimationChartOnlyBuildType {
+  AnimChartSeries
+  AnimChartCategory
+  AnimChartSeriesEl
+  AnimChartCategoryEl
+} derive(Eq, @debug.Debug)
+pub fn ST_AnimationChartOnlyBuildType::new(String) -> Self raise SchemaViolation
+pub fn ST_AnimationChartOnlyBuildType::parse(String) -> Self raise SchemaViolation
+pub fn ST_AnimationChartOnlyBuildType::to_string(Self) -> String
+
 pub(all) enum ST_AnimationDgmBuildType {
   DgmBuildAllAtOnce
   DgmBuildOne
@@ -2871,6 +3021,15 @@ pub(all) enum ST_AnimationDgmBuildType {
 } derive(Eq, @debug.Debug)
 pub fn ST_AnimationDgmBuildType::parse(String) -> Self raise SchemaViolation
 pub fn ST_AnimationDgmBuildType::to_string(Self) -> String
+
+pub(all) enum ST_AnimationDgmOnlyBuildType {
+  AnimDgmOne
+  AnimDgmLvlOne
+  AnimDgmLvlAtOnce
+} derive(Eq, @debug.Debug)
+pub fn ST_AnimationDgmOnlyBuildType::new(String) -> Self raise SchemaViolation
+pub fn ST_AnimationDgmOnlyBuildType::parse(String) -> Self raise SchemaViolation
+pub fn ST_AnimationDgmOnlyBuildType::to_string(Self) -> String
 
 pub(all) enum ST_BevelPresetType {
   BevelRelaxedInset
@@ -3007,6 +3166,14 @@ pub(all) enum ST_DgmBuildStep {
 pub fn ST_DgmBuildStep::parse(String) -> Self raise SchemaViolation
 pub fn ST_DgmBuildStep::to_string(Self) -> String
 
+pub struct ST_DrawingElementId {
+  value : UInt
+} derive(Eq, @debug.Debug)
+pub fn ST_DrawingElementId::new(String) -> Self raise SchemaViolation
+pub fn ST_DrawingElementId::parse(String) -> Self raise SchemaViolation
+pub fn ST_DrawingElementId::to_string(Self) -> String
+pub fn ST_DrawingElementId::to_uint(Self) -> UInt
+
 pub(all) enum ST_EffectContainerType {
   EffectContainerSib
   EffectContainerTree
@@ -3039,6 +3206,14 @@ pub fn ST_FixedPercentage::parse(String) -> Self raise SchemaViolation
 pub fn ST_FixedPercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_FixedPercentage::to_string(Self) -> String
 
+pub struct ST_FixedPercentageDecimal {
+  thousandths : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_FixedPercentageDecimal::new(String) -> Self raise SchemaViolation
+pub fn ST_FixedPercentageDecimal::parse(String) -> Self raise SchemaViolation
+pub fn ST_FixedPercentageDecimal::thousandths_of_percent(Self) -> Int
+pub fn ST_FixedPercentageDecimal::to_string(Self) -> String
+
 pub(all) enum ST_FontCollectionIndex {
   FontMajor
   FontMinor
@@ -3047,6 +3222,20 @@ pub(all) enum ST_FontCollectionIndex {
 pub fn ST_FontCollectionIndex::new(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::parse(String) -> Self raise SchemaViolation
 pub fn ST_FontCollectionIndex::to_string(Self) -> String
+
+pub struct ST_GeomGuideFormula {
+  lexical : String
+} derive(Eq, @debug.Debug)
+pub fn ST_GeomGuideFormula::new(String) -> Self
+pub fn ST_GeomGuideFormula::parse(String) -> Self
+pub fn ST_GeomGuideFormula::to_string(Self) -> String
+
+pub struct ST_GeomGuideName {
+  lexical : String
+} derive(Eq, @debug.Debug)
+pub fn ST_GeomGuideName::new(String) -> Self raise SchemaViolation
+pub fn ST_GeomGuideName::parse(String) -> Self raise SchemaViolation
+pub fn ST_GeomGuideName::to_string(Self) -> String
 
 pub(all) enum ST_LightRigDirection {
   LightDirTL
@@ -3151,6 +3340,18 @@ pub fn ST_OnOffStyleType::new(String) -> Self raise SchemaViolation
 pub fn ST_OnOffStyleType::parse(String) -> Self raise SchemaViolation
 pub fn ST_OnOffStyleType::to_string(Self) -> String
 
+pub(all) enum ST_PathFillMode {
+  PathFillNone
+  PathFillNorm
+  PathFillLighten
+  PathFillLightenLess
+  PathFillDarken
+  PathFillDarkenLess
+} derive(Eq, @debug.Debug)
+pub fn ST_PathFillMode::new(String) -> Self raise SchemaViolation
+pub fn ST_PathFillMode::parse(String) -> Self raise SchemaViolation
+pub fn ST_PathFillMode::to_string(Self) -> String
+
 pub(all) enum ST_PathShadeType {
   PathShape
   PathCircle
@@ -3175,6 +3376,14 @@ pub fn ST_Percentage::new(String) -> Self raise SchemaViolation
 pub fn ST_Percentage::parse(String) -> Self raise SchemaViolation
 pub fn ST_Percentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_Percentage::to_string(Self) -> String
+
+pub struct ST_PercentageDecimal {
+  thousandths : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_PercentageDecimal::new(String) -> Self raise SchemaViolation
+pub fn ST_PercentageDecimal::parse(String) -> Self raise SchemaViolation
+pub fn ST_PercentageDecimal::thousandths_of_percent(Self) -> Int
+pub fn ST_PercentageDecimal::to_string(Self) -> String
 
 pub(all) enum ST_PitchFamily {
   PitchFamily00
@@ -3232,6 +3441,14 @@ pub fn ST_PositiveFixedPercentage::parse(String) -> Self raise SchemaViolation
 pub fn ST_PositiveFixedPercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_PositiveFixedPercentage::to_string(Self) -> String
 
+pub struct ST_PositiveFixedPercentageDecimal {
+  thousandths : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_PositiveFixedPercentageDecimal::new(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedPercentageDecimal::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositiveFixedPercentageDecimal::thousandths_of_percent(Self) -> Int
+pub fn ST_PositiveFixedPercentageDecimal::to_string(Self) -> String
+
 pub struct ST_PositivePercentage {
   thousandths : Int64
 } derive(Eq, @debug.Debug)
@@ -3239,6 +3456,14 @@ pub fn ST_PositivePercentage::new(String) -> Self raise SchemaViolation
 pub fn ST_PositivePercentage::parse(String) -> Self raise SchemaViolation
 pub fn ST_PositivePercentage::thousandths_of_percent(Self) -> Int64
 pub fn ST_PositivePercentage::to_string(Self) -> String
+
+pub struct ST_PositivePercentageDecimal {
+  thousandths : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_PositivePercentageDecimal::new(String) -> Self raise SchemaViolation
+pub fn ST_PositivePercentageDecimal::parse(String) -> Self raise SchemaViolation
+pub fn ST_PositivePercentageDecimal::thousandths_of_percent(Self) -> Int
+pub fn ST_PositivePercentageDecimal::to_string(Self) -> String
 
 pub(all) enum ST_PresetCameraType {
   CameraLegacyObliqueTopLeft
@@ -3666,6 +3891,206 @@ pub fn ST_SchemeColorVal::new(String) -> Self raise SchemaViolation
 pub fn ST_SchemeColorVal::parse(String) -> Self raise SchemaViolation
 pub fn ST_SchemeColorVal::to_string(Self) -> String
 
+pub struct ST_ShapeID {
+  lexical : String
+} derive(Eq, @debug.Debug)
+pub fn ST_ShapeID::new(String) -> Self raise SchemaViolation
+pub fn ST_ShapeID::parse(String) -> Self raise SchemaViolation
+pub fn ST_ShapeID::to_string(Self) -> String
+
+pub(all) enum ST_ShapeType {
+  ShapeLine
+  ShapeLineInv
+  ShapeTriangle
+  ShapeRtTriangle
+  ShapeRect
+  ShapeDiamond
+  ShapeParallelogram
+  ShapeTrapezoid
+  ShapeNonIsoscelesTrapezoid
+  ShapePentagon
+  ShapeHexagon
+  ShapeHeptagon
+  ShapeOctagon
+  ShapeDecagon
+  ShapeDodecagon
+  ShapeStar4
+  ShapeStar5
+  ShapeStar6
+  ShapeStar7
+  ShapeStar8
+  ShapeStar10
+  ShapeStar12
+  ShapeStar16
+  ShapeStar24
+  ShapeStar32
+  ShapeRoundRect
+  ShapeRound1Rect
+  ShapeRound2SameRect
+  ShapeRound2DiagRect
+  ShapeSnipRoundRect
+  ShapeSnip1Rect
+  ShapeSnip2SameRect
+  ShapeSnip2DiagRect
+  ShapePlaque
+  ShapeEllipse
+  ShapeTeardrop
+  ShapeHomePlate
+  ShapeChevron
+  ShapePieWedge
+  ShapePie
+  ShapeBlockArc
+  ShapeDonut
+  ShapeNoSmoking
+  ShapeRightArrow
+  ShapeLeftArrow
+  ShapeUpArrow
+  ShapeDownArrow
+  ShapeStripedRightArrow
+  ShapeNotchedRightArrow
+  ShapeBentUpArrow
+  ShapeLeftRightArrow
+  ShapeUpDownArrow
+  ShapeLeftUpArrow
+  ShapeLeftRightUpArrow
+  ShapeQuadArrow
+  ShapeLeftArrowCallout
+  ShapeRightArrowCallout
+  ShapeUpArrowCallout
+  ShapeDownArrowCallout
+  ShapeLeftRightArrowCallout
+  ShapeUpDownArrowCallout
+  ShapeQuadArrowCallout
+  ShapeBentArrow
+  ShapeUturnArrow
+  ShapeCircularArrow
+  ShapeLeftCircularArrow
+  ShapeLeftRightCircularArrow
+  ShapeCurvedRightArrow
+  ShapeCurvedLeftArrow
+  ShapeCurvedUpArrow
+  ShapeCurvedDownArrow
+  ShapeSwooshArrow
+  ShapeCube
+  ShapeCan
+  ShapeLightningBolt
+  ShapeHeart
+  ShapeSun
+  ShapeMoon
+  ShapeSmileyFace
+  ShapeIrregularSeal1
+  ShapeIrregularSeal2
+  ShapeFoldedCorner
+  ShapeBevel
+  ShapeFrame
+  ShapeHalfFrame
+  ShapeCorner
+  ShapeDiagStripe
+  ShapeChord
+  ShapeArc
+  ShapeLeftBracket
+  ShapeRightBracket
+  ShapeLeftBrace
+  ShapeRightBrace
+  ShapeBracketPair
+  ShapeBracePair
+  ShapeStraightConnector1
+  ShapeBentConnector2
+  ShapeBentConnector3
+  ShapeBentConnector4
+  ShapeBentConnector5
+  ShapeCurvedConnector2
+  ShapeCurvedConnector3
+  ShapeCurvedConnector4
+  ShapeCurvedConnector5
+  ShapeCallout1
+  ShapeCallout2
+  ShapeCallout3
+  ShapeAccentCallout1
+  ShapeAccentCallout2
+  ShapeAccentCallout3
+  ShapeBorderCallout1
+  ShapeBorderCallout2
+  ShapeBorderCallout3
+  ShapeAccentBorderCallout1
+  ShapeAccentBorderCallout2
+  ShapeAccentBorderCallout3
+  ShapeWedgeRectCallout
+  ShapeWedgeRoundRectCallout
+  ShapeWedgeEllipseCallout
+  ShapeCloudCallout
+  ShapeCloud
+  ShapeRibbon
+  ShapeRibbon2
+  ShapeEllipseRibbon
+  ShapeEllipseRibbon2
+  ShapeLeftRightRibbon
+  ShapeVerticalScroll
+  ShapeHorizontalScroll
+  ShapeWave
+  ShapeDoubleWave
+  ShapePlus
+  ShapeFlowChartProcess
+  ShapeFlowChartDecision
+  ShapeFlowChartInputOutput
+  ShapeFlowChartPredefinedProcess
+  ShapeFlowChartInternalStorage
+  ShapeFlowChartDocument
+  ShapeFlowChartMultidocument
+  ShapeFlowChartTerminator
+  ShapeFlowChartPreparation
+  ShapeFlowChartManualInput
+  ShapeFlowChartManualOperation
+  ShapeFlowChartConnector
+  ShapeFlowChartPunchedCard
+  ShapeFlowChartPunchedTape
+  ShapeFlowChartSummingJunction
+  ShapeFlowChartOr
+  ShapeFlowChartCollate
+  ShapeFlowChartSort
+  ShapeFlowChartExtract
+  ShapeFlowChartMerge
+  ShapeFlowChartOfflineStorage
+  ShapeFlowChartOnlineStorage
+  ShapeFlowChartMagneticTape
+  ShapeFlowChartMagneticDisk
+  ShapeFlowChartMagneticDrum
+  ShapeFlowChartDisplay
+  ShapeFlowChartDelay
+  ShapeFlowChartAlternateProcess
+  ShapeFlowChartOffpageConnector
+  ShapeActionButtonBlank
+  ShapeActionButtonHome
+  ShapeActionButtonHelp
+  ShapeActionButtonInformation
+  ShapeActionButtonForwardNext
+  ShapeActionButtonBackPrevious
+  ShapeActionButtonEnd
+  ShapeActionButtonBeginning
+  ShapeActionButtonReturn
+  ShapeActionButtonDocument
+  ShapeActionButtonSound
+  ShapeActionButtonMovie
+  ShapeGear6
+  ShapeGear9
+  ShapeFunnel
+  ShapeMathPlus
+  ShapeMathMinus
+  ShapeMathMultiply
+  ShapeMathDivide
+  ShapeMathEqual
+  ShapeMathNotEqual
+  ShapeCornerTabs
+  ShapeSquareTabs
+  ShapePlaqueTabs
+  ShapeChartX
+  ShapeChartStar
+  ShapeChartPlus
+} derive(Eq, @debug.Debug)
+pub fn ST_ShapeType::new(String) -> Self raise SchemaViolation
+pub fn ST_ShapeType::parse(String) -> Self raise SchemaViolation
+pub fn ST_ShapeType::to_string(Self) -> String
+
 pub struct ST_StyleMatrixColumnIndex {
   idx : UInt
 } derive(Eq, @debug.Debug)
@@ -3789,6 +4214,14 @@ pub fn ST_TextBulletSize::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextBulletSize::thousandths_of_percent(Self) -> Int
 pub fn ST_TextBulletSize::to_string(Self) -> String
 
+pub struct ST_TextBulletSizeDecimal {
+  thousandths : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_TextBulletSizeDecimal::new(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletSizeDecimal::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextBulletSizeDecimal::thousandths_of_percent(Self) -> Int
+pub fn ST_TextBulletSizeDecimal::to_string(Self) -> String
+
 pub struct ST_TextBulletSizePercent {
   percent : Int
 } derive(Eq, @debug.Debug)
@@ -3832,6 +4265,14 @@ pub(all) enum ST_TextFontAlignType {
 pub fn ST_TextFontAlignType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextFontAlignType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextFontAlignType::to_string(Self) -> String
+
+pub struct ST_TextFontScalePercent {
+  thousandths : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_TextFontScalePercent::new(String) -> Self raise SchemaViolation
+pub fn ST_TextFontScalePercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextFontScalePercent::thousandths_of_percent(Self) -> Int
+pub fn ST_TextFontScalePercent::to_string(Self) -> String
 
 pub struct ST_TextFontScalePercentOrPercentString {
   thousandths : Int64
@@ -3951,6 +4392,14 @@ pub(all) enum ST_TextShapeType {
 pub fn ST_TextShapeType::new(String) -> Self raise SchemaViolation
 pub fn ST_TextShapeType::parse(String) -> Self raise SchemaViolation
 pub fn ST_TextShapeType::to_string(Self) -> String
+
+pub struct ST_TextSpacingPercent {
+  thousandths : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_TextSpacingPercent::new(String) -> Self raise SchemaViolation
+pub fn ST_TextSpacingPercent::parse(String) -> Self raise SchemaViolation
+pub fn ST_TextSpacingPercent::thousandths_of_percent(Self) -> Int
+pub fn ST_TextSpacingPercent::to_string(Self) -> String
 
 pub struct ST_TextSpacingPercentOrPercentString {
   thousandths : Int64

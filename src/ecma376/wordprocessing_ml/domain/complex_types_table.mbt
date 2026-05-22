@@ -508,7 +508,7 @@ pub(all) struct CT_TcPrInner {
   /// EG_CellMarkupElements (§17.13.5.4 cellIns / §17.13.5.2 cellDel /
   /// §17.13.5.3 cellMerge) — raw children in document order, typed by
   /// upstream readers.
-  cell_markup_elements : Array[@xml.Element]
+  cell_markup_elements : Array[EG_CellMarkupElements]
 } derive(Eq, Debug)
 
 ///|
@@ -568,17 +568,18 @@ pub fn CT_TcPrInner::new(
     Some(child) => Some(CT_Headers::new(child))
     None => None
   }
-  let cell_markup_elements : Array[@xml.Element] = []
+  let raw_markup : Array[@xml.Element] = []
   for child in element.children {
     match child {
       @xml.Element(e) =>
         match e.name.local_name {
-          "cellIns" | "cellDel" | "cellMerge" => cell_markup_elements.push(e)
+          "cellIns" | "cellDel" | "cellMerge" => raw_markup.push(e)
           _ => ()
         }
       _ => ()
     }
   }
+  let cell_markup_elements = collect_cell_markup_elements(raw_markup)
   {
     element,
     cnf_style,
@@ -644,7 +645,7 @@ pub(all) struct CT_TcPr {
   /// §17.4.19 `<headers>`?
   headers : CT_Headers?
   /// EG_CellMarkupElements raw children (cellIns / cellDel / cellMerge).
-  cell_markup_elements : Array[@xml.Element]
+  cell_markup_elements : Array[EG_CellMarkupElements]
   /// §17.13.5.36 `<tcPrChange>`? — optional revision snapshot.
   tc_pr_change : CT_TcPrChange?
 } derive(Eq, Debug)
@@ -689,17 +690,17 @@ pub fn CT_TcPr::to_element(self : CT_TcPr) -> @xml.Element {
 ///|
 /// XSD complex type CT_Tc — Part 1 §17.4.66 (table cell). One optional
 /// `<tcPr>` (CT_TcPr) followed by an `EG_BlockLevelElts` model group
-/// (`minOccurs=1 maxOccurs=unbounded` — typed projection owned by
-/// upstream readers, exposed here as `Array[@xml.Element]`). An optional
-/// `@id` (s:ST_String §22.9.2.13) identifies the cell for accessibility.
+/// (`minOccurs=1 maxOccurs=unbounded` — typed projection via
+/// `collect_block_level_elements`). An optional `@id` (s:ST_String
+/// §22.9.2.13) identifies the cell for accessibility.
 pub(all) struct CT_Tc {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
   /// §17.4.69 `<tcPr>`? — typed cell properties.
   tc_pr : CT_TcPr?
-  /// EG_BlockLevelElts (1..unbounded) — raw block-level children in
-  /// document order; the typed projection lives at the document reader.
-  block_level_elts : Array[@xml.Element]
+  /// §17.4.65 EG_BlockLevelElts (1..unbounded) — typed block-level
+  /// projections in document order.
+  block_level_elts : Array[EG_BlockLevelElts]
   /// §22.9.2.13 @id (s:ST_String) — optional accessibility identifier.
   id : String?
 } derive(Eq, Debug)
@@ -710,16 +711,17 @@ pub fn CT_Tc::new(element : @xml.Element) -> CT_Tc raise SchemaViolation {
     Some(child) => Some(CT_TcPr::new(child))
     None => None
   }
-  let block_level_elts : Array[@xml.Element] = []
+  let raw : Array[@xml.Element] = []
   for child in element.children {
     match child {
       @xml.Element(e) =>
         if e.name.local_name != "tcPr" {
-          block_level_elts.push(e)
+          raw.push(e)
         }
       _ => ()
     }
   }
+  let block_level_elts = collect_block_level_elements(raw)
   let id = wml_ct_chunk4_attr(element, "id")
   { element, tc_pr, block_level_elts, id }
 }
@@ -1034,8 +1036,8 @@ pub fn CT_TrPr::to_element(self : CT_TrPr) -> @xml.Element {
 /// optional `<tblPrEx>` (CT_TblPrEx — exception properties), an
 /// optional `<trPr>` (CT_TrPr — row properties), and an
 /// EG_ContentCellContent model group (zero or more, typed projection
-/// owned by upstream readers — surfaced as `Array[@xml.Element]`). The
-/// four optional revision-id attributes are decoded as ST_LongHexNumber.
+/// via `collect_content_cell_content`). The four optional revision-id
+/// attributes are decoded as ST_LongHexNumber.
 pub(all) struct CT_Row {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
@@ -1043,9 +1045,9 @@ pub(all) struct CT_Row {
   tbl_pr_ex : CT_TblPrEx?
   /// §17.4.81 `<trPr>`? — typed row properties.
   tr_pr : CT_TrPr?
-  /// EG_ContentCellContent (0..unbounded) — raw cell-content children
-  /// (tc / sdt / customXml etc.).
-  content_cell_content : Array[@xml.Element]
+  /// §17.4.79 EG_ContentCellContent (0..unbounded) — typed cell-content
+  /// projections (tc / sdt / customXml / run-level marks).
+  content_cell_content : Array[EG_ContentCellContent]
   /// §17.18.50 @rsidRPr (ST_LongHexNumber) — optional revision id.
   rsid_r_pr : ST_LongHexNumber?
   /// §17.18.50 @rsidR (ST_LongHexNumber) — optional revision id.
@@ -1066,18 +1068,19 @@ pub fn CT_Row::new(element : @xml.Element) -> CT_Row raise SchemaViolation {
     Some(child) => Some(CT_TrPr::new(child))
     None => None
   }
-  let content_cell_content : Array[@xml.Element] = []
+  let raw_cell_content : Array[@xml.Element] = []
   for child in element.children {
     match child {
       @xml.Element(e) => {
         let ln = e.name.local_name
         if ln != "tblPrEx" && ln != "trPr" {
-          content_cell_content.push(e)
+          raw_cell_content.push(e)
         }
       }
       _ => ()
     }
   }
+  let content_cell_content = collect_content_cell_content(raw_cell_content)
   let rsid_r_pr = match wml_ct_chunk4_attr(element, "rsidRPr") {
     Some(text) => Some(ST_LongHexNumber::parse(text))
     None => None
@@ -1794,22 +1797,21 @@ pub fn CT_TblPrEx::to_element(self : CT_TblPrEx) -> @xml.Element {
 ///|
 /// XSD complex type CT_Tbl — Part 1 §17.4.38 (table). Sequence:
 /// EG_RangeMarkupElements*, `<tblPr>` (required, CT_TblPr), `<tblGrid>`
-/// (required, CT_TblGrid), then EG_ContentRowContent* — both range
-/// markup and row content are projected as `Array[@xml.Element]` here
-/// (the typed expansion lives at the document-reader layer).
+/// (required, CT_TblGrid), then EG_ContentRowContent* — all typed
+/// per the wml.xsd model groups (see model_groups.mbt).
 pub(all) struct CT_Tbl {
   /// §A.1 — source element kept for builder round-trip.
   element : @xml.Element
-  /// EG_RangeMarkupElements (0..unbounded) — leading range-markup
-  /// children (bookmarkStart / bookmarkEnd / commentRangeStart etc.).
-  range_markup_elements : Array[@xml.Element]
+  /// §17.13.5.x EG_RangeMarkupElements (0..unbounded) — leading
+  /// range-markup projections.
+  range_markup_elements : Array[EG_RangeMarkupElements]
   /// §17.4.61 `<tblPr>` — required table properties.
   tbl_pr : CT_TblPr
   /// §17.4.49 `<tblGrid>` — required table grid.
   tbl_grid : CT_TblGrid
-  /// EG_ContentRowContent (0..unbounded) — row content (tr / sdt /
-  /// customXml etc.) following the grid.
-  content_row_content : Array[@xml.Element]
+  /// §17.4.77 EG_ContentRowContent (0..unbounded) — typed row-content
+  /// projections following the grid.
+  content_row_content : Array[EG_ContentRowContent]
 } derive(Eq, Debug)
 
 ///|
@@ -1830,8 +1832,8 @@ pub fn CT_Tbl::new(element : @xml.Element) -> CT_Tbl raise SchemaViolation {
   }
   // Partition the remaining element children into the prefix (range markup)
   // and the suffix (row content) about the tblPr/tblGrid spine.
-  let range_markup_elements : Array[@xml.Element] = []
-  let content_row_content : Array[@xml.Element] = []
+  let raw_range_markup : Array[@xml.Element] = []
+  let raw_row_content : Array[@xml.Element] = []
   let mut seen_spine = false
   for child in element.children {
     match child {
@@ -1840,14 +1842,16 @@ pub fn CT_Tbl::new(element : @xml.Element) -> CT_Tbl raise SchemaViolation {
           "tblPr" | "tblGrid" => seen_spine = true
           _ =>
             if seen_spine {
-              content_row_content.push(e)
+              raw_row_content.push(e)
             } else {
-              range_markup_elements.push(e)
+              raw_range_markup.push(e)
             }
         }
       _ => ()
     }
   }
+  let range_markup_elements = collect_range_markup_elements(raw_range_markup)
+  let content_row_content = collect_content_row_content(raw_row_content)
   { element, range_markup_elements, tbl_pr, tbl_grid, content_row_content }
 }
 

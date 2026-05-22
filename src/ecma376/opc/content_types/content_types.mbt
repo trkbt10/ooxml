@@ -45,3 +45,11 @@
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/opc/content_types"
 }
+
+///|
+/// ECMA-376 Part 2 §6.2.3 Media Types.
+/// Source: `references/spec/part2/sections/6.2.3__media-types.md`. Owned by
+/// `src/ecma376/opc/content_types`.
+pub fn opc_content_types_part2_6_2_3_media_types_section_name() -> String {
+  "ECMA-376 Part 2 §6.2.3 Media Types"
+}

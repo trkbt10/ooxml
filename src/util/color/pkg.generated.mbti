@@ -1,0 +1,52 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/util/color"
+
+// Values
+pub fn apply_hue_mod(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_lum_mod(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_lum_off(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_sat_mod(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_shade(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_tint(String, Double, is_alpha? : Bool) -> String
+
+pub fn get_color_name_to_hex(String) -> String?
+
+pub fn hex_to_rgb(String) -> RgbColor
+
+pub fn hsl_to_hex_string(HslColor, Bool) -> String
+
+pub fn hsl_to_rgb(Double, Double, Double) -> RgbColor
+
+pub fn parse_color_to_hsl(String) -> HslColor
+
+pub fn rgb_to_hex(Double, Double, Double) -> String
+
+pub fn rgb_to_hsl(Double, Double, Double) -> HslColor
+
+pub fn to_hex(Double) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct HslColor {
+  h : Double
+  s : Double
+  l : Double
+  a : Double?
+} derive(Eq)
+
+pub(all) struct RgbColor {
+  r : Double
+  g : Double
+  b : Double
+} derive(Eq)
+
+// Type aliases
+
+// Traits
+

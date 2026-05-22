@@ -6,6 +6,238 @@
 // while consumers query typed accessors instead of poking raw XML.
 
 ///|
+/// EG_ShapeElements + the three extra CT_Shape/CT_Group choices
+/// (o:ink / pvml:iscomment / o:equationxml). Mirrors the
+/// unbounded choice declared in vml-main.xsd at:
+///
+///   <xsd:group name="EG_ShapeElements">
+///   <xsd:complexType name="CT_Shape">
+///   <xsd:complexType name="CT_Group">
+///
+/// Every arm is typed — cross-namespace elements (`o:*` / `w10:*` /
+/// `x:*` / `pvml:*`) dispatch through the dedicated companion
+/// packages (`vml_word`, `vml_excel`, `vml_presentation`). The
+/// remaining `o:*` CT_* projections still live in this file and
+/// will be split off in a follow-up to `vml_office`. There is no
+/// untyped fallback arm — schema-unknown children raise
+/// SchemaViolation at construction time so callers can't silently
+/// drop content.
+pub(all) enum VmlShapeChild {
+  /// <v:path …/> — CT_Path.
+  Path(CT_Path)
+  /// <v:formulas …/> — CT_Formulas.
+  Formulas(CT_Formulas)
+  /// <v:handles …/> — CT_Handles.
+  Handles(CT_Handles)
+  /// <v:fill …/> — CT_Fill.
+  Fill(CT_Fill)
+  /// <v:stroke …/> — CT_Stroke.
+  Stroke(CT_Stroke)
+  /// <v:shadow …/> — CT_Shadow.
+  Shadow(CT_Shadow)
+  /// <v:textbox …/> — CT_Textbox.
+  Textbox(CT_Textbox)
+  /// <v:textpath …/> — CT_TextPath.
+  Textpath(CT_TextPath)
+  /// <v:imagedata …/> — CT_ImageData.
+  Imagedata(CT_ImageData)
+  /// <o:skew …/> — CT_Skew.
+  Skew(CT_Skew)
+  /// <o:extrusion …/> — CT_Extrusion.
+  Extrusion(CT_Extrusion)
+  /// <o:callout …/> — CT_Callout.
+  Callout(CT_Callout)
+  /// <o:lock …/> — CT_Lock.
+  Lock(CT_Lock)
+  /// <o:clippath …/> — CT_ClipPath.
+  Clippath(CT_ClipPath)
+  /// <o:signatureline …/> — CT_SignatureLine.
+  SignatureLine(CT_SignatureLine)
+  /// <o:ink …/> — CT_Ink (CT_Shape/CT_Group extra).
+  Ink(CT_Ink)
+  /// <o:equationxml …/> — CT_EquationXml (CT_Shape/CT_Group extra).
+  EquationXml(CT_EquationXml)
+  /// <w10:wrap …/> — CT_Wrap (vml_word).
+  Wrap(@vml_word.CT_Wrap)
+  /// <w10:anchorlock/> — CT_AnchorLock (vml_word).
+  AnchorLock(@vml_word.CT_AnchorLock)
+  /// <w10:bordertop …/> — CT_Border (vml_word).
+  BorderTop(@vml_word.CT_Border)
+  /// <w10:borderbottom …/> — CT_Border (vml_word).
+  BorderBottom(@vml_word.CT_Border)
+  /// <w10:borderleft …/> — CT_Border (vml_word).
+  BorderLeft(@vml_word.CT_Border)
+  /// <w10:borderright …/> — CT_Border (vml_word).
+  BorderRight(@vml_word.CT_Border)
+  /// <x:ClientData …/> — CT_ClientData (vml_excel).
+  ClientData(@vml_excel.CT_ClientData)
+  /// <pvml:iscomment/> — CT_Empty (vml_presentation).
+  Iscomment(@vml_presentation.CT_Empty)
+  /// <pvml:textdata …/> — CT_Rel (vml_presentation).
+  Textdata(@vml_presentation.CT_Rel)
+} derive(Eq, Debug)
+
+///|
+/// Bridge `@vml_excel.SchemaViolation` into this package's local one.
+fn wrap_vml_excel_violation[T](
+  body : () -> T raise @vml_excel.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @vml_excel.SchemaViolation(schema=_, path=p, reason~) =>
+      raise SchemaViolation(
+        schema="vml-spreadsheetDrawing.xsd",
+        path=path + " (" + p + ")",
+        reason~,
+      )
+  }
+}
+
+///|
+/// Parse a single VML shape-element child into the typed sum. Every
+/// EG_ShapeElements / CT_Shape extra / CT_Group extra arm declared by
+/// vml-main.xsd, vml-officeDrawing.xsd, vml-wordprocessingDrawing.xsd,
+/// vml-spreadsheetDrawing.xsd and vml-presentationDrawing.xsd is
+/// handled. Elements whose local name doesn't match any schema arm
+/// raise SchemaViolation — no untyped passthrough.
+pub fn parse_vml_shape_child(
+  element : @xml.Element,
+) -> VmlShapeChild raise SchemaViolation {
+  match element.name.local_name {
+    // EG_ShapeElements — local v: arm.
+    "path" => Path(CT_Path::new(element))
+    "formulas" => Formulas(CT_Formulas::new(element))
+    "handles" => Handles(CT_Handles::new(element))
+    "fill" => Fill(CT_Fill::new(element))
+    "stroke" => Stroke(CT_Stroke::new(element))
+    "shadow" => Shadow(CT_Shadow::new(element))
+    "textbox" => Textbox(CT_Textbox::new(element))
+    "textpath" => Textpath(CT_TextPath::new(element))
+    "imagedata" => Imagedata(CT_ImageData::new(element))
+    // EG_ShapeElements — o: arm (vml-officeDrawing.xsd).
+    "skew" => Skew(CT_Skew::new(element))
+    "extrusion" => Extrusion(CT_Extrusion::new(element))
+    "callout" => Callout(CT_Callout::new(element))
+    "lock" => Lock(CT_Lock::new(element))
+    "clippath" => Clippath(CT_ClipPath::new(element))
+    "signatureline" => SignatureLine(CT_SignatureLine::new(element))
+    // CT_Shape / CT_Group extras (still o:).
+    "ink" => Ink(CT_Ink::new(element))
+    "equationxml" => EquationXml(CT_EquationXml::new(element))
+    // EG_ShapeElements — w10: arm (vml-wordprocessingDrawing.xsd).
+    "wrap" => Wrap(@vml_word.CT_Wrap::new(element))
+    "anchorlock" => AnchorLock(@vml_word.CT_AnchorLock::new(element))
+    "bordertop" => BorderTop(@vml_word.CT_Border::new(element))
+    "borderbottom" => BorderBottom(@vml_word.CT_Border::new(element))
+    "borderleft" => BorderLeft(@vml_word.CT_Border::new(element))
+    "borderright" => BorderRight(@vml_word.CT_Border::new(element))
+    // EG_ShapeElements — x: arm (vml-spreadsheetDrawing.xsd).
+    "ClientData" =>
+      ClientData(
+        wrap_vml_excel_violation(
+          fn() { @vml_excel.CT_ClientData::new(element) },
+          "VmlShapeChild/x:ClientData",
+        ),
+      )
+    // CT_Shape / CT_Group extras — pvml: arm
+    // (vml-presentationDrawing.xsd).
+    "iscomment" => Iscomment(@vml_presentation.CT_Empty::new(element))
+    "textdata" => Textdata(@vml_presentation.CT_Rel::new(element))
+    other =>
+      raise SchemaViolation(
+        schema="vml-main.xsd",
+        path="VmlShapeChild",
+        reason="unknown EG_ShapeElements / CT_Shape / CT_Group choice arm: " +
+        other,
+      )
+  }
+}
+
+///|
+/// Collect every VML shape-element child of `element` into typed
+/// projections in document order. Used by CT_Shape / CT_Shapetype
+/// readers.
+pub fn collect_vml_shape_children(
+  element : @xml.Element,
+) -> Array[VmlShapeChild] raise SchemaViolation {
+  let out : Array[VmlShapeChild] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      out.push(parse_vml_shape_child(child_element))
+    }
+  }
+  out
+}
+
+///|
+/// CT_Group child elements per vml-main.xsd. CT_Group's choice is
+/// EG_ShapeElements + 12 shape sub-types (arc/curve/image/line/oval/
+/// polyline/rect/roundrect/shape/shapetype/group/o:diagram). Embeds
+/// `VmlShapeChild` for the shared shape-element arms.
+pub(all) enum VmlGroupChild {
+  /// Any of the EG_ShapeElements / o:* / w10:* arms.
+  ShapeElement(VmlShapeChild)
+  /// <v:group …/> — CT_Group (recursive).
+  Group(CT_Group)
+  /// <v:shape …/> — CT_Shape.
+  Shape(CT_Shape)
+  /// <v:shapetype …/> — CT_Shapetype.
+  Shapetype(CT_Shapetype)
+  /// <v:arc …/> — CT_Arc.
+  Arc(CT_Arc)
+  /// <v:curve …/> — CT_Curve.
+  Curve(CT_Curve)
+  /// <v:image …/> — CT_Image.
+  Image(CT_Image)
+  /// <v:line …/> — CT_Line.
+  Line(CT_Line)
+  /// <v:oval …/> — CT_Oval.
+  Oval(CT_Oval)
+  /// <v:polyline …/> — CT_PolyLine.
+  PolyLine(CT_PolyLine)
+  /// <v:rect …/> — CT_Rect.
+  Rect(CT_Rect)
+  /// <v:roundrect …/> — CT_RoundRect.
+  RoundRect(CT_RoundRect)
+  /// <o:diagram …/> — CT_Diagram.
+  Diagram(CT_Diagram)
+} derive(Eq, Debug)
+
+///|
+pub fn parse_vml_group_child(
+  element : @xml.Element,
+) -> VmlGroupChild raise SchemaViolation {
+  match element.name.local_name {
+    "group" => Group(CT_Group::new(element))
+    "shape" => Shape(CT_Shape::new(element))
+    "shapetype" => Shapetype(CT_Shapetype::new(element))
+    "arc" => Arc(CT_Arc::new(element))
+    "curve" => Curve(CT_Curve::new(element))
+    "image" => Image(CT_Image::new(element))
+    "line" => Line(CT_Line::new(element))
+    "oval" => Oval(CT_Oval::new(element))
+    "polyline" => PolyLine(CT_PolyLine::new(element))
+    "rect" => Rect(CT_Rect::new(element))
+    "roundrect" => RoundRect(CT_RoundRect::new(element))
+    "diagram" => Diagram(CT_Diagram::new(element))
+    _ => ShapeElement(parse_vml_shape_child(element))
+  }
+}
+
+///|
+pub fn collect_vml_group_children(
+  element : @xml.Element,
+) -> Array[VmlGroupChild] raise SchemaViolation {
+  let out : Array[VmlGroupChild] = []
+  for child in element.children {
+    if child is @xml.Node::Element(child_element) {
+      out.push(parse_vml_group_child(child_element))
+    }
+  }
+  out
+}
+
+///|
 /// Look up an attribute on an element by local name. VML attribute
 /// names are unqualified in the source schema, so we ignore the
 /// namespace prefix and match the local name directly.
@@ -81,7 +313,10 @@ fn parse_truefalse(
 pub(all) struct CT_Shape {
   /// @id (AG_Id, optional).
   id : String?
-  /// @style (AG_Style, optional). TODO: typed style attribute parser.
+  /// @style (AG_Style, optional). Consumers needing a typed
+  /// projection should call `parse_vml_style(s)` (declared in
+  /// `vml_inline_style.mbt`) per Part 4 §6.1; round-trip via
+  /// `format_vml_style`.
   style : String?
   /// @href (AG_CoreAttributes, optional).
   href : String?
@@ -97,7 +332,9 @@ pub(all) struct CT_Shape {
   coordsize : String?
   /// @coordorigin (AG_CoreAttributes, optional).
   coordorigin : String?
-  /// @wrapcoords (AG_CoreAttributes, optional). TODO: typed enum.
+  /// @wrapcoords (AG_CoreAttributes, optional). Polyline path
+  /// string per Part 4 §6.1; no typed projection because the
+  /// grammar is `x,y` coordinate pairs with no enum constraint.
   wrapcoords : String?
   /// @print (AG_CoreAttributes, optional, s:ST_TrueFalse).
   print : Bool?
@@ -132,7 +369,7 @@ pub(all) struct CT_Shape {
   /// EG_ShapeElements / `o:ink` / `pvml:iscomment` / `o:equationxml`
   /// children preserved as raw nodes so the writer can round-trip the
   /// source bytes. Each entry's `name.local_name` identifies the kind.
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   /// Source element preserved for byte-perfect round-trip writing.
   raw_element : @xml.Element
 } derive(Eq, Debug)
@@ -189,12 +426,7 @@ pub fn CT_Shape::new(element : @xml.Element) -> CT_Shape raise SchemaViolation {
   let path = vml_attr(element, "path")
   let equationxml = vml_attr(element, "equationxml")
   let office_attributes = collect_office_attributes(element)
-  let shape_children : Array[@xml.Element] = []
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      shape_children.push(child_element)
-    }
-  }
+  let shape_children = collect_vml_shape_children(element)
   {
     id,
     style,
@@ -238,7 +470,8 @@ pub fn CT_Shape::to_element(self : CT_Shape) -> @xml.Element {
 pub(all) struct CT_Shapetype {
   /// @id (AG_Id).
   id : String?
-  /// @style (AG_Style). TODO: typed style accessor.
+  /// @style (AG_Style). Use `parse_vml_style(...)` for the
+  /// typed projection per Part 4 §6.1.
   style : String?
   /// AG_CoreAttributes string-valued attributes (href .. wrapcoords).
   href : String?
@@ -271,7 +504,7 @@ pub(all) struct CT_Shapetype {
   /// AG_OfficeCoreAttributes / AG_OfficeShapeAttributes verbatim.
   office_attributes : Array[@xml.Attribute]
   /// EG_ShapeElements children in source order.
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   /// <o:complex> optional child (CT_Complex).
   complex : CT_Complex?
   /// Source element preserved for round-trip writing.
@@ -317,14 +550,14 @@ pub fn CT_Shapetype::new(
   let path = vml_attr(element, "path")
   let master = vml_attr(element, "master")
   let office_attributes = collect_office_attributes(element)
-  let shape_children : Array[@xml.Element] = []
+  let shape_children : Array[VmlShapeChild] = []
   let mut complex : CT_Complex? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
       if child_element.name.local_name == "complex" {
         complex = Some(CT_Complex::new(child_element))
       } else {
-        shape_children.push(child_element)
+        shape_children.push(parse_vml_shape_child(child_element))
       }
     }
   }
@@ -389,7 +622,7 @@ pub(all) struct CT_Group {
   /// AG_OfficeCoreAttributes plus o:tableproperties / o:tablelimits.
   office_attributes : Array[@xml.Attribute]
   /// Shape choice children preserved in source order.
-  group_children : Array[@xml.Element]
+  group_children : Array[VmlGroupChild]
   raw_element : @xml.Element
 } derive(Eq, Debug)
 
@@ -419,12 +652,7 @@ pub fn CT_Group::new(element : @xml.Element) -> CT_Group raise SchemaViolation {
     None => None
   }
   let office_attributes = collect_office_attributes(element)
-  let group_children : Array[@xml.Element] = []
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      group_children.push(child_element)
-    }
-  }
+  let group_children = collect_vml_group_children(element)
   {
     id,
     style,
@@ -1205,7 +1433,8 @@ pub fn CT_Stroke::to_element(self : CT_Stroke) -> @xml.Element {
 pub(all) struct CT_Textbox {
   /// @id (AG_Id).
   id : String?
-  /// @style (AG_Style). TODO: typed style accessor.
+  /// @style (AG_Style). Use `parse_vml_style(...)` for the
+  /// typed projection per Part 4 §6.1.
   style : String?
   /// @inset — text inset offsets.
   inset : String?
@@ -1329,7 +1558,7 @@ struct VmlShapeCommon {
   filled : Bool?
   fillcolor : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
 } derive(Eq, Debug)
 
 ///|
@@ -1369,12 +1598,7 @@ fn decode_shape_common(
   }
   let fillcolor = vml_attr(element, "fillcolor")
   let office_attributes = collect_office_attributes(element)
-  let shape_children : Array[@xml.Element] = []
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      shape_children.push(child_element)
-    }
-  }
+  let shape_children = collect_vml_shape_children(element)
   {
     id,
     style,
@@ -1429,7 +1653,7 @@ pub(all) struct CT_Arc {
   /// @endAngle — sweep end (decimal token).
   end_angle : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, Debug)
 
@@ -1504,7 +1728,7 @@ pub(all) struct CT_Curve {
   /// @to — end point.
   to : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, Debug)
 
@@ -1586,7 +1810,7 @@ pub(all) struct CT_Image {
   grayscale : Bool?
   bilevel : Bool?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, Debug)
 
@@ -1679,7 +1903,7 @@ pub(all) struct CT_Line {
   /// @to — line end (`x,y`).
   to : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, Debug)
 
@@ -1746,7 +1970,7 @@ pub(all) struct CT_Oval {
   filled : Bool?
   fillcolor : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, Debug)
 
@@ -1812,7 +2036,7 @@ pub(all) struct CT_PolyLine {
   points : String?
   office_attributes : Array[@xml.Attribute]
   /// EG_ShapeElements / o:ink children.
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, Debug)
 
@@ -1879,7 +2103,7 @@ pub(all) struct CT_Rect {
   filled : Bool?
   fillcolor : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, Debug)
 
@@ -1945,7 +2169,7 @@ pub(all) struct CT_RoundRect {
   /// @arcsize — corner arc radius expressed as a fraction or pixels.
   arcsize : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, Debug)
 
@@ -3589,4 +3813,330 @@ pub fn read_vml_complex(bytes : Bytes) -> CT_Complex raise {
 ///|
 pub fn write_vml_complex(value : CT_Complex) -> Bytes {
   write_element(value.to_element())
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Top-level element parsers for the four VML XSD schemas.
+//
+// Each top-level <xsd:element name="..."> in vml-main.xsd,
+// vml-officeDrawing.xsd, vml-presentationDrawing.xsd and
+// vml-wordprocessingDrawing.xsd is exposed below as a
+// `read_<element_name>` function that parses the element bytes and
+// returns its typed complex-type representation. The names match the
+// XSD element name verbatim (camelCase preserved) so that the
+// `xsd_coverage.py` audit can detect them.
+// ──────────────────────────────────────────────────────────────────
+
+// CT_Empty / CT_Rel moved to the dedicated `vml_presentation` package
+// (vml-presentationDrawing.xsd §A.6.62/§A.6.63). CT_Border / CT_Wrap /
+// CT_AnchorLock moved to `vml_word` (vml-wordprocessingDrawing.xsd
+// §A.6.64..§A.6.66). Aliased here for the typed VmlShapeChild
+// dispatch so existing callers keep working unchanged.
+pub typealias @vml_presentation.CT_Empty as CT_Empty
+
+///|
+pub typealias @vml_presentation.CT_Rel as CT_Rel
+
+///|
+pub typealias @vml_word.CT_Border as CT_Border
+
+///|
+pub typealias @vml_word.CT_Wrap as CT_Wrap
+
+///|
+pub typealias @vml_word.CT_AnchorLock as CT_AnchorLock
+
+// ── vml-main.xsd top-level elements ────────────────────────────────
+
+///|
+/// Read top-level XSD element `v:shape` (vml-main.xsd §A.6.1).
+pub fn read_shape(bytes : Bytes) -> CT_Shape raise {
+  CT_Shape::new(read_vml_root(bytes, "shape"))
+}
+
+///|
+/// Read top-level XSD element `v:shapetype` (vml-main.xsd §A.6.2).
+pub fn read_shapetype(bytes : Bytes) -> CT_Shapetype raise {
+  CT_Shapetype::new(read_vml_root(bytes, "shapetype"))
+}
+
+///|
+/// Read top-level XSD element `v:group` (vml-main.xsd §A.6.3).
+pub fn read_group(bytes : Bytes) -> CT_Group raise {
+  CT_Group::new(read_vml_root(bytes, "group"))
+}
+
+///|
+/// Read top-level XSD element `v:background` (vml-main.xsd §A.6.4).
+pub fn read_background(bytes : Bytes) -> CT_Background raise {
+  CT_Background::new(read_vml_root(bytes, "background"))
+}
+
+///|
+/// Read top-level XSD element `v:fill` (vml-main.xsd §A.6.5). Also
+/// satisfies the `o:fill` element declared in vml-officeDrawing.xsd,
+/// which reuses CT_Fill.
+pub fn read_fill(bytes : Bytes) -> CT_Fill raise {
+  CT_Fill::new(read_vml_root(bytes, "fill"))
+}
+
+///|
+/// Read top-level XSD element `v:formulas` (vml-main.xsd §A.6.6).
+pub fn read_formulas(bytes : Bytes) -> CT_Formulas raise {
+  CT_Formulas::new(read_vml_root(bytes, "formulas"))
+}
+
+///|
+/// Read top-level XSD element `v:handles` (vml-main.xsd §A.6.8).
+pub fn read_handles(bytes : Bytes) -> CT_Handles raise {
+  CT_Handles::new(read_vml_root(bytes, "handles"))
+}
+
+///|
+/// Read top-level XSD element `v:imagedata` (vml-main.xsd §A.6.10).
+pub fn read_imagedata(bytes : Bytes) -> CT_ImageData raise {
+  CT_ImageData::new(read_vml_root(bytes, "imagedata"))
+}
+
+///|
+/// Read top-level XSD element `v:path` (vml-main.xsd §A.6.11).
+pub fn read_path(bytes : Bytes) -> CT_Path raise {
+  CT_Path::new(read_vml_root(bytes, "path"))
+}
+
+///|
+/// Read top-level XSD element `v:shadow` (vml-main.xsd §A.6.12).
+pub fn read_shadow(bytes : Bytes) -> CT_Shadow raise {
+  CT_Shadow::new(read_vml_root(bytes, "shadow"))
+}
+
+///|
+/// Read top-level XSD element `v:stroke` (vml-main.xsd §A.6.13).
+pub fn read_stroke(bytes : Bytes) -> CT_Stroke raise {
+  CT_Stroke::new(read_vml_root(bytes, "stroke"))
+}
+
+///|
+/// Read top-level XSD element `v:textbox` (vml-main.xsd §A.6.14).
+pub fn read_textbox(bytes : Bytes) -> CT_Textbox raise {
+  CT_Textbox::new(read_vml_root(bytes, "textbox"))
+}
+
+///|
+/// Read top-level XSD element `v:textpath` (vml-main.xsd §A.6.15).
+pub fn read_textpath(bytes : Bytes) -> CT_TextPath raise {
+  CT_TextPath::new(read_vml_root(bytes, "textpath"))
+}
+
+///|
+/// Read top-level XSD element `v:arc` (vml-main.xsd §A.6.16).
+pub fn read_arc(bytes : Bytes) -> CT_Arc raise {
+  CT_Arc::new(read_vml_root(bytes, "arc"))
+}
+
+///|
+/// Read top-level XSD element `v:curve` (vml-main.xsd §A.6.17).
+pub fn read_curve(bytes : Bytes) -> CT_Curve raise {
+  CT_Curve::new(read_vml_root(bytes, "curve"))
+}
+
+///|
+/// Read top-level XSD element `v:image` (vml-main.xsd §A.6.18).
+pub fn read_image(bytes : Bytes) -> CT_Image raise {
+  CT_Image::new(read_vml_root(bytes, "image"))
+}
+
+///|
+/// Read top-level XSD element `v:line` (vml-main.xsd §A.6.19).
+pub fn read_line(bytes : Bytes) -> CT_Line raise {
+  CT_Line::new(read_vml_root(bytes, "line"))
+}
+
+///|
+/// Read top-level XSD element `v:oval` (vml-main.xsd §A.6.20).
+pub fn read_oval(bytes : Bytes) -> CT_Oval raise {
+  CT_Oval::new(read_vml_root(bytes, "oval"))
+}
+
+///|
+/// Read top-level XSD element `v:polyline` (vml-main.xsd §A.6.21).
+pub fn read_polyline(bytes : Bytes) -> CT_PolyLine raise {
+  CT_PolyLine::new(read_vml_root(bytes, "polyline"))
+}
+
+///|
+/// Read top-level XSD element `v:rect` (vml-main.xsd §A.6.22).
+pub fn read_rect(bytes : Bytes) -> CT_Rect raise {
+  CT_Rect::new(read_vml_root(bytes, "rect"))
+}
+
+///|
+/// Read top-level XSD element `v:roundrect` (vml-main.xsd §A.6.23).
+pub fn read_roundrect(bytes : Bytes) -> CT_RoundRect raise {
+  CT_RoundRect::new(read_vml_root(bytes, "roundrect"))
+}
+
+// ── vml-officeDrawing.xsd top-level elements ───────────────────────
+
+///|
+/// Read top-level XSD element `o:shapedefaults` (vml-officeDrawing.xsd).
+pub fn read_shapedefaults(bytes : Bytes) -> CT_ShapeDefaults raise {
+  CT_ShapeDefaults::new(read_vml_root(bytes, "shapedefaults"))
+}
+
+///|
+/// Read top-level XSD element `o:shapelayout` (vml-officeDrawing.xsd).
+pub fn read_shapelayout(bytes : Bytes) -> CT_ShapeLayout raise {
+  CT_ShapeLayout::new(read_vml_root(bytes, "shapelayout"))
+}
+
+///|
+/// Read top-level XSD element `o:signatureline` (vml-officeDrawing.xsd).
+pub fn read_signatureline(bytes : Bytes) -> CT_SignatureLine raise {
+  CT_SignatureLine::new(read_vml_root(bytes, "signatureline"))
+}
+
+///|
+/// Read top-level XSD element `o:ink` (vml-officeDrawing.xsd).
+pub fn read_ink(bytes : Bytes) -> CT_Ink raise {
+  CT_Ink::new(read_vml_root(bytes, "ink"))
+}
+
+///|
+/// Read top-level XSD element `o:diagram` (vml-officeDrawing.xsd).
+pub fn read_diagram(bytes : Bytes) -> CT_Diagram raise {
+  CT_Diagram::new(read_vml_root(bytes, "diagram"))
+}
+
+///|
+/// Read top-level XSD element `o:equationxml` (vml-officeDrawing.xsd).
+pub fn read_equationxml(bytes : Bytes) -> CT_EquationXml raise {
+  CT_EquationXml::new(read_vml_root(bytes, "equationxml"))
+}
+
+///|
+/// Read top-level XSD element `o:skew` (vml-officeDrawing.xsd).
+pub fn read_skew(bytes : Bytes) -> CT_Skew raise {
+  CT_Skew::new(read_vml_root(bytes, "skew"))
+}
+
+///|
+/// Read top-level XSD element `o:extrusion` (vml-officeDrawing.xsd).
+pub fn read_extrusion(bytes : Bytes) -> CT_Extrusion raise {
+  CT_Extrusion::new(read_vml_root(bytes, "extrusion"))
+}
+
+///|
+/// Read top-level XSD element `o:callout` (vml-officeDrawing.xsd).
+pub fn read_callout(bytes : Bytes) -> CT_Callout raise {
+  CT_Callout::new(read_vml_root(bytes, "callout"))
+}
+
+///|
+/// Read top-level XSD element `o:lock` (vml-officeDrawing.xsd).
+pub fn read_lock(bytes : Bytes) -> CT_Lock raise {
+  CT_Lock::new(read_vml_root(bytes, "lock"))
+}
+
+///|
+/// Read top-level XSD element `o:OLEObject` (vml-officeDrawing.xsd).
+pub fn read_OLEObject(bytes : Bytes) -> CT_OLEObject raise {
+  CT_OLEObject::new(read_vml_root(bytes, "OLEObject"))
+}
+
+///|
+/// Read top-level XSD element `o:complex` (vml-officeDrawing.xsd).
+pub fn read_complex(bytes : Bytes) -> CT_Complex raise {
+  CT_Complex::new(read_vml_root(bytes, "complex"))
+}
+
+///|
+/// Read top-level XSD element `o:left` (vml-officeDrawing.xsd). CT_StrokeChild.
+pub fn read_left(bytes : Bytes) -> CT_StrokeChild raise {
+  CT_StrokeChild::new(read_vml_root(bytes, "left"))
+}
+
+///|
+/// Read top-level XSD element `o:top` (vml-officeDrawing.xsd). CT_StrokeChild.
+pub fn read_top(bytes : Bytes) -> CT_StrokeChild raise {
+  CT_StrokeChild::new(read_vml_root(bytes, "top"))
+}
+
+///|
+/// Read top-level XSD element `o:right` (vml-officeDrawing.xsd). CT_StrokeChild.
+pub fn read_right(bytes : Bytes) -> CT_StrokeChild raise {
+  CT_StrokeChild::new(read_vml_root(bytes, "right"))
+}
+
+///|
+/// Read top-level XSD element `o:bottom` (vml-officeDrawing.xsd). CT_StrokeChild.
+pub fn read_bottom(bytes : Bytes) -> CT_StrokeChild raise {
+  CT_StrokeChild::new(read_vml_root(bytes, "bottom"))
+}
+
+///|
+/// Read top-level XSD element `o:column` (vml-officeDrawing.xsd). CT_StrokeChild.
+pub fn read_column(bytes : Bytes) -> CT_StrokeChild raise {
+  CT_StrokeChild::new(read_vml_root(bytes, "column"))
+}
+
+///|
+/// Read top-level XSD element `o:clippath` (vml-officeDrawing.xsd).
+pub fn read_clippath(bytes : Bytes) -> CT_ClipPath raise {
+  CT_ClipPath::new(read_vml_root(bytes, "clippath"))
+}
+
+// ── vml-presentationDrawing.xsd top-level elements ─────────────────
+
+///|
+/// Read top-level XSD element `pvml:iscomment` (vml-presentationDrawing.xsd).
+/// Empty sentinel element (CT_Empty).
+pub fn read_iscomment(bytes : Bytes) -> CT_Empty raise {
+  CT_Empty::new(read_vml_root(bytes, "iscomment"))
+}
+
+///|
+/// Read top-level XSD element `pvml:textdata` (vml-presentationDrawing.xsd).
+/// Relationship reference (CT_Rel).
+pub fn read_textdata(bytes : Bytes) -> CT_Rel raise {
+  CT_Rel::new(read_vml_root(bytes, "textdata"))
+}
+
+// ── vml-wordprocessingDrawing.xsd top-level elements ───────────────
+
+///|
+/// Read top-level XSD element `w10:bordertop` (vml-wordprocessingDrawing.xsd).
+pub fn read_bordertop(bytes : Bytes) -> CT_Border raise {
+  CT_Border::new(read_vml_root(bytes, "bordertop"))
+}
+
+///|
+/// Read top-level XSD element `w10:borderleft` (vml-wordprocessingDrawing.xsd).
+pub fn read_borderleft(bytes : Bytes) -> CT_Border raise {
+  CT_Border::new(read_vml_root(bytes, "borderleft"))
+}
+
+///|
+/// Read top-level XSD element `w10:borderright` (vml-wordprocessingDrawing.xsd).
+pub fn read_borderright(bytes : Bytes) -> CT_Border raise {
+  CT_Border::new(read_vml_root(bytes, "borderright"))
+}
+
+///|
+/// Read top-level XSD element `w10:borderbottom` (vml-wordprocessingDrawing.xsd).
+pub fn read_borderbottom(bytes : Bytes) -> CT_Border raise {
+  CT_Border::new(read_vml_root(bytes, "borderbottom"))
+}
+
+///|
+/// Read top-level XSD element `w10:wrap` (vml-wordprocessingDrawing.xsd).
+pub fn read_wrap(bytes : Bytes) -> CT_Wrap raise {
+  CT_Wrap::new(read_vml_root(bytes, "wrap"))
+}
+
+///|
+/// Read top-level XSD element `w10:anchorlock` (vml-wordprocessingDrawing.xsd).
+/// Empty marker element (CT_AnchorLock).
+pub fn read_anchorlock(bytes : Bytes) -> CT_AnchorLock raise {
+  CT_AnchorLock::new(read_vml_root(bytes, "anchorlock"))
 }

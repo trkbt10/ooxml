@@ -116,3 +116,52 @@ test "public E3 and E4 errors carry content-types context" {
 fn b(source : String) -> Bytes {
   @utf8.encode(source[:])
 }
+
+///|
+/// Part 2 §10.1.2.2.1 — the CT_Default extension comparison is
+/// case-insensitive ASCII.  A part `image.JPEG` must resolve
+/// against `<Default Extension="jpeg">`.
+test "default extension match is case-insensitive" {
+  let types = try! CT_Types::new([
+    Default(
+      CT_Default::new(
+        try! Extension::parse("jpeg"),
+        try! ContentType::parse("image/jpeg"),
+      ),
+    ),
+  ])
+  // Part name with an uppercase extension.
+  let part = try! PartName::__from_trusted("/word/media/photo.JPEG")
+  let actual = match types.content_type_for_part(part) {
+    Some(t) => t.to_string()
+    None => ""
+  }
+  assert_eq(actual, "image/jpeg")
+}
+
+///|
+/// Part 2 §10.1.2.2.2 — the CT_Override PartName comparison is
+/// case-insensitive ASCII.
+test "override partName match is case-insensitive" {
+  let override_part = try! PartName::__from_trusted("/word/document.xml")
+  let types = try! CT_Types::new([
+    Override(
+      CT_Override::new(
+        override_part,
+        try! ContentType::parse(
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+        ),
+      ),
+    ),
+  ])
+  // Look up with a different-cased part name.
+  let lookup = try! PartName::__from_trusted("/Word/Document.XML")
+  let actual = match types.content_type_for_part(lookup) {
+    Some(t) => t.to_string()
+    None => ""
+  }
+  assert_eq(
+    actual,
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+  )
+}

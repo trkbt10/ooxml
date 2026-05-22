@@ -5,6 +5,16 @@
 /// `OpEndsWith` cellIs operators. Returns true when `needle` appears at
 /// or after position 0 in `haystack` after both are upper-cased; mirrors
 /// the SEARCH() reference in §18.18.12 ContainsText.
+///
+/// Case-folding policy: §22.5 ST_Xstring is encoded as UTF-8 but
+/// the spec does not pin a normative case-folding table.  We use
+/// MoonBit's `to_upper()` which performs ASCII-range conversion
+/// (A-Z ↔ a-z) only — Turkish dotless-i, German ß, and other
+/// locale-specific case pairs are NOT folded.  This matches
+/// Excel's own case-insensitive search behaviour for cells whose
+/// content stays in the BMP ASCII range; consumers needing
+/// locale-aware folding should pre-normalise the cell text
+/// upstream.
 fn contains_ci(haystack : String, needle : String) -> Bool {
   if needle.length() == 0 {
     return true
@@ -67,6 +77,7 @@ fn ends_with_ci(haystack : String, needle : String) -> Bool {
 /// `LEN(TRIM(value)) = 0`. An empty cell is blank; a cell whose value is
 /// only whitespace is blank.
 fn is_blank_value(value : @formula.FormulaValue) -> Bool {
+  // §18.17.2 FormulaValue — 6 variants total.
   match value {
     @formula.VEmpty => true
     @formula.VString(text) => {
@@ -78,7 +89,10 @@ fn is_blank_value(value : @formula.FormulaValue) -> Bool {
       }
       true
     }
-    _ => false
+    @formula.VNumber(_) => false
+    @formula.VBool(_) => false
+    @formula.VError(_) => false
+    @formula.VArray(_) => false
   }
 }
 
@@ -86,9 +100,15 @@ fn is_blank_value(value : @formula.FormulaValue) -> Bool {
 /// Part 1 §18.18.12 — `containsErrors` / `notContainsErrors`. Matches
 /// the seven canonical error literals carried by `VError`.
 fn is_error_value(value : @formula.FormulaValue) -> Bool {
+  // §18.17.2 — 6 FormulaValue variants.  Only VError is a true
+  // error literal; the rest are numeric / textual / array data.
   match value {
     @formula.VError(_) => true
-    _ => false
+    @formula.VNumber(_) => false
+    @formula.VString(_) => false
+    @formula.VBool(_) => false
+    @formula.VEmpty => false
+    @formula.VArray(_) => false
   }
 }
 
@@ -194,6 +214,13 @@ fn compare_with_operator(
   op : @domain.ST_ConditionalFormattingOperator,
   rhs : @formula.FormulaValue,
 ) -> Bool {
+  // §18.18.15 ST_ConditionalFormattingOperator — closed-12.
+  // The text predicates (OpContainsText, OpNotContains,
+  // OpBeginsWith, OpEndsWith) and the range predicates
+  // (OpBetween, OpNotBetween) are dispatched upstream by
+  // `cellis_match`; they reach this function only when
+  // schema-violating callers route them here, in which case
+  // returning false is the spec-permitted "no match" result.
   match op {
     @domain.OpEqual => equals_loose(cell, rhs)
     @domain.OpNotEqual => !equals_loose(cell, rhs)
@@ -202,7 +229,16 @@ fn compare_with_operator(
       greater_than(cell, rhs) || equals_loose(cell, rhs)
     @domain.OpLessThan => less_than(cell, rhs)
     @domain.OpLessThanOrEqual => less_than(cell, rhs) || equals_loose(cell, rhs)
-    _ => false
+    // The remaining 6 operators are not numeric comparisons —
+    // they belong to the text / between dispatchers and should
+    // not arrive here.  Return false to keep the predicate
+    // safe rather than invent a numeric semantic.
+    @domain.OpBetween => false
+    @domain.OpNotBetween => false
+    @domain.OpContainsText => false
+    @domain.OpNotContains => false
+    @domain.OpBeginsWith => false
+    @domain.OpEndsWith => false
   }
 }
 

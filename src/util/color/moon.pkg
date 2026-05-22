@@ -1,0 +1,8 @@
+// trkbt10/ooxml/util/color
+//
+// Color conversion (RGB ↔ HSL ↔ hex) and DrawingML color
+// transformations (shade / tint / lumMod / lumOff / hueMod / satMod).
+//
+// Faithful MoonBit port of web-pptx's @aurochs/color package.
+// Reference: /Users/terukichi/Workspaces/trkbt10/web-pptx/packages/
+//   @aurochs/color/src/*

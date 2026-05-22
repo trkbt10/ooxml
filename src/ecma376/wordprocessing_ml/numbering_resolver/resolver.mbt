@@ -59,18 +59,44 @@ pub fn resolve_level(
     Some(value) => value
     None => return None
   }
-  match abs.num_style_link {
-    Some(style_id) =>
-      match find_abstract_by_style_link(table, style_id) {
-        Some(linked) =>
-          match find_lvl(linked.lvls, ilvl) {
-            Some(lvl) => Some({ lvl, origin: SourceLinkedAbstract })
-            None => None
+  // §17.9.21 numStyleLink — the spec permits chains of
+  // `numStyleLink` references (style A → abstract X →
+  // numStyleLink → style B → abstract Y → …).  Walk the chain
+  // iteratively, terminating when we reach an abstract that
+  // carries a concrete lvl for the requested `ilvl` (or runs
+  // out of numStyleLink links).  Cycle detection: keep a set
+  // of visited abstractNumId values and stop if we revisit one
+  // — pathological numbering parts with mutual style links
+  // would otherwise loop forever.  §17.9.15 `lvlOverride`s on
+  // the referring num still apply via the early-return at the
+  // top of `find_lvl` above; we explicitly re-apply nothing in
+  // the linked path because lvlOverrides are gated by the
+  // original num's id, not the linked abstract.
+  let visited : Map[Int, Unit] = Map::new()
+  visited.set(abs.abstract_num_id, ())
+  let mut cursor = abs
+  while true {
+    match cursor.num_style_link {
+      None => return None
+      Some(style_id) =>
+        match find_abstract_by_style_link(table, style_id) {
+          None => return None
+          Some(linked) => {
+            if visited.contains(linked.abstract_num_id) {
+              // Cycle — give up.
+              return None
+            }
+            visited.set(linked.abstract_num_id, ())
+            match find_lvl(linked.lvls, ilvl) {
+              Some(lvl) => return Some({ lvl, origin: SourceLinkedAbstract })
+              None => cursor = linked
+            }
           }
-        None => None
-      }
-    None => None
+        }
+    }
   }
+  // Unreachable, but the compiler insists on a tail expression.
+  None
 }
 
 ///|

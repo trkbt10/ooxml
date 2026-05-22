@@ -1192,7 +1192,11 @@ pub fn ST_TextHorzOverflowType::to_string(
 }
 
 ///|
-/// XSD simple type ST_TextVerticalType — Part 1 §20.1.10.83.
+/// Schema dml-main.xsd simple type `ST_TextVerticalType` — Part 1
+/// §20.1.10.83.  Base: `xsd:token`.  Enumeration values: `horz`,
+/// `vert`, `vert270`, `wordArtVert`, `eaVert`, `mongolianVert`,
+/// `wordArtVertRtl`.  Controls the vertical flow direction of a
+/// `<a:bodyPr>` text block (§21.1.2.1.39).
 pub(all) enum ST_TextVerticalType {
   /// §20.1.10.83 "horz"
   TextHorz
@@ -3953,6 +3957,1255 @@ pub fn ST_StyleMatrixColumnIndex::to_uint(
   self.idx
 }
 
+///|
+/// Schema dml-main.xsd simple type `ST_PercentageDecimal` — §A.4.1
+/// transitional alias of xsd:int storing a percent value in 1000ths of a
+/// percent (the same encoding ST_Percentage's decimal branch produces).
+/// The constructor accepts the raw signed-integer lexical form; callers
+/// that need to round-trip the percent symbol go through ST_Percentage.
+pub struct ST_PercentageDecimal {
+  thousandths : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PercentageDecimal::parse(
+  s : String,
+) -> ST_PercentageDecimal raise SchemaViolation {
+  let value = parse_int_or_violate("ST_PercentageDecimal", s)
+  { thousandths: value }
+}
+
+///|
+pub fn ST_PercentageDecimal::new(
+  s : String,
+) -> ST_PercentageDecimal raise SchemaViolation {
+  ST_PercentageDecimal::parse(s)
+}
+
+///|
+pub fn ST_PercentageDecimal::to_string(self : ST_PercentageDecimal) -> String {
+  self.thousandths.to_string()
+}
+
+///|
+pub fn ST_PercentageDecimal::thousandths_of_percent(
+  self : ST_PercentageDecimal,
+) -> Int {
+  self.thousandths
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_FixedPercentageDecimal` — §A.4.1
+/// restriction of ST_PercentageDecimal to [-100000, 100000], i.e.
+/// ±100% expressed in 1000ths of a percent.
+pub struct ST_FixedPercentageDecimal {
+  thousandths : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_FixedPercentageDecimal::parse(
+  s : String,
+) -> ST_FixedPercentageDecimal raise SchemaViolation {
+  let value = parse_int_or_violate("ST_FixedPercentageDecimal", s)
+  if value < -100000 || value > 100000 {
+    measure_violation("ST_FixedPercentageDecimal")
+  }
+  { thousandths: value }
+}
+
+///|
+pub fn ST_FixedPercentageDecimal::new(
+  s : String,
+) -> ST_FixedPercentageDecimal raise SchemaViolation {
+  ST_FixedPercentageDecimal::parse(s)
+}
+
+///|
+pub fn ST_FixedPercentageDecimal::to_string(
+  self : ST_FixedPercentageDecimal,
+) -> String {
+  self.thousandths.to_string()
+}
+
+///|
+pub fn ST_FixedPercentageDecimal::thousandths_of_percent(
+  self : ST_FixedPercentageDecimal,
+) -> Int {
+  self.thousandths
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_PositivePercentageDecimal` —
+/// §A.4.1 restriction of ST_PercentageDecimal to values ≥ 0.
+pub struct ST_PositivePercentageDecimal {
+  thousandths : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PositivePercentageDecimal::parse(
+  s : String,
+) -> ST_PositivePercentageDecimal raise SchemaViolation {
+  let value = parse_int_or_violate("ST_PositivePercentageDecimal", s)
+  if value < 0 {
+    measure_violation("ST_PositivePercentageDecimal")
+  }
+  { thousandths: value }
+}
+
+///|
+pub fn ST_PositivePercentageDecimal::new(
+  s : String,
+) -> ST_PositivePercentageDecimal raise SchemaViolation {
+  ST_PositivePercentageDecimal::parse(s)
+}
+
+///|
+pub fn ST_PositivePercentageDecimal::to_string(
+  self : ST_PositivePercentageDecimal,
+) -> String {
+  self.thousandths.to_string()
+}
+
+///|
+pub fn ST_PositivePercentageDecimal::thousandths_of_percent(
+  self : ST_PositivePercentageDecimal,
+) -> Int {
+  self.thousandths
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_PositiveFixedPercentageDecimal` —
+/// §A.4.1 restriction of ST_PercentageDecimal to [0, 100000].
+pub struct ST_PositiveFixedPercentageDecimal {
+  thousandths : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PositiveFixedPercentageDecimal::parse(
+  s : String,
+) -> ST_PositiveFixedPercentageDecimal raise SchemaViolation {
+  let value = parse_int_or_violate("ST_PositiveFixedPercentageDecimal", s)
+  if value < 0 || value > 100000 {
+    measure_violation("ST_PositiveFixedPercentageDecimal")
+  }
+  { thousandths: value }
+}
+
+///|
+pub fn ST_PositiveFixedPercentageDecimal::new(
+  s : String,
+) -> ST_PositiveFixedPercentageDecimal raise SchemaViolation {
+  ST_PositiveFixedPercentageDecimal::parse(s)
+}
+
+///|
+pub fn ST_PositiveFixedPercentageDecimal::to_string(
+  self : ST_PositiveFixedPercentageDecimal,
+) -> String {
+  self.thousandths.to_string()
+}
+
+///|
+pub fn ST_PositiveFixedPercentageDecimal::thousandths_of_percent(
+  self : ST_PositiveFixedPercentageDecimal,
+) -> Int {
+  self.thousandths
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_DrawingElementId` — §20.1.10.22.
+/// Restriction of xsd:unsignedInt with no further range constraint;
+/// stored as UInt to cover the full 0..2^32 − 1 lexical space.
+pub struct ST_DrawingElementId {
+  value : UInt
+} derive(Eq, Debug)
+
+///|
+pub fn ST_DrawingElementId::parse(
+  s : String,
+) -> ST_DrawingElementId raise SchemaViolation {
+  if !all_digits(s) {
+    raise SchemaViolation(
+      schema="dml-main.xsd",
+      path="ST_DrawingElementId",
+      reason="invalid xsd:unsignedInt lexical form",
+    )
+  }
+  // xsd:unsignedInt fits in 32 bits; bound-check via Int64 then narrow.
+  let value64 = parse_int64_lexical(s)
+  if value64 < 0L || value64 > 4294967295L {
+    raise SchemaViolation(
+      schema="dml-main.xsd",
+      path="ST_DrawingElementId",
+      reason="value exceeds xsd:unsignedInt range",
+    )
+  }
+  { value: value64.to_int().reinterpret_as_uint() }
+}
+
+///|
+pub fn ST_DrawingElementId::new(
+  s : String,
+) -> ST_DrawingElementId raise SchemaViolation {
+  ST_DrawingElementId::parse(s)
+}
+
+///|
+pub fn ST_DrawingElementId::to_string(self : ST_DrawingElementId) -> String {
+  self.value.to_uint64().to_string()
+}
+
+///|
+pub fn ST_DrawingElementId::to_uint(self : ST_DrawingElementId) -> UInt {
+  self.value
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_GeomGuideName` — §20.1.10.27.
+/// Restriction of xsd:token (whitespace-collapsed) carrying the name of
+/// a custom-geometry adjust-value or guide formula.
+pub struct ST_GeomGuideName {
+  lexical : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_GeomGuideName::parse(
+  s : String,
+) -> ST_GeomGuideName raise SchemaViolation {
+  // xsd:token does not allow leading/trailing whitespace or interior
+  // tab/CR/LF runs; the schema places no further restriction.
+  if !is_xsd_token(s) {
+    raise SchemaViolation(
+      schema="dml-main.xsd",
+      path="ST_GeomGuideName",
+      reason="invalid xsd:token lexical form",
+    )
+  }
+  { lexical: s }
+}
+
+///|
+pub fn ST_GeomGuideName::new(
+  s : String,
+) -> ST_GeomGuideName raise SchemaViolation {
+  ST_GeomGuideName::parse(s)
+}
+
+///|
+pub fn ST_GeomGuideName::to_string(self : ST_GeomGuideName) -> String {
+  self.lexical
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_GeomGuideFormula` — §20.1.10.26.
+/// Restriction of xsd:string carrying a custom-geometry guide formula
+/// such as `"*/ 100 w 200"`. The lexical form is preserved verbatim so
+/// callers can hand it straight to the formula evaluator.
+pub struct ST_GeomGuideFormula {
+  lexical : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_GeomGuideFormula::new(s : String) -> ST_GeomGuideFormula {
+  { lexical: s }
+}
+
+///|
+pub fn ST_GeomGuideFormula::parse(s : String) -> ST_GeomGuideFormula {
+  // No xsd-level constraint beyond xsd:string; producers may emit any
+  // formula text including embedded spaces.
+  { lexical: s }
+}
+
+///|
+pub fn ST_GeomGuideFormula::to_string(self : ST_GeomGuideFormula) -> String {
+  self.lexical
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_AdjCoordinate` — §20.1.10.1.
+/// Union of `ST_Coordinate` (EMU long or universal-measure) and
+/// `ST_GeomGuideName` (guide-formula reference). Stored as a tagged
+/// branch so neither lexical form is lost on round-trip.
+pub(all) enum ST_AdjCoordinate {
+  /// §20.1.10.1 coordinate branch (EMU long or universal-measure).
+  AdjCoord(ST_Coordinate)
+  /// §20.1.10.1 named-guide branch.
+  AdjGuide(ST_GeomGuideName)
+} derive(Eq, Debug)
+
+///|
+pub fn ST_AdjCoordinate::parse(
+  s : String,
+) -> ST_AdjCoordinate raise SchemaViolation {
+  // The numeric coordinate branch always starts with a digit, sign, or
+  // a universal-measure decimal; everything else must be a guide name.
+  if looks_like_signed_number(s) || is_universal_measure(s) {
+    AdjCoord(ST_Coordinate::parse(s))
+  } else {
+    AdjGuide(ST_GeomGuideName::parse(s))
+  }
+}
+
+///|
+pub fn ST_AdjCoordinate::new(
+  s : String,
+) -> ST_AdjCoordinate raise SchemaViolation {
+  ST_AdjCoordinate::parse(s)
+}
+
+///|
+pub fn ST_AdjCoordinate::to_string(self : ST_AdjCoordinate) -> String {
+  match self {
+    AdjCoord(value) => value.to_string()
+    AdjGuide(value) => value.to_string()
+  }
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_AdjAngle` — §20.1.10.1.
+/// Union of `ST_Angle` (60 000ths-of-degree int) and `ST_GeomGuideName`
+/// (guide-formula reference).
+pub(all) enum ST_AdjAngle {
+  /// §20.1.10.1 angle branch (60 000ths of a degree).
+  AdjAngleValue(ST_Angle)
+  /// §20.1.10.1 named-guide branch.
+  AdjAngleGuide(ST_GeomGuideName)
+} derive(Eq, Debug)
+
+///|
+pub fn ST_AdjAngle::parse(s : String) -> ST_AdjAngle raise SchemaViolation {
+  if looks_like_signed_number(s) {
+    AdjAngleValue(ST_Angle::parse(s))
+  } else {
+    AdjAngleGuide(ST_GeomGuideName::parse(s))
+  }
+}
+
+///|
+pub fn ST_AdjAngle::new(s : String) -> ST_AdjAngle raise SchemaViolation {
+  ST_AdjAngle::parse(s)
+}
+
+///|
+pub fn ST_AdjAngle::to_string(self : ST_AdjAngle) -> String {
+  match self {
+    AdjAngleValue(value) => value.to_string()
+    AdjAngleGuide(value) => value.to_string()
+  }
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_AnimationBuildType` — §20.1.10.4.
+/// Restriction of xsd:token. Enumeration values: `allAtOnce`.
+pub(all) enum ST_AnimationBuildType {
+  /// Build the entire object in a single animation step.
+  AnimBuildAllAtOnce
+} derive(Eq, Debug)
+
+///|
+pub fn ST_AnimationBuildType::parse(
+  s : String,
+) -> ST_AnimationBuildType raise SchemaViolation {
+  match s {
+    "allAtOnce" => AnimBuildAllAtOnce
+    _ => enum_violation("ST_AnimationBuildType")
+  }
+}
+
+///|
+pub fn ST_AnimationBuildType::new(
+  s : String,
+) -> ST_AnimationBuildType raise SchemaViolation {
+  ST_AnimationBuildType::parse(s)
+}
+
+///|
+pub fn ST_AnimationBuildType::to_string(self : ST_AnimationBuildType) -> String {
+  match self {
+    AnimBuildAllAtOnce => "allAtOnce"
+  }
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_AnimationChartOnlyBuildType` —
+/// §20.1.10.6. Restriction of xsd:token. Enumeration values: `series`,
+/// `category`, `seriesEl`, `categoryEl`.
+pub(all) enum ST_AnimationChartOnlyBuildType {
+  /// Build by series — each series animates as a unit.
+  AnimChartSeries
+  /// Build by category — each category animates as a unit.
+  AnimChartCategory
+  /// Build by series element — each series element animates separately.
+  AnimChartSeriesEl
+  /// Build by category element — each category element animates separately.
+  AnimChartCategoryEl
+} derive(Eq, Debug)
+
+///|
+pub fn ST_AnimationChartOnlyBuildType::parse(
+  s : String,
+) -> ST_AnimationChartOnlyBuildType raise SchemaViolation {
+  match s {
+    "series" => AnimChartSeries
+    "category" => AnimChartCategory
+    "seriesEl" => AnimChartSeriesEl
+    "categoryEl" => AnimChartCategoryEl
+    _ => enum_violation("ST_AnimationChartOnlyBuildType")
+  }
+}
+
+///|
+pub fn ST_AnimationChartOnlyBuildType::new(
+  s : String,
+) -> ST_AnimationChartOnlyBuildType raise SchemaViolation {
+  ST_AnimationChartOnlyBuildType::parse(s)
+}
+
+///|
+pub fn ST_AnimationChartOnlyBuildType::to_string(
+  self : ST_AnimationChartOnlyBuildType,
+) -> String {
+  match self {
+    AnimChartSeries => "series"
+    AnimChartCategory => "category"
+    AnimChartSeriesEl => "seriesEl"
+    AnimChartCategoryEl => "categoryEl"
+  }
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_AnimationDgmOnlyBuildType` —
+/// §20.1.10.8. Restriction of xsd:token. Enumeration values: `one`,
+/// `lvlOne`, `lvlAtOnce`.
+pub(all) enum ST_AnimationDgmOnlyBuildType {
+  /// Build one shape at a time.
+  AnimDgmOne
+  /// Build one level at a time, one shape per step.
+  AnimDgmLvlOne
+  /// Build one level at a time, all shapes in a level together.
+  AnimDgmLvlAtOnce
+} derive(Eq, Debug)
+
+///|
+pub fn ST_AnimationDgmOnlyBuildType::parse(
+  s : String,
+) -> ST_AnimationDgmOnlyBuildType raise SchemaViolation {
+  match s {
+    "one" => AnimDgmOne
+    "lvlOne" => AnimDgmLvlOne
+    "lvlAtOnce" => AnimDgmLvlAtOnce
+    _ => enum_violation("ST_AnimationDgmOnlyBuildType")
+  }
+}
+
+///|
+pub fn ST_AnimationDgmOnlyBuildType::new(
+  s : String,
+) -> ST_AnimationDgmOnlyBuildType raise SchemaViolation {
+  ST_AnimationDgmOnlyBuildType::parse(s)
+}
+
+///|
+pub fn ST_AnimationDgmOnlyBuildType::to_string(
+  self : ST_AnimationDgmOnlyBuildType,
+) -> String {
+  match self {
+    AnimDgmOne => "one"
+    AnimDgmLvlOne => "lvlOne"
+    AnimDgmLvlAtOnce => "lvlAtOnce"
+  }
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_PathFillMode` — §20.1.10.36.
+/// Restriction of xsd:token. Enumeration values: `none`, `norm`,
+/// `lighten`, `lightenLess`, `darken`, `darkenLess`.
+pub(all) enum ST_PathFillMode {
+  /// No fill applied to the geometry path.
+  PathFillNone
+  /// Fill the path with its parent's nominal fill (no tint).
+  PathFillNorm
+  /// Lighten the parent's fill before painting the path.
+  PathFillLighten
+  /// Lighten the parent's fill by a smaller amount than `lighten`.
+  PathFillLightenLess
+  /// Darken the parent's fill before painting the path.
+  PathFillDarken
+  /// Darken the parent's fill by a smaller amount than `darken`.
+  PathFillDarkenLess
+} derive(Eq, Debug)
+
+///|
+pub fn ST_PathFillMode::parse(
+  s : String,
+) -> ST_PathFillMode raise SchemaViolation {
+  match s {
+    "none" => PathFillNone
+    "norm" => PathFillNorm
+    "lighten" => PathFillLighten
+    "lightenLess" => PathFillLightenLess
+    "darken" => PathFillDarken
+    "darkenLess" => PathFillDarkenLess
+    _ => enum_violation("ST_PathFillMode")
+  }
+}
+
+///|
+pub fn ST_PathFillMode::new(
+  s : String,
+) -> ST_PathFillMode raise SchemaViolation {
+  ST_PathFillMode::parse(s)
+}
+
+///|
+pub fn ST_PathFillMode::to_string(self : ST_PathFillMode) -> String {
+  match self {
+    PathFillNone => "none"
+    PathFillNorm => "norm"
+    PathFillLighten => "lighten"
+    PathFillLightenLess => "lightenLess"
+    PathFillDarken => "darken"
+    PathFillDarkenLess => "darkenLess"
+  }
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_ShapeID` — §20.1.10.55.
+/// Restriction of xsd:token carrying a producer-assigned VML shape
+/// identifier used by Word's drawing legacy. The lexical form is
+/// preserved verbatim.
+pub struct ST_ShapeID {
+  lexical : String
+} derive(Eq, Debug)
+
+///|
+pub fn ST_ShapeID::parse(s : String) -> ST_ShapeID raise SchemaViolation {
+  if !is_xsd_token(s) {
+    raise SchemaViolation(
+      schema="dml-main.xsd",
+      path="ST_ShapeID",
+      reason="invalid xsd:token lexical form",
+    )
+  }
+  { lexical: s }
+}
+
+///|
+pub fn ST_ShapeID::new(s : String) -> ST_ShapeID raise SchemaViolation {
+  ST_ShapeID::parse(s)
+}
+
+///|
+pub fn ST_ShapeID::to_string(self : ST_ShapeID) -> String {
+  self.lexical
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_TextBulletSizeDecimal` — §A.4.1
+/// transitional restriction of ST_PercentageDecimal to [25000, 400000],
+/// i.e. 25% to 400% in 1000ths of a percent.
+pub struct ST_TextBulletSizeDecimal {
+  thousandths : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TextBulletSizeDecimal::parse(
+  s : String,
+) -> ST_TextBulletSizeDecimal raise SchemaViolation {
+  let value = parse_int_or_violate("ST_TextBulletSizeDecimal", s)
+  if value < 25000 || value > 400000 {
+    measure_violation("ST_TextBulletSizeDecimal")
+  }
+  { thousandths: value }
+}
+
+///|
+pub fn ST_TextBulletSizeDecimal::new(
+  s : String,
+) -> ST_TextBulletSizeDecimal raise SchemaViolation {
+  ST_TextBulletSizeDecimal::parse(s)
+}
+
+///|
+pub fn ST_TextBulletSizeDecimal::to_string(
+  self : ST_TextBulletSizeDecimal,
+) -> String {
+  self.thousandths.to_string()
+}
+
+///|
+pub fn ST_TextBulletSizeDecimal::thousandths_of_percent(
+  self : ST_TextBulletSizeDecimal,
+) -> Int {
+  self.thousandths
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_TextFontScalePercent` — §A.4.1
+/// transitional restriction of ST_PercentageDecimal to [1000, 100000],
+/// i.e. 1% to 100% in 1000ths of a percent (normAutofit @fontScale).
+pub struct ST_TextFontScalePercent {
+  thousandths : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TextFontScalePercent::parse(
+  s : String,
+) -> ST_TextFontScalePercent raise SchemaViolation {
+  let value = parse_int_or_violate("ST_TextFontScalePercent", s)
+  if value < 1000 || value > 100000 {
+    measure_violation("ST_TextFontScalePercent")
+  }
+  { thousandths: value }
+}
+
+///|
+pub fn ST_TextFontScalePercent::new(
+  s : String,
+) -> ST_TextFontScalePercent raise SchemaViolation {
+  ST_TextFontScalePercent::parse(s)
+}
+
+///|
+pub fn ST_TextFontScalePercent::to_string(
+  self : ST_TextFontScalePercent,
+) -> String {
+  self.thousandths.to_string()
+}
+
+///|
+pub fn ST_TextFontScalePercent::thousandths_of_percent(
+  self : ST_TextFontScalePercent,
+) -> Int {
+  self.thousandths
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_TextSpacingPercent` — §A.4.1
+/// transitional restriction of ST_PercentageDecimal to [0, 13200000],
+/// i.e. 0% to 13200% in 1000ths of a percent.
+pub struct ST_TextSpacingPercent {
+  thousandths : Int
+} derive(Eq, Debug)
+
+///|
+pub fn ST_TextSpacingPercent::parse(
+  s : String,
+) -> ST_TextSpacingPercent raise SchemaViolation {
+  let value = parse_int_or_violate("ST_TextSpacingPercent", s)
+  if value < 0 || value > 13200000 {
+    measure_violation("ST_TextSpacingPercent")
+  }
+  { thousandths: value }
+}
+
+///|
+pub fn ST_TextSpacingPercent::new(
+  s : String,
+) -> ST_TextSpacingPercent raise SchemaViolation {
+  ST_TextSpacingPercent::parse(s)
+}
+
+///|
+pub fn ST_TextSpacingPercent::to_string(self : ST_TextSpacingPercent) -> String {
+  self.thousandths.to_string()
+}
+
+///|
+pub fn ST_TextSpacingPercent::thousandths_of_percent(
+  self : ST_TextSpacingPercent,
+) -> Int {
+  self.thousandths
+}
+
+///|
+/// Schema dml-main.xsd simple type `ST_ShapeType` — §20.1.10.56.
+/// Restriction of xsd:token to the 187 named preset-shape geometries
+/// (rectangles, arrows, callouts, flowchart, action buttons, math, …).
+/// Stored as an enum so consumers branch on the spec member directly.
+pub(all) enum ST_ShapeType {
+  ShapeLine
+  ShapeLineInv
+  ShapeTriangle
+  ShapeRtTriangle
+  ShapeRect
+  ShapeDiamond
+  ShapeParallelogram
+  ShapeTrapezoid
+  ShapeNonIsoscelesTrapezoid
+  ShapePentagon
+  ShapeHexagon
+  ShapeHeptagon
+  ShapeOctagon
+  ShapeDecagon
+  ShapeDodecagon
+  ShapeStar4
+  ShapeStar5
+  ShapeStar6
+  ShapeStar7
+  ShapeStar8
+  ShapeStar10
+  ShapeStar12
+  ShapeStar16
+  ShapeStar24
+  ShapeStar32
+  ShapeRoundRect
+  ShapeRound1Rect
+  ShapeRound2SameRect
+  ShapeRound2DiagRect
+  ShapeSnipRoundRect
+  ShapeSnip1Rect
+  ShapeSnip2SameRect
+  ShapeSnip2DiagRect
+  ShapePlaque
+  ShapeEllipse
+  ShapeTeardrop
+  ShapeHomePlate
+  ShapeChevron
+  ShapePieWedge
+  ShapePie
+  ShapeBlockArc
+  ShapeDonut
+  ShapeNoSmoking
+  ShapeRightArrow
+  ShapeLeftArrow
+  ShapeUpArrow
+  ShapeDownArrow
+  ShapeStripedRightArrow
+  ShapeNotchedRightArrow
+  ShapeBentUpArrow
+  ShapeLeftRightArrow
+  ShapeUpDownArrow
+  ShapeLeftUpArrow
+  ShapeLeftRightUpArrow
+  ShapeQuadArrow
+  ShapeLeftArrowCallout
+  ShapeRightArrowCallout
+  ShapeUpArrowCallout
+  ShapeDownArrowCallout
+  ShapeLeftRightArrowCallout
+  ShapeUpDownArrowCallout
+  ShapeQuadArrowCallout
+  ShapeBentArrow
+  ShapeUturnArrow
+  ShapeCircularArrow
+  ShapeLeftCircularArrow
+  ShapeLeftRightCircularArrow
+  ShapeCurvedRightArrow
+  ShapeCurvedLeftArrow
+  ShapeCurvedUpArrow
+  ShapeCurvedDownArrow
+  ShapeSwooshArrow
+  ShapeCube
+  ShapeCan
+  ShapeLightningBolt
+  ShapeHeart
+  ShapeSun
+  ShapeMoon
+  ShapeSmileyFace
+  ShapeIrregularSeal1
+  ShapeIrregularSeal2
+  ShapeFoldedCorner
+  ShapeBevel
+  ShapeFrame
+  ShapeHalfFrame
+  ShapeCorner
+  ShapeDiagStripe
+  ShapeChord
+  ShapeArc
+  ShapeLeftBracket
+  ShapeRightBracket
+  ShapeLeftBrace
+  ShapeRightBrace
+  ShapeBracketPair
+  ShapeBracePair
+  ShapeStraightConnector1
+  ShapeBentConnector2
+  ShapeBentConnector3
+  ShapeBentConnector4
+  ShapeBentConnector5
+  ShapeCurvedConnector2
+  ShapeCurvedConnector3
+  ShapeCurvedConnector4
+  ShapeCurvedConnector5
+  ShapeCallout1
+  ShapeCallout2
+  ShapeCallout3
+  ShapeAccentCallout1
+  ShapeAccentCallout2
+  ShapeAccentCallout3
+  ShapeBorderCallout1
+  ShapeBorderCallout2
+  ShapeBorderCallout3
+  ShapeAccentBorderCallout1
+  ShapeAccentBorderCallout2
+  ShapeAccentBorderCallout3
+  ShapeWedgeRectCallout
+  ShapeWedgeRoundRectCallout
+  ShapeWedgeEllipseCallout
+  ShapeCloudCallout
+  ShapeCloud
+  ShapeRibbon
+  ShapeRibbon2
+  ShapeEllipseRibbon
+  ShapeEllipseRibbon2
+  ShapeLeftRightRibbon
+  ShapeVerticalScroll
+  ShapeHorizontalScroll
+  ShapeWave
+  ShapeDoubleWave
+  ShapePlus
+  ShapeFlowChartProcess
+  ShapeFlowChartDecision
+  ShapeFlowChartInputOutput
+  ShapeFlowChartPredefinedProcess
+  ShapeFlowChartInternalStorage
+  ShapeFlowChartDocument
+  ShapeFlowChartMultidocument
+  ShapeFlowChartTerminator
+  ShapeFlowChartPreparation
+  ShapeFlowChartManualInput
+  ShapeFlowChartManualOperation
+  ShapeFlowChartConnector
+  ShapeFlowChartPunchedCard
+  ShapeFlowChartPunchedTape
+  ShapeFlowChartSummingJunction
+  ShapeFlowChartOr
+  ShapeFlowChartCollate
+  ShapeFlowChartSort
+  ShapeFlowChartExtract
+  ShapeFlowChartMerge
+  ShapeFlowChartOfflineStorage
+  ShapeFlowChartOnlineStorage
+  ShapeFlowChartMagneticTape
+  ShapeFlowChartMagneticDisk
+  ShapeFlowChartMagneticDrum
+  ShapeFlowChartDisplay
+  ShapeFlowChartDelay
+  ShapeFlowChartAlternateProcess
+  ShapeFlowChartOffpageConnector
+  ShapeActionButtonBlank
+  ShapeActionButtonHome
+  ShapeActionButtonHelp
+  ShapeActionButtonInformation
+  ShapeActionButtonForwardNext
+  ShapeActionButtonBackPrevious
+  ShapeActionButtonEnd
+  ShapeActionButtonBeginning
+  ShapeActionButtonReturn
+  ShapeActionButtonDocument
+  ShapeActionButtonSound
+  ShapeActionButtonMovie
+  ShapeGear6
+  ShapeGear9
+  ShapeFunnel
+  ShapeMathPlus
+  ShapeMathMinus
+  ShapeMathMultiply
+  ShapeMathDivide
+  ShapeMathEqual
+  ShapeMathNotEqual
+  ShapeCornerTabs
+  ShapeSquareTabs
+  ShapePlaqueTabs
+  ShapeChartX
+  ShapeChartStar
+  ShapeChartPlus
+} derive(Eq, Debug)
+
+///|
+pub fn ST_ShapeType::parse(s : String) -> ST_ShapeType raise SchemaViolation {
+  match s {
+    "line" => ShapeLine
+    "lineInv" => ShapeLineInv
+    "triangle" => ShapeTriangle
+    "rtTriangle" => ShapeRtTriangle
+    "rect" => ShapeRect
+    "diamond" => ShapeDiamond
+    "parallelogram" => ShapeParallelogram
+    "trapezoid" => ShapeTrapezoid
+    "nonIsoscelesTrapezoid" => ShapeNonIsoscelesTrapezoid
+    "pentagon" => ShapePentagon
+    "hexagon" => ShapeHexagon
+    "heptagon" => ShapeHeptagon
+    "octagon" => ShapeOctagon
+    "decagon" => ShapeDecagon
+    "dodecagon" => ShapeDodecagon
+    "star4" => ShapeStar4
+    "star5" => ShapeStar5
+    "star6" => ShapeStar6
+    "star7" => ShapeStar7
+    "star8" => ShapeStar8
+    "star10" => ShapeStar10
+    "star12" => ShapeStar12
+    "star16" => ShapeStar16
+    "star24" => ShapeStar24
+    "star32" => ShapeStar32
+    "roundRect" => ShapeRoundRect
+    "round1Rect" => ShapeRound1Rect
+    "round2SameRect" => ShapeRound2SameRect
+    "round2DiagRect" => ShapeRound2DiagRect
+    "snipRoundRect" => ShapeSnipRoundRect
+    "snip1Rect" => ShapeSnip1Rect
+    "snip2SameRect" => ShapeSnip2SameRect
+    "snip2DiagRect" => ShapeSnip2DiagRect
+    "plaque" => ShapePlaque
+    "ellipse" => ShapeEllipse
+    "teardrop" => ShapeTeardrop
+    "homePlate" => ShapeHomePlate
+    "chevron" => ShapeChevron
+    "pieWedge" => ShapePieWedge
+    "pie" => ShapePie
+    "blockArc" => ShapeBlockArc
+    "donut" => ShapeDonut
+    "noSmoking" => ShapeNoSmoking
+    "rightArrow" => ShapeRightArrow
+    "leftArrow" => ShapeLeftArrow
+    "upArrow" => ShapeUpArrow
+    "downArrow" => ShapeDownArrow
+    "stripedRightArrow" => ShapeStripedRightArrow
+    "notchedRightArrow" => ShapeNotchedRightArrow
+    "bentUpArrow" => ShapeBentUpArrow
+    "leftRightArrow" => ShapeLeftRightArrow
+    "upDownArrow" => ShapeUpDownArrow
+    "leftUpArrow" => ShapeLeftUpArrow
+    "leftRightUpArrow" => ShapeLeftRightUpArrow
+    "quadArrow" => ShapeQuadArrow
+    "leftArrowCallout" => ShapeLeftArrowCallout
+    "rightArrowCallout" => ShapeRightArrowCallout
+    "upArrowCallout" => ShapeUpArrowCallout
+    "downArrowCallout" => ShapeDownArrowCallout
+    "leftRightArrowCallout" => ShapeLeftRightArrowCallout
+    "upDownArrowCallout" => ShapeUpDownArrowCallout
+    "quadArrowCallout" => ShapeQuadArrowCallout
+    "bentArrow" => ShapeBentArrow
+    "uturnArrow" => ShapeUturnArrow
+    "circularArrow" => ShapeCircularArrow
+    "leftCircularArrow" => ShapeLeftCircularArrow
+    "leftRightCircularArrow" => ShapeLeftRightCircularArrow
+    "curvedRightArrow" => ShapeCurvedRightArrow
+    "curvedLeftArrow" => ShapeCurvedLeftArrow
+    "curvedUpArrow" => ShapeCurvedUpArrow
+    "curvedDownArrow" => ShapeCurvedDownArrow
+    "swooshArrow" => ShapeSwooshArrow
+    "cube" => ShapeCube
+    "can" => ShapeCan
+    "lightningBolt" => ShapeLightningBolt
+    "heart" => ShapeHeart
+    "sun" => ShapeSun
+    "moon" => ShapeMoon
+    "smileyFace" => ShapeSmileyFace
+    "irregularSeal1" => ShapeIrregularSeal1
+    "irregularSeal2" => ShapeIrregularSeal2
+    "foldedCorner" => ShapeFoldedCorner
+    "bevel" => ShapeBevel
+    "frame" => ShapeFrame
+    "halfFrame" => ShapeHalfFrame
+    "corner" => ShapeCorner
+    "diagStripe" => ShapeDiagStripe
+    "chord" => ShapeChord
+    "arc" => ShapeArc
+    "leftBracket" => ShapeLeftBracket
+    "rightBracket" => ShapeRightBracket
+    "leftBrace" => ShapeLeftBrace
+    "rightBrace" => ShapeRightBrace
+    "bracketPair" => ShapeBracketPair
+    "bracePair" => ShapeBracePair
+    "straightConnector1" => ShapeStraightConnector1
+    "bentConnector2" => ShapeBentConnector2
+    "bentConnector3" => ShapeBentConnector3
+    "bentConnector4" => ShapeBentConnector4
+    "bentConnector5" => ShapeBentConnector5
+    "curvedConnector2" => ShapeCurvedConnector2
+    "curvedConnector3" => ShapeCurvedConnector3
+    "curvedConnector4" => ShapeCurvedConnector4
+    "curvedConnector5" => ShapeCurvedConnector5
+    "callout1" => ShapeCallout1
+    "callout2" => ShapeCallout2
+    "callout3" => ShapeCallout3
+    "accentCallout1" => ShapeAccentCallout1
+    "accentCallout2" => ShapeAccentCallout2
+    "accentCallout3" => ShapeAccentCallout3
+    "borderCallout1" => ShapeBorderCallout1
+    "borderCallout2" => ShapeBorderCallout2
+    "borderCallout3" => ShapeBorderCallout3
+    "accentBorderCallout1" => ShapeAccentBorderCallout1
+    "accentBorderCallout2" => ShapeAccentBorderCallout2
+    "accentBorderCallout3" => ShapeAccentBorderCallout3
+    "wedgeRectCallout" => ShapeWedgeRectCallout
+    "wedgeRoundRectCallout" => ShapeWedgeRoundRectCallout
+    "wedgeEllipseCallout" => ShapeWedgeEllipseCallout
+    "cloudCallout" => ShapeCloudCallout
+    "cloud" => ShapeCloud
+    "ribbon" => ShapeRibbon
+    "ribbon2" => ShapeRibbon2
+    "ellipseRibbon" => ShapeEllipseRibbon
+    "ellipseRibbon2" => ShapeEllipseRibbon2
+    "leftRightRibbon" => ShapeLeftRightRibbon
+    "verticalScroll" => ShapeVerticalScroll
+    "horizontalScroll" => ShapeHorizontalScroll
+    "wave" => ShapeWave
+    "doubleWave" => ShapeDoubleWave
+    "plus" => ShapePlus
+    "flowChartProcess" => ShapeFlowChartProcess
+    "flowChartDecision" => ShapeFlowChartDecision
+    "flowChartInputOutput" => ShapeFlowChartInputOutput
+    "flowChartPredefinedProcess" => ShapeFlowChartPredefinedProcess
+    "flowChartInternalStorage" => ShapeFlowChartInternalStorage
+    "flowChartDocument" => ShapeFlowChartDocument
+    "flowChartMultidocument" => ShapeFlowChartMultidocument
+    "flowChartTerminator" => ShapeFlowChartTerminator
+    "flowChartPreparation" => ShapeFlowChartPreparation
+    "flowChartManualInput" => ShapeFlowChartManualInput
+    "flowChartManualOperation" => ShapeFlowChartManualOperation
+    "flowChartConnector" => ShapeFlowChartConnector
+    "flowChartPunchedCard" => ShapeFlowChartPunchedCard
+    "flowChartPunchedTape" => ShapeFlowChartPunchedTape
+    "flowChartSummingJunction" => ShapeFlowChartSummingJunction
+    "flowChartOr" => ShapeFlowChartOr
+    "flowChartCollate" => ShapeFlowChartCollate
+    "flowChartSort" => ShapeFlowChartSort
+    "flowChartExtract" => ShapeFlowChartExtract
+    "flowChartMerge" => ShapeFlowChartMerge
+    "flowChartOfflineStorage" => ShapeFlowChartOfflineStorage
+    "flowChartOnlineStorage" => ShapeFlowChartOnlineStorage
+    "flowChartMagneticTape" => ShapeFlowChartMagneticTape
+    "flowChartMagneticDisk" => ShapeFlowChartMagneticDisk
+    "flowChartMagneticDrum" => ShapeFlowChartMagneticDrum
+    "flowChartDisplay" => ShapeFlowChartDisplay
+    "flowChartDelay" => ShapeFlowChartDelay
+    "flowChartAlternateProcess" => ShapeFlowChartAlternateProcess
+    "flowChartOffpageConnector" => ShapeFlowChartOffpageConnector
+    "actionButtonBlank" => ShapeActionButtonBlank
+    "actionButtonHome" => ShapeActionButtonHome
+    "actionButtonHelp" => ShapeActionButtonHelp
+    "actionButtonInformation" => ShapeActionButtonInformation
+    "actionButtonForwardNext" => ShapeActionButtonForwardNext
+    "actionButtonBackPrevious" => ShapeActionButtonBackPrevious
+    "actionButtonEnd" => ShapeActionButtonEnd
+    "actionButtonBeginning" => ShapeActionButtonBeginning
+    "actionButtonReturn" => ShapeActionButtonReturn
+    "actionButtonDocument" => ShapeActionButtonDocument
+    "actionButtonSound" => ShapeActionButtonSound
+    "actionButtonMovie" => ShapeActionButtonMovie
+    "gear6" => ShapeGear6
+    "gear9" => ShapeGear9
+    "funnel" => ShapeFunnel
+    "mathPlus" => ShapeMathPlus
+    "mathMinus" => ShapeMathMinus
+    "mathMultiply" => ShapeMathMultiply
+    "mathDivide" => ShapeMathDivide
+    "mathEqual" => ShapeMathEqual
+    "mathNotEqual" => ShapeMathNotEqual
+    "cornerTabs" => ShapeCornerTabs
+    "squareTabs" => ShapeSquareTabs
+    "plaqueTabs" => ShapePlaqueTabs
+    "chartX" => ShapeChartX
+    "chartStar" => ShapeChartStar
+    "chartPlus" => ShapeChartPlus
+    _ => enum_violation("ST_ShapeType")
+  }
+}
+
+///|
+pub fn ST_ShapeType::new(s : String) -> ST_ShapeType raise SchemaViolation {
+  ST_ShapeType::parse(s)
+}
+
+///|
+pub fn ST_ShapeType::to_string(self : ST_ShapeType) -> String {
+  match self {
+    ShapeLine => "line"
+    ShapeLineInv => "lineInv"
+    ShapeTriangle => "triangle"
+    ShapeRtTriangle => "rtTriangle"
+    ShapeRect => "rect"
+    ShapeDiamond => "diamond"
+    ShapeParallelogram => "parallelogram"
+    ShapeTrapezoid => "trapezoid"
+    ShapeNonIsoscelesTrapezoid => "nonIsoscelesTrapezoid"
+    ShapePentagon => "pentagon"
+    ShapeHexagon => "hexagon"
+    ShapeHeptagon => "heptagon"
+    ShapeOctagon => "octagon"
+    ShapeDecagon => "decagon"
+    ShapeDodecagon => "dodecagon"
+    ShapeStar4 => "star4"
+    ShapeStar5 => "star5"
+    ShapeStar6 => "star6"
+    ShapeStar7 => "star7"
+    ShapeStar8 => "star8"
+    ShapeStar10 => "star10"
+    ShapeStar12 => "star12"
+    ShapeStar16 => "star16"
+    ShapeStar24 => "star24"
+    ShapeStar32 => "star32"
+    ShapeRoundRect => "roundRect"
+    ShapeRound1Rect => "round1Rect"
+    ShapeRound2SameRect => "round2SameRect"
+    ShapeRound2DiagRect => "round2DiagRect"
+    ShapeSnipRoundRect => "snipRoundRect"
+    ShapeSnip1Rect => "snip1Rect"
+    ShapeSnip2SameRect => "snip2SameRect"
+    ShapeSnip2DiagRect => "snip2DiagRect"
+    ShapePlaque => "plaque"
+    ShapeEllipse => "ellipse"
+    ShapeTeardrop => "teardrop"
+    ShapeHomePlate => "homePlate"
+    ShapeChevron => "chevron"
+    ShapePieWedge => "pieWedge"
+    ShapePie => "pie"
+    ShapeBlockArc => "blockArc"
+    ShapeDonut => "donut"
+    ShapeNoSmoking => "noSmoking"
+    ShapeRightArrow => "rightArrow"
+    ShapeLeftArrow => "leftArrow"
+    ShapeUpArrow => "upArrow"
+    ShapeDownArrow => "downArrow"
+    ShapeStripedRightArrow => "stripedRightArrow"
+    ShapeNotchedRightArrow => "notchedRightArrow"
+    ShapeBentUpArrow => "bentUpArrow"
+    ShapeLeftRightArrow => "leftRightArrow"
+    ShapeUpDownArrow => "upDownArrow"
+    ShapeLeftUpArrow => "leftUpArrow"
+    ShapeLeftRightUpArrow => "leftRightUpArrow"
+    ShapeQuadArrow => "quadArrow"
+    ShapeLeftArrowCallout => "leftArrowCallout"
+    ShapeRightArrowCallout => "rightArrowCallout"
+    ShapeUpArrowCallout => "upArrowCallout"
+    ShapeDownArrowCallout => "downArrowCallout"
+    ShapeLeftRightArrowCallout => "leftRightArrowCallout"
+    ShapeUpDownArrowCallout => "upDownArrowCallout"
+    ShapeQuadArrowCallout => "quadArrowCallout"
+    ShapeBentArrow => "bentArrow"
+    ShapeUturnArrow => "uturnArrow"
+    ShapeCircularArrow => "circularArrow"
+    ShapeLeftCircularArrow => "leftCircularArrow"
+    ShapeLeftRightCircularArrow => "leftRightCircularArrow"
+    ShapeCurvedRightArrow => "curvedRightArrow"
+    ShapeCurvedLeftArrow => "curvedLeftArrow"
+    ShapeCurvedUpArrow => "curvedUpArrow"
+    ShapeCurvedDownArrow => "curvedDownArrow"
+    ShapeSwooshArrow => "swooshArrow"
+    ShapeCube => "cube"
+    ShapeCan => "can"
+    ShapeLightningBolt => "lightningBolt"
+    ShapeHeart => "heart"
+    ShapeSun => "sun"
+    ShapeMoon => "moon"
+    ShapeSmileyFace => "smileyFace"
+    ShapeIrregularSeal1 => "irregularSeal1"
+    ShapeIrregularSeal2 => "irregularSeal2"
+    ShapeFoldedCorner => "foldedCorner"
+    ShapeBevel => "bevel"
+    ShapeFrame => "frame"
+    ShapeHalfFrame => "halfFrame"
+    ShapeCorner => "corner"
+    ShapeDiagStripe => "diagStripe"
+    ShapeChord => "chord"
+    ShapeArc => "arc"
+    ShapeLeftBracket => "leftBracket"
+    ShapeRightBracket => "rightBracket"
+    ShapeLeftBrace => "leftBrace"
+    ShapeRightBrace => "rightBrace"
+    ShapeBracketPair => "bracketPair"
+    ShapeBracePair => "bracePair"
+    ShapeStraightConnector1 => "straightConnector1"
+    ShapeBentConnector2 => "bentConnector2"
+    ShapeBentConnector3 => "bentConnector3"
+    ShapeBentConnector4 => "bentConnector4"
+    ShapeBentConnector5 => "bentConnector5"
+    ShapeCurvedConnector2 => "curvedConnector2"
+    ShapeCurvedConnector3 => "curvedConnector3"
+    ShapeCurvedConnector4 => "curvedConnector4"
+    ShapeCurvedConnector5 => "curvedConnector5"
+    ShapeCallout1 => "callout1"
+    ShapeCallout2 => "callout2"
+    ShapeCallout3 => "callout3"
+    ShapeAccentCallout1 => "accentCallout1"
+    ShapeAccentCallout2 => "accentCallout2"
+    ShapeAccentCallout3 => "accentCallout3"
+    ShapeBorderCallout1 => "borderCallout1"
+    ShapeBorderCallout2 => "borderCallout2"
+    ShapeBorderCallout3 => "borderCallout3"
+    ShapeAccentBorderCallout1 => "accentBorderCallout1"
+    ShapeAccentBorderCallout2 => "accentBorderCallout2"
+    ShapeAccentBorderCallout3 => "accentBorderCallout3"
+    ShapeWedgeRectCallout => "wedgeRectCallout"
+    ShapeWedgeRoundRectCallout => "wedgeRoundRectCallout"
+    ShapeWedgeEllipseCallout => "wedgeEllipseCallout"
+    ShapeCloudCallout => "cloudCallout"
+    ShapeCloud => "cloud"
+    ShapeRibbon => "ribbon"
+    ShapeRibbon2 => "ribbon2"
+    ShapeEllipseRibbon => "ellipseRibbon"
+    ShapeEllipseRibbon2 => "ellipseRibbon2"
+    ShapeLeftRightRibbon => "leftRightRibbon"
+    ShapeVerticalScroll => "verticalScroll"
+    ShapeHorizontalScroll => "horizontalScroll"
+    ShapeWave => "wave"
+    ShapeDoubleWave => "doubleWave"
+    ShapePlus => "plus"
+    ShapeFlowChartProcess => "flowChartProcess"
+    ShapeFlowChartDecision => "flowChartDecision"
+    ShapeFlowChartInputOutput => "flowChartInputOutput"
+    ShapeFlowChartPredefinedProcess => "flowChartPredefinedProcess"
+    ShapeFlowChartInternalStorage => "flowChartInternalStorage"
+    ShapeFlowChartDocument => "flowChartDocument"
+    ShapeFlowChartMultidocument => "flowChartMultidocument"
+    ShapeFlowChartTerminator => "flowChartTerminator"
+    ShapeFlowChartPreparation => "flowChartPreparation"
+    ShapeFlowChartManualInput => "flowChartManualInput"
+    ShapeFlowChartManualOperation => "flowChartManualOperation"
+    ShapeFlowChartConnector => "flowChartConnector"
+    ShapeFlowChartPunchedCard => "flowChartPunchedCard"
+    ShapeFlowChartPunchedTape => "flowChartPunchedTape"
+    ShapeFlowChartSummingJunction => "flowChartSummingJunction"
+    ShapeFlowChartOr => "flowChartOr"
+    ShapeFlowChartCollate => "flowChartCollate"
+    ShapeFlowChartSort => "flowChartSort"
+    ShapeFlowChartExtract => "flowChartExtract"
+    ShapeFlowChartMerge => "flowChartMerge"
+    ShapeFlowChartOfflineStorage => "flowChartOfflineStorage"
+    ShapeFlowChartOnlineStorage => "flowChartOnlineStorage"
+    ShapeFlowChartMagneticTape => "flowChartMagneticTape"
+    ShapeFlowChartMagneticDisk => "flowChartMagneticDisk"
+    ShapeFlowChartMagneticDrum => "flowChartMagneticDrum"
+    ShapeFlowChartDisplay => "flowChartDisplay"
+    ShapeFlowChartDelay => "flowChartDelay"
+    ShapeFlowChartAlternateProcess => "flowChartAlternateProcess"
+    ShapeFlowChartOffpageConnector => "flowChartOffpageConnector"
+    ShapeActionButtonBlank => "actionButtonBlank"
+    ShapeActionButtonHome => "actionButtonHome"
+    ShapeActionButtonHelp => "actionButtonHelp"
+    ShapeActionButtonInformation => "actionButtonInformation"
+    ShapeActionButtonForwardNext => "actionButtonForwardNext"
+    ShapeActionButtonBackPrevious => "actionButtonBackPrevious"
+    ShapeActionButtonEnd => "actionButtonEnd"
+    ShapeActionButtonBeginning => "actionButtonBeginning"
+    ShapeActionButtonReturn => "actionButtonReturn"
+    ShapeActionButtonDocument => "actionButtonDocument"
+    ShapeActionButtonSound => "actionButtonSound"
+    ShapeActionButtonMovie => "actionButtonMovie"
+    ShapeGear6 => "gear6"
+    ShapeGear9 => "gear9"
+    ShapeFunnel => "funnel"
+    ShapeMathPlus => "mathPlus"
+    ShapeMathMinus => "mathMinus"
+    ShapeMathMultiply => "mathMultiply"
+    ShapeMathDivide => "mathDivide"
+    ShapeMathEqual => "mathEqual"
+    ShapeMathNotEqual => "mathNotEqual"
+    ShapeCornerTabs => "cornerTabs"
+    ShapeSquareTabs => "squareTabs"
+    ShapePlaqueTabs => "plaqueTabs"
+    ShapeChartX => "chartX"
+    ShapeChartStar => "chartStar"
+    ShapeChartPlus => "chartPlus"
+  }
+}
+
 // === Private helpers ===
 
 ///|
@@ -4386,5 +5639,51 @@ fn format_decimal(value : Double) -> String {
     value.to_int64().to_string()
   } else {
     value.to_string()
+  }
+}
+
+///|
+/// xsd:token's lexical-space constraint: collapsed whitespace, i.e. no
+/// leading/trailing space and no interior tab/CR/LF/double-space.
+fn is_xsd_token(s : String) -> Bool {
+  if s.length() == 0 {
+    false
+  } else {
+    let mut ok = s[0:1] != " "
+    if ok && s.length() > 1 {
+      ok = ok && s[s.length() - 1:s.length()] != " "
+    }
+    let mut i = 0
+    while ok && i < s.length() {
+      let ch = s[i:i + 1]
+      if ch == "\t" || ch == "\r" || ch == "\n" {
+        ok = false
+      }
+      if ok && ch == " " && i + 1 < s.length() && s[i + 1:i + 2] == " " {
+        ok = false
+      }
+      i = i + 1
+    }
+    ok
+  }
+}
+
+///|
+/// Lexical heuristic for "this looks like a signed decimal integer" —
+/// used by ST_AdjAngle / ST_AdjCoordinate to dispatch between the
+/// numeric and named-guide branches before invoking the strict parser.
+fn looks_like_signed_number(s : String) -> Bool {
+  if s.length() == 0 {
+    false
+  } else {
+    let mut start = 0
+    if s[0:1] == "-" || s[0:1] == "+" {
+      start = 1
+    }
+    if start >= s.length() {
+      false
+    } else {
+      is_digit_at(s, start)
+    }
   }
 }

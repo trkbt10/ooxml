@@ -1,0 +1,10 @@
+// trkbt10/ooxml/ecma376/drawing_ml/vml_excel
+//
+// vml-spreadsheetDrawing.xsd typed CT projections — Part 4 §A.6.
+// Target namespace: urn:schemas-microsoft-com:office:excel (`x:` prefix).
+// Hosts CT_ClientData / ClientDataChild / ST_ObjectType / ST_CF +
+// the `read_client_data` / `write_client_data` round-trip entry points.
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}

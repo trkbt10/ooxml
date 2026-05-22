@@ -115,3 +115,11 @@
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/opc/digital_signatures"
 }
+
+///|
+/// ECMA-376 Part 2 §10.5.15 Signaturetime Element.
+/// Source: `references/spec/part2/sections/10.5.15__signaturetime-element.md`.
+/// Owned by `src/ecma376/opc/digital_signatures`.
+pub fn opc_digital_signatures_part2_10_5_15_signaturetime_element_section_name() -> String {
+  "ECMA-376 Part 2 §10.5.15 Signaturetime Element"
+}

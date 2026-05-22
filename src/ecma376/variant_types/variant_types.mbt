@@ -470,6 +470,214 @@ pub fn write_vector(value : VectorElement) -> Bytes {
 }
 
 ///|
+/// Read a top-level vt:array element (XSD §22.4 element `array`).
+pub fn read_array(bytes : Bytes) -> ArrayElement raise {
+  let root = @xml.parse(bytes).root
+  require_local(root, "array", "array")
+  CT_Array::new(root)
+}
+
+///|
+/// Read a top-level vt:blob element (XSD §22.4 element `blob`, xsd:base64Binary).
+pub fn read_blob(bytes : Bytes) -> Blob raise {
+  read_atom(bytes, "blob")
+}
+
+///|
+/// Read a top-level vt:bool element (XSD §22.4 element `bool`, xsd:boolean).
+pub fn read_bool(bytes : Bytes) -> BoolElement raise {
+  read_atom(bytes, "bool")
+}
+
+///|
+/// Read a top-level vt:bstr element (XSD §22.4 element `bstr`, xsd:string).
+pub fn read_bstr(bytes : Bytes) -> Bstr raise {
+  read_atom(bytes, "bstr")
+}
+
+///|
+/// Read a top-level vt:clsid element (XSD §22.4 element `clsid`, s:ST_Guid).
+pub fn read_clsid(bytes : Bytes) -> Clsid raise {
+  read_atom(bytes, "clsid")
+}
+
+///|
+/// Read a top-level vt:cy element (XSD §22.4 element `cy`, ST_Cy).
+pub fn read_cy(bytes : Bytes) -> Cy raise {
+  read_atom(bytes, "cy")
+}
+
+///|
+/// Read a top-level vt:date element (XSD §22.4 element `date`, xsd:dateTime).
+pub fn read_date(bytes : Bytes) -> DateElement raise {
+  read_atom(bytes, "date")
+}
+
+///|
+/// Read a top-level vt:decimal element (XSD §22.4 element `decimal`, xsd:decimal).
+pub fn read_decimal(bytes : Bytes) -> DecimalElement raise {
+  read_atom(bytes, "decimal")
+}
+
+///|
+/// Read a top-level vt:empty element (XSD §22.4 element `empty`, CT_Empty).
+pub fn read_empty(bytes : Bytes) -> EmptyElement raise {
+  let root = @xml.parse(bytes).root
+  require_local(root, "empty", "empty")
+  CT_Empty::new(root)
+}
+
+///|
+/// Read a top-level vt:error element (XSD §22.4 element `error`, ST_Error).
+pub fn read_error(bytes : Bytes) -> ErrorElement raise {
+  read_atom(bytes, "error")
+}
+
+///|
+/// Read a top-level vt:filetime element (XSD §22.4 element `filetime`, xsd:dateTime).
+pub fn read_filetime(bytes : Bytes) -> Filetime raise {
+  read_atom(bytes, "filetime")
+}
+
+///|
+/// Read a top-level vt:i1 element (XSD §22.4 element `i1`, xsd:byte).
+pub fn read_i1(bytes : Bytes) -> I1 raise {
+  read_atom(bytes, "i1")
+}
+
+///|
+/// Read a top-level vt:i2 element (XSD §22.4 element `i2`, xsd:short).
+pub fn read_i2(bytes : Bytes) -> I2 raise {
+  read_atom(bytes, "i2")
+}
+
+///|
+/// Read a top-level vt:i4 element (XSD §22.4 element `i4`, xsd:int).
+pub fn read_i4(bytes : Bytes) -> I4 raise {
+  read_atom(bytes, "i4")
+}
+
+///|
+/// Read a top-level vt:i8 element (XSD §22.4 element `i8`, xsd:long).
+pub fn read_i8(bytes : Bytes) -> I8 raise {
+  read_atom(bytes, "i8")
+}
+
+///|
+/// Read a top-level vt:int element (XSD §22.4 element `int`, xsd:int).
+pub fn read_int(bytes : Bytes) -> IntElement raise {
+  read_atom(bytes, "int")
+}
+
+///|
+/// Read a top-level vt:lpstr element (XSD §22.4 element `lpstr`, xsd:string).
+pub fn read_lpstr(bytes : Bytes) -> Lpstr raise {
+  read_atom(bytes, "lpstr")
+}
+
+///|
+/// Read a top-level vt:lpwstr element (XSD §22.4 element `lpwstr`, xsd:string).
+pub fn read_lpwstr(bytes : Bytes) -> Lpwstr raise {
+  read_atom(bytes, "lpwstr")
+}
+
+///|
+/// Read a top-level vt:null element (XSD §22.4 element `null`, CT_Null).
+pub fn read_null(bytes : Bytes) -> NullElement raise {
+  let root = @xml.parse(bytes).root
+  require_local(root, "null", "null")
+  CT_Null::new(root)
+}
+
+///|
+/// Read a top-level vt:oblob element (XSD §22.4 element `oblob`, xsd:base64Binary).
+pub fn read_oblob(bytes : Bytes) -> Oblob raise {
+  read_atom(bytes, "oblob")
+}
+
+///|
+/// Read a top-level vt:ostorage element (XSD §22.4 element `ostorage`, xsd:base64Binary).
+pub fn read_ostorage(bytes : Bytes) -> Ostorage raise {
+  read_atom(bytes, "ostorage")
+}
+
+///|
+/// Read a top-level vt:ostream element (XSD §22.4 element `ostream`, xsd:base64Binary).
+pub fn read_ostream(bytes : Bytes) -> Ostream raise {
+  read_atom(bytes, "ostream")
+}
+
+///|
+/// Read a top-level vt:r4 element (XSD §22.4 element `r4`, xsd:float).
+pub fn read_r4(bytes : Bytes) -> R4 raise {
+  read_atom(bytes, "r4")
+}
+
+///|
+/// Read a top-level vt:r8 element (XSD §22.4 element `r8`, xsd:double).
+pub fn read_r8(bytes : Bytes) -> R8 raise {
+  read_atom(bytes, "r8")
+}
+
+///|
+/// Read a top-level vt:storage element (XSD §22.4 element `storage`, xsd:base64Binary).
+pub fn read_storage(bytes : Bytes) -> Storage raise {
+  read_atom(bytes, "storage")
+}
+
+///|
+/// Read a top-level vt:stream element (XSD §22.4 element `stream`, xsd:base64Binary).
+pub fn read_stream(bytes : Bytes) -> Stream raise {
+  read_atom(bytes, "stream")
+}
+
+///|
+/// Read a top-level vt:ui1 element (XSD §22.4 element `ui1`, xsd:unsignedByte).
+pub fn read_ui1(bytes : Bytes) -> Ui1 raise {
+  read_atom(bytes, "ui1")
+}
+
+///|
+/// Read a top-level vt:ui2 element (XSD §22.4 element `ui2`, xsd:unsignedShort).
+pub fn read_ui2(bytes : Bytes) -> Ui2 raise {
+  read_atom(bytes, "ui2")
+}
+
+///|
+/// Read a top-level vt:ui4 element (XSD §22.4 element `ui4`, xsd:unsignedInt).
+pub fn read_ui4(bytes : Bytes) -> Ui4 raise {
+  read_atom(bytes, "ui4")
+}
+
+///|
+/// Read a top-level vt:ui8 element (XSD §22.4 element `ui8`, xsd:unsignedLong).
+pub fn read_ui8(bytes : Bytes) -> Ui8 raise {
+  read_atom(bytes, "ui8")
+}
+
+///|
+/// Read a top-level vt:uint element (XSD §22.4 element `uint`, xsd:unsignedInt).
+pub fn read_uint(bytes : Bytes) -> UintElement raise {
+  read_atom(bytes, "uint")
+}
+
+///|
+/// Read a top-level vt:vstream element (XSD §22.4 element `vstream`, CT_Vstream).
+pub fn read_vstream(bytes : Bytes) -> VstreamElement raise {
+  let root = @xml.parse(bytes).root
+  require_local(root, "vstream", "vstream")
+  CT_Vstream::new(root)
+}
+
+///|
+/// Parse `bytes` as a top-level §22.4 scalar variant atom with required local name.
+fn read_atom(bytes : Bytes, local_name : String) -> VariantAtom raise {
+  let root = @xml.parse(bytes).root
+  require_local(root, local_name, local_name)
+  { element: root }
+}
+
+///|
 /// Read any top-level §22.4 variant flavour as Variant.
 pub fn read_value(bytes : Bytes) -> Variant raise {
   let root = @xml.parse(bytes).root

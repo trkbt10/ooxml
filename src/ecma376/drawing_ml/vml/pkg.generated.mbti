@@ -3,10 +3,117 @@ package "trkbt10/ooxml/ecma376/drawing_ml/vml"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/drawing_ml/vml_excel",
+  "trkbt10/ooxml/ecma376/drawing_ml/vml_presentation",
+  "trkbt10/ooxml/ecma376/drawing_ml/vml_word",
   "trkbt10/ooxml/xml",
 }
 
 // Values
+pub fn collect_vml_group_children(@xml.Element) -> Array[VmlGroupChild] raise SchemaViolation
+
+pub fn collect_vml_shape_children(@xml.Element) -> Array[VmlShapeChild] raise SchemaViolation
+
+pub fn format_vml_style(VmlInlineStyle) -> String
+
+pub fn parse_vml_group_child(@xml.Element) -> VmlGroupChild raise SchemaViolation
+
+pub fn parse_vml_shape_child(@xml.Element) -> VmlShapeChild raise SchemaViolation
+
+pub fn parse_vml_style(String) -> VmlInlineStyle
+
+pub fn read_OLEObject(Bytes) -> CT_OLEObject raise
+
+pub fn read_anchorlock(Bytes) -> @vml_word.CT_AnchorLock raise
+
+pub fn read_arc(Bytes) -> CT_Arc raise
+
+pub fn read_background(Bytes) -> CT_Background raise
+
+pub fn read_borderbottom(Bytes) -> @vml_word.CT_Border raise
+
+pub fn read_borderleft(Bytes) -> @vml_word.CT_Border raise
+
+pub fn read_borderright(Bytes) -> @vml_word.CT_Border raise
+
+pub fn read_bordertop(Bytes) -> @vml_word.CT_Border raise
+
+pub fn read_bottom(Bytes) -> CT_StrokeChild raise
+
+pub fn read_callout(Bytes) -> CT_Callout raise
+
+pub fn read_clippath(Bytes) -> CT_ClipPath raise
+
+pub fn read_column(Bytes) -> CT_StrokeChild raise
+
+pub fn read_complex(Bytes) -> CT_Complex raise
+
+pub fn read_curve(Bytes) -> CT_Curve raise
+
+pub fn read_diagram(Bytes) -> CT_Diagram raise
+
+pub fn read_equationxml(Bytes) -> CT_EquationXml raise
+
+pub fn read_extrusion(Bytes) -> CT_Extrusion raise
+
+pub fn read_fill(Bytes) -> CT_Fill raise
+
+pub fn read_formulas(Bytes) -> CT_Formulas raise
+
+pub fn read_group(Bytes) -> CT_Group raise
+
+pub fn read_handles(Bytes) -> CT_Handles raise
+
+pub fn read_image(Bytes) -> CT_Image raise
+
+pub fn read_imagedata(Bytes) -> CT_ImageData raise
+
+pub fn read_ink(Bytes) -> CT_Ink raise
+
+pub fn read_iscomment(Bytes) -> @vml_presentation.CT_Empty raise
+
+pub fn read_left(Bytes) -> CT_StrokeChild raise
+
+pub fn read_line(Bytes) -> CT_Line raise
+
+pub fn read_lock(Bytes) -> CT_Lock raise
+
+pub fn read_oval(Bytes) -> CT_Oval raise
+
+pub fn read_path(Bytes) -> CT_Path raise
+
+pub fn read_polyline(Bytes) -> CT_PolyLine raise
+
+pub fn read_rect(Bytes) -> CT_Rect raise
+
+pub fn read_right(Bytes) -> CT_StrokeChild raise
+
+pub fn read_roundrect(Bytes) -> CT_RoundRect raise
+
+pub fn read_shadow(Bytes) -> CT_Shadow raise
+
+pub fn read_shape(Bytes) -> CT_Shape raise
+
+pub fn read_shapedefaults(Bytes) -> CT_ShapeDefaults raise
+
+pub fn read_shapelayout(Bytes) -> CT_ShapeLayout raise
+
+pub fn read_shapetype(Bytes) -> CT_Shapetype raise
+
+pub fn read_signatureline(Bytes) -> CT_SignatureLine raise
+
+pub fn read_skew(Bytes) -> CT_Skew raise
+
+pub fn read_stroke(Bytes) -> CT_Stroke raise
+
+pub fn read_textbox(Bytes) -> CT_Textbox raise
+
+pub fn read_textdata(Bytes) -> @vml_presentation.CT_Rel raise
+
+pub fn read_textpath(Bytes) -> CT_TextPath raise
+
+pub fn read_top(Bytes) -> CT_StrokeChild raise
+
 pub fn read_vml_background(Bytes) -> CT_Background raise
 
 pub fn read_vml_complex(Bytes) -> CT_Complex raise
@@ -46,6 +153,8 @@ pub fn read_vml_stroke(Bytes) -> CT_Stroke raise
 pub fn read_vml_textbox(Bytes) -> CT_Textbox raise
 
 pub fn read_vml_textpath(Bytes) -> CT_TextPath raise
+
+pub fn read_wrap(Bytes) -> @vml_word.CT_Wrap raise
 
 pub fn write_vml_background(CT_Background) -> Bytes
 
@@ -212,7 +321,7 @@ pub(all) struct CT_Arc {
   start_angle : String?
   end_angle : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Arc::new(@xml.Element) -> Self raise SchemaViolation
@@ -307,7 +416,7 @@ pub(all) struct CT_Curve {
   control2 : String?
   to : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Curve::new(@xml.Element) -> Self raise SchemaViolation
@@ -443,7 +552,7 @@ pub(all) struct CT_Group {
   fillcolor : String?
   editas : ST_EditAs?
   office_attributes : Array[@xml.Attribute]
-  group_children : Array[@xml.Element]
+  group_children : Array[VmlGroupChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Group::new(@xml.Element) -> Self raise SchemaViolation
@@ -510,7 +619,7 @@ pub(all) struct CT_Image {
   grayscale : Bool?
   bilevel : Bool?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Image::new(@xml.Element) -> Self raise SchemaViolation
@@ -569,7 +678,7 @@ pub(all) struct CT_Line {
   from : String?
   to : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Line::new(@xml.Element) -> Self raise SchemaViolation
@@ -630,7 +739,7 @@ pub(all) struct CT_Oval {
   filled : Bool?
   fillcolor : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Oval::new(@xml.Element) -> Self raise SchemaViolation
@@ -676,7 +785,7 @@ pub(all) struct CT_PolyLine {
   fillcolor : String?
   points : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_PolyLine::new(@xml.Element) -> Self raise SchemaViolation
@@ -724,7 +833,7 @@ pub(all) struct CT_Rect {
   filled : Bool?
   fillcolor : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Rect::new(@xml.Element) -> Self raise SchemaViolation
@@ -778,7 +887,7 @@ pub(all) struct CT_RoundRect {
   fillcolor : String?
   arcsize : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_RoundRect::new(@xml.Element) -> Self raise SchemaViolation
@@ -834,7 +943,7 @@ pub(all) struct CT_Shape {
   path : String?
   equationxml : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Shape::new(@xml.Element) -> Self raise SchemaViolation
@@ -898,7 +1007,7 @@ pub(all) struct CT_Shapetype {
   path : String?
   master : String?
   office_attributes : Array[@xml.Attribute]
-  shape_children : Array[@xml.Element]
+  shape_children : Array[VmlShapeChild]
   complex : CT_Complex?
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
@@ -1055,6 +1164,20 @@ pub struct ST_BWMode {
 pub fn ST_BWMode::new(String) -> Self raise SchemaViolation
 pub fn ST_BWMode::parse(String) -> Self raise SchemaViolation
 pub fn ST_BWMode::to_string(Self) -> String
+
+pub struct ST_BorderShadow {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BorderShadow::new(String) -> Self raise SchemaViolation
+pub fn ST_BorderShadow::parse(String) -> Self raise SchemaViolation
+pub fn ST_BorderShadow::to_string(Self) -> String
+
+pub struct ST_BorderType {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_BorderType::new(String) -> Self raise SchemaViolation
+pub fn ST_BorderType::parse(String) -> Self raise SchemaViolation
+pub fn ST_BorderType::to_string(Self) -> String
 
 pub struct ST_CalloutDrop {
   value : String
@@ -1273,9 +1396,88 @@ pub fn ST_StrokeLineStyle::new(String) -> Self raise SchemaViolation
 pub fn ST_StrokeLineStyle::parse(String) -> Self raise SchemaViolation
 pub fn ST_StrokeLineStyle::to_string(Self) -> String
 
+pub(all) enum VmlGroupChild {
+  ShapeElement(VmlShapeChild)
+  Group(CT_Group)
+  Shape(CT_Shape)
+  Shapetype(CT_Shapetype)
+  Arc(CT_Arc)
+  Curve(CT_Curve)
+  Image(CT_Image)
+  Line(CT_Line)
+  Oval(CT_Oval)
+  PolyLine(CT_PolyLine)
+  Rect(CT_Rect)
+  RoundRect(CT_RoundRect)
+  Diagram(CT_Diagram)
+} derive(Eq, @debug.Debug)
+
+pub(all) struct VmlInlineStyle {
+  position : String?
+  left : String?
+  top : String?
+  width : String?
+  height : String?
+  margin_left : String?
+  margin_top : String?
+  margin_right : String?
+  margin_bottom : String?
+  z_index : String?
+  rotation : String?
+  visibility : String?
+  mso_position_horizontal : String?
+  mso_position_vertical : String?
+  mso_position_horizontal_relative : String?
+  mso_position_vertical_relative : String?
+  mso_wrap_distance_left : String?
+  mso_wrap_distance_top : String?
+  mso_wrap_distance_right : String?
+  mso_wrap_distance_bottom : String?
+  extras : Array[(String, String)]
+}
+pub fn VmlInlineStyle::empty() -> Self
+
+pub(all) enum VmlShapeChild {
+  Path(CT_Path)
+  Formulas(CT_Formulas)
+  Handles(CT_Handles)
+  Fill(CT_Fill)
+  Stroke(CT_Stroke)
+  Shadow(CT_Shadow)
+  Textbox(CT_Textbox)
+  Textpath(CT_TextPath)
+  Imagedata(CT_ImageData)
+  Skew(CT_Skew)
+  Extrusion(CT_Extrusion)
+  Callout(CT_Callout)
+  Lock(CT_Lock)
+  Clippath(CT_ClipPath)
+  SignatureLine(CT_SignatureLine)
+  Ink(CT_Ink)
+  EquationXml(CT_EquationXml)
+  Wrap(@vml_word.CT_Wrap)
+  AnchorLock(@vml_word.CT_AnchorLock)
+  BorderTop(@vml_word.CT_Border)
+  BorderBottom(@vml_word.CT_Border)
+  BorderLeft(@vml_word.CT_Border)
+  BorderRight(@vml_word.CT_Border)
+  ClientData(@vml_excel.CT_ClientData)
+  Iscomment(@vml_presentation.CT_Empty)
+  Textdata(@vml_presentation.CT_Rel)
+} derive(Eq, @debug.Debug)
+
 type VmlShapeCommon derive(Eq, @debug.Debug)
 
 // Type aliases
+pub using @vml_word {type CT_AnchorLock}
+
+pub using @vml_word {type CT_Border}
+
+pub using @vml_presentation {type CT_Empty}
+
+pub using @vml_presentation {type CT_Rel}
+
+pub using @vml_word {type CT_Wrap}
 
 // Traits
 

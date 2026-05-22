@@ -136,6 +136,30 @@ pub fn sml_part4_10_2_7_dialogsheet_part_part_1_12_3_7_section_name() -> String
 
 pub fn sml_part4_10_2_8_drawings_part_part_1_12_3_8_section_name() -> String
 
+pub fn sml_xsd_ct_color_schema_name() -> String
+
+pub fn sml_xsd_ct_fills_schema_name() -> String
+
+pub fn sml_xsd_ct_filter_schema_name() -> String
+
+pub fn sml_xsd_ct_fonts_schema_name() -> String
+
+pub fn sml_xsd_ct_i_schema_name() -> String
+
+pub fn sml_xsd_ct_mdxset_schema_name() -> String
+
+pub fn sml_xsd_ct_numfmts_schema_name() -> String
+
+pub fn sml_xsd_ct_olappr_schema_name() -> String
+
+pub fn sml_xsd_ct_schema_schema_name() -> String
+
+pub fn sml_xsd_ct_sets_schema_name() -> String
+
+pub fn sml_xsd_ct_top10_schema_name() -> String
+
+pub fn sml_xsd_ct_webpr_schema_name() -> String
+
 pub fn sml_xsd_eg_extensionlist_schema_name() -> String
 
 // Errors
@@ -758,6 +782,13 @@ pub struct ST_UnsignedIntHex {
 pub fn ST_UnsignedIntHex::new(String) -> Self raise SchemaViolation
 pub fn ST_UnsignedIntHex::parse(String) -> Self raise SchemaViolation
 pub fn ST_UnsignedIntHex::to_string(Self) -> String
+
+pub struct ST_UnsignedShortHex {
+  value : String
+} derive(Eq, @debug.Debug)
+pub fn ST_UnsignedShortHex::new(String) -> Self raise SchemaViolation
+pub fn ST_UnsignedShortHex::parse(String) -> Self raise SchemaViolation
+pub fn ST_UnsignedShortHex::to_string(Self) -> String
 
 pub struct ST_UpdateLinks {
   value : String

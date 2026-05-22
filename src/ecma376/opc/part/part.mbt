@@ -113,3 +113,12 @@ pub fn opc_part_part4_13_2_11_custom_file_properties_part_part_1_15_2_12_2_secti
 pub fn opc_part_part4_13_2_15_printer_settings_part_part_1_15_2_15_section_name() -> String {
   "ECMA-376 Part 4 §13.2.15 Printer Settings Part Part 1 15 2 15"
 }
+
+///|
+/// ECMA-376 Part 2 §8.3.2 Support For Versioning And Extensibility.
+/// Source:
+/// `references/spec/part2/sections/8.3.2__support-for-versioning-and-extensibility.md`.
+/// Owned by `src/ecma376/opc/part`.
+pub fn opc_part_part2_8_3_2_support_for_versioning_and_extensibility_section_name() -> String {
+  "ECMA-376 Part 2 §8.3.2 Support For Versioning And Extensibility"
+}

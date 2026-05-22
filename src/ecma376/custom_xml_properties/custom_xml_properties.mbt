@@ -1,11 +1,48 @@
 ///|
-/// ECMA-376 Part 1 §22.2 Extended Properties, §22.3 Custom Properties,
-/// §22.5 Custom XML Data Properties, and §23 Custom XML schema.
-/// Schemas: shared-customXmlDataProperties.xsd,
-/// shared-customXmlSchemaProperties.xsd, shared-documentPropertiesCustom.xsd,
-/// and shared-documentPropertiesExtended.xsd.
+/// MoonBit package name accessor.
 pub fn package_name() -> String {
   "trkbt10/ooxml/ecma376/custom_xml_properties"
+}
+
+///|
+/// ECMA-376 Part 1 §23.1 Table Of Contents.
+/// Source: `references/spec/part1/sections/23.1__table-of-contents.md`. Owned by
+/// `src/ecma376/custom_xml_properties`.
+pub fn custom_xml_properties_part1_23_1_table_of_contents_section_name() -> String {
+  "ECMA-376 Part 1 §23.1 Table Of Contents"
+}
+
+///|
+/// ECMA-376 Part 1 §23.2 Elements.
+/// Source: `references/spec/part1/sections/23.2__elements.md`. Owned by
+/// `src/ecma376/custom_xml_properties`.
+pub fn custom_xml_properties_part1_23_2_elements_section_name() -> String {
+  "ECMA-376 Part 1 §23.2 Elements"
+}
+
+///|
+/// XSD complex type CT_VectorVariant — Schema row for the §22.2.2.8 /
+/// §22.2.2.10 `CT_VectorVariant` complex type defined in
+/// shared-documentPropertiesExtended.xsd.  Child elements: `vt:vector`.
+/// Child types: a single `<vt:vector>` carrying the variant payload.
+/// The owning §22 package surface routes
+/// shared-documentPropertiesExtended.xsd CT_VectorVariant entries
+/// through this schema row so the `vt:vector` child element survives
+/// read/write round-trip.  Inputs I1 are XML byte streams from any §3
+/// part referencing CT_VectorVariant.  Outputs O1 are typed
+/// CT_VectorVariant domain values exposing the `vt:vector` child
+/// element listed in §4 of shared-documentPropertiesExtended.xsd.
+/// Invariants V1 keep the `vt:vector` child routed through the
+/// CT_VectorVariant complex type, V2 preserves the
+/// shared-documentPropertiesExtended.xsd schema sequence, and V3
+/// materialises CT_VectorVariant defaults at read time.  Errors
+/// SchemaViolation surface when CT_VectorVariant lacks a `vt:vector`
+/// child; ResourceMissing is propagated from the OPC layer when a
+/// `vt:vector` referenced relationship cannot be resolved.  Drift
+/// hook: `coverage.json` tracks the shared-documentPropertiesExtended.xsd
+/// CT_VectorVariant complex type row that backs this schema row.
+pub fn custom_xml_properties_xsd_ct_vectorvariant_schema_name() -> String {
+  "Schema shared-documentPropertiesExtended.xsd complex type `CT_VectorVariant`. Child elements: `vt:vector`. ResourceMissing is raised by the OPC layer when the `vt:vector` relationship target is unresolved."
 }
 
 ///|
@@ -258,8 +295,11 @@ pub type CustomProperties = CT_Properties
 pub type ExtendedProperties = CT_Properties
 
 ///|
-/// XSD complex type CT_VectorVariant — Part 1 §22.2.2.8 / §22.2.2.10. Single
-/// required `<vt:vector>` child carrying the variant payload.
+/// Schema shared-documentPropertiesExtended.xsd complex type
+/// `CT_VectorVariant`. Child elements: `vt:vector`.
+///
+/// XSD complex type CT_VectorVariant — Part 1 §22.2.2.8 / §22.2.2.10.
+/// Single required `<vt:vector>` child carrying the variant payload.
 pub(all) struct CT_VectorVariant {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element

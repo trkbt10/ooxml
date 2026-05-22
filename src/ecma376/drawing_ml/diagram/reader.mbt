@@ -157,6 +157,18 @@ fn validate_diagram_attributes(
 }
 
 ///|
+/// §21.4.7 — `@type` attribute on diagram elements is one of
+/// six closed enumerations (ST_PtType, ST_CxnType,
+/// ST_AlgorithmType, ST_ParameterId, ST_ConstraintType,
+/// ST_ElementType).  The cascade tries each in turn; if none
+/// of the six accepts the literal we currently swallow the
+/// breach silently because the reader's containing pass already
+/// captures the raw `@type` on the source element so the value
+/// survives the round-trip.  Raising would abort the entire
+/// diagram parse for a single unknown token, which is too
+/// aggressive given that the consumer may want to render the
+/// remainder.  The breach is documented as a known
+/// schema-tolerance behaviour.
 fn validate_type_attribute(value : String) -> Unit {
   try ST_PtType::parse(value) |> ignore catch {
     SchemaViolation(_) =>
@@ -169,6 +181,11 @@ fn validate_type_attribute(value : String) -> Unit {
                   try ST_ConstraintType::parse(value) |> ignore catch {
                     SchemaViolation(_) =>
                       try ST_ElementType::parse(value) |> ignore catch {
+                        // §21.4.7 schema violation — value
+                        // outside all 6 type unions.  Accept
+                        // silently so the rest of the diagram
+                        // continues to parse; the raw value is
+                        // preserved on the source element.
                         SchemaViolation(_) => ()
                       }
                   }

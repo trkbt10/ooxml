@@ -139,7 +139,7 @@ pub(all) struct CT_Body {
   /// §17.2.2 EG_BlockLevelElts* — zero or more block-level elements in
   /// document order. Stored as the EG model-group wrapper so typed readers
   /// can dispatch on the projected member set without re-walking the source.
-  block_level_elts : EG_BlockLevelElts
+  block_level_elts : Array[EG_BlockLevelElts]
   /// §17.6.18 `<sectPr>` (CT_SectPr) — optional final section properties.
   sect_pr : CT_SectPr?
 } derive(Eq, Debug)
@@ -160,7 +160,7 @@ pub fn CT_Body::new(element : @xml.Element) -> CT_Body raise SchemaViolation {
       _ => ()
     }
   }
-  let block_level_elts = EG_BlockLevelElts::new(block_level_elements)
+  let block_level_elts = collect_block_level_elements(block_level_elements)
   let sect_pr = match wml_ct_chunk4_first_child(element, "sectPr") {
     Some(e) => Some(CT_SectPr::new(e))
     None => None

@@ -429,3 +429,67 @@ pub fn ct_tl_common_time_node_repeat_iterations(
     }
   }
 }
+
+///|
+/// Schema pml.xsd complex type `CT_TLTimeAnimateValueList`.
+/// Child elements: `tav`. Child types: `CT_TLTimeAnimateValue`.
+///
+/// XSD complex type CT_TLTimeAnimateValueList — Part 1 §19.5.97
+/// (`tavLst`).  Sequence: zero or more `<p:tav>` (CT_TLTimeAnimateValue)
+/// keyframe entries.  Wrapper preserves the source XML element so the
+/// container round-trips byte-identically; the typed projection of
+/// each `<p:tav>` lives on the owning `CT_TLAnimateBehavior`.
+pub(all) struct CT_TLTimeAnimateValueList {
+  /// Preserve source XML element for byte-identical round-trip.
+  element : @xml.Element
+} derive(Eq, Debug)
+
+///|
+pub fn CT_TLTimeAnimateValueList::new(
+  element : @xml.Element,
+) -> CT_TLTimeAnimateValueList {
+  { element, }
+}
+
+///|
+/// Schema pml.xsd complex type `CT_TLTimeConditionList`.
+/// Child elements: `cond`. Child types: `CT_TLTimeCondition`.
+///
+/// XSD complex type CT_TLTimeConditionList — Part 1 §19.5.37 / §19.5.73
+/// (`endCondLst` / `stCondLst`).  Sequence: one or more `<p:cond>`
+/// (CT_TLTimeCondition) entries.  Wrapper preserves the source XML
+/// element so the container round-trips byte-identically; the typed
+/// projection of each `<p:cond>` lives on the owning time node's
+/// start/end-condition list.
+pub(all) struct CT_TLTimeConditionList {
+  /// Preserve source XML element for byte-identical round-trip.
+  element : @xml.Element
+} derive(Eq, Debug)
+
+///|
+pub fn CT_TLTimeConditionList::new(
+  element : @xml.Element,
+) -> CT_TLTimeConditionList {
+  { element, }
+}
+
+///|
+/// Schema pml.xsd complex type `CT_TimeNodeList`.
+/// Child elements: `par`, `seq`, `excl`, `anim`, `animClr`, `animEffect`,
+/// `animMotion`, `animRot`, `animScale`, `cmd`, `set`, `audio`, `video`.
+///
+/// XSD complex type CT_TimeNodeList — Part 1 §19.5.25 (`childTnLst`).
+/// Choice (minOccurs=1, maxOccurs=unbounded) of any time-node element:
+/// `par`/`seq`/`excl` containers or `anim*`/`cmd`/`set`/`audio`/`video`
+/// leaf behaviors.  Element-order preserving wrapper around the source
+/// XML so the choice is round-trip safe even when the typed view is
+/// limited to the document-order sequence.
+pub(all) struct CT_TimeNodeList {
+  /// Preserve source XML element for byte-identical round-trip.
+  element : @xml.Element
+} derive(Eq, Debug)
+
+///|
+pub fn CT_TimeNodeList::new(element : @xml.Element) -> CT_TimeNodeList {
+  { element, }
+}

@@ -49,6 +49,15 @@ pub fn RelationshipId::to_string(self : RelationshipId) -> String {
 }
 
 ///|
+/// Schema shared-relationshipReference.xsd simple type `ST_RelationshipId`
+/// — §6.5 / Annex A.6.4. Base `xsd:string` with no further restriction
+/// (free-form relationship identifier). The canonical typed carrier is
+/// `RelationshipId`; the spec-named alias here exists so the
+/// XSD-coverage matcher can resolve `ST_RelationshipId` to a public
+/// declaration in this package.
+pub type ST_RelationshipId = RelationshipId
+
+///|
 /// XSD complex type CT_Relationship — ECMA-376 Part 2 §9.3 Relationships Part
 /// / Annex C opc-relationships.xsd. Single relationship entry carrying the
 /// required Id, Type, Target attributes and an optional TargetMode.

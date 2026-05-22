@@ -2,17 +2,26 @@
 //
 // Build:  moon build --target native --release
 // Run:    moon run cmd/ooxml_cli
+//
+// Direct context-level dependencies — there is no @docx/@xlsx/@pptx
+// facade layer. The CLI imports each ML's context (parser + IO +
+// render) and edit (mutators) packages explicitly so the
+// parser → context → edit | builder | renderer direction is visible
+// from the import list itself.
 
 import {
   "moonbitlang/core/env" @env,
   "moonbitlang/core/strconv" @strconv,
   "moonbitlang/x/fs" @fs,
   "trkbt10/ooxml" @ooxml,
-  "trkbt10/ooxml/docx" @docx,
   "trkbt10/ooxml/ecma376/opc" @opc,
-  "trkbt10/ooxml/pptx" @pptx,
-  "trkbt10/ooxml/xlsx" @xlsx,
   "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/context" @wml_context,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/edit" @wml_edit,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/context" @sml_context,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/edit" @sml_edit,
+  "trkbt10/ooxml/ecma376/presentation_ml/context" @pml_context,
+  "trkbt10/ooxml/ecma376/presentation_ml/edit" @pml_edit,
 }
 
 options(

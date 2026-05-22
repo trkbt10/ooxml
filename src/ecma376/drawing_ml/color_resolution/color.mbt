@@ -95,6 +95,10 @@ pub(all) enum ColorRef {
   Preset(String)
   /// §20.1.2.3.13 hslClr raw hue, saturation, luminance attributes.
   Hsl(Int, Int, Int)
+  /// §20.1.2.3.30 scrgbClr — linear-RGB colour.  Stored as the
+  /// already-gamma-encoded sRGB `Rgba8` so the resolver path is
+  /// uniform with `Srgb`.
+  ScRgb(Rgba8)
 } derive(Eq, Debug)
 
 ///|
@@ -109,6 +113,7 @@ pub fn resolve_color(
 ) -> Rgba8 raise @opc_errors.SchemaViolation {
   let mut color = match base {
     Srgb(value) => value
+    ScRgb(value) => value
     Scheme(value) => scheme_color(value, scheme, placeholder_color)
     Sys(_, fallback) => fallback
     Preset(name) => preset_color(name)
@@ -184,6 +189,24 @@ pub fn read_color_ref(
 ) -> (ColorRef, Array[ColorTransform]) raise @opc_errors.SchemaViolation {
   let base = match element.name.local_name {
     "srgbClr" => Srgb(parse_srgb_hex(required_attr(element, "val")))
+    // §20.1.2.3.30 scrgbClr — three linear-RGB percentage
+    // channels (`@r`/`@g`/`@b`).  Gamma-encode to sRGB so the
+    // result is comparable with srgbClr values.
+    "scrgbClr" =>
+      ScRgb(
+        rgba(
+          linear_unit_to_srgb_byte(
+            percent_to_unit(parse_percentage_attr(element, "r", "§20.1.2.3.30")),
+          ),
+          linear_unit_to_srgb_byte(
+            percent_to_unit(parse_percentage_attr(element, "g", "§20.1.2.3.30")),
+          ),
+          linear_unit_to_srgb_byte(
+            percent_to_unit(parse_percentage_attr(element, "b", "§20.1.2.3.30")),
+          ),
+          255,
+        ),
+      )
     "schemeClr" => Scheme(parse_scheme_color(required_attr(element, "val")))
     "sysClr" =>
       Sys(
@@ -199,7 +222,8 @@ pub fn read_color_ref(
       )
     name =>
       schema_error(
-        "§20.1.2.3", name, "expected srgbClr, schemeClr, sysClr, prstClr, or hslClr",
+        "§20.1.2.3", name,
+        "expected srgbClr, scrgbClr, schemeClr, sysClr, prstClr, or hslClr",
       )
   }
   (base, read_transforms(element))
@@ -839,6 +863,36 @@ fn require_local(
 ///|
 fn percent_to_unit(value : Int) -> Double {
   value.to_double() / 100000.0
+}
+
+///|
+/// §20.1.2.3.30 — convert a linear-RGB channel value in [0, 1]
+/// to a gamma-encoded sRGB byte [0, 255] using the IEC
+/// 61966-2-1 transfer function.  scRGB stores LINEAR light, so
+/// a 50% channel maps to ≈188 (not 128) once gamma-encoded.
+fn linear_unit_to_srgb_byte(linear : Double) -> Int {
+  // Clamp to the displayable [0, 1] range first.
+  let l = if linear < 0.0 {
+    0.0
+  } else if linear > 1.0 {
+    1.0
+  } else {
+    linear
+  }
+  // IEC 61966-2-1 piecewise transfer function.
+  let encoded = if l <= 0.0031308 {
+    l * 12.92
+  } else {
+    1.055 * l.pow(1.0 / 2.4) - 0.055
+  }
+  let byte = (encoded * 255.0).round().to_int()
+  if byte < 0 {
+    0
+  } else if byte > 255 {
+    255
+  } else {
+    byte
+  }
 }
 
 ///|

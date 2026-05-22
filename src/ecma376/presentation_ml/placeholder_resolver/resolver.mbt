@@ -1,13 +1,17 @@
 ///|
-/// Part 1 §19.3.1.36 ph — find the shape in `shapes` whose `<ph idx="…">`
-/// matches the supplied `idx`. Returns the first match (idx is unique
-/// per cSld per spec). `None` when no match exists or `target` is `None`.
-fn lookup_by_idx(shapes : Array[@xml.Element], target : Int?) -> @xml.Element? {
+/// Part 1 §19.3.1.36 ph — find the CT_Shape in `shapes` whose
+/// `<ph idx="…">` matches the supplied `idx`. Returns the first match
+/// (idx is unique per cSld per spec). `None` when no match exists or
+/// `target` is `None`.
+fn lookup_by_idx(
+  shapes : Array[@domain.CT_Shape],
+  target : Int?,
+) -> @domain.CT_Shape? {
   match target {
     None => None
     Some(idx) => {
       for shape in shapes {
-        match find_shape_ph(shape) {
+        match find_shape_ph(shape.element) {
           Some(ph_element) =>
             for a in ph_element.attributes {
               if a.name.local_name == "idx" {
@@ -26,19 +30,19 @@ fn lookup_by_idx(shapes : Array[@xml.Element], target : Int?) -> @xml.Element? {
 }
 
 ///|
-/// Part 1 §19.3.1.36 ph / §19.7.10 ST_PlaceholderType — find the shape
-/// in `shapes` whose `<ph type="…">` matches the supplied `target`.
-/// Used for type-based fallback when an `idx` lookup fails or when the
-/// slide placeholder has no `idx`.
+/// Part 1 §19.3.1.36 ph / §19.7.10 ST_PlaceholderType — find the
+/// CT_Shape in `shapes` whose `<ph type="…">` matches the supplied
+/// `target`. Used for type-based fallback when an `idx` lookup fails
+/// or when the slide placeholder has no `idx`.
 fn lookup_by_type(
-  shapes : Array[@xml.Element],
+  shapes : Array[@domain.CT_Shape],
   target : @domain.ST_PlaceholderType?,
-) -> @xml.Element? {
+) -> @domain.CT_Shape? {
   match target {
     None => None
     Some(needle) => {
       for shape in shapes {
-        match find_shape_ph(shape) {
+        match find_shape_ph(shape.element) {
           Some(ph_element) =>
             match attr_local(ph_element, "type") {
               Some(text) =>
@@ -126,19 +130,19 @@ fn merge_effective(
 ///|
 /// Part 1 §19.3.1.36 — resolve a single slide shape against its
 /// `SlideChain`. The returned `ResolvedShape` carries the contributing
-/// element at each level (slide → layout → master) plus the
-/// `EffectivePlaceholder` view and convenience accessors for `sp_pr`,
-/// `tx_body`, `nv_sp_pr` taken from the slide / layout / master in
-/// that priority order.
+/// CT_Shape projection at each level (slide → layout → master) plus
+/// the `EffectivePlaceholder` view and convenience accessors for
+/// `sp_pr`, `tx_body`, `nv_sp_pr` taken from the slide / layout /
+/// master in that priority order.
 pub fn resolve_placeholder(
-  slide_shape : @xml.Element,
+  slide_shape : @domain.CT_Shape,
   chain : SlideChain,
 ) -> ResolvedShape raise @domain.SchemaViolation {
-  let slide_ph = decode_shape_placeholder(slide_shape)
+  let slide_ph = decode_shape_placeholder(slide_shape.element)
   let layout_shapes = chain.layout_shapes()
   let layout_shape_match = lookup_layout_shape(layout_shapes, slide_ph)
   let layout_ph = match layout_shape_match {
-    Some(shape) => decode_shape_placeholder(shape)
+    Some(shape) => decode_shape_placeholder(shape.element)
     None => None
   }
   let master_shapes = chain.master_shapes()
@@ -146,24 +150,24 @@ pub fn resolve_placeholder(
     master_shapes, layout_ph, slide_ph,
   )
   let master_ph = match master_shape_match {
-    Some(shape) => decode_shape_placeholder(shape)
+    Some(shape) => decode_shape_placeholder(shape.element)
     None => None
   }
   let effective = merge_effective(slide_ph, layout_ph, master_ph)
-  let sp_pr = merge_first(
-    shape_sp_pr(slide_shape),
-    layout_shape_match.bind(fn(s) { shape_sp_pr(s) }),
-    master_shape_match.bind(fn(s) { shape_sp_pr(s) }),
+  let sp_pr = merge_sp_pr(
+    typed_sp_pr(slide_shape),
+    layout_shape_match.bind(fn(s) { typed_sp_pr(s) }),
+    master_shape_match.bind(fn(s) { typed_sp_pr(s) }),
   )
-  let tx_body = merge_first(
-    shape_tx_body(slide_shape),
-    layout_shape_match.bind(fn(s) { shape_tx_body(s) }),
-    master_shape_match.bind(fn(s) { shape_tx_body(s) }),
+  let tx_body = merge_tx_body(
+    typed_tx_body(slide_shape),
+    layout_shape_match.bind(fn(s) { typed_tx_body(s) }),
+    master_shape_match.bind(fn(s) { typed_tx_body(s) }),
   )
-  let nv_sp_pr = merge_first(
-    shape_nv_sp_pr(slide_shape),
-    layout_shape_match.bind(fn(s) { shape_nv_sp_pr(s) }),
-    master_shape_match.bind(fn(s) { shape_nv_sp_pr(s) }),
+  let nv_sp_pr = merge_nv_sp_pr(
+    Some(slide_shape.nv_sp_pr),
+    layout_shape_match.map(fn(s) { s.nv_sp_pr }),
+    master_shape_match.map(fn(s) { s.nv_sp_pr }),
   )
   {
     slide_shape: Some(slide_shape),
@@ -193,9 +197,9 @@ pub fn resolve_slide_shapes(
 
 ///|
 fn lookup_layout_shape(
-  layout_shapes : Array[@xml.Element],
+  layout_shapes : Array[@domain.CT_Shape],
   slide_ph : @domain.CT_Placeholder?,
-) -> @xml.Element? {
+) -> @domain.CT_Shape? {
   match slide_ph {
     None => None
     Some(ph) => {
@@ -217,10 +221,10 @@ fn lookup_layout_shape(
 
 ///|
 fn lookup_master_shape(
-  master_shapes : Array[@xml.Element],
+  master_shapes : Array[@domain.CT_Shape],
   layout_ph : @domain.CT_Placeholder?,
   slide_ph : @domain.CT_Placeholder?,
-) -> @xml.Element? {
+) -> @domain.CT_Shape? {
   let layout_idx = match layout_ph {
     Some(ph) => ph.idx
     None => None
@@ -234,11 +238,83 @@ fn lookup_master_shape(
 }
 
 ///|
-fn merge_first(
-  slide : @xml.Element?,
-  layout : @xml.Element?,
-  master : @xml.Element?,
-) -> @xml.Element? {
+/// Project a CT_Shape's `<a:spPr>` raw element into the typed
+/// CT_ShapeProperties. Bridge `@a.SchemaViolation` into the local PML
+/// SchemaViolation so the resolver surface stays uniform.
+fn typed_sp_pr(
+  shape : @domain.CT_Shape,
+) -> @a.CT_ShapeProperties? raise @domain.SchemaViolation {
+  Some(wrap_a_violation(fn() { @a.CT_ShapeProperties::new(shape.sp_pr) }))
+}
+
+///|
+/// Project a CT_Shape's optional `<a:txBody>` into the typed
+/// CT_TextBody.
+fn typed_tx_body(
+  shape : @domain.CT_Shape,
+) -> @a.CT_TextBody? raise @domain.SchemaViolation {
+  match shape.tx_body {
+    Some(e) => Some(wrap_a_violation(fn() { @a.CT_TextBody::new(e) }))
+    None => None
+  }
+}
+
+///|
+/// Bridge `@a.SchemaViolation` (DrawingML) into the local PML
+/// SchemaViolation so DrawingML-owned constructors can be invoked
+/// from the placeholder_resolver surface without leaking the foreign
+/// error type.
+fn wrap_a_violation[T](
+  body : () -> T raise @a.SchemaViolation,
+) -> T raise @domain.SchemaViolation {
+  body() catch {
+    @a.SchemaViolation(_) =>
+      @domain.schema_violation(
+        "placeholder_resolver/typed_sp_pr",
+        "",
+        "DrawingML child failed validation",
+      )
+  }
+}
+
+///|
+fn merge_sp_pr(
+  slide : @a.CT_ShapeProperties?,
+  layout : @a.CT_ShapeProperties?,
+  master : @a.CT_ShapeProperties?,
+) -> @a.CT_ShapeProperties? {
+  match slide {
+    Some(_) => slide
+    None =>
+      match layout {
+        Some(_) => layout
+        None => master
+      }
+  }
+}
+
+///|
+fn merge_tx_body(
+  slide : @a.CT_TextBody?,
+  layout : @a.CT_TextBody?,
+  master : @a.CT_TextBody?,
+) -> @a.CT_TextBody? {
+  match slide {
+    Some(_) => slide
+    None =>
+      match layout {
+        Some(_) => layout
+        None => master
+      }
+  }
+}
+
+///|
+fn merge_nv_sp_pr(
+  slide : @domain.CT_ShapeNonVisual?,
+  layout : @domain.CT_ShapeNonVisual?,
+  master : @domain.CT_ShapeNonVisual?,
+) -> @domain.CT_ShapeNonVisual? {
   match slide {
     Some(_) => slide
     None =>

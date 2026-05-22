@@ -72,12 +72,22 @@ pub fn build_geometry(
 }
 
 ///|
-/// Return the canonical four-corner rectangle for any preset whose
-/// dedicated geometry generator is not yet implemented. Documented
-/// as the fallback so a follow-up commit can replace it with a
-/// faithful shape; until then renderers still get a non-empty,
-/// bounding-box-correct path. The fallback is also returned for
-/// degenerate inputs (`width` or `height` ≤ 0).
+/// §20.1.10.56 ST_PresetGeometry — bounding-box fallback for
+/// presets whose dedicated path generator has not yet been
+/// authored.  Returns the canonical four-corner rectangle so
+/// renderers still get a non-empty, bounding-box-correct path
+/// (the document round-trips without loss because the spec
+/// preset name is preserved on the source `<a:prstGeom>`).
+///
+/// Consumers that need to know whether the returned geometry
+/// is the faithful spec path or the bounding-box fallback can
+/// call `supports(shape)` first — `false` means the renderer
+/// is using this fallback and the consumer can surface the
+/// preset name as `data-ooxml-prst="<name>"` metadata in their
+/// own emission layer.
+///
+/// The fallback is also returned for degenerate inputs
+/// (`width` or `height` ≤ 0).
 pub fn rectangular_fallback(width : Int, height : Int) -> ShapeGeometry {
   if width <= 0 || height <= 0 {
     return { commands: [], width: 0, height: 0 }

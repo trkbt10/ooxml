@@ -1481,3 +1481,52 @@ pub fn wml_xsd_ct_shd_schema_name() -> String {
 pub fn wml_xsd_ct_tblppr_schema_name() -> String {
   "XSD complex type CT_TblPPr. Schema wml.xsd complex type `CT_TblPPr`. Attributes: `leftFromText`, `rightFromText`, `topFromText`, `bottomFromText`, `vertAnchor`, `horzAnchor`, `tblpXSpec`, `tblpX`, `tblpYSpec`, `tblpY`."
 }
+
+///|
+/// XSD complex type CT_FontSig.
+/// Schema wml.xsd complex type `CT_FontSig`. Attributes: `usb0`, `usb1`, `usb2`, `usb3`, `csb0`, `csb1`.
+pub fn wml_xsd_ct_fontsig_schema_name() -> String {
+  "XSD complex type CT_FontSig. Schema wml.xsd complex type `CT_FontSig`. Attributes: `usb0`, `usb1`, `usb2`, `usb3`, `csb0`, `csb1`."
+}
+
+///|
+/// XSD complex type CT_HdrFtr.
+/// Schema wml.xsd complex type `CT_HdrFtr`.
+pub fn wml_xsd_ct_hdrftr_schema_name() -> String {
+  "XSD complex type CT_HdrFtr. Schema wml.xsd complex type `CT_HdrFtr`."
+}
+
+///|
+/// XSD complex type CT_PTab.
+/// Schema wml.xsd complex type `CT_PTab`. Attributes: `alignment`, `relativeTo`, `leader`.
+pub fn wml_xsd_ct_ptab_schema_name() -> String {
+  "XSD complex type CT_PTab. Schema wml.xsd complex type `CT_PTab`. Attributes: `alignment`, `relativeTo`, `leader`."
+}
+
+///|
+/// XSD complex type CT_PageMar.
+/// Schema wml.xsd complex type `CT_PageMar`. Attributes: `top`, `right`, `bottom`, `left`, `header`, `footer`, `gutter`.
+pub fn wml_xsd_ct_pagemar_schema_name() -> String {
+  "XSD complex type CT_PageMar. Schema wml.xsd complex type `CT_PageMar`. Attributes: `top`, `right`, `bottom`, `left`, `header`, `footer`, `gutter`."
+}
+
+///|
+/// XSD complex type CT_PageSz.
+/// Schema wml.xsd complex type `CT_PageSz`. Attributes: `w`, `h`, `orient`, `code`.
+pub fn wml_xsd_ct_pagesz_schema_name() -> String {
+  "XSD complex type CT_PageSz. Schema wml.xsd complex type `CT_PageSz`. Attributes: `w`, `h`, `orient`, `code`."
+}
+
+///|
+/// XSD complex type CT_RPr.
+/// Schema wml.xsd complex type `CT_RPr`.
+pub fn wml_xsd_ct_rpr_schema_name() -> String {
+  "XSD complex type CT_RPr. Schema wml.xsd complex type `CT_RPr`."
+}
+
+///|
+/// XSD complex type CT_Rel.
+/// Schema wml.xsd complex type `CT_Rel`. Attribute groups referenced: `r:id`.
+pub fn wml_xsd_ct_rel_schema_name() -> String {
+  "XSD complex type CT_Rel. Schema wml.xsd complex type `CT_Rel`. Attribute groups referenced: `r:id`."
+}

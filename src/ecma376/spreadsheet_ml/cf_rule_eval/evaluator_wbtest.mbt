@@ -276,8 +276,8 @@ test "§18.3.1.16 colorScale interpolates between stops" {
       { kind: @domain.CfvoMax, value_text: None },
     ],
     colors: [
-      @domain.CT_Color::new(255, 0, 0, 0),
-      @domain.CT_Color::new(255, 255, 255, 255),
+      @domain.CT_ColorArgb::new(255, 0, 0, 0),
+      @domain.CT_ColorArgb::new(255, 255, 255, 255),
     ],
   }
   let pop = [n(0.0), n(50.0), n(100.0)]
@@ -295,9 +295,14 @@ test "§18.3.1.16 colorScale interpolates between stops" {
 ///|
 test "§18.3.1.28 dataBar ratio saturates outside min/max" {
   let bar : @domain.CT_DataBar = {
+    element: {
+      name: { prefix: None, local_name: "dataBar", ns: None },
+      attributes: [],
+      children: [],
+    },
     min_threshold: { kind: @domain.CfvoNum, value_text: Some("0") },
     max_threshold: { kind: @domain.CfvoNum, value_text: Some("100") },
-    color: @domain.CT_Color::new(255, 0, 0, 255),
+    color: @domain.CT_ColorArgb::new(255, 0, 0, 255),
   }
   assert_eq(evaluate_bar_ratio(bar, n(-5.0), []).unwrap(), 0.0)
   assert_eq(evaluate_bar_ratio(bar, n(200.0), []).unwrap(), 1.0)
@@ -408,4 +413,51 @@ test "§18.18.15 decode_cf_operator handles all 12 values" {
     let got = try! decode_cf_operator(lex)
     assert_true(got == expected)
   }
+}
+
+///|
+/// §18.18.82 — full ST_TimePeriod enumeration (all 10 values).
+/// `fixed_today(2026, 5, 19)` is a Tuesday; today's ISO calendar
+/// week (anchored Sun..Sat) is 2026-05-17..2026-05-23.
+test "§18.18.82 timePeriod full enumeration" {
+  let today = fixed_today(2026, 5, 19)
+  let to_serial = fn(y : Int, m : Int, d : Int) -> Double {
+    try! @date_serial.date_time_to_serial(
+      { year: y, month: m, day: d, hour: 0, minute: 0, second: 0, millisecond: 0 },
+      @date_serial.DateSystem::Serial1900,
+    )
+  }
+  let ctx = context(today, no_formula())
+  let mk = fn(period : @domain.ST_TimePeriod) -> @domain.CT_CfRule {
+    rule_for_test(@domain.TimePeriod, 1, fn(base) {
+      { ..base, time_period: Some(period) }
+    })
+  }
+  // tomorrow → 2026-05-20.
+  assert_true(evaluate_rule(mk(@domain.Tomorrow), n(to_serial(2026, 5, 20)), [], ctx))
+  assert_true(!evaluate_rule(mk(@domain.Tomorrow), n(to_serial(2026, 5, 21)), [], ctx))
+  // thisWeek → any day in 2026-05-17..2026-05-23.
+  assert_true(evaluate_rule(mk(@domain.ThisWeek), n(to_serial(2026, 5, 17)), [], ctx))
+  assert_true(evaluate_rule(mk(@domain.ThisWeek), n(to_serial(2026, 5, 23)), [], ctx))
+  assert_true(!evaluate_rule(mk(@domain.ThisWeek), n(to_serial(2026, 5, 24)), [], ctx))
+  // lastWeek → 2026-05-10..2026-05-16.
+  assert_true(evaluate_rule(mk(@domain.LastWeek), n(to_serial(2026, 5, 10)), [], ctx))
+  assert_true(evaluate_rule(mk(@domain.LastWeek), n(to_serial(2026, 5, 16)), [], ctx))
+  assert_true(!evaluate_rule(mk(@domain.LastWeek), n(to_serial(2026, 5, 17)), [], ctx))
+  // nextWeek → 2026-05-24..2026-05-30.
+  assert_true(evaluate_rule(mk(@domain.NextWeek), n(to_serial(2026, 5, 24)), [], ctx))
+  assert_true(evaluate_rule(mk(@domain.NextWeek), n(to_serial(2026, 5, 30)), [], ctx))
+  assert_true(!evaluate_rule(mk(@domain.NextWeek), n(to_serial(2026, 5, 31)), [], ctx))
+  // thisMonth → 2026-05-01..2026-05-31.
+  assert_true(evaluate_rule(mk(@domain.ThisMonth), n(to_serial(2026, 5, 1)), [], ctx))
+  assert_true(evaluate_rule(mk(@domain.ThisMonth), n(to_serial(2026, 5, 31)), [], ctx))
+  assert_true(!evaluate_rule(mk(@domain.ThisMonth), n(to_serial(2026, 6, 1)), [], ctx))
+  // lastMonth → 2026-04.
+  assert_true(evaluate_rule(mk(@domain.LastMonth), n(to_serial(2026, 4, 1)), [], ctx))
+  assert_true(evaluate_rule(mk(@domain.LastMonth), n(to_serial(2026, 4, 30)), [], ctx))
+  assert_true(!evaluate_rule(mk(@domain.LastMonth), n(to_serial(2026, 5, 1)), [], ctx))
+  // nextMonth → 2026-06.
+  assert_true(evaluate_rule(mk(@domain.NextMonth), n(to_serial(2026, 6, 1)), [], ctx))
+  assert_true(evaluate_rule(mk(@domain.NextMonth), n(to_serial(2026, 6, 30)), [], ctx))
+  assert_true(!evaluate_rule(mk(@domain.NextMonth), n(to_serial(2026, 5, 31)), [], ctx))
 }

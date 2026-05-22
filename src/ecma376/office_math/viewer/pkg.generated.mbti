@@ -3,12 +3,15 @@ package "trkbt10/ooxml/ecma376/office_math/viewer"
 
 import {
   "trkbt10/ooxml/ecma376/office_math/domain",
+  "trkbt10/ooxml/xml",
 }
 
 // Values
 pub fn package_name() -> String
 
 pub fn render_html(@domain.CT_OMath) -> String
+
+pub fn render_mathml(@domain.CT_OMath) -> @xml.Element
 
 // Errors
 

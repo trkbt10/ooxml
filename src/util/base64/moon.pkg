@@ -1,0 +1,4 @@
+// trkbt10/ooxml/util/base64
+//
+// RFC 4648 §4 base64 encoder used by SVG renderers to embed image
+// part bytes as data URIs.

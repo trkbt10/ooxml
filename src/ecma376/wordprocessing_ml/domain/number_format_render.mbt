@@ -13,7 +13,17 @@
 /// formats (japanese, hindi, thai, ...) are placeholders pending
 /// per-locale glyph tables.
 pub fn ST_NumberFormat::format(self : ST_NumberFormat, value : Int) -> String {
+  // §17.18.59 ST_NumberFormat — closed-60 enum.  Every variant
+  // is matched explicitly below; regional script systems that
+  // require dedicated glyph tables (Hindi, Thai, Chinese,
+  // Japanese kanji, Korean, Hebrew, Arabic, Vietnamese, …) fall
+  // through to decimal with a comment marking them as
+  // pending — the spec wording for these formats describes the
+  // glyph mapping but defers to locale fonts, so the
+  // arabic-digit fallback is the closest spec-permitted
+  // degradation until the per-locale tables land.
   match self {
+    // §17.18.59 numeric / latin formats — fully implemented.
     NumFmtDecimal => value.to_string()
     NumFmtDecimalZero =>
       if value < 10 {
@@ -30,8 +40,155 @@ pub fn ST_NumberFormat::format(self : ST_NumberFormat, value : Int) -> String {
     NumFmtOrdinalText => render_ordinal_text(value)
     NumFmtBullet => ""
     NumFmtNone => ""
-    _ => value.to_string()
+    NumFmtHex => render_hex(value)
+    NumFmtChicago => render_chicago(value)
+    NumFmtDecimalFullWidth => render_full_width_digits(value)
+    NumFmtDecimalFullWidth2 => render_full_width_digits(value)
+    NumFmtDecimalHalfWidth => value.to_string()
+    NumFmtDecimalEnclosedCircle => render_enclosed_circle(value)
+    NumFmtDecimalEnclosedCircleChinese => render_enclosed_circle(value)
+    NumFmtIdeographEnclosedCircle => render_enclosed_circle(value)
+    NumFmtDecimalEnclosedFullstop => value.to_string() + "."
+    NumFmtDecimalEnclosedParen => "(" + value.to_string() + ")"
+    NumFmtNumberInDash => "- " + value.to_string() + " -"
+    // §17.18.59 regional script formats — Hindi / Thai / CJK /
+    // Hebrew / Arabic / Vietnamese / Russian require dedicated
+    // glyph tables that we do not yet ship; render arabic
+    // digits and surface the spec format name as
+    // `data-ooxml-numfmt` metadata upstream so consumers can
+    // substitute the correct glyphs themselves.
+    NumFmtIdeographDigital => value.to_string()
+    NumFmtIdeographTraditional => value.to_string()
+    NumFmtIdeographZodiac => value.to_string()
+    NumFmtIdeographZodiacTraditional => value.to_string()
+    NumFmtIdeographLegalTraditional => value.to_string()
+    NumFmtJapaneseCounting => value.to_string()
+    NumFmtJapaneseLegal => value.to_string()
+    NumFmtJapaneseDigitalTenThousand => value.to_string()
+    NumFmtAiueo => value.to_string()
+    NumFmtAiueoFullWidth => value.to_string()
+    NumFmtIroha => value.to_string()
+    NumFmtIrohaFullWidth => value.to_string()
+    NumFmtGanada => value.to_string()
+    NumFmtChosung => value.to_string()
+    NumFmtTaiwaneseCounting => value.to_string()
+    NumFmtTaiwaneseCountingThousand => value.to_string()
+    NumFmtTaiwaneseDigital => value.to_string()
+    NumFmtChineseCounting => value.to_string()
+    NumFmtChineseLegalSimplified => value.to_string()
+    NumFmtChineseCountingThousand => value.to_string()
+    NumFmtKoreanDigital => value.to_string()
+    NumFmtKoreanCounting => value.to_string()
+    NumFmtKoreanLegal => value.to_string()
+    NumFmtKoreanDigital2 => value.to_string()
+    NumFmtVietnameseCounting => value.to_string()
+    NumFmtRussianLower => value.to_string()
+    NumFmtRussianUpper => value.to_string()
+    NumFmtHebrew1 => value.to_string()
+    NumFmtHebrew2 => value.to_string()
+    NumFmtArabicAlpha => value.to_string()
+    NumFmtArabicAbjad => value.to_string()
+    NumFmtHindiVowels => value.to_string()
+    NumFmtHindiConsonants => value.to_string()
+    NumFmtHindiNumbers => value.to_string()
+    NumFmtHindiCounting => value.to_string()
+    NumFmtThaiLetters => value.to_string()
+    NumFmtThaiNumbers => value.to_string()
+    NumFmtThaiCounting => value.to_string()
+    // §17.18.59 currency text formats — `bahtText` and
+    // `dollarText` spell the value out as currency words; we
+    // render arabic digits until the spell-out tables land.
+    NumFmtBahtText => value.to_string()
+    NumFmtDollarText => value.to_string()
+    // §17.18.59 `custom` — the consumer supplies the format
+    // string via `<w:lvlText>`.  Return the raw arabic digit so
+    // the caller's substitution machinery has a non-empty token
+    // to splice in.
+    NumFmtCustom => value.to_string()
   }
+}
+
+///|
+/// §17.18.59 `hex` — render the value in uppercase hexadecimal
+/// without a `0x` prefix.  Spec example: `255` → `"FF"`.
+fn render_hex(value : Int) -> String {
+  if value < 0 {
+    return "-" + render_hex(-value)
+  }
+  if value == 0 {
+    return "0"
+  }
+  let buf : Array[Char] = []
+  let mut n = value
+  while n > 0 {
+    let idx = n % 16
+    let ch = if idx < 10 {
+      Char::from_int(0x30 + idx)
+    } else {
+      Char::from_int(0x41 + (idx - 10))
+    }
+    buf.push(ch)
+    n = n / 16
+  }
+  let out = StringBuilder::new()
+  for i in 0..<buf.length() {
+    out.write_char(buf[buf.length() - 1 - i])
+  }
+  out.to_string()
+}
+
+///|
+/// §17.18.59 `chicago` — Chicago Manual of Style footnote
+/// sequence: `*`, `†`, `‡`, `§`, `‖`, `¶`, then doubled (`**`, …),
+/// tripled, etc.  Index is 1-based.
+fn render_chicago(value : Int) -> String {
+  if value < 1 {
+    return value.to_string()
+  }
+  let symbols = ["*", "†", "‡", "§", "‖", "¶"]
+  let n = symbols.length()
+  let group = (value - 1) / n + 1
+  let pos = (value - 1) % n
+  let sym = symbols[pos]
+  let buf = StringBuilder::new()
+  for _i in 0..<group {
+    buf.write_string(sym)
+  }
+  buf.to_string()
+}
+
+///|
+/// §17.18.59 `decimalFullWidth` / `decimalFullWidth2` — emit
+/// full-width arabic digits (U+FF10..U+FF19) for each base-10
+/// digit of the value.
+fn render_full_width_digits(value : Int) -> String {
+  if value < 0 {
+    return "-" + render_full_width_digits(-value)
+  }
+  let decimal = value.to_string()
+  let out = StringBuilder::new()
+  for c in decimal {
+    let code = c.to_int()
+    if code >= 0x30 && code <= 0x39 {
+      out.write_char(Char::from_int(0xFF10 + (code - 0x30)))
+    } else {
+      out.write_char(c)
+    }
+  }
+  out.to_string()
+}
+
+///|
+/// §17.18.59 `decimalEnclosedCircle` — circled digits (U+2460..
+/// U+2473 for 1..20).  Outside the supported range we fall back
+/// to plain arabic so the counter still increments.
+fn render_enclosed_circle(value : Int) -> String {
+  if value >= 1 && value <= 20 {
+    let buf = StringBuilder::new()
+    buf.write_char(Char::from_int(0x2460 + value - 1))
+    return buf.to_string()
+  }
+  value.to_string()
 }
 
 ///|

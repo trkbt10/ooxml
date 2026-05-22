@@ -2,28 +2,59 @@
 package "trkbt10/ooxml/ecma376/presentation_ml/context"
 
 import {
+  "mizchi/svg",
   "moonbitlang/core/debug",
-  "trkbt10/ooxml/ecma376/drawing_ml/theme",
-  "trkbt10/ooxml/ecma376/opc/content_types",
-  "trkbt10/ooxml/ecma376/opc/relationships",
+  "trkbt10/ooxml/ecma376/opc",
+  "trkbt10/ooxml/ecma376/presentation_ml/animation_eval",
   "trkbt10/ooxml/ecma376/presentation_ml/domain",
+  "trkbt10/ooxml/ecma376/presentation_ml/placeholder_resolver",
 }
 
 // Values
+pub fn open(Bytes) -> Presentation raise OpenError
+
 pub fn package_name() -> String
 
 // Errors
+pub(all) suberror OpenError {
+  OpenError(kind~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
 
 // Types and methods
-pub(all) struct Context {
-  relationships : @relationships.CT_Relationships?
-  content_types : @content_types.CT_Types?
-  theme : @theme.CT_OfficeStyleSheet?
-  slide_master : @domain.CT_SlideMaster?
-  slide_layout : @domain.CT_SlideLayout?
+pub(all) struct Presentation {
+  package : @opc.Package
+  presentation_part : String
+  presentation : @domain.CT_Presentation
+  slides : Array[SlidePart]
+  slide_masters : Array[SlideMasterPart]
+  slide_layouts : Array[SlideLayoutPart]
+  themes : Array[@opc.PackagePart]
 } derive(Eq, @debug.Debug)
-pub fn Context::new() -> Self
-pub fn Context::resolve_relationship(Self, String) -> @relationships.CT_Relationship?
+pub fn Presentation::decode_timing(Self, @domain.CT_SlideTiming) -> @animation_eval.Timeline raise OpenError
+pub fn Presentation::resolve_slide_shapes(Self, @placeholder_resolver.SlideChain) -> Array[@placeholder_resolver.ResolvedShape] raise OpenError
+pub fn Presentation::save(Self) -> Bytes
+pub fn Presentation::schedule_animation(Self, @animation_eval.Timeline) -> Array[@animation_eval.Event]
+pub fn Presentation::slide_chain(Self, @domain.CT_SlideMaster, @domain.CT_SlideLayout?, @domain.CT_Slide?) -> @placeholder_resolver.SlideChain
+pub fn Presentation::to_html(Self) -> String
+pub fn Presentation::to_image_for_slide(Self, Int, Int, Int) -> @svg.Image? raise OpenError
+pub fn Presentation::to_styled_html(Self) -> String
+pub fn Presentation::to_svg(Self) -> String
+pub fn Presentation::to_svg_for_slide(Self, Int) -> String raise OpenError
+
+pub(all) struct SlideLayoutPart {
+  name : String
+  value : @domain.CT_SlideLayout
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SlideMasterPart {
+  name : String
+  value : @domain.CT_SlideMaster
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SlidePart {
+  name : String
+  value : @domain.CT_Slide
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

@@ -3,5 +3,6 @@
 // Standalone DrawingML renderer (SVG).
 
 import {
+  "trkbt10/ooxml/util/markup" @markup,
   "trkbt10/ooxml/xml" @xml,
 }

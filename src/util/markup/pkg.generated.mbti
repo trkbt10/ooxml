@@ -1,0 +1,40 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/util/markup"
+
+import {
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn attr(String, String) -> @xml.Attribute
+
+pub fn attr_ns(String, String, String, String) -> @xml.Attribute
+
+pub fn elem(String, Array[@xml.Attribute], Array[@xml.Node]) -> @xml.Node
+
+pub fn elem_ns(String, String, Array[@xml.Attribute], Array[@xml.Node]) -> @xml.Node
+
+pub fn qname(String) -> @xml.QName
+
+pub fn qname_ns(String, String) -> @xml.QName
+
+pub fn serialize(@xml.Element) -> String
+
+pub fn serialize_svg(@xml.Element) -> String
+
+pub let svg_ns : String
+
+pub fn text(String) -> @xml.Node
+
+pub let xhtml_ns : String
+
+pub let xlink_ns : String
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

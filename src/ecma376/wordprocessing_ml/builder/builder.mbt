@@ -84,6 +84,20 @@ pub fn write_glossary_document(value : @domain.CT_GlossaryDocument) -> Bytes {
 }
 
 ///|
+/// ECMA-376 Part 2 §10.1 / OPC §10.1.2 mandate XML 1.0 for every
+/// package part, and Office consumers expect the explicit XML
+/// declaration with UTF-8 encoding and `standalone="yes"`.
+/// Emitting it satisfies Word's strict validator on every part
+/// type we produce (`document.xml`, `styles.xml`, `numbering.xml`,
+/// header/footer, comments/footnotes/endnotes, glossary).
 fn write_element(element : @xml.Element) -> Bytes {
-  @xml.write({ declaration: None, doctype: None, root: element })
+  @xml.write({
+    declaration: Some({
+      version: "1.0",
+      encoding: Some("UTF-8"),
+      standalone: Some(true),
+    }),
+    doctype: None,
+    root: element,
+  })
 }

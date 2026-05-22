@@ -389,28 +389,24 @@ pub fn CT_Border::new(element : @xml.Element) -> CT_Border {
 /// XSD complex type CT_BorderPr — Part 1 §18.8.4 (border edge sub-element
 /// definition shared by `<start>`/`<end>`/`<top>`/`<bottom>`/`<diagonal>`/
 /// `<vertical>`/`<horizontal>` in §18.8.4). Optional `<color>` (CT_Color)
-/// child and optional `@style` (ST_BorderStyle, default "none"). The
-/// `<color>` child is preserved as a raw XML element because the domain's
-/// typed CT_Color is an ARGB tuple (per §18.3.1.15) constructed via
-/// CT_Color::new(a, r, g, b) rather than from XML; this field preserves the
-/// border-edge `<color>` reference until colour resolution converts it.
+/// child and optional `@style` (ST_BorderStyle, default "none").
 pub(all) struct CT_BorderPr {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
-  /// <color> (CT_Color element) — optional stroke color, preserved as raw
-  /// XML for downstream colour resolution.
-  color : @xml.Element?
+  /// <color> (CT_Color, §18.8.3) — optional stroke colour. Typed
+  /// projection of the auto/indexed/rgb/theme/tint attribute set.
+  color : CT_Color?
   /// @style (ST_BorderStyle) — optional, default "none".
   style : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_BorderPr::new(element : @xml.Element) -> CT_BorderPr {
-  let mut color : @xml.Element? = None
+  let mut color : CT_Color? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
       if child_element.name.local_name == "color" {
-        color = Some(child_element)
+        color = Some(CT_Color::new(child_element))
       }
     }
   }
@@ -442,9 +438,12 @@ pub fn CT_CellProtection::new(element : @xml.Element) -> CT_CellProtection {
 }
 
 ///|
-/// XSD complex type CT_Fonts — Part 1 §18.8.23 (`<fonts>`). Container for
-/// `<font>` (CT_Font) entries (minOccurs=0, maxOccurs=unbounded). Optional
-/// `@count` (xsd:unsignedInt) reports the declared total.
+/// Schema sml.xsd complex type `CT_Fonts`. Attributes: `count`. Child
+/// elements: `font`. Child types: `CT_Font`.
+///
+/// XSD complex type CT_Fonts — Part 1 §18.8.23 (`<fonts>`). Container
+/// for `<font>` (CT_Font) entries (minOccurs=0, maxOccurs=unbounded).
+/// Optional `@count` (xsd:unsignedInt) reports the declared total.
 pub(all) struct CT_Fonts {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -469,9 +468,12 @@ pub fn CT_Fonts::new(element : @xml.Element) -> CT_Fonts {
 }
 
 ///|
-/// XSD complex type CT_Fills — Part 1 §18.8.21 (`<fills>`). Container for
-/// `<fill>` (CT_Fill) entries (minOccurs=0, maxOccurs=unbounded). Optional
-/// `@count` (xsd:unsignedInt) declares the total.
+/// Schema sml.xsd complex type `CT_Fills`. Attributes: `count`. Child
+/// elements: `fill`. Child types: `CT_Fill`.
+///
+/// XSD complex type CT_Fills — Part 1 §18.8.21 (`<fills>`). Container
+/// for `<fill>` (CT_Fill) entries (minOccurs=0, maxOccurs=unbounded).
+/// Optional `@count` (xsd:unsignedInt) declares the total.
 pub(all) struct CT_Fills {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -501,6 +503,8 @@ pub fn CT_Fills::new(element : @xml.Element) -> CT_Fills {
 /// (CT_GradientFill). The XSD models both arms as minOccurs=0 within the
 /// choice, so either may be absent on round-trip; consumers must read the
 /// arm that is present per choice semantics.
+/// Schema sml.xsd complex type `CT_Fill`. Child elements: `patternFill`,
+/// `gradientFill`. Child types: `CT_PatternFill`, `CT_GradientFill`.
 pub(all) struct CT_Fill {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -614,15 +618,15 @@ pub fn CT_GradientFill::new(element : @xml.Element) -> CT_GradientFill {
 }
 
 ///|
+/// Schema sml.xsd complex type `CT_NumFmts`. Attributes: `count`.
+/// Child elements: `numFmt`. Child types: `CT_NumFmt`.
+///
 /// XSD complex type CT_NumFmts — Part 1 §18.8.31 numFmts (NumFmts).
 /// Schema sml.xsd complex type `CT_NumFmts` is a `<xsd:complexType
 /// name="CT_NumFmts">` declaration with attribute `count`
 /// (xsd:unsignedInt) and `<xsd:element name="numFmt" type="CT_NumFmt"
 /// minOccurs="0" maxOccurs="unbounded"/>`. CT_NumFmts and
-/// CT_NumFmts::new bind this numFmts container collection: attributes
-/// `count`; child elements `numFmt`; child types `CT_NumFmt`. CT_NumFmts
-/// is the stylesheet numFmts table; CT_NumFmts is the plural NumFmts
-/// collection wrapper; CT_NumFmts groups several NumFmt entries.
+/// CT_NumFmts::new bind this numFmts container collection.
 pub(all) struct CT_NumFmts {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -660,6 +664,16 @@ pub(all) struct CT_NumFmt {
 } derive(Eq, Debug)
 
 ///|
+/// §18.8.30 CT_NumFmt — `@numFmtId` and `@formatCode` are both
+/// `use="required"` per the schema.  Missing attributes default
+/// to `0` / `""` here to keep the parser tolerant of malformed
+/// stylesheet parts (Excel's strict validator accepts these as
+/// degenerate but consumers should treat them as schema
+/// violations).  A stricter SchemaViolation-raising
+/// constructor is tracked as Round 13 #303 — promoting this
+/// helper requires raise-propagation through every styles.xml
+/// caller (CT_Stylesheet::new ← read_style_sheet ← context
+/// open), which is out of scope here.
 pub fn CT_NumFmt::new(element : @xml.Element) -> CT_NumFmt {
   let num_fmt_id = attr_uint(element, "numFmtId", 0)
   let format_code = match attr(element, "formatCode") {
@@ -1028,25 +1042,22 @@ pub fn CT_IndexedColors::new(element : @xml.Element) -> CT_IndexedColors {
 
 ///|
 /// XSD complex type CT_MRUColors — Part 1 §18.8.21. Most-recently-used
-/// color list. Sequence: `<color>+` (CT_Color, one or more entries).
-/// The child color element is preserved as `@xml.Element` because the
-/// package's typed CT_Color is the ARGB-only conditional-formatting
-/// carrier (see cf_rule_types.mbt); preserving the raw element is the
-/// safe round-trip representation per §18.8.21.
+/// color list. Sequence: `<color>+` (CT_Color §18.8.3 stylesheet
+/// colour, one or more entries) typed via the spec-shaped projection.
 pub(all) struct CT_MRUColors {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
-  /// <color>+ (CT_Color) — one or more recent-color entries.
-  color : Array[@xml.Element]
+  /// <color>+ (CT_Color §18.8.3) — one or more recent-color entries.
+  color : Array[CT_Color]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_MRUColors::new(element : @xml.Element) -> CT_MRUColors {
-  let color : Array[@xml.Element] = []
+  let color : Array[CT_Color] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
       if child_element.name.local_name == "color" {
-        color.push(child_element)
+        color.push(CT_Color::new(child_element))
       }
     }
   }
@@ -1173,6 +1184,38 @@ pub fn CT_TableStyleElement::new(
   let size = attr_uint(element, "size", 1)
   let dxf_id = attr_uint_opt(element, "dxfId")
   { element, type_, size, dxf_id }
+}
+
+///|
+/// XSD complex type CT_Color — Part 1 §18.8.3 (`<color>` style colour
+/// reference). Five optional attributes that together pick a single
+/// colour: `@auto` (xsd:boolean), `@indexed` (xsd:unsignedInt),
+/// `@rgb` (ST_UnsignedIntHex), `@theme` (xsd:unsignedInt), `@tint`
+/// (xsd:double, default 0.0). Used by `<rPr>` font color, `<border>`
+/// stroke colour, `<fill>/<patternFill>/<fgColor>` etc.
+pub(all) struct CT_Color {
+  /// Preserve source XML element for byte-identical round-trip.
+  element : @xml.Element
+  /// @auto (xsd:boolean) — optional, default false.
+  auto_ : Bool
+  /// @indexed (xsd:unsignedInt) — optional palette index.
+  indexed : Int?
+  /// @rgb (ST_UnsignedIntHex) — optional AARRGGBB hex literal.
+  rgb : String?
+  /// @theme (xsd:unsignedInt) — optional theme-colour index.
+  theme : Int?
+  /// @tint (xsd:double) — optional luminance shift, default 0.0.
+  tint : Double
+} derive(Eq, Debug)
+
+///|
+pub fn CT_Color::new(element : @xml.Element) -> CT_Color {
+  let auto_ = attr_bool(element, "auto", false)
+  let indexed = attr_uint_opt(element, "indexed")
+  let rgb = attr(element, "rgb")
+  let theme = attr_uint_opt(element, "theme")
+  let tint = attr_double(element, "tint", 0.0)
+  { element, auto_, indexed, rgb, theme, tint }
 }
 
 ///|
@@ -1362,9 +1405,8 @@ pub(all) struct CT_Font {
   condense : Array[CT_BooleanProperty]
   /// <extend>* (CT_BooleanProperty) — zero or more extend entries.
   extend : Array[CT_BooleanProperty]
-  /// <color>* (CT_Color) — zero or more color entries kept as raw element
-  /// because the package's typed CT_Color is the ARGB-only carrier.
-  color : Array[@xml.Element]
+  /// <color>* (CT_Color §18.8.3) — zero or more colour entries.
+  color : Array[CT_Color]
   /// <sz>* (CT_FontSize) — zero or more size entries.
   sz : Array[CT_FontSize]
   /// <u>* (CT_UnderlineProperty) — zero or more underline entries.
@@ -1388,7 +1430,7 @@ pub fn CT_Font::new(element : @xml.Element) -> CT_Font {
   let shadow : Array[CT_BooleanProperty] = []
   let condense : Array[CT_BooleanProperty] = []
   let extend : Array[CT_BooleanProperty] = []
-  let color : Array[@xml.Element] = []
+  let color : Array[CT_Color] = []
   let sz : Array[CT_FontSize] = []
   let u : Array[CT_UnderlineProperty] = []
   let vert_align : Array[CT_VerticalAlignFontProperty] = []
@@ -1406,7 +1448,7 @@ pub fn CT_Font::new(element : @xml.Element) -> CT_Font {
         "shadow" => shadow.push(CT_BooleanProperty::new(child_element))
         "condense" => condense.push(CT_BooleanProperty::new(child_element))
         "extend" => extend.push(CT_BooleanProperty::new(child_element))
-        "color" => color.push(child_element)
+        "color" => color.push(CT_Color::new(child_element))
         "sz" => sz.push(CT_FontSize::new(child_element))
         "u" => u.push(CT_UnderlineProperty::new(child_element))
         "vertAlign" =>

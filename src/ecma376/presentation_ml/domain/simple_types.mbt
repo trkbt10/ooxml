@@ -14,6 +14,17 @@ pub fn raise_schema_violation(
 }
 
 ///|
+/// Generic-return variant of `raise_schema_violation` for use inside
+/// `match`/`catch` arms whose context expects a value of type `T`.
+pub fn[T] schema_violation(
+  type_name : String,
+  value : String,
+  reason : String,
+) -> T raise SchemaViolation {
+  raise SchemaViolation(type_name~, value~, reason~)
+}
+
+///|
 fn[T] invalid_simple_type(
   type_name : String,
   value : String,

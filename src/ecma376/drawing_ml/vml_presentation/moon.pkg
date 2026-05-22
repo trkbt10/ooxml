@@ -1,0 +1,8 @@
+// trkbt10/ooxml/ecma376/drawing_ml/vml_presentation
+//
+// vml-presentationDrawing.xsd typed CT projections — Part 4 §A.6.62..§A.6.63.
+// Target namespace: urn:schemas-microsoft-com:office:powerpoint (`pvml:` prefix).
+
+import {
+  "trkbt10/ooxml/xml" @xml,
+}

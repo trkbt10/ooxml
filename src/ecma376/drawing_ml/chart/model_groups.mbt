@@ -1,629 +1,249 @@
+// ECMA-376 DrawingML chart §21.2 / chartDrawing §21.3 model groups.
+// All <xsd:group> declarations from dml-chart.xsd / dml-chartDrawing.xsd
+// rendered as Moonbit sum types (choice) or structs (sequence) so
+// readers branch on the typed schema arm rather than re-walking
+// raw XML.
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_DLblShared — §21.2 dml-chart.xsd. Sequence of 11 optional members
+// (numFmt / spPr / txPr / dLblPos / showLegendKey / showVal /
+// showCatName / showSerName / showPercent / showBubbleSize / separator).
+// ─────────────────────────────────────────────────────────────────────
+
 ///|
-/// XSD model group EG_DLblShared (§21.2, dml-chart.xsd): choices/sequence members numFmt: CT_NumFmt, spPr: a:CT_ShapeProperties, txPr: a:CT_TextBody, dLblPos: CT_DLblPos, showLegendKey: CT_Boolean, showVal: CT_Boolean, showCatName: CT_Boolean, showSerName: CT_Boolean, showPercent: CT_Boolean, showBubbleSize: CT_Boolean, separator: xsd:string.
 pub(all) struct EG_DLblShared {
-  elements : Array[@xml.Element]
-}
+  num_fmt : CT_NumFmt?
+  sp_pr : @a.CT_ShapeProperties?
+  tx_pr : @a.CT_TextBody?
+  d_lbl_pos : CT_DLblPos?
+  show_legend_key : CT_Boolean?
+  show_val : CT_Boolean?
+  show_cat_name : CT_Boolean?
+  show_ser_name : CT_Boolean?
+  show_percent : CT_Boolean?
+  show_bubble_size : CT_Boolean?
+  separator : String?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// Group_DLbl — §21.2. Sequence (layout? / tx? / EG_DLblShared).
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct EG_DLblShared from already parsed child elements.
-pub fn EG_DLblShared::new(elements : Array[@xml.Element]) -> EG_DLblShared {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by EG_DLblShared.
-pub fn EG_DLblShared::count(self : EG_DLblShared) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_DLblShared contains a child with the requested local name.
-pub fn EG_DLblShared::contains(
-  self : EG_DLblShared,
-  local_name : String,
-) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_DLblShared.
-pub fn EG_DLblShared::member_names(self : EG_DLblShared) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group Group_DLbl (§21.2, dml-chart.xsd): choices/sequence members layout: CT_Layout, tx: CT_Tx.
 pub(all) struct Group_DLbl {
-  elements : Array[@xml.Element]
-}
+  layout : CT_Layout?
+  tx : CT_Tx?
+  shared : EG_DLblShared
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// Group_DLbls — §21.2. Sequence (EG_DLblShared / showLeaderLines? /
+// leaderLines?).
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct Group_DLbl from already parsed child elements.
-pub fn Group_DLbl::new(elements : Array[@xml.Element]) -> Group_DLbl {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by Group_DLbl.
-pub fn Group_DLbl::count(self : Group_DLbl) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when Group_DLbl contains a child with the requested local name.
-pub fn Group_DLbl::contains(self : Group_DLbl, local_name : String) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of Group_DLbl.
-pub fn Group_DLbl::member_names(self : Group_DLbl) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group Group_DLbls (§21.2, dml-chart.xsd): choices/sequence members showLeaderLines: CT_Boolean, leaderLines: CT_ChartLines.
 pub(all) struct Group_DLbls {
-  elements : Array[@xml.Element]
-}
+  shared : EG_DLblShared
+  show_leader_lines : CT_Boolean?
+  leader_lines : CT_ChartLines?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_SerShared — §21.2. Sequence (idx / order / tx? / spPr?).
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct Group_DLbls from already parsed child elements.
-pub fn Group_DLbls::new(elements : Array[@xml.Element]) -> Group_DLbls {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by Group_DLbls.
-pub fn Group_DLbls::count(self : Group_DLbls) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when Group_DLbls contains a child with the requested local name.
-pub fn Group_DLbls::contains(self : Group_DLbls, local_name : String) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of Group_DLbls.
-pub fn Group_DLbls::member_names(self : Group_DLbls) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group EG_SerShared (§21.2, dml-chart.xsd): choices/sequence members idx: CT_UnsignedInt, order: CT_UnsignedInt, tx: CT_SerTx, spPr: a:CT_ShapeProperties.
 pub(all) struct EG_SerShared {
-  elements : Array[@xml.Element]
-}
+  idx : CT_UnsignedInt
+  order : CT_UnsignedInt
+  tx : CT_SerTx?
+  sp_pr : @a.CT_ShapeProperties?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_LineChartShared — §21.2. Sequence (grouping / varyColors? /
+// ser* / dLbls? / dropLines?).
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct EG_SerShared from already parsed child elements.
-pub fn EG_SerShared::new(elements : Array[@xml.Element]) -> EG_SerShared {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by EG_SerShared.
-pub fn EG_SerShared::count(self : EG_SerShared) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_SerShared contains a child with the requested local name.
-pub fn EG_SerShared::contains(self : EG_SerShared, local_name : String) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_SerShared.
-pub fn EG_SerShared::member_names(self : EG_SerShared) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group EG_LineChartShared (§21.2, dml-chart.xsd): choices/sequence members grouping: CT_Grouping, varyColors: CT_Boolean, ser: CT_LineSer, dLbls: CT_DLbls, dropLines: CT_ChartLines.
 pub(all) struct EG_LineChartShared {
-  elements : Array[@xml.Element]
-}
+  grouping : CT_Grouping
+  vary_colors : CT_Boolean?
+  ser : Array[CT_LineSer]
+  d_lbls : CT_DLbls?
+  drop_lines : CT_ChartLines?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_BarChartShared — §21.2. Sequence (barDir / grouping? / varyColors? /
+// ser* / dLbls?).
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct EG_LineChartShared from already parsed child elements.
-pub fn EG_LineChartShared::new(
-  elements : Array[@xml.Element],
-) -> EG_LineChartShared {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by EG_LineChartShared.
-pub fn EG_LineChartShared::count(self : EG_LineChartShared) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_LineChartShared contains a child with the requested local name.
-pub fn EG_LineChartShared::contains(
-  self : EG_LineChartShared,
-  local_name : String,
-) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_LineChartShared.
-pub fn EG_LineChartShared::member_names(
-  self : EG_LineChartShared,
-) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group EG_BarChartShared (§21.2, dml-chart.xsd): choices/sequence members barDir: CT_BarDir, grouping: CT_BarGrouping, varyColors: CT_Boolean, ser: CT_BarSer, dLbls: CT_DLbls.
 pub(all) struct EG_BarChartShared {
-  elements : Array[@xml.Element]
-}
+  bar_dir : CT_BarDir
+  grouping : CT_BarGrouping?
+  vary_colors : CT_Boolean?
+  ser : Array[CT_BarSer]
+  d_lbls : CT_DLbls?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_AreaChartShared — §21.2.
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct EG_BarChartShared from already parsed child elements.
-pub fn EG_BarChartShared::new(
-  elements : Array[@xml.Element],
-) -> EG_BarChartShared {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by EG_BarChartShared.
-pub fn EG_BarChartShared::count(self : EG_BarChartShared) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_BarChartShared contains a child with the requested local name.
-pub fn EG_BarChartShared::contains(
-  self : EG_BarChartShared,
-  local_name : String,
-) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_BarChartShared.
-pub fn EG_BarChartShared::member_names(
-  self : EG_BarChartShared,
-) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group EG_AreaChartShared (§21.2, dml-chart.xsd): choices/sequence members grouping: CT_Grouping, varyColors: CT_Boolean, ser: CT_AreaSer, dLbls: CT_DLbls, dropLines: CT_ChartLines.
 pub(all) struct EG_AreaChartShared {
-  elements : Array[@xml.Element]
-}
+  grouping : CT_Grouping?
+  vary_colors : CT_Boolean?
+  ser : Array[CT_AreaSer]
+  d_lbls : CT_DLbls?
+  drop_lines : CT_ChartLines?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_PieChartShared — §21.2.
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct EG_AreaChartShared from already parsed child elements.
-pub fn EG_AreaChartShared::new(
-  elements : Array[@xml.Element],
-) -> EG_AreaChartShared {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by EG_AreaChartShared.
-pub fn EG_AreaChartShared::count(self : EG_AreaChartShared) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_AreaChartShared contains a child with the requested local name.
-pub fn EG_AreaChartShared::contains(
-  self : EG_AreaChartShared,
-  local_name : String,
-) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_AreaChartShared.
-pub fn EG_AreaChartShared::member_names(
-  self : EG_AreaChartShared,
-) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group EG_PieChartShared (§21.2, dml-chart.xsd): choices/sequence members varyColors: CT_Boolean, ser: CT_PieSer, dLbls: CT_DLbls.
 pub(all) struct EG_PieChartShared {
-  elements : Array[@xml.Element]
-}
+  vary_colors : CT_Boolean?
+  ser : Array[CT_PieSer]
+  d_lbls : CT_DLbls?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_SurfaceChartShared — §21.2.
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct EG_PieChartShared from already parsed child elements.
-pub fn EG_PieChartShared::new(
-  elements : Array[@xml.Element],
-) -> EG_PieChartShared {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by EG_PieChartShared.
-pub fn EG_PieChartShared::count(self : EG_PieChartShared) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_PieChartShared contains a child with the requested local name.
-pub fn EG_PieChartShared::contains(
-  self : EG_PieChartShared,
-  local_name : String,
-) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_PieChartShared.
-pub fn EG_PieChartShared::member_names(
-  self : EG_PieChartShared,
-) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group EG_SurfaceChartShared (§21.2, dml-chart.xsd): choices/sequence members wireframe: CT_Boolean, ser: CT_SurfaceSer, bandFmts: CT_BandFmts.
 pub(all) struct EG_SurfaceChartShared {
-  elements : Array[@xml.Element]
-}
+  wireframe : CT_Boolean?
+  ser : Array[CT_SurfaceSer]
+  band_fmts : CT_BandFmts?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_AxShared — §21.2. Sequence (axId / scaling / delete? / axPos /
+// majorGridlines? / minorGridlines? / title? / numFmt? / majorTickMark? /
+// minorTickMark? / tickLblPos? / spPr? / txPr? / crossAx /
+// choice<crosses | crossesAt>?).
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct EG_SurfaceChartShared from already parsed child elements.
-pub fn EG_SurfaceChartShared::new(
-  elements : Array[@xml.Element],
-) -> EG_SurfaceChartShared {
-  { elements, }
-}
+pub(all) enum CrossesOrAt {
+  Crosses(CT_Crosses)
+  CrossesAt(CT_Double)
+} derive(Eq, Debug)
 
 ///|
-/// Count parsed child elements held by EG_SurfaceChartShared.
-pub fn EG_SurfaceChartShared::count(self : EG_SurfaceChartShared) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_SurfaceChartShared contains a child with the requested local name.
-pub fn EG_SurfaceChartShared::contains(
-  self : EG_SurfaceChartShared,
-  local_name : String,
-) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_SurfaceChartShared.
-pub fn EG_SurfaceChartShared::member_names(
-  self : EG_SurfaceChartShared,
-) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group EG_AxShared (§21.2, dml-chart.xsd): choices/sequence members axId: CT_UnsignedInt, scaling: CT_Scaling, delete: CT_Boolean, axPos: CT_AxPos, majorGridlines: CT_ChartLines, minorGridlines: CT_ChartLines, title: CT_Title, numFmt: CT_NumFmt, majorTickMark: CT_TickMark, minorTickMark: CT_TickMark, tickLblPos: CT_TickLblPos, spPr: a:CT_ShapeProperties, txPr: a:CT_TextBody, crossAx: CT_UnsignedInt, crosses: CT_Crosses, crossesAt: CT_Double.
 pub(all) struct EG_AxShared {
-  elements : Array[@xml.Element]
-}
+  ax_id : CT_UnsignedInt
+  scaling : CT_Scaling
+  delete_ : CT_Boolean?
+  ax_pos : CT_AxPos
+  major_gridlines : CT_ChartLines?
+  minor_gridlines : CT_ChartLines?
+  title : CT_Title?
+  num_fmt : CT_NumFmt?
+  major_tick_mark : CT_TickMark?
+  minor_tick_mark : CT_TickMark?
+  tick_lbl_pos : CT_TickLblPos?
+  sp_pr : @a.CT_ShapeProperties?
+  tx_pr : @a.CT_TextBody?
+  cross_ax : CT_UnsignedInt
+  crosses_choice : CrossesOrAt?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_LegendEntryData — §21.2. Sequence with single optional txPr.
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct EG_AxShared from already parsed child elements.
-pub fn EG_AxShared::new(elements : Array[@xml.Element]) -> EG_AxShared {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by EG_AxShared.
-pub fn EG_AxShared::count(self : EG_AxShared) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_AxShared contains a child with the requested local name.
-pub fn EG_AxShared::contains(self : EG_AxShared, local_name : String) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_AxShared.
-pub fn EG_AxShared::member_names(self : EG_AxShared) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group EG_LegendEntryData (§21.2, dml-chart.xsd): choices/sequence members txPr: a:CT_TextBody.
 pub(all) struct EG_LegendEntryData {
-  elements : Array[@xml.Element]
-}
+  tx_pr : @a.CT_TextBody?
+} derive(Eq, Debug)
+
+// ─────────────────────────────────────────────────────────────────────
+// EG_ObjectChoices — §21.3 dml-chartDrawing.xsd. Required choice of
+// sp / grpSp / graphicFrame / cxnSp / pic.
+// ─────────────────────────────────────────────────────────────────────
 
 ///|
-/// Construct EG_LegendEntryData from already parsed child elements.
-pub fn EG_LegendEntryData::new(
-  elements : Array[@xml.Element],
-) -> EG_LegendEntryData {
-  { elements, }
-}
+pub(all) enum EG_ObjectChoices {
+  Sp(CT_Shape)
+  GrpSp(CT_GroupShape)
+  GraphicFrame(CT_GraphicFrame)
+  CxnSp(CT_Connector)
+  Pic(CT_Picture)
+} derive(Eq, Debug)
 
 ///|
-/// Count parsed child elements held by EG_LegendEntryData.
-pub fn EG_LegendEntryData::count(self : EG_LegendEntryData) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
+pub fn parse_object_choice_element(
+  element : @xml.Element,
+) -> EG_ObjectChoices? raise SchemaViolation {
+  match element.name.local_name {
+    "sp" => Some(Sp(CT_Shape::new(element)))
+    "grpSp" => Some(GrpSp(CT_GroupShape::new(element)))
+    "graphicFrame" => Some(GraphicFrame(CT_GraphicFrame::new(element)))
+    "cxnSp" => Some(CxnSp(CT_Connector::new(element)))
+    "pic" => Some(Pic(CT_Picture::new(element)))
+    _ => None
   }
-  total
 }
 
 ///|
-/// Return true when EG_LegendEntryData contains a child with the requested local name.
-pub fn EG_LegendEntryData::contains(
-  self : EG_LegendEntryData,
-  local_name : String,
-) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
+pub fn find_object_choice_child(
+  element : @xml.Element,
+) -> EG_ObjectChoices? raise SchemaViolation {
+  for node in element.children {
+    match node {
+      @xml.Element(child) =>
+        match parse_object_choice_element(child) {
+          Some(c) => return Some(c)
+          None => ()
+        }
+      _ => ()
     }
   }
-  found
+  None
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// EG_Anchor — §21.3. Choice of relSizeAnchor / absSizeAnchor.
+// ─────────────────────────────────────────────────────────────────────
+
 ///|
-/// Return local names from the concrete members of EG_LegendEntryData.
-pub fn EG_LegendEntryData::member_names(
-  self : EG_LegendEntryData,
-) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
+pub(all) enum EG_Anchor {
+  RelSizeAnchor(CT_RelSizeAnchor)
+  AbsSizeAnchor(CT_AbsSizeAnchor)
+} derive(Eq, Debug)
+
+///|
+pub fn parse_anchor_element(
+  element : @xml.Element,
+) -> EG_Anchor? raise SchemaViolation {
+  match element.name.local_name {
+    "relSizeAnchor" => Some(RelSizeAnchor(CT_RelSizeAnchor::new(element)))
+    "absSizeAnchor" => Some(AbsSizeAnchor(CT_AbsSizeAnchor::new(element)))
+    _ => None
   }
-  names
 }
 
 ///|
-/// XSD model group EG_ObjectChoices (§21.3, dml-chartDrawing.xsd): choices/sequence members sp: CT_Shape, grpSp: CT_GroupShape, graphicFrame: CT_GraphicFrame, cxnSp: CT_Connector, pic: CT_Picture.
-/// ResourceMissing is reported by higher layers when a selected object choice
-/// references an external chart drawing resource that is not available.
-pub(all) struct EG_ObjectChoices {
-  elements : Array[@xml.Element]
-}
-
-///|
-/// Resource lookup error for chart drawing object choices.
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
-} derive(Debug)
-
-///|
-/// Construct EG_ObjectChoices from already parsed child elements.
-pub fn EG_ObjectChoices::new(
-  elements : Array[@xml.Element],
-) -> EG_ObjectChoices {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by EG_ObjectChoices.
-pub fn EG_ObjectChoices::count(self : EG_ObjectChoices) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_ObjectChoices contains a child with the requested local name.
-pub fn EG_ObjectChoices::contains(
-  self : EG_ObjectChoices,
-  local_name : String,
-) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
+pub fn collect_anchors(
+  element : @xml.Element,
+) -> Array[EG_Anchor] raise SchemaViolation {
+  let out : Array[EG_Anchor] = []
+  for node in element.children {
+    match node {
+      @xml.Element(child) =>
+        match parse_anchor_element(child) {
+          Some(a) => out.push(a)
+          None => ()
+        }
+      _ => ()
     }
   }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_ObjectChoices.
-pub fn EG_ObjectChoices::member_names(self : EG_ObjectChoices) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
-}
-
-///|
-/// XSD model group EG_Anchor (§21.3, dml-chartDrawing.xsd): choices/sequence members relSizeAnchor: CT_RelSizeAnchor, absSizeAnchor: CT_AbsSizeAnchor.
-pub(all) struct EG_Anchor {
-  elements : Array[@xml.Element]
-}
-
-///|
-/// Construct EG_Anchor from already parsed child elements.
-pub fn EG_Anchor::new(elements : Array[@xml.Element]) -> EG_Anchor {
-  { elements, }
-}
-
-///|
-/// Count parsed child elements held by EG_Anchor.
-pub fn EG_Anchor::count(self : EG_Anchor) -> Int {
-  let mut total = 0
-  for _ in self.elements {
-    total = total + 1
-  }
-  total
-}
-
-///|
-/// Return true when EG_Anchor contains a child with the requested local name.
-pub fn EG_Anchor::contains(self : EG_Anchor, local_name : String) -> Bool {
-  let mut found = false
-  for element in self.elements {
-    if element.name.local_name == local_name {
-      found = true
-    }
-  }
-  found
-}
-
-///|
-/// Return local names from the concrete members of EG_Anchor.
-pub fn EG_Anchor::member_names(self : EG_Anchor) -> Array[String] {
-  let names = []
-  for element in self.elements {
-    names.push(element.name.local_name)
-  }
-  names
+  out
 }

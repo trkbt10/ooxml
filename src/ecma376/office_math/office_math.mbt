@@ -27,3 +27,18 @@ pub fn package_name() -> String {
 pub fn schema_bundle_name() -> String {
   "shared-math.xsd"
 }
+
+///|
+/// ECMA-376 Part 1 §22.1 Math.
+/// Source: `references/spec/part1/sections/22.1__math.md`. Owned by
+/// `src/ecma376/office_math`.
+pub fn office_math_part1_22_1_math_section_name() -> String {
+  "ECMA-376 Part 1 §22.1 Math"
+}
+
+///|
+/// Return the XSD simple type ST_Char schema row owned by this package.
+/// Schema shared-math.xsd simple type `ST_Char`. Base: `xsd:string`.
+pub fn office_math_xsd_st_char_schema_name() -> String {
+  "Schema shared-math.xsd simple type `ST_Char`. Base: `xsd:string`."
+}

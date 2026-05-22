@@ -3,7 +3,15 @@
 // WordprocessingML context → HTML / SVG / ASCII renderer.
 
 import {
+  "moonbitlang/core/hashmap" @hashmap,
   "moonbitlang/core/strconv" @strconv,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @domain,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/style_resolver" @style_resolver,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver" @numbering_resolver,
+  "trkbt10/ooxml/ecma376/office_math/domain" @omml,
+  "trkbt10/ooxml/ecma376/office_math/viewer" @omml_viewer,
+  "trkbt10/ooxml/util/color" @color,
+  "trkbt10/ooxml/util/glyph" @glyph,
+  "trkbt10/ooxml/util/markup" @markup,
   "trkbt10/ooxml/xml" @xml,
 }

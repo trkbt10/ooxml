@@ -1,12 +1,28 @@
 ///|
-test "collect DrawingML fill model group children" {
+test "EG_ShadeProperties typed projection of gradient fill children" {
   let value = read_gradient_fill_properties(
-    b"<a:gradFill xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\"><a:gsLst/><a:lin/><a:path/></a:gradFill>",
+    b"<a:gradFill xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\"><a:gsLst/><a:lin/></a:gradFill>",
   )
-  let group = EG_ShadeProperties::new(value.element)
-  assert_true(group.has_child("lin"))
-  assert_true(group.has_child("path"))
-  assert_eq(group.child_names().length(), 3)
+  // The <a:lin/> child is a CT_LinearShadeProperties — the typed
+  // projection should report exactly that arm via
+  // `find_shade_properties_child`.
+  let found = find_shade_properties_child(value.element)
+  match found {
+    Some(Lin(_)) => assert_true(true)
+    _ => fail("expected Lin(...) from EG_ShadeProperties")
+  }
+}
+
+///|
+test "EG_ShadeProperties typed projection of path-shaded gradient" {
+  let value = read_gradient_fill_properties(
+    b"<a:gradFill xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\"><a:gsLst/><a:path path=\"rect\"/></a:gradFill>",
+  )
+  let found = find_shade_properties_child(value.element)
+  match found {
+    Some(Path(_)) => assert_true(true)
+    _ => fail("expected Path(...) from EG_ShadeProperties")
+  }
 }
 
 ///|

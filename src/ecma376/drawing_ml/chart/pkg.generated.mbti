@@ -3,6 +3,7 @@ package "trkbt10/ooxml/ecma376/drawing_ml/chart"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/drawing_ml",
   "trkbt10/ooxml/xml",
 }
 
@@ -15,11 +16,31 @@ pub fn chart_schema_bundles() -> Array[String]
 
 pub fn chart_section_name() -> String
 
+pub fn chart_xsd_ct_dlblpos_schema_name() -> String
+
+pub fn chart_xsd_ct_numdata_schema_name() -> String
+
+pub fn chart_xsd_ct_rotx_schema_name() -> String
+
+pub fn chart_xsd_ct_roty_schema_name() -> String
+
+pub fn chart_xsd_ct_shape_dml_chart_schema_name() -> String
+
+pub fn chart_xsd_ct_tx_schema_name() -> String
+
+pub fn collect_anchors(@xml.Element) -> Array[EG_Anchor] raise SchemaViolation
+
 pub fn drawingml_main_namespace() -> String
+
+pub fn find_object_choice_child(@xml.Element) -> EG_ObjectChoices? raise SchemaViolation
 
 pub fn package_name() -> String
 
+pub fn parse_anchor_element(@xml.Element) -> EG_Anchor? raise SchemaViolation
+
 pub fn parse_ct_chart_element(@xml.Element) -> CT_Chart raise SchemaViolation
+
+pub fn parse_object_choice_element(@xml.Element) -> EG_ObjectChoices? raise SchemaViolation
 
 pub fn parse_st_shape(String) -> ST_Shape raise SchemaViolation
 
@@ -38,10 +59,6 @@ pub fn write_chart_space(ChartSpace) -> Bytes
 pub fn write_user_shapes(UserShapes) -> Bytes
 
 // Errors
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
-} derive(@debug.Debug)
-
 pub suberror SchemaViolation {
   SchemaViolation(schema~ : String, path~ : String, reason~ : String)
 } derive(@debug.Debug)
@@ -85,8 +102,8 @@ pub(all) struct CT_AreaSer {
   idx : CT_UnsignedInt
   order : CT_UnsignedInt
   tx : CT_SerTx?
-  sp_pr : @xml.Element?
-  picture_options : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  picture_options : CT_PictureOptions?
   d_pt : Array[CT_DPt]
   d_lbls : CT_DLbls?
   trendline : Array[CT_Trendline]
@@ -118,7 +135,7 @@ pub fn CT_AxisUnit::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_BandFmt {
   idx : CT_UnsignedInt
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
 } derive(Eq, @debug.Debug)
 pub fn CT_BandFmt::new(@xml.Element) -> Self raise SchemaViolation
 
@@ -169,9 +186,9 @@ pub(all) struct CT_BarSer {
   idx : CT_UnsignedInt
   order : CT_UnsignedInt
   tx : CT_SerTx?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   invert_if_negative : CT_Boolean?
-  picture_options : @xml.Element?
+  picture_options : CT_PictureOptions?
   d_pt : Array[CT_DPt]
   d_lbls : CT_DLbls?
   trendline : Array[CT_Trendline]
@@ -210,7 +227,7 @@ pub(all) struct CT_BubbleSer {
   idx : CT_UnsignedInt
   order : CT_UnsignedInt
   tx : CT_SerTx?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   invert_if_negative : CT_Boolean?
   d_pt : Array[CT_DPt]
   d_lbls : CT_DLbls?
@@ -241,8 +258,8 @@ pub(all) struct CT_CatAx {
   major_tick_mark : @xml.Element?
   minor_tick_mark : @xml.Element?
   tick_lbl_pos : @xml.Element?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   cross_ax : CT_UnsignedInt
   crosses : @xml.Element?
   crosses_at : CT_Double?
@@ -275,9 +292,9 @@ pub fn CT_Chart::has_plot_area(Self) -> Bool
 pub fn CT_Chart::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ChartLines {
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
 } derive(Eq, @debug.Debug)
-pub fn CT_ChartLines::new(@xml.Element) -> Self
+pub fn CT_ChartLines::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ChartSpace {
   date_1904 : CT_Boolean?
@@ -288,8 +305,8 @@ pub(all) struct CT_ChartSpace {
   pivot_source : CT_PivotSource?
   protection : CT_Protection?
   chart : CT_Chart
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   external_data : CT_ExternalData?
   print_settings : CT_PrintSettings?
   user_shapes : CT_RelId?
@@ -301,14 +318,14 @@ pub(all) struct CT_Connector {
   macro_ : String?
   f_published : Bool?
   nv_cxn_sp_pr : CT_ConnectorNonVisual
-  sp_pr : @xml.Element
-  style : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties
+  style : @drawing_ml.CT_ShapeStyle?
 } derive(Eq, @debug.Debug)
 pub fn CT_Connector::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ConnectorNonVisual {
-  c_nv_pr : @xml.Element
-  c_nv_cxn_sp_pr : @xml.Element
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_cxn_sp_pr : @drawing_ml.CT_NonVisualConnectorProperties
 } derive(Eq, @debug.Debug)
 pub fn CT_ConnectorNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
@@ -333,8 +350,8 @@ pub(all) struct CT_DLbl {
   layout : CT_Layout?
   tx : CT_Tx?
   num_fmt : CT_NumFmt?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   d_lbl_pos : CT_DLblPos?
   show_legend_key : CT_Boolean?
   show_val : CT_Boolean?
@@ -356,8 +373,8 @@ pub(all) struct CT_DLbls {
   d_lbl : Array[CT_DLbl]
   delete : CT_Boolean?
   num_fmt : CT_NumFmt?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   d_lbl_pos : CT_DLblPos?
   show_legend_key : CT_Boolean?
   show_val : CT_Boolean?
@@ -378,8 +395,8 @@ pub(all) struct CT_DPt {
   marker : CT_Marker?
   bubble_3d : CT_Boolean?
   explosion : CT_UnsignedInt?
-  sp_pr : @xml.Element?
-  picture_options : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  picture_options : CT_PictureOptions?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_DPt::new(@xml.Element) -> Self raise SchemaViolation
@@ -389,8 +406,8 @@ pub(all) struct CT_DTable {
   show_vert_border : CT_Boolean?
   show_outline : CT_Boolean?
   show_keys : CT_Boolean?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_DTable::new(@xml.Element) -> Self raise SchemaViolation
@@ -407,8 +424,8 @@ pub(all) struct CT_DateAx {
   major_tick_mark : @xml.Element?
   minor_tick_mark : @xml.Element?
   tick_lbl_pos : @xml.Element?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   cross_ax : CT_UnsignedInt
   crosses : @xml.Element?
   crosses_at : CT_Double?
@@ -444,8 +461,8 @@ pub fn CT_DispUnits::new(@xml.Element) -> Self raise SchemaViolation
 pub(all) struct CT_DispUnitsLbl {
   layout : CT_Layout?
   tx : CT_Tx?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CT_Double {
@@ -482,7 +499,7 @@ pub(all) struct CT_ErrBars {
   plus : CT_NumDataSource?
   minus : CT_NumDataSource?
   val : CT_Double?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_ErrBars::new(@xml.Element) -> Self raise SchemaViolation
@@ -528,21 +545,21 @@ pub(all) struct CT_GraphicFrame {
   macro_ : String?
   f_published : Bool?
   nv_graphic_frame_pr : CT_GraphicFrameNonVisual
-  xfrm : @xml.Element
-  graphic : @xml.Element
+  xfrm : @drawing_ml.CT_Transform2D
+  graphic : @drawing_ml.CT_GraphicalObject
 } derive(Eq, @debug.Debug)
 pub fn CT_GraphicFrame::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GraphicFrameNonVisual {
-  c_nv_pr : @xml.Element
-  c_nv_graphic_frame_pr : @xml.Element
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_graphic_frame_pr : @drawing_ml.CT_NonVisualGraphicFrameProperties
 } derive(Eq, @debug.Debug)
 pub fn CT_GraphicFrameNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GroupShape {
   nv_grp_sp_pr : CT_GroupShapeNonVisual
-  grp_sp_pr : @xml.Element
-  sp : Array[@xml.Element]
+  grp_sp_pr : @drawing_ml.CT_GroupShapeProperties
+  sp : Array[CT_Shape]
   grp_sp : Array[CT_GroupShape]
   graphic_frame : Array[CT_GraphicFrame]
   cxn_sp : Array[CT_Connector]
@@ -551,8 +568,8 @@ pub(all) struct CT_GroupShape {
 pub fn CT_GroupShape::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_GroupShapeNonVisual {
-  c_nv_pr : @xml.Element
-  c_nv_grp_sp_pr : @xml.Element
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_grp_sp_pr : @drawing_ml.CT_NonVisualGroupDrawingShapeProps
 } derive(Eq, @debug.Debug)
 pub fn CT_GroupShapeNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
@@ -615,8 +632,8 @@ pub(all) struct CT_Legend {
   legend_entry : Array[CT_LegendEntry]
   layout : CT_Layout?
   overlay : CT_Boolean?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_Legend::new(@xml.Element) -> Self raise SchemaViolation
@@ -624,7 +641,7 @@ pub fn CT_Legend::new(@xml.Element) -> Self raise SchemaViolation
 pub(all) struct CT_LegendEntry {
   idx : CT_UnsignedInt
   delete : CT_Boolean?
-  tx_pr : @xml.Element?
+  tx_pr : @drawing_ml.CT_TextBody?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_LegendEntry::new(@xml.Element) -> Self raise SchemaViolation
@@ -665,7 +682,7 @@ pub(all) struct CT_LineSer {
   idx : CT_UnsignedInt
   order : CT_UnsignedInt
   tx : CT_SerTx?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   marker : CT_Marker?
   d_pt : Array[CT_DPt]
   d_lbls : CT_DLbls?
@@ -705,7 +722,7 @@ pub fn CT_ManualLayout::new(@xml.Element) -> Self raise SchemaViolation
 pub(all) struct CT_Marker {
   symbol : CT_MarkerStyle?
   size : CT_MarkerSize?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_Marker::new(@xml.Element) -> Self raise SchemaViolation
@@ -842,9 +859,9 @@ pub(all) struct CT_Picture {
   macro_ : String?
   f_published : Bool?
   nv_pic_pr : CT_PictureNonVisual
-  blip_fill : @xml.Element
-  sp_pr : @xml.Element
-  style : @xml.Element?
+  blip_fill : @drawing_ml.CT_BlipFillProperties
+  sp_pr : @drawing_ml.CT_ShapeProperties
+  style : @drawing_ml.CT_ShapeStyle?
 } derive(Eq, @debug.Debug)
 pub fn CT_Picture::new(@xml.Element) -> Self raise SchemaViolation
 
@@ -854,8 +871,8 @@ pub(all) struct CT_PictureFormat {
 pub fn CT_PictureFormat::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PictureNonVisual {
-  c_nv_pr : @xml.Element
-  c_nv_pic_pr : @xml.Element
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_pic_pr : @drawing_ml.CT_NonVisualPictureProperties
 } derive(Eq, @debug.Debug)
 pub fn CT_PictureNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
@@ -894,7 +911,7 @@ pub(all) struct CT_PieSer {
   idx : CT_UnsignedInt
   order : CT_UnsignedInt
   tx : CT_SerTx?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   explosion : CT_UnsignedInt?
   d_pt : Array[CT_DPt]
   d_lbls : CT_DLbls?
@@ -906,8 +923,8 @@ pub fn CT_PieSer::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PivotFmt {
   idx : CT_UnsignedInt
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   marker : CT_Marker?
   d_lbl : CT_DLbl?
   ext_lst : CT_ExtensionList?
@@ -928,28 +945,28 @@ pub fn CT_PivotSource::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_PlotArea {
   layout : CT_Layout?
-  area_chart : Array[@xml.Element]
-  area_3d_chart : Array[@xml.Element]
-  line_chart : Array[@xml.Element]
-  line_3d_chart : Array[@xml.Element]
-  stock_chart : Array[@xml.Element]
-  radar_chart : Array[@xml.Element]
-  scatter_chart : Array[@xml.Element]
-  pie_chart : Array[@xml.Element]
-  pie_3d_chart : Array[@xml.Element]
-  doughnut_chart : Array[@xml.Element]
-  bar_chart : Array[@xml.Element]
-  bar_3d_chart : Array[@xml.Element]
-  of_pie_chart : Array[@xml.Element]
-  surface_chart : Array[@xml.Element]
-  surface_3d_chart : Array[@xml.Element]
-  bubble_chart : Array[@xml.Element]
+  area_chart : Array[CT_AreaChart]
+  area_3d_chart : Array[CT_Area3DChart]
+  line_chart : Array[CT_LineChart]
+  line_3d_chart : Array[CT_Line3DChart]
+  stock_chart : Array[CT_StockChart]
+  radar_chart : Array[CT_RadarChart]
+  scatter_chart : Array[CT_ScatterChart]
+  pie_chart : Array[CT_PieChart]
+  pie_3d_chart : Array[CT_Pie3DChart]
+  doughnut_chart : Array[CT_DoughnutChart]
+  bar_chart : Array[CT_BarChart]
+  bar_3d_chart : Array[CT_Bar3DChart]
+  of_pie_chart : Array[CT_OfPieChart]
+  surface_chart : Array[CT_SurfaceChart]
+  surface_3d_chart : Array[CT_Surface3DChart]
+  bubble_chart : Array[CT_BubbleChart]
   val_ax : Array[CT_ValAx]
   cat_ax : Array[CT_CatAx]
   date_ax : Array[CT_DateAx]
   ser_ax : Array[CT_SerAx]
   d_table : CT_DTable?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_PlotArea::new(@xml.Element) -> Self raise SchemaViolation
@@ -984,7 +1001,7 @@ pub(all) struct CT_RadarSer {
   idx : CT_UnsignedInt
   order : CT_UnsignedInt
   tx : CT_SerTx?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   marker : CT_Marker?
   d_pt : Array[CT_DPt]
   d_lbls : CT_DLbls?
@@ -1048,7 +1065,7 @@ pub(all) struct CT_ScatterSer {
   idx : CT_UnsignedInt
   order : CT_UnsignedInt
   tx : CT_SerTx?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   marker : CT_Marker?
   d_pt : Array[CT_DPt]
   d_lbls : CT_DLbls?
@@ -1083,8 +1100,8 @@ pub(all) struct CT_SerAx {
   major_tick_mark : @xml.Element?
   minor_tick_mark : @xml.Element?
   tick_lbl_pos : @xml.Element?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   cross_ax : CT_UnsignedInt
   crosses : @xml.Element?
   crosses_at : CT_Double?
@@ -1106,8 +1123,8 @@ pub(all) struct CT_Shape {
 pub fn CT_Shape::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_ShapeNonVisual {
-  c_nv_pr : @xml.Element
-  c_nv_sp_pr : @xml.Element
+  c_nv_pr : @drawing_ml.CT_NonVisualDrawingProps
+  c_nv_sp_pr : @drawing_ml.CT_NonVisualDrawingShapeProps
 } derive(Eq, @debug.Debug)
 pub fn CT_ShapeNonVisual::new(@xml.Element) -> Self raise SchemaViolation
 
@@ -1164,8 +1181,8 @@ pub fn CT_Style::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Surface {
   thickness : CT_Thickness?
-  sp_pr : @xml.Element?
-  picture_options : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  picture_options : CT_PictureOptions?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_Surface::new(@xml.Element) -> Self raise SchemaViolation
@@ -1192,7 +1209,7 @@ pub(all) struct CT_SurfaceSer {
   idx : CT_UnsignedInt
   order : CT_UnsignedInt
   tx : CT_SerTx?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   cat : CT_AxDataSource?
   val : CT_NumDataSource?
   ext_lst : CT_ExtensionList?
@@ -1228,15 +1245,15 @@ pub(all) struct CT_Title {
   tx : CT_Tx?
   layout : CT_Layout?
   overlay : CT_Boolean?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_Title::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Trendline {
   name : String?
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
   trendline_type : CT_TrendlineType
   order : CT_Order?
   period : CT_Period?
@@ -1254,8 +1271,8 @@ pub(all) struct CT_TrendlineLbl {
   layout : CT_Layout?
   tx : CT_Tx?
   num_fmt : CT_NumFmt?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
 pub fn CT_TrendlineLbl::new(@xml.Element) -> Self raise SchemaViolation
@@ -1267,7 +1284,7 @@ pub fn CT_TrendlineType::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Tx {
   str_ref : CT_StrRef?
-  rich : @xml.Element?
+  rich : @drawing_ml.CT_TextBody?
 } derive(Eq, @debug.Debug)
 pub fn CT_Tx::new(@xml.Element) -> Self raise SchemaViolation
 
@@ -1277,9 +1294,9 @@ pub(all) struct CT_UnsignedInt {
 pub fn CT_UnsignedInt::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_UpDownBar {
-  sp_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
 } derive(Eq, @debug.Debug)
-pub fn CT_UpDownBar::new(@xml.Element) -> Self
+pub fn CT_UpDownBar::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_UpDownBars {
   gap_width : CT_GapAmount?
@@ -1301,8 +1318,8 @@ pub(all) struct CT_ValAx {
   major_tick_mark : @xml.Element?
   minor_tick_mark : @xml.Element?
   tick_lbl_pos : @xml.Element?
-  sp_pr : @xml.Element?
-  tx_pr : @xml.Element?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
   cross_ax : CT_UnsignedInt
   crosses : @xml.Element?
   crosses_at : CT_Double?
@@ -1333,109 +1350,114 @@ pub(all) struct ChartSpace {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 
-pub(all) struct EG_Anchor {
-  elements : Array[@xml.Element]
-}
-pub fn EG_Anchor::contains(Self, String) -> Bool
-pub fn EG_Anchor::count(Self) -> Int
-pub fn EG_Anchor::member_names(Self) -> Array[String]
-pub fn EG_Anchor::new(Array[@xml.Element]) -> Self
+pub(all) enum CrossesOrAt {
+  Crosses(CT_Crosses)
+  CrossesAt(CT_Double)
+} derive(Eq, @debug.Debug)
+
+pub(all) enum EG_Anchor {
+  RelSizeAnchor(CT_RelSizeAnchor)
+  AbsSizeAnchor(CT_AbsSizeAnchor)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EG_AreaChartShared {
-  elements : Array[@xml.Element]
-}
-pub fn EG_AreaChartShared::contains(Self, String) -> Bool
-pub fn EG_AreaChartShared::count(Self) -> Int
-pub fn EG_AreaChartShared::member_names(Self) -> Array[String]
-pub fn EG_AreaChartShared::new(Array[@xml.Element]) -> Self
+  grouping : CT_Grouping?
+  vary_colors : CT_Boolean?
+  ser : Array[CT_AreaSer]
+  d_lbls : CT_DLbls?
+  drop_lines : CT_ChartLines?
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EG_AxShared {
-  elements : Array[@xml.Element]
-}
-pub fn EG_AxShared::contains(Self, String) -> Bool
-pub fn EG_AxShared::count(Self) -> Int
-pub fn EG_AxShared::member_names(Self) -> Array[String]
-pub fn EG_AxShared::new(Array[@xml.Element]) -> Self
+  ax_id : CT_UnsignedInt
+  scaling : CT_Scaling
+  delete_ : CT_Boolean?
+  ax_pos : CT_AxPos
+  major_gridlines : CT_ChartLines?
+  minor_gridlines : CT_ChartLines?
+  title : CT_Title?
+  num_fmt : CT_NumFmt?
+  major_tick_mark : CT_TickMark?
+  minor_tick_mark : CT_TickMark?
+  tick_lbl_pos : CT_TickLblPos?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
+  cross_ax : CT_UnsignedInt
+  crosses_choice : CrossesOrAt?
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EG_BarChartShared {
-  elements : Array[@xml.Element]
-}
-pub fn EG_BarChartShared::contains(Self, String) -> Bool
-pub fn EG_BarChartShared::count(Self) -> Int
-pub fn EG_BarChartShared::member_names(Self) -> Array[String]
-pub fn EG_BarChartShared::new(Array[@xml.Element]) -> Self
+  bar_dir : CT_BarDir
+  grouping : CT_BarGrouping?
+  vary_colors : CT_Boolean?
+  ser : Array[CT_BarSer]
+  d_lbls : CT_DLbls?
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EG_DLblShared {
-  elements : Array[@xml.Element]
-}
-pub fn EG_DLblShared::contains(Self, String) -> Bool
-pub fn EG_DLblShared::count(Self) -> Int
-pub fn EG_DLblShared::member_names(Self) -> Array[String]
-pub fn EG_DLblShared::new(Array[@xml.Element]) -> Self
+  num_fmt : CT_NumFmt?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+  tx_pr : @drawing_ml.CT_TextBody?
+  d_lbl_pos : CT_DLblPos?
+  show_legend_key : CT_Boolean?
+  show_val : CT_Boolean?
+  show_cat_name : CT_Boolean?
+  show_ser_name : CT_Boolean?
+  show_percent : CT_Boolean?
+  show_bubble_size : CT_Boolean?
+  separator : String?
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EG_LegendEntryData {
-  elements : Array[@xml.Element]
-}
-pub fn EG_LegendEntryData::contains(Self, String) -> Bool
-pub fn EG_LegendEntryData::count(Self) -> Int
-pub fn EG_LegendEntryData::member_names(Self) -> Array[String]
-pub fn EG_LegendEntryData::new(Array[@xml.Element]) -> Self
+  tx_pr : @drawing_ml.CT_TextBody?
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EG_LineChartShared {
-  elements : Array[@xml.Element]
-}
-pub fn EG_LineChartShared::contains(Self, String) -> Bool
-pub fn EG_LineChartShared::count(Self) -> Int
-pub fn EG_LineChartShared::member_names(Self) -> Array[String]
-pub fn EG_LineChartShared::new(Array[@xml.Element]) -> Self
+  grouping : CT_Grouping
+  vary_colors : CT_Boolean?
+  ser : Array[CT_LineSer]
+  d_lbls : CT_DLbls?
+  drop_lines : CT_ChartLines?
+} derive(Eq, @debug.Debug)
 
-pub(all) struct EG_ObjectChoices {
-  elements : Array[@xml.Element]
-}
-pub fn EG_ObjectChoices::contains(Self, String) -> Bool
-pub fn EG_ObjectChoices::count(Self) -> Int
-pub fn EG_ObjectChoices::member_names(Self) -> Array[String]
-pub fn EG_ObjectChoices::new(Array[@xml.Element]) -> Self
+pub(all) enum EG_ObjectChoices {
+  Sp(CT_Shape)
+  GrpSp(CT_GroupShape)
+  GraphicFrame(CT_GraphicFrame)
+  CxnSp(CT_Connector)
+  Pic(CT_Picture)
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EG_PieChartShared {
-  elements : Array[@xml.Element]
-}
-pub fn EG_PieChartShared::contains(Self, String) -> Bool
-pub fn EG_PieChartShared::count(Self) -> Int
-pub fn EG_PieChartShared::member_names(Self) -> Array[String]
-pub fn EG_PieChartShared::new(Array[@xml.Element]) -> Self
+  vary_colors : CT_Boolean?
+  ser : Array[CT_PieSer]
+  d_lbls : CT_DLbls?
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EG_SerShared {
-  elements : Array[@xml.Element]
-}
-pub fn EG_SerShared::contains(Self, String) -> Bool
-pub fn EG_SerShared::count(Self) -> Int
-pub fn EG_SerShared::member_names(Self) -> Array[String]
-pub fn EG_SerShared::new(Array[@xml.Element]) -> Self
+  idx : CT_UnsignedInt
+  order : CT_UnsignedInt
+  tx : CT_SerTx?
+  sp_pr : @drawing_ml.CT_ShapeProperties?
+} derive(Eq, @debug.Debug)
 
 pub(all) struct EG_SurfaceChartShared {
-  elements : Array[@xml.Element]
-}
-pub fn EG_SurfaceChartShared::contains(Self, String) -> Bool
-pub fn EG_SurfaceChartShared::count(Self) -> Int
-pub fn EG_SurfaceChartShared::member_names(Self) -> Array[String]
-pub fn EG_SurfaceChartShared::new(Array[@xml.Element]) -> Self
+  wireframe : CT_Boolean?
+  ser : Array[CT_SurfaceSer]
+  band_fmts : CT_BandFmts?
+} derive(Eq, @debug.Debug)
 
 pub(all) struct Group_DLbl {
-  elements : Array[@xml.Element]
-}
-pub fn Group_DLbl::contains(Self, String) -> Bool
-pub fn Group_DLbl::count(Self) -> Int
-pub fn Group_DLbl::member_names(Self) -> Array[String]
-pub fn Group_DLbl::new(Array[@xml.Element]) -> Self
+  layout : CT_Layout?
+  tx : CT_Tx?
+  shared : EG_DLblShared
+} derive(Eq, @debug.Debug)
 
 pub(all) struct Group_DLbls {
-  elements : Array[@xml.Element]
-}
-pub fn Group_DLbls::contains(Self, String) -> Bool
-pub fn Group_DLbls::count(Self) -> Int
-pub fn Group_DLbls::member_names(Self) -> Array[String]
-pub fn Group_DLbls::new(Array[@xml.Element]) -> Self
+  shared : EG_DLblShared
+  show_leader_lines : CT_Boolean?
+  leader_lines : CT_ChartLines?
+} derive(Eq, @debug.Debug)
 
 pub(all) enum ST_AxPos {
   AxPosB
@@ -1488,6 +1510,14 @@ pub fn ST_BubbleScalePercent::new(String) -> Self raise SchemaViolation
 pub fn ST_BubbleScalePercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_BubbleScalePercent::percent(Self) -> Int
 pub fn ST_BubbleScalePercent::to_string(Self) -> String
+
+pub struct ST_BubbleScaleUInt {
+  value : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_BubbleScaleUInt::new(String) -> Self raise SchemaViolation
+pub fn ST_BubbleScaleUInt::parse(String) -> Self raise SchemaViolation
+pub fn ST_BubbleScaleUInt::to_string(Self) -> String
+pub fn ST_BubbleScaleUInt::value(Self) -> Int
 
 pub(all) enum ST_BuiltInUnit {
   BuiltInUnitHundreds
@@ -1543,6 +1573,14 @@ pub fn ST_DepthPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_DepthPercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_DepthPercent::percent(Self) -> Int
 pub fn ST_DepthPercent::to_string(Self) -> String
+
+pub struct ST_DepthPercentUShort {
+  value : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_DepthPercentUShort::new(String) -> Self raise SchemaViolation
+pub fn ST_DepthPercentUShort::parse(String) -> Self raise SchemaViolation
+pub fn ST_DepthPercentUShort::to_string(Self) -> String
+pub fn ST_DepthPercentUShort::value(Self) -> Int
 
 pub struct ST_DepthPercentWithSymbol {
   percent : Int
@@ -1613,6 +1651,14 @@ pub fn ST_GapAmountPercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_GapAmountPercent::percent(Self) -> Int
 pub fn ST_GapAmountPercent::to_string(Self) -> String
 
+pub struct ST_GapAmountUShort {
+  value : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_GapAmountUShort::new(String) -> Self raise SchemaViolation
+pub fn ST_GapAmountUShort::parse(String) -> Self raise SchemaViolation
+pub fn ST_GapAmountUShort::to_string(Self) -> String
+pub fn ST_GapAmountUShort::value(Self) -> Int
+
 pub(all) enum ST_Grouping {
   GroupingPercentStacked
   GroupingStandard
@@ -1629,6 +1675,14 @@ pub fn ST_HPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_HPercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_HPercent::percent(Self) -> Int
 pub fn ST_HPercent::to_string(Self) -> String
+
+pub struct ST_HPercentUShort {
+  value : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_HPercentUShort::new(String) -> Self raise SchemaViolation
+pub fn ST_HPercentUShort::parse(String) -> Self raise SchemaViolation
+pub fn ST_HPercentUShort::to_string(Self) -> String
+pub fn ST_HPercentUShort::value(Self) -> Int
 
 pub struct ST_HPercentWithSymbol {
   percent : Int
@@ -1653,6 +1707,14 @@ pub fn ST_HoleSizePercent::new(String) -> Self raise SchemaViolation
 pub fn ST_HoleSizePercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_HoleSizePercent::percent(Self) -> Int
 pub fn ST_HoleSizePercent::to_string(Self) -> String
+
+pub struct ST_HoleSizeUByte {
+  value : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_HoleSizeUByte::new(String) -> Self raise SchemaViolation
+pub fn ST_HoleSizeUByte::parse(String) -> Self raise SchemaViolation
+pub fn ST_HoleSizeUByte::to_string(Self) -> String
+pub fn ST_HoleSizeUByte::value(Self) -> Int
 
 pub(all) enum ST_LayoutMode {
   LayoutModeEdge
@@ -1694,6 +1756,14 @@ pub fn ST_LblOffsetPercent::new(String) -> Self raise SchemaViolation
 pub fn ST_LblOffsetPercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_LblOffsetPercent::percent(Self) -> Int
 pub fn ST_LblOffsetPercent::to_string(Self) -> String
+
+pub struct ST_LblOffsetUShort {
+  value : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_LblOffsetUShort::new(String) -> Self raise SchemaViolation
+pub fn ST_LblOffsetUShort::parse(String) -> Self raise SchemaViolation
+pub fn ST_LblOffsetUShort::to_string(Self) -> String
+pub fn ST_LblOffsetUShort::value(Self) -> Int
 
 pub(all) enum ST_LegendPos {
   LegendPosB
@@ -1779,6 +1849,14 @@ pub fn ST_Overlap::new(String) -> Self raise SchemaViolation
 pub fn ST_Overlap::parse(String) -> Self raise SchemaViolation
 pub fn ST_Overlap::percent(Self) -> Int
 pub fn ST_Overlap::to_string(Self) -> String
+
+pub struct ST_OverlapByte {
+  value : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_OverlapByte::new(String) -> Self raise SchemaViolation
+pub fn ST_OverlapByte::parse(String) -> Self raise SchemaViolation
+pub fn ST_OverlapByte::to_string(Self) -> String
+pub fn ST_OverlapByte::value(Self) -> Int
 
 pub struct ST_OverlapPercent {
   percent : Int
@@ -1882,6 +1960,14 @@ pub fn ST_SecondPieSizePercent::new(String) -> Self raise SchemaViolation
 pub fn ST_SecondPieSizePercent::parse(String) -> Self raise SchemaViolation
 pub fn ST_SecondPieSizePercent::percent(Self) -> Int
 pub fn ST_SecondPieSizePercent::to_string(Self) -> String
+
+pub struct ST_SecondPieSizeUShort {
+  value : Int
+} derive(Eq, @debug.Debug)
+pub fn ST_SecondPieSizeUShort::new(String) -> Self raise SchemaViolation
+pub fn ST_SecondPieSizeUShort::parse(String) -> Self raise SchemaViolation
+pub fn ST_SecondPieSizeUShort::to_string(Self) -> String
+pub fn ST_SecondPieSizeUShort::value(Self) -> Int
 
 pub(all) enum ST_Shape {
   ShapeCone

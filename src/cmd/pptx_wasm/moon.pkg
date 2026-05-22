@@ -1,7 +1,7 @@
 // WASM build target for the .pptx facade.
 
 import {
-  "trkbt10/ooxml/pptx" @pptx,
+  "trkbt10/ooxml/ecma376/presentation_ml/context" @pml_context,
 }
 
 options(

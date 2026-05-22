@@ -168,13 +168,13 @@ pub(all) struct CT_FtnEdn {
   /// §17.18.33 @type (ST_FtnEdn) — optional note kind.
   ftn_edn_type : ST_FtnEdn?
   /// EG_BlockLevelElts+ — block-level children carrying the note body,
-  /// preserved as raw `@xml.Element` nodes in document order.
-  block_level_elements : Array[@xml.Element]
+  /// typed projection of the EG_BlockLevelElts model group.
+  block_level_elements : Array[EG_BlockLevelElts]
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_FtnEdn — Part 1 §17.11.8 / §17.11.10. Decode the
-/// required `@id`, optional `@type` and the raw block-level body.
+/// required `@id`, optional `@type` and the EG_BlockLevelElts body.
 pub fn CT_FtnEdn::new(
   element : @xml.Element,
 ) -> CT_FtnEdn raise SchemaViolation {
@@ -186,7 +186,9 @@ pub fn CT_FtnEdn::new(
     Some(text) => Some(ST_FtnEdn::parse(text))
     None => None
   }
-  let block_level_elements = wml_ct_chunk2_element_children(element)
+  let block_level_elements = collect_block_level_elements(
+    wml_ct_chunk2_element_children(element),
+  )
   { element, id, ftn_edn_type, block_level_elements }
 }
 

@@ -3325,6 +3325,44 @@ pub fn ST_TargetScreenSize::to_string(self : ST_TargetScreenSize) -> String {
 }
 
 ///|
+/// Schema sml.xsd simple type `ST_UnsignedShortHex` — §18.18.94. Base
+/// `xsd:hexBinary` with `length=2` (exactly two hex octets, i.e. four hex
+/// digits) representing an unsigned 16-bit value stored as the lexical
+/// hex token. The constructor enforces the four-hex-digit length and the
+/// hex-digit charset; case is preserved verbatim.
+pub struct ST_UnsignedShortHex {
+  value : String
+} derive(Eq, Debug)
+
+///|
+/// Parse the ST_UnsignedShortHex lexical value, requiring exactly two
+/// hex octets (four hex digits).
+pub fn ST_UnsignedShortHex::parse(
+  s : String,
+) -> ST_UnsignedShortHex raise SchemaViolation {
+  if s.length() != 4 || !is_hex_digits(s) {
+    raise SchemaViolation(
+      schema="sml.xsd",
+      path="ST_UnsignedShortHex",
+      reason="value must be exactly four hexadecimal digits",
+    )
+  }
+  { value: s }
+}
+
+///|
+pub fn ST_UnsignedShortHex::new(
+  s : String,
+) -> ST_UnsignedShortHex raise SchemaViolation {
+  ST_UnsignedShortHex::parse(s)
+}
+
+///|
+pub fn ST_UnsignedShortHex::to_string(self : ST_UnsignedShortHex) -> String {
+  self.value
+}
+
+///|
 fn validate_non_empty_token(
   type_name : String,
   value : String,

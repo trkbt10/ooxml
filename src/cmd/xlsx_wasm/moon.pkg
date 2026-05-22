@@ -1,7 +1,7 @@
 // WASM build target for the .xlsx facade.
 
 import {
-  "trkbt10/ooxml/xlsx" @xlsx,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/context" @sml_context,
 }
 
 options(

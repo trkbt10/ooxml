@@ -218,3 +218,31 @@ test "§20.1.2.3.14-.17 hue and inverse transforms" {
     rgba(0, 255, 255, 255)),
   )
 }
+
+///|
+/// §20.1.2.3.30 scrgbClr — linear-RGB colour.  `read_color_ref`
+/// MUST accept the element (not raise SchemaViolation) and the
+/// channels MUST be gamma-encoded to sRGB.  A 50% linear channel
+/// maps to ≈188 (not 128) after the IEC 61966-2-1 transfer.
+test "§20.1.2.3.30 scrgbClr resolves with linear→sRGB gamma" {
+  let ns = " xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\""
+  let el = xml_root("<a:scrgbClr" + ns + " r=\"50000\" g=\"50000\" b=\"50000\"/>")
+  let (base, transforms) = read_color_ref(el)
+  let resolved = resolve_color(base, transforms, sample_scheme(), None)
+  // 50% linear → ≈188 sRGB.  (Straight linear scaling would
+  // wrongly produce 128.)
+  assert_close_channel(resolved.r, 188)
+  assert_close_channel(resolved.g, 188)
+  assert_close_channel(resolved.b, 188)
+  // Full intensity stays 255, zero stays 0.
+  let white = xml_root(
+    "<a:scrgbClr" + ns + " r=\"100000\" g=\"100000\" b=\"100000\"/>",
+  )
+  let (wb, wt) = read_color_ref(white)
+  let w = resolve_color(wb, wt, sample_scheme(), None)
+  assert_eq(w.r, 255)
+  let black = xml_root("<a:scrgbClr" + ns + " r=\"0\" g=\"0\" b=\"0\"/>")
+  let (bb, bt) = read_color_ref(black)
+  let bk = resolve_color(bb, bt, sample_scheme(), None)
+  assert_eq(bk.r, 0)
+}

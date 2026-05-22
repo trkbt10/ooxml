@@ -9,6 +9,7 @@
 import {
   "trkbt10/ooxml/xml" @xml,
   "trkbt10/ooxml/ecma376/presentation_ml/domain" @domain,
+  "trkbt10/ooxml/ecma376/drawing_ml" @a,
 }
 
 import {

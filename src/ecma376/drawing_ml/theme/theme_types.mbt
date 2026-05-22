@@ -12,142 +12,193 @@ pub(all) struct CT_BaseStyles {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <clrScheme> (CT_ColorScheme) — required.
-  clr_scheme_child_name : String
+  clr_scheme : @a.CT_ColorScheme
   /// <fontScheme> (CT_FontScheme) — required.
-  font_scheme_child_name : String
+  font_scheme : @a.CT_FontScheme
   /// <fmtScheme> (CT_StyleMatrix) — required.
-  fmt_scheme_child_name : String
+  fmt_scheme : @a.CT_StyleMatrix
   /// <extLst> (CT_OfficeArtExtensionList) — optional.
-  has_ext_lst : Bool
+  ext_lst : @a.CT_OfficeArtExtensionList?
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_BaseStyles from its source XML element.
-pub fn CT_BaseStyles::new(element : @xml.Element) -> CT_BaseStyles {
-  let mut clr = ""
-  let mut font = ""
-  let mut fmt = ""
-  let mut has_ext = false
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "clrScheme" => clr = "clrScheme"
-        "fontScheme" => font = "fontScheme"
-        "fmtScheme" => fmt = "fmtScheme"
-        "extLst" => has_ext = true
-        _ => ()
-      }
-    }
+pub fn CT_BaseStyles::new(
+  element : @xml.Element,
+) -> CT_BaseStyles raise SchemaViolation {
+  let clr_el = required_child(element, "clrScheme", "CT_BaseStyles/clrScheme")
+  let font_el = required_child(element, "fontScheme", "CT_BaseStyles/fontScheme")
+  let fmt_el = required_child(element, "fmtScheme", "CT_BaseStyles/fmtScheme")
+  let clr_scheme = wrap_a_violation(
+    fn() { @a.CT_ColorScheme::new(clr_el) },
+    "CT_BaseStyles/clrScheme",
+  )
+  let font_scheme = wrap_a_violation(
+    fn() { @a.CT_FontScheme::new(font_el) },
+    "CT_BaseStyles/fontScheme",
+  )
+  let fmt_scheme = wrap_a_violation(
+    fn() { @a.CT_StyleMatrix::new(fmt_el) },
+    "CT_BaseStyles/fmtScheme",
+  )
+  let ext_lst = match optional_child(element, "extLst") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_OfficeArtExtensionList::new(e) },
+          "CT_BaseStyles/extLst",
+        ),
+      )
   }
-  {
-    element,
-    clr_scheme_child_name: clr,
-    font_scheme_child_name: font,
-    fmt_scheme_child_name: fmt,
-    has_ext_lst: has_ext,
-  }
+  { element, clr_scheme, font_scheme, fmt_scheme, ext_lst }
 }
 
 ///|
-/// XSD complex type CT_OfficeStyleSheet — Part 1 §20.1.6.9. Optional `name`
-/// attribute (xsd:string, default ""), required `themeElements` (CT_BaseStyles)
-/// child, plus optional `objectDefaults`, `extraClrSchemeLst`, `custClrLst`,
-/// and `extLst` children.
+/// XSD complex type CT_OfficeStyleSheet — Part 1 §20.1.6.9.
 pub(all) struct CT_OfficeStyleSheet {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// @name (xsd:string) — optional, default "".
   name : String?
   /// <themeElements> (CT_BaseStyles) — required.
-  theme_elements_child_name : String
+  theme_elements : CT_BaseStyles
   /// <objectDefaults> (CT_ObjectStyleDefaults) — optional.
-  has_object_defaults : Bool
+  object_defaults : @a.CT_ObjectStyleDefaults?
   /// <extraClrSchemeLst> (CT_ColorSchemeList) — optional.
-  has_extra_clr_scheme_lst : Bool
+  extra_clr_scheme_lst : @a.CT_ColorSchemeList?
   /// <custClrLst> (CT_CustomColorList) — optional.
-  has_cust_clr_lst : Bool
+  cust_clr_lst : @a.CT_CustomColorList?
   /// <extLst> (CT_OfficeArtExtensionList) — optional.
-  has_ext_lst : Bool
+  ext_lst : @a.CT_OfficeArtExtensionList?
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_OfficeStyleSheet from its source XML element.
-pub fn CT_OfficeStyleSheet::new(element : @xml.Element) -> CT_OfficeStyleSheet {
-  let mut theme = ""
-  let mut obj = false
-  let mut extra = false
-  let mut cust = false
-  let mut ext = false
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "themeElements" => theme = "themeElements"
-        "objectDefaults" => obj = true
-        "extraClrSchemeLst" => extra = true
-        "custClrLst" => cust = true
-        "extLst" => ext = true
-        _ => ()
-      }
-    }
+pub fn CT_OfficeStyleSheet::new(
+  element : @xml.Element,
+) -> CT_OfficeStyleSheet raise SchemaViolation {
+  let theme_el = required_child(
+    element, "themeElements", "CT_OfficeStyleSheet/themeElements",
+  )
+  let theme_elements = CT_BaseStyles::new(theme_el)
+  let object_defaults = match optional_child(element, "objectDefaults") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_ObjectStyleDefaults::new(e) },
+          "CT_OfficeStyleSheet/objectDefaults",
+        ),
+      )
+  }
+  let extra_clr_scheme_lst = match optional_child(element, "extraClrSchemeLst") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_ColorSchemeList::new(e) },
+          "CT_OfficeStyleSheet/extraClrSchemeLst",
+        ),
+      )
+  }
+  let cust_clr_lst = match optional_child(element, "custClrLst") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_CustomColorList::new(e) },
+          "CT_OfficeStyleSheet/custClrLst",
+        ),
+      )
+  }
+  let ext_lst = match optional_child(element, "extLst") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_OfficeArtExtensionList::new(e) },
+          "CT_OfficeStyleSheet/extLst",
+        ),
+      )
   }
   {
     element,
     name: attr(element, "name"),
-    theme_elements_child_name: theme,
-    has_object_defaults: obj,
-    has_extra_clr_scheme_lst: extra,
-    has_cust_clr_lst: cust,
-    has_ext_lst: ext,
+    theme_elements,
+    object_defaults,
+    extra_clr_scheme_lst,
+    cust_clr_lst,
+    ext_lst,
   }
 }
 
 ///|
-/// XSD complex type CT_BaseStylesOverride — Part 1 §20.1.6.5. Optional children
-/// `clrScheme` (CT_ColorScheme), `fontScheme` (CT_FontScheme), and `fmtScheme`
-/// (CT_StyleMatrix).
+/// XSD complex type CT_BaseStylesOverride — Part 1 §20.1.6.5.
 pub(all) struct CT_BaseStylesOverride {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <clrScheme> (CT_ColorScheme) — optional.
-  has_clr_scheme : Bool
+  clr_scheme : @a.CT_ColorScheme?
   /// <fontScheme> (CT_FontScheme) — optional.
-  has_font_scheme : Bool
+  font_scheme : @a.CT_FontScheme?
   /// <fmtScheme> (CT_StyleMatrix) — optional.
-  has_fmt_scheme : Bool
+  fmt_scheme : @a.CT_StyleMatrix?
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_BaseStylesOverride from its source XML element.
 pub fn CT_BaseStylesOverride::new(
   element : @xml.Element,
-) -> CT_BaseStylesOverride {
-  let mut clr = false
-  let mut font = false
-  let mut fmt = false
-  for child in element.children {
-    if child is @xml.Node::Element(child_element) {
-      match child_element.name.local_name {
-        "clrScheme" => clr = true
-        "fontScheme" => font = true
-        "fmtScheme" => fmt = true
-        _ => ()
-      }
-    }
+) -> CT_BaseStylesOverride raise SchemaViolation {
+  let clr_scheme = match optional_child(element, "clrScheme") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_ColorScheme::new(e) },
+          "CT_BaseStylesOverride/clrScheme",
+        ),
+      )
   }
-  { element, has_clr_scheme: clr, has_font_scheme: font, has_fmt_scheme: fmt }
+  let font_scheme = match optional_child(element, "fontScheme") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_FontScheme::new(e) },
+          "CT_BaseStylesOverride/fontScheme",
+        ),
+      )
+  }
+  let fmt_scheme = match optional_child(element, "fmtScheme") {
+    None => None
+    Some(e) =>
+      Some(
+        wrap_a_violation(
+          fn() { @a.CT_StyleMatrix::new(e) },
+          "CT_BaseStylesOverride/fmtScheme",
+        ),
+      )
+  }
+  { element, clr_scheme, font_scheme, fmt_scheme }
 }
 
 ///|
-/// XSD complex type CT_OfficeArtExtension — Part 1 §20.1.2.2.14. Required
-/// `uri` attribute (xsd:token) and an unbounded xsd:any sequence preserved as
-/// raw payload.
+/// XSD complex type CT_OfficeArtExtension — Part 1 §20.1.2.2.14.
+/// Required `uri` attribute and an unbounded xsd:any sequence
+/// preserved as raw child XML nodes.
 pub(all) struct CT_OfficeArtExtension {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// @uri (xsd:token) — required.
   uri : String
-  /// Local names of preserved xsd:any payload children.
-  payload_names : Array[String]
+  /// xsd:any payload children, preserved as parsed @xml.Element values
+  /// in document order. Since the schema permits any element under
+  /// any namespace, we keep the raw XML rather than synthesising a
+  /// typed projection (this is the one place where opaque payload is
+  /// the contract, not a sub-task to project).
+  payload : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
@@ -156,39 +207,93 @@ pub fn CT_OfficeArtExtension::new(
   element : @xml.Element,
 ) -> CT_OfficeArtExtension raise SchemaViolation {
   let uri = require_attr(element, "uri", "CT_OfficeArtExtension/@uri")
-  let payload_names : Array[String] = []
+  let payload : Array[@xml.Element] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
-      payload_names.push(child_element.name.local_name)
+      payload.push(child_element)
     }
   }
-  { element, uri, payload_names }
+  { element, uri, payload }
 }
 
 ///|
-/// XSD complex type CT_OfficeArtExtensionList — Part 1 §20.1.2.2.15. Wraps an
-/// unbounded sequence of `ext` (CT_OfficeArtExtension) children.
+/// XSD complex type CT_OfficeArtExtensionList — Part 1 §20.1.2.2.15.
 pub(all) struct CT_OfficeArtExtensionList {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// <ext>* (CT_OfficeArtExtension) — zero or more extension entries.
-  extension_count : Int
+  extensions : Array[CT_OfficeArtExtension]
 } derive(Eq, Debug)
 
 ///|
 /// Construct CT_OfficeArtExtensionList from its source XML element.
 pub fn CT_OfficeArtExtensionList::new(
   element : @xml.Element,
-) -> CT_OfficeArtExtensionList {
-  let mut count = 0
+) -> CT_OfficeArtExtensionList raise SchemaViolation {
+  let extensions : Array[CT_OfficeArtExtension] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
       if child_element.name.local_name == "ext" {
-        count = count + 1
+        extensions.push(CT_OfficeArtExtension::new(child_element))
       }
     }
   }
-  { element, extension_count: count }
+  { element, extensions }
+}
+
+///|
+/// Locate a required child element by local name.
+fn required_child(
+  element : @xml.Element,
+  local_name : String,
+  path : String,
+) -> @xml.Element raise SchemaViolation {
+  for child in element.children {
+    match child {
+      @xml.Node::Element(child_element) =>
+        if child_element.name.local_name == local_name {
+          return child_element
+        }
+      _ => ()
+    }
+  }
+  raise SchemaViolation(
+    schema="dml-main.xsd",
+    path~,
+    reason="required child element is missing",
+  )
+}
+
+///|
+fn optional_child(
+  element : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  for child in element.children {
+    match child {
+      @xml.Node::Element(child_element) =>
+        if child_element.name.local_name == local_name {
+          return Some(child_element)
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn wrap_a_violation[T](
+  body : () -> T raise @a.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @a.SchemaViolation(schema=_, path=p, reason~) =>
+      raise SchemaViolation(
+        schema="dml-main.xsd",
+        path=path + " (" + p + ")",
+        reason~,
+      )
+  }
 }
 
 ///|

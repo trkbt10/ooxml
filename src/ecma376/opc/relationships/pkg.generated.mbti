@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn opc_relationships_part2_6_5_1_general_section_name() -> String
+
 pub fn package_name() -> String
 
 pub fn read_relationships(Bytes) -> CT_Relationships raise
@@ -28,6 +30,7 @@ pub(all) struct CT_Relationships {
 } derive(Eq, @debug.Debug)
 pub fn CT_Relationships::find_by_id(Self, String) -> CT_Relationship?
 
+#alias(ST_RelationshipId)
 pub struct RelationshipId {
   value : String
 } derive(Eq)

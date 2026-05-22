@@ -1,0 +1,22 @@
+// trkbt10/ooxml/ecma376/presentation_ml/edit
+//
+// B-layer mutators for the PresentationML context. Every function
+// here consumes a `@pml_context.Presentation`, applies a mutation
+// composed exclusively from A-layer primitives (`@edit` for XML,
+// `@opc` for OPC, plus the facade-edit primitives exposed by the
+// context package), and returns a new context. The original context
+// is never mutated in place. The render direction is strictly
+// parser → context → edit (here) → builder | renderer.
+
+import {
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/ecma376/opc/part_name" @opc_part_name,
+  "trkbt10/ooxml/ecma376/opc" @opc,
+  "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
+  "trkbt10/ooxml/ecma376/presentation_ml/domain" @pml,
+  "trkbt10/ooxml/ecma376/presentation_ml/builder" @pml_builder,
+  "trkbt10/ooxml/ecma376/presentation_ml/context" @pml_context,
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/edit" @edit,
+  "moonbitlang/core/strconv" @strconv,
+}

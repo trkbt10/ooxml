@@ -105,3 +105,130 @@ pub fn CT_AdditionalCharacteristics::iter(
 ) -> Iter[CT_Characteristic] {
   self.characteristics.iter()
 }
+
+///|
+/// Read top-level XSD element additionalCharacteristics (§22.6.2.1) into
+/// CT_AdditionalCharacteristics by parsing the XML bytes, validating the
+/// root element name, and materialising every CT_Characteristic child in
+/// document order.
+pub fn read_additional_characteristics(
+  bytes : Bytes,
+) -> CT_AdditionalCharacteristics raise {
+  let root = @xml.parse(bytes).root
+  if root.name.local_name != "additionalCharacteristics" {
+    raise SchemaViolation(
+      type_name="additionalCharacteristics",
+      value=root.name.local_name,
+    )
+  }
+  let characteristics : Array[CT_Characteristic] = []
+  for child in root.children {
+    match child {
+      Element(child_element) => {
+        if child_element.name.local_name != "characteristic" {
+          continue
+        }
+        let name = attr_value(child_element, "name")
+        let relation_raw = attr_value(child_element, "relation")
+        let val = attr_value(child_element, "val")
+        let vocabulary = optional_attr_value(child_element, "vocabulary")
+        let relation = ST_Relation::parse(relation_raw)
+        characteristics.push(
+          CT_Characteristic::new(name~, relation~, val~, vocabulary~),
+        )
+      }
+      _ => ()
+    }
+  }
+  CT_AdditionalCharacteristics::new(characteristics)
+}
+
+///|
+/// §22.6.2.1 — serialize a `CT_AdditionalCharacteristics` value
+/// to the canonical `<additionalCharacteristics>` XML byte
+/// stream.  Every `<characteristic>` child is emitted with its
+/// `name`, `relation`, `val`, and optional `vocabulary`
+/// attributes; the root element carries the spec-mandated
+/// `xmlns="http://schemas.openxmlformats.org/officeDocument/2006/characteristics"`
+/// namespace declaration so consumers can round-trip the part.
+///
+/// Mirrors `read_additional_characteristics` so the pair forms
+/// a lossless round-trip (modulo attribute ordering, which is
+/// canonicalised to `name relation val vocabulary` for
+/// determinism).
+pub fn write_additional_characteristics(
+  value : CT_AdditionalCharacteristics,
+) -> Bytes {
+  let ns_chars = "http://schemas.openxmlformats.org/officeDocument/2006/characteristics"
+  let root_qn : @xml.QName = {
+    prefix: None,
+    local_name: "additionalCharacteristics",
+    ns: Some(ns_chars),
+  }
+  let attr_qn = fn(local : String) -> @xml.QName {
+    { prefix: None, local_name: local, ns: None }
+  }
+  let attrs : Array[@xml.Attribute] = [
+    // §22.6.2.1 — single mandatory namespace declaration.
+    { name: { prefix: Some("xmlns"), local_name: "", ns: None }, value: ns_chars },
+  ]
+  let children : Array[@xml.Node] = []
+  for ch in value.characteristics {
+    let ch_attrs : Array[@xml.Attribute] = [
+      { name: attr_qn("name"), value: ch.name },
+      { name: attr_qn("relation"), value: ch.relation.to_string() },
+      { name: attr_qn("val"), value: ch.val },
+    ]
+    match ch.vocabulary {
+      Some(v) =>
+        ch_attrs.push({ name: attr_qn("vocabulary"), value: v })
+      None => ()
+    }
+    let elt : @xml.Element = {
+      name: { prefix: None, local_name: "characteristic", ns: Some(ns_chars) },
+      attributes: ch_attrs,
+      children: [],
+    }
+    children.push(@xml.Node::Element(elt))
+  }
+  let root : @xml.Element = {
+    name: root_qn,
+    attributes: attrs,
+    children,
+  }
+  @xml.write({
+    declaration: Some({
+      version: "1.0",
+      encoding: Some("UTF-8"),
+      standalone: Some(true),
+    }),
+    doctype: None,
+    root,
+  })
+}
+
+///|
+/// Return the unprefixed value for the named attribute or raise a
+/// SchemaViolation if missing.
+fn attr_value(
+  element : @xml.Element,
+  local_name : String,
+) -> String raise SchemaViolation {
+  for attribute in element.attributes {
+    if attribute.name.local_name == local_name {
+      return attribute.value
+    }
+  }
+  raise SchemaViolation(type_name="CT_Characteristic/@" + local_name, value="")
+}
+
+///|
+/// Return the unprefixed value for the named attribute, or None.
+fn optional_attr_value(element : @xml.Element, local_name : String) -> String? {
+  for attribute in element.attributes {
+    if attribute.name.local_name == local_name {
+      return Some(attribute.value)
+    }
+  }
+  None
+}

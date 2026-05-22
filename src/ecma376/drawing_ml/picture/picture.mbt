@@ -99,6 +99,18 @@ fn parse_ct_picture(root : @xml.Element) -> CT_Picture raise SchemaViolation {
 }
 
 ///|
+/// Typed projection constructor — accept an already-parsed `<pic>`
+/// element and produce the CT_Picture record. Public so callers in
+/// neighbouring packages (e.g. wordprocessing_ml/domain typed
+/// wrappers) can decode embedded `<dpct:pic>` children without
+/// going through the byte-level reader.
+pub fn CT_Picture::new(
+  element : @xml.Element,
+) -> CT_Picture raise SchemaViolation {
+  parse_ct_picture(element)
+}
+
+///|
 fn parse_ct_picture_non_visual(
   element : @xml.Element,
 ) -> CT_PictureNonVisual raise SchemaViolation {

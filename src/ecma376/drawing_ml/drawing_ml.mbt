@@ -606,9 +606,33 @@ pub fn dml_simple_type_st_ext_name() -> String {
 }
 
 ///|
+/// Return the Schema vml-main.xsd complex type `CT_Fill` schema row
+/// owned by this package.  Legacy VML fill descriptor used inside the
+/// `urn:schemas-microsoft-com:vml` namespace; the canonical DrawingML
+/// fill complex types live in dml-main.xsd (a:solidFill, a:gradFill,
+/// a:blipFill, a:pattFill, a:noFill).  Preserved here as a schema row
+/// so the `<v:fill>` source-level element survives round-trip.
+/// Attributes: `type`, `on`, `color`, `opacity`, `color2`, `src`,
+/// `size`, `origin`, `position`, `aspect`, `colors`, `angle`,
+/// `alignshape`, `focus`, `focussize`, `focusposition`, `method`,
+/// `recolor`, `rotate`.  Attribute groups referenced: `o:href`,
+/// `o:althref`, `o:detectmouseclick`, `o:title`, `o:opacity2`,
+/// `r:id`, `o:relid`.  Child elements: `o:fill`.
+pub fn dml_vml_main_ct_fill_schema_name() -> String {
+  "Schema vml-main.xsd complex type `CT_Fill`. Attributes: `type`, `on`, `color`, `opacity`, `color2`, `src`, `size`, `origin`, `position`, `aspect`, `colors`, `angle`, `alignshape`, `focus`, `focussize`, `focusposition`, `method`, `recolor`, `rotate`. Attribute groups referenced: `o:href`, `o:althref`, `o:detectmouseclick`, `o:title`, `o:opacity2`, `r:id`, `o:relid`. Child elements: `o:fill`."
+}
+
+///|
 /// Return the Schema vml-officeDrawing.xsd schema row owned by this package.
 pub fn dml_schema_vml_officedrawing_xsd_name() -> String {
   "Bundle `transitional`. Target namespace `urn:schemas-microsoft-com:office:office`. Identifier counts: elements=19, complexTypes=25, simpleTypes=23, attributeGroups=0, groups=0."
+}
+
+///|
+/// Return the XSD element `fill` (vml-main.xsd) row owned by this package.
+/// Schema vml-main.xsd top-level element `fill`. Type: `CT_Fill`.
+pub fn dml_vml_main_element_fill_schema_name() -> String {
+  "Schema vml-main.xsd top-level element `fill`. Type: `CT_Fill`."
 }
 
 ///|

@@ -114,7 +114,27 @@ pub fn dispatch_algorithm(
       let per_child = layout_lin(inner, algorithm, constraints, n)
       apply_each_child(children, per_child)
     }
-    _ => {
+    // §21.4.7.1 AlgorithmType — closed-10 enum.  The remaining
+    // four algorithms (Composite, Conn, Sp, Tx) do not yet have
+    // dedicated layout passes in this engine; they fall back to
+    // the linear layout which preserves bounds-correctness even
+    // though it does not honour the algorithm's spatial
+    // semantics.  The algorithm name survives on the source
+    // DOM so consumers can re-layout with their own
+    // dispatcher.
+    AlgComposite => {
+      let per_child = layout_lin(inner, algorithm, constraints, n)
+      apply_each_child(children, per_child)
+    }
+    AlgConn => {
+      let per_child = layout_lin(inner, algorithm, constraints, n)
+      apply_each_child(children, per_child)
+    }
+    AlgSp => {
+      let per_child = layout_lin(inner, algorithm, constraints, n)
+      apply_each_child(children, per_child)
+    }
+    AlgTx => {
       let per_child = layout_lin(inner, algorithm, constraints, n)
       apply_each_child(children, per_child)
     }
@@ -607,9 +627,11 @@ pub fn find_root_point_id(data_model : DataModel) -> String? {
 }
 
 ///|
-/// Filter the candidate point list against the spec's
-/// `ST_ElementType` filter. `ElAll` and `ElOther(_)` mean "no
-/// filter".
+/// §21.4.7.41 ST_ElementType — filter the candidate point list
+/// against the spec's type predicate.  `ElAll` (no filter) and
+/// `ElOther(_)` (caller-supplied custom token) match every
+/// candidate; the remaining concrete variants compare against
+/// the canonical lexical form produced by `pt_type_lexical`.
 fn filter_by_pt_type(
   candidates : Array[DiagramPoint],
   pt_type : ElementType,
@@ -617,6 +639,9 @@ fn filter_by_pt_type(
   match pt_type {
     ElAll => candidates
     ElOther(_) => candidates
+    // All remaining ST_ElementType variants (ElNode, ElDoc,
+    // ElAsst, ElNonAsst, ElParTrans, ElSibTrans, ElPres) take
+    // the per-element string-match path below.
     _ => {
       let acc : Array[DiagramPoint] = []
       let needle = pt_type_lexical(pt_type)

@@ -1277,9 +1277,8 @@ pub(all) struct CT_Macrosheet {
   custom_sheet_views : CT_CustomSheetViews?
   phonetic_pr : CT_PhoneticPr?
   /// <conditionalFormatting>* (CT_ConditionalFormatting) — unbounded.
-  /// Kept as raw elements because the typed CT_ConditionalFormatting is
-  /// constructed by the external cf_rule_eval parser package.
-  conditional_formatting : Array[@xml.Element]
+  /// Part 1 §18.3.1.18.
+  conditional_formatting : Array[CT_ConditionalFormatting]
   print_options : CT_PrintOptions?
   page_margins : CT_PageMargins?
   /// <pageSetup> (CT_PageSetup) — optional. Kept as raw element to
@@ -1297,7 +1296,9 @@ pub(all) struct CT_Macrosheet {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Macrosheet::new(element : @xml.Element) -> CT_Macrosheet {
+pub fn CT_Macrosheet::new(
+  element : @xml.Element,
+) -> CT_Macrosheet raise @opc_errors.SchemaViolation {
   let mut sheet_pr : CT_SheetPr? = None
   let mut dimension : CT_SheetDimension? = None
   let mut sheet_views : CT_SheetViews? = None
@@ -1310,7 +1311,7 @@ pub fn CT_Macrosheet::new(element : @xml.Element) -> CT_Macrosheet {
   let mut data_consolidate : CT_DataConsolidate? = None
   let mut custom_sheet_views : CT_CustomSheetViews? = None
   let mut phonetic_pr : CT_PhoneticPr? = None
-  let conditional_formatting : Array[@xml.Element] = []
+  let conditional_formatting : Array[CT_ConditionalFormatting] = []
   let mut print_options : CT_PrintOptions? = None
   let mut page_margins : CT_PageMargins? = None
   let mut page_setup : @xml.Element? = None
@@ -1342,7 +1343,8 @@ pub fn CT_Macrosheet::new(element : @xml.Element) -> CT_Macrosheet {
         "customSheetViews" =>
           custom_sheet_views = Some(CT_CustomSheetViews::new(child_element))
         "phoneticPr" => phonetic_pr = Some(CT_PhoneticPr::new(child_element))
-        "conditionalFormatting" => conditional_formatting.push(child_element)
+        "conditionalFormatting" =>
+          conditional_formatting.push(CT_ConditionalFormatting::new(child_element))
         "printOptions" =>
           print_options = Some(CT_PrintOptions::new(child_element))
         "pageMargins" => page_margins = Some(CT_PageMargins::new(child_element))
@@ -1528,9 +1530,8 @@ pub(all) struct CT_Worksheet {
   merge_cells : CT_MergeCells?
   phonetic_pr : CT_PhoneticPr?
   /// <conditionalFormatting>* (CT_ConditionalFormatting) — unbounded.
-  /// Kept as raw elements because the typed CT_ConditionalFormatting is
-  /// constructed by the external cf_rule_eval parser package.
-  conditional_formatting : Array[@xml.Element]
+  /// Part 1 §18.3.1.18.
+  conditional_formatting : Array[CT_ConditionalFormatting]
   data_validations : CT_DataValidations?
   hyperlinks : CT_Hyperlinks?
   print_options : CT_PrintOptions?
@@ -1555,7 +1556,9 @@ pub(all) struct CT_Worksheet {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Worksheet::new(element : @xml.Element) -> CT_Worksheet {
+pub fn CT_Worksheet::new(
+  element : @xml.Element,
+) -> CT_Worksheet raise @opc_errors.SchemaViolation {
   let mut sheet_pr : CT_SheetPr? = None
   let mut dimension : CT_SheetDimension? = None
   let mut sheet_views : CT_SheetViews? = None
@@ -1572,7 +1575,7 @@ pub fn CT_Worksheet::new(element : @xml.Element) -> CT_Worksheet {
   let mut custom_sheet_views : CT_CustomSheetViews? = None
   let mut merge_cells : CT_MergeCells? = None
   let mut phonetic_pr : CT_PhoneticPr? = None
-  let conditional_formatting : Array[@xml.Element] = []
+  let conditional_formatting : Array[CT_ConditionalFormatting] = []
   let mut data_validations : CT_DataValidations? = None
   let mut hyperlinks : CT_Hyperlinks? = None
   let mut print_options : CT_PrintOptions? = None
@@ -1618,7 +1621,8 @@ pub fn CT_Worksheet::new(element : @xml.Element) -> CT_Worksheet {
           custom_sheet_views = Some(CT_CustomSheetViews::new(child_element))
         "mergeCells" => merge_cells = Some(CT_MergeCells::new(child_element))
         "phoneticPr" => phonetic_pr = Some(CT_PhoneticPr::new(child_element))
-        "conditionalFormatting" => conditional_formatting.push(child_element)
+        "conditionalFormatting" =>
+          conditional_formatting.push(CT_ConditionalFormatting::new(child_element))
         "dataValidations" =>
           data_validations = Some(CT_DataValidations::new(child_element))
         "hyperlinks" => hyperlinks = Some(CT_Hyperlinks::new(child_element))
@@ -1792,6 +1796,8 @@ pub fn CT_SheetFormatPr::new(element : @xml.Element) -> CT_SheetFormatPr {
 ///|
 /// XSD complex type CT_Cols — Part 1 §18.3.1.17. Worksheet column-range
 /// container: one or more `<col>` (CT_Col) children.
+/// Schema sml.xsd complex type `CT_Cols`. Child elements: `col`. Child
+/// types: `CT_Col`.
 pub(all) struct CT_Cols {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
@@ -2650,6 +2656,31 @@ pub(all) struct CT_Drawing {
 
 ///|
 pub fn CT_Drawing::new(element : @xml.Element) -> CT_Drawing {
+  let r_id = match attr_with_ns(element, "id") {
+    Some(value) => value
+    None => ""
+  }
+  { element, r_id }
+}
+
+///|
+/// Schema sml.xsd complex type `CT_LegacyDrawing`. Attribute groups
+/// referenced: `r:id`.
+///
+/// XSD complex type CT_LegacyDrawing — Part 1 §18.3.1.32. Sheet
+/// legacy-drawing-part reference (VML drawing).  Required `@r:id`
+/// (relationship to the VML drawing part).  Used by `<legacyDrawing>`
+/// and `<legacyDrawingHF>` to address pre-DrawingML graphics that
+/// survive in Office documents for backwards compatibility.
+pub(all) struct CT_LegacyDrawing {
+  /// Preserve source XML element for byte-identical round-trip.
+  element : @xml.Element
+  /// @r:id — required relationship identifier.
+  r_id : String
+} derive(Eq, Debug)
+
+///|
+pub fn CT_LegacyDrawing::new(element : @xml.Element) -> CT_LegacyDrawing {
   let r_id = match attr_with_ns(element, "id") {
     Some(value) => value
     None => ""
