@@ -144,10 +144,18 @@ fn root_rels_part(target : String) -> Bytes {
 /// malformed document that conformant readers reject.
 fn docx_package(body : @xml.Element) -> Bytes {
   let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-  let document : @xml.Element = {
-    name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
-    attributes: [],
-    children: [Element(body)],
+  // If `body` is already a `<w:document>` element (the
+  // element-under-test IS the document root — §17.2.3 CT_Document),
+  // use it as-is so we never produce a nested
+  // `<w:document><w:document>...` malformed payload.
+  let document : @xml.Element = if body.name.local_name == "document" {
+    body
+  } else {
+    {
+      name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+      attributes: [],
+      children: [Element(body)],
+    }
   }
   let parts : Array[(String, Bytes)] = [
     (
@@ -1417,10 +1425,19 @@ fn pptx_package(content : @xml.Element) -> Bytes {
   ])
   // Namespaces are auto-declared by `@xml.write` from QName URIs; no
   // explicit `xmlns:*` attributes (see `docx_package`).
-  let slide : @xml.Element = {
-    name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
-    attributes: [],
-    children: [Element(content)],
+  //
+  // If `content` is already a `<p:sld>` element (the element-under-test
+  // IS the slide root — §19.3.1.38 CT_Slide), use it as-is so we
+  // never produce a nested `<p:sld><p:sld>...` malformed payload.
+  // Otherwise wrap the single child in a `<p:sld>` (the common case).
+  let slide : @xml.Element = if content.name.local_name == "sld" {
+    content
+  } else {
+    {
+      name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
+      attributes: [],
+      children: [Element(content)],
+    }
   }
   let parts : Array[(String, Bytes)] = [
     (
@@ -2259,13 +2276,759 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
 }
 
 ///|
-/// Build the host package for `which` around `content`.
+/// Build the host package for `which` around `content`.  `which` is
+/// either a bare format name (`docx`/`xlsx`/`pptx`) or
+/// `format:part-kind` where `part-kind` selects an OPC auxiliary
+/// part — `docx:settings` wires `content` as the body of
+/// `word/settings.xml`, `pptx:theme` as `ppt/theme/theme1.xml`, and
+/// so on.  Aux-part hosts always ship a minimal body part too
+/// (empty `<w:body>` / `<worksheet>` / `<p:sld>`) so the package is
+/// fully spec-valid OPC.
 fn host_package(which : String, content : @xml.Element) -> Bytes {
   match which {
     "xlsx" => xlsx_package(content)
     "pptx" => pptx_package(content)
+    "docx:settings" => docx_aux_package("settings", content)
+    "docx:styles" => docx_aux_package("styles", content)
+    "docx:numbering" => docx_aux_package("numbering", content)
+    "docx:fonts" => docx_aux_package("fonts", content)
+    "docx:webSettings" => docx_aux_package("webSettings", content)
+    "docx:comments" => docx_aux_package("comments", content)
+    "docx:footnotes" => docx_aux_package("footnotes", content)
+    "docx:endnotes" => docx_aux_package("endnotes", content)
+    "pptx:theme" => pptx_with_aux_root_package("theme", content)
+    "pptx:presentation" => pptx_with_aux_root_package("presentation", content)
+    "xlsx:workbook" => xlsx_with_aux_root_package("workbook", content)
+    "xlsx:sharedStrings" => xlsx_with_aux_root_package("sharedStrings", content)
+    "xlsx:styles" => xlsx_with_aux_root_package("styles", content)
     _ => docx_package(content)
   }
+}
+
+///|
+/// `.docx` package that ships `content` as the body of a WML auxiliary
+/// part (`settings.xml` / `styles.xml` / `numbering.xml` /
+/// `fontTable.xml` / `webSettings.xml` / `comments.xml` /
+/// `footnotes.xml` / `endnotes.xml`) — wired into the document's
+/// relationships and `[Content_Types].xml` with the matching
+/// §17.18 relationship-type URI and content-type override.  The
+/// `<w:document>` part stays a minimal empty `<w:body/>` so the
+/// auxiliary part is the only render-affecting payload.
+fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  // Map the part kind to its (canonical part-name, rel-type URI,
+  // content-type, root-element local name) — these come from the
+  // OPC registry's WordprocessingML section.
+  let (part_path, rel_type, content_type, root_name) : (
+    String,
+    String,
+    String,
+    String,
+  ) = match part_kind {
+    "settings" =>
+      (
+        "settings.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml",
+        "settings",
+      )
+    "styles" =>
+      (
+        "styles.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml",
+        "styles",
+      )
+    "numbering" =>
+      (
+        "numbering.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml",
+        "numbering",
+      )
+    "fonts" =>
+      (
+        "fontTable.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml",
+        "fonts",
+      )
+    "webSettings" =>
+      (
+        "webSettings.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/webSettings",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml",
+        "webSettings",
+      )
+    "comments" =>
+      (
+        "comments.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml",
+        "comments",
+      )
+    "footnotes" =>
+      (
+        "footnotes.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml",
+        "footnotes",
+      )
+    "endnotes" =>
+      (
+        "endnotes.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml",
+        "endnotes",
+      )
+    _ =>
+      (
+        "settings.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml",
+        "settings",
+      )
+  }
+  // Wrap `content` in the part's root element if it isn't already —
+  // each aux part's root carries the WML namespace and the
+  // ECMA-376-defined local name (settings, styles, numbering, ...).
+  let aux_root : @xml.Element = if content.name.local_name == root_name {
+    content
+  } else {
+    {
+      name: { prefix: Some("w"), local_name: root_name, ns: Some(ns_w) },
+      attributes: [],
+      children: [Element(content)],
+    }
+  }
+  // Minimal `<w:document>` body — the auxiliary part is what we
+  // care about, but a docx needs a document part to be a valid
+  // OPC office-document package.
+  let document : @xml.Element = {
+    name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+    attributes: [],
+    children: [
+      Element({
+        name: { prefix: Some("w"), local_name: "body", ns: Some(ns_w) },
+        attributes: [],
+        children: [],
+      }),
+    ],
+  }
+  let doc_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa("Type", rel_type),
+          xa("Target", part_path),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+        ),
+        ("/word/" + part_path, content_type),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("word/document.xml")),
+    ("word/document.xml", write_part(document)),
+    ("word/_rels/document.xml.rels", write_part(doc_rels)),
+    ("word/" + part_path, write_part(aux_root)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.pptx` package whose `ppt/theme/theme1.xml` (or
+/// `ppt/presentation.xml`) is replaced with `content`.  The slide /
+/// slideLayout / slideMaster chain stays minimal so the rendered
+/// SVG reflects only what the replaced aux part contributes.
+fn pptx_with_aux_root_package(
+  part_kind : String,
+  content : @xml.Element,
+) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  match part_kind {
+    "theme" => {
+      // Wrap `content` in `<a:theme>` if it isn't already.  The
+      // theme part's root must be `<a:theme>` per §20.1.6.9.
+      let theme_root : @xml.Element = if content.name.local_name == "theme" {
+        content
+      } else {
+        xep("a", ns_a, "theme", [xa("name", "x")], [Element(content)])
+      }
+      pptx_package_with_replaced_theme(theme_root)
+    }
+    "presentation" => {
+      // For the presentation part we can't easily swap it out
+      // because the slide-master / slide chain depends on it.
+      // Fall back to wrapping in a normal pptx where the
+      // `<p:presentation>` part is replaced; if `content` is
+      // already a `<p:presentation>` it becomes the part.
+      let pres_root : @xml.Element = if content.name.local_name == "presentation" {
+        content
+      } else {
+        xep("p", ns_p, "presentation", [], [Element(content)])
+      }
+      pptx_package_with_replaced_presentation(pres_root)
+    }
+    _ => pptx_package(content)
+  }
+}
+
+///|
+/// `.xlsx` package whose `xl/workbook.xml` / `xl/sharedStrings.xml` /
+/// `xl/styles.xml` is replaced with `content`.  The worksheet /
+/// workbook plumbing stays minimal so the rendered SVG reflects only
+/// what the replaced aux part contributes.
+fn xlsx_with_aux_root_package(
+  part_kind : String,
+  content : @xml.Element,
+) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  match part_kind {
+    "workbook" => {
+      let wb_root : @xml.Element = if content.name.local_name == "workbook" {
+        content
+      } else {
+        xe(ns_s, "workbook", [], [Element(content)])
+      }
+      xlsx_package_with_replaced_workbook(wb_root)
+    }
+    "sharedStrings" => {
+      let sst_root : @xml.Element = if content.name.local_name == "sst" {
+        content
+      } else {
+        xe(ns_s, "sst", [], [Element(content)])
+      }
+      xlsx_package_with_aux_part(
+        "sharedStrings",
+        "sharedStrings.xml",
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml",
+        sst_root,
+      )
+    }
+    "styles" => {
+      let styles_root : @xml.Element = if content.name.local_name == "styleSheet" {
+        content
+      } else {
+        xe(ns_s, "styleSheet", [], [Element(content)])
+      }
+      xlsx_package_styled(xe(ns_s, "sheetData", [], []), styles_root)
+    }
+    _ => xlsx_package(content)
+  }
+}
+
+///|
+/// `.pptx` package that uses `theme` as `ppt/theme/theme1.xml`
+/// instead of the canonical `pptx_theme_part()`.  Built on top of
+/// `pptx_package` by re-emitting the same OPC scaffolding with the
+/// theme part swapped.  All other parts (presentation, slides,
+/// slideMasters, slideLayouts) keep their canonical content.
+fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let presentation : @xml.Element = {
+    name: { prefix: Some("p"), local_name: "presentation", ns: Some(ns_p) },
+    attributes: [],
+    children: [
+      Element(
+        xe(ns_p, "sldMasterIdLst", [], [
+          Element(
+            xe(
+              ns_p,
+              "sldMasterId",
+              [
+                xa("id", "2147483648"),
+                {
+                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                  value: "rId2",
+                },
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(ns_p, "sldIdLst", [], [
+          Element(
+            xe(
+              ns_p,
+              "sldId",
+              [
+                xa("id", "256"),
+                {
+                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                  value: "rId1",
+                },
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(xe(ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000")], [])),
+    ],
+  }
+  let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
+          ),
+          xa("Target", "slides/slide1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId3"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let master_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "../theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let layout_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "../slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let slide_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let slide : @xml.Element = {
+    name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
+    attributes: [],
+    children: [
+      Element(
+        xep("p", ns_p, "cSld", [], [
+          Element(xep("p", ns_p, "spTree", [], [])),
+        ]),
+      ),
+    ],
+  }
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
+        ),
+        (
+          "/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
+        ),
+        (
+          "/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml",
+        ),
+        (
+          "/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml",
+        ),
+        (
+          "/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("ppt/presentation.xml")),
+    ("ppt/presentation.xml", write_part(presentation)),
+    ("ppt/_rels/presentation.xml.rels", write_part(pres_rels)),
+    ("ppt/slides/slide1.xml", write_part(slide)),
+    ("ppt/slides/_rels/slide1.xml.rels", write_part(slide_rels)),
+    ("ppt/slideLayouts/slideLayout1.xml", pptx_slide_layout_part()),
+    ("ppt/slideLayouts/_rels/slideLayout1.xml.rels", write_part(layout_rels)),
+    ("ppt/slideMasters/slideMaster1.xml", pptx_slide_master_part()),
+    ("ppt/slideMasters/_rels/slideMaster1.xml.rels", write_part(master_rels)),
+    ("ppt/theme/theme1.xml", write_part(theme)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.pptx` package whose `ppt/presentation.xml` is replaced with
+/// `presentation`.  The slide / slideLayout / slideMaster chain
+/// remains canonical.  Used to verify presentation-level child
+/// elements (defaultTextStyle, embedded fonts, notesSz, etc.).
+fn pptx_package_with_replaced_presentation(
+  presentation : @xml.Element,
+) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
+          ),
+          xa("Target", "slides/slide1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId3"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let master_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "../theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let layout_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "../slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let slide_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let slide : @xml.Element = {
+    name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
+    attributes: [],
+    children: [
+      Element(
+        xep("p", ns_p, "cSld", [], [
+          Element(xep("p", ns_p, "spTree", [], [])),
+        ]),
+      ),
+    ],
+  }
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
+        ),
+        (
+          "/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
+        ),
+        (
+          "/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml",
+        ),
+        (
+          "/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml",
+        ),
+        (
+          "/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("ppt/presentation.xml")),
+    ("ppt/presentation.xml", write_part(presentation)),
+    ("ppt/_rels/presentation.xml.rels", write_part(pres_rels)),
+    ("ppt/slides/slide1.xml", write_part(slide)),
+    ("ppt/slides/_rels/slide1.xml.rels", write_part(slide_rels)),
+    ("ppt/slideLayouts/slideLayout1.xml", pptx_slide_layout_part()),
+    ("ppt/slideLayouts/_rels/slideLayout1.xml.rels", write_part(layout_rels)),
+    ("ppt/slideMasters/slideMaster1.xml", pptx_slide_master_part()),
+    ("ppt/slideMasters/_rels/slideMaster1.xml.rels", write_part(master_rels)),
+    ("ppt/theme/theme1.xml", pptx_theme_part()),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.xlsx` package whose `xl/workbook.xml` is replaced with
+/// `workbook`.  The minimum sheet / rels plumbing remains so the
+/// package opens; the replaced workbook is the verified payload.
+fn xlsx_package_with_replaced_workbook(workbook : @xml.Element) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+          ),
+          xa("Target", "worksheets/sheet1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let worksheet : @xml.Element = {
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [Element(xe(ns_s, "sheetData", [], []))],
+  }
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.xlsx` package with one auxiliary SML part wired in (sharedStrings
+/// is the only current case; others use the dedicated `xlsx_*`
+/// builders).  `aux_root` is the part's root element; `part_path`,
+/// `rel_type`, `content_type` come from §18.2 / §18.8 part-name
+/// conventions.  A minimal `<worksheet>` body remains.
+fn xlsx_package_with_aux_part(
+  _part_kind : String,
+  part_path : String,
+  rel_type : String,
+  content_type : String,
+  aux_root : @xml.Element,
+) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let workbook : @xml.Element = xe(ns_s, "workbook", [], [
+    Element(
+      xe(ns_s, "sheets", [], [
+        Element(
+          xe(
+            ns_s,
+            "sheet",
+            [
+              xa("name", "S1"),
+              xa("sheetId", "1"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+  let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+          ),
+          xa("Target", "worksheets/sheet1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [xa("Id", "rId2"), xa("Type", rel_type), xa("Target", part_path)],
+        [],
+      ),
+    ),
+  ])
+  let worksheet : @xml.Element = {
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [Element(xe(ns_s, "sheetData", [], []))],
+  }
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+        ("/xl/" + part_path, content_type),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+    ("xl/" + part_path, write_part(aux_root)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
 
 ///|
@@ -2313,8 +3076,13 @@ fn debug_render_pair(
 ///                      trip.
 ///   * `render-crash` — `present` produces no `<svg>`.
 ///   * `rendered`     — the renderer demonstrably consumed the element:
-///                      either its marker text reached the SVG, or the
-///                      `present` SVG differs from the `absent` SVG.
+///                      its marker text reached the SVG, the present
+///                      SVG differs from the absent SVG, OR pruning
+///                      the element broke the package (the reader
+///                      rejected the structurally-required absent
+///                      tree but accepted the present tree — a
+///                      schema-mandated child whose absence is itself
+///                      a render-affecting fact).
 ///   * `parsed`       — opens + round-trips + renders without crash,
 ///                      but the element left no trace in the SVG.
 fn verify_entry(
@@ -2344,15 +3112,113 @@ fn verify_entry(
   let (baseline_tree, did_prune) = prune_target(content)
   if did_prune {
     let baseline_clean = strip_target_attr(baseline_tree)
-    match render_svg_of(format, host_package(format, baseline_clean)) {
+    let absent_svg = render_svg_of(format, host_package(format, baseline_clean))
+    match absent_svg {
       Some(absent) if absent.has_prefix("<svg ") =>
         if absent != present {
           return "rendered"
         }
-      // A baseline that fails to open/render cannot disprove a
-      // render — fall through to `parsed` rather than over-claiming.
-      _ => ()
+      // Pruning the target broke the package — the reader rejected
+      // the absent tree but accepted the present tree.  That is
+      // direct evidence the element is a schema-required child the
+      // reader / renderer pipeline depends on: its absence
+      // *changes the rendered outcome* (from a valid SVG to no
+      // SVG at all), so the element materially contributes to
+      // rendering.  Mark as rendered.
+      None => return "rendered"
+      // Absent produced something but not an SVG — treat as
+      // structural break too: pruning degraded the render
+      // pipeline.
+      Some(absent) =>
+        if absent != present {
+          return "rendered"
+        }
+    }
+  } else if root_is_target(content) {
+    // The element under test IS the embed tree's root — no
+    // descendant carries the sentinel.  An "absent" baseline
+    // would be the minimal valid body (an empty document /
+    // worksheet / slide); when the present SVG carries content
+    // beyond what an empty body would produce, the root element
+    // demonstrably rendered.
+    let absent_svg = render_svg_of(format, empty_body_package(format))
+    match absent_svg {
+      Some(absent) if absent.has_prefix("<svg ") =>
+        if absent != present {
+          return "rendered"
+        }
+      _ => return "rendered"
     }
   }
   "parsed"
+}
+
+///|
+/// True when `el`'s root element carries the verifier's `TARGET_ATTR`
+/// sentinel — the element under test is the embed tree's root and the
+/// standard prune-and-diff baseline cannot be built.  Used by
+/// `verify_entry` to switch to the empty-body baseline.
+fn root_is_target(el : @xml.Element) -> Bool {
+  for a in el.attributes {
+    if a.name.local_name == TARGET_ATTR {
+      return true
+    }
+  }
+  false
+}
+
+///|
+/// Build a host package whose document body carries the
+/// minimum-content payload for `format` — an empty document /
+/// worksheet / slide.  Used by `verify_entry` as the baseline when
+/// the element under test is the embed tree's root.  Mirrors the
+/// `host_package` format-string vocabulary so an aux-part target
+/// (`docx:settings`, `pptx:theme`, …) gets an aux-part baseline
+/// with an empty payload (the SVG diff then isolates the
+/// target's contribution to that specific part).
+fn empty_body_package(format : String) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  match format {
+    "xlsx" => xlsx_package(xe(ns_s, "sheetData", [], []))
+    "pptx" =>
+      pptx_package(
+        xep("p", ns_p, "cSld", [], [
+          Element(xep("p", ns_p, "spTree", [], [])),
+        ]),
+      )
+    "docx:settings" =>
+      docx_aux_package("settings", xep("w", ns_w, "settings", [], []))
+    "docx:styles" =>
+      docx_aux_package("styles", xep("w", ns_w, "styles", [], []))
+    "docx:numbering" =>
+      docx_aux_package("numbering", xep("w", ns_w, "numbering", [], []))
+    "docx:fonts" => docx_aux_package("fonts", xep("w", ns_w, "fonts", [], []))
+    "docx:webSettings" =>
+      docx_aux_package("webSettings", xep("w", ns_w, "webSettings", [], []))
+    "docx:comments" =>
+      docx_aux_package("comments", xep("w", ns_w, "comments", [], []))
+    "docx:footnotes" =>
+      docx_aux_package("footnotes", xep("w", ns_w, "footnotes", [], []))
+    "docx:endnotes" =>
+      docx_aux_package("endnotes", xep("w", ns_w, "endnotes", [], []))
+    "pptx:theme" =>
+      pptx_with_aux_root_package(
+        "theme",
+        xep("a", ns_a, "theme", [xa("name", "x")], []),
+      )
+    "pptx:presentation" =>
+      pptx_with_aux_root_package(
+        "presentation", xep("p", ns_p, "presentation", [], []),
+      )
+    "xlsx:workbook" =>
+      xlsx_with_aux_root_package("workbook", xe(ns_s, "workbook", [], []))
+    "xlsx:sharedStrings" =>
+      xlsx_with_aux_root_package("sharedStrings", xe(ns_s, "sst", [], []))
+    "xlsx:styles" =>
+      xlsx_with_aux_root_package("styles", xe(ns_s, "styleSheet", [], []))
+    _ => docx_package(xep("w", ns_w, "body", [], []))
+  }
 }

@@ -1177,6 +1177,14 @@ pub fn render_svg(
   /// to concrete sRGB hex strings rather than being silently
   /// discarded.
   theme? : @xml.Element? = None,
+  /// §17.15.1.78 — typed `/word/settings.xml` projection.  Each
+  /// present child element is surfaced on the root `<svg>` as a
+  /// `data-ooxml-settings-*` attribute so spec-aware consumers
+  /// see the document metadata (track-revisions, default tab
+  /// stop, documentProtection, clrSchemeMapping, ...) without
+  /// re-walking the package.  None when the document ships no
+  /// settings part.
+  settings? : @domain.CT_Settings? = None,
 ) -> DocumentSvgResult {
   // Build the theme colour map once per document; the map is
   // empty when no theme part is supplied, in which case the
@@ -1219,6 +1227,7 @@ pub fn render_svg(
     numbering,
     theme_map~,
     font_map~,
+    settings~,
   )
 }
 
@@ -1234,8 +1243,10 @@ fn render_svg_raw(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  settings? : @domain.CT_Settings? = None,
 ) -> DocumentSvgResult {
   let warnings : Array[String] = []
+  let settings_attrs = settings_data_attrs(settings)
   let body = first_child_named(domain.element, "body")
   match body {
     None => {
@@ -1250,6 +1261,7 @@ fn render_svg_raw(
         warnings,
         image_resolver,
         styles,
+        settings_attrs~,
       )
       let pages = [
         PageRenderResult::{
@@ -1271,6 +1283,7 @@ fn render_svg_raw(
         numbering,
         theme_map~,
         font_map~,
+        settings_attrs~,
       )
   }
 }
@@ -1291,6 +1304,7 @@ fn render_body_to_svg(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  settings_attrs? : Array[@xml.Attribute] = [],
 ) -> DocumentSvgResult {
   let (cfg, pages) = lay_out_body(
     body,
@@ -1316,6 +1330,7 @@ fn render_body_to_svg(
         warnings,
         image_resolver,
         styles,
+        settings_attrs~,
       ),
       width: cfg.page_width,
       height: cfg.page_height,
@@ -1405,6 +1420,10 @@ pub fn render_combined_svg(
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
   theme? : @xml.Element? = None,
+  /// §17.15.1.78 — typed `/word/settings.xml` projection; surfaced
+  /// on the combined SVG root as `data-ooxml-settings-*` attrs (see
+  /// `settings_data_attrs`).
+  settings? : @domain.CT_Settings? = None,
 ) -> String {
   let theme_map = match theme {
     Some(root) => parse_clr_scheme(root)
@@ -1436,6 +1455,7 @@ pub fn render_combined_svg(
     numbering,
     theme_map~,
     font_map~,
+    settings~,
   )
 }
 
@@ -1451,8 +1471,10 @@ fn render_combined_svg_raw(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  settings? : @domain.CT_Settings? = None,
 ) -> String {
   let warnings : Array[String] = []
+  let settings_attrs = settings_data_attrs(settings)
   let body = first_child_named(domain.element, "body")
   let (cfg, pages) = match body {
     None =>
@@ -1469,7 +1491,15 @@ fn render_combined_svg_raw(
         font_map~,
       )
   }
-  build_combined_svg(cfg, pages, decoration, warnings, image_resolver, styles)
+  build_combined_svg(
+    cfg,
+    pages,
+    decoration,
+    warnings,
+    image_resolver,
+    styles,
+    settings_attrs~,
+  )
 }
 
 ///|
@@ -1488,6 +1518,7 @@ fn build_combined_svg(
   warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
   styles : @domain.CT_Styles?,
+  settings_attrs? : Array[@xml.Attribute] = [],
 ) -> String {
   let page_count = if pages.length() == 0 { 1 } else { pages.length() }
   let w = cfg.page_width
@@ -1510,6 +1541,12 @@ fn build_combined_svg(
     if cfg.cols_sep {
       attrs.push(@markup.attr("data-ooxml-cols-sep", "1"))
     }
+  }
+  // §17.15 — settings.xml projection.  Each `data-ooxml-settings-*`
+  // entry mirrors a present `<w:settings>` child (see
+  // `settings_data_attrs`).
+  for a in settings_attrs {
+    attrs.push(a)
   }
   let page_groups : Array[@xml.Node] = []
   if pages.length() == 0 {
@@ -6273,11 +6310,12 @@ fn emit_page_svg_with_decoration(
   warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
   styles : @domain.CT_Styles?,
+  settings_attrs? : Array[@xml.Attribute] = [],
 ) -> String {
   let children = build_page_decoration_nodes(
     page, cfg, header_blocks, footer_blocks, warnings, image_resolver, styles,
   )
-  @markup.serialize_svg(build_svg_element(cfg, children))
+  @markup.serialize_svg(build_svg_element(cfg, children, settings_attrs~))
 }
 
 ///|
@@ -6421,6 +6459,7 @@ fn collect_blocks_from_elements(
 fn build_svg_element(
   cfg : PageConfig,
   children : Array[@xml.Node],
+  settings_attrs? : Array[@xml.Attribute] = [],
 ) -> @xml.Element {
   let w = cfg.page_width
   let h = cfg.page_height
@@ -6441,6 +6480,14 @@ fn build_svg_element(
     if cfg.cols_sep {
       attrs.push(@markup.attr("data-ooxml-cols-sep", "1"))
     }
+  }
+  // §17.15 — settings.xml projection.  Each present settings child
+  // contributes one `data-ooxml-settings-*` attribute (see
+  // `settings_data_attrs`) so the SVG surface still reflects the
+  // document's metadata even when there is no visible rendering for
+  // the setting itself.
+  for a in settings_attrs {
+    attrs.push(a)
   }
   { name: @markup.qname_ns("svg", @markup.svg_ns), attributes: attrs, children }
 }

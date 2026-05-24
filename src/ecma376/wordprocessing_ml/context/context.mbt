@@ -265,6 +265,12 @@ pub fn Document::to_svg(self : Document) -> String {
     // so the viewer can build a ThemeColorMap and resolve
     // `<w:color w:themeColor>` references to concrete sRGB hex.
     theme=self.theme,
+    // §17.15.1.78 — thread the parsed `/word/settings.xml`
+    // typed projection so the viewer surfaces each present
+    // `<w:settings>` child as a `data-ooxml-settings-*` attribute
+    // on the root `<svg>` (track-revisions, defaultTabStop,
+    // documentProtection, clrSchemeMapping, ...).
+    settings=self.settings,
   )
 }
 

@@ -377,7 +377,12 @@ fn main {
     )
     // Embed the element at its schema-correct position: wrap it in
     // its containment ancestry (a real element tree).  The ancestry
-    // also picks the host format.
+    // also picks the host format.  Format strings carry the OPC
+    // part kind when the root is an auxiliary part (e.g.
+    // `docx:settings` builds a docx whose `<w:settings>` part
+    // contains the embed tree; the document body stays minimal).
+    // Every host_fmt registered here MUST be handled by
+    // `host_package` in verify.mbt.
     let (host_fmt, embed_tree) = {
       let akey = nt_key(decl.name, decl.type_name)
       match ancestry.get(akey) {
@@ -386,6 +391,19 @@ fn main {
           let host = match root_name {
             "worksheet" => "xlsx"
             "sld" => "pptx"
+            "settings" => "docx:settings"
+            "styles" => "docx:styles"
+            "numbering" => "docx:numbering"
+            "fonts" => "docx:fonts"
+            "webSettings" => "docx:webSettings"
+            "comments" => "docx:comments"
+            "footnotes" => "docx:footnotes"
+            "endnotes" => "docx:endnotes"
+            "theme" => "pptx:theme"
+            "presentation" => "pptx:presentation"
+            "workbook" => "xlsx:workbook"
+            "sharedStrings" => "xlsx:sharedStrings"
+            "stylesheet" => "xlsx:styles"
             _ => "docx"
           }
           (host, wrap_in_ancestry(schema, path, 1, target))
