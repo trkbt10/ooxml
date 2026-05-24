@@ -91,11 +91,29 @@ fn strip_hash(s : String) -> String {
 }
 
 ///|
-/// Convert a hex colour string to RGB.  Accepts 3-digit (#RGB) or
-/// 6-digit (#RRGGBB) forms — alpha (8-digit) is consumed but ignored,
-/// matching `hexToRgb` in `convert.ts:11`.
+/// Convert a hex colour string to RGB.  Accepts 3-digit (#RGB),
+/// 6-digit (#RRGGBB), and 8-digit (#RRGGBBAA) forms.  The 8-digit
+/// form encodes alpha as the trailing byte — we strip it here so the
+/// returned channels are the pure RGB triple (callers needing the
+/// alpha go through `ResolvedColor` instead).  Mirrors `hexToRgb` in
+/// `convert.ts:11`.
+///
+/// Previously the 8-digit path fed the entire 32-bit integer through
+/// the same shift/mask used for `#RRGGBB`, which extracts bytes
+/// `[GG, BB, AA]` instead of `[RR, GG, BB]`.  That made every alpha-
+/// modified srgbClr render with the wrong colour (notably the venn
+/// fixture — `4472c4` + alpha → `(0x72, 0xc4, 0x80)`).
 pub fn hex_to_rgb(hex : String) -> RgbColor {
-  let clean = strip_hash(hex)
+  let stripped = strip_hash(hex)
+  // §20.1.2.3 alpha is stored separately in DrawingML, but our
+  // intermediate `hsl_to_hex_string(..., true)` round-trip emits
+  // 8-digit `#RRGGBBAA`.  Drop the trailing alpha pair so the parser
+  // operates on the canonical 6-digit body.
+  let clean = if stripped.length() == 8 {
+    stripped.substring(start=0, end=6)
+  } else {
+    stripped
+  }
   let n = parse_hex(clean)
   if clean.length() == 3 {
     let r = n.lsr(8).land(0xFL).to_int() * 17

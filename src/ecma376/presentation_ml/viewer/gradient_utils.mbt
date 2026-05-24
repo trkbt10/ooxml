@@ -36,19 +36,25 @@ let deg_to_rad : Double = 3.141592653589793 / 180.0
 ///|
 /// Convert OOXML linear-gradient angle to SVG x1/y1/x2/y2 percentages.
 ///
-/// OOXML angle convention (a:lin ang):
+/// §20.1.8.41 `<a:lin @ang>` — the angle is measured CLOCKWISE from
+/// the positive-x (3 o'clock) direction, in a Y-DOWN coordinate
+/// system:
 ///   0°   = gradient flows left → right
 ///   90°  = top → bottom
 ///   180° = right → left
 ///   270° = bottom → top
 ///
-/// SVG uses x1,y1 → x2,y2 to define direction; we offset by -90° to
-/// align with the SVG coordinate system (Y increases downward).
-/// Mirrors `ooxmlAngleToSvgLinearGradient` in `gradient-utils.ts:57`.
+/// SVG's `linearGradient` uses exactly the same Y-down convention:
+/// `x1,y1 → x2,y2` is the gradient direction.  So the OOXML angle
+/// maps DIRECTLY — the gradient direction is `(cos θ, sin θ)` and the
+/// start/end points are the box centre offset ±half along it.  (The
+/// earlier code subtracted 90° "to align with SVG", which was wrong:
+/// SVG is already Y-down, so `ang=0` came out vertical instead of
+/// horizontal — the gradient ran the wrong way.)
 pub fn ooxml_angle_to_svg_linear_gradient(
   angle : Double,
 ) -> LinearGradientCoords {
-  let rad = (angle - 90.0) * deg_to_rad
+  let rad = angle * deg_to_rad
   let x1 = 50.0 - 50.0 * @math.cos(rad)
   let y1 = 50.0 - 50.0 * @math.sin(rad)
   let x2 = 50.0 + 50.0 * @math.cos(rad)

@@ -15,10 +15,7 @@
 /// `adj2 = -8333`, `adj3 = 18750`, `adj4 = -16667`, `adj5 = 112500`,
 /// `adj6 = -46667`. The accent bar spans `(x1,t)`..`(x1,b)`; the leader
 /// runs through `(x1,y1)`, elbow `(x2,y2)`, and target `(x3,y3)`.
-pub fn build_accent_border_callout2(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_accent_border_callout2(width : Int, height : Int) -> ShapeGeometry {
   let body = build_rect(width, height)
   let commands : Array[PathCommand] = []
   for cmd in body.commands {

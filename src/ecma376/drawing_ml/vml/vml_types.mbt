@@ -79,7 +79,7 @@ pub(all) enum VmlShapeChild {
 
 ///|
 /// Bridge `@vml_excel.SchemaViolation` into this package's local one.
-fn wrap_vml_excel_violation[T](
+fn[T] wrap_vml_excel_violation(
   body : () -> T raise @vml_excel.SchemaViolation,
   path : String,
 ) -> T raise SchemaViolation {
@@ -148,7 +148,7 @@ pub fn parse_vml_shape_child(
         schema="vml-main.xsd",
         path="VmlShapeChild",
         reason="unknown EG_ShapeElements / CT_Shape / CT_Group choice arm: " +
-        other,
+          other,
       )
   }
 }
@@ -3832,19 +3832,21 @@ pub fn write_vml_complex(value : CT_Complex) -> Bytes {
 // CT_AnchorLock moved to `vml_word` (vml-wordprocessingDrawing.xsd
 // §A.6.64..§A.6.66). Aliased here for the typed VmlShapeChild
 // dispatch so existing callers keep working unchanged.
-pub typealias @vml_presentation.CT_Empty as CT_Empty
 
 ///|
-pub typealias @vml_presentation.CT_Rel as CT_Rel
+pub using @vml_presentation {type CT_Empty as CT_Empty}
 
 ///|
-pub typealias @vml_word.CT_Border as CT_Border
+pub using @vml_presentation {type CT_Rel as CT_Rel}
 
 ///|
-pub typealias @vml_word.CT_Wrap as CT_Wrap
+pub using @vml_word {type CT_Border as CT_Border}
 
 ///|
-pub typealias @vml_word.CT_AnchorLock as CT_AnchorLock
+pub using @vml_word {type CT_Wrap as CT_Wrap}
+
+///|
+pub using @vml_word {type CT_AnchorLock as CT_AnchorLock}
 
 // ── vml-main.xsd top-level elements ────────────────────────────────
 

@@ -23,7 +23,11 @@ pub fn build_left_up_arrow(width : Int, height : Int) -> ShapeGeometry {
   let up_head_left = up_left - head_barb
   let up_head_right = up_right + head_barb
   // Clamp the up arrowhead within the right edge.
-  let up_head_right_c = if up_head_right > width { width } else { up_head_right }
+  let up_head_right_c = if up_head_right > width {
+    width
+  } else {
+    up_head_right
+  }
   let up_tip_x = (up_left + up_right) / 2
   let left_tip = 0
   let left_base = head_len

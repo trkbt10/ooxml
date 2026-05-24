@@ -229,7 +229,8 @@ fn digest_reference_bytes(
     raise @opc_errors.SchemaViolation(
       section="10.8",
       path="/SignedInfo/Reference/DigestMethod/@Algorithm",
-      reason="unsupported digest algorithm (only SHA-256 is implemented): " + digest_method.algorithm,
+      reason="unsupported digest algorithm (only SHA-256 is implemented): " +
+        digest_method.algorithm,
     )
   }
   @base64.encode(@crypto.sha256(bytes).unsafe_reinterpret_as_bytes()[:])

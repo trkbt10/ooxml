@@ -2,13 +2,45 @@
 package "trkbt10/ooxml/util/color"
 
 // Values
+pub fn apply_blue(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_blue_mod(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_blue_off(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_comp(String, is_alpha? : Bool) -> String
+
+pub fn apply_gamma(String, is_alpha? : Bool) -> String
+
+pub fn apply_gray(String, is_alpha? : Bool) -> String
+
+pub fn apply_green(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_green_mod(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_green_off(String, Double, is_alpha? : Bool) -> String
+
 pub fn apply_hue_mod(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_hue_off(String, Double, is_alpha? : Bool, lo_compat? : Bool) -> String
+
+pub fn apply_inv(String, is_alpha? : Bool) -> String
+
+pub fn apply_inv_gamma(String, is_alpha? : Bool) -> String
 
 pub fn apply_lum_mod(String, Double, is_alpha? : Bool) -> String
 
 pub fn apply_lum_off(String, Double, is_alpha? : Bool) -> String
 
+pub fn apply_red(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_red_mod(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_red_off(String, Double, is_alpha? : Bool) -> String
+
 pub fn apply_sat_mod(String, Double, is_alpha? : Bool) -> String
+
+pub fn apply_sat_off(String, Double, is_alpha? : Bool) -> String
 
 pub fn apply_shade(String, Double, is_alpha? : Bool) -> String
 

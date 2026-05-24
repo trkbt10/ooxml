@@ -66,20 +66,29 @@ pub fn parse_range_markup_element(
   match element.name.local_name {
     "bookmarkStart" => Some(BookmarkStart(CT_Bookmark::new(element)))
     "bookmarkEnd" => Some(BookmarkEnd(CT_MarkupRange::new(element)))
-    "moveFromRangeStart" => Some(MoveFromRangeStart(CT_MoveBookmark::new(element)))
+    "moveFromRangeStart" =>
+      Some(MoveFromRangeStart(CT_MoveBookmark::new(element)))
     "moveFromRangeEnd" => Some(MoveFromRangeEnd(CT_MarkupRange::new(element)))
     "moveToRangeStart" => Some(MoveToRangeStart(CT_MoveBookmark::new(element)))
     "moveToRangeEnd" => Some(MoveToRangeEnd(CT_MarkupRange::new(element)))
     "commentRangeStart" => Some(CommentRangeStart(CT_MarkupRange::new(element)))
     "commentRangeEnd" => Some(CommentRangeEnd(CT_MarkupRange::new(element)))
-    "customXmlInsRangeStart" => Some(CustomXmlInsRangeStart(CT_TrackChange::new(element)))
-    "customXmlInsRangeEnd" => Some(CustomXmlInsRangeEnd(CT_Markup::new(element)))
-    "customXmlDelRangeStart" => Some(CustomXmlDelRangeStart(CT_TrackChange::new(element)))
-    "customXmlDelRangeEnd" => Some(CustomXmlDelRangeEnd(CT_Markup::new(element)))
-    "customXmlMoveFromRangeStart" => Some(CustomXmlMoveFromRangeStart(CT_TrackChange::new(element)))
-    "customXmlMoveFromRangeEnd" => Some(CustomXmlMoveFromRangeEnd(CT_Markup::new(element)))
-    "customXmlMoveToRangeStart" => Some(CustomXmlMoveToRangeStart(CT_TrackChange::new(element)))
-    "customXmlMoveToRangeEnd" => Some(CustomXmlMoveToRangeEnd(CT_Markup::new(element)))
+    "customXmlInsRangeStart" =>
+      Some(CustomXmlInsRangeStart(CT_TrackChange::new(element)))
+    "customXmlInsRangeEnd" =>
+      Some(CustomXmlInsRangeEnd(CT_Markup::new(element)))
+    "customXmlDelRangeStart" =>
+      Some(CustomXmlDelRangeStart(CT_TrackChange::new(element)))
+    "customXmlDelRangeEnd" =>
+      Some(CustomXmlDelRangeEnd(CT_Markup::new(element)))
+    "customXmlMoveFromRangeStart" =>
+      Some(CustomXmlMoveFromRangeStart(CT_TrackChange::new(element)))
+    "customXmlMoveFromRangeEnd" =>
+      Some(CustomXmlMoveFromRangeEnd(CT_Markup::new(element)))
+    "customXmlMoveToRangeStart" =>
+      Some(CustomXmlMoveToRangeStart(CT_TrackChange::new(element)))
+    "customXmlMoveToRangeEnd" =>
+      Some(CustomXmlMoveToRangeEnd(CT_Markup::new(element)))
     _ => None
   }
 }
@@ -360,7 +369,8 @@ pub fn parse_run_inner_content_element(
     "footnoteRef" => Some(FootnoteRef(CT_Empty::new(element)))
     "endnoteRef" => Some(EndnoteRef(CT_Empty::new(element)))
     "separator" => Some(Separator(CT_Empty::new(element)))
-    "continuationSeparator" => Some(ContinuationSeparator(CT_Empty::new(element)))
+    "continuationSeparator" =>
+      Some(ContinuationSeparator(CT_Empty::new(element)))
     "sym" => Some(Sym(CT_Sym::new(element)))
     "pgNum" => Some(PgNum(CT_Empty::new(element)))
     "cr" => Some(Cr(CT_Empty::new(element)))
@@ -374,7 +384,8 @@ pub fn parse_run_inner_content_element(
     "commentReference" => Some(CommentReference(CT_Markup::new(element)))
     "drawing" => Some(Drawing(CT_Drawing::new(element)))
     "ptab" => Some(Ptab(CT_PTab::new(element)))
-    "lastRenderedPageBreak" => Some(LastRenderedPageBreak(CT_Empty::new(element)))
+    "lastRenderedPageBreak" =>
+      Some(LastRenderedPageBreak(CT_Empty::new(element)))
     _ => None
   }
 }
@@ -397,14 +408,15 @@ pub fn parse_math_content_element(
   element : @xml.Element,
 ) -> EG_MathContent? raise SchemaViolation {
   match element.name.local_name {
-    "oMathPara" => Some(OMathPara(wrap_m_violation(fn() { @m.CT_OMathPara::new(element) })))
+    "oMathPara" =>
+      Some(OMathPara(wrap_m_violation(fn() { @m.CT_OMathPara::new(element) })))
     "oMath" => Some(OMath(wrap_m_violation(fn() { @m.CT_OMath::new(element) })))
     _ => None
   }
 }
 
 ///|
-fn wrap_m_violation[T](
+fn[T] wrap_m_violation(
   body : () -> T raise @m.SchemaViolation,
 ) -> T raise SchemaViolation {
   body() catch {
@@ -1149,18 +1161,9 @@ pub fn decode_sect_pr_contents(
           if endnote_pr is None {
             endnote_pr = Some(CT_EdnProps::new(e))
           }
-        "type" =>
-          if type_ is None {
-            type_ = Some(CT_SectType::new(e))
-          }
-        "pgSz" =>
-          if pg_sz is None {
-            pg_sz = Some(CT_PageSz::new(e))
-          }
-        "pgMar" =>
-          if pg_mar is None {
-            pg_mar = Some(CT_PageMar::new(e))
-          }
+        "type" => if type_ is None { type_ = Some(CT_SectType::new(e)) }
+        "pgSz" => if pg_sz is None { pg_sz = Some(CT_PageSz::new(e)) }
+        "pgMar" => if pg_mar is None { pg_mar = Some(CT_PageMar::new(e)) }
         "paperSrc" =>
           if paper_src is None {
             paper_src = Some(CT_PaperSource::new(e))
@@ -1177,42 +1180,27 @@ pub fn decode_sect_pr_contents(
           if pg_num_type is None {
             pg_num_type = Some(CT_PageNumber::new(e))
           }
-        "cols" =>
-          if cols is None {
-            cols = Some(CT_Columns::new(e))
-          }
+        "cols" => if cols is None { cols = Some(CT_Columns::new(e)) }
         "formProt" =>
           if form_prot is None {
             form_prot = Some(CT_OnOff::new(e))
           }
-        "vAlign" =>
-          if v_align is None {
-            v_align = Some(CT_VerticalJc::new(e))
-          }
+        "vAlign" => if v_align is None { v_align = Some(CT_VerticalJc::new(e)) }
         "noEndnote" =>
           if no_endnote is None {
             no_endnote = Some(CT_OnOff::new(e))
           }
-        "titlePg" =>
-          if title_pg is None {
-            title_pg = Some(CT_OnOff::new(e))
-          }
+        "titlePg" => if title_pg is None { title_pg = Some(CT_OnOff::new(e)) }
         "textDirection" =>
           if text_direction is None {
             text_direction = Some(CT_TextDirection::new(e))
           }
-        "bidi" =>
-          if bidi is None {
-            bidi = Some(CT_OnOff::new(e))
-          }
+        "bidi" => if bidi is None { bidi = Some(CT_OnOff::new(e)) }
         "rtlGutter" =>
           if rtl_gutter is None {
             rtl_gutter = Some(CT_OnOff::new(e))
           }
-        "docGrid" =>
-          if doc_grid is None {
-            doc_grid = Some(CT_DocGrid::new(e))
-          }
+        "docGrid" => if doc_grid is None { doc_grid = Some(CT_DocGrid::new(e)) }
         "printerSettings" =>
           if printer_settings is None {
             printer_settings = Some(CT_Rel::new(e))

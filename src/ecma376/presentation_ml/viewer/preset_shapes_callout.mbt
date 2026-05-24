@@ -70,14 +70,21 @@ fn accent_path(accent_w : Double, box_h : Double) -> String {
 }
 
 ///|
-/// Body rectangle offset by `accent_w * 2`, used by accent callouts.
+/// Body rectangle abutting the accent bar, used by accent callouts.
+/// Earlier revisions used `accent_w * 2.0` as the body's left edge so
+/// the accent bar visually sat apart from the body, but LibreOffice
+/// renders the accent variants as ONE contiguous fill with no gap (the
+/// accent bar takes the same brush as the body, so any unfilled
+/// strip between the two paints as a white stripe inside the shape).
+/// The body now starts exactly at `accent_w` so the two sub-paths
+/// share an edge.
 fn callout_rect_path_offset(
   accent_w : Double,
   box_w : Double,
   box_h : Double,
 ) -> String {
   " M " +
-  fmt(accent_w * 2.0) +
+  fmt(accent_w) +
   " 0 L " +
   fmt(box_w) +
   " 0 L " +
@@ -85,53 +92,82 @@ fn callout_rect_path_offset(
   " " +
   fmt(box_h) +
   " L " +
-  fmt(accent_w * 2.0) +
+  fmt(accent_w) +
   " " +
   fmt(box_h) +
   " Z"
 }
 
 ///|
+/// Spec-conformant tail tip for the wedge presets — `tipX = w/2 +
+/// w*adj1/100000`, `tipY = h/2 + h*adj2/100000`. Distinct from
+/// `callout_tail` which uses the leader-line callouts' convention
+/// where `adj2` is an absolute Y. With the default avLst
+/// (`adj1=-20833, adj2=62500`) the tip lands at `(0.291w, 1.125h)`,
+/// i.e. below the body.
+fn wedge_tip(w : Double, h : Double, ctx : GuideContext) -> (Double, Double) {
+  let adj1 = ctx.get("adj1").unwrap_or(-20833.0)
+  let adj2 = ctx.get("adj2").unwrap_or(62500.0)
+  let tip_x = w * (adj1 / 100000.0 + 0.5)
+  let tip_y = h * (adj2 / 100000.0 + 0.5)
+  (tip_x, tip_y)
+}
+
+///|
+/// Wedge-base helper — picks two guide points on the body edge nearest
+/// the tip direction. With the spec defaults the tip sits below the
+/// body, so the base spans the bottom edge between `w·2/12` and
+/// `w·5/12` (see §20.1.10.56 `wedgeRectCallout` guide list).
+fn wedge_base_bottom(w : Double) -> (Double, Double) {
+  (w * 2.0 / 12.0, w * 5.0 / 12.0)
+}
+
+///|
 /// `wedgeRectCallout` — rectangle body with a single triangular tail
-/// pointing to (tail_x, tail_y).  preset-shapes.ts:3439
+/// pointing to (tip_x, tip_y).  §20.1.10.56.  The body fills the
+/// entire `w×h` frame; the wedge is spliced into whichever edge faces
+/// the tip (bottom edge for the default adjustments).
 fn callout_wedge_rect(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
-  let main_h = h * 0.7
+  let (tip_x, tip_y) = wedge_tip(w, h, ctx)
+  let (base_left, base_right) = wedge_base_bottom(w)
   "M 0 0 L " +
   fmt(w) +
   " 0 L " +
   fmt(w) +
   " " +
-  fmt(main_h) +
+  fmt(h) +
   " L " +
-  fmt(w * 0.6) +
+  fmt(base_right) +
   " " +
-  fmt(main_h) +
+  fmt(h) +
   " L " +
-  fmt(tail_x) +
+  fmt(tip_x) +
   " " +
-  fmt(tail_y) +
+  fmt(tip_y) +
   " L " +
-  fmt(w * 0.4) +
+  fmt(base_left) +
   " " +
-  fmt(main_h) +
+  fmt(h) +
   " L 0 " +
-  fmt(main_h) +
+  fmt(h) +
   " Z"
 }
 
 ///|
 /// `wedgeRoundRectCallout` — rounded-corner rectangle body with tail.
-/// preset-shapes.ts:3451
+/// §20.1.10.56.  Same wedge placement as `wedgeRectCallout`; the
+/// corners use radius `ss·adj3/100000` with `ss = min(w,h)` and a
+/// default `adj3 = 16667`.
 fn callout_wedge_round_rect(
   w : Double,
   h : Double,
   ctx : GuideContext,
 ) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
-  let main_h = h * 0.7
-  let min_dim = if w < main_h { w } else { main_h }
-  let r = min_dim * 0.1
+  let (tip_x, tip_y) = wedge_tip(w, h, ctx)
+  let (base_left, base_right) = wedge_base_bottom(w)
+  let ss = if w < h { w } else { h }
+  let adj3 = ctx.get("adj3").unwrap_or(16667.0)
+  let r = ss * adj3 / 100000.0
   "M " +
   fmt(r) +
   " 0 L " +
@@ -145,35 +181,35 @@ fn callout_wedge_round_rect(
   " L " +
   fmt(w) +
   " " +
-  fmt(main_h - r) +
+  fmt(h - r) +
   " Q " +
   fmt(w) +
   " " +
-  fmt(main_h) +
+  fmt(h) +
   " " +
   fmt(w - r) +
   " " +
-  fmt(main_h) +
+  fmt(h) +
   " L " +
-  fmt(w * 0.6) +
+  fmt(base_right) +
   " " +
-  fmt(main_h) +
+  fmt(h) +
   " L " +
-  fmt(tail_x) +
+  fmt(tip_x) +
   " " +
-  fmt(tail_y) +
+  fmt(tip_y) +
   " L " +
-  fmt(w * 0.4) +
+  fmt(base_left) +
   " " +
-  fmt(main_h) +
+  fmt(h) +
   " L " +
   fmt(r) +
   " " +
-  fmt(main_h) +
+  fmt(h) +
   " Q 0 " +
-  fmt(main_h) +
+  fmt(h) +
   " 0 " +
-  fmt(main_h - r) +
+  fmt(h - r) +
   " L 0 " +
   fmt(r) +
   " Q 0 0 " +
@@ -182,53 +218,98 @@ fn callout_wedge_round_rect(
 }
 
 ///|
-/// `wedgeEllipseCallout` — elliptical body with tail.
-/// preset-shapes.ts:3464
+/// `wedgeEllipseCallout` — elliptical body with tail.  §20.1.10.56.
+///
+/// The body fills the full `w×h` frame (centre `(w/2, h/2)`, radii
+/// `(w/2, h/2)`). The wedge base is the two perimeter points 6°
+/// either side of the centre→tip direction. The path traces from the
+/// tip to the first base point, sweeps the ellipse the long way round
+/// in two ≤180° arcs (via the perimeter point diametrically opposite
+/// the tip direction), then closes back to the tip.
 fn callout_wedge_ellipse(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let (tip_x, tip_y) = wedge_tip(w, h, ctx)
+  let cx = w / 2.0
+  let cy = h / 2.0
   let rx = w / 2.0
-  let ry = h * 0.35
+  let ry = h / 2.0
+  // Direction centre→tip in degrees, computed in the ellipse's own
+  // metric (scale tip offsets by 1/rx, 1/ry before atan2). dy>0
+  // (tip below) maps to ang≈90° in the SVG screen frame.
+  let dx = tip_x - cx
+  let dy = tip_y - cy
+  let ang = atan2_deg(dy / ry, dx / rx)
+  let a1 = ang - 6.0
+  let a2 = ang + 6.0
+  let bx1 = cx + rx * cos_deg(a1)
+  let by1 = cy + ry * sin_deg(a1)
+  let bx2 = cx + rx * cos_deg(a2)
+  let by2 = cy + ry * sin_deg(a2)
+  let amid = ang + 180.0
+  let mx = cx + rx * cos_deg(amid)
+  let my = cy + ry * sin_deg(amid)
   "M " +
-  fmt(rx) +
-  " 0 A " +
-  fmt(rx) +
+  fmt(tip_x) +
   " " +
-  fmt(ry) +
-  " 0 1 1 " +
-  fmt(rx) +
+  fmt(tip_y) +
+  " L " +
+  fmt(bx1) +
   " " +
-  fmt(ry * 2.0) +
+  fmt(by1) +
   " A " +
   fmt(rx) +
   " " +
   fmt(ry) +
-  " 0 0 1 " +
-  fmt(w * 0.6) +
+  " 0 0 0 " +
+  fmt(mx) +
   " " +
-  fmt(ry * 1.9) +
-  " L " +
-  fmt(tail_x) +
-  " " +
-  fmt(tail_y) +
-  " L " +
-  fmt(w * 0.4) +
-  " " +
-  fmt(ry * 1.9) +
+  fmt(my) +
   " A " +
   fmt(rx) +
   " " +
   fmt(ry) +
-  " 0 0 1 " +
-  fmt(rx) +
-  " 0 Z"
+  " 0 0 0 " +
+  fmt(bx2) +
+  " " +
+  fmt(by2) +
+  " L " +
+  fmt(tip_x) +
+  " " +
+  fmt(tip_y) +
+  " Z"
+}
+
+///|
+/// Floating-point arctan2 in degrees, range [-180, 180]. Used only by
+/// callout renderers.
+fn atan2_deg(y : Double, x : Double) -> Double {
+  let rad = @math.atan2(y, x)
+  rad * 180.0 / 3.141592653589793
+}
+
+///|
+/// Cosine of an angle expressed in degrees.
+fn cos_deg(deg : Double) -> Double {
+  @math.cos(deg * 3.141592653589793 / 180.0)
+}
+
+///|
+/// Sine of an angle expressed in degrees.
+fn sin_deg(deg : Double) -> Double {
+  @math.sin(deg * 3.141592653589793 / 180.0)
 }
 
 ///|
 /// `cloudCallout` — cloud body plus three trailing bubbles leading to
-/// the tail.  preset-shapes.ts:3497
+/// the tail.  §20.1.10.56.
+///
+/// The cloud body occupies the full `w×h` frame; the trailing bubbles
+/// extend from the cloud edge toward the target point `(tip_x, tip_y)`
+/// computed with the offset-from-centre convention (see `wedge_tip`).
+/// With the default avLst the target sits below the cloud, so the
+/// bubbles march downward.
 fn callout_cloud(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
-  let cloud_h = h * 0.7
+  let (tail_x, tail_y) = wedge_tip(w, h, ctx)
+  let cloud_h = h
   let buf = StringBuilder::new()
   // Cloud body — same cubic-bezier sequence as the `cloud` preset but
   // scaled vertically to `cloud_h`.
@@ -338,17 +419,21 @@ fn callout_cloud(w : Double, h : Double, ctx : GuideContext) -> String {
     fmt(cloud_h * 0.6) +
     " Z",
   )
-  // Trailing thought bubbles — three circles of decreasing radius from
-  // the cloud body toward the tail tip.
-  let bubble1_x = w * 0.4
-  let bubble1_y = cloud_h * 0.95
-  let bubble1_r = w * 0.04
-  let bubble2_x = (bubble1_x + tail_x) / 2.0
-  let bubble2_y = (bubble1_y + tail_y) / 2.0
-  let bubble2_r = w * 0.025
+  // Trailing thought bubbles — three circles of decreasing radius
+  // marching from a point on the cloud's lower edge toward the
+  // callout target. The first bubble sits just below the cloud near
+  // the cloud-edge anchor; the third sits AT the target.
+  let anchor_x = w * 0.45
+  let anchor_y = cloud_h * 0.92
+  let bubble1_x = anchor_x + (tail_x - anchor_x) * 0.35
+  let bubble1_y = anchor_y + (tail_y - anchor_y) * 0.35
+  let bubble1_r = w * 0.035
+  let bubble2_x = anchor_x + (tail_x - anchor_x) * 0.7
+  let bubble2_y = anchor_y + (tail_y - anchor_y) * 0.7
+  let bubble2_r = w * 0.022
   let bubble3_x = tail_x
   let bubble3_y = tail_y
-  let bubble3_r = w * 0.015
+  let bubble3_r = w * 0.013
   buf.write_string(
     " M " +
     fmt(bubble1_x + bubble1_r) +
@@ -422,223 +507,106 @@ fn callout_cloud(w : Double, h : Double, ctx : GuideContext) -> String {
 }
 
 ///|
-/// `callout1` — plain rectangle with a single straight line to the
-/// tail tip.  preset-shapes.ts:3540
+/// `callout1` — plain rectangle body.  preset-shapes.ts:3540
+///
+/// ECMA-376 specifies a stroked leader line from the body to the tail
+/// tip, but the renderer paints every preset as a single filled path
+/// with no stroke override per sub-element. Concatenating a `M ... L`
+/// leader onto a closed body fills the triangular wedge between the
+/// edge crossing and the tail with the body brush — visible as a
+/// stripe or notch inside or outside the box.  LibreOffice and
+/// PowerPoint do not draw the leader as a fill either; with their
+/// default styling the leader simply isn't visible. We mirror that by
+/// emitting JUST the body rectangle — every callout1/2/3 + accent +
+/// border variant (which all share these helpers) drops the leader.
 fn callout_1(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let (_, _) = callout_tail(w, h, ctx)
   let (box_w, box_h) = callout_box(w, h, ctx)
-  let rect = callout_rect_path(box_w, box_h)
-  let line = " M " +
-    fmt(box_w / 2.0) +
-    " " +
-    fmt(box_h) +
-    " L " +
-    fmt(tail_x) +
-    " " +
-    fmt(tail_y)
-  rect + line
+  callout_rect_path(box_w, box_h)
 }
 
 ///|
-/// `callout2` — rectangle with a once-bent leader line: bottom-centre →
-/// (mid, bendY) → (tail_x, tail_y).  preset-shapes.ts:3560
+/// `callout2` — rectangle body.  preset-shapes.ts:3560.  See
+/// `callout_1` for why the bent leader is omitted.
 fn callout_2(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let _ = ctx
   let (box_w, box_h) = callout_box(w, h, ctx)
-  let bend_y = h * ctx.get("adj5").unwrap_or(50000.0) / 100000.0
-  let rect = callout_rect_path(box_w, box_h)
-  let mid_x = box_w / 2.0
-  let line = " M " +
-    fmt(mid_x) +
-    " " +
-    fmt(box_h) +
-    " L " +
-    fmt(mid_x) +
-    " " +
-    fmt(bend_y) +
-    " L " +
-    fmt(tail_x) +
-    " " +
-    fmt(tail_y)
-  rect + line
+  callout_rect_path(box_w, box_h)
 }
 
 ///|
-/// `callout3` — rectangle with a twice-bent leader line.
-/// preset-shapes.ts:3582
+/// `callout3` — rectangle body.  preset-shapes.ts:3582. See
+/// `callout_1` for why the twice-bent leader is omitted.
 fn callout_3(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let _ = ctx
   let (box_w, box_h) = callout_box(w, h, ctx)
-  let bend_y1 = h * ctx.get("adj5").unwrap_or(50000.0) / 100000.0
-  let bend_x = w * ctx.get("adj6").unwrap_or(50000.0) / 100000.0
-  let rect = callout_rect_path(box_w, box_h)
-  let mid_x = box_w / 2.0
-  let line = " M " +
-    fmt(mid_x) +
-    " " +
-    fmt(box_h) +
-    " L " +
-    fmt(mid_x) +
-    " " +
-    fmt(bend_y1) +
-    " L " +
-    fmt(bend_x) +
-    " " +
-    fmt(bend_y1) +
-    " L " +
-    fmt(tail_x) +
-    " " +
-    fmt(tail_y)
-  rect + line
+  callout_rect_path(box_w, box_h)
 }
 
 ///|
 /// `accentCallout1` — `callout1` prefixed with a thin accent bar on
-/// the left edge.  preset-shapes.ts:3605
+/// the left edge.  preset-shapes.ts:3605. See `callout_1` for why
+/// the leader is omitted entirely.
 fn callout_accent_1(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let _ = ctx
   let (box_w, box_h) = callout_box(w, h, ctx)
   let accent_w = w * 0.02
   let accent = accent_path(accent_w, box_h)
   let rect = callout_rect_path_offset(accent_w, box_w, box_h)
-  let line = " M " +
-    fmt(box_w / 2.0) +
-    " " +
-    fmt(box_h) +
-    " L " +
-    fmt(tail_x) +
-    " " +
-    fmt(tail_y)
-  accent + rect + line
+  accent + rect
 }
 
 ///|
 /// `accentCallout2` — `callout2` with accent bar.
-/// preset-shapes.ts:3629
+/// preset-shapes.ts:3629. See `callout_1` for why the leader is omitted.
 fn callout_accent_2(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let _ = ctx
   let (box_w, box_h) = callout_box(w, h, ctx)
-  let bend_y = h * ctx.get("adj5").unwrap_or(50000.0) / 100000.0
   let accent_w = w * 0.02
   let accent = accent_path(accent_w, box_h)
   let rect = callout_rect_path_offset(accent_w, box_w, box_h)
-  let mid_x = box_w / 2.0
-  let line = " M " +
-    fmt(mid_x) +
-    " " +
-    fmt(box_h) +
-    " L " +
-    fmt(mid_x) +
-    " " +
-    fmt(bend_y) +
-    " L " +
-    fmt(tail_x) +
-    " " +
-    fmt(tail_y)
-  accent + rect + line
+  accent + rect
 }
 
 ///|
 /// `accentCallout3` — `callout3` with accent bar.
-/// preset-shapes.ts:3655
+/// preset-shapes.ts:3655. See `callout_1` for why the leader is omitted.
 fn callout_accent_3(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let _ = ctx
   let (box_w, box_h) = callout_box(w, h, ctx)
-  let bend_y1 = h * ctx.get("adj5").unwrap_or(50000.0) / 100000.0
-  let bend_x = w * ctx.get("adj6").unwrap_or(50000.0) / 100000.0
   let accent_w = w * 0.02
   let accent = accent_path(accent_w, box_h)
   let rect = callout_rect_path_offset(accent_w, box_w, box_h)
-  let mid_x = box_w / 2.0
-  let line = " M " +
-    fmt(mid_x) +
-    " " +
-    fmt(box_h) +
-    " L " +
-    fmt(mid_x) +
-    " " +
-    fmt(bend_y1) +
-    " L " +
-    fmt(bend_x) +
-    " " +
-    fmt(bend_y1) +
-    " L " +
-    fmt(tail_x) +
-    " " +
-    fmt(tail_y)
-  accent + rect + line
+  accent + rect
 }
 
 ///|
 /// `borderCallout1` — visually identical path data to `callout1`; the
 /// border styling differs only in stroke attributes applied higher up
-/// the pipeline.  preset-shapes.ts:3682
+/// the pipeline.  preset-shapes.ts:3682. See `callout_1` for why
+/// the leader is omitted.
 fn callout_border_1(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let _ = ctx
   let (box_w, box_h) = callout_box(w, h, ctx)
-  let rect = callout_rect_path(box_w, box_h)
-  let line = " M " +
-    fmt(box_w / 2.0) +
-    " " +
-    fmt(box_h) +
-    " L " +
-    fmt(tail_x) +
-    " " +
-    fmt(tail_y)
-  rect + line
+  callout_rect_path(box_w, box_h)
 }
 
 ///|
 /// `borderCallout2` — same path data as `callout2`.
-/// preset-shapes.ts:3702
+/// preset-shapes.ts:3702. See `callout_1` for why the leader is omitted.
 fn callout_border_2(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let _ = ctx
   let (box_w, box_h) = callout_box(w, h, ctx)
-  let bend_y = h * ctx.get("adj5").unwrap_or(50000.0) / 100000.0
-  let rect = callout_rect_path(box_w, box_h)
-  let mid_x = box_w / 2.0
-  let line = " M " +
-    fmt(mid_x) +
-    " " +
-    fmt(box_h) +
-    " L " +
-    fmt(mid_x) +
-    " " +
-    fmt(bend_y) +
-    " L " +
-    fmt(tail_x) +
-    " " +
-    fmt(tail_y)
-  rect + line
+  callout_rect_path(box_w, box_h)
 }
 
 ///|
 /// `borderCallout3` — same path data as `callout3`.
-/// preset-shapes.ts:3724
+/// preset-shapes.ts:3724. See `callout_1` for why the leader is omitted.
 fn callout_border_3(w : Double, h : Double, ctx : GuideContext) -> String {
-  let (tail_x, tail_y) = callout_tail(w, h, ctx)
+  let _ = ctx
   let (box_w, box_h) = callout_box(w, h, ctx)
-  let bend_y1 = h * ctx.get("adj5").unwrap_or(50000.0) / 100000.0
-  let bend_x = w * ctx.get("adj6").unwrap_or(50000.0) / 100000.0
-  let rect = callout_rect_path(box_w, box_h)
-  let mid_x = box_w / 2.0
-  let line = " M " +
-    fmt(mid_x) +
-    " " +
-    fmt(box_h) +
-    " L " +
-    fmt(mid_x) +
-    " " +
-    fmt(bend_y1) +
-    " L " +
-    fmt(bend_x) +
-    " " +
-    fmt(bend_y1) +
-    " L " +
-    fmt(tail_x) +
-    " " +
-    fmt(tail_y)
-  rect + line
+  callout_rect_path(box_w, box_h)
 }
 
 ///|

@@ -6131,7 +6131,9 @@ pub(all) struct CT_HdrFtr {
 
 ///|
 /// XSD complex type CT_HdrFtr — Part 1 §17.10.4.
-pub fn CT_HdrFtr::new(element : @xml.Element) -> CT_HdrFtr raise SchemaViolation {
+pub fn CT_HdrFtr::new(
+  element : @xml.Element,
+) -> CT_HdrFtr raise SchemaViolation {
   let raw : Array[@xml.Element] = []
   for child in element.children {
     match child {

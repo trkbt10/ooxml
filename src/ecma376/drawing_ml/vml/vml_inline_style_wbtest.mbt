@@ -2,7 +2,9 @@
 
 ///|
 test "parse_vml_style recognises position / size properties" {
-  let v = parse_vml_style("position:absolute;left:10pt;top:20pt;width:100pt;height:50pt")
+  let v = parse_vml_style(
+    "position:absolute;left:10pt;top:20pt;width:100pt;height:50pt",
+  )
   inspect(v.position, content="Some(absolute)")
   inspect(v.left, content="Some(10pt)")
   inspect(v.top, content="Some(20pt)")

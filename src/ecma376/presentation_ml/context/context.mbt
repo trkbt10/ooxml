@@ -194,6 +194,15 @@ pub fn Presentation::to_svg_for_slide(
   let resolver = fn(rid : String) -> @pml_viewer.ResolvedImage? {
     resolve_slide_image(self, slide.name, rid)
   }
+  // §21.4.2.22 CT_RelIds — resolve an rId on the slide's rels into
+  // a part's root XML element. The diagram renderer asks for the
+  // four SmartArt parts (data1.xml / layout1.xml / quickStyle1.xml
+  // / colors1.xml) by rId and parses each to feed the layout
+  // engine. Returns None for unknown rIds or malformed XML so the
+  // viewer falls back to its placeholder.
+  let parts_resolver = fn(rid : String) -> @xml.Element? {
+    resolve_slide_part(self, slide.name, rid)
+  }
   // §19.3.1.42 — walk slide → layout → master → theme rels so
   // multi-master decks pick up the theme each master references.
   // Fall back to the first theme part when the chain cannot
@@ -215,15 +224,17 @@ pub fn Presentation::to_svg_for_slide(
         width_emu=sz.cx.emu,
         height_emu=sz.cy.emu,
         image_resolver=resolver,
+        part_resolver=parts_resolver,
         theme=typed_theme,
-        chain=chain,
+        chain~,
       )
     None =>
       @pml_viewer.render_svg(
         slide.value,
         image_resolver=resolver,
+        part_resolver=parts_resolver,
         theme=typed_theme,
-        chain=chain,
+        chain~,
       )
   }
 }
@@ -251,7 +262,10 @@ fn Presentation::resolve_slide_chain(
       for rel in relationships.relationships {
         if rel.type_uri.has_suffix("/slideLayout") &&
           rel.target_mode == @relationships.TargetMode::Internal {
-          let ln_result = try? @opc_part_name.resolve_target(slide.name, rel.target)
+          let ln_result = try? @opc_part_name.resolve_target(
+            slide.name,
+            rel.target,
+          )
           match ln_result {
             Ok(ln) =>
               for lp in self.slide_layouts {
@@ -277,7 +291,10 @@ fn Presentation::resolve_slide_chain(
             for rel in rs.relationships {
               if rel.type_uri.has_suffix("/slideMaster") &&
                 rel.target_mode == @relationships.TargetMode::Internal {
-                let mn_result = try? @opc_part_name.resolve_target(ln, rel.target)
+                let mn_result = try? @opc_part_name.resolve_target(
+                  ln,
+                  rel.target,
+                )
                 match mn_result {
                   Ok(master_name) =>
                     for mp in self.slide_masters {
@@ -307,7 +324,9 @@ fn Presentation::resolve_slide_chain(
   match master {
     None => None
     Some(mv) =>
-      Some(@pml_placeholder.SlideChain::from_parts(mv, layout, Some(slide.value)))
+      Some(
+        @pml_placeholder.SlideChain::from_parts(mv, layout, Some(slide.value)),
+      )
   }
 }
 
@@ -322,6 +341,7 @@ fn Presentation::resolve_slide_chain(
 /// relationship chain so each slide picks up the theme its master
 /// references; for now the first theme part is good enough for
 /// single-master decks.
+
 ///|
 /// §19.3.1.42 — walk slide → slideLayout → slideMaster → theme
 /// rels and return the theme part the slide's master references.
@@ -340,7 +360,8 @@ fn Presentation::resolve_theme_for_slide(
         if rel.type_uri.has_suffix("/slideLayout") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let ln_result = try? @opc_part_name.resolve_target(
-            slide.name, rel.target,
+            slide.name,
+            rel.target,
           )
           match ln_result {
             Ok(ln) => {
@@ -366,7 +387,8 @@ fn Presentation::resolve_theme_for_slide(
         if rel.type_uri.has_suffix("/slideMaster") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let mn_result = try? @opc_part_name.resolve_target(
-            layout_name, rel.target,
+            layout_name,
+            rel.target,
           )
           match mn_result {
             Ok(mn) => {
@@ -392,7 +414,8 @@ fn Presentation::resolve_theme_for_slide(
         if rel.type_uri.has_suffix("/theme") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let tn_result = try? @opc_part_name.resolve_target(
-            master_name, rel.target,
+            master_name,
+            rel.target,
           )
           match tn_result {
             Ok(tn) => {
@@ -456,6 +479,43 @@ pub fn Presentation::to_svg(self : Presentation) -> String {
       "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"450\"><text x=\"16\" y=\"32\">pptx:" +
       @xml.escape_text(self.presentation.element.name.local_name) +
       "</text></svg>"
+  }
+}
+
+///|
+/// §21.4.2.22 CT_RelIds — resolve a slide-scoped rId into the
+/// referenced part's root XML element. The diagram renderer calls
+/// this for each of the four SmartArt parts (dataModel, layoutDef,
+/// styleDef, colorsDef) via the `r:dm` / `r:lo` / `r:qs` / `r:cs`
+/// attributes on `<dgm:relIds>`. Returns `None` when the rId is
+/// unknown to the slide's rels or when the referenced part's XML
+/// cannot be parsed.
+fn resolve_slide_part(
+  presentation : Presentation,
+  slide_part_name : String,
+  rid : String,
+) -> @xml.Element? {
+  let rels = presentation.package.relationships(slide_part_name)
+  let rel = match rels {
+    Some(rs) => rs.find_by_id(rid)
+    None => return None
+  }
+  let target_rel = match rel {
+    Some(r) => r
+    None => return None
+  }
+  let resolved = match
+    (try? @opc_part_name.resolve_target(slide_part_name, target_rel.target)) {
+    Ok(name) => name
+    Err(_) => return None
+  }
+  let part = match presentation.package.part(resolved) {
+    Some(p) => p
+    None => return None
+  }
+  match (try? @xml.parse(part.data)) {
+    Ok(doc) => Some(doc.root)
+    Err(_) => None
   }
 }
 

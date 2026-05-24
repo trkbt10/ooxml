@@ -13,6 +13,8 @@ import {
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @domain,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/drawing" @drawing,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/formula" @formula,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/pivot_table" @pivot_table,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/sparkline" @sparkline,
   "trkbt10/ooxml/util/color" @color,
   "trkbt10/ooxml/util/markup" @markup,
   "trkbt10/ooxml/xml" @xml,

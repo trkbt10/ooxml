@@ -16,6 +16,8 @@ pub fn break_into_lines(Array[MeasuredSpan], Double, Double, TextWrapping) -> Li
 
 pub fn build_line_marker_attrs(@xml.Element, Double, String, SvgDefsCollector) -> LineMarkerEmission
 
+pub fn count_line_spaces(Array[MeasuredSpan]) -> Int
+
 pub fn create_guide_context(Double, Double, adjust_values? : Array[AdjustValue]) -> Map[String, Double]
 
 pub let default_font_size_pt : Double
@@ -37,6 +39,8 @@ pub fn format_resolved_color(ResolvedColor) -> String
 pub fn get_line_max_font_info(Array[MeasuredSpan]) -> LineFontInfo
 
 pub fn get_line_max_font_size(Array[MeasuredSpan]) -> Double
+
+pub fn get_line_visible_width(Array[MeasuredSpan]) -> Double
 
 pub fn get_line_width(Array[MeasuredSpan]) -> Double
 
@@ -62,6 +66,8 @@ pub fn parse_xsd_boolean(String?) -> Bool?
 
 pub fn parse_xsd_boolean_or(String?, Bool) -> Bool
 
+pub fn reflection_extra_nodes(@xml.Element, @xml.Node, Double) -> Array[@xml.Node]
+
 pub fn render_3d_effects(@xml.Element, String, String, Double, Double) -> Effects3d
 
 pub fn render_effects_filter_attr(@xml.Element, String, ColorResolveContext, SvgDefsCollector) -> Array[@xml.Attribute]
@@ -72,7 +78,9 @@ pub fn render_graphic_frame_table_svg(@xml.Element, Double, Double, ColorResolve
 
 pub fn render_preset_geometry(@xml.Element, Double, Double) -> String?
 
-pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, theme? : @theme.CT_OfficeStyleSheet?, chain? : @placeholder_resolver.SlideChain?) -> String
+pub fn render_preset_geometry_layered(@xml.Element, Double, Double) -> Array[PresetLayer]?
+
+pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, part_resolver? : (String) -> @xml.Element?, theme? : @theme.CT_OfficeStyleSheet?, chain? : @placeholder_resolver.SlideChain?) -> String
 
 pub fn resolve_solid_fill(@xml.Element, ph_clr? : String?, ctx~ : ColorResolveContext) -> ResolvedColor?
 
@@ -107,13 +115,18 @@ pub struct ColorResolveContext {
   ph_clr : String?
   major_font : Map[String, String]
   minor_font : Map[String, String]
+  lo_compat : Bool
 }
 pub fn ColorResolveContext::empty() -> Self
 pub fn ColorResolveContext::resolve_theme_typeface(Self, String) -> String?
 pub fn ColorResolveContext::with_color_scheme(Self, Map[String, String]) -> Self
 pub fn ColorResolveContext::with_font_scheme(Self, Map[String, String], Map[String, String]) -> Self
+pub fn ColorResolveContext::with_lo_compat(Self, Bool) -> Self
 pub fn ColorResolveContext::with_maps(Self, Map[String, String], Map[String, String]?) -> Self
 pub fn ColorResolveContext::with_ph_clr(Self, String) -> Self
+pub fn ColorResolveContext::with_strict_spec(Self) -> Self
+
+type EffectContribution
 
 pub struct Effects3d {
   transform_attrs : Array[@xml.Attribute]
@@ -126,6 +139,8 @@ pub struct FillAttrResult {
   attr_value : String
   is_no_fill : Bool
 }
+
+type FilterExtents
 
 pub(all) enum FontAlignment {
   FontAlignAuto
@@ -155,6 +170,7 @@ pub struct LayoutLine {
   y : Double
   width : Double
   height : Double
+  word_spacing_extra : Double
 }
 
 pub struct LayoutParagraphInput {
@@ -181,6 +197,7 @@ pub struct LayoutParagraphResult {
   alignment : TextAlign
   bullet : BulletConfig?
   bullet_width : Double
+  bullet_x : Double
   font_alignment : FontAlignment
 }
 
@@ -217,6 +234,7 @@ pub struct LayoutSpan {
   text_fill : TextFillConfig?
   kerning : Double?
   underline_color : String?
+  underline_style : String?
 }
 
 pub struct LayoutTabStop {
@@ -262,6 +280,11 @@ pub struct PositionedSpan {
   span : LayoutSpan
   width : Double
   dx : Double
+}
+
+pub struct PresetLayer {
+  path : String
+  fill_mod : Double
 }
 
 pub struct RadialGradientCoords {

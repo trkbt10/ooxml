@@ -273,7 +273,7 @@ fn lighting_gradient(light_rig : @xml.Element, shape_id : String) -> @xml.Node {
   }
   let coords = gradient_coords(direction)
   let (hi, sh) = lighting_intensity(rig)
-  let stop = (offset : String, color : String, opacity : String) =>
+  let stop = (offset : String, color : String, opacity : String) => {
     @markup.elem_ns(
       "stop",
       @markup.svg_ns,
@@ -284,6 +284,7 @@ fn lighting_gradient(light_rig : @xml.Element, shape_id : String) -> @xml.Node {
       ],
       [],
     )
+  }
   @markup.elem_ns(
     "linearGradient",
     @markup.svg_ns,
@@ -354,7 +355,8 @@ fn lighting_intensity(rig : String) -> (Double, Double) {
     "fluorescent" => (0.4, 0.1)
     "legacyNormal1" | "legacyNormal2" | "legacyNormal3" | "legacyNormal4" =>
       (0.2, 0.2)
-    "legacyHard1" | "legacyHard2" | "legacyHard3" | "legacyHard4" => (0.35, 0.35)
+    "legacyHard1" | "legacyHard2" | "legacyHard3" | "legacyHard4" =>
+      (0.35, 0.35)
     // Schema violation — value outside ST_LightRigType.  Fall
     // back to a neutral intensity tuple.
     _ => (0.25, 0.25)

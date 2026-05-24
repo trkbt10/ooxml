@@ -2,9 +2,7 @@
 /// Part 1 §19.3.1.38 sld — the list of `p:sp` CT_Shape projections
 /// inside the slide (returns an empty array when no slide is in the
 /// chain or the slide has no `p:cSld/p:spTree`).
-pub fn SlideChain::slide_shapes(
-  self : SlideChain,
-) -> Array[@domain.CT_Shape] {
+pub fn SlideChain::slide_shapes(self : SlideChain) -> Array[@domain.CT_Shape] {
   match self.slide {
     Some(slide) => extract_shapes(slide.element)
     None => []
@@ -15,9 +13,7 @@ pub fn SlideChain::slide_shapes(
 /// Part 1 §19.3.1.39 sldLayout — the list of `p:sp` CT_Shape
 /// projections inside the layout. Empty when no layout is in the
 /// chain.
-pub fn SlideChain::layout_shapes(
-  self : SlideChain,
-) -> Array[@domain.CT_Shape] {
+pub fn SlideChain::layout_shapes(self : SlideChain) -> Array[@domain.CT_Shape] {
   match self.layout {
     Some(layout) => extract_shapes(layout.element)
     None => []
@@ -27,9 +23,7 @@ pub fn SlideChain::layout_shapes(
 ///|
 /// Part 1 §19.3.1.42 sldMaster — the list of `p:sp` CT_Shape
 /// projections inside the master.
-pub fn SlideChain::master_shapes(
-  self : SlideChain,
-) -> Array[@domain.CT_Shape] {
+pub fn SlideChain::master_shapes(self : SlideChain) -> Array[@domain.CT_Shape] {
   extract_shapes(self.master.element)
 }
 

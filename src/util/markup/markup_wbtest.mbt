@@ -7,19 +7,18 @@ test "markup serialize emits a plain element fragment" {
     children: [text("hi")],
   }
   let s = serialize(root)
-  inspect(s, content=(
-    #|<mrow class="x">hi</mrow>
-  ))
+  inspect(
+    s,
+    content=(
+      #|<mrow class="x">hi</mrow>
+    ),
+  )
 }
 
 ///|
 /// An empty element serialises as a self-closing tag.
 test "markup serialize emits self-closing empty element" {
-  let root : @xml.Element = {
-    name: qname("br"),
-    attributes: [],
-    children: [],
-  }
+  let root : @xml.Element = { name: qname("br"), attributes: [], children: [] }
   inspect(serialize(root), content="<br/>")
 }
 
@@ -50,19 +49,17 @@ test "markup serialize_svg declares the SVG namespace once" {
     attributes: [attr("width", "100")],
     children: [
       elem_ns("rect", svg_ns, [attr("x", "0")], []),
-      elem_ns(
-        "g",
-        svg_ns,
-        [],
-        [elem_ns("circle", svg_ns, [attr("r", "5")], [])],
-      ),
+      elem_ns("g", svg_ns, [], [elem_ns("circle", svg_ns, [attr("r", "5")], [])]),
     ],
   }
   let s = serialize_svg(root)
   // The namespace is declared on <svg> exactly once; descendants
   // inherit it with no repeat and no `xmlns=""` reset.  Verified
   // by inspecting the whole fragment.
-  inspect(s, content=(
-    #|<svg xmlns="http://www.w3.org/2000/svg" width="100"><rect x="0"/><g><circle r="5"/></g></svg>
-  ))
+  inspect(
+    s,
+    content=(
+      #|<svg xmlns="http://www.w3.org/2000/svg" width="100"><rect x="0"/><g><circle r="5"/></g></svg>
+    ),
+  )
 }

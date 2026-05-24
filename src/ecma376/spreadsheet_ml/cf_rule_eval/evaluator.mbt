@@ -11,24 +11,29 @@ pub fn evaluate_rule(
   ctx : EvalContext,
 ) -> Bool {
   match rule.cf_type {
-    @domain.CellIs => evaluate_cellis(rule, cell, ctx)
-    @domain.ContainsText =>
+    // §18.3.1.10 — `@type` is `use="optional"`. A type-less rule has
+    // no predicate to evaluate, so it never matches any cell.
+    None => false
+    Some(@domain.CellIs) => evaluate_cellis(rule, cell, ctx)
+    Some(@domain.ContainsText) =>
       evaluate_text_predicate(rule, cell, contains_text_match)
-    @domain.NotContainsText =>
+    Some(@domain.NotContainsText) =>
       !evaluate_text_predicate(rule, cell, contains_text_match)
-    @domain.BeginsWith => evaluate_text_predicate(rule, cell, begins_with_match)
-    @domain.EndsWith => evaluate_text_predicate(rule, cell, ends_with_match)
-    @domain.ContainsBlanks => is_blank_value(cell)
-    @domain.NotContainsBlanks => !is_blank_value(cell)
-    @domain.ContainsErrors => is_error_value(cell)
-    @domain.NotContainsErrors => !is_error_value(cell)
-    @domain.DuplicateValues => occurrence_of(cell, population) > 1
-    @domain.UniqueValues => occurrence_of(cell, population) == 1
-    @domain.Top10 => evaluate_top10(rule, cell, population)
-    @domain.AboveAverage => evaluate_above_average(rule, cell, population)
-    @domain.TimePeriod => evaluate_time_period(rule, cell, ctx)
-    @domain.Expression => evaluate_expression(rule, ctx)
-    @domain.ColorScale | @domain.DataBar | @domain.IconSet =>
+    Some(@domain.BeginsWith) =>
+      evaluate_text_predicate(rule, cell, begins_with_match)
+    Some(@domain.EndsWith) =>
+      evaluate_text_predicate(rule, cell, ends_with_match)
+    Some(@domain.ContainsBlanks) => is_blank_value(cell)
+    Some(@domain.NotContainsBlanks) => !is_blank_value(cell)
+    Some(@domain.ContainsErrors) => is_error_value(cell)
+    Some(@domain.NotContainsErrors) => !is_error_value(cell)
+    Some(@domain.DuplicateValues) => occurrence_of(cell, population) > 1
+    Some(@domain.UniqueValues) => occurrence_of(cell, population) == 1
+    Some(@domain.Top10) => evaluate_top10(rule, cell, population)
+    Some(@domain.AboveAverage) => evaluate_above_average(rule, cell, population)
+    Some(@domain.TimePeriod) => evaluate_time_period(rule, cell, ctx)
+    Some(@domain.Expression) => evaluate_expression(rule, ctx)
+    Some(@domain.ColorScale) | Some(@domain.DataBar) | Some(@domain.IconSet) =>
       match to_number_opt(cell) {
         Some(_) => true
         None => false
@@ -312,7 +317,7 @@ pub fn evaluate_bucket(
   population : Array[@formula.FormulaValue],
 ) -> Int? {
   match rule.cf_type {
-    @domain.ColorScale =>
+    Some(@domain.ColorScale) =>
       match rule.color_scale {
         Some(scale) => {
           let cell_number = match to_number_opt(cell) {
@@ -331,11 +336,13 @@ pub fn evaluate_bucket(
         }
         None => None
       }
-    @domain.IconSet =>
+    Some(@domain.IconSet) =>
       match rule.icon_set {
         Some(icon_set) => evaluate_icon_bucket(icon_set, cell, population)
         None => None
       }
+    // Any other type, or a type-less rule (§18.3.1.10 `@type`
+    // optional), has no bucket projection.
     _ => None
   }
 }
@@ -367,7 +374,7 @@ pub fn evaluate_cf_block(
       let (address, value) = cells[i]
       if evaluate_rule(rule, value, population, ctx) {
         let argb = match rule.cf_type {
-          @domain.ColorScale =>
+          Some(@domain.ColorScale) =>
             match rule.color_scale {
               Some(scale) => evaluate_color_scale(scale, value, population)
               None => None
@@ -375,7 +382,7 @@ pub fn evaluate_cf_block(
           _ => None
         }
         let bar_ratio = match rule.cf_type {
-          @domain.DataBar =>
+          Some(@domain.DataBar) =>
             match rule.data_bar {
               Some(bar) => evaluate_bar_ratio(bar, value, population)
               None => None
@@ -383,7 +390,7 @@ pub fn evaluate_cf_block(
           _ => None
         }
         let icon_index = match rule.cf_type {
-          @domain.IconSet =>
+          Some(@domain.IconSet) =>
             match rule.icon_set {
               Some(set) => evaluate_icon_bucket(set, value, population)
               None => None

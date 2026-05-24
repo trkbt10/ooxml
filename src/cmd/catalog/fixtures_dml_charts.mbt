@@ -1,0 +1,584 @@
+// DrawingML CHART fixtures — ECMA-376 Part 1 §21.2 (dml-chart.xsd).
+//
+// Each fixture is a `.pptx` carrying a single slide with one
+// `<p:graphicFrame>` whose `<a:graphicData uri="…/chart">` payload
+// is a `<c:chart r:id="rId2"/>` reference; the slide's relationship
+// part (built by `pptx_package_with_chart` in verify.mbt) maps
+// `rId2` to `ppt/charts/chart1.xml`, which carries the
+// `<c:chartSpace>` root tree this file builds.
+//
+// What this file covers (5 fixtures, one per top-level chart type
+// in §21.2.2):
+//
+//   * `chart-bar-basic`     — §21.2.2.16 CT_BarChart (clustered bar)
+//   * `chart-line-basic`    — §21.2.2.97 CT_LineChart
+//   * `chart-pie-basic`     — §21.2.2.137 CT_PieChart
+//   * `chart-doughnut-basic`— §21.2.2.50 CT_DoughnutChart
+//   * `chart-scatter-basic` — §21.2.2.166 CT_ScatterChart (line w/ markers)
+//
+// Each chart payload carries a minimal but schema-valid
+// `<c:plotArea>` with one numeric series of four points, so the
+// renderer (when implemented) has real data to plot.  All trees
+// are built as `@xml.Element` values — never via string assembly,
+// per AGENTS.md.
+//
+// =========================================================================
+// RENDERING GAP — §21.2 chart rendering is NOT IMPLEMENTED.
+// =========================================================================
+// The PML viewer's `render_graphic_frame_svg`
+// (`src/ecma376/presentation_ml/viewer/viewer.mbt`) dispatches
+// `<a:graphicData @uri="…/chart">` to the generic placeholder
+// branch that emits a `<g data-ooxml="graphicFrame"
+// data-ooxml-uri="…/chart">` annotation with the bounding box but
+// no chart-specific drawing. The chart package
+// (`src/ecma376/drawing_ml/chart`) decodes `<c:chartSpace>` into
+// the typed `CT_ChartSpace` / `CT_Chart` / `CT_PlotArea` /
+// `CT_BarChart` etc. domain, but no consumer downstream converts
+// the typed plot-area into SVG.
+//
+// Therefore: these fixtures exercise the *parse + serialise +
+// open-again* round-trip and the OPC plumbing
+// (`pptx_package_with_chart`), but their visual diff against
+// LibreOffice will show a blank PPTX vs. a chart until the typed
+// renderer lands. The fixtures are still useful because:
+//
+//   1. They cover the OPC-side wiring (slide rels, content types,
+//      `[Content_Types]` overrides for `…drawingml.chart+xml`)
+//      that any future chart renderer will rely on.
+//   2. The reader + builder loop validates that the chart package's
+//      decode → encode is lossless for the chart-type-specific
+//      payloads (bar / line / pie / doughnut / scatter).
+//   3. The catalog tool's `verify_entry` differential check
+//      records them as `parsed` (open + round-trip + render-no-
+//      crash) so coverage tracking surfaces the gap.
+//
+// TODO §21.2 — once the chart renderer lands, expand the fixture
+// set to cover: stacked / 100% bar groupings (§21.2.2.16), area
+// charts (§21.2.2.4 CT_AreaChart), radar (§21.2.2.150), bubble
+// (§21.2.2.21 CT_BubbleChart), 3-D variants, and legend / title /
+// `<c:dLbls>` styling.
+
+// ---- file-local helpers ---------------------------------------------------
+
+///|
+/// DrawingML chart namespace (`c:` prefix per ECMA-376 §21.2).
+const NS_C : String = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+
+///|
+/// DrawingML chart graphicData URI — §15.2 well-known URI registry.
+const CHART_URI : String = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+
+///|
+/// Build a prefixed `<c:NAME …>…</c:NAME>` element for the
+/// chartSpace tree.  The `xmlns:c` declaration is emitted
+/// automatically by `@xml.write` at the root.
+fn c_elem(
+  tag : String,
+  attrs : Array[@xml.Attribute],
+  kids : Array[@xml.Node],
+) -> @xml.Element {
+  {
+    name: { prefix: Some("c"), local_name: tag, ns: Some(NS_C) },
+    attributes: attrs,
+    children: kids,
+  }
+}
+
+///|
+/// `<c:NAME val="…"/>` shorthand — every chart-side simple-typed
+/// element uses the `val` attribute (CT_Boolean / CT_UnsignedInt /
+/// CT_BarDir / …).
+fn c_val(tag : String, value : String) -> @xml.Element {
+  c_elem(tag, [xa("val", value)], [])
+}
+
+///|
+/// `<c:numCache>` containing a `formatCode` + `ptCount` + N
+/// `<c:pt idx="i"><c:v>…</c:v></c:pt>` entries.  Used as the
+/// cached evaluated value of a `<c:numRef>` (numeric reference).
+fn c_num_cache(values : Array[String]) -> @xml.Element {
+  let kids : Array[@xml.Node] = [
+    Element(c_elem("formatCode", [], [Text("General")])),
+    Element(c_val("ptCount", values.length().to_string())),
+  ]
+  for i, v in values {
+    kids.push(
+      Element(
+        c_elem("pt", [xa("idx", i.to_string())], [
+          Element(c_elem("v", [], [Text(v)])),
+        ]),
+      ),
+    )
+  }
+  c_elem("numCache", [], kids)
+}
+
+///|
+/// `<c:strCache>` mirror of `c_num_cache` for string axis labels.
+fn c_str_cache(values : Array[String]) -> @xml.Element {
+  let kids : Array[@xml.Node] = [
+    Element(c_val("ptCount", values.length().to_string())),
+  ]
+  for i, v in values {
+    kids.push(
+      Element(
+        c_elem("pt", [xa("idx", i.to_string())], [
+          Element(c_elem("v", [], [Text(v)])),
+        ]),
+      ),
+    )
+  }
+  c_elem("strCache", [], kids)
+}
+
+///|
+/// `<c:numRef>` carrying a `<c:f>` formula + cached `<c:numCache>`.
+/// Used inside `<c:val>` for series numeric data.
+fn c_num_ref(formula : String, values : Array[String]) -> @xml.Element {
+  c_elem("numRef", [], [
+    Element(c_elem("f", [], [Text(formula)])),
+    Element(c_num_cache(values)),
+  ])
+}
+
+///|
+/// `<c:strRef>` carrying a `<c:f>` formula + cached `<c:strCache>`.
+/// Used inside `<c:cat>` for category-axis labels.
+fn c_str_ref(formula : String, values : Array[String]) -> @xml.Element {
+  c_elem("strRef", [], [
+    Element(c_elem("f", [], [Text(formula)])),
+    Element(c_str_cache(values)),
+  ])
+}
+
+///|
+/// `<c:tx>` with a strRef wrapping a single literal title string.
+fn c_series_tx(title : String) -> @xml.Element {
+  c_elem("tx", [], [Element(c_str_ref("Sheet1!$A$1", [title]))])
+}
+
+///|
+/// `<c:cat>` containing a string reference to category labels.
+fn c_cat(labels : Array[String]) -> @xml.Element {
+  c_elem("cat", [], [Element(c_str_ref("Sheet1!$A$2:$A$5", labels))])
+}
+
+///|
+/// `<c:val>` containing a numeric reference to series values.
+fn c_val_ref(values : Array[String]) -> @xml.Element {
+  c_elem("val", [], [Element(c_num_ref("Sheet1!$B$2:$B$5", values))])
+}
+
+///|
+/// `<c:catAx>` / `<c:valAx>` pair builder shared across bar / line /
+/// scatter charts.  Axis ids `crossAx`-link the two as required by
+/// §21.2.2.18 / §21.2.2.20.
+fn c_axes() -> Array[@xml.Element] {
+  let cat_ax = c_elem("catAx", [], [
+    Element(c_val("axId", "111111111")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "b")),
+    Element(c_val("crossAx", "222222222")),
+  ])
+  let val_ax = c_elem("valAx", [], [
+    Element(c_val("axId", "222222222")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "l")),
+    Element(c_val("crossAx", "111111111")),
+  ])
+  [cat_ax, val_ax]
+}
+
+///|
+/// Numeric value-axis pair for scatter (both axes are numeric).
+fn c_axes_num() -> Array[@xml.Element] {
+  let x_ax = c_elem("valAx", [], [
+    Element(c_val("axId", "111111111")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "b")),
+    Element(c_val("crossAx", "222222222")),
+  ])
+  let y_ax = c_elem("valAx", [], [
+    Element(c_val("axId", "222222222")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "l")),
+    Element(c_val("crossAx", "111111111")),
+  ])
+  [x_ax, y_ax]
+}
+
+///|
+/// Wrap a chart-type-specific element (`<c:barChart>` /
+/// `<c:lineChart>` / …) in the surrounding `<c:chartSpace>` /
+/// `<c:chart>` / `<c:plotArea>` boilerplate.
+///
+/// The plot area carries:
+///   * a `<c:layout/>` (auto layout)
+///   * the chart-type element (one only — `<c:barChart>`, …)
+///   * a pair of axis elements (`<c:catAx>` + `<c:valAx>` for
+///     category-driven charts; two `<c:valAx>` for scatter).
+fn wrap_chart_space(
+  chart_payload : @xml.Element,
+  axes : Array[@xml.Element],
+) -> @xml.Element {
+  wrap_chart_space_with_decor(chart_payload, axes, None, None)
+}
+
+///|
+/// Same as `wrap_chart_space` but accepts an optional `<c:title>`
+/// and `<c:legend>`. The schema ordering inside `<c:chart>` is
+/// `title? / autoTitleDeleted? / pivotFmts? / view3D? / floor? /
+/// sideWall? / backWall? / plotArea / plotVisOnly? / dispBlanksAs? /
+/// showDLblsOverMax? / extLst?` (§21.2.2.27 CT_Chart) and the legend
+/// lives between plotArea and plotVisOnly. We honour the canonical
+/// ordering so the typed projection in `@chart.CT_Chart` can round-
+/// trip the value losslessly.
+fn wrap_chart_space_with_decor(
+  chart_payload : @xml.Element,
+  axes : Array[@xml.Element],
+  title : @xml.Element?,
+  legend : @xml.Element?,
+) -> @xml.Element {
+  let plot_area_kids : Array[@xml.Node] = [
+    Element(c_elem("layout", [], [])),
+    Element(chart_payload),
+  ]
+  for ax in axes {
+    plot_area_kids.push(Element(ax))
+  }
+  let plot_area = c_elem("plotArea", [], plot_area_kids)
+  let chart_kids : Array[@xml.Node] = []
+  match title {
+    Some(t) => chart_kids.push(Element(t))
+    None => ()
+  }
+  chart_kids.push(Element(plot_area))
+  match legend {
+    Some(l) => chart_kids.push(Element(l))
+    None => ()
+  }
+  chart_kids.push(Element(c_val("plotVisOnly", "1")))
+  chart_kids.push(Element(c_val("dispBlanksAs", "gap")))
+  let chart = c_elem("chart", [], chart_kids)
+  c_elem("chartSpace", [], [Element(chart)])
+}
+
+///|
+/// Build a `<c:title>` carrying a `<c:tx>/<c:rich>` body — the rich
+/// body is a DrawingML text body (`<a:p>/<a:r>/<a:t>text</a:t>...`).
+/// Required §21.2.2.213 children inside `<c:rich>` are `<a:bodyPr/>`,
+/// `<a:lstStyle/>`, then one or more `<a:p>`. We add a final
+/// `<c:overlay val="0"/>` so the title participates in the chart's
+/// layout (i.e. the plot area shrinks to make room).
+fn c_chart_title(text : String) -> @xml.Element {
+  let rich = c_elem("rich", [], [
+    Element(xe(NS_A, "bodyPr", [], [])),
+    Element(xe(NS_A, "lstStyle", [], [])),
+    Element(
+      xe(NS_A, "p", [], [
+        Element(
+          xe(NS_A, "r", [], [
+            Element(xe(NS_A, "rPr", [xa("lang", "en-US"), xa("b", "1")], [])),
+            Element(xe(NS_A, "t", [], [Text(text)])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  c_elem("title", [], [
+    Element(c_elem("tx", [], [Element(rich)])),
+    Element(c_val("overlay", "0")),
+  ])
+}
+
+///|
+/// Build a `<c:legend>` carrying a `<c:legendPos val="…"/>`. The
+/// `pos` argument must be one of `"r"` / `"t"` / `"b"` / `"l"` /
+/// `"tr"` per §21.2.2.94 ST_LegendPos.
+fn c_chart_legend(pos : String) -> @xml.Element {
+  c_elem("legend", [], [
+    Element(c_val("legendPos", pos)),
+    Element(c_val("overlay", "0")),
+  ])
+}
+
+///|
+/// Build a `<p:graphicFrame>` that anchors a chart to the slide and
+/// points its `<a:graphicData>` at `r:id="rId2"` — the rel the
+/// builder writes for the chart part. The frame is positioned at a
+/// fixed offset and given a 6 in × 4.5 in (5486400 × 4114800 EMU)
+/// extent so the placeholder rect is visible during the OPC-loop
+/// verification.
+fn chart_graphic_frame(id_ : String, name : String) -> @xml.Element {
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xe(NS_PML, "graphicFrame", [], [
+    Element(
+      xe(NS_PML, "nvGraphicFramePr", [], [
+        Element(xe(NS_PML, "cNvPr", [xa("id", id_), xa("name", name)], [])),
+        Element(xe(NS_PML, "cNvGraphicFramePr", [], [])),
+        Element(xe(NS_PML, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xe(NS_PML, "xfrm", [], [
+        Element(xe(NS_A, "off", [xa("x", "1828800"), xa("y", "1371600")], [])),
+        Element(xe(NS_A, "ext", [xa("cx", "5486400"), xa("cy", "4114800")], [])),
+      ]),
+    ),
+    Element(
+      xe(NS_A, "graphic", [], [
+        Element(
+          xe(NS_A, "graphicData", [xa("uri", CHART_URI)], [
+            // `<c:chart r:id="rId2"/>` — note `r:id` is a typed
+            // qname so the writer auto-declares `xmlns:r` for us.
+            Element({
+              name: { prefix: Some("c"), local_name: "chart", ns: Some(NS_C) },
+              attributes: [
+                {
+                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                  value: "rId2",
+                },
+              ],
+              children: [],
+            }),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+// ---- chart-type-specific payloads ----------------------------------------
+
+///|
+/// §21.2.2.16 CT_BarChart — clustered bar with one series.
+fn bar_chart_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Sales")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["10", "30", "20", "40"])),
+  ])
+  c_elem("barChart", [], [
+    Element(c_val("barDir", "bar")),
+    Element(c_val("grouping", "clustered")),
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.97 CT_LineChart — standard grouping with markers off.
+fn line_chart_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Trend")),
+    Element(c_cat(["Jan", "Feb", "Mar", "Apr"])),
+    Element(c_val_ref(["5", "15", "10", "25"])),
+    Element(c_val("smooth", "0")),
+  ])
+  c_elem("lineChart", [], [
+    Element(c_val("grouping", "standard")),
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_elem("marker", [], [Element(c_val("val", "1"))])),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.137 CT_PieChart — single series, no axes.
+fn pie_chart_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Mix")),
+    Element(c_cat(["A", "B", "C", "D"])),
+    Element(c_val_ref(["35", "25", "20", "20"])),
+  ])
+  c_elem("pieChart", [], [
+    Element(c_val("varyColors", "1")),
+    Element(ser),
+    Element(c_val("firstSliceAng", "0")),
+  ])
+}
+
+///|
+/// §21.2.2.50 CT_DoughnutChart — pie with hole; `holeSize` percent.
+fn doughnut_chart_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Mix")),
+    Element(c_cat(["A", "B", "C", "D"])),
+    Element(c_val_ref(["35", "25", "20", "20"])),
+  ])
+  c_elem("doughnutChart", [], [
+    Element(c_val("varyColors", "1")),
+    Element(ser),
+    Element(c_val("firstSliceAng", "0")),
+    Element(c_val("holeSize", "50")),
+  ])
+}
+
+///|
+/// §21.2.2.166 CT_ScatterChart — `scatterStyle="lineMarker"` with
+/// numeric X + Y refs.  `<c:xVal>` carries the X axis values and
+/// `<c:yVal>` the Y values (both as `<c:numRef>`).
+fn scatter_chart_payload() -> @xml.Element {
+  let x_ref = c_elem("xVal", [], [
+    Element(c_num_ref("Sheet1!$A$2:$A$5", ["1", "2", "3", "4"])),
+  ])
+  let y_ref = c_elem("yVal", [], [
+    Element(c_num_ref("Sheet1!$B$2:$B$5", ["3", "5", "4", "8"])),
+  ])
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Pts")),
+    Element(x_ref),
+    Element(y_ref),
+    Element(c_val("smooth", "0")),
+  ])
+  c_elem("scatterChart", [], [
+    Element(c_val("scatterStyle", "lineMarker")),
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+// ---- ChartedCase extender -------------------------------------------------
+
+///|
+/// §21.2 DrawingML chart fixtures (5 distinct top-level chart
+/// types). Each fixture is a single-slide PPTX whose lone
+/// `<p:graphicFrame>` references the chart part the
+/// `pptx_package_with_chart` builder writes.
+///
+/// Category folder: `chart` — fixtures land under
+/// `.snapshots/fixtures/pptx/chart/<id>.pptx`.
+fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
+  // ---- bar chart (§21.2.2.16) ------------------------------------
+  ccases.push({
+    id: "chart-bar-basic",
+    format: "pptx",
+    category: "chart",
+    content: sp_tree([chart_graphic_frame("2", "Bar Chart 1")]),
+    chart_space: wrap_chart_space(bar_chart_payload(), c_axes()),
+  })
+
+  // ---- line chart (§21.2.2.97) ----------------------------------
+  ccases.push({
+    id: "chart-line-basic",
+    format: "pptx",
+    category: "chart",
+    content: sp_tree([chart_graphic_frame("2", "Line Chart 1")]),
+    chart_space: wrap_chart_space(line_chart_payload(), c_axes()),
+  })
+
+  // ---- pie chart (§21.2.2.137) ----------------------------------
+  ccases.push({
+    id: "chart-pie-basic",
+    format: "pptx",
+    category: "chart",
+    content: sp_tree([chart_graphic_frame("2", "Pie Chart 1")]),
+    chart_space: wrap_chart_space(pie_chart_payload(), []),
+  })
+
+  // ---- doughnut chart (§21.2.2.50) ------------------------------
+  ccases.push({
+    id: "chart-doughnut-basic",
+    format: "pptx",
+    category: "chart",
+    content: sp_tree([chart_graphic_frame("2", "Doughnut Chart 1")]),
+    chart_space: wrap_chart_space(doughnut_chart_payload(), []),
+  })
+
+  // ---- scatter chart (§21.2.2.166) ------------------------------
+  ccases.push({
+    id: "chart-scatter-basic",
+    format: "pptx",
+    category: "chart",
+    content: sp_tree([chart_graphic_frame("2", "Scatter Chart 1")]),
+    chart_space: wrap_chart_space(scatter_chart_payload(), c_axes_num()),
+  })
+
+  // ---- bar chart with right-side legend (§21.2.2.93) ------------
+  // Two-series clustered vertical bar so the legend has two distinct
+  // entries (one per series). The legend lives on the right side
+  // (`<c:legendPos val="r"/>`); the renderer shrinks the plot area
+  // by ~18% of frame width to make room and stacks the entries
+  // vertically.
+  ccases.push({
+    id: "chart-bar-with-legend",
+    format: "pptx",
+    category: "chart",
+    content: sp_tree([chart_graphic_frame("2", "Bar With Legend")]),
+    chart_space: wrap_chart_space_with_decor(
+      bar_chart_two_series_payload(),
+      c_axes(),
+      None,
+      Some(c_chart_legend("r")),
+    ),
+  })
+
+  // ---- line chart with title + bottom legend (§21.2.2.213 + §21.2.2.93)
+  // Single-series line with a rich-body title centred above and a
+  // bottom legend strip containing the lone series swatch + name.
+  // Exercises both decorations simultaneously: the inner plot rect
+  // is shrunk on top (~9%) AND bottom (~12%).
+  ccases.push({
+    id: "chart-line-with-title-and-legend",
+    format: "pptx",
+    category: "chart",
+    content: sp_tree([chart_graphic_frame("2", "Line With Title And Legend")]),
+    chart_space: wrap_chart_space_with_decor(
+      line_chart_payload(),
+      c_axes(),
+      Some(c_chart_title("Monthly Trend")),
+      Some(c_chart_legend("b")),
+    ),
+  })
+}
+
+///|
+/// Two-series clustered vertical bar payload — same fixture shape as
+/// `bar_chart_payload` but adds a second series so the legend has
+/// two distinct entries. `barDir="col"` (the default) draws vertical
+/// columns side by side per category.
+fn bar_chart_two_series_payload() -> @xml.Element {
+  let ser_a = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Plan")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["10", "30", "20", "40"])),
+  ])
+  let ser_b = c_elem("ser", [], [
+    Element(c_val("idx", "1")),
+    Element(c_val("order", "1")),
+    Element(c_series_tx("Actual")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["15", "25", "30", "35"])),
+  ])
+  c_elem("barChart", [], [
+    Element(c_val("barDir", "col")),
+    Element(c_val("grouping", "clustered")),
+    Element(c_val("varyColors", "0")),
+    Element(ser_a),
+    Element(ser_b),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}

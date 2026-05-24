@@ -16,10 +16,7 @@
 /// (`fill="none"`) is `moveTo (l, t)` → `lnTo (x1, t)` →
 /// `lnTo (x1, y2)` → `lnTo (r, y2)` → `lnTo (r, b)`, an open polyline
 /// (no `close`).
-pub fn build_bent_connector4(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_bent_connector4(width : Int, height : Int) -> ShapeGeometry {
   // adj1/adj2 defaults 50000 → x1/y2 at the box midpoints.
   let x1 = percent(width, 50000)
   let y2 = percent(height, 50000)

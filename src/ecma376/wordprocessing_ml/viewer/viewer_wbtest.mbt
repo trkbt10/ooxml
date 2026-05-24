@@ -69,10 +69,12 @@ test "render_svg emits text from a paragraph as <text> element" {
   // serialises to `Hello &lt;wml>`.
   assert_true(svg.contains("Hello &lt;wml>"))
   // §17.3.2.26 rFonts — without `<w:rFonts>` and without a
-  // `<w:docDefaults>` cascade, the viewer falls back to the SVG/CSS
-  // generic `serif` family. The previous "Calibri" assertion
-  // expected a Word-specific UX default with no ECMA-376 basis.
-  assert_true(svg.contains("font-family=\"serif\""))
+  // `<w:docDefaults>` cascade, the viewer falls back to the CSS
+  // generic `sans-serif` family: a document with no explicit
+  // typeface inherits the application/theme default body face, which
+  // is a sans-serif in every real OOXML consumer (see
+  // `DEFAULT_FONT_FAMILY`).
+  assert_true(svg.contains("font-family=\"sans-serif\""))
 }
 
 ///|
@@ -666,9 +668,16 @@ test "render_svg omits bullet when numbering table not wired (§17.9)" {
 ///|
 /// §17.3.2.42 `<w:rPr><w:vertAlign>` — superscript / subscript runs
 /// emit `<text>` elements with a scaled-down font size and a shifted
-/// baseline. With no `<w:sz>` and no `<w:docDefaults>` cascade, the
-/// run falls back to the viewer's spec-undefined default size of
-/// 10 pt: 10 * 96/72 * 0.65 ≈ 8.667 px.
+/// baseline. With no `<w:sz>` and no `<w:styles>` part in the
+/// document, `layout_paragraph` engages the §17.7.5.3 Office Normal
+/// fallback and uses the implementation's built-in Normal style font
+/// size — 11 pt (Word's `<w:sz w:val="22"/>` baseline), NOT the
+/// spec-undefined 10 pt last-resort fallback. The superscript ratio
+/// is `vertAlign_scale = 0.65`, so the rendered font size is
+/// `11 × 96/72 × 0.65 ≈ 9.533 px`. (Before the Office Normal default
+/// was wired in, this value was `10 × 96/72 × 0.65 ≈ 8.667 px`,
+/// which caused a ~6 %/line vertical drift against LibreOffice — see
+/// `OFFICE_NORMAL_FONT_SIZE_PT` in `svg.mbt`.)
 test "render_svg scales font for <w:vertAlign> superscript" {
   let document = @domain.CT_Document::new({
     name: name("document"),
@@ -711,10 +720,14 @@ test "render_svg scales font for <w:vertAlign> superscript" {
     ],
   })
   let svg = render_svg(document).pages[0].svg
-  // 10 pt default × 96/72 × 0.65 ≈ 8.667. The emitter writes the
-  // value through fmt_double which trims to ≤3 decimals, so the
-  // resulting attribute is "8.667" (substring match).
-  assert_true(svg.contains("font-size=\"8.667\""))
+  // §17.7.5.3 Office Normal: with no `<w:styles>` part the renderer
+  // uses 11 pt as the run-default. 11 × 96/72 × 0.65 ≈ 9.533. The
+  // emitter writes the value through fmt_double which trims to ≤3
+  // decimals, so the resulting attribute is "9.533" (substring
+  // match). Switching from the old 10 pt last-resort default to the
+  // Office Normal 11 pt removes the ~6 %/line vertical drift the
+  // section snapshots showed against LibreOffice.
+  assert_true(svg.contains("font-size=\"9.533\""))
   assert_true(svg.contains("Sup"))
 }
 
@@ -1234,8 +1247,15 @@ test "render_svg emits outline/shadow/em effects" {
     ],
   })
   let svg = render_svg(document).pages[0].svg
-  // outline → stroke + paint-order
-  assert_true(svg.contains("paint-order=\"stroke fill\""))
+  // §17.3.2.23 outline — outlined glyphs are HOLLOW (stroke
+  // around a transparent interior), matching what LibreOffice's
+  // PDF reference renders. We assert the stroke is painted AND
+  // the fill is suppressed (`fill="none"`); the `data-ooxml-
+  // outline` marker lets consumers find the run without parsing
+  // the stroke attributes.
+  assert_true(svg.contains("data-ooxml-outline=\"true\""))
+  assert_true(svg.contains("stroke=\"currentColor\""))
+  assert_true(svg.contains("fill=\"none\""))
   // shadow → CSS text-shadow
   assert_true(svg.contains("text-shadow: 1px 1px 1px rgba(0,0,0,0.5)"))
   // em → CSS text-emphasis-style. §17.18.24 ST_Em `dot` maps to
@@ -3811,6 +3831,17 @@ test "render_svg draws a column separator for <w:cols w:sep='1'>" {
 /// A wide first column followed by a narrow second column places the
 /// second column far enough right that its paragraphs are offset by
 /// the first column's full width plus the declared gap.
+///
+/// LO renormalises explicit column widths + inter-column spaces so
+/// their sum equals the section's `content_width` (page width minus
+/// the left + right margins): if the section's `<w:col>` children
+/// sum to less than the content width the columns are stretched, and
+/// if they sum to more they are shrunk.  Here the page is 12240
+/// twips with 1440-twip side margins, so content = 9360 twips, and
+/// the declared col widths + gap sum to 6000 + 720 + 2000 = 8720
+/// twips ⇒ scale = 9360 / 8720 ≈ 1.0734.  The wide col becomes
+/// 6440 twips ≈ 429.3 px and the gap becomes 773 twips ≈ 51.5 px,
+/// so the narrow col starts at 96 + 429.3 + 51.5 ≈ 576.8 px.
 test "render_svg honours unequal <w:col> widths (§17.6.3)" {
   let make_para = fn(text : String, with_break : Bool) -> @xml.Node {
     let r_children : Array[@xml.Node] = [
@@ -3841,9 +3872,11 @@ test "render_svg honours unequal <w:col> widths (§17.6.3)" {
       ],
     })
   }
-  // Wide column (6000 twips = 400 px) + 720-twip gap (48 px) +
-  // narrow column (2000 twips). With a 1-inch (96 px) left margin
-  // the narrow column starts at 96 + 400 + 48 = 544 px.
+  // Wide column (6000 twips) + 720-twip gap + narrow column (2000
+  // twips). The three values are renormalised to fill the 9360-twip
+  // content area, so the wide col becomes ≈ 6440 twips and the gap
+  // ≈ 773 twips; with a 1-inch (96 px) left margin the narrow col's
+  // text starts at 96 + 6440·96/1440 + 773·96/1440 ≈ 576 px.
   let sect = @xml.Node::Element({
     name: name("sectPr"),
     attributes: [],
@@ -3887,8 +3920,10 @@ test "render_svg honours unequal <w:col> widths (§17.6.3)" {
   let svg = result.pages[0].svg
   assert_true(svg.contains("WideCol"))
   assert_true(svg.contains("NarrowCol"))
-  // The narrow column's <text> is positioned at x = 544 px.
-  assert_true(svg.contains("x=\"544"))
+  // The narrow column's <text> is positioned at x ≈ 576 px after
+  // renormalisation (see test header). Tolerate the renderer's
+  // sub-pixel formatting by matching the integer prefix.
+  assert_true(svg.contains("x=\"576"))
 }
 
 ///|

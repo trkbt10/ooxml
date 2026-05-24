@@ -204,9 +204,12 @@ pub(all) struct CT_IconSet {
 /// conditional formatting rule. Attributes only meaningful for specific
 /// @type values are captured as `Option`s; the evaluator ignores them
 /// when @type does not match the spec gating (see §18.3.1.10 column
-/// descriptions).
+/// descriptions). `@type` itself is `use="optional"` in the XSD: a
+/// `<cfRule>` with no `@type` is well-formed, so `cf_type` is an
+/// `Option`. A type-less rule is inert — the evaluator applies no
+/// format and the renderer draws nothing for it.
 pub(all) struct CT_CfRule {
-  cf_type : ST_CfType
+  cf_type : ST_CfType?
   dxf_id : Int?
   priority : Int
   stop_if_true : Bool
@@ -231,16 +234,18 @@ pub(all) struct CT_CfRule {
 /// unique values, colorScale, dataBar, iconSet). Per-cell rules
 /// (cellIs, containsText, …) return false so callers can skip the
 /// population scan. Cited from §18.18.12 ST_CfType — those entries
-/// that explicitly say "in the range" require population.
+/// that explicitly say "in the range" require population. A type-less
+/// rule (`@type` absent, §18.3.1.10 `use="optional"`) is inert and
+/// requires no population, so it returns false.
 pub fn CT_CfRule::is_population_rule(self : CT_CfRule) -> Bool {
   match self.cf_type {
-    Top10 => true
-    AboveAverage => true
-    DuplicateValues => true
-    UniqueValues => true
-    ColorScale => true
-    DataBar => true
-    IconSet => true
+    Some(Top10) => true
+    Some(AboveAverage) => true
+    Some(DuplicateValues) => true
+    Some(UniqueValues) => true
+    Some(ColorScale) => true
+    Some(DataBar) => true
+    Some(IconSet) => true
     _ => false
   }
 }

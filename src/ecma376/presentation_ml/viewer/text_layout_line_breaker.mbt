@@ -64,6 +64,7 @@ fn make_span(parent : MeasuredSpan, text : String) -> MeasuredSpan {
     text_fill: parent.span.text_fill,
     kerning: parent.span.kerning,
     underline_color: parent.span.underline_color,
+    underline_style: parent.span.underline_style,
   }
   { span: new_span, width }
 }
@@ -283,6 +284,139 @@ pub fn get_line_width(spans : Array[MeasuredSpan]) -> Double {
     total = total + s.width
   }
   total
+}
+
+///|
+/// §21.1.2.2.1 ST_TextAlignType `just` — count the U+0020 word-break
+/// opportunities on a laid-out line, excluding the trailing wrap-space
+/// that `get_line_visible_width` strips for alignment width.
+///
+/// Used by `layout_paragraph` to spread the slack between the line's
+/// visible glyph width and the available text-frame width across the
+/// stretchable spaces. We exclude the trailing space on the LAST span
+/// because that space is the break-causing whitespace the line breaker
+/// keeps on the closing line — stretching it would push the visible
+/// glyphs past the right margin instead of holding them at it (the
+/// same reason `get_line_visible_width` trims it before computing the
+/// alignment X). Internal break-runs (`is_break`) are skipped: their
+/// text is the line break sentinel, not a stretchable space.
+pub fn count_line_spaces(spans : Array[MeasuredSpan]) -> Int {
+  let n = spans.length()
+  if n == 0 {
+    return 0
+  }
+  let mut total = 0
+  for i in 0..<n {
+    let s = spans[i]
+    if s.span.is_break {
+      continue
+    }
+    if i == n - 1 {
+      // Last span: strip trailing whitespace so the break-causing
+      // space (kept on the closing line by the wrapper) is not
+      // counted as a stretch point.
+      let chars : Array[Char] = []
+      for c in s.span.text {
+        chars.push(c)
+      }
+      let mut end = chars.length()
+      while end > 0 && is_trailing_ws(chars[end - 1]) {
+        end = end - 1
+      }
+      for j in 0..<end {
+        if chars[j] == ' ' {
+          total = total + 1
+        }
+      }
+    } else {
+      for c in s.span.text {
+        if c == ' ' {
+          total = total + 1
+        }
+      }
+    }
+  }
+  total
+}
+
+///|
+/// Visible width of a laid-out line — the total span advance minus
+/// the advance of any trailing whitespace characters on the LAST span.
+///
+/// Centring / right-alignment / justified `available_width - line_width`
+/// calculations must use this value, NOT `get_line_width`.  Reason:
+/// after `break_into_lines` runs, a wrapped line frequently ends with
+/// the literal space that triggered the break (the wrapper kept the
+/// break-char on the closing line rather than pushing it to the next
+/// line; the spec is silent on which side the space goes to, and both
+/// LO and PowerPoint keep it on the breaking line).  That trailing
+/// space contributes ≈1 advance unit to the raw line width but draws
+/// no ink, so the visible glyph extent ends one space-width to the
+/// LEFT of the advance end.  LibreOffice excludes the trailing space
+/// before centring; if we use the full advance width we leave too
+/// little room on the LEFT and the line drifts ≈half-a-space right
+/// (≈3–4 px at 26 pt Liberation Sans on the pml-shape-text-wrap
+/// fixture — enough to push the RMSE 5–10% past target).
+///
+/// Mirrors the implicit behaviour in PowerPoint / LibreOffice; the
+/// upstream web-pptx port lacks the helper because Canvas
+/// `measureText` measures glyph extents directly and skips trailing
+/// whitespace automatically — our advance-based estimator has to do
+/// the exclusion by hand.
+pub fn get_line_visible_width(spans : Array[MeasuredSpan]) -> Double {
+  let n = spans.length()
+  if n == 0 {
+    return 0.0
+  }
+  // Sum every span's full advance EXCEPT the last span, which we
+  // strip of trailing whitespace.
+  let mut total = 0.0
+  for i in 0..<(n - 1) {
+    total = total + spans[i].width
+  }
+  let last = spans[n - 1]
+  // Locate the last non-whitespace char and trim everything after it
+  // from the last span's text, then re-measure the visible portion.
+  let chars : Array[Char] = []
+  for c in last.span.text {
+    chars.push(c)
+  }
+  let mut end = chars.length()
+  while end > 0 && is_trailing_ws(chars[end - 1]) {
+    end = end - 1
+  }
+  if end == chars.length() {
+    // No trailing whitespace — last span is already its visible width.
+    total + last.width
+  } else if end == 0 {
+    // The entire last span is whitespace — visible width excludes it
+    // entirely. (Pure-whitespace lines centre as zero-width which is
+    // what LibreOffice does.)
+    total
+  } else {
+    let buf = StringBuilder::new()
+    for i in 0..<end {
+      buf.write_char(chars[i])
+    }
+    let trimmed = buf.to_string()
+    let w = @glyph.estimate_text_width_fallback(
+      trimmed,
+      font_size_pt=last.span.font_size,
+      letter_spacing_px=last.span.letter_spacing,
+      font_family=Some(last.span.font_family),
+      font_weight=last.span.font_weight,
+    )
+    total + w
+  }
+}
+
+///|
+/// True for ASCII whitespace characters that LO / PowerPoint discount
+/// at end-of-line for alignment purposes: space and tab.  Hard line
+/// breaks `\n` never appear in a layout span (the line-breaker turns
+/// `<a:br/>` into a `is_break` marker, not a literal char).
+fn is_trailing_ws(c : Char) -> Bool {
+  c == ' ' || c == '\t'
 }
 
 ///|

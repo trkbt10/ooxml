@@ -4,6 +4,7 @@ package "trkbt10/ooxml/ecma376/spreadsheet_ml/viewer"
 import {
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/drawing",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/pivot_table",
   "trkbt10/ooxml/xml",
 }
 
@@ -20,7 +21,7 @@ pub fn parse_xsd_boolean_or(String?, Bool) -> Bool
 
 pub fn render_preset_shape_d(String, Double, Double) -> String?
 
-pub fn render_svg(@domain.CT_Worksheet, shared_strings? : @domain.CT_Sst?, options? : SheetRenderOptions, drawing? : @drawing.CT_Drawing?, image_resolver? : (String) -> String?, styles? : @domain.CT_Stylesheet?, theme? : @xml.Element?, date1904? : Bool, id_prefix? : String) -> SheetSvgResult
+pub fn render_svg(@domain.CT_Worksheet, shared_strings? : @domain.CT_Sst?, options? : SheetRenderOptions, drawing? : @drawing.CT_Drawing?, image_resolver? : (String) -> String?, styles? : @domain.CT_Stylesheet?, theme? : @xml.Element?, date1904? : Bool, id_prefix? : String, tables? : Array[@xml.Element], pivots? : Array[SheetPivot]) -> SheetSvgResult
 
 pub fn resolve_sml_color(@domain.CT_Color, SmlThemeColorMap) -> String?
 
@@ -58,6 +59,12 @@ type SheetLayout
 
 type SheetPaneInfo
 
+pub(all) struct SheetPivot {
+  definition : @pivot_table.PivotTableDefinition
+  cache : @pivot_table.PivotCacheDefinition
+  materialization : @pivot_table.PivotMaterialization
+}
+
 pub(all) struct SheetRenderOptions {
   scale : Double
   default_row_height : Double
@@ -70,6 +77,7 @@ pub(all) struct SheetRenderOptions {
   default_font_size : Double
   grid_line_color : String
   background_color : String
+  show_table_chrome : Bool
 }
 
 pub(all) struct SheetSvgResult {
@@ -84,6 +92,8 @@ pub(all) struct SmlThemeColorMap {
 }
 pub fn SmlThemeColorMap::empty() -> Self
 pub fn SmlThemeColorMap::lookup(Self, Int) -> String?
+
+type TableStylePalette
 
 // Type aliases
 

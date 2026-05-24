@@ -1,0 +1,24 @@
+// trkbt10/ooxml/ecma376/spreadsheet_ml/sparkline
+//
+// Microsoft x14 sparklines extension (`<x14:sparklineGroups>`) decoder
+// and SVG renderer. The extension URI is `{05C60535-1F16-4FD2-B633-F4F36F0B64E0}`
+// per `[MS-XLSX]` §2.2.4 and the schema lives in the
+// `http://schemas.microsoft.com/office/spreadsheetml/2009/9/main`
+// namespace (Office 2010 `x14` prefix).
+//
+// The extension is carried inline on a worksheet via
+// `<x:extLst>/<x:ext uri="…">/<x14:sparklineGroups>`. The base
+// `CT_ExtensionList` parser preserves the unknown payload as raw
+// `@xml.Element` children, and this package walks those elements to
+// build the typed `SparklineGroup` / `Sparkline` domain.
+//
+// `render.mbt` paints one inline SVG glyph per `<x14:sparkline>` cell —
+// a polyline for `type="line"`, vertical bars for `type="column"`, and
+// signed bars for `type="stacked"` (win/loss).
+
+import {
+  "moonbitlang/core/strconv" @strconv,
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "trkbt10/ooxml/util/markup" @markup,
+  "trkbt10/ooxml/xml" @xml,
+}

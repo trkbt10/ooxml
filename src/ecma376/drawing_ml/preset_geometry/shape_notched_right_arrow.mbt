@@ -11,10 +11,7 @@
 /// bounding height (default 50000 = 50%, the shaft thickness), `adj2`
 /// = head width as a fraction of the smaller bounding dimension
 /// (default 50000 = 50%). The notch depth mirrors the head width.
-pub fn build_notched_right_arrow(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_notched_right_arrow(width : Int, height : Int) -> ShapeGeometry {
   let shaft_h = percent(height, 50000)
   let head_w = percent(min_dim(width, height), 50000)
   let shaft_top = (height - shaft_h) / 2

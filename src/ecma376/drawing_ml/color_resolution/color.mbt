@@ -196,13 +196,19 @@ pub fn read_color_ref(
       ScRgb(
         rgba(
           linear_unit_to_srgb_byte(
-            percent_to_unit(parse_percentage_attr(element, "r", "§20.1.2.3.30")),
+            percent_to_unit(
+              parse_percentage_attr(element, "r", "§20.1.2.3.30"),
+            ),
           ),
           linear_unit_to_srgb_byte(
-            percent_to_unit(parse_percentage_attr(element, "g", "§20.1.2.3.30")),
+            percent_to_unit(
+              parse_percentage_attr(element, "g", "§20.1.2.3.30"),
+            ),
           ),
           linear_unit_to_srgb_byte(
-            percent_to_unit(parse_percentage_attr(element, "b", "§20.1.2.3.30")),
+            percent_to_unit(
+              parse_percentage_attr(element, "b", "§20.1.2.3.30"),
+            ),
           ),
           255,
         ),
@@ -222,8 +228,7 @@ pub fn read_color_ref(
       )
     name =>
       schema_error(
-        "§20.1.2.3", name,
-        "expected srgbClr, scrgbClr, schemeClr, sysClr, prstClr, or hslClr",
+        "§20.1.2.3", name, "expected srgbClr, scrgbClr, schemeClr, sysClr, prstClr, or hslClr",
       )
   }
   (base, read_transforms(element))
@@ -872,13 +877,7 @@ fn percent_to_unit(value : Int) -> Double {
 /// a 50% channel maps to ≈188 (not 128) once gamma-encoded.
 fn linear_unit_to_srgb_byte(linear : Double) -> Int {
   // Clamp to the displayable [0, 1] range first.
-  let l = if linear < 0.0 {
-    0.0
-  } else if linear > 1.0 {
-    1.0
-  } else {
-    linear
-  }
+  let l = if linear < 0.0 { 0.0 } else if linear > 1.0 { 1.0 } else { linear }
   // IEC 61966-2-1 piecewise transfer function.
   let encoded = if l <= 0.0031308 {
     l * 12.92

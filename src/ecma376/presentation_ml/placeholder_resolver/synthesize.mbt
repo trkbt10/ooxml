@@ -31,9 +31,7 @@
 /// in their original order. When `resolved.slide_shape` is `None`
 /// (layout-only or master-only placeholder rendering) the layout
 /// shape or, failing that, the master shape acts as the base.
-pub fn synthesize_resolved_shape(
-  resolved : ResolvedShape,
-) -> @xml.Element? {
+pub fn synthesize_resolved_shape(resolved : ResolvedShape) -> @xml.Element? {
   let base = match resolved.slide_shape {
     Some(shape) => shape.element
     None =>
@@ -124,10 +122,7 @@ fn first_child_local_in_layers(
   for layer in layers {
     for child in layer.children {
       match child {
-        @xml.Element(e) =>
-          if e.name.local_name == name {
-            return Some(e)
-          }
+        @xml.Element(e) => if e.name.local_name == name { return Some(e) }
         _ => ()
       }
     }

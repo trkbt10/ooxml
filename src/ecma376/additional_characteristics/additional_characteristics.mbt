@@ -170,7 +170,10 @@ pub fn write_additional_characteristics(
   }
   let attrs : Array[@xml.Attribute] = [
     // §22.6.2.1 — single mandatory namespace declaration.
-    { name: { prefix: Some("xmlns"), local_name: "", ns: None }, value: ns_chars },
+    {
+      name: { prefix: Some("xmlns"), local_name: "", ns: None },
+      value: ns_chars,
+    },
   ]
   let children : Array[@xml.Node] = []
   for ch in value.characteristics {
@@ -180,8 +183,7 @@ pub fn write_additional_characteristics(
       { name: attr_qn("val"), value: ch.val },
     ]
     match ch.vocabulary {
-      Some(v) =>
-        ch_attrs.push({ name: attr_qn("vocabulary"), value: v })
+      Some(v) => ch_attrs.push({ name: attr_qn("vocabulary"), value: v })
       None => ()
     }
     let elt : @xml.Element = {
@@ -191,11 +193,7 @@ pub fn write_additional_characteristics(
     }
     children.push(@xml.Node::Element(elt))
   }
-  let root : @xml.Element = {
-    name: root_qn,
-    attributes: attrs,
-    children,
-  }
+  let root : @xml.Element = { name: root_qn, attributes: attrs, children }
   @xml.write({
     declaration: Some({
       version: "1.0",

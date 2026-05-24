@@ -317,7 +317,16 @@ test "table_style resolves §17.7.6 firstRow override gated by tblLook" {
   // both qualify, plus the wholeTable + base; first_row override
   // should layer onto base tcPr so the fill becomes FF0000.
   let row0 = resolve_cell(
-    resolved, tbl_look, 0, 0, 2, 2, None, None, None, None,
+    resolved,
+    tbl_look,
+    0,
+    0,
+    2,
+    2,
+    None,
+    None,
+    None,
+    None,
   )
   assert_true(prop_value(row0.tc_pr, "shd") == Some("clear"))
   let shd0 = first_child_named(row0.tc_pr, "shd")
@@ -327,7 +336,16 @@ test "table_style resolves §17.7.6 firstRow override gated by tblLook" {
   // Row 1, col 0 — not firstRow, so the override must NOT apply;
   // the base tcPr.shd survives with fill=EEEEEE.
   let row1 = resolve_cell(
-    resolved, tbl_look, 1, 0, 2, 2, None, None, None, None,
+    resolved,
+    tbl_look,
+    1,
+    0,
+    2,
+    2,
+    None,
+    None,
+    None,
+    None,
   )
   let shd1 = first_child_named(row1.tc_pr, "shd")
   assert_true(
@@ -340,10 +358,9 @@ test "table_style resolves §17.7.6 firstRow override gated by tblLook" {
 /// firstRow + firstColumn + no_h_band + no_v_band per the spec
 /// bit layout.
 test "tblLook decodes the legacy 0x04A0 hex mask" {
-  let tbl_look_el : @xml.Element = elem(
-    "tblLook",
-    attributes=[attr("val", "04A0")],
-  )
+  let tbl_look_el : @xml.Element = elem("tblLook", attributes=[
+    attr("val", "04A0"),
+  ])
   let tl = TblLook::from_element(tbl_look_el)
   // 0x04A0 = 0x0400 (noVBand) | 0x0080 (firstColumn) | 0x0020 (firstRow)
   inspect(tl.first_row, content="true")

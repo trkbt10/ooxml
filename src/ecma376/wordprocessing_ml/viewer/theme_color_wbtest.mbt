@@ -143,7 +143,13 @@ test "themeColor cascade E2E: accent1 + themeTint produces resolved hex" {
   //   b=0xC4(196) → 196 * 0.498 ≈ 97 → 0x61
   // We don't pin the exact byte (depends on rounding); just
   // verify the result is darker than the base and 6 hex chars.
-  let shaded = resolve_themed_color(None, Some("accent1"), None, Some("80"), map)
+  let shaded = resolve_themed_color(
+    None,
+    Some("accent1"),
+    None,
+    Some("80"),
+    map,
+  )
   match shaded {
     Some(hex) => {
       assert_eq(hex.length(), 6)

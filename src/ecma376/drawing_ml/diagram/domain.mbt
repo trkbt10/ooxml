@@ -147,8 +147,7 @@ pub fn CT_Colors::new(
   }
   let color_choices : Array[@a.EG_ColorChoice] = []
   for child in element_children(element) {
-    match
-      wrap_a_color_violation(fn() { @a.parse_color_choice_child(child) }) {
+    match wrap_a_color_violation(fn() { @a.parse_color_choice_child(child) }) {
       Some(c) => color_choices.push(c)
       None => ()
     }
@@ -160,7 +159,7 @@ pub fn CT_Colors::new(
 /// Bridge `@a.SchemaViolation` (DrawingML) into the local diagram
 /// SchemaViolation so EG_ColorChoice arms can be constructed without
 /// leaking the foreign error type.
-fn wrap_a_color_violation[T](
+fn[T] wrap_a_color_violation(
   body : () -> T raise @a.SchemaViolation,
 ) -> T raise SchemaViolation {
   body() catch {

@@ -83,19 +83,83 @@ fn scale_bullet(bullet : BulletConfig?, percent : Double) -> BulletConfig? {
 }
 
 ///|
+
+///|
+/// The ratio of a paragraph's SINGLE-spaced line height to its point
+/// size, used by §21.1.2.2.5 `<a:lnSpc>` when the cascade resolves
+/// to "single" (absent element, or `<a:spcPct val="100000">`).
+///
+/// PowerPoint's documented behaviour for "Single" line spacing — and
+/// what LibreOffice's PPTX importer reproduces when no master/layout
+/// `<p:bodyStyle>` overrides the value — is `1.20 × fontSize`, not
+/// the font's hhea ascender+descender+lineGap sum. This is the same
+/// "loose" line height the CSS `line-height: normal` recommendation
+/// hits for sans-serif body faces, and it matches PowerPoint's own
+/// "Line Spacing → Single" menu item across all default body sizes.
+///
+/// Empirical evidence (Liberation Sans is LO's PDF-export substitute
+/// for the Office Theme minor font on `.pptx`; see
+/// `presentation_default_typeface`): rasterising every
+/// `.snapshots/fixtures/pptx/**/*.pptx` and measuring the y-delta
+/// between consecutive text rows gives
+///
+///   18pt body  → ref baseline-pitch = 29 px (29 / 24 = 1.208)
+///   20pt body  → ref baseline-pitch = 32 px (32 / 26.667 = 1.200)
+///   32pt title → ref baseline-pitch = 51 px (51 / 42.667 = 1.195)
+///
+/// — all within rounding of 1.20.  The previous setting (1.1499,
+/// derived from Liberation Sans' hhea `(1854 + 434 + 67) / 2048`)
+/// under-shot every body paragraph by ~4 % per line, which
+/// compounded to 5–6 px of drift by the fifth wrapped line and
+/// pushed `ml-notes-body` / `ml-title-body-bullets` /
+/// `ml-title-two-content` over the 0.10 RMSE outlier threshold.
+/// The hhea sum is what a glyph-shaping engine uses for typesetting
+/// glyph metrics; PowerPoint disregards it and applies its own
+/// fixed 1.2 multiplier for "Single" line spacing.
+///
+/// WML has its own `DEFAULT_LINE_HEIGHT_RATIO = 1.2227` calibrated
+/// against LO's Carlito-substituted PDF body pitch (the Calibri
+/// face LO selects for `.docx`).  Numerically that is very close
+/// to PowerPoint's 1.2; both reflect that production OOXML
+/// renderers compose body text at ≈1.2× the bare point size
+/// regardless of the font's OS/2 design line-height.  The two
+/// constants are kept separate so each pipeline carries its own
+/// measurement evidence; § 17.3.1.33 `<w:spacing>` "Single" is
+/// implementation-defined and both Word and LO settle near 1.2 in
+/// practice for Latin body faces.
+const LINE_HEIGHT_RATIO : Double = 1.2
+
+///|
+/// The descent of an OOXML body font as a fraction of its point size
+/// — the distance from the text baseline down to the bottom of the
+/// line box.  Used to place the baseline within the line box
+/// (`baseline = box_bottom − descent`).
+///
+/// Liberation Sans reports `sTypoDescender = -434 / 2048 ≈ 0.2119
+/// em`; PML defaults to Liberation Sans (see `LINE_HEIGHT_RATIO`
+/// above) so the descent matches the same face. The previous 0.187
+/// value was Carlito's descent and left the baseline ≈1 px above
+/// the LO reference when paired with Liberation Sans's wider line
+/// box.
+const LINE_DESCENT_RATIO : Double = 0.2119
+
+///|
 /// Calculate the line height (in pixels) from `line_spacing`.
-/// Mirrors `calculateLineHeight` in `engine.ts:99`.  We always treat
-/// `LineSpacingPercent` as a multiplier of the line's max font size
-/// (the ECMA-376 standard interpretation); the LibreOffice-compat
-/// branch lives in `applyDialect` callers — not the engine.
+///
+/// `LineSpacingPercent` is a multiplier of SINGLE spacing — and
+/// single spacing is the font's natural line height
+/// (`font_size × LINE_HEIGHT_RATIO`), not the bare point size — so a
+/// `None` / 100% line is `font_size_px × LINE_HEIGHT_RATIO`.
+/// `LineSpacingPoints` is an absolute height and is used as given.
 fn calc_line_height(
   base_font_size_pt : Double,
   spacing : LineSpacing?,
 ) -> Double {
   let font_size_px = base_font_size_pt * @glyph.pt_to_px
+  let single = font_size_px * LINE_HEIGHT_RATIO
   match spacing {
-    None => font_size_px
-    Some(LineSpacingPercent(pct)) => font_size_px * (pct / 100.0)
+    None => single
+    Some(LineSpacingPercent(pct)) => single * (pct / 100.0)
     Some(LineSpacingPoints(pts)) => pts * @glyph.pt_to_px
   }
 }
@@ -114,6 +178,22 @@ fn position_spans(spans : Array[MeasuredSpan]) -> Array[PositionedSpan] {
 ///|
 /// X-position of one line given alignment + margins.  Mirrors
 /// `calculateLineX` in `engine.ts:268`.
+///
+/// PowerPoint hanging-indent semantics (§21.1.2.2.7 marL / indent /
+/// bullets):
+///   • The bullet glyph itself sits at `margin_left + indent`.
+///   • The TEXT origin sits one bullet-width past the bullet —
+///     `margin_left + indent + bullet_width` — UNLESS the bullet
+///     fits entirely within the hanging slot (`bullet_width <
+///     -indent`), in which case the text snaps to `margin_left` so
+///     it aligns with the wrapped lines that follow.
+///
+/// Without the snap, a `marL=N, indent=-N` paragraph with a small
+/// bullet (e.g. "•" measured ~9 px against a 48 px slot) would put
+/// the first line of text at x≈9 — leaving a ragged left edge where
+/// wrapped lines start cleanly at x=48 and only the bullet's own
+/// line sticks out.  The snap is what PowerPoint / LibreOffice do
+/// and is what the LO PDF reference renders.
 fn calc_line_x(
   alignment : TextAlign,
   margin_left : Double,
@@ -122,7 +202,12 @@ fn calc_line_x(
   indent : Double,
   bullet_width : Double,
 ) -> Double {
-  let base_x = margin_left + indent + bullet_width
+  let bullet_end = margin_left + indent + bullet_width
+  let base_x = if indent < 0.0 && bullet_end < margin_left {
+    margin_left
+  } else {
+    bullet_end
+  }
   match alignment {
     AlignCenter => base_x + (available_width - line_width) / 2.0
     AlignRight => base_x + available_width - line_width
@@ -153,7 +238,21 @@ fn layout_paragraph(
   let ind = para.indent
   let measured = measure_spans(para.spans, measurer~)
   let bw = bullet_width_of(para.bullet, measurer)
-  let first_line_width = cw - ml - mr - ind - bw
+  // Hanging-indent snap: when the bullet area fits entirely inside
+  // the negative-indent slot (`bw < -ind`) the first-line text origin
+  // collapses to `margin_left` (see `calc_line_x` doc-comment).  The
+  // first line then has the SAME effective width as the wrapped
+  // lines below.  Without this branch the wrap budget for the first
+  // line of a bulleted paragraph is `cw - ml - mr - ind - bw`, which
+  // with `ind = -bw` collapses to `cw - ml - mr` correctly anyway —
+  // but with `bw < -ind` (the typical case: a 9 px bullet inside a
+  // 48 px slot) the budget would inflate by `-ind - bw` and the
+  // wrap point would drift right.
+  let first_line_width = if ind < 0.0 && ml + ind + bw < ml {
+    cw - ml - mr
+  } else {
+    cw - ml - mr - ind - bw
+  }
   let next_line_width = cw - ml - mr
   let { lines: span_lines, line_heights } = break_into_lines(
     measured,
@@ -176,20 +275,40 @@ fn layout_paragraph(
     let lh_pt = line_font_size(line_heights[idx], para.end_para_font_size)
     let lh_px = calc_line_height(lh_pt, para.line_spacing)
     let fs_px = lh_pt * @glyph.pt_to_px
-    let ascender = if line_spans.length() > 0 {
-      @glyph.get_ascender_ratio(Some(line_spans[0].span.font_family))
+    // Baseline placement within the line box.  The line box is
+    // `lh_px` tall; the baseline sits one DESCENT up from the box
+    // bottom — the descent of the Calibri/Carlito body face is
+    // ≈0.187 em (Carlito sTypoDescender = -383/2048).  (The earlier
+    // `half_leading + fs*cap_height` model used the cap-height ratio
+    // for ascent and so placed the baseline ≈one descent too high
+    // — every line drifted up a few px against the LibreOffice
+    // reference.)  This makes the baseline `lh_px - 0.187*fs_px`
+    // from the box top, which for single-spaced text (`lh_px ≈
+    // 1.079*fs_px`) puts it ≈one cap-height down, matching PowerPoint
+    // / LibreOffice.
+    let descent = fs_px * LINE_DESCENT_RATIO
+    let baseline_in_box = if lh_px - descent > 0.0 {
+      lh_px - descent
     } else {
-      0.8
+      lh_px
     }
-    let baseline = current_y + fs_px * ascender
+    let baseline = current_y + baseline_in_box
     let lw = get_line_width(line_spans)
+    // Alignment width excludes trailing whitespace from the last
+    // span: a wrapped line keeps its break-causing space on the
+    // CLOSING line (a fact PowerPoint and LibreOffice both rely on
+    // — neither counts that invisible glyph when centring). Using
+    // the full advance width here makes centred/right-aligned lines
+    // drift ~half-a-space to the right; see the doc-comment on
+    // `get_line_visible_width` for the fixture motivation.
+    let lw_aligned = get_line_visible_width(line_spans)
     let aw = if idx == 0 { first_line_width } else { next_line_width }
     let line_indent = if idx == 0 { ind } else { 0.0 }
     let line_bw = if idx == 0 { bw } else { 0.0 }
     let x = calc_line_x(
       para.alignment,
       ml,
-      lw,
+      lw_aligned,
       if aw < 0.0 {
         0.0
       } else {
@@ -199,16 +318,67 @@ fn layout_paragraph(
       line_bw,
     )
     let positioned = position_spans(line_spans)
-    lines.push({ spans: positioned, x, y: baseline, width: lw, height: lh_px })
+    // §21.1.2.2.1 ST_TextAlignType `just` — when the paragraph
+    // alignment is `justify`, distribute the slack between the
+    // line's natural width and the available text-frame width
+    // across the U+0020 spaces in the line. The trailing line of a
+    // justified paragraph keeps its natural width (the spec exempts
+    // the last line); same for any line that has no spaces (a
+    // single long word). Negative slack is treated as zero — that
+    // means the glyphs already exceeded the budget and stretching
+    // would not match Word / PowerPoint behaviour. We use the same
+    // `lw_aligned` width that `calc_line_x` uses so the trailing
+    // wrap-space (already excluded from alignment width) is also
+    // excluded from the slack we distribute — otherwise we would
+    // stretch by a few px more than the right margin allows.
+    let aw_clamped = if aw < 0.0 { 0.0 } else { aw }
+    let is_last_line = idx == span_lines.length() - 1
+    let word_spacing_extra = match para.alignment {
+      AlignJustify
+      | AlignJustifyLow
+      | AlignDistributed
+      | AlignThaiDistributed =>
+        if is_last_line || aw_clamped <= lw_aligned {
+          0.0
+        } else {
+          let n = count_line_spaces(line_spans)
+          if n > 0 {
+            (aw_clamped - lw_aligned) / n.to_double()
+          } else {
+            0.0
+          }
+        }
+      _ => 0.0
+    }
+    // `width: lw` keeps the public `LayoutLine.width` aligned with
+    // the existing semantics (full advance, used by downstream
+    // measurements such as highlight-rect sizing); only the X
+    // origin uses the trimmed value.
+    lines.push({
+      spans: positioned,
+      x,
+      y: baseline,
+      width: lw,
+      height: lh_px,
+      word_spacing_extra,
+    })
     current_y = current_y + lh_px
   }
   current_y = current_y + para.space_after * @glyph.pt_to_px
+  // Bullet x: left-aligned at the start of the hanging-indent slot
+  // (`margin_left + indent`).  For a regular non-hanging bullet the
+  // slot start equals `margin_left + indent` which sits to the
+  // immediate left of the text origin; for a hanging-indent bullet
+  // (`indent < 0`) it sits one slot-width left of `margin_left`,
+  // giving a natural gap between the bullet glyph and the text.
+  let bullet_x = ml + ind
   (
     {
       lines,
       alignment: para.alignment,
       bullet: para.bullet,
       bullet_width: bw,
+      bullet_x,
       font_alignment: para.font_alignment,
     },
     current_y,
@@ -289,6 +459,7 @@ fn apply_anchor_offsets(
         y: l.y + y_offset,
         width: l.width,
         height: l.height,
+        word_spacing_extra: l.word_spacing_extra,
       })
     }
     result.push({
@@ -296,6 +467,7 @@ fn apply_anchor_offsets(
       alignment: p.alignment,
       bullet: p.bullet,
       bullet_width: p.bullet_width,
+      bullet_x: p.bullet_x + tb.inset_left + x_center,
       font_alignment: p.font_alignment,
     })
   }
@@ -333,6 +505,7 @@ fn scale_span_font_size(span : LayoutSpan, percent : Double) -> LayoutSpan {
     text_fill: span.text_fill,
     kerning: span.kerning,
     underline_color: span.underline_color,
+    underline_style: span.underline_style,
   }
 }
 

@@ -32,8 +32,15 @@ pub fn Reader::new(bytes : Bytes) -> Reader raise XmlMalformed {
     @utf8.Malformed(_) =>
       raise XmlMalformed(line=1, col=1, reason="input is not valid UTF-8")
   }
+  let chars = source.to_array()
+  // XML 1.0 §4.3.3 — a leading U+FEFF byte-order mark is a legal
+  // encoding signature, not document content.  Drop it so the
+  // parser sees the `<?xml …?>` declaration or root element first.
+  if chars.length() > 0 && chars[0] == '\u{FEFF}' {
+    chars.remove(0) |> ignore
+  }
   {
-    chars: source.to_array(),
+    chars,
     pos: 0,
     line: 1,
     col: 1,

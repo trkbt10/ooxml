@@ -16,10 +16,7 @@
 /// `y2 = h·adj2/100000`. The path (`fill="none"`) is `moveTo (l, t)`
 /// → `lnTo (x1, t)` → `lnTo (x1, y2)` → `lnTo (x3, y2)` →
 /// `lnTo (x3, b)` → `lnTo (r, b)`, an open polyline (no `close`).
-pub fn build_bent_connector5(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_bent_connector5(width : Int, height : Int) -> ShapeGeometry {
   // adj1/adj2/adj3 defaults 50000 → x1/x3/y2 at the box midpoints.
   let x1 = percent(width, 50000)
   let x3 = percent(width, 50000)

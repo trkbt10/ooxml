@@ -20,10 +20,7 @@
 /// `cubicBezTo (x3, y3) (x4, y4) (x1, y4)` →
 /// `cubicBezTo (x5, y4) (x6, y6) (x6, y5)` →
 /// `cubicBezTo (x6, y7) (x7, b) (r, b)`, an open curve (no `close`).
-pub fn build_curved_connector5(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_curved_connector5(width : Int, height : Int) -> ShapeGeometry {
   // adj1/adj2/adj3 defaults 50000.
   let x3 = percent(width, 50000)
   let x6 = percent(width, 50000)

@@ -241,7 +241,6 @@ pub fn collect_color_transforms(
   result
 }
 
-
 // ─────────────────────────────────────────────────────────────────────
 // EG_OfficeArtExtensionList — Part 1 §20.1.2.2.15 (extLst wrapper).
 // Single arm <a:ext>* (CT_OfficeArtExtension, unbounded).
@@ -537,7 +536,8 @@ pub fn parse_effect_child(
     "alphaFloor" => Some(AlphaFloor(CT_AlphaFloorEffect::new(element)))
     "alphaInv" => Some(AlphaInv(CT_AlphaInverseEffect::new(element)))
     "alphaMod" => Some(AlphaMod(CT_AlphaModulateEffect::new(element)))
-    "alphaModFix" => Some(AlphaModFix(CT_AlphaModulateFixedEffect::new(element)))
+    "alphaModFix" =>
+      Some(AlphaModFix(CT_AlphaModulateFixedEffect::new(element)))
     "alphaOutset" => Some(AlphaOutset(CT_AlphaOutsetEffect::new(element)))
     "alphaRepl" => Some(AlphaRepl(CT_AlphaReplaceEffect::new(element)))
     "biLevel" => Some(BiLevel(CT_BiLevelEffect::new(element)))

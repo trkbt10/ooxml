@@ -264,15 +264,13 @@ fn typed_tx_body(
 /// SchemaViolation so DrawingML-owned constructors can be invoked
 /// from the placeholder_resolver surface without leaking the foreign
 /// error type.
-fn wrap_a_violation[T](
+fn[T] wrap_a_violation(
   body : () -> T raise @a.SchemaViolation,
 ) -> T raise @domain.SchemaViolation {
   body() catch {
     @a.SchemaViolation(_) =>
       @domain.schema_violation(
-        "placeholder_resolver/typed_sp_pr",
-        "",
-        "DrawingML child failed validation",
+        "placeholder_resolver/typed_sp_pr", "", "DrawingML child failed validation",
       )
   }
 }

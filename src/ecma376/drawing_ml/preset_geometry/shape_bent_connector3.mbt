@@ -15,10 +15,7 @@
 /// `moveTo (l, t)` → `lnTo (x1, t)` → `lnTo (x1, b)` → `lnTo (r, b)`,
 /// an open polyline (no `close`). With the default the elbow sits at
 /// the horizontal midpoint.
-pub fn build_bent_connector3(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_bent_connector3(width : Int, height : Int) -> ShapeGeometry {
   // adj1 default 50000 → x1 at the horizontal midpoint.
   let x1 = percent(width, 50000)
   let commands : Array[PathCommand] = [

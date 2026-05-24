@@ -80,9 +80,15 @@ test "§17.16.2 decode_simple_field reads w:fldSimple/@instr" {
 test "§17.16.2 decode_field_run_sequence walks begin/separate/end" {
   // Three runs: begin, instrText, separate + cached, end.
   let runs : Array[@domain.CT_R] = [
-    try! @domain.CT_R::new(parse_root("<r><fldChar fldCharType=\"begin\"/></r>")),
-    try! @domain.CT_R::new(parse_root("<r><instrText>NUMPAGES \\* Arabic</instrText></r>")),
-    try! @domain.CT_R::new(parse_root("<r><fldChar fldCharType=\"separate\"/></r>")),
+    try! @domain.CT_R::new(
+      parse_root("<r><fldChar fldCharType=\"begin\"/></r>"),
+    ),
+    try! @domain.CT_R::new(
+      parse_root("<r><instrText>NUMPAGES \\* Arabic</instrText></r>"),
+    ),
+    try! @domain.CT_R::new(
+      parse_root("<r><fldChar fldCharType=\"separate\"/></r>"),
+    ),
     try! @domain.CT_R::new(parse_root("<r><t>42</t></r>")),
     try! @domain.CT_R::new(parse_root("<r><fldChar fldCharType=\"end\"/></r>")),
   ]
@@ -266,11 +272,11 @@ test "§17.16 field_part1_17_16_section_name citation" {
 test "§17.16.5 structural fields evaluate to Empty (cached-run pass-through)" {
   let registry = FieldRegistry::with_builtins()
   let ctx = ctx_with(fn(c) { c })
-  for instr in [
-    "TOC", "TC \"Chapter 1\"", "INDEX", "XE \"entry\"",
-    "STYLEREF \"Heading 1\"", "NOTEREF _RefNote",
-    "FORMTEXT", "FORMCHECKBOX", "FORMDROPDOWN",
-  ] {
+  for
+    instr in [
+      "TOC", "TC \"Chapter 1\"", "INDEX", "XE \"entry\"", "STYLEREF \"Heading 1\"",
+      "NOTEREF _RefNote", "FORMTEXT", "FORMCHECKBOX", "FORMDROPDOWN",
+    ] {
     let field = try! parse_instruction(instr)
     let result = evaluate_field(field, ctx, registry)
     assert_true(result is Empty)

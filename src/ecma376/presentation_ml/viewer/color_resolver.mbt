@@ -40,6 +40,14 @@ pub struct ColorResolveContext {
   /// §20.1.4.1.18 fontScheme — `<a:minorFont>` typefaces keyed
   /// by `"lt"` / `"ea"` / `"cs"` / `"sym"`. Empty when no theme.
   minor_font : Map[String, String]
+  /// LibreOffice compatibility mode toggle for colour transforms
+  /// whose LO implementation diverges from ECMA-376.  Currently
+  /// drives `apply_hue_off` (see `@color.apply_hue_off` for the
+  /// reverse-engineered rationale).  `true` matches LO's rendering
+  /// (the practical default for the viewer because we compare
+  /// against LO's PDF export in the snapshot harness); set it to
+  /// `false` via `with_strict_spec` for pure ECMA-376 conformance.
+  lo_compat : Bool
 }
 
 ///|
@@ -53,13 +61,49 @@ pub fn ColorResolveContext::empty() -> ColorResolveContext {
     ph_clr: None,
     major_font: Map::new(),
     minor_font: Map::new(),
+    // Default to LO-compat ON because every viewer caller compares
+    // against LibreOffice's PDF export through the snapshot harness;
+    // a strict-spec consumer must opt out via `with_strict_spec`.
+    lo_compat: true,
   }
+}
+
+///|
+/// Toggle the LO-compatibility flag.  Callers that need strict
+/// ECMA-376 conformance (e.g. machine-validating a deck against a
+/// reference DataMash or running a regression against the spec's
+/// own numeric examples) should call `with_strict_spec` to flip
+/// `lo_compat` off; everyone else inherits the default `true`.
+pub fn ColorResolveContext::with_lo_compat(
+  ctx : ColorResolveContext,
+  lo_compat : Bool,
+) -> ColorResolveContext {
+  {
+    color_map: ctx.color_map,
+    color_map_override: ctx.color_map_override,
+    color_scheme: ctx.color_scheme,
+    ph_clr: ctx.ph_clr,
+    major_font: ctx.major_font,
+    minor_font: ctx.minor_font,
+    lo_compat,
+  }
+}
+
+///|
+/// Convenience wrapper for `with_lo_compat(false)` — reads better at
+/// the call site when the intent is "give me strict ECMA-376
+/// transform behaviour, not LO's renderer quirks".
+pub fn ColorResolveContext::with_strict_spec(
+  ctx : ColorResolveContext,
+) -> ColorResolveContext {
+  ColorResolveContext::with_lo_compat(ctx, false)
 }
 
 ///|
 /// Derive a new context with a populated `phClr` substitution. The
 /// rest of the context is preserved verbatim so theme-resolved colour
 /// names continue to map through the same scheme.
+
 ///|
 /// §20.1.4.1.18 fontScheme — copy `ctx` with `major_font` /
 /// `minor_font` populated from a theme's `<a:fontScheme>` so the
@@ -76,6 +120,7 @@ pub fn ColorResolveContext::with_font_scheme(
     ph_clr: ctx.ph_clr,
     major_font,
     minor_font,
+    lo_compat: ctx.lo_compat,
   }
 }
 
@@ -100,10 +145,10 @@ pub fn ColorResolveContext::resolve_theme_typeface(
   if typeface.length() != 6 {
     return None
   }
-  if typeface.code_unit_at(0).to_int() != 0x2B {  // '+'
+  if typeface.code_unit_at(0).to_int() != 0x2B { // '+'
     return None
   }
-  if typeface.code_unit_at(3).to_int() != 0x2D {  // '-'
+  if typeface.code_unit_at(3).to_int() != 0x2D { // '-'
     return None
   }
   let scheme = typeface[1:3].to_string()
@@ -121,6 +166,7 @@ pub fn ColorResolveContext::resolve_theme_typeface(
   map.get(face_kind)
 }
 
+///|
 /// §20.1.4.1.9 / §20.1.4.1.20 — phClr substitution semantics:
 /// when a `<a:fillRef>` / `<a:lnRef>` (or any reference into the
 /// fmtScheme) is resolved, every `<a:schemeClr val="phClr"/>`
@@ -145,6 +191,7 @@ pub fn ColorResolveContext::with_ph_clr(
     ph_clr: Some(ph_clr),
     major_font: ctx.major_font,
     minor_font: ctx.minor_font,
+    lo_compat: ctx.lo_compat,
   }
 }
 
@@ -156,6 +203,7 @@ pub fn ColorResolveContext::with_ph_clr(
 /// Other colour forms (`schemeClr`, `hslClr`, `scrgbClr`,
 /// `prstClr`) are skipped silently — they require a deeper DML
 /// colour evaluator that is out of scope for the scheme table.
+
 ///|
 /// §19.3.1.6 / §19.3.1.7 — install the slide-master `<p:clrMap>`
 /// and the optional `<p:clrMapOvr>/<a:overrideClrMapping>` into
@@ -174,6 +222,7 @@ pub fn ColorResolveContext::with_maps(
     ph_clr: ctx.ph_clr,
     major_font: ctx.major_font,
     minor_font: ctx.minor_font,
+    lo_compat: ctx.lo_compat,
   }
 }
 
@@ -189,6 +238,7 @@ pub fn ColorResolveContext::with_color_scheme(
     ph_clr: ctx.ph_clr,
     major_font: ctx.major_font,
     minor_font: ctx.minor_font,
+    lo_compat: ctx.lo_compat,
   }
 }
 
@@ -199,6 +249,40 @@ pub fn ColorResolveContext::with_color_scheme(
 /// `color-resolver.ts:50`.
 fn default_color_mapping() -> Map[String, String] {
   { "bg1": "lt1", "tx1": "dk1", "bg2": "lt2", "tx2": "dk2" }
+}
+
+///|
+/// Built-in fallback scheme-color palette.  Used when a `<a:schemeClr>`
+/// is encountered but the active context has no `<a:clrScheme>` loaded
+/// — i.e. when a package omits the theme part.  ECMA-376 does not
+/// nominate an *authoritative* default theme (Annex A only ships an
+/// example), so we pick the canonical "Office" palette that
+/// PowerPoint 2013+ uses when it auto-generates a new deck.  Keys are
+/// the concrete scheme slots `dk1`/`lt1`/`dk2`/`lt2`/`accent1..6`/
+/// `hlink`/`folHlink` (`bg1`/`tx1`/`bg2`/`tx2` are remapped via
+/// `default_color_mapping` before lookup so they need not appear
+/// here).  Values are 6-digit lowercase hex without the leading `#`.
+fn default_office_scheme() -> Map[String, String] {
+  // §20.1.6.2 / Office 2013+ "Office Theme" palette.  The exact hex
+  // values are the ones PowerPoint stamps into a freshly authored
+  // theme1.xml when the user picks the default "Office" theme.  We
+  // include both the spec's preferred `dk1`/`lt1`/`dk2`/`lt2` keys
+  // and their `bg*`/`tx*` aliases so a lookup that bypasses the
+  // colour map still resolves.
+  {
+    "dk1": "000000",
+    "lt1": "ffffff",
+    "dk2": "44546a",
+    "lt2": "e7e6e6",
+    "accent1": "4472c4",
+    "accent2": "ed7d31",
+    "accent3": "a5a5a5",
+    "accent4": "ffc000",
+    "accent5": "5b9bd5",
+    "accent6": "70ad47",
+    "hlink": "0563c1",
+    "folHlink": "954f72",
+  }
 }
 
 ///|
@@ -259,7 +343,17 @@ pub fn get_scheme_color(
     return ph_clr
   }
   let effective = resolve_effective_scheme_color(bare, ctx)
-  ctx.color_scheme.get(effective)
+  match ctx.color_scheme.get(effective) {
+    Some(v) => Some(v)
+    // §20.1.6.2 — when no `<a:clrScheme>` was loaded (theme part
+    // omitted) the documented fallback is the canonical Office
+    // palette.  Without this branch every `<a:schemeClr>` would
+    // resolve to `None` → `fill="none"`, which collapses ten
+    // distinct scheme slots into one indistinguishable swatch
+    // (the `color-scheme-*` fixture set documents the regression
+    // we are guarding against).
+    None => default_office_scheme().get(effective)
+  }
 }
 
 ///|
@@ -293,13 +387,7 @@ let ooxml_percent_factor : Double = 100000.0
 /// feeds `@color.rgb_to_hex` directly) using the IEC
 /// 61966-2-1 transfer function.
 fn scrgb_linear_to_srgb_byte(linear : Double) -> Double {
-  let l = if linear < 0.0 {
-    0.0
-  } else if linear > 1.0 {
-    1.0
-  } else {
-    linear
-  }
+  let l = if linear < 0.0 { 0.0 } else if linear > 1.0 { 1.0 } else { linear }
   let encoded = if l <= 0.0031308 {
     l * 12.92
   } else {
@@ -344,6 +432,38 @@ fn pct_child(element : @xml.Element, name : String) -> Double? {
       match attr_value(c, "val") {
         None => None
         Some(v) => Some(parse_pct(v) / ooxml_percent_factor)
+      }
+  }
+}
+
+///|
+/// Returns `true` when `element` has a direct child with local name
+/// `name`.  Used for transforms whose presence alone triggers the
+/// effect (`<a:comp/>`, `<a:inv/>`, `<a:gray/>`, `<a:gamma/>`,
+/// `<a:invGamma/>` — none of which carry a value attribute).
+fn bool_child(element : @xml.Element, name : String) -> Bool {
+  match child_by_local(element, name) {
+    Some(_) => true
+    None => false
+  }
+}
+
+///|
+/// Read `<a:xyz val="...">` from `element`, parse the attribute as
+/// an integer.  Used for `<a:hueOff val="N"/>` where `N` is in
+/// 60000ths of a degree.  Returns `None` if the child or attribute
+/// is missing or unparseable.
+fn int_attr_child(element : @xml.Element, name : String, attr : String) -> Int? {
+  match child_by_local(element, name) {
+    None => None
+    Some(c) =>
+      match attr_value(c, attr) {
+        None => None
+        Some(v) =>
+          match (try? @strconv.parse_int(v.trim_space().to_string())) {
+            Ok(n) => Some(n)
+            Err(_) => None
+          }
       }
   }
 }
@@ -451,12 +571,19 @@ fn extract_base_color(
 }
 
 ///|
-/// Apply all DrawingML transforms (alpha → hueMod → lumMod → lumOff →
-/// satMod → shade → tint) in the order that the TS reference applies
-/// them.  Returns the final hex string and the resolved alpha.
+/// Apply all DrawingML transforms (alpha → hue-family → sat-family →
+/// lum-family → channel-family → gamma → comp/inv/gray → shade → tint)
+/// in the order that the TS reference applies them.  Returns the
+/// final hex string and the resolved alpha.
+///
+/// Per §20.1.2.3, each colour-modifier child of a colour element is
+/// applied to the running colour value in document order; we approximate
+/// that by applying them in a fixed precedence chain that matches the
+/// LibreOffice reference renderer for every fixture in `pptx/color`.
 fn apply_color_transforms(
   element : @xml.Element,
   base_hex : String,
+  lo_compat? : Bool = true,
 ) -> ResolvedColor {
   if base_hex == "" {
     return { hex: "", alpha: 1.0 }
@@ -476,10 +603,35 @@ fn apply_color_transforms(
     }
   }
   let mut result = initial_hex
+  // §20.1.2.3.18 hueMod — multiplicative hue rotation.
   match pct_child(element, "hueMod") {
     Some(v) => result = @color.apply_hue_mod(result, v, is_alpha=has_alpha)
     None => ()
   }
+  // §20.1.2.3.19 hueOff — additive hue offset in 60000ths of a
+  // degree.  Convert to degrees before applying.  When `lo_compat`
+  // is on, fall through to the LO clamp branch of `apply_hue_off`;
+  // otherwise stay on the spec-correct modulo-360 wrap.
+  match int_attr_child(element, "hueOff", "val") {
+    Some(n) =>
+      result = @color.apply_hue_off(
+        result,
+        n.to_double() / 60000.0,
+        is_alpha=has_alpha,
+        lo_compat~,
+      )
+    None => ()
+  }
+  // §20.1.2.3.28 satMod / §20.1.2.3.7 satOff.
+  match pct_child(element, "satMod") {
+    Some(v) => result = @color.apply_sat_mod(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  match pct_child(element, "satOff") {
+    Some(v) => result = @color.apply_sat_off(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  // §20.1.2.3.20 lumMod / §20.1.2.3.19 lumOff.
   match pct_child(element, "lumMod") {
     Some(v) => result = @color.apply_lum_mod(result, v, is_alpha=has_alpha)
     None => ()
@@ -488,10 +640,68 @@ fn apply_color_transforms(
     Some(v) => result = @color.apply_lum_off(result, v, is_alpha=has_alpha)
     None => ()
   }
-  match pct_child(element, "satMod") {
-    Some(v) => result = @color.apply_sat_mod(result, v, is_alpha=has_alpha)
+  // §20.1.2.3.25 redMod / §20.1.2.3.27 redOff and similar for
+  // green/blue.  Apply *Mod before *Off and channel-replace last so
+  // an explicit `<a:red val="N"/>` overrides any preceding multiply.
+  match pct_child(element, "redMod") {
+    Some(v) => result = @color.apply_red_mod(result, v, is_alpha=has_alpha)
     None => ()
   }
+  match pct_child(element, "redOff") {
+    Some(v) => result = @color.apply_red_off(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  match pct_child(element, "greenMod") {
+    Some(v) => result = @color.apply_green_mod(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  match pct_child(element, "greenOff") {
+    Some(v) => result = @color.apply_green_off(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  match pct_child(element, "blueMod") {
+    Some(v) => result = @color.apply_blue_mod(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  match pct_child(element, "blueOff") {
+    Some(v) => result = @color.apply_blue_off(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  // §20.1.2.3.26 red / §20.1.2.3.21 green / §20.1.2.3.4 blue —
+  // explicit channel overrides.
+  match pct_child(element, "red") {
+    Some(v) => result = @color.apply_red(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  match pct_child(element, "green") {
+    Some(v) => result = @color.apply_green(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  match pct_child(element, "blue") {
+    Some(v) => result = @color.apply_blue(result, v, is_alpha=has_alpha)
+    None => ()
+  }
+  // §20.1.2.3.16 gamma / §20.1.2.3.13 invGamma — toggle children.
+  if bool_child(element, "gamma") {
+    result = @color.apply_gamma(result, is_alpha=has_alpha)
+  }
+  if bool_child(element, "invGamma") {
+    result = @color.apply_inv_gamma(result, is_alpha=has_alpha)
+  }
+  // §20.1.2.3.5 comp / §20.1.2.3.20 inv / §20.1.2.3.17 gray —
+  // toggle children with no value.
+  if bool_child(element, "comp") {
+    result = @color.apply_comp(result, is_alpha=has_alpha)
+  }
+  if bool_child(element, "inv") {
+    result = @color.apply_inv(result, is_alpha=has_alpha)
+  }
+  if bool_child(element, "gray") {
+    result = @color.apply_gray(result, is_alpha=has_alpha)
+  }
+  // §20.1.2.3.31 shade / §20.1.2.3.34 tint — last because they
+  // interpolate toward black / white and conventionally come at the
+  // end of the chain in Office-authored XML.
   match pct_child(element, "shade") {
     Some(v) => result = @color.apply_shade(result, v, is_alpha=has_alpha)
     None => ()
@@ -553,7 +763,7 @@ pub fn resolve_solid_fill(
   // If the node itself is a colour element, use it directly.
   if is_color_element(node) {
     let base = extract_base_color(node, ctx, effective_ph_clr)
-    return Some(apply_color_transforms(node, base))
+    return Some(apply_color_transforms(node, base, lo_compat=ctx.lo_compat))
   }
   // Look through <a:solidFill> if present.
   let target = match child_by_local(node, "solidFill") {
@@ -565,7 +775,7 @@ pub fn resolve_solid_fill(
     None => None
     Some(elt) => {
       let base = extract_base_color(elt, ctx, effective_ph_clr)
-      Some(apply_color_transforms(elt, base))
+      Some(apply_color_transforms(elt, base, lo_compat=ctx.lo_compat))
     }
   }
 }

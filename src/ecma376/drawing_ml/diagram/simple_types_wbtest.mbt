@@ -1315,8 +1315,8 @@ test "ST_OutputShapeType rejects one invalid lexical value" {
 test "ST_AlgorithmType ten enum variants are distinct and round-trip" {
   // Round-trip each lexical value.
   let lexicals = [
-    "composite", "conn", "cycle", "hierChild", "hierRoot",
-    "pyra", "lin", "sp", "tx", "snake",
+    "composite", "conn", "cycle", "hierChild", "hierRoot", "pyra", "lin", "sp", "tx",
+    "snake",
   ]
   let parsed : Array[ST_AlgorithmType] = []
   for s in lexicals {

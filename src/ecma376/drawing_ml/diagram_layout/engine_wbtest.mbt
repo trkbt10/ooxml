@@ -434,3 +434,431 @@ test "§21.4.7.6 AxisType decoder defaults unknown values to none" {
   assert_true(AxisType::from_attr("self") is AxisSelf)
   assert_true(AxisType::from_attr("definitely-not-an-axis") is AxisNone)
 }
+
+///|
+/// §21.4.7.1 — 3-level hierRoot recursion: doc → CEO → VPs → Mgrs.
+/// Mirrors the catalog fixture `diagram-orgChart-with-connectors`
+/// to ensure the engine emits five `NodeBounds` (CEO + 2 VPs +
+/// 2 Managers) so the renderer's connector emitter has the bounds
+/// it needs.
+test "§21.4.7.1 hier 3-level recursion emits NodeBounds for every level" {
+  // Nested hierRoot: each level emits a shape for the current
+  // context and dispatches its children container.
+  let layout_xml = "<layoutDef uniqueId=\"urn:test:org3\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"hierRoot\"/>" +
+    "<layoutNode name=\"rootShape\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "<layoutNode name=\"l1Container\">" +
+    "<alg type=\"hierChild\"/>" +
+    "<forEach name=\"l1each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"l1\">" +
+    "<alg type=\"hierRoot\"/>" +
+    "<layoutNode name=\"l1Shape\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "<layoutNode name=\"l2Container\">" +
+    "<alg type=\"hierChild\"/>" +
+    "<forEach name=\"l2each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"l2\">" +
+    "<alg type=\"hierRoot\"/>" +
+    "<layoutNode name=\"l2Shape\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "<layoutNode name=\"l3Container\">" +
+    "<alg type=\"hierChild\"/>" +
+    "<forEach name=\"l3each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"l3Shape\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</layoutNode>" +
+    "</layoutDef>"
+  let def = definition(layout_xml)
+  let dm_xml = "<dataModel>" +
+    "<ptLst>" +
+    "<pt modelId=\"0\" type=\"doc\"/>" +
+    "<pt modelId=\"1\" type=\"node\"/>" +
+    "<pt modelId=\"10\" type=\"node\"/>" +
+    "<pt modelId=\"20\" type=\"node\"/>" +
+    "<pt modelId=\"100\" type=\"node\"/>" +
+    "<pt modelId=\"200\" type=\"node\"/>" +
+    "</ptLst>" +
+    "<cxnLst>" +
+    "<cxn modelId=\"101\" srcId=\"0\" destId=\"1\" srcOrd=\"0\" destOrd=\"0\"/>" +
+    "<cxn modelId=\"102\" srcId=\"1\" destId=\"10\" srcOrd=\"0\" destOrd=\"0\"/>" +
+    "<cxn modelId=\"103\" srcId=\"1\" destId=\"20\" srcOrd=\"1\" destOrd=\"0\"/>" +
+    "<cxn modelId=\"104\" srcId=\"10\" destId=\"100\" srcOrd=\"0\" destOrd=\"0\"/>" +
+    "<cxn modelId=\"105\" srcId=\"20\" destId=\"200\" srcOrd=\"0\" destOrd=\"0\"/>" +
+    "</cxnLst>" +
+    "</dataModel>"
+  let dm = data_model(dm_xml)
+  let engine = DiagramLayoutEngine::new()
+  let result = engine.apply(def, dm, canvas())
+  // Walk: rootShape emits "0"; l1Container's forEach iterates ch
+  // of "0" → [CEO "1"]; l1 hierRoot{l1Shape,l2Container}:
+  // l1Shape emits "1"; l2Container's forEach iterates ch of "1"
+  // → [VP "10", "20"]; l2 hierRoot{l2Shape,l3Container} each:
+  // l2Shape emits "10"/"20"; l3Container iterates ch of
+  // "10"/"20" → [Manager "100"/"200"]; l3Shape emits each.
+  // Total = 1 + 1 + 2 + 2 = 6 NodeBounds.
+  assert_eq(result.length(), 6)
+}
+
+///|
+/// §21.4.7.21 ST_ConstraintType — `constraint_kind_is_geometric`
+/// must report every layout-driving constraint as spatial and
+/// every text-fitting / catch-all constraint as non-spatial.
+/// `primFontSz` is the canonical non-spatial example that the
+/// renderer's gate uses to decline rendering.
+test "§21.4.7.21 constraint_kind_is_geometric separates spatial vs typography" {
+  // Spatial — every member of the kept ConstrW…ConstrPyraAcctRatio set.
+  assert_eq(constraint_kind_is_geometric(ConstrW), true)
+  assert_eq(constraint_kind_is_geometric(ConstrH), true)
+  assert_eq(constraint_kind_is_geometric(ConstrL), true)
+  assert_eq(constraint_kind_is_geometric(ConstrT), true)
+  assert_eq(constraint_kind_is_geometric(ConstrR), true)
+  assert_eq(constraint_kind_is_geometric(ConstrB), true)
+  assert_eq(constraint_kind_is_geometric(ConstrLMarg), true)
+  assert_eq(constraint_kind_is_geometric(ConstrSp), true)
+  assert_eq(constraint_kind_is_geometric(ConstrSibSp), true)
+  assert_eq(constraint_kind_is_geometric(ConstrWOff), true)
+  assert_eq(constraint_kind_is_geometric(ConstrPyraAcctRatio), true)
+  // Non-spatial — every catch-all (incl. the canonical `primFontSz`).
+  assert_eq(constraint_kind_is_geometric(ConstrOther("primFontSz")), false)
+  assert_eq(constraint_kind_is_geometric(ConstrOther("secFontSz")), false)
+  assert_eq(constraint_kind_is_geometric(ConstrOther("userA")), false)
+}
+
+///|
+/// §21.4.2.16 CT_DiagramDefinition — the gate predicate must report
+/// `false` when the only constraint in the tree is non-spatial,
+/// and `true` as soon as one spatial constraint appears anywhere
+/// in the layout-node tree.
+test "§21.4.2.16 definition_has_geometric_constraints gates on spatial intent" {
+  // Only primFontSz — non-spatial; gate must be false.
+  let only_font = definition(
+    "<layoutDef uniqueId=\"urn:test\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"lin\"/>" +
+    "<constrLst>" +
+    "<constr type=\"primFontSz\" val=\"65\"/>" +
+    "</constrLst>" +
+    "</layoutNode>" +
+    "</layoutDef>",
+  )
+  assert_eq(definition_has_geometric_constraints(only_font), false)
+  // Spatial w constraint — gate must be true.
+  let with_w = definition(
+    "<layoutDef uniqueId=\"urn:test\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"lin\"/>" +
+    "<constrLst>" +
+    "<constr type=\"primFontSz\" val=\"65\"/>" +
+    "<constr type=\"w\" val=\"500\"/>" +
+    "</constrLst>" +
+    "</layoutNode>" +
+    "</layoutDef>",
+  )
+  assert_eq(definition_has_geometric_constraints(with_w), true)
+  // Spatial constraint nested under a forEach body — gate must
+  // still be true (recursive walk).
+  let nested = definition(
+    "<layoutDef uniqueId=\"urn:test\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"lin\"/>" +
+    "<forEach name=\"each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"child\">" +
+    "<alg type=\"sp\"/>" +
+    "<constrLst><constr type=\"sp\" val=\"100\"/></constrLst>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</layoutDef>",
+  )
+  assert_eq(definition_has_geometric_constraints(nested), true)
+}
+
+///|
+/// §21.4.2.8 constr — a `self`-targeting `w` constraint must
+/// override the parent-derived width; `l` must reanchor the x
+/// origin relative to the parent bounds. Used to make sure the
+/// `walk_layout_node` integration in `engine.mbt` honours the
+/// solver before applying margins.
+test "§21.4.2.8 apply_self_geometric_constraints honours w/h/l/t" {
+  let parent : BoundsRect = { x: 100.0, y: 200.0, width: 600.0, height: 400.0 }
+  // No constraints — passthrough (component-wise compare; BoundsRect
+  // implements Debug but not Show, so we cannot pass the struct to
+  // assert_eq).
+  let pass = apply_self_geometric_constraints(parent, [])
+  assert_eq(pass.x, parent.x)
+  assert_eq(pass.y, parent.y)
+  assert_eq(pass.width, parent.width)
+  assert_eq(pass.height, parent.height)
+  // Explicit w/h — replace width / height (origin unchanged).
+  let resized = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrW, val=Some(250.0)),
+    test_constraint(ConstrH, for_target=Some("self"), val=Some(150.0)),
+  ])
+  assert_eq(resized.x, 100.0)
+  assert_eq(resized.y, 200.0)
+  assert_eq(resized.width, 250.0)
+  assert_eq(resized.height, 150.0)
+  // l/t — re-anchor relative to parent origin.
+  let moved = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrL, val=Some(50.0)),
+    test_constraint(ConstrT, val=Some(20.0), fact=Some(2.0)),
+  ])
+  // x = parent.x (100) + 50 = 150; y = parent.y (200) + 20*2 = 240.
+  assert_eq(moved.x, 150.0)
+  assert_eq(moved.y, 240.0)
+  // Cross-node constraints (for!=self or refFor*) ignored by
+  // `apply_self_geometric_constraints`; they are handled later by
+  // the child-targeted pass `child_targeted_constraints_for`.
+  let cross = apply_self_geometric_constraints(parent, [
+    test_constraint(
+      ConstrW,
+      for_target=Some("ch"),
+      for_name=Some("node"),
+      val=Some(10.0),
+    ),
+  ])
+  assert_eq(cross.width, parent.width)
+}
+
+///|
+/// §21.4.2.8 constr — `r` (right anchor) and `b` (bottom anchor)
+/// constraints should resize the rectangle so its trailing edge
+/// lands at the supplied offset from `parent_bounds.x` /
+/// `parent_bounds.y`. Cross-verifies the new branch added in
+/// `apply_self_geometric_constraints` for §21.4.7.21 r / b.
+test "§21.4.2.8 apply_self_geometric_constraints honours r/b anchors" {
+  let parent : BoundsRect = { x: 100.0, y: 200.0, width: 600.0, height: 400.0 }
+  // r = 500 means the right edge sits at parent.x + 500 = 600.
+  // With x unchanged (= 100), width becomes 600 - 100 = 500.
+  let with_r = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrR, val=Some(500.0)),
+  ])
+  assert_eq(with_r.x, 100.0)
+  assert_eq(with_r.width, 500.0)
+  // b = 300 means the bottom edge sits at parent.y + 300 = 500.
+  // With y unchanged (= 200), height becomes 500 - 200 = 300.
+  let with_b = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrB, val=Some(300.0)),
+  ])
+  assert_eq(with_b.y, 200.0)
+  assert_eq(with_b.height, 300.0)
+  // Combined l + r — the right anchor is computed after the
+  // left anchor moves x, so width = (parent.x + r) - new_x.
+  let lr = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrL, val=Some(50.0)),
+    test_constraint(ConstrR, val=Some(450.0)),
+  ])
+  // new_x = 100 + 50 = 150; right edge = 100 + 450 = 550;
+  // width = 550 - 150 = 400.
+  assert_eq(lr.x, 150.0)
+  assert_eq(lr.width, 400.0)
+}
+
+///|
+/// §21.4.2.8 constr — `wOff` / `hOff` additive offsets should
+/// shrink or grow the rectangle without changing its origin.
+test "§21.4.2.8 apply_self_geometric_constraints honours wOff/hOff" {
+  let parent : BoundsRect = { x: 0.0, y: 0.0, width: 600.0, height: 400.0 }
+  let grown = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrWOff, val=Some(100.0)),
+    test_constraint(ConstrHOff, val=Some(-50.0)),
+  ])
+  assert_eq(grown.x, 0.0)
+  assert_eq(grown.y, 0.0)
+  assert_eq(grown.width, 700.0)
+  assert_eq(grown.height, 350.0)
+  // Negative width clamps to 0 (so renderers never see a
+  // degenerate rectangle).
+  let shrunk = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrWOff, val=Some(-1000.0)),
+  ])
+  assert_eq(shrunk.width, 0.0)
+}
+
+///|
+/// §21.4.2.8 constr/@refType — a `w` constraint that references
+/// `h` on the same node (`refType="h"` with `refFor="self"` /
+/// absent) should compute width from the in-flight height.
+test "§21.4.2.8 same-node refType resolves against current rect" {
+  let parent : BoundsRect = { x: 0.0, y: 0.0, width: 600.0, height: 400.0 }
+  // w = h * 0.5 — width becomes 400 * 0.5 = 200, height stays.
+  let scaled = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrW, ref_type=Some(ConstrH), fact=Some(0.5)),
+  ])
+  assert_eq(scaled.width, 200.0)
+  assert_eq(scaled.height, 400.0)
+  // refType without an in-flight source (e.g. `l` references
+  // something we do not track) falls back to literal `val` if
+  // present — here we deliberately have neither val nor a
+  // resolvable source, so the constraint is a no-op.
+  let noop = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrL, ref_type=Some(ConstrR), fact=Some(0.5)),
+  ])
+  assert_eq(noop.x, 0.0)
+  assert_eq(noop.width, 600.0)
+}
+
+///|
+/// §21.4.2.8 constr/@for=ch — `child_targeted_constraints_for`
+/// must filter on `for=ch | des` and (when present) match
+/// `forName` against the child's layoutNode `name`. The returned
+/// constraint is rewritten as `for=self` so the caller can hand
+/// it straight to `apply_self_geometric_constraints`.
+test "§21.4.2.8 child_targeted_constraints_for filters by for/forName" {
+  let parent_constraints = [
+    // Targets every child (forName absent).
+    test_constraint(ConstrW, for_target=Some("ch"), val=Some(120.0)),
+    // Targets only `nodeA` by name.
+    test_constraint(
+      ConstrH,
+      for_target=Some("ch"),
+      for_name=Some("nodeA"),
+      val=Some(60.0),
+    ),
+    // for=des matches the same way as for=ch (descendants vs
+    // children — the engine recurses, so both cascade).
+    test_constraint(
+      ConstrL,
+      for_target=Some("des"),
+      for_name=Some("nodeA"),
+      val=Some(15.0),
+    ),
+    // for=self — must NOT appear in the child-targeted subset.
+    test_constraint(ConstrW, for_target=Some("self"), val=Some(999.0)),
+  ]
+  let for_a = child_targeted_constraints_for(parent_constraints, "nodeA")
+  // nodeA receives the unnamed `w=120`, the `h=60` (forName=nodeA),
+  // and the `l=15` (for=des forName=nodeA). The for=self entry is
+  // filtered out.
+  assert_eq(for_a.length(), 3)
+  for c in for_a {
+    assert_eq(c.for_target, Some("self"))
+  }
+  let for_b = child_targeted_constraints_for(parent_constraints, "nodeB")
+  // nodeB only matches the unnamed w=120 — the forName=nodeA ones
+  // and the for=self one are filtered out.
+  assert_eq(for_b.length(), 1)
+  assert_true(for_b[0].kind is ConstrW)
+}
+
+///|
+/// §21.4.2.8 — end-to-end: a parent `lin` layout with a
+/// `<constr for="ch" forName="leaf" type="w" val="…"/>` must
+/// override the algorithm-derived child width when the engine
+/// recurses into the named child. Validates `recurse_into_child`
+/// in `engine.mbt` wires the solver through.
+test "§21.4.2.8 parent for=ch forName constraint overrides child width" {
+  let layout_xml = "<layoutDef uniqueId=\"urn:test:constr-ch\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"lin\"/>" +
+    // Override every `leaf` child's width to 200; height to 50.
+    "<constrLst>" +
+    "<constr type=\"w\" for=\"ch\" forName=\"leaf\" val=\"200\"/>" +
+    "<constr type=\"h\" for=\"ch\" forName=\"leaf\" val=\"50\"/>" +
+    "</constrLst>" +
+    "<forEach name=\"each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"leaf\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</layoutDef>"
+  let def = definition(layout_xml)
+  let engine = DiagramLayoutEngine::new()
+  let result = engine.apply(def, flat_data_model(3), canvas())
+  assert_eq(result.length(), 3)
+  // Every leaf must land at w=200, h=50 (overrides the lin
+  // algorithm's natural 1000/3 ≈ 333 width and 500 height).
+  for nb in result {
+    assert_eq(nb.bounds.width, 200.0)
+    assert_eq(nb.bounds.height, 50.0)
+  }
+}
+
+///|
+/// §21.4.2.8 constr/@refType — round-trip the decoder for the
+/// `refType` / `refFor` / `refForName` / `refPtType` /
+/// `ptType` attributes. Ensures the typed `Constraint` carries
+/// the cross-node reference plumbing the solver consumes.
+test "§21.4.2.8 decode_constraint preserves ref* / pt_type fields" {
+  let element = parse_root(
+    "<constr type=\"w\" for=\"ch\" forName=\"node1\" ptType=\"node\" " +
+    "refType=\"h\" refFor=\"self\" refForName=\"otherNode\" refPtType=\"all\" " +
+    "op=\"equ\" val=\"100\" fact=\"0.5\"/>",
+  )
+  let c = try! decode_constraint(element)
+  assert_true(c.kind is ConstrW)
+  assert_eq(c.for_target, Some("ch"))
+  assert_eq(c.for_name, Some("node1"))
+  assert_eq(c.pt_type, Some("node"))
+  assert_true(c.ref_type is Some(ConstrH))
+  assert_eq(c.ref_for_target, Some("self"))
+  assert_eq(c.ref_for_name, Some("otherNode"))
+  assert_eq(c.ref_pt_type, Some("all"))
+  assert_eq(c.val, Some(100.0))
+  assert_eq(c.fact, Some(0.5))
+  // `refType="none"` is the schema default; it should decode to
+  // `None`, not `Some(ConstrOther("none"))`.
+  let none_ref = parse_root("<constr type=\"w\" refType=\"none\" val=\"50\"/>")
+  let cn = try! decode_constraint(none_ref)
+  assert_true(cn.ref_type is None)
+}
+
+///|
+/// Test helper: build a `Constraint` with the supplied `kind` and
+/// optional overrides for every attribute the wbtest needs to set.
+/// Centralised so wbtest authors do not have to spell out the
+/// 10-field struct literal on every call, and so adding a new
+/// schema attribute in `types.mbt` does not cascade into every
+/// existing test.
+fn test_constraint(
+  kind : ConstraintKind,
+  for_target? : String? = None,
+  for_name? : String? = None,
+  pt_type? : String? = None,
+  ref_type? : ConstraintKind? = None,
+  ref_for_target? : String? = None,
+  ref_for_name? : String? = None,
+  ref_pt_type? : String? = None,
+  op? : FunctionOp? = None,
+  val? : Double? = None,
+  fact? : Double? = None,
+) -> Constraint {
+  {
+    kind,
+    for_target,
+    for_name,
+    pt_type,
+    ref_type,
+    ref_for_target,
+    ref_for_name,
+    ref_pt_type,
+    op,
+    val,
+    fact,
+  }
+}

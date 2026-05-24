@@ -35,6 +35,7 @@ fn tl_make_span(
     text_fill: None,
     kerning: None,
     underline_color: None,
+    underline_style: None,
   }
 }
 
@@ -146,7 +147,8 @@ test "format_auto_number — CJK ideographic numerals (Japanese)" {
   inspect(format_auto_number("ea1JpnKorPlain", 110), content="百十")
   inspect(format_auto_number("ea1JpnChsDbPeriod", 123), content="百二十三.")
   inspect(
-    format_auto_number("ea1JpnKorPlainPeriod", 999), content="九百九十九.",
+    format_auto_number("ea1JpnKorPlainPeriod", 999),
+    content="九百九十九.",
   )
 }
 
@@ -188,6 +190,57 @@ test "break_into_lines wraps long text" {
     WrapSquare,
   )
   assert_true(result.lines.length() > 1)
+}
+
+///|
+/// `get_line_visible_width` trims trailing whitespace from the last
+/// span before summing — needed so wrapped lines that retain the
+/// space character that caused the wrap centre correctly.  Without
+/// this trim, every centred / right-aligned wrapped line drifts
+/// half-a-space to the right (≈3–4 px at 26 pt Liberation Sans).
+test "get_line_visible_width trims trailing whitespace" {
+  let s1 = tl_make_span("Hello ", font_size=24.0)
+  let spans = measure_spans([s1])
+  let full = get_line_width(spans)
+  let visible = get_line_visible_width(spans)
+  // The trimmed width must be strictly less than the full width by
+  // exactly one space's advance at this font/size.  We don't pin
+  // the absolute pixel value — the metrics tables move — but the
+  // delta has to be positive AND match the space's measured width.
+  assert_true(full > visible)
+  let space_w = @glyph.estimate_text_width_fallback(
+    " ",
+    font_size_pt=24.0,
+    letter_spacing_px=0.0,
+    font_family=Some("Calibri"),
+  )
+  // Allow a 1e-6 epsilon because both sides come from the same
+  // estimator and arithmetic should be exact.
+  let delta = full - visible
+  assert_true((delta - space_w).abs() < 1.0e-6)
+}
+
+///|
+test "get_line_visible_width returns 0 for whitespace-only line" {
+  // An empty span produces 0 width and is unaffected; a span that is
+  // ALL whitespace gets trimmed down to zero — centring such a line
+  // would otherwise place it left-of-centre by half-its-own-width.
+  let only_ws = tl_make_span("   ", font_size=24.0)
+  let spans = measure_spans([only_ws])
+  inspect(get_line_visible_width(spans), content="0")
+}
+
+///|
+test "get_line_visible_width preserves interior whitespace" {
+  // Only the trailing run of whitespace is excluded — interior
+  // spaces between visible glyphs must still count toward the
+  // alignment width.
+  let s = tl_make_span("Hi there", font_size=24.0)
+  let spans = measure_spans([s])
+  let full = get_line_width(spans)
+  let visible = get_line_visible_width(spans)
+  // No trailing whitespace → visible width equals full width.
+  inspect(full == visible, content="true")
 }
 
 ///|

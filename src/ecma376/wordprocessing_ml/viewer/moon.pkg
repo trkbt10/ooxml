@@ -10,6 +10,7 @@ import {
   "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver" @numbering_resolver,
   "trkbt10/ooxml/ecma376/office_math/domain" @omml,
   "trkbt10/ooxml/ecma376/office_math/viewer" @omml_viewer,
+  "trkbt10/ooxml/ecma376/presentation_ml/viewer" @pml_viewer,
   "trkbt10/ooxml/util/color" @color,
   "trkbt10/ooxml/util/glyph" @glyph,
   "trkbt10/ooxml/util/markup" @markup,

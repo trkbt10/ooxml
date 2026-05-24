@@ -56,9 +56,7 @@ pub fn edit_worksheet(
   }
   let target = workbook.worksheets[sheet_index]
   let new_element = transform(target.value.element)
-  let new_value = try {
-    @sml.CT_Worksheet::new(new_element)
-  } catch {
+  let new_value = @sml.CT_Worksheet::new(new_element) catch {
     @opc_errors.SchemaViolation(section~, path~, reason~) =>
       raise @sml_context.OpenError(
         kind="SchemaViolation \{section}",
@@ -75,6 +73,7 @@ pub fn edit_worksheet(
         value: new_value,
         drawing: ws.drawing,
         drawing_part: ws.drawing_part,
+        tables: ws.tables,
       })
     } else {
       new_worksheets.push(ws)
@@ -1388,9 +1387,7 @@ pub fn append_sheet(
     attributes: xmlns_attrs,
     children: [@xml.Node::Element(sheet_data)],
   }
-  let new_ws = try {
-    @sml.CT_Worksheet::new(ws_element)
-  } catch {
+  let new_ws = @sml.CT_Worksheet::new(ws_element) catch {
     @opc_errors.SchemaViolation(section~, path~, reason~) =>
       raise @sml_context.OpenError(
         kind="SchemaViolation \{section}",
@@ -1543,6 +1540,7 @@ pub fn append_sheet(
     value: new_ws,
     drawing: None,
     drawing_part: None,
+    tables: [],
   })
   {
     package: pkg2,

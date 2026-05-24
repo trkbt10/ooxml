@@ -36,7 +36,12 @@ pub fn EvalContext::new(
 pub(all) struct MatchHit {
   cell : @address.CellAddress
   rule_priority : Int
-  cf_type : @domain.ST_CfType
+  /// The matched rule's `@type`. `None` mirrors a `<cfRule>` with no
+  /// `@type` (§18.3.1.10 `use="optional"`); such a rule is inert and
+  /// never produces a `MatchHit`, so in practice this is always
+  /// `Some(_)` here, but the field type stays faithful to
+  /// `CT_CfRule::cf_type`.
+  cf_type : @domain.ST_CfType?
   dxf_id : Int?
   argb : @domain.CT_ColorArgb?
   bar_ratio : Double?

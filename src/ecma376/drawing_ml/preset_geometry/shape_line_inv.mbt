@@ -13,9 +13,6 @@
 /// Spec path: `moveTo (l, b)` then `lnTo (r, t)`. The shape is an
 /// open polyline (no `close`), drawn as a stroked segment.
 pub fn build_line_inv(width : Int, height : Int) -> ShapeGeometry {
-  let commands : Array[PathCommand] = [
-    MoveTo(0, height),
-    LineTo(width, 0),
-  ]
+  let commands : Array[PathCommand] = [MoveTo(0, height), LineTo(width, 0)]
   { commands, width, height }
 }

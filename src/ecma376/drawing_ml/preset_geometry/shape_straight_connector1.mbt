@@ -13,13 +13,7 @@
 /// Spec path (`fill="none"`): `moveTo (l, t)` then `lnTo (r, b)`. The
 /// connector is an open polyline (no `close`); the renderer strokes
 /// it and the connector endpoints anchor to the attached shapes.
-pub fn build_straight_connector1(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
-  let commands : Array[PathCommand] = [
-    MoveTo(0, 0),
-    LineTo(width, height),
-  ]
+pub fn build_straight_connector1(width : Int, height : Int) -> ShapeGeometry {
+  let commands : Array[PathCommand] = [MoveTo(0, 0), LineTo(width, height)]
   { commands, width, height }
 }

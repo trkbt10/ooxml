@@ -68,8 +68,7 @@ pub fn build_geometry(
     ShapeLeftArrowCallout => build_left_arrow_callout(width, height)
     ShapeUpArrowCallout => build_up_arrow_callout(width, height)
     ShapeDownArrowCallout => build_down_arrow_callout(width, height)
-    ShapeLeftRightArrowCallout =>
-      build_left_right_arrow_callout(width, height)
+    ShapeLeftRightArrowCallout => build_left_right_arrow_callout(width, height)
     ShapeUpDownArrowCallout => build_up_down_arrow_callout(width, height)
     ShapeQuadArrowCallout => build_quad_arrow_callout(width, height)
     ShapeCallout1 => build_callout1(width, height)
@@ -97,8 +96,7 @@ pub fn build_geometry(
     ShapeChartPlus => build_chart_plus(width, height)
     ShapeChartStar => build_chart_star(width, height)
     ShapeFlowChartDocument => build_flow_chart_document(width, height)
-    ShapeFlowChartMultidocument =>
-      build_flow_chart_multidocument(width, height)
+    ShapeFlowChartMultidocument => build_flow_chart_multidocument(width, height)
     ShapeFlowChartPreparation => build_flow_chart_preparation(width, height)
     ShapeFlowChartManualInput => build_flow_chart_manual_input(width, height)
     ShapeFlowChartManualOperation =>
@@ -208,8 +206,7 @@ pub fn build_geometry(
     ShapeCornerTabs => build_corner_tabs(width, height)
     ShapeSquareTabs => build_square_tabs(width, height)
     ShapePlaqueTabs => build_plaque_tabs(width, height)
-    ShapeNonIsoscelesTrapezoid =>
-      build_non_isosceles_trapezoid(width, height)
+    ShapeNonIsoscelesTrapezoid => build_non_isosceles_trapezoid(width, height)
     ShapeMathNotEqual => build_math_not_equal(width, height)
     ShapeSwooshArrow => build_swoosh_arrow(width, height)
     ShapeLeftCircularArrow => build_left_circular_arrow(width, height)

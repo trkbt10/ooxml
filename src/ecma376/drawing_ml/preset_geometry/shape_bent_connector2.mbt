@@ -14,10 +14,7 @@
 /// `lnTo (r, b)`. The connector is an open polyline (no `close`); the
 /// `bentConnector2` shape carries no `avLst`, so the elbow is fixed
 /// at the top-right corner.
-pub fn build_bent_connector2(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_bent_connector2(width : Int, height : Int) -> ShapeGeometry {
   let commands : Array[PathCommand] = [
     MoveTo(0, 0),
     LineTo(width, 0),

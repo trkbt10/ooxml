@@ -34,7 +34,9 @@ pub fn build_cloud_callout(width : Int, height : Int) -> ShapeGeometry {
   // Bumpy cloud outline approximated with quadratic Béziers.
   commands.push(MoveTo(q1, body_h - bump))
   commands.push(QuadTo(0, body_h - bump, 0, fraction(body_h, 60, 100)))
-  commands.push(QuadTo(0, fraction(body_h, 25, 100), q1, fraction(body_h, 25, 100)))
+  commands.push(
+    QuadTo(0, fraction(body_h, 25, 100), q1, fraction(body_h, 25, 100)),
+  )
   commands.push(QuadTo(q1, 0, q2, fraction(body_h, 15, 100)))
   commands.push(QuadTo(q2, 0, q3, fraction(body_h, 20, 100)))
   commands.push(QuadTo(width, 0, width, fraction(body_h, 40, 100)))

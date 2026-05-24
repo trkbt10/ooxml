@@ -247,7 +247,8 @@ fn parse_blip_effect_child(
     "alphaFloor" => Some(AlphaFloor(CT_AlphaFloorEffect::new(element)))
     "alphaInv" => Some(AlphaInv(CT_AlphaInverseEffect::new(element)))
     "alphaMod" => Some(AlphaMod(CT_AlphaModulateEffect::new(element)))
-    "alphaModFix" => Some(AlphaModFix(CT_AlphaModulateFixedEffect::new(element)))
+    "alphaModFix" =>
+      Some(AlphaModFix(CT_AlphaModulateFixedEffect::new(element)))
     "alphaRepl" => Some(AlphaRepl(CT_AlphaReplaceEffect::new(element)))
     "biLevel" => Some(BiLevel(CT_BiLevelEffect::new(element)))
     "blur" => Some(Blur(CT_BlurEffect::new(element)))

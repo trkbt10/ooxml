@@ -28,7 +28,6 @@
 // child elements while preserving the source `@xml.Element` for
 // builder round-trip (ct-typing protocol).
 
-
 ///|
 /// XSD complex type CT_Color — Part 1 §20.1.2.3.5 (color choice
 /// container). Annex A.4.1 lines 677..681. Wraps the
@@ -816,7 +815,6 @@ pub fn CT_TextBulletColorFollowText::to_element(
 ) -> @xml.Element {
   self.element
 }
-
 
 ///|
 /// Internal: EG_ColorChoice child local names per Annex A.4.1 lines

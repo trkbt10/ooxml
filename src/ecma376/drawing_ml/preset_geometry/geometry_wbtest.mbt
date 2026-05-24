@@ -455,10 +455,15 @@ test "build_geometry gears emit per-tooth trapezoid vertices" {
 /// §20.1.10.56 curved-arrow + `circularArrow` + `funnel` family —
 /// each emits a closed multi-segment band with `ArcTo` rim edges.
 test "build_geometry curved arrows and funnel emit closed arc bands" {
-  for shape in [
-    ShapeCurvedRightArrow, ShapeCurvedLeftArrow, ShapeCurvedUpArrow,
-    ShapeCurvedDownArrow, ShapeCircularArrow, ShapeFunnel,
-  ] {
+  for
+    shape in [
+      ShapeCurvedRightArrow,
+      ShapeCurvedLeftArrow,
+      ShapeCurvedUpArrow,
+      ShapeCurvedDownArrow,
+      ShapeCircularArrow,
+      ShapeFunnel,
+    ] {
     let g = build_geometry(shape, 200, 200)
     assert_eq(g.width, 200)
     assert_eq(g.height, 200)

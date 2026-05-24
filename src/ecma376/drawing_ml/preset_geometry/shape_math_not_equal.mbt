@@ -32,10 +32,7 @@
 ///
 /// With the default `cadj2 > 0` the spec `?:` guides resolve to
 /// `lx = x7`, `rx = x7 + dx7`, `ly = 0`, `ry = dy3`.
-pub fn build_math_not_equal(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_math_not_equal(width : Int, height : Int) -> ShapeGeometry {
   fn pin(lo : Int, v : Int, hi : Int) -> Int {
     if v < lo {
       lo

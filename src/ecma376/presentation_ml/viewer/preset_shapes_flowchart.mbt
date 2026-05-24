@@ -205,10 +205,16 @@ fn flowchart_input_output(w : Double, h : Double) -> String {
 }
 
 ///|
-/// `flowChartDocument` — rectangle with wavy bottom edge.
-/// @source preset-shapes.ts:3194
+/// `flowChartDocument` — §20.1.10.56 rectangle whose bottom edge is
+/// an S-curve, asymmetric: the right half curves UP into the body
+/// (a notch), the left half curves DOWN below the midline (an
+/// extension), so the bottom-right corner sits ABOVE `wave_y` and
+/// the bottom-left BELOW it — matching the standard PowerPoint /
+/// LibreOffice render.  The earlier code placed both control points
+/// on the same side, producing a "hump down both ends" shape that
+/// looked like a flag bottom, not a document bottom.
 fn flowchart_document(w : Double, h : Double) -> String {
-  let wave_height = h * 0.15
+  let wave_height = h * 0.1
   let wave_y = h - wave_height
   "M 0 0 L " +
   fmt(w) +
@@ -219,7 +225,7 @@ fn flowchart_document(w : Double, h : Double) -> String {
   " Q " +
   fmt(w * 0.75) +
   " " +
-  fmt(h) +
+  fmt(wave_y - wave_height) +
   " " +
   fmt(w / 2.0) +
   " " +
@@ -227,7 +233,7 @@ fn flowchart_document(w : Double, h : Double) -> String {
   " Q " +
   fmt(w * 0.25) +
   " " +
-  fmt(wave_y - wave_height) +
+  fmt(wave_y + wave_height) +
   " 0 " +
   fmt(wave_y) +
   " Z"

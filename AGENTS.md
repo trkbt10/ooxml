@@ -82,6 +82,31 @@ moon check --target wasm-gc         # core wasm bundle for npm
 moon run src/cmd/ooxml_cli          # run native CLI
 ```
 
+## Font measurement (no pre-computed values)
+
+`src/util/glyph` is **TTF-only**. Every glyph advance, kerning
+pair, ascender, descender, and line-gap value is read at runtime
+from a bundled TrueType file in `src/util/glyph/fonts/` via
+`mizchi/font::TTFont`.
+
+- **Never** add a hard-coded char-width table, ascender table, or
+  per-font em-ratio map. The previous `fonts.mbt` /
+  `liberation_sans.mbt` / `calibri.mbt` / `common.mbt` / `font_metrics.mbt`
+  were deleted for exactly this reason — they were a false source
+  of truth that diverged from what LibreOffice actually
+  rasterises, and they kept leading subagents into "tune the
+  number" fixes instead of "measure the font".
+- If you need a metric, call `@glyph.measure_text_width(...)`,
+  `@glyph.get_ascender_ratio(...)`, `@glyph.calculate_char_width(...)`,
+  or load a `FontMeasurer` via `@glyph.default_font_set()`.
+- LibreOffice substitutes Calibri → Carlito for `.docx` and
+  Calibri → Liberation Sans for `.pptx`; the registry mirrors that
+  split (`FontSet::measurer_for` vs `FontSet::measurer_for_pptx_family`).
+  Match the format you are rendering.
+- New fonts are added by dropping a TTF into `src/util/glyph/fonts/`
+  and extending the `FontFace` enum + `resolve_face` mapping in
+  `font_registry.mbt`. No measurement values get committed.
+
 ## Spec-Driven Development
 
 Real implementation is gated on running the `indexion-skills:indexion-sdd`

@@ -12,10 +12,7 @@
 ///
 /// Spec path (10×10 frame): vertices at (0,5) (2,0) (8,0) (10,5)
 /// (8,10) (2,10).
-pub fn build_flow_chart_preparation(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_flow_chart_preparation(width : Int, height : Int) -> ShapeGeometry {
   fn sx(v : Int) -> Int {
     fraction(width, v, 10)
   }

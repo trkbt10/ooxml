@@ -234,6 +234,14 @@ pub struct LayoutSpan {
   kerning : Double?
   /// Custom underline colour (§21.1.2.3.33 `a:uLn`).
   underline_color : String?
+  /// §21.1.2.3.32 u — the raw underline-style value (`sng`, `dbl`,
+  /// `wavy`, `dotted`, `dash`, `heavy`, …) preserved so the
+  /// renderer can paint multi-line / wavy decorations the SVG
+  /// `text-decoration-style` CSS property can't express through
+  /// librsvg.  `None` matches `<a:rPr u="none">` or an absent
+  /// attribute; `text_decoration` (above) carries the CSS-level
+  /// flag this raw value translates to.
+  underline_style : String?
 }
 
 ///|
@@ -306,6 +314,16 @@ pub struct LayoutLine {
   y : Double
   width : Double
   height : Double
+  /// §21.1.2.2.1 ST_TextAlignType `just` — extra CSS-pixel advance
+  /// added at every U+0020 space in this line so the right edge
+  /// reaches the available text-frame width. Zero for non-justified
+  /// lines and for the trailing line of a justified paragraph (PML
+  /// `just`, like WML `both`, exempts the last line). The renderer
+  /// emits this as both a `word-spacing` attribute on each `<text>`
+  /// element (so painted glyphs land on the justified positions) and
+  /// an additive cursor advance between spans (so subsequent spans
+  /// start where the stretched glyphs end).
+  word_spacing_extra : Double
 }
 
 ///|
@@ -315,6 +333,14 @@ pub struct LayoutParagraphResult {
   alignment : TextAlign
   bullet : BulletConfig?
   bullet_width : Double
+  /// §21.1.2.4.4-8 — x-coordinate of the bullet's left edge (CSS
+  /// pixels).  The bullet glyph is painted left-aligned at this
+  /// position so its right edge falls inside the hanging-indent
+  /// slot (`bullet_x + bullet_width ≤ margin_left`).  This keeps a
+  /// natural gap between bullet and text when the slot is wider
+  /// than the glyph, matching PowerPoint / LibreOffice.  Zero when
+  /// the paragraph has no bullet.
+  bullet_x : Double
   font_alignment : FontAlignment
 }
 

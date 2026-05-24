@@ -53,7 +53,7 @@ fn svg_text_content(svg : String) -> String {
     // Find the next "<text" ... ">" open tag.
     match find_from(svg, "<text", i) {
       None => break
-      Some(tag_start) => {
+      Some(tag_start) =>
         match find_from(svg, ">", tag_start) {
           None => break
           Some(gt) => {
@@ -67,7 +67,6 @@ fn svg_text_content(svg : String) -> String {
             }
           }
         }
-      }
     }
   }
   out.to_string()
@@ -241,7 +240,9 @@ test "presentation_ml context remove_shape drops a direct spTree child" {
       match removed {
         Ok(p2) => {
           let reopened = open(p2.save())
-          assert_true(!svg_text_content(reopened.to_svg()).contains("to-remove"))
+          assert_true(
+            !svg_text_content(reopened.to_svg()).contains("to-remove"),
+          )
         }
         Err(_) => assert_true(false)
       }

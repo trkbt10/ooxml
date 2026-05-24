@@ -262,9 +262,17 @@ test "viewer §21.1.2.3.5 hlinkClick run emits xlink anchor" {
 
 ///|
 /// §21.1.2.3.32 + §21.1.2.3.28 — a run with both `u="sng"` and
-/// `strike="sngStrike"` emits the combined CSS `text-decoration`
-/// shorthand "underline line-through" so the browser draws both.
-test "viewer u + strike combine into compound text-decoration" {
+/// `strike="sngStrike"` emits:
+///   • `text-decoration="line-through"` on the `<text>` element
+///     (the strikethrough is still drawn by librsvg / Pango at
+///     the font's mid-glyph height, which matches LO closely);
+///   • an explicit `<line>` overlay for the underline at the LO-
+///     matched offset (≈0.155 em below baseline) — see
+///     `build_underline_overlay` for the why; the legacy
+///     `text-decoration="underline"` shorthand was dropped
+///     because librsvg placed the line 2-3 px above LO's PDF
+///     reference for our Liberation Sans substitute.
+test "viewer u + strike combine: strike via CSS, underline via overlay" {
   fn run_with(rpr_attrs : Array[@xml.Attribute]) -> @xml.Node {
     @xml.Node::Element({
       name: name("r"),
@@ -360,7 +368,13 @@ test "viewer u + strike combine into compound text-decoration" {
     ],
   })
   let svg = render_svg(slide)
-  assert_true(svg.contains("text-decoration=\"underline line-through\""))
+  // Strike kept as CSS text-decoration (librsvg renders it OK).
+  assert_true(svg.contains("text-decoration=\"line-through\""))
+  // Underline is drawn as an explicit `<line>` overlay.
+  assert_true(svg.contains("<line"))
+  // The compound `underline line-through` shorthand is NO LONGER
+  // emitted — the explicit overlay replaces the underline half.
+  assert_true(not(svg.contains("underline line-through")))
 }
 
 ///|
@@ -456,9 +470,7 @@ fn sp_with_bodypr_attrs(
 /// §21.1.2.1.7 `<a:bodyPr rot="…">` — body rotation wraps the text in a
 /// `<g transform="rotate(deg, cx, cy)">`. 5400000 = 90°.
 test "viewer §21.1.2.1.7 bodyPr rot wraps text in rotate()" {
-  let slide = sp_with_bodypr_attrs([
-    { name: name("rot"), value: "5400000" },
-  ])
+  let slide = sp_with_bodypr_attrs([{ name: name("rot"), value: "5400000" }])
   let svg = render_svg(slide)
   // 90° → rotate(90, cx, cy). Both box width and height are scaled
   // from EMU (914400×457200) divided by 9525.
@@ -490,9 +502,7 @@ test "viewer §21.1.2.1.7 bodyPr horzOverflow=clip emits clipPath" {
 /// §21.1.2.1.7 `<a:bodyPr forceAA="1">` — wraps the text in
 /// `<g text-rendering="geometricPrecision">`.
 test "viewer §21.1.2.1.7 bodyPr forceAA=1 sets text-rendering" {
-  let slide = sp_with_bodypr_attrs([
-    { name: name("forceAA"), value: "1" },
-  ])
+  let slide = sp_with_bodypr_attrs([{ name: name("forceAA"), value: "1" }])
   let svg = render_svg(slide)
   assert_true(svg.contains("text-rendering=\"geometricPrecision\""))
 }
@@ -916,12 +926,26 @@ test "viewer §19.3.1.16 OLE preview image surfaces through image_resolver" {
 /// that "Layout Title" surfaces in the resulting SVG.
 test "viewer §19.3.1.36 layout-only placeholder renders via chain" {
   // Build a shape tree skeleton (used by slide / layout / master).
-  let title_layout_sp = ph_title_shape("Layout Title", x_emu=914400, y_emu=914400, w_emu=4572000, h_emu=914400)
+  let title_layout_sp = ph_title_shape(
+    "Layout Title",
+    x_emu=914400,
+    y_emu=914400,
+    w_emu=4572000,
+    h_emu=914400,
+  )
   let body_master_sp = ph_body_shape("Master Body")
   let slide = @domain.CT_Slide::new(empty_slide_like("sld"))
-  let layout = @domain.CT_SlideLayout::new(slide_like_with_shapes("sldLayout", [title_layout_sp]))
-  let master = @domain.CT_SlideMaster::new(slide_like_with_shapes("sldMaster", [body_master_sp]))
-  let chain = @ph_resolver.SlideChain::from_parts(master, Some(layout), Some(slide))
+  let layout = @domain.CT_SlideLayout::new(
+    slide_like_with_shapes("sldLayout", [title_layout_sp]),
+  )
+  let master = @domain.CT_SlideMaster::new(
+    slide_like_with_shapes("sldMaster", [body_master_sp]),
+  )
+  let chain = @ph_resolver.SlideChain::from_parts(
+    master,
+    Some(layout),
+    Some(slide),
+  )
   let svg = render_svg(slide, chain=Some(chain))
   assert_true(svg.contains("Layout Title"))
 }
@@ -943,7 +967,10 @@ test "viewer §19.3.1.36 slide ph inherits spPr from layout by idx" {
         children: [
           @xml.Node::Element({
             name: name("cNvPr"),
-            attributes: [{ name: name("id"), value: "2" }, { name: name("name"), value: "TitlePh" }],
+            attributes: [
+              { name: name("id"), value: "2" },
+              { name: name("name"), value: "TitlePh" },
+            ],
             children: [],
           }),
           @xml.Node::Element({
@@ -977,12 +1004,18 @@ test "viewer §19.3.1.36 slide ph inherits spPr from layout by idx" {
             children: [
               @xml.Node::Element({
                 name: name("off"),
-                attributes: [{ name: name("x"), value: "457200" }, { name: name("y"), value: "457200" }],
+                attributes: [
+                  { name: name("x"), value: "457200" },
+                  { name: name("y"), value: "457200" },
+                ],
                 children: [],
               }),
               @xml.Node::Element({
                 name: name("ext"),
-                attributes: [{ name: name("cx"), value: "8229600" }, { name: name("cy"), value: "1143000" }],
+                attributes: [
+                  { name: name("cx"), value: "8229600" },
+                  { name: name("cy"), value: "1143000" },
+                ],
                 children: [],
               }),
             ],
@@ -1001,7 +1034,10 @@ test "viewer §19.3.1.36 slide ph inherits spPr from layout by idx" {
         children: [
           @xml.Node::Element({
             name: name("cNvPr"),
-            attributes: [{ name: name("id"), value: "3" }, { name: name("name"), value: "SlideTitle" }],
+            attributes: [
+              { name: name("id"), value: "3" },
+              { name: name("name"), value: "SlideTitle" },
+            ],
             children: [],
           }),
           @xml.Node::Element({
@@ -1057,9 +1093,17 @@ test "viewer §19.3.1.36 slide ph inherits spPr from layout by idx" {
     ],
   }
   let slide = @domain.CT_Slide::new(slide_like_with_shapes("sld", [slide_sp]))
-  let layout = @domain.CT_SlideLayout::new(slide_like_with_shapes("sldLayout", [layout_sp]))
-  let master = @domain.CT_SlideMaster::new(slide_like_with_shapes("sldMaster", []))
-  let chain = @ph_resolver.SlideChain::from_parts(master, Some(layout), Some(slide))
+  let layout = @domain.CT_SlideLayout::new(
+    slide_like_with_shapes("sldLayout", [layout_sp]),
+  )
+  let master = @domain.CT_SlideMaster::new(
+    slide_like_with_shapes("sldMaster", []),
+  )
+  let chain = @ph_resolver.SlideChain::from_parts(
+    master,
+    Some(layout),
+    Some(slide),
+  )
   let svg = render_svg(slide, chain=Some(chain))
   assert_true(svg.contains("Slide Title"))
   // Inherited width (8229600 EMU) should drive the rendered geometry —
@@ -1093,7 +1137,10 @@ fn slide_like_with_shapes(
       children: [
         @xml.Node::Element({
           name: name("cNvPr"),
-          attributes: [{ name: name("id"), value: "1" }, { name: name("name"), value: "" }],
+          attributes: [
+            { name: name("id"), value: "1" },
+            { name: name("name"), value: "" },
+          ],
           children: [],
         }),
         @xml.Node::Element({
@@ -1101,18 +1148,10 @@ fn slide_like_with_shapes(
           attributes: [],
           children: [],
         }),
-        @xml.Node::Element({
-          name: name("nvPr"),
-          attributes: [],
-          children: [],
-        }),
+        @xml.Node::Element({ name: name("nvPr"), attributes: [], children: [] }),
       ],
     }),
-    @xml.Node::Element({
-      name: name("grpSpPr"),
-      attributes: [],
-      children: [],
-    }),
+    @xml.Node::Element({ name: name("grpSpPr"), attributes: [], children: [] }),
   ]
   for s in shapes {
     sp_tree_children.push(@xml.Node::Element(s))
@@ -1157,7 +1196,10 @@ fn ph_title_shape(
         children: [
           @xml.Node::Element({
             name: name("cNvPr"),
-            attributes: [{ name: name("id"), value: "2" }, { name: name("name"), value: "Title" }],
+            attributes: [
+              { name: name("id"), value: "2" },
+              { name: name("name"), value: "Title" },
+            ],
             children: [],
           }),
           @xml.Node::Element({
@@ -1188,12 +1230,18 @@ fn ph_title_shape(
             children: [
               @xml.Node::Element({
                 name: name("off"),
-                attributes: [{ name: name("x"), value: x_emu.to_string() }, { name: name("y"), value: y_emu.to_string() }],
+                attributes: [
+                  { name: name("x"), value: x_emu.to_string() },
+                  { name: name("y"), value: y_emu.to_string() },
+                ],
                 children: [],
               }),
               @xml.Node::Element({
                 name: name("ext"),
-                attributes: [{ name: name("cx"), value: w_emu.to_string() }, { name: name("cy"), value: h_emu.to_string() }],
+                attributes: [
+                  { name: name("cx"), value: w_emu.to_string() },
+                  { name: name("cy"), value: h_emu.to_string() },
+                ],
                 children: [],
               }),
             ],
@@ -1247,7 +1295,10 @@ fn ph_body_shape(text : String) -> @xml.Element {
         children: [
           @xml.Node::Element({
             name: name("cNvPr"),
-            attributes: [{ name: name("id"), value: "3" }, { name: name("name"), value: "Body" }],
+            attributes: [
+              { name: name("id"), value: "3" },
+              { name: name("name"), value: "Body" },
+            ],
             children: [],
           }),
           @xml.Node::Element({
@@ -1278,12 +1329,18 @@ fn ph_body_shape(text : String) -> @xml.Element {
             children: [
               @xml.Node::Element({
                 name: name("off"),
-                attributes: [{ name: name("x"), value: "0" }, { name: name("y"), value: "0" }],
+                attributes: [
+                  { name: name("x"), value: "0" },
+                  { name: name("y"), value: "0" },
+                ],
                 children: [],
               }),
               @xml.Node::Element({
                 name: name("ext"),
-                attributes: [{ name: name("cx"), value: "1000000" }, { name: name("cy"), value: "1000000" }],
+                attributes: [
+                  { name: name("cx"), value: "1000000" },
+                  { name: name("cy"), value: "1000000" },
+                ],
                 children: [],
               }),
             ],
@@ -1374,10 +1431,11 @@ test "viewer §19.5.50 slide transition surfaces data attributes" {
   ) {
     { name: name(local), attributes: attrs, children }
   }
-  let c_nv_pr = elem("cNvPr", [
-    { name: name("id"), value: "1" },
-    { name: name("name"), value: "" },
-  ], [])
+  let c_nv_pr = elem(
+    "cNvPr",
+    [{ name: name("id"), value: "1" }, { name: name("name"), value: "" }],
+    [],
+  )
   let c_nv_grp_sp_pr = elem("cNvGrpSpPr", [], [])
   let nv_pr = elem("nvPr", [], [])
   let nv_grp_sp_pr = elem("nvGrpSpPr", [], [
@@ -1392,10 +1450,14 @@ test "viewer §19.5.50 slide transition surfaces data attributes" {
   ])
   let c_sld = elem("cSld", [], [@xml.Node::Element(sp_tree)])
   let fade = elem("fade", [], [])
-  let transition = elem("transition", [
-    { name: name("spd"), value: "fast" },
-    { name: name("advClick"), value: "1" },
-  ], [@xml.Node::Element(fade)])
+  let transition = elem(
+    "transition",
+    [
+      { name: name("spd"), value: "fast" },
+      { name: name("advClick"), value: "1" },
+    ],
+    [@xml.Node::Element(fade)],
+  )
   let slide_root = elem("sld", [], [
     @xml.Node::Element(c_sld),
     @xml.Node::Element(transition),
@@ -1475,8 +1537,7 @@ test "viewer §19.3.1.6 clrMap tx1→dk2 cascades to theme dk2 hex" {
   let master_root = slide_like_with_shapes("sldMaster", [])
   let master_with_clrmap : @xml.Element = {
     ..master_root,
-    children: master_root.children +
-      [@xml.Node::Element(clr_map)],
+    children: master_root.children + [@xml.Node::Element(clr_map)],
   }
   let master = @domain.CT_SlideMaster::new(master_with_clrmap)
   // Slide carrying `<p:bg><p:bgPr><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></p:bgPr></p:bg>`.
@@ -1611,11 +1672,7 @@ test "viewer §20.1.9.8 cxnSp endpoints surface as data attributes" {
     children: [
       c_nv_pr,
       c_nv_cxn_sp_pr,
-      @xml.Node::Element({
-        name: name("nvPr"),
-        attributes: [],
-        children: [],
-      }),
+      @xml.Node::Element({ name: name("nvPr"), attributes: [], children: [] }),
     ],
   })
   // Minimal `<p:cxnSp>` with the nvCxnSpPr block + an spPr.
@@ -1701,7 +1758,10 @@ test "viewer §20.1.9.8 cxnSp endpoints surface as data attributes" {
 /// parse_body_pr_auto_fit helper since the full layout effect
 /// requires deep plumbing.
 test "viewer §21.1.2.1.2 parse_body_pr_auto_fit handles normAutofit/spAutoFit/noAutofit" {
-  let mk_bp = fn(child_local : String, attrs : Array[@xml.Attribute]) -> @xml.Element {
+  let mk_bp = fn(
+    child_local : String,
+    attrs : Array[@xml.Attribute],
+  ) -> @xml.Element {
     {
       name: name("bodyPr"),
       attributes: [],

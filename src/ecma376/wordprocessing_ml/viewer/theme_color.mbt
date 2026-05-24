@@ -88,25 +88,23 @@ pub fn parse_font_scheme(theme_root : @xml.Element?) -> ThemeFontMap {
     None => ()
     Some(fs) => {
       match find_a_child(fs, "majorFont") {
-        Some(mj) => {
+        Some(mj) =>
           map_mut.val = {
             ..map_mut.val,
             major_latin: typeface_attr(find_a_child(mj, "latin")),
             major_ea: typeface_attr(find_a_child(mj, "ea")),
             major_cs: typeface_attr(find_a_child(mj, "cs")),
           }
-        }
         None => ()
       }
       match find_a_child(fs, "minorFont") {
-        Some(mn) => {
+        Some(mn) =>
           map_mut.val = {
             ..map_mut.val,
             minor_latin: typeface_attr(find_a_child(mn, "latin")),
             minor_ea: typeface_attr(find_a_child(mn, "ea")),
             minor_cs: typeface_attr(find_a_child(mn, "cs")),
           }
-        }
         None => ()
       }
     }
@@ -134,7 +132,7 @@ fn typeface_attr(element : @xml.Element?) -> String? {
         if a.name.local_name == "typeface" && a.value.length() > 0 {
           return Some(a.value)
         }
-      } else {
+      } nobreak {
         None
       }
   }
@@ -327,10 +325,7 @@ fn extract_scheme_color_hex(color_el : @xml.Element) -> String? {
 /// Lowercase a 6-digit hex string; pass through anything else so
 /// caller code can decide whether to honour it (an empty string,
 /// for example, would indicate a malformed attribute).
-fn read_attr_normalised(
-  element : @xml.Element,
-  attr_name : String,
-) -> String? {
+fn read_attr_normalised(element : @xml.Element, attr_name : String) -> String? {
   for attr in element.attributes {
     if attr.name.local_name == attr_name {
       return Some(lowercase_hex(attr.value))

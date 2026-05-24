@@ -14,10 +14,7 @@
 /// The stripe geometry comes from the spec gdLst: the head height is
 /// `min(w,h)/32` units of stride, with stripes at the 1/32 and 3/32
 /// marks of the smaller dimension.
-pub fn build_striped_right_arrow(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_striped_right_arrow(width : Int, height : Int) -> ShapeGeometry {
   let shaft_h = percent(height, 50000)
   let smaller = min_dim(width, height)
   let head_w = percent(smaller, 50000)

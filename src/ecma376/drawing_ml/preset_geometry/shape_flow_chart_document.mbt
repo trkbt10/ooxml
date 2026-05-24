@@ -12,10 +12,7 @@
 /// Spec path (21600×21600 frame): top-left → top-right → down to
 /// y=17322, then a cubic Bézier wave back to the left edge at
 /// y=20172 (control points at 10800,17322 and 10800,23922).
-pub fn build_flow_chart_document(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_flow_chart_document(width : Int, height : Int) -> ShapeGeometry {
   // Scale the 21600-unit spec coordinates into the pixel frame.
   fn sx(v : Int) -> Int {
     fraction(width, v, 21600)
@@ -29,14 +26,7 @@ pub fn build_flow_chart_document(
     MoveTo(sx(0), sy(0)),
     LineTo(sx(21600), sy(0)),
     LineTo(sx(21600), sy(17322)),
-    CurveTo(
-      sx(10800),
-      sy(17322),
-      sx(10800),
-      sy(23922),
-      sx(0),
-      sy(20172),
-    ),
+    CurveTo(sx(10800), sy(17322), sx(10800), sy(23922), sx(0), sy(20172)),
     ClosePath,
   ]
   { commands, width, height }

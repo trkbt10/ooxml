@@ -120,7 +120,9 @@ pub fn parse_vml_style(s : String) -> VmlInlineStyle {
     let (k, v) = match colon_idx {
       Some(idx) => {
         let k = trim_ascii(trimmed.substring(start=0, end=idx))
-        let v = trim_ascii(trimmed.substring(start=idx + 1, end=trimmed.length()))
+        let v = trim_ascii(
+          trimmed.substring(start=idx + 1, end=trimmed.length()),
+        )
         (k, v)
       }
       None => (trimmed, "")
@@ -142,7 +144,8 @@ pub fn parse_vml_style(s : String) -> VmlInlineStyle {
       "mso-position-vertical" => mso_position_vertical = Some(v)
       "mso-position-horizontal-relative" =>
         mso_position_horizontal_relative = Some(v)
-      "mso-position-vertical-relative" => mso_position_vertical_relative = Some(v)
+      "mso-position-vertical-relative" =>
+        mso_position_vertical_relative = Some(v)
       "mso-wrap-distance-left" => mso_wrap_distance_left = Some(v)
       "mso-wrap-distance-top" => mso_wrap_distance_top = Some(v)
       "mso-wrap-distance-right" => mso_wrap_distance_right = Some(v)

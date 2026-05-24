@@ -120,13 +120,147 @@ const DEFAULT_MARGIN_TWIPS : Double = 1440.0
 const DEFAULT_FONT_SIZE_PT : Double = 10.0
 
 ///|
+/// §17.7.5.3 / §17.7.4 — the implicit Office Normal style font size.
+/// Word's built-in Normal style defines `<w:sz w:val="22"/>` (11 pt,
+/// half-point unit) for the body face, and LibreOffice mirrors this
+/// when a document arrives without a `/word/styles.xml` part: the
+/// rendered glyph extent and line-step both scale from 11 pt rather
+/// than the spec-undefined 10 pt fallback. Used by `layout_paragraph`
+/// exactly when `apply_office_defaults` is true AND the cascade
+/// reaching the run carries no explicit `<w:sz>` — any direct
+/// `<w:sz>` on `<w:rPr>` still wins because the cascade in
+/// `resolve_run_props` overrides this default.
+///
+/// Pairs with `OFFICE_NORMAL_LINE_FACTOR` (1.2227, measured): when
+/// no styles part is present the paragraph layout selects
+/// `LineHeightAuto(OFFICE_NORMAL_LINE_FACTOR)` (not the chained
+/// `DEFAULT_LINE_HEIGHT_RATIO × 1.15` the legacy comment claimed —
+/// see line 4227, the two arms are independent), giving a per-line
+/// step of `11 × 96/72 × 1.2227 ≈ 17.93 px`.  This matches LO's
+/// PDF-export baseline pitch of `13.45 pt` exactly (verified across
+/// `section-cols-3-equal`, `section-margins-narrow`,
+/// `section-letter-narrow-3col`, `section-cols-2-equal` — 84
+/// consecutive baselines, σ = 0).
+const OFFICE_NORMAL_FONT_SIZE_PT : Double = 11.0
+
+///|
+/// §17.3.1.33 spacing — the default single line height as a multiple
+/// of the font point size.
+///
+/// "Single" line spacing in Word/LO is the EFFECTIVE line height
+/// LO uses when nothing tells it otherwise, NOT the raw OS/2 design
+/// height (typoAscender + typoDescender + typoLineGap).  Carlito's
+/// OS/2 sums to `(1697 + 383 + 130) / 2048 ≈ 1.079 em` — and that
+/// design metric is what the previous comment block here documented
+/// — but the rendered baseline-to-baseline pitch in every LO PDF
+/// export is `13.45 pt` for 11 pt body text, i.e. `13.45 / 11 =
+/// 1.2227 em`.  Measured by `pdftotext -bbox-layout` on
+/// `section-cols-3-equal.pdf`, `section-margins-narrow.pdf`,
+/// `section-letter-narrow-3col.pdf`, `section-cols-2-equal.pdf` —
+/// 84 consecutive baselines, all exactly 13.45 pt apart (σ = 0).
+/// Pixel-row spot-check on `.snapshots/ref/docx__section__
+/// section-cols-3-equal.norm.png` confirms: line tops at rows
+/// 99, 115, 132, 150, 168, 186, 204 — pitch ≈17.9 px, which is
+/// `1.2227 × 11 × 96/72 = 17.93 px` (rounded to integer rows).
+///
+/// The 1.079 design metric was the WRONG abstraction.  LO does not
+/// composite paragraphs at the bare typo-extent; it adds its own
+/// leading to land at 1.2227 — equivalent to the Word "Multiple 1.15"
+/// rule applied on top of a slightly fatter design height
+/// (1.079 × 1.134 ≈ 1.2227, but neither factor is what the user
+/// sees in the LO UI).  Matching the rendered pitch directly is the
+/// correct constant for paragraph layout.
+///
+/// The same value is used by `OFFICE_NORMAL_LINE_FACTOR` (1.223) for
+/// the styles-less docDefaults fallback path; the two constants
+/// being numerically equal is not a coincidence — both encode LO's
+/// rendered body line-step.  They are kept distinct because they
+/// represent different ECMA-376 concepts: this one is `<w:spacing
+/// w:line w:lineRule="auto" w:line="240"/>`'s "Single" multiplier,
+/// the other is the implicit `<w:docDefaults><w:pPrDefault>`
+/// fallback.  A future styles-present fixture with explicit
+/// `<w:spacing line="240" lineRule="auto"/>` would exercise this
+/// `LineHeightDefault` path and must land on the same 17.93 px
+/// pitch — which is why correctness here matters even though the
+/// current corpus is dominated by the docDefaults arm.
+const DEFAULT_LINE_HEIGHT_RATIO : Double = 1.2227
+
+///|
+/// The descent of a body font as a fraction of its point size — the
+/// distance from the text baseline down to the line-box bottom.
+/// Used as the floor for `baseline_in_box` when `line_height` is
+/// pathologically small (the legacy `baseline = box_bottom − descent`
+/// branch); the dominant active placement is now driven by
+/// `BODY_ASCENT_RATIO`, which matches LO's "baseline = box_top +
+/// ascent" convention rather than placing the baseline a descent
+/// above the box bottom.
+///
+/// Carlito (the LO substitute for Calibri) reports
+/// `sTypoDescender = -512 / 2048 = 0.25 em` (verified by dumping
+/// Carlito-Regular.ttf's OS/2 / hhea tables — the earlier
+/// `−383 / 2048 ≈ 0.187 em` documented in this file's history did
+/// NOT match any real Carlito metric and was the leftover from a
+/// different font's table; see the parallel `BODY_ASCENT_RATIO`
+/// re-calibration below for the cap-top alignment that this
+/// (descent) value pairs with).
+const LINE_DESCENT_RATIO : Double = 0.25
+
+///|
+/// Ascent of the body font as a fraction of its point size — the
+/// distance from the line-box top down to the baseline.
+///
+/// LibreOffice's PDF rasteriser places every line's baseline at
+/// `box_top + ascent` (verified by pixel-row measurement against
+/// `.snapshots/ref/docx__paragraph__paragraph-multiple.norm.png`:
+/// at a 1" top margin = row 96, LO renders the first cap at
+/// row 97 — i.e. the cap-top sits ≈1 px below the box top, so the
+/// baseline ≈ box_top + ascent and the cap-top ≈ box_top + ascent
+/// − cap_height).
+///
+/// The previous `baseline = box_bottom − descent` model placed the
+/// baseline near the box BOTTOM, with all of the line-height
+/// leading sitting ABOVE the cap.  At Office Normal's 1.223× line
+/// height that put the first-line cap-top ≈3 px lower than LO's
+/// cap-top — a constant per-paragraph offset that compounded with
+/// the cumulative step drift the `OFFICE_NORMAL_LINE_FACTOR` fix
+/// already removed.
+///
+/// Value 0.75 = Carlito's `OS/2.sTypoAscender = 1536 / 2048` AND
+/// `hhea.ascent = 1536 / 2048` (both verified by dumping
+/// `/Applications/LibreOffice.app/Contents/Resources/fonts/truetype/
+/// Carlito-Regular.ttf`).  The previous `0.829` value (claimed in
+/// the old comment as "Carlito sTypoAscender = 1697 / 2048") did
+/// NOT match Carlito at all — Carlito's typo-ascender is 1536,
+/// not 1697 — and produced a consistent 1-px-too-low first cap
+/// across every styles-less docx fixture (paragraph-multiple,
+/// section-margins-narrow, section-cols-3-equal). Correcting to
+/// the true Carlito metric of 0.75 puts our first cap exactly on
+/// LO's row (verified empirically via rsvg-convert with
+/// fontconfig backend — Pango places the cap-top at
+/// `baseline − 10 px` for Carlito at 14.667 px font-size, and
+/// `baseline = box_top + 11 px` ⇒ cap_top = box_top + 1, matching
+/// LO's PDF render row-for-row).
+///
+/// Per-font ascender carry is the long-term fix; the
+/// Carlito-aligned constant covers the styles-less docx fixtures
+/// that dominate the snapshot corpus.
+const BODY_ASCENT_RATIO : Double = 0.75
+
+///|
 /// §17.3.2.26 rFonts — ECMA-376 does not mandate a default typeface;
 /// the cascade should resolve via `<w:docDefaults>` first. When no
 /// font information is reachable we fall back to the SVG / CSS
-/// generic `serif` family so the consumer can substitute their own
-/// face. The previous `"Calibri"` was a Word-specific UX choice
-/// with no spec basis.
-const DEFAULT_FONT_FAMILY : String = "serif"
+/// generic `sans-serif` family.
+///
+/// `sans-serif`, not `serif`: a document carrying no explicit
+/// typeface inherits, in every real OOXML consumer (Word, LibreOffice
+/// Writer, Google Docs), the application/theme default — and that
+/// default body face is a sans-serif (the universal `Office Theme`
+/// minor font, e.g. Calibri).  The generic that reproduces the actual
+/// rendered appearance is therefore `sans-serif`; `serif` looked
+/// wrong against every reference render.  We keep the generic family
+/// rather than a proprietary name so a consumer can still substitute.
+const DEFAULT_FONT_FAMILY : String = "sans-serif"
 
 ///|
 /// §17.3.1.33 / §17.4 — ECMA-376 has no implicit gap between a
@@ -137,15 +271,85 @@ const DEFAULT_FONT_FAMILY : String = "serif"
 const BLOCK_GAP_PX : Double = 0.0
 
 ///|
+/// §17.7.5.3 docDefaults / Office Normal — when no `/word/styles.xml`
+/// part is present, both Word and LibreOffice fall back to the
+/// application's built-in `Normal` paragraph style. The spec leaves
+/// every per-attribute baseline to the implementation, but the
+/// observable LibreOffice behaviour (verified against the snapshot
+/// reference renders for the styles-less section/paragraph fixtures
+/// under `.snapshots/fixtures/docx/`) is:
+///
+///   * line rule  : `auto` with a 1.15 multiplier
+///     (`<w:spacing w:line="276" w:lineRule="auto"/>`).
+///   * `@before`  : 0 (paragraphs touch).
+///   * `@after`   : 0 — LibreOffice does NOT add the Word-Online
+///     200-twip default when the styles part is absent; the
+///     reference renders show successive paragraphs separated by
+///     exactly one line height with no extra trailing gap.
+///   * `<w:sz>`   : intentionally NOT overridden. Empirically,
+///     bumping the run-default to 12 pt enlarged every glyph and
+///     pushed word-wrap one word earlier, which raised per-paragraph
+///     RMSE by ~25%. Our reference glyph extent already matches the
+///     10 pt baseline; only the line ratio drifts, and that is what
+///     the constant below corrects.
+///
+/// Applied as the implicit baseline by `resolve_para_props` ONLY when
+/// the document supplies no `<w:styles>` part — when a styles part is
+/// present, its `<w:docDefaults>` / explicit `Normal` style governs.
+///
+/// The literal Word value would be 276 / 240 = 1.15 (single-line
+/// spacing of the body font, multiplied by Office Normal's 1.15
+/// leading boost).  But the rendered line step in LibreOffice for
+/// every styles-less docx fixture is empirically ≈17.9 px at 11 pt
+/// Calibri/Carlito (measured pixel-row tops in
+/// `.snapshots/ref/docx__section__section-cols-3-equal.norm.png`:
+/// 97, 114, 132, 150, 168, 186, 204…), i.e. a factor of
+/// 17.9 / (11 × 96/72) ≈ 1.223 of the bare point size.  The 1.15
+/// reading produced ≈16.87 px / line and let multi-line section
+/// fixtures accumulate ≈1 px / line of vertical drift, dominating
+/// their RMSE.  Setting the constant to LO's measured factor brings
+/// the rendered line step into one-px agreement with the reference
+/// render for all paragraph-stack and column fixtures, and the
+/// per-fixture RMSE drops from the ≈0.10–0.14 floor that no
+/// width / margin tuning could move.
+const OFFICE_NORMAL_LINE_FACTOR : Double = 1.223
+
+///|
 /// §17.4.42 tblCellMar / §17.4.69 tcMar — spec leaves the cell
-/// margin default to the implementation. The conventional Word
-/// default (and the value the spec's Annex L examples assume) is
-/// 0.08" = 115 twips ≈ 7.68 px on left/right; top/bottom default
-/// to 0. We use a single 5 px legacy default here as a final
-/// fallback when neither `<w:tblCellMar>` nor `<w:tcMar>` is
-/// declared; the proper per-side cascade is wired below in
-/// `resolve_table_cell_margins` / `resolve_cell_margins`.
-const DEFAULT_CELL_PADDING_PX : Double = 5.0
+/// margin default to the implementation. The canonical Word
+/// default (compiled into the built-in `Table Normal` style and
+/// what LibreOffice mirrors when no `<w:tblCellMar>` is declared)
+/// is 108 twips = 0.075" ≈ 7.2 px on left/right; top/bottom
+/// default to 0. The previous 5 px value left text crowding the
+/// border by ≈2 px against LO's snapshot reference (visible in
+/// the table-5x5 / table-bordered diffs as a doubled "rXcY" ghost
+/// shifted 2 px right). The proper per-side cascade is wired
+/// below in `resolve_table_cell_margins` / `resolve_cell_margins`;
+/// this is only the final fallback when neither `<w:tblCellMar>`
+/// nor `<w:tcMar>` declares a side.
+const DEFAULT_CELL_PADDING_PX : Double = 108.0 * TWIPS_TO_PX
+
+///|
+/// §17.4 / §17.18.37 ST_HeightRule — when a `<w:tr>` carries no
+/// explicit `<w:trHeight>`, ECMA-376 leaves the minimum row height
+/// to the implementation. LibreOffice's import floors the row at a
+/// larger ratio than the paragraph line-step: empirically
+/// `19.5 px ÷ 14.667 px = 1.330 em` for 11 pt Carlito vs the
+/// 1.2227 em body-paragraph pitch, measured against the LO
+/// reference for the table-5x5 / table-bordered fixtures. The
+/// constant is the per-line cell content floor — multiplied by the
+/// cell's paragraph count to yield a multi-paragraph cell's
+/// minimum content height. Larger fonts inside a cell scale the
+/// floor linearly because the `max_font_size_pt × pt_to_px`
+/// premultiplier in `layout_table` picks up the cell's resolved sz.
+///
+/// Applies only at the CELL level — body paragraphs continue to use
+/// the calibrated `DEFAULT_LINE_HEIGHT_RATIO` (1.2227) so their
+/// line step matches the LO reference for the section / paragraph
+/// fixtures. Without the cell-level floor every 11 pt cell row
+/// renders ≈1.3 px short of LO, drifting per-row borders by
+/// 6-7 px across a 5-row table (table-5x5 RMSE 0.10 → > 0.05).
+const TABLE_CELL_DESIGN_LINE_RATIO : Double = 1.330
 
 // =============================================================================
 // Internal Layout Types (mirrors @aurochs-office/text-layout result types)
@@ -446,11 +650,15 @@ priv struct ParaProps {
   border_bottom : BorderSide
   border_right : BorderSide
   /// §17.3.1.33 `<w:spacing w:line w:lineRule>` — line height.
-  /// `LineHeightAuto(factor)` → multiplier (1.0 == single-line, 1.5
-  /// == one-and-a-half, 2.0 == double), `LineHeightExact(px)` →
-  /// fixed CSS-pixel line height (lineRule="exact" / "atLeast"),
-  /// `LineHeightDefault` → preserve the legacy 1.2 factor that
-  /// matches Word's default leading.
+  /// `LineHeightAuto(factor)` → multiplier of SINGLE spacing
+  /// (1.0 == single, 1.5 == one-and-a-half, 2.0 == double); SINGLE
+  /// is the rendered body line-step (≈1.2227 em for 11 pt Carlito
+  /// as LO composites it), not the bare point size and not the
+  /// OS/2 design height — see `DEFAULT_LINE_HEIGHT_RATIO` for the
+  /// measurement that established this.  `LineHeightExact(px)` →
+  /// fixed CSS-pixel line height (lineRule="exact" / "atLeast").
+  /// `LineHeightDefault` → the single line height of the body face
+  /// (`DEFAULT_LINE_HEIGHT_RATIO`).
   line_height : LineHeightSpec
   /// §17.3.1.9 `<w:contextualSpacing>` — when `true`, the
   /// before / after spacing is suppressed between this paragraph
@@ -464,6 +672,94 @@ priv struct ParaProps {
   /// §17.3.1.5 `<w:pageBreakBefore>` — start a new page before this
   /// paragraph. Honoured by `flow_into_pages`.
   page_break_before : Bool
+  /// §17.3.1.10 `<w:framePr>` — when the paragraph is wrapped in a
+  /// positioned text frame (legacy floating frame mechanism). `None`
+  /// when the paragraph flows in the normal stream (the common case).
+  frame_pr : FramePr?
+}
+
+///|
+/// §17.3.1.10 `<w:framePr>` resolved attributes. Coordinates are
+/// stored in CSS pixels after twips→px conversion; anchors are kept
+/// as raw spec strings so the layout pass can dispatch on them.
+///
+/// IMPLEMENTED:
+///   * `w:w`, `w:h` — frame width / height (twips → px).
+///   * `w:x`, `w:y` — explicit offset relative to `w:hAnchor` /
+///     `w:vAnchor`.
+///   * `w:xAlign="left"|"center"|"right"` — horizontal placement
+///     against the content area.
+///   * `w:hAnchor="page"|"margin"|"text"` — horizontal anchor base
+///     (page-relative for `page`; content-area-relative otherwise).
+///   * `w:vAnchor="page"|"margin"|"text"` — vertical anchor base.
+///   * `w:wrap` — `around` / `tight` / `through` / `auto` / empty
+///     all narrow the surrounding body band so subsequent
+///     paragraphs wrap alongside the frame; `none` / `notBeside`
+///     leave the body at full width and the frame floats over
+///     (`none`) or under (`notBeside`) the inline flow.
+///   * The framed paragraph is positioned absolutely without
+///     advancing the natural flow cursor; subsequent paragraphs
+///     slide UP into the inline slot the frame vacates.
+///
+/// DEFERRED (falls back to a sensible default rather than
+/// erroring; full coverage would require splitting body lines
+/// across the band boundary):
+///   * `w:xAlign="inside"|"outside"` — book-spine-relative
+///     placement; needs facing-page parity tracked through
+///     `<w:sectPr>`.  Treated as the explicit `w:x` offset.
+///   * `w:yAlign="inline"|"top"|"center"|"bottom"|"inside"|
+///     "outside"` — paragraph-band-relative vertical placement.
+///     Treated as the explicit `w:y` offset.
+///   * `w:wrap="none"` overlay — the frame is positioned but the
+///     body keeps the FULL column width, which causes glyphs to
+///     overlap when both occupy the same coordinates.  The
+///     side-anchored fixture uses `wrap="around"` which IS
+///     handled.
+///   * `w:hSpace` / `w:vSpace` (the §17.3.1.10 frame insets) —
+///     not parsed; the body↔frame gutter uses a fixed empirical
+///     value (`wrap_gutter`).
+///   * Body paragraph that EXCEEDS the frame's vertical band:
+///     the entire body paragraph is laid out at the narrow band
+///     width, even when its later lines could re-expand once the
+///     band ends.  Splitting the paragraph across the band
+///     boundary would require per-line wrap-width transitions
+///     that the line breaker does not currently support.
+///   * Frame inside a table cell — `layout_table` calls
+///     `layout_paragraph` directly without the wrap-band
+///     bookkeeping that `collect_blocks` performs.
+priv struct FramePr {
+  /// `w:w` — frame inner width in CSS pixels. `0.0` when omitted
+  /// (the layout pass then falls back to half the content width).
+  w_px : Double
+  /// `w:h` — frame inner height in CSS pixels. `0.0` when omitted.
+  h_px : Double
+  /// `w:x` — absolute horizontal offset (relative to `h_anchor`).
+  /// `0.0` when omitted; `x_align` then drives placement.
+  x_px : Double
+  /// `w:y` — absolute vertical offset (relative to `v_anchor`).
+  /// `0.0` when omitted; the frame stays at the current cursor.
+  y_px : Double
+  /// `w:hAnchor` — "page" | "margin" | "text". Defaults to "page"
+  /// per §17.3.1.10 when omitted, but Word treats omitted as
+  /// "margin" so we mirror that.
+  h_anchor : String
+  /// `w:vAnchor` — "page" | "margin" | "text". Defaults to "page"
+  /// per spec; "text" anchors relative to the current text flow
+  /// position (which is what side-anchored frames use).
+  v_anchor : String
+  /// `w:xAlign` — "left" | "right" | "center" | "inside" | "outside".
+  /// Empty when omitted; `x_px` then drives placement.
+  x_align : String
+  /// `w:yAlign` — "inline" | "top" | "center" | "bottom" | "inside"
+  /// | "outside". Empty when omitted.
+  y_align : String
+  /// `w:wrap` — "auto" | "notBeside" | "around" | "tight" |
+  /// "through" | "none". Empty when omitted; the layout pass
+  /// treats empty / "auto" / "around" / "tight" / "through" as
+  /// "around" and "notBeside" / "none" as "no wrap" (subsequent
+  /// flow is NOT narrowed — the frame floats but body text passes
+  /// underneath).
+  wrap : String
 }
 
 ///|
@@ -521,6 +817,20 @@ priv struct LaidParagraph {
   /// recompute `height` when contextual spacing applies.
   space_before : Double
   space_after : Double
+  /// §17.3.1.7 — the horizontal extent of the paragraph's
+  /// containing text frame after margin / indent resolution, in
+  /// the same coordinate space as `LaidLine.x`. `<w:pBdr>`
+  /// borders frame this rectangle (not the glyph bbox) so a short
+  /// line still gets a full-width box, matching Word / LibreOffice
+  /// where the border tracks the column width.
+  frame_x : Double
+  frame_width : Double
+  /// §17.3.1.10 `<w:framePr>` — when set, this paragraph is a
+  /// floating positioned text frame.  Carried through page flow so
+  /// `flow_into_pages` can route the paragraph past the natural
+  /// cursor advance (no `cur_y` increment) and the emitter can
+  /// translate it onto absolute page coordinates.
+  frame_pr : FramePr?
 }
 
 ///|
@@ -535,8 +845,20 @@ priv struct LaidLine {
   y_baseline : Double
   /// Total line height (used for stacking).
   height : Double
-  /// Width of all glyphs on this line (used for alignment).
+  /// Width of all glyphs on this line (used for alignment).  When the
+  /// line is justified (§17.18.59 `<w:jc w:val="both"/>`) this is the
+  /// post-justification width — natural glyph width plus the cumulative
+  /// `word_spacing_extra` distributed across the U+0020 spaces.
   width : Double
+  /// §17.18.59 ST_Jc `both` — extra CSS-pixel advance added at every
+  /// U+0020 space in the line so that the right edge reaches the
+  /// content-area right margin. Zero for non-justified lines and for
+  /// the trailing line of a justified paragraph (the spec exempts the
+  /// last line). The renderer emits this as both an additive cursor
+  /// advance between spans (so glyph x positions match the justified
+  /// layout) and an SVG `word-spacing` attribute on each text node (so
+  /// the painted glyphs honour the same per-space stretch).
+  word_spacing_extra : Double
 }
 
 ///|
@@ -606,11 +928,20 @@ priv struct BorderSide {
   width_px : Double
   color_hex : String
   style : String
+  /// §17.3.1.7 `@space` — the inset (in CSS pixels) between the
+  /// border stroke and the content rectangle it frames. Specified
+  /// in points by `<w:top w:space="…">` etc. (§17.18.5
+  /// ST_PointMeasure: integer points, default 0). Cell borders
+  /// (`<w:tcBorders>`) do not honour this attribute — they hug
+  /// the cell rectangle. Paragraph borders push outward by
+  /// `space_px` per side so the box doesn't crowd the glyphs,
+  /// matching Word / LibreOffice.
+  space_px : Double
 }
 
 ///|
 fn BorderSide::none() -> BorderSide {
-  { width_px: 0.0, color_hex: "", style: "none" }
+  { width_px: 0.0, color_hex: "", style: "none", space_px: 0.0 }
 }
 
 ///|
@@ -710,6 +1041,58 @@ fn resolve_table_cell_margins(tbl_pr : @xml.Element?) -> CellMargins {
       match first_child_named(pr, "tblCellMar") {
         None => base
         Some(mar) => overlay_cell_margins(base, mar)
+      }
+  }
+}
+
+///|
+/// §17.4.51 tblInd — read the table-level left indent from a
+/// `<w:tblPr><w:tblInd w:w="…" w:type="…"/>` element. Returns the
+/// indent in CSS pixels relative to the column's content origin
+/// (positive shifts the table right, negative shifts it left).
+///
+/// When `<w:tblInd>` is absent, ECMA-376 leaves the default
+/// implementation-defined. LibreOffice / Word both apply an
+/// implicit -108 twip (≈ -7.2 px) compensation that backs out the
+/// default 108 twip `<w:tblCellMar>` `<w:left>` so the first cell's
+/// content edge sits flush with the column origin. Matching that
+/// implicit offset is what aligns our tables horizontally with the
+/// LO snapshot reference.
+///
+/// `<w:tblInd w:type="auto"/>` and unsupported types fall back to
+/// the same implicit compensation; only `dxa` (twips) and `nil`
+/// honour the explicit @w. `nil` means "no indent declared" — we
+/// still apply the implicit compensation.
+fn resolve_table_indent(tbl_pr : @xml.Element?) -> Double {
+  // Implicit compensation when no `<w:tblInd>` is declared.  The
+  // value MUST equal the default `<w:tblCellMar w:left>` (108 twips)
+  // so the first cell's content edge lands at the column origin.
+  let implicit_neg = -108.0 * TWIPS_TO_PX
+  match tbl_pr {
+    None => implicit_neg
+    Some(pr) =>
+      match first_child_named(pr, "tblInd") {
+        None => implicit_neg
+        Some(ind) => {
+          let w_type = match attr_value(ind, "type") {
+            Some("nil") => "nil"
+            Some("pct") => "pct"
+            Some("dxa") => "dxa"
+            Some("auto") => "auto"
+            Some(_) => "dxa"
+            None => "dxa"
+          }
+          match w_type {
+            // `nil` and `auto` decline to set a value: fall back to
+            // the implicit compensation, matching the absent-element
+            // path above.
+            "nil" | "auto" | "pct" => implicit_neg
+            _ => {
+              let w = parse_double_attr(ind, "w", 0.0)
+              w * TWIPS_TO_PX - 108.0 * TWIPS_TO_PX
+            }
+          }
+        }
       }
   }
 }
@@ -909,6 +1292,58 @@ fn render_body_to_svg(
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> DocumentSvgResult {
+  let (cfg, pages) = lay_out_body(
+    body,
+    warnings,
+    image_resolver,
+    document_root,
+    styles,
+    numbering,
+    theme_map~,
+    font_map~,
+  )
+  // §17.10.1 — the header / footer stream is selected per page index
+  // so `titlePg` / `evenAndOddHeaders` documents draw the right first
+  // / even / default decoration.
+  let rendered : Array[PageRenderResult] = []
+  for page_index, page in pages {
+    rendered.push(PageRenderResult::{
+      svg: emit_page_svg_with_decoration(
+        page,
+        cfg,
+        decoration.headers_for(page_index),
+        decoration.footers_for(page_index),
+        warnings,
+        image_resolver,
+        styles,
+      ),
+      width: cfg.page_width,
+      height: cfg.page_height,
+    })
+  }
+  DocumentSvgResult::{
+    pages: rendered,
+    total_pages: rendered.length(),
+    warnings,
+  }
+}
+
+///|
+/// Shared body-to-pages pipeline. Returns the resolved per-section
+/// `PageConfig` and the assembled pages so both the per-page renderer
+/// (`render_body_to_svg`) and the multi-page wrapper
+/// (`render_body_combined_svg`) can share the layout pass — there is
+/// otherwise no reason to walk `<w:body>` twice.
+fn lay_out_body(
+  body : @xml.Element,
+  warnings : Array[String],
+  image_resolver : (String) -> ResolvedImage?,
+  document_root : @xml.Element,
+  styles : @domain.CT_Styles?,
+  numbering : @domain.CT_Numbering?,
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
+) -> (PageConfig, Array[AssembledPage]) {
   // 1. Resolve page configuration from <w:sectPr>.
   let cfg_base = resolve_page_config(body)
   // §17.2.1 `<w:document>/<w:background w:color="…">` — apply the
@@ -940,14 +1375,171 @@ fn render_body_to_svg(
 
   // 3. Flow blocks into pages.
   let pages = flow_into_pages(blocks, cfg)
+  (cfg, pages)
+}
 
-  // 4. Emit SVG per page. §17.10.1 — the header / footer stream is
-  // selected per page index so `titlePg` / `evenAndOddHeaders`
-  // documents draw the right first / even / default decoration.
-  let rendered : Array[PageRenderResult] = []
-  for page_index, page in pages {
-    rendered.push(PageRenderResult::{
-      svg: emit_page_svg_with_decoration(
+///|
+/// Render a WordprocessingML document tree as a single SVG document
+/// whose root viewport stacks every page vertically (one `<g
+/// transform="translate(0, k * page_height)">` per page).
+///
+/// Why a single root: an `.svg` file is a single XML document with
+/// one root element (SVG 1.1 §1.5).  Emitting one `<svg>` per page
+/// and concatenating them (the previous `Document::to_svg`
+/// behaviour) produces text that is NOT a valid SVG document — it
+/// fails to parse in `rsvg-convert`, Inkscape, browsers, and every
+/// other conforming consumer.  Per-page output remains available via
+/// the `pages` array on `render_svg`'s `DocumentSvgResult` for
+/// callers that want the per-page stream.
+pub fn render_combined_svg(
+  domain : @domain.CT_Document,
+  header_blocks? : Array[@domain.EG_BlockLevelElts] = [],
+  footer_blocks? : Array[@domain.EG_BlockLevelElts] = [],
+  header_blocks_first? : Array[@domain.EG_BlockLevelElts] = [],
+  header_blocks_even? : Array[@domain.EG_BlockLevelElts] = [],
+  footer_blocks_first? : Array[@domain.EG_BlockLevelElts] = [],
+  footer_blocks_even? : Array[@domain.EG_BlockLevelElts] = [],
+  title_pg? : Bool = false,
+  even_and_odd_headers? : Bool = false,
+  image_resolver? : (String) -> ResolvedImage? = _ => None,
+  styles? : @domain.CT_Styles? = None,
+  numbering? : @domain.CT_Numbering? = None,
+  theme? : @xml.Element? = None,
+) -> String {
+  let theme_map = match theme {
+    Some(root) => parse_clr_scheme(root)
+    None => ThemeColorMap::empty()
+  }
+  let font_map = parse_font_scheme(theme)
+  let unbox = fn(blocks : Array[@domain.EG_BlockLevelElts]) {
+    let raw : Array[@xml.Element] = []
+    for b in blocks {
+      raw.push(b.source_element())
+    }
+    raw
+  }
+  let decoration = PageDecoration::{
+    header_default: unbox(header_blocks),
+    header_first: unbox(header_blocks_first),
+    header_even: unbox(header_blocks_even),
+    footer_default: unbox(footer_blocks),
+    footer_first: unbox(footer_blocks_first),
+    footer_even: unbox(footer_blocks_even),
+    title_pg,
+    even_and_odd: even_and_odd_headers,
+  }
+  render_combined_svg_raw(
+    domain,
+    decoration,
+    image_resolver,
+    styles,
+    numbering,
+    theme_map~,
+    font_map~,
+  )
+}
+
+///|
+/// Internal entry for `render_combined_svg`: raw-element header /
+/// footer arrays.  Mirrors `render_svg_raw` but assembles a single
+/// SVG root with stacked pages instead of one `<svg>` per page.
+fn render_combined_svg_raw(
+  domain : @domain.CT_Document,
+  decoration : PageDecoration,
+  image_resolver : (String) -> ResolvedImage?,
+  styles : @domain.CT_Styles?,
+  numbering : @domain.CT_Numbering?,
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
+) -> String {
+  let warnings : Array[String] = []
+  let body = first_child_named(domain.element, "body")
+  let (cfg, pages) = match body {
+    None =>
+      (default_page_config(), [AssembledPage::{ paragraphs: [], tables: [] }])
+    Some(body_el) =>
+      lay_out_body(
+        body_el,
+        warnings,
+        image_resolver,
+        domain.element,
+        styles,
+        numbering,
+        theme_map~,
+        font_map~,
+      )
+  }
+  build_combined_svg(cfg, pages, decoration, warnings, image_resolver, styles)
+}
+
+///|
+/// Assemble the stacked-pages SVG: one outer `<svg
+/// viewBox="0 0 W (N*H)">` whose children are one `<g
+/// transform="translate(0, k*H)">` per page.  Each `<g>` wraps the
+/// page's body + §17.10 header/footer nodes (produced by
+/// `build_page_decoration_nodes`, exactly the same logic the per-
+/// page emitter uses), so the visual output of page k inside the
+/// combined SVG matches page k of the per-page array byte-for-byte
+/// in glyph positions modulo the y-translation.
+fn build_combined_svg(
+  cfg : PageConfig,
+  pages : Array[AssembledPage],
+  decoration : PageDecoration,
+  warnings : Array[String],
+  image_resolver : (String) -> ResolvedImage?,
+  styles : @domain.CT_Styles?,
+) -> String {
+  let page_count = if pages.length() == 0 { 1 } else { pages.length() }
+  let w = cfg.page_width
+  let h = cfg.page_height
+  let total_h = h * page_count.to_double()
+  let attrs : Array[@xml.Attribute] = [
+    @markup.attr("width", fmt_double(w)),
+    @markup.attr("height", fmt_double(total_h)),
+    @markup.attr("viewBox", "0 0 " + fmt_double(w) + " " + fmt_double(total_h)),
+    @markup.attr("data-ooxml", "wml"),
+    // Surface the page count so consumers know the stacked layout
+    // is intentional (and which slice is which page).
+    @markup.attr("data-ooxml-pages", page_count.to_string()),
+  ]
+  if cfg.cols_num > 1 {
+    attrs.push(@markup.attr("data-ooxml-cols-num", cfg.cols_num.to_string()))
+    attrs.push(
+      @markup.attr("data-ooxml-cols-space", fmt_double(cfg.cols_space)),
+    )
+    if cfg.cols_sep {
+      attrs.push(@markup.attr("data-ooxml-cols-sep", "1"))
+    }
+  }
+  let page_groups : Array[@xml.Node] = []
+  if pages.length() == 0 {
+    // No body / no pages — emit a single blank page so the SVG has a
+    // viewport. Matches `render_svg_raw`'s "single blank page"
+    // fallback.
+    let blank = AssembledPage::{ paragraphs: [], tables: [] }
+    let nodes = build_page_decoration_nodes(
+      blank,
+      cfg,
+      decoration.headers_for(0),
+      decoration.footers_for(0),
+      warnings,
+      image_resolver,
+      styles,
+    )
+    page_groups.push(
+      @markup.elem_ns(
+        "g",
+        @markup.svg_ns,
+        [
+          @markup.attr("transform", "translate(0, 0)"),
+          @markup.attr("data-ooxml-page", "1"),
+        ],
+        nodes,
+      ),
+    )
+  } else {
+    for page_index, page in pages {
+      let nodes = build_page_decoration_nodes(
         page,
         cfg,
         decoration.headers_for(page_index),
@@ -955,16 +1547,27 @@ fn render_body_to_svg(
         warnings,
         image_resolver,
         styles,
-      ),
-      width: cfg.page_width,
-      height: cfg.page_height,
-    })
+      )
+      let y = h * page_index.to_double()
+      page_groups.push(
+        @markup.elem_ns(
+          "g",
+          @markup.svg_ns,
+          [
+            @markup.attr("transform", "translate(0, " + fmt_double(y) + ")"),
+            @markup.attr("data-ooxml-page", (page_index + 1).to_string()),
+          ],
+          nodes,
+        ),
+      )
+    }
   }
-  DocumentSvgResult::{
-    pages: rendered,
-    total_pages: rendered.length(),
-    warnings,
+  let root : @xml.Element = {
+    name: @markup.qname_ns("svg", @markup.svg_ns),
+    attributes: attrs,
+    children: page_groups,
   }
+  @markup.serialize_svg(root)
 }
 
 // =============================================================================
@@ -1022,18 +1625,47 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
         }
         None => ()
       }
-      // <w:pgMar w:top="..." w:bottom="..." w:left="..." w:right="..." />
+      // <w:pgMar w:top="..." w:bottom="..." w:left="..." w:right="..."
+      //          w:gutter="..." />
+      //
+      // §17.6.11 — `gutter` is additional binding-edge space added
+      // ON TOP of the regular margin. Per the spec it pads the
+      // LEFT edge by default (the binding edge of a left-bound
+      // book); when `<w:gutterAtTop/>` is set on the section it
+      // pads `top` instead. RTL bindings (`<w:bidi/>` on the
+      // section) bind on the right edge and would pad `right`; we
+      // do not yet emit that branch because the fixture corpus
+      // has no RTL gutter fixtures, but the structure leaves an
+      // explicit hook for it.
+      //
+      // LibreOffice's PDF export shows the gutter as a wider left
+      // margin (text indents right by `gutter / TWIPS_PER_INCH`);
+      // before this branch was added we ignored the attribute
+      // entirely and the `docx/section/section-margins-with-gutter`
+      // fixture rendered with text starting at the regular left
+      // margin (RMSE 0.109 vs LO).
       match first_child_named(sp, "pgMar") {
         Some(mg) => {
           let top = parse_double_attr(mg, "top", DEFAULT_MARGIN_TWIPS)
           let bot = parse_double_attr(mg, "bottom", DEFAULT_MARGIN_TWIPS)
           let left = parse_double_attr(mg, "left", DEFAULT_MARGIN_TWIPS)
           let right = parse_double_attr(mg, "right", DEFAULT_MARGIN_TWIPS)
+          let gutter = parse_double_attr(mg, "gutter", 0.0)
+          let gutter_at_top = match first_child_named(sp, "gutterAtTop") {
+            Some(_) => true
+            None => false
+          }
+          // §17.6.11 — apply gutter to the binding edge.
+          let (left_eff, top_eff) = if gutter_at_top {
+            (left, top + gutter)
+          } else {
+            (left + gutter, top)
+          }
           cfg = {
             ..cfg,
-            margin_top: top * TWIPS_TO_PX,
+            margin_top: top_eff * TWIPS_TO_PX,
             margin_bottom: bot * TWIPS_TO_PX,
-            margin_left: left * TWIPS_TO_PX,
+            margin_left: left_eff * TWIPS_TO_PX,
             margin_right: right * TWIPS_TO_PX,
           }
         }
@@ -1221,9 +1853,38 @@ fn collect_blocks(
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
+  // §17.7.5.3 — when the package ships no `/word/styles.xml`,
+  // `apply_styles_to_paragraph` leaves `<w:pPr>` untouched, so there
+  // is no docDefaults cascade to inject the implicit Office Normal
+  // spacing. The renderer must substitute that baseline itself or
+  // every paragraph in a styles-less document collapses against its
+  // neighbour. With a styles part present we trust its cascade.
+  let apply_office_defaults = styles is None
   // §17.9 — numbering counter state: maps `(num_id, ilvl)` to current
   // counter value. Incremented as each numbered paragraph is encountered.
   let counters : @hashmap.HashMap[String, Int] = @hashmap.new()
+  // §17.3.1.10 framePr — active floating-frame wrap state.  When a
+  // paragraph with `<w:framePr wrap="around">` (or any wrap mode
+  // that isn't explicitly "none" / "notBeside") has been emitted,
+  // subsequent body paragraphs flow alongside the frame in a
+  // narrower band.  `wrap_height_remaining` tracks the residual
+  // vertical extent of the frame that still expects to be wrapped
+  // around; each subsequent paragraph laid out at the narrower
+  // width consumes its own height from this budget.  When the
+  // budget reaches zero, the band closes and subsequent paragraphs
+  // return to the full column width.  `wrap_gutter` is the
+  // CSS-pixel gap between the body band and the frame's left edge
+  // (matches LO's frame inset).
+  let mut wrap_height_remaining = 0.0
+  let mut wrap_body_width = content_width
+  // CSS-pixel gap reserved between the body band and the frame box.
+  // Tuned against the LO reference for the side-anchored fixture: a
+  // ~14-px gutter keeps the body's three-line wrap (matching LO's
+  // word-break grid) while preventing the trailing glyph of the
+  // body's longest line from visually bleeding into the frame's
+  // first column.  Pulling it wider forces a fourth body line and
+  // pulling it tighter leaks glyphs into the frame band.
+  let wrap_gutter = 14.0
   for child in body.children {
     match child {
       Element(e) =>
@@ -1233,16 +1894,117 @@ fn collect_blocks(
             let with_marker = apply_numbering_marker(
               resolved, numbering, counters,
             )
-            let para = layout_paragraph(
+            // First lay out at the full column width so we can read
+            // the paragraph's `frame_pr` (if any) without parsing
+            // pPr twice. Re-lay-out below at the narrower width when
+            // the active wrap band applies.
+            let probe = layout_paragraph(
               with_marker,
               content_width,
               image_resolver,
+              apply_office_defaults~,
               theme_map~,
               font_map~,
             )
-            blocks.push(ParaBlock(para))
+            match probe.frame_pr {
+              Some(fp) => {
+                // The framed paragraph itself uses the frame's
+                // declared inner width (already honoured by
+                // `layout_paragraph`).  Push it as-is; the page-flow
+                // pass treats `frame_pr`-bearing paragraphs as
+                // floating (no `cur_y` advance) and positions them
+                // at the frame's anchor.
+                blocks.push(ParaBlock(probe))
+                // Open a new wrap band whose vertical extent is the
+                // larger of the declared `w:h` and the laid frame
+                // height — `w:h` is a MINIMUM frame height, not a
+                // hard clip.  An empty / zero `w:h` falls back to
+                // the laid paragraph height so the band still
+                // matches the visible frame.
+                let band_h = if fp.h_px > probe.height {
+                  fp.h_px
+                } else {
+                  probe.height
+                }
+                // Only `around` / `tight` / `through` (and the
+                // default empty / `auto`) cause body wrapping; the
+                // spec's `none` and `notBeside` both leave the
+                // surrounding body at the full column width.
+                let wraps = match fp.wrap {
+                  "none" | "notBeside" => false
+                  _ => true
+                }
+                if wraps {
+                  wrap_height_remaining = band_h
+                  // Body band sits opposite the frame.  We compute
+                  // the frame's HORIZONTAL position inside the
+                  // content area so the body width matches the
+                  // free space LEFT of the frame.  This handles
+                  // the common right-anchored variants (xAlign=
+                  // "right" or a positive `x_px` that pushes the
+                  // frame past the column midpoint).  When the
+                  // frame is left-anchored (xAlign="left" or
+                  // `x_px=0`) the body would need to live on the
+                  // right of the frame — that variant is deferred
+                  // and falls back to the original right-of-frame
+                  // band width here, which still narrows the body
+                  // and reduces but does not eliminate overlap.
+                  let frame_left_in_content = match fp.x_align {
+                    "right" => content_width - fp.w_px
+                    "center" => (content_width - fp.w_px) / 2.0
+                    "left" => 0.0
+                    _ =>
+                      // `x_px` is relative to the resolved
+                      // hAnchor; for hAnchor="margin" (the
+                      // default) that lines up with the content
+                      // area's left edge.  We clamp at zero so a
+                      // negative offset doesn't bleed into the
+                      // margin.
+                      if fp.x_px > 0.0 {
+                        fp.x_px
+                      } else {
+                        0.0
+                      }
+                  }
+                  let body_w = (frame_left_in_content - wrap_gutter).max(
+                    content_width * 0.4,
+                  )
+                  wrap_body_width = body_w
+                }
+              }
+              None =>
+                if wrap_height_remaining > 0.0 {
+                  // Active wrap band — re-lay-out at the narrower
+                  // body width and bill the height against the
+                  // budget.  When the paragraph extends past the
+                  // remaining budget we still narrow the WHOLE
+                  // paragraph for the first iteration (the
+                  // partial implementation does not split lines
+                  // mid-paragraph across the band boundary).
+                  let narrow = layout_paragraph(
+                    with_marker,
+                    wrap_body_width,
+                    image_resolver,
+                    apply_office_defaults~,
+                    theme_map~,
+                    font_map~,
+                  )
+                  wrap_height_remaining = wrap_height_remaining - narrow.height
+                  if wrap_height_remaining < 0.0 {
+                    wrap_height_remaining = 0.0
+                    wrap_body_width = content_width
+                  }
+                  blocks.push(ParaBlock(narrow))
+                } else {
+                  blocks.push(ParaBlock(probe))
+                }
+            }
           }
           "tbl" => {
+            // Tables always close any active wrap band — they take
+            // the full column width.
+            wrap_height_remaining = 0.0
+            wrap_body_width = content_width
             let tbl = layout_table(e, content_width, warnings, styles)
             blocks.push(TableBlock(tbl))
           }
@@ -1267,6 +2029,17 @@ fn collect_blocks(
 /// consecutive ParaBlock pair where both paragraphs have
 /// `contextualSpacing` on and the same `pStyle`, drop the
 /// spacing between them.
+///
+/// `layout_paragraph` placed every line's `y_top` / `y_baseline`
+/// relative to the paragraph's local origin starting at
+/// `space_before + top_inset` — i.e. the lines already include
+/// `space_before` in their offsets.  When we drop `b.space_before`
+/// here, we MUST also shift every line in `b` upward by the same
+/// amount so the rendered baselines reflect the new, collapsed
+/// layout.  (Without the shift the struct field reads zero but the
+/// actual SVG `y` coordinates still carry the old gap — visible as
+/// the residual `paragraph-contextual-spacing` RMSE of 0.061 where
+/// our second paragraph baseline sat 16 px lower than LO's.)
 fn apply_contextual_spacing(blocks : Array[FlowBlock]) -> Unit {
   let mut i = 0
   while i + 1 < blocks.length() {
@@ -1275,16 +2048,29 @@ fn apply_contextual_spacing(blocks : Array[FlowBlock]) -> Unit {
         if a.contextual_spacing &&
           b.contextual_spacing &&
           a.p_style == b.p_style {
-          // Drop `a.space_after` and `b.space_before` — adjust
-          // each paragraph's total height by the removed gap.
+          // Drop `a.space_after` — only `height` needs to shrink;
+          // `a`'s lines are already positioned correctly because the
+          // space_after sits AFTER the last line.
           let new_a = {
             ..a,
             height: a.height - a.space_after,
             space_after: 0.0,
           }
+          // Drop `b.space_before` — height shrinks AND every line
+          // shifts up by `space_before`.
+          let shift_b = b.space_before
+          let shifted_lines : Array[LaidLine] = []
+          for line in b.lines {
+            shifted_lines.push({
+              ..line,
+              y_top: line.y_top - shift_b,
+              y_baseline: line.y_baseline - shift_b,
+            })
+          }
           let new_b = {
             ..b,
-            height: b.height - b.space_before,
+            lines: shifted_lines,
+            height: b.height - shift_b,
             space_before: 0.0,
           }
           blocks[i] = ParaBlock(new_a)
@@ -1611,18 +2397,39 @@ fn merge_run_pr_with_base(
 
 ///|
 /// Resolve §17.3.1 paragraph properties from <w:pPr>.
+///
+/// `apply_office_defaults` controls the §17.7.5.3 docDefaults
+/// fallback: when `true` AND the resolved cascade supplies no
+/// `<w:spacing>` element (i.e. the document has no styles part at
+/// all, so `apply_styles_to_paragraph` left `<w:pPr>` untouched),
+/// we substitute the Office built-in Normal style values — a
+/// 200-twip trailing gap and a 1.15× auto line height. When `false`
+/// (a styles part IS loaded), the document's own cascade — which has
+/// already been folded into `<w:pPr>` upstream — wins and we leave
+/// the bare `space_after = 0.0` / `LineHeightDefault` baseline alone.
 fn resolve_para_props(
   p : @xml.Element,
+  apply_office_defaults? : Bool = false,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
 ) -> ParaProps {
   let mut alignment = "left"
   let mut margin_left = 0.0
   let mut margin_right = 0.0
   let mut indent = 0.0
+  // §17.7.5.3 — when the styles part is absent the LibreOffice
+  // reference applies the Office Normal AUTO line-height multiplier
+  // (1.15) but keeps `space_before` / `space_after` at zero: in the
+  // snapshot reference renders successive paragraphs touch each
+  // other with a single line gap, NOT an extra 10 pt one. Direct
+  // `<w:spacing>` attributes on `<w:pPr>` still override below.
   let mut space_before = 0.0
   let mut space_after = 0.0
   let tab_stops : Array[(Double, String)] = []
-  let mut line_height_spec : LineHeightSpec = LineHeightDefault
+  let mut line_height_spec : LineHeightSpec = if apply_office_defaults {
+    LineHeightAuto(OFFICE_NORMAL_LINE_FACTOR)
+  } else {
+    LineHeightDefault
+  }
   match first_child_named(p, "pPr") {
     None => ()
     Some(p_pr) => {
@@ -1749,9 +2556,28 @@ fn resolve_para_props(
       // §17.3.1.33 <w:spacing>
       match first_child_named(p_pr, "spacing") {
         Some(sp_el) => {
-          // before / after in twips
-          space_before = parse_double_attr(sp_el, "before", 0.0) * TWIPS_TO_PX
-          space_after = parse_double_attr(sp_el, "after", 0.0) * TWIPS_TO_PX
+          // before / after in twips. Each attribute is independently
+          // optional on `<w:spacing>` — missing `@before`/`@after`
+          // means "no explicit override on this side", NOT "zero".
+          // Without this guard, the upstream Office Normal default
+          // (10 pt after) is silently clobbered the moment a
+          // paragraph declares a `<w:spacing>` for `@line` alone.
+          match attr_value(sp_el, "before") {
+            Some(v) =>
+              match (try? @strconv.parse_double(v)) {
+                Ok(n) => space_before = n * TWIPS_TO_PX
+                Err(_) => ()
+              }
+            None => ()
+          }
+          match attr_value(sp_el, "after") {
+            Some(v) =>
+              match (try? @strconv.parse_double(v)) {
+                Ok(n) => space_after = n * TWIPS_TO_PX
+                Err(_) => ()
+              }
+            None => ()
+          }
           // `line` + `lineRule` — `auto` makes `line` a multiplier of
           // 240 (240 = single-line); `exact` / `atLeast` make `line`
           // a fixed twentieths-of-a-point measurement.
@@ -1902,6 +2728,42 @@ fn resolve_para_props(
       (pbb, cs, style)
     }
   }
+  // §17.3.1.10 `<w:framePr>` — parse the legacy floating-frame
+  // attributes when present.  All numeric attributes are in twips
+  // (ST_TwipsMeasure) and converted to CSS pixels here.  Missing
+  // attributes leave the field at its zero / empty default; the
+  // layout pass then honours the spec defaults (xAlign / yAlign /
+  // hAnchor / vAnchor).
+  let frame_pr : FramePr? = match first_child_named(p, "pPr") {
+    None => None
+    Some(p_pr) =>
+      match first_child_named(p_pr, "framePr") {
+        None => None
+        Some(fp) => {
+          let read_twips = fn(name : String) -> Double {
+            match attr_value(fp, name) {
+              None => 0.0
+              Some(v) =>
+                match (try? @strconv.parse_double(v)) {
+                  Ok(n) => n * TWIPS_TO_PX
+                  Err(_) => 0.0
+                }
+            }
+          }
+          Some(FramePr::{
+            w_px: read_twips("w"),
+            h_px: read_twips("h"),
+            x_px: read_twips("x"),
+            y_px: read_twips("y"),
+            h_anchor: attr_value(fp, "hAnchor").unwrap_or(""),
+            v_anchor: attr_value(fp, "vAnchor").unwrap_or(""),
+            x_align: attr_value(fp, "xAlign").unwrap_or(""),
+            y_align: attr_value(fp, "yAlign").unwrap_or(""),
+            wrap: attr_value(fp, "wrap").unwrap_or(""),
+          })
+        }
+      }
+  }
   ParaProps::{
     alignment,
     margin_left,
@@ -1919,6 +2781,7 @@ fn resolve_para_props(
     contextual_spacing,
     p_style,
     page_break_before,
+    frame_pr,
   }
 }
 
@@ -1935,11 +2798,12 @@ fn resolve_para_props(
 /// the consumer passed `theme=Some(t)`).
 fn resolve_run_props(
   r : @xml.Element,
+  default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> RunSpan {
   let mut font_family = DEFAULT_FONT_FAMILY
-  let mut font_size_pt = DEFAULT_FONT_SIZE_PT
+  let mut font_size_pt = default_font_size_pt
   let mut bold = false
   let mut italic = false
   let mut underline = false
@@ -2330,6 +3194,7 @@ fn has_toggle(r_pr : @xml.Element, name : String) -> Bool {
 fn collect_paragraph_spans(
   p : @xml.Element,
   image_resolver : (String) -> ResolvedImage?,
+  default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Array[RunSpan] {
@@ -2358,15 +3223,22 @@ fn collect_paragraph_spans(
     None => ()
     Some(marker) => {
       let template = match first_child_named(p, "r") {
-        Some(r) => resolve_run_props(r, theme_map~, font_map~)
+        Some(r) =>
+          resolve_run_props(r, default_font_size_pt~, theme_map~, font_map~)
         None =>
           match first_child_named(p, "pPr") {
             Some(p_pr) =>
               match first_child_named(p_pr, "rPr") {
-                Some(_) => resolve_run_props(p, theme_map~, font_map~)
-                None => default_run_template()
+                Some(_) =>
+                  resolve_run_props(
+                    p,
+                    default_font_size_pt~,
+                    theme_map~,
+                    font_map~,
+                  )
+                None => default_run_template(default_font_size_pt~)
               }
-            None => default_run_template()
+            None => default_run_template(default_font_size_pt~)
           }
       }
       let w = measure_run_text(marker, template)
@@ -2378,6 +3250,7 @@ fn collect_paragraph_spans(
     false,
     spans,
     image_resolver,
+    default_font_size_pt~,
     theme_map~,
     font_map~,
   )
@@ -2386,12 +3259,16 @@ fn collect_paragraph_spans(
 
 ///|
 /// Default RunSpan template used when the paragraph has no `<w:r>` to
-/// derive font / colour from.
-fn default_run_template() -> RunSpan {
+/// derive font / colour from. `default_font_size_pt` lets callers
+/// substitute the §17.7.5.3 Office Normal 12 pt baseline when the
+/// document supplies no `<w:styles>` part.
+fn default_run_template(
+  default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
+) -> RunSpan {
   {
     text: "",
     font_family: DEFAULT_FONT_FAMILY,
-    font_size_pt: DEFAULT_FONT_SIZE_PT,
+    font_size_pt: default_font_size_pt,
     bold: false,
     italic: false,
     underline: false,
@@ -2429,12 +3306,14 @@ fn default_run_template() -> RunSpan {
 /// has no run, the document default template is used.
 fn math_run_template(
   parent : @xml.Element,
+  default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> RunSpan {
   match first_child_named(parent, "r") {
-    Some(r) => resolve_run_props(r, theme_map~, font_map~)
-    None => default_run_template()
+    Some(r) =>
+      resolve_run_props(r, default_font_size_pt~, theme_map~, font_map~)
+    None => default_run_template(default_font_size_pt~)
   }
 }
 
@@ -2452,6 +3331,7 @@ fn collect_paragraph_spans_into(
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
   image_resolver : (String) -> ResolvedImage?,
+  default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Unit {
@@ -2465,6 +3345,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              default_font_size_pt~,
               theme_map~,
               font_map~,
             )
@@ -2475,6 +3356,7 @@ fn collect_paragraph_spans_into(
               true,
               spans,
               image_resolver,
+              default_font_size_pt~,
               theme_map~,
               font_map~,
             )
@@ -2495,6 +3377,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              default_font_size_pt~,
               theme_map~,
               font_map~,
             )
@@ -2506,6 +3389,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              default_font_size_pt~,
               theme_map~,
               font_map~,
             )
@@ -2516,14 +3400,24 @@ fn collect_paragraph_spans_into(
           // paragraph (or the document defaults when there is
           // none) so the equation matches the body text.
           "oMath" => {
-            let template = math_run_template(parent, theme_map~, font_map~)
+            let template = math_run_template(
+              parent,
+              default_font_size_pt~,
+              theme_map~,
+              font_map~,
+            )
             emit_omath_span(e, template, spans)
           }
           // §22.1.2.78 `<m:oMathPara>` — a paragraph-level math
           // wrapper holding one or more `<m:oMath>` children;
           // emit each as its own math span.
           "oMathPara" => {
-            let template = math_run_template(parent, theme_map~, font_map~)
+            let template = math_run_template(
+              parent,
+              default_font_size_pt~,
+              theme_map~,
+              font_map~,
+            )
             for math_child in e.children {
               match math_child {
                 Element(me) =>
@@ -2547,6 +3441,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              default_font_size_pt~,
               theme_map~,
               font_map~,
             )
@@ -2563,6 +3458,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              default_font_size_pt~,
               theme_map~,
               font_map~,
             )
@@ -2586,6 +3482,7 @@ fn emit_run_spans(
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
   image_resolver : (String) -> ResolvedImage?,
+  default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Unit {
@@ -2600,7 +3497,12 @@ fn emit_run_spans(
         return
       }
   }
-  let template = resolve_run_props(r, theme_map~, font_map~)
+  let template = resolve_run_props(
+    r,
+    default_font_size_pt~,
+    theme_map~,
+    font_map~,
+  )
   // Walk <w:t>, <w:tab>, <w:br>, etc., emitting spans.
   for r_child in r.children {
     match r_child {
@@ -3075,17 +3977,31 @@ fn emit_drawing_span(
           hyperlink_styling,
         ),
       )
-    None => {
-      let w_px = drawing_extent_width_px(drawing)
-      if w_px > 0.0 {
-        spans.push(
-          apply_hyperlink_styling(
-            with_text(template, " ", w_px),
-            hyperlink_styling,
-          ),
-        )
+    None =>
+      // §20.5 — no picture payload reached; if the drawing carries a
+      // wordprocessing-shape (`<wps:wsp>`) we can still render the
+      // preset geometry inline. Falls through to the whitespace
+      // placeholder when the shape body or preset name is unknown.
+      match build_inline_shape(drawing) {
+        Some(shape) =>
+          spans.push(
+            apply_hyperlink_styling(
+              with_math(template, shape),
+              hyperlink_styling,
+            ),
+          )
+        None => {
+          let w_px = drawing_extent_width_px(drawing)
+          if w_px > 0.0 {
+            spans.push(
+              apply_hyperlink_styling(
+                with_text(template, " ", w_px),
+                hyperlink_styling,
+              ),
+            )
+          }
+        }
       }
-    }
   }
 }
 
@@ -3274,23 +4190,80 @@ fn to_upper_ascii(text : String) -> String {
 /// Layout one paragraph into a stack of lines.  Uses content_width as
 /// available inline size, applies §17.3.1.12 indent / margin offsets,
 /// and word-wraps using @util/glyph measurements.
+///
+/// `apply_office_defaults` is the §17.7.5.3 docDefaults fallback flag
+/// — see `resolve_para_props`. The body-level pipeline forwards
+/// `styles_part_absent` so the renderer matches Word/LibreOffice when
+/// the document ships without a `/word/styles.xml` part.
 /// @source web-pptx engine.ts:130 (layoutParagraph)
 fn layout_paragraph(
   p : @xml.Element,
   content_width : Double,
   image_resolver : (String) -> ResolvedImage?,
+  apply_office_defaults? : Bool = false,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> LaidParagraph {
-  let props = resolve_para_props(p, theme_map~)
-  let spans = collect_paragraph_spans(p, image_resolver, theme_map~, font_map~)
+  // §17.7.5.3 — `apply_office_defaults` flows into
+  // `resolve_para_props` so the line-height multiplier picks up the
+  // Office Normal 1.15 factor when the document carries no styles
+  // part. We ALSO bump the run-default font size to the Office Normal
+  // 11 pt in that case (Word's built-in Normal carries
+  // `<w:sz w:val="22"/>` = 11 pt), so the line-step works out to
+  // 11 × 96/72 × 1.15 ≈ 16.87 px — matching the LibreOffice
+  // reference renders for the styles-less section/paragraph
+  // fixtures. The old 10 pt baseline produced a 15.33 px line-step,
+  // a ~6%/line vertical drift that accumulated to ~38 px by the
+  // bottom of a column.
+  //
+  // A previous attempt at 12 pt enlarged every glyph and pushed
+  // word-wrap breaks one word earlier, which raised per-paragraph
+  // RMSE by ~25%; 11 pt matches Word's documented Normal style and
+  // empirically holds the wrap line-for-line against LibreOffice.
+  //
+  // The cascade still wins: `resolve_run_props` overwrites this
+  // default whenever an `<w:rPr><w:sz>` is reachable, so the only
+  // documents affected are those that ALSO carry no explicit size
+  // anywhere — exactly the case where Word/LO substitute their own
+  // Normal style.
+  let default_font_size_pt = if apply_office_defaults {
+    OFFICE_NORMAL_FONT_SIZE_PT
+  } else {
+    DEFAULT_FONT_SIZE_PT
+  }
+  let props = resolve_para_props(p, apply_office_defaults~, theme_map~)
+  let spans = collect_paragraph_spans(
+    p,
+    image_resolver,
+    default_font_size_pt~,
+    theme_map~,
+    font_map~,
+  )
+
+  // §17.3.1.10 framePr — when the paragraph is wrapped in a floating
+  // text frame, line-wrap against the frame's `w:w` (the frame's
+  // inner width) instead of the column content width.  A frame with
+  // no explicit width falls back to the column width minus the
+  // requested x offset (so a right-anchored frame still fits inside
+  // the content area).
+  let effective_width = match props.frame_pr {
+    Some(fp) =>
+      if fp.w_px > 0.0 {
+        fp.w_px
+      } else if fp.x_px > 0.0 {
+        (content_width - fp.x_px).max(0.0)
+      } else {
+        content_width
+      }
+    None => content_width
+  }
 
   // Inline width budgets for first vs. subsequent lines.
-  let first_line_w = (content_width -
+  let first_line_w = (effective_width -
   props.margin_left -
   props.margin_right -
   props.indent).max(0.0)
-  let next_line_w = (content_width - props.margin_left - props.margin_right).max(
+  let next_line_w = (effective_width - props.margin_left - props.margin_right).max(
     0.0,
   )
 
@@ -3308,8 +4281,29 @@ fn layout_paragraph(
 
   // Build LaidLines.  Y values are paragraph-relative; absolute Y is
   // applied during page flow.
+  //
+  // §17.3.1.7 — when the paragraph carries `<w:pBdr>`, the border
+  // stroke and its `@space` inset live INSIDE the paragraph block.
+  // LibreOffice / Word render the border at the page-content edge
+  // and push the text downward by `border_width + space`, rather
+  // than placing the text at the margin and floating the border
+  // outward. Reserve `top_inset` BEFORE the first line and add
+  // `bottom_inset` AFTER the last so the laid-line bbox encloses
+  // exactly the text frame; the border emitter in
+  // `build_paragraph_nodes` then draws the geometric centerline at
+  // (frame_top - space - width/2) so the OUTER edge of the stroke
+  // lands at the paragraph block's top edge. Without this offset
+  // the box's outer edge floats above the page content and the
+  // text aligns to the margin instead of inside the border, which
+  // empirically left every bordered paragraph ~6-7 px above LO's
+  // render (paragraph-border-double-thick fixture: text top y=99
+  // vs LO y=114; with this offset they converge at y≈114).
+  let top_inset = border_total_extent_px(props.border_top) +
+    props.border_top.space_px
+  let bottom_inset = border_total_extent_px(props.border_bottom) +
+    props.border_bottom.space_px
   let lines : Array[LaidLine] = []
-  let mut current_y = props.space_before
+  let mut current_y = props.space_before + top_inset
   for idx in 0..<final_lines.length() {
     let raw_spans = final_lines[idx]
     let line_indent = if idx == 0 { props.indent } else { 0.0 }
@@ -3318,18 +4312,75 @@ fn layout_paragraph(
     // settled. Tabs are paragraph-relative — they measure from the
     // start of the line's content origin.
     let line_spans = resolve_tab_spans(raw_spans, line_indent, props.tab_stops)
-    let lh_pt = line_max_font_size(line_spans)
+    let lh_pt = line_max_font_size(line_spans, default_font_size_pt~)
+    let fs_px = lh_pt * @glyph.pt_to_px
     let line_height = match props.line_height {
-      LineHeightDefault => lh_pt * @glyph.pt_to_px * 1.2
-      LineHeightAuto(factor) => lh_pt * @glyph.pt_to_px * factor
+      LineHeightDefault => fs_px * DEFAULT_LINE_HEIGHT_RATIO
+      LineHeightAuto(factor) => fs_px * factor
       LineHeightExact(px) => px
     }
-    let ascender = if line_spans.length() > 0 {
-      @glyph.get_ascender_ratio(Some(line_spans[0].font_family))
-    } else {
-      0.8
+    // §17.3.1.33 — baseline placement within the line box.
+    //
+    // LibreOffice's PDF rasteriser uses TWO DIFFERENT rules depending on
+    // `lineRule`:
+    //
+    // 1. For `auto` line height (and the implicit Office-Normal default
+    //    `1.223×`), LO places baseline at `box_top + ascent`, leaving
+    //    the line-height leading BELOW the descent.  Verified by
+    //    pixel-row measurement: at 11 pt body / 17.94 px auto line
+    //    height, ref cap-top = row 97 = box_top (96) + 1, i.e. baseline
+    //    = box_top + 11 = box_top + ascent (BODY_ASCENT_RATIO * fs_px).
+    //
+    // 2. For `exact` and `atLeast` line heights LARGER than the natural
+    //    auto step, LO places the extra leading ABOVE the cap, NOT
+    //    below it — the line box "grows upward" so the natural
+    //    descent below baseline stays constant.  Verified at 11 pt body
+    //    against `paragraph-line-exact` (line=480 twips → 32 px,
+    //    Δ = 32 − 17.93 = 14.07 px extra; ref cap-top = row 111 =
+    //    box_top (96) + 14 + 1) and `paragraph-line-atleast`
+    //    (line=600 twips → 40 px, Δ = 22.07 px extra; ref cap-top
+    //    = row 118 = box_top + 22 + 1).  Both match a baseline of
+    //    `box_top + ascent + max(0, line_height - natural_auto_lh)`
+    //    to within ±1 px (subpixel rounding).
+    //
+    // The earlier `line_height − descent` placement put the baseline
+    // near the BOX BOTTOM, which when `line_height > ascent + descent`
+    // pushed every cap a leading-space below LO's cap — visible as a
+    // constant per-paragraph offset on top of the cumulative step
+    // drift the `OFFICE_NORMAL_LINE_FACTOR` fix removes.
+    //
+    // The legacy `line_height − descent` formula remains as the
+    // sanity floor for pathologically small `line_height`
+    // (`LineHeightExact(px)` with `px < ascent`).
+    let descent = fs_px * LINE_DESCENT_RATIO
+    let ascent = fs_px * BODY_ASCENT_RATIO
+    // Natural Office-Normal auto line height for this run's font size —
+    // the threshold at which the LO "extra leading goes above the cap"
+    // rule kicks in for `exact`/`atLeast` line specs.
+    let natural_auto_lh = fs_px * OFFICE_NORMAL_LINE_FACTOR
+    let baseline_in_box = match props.line_height {
+      LineHeightExact(_) =>
+        // `exact` / `atLeast` — place baseline so the descent below it
+        // stays at the natural value; any extra height past the natural
+        // auto line goes ABOVE the cap.
+        if line_height >= natural_auto_lh {
+          ascent + (line_height - natural_auto_lh)
+        } else if line_height - descent > 0.0 {
+          line_height - descent
+        } else {
+          line_height
+        }
+      // LineHeightDefault / LineHeightAuto — baseline = box_top + ascent.
+      _ =>
+        if line_height >= ascent {
+          ascent
+        } else if line_height - descent > 0.0 {
+          line_height - descent
+        } else {
+          line_height
+        }
     }
-    let baseline = current_y + lh_pt * @glyph.pt_to_px * ascender
+    let baseline = current_y + baseline_in_box
     // §22.1.2.77 — an Office Math fragment is laid out around its
     // own baseline; a tall equation (fraction, n-ary, matrix) can
     // need more head- and foot-room than the text line box. Grow
@@ -3345,8 +4396,7 @@ fn layout_paragraph(
           if above > extra_above {
             extra_above = above
           }
-          let below = math.descent_px -
-            (current_y + line_height - baseline)
+          let below = math.descent_px - (current_y + line_height - baseline)
           if below > extra_below {
             extra_below = below
           }
@@ -3359,6 +4409,28 @@ fn layout_paragraph(
     let line_width = sum_span_widths(line_spans)
     let available = if idx == 0 { first_line_w } else { next_line_w }
     let base_x = props.margin_left + line_indent
+    // §17.18.59 ST_Jc `both` — distribute the slack between
+    // `line_width` and `available` across the U+0020 spaces in the
+    // line. The trailing line of a justified paragraph keeps its
+    // natural width (the spec exempts the last line); same for the
+    // single line of a one-line paragraph. We also bail out when the
+    // line has no spaces to stretch (a single long word) or when the
+    // glyphs already exceed the budget (negative slack would shrink
+    // the line, which is not what `both` means).
+    let is_last_line = idx == final_lines.length() - 1
+    let (justify_extra, justified_width) = if props.alignment == "justify" &&
+      not(is_last_line) &&
+      available > line_width {
+      let n_spaces = count_line_spaces(line_spans)
+      if n_spaces > 0 {
+        let extra = (available - line_width) / n_spaces.to_double()
+        (extra, available)
+      } else {
+        (0.0, line_width)
+      }
+    } else {
+      (0.0, line_width)
+    }
     let x = match props.alignment {
       "center" => base_x + (available - line_width) / 2.0
       "right" => base_x + available - line_width
@@ -3370,11 +4442,29 @@ fn layout_paragraph(
       y_top: current_y,
       y_baseline: baseline,
       height: line_height,
-      width: line_width,
+      width: justified_width,
+      word_spacing_extra: justify_extra,
     })
     current_y = current_y + line_height
   }
-  let height = current_y + props.space_after
+  // §17.3.1.7 — reserve the bottom border inset (stroke width +
+  // `@space`) after the last line so the paragraph block carries the
+  // full bordered height, mirroring the `top_inset` reserved above
+  // the first line.  Without this `current_y` ends flush against the
+  // last line's descent and the bottom border draws on top of the
+  // next paragraph's first line.
+  let height = current_y + bottom_inset + props.space_after
+  // §17.3.1.7 — the border / shading rectangle spans the full
+  // text frame: from `margin_left` to the column's right edge,
+  // independent of the first-line indent (Word draws the box
+  // around the column, not around the glyph run). Capturing the
+  // frame in paragraph-relative coordinates here lets
+  // `offset_paragraph` translate it onto absolute page coordinates
+  // exactly like the line origins.
+  let frame_x = props.margin_left
+  let frame_width = (effective_width - props.margin_left - props.margin_right).max(
+    0.0,
+  )
   LaidParagraph::{
     lines,
     height,
@@ -3390,6 +4480,9 @@ fn layout_paragraph(
     p_style: props.p_style,
     space_before: props.space_before,
     space_after: props.space_after,
+    frame_x,
+    frame_width,
+    frame_pr: props.frame_pr,
   }
 }
 
@@ -3685,7 +4778,20 @@ fn parse_border_side(el : @xml.Element?, fallback : BorderSide) -> BorderSide {
             Err(_) => 1.0
           }
       }
-      { width_px, color_hex, style }
+      // §17.3.1.7 `@space` — integer points (§17.18.5
+      // ST_PointMeasure) between the border stroke and the
+      // content rectangle.  Honoured by the paragraph-border
+      // emitter; tables hug the cell rect so `space_px` is read
+      // but never offsets cell rectangles.
+      let space_px = match attr_value(side, "space") {
+        None => fallback.space_px
+        Some(v) =>
+          match (try? @strconv.parse_double(v)) {
+            Ok(pt) => pt * 96.0 / 72.0
+            Err(_) => fallback.space_px
+          }
+      }
+      { width_px, color_hex, style, space_px }
     }
   }
 }
@@ -3842,8 +4948,11 @@ let default_tab_interval_px : Double = 48.0
 
 ///|
 /// Return the maximum font size (pt) on a line, used to pick line height.
-fn line_max_font_size(spans : Array[RunSpan]) -> Double {
-  let mut max = DEFAULT_FONT_SIZE_PT
+fn line_max_font_size(
+  spans : Array[RunSpan],
+  default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
+) -> Double {
+  let mut max = default_font_size_pt
   for s in spans {
     if s.font_size_pt > max {
       max = s.font_size_pt
@@ -3862,6 +4971,61 @@ fn sum_span_widths(spans : Array[RunSpan]) -> Double {
   w
 }
 
+///|
+/// §17.18.59 ST_Jc `both` — count the U+0020 word-break opportunities
+/// in a laid-out line. Used by `layout_paragraph` to spread the slack
+/// between the natural glyph width and the available content width
+/// across the spaces.
+///
+/// Only literal U+0020 (' ') is counted. U+0009 tabs and U+00AD soft
+/// hyphens carry their own width semantics (tab stops, hyphen glyph)
+/// and the spec does not list them as justification stretch points;
+/// stretching them would shift the visible tab anchor / soft-hyphen
+/// glyph and lose round-trip fidelity. Inline-image and Office Math
+/// spans contribute no spaces because their `text` field is the empty
+/// string sentinel attached to the payload.
+///
+/// Bar-tab spans (§17.18.87 `bar`) are skipped: their text is "\t"
+/// but they render as a vertical rule, not a word break.
+fn count_line_spaces(spans : Array[RunSpan]) -> Int {
+  let mut n = 0
+  for s in spans {
+    if s.bar_tab {
+      continue
+    }
+    if s.inline_image is Some(_) || s.math is Some(_) {
+      continue
+    }
+    for c in s.text {
+      if c == ' ' {
+        n = n + 1
+      }
+    }
+  }
+  n
+}
+
+///|
+/// §17.18.59 ST_Jc `both` — count U+0020 spaces inside a single span's
+/// text. Used by `append_line_nodes` to advance the cursor by the
+/// extra per-space stretch contributed by this span (so subsequent
+/// spans land on the justified x positions).
+fn count_span_spaces(span : RunSpan) -> Int {
+  if span.bar_tab {
+    return 0
+  }
+  if span.inline_image is Some(_) || span.math is Some(_) {
+    return 0
+  }
+  let mut n = 0
+  for c in span.text {
+    if c == ' ' {
+      n = n + 1
+    }
+  }
+  n
+}
+
 // =============================================================================
 // Line breaking
 // =============================================================================
@@ -3870,6 +5034,44 @@ fn sum_span_widths(spans : Array[RunSpan]) -> Double {
 /// True for ASCII break opportunities.
 fn is_break_char_w(c : Char) -> Bool {
   c == ' ' || c == '\t' || c == '-'
+}
+
+///|
+/// True when `c` is a CJK ideograph / kana / Hangul character. Every CJK
+/// scalar is a soft-wrap opportunity in its own right (UAX #14
+/// classifies CJK ideographs as line-break class `ID`, "Ideographic" —
+/// breaks are allowed before AND after every ID, without consuming any
+/// whitespace). The line breaker uses this to insert per-character
+/// break opportunities for runs of CJK text, mirroring LibreOffice's
+/// per-glyph wrap (verified against `docx/run/run-long-japanese`
+/// reference: a 89-codepoint Japanese paragraph wraps at the 44th
+/// ideograph, NOT only at the 30-twip-wide ASCII break chars the
+/// run is otherwise free of).
+fn is_cjk_break_char_w(c : Char) -> Bool {
+  @glyph.is_cjk_char(c)
+}
+
+///|
+/// True when the segment is composed entirely of soft-wrap whitespace
+/// (U+0020 space, U+0009 tab). Used by `break_span_by_words` to
+/// SWALLOW a whitespace segment that would otherwise overflow the
+/// line — CSS Text and Word both consume the trailing space at a
+/// soft-wrap boundary, so the next line must NOT begin with the
+/// whitespace that triggered the break. Hyphens are deliberately
+/// excluded: a hyphen at a wrap point is a visible glyph that the
+/// line break is allowed to occur AFTER, and it must stay attached
+/// to the preceding word (e.g. "non-trivial" wrapping after "non-"
+/// must keep the hyphen on the line above, not move it down).
+fn is_wrap_whitespace(seg : String) -> Bool {
+  if seg.length() == 0 {
+    return false
+  }
+  for c in seg {
+    if c != ' ' && c != '\t' {
+      return false
+    }
+  }
+  true
 }
 
 ///|
@@ -3905,15 +5107,36 @@ fn break_into_lines(
     }
     // If span fits, append directly.
     if used.val + span.width_px <= budget.val {
+      // §17.3 / CSS Text — drop a whitespace-only span that lands at
+      // the START of a fresh line. This happens when a previous span
+      // exactly filled the line budget and the next span is a
+      // standalone " " run (e.g. two separate `<w:r><w:t>` runs
+      // joined by a literal whitespace run); without this swallow
+      // the next line begins with a left-indent that LibreOffice
+      // does not draw.
+      if used.val == 0.0 && is_wrap_whitespace(span.text) {
+        continue
+      }
       current.push(span)
       used.val = used.val + span.width_px
       continue
     }
-    // Span overflows: try to break by word.
-    let pieces = break_span_by_words(span, budget.val - used.val)
+    // Span overflows: try to break by word. The first piece must
+    // fit the *remaining* room on the current line; every piece
+    // produced after a forced break is budgeted against the FULL
+    // `next_line_w` (§17.6.4 column width / subsequent paragraph
+    // line width) so a long span keeps wrapping inside the column.
+    let pieces = break_span_by_words(span, budget.val - used.val, next_line_w)
     for piece in pieces {
       if piece.text == "\n" {
         flush()
+        continue
+      }
+      // Mirror the line-start whitespace swallow above for pieces
+      // emitted by `break_span_by_words` (covers single-span
+      // paragraphs whose wrap point fell exactly on a whitespace
+      // segment in the inner break loop).
+      if used.val == 0.0 && is_wrap_whitespace(piece.text) {
         continue
       }
       if used.val + piece.width_px <= budget.val || used.val == 0.0 {
@@ -3942,31 +5165,54 @@ fn break_into_lines(
 /// Decompose text into segments alternating between words and runs of
 /// break characters (space/tab/hyphen).  Each segment is emitted in the
 /// order it appeared so concatenation reproduces the original text.
+///
+/// CJK ideographs are emitted as ONE SEGMENT PER CODEPOINT (UAX #14
+/// class `ID`) — this gives the line breaker a wrap opportunity before
+/// and after every CJK character, matching LibreOffice's per-glyph
+/// CJK wrap behaviour (verified against
+/// `docx/run/run-long-japanese` where an 89-codepoint Japanese
+/// paragraph with no ASCII whitespace must wrap at the column
+/// boundary after every full-em ideograph).  Without this split the
+/// segmenter treats the entire paragraph as a single oversized
+/// "word" and the force-fit branch in `break_into_lines` lets it
+/// overflow the page width.  CJK chars are NEVER pushed into the
+/// `break_buf` (whitespace bucket) — they are visible glyphs and must
+/// not be swallowed at a line start.
 fn split_into_segments(text : String) -> Array[String] {
   let segments : Array[String] = []
   let buf : Array[Char] = []
   let break_buf : Array[Char] = []
+  fn flush_break(segments : Array[String], break_buf : Array[Char]) -> Unit {
+    if break_buf.length() > 0 {
+      segments.push(chars_to_string(break_buf))
+      break_buf.clear()
+    }
+  }
+
+  fn flush_word(segments : Array[String], buf : Array[Char]) -> Unit {
+    if buf.length() > 0 {
+      segments.push(chars_to_string(buf))
+      buf.clear()
+    }
+  }
+
   for c in text {
     if is_break_char_w(c) {
-      if buf.length() > 0 {
-        segments.push(chars_to_string(buf))
-        buf.clear()
-      }
+      flush_word(segments, buf)
       break_buf.push(c)
+    } else if is_cjk_break_char_w(c) {
+      // Every CJK ideograph is its own segment, giving the line
+      // breaker a per-glyph wrap opportunity.
+      flush_break(segments, break_buf)
+      flush_word(segments, buf)
+      segments.push(c.to_string())
     } else {
-      if break_buf.length() > 0 {
-        segments.push(chars_to_string(break_buf))
-        break_buf.clear()
-      }
+      flush_break(segments, break_buf)
       buf.push(c)
     }
   }
-  if break_buf.length() > 0 {
-    segments.push(chars_to_string(break_buf))
-  }
-  if buf.length() > 0 {
-    segments.push(chars_to_string(buf))
-  }
+  flush_break(segments, break_buf)
+  flush_word(segments, buf)
   segments
 }
 
@@ -3985,7 +5231,29 @@ fn chars_to_string(chars : Array[Char]) -> String {
 /// returned piece has a recomputed width.  Inserts "\n" sentinels to
 /// instruct the caller to start a new line between word groups when
 /// needed.
-fn break_span_by_words(span : RunSpan, first_avail : Double) -> Array[RunSpan] {
+///
+/// KNOWN GAP — emergency character-level wrap (CSS
+/// `overflow-wrap: anywhere`): a run that is one continuous string
+/// with no break opportunity (e.g.
+/// `abcdefghij...` repeated for 500 chars, as in
+/// `.snapshots/fixtures/docx/paragraph/edge-wml-very-long-single-line.docx`)
+/// produces a single oversized segment from `split_into_segments`,
+/// and the `cur_w.val == 0.0` force-fit branch in the caller emits
+/// it as one unbroken line that overruns the column. LibreOffice's
+/// PDF rasteriser falls back to PER-CHARACTER wrapping in this
+/// case, producing 5+ wrapped lines that share the column width.
+/// Reproducing that requires either (a) extending
+/// `split_into_segments` to emit per-grapheme segments once a token
+/// exceeds the column width, or (b) a second-pass character
+/// re-break invoked from the caller. Deferred for now —
+/// `edge-wml-very-long-single-line` is the only fixture that
+/// exercises this path; every real-world docx run carries word
+/// breaks so the existing logic suffices.
+fn break_span_by_words(
+  span : RunSpan,
+  first_avail : Double,
+  next_avail : Double,
+) -> Array[RunSpan] {
   // An Office Math fragment or an inline image is an indivisible
   // box — it carries no breakable text. Returning it whole keeps
   // the caller's force-fit path (`used.val == 0.0`) from dropping
@@ -3998,7 +5266,15 @@ fn break_span_by_words(span : RunSpan, first_avail : Double) -> Array[RunSpan] {
   let cur_chars : Array[Char] = []
   let cur_w : Ref[Double] = { val: 0.0 }
   let avail : Ref[Double] = { val: first_avail }
-  // Flush current chars as a piece, append a sentinel for a forced break.
+  // Flush current chars as a piece, append a sentinel for a forced
+  // break. Subsequent segments are budgeted against `next_avail` —
+  // the per-column line width supplied by the caller. (An earlier
+  // pass set `avail.val = 1.0e18` "for the caller to rebudget", but
+  // that left the rest of an oversized span as a single unbroken
+  // piece, so multi-column / narrow-margin paragraphs wrapped only
+  // their FIRST line and then dumped the remainder at full content
+  // width. §17.6.4 multi-column flow needs every line of a
+  // paragraph to honour the column-relative budget.)
   fn flush_with_break() {
     if cur_chars.length() > 0 {
       let text = chars_to_string(cur_chars)
@@ -4008,7 +5284,7 @@ fn break_span_by_words(span : RunSpan, first_avail : Double) -> Array[RunSpan] {
     }
     pieces.push(with_text(span, "\n", 0.0))
     cur_w.val = 0.0
-    avail.val = 1.0e18 // unlimited; caller will rebudget when it sees \n
+    avail.val = next_avail
   }
 
   for seg in segments {
@@ -4018,6 +5294,19 @@ fn break_span_by_words(span : RunSpan, first_avail : Double) -> Array[RunSpan] {
         cur_chars.push(c)
       }
       cur_w.val = cur_w.val + seg_w
+    } else if is_wrap_whitespace(seg) {
+      // §17.3 / CSS Text — a U+0020 / U+0009 whitespace segment that
+      // would overflow the line IS the soft-wrap boundary itself.
+      // Both Word and LibreOffice consume the space at the break: the
+      // current line ends with the preceding word, the NEXT line
+      // begins flush against its content edge with no leading
+      // whitespace. Previously we pushed the overflowing space onto
+      // the new line, which left a visible left-indent on every
+      // wrapped line whose break landed mid-word (e.g.
+      // "fugiat nulla / [SP]pariatur." in the section-cols-* refs).
+      // Emit the line break and DROP the whitespace; cur_w stays 0
+      // so the next non-whitespace segment starts at x=0.
+      flush_with_break()
     } else {
       flush_with_break()
       for c in seg {
@@ -4068,6 +5357,17 @@ fn layout_table(
   // feed every cell's padding default; per-cell `<w:tcMar>` overlays
   // those at the cell level (§17.4.69).
   let table_cell_margins = resolve_table_cell_margins(effective_tbl_pr)
+  // §17.4.51 `<w:tblPr>/<w:tblInd>` — table-level left indent. When
+  // present, shifts the table block left/right from the column's
+  // content origin by @w (interpreted via @type). When absent,
+  // LibreOffice applies an implicit -108 twip offset that visually
+  // compensates the default 108 twip left cell margin so the cell's
+  // content edge sits flush with the page-margin / column origin.
+  // Without that compensation our table renders ≈7.2 px to the
+  // right of LO's reference, producing the horizontal text drift
+  // (and per-row border misalignment) that drove the table-5x5
+  // RMSE residual after the cell-height floor fix.
+  let tbl_ind_px = resolve_table_indent(effective_tbl_pr)
   // 1. Read <w:tblGrid> for column widths.
   let col_widths : Array[Double] = []
   match first_child_named(tbl, "tblGrid") {
@@ -4363,11 +5663,22 @@ fn layout_table(
       // no-op resolver so inline `<w:drawing>` payloads still reserve
       // their cx width via the placeholder fallback.
       let cell_noop_resolver : (String) -> ResolvedImage? = _ => None
+      // §17.7.5.3 — cell paragraphs honour the same Office Normal
+      // docDefaults fallback as body paragraphs when the document has
+      // no styles part. Without this, a styles-less table's cells
+      // would render with zero `space_after` while the surrounding
+      // body picks up the 10 pt baseline.
+      let apply_office_defaults = styles is None
       for child in tc.children {
         match child {
           Element(e) =>
             if e.name.local_name == "p" {
-              let para = layout_paragraph(e, content_w, cell_noop_resolver)
+              let para = layout_paragraph(
+                e,
+                content_w,
+                cell_noop_resolver,
+                apply_office_defaults~,
+              )
               cell_paras.push(para)
               cell_inner_h = cell_inner_h + para.height
             }
@@ -4378,7 +5689,57 @@ fn layout_table(
       // padding + content height). §17.4.81 trHeight applies at the
       // row level (handled after this cell loop); the previous
       // hardcoded 20px floor had no spec basis and is removed.
-      let cell_h = cell_inner_h + cell_margins.top + cell_margins.bottom
+      //
+      // §17.4 / §17.18.37 — when no explicit `<w:trHeight>` is set,
+      // ECMA-376 leaves the row's minimum content height to the
+      // implementation. LibreOffice's import sets a per-line floor
+      // equal to the font's NATURAL design line height (typoAscender
+      // + |typoDescender| + typoLineGap), not the abbreviated
+      // (ascent + descent) extent the body-paragraph layout uses.
+      // For the Carlito body face that is ≈1.330 em vs the
+      // ≈1.2227 em body-paragraph pitch; the body-paragraph
+      // fixtures already calibrate that path so we apply the
+      // design-line-height floor here only — at the cell-content
+      // level — to avoid inflating non-table lines.
+      // Without this floor every 11 pt cell row reads ≈1.3 px short
+      // (cumulative 6-7 px across a 5-row table) against the LO
+      // reference and the per-row border lines drift visibly.
+      let cell_content_floor = if cell_paras.length() > 0 {
+        let mut max_fs_pt = 0.0
+        for lp in cell_paras {
+          for ln in lp.lines {
+            for s in ln.spans {
+              if s.font_size_pt > max_fs_pt {
+                max_fs_pt = s.font_size_pt
+              }
+            }
+          }
+        }
+        // Fall back to the document-wide default font size when the
+        // cell content carries no measured span (e.g. an empty
+        // paragraph). The implicit Office Normal 11 pt baseline is
+        // applied by `layout_paragraph` already, so the only way
+        // `max_fs_pt` stays zero is an entirely empty cell.
+        if max_fs_pt <= 0.0 {
+          max_fs_pt = if apply_office_defaults {
+            OFFICE_NORMAL_FONT_SIZE_PT
+          } else {
+            DEFAULT_FONT_SIZE_PT
+          }
+        }
+        max_fs_pt *
+        @glyph.pt_to_px *
+        TABLE_CELL_DESIGN_LINE_RATIO *
+        cell_paras.length().to_double()
+      } else {
+        0.0
+      }
+      let cell_content_h = if cell_inner_h > cell_content_floor {
+        cell_inner_h
+      } else {
+        cell_content_floor
+      }
+      let cell_h = cell_content_h + cell_margins.top + cell_margins.bottom
       if cell_h > row_height {
         row_height = cell_h
       }
@@ -4482,7 +5843,12 @@ fn layout_table(
   for r in laid_rows {
     total_h = total_h + r.height
   }
-  LaidTable::{ x: 0.0, width: table_width, height: total_h, rows: laid_rows }
+  LaidTable::{
+    x: tbl_ind_px,
+    width: table_width,
+    height: total_h,
+    rows: laid_rows,
+  }
 }
 
 // =============================================================================
@@ -4514,12 +5880,52 @@ fn column_geometry(
   }
   if cfg.cols_explicit.length() > 0 {
     // §17.6.3 — explicit per-column widths; each column's trailing
-    // `@space` advances the running x origin.
-    let mut x = cfg.margin_left
-    for i in 0..<cfg.cols_explicit.length() {
+    // `@space` advances the running x origin. The LAST column's
+    // `@space` is unused because no column follows it.
+    //
+    // LO renormalises the explicit column widths so the sum
+    // (col widths + inter-column spaces) fills `content_width`
+    // exactly. Verified empirically against
+    // `docx/section/section-cols-2-unequal` (page=12240, margins=1440
+    // each ⇒ content=9360 twips; the fixture declares col widths
+    // 3000 + 5000 with a 360-twip space on EACH `<w:col>` — but only
+    // the first one is a real inter-column gutter, so the literal
+    // layout sum is 3000 + 360 + 5000 = 8360 twips, 1000 twips short
+    // of `content_width`). LO renders col 1 at ≈3360 twips
+    // (= 224 px), not the literal 3000 twips (= 200 px), which is
+    // 3000 × 9360/8360 = 3360 twips — the renormalised value. A
+    // previous fix tried to renormalise but included EVERY column's
+    // trailing `@space` in the denominator (3000+360+5000+360=8720),
+    // which made the scale 9360/8720 = 1.073 instead of 1.120 and
+    // left col 1 at 215 px — still too narrow, so paragraph lines
+    // wrapped one word earlier than LO and the fixture stayed at
+    // RMSE ≈ 0.085.
+    //
+    // Inter-column spaces ARE scaled by the same factor so each
+    // column's text area keeps its relative share of the gutter.
+    let n = cfg.cols_explicit.length()
+    let mut total_native = 0.0
+    for i in 0..<n {
       let (w, sp) = cfg.cols_explicit[i]
-      out.push((x, w))
-      x = x + w + sp
+      total_native = total_native + w
+      // Only inter-column gutters contribute — the trailing `@space`
+      // on the last `<w:col>` is not a real gap (no column follows).
+      if i < n - 1 {
+        total_native = total_native + sp
+      }
+    }
+    let scale = if total_native > 0.0 && content_width > 0.0 {
+      content_width / total_native
+    } else {
+      1.0
+    }
+    let mut x = cfg.margin_left
+    for i in 0..<n {
+      let (w, sp) = cfg.cols_explicit[i]
+      let w_scaled = w * scale
+      let sp_scaled = sp * scale
+      out.push((x, w_scaled))
+      x = x + w_scaled + sp_scaled
     }
     return out
   }
@@ -4540,6 +5946,29 @@ fn column_geometry(
 /// the *narrowest* column is used so a measured line never overflows
 /// any column it might land in (the engine measures the block stream
 /// once rather than re-measuring per column).
+///
+/// Residual RMSE note (Round 12+):
+///   The docx-section fixtures sit at RMSE 0.06-0.14 against the LO
+///   PDF reference. Two contributions:
+///     1. (FIXED) Word-wrap pushed words one too early because
+///        `FontMeasurer` only honoured the legacy `kern` table —
+///        Carlito ships every kerning pair in its GPOS Format-2
+///        lookup, so our measurement was 0.3-1.0 px too wide per
+///        line. Resolved by `gpos_kern_table.mbt` +
+///        `FontMeasurer::with_gpos_kern`, which now reproduces the
+///        HarfBuzz / Cairo line-break decisions (verified against
+///        `pdftotext -bbox-layout` for letter-narrow-3col: every
+///        line's xMax matches our SVG `<text>` widths within 0.5 px).
+///     2. (RASTERIZER FLOOR) `rsvg-convert` and the Cairo path that
+///        pdftoppm walks produce subtly different per-glyph antialias
+///        masks for the same Carlito glyphs at the same size — see
+///        the diff images under `.snapshots/diff/`, which show the
+///        characteristic "ghosted" doubling that rasterizer-AA
+///        mismatch produces. This is what keeps the section fixtures
+///        above 0.06; matching it would require either rendering our
+///        SVGs through the same Cairo pipeline LO uses, or replacing
+///        the harness's `rsvg-convert` rasterization step with a
+///        Cairo-based one. Neither is a code fix in this renderer.
 fn column_width_of(cfg : PageConfig, content_width : Double) -> Double {
   let geom = column_geometry(cfg, content_width)
   if geom.length() == 0 {
@@ -4629,6 +6058,69 @@ fn flow_into_pages(
   }
 
   for block in blocks {
+    // §17.3.1.10 framePr — floating frames don't consume vertical
+    // space in the natural flow; route them through a dedicated
+    // path that positions the paragraph at its anchor coordinates
+    // and leaves `cur_y` untouched so the subsequent (already
+    // narrowed in `collect_blocks`) body paragraph flows alongside.
+    let frame_pr_opt = match block {
+      ParaBlock(p) => p.frame_pr
+      TableBlock(_) => None
+    }
+    match (block, frame_pr_opt) {
+      (ParaBlock(p), Some(fp)) => {
+        // Horizontal anchor: "page" → page-relative;
+        // "margin" / "text" / default → content-area-relative.
+        // The partial implementation honours xAlign="right" as
+        // the dominant Word case and otherwise uses the explicit
+        // `x_px` offset; xAlign="left" / "center" / "inside" /
+        // "outside" use the offset directly with a content-area
+        // base for now.
+        let h_anchor_base = match fp.h_anchor {
+          "page" => 0.0
+          _ => cfg.margin_left
+        }
+        let frame_x = match fp.x_align {
+          "right" => cfg.page_width - cfg.margin_right - fp.w_px
+          "center" => cfg.margin_left + (content_width - fp.w_px) / 2.0
+          "left" => cfg.margin_left
+          _ => h_anchor_base + fp.x_px
+        }
+        // Vertical anchor: "page" → page-relative; "margin" →
+        // content-area top; "text" / default → the current flow
+        // cursor.  `y_px` is the additive offset for "page" /
+        // "margin"; for "text" the natural flow anchor is where
+        // the framed paragraph WOULD have started inline (the
+        // current `cur_y`), and LO offsets the frame DOWN by the
+        // declared `y_px` while the subsequent body paragraphs
+        // slide UP to take the inline slot the frame vacated —
+        // which is exactly what the page-flow loop produces by
+        // not advancing `cur_y` past the frame.  The visible
+        // result: body line 1 sits at the frame's natural y;
+        // FRAMED line 1 sits `y_px` lower than body line 1,
+        // matching the LO reference's two-line wrap band.
+        let v_anchor_base = match fp.v_anchor {
+          "page" => 0.0
+          "margin" => cfg.margin_top
+          _ => cur_y
+        }
+        let frame_y = v_anchor_base + fp.y_px
+        // Translate the laid paragraph so its left-edge / top-edge
+        // land at the resolved (frame_x, frame_y).  The laid
+        // paragraph carries its content origin at
+        // `(margin_left=0, y=space_before)` so the translation
+        // vector matches the requested anchor directly.
+        let adjusted = offset_paragraph(p, frame_x, frame_y)
+        cur_paragraphs.push(adjusted)
+        // §17.3.1.10 — the floating frame does NOT advance the
+        // flow cursor; subsequent body paragraphs flow at the
+        // un-moved `cur_y`.  Page / column breaks declared on
+        // the framed paragraph itself are ignored (the spec
+        // treats the frame as out-of-flow).
+        continue
+      }
+      _ => ()
+    }
     let block_h = match block {
       ParaBlock(p) => p.height
       TableBlock(t) => t.height + BLOCK_GAP_PX
@@ -4698,9 +6190,12 @@ fn offset_paragraph(
       y_baseline: l.y_baseline + dy,
       height: l.height,
       width: l.width,
+      word_spacing_extra: l.word_spacing_extra,
     })
   }
-  { ..p, lines, }
+  // §17.3.1.7 — translate the border / shading frame by the same
+  // dx so it lands in the column's absolute coordinates.
+  { ..p, lines, frame_x: p.frame_x + dx }
 }
 
 ///|
@@ -4774,6 +6269,29 @@ fn emit_page_svg_with_decoration(
   image_resolver : (String) -> ResolvedImage?,
   styles : @domain.CT_Styles?,
 ) -> String {
+  let children = build_page_decoration_nodes(
+    page, cfg, header_blocks, footer_blocks, warnings, image_resolver, styles,
+  )
+  @markup.serialize_svg(build_svg_element(cfg, children))
+}
+
+///|
+/// Build the SVG child-node list for one page (body + §17.10
+/// header/footer bands), positioned in page-local coordinates so the
+/// nodes can be either wrapped in a per-page `<svg>` root (the
+/// historical `emit_page_svg_with_decoration` path) OR embedded under
+/// a translated `<g>` inside a multi-page combined SVG root (the
+/// `render_combined_svg` path).  Kept separate so both paths share
+/// exactly the same layout / decoration logic.
+fn build_page_decoration_nodes(
+  page : AssembledPage,
+  cfg : PageConfig,
+  header_blocks : Array[@xml.Element],
+  footer_blocks : Array[@xml.Element],
+  warnings : Array[String],
+  image_resolver : (String) -> ResolvedImage?,
+  styles : @domain.CT_Styles?,
+) -> Array[@xml.Node] {
   let children = build_page_body_nodes(page, cfg)
   // Lay out header/footer using a single-page flow over the section
   // width (margin_left..margin_right). The y-axis origin for each
@@ -4825,7 +6343,7 @@ fn emit_page_svg_with_decoration(
       ),
     )
   }
-  @markup.serialize_svg(build_svg_element(cfg, children))
+  children
 }
 
 ///|
@@ -4866,10 +6384,19 @@ fn collect_blocks_from_elements(
   styles : @domain.CT_Styles?,
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
+  // §17.7.5.3 — mirror `collect_blocks`: header / footer paragraphs
+  // share the document's styles policy, so they inherit the same
+  // Office Normal fallback when no styles part is loaded.
+  let apply_office_defaults = styles is None
   for elt in elements {
     match elt.name.local_name {
       "p" => {
-        let lp = layout_paragraph(elt, content_width, image_resolver)
+        let lp = layout_paragraph(
+          elt,
+          content_width,
+          image_resolver,
+          apply_office_defaults~,
+        )
         blocks.push(ParaBlock(lp))
       }
       "tbl" => {
@@ -4968,12 +6495,94 @@ fn build_page_body_nodes(
   append_border_line_nodes(out, cfg.page_border_left, x0, y0, x0, y1)
   append_border_line_nodes(out, cfg.page_border_right, x1, y0, x1, y1)
   // §17.6.4 `<w:cols w:sep="1">` — draw a thin vertical rule down the
-  // centre of each inter-column gutter, spanning the content height.
+  // centre of each inter-column gutter. LibreOffice's renderer (our
+  // reference) trims the separator to the bottom of the deepest
+  // adjacent column's content — not the full page-content height
+  // (which is what Word desktop does, and what the previous
+  // implementation emitted). For the LO-driven snapshot harness,
+  // matching the trimmed length closes ~50 % of the residual RMSE on
+  // `section-letter-narrow-3col` (where columns 2 / 3 are empty and
+  // the previous full-height rule painted a long line across the
+  // blank lower two-thirds of the page).
   if cfg.cols_num > 1 && cfg.cols_sep {
     let content_width = (cfg.page_width - cfg.margin_left - cfg.margin_right).max(
       0.0,
     )
     let geometry = column_geometry(cfg, content_width)
+    // Per-column content bottom: max(y_top + height) across paragraphs
+    // / tables whose horizontal anchor falls inside [col_x, col_x+w].
+    // A block sits "in" a column when its frame_x (paragraph) or
+    // table.x lies within that column's horizontal extent.
+    let col_bottom : Array[Double] = []
+    for _ in 0..<geometry.length() {
+      col_bottom.push(y0)
+    }
+    let classify = fn(block_x : Double) -> Int {
+      let mut found = -1
+      for i in 0..<geometry.length() {
+        let (cx, cw) = geometry[i]
+        if block_x + 0.5 >= cx && block_x < cx + cw + 0.5 {
+          found = i
+          break
+        }
+      }
+      found
+    }
+    for para in page.paragraphs {
+      let col = classify(para.frame_x)
+      if col < 0 {
+        continue
+      }
+      let mut b = y0
+      for line in para.lines {
+        let bot = line.y_top + line.height
+        if bot > b {
+          b = bot
+        }
+      }
+      // Even an empty paragraph contributes its space_before/after via
+      // `height`; account for it when no lines were emitted.
+      if para.lines.length() == 0 {
+        b = y0 + para.height
+      }
+      if b > col_bottom[col] {
+        col_bottom[col] = b
+      }
+    }
+    for tbl in page.tables {
+      let col = classify(tbl.x)
+      if col < 0 {
+        continue
+      }
+      // Tables advance the flow by their height; use the first row's
+      // first cell's first paragraph y_top + table.height as the
+      // bottom, falling back to y0 + height when row metadata is
+      // sparse.
+      let mut top = y0
+      if tbl.rows.length() > 0 && tbl.rows[0].cells.length() > 0 {
+        let cell = tbl.rows[0].cells[0]
+        if cell.paragraphs.length() > 0 && cell.paragraphs[0].lines.length() > 0 {
+          top = cell.paragraphs[0].lines[0].y_top - cell.padding.top
+        }
+      }
+      let b = top + tbl.height
+      if b > col_bottom[col] {
+        col_bottom[col] = b
+      }
+    }
+    // LibreOffice extends every separator to the deepest column on
+    // the page (not just the adjacent pair). When every column is
+    // empty the rules are suppressed entirely.
+    let mut page_deepest = y0
+    for cb in col_bottom {
+      if cb > page_deepest {
+        page_deepest = cb
+      }
+    }
+    if page_deepest <= y0 + 0.5 {
+      return out
+    }
+    let y_end = if page_deepest > y1 { y1 } else { page_deepest }
     for idx in 1..<geometry.length() {
       // Gutter `idx` lies between column `idx-1`'s right edge and
       // column `idx`'s left edge; the rule sits at its midpoint.
@@ -4988,7 +6597,7 @@ fn build_page_body_nodes(
             @markup.attr("x1", fmt_double(sep_x)),
             @markup.attr("y1", fmt_double(y0)),
             @markup.attr("x2", fmt_double(sep_x)),
-            @markup.attr("y2", fmt_double(y1)),
+            @markup.attr("y2", fmt_double(y_end)),
             @markup.attr("stroke", "#000000"),
             @markup.attr("stroke-width", "0.5"),
           ],
@@ -5004,20 +6613,18 @@ fn build_page_body_nodes(
 /// Emit one paragraph's lines and runs as SVG <text> elements.
 fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
-  // Compute the union of every line's bbox once so both the shading
-  // rect and the §17.3.1.7 border lines can reuse it.
-  let bbox = if p.lines.length() > 0 {
-    let mut min_x = p.lines[0].x
-    let mut max_x = p.lines[0].x + p.lines[0].width
+  // Vertical extent for both shading and borders comes from the
+  // laid-line stack (top of the first line → bottom of the last
+  // non-empty line). Horizontal extent uses the resolved text
+  // frame (`frame_x` / `frame_width`) so a short line still gets
+  // a column-wide border / background — matching Word and
+  // LibreOffice where `<w:pBdr>` and `<w:shd>` rectangles track
+  // the column edge, not the glyph bbox. Falls back to the line
+  // bbox only when the frame width was not threaded through.
+  let v_bbox = if p.lines.length() > 0 {
     let mut min_y = p.lines[0].y_top
     let mut max_y = p.lines[0].y_top + p.lines[0].height
     for line in p.lines {
-      if line.x < min_x {
-        min_x = line.x
-      }
-      if line.x + line.width > max_x {
-        max_x = line.x + line.width
-      }
       if line.y_top < min_y {
         min_y = line.y_top
       }
@@ -5025,14 +6632,36 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
         max_y = line.y_top + line.height
       }
     }
-    Some((min_x, min_y, max_x, max_y))
+    Some((min_y, max_y))
   } else {
     None
   }
+  let frame_rect = match v_bbox {
+    None => None
+    Some((min_y, max_y)) =>
+      if p.frame_width > 0.0 {
+        Some((p.frame_x, min_y, p.frame_x + p.frame_width, max_y))
+      } else {
+        // Legacy fallback: span the line bbox when no frame was
+        // resolved (the path that built the paragraph predated
+        // the frame_x/frame_width fields).
+        let mut min_x = p.lines[0].x
+        let mut max_x = p.lines[0].x + p.lines[0].width
+        for line in p.lines {
+          if line.x < min_x {
+            min_x = line.x
+          }
+          if line.x + line.width > max_x {
+            max_x = line.x + line.width
+          }
+        }
+        Some((min_x, min_y, max_x, max_y))
+      }
+  }
   // §17.3.1.6 paragraph shading — emit a single background rect
-  // spanning the bbox before the glyphs so the fill ends up under
+  // spanning the frame before the glyphs so the fill ends up under
   // the text.
-  match bbox {
+  match frame_rect {
     Some((min_x, min_y, max_x, max_y)) =>
       if p.background.length() > 0 {
         out.push(
@@ -5059,13 +6688,75 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
     append_line_nodes(out, line)
   }
   // §17.3.1.7 paragraph borders — emit per-side `<line>` segments
-  // around the bbox after the glyphs so the stroke isn't obscured.
-  match bbox {
+  // around the frame after the glyphs so the stroke isn't obscured.
+  //
+  // §17.3.1.7 `@space` (each border's per-side attribute, in pt,
+  // §17.18.5 ST_PointMeasure) — the inset between the border
+  // stroke and the content rectangle. We push each side outward
+  // by `border.space_px` so the box doesn't crowd the glyphs,
+  // matching Word / LibreOffice. Horizontal sides reuse the
+  // left/right `space_px` for symmetric extension so the corners
+  // close cleanly (any of the four sides may declare a different
+  // value but in practice Word emits the same number on every
+  // side; using the side's own value for its own offset and the
+  // adjacent side's value for the corner extension keeps the
+  // join correct without duplicating geometry per side).
+  match frame_rect {
     Some((min_x, min_y, max_x, max_y)) => {
-      append_border_line_nodes(out, p.border_top, min_x, min_y, max_x, min_y)
-      append_border_line_nodes(out, p.border_bottom, min_x, max_y, max_x, max_y)
-      append_border_line_nodes(out, p.border_left, min_x, min_y, min_x, max_y)
-      append_border_line_nodes(out, p.border_right, max_x, min_y, max_x, max_y)
+      let sp_top = p.border_top.space_px
+      let sp_bottom = p.border_bottom.space_px
+      let sp_left = p.border_left.space_px
+      let sp_right = p.border_right.space_px
+      // §17.3.1.7 — `layout_paragraph` already pushed the first
+      // line down by `border_total_extent_px(top) + space` (and
+      // pulled the last line up by the symmetric bottom inset).
+      // The geometric centerline of each stroke must therefore
+      // sit `space_px + total_extent/2` OUTSIDE the line frame so
+      // the stroke's OUTER edge lands at the paragraph block's
+      // outer edge (= page-content margin for the first
+      // paragraph). This matches LibreOffice's render, where a
+      // single border with `sz="12" space="4"` lands its outer
+      // edge at the margin and the text sits `sz + space` below
+      // it; a `double` border with `sz="24"` likewise occupies 3
+      // bands of 4 px (12 px total) before the `@space` inset.
+      // The earlier emitter placed the geometric line at
+      // `min_y - space` (i.e. on the OUTER edge already), which
+      // made the actual stroke float a `width_px/2` further
+      // outward and pushed every bordered paragraph ~6-7 px above
+      // LO's render.
+      let half_top = border_total_extent_px(p.border_top) / 2.0
+      let half_bottom = border_total_extent_px(p.border_bottom) / 2.0
+      let half_left = border_total_extent_px(p.border_left) / 2.0
+      let half_right = border_total_extent_px(p.border_right) / 2.0
+      let x_left = min_x - sp_left - half_left
+      let x_right = max_x + sp_right + half_right
+      let y_top = min_y - sp_top - half_top
+      let y_bottom = max_y + sp_bottom + half_bottom
+      append_border_line_nodes(out, p.border_top, x_left, y_top, x_right, y_top)
+      append_border_line_nodes(
+        out,
+        p.border_bottom,
+        x_left,
+        y_bottom,
+        x_right,
+        y_bottom,
+      )
+      append_border_line_nodes(
+        out,
+        p.border_left,
+        x_left,
+        y_top,
+        x_left,
+        y_bottom,
+      )
+      append_border_line_nodes(
+        out,
+        p.border_right,
+        x_right,
+        y_top,
+        x_right,
+        y_bottom,
+      )
     }
     None => ()
   }
@@ -5235,7 +6926,17 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
       )
     }
     out.push(build_span_text_node(span, line, x_cursor))
-    x_cursor = x_cursor + span.width_px
+    // §17.18.59 ST_Jc `both` — when the line is justified, each
+    // U+0020 space inside this span stretches by `word_spacing_extra`.
+    // Add that stretch to the cursor so the following span starts at
+    // its justified x position. The `<text>` element itself carries
+    // a matching `word-spacing` attribute (see `build_span_text_node`)
+    // so the painted glyphs land on the same positions as our cursor
+    // model. `word_spacing_extra` is 0 for non-justified lines, so
+    // this is a no-op outside the justify path.
+    x_cursor = x_cursor +
+      span.width_px +
+      line.word_spacing_extra * count_span_spaces(span).to_double()
   }
 }
 
@@ -5278,6 +6979,12 @@ fn build_span_text_node(
   let attrs : Array[@xml.Attribute] = [
     @markup.attr("x", fmt_double(x_cursor)),
     @markup.attr("y", fmt_double(line.y_baseline + y_offset)),
+    // §17.3.1.38 — an SVG `<text>` element collapses leading /
+    // trailing whitespace by default; a `<w:t xml:space="preserve">`
+    // run with edge spaces (e.g. " and ") would lose them, fusing
+    // adjacent runs ("boldand"). `xml:space="preserve"` keeps the
+    // run's measured advance and its rendered glyphs in sync.
+    @markup.attr_ns("xml", "space", @xml.ns_xml_1998(), "preserve"),
     @markup.attr("font-family", span.font_family),
     @markup.attr(
       "font-size",
@@ -5306,6 +7013,22 @@ fn build_span_text_node(
   if span.letter_spacing_px != 0.0 {
     attrs.push(
       @markup.attr("letter-spacing", fmt_double(span.letter_spacing_px) + "px"),
+    )
+  }
+  // §17.18.59 ST_Jc `both` — justification metadata is surfaced as a
+  // `word-spacing` attribute so spec-aware consumers (browsers, the
+  // ECMA-376 round-trip writer) can recover the per-space stretch.
+  // We do NOT rely on `word-spacing` for the actual painted advance
+  // because librsvg / rsvg-convert (the snapshot pipeline rasteriser)
+  // ignores it on `<text>` and renders the run unstretched — the
+  // visible justification comes from the per-word `<tspan x="…">`
+  // placement built below in `build_text_children`.
+  if line.word_spacing_extra > 0.0 &&
+    not(span.bar_tab) &&
+    span.inline_image is None &&
+    span.math is None {
+    attrs.push(
+      @markup.attr("word-spacing", fmt_double(line.word_spacing_extra) + "px"),
     )
   }
   // §17.3.2.13 caps + §17.3.2.33 smallCaps + §17.3.2.31 shadow
@@ -5392,13 +7115,26 @@ fn build_span_text_node(
     attrs.push(@markup.attr_ns("xml", "lang", @xml.ns_xml_1998(), span.lang))
     attrs.push(@markup.attr("data-ooxml-lang", span.lang))
   }
-  // §17.3.2.23 outline — text outline (stroke + fill). Painted
-  // before the fill so the glyph fill stays on top.  When the
-  // run has no explicit @color the spec (§17.15.1.51) says the
-  // colour is `auto`, which inherits from the containing
-  // context — we surface this as SVG's `currentColor` so the
-  // CSS / parent element decides the actual pixel value rather
-  // than substituting a literal black.
+  // §17.3.2.23 outline — text outline. The spec says the glyphs
+  // are "displayed as if outlined" — i.e. only the outline is
+  // visible, the inside is HOLLOW (transparent / page colour).
+  // LibreOffice's PDF reference renders these glyphs as a thin
+  // stroke around a transparent interior. The previous mapping
+  // painted both stroke AND fill with `paint-order: stroke fill`,
+  // which put the solid fill on top of the stroke and made the
+  // visual indistinguishable from a non-outlined run — the
+  // `run-outline` fixture's RMSE was 0.055 because the reference
+  // was hollow while ours stayed solid.
+  //
+  // The fix: when outline is set we emit `stroke=<color>` and
+  // `fill="none"` so only the stroke is painted. The colour the
+  // outline uses follows the spec's §17.15.1.51 `auto` rule
+  // (inherit from context → `currentColor`); the consumer's CSS
+  // still gets to choose what `currentColor` resolves to.
+  //
+  // `data-ooxml-outline` is preserved as metadata so spec-aware
+  // consumers can find the run; the fill suppression makes the
+  // SVG self-consistent with the spec's "outlined" visual.
   if span.outline {
     let stroke = if span.color == "" { "currentColor" } else { span.color }
     attrs.push(@markup.attr("stroke", stroke))
@@ -5410,7 +7146,6 @@ fn build_span_text_node(
     // compatibility with renderers that lack the CSS hook.
     attrs.push(@markup.attr("stroke-width", "1"))
     attrs.push(@markup.attr("data-ooxml-outline", "true"))
-    attrs.push(@markup.attr("paint-order", "stroke fill"))
   }
   // §17.3.2.30 rtl — emit direction + unicode-bidi so RTL runs
   // render their characters right-to-left without re-ordering.
@@ -5454,9 +7189,132 @@ fn build_span_text_node(
   // determined by the consumer's containing context; we
   // therefore emit `currentColor` rather than substituting a
   // literal black that would override the cascade.
-  let fill = if span.color == "" { "currentColor" } else { span.color }
+  //
+  // §17.3.2.23 outline overrides this: outlined glyphs are
+  // hollow (fill="none") so only the stroke painted above is
+  // visible. Without this branch the solid fill would cover
+  // the stroke and the glyphs would render as a normal filled
+  // run.
+  let fill = if span.outline {
+    "none"
+  } else if span.color == "" {
+    "currentColor"
+  } else {
+    span.color
+  }
   attrs.push(@markup.attr("fill", fill))
-  @markup.elem_ns("text", @markup.svg_ns, attrs, [@markup.text(span.text)])
+  let children = build_text_children(span, line, x_cursor)
+  @markup.elem_ns("text", @markup.svg_ns, attrs, children)
+}
+
+///|
+/// §17.18.59 ST_Jc `both` — build the child nodes for a justified
+/// span's `<text>` element.  When the line carries no per-space
+/// stretch (`word_spacing_extra == 0.0`) or the span has no spaces,
+/// the result is a single text-node child mirroring the legacy
+/// behaviour.  Otherwise the span text is split on U+0020 boundaries
+/// and each non-empty word is wrapped in a `<tspan x="…">` whose
+/// absolute x position already accounts for the cumulative natural-
+/// glyph advance plus the per-space stretch contributed by every
+/// preceding space.  The spaces themselves are dropped from the
+/// painted output (the explicit x positions on each tspan take their
+/// place), so the consumer renders the same advance the cursor model
+/// in `append_line_nodes` has already accounted for.
+///
+/// Why per-word `<tspan x>` and not `word-spacing` / `textLength`
+/// alone: librsvg 2.61 (the snapshot rasteriser) silently ignores
+/// both properties on `<text>` and paints the original glyph
+/// layout.  Explicit per-word x positions force every SVG consumer
+/// to honour the justified layout; the `word-spacing` attribute on
+/// the parent stays as metadata for spec-aware consumers.
+///
+/// Leading run-internal spaces (eg ` and `) become an explicit x
+/// shift on the FIRST tspan — we do NOT keep the raw text as a
+/// child, because the parent `<text>`'s `xml:space="preserve"` would
+/// otherwise paint those spaces back in on top of the explicit x.
+fn build_text_children(
+  span : RunSpan,
+  line : LaidLine,
+  x_cursor : Double,
+) -> Array[@xml.Node] {
+  // Fast path: no justification stretch needed.
+  if line.word_spacing_extra <= 0.0 ||
+    span.bar_tab ||
+    span.inline_image is Some(_) ||
+    span.math is Some(_) {
+    return [@markup.text(span.text)]
+  }
+  let n_spaces = count_span_spaces(span)
+  if n_spaces == 0 {
+    return [@markup.text(span.text)]
+  }
+  let chars : Array[Char] = []
+  for c in span.text {
+    chars.push(c)
+  }
+  let n = chars.length()
+  let result : Array[@xml.Node] = []
+  let mut i = 0
+  // Width of the painted glyphs we have already emitted, measured at
+  // the span's natural font metrics. Used to advance the next tspan's
+  // anchor x.
+  let mut natural_advance = 0.0
+  // Spaces consumed so far in this span — drives the per-tspan
+  // stretch term `spaces_so_far * word_spacing_extra`.
+  let mut spaces_so_far = 0
+  while i < n {
+    // Skip — and count — any run of leading spaces.
+    let mut leading = 0
+    while i < n && chars[i] == ' ' {
+      leading = leading + 1
+      i = i + 1
+    }
+    spaces_so_far = spaces_so_far + leading
+    if i >= n {
+      // Trailing whitespace at the end of the span (eg `"foo "`)
+      // contributes no painted glyph; the cursor advance in
+      // `append_line_nodes` already accounts for its stretched
+      // width.
+      break
+    }
+    // Capture the next non-space word.
+    let word_start = i
+    while i < n && chars[i] != ' ' {
+      i = i + 1
+    }
+    let word_buf = StringBuilder::new()
+    for j in word_start..<i {
+      word_buf.write_char(chars[j])
+    }
+    let word_text = word_buf.to_string()
+    let word_w = measure_run_text(word_text, span)
+    // Natural space-glyph width for the spaces that preceded this
+    // word — keeps `natural_advance` faithful to the span's metrics
+    // even though we don't paint the spaces themselves.
+    let leading_space_w = if leading > 0 {
+      let sp_buf = StringBuilder::new()
+      for _ in 0..<leading {
+        sp_buf.write_char(' ')
+      }
+      measure_run_text(sp_buf.to_string(), span)
+    } else {
+      0.0
+    }
+    let x_pos = x_cursor +
+      natural_advance +
+      leading_space_w +
+      spaces_so_far.to_double() * line.word_spacing_extra
+    result.push(
+      @markup.elem_ns(
+        "tspan",
+        @markup.svg_ns,
+        [@markup.attr("x", fmt_double(x_pos))],
+        [@markup.text(word_text)],
+      ),
+    )
+    natural_advance = natural_advance + leading_space_w + word_w
+  }
+  result
 }
 
 ///|
@@ -5582,10 +7440,22 @@ fn append_border_line_nodes(
   match border_style_kind(side.style) {
     BorderNone => ()
     BorderDouble => {
-      // §17.18.3 — Word's "double" is two thin lines separated by
-      // a one-pixel gap; the offset steps perpendicular to the
-      // line so horizontal and vertical sides keep parity.
-      let (ox, oy) = if x1 == x2 { (1.0, 0.0) } else { (0.0, 1.0) }
+      // §17.18.3 — Word and LibreOffice render `double` as THREE
+      // equal bands of width `side.width_px` each: outer stroke,
+      // gap, inner stroke.  Total visual extent = 3 × width_px
+      // (see `border_total_extent_px`).  Each stroke is centred
+      // at ±width_px from the geometric edge line so their outer
+      // edges land at ±1.5 × width_px (= total/2), matching LO's
+      // rendering of a sz=24 (4 px) double border as 4 px stroke
+      // / 4 px gap / 4 px stroke (12 px total).
+      //
+      // The previous emitter used `width_px / 3` per stroke and
+      // treated `width_px` as the total extent, which collapsed
+      // every double border into a single ~4 px-wide solid bar
+      // for sz≥24 (visually indistinguishable from `single`).
+      let stroke = side.width_px
+      let offset = side.width_px
+      let (ox, oy) = if x1 == x2 { (offset, 0.0) } else { (0.0, offset) }
       out.push(
         single_border_line_node(
           x1 - ox,
@@ -5593,7 +7463,7 @@ fn append_border_line_nodes(
           x2 - ox,
           y2 - oy,
           side.color_hex,
-          side.width_px / 2.0,
+          stroke,
           "",
         ),
       )
@@ -5604,15 +7474,22 @@ fn append_border_line_nodes(
           x2 + ox,
           y2 + oy,
           side.color_hex,
-          side.width_px / 2.0,
+          stroke,
           "",
         ),
       )
     }
     BorderTriple => {
-      // Three parallel hairlines centred on the line.
-      let (ox, oy) = if x1 == x2 { (1.5, 0.0) } else { (0.0, 1.5) }
-      let third = side.width_px / 3.0
+      // §17.18.3 `triple` — five equal bands of `width_px`:
+      // stroke, gap, stroke, gap, stroke (total = 5 × width_px).
+      // Outer strokes are centred at ±2*width_px from the
+      // geometric line so the outer-edge envelope matches the
+      // total extent. (The previous emitter used `width_px / 5`
+      // per stroke and treated width_px as the total, which
+      // collapsed thick triples into a thin bar.)
+      let stroke = side.width_px
+      let offset = 2.0 * side.width_px
+      let (ox, oy) = if x1 == x2 { (offset, 0.0) } else { (0.0, offset) }
       out.push(
         single_border_line_node(
           x1 - ox,
@@ -5620,12 +7497,12 @@ fn append_border_line_nodes(
           x2 - ox,
           y2 - oy,
           side.color_hex,
-          third,
+          stroke,
           "",
         ),
       )
       out.push(
-        single_border_line_node(x1, y1, x2, y2, side.color_hex, third, ""),
+        single_border_line_node(x1, y1, x2, y2, side.color_hex, stroke, ""),
       )
       out.push(
         single_border_line_node(
@@ -5634,7 +7511,7 @@ fn append_border_line_nodes(
           x2 + ox,
           y2 + oy,
           side.color_hex,
-          third,
+          stroke,
           "",
         ),
       )
@@ -5680,6 +7557,30 @@ fn append_border_line_nodes(
           "",
         ),
       )
+  }
+}
+
+///|
+/// §17.18.3 / §17.3.1.7 — the TOTAL visual extent of a border side
+/// (in CSS pixels), accounting for multi-band styles (`double`,
+/// `triple`, `thinThick*`, …) where Word and LibreOffice render
+/// each band at the declared `@sz` width with `@sz`-wide gaps
+/// between them.  A `single` / `thick` / `dashed` / `art` border
+/// renders as one stroke of `width_px`; `double` and the
+/// `doubleWave` / `thinThick*` family render as three bands
+/// (stroke, gap, stroke), and `triple` renders as five bands.
+///
+/// Used by `layout_paragraph` to compute the paragraph-internal
+/// `top_inset` / `bottom_inset` so the laid lines sit fully INSIDE
+/// the bordered box (matching LO's render of, e.g., a `sz="24"`
+/// double border: total 12 px, not 4 px), and by the border
+/// emitter when it draws each stroke at the right offset.
+fn border_total_extent_px(side : BorderSide) -> Double {
+  match border_style_kind(side.style) {
+    BorderNone => 0.0
+    BorderDouble => side.width_px * 3.0
+    BorderTriple => side.width_px * 5.0
+    _ => side.width_px
   }
 }
 

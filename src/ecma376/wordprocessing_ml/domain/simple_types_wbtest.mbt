@@ -235,3 +235,74 @@ test "WML drawing chunk2 types decode positioning anchors" {
   )
   assert_true((try? ST_RelFromH::parse("paragraph")) is Err(SchemaViolation(_)))
 }
+
+///|
+/// §17.18.93 ST_TextDirection — a conforming reader MUST accept both
+/// the Strict (4th edition) token set and the Transitional (ISO/IEC
+/// 29500-1, written by Word 2007 / LibreOffice) token set.  The
+/// transitional spellings project onto their Strict semantic
+/// equivalents.
+test "WML §17.18.93 ST_TextDirection accepts Strict and Transitional" {
+  // Strict token set.
+  assert_true((try! ST_TextDirection::parse("lr")) is TextDirectionLr)
+  assert_true((try! ST_TextDirection::parse("tb")) is TextDirectionTb)
+  assert_true((try! ST_TextDirection::parse("tbV")) is TextDirectionTbV)
+  // Transitional token set — mapped onto the Strict equivalent.
+  assert_true((try! ST_TextDirection::parse("lrTb")) is TextDirectionLr)
+  assert_true((try! ST_TextDirection::parse("tbRl")) is TextDirectionTb)
+  assert_true((try! ST_TextDirection::parse("btLr")) is TextDirectionLrV)
+  assert_true((try! ST_TextDirection::parse("lrTbV")) is TextDirectionLrV)
+  assert_true((try! ST_TextDirection::parse("tbRlV")) is TextDirectionTbV)
+  assert_true((try! ST_TextDirection::parse("tbLrV")) is TextDirectionTbV)
+  // A genuinely unknown token is still rejected.
+  assert_true(
+    (try? ST_TextDirection::parse("sideways")) is Err(SchemaViolation(_)),
+  )
+}
+
+///|
+/// §22.9.2.6 ST_MeasurementOrPercent is a union of
+/// ST_DecimalNumberOrPercent (which itself unions an unqualified
+/// signed integer with a percentage) and ST_UniversalMeasure.  All
+/// three lexical forms MUST parse — a bare integer is the common
+/// `<w:tcW w:type="dxa" w:w="3000">` width form.
+test "WML §22.9.2.6 ST_MeasurementOrPercent accepts integer, percent, measure" {
+  // Bare signed integer (ST_UnqualifiedPercentage branch).
+  assert_true(
+    (try! ST_MeasurementOrPercent::parse("3000")) is MeasOrPctDecimal(3000L),
+  )
+  assert_true(
+    (try! ST_MeasurementOrPercent::parse("-50")) is MeasOrPctDecimal(-50L),
+  )
+  assert_eq((try! ST_MeasurementOrPercent::parse("3000")).to_string(), "3000")
+  // Percentage branch.
+  assert_true(
+    (try! ST_MeasurementOrPercent::parse("12.345%")) is MeasOrPctPercent(12345L),
+  )
+  // Universal-measure branch.
+  assert_true(
+    (try! ST_MeasurementOrPercent::parse("2.5cm")) is MeasOrPctMeasure(_),
+  )
+  // A non-numeric token is still rejected.
+  assert_true(
+    (try? ST_MeasurementOrPercent::parse("wide")) is Err(SchemaViolation(_)),
+  )
+}
+
+///|
+/// §17.18.84 ST_TabJc — a conforming reader MUST accept the Strict
+/// token set and the Transitional `left` / `right` aliases (written
+/// by Word 2007 / LibreOffice for tab stops), which project onto the
+/// Strict `start` / `end` variants.
+test "WML §17.18.84 ST_TabJc accepts Strict and Transitional left/right" {
+  // Strict tokens.
+  assert_true((try! ST_TabJc::parse("start")) is TabJcStart)
+  assert_true((try! ST_TabJc::parse("end")) is TabJcEnd)
+  assert_true((try! ST_TabJc::parse("decimal")) is TabJcDecimal)
+  assert_true((try! ST_TabJc::parse("bar")) is TabJcBar)
+  // Transitional aliases map onto the Strict equivalent.
+  assert_true((try! ST_TabJc::parse("left")) is TabJcStart)
+  assert_true((try! ST_TabJc::parse("right")) is TabJcEnd)
+  // An unknown token is still rejected.
+  assert_true((try? ST_TabJc::parse("middle")) is Err(SchemaViolation(_)))
+}

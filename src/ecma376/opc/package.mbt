@@ -149,18 +149,14 @@ pub fn Package::save(self : Package) -> Bytes raise {
   // entry_order (e.g. constructed package), emit it next so
   // §10.1.2 placement remains valid.
   if not(emitted.contains("[Content_Types].xml")) {
-    entries.push((
-      "[Content_Types].xml",
-      materialised.get("[Content_Types].xml").unwrap(),
-    ))
+    entries.push(
+      ("[Content_Types].xml", materialised.get("[Content_Types].xml").unwrap()),
+    )
     emitted.set("[Content_Types].xml", ())
   }
   if materialised.contains("_rels/.rels") &&
     not(emitted.contains("_rels/.rels")) {
-    entries.push((
-      "_rels/.rels",
-      materialised.get("_rels/.rels").unwrap(),
-    ))
+    entries.push(("_rels/.rels", materialised.get("_rels/.rels").unwrap()))
     emitted.set("_rels/.rels", ())
   }
   for name in parts_order {

@@ -1,0 +1,87 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/spreadsheet_ml/sparkline"
+
+import {
+  "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn decode_ext_lst(@xml.Element) -> SparklineGroups raise @errors.SchemaViolation
+
+pub fn package_name() -> String
+
+pub fn render_sparkline(SparklineBox, Array[Double], SparklineGroup) -> @xml.Node
+
+pub fn sparkline_ext_uri() -> String
+
+pub fn x14_ns() -> String
+
+pub fn xm_ns() -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct Sparkline {
+  data_range : String
+  anchor_cell : String
+  literal_values : Array[Double]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SparklineBox {
+  x : Double
+  y : Double
+  width : Double
+  height : Double
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SparklineColor {
+  hex : String?
+  theme : Int?
+  tint : Double?
+} derive(Eq, @debug.Debug)
+pub fn SparklineColor::empty() -> Self
+
+pub(all) enum SparklineEmptyCells {
+  EmptyGap
+  EmptyZero
+  EmptySpan
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SparklineGroup {
+  kind : SparklineKind
+  display_empty_cells_as : SparklineEmptyCells
+  markers : Bool
+  high : Bool
+  low : Bool
+  first : Bool
+  last : Bool
+  negative : Bool
+  display_x_axis : Bool
+  color_series : SparklineColor
+  color_negative : SparklineColor
+  color_axis : SparklineColor
+  color_markers : SparklineColor
+  color_first : SparklineColor
+  color_last : SparklineColor
+  color_high : SparklineColor
+  color_low : SparklineColor
+  sparklines : Array[Sparkline]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct SparklineGroups {
+  groups : Array[SparklineGroup]
+} derive(Eq, @debug.Debug)
+pub fn SparklineGroups::empty() -> Self
+
+pub(all) enum SparklineKind {
+  Line
+  Column
+  Stacked
+} derive(Eq, @debug.Debug)
+
+// Type aliases
+
+// Traits
+

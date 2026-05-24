@@ -226,7 +226,9 @@ test "§20.1.2.3.14-.17 hue and inverse transforms" {
 /// maps to ≈188 (not 128) after the IEC 61966-2-1 transfer.
 test "§20.1.2.3.30 scrgbClr resolves with linear→sRGB gamma" {
   let ns = " xmlns:a=\"http://purl.oclc.org/ooxml/drawingml/main\""
-  let el = xml_root("<a:scrgbClr" + ns + " r=\"50000\" g=\"50000\" b=\"50000\"/>")
+  let el = xml_root(
+    "<a:scrgbClr" + ns + " r=\"50000\" g=\"50000\" b=\"50000\"/>",
+  )
   let (base, transforms) = read_color_ref(el)
   let resolved = resolve_color(base, transforms, sample_scheme(), None)
   // 50% linear → ≈188 sRGB.  (Straight linear scaling would

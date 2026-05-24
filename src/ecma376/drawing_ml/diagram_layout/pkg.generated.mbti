@@ -14,13 +14,19 @@ pub fn apply_margins(BoundsRect, Array[Constraint]) -> BoundsRect
 
 pub fn apply_pres_of(LayoutNode, BoundsRect, EvalContext) -> Unit
 
+pub fn apply_self_geometric_constraints(BoundsRect, Array[Constraint]) -> BoundsRect
+
 pub fn attribute(@xml.Element, String) -> String?
 
 pub fn axis_select(AxisType, ElementType, EvalContext) -> Array[DiagramPoint]
 
+pub fn child_targeted_constraints_for(Array[Constraint], String) -> Array[Constraint]
+
 pub fn children_of(String, DataModel) -> Array[DiagramPoint]
 
 pub fn collect_effective_children(Array[LayoutChild], EvalContext) -> Array[ExpandedChild]
+
+pub fn constraint_kind_is_geometric(ConstraintKind) -> Bool
 
 pub fn constraint_value(Array[Constraint], ConstraintKind) -> Double
 
@@ -47,6 +53,8 @@ pub fn decode_point(@xml.Element) -> DiagramPoint raise @errors.SchemaViolation
 pub fn decode_pres_of(@xml.Element) -> PresOfSpec raise @errors.SchemaViolation
 
 pub fn decode_shape(@xml.Element) -> Shape
+
+pub fn definition_has_geometric_constraints(DiagramDefinition) -> Bool
 
 pub fn descendants_of(String, DataModel) -> Array[DiagramPoint]
 
@@ -156,8 +164,11 @@ pub(all) struct Constraint {
   kind : ConstraintKind
   for_target : String?
   for_name : String?
+  pt_type : String?
+  ref_type : ConstraintKind?
   ref_for_target : String?
   ref_for_name : String?
+  ref_pt_type : String?
   op : FunctionOp?
   val : Double?
   fact : Double?

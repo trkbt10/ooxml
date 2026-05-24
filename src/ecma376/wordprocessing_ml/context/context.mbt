@@ -230,13 +230,25 @@ pub fn Document::save(self : Document) -> Bytes {
 /// `<w:footerReference>` (type="default") are resolved through the
 /// main-part relationships, parsed, and drawn inside each page's
 /// top / bottom margin band per §17.10.
+///
+/// Returns a SINGLE well-formed SVG document — when the document
+/// spans multiple pages (e.g. via `<w:pageBreakBefore/>` or
+/// content that simply overflows one page), every page is stacked
+/// vertically inside one outer `<svg viewBox="0 0 W (N*H)">`.  The
+/// previous implementation concatenated per-page `<svg>` strings
+/// into one buffer, which produced text with multiple root
+/// elements — that violates SVG 1.1 §1.5 ("an `.svg` file is a
+/// single XML document") and is rejected by `rsvg-convert`,
+/// Inkscape, browsers, and every other conforming consumer.
+/// Callers wanting per-page output can call
+/// `@wml_viewer.render_svg` directly and walk the `pages` array.
 pub fn Document::to_svg(self : Document) -> String {
   let deco = resolve_header_footer_decoration(self)
   let image_resolver = build_document_image_resolver(
     self.package,
     self.main_part,
   )
-  let result = @wml_viewer.render_svg(
+  @wml_viewer.render_combined_svg(
     self.main,
     header_blocks=deco.header_default,
     footer_blocks=deco.footer_default,
@@ -254,13 +266,6 @@ pub fn Document::to_svg(self : Document) -> String {
     // `<w:color w:themeColor>` references to concrete sRGB hex.
     theme=self.theme,
   )
-  // Concatenate every page's SVG into a single document — callers
-  // wanting per-page output can use `@wml_viewer.render_svg` directly.
-  let buf = StringBuilder::new()
-  for p in result.pages {
-    buf.write_string(p.svg)
-  }
-  buf.to_string()
 }
 
 ///|

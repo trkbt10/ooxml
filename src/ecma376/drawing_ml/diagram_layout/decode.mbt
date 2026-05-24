@@ -337,8 +337,23 @@ pub fn decode_constraint(
   let kind = ConstraintKind::from_attr(raw_type)
   let for_target = attribute(element, "for")
   let for_name = attribute(element, "forName")
+  let pt_type = attribute(element, "ptType")
+  // §21.4.2.8 constr/@refType — default `none` per the schema. We
+  // surface the typed `ConstraintKind` directly so the solver does
+  // not have to re-decode the lexical token each time it follows a
+  // reference.  Schema default `none` is absent here (mapped to
+  // `None`), matching the semantics: "no reference".
+  let ref_type = match attribute(element, "refType") {
+    Some(raw) =>
+      match raw {
+        "none" => None
+        other => Some(ConstraintKind::from_attr(other))
+      }
+    None => None
+  }
   let ref_for_target = attribute(element, "refFor")
   let ref_for_name = attribute(element, "refForName")
+  let ref_pt_type = attribute(element, "refPtType")
   let op = match attribute(element, "op") {
     Some(value) => Some(FunctionOp::from_attr(value))
     None => None
@@ -351,7 +366,19 @@ pub fn decode_constraint(
     Some(text) => Some(parse_double_string(text, "constr/@fact"))
     None => None
   }
-  { kind, for_target, for_name, ref_for_target, ref_for_name, op, val, fact }
+  {
+    kind,
+    for_target,
+    for_name,
+    pt_type,
+    ref_type,
+    ref_for_target,
+    ref_for_name,
+    ref_pt_type,
+    op,
+    val,
+    fact,
+  }
 }
 
 ///|

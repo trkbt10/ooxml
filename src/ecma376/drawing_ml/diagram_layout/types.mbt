@@ -372,15 +372,28 @@ pub fn ElementType::from_attr(value : String) -> ElementType {
 
 ///|
 /// Part 1 §21.4.2.8 constr — decoded constraint record. Every
-/// non-required attribute is optional; the engine reads only the
-/// `kind` + `val` pair for the canonical layouts and preserves the
-/// rest so callers can implement reference constraints later.
+/// non-required attribute is optional; the engine reads `kind` +
+/// `val` + `fact` for absolute constraints, and additionally
+/// `ref_type` + `ref_for_target` + `ref_for_name` + `ref_pt_type`
+/// for reference constraints (value = sourceNode[ref_type] * fact).
+///
+/// `pt_type` filters which carrying-node's point class the
+/// constraint applies to (`AG_ConstraintAttributes/@ptType`,
+/// default `all`); `ref_pt_type` is the analogous filter on the
+/// referenced node (`AG_ConstraintRefAttributes/@refPtType`,
+/// default `all`).
+///
+/// `ref_type` defaults to `none` per the schema; the engine treats
+/// `None` here as "no reference, use literal val * fact".
 pub(all) struct Constraint {
   kind : ConstraintKind
   for_target : String?
   for_name : String?
+  pt_type : String?
+  ref_type : ConstraintKind?
   ref_for_target : String?
   ref_for_name : String?
+  ref_pt_type : String?
   op : FunctionOp?
   val : Double?
   fact : Double?

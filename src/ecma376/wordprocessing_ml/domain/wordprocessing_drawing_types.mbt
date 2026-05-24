@@ -1930,7 +1930,7 @@ pub(all) struct CT_WordprocessingGroup {
 
 ///|
 /// Bridge `@dml_pic.SchemaViolation` into our local SchemaViolation.
-fn wrap_dml_pic_violation[T](
+fn[T] wrap_dml_pic_violation(
   body : () -> T raise @dml_pic.SchemaViolation,
   path : String,
 ) -> T raise SchemaViolation {
@@ -1958,7 +1958,8 @@ pub fn CT_WordprocessingGroup::new(
       )
     None => None
   }
-  let c_nv_grp_sp_pr_el = match wml_ct_chunk4_first_child(element, "cNvGrpSpPr") {
+  let c_nv_grp_sp_pr_el = match
+    wml_ct_chunk4_first_child(element, "cNvGrpSpPr") {
     Some(child) => child
     None =>
       raise_schema_violation(
@@ -1988,7 +1989,8 @@ pub fn CT_WordprocessingGroup::new(
           "cNvPr" | "cNvGrpSpPr" | "grpSpPr" | "extLst" => ()
           "wsp" => group_body.push(Wsp(CT_WordprocessingShape::new(e)))
           "grpSp" => group_body.push(GrpSp(CT_WordprocessingGroup::new(e)))
-          "graphicFrame" => group_body.push(GraphicFrame(CT_GraphicFrame::new(e)))
+          "graphicFrame" =>
+            group_body.push(GraphicFrame(CT_GraphicFrame::new(e)))
           "pic" =>
             group_body.push(
               Pic(
@@ -2196,16 +2198,12 @@ pub fn find_wrap_type_child(
 /// Bridge `@a.SchemaViolation` into the local one so DrawingML
 /// projections (CT_Point2D, CT_PositiveSize2D, CT_GraphicalObject,
 /// etc.) raise this package's SchemaViolation when consumed.
-fn wrap_a_violation[T](
+fn[T] wrap_a_violation(
   body : () -> T raise @a.SchemaViolation,
   path : String,
 ) -> T raise SchemaViolation {
   body() catch {
     @a.SchemaViolation(schema=_, path=p, reason~) =>
-      raise SchemaViolation(
-        type_name=path + " (" + p + ")",
-        value="",
-        reason~,
-      )
+      raise SchemaViolation(type_name=path + " (" + p + ")", value="", reason~)
   }
 }

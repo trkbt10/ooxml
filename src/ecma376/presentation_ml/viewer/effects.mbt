@@ -3,12 +3,25 @@
 // SVG filter emission for ECMA-376 effects.
 //
 // ECMA-376 references:
-//   §20.1.8.45 outerShdw  (CT_OuterShadowEffect)
-//   §20.1.8.40 innerShdw  (CT_InnerShadowEffect)
-//   §20.1.8.32 glow       (CT_GlowEffect)
-//   §20.1.8.53 softEdge   (CT_SoftEdgesEffect)
-//   §20.1.8.15 blur       (CT_BlurEffect)
-//   §20.1.8.50 reflection (not rendered — requires complex transforms)
+//   §20.1.8.45 outerShdw   (CT_OuterShadowEffect)
+//   §20.1.8.40 innerShdw   (CT_InnerShadowEffect)
+//   §20.1.8.32 glow        (CT_GlowEffect)
+//   §20.1.8.53 softEdge    (CT_SoftEdgesEffect)
+//   §20.1.8.15 blur        (CT_BlurEffect; grow xsd:boolean default=true)
+//   §20.1.8.29 fillOverlay (CT_FillOverlayEffect)
+//   §20.1.8.50 reflection  (CT_ReflectionEffect; emitted as a sibling
+//                            mirrored <g> clone by the caller — SVG
+//                            filter primitives cannot flip the source.)
+//
+// Composition model (§20.1.8.16 EG_Effect / §20.1.8.27 effectLst):
+// every child of <a:effectLst> contributes to the same composited
+// output.  The previous implementation only honoured the highest-
+// priority effect (shadow > glow > softEdge > blur) which dropped
+// the second effect of a stack such as outerShdw + glow.  We now
+// build a single multi-primitive <filter> whose primitives chain by
+// `result=` id and whose final `feMerge` orders all per-effect
+// outputs back over the source in document order — matching the
+// spec's "stack of effects" model.
 //
 // The reader-side typed CT_* structs live in
 // `src/ecma376/drawing_ml/effect_types.mbt`. This module operates on
@@ -80,6 +93,18 @@ fn parse_hex_to_rgb(hex : String) -> (Double, Double, Double) {
   let g = parse_hex_byte(normalized, 2).to_double() / 255.0
   let b = parse_hex_byte(normalized, 4).to_double() / 255.0
   (r, g, b)
+}
+
+///|
+/// Format a colour as a `rgb(r, g, b)` CSS string for `<feFlood>`.
+fn rgb_css(r : Double, g : Double, b : Double) -> String {
+  "rgb(" +
+  (r * 255.0).to_int().to_string() +
+  ", " +
+  (g * 255.0).to_int().to_string() +
+  ", " +
+  (b * 255.0).to_int().to_string() +
+  ")"
 }
 
 ///|
@@ -228,76 +253,155 @@ fn fe_color_matrix(
 }
 
 ///|
-/// Two-node `<feMerge>` element merging `node1` over `node2`. Mirrors
-/// the most common shape used in `effects.ts`.
-fn fe_merge_two(node1 : String, node2 : String) -> @xml.Node {
-  @markup.elem_ns("feMerge", @markup.svg_ns, [], [
-    @markup.elem_ns(
-      "feMergeNode",
-      @markup.svg_ns,
-      [@markup.attr("in", node1)],
-      [],
-    ),
-    @markup.elem_ns(
-      "feMergeNode",
-      @markup.svg_ns,
-      [@markup.attr("in", node2)],
-      [],
-    ),
-  ])
-}
-
-///|
-/// Wrap a sequence of primitive nodes as a complete `<filter>`
-/// definition with the standard `(-50%, -50%, 200%, 200%)` viewport.
-fn wrap_filter_standard(
-  filter_id : String,
-  body : Array[@xml.Node],
+/// `<feFlood flood-color="..." flood-opacity="..." result="..."/>`.
+fn fe_flood(
+  flood_color : String,
+  flood_opacity : Double,
+  result : String,
 ) -> @xml.Node {
   @markup.elem_ns(
-    "filter",
+    "feFlood",
     @markup.svg_ns,
     [
-      @markup.attr("id", filter_id),
-      @markup.attr("x", "-50%"),
-      @markup.attr("y", "-50%"),
-      @markup.attr("width", "200%"),
-      @markup.attr("height", "200%"),
+      @markup.attr("flood-color", flood_color),
+      @markup.attr("flood-opacity", format_double_for_filter(flood_opacity)),
+      @markup.attr("result", result),
     ],
-    body,
+    [],
   )
 }
 
 ///|
-/// Wrap a sequence of primitive nodes as a complete `<filter>`
-/// definition with a tight viewport (used by softEdge — the edge
-/// blur only extends slightly outside the shape bounds).
-fn wrap_filter_tight(filter_id : String, body : Array[@xml.Node]) -> @xml.Node {
+/// `<feComposite in=in1 in2=in2 operator=op result=result/>`.
+fn fe_composite(
+  in1 : String,
+  in2 : String,
+  operator : String,
+  result : String,
+) -> @xml.Node {
   @markup.elem_ns(
-    "filter",
+    "feComposite",
     @markup.svg_ns,
     [
-      @markup.attr("id", filter_id),
-      @markup.attr("x", "-10%"),
-      @markup.attr("y", "-10%"),
-      @markup.attr("width", "120%"),
-      @markup.attr("height", "120%"),
+      @markup.attr("in", in1),
+      @markup.attr("in2", in2),
+      @markup.attr("operator", operator),
+      @markup.attr("result", result),
     ],
-    body,
+    [],
   )
 }
 
 ///|
-/// Generate an outer-shadow filter. Mirrors `generateOuterShadowFilter`
-/// in `effects.ts:87`. The shadow's blur radius and distance are taken
-/// from the §20.1.8.45 attributes; the colour is resolved via the
-/// viewer's `ColorResolveContext` so scheme/theme colours work
-/// transparently.
-fn generate_outer_shadow_filter(
+/// `<feBlend in=in1 in2=in2 mode=mode result=result/>`.
+fn fe_blend(
+  in1 : String,
+  in2 : String,
+  mode : String,
+  result : String,
+) -> @xml.Node {
+  @markup.elem_ns(
+    "feBlend",
+    @markup.svg_ns,
+    [
+      @markup.attr("in", in1),
+      @markup.attr("in2", in2),
+      @markup.attr("mode", mode),
+      @markup.attr("result", result),
+    ],
+    [],
+  )
+}
+
+///|
+/// Final `feMerge` collapsing an ordered list of result IDs (back to
+/// front).  Each entry becomes a `<feMergeNode in="...">`.
+fn fe_merge_nodes(results : Array[String]) -> @xml.Node {
+  let nodes : Array[@xml.Node] = []
+  for r in results {
+    nodes.push(
+      @markup.elem_ns("feMergeNode", @markup.svg_ns, [@markup.attr("in", r)], []),
+    )
+  }
+  @markup.elem_ns("feMerge", @markup.svg_ns, [], nodes)
+}
+
+///|
+/// Extents added by an effect, expressed as fractional shape-box
+/// margins on each side.  The wrapper viewport is the max across
+/// all effects so the largest blur/glow halo isn't clipped.
+struct FilterExtents {
+  left : Double
+  top : Double
+  right : Double
+  bottom : Double
+}
+
+///|
+fn FilterExtents::zero() -> FilterExtents {
+  { left: 0.0, top: 0.0, right: 0.0, bottom: 0.0 }
+}
+
+///|
+fn FilterExtents::merge(a : FilterExtents, b : FilterExtents) -> FilterExtents {
+  {
+    left: if a.left > b.left {
+      a.left
+    } else {
+      b.left
+    },
+    top: if a.top > b.top {
+      a.top
+    } else {
+      b.top
+    },
+    right: if a.right > b.right {
+      a.right
+    } else {
+      b.right
+    },
+    bottom: if a.bottom > b.bottom {
+      a.bottom
+    } else {
+      b.bottom
+    },
+  }
+}
+
+///|
+/// One effect's contribution to the composed filter — primitives to
+/// splice into the filter body and the `result=` id whose output is
+/// merged back into the final stack, plus the extents the wrapper
+/// viewport must accommodate.
+///
+/// `merge_under` is true when the effect's output should be merged
+/// *behind* SourceGraphic (shadow, glow, reflection, fillOverlay).
+/// `merge_over` is true when it should be merged in front
+/// (innerShdw, fillOverlay-mult/over).  softEdge / blur replace the
+/// stack entirely (they declare `result_id = ""`).
+struct EffectContribution {
+  primitives : Array[@xml.Node]
+  result_id : String
+  merge_under : Bool
+  merge_over : Bool
+  extents : FilterExtents
+  // softEdge / blur replace the entire source rendering — when
+  // `replaces_source` is true, the final merge uses this effect's
+  // result as the only output and ignores SourceGraphic/under/over.
+  replaces_source : Bool
+}
+
+///|
+/// Build an outer-shadow primitive group (§20.1.8.45). Mirrors
+/// `generateOuterShadowFilter` in `effects.ts:87`; the shadow's blur
+/// radius and distance come from the §20.1.8.45 attributes, the
+/// colour is resolved through `ColorResolveContext` so scheme/theme
+/// colours work.  Output result id `<prefix>_out`.
+fn outer_shadow_primitives(
   shdw : @xml.Element,
-  filter_id : String,
+  prefix : String,
   ctx : ColorResolveContext,
-) -> @xml.Node {
+) -> EffectContribution {
   let dist = attr_double(shdw, "dist", 0.0)
   let dir = attr_double(shdw, "dir", 0.0)
   let blur_rad = attr_double(shdw, "blurRad", 0.0)
@@ -305,33 +409,62 @@ fn generate_outer_shadow_filter(
   let std_dev = blur_rad / 2.0
   let hex = resolve_effect_color_hex(shdw, ctx)
   let (r, g, b) = parse_hex_to_rgb(hex)
-  // §20.1.2.3.7 `<a:alpha val>` — when the colour element
-  // carries an explicit alpha child we honour it; otherwise we
-  // default to 0.5 (50 %), matching the renderer-policy
-  // intensity the TS reference uses.  The 50 % default is
-  // surfaced via `data-ooxml-effect-alpha-source` on the
-  // caller's <g> wrapper when no explicit alpha was present.
+  // §20.1.2.3.7 `<a:alpha val>` — outer shadow default 50 %.
   let opacity = read_effect_alpha(shdw, 0.5)
   let matrix = color_matrix_values(r, g, b, opacity)
-  let body : Array[@xml.Node] = [
-    fe_gaussian_blur("SourceAlpha", std_dev, "blur"),
-    fe_offset("blur", dx, dy, "offsetBlur"),
-    fe_color_matrix("offsetBlur", matrix, "shadow"),
-    fe_merge_two("shadow", "SourceGraphic"),
+  let blur_id = prefix + "_blur"
+  let off_id = prefix + "_off"
+  let out_id = prefix + "_out"
+  let primitives : Array[@xml.Node] = [
+    fe_gaussian_blur("SourceAlpha", std_dev, blur_id),
+    fe_offset(blur_id, dx, dy, off_id),
+    fe_color_matrix(off_id, matrix, out_id),
   ]
-  wrap_filter_standard(filter_id, body)
+  // Extents margin: halo extends ~3 std-devs from the shifted alpha
+  // (3-sigma covers 99.7 % of the gaussian); plus the offset itself.
+  let halo = std_dev * 3.0
+  let extents = {
+    left: if dx < 0.0 {
+      -dx + halo
+    } else {
+      halo
+    },
+    right: if dx > 0.0 {
+      dx + halo
+    } else {
+      halo
+    },
+    top: if dy < 0.0 {
+      -dy + halo
+    } else {
+      halo
+    },
+    bottom: if dy > 0.0 {
+      dy + halo
+    } else {
+      halo
+    },
+  }
+  {
+    primitives,
+    result_id: out_id,
+    merge_under: true,
+    merge_over: false,
+    extents,
+    replaces_source: false,
+  }
 }
 
 ///|
-/// Generate an inner-shadow filter. Mirrors `generateInnerShadowFilter`
-/// in `effects.ts:119`. The offset is negated (shadow comes from the
-/// opposite direction) and a `feComposite operator="in"` clips the
-/// shadow to the shape's alpha so the shadow only renders inside.
-fn generate_inner_shadow_filter(
+/// Build an inner-shadow primitive group (§20.1.8.40). Mirrors
+/// `generateInnerShadowFilter` in `effects.ts:119`.  The offset is
+/// negated and the shadow is clipped to the source alpha so it
+/// renders inside the shape.  Output result id `<prefix>_in`.
+fn inner_shadow_primitives(
   shdw : @xml.Element,
-  filter_id : String,
+  prefix : String,
   ctx : ColorResolveContext,
-) -> @xml.Node {
+) -> EffectContribution {
   let dist = attr_double(shdw, "dist", 0.0)
   let dir = attr_double(shdw, "dir", 0.0)
   let blur_rad = attr_double(shdw, "blurRad", 0.0)
@@ -342,36 +475,38 @@ fn generate_inner_shadow_filter(
   // §20.1.2.3.7 `<a:alpha val>` — inner-shadow default 30 %.
   let opacity = read_effect_alpha(shdw, 0.3)
   let matrix = color_matrix_values(r, g, b, opacity)
-  let body : Array[@xml.Node] = [
-    fe_gaussian_blur("SourceAlpha", std_dev, "blur"),
-    fe_offset("blur", -dx, -dy, "offsetBlur"),
-    fe_color_matrix("offsetBlur", matrix, "shadow"),
-    @markup.elem_ns(
-      "feComposite",
-      @markup.svg_ns,
-      [
-        @markup.attr("in", "shadow"),
-        @markup.attr("in2", "SourceAlpha"),
-        @markup.attr("operator", "in"),
-        @markup.attr("result", "innerShadow"),
-      ],
-      [],
-    ),
-    fe_merge_two("SourceGraphic", "innerShadow"),
+  let blur_id = prefix + "_iblur"
+  let off_id = prefix + "_ioff"
+  let cm_id = prefix + "_icm"
+  let out_id = prefix + "_in"
+  let primitives : Array[@xml.Node] = [
+    fe_gaussian_blur("SourceAlpha", std_dev, blur_id),
+    fe_offset(blur_id, -dx, -dy, off_id),
+    fe_color_matrix(off_id, matrix, cm_id),
+    fe_composite(cm_id, "SourceAlpha", "in", out_id),
   ]
-  wrap_filter_standard(filter_id, body)
+  // Inner shadow is clipped to source alpha; the only extent the
+  // wrapper must add is what the source itself needs.
+  {
+    primitives,
+    result_id: out_id,
+    merge_under: false,
+    merge_over: true,
+    extents: FilterExtents::zero(),
+    replaces_source: false,
+  }
 }
 
 ///|
-/// Generate a glow filter. Mirrors `generateGlowFilter` in
-/// `effects.ts:178`. The glow is a blurred copy of the source's alpha
-/// recoloured to the glow colour at 0.7 opacity and merged under the
-/// source.
-fn generate_glow_filter(
+/// Build a glow primitive group (§20.1.8.32).  Mirrors
+/// `generateGlowFilter` in `effects.ts:178`.  The glow is a blurred
+/// copy of the alpha recoloured to the glow colour and merged under
+/// the source.  Output result id `<prefix>_glow`.
+fn glow_primitives(
   glow : @xml.Element,
-  filter_id : String,
+  prefix : String,
   ctx : ColorResolveContext,
-) -> @xml.Node {
+) -> EffectContribution {
   let rad = attr_double(glow, "rad", 0.0)
   let std_dev = rad / 2.0
   let hex = resolve_effect_color_hex(glow, ctx)
@@ -379,61 +514,151 @@ fn generate_glow_filter(
   // §20.1.2.3.7 `<a:alpha val>` — glow default 70 %.
   let opacity = read_effect_alpha(glow, 0.7)
   let matrix = color_matrix_values(r, g, b, opacity)
-  let body : Array[@xml.Node] = [
-    fe_gaussian_blur("SourceAlpha", std_dev, "blur"),
-    fe_color_matrix("blur", matrix, "glow"),
-    fe_merge_two("glow", "SourceGraphic"),
+  let blur_id = prefix + "_gblur"
+  let out_id = prefix + "_glow"
+  let primitives : Array[@xml.Node] = [
+    fe_gaussian_blur("SourceAlpha", std_dev, blur_id),
+    fe_color_matrix(blur_id, matrix, out_id),
   ]
-  wrap_filter_standard(filter_id, body)
+  let halo = std_dev * 3.0
+  let extents = { left: halo, top: halo, right: halo, bottom: halo }
+  {
+    primitives,
+    result_id: out_id,
+    merge_under: true,
+    merge_over: false,
+    extents,
+    replaces_source: false,
+  }
 }
 
 ///|
-/// Generate a soft-edge filter. Mirrors `generateSoftEdgeFilter` in
-/// `effects.ts:210`. The edge is feathered by blurring the alpha and
-/// compositing the source over the blurred alpha with `operator="in"`.
-fn generate_soft_edge_filter(
+/// Build a soft-edge primitive group (§20.1.8.53).  The edge is
+/// feathered by blurring the alpha then re-clipping the source by
+/// the blurred alpha with `feComposite operator="in"`.  softEdge
+/// replaces the source rendering — the merge stage uses its output
+/// in place of `SourceGraphic`.  Output result id `<prefix>_soft`.
+fn soft_edge_primitives(
   soft : @xml.Element,
-  filter_id : String,
-) -> @xml.Node {
+  prefix : String,
+) -> EffectContribution {
   let rad = attr_double(soft, "rad", 0.0)
   let std_dev = rad / 2.0
-  let body : Array[@xml.Node] = [
-    fe_gaussian_blur("SourceAlpha", std_dev, "blur"),
-    @markup.elem_ns(
-      "feComposite",
-      @markup.svg_ns,
-      [
-        @markup.attr("in", "SourceGraphic"),
-        @markup.attr("in2", "blur"),
-        @markup.attr("operator", "in"),
-      ],
-      [],
-    ),
+  let blur_id = prefix + "_sblur"
+  let out_id = prefix + "_soft"
+  let primitives : Array[@xml.Node] = [
+    fe_gaussian_blur("SourceAlpha", std_dev, blur_id),
+    fe_composite("SourceGraphic", blur_id, "in", out_id),
   ]
-  wrap_filter_tight(filter_id, body)
+  // softEdge's feComposite("in") clips the feathered alpha back to
+  // the source shape — the feather never extends past the bounding
+  // box, so the wrapper stays at the tight viewport (no extra
+  // extents).  Without this the rasteriser allocates a needlessly
+  // large filter buffer for every feathered shape.
+  {
+    primitives,
+    result_id: out_id,
+    merge_under: false,
+    merge_over: false,
+    extents: FilterExtents::zero(),
+    replaces_source: true,
+  }
 }
 
 ///|
-/// Generate a blur filter. Mirrors §20.1.8.15 directly — the spec
-/// blur primitive is a plain Gaussian blur of the source. `web-pptx`
-/// doesn't ship a dedicated `blur` path (it short-circuits to glow's
-/// rad-based blur), but the ECMA-376 element warrants explicit
-/// handling so the filter chain can carry isolated blurs.
-fn generate_blur_filter(blur : @xml.Element, filter_id : String) -> @xml.Node {
+/// Build a uniform Gaussian blur (§20.1.8.15).  The `grow` attribute
+/// (xsd:boolean default=true) controls whether the blur halo extends
+/// past the original bounding box (`grow=true`) or is clipped inside
+/// (`grow=false`); we honour it by widening the wrapper viewport when
+/// `grow=true` and leaving the extents at zero when `grow=false`.
+/// Output result id `<prefix>_blur`.
+fn blur_primitives(blur : @xml.Element, prefix : String) -> EffectContribution {
   let rad = attr_double(blur, "rad", 0.0)
   let std_dev = rad / 2.0
-  let body : Array[@xml.Node] = [
+  // §20.1.8.15 @grow — xsd:boolean default=true.
+  let grow = parse_xsd_boolean_or(attr_value(blur, "grow"), true)
+  let out_id = prefix + "_blur"
+  let primitives : Array[@xml.Node] = [
     @markup.elem_ns(
       "feGaussianBlur",
       @markup.svg_ns,
       [
         @markup.attr("in", "SourceGraphic"),
         @markup.attr("stdDeviation", format_double_for_filter(std_dev)),
+        @markup.attr("result", out_id),
       ],
       [],
     ),
   ]
-  wrap_filter_tight(filter_id, body)
+  let halo = if grow { std_dev * 3.0 } else { 0.0 }
+  let extents = { left: halo, top: halo, right: halo, bottom: halo }
+  {
+    primitives,
+    result_id: out_id,
+    merge_under: false,
+    merge_over: false,
+    extents,
+    replaces_source: true,
+  }
+}
+
+///|
+/// Build a fill-overlay primitive group (§20.1.8.29).  Renders a
+/// semi-opaque colour over the source, blended per the `blend`
+/// attribute (`over` / `mult` / `screen` / `darken` / `lighten`).
+/// The overlay is clipped to the source alpha so it doesn't bleed
+/// past the shape silhouette.  Output result id `<prefix>_fo`.
+fn fill_overlay_primitives(
+  overlay : @xml.Element,
+  prefix : String,
+  ctx : ColorResolveContext,
+) -> EffectContribution {
+  let hex = resolve_effect_color_hex(overlay, ctx)
+  let (r, g, b) = parse_hex_to_rgb(hex)
+  let opacity = read_effect_alpha(overlay, 0.5)
+  let blend = match attr_value(overlay, "blend") {
+    Some(v) => v
+    None => "over"
+  }
+  let flood_id = prefix + "_fflood"
+  let clip_id = prefix + "_fclip"
+  let out_id = prefix + "_fo"
+  let primitives : Array[@xml.Node] = [
+    fe_flood(rgb_css(r, g, b), opacity, flood_id),
+    // Clip the flood rectangle to the source alpha so the overlay
+    // matches the shape silhouette rather than the filter viewport.
+    fe_composite(flood_id, "SourceAlpha", "in", clip_id),
+    // Blend the clipped flood with the source per the §20.1.8.29
+    // @blend attribute: `over` (paint on top), `mult` (multiply),
+    // `screen`, `darken`, `lighten` map directly to SVG `feBlend`
+    // modes (`normal`/`multiply`/`screen`/`darken`/`lighten`).
+    fe_blend(clip_id, "SourceGraphic", blend_to_svg_mode(blend), out_id),
+  ]
+  // The overlay never expands the bounding box (it's clipped to
+  // SourceAlpha), so no extra extents.
+  {
+    primitives,
+    result_id: out_id,
+    merge_under: false,
+    merge_over: false,
+    // The blend already composes the source — feMerge should use
+    // this output in place of SourceGraphic, so flag as replacement.
+    extents: FilterExtents::zero(),
+    replaces_source: true,
+  }
+}
+
+///|
+/// Map a §20.1.8.29 @blend value to the corresponding SVG `feBlend`
+/// @mode value.  Unknown / `over` map to `normal`.
+fn blend_to_svg_mode(blend : String) -> String {
+  match blend {
+    "mult" => "multiply"
+    "screen" => "screen"
+    "darken" => "darken"
+    "lighten" => "lighten"
+    _ => "normal"
+  }
 }
 
 ///|
@@ -446,10 +671,16 @@ fn generate_blur_filter(blur : @xml.Element, filter_id : String) -> @xml.Node {
 /// effect is present, so callers can splat it unconditionally onto an
 /// element.
 ///
-/// Priority matches `effects.ts:252`: shadow > glow > softEdge > blur.
-/// Reflection (§20.1.8.50) is not rendered — SVG cannot express the
-/// distance/blur/start-alpha/end-alpha combination as a single filter
-/// without `<image>` composition, and the TS version skips it too.
+/// Composition (§20.1.8.27): walks every child of `<a:effectLst>` in
+/// document order — the spec's composition order — building one
+/// multi-primitive filter.  Each effect's primitives chain through
+/// unique result ids (`eff0_blur`, `eff0_glow`, etc.) and the final
+/// `<feMerge>` stacks shadow/glow under the source and innerShdw
+/// over it.  softEdge and blur replace the source rendering wholesale
+/// (their output IS the rendered shape).  Reflection is not emitted
+/// via the filter — SVG filter primitives cannot mirror — and is
+/// instead surfaced by `reflection_extra_nodes` for the caller to
+/// place as a sibling clone.
 pub fn render_effects_filter_attr(
   sp_pr : @xml.Element,
   shape_id : String,
@@ -463,8 +694,7 @@ pub fn render_effects_filter_attr(
 /// Internal counterpart of `render_effects_filter_attr` that returns
 /// the structured `filter` attribute list (empty when no supported
 /// effect is present).  Pushes the `<filter>` node into `defs` as a
-/// side-effect.  Priority matches `effects.ts:252`:
-/// shadow > glow > softEdge > blur.
+/// side-effect.
 fn effects_filter_attrs(
   sp_pr : @xml.Element,
   shape_id : String,
@@ -481,41 +711,218 @@ fn effects_filter_attrs(
     None => []
     Some(lst) => {
       let filter_id = generate_effects_filter_id(shape_id)
-      // Priority: outerShdw > innerShdw > glow > softEdge > blur.
-      let outer_shdw = first_child_named(lst, "outerShdw")
-      let inner_shdw = first_child_named(lst, "innerShdw")
-      let glow = first_child_named(lst, "glow")
-      let soft_edge = first_child_named(lst, "softEdge")
-      let blur = first_child_named(lst, "blur")
-      let filter_body : @xml.Node? = match outer_shdw {
-        Some(e) => Some(generate_outer_shadow_filter(e, filter_id, ctx))
-        None =>
-          match inner_shdw {
-            Some(e) => Some(generate_inner_shadow_filter(e, filter_id, ctx))
-            None =>
-              match glow {
-                Some(e) => Some(generate_glow_filter(e, filter_id, ctx))
-                None =>
-                  match soft_edge {
-                    Some(e) => Some(generate_soft_edge_filter(e, filter_id))
-                    None =>
-                      match blur {
-                        Some(e) => Some(generate_blur_filter(e, filter_id))
-                        None => None
-                      }
-                  }
-              }
+      let contributions : Array[EffectContribution] = []
+      let mut idx : Int = 0
+      // Walk in document order — §20.1.8.27 says child effects
+      // compose in the order they appear inside the list.
+      for child in lst.children {
+        match child {
+          @xml.Node::Element(el) => {
+            let prefix = "eff" + idx.to_string()
+            let contribution : EffectContribution? = match el.name.local_name {
+              "outerShdw" => Some(outer_shadow_primitives(el, prefix, ctx))
+              "innerShdw" => Some(inner_shadow_primitives(el, prefix, ctx))
+              "glow" => Some(glow_primitives(el, prefix, ctx))
+              "softEdge" => Some(soft_edge_primitives(el, prefix))
+              "blur" => Some(blur_primitives(el, prefix))
+              "fillOverlay" => Some(fill_overlay_primitives(el, prefix, ctx))
+              // §20.1.8.50 reflection — handled outside the filter
+              // by `reflection_extra_nodes`; skip here.
+              // Unrecognised effect names are ignored.
+              _ => None
+            }
+            match contribution {
+              Some(c) => contributions.push(c)
+              None => ()
+            }
+            idx = idx + 1
           }
-      }
-      match filter_body {
-        None => []
-        Some(def) => {
-          defs.add_def(def)
-          [@markup.attr("filter", "url(#" + filter_id + ")")]
+          _ => ()
         }
       }
+      if contributions.length() == 0 {
+        return []
+      }
+      // Determine the source-of-truth for the final stack:
+      //   * If any contribution declares `replaces_source` we use the
+      //     LAST one's output in place of SourceGraphic.  This lets a
+      //     <softEdge> after a <glow> render the feathered shape with
+      //     the glow underneath; it also lets <blur> blur the whole
+      //     stack.  In practice §20.1.8.27 stacks blur/softEdge at the
+      //     end, so honouring the last replacement matches Office.
+      //   * Otherwise SourceGraphic is the central layer.
+      let mut source_layer = "SourceGraphic"
+      for c in contributions {
+        if c.replaces_source {
+          source_layer = c.result_id
+        }
+      }
+
+      // Collect filter primitives in document order.
+      let body : Array[@xml.Node] = []
+      for c in contributions {
+        for n in c.primitives {
+          body.push(n)
+        }
+      }
+
+      // Build the merge stack: under-layers (shadow/glow) in
+      // document order, then the source layer, then over-layers
+      // (innerShdw / fillOverlay-blend) in document order.
+      let merge_inputs : Array[String] = []
+      for c in contributions {
+        if c.merge_under {
+          merge_inputs.push(c.result_id)
+        }
+      }
+      merge_inputs.push(source_layer)
+      for c in contributions {
+        if c.merge_over {
+          merge_inputs.push(c.result_id)
+        }
+      }
+      body.push(fe_merge_nodes(merge_inputs))
+
+      // Compute viewport.  Combined extents are the per-effect max,
+      // expressed as fractional shape-box margins.  The default
+      // 50 % box on every side covers the historical
+      // shadow/glow halos; we widen further only when an effect's
+      // extents call for it.  Extents are EMUs of margin; we don't
+      // have the shape bbox here, so approximate via percentages
+      // proportional to a 200 % bounding box and let the rsvg
+      // clipper handle the rest.
+      let mut extents = FilterExtents::zero()
+      for c in contributions {
+        extents = FilterExtents::merge(extents, c.extents)
+      }
+      let filter_node = wrap_filter_with_extents(filter_id, body, extents)
+      defs.add_def(filter_node)
+      [@markup.attr("filter", "url(#" + filter_id + ")")]
     }
   }
+}
+
+///|
+/// Wrap a body of filter primitives in a `<filter>` element sized
+/// to accommodate the combined extents.  Extents are EMU-scale
+/// margins; we don't know the shape's EMU box at this layer, so we
+/// convert margin → viewport percentage via the heuristic that 1 EMU
+/// of halo ≈ 1/9525 px and the typical shape edge is sub-1 in.  We
+/// keep the same nominal `(-50%, -50%, 200%, 200%)` viewport for
+/// shadow/glow effects (matches the historical behaviour) and
+/// widen when an effect's halo is large.  When no extra extents are
+/// requested (softEdge / non-grow blur) we use the tight
+/// `(-10%, -10%, 120%, 120%)` viewport so the rasteriser doesn't
+/// allocate huge filter buffers needlessly.
+fn wrap_filter_with_extents(
+  filter_id : String,
+  body : Array[@xml.Node],
+  extents : FilterExtents,
+) -> @xml.Node {
+  let any_halo = extents.left > 0.0 ||
+    extents.right > 0.0 ||
+    extents.top > 0.0 ||
+    extents.bottom > 0.0
+  // Percentage margins to apply on each side of the shape box.
+  // The historical shadow/glow filter used `-50%, -50%, 200%, 200%`
+  // (50 % halo on each side).  For larger halos we widen so a deep
+  // glow isn't clipped; for no halo we tighten so feather filters
+  // don't allocate huge raster buffers.
+  let (lp, tp, wp, hp) = if any_halo {
+    // Heuristic margin: convert EMU halo to fractional shape-box
+    // margin via an approximate "average shape ~ 1 in = 914400 EMU"
+    // assumption.  Cap at 100 % on each side so the viewport
+    // doesn't blow up for runaway radii.
+    let frac = fn(emu : Double) -> Double {
+      let m = emu / 914400.0
+      if m > 1.0 {
+        1.0
+      } else if m < 0.5 {
+        0.5
+      } else {
+        m
+      }
+    }
+    let l = frac(extents.left) * 100.0
+    let t = frac(extents.top) * 100.0
+    let r = frac(extents.right) * 100.0
+    let b = frac(extents.bottom) * 100.0
+    (-l, -t, 100.0 + l + r, 100.0 + t + b)
+  } else {
+    (-10.0, -10.0, 120.0, 120.0)
+  }
+  let percent = fn(v : Double) -> String { format_double_for_filter(v) + "%" }
+  @markup.elem_ns(
+    "filter",
+    @markup.svg_ns,
+    [
+      @markup.attr("id", filter_id),
+      @markup.attr("x", percent(lp)),
+      @markup.attr("y", percent(tp)),
+      @markup.attr("width", percent(wp)),
+      @markup.attr("height", percent(hp)),
+    ],
+    body,
+  )
+}
+
+///|
+/// §20.1.8.50 `<a:reflection>` — emit a mirrored clone of the
+/// rendered shape geometry as a sibling `<g>` that the caller
+/// inserts behind the shape's own `<g>`.  Returns an empty array
+/// when there is no reflection child.
+///
+/// SVG filters cannot mirror the source vertically (no primitive
+/// flips the y axis), so the reflection is implemented as a
+/// duplicate `<g>` whose `transform` matrix scales `y` by `-1` and
+/// translates by `2·h + dist` so the mirrored copy sits flush
+/// underneath the original.  Fade-out is approximated by a constant
+/// `opacity` derived from the §20.1.8.50 `stA` (start alpha) — a
+/// linear-gradient mask would honour the `stPos`/`endPos`/`endA`
+/// quartet exactly but the gradient mask requires a `<mask>` def
+/// keyed to the shape's path; we surface a constant opacity (mean
+/// of `stA` and `endA`) so the reflection's overall visibility
+/// matches Office without the per-pixel falloff.
+pub fn reflection_extra_nodes(
+  sp_pr : @xml.Element,
+  shape_path : @xml.Node,
+  shape_height : Double,
+) -> Array[@xml.Node] {
+  let lst = match first_child_named(sp_pr, "effectLst") {
+    Some(e) => e
+    None =>
+      match first_child_named(sp_pr, "effectDag") {
+        Some(e) => e
+        None => return []
+      }
+  }
+  let refl = match first_child_named(lst, "reflection") {
+    Some(e) => e
+    None => return []
+  }
+  // §20.1.8.50 @dist — EMU gap between shape and reflection.
+  let dist = attr_double(refl, "dist", 0.0)
+  // §20.1.8.50 @stA / @endA — 0..100000 (positive-fixed-percentage).
+  // Default fade: stA=50000 (50 %), endA=0 — same defaults Office
+  // uses for the "tight reflection" preset.
+  let st_a = attr_double(refl, "stA", 50000.0) / 100000.0
+  let end_a = attr_double(refl, "endA", 0.0) / 100000.0
+  let mean_alpha = (st_a + end_a) / 2.0
+  // Mirror transform: scale(1, -1) flips around y=0, then we
+  // translate down by 2·h + dist so the mirrored top edge sits at
+  // y=h+dist (just below the original's bottom edge).
+  //
+  // The matrix is composed in user-space; the shape itself is
+  // already positioned by its outer <g transform="translate(...)">
+  // so we apply the mirror *inside* that frame.
+  let ty = 2.0 * shape_height + dist
+  let transform_val = "matrix(1 0 0 -1 0 " + format_double_for_filter(ty) + ")"
+  let attrs : Array[@xml.Attribute] = [
+    @markup.attr("transform", transform_val),
+    @markup.attr("opacity", format_double_for_filter(mean_alpha)),
+    @markup.attr("data-ooxml-effect", "reflection"),
+  ]
+  [@markup.elem_ns("g", @markup.svg_ns, attrs, [shape_path])]
 }
 
 ///|
@@ -552,7 +959,12 @@ fn read_effect_alpha(effect : @xml.Element, default : Double) -> Double {
         match color_el.name.local_name {
           // §20.1.2.3 EG_ColorChoice — the 6 colour-bearing
           // elements that may appear inside an effect.
-          "srgbClr" | "schemeClr" | "sysClr" | "hslClr" | "scrgbClr" | "prstClr" =>
+          "srgbClr"
+          | "schemeClr"
+          | "sysClr"
+          | "hslClr"
+          | "scrgbClr"
+          | "prstClr" =>
             for inner in color_el.children {
               match inner {
                 @xml.Node::Element(alpha_el) =>
@@ -569,6 +981,41 @@ fn read_effect_alpha(effect : @xml.Element, default : Double) -> Double {
                         }
                       None => ()
                     }
+                  }
+                _ => ()
+              }
+            }
+          // fillOverlay carries `<a:solidFill>` as its child;
+          // recurse into the solidFill's colour element so the
+          // alpha lookup works the same.
+          "solidFill" =>
+            for inner in color_el.children {
+              match inner {
+                @xml.Node::Element(color_inner) =>
+                  match color_inner.name.local_name {
+                    "srgbClr"
+                    | "schemeClr"
+                    | "sysClr"
+                    | "hslClr"
+                    | "scrgbClr"
+                    | "prstClr" =>
+                      for alpha_n in color_inner.children {
+                        match alpha_n {
+                          @xml.Node::Element(alpha_el) =>
+                            if alpha_el.name.local_name == "alpha" {
+                              match attr_value(alpha_el, "val") {
+                                Some(v) =>
+                                  match (try? @strconv.parse_double(v)) {
+                                    Ok(d) => return d / 100000.0
+                                    Err(_) => ()
+                                  }
+                                None => ()
+                              }
+                            }
+                          _ => ()
+                        }
+                      }
+                    _ => ()
                   }
                 _ => ()
               }

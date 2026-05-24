@@ -177,7 +177,7 @@ fn required_child(
 
 ///|
 /// Bridge @a.SchemaViolation into our local one.
-fn wrap_a_violation[T](
+fn[T] wrap_a_violation(
   body : () -> T raise @a.SchemaViolation,
   path : String,
 ) -> T raise SchemaViolation {

@@ -196,7 +196,7 @@ fn hindi_consonant_numeral(num : Int) -> String {
 /// occupies the contiguous block U+0915–U+0939.
 fn hindi_vowel_numeral(num : Int) -> String {
   let charset : Array[Int] = []
-  for cp in 0x0915..=0x0939 {
+  for cp in 0x0915..<=0x0939 {
     charset.push(cp)
   }
   repeated_letter_numeral(num, charset)
@@ -207,11 +207,11 @@ fn hindi_vowel_numeral(num : Int) -> String {
 /// U+0E01, U+0E02, U+0E04, U+0E07–U+0E23, U+0E25, U+0E27–U+0E2E.
 fn thai_letter_numeral(num : Int) -> String {
   let charset : Array[Int] = [0x0E01, 0x0E02, 0x0E04]
-  for cp in 0x0E07..=0x0E23 {
+  for cp in 0x0E07..<=0x0E23 {
     charset.push(cp)
   }
   charset.push(0x0E25)
-  for cp in 0x0E27..=0x0E2E {
+  for cp in 0x0E27..<=0x0E2E {
     charset.push(cp)
   }
   repeated_letter_numeral(num, charset)
@@ -292,8 +292,7 @@ fn to_hebrew_numeral(num : Int) -> String {
 /// The ten CJK ideographic digits 〇..九 (U+3007, then U+4E00…).
 /// Index 0 is the placeholder zero 〇; 1..9 are 一..九.
 let cjk_digits : Array[Int] = [
-  0x3007, 0x4E00, 0x4E8C, 0x4E09, 0x56DB, 0x4E94, 0x516D, 0x4E03, 0x516B,
-  0x4E5D,
+  0x3007, 0x4E00, 0x4E8C, 0x4E09, 0x56DB, 0x4E94, 0x516D, 0x4E03, 0x516B, 0x4E5D,
 ]
 
 ///|
@@ -339,7 +338,7 @@ fn to_cjk_numeral(num : Int, chinese~ : Bool) -> String {
     // A tens digit of 1 is written `一十` in Chinese style only
     // when it follows a hundreds place; standalone 10..19 is
     // `十…` in both styles.
-    if tens == 1 && (chinese && hundreds >= 1) {
+    if tens == 1 && chinese && hundreds >= 1 {
       out.write_char(Char::from_int(cjk_digits[1])) // 一
     } else if tens >= 2 {
       out.write_char(Char::from_int(cjk_digits[tens]))
@@ -401,8 +400,7 @@ pub fn format_auto_number(
     // hundreds, interior zero glyph); the `ea1Jpn*` family uses
     // the Japanese / Korean orthography.  The `*Period` schemes
     // append a full stop; `*Plain` schemes append nothing.
-    "ea1ChsPeriod" | "ea1ChtPeriod" =>
-      to_cjk_numeral(num, chinese=true) + "."
+    "ea1ChsPeriod" | "ea1ChtPeriod" => to_cjk_numeral(num, chinese=true) + "."
     "ea1ChsPlain" | "ea1ChtPlain" => to_cjk_numeral(num, chinese=true)
     "ea1JpnChsDbPeriod" | "ea1JpnKorPeriod" | "ea1JpnKorPlainPeriod" =>
       to_cjk_numeral(num, chinese=false) + "."

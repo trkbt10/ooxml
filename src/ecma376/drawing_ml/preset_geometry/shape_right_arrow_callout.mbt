@@ -12,10 +12,7 @@
 /// length (25000), `adj4` = callout box width as a fraction of the
 /// bounding width (64977). `adj1`/`adj2` are taken against the
 /// bounding height.
-pub fn build_right_arrow_callout(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_right_arrow_callout(width : Int, height : Int) -> ShapeGeometry {
   let shaft_h = percent(height, 25000)
   let head_h = percent(height, 25000)
   let head_w = percent(width, 25000)

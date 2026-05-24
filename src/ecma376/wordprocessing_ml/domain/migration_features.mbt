@@ -293,17 +293,13 @@ pub fn CT_Picture::new(
 
 ///|
 /// Bridge `@vml.SchemaViolation` into our local WML SchemaViolation.
-fn wrap_vml_violation[T](
+fn[T] wrap_vml_violation(
   body : () -> T raise @vml.SchemaViolation,
   path : String,
 ) -> T raise SchemaViolation {
   body() catch {
     @vml.SchemaViolation(schema=_, path=p, reason~) =>
-      raise SchemaViolation(
-        type_name=path,
-        value=p,
-        reason~,
-      )
+      raise SchemaViolation(type_name=path, value=p, reason~)
   }
 }
 

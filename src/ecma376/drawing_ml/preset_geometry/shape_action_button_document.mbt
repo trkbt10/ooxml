@@ -15,10 +15,7 @@
 /// `g15 = g9 + g13`. The symbol is the page outline
 /// `(g11,g9) → (g14,g9) → (g12,g15) → (g12,g10) → (g11,g10)` plus
 /// the fold triangle leg `(g12,g15) → (g14,g15) → (g14,g9)`.
-pub fn build_action_button_document(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_action_button_document(width : Int, height : Int) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let dx2 = fraction(ss, 3, 8)
   let hc = width / 2

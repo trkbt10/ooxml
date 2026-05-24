@@ -1,0 +1,35 @@
+// trkbt10/ooxml — ECMA-376 schema catalog + coverage tool.
+//
+// Build:  moon build --target native --release src/cmd/catalog
+//
+// Walks the ECMA-376 XSD schema sets, enumerates every element
+// declaration, synthesises a minimal schema-valid instance for each,
+// embeds it into a host OOXML package, and exercises the full
+// round-trip — this package's builder writes the package, its
+// reader opens it, the reader saves it, the reader re-opens it, and
+// the renderer produces SVG.  Writes .snapshots/catalog.json and
+// .snapshots/coverage.json.
+//
+// This replaces the former Python xsd_catalog.py / catalog_verify.py:
+// the catalog and its verification are produced by the same MoonBit
+// toolchain — and the same builder / reader / renderer — as the
+// library under test.
+
+import {
+  "moonbitlang/core/strconv" @strconv,
+  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/env" @env,
+  "moonbitlang/x/fs" @fs,
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/zip" @zip,
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/context" @wml_context,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/context" @sml_context,
+  "trkbt10/ooxml/ecma376/presentation_ml/context" @pml_context,
+  "trkbt10/ooxml/ecma376/drawing_ml/diagram" @dgm_domain,
+  "trkbt10/ooxml/ecma376/drawing_ml/diagram_layout" @diagram_layout,
+  "trkbt10/ooxml/ecma376/drawing_ml/preset_geometry" @preset_geometry,
+}
+
+options(
+  "is-main": true,
+)

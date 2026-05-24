@@ -42,7 +42,8 @@ fn x_element_text(element : @xml.Element) -> String {
   let out = StringBuilder::new()
   for node in element.children {
     match node {
-      @xml.Node::Text(value) | @xml.Node::CData(value) => out.write_string(value)
+      @xml.Node::Text(value) | @xml.Node::CData(value) =>
+        out.write_string(value)
       _ => ()
     }
   }

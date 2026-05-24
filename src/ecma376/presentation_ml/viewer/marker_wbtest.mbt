@@ -120,7 +120,9 @@ test "both headEnd and tailEnd emit two markers" {
   )
   let defs = SvgDefsCollector::new()
   let result = build_line_marker_attrs(line, 1.0, "#000000", defs)
-  assert_true(marker_attrs_markup(result.marker_start_attrs).contains("triangle"))
+  assert_true(
+    marker_attrs_markup(result.marker_start_attrs).contains("triangle"),
+  )
   assert_true(marker_attrs_markup(result.marker_end_attrs).contains("diamond"))
   let defs_str = defs.to_defs_element()
   assert_true(defs_str.contains("marker-head-triangle"))

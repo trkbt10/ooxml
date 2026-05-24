@@ -1,3 +1,4 @@
+///|
 /// Part 1 §18.3.1.10 / §18.18.12 — citation helper exported so
 /// callers can include the spec anchor in their own diagnostics.
 let cf_rule_section : String = "Part 1 §18.3.1.10 / §18.18.12"
@@ -119,15 +120,18 @@ pub fn decode_cfvo_type(
 /// Part 1 §18.3.1.18 conditionalFormatting — decode the outer
 /// CT_ConditionalFormatting element into a typed
 /// `CT_ConditionalFormatting` whose rules are sorted ascending by
-/// `@priority`. The `@sqref` attribute is parsed through `@address`.
+/// `@priority`. The `@sqref` attribute is `use="optional"` in the XSD:
+/// when present it is parsed through `@address`; when absent the
+/// conditional formatting block simply has no application target, so
+/// an empty `Sqref` (`{ ranges: [] }`) is used.
 pub fn CT_ConditionalFormatting::new(
   element : @xml.Element,
 ) -> CT_ConditionalFormatting raise @opc_errors.SchemaViolation {
   let pivot = cf_decode_bool_attr(element, "pivot", false)
-  let sqref_text = cf_require_attr(
-    element, "sqref", "conditionalFormatting/@sqref",
-  )
-  let sqref = @address.Sqref::parse_a1(sqref_text)
+  let sqref : @address.Sqref = match cf_attr(element, "sqref") {
+    Some(sqref_text) => @address.Sqref::parse_a1(sqref_text)
+    None => { ranges: [] }
+  }
   let rules : Array[CT_CfRule] = []
   for child in element.children {
     match child {
@@ -160,12 +164,15 @@ pub fn CT_ConditionalFormatting::new(
 pub fn CT_CfRule::new(
   element : @xml.Element,
 ) -> CT_CfRule raise @opc_errors.SchemaViolation {
-  let cf_type = decode_cf_type(
-    cf_require_attr(element, "type", "cfRule/@type"),
-  )
-  let priority = cf_decode_required_int(
-    element, "priority", "cfRule/@priority",
-  )
+  // §18.3.1.10 — `@type` is `use="optional"`. ST_CfType is a closed
+  // 18-value enumeration with no "none" member, so a missing `@type`
+  // is modelled as `None`: the rule carries no recognised type and
+  // the evaluator/renderer treat it as inert.
+  let cf_type : ST_CfType? = match cf_attr(element, "type") {
+    Some(value) => Some(decode_cf_type(value))
+    None => None
+  }
+  let priority = cf_decode_required_int(element, "priority", "cfRule/@priority")
   let dxf_id = cf_decode_optional_int(element, "dxfId", "cfRule/@dxfId")
   let stop_if_true = cf_decode_bool_attr(element, "stopIfTrue", false)
   let above_average = cf_decode_bool_attr(element, "aboveAverage", true)
@@ -300,12 +307,7 @@ pub fn CT_DataBar::new(
         reason="dataBar requires a color element",
       )
   }
-  {
-    element,
-    min_threshold: thresholds[0],
-    max_threshold: thresholds[1],
-    color,
-  }
+  { element, min_threshold: thresholds[0], max_threshold: thresholds[1], color }
 }
 
 ///|
@@ -345,34 +347,14 @@ pub fn CT_IconSet::new(
 pub fn CT_Cfvo::new(
   element : @xml.Element,
 ) -> CT_Cfvo raise @opc_errors.SchemaViolation {
+  // §A.2 — `CT_Cfvo/@val` is `use="optional"` in the schema.  Word
+  // and the spec's own examples always pair a threshold `@type` with
+  // a `@val`, but a conforming reader MUST NOT reject its absence;
+  // an absent value simply leaves the threshold unset and a consumer
+  // treats that rule arm as inert.
   let kind = decode_cfvo_type(cf_require_attr(element, "type", "cfvo/@type"))
   let value_text = cf_attr(element, "val")
-  match kind {
-    CfvoMin | CfvoMax => ()
-    _ =>
-      if value_text is None {
-        raise @opc_errors.SchemaViolation(
-          section="Part 1 §18.3.1.11",
-          path="cfvo/@val",
-          reason="cfvo type=" +
-            cf_kind_to_lexical(kind) +
-            " requires @val attribute",
-        )
-      }
-  }
   { kind, value_text }
-}
-
-///|
-fn cf_kind_to_lexical(kind : ST_CfvoType) -> String {
-  match kind {
-    CfvoNum => "num"
-    CfvoMin => "min"
-    CfvoMax => "max"
-    CfvoPercent => "percent"
-    CfvoPercentile => "percentile"
-    CfvoFormula => "formula"
-  }
 }
 
 ///|

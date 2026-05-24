@@ -536,7 +536,8 @@ test "wml edit §17.13.5.29 accept_revisions drops pPrChange marker" {
                           @xml.Node::Element(c) => {
                             if c.name.local_name == "jc" {
                               for a in c.attributes {
-                                if a.name.local_name == "val" && a.value == "center" {
+                                if a.name.local_name == "val" &&
+                                  a.value == "center" {
                                   found_jc_center = true
                                 }
                               }
@@ -592,7 +593,8 @@ test "wml edit §17.13.5.29 reject_revisions restores pPr snapshot" {
                           @xml.Node::Element(c) => {
                             if c.name.local_name == "jc" {
                               for a in c.attributes {
-                                if a.name.local_name == "val" && a.value == "start" {
+                                if a.name.local_name == "val" &&
+                                  a.value == "start" {
                                   found_jc_start = true
                                 }
                               }
@@ -628,7 +630,7 @@ test "wml edit §17.18.44 set_paragraph_alignment normalises left/right" {
   // "left" → "start".
   let modified = try? @wml_edit.set_paragraph_alignment(document, 0, "left")
   match modified {
-    Ok(d) => {
+    Ok(d) =>
       match d.main.body {
         Some(body) => {
           let p = body.block_level_elts[0].source_element()
@@ -652,7 +654,6 @@ test "wml edit §17.18.44 set_paragraph_alignment normalises left/right" {
         }
         None => abort("body missing")
       }
-    }
     Err(_) => abort("set_paragraph_alignment(left) failed")
   }
 }

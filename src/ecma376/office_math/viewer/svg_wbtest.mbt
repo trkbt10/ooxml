@@ -227,9 +227,7 @@ test "Office Math SVG §22.1.2.12 borderBox emits edge lines" {
 ///|
 test "Office Math SVG §22.1.2.78 matrix lays cells out in a grid" {
   // 2x2 matrix.
-  let cell = fn(t : String) -> @xml.Node {
-    omml_elem("e", [omml_run(t)])
-  }
+  let cell = fn(t : String) -> @xml.Node { omml_elem("e", [omml_run(t)]) }
   let m = omml_elem("m", [
     omml_elem("mr", [cell("a"), cell("b")]),
     omml_elem("mr", [cell("c"), cell("d")]),

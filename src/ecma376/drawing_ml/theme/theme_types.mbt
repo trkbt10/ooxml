@@ -27,7 +27,9 @@ pub fn CT_BaseStyles::new(
   element : @xml.Element,
 ) -> CT_BaseStyles raise SchemaViolation {
   let clr_el = required_child(element, "clrScheme", "CT_BaseStyles/clrScheme")
-  let font_el = required_child(element, "fontScheme", "CT_BaseStyles/fontScheme")
+  let font_el = required_child(
+    element, "fontScheme", "CT_BaseStyles/fontScheme",
+  )
   let fmt_el = required_child(element, "fmtScheme", "CT_BaseStyles/fmtScheme")
   let clr_scheme = wrap_a_violation(
     fn() { @a.CT_ColorScheme::new(clr_el) },
@@ -92,7 +94,8 @@ pub fn CT_OfficeStyleSheet::new(
         ),
       )
   }
-  let extra_clr_scheme_lst = match optional_child(element, "extraClrSchemeLst") {
+  let extra_clr_scheme_lst = match
+    optional_child(element, "extraClrSchemeLst") {
     None => None
     Some(e) =>
       Some(
@@ -265,10 +268,7 @@ fn required_child(
 }
 
 ///|
-fn optional_child(
-  element : @xml.Element,
-  local_name : String,
-) -> @xml.Element? {
+fn optional_child(element : @xml.Element, local_name : String) -> @xml.Element? {
   for child in element.children {
     match child {
       @xml.Node::Element(child_element) =>
@@ -282,7 +282,7 @@ fn optional_child(
 }
 
 ///|
-fn wrap_a_violation[T](
+fn[T] wrap_a_violation(
   body : () -> T raise @a.SchemaViolation,
   path : String,
 ) -> T raise SchemaViolation {

@@ -161,7 +161,6 @@ test "override partName match is case-insensitive" {
     None => ""
   }
   assert_eq(
-    actual,
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+    actual, "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
   )
 }

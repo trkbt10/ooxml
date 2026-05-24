@@ -13,9 +13,6 @@
 /// open polyline (no `close`), so the renderer draws it as a stroked
 /// segment rather than a filled region.
 pub fn build_line(width : Int, height : Int) -> ShapeGeometry {
-  let commands : Array[PathCommand] = [
-    MoveTo(0, 0),
-    LineTo(width, height),
-  ]
+  let commands : Array[PathCommand] = [MoveTo(0, 0), LineTo(width, height)]
   { commands, width, height }
 }

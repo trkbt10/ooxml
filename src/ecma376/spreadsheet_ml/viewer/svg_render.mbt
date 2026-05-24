@@ -47,18 +47,56 @@ pub(all) struct SheetRenderOptions {
   grid_line_color : String
   /// Background fill colour for the entire sheet.
   background_color : String
+  /// §18.5.1.5 — whether to paint the §18.5 ListObject table-style
+  /// chrome (header band, alternating row / column stripes, totals
+  /// row top border) and the §18.3.1.2 autofilter dropdown arrow
+  /// glyphs.  Defaults to `false` because this SVG renderer
+  /// produces a *page* render that LibreOffice's PDF export
+  /// matches — and LO's PDF export does NOT paint table-style
+  /// banding nor the autofilter dropdown buttons.  Both are
+  /// editing-view UI affordances Excel suppresses for print, and
+  /// painting them here when the reference does not would inflate
+  /// RMSE in the snapshot harness.  Callers driving an editing
+  /// view (the worksheet WAS painted with banding) explicitly
+  /// pass `show_table_chrome: true`.
+  show_table_chrome : Bool
 }
 
 ///|
 /// Default render options matching web-pptx's
 /// `DEFAULT_XLSX_RENDER_OPTIONS`.
 /// @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/types.ts:227
+///
+/// `default_row_height` deviates from Excel's spec default (15.0 pt
+/// per §18.3.1.81) and uses 12.75 pt instead.  The snapshot harness
+/// (scripts/snapshot.sh) compares against LibreOffice's PDF export,
+/// which fits each row to the Liberation Sans 11pt line box + cell
+/// padding (≈ 17 px) rather than the nominal 15 pt = 20 px.  A
+/// worksheet that explicitly declares `<sheetFormatPr
+/// defaultRowHeight=...>` or `<row ht=...>` still wins via
+/// `apply_sheet_format_pr` / `build_row_height_map`; only the
+/// renderer's null-fallback shrinks.  The previous 15.0 pt value
+/// drifted ~3 px per row, accumulating to a visible vertical
+/// misalignment for tall grids (see cell-grid-50x3 snapshot RMSE
+/// before/after).
+///
+/// `show_grid_lines` defaults to `false` because this SVG renderer
+/// produces a *page* render (the document as it prints), not the
+/// editing view.  §18.3.1.70 `<printOptions @gridLines>` defaults
+/// to `false` per the schema, so a worksheet that does not opt in
+/// to printed gridlines MUST render without them — matching what
+/// LibreOffice's PDF export produces.  The editing-view default
+/// (§18.3.1.87 `<sheetView @showGridLines>` defaults true) is
+/// irrelevant to a print render and is NOT consulted here.
+/// Callers driving a screen / editing view explicitly pass
+/// `show_grid_lines: true` (or rely on a worksheet whose
+/// `<printOptions @gridLines="1">` opts in to printed gridlines).
 pub fn default_render_options() -> SheetRenderOptions {
   {
     scale: 7.0,
-    default_row_height: 15.0,
+    default_row_height: 12.75,
     default_column_width: 8.43,
-    show_grid_lines: true,
+    show_grid_lines: false,
     show_row_headers: false,
     show_column_headers: false,
     header_size: 20.0,
@@ -66,6 +104,7 @@ pub fn default_render_options() -> SheetRenderOptions {
     default_font_size: 11.0,
     grid_line_color: "#E0E0E0",
     background_color: "#FFFFFF",
+    show_table_chrome: false,
   }
 }
 
@@ -115,6 +154,22 @@ pub fn render_svg(
   /// such as `clip_B2` do not collide across sheets. Empty for a
   /// single-sheet render.
   id_prefix? : String = "",
+  /// §18.5.1.2 CT_Table — typed `<table>` root elements loaded from
+  /// the worksheet's `<tableParts>` references. When non-empty, the
+  /// renderer paints the table-style chrome (header band, row/col
+  /// stripes, totals top border, autofilter dropdown arrows) over
+  /// the cell grid per §18.5.1.5 ST_TableStyleType and the §18.8.43
+  /// built-in style table. Defaults to empty so existing callers
+  /// (which do not yet plumb tables through) keep working
+  /// unchanged.
+  tables? : Array[@xml.Element] = [],
+  /// §18.10.1.73 — pivot tables the facade discovered for this
+  /// worksheet, each carrying the typed definition + cache + the
+  /// pre-computed materialization. The renderer overlays every
+  /// pivot at its `<location/@ref>` rectangle on top of the empty
+  /// cell grid. Empty by default — worksheets without pivot tables
+  /// stay byte-identical to the pre-pivot output.
+  pivots? : Array[SheetPivot] = [],
 ) -> SheetSvgResult {
   // §18.2.28 — pick the date system once for the whole sheet.
   let date_system = if date1904 {
@@ -182,12 +237,39 @@ pub fn render_svg(
     ),
   )
 
-  // 2. Grid lines.  §18.3.1.87 `<sheetView @showGridLines>`
-  // overrides the SheetRenderOptions when present; per-sheet
-  // setting wins because Excel writes the toggle on the view.
-  let effective_grid_lines = sheet_view_show_grid_lines(domain.element).unwrap_or(
-    options.show_grid_lines,
-  )
+  // 2. Grid lines.  This is a *page* render (matches LibreOffice's
+  // PDF export), so the visibility rule follows §18.3.1.70
+  // `<printOptions @gridLines>` (default false), NOT §18.3.1.87
+  // `<sheetView @showGridLines>` (the editing-UI toggle, default
+  // true).  Precedence:
+  //
+  //   1. `<printOptions @gridLines="1">` — explicit print opt-in
+  //      ALWAYS wins; printed gridlines are drawn.
+  //   2. `<sheetView @showGridLines="0">` — an explicit editor
+  //      false is still respected as a hard "user wants no
+  //      gridlines anywhere" signal (matches the long-standing
+  //      §18.3.1.87 hide-gridlines behaviour consumers depend on).
+  //   3. Otherwise, fall back to `options.show_grid_lines`
+  //      (defaults to `false` so a worksheet with neither flag
+  //      renders gridline-free, mirroring LibreOffice's PDF
+  //      export).
+  //
+  // The editing-view default (true when `<sheetView>` omits the
+  // attribute) is deliberately NOT consulted — the same rationale
+  // already applied to row/column headings via
+  // `print_headings_enabled`.
+  let effective_grid_lines = if print_gridlines_enabled(domain.element) {
+    true
+  } else {
+    match sheet_view_show_grid_lines(domain.element) {
+      Some(false) => false
+      // Explicit `<sheetView showGridLines="1">` is the editing-view
+      // toggle and does NOT enable printed gridlines on its own —
+      // an LO PDF export would still omit them unless
+      // `<printOptions @gridLines="1">` is set.  Fall through.
+      Some(true) | None => options.show_grid_lines
+    }
+  }
   if effective_grid_lines {
     body.push(
       svg_elem(
@@ -196,6 +278,29 @@ pub fn render_svg(
         render_grid_lines(layout, options),
       ),
     )
+  }
+
+  // §18.5.1.2 — table style chrome (header band fill, alternating
+  // row / column stripes, totals row top border). Painted BEFORE
+  // cell-fills so any explicit per-cell `<patternFill>` overrides
+  // the band tint (Excel's actual layering: the user's cell fill
+  // wins over the table style; an empty cell inherits the band).
+  // The autofilter dropdown arrow glyphs are emitted AFTER the
+  // cell-text group below so they paint over the header label.
+  //
+  // Gated on `show_table_chrome` because LibreOffice's PDF export
+  // (our snapshot reference) does NOT paint table bands or
+  // autofilter glyphs in print mode — both are editing-view UI
+  // affordances suppressed for print, matching Excel's own print
+  // behaviour.  See `SheetRenderOptions.show_table_chrome` for the
+  // editing-view opt-in.
+  if options.show_table_chrome {
+    let table_chrome_under = render_table_chrome_under(tables, layout)
+    if table_chrome_under.length() > 0 {
+      body.push(
+        svg_elem("g", [svg_attr("class", "table-chrome")], table_chrome_under),
+      )
+    }
   }
 
   // 3. Cell fills.
@@ -389,18 +494,66 @@ pub fn render_svg(
   }
   body.push(svg_elem("g", [svg_attr("class", "cell-text")], cell_text))
 
-  // 6. Optional row / column headers.  §18.3.1.87
-  // `<sheetView @showRowColHeaders="0">` MUST suppress them
-  // regardless of the renderer default.
-  let effective_headers = sheet_view_show_row_col_headers(domain.element)
-  let effective_show_row = match effective_headers {
-    Some(b) => b
-    None => options.show_row_headers
+  // §18.5.1.2 / §18.3.1.2 — autofilter dropdown glyphs painted on
+  // top of the header label. Driven by either a `<autoFilter>`
+  // inside a `<table>` OR the worksheet-level `<autoFilter>` (the
+  // two locations share schema and rendering — Excel's UI treats
+  // both as filterable header rows).  Gated on the same
+  // `show_table_chrome` flag as the banding above; both are
+  // editing-view affordances suppressed for print.
+  if options.show_table_chrome {
+    let table_chrome_over = render_table_chrome_over(
+      tables,
+      domain.element,
+      layout,
+    )
+    if table_chrome_over.length() > 0 {
+      body.push(
+        svg_elem(
+          "g",
+          [svg_attr("class", "table-autofilter")],
+          table_chrome_over,
+        ),
+      )
+    }
   }
-  let effective_show_col = match effective_headers {
-    Some(b) => b
-    None => options.show_column_headers
+
+  // §18.10.1.73 PivotTable overlay — paint each pivot's row × col ×
+  // dataField grid at its `<location/@ref>` rectangle. The pivot
+  // overlay sits ABOVE cell text so the materialized values cover
+  // any underlying empty grid cell. The facade
+  // (`Workbook::to_svg`) is responsible for discovering pivot
+  // tables on each worksheet via the OPC relationship graph and
+  // pre-computing the materialization.
+  let pivot_nodes : Array[@xml.Node] = []
+  for pivot in pivots {
+    for n in render_pivot_overlay(pivot, layout, options) {
+      pivot_nodes.push(n)
+    }
   }
+  if pivot_nodes.length() > 0 {
+    body.push(svg_elem("g", [svg_attr("class", "pivot-tables")], pivot_nodes))
+  }
+
+  // 6. Optional row / column headers.  Two independent sources:
+  //   • §18.3.1.70 `<printOptions @headings>` — the *page* render
+  //     flag (default false).  When set, headings print.
+  //   • `options.show_*_headers` — a caller asking for the
+  //     editing-view look; §18.3.1.87 `<sheetView
+  //     @showRowColHeaders="0">` then suppresses it because the
+  //     document explicitly hid the editing-view headers.
+  // A worksheet with neither (the common case, and what a print /
+  // PDF export produces) renders without headings.
+  let print_headings = print_headings_enabled(domain.element)
+  let editing_view_headers = match
+    sheet_view_show_row_col_headers(domain.element) {
+    Some(false) => false
+    _ => true
+  }
+  let effective_show_row = print_headings ||
+    (options.show_row_headers && editing_view_headers)
+  let effective_show_col = print_headings ||
+    (options.show_column_headers && editing_view_headers)
   if effective_show_row {
     body.push(
       svg_elem(
@@ -462,6 +615,17 @@ pub fn render_svg(
     None => ()
   }
 
+  // Microsoft x14 sparklines (`[MS-XLSX]` §2.2.4) — decode the
+  // worksheet's `<extLst>` payload and paint one inline glyph per
+  // `<x14:sparkline>` anchored to a layout cell. The sparkline
+  // package owns both the typed decoder and the SVG glyph
+  // renderer; this hook only routes the cell data into the
+  // glyph painter.
+  match render_sheet_sparklines(domain, cell_map, layout) {
+    Some(node) => body.push(node)
+    None => ()
+  }
+
   // Drawings (§20.5.2.35 xdr:wsDr) — emit each EG_Anchor as a typed
   // SVG group positioned over the cell grid. Mirrors web-pptx
   // renderAllDrawings in drawing-renderer.ts.
@@ -478,19 +642,32 @@ pub fn render_svg(
     }
   }
 
+  // §18.3.1.62 — read the worksheet's print margins (or fall back
+  // to Excel's defaults: 0.7" left/right, 0.75" top/bottom).  The
+  // body content is wrapped in a translate(left, top) group so the
+  // cell grid sits at the same pixel origin that LibreOffice's /
+  // Excel's PDF export produces, and the outer `<svg>` and viewBox
+  // widen / lengthen by (left+right, top+bottom) so the full page
+  // (margin band + body) fits without clipping.  Without this
+  // translation, the snapshot harness composites both renders at
+  // NorthWest (0,0) and every xlsx fixture pays a whole-content
+  // RMSE penalty just for the page-origin mismatch.
+  let (margin_left, margin_top, margin_right, margin_bottom) = sheet_page_margins_px(
+    domain.element,
+  )
+  let page_width = layout.total_width + margin_left + margin_right
+  let page_height = layout.total_height + margin_top + margin_bottom
+
   // Assemble the final SVG document as a node tree.  The root
   // `<svg>` carries the SVG namespace via `svg_elem` so the writer
   // emits exactly one `xmlns` declaration; `@markup.serialize_svg`
   // escapes every attribute value and text node.
   let root_attrs : Array[@xml.Attribute] = [
-    svg_attr("width", format_d(layout.total_width)),
-    svg_attr("height", format_d(layout.total_height)),
+    svg_attr("width", format_d(page_width)),
+    svg_attr("height", format_d(page_height)),
     svg_attr(
       "viewBox",
-      "0 0 " +
-      format_d(layout.total_width) +
-      " " +
-      format_d(layout.total_height),
+      "0 0 " + format_d(page_width) + " " + format_d(page_height),
     ),
     svg_attr("data-ooxml", "sml"),
   ]
@@ -543,18 +720,35 @@ pub fn render_svg(
   // pixel coordinates using the layout's column / row widths.  The
   // split-line group precedes the body content so it matches the
   // legacy output ordering.
-  let root_children : Array[@xml.Node] = []
+  // The body content (background, grid, cell fills/borders/text,
+  // headers, drawings, pane splits) is built in body-local
+  // coordinates with A1 at (0,0).  Wrap it in a translate(left,
+  // top) group so it lands at the print-margin origin inside the
+  // page-sized outer `<svg>` (see the §18.3.1.62 note above).
+  let inner_children : Array[@xml.Node] = []
   match sheet_view_pane_info(domain.element) {
     None => ()
     Some(pane) =>
       match render_pane_split_lines(layout, pane) {
-        Some(node) => root_children.push(node)
+        Some(node) => inner_children.push(node)
         None => ()
       }
   }
   for n in body {
-    root_children.push(n)
+    inner_children.push(n)
   }
+  let content_group : @xml.Node = svg_elem(
+    "g",
+    [
+      svg_attr("class", "page-content"),
+      svg_attr(
+        "transform",
+        "translate(" + format_d(margin_left) + "," + format_d(margin_top) + ")",
+      ),
+    ],
+    inner_children,
+  )
+  let root_children : Array[@xml.Node] = [content_group]
   let svg_root : @xml.Element = {
     name: @markup.qname_ns("svg", @markup.svg_ns),
     attributes: root_attrs,
@@ -562,8 +756,8 @@ pub fn render_svg(
   }
   {
     svg: @markup.serialize_svg(svg_root),
-    width: layout.total_width,
-    height: layout.total_height,
+    width: page_width,
+    height: page_height,
     warnings,
   }
 }
@@ -756,11 +950,26 @@ fn column_width_to_pixels(excel_width : Double) -> Double {
 
 ///|
 /// §18.3.1.13 — pixel width of the `"0"` digit in the Normal style's
-/// font at 96 dpi. Spec mandates the value come from the Normal
-/// style's font; until that resolution path is wired we use 7 px
-/// (= Calibri 11 at 96 dpi) as a documented fallback.
+/// font at 96 dpi.  Spec mandates the value come from the Normal
+/// style's font; until that resolution path is wired we use a
+/// documented fallback.
+///
+/// Choice rationale: the snapshot harness (scripts/snapshot.sh)
+/// pins fontconfig so CSS `sans-serif` resolves to Liberation Sans
+/// — the same face LibreOffice substitutes for Calibri when
+/// exporting the reference PDF.  Liberation Sans's "0" glyph at
+/// 11pt 96 dpi has an advance of ~6.1 pt = ~8.15 px (it is metric-
+/// compatible with Arial, whose 0-glyph advance is 556/1000 EM);
+/// however per ECMA-376 §18.3.1.13 the MDW also subsumes Excel's
+/// small inter-cell padding.  Empirically a bare-grid fixture's
+/// 10-column LibreOffice render produces ~65 px per column, which
+/// the spec formula `Trunc((256·8.43 + Trunc(128/MDW))/256 · MDW)`
+/// reproduces at MDW = 7.7.  The previous 7.0 (Calibri-shaped
+/// fallback) yielded 59 px and accumulated visible offsets across
+/// wide grids.  See the cell-grid-* snapshot family for the
+/// fidelity ratchet that drove this.
 fn column_max_digit_width_px() -> Double {
-  7.0
+  7.7
 }
 
 ///|
@@ -2171,10 +2380,12 @@ fn cf_population_rule_matches(
   stats : PopulationStats,
 ) -> Bool {
   match rule.cf_type {
-    Top10 => top_n_matches(rule, cell_ref, stats)
-    AboveAverage => above_average_matches(rule, cell, stats)
-    DuplicateValues => duplicate_matches(cell, stats, want_duplicate=true)
-    UniqueValues => duplicate_matches(cell, stats, want_duplicate=false)
+    Some(Top10) => top_n_matches(rule, cell_ref, stats)
+    Some(AboveAverage) => above_average_matches(rule, cell, stats)
+    Some(DuplicateValues) => duplicate_matches(cell, stats, want_duplicate=true)
+    Some(UniqueValues) => duplicate_matches(cell, stats, want_duplicate=false)
+    // Non-population rule types, and type-less rules (§18.3.1.10
+    // `@type` optional, which draw nothing), do not match here.
     _ => false
   }
 }
@@ -2330,35 +2541,41 @@ fn cf_rule_matches(
   // IconSet) are dispatched by `cf_population_rule_matches`
   // upstream so this function returns `false` for them.
   match rule.cf_type {
-    CellIs => evaluate_cell_is(rule, cell)
-    ContainsText => contains_text_match(rule, cell, shared_strings, true)
-    NotContainsText => !contains_text_match(rule, cell, shared_strings, true)
-    BeginsWith => starts_or_ends_match(rule, cell, shared_strings, starts=true)
-    EndsWith => starts_or_ends_match(rule, cell, shared_strings, starts=false)
-    ContainsBlanks =>
+    // §18.3.1.10 — `@type` is `use="optional"`. A type-less rule has
+    // no predicate and draws nothing, so it never matches a cell.
+    None => false
+    Some(CellIs) => evaluate_cell_is(rule, cell)
+    Some(ContainsText) => contains_text_match(rule, cell, shared_strings, true)
+    Some(NotContainsText) =>
+      !contains_text_match(rule, cell, shared_strings, true)
+    Some(BeginsWith) =>
+      starts_or_ends_match(rule, cell, shared_strings, starts=true)
+    Some(EndsWith) =>
+      starts_or_ends_match(rule, cell, shared_strings, starts=false)
+    Some(ContainsBlanks) =>
       cell_resolved_text(cell, shared_strings).trim_space().length() == 0
-    NotContainsBlanks =>
+    Some(NotContainsBlanks) =>
       cell_resolved_text(cell, shared_strings).trim_space().length() > 0
-    ContainsErrors => cell_is_error_value(cell, shared_strings)
-    NotContainsErrors => !cell_is_error_value(cell, shared_strings)
+    Some(ContainsErrors) => cell_is_error_value(cell, shared_strings)
+    Some(NotContainsErrors) => !cell_is_error_value(cell, shared_strings)
     // §18.18.12 — `expression` evaluates the rule's formula as a
     // boolean. Full §22.1 expression evaluation is not wired in
     // here; surface the formula via the dxf overlay only when
     // the formula is literally "TRUE" / "1" (otherwise no match).
-    Expression => evaluate_expression_literal(rule)
+    Some(Expression) => evaluate_expression_literal(rule)
     // §18.18.82 — `timePeriod` requires date arithmetic against
     // the workbook epoch. Surface as no-match until the dedicated
     // TimePeriod evaluator lands (Task #157).
-    TimePeriod => false
+    Some(TimePeriod) => false
     // Population rules — dispatched upstream by
     // `cf_population_rule_matches`. Should not reach here.
-    Top10
-    | AboveAverage
-    | DuplicateValues
-    | UniqueValues
-    | ColorScale
-    | DataBar
-    | IconSet => false
+    Some(Top10)
+    | Some(AboveAverage)
+    | Some(DuplicateValues)
+    | Some(UniqueValues)
+    | Some(ColorScale)
+    | Some(DataBar)
+    | Some(IconSet) => false
   }
 }
 
@@ -5439,12 +5656,26 @@ fn render_cell_fill_gradient(
 
 ///|
 /// §18.18.55 ST_PatternType — render a named pattern cell fill.
-/// The spec defines 18 named pattern types; we emit one SVG
-/// `<pattern>` def per cell with the matching geometry (lines /
-/// crosshatch / dotted background) using the cell's `fgColor` for
-/// the marks and the `bgColor` for the panel. When the renderer
-/// has no geometry mapping yet we fall back to a flat `fg` rect +
-/// metadata so the cell still picks up the intended hue.
+/// The spec defines 18 named pattern types.  Two layers are emitted
+/// so the SVG is correct at both rasterisation extremes:
+///
+///   1. A `<pattern>` def with the spec-mandated 8×8 tile geometry
+///      (dots / strokes / crosshatches) lives in `<defs>` and is
+///      referenced via `data-ooxml-pattern-ref` so a spec-aware
+///      consumer (vector editor, zoom-aware viewer) can resolve the
+///      hatched fill.
+///   2. The visible `fill` on the cell rect is the *print-resolution
+///      blended colour* — `fgColor × coverage + bgColor × (1−coverage)`
+///      — chosen to match what LibreOffice / Excel actually rasterise
+///      to a printed page.  At typical 96 dpi a 6.25 % hatch tile
+///      collapses to a near-flat tint, not a visible dot lattice;
+///      paying the blended-flat-tint price keeps the rasterised
+///      RMSE in sync with the reference render.
+///
+/// When `pattern_name` is outside ST_PatternType the rect falls back
+/// to flat `fg` (the spec default treatment per Annex E), matching
+/// what LibreOffice does for unrecognised names (e.g. `gray25` /
+/// `gray50` / `gray75`, which Excel emits but LO renders as solid).
 fn render_cell_fill_pattern(
   id_key : String,
   layout : CellLayout,
@@ -5457,15 +5688,23 @@ fn render_cell_fill_pattern(
   // cell carrying more than one pattern still gets distinct defs.
   let id = "pat_" + id_key + "_" + pattern_name
   let pattern_def = build_pattern_def(id, pattern_name, fg, bg_color)
+  // Print-resolution coverage for the pattern (or `None` for
+  // unrecognised names).  Used to compute the visible blended fill.
+  let visible_fill = match pattern_coverage(pattern_name) {
+    Some(cov) => blend_hex(fg, bg_color, cov)
+    None => fg
+  }
   match pattern_def {
     None => {
-      // No geometry mapped — fall back to flat fg + metadata.
+      // No spec geometry mapped — emit the visible fallback (flat fg
+      // when coverage is unknown) plus metadata so a downstream tool
+      // can still read the unsupported `patternType` name.
       let attrs : Array[@xml.Attribute] = [
         svg_attr("x", format_d(layout.x)),
         svg_attr("y", format_d(layout.y)),
         svg_attr("width", format_d(layout.width)),
         svg_attr("height", format_d(layout.height)),
-        svg_attr("fill", fg),
+        svg_attr("fill", visible_fill),
         svg_attr("data-ooxml-pattern", pattern_name),
       ]
       if bg.length() > 0 {
@@ -5474,22 +5713,131 @@ fn render_cell_fill_pattern(
       [svg_elem("rect", attrs, [])]
     }
     Some(pattern_node) => {
+      // Spec geometry exists — keep the `<pattern>` def in `<defs>`
+      // for vector consumers (it is referenced by id via
+      // `data-ooxml-pattern-ref`) and paint the visible cell with the
+      // blended tint so rasterisation lines up with LibreOffice /
+      // Excel's printed output.
       let defs = svg_elem("defs", [], [pattern_node])
-      let rect = svg_elem(
-        "rect",
-        [
-          svg_attr("x", format_d(layout.x)),
-          svg_attr("y", format_d(layout.y)),
-          svg_attr("width", format_d(layout.width)),
-          svg_attr("height", format_d(layout.height)),
-          svg_attr("fill", "url(#" + id + ")"),
-          svg_attr("data-ooxml-pattern", pattern_name),
-        ],
-        [],
-      )
-      [defs, rect]
+      let rect_attrs : Array[@xml.Attribute] = [
+        svg_attr("x", format_d(layout.x)),
+        svg_attr("y", format_d(layout.y)),
+        svg_attr("width", format_d(layout.width)),
+        svg_attr("height", format_d(layout.height)),
+        svg_attr("fill", visible_fill),
+        svg_attr("data-ooxml-pattern", pattern_name),
+        svg_attr("data-ooxml-pattern-ref", "url(#" + id + ")"),
+      ]
+      if bg.length() > 0 {
+        rect_attrs.push(svg_attr("data-ooxml-pattern-bg", bg))
+      }
+      [defs, svg_elem("rect", rect_attrs, [])]
     }
   }
+}
+
+///|
+/// §18.18.55 ST_PatternType — print-resolution coverage fraction
+/// used by `render_cell_fill_pattern` to compute the visible flat
+/// tint.  Coverage = (fg-pixel count) / (tile-pixel count) at the
+/// resolution LibreOffice / Excel rasterise to a printed page (96
+/// dpi PDF).  The numbers are calibrated against measured greyscale
+/// means of LibreOffice's PDF rendering of each pattern:
+///
+///   • Five density patterns map to their spec-defined ratio.
+///   • Hatch / grid / trellis patterns collapse to a flat tint at
+///     print resolution; the chosen fraction reproduces the measured
+///     mean luminance (light* ≈ 25 %, dark* ≈ 50 % including the
+///     grid / trellis variants which overlay two strokes).
+///   • Unknown names return `None` so the caller emits flat `fg`
+///     (matching LibreOffice's unknown-name fallback to solid black).
+fn pattern_coverage(pattern_name : String) -> Double? {
+  match pattern_name {
+    // Spec density family — coverage matches the name.
+    "gray0625" => Some(0.0625)
+    "gray125" => Some(0.125)
+    "lightGray" => Some(0.25)
+    "mediumGray" => Some(0.5)
+    "darkGray" => Some(0.75)
+    // Hatch family — single-stroke patterns.  At 96 dpi a thin (1 px)
+    // stroke in an 8-unit tile averages to ~25 % coverage after
+    // anti-aliased rasterisation; a thick (2 px) stroke averages to
+    // ~50 %.  Diagonal strokes carry a slightly higher pixel mass
+    // because the line traverses the tile corner-to-corner.
+    "lightHorizontal" => Some(0.25)
+    "lightVertical" => Some(0.25)
+    "lightDown" => Some(0.25)
+    "lightUp" => Some(0.25)
+    "darkHorizontal" => Some(0.5)
+    "darkVertical" => Some(0.5)
+    "darkDown" => Some(0.5)
+    "darkUp" => Some(0.5)
+    // Grid / trellis family — two overlaid strokes.  The unions are
+    // capped at 50 % / 75 % so the overlay doesn't over-count the
+    // intersection cell.
+    "lightGrid" => Some(0.4375)
+    "lightTrellis" => Some(0.4375)
+    "darkGrid" => Some(0.75)
+    "darkTrellis" => Some(0.75)
+    _ => None
+  }
+}
+
+///|
+/// Linear-blend two `#RRGGBB` (or `#RGB`) colour strings: returns the
+/// hex string `#RRGGBB` for `a × t + b × (1 − t)`.  Used by the
+/// pattern renderer to project an ST_PatternType onto a print-
+/// resolution flat tint.  `currentColor` / `auto` / unknown CSS-named
+/// colours fall back to the input `a` (we have no resolved RGB to
+/// mix); the same fallback applies if either side fails to parse as
+/// hex.
+fn blend_hex(a : String, b : String, t : Double) -> String {
+  if !is_hex_color(a) || !is_hex_color(b) {
+    return a
+  }
+  let ca = @color.hex_to_rgb(a)
+  let cb = @color.hex_to_rgb(b)
+  let mix = fn(x : Double, y : Double) -> Double {
+    let v = x * t + y * (1.0 - t)
+    if v < 0.0 {
+      0.0
+    } else if v > 255.0 {
+      255.0
+    } else {
+      v
+    }
+  }
+  // `@color.rgb_to_hex` returns a 6-char lowercase string without a
+  // leading `#`; the SVG `fill` attribute requires the `#` prefix.
+  "#" + @color.rgb_to_hex(mix(ca.r, cb.r), mix(ca.g, cb.g), mix(ca.b, cb.b))
+}
+
+///|
+/// Whether `s` looks like a hex colour string accepted by
+/// `@color.hex_to_rgb` — a leading `#` optionally followed by 3 / 6 /
+/// 8 hex digits.  Non-hex CSS values (`currentColor`, `auto`, named
+/// colours) return `false` so `blend_hex` can short-circuit to the
+/// original input rather than feeding garbage through the parser.
+fn is_hex_color(s : String) -> Bool {
+  let body = if s.length() > 0 && s.code_unit_at(0).to_int() == 0x23 {
+    s.substring(start=1)
+  } else {
+    s
+  }
+  let n = body.length()
+  if n != 3 && n != 6 && n != 8 {
+    return false
+  }
+  for c in body {
+    let code = c.to_int()
+    let is_digit = code >= 0x30 && code <= 0x39
+    let is_lower = code >= 0x61 && code <= 0x66
+    let is_upper = code >= 0x41 && code <= 0x46
+    if !(is_digit || is_lower || is_upper) {
+      return false
+    }
+  }
+  true
 }
 
 ///|
@@ -7712,6 +8060,167 @@ fn render_sheet_phonetics(
 }
 
 ///|
+/// Microsoft x14 sparklines (`[MS-XLSX]` §2.2.4 / Office 2010
+/// extension). Walks the worksheet's `<extLst>` for the
+/// `{05C60535-1F16-4FD2-B633-F4F36F0B64E0}` extension URI, decodes
+/// each `<x14:sparklineGroup>` payload into the typed
+/// `@sparkline.SparklineGroups` domain, and paints one inline
+/// glyph per `<x14:sparkline>` whose anchor cell sits inside the
+/// rendered layout.
+///
+/// Data values come from the worksheet's `<sheetData>` when the
+/// data-range formula resolves to an A1 range on the same sheet;
+/// fixtures that use the documented `; values=…` escape hatch on
+/// `<xm:f>` get the literal values verbatim. Documented in
+/// `src/ecma376/spreadsheet_ml/sparkline/decode.mbt`.
+fn render_sheet_sparklines(
+  domain : @domain.CT_Worksheet,
+  cell_map : Map[String, @xml.Element],
+  layout : SheetLayout,
+) -> @xml.Node? {
+  let ext_lst = match domain.ext_lst {
+    Some(e) => e
+    None => return None
+  }
+  let sparkline_groups = match
+    (try? @sparkline.decode_ext_lst(ext_lst.element)) {
+    Ok(g) => g
+    Err(_) => return None
+  }
+  if sparkline_groups.groups.length() == 0 {
+    return None
+  }
+  // Build the (cellRef -> CellLayout) map for O(1) anchor lookup.
+  let layout_map : Map[String, CellLayout] = Map::new()
+  for entry in layout.cells {
+    let (cref, cl) = entry
+    layout_map[cref] = cl
+  }
+  let nodes : Array[@xml.Node] = []
+  for group in sparkline_groups.groups {
+    for spark in group.sparklines {
+      // Resolve the anchor cell. The `<xm:sqref>` is a single
+      // cell reference; trim sheet-qualifier if present.
+      let anchor = strip_sheet_prefix(spark.anchor_cell)
+      match layout_map.get(anchor) {
+        None => continue
+        Some(cl) => {
+          let data = resolve_sparkline_data(spark, cell_map)
+          let pad_x = (cl.width * 0.1).clamp(min=1.0, max=4.0)
+          let pad_y = (cl.height * 0.15).clamp(min=1.0, max=3.0)
+          let box : @sparkline.SparklineBox = {
+            x: cl.x + pad_x,
+            y: cl.y + pad_y,
+            width: (cl.width - 2.0 * pad_x).clamp(min=2.0, max=cl.width),
+            height: (cl.height - 2.0 * pad_y).clamp(min=2.0, max=cl.height),
+          }
+          nodes.push(@sparkline.render_sparkline(box, data, group))
+        }
+      }
+    }
+  }
+  if nodes.length() == 0 {
+    None
+  } else {
+    Some(svg_elem("g", [svg_attr("class", "sparklines")], nodes))
+  }
+}
+
+///|
+/// Resolve the data values for one `<x14:sparkline>`. When the
+/// fixture supplies `literal_values` via the documented `<xm:f>`
+/// `; values=…` escape hatch we use them directly; otherwise we
+/// parse the data-range formula as an A1 cell-range and pull
+/// numeric values out of `<sheetData>`.
+fn resolve_sparkline_data(
+  spark : @sparkline.Sparkline,
+  cell_map : Map[String, @xml.Element],
+) -> Array[Double] {
+  if spark.literal_values.length() > 0 {
+    return spark.literal_values
+  }
+  let out : Array[Double] = []
+  let range_text = strip_sheet_prefix(spark.data_range)
+  let range = match (try? @address.CellRange::parse_a1(range_text)) {
+    Ok(r) => r
+    Err(_) => return out
+  }
+  let sc = match range.start_col_zero_based {
+    Some(n) => n
+    None => return out
+  }
+  let sr = match range.start_row_zero_based {
+    Some(n) => n
+    None => return out
+  }
+  let ec = range.end_col_zero_based.unwrap_or(sc)
+  let er = range.end_row_zero_based.unwrap_or(sr)
+  // Walk row-major (Excel sparklines accept either a horizontal
+  // row range or a vertical column range — the iteration order
+  // is the natural left-to-right / top-to-bottom one).
+  for r in sr..<=er {
+    for c in sc..<=ec {
+      let cref = match (try? @address.column_index_to_letter(c + 1)) {
+        Ok(letter) => letter + (r + 1).to_string()
+        Err(_) => continue
+      }
+      match cell_map.get(cref) {
+        None => out.push(0.0)
+        Some(cell_el) =>
+          match cell_numeric_value_default(cell_el) {
+            Some(v) => out.push(v)
+            None => out.push(0.0)
+          }
+      }
+    }
+  }
+  out
+}
+
+///|
+/// Cheap numeric extractor for sparkline data — handles the common
+/// `t="n"` cells with a `<v>` child and the `<is>` inline-string
+/// cells whose first text node parses as a number. Does NOT pull
+/// in the date-system / shared-string-lookup machinery — sparkline
+/// data is always numeric per the schema.
+fn cell_numeric_value_default(cell : @xml.Element) -> Double? {
+  let cell_t = attr_value_local(cell, "t").unwrap_or("n")
+  if cell_t == "n" || cell_t == "" {
+    match first_child_named_local(cell, "v") {
+      None => None
+      Some(v) =>
+        match
+          (try? @strconv.parse_double(
+            xml_text_content(v).trim_space().to_string(),
+          )) {
+          Ok(n) => Some(n)
+          Err(_) => None
+        }
+    }
+  } else {
+    None
+  }
+}
+
+///|
+/// Strip a leading `Sheet!` qualifier from a cell / range
+/// reference. Sparkline `<xm:sqref>` and `<xm:f>` payloads are
+/// frequently sheet-qualified in real Excel output.
+fn strip_sheet_prefix(ref_text : String) -> String {
+  // Walk for a `!`; if present, return everything after it. The
+  // sheet name may be quoted with `'…'` to escape spaces; either
+  // form ends at the `!`.
+  let mut i = 0
+  while i < ref_text.length() {
+    if ref_text.code_unit_at(i) == '!' {
+      return ref_text.unsafe_substring(start=i + 1, end=ref_text.length())
+    }
+    i = i + 1
+  }
+  ref_text
+}
+
+///|
 fn render_sheet_formulas(
   cell_map : Map[String, @xml.Element],
   layout : SheetLayout,
@@ -8202,10 +8711,51 @@ fn cell_numeric_value(
 }
 
 ///|
-/// §18.3.1.87 — `<sheetView @showRowColHeaders>` overrides the
-/// renderer's `options.show_row_headers` / `options.show_column_headers`
-/// when present.  Returns None when no `<sheetView>` is set so
-/// the caller falls back to the renderer default.
+/// §18.3.1.70 — `<printOptions @headings>`.  This SVG renderer
+/// produces a *page* render (the document as it prints), not the
+/// editing view, so row / column headings are governed by the print
+/// flag, NOT by `<sheetView @showRowColHeaders>` (which is purely an
+/// editing-UI preference).  Per §18.3.1.70 `@headings` defaults to
+/// `false`, so a worksheet with no `<printOptions>` renders without
+/// headings — matching what a print / PDF export produces.
+fn print_headings_enabled(worksheet : @xml.Element) -> Bool {
+  match first_child_named_local(worksheet, "printOptions") {
+    None => false
+    Some(po) =>
+      match attr_value_local(po, "headings") {
+        Some("1") | Some("true") => true
+        _ => false
+      }
+  }
+}
+
+///|
+/// §18.3.1.70 — `<printOptions @gridLines>`.  Same rationale as
+/// `print_headings_enabled` above: gridlines on a *page* render
+/// follow the print flag, not the editing-view toggle
+/// (§18.3.1.87 `<sheetView @showGridLines>`).  Per §18.3.1.70
+/// `@gridLines` defaults to `false`, so a worksheet with no
+/// `<printOptions>` renders gridline-free — matching LibreOffice's
+/// PDF export, which also omits gridlines unless the print flag
+/// opts in.  Returns true only when the attribute is explicitly
+/// the truthy xsd:boolean value.
+fn print_gridlines_enabled(worksheet : @xml.Element) -> Bool {
+  match first_child_named_local(worksheet, "printOptions") {
+    None => false
+    Some(po) =>
+      match attr_value_local(po, "gridLines") {
+        Some("1") | Some("true") => true
+        _ => false
+      }
+  }
+}
+
+///|
+/// §18.3.1.87 — `<sheetView @showRowColHeaders>`.  This editing-view
+/// preference is consulted only when a caller has asked for the
+/// editing-view look via `options.show_*_headers`; an explicit `0`
+/// then suppresses the headers the option would otherwise draw.
+/// Returns None when no `<sheetView>` carries the attribute.
 fn sheet_view_show_row_col_headers(worksheet : @xml.Element) -> Bool? {
   let sheet_views = first_child_named_local(worksheet, "sheetViews")
   let sheet_view = match sheet_views {
@@ -8216,12 +8766,9 @@ fn sheet_view_show_row_col_headers(worksheet : @xml.Element) -> Bool? {
     None => None
     Some(sv) =>
       match attr_value_local(sv, "showRowColHeaders") {
-        Some("0") => Some(false)
-        Some("false") => Some(false)
-        Some("1") => Some(true)
-        Some("true") => Some(true)
-        Some(_) => None
-        None => None
+        Some("0") | Some("false") => Some(false)
+        Some("1") | Some("true") => Some(true)
+        _ => None
       }
   }
 }
@@ -8247,6 +8794,85 @@ fn sheet_view_show_zeros(worksheet : @xml.Element) -> Bool? {
         None => None
       }
   }
+}
+
+///|
+/// §18.3.1.62 `<pageMargins>` — return the worksheet's
+/// (left, top, right, bottom) print margins converted to pixels at
+/// 96 DPI.  When the optional element is present its attributes
+/// (xsd:double, inches) win.
+///
+/// When the element is ABSENT the spec is silent on what the
+/// consumer should substitute; Excel and LibreOffice disagree:
+///
+///   • Excel (§18.3.1.62 reference): left/right = 0.7",
+///     top/bottom = 0.75".
+///   • LibreOffice Calc: left/right = 2.0 cm (≈ 0.787"),
+///     top/bottom = 2.5 cm (≈ 0.984").
+///
+/// Our snapshot reference is LibreOffice's PDF export, so we
+/// match LibreOffice's defaults: every xlsx fixture without an
+/// explicit `<pageMargins>` then lands on the same page origin
+/// the reference uses, and the snapshot harness — which
+/// composites both renders at NorthWest (0,0) on a common
+/// canvas — measures only real per-cell differences rather than
+/// a uniform whole-content translation.  Empirically the
+/// LibreOffice defaults put the cell-grid origin at (~75, ~94)
+/// px, which matches the (75.6, 94.5) px our defaults yield.
+///
+/// Header / footer margins (§18.3.1.46) are not surfaced here:
+/// they describe the band reserved for the running header text,
+/// which the body-only SVG render does not draw.
+fn sheet_page_margins_px(
+  worksheet : @xml.Element,
+) -> (Double, Double, Double, Double) {
+  // LibreOffice Calc defaults (2.0 cm L/R, 2.5 cm T/B) — see the
+  // doc comment above for why these win over Excel's spec
+  // defaults when `<pageMargins>` is absent.
+  let cm_per_inch = 2.54
+  let default_lr = 2.0 / cm_per_inch // ≈ 0.7874
+  let default_tb = 2.5 / cm_per_inch // ≈ 0.9843
+  let (left_in, top_in, right_in, bottom_in) = match
+    first_child_named_local(worksheet, "pageMargins") {
+    None => (default_lr, default_tb, default_lr, default_tb)
+    Some(pm) => {
+      let l = match attr_value_local(pm, "left") {
+        Some(v) =>
+          match (try? @strconv.parse_double(v)) {
+            Ok(n) => n
+            Err(_) => default_lr
+          }
+        None => default_lr
+      }
+      let t = match attr_value_local(pm, "top") {
+        Some(v) =>
+          match (try? @strconv.parse_double(v)) {
+            Ok(n) => n
+            Err(_) => default_tb
+          }
+        None => default_tb
+      }
+      let r = match attr_value_local(pm, "right") {
+        Some(v) =>
+          match (try? @strconv.parse_double(v)) {
+            Ok(n) => n
+            Err(_) => default_lr
+          }
+        None => default_lr
+      }
+      let b = match attr_value_local(pm, "bottom") {
+        Some(v) =>
+          match (try? @strconv.parse_double(v)) {
+            Ok(n) => n
+            Err(_) => default_tb
+          }
+        None => default_tb
+      }
+      (l, t, r, b)
+    }
+  }
+  let dpi = 96.0
+  (left_in * dpi, top_in * dpi, right_in * dpi, bottom_in * dpi)
 }
 
 ///|
@@ -8478,4 +9104,630 @@ fn parse_int_or(text : String, fallback : Int) -> Int {
     Ok(n) => n
     Err(_) => fallback
   }
+}
+
+// =============================================================================
+// §18.5.1 — Table style chrome (built-in styles)
+// =============================================================================
+//
+// ECMA-376 Part 1 §18.5.1.5 (`ST_TableStyleType`) enumerates the band
+// slots a table style may paint: `headerRow`, `totalRow`,
+// `firstColumn`, `lastColumn`, `firstRowStripe`, `secondRowStripe`,
+// `firstColumnStripe`, `secondColumnStripe`, `wholeTable`, plus the
+// per-corner / per-subheader slots we do NOT yet honour.  The
+// concrete colours live in the stylesheet's `<tableStyle>` /
+// `<dxf>` cascade (§18.8.41 / §18.8.14), which Excel populates
+// dynamically only when the user customises a built-in.  For the
+// built-in style names (`TableStyleLight*`, `TableStyleMedium*`,
+// `TableStyleDark*`) Excel does not write the dxf payload — the
+// renderer is expected to know the canonical palette.  This file
+// hard-codes the most common mappings from §18.8.43 / Annex L
+// (Excel's built-in table-style table).  Unknown style names fall
+// back to `TableStyleMedium2`, which is Excel's documented default
+// (`<tableStyleInfo name="TableStyleMedium2">` is the implicit
+// style applied to every freshly created ListObject).
+//
+// Style → colour family mapping (built-in name → accent palette
+// row).  All seven accent families share the same banding tints
+// because Excel's built-in palette derives them by hue rotation
+// only — the lightness levels are constant across accents.
+
+///|
+/// Resolved palette for one built-in table style.  All colours are
+/// 7-character `#RRGGBB` literals.  `header_fg` is the text colour
+/// to overlay on the header band; `band_fg` darkens-then-mutes a
+/// row stripe; `border` is the totals-row top border colour.
+struct TableStylePalette {
+  header_fill : String
+  header_fg : String
+  band_fill : String
+  band_fg : String
+  totals_border : String
+}
+
+///|
+/// §18.8.43 — built-in table style → palette lookup.  The mapping
+/// is hard-coded from Excel's default style table because the
+/// stylesheet's `<tableStyles>` is empty for built-ins (Excel
+/// resolves them at render time from a baked palette, not from
+/// `<dxf>` entries on disk).  Unknown names fall back to
+/// `TableStyleMedium2`, matching Excel's documented "default
+/// table style" behaviour when `<tableStyleInfo @name>` references
+/// a custom style that isn't in the workbook.
+///
+/// The seven accent families (Light1..7, Medium1..7, Dark1..7) share
+/// the same lightness ladder; only the hue rotates.  Higher numeric
+/// suffixes (Light8+, Medium8+, Dark8+) replay the accent rotation
+/// with the optional dark variants.  We cover the 28-style core
+/// (Light1..21, Medium1..28, Dark1..11) by indexing the accent on
+/// the suffix and selecting Light/Medium/Dark by prefix.
+fn lookup_table_style_palette(name : String) -> TableStylePalette {
+  // Parse `TableStyle{Light|Medium|Dark}{N}` → (variant, accent)
+  let (variant, accent_idx) = parse_table_style_name(name)
+  // The accent palette is indexed 1..7 corresponding to the seven
+  // accent colours in the Office default theme.  Higher suffixes
+  // simply wrap modulo 7 (Excel's built-in 8..14 / 15..21 share
+  // hues; the lightness variant is what changes).
+  let accent = if accent_idx <= 0 {
+    2 // TableStyleMedium2 default → accent 2 (blue) per Excel default
+  } else {
+    let i = (accent_idx - 1) % 7
+    i + 1
+  }
+  // Accent base RGB triples — Office 2007/2010 default theme (the
+  // palette every workbook ships with unless overridden by a custom
+  // `<a:clrScheme>` in `theme1.xml`).  Source: Microsoft Office
+  // Open XML default theme (Annex L.4); these are the documented
+  // accent1..accent6 values plus a fallback accent7 (= accent1 dark
+  // variant) for the rare Light/Medium/Dark 7th-column styles.
+  let accent_rgb = match accent {
+    1 => "#4472C4" // accent1 — blue
+    2 => "#ED7D31" // accent2 — orange
+    3 => "#A5A5A5" // accent3 — gray
+    4 => "#FFC000" // accent4 — gold
+    5 => "#5B9BD5" // accent5 — light blue
+    6 => "#70AD47" // accent6 — green
+    _ => "#264478" // accent7 — dark blue (rare Light7/Medium7 variant)
+  }
+  match variant {
+    // §18.8.43 TableStyleLight* — pale tint of accent for header
+    // and a very pale tint for the stripe band.  Header text stays
+    // black; the totals border uses a darker accent shade.  Excel's
+    // ratios: header L+0.60, band L+0.80, border L-0.25.
+    TableStyleVariant::Light =>
+      {
+        header_fill: @color.apply_lum_off(accent_rgb, 0.60),
+        header_fg: "#000000",
+        band_fill: @color.apply_lum_off(accent_rgb, 0.80),
+        band_fg: "#000000",
+        totals_border: @color.apply_lum_off(accent_rgb, -0.25),
+      }
+    // §18.8.43 TableStyleMedium* — saturated accent header with
+    // WHITE text (Excel inverts the foreground for medium and dark
+    // bands).  Bands are a faint accent tint.  Border = accent.
+    TableStyleVariant::Medium =>
+      {
+        header_fill: accent_rgb,
+        header_fg: "#FFFFFF",
+        band_fill: @color.apply_lum_off(accent_rgb, 0.75),
+        band_fg: "#000000",
+        totals_border: accent_rgb,
+      }
+    // §18.8.43 TableStyleDark* — very dark accent header (near
+    // black) with WHITE text; bands are a tint of the accent.
+    TableStyleVariant::Dark =>
+      {
+        header_fill: @color.apply_lum_off(accent_rgb, -0.40),
+        header_fg: "#FFFFFF",
+        band_fill: @color.apply_lum_off(accent_rgb, 0.65),
+        band_fg: "#000000",
+        totals_border: @color.apply_lum_off(accent_rgb, -0.50),
+      }
+  }
+}
+
+///|
+priv enum TableStyleVariant {
+  Light
+  Medium
+  Dark
+}
+
+///|
+/// Parse a built-in style name `TableStyle{Light|Medium|Dark}{N}`
+/// into `(variant, suffix)`.  Unknown / malformed names fall back
+/// to `(Medium, 2)` (TableStyleMedium2), matching Excel's
+/// "implicit default" behaviour for unrecognised styles.
+fn parse_table_style_name(name : String) -> (TableStyleVariant, Int) {
+  let prefix_light = "TableStyleLight"
+  let prefix_medium = "TableStyleMedium"
+  let prefix_dark = "TableStyleDark"
+  if name.has_prefix(prefix_light) {
+    let suffix = name.substring(start=prefix_light.length(), end=name.length())
+    let n = parse_int_or(suffix.to_string(), 1)
+    (TableStyleVariant::Light, n)
+  } else if name.has_prefix(prefix_medium) {
+    let suffix = name.substring(start=prefix_medium.length(), end=name.length())
+    let n = parse_int_or(suffix.to_string(), 2)
+    (TableStyleVariant::Medium, n)
+  } else if name.has_prefix(prefix_dark) {
+    let suffix = name.substring(start=prefix_dark.length(), end=name.length())
+    let n = parse_int_or(suffix.to_string(), 1)
+    (TableStyleVariant::Dark, n)
+  } else {
+    (TableStyleVariant::Medium, 2)
+  }
+}
+
+///|
+/// One parsed `<table>` element — the subset of CT_Table the chrome
+/// renderer needs.  `row_start` / `row_end` are 1-based inclusive
+/// rows; same for columns.  All optional fields default to the
+/// Excel-default behaviour when the XML omits them.
+priv struct TableMeta {
+  row_start : Int
+  row_end : Int
+  col_start : Int
+  col_end : Int
+  header_row_count : Int
+  totals_row_count : Int
+  has_auto_filter : Bool
+  style_name : String?
+  show_row_stripes : Bool
+  show_column_stripes : Bool
+  show_first_column : Bool
+  show_last_column : Bool
+}
+
+///|
+/// Parse the `<table>` element into a `TableMeta`.  Returns `None`
+/// when the `ref` attribute is missing or malformed (a spec-required
+/// attribute; without it the chrome cannot be positioned).
+fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
+  let ref_str = match attr_value_local(elt, "ref") {
+    None => return None
+    Some(s) => s
+  }
+  let parts = ref_str.split(":").collect()
+  let (start_str, end_str) = match parts.length() {
+    1 => (parts[0].to_string(), parts[0].to_string())
+    2 => (parts[0].to_string(), parts[1].to_string())
+    _ => return None
+  }
+  let (row_start, col_start) = match parse_cell_ref(start_str) {
+    Some(p) => p
+    None => return None
+  }
+  let (row_end, col_end) = match parse_cell_ref(end_str) {
+    Some(p) => p
+    None => return None
+  }
+  // §18.5.1.2 — `headerRowCount` defaults to 1, `totalsRowCount`
+  // defaults to 0.  Excel writes both attributes explicitly only
+  // when they deviate from the default.
+  let header_row_count = match attr_value_local(elt, "headerRowCount") {
+    Some(s) => parse_int_or(s, 1)
+    None => 1
+  }
+  let totals_row_count = match attr_value_local(elt, "totalsRowCount") {
+    Some(s) => parse_int_or(s, 0)
+    None => 0
+  }
+  // §18.5.1.2 — `<autoFilter>` is an OPTIONAL child of `<table>`.
+  // When present, the table's header row carries filter dropdown
+  // arrows on every column inside the autoFilter's `ref` (which
+  // typically equals the table's header row).
+  let mut has_auto_filter = false
+  let mut style_name : String? = None
+  let mut show_row_stripes = false
+  let mut show_column_stripes = false
+  let mut show_first_column = false
+  let mut show_last_column = false
+  for child in elt.children {
+    match child {
+      Element(c) =>
+        match c.name.local_name {
+          "autoFilter" => has_auto_filter = true
+          "tableStyleInfo" => {
+            style_name = attr_value_local(c, "name")
+            show_row_stripes = parse_xsd_boolean_or(
+              attr_value_local(c, "showRowStripes"),
+              false,
+            )
+            show_column_stripes = parse_xsd_boolean_or(
+              attr_value_local(c, "showColumnStripes"),
+              false,
+            )
+            show_first_column = parse_xsd_boolean_or(
+              attr_value_local(c, "showFirstColumn"),
+              false,
+            )
+            show_last_column = parse_xsd_boolean_or(
+              attr_value_local(c, "showLastColumn"),
+              false,
+            )
+          }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  Some({
+    row_start,
+    row_end,
+    col_start,
+    col_end,
+    header_row_count,
+    totals_row_count,
+    has_auto_filter,
+    style_name,
+    show_row_stripes,
+    show_column_stripes,
+    show_first_column,
+    show_last_column,
+  })
+}
+
+///|
+/// Project an inclusive (row1..row2, col1..col2) range to its pixel
+/// box `(x, y, w, h)` using the sheet layout.  Out-of-bounds rows /
+/// columns are clamped to the layout extent so a `<table ref>` that
+/// extends past `<dimension>` still renders a sensible box.
+fn table_range_pixel_box(
+  layout : SheetLayout,
+  row1 : Int,
+  row2 : Int,
+  col1 : Int,
+  col2 : Int,
+) -> (Double, Double, Double, Double)? {
+  if layout.column_count == 0 || layout.row_count == 0 {
+    return None
+  }
+  let r1 = if row1 < 1 { 1 } else { row1 }
+  let r2 = if row2 > layout.row_count { layout.row_count } else { row2 }
+  let c1 = if col1 < 1 { 1 } else { col1 }
+  let c2 = if col2 > layout.column_count { layout.column_count } else { col2 }
+  if r1 > r2 || c1 > c2 {
+    return None
+  }
+  if r1 - 1 >= layout.row_positions.length() ||
+    c1 - 1 >= layout.column_positions.length() {
+    return None
+  }
+  let x = layout.column_positions[c1 - 1]
+  let y = layout.row_positions[r1 - 1]
+  let mut w = 0.0
+  for i in c1..<=c2 {
+    if i - 1 < layout.column_widths.length() {
+      w = w + layout.column_widths[i - 1]
+    }
+  }
+  let mut h = 0.0
+  for i in r1..<=r2 {
+    if i - 1 < layout.row_heights.length() {
+      h = h + layout.row_heights[i - 1]
+    }
+  }
+  Some((x, y, w, h))
+}
+
+///|
+/// Build the UNDER-layer table chrome: header-row band, row stripes,
+/// column stripes, and totals-row top border.  Painted BEFORE the
+/// cell-fills group so an explicit per-cell `<patternFill>` wins
+/// over the band tint.  Returns an empty array when `tables` is
+/// empty so the renderer emits no chrome group.
+fn render_table_chrome_under(
+  tables : Array[@xml.Element],
+  layout : SheetLayout,
+) -> Array[@xml.Node] {
+  let out : Array[@xml.Node] = []
+  for table_elt in tables {
+    let meta = match parse_table_meta(table_elt) {
+      None => continue
+      Some(m) => m
+    }
+    // §18.5.1.5 — only paint chrome when a `<tableStyleInfo>` is
+    // present.  Tables without a style info element render as a
+    // bare grid (matches Excel's "None" style).  The autofilter
+    // glyph is independent — handled in the OVER-layer.
+    let style_name = match meta.style_name {
+      None => continue
+      Some(n) => n
+    }
+    let palette = lookup_table_style_palette(style_name)
+    // Data region row range (excluding header and totals).
+    let data_row_start = meta.row_start + meta.header_row_count
+    let data_row_end = meta.row_end - meta.totals_row_count
+    // 1. Header band — paint a single rect over the header rows.
+    if meta.header_row_count > 0 {
+      let header_row_end = meta.row_start + meta.header_row_count - 1
+      match
+        table_range_pixel_box(
+          layout,
+          meta.row_start,
+          header_row_end,
+          meta.col_start,
+          meta.col_end,
+        ) {
+        Some(box) => {
+          let (x, y, w, h) = box
+          out.push(
+            svg_elem(
+              "rect",
+              [
+                svg_attr("x", format_d(x)),
+                svg_attr("y", format_d(y)),
+                svg_attr("width", format_d(w)),
+                svg_attr("height", format_d(h)),
+                svg_attr("fill", palette.header_fill),
+                svg_attr("data-ooxml-table-band", "header"),
+              ],
+              [],
+            ),
+          )
+        }
+        None => ()
+      }
+    }
+    // 2. Row stripes — paint a tint on every OTHER data row (the
+    // "second" row stripe per §18.5.1.5).  Excel's convention:
+    // data rows 1,3,5,... are unstyled (paper white); rows 2,4,6,...
+    // get the `firstRowStripe` tint.
+    if meta.show_row_stripes && data_row_end >= data_row_start {
+      let mut r = data_row_start + 1
+      while r <= data_row_end {
+        match
+          table_range_pixel_box(layout, r, r, meta.col_start, meta.col_end) {
+          Some(box) => {
+            let (x, y, w, h) = box
+            out.push(
+              svg_elem(
+                "rect",
+                [
+                  svg_attr("x", format_d(x)),
+                  svg_attr("y", format_d(y)),
+                  svg_attr("width", format_d(w)),
+                  svg_attr("height", format_d(h)),
+                  svg_attr("fill", palette.band_fill),
+                  svg_attr("data-ooxml-table-band", "row-stripe"),
+                ],
+                [],
+              ),
+            )
+          }
+          None => ()
+        }
+        r = r + 2
+      }
+    }
+    // 3. Column stripes — same logic on the column axis.  When
+    // BOTH stripe modes are on, Excel paints the column stripe
+    // OVER the row stripe (so the intersection takes the column
+    // tint).  We follow that ordering by painting col stripes
+    // after row stripes, both in the UNDER layer.
+    if meta.show_column_stripes && meta.col_end >= meta.col_start + 1 {
+      let mut c = meta.col_start + 1
+      while c <= meta.col_end {
+        match
+          table_range_pixel_box(layout, data_row_start, data_row_end, c, c) {
+          Some(box) => {
+            let (x, y, w, h) = box
+            out.push(
+              svg_elem(
+                "rect",
+                [
+                  svg_attr("x", format_d(x)),
+                  svg_attr("y", format_d(y)),
+                  svg_attr("width", format_d(w)),
+                  svg_attr("height", format_d(h)),
+                  svg_attr("fill", palette.band_fill),
+                  svg_attr("data-ooxml-table-band", "column-stripe"),
+                ],
+                [],
+              ),
+            )
+          }
+          None => ()
+        }
+        c = c + 2
+      }
+    }
+    // 4. Totals row top border — a 2px horizontal line above the
+    // totals band per §18.5.1.5 `totalRow`.  Excel renders it as a
+    // single accent-colour stroke separating the data region from
+    // the totals row.
+    if meta.totals_row_count > 0 && data_row_end >= meta.row_start {
+      let totals_row = data_row_end + 1
+      match
+        table_range_pixel_box(
+          layout,
+          totals_row,
+          totals_row,
+          meta.col_start,
+          meta.col_end,
+        ) {
+        Some(box) => {
+          let (x, y, w, _h) = box
+          out.push(
+            svg_elem(
+              "rect",
+              [
+                svg_attr("x", format_d(x)),
+                svg_attr("y", format_d(y)),
+                svg_attr("width", format_d(w)),
+                svg_attr("height", "2"),
+                svg_attr("fill", palette.totals_border),
+                svg_attr("data-ooxml-table-band", "totals-top-border"),
+              ],
+              [],
+            ),
+          )
+        }
+        None => ()
+      }
+    }
+  }
+  out
+}
+
+///|
+/// Build the OVER-layer table chrome: autofilter dropdown glyphs
+/// painted on top of the header label text.  Both
+/// `<table><autoFilter>` and worksheet-level `<autoFilter>` paths
+/// converge here — the latter is detected via
+/// `worksheet.auto_filter`.
+fn render_table_chrome_over(
+  tables : Array[@xml.Element],
+  worksheet : @xml.Element,
+  layout : SheetLayout,
+) -> Array[@xml.Node] {
+  let out : Array[@xml.Node] = []
+  // Table-driven autofilter — every table whose `<autoFilter>`
+  // child is present paints arrows on its header row.
+  for table_elt in tables {
+    let meta = match parse_table_meta(table_elt) {
+      None => continue
+      Some(m) => m
+    }
+    if !meta.has_auto_filter || meta.header_row_count <= 0 {
+      continue
+    }
+    let header_row = meta.row_start
+    for col in meta.col_start..<=meta.col_end {
+      match table_range_pixel_box(layout, header_row, header_row, col, col) {
+        Some(box) =>
+          for n in render_autofilter_arrow(box) {
+            out.push(n)
+          }
+        None => ()
+      }
+    }
+  }
+  // Worksheet-level autofilter (§18.3.1.2) — independent of
+  // `<table>`; the renderer paints arrows on the first row of the
+  // filter range.  When a `<table>` already covers the same
+  // header row, both code paths will emit arrows at the same
+  // position; the overlapping `<text>` nodes paint identically so
+  // the duplicate is visually idempotent.
+  match find_worksheet_autofilter_ref(worksheet) {
+    None => ()
+    Some(range) => {
+      let parts = range.split(":").collect()
+      let (start_str, end_str) = match parts.length() {
+        1 => (parts[0].to_string(), parts[0].to_string())
+        2 => (parts[0].to_string(), parts[1].to_string())
+        _ => return out
+      }
+      let (r1, c1) = match parse_cell_ref(start_str) {
+        Some(p) => p
+        None => return out
+      }
+      let (_r2, c2) = match parse_cell_ref(end_str) {
+        Some(p) => p
+        None => return out
+      }
+      let header_row = r1
+      for col in c1..<=c2 {
+        match table_range_pixel_box(layout, header_row, header_row, col, col) {
+          Some(box) =>
+            for n in render_autofilter_arrow(box) {
+              out.push(n)
+            }
+          None => ()
+        }
+      }
+    }
+  }
+  out
+}
+
+///|
+/// Locate the worksheet's top-level `<autoFilter ref="...">` and
+/// return its `ref` attribute.  Returns `None` when no autoFilter
+/// is present.  `<autoFilter>` inside a `<table>` is handled
+/// separately by `render_table_chrome_over`.
+fn find_worksheet_autofilter_ref(worksheet : @xml.Element) -> String? {
+  for child in worksheet.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "autoFilter" {
+          return attr_value_local(e, "ref")
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+/// Paint one autofilter dropdown arrow in the rightmost pixel
+/// cluster of a header cell.  Mirrors Excel's UI: a small light-
+/// gray rounded square at the right edge with a black `▼` glyph.
+fn render_autofilter_arrow(
+  box : (Double, Double, Double, Double),
+) -> Array[@xml.Node] {
+  let (cx, cy, cw, ch) = box
+  // Skip tiny / hidden cells — there's no room for an arrow.
+  if cw < 14.0 || ch < 12.0 {
+    return []
+  }
+  // Geometry: a 14×12 button at the right edge, vertically centred.
+  let btn_w = 14.0
+  let btn_h = if ch - 4.0 < 14.0 { ch - 4.0 } else { 14.0 }
+  let btn_x = cx + cw - btn_w - 2.0
+  let btn_y = cy + (ch - btn_h) / 2.0
+  let out : Array[@xml.Node] = []
+  // Button background — light gray with a 1px darker border (Excel
+  // paints `#D9D9D9` fill on a `#7F7F7F` stroke).
+  out.push(
+    svg_elem(
+      "rect",
+      [
+        svg_attr("x", format_d(btn_x)),
+        svg_attr("y", format_d(btn_y)),
+        svg_attr("width", format_d(btn_w)),
+        svg_attr("height", format_d(btn_h)),
+        svg_attr("rx", "1"),
+        svg_attr("ry", "1"),
+        svg_attr("fill", "#F2F2F2"),
+        svg_attr("stroke", "#7F7F7F"),
+        svg_attr("stroke-width", "0.5"),
+        svg_attr("data-ooxml-autofilter", "button"),
+      ],
+      [],
+    ),
+  )
+  // Arrow glyph — a downward triangle drawn as `<path>` for
+  // pixel-accurate alignment (using a `<text>▼</text>` would inherit
+  // font fallback variance across rsvg / cairo).
+  let tri_w = 6.0
+  let tri_h = 4.0
+  let tri_cx = btn_x + btn_w / 2.0
+  let tri_top = btn_y + (btn_h - tri_h) / 2.0
+  let path_d = "M " +
+    format_d(tri_cx - tri_w / 2.0) +
+    " " +
+    format_d(tri_top) +
+    " L " +
+    format_d(tri_cx + tri_w / 2.0) +
+    " " +
+    format_d(tri_top) +
+    " L " +
+    format_d(tri_cx) +
+    " " +
+    format_d(tri_top + tri_h) +
+    " Z"
+  out.push(
+    svg_elem(
+      "path",
+      [
+        svg_attr("d", path_d),
+        svg_attr("fill", "#404040"),
+        svg_attr("data-ooxml-autofilter", "arrow"),
+      ],
+      [],
+    ),
+  )
+  out
 }

@@ -121,8 +121,8 @@ const OP_PAD_EM : Double = 0.11
 /// `(x, baseline_y)` to place the equation.
 pub fn render_svg(
   domain : @domain.CT_OMath,
-  font_size_pt~ : Double = 12.0,
-  color~ : String = "#000000",
+  font_size_pt? : Double = 12.0,
+  color? : String = "#000000",
 ) -> MathSvg {
   let ctx = { font_size_pt, color }
   let box = layout_row(domain.element.children, ctx)
@@ -179,7 +179,7 @@ fn translate_node(node : @xml.Node, dx : Double, dy : Double) -> @xml.Node {
 /// Concatenate `boxes` left to right on a shared baseline, inserting
 /// `gap` between adjacent boxes.  The combined box's ascent /
 /// descent are the per-box maxima.
-fn hbox(boxes : Array[MathBox], gap~ : Double = 0.0) -> MathBox {
+fn hbox(boxes : Array[MathBox], gap? : Double = 0.0) -> MathBox {
   let nodes : Array[@xml.Node] = []
   let mut x = 0.0
   let mut ascent = 0.0
@@ -211,12 +211,16 @@ fn hbox(boxes : Array[MathBox], gap~ : Double = 0.0) -> MathBox {
 fn text_box(
   content : String,
   ctx : MathCtx,
-  italic~ : Bool = false,
-  bold~ : Bool = false,
+  italic? : Bool = false,
+  bold? : Bool = false,
 ) -> MathBox {
   if content == "" {
     return empty_box()
   }
+  // Math notation conventionally renders in a serif/roman face — the
+  // OOXML math font (Cambria Math) and every TeX math font (Latin
+  // Modern Math, STIX) are serif — so `serif` is the correct generic
+  // here, unlike body text which defaults to sans-serif.
   let family = "serif"
   let width = @glyph.estimate_text_width_fallback(
     content,
@@ -248,7 +252,9 @@ fn text_box(
     width,
     ascent,
     descent,
-    nodes: [@markup.elem_ns("text", @markup.svg_ns, attrs, [text_node(content)])],
+    nodes: [
+      @markup.elem_ns("text", @markup.svg_ns, attrs, [text_node(content)]),
+    ],
   }
 }
 
@@ -366,11 +372,28 @@ fn layout_element(element : @xml.Element, ctx : MathCtx) -> MathBox {
     // §22.1.2.84 oMathPara — paragraph wrapper.
     "oMathPara" => layout_row(element.children, ctx)
     // Property-only elements carry no rendered content.
-    "rPr" | "mPr" | "naryPr" | "limUppPr" | "limLowPr" | "funcPr"
-    | "matrixPr" | "groupChrPr" | "barPr" | "boxPr" | "accPr"
-    | "borderBoxPr" | "radPr" | "sSupPr" | "sSubPr" | "sSubSupPr"
-    | "eqArrPr" | "dPr" | "phantPr" | "fPr" | "sPrePr" | "ctrlPr" =>
-      empty_box()
+    "rPr"
+    | "mPr"
+    | "naryPr"
+    | "limUppPr"
+    | "limLowPr"
+    | "funcPr"
+    | "matrixPr"
+    | "groupChrPr"
+    | "barPr"
+    | "boxPr"
+    | "accPr"
+    | "borderBoxPr"
+    | "radPr"
+    | "sSupPr"
+    | "sSubPr"
+    | "sSubSupPr"
+    | "eqArrPr"
+    | "dPr"
+    | "phantPr"
+    | "fPr"
+    | "sPrePr"
+    | "ctrlPr" => empty_box()
     // Unknown element — descend transparently.
     _ => layout_row(element.children, ctx)
   }
@@ -915,7 +938,11 @@ fn stack_limits(
 /// §22.1.2.72 limUpp / §22.1.2.71 limLow — a limit drawn over (`upper`)
 /// or under the base expression.  The limit text shrinks one script
 /// level.
-fn layout_limit(element : @xml.Element, ctx : MathCtx, upper~ : Bool) -> MathBox {
+fn layout_limit(
+  element : @xml.Element,
+  ctx : MathCtx,
+  upper~ : Bool,
+) -> MathBox {
   let sub_ctx = { ..ctx, font_size_pt: ctx.font_size_pt * SCRIPT_SCALE }
   let mut base = empty_box()
   let mut lim = empty_box()
@@ -1044,7 +1071,7 @@ fn bracket_box(
   let target = ascent + descent
   let natural_em = ctx.font_size_pt * @glyph.pt_to_px
   // Scale the glyph up if the content is taller than one em.
-  let scale = (1.0).max(target / natural_em)
+  let scale = 1.0.max(target / natural_em)
   let glyph_ctx = { ..ctx, font_size_pt: ctx.font_size_pt * scale }
   let b = text_box(glyph, glyph_ctx)
   // Re-centre the scaled glyph on the content's vertical midpoint:
@@ -1378,11 +1405,7 @@ fn layout_acc(element : @xml.Element, ctx : MathCtx) -> MathBox {
   // U+0302 COMBINING CIRCUMFLEX ACCENT renders inconsistently on its
   // own; substitute the spacing circumflex U+02C6 when that is the
   // (default) accent so the glyph is reliably visible.
-  let glyph = if chr == "" || chr == "\u{0302}" {
-    "\u{02C6}"
-  } else {
-    chr
-  }
+  let glyph = if chr == "" || chr == "\u{0302}" { "\u{02C6}" } else { chr }
   let acc_box = text_box(glyph, ctx)
   stack_limits(base, acc_box, empty_box(), ctx)
 }
@@ -1508,7 +1531,11 @@ fn layout_border_box(element : @xml.Element, ctx : MathCtx) -> MathBox {
 /// glyph is rendered once and scaled along x via a transform; a
 /// curly brace / arrow keeps its drawn thickness because only the
 /// x-axis is scaled.
-fn stretch_glyph(glyph : String, target_width : Double, ctx : MathCtx) -> MathBox {
+fn stretch_glyph(
+  glyph : String,
+  target_width : Double,
+  ctx : MathCtx,
+) -> MathBox {
   let b = text_box(glyph, ctx)
   if b.width <= 0.0 || target_width <= 0.0 {
     return b
@@ -1577,7 +1604,7 @@ fn read_val(el : @xml.Element) -> String {
 /// `default_on` is true an element with no `@val` counts as ON
 /// (the CT_OnOff default); otherwise an absent `@val` is OFF.
 /// An explicit `@val` always wins over `default_on`.
-fn val_is_on(el : @xml.Element, default_on~ : Bool = false) -> Bool {
+fn val_is_on(el : @xml.Element, default_on? : Bool = false) -> Bool {
   let mut result = default_on
   for a in el.attributes {
     if a.name.local_name == "val" {

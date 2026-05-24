@@ -12,10 +12,7 @@
 /// length (18515), `adj4` = callout box side fraction (48123). Shaft
 /// and head dimensions are taken against the smaller bounding
 /// dimension so the four arms stay consistent.
-pub fn build_quad_arrow_callout(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_quad_arrow_callout(width : Int, height : Int) -> ShapeGeometry {
   let smaller = min_dim(width, height)
   let shaft_t = percent(smaller, 18515)
   let head_barb = percent(smaller, 18515)

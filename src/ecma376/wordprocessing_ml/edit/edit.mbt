@@ -375,8 +375,16 @@ pub fn set_paragraph_alignment(
     other => other
   }
   match value {
-    "start" | "center" | "end" | "both" | "numTab" | "mediumKashida"
-    | "distribute" | "highKashida" | "lowKashida" | "thaiDistribute" => ()
+    "start"
+    | "center"
+    | "end"
+    | "both"
+    | "numTab"
+    | "mediumKashida"
+    | "distribute"
+    | "highKashida"
+    | "lowKashida"
+    | "thaiDistribute" => ()
     other =>
       raise @wml_context.OpenError(
         kind="SchemaViolation",
@@ -1090,10 +1098,7 @@ pub fn insert_picture(
   )
   let inline = @edit.append_child(
     @edit.append_child(
-      @edit.append_child(
-        inline_el,
-        @xml.Node::Element(wp_extent),
-      ),
+      @edit.append_child(inline_el, @xml.Node::Element(wp_extent)),
       @xml.Node::Element(doc_pr),
     ),
     @xml.Node::Element(graphic),
@@ -1200,7 +1205,9 @@ fn build_w_qname(local_name : String) -> @xml.QName {
 fn next_drawing_id_for_document(document : Document) -> Int {
   let mut max_id = 0
   walk_wml_id_attrs(document.main.element, fn(id) {
-    if id > max_id { max_id = id }
+    if id > max_id {
+      max_id = id
+    }
   })
   max_id + 1
 }
@@ -1250,9 +1257,7 @@ fn wml_needs_xml_space_preserve(text : String) -> Bool {
 /// resolved.  Bookmark-style range markers (`<w:permStart>`,
 /// `<w:ins>` etc. with no children) are dropped.
 pub fn accept_revisions(document : Document) -> Document raise OpenError {
-  edit_main(document, fn(root) {
-    transform_revisions(root, accept=true)
-  })
+  edit_main(document, fn(root) { transform_revisions(root, accept=true) })
 }
 
 ///|
@@ -1265,16 +1270,11 @@ pub fn accept_revisions(document : Document) -> Document raise OpenError {
 ///     rather than `<w:t>` — we rename them back so the result
 ///     parses as normal text again.
 pub fn reject_revisions(document : Document) -> Document raise OpenError {
-  edit_main(document, fn(root) {
-    transform_revisions(root, accept=false)
-  })
+  edit_main(document, fn(root) { transform_revisions(root, accept=false) })
 }
 
 ///|
-fn transform_revisions(
-  elt : @xml.Element,
-  accept~ : Bool,
-) -> @xml.Element {
+fn transform_revisions(elt : @xml.Element, accept~ : Bool) -> @xml.Element {
   // §17.13.5.29-.35 — when this element is a properties container
   // (pPr/rPr/tblPr/trPr/tcPr/sectPr) that owns a change marker
   // child, the reject path replaces the entire container with

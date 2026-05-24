@@ -58,10 +58,7 @@ pub fn add_textbox(
   } else {
     t_base
   }
-  let t_elt = @edit.append_child(
-    t_elt_with_space,
-    @xml.Node::Text(text),
-  )
+  let t_elt = @edit.append_child(t_elt_with_space, @xml.Node::Text(text))
   // <a:r><a:t/></a:r>
   let r_elt = @edit.append_child(
     @edit.empty_element(a_qn, "r"),
@@ -120,9 +117,7 @@ pub fn add_textbox(
       @edit.empty_element(p_qn, "cNvPr"),
       @edit.unprefixed_attribute("id", allocated_id.to_string()),
     ),
-    @edit.unprefixed_attribute(
-      "name", "TextBox " + allocated_id.to_string(),
-    ),
+    @edit.unprefixed_attribute("name", "TextBox " + allocated_id.to_string()),
   )
   let c_nv_sp_pr = @edit.set_attribute(
     @edit.empty_element(p_qn, "cNvSpPr"),

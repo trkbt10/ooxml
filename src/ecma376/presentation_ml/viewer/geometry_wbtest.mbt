@@ -67,17 +67,20 @@ test "preset diamond" {
 }
 
 ///|
-test "preset line horizontal" {
+test "preset line — corner-to-corner diagonal (wide box)" {
+  // §20.1.10.56 line — the `line` preset is always the diagonal
+  // from `(0, 0)` to `(w, h)`, regardless of aspect ratio.  The
+  // horizontal/vertical variant lives in `straightConnector1`.
   let elt = geom_make_elt("line", [])
   let p = render_preset_geometry(elt, 100.0, 50.0).unwrap()
-  inspect(p, content="M 0 25 L 100 25")
+  inspect(p, content="M 0 0 L 100 50")
 }
 
 ///|
-test "preset line vertical" {
+test "preset line — corner-to-corner diagonal (tall box)" {
   let elt = geom_make_elt("line", [])
   let p = render_preset_geometry(elt, 50.0, 100.0).unwrap()
-  inspect(p, content="M 25 0 L 25 100")
+  inspect(p, content="M 0 0 L 50 100")
 }
 
 ///|
@@ -95,8 +98,12 @@ test "preset roundRect with default adj" {
 test "preset parallelogram with custom adj" {
   let elt = geom_make_elt("parallelogram", [("adj", 50000.0)])
   let p = render_preset_geometry(elt, 100.0, 50.0).unwrap()
-  // offset = 50000/100000 * 100 = 50
-  inspect(p, content="M 50 0 L 100 0 L 50 50 L 0 50 Z")
+  // The lean offset is a fraction of the SHORTER side
+  // (min(100,50) = 50), so 50000/100000 * 50 = 25 — the
+  // parallelogram leans by 25 px regardless of `w`.  Geometric
+  // proportions stay fixed in `min(w,h)`, matching PowerPoint /
+  // LibreOffice.
+  inspect(p, content="M 25 0 L 100 0 L 75 50 L 0 50 Z")
 }
 
 ///|
@@ -112,8 +119,9 @@ test "preset pentagon produces 5 vertices + close" {
 test "preset hexagon with default adj" {
   let elt = geom_make_elt("hexagon", [])
   let p = render_preset_geometry(elt, 100.0, 50.0).unwrap()
-  // offset = 25000/100000 * 100 = 25
-  inspect(p, content="M 25 0 L 75 0 L 100 25 L 75 50 L 25 50 L 0 25 Z")
+  // The notch is the `adj` fraction of the SHORTER side, so for a
+  // 100×50 box offset = 25000/100000 * min(100,50) = 12.5.
+  inspect(p, content="M 12.5 0 L 87.5 0 L 100 25 L 87.5 50 L 12.5 50 L 0 25 Z")
 }
 
 ///|

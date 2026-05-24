@@ -45,6 +45,7 @@ pub fn render_svg(
   width_emu? : Int = 9144000,
   height_emu? : Int = 6858000,
   image_resolver? : (String) -> ResolvedImage? = _ => None,
+  part_resolver? : (String) -> @xml.Element? = _ => None,
   theme? : @theme.CT_OfficeStyleSheet? = None,
   chain? : @ph_resolver.SlideChain? = None,
 ) -> String {
@@ -82,7 +83,9 @@ pub fn render_svg(
       let color_map_override = build_color_map_override_from_chain(chain)
       let base = ColorResolveContext::with_color_scheme(
         ColorResolveContext::with_font_scheme(
-          ColorResolveContext::empty(), major, minor,
+          ColorResolveContext::empty(),
+          major,
+          minor,
         ),
         color_scheme,
       )
@@ -113,6 +116,7 @@ pub fn render_svg(
     ctx,
     defs,
     image_resolver,
+    part_resolver,
     chain,
     theme~,
   )
@@ -245,10 +249,11 @@ fn populate_color_map_from_element(
   // §19.3.1.6 attribute names — exactly 12 abstract slot
   // mappings.  Each attribute value is the concrete clrScheme
   // slot name (lt1/dk1/lt2/dk2/accent1..6/hlink/folHlink).
-  for slot in [
-    "bg1", "tx1", "bg2", "tx2", "accent1", "accent2", "accent3", "accent4",
-    "accent5", "accent6", "hlink", "folHlink",
-  ] {
+  for
+    slot in [
+      "bg1", "tx1", "bg2", "tx2", "accent1", "accent2", "accent3", "accent4", "accent5",
+      "accent6", "hlink", "folHlink",
+    ] {
     match attr_value(el, slot) {
       Some(target) => out.set(slot, target)
       None => ()
@@ -296,10 +301,7 @@ fn slide_timing_metadata(domain : @domain.CT_Slide) -> Array[@xml.Attribute] {
   // on "has animations" without parsing the list.
   [
     @markup.attr("data-ooxml-timing-tnLst", names.to_string()),
-    @markup.attr(
-      "data-ooxml-timing-count",
-      timing.tnLst.length().to_string(),
-    ),
+    @markup.attr("data-ooxml-timing-count", timing.tnLst.length().to_string()),
   ]
 }
 
@@ -333,7 +335,11 @@ fn slide_transition_metadata(
       attrs.push(
         @markup.attr(
           "data-ooxml-transition-adv-click",
-          if b { "1" } else { "0" },
+          if b {
+            "1"
+          } else {
+            "0"
+          },
         ),
       )
   }
@@ -389,12 +395,11 @@ fn populate_color_scheme(
   let assign = fn(slot_name : String, ct : @a.CT_Color?) {
     match ct {
       None => ()
-      Some(c) => {
+      Some(c) =>
         match extract_color_scheme_hex(c) {
           Some(hex) => out.set(slot_name, hex)
           None => ()
         }
-      }
     }
   }
   assign("dk1", scheme.dk1)
@@ -519,8 +524,7 @@ fn render_slide_background_svg(
         Some(bp) =>
           match find_fill_child(bp) {
             None => []
-            Some(fill) =>
-              render_background_rect(width, height, fill, defs, ctx)
+            Some(fill) => render_background_rect(width, height, fill, defs, ctx)
           }
         None => {
           let bg_ref = first_child_named(bg_elt, "bgRef")
@@ -587,7 +591,11 @@ fn render_background_rect(
   ctx : ColorResolveContext,
 ) -> Array[@xml.Node] {
   let result = render_fill_attr(
-    fill, defs, ctx, shape_width=width, shape_height=height,
+    fill,
+    defs,
+    ctx,
+    shape_width=width,
+    shape_height=height,
   )
   [
     @markup.elem_ns(
@@ -742,7 +750,10 @@ fn resolve_fill_ref_for_shape(
   // The fillRef's own EG_ColorChoice child supplies the phClr
   // substitution value.  We extract it via the same helper
   // used for bgRef so the substitution path is uniform.
-  let ph_clr = resolve_ph_clr_from_bg_ref(fill_ref, ColorResolveContext::empty())
+  let ph_clr = resolve_ph_clr_from_bg_ref(
+    fill_ref,
+    ColorResolveContext::empty(),
+  )
   Some((template, ph_clr))
 }
 
@@ -804,7 +815,8 @@ fn resolve_effect_ref_for_shape(
     None => return None
   }
   let ph_clr = resolve_ph_clr_from_bg_ref(
-    effect_ref, ColorResolveContext::empty(),
+    effect_ref,
+    ColorResolveContext::empty(),
   )
   Some((template, ph_clr))
 }
@@ -982,9 +994,7 @@ fn resolve_bg_ref_template(
 /// sum-type arm so the fill renderer can re-enter the EG_FillProperties
 /// dispatch on the raw element. Every entry preserves its source
 /// element for round-trip writing.
-fn fill_style_entry_element(
-  entry : @a.CT_FillStyleList_Entry,
-) -> @xml.Element {
+fn fill_style_entry_element(entry : @a.CT_FillStyleList_Entry) -> @xml.Element {
   match entry {
     FillStyleNone(v) => v.element
     FillStyleSolid(v) => v.element
@@ -1001,7 +1011,9 @@ fn fill_style_entry_element(
 /// needs to resolve a single color child without committing to a fill
 /// wrapper.
 fn first_color_choice_child(parent : @xml.Element) -> @xml.Element? {
-  let names = ["scrgbClr", "srgbClr", "hslClr", "sysClr", "schemeClr", "prstClr"]
+  let names = [
+    "scrgbClr", "srgbClr", "hslClr", "sysClr", "schemeClr", "prstClr",
+  ]
   for n in names {
     match first_child_named(parent, n) {
       Some(e) => return Some(e)
@@ -1022,7 +1034,6 @@ fn synthetic_a_qname(local_name : String) -> @xml.QName {
     ns: Some("http://schemas.openxmlformats.org/drawingml/2006/main"),
   }
 }
-
 
 ///|
 /// §20.1.8 EG_FillProperties — find the first fill child element
@@ -1054,8 +1065,9 @@ fn render_slide_shapes_svg(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
+  part_resolver : (String) -> @xml.Element?,
   chain : @ph_resolver.SlideChain?,
-  theme~ : @theme.CT_OfficeStyleSheet? = None,
+  theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
   let c_sld = first_child_named(slide_element, "cSld")
   let sp_tree = match c_sld {
@@ -1071,7 +1083,16 @@ fn render_slide_shapes_svg(
   match sp_tree {
     None => ()
     Some(st) =>
-      render_shape_children(st, ctx, defs, image_resolver, nodes, chain, theme~)
+      render_shape_children(
+        st,
+        ctx,
+        defs,
+        image_resolver,
+        part_resolver,
+        nodes,
+        chain,
+        theme~,
+      )
   }
   nodes
 }
@@ -1084,16 +1105,24 @@ fn render_shape_children(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
+  part_resolver : (String) -> @xml.Element?,
   out : Array[@xml.Node],
   chain : @ph_resolver.SlideChain?,
-  theme~ : @theme.CT_OfficeStyleSheet? = None,
+  theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Unit {
   for child in parent.children {
     match child {
       Element(e) => {
         let resolved = resolve_shape_with_chain(e, chain)
-        for n in render_shape_svg(
-            resolved, ctx, defs, image_resolver, chain~, theme~,
+        for
+          n in render_shape_svg(
+            resolved,
+            ctx,
+            defs,
+            image_resolver,
+            part_resolver,
+            chain~,
+            theme~,
           ) {
           out.push(n)
         }
@@ -1107,7 +1136,9 @@ fn render_shape_children(
   match chain {
     None => ()
     Some(ch) =>
-      render_layout_only_shapes(parent, ctx, defs, image_resolver, out, ch)
+      render_layout_only_shapes(
+        parent, ctx, defs, image_resolver, part_resolver, out, ch,
+      )
   }
 }
 
@@ -1128,7 +1159,8 @@ fn resolve_shape_with_chain(
         shape
       } else {
         let typed = @domain.CT_Shape::new(shape)
-        let resolved = match (try? @ph_resolver.resolve_placeholder(typed, ch)) {
+        let resolved = match
+          (try? @ph_resolver.resolve_placeholder(typed, ch)) {
           Ok(r) => r
           Err(_) => return shape
         }
@@ -1152,6 +1184,7 @@ fn render_layout_only_shapes(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
+  part_resolver : (String) -> @xml.Element?,
   out : Array[@xml.Node],
   chain : @ph_resolver.SlideChain,
 ) -> Unit {
@@ -1186,15 +1219,20 @@ fn render_layout_only_shapes(
       continue
     }
     // Construct a synthetic ResolvedShape with no slide layer.
-    let resolved = match
-      (try? layout_only_resolve(layout_shape, chain)) {
+    let resolved = match (try? layout_only_resolve(layout_shape, chain)) {
       Ok(r) => r
       Err(_) => continue
     }
     match @ph_resolver.synthesize_resolved_shape(resolved) {
       Some(merged) =>
-        for n in render_shape_svg(
-            merged, ctx, defs, image_resolver, chain=Some(chain),
+        for
+          n in render_shape_svg(
+            merged,
+            ctx,
+            defs,
+            image_resolver,
+            part_resolver,
+            chain=Some(chain),
           ) {
           out.push(n)
         }
@@ -1258,7 +1296,6 @@ fn layout_only_resolve(
   @ph_resolver.resolve_placeholder(layout_shape, synthetic_chain)
 }
 
-
 ///|
 /// Render a single shape.  Dispatches on local name.
 /// @source web-pptx packages/@aurochs-renderer/pptx/src/svg/slide-shapes.ts:75 (renderShapeSvg)
@@ -1267,8 +1304,9 @@ fn render_shape_svg(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
-  chain~ : @ph_resolver.SlideChain? = None,
-  theme~ : @theme.CT_OfficeStyleSheet? = None,
+  part_resolver : (String) -> @xml.Element?,
+  chain? : @ph_resolver.SlideChain? = None,
+  theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
   if is_shape_hidden(shape) {
     return []
@@ -1280,10 +1318,11 @@ fn render_shape_svg(
   match shape.name.local_name {
     "sp" => render_sp_shape_svg(shape, ctx, defs, image_resolver, theme~)
     "pic" => render_picture_svg(shape, ctx, defs, image_resolver)
-    "grpSp" => render_group_svg(shape, ctx, defs, image_resolver, chain)
+    "grpSp" =>
+      render_group_svg(shape, ctx, defs, image_resolver, part_resolver, chain)
     "cxnSp" => render_connector_svg(shape, ctx, defs, image_resolver, theme~)
     "graphicFrame" =>
-      render_graphic_frame_svg(shape, ctx, defs, image_resolver)
+      render_graphic_frame_svg(shape, ctx, defs, image_resolver, part_resolver)
     "contentPart" => render_content_part_metadata(shape)
     _ => []
   }
@@ -1379,10 +1418,11 @@ fn render_sp_shape_svg(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
-  theme~ : @theme.CT_OfficeStyleSheet? = None,
+  theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
   let sp_pr = first_child_named(shape, "spPr")
-  let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match sp_pr {
+  let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match
+    sp_pr {
     None => ([], 0.0, 0.0)
     Some(pr) =>
       match extract_xfrm(pr) {
@@ -1415,8 +1455,12 @@ fn render_sp_shape_svg(
                 None => ctx
               }
               let r = render_fill_attr(
-                template, defs, ctx2,
-                shape_width=w, shape_height=h, image_resolver~,
+                template,
+                defs,
+                ctx2,
+                shape_width=w,
+                shape_height=h,
+                image_resolver~,
               )
               [@markup.attr("fill", r.attr_value)]
             }
@@ -1482,12 +1526,13 @@ fn render_sp_shape_svg(
   let (path_d, _) = extract_geometry_path_d(sp_pr, w, h)
   let effects3d = match sp_pr {
     None =>
-      ({
-        transform_attrs: [],
-        extrusion: None,
-        bevel: None,
-        gradient_def: None,
-      } : Effects3d)
+      (
+        {
+          transform_attrs: [],
+          extrusion: None,
+          bevel: None,
+          gradient_def: None,
+        } : Effects3d)
     Some(pr) => compute_3d_effects(pr, path_d, shape_id, w, h)
   }
   match effects3d.gradient_def {
@@ -1531,6 +1576,21 @@ fn render_sp_shape_svg(
   let g_children : Array[@xml.Node] = []
   match effects3d.extrusion {
     Some(n) => g_children.push(n)
+    None => ()
+  }
+  // §20.1.8.50 reflection — emitted BEFORE the shape so the mirrored
+  // clone sits behind / below the original (the outer <g>'s
+  // `translate(x, y)` puts the local origin at the shape's top-
+  // left; the reflection helper's `matrix(1 0 0 -1 0 2h+dist)`
+  // mirrors the path's local y-axis so the clone lands flush
+  // underneath).  SVG filter primitives cannot mirror the source
+  // alone — this is the only spec-faithful place to add the
+  // mirrored copy.
+  match sp_pr {
+    Some(pr) =>
+      for n in reflection_extra_nodes(pr, shape_path, h) {
+        g_children.push(n)
+      }
     None => ()
   }
   g_children.push(shape_path)
@@ -1770,12 +1830,9 @@ fn preset_dash_pattern(pattern : String, stroke_width : Double) -> String {
   let s = stroke_width
   match pattern {
     "solid" => ""
-    "dot" =>
-      format_double(s) + " " + format_double(s)
-    "dash" =>
-      format_double(4.0 * s) + " " + format_double(3.0 * s)
-    "lgDash" =>
-      format_double(8.0 * s) + " " + format_double(3.0 * s)
+    "dot" => format_double(s) + " " + format_double(s)
+    "dash" => format_double(4.0 * s) + " " + format_double(3.0 * s)
+    "lgDash" => format_double(8.0 * s) + " " + format_double(3.0 * s)
     "dashDot" =>
       format_double(4.0 * s) +
       " " +
@@ -1804,10 +1861,8 @@ fn preset_dash_pattern(pattern : String, stroke_width : Double) -> String {
       format_double(s) +
       " " +
       format_double(3.0 * s)
-    "sysDash" =>
-      format_double(3.0 * s) + " " + format_double(s)
-    "sysDot" =>
-      format_double(s) + " " + format_double(s)
+    "sysDash" => format_double(3.0 * s) + " " + format_double(s)
+    "sysDot" => format_double(s) + " " + format_double(s)
     "sysDashDot" =>
       format_double(3.0 * s) +
       " " +
@@ -1920,22 +1975,143 @@ fn render_geometry_path(
       // No explicit geometry — default rectangle (web-pptx fallback).
       rect_fallback()
     Some(pg) =>
-      match render_preset_geometry(pg, w, h) {
+      match render_preset_geometry_layered(pg, w, h) {
         // Unknown preset — degrade to bounding rect to avoid empty
         // output.
         None => rect_fallback()
-        Some(d) => {
-          let attrs : Array[@xml.Attribute] = [@markup.attr("d", d)]
-          for a in fill_attrs {
-            attrs.push(a)
+        Some(layers) =>
+          if layers.length() <= 1 {
+            // Single-layer (the vast majority) — one flat `<path>`
+            // with the supplied fill / stroke.
+            let d = if layers.length() == 1 { layers[0].path } else { "" }
+            let attrs : Array[@xml.Attribute] = [@markup.attr("d", d)]
+            for a in fill_attrs {
+              attrs.push(a)
+            }
+            for a in stroke_attrs {
+              attrs.push(a)
+            }
+            @markup.elem_ns("path", @markup.svg_ns, attrs, [])
+          } else {
+            // Multi-layer 3D / shaded preset — emit a `<g>` group
+            // whose children are one `<path>` per layer, each
+            // painted with the base fill modified by the layer's
+            // `fill_mod` (lightness offset).  Strokes go on the
+            // first layer only so the outline does not double.
+            let layer_nodes : Array[@xml.Node] = []
+            for i, layer in layers {
+              let layer_fill = derive_layer_fill(fill_attrs, layer.fill_mod)
+              let attrs : Array[@xml.Attribute] = [
+                @markup.attr("d", layer.path),
+              ]
+              for a in layer_fill {
+                attrs.push(a)
+              }
+              if i == 0 {
+                for a in stroke_attrs {
+                  attrs.push(a)
+                }
+              }
+              layer_nodes.push(
+                @markup.elem_ns("path", @markup.svg_ns, attrs, []),
+              )
+            }
+            @markup.elem_ns("g", @markup.svg_ns, [], layer_nodes)
           }
-          for a in stroke_attrs {
-            attrs.push(a)
-          }
-          @markup.elem_ns("path", @markup.svg_ns, attrs, [])
-        }
       }
   }
+}
+
+///|
+/// Derive a layer-specific fill from a base fill, offsetting its
+/// lightness by `lum_mod` in the range [−1, 1].  When the base
+/// fill is a flat hex colour (`fill="#rrggbb"`), the hex is parsed,
+/// shifted in HSL space, and rewritten.  Any other fill encoding
+/// (`url(#…)` gradient, `none`, `currentColor`, …) is returned as is
+/// — gradients already encode shading, so a per-layer derivation
+/// would only fight the source.
+fn derive_layer_fill(
+  base_attrs : Array[@xml.Attribute],
+  lum_mod : Double,
+) -> Array[@xml.Attribute] {
+  if lum_mod == 0.0 {
+    return base_attrs
+  }
+  let out : Array[@xml.Attribute] = []
+  for a in base_attrs {
+    if a.name.local_name == "fill" &&
+      a.value.has_prefix("#") &&
+      a.value.length() == 7 {
+      let shifted = shift_hex_lightness(a.value, lum_mod)
+      out.push(@markup.attr("fill", shifted))
+    } else {
+      out.push(a)
+    }
+  }
+  out
+}
+
+///|
+/// Shift the lightness of a `#rrggbb` colour by `delta` in [−1, 1].
+/// `+1` → white, `−1` → black, `0` → unchanged.  Each channel is
+/// linearly interpolated toward 255 or 0; the resulting hex is
+/// uppercase.
+fn shift_hex_lightness(hex : String, delta : Double) -> String {
+  fn nybble(c : Char) -> Int {
+    let n = c.to_int()
+    if n >= 0x30 && n <= 0x39 {
+      n - 0x30
+    } else if n >= 0x41 && n <= 0x46 {
+      n - 0x41 + 10
+    } else if n >= 0x61 && n <= 0x66 {
+      n - 0x61 + 10
+    } else {
+      0
+    }
+  }
+
+  fn hex_digit(n : Int) -> Char {
+    if n < 10 {
+      (n + 0x30).to_char().unwrap()
+    } else {
+      (n - 10 + 0x41).to_char().unwrap()
+    }
+  }
+
+  let chars = hex.to_array()
+  if chars.length() < 7 {
+    return hex
+  }
+  let r = nybble(chars[1]) * 16 + nybble(chars[2])
+  let g = nybble(chars[3]) * 16 + nybble(chars[4])
+  let b = nybble(chars[5]) * 16 + nybble(chars[6])
+  fn shift(channel : Int) -> Int {
+    let f = channel.to_double()
+    let target = if delta > 0.0 { 255.0 } else { 0.0 }
+    let abs = if delta < 0.0 { -delta } else { delta }
+    let mixed = f + (target - f) * abs
+    let i = mixed.to_int()
+    if i < 0 {
+      0
+    } else if i > 255 {
+      255
+    } else {
+      i
+    }
+  }
+
+  let r2 = shift(r)
+  let g2 = shift(g)
+  let b2 = shift(b)
+  let buf = StringBuilder::new()
+  buf.write_char('#')
+  buf.write_char(hex_digit(r2 / 16))
+  buf.write_char(hex_digit(r2 % 16))
+  buf.write_char(hex_digit(g2 / 16))
+  buf.write_char(hex_digit(g2 % 16))
+  buf.write_char(hex_digit(b2 / 16))
+  buf.write_char(hex_digit(b2 % 16))
+  buf.to_string()
 }
 
 // =============================================================================
@@ -2169,14 +2345,13 @@ fn apply_vertical_text_transform(
   if vert_type == "horz" {
     return text_svg
   }
-  let wrap = (attrs : Array[@xml.Attribute]) => [
-    @markup.elem_ns("g", @markup.svg_ns, attrs, text_svg),
-  ]
+  let wrap = (attrs : Array[@xml.Attribute]) => {
+    [@markup.elem_ns("g", @markup.svg_ns, attrs, text_svg)]
+  }
   if upright {
     return wrap([
       @markup.attr(
-        "style",
-        "text-orientation: upright; writing-mode: vertical-rl",
+        "style", "text-orientation: upright; writing-mode: vertical-rl",
       ),
     ])
   }
@@ -2198,8 +2373,7 @@ fn apply_vertical_text_transform(
     "wordArtVert" | "mongolianVert" | "wordArtVertRtl" =>
       wrap([
         @markup.attr(
-          "style",
-          "writing-mode: vertical-rl; text-orientation: mixed",
+          "style", "writing-mode: vertical-rl; text-orientation: mixed",
         ),
       ])
     _ => text_svg
@@ -2226,19 +2400,23 @@ fn build_layout_input(
   // resolver can layer the right defaults under `<a:pPr lvl="N">`.
   let lst_style = first_child_named(tx_body, "lstStyle")
   // §21.1.2.4.1 buAutoNum — per-paragraph auto-number counter
-  // grouped by paragraph level (lvl). Each entry tracks the next
-  // numeric value to emit for that level. Counters reset whenever
-  // the level resets to 0 because a new top-level list begins.
-  let auto_num_counters : @hashmap.HashMap[Int, Int] = @hashmap.new()
+  // grouped by `(lvl, scheme)`. Each entry tracks the next numeric
+  // value to emit for that combination. PowerPoint treats a change
+  // of `@type` (alphaLcPeriod → romanUcPeriod, etc.) at the same
+  // level as starting a fresh sub-list — keying solely by level
+  // would let consecutive paragraphs at lvl=0 with different schemes
+  // share the same counter, so the second paragraph's `arabicPeriod`
+  // bullet would emit "2." instead of "1." and a `romanUcPeriod`
+  // would emit "II." instead of "I.".  Verified against the LO PDF
+  // reference for `text-bullet-auto-types`.
+  let auto_num_counters : @hashmap.HashMap[String, Int] = @hashmap.new()
   let paragraphs : Array[LayoutParagraphInput] = []
   for child in tx_body.children {
     match child {
       Element(e) =>
         if e.name.local_name == "p" {
           let para = build_paragraph_input(e, ctx, lst_style)
-          let resolved = apply_auto_num_counter(
-            para, e, auto_num_counters,
-          )
+          let resolved = apply_auto_num_counter(para, e, auto_num_counters)
           paragraphs.push(resolved)
         }
       _ => ()
@@ -2256,7 +2434,7 @@ fn build_layout_input(
 fn apply_auto_num_counter(
   para : LayoutParagraphInput,
   p_element : @xml.Element,
-  counters : @hashmap.HashMap[Int, Int],
+  counters : @hashmap.HashMap[String, Int],
 ) -> LayoutParagraphInput {
   let bullet = match para.bullet {
     None => return para
@@ -2305,11 +2483,12 @@ fn apply_auto_num_counter(
         None => 0
       }
   }
-  let current = match counters.get(lvl) {
+  let key = lvl.to_string() + ":" + scheme
+  let current = match counters.get(key) {
     Some(n) => n
     None => start_at
   }
-  counters.set(lvl, current + 1)
+  counters.set(key, current + 1)
   let new_char = format_auto_number(scheme, current, start_at=1)
   let new_bullet : BulletConfig = {
     char: new_char,
@@ -2337,7 +2516,6 @@ fn apply_auto_num_counter(
     end_para_font_size: para.end_para_font_size,
   }
 }
-
 
 ///|
 /// §21.1.2.1.1 / .2 / .3 — parse the xsd:choice between
@@ -2397,9 +2575,19 @@ fn build_text_box_config(
   h_emu : Double,
 ) -> TextBoxConfig {
   // §21.1.2.1.2 default insets, in EMU: l=91440 t=45720 r=91440 b=45720.
-  let (l_emu, t_emu, r_emu, b_emu, anchor, anchor_ctr, wrap, auto_fit) = match body_pr {
+  let (l_emu, t_emu, r_emu, b_emu, anchor, anchor_ctr, wrap, auto_fit) = match
+    body_pr {
     None =>
-      (91440.0, 45720.0, 91440.0, 45720.0, AnchorTop, false, WrapSquare, AutoFitNone)
+      (
+        91440.0,
+        45720.0,
+        91440.0,
+        45720.0,
+        AnchorTop,
+        false,
+        WrapSquare,
+        AutoFitNone,
+      )
     Some(bp) => {
       let li = parse_emu_attr_or(bp, "lIns", 91440.0)
       let ti = parse_emu_attr_or(bp, "tIns", 45720.0)
@@ -2503,12 +2691,12 @@ fn build_paragraph_input(
     Some(_) => AlignLeft
     None => AlignLeft
   }
-  let mar_l =
-    p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "marL", 0.0) / emu_per_px
-  let mar_r =
-    p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "marR", 0.0) / emu_per_px
-  let indent =
-    p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "indent", 0.0) / emu_per_px
+  let mar_l = p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "marL", 0.0) /
+    emu_per_px
+  let mar_r = p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "marR", 0.0) /
+    emu_per_px
+  let indent = p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "indent", 0.0) /
+    emu_per_px
   // §21.1.2.2.4 lnSpc / §21.1.2.2.5 spcAft / §21.1.2.2.6 spcBef —
   // line spacing and inter-paragraph spacing children. The direct
   // `<a:pPr>` wins; otherwise the lvl default applies.
@@ -2551,8 +2739,10 @@ fn build_paragraph_input(
   }
   // §21.1.2.2.5 defTabSz — default tab stop size on `<a:pPr>`
   // (EMU). Converted to CSS pixels.
-  let default_tab_size =
-    p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "defTabSz", 0.0) / emu_per_px
+  let default_tab_size = p_pr_emu_with_lvl(
+      p_pr, lvl_default_p_pr, "defTabSz", 0.0,
+    ) /
+    emu_per_px
   // §21.1.2.2.9 tabLst — explicit tab stop list under `<a:pPr>`.
   // Use the direct pPr's tabLst when non-empty; otherwise fall
   // back to the lvl default. LayoutTabStop is not Eq so we test
@@ -2578,9 +2768,9 @@ fn build_paragraph_input(
   // §21.1.2.4.4-8 bullets — `<a:buNone>` / `<a:buChar>` /
   // `<a:buAutoNum>` / `<a:buBlip>` plus `<a:buFont>` /
   // `<a:buClr>` / `<a:buSzPts>` / `<a:buSzPct>`.
-  let bullet = p_pr_with_lvl_fn(
-    p_pr, lvl_default_p_pr, fn(el) { parse_bullet_config(el, ctx) },
-  )
+  let raw_bullet = p_pr_with_lvl_fn(p_pr, lvl_default_p_pr, fn(el) {
+    parse_bullet_config(el, ctx)
+  })
   // §21.1.2.4.12 lstStyle / §21.1.2.3.27 defRPr — extract the
   // run-default rPr from the matching `<a:lvlNpPr>/<a:defRPr>` so
   // runs lacking their own rPr inherit the lstStyle's defaults.
@@ -2602,6 +2792,20 @@ fn build_paragraph_input(
         }
       _ => ()
     }
+  }
+  // §21.1.2.4.4-8 — bullet font / size / colour inherit from the
+  // first non-break run when `<a:buFont>` / `<a:buSzPts>` / `<a:buClr>`
+  // are absent. `parse_bullet_config` surfaces these inherit-
+  // requests as empty string / `font_size == 0.0`; resolve them here
+  // (after spans are built) so the layout engine measures the bullet
+  // with the right metrics and the renderer paints it with the right
+  // typography. Without this, an unsized bullet measured 0 px wide
+  // and a hanging-indent layout (`marL=N, indent=-N`) collapsed the
+  // text origin onto the shape's left inset — losing both the bullet
+  // glyph and the indent slot.
+  let bullet : BulletConfig? = match raw_bullet {
+    None => None
+    Some(b) => Some(resolve_bullet_inheritance(b, spans))
   }
   // §21.1.2.2.3 `<a:endParaRPr>` carries the run-properties for an
   // empty paragraph; its `sz` attribute (1/100 pt) drives the line
@@ -2700,7 +2904,7 @@ fn p_pr_emu_with_lvl(
 /// §21.1.2.2 — invoke `reader` against the direct `<a:pPr>` first
 /// and, when it returns `None`, against the lvl default. Returns
 /// the first non-`None` result or `None` when both miss.
-fn p_pr_with_lvl_fn[T](
+fn[T] p_pr_with_lvl_fn(
   direct : @xml.Element?,
   lvl_default : @xml.Element?,
   reader : (@xml.Element) -> T?,
@@ -2718,7 +2922,6 @@ fn p_pr_with_lvl_fn[T](
     Some(l) => reader(l)
   }
 }
-
 
 ///|
 /// §21.1.2.4.12 lstStyle — pick the `<a:lvlNpPr>` matching `lvl`
@@ -2951,6 +3154,58 @@ fn parse_bullet_config(
 }
 
 ///|
+/// §21.1.2.4.4-8 — fill in bullet defaults inherited from the first
+/// non-break run of the paragraph. `parse_bullet_config` emits
+/// `font_size == 0.0`, `font_family == ""`, and `color == ""` when
+/// the corresponding `<a:buSzPts>` / `<a:buFont>` / `<a:buClr>` are
+/// missing (the spec says inherit from the run); this helper performs
+/// that inheritance after `build_paragraph_input` has collected the
+/// paragraph's spans.
+///
+/// When the paragraph has no text runs (image-only bullet, end-para
+/// rPr, etc.), the bullet keeps its zero / empty markers — the
+/// caller is responsible for skipping it or supplying its own
+/// fallbacks.  Image bullets (`bullet.image_url is Some`) need no
+/// text metrics; the metrics inheritance is a no-op for them but
+/// safe.
+fn resolve_bullet_inheritance(
+  bullet : BulletConfig,
+  spans : Array[LayoutSpan],
+) -> BulletConfig {
+  // Pick the first span that contributes glyphs — line breaks
+  // (`is_break == true`) carry no font metrics worth inheriting.
+  let mut source : LayoutSpan? = None
+  for s in spans {
+    if not(s.is_break) && s.text.length() > 0 {
+      source = Some(s)
+      break
+    }
+  }
+  let src = match source {
+    None => return bullet
+    Some(s) => s
+  }
+  let font_size = if bullet.font_size <= 0.0 {
+    src.font_size
+  } else {
+    bullet.font_size
+  }
+  let font_family = if bullet.font_family.length() == 0 {
+    src.font_family
+  } else {
+    bullet.font_family
+  }
+  let color = if bullet.color.length() == 0 { src.color } else { bullet.color }
+  {
+    char: bullet.char,
+    font_size,
+    color,
+    font_family,
+    image_url: bullet.image_url,
+  }
+}
+
+///|
 /// Build a `LayoutSpan` from `<a:r>`.  Reads `<a:rPr>` for size,
 /// weight, style, decoration, and colour, plus the concatenated text
 /// from `<a:t>` child(ren).
@@ -3016,25 +3271,49 @@ fn build_run_span(
   } else {
     "normal"
   }
-  // §21.1.2.3.32 u — `none|sng|dbl|wavy|…` map to either no underline
-  // or CSS `underline`; §21.1.2.3.28 strike adds line-through; both
-  // can combine into "underline line-through" per the spec table.
+  // §21.1.2.3.32 u — ST_TextUnderlineType enumerates
+  //   none, words, sng, dbl, heavy, dotted, dottedHeavy, dash,
+  //   dashHeavy, dashLong, dashLongHeavy, dotDash, dotDashHeavy,
+  //   dotDotDash, dotDotDashHeavy, wavy, wavyHeavy, wavyDbl.
+  // All non-`none` values render an underline of some style.
+  //
+  // Why we DON'T emit `text-decoration: underline` for these:
+  // librsvg (and Cairo's PDF backend it drives) paint the
+  // underline through Pango at the FONT's metric position
+  // (post.underlinePosition + underlineThickness). For
+  // Liberation Sans (our PPTX sans-serif substitute) that puts
+  // the underline ~1.5 px BELOW the baseline at 24-32 px font
+  // sizes — but LibreOffice's PDF export of the same content
+  // places it ~4-6 px below the baseline (descent + ~1pt
+  // clearance) with a slightly thinner stroke. The mismatch
+  // showed up as 0.06-0.07 RMSE on `text-underline-styles` and
+  // `text-bold-italic-underline` because the rsvg-drawn
+  // underline sat 2-3 px above LO's and was 1-2 px thicker.
+  //
+  // We surface the raw `u` value in `underline_style` and let
+  // `build_underline_overlay` paint EVERY underline variant
+  // (including `sng`) as an explicit `<line>` overlay at the
+  // LO-matched position / thickness. The legacy
+  // `text-decoration: underline` short-hand is dropped from
+  // the `<text>` element so rsvg does not draw its own line
+  // on top.
+  //
+  // §21.1.2.3.28 strike still uses CSS `line-through` —
+  // librsvg paints it through the same Pango path but at a
+  // mid-glyph height that matches LO's strikethrough closely
+  // (no observable RMSE drift), so the explicit-overlay
+  // treatment is reserved for underline.
+  let underline_style_raw : String? = match r_pr_attr("u") {
+    Some(v) => if v != "none" { Some(v) } else { None }
+    None => None
+  }
   let text_decoration : String? = {
-    let mut underline = false
     let mut strike = false
-    match r_pr_attr("u") {
-      Some(v) => if v != "none" { underline = true }
-      None => ()
-    }
     match r_pr_attr("strike") {
       Some(v) => if v != "noStrike" { strike = true }
       None => ()
     }
-    if underline && strike {
-      Some("underline line-through")
-    } else if underline {
-      Some("underline")
-    } else if strike {
+    if strike {
       Some("line-through")
     } else {
       None
@@ -3179,16 +3458,20 @@ fn build_run_span(
     text: text_buf.to_string(),
     font_size: font_size_pt,
     // §20.1.4.1.18 / §21.1.2.3.10 — when no typeface is reachable
-    // we fall back to the SVG/CSS generic `serif` family (spec-
-    // neutral) matching the WML viewer's convention. The previous
-    // "Calibri" hardcode embedded a Microsoft-specific default
-    // not mandated by ECMA-376.
-    font_family: resolve_typeface_element(
-      typeface_element("latin"), ctx,
-    ).unwrap_or("serif"),
-    font_family_east_asian: resolve_typeface_element(typeface_element("ea"), ctx),
+    // we fall back to the CSS generic `sans-serif` family: a slide
+    // with no explicit typeface inherits the application/theme
+    // default, which is a sans-serif in every real OOXML consumer
+    // (see `presentation_default_typeface`).
+    font_family: resolve_typeface_element(typeface_element("latin"), ctx).unwrap_or(
+      presentation_default_typeface(),
+    ),
+    font_family_east_asian: resolve_typeface_element(
+      typeface_element("ea"),
+      ctx,
+    ),
     font_family_complex_script: resolve_typeface_element(
-      typeface_element("cs"), ctx,
+      typeface_element("cs"),
+      ctx,
     ),
     font_family_symbol: resolve_typeface_element(typeface_element("sym"), ctx),
     font_weight,
@@ -3211,6 +3494,7 @@ fn build_run_span(
     text_fill: None,
     kerning,
     underline_color: None,
+    underline_style: underline_style_raw,
   }
 }
 
@@ -3246,10 +3530,10 @@ fn resolve_run_typeface(
   //   "latin" → ctx.minor_font["lt"]
   //   "ea"    → ctx.minor_font["ea"]
   //   "cs"    → ctx.minor_font["cs"]
-  //   "sym"   → no scheme mapping; use SVG generic `serif`
+  //   "sym"   → no scheme mapping; use SVG generic `sans-serif`
   // When the scheme map is empty (no theme part) we keep the
-  // SVG-neutral `serif` fallback — every consumer's CSS knows
-  // how to render that generic family.
+  // SVG-neutral `sans-serif` fallback (see `presentation_default_
+  // typeface` for why sans-serif, not serif).
   match resolve_optional_typeface(r_pr, local_name, ctx) {
     Some(t) => t
     None => {
@@ -3258,7 +3542,7 @@ fn resolve_run_typeface(
         "ea" => "ea"
         "cs" => "cs"
         // `sym` and any other face kind have no fontScheme
-        // counterpart per §20.1.4.1.14; fall back to serif.
+        // counterpart per §20.1.4.1.14; fall back to the default.
         _ => ""
       }
       if face_kind != "" {
@@ -3267,9 +3551,50 @@ fn resolve_run_typeface(
           None => ()
         }
       }
-      "serif"
+      presentation_default_typeface()
     }
   }
+}
+
+///|
+/// The fallback typeface when neither the run properties nor the
+/// theme `<a:fontScheme>` supply one.
+///
+/// We name the concrete font LibreOffice actually rasterises for
+/// PowerPoint files — **Liberation Sans** — rather than the CSS
+/// generic `sans-serif`. Background:
+///
+///   * A PML slide with no `<a:latin>` run-property and no resolved
+///     theme typeface inherits the Office Theme minor font, which is
+///     Calibri in the canonical "Office Theme" preset.
+///   * When LO opens that file and exports to PDF it substitutes
+///     Calibri for one of two faces depending on the format:
+///       - .docx files → `BAAAAA+Carlito`           (verified by
+///                                                   `pdffonts`)
+///       - .pptx files → `BAAAAA+LiberationSans`    (LO's PowerPoint
+///                                                   default-body
+///                                                   path bypasses the
+///                                                   Carlito alias and
+///                                                   selects the
+///                                                   Helvetica clone)
+///   * The width estimator in `@glyph` chooses metrics by font-family
+///     name. If we hand it the generic `sans-serif`, we hit the
+///     Carlito table in `sans_serif_metrics` — which matches the
+///     .docx rasteriser but is 8-15 % NARROWER than what LO embeds
+///     for our .pptx fixtures, breaking centred / right-aligned
+///     wraps by ~0.07 RMSE per fixture (`pml-shape-text-wrap`,
+///     `shape-comp-title-slide`, etc.).
+///   * Naming the actual rasterised face routes both the width
+///     estimator and the rsvg fontconfig pass through Liberation
+///     Sans, keeping the line breaker, the SVG glyph placement, and
+///     the reference rasteriser on the same hmtx table.
+///
+/// The DOCX viewer keeps its own `DEFAULT_FONT_FAMILY = "sans-serif"`
+/// because LO substitutes Calibri → Carlito for that format; the two
+/// viewers DELIBERATELY disagree to mirror the per-format font
+/// matching LO performs.
+fn presentation_default_typeface() -> String {
+  "Liberation Sans"
 }
 
 ///|
@@ -3325,13 +3650,13 @@ fn resolve_optional_typeface(
 
 ///|
 /// Construct an `<a:br/>` span — text empty, `is_break: true`.
-/// §20.1.4.1.18 — `serif` is the spec-neutral CSS generic family
-/// fallback (matches `resolve_run_typeface`).
+/// §20.1.4.1.18 — the break span carries no glyphs, so the family is
+/// cosmetic; use the same default as a real run for consistency.
 fn make_break_span() -> LayoutSpan {
   {
     text: "",
     font_size: default_font_size_pt,
-    font_family: "serif",
+    font_family: presentation_default_typeface(),
     font_family_east_asian: None,
     font_family_complex_script: None,
     font_family_symbol: None,
@@ -3358,7 +3683,285 @@ fn make_break_span() -> LayoutSpan {
     text_fill: None,
     kerning: None,
     underline_color: None,
+    underline_style: None,
   }
+}
+
+///|
+/// §21.1.2.3.32 u — paint EVERY ST_TextUnderlineType variant as an
+/// explicit `<line>` / `<path>` overlay so the visual treatment
+/// matches LibreOffice's PDF reference instead of relying on
+/// librsvg's `text-decoration: underline` shorthand.
+///
+/// Why every variant is overlaid (including the simple `sng` case):
+/// librsvg renders `text-decoration: underline` at the font's
+/// `post.underlinePosition` (≈1.5 px below baseline for Liberation
+/// Sans at 24-32 px sizes) with the font's `underlineThickness`
+/// (≈1-2 px). LibreOffice's PDF export instead places the line at
+/// ~`descent * 0.7` below the baseline (≈4-6 px) with a thinner
+/// stroke. The mismatch produced 0.06-0.07 RMSE on
+/// `text-underline-styles` and `text-bold-italic-underline` because
+/// the rsvg-drawn line sat 2-3 px ABOVE the LO reference and was
+/// 1-2 px THICKER. Drawing the underline ourselves removes the
+/// rsvg dependency and lets us match LO's geometry directly.
+///
+/// Returned shapes per variant:
+///   • `sng` / `words` / `heavy` / `dotted*` / `dash*` →
+///     a single solid `<line>` (the dash / dotted variants
+///     degrade gracefully to solid; that is what LO does too
+///     when its font lacks the variant glyph, verified against
+///     the PDF reference).
+///   • `dbl`  → two solid `<line>` elements separated by one
+///     stroke-width.
+///   • `wavy` / `wavyHeavy` → sinusoidal `<path>` traced across
+///     the span's width.
+///   • `wavyDbl` → two wavy paths separated by one stroke-width.
+///
+/// Position is `baseline_y + font_size_px * UNDERLINE_OFFSET_RATIO`
+/// (≈ 0.155em); the constant is calibrated against LO's `Sng`
+/// underline placement at 24pt body and matches the
+/// `text-bold-italic-underline` 32pt body line within 1 px.
+///
+/// Thickness is `font_size_px * UNDERLINE_STROKE_RATIO` (≈ 0.06em),
+/// doubled for the `*Heavy` variants. Liberation Sans's own
+/// `post.underlineThickness` (≈ 0.024 em) is much thinner than
+/// LO actually draws, so we use the empirical LO value instead.
+///
+/// All overlays use the span's resolved underline colour (or its
+/// text colour) so the visual treatment carries the same fill as
+/// the glyphs.
+fn build_underline_overlay(
+  style : String,
+  x_start : Double,
+  baseline_y : Double,
+  width : Double,
+  font_size_px : Double,
+  span : LayoutSpan,
+) -> Array[@xml.Node] {
+  // §21.1.2.3.33 uLn — custom underline colour overrides text fill.
+  let stroke_color = match span.underline_color {
+    Some(c) => c
+    None => span.color
+  }
+  // Stroke width: a "heavy" variant doubles the line thickness. The
+  // baseline thickness is 0.0625 em which matches LibreOffice's
+  // default underline weight for sans-serif body faces (verified
+  // against LO Liberation Sans @ 24-32pt rasterised at our snapshot
+  // DPI: 2 px line at 32 px font ≈ 0.0625 em).
+  let is_heavy = style == "heavy" ||
+    style == "dottedHeavy" ||
+    style == "dashHeavy" ||
+    style == "dashLongHeavy" ||
+    style == "dotDashHeavy" ||
+    style == "dotDotDashHeavy" ||
+    style == "wavyHeavy"
+  let stroke_w = font_size_px * (if is_heavy { 0.125 } else { 0.0625 })
+  // Underline sits ~0.14em below the baseline; double sits +0.085em
+  // further beneath. The 0.14 ratio is the empirical centre of two
+  // LibreOffice data points measured at our snapshot DPI:
+  //
+  //   • `text-underline-styles` 24pt body (font_size_px = 32):
+  //     ref underline pixels at y=87–88 (centre 87.5), baseline at
+  //     y=83 → offset 4.5 px → 0.141 em.
+  //   • `text-bold-italic-underline` 32pt title (font_size_px =
+  //     42.67): ref underline pixels at y=243–244 (centre 243.5),
+  //     baseline at y=237 → offset 6.5 px → 0.152 em.
+  //
+  // The 0.14 midpoint lands within 0.5 px of each reference; a
+  // single linear-in-em formula cannot match both exactly because
+  // LO's underline position depends on `post.underlinePosition`,
+  // which is a per-face FUnit constant Liberation Sans tabulates
+  // as -239 (regular) and -150 (bold) — i.e. a per-style shift
+  // that an em-uniform model cannot capture. The chosen value is
+  // the best single-constant fit and is what closes the
+  // `text-underline-styles` (0.060 → < 0.05) and
+  // `text-bold-italic-underline` (0.069 → < 0.05) RMSE gaps
+  // simultaneously.
+  let base_offset = font_size_px * 0.14
+  let dbl_offset = base_offset + stroke_w + font_size_px * 0.04
+  let x_end = x_start + width
+  match style {
+    "dbl" =>
+      [
+        build_underline_line(
+          x_start,
+          x_end,
+          baseline_y + base_offset,
+          stroke_w,
+          stroke_color,
+        ),
+        build_underline_line(
+          x_start,
+          x_end,
+          baseline_y + dbl_offset,
+          stroke_w,
+          stroke_color,
+        ),
+      ]
+    "wavyDbl" =>
+      [
+        build_wavy_underline_path(
+          x_start,
+          x_end,
+          baseline_y + base_offset,
+          font_size_px,
+          stroke_w,
+          stroke_color,
+        ),
+        build_wavy_underline_path(
+          x_start,
+          x_end,
+          baseline_y + dbl_offset,
+          font_size_px,
+          stroke_w,
+          stroke_color,
+        ),
+      ]
+    "wavy" | "wavyHeavy" =>
+      [
+        build_wavy_underline_path(
+          x_start,
+          x_end,
+          baseline_y + base_offset,
+          font_size_px,
+          stroke_w,
+          stroke_color,
+        ),
+      ]
+    // Every other non-`none` value (sng, words, heavy, dotted*,
+    // dash*, dotDash*, dotDotDash*) renders as a single solid line.
+    // librsvg cannot vary the line style through SVG attributes
+    // alone (no `stroke-dasharray` support on `text-decoration`),
+    // so the dash / dotted variants degrade to solid — the same
+    // fallback LO uses when its font has no dedicated variant
+    // glyph.
+    _ =>
+      [
+        build_underline_line(
+          x_start,
+          x_end,
+          baseline_y + base_offset,
+          stroke_w,
+          stroke_color,
+        ),
+      ]
+  }
+}
+
+///|
+/// §21.1.2.3.32 — plain horizontal underline line at the given y.
+fn build_underline_line(
+  x1 : Double,
+  x2 : Double,
+  y : Double,
+  stroke_width : Double,
+  stroke_color : String,
+) -> @xml.Node {
+  @markup.elem_ns(
+    "line",
+    @markup.svg_ns,
+    [
+      @markup.attr("x1", format_double(x1)),
+      @markup.attr("y1", format_double(y)),
+      @markup.attr("x2", format_double(x2)),
+      @markup.attr("y2", format_double(y)),
+      @markup.attr("stroke", stroke_color),
+      @markup.attr("stroke-width", format_double(stroke_width)),
+    ],
+    [],
+  )
+}
+
+///|
+/// §21.1.2.3.32 u="wavy" — emit a quadratic-Bezier sinusoid spanning
+/// `[x1, x2]` at the given center y.  Each wavelength is ~0.36em
+/// wide and the amplitude is ~0.06em, matching LibreOffice's wavy
+/// underline drawing at 24pt body.
+///
+/// The path uses alternating `q` segments — each half-wavelength is
+/// a quadratic Bezier whose control point pulls the curve to peak /
+/// trough.  This is what `text-decoration-style: wavy` renders to
+/// in browsers that support it; we draw it explicitly so librsvg
+/// (which doesn't) still gets the right pixels.
+fn build_wavy_underline_path(
+  x1 : Double,
+  x2 : Double,
+  center_y : Double,
+  font_size_px : Double,
+  stroke_width : Double,
+  stroke_color : String,
+) -> @xml.Node {
+  let half_wavelength = font_size_px * 0.18
+  let amplitude = font_size_px * 0.06
+  let buf = StringBuilder::new()
+  buf.write_string("M ")
+  buf.write_string(format_double(x1))
+  buf.write_string(" ")
+  buf.write_string(format_double(center_y))
+  let mut x = x1
+  let mut up = true
+  while x < x2 {
+    let next_x = if x + half_wavelength > x2 { x2 } else { x + half_wavelength }
+    let dx = next_x - x
+    let cx = x + dx * 0.5
+    let cy = if up { center_y - amplitude } else { center_y + amplitude }
+    buf.write_string(" Q ")
+    buf.write_string(format_double(cx))
+    buf.write_string(" ")
+    buf.write_string(format_double(cy))
+    buf.write_string(" ")
+    buf.write_string(format_double(next_x))
+    buf.write_string(" ")
+    buf.write_string(format_double(center_y))
+    x = next_x
+    up = not(up)
+  }
+  @markup.elem_ns(
+    "path",
+    @markup.svg_ns,
+    [
+      @markup.attr("d", buf.to_string()),
+      @markup.attr("fill", "none"),
+      @markup.attr("stroke", stroke_color),
+      @markup.attr("stroke-width", format_double(stroke_width)),
+    ],
+    [],
+  )
+}
+
+///|
+/// §21.1.2.4.4-8 — build the `<text>` element that paints the bullet
+/// glyph for one paragraph.  The bullet sits one bullet-width to the
+/// left of the first line's text origin (`line.x`), on the same
+/// baseline (`line.y`).  The font-family / font-size / fill are
+/// resolved by `resolve_bullet_inheritance` upstream, so all four
+/// metrics are concrete by the time we get here.
+///
+/// Bullets are rendered with the same baseline as the first text
+/// run.  PowerPoint and LibreOffice both paint the bullet on the
+/// run's baseline (not its own typographic baseline) — verified
+/// against the LO PDF reference for `text-bullet-char` and
+/// `text-bullet-auto-arabic` fixtures.
+fn build_bullet_text_node(
+  bullet : BulletConfig,
+  bullet_x : Double,
+  baseline_y : Double,
+) -> @xml.Node {
+  let fs_px = bullet.font_size * @glyph.pt_to_px
+  let attrs : Array[@xml.Attribute] = [
+    @markup.attr("x", format_double(bullet_x)),
+    @markup.attr("y", format_double(baseline_y)),
+    @markup.attr("font-size", format_double(fs_px) + "px"),
+  ]
+  if bullet.font_family.length() > 0 {
+    attrs.push(@markup.attr("font-family", bullet.font_family))
+  }
+  if bullet.color.length() > 0 {
+    attrs.push(@markup.attr("fill", bullet.color))
+  } else {
+    attrs.push(@markup.attr("fill", "#000000"))
+  }
+  @markup.elem_ns("text", @markup.svg_ns, attrs, [@markup.text(bullet.char)])
 }
 
 ///|
@@ -3372,6 +3975,29 @@ fn render_layout_result_svg(
 ) -> Array[@xml.Node] {
   let nodes : Array[@xml.Node] = []
   for para in result.paragraphs {
+    // §21.1.2.4.4-8 — emit the bullet glyph on the first line of
+    // every paragraph that carries a `<a:buChar>` / `<a:buAutoNum>`
+    // bullet.  Bullets sit in the hanging-indent slot to the left of
+    // the text origin: `bullet_x = line.x - bullet_width` when the
+    // text snapped to `margin_left`, and `bullet_x = line.x -
+    // bullet_width` regardless (see `calc_line_x` for the snap).
+    // Image bullets (`<a:buBlip>`) are skipped — image rendering
+    // through the rels graph is not wired through this path yet.
+    if para.lines.length() > 0 {
+      match para.bullet {
+        None => ()
+        Some(b) =>
+          if b.image_url is None && b.char.length() > 0 {
+            let first_line = para.lines[0]
+            let bullet_node = build_bullet_text_node(
+              b,
+              para.bullet_x,
+              first_line.y,
+            )
+            nodes.push(bullet_node)
+          }
+      }
+    }
     for line in para.lines {
       let mut cursor = line.x
       for span in line.spans {
@@ -3400,7 +4026,9 @@ fn render_layout_result_svg(
           None => ()
         }
         let adjusted_y = adjust_vertical_align(
-          line.y, fs_px, span.span.baseline_pct,
+          line.y,
+          fs_px,
+          span.span.baseline_pct,
         )
         // Build the <text> element with all run attributes.
         let text_attrs : Array[@xml.Attribute] = [
@@ -3474,6 +4102,21 @@ fn render_layout_result_svg(
             ),
           )
         }
+        // §21.1.2.2.1 ST_TextAlignType `just` — surface the per-space
+        // stretch as a `word-spacing` attribute for spec-aware
+        // consumers.  The visible justification comes from the per-
+        // word `<tspan x="…">` placement built below; librsvg /
+        // rsvg-convert (the snapshot pipeline rasteriser) ignores
+        // both `word-spacing` and `textLength`, so explicit per-word
+        // anchors are the only path that survives the raster.
+        if line.word_spacing_extra > 0.0 {
+          text_attrs.push(
+            @markup.attr(
+              "word-spacing",
+              format_double(line.word_spacing_extra) + "px",
+            ),
+          )
+        }
         // §21.1.2.3.9 kern — engage kerning above the threshold.
         match span.span.kerning {
           Some(threshold) =>
@@ -3494,11 +4137,22 @@ fn render_layout_result_svg(
           Some(b) => text_attrs.push(@markup.attr("id", b))
           None => ()
         }
+        // §21.1.2.2.1 — when the line is justified, split the painted
+        // text into per-word `<tspan x="…">` children so the raster
+        // honours the per-space stretch even when it ignores
+        // `word-spacing` (librsvg 2.61, used by the snapshot pipeline,
+        // does). Non-justified output stays as a single text node so
+        // we match the legacy SVG byte-for-byte outside the justify
+        // path.
+        let painted_text = apply_text_transform(span.span)
+        let text_children = build_justified_text_children(
+          painted_text,
+          line.word_spacing_extra,
+          cursor,
+          span.span,
+        )
         let text_node = @markup.elem_ns(
-          "text",
-          @markup.svg_ns,
-          text_attrs,
-          [@markup.text(apply_text_transform(span.span))],
+          "text", @markup.svg_ns, text_attrs, text_children,
         )
         // §21.1.2.3.7 — link wrapping: wrap the `<text>` in a
         // hyperlink anchor.  The `link_id` carries the raw r:id from
@@ -3526,11 +4180,168 @@ fn render_layout_result_svg(
           }
           None => nodes.push(text_node)
         }
-        cursor = cursor + span.width + span.dx
+        // §21.1.2.3.32 u — paint EVERY underline variant explicitly
+        // as a `<line>` / `<path>` overlay (see
+        // `build_underline_overlay` for the position / thickness
+        // calibration). We no longer emit `text-decoration:
+        // underline` on the `<text>` element because librsvg drew
+        // the line through Liberation Sans's metric position
+        // (≈1.5 px below baseline), 2-3 px higher than
+        // LibreOffice's PDF reference places it. Owning the full
+        // underline lets us match LO's geometry directly.
+        match span.span.underline_style {
+          Some(style) => {
+            let extras = build_underline_overlay(
+              style,
+              cursor,
+              adjusted_y,
+              span.width,
+              fs_px,
+              span.span,
+            )
+            for n in extras {
+              nodes.push(n)
+            }
+          }
+          None => ()
+        }
+        // §21.1.2.2.1 ST_TextAlignType `just` — advance the cursor by
+        // the cumulative stretch this span contributes (every U+0020
+        // inside its text adds `line.word_spacing_extra`). Without
+        // this, the next span would start where the unstretched
+        // glyphs end, leaving the painted `word-spacing` extra glued
+        // onto the trailing edge of this span and skewing the
+        // justified positions. `line.word_spacing_extra` is 0.0 for
+        // non-justified lines so this is a no-op outside the
+        // justify path.
+        let span_spaces = if line.word_spacing_extra > 0.0 {
+          count_span_spaces_text(span.span.text)
+        } else {
+          0
+        }
+        cursor = cursor +
+          span.width +
+          span.dx +
+          line.word_spacing_extra * span_spaces.to_double()
       }
     }
   }
   nodes
+}
+
+///|
+/// §21.1.2.2.1 ST_TextAlignType `just` — count U+0020 spaces inside
+/// one span's text. The renderer multiplies this by the line's
+/// `word_spacing_extra` to mirror the SVG `word-spacing` advance the
+/// browser will paint, so the cursor lands on the same x position
+/// the painted glyphs end at.
+fn count_span_spaces_text(text : String) -> Int {
+  let mut n = 0
+  for c in text {
+    if c == ' ' {
+      n = n + 1
+    }
+  }
+  n
+}
+
+///|
+/// §21.1.2.2.1 ST_TextAlignType `just` — build the child nodes for a
+/// justified span's `<text>` element. When the line carries no
+/// per-space stretch (`extra == 0.0`) or the text has no spaces, the
+/// result is the single text node mirroring the legacy emitter.
+/// Otherwise the text is split on every U+0020 and each non-empty
+/// word becomes a `<tspan x="…">` with the absolute x position the
+/// justified layout demands.
+///
+/// We rely on `@glyph.measure_text_width` (no real measurer is
+/// available here — the renderer calls this from emit time, not
+/// layout time) so the per-word widths match the same statistical
+/// fallback `measure_span` uses when no font file is supplied.
+/// Real-font measurement isn't necessary at this stage because the
+/// PML layout pass already chose the wrap points using the same
+/// measurer; the per-word advance here only feeds the next tspan's
+/// anchor, and the cumulative `natural_advance` doubles back to the
+/// span's already-measured `width` at the end (modulo the spaces we
+/// elide).
+fn build_justified_text_children(
+  painted_text : String,
+  extra : Double,
+  _cursor : Double,
+  span : LayoutSpan,
+) -> Array[@xml.Node] {
+  if extra <= 0.0 {
+    return [@markup.text(painted_text)]
+  }
+  let n_spaces = count_span_spaces_text(painted_text)
+  if n_spaces == 0 {
+    return [@markup.text(painted_text)]
+  }
+  let chars : Array[Char] = []
+  for c in painted_text {
+    chars.push(c)
+  }
+  let n = chars.length()
+  let result : Array[@xml.Node] = []
+  let mut i = 0
+  let mut natural_advance = 0.0
+  let mut spaces_so_far = 0
+  while i < n {
+    let mut leading = 0
+    while i < n && chars[i] == ' ' {
+      leading = leading + 1
+      i = i + 1
+    }
+    spaces_so_far = spaces_so_far + leading
+    if i >= n {
+      break
+    }
+    let word_start = i
+    while i < n && chars[i] != ' ' {
+      i = i + 1
+    }
+    let word_buf = StringBuilder::new()
+    for j in word_start..<i {
+      word_buf.write_char(chars[j])
+    }
+    let word_text = word_buf.to_string()
+    let leading_space_w = if leading > 0 {
+      let sp_buf = StringBuilder::new()
+      for _ in 0..<leading {
+        sp_buf.write_char(' ')
+      }
+      @glyph.measure_text_width(
+        sp_buf.to_string(),
+        font_size_pt=span.font_size,
+        letter_spacing_px=span.letter_spacing,
+        font_family=Some(span.font_family),
+        font_weight=span.font_weight,
+      )
+    } else {
+      0.0
+    }
+    let word_w = @glyph.measure_text_width(
+      word_text,
+      font_size_pt=span.font_size,
+      letter_spacing_px=span.letter_spacing,
+      font_family=Some(span.font_family),
+      font_weight=span.font_weight,
+    )
+    let x_pos = _cursor +
+      natural_advance +
+      leading_space_w +
+      spaces_so_far.to_double() * extra
+    result.push(
+      @markup.elem_ns(
+        "tspan",
+        @markup.svg_ns,
+        [@markup.attr("x", format_double(x_pos))],
+        [@markup.text(word_text)],
+      ),
+    )
+    natural_advance = natural_advance + leading_space_w + word_w
+  }
+  result
 }
 
 ///|
@@ -3620,13 +4431,9 @@ fn build_text_gradient_def(
       @markup.attr("stop-color", stop.color),
     ]
     if stop.alpha < 1.0 {
-      stop_attrs.push(
-        @markup.attr("stop-opacity", format_double(stop.alpha)),
-      )
+      stop_attrs.push(@markup.attr("stop-opacity", format_double(stop.alpha)))
     }
-    stop_nodes.push(
-      @markup.elem_ns("stop", @markup.svg_ns, stop_attrs, []),
-    )
+    stop_nodes.push(@markup.elem_ns("stop", @markup.svg_ns, stop_attrs, []))
   }
   if is_radial {
     @markup.elem_ns(
@@ -3664,7 +4471,9 @@ fn build_text_gradient_def(
 /// SVG's `x1,y1,x2,y2` describe the gradient line in user-space, so we
 /// emit percentages on a unit square. Mirrors web-pptx
 /// `ooxmlAngleToSvgLinearGradient` in gradient-utils.ts.
-fn ooxml_angle_to_svg_linear(angle : Double) -> (Double, Double, Double, Double) {
+fn ooxml_angle_to_svg_linear(
+  angle : Double,
+) -> (Double, Double, Double, Double) {
   let degrees = angle / 60000.0
   let radians = degrees * 3.14159265358979 / 180.0
   let cos_a = @math.cos(radians)
@@ -3840,7 +4649,8 @@ fn render_picture_svg(
 ) -> Array[@xml.Node] {
   let _ = ctx
   let sp_pr = first_child_named(pic, "spPr")
-  let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match sp_pr {
+  let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match
+    sp_pr {
     None => ([], 0.0, 0.0)
     Some(pr) =>
       match extract_xfrm(pr) {
@@ -4054,6 +4864,7 @@ fn render_group_svg(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
+  part_resolver : (String) -> @xml.Element?,
   chain : @ph_resolver.SlideChain?,
 ) -> Array[@xml.Node] {
   let grp_sp_pr = first_child_named(grp, "grpSpPr")
@@ -4085,8 +4896,14 @@ fn render_group_svg(
           local == "cxnSp" ||
           local == "graphicFrame" {
           let resolved = resolve_shape_with_chain(e, chain)
-          for n in render_shape_svg(
-              resolved, ctx, defs, image_resolver, chain~,
+          for
+            n in render_shape_svg(
+              resolved,
+              ctx,
+              defs,
+              image_resolver,
+              part_resolver,
+              chain~,
             ) {
             g_children.push(n)
           }
@@ -4152,7 +4969,8 @@ fn render_connector_svg(
 ) -> Array[@xml.Node] {
   let _ = image_resolver
   let sp_pr = first_child_named(cxn, "spPr")
-  let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match sp_pr {
+  let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match
+    sp_pr {
     None => ([], 0.0, 0.0)
     Some(pr) =>
       match extract_xfrm(pr) {
@@ -4197,9 +5015,8 @@ fn render_connector_svg(
                         // colour is substituted for every
                         // `<a:schemeClr val="phClr"/>` inside
                         // the template.
-                        let ctx2 = match resolve_ph_clr_from_bg_ref(
-                            ln_ref, ctx,
-                          ) {
+                        let ctx2 = match
+                          resolve_ph_clr_from_bg_ref(ln_ref, ctx) {
                           Some(hex) => with_ph_clr(ctx, hex)
                           None => ctx
                         }
@@ -4285,14 +5102,10 @@ fn connector_path_data(sp_pr : @xml.Element?, w : Double, h : Double) -> String 
     Some(pg) =>
       match attr_value(pg, "prst") {
         Some("line") => diagonal
-        Some("bentConnector2") =>
-          render_preset_geometry(pg, w, h).or(diagonal)
-        Some("bentConnector3") =>
-          render_preset_geometry(pg, w, h).or(diagonal)
-        Some("bentConnector4") =>
-          render_preset_geometry(pg, w, h).or(diagonal)
-        Some("bentConnector5") =>
-          render_preset_geometry(pg, w, h).or(diagonal)
+        Some("bentConnector2") => render_preset_geometry(pg, w, h).or(diagonal)
+        Some("bentConnector3") => render_preset_geometry(pg, w, h).or(diagonal)
+        Some("bentConnector4") => render_preset_geometry(pg, w, h).or(diagonal)
+        Some("bentConnector5") => render_preset_geometry(pg, w, h).or(diagonal)
         Some("curvedConnector2") =>
           render_preset_geometry(pg, w, h).or(diagonal)
         Some("curvedConnector3") =>
@@ -4327,11 +5140,13 @@ fn render_graphic_frame_svg(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
+  part_resolver : (String) -> @xml.Element?,
 ) -> Array[@xml.Node] {
   // §19.3.1.21: `<p:graphicFrame>` uses `<p:xfrm>` (PresentationML
   // namespace) for transform, not `<a:xfrm>` inside `<p:spPr>`.
   let xfrm = first_child_named(frame, "xfrm")
-  let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match xfrm {
+  let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match
+    xfrm {
     None => ([], 0.0, 0.0)
     Some(_) =>
       match extract_xfrm(frame) {
@@ -4351,6 +5166,27 @@ fn render_graphic_frame_svg(
   let ole_image_nodes = render_graphic_frame_ole_image(
     frame, w, h, image_resolver,
   )
+  // §21.4 DrawingML SmartArt — detect a `<dgm:relIds>` payload and
+  // resolve its four part references through `part_resolver`, then
+  // run the layout engine + SVG emitter.  When any of the four
+  // parts cannot be resolved, the function returns `[]` and we
+  // fall back to the placeholder branch below.
+  let diagram_nodes : Array[@xml.Node] = if is_diagram_graphic_frame(frame) {
+    render_diagram_svg(frame, w, h, part_resolver)
+  } else {
+    []
+  }
+  // §21.2 DrawingML chart — detect a `<c:chart r:id="…"/>` payload and
+  // resolve the referenced chart part through `part_resolver`.  The
+  // chart renderer walks the raw element tree (schema-tolerant) and
+  // emits axes + series geometry.  When the chart part cannot be
+  // resolved (no part_resolver wired, missing rels), we fall back to
+  // the metadata placeholder so consumers still see the bounding box.
+  let chart_nodes : Array[@xml.Node] = if is_chart_graphic_frame(frame) {
+    render_chart_graphic_frame(frame, w, h, ctx, defs, part_resolver)
+  } else {
+    []
+  }
   let g_attrs : Array[@xml.Attribute] = []
   for a in transform_attrs {
     g_attrs.push(a)
@@ -4362,6 +5198,10 @@ fn render_graphic_frame_svg(
     table_nodes
   } else if ole_image_nodes.length() > 0 {
     ole_image_nodes
+  } else if diagram_nodes.length() > 0 {
+    diagram_nodes
+  } else if chart_nodes.length() > 0 {
+    chart_nodes
   } else {
     // §19.3.1.21 — `<p:graphicFrame>` carries an `<a:graphic>`
     // payload whose `<a:graphicData @uri>` selects the sub-grammar
@@ -4561,7 +5401,6 @@ fn extract_pic_blip_image(
   image_resolver(rid)
 }
 
-
 // =============================================================================
 // Shared XML utilities
 // =============================================================================
@@ -4616,4 +5455,3 @@ fn text_content(element : @xml.Element) -> String {
   }
   out.to_string()
 }
-

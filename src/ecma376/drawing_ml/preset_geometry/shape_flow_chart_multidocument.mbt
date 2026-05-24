@@ -33,9 +33,7 @@ pub fn build_flow_chart_multidocument(
   let commands : Array[PathCommand] = [
     // Front document — body with the wavy bottom edge.
     MoveTo(sx(0), sy(20782)),
-    CurveTo(
-      sx(9298), sy(23542), sx(9298), sy(18022), sx(18595), sy(18022),
-    ),
+    CurveTo(sx(9298), sy(23542), sx(9298), sy(18022), sx(18595), sy(18022)),
     LineTo(sx(18595), sy(3675)),
     LineTo(sx(0), sy(3675)),
     ClosePath,
@@ -44,9 +42,7 @@ pub fn build_flow_chart_multidocument(
     LineTo(sx(1532), sy(1815)),
     LineTo(sx(20000), sy(1815)),
     LineTo(sx(20000), sy(16252)),
-    CurveTo(
-      sx(19298), sy(16252), sx(18595), sy(16352), sx(18595), sy(16352),
-    ),
+    CurveTo(sx(19298), sy(16252), sx(18595), sy(16352), sx(18595), sy(16352)),
     LineTo(sx(18595), sy(3675)),
     ClosePath,
     // Rear sheet — the topmost L-shaped strip.
@@ -54,9 +50,7 @@ pub fn build_flow_chart_multidocument(
     LineTo(sx(2972), sy(0)),
     LineTo(sx(21600), sy(0)),
     LineTo(sx(21600), sy(14392)),
-    CurveTo(
-      sx(20800), sy(14392), sx(20000), sy(14467), sx(20000), sy(14467),
-    ),
+    CurveTo(sx(20800), sy(14392), sx(20000), sy(14467), sx(20000), sy(14467)),
     LineTo(sx(20000), sy(1815)),
     ClosePath,
   ]

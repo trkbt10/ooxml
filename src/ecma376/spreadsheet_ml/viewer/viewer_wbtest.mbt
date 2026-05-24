@@ -64,10 +64,12 @@ test "SpreadsheetML SVG renderer cell ref round-trip" {
 
 ///|
 test "SpreadsheetML SVG renderer column / row pixel conversions" {
-  // §18.3.1.13 — Truncate(((256*8.43 + Trunc(128/7))/256)*7)
-  //              = Truncate(((2158.08 + 18)/256)*7)
-  //              = Truncate(8.500*7) = Truncate(59.501) = 59
-  inspect(column_width_to_pixels(8.43), content="59")
+  // §18.3.1.13 — Truncate(((256*8.43 + Trunc(128/MDW))/256)*MDW)
+  // with MDW = 7.7 (Liberation Sans "0" advance @ 11pt 96dpi,
+  // documented in `column_max_digit_width_px`):
+  //              = Truncate(((2158.08 + 16)/256)*7.7)
+  //              = Truncate(8.4925*7.7) = Truncate(65.39) = 65
+  inspect(column_width_to_pixels(8.43), content="65")
   // 15 pt * 96/72 = 20 → round → 20.
   inspect(row_height_to_pixels(15.0), content="20")
   // 14.4 pt * 96/72 = 19.2 → round → 19.
@@ -137,16 +139,45 @@ test "SpreadsheetML SVG renderer renders 2x2 sheet with text cells" {
     ],
   })
   let result = render_svg(worksheet)
-  // §18.3.1.13 spec formula → default col width 8.43 char = 59 px.
-  // Two columns × 59 = 118 px. Two rows × 20 px (15pt × 96/72) = 40.
-  inspect(result.width, content="118")
-  inspect(result.height, content="40")
+  // §18.3.1.13 spec formula → default col width 8.43 char = 65 px
+  // (MDW = 7.7, see `column_max_digit_width_px`).
+  // Two columns × 65 = 130 px body. Two rows × 17 px (12.75pt × 96/72
+  // rounded — see `default_render_options` for why we use 12.75 pt
+  // instead of the spec's 15 pt) = 34 px body.
+  // §18.3.1.62 — `result.width` / `result.height` are the page
+  // size, i.e. body + print margins.  This worksheet declares no
+  // `<pageMargins>`, so the renderer falls back to LibreOffice's
+  // defaults (2.0 cm L/R, 2.5 cm T/B) so the SVG lines up with
+  // the LO PDF export used as the snapshot reference.
+  //   2.0 cm = 0.787" = 75.59055 px @ 96 DPI
+  //   2.5 cm = 0.984" = 94.48819 px @ 96 DPI
+  //   width  = 130 + 2*75.59055 ≈ 281.181
+  //   height =  34 + 2*94.48819 ≈ 222.976
+  inspect(
+    result.width,
+    content=(
+      #|281.1811023622047
+    ),
+  )
+  inspect(
+    result.height,
+    content=(
+      #|222.9763779527559
+    ),
+  )
   assert_true(result.svg.contains("<svg"))
   assert_true(result.svg.contains("data-ooxml=\"sml\""))
   assert_true(result.svg.contains("Hello"))
   assert_true(result.svg.contains("100"))
   assert_true(result.svg.contains("1.5"))
-  assert_true(result.svg.contains("class=\"grid-lines\""))
+  // Renderer is a *page* render: gridlines follow §18.3.1.70
+  // `<printOptions @gridLines>` (default false), not §18.3.1.87
+  // `<sheetView @showGridLines>` (default true).  This worksheet
+  // declares neither, so gridlines MUST be absent — matching
+  // LibreOffice's PDF export.  See `default_render_options` for
+  // the rationale.  Callers that want screen-style gridlines pass
+  // `show_grid_lines: true` or set `<printOptions @gridLines="1">`.
+  assert_false(result.svg.contains("class=\"grid-lines\""))
   assert_true(result.svg.contains("class=\"cell-text\""))
 }
 
@@ -279,8 +310,16 @@ test "SpreadsheetML SVG renderer honours merge cell layout" {
     ],
   })
   let result = render_svg(worksheet)
-  // §18.3.1.13 spec formula → 2 default columns × 59 px = 118 px.
-  inspect(result.width, content="118")
+  // §18.3.1.13 spec formula → 2 default columns × 65 px = 130 px
+  // body (MDW = 7.7, see `column_max_digit_width_px`), plus
+  // §18.3.1.62 LibreOffice-default 2.0 cm L/R print margins
+  // (75.59055 px each, 96 DPI) = 281.181 px page width.
+  inspect(
+    result.width,
+    content=(
+      #|281.1811023622047
+    ),
+  )
   // The cell-text group must include "1" exactly once: B1 is hidden by merge.
   assert_true(result.svg.contains(">1<"))
   // It must contain "2" for A2.
@@ -327,30 +366,37 @@ test "SpreadsheetML grid lines skip inside merged regions" {
       }),
     ],
   })
-  let result = render_svg(worksheet)
-  // §18.3.1.13 spec formula → default col width 8.43 char = 59 px.
-  // §18.3.1.81 default row height 15 pt × 96/72 = 20 px.
+  // This test exercises gridline behaviour, so force
+  // `show_grid_lines: true` — the page-render default is now
+  // `false` (see `default_render_options`) so without the override
+  // there would be no `<g class="grid-lines">` group to inspect.
+  let opts = { ..default_render_options(), show_grid_lines: true }
+  let result = render_svg(worksheet, options=opts)
+  // §18.3.1.13 spec formula → default col width 8.43 char = 65 px
+  // (MDW = 7.7, see `column_max_digit_width_px`).
+  // §18.3.1.81 default row height 12.75 pt × 96/72 = 17 px (see
+  // `default_render_options` for the LibreOffice-tuned default).
   // With 3 columns and 2 rows the boundary verticals sit at
-  // x=59 and x=118, and the horizontal mid-line at y=20.
-  // Inside the merged area (row 1, y=0..20) the two inner
+  // x=65 and x=130, and the horizontal mid-line at y=17.
+  // Inside the merged area (row 1, y=0..17) the two inner
   // verticals must NOT appear: their only emitted segments must
-  // start at y=20 and run to y=40. Outer frame is preserved.
+  // start at y=17 and run to y=34. Outer frame is preserved.
   assert_true(
-    !result.svg.contains("<line x1=\"59\" y1=\"0\" x2=\"59\" y2=\"20\""),
+    !result.svg.contains("<line x1=\"65\" y1=\"0\" x2=\"65\" y2=\"17\""),
   )
   assert_true(
-    !result.svg.contains("<line x1=\"118\" y1=\"0\" x2=\"118\" y2=\"20\""),
+    !result.svg.contains("<line x1=\"130\" y1=\"0\" x2=\"130\" y2=\"17\""),
   )
   assert_true(
-    result.svg.contains("<line x1=\"59\" y1=\"20\" x2=\"59\" y2=\"40\""),
+    result.svg.contains("<line x1=\"65\" y1=\"17\" x2=\"65\" y2=\"34\""),
   )
   assert_true(
-    result.svg.contains("<line x1=\"118\" y1=\"20\" x2=\"118\" y2=\"40\""),
+    result.svg.contains("<line x1=\"130\" y1=\"17\" x2=\"130\" y2=\"34\""),
   )
-  // Outer frame: 3 columns × 59 = 177 px total.
-  assert_true(result.svg.contains("<line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"40\""))
+  // Outer frame: 3 columns × 65 = 195 px total.
+  assert_true(result.svg.contains("<line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"34\""))
   assert_true(
-    result.svg.contains("<line x1=\"177\" y1=\"0\" x2=\"177\" y2=\"40\""),
+    result.svg.contains("<line x1=\"195\" y1=\"0\" x2=\"195\" y2=\"34\""),
   )
 }
 
@@ -1751,12 +1797,27 @@ test "SpreadsheetML SVG renderer parses col / row attributes" {
   })
   let result = render_svg(worksheet)
   // §18.3.1.13 spec formula —
-  //   Truncate(((256*20 + Trunc(128/7))/256)*7)
-  // = Truncate(((5120+18)/256)*7)
-  // = Truncate(20.07*7) = Truncate(140.49) = 140
-  inspect(result.width, content="140")
-  // 30 pt * 4/3 = 40.
-  inspect(result.height, content="40")
+  //   Truncate(((256*20 + Trunc(128/7.7))/256)*7.7)
+  // = Truncate(((5120+16)/256)*7.7)
+  // = Truncate(20.0625*7.7) = Truncate(154.48) = 154 px body width
+  // (MDW = 7.7, see `column_max_digit_width_px`).
+  // 30 pt * 4/3 = 40 px body height (explicit `ht`, not default).
+  // §18.3.1.62 — page size = body + LibreOffice-default print
+  // margins (2.0 cm = 75.59055 px L/R, 2.5 cm = 94.48819 px T/B).
+  //   width  = 154 + 2*75.59055 ≈ 305.181
+  //   height =  40 + 2*94.48819 ≈ 228.976
+  inspect(
+    result.width,
+    content=(
+      #|305.1811023622047
+    ),
+  )
+  inspect(
+    result.height,
+    content=(
+      #|228.9763779527559
+    ),
+  )
 }
 
 ///|
@@ -2371,10 +2432,14 @@ test "render_svg resolves cell font color through theme cascade" {
 ///|
 /// §18.3.1.87 `<sheetViews>/<sheetView @showGridLines="0">` — when
 /// the per-sheet view turns gridlines off, the SVG renderer MUST
-/// omit the `<g class="grid-lines">` group regardless of the
-/// renderer-level `SheetRenderOptions.show_grid_lines` default
-/// (which is `true`).  This is the only mechanism Excel ships with
-/// to hide gridlines per-sheet, so consumers depend on it.
+/// omit the `<g class="grid-lines">` group, even when the caller
+/// has forced `SheetRenderOptions.show_grid_lines = true` (the
+/// screen-style branch).  An explicit editor "false" is treated as
+/// a hard "user wants no gridlines anywhere" signal — the
+/// historical hide-gridlines contract consumers depend on.  We
+/// force `show_grid_lines: true` so the assertion is meaningful;
+/// with the page-render default (false) gridlines would be off
+/// regardless and the test would pass trivially.
 test "SpreadsheetML viewer §18.3.1.87 showGridLines=\"0\" omits grid-lines group" {
   let sheet_view : @xml.Node = @xml.Node::Element({
     name: name("sheetView"),
@@ -2407,8 +2472,10 @@ test "SpreadsheetML viewer §18.3.1.87 showGridLines=\"0\" omits grid-lines grou
       }),
     ],
   })
-  // Renderer default would normally emit the grid-lines group.
-  let result = render_svg(worksheet)
+  // Force `show_grid_lines: true` to mimic a screen-style caller
+  // (default options would NOT render gridlines on a page render).
+  let opts = { ..default_render_options(), show_grid_lines: true }
+  let result = render_svg(worksheet, options=opts)
   assert_false(result.svg.contains("class=\"grid-lines\""))
   // Cell content is still emitted normally.
   assert_true(result.svg.contains("data-ooxml=\"sml\""))
@@ -2416,10 +2483,54 @@ test "SpreadsheetML viewer §18.3.1.87 showGridLines=\"0\" omits grid-lines grou
 }
 
 ///|
-/// §18.3.1.87 — the inverse direction: when `<sheetView>` does NOT
-/// carry `@showGridLines`, the renderer default (true) must apply
-/// and the `<g class="grid-lines">` group MUST appear.
-test "SpreadsheetML viewer §18.3.1.87 absent showGridLines keeps grid-lines" {
+/// §18.3.1.70 `<printOptions @gridLines="1">` — when the worksheet
+/// opts in to printed gridlines, the SVG (page) renderer MUST emit
+/// the `<g class="grid-lines">` group, overriding the
+/// `SheetRenderOptions.show_grid_lines` default of `false`.  This
+/// is the print-side counterpart to §18.3.1.87 `@showGridLines`:
+/// the editing-view toggle defaults true but is irrelevant to a
+/// print render; the print toggle defaults false and is what LO's
+/// PDF export consults.
+test "SpreadsheetML viewer §18.3.1.70 printOptions gridLines enables grid-lines" {
+  let print_options : @xml.Node = @xml.Node::Element({
+    name: name("printOptions"),
+    attributes: [{ name: name("gridLines"), value: "1" }],
+    children: [],
+  })
+  let cells_row1 : Array[@xml.Node] = [build_cell("A1", None, "1")]
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, cells_row1)],
+      }),
+      print_options,
+    ],
+  })
+  // Default options — `show_grid_lines: false`.  Only the
+  // `<printOptions @gridLines="1">` flag should turn them on.
+  let result = render_svg(worksheet)
+  assert_true(result.svg.contains("class=\"grid-lines\""))
+}
+
+///|
+/// §18.3.1.70 / §18.3.1.87 — a worksheet whose `<sheetView>` has
+/// NO `@showGridLines` attribute (so the editing-UI default of
+/// `true` would apply for screen rendering) and NO `<printOptions
+/// @gridLines>` MUST render gridline-free on the page renderer.
+/// LibreOffice's PDF export behaves identically: the screen
+/// default does not propagate into the print pipeline.  This is
+/// the dual of the "showGridLines=0" test above and locks in the
+/// page-render default flipped in this commit (was true).
+test "SpreadsheetML viewer §18.3.1.70 absent printOptions gridLines omits grid-lines" {
   let sheet_view : @xml.Node = @xml.Node::Element({
     name: name("sheetView"),
     attributes: [{ name: name("workbookViewId"), value: "0" }],
@@ -2449,7 +2560,7 @@ test "SpreadsheetML viewer §18.3.1.87 absent showGridLines keeps grid-lines" {
     ],
   })
   let result = render_svg(worksheet)
-  assert_true(result.svg.contains("class=\"grid-lines\""))
+  assert_false(result.svg.contains("class=\"grid-lines\""))
 }
 
 ///|
@@ -3305,9 +3416,18 @@ test "SpreadsheetML viewer §18.3.1.73 row spans widen derived bounds" {
     ],
   })
   let result = render_svg(worksheet)
-  // 5 default-width columns (8.43 char ≈ 59 px each) = 295 px.
-  // Without the spans honoring, only column A (59 px) would show.
-  inspect(result.width, content="295")
+  // 5 default-width columns (8.43 char × 65 px each, MDW = 7.7 —
+  // see `column_max_digit_width_px`) = 325 px body width.  Without
+  // the spans honoring, only column A (65 px) would show.
+  // §18.3.1.62 — `result.width` is the page width (body +
+  // LibreOffice-default 2.0 cm L/R print margins):
+  // 325 + 2*75.59055 ≈ 476.181 px.
+  inspect(
+    result.width,
+    content=(
+      #|476.1811023622047
+    ),
+  )
 }
 
 ///|
@@ -3564,4 +3684,227 @@ test "SpreadsheetML SVG renderer clips cell text to the cell rect" {
   // <clipPath> definition is emitted.
   assert_true(svg.contains("<clipPath "))
   assert_true(svg.contains("clip-path=\"url(#clip_"))
+}
+
+///|
+/// §18.3.1.70 — `render_svg` produces a *page* render, so row /
+/// column headings follow `<printOptions @headings>` (default
+/// false), NOT the editing-view `<sheetView @showRowColHeaders>`.
+/// A worksheet whose `<sheetView>` enables headers for editing but
+/// has no `<printOptions @headings="1">` MUST render without the
+/// header gutters — matching a print / PDF export.
+test "SpreadsheetML viewer §18.3.1.70 page render omits editing-view headers" {
+  let sheet_view : @xml.Node = @xml.Node::Element({
+    name: name("sheetView"),
+    attributes: [
+      { name: name("workbookViewId"), value: "0" },
+      // Editing view shows headers — must NOT leak into the page render.
+      { name: name("showRowColHeaders"), value: "true" },
+    ],
+    children: [],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetViews"),
+        attributes: [],
+        children: [sheet_view],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+    ],
+  })
+  let svg = render_svg(worksheet).svg
+  // No editing-view header gutters in a page render.
+  assert_false(svg.contains("class=\"row-headers\""))
+  assert_false(svg.contains("class=\"column-headers\""))
+}
+
+///|
+/// §18.3.1.70 — when `<printOptions @headings="1">` IS set, the page
+/// render DOES include the row / column heading gutters.
+test "SpreadsheetML viewer §18.3.1.70 printOptions headings enables gutters" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("printOptions"),
+        attributes: [{ name: name("headings"), value: "1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+    ],
+  })
+  let svg = render_svg(worksheet).svg
+  assert_true(svg.contains("class=\"row-headers\""))
+  assert_true(svg.contains("class=\"column-headers\""))
+}
+
+///|
+/// §18.5.1.5 — table style chrome is suppressed by default
+/// (matches LibreOffice's PDF print export, which does NOT paint
+/// table banding nor autofilter dropdown glyphs).  A worksheet
+/// carrying a styled `<table>` must render without the
+/// `table-chrome` / `table-autofilter` groups when
+/// `show_table_chrome: false` (the default).
+test "SpreadsheetML viewer §18.5 table chrome suppressed by default for print" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "Project")])],
+      }),
+    ],
+  })
+  // A `<table>` element with TableStyleMedium2 + showRowStripes —
+  // the canonical Excel-default styled table.
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:A3" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("tableStyleInfo"),
+        attributes: [
+          { name: name("name"), value: "TableStyleMedium2" },
+          { name: name("showRowStripes"), value: "1" },
+        ],
+        children: [],
+      }),
+    ],
+  }
+  let svg = render_svg(worksheet, tables=[table]).svg
+  // Default: no chrome (print mode).
+  assert_false(svg.contains("class=\"table-chrome\""))
+  assert_false(svg.contains("class=\"table-autofilter\""))
+  assert_false(svg.contains("data-ooxml-table-band"))
+}
+
+///|
+/// §18.5.1.5 — with `show_table_chrome: true` (editing view), the
+/// renderer paints the header band, row stripes, and totals border
+/// using the built-in style palette.
+test "SpreadsheetML viewer §18.5 table chrome emitted when show_table_chrome opts in" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [build_cell("A1", None, "H")]),
+          build_row(2, [build_cell("A2", None, "1")]),
+          build_row(3, [build_cell("A3", None, "2")]),
+          build_row(4, [build_cell("A4", None, "3")]),
+        ],
+      }),
+    ],
+  })
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:A4" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("tableStyleInfo"),
+        attributes: [
+          { name: name("name"), value: "TableStyleMedium2" },
+          { name: name("showRowStripes"), value: "1" },
+        ],
+        children: [],
+      }),
+    ],
+  }
+  let opts = { ..default_render_options(), show_table_chrome: true }
+  let svg = render_svg(worksheet, options=opts, tables=[table]).svg
+  // Chrome groups MUST appear.
+  assert_true(svg.contains("class=\"table-chrome\""))
+  // Header band sits on row 1 (y=0..17).
+  assert_true(svg.contains("data-ooxml-table-band=\"header\""))
+  // One row stripe — data rows are 2,3,4 → stripe lands on row 3.
+  assert_true(svg.contains("data-ooxml-table-band=\"row-stripe\""))
+}
+
+///|
+/// §18.5.1.2 / §18.3.1.2 — when a `<table>` carries an
+/// `<autoFilter>` child AND `show_table_chrome: true`, the renderer
+/// paints the dropdown button glyph on the header row.
+test "SpreadsheetML viewer §18.5 autofilter dropdown emitted with chrome opt-in" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", None, "H"),
+            build_cell("B1", None, "K"),
+          ]),
+          build_row(2, [
+            build_cell("A2", None, "x"),
+            build_cell("B2", None, "y"),
+          ]),
+        ],
+      }),
+    ],
+  })
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:B2" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:B2" }],
+        children: [],
+      }),
+    ],
+  }
+  let opts = { ..default_render_options(), show_table_chrome: true }
+  let svg = render_svg(worksheet, options=opts, tables=[table]).svg
+  // The autofilter glyph group fires.
+  assert_true(svg.contains("class=\"table-autofilter\""))
+  assert_true(svg.contains("data-ooxml-autofilter=\"button\""))
+  assert_true(svg.contains("data-ooxml-autofilter=\"arrow\""))
 }

@@ -21,10 +21,7 @@
 /// 6° either side of the centre→tip direction, the bubble outline is
 /// drawn as two `ArcTo` half-sweeps so the SVG `large_arc` flag stays
 /// false, and the wedge is two straight legs to the tip.
-pub fn build_wedge_ellipse_callout(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_wedge_ellipse_callout(width : Int, height : Int) -> ShapeGeometry {
   let cx = width / 2
   let cy = height / 2
   let rx = width / 2

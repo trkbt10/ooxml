@@ -54,8 +54,11 @@ fn arc_to_command(
   sw_ang : Int,
 ) -> PathCommand {
   let (ex, ey) = ellipse_point(cx, cy, rx, ry, st_ang + sw_ang)
-  let large_arc = if sw_ang >= 0 { sw_ang > 10800000 } else { -sw_ang >
-    10800000 }
+  let large_arc = if sw_ang >= 0 {
+    sw_ang > 10800000
+  } else {
+    -sw_ang > 10800000
+  }
   let sweep = sw_ang >= 0
   ArcTo(rx, ry, 0, large_arc, sweep, ex, ey)
 }

@@ -81,9 +81,7 @@ pub fn TblLook::default_() -> TblLook {
 /// §17.4.6 — decode a typed `<w:tblLook>` element into the runtime
 /// TblLook view. Accepts the modern boolean-child form as well as
 /// the legacy `@w:val` hex-mask attribute.
-pub fn TblLook::from_element(
-  element : @xml.Element,
-) -> TblLook {
+pub fn TblLook::from_element(element : @xml.Element) -> TblLook {
   let mut first_row = false
   let mut last_row = false
   let mut first_column = false
@@ -176,7 +174,7 @@ fn parse_hex(text : String) -> Int? {
     } else {
       return None
     }
-    value = (value * 16) + digit
+    value = value * 16 + digit
   }
   Some(value)
 }
@@ -318,7 +316,9 @@ pub fn resolve_cell(
   let is_top = tbl_look.first_row && row_index == 0
   let is_bot = tbl_look.last_row && row_count > 0 && row_index == row_count - 1
   let is_left = tbl_look.first_column && col_index == 0
-  let is_right = tbl_look.last_column && col_count > 0 && col_index == col_count - 1
+  let is_right = tbl_look.last_column &&
+    col_count > 0 &&
+    col_index == col_count - 1
   if is_top && is_left {
     acc = merge_effective_pub(acc, resolved.nw_cell)
   }
@@ -452,4 +452,3 @@ fn horizontal_band(row : Int, row_count : Int, tbl_look : TblLook) -> Int {
     2
   }
 }
-

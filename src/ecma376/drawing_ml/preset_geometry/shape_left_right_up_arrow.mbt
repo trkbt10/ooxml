@@ -11,10 +11,7 @@
 /// (25000), `adj2` = arrowhead length (25000), `adj3` = shaft
 /// thickness (25000). Heads are scaled against the smaller bounding
 /// dimension so the three arms keep a consistent thickness.
-pub fn build_left_right_up_arrow(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_left_right_up_arrow(width : Int, height : Int) -> ShapeGeometry {
   let smaller = min_dim(width, height)
   let shaft_t = percent(smaller, 25000)
   let head_len = percent(smaller, 25000)

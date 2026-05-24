@@ -11,10 +11,7 @@
 /// Adjustment guides (defaults): `adj1` = arrow shaft thickness
 /// (25000), `adj2` = arrowhead barb height (25000), `adj3` = arrowhead
 /// length (25000), `adj4` = callout box width fraction (64977).
-pub fn build_left_arrow_callout(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_left_arrow_callout(width : Int, height : Int) -> ShapeGeometry {
   let shaft_h = percent(height, 25000)
   let head_h = percent(height, 25000)
   let head_w = percent(width, 25000)

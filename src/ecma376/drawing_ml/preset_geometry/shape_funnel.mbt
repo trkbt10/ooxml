@@ -35,24 +35,16 @@ pub fn build_funnel(width : Int, height : Int) -> ShapeGeometry {
   // right wall to the spout, sweep the lower half of the spout
   // ellipse back, then taper up the left wall.
   commands.push(MoveTo(cx - rim_rx, rim_cy))
-  commands.push(
-    ArcTo(rim_rx, rim_ry, 0, false, true, cx + rim_rx, rim_cy),
-  )
+  commands.push(ArcTo(rim_rx, rim_ry, 0, false, true, cx + rim_rx, rim_cy))
   commands.push(LineTo(cx + tube_rx, tube_cy))
-  commands.push(
-    ArcTo(tube_rx, tube_ry, 0, false, true, cx - tube_rx, tube_cy),
-  )
+  commands.push(ArcTo(tube_rx, tube_ry, 0, false, true, cx - tube_rx, tube_cy))
   commands.push(LineTo(cx - rim_rx, rim_cy))
   commands.push(ClosePath)
   // Rim opening: the elliptical mouth of the funnel, a full ellipse
   // drawn as two half-arcs so renderers can fill it as the throat.
   commands.push(MoveTo(cx - rim_rx, rim_cy))
-  commands.push(
-    ArcTo(rim_rx, rim_ry, 0, false, true, cx + rim_rx, rim_cy),
-  )
-  commands.push(
-    ArcTo(rim_rx, rim_ry, 0, false, true, cx - rim_rx, rim_cy),
-  )
+  commands.push(ArcTo(rim_rx, rim_ry, 0, false, true, cx + rim_rx, rim_cy))
+  commands.push(ArcTo(rim_rx, rim_ry, 0, false, true, cx - rim_rx, rim_cy))
   commands.push(ClosePath)
   { commands, width, height }
 }

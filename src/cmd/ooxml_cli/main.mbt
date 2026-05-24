@@ -162,6 +162,12 @@ fn run_info(args : Array[String]) -> Unit {
         }
       }
     } catch {
+      @wml_context.OpenError(kind~, path~, reason~) =>
+        println("error: docx: \{kind} @ \{path}: \{reason}")
+      @sml_context.OpenError(kind~, path~, reason~) =>
+        println("error: xlsx: \{kind} @ \{path}: \{reason}")
+      @pml_context.OpenError(kind~, path~, reason~) =>
+        println("error: pptx: \{kind} @ \{path}: \{reason}")
       _ => println("error: failed to inspect file")
     }
   }
@@ -253,8 +259,7 @@ fn run_list(args : Array[String]) -> Unit {
           match document.main.body {
             Some(body) => {
               println(
-                "paragraphs: " +
-                body.block_level_elts.length().to_string(),
+                "paragraphs: " + body.block_level_elts.length().to_string(),
               )
               let mut i = 0
               for elt in body.block_level_elts {

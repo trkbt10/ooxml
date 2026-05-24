@@ -57,7 +57,7 @@ pub fn format_lvl_text(
       if unit >= 0xD800 && unit <= 0xDBFF && i + 1 < template.length() {
         let low = template.code_unit_at(i + 1).to_int()
         if low >= 0xDC00 && low <= 0xDFFF {
-          let code_point = 0x10000 + ((unit - 0xD800) * 0x400) + (low - 0xDC00)
+          let code_point = 0x10000 + (unit - 0xD800) * 0x400 + (low - 0xDC00)
           buf.write_char(Char::from_int(code_point))
           i = i + 2
           continue

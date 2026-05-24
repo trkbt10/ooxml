@@ -43,7 +43,8 @@ fn rule_for_test(
   customize : (@domain.CT_CfRule) -> @domain.CT_CfRule,
 ) -> @domain.CT_CfRule {
   let base : @domain.CT_CfRule = {
-    cf_type,
+    // §18.3.1.10 — every test rule carries an explicit `@type`.
+    cf_type: Some(cf_type),
     dxf_id: Some(0),
     priority,
     stop_if_true: false,
@@ -393,6 +394,47 @@ test "§18.18.12 decode_cf_type rejects bogus values" {
 }
 
 ///|
+fn cf_qname(local_name : String) -> @xml.QName {
+  { prefix: None, local_name, ns: None }
+}
+
+///|
+test "§18.3.1.10/§18.3.1.18 cfRule with no @type and conditionalFormatting with no @sqref decode" {
+  // §18.3.1.18 — `@sqref` is `use="optional"`; §18.3.1.10 — `@type`
+  // is `use="optional"`. A `<conditionalFormatting><cfRule
+  // priority="1"/></conditionalFormatting>` carrying neither must
+  // decode without raising a SchemaViolation.
+  let cf_rule : @xml.Element = {
+    name: cf_qname("cfRule"),
+    attributes: [{ name: cf_qname("priority"), value: "1" }],
+    children: [],
+  }
+  let conditional_formatting : @xml.Element = {
+    name: cf_qname("conditionalFormatting"),
+    attributes: [],
+    children: [@xml.Node::Element(cf_rule)],
+  }
+  let block = decode_cf_block(conditional_formatting)
+  // §18.3.1.18 — a missing @sqref yields an empty range list, the
+  // faithful "no application target" default.
+  assert_eq(block.sqref.ranges.length(), 0)
+  assert_eq(block.rules.length(), 1)
+  // §18.3.1.10 — a missing @type yields `None`: the rule is inert.
+  assert_true(block.rules[0].cf_type is None)
+  assert_eq(block.rules[0].priority, 1)
+  // An inert rule never matches a cell and is not a population rule.
+  assert_false(
+    evaluate_rule(
+      block.rules[0],
+      n(42.0),
+      [n(42.0)],
+      context(fixed_today(2026, 5, 22), no_formula()),
+    ),
+  )
+  assert_false(block.rules[0].is_population_rule())
+}
+
+///|
 test "§18.18.15 decode_cf_operator handles all 12 values" {
   let mappings : Array[(String, @domain.ST_ConditionalFormattingOperator)] = [
     ("beginsWith", @domain.OpBeginsWith),
@@ -423,7 +465,15 @@ test "§18.18.82 timePeriod full enumeration" {
   let today = fixed_today(2026, 5, 19)
   let to_serial = fn(y : Int, m : Int, d : Int) -> Double {
     try! @date_serial.date_time_to_serial(
-      { year: y, month: m, day: d, hour: 0, minute: 0, second: 0, millisecond: 0 },
+      {
+        year: y,
+        month: m,
+        day: d,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      },
       @date_serial.DateSystem::Serial1900,
     )
   }
@@ -434,30 +484,70 @@ test "§18.18.82 timePeriod full enumeration" {
     })
   }
   // tomorrow → 2026-05-20.
-  assert_true(evaluate_rule(mk(@domain.Tomorrow), n(to_serial(2026, 5, 20)), [], ctx))
-  assert_true(!evaluate_rule(mk(@domain.Tomorrow), n(to_serial(2026, 5, 21)), [], ctx))
+  assert_true(
+    evaluate_rule(mk(@domain.Tomorrow), n(to_serial(2026, 5, 20)), [], ctx),
+  )
+  assert_true(
+    !evaluate_rule(mk(@domain.Tomorrow), n(to_serial(2026, 5, 21)), [], ctx),
+  )
   // thisWeek → any day in 2026-05-17..2026-05-23.
-  assert_true(evaluate_rule(mk(@domain.ThisWeek), n(to_serial(2026, 5, 17)), [], ctx))
-  assert_true(evaluate_rule(mk(@domain.ThisWeek), n(to_serial(2026, 5, 23)), [], ctx))
-  assert_true(!evaluate_rule(mk(@domain.ThisWeek), n(to_serial(2026, 5, 24)), [], ctx))
+  assert_true(
+    evaluate_rule(mk(@domain.ThisWeek), n(to_serial(2026, 5, 17)), [], ctx),
+  )
+  assert_true(
+    evaluate_rule(mk(@domain.ThisWeek), n(to_serial(2026, 5, 23)), [], ctx),
+  )
+  assert_true(
+    !evaluate_rule(mk(@domain.ThisWeek), n(to_serial(2026, 5, 24)), [], ctx),
+  )
   // lastWeek → 2026-05-10..2026-05-16.
-  assert_true(evaluate_rule(mk(@domain.LastWeek), n(to_serial(2026, 5, 10)), [], ctx))
-  assert_true(evaluate_rule(mk(@domain.LastWeek), n(to_serial(2026, 5, 16)), [], ctx))
-  assert_true(!evaluate_rule(mk(@domain.LastWeek), n(to_serial(2026, 5, 17)), [], ctx))
+  assert_true(
+    evaluate_rule(mk(@domain.LastWeek), n(to_serial(2026, 5, 10)), [], ctx),
+  )
+  assert_true(
+    evaluate_rule(mk(@domain.LastWeek), n(to_serial(2026, 5, 16)), [], ctx),
+  )
+  assert_true(
+    !evaluate_rule(mk(@domain.LastWeek), n(to_serial(2026, 5, 17)), [], ctx),
+  )
   // nextWeek → 2026-05-24..2026-05-30.
-  assert_true(evaluate_rule(mk(@domain.NextWeek), n(to_serial(2026, 5, 24)), [], ctx))
-  assert_true(evaluate_rule(mk(@domain.NextWeek), n(to_serial(2026, 5, 30)), [], ctx))
-  assert_true(!evaluate_rule(mk(@domain.NextWeek), n(to_serial(2026, 5, 31)), [], ctx))
+  assert_true(
+    evaluate_rule(mk(@domain.NextWeek), n(to_serial(2026, 5, 24)), [], ctx),
+  )
+  assert_true(
+    evaluate_rule(mk(@domain.NextWeek), n(to_serial(2026, 5, 30)), [], ctx),
+  )
+  assert_true(
+    !evaluate_rule(mk(@domain.NextWeek), n(to_serial(2026, 5, 31)), [], ctx),
+  )
   // thisMonth → 2026-05-01..2026-05-31.
-  assert_true(evaluate_rule(mk(@domain.ThisMonth), n(to_serial(2026, 5, 1)), [], ctx))
-  assert_true(evaluate_rule(mk(@domain.ThisMonth), n(to_serial(2026, 5, 31)), [], ctx))
-  assert_true(!evaluate_rule(mk(@domain.ThisMonth), n(to_serial(2026, 6, 1)), [], ctx))
+  assert_true(
+    evaluate_rule(mk(@domain.ThisMonth), n(to_serial(2026, 5, 1)), [], ctx),
+  )
+  assert_true(
+    evaluate_rule(mk(@domain.ThisMonth), n(to_serial(2026, 5, 31)), [], ctx),
+  )
+  assert_true(
+    !evaluate_rule(mk(@domain.ThisMonth), n(to_serial(2026, 6, 1)), [], ctx),
+  )
   // lastMonth → 2026-04.
-  assert_true(evaluate_rule(mk(@domain.LastMonth), n(to_serial(2026, 4, 1)), [], ctx))
-  assert_true(evaluate_rule(mk(@domain.LastMonth), n(to_serial(2026, 4, 30)), [], ctx))
-  assert_true(!evaluate_rule(mk(@domain.LastMonth), n(to_serial(2026, 5, 1)), [], ctx))
+  assert_true(
+    evaluate_rule(mk(@domain.LastMonth), n(to_serial(2026, 4, 1)), [], ctx),
+  )
+  assert_true(
+    evaluate_rule(mk(@domain.LastMonth), n(to_serial(2026, 4, 30)), [], ctx),
+  )
+  assert_true(
+    !evaluate_rule(mk(@domain.LastMonth), n(to_serial(2026, 5, 1)), [], ctx),
+  )
   // nextMonth → 2026-06.
-  assert_true(evaluate_rule(mk(@domain.NextMonth), n(to_serial(2026, 6, 1)), [], ctx))
-  assert_true(evaluate_rule(mk(@domain.NextMonth), n(to_serial(2026, 6, 30)), [], ctx))
-  assert_true(!evaluate_rule(mk(@domain.NextMonth), n(to_serial(2026, 5, 31)), [], ctx))
+  assert_true(
+    evaluate_rule(mk(@domain.NextMonth), n(to_serial(2026, 6, 1)), [], ctx),
+  )
+  assert_true(
+    evaluate_rule(mk(@domain.NextMonth), n(to_serial(2026, 6, 30)), [], ctx),
+  )
+  assert_true(
+    !evaluate_rule(mk(@domain.NextMonth), n(to_serial(2026, 5, 31)), [], ctx),
+  )
 }

@@ -13,10 +13,7 @@
 /// Spec path (`fill="none"`): `moveTo (l, t)` then a cubic Bézier
 /// `cubicBezTo (wd2, t) (r, hd2) (r, b)`, where `wd2 = w/2` and
 /// `hd2 = h/2`. The connector is an open curve (no `close`).
-pub fn build_curved_connector2(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_curved_connector2(width : Int, height : Int) -> ShapeGeometry {
   let wd2 = width / 2
   let hd2 = height / 2
   let commands : Array[PathCommand] = [

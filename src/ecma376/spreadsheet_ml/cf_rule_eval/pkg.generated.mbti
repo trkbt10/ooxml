@@ -53,7 +53,7 @@ pub fn EvalContext::new(@date_serial.CalendarDateTime, @date_serial.DateSystem, 
 pub(all) struct MatchHit {
   cell : @address.CellAddress
   rule_priority : Int
-  cf_type : @domain.ST_CfType
+  cf_type : @domain.ST_CfType?
   dxf_id : Int?
   argb : @domain.CT_ColorArgb?
   bar_ratio : Double?

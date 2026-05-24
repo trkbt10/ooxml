@@ -98,10 +98,10 @@ pub fn ST_EditAs::to_string(self : ST_EditAs) -> String {
 /// belong to vml-spreadsheetDrawing.xsd not dml-spreadsheetDrawing.xsd.
 /// Re-exported here through type aliases so existing consumers of
 /// this module keep compiling unchanged.
-pub typealias @vml_excel.ST_CF as ST_CF
+pub using @vml_excel {type ST_CF as ST_CF}
 
 ///|
-pub typealias @vml_excel.ST_ObjectType as ST_ObjectType
+pub using @vml_excel {type ST_ObjectType as ST_ObjectType}
 
 ///|
 /// XSD complex type CT_AnchorClientData — Part 1 §20.5.2.3. Optional
@@ -144,9 +144,7 @@ pub(all) struct CT_ShapeNonVisual {
 pub fn CT_ShapeNonVisual::new(
   element : @xml.Element,
 ) -> CT_ShapeNonVisual raise SchemaViolation {
-  let c_nv_pr_el = required_child(
-    element, "cNvPr", "CT_ShapeNonVisual/cNvPr",
-  )
+  let c_nv_pr_el = required_child(element, "cNvPr", "CT_ShapeNonVisual/cNvPr")
   let c_nv_sp_pr_el = required_child(
     element, "cNvSpPr", "CT_ShapeNonVisual/cNvSpPr",
   )
@@ -201,7 +199,9 @@ pub fn CT_Shape::new(element : @xml.Element) -> CT_Shape raise SchemaViolation {
   let style = match optional_child(element, "style") {
     None => None
     Some(e) =>
-      Some(wrap_a_violation(fn() { @a.CT_ShapeStyle::new(e) }, "CT_Shape/style"))
+      Some(
+        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(e) }, "CT_Shape/style"),
+      )
   }
   let tx_body = match optional_child(element, "txBody") {
     None => None
@@ -292,7 +292,10 @@ pub fn CT_Connector::new(
     None => None
     Some(e) =>
       Some(
-        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(e) }, "CT_Connector/style"),
+        wrap_a_violation(
+          fn() { @a.CT_ShapeStyle::new(e) },
+          "CT_Connector/style",
+        ),
       )
   }
   {
@@ -323,9 +326,7 @@ pub(all) struct CT_PictureNonVisual {
 pub fn CT_PictureNonVisual::new(
   element : @xml.Element,
 ) -> CT_PictureNonVisual raise SchemaViolation {
-  let c_nv_pr_el = required_child(
-    element, "cNvPr", "CT_PictureNonVisual/cNvPr",
-  )
+  let c_nv_pr_el = required_child(element, "cNvPr", "CT_PictureNonVisual/cNvPr")
   let c_nv_pic_pr_el = required_child(
     element, "cNvPicPr", "CT_PictureNonVisual/cNvPicPr",
   )
@@ -419,8 +420,7 @@ pub fn CT_GraphicalObjectFrameNonVisual::new(
     element, "cNvPr", "CT_GraphicalObjectFrameNonVisual/cNvPr",
   )
   let c_nv_graphic_frame_pr_el = required_child(
-    element, "cNvGraphicFramePr",
-    "CT_GraphicalObjectFrameNonVisual/cNvGraphicFramePr",
+    element, "cNvGraphicFramePr", "CT_GraphicalObjectFrameNonVisual/cNvGraphicFramePr",
   )
   let c_nv_pr = wrap_a_violation(
     fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
@@ -749,7 +749,9 @@ pub(all) struct CT_Drawing {
 
 ///|
 /// Construct CT_Drawing from its source XML element.
-pub fn CT_Drawing::new(element : @xml.Element) -> CT_Drawing raise SchemaViolation {
+pub fn CT_Drawing::new(
+  element : @xml.Element,
+) -> CT_Drawing raise SchemaViolation {
   let anchors : Array[EG_Anchor] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -799,17 +801,18 @@ pub type To = CT_Marker
 /// XSD element wsDr in dml-spreadsheetDrawing.xsd.
 pub type WsDr = CT_Drawing
 
+///|
 /// VML CT_ClientData / ClientDataChild / ClientData live in the
 /// vml-spreadsheetDrawing.xsd schema, which is owned by the dedicated
 /// `drawing_ml/vml_excel` package. Aliased here so consumers don't
 /// need to re-import.
-pub typealias @vml_excel.ClientDataChild as ClientDataChild
+pub using @vml_excel {type ClientDataChild as ClientDataChild}
 
 ///|
-pub typealias @vml_excel.CT_ClientData as CT_ClientData
+pub using @vml_excel {type CT_ClientData as CT_ClientData}
 
 ///|
-pub typealias @vml_excel.ClientData as ClientData
+pub using @vml_excel {type ClientData as ClientData}
 
 ///|
 /// Read top-level XSD element from as CT_Marker.
@@ -991,10 +994,7 @@ fn required_child(
 
 ///|
 /// Locate an optional child element by local name.
-fn optional_child(
-  element : @xml.Element,
-  local_name : String,
-) -> @xml.Element? {
+fn optional_child(element : @xml.Element, local_name : String) -> @xml.Element? {
   for child in element.children {
     match child {
       @xml.Node::Element(child_element) =>
@@ -1041,7 +1041,7 @@ fn read_object_choice(
 /// drawing_ml package's SchemaViolation into our own so the
 /// spreadsheet_ml drawing reader stays self-contained at the public
 /// API.
-fn wrap_a_violation[T](
+fn[T] wrap_a_violation(
   body : () -> T raise @a.SchemaViolation,
   path : String,
 ) -> T raise SchemaViolation {

@@ -13,10 +13,7 @@
 /// ~270° with a triangular arrowhead at the band's leading (left)
 /// end. Defaults `adj1 = 12500` / `adj5 = 12500` drive the band
 /// thickness and arrowhead overhang.
-pub fn build_left_circular_arrow(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_left_circular_arrow(width : Int, height : Int) -> ShapeGeometry {
   let cx = width / 2
   let cy = height / 2
   let ss = min_dim(width, height)

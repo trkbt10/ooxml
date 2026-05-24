@@ -208,3 +208,20 @@ test "reject duplicate expanded attributes" {
     _ => fail("expected parse failure")
   }
 }
+
+///|
+/// XML 1.0 §4.3.3 — a leading U+FEFF byte-order mark is a legal
+/// encoding signature, not document content.  The parser must skip
+/// it and parse the document normally (ECMA-376 ships several XSD
+/// parts with a UTF-8 BOM).
+test "parse skips a leading UTF-8 byte-order mark" {
+  let doc = parse(bytes("\u{FEFF}<root attr=\"v\"><child/></root>"))
+  assert_eq(doc.root.name.local_name, "root")
+  assert_eq(doc.root.children.length(), 1)
+  // A BOM that is NOT at the start stays as ordinary text content.
+  let doc2 = parse(bytes("<root>a\u{FEFF}b</root>"))
+  match doc2.root.children[0] {
+    Text(t) => assert_eq(t, "a\u{FEFF}b")
+    _ => fail("expected text node")
+  }
+}

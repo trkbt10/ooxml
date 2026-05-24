@@ -753,7 +753,10 @@ pub fn CT_Tx::new(element : @xml.Element) -> CT_Tx raise SchemaViolation {
           {
             str_ref: None,
             rich: Some(
-              wrap_a_violation(fn() { @a.CT_TextBody::new(child) }, "CT_Tx/rich"),
+              wrap_a_violation(
+                fn() { @a.CT_TextBody::new(child) },
+                "CT_Tx/rich",
+              ),
             ),
           }
         None =>
@@ -6759,7 +6762,10 @@ pub fn CT_Connector::new(
     None => None
     Some(c) =>
       Some(
-        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(c) }, "CT_Connector/style"),
+        wrap_a_violation(
+          fn() { @a.CT_ShapeStyle::new(c) },
+          "CT_Connector/style",
+        ),
       )
   }
   { macro_, f_published, nv_cxn_sp_pr, sp_pr, style }
@@ -7044,7 +7050,7 @@ pub fn CT_GroupShapeNonVisual::new(
 
 ///|
 /// Bridge @a.SchemaViolation into the chart's local SchemaViolation.
-fn wrap_a_violation[T](
+fn[T] wrap_a_violation(
   body : () -> T raise @a.SchemaViolation,
   path : String,
 ) -> T raise SchemaViolation {
@@ -7338,7 +7344,6 @@ fn chart_a_tx_pr_opt(
 ) -> @a.CT_TextBody? raise SchemaViolation {
   match first_child_named(element, "txPr") {
     None => None
-    Some(e) =>
-      Some(wrap_a_violation(fn() { @a.CT_TextBody::new(e) }, "txPr"))
+    Some(e) => Some(wrap_a_violation(fn() { @a.CT_TextBody::new(e) }, "txPr"))
   }
 }

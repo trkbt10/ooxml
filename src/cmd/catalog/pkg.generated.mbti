@@ -1,0 +1,34 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/cmd/catalog"
+
+// Values
+
+// Errors
+
+// Types and methods
+type ChartedCase
+
+type DiagrammedCase
+
+type ElemDecl
+
+type ExtendedCase
+
+type PartCoverage
+
+type PivotedCase
+
+type Schema
+
+type SchemaSet
+
+type SparklineCase
+
+type TabledCase
+
+type VisualCase
+
+// Type aliases
+
+// Traits
+

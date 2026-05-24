@@ -52,7 +52,9 @@ fn wml_simple_type_values(type_name : String) -> String {
       ";nil;clear;solid;horzStripe;vertStripe;reverseDiagStripe;diagStripe;horzCross;diagCross;thinHorzStripe;thinVertStripe;thinReverseDiagStripe;thinDiagStripe;thinHorzCross;thinDiagCross;pct5;pct10;pct12;pct15;pct20;pct25;pct30;pct35;pct37;pct40;pct45;pct50;pct55;pct60;pct62;pct65;pct70;pct75;pct80;pct85;pct87;pct90;pct95;"
     "ST_Wrap" => ";auto;notBeside;around;tight;through;none;"
     "ST_VAnchor" => ";text;margin;page;"
-    "ST_TabJc" => ";clear;start;center;end;decimal;bar;num;"
+    // Strict + Transitional (§17.18.84) — `left`/`right` alias
+    // `start`/`end`; see `ST_TabJc::parse`.
+    "ST_TabJc" => ";clear;start;center;end;decimal;bar;num;left;right;"
     "ST_TabTlc" => ";none;dot;hyphen;underscore;heavy;middleDot;"
     "ST_View" => ";none;print;outline;masterPages;normal;web;"
     "ST_Zoom" => ";none;fullPage;bestFit;textFit;"
@@ -64,7 +66,11 @@ fn wml_simple_type_values(type_name : String) -> String {
     "ST_DisplacedByCustomXml" => ";next;prev;"
     "ST_AnnotationVMerge" => ";cont;rest;"
     "ST_DocProtect" => ";none;readOnly;comments;trackedChanges;forms;"
-    "ST_TextDirection" => ";tb;rl;lr;tbV;rlV;lrV;"
+    // Both the Strict (4th edition) and the Transitional (ISO/IEC
+    // 29500-1 §17.18.93, written by Word 2007 / LibreOffice) token
+    // sets are accepted; see `ST_TextDirection::parse`.
+    "ST_TextDirection" =>
+      ";tb;rl;lr;tbV;rlV;lrV;lrTb;tbRl;btLr;lrTbV;tbRlV;tbLrV;"
     "ST_TextAlignment" => ";top;center;baseline;bottom;auto;"
     "ST_TextboxTightWrap" =>
       ";none;allLines;firstAndLastLine;firstLineOnly;lastLineOnly;"
@@ -2272,6 +2278,14 @@ pub(all) enum ST_TabJc {
 
 ///|
 /// Parse the ST_TabJc schema lexical value.
+///
+/// §17.18.84 — the Strict token set is `clear`/`start`/`center`/
+/// `end`/`decimal`/`bar`/`num`.  The Transitional token set (written
+/// by Word 2007 and LibreOffice) additionally uses `left` and
+/// `right` as aliases for `start` / `end`; a conforming reader MUST
+/// accept them.  They map onto the Strict variant — `CT_TabStop`
+/// keeps the source element verbatim, so the lexical token still
+/// round-trips and only this typed projection is normalised.
 pub fn ST_TabJc::parse(s : String) -> ST_TabJc raise SchemaViolation {
   match s {
     "bar" => TabJcBar
@@ -2281,6 +2295,9 @@ pub fn ST_TabJc::parse(s : String) -> ST_TabJc raise SchemaViolation {
     "end" => TabJcEnd
     "num" => TabJcNum
     "start" => TabJcStart
+    // Transitional aliases (§17.18.84) — `left` / `right`.
+    "left" => TabJcStart
+    "right" => TabJcEnd
     _ => invalid_simple_type("ST_TabJc", s, "unknown enumeration value")
   }
 }
@@ -2420,11 +2437,19 @@ pub(all) enum ST_Jc {
 
 ///|
 /// Part 1 §17.18.44 — decode the justification lexical token.
+///
+/// `left` and `right` are the legacy (Word 2003-era, deprecated in
+/// §L.4.3.2.27 transitional spec note) spellings of `start` / `end`.
+/// Word itself still emits them when an author saves a paragraph
+/// alignment in the UI, so accepting them here lets every real-world
+/// .docx survive `CT_Jc::new`. The mapping matches the canonicalisation
+/// already applied to numbering-level `<w:lvlJc>` (see
+/// `numbering_types.mbt::normalise_lvl_jc`).
 pub fn ST_Jc::parse(s : String) -> ST_Jc raise SchemaViolation {
   match s {
-    "start" => JcStart
+    "start" | "left" => JcStart
     "center" => JcCenter
-    "end" => JcEnd
+    "end" | "right" => JcEnd
     "both" => JcBoth
     "mediumKashida" => JcMediumKashida
     "distribute" => JcDistribute
@@ -2472,11 +2497,17 @@ pub(all) enum ST_JcTable {
 
 ///|
 /// Part 1 §17.18.45 — decode the table-justification lexical token.
+///
+/// `left` and `right` mirror the legacy aliases accepted by ST_Jc
+/// (§17.18.44). Word emits `left` / `right` on `<w:tblPr><w:jc>` /
+/// `<w:trPr><w:jc>` for documents authored before the start / end
+/// canonicalisation, so accepting them avoids rejecting otherwise
+/// valid round-trips.
 pub fn ST_JcTable::parse(s : String) -> ST_JcTable raise SchemaViolation {
   match s {
     "center" => JcTableCenter
-    "end" => JcTableEnd
-    "start" => JcTableStart
+    "end" | "right" => JcTableEnd
+    "start" | "left" => JcTableStart
     _ => invalid_simple_type("ST_JcTable", s, "unknown enumeration value")
   }
 }
@@ -2881,16 +2912,38 @@ pub(all) enum ST_TextDirection {
 
 ///|
 /// Parse the ST_TextDirection schema lexical value.
+///
+/// ECMA-376 defines this enumeration in two generations.  The
+/// *Strict* (4th edition) token set is `lr`/`lrV`/`rl`/`rlV`/`tb`/
+/// `tbV`.  The *Transitional* (ISO/IEC 29500-1 §17.18.93) token set
+/// — written by Word 2007 and by LibreOffice — is `lrTb`/`tbRl`/
+/// `btLr`/`lrTbV`/`tbRlV`/`tbLrV`.  A conforming reader MUST accept
+/// both, so the transitional spellings are mapped here onto their
+/// closest Strict semantic equivalent.  `CT_TextDirection` keeps the
+/// source element verbatim, so the original lexical token still
+/// round-trips unchanged; this typed `val` is only the semantic
+/// projection.
 pub fn ST_TextDirection::parse(
   s : String,
 ) -> ST_TextDirection raise SchemaViolation {
   match s {
+    // Strict (ECMA-376 4th edition) token set.
     "lr" => TextDirectionLr
     "lrV" => TextDirectionLrV
     "rl" => TextDirectionRl
     "rlV" => TextDirectionRlV
     "tb" => TextDirectionTb
     "tbV" => TextDirectionTbV
+    // Transitional (ISO/IEC 29500-1 §17.18.93) token set — mapped to
+    // the Strict equivalent.  `lrTb` is ordinary horizontal flow;
+    // `tbRl` is the 90°-rotated vertical flow; `btLr` and the `*V`
+    // tokens are the rotated-text variants.
+    "lrTb" => TextDirectionLr
+    "tbRl" => TextDirectionTb
+    "btLr" => TextDirectionLrV
+    "lrTbV" => TextDirectionLrV
+    "tbRlV" => TextDirectionTbV
+    "tbLrV" => TextDirectionTbV
     _ => invalid_simple_type("ST_TextDirection", s, "unknown enumeration value")
   }
 }
@@ -4732,6 +4785,12 @@ pub enum ST_MeasurementOrPercent {
   MeasOrPctPercent(Int64)
   /// §17.18.107 universal-measure branch — typed magnitude + unit.
   MeasOrPctMeasure(WmlUniversalMeasure)
+  /// §22.9.2.4 ST_DecimalNumberOrPercent → ST_UnqualifiedPercentage
+  /// branch — a bare signed integer.  In a measurement context
+  /// (e.g. `<w:tcW w:type="dxa" w:w="3000">`) the integer is a count
+  /// of twentieths-of-a-point; the unit is supplied by the sibling
+  /// `@type` attribute, so only the raw integer is stored here.
+  MeasOrPctDecimal(Int64)
 } derive(Eq, Debug)
 
 ///|
@@ -4744,6 +4803,13 @@ pub fn ST_MeasurementOrPercent::parse(
     MeasOrPctPercent(parse_wml_decimal_scaled(magnitude_text, 3))
   } else if is_wml_universal_measure(s, positive=false) {
     MeasOrPctMeasure(WmlUniversalMeasure::parse(s))
+  } else if is_wml_signed_int(s) {
+    // §22.9.2.4 ST_DecimalNumberOrPercent → ST_UnqualifiedPercentage
+    // — a bare signed integer.  `<w:tcW w:type="dxa" w:w="3000">`
+    // and `<w:gridCol>`-style widths use this form.
+    MeasOrPctDecimal(
+      parse_wml_signed_int("ST_MeasurementOrPercent", s).to_int64(),
+    )
   } else {
     invalid_simple_type(
       "ST_MeasurementOrPercent", s, "expected ST_DecimalNumberOrPercent or ST_UniversalMeasure",
@@ -4767,6 +4833,7 @@ pub fn ST_MeasurementOrPercent::to_string(
     MeasOrPctPercent(thousandths) =>
       format_wml_scaled_decimal(thousandths, 3) + "%"
     MeasOrPctMeasure(measure) => measure.to_string()
+    MeasOrPctDecimal(n) => n.to_string()
   }
 }
 

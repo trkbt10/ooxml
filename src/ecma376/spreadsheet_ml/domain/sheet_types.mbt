@@ -1344,7 +1344,9 @@ pub fn CT_Macrosheet::new(
           custom_sheet_views = Some(CT_CustomSheetViews::new(child_element))
         "phoneticPr" => phonetic_pr = Some(CT_PhoneticPr::new(child_element))
         "conditionalFormatting" =>
-          conditional_formatting.push(CT_ConditionalFormatting::new(child_element))
+          conditional_formatting.push(
+            CT_ConditionalFormatting::new(child_element),
+          )
         "printOptions" =>
           print_options = Some(CT_PrintOptions::new(child_element))
         "pageMargins" => page_margins = Some(CT_PageMargins::new(child_element))
@@ -1622,7 +1624,9 @@ pub fn CT_Worksheet::new(
         "mergeCells" => merge_cells = Some(CT_MergeCells::new(child_element))
         "phoneticPr" => phonetic_pr = Some(CT_PhoneticPr::new(child_element))
         "conditionalFormatting" =>
-          conditional_formatting.push(CT_ConditionalFormatting::new(child_element))
+          conditional_formatting.push(
+            CT_ConditionalFormatting::new(child_element),
+          )
         "dataValidations" =>
           data_validations = Some(CT_DataValidations::new(child_element))
         "hyperlinks" => hyperlinks = Some(CT_Hyperlinks::new(child_element))

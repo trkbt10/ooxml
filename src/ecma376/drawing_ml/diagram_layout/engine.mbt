@@ -40,7 +40,16 @@ pub fn walk_layout_node(
   parent_bounds : BoundsRect,
   context : EvalContext,
 ) -> Unit {
-  let inner = apply_margins(parent_bounds, node.constraints)
+  // §21.4.2.8 constr — honour `self`-targeting absolute `w`/`h`/`l`/`t`
+  // constraints before margins, so an explicit size override
+  // re-parents the margin pass on the constrained rectangle. See
+  // `constraint_solver.mbt` for the supported / deferred constraint
+  // matrix.
+  let bounds_after_self = apply_self_geometric_constraints(
+    parent_bounds,
+    node.constraints,
+  )
+  let inner = apply_margins(bounds_after_self, node.constraints)
   let effective_children = collect_effective_children(node.children, context)
   apply_pres_of(node, inner, context)
   let alg_kind = match node.algorithm {
@@ -91,28 +100,28 @@ pub fn dispatch_algorithm(
   match kind {
     AlgLin => {
       let per_child = layout_lin(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child)
+      apply_each_child(children, per_child, constraints)
     }
     AlgSnake => {
       let per_child = layout_snake(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child)
+      apply_each_child(children, per_child, constraints)
     }
     AlgCycle => {
       let per_child = layout_cycle(inner, n)
-      apply_each_child(children, per_child)
+      apply_each_child(children, per_child, constraints)
     }
     AlgPyra => {
       let per_child = layout_pyra(inner, constraints, n)
-      apply_each_child(children, per_child)
+      apply_each_child(children, per_child, constraints)
     }
-    AlgHierRoot => dispatch_hier(inner, children)
+    AlgHierRoot => dispatch_hier(inner, children, constraints)
     AlgHierChild => {
       // hierChild lays its forEach output horizontally; the
       // hierRoot above it has already carved out the bottom 70 %
       // of the canvas, so we just distribute the children
       // left-to-right inside that strip.
       let per_child = layout_lin(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child)
+      apply_each_child(children, per_child, constraints)
     }
     // §21.4.7.1 AlgorithmType — closed-10 enum.  The remaining
     // four algorithms (Composite, Conn, Sp, Tx) do not yet have
@@ -124,19 +133,19 @@ pub fn dispatch_algorithm(
     // dispatcher.
     AlgComposite => {
       let per_child = layout_lin(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child)
+      apply_each_child(children, per_child, constraints)
     }
     AlgConn => {
       let per_child = layout_lin(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child)
+      apply_each_child(children, per_child, constraints)
     }
     AlgSp => {
       let per_child = layout_lin(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child)
+      apply_each_child(children, per_child, constraints)
     }
     AlgTx => {
       let per_child = layout_lin(inner, algorithm, constraints, n)
-      apply_each_child(children, per_child)
+      apply_each_child(children, per_child, constraints)
     }
   }
 }
@@ -146,16 +155,25 @@ pub fn dispatch_algorithm(
 /// root and is laid out across the top 30 % of the bounds; the
 /// remaining children share the bottom 70 % equally. The engine
 /// then recurses into each child with its own bounds.
-fn dispatch_hier(inner : BoundsRect, children : Array[ExpandedChild]) -> Unit {
+///
+/// `parent_constraints` is the carrying layoutNode's `<constrLst>`
+/// (the one running the `hierRoot` algorithm); we pass it through
+/// to `recurse_into_child` so any `<constr for="ch" forName="X" …/>`
+/// override on the parent reaches the child.
+fn dispatch_hier(
+  inner : BoundsRect,
+  children : Array[ExpandedChild],
+  parent_constraints : Array[Constraint],
+) -> Unit {
   let n = children.length()
   if n == 0 {
     return
   }
   let (root_bounds, child_bounds) = layout_hier(inner, n - 1)
-  walk_layout_node(children[0].node, root_bounds, children[0].context)
+  recurse_into_child(children[0], root_bounds, parent_constraints)
   for i in 1..<n {
     let bounds = child_bounds[i - 1]
-    walk_layout_node(children[i].node, bounds, children[i].context)
+    recurse_into_child(children[i], bounds, parent_constraints)
   }
 }
 
@@ -165,16 +183,46 @@ fn dispatch_hier(inner : BoundsRect, children : Array[ExpandedChild]) -> Unit {
 /// (lin, snake, cycle, pyra). Each child carries its own
 /// `EvalContext` so `forEach` iteration contexts propagate
 /// correctly into the layout-node walk.
+///
+/// `parent_constraints` carries the constraints declared on the
+/// dispatching layoutNode; `recurse_into_child` filters them down
+/// to the subset that targets each child by name.
 fn apply_each_child(
   children : Array[ExpandedChild],
   bounds : Array[BoundsRect],
+  parent_constraints : Array[Constraint],
 ) -> Unit {
   let n = children.length()
   let m = bounds.length()
   let limit = if n < m { n } else { m }
   for i in 0..<limit {
-    walk_layout_node(children[i].node, bounds[i], children[i].context)
+    recurse_into_child(children[i], bounds[i], parent_constraints)
   }
+}
+
+///|
+/// §21.4.2.8 constr/@for=ch — apply the parent's child-targeting
+/// constraints to `child`'s algorithm-derived bounds, then
+/// recurse into the child's layoutNode walk. The two-step
+/// application matches §21.4.2.8's evaluation order: the parent's
+/// `for=ch forName=X` constraints adjust the child's bounds
+/// before the child's own `<constrLst>` (handled inside
+/// `walk_layout_node`) gets a chance to override them.
+fn recurse_into_child(
+  child : ExpandedChild,
+  base_bounds : BoundsRect,
+  parent_constraints : Array[Constraint],
+) -> Unit {
+  let overrides = child_targeted_constraints_for(
+    parent_constraints,
+    child.node.name,
+  )
+  let adjusted = if overrides.length() == 0 {
+    base_bounds
+  } else {
+    apply_self_geometric_constraints(base_bounds, overrides)
+  }
+  walk_layout_node(child.node, adjusted, child.context)
 }
 
 ///|

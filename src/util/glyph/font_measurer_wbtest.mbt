@@ -70,6 +70,40 @@ test "measure_text_width prefers FontMeasurer when supplied" {
 }
 
 ///|
+/// Cross-pipeline width regression: our `@glyph` measurer's Carlito
+/// 11 pt advance for "Lorem ipsum dolor sit amet," must match (within
+/// 1 px) the same metric obtained from LibreOffice's PDF render of
+/// the section-cols-3-equal fixture (167.23 px = 125.422 pt) and the
+/// rsvg-convert + PANGOCAIRO_BACKEND=fontconfig raster of the same
+/// string at the same size (≈ 168 px).
+///
+/// Why this exists: before snapshot.sh exported
+/// `PANGOCAIRO_BACKEND=fontconfig` (Round 13), rsvg-convert on macOS
+/// silently substituted Carlito with Liberation Sans, producing a
+/// raster ~13 px (≈ 8 %) wider than our measurer and LO's PDF on the
+/// same string. The width gap looked like a measurer bug but was
+/// actually a Pango/CoreText font-discovery gap. This test pins the
+/// measurer side of the contract so a regression there would surface
+/// independently of the snapshot harness.
+test "Carlito 11pt 'Lorem ipsum dolor sit amet,' width matches LO PDF" {
+  let w = measure_text_width(
+    "Lorem ipsum dolor sit amet,",
+    font_size_pt=11.0,
+    letter_spacing_px=0.0,
+    font_family=Some("Carlito"),
+  )
+  // LO's PDF places this exact string with xMax-xMin = 125.422 pt
+  // (verified via `pdftotext -bbox-layout` on
+  // .snapshots/fixtures/docx/section/section-cols-3-equal.docx).
+  // 125.422 pt × (96/72) = 167.229 px.
+  let lo_pdf_px = 125.422 * 96.0 / 72.0
+  let diff = w - lo_pdf_px
+  let abs_diff = if diff < 0.0 { -diff } else { diff }
+  // Allow 0.5 px slack for PDF round-tripping.
+  assert_true(abs_diff < 0.5)
+}
+
+///|
 test "FontMeasurer::ascender_ratio is in (0, 1.5]" {
   let bytes = load_subset_font()
   guard make_font_measurer(bytes) is Some(m) else {

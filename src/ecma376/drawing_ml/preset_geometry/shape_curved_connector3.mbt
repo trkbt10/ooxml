@@ -15,10 +15,7 @@
 /// `y3 = 3·h/4`. The path (`fill="none"`) is `moveTo (l, t)` →
 /// `cubicBezTo (x1, t) (x2, hd4) (x2, vc)` →
 /// `cubicBezTo (x2, y3) (x3, b) (r, b)`, an open curve (no `close`).
-pub fn build_curved_connector3(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_curved_connector3(width : Int, height : Int) -> ShapeGeometry {
   // adj1 default 50000 → x2 at the horizontal midpoint.
   let x2 = percent(width, 50000)
   let x1 = x2 / 2

@@ -714,10 +714,7 @@ pub fn CT_Tc::new(element : @xml.Element) -> CT_Tc raise SchemaViolation {
   let raw : Array[@xml.Element] = []
   for child in element.children {
     match child {
-      @xml.Element(e) =>
-        if e.name.local_name != "tcPr" {
-          raw.push(e)
-        }
+      @xml.Element(e) => if e.name.local_name != "tcPr" { raw.push(e) }
       _ => ()
     }
   }
