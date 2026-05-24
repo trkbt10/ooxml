@@ -1,30 +1,24 @@
 // Public text-measurement API.
 //
-// Every entrypoint here resolves through `default_font_set()` and a
-// concrete `FontMeasurer` (real TTF, real `hmtx`). The previous
-// statistical em-ratio path is gone — see `font_registry.mbt` for
-// the rationale.
+// Every entry point goes through `default_font_set()` and a
+// `FontMeasurer` parsed from real TTF bytes returned by the
+// `FontResolver`. There is one canonical request shape
+// (`FontFaceRequest`) and one canonical method
+// (`FontSet::measurer_for_request`); legacy `(family?, weight)`
+// overloads have been removed in favour of explicit request
+// construction by the caller.
 //
-// External callers go through:
+// Failure mode: when no driver can satisfy a request the call
+// raises `FontUnresolvedError`. Callers either:
+//   - retry with a different stack (the ECMA-376 substitution chain
+//     in `font_substitution_chain.mbt` does this), or
+//   - propagate the error so the document-producer sees that the
+//     requested font is missing and ships embeddedFont / altName.
 //
-//   - `pt_to_px` / `px_to_pt`           — unit conversion constants
-//   - `measure_text_width(...)`         — total advance for a string
-//   - `estimate_text_width_fallback(.)` — same, kept under the old
-//                                          name so renderer callsites
-//                                          don't need a global
-//                                          rename. The body is no
-//                                          longer "fallback" — it
-//                                          calls the real measurer
-//                                          like every other path.
-//   - `calculate_char_width(...)`       — per-character bundle with
-//                                          kerning context
-//   - `measure_text_detailed(...)`      — per-character cumulative
-//                                          x-offsets for tspan
-//                                          placement
+// The renderer must NOT silently fall back to statistical metrics.
 
 ///|
-/// Points-to-pixels conversion factor used throughout the codebase.
-/// 96 DPI / 72 pt-per-inch = 1.333…
+/// Points-to-pixels conversion factor. 96 DPI / 72 pt-per-inch.
 pub let pt_to_px : Double = 96.0 / 72.0
 
 ///|
@@ -32,74 +26,75 @@ pub let pt_to_px : Double = 96.0 / 72.0
 pub let px_to_pt : Double = 72.0 / 96.0
 
 ///|
-/// Convert points to pixels at 96 DPI.
 pub fn points_to_pixels(points : Double) -> Double {
   points * pt_to_px
 }
 
 ///|
-/// Convert pixels to points at 96 DPI.
 pub fn pixels_to_points(pixels : Double) -> Double {
   pixels * px_to_pt
 }
 
 ///|
-/// Result of calculating one character's width with kerning context.
-/// All fields are in pixels.
+/// Per-character measurement bundle: real `hmtx` advance plus the
+/// kerning adjustment contributed by the previous character.
 pub struct CharWidthResult {
-  /// Character width in pixels (real `hmtx` advance × font_size_px /
-  /// units_per_em).
   width : Double
-  /// Kerning adjustment from the previous character in pixels.
-  /// Negative = tighter than default spacing.
   kerning_adjust : Double
-  /// `width + kerning_adjust`. Pre-computed for convenience.
   total_width : Double
 }
 
 ///|
-/// Per-character measurement bundle used for precise tspan placement.
+/// Per-character measurement of a whole string, used for precise
+/// tspan placement (positions[i] is the x at which char i begins).
 pub struct DetailedMeasurement {
-  /// Total width of the laid-out span in pixels.
   total_width : Double
-  /// One `CharWidthResult` per character (in input order).
   char_widths : Array[CharWidthResult]
-  /// Cumulative x-offset for each character (positions[i] is the x
-  /// at which char i begins).
   positions : Array[Double]
 }
 
 ///|
-/// Resolve the measurer for `(family, weight)` — prefer an
-/// explicitly-supplied one (e.g. a PPTX caller that pre-loaded a
-/// specific TTF) but otherwise consult the default registry.
-fn pick_measurer(
-  measurer : FontMeasurer?,
-  family : String?,
+/// Build a single-name request and resolve it through the default
+/// font set. Raises `FontUnresolvedError` on miss.
+fn resolve_measurer(
+  family : String,
   weight : Int,
-) -> FontMeasurer {
-  match measurer {
-    Some(m) => m
-    None => default_font_set().measurer_for(family, weight)
-  }
+  italic : Bool,
+) -> FontMeasurer raise FontUnresolvedError {
+  default_font_set().measurer_for_request(
+    FontFaceRequest::of_name(family, weight~, italic~),
+  )
 }
 
 ///|
-/// Calculate the width of a single character with kerning context.
-///
-/// - `font_size_pt`: font size in points.
-/// - `font_family`: family name (`None` resolves to the default
-///   sans-serif face for the platform — see `font_registry.mbt`).
-/// - `font_weight`: 400 (regular) / 700 (bold) — selects the bold
-///   cut from the registry when ≥ 700.
+/// Total text width for `text` measured against `family` at the
+/// given weight / italic. Raises `FontUnresolvedError` when the
+/// host has no copy of the requested family — callers that want a
+/// retry through the ECMA-376 chain wrap the call in `try?`.
+pub fn measure_text_width(
+  text : String,
+  font_size_pt~ : Double,
+  letter_spacing_px~ : Double,
+  family~ : String,
+  weight~ : Int = 400,
+  italic~ : Bool = false,
+) -> Double raise FontUnresolvedError {
+  let m = resolve_measurer(family, weight, italic)
+  m.measure_text(text, font_size_pt~, letter_spacing_px~)
+}
+
+///|
+/// Single-character width with kerning context (the previous
+/// character contributes the kern adjustment).
 pub fn calculate_char_width(
   char : Char,
-  prev_char? : Char? = None,
+  prev_char~ : Char? = None,
   font_size_pt~ : Double,
-  font_family~ : String?,
-  font_weight? : Int = 400,
-) -> CharWidthResult {
-  let m = pick_measurer(None, font_family, font_weight)
+  family~ : String,
+  weight~ : Int = 400,
+  italic~ : Bool = false,
+) -> CharWidthResult raise FontUnresolvedError {
+  let m = resolve_measurer(family, weight, italic)
   let width = m.char_advance(char, font_size_pt~)
   let kerning_adjust = match prev_char {
     None => 0.0
@@ -109,56 +104,17 @@ pub fn calculate_char_width(
 }
 
 ///|
-/// Total text width for `text` using real-font advances.
-///
-/// `letter_spacing_px` adds extra spacing between every adjacent
-/// pair (not after the last character), matching the historical
-/// `index > 0 ? letterSpacingPx : 0` convention.
-///
-/// Despite the historical name, this is no longer a "fallback" —
-/// it always walks the real TTF (`hmtx` + kern table). The name is
-/// preserved because every renderer call-site reads it.
-pub fn estimate_text_width_fallback(
-  text : String,
-  font_size_pt~ : Double,
-  letter_spacing_px~ : Double,
-  font_family~ : String?,
-  font_weight? : Int = 400,
-) -> Double {
-  let m = pick_measurer(None, font_family, font_weight)
-  m.measure_text(text, font_size_pt~, letter_spacing_px~)
-}
-
-///|
-/// Public text-width measurement. When `measurer` is `Some`, uses
-/// that pre-loaded TTF directly; otherwise the family / weight are
-/// looked up in the default registry.
-///
-/// All paths read the real `hmtx` table — no statistical
-/// approximation remains.
-pub fn measure_text_width(
-  text : String,
-  font_size_pt~ : Double,
-  letter_spacing_px~ : Double,
-  font_family~ : String?,
-  font_weight? : Int = 400,
-  measurer? : FontMeasurer? = None,
-) -> Double {
-  let m = pick_measurer(measurer, font_family, font_weight)
-  m.measure_text(text, font_size_pt~, letter_spacing_px~)
-}
-
-///|
-/// Detailed per-character measurement (positions + per-glyph widths
-/// with kerning context).
+/// Per-character cumulative measurement: positions + per-glyph
+/// widths with kerning context.
 pub fn measure_text_detailed(
   text : String,
   font_size_pt~ : Double,
   letter_spacing_px~ : Double,
-  font_family~ : String?,
-  font_weight? : Int = 400,
-) -> DetailedMeasurement {
-  let m = pick_measurer(None, font_family, font_weight)
+  family~ : String,
+  weight~ : Int = 400,
+  italic~ : Bool = false,
+) -> DetailedMeasurement raise FontUnresolvedError {
+  let m = resolve_measurer(family, weight, italic)
   let chars : Array[Char] = []
   for c in text {
     chars.push(c)
@@ -189,30 +145,35 @@ pub fn measure_text_detailed(
 }
 
 ///|
-/// Ascender ratio for `font_family` — the fraction of the font size
-/// from the baseline to the top of the line box. Read from the
-/// font's `hhea` (or OS/2) table via the registry; no hardcoded
-/// table.
-///
-/// For weight selection we always pick the regular cut: ascender /
-/// descender are typically identical between Regular and Bold for a
-/// given family, so caching one face is enough.
-pub fn get_ascender_ratio(font_family : String?) -> Double {
-  let m = default_font_set().measurer_for(font_family, 400)
-  m.ascender_ratio()
+/// Ascender ratio for `family`. Reads `ascent / units_per_em` from
+/// the font's `hhea` table. Raises `FontUnresolvedError` when the
+/// family is missing.
+pub fn get_ascender_ratio(
+  family : String,
+  weight~ : Int = 400,
+  italic~ : Bool = false,
+) -> Double raise FontUnresolvedError {
+  resolve_measurer(family, weight, italic).ascender_ratio()
 }
 
 ///|
-/// Descender ratio (positive value).
-pub fn get_descender_ratio(font_family : String?) -> Double {
-  let m = default_font_set().measurer_for(font_family, 400)
-  m.descender_ratio()
+/// Descender ratio (positive value, even though `descent` is
+/// negative in TrueType conventions).
+pub fn get_descender_ratio(
+  family : String,
+  weight~ : Int = 400,
+  italic~ : Bool = false,
+) -> Double raise FontUnresolvedError {
+  resolve_measurer(family, weight, italic).descender_ratio()
 }
 
 ///|
 /// Line-gap ratio (additional leading recommended by the font's
-/// `hhea` line_gap).
-pub fn get_line_gap_ratio(font_family : String?) -> Double {
-  let m = default_font_set().measurer_for(font_family, 400)
-  m.line_gap_ratio()
+/// `hhea` `lineGap`).
+pub fn get_line_gap_ratio(
+  family : String,
+  weight~ : Int = 400,
+  italic~ : Bool = false,
+) -> Double raise FontUnresolvedError {
+  resolve_measurer(family, weight, italic).line_gap_ratio()
 }

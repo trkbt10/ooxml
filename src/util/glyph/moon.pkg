@@ -1,26 +1,25 @@
 // trkbt10/ooxml/util/glyph
 //
-// Font metrics for text width estimation, kerning, CJK detection, and
-// ascender ratios.
+// Real-font measurement layer driven by a swappable `FontResolver`.
+// Every metric (advance, kerning, ascender, descender, line-gap) is
+// read at runtime from the TTF/TTC bytes returned by the resolver —
+// no statistical fallback, no hard-coded per-font tables. When the
+// resolver cannot satisfy a request the call raises
+// `FontUnresolvedError`; callers decide whether to retry through
+// the ECMA-376 §17.8.3.1 substitution chain or surface the failure
+// at the document boundary.
 //
-// Two measurement modes:
-//   1. Real TTF measurement via mizchi/font (preferred — call
-//      `make_font_measurer(bytes)` then `font_measurer.measure_text(...)`).
-//   2. Statistical fallback (used when no font file is provided)
-//      — `measure_text_width(...)` uses pre-computed per-glyph em-ratio
-//      tables matching web-pptx's `@aurochs/glyph` metrics submodule.
-//
-// Reference (statistical tables):
-//   /Users/terukichi/Workspaces/trkbt10/web-pptx/packages/
-//     @aurochs/glyph/src/metrics/*
-//
-// Reference (TTF parser):
-//   mizchi/font::TTFont (parse_font, glyph_index, glyph_metrics)
+// References:
+//   - ECMA-376 Part 1 §17.8.3 (WML font table and substitution).
+//   - ECMA-376 Part 1 §20.1.4.2.1 (DML fontScheme).
+//   - mizchi/font (sfnt / cmap / hmtx / hhea / OS2 / ttc parser).
+//   - trkbt10/osenv (cross-platform OS / dirs detection).
 
 import {
   "mizchi/font" @font,
-}
-
-import {
+  "moonbitlang/core/env" @env,
   "moonbitlang/x/fs" @fs,
-} for "wbtest"
+  "trkbt10/osenv/dirs" @dirs,
+  "trkbt10/osenv/path" @path,
+  "trkbt10/osenv/platform" @platform,
+}

@@ -37,15 +37,12 @@ fn content_height(tb : TextBoxConfig) -> Double {
 
 ///|
 /// Bullet width helper.  Returns 0 when there is no bullet.
-/// Threads the optional `measurer` for real-font measurement.
 fn bullet_width_of(
   bullet : BulletConfig?,
-  measurer : @glyph.FontMeasurer?,
-) -> Double {
+) -> Double raise @glyph.FontUnresolvedError {
   match bullet {
     None => 0.0
-    Some(b) =>
-      estimate_bullet_width(b.char, b.font_size, b.font_family, measurer~)
+    Some(b) => estimate_bullet_width(b.char, b.font_size, b.font_family)
   }
 }
 
