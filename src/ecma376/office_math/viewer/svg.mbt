@@ -22,9 +22,10 @@
 /// Nothing is assembled by string concatenation; the SVG tree is a
 /// structured `@xml.Element` graph serialised once by `@markup`.
 ///
-/// Glyph widths come from `@glyph.estimate_text_width_fallback`,
-/// the same measurement path the WordprocessingML viewer uses, so
-/// math runs and surrounding body text share one metric basis.
+/// Glyph widths come from `@glyph.measure_text_width`, the same
+/// resolver-backed measurement path the WordprocessingML viewer
+/// uses, so math runs and surrounding body text share one metric
+/// basis.
 
 ///|
 /// A laid-out math fragment.
@@ -219,18 +220,53 @@ fn text_box(
   }
   // Math notation conventionally renders in a serif/roman face — the
   // OOXML math font (Cambria Math) and every TeX math font (Latin
-  // Modern Math, STIX) are serif — so `serif` is the correct generic
-  // here, unlike body text which defaults to sans-serif.
-  let family = "serif"
-  let width = @glyph.estimate_text_width_fallback(
-    content,
-    font_size_pt=ctx.font_size_pt,
-    letter_spacing_px=0.0,
-    font_family=Some(family),
-    font_weight=if bold { 700 } else { 400 },
-  )
+  // Modern Math, STIX) are serif. We pass the canonical Noto serif
+  // family name and let the resolver pick whatever serif face the
+  // host carries; body text defaults to sans-serif by contrast.
+  let family = "Noto Serif"
+  let weight = if bold { 700 } else { 400 }
+  // Measure with the requested italic/weight first; when the host
+  // catalogue lacks that cut, fall back to the upright/regular cut
+  // before degrading to zero. This mirrors what every font shaper
+  // does when a faux-italic synthesis is acceptable for layout
+  // metrics — the glyph still renders via the SVG `font-style`
+  // attribute below.
+  let width = match
+    (try? @glyph.measure_text_width(
+      content,
+      font_size_pt=ctx.font_size_pt,
+      letter_spacing_px=0.0,
+      family~,
+      weight~,
+      italic~,
+    )) {
+    Ok(w) => w
+    Err(_) =>
+      match
+        (try? @glyph.measure_text_width(
+          content,
+          font_size_pt=ctx.font_size_pt,
+          letter_spacing_px=0.0,
+          family~,
+          weight=400,
+          italic=false,
+        )) {
+        Ok(w) => w
+        Err(_) => 0.0
+      }
+  }
   let px = ctx.font_size_pt * @glyph.pt_to_px
-  let ascender = @glyph.get_ascender_ratio(Some(family))
+  // Ascender ratio drives the box's ascent/descent split. Same
+  // italic/regular fallback strategy as `measure_text_width` above.
+  let ascender = match
+    (try? @glyph.get_ascender_ratio(family, weight~, italic~)) {
+    Ok(r) => r
+    Err(_) =>
+      match (try? @glyph.get_ascender_ratio(family, weight=400, italic=false)) {
+        Ok(r) => r
+        Err(_) => 0.8
+      }
+  }
   // The ascender ratio covers the cap/ascender extent; the descent
   // is the remaining em below the baseline.
   let ascent = px * ascender

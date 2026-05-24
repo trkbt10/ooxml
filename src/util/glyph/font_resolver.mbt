@@ -88,8 +88,8 @@ pub(all) struct FontFaceRequest {
 /// construct the struct literal directly.
 pub fn FontFaceRequest::of_name(
   family : String,
-  weight~ : Int = 400,
-  italic~ : Bool = false,
+  weight? : Int = 400,
+  italic? : Bool = false,
 ) -> FontFaceRequest {
   { stack: [Name(family)], weight, italic, embedded_bytes: None }
 }
@@ -125,7 +125,7 @@ pub(all) struct FontResource {
 pub suberror FontUnresolvedError {
   FontUnresolvedError(
     request~ : FontFaceRequest,
-    driver_labels~ : Array[String],
+    driver_labels~ : Array[String]
   )
 } derive(Show)
 

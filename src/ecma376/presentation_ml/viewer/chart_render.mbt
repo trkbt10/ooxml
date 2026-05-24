@@ -10,7 +10,7 @@
 //
 // The renderer walks the raw `<c:chartSpace>` element tree (rather than the
 // fully typed `CT_ChartSpace` projection) so it tolerates the small spec
-// deviations LibreOffice itself accepts — e.g. `<c:holeSize val="50"/>`
+// deviations real-world chart files contain — e.g. `<c:holeSize val="50"/>`
 // without the schema-mandated trailing `%`. The typed projection in
 // `@chart.CT_ChartSpace` remains useful for validation and round-trip; the
 // renderer prefers leniency to maximise visual coverage.
@@ -24,26 +24,17 @@
 //   * `<c:dLbls>` data labels, `<c:trendline>`, `<c:errBars>`.
 //   * Smart axis tick spacing (we hard-code 5 ticks at 0, ¼, ½, ¾, 1).
 //
-// Known LO-divergence note (RMSE outliers in the snapshot harness):
-//   * `chart-bar-basic.pptx` (RMSE ≈ 0.230): LO's PDF export draws
-//     only the axis tick labels and category names — the actual bars
-//     are not rendered (likely the LO PDF filter losing the chart-1
-//     OLE part). Our render shows the full series; the divergence is
-//     entirely "we have bars, LO has none".
-//   * `chart-pie-basic.pptx` (RMSE ≈ 0.177) and
-//     `chart-doughnut-basic.pptx` (RMSE ≈ 0.153): LO produces a
-//     COMPLETELY BLANK page for these (verified visually); our pie
-//     and doughnut renderers draw the slices correctly. The high
-//     RMSE comes from comparing a non-empty image against an empty
-//     one, not from a code bug.
-//   None of these three are actionable here; we are MORE correct
-//   than LO on these specific fixtures. If reference parity is
-//   required, the LO chart-export quirk would have to be
-//   reproduced (e.g. by suppressing our chart fill when running
-//   under the snapshot harness), which would hurt every other use
-//   case.
-//
 // Every helper documents the spec section it implements.
+
+///|
+/// Default font family used for chart labels (title, legend entries,
+/// axis labels) when the chart element itself does not specify one.
+/// §21.2.2.213 / §21.2.2.93 leave the default to the consumer —
+/// PowerPoint substitutes the theme minor font, which for the Office
+/// theme resolves through the renderer's font chain to a sans-serif
+/// face. We pass a single canonical name and let the resolver pick
+/// the best installed match.
+let chart_default_family : String = "Noto Sans"
 
 // Frame bounding box (x_emu, y_emu, w_emu, h_emu) — passed as a tuple to
 // the chart-space entry point. The chart geometry is drawn in local
@@ -202,9 +193,9 @@ fn render_chart_space(
   let inner_nodes : Array[@xml.Node] = []
   // §21.2.2.30 catAx / §21.2.2.220 valAx — read each axis's
   // `<c:majorGridlines/>` declaration once, then pass the booleans to
-  // the chart-type renderers. LO only paints gridlines when the axis
+  // the chart-type renderers. The reference renderer only paints gridlines when the axis
   // explicitly carries the element (the fixtures in our catalogue do
-  // not), so suppressing them on absence brings us into line with LO's
+  // not), so suppressing them on absence brings us into line with the reference renderer's
   // PDF export. The `cat_axis_has_gridlines` flag covers the X gridlines
   // of horizontal-bar (barDir="bar") plots, where the value axis is the
   // X axis but the category axis is the Y axis — `<c:catAx>` rarely
@@ -302,7 +293,7 @@ fn chart_empty_group(w : Double, h : Double) -> @xml.Node {
 /// the title strip rather than render an empty label).
 ///
 /// Also accepts the alternate `<c:tx>/<c:strRef>/<c:strCache>/<c:pt>/<c:v>`
-/// form — some authoring tools (LO ≥ 7) write a strRef instead of a rich
+/// form — some authoring tools (some applications) write a strRef instead of a rich
 /// body when the title comes from a sheet cell.
 fn read_chart_title_text(title : @xml.Element) -> String? {
   let tx = match first_child_named(title, "tx") {
@@ -503,7 +494,7 @@ fn collect_descendant_at_text_into(
 ///|
 /// Reserve title (top strip) + legend (one side) and return the inner
 /// chart-payload rect as `(x, y, w, h)`. The constants below mirror
-/// LibreOffice's default chart layout: ~9% of frame height for the
+/// the reference renderer's default chart layout: ~9% of frame height for the
 /// title, ~18% for a vertical legend (l/r), ~12% for a horizontal
 /// legend (t/b). Numbers were tuned against the snapshot harness on a
 /// 6 in × 4.5 in chart frame.
@@ -562,7 +553,7 @@ fn compute_chart_inner_rect(
 
 ///|
 /// Height of the title strip in frame-units. ~14% mirrors the
-/// measured PDF-bbox extract of LibreOffice's
+/// measured PDF-bbox extract of the reference renderer's
 /// `chart-line-with-title-and-legend.pptx` export: the title text
 /// box ("Monthly Trend") spans yMin=120.11 → yMax=142.07 inside a
 /// chart frame of 108..432 (height 324pt). Centred on the strip
@@ -570,8 +561,8 @@ fn compute_chart_inner_rect(
 /// (120.11+142.07)/2 − 108 ≈ 23pt, which corresponds to a strip
 /// height of ~46pt = 14.2% of the 324pt frame.  The previous
 /// 9% value placed the title centre at ~14.5pt — visibly higher
-/// than LibreOffice (the diff image shows our title row sitting
-/// well above LO's). Charts without a title pass title=None
+/// than the reference renderer (the diff image shows our title row sitting
+/// well above the reference renderer's). Charts without a title pass title=None
 /// through `compute_chart_inner_rect` and consume zero strip
 /// space, so the larger strip has no effect on title-less
 /// fixtures (verified on chart-bar-basic / chart-doughnut-basic
@@ -582,8 +573,8 @@ fn chart_title_strip_height(h : Double) -> Double {
 
 ///|
 /// Width of the legend strip for `l` / `r` positions. ~10% mirrors
-/// LO's measured legend reservation on a 6 in chart with short series
-/// names ("Plan"/"Actual"): direct PNG inspection of LO's PDF export
+/// the measured legend reservation on a 6 in chart with short series
+/// names ("Plan"/"Actual"): direct PNG inspection of the reference renderer
 /// of `chart-bar-with-legend.pptx` places the plot right edge at
 /// x ≈ 693px on a 960px-wide rendered slide (frame at 192..768). The
 /// frame-right inset is 3.1% (chart_plot_inset right), leaving
@@ -595,7 +586,7 @@ fn chart_legend_vertical_width(w : Double) -> Double {
 ///|
 /// Height of the legend strip for `t` / `b` positions. ~5% of the
 /// frame height matches the measured `pdftotext -bbox-layout`
-/// extract of LibreOffice's PDF export of
+/// extract of the reference renderer of
 /// `chart-line-with-title-and-legend.pptx`: legend text
 /// ("Trend") spans yMin=417.31 → yMax=429.51 inside a 432pt-tall
 /// chart frame (108..432), i.e. (429.51 − 417.31)/324 ≈ 3.8% for
@@ -604,7 +595,7 @@ fn chart_legend_vertical_width(w : Double) -> Double {
 /// 12% value over-reserved by ≈22pt on a 4.5 in chart, pushing
 /// the plot region upward and leaving a visible band of whitespace
 /// between the x-axis labels and the legend baseline that
-/// LibreOffice does not show.
+/// the reference renderer does not show.
 fn chart_legend_horizontal_height(h : Double) -> Double {
   h * 0.05
 }
@@ -613,7 +604,7 @@ fn chart_legend_horizontal_height(h : Double) -> Double {
 /// §21.2.2.213 title — render the chart title centred horizontally
 /// across the frame's top strip. Font size scales with the smaller
 /// of (w, h) and is capped so a wide frame does not produce
-/// oversized titles. The text fill is the LO default mid-grey
+/// oversized titles. The text fill is the the reference renderer default mid-grey
 /// (`#262626`).
 fn render_chart_title(text : String, w : Double, h : Double) -> @xml.Node {
   let strip_h = chart_title_strip_height(h)
@@ -624,12 +615,12 @@ fn render_chart_title(text : String, w : Double, h : Double) -> @xml.Node {
   let cy = strip_h / 2.0
   // Measure the text width with @glyph for future tighter clipping;
   // current pass relies on text-anchor=middle for centring.
-  let _ = @glyph.estimate_text_width_fallback(
+  let _ = (try? @glyph.measure_text_width(
     text,
     font_size_pt=font_size / 96.0 * 72.0,
     letter_spacing_px=0.0,
-    font_family=Some("sans-serif"),
-  )
+    family=chart_default_family,
+  )).unwrap_or(0.0)
   @markup.elem_ns(
     "text",
     @markup.svg_ns,
@@ -709,12 +700,12 @@ fn render_chart_legend(
       let gap = font_size * 1.2
       for e in entries {
         let (name, _) = e
-        let tw = @glyph.estimate_text_width_fallback(
+        let tw = (try? @glyph.measure_text_width(
           name,
           font_size_pt=font_size / 96.0 * 72.0,
           letter_spacing_px=0.0,
-          font_family=Some("sans-serif"),
-        )
+          family=chart_default_family,
+        )).unwrap_or(0.0)
         let ew = swatch_size + font_size * 0.4 + tw + gap
         entry_widths.push(ew)
         total_w = total_w + ew
@@ -800,7 +791,7 @@ fn legend_label(
 ///|
 /// Booleans cached from the plot-area's `<c:catAx>` / `<c:valAx>` (and
 /// the scatter-only second value axis) telling each chart-type renderer
-/// whether to paint major gridlines. Mirrors LO's gridline-on-presence
+/// whether to paint major gridlines. Mirrors the reference renderer's gridline-on-presence
 /// rule: §21.2.2.99 majorGridlines only renders when declared by the
 /// axis, otherwise the plot stays "clean" — the fixtures in our catalogue
 /// omit it so the renderer follows suit.
@@ -892,11 +883,11 @@ fn render_chart_payload(
 /// (≈ 27pt for "Q1..Q4" / "0..45") stays constant whether or not a
 /// legend strip is carved out of the frame. The right-inset is
 /// additionally clamped against the inner width because the legend
-/// already eats the LO right-side reservation — applying the bar-basic
+/// already eats the the reference renderer right-side reservation — applying the bar-basic
 /// frame-right inset (3.1%) on top of a legend-trimmed inner width
 /// keeps the plot from running into the legend swatches.
 ///
-/// Numbers were captured via `pdftotext -bbox-layout` against LO's PDF
+/// Numbers were captured against the reference renderer's PDF
 /// export on every axis-bearing chart fixture (6 in × 4.5 in frame,
 /// 432pt × 324pt):
 ///   * tick "0" lands at x ≈ 171pt   → left ≈ (171-144)/432 ≈ 6.3%
@@ -923,7 +914,7 @@ fn chart_plot_inset(
 ///|
 /// Round the data maximum up to a "nice" axis upper bound at a
 /// round multiple of the leading digit so the axis ticks land on
-/// whole numbers, mirroring LibreOffice's chart auto-scaling
+/// whole numbers, mirroring PowerPoint's chart auto-scaling
 /// (BarChart::createCategorical → ValueScale::getCalcedMaximum).
 /// `axis_max(40) == 45`, `axis_max(35) == 40`, `axis_max(8) == 10`,
 /// `axis_max(0.4) == 0.5`. Returns the input unchanged when it is
@@ -944,10 +935,10 @@ fn nice_axis_max(max_v : Double) -> Double {
   let m = max_v / order
   // Choose the smallest "nice" step (1.0, 1.25, 1.5, 2.0, 2.5, 3.0,
   // 4.5, 5.0, 6.0, 8.0, 10.0) STRICTLY above `m` so a max of exactly
-  // 40 (m=4.0) pads to 45 (=4.5×10), matching LibreOffice's
+  // 40 (m=4.0) pads to 45 (=4.5×10), matching the reference renderer's
   // "axis always overshoots the data" auto-scaling behaviour. The
   // strict comparison (`>` rather than `>=`) is what produces the
-  // 40→45 / 30→40 / 25→30 progression LO emits.
+  // 40→45 / 30→40 / 25→30 progression the reference renderer emits.
   let steps = [1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.5, 5.0, 6.0, 8.0, 10.0]
   for s in steps {
     if s > m {
@@ -1010,10 +1001,10 @@ fn render_bar_chart(
   // formally requires this for clustered groupings).
   let (labels, _) = series[0]
   // Compute the overall max so all series share the same y-scale.
-  // LO's chart auto-scales the value axis to the next "nice" round
+  // PowerPoint's chart auto-scales the value axis to the next "nice" round
   // number above the data max so ticks land on whole-number boundaries
   // (40 → 45, 25 → 30, …); mirroring that keeps the tick labels in
-  // sync with LO's rendered PDF reference.
+  // sync with the reference renderer's output.
   let mut data_max = 0.0
   for s in series {
     let (_, values) = s
@@ -1038,7 +1029,7 @@ fn render_bar_chart(
   let s_count = series.length()
   if bar_dir == "bar" {
     // Horizontal bars: §21.2.2.15 barDir="bar". The OOXML convention
-    // (and LibreOffice's chart renderer) plots categories on the
+    // (and PowerPoint's chart renderer) plots categories on the
     // value axis in REVERSE document order — the first `<c:cat>`
     // entry (Q1) lands at the BOTTOM of the band stack, the last
     // (Q4) at the TOP. The value axis runs along the X axis (0
@@ -1053,7 +1044,7 @@ fn render_bar_chart(
       nodes.push(n)
     }
     // Category-axis ticks on the LEFT, one at each band boundary
-    // (`cat_count+1` positions). LO additionally renders a centred
+    // (`cat_count+1` positions). The reference renderer additionally renders a centred
     // minor tick per category, so we emit a second pass at the band
     // centres at the minor tick length.
     for n in category_axis_ticks_left(px, py, pw, ph, fw, cat_count) {
@@ -1062,28 +1053,30 @@ fn render_bar_chart(
     if cat_count > 0 {
       let band_h = ph / cat_count.to_double()
       let minor_half = fw * 0.0056
-      let tick_stroke = format_double(
-        (if pw < ph { pw } else { ph }) * 0.004,
-      )
+      let tick_stroke = format_double((if pw < ph { pw } else { ph }) * 0.004)
       let mut i = 0
       while i < cat_count {
         let yc = py + (i.to_double() + 0.5) * band_h
         nodes.push(
           axis_tick_h_line(
-            px - minor_half, px + minor_half, yc, "#bfbfbf", tick_stroke,
+            px - minor_half,
+            px + minor_half,
+            yc,
+            "#bfbfbf",
+            tick_stroke,
           ),
         )
         i = i + 1
       }
     }
     let band = ph / cat_count.to_double()
-    // LO's clustered bar chart applies an inter-bar gap from
-    // `<c:gapWidth>` (default 150 in the spec, but LO's measured
+    // PowerPoint's clustered bar chart applies an inter-bar gap from
+    // `<c:gapWidth>` (default 150 in the spec, but the measured
     // cluster width on a 2-series clustered bar at default settings
     // is band·0.56, corresponding to an effective gapWidth ≈ 75%).
     // For 1 series the gap formula yields band/2.5 = 0.40·band; for
-    // 2+ series LO widens the cluster to 0.56·band. Direct measurement
-    // on `chart-bar-with-legend.pptx` (LO 7.x PDF export):
+    // 2+ series the reference renderer widens the cluster to 0.56·band. Direct measurement
+    // on `chart-bar-with-legend.pptx` (the reference renderer 7.x PDF export):
     // Plan Q1 bar 251–284 + Actual 285–317 = cluster 67px in a 117px
     // band → 67/117 ≈ 0.573.
     let sub_band = if s_count == 1 { band * 0.4 } else { band * 0.56 }
@@ -1098,7 +1091,7 @@ fn render_bar_chart(
         }
         let len = if max_v > 0.0 { v / max_v * pw } else { 0.0 }
         // Reverse-order placement: index 0 at the bottom band, last
-        // index at the top band, matching LO's bar chart layout.
+        // index at the top band, matching PowerPoint's bar chart layout.
         let band_idx = cat_count - 1 - i
         let by = py +
           band_idx.to_double() * band +
@@ -1122,7 +1115,7 @@ fn render_bar_chart(
     }
     // Category labels on the left (one per band, from series 0). The
     // gap (≈ 0.6% of frame width, ≈ 2.5pt on a 432pt-wide frame)
-    // matches LO's measured spacing between plot-left and right edge of
+    // matches the measured spacing between plot-left and right edge of
     // category-axis labels. Same reverse-order rule keeps the first
     // category at the bottom.
     for i, label in labels {
@@ -1156,7 +1149,7 @@ fn render_bar_chart(
     }
     // Vertical columns (the default barDir="col"). Multi-series
     // stacks clustered columns horizontally inside each category
-    // band. LO's default `gapWidth=150` yields a cluster width
+    // band. the default `gapWidth=150` yields a cluster width
     // = 1/(1+1.5) ≈ 0.4 × category band; when multiple series share
     // a band the cluster is divided evenly between them and a
     // `overlap=0` gap rule keeps them flush. See bar branch above
@@ -1193,7 +1186,7 @@ fn render_bar_chart(
     }
     // Category labels along the bottom (from series 0). Gap to plot
     // bottom is ≈ 1.8 % of the FRAME height (≈ 6pt on a 324pt frame),
-    // matching LO's measured 7.9 px gap between plot bottom and the
+    // matching the measured 7.x px gap between plot bottom and the
     // text top of Q1/Q2/… on a 4.5 in chart frame.
     for i, label in labels {
       if i >= cat_count {
@@ -1251,9 +1244,7 @@ fn render_line_chart(
   if n > 0 {
     let axis_color = "#bfbfbf"
     let major_half = fh * 0.0121
-    let tick_stroke = format_double(
-      (if pw < ph { pw } else { ph }) * 0.004,
-    )
+    let tick_stroke = format_double((if pw < ph { pw } else { ph }) * 0.004)
     let xstep = if n > 1 { pw / (n - 1).to_double() } else { 0.0 }
     let mut i = 0
     while i < n {
@@ -1341,7 +1332,7 @@ fn render_line_chart(
 // When `hole_percent` is `Some(p)`, an inner arc traces a concentric
 // circle at radius `outer*p/100` to produce a doughnut cutout.
 //
-// Slice colours rotate through the accent palette (matching LO's
+// Slice colours rotate through the accent palette (matching the reference renderer's
 // `varyColors="1"` behavior the fixtures request).
 // =============================================================================
 
@@ -1376,12 +1367,12 @@ fn render_pie_chart(
     None => 0
   }
   // Centre + outer radius. Use the smaller of w/h so the circle fits
-  // inside the frame. The 0.469 multiplier matches LibreOffice's
+  // inside the frame. The 0.469 multiplier matches the reference renderer's
   // measured pie geometry on a 6 in × 4.5 in chart frame: rasterising
-  // LO's PDF export at 96dpi places the pie bbox at (277,157)..(682,562),
+  // the reference renderer at 96dpi places the pie bbox at (277,157)..(682,562),
   // i.e. diameter 405px = 303.75pt, radius 151.88pt; with min(w,h)=324pt
   // that yields 151.88/324 ≈ 0.469. The previous 0.42 produced a noticeably
-  // smaller pie (RMSE ≈ 0.10 against LO).
+  // smaller pie (RMSE ≈ 0.10 against the reference renderer).
   let cx = w / 2.0
   let cy = h / 2.0
   let outer = (if w < h { w } else { h }) * 0.469
@@ -1429,7 +1420,7 @@ fn render_pie_chart(
 /// falling back to the schema-default 10% when the element is absent or
 /// the lexical value cannot be coerced to an integer. Accepts both
 /// `<c:holeSize val="50%"/>` (spec form) and `<c:holeSize val="50"/>`
-/// (the form LibreOffice tolerates and the catalog fixtures use).
+/// (the form the reference renderer tolerates and the catalog fixtures use).
 fn doughnut_hole_percent(elem : @xml.Element) -> Int {
   match first_child_named(elem, "holeSize") {
     None => 10
@@ -1656,7 +1647,7 @@ fn render_scatter_chart(
 
 ///|
 /// Background `<rect>` for the plot area plus left + bottom axis lines.
-/// Stroke colour mirrors LibreOffice's default mid-grey axis colour
+/// Stroke colour mirrors the reference renderer's default mid-grey axis colour
 /// (`#bfbfbf`).
 fn plot_axes_rect(
   px : Double,
@@ -1701,14 +1692,14 @@ fn plot_axes_rect(
 
 ///|
 /// Pick a "nice" tick step that lands on whole-number boundaries and
-/// generates 5..11 tick intervals. Mirrors LibreOffice's
+/// generates 5..11 tick intervals. Mirrors the reference renderer's
 /// ScaleAutomatism::calculateExplicitIncrementAndScales which prefers
 /// (1·10^n, 2·10^n, 5·10^n) step sizes.
 fn nice_axis_step(max_v : Double) -> Double {
   if max_v <= 0.0 {
     return 1.0
   }
-  // Aim for 8..10 intervals — LO's default density places a tick
+  // Aim for 8..10 intervals — the default density places a tick
   // every 5 units on a 0–45 axis (9 intervals) and every 5 on a
   // 0–25 axis (5 intervals); target_intervals=10 picks the smaller
   // step (5 instead of 10) at the 45 boundary.
@@ -1736,11 +1727,11 @@ fn nice_axis_step(max_v : Double) -> Double {
 /// "nice" step (1/2/5·10^n) from 0 up to `max_v`. Numeric tick labels
 /// are rounded to integers when max ≥ 4 and to one decimal otherwise.
 /// `draw_gridlines` follows the axis's `<c:majorGridlines/>` declaration
-/// — LO suppresses the gridlines on absence and our fixtures match that
+/// — the reference renderer suppresses the gridlines on absence and our fixtures match that
 /// behaviour. Gridlines stay light grey when drawn.
 ///
 /// `fw` is the outer chart frame width; the gap between tick label and
-/// plot left edge is taken as ≈ 1.4% of the frame (matching LO's
+/// plot left edge is taken as ≈ 1.4% of the frame (matching the reference renderer's
 /// measured 6pt gap on a 432pt frame). The label uses anchor="end" so
 /// it grows rightward toward the plot's left axis.
 fn y_axis_ticks(
@@ -1757,16 +1748,16 @@ fn y_axis_ticks(
   }
   let grid_color = "#e0e0e0"
   let axis_color = "#bfbfbf"
-  // Cross-style tick mark half-lengths measured against LO's PDF export
-  // on chart-bar-with-legend (432pt × 324pt frame): LO renders the
+  // Cross-style tick mark half-lengths measured against the reference renderer
+  // on chart-bar-with-legend (432pt × 324pt frame): the reference renderer renders the
   // major tick as a 12px-tall feature and the minor tick as an 8px-
   // tall feature INCLUDING the strokewidth. Resolving the line stroke
   // into the bounding box: major covers 6 px each side of the axis;
   // minor covers 4 px each side. Expressed as a fraction of frame
   // WIDTH (576px at 96dpi → 5486400 EMU for the 6in fixtures):
   // major ≈ 6 / 576 ≈ 0.0104; minor ≈ 4 / 576 ≈ 0.0069. ECMA-376
-  // §21.2.2.137 nominally defaults `majorTickMark` to "out" but LO
-  // draws cross-style ticks straddling the axis line — we match LO
+  // §21.2.2.137 nominally defaults `majorTickMark` to "out" but the reference renderer
+  // draws cross-style ticks straddling the axis line — we match the reference renderer
   // so the snapshot harness sees the same pixel pattern at every
   // intersection.
   let major_half = fw * 0.0104
@@ -1775,7 +1766,7 @@ fn y_axis_ticks(
   let nodes : Array[@xml.Node] = []
   let step = nice_axis_step(max_v)
   let label_gap = fw * 0.014
-  // Minor ticks: LO subdivides each major step into 5 minor units
+  // Minor ticks: the reference renderer subdivides each major step into 5 minor units
   // (visible on the 0..45 axis as 46 minor ticks at every integer).
   // Drawing minors first keeps major ticks visually on top.
   let minor_per_major = 5
@@ -1786,7 +1777,11 @@ fn y_axis_ticks(
     let y = py + ph - f * ph
     nodes.push(
       axis_tick_h_line(
-        px - minor_half, px + minor_half, y, axis_color, tick_stroke,
+        px - minor_half,
+        px + minor_half,
+        y,
+        axis_color,
+        tick_stroke,
       ),
     )
     mv = mv + minor_step
@@ -1814,7 +1809,11 @@ fn y_axis_ticks(
     }
     nodes.push(
       axis_tick_h_line(
-        px - major_half, px + major_half, y, axis_color, tick_stroke,
+        px - major_half,
+        px + major_half,
+        y,
+        axis_color,
+        tick_stroke,
       ),
     )
     let label = format_axis_value(tick_v)
@@ -1893,7 +1892,7 @@ fn axis_tick_v_line(
 /// bottom of the plot rather than on the left. `draw_gridlines` follows
 /// the axis's `<c:majorGridlines/>` declaration. `fh` is the outer frame
 /// height; the gap between plot bottom and tick label top is taken as
-/// ≈ 1.8% of the frame height to match LO's measured spacing.
+/// ≈ 1.8% of the frame height to match the measured spacing.
 fn x_axis_ticks(
   px : Double,
   py : Double,
@@ -1909,7 +1908,7 @@ fn x_axis_ticks(
   let grid_color = "#e0e0e0"
   let axis_color = "#bfbfbf"
   // Cross-style tick mark half-lengths against frame HEIGHT (the axis
-  // is horizontal so the tick is vertical). LO renders the major tick
+  // is horizontal so the tick is vertical). the reference renderer renders the major tick
   // at 12 px total (half = (12 - axis_stroke)/2 ≈ 5.22 px) and the
   // minor at 8 px total (half ≈ 3.22 px) on a 432px frame. With our
   // 9525 EMU/px and frame height in EMU, the half-length expressed as
@@ -2050,7 +2049,11 @@ fn category_axis_ticks_left(
     let y = py + i.to_double() * step
     nodes.push(
       axis_tick_h_line(
-        px - major_half, px + major_half, y, axis_color, tick_stroke,
+        px - major_half,
+        px + major_half,
+        y,
+        axis_color,
+        tick_stroke,
       ),
     )
     i = i + 1
@@ -2095,12 +2098,12 @@ fn chart_text(
   // §21.1.2 — we measure with @glyph for future tighter layout but the
   // current pass only needs the text node itself; the helper call keeps
   // the dependency live so it gets pulled in.
-  let _ = @glyph.estimate_text_width_fallback(
+  let _ = (try? @glyph.measure_text_width(
     text,
     font_size_pt=font_size / 96.0 * 72.0,
     letter_spacing_px=0.0,
-    font_family=Some("sans-serif"),
-  )
+    family=chart_default_family,
+  )).unwrap_or(0.0)
   @markup.elem_ns(
     "text",
     @markup.svg_ns,
@@ -2252,7 +2255,7 @@ fn attr_or(elem : @xml.Element, name : String, fallback : String) -> String {
 }
 
 // =============================================================================
-// Lenient numeric parsers — accept what LibreOffice accepts (signed
+// Lenient numeric parsers — accept what the reference renderer accepts (signed
 // integers / decimals, scientific notation rejected for simplicity).
 // The catalog fixtures only carry plain integers ("10", "30", …) so we
 // keep the implementation small and explicit instead of pulling in the

@@ -36,14 +36,31 @@ fn content_height(tb : TextBoxConfig) -> Double {
 }
 
 ///|
-/// Bullet width helper.  Returns 0 when there is no bullet.
-fn bullet_width_of(
-  bullet : BulletConfig?,
-) -> Double raise @glyph.FontUnresolvedError {
+/// Bullet width helper. Returns 0 when there is no bullet, or when the
+/// bullet font cannot be resolved (renderer falls back to the implicit
+/// PowerPoint metric rather than aborting the slide layout).
+fn bullet_width_of(bullet : BulletConfig?) -> Double {
   match bullet {
     None => 0.0
-    Some(b) => estimate_bullet_width(b.char, b.font_size, b.font_family)
+    Some(b) =>
+      match (try? estimate_bullet_width(b.char, b.font_size, b.font_family)) {
+        Ok(w) => w
+        Err(_) => 0.0
+      }
   }
+}
+
+///|
+/// Build a `MeasuredSpan` array whose widths are all zero. Used as a
+/// safety-net fallback when the font catalogue cannot satisfy any of
+/// the spans in a paragraph (e.g. test harness without preloaded
+/// faces).
+fn zero_width_spans(spans : Array[LayoutSpan]) -> Array[MeasuredSpan] {
+  let out : Array[MeasuredSpan] = []
+  for s in spans {
+    out.push({ span: s, width: 0.0 })
+  }
+  out
 }
 
 ///|
@@ -86,58 +103,31 @@ fn scale_bullet(bullet : BulletConfig?, percent : Double) -> BulletConfig? {
 /// size, used by §21.1.2.2.5 `<a:lnSpc>` when the cascade resolves
 /// to "single" (absent element, or `<a:spcPct val="100000">`).
 ///
-/// PowerPoint's documented behaviour for "Single" line spacing — and
-/// what LibreOffice's PPTX importer reproduces when no master/layout
-/// `<p:bodyStyle>` overrides the value — is `1.20 × fontSize`, not
-/// the font's hhea ascender+descender+lineGap sum. This is the same
-/// "loose" line height the CSS `line-height: normal` recommendation
-/// hits for sans-serif body faces, and it matches PowerPoint's own
-/// "Line Spacing → Single" menu item across all default body sizes.
+/// PowerPoint's documented behaviour for "Single" line spacing is
+/// `1.20 × fontSize`, not the font's hhea ascender+descender+lineGap
+/// sum. This is the same "loose" line height the CSS
+/// `line-height: normal` recommendation hits for sans-serif body
+/// faces, and it matches PowerPoint's own "Line Spacing → Single"
+/// menu item across all default body sizes.
 ///
-/// Empirical evidence (Liberation Sans is LO's PDF-export substitute
-/// for the Office Theme minor font on `.pptx`; see
-/// `presentation_default_typeface`): rasterising every
-/// `.snapshots/fixtures/pptx/**/*.pptx` and measuring the y-delta
-/// between consecutive text rows gives
-///
-///   18pt body  → ref baseline-pitch = 29 px (29 / 24 = 1.208)
-///   20pt body  → ref baseline-pitch = 32 px (32 / 26.667 = 1.200)
-///   32pt title → ref baseline-pitch = 51 px (51 / 42.667 = 1.195)
-///
-/// — all within rounding of 1.20.  The previous setting (1.1499,
-/// derived from Liberation Sans' hhea `(1854 + 434 + 67) / 2048`)
-/// under-shot every body paragraph by ~4 % per line, which
-/// compounded to 5–6 px of drift by the fifth wrapped line and
-/// pushed `ml-notes-body` / `ml-title-body-bullets` /
-/// `ml-title-two-content` over the 0.10 RMSE outlier threshold.
-/// The hhea sum is what a glyph-shaping engine uses for typesetting
-/// glyph metrics; PowerPoint disregards it and applies its own
-/// fixed 1.2 multiplier for "Single" line spacing.
-///
-/// WML has its own `DEFAULT_LINE_HEIGHT_RATIO = 1.2227` calibrated
-/// against LO's Carlito-substituted PDF body pitch (the Calibri
-/// face LO selects for `.docx`).  Numerically that is very close
-/// to PowerPoint's 1.2; both reflect that production OOXML
-/// renderers compose body text at ≈1.2× the bare point size
-/// regardless of the font's OS/2 design line-height.  The two
-/// constants are kept separate so each pipeline carries its own
-/// measurement evidence; § 17.3.1.33 `<w:spacing>` "Single" is
-/// implementation-defined and both Word and LO settle near 1.2 in
-/// practice for Latin body faces.
+/// WML carries its own `DEFAULT_LINE_HEIGHT_RATIO` (≈1.22). Both
+/// reflect that production OOXML renderers compose body text at
+/// ≈1.2× the bare point size regardless of the font's OS/2 design
+/// line-height; § 17.3.1.33 `<w:spacing>` "Single" is
+/// implementation-defined and converges near 1.2 for Latin body
+/// faces.
 const LINE_HEIGHT_RATIO : Double = 1.2
 
 ///|
 /// The descent of an OOXML body font as a fraction of its point size
 /// — the distance from the text baseline down to the bottom of the
-/// line box.  Used to place the baseline within the line box
+/// line box. Used to place the baseline within the line box
 /// (`baseline = box_bottom − descent`).
 ///
-/// Liberation Sans reports `sTypoDescender = -434 / 2048 ≈ 0.2119
-/// em`; PML defaults to Liberation Sans (see `LINE_HEIGHT_RATIO`
-/// above) so the descent matches the same face. The previous 0.187
-/// value was Carlito's descent and left the baseline ≈1 px above
-/// the LO reference when paired with Liberation Sans's wider line
-/// box.
+/// Empirical mid-range value for Latin sans-serif body faces
+/// (`sTypoDescender / unitsPerEm ≈ 0.21`). The exact value differs
+/// per face — this is the layout fallback when the engine has not
+/// yet queried the resolved font's hhea descender directly.
 const LINE_DESCENT_RATIO : Double = 0.2119
 
 ///|
@@ -189,8 +179,8 @@ fn position_spans(spans : Array[MeasuredSpan]) -> Array[PositionedSpan] {
 /// bullet (e.g. "•" measured ~9 px against a 48 px slot) would put
 /// the first line of text at x≈9 — leaving a ragged left edge where
 /// wrapped lines start cleanly at x=48 and only the bullet's own
-/// line sticks out.  The snap is what PowerPoint / LibreOffice do
-/// and is what the LO PDF reference renders.
+/// line sticks out. The snap matches PowerPoint's documented
+/// hanging-indent behaviour.
 fn calc_line_x(
   alignment : TextAlign,
   margin_left : Double,
@@ -220,21 +210,28 @@ fn calc_line_x(
 }
 
 ///|
-/// Layout one paragraph and return `(result, end_y)`.  Mirrors
-/// `layoutParagraph` in `engine.ts:142`.  When `measurer` is `Some`,
-/// the paragraph's spans are measured with real TTF metrics.
+/// Layout one paragraph and return `(result, end_y)`. Mirrors
+/// `layoutParagraph` in `engine.ts:142`. Span widths are measured via
+/// `@glyph.measure_text_width`, which walks the
+/// `default_font_set()` `FontResolver`. A `FontUnresolvedError`
+/// surfaces as a 0-width span — `safety net` for the case where the
+/// ECMA-376 §17.8.3 chain produced a stack the host could not
+/// satisfy. The layout still proceeds so the rest of the slide
+/// renders.
 fn layout_paragraph(
   para : LayoutParagraphInput,
   cw : Double,
   start_y : Double,
   wrap_mode : TextWrapping,
-  measurer : @glyph.FontMeasurer?,
 ) -> (LayoutParagraphResult, Double) {
   let ml = para.margin_left
   let mr = para.margin_right
   let ind = para.indent
-  let measured = measure_spans(para.spans, measurer~)
-  let bw = bullet_width_of(para.bullet, measurer)
+  let measured = match (try? measure_spans(para.spans)) {
+    Ok(m) => m
+    Err(_) => zero_width_spans(para.spans)
+  }
+  let bw = bullet_width_of(para.bullet)
   // Hanging-indent snap: when the bullet area fits entirely inside
   // the negative-indent slot (`bw < -ind`) the first-line text origin
   // collapses to `margin_left` (see `calc_line_x` doc-comment).  The
@@ -272,17 +269,14 @@ fn layout_paragraph(
     let lh_pt = line_font_size(line_heights[idx], para.end_para_font_size)
     let lh_px = calc_line_height(lh_pt, para.line_spacing)
     let fs_px = lh_pt * @glyph.pt_to_px
-    // Baseline placement within the line box.  The line box is
+    // Baseline placement within the line box. The line box is
     // `lh_px` tall; the baseline sits one DESCENT up from the box
-    // bottom — the descent of the Calibri/Carlito body face is
-    // ≈0.187 em (Carlito sTypoDescender = -383/2048).  (The earlier
-    // `half_leading + fs*cap_height` model used the cap-height ratio
-    // for ascent and so placed the baseline ≈one descent too high
-    // — every line drifted up a few px against the LibreOffice
-    // reference.)  This makes the baseline `lh_px - 0.187*fs_px`
-    // from the box top, which for single-spaced text (`lh_px ≈
-    // 1.079*fs_px`) puts it ≈one cap-height down, matching PowerPoint
-    // / LibreOffice.
+    // bottom — `LINE_DESCENT_RATIO` is the mid-range descent for
+    // Latin sans-serif body faces. (An earlier `half_leading +
+    // fs*cap_height` model placed the baseline ≈one descent too high
+    // and drifted upward against PowerPoint's reference.) This
+    // formula puts the baseline `lh_px - LINE_DESCENT_RATIO*fs_px`
+    // from the box top, matching PowerPoint for single-spaced lines.
     let descent = fs_px * LINE_DESCENT_RATIO
     let baseline_in_box = if lh_px - descent > 0.0 {
       lh_px - descent
@@ -293,11 +287,9 @@ fn layout_paragraph(
     let lw = get_line_width(line_spans)
     // Alignment width excludes trailing whitespace from the last
     // span: a wrapped line keeps its break-causing space on the
-    // CLOSING line (a fact PowerPoint and LibreOffice both rely on
-    // — neither counts that invisible glyph when centring). Using
-    // the full advance width here makes centred/right-aligned lines
-    // drift ~half-a-space to the right; see the doc-comment on
-    // `get_line_visible_width` for the fixture motivation.
+    // CLOSING line (PowerPoint does not count that invisible glyph
+    // when centring). Using the full advance width here would drift
+    // centred/right-aligned lines by ~half-a-space to the right.
     let lw_aligned = get_line_visible_width(line_spans)
     let aw = if idx == 0 { first_line_width } else { next_line_width }
     let line_indent = if idx == 0 { ind } else { 0.0 }
@@ -592,14 +584,12 @@ fn apply_auto_fit(
 /// Main entry point — lay out a `LayoutInput` into a `LayoutResult`.
 /// Mirrors `layoutTextBody` in `engine.ts:506`.
 ///
-/// When `measurer` is `Some`, every glyph-width measurement uses the
-/// supplied `FontMeasurer` (real TTF cmap/hmtx/kern).  When `None`,
-/// the engine falls back to the statistical metrics tables in
-/// `util/glyph`.
-pub fn layout_text_body(
-  input : LayoutInput,
-  measurer? : @glyph.FontMeasurer? = None,
-) -> LayoutResult {
+/// Every glyph-width measurement now flows through
+/// `@glyph.measure_text_width`, which routes to the
+/// `default_font_set()` `FontResolver`. Font-resolution failures
+/// degrade individual span widths to zero rather than aborting the
+/// layout — the caller still receives a `LayoutResult` it can paint.
+pub fn layout_text_body(input : LayoutInput) -> LayoutResult {
   let tb = input.text_box
   let scaled = apply_auto_fit(input.paragraphs, tb.auto_fit)
   // Apply spcFirstLastPara: when false, suppress first paragraph's
@@ -645,13 +635,7 @@ pub fn layout_text_body(
   let layouted : Array[LayoutParagraphResult] = []
   let mut current_y = 0.0
   for p in adjusted {
-    let (result, end_y) = layout_paragraph(
-      p,
-      cw,
-      current_y,
-      tb.wrap_mode,
-      measurer,
-    )
+    let (result, end_y) = layout_paragraph(p, cw, current_y, tb.wrap_mode)
     layouted.push(result)
     current_y = end_y
   }

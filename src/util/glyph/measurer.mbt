@@ -76,8 +76,8 @@ pub fn measure_text_width(
   font_size_pt~ : Double,
   letter_spacing_px~ : Double,
   family~ : String,
-  weight~ : Int = 400,
-  italic~ : Bool = false,
+  weight? : Int = 400,
+  italic? : Bool = false,
 ) -> Double raise FontUnresolvedError {
   let m = resolve_measurer(family, weight, italic)
   m.measure_text(text, font_size_pt~, letter_spacing_px~)
@@ -88,11 +88,11 @@ pub fn measure_text_width(
 /// character contributes the kern adjustment).
 pub fn calculate_char_width(
   char : Char,
-  prev_char~ : Char? = None,
+  prev_char? : Char? = None,
   font_size_pt~ : Double,
   family~ : String,
-  weight~ : Int = 400,
-  italic~ : Bool = false,
+  weight? : Int = 400,
+  italic? : Bool = false,
 ) -> CharWidthResult raise FontUnresolvedError {
   let m = resolve_measurer(family, weight, italic)
   let width = m.char_advance(char, font_size_pt~)
@@ -111,8 +111,8 @@ pub fn measure_text_detailed(
   font_size_pt~ : Double,
   letter_spacing_px~ : Double,
   family~ : String,
-  weight~ : Int = 400,
-  italic~ : Bool = false,
+  weight? : Int = 400,
+  italic? : Bool = false,
 ) -> DetailedMeasurement raise FontUnresolvedError {
   let m = resolve_measurer(family, weight, italic)
   let chars : Array[Char] = []
@@ -150,8 +150,8 @@ pub fn measure_text_detailed(
 /// family is missing.
 pub fn get_ascender_ratio(
   family : String,
-  weight~ : Int = 400,
-  italic~ : Bool = false,
+  weight? : Int = 400,
+  italic? : Bool = false,
 ) -> Double raise FontUnresolvedError {
   resolve_measurer(family, weight, italic).ascender_ratio()
 }
@@ -161,8 +161,8 @@ pub fn get_ascender_ratio(
 /// negative in TrueType conventions).
 pub fn get_descender_ratio(
   family : String,
-  weight~ : Int = 400,
-  italic~ : Bool = false,
+  weight? : Int = 400,
+  italic? : Bool = false,
 ) -> Double raise FontUnresolvedError {
   resolve_measurer(family, weight, italic).descender_ratio()
 }
@@ -172,8 +172,8 @@ pub fn get_descender_ratio(
 /// `hhea` `lineGap`).
 pub fn get_line_gap_ratio(
   family : String,
-  weight~ : Int = 400,
-  italic~ : Bool = false,
+  weight? : Int = 400,
+  italic? : Bool = false,
 ) -> Double raise FontUnresolvedError {
   resolve_measurer(family, weight, italic).line_gap_ratio()
 }

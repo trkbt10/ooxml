@@ -26,17 +26,23 @@ fn is_break_char(c : Char) -> Bool {
 }
 
 ///|
-/// Re-measure a single span after splitting its text.  Mirrors
+/// Re-measure a single span after splitting its text. Mirrors
 /// `createOverflowSpan` / inline `estimateTextWidth` calls in
-/// `text-layout/line-breaker.ts:45`.
+/// `text-layout/line-breaker.ts:45`. A `FontUnresolvedError` from
+/// the resolver degrades to 0 width so the line breaker still makes
+/// forward progress.
 fn make_span(parent : MeasuredSpan, text : String) -> MeasuredSpan {
-  let width = @glyph.estimate_text_width_fallback(
-    text,
-    font_size_pt=parent.span.font_size,
-    letter_spacing_px=parent.span.letter_spacing,
-    font_family=Some(parent.span.font_family),
-    font_weight=parent.span.font_weight,
-  )
+  let width = match
+    (try? @glyph.measure_text_width(
+      text,
+      font_size_pt=parent.span.font_size,
+      letter_spacing_px=parent.span.letter_spacing,
+      family=parent.span.font_family,
+      weight=parent.span.font_weight,
+    )) {
+    Ok(w) => w
+    Err(_) => 0.0
+  }
   let new_span : LayoutSpan = {
     text,
     font_size: parent.span.font_size,
@@ -71,17 +77,23 @@ fn make_span(parent : MeasuredSpan, text : String) -> MeasuredSpan {
 
 ///|
 /// Single-character width estimate used while searching for break
-/// points inside an oversized span.
+/// points inside an oversized span. Returns 0 when the font cannot
+/// be resolved (the search still terminates because every other
+/// character also measures 0 in that condition).
 fn char_width_estimate(parent : MeasuredSpan, c : Char) -> Double {
   let buf = StringBuilder::new()
   buf.write_char(c)
-  @glyph.estimate_text_width_fallback(
-    buf.to_string(),
-    font_size_pt=parent.span.font_size,
-    letter_spacing_px=0.0,
-    font_family=Some(parent.span.font_family),
-    font_weight=parent.span.font_weight,
-  )
+  match
+    (try? @glyph.measure_text_width(
+      buf.to_string(),
+      font_size_pt=parent.span.font_size,
+      letter_spacing_px=0.0,
+      family=parent.span.font_family,
+      weight=parent.span.font_weight,
+    )) {
+    Ok(w) => w
+    Err(_) => 0.0
+  }
 }
 
 ///|
@@ -341,25 +353,24 @@ pub fn count_line_spaces(spans : Array[MeasuredSpan]) -> Int {
 
 ///|
 /// Visible width of a laid-out line — the total span advance minus
-/// the advance of any trailing whitespace characters on the LAST span.
+/// the advance of any trailing whitespace characters on the LAST
+/// span.
 ///
-/// Centring / right-alignment / justified `available_width - line_width`
-/// calculations must use this value, NOT `get_line_width`.  Reason:
-/// after `break_into_lines` runs, a wrapped line frequently ends with
-/// the literal space that triggered the break (the wrapper kept the
-/// break-char on the closing line rather than pushing it to the next
-/// line; the spec is silent on which side the space goes to, and both
-/// LO and PowerPoint keep it on the breaking line).  That trailing
-/// space contributes ≈1 advance unit to the raw line width but draws
-/// no ink, so the visible glyph extent ends one space-width to the
-/// LEFT of the advance end.  LibreOffice excludes the trailing space
-/// before centring; if we use the full advance width we leave too
-/// little room on the LEFT and the line drifts ≈half-a-space right
-/// (≈3–4 px at 26 pt Liberation Sans on the pml-shape-text-wrap
-/// fixture — enough to push the RMSE 5–10% past target).
+/// Centring / right-alignment / justified
+/// `available_width - line_width` calculations must use this value,
+/// NOT `get_line_width`. Reason: after `break_into_lines` runs, a
+/// wrapped line frequently ends with the literal space that
+/// triggered the break (the wrapper kept the break-char on the
+/// closing line rather than pushing it to the next line; the spec is
+/// silent on which side the space goes to, and PowerPoint keeps it
+/// on the breaking line). That trailing space contributes ≈1
+/// advance unit to the raw line width but draws no ink, so the
+/// visible glyph extent ends one space-width to the LEFT of the
+/// advance end. If we use the full advance width we leave too little
+/// room on the LEFT and centred lines drift ≈half-a-space to the
+/// right.
 ///
-/// Mirrors the implicit behaviour in PowerPoint / LibreOffice; the
-/// upstream web-pptx port lacks the helper because Canvas
+/// The upstream web-pptx port lacks the helper because Canvas
 /// `measureText` measures glyph extents directly and skips trailing
 /// whitespace automatically — our advance-based estimator has to do
 /// the exclusion by hand.
@@ -390,8 +401,8 @@ pub fn get_line_visible_width(spans : Array[MeasuredSpan]) -> Double {
     total + last.width
   } else if end == 0 {
     // The entire last span is whitespace — visible width excludes it
-    // entirely. (Pure-whitespace lines centre as zero-width which is
-    // what LibreOffice does.)
+    // entirely. Pure-whitespace lines centre as zero-width, matching
+    // PowerPoint.
     total
   } else {
     let buf = StringBuilder::new()
@@ -399,22 +410,26 @@ pub fn get_line_visible_width(spans : Array[MeasuredSpan]) -> Double {
       buf.write_char(chars[i])
     }
     let trimmed = buf.to_string()
-    let w = @glyph.estimate_text_width_fallback(
-      trimmed,
-      font_size_pt=last.span.font_size,
-      letter_spacing_px=last.span.letter_spacing,
-      font_family=Some(last.span.font_family),
-      font_weight=last.span.font_weight,
-    )
+    let w = match
+      (try? @glyph.measure_text_width(
+        trimmed,
+        font_size_pt=last.span.font_size,
+        letter_spacing_px=last.span.letter_spacing,
+        family=last.span.font_family,
+        weight=last.span.font_weight,
+      )) {
+      Ok(v) => v
+      Err(_) => 0.0
+    }
     total + w
   }
 }
 
 ///|
-/// True for ASCII whitespace characters that LO / PowerPoint discount
-/// at end-of-line for alignment purposes: space and tab.  Hard line
+/// True for ASCII whitespace characters that PowerPoint discounts at
+/// end-of-line for alignment purposes: space and tab. Hard line
 /// breaks `\n` never appear in a layout span (the line-breaker turns
-/// `<a:br/>` into a `is_break` marker, not a literal char).
+/// `<a:br/>` into an `is_break` marker, not a literal char).
 fn is_trailing_ws(c : Char) -> Bool {
   c == ' ' || c == '\t'
 }

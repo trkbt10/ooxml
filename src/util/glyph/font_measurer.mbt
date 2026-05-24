@@ -63,10 +63,7 @@ pub fn make_font_measurer(bytes : Bytes) -> FontMeasurer? {
 /// file; without this entry point the resolver could only read
 /// single-face TTFs and every host with `.ttc` system fonts would
 /// require repackaging.
-pub fn make_font_measurer_at(
-  bytes : Bytes,
-  ttc_index : Int?,
-) -> FontMeasurer? {
+pub fn make_font_measurer_at(bytes : Bytes, ttc_index : Int?) -> FontMeasurer? {
   match ttc_index {
     None => make_font_measurer(bytes)
     Some(idx) =>

@@ -177,10 +177,10 @@ fn render_diagram_svg(
   // `sp`, `lMarg`, …) that drive the engine's sizing / positioning.
   // A layoutDef carrying only *non-geometric* constraints —
   // typically `primFontSz` for text fitting — has no spatial intent:
-  // PowerPoint and LibreOffice both surface such layouts as blank
-  // graphicFrames (LibreOffice emits no shapes; PowerPoint shows
+  // PowerPoint both surface such layouts as blank
+  // graphicFrames (the reference renderer emits no shapes; PowerPoint shows
   // "Cannot display SmartArt"). To stay aligned with the snapshot
-  // harness's reference renderer (LibreOffice), we follow suit and
+  // harness's reference renderer (the reference renderer), we follow suit and
   // emit nothing when the decoded definition carries zero geometric
   // constraints. The predicate
   // `definition_has_geometric_constraints` lives in
@@ -266,11 +266,11 @@ fn render_diagram_svg(
 ///   * §21.4.7.1 hierRoot / hierChild — vertical shoulder routing:
 ///     parent's bottom-centre → midway down → horizontally to the
 ///     child's column → child's top-centre. Mirrors PowerPoint /
-///     LibreOffice's default org-chart connector style.
+///     the reference renderer's default org-chart connector style.
 ///   * §21.4.7.1 cycle — straight chord from centre to centre.
 ///   * §21.4.7.1 lin / snake / pyra — no connectors (linear stacking
 ///     already conveys order); we drop the connections silently so
-///     the renderer's output matches LibreOffice's for these
+///     the renderer's output matches the reference renderer's for these
 ///     families.
 fn emit_diagram_connectors(
   data_model : @diagram_layout.DataModel,

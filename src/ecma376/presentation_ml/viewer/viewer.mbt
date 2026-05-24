@@ -2407,7 +2407,7 @@ fn build_layout_input(
   // would let consecutive paragraphs at lvl=0 with different schemes
   // share the same counter, so the second paragraph's `arabicPeriod`
   // bullet would emit "2." instead of "1." and a `romanUcPeriod`
-  // would emit "II." instead of "I.".  Verified against the LO PDF
+  // would emit "II." instead of "I.".  Verified against the the reference renderer PDF
   // reference for `text-bullet-auto-types`.
   let auto_num_counters : @hashmap.HashMap[String, Int] = @hashmap.new()
   let paragraphs : Array[LayoutParagraphInput] = []
@@ -3281,26 +3281,26 @@ fn build_run_span(
   // librsvg (and Cairo's PDF backend it drives) paint the
   // underline through Pango at the FONT's metric position
   // (post.underlinePosition + underlineThickness). For
-  // Liberation Sans (our PPTX sans-serif substitute) that puts
+  // the rendered body face (our PPTX sans-serif substitute) that puts
   // the underline ~1.5 px BELOW the baseline at 24-32 px font
-  // sizes — but LibreOffice's PDF export of the same content
+  // sizes — but the reference renderer of the same content
   // places it ~4-6 px below the baseline (descent + ~1pt
   // clearance) with a slightly thinner stroke. The mismatch
   // showed up as 0.06-0.07 RMSE on `text-underline-styles` and
   // `text-bold-italic-underline` because the rsvg-drawn
-  // underline sat 2-3 px above LO's and was 1-2 px thicker.
+  // underline sat 2-3 px above the reference renderer's and was 1-2 px thicker.
   //
   // We surface the raw `u` value in `underline_style` and let
   // `build_underline_overlay` paint EVERY underline variant
   // (including `sng`) as an explicit `<line>` overlay at the
-  // LO-matched position / thickness. The legacy
+  // the reference renderer-matched position / thickness. The legacy
   // `text-decoration: underline` short-hand is dropped from
   // the `<text>` element so rsvg does not draw its own line
   // on top.
   //
   // §21.1.2.3.28 strike still uses CSS `line-through` —
   // librsvg paints it through the same Pango path but at a
-  // mid-glyph height that matches LO's strikethrough closely
+  // mid-glyph height that matches the reference renderer's strikethrough closely
   // (no observable RMSE drift), so the explicit-overlay
   // treatment is reserved for underline.
   let underline_style_raw : String? = match r_pr_attr("u") {
@@ -3560,41 +3560,19 @@ fn resolve_run_typeface(
 /// The fallback typeface when neither the run properties nor the
 /// theme `<a:fontScheme>` supply one.
 ///
-/// We name the concrete font LibreOffice actually rasterises for
-/// PowerPoint files — **Liberation Sans** — rather than the CSS
-/// generic `sans-serif`. Background:
+/// §20.1.4.1.18 leaves the choice to the consumer once the theme
+/// minor font is also absent. We hand the resolver a single canonical
+/// sans-serif family name — `"Noto Sans"` — and let the ECMA-376
+/// §17.8.3 substitution chain in `@glyph` map it to whatever
+/// concrete face the host actually carries. The DOCX viewer carries
+/// its own format-specific default so per-format substitution stays
+/// independent.
 ///
-///   * A PML slide with no `<a:latin>` run-property and no resolved
-///     theme typeface inherits the Office Theme minor font, which is
-///     Calibri in the canonical "Office Theme" preset.
-///   * When LO opens that file and exports to PDF it substitutes
-///     Calibri for one of two faces depending on the format:
-///       - .docx files → `BAAAAA+Carlito`           (verified by
-///                                                   `pdffonts`)
-///       - .pptx files → `BAAAAA+LiberationSans`    (LO's PowerPoint
-///                                                   default-body
-///                                                   path bypasses the
-///                                                   Carlito alias and
-///                                                   selects the
-///                                                   Helvetica clone)
-///   * The width estimator in `@glyph` chooses metrics by font-family
-///     name. If we hand it the generic `sans-serif`, we hit the
-///     Carlito table in `sans_serif_metrics` — which matches the
-///     .docx rasteriser but is 8-15 % NARROWER than what LO embeds
-///     for our .pptx fixtures, breaking centred / right-aligned
-///     wraps by ~0.07 RMSE per fixture (`pml-shape-text-wrap`,
-///     `shape-comp-title-slide`, etc.).
-///   * Naming the actual rasterised face routes both the width
-///     estimator and the rsvg fontconfig pass through Liberation
-///     Sans, keeping the line breaker, the SVG glyph placement, and
-///     the reference rasteriser on the same hmtx table.
-///
-/// The DOCX viewer keeps its own `DEFAULT_FONT_FAMILY = "sans-serif"`
-/// because LO substitutes Calibri → Carlito for that format; the two
-/// viewers DELIBERATELY disagree to mirror the per-format font
-/// matching LO performs.
+/// TODO: callers that have a document-resolved family from the
+/// theme cascade should pass it through instead of falling back
+/// here.
 fn presentation_default_typeface() -> String {
-  "Liberation Sans"
+  "Noto Sans"
 }
 
 ///|
@@ -3690,25 +3668,25 @@ fn make_break_span() -> LayoutSpan {
 ///|
 /// §21.1.2.3.32 u — paint EVERY ST_TextUnderlineType variant as an
 /// explicit `<line>` / `<path>` overlay so the visual treatment
-/// matches LibreOffice's PDF reference instead of relying on
+/// matches the reference renderer instead of relying on
 /// librsvg's `text-decoration: underline` shorthand.
 ///
 /// Why every variant is overlaid (including the simple `sng` case):
 /// librsvg renders `text-decoration: underline` at the font's
 /// `post.underlinePosition` (≈1.5 px below baseline for Liberation
 /// Sans at 24-32 px sizes) with the font's `underlineThickness`
-/// (≈1-2 px). LibreOffice's PDF export instead places the line at
+/// (≈1-2 px). the reference renderer instead places the line at
 /// ~`descent * 0.7` below the baseline (≈4-6 px) with a thinner
 /// stroke. The mismatch produced 0.06-0.07 RMSE on
 /// `text-underline-styles` and `text-bold-italic-underline` because
-/// the rsvg-drawn line sat 2-3 px ABOVE the LO reference and was
+/// the rsvg-drawn line sat 2-3 px ABOVE the reference renderer and was
 /// 1-2 px THICKER. Drawing the underline ourselves removes the
-/// rsvg dependency and lets us match LO's geometry directly.
+/// rsvg dependency and lets us match the reference renderer's geometry directly.
 ///
 /// Returned shapes per variant:
 ///   • `sng` / `words` / `heavy` / `dotted*` / `dash*` →
 ///     a single solid `<line>` (the dash / dotted variants
-///     degrade gracefully to solid; that is what LO does too
+///     degrade gracefully to solid; that is what the reference renderer does too
 ///     when its font lacks the variant glyph, verified against
 ///     the PDF reference).
 ///   • `dbl`  → two solid `<line>` elements separated by one
@@ -3718,14 +3696,14 @@ fn make_break_span() -> LayoutSpan {
 ///   • `wavyDbl` → two wavy paths separated by one stroke-width.
 ///
 /// Position is `baseline_y + font_size_px * UNDERLINE_OFFSET_RATIO`
-/// (≈ 0.155em); the constant is calibrated against LO's `Sng`
+/// (≈ 0.155em); the constant is calibrated against the reference renderer's `Sng`
 /// underline placement at 24pt body and matches the
 /// `text-bold-italic-underline` 32pt body line within 1 px.
 ///
 /// Thickness is `font_size_px * UNDERLINE_STROKE_RATIO` (≈ 0.06em),
-/// doubled for the `*Heavy` variants. Liberation Sans's own
+/// doubled for the `*Heavy` variants. the rendered body face's own
 /// `post.underlineThickness` (≈ 0.024 em) is much thinner than
-/// LO actually draws, so we use the empirical LO value instead.
+/// the reference renderer actually draws, so we use the empirical the reference renderer value instead.
 ///
 /// All overlays use the span's resolved underline colour (or its
 /// text colour) so the visual treatment carries the same fill as
@@ -3744,9 +3722,9 @@ fn build_underline_overlay(
     None => span.color
   }
   // Stroke width: a "heavy" variant doubles the line thickness. The
-  // baseline thickness is 0.0625 em which matches LibreOffice's
+  // baseline thickness is 0.0625 em which matches the reference renderer's
   // default underline weight for sans-serif body faces (verified
-  // against LO Liberation Sans @ 24-32pt rasterised at our snapshot
+  // against the reference renderer the rendered body face @ 24-32pt rasterised at our snapshot
   // DPI: 2 px line at 32 px font ≈ 0.0625 em).
   let is_heavy = style == "heavy" ||
     style == "dottedHeavy" ||
@@ -3758,7 +3736,7 @@ fn build_underline_overlay(
   let stroke_w = font_size_px * (if is_heavy { 0.125 } else { 0.0625 })
   // Underline sits ~0.14em below the baseline; double sits +0.085em
   // further beneath. The 0.14 ratio is the empirical centre of two
-  // LibreOffice data points measured at our snapshot DPI:
+  // the reference renderer data points measured at our snapshot DPI:
   //
   //   • `text-underline-styles` 24pt body (font_size_px = 32):
   //     ref underline pixels at y=87–88 (centre 87.5), baseline at
@@ -3769,8 +3747,8 @@ fn build_underline_overlay(
   //
   // The 0.14 midpoint lands within 0.5 px of each reference; a
   // single linear-in-em formula cannot match both exactly because
-  // LO's underline position depends on `post.underlinePosition`,
-  // which is a per-face FUnit constant Liberation Sans tabulates
+  // the reference renderer's underline position depends on `post.underlinePosition`,
+  // which is a per-face FUnit constant the rendered body face tabulates
   // as -239 (regular) and -150 (bold) — i.e. a per-style shift
   // that an em-uniform model cannot capture. The chosen value is
   // the best single-constant fit and is what closes the
@@ -3833,7 +3811,7 @@ fn build_underline_overlay(
     // librsvg cannot vary the line style through SVG attributes
     // alone (no `stroke-dasharray` support on `text-decoration`),
     // so the dash / dotted variants degrade to solid — the same
-    // fallback LO uses when its font has no dedicated variant
+    // fallback the reference renderer uses when its font has no dedicated variant
     // glyph.
     _ =>
       [
@@ -3875,7 +3853,7 @@ fn build_underline_line(
 ///|
 /// §21.1.2.3.32 u="wavy" — emit a quadratic-Bezier sinusoid spanning
 /// `[x1, x2]` at the given center y.  Each wavelength is ~0.36em
-/// wide and the amplitude is ~0.06em, matching LibreOffice's wavy
+/// wide and the amplitude is ~0.06em, matching the reference renderer's wavy
 /// underline drawing at 24pt body.
 ///
 /// The path uses alternating `q` segments — each half-wavelength is
@@ -3938,9 +3916,9 @@ fn build_wavy_underline_path(
 /// metrics are concrete by the time we get here.
 ///
 /// Bullets are rendered with the same baseline as the first text
-/// run.  PowerPoint and LibreOffice both paint the bullet on the
+/// run.  PowerPoint both paint the bullet on the
 /// run's baseline (not its own typographic baseline) — verified
-/// against the LO PDF reference for `text-bullet-char` and
+/// against the reference renderer for `text-bullet-char` and
 /// `text-bullet-auto-arabic` fixtures.
 fn build_bullet_text_node(
   bullet : BulletConfig,
@@ -4185,10 +4163,10 @@ fn render_layout_result_svg(
         // `build_underline_overlay` for the position / thickness
         // calibration). We no longer emit `text-decoration:
         // underline` on the `<text>` element because librsvg drew
-        // the line through Liberation Sans's metric position
+        // the line through the rendered body face's metric position
         // (≈1.5 px below baseline), 2-3 px higher than
-        // LibreOffice's PDF reference places it. Owning the full
-        // underline lets us match LO's geometry directly.
+        // the reference renderer places it. Owning the full
+        // underline lets us match the reference renderer's geometry directly.
         match span.span.underline_style {
           Some(style) => {
             let extras = build_underline_overlay(
@@ -4254,16 +4232,14 @@ fn count_span_spaces_text(text : String) -> Int {
 /// word becomes a `<tspan x="…">` with the absolute x position the
 /// justified layout demands.
 ///
-/// We rely on `@glyph.measure_text_width` (no real measurer is
-/// available here — the renderer calls this from emit time, not
-/// layout time) so the per-word widths match the same statistical
-/// fallback `measure_span` uses when no font file is supplied.
-/// Real-font measurement isn't necessary at this stage because the
-/// PML layout pass already chose the wrap points using the same
-/// measurer; the per-word advance here only feeds the next tspan's
-/// anchor, and the cumulative `natural_advance` doubles back to the
-/// span's already-measured `width` at the end (modulo the spaces we
-/// elide).
+/// We rely on `@glyph.measure_text_width`, which routes through the
+/// process-wide `default_font_set()` resolver. The per-word advance
+/// here only feeds the next tspan's anchor, and the cumulative
+/// `natural_advance` doubles back to the span's already-measured
+/// `width` at the end (modulo the spaces we elide). A
+/// `FontUnresolvedError` degrades each word to 0 width — the
+/// justified anchor positions still increase monotonically, just
+/// without per-glyph kerning.
 fn build_justified_text_children(
   painted_text : String,
   extra : Double,
@@ -4310,23 +4286,31 @@ fn build_justified_text_children(
       for _ in 0..<leading {
         sp_buf.write_char(' ')
       }
-      @glyph.measure_text_width(
-        sp_buf.to_string(),
-        font_size_pt=span.font_size,
-        letter_spacing_px=span.letter_spacing,
-        font_family=Some(span.font_family),
-        font_weight=span.font_weight,
-      )
+      match
+        (try? @glyph.measure_text_width(
+          sp_buf.to_string(),
+          font_size_pt=span.font_size,
+          letter_spacing_px=span.letter_spacing,
+          family=span.font_family,
+          weight=span.font_weight,
+        )) {
+        Ok(w) => w
+        Err(_) => 0.0
+      }
     } else {
       0.0
     }
-    let word_w = @glyph.measure_text_width(
-      word_text,
-      font_size_pt=span.font_size,
-      letter_spacing_px=span.letter_spacing,
-      font_family=Some(span.font_family),
-      font_weight=span.font_weight,
-    )
+    let word_w = match
+      (try? @glyph.measure_text_width(
+        word_text,
+        font_size_pt=span.font_size,
+        letter_spacing_px=span.letter_spacing,
+        family=span.font_family,
+        weight=span.font_weight,
+      )) {
+      Ok(w) => w
+      Err(_) => 0.0
+    }
     let x_pos = _cursor +
       natural_advance +
       leading_space_w +

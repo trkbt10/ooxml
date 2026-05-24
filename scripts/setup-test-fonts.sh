@@ -45,18 +45,18 @@ fi
 
 mkdir -p "$CACHE_DIR"
 
-# Each entry: filename | upstream URL. URLs pinned to the
-# google/fonts repository's main branch; bumping is one edit per
-# row.
+# Each entry: filename | upstream URL. URLs point at the
+# googlefonts/noto-fonts repository's hinted TTF tree; bumping is
+# one edit per row.
 declare -a FONTS=(
-  "NotoSans-Regular.ttf|https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSans/full/ttf/NotoSans-Regular.ttf"
-  "NotoSans-Bold.ttf|https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSans/full/ttf/NotoSans-Bold.ttf"
-  "NotoSans-Italic.ttf|https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSans/full/ttf/NotoSans-Italic.ttf"
-  "NotoSans-BoldItalic.ttf|https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSans/full/ttf/NotoSans-BoldItalic.ttf"
-  "NotoSerif-Regular.ttf|https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSerif/full/ttf/NotoSerif-Regular.ttf"
-  "NotoSerif-Bold.ttf|https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSerif/full/ttf/NotoSerif-Bold.ttf"
-  "NotoSansMono-Regular.ttf|https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSansMono/full/ttf/NotoSansMono-Regular.ttf"
-  "NotoSansMono-Bold.ttf|https://raw.githubusercontent.com/notofonts/notofonts.github.io/main/fonts/NotoSansMono/full/ttf/NotoSansMono-Bold.ttf"
+  "NotoSans-Regular.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Regular.ttf"
+  "NotoSans-Bold.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Bold.ttf"
+  "NotoSans-Italic.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-Italic.ttf"
+  "NotoSans-BoldItalic.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-BoldItalic.ttf"
+  "NotoSerif-Regular.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSerif/NotoSerif-Regular.ttf"
+  "NotoSerif-Bold.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSerif/NotoSerif-Bold.ttf"
+  "NotoSansMono-Regular.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansMono/NotoSansMono-Regular.ttf"
+  "NotoSansMono-Bold.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansMono/NotoSansMono-Bold.ttf"
 )
 
 # Pick a downloader. curl is the macOS / most-distro default; wget

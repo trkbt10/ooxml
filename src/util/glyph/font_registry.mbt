@@ -42,9 +42,8 @@ pub fn FontSet::measurer_for_request(
     Some(m) => m
     None => {
       let resource = (self.resolver.resolve)(request)
-      let base = match make_font_measurer_at(
-          resource.bytes, resource.ttc_index,
-        ) {
+      let base = match
+        make_font_measurer_at(resource.bytes, resource.ttc_index) {
         Some(m) => m
         None =>
           abort(

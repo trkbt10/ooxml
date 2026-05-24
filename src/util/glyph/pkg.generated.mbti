@@ -6,49 +6,41 @@ import {
 }
 
 // Values
-pub fn calculate_char_width(Char, prev_char? : Char?, font_size_pt~ : Double, font_family~ : String?, font_weight? : Int) -> CharWidthResult
+pub fn build_font_face_request(FontResolutionRequest) -> FontFaceRequest
+
+pub fn calculate_char_width(Char, prev_char? : Char?, font_size_pt~ : Double, family~ : String, weight? : Int, italic? : Bool) -> CharWidthResult raise FontUnresolvedError
+
+pub fn create_host_font_resolver() -> FontResolver
 
 pub fn default_font_set() -> FontSet
 
-pub fn estimate_text_width_fallback(String, font_size_pt~ : Double, letter_spacing_px~ : Double, font_family~ : String?, font_weight? : Int) -> Double
+pub let env_font_dir_var : String
 
 pub fn extract_gpos_kern_pairs(Bytes) -> Array[GposKernEntry]
 
-pub fn family_is_pptx_sans(String?) -> Bool
+pub fn get_ascender_ratio(String, weight? : Int, italic? : Bool) -> Double raise FontUnresolvedError
 
-pub fn get_ascender_ratio(String?) -> Double
+pub fn get_descender_ratio(String, weight? : Int, italic? : Bool) -> Double raise FontUnresolvedError
 
-pub fn get_descender_ratio(String?) -> Double
-
-pub fn get_line_gap_ratio(String?) -> Double
-
-pub fn gpos_kern_pairs_carlitobold() -> Array[GposKernEntry]
-
-pub fn gpos_kern_pairs_carlitoregular() -> Array[GposKernEntry]
-
-pub fn gpos_kern_pairs_liberationmonobold() -> Array[GposKernEntry]
-
-pub fn gpos_kern_pairs_liberationmonoregular() -> Array[GposKernEntry]
-
-pub fn gpos_kern_pairs_liberationsansbold() -> Array[GposKernEntry]
-
-pub fn gpos_kern_pairs_liberationsansregular() -> Array[GposKernEntry]
-
-pub fn gpos_kern_pairs_liberationserifbold() -> Array[GposKernEntry]
-
-pub fn gpos_kern_pairs_liberationserifregular() -> Array[GposKernEntry]
+pub fn get_line_gap_ratio(String, weight? : Int, italic? : Bool) -> Double raise FontUnresolvedError
 
 pub fn is_cjk_char(Char) -> Bool
 
 pub fn is_cjk_code_point(Int) -> Bool
 
+pub fn lowercase_ascii(String) -> String
+
 pub fn make_font_measurer(Bytes) -> FontMeasurer?
 
-pub fn measure_text_detailed(String, font_size_pt~ : Double, letter_spacing_px~ : Double, font_family~ : String?, font_weight? : Int) -> DetailedMeasurement
+pub fn make_font_measurer_at(Bytes, Int?) -> FontMeasurer?
 
-pub fn measure_text_width(String, font_size_pt~ : Double, letter_spacing_px~ : Double, font_family~ : String?, font_weight? : Int, measurer? : FontMeasurer?) -> Double
+pub fn measure_text_detailed(String, font_size_pt~ : Double, letter_spacing_px~ : Double, family~ : String, weight? : Int, italic? : Bool) -> DetailedMeasurement raise FontUnresolvedError
 
-pub fn normalize_font_name(String) -> String
+pub fn measure_text_width(String, font_size_pt~ : Double, letter_spacing_px~ : Double, family~ : String, weight? : Int, italic? : Bool) -> Double raise FontUnresolvedError
+
+pub fn normalize_family(String) -> String
+
+pub fn parse_font_stack(String) -> Array[FontStackCandidate]
 
 pub fn pixels_to_points(Double) -> Double
 
@@ -58,7 +50,14 @@ pub let pt_to_px : Double
 
 pub let px_to_pt : Double
 
+pub fn resolve_chain(FontResolutionRequest) -> FontMeasurer raise FontUnresolvedError
+
+pub fn set_default_font_set(FontSet) -> Unit
+
 // Errors
+pub suberror FontUnresolvedError {
+  FontUnresolvedError(request~ : FontFaceRequest, driver_labels~ : Array[String])
+} derive(Show)
 
 // Types and methods
 pub struct CharWidthResult {
@@ -73,16 +72,13 @@ pub struct DetailedMeasurement {
   positions : Array[Double]
 }
 
-pub(all) enum FontFace {
-  CarlitoRegular
-  CarlitoBold
-  LiberationSansRegular
-  LiberationSansBold
-  LiberationSerifRegular
-  LiberationSerifBold
-  LiberationMonoRegular
-  LiberationMonoBold
-} derive(Eq, Hash)
+pub(all) struct FontFaceRequest {
+  stack : Array[FontStackCandidate]
+  weight : Int
+  italic : Bool
+  embedded_bytes : Bytes?
+} derive(Show)
+pub fn FontFaceRequest::of_name(String, weight? : Int, italic? : Bool) -> Self
 
 pub struct FontMeasurer {
   ttfont : @font.TTFont
@@ -98,11 +94,58 @@ pub fn FontMeasurer::line_gap_ratio(Self) -> Double
 pub fn FontMeasurer::measure_text(Self, String, font_size_pt~ : Double, letter_spacing_px? : Double) -> Double
 pub fn FontMeasurer::with_gpos_kern(Self, Array[GposKernEntry]) -> Self
 
-type FontSet
-pub fn FontSet::measurer_for(Self, String?, Int) -> FontMeasurer
-pub fn FontSet::measurer_for_face(Self, FontFace) -> FontMeasurer
-pub fn FontSet::measurer_for_pptx_family(Self, String?, Int) -> FontMeasurer
-pub fn FontSet::new() -> Self
+pub(all) struct FontResolutionRequest {
+  primary : String?
+  alt_name : String?
+  family_hint : GenericFamily?
+  panose1 : String?
+  embedded_bytes : Bytes?
+  weight : Int
+  italic : Bool
+}
+
+pub(all) struct FontResolver {
+  resolve : (FontFaceRequest) -> FontResource raise FontUnresolvedError
+  label : String
+}
+pub fn FontResolver::compose(Array[Self]) -> Self
+pub fn FontResolver::env_dir() -> Self
+pub fn FontResolver::host() -> Self
+pub fn FontResolver::in_memory(Map[String, Bytes]) -> Self
+
+pub(all) struct FontResource {
+  bytes : Bytes
+  ttc_index : Int?
+  source_label : String
+}
+
+pub struct FontSet {
+  cache : Map[String, FontMeasurer]
+  resolver : FontResolver
+}
+pub fn FontSet::measurer_for_request(Self, FontFaceRequest) -> FontMeasurer raise FontUnresolvedError
+pub fn FontSet::new(resolver~ : FontResolver) -> Self
+
+pub(all) enum FontStackCandidate {
+  Name(String)
+  Generic(GenericFamily)
+} derive(Eq, Show)
+
+pub(all) enum GenericFamily {
+  Serif
+  SansSerif
+  Monospace
+  Cursive
+  Fantasy
+  SystemUi
+  UiSerif
+  UiSansSerif
+  UiMonospace
+  UiRounded
+  Math
+  Emoji
+  Fangsong
+} derive(Eq, Hash, Show)
 
 pub(all) struct GposKernEntry {
   first : Int

@@ -6,7 +6,7 @@
 fn tl_make_span(
   text : String,
   font_size? : Double = 18.0,
-  font_family? : String = "Calibri",
+  font_family? : String = "Noto Sans",
 ) -> LayoutSpan {
   {
     text,
@@ -40,7 +40,7 @@ fn tl_make_span(
 }
 
 ///|
-test "measure_span on a non-empty Calibri ASCII string" {
+test "measure_span on a non-empty ASCII string" {
   let s = tl_make_span("Hello", font_size=24.0)
   let m = measure_span(s)
   assert_true(m.width > 0.0)
@@ -195,27 +195,27 @@ test "break_into_lines wraps long text" {
 ///|
 /// `get_line_visible_width` trims trailing whitespace from the last
 /// span before summing — needed so wrapped lines that retain the
-/// space character that caused the wrap centre correctly.  Without
+/// space character that caused the wrap centre correctly. Without
 /// this trim, every centred / right-aligned wrapped line drifts
-/// half-a-space to the right (≈3–4 px at 26 pt Liberation Sans).
+/// half-a-space to the right.
 test "get_line_visible_width trims trailing whitespace" {
   let s1 = tl_make_span("Hello ", font_size=24.0)
   let spans = measure_spans([s1])
   let full = get_line_width(spans)
   let visible = get_line_visible_width(spans)
   // The trimmed width must be strictly less than the full width by
-  // exactly one space's advance at this font/size.  We don't pin
-  // the absolute pixel value — the metrics tables move — but the
-  // delta has to be positive AND match the space's measured width.
+  // exactly one space's advance at this font/size. We don't pin the
+  // absolute pixel value — the metrics tables move — but the delta
+  // has to be positive AND match the space's measured width.
   assert_true(full > visible)
-  let space_w = @glyph.estimate_text_width_fallback(
+  let space_w = @glyph.measure_text_width(
     " ",
     font_size_pt=24.0,
     letter_spacing_px=0.0,
-    font_family=Some("Calibri"),
+    family="Noto Sans",
   )
   // Allow a 1e-6 epsilon because both sides come from the same
-  // estimator and arithmetic should be exact.
+  // measurer and arithmetic should be exact.
   let delta = full - visible
   assert_true((delta - space_w).abs() < 1.0e-6)
 }

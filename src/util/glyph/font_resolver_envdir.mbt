@@ -113,10 +113,7 @@ fn split_path_list(raw : String) -> Array[String] {
 /// Scan `dir` (non-recursively) and index every `.ttf` / `.ttc`
 /// file by `(family|weight|italic)`. Silently skips missing
 /// directories.
-fn populate_envdir_catalog(
-  catalog : Map[String, String],
-  dir : String,
-) -> Unit {
+fn populate_envdir_catalog(catalog : Map[String, String], dir : String) -> Unit {
   match (try? @fs.read_dir(dir)) {
     Err(_) => return
     Ok(entries) =>
@@ -127,9 +124,7 @@ fn populate_envdir_catalog(
           continue
         }
         let lower = lowercase_ascii(name)
-        if not(
-            ends_with_lower(lower, ".ttf") || ends_with_lower(lower, ".ttc"),
-          ) {
+        if not(ends_with_lower(lower, ".ttf") || ends_with_lower(lower, ".ttc")) {
           continue
         }
         let (family, weight, italic) = parse_envdir_filename(name)

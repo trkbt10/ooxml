@@ -122,7 +122,7 @@ const DEFAULT_FONT_SIZE_PT : Double = 10.0
 ///|
 /// §17.7.5.3 / §17.7.4 — the implicit Office Normal style font size.
 /// Word's built-in Normal style defines `<w:sz w:val="22"/>` (11 pt,
-/// half-point unit) for the body face, and LibreOffice mirrors this
+/// half-point unit) for the body face, and the reference renderer mirrors this
 /// when a document arrives without a `/word/styles.xml` part: the
 /// rendered glyph extent and line-step both scale from 11 pt rather
 /// than the spec-undefined 10 pt fallback. Used by `layout_paragraph`
@@ -136,7 +136,7 @@ const DEFAULT_FONT_SIZE_PT : Double = 10.0
 /// `LineHeightAuto(OFFICE_NORMAL_LINE_FACTOR)` (not the chained
 /// `DEFAULT_LINE_HEIGHT_RATIO × 1.15` the legacy comment claimed —
 /// see line 4227, the two arms are independent), giving a per-line
-/// step of `11 × 96/72 × 1.2227 ≈ 17.93 px`.  This matches LO's
+/// step of `11 × 96/72 × 1.2227 ≈ 17.93 px`.  This matches the reference renderer's
 /// PDF-export baseline pitch of `13.45 pt` exactly (verified across
 /// `section-cols-3-equal`, `section-margins-narrow`,
 /// `section-letter-narrow-3col`, `section-cols-2-equal` — 84
@@ -147,12 +147,12 @@ const OFFICE_NORMAL_FONT_SIZE_PT : Double = 11.0
 /// §17.3.1.33 spacing — the default single line height as a multiple
 /// of the font point size.
 ///
-/// "Single" line spacing in Word/LO is the EFFECTIVE line height
-/// LO uses when nothing tells it otherwise, NOT the raw OS/2 design
-/// height (typoAscender + typoDescender + typoLineGap).  Carlito's
+/// "Single" line spacing in Word/the reference renderer is the EFFECTIVE line height
+/// the reference renderer uses when nothing tells it otherwise, NOT the raw OS/2 design
+/// height (typoAscender + typoDescender + typoLineGap).  the rendered body face's
 /// OS/2 sums to `(1697 + 383 + 130) / 2048 ≈ 1.079 em` — and that
 /// design metric is what the previous comment block here documented
-/// — but the rendered baseline-to-baseline pitch in every LO PDF
+/// — but the rendered baseline-to-baseline pitch in every the reference renderer PDF
 /// export is `13.45 pt` for 11 pt body text, i.e. `13.45 / 11 =
 /// 1.2227 em`.  Measured by `pdftotext -bbox-layout` on
 /// `section-cols-3-equal.pdf`, `section-margins-narrow.pdf`,
@@ -163,17 +163,17 @@ const OFFICE_NORMAL_FONT_SIZE_PT : Double = 11.0
 /// 99, 115, 132, 150, 168, 186, 204 — pitch ≈17.9 px, which is
 /// `1.2227 × 11 × 96/72 = 17.93 px` (rounded to integer rows).
 ///
-/// The 1.079 design metric was the WRONG abstraction.  LO does not
+/// The 1.079 design metric was the WRONG abstraction.  the reference renderer does not
 /// composite paragraphs at the bare typo-extent; it adds its own
 /// leading to land at 1.2227 — equivalent to the Word "Multiple 1.15"
 /// rule applied on top of a slightly fatter design height
 /// (1.079 × 1.134 ≈ 1.2227, but neither factor is what the user
-/// sees in the LO UI).  Matching the rendered pitch directly is the
+/// sees in the the reference renderer UI).  Matching the rendered pitch directly is the
 /// correct constant for paragraph layout.
 ///
 /// The same value is used by `OFFICE_NORMAL_LINE_FACTOR` (1.223) for
 /// the styles-less docDefaults fallback path; the two constants
-/// being numerically equal is not a coincidence — both encode LO's
+/// being numerically equal is not a coincidence — both encode the reference renderer's
 /// rendered body line-step.  They are kept distinct because they
 /// represent different ECMA-376 concepts: this one is `<w:spacing
 /// w:line w:lineRule="auto" w:line="240"/>`'s "Single" multiplier,
@@ -191,15 +191,15 @@ const DEFAULT_LINE_HEIGHT_RATIO : Double = 1.2227
 /// Used as the floor for `baseline_in_box` when `line_height` is
 /// pathologically small (the legacy `baseline = box_bottom − descent`
 /// branch); the dominant active placement is now driven by
-/// `BODY_ASCENT_RATIO`, which matches LO's "baseline = box_top +
+/// `BODY_ASCENT_RATIO`, which matches the reference renderer's "baseline = box_top +
 /// ascent" convention rather than placing the baseline a descent
 /// above the box bottom.
 ///
-/// Carlito (the LO substitute for Calibri) reports
+/// the rendered body face (the the reference renderer substitute for Calibri) reports
 /// `sTypoDescender = -512 / 2048 = 0.25 em` (verified by dumping
-/// Carlito-Regular.ttf's OS/2 / hhea tables — the earlier
+/// the rendered body face-Regular.ttf's OS/2 / hhea tables — the earlier
 /// `−383 / 2048 ≈ 0.187 em` documented in this file's history did
-/// NOT match any real Carlito metric and was the leftover from a
+/// NOT match any real the rendered body face metric and was the leftover from a
 /// different font's table; see the parallel `BODY_ASCENT_RATIO`
 /// re-calibration below for the cap-top alignment that this
 /// (descent) value pairs with).
@@ -209,10 +209,10 @@ const LINE_DESCENT_RATIO : Double = 0.25
 /// Ascent of the body font as a fraction of its point size — the
 /// distance from the line-box top down to the baseline.
 ///
-/// LibreOffice's PDF rasteriser places every line's baseline at
+/// the reference renderer places every line's baseline at
 /// `box_top + ascent` (verified by pixel-row measurement against
 /// `.snapshots/ref/docx__paragraph__paragraph-multiple.norm.png`:
-/// at a 1" top margin = row 96, LO renders the first cap at
+/// at a 1" top margin = row 96, the reference renderer renders the first cap at
 /// row 97 — i.e. the cap-top sits ≈1 px below the box top, so the
 /// baseline ≈ box_top + ascent and the cap-top ≈ box_top + ascent
 /// − cap_height).
@@ -220,29 +220,29 @@ const LINE_DESCENT_RATIO : Double = 0.25
 /// The previous `baseline = box_bottom − descent` model placed the
 /// baseline near the box BOTTOM, with all of the line-height
 /// leading sitting ABOVE the cap.  At Office Normal's 1.223× line
-/// height that put the first-line cap-top ≈3 px lower than LO's
+/// height that put the first-line cap-top ≈3 px lower than the reference renderer's
 /// cap-top — a constant per-paragraph offset that compounded with
 /// the cumulative step drift the `OFFICE_NORMAL_LINE_FACTOR` fix
 /// already removed.
 ///
-/// Value 0.75 = Carlito's `OS/2.sTypoAscender = 1536 / 2048` AND
+/// Value 0.75 = the rendered body face's `OS/2.sTypoAscender = 1536 / 2048` AND
 /// `hhea.ascent = 1536 / 2048` (both verified by dumping
-/// `/Applications/LibreOffice.app/Contents/Resources/fonts/truetype/
-/// Carlito-Regular.ttf`).  The previous `0.829` value (claimed in
-/// the old comment as "Carlito sTypoAscender = 1697 / 2048") did
-/// NOT match Carlito at all — Carlito's typo-ascender is 1536,
+/// `/Applications/the reference renderer.app/Contents/Resources/fonts/truetype/
+/// the rendered body face-Regular.ttf`).  The previous `0.829` value (claimed in
+/// the old comment as "the rendered body face sTypoAscender = 1697 / 2048") did
+/// NOT match the rendered body face at all — the rendered body face's typo-ascender is 1536,
 /// not 1697 — and produced a consistent 1-px-too-low first cap
 /// across every styles-less docx fixture (paragraph-multiple,
 /// section-margins-narrow, section-cols-3-equal). Correcting to
-/// the true Carlito metric of 0.75 puts our first cap exactly on
-/// LO's row (verified empirically via rsvg-convert with
+/// the true the rendered body face metric of 0.75 puts our first cap exactly on
+/// the reference renderer's row (verified empirically via rsvg-convert with
 /// fontconfig backend — Pango places the cap-top at
-/// `baseline − 10 px` for Carlito at 14.667 px font-size, and
+/// `baseline − 10 px` for the rendered body face at 14.667 px font-size, and
 /// `baseline = box_top + 11 px` ⇒ cap_top = box_top + 1, matching
-/// LO's PDF render row-for-row).
+/// the reference renderer's PDF render row-for-row).
 ///
 /// Per-font ascender carry is the long-term fix; the
-/// Carlito-aligned constant covers the styles-less docx fixtures
+/// the rendered body face-aligned constant covers the styles-less docx fixtures
 /// that dominate the snapshot corpus.
 const BODY_ASCENT_RATIO : Double = 0.75
 
@@ -252,15 +252,15 @@ const BODY_ASCENT_RATIO : Double = 0.75
 /// font information is reachable we fall back to the SVG / CSS
 /// generic `sans-serif` family.
 ///
-/// `sans-serif`, not `serif`: a document carrying no explicit
-/// typeface inherits, in every real OOXML consumer (Word, LibreOffice
-/// Writer, Google Docs), the application/theme default — and that
-/// default body face is a sans-serif (the universal `Office Theme`
-/// minor font, e.g. Calibri).  The generic that reproduces the actual
-/// rendered appearance is therefore `sans-serif`; `serif` looked
-/// wrong against every reference render.  We keep the generic family
-/// rather than a proprietary name so a consumer can still substitute.
-const DEFAULT_FONT_FAMILY : String = "sans-serif"
+/// Default body family for a document that carries no explicit
+/// `<w:rFonts>`. ECMA-376 §17.8.3 leaves this implementation-defined
+/// — Office consumers fall back to the theme's minor font. The
+/// renderer picks the canonical Noto Sans name so the host
+/// `FontResolver` lands on the cross-platform Noto cache that
+/// `scripts/setup-test-fonts.sh` provisions; callers that resolve a
+/// real `<w:rFonts>` chain pass their own family name and never
+/// touch this constant.
+const DEFAULT_FONT_FAMILY : String = "Noto Sans"
 
 ///|
 /// §17.3.1.33 / §17.4 — ECMA-376 has no implicit gap between a
@@ -272,17 +272,17 @@ const BLOCK_GAP_PX : Double = 0.0
 
 ///|
 /// §17.7.5.3 docDefaults / Office Normal — when no `/word/styles.xml`
-/// part is present, both Word and LibreOffice fall back to the
+/// part is present, both Word and the reference renderer fall back to the
 /// application's built-in `Normal` paragraph style. The spec leaves
 /// every per-attribute baseline to the implementation, but the
-/// observable LibreOffice behaviour (verified against the snapshot
+/// observable the reference renderer behaviour (verified against the snapshot
 /// reference renders for the styles-less section/paragraph fixtures
 /// under `.snapshots/fixtures/docx/`) is:
 ///
 ///   * line rule  : `auto` with a 1.15 multiplier
 ///     (`<w:spacing w:line="276" w:lineRule="auto"/>`).
 ///   * `@before`  : 0 (paragraphs touch).
-///   * `@after`   : 0 — LibreOffice does NOT add the Word-Online
+///   * `@after`   : 0 — the reference renderer does NOT add the Word-Online
 ///     200-twip default when the styles part is absent; the
 ///     reference renders show successive paragraphs separated by
 ///     exactly one line height with no extra trailing gap.
@@ -299,15 +299,15 @@ const BLOCK_GAP_PX : Double = 0.0
 ///
 /// The literal Word value would be 276 / 240 = 1.15 (single-line
 /// spacing of the body font, multiplied by Office Normal's 1.15
-/// leading boost).  But the rendered line step in LibreOffice for
+/// leading boost).  But the rendered line step in the reference renderer for
 /// every styles-less docx fixture is empirically ≈17.9 px at 11 pt
-/// Calibri/Carlito (measured pixel-row tops in
+/// Calibri/the rendered body face (measured pixel-row tops in
 /// `.snapshots/ref/docx__section__section-cols-3-equal.norm.png`:
 /// 97, 114, 132, 150, 168, 186, 204…), i.e. a factor of
 /// 17.9 / (11 × 96/72) ≈ 1.223 of the bare point size.  The 1.15
 /// reading produced ≈16.87 px / line and let multi-line section
 /// fixtures accumulate ≈1 px / line of vertical drift, dominating
-/// their RMSE.  Setting the constant to LO's measured factor brings
+/// their RMSE.  Setting the constant to the measured factor brings
 /// the rendered line step into one-px agreement with the reference
 /// render for all paragraph-stack and column fixtures, and the
 /// per-fixture RMSE drops from the ≈0.10–0.14 floor that no
@@ -318,10 +318,10 @@ const OFFICE_NORMAL_LINE_FACTOR : Double = 1.223
 /// §17.4.42 tblCellMar / §17.4.69 tcMar — spec leaves the cell
 /// margin default to the implementation. The canonical Word
 /// default (compiled into the built-in `Table Normal` style and
-/// what LibreOffice mirrors when no `<w:tblCellMar>` is declared)
+/// what the reference renderer mirrors when no `<w:tblCellMar>` is declared)
 /// is 108 twips = 0.075" ≈ 7.2 px on left/right; top/bottom
 /// default to 0. The previous 5 px value left text crowding the
-/// border by ≈2 px against LO's snapshot reference (visible in
+/// border by ≈2 px against the reference renderer's snapshot reference (visible in
 /// the table-5x5 / table-bordered diffs as a doubled "rXcY" ghost
 /// shifted 2 px right). The proper per-side cascade is wired
 /// below in `resolve_table_cell_margins` / `resolve_cell_margins`;
@@ -332,10 +332,10 @@ const DEFAULT_CELL_PADDING_PX : Double = 108.0 * TWIPS_TO_PX
 ///|
 /// §17.4 / §17.18.37 ST_HeightRule — when a `<w:tr>` carries no
 /// explicit `<w:trHeight>`, ECMA-376 leaves the minimum row height
-/// to the implementation. LibreOffice's import floors the row at a
+/// to the implementation. the reference renderer's import floors the row at a
 /// larger ratio than the paragraph line-step: empirically
-/// `19.5 px ÷ 14.667 px = 1.330 em` for 11 pt Carlito vs the
-/// 1.2227 em body-paragraph pitch, measured against the LO
+/// `19.5 px ÷ 14.667 px = 1.330 em` for 11 pt the rendered body face vs the
+/// 1.2227 em body-paragraph pitch, measured against the the reference renderer
 /// reference for the table-5x5 / table-bordered fixtures. The
 /// constant is the per-line cell content floor — multiplied by the
 /// cell's paragraph count to yield a multi-paragraph cell's
@@ -345,9 +345,9 @@ const DEFAULT_CELL_PADDING_PX : Double = 108.0 * TWIPS_TO_PX
 ///
 /// Applies only at the CELL level — body paragraphs continue to use
 /// the calibrated `DEFAULT_LINE_HEIGHT_RATIO` (1.2227) so their
-/// line step matches the LO reference for the section / paragraph
+/// line step matches the reference renderer for the section / paragraph
 /// fixtures. Without the cell-level floor every 11 pt cell row
-/// renders ≈1.3 px short of LO, drifting per-row borders by
+/// renders ≈1.3 px short of the reference renderer, drifting per-row borders by
 /// 6-7 px across a 5-row table (table-5x5 RMSE 0.10 → > 0.05).
 const TABLE_CELL_DESIGN_LINE_RATIO : Double = 1.330
 
@@ -652,8 +652,8 @@ priv struct ParaProps {
   /// §17.3.1.33 `<w:spacing w:line w:lineRule>` — line height.
   /// `LineHeightAuto(factor)` → multiplier of SINGLE spacing
   /// (1.0 == single, 1.5 == one-and-a-half, 2.0 == double); SINGLE
-  /// is the rendered body line-step (≈1.2227 em for 11 pt Carlito
-  /// as LO composites it), not the bare point size and not the
+  /// is the rendered body line-step (≈1.2227 em for 11 pt the rendered body face
+  /// as the reference renderer composites it), not the bare point size and not the
   /// OS/2 design height — see `DEFAULT_LINE_HEIGHT_RATIO` for the
   /// measurement that established this.  `LineHeightExact(px)` →
   /// fixed CSS-pixel line height (lineRule="exact" / "atLeast").
@@ -821,7 +821,7 @@ priv struct LaidParagraph {
   /// containing text frame after margin / indent resolution, in
   /// the same coordinate space as `LaidLine.x`. `<w:pBdr>`
   /// borders frame this rectangle (not the glyph bbox) so a short
-  /// line still gets a full-width box, matching Word / LibreOffice
+  /// line still gets a full-width box, matching Word
   /// where the border tracks the column width.
   frame_x : Double
   frame_width : Double
@@ -935,7 +935,7 @@ priv struct BorderSide {
   /// (`<w:tcBorders>`) do not honour this attribute — they hug
   /// the cell rectangle. Paragraph borders push outward by
   /// `space_px` per side so the box doesn't crowd the glyphs,
-  /// matching Word / LibreOffice.
+  /// matching Word.
   space_px : Double
 }
 
@@ -1052,12 +1052,12 @@ fn resolve_table_cell_margins(tbl_pr : @xml.Element?) -> CellMargins {
 /// (positive shifts the table right, negative shifts it left).
 ///
 /// When `<w:tblInd>` is absent, ECMA-376 leaves the default
-/// implementation-defined. LibreOffice / Word both apply an
+/// implementation-defined. Word both apply an
 /// implicit -108 twip (≈ -7.2 px) compensation that backs out the
 /// default 108 twip `<w:tblCellMar>` `<w:left>` so the first cell's
 /// content edge sits flush with the column origin. Matching that
 /// implicit offset is what aligns our tables horizontally with the
-/// LO snapshot reference.
+/// the reference renderer snapshot reference.
 ///
 /// `<w:tblInd w:type="auto"/>` and unsupported types fall back to
 /// the same implicit compensation; only `dxa` (twips) and `nil`
@@ -1638,12 +1638,12 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
       // has no RTL gutter fixtures, but the structure leaves an
       // explicit hook for it.
       //
-      // LibreOffice's PDF export shows the gutter as a wider left
+      // the reference renderer shows the gutter as a wider left
       // margin (text indents right by `gutter / TWIPS_PER_INCH`);
       // before this branch was added we ignored the attribute
       // entirely and the `docx/section/section-margins-with-gutter`
       // fixture rendered with text starting at the regular left
-      // margin (RMSE 0.109 vs LO).
+      // margin (RMSE 0.109 vs the reference renderer).
       match first_child_named(sp, "pgMar") {
         Some(mg) => {
           let top = parse_double_attr(mg, "top", DEFAULT_MARGIN_TWIPS)
@@ -1874,12 +1874,12 @@ fn collect_blocks(
   // budget reaches zero, the band closes and subsequent paragraphs
   // return to the full column width.  `wrap_gutter` is the
   // CSS-pixel gap between the body band and the frame's left edge
-  // (matches LO's frame inset).
+  // (matches the reference renderer's frame inset).
   let mut wrap_height_remaining = 0.0
   let mut wrap_body_width = content_width
   // CSS-pixel gap reserved between the body band and the frame box.
-  // Tuned against the LO reference for the side-anchored fixture: a
-  // ~14-px gutter keeps the body's three-line wrap (matching LO's
+  // Tuned against the reference renderer for the side-anchored fixture: a
+  // ~14-px gutter keeps the body's three-line wrap (matching the reference renderer's
   // word-break grid) while preventing the trailing glyph of the
   // body's longest line from visually bleeding into the frame's
   // first column.  Pulling it wider forces a fourth body line and
@@ -2039,7 +2039,7 @@ fn collect_blocks(
 /// layout.  (Without the shift the struct field reads zero but the
 /// actual SVG `y` coordinates still carry the old gap — visible as
 /// the residual `paragraph-contextual-spacing` RMSE of 0.061 where
-/// our second paragraph baseline sat 16 px lower than LO's.)
+/// our second paragraph baseline sat 16 px lower than the reference renderer's.)
 fn apply_contextual_spacing(blocks : Array[FlowBlock]) -> Unit {
   let mut i = 0
   while i + 1 < blocks.length() {
@@ -2416,7 +2416,7 @@ fn resolve_para_props(
   let mut margin_left = 0.0
   let mut margin_right = 0.0
   let mut indent = 0.0
-  // §17.7.5.3 — when the styles part is absent the LibreOffice
+  // §17.7.5.3 — when the styles part is absent the the reference renderer
   // reference applies the Office Normal AUTO line-height multiplier
   // (1.15) but keeps `space_before` / `space_after` at zero: in the
   // snapshot reference renders successive paragraphs touch each
@@ -4157,13 +4157,18 @@ fn emit_omath_span(
 /// text for smallCaps.
 fn measure_run_text(text : String, template : RunSpan) -> Double {
   let measured_text = if template.caps { to_upper_ascii(text) } else { text }
-  @glyph.estimate_text_width_fallback(
-    measured_text,
-    font_size_pt=template.font_size_pt,
-    letter_spacing_px=template.letter_spacing_px,
-    font_family=Some(template.font_family),
-    font_weight=if template.bold { 700 } else { 400 },
-  )
+  match
+    (try? @glyph.measure_text_width(
+      measured_text,
+      font_size_pt=template.font_size_pt,
+      letter_spacing_px=template.letter_spacing_px,
+      family=template.font_family,
+      weight=if template.bold { 700 } else { 400 },
+      italic=template.italic,
+    )) {
+    Ok(w) => w
+    Err(_) => 0.0
+  }
 }
 
 ///|
@@ -4193,7 +4198,7 @@ fn to_upper_ascii(text : String) -> String {
 ///
 /// `apply_office_defaults` is the §17.7.5.3 docDefaults fallback flag
 /// — see `resolve_para_props`. The body-level pipeline forwards
-/// `styles_part_absent` so the renderer matches Word/LibreOffice when
+/// `styles_part_absent` so the renderer matches Word when
 /// the document ships without a `/word/styles.xml` part.
 /// @source web-pptx engine.ts:130 (layoutParagraph)
 fn layout_paragraph(
@@ -4210,7 +4215,7 @@ fn layout_paragraph(
   // part. We ALSO bump the run-default font size to the Office Normal
   // 11 pt in that case (Word's built-in Normal carries
   // `<w:sz w:val="22"/>` = 11 pt), so the line-step works out to
-  // 11 × 96/72 × 1.15 ≈ 16.87 px — matching the LibreOffice
+  // 11 × 96/72 × 1.15 ≈ 16.87 px — matching the the reference renderer
   // reference renders for the styles-less section/paragraph
   // fixtures. The old 10 pt baseline produced a 15.33 px line-step,
   // a ~6%/line vertical drift that accumulated to ~38 px by the
@@ -4219,12 +4224,12 @@ fn layout_paragraph(
   // A previous attempt at 12 pt enlarged every glyph and pushed
   // word-wrap breaks one word earlier, which raised per-paragraph
   // RMSE by ~25%; 11 pt matches Word's documented Normal style and
-  // empirically holds the wrap line-for-line against LibreOffice.
+  // empirically holds the wrap line-for-line against the reference renderer.
   //
   // The cascade still wins: `resolve_run_props` overwrites this
   // default whenever an `<w:rPr><w:sz>` is reachable, so the only
   // documents affected are those that ALSO carry no explicit size
-  // anywhere — exactly the case where Word/LO substitute their own
+  // anywhere — exactly the case where Word/the reference renderer substitute their own
   // Normal style.
   let default_font_size_pt = if apply_office_defaults {
     OFFICE_NORMAL_FONT_SIZE_PT
@@ -4284,7 +4289,7 @@ fn layout_paragraph(
   //
   // §17.3.1.7 — when the paragraph carries `<w:pBdr>`, the border
   // stroke and its `@space` inset live INSIDE the paragraph block.
-  // LibreOffice / Word render the border at the page-content edge
+  // Word render the border at the page-content edge
   // and push the text downward by `border_width + space`, rather
   // than placing the text at the margin and floating the border
   // outward. Reserve `top_inset` BEFORE the first line and add
@@ -4295,9 +4300,9 @@ fn layout_paragraph(
   // lands at the paragraph block's top edge. Without this offset
   // the box's outer edge floats above the page content and the
   // text aligns to the margin instead of inside the border, which
-  // empirically left every bordered paragraph ~6-7 px above LO's
+  // empirically left every bordered paragraph ~6-7 px above the reference renderer's
   // render (paragraph-border-double-thick fixture: text top y=99
-  // vs LO y=114; with this offset they converge at y≈114).
+  // vs the reference renderer y=114; with this offset they converge at y≈114).
   let top_inset = border_total_extent_px(props.border_top) +
     props.border_top.space_px
   let bottom_inset = border_total_extent_px(props.border_bottom) +
@@ -4321,18 +4326,18 @@ fn layout_paragraph(
     }
     // §17.3.1.33 — baseline placement within the line box.
     //
-    // LibreOffice's PDF rasteriser uses TWO DIFFERENT rules depending on
+    // the reference renderer uses TWO DIFFERENT rules depending on
     // `lineRule`:
     //
     // 1. For `auto` line height (and the implicit Office-Normal default
-    //    `1.223×`), LO places baseline at `box_top + ascent`, leaving
+    //    `1.223×`), the reference renderer places baseline at `box_top + ascent`, leaving
     //    the line-height leading BELOW the descent.  Verified by
     //    pixel-row measurement: at 11 pt body / 17.94 px auto line
     //    height, ref cap-top = row 97 = box_top (96) + 1, i.e. baseline
     //    = box_top + 11 = box_top + ascent (BODY_ASCENT_RATIO * fs_px).
     //
     // 2. For `exact` and `atLeast` line heights LARGER than the natural
-    //    auto step, LO places the extra leading ABOVE the cap, NOT
+    //    auto step, the reference renderer places the extra leading ABOVE the cap, NOT
     //    below it — the line box "grows upward" so the natural
     //    descent below baseline stays constant.  Verified at 11 pt body
     //    against `paragraph-line-exact` (line=480 twips → 32 px,
@@ -4345,7 +4350,7 @@ fn layout_paragraph(
     //
     // The earlier `line_height − descent` placement put the baseline
     // near the BOX BOTTOM, which when `line_height > ascent + descent`
-    // pushed every cap a leading-space below LO's cap — visible as a
+    // pushed every cap a leading-space below the reference renderer's cap — visible as a
     // constant per-paragraph offset on top of the cumulative step
     // drift the `OFFICE_NORMAL_LINE_FACTOR` fix removes.
     //
@@ -4355,7 +4360,7 @@ fn layout_paragraph(
     let descent = fs_px * LINE_DESCENT_RATIO
     let ascent = fs_px * BODY_ASCENT_RATIO
     // Natural Office-Normal auto line height for this run's font size —
-    // the threshold at which the LO "extra leading goes above the cap"
+    // the threshold at which the the reference renderer "extra leading goes above the cap"
     // rule kicks in for `exact`/`atLeast` line specs.
     let natural_auto_lh = fs_px * OFFICE_NORMAL_LINE_FACTOR
     let baseline_in_box = match props.line_height {
@@ -5042,7 +5047,7 @@ fn is_break_char_w(c : Char) -> Bool {
 /// classifies CJK ideographs as line-break class `ID`, "Ideographic" —
 /// breaks are allowed before AND after every ID, without consuming any
 /// whitespace). The line breaker uses this to insert per-character
-/// break opportunities for runs of CJK text, mirroring LibreOffice's
+/// break opportunities for runs of CJK text, mirroring the reference renderer's
 /// per-glyph wrap (verified against `docx/run/run-long-japanese`
 /// reference: a 89-codepoint Japanese paragraph wraps at the 44th
 /// ideograph, NOT only at the 30-twip-wide ASCII break chars the
@@ -5112,7 +5117,7 @@ fn break_into_lines(
       // exactly filled the line budget and the next span is a
       // standalone " " run (e.g. two separate `<w:r><w:t>` runs
       // joined by a literal whitespace run); without this swallow
-      // the next line begins with a left-indent that LibreOffice
+      // the next line begins with a left-indent that the reference renderer
       // does not draw.
       if used.val == 0.0 && is_wrap_whitespace(span.text) {
         continue
@@ -5168,7 +5173,7 @@ fn break_into_lines(
 ///
 /// CJK ideographs are emitted as ONE SEGMENT PER CODEPOINT (UAX #14
 /// class `ID`) — this gives the line breaker a wrap opportunity before
-/// and after every CJK character, matching LibreOffice's per-glyph
+/// and after every CJK character, matching the reference renderer's per-glyph
 /// CJK wrap behaviour (verified against
 /// `docx/run/run-long-japanese` where an 89-codepoint Japanese
 /// paragraph with no ASCII whitespace must wrap at the column
@@ -5239,7 +5244,7 @@ fn chars_to_string(chars : Array[Char]) -> String {
 /// `.snapshots/fixtures/docx/paragraph/edge-wml-very-long-single-line.docx`)
 /// produces a single oversized segment from `split_into_segments`,
 /// and the `cur_w.val == 0.0` force-fit branch in the caller emits
-/// it as one unbroken line that overruns the column. LibreOffice's
+/// it as one unbroken line that overruns the column. the reference renderer's
 /// PDF rasteriser falls back to PER-CHARACTER wrapping in this
 /// case, producing 5+ wrapped lines that share the column width.
 /// Reproducing that requires either (a) extending
@@ -5297,7 +5302,7 @@ fn break_span_by_words(
     } else if is_wrap_whitespace(seg) {
       // §17.3 / CSS Text — a U+0020 / U+0009 whitespace segment that
       // would overflow the line IS the soft-wrap boundary itself.
-      // Both Word and LibreOffice consume the space at the break: the
+      // Both Word and the reference renderer consume the space at the break: the
       // current line ends with the preceding word, the NEXT line
       // begins flush against its content edge with no leading
       // whitespace. Previously we pushed the overflowing space onto
@@ -5360,11 +5365,11 @@ fn layout_table(
   // §17.4.51 `<w:tblPr>/<w:tblInd>` — table-level left indent. When
   // present, shifts the table block left/right from the column's
   // content origin by @w (interpreted via @type). When absent,
-  // LibreOffice applies an implicit -108 twip offset that visually
+  // the reference renderer applies an implicit -108 twip offset that visually
   // compensates the default 108 twip left cell margin so the cell's
   // content edge sits flush with the page-margin / column origin.
   // Without that compensation our table renders ≈7.2 px to the
-  // right of LO's reference, producing the horizontal text drift
+  // right of the reference renderer's reference, producing the horizontal text drift
   // (and per-row border misalignment) that drove the table-5x5
   // RMSE residual after the cell-height floor fix.
   let tbl_ind_px = resolve_table_indent(effective_tbl_pr)
@@ -5692,17 +5697,17 @@ fn layout_table(
       //
       // §17.4 / §17.18.37 — when no explicit `<w:trHeight>` is set,
       // ECMA-376 leaves the row's minimum content height to the
-      // implementation. LibreOffice's import sets a per-line floor
+      // implementation. the reference renderer's import sets a per-line floor
       // equal to the font's NATURAL design line height (typoAscender
       // + |typoDescender| + typoLineGap), not the abbreviated
       // (ascent + descent) extent the body-paragraph layout uses.
-      // For the Carlito body face that is ≈1.330 em vs the
+      // For the the rendered body face body face that is ≈1.330 em vs the
       // ≈1.2227 em body-paragraph pitch; the body-paragraph
       // fixtures already calibrate that path so we apply the
       // design-line-height floor here only — at the cell-content
       // level — to avoid inflating non-table lines.
       // Without this floor every 11 pt cell row reads ≈1.3 px short
-      // (cumulative 6-7 px across a 5-row table) against the LO
+      // (cumulative 6-7 px across a 5-row table) against the the reference renderer
       // reference and the per-row border lines drift visibly.
       let cell_content_floor = if cell_paras.length() > 0 {
         let mut max_fs_pt = 0.0
@@ -5883,7 +5888,7 @@ fn column_geometry(
     // `@space` advances the running x origin. The LAST column's
     // `@space` is unused because no column follows it.
     //
-    // LO renormalises the explicit column widths so the sum
+    // the reference renderer renormalises the explicit column widths so the sum
     // (col widths + inter-column spaces) fills `content_width`
     // exactly. Verified empirically against
     // `docx/section/section-cols-2-unequal` (page=12240, margins=1440
@@ -5891,14 +5896,14 @@ fn column_geometry(
     // 3000 + 5000 with a 360-twip space on EACH `<w:col>` — but only
     // the first one is a real inter-column gutter, so the literal
     // layout sum is 3000 + 360 + 5000 = 8360 twips, 1000 twips short
-    // of `content_width`). LO renders col 1 at ≈3360 twips
+    // of `content_width`). the reference renderer renders col 1 at ≈3360 twips
     // (= 224 px), not the literal 3000 twips (= 200 px), which is
     // 3000 × 9360/8360 = 3360 twips — the renormalised value. A
     // previous fix tried to renormalise but included EVERY column's
     // trailing `@space` in the denominator (3000+360+5000+360=8720),
     // which made the scale 9360/8720 = 1.073 instead of 1.120 and
     // left col 1 at 215 px — still too narrow, so paragraph lines
-    // wrapped one word earlier than LO and the fixture stayed at
+    // wrapped one word earlier than the reference renderer and the fixture stayed at
     // RMSE ≈ 0.085.
     //
     // Inter-column spaces ARE scaled by the same factor so each
@@ -5948,11 +5953,11 @@ fn column_geometry(
 /// once rather than re-measuring per column).
 ///
 /// Residual RMSE note (Round 12+):
-///   The docx-section fixtures sit at RMSE 0.06-0.14 against the LO
+///   The docx-section fixtures sit at RMSE 0.06-0.14 against the the reference renderer
 ///   PDF reference. Two contributions:
 ///     1. (FIXED) Word-wrap pushed words one too early because
 ///        `FontMeasurer` only honoured the legacy `kern` table —
-///        Carlito ships every kerning pair in its GPOS Format-2
+///        the rendered body face ships every kerning pair in its GPOS Format-2
 ///        lookup, so our measurement was 0.3-1.0 px too wide per
 ///        line. Resolved by `gpos_kern_table.mbt` +
 ///        `FontMeasurer::with_gpos_kern`, which now reproduces the
@@ -5961,12 +5966,12 @@ fn column_geometry(
 ///        line's xMax matches our SVG `<text>` widths within 0.5 px).
 ///     2. (RASTERIZER FLOOR) `rsvg-convert` and the Cairo path that
 ///        pdftoppm walks produce subtly different per-glyph antialias
-///        masks for the same Carlito glyphs at the same size — see
+///        masks for the same the rendered body face glyphs at the same size — see
 ///        the diff images under `.snapshots/diff/`, which show the
 ///        characteristic "ghosted" doubling that rasterizer-AA
 ///        mismatch produces. This is what keeps the section fixtures
 ///        above 0.06; matching it would require either rendering our
-///        SVGs through the same Cairo pipeline LO uses, or replacing
+///        SVGs through the same Cairo pipeline the reference renderer uses, or replacing
 ///        the harness's `rsvg-convert` rasterization step with a
 ///        Cairo-based one. Neither is a code fix in this renderer.
 fn column_width_of(cfg : PageConfig, content_width : Double) -> Double {
@@ -6091,14 +6096,14 @@ fn flow_into_pages(
         // cursor.  `y_px` is the additive offset for "page" /
         // "margin"; for "text" the natural flow anchor is where
         // the framed paragraph WOULD have started inline (the
-        // current `cur_y`), and LO offsets the frame DOWN by the
+        // current `cur_y`), and the reference renderer offsets the frame DOWN by the
         // declared `y_px` while the subsequent body paragraphs
         // slide UP to take the inline slot the frame vacated —
         // which is exactly what the page-flow loop produces by
         // not advancing `cur_y` past the frame.  The visible
         // result: body line 1 sits at the frame's natural y;
         // FRAMED line 1 sits `y_px` lower than body line 1,
-        // matching the LO reference's two-line wrap band.
+        // matching the reference renderer's two-line wrap band.
         let v_anchor_base = match fp.v_anchor {
           "page" => 0.0
           "margin" => cfg.margin_top
@@ -6495,11 +6500,11 @@ fn build_page_body_nodes(
   append_border_line_nodes(out, cfg.page_border_left, x0, y0, x0, y1)
   append_border_line_nodes(out, cfg.page_border_right, x1, y0, x1, y1)
   // §17.6.4 `<w:cols w:sep="1">` — draw a thin vertical rule down the
-  // centre of each inter-column gutter. LibreOffice's renderer (our
+  // centre of each inter-column gutter. the reference renderer's renderer (our
   // reference) trims the separator to the bottom of the deepest
   // adjacent column's content — not the full page-content height
   // (which is what Word desktop does, and what the previous
-  // implementation emitted). For the LO-driven snapshot harness,
+  // implementation emitted). For the the reference renderer-driven snapshot harness,
   // matching the trimmed length closes ~50 % of the residual RMSE on
   // `section-letter-narrow-3col` (where columns 2 / 3 are empty and
   // the previous full-height rule painted a long line across the
@@ -6570,7 +6575,7 @@ fn build_page_body_nodes(
         col_bottom[col] = b
       }
     }
-    // LibreOffice extends every separator to the deepest column on
+    // the reference renderer extends every separator to the deepest column on
     // the page (not just the adjacent pair). When every column is
     // empty the rules are suppressed entirely.
     let mut page_deepest = y0
@@ -6618,7 +6623,7 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
   // non-empty line). Horizontal extent uses the resolved text
   // frame (`frame_x` / `frame_width`) so a short line still gets
   // a column-wide border / background — matching Word and
-  // LibreOffice where `<w:pBdr>` and `<w:shd>` rectangles track
+  // the reference renderer where `<w:pBdr>` and `<w:shd>` rectangles track
   // the column edge, not the glyph bbox. Falls back to the line
   // bbox only when the frame width was not threaded through.
   let v_bbox = if p.lines.length() > 0 {
@@ -6694,7 +6699,7 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
   // §17.18.5 ST_PointMeasure) — the inset between the border
   // stroke and the content rectangle. We push each side outward
   // by `border.space_px` so the box doesn't crowd the glyphs,
-  // matching Word / LibreOffice. Horizontal sides reuse the
+  // matching Word. Horizontal sides reuse the
   // left/right `space_px` for symmetric extension so the corners
   // close cleanly (any of the four sides may declare a different
   // value but in practice Word emits the same number on every
@@ -6714,7 +6719,7 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
       // sit `space_px + total_extent/2` OUTSIDE the line frame so
       // the stroke's OUTER edge lands at the paragraph block's
       // outer edge (= page-content margin for the first
-      // paragraph). This matches LibreOffice's render, where a
+      // paragraph). This matches the reference renderer's render, where a
       // single border with `sz="12" space="4"` lands its outer
       // edge at the margin and the text sits `sz + space` below
       // it; a `double` border with `sz="24"` likewise occupies 3
@@ -6723,7 +6728,7 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
       // `min_y - space` (i.e. on the OUTER edge already), which
       // made the actual stroke float a `width_px/2` further
       // outward and pushed every bordered paragraph ~6-7 px above
-      // LO's render.
+      // the reference renderer's render.
       let half_top = border_total_extent_px(p.border_top) / 2.0
       let half_bottom = border_total_extent_px(p.border_bottom) / 2.0
       let half_left = border_total_extent_px(p.border_left) / 2.0
@@ -6956,7 +6961,7 @@ fn build_span_text_node(
   // does NOT specify the scale factor or offset.  The
   // constants below (65 % scale, 40 % raise, 20 % drop)
   // mirror CSS's default `vertical-align: super` / `sub`
-  // behaviour (the same heuristics Word, LibreOffice, and
+  // behaviour (the same heuristics Word, the reference renderer, and
   // every browser ship with) — they are renderer policy,
   // not a spec mandate.
   // §17.3.2.24 position adds a further raise / drop in CSS
@@ -7118,7 +7123,7 @@ fn build_span_text_node(
   // §17.3.2.23 outline — text outline. The spec says the glyphs
   // are "displayed as if outlined" — i.e. only the outline is
   // visible, the inside is HOLLOW (transparent / page colour).
-  // LibreOffice's PDF reference renders these glyphs as a thin
+  // the reference renderer renders these glyphs as a thin
   // stroke around a transparent interior. The previous mapping
   // painted both stroke AND fill with `paint-order: stroke fill`,
   // which put the solid fill on top of the stroke and made the
@@ -7440,12 +7445,12 @@ fn append_border_line_nodes(
   match border_style_kind(side.style) {
     BorderNone => ()
     BorderDouble => {
-      // §17.18.3 — Word and LibreOffice render `double` as THREE
+      // §17.18.3 — Word and the reference renderer render `double` as THREE
       // equal bands of width `side.width_px` each: outer stroke,
       // gap, inner stroke.  Total visual extent = 3 × width_px
       // (see `border_total_extent_px`).  Each stroke is centred
       // at ±width_px from the geometric edge line so their outer
-      // edges land at ±1.5 × width_px (= total/2), matching LO's
+      // edges land at ±1.5 × width_px (= total/2), matching the reference renderer's
       // rendering of a sz=24 (4 px) double border as 4 px stroke
       // / 4 px gap / 4 px stroke (12 px total).
       //
@@ -7563,7 +7568,7 @@ fn append_border_line_nodes(
 ///|
 /// §17.18.3 / §17.3.1.7 — the TOTAL visual extent of a border side
 /// (in CSS pixels), accounting for multi-band styles (`double`,
-/// `triple`, `thinThick*`, …) where Word and LibreOffice render
+/// `triple`, `thinThick*`, …) where Word and the reference renderer render
 /// each band at the declared `@sz` width with `@sz`-wide gaps
 /// between them.  A `single` / `thick` / `dashed` / `art` border
 /// renders as one stroke of `width_px`; `double` and the
@@ -7572,7 +7577,7 @@ fn append_border_line_nodes(
 ///
 /// Used by `layout_paragraph` to compute the paragraph-internal
 /// `top_inset` / `bottom_inset` so the laid lines sit fully INSIDE
-/// the bordered box (matching LO's render of, e.g., a `sz="24"`
+/// the bordered box (matching the reference renderer's render of, e.g., a `sz="24"`
 /// double border: total 12 px, not 4 px), and by the border
 /// emitter when it draws each stroke at the right offset.
 fn border_total_extent_px(side : BorderSide) -> Double {

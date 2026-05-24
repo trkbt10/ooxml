@@ -24,7 +24,7 @@ pub let default_font_size_pt : Double
 
 pub fn degrees_to_angle_units(Double) -> Double
 
-pub fn estimate_bullet_width(String, Double, String, measurer? : @glyph.FontMeasurer?) -> Double
+pub fn estimate_bullet_width(String, Double, String) -> Double raise @glyph.FontUnresolvedError
 
 pub fn evaluate_expression(String, Map[String, Double]) -> Double
 
@@ -50,11 +50,11 @@ pub fn get_scheme_color(String, String?, ColorResolveContext) -> String?
 
 pub fn has_3d_effects(@xml.Element) -> Bool
 
-pub fn layout_text_body(LayoutInput, measurer? : @glyph.FontMeasurer?) -> LayoutResult
+pub fn layout_text_body(LayoutInput) -> LayoutResult
 
-pub fn measure_span(LayoutSpan, measurer? : @glyph.FontMeasurer?) -> MeasuredSpan
+pub fn measure_span(LayoutSpan) -> MeasuredSpan raise @glyph.FontUnresolvedError
 
-pub fn measure_spans(Array[LayoutSpan], measurer? : @glyph.FontMeasurer?) -> Array[MeasuredSpan]
+pub fn measure_spans(Array[LayoutSpan]) -> Array[MeasuredSpan] raise @glyph.FontUnresolvedError
 
 pub fn normalize_angle(Double) -> Double
 

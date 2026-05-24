@@ -82,30 +82,59 @@ moon check --target wasm-gc         # core wasm bundle for npm
 moon run src/cmd/ooxml_cli          # run native CLI
 ```
 
-## Font measurement (no pre-computed values)
+## Font measurement (no pre-computed values, ECMA-376 chain)
 
 `src/util/glyph` is **TTF-only**. Every glyph advance, kerning
 pair, ascender, descender, and line-gap value is read at runtime
-from a bundled TrueType file in `src/util/glyph/fonts/` via
-`mizchi/font::TTFont`.
+from a TrueType file the `FontResolver` returns. The repository
+ships **no** bundled fonts — every measurement reads bytes the
+host OS, an operator-supplied directory, or an in-test catalogue
+provides.
 
 - **Never** add a hard-coded char-width table, ascender table, or
-  per-font em-ratio map. The previous `fonts.mbt` /
-  `liberation_sans.mbt` / `calibri.mbt` / `common.mbt` / `font_metrics.mbt`
-  were deleted for exactly this reason — they were a false source
-  of truth that diverged from what LibreOffice actually
-  rasterises, and they kept leading subagents into "tune the
-  number" fixes instead of "measure the font".
-- If you need a metric, call `@glyph.measure_text_width(...)`,
-  `@glyph.get_ascender_ratio(...)`, `@glyph.calculate_char_width(...)`,
-  or load a `FontMeasurer` via `@glyph.default_font_set()`.
-- LibreOffice substitutes Calibri → Carlito for `.docx` and
-  Calibri → Liberation Sans for `.pptx`; the registry mirrors that
-  split (`FontSet::measurer_for` vs `FontSet::measurer_for_pptx_family`).
-  Match the format you are rendering.
-- New fonts are added by dropping a TTF into `src/util/glyph/fonts/`
-  and extending the `FontFace` enum + `resolve_face` mapping in
-  `font_registry.mbt`. No measurement values get committed.
+  per-font em-ratio map. Any "measurement constant" living in code
+  is a false SoT — `mizchi/font::TTFont` is the only allowed
+  source of advance / hmtx / hhea / OS_2 values.
+- **Never** name a specific renderer's font-substitution table as
+  the source of truth. Office binaries (Word, PowerPoint, Excel,
+  alternative office suites) all apply their own substitution
+  chains; the renderer follows ECMA-376 §17.8.3.1 / §20.1.4.2.1
+  instead.
+- If you need a metric, call `@glyph.measure_text_width(text,
+  font_size_pt~, letter_spacing_px~, family~, weight~, italic~)`
+  (or the per-glyph / detailed variants). Every entry point raises
+  `@glyph.FontUnresolvedError` when the resolver chain cannot
+  satisfy the request; callers retry through the substitution
+  chain or surface the failure at the document boundary.
+
+### Resolution chain
+
+The renderer turns a document-side font reference into a
+`@glyph.FontResolutionRequest` carrying the primary family name
+plus every disambiguating hint the document supplied
+(`<w:altName>`, `<w:panose1>`, `<w:family>`, embedded-font bytes).
+`@glyph.build_font_face_request` walks them in spec order — primary
+→ altName → PANOSE-derived generic → typed `<w:family>` generic —
+into a `FontFaceRequest` the resolver consumes.
+
+`@glyph.create_host_font_resolver()` composes the standard chain:
+
+  1. `FontResolver::env_dir` — scans `$OOXML_FONT_DIR` directories.
+  2. `FontResolver::host` — walks the OS-canonical font dirs
+     (`/System/Library/Fonts`, `/usr/share/fonts`, `%SYSTEMROOT%\Fonts`,
+     …) using `trkbt10/osenv` for platform detection.
+
+Tests inject `FontResolver::in_memory` through
+`@glyph.set_default_font_set(...)` to drive deterministic
+catalogues without filesystem dependence.
+
+### Snapshot harness
+
+`scripts/snapshot.sh` requires `OOXML_FONT_DIR` to point at the
+cross-platform Noto cache populated by `scripts/setup-test-fonts.sh`.
+Both the renderer and the reference office binary read the same
+catalogue — without that, metrics drift between pipelines and RMSE
+values become meaningless.
 
 ## Spec-Driven Development
 

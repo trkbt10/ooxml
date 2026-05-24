@@ -60,7 +60,7 @@ pub(all) struct SheetPivot {
 /// columns + `data_cols` value columns × `header_rows` header rows
 /// + `data_rows` body rows. Cells outside the worksheet's nominal
 /// dimension are still allowed: the snapshot harness compares
-/// against LibreOffice's PDF export which auto-extends the printable
+/// against the reference renderer which auto-extends the printable
 /// region to cover the pivot, so the renderer mirrors that.
 fn render_pivot_overlay(
   pivot : SheetPivot,
@@ -490,7 +490,7 @@ fn pivot_column_geometry(
     (layout.column_positions[col_zero], layout.column_widths[col_zero])
   } else {
     // Extend past the worksheet's nominal dimension using the
-    // renderer's default column width — matches how LibreOffice's
+    // renderer's default column width — matches how the reference renderer's
     // PDF export auto-extends the printable region to fit the pivot.
     let overflow = col_zero - layout.column_positions.length() + 1
     let base_x = if layout.column_positions.length() == 0 {

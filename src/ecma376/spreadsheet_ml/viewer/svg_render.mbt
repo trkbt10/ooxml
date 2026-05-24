@@ -51,8 +51,8 @@ pub(all) struct SheetRenderOptions {
   /// chrome (header band, alternating row / column stripes, totals
   /// row top border) and the §18.3.1.2 autofilter dropdown arrow
   /// glyphs.  Defaults to `false` because this SVG renderer
-  /// produces a *page* render that LibreOffice's PDF export
-  /// matches — and LO's PDF export does NOT paint table-style
+  /// produces a *page* render that the reference renderer
+  /// matches — and the reference renderer does NOT paint table-style
   /// banding nor the autofilter dropdown buttons.  Both are
   /// editing-view UI affordances Excel suppresses for print, and
   /// painting them here when the reference does not would inflate
@@ -69,8 +69,8 @@ pub(all) struct SheetRenderOptions {
 ///
 /// `default_row_height` deviates from Excel's spec default (15.0 pt
 /// per §18.3.1.81) and uses 12.75 pt instead.  The snapshot harness
-/// (scripts/snapshot.sh) compares against LibreOffice's PDF export,
-/// which fits each row to the Liberation Sans 11pt line box + cell
+/// (scripts/snapshot.sh) compares against the reference renderer,
+/// which fits each row to the the rendered body face 11pt line box + cell
 /// padding (≈ 17 px) rather than the nominal 15 pt = 20 px.  A
 /// worksheet that explicitly declares `<sheetFormatPr
 /// defaultRowHeight=...>` or `<row ht=...>` still wins via
@@ -85,7 +85,7 @@ pub(all) struct SheetRenderOptions {
 /// editing view.  §18.3.1.70 `<printOptions @gridLines>` defaults
 /// to `false` per the schema, so a worksheet that does not opt in
 /// to printed gridlines MUST render without them — matching what
-/// LibreOffice's PDF export produces.  The editing-view default
+/// the reference renderer produces.  The editing-view default
 /// (§18.3.1.87 `<sheetView @showGridLines>` defaults true) is
 /// irrelevant to a print render and is NOT consulted here.
 /// Callers driving a screen / editing view explicitly pass
@@ -237,7 +237,7 @@ pub fn render_svg(
     ),
   )
 
-  // 2. Grid lines.  This is a *page* render (matches LibreOffice's
+  // 2. Grid lines.  This is a *page* render (matches the reference renderer's
   // PDF export), so the visibility rule follows §18.3.1.70
   // `<printOptions @gridLines>` (default false), NOT §18.3.1.87
   // `<sheetView @showGridLines>` (the editing-UI toggle, default
@@ -251,7 +251,7 @@ pub fn render_svg(
   //      §18.3.1.87 hide-gridlines behaviour consumers depend on).
   //   3. Otherwise, fall back to `options.show_grid_lines`
   //      (defaults to `false` so a worksheet with neither flag
-  //      renders gridline-free, mirroring LibreOffice's PDF
+  //      renders gridline-free, mirroring the reference renderer's PDF
   //      export).
   //
   // The editing-view default (true when `<sheetView>` omits the
@@ -265,7 +265,7 @@ pub fn render_svg(
       Some(false) => false
       // Explicit `<sheetView showGridLines="1">` is the editing-view
       // toggle and does NOT enable printed gridlines on its own —
-      // an LO PDF export would still omit them unless
+      // an the reference renderer PDF export would still omit them unless
       // `<printOptions @gridLines="1">` is set.  Fall through.
       Some(true) | None => options.show_grid_lines
     }
@@ -288,7 +288,7 @@ pub fn render_svg(
   // The autofilter dropdown arrow glyphs are emitted AFTER the
   // cell-text group below so they paint over the header label.
   //
-  // Gated on `show_table_chrome` because LibreOffice's PDF export
+  // Gated on `show_table_chrome` because the reference renderer
   // (our snapshot reference) does NOT paint table bands or
   // autofilter glyphs in print mode — both are editing-view UI
   // affordances suppressed for print, matching Excel's own print
@@ -645,7 +645,7 @@ pub fn render_svg(
   // §18.3.1.62 — read the worksheet's print margins (or fall back
   // to Excel's defaults: 0.7" left/right, 0.75" top/bottom).  The
   // body content is wrapped in a translate(left, top) group so the
-  // cell grid sits at the same pixel origin that LibreOffice's /
+  // cell grid sits at the same pixel origin that the reference renderer's /
   // Excel's PDF export produces, and the outer `<svg>` and viewBox
   // widen / lengthen by (left+right, top+bottom) so the full page
   // (margin band + body) fits without clipping.  Without this
@@ -955,14 +955,14 @@ fn column_width_to_pixels(excel_width : Double) -> Double {
 /// documented fallback.
 ///
 /// Choice rationale: the snapshot harness (scripts/snapshot.sh)
-/// pins fontconfig so CSS `sans-serif` resolves to Liberation Sans
-/// — the same face LibreOffice substitutes for Calibri when
-/// exporting the reference PDF.  Liberation Sans's "0" glyph at
+/// pins fontconfig so CSS `sans-serif` resolves to the rendered body face
+/// — the same face the reference renderer substitutes for Calibri when
+/// exporting the reference PDF.  the rendered body face's "0" glyph at
 /// 11pt 96 dpi has an advance of ~6.1 pt = ~8.15 px (it is metric-
 /// compatible with Arial, whose 0-glyph advance is 556/1000 EM);
 /// however per ECMA-376 §18.3.1.13 the MDW also subsumes Excel's
 /// small inter-cell padding.  Empirically a bare-grid fixture's
-/// 10-column LibreOffice render produces ~65 px per column, which
+/// 10-column the reference renderer render produces ~65 px per column, which
 /// the spec formula `Trunc((256·8.43 + Trunc(128/MDW))/256 · MDW)`
 /// reproduces at MDW = 7.7.  The previous 7.0 (Calibri-shaped
 /// fallback) yielded 59 px and accumulated visible offsets across
@@ -5666,7 +5666,7 @@ fn render_cell_fill_gradient(
 ///      hatched fill.
 ///   2. The visible `fill` on the cell rect is the *print-resolution
 ///      blended colour* — `fgColor × coverage + bgColor × (1−coverage)`
-///      — chosen to match what LibreOffice / Excel actually rasterise
+///      — chosen to match what the reference renderer / Excel actually rasterise
 ///      to a printed page.  At typical 96 dpi a 6.25 % hatch tile
 ///      collapses to a near-flat tint, not a visible dot lattice;
 ///      paying the blended-flat-tint price keeps the rasterised
@@ -5674,8 +5674,8 @@ fn render_cell_fill_gradient(
 ///
 /// When `pattern_name` is outside ST_PatternType the rect falls back
 /// to flat `fg` (the spec default treatment per Annex E), matching
-/// what LibreOffice does for unrecognised names (e.g. `gray25` /
-/// `gray50` / `gray75`, which Excel emits but LO renders as solid).
+/// what the reference renderer does for unrecognised names (e.g. `gray25` /
+/// `gray50` / `gray75`, which Excel emits but the reference renderer renders as solid).
 fn render_cell_fill_pattern(
   id_key : String,
   layout : CellLayout,
@@ -5716,7 +5716,7 @@ fn render_cell_fill_pattern(
       // Spec geometry exists — keep the `<pattern>` def in `<defs>`
       // for vector consumers (it is referenced by id via
       // `data-ooxml-pattern-ref`) and paint the visible cell with the
-      // blended tint so rasterisation lines up with LibreOffice /
+      // blended tint so rasterisation lines up with the reference renderer /
       // Excel's printed output.
       let defs = svg_elem("defs", [], [pattern_node])
       let rect_attrs : Array[@xml.Attribute] = [
@@ -5740,9 +5740,9 @@ fn render_cell_fill_pattern(
 /// §18.18.55 ST_PatternType — print-resolution coverage fraction
 /// used by `render_cell_fill_pattern` to compute the visible flat
 /// tint.  Coverage = (fg-pixel count) / (tile-pixel count) at the
-/// resolution LibreOffice / Excel rasterise to a printed page (96
+/// resolution the reference renderer / Excel rasterise to a printed page (96
 /// dpi PDF).  The numbers are calibrated against measured greyscale
-/// means of LibreOffice's PDF rendering of each pattern:
+/// means of the reference renderer's PDF rendering of each pattern:
 ///
 ///   • Five density patterns map to their spec-defined ratio.
 ///   • Hatch / grid / trellis patterns collapse to a flat tint at
@@ -5750,7 +5750,7 @@ fn render_cell_fill_pattern(
 ///     mean luminance (light* ≈ 25 %, dark* ≈ 50 % including the
 ///     grid / trellis variants which overlay two strokes).
 ///   • Unknown names return `None` so the caller emits flat `fg`
-///     (matching LibreOffice's unknown-name fallback to solid black).
+///     (matching the reference renderer's unknown-name fallback to solid black).
 fn pattern_coverage(pattern_name : String) -> Double? {
   match pattern_name {
     // Spec density family — coverage matches the name.
@@ -8735,7 +8735,7 @@ fn print_headings_enabled(worksheet : @xml.Element) -> Bool {
 /// follow the print flag, not the editing-view toggle
 /// (§18.3.1.87 `<sheetView @showGridLines>`).  Per §18.3.1.70
 /// `@gridLines` defaults to `false`, so a worksheet with no
-/// `<printOptions>` renders gridline-free — matching LibreOffice's
+/// `<printOptions>` renders gridline-free — matching the reference renderer's
 /// PDF export, which also omits gridlines unless the print flag
 /// opts in.  Returns true only when the attribute is explicitly
 /// the truthy xsd:boolean value.
@@ -8803,21 +8803,21 @@ fn sheet_view_show_zeros(worksheet : @xml.Element) -> Bool? {
 /// (xsd:double, inches) win.
 ///
 /// When the element is ABSENT the spec is silent on what the
-/// consumer should substitute; Excel and LibreOffice disagree:
+/// consumer should substitute; Excel and the reference renderer disagree:
 ///
 ///   • Excel (§18.3.1.62 reference): left/right = 0.7",
 ///     top/bottom = 0.75".
-///   • LibreOffice Calc: left/right = 2.0 cm (≈ 0.787"),
+///   • the reference renderer Calc: left/right = 2.0 cm (≈ 0.787"),
 ///     top/bottom = 2.5 cm (≈ 0.984").
 ///
-/// Our snapshot reference is LibreOffice's PDF export, so we
-/// match LibreOffice's defaults: every xlsx fixture without an
+/// Our snapshot reference is the reference renderer, so we
+/// match the reference renderer's defaults: every xlsx fixture without an
 /// explicit `<pageMargins>` then lands on the same page origin
 /// the reference uses, and the snapshot harness — which
 /// composites both renders at NorthWest (0,0) on a common
 /// canvas — measures only real per-cell differences rather than
 /// a uniform whole-content translation.  Empirically the
-/// LibreOffice defaults put the cell-grid origin at (~75, ~94)
+/// the reference renderer defaults put the cell-grid origin at (~75, ~94)
 /// px, which matches the (75.6, 94.5) px our defaults yield.
 ///
 /// Header / footer margins (§18.3.1.46) are not surfaced here:
@@ -8826,7 +8826,7 @@ fn sheet_view_show_zeros(worksheet : @xml.Element) -> Bool? {
 fn sheet_page_margins_px(
   worksheet : @xml.Element,
 ) -> (Double, Double, Double, Double) {
-  // LibreOffice Calc defaults (2.0 cm L/R, 2.5 cm T/B) — see the
+  // the reference renderer Calc defaults (2.0 cm L/R, 2.5 cm T/B) — see the
   // doc comment above for why these win over Excel's spec
   // defaults when `<pageMargins>` is absent.
   let cm_per_inch = 2.54

@@ -69,12 +69,10 @@ test "render_svg emits text from a paragraph as <text> element" {
   // serialises to `Hello &lt;wml>`.
   assert_true(svg.contains("Hello &lt;wml>"))
   // §17.3.2.26 rFonts — without `<w:rFonts>` and without a
-  // `<w:docDefaults>` cascade, the viewer falls back to the CSS
-  // generic `sans-serif` family: a document with no explicit
-  // typeface inherits the application/theme default body face, which
-  // is a sans-serif in every real OOXML consumer (see
-  // `DEFAULT_FONT_FAMILY`).
-  assert_true(svg.contains("font-family=\"sans-serif\""))
+  // `<w:docDefaults>` cascade, the viewer falls back to the
+  // renderer's default body family (`DEFAULT_FONT_FAMILY`) so the
+  // host `FontResolver` lands on the configured test catalogue.
+  assert_true(svg.contains("font-family=\"Noto Sans\""))
 }
 
 ///|
