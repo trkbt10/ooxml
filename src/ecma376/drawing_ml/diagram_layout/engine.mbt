@@ -23,7 +23,21 @@ pub fn DiagramLayoutEngine::apply(
       ""
   }
   let results : Array[NodeBounds] = []
-  let context = { data_model, context_id: root_id, depth: 0, results }
+  // §21.4.2.19 layoutNode/@name → computed inner bounds map. The
+  // walker registers every named layoutNode's `inner` rectangle so
+  // a later constraint with `<constr refForName="…"/>` can resolve
+  // against the named sibling's bounds. The map is mutable and
+  // shared across the entire walk (forEach iterations carry the
+  // same registry forward) so depth-first ordering is sufficient
+  // for the common case.
+  let node_bounds_by_name : Map[String, BoundsRect] = Map::new()
+  let context = {
+    data_model,
+    context_id: root_id,
+    depth: 0,
+    results,
+    node_bounds_by_name,
+  }
   walk_layout_node(definition.root, bounds, context)
   context.results
 }
@@ -44,12 +58,23 @@ pub fn walk_layout_node(
   // constraints before margins, so an explicit size override
   // re-parents the margin pass on the constrained rectangle. See
   // `constraint_solver.mbt` for the supported / deferred constraint
-  // matrix.
-  let bounds_after_self = apply_self_geometric_constraints(
+  // matrix. The name registry is threaded in so a constraint with
+  // `refForName="other"` can resolve against a previously walked
+  // sibling's bounds.
+  let bounds_after_self = apply_self_geometric_constraints_with_registry(
     parent_bounds,
     node.constraints,
+    context.node_bounds_by_name,
   )
   let inner = apply_margins(bounds_after_self, node.constraints)
+  // §21.4.2.19 layoutNode/@name — register this node's inner
+  // bounds so later siblings/descendants can resolve a
+  // `<constr refForName="<this.name>" refType="w|h|l|t|r|b"/>`
+  // reference. The map mutates in-place; the depth-first walker
+  // guarantees a layoutNode is registered before its children
+  // recurse, and earlier-document-order siblings are registered
+  // before later ones.
+  context.node_bounds_by_name[node.name] = inner
   let effective_children = collect_effective_children(node.children, context)
   apply_pres_of(node, inner, context)
   let alg_kind = match node.algorithm {
@@ -220,7 +245,11 @@ fn recurse_into_child(
   let adjusted = if overrides.length() == 0 {
     base_bounds
   } else {
-    apply_self_geometric_constraints(base_bounds, overrides)
+    apply_self_geometric_constraints_with_registry(
+      base_bounds,
+      overrides,
+      child.context.node_bounds_by_name,
+    )
   }
   walk_layout_node(child.node, adjusted, child.context)
 }
@@ -405,6 +434,10 @@ pub fn evaluate_for_each(
       context_id: point.id,
       depth: context.depth + 1,
       results: context.results,
+      // Share the same registry across iterations so a later
+      // forEach iteration can resolve a `refForName` against a
+      // named layoutNode that an earlier iteration walked.
+      node_bounds_by_name: context.node_bounds_by_name,
     }
     // Each iteration expands the body once against its own
     // context so nested `LcNode` / `LcChoose` / `LcForEach`

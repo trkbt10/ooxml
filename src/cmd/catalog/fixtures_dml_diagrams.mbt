@@ -817,6 +817,233 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
     colors_def: make_colors_def("urn:test:diagram:list:constr:colors"),
     drawing: cached_drawing(cstr_data, cstr_layout, cstr_labels),
   })
+
+  // ---- list WITH cross-node refForName constraints --------------
+  // §21.4.2.8 constr/@refForName — each leaf node's `w` is computed
+  // from the *root* layoutNode's width via `refType="w"
+  // refForName="root" fact="0.15"` (i.e. each leaf is 15 % of the
+  // root's width, regardless of how many siblings share the lin
+  // strip). The engine populates `node_bounds_by_name["root"]` in
+  // `walk_layout_node` before recursing into the forEach body, so
+  // the leaf's `apply_self_geometric_constraints_with_registry`
+  // call resolves the cross-node reference.
+  let xref_labels = ["A"]
+  let xref_data = shared_data_model(xref_labels)
+  let xref_layout = make_layout_def_with_cross_node_constraint(
+    "urn:test:diagram:list:xref",
+    width_fact=0.10,
+    height_fact=0.08,
+  )
+  dcases.push({
+    id: "diagram-list-cross-node-ref",
+    format: "pptx",
+    category: "diagram",
+    content: sp_tree([diagram_graphic_frame("2", "Diagram List XRef")]),
+    data_model: xref_data,
+    layout_def: xref_layout,
+    style_def: make_style_def("urn:test:diagram:list:xref:style"),
+    colors_def: make_colors_def("urn:test:diagram:list:xref:colors"),
+    drawing: cached_drawing(xref_data, xref_layout, xref_labels),
+  })
+
+  // ---- hierarchy WITH self-targeting w/h constraints ------------
+  // §21.4.2.8 constr — the root layoutNode carries a `for=self`
+  // `<constr type="w" val=…/>` and `<constr type="h" val=…/>` that
+  // shrink the entire hierarchy canvas to a small box in the
+  // upper-left of the graphicFrame. The solver's
+  // `apply_self_geometric_constraints` consumes the constraints
+  // before margins are applied; the hierRoot algorithm then
+  // distributes the root + children inside that shrunk area.
+  let hier_constr_labels = ["Root", "ChildA", "ChildB"]
+  let hier_constr_data = shared_data_model(hier_constr_labels)
+  let hier_constr_layout = make_layout_def_with_self_size_constraint(
+    "urn:test:diagram:hier:constr",
+    "hierRoot",
+    explicit_w=900000.0,
+    explicit_h=600000.0,
+  )
+  dcases.push({
+    id: "diagram-hierarchy-with-constraints",
+    format: "pptx",
+    category: "diagram",
+    content: sp_tree([diagram_graphic_frame("2", "Diagram Hier Constr")]),
+    data_model: hier_constr_data,
+    layout_def: hier_constr_layout,
+    style_def: make_style_def("urn:test:diagram:hier:constr:style"),
+    colors_def: make_colors_def("urn:test:diagram:hier:constr:colors"),
+    drawing: cached_drawing(
+      hier_constr_data, hier_constr_layout, hier_constr_labels,
+    ),
+  })
+}
+
+///|
+/// §21.4.2.16 CT_DiagramDefinition — variant of `make_layout_def`
+/// that decorates the inner `leaf` layoutNode with cross-node
+/// `<constr refForName="root" refType="w|h" fact=…/>` constraints.
+/// Used by the `diagram-list-cross-node-ref` fixture to exercise
+/// the new registry-aware constraint solver: every leaf's width
+/// becomes `root.w * width_fact`, every leaf's height becomes
+/// `root.h * height_fact`. The root layoutNode has no explicit
+/// size constraints, so its inner bounds equal the graphicFrame's.
+fn make_layout_def_with_cross_node_constraint(
+  unique_id : String,
+  width_fact~ : Double,
+  height_fact~ : Double,
+) -> @xml.Element {
+  // Inner layoutNode carries the cross-node references directly on
+  // its own <constrLst>. The solver applies them via
+  // `apply_self_geometric_constraints_with_registry` because
+  // `walk_layout_node` registers "root" → inner_bounds before the
+  // forEach iterates this body.
+  let inner_constr_lst = dgm_elem("constrLst", [], [
+    Element(
+      dgm_elem(
+        "constr",
+        [
+          xa("type", "w"),
+          xa("refType", "w"),
+          xa("refForName", "root"),
+          xa("fact", width_fact.to_string()),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      dgm_elem(
+        "constr",
+        [
+          xa("type", "h"),
+          xa("refType", "h"),
+          xa("refForName", "root"),
+          xa("fact", height_fact.to_string()),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let inner_node = dgm_elem(
+    "layoutNode",
+    [xa("name", "leaf"), xa("styleLbl", "node1")],
+    [
+      Element(dgm_elem("alg", [xa("type", "sp")], [])),
+      Element(dgm_elem("shape", [xa("type", "rect")], [])),
+      Element(dgm_elem("presOf", [xa("axis", "self"), xa("ptType", "all")], [])),
+      Element(inner_constr_lst),
+    ],
+  )
+  let for_each = dgm_elem(
+    "forEach",
+    [xa("name", "n"), xa("axis", "ch"), xa("ptType", "node")],
+    [Element(inner_node)],
+  )
+  let root_node = dgm_elem("layoutNode", [xa("name", "root")], [
+    Element(dgm_elem("varLst", [], [])),
+    Element(dgm_elem("alg", [xa("type", "lin")], [])),
+    Element(dgm_elem("shape", [], [])),
+    Element(dgm_elem("presOf", [], [])),
+    Element(dgm_elem("constrLst", [], [])),
+    Element(for_each),
+  ])
+  dgm_elem(
+    "layoutDef",
+    [
+      xa("uniqueId", unique_id),
+      xa("minVer", "http://schemas.openxmlformats.org/drawingml/2006/diagram"),
+    ],
+    [
+      Element(dgm_elem("title", [xa("val", unique_id)], [])),
+      Element(dgm_elem("desc", [xa("val", unique_id)], [])),
+      Element(dgm_elem("catLst", [], [])),
+      Element(root_node),
+    ],
+  )
+}
+
+///|
+/// §21.4.2.16 CT_DiagramDefinition — variant of `make_layout_def`
+/// that places explicit `for=self` `<constr type="w" val=…/>` and
+/// `<constr type="h" val=…/>` on the root layoutNode so the entire
+/// layout area shrinks below the graphicFrame's natural extent.
+/// Used by `diagram-hierarchy-with-constraints` to validate that
+/// `apply_self_geometric_constraints` consumes self-targeted size
+/// constraints on a hierRoot/hierChild layout before margins are
+/// applied and the algorithm distributes its children.
+fn make_layout_def_with_self_size_constraint(
+  unique_id : String,
+  root_alg : String,
+  explicit_w~ : Double,
+  explicit_h~ : Double,
+) -> @xml.Element {
+  // Hierarchical layouts need a root-shape sub-layoutNode followed
+  // by a children container (the hierRoot algorithm distributes
+  // them at top 30 % / bottom 70 %).
+  let root_shape = dgm_elem(
+    "layoutNode",
+    [xa("name", "rootShape"), xa("styleLbl", "node1")],
+    [
+      Element(dgm_elem("alg", [xa("type", "sp")], [])),
+      Element(dgm_elem("shape", [xa("type", "rect")], [])),
+      Element(dgm_elem("presOf", [xa("axis", "self"), xa("ptType", "all")], [])),
+    ],
+  )
+  let child_shape = dgm_elem(
+    "layoutNode",
+    [xa("name", "childShape"), xa("styleLbl", "node1")],
+    [
+      Element(dgm_elem("alg", [xa("type", "sp")], [])),
+      Element(dgm_elem("shape", [xa("type", "rect")], [])),
+      Element(dgm_elem("presOf", [xa("axis", "self"), xa("ptType", "all")], [])),
+    ],
+  )
+  let child_container = dgm_elem("layoutNode", [xa("name", "childContainer")], [
+    Element(dgm_elem("alg", [xa("type", "hierChild")], [])),
+    Element(
+      dgm_elem(
+        "forEach",
+        [xa("name", "each"), xa("axis", "ch"), xa("ptType", "node")],
+        [Element(child_shape)],
+      ),
+    ),
+  ])
+  // Root constrLst with self-targeting absolute size constraints —
+  // the default `for=self` (omitted) makes them shrink the root.
+  let root_constr_lst = dgm_elem("constrLst", [], [
+    Element(
+      dgm_elem(
+        "constr",
+        [xa("type", "w"), xa("val", double_to_emu_attr(explicit_w))],
+        [],
+      ),
+    ),
+    Element(
+      dgm_elem(
+        "constr",
+        [xa("type", "h"), xa("val", double_to_emu_attr(explicit_h))],
+        [],
+      ),
+    ),
+  ])
+  let root_node = dgm_elem("layoutNode", [xa("name", "root")], [
+    Element(dgm_elem("varLst", [], [])),
+    Element(dgm_elem("alg", [xa("type", root_alg)], [])),
+    Element(root_constr_lst),
+    Element(root_shape),
+    Element(child_container),
+  ])
+  dgm_elem(
+    "layoutDef",
+    [
+      xa("uniqueId", unique_id),
+      xa("minVer", "http://schemas.openxmlformats.org/drawingml/2006/diagram"),
+    ],
+    [
+      Element(dgm_elem("title", [xa("val", unique_id)], [])),
+      Element(dgm_elem("desc", [xa("val", unique_id)], [])),
+      Element(dgm_elem("catLst", [], [])),
+      Element(root_node),
+    ],
+  )
 }
 
 ///|

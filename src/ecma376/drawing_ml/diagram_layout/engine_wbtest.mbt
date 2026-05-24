@@ -700,7 +700,10 @@ test "§21.4.2.8 apply_self_geometric_constraints honours wOff/hOff" {
 ///|
 /// §21.4.2.8 constr/@refType — a `w` constraint that references
 /// `h` on the same node (`refType="h"` with `refFor="self"` /
-/// absent) should compute width from the in-flight height.
+/// absent) should compute width from the in-flight height. `l/t/r/b`
+/// references also resolve against the in-flight rectangle: `l` /
+/// `t` read the origin (relative to parent), `r` / `b` read
+/// `origin + length`.
 test "§21.4.2.8 same-node refType resolves against current rect" {
   let parent : BoundsRect = { x: 0.0, y: 0.0, width: 600.0, height: 400.0 }
   // w = h * 0.5 — width becomes 400 * 0.5 = 200, height stays.
@@ -709,12 +712,21 @@ test "§21.4.2.8 same-node refType resolves against current rect" {
   ])
   assert_eq(scaled.width, 200.0)
   assert_eq(scaled.height, 400.0)
-  // refType without an in-flight source (e.g. `l` references
-  // something we do not track) falls back to literal `val` if
-  // present — here we deliberately have neither val nor a
-  // resolvable source, so the constraint is a no-op.
-  let noop = apply_self_geometric_constraints(parent, [
+  // l = r * 0.5 — `r` reads the in-flight right edge (initially
+  // parent.x + width = 600). new_x = parent.x + 600 * 0.5 = 300;
+  // the explicit `l` then shifts x but does NOT shrink the
+  // width (the spec treats `l`/`t` as origin moves; width follows
+  // the existing rectangle). After the move, width stays 600.
+  let l_from_r = apply_self_geometric_constraints(parent, [
     test_constraint(ConstrL, ref_type=Some(ConstrR), fact=Some(0.5)),
+  ])
+  assert_eq(l_from_r.x, 300.0)
+  assert_eq(l_from_r.width, 600.0)
+  // refType=sibSp is *not* an in-flight rectangle variable
+  // (sibling spacing has no slot on a single node's bounds), and
+  // no literal `val` is supplied → the constraint is a no-op.
+  let noop = apply_self_geometric_constraints(parent, [
+    test_constraint(ConstrL, ref_type=Some(ConstrSibSp), fact=Some(0.5)),
   ])
   assert_eq(noop.x, 0.0)
   assert_eq(noop.width, 600.0)
@@ -796,6 +808,111 @@ test "§21.4.2.8 parent for=ch forName constraint overrides child width" {
   for nb in result {
     assert_eq(nb.bounds.width, 200.0)
     assert_eq(nb.bounds.height, 50.0)
+  }
+}
+
+///|
+/// §21.4.2.8 constr/@refForName — cross-node references resolve
+/// against the engine's name registry. When the named source
+/// layoutNode was already walked (depth-first prior in document
+/// order), the registry-aware solver substitutes the source's
+/// `refType` variable; the value is then scaled by `fact` per the
+/// spec's `target = source[refType] * fact` rule.
+test "§21.4.2.8 cross-node refForName resolves via name registry" {
+  // Registry pre-loaded with a `frame` node whose inner bounds are
+  // 800 × 400 (typical container). The carrying node's constraint
+  // declares `w` from `frame.w * 0.4` → 320.
+  let registry : Map[String, BoundsRect] = Map::new()
+  registry["frame"] = { x: 0.0, y: 0.0, width: 800.0, height: 400.0 }
+  let parent : BoundsRect = { x: 0.0, y: 0.0, width: 1000.0, height: 500.0 }
+  let with_ref = apply_self_geometric_constraints_with_registry(
+    parent,
+    [
+      test_constraint(
+        ConstrW,
+        ref_type=Some(ConstrW),
+        ref_for_name=Some("frame"),
+        fact=Some(0.4),
+      ),
+    ],
+    registry,
+  )
+  assert_eq(with_ref.width, 320.0)
+  // refForName pointing at an absent name (forward reference) →
+  // the registry lookup misses, and the solver falls through to the
+  // same-node lookup before reaching the literal `val`. With
+  // refType=w, the same-node lookup reads the in-flight rectangle
+  // (= parent.width 1000) and returns it scaled by fact (default
+  // 1.0). The literal `val=123` therefore never fires for this
+  // input — it would only matter if refType pointed at a kind
+  // `read_bounds_variable` does not recognise (margins / spacing).
+  let forward = apply_self_geometric_constraints_with_registry(
+    parent,
+    [
+      test_constraint(
+        ConstrW,
+        ref_type=Some(ConstrW),
+        ref_for_name=Some("not-yet-walked"),
+        val=Some(123.0),
+      ),
+    ],
+    registry,
+  )
+  assert_eq(forward.width, 1000.0)
+  // refForName + refType=h reads the named source's height.
+  let height_ref = apply_self_geometric_constraints_with_registry(
+    parent,
+    [
+      test_constraint(
+        ConstrH,
+        ref_type=Some(ConstrH),
+        ref_for_name=Some("frame"),
+        fact=Some(0.25),
+      ),
+    ],
+    registry,
+  )
+  assert_eq(height_ref.height, 100.0)
+}
+
+///|
+/// §21.4.2.19 layoutNode/@name — end-to-end: a layoutNode whose
+/// `<constr type="w" refForName="root" refType="w" fact="0.25"/>`
+/// must resolve against the root's bounds the walker registered
+/// before descending. Validates the full engine wiring (registry
+/// population in `walk_layout_node` + lookup in
+/// `apply_self_geometric_constraints_with_registry`).
+test "§21.4.2.19 layoutNode/@name registry feeds refForName end-to-end" {
+  // Layout: root has natural canvas bounds (1000×500). A child
+  // `leaf` carries `w refForName=root refType=w fact=0.25` and
+  // `h refForName=root refType=h fact=0.5`, so each leaf shrinks
+  // to 250 × 250 regardless of the lin algorithm's natural per-
+  // child width / height.
+  let xml = "<layoutDef uniqueId=\"urn:test:cross-node\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"lin\"/>" +
+    "<forEach name=\"each\" axis=\"ch\" ptType=\"node\">" +
+    "<layoutNode name=\"leaf\">" +
+    "<alg type=\"sp\"/>" +
+    "<shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "<constrLst>" +
+    "<constr type=\"w\" refType=\"w\" refForName=\"root\" fact=\"0.25\"/>" +
+    "<constr type=\"h\" refType=\"h\" refForName=\"root\" fact=\"0.5\"/>" +
+    "</constrLst>" +
+    "</layoutNode>" +
+    "</forEach>" +
+    "</layoutNode>" +
+    "</layoutDef>"
+  let def = definition(xml)
+  let engine = DiagramLayoutEngine::new()
+  let result = engine.apply(def, flat_data_model(3), canvas())
+  assert_eq(result.length(), 3)
+  // 1000 * 0.25 = 250 width; 500 * 0.5 = 250 height — applies to
+  // every leaf regardless of the lin per-child slot size.
+  for nb in result {
+    assert_eq(nb.bounds.width, 250.0)
+    assert_eq(nb.bounds.height, 250.0)
   }
 }
 

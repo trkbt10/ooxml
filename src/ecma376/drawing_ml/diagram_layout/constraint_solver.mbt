@@ -18,14 +18,23 @@
 //   * §21.4.7.21 pyraAcctRatio — handled by `algorithms_pyra.mbt`
 //
 // Reference constraints (`refType` + optional `refFor` /
-// `refForName`) are resolved against the carrying node's own
-// already-computed bounds: e.g. `<constr type="w" refType="h"
-// fact="0.5"/>` sets width = height * 0.5. Cross-node reference
-// lookups (where `refForName` points at a *different* layout node)
-// are partially supported: when the named source node was already
-// computed in an earlier dispatch pass, the solver substitutes its
-// variable; otherwise the constraint silently no-ops and the
-// algorithm-derived bound stays in effect.
+// `refForName`) are resolved in `resolve_constraint_value`:
+//
+//   * `<constr type="w" refType="h" fact="0.5"/>` (same-node) —
+//     sets the carrying node's width to half its own height; the
+//     in-flight rectangle is read so this constraint may appear
+//     after a same-node `h` constraint that has already adjusted
+//     the height.
+//   * `<constr type="w" refType="w" refForName="root" fact="0.4"/>`
+//     (cross-node) — looks up `root` in the engine's
+//     `EvalContext.node_bounds_by_name` registry. The map is
+//     populated by `walk_layout_node` after each layoutNode's
+//     `inner` rectangle is computed, so a constraint that
+//     references a named sibling/ancestor walked earlier in
+//     document order resolves correctly. A constraint that
+//     references a node not yet walked (forward reference) silently
+//     no-ops; a fully iterative fixed-point solver that re-evaluates
+//     pending constraints across multiple passes is deferred.
 //
 // `for=ch` / `for=des` constraints with `forName` (a name reference
 // into the layout-node tree) are handled by
@@ -172,6 +181,38 @@ pub fn apply_self_geometric_constraints(
   parent_bounds : BoundsRect,
   constraints : Array[Constraint],
 ) -> BoundsRect {
+  // Backward-compatible wrapper: call the registry-aware helper
+  // with an empty map so existing callers that have no name
+  // registry (the wbtests in particular) keep the same behaviour:
+  // every `refForName` cross-node reference no-ops.
+  apply_self_geometric_constraints_with_registry(
+    parent_bounds,
+    constraints,
+    Map::new(),
+  )
+}
+
+///|
+/// §21.4.2.8 constr — registry-aware variant of
+/// `apply_self_geometric_constraints` that additionally honours
+/// cross-node references (`<constr refForName="other"
+/// refType="w|h|l|t|r|b" .../>`) by consulting `node_bounds_by_name`.
+///
+/// The engine populates this map in `walk_layout_node` with the
+/// inner bounds of every named layoutNode it visits; a later
+/// constraint can therefore declare e.g. `<constr type="w"
+/// refType="w" refForName="root" fact="0.4"/>` and have its width
+/// resolved to 40 % of the (already-walked) `root` node's width.
+///
+/// Forward references — where the source node is laid out *after*
+/// the carrying node in document order — still no-op (the map has
+/// no entry for the source name yet). A fully iterative
+/// fixed-point solver is deferred.
+pub fn apply_self_geometric_constraints_with_registry(
+  parent_bounds : BoundsRect,
+  constraints : Array[Constraint],
+  node_bounds_by_name : Map[String, BoundsRect],
+) -> BoundsRect {
   let mut x = parent_bounds.x
   let mut y = parent_bounds.y
   let mut w = parent_bounds.width
@@ -180,11 +221,25 @@ pub fn apply_self_geometric_constraints(
     if !constraint_is_self_targeted(c) {
       continue
     }
-    // Same-node reference constraints (refType present, refForName
-    // absent) resolve against the in-flight rectangle so a node
-    // may declare e.g. `w refType="h" fact="0.5"` to compute width
-    // from height.
-    let resolved = resolve_self_constraint_value(c, w, h)
+    // Reference constraints resolve in this priority order:
+    //
+    //   1. Cross-node lookup when `refForName` is set and the
+    //      registry already carries that named layoutNode's
+    //      bounds — read the requested `refType` variable on the
+    //      source rect, scale by `fact`.
+    //   2. Same-node reference when `refForName` is absent and
+    //      `refType` is set — read the in-flight rectangle (w/h/l/t/r/b
+    //      reference each other via `read_bounds_variable`).
+    //   3. Literal `val * fact` when no `refType`.
+    let resolved = resolve_constraint_value(
+      c,
+      x,
+      y,
+      w,
+      h,
+      parent_bounds,
+      node_bounds_by_name,
+    )
     let value = match resolved {
       Some(v) => v
       None => continue
@@ -219,39 +274,29 @@ pub fn apply_self_geometric_constraints(
 }
 
 ///|
-/// §21.4.2.8 constr/@for — return whether a constraint targets the
-/// carrying node itself. The schema default for `@for` is `self`;
-/// constraints with `for=ch|des|ancst` target relatives and are
-/// not handled by this pass — those flow through
-/// `child_targeted_constraints_for` instead.
-fn constraint_is_self_targeted(c : Constraint) -> Bool {
-  match c.for_target {
-    None => true
-    Some("self") => true
-    Some(_) => false
-  }
-}
-
-///|
-/// §21.4.2.8 constr/@refType — resolve a constraint's right-hand
-/// value against either:
+/// §21.4.2.8 constr — unified resolver that combines the
+/// cross-node (`refForName`) and same-node (`refType` only) lookup
+/// paths. The constraint is interpreted as the right-hand side of
+/// `target_var = value` where `value` is one of:
 ///
-///   * a literal `val` multiplied by `fact` (no reference), or
-///   * a same-node variable lookup when `refType` is present and
-///     `refForName` is absent (the schema default `refFor="self"`
-///     applies, so the source is the same layout node).
+///   * `source_node[refType] * fact` — cross-node reference,
+///     read from `node_bounds_by_name` (returns `None` when the
+///     source has not been laid out yet, i.e. forward reference).
+///   * `self[refType] * fact` — same-node reference, read from
+///     the in-flight rectangle (only `w` / `h` are tracked).
+///   * `val * fact` — literal numeric constraint.
 ///
-/// Returns `None` when the constraint carries neither a `val` nor a
-/// resolvable `refType` source — the caller treats that as
-/// "constraint underspecified, skip".  Cross-node references
-/// (`refForName` set) are not handled here: they are addressed by
-/// the child-targeting pass and stay as `Some(0)` would be wrong,
-/// so this routine returns `None` for them too, letting the engine
-/// fall back to the algorithm-derived bound.
-fn resolve_self_constraint_value(
+/// Returns `None` for underspecified constraints (no `val`, no
+/// resolvable `refType`) so the caller can skip the assignment
+/// and let the algorithm-derived value stand.
+fn resolve_constraint_value(
   c : Constraint,
+  current_x : Double,
+  current_y : Double,
   current_w : Double,
   current_h : Double,
+  parent_bounds : BoundsRect,
+  node_bounds_by_name : Map[String, BoundsRect],
 ) -> Double? {
   let factor = match c.fact {
     Some(f) => f
@@ -263,22 +308,39 @@ fn resolve_self_constraint_value(
         Some(v) => Some(v * factor)
         None => None
       }
-    Some(_) => {
-      // Cross-node references (`refForName` present) are out of
-      // scope for the self-targeted pass; the engine will pick
-      // them up when it reaches the source layoutNode.
-      if c.ref_for_name is Some(_) {
-        return None
+    Some(ref_kind) => {
+      // Cross-node lookup: `refForName` names a layoutNode that may
+      // already be in the registry. The `refFor` axis is treated as
+      // `self` here — that is the schema default and the only
+      // axis the registry semantics support without a full
+      // layout-node tree walker.
+      match c.ref_for_name {
+        Some(source_name) =>
+          match node_bounds_by_name.get(source_name) {
+            Some(source_bounds) => {
+              let raw = read_bounds_variable(source_bounds, ref_kind)
+              match raw {
+                Some(v) => return Some(v * factor)
+                None => ()
+              }
+              // refType is not a per-rect variable (e.g. lMarg);
+              // fall through to the literal-val branch.
+            }
+            None => ()
+          }
+        None => ()
       }
-      let source = match c.ref_type {
-        Some(ConstrW) => Some(current_w)
-        Some(ConstrH) => Some(current_h)
-        // Other refTypes (l/t/r/b/...) would need the in-flight
-        // rectangle origin, but those are uncommon as same-node
-        // references and we conservatively no-op so the algorithm
-        // bound stays.
-        _ => None
+      // Same-node lookup: read the in-flight rectangle. Same-node
+      // l/t/r/b references resolve against the offsets relative
+      // to the parent origin so they match how the constraint
+      // writer would have authored a `val` for them.
+      let in_flight : BoundsRect = {
+        x: current_x - parent_bounds.x,
+        y: current_y - parent_bounds.y,
+        width: current_w,
+        height: current_h,
       }
+      let source = read_bounds_variable(in_flight, ref_kind)
       match source {
         Some(value) => Some(value * factor)
         None =>
@@ -290,6 +352,47 @@ fn resolve_self_constraint_value(
           }
       }
     }
+  }
+}
+
+///|
+/// §21.4.7.21 ST_ConstraintType — read a per-rectangle variable
+/// (`w` / `h` / `l` / `t` / `r` / `b`) off the supplied bounds.
+/// The lengths (`w` / `h`) come straight from the rectangle; the
+/// anchors (`l` / `t`) are the rectangle's relative origin; `r` /
+/// `b` are computed as origin + length (matching how a constraint
+/// `val` is authored — see `apply_self_geometric_constraints`'s
+/// handling of `ConstrR` / `ConstrB`).
+///
+/// Returns `None` for constraint kinds that do not map to a single
+/// rectangle scalar (margins, spacing, offsets, pyraAcctRatio,
+/// catch-all) so the caller can fall back to the literal `val`.
+fn read_bounds_variable(
+  bounds : BoundsRect,
+  kind : ConstraintKind,
+) -> Double? {
+  match kind {
+    ConstrW => Some(bounds.width)
+    ConstrH => Some(bounds.height)
+    ConstrL => Some(bounds.x)
+    ConstrT => Some(bounds.y)
+    ConstrR => Some(bounds.x + bounds.width)
+    ConstrB => Some(bounds.y + bounds.height)
+    _ => None
+  }
+}
+
+///|
+/// §21.4.2.8 constr/@for — return whether a constraint targets the
+/// carrying node itself. The schema default for `@for` is `self`;
+/// constraints with `for=ch|des|ancst` target relatives and are
+/// not handled by this pass — those flow through
+/// `child_targeted_constraints_for` instead.
+fn constraint_is_self_targeted(c : Constraint) -> Bool {
+  match c.for_target {
+    None => true
+    Some("self") => true
+    Some(_) => false
   }
 }
 

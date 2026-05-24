@@ -563,11 +563,22 @@ pub(all) struct NodeBounds {
 /// walk. `results` accumulates the output `NodeBounds`; `depth`
 /// is the current tree depth measured from the root (0-based) so
 /// `FnDepth` / `FnMaxDepth` can be evaluated cheaply.
+///
+/// `node_bounds_by_name` carries the §21.4.2.19 layoutNode `@name`
+/// → computed inner bounds map so cross-node `<constr refForName>`
+/// references can resolve against named siblings / ancestors that
+/// the walker already laid out. The map is mutable and shared
+/// across every recursive call so a later child can read the
+/// bounds an earlier sibling registered (depth-first walk
+/// guarantees the order). Forward references (the source node
+/// is laid out *after* the target) still no-op; a fully iterative
+/// fixed-point solver is deferred.
 pub(all) struct EvalContext {
   data_model : DataModel
   context_id : String
   depth : Int
   results : Array[NodeBounds]
+  node_bounds_by_name : Map[String, BoundsRect]
 }
 
 ///|

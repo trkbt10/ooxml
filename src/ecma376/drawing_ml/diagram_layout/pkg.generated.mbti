@@ -16,6 +16,8 @@ pub fn apply_pres_of(LayoutNode, BoundsRect, EvalContext) -> Unit
 
 pub fn apply_self_geometric_constraints(BoundsRect, Array[Constraint]) -> BoundsRect
 
+pub fn apply_self_geometric_constraints_with_registry(BoundsRect, Array[Constraint], Map[String, BoundsRect]) -> BoundsRect
+
 pub fn attribute(@xml.Element, String) -> String?
 
 pub fn axis_select(AxisType, ElementType, EvalContext) -> Array[DiagramPoint]
@@ -248,6 +250,7 @@ pub(all) struct EvalContext {
   context_id : String
   depth : Int
   results : Array[NodeBounds]
+  node_bounds_by_name : Map[String, BoundsRect]
 }
 
 pub(all) struct ExpandedChild {
