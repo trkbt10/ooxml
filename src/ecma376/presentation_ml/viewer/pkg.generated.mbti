@@ -80,7 +80,7 @@ pub fn render_preset_geometry(@xml.Element, Double, Double) -> String?
 
 pub fn render_preset_geometry_layered(@xml.Element, Double, Double) -> Array[PresetLayer]?
 
-pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, part_resolver? : (String) -> @xml.Element?, theme? : @theme.CT_OfficeStyleSheet?, chain? : @placeholder_resolver.SlideChain?) -> String
+pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, part_resolver? : (String) -> @xml.Element?, theme? : @theme.CT_OfficeStyleSheet?, chain? : @placeholder_resolver.SlideChain?, presentation? : @xml.Element?) -> String
 
 pub fn resolve_solid_fill(@xml.Element, ph_clr? : String?, ctx~ : ColorResolveContext) -> ResolvedColor?
 

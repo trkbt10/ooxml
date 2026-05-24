@@ -403,7 +403,7 @@ fn main {
             "presentation" => "pptx:presentation"
             "workbook" => "xlsx:workbook"
             "sharedStrings" => "xlsx:sharedStrings"
-            "stylesheet" => "xlsx:styles"
+            "styleSheet" => "xlsx:styles"
             _ => "docx"
           }
           (host, wrap_in_ancestry(schema, path, 1, target))

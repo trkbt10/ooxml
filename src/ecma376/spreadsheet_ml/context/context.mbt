@@ -244,6 +244,7 @@ pub fn Workbook::to_svg(self : Workbook) -> String {
       id_prefix="s" + sheet_index.to_string() + "-",
       pivots~,
       tables=worksheet.tables,
+      workbook=Some(self.workbook.element),
     )
     buf.write_string(result.svg)
   }

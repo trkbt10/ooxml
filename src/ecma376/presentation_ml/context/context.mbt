@@ -217,6 +217,7 @@ pub fn Presentation::to_svg_for_slide(
   // slide's viewport. Without sldSz the viewer falls back to its
   // own default (screen4x3 = 10" × 7.5") because the spec does not
   // mandate one.
+  let presentation_root : @xml.Element? = Some(self.presentation.element)
   match self.presentation.sld_sz {
     Some(sz) =>
       @pml_viewer.render_svg(
@@ -227,6 +228,7 @@ pub fn Presentation::to_svg_for_slide(
         part_resolver=parts_resolver,
         theme=typed_theme,
         chain~,
+        presentation=presentation_root,
       )
     None =>
       @pml_viewer.render_svg(
@@ -235,6 +237,7 @@ pub fn Presentation::to_svg_for_slide(
         part_resolver=parts_resolver,
         theme=typed_theme,
         chain~,
+        presentation=presentation_root,
       )
   }
 }
@@ -458,7 +461,7 @@ fn Presentation::resolve_first_theme(
   for theme_part in self.themes {
     match (try? @theme.read_theme(theme_part.data)) {
       Ok(t) => return Some(t)
-      Err(_) => ()
+      Err(_) => continue
     }
   }
   None

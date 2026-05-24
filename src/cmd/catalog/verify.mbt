@@ -943,16 +943,41 @@ fn pptx_theme_part() -> Bytes {
   ])
 
   // ---- <a:fontScheme name="Office"> ----
-  // The minimum: a major and minor latin face that the harness
-  // substitutes for Calibri so the typeface still round-trips
-  // through the snapshot's fontconfig overlay.
+  // §20.1.4.1.18 CT_FontScheme — majorFont / minorFont each are
+  // CT_FontCollection (§20.1.4.1.17) which REQUIRES `<a:latin>`,
+  // `<a:ea>` (East Asian), and `<a:cs>` (complex script) all three
+  // (minOccurs=1).  Without all three the typed theme reader
+  // raises `CT_FontCollection/ea: missing required child element
+  // <ea>` and the slide renderer falls back to no-theme, losing
+  // schemeClr resolution AND silencing the data-ooxml-theme-*
+  // metadata projection.
   fn font_face(local : String, typeface : String) -> @xml.Element {
     ae(local, [xa("typeface", typeface)], [])
   }
 
+  // §22.9.2 ST_TextTypeface — non-empty xsd:string.  ECMA-376 Annex
+  // A's sample theme leaves the East Asian / complex-script
+  // typeface fields blank by writing `typeface=""`, but the typed
+  // theme reader rejects that as "value outside the
+  // schema-permitted range" so we mirror the latin face name into
+  // ea / cs.  Consumers that resolve via fontconfig keep their
+  // platform's CJK fallback regardless of the literal typeface
+  // name supplied here.
   let font_scheme = ae("fontScheme", [xa("name", "Office")], [
-    Element(ae("majorFont", [], [Element(font_face("latin", "Calibri Light"))])),
-    Element(ae("minorFont", [], [Element(font_face("latin", "Calibri"))])),
+    Element(
+      ae("majorFont", [], [
+        Element(font_face("latin", "Calibri Light")),
+        Element(font_face("ea", "Calibri Light")),
+        Element(font_face("cs", "Calibri Light")),
+      ]),
+    ),
+    Element(
+      ae("minorFont", [], [
+        Element(font_face("latin", "Calibri")),
+        Element(font_face("ea", "Calibri")),
+        Element(font_face("cs", "Calibri")),
+      ]),
+    ),
   ])
 
   // ---- <a:fmtScheme> — phClr-driven payload mirroring Office ----
@@ -2244,7 +2269,18 @@ fn prune_target(el : @xml.Element) -> (@xml.Element, Bool) {
 /// Render one host package's SVG, or `None` when the open / round-trip
 /// pipeline cannot complete.  `which` selects the host format.
 fn render_svg_of(which : String, pkg : Bytes) -> String? {
-  match which {
+  // The `which` token is either a bare format (`docx`/`xlsx`/`pptx`)
+  // or a `format:part-kind` aux-host token (`docx:settings`,
+  // `pptx:theme`, `xlsx:workbook`, …).  Normalise to the bare
+  // format so the reader-dispatch below sees the right family —
+  // before the prefix split was added, an aux-host token like
+  // `pptx:presentation` fell to the default `wml_context.open`
+  // arm and every aux part rejected as "expected document".
+  let base = match which.find(":") {
+    Some(i) => which[0:i].to_string()
+    None => which
+  }
+  match base {
     "xlsx" =>
       match (try? @sml_context.open(pkg)) {
         Err(_) => None
@@ -2532,12 +2568,135 @@ fn xlsx_with_aux_root_package(
 }
 
 ///|
+/// The §20.1.6.9 CT_OfficeStyleSheet child element names, in their
+/// schema sequence order.  Mirrors `workbook_child_order()` for the
+/// SML workbook splice — `<themeElements>` is the only schema-
+/// required child (`minOccurs=1`) but downstream consumers expect
+/// the canonical sequence.
+fn theme_child_order() -> Array[String] {
+  ["themeElements", "objectDefaults", "extraClrSchemeLst", "custClrLst", "extLst"]
+}
+
+///|
+/// The §20.1.6.2 CT_BaseStyles child element names, in their schema
+/// sequence order.  `themeElements` REQUIRES all three style
+/// schemes (`minOccurs=1` for clrScheme / fontScheme / fmtScheme),
+/// so when the caller's themeElements lacks a sibling the skeleton
+/// version is kept — otherwise CT_OfficeStyleSheet::new raises and
+/// the renderer falls back to no-theme.
+fn theme_elements_child_order() -> Array[String] {
+  ["clrScheme", "fontScheme", "fmtScheme", "extLst"]
+}
+
+///|
+/// Wrap `theme` with a §20.1.6.9-valid skeleton.  Merging happens
+/// at two levels:
+///
+///   * `<a:theme>` children — the caller's top-level theme
+///     children (`themeElements`, `objectDefaults`,
+///     `extraClrSchemeLst`, `custClrLst`, `extLst`) are spliced
+///     into the canonical pptx_theme_part skeleton.  When the
+///     caller does NOT supply a `<themeElements>`, the canonical
+///     one survives — its required `clrScheme / fontScheme /
+///     fmtScheme` triple is what makes the theme part parseable.
+///   * `<a:themeElements>` inner children — when the caller DOES
+///     supply a `<themeElements>`, its children
+///     (`clrScheme / fontScheme / fmtScheme / extLst`) are spliced
+///     into the canonical themeElements one-by-one.  This way a
+///     target like `<a:clrScheme>` replaces the canonical
+///     clrScheme but the canonical fontScheme / fmtScheme stay,
+///     keeping the §20.1.6.2 CT_BaseStyles required-child
+///     contract intact.
+fn ensure_theme_skeleton(theme : @xml.Element) -> @xml.Element {
+  let canonical_bytes = pptx_theme_part()
+  let canonical = match (try? @xml.parse(canonical_bytes)) {
+    Ok(doc) => doc.root
+    Err(_) => theme
+  }
+  // The single themeElements child of the caller, if any —
+  // extracted so its children can be spliced into the canonical
+  // themeElements one-by-one rather than replacing the whole
+  // themeElements (which would discard the canonical's required
+  // fontScheme / fmtScheme).
+  fn extract_theme_elements(t : @xml.Element) -> @xml.Element? {
+    for child in t.children {
+      match child {
+        Element(ce) if ce.name.local_name == "themeElements" => return Some(ce)
+        _ => ()
+      }
+    }
+    None
+  }
+
+  if theme.name.local_name == "theme" {
+    let mut cur = canonical
+    // First splice the non-themeElements children of `theme`
+    // into the canonical at their sequence positions.
+    for child in theme.children {
+      match child {
+        Element(ce) if ce.name.local_name != "themeElements" =>
+          cur = splice_child_in_sequence(cur, ce, theme_child_order())
+        _ => ()
+      }
+    }
+    // Then, if the caller supplied a `<themeElements>`, splice
+    // each of its inner children into the canonical themeElements
+    // one-by-one (preserving the canonical's required siblings).
+    match extract_theme_elements(theme) {
+      None => ()
+      Some(caller_te) => {
+        let canonical_te = match
+          first_child_named_local_local(cur, "themeElements") {
+          Some(ct) => ct
+          None => caller_te
+        }
+        let mut new_te = canonical_te
+        for inner in caller_te.children {
+          match inner {
+            Element(ie) =>
+              new_te = splice_child_in_sequence(
+                new_te,
+                ie,
+                theme_elements_child_order(),
+              )
+            _ => ()
+          }
+        }
+        cur = splice_child_in_sequence(cur, new_te, theme_child_order())
+      }
+    }
+    cur
+  } else {
+    splice_child_in_sequence(canonical, theme, theme_child_order())
+  }
+}
+
+///|
+/// Helper local to `ensure_theme_skeleton` — return the first
+/// element child of `e` whose local name matches `local_name`.
+fn first_child_named_local_local(
+  e : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  for child in e.children {
+    match child {
+      Element(ce) if ce.name.local_name == local_name => return Some(ce)
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
 /// `.pptx` package that uses `theme` as `ppt/theme/theme1.xml`
 /// instead of the canonical `pptx_theme_part()`.  Built on top of
 /// `pptx_package` by re-emitting the same OPC scaffolding with the
-/// theme part swapped.  All other parts (presentation, slides,
+/// theme part swapped, AFTER splicing the caller's content into a
+/// spec-valid skeleton so the required `<themeElements>` chain
+/// remains intact.  All other parts (presentation, slides,
 /// slideMasters, slideLayouts) keep their canonical content.
 fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
+  let theme = ensure_theme_skeleton(theme)
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
   let presentation : @xml.Element = {
@@ -2736,15 +2895,115 @@ fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
 }
 
 ///|
-/// `.pptx` package whose `ppt/presentation.xml` is replaced with
-/// `presentation`.  The slide / slideLayout / slideMaster chain
-/// remains canonical.  Used to verify presentation-level child
-/// elements (defaultTextStyle, embedded fonts, notesSz, etc.).
+/// The §19.2.1.26 CT_Presentation child element names, in their schema
+/// sequence order.  Mirrors `workbook_child_order()` for the SML
+/// workbook splice — the splice must preserve the canonical
+/// `sldMasterIdLst → notesMasterIdLst → … → extLst` order so the
+/// reader's per-child handlers see siblings in spec position.
+fn presentation_child_order() -> Array[String] {
+  [
+    "sldMasterIdLst", "notesMasterIdLst", "handoutMasterIdLst", "sldIdLst",
+    "sldSz", "notesSz", "smartTags", "embeddedFontLst", "custShowLst",
+    "photoAlbum", "custDataLst", "kinsoku", "defaultTextStyle",
+    "modifyVerifier", "extLst",
+  ]
+}
+
+///|
+/// `.pptx` package whose `ppt/presentation.xml` carries the caller's
+/// target child element spliced into a minimal spec-valid skeleton.
+///
+/// §19.2.1.26 CT_Presentation requires `<notesSz>` (minOccurs=1)
+/// and Office consumers reject a presentation without at least one
+/// `<sldMasterIdLst>/<sldMasterId>` reference, so the skeleton
+/// ships those plus an `<sldIdLst>` pointing at the single slide
+/// this builder writes.  Children are spliced in via
+/// `splice_child_in_sequence` so a presentation-level target (e.g.
+/// `<sldSz>`, `<embeddedFontLst>`, `<modifyVerifier>`) lands at
+/// its canonical sequence position and replaces the skeleton's
+/// own entry of the same name when one exists.
 fn pptx_package_with_replaced_presentation(
   presentation : @xml.Element,
 ) -> Bytes {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  // §19.2.1.26 minimal spec-valid presentation skeleton.  The
+  // sld[Master]IdLst entries reference the rId2 / rId1 the package
+  // builder below wires; sldSz / notesSz default to the standard
+  // 9144000×6858000 / 6858000×9144000 EMU sizes (10" × 7.5"
+  // landscape slides, 7.5" × 10" portrait notes).
+  let skeleton : @xml.Element = {
+    name: { prefix: Some("p"), local_name: "presentation", ns: Some(ns_p) },
+    attributes: [],
+    children: [
+      Element(
+        xep("p", ns_p, "sldMasterIdLst", [], [
+          Element(
+            xep(
+              "p",
+              ns_p,
+              "sldMasterId",
+              [
+                xa("id", "2147483648"),
+                {
+                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                  value: "rId2",
+                },
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xep("p", ns_p, "sldIdLst", [], [
+          Element(
+            xep(
+              "p",
+              ns_p,
+              "sldId",
+              [
+                xa("id", "256"),
+                {
+                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                  value: "rId1",
+                },
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000")], []),
+      ),
+      Element(
+        xep(
+          "p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [],
+        ),
+      ),
+    ],
+  }
+  let merged : @xml.Element = if presentation.name.local_name == "presentation" {
+    let mut cur = skeleton
+    for child in presentation.children {
+      match child {
+        Element(ce) =>
+          cur = splice_child_in_sequence(cur, ce, presentation_child_order())
+        _ => ()
+      }
+    }
+    cur
+  } else {
+    splice_child_in_sequence(
+      skeleton,
+      presentation,
+      presentation_child_order(),
+    )
+  }
+  // From this point on the original packaging applies — the rels /
+  // slide-master / slide-layout / theme parts stay canonical.
+  let presentation = merged
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -2898,11 +3157,161 @@ fn pptx_package_with_replaced_presentation(
 }
 
 ///|
-/// `.xlsx` package whose `xl/workbook.xml` is replaced with
-/// `workbook`.  The minimum sheet / rels plumbing remains so the
-/// package opens; the replaced workbook is the verified payload.
+/// The §18.2.1 CT_Workbook child element names, in their schema
+/// sequence order.  `xlsx_package_with_replaced_workbook` uses this
+/// to splice the caller's target into a spec-valid skeleton at the
+/// correct position — `<sheets>` is the only required child per
+/// the XSD, but consumer readers reject a workbook with sibling
+/// elements appearing out of sequence order, so the splice must
+/// keep the canonical order.
+fn workbook_child_order() -> Array[String] {
+  [
+    "fileVersion", "fileSharing", "workbookPr", "workbookProtection",
+    "bookViews", "sheets", "functionGroups", "externalReferences",
+    "definedNames", "calcPr", "oleSize", "customWorkbookViews", "pivotCaches",
+    "smartTagPr", "smartTagTypes", "webPublishing", "fileRecoveryPr",
+    "webPublishObjects", "extLst",
+  ]
+}
+
+///|
+/// Splice `replacement` (an `@xml.Element` whose local name names a
+/// position in `order`) into `skeleton`'s child sequence —
+/// replacing the existing child of the same local name when one
+/// exists, or inserting at the canonical sequence position (per
+/// `order`) when not.  Unknown local names append to the end so a
+/// future workbook / presentation child is still represented in the
+/// output.
+fn splice_child_in_sequence(
+  skeleton : @xml.Element,
+  replacement : @xml.Element,
+  order : Array[String],
+) -> @xml.Element {
+  let target_name = replacement.name.local_name
+  let mut target_pos = order.length()
+  for i, n in order {
+    if n == target_name {
+      target_pos = i
+      break
+    }
+  }
+  let kids : Array[@xml.Node] = []
+  let mut inserted = false
+  for child in skeleton.children {
+    match child {
+      Element(ce) if ce.name.local_name == target_name => {
+        kids.push(Element(replacement))
+        inserted = true
+      }
+      Element(ce) => {
+        let mut ce_pos = order.length()
+        for i, n in order {
+          if n == ce.name.local_name {
+            ce_pos = i
+            break
+          }
+        }
+        if not(inserted) && target_pos < ce_pos {
+          kids.push(Element(replacement))
+          inserted = true
+        }
+        kids.push(Element(ce))
+      }
+      other => kids.push(other)
+    }
+  }
+  if not(inserted) {
+    kids.push(Element(replacement))
+  }
+  { name: skeleton.name, attributes: skeleton.attributes, children: kids }
+}
+
+///|
+/// `.xlsx` package whose `xl/workbook.xml` carries the caller's
+/// target workbook child (`<workbookProtection>`, `<fileVersion>`,
+/// `<bookViews>`, …) spliced into a minimal spec-valid skeleton.
+///
+/// §18.2.1 CT_Workbook only REQUIRES `<sheets>` per the XSD, but
+/// Office consumers reject a bare-sheets workbook outright and the
+/// SML renderer's `<workbook>` metadata reader only surfaces
+/// values when the workbook plumbing is intact.  The skeleton
+/// therefore ships `<fileVersion>`, `<workbookPr>`, `<bookViews>`,
+/// `<sheets>` (with one sheet pointing at the worksheet part this
+/// builder writes) and `<calcPr>` — the five children Excel emits
+/// for every new workbook.
+///
+/// The target is spliced via `splice_child_in_sequence` so a
+/// workbook child like `<workbookProtection>` lands at its
+/// canonical sequence position (between `<workbookPr>` and
+/// `<bookViews>`), keeping the §18.2.1 sequence ordering even
+/// when the target replaces or inserts.  When the caller supplies
+/// a `<workbook>` root, every one of its children is spliced in
+/// turn so a multi-child workbook (e.g. the renderer's existing
+/// xlsx fixture) survives wholesale.
 fn xlsx_package_with_replaced_workbook(workbook : @xml.Element) -> Bytes {
   let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let skeleton : @xml.Element = xe(ns_s, "workbook", [], [
+    Element(
+      xe(
+        ns_s,
+        "fileVersion",
+        [xa("appName", "xl"), xa("lastEdited", "0"), xa("rupBuild", "0")],
+        [],
+      ),
+    ),
+    Element(xe(ns_s, "workbookPr", [], [])),
+    Element(
+      xe(ns_s, "bookViews", [], [
+        Element(
+          xe(
+            ns_s,
+            "workbookView",
+            [
+              xa("xWindow", "0"),
+              xa("yWindow", "0"),
+              xa("windowWidth", "16384"),
+              xa("windowHeight", "8192"),
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+    Element(
+      xe(ns_s, "sheets", [], [
+        Element(
+          xe(
+            ns_s,
+            "sheet",
+            [
+              xa("name", "S1"),
+              xa("sheetId", "1"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+    Element(xe(ns_s, "calcPr", [xa("calcId", "0")], [])),
+  ])
+  let merged : @xml.Element = if workbook.name.local_name == "workbook" {
+    let mut cur = skeleton
+    for child in workbook.children {
+      match child {
+        Element(ce) =>
+          cur = splice_child_in_sequence(cur, ce, workbook_child_order())
+        _ => ()
+      }
+    }
+    cur
+  } else {
+    splice_child_in_sequence(skeleton, workbook, workbook_child_order())
+  }
   let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -2937,7 +3346,7 @@ fn xlsx_package_with_replaced_workbook(workbook : @xml.Element) -> Bytes {
       ]),
     ),
     ("_rels/.rels", root_rels_part("xl/workbook.xml")),
-    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/workbook.xml", write_part(merged)),
     ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
     ("xl/worksheets/sheet1.xml", write_part(worksheet)),
   ]

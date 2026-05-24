@@ -130,11 +130,33 @@ fn type_has_any(ct : @xml.Element) -> Bool {
 }
 
 ///|
-/// The three document-part root elements a fixture can be built
-/// around, with their type names.
+/// The document-part root elements a fixture can be built around,
+/// with their type names.
+///
+/// The three primary document parts (`document` / `worksheet` /
+/// `sld`) carry the bulk of the renderable content per
+/// ECMA-376 §17 / §18 / §19.  The four supplementary part roots
+/// (`presentation` / `workbook` / `theme` / `styleSheet`) anchor
+/// presentation-level metadata, workbook-level configuration,
+/// theme palettes, and styled-cell tables respectively; including
+/// them widens the BFS so child elements of those parts (`<sldSz>`,
+/// `<workbookProtection>`, `<themeElements>`, `<numFmts>`, …) get
+/// a wrapper chain that lands them in their canonical OPC part
+/// rather than the default docx fallback.  The corresponding
+/// auxiliary-part builders (`xlsx_package_with_replaced_workbook`,
+/// `pptx_package_with_replaced_presentation`,
+/// `pptx_package_with_replaced_theme`,
+/// `xlsx_package_with_replaced_stylesheet`) must synthesise a
+/// spec-valid minimum skeleton (required siblings such as
+/// `<sheets>` / `<sldIdLst>` / `<themeElements>` / required
+/// `<extLst>` slots) for the embedded element to survive the open
+/// → save → open round trip.
 fn part_roots(schema : Schema) -> Array[(String, String)] {
   let roots : Array[(String, String)] = []
-  for name in ["document", "worksheet", "sld"] {
+  for name in [
+    "document", "worksheet", "sld", "presentation", "workbook", "theme",
+    "styleSheet",
+  ] {
     match schema.top_elements.get(name) {
       Some((el, _)) =>
         // The root element's `type` is a resolved `ns#localname`.
@@ -165,7 +187,6 @@ fn build_ancestry(schema : Schema) -> Map[String, Array[(String, String)]] {
   // canonical path leads through a render-bearing host whenever
   // possible.
   let all_paths : Map[String, Array[Array[(String, String)]]] = Map::new()
-  let expanded : Map[String, Bool] = Map::new()
   // Queue of (name, type, path-of-(name,type)-down-to-parent).
   let queue : Array[(String, String, Array[(String, String)])] = []
   for root in part_roots(schema) {
@@ -176,43 +197,101 @@ fn build_ancestry(schema : Schema) -> Map[String, Array[(String, String)]] {
   // with the path down to their content slot — used only as a
   // fallback after the named graph is exhausted.
   let any_hosts : Array[Array[(String, String)]] = []
-  let mut head = 0
-  // Named-containment BFS to its fixpoint.  Every named element
-  // particle pushes one (name, type) per parent occurrence so the
-  // candidate-path set covers the alternative wrappers an element
-  // may sit under; types are still expanded only once so the
-  // search stays linear in the schema graph size.
-  while head < queue.length() {
-    let (cur_name, cur_type, path) = queue[head]
-    head = head + 1
-    let key = nt_key(cur_name, cur_type)
-    let existing = all_paths.get(key).unwrap_or([])
-    existing.push(path)
-    all_paths[key] = existing
-    if expanded.get(cur_type) is Some(_) {
-      continue
-    }
-    expanded[cur_type] = true
-    match schema.complex_types.get(cur_type) {
-      None => ()
-      Some(ct) => {
-        let child_path = path + [(cur_name, cur_type)]
-        for child in type_children(schema, ct) {
-          let (cname, ctype) = child
-          let ckey = nt_key(cname, ctype)
-          let child_existing = all_paths.get(ckey).unwrap_or([])
-          if child_existing.length() == 0 {
-            queue.push((cname, ctype, child_path))
+  // Two-pass named-containment BFS — keeps every primary-rooted
+  // (name, type) on its shortest primary chain, and only routes
+  // through supplementary roots (`presentation` / `workbook` /
+  // `theme` / `styleSheet`) for elements the primary pass never
+  // reached.
+  //
+  // Without the split, a complex type shared by both
+  // a primary chain (e.g. `<a:spPr>` under
+  // `[sld, cSld, spTree, sp]`) and a supplementary chain
+  // (e.g. `<a:spPr>` under `[theme, objectDefaults, spDef]`)
+  // gets expanded just once — through whichever route the BFS
+  // visits first — and the OTHER route's descendants never get
+  // their parent path propagated.  When the supplementary route
+  // is shallower (a 4-deep theme chain vs a 5-deep sld chain),
+  // the descendants like `<a:prstGeom>` end up with only the
+  // supplementary path and the canonical picker's primary-root
+  // preference has no primary candidate to select.
+  fn run_bfs(
+    bfs_queue : Array[(String, String, Array[(String, String)])],
+    skip_keys : Map[String, Bool],
+  ) -> Unit {
+    let local_expanded : Map[String, Bool] = Map::new()
+    let mut h = 0
+    while h < bfs_queue.length() {
+      let (cur_name, cur_type, path) = bfs_queue[h]
+      h = h + 1
+      let key = nt_key(cur_name, cur_type)
+      if skip_keys.contains(key) {
+        continue
+      }
+      let existing = all_paths.get(key).unwrap_or([])
+      existing.push(path)
+      all_paths[key] = existing
+      if local_expanded.contains(cur_type) {
+        continue
+      }
+      local_expanded[cur_type] = true
+      match schema.complex_types.get(cur_type) {
+        None => ()
+        Some(ct) => {
+          let child_path = path + [(cur_name, cur_type)]
+          for child in type_children(schema, ct) {
+            let (cname, ctype) = child
+            let ckey = nt_key(cname, ctype)
+            let child_existing = all_paths.get(ckey).unwrap_or([])
+            if child_existing.length() == 0 && not(skip_keys.contains(ckey)) {
+              bfs_queue.push((cname, ctype, child_path))
+            }
+            child_existing.push(child_path)
+            all_paths[ckey] = child_existing
           }
-          child_existing.push(child_path)
-          all_paths[ckey] = child_existing
-        }
-        if type_has_any(ct) {
-          any_hosts.push(child_path)
+          if type_has_any(ct) {
+            any_hosts.push(child_path)
+          }
         }
       }
     }
   }
+
+  // PASS 1 — primary-root BFS.  Seed only `document` /
+  // `worksheet` / `sld`; expand to fixpoint.  This is the
+  // pre-supplementary baseline behaviour, so primary-rooted
+  // (name, type) pairs end up on the SAME canonical chain the
+  // baseline produced.
+  let primary_queue : Array[(String, String, Array[(String, String)])] = []
+  for entry in queue {
+    let (rname, _rtype) = (entry.0, entry.1)
+    match rname {
+      "document" | "worksheet" | "sld" => primary_queue.push(entry)
+      _ => ()
+    }
+  }
+  run_bfs(primary_queue, Map::new())
+  let primary_keys : Map[String, Bool] = Map::new()
+  for k, _ in all_paths {
+    primary_keys[k] = true
+  }
+  // PASS 2 — supplementary-root BFS.  Seed only `presentation` /
+  // `workbook` / `theme` / `styleSheet`.  Elements already
+  // covered by the primary pass are skipped (no path added, no
+  // children recursed through them) so primary canonical paths
+  // are preserved; elements ONLY reachable through a
+  // supplementary root (`<workbookProtection>`,
+  // `<sldSz>`, `<themeElements>/clrScheme`, …) pick up their
+  // supplementary chain here.
+  let supp_queue : Array[(String, String, Array[(String, String)])] = []
+  for entry in queue {
+    let (rname, _rtype) = (entry.0, entry.1)
+    match rname {
+      "presentation" | "workbook" | "theme" | "styleSheet" =>
+        supp_queue.push(entry)
+      _ => ()
+    }
+  }
+  run_bfs(supp_queue, primary_keys)
   // An `<xsd:any>` extension point (e.g. CT_GraphicalObjectData)
   // legally accepts any element.  For an element the named BFS
   // could not reach, route it through the FIRST visual any-host —
@@ -234,6 +313,23 @@ fn build_ancestry(schema : Schema) -> Map[String, Array[(String, String)]] {
   for _k, decl in schema.all_elements {
     let ckey = nt_key(decl.name, decl.type_name)
     let existing = all_paths.get(ckey).unwrap_or([])
+    // The visual / non-visual any-host fallbacks fire ONLY when the
+    // two-pass named BFS reached the element through no path at
+    // all — neither a primary part root nor a supplementary one.
+    // For such elements (DrawingML payload reachable only through
+    // the §20.1.2.2.17 `<a:graphicData>` `<xsd:any>` extension
+    // point) the visual any-host route lands the element under the
+    // slide's `graphicFrame` dispatcher; without it the element
+    // would have no host and the verifier would have to skip it.
+    //
+    // Crucially the fallback is NOT added when the BFS reached the
+    // element through a supplementary part root only — `<workbook>`,
+    // `<presentation>`, `<theme>`, `<styleSheet>` ARE legitimate
+    // OPC parts the renderer reads (after the corresponding
+    // `data-ooxml-*` projection lands), so a supplementary chain is
+    // a renderable route and the visual any-host would only mask
+    // it with a generic graphicData dispatch that cannot interpret
+    // the supplementary-rooted element.
     if existing.length() == 0 {
       match visual_host {
         Some(h) => existing.push(h)
@@ -247,16 +343,36 @@ fn build_ancestry(schema : Schema) -> Map[String, Array[(String, String)]] {
     }
   }
   // Canonical single-path map: pick one wrapper chain per element.
-  // The default is the BFS-shortest path (the first one recorded —
-  // the schema's most direct route).  Non-visual property elements
-  // (cNvPr, cNvSpPr, cNvPicPr, hlinkClick, hlinkHover) are special:
-  // the renderer reads them only when they sit inside a real shape
-  // host (sp / pic / cxnSp / grpSp / graphicFrame), so for those
-  // names we PROMOTE a shape-bearing path over the schema-shortest
-  // (which lands at spTree's own nvGrpSpPr metadata slot — visible
-  // to round-trip but never to the renderer).  A fill / colour /
-  // geometry element like `blipFill` renders just as well from
-  // `bg/bgPr` as from `pic` so it stays on the BFS-canonical path.
+  //
+  // Two-level preference, applied in order:
+  //
+  // 1. PRIMARY part-root preference — when an element is reachable
+  //    both from a primary part root (`document` / `worksheet` /
+  //    `sld`, which host the bulk of the renderable content) AND
+  //    from a supplementary one (`presentation` / `workbook` /
+  //    `theme` / `styleSheet`, which carry metadata and
+  //    configuration), keep the primary path.  Without this the
+  //    BFS picks the shallower route through the supplementary
+  //    root (e.g. `<a:srgbClr>` reached via
+  //    `[theme, themeElements, clrScheme, accent1]` at depth 4
+  //    instead of via `[sld, …, spPr, solidFill]` at depth 7+),
+  //    landing the element in an aux part where the slide renderer
+  //    cannot see it.  Supplementary-root paths are still kept as
+  //    the canonical route for elements that ONLY appear there
+  //    (e.g. `<workbookProtection>` lives strictly under
+  //    `<workbook>`, `<sldSz>` strictly under `<presentation>`).
+  //
+  // 2. SHAPE-HOST preference (existing) — non-visual property
+  //    elements (cNvPr / cNvSpPr / cNvPicPr / hlinkClick /
+  //    hlinkHover) are only consulted by the renderer when they
+  //    sit inside a real shape host (sp / pic / cxnSp / grpSp /
+  //    graphicFrame), so for those names a shape-bearing path is
+  //    promoted over the otherwise-canonical one (which lands at
+  //    spTree's own nvGrpSpPr metadata slot — visible to
+  //    round-trip but never to the renderer).  A fill / colour /
+  //    geometry element like `blipFill` renders just as well from
+  //    `bg/bgPr` as from `pic` so it stays on the BFS-canonical
+  //    path.
   let ancestry : Map[String, Array[(String, String)]] = Map::new()
   for key, paths in all_paths {
     if paths.length() == 0 {
@@ -264,7 +380,23 @@ fn build_ancestry(schema : Schema) -> Map[String, Array[(String, String)]] {
     }
     let name = nt_name(key)
     let prefer_shape = is_shape_attached_prop(name)
+    // Step 1 — primary part-root preference.  Walk candidates in
+    // BFS order so we land on the shallowest primary path when
+    // multiple primary paths exist (matches the pre-supplementary
+    // baseline canonical pick).  An empty path indicates the
+    // element IS a primary part root (`<document>`, `<sld>`,
+    // `<worksheet>`) — it is its own host and counts as primary.
     let mut best : Array[(String, String)] = paths[0]
+    let best_is_primary = best.length() == 0 || path_starts_in_primary_root(best)
+    if not(best_is_primary) {
+      for p in paths {
+        if p.length() == 0 || path_starts_in_primary_root(p) {
+          best = p
+          break
+        }
+      }
+    }
+    // Step 2 — shape-host preference for cNv* / hlink* elements.
     if prefer_shape {
       for p in paths {
         if path_has_shape_host(p) && not(path_has_shape_host(best)) {
@@ -275,6 +407,57 @@ fn build_ancestry(schema : Schema) -> Map[String, Array[(String, String)]] {
     ancestry[key] = best
   }
   ancestry
+}
+
+///|
+/// True when `path` starts at one of the three primary document part
+/// roots — `<document>` (WML), `<worksheet>` (SML), `<sld>` (PML).
+/// Used by `build_ancestry` to keep an element on its
+/// renderer-reachable wrapper chain when the schema also exposes a
+/// shallower route through a supplementary root (`<presentation>`,
+/// `<workbook>`, `<theme>`, `<styleSheet>`) whose aux-part host the
+/// slide / worksheet renderer never inspects.
+fn path_starts_in_primary_root(path : Array[(String, String)]) -> Bool {
+  if path.length() == 0 {
+    return false
+  }
+  let (root_name, _) = path[0]
+  match root_name {
+    "document" | "worksheet" | "sld" => true
+    _ => false
+  }
+}
+
+///|
+/// True when any path in `paths` starts at a primary document part
+/// root — used to detect whether the BFS reached an element through
+/// at least one renderable route, so the visual any-host fallback
+/// can be skipped when that fallback would not improve coverage.
+fn any_path_starts_in_primary_root(
+  paths : Array[Array[(String, String)]],
+) -> Bool {
+  for p in paths {
+    if path_starts_in_primary_root(p) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+/// True when at least one path in `paths` is the empty wrapper
+/// chain — the element IS itself a part-root (e.g. `<document>`,
+/// `<worksheet>`, `<sld>`).  In that case the canonical-path picker
+/// keeps the empty chain so the verifier wraps the element as its
+/// own document part rather than re-embedding it inside another
+/// host.
+fn any_path_is_empty(paths : Array[Array[(String, String)]]) -> Bool {
+  for p in paths {
+    if p.length() == 0 {
+      return true
+    }
+  }
+  false
 }
 
 ///|

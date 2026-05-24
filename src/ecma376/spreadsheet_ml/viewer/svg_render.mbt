@@ -170,6 +170,16 @@ pub fn render_svg(
   /// cell grid. Empty by default — worksheets without pivot tables
   /// stay byte-identical to the pre-pivot output.
   pivots? : Array[SheetPivot] = [],
+  /// §18.2.1 — the workbook part's root `<workbook>` element, when
+  /// the facade can supply it.  `sml_metadata_attrs` consults this
+  /// element so workbook-level metadata
+  /// (`<workbookProtection>`, `<fileSharing>`, `<fileVersion>`,
+  /// `<workbookPr>`, …) surfaces as `data-ooxml-*` attributes on
+  /// the root SVG even when the catalog harness routes those
+  /// elements through `xl/workbook.xml` instead of the worksheet.
+  /// `None` keeps the per-worksheet behaviour the pre-workbook
+  /// callers expect.
+  workbook? : @xml.Element? = None,
 ) -> SheetSvgResult {
   // §18.2.28 — pick the date system once for the whole sheet.
   let date_system = if date1904 {
@@ -193,7 +203,25 @@ pub fn render_svg(
   let options = apply_sheet_format_pr(domain.element, options)
   let layout = compute_sheet_layout(domain.element, options)
   if layout.column_count == 0 || layout.row_count == 0 {
-    return create_empty_result()
+    // Empty sheet — still surface the workbook + worksheet
+    // metadata as `data-ooxml-*` attributes on the placeholder
+    // SVG so the catalog harness's differential check sees the
+    // distinguishing signal even when the cell grid has no
+    // rows/columns.  Without this the body-only render falls
+    // back to a fixed "(empty sheet)" placeholder identical for
+    // every empty worksheet, hiding the workbook-level
+    // (`<workbookProtection>`, `<fileVersion>`, …) and
+    // worksheet-level (`<sheetProtection>`, `<pageSetup>`, …)
+    // metadata the verifier depends on.
+    let attrs = sml_metadata_attrs(
+    domain.element,
+    workbook_root=workbook,
+    stylesheet_root=match styles {
+      Some(s) => Some(s.element)
+      None => None
+    },
+  )
+    return create_empty_result_with_attrs(attrs)
   }
 
   // Build cell map: cell-ref string ("A1") -> XML <c> element.
@@ -721,7 +749,14 @@ pub fn render_svg(
   // the body-only SVG render has no paintable contribution for any
   // of them, so they surface as `data-ooxml-*` attributes on the
   // root, mirroring the existing print / pane / tab-color treatment.
-  for a in sml_metadata_attrs(domain.element) {
+  for a in sml_metadata_attrs(
+    domain.element,
+    workbook_root=workbook,
+    stylesheet_root=match styles {
+      Some(s) => Some(s.element)
+      None => None
+    },
+  ) {
     root_attrs.push(a)
   }
   // §18.3.1.65 — draw split lines for visible freeze/split panes.
@@ -776,13 +811,28 @@ pub fn render_svg(
 /// Build the empty-sheet placeholder.
 /// @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/sheet-renderer.ts:103
 fn create_empty_result() -> SheetSvgResult {
+  create_empty_result_with_attrs([])
+}
+
+///|
+/// Empty-sheet placeholder carrying extra `data-ooxml-*` attributes
+/// on the root SVG.  Used when the metadata pass collected any
+/// signal worth surfacing (workbook-level metadata, worksheet
+/// `<sheetProtection>` etc.) even though the cell grid is empty.
+fn create_empty_result_with_attrs(
+  extra : Array[@xml.Attribute],
+) -> SheetSvgResult {
+  let attrs : Array[@xml.Attribute] = [
+    svg_attr("width", "200"),
+    svg_attr("height", "50"),
+    svg_attr("viewBox", "0 0 200 50"),
+  ]
+  for a in extra {
+    attrs.push(a)
+  }
   let svg_root : @xml.Element = {
     name: @markup.qname_ns("svg", @markup.svg_ns),
-    attributes: [
-      svg_attr("width", "200"),
-      svg_attr("height", "50"),
-      svg_attr("viewBox", "0 0 200 50"),
-    ],
+    attributes: attrs,
     children: [
       svg_elem(
         "text",
@@ -8605,8 +8655,379 @@ fn sheet_print_options(worksheet : @xml.Element) -> Array[(String, String)] {
 /// catalog harness, which wraps a workbook-level element (e.g.
 /// `<workbookProtection>`) in a `<worksheet>` host when the schema
 /// graph offers no ancestry path through a part root.
-fn sml_metadata_attrs(worksheet : @xml.Element) -> Array[@xml.Attribute] {
+///|
+/// §18.2.1 — emit `data-ooxml-*` attributes for every workbook-level
+/// metadata element this renderer recognises (`<workbookProtection>`,
+/// `<fileSharing>`, `<fileVersion>`, `<workbookPr>`, `<bookViews>`,
+/// `<calcPr>`, `<externalReferences>`, `<definedNames>`,
+/// `<pivotCaches>`, `<extLst>`).  Reads directly from `wb`'s
+/// children — the workbook part is otherwise not part of the SVG
+/// render but its metadata still differentiates one workbook from
+/// another, so the catalog harness's differential check needs a
+/// stable signal in the SVG output.
+fn emit_workbook_metadata_attrs(
+  wb : @xml.Element,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  // §18.2.29 workbookProtection — every flag the schema declares.
+  match first_child_named_local(wb, "workbookProtection") {
+    None => ()
+    Some(wp) => {
+      out.push(svg_attr("data-ooxml-wb-workbook-protection", "1"))
+      for flag in [
+        "lockStructure", "lockWindows", "lockRevision",
+      ] {
+        match attr_value_local(wp, flag) {
+          Some(v) =>
+            out.push(svg_attr("data-ooxml-wb-workbook-protection-" + flag, v))
+          None => ()
+        }
+      }
+      match attr_value_local(wp, "workbookAlgorithmName") {
+        Some(v) =>
+          out.push(svg_attr("data-ooxml-wb-workbook-protection-algorithm", v))
+        None => ()
+      }
+    }
+  }
+  // §18.2.12 fileSharing — read-only recommendation + user name +
+  // crypto envelope.
+  match first_child_named_local(wb, "fileSharing") {
+    None => ()
+    Some(fs) => {
+      out.push(svg_attr("data-ooxml-wb-file-sharing", "1"))
+      for key in ["readOnlyRecommended", "userName", "algorithmName"] {
+        match attr_value_local(fs, key) {
+          Some(v) =>
+            out.push(svg_attr("data-ooxml-wb-file-sharing-" + key, v))
+          None => ()
+        }
+      }
+    }
+  }
+  // §18.2.13 fileVersion — appName / lastEdited / lowestEdited.
+  match first_child_named_local(wb, "fileVersion") {
+    None => ()
+    Some(fv) => {
+      out.push(svg_attr("data-ooxml-wb-file-version", "1"))
+      for key in [
+        "appName", "lastEdited", "lowestEdited", "rupBuild", "codeName",
+      ] {
+        match attr_value_local(fv, key) {
+          Some(v) =>
+            out.push(svg_attr("data-ooxml-wb-file-version-" + key, v))
+          None => ()
+        }
+      }
+    }
+  }
+  // §18.2.28 workbookPr — date1904 + every behavioural flag.
+  match first_child_named_local(wb, "workbookPr") {
+    None => ()
+    Some(wp) => {
+      out.push(svg_attr("data-ooxml-wb-workbook-pr", "1"))
+      for key in [
+        "date1904", "showObjects", "hidePivotFieldList", "showPivotChartFilter",
+        "allowRefreshQuery", "publishItems", "checkCompatibility",
+        "autoCompressPictures", "refreshAllConnections",
+        "defaultThemeVersion", "backupFile", "saveExternalLinkValues",
+        "updateLinks", "codeName", "filterPrivacy", "promptedSolutions",
+      ] {
+        match attr_value_local(wp, key) {
+          Some(v) =>
+            out.push(svg_attr("data-ooxml-wb-workbook-pr-" + key, v))
+          None => ()
+        }
+      }
+    }
+  }
+  // §18.2.6 bookViews — count of declared workbook views.
+  match first_child_named_local(wb, "bookViews") {
+    None => ()
+    Some(bv) => {
+      let mut n = 0
+      for child in bv.children {
+        if child is @xml.Node::Element(ce) &&
+          ce.name.local_name == "workbookView" {
+          n = n + 1
+        }
+      }
+      out.push(svg_attr("data-ooxml-wb-book-views-count", n.to_string()))
+    }
+  }
+  // §18.2.2 calcPr — calculation mode + iteration flags.
+  match first_child_named_local(wb, "calcPr") {
+    None => ()
+    Some(cp) => {
+      out.push(svg_attr("data-ooxml-wb-calc-pr", "1"))
+      for key in [
+        "calcId", "calcMode", "fullCalcOnLoad", "refMode", "iterate",
+        "iterateCount", "iterateDelta", "fullPrecision", "calcCompleted",
+        "calcOnSave", "concurrentCalc", "concurrentManualCount",
+        "forceFullCalc",
+      ] {
+        match attr_value_local(cp, key) {
+          Some(v) =>
+            out.push(svg_attr("data-ooxml-wb-calc-pr-" + key, v))
+          None => ()
+        }
+      }
+    }
+  }
+  // §18.14.7 externalReferences — count of external links.
+  match first_child_named_local(wb, "externalReferences") {
+    None => ()
+    Some(er) => {
+      let mut n = 0
+      for child in er.children {
+        if child is @xml.Node::Element(ce) &&
+          ce.name.local_name == "externalReference" {
+          n = n + 1
+        }
+      }
+      out.push(
+        svg_attr("data-ooxml-wb-external-references-count", n.to_string()),
+      )
+    }
+  }
+  // §18.2.7 definedNames — count + flattened (name|sheetId|sqref) list.
+  match first_child_named_local(wb, "definedNames") {
+    None => ()
+    Some(dn) => {
+      let names : Array[String] = []
+      for child in dn.children {
+        if child is @xml.Node::Element(ce) &&
+          ce.name.local_name == "definedName" {
+          let nm = attr_value_local(ce, "name").unwrap_or("")
+          let sid = attr_value_local(ce, "localSheetId").unwrap_or("")
+          names.push(nm + "|" + sid)
+        }
+      }
+      out.push(
+        svg_attr("data-ooxml-wb-defined-names-count", names.length().to_string()),
+      )
+      if names.length() > 0 {
+        out.push(svg_attr("data-ooxml-wb-defined-names", names.join(";")))
+      }
+    }
+  }
+  // §18.10.1.78 pivotCaches — count of declared pivot caches.
+  match first_child_named_local(wb, "pivotCaches") {
+    None => ()
+    Some(pc) => {
+      let mut n = 0
+      for child in pc.children {
+        if child is @xml.Node::Element(ce) &&
+          ce.name.local_name == "pivotCache" {
+          n = n + 1
+        }
+      }
+      out.push(svg_attr("data-ooxml-wb-pivot-caches-count", n.to_string()))
+    }
+  }
+  // §18.2.5 customWorkbookViews — count.
+  match first_child_named_local(wb, "customWorkbookViews") {
+    None => ()
+    Some(cwv) => {
+      let mut n = 0
+      for child in cwv.children {
+        if child is @xml.Node::Element(ce) &&
+          ce.name.local_name == "customWorkbookView" {
+          n = n + 1
+        }
+      }
+      out.push(
+        svg_attr("data-ooxml-wb-custom-workbook-views-count", n.to_string()),
+      )
+    }
+  }
+  // §18.2.14 functionGroups — function library count.
+  match first_child_named_local(wb, "functionGroups") {
+    None => ()
+    Some(fg) => {
+      let mut n = 0
+      for child in fg.children {
+        if child is @xml.Node::Element(ce) &&
+          ce.name.local_name == "functionGroup" {
+          n = n + 1
+        }
+      }
+      out.push(svg_attr("data-ooxml-wb-function-groups-count", n.to_string()))
+    }
+  }
+  // §18.2.24 smartTagPr / §18.2.25 smartTagTypes — flag presence.
+  match first_child_named_local(wb, "smartTagPr") {
+    None => ()
+    Some(stp) => {
+      out.push(svg_attr("data-ooxml-wb-smart-tag-pr", "1"))
+      for key in ["embed", "show"] {
+        match attr_value_local(stp, key) {
+          Some(v) =>
+            out.push(svg_attr("data-ooxml-wb-smart-tag-pr-" + key, v))
+          None => ()
+        }
+      }
+    }
+  }
+  match first_child_named_local(wb, "smartTagTypes") {
+    None => ()
+    Some(stt) => {
+      let mut n = 0
+      for child in stt.children {
+        if child is @xml.Node::Element(ce) &&
+          ce.name.local_name == "smartTagType" {
+          n = n + 1
+        }
+      }
+      out.push(svg_attr("data-ooxml-wb-smart-tag-types-count", n.to_string()))
+    }
+  }
+  // §18.2.27 webPublishing — flag presence + key attrs.
+  match first_child_named_local(wb, "webPublishing") {
+    None => ()
+    Some(wp) => {
+      out.push(svg_attr("data-ooxml-wb-web-publishing", "1"))
+      for key in [
+        "css", "thicket", "longFileNames", "vml", "allowPng",
+        "targetScreenSize", "dpi", "codePage", "characterSet",
+      ] {
+        match attr_value_local(wp, key) {
+          Some(v) =>
+            out.push(svg_attr("data-ooxml-wb-web-publishing-" + key, v))
+          None => ()
+        }
+      }
+    }
+  }
+  // §18.2.11 fileRecoveryPr — count of records.
+  let mut frp_n = 0
+  for child in wb.children {
+    if child is @xml.Node::Element(ce) &&
+      ce.name.local_name == "fileRecoveryPr" {
+      frp_n = frp_n + 1
+    }
+  }
+  if frp_n > 0 {
+    out.push(
+      svg_attr("data-ooxml-wb-file-recovery-pr-count", frp_n.to_string()),
+    )
+  }
+  // §18.2.26 webPublishObjects — count.
+  match first_child_named_local(wb, "webPublishObjects") {
+    None => ()
+    Some(wpo) => {
+      let mut n = 0
+      for child in wpo.children {
+        if child is @xml.Node::Element(ce) &&
+          ce.name.local_name == "webPublishObject" {
+          n = n + 1
+        }
+      }
+      out.push(
+        svg_attr("data-ooxml-wb-web-publish-objects-count", n.to_string()),
+      )
+    }
+  }
+  // §18.2.20 oleSize — single attribute.
+  match first_child_named_local(wb, "oleSize") {
+    None => ()
+    Some(os) =>
+      match attr_value_local(os, "ref") {
+        Some(v) => out.push(svg_attr("data-ooxml-wb-ole-size-ref", v))
+        None => out.push(svg_attr("data-ooxml-wb-ole-size", "1"))
+      }
+  }
+  // §18.2.10 extLst — extension-count signal.
+  match first_child_named_local(wb, "extLst") {
+    None => ()
+    Some(el) => {
+      let mut n = 0
+      for child in el.children {
+        if child is @xml.Node::Element(ce) && ce.name.local_name == "ext" {
+          n = n + 1
+        }
+      }
+      out.push(svg_attr("data-ooxml-wb-ext-lst-count", n.to_string()))
+    }
+  }
+}
+
+///|
+/// §18.8.39 CT_Stylesheet — surface per-section counts for the
+/// stylesheet's children so the catalog harness's differential
+/// render check sees a stable signal when only the styles part
+/// changes.  Each section emits both a "has-this-section" flag
+/// and an entry-count, so a single element insertion shifts the
+/// count value.
+fn emit_stylesheet_metadata_attrs(
+  ss : @xml.Element,
+  out : Array[@xml.Attribute],
+) -> Unit {
+  for spec in [
+    ("numFmts", "numFmt"),
+    ("fonts", "font"),
+    ("fills", "fill"),
+    ("borders", "border"),
+    ("cellStyleXfs", "xf"),
+    ("cellXfs", "xf"),
+    ("cellStyles", "cellStyle"),
+    ("dxfs", "dxf"),
+    ("tableStyles", "tableStyle"),
+    ("colors", "indexedColors"),
+    ("extLst", "ext"),
+  ] {
+    let (section, item) = spec
+    match first_child_named_local(ss, section) {
+      None => ()
+      Some(child) => {
+        out.push(svg_attr("data-ooxml-ss-" + section, "1"))
+        let mut n = 0
+        for c in child.children {
+          if c is @xml.Node::Element(ce) && ce.name.local_name == item {
+            n = n + 1
+          }
+        }
+        out.push(svg_attr("data-ooxml-ss-" + section + "-count", n.to_string()))
+      }
+    }
+  }
+}
+
+///|
+fn sml_metadata_attrs(
+  worksheet : @xml.Element,
+  workbook_root? : @xml.Element? = None,
+  stylesheet_root? : @xml.Element? = None,
+) -> Array[@xml.Attribute] {
   let out : Array[@xml.Attribute] = []
+  // §18.2.1 — when a `<workbook>` root is supplied, scan its
+  // direct children for the workbook-level metadata elements
+  // (`<workbookProtection>`, `<fileSharing>`, `<fileVersion>`,
+  // `<workbookPr>`, `<bookViews>`, `<calcPr>`, `<externalReferences>`,
+  // `<definedNames>`, `<pivotCaches>`, …) and emit their effect
+  // attributes here.  This lets the renderer surface workbook-level
+  // metadata when the verifier routes those elements through
+  // `xl/workbook.xml` (the catalog's `xlsx:workbook` aux-host).
+  //
+  // The per-worksheet scan below ALSO covers each of these
+  // element names, so the legacy harness behaviour (which dropped
+  // workbook-level elements as direct worksheet children) keeps
+  // working — this addition is strictly a fallback when the
+  // workbook is the source.
+  match workbook_root {
+    None => ()
+    Some(wb) => emit_workbook_metadata_attrs(wb, out)
+  }
+  // §18.8.39 CT_Stylesheet — when an `<styleSheet>` root is
+  // supplied, surface per-section counts so the catalog harness's
+  // differential render check can detect a change to any styles
+  // child (`<numFmts>`, `<fonts>`, `<fills>`, `<borders>`,
+  // `<cellStyleXfs>`, `<cellXfs>`, `<cellStyles>`, `<dxfs>`,
+  // `<tableStyles>`, `<colors>`, `<extLst>`).
+  match stylesheet_root {
+    None => ()
+    Some(ss) => emit_stylesheet_metadata_attrs(ss, out)
+  }
 
   // §18.3.1.85 sheetProtection — surface every locked-action flag
   // that differs from its XSD default plus the crypto envelope so
