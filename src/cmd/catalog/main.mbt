@@ -9,6 +9,44 @@
 /// synthesised fragments.  Both the Transitional
 /// (`schemas.openxmlformats.org`) and the Strict (`purl.oclc.org`)
 /// URIs are mapped to the same prefix.
+///|
+/// Inverse of `ns_prefix` — the namespace URI a short prefix maps
+/// to.  Returns "" when the prefix is unknown so callers stamp the
+/// attribute in the no-namespace slot rather than fabricating a
+/// non-existent URI.  Used to resolve `<xsd:attribute ref="r:dm">`
+/// references back to their referenced attribute's namespace at
+/// synthesis time, since rewrite_refs intentionally leaves the raw
+/// prefix in place.
+fn prefix_ns(prefix : String) -> String {
+  match prefix {
+    "w" => "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    "s" => "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    "p" => "http://schemas.openxmlformats.org/presentationml/2006/main"
+    "a" => "http://schemas.openxmlformats.org/drawingml/2006/main"
+    "m" => "http://schemas.openxmlformats.org/officeDocument/2006/math"
+    "r" =>
+      "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    "c" => "http://schemas.openxmlformats.org/drawingml/2006/chart"
+    "dgm" => "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+    "pic" => "http://schemas.openxmlformats.org/drawingml/2006/picture"
+    "xdr" =>
+      "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+    "wp" =>
+      "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+    "cdr" => "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing"
+    "st" => "http://schemas.openxmlformats.org/officeDocument/2006/sharedTypes"
+    "sl" => "http://schemas.openxmlformats.org/schemaLibrary/2006/main"
+    "v" => "urn:schemas-microsoft-com:vml"
+    "o" => "urn:schemas-microsoft-com:office:office"
+    "w10" => "urn:schemas-microsoft-com:office:word"
+    "x" => "urn:schemas-microsoft-com:office:excel"
+    "pvml" => "urn:schemas-microsoft-com:office:powerpoint"
+    "xml" => "http://www.w3.org/XML/1998/namespace"
+    _ => ""
+  }
+}
+
+///|
 fn ns_prefix(ns : String) -> String {
   match strip_ns(ns) {
     "wordprocessingml/main" => "w"
@@ -120,6 +158,7 @@ fn main {
   // Install the namespace -> prefix mapping the synthesiser uses so
   // every emitted element carries the prefix of its own namespace.
   g_ns_prefix.val = ns_prefix
+  g_prefix_ns.val = prefix_ns
   let args = @env.args()
   if args.length() >= 2 && args[1] == "fixtures" {
     generate_visual_fixtures()
@@ -594,6 +633,7 @@ fn main {
 
 ///|
 /// Percentage of `n`/`d` scaled to tenths (e.g. 897 == 89.7%).
+///|
 fn pct10(n : Int, d : Int) -> Int {
   if d > 0 {
     n * 1000 / d

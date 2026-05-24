@@ -162,18 +162,28 @@ fn collect_attrs(
   ag_stack : StrSet,
 ) -> Unit {
   // Required <xsd:attribute> nodes anywhere in this type's subtree.
+  let _ = schema
   for a in xsd_descendants(ct, "attribute") {
     if attr(a, "use") == Some("required") {
-      let name = match attr(a, "name") {
+      // For an inline-declared attribute the key is the bare local
+      // name; for `<xsd:attribute ref="prefix:name">` the key is
+      // `prefix:name` so the downstream synthesiser (`synth_attrs`)
+      // can split it back into a (prefix, local) pair and place
+      // the attribute in the referenced attribute's namespace.
+      // The diagram renderer reads `<dgm:relIds r:dm="..."/>` by
+      // probing the `r:` (officedoc relationships) URI; without
+      // namespace preservation the attribute would land in the
+      // element's own namespace and the dispatcher would miss it.
+      let key = match attr(a, "name") {
         Some(n) => n
         None =>
           match attr(a, "ref") {
-            Some(r) => local_name(r)
+            Some(r) => r
             None => ""
           }
       }
-      if name != "" && !found.contains(name) {
-        found[name] = attr_value_sample(schema, a)
+      if key != "" && !found.contains(key) {
+        found[key] = attr_value_sample(schema, a)
       }
     }
   }

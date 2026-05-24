@@ -298,6 +298,7 @@ fn rewrite_refs(root : @xml.Element, prefixes : Map[String, String]) -> Unit {
   fn visit(el : @xml.Element) -> Unit {
     let is_attr_group = is_xsd(el, "attributeGroup")
     let is_group = is_xsd(el, "group")
+    let is_attribute = is_xsd(el, "attribute")
     let attrs = el.attributes
     for i in 0..<attrs.length() {
       let a = attrs[i]
@@ -305,7 +306,14 @@ fn rewrite_refs(root : @xml.Element, prefixes : Map[String, String]) -> Unit {
       let rewrite = match nm {
         "type" | "base" | "itemType" => true
         // `ref` is qualified only for group / attributeGroup refs;
-        // an element `ref` keeps its bare name.
+        // an element `ref` keeps its bare name.  `<xsd:attribute
+        // ref="prefix:name">` references are NOT rewritten here:
+        // doing so during the in-place tree mutation produced a
+        // pathological slowdown in schema loading, so the namespace
+        // resolution is deferred to `collect_attrs` / `synth_attrs`
+        // which build the qualified key from the unrewritten ref
+        // value via `attr_ref_qkey` (looks up the local-name half
+        // in the schema's `top_attrs`).
         "ref" => is_group || is_attr_group
         _ => false
       }

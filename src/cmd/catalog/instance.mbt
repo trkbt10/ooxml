@@ -101,11 +101,35 @@ fn synth_attrs(
   let found : Map[String, String] = Map::new()
   collect_attrs(schema, ct, found, Map::new(), Map::new())
   let out : Array[@xml.Attribute] = []
-  for name, value in found {
-    out.push({ name: qname(ns, name), value })
+  for key, value in found {
+    // `key` is either a bare local name (inline `<xsd:attribute
+    // name="x"/>`) or `prefix:localname` (a `ref="prefix:name"`
+    // reference — `<xsd:attribute ref="r:dm"/>` keeps its raw
+    // prefix because rewrite_refs leaves attribute refs alone, see
+    // the comment there).  An inline attribute inherits the
+    // element's own namespace; a prefixed-ref attribute carries
+    // the namespace the prefix resolves to (so `r:` maps to the
+    // officedoc-relationships URI the diagram renderer reads).
+    match key.find(":") {
+      None => out.push({ name: qname(ns, key), value })
+      Some(i) => {
+        let prefix = key[0:i].to_string()
+        let local = key[i + 1:].to_string()
+        let attr_ns = (g_prefix_ns.val)(prefix)
+        out.push({ name: qname(attr_ns, local), value })
+      }
+    }
   }
   out
 }
+
+///|
+/// Prefix → namespace URI mapping, installed once by `main`.  Used
+/// by `synth_attrs` to recover the namespace of an
+/// `<xsd:attribute ref="prefix:name">` reference whose raw prefix
+/// stays in the synthesised key (rewrite_refs intentionally leaves
+/// attribute refs alone to avoid a slow in-place tree mutation).
+let g_prefix_ns : Ref[(String) -> String] = { val: fn(_p) { "" } }
 
 ///|
 /// Synthesise the children of a sequence / choice / all particle list
