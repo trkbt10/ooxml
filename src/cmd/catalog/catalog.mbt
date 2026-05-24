@@ -26,7 +26,7 @@ struct SchemaSet {
 /// The three schema sets that together make up ECMA-376.  Transitional
 /// is listed first so that, for an element present in both
 /// generations, the catalog entry keeps the Transitional namespace —
-/// the URI real Word / LibreOffice documents use.
+/// the URI real-world Office documents use.
 fn schema_sets() -> Array[SchemaSet] {
   [
     {

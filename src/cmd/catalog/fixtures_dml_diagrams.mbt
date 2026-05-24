@@ -62,7 +62,7 @@
 // Therefore: these fixtures exercise the *parse + serialise +
 // open-again* round-trip and the OPC plumbing
 // (`pptx_package_with_diagram`), but their visual diff against
-// LibreOffice will show a blank PPTX vs. a SmartArt diagram
+// the reference renderer will show a blank PPTX vs. a SmartArt diagram
 // until the bridge lands. The fixtures are still useful because:
 //
 //   1. They cover the OPC-side wiring (slide rels rId2..rId5,
@@ -386,8 +386,8 @@ const DIAGRAM_FRAME_CY : Double = 5029200.0
 /// accent colours that the viewer's `diagram_render` module falls
 /// back to when the `<dgm:colorsDef>` does not list per-node
 /// fills. Caching the same palette here keeps the rendered SVG
-/// (engine-driven) and the LibreOffice render (cached-drawing
-/// driven) on the same colour cycle.
+/// (engine-driven) and the reference render (cached-drawing driven)
+/// on the same colour cycle.
 fn default_accent_palette() -> Array[String] {
   ["4472C4", "ED7D31", "A5A5A5", "FFC000", "5B9BD5", "70AD47"]
 }
@@ -500,8 +500,9 @@ fn emu(value : Double) -> String {
 /// same labels.
 ///
 /// Returns `None` when the data model / layout cannot be decoded —
-/// the fixture then ships without a cached drawing and LibreOffice
-/// falls back to its own (currently blank) rendering. The catalog's
+/// the fixture then ships without a cached drawing and the
+/// reference renderer falls back to its own (currently blank)
+/// rendering. The catalog's
 /// snapshot harness treats `None` as "out-of-band rendered by the
 /// engine only", matching the pre-Round 13 baseline.
 fn cached_drawing(
@@ -726,12 +727,12 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
   // ---- pyramid WITHOUT extra constraints (gate-closed regression) --
   // §21.4.2.16 — this layout has only a `primFontSz` non-geometric
   // constraint, so `definition_has_geometric_constraints` returns
-  // `false` and the renderer's gate suppresses output. LibreOffice
-  // does not render the cached drawing for our synthesised fixtures
-  // either, so both sides come out blank and the snapshot RMSE is
-  // 0. The fixture is here to (a) catch regressions where the gate
-  // accidentally opens for a font-only constraint, and (b) cover
-  // the round-trip path for the pyra algorithm.
+  // `false` and the renderer's gate suppresses output. The reference
+  // renderer does not render the cached drawing for our synthesised
+  // fixtures either, so both sides come out blank and the snapshot
+  // RMSE is 0. The fixture is here to (a) catch regressions where
+  // the gate accidentally opens for a font-only constraint, and
+  // (b) cover the round-trip path for the pyra algorithm.
   let pyra_basic_labels = ["Apex", "Middle", "Base"]
   let pyra_basic_data = shared_data_model(pyra_basic_labels)
   let pyra_basic_layout = make_layout_def("urn:test:diagram:pyramid", "pyra")
@@ -762,9 +763,10 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
   //
   // The boxes are deliberately sized small (~6% of the frame each)
   // and positioned in the upper portion so the rendered area stays
-  // well under 10% of the canvas. LibreOffice's blank rendering of
-  // our synthesised cached drawing therefore differs from our
-  // engine-driven SVG by less than the catalog's 0.10 RMSE budget.
+  // well under 10% of the canvas.  The reference renderer's blank
+  // rendering of our synthesised cached drawing therefore differs
+  // from our engine-driven SVG by less than the catalog's RMSE
+  // budget.
   let pyra_constr_labels = ["Top", "Mid", "Bot"]
   let pyra_constr_data = shared_data_model(pyra_constr_labels)
   let pyra_constr_layout = make_layout_def_with_pyra_constraint(
@@ -794,7 +796,7 @@ fn extras_dml_diagrams(dcases : Array[DiagrammedCase]) -> Unit {
   // child, overriding the lin algorithm's natural per-child width
   // and height. The chosen explicit_w / explicit_h are tiny so
   // each leaf occupies only ~3 % of the frame, keeping the RMSE
-  // diff against LibreOffice's blank rendering well below 0.10.
+  // diff against the reference's blank rendering well within budget.
   let cstr_labels = ["x"]
   let cstr_data = shared_data_model(cstr_labels)
   let cstr_layout = make_layout_def_with_child_constraints(
@@ -933,7 +935,7 @@ fn make_layout_def_with_pyra_constraint(
   // Pyramid root constrLst — the pyraAcctRatio controls the top
   // trapezoid's relative width inside the layout algorithm, and
   // the for=ch overrides shrink each trapezoid in place so the
-  // rendered diff against LibreOffice's blank stays small.
+  // rendered diff against the reference renderer's blank stays small.
   let root_constr_lst = dgm_elem("constrLst", [], [
     Element(
       dgm_elem(

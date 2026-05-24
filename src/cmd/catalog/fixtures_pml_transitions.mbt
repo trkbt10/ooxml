@@ -13,7 +13,7 @@
 //      `<p:transition>` flavour does NOT crash the renderer when it
 //      appears in a slide.  Each fixture additionally carries a
 //      visible shape so the rendered output is compared against
-//      LibreOffice on the shape alone.
+//      the reference renderer on the shape alone.
 //
 //   2. DrawingML theme cascade.  Exercises every cascade flavour the
 //      DrawingML colour pipeline must resolve when no theme part is

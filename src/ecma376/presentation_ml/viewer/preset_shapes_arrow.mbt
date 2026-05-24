@@ -2957,12 +2957,13 @@ fn arrow_left_right_circular_arrow(
 // ============================================================================
 // Curved-arrow (curved{Right,Left,Up,Down}Arrow) — body + darkenLess overlay
 //
-// LibreOffice renders these four legacy presets as a 3-D ribbon-loop, not
-// the literal §20.1.10.24 silhouette.  Reverse-engineering the LO SVG output
-// for `shape-arrows-curved.pptx` (default adj 25 000 / 50 000 / 25 000)
-// shows that the whole silhouette is parametrised by exactly TWO axis-aligned
-// ellipses that share rx, ry and differ only by a `th`-sized translation in
-// the perpendicular direction:
+// The reference renderer draws these four legacy presets as a 3-D
+// ribbon-loop, not the literal §20.1.10.24 silhouette.  Empirical
+// analysis of the reference SVG for the curved-arrows family (default
+// adj 25 000 / 50 000 / 25 000) shows that the whole silhouette is
+// parametrised by exactly TWO axis-aligned ellipses that share rx, ry
+// and differ only by a `th`-sized translation in the perpendicular
+// direction:
 //
 //   E1 (inner) — centre on the spec's centre-line: (w, hR) for Right
 //   E2 (outer) — translated by (0, +th) so its centre is (w, y3 = hR + th)
@@ -2978,8 +2979,9 @@ fn arrow_left_right_circular_arrow(
 // for these presets — `y5 = hR - dy` and `y4 = y5 - dh` produce negative
 // coordinates for the default adjustments, and the published arcTo angles
 // only sweep ~39° instead of the ~79° actually needed to land on (x1, hR+dy).
-// LibreOffice silently corrects this.  We do the same here: compute the
-// arc angles directly from the geometry rather than the spec's formulas.
+// The reference renderer silently corrects this.  We do the same
+// here: compute the arc angles directly from the geometry rather
+// than the spec's formulas.
 //
 // Symmetry:
 //   - Left = Right mirrored across the vertical centre-line  (x → w - x)
@@ -3040,8 +3042,8 @@ fn curved_arrow_normalise_sweep(sweep_units : Double) -> Double {
 }
 
 ///|
-/// `curvedRightArrow` — ECMA-376 §20.1.10.24.  Body path matches LO's
-/// rendering by treating E1 (centre (w, hR)) as the inner ribbon edge and
+/// `curvedRightArrow` — ECMA-376 §20.1.10.24.  Body path matches the
+/// reference renderer by treating E1 (centre (w, hR)) as the inner ribbon edge and
 /// E2 (centre (w, y3)) as the outer, with the corrected `+dy` end-point.
 fn arrow_curved_right_arrow(
   _w : Double,
@@ -3097,7 +3099,7 @@ fn arrow_curved_right_arrow(
   let y3 = g(local, "y3")
   let y6 = g(local, "y6")
   let cd2 = g(local, "cd2")
-  // LO-corrected band endpoints at the arrowhead side.  Inner ribbon edge
+  // Reference-corrected band endpoints at the arrowhead side.  Inner ribbon edge
   // (on E1) ends at `(x1, hR + dy)`; outer edge (on E2) ends at `(x1, y3
   // + dy)`.  Arrowhead notch wings extend `dh` past those band-ends.
   let inner_end_y = h_r + dy
@@ -3135,7 +3137,7 @@ fn arrow_curved_right_arrow(
 ///   E2 (outer) — centre (l, y3) = (l, hR + th)
 ///
 /// Like Up arrow, the spec writes the body with both arcs CONSECUTIVE so
-/// LO traces inner-E1 from the band-end through the RIGHT-side (ix, iy)
+/// the reference renderer traces inner-E1 from the band-end through the RIGHT-side (ix, iy)
 /// intersection, then outer-E2 back to the other band-end.
 fn arrow_curved_left_arrow(
   _w : Double,
@@ -3209,7 +3211,7 @@ fn arrow_curved_left_arrow(
   let st_outer = curved_arrow_atan2_units(iy - y3, ix - l, h_r, width)
   let en_outer = curved_arrow_atan2_units(dy, x1 - l, h_r, width)
   let sw_outer = en_outer - st_outer
-  // LO path order: tip → top notch → inner band-end → inner arc →
+  // Reference path order: tip → top notch → inner band-end → inner arc →
   // (ix, iy) → outer arc → outer band-end → bottom notch → close.
   build_arrow_path([
     MoveTo(l, y6),
@@ -3231,9 +3233,10 @@ fn arrow_curved_left_arrow(
 ///   E2 (outer) — centre (wR, t)
 ///
 /// The spec writes the main body with both arcs CONSECUTIVE (no arrowhead
-/// in between), so LO traces inner-E1 from the band-end through the
-/// (ix, iy) ellipse intersection, then outer-E2 back to the other band-
-/// end — a 90.64° sweep on E1 and a 60.4° sweep on E2 at default adj.
+/// in between), so the reference renderer traces inner-E1 from the
+/// band-end through the (ix, iy) ellipse intersection, then outer-E2
+/// back to the other band-end — a 90.64° sweep on E1 and a 60.4°
+/// sweep on E2 at default adj.
 fn arrow_curved_up_arrow(
   _w : Double,
   _h : Double,
@@ -3312,7 +3315,7 @@ fn arrow_curved_up_arrow(
   let en_outer = curved_arrow_atan2_units(ah, dx, height, w_r)
   let sw_outer = en_outer - st_outer
   let _ = (iy, th) // captured for ellipse derivation; not used in path
-  // LO's path order: tip → right notch → inner band-end → inner arc →
+  // Reference path order: tip → right notch → inner band-end → inner arc →
   // (ix, iy) → outer arc → outer band-end → left notch → close.
   build_arrow_path([
     MoveTo(x6, t),
@@ -3407,7 +3410,7 @@ fn arrow_curved_down_arrow(
   let en_outer = curved_arrow_atan2_units(y1 - b, dx, height, w_r)
   let sw_outer = en_outer - st_outer
   let _ = ah // captured for completeness; used implicitly via y1 = b-ah
-  // LO's path order: tip → left notch → inner band-end → inner arc on E1 →
+  // Reference path order: tip → left notch → inner band-end → inner arc on E1 →
   // (wR, t) → connector → (x3, t) → outer arc on E2 → outer band-end →
   // right notch → close (back to tip).
   build_arrow_path([
@@ -3630,7 +3633,7 @@ fn curved_left_arrow_layers(
 
 ///|
 /// `curvedUpArrow` dark overlay — implements the literal spec path which
-/// already matches LO for Up arrow.  Two 90° arcs joined by horizontal
+/// already matches the reference renderer for Up arrow.  Two 90° arcs joined by horizontal
 /// connectors at top and bottom.
 fn curved_up_arrow_layers(
   _w : Double,

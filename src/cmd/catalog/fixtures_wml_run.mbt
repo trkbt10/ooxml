@@ -461,7 +461,7 @@ fn extras_wml_run(cases : Array[VisualCase]) -> Unit {
           w_run(None, " and "),
           w_run(Some(w_rpr([w_flag("strike")])), "strike"),
           w_run(None, " and "),
-          w_run(Some(w_rpr([w_rfonts("Liberation Mono")])), "code()"),
+          w_run(Some(w_rpr([w_rfonts("Courier New")])), "code()"),
           w_run(None, "."),
         ]),
       ),

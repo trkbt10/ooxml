@@ -226,7 +226,7 @@ fn extras_dml_color_complete(cases : Array[VisualCase]) -> Unit {
   // subtle tint shift.  Steps at 0°, 72°, 144°, 216°, 288° (full
   // rotation in 5 steps).  0° = the reference colour.
   //
-  // KNOWN LO DIVERGENCE — SNAPSHOT RMSE ≈ 0.186 ON THIS FIXTURE:
+  // KNOWN REFERENCE-RENDERER DIVERGENCE ON THIS FIXTURE:
   //
   // ECMA-376 §20.1.2.3.19 defines `<a:hueOff val="…"/>` with `val`
   // typed as `ST_Angle` (60000ths-of-a-degree), and the algebra is
@@ -236,21 +236,22 @@ fn extras_dml_color_complete(cases : Array[VisualCase]) -> Unit {
   // (354°), olive (66° after wrap) and emerald-green (138° after
   // wrap).
   //
-  // LibreOffice's PDF export clamps the hue offset to a single
-  // 360° rotation: the swatches at 216° (val=12960000) and 288°
-  // (val=17280000) come out IDENTICAL to the 144° (val=8640000)
-  // step (a saturated red), as if LO took `min(val, 21600000)`
-  // and then capped further. Visually:
-  //   - LO  : [blue, magenta, red, red, red]
-  //   - ours: [blue, magenta, red, olive, green]
+  // The reference renderer used by the snapshot harness clamps the
+  // hue offset to a single 360° rotation: the swatches at 216°
+  // (val=12960000) and 288° (val=17280000) come out IDENTICAL to
+  // the 144° (val=8640000) step (a saturated red), as if the
+  // renderer took `min(val, 21600000)` and then capped further.
+  // Visually:
+  //   - reference: [blue, magenta, red, red, red]
+  //   - ours     : [blue, magenta, red, olive, green]
   //
-  // Our render is spec-correct; LO's is a renderer-side clamp not
-  // mandated by §20.1.2.3.19. We deliberately keep the fixture so
-  // a future regression in our hue-offset wrap math is caught,
-  // and accept the ~0.186 snapshot RMSE as a known LO-divergence
-  // floor for this specific case. (Document classification:
-  // category-B spec ambiguity — LO behaviour, not a bug in our
-  // renderer.)
+  // Our render is spec-correct; the reference renderer's behaviour
+  // is a renderer-side clamp not mandated by §20.1.2.3.19. We
+  // deliberately keep the fixture so a future regression in our
+  // hue-offset wrap math is caught, and accept the snapshot RMSE as
+  // a known reference-divergence floor for this specific case.
+  // (Document classification: category-B spec ambiguity — renderer
+  // behaviour, not a bug in our renderer.)
   cases.push({
     id: "color-hueOff-ladder",
     format: "pptx",

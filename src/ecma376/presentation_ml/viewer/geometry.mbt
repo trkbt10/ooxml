@@ -137,7 +137,7 @@ pub fn render_preset_geometry_layered(
 
 ///|
 /// Multi-path dispatcher — handles only the presets whose canonical
-/// PowerPoint / LibreOffice render is a STACK of fills (a 3D / shaded
+/// PowerPoint render is a STACK of fills (a 3D / shaded
 /// preset).  Returns `None` for every other preset so the caller can
 /// fall through to the standard single-path dispatcher.
 fn preset_shape_dispatch_layered(
@@ -538,7 +538,7 @@ fn preset_shape_dispatch(
     // gives the classic inner_ratio 0.382, star8's `adj=37500`
     // gives the ribbon-edged 0.75, etc.  The old uniform 0.382 for
     // star8+ produced spike-heavy renders that did not match the
-    // shallow-notched LibreOffice references.
+    // shallow-notched reference renderer's images.
     "star4" => Some(preset_star(w, h, 4, 0.250)) // adj=12500
     "star5" => Some(preset_star(w, h, 5, 0.382)) // adj=19098
     "star6" => Some(preset_star(w, h, 6, 0.577)) // adj=28868
@@ -734,7 +734,7 @@ fn preset_diamond(w : Double, h : Double) -> String {
 /// shorter side (`min(w,h)`), not of `w`.  Applying the offset to
 /// `w` made wide parallelograms lean too much and tall ones not
 /// enough; the geometric proportion is fixed in `min(w,h)`, matching
-/// PowerPoint / LibreOffice.
+/// PowerPoint.
 fn preset_parallelogram(w : Double, h : Double, ctx : GuideContext) -> String {
   let adj = ctx.get("adj").unwrap_or(25000.0)
   let ss = if w < h { w } else { h }

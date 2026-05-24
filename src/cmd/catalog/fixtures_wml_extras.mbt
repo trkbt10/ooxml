@@ -321,9 +321,9 @@ fn extras_wml_extras(cases : Array[VisualCase]) -> Unit {
         // The OPC reader / .rels manifest needed to attach that part
         // is out of scope for this fixture, which exercises only the
         // RANGE-MARKER pair (a transparent wrapper for rendering);
-        // LibreOffice rejects the whole `.docx` when the reference
-        // resolves to a missing part, so we omit the reference and
-        // keep only the start / end pair.
+        // Conformant readers reject the whole `.docx` when the
+        // reference resolves to a missing part, so we omit the
+        // reference and keep only the start / end pair.
         w_run(None, " jumps over the lazy dog."),
       ]),
     ]),

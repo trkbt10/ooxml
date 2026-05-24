@@ -54,9 +54,9 @@ test "apply_shade 50% in linear RGB" {
   // §20.1.2.3.31 — `<a:shade val=50000>` halves the linear-light
   // intensity of each channel.  For pure red (255,0,0), L_lin=1.0
   // → L'_lin=0.5 → sRGB byte = round(255 * (1.055 * 0.5^(1/2.4) - 0.055))
-  // ≈ 188 (= 0xbc).  This matches LibreOffice/PowerPoint, whereas a
-  // naive sRGB-space multiply yields 128 (= 0x80) which is visibly
-  // darker than the reference.
+  // ≈ 188 (= 0xbc).  This matches PowerPoint, whereas a naive
+  // sRGB-space multiply yields 128 (= 0x80) which is visibly darker
+  // than the reference.
   inspect(apply_shade("ff0000", 0.5), content="bc0000")
 }
 
@@ -112,33 +112,32 @@ test "apply_hue_off rotates the hue" {
 }
 
 ///|
-/// §20.1.2.3.19 hueOff LO-compat mode — when `lo_compat=true` the
-/// post-offset hue is clamped to [0, 360] instead of wrapped.  For
-/// accent1 blue (4472c4 → hue ≈ 218°):
+/// §20.1.2.3.19 hueOff reference-renderer compatibility — when
+/// `clamp_overflow_hue=true` the post-offset hue is clamped to
+/// [0, 360] instead of wrapped.  For accent1 blue
+/// (4472c4 → hue ≈ 218°):
 ///   - +72° → 290° (within [0,360], no clamp) → purple
 ///   - +144°, +216°, +288° → all clamp to 360° (≡ 0°) → red
-/// This mirrors LibreOffice's rendering of
-/// `.snapshots/fixtures/pptx/color/color-hueOff-ladder.pptx`.
-test "apply_hue_off lo_compat clamps over-360 hues to red" {
+test "apply_hue_off clamp_overflow_hue clamps over-360 hues to red" {
   // +72° stays in-range under both modes.
   let purple_spec = apply_hue_off("4472c4", 72.0)
-  let purple_lo = apply_hue_off("4472c4", 72.0, lo_compat=true)
-  inspect(purple_spec, content=purple_lo) // identical when no clamp
+  let purple_compat = apply_hue_off("4472c4", 72.0, clamp_overflow_hue=true)
+  inspect(purple_spec, content=purple_compat) // identical when no clamp
   // +144° wraps to ~2° in spec mode (red-ish) and clamps to 0°
-  // (red) in LO mode.  Both happen to be red on the wheel, so we
-  // assert by sampling: LO-compat result has R clearly dominant.
-  let red_lo = apply_hue_off("4472c4", 144.0, lo_compat=true)
-  inspect(red_lo.length(), content="6")
+  // (red) in compat mode.  Both happen to be red on the wheel, so
+  // we assert by sampling: compat result has R clearly dominant.
+  let red_compat = apply_hue_off("4472c4", 144.0, clamp_overflow_hue=true)
+  inspect(red_compat.length(), content="6")
   // +216° wraps to 74° (yellow-green) in spec mode but clamps to
-  // red in LO mode — assert the two diverge.
+  // red in compat mode — assert the two diverge.
   let yg_spec = apply_hue_off("4472c4", 216.0)
-  let red_lo_2 = apply_hue_off("4472c4", 216.0, lo_compat=true)
-  assert_true(yg_spec != red_lo_2)
-  // All three over-180° offsets collapse to the SAME hex in LO
+  let red_compat_2 = apply_hue_off("4472c4", 216.0, clamp_overflow_hue=true)
+  assert_true(yg_spec != red_compat_2)
+  // All three over-180° offsets collapse to the SAME hex in compat
   // mode (the clamp pins them all to hue=360°≡0°).
-  let red_lo_3 = apply_hue_off("4472c4", 288.0, lo_compat=true)
-  inspect(red_lo == red_lo_2, content="true")
-  inspect(red_lo_2 == red_lo_3, content="true")
+  let red_compat_3 = apply_hue_off("4472c4", 288.0, clamp_overflow_hue=true)
+  inspect(red_compat == red_compat_2, content="true")
+  inspect(red_compat_2 == red_compat_3, content="true")
 }
 
 ///|

@@ -115,13 +115,13 @@ pub struct ColorResolveContext {
   ph_clr : String?
   major_font : Map[String, String]
   minor_font : Map[String, String]
-  lo_compat : Bool
+  clamp_overflow_hue : Bool
 }
 pub fn ColorResolveContext::empty() -> Self
 pub fn ColorResolveContext::resolve_theme_typeface(Self, String) -> String?
+pub fn ColorResolveContext::with_clamp_overflow_hue(Self, Bool) -> Self
 pub fn ColorResolveContext::with_color_scheme(Self, Map[String, String]) -> Self
 pub fn ColorResolveContext::with_font_scheme(Self, Map[String, String], Map[String, String]) -> Self
-pub fn ColorResolveContext::with_lo_compat(Self, Bool) -> Self
 pub fn ColorResolveContext::with_maps(Self, Map[String, String], Map[String, String]?) -> Self
 pub fn ColorResolveContext::with_ph_clr(Self, String) -> Self
 pub fn ColorResolveContext::with_strict_spec(Self) -> Self

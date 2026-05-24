@@ -265,13 +265,14 @@ test "viewer §21.1.2.3.5 hlinkClick run emits xlink anchor" {
 /// `strike="sngStrike"` emits:
 ///   • `text-decoration="line-through"` on the `<text>` element
 ///     (the strikethrough is still drawn by librsvg / Pango at
-///     the font's mid-glyph height, which matches LO closely);
-///   • an explicit `<line>` overlay for the underline at the LO-
-///     matched offset (≈0.155 em below baseline) — see
+///     the font's mid-glyph height, which matches the reference
+///     renderer closely);
+///   • an explicit `<line>` overlay for the underline at the
+///     reference-matched offset (≈0.155 em below baseline) — see
 ///     `build_underline_overlay` for the why; the legacy
-///     `text-decoration="underline"` shorthand was dropped
-///     because librsvg placed the line 2-3 px above LO's PDF
-///     reference for our Liberation Sans substitute.
+///     `text-decoration="underline"` shorthand was dropped because
+///     librsvg placed the line 2-3 px above the reference PDF for
+///     the body-face substitute the harness uses.
 test "viewer u + strike combine: strike via CSS, underline via overlay" {
   fn run_with(rpr_attrs : Array[@xml.Attribute]) -> @xml.Node {
     @xml.Node::Element({

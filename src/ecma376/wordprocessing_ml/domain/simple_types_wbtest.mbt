@@ -239,7 +239,7 @@ test "WML drawing chunk2 types decode positioning anchors" {
 ///|
 /// §17.18.93 ST_TextDirection — a conforming reader MUST accept both
 /// the Strict (4th edition) token set and the Transitional (ISO/IEC
-/// 29500-1, written by Word 2007 / LibreOffice) token set.  The
+/// 29500-1, written by Word 2007) token set.  The
 /// transitional spellings project onto their Strict semantic
 /// equivalents.
 test "WML §17.18.93 ST_TextDirection accepts Strict and Transitional" {
@@ -292,7 +292,7 @@ test "WML §22.9.2.6 ST_MeasurementOrPercent accepts integer, percent, measure" 
 ///|
 /// §17.18.84 ST_TabJc — a conforming reader MUST accept the Strict
 /// token set and the Transitional `left` / `right` aliases (written
-/// by Word 2007 / LibreOffice for tab stops), which project onto the
+/// by Word 2007 for tab stops), which project onto the
 /// Strict `start` / `end` variants.
 test "WML §17.18.84 ST_TabJc accepts Strict and Transitional left/right" {
   // Strict tokens.

@@ -40,14 +40,14 @@ pub struct ColorResolveContext {
   /// §20.1.4.1.18 fontScheme — `<a:minorFont>` typefaces keyed
   /// by `"lt"` / `"ea"` / `"cs"` / `"sym"`. Empty when no theme.
   minor_font : Map[String, String]
-  /// LibreOffice compatibility mode toggle for colour transforms
-  /// whose LO implementation diverges from ECMA-376.  Currently
-  /// drives `apply_hue_off` (see `@color.apply_hue_off` for the
-  /// reverse-engineered rationale).  `true` matches LO's rendering
-  /// (the practical default for the viewer because we compare
-  /// against LO's PDF export in the snapshot harness); set it to
-  /// `false` via `with_strict_spec` for pure ECMA-376 conformance.
-  lo_compat : Bool
+  /// Reference-renderer compatibility mode toggle for colour
+  /// transforms whose snapshot-reference implementation diverges from
+  /// ECMA-376.  Currently drives `apply_hue_off` (see
+  /// `@color.apply_hue_off` for the rationale).  `true` matches the
+  /// reference renderer (the practical default for the viewer because
+  /// the snapshot harness compares against it); set it to `false` via
+  /// `with_strict_spec` for pure ECMA-376 conformance.
+  clamp_overflow_hue : Bool
 }
 
 ///|
@@ -61,22 +61,24 @@ pub fn ColorResolveContext::empty() -> ColorResolveContext {
     ph_clr: None,
     major_font: Map::new(),
     minor_font: Map::new(),
-    // Default to LO-compat ON because every viewer caller compares
-    // against LibreOffice's PDF export through the snapshot harness;
-    // a strict-spec consumer must opt out via `with_strict_spec`.
-    lo_compat: true,
+    // Default to reference-renderer compat ON because every viewer
+    // caller compares against the reference renderer's output through
+    // the snapshot harness; a strict-spec consumer must opt out via
+    // `with_strict_spec`.
+    clamp_overflow_hue: true,
   }
 }
 
 ///|
-/// Toggle the LO-compatibility flag.  Callers that need strict
-/// ECMA-376 conformance (e.g. machine-validating a deck against a
-/// reference DataMash or running a regression against the spec's
-/// own numeric examples) should call `with_strict_spec` to flip
-/// `lo_compat` off; everyone else inherits the default `true`.
-pub fn ColorResolveContext::with_lo_compat(
+/// Toggle the reference-renderer compatibility flag.  Callers that
+/// need strict ECMA-376 conformance (e.g. machine-validating a deck
+/// against a reference DataMash or running a regression against the
+/// spec's own numeric examples) should call `with_strict_spec` to
+/// flip `clamp_overflow_hue` off; everyone else inherits the default
+/// `true`.
+pub fn ColorResolveContext::with_clamp_overflow_hue(
   ctx : ColorResolveContext,
-  lo_compat : Bool,
+  clamp_overflow_hue : Bool,
 ) -> ColorResolveContext {
   {
     color_map: ctx.color_map,
@@ -85,18 +87,19 @@ pub fn ColorResolveContext::with_lo_compat(
     ph_clr: ctx.ph_clr,
     major_font: ctx.major_font,
     minor_font: ctx.minor_font,
-    lo_compat,
+    clamp_overflow_hue,
   }
 }
 
 ///|
-/// Convenience wrapper for `with_lo_compat(false)` — reads better at
-/// the call site when the intent is "give me strict ECMA-376
-/// transform behaviour, not LO's renderer quirks".
+/// Convenience wrapper for `with_clamp_overflow_hue(false)` — reads
+/// better at the call site when the intent is "give me strict
+/// ECMA-376 transform behaviour, not the reference renderer's
+/// quirks".
 pub fn ColorResolveContext::with_strict_spec(
   ctx : ColorResolveContext,
 ) -> ColorResolveContext {
-  ColorResolveContext::with_lo_compat(ctx, false)
+  ColorResolveContext::with_clamp_overflow_hue(ctx, false)
 }
 
 ///|
@@ -120,7 +123,7 @@ pub fn ColorResolveContext::with_font_scheme(
     ph_clr: ctx.ph_clr,
     major_font,
     minor_font,
-    lo_compat: ctx.lo_compat,
+    clamp_overflow_hue: ctx.clamp_overflow_hue,
   }
 }
 
@@ -191,7 +194,7 @@ pub fn ColorResolveContext::with_ph_clr(
     ph_clr: Some(ph_clr),
     major_font: ctx.major_font,
     minor_font: ctx.minor_font,
-    lo_compat: ctx.lo_compat,
+    clamp_overflow_hue: ctx.clamp_overflow_hue,
   }
 }
 
@@ -222,7 +225,7 @@ pub fn ColorResolveContext::with_maps(
     ph_clr: ctx.ph_clr,
     major_font: ctx.major_font,
     minor_font: ctx.minor_font,
-    lo_compat: ctx.lo_compat,
+    clamp_overflow_hue: ctx.clamp_overflow_hue,
   }
 }
 
@@ -238,7 +241,7 @@ pub fn ColorResolveContext::with_color_scheme(
     ph_clr: ctx.ph_clr,
     major_font: ctx.major_font,
     minor_font: ctx.minor_font,
-    lo_compat: ctx.lo_compat,
+    clamp_overflow_hue: ctx.clamp_overflow_hue,
   }
 }
 
@@ -579,11 +582,11 @@ fn extract_base_color(
 /// Per §20.1.2.3, each colour-modifier child of a colour element is
 /// applied to the running colour value in document order; we approximate
 /// that by applying them in a fixed precedence chain that matches the
-/// LibreOffice reference renderer for every fixture in `pptx/color`.
+/// reference renderer for every fixture in `pptx/color`.
 fn apply_color_transforms(
   element : @xml.Element,
   base_hex : String,
-  lo_compat? : Bool = true,
+  clamp_overflow_hue? : Bool = true,
 ) -> ResolvedColor {
   if base_hex == "" {
     return { hex: "", alpha: 1.0 }
@@ -609,16 +612,17 @@ fn apply_color_transforms(
     None => ()
   }
   // §20.1.2.3.19 hueOff — additive hue offset in 60000ths of a
-  // degree.  Convert to degrees before applying.  When `lo_compat`
-  // is on, fall through to the LO clamp branch of `apply_hue_off`;
-  // otherwise stay on the spec-correct modulo-360 wrap.
+  // degree.  Convert to degrees before applying.  When
+  // `clamp_overflow_hue` is on, fall through to the clamp branch of
+  // `apply_hue_off`; otherwise stay on the spec-correct modulo-360
+  // wrap.
   match int_attr_child(element, "hueOff", "val") {
     Some(n) =>
       result = @color.apply_hue_off(
         result,
         n.to_double() / 60000.0,
         is_alpha=has_alpha,
-        lo_compat~,
+        clamp_overflow_hue~,
       )
     None => ()
   }
@@ -763,7 +767,13 @@ pub fn resolve_solid_fill(
   // If the node itself is a colour element, use it directly.
   if is_color_element(node) {
     let base = extract_base_color(node, ctx, effective_ph_clr)
-    return Some(apply_color_transforms(node, base, lo_compat=ctx.lo_compat))
+    return Some(
+      apply_color_transforms(
+        node,
+        base,
+        clamp_overflow_hue=ctx.clamp_overflow_hue,
+      ),
+    )
   }
   // Look through <a:solidFill> if present.
   let target = match child_by_local(node, "solidFill") {
@@ -775,7 +785,13 @@ pub fn resolve_solid_fill(
     None => None
     Some(elt) => {
       let base = extract_base_color(elt, ctx, effective_ph_clr)
-      Some(apply_color_transforms(elt, base, lo_compat=ctx.lo_compat))
+      Some(
+        apply_color_transforms(
+          elt,
+          base,
+          clamp_overflow_hue=ctx.clamp_overflow_hue,
+        ),
+      )
     }
   }
 }

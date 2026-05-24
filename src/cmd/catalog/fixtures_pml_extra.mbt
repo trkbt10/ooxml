@@ -1,8 +1,8 @@
 // PresentationML compositional fixtures — multi-shape slide
 // compositions, backgrounds, decorations, layouts.  Each fixture
 // arranges several `<p:sp>` elements into a recognisable scene
-// (flowchart, venn diagram, org chart, etc.) so the LibreOffice ↔
-// catalog renderer comparison can shake out z-order, layout, and
+// (flowchart, venn diagram, org chart, etc.) so the
+// reference-renderer comparison can shake out z-order, layout, and
 // preset-geometry interaction bugs that single-shape fixtures miss.
 //
 // Conventions:

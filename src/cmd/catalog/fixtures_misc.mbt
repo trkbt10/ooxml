@@ -123,7 +123,7 @@ fn extras_misc(cases : Array[VisualCase]) -> Unit {
   // ===================================================================
   //
   // §17.6.11 pgMar boundary — 144 twips = 0.1" margins squeeze the
-  // body to almost the full page width; LibreOffice's narrowest
+  // body to almost the full page width; Word's narrowest built-in
   // preset is 0.25" so this exercises a value below every named
   // preset.  Useful for catching off-by-one in margin → content-width
   // arithmetic.

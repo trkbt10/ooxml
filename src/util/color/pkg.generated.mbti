@@ -22,7 +22,7 @@ pub fn apply_green_off(String, Double, is_alpha? : Bool) -> String
 
 pub fn apply_hue_mod(String, Double, is_alpha? : Bool) -> String
 
-pub fn apply_hue_off(String, Double, is_alpha? : Bool, lo_compat? : Bool) -> String
+pub fn apply_hue_off(String, Double, is_alpha? : Bool, clamp_overflow_hue? : Bool) -> String
 
 pub fn apply_inv(String, is_alpha? : Bool) -> String
 

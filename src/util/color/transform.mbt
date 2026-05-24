@@ -116,9 +116,9 @@ fn linear_to_srgb_byte(linear : Double) -> Double {
 /// component toward BLACK in linear-light (gamma-decoded) space, then
 /// re-encode.  `shade=1.0` is identity, `shade=0.0` is full black.
 ///
-/// LibreOffice (and PowerPoint) apply shade in linear RGB, not sRGB:
-/// for `4472C4` (68, 114, 196) with `shade=0.5`, the rendered result
-/// is approximately `(50, 84, 144)` rather than the sRGB-arithmetic
+/// PowerPoint applies shade in linear RGB, not sRGB: for `4472C4`
+/// (68, 114, 196) with `shade=0.5`, the rendered result is
+/// approximately `(50, 84, 144)` rather than the sRGB-arithmetic
 /// `(34, 57, 98)`.  Performing the multiplication in linear space
 /// matches the reference renderer to within 1-3 byte values.
 ///
@@ -148,9 +148,9 @@ pub fn apply_shade(
 /// re-encode.  `tint=1.0` is identity, `tint=0.0` is full white.
 ///
 /// Formula (per channel in linear light): `c' = c * tint + 1.0 * (1 - tint)`.
-/// LibreOffice (and PowerPoint) apply tint in linear RGB, not sRGB.
-/// For `4472C4` (68, 114, 196) with `tint=0.5`, the rendered result
-/// is approximately `(192, 200, 227)` rather than the sRGB-arithmetic
+/// PowerPoint applies tint in linear RGB, not sRGB.  For `4472C4`
+/// (68, 114, 196) with `tint=0.5`, the rendered result is
+/// approximately `(192, 200, 227)` rather than the sRGB-arithmetic
 /// `(162, 185, 226)`.  Performing the interpolation in linear space
 /// matches the reference renderer to within 1 byte per channel.
 ///
@@ -241,39 +241,36 @@ pub fn apply_sat_mod(
 /// caller is responsible for converting the OOXML 60000ths-of-a-
 /// degree attribute into a degree value before invocation.
 ///
-/// In spec mode (`lo_compat=false`) the hue is wrapped modulo 360°
-/// so `h + degrees` re-enters the [0, 360) cycle exactly as the
-/// ECMA-376 specification requires (`val` is `ST_Angle`, the only
-/// documented bound is the implicit 60000ths-per-degree scale; no
-/// clamping is mentioned).
+/// In spec mode (`clamp_overflow_hue=false`) the hue is wrapped
+/// modulo 360° so `h + degrees` re-enters the [0, 360) cycle
+/// exactly as the ECMA-376 specification requires (`val` is
+/// `ST_Angle`, the only documented bound is the implicit
+/// 60000ths-per-degree scale; no clamping is mentioned).
 ///
-/// In LO-compat mode (`lo_compat=true`) the sum `h + degrees` is
-/// instead CLAMPED to `[0, 360]` before being fed back to the HSL
-/// → RGB converter.  This mirrors LibreOffice's non-conforming
-/// behaviour: for an input colour with hue ≈ 218° and offsets of
-/// 0° / 72° / 144° / 216° / 288°, LO produces blue / purple /
-/// red / red / red — i.e. every offset that would push the hue
-/// past 360° saturates at the red end of the wheel instead of
-/// wrapping back to yellow / green / cyan.  Reverse-engineered
-/// empirically against LO 24.x rendering of
-/// `.snapshots/fixtures/pptx/color/color-hueOff-ladder.pptx`;
-/// LO's PDF export samples at exactly (196, 68, 68) for all three
-/// over-180° swatches which is the canonical result of clamping
-/// 218 + {144, 216, 288} to 360°.  This is an LO-side bug
-/// relative to ECMA-376 §20.1.2.3.19 — keep `lo_compat=false`
-/// for any caller that wants strict ECMA-376 compliance.
+/// In reference-renderer compatibility mode
+/// (`clamp_overflow_hue=true`) the sum `h + degrees` is instead
+/// CLAMPED to `[0, 360]` before being fed back to the HSL → RGB
+/// converter.  This mirrors the non-conforming behaviour observed
+/// in the reference renderer used for snapshot comparisons: for an
+/// input colour with hue ≈ 218° and offsets of 0° / 72° / 144° /
+/// 216° / 288°, the reference produces blue / purple / red / red /
+/// red — i.e. every offset that would push the hue past 360°
+/// saturates at the red end of the wheel instead of wrapping back
+/// to yellow / green / cyan.  This is a renderer-side bug relative
+/// to ECMA-376 §20.1.2.3.19 — keep `clamp_overflow_hue=false` for
+/// any caller that wants strict ECMA-376 compliance.
 pub fn apply_hue_off(
   rgb_str : String,
   degrees : Double,
   is_alpha? : Bool = false,
-  lo_compat? : Bool = false,
+  clamp_overflow_hue? : Bool = false,
 ) -> String {
   let color = parse_color_to_hsl(rgb_str)
   let shifted = color.h + degrees
-  let h = if lo_compat {
-    // LO non-conforming behaviour: clamp the post-offset hue into
-    // [0, 360] instead of wrapping.  Values >= 360 collapse to 360
-    // (≡ 0°), values < 0 collapse to 0°.
+  let h = if clamp_overflow_hue {
+    // Non-conforming compatibility behaviour: clamp the post-offset
+    // hue into [0, 360] instead of wrapping.  Values >= 360 collapse
+    // to 360 (≡ 0°), values < 0 collapse to 0°.
     if shifted < 0.0 {
       0.0
     } else if shifted > 360.0 {
@@ -327,8 +324,8 @@ pub fn apply_comp(rgb_str : String, is_alpha? : Bool = false) -> String {
 ///|
 /// §20.1.2.3.20 a:inv — per-channel inversion `c' = 1.0 - c`.
 /// Performed in linear-light space so the operation is consistent
-/// with the rest of DrawingML's colour maths (and matches the
-/// way LibreOffice / PowerPoint apply the transform).
+/// with the rest of DrawingML's colour maths (and matches the way
+/// PowerPoint applies the transform).
 pub fn apply_inv(rgb_str : String, is_alpha? : Bool = false) -> String {
   let (r, g, b, alpha_tail) = split_hex_for_transform(rgb_str)
   let lr = 1.0 - srgb_byte_to_linear(r)

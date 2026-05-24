@@ -53,8 +53,7 @@
 /// against — a layoutDef carrying only `primFontSz` constraints
 /// (no width/height/anchor) does not yield a meaningful per-node
 /// rendering and is treated as a "metadata only" layoutDef
-/// (PowerPoint and LibreOffice both surface this as an empty
-/// graphicFrame).
+/// (PowerPoint surfaces this as an empty graphicFrame).
 pub fn constraint_kind_is_geometric(kind : ConstraintKind) -> Bool {
   match kind {
     ConstrW | ConstrH | ConstrL | ConstrT | ConstrR | ConstrB => true
@@ -73,8 +72,7 @@ pub fn constraint_kind_is_geometric(kind : ConstraintKind) -> Bool {
 /// SmartArt renderer to gate engine-driven rendering: a layoutDef
 /// that carries only text-fitting constraints (e.g. `primFontSz`)
 /// is treated as metadata-only and the renderer emits nothing,
-/// mirroring LibreOffice / PowerPoint's behaviour on the same
-/// inputs.
+/// mirroring PowerPoint's behaviour on the same inputs.
 ///
 /// We probe the typed `LayoutNode` tree (rather than the raw XML)
 /// so the decoder's normalisation — including `ConstraintKind`

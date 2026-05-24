@@ -10,7 +10,7 @@
 //
 // Each fixture isolates ONE numbering behaviour so a regression in
 // the resolver / formatter points at a single feature, and so
-// LibreOffice's reference rendering can be compared per-feature.
+// the reference renderer's output can be compared per-feature.
 //
 // Conventions:
 //   * `format = "docx"`, `styles = None`, `doc_styles = None`,

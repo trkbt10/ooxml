@@ -209,8 +209,8 @@ fn flowchart_input_output(w : Double, h : Double) -> String {
 /// an S-curve, asymmetric: the right half curves UP into the body
 /// (a notch), the left half curves DOWN below the midline (an
 /// extension), so the bottom-right corner sits ABOVE `wave_y` and
-/// the bottom-left BELOW it — matching the standard PowerPoint /
-/// LibreOffice render.  The earlier code placed both control points
+/// the bottom-left BELOW it — matching the standard PowerPoint
+/// render.  The earlier code placed both control points
 /// on the same side, producing a "hump down both ends" shape that
 /// looked like a flag bottom, not a document bottom.
 fn flowchart_document(w : Double, h : Double) -> String {

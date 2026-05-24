@@ -606,7 +606,7 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
 
   // ----------------------------------------------------------------
   // 15. table-tbllook — explicit conditional-formatting hints.
-  //     (Renderer/LibreOffice may not apply distinct first-row /
+  //     (Conformant renderers may not apply distinct first-row /
   //     first-col styling without a referenced style, but the
   //     element must round-trip without breaking layout.)
   // ----------------------------------------------------------------

@@ -8,7 +8,7 @@
 //     there shows up immediately as an RMSE spike on these fixtures.
 //   • Keeping arrow extensions in their own file lets contributors
 //     iterate on arrow geometry without touching the existing
-//     `shape-arrows{,-curved}` fixtures (and their cached LO refs).
+//     `shape-arrows{,-curved}` fixtures (and their cached references).
 //
 // Each fixture uses `preset_batch` from `fixtures_helpers.mbt` to
 // arrange a 4-column grid of shape boxes at 1828800 × 1371600 EMU

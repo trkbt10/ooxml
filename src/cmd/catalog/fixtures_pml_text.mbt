@@ -1,7 +1,7 @@
 // PresentationML text-frame fixtures — txBody, paragraphs, runs,
 // alignment, bullets.  Each fixture isolates one ECMA-376 §21.1
 // text-frame feature (anchor, bullet, indent level, run property,
-// spacing, etc.) so the LibreOffice ↔ catalog renderer comparison
+// spacing, etc.) so the reference-renderer comparison
 // can pinpoint where text layout drifts.
 
 ///|

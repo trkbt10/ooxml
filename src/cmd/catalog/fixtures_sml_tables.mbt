@@ -1,7 +1,7 @@
 // SpreadsheetML TABLES (Excel "ListObject" tables) — ECMA-376 §18.5.
 //
 // A table is a named, structured region inside a worksheet that the
-// reader (and LibreOffice) renders with banded fills + a header band
+// reader (and conformant viewers) renders with banded fills + a header band
 // + optional totals row.  The on-disk shape is:
 //
 //   xl/worksheets/sheet1.xml          carries `<tableParts>` referencing
@@ -35,10 +35,10 @@
 // not consult `CT_Worksheet.table_parts` or
 // `CT_Worksheet.auto_filter`; the parser stores both as raw elements
 // and the SVG renderer ignores them.  The fixtures here exercise the
-// FILE / OPC plumbing — they round-trip cleanly and LibreOffice's
-// reference render will paint the table bands + filter dropdowns
-// even though ours will not.  Expect higher RMSE for these fixtures
-// until the renderer learns table-style overlay.
+// FILE / OPC plumbing — they round-trip cleanly and the reference
+// renderer will paint the table bands + filter dropdowns even though
+// ours will not.  Expect higher RMSE for these fixtures until the
+// renderer learns table-style overlay.
 // TODO(round-N): teach `svg_render.mbt` about
 // `<tableStyleInfo>` (banded fills + header band) and
 // `<autoFilter>` (header-cell dropdown arrows).
@@ -176,8 +176,8 @@ fn tbl_table(
 ///
 /// Pushed onto the regular `VisualCase` array via `extra_cases()` in
 /// `fixtures_categories.mbt`.  Renderer support: parser preserves
-/// `auto_filter`; svg_render.mbt currently ignores it — LibreOffice
-/// will paint the dropdown arrows on the header row, so RMSE is
+/// `auto_filter`; svg_render.mbt currently ignores it — the reference
+/// renderer paints the dropdown arrows on the header row, so RMSE is
 /// inflated until rendering catches up (documented TODO above).
 fn extras_sml_autofilter_inline(cases : Array[VisualCase]) -> Unit {
   // A 4-row sheet (header + 3 data rows) with `<autoFilter
@@ -369,7 +369,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
         ]),
       ),
       // Totals row — formulas mirror what Excel inserts when totals
-      // is enabled; LibreOffice paints them via the table band style.
+      // is enabled; conformant viewers paint them via the table band style.
       Element(
         s_row("5", [
           s_inline("A5", "Total"),
@@ -897,7 +897,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
 // and push at least one `pivot-basic` fixture exercising
 // `<pivotField>` / `<rowFields>` / `<dataFields>` decoding.  Skipped
 // in this round because half-implementing the builder would leave
-// the workbook rel-graph in a state LibreOffice rejects (a
+// the workbook rel-graph in a state conformant readers reject (a
 // `pivotCache` ref to a missing part triggers a hard error).
 
 // ---- SPARKLINES (§18.7 / x14:sparklineGroups) — gap documentation ----
@@ -925,7 +925,8 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
 // TODO(sparkline, future round): write `extras_sml_sparkline_inline`
 // pushing a `<worksheet>` carrying an `<extLst>` with one
 // `<x14:sparklineGroup>` / `<x14:sparklines>` pair on a small grid.
-// Skipped this round because the rendered output (LibreOffice paints
-// the sparkline; we paint nothing) is fully expected — the marker is
-// only useful once the renderer learns to draw the line/column
-// sparkline glyph itself, otherwise the fixture is noise.
+// Skipped this round because the rendered output (the reference
+// renderer paints the sparkline; we paint nothing) is fully
+// expected — the marker is only useful once the renderer learns to
+// draw the line/column sparkline glyph itself, otherwise the fixture
+// is noise.

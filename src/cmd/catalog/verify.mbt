@@ -48,14 +48,14 @@ fn xe(
 
 ///|
 /// Build a prefixed-namespace element (`<prefix:local …/>`).  Used
-/// when the consumer (e.g. LibreOffice's PPTX parser) only accepts
-/// the prefix form of the element name — the DrawingML `<a:theme>`
-/// payload triggers exactly this requirement: emitting `<theme>`
-/// with an `xmlns="...drawingml..."` default namespace declaration
-/// validates as XML, but Impress' OOXML import refuses to populate
-/// the colour scheme from it.  Switching to `<a:theme>` /
-/// `<a:clrScheme>` / `<a:accent1>` etc. lets LibreOffice resolve
-/// `<a:schemeClr val="accent1"/>` against the theme.
+/// when the consumer's PPTX parser only accepts the prefix form of
+/// the element name — the DrawingML `<a:theme>` payload triggers
+/// exactly this requirement: emitting `<theme>` with an
+/// `xmlns="...drawingml..."` default namespace declaration validates
+/// as XML, but conformant OOXML importers refuse to populate the
+/// colour scheme from it.  Switching to `<a:theme>` /
+/// `<a:clrScheme>` / `<a:accent1>` etc. lets the reference renderer
+/// resolve `<a:schemeClr val="accent1"/>` against the theme.
 fn xep(
   prefix : String,
   ns : String,
@@ -141,7 +141,7 @@ fn root_rels_part(target : String) -> Bytes {
 /// its namespace URI, and `@xml.write` emits each `xmlns` declaration
 /// once, at the element that first uses the prefix.  Adding explicit
 /// `xmlns:*` attributes on top would emit each declaration twice — a
-/// malformed document LibreOffice and conformant readers reject.
+/// malformed document that conformant readers reject.
 fn docx_package(body : @xml.Element) -> Bytes {
   let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   let document : @xml.Element = {
@@ -874,9 +874,9 @@ const NS_A_THEME : String = "http://schemas.openxmlformats.org/drawingml/2006/ma
 /// Build the canonical "Office" `theme1.xml` part for a fixture
 /// package.  The palette mirrors the renderer's
 /// `default_office_scheme()` table so a `<a:schemeClr val="accent3"/>`
-/// resolves to the same colour whether the reference (LibreOffice)
-/// or our renderer is asked.  Without this part LibreOffice has no
-/// `<a:clrScheme>` to consult and falls back to its built-in "all
+/// resolves to the same colour whether the reference renderer or our
+/// renderer is asked.  Without this part the reference renderer has
+/// no `<a:clrScheme>` to consult and falls back to its built-in "all
 /// scheme colours render as black" path — which leaves the
 /// `color-scheme-*` fixtures comparing a properly resolved Office
 /// palette against a wall of black.
@@ -890,7 +890,7 @@ fn pptx_theme_part() -> Bytes {
   let ns_a = NS_A_THEME
   // Every element under `<a:theme>` MUST carry the `a:` prefix.
   // Using a default-namespace declaration on each child (`xmlns="…"`)
-  // parses as valid XML but LibreOffice's OOXML importer rejects it
+  // parses as valid XML but conformant OOXML importers reject it
   // when reading the colour scheme — the scheme is silently dropped
   // and every `<a:schemeClr>` falls back to black.  Mirrors the
   // serialisation PowerPoint and the ECMA-376 Annex A sample emit.
@@ -935,9 +935,9 @@ fn pptx_theme_part() -> Bytes {
   ])
 
   // ---- <a:fontScheme name="Office"> ----
-  // The minimum: a major and minor latin face.  Liberation Sans is
-  // the harness substitute for Calibri so the typeface still
-  // round-trips through the snapshot's fontconfig overlay.
+  // The minimum: a major and minor latin face that the harness
+  // substitutes for Calibri so the typeface still round-trips
+  // through the snapshot's fontconfig overlay.
   fn font_face(local : String, typeface : String) -> @xml.Element {
     ae(local, [xa("typeface", typeface)], [])
   }
@@ -950,16 +950,16 @@ fn pptx_theme_part() -> Bytes {
   // ---- <a:fmtScheme> — phClr-driven payload mirroring Office ----
   // The format scheme MUST resolve to non-empty fills when a chart
   // series, a SmartArt shape or any `<a:fillRef idx="…"/>` consumer
-  // looks it up. LibreOffice's chart renderer derives each series'
+  // looks it up.  A conformant chart renderer derives each series'
   // fill by looking up `fillStyleLst[idx]` (idx ≥ 1000 → subtract
   // 1000) and substituting the colour scheme's accentN palette for
   // every `<a:schemeClr val="phClr"/>` placeholder; if every entry
-  // is a flat `srgbClr` (no `phClr`) LO sees the override as
-  // "white on white" and emits a transparent chart. The minimal
-  // §20.1.4.1.14 CT_StyleMatrix that LO accepts therefore needs
-  // three styled fill entries, three styled line entries, three
-  // styled effect entries, and three bgFill entries — each carrying
-  // a `<a:schemeClr val="phClr"/>` for LO to colour-substitute.
+  // is a flat `srgbClr` (no `phClr`) the renderer sees the override
+  // as "white on white" and emits a transparent chart. The minimal
+  // §20.1.4.1.14 CT_StyleMatrix therefore needs three styled fill
+  // entries, three styled line entries, three styled effect entries,
+  // and three bgFill entries — each carrying a `<a:schemeClr
+  // val="phClr"/>` for the renderer to colour-substitute.
   //
   // The structure below mirrors the canonical Office 2010 theme
   // distribution (the same shape python-pptx and PowerPoint emit):
@@ -1146,13 +1146,13 @@ fn pptx_theme_part() -> Bytes {
 /// (`bg1`/`tx1`/…) onto the concrete `<a:clrScheme>` entries the
 /// theme provides.  A spec-valid master also needs `<p:cSld>` (with
 /// an empty shape tree) and `<p:txStyles>` placeholders; we keep
-/// every section to the smallest payload that PowerPoint /
-/// LibreOffice will load without warning.
+/// every section to the smallest payload that PowerPoint and other
+/// conformant readers will load without warning.
 fn pptx_slide_master_part() -> Bytes {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-  // All `<p:*>` payload must carry the `p:` prefix for LibreOffice's
-  // PPTX importer to populate the colour map and the layout list —
+  // All `<p:*>` payload must carry the `p:` prefix for conformant
+  // PPTX importers to populate the colour map and the layout list —
   // same rationale as `pptx_theme_part` (default-namespace form
   // parses but is silently ignored).
   fn pe(
@@ -1251,13 +1251,13 @@ fn pptx_slide_layout_part() -> Bytes {
 ///|
 /// Assemble a `.pptx` package whose `<p:sld>` directly contains
 /// `content`.  Ships a canonical Office-palette theme part plus a
-/// minimal slideMaster / slideLayout chain so consumers
-/// (LibreOffice, PowerPoint, our own viewer) can resolve
+/// minimal slideMaster / slideLayout chain so consumers (PowerPoint,
+/// the reference renderer, our own viewer) can resolve
 /// `<a:schemeClr val="accent1"/>` to the documented hue.  Omitting
-/// these auxiliary parts is technically valid OPC, but LibreOffice
-/// degrades to "every scheme colour renders as black", which
-/// collapses the `color-scheme-*` fixture set into one indistinct
-/// swatch.
+/// these auxiliary parts is technically valid OPC, but the reference
+/// renderer degrades to "every scheme colour renders as black",
+/// which collapses the `color-scheme-*` fixture set into one
+/// indistinct swatch.
 fn pptx_package(content : @xml.Element) -> Bytes {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -1761,8 +1761,8 @@ fn pptx_package_with_diagram(
   // `rId1` since the data model has no other relationships.
   // §[MS-OOXML] diagram-layout-extensions
   // (http://schemas.microsoft.com/office/drawing/2008/diagram) —
-  // PowerPoint and LibreOffice both honour this extension to skip
-  // re-running the layout engine.
+  // PowerPoint honours this extension to skip re-running the layout
+  // engine.
   let data_model_emitted = match drawing {
     None => data_model
     Some(_) => {
@@ -2080,8 +2080,8 @@ fn pptx_package_with_diagram(
   ]
   // Cached drawing wiring — the data model's own rels file points
   // `rId1` at the drawing part with the Microsoft Office 2007
-  // `diagramDrawing` relationship type. PowerPoint and LibreOffice
-  // pick up the drawing through this rels chain.
+  // `diagramDrawing` relationship type. PowerPoint picks up the
+  // drawing through this rels chain.
   match drawing {
     None => ()
     Some(drawing_root) => {

@@ -4,7 +4,7 @@
 // formats (WML/SML/PML/OMML).  They complement the per-category
 // "happy-path" fixtures by stressing extreme geometries, degenerate
 // content, or rarely-exercised property combinations so the
-// LibreOffice ↔ catalog renderer comparison surfaces regressions that
+// reference-renderer comparison surfaces regressions that
 // the bulk fixtures would not catch.
 //
 // All IDs are prefixed `edge-` so a single grep separates this set
@@ -492,8 +492,9 @@ fn extras_edges(cases : Array[VisualCase]) -> Unit {
   // ============================================================
 
   // 14. Extreme aspect-ratio rectangle — very wide, very short.  Tests
-  //     the geometry pipeline at the edge of LibreOffice's hairline-
-  //     thickness rasterisation: 1000 EMU tall × 7,500,000 wide.
+  //     the geometry pipeline at the edge of the reference renderer's
+  //     hairline-thickness rasterisation: 1000 EMU tall × 7,500,000
+  //     wide.
   cases.push({
     id: "edge-pml-extreme-aspect-shape",
     format: "pptx",

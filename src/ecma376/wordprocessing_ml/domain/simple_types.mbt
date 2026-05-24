@@ -67,8 +67,8 @@ fn wml_simple_type_values(type_name : String) -> String {
     "ST_AnnotationVMerge" => ";cont;rest;"
     "ST_DocProtect" => ";none;readOnly;comments;trackedChanges;forms;"
     // Both the Strict (4th edition) and the Transitional (ISO/IEC
-    // 29500-1 §17.18.93, written by Word 2007 / LibreOffice) token
-    // sets are accepted; see `ST_TextDirection::parse`.
+    // 29500-1 §17.18.93, written by Word 2007) token sets are
+    // accepted; see `ST_TextDirection::parse`.
     "ST_TextDirection" =>
       ";tb;rl;lr;tbV;rlV;lrV;lrTb;tbRl;btLr;lrTbV;tbRlV;tbLrV;"
     "ST_TextAlignment" => ";top;center;baseline;bottom;auto;"
@@ -2281,7 +2281,7 @@ pub(all) enum ST_TabJc {
 ///
 /// §17.18.84 — the Strict token set is `clear`/`start`/`center`/
 /// `end`/`decimal`/`bar`/`num`.  The Transitional token set (written
-/// by Word 2007 and LibreOffice) additionally uses `left` and
+/// by Word 2007) additionally uses `left` and
 /// `right` as aliases for `start` / `end`; a conforming reader MUST
 /// accept them.  They map onto the Strict variant — `CT_TabStop`
 /// keeps the source element verbatim, so the lexical token still
@@ -2916,7 +2916,7 @@ pub(all) enum ST_TextDirection {
 /// ECMA-376 defines this enumeration in two generations.  The
 /// *Strict* (4th edition) token set is `lr`/`lrV`/`rl`/`rlV`/`tb`/
 /// `tbV`.  The *Transitional* (ISO/IEC 29500-1 §17.18.93) token set
-/// — written by Word 2007 and by LibreOffice — is `lrTb`/`tbRl`/
+/// — written by Word 2007 — is `lrTb`/`tbRl`/
 /// `btLr`/`lrTbV`/`tbRlV`/`tbLrV`.  A conforming reader MUST accept
 /// both, so the transitional spellings are mapped here onto their
 /// closest Strict semantic equivalent.  `CT_TextDirection` keeps the

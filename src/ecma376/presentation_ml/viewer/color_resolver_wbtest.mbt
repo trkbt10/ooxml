@@ -50,7 +50,7 @@ test "schemeClr looks up the theme palette" {
     ph_clr: None,
     major_font: Map::new(),
     minor_font: Map::new(),
-    lo_compat: true,
+    clamp_overflow_hue: true,
   }
   let rc = resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="4472c4")
@@ -68,7 +68,7 @@ test "schemeClr respects colorMap (tx1 → dk1)" {
     ph_clr: None,
     major_font: Map::new(),
     minor_font: Map::new(),
-    lo_compat: true,
+    clamp_overflow_hue: true,
   }
   let rc = resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="000000")

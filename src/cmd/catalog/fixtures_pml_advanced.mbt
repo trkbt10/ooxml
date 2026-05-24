@@ -47,8 +47,9 @@ fn pml_adv_cSld_with_bg(
 ///|
 /// `<p:bg><p:bgPr><a:solidFill .../></p:bgPr></p:bg>` — solid hex
 /// background colour for a slide.  `<p:bgPr>` requires a child
-/// `<a:effectLst/>` per ECMA-376 §19.3.1.2, otherwise LibreOffice
-/// silently drops the background; we include the empty element.
+/// `<a:effectLst/>` per ECMA-376 §19.3.1.2, otherwise conformant
+/// readers silently drop the background; we include the empty
+/// element.
 fn pml_adv_bg_solid(hex : String) -> @xml.Element {
   xe(NS_PML, "bg", [], [
     Element(

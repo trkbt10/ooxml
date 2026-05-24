@@ -65,7 +65,7 @@ test "SpreadsheetML SVG renderer cell ref round-trip" {
 ///|
 test "SpreadsheetML SVG renderer column / row pixel conversions" {
   // §18.3.1.13 — Truncate(((256*8.43 + Trunc(128/MDW))/256)*MDW)
-  // with MDW = 7.7 (Liberation Sans "0" advance @ 11pt 96dpi,
+  // with MDW = 7.7 (the Calibri-substitute "0" advance @ 11pt 96dpi,
   // documented in `column_max_digit_width_px`):
   //              = Truncate(((2158.08 + 16)/256)*7.7)
   //              = Truncate(8.4925*7.7) = Truncate(65.39) = 65
@@ -146,9 +146,9 @@ test "SpreadsheetML SVG renderer renders 2x2 sheet with text cells" {
   // instead of the spec's 15 pt) = 34 px body.
   // §18.3.1.62 — `result.width` / `result.height` are the page
   // size, i.e. body + print margins.  This worksheet declares no
-  // `<pageMargins>`, so the renderer falls back to LibreOffice's
+  // `<pageMargins>`, so the renderer falls back to Excel's print
   // defaults (2.0 cm L/R, 2.5 cm T/B) so the SVG lines up with
-  // the LO PDF export used as the snapshot reference.
+  // the reference PDF export used as the snapshot reference.
   //   2.0 cm = 0.787" = 75.59055 px @ 96 DPI
   //   2.5 cm = 0.984" = 94.48819 px @ 96 DPI
   //   width  = 130 + 2*75.59055 ≈ 281.181
@@ -174,7 +174,7 @@ test "SpreadsheetML SVG renderer renders 2x2 sheet with text cells" {
   // `<printOptions @gridLines>` (default false), not §18.3.1.87
   // `<sheetView @showGridLines>` (default true).  This worksheet
   // declares neither, so gridlines MUST be absent — matching
-  // LibreOffice's PDF export.  See `default_render_options` for
+  // the reference PDF export.  See `default_render_options` for
   // the rationale.  Callers that want screen-style gridlines pass
   // `show_grid_lines: true` or set `<printOptions @gridLines="1">`.
   assert_false(result.svg.contains("class=\"grid-lines\""))
@@ -312,7 +312,7 @@ test "SpreadsheetML SVG renderer honours merge cell layout" {
   let result = render_svg(worksheet)
   // §18.3.1.13 spec formula → 2 default columns × 65 px = 130 px
   // body (MDW = 7.7, see `column_max_digit_width_px`), plus
-  // §18.3.1.62 LibreOffice-default 2.0 cm L/R print margins
+  // §18.3.1.62 print-default 2.0 cm L/R print margins
   // (75.59055 px each, 96 DPI) = 281.181 px page width.
   inspect(
     result.width,
@@ -375,7 +375,7 @@ test "SpreadsheetML grid lines skip inside merged regions" {
   // §18.3.1.13 spec formula → default col width 8.43 char = 65 px
   // (MDW = 7.7, see `column_max_digit_width_px`).
   // §18.3.1.81 default row height 12.75 pt × 96/72 = 17 px (see
-  // `default_render_options` for the LibreOffice-tuned default).
+  // `default_render_options` for the reference-tuned default).
   // With 3 columns and 2 rows the boundary verticals sit at
   // x=65 and x=130, and the horizontal mid-line at y=17.
   // Inside the merged area (row 1, y=0..17) the two inner
@@ -1802,8 +1802,8 @@ test "SpreadsheetML SVG renderer parses col / row attributes" {
   // = Truncate(20.0625*7.7) = Truncate(154.48) = 154 px body width
   // (MDW = 7.7, see `column_max_digit_width_px`).
   // 30 pt * 4/3 = 40 px body height (explicit `ht`, not default).
-  // §18.3.1.62 — page size = body + LibreOffice-default print
-  // margins (2.0 cm = 75.59055 px L/R, 2.5 cm = 94.48819 px T/B).
+  // §18.3.1.62 — page size = body + print-default margins
+  // (2.0 cm = 75.59055 px L/R, 2.5 cm = 94.48819 px T/B).
   //   width  = 154 + 2*75.59055 ≈ 305.181
   //   height =  40 + 2*94.48819 ≈ 228.976
   inspect(
@@ -2489,8 +2489,8 @@ test "SpreadsheetML viewer §18.3.1.87 showGridLines=\"0\" omits grid-lines grou
 /// `SheetRenderOptions.show_grid_lines` default of `false`.  This
 /// is the print-side counterpart to §18.3.1.87 `@showGridLines`:
 /// the editing-view toggle defaults true but is irrelevant to a
-/// print render; the print toggle defaults false and is what LO's
-/// PDF export consults.
+/// print render; the print toggle defaults false and is what the
+/// reference PDF export consults.
 test "SpreadsheetML viewer §18.3.1.70 printOptions gridLines enables grid-lines" {
   let print_options : @xml.Node = @xml.Node::Element({
     name: name("printOptions"),
@@ -2526,7 +2526,7 @@ test "SpreadsheetML viewer §18.3.1.70 printOptions gridLines enables grid-lines
 /// NO `@showGridLines` attribute (so the editing-UI default of
 /// `true` would apply for screen rendering) and NO `<printOptions
 /// @gridLines>` MUST render gridline-free on the page renderer.
-/// LibreOffice's PDF export behaves identically: the screen
+/// The reference PDF export behaves identically: the screen
 /// default does not propagate into the print pipeline.  This is
 /// the dual of the "showGridLines=0" test above and locks in the
 /// page-render default flipped in this commit (was true).
@@ -3420,7 +3420,7 @@ test "SpreadsheetML viewer §18.3.1.73 row spans widen derived bounds" {
   // see `column_max_digit_width_px`) = 325 px body width.  Without
   // the spans honoring, only column A (65 px) would show.
   // §18.3.1.62 — `result.width` is the page width (body +
-  // LibreOffice-default 2.0 cm L/R print margins):
+  // print-default 2.0 cm L/R print margins):
   // 325 + 2*75.59055 ≈ 476.181 px.
   inspect(
     result.width,
@@ -3762,7 +3762,7 @@ test "SpreadsheetML viewer §18.3.1.70 printOptions headings enables gutters" {
 
 ///|
 /// §18.5.1.5 — table style chrome is suppressed by default
-/// (matches LibreOffice's PDF print export, which does NOT paint
+/// (matches the reference PDF print export, which does NOT paint
 /// table banding nor autofilter dropdown glyphs).  A worksheet
 /// carrying a styled `<table>` must render without the
 /// `table-chrome` / `table-autofilter` groups when

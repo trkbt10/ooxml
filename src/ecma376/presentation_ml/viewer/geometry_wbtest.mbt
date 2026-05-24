@@ -101,8 +101,7 @@ test "preset parallelogram with custom adj" {
   // The lean offset is a fraction of the SHORTER side
   // (min(100,50) = 50), so 50000/100000 * 50 = 25 — the
   // parallelogram leans by 25 px regardless of `w`.  Geometric
-  // proportions stay fixed in `min(w,h)`, matching PowerPoint /
-  // LibreOffice.
+  // proportions stay fixed in `min(w,h)`, matching PowerPoint.
   inspect(p, content="M 25 0 L 100 0 L 75 50 L 0 50 Z")
 }
 

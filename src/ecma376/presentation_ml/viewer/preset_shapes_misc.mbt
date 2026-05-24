@@ -545,7 +545,7 @@ fn misc_bent_connector5(w : Double, h : Double, ctx : GuideContext) -> String {
 //
 // These four presets are the S-curve connectors from ST_PresetLineGeometryType
 // (§20.1.10.49).  Each is a chain of cubic Bézier segments whose control points
-// reproduce LibreOffice's evaluator pixel-for-pixel.  The path data here mirrors
+// reproduce the reference renderer's evaluator pixel-for-pixel.  The path data here mirrors
 // the integer spec builders in `drawing_ml/preset_geometry/shape_curved_connector{2..5}.mbt`
 // so the viewer and the dedicated geometry package agree on every control point.
 //
@@ -553,22 +553,21 @@ fn misc_bent_connector5(w : Double, h : Double, ctx : GuideContext) -> String {
 // curvedConnector2/3 and collapsed control-point intermediaries for
 // curvedConnector4/5; both diverged from the cubic-Bézier paths that
 // `presetShapeDefinitions.xml` requires, producing 0.04..0.06 RMSE drift
-// against LibreOffice in the line snapshot harness.
+// against the reference renderer in the line snapshot harness.
 
 ///|
 /// §20.1.10.56 `curvedConnector2`.
 ///
 /// The literal spec path is a single cubic Bézier
-/// `M (l, t) C (wd2, t) (r, hd2) (r, b)`, but LibreOffice's renderer (which
+/// `M (l, t) C (wd2, t) (r, hd2) (r, b)`, but the reference renderer (which
 /// our snapshot harness uses as the visual oracle) actually draws the
 /// connector with a horizontal tangent at *both* ends: the resulting curve
 /// matches the two-cubic S-shape that `curvedConnector3` produces with the
-/// default `adj1 = 50000`.  Empirically — and observable in
-/// `.snapshots/ref/pptx__line__connector-curved2.png` — LO's curved2 and
-/// curved3 are visually indistinguishable.  Emitting the single-cubic spec
-/// path here would force the snapshot to drift by ~0.055 RMSE; the
-/// two-cubic form below mirrors what the user actually sees in PowerPoint
-/// and LibreOffice and brings the curve into agreement (~0.008 RMSE).
+/// default `adj1 = 50000`.  Empirically the reference's curved2 and
+/// curved3 are visually indistinguishable.  Emitting the single-cubic
+/// spec path here would force the snapshot to drift; the two-cubic
+/// form below mirrors what the user actually sees in PowerPoint and
+/// brings the curve into agreement.
 fn misc_curved_connector2(w : Double, h : Double) -> String {
   let wd2 = w / 2.0
   let hd4 = h / 4.0
@@ -649,22 +648,20 @@ fn misc_curved_connector3(w : Double, h : Double, ctx : GuideContext) -> String 
 /// `M (l, t) C (x1, t) (x2, y2) (x2, y1) C (x2, y3) (x4, y4) (x3, y4)
 /// C (x5, y4) (r, y5) (r, b)` — open, no `Z`.
 ///
-/// LibreOffice's renderer (our snapshot oracle) deviates from the spec
-/// here: it produces a curve with *horizontal* tangents at both
+/// The reference renderer (our snapshot oracle) deviates from the
+/// spec here: it produces a curve with *horizontal* tangents at both
 /// endpoints — visually indistinguishable from `curvedConnector3` at
-/// the default adjustments.  Compare `.snapshots/ref/pptx__line__
-/// connector-curved3.png` and `.../connector-curved4.png`; the two
-/// references differ only by stroke colour.  To minimise the rendering
-/// drift against LO we mirror that behaviour: when the adjust values
+/// the default adjustments.  To minimise the rendering drift against
+/// the reference we mirror that behaviour: when the adjust values
 /// land on the spec defaults we emit the spec's two-cubic S-curve
 /// (same as curved3) so the connector matches what the user actually
-/// sees in PowerPoint/LO; otherwise we fall back to the spec's
-/// three-cubic path so custom adjustments still take effect.
+/// sees in PowerPoint; otherwise we fall back to the spec's three-
+/// cubic path so custom adjustments still take effect.
 fn misc_curved_connector4(w : Double, h : Double, ctx : GuideContext) -> String {
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   if adj1 == 50000.0 && adj2 == 50000.0 {
-    // LibreOffice-faithful default render: collapse to curved3's S-curve.
+    // Reference-faithful default render: collapse to curved3's S-curve.
     return misc_curved_connector3(w, h, ctx)
   }
   let x2 = w * adj1 / 100000.0
@@ -725,19 +722,19 @@ fn misc_curved_connector4(w : Double, h : Double, ctx : GuideContext) -> String 
 /// C (x5, y4) (x6, y6) (x6, y5) C (x6, y7) (x7, b) (r, b)`.
 /// Open, no `Z`.
 ///
-/// LibreOffice's renderer (our snapshot oracle) again collapses this to
-/// the curved3 S-curve when all three adjustments sit at their 50000
-/// defaults — the references for curved3/4/5 differ only in stroke
-/// colour, not shape.  We mirror that behaviour at the defaults to keep
-/// the snapshot drift low, and only synthesise the spec's four-cubic
-/// path when one of the adjustments diverges from the default so custom
-/// connector geometries continue to take effect.
+/// The reference renderer (our snapshot oracle) again collapses this
+/// to the curved3 S-curve when all three adjustments sit at their
+/// 50000 defaults — the references for curved3/4/5 differ only in
+/// stroke colour, not shape.  We mirror that behaviour at the
+/// defaults to keep the snapshot drift low, and only synthesise the
+/// spec's four-cubic path when one of the adjustments diverges from
+/// the default so custom connector geometries continue to take effect.
 fn misc_curved_connector5(w : Double, h : Double, ctx : GuideContext) -> String {
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   let adj3 = ctx.get("adj3").unwrap_or(50000.0)
   if adj1 == 50000.0 && adj2 == 50000.0 && adj3 == 50000.0 {
-    // LibreOffice-faithful default render: collapse to curved3's S-curve.
+    // Reference-faithful default render: collapse to curved3's S-curve.
     return misc_curved_connector3(w, h, ctx)
   }
   let x3 = w * adj1 / 100000.0
@@ -1223,7 +1220,7 @@ fn misc_donut(w : Double, h : Double, ctx : GuideContext) -> String {
   //     ihd2 = hd2 - dr
   // Using `ss/2` produced a too-thin ring (visible in the
   // shape-misc-pointy diff — the donut's red-outlined ring was
-  // half the LibreOffice reference thickness).  Reference: ECMA-376
+  // half the reference renderer's thickness).  Reference: ECMA-376
   // Part 1 §20.1.10.56 (and `shape_donut.mbt::build_donut` which
   // implements the same formula on the integer path).
   let thickness_frac = ctx.get("adj").unwrap_or(25000.0) / 100000.0
@@ -1281,8 +1278,8 @@ fn misc_donut(w : Double, h : Double, ctx : GuideContext) -> String {
 fn misc_sun(w : Double, h : Double, ctx : GuideContext) -> String {
   // §20.1.10.56 sun — a central disc with 8 trapezoidal rays.  The
   // earlier 16-pointed-star approximation made the sun look like a
-  // spiky badge, not a sun.  PowerPoint / LibreOffice render this
-  // as: 8 trapezoid rays around a central circle, the rays' wide
+  // spiky badge, not a sun.  PowerPoint renders this as:
+  // 8 trapezoid rays around a central circle, the rays' wide
   // base on the circle and their narrow tip on the bounding-box
   // edge.  `adj` sets the disc radius as a fraction of half the
   // shorter side (default 0.25, so the disc is 50 % the rays' tip
@@ -1432,8 +1429,8 @@ fn misc_smiley_face(w : Double, h : Double) -> String {
   // Smile — drawn as a closed zero-area trace (forward Q, then back
   // along the same control point) so that fill-based rendering does
   // not turn the curve into a filled lens that swallows the face.
-  // LibreOffice's spec render of `smileyFace` actually omits the smile,
-  // so a zero-area subpath is the closest match.
+  // The reference renderer's spec render of `smileyFace` actually
+  // omits the smile, so a zero-area subpath is the closest match.
   "M " +
   fmt(cx - smile_r) +
   " " +
@@ -1462,7 +1459,7 @@ fn misc_smiley_face(w : Double, h : Double) -> String {
 //
 // Both are ECMA-376 §20.1.10.56 banner ribbons. The earlier
 // implementations were ad-hoc approximations with rectangular tabs
-// that did not match LibreOffice's spec-faithful render. Reuse the
+// that did not match the reference renderer's spec-faithful render. Reuse the
 // spec-correct path commands from
 //   src/ecma376/drawing_ml/preset_geometry/shape_ribbon.mbt
 //   src/ecma376/drawing_ml/preset_geometry/shape_ribbon2.mbt
@@ -1526,7 +1523,7 @@ fn ribbon_arc(
 /// top edge.
 ///
 /// Rather than re-derive the trigonometric endpoints we draw the
-/// straight-edge silhouette that matches LibreOffice / PowerPoint at
+/// straight-edge silhouette that matches PowerPoint at
 /// a glance: the trapezoidal band across the upper portion of the
 /// frame, with chevron-notched flag wings at each end and a centred
 /// drop-tab hanging from the bottom edge. The small `wd32 × hR` fold
@@ -3290,9 +3287,9 @@ fn misc_plaque_tabs(w : Double, h : Double) -> String {
 ///|
 /// `chartX` — §20.1.10.56.  A solid rectangle the size of the
 /// bounding box.  The ECMA-376 spec emits two crossing diagonal
-/// subpaths to delineate four quadrants, but LibreOffice fills them
-/// with the same solid colour as the body, so the rectangle alone
-/// matches the rasterised result.
+/// subpaths to delineate four quadrants, but the reference renderer
+/// fills them with the same solid colour as the body, so the
+/// rectangle alone matches the rasterised result.
 fn misc_chart_x(w : Double, h : Double) -> String {
   "M 0 0 L " +
   fmt(w) +

@@ -338,7 +338,7 @@ pub struct LayoutParagraphResult {
   /// position so its right edge falls inside the hanging-indent
   /// slot (`bullet_x + bullet_width ≤ margin_left`).  This keeps a
   /// natural gap between bullet and text when the slot is wider
-  /// than the glyph, matching PowerPoint / LibreOffice.  Zero when
+  /// than the glyph, matching PowerPoint.  Zero when
   /// the paragraph has no bullet.
   bullet_x : Double
   font_alignment : FontAlignment

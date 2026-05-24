@@ -74,7 +74,7 @@ fn build_inline_shape(drawing : @xml.Element) -> MathPayload? {
   // §20.4.2 — the shape is laid out with its top-left at (0,0); when
   // surfaced through the math payload the renderer translates the
   // group to (x_cursor, baseline). We shift the group up by `h_px` so
-  // its bottom edge lands on the baseline (matching LibreOffice's
+  // its bottom edge lands on the baseline (matching Word's
   // inline-shape baseline alignment).
   let group : @xml.Element = {
     name: @markup.qname_ns("g", @markup.svg_ns),
@@ -124,7 +124,7 @@ fn drawing_wps_shape(drawing : @xml.Element) -> @xml.Element? {
 /// pull a solid fill colour from a `<wps:spPr>`. Returns "#rrggbb"
 /// when an `<a:solidFill>` with an `<a:srgbClr>` is present; falls back
 /// to "#4f81bd" (PowerPoint default accent1) when the fill is absent —
-/// matching LibreOffice's behaviour for an unstyled shape.
+/// matching Word's behaviour for an unstyled shape.
 fn wps_solid_fill_hex(sp_pr : @xml.Element) -> String {
   match first_child_named(sp_pr, "solidFill") {
     Some(sf) =>

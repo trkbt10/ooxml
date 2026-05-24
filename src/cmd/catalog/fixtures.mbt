@@ -1,9 +1,9 @@
 // Content-rich visual-comparison fixtures.
 //
 // Distinct from the XSD-enumerated catalog: the catalog's synthesised
-// fragments are schema-minimal (mostly empty), so a LibreOffice image
-// comparison against them would be vacuous.  The fixtures below carry
-// real renderable content — text, tables, equations, shapes.
+// fragments are schema-minimal (mostly empty), so a reference-renderer
+// image comparison against them would be vacuous.  The fixtures below
+// carry real renderable content — text, tables, equations, shapes.
 //
 // Every fixture is built as an `@xml.Element` tree (via the `xe`/`xa`
 // helpers in verify.mbt) and serialised by `@xml.write`; no XML is
@@ -135,7 +135,8 @@ struct SparklineCase {
 /// `render_graphic_frame_svg`.  The fixtures here therefore
 /// exercise the *parse + serialise* loop (open → save → open →
 /// to_svg) and the OPC plumbing, but they will not visually
-/// match LibreOffice until the typed chart renderer lands.
+/// match the reference renderer until the typed chart renderer
+/// lands.
 /// TODO §21.2 — wire `chartSpace::CT_Chart::plot_area`
 /// (bar / line / pie / doughnut / scatter / area) through to
 /// SVG output via the `chart` package's domain.
@@ -187,10 +188,10 @@ struct DiagrammedCase {
   // Optional cached `<dsp:drawing>` part — §[MS-OOXML]
   // `diagram-layout-extensions` (drawingml 2008 namespace
   // `http://schemas.microsoft.com/office/drawing/2008/diagram`).
-  // PowerPoint and LibreOffice both render SmartArt from this
-  // pre-laid-out cache; without it consumers must re-run the
-  // layout engine themselves, which LibreOffice does not. Supplied
-  // by the fixture and emitted at `ppt/diagrams/drawing1.xml` by
+  // PowerPoint renders SmartArt from this pre-laid-out cache;
+  // without it consumers must re-run the layout engine themselves,
+  // which not every reader supports.  Supplied by the fixture and
+  // emitted at `ppt/diagrams/drawing1.xml` by
   // `pptx_package_with_diagram` when present, with the data model
   // patched to carry the matching `<dgm:extLst>/<dsp:dataModelExt>`
   // reference. Wired by the layout engine running at fixture-build
@@ -963,12 +964,12 @@ fn visual_cases() -> Array[VisualCase] {
     content: xe(NS_W, "body", [], [
       Element(
         w_p(None, [
-          w_run(Some(w_rpr([w_rfonts("Liberation Serif")])), "Serif text."),
+          w_run(Some(w_rpr([w_rfonts("Times New Roman")])), "Serif text."),
         ]),
       ),
       Element(
         w_p(None, [
-          w_run(Some(w_rpr([w_rfonts("Liberation Mono")])), "Monospace text."),
+          w_run(Some(w_rpr([w_rfonts("Courier New")])), "Monospace text."),
         ]),
       ),
     ]),
@@ -2518,7 +2519,7 @@ fn visual_cases() -> Array[VisualCase] {
 
   // Preset-geometry coverage — a grid of common preset shapes, each
   // with a solid fill, so the geometry path generator is exercised
-  // against the LibreOffice reference for many `prst` values at once.
+  // against the reference renderer for many `prst` values at once.
   let preset_grid : Array[@xml.Element] = []
   let presets = [
     ("triangle", "C00000"),
@@ -2558,7 +2559,7 @@ fn visual_cases() -> Array[VisualCase] {
   // 2286000 × 1828800 EMU cells, centred in a 9144000-wide slide.
   // Returns one shape per preset, all in a uniform fill colour, so
   // the fixture isolates the GEOMETRY of each `prst` against the
-  // LibreOffice reference render.
+  // reference render.
   let preset_batch = fn(names : Array[String], hex : String) -> @xml.Element {
     let shapes : Array[@xml.Element] = []
     for i, n in names {

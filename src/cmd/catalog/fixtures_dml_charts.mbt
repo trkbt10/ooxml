@@ -39,7 +39,7 @@
 // Therefore: these fixtures exercise the *parse + serialise +
 // open-again* round-trip and the OPC plumbing
 // (`pptx_package_with_chart`), but their visual diff against
-// LibreOffice will show a blank PPTX vs. a chart until the typed
+// the reference renderer will show a blank PPTX vs. a chart until the typed
 // renderer lands. The fixtures are still useful because:
 //
 //   1. They cover the OPC-side wiring (slide rels, content types,

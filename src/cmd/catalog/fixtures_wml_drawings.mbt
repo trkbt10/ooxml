@@ -12,8 +12,9 @@
 // Most fixtures here intentionally OMIT the `<a:blip r:embed=…>`
 // reference to image media: shipping binary images in the fixture
 // catalogue would defeat the point of an XML-only test surface.
-// LibreOffice and our renderer both fall back to a placeholder box
-// for an unresolved picture, so the visual-comparison pipeline can
+// The reference renderer and our renderer both fall back to a
+// placeholder box for an unresolved picture, so the
+// visual-comparison pipeline can
 // still measure drawing-wrapper geometry (extent, position, anchor
 // distances) even without a real image.  The few "shape" fixtures
 // (`<wps:wsp>` wordprocessing-shape) carry their own renderable
@@ -151,8 +152,8 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   //   - "none"   — `<wp:wrapNone/>` (drawing floats over text)
   //   - "square" — `<wp:wrapSquare wrapText="bothSides"/>`
   //   - "tight"  — `<wp:wrapTight wrapText="bothSides"/>` (degenerate
-  //                without a `<wp:wrapPolygon>` child; LibreOffice
-  //                falls back to a rectangular wrap)
+  //                without a `<wp:wrapPolygon>` child; conformant
+  //                renderers fall back to a rectangular wrap)
   //   - "topBottom" — `<wp:wrapTopAndBottom/>`
   let anchor = fn(
     pos_x : String,
@@ -215,9 +216,10 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   }
   // `<pic:blipFill><a:blip/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>`
   // — empty blipFill: no `r:embed` attribute, so no image is
-  // resolved.  Both LibreOffice and our renderer respond with an
-  // empty/placeholder box.  Useful for fixtures that want to
-  // exercise the picture layout path WITHOUT shipping binary media.
+  // resolved.  Both the reference renderer and our renderer respond
+  // with an empty/placeholder box.  Useful for fixtures that want
+  // to exercise the picture layout path WITHOUT shipping binary
+  // media.
   let pic_blipfill_empty = pic_el("blipFill", [], [
     Element(a_el("blip", [], [])),
     Element(a_el("stretch", [], [Element(a_el("fillRect", [], []))])),
@@ -317,8 +319,8 @@ fn extras_wml_drawings(cases : Array[VisualCase]) -> Unit {
   //
   // §17.3.3.9 + §20.4.2.8 — minimal `<w:drawing><wp:inline>` with a
   // `<pic:pic>` carrying only nvPicPr + empty blipFill + spPr.  No
-  // `r:embed` attribute means no image media is resolved; both
-  // LibreOffice and our renderer should produce an empty
+  // `r:embed` attribute means no image media is resolved; both the
+  // reference renderer and our renderer should produce an empty
   // 2.5" × 2" rectangle inline with surrounding text.
   cases.push({
     id: "drawing-inline-empty-pic",

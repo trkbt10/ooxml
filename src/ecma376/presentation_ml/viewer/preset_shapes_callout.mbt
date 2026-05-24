@@ -72,7 +72,7 @@ fn accent_path(accent_w : Double, box_h : Double) -> String {
 ///|
 /// Body rectangle abutting the accent bar, used by accent callouts.
 /// Earlier revisions used `accent_w * 2.0` as the body's left edge so
-/// the accent bar visually sat apart from the body, but LibreOffice
+/// the accent bar visually sat apart from the body, but PowerPoint
 /// renders the accent variants as ONE contiguous fill with no gap (the
 /// accent bar takes the same brush as the body, so any unfilled
 /// strip between the two paints as a white stripe inside the shape).
@@ -514,9 +514,9 @@ fn callout_cloud(w : Double, h : Double, ctx : GuideContext) -> String {
 /// with no stroke override per sub-element. Concatenating a `M ... L`
 /// leader onto a closed body fills the triangular wedge between the
 /// edge crossing and the tail with the body brush — visible as a
-/// stripe or notch inside or outside the box.  LibreOffice and
-/// PowerPoint do not draw the leader as a fill either; with their
-/// default styling the leader simply isn't visible. We mirror that by
+/// stripe or notch inside or outside the box.  PowerPoint does not
+/// draw the leader as a fill either; with the default styling the
+/// leader simply isn't visible. We mirror that by
 /// emitting JUST the body rectangle — every callout1/2/3 + accent +
 /// border variant (which all share these helpers) drops the leader.
 fn callout_1(w : Double, h : Double, ctx : GuideContext) -> String {

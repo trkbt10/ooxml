@@ -25,7 +25,7 @@
 //     placeholder so notes text is part of the visual.
 //   • §19.4 Comments — `<p:cm>` author-annotation; renders as a
 //     small comment glyph attached to a slide-side anchor shape so
-//     LibreOffice's comment-pane indicator is visible.
+//     PowerPoint's comment-pane indicator is visible.
 //
 // Conventions:
 //   • Slide canvas is 9144000 × 6858000 EMU (10in × 7.5in).
@@ -538,8 +538,8 @@ fn extras_pml_master_layout(cases : Array[VisualCase]) -> Unit {
 
   // ---- 7. §19.3.1.20 header/footer toggled off: same placeholders
   // present on the slide but `<p:hf>` says hide footer + slide
-  // number.  LibreOffice still renders the placeholder text (we
-  // never strip them), but the parser path for the toggle is
+  // number.  Conformant readers still render the placeholder text
+  // (we never strip them), but the parser path for the toggle is
   // exercised and the slide composes cleanly.
   cases.push({
     id: "ml-hf-footer-off",

@@ -1,8 +1,8 @@
 // Run-time GPOS Pair Adjustment extractor.
 //
 // Replaces the auto-generated hard-coded tables in `gpos_kern_table.mbt`
-// with a real OpenType GPOS parser. The bundled TTFs (Carlito, Liberation
-// Sans / Serif / Mono) keep their ASCII kerning in GPOS lookups of:
+// with a real OpenType GPOS parser. The TTFs the harness loads keep
+// their ASCII kerning in GPOS lookups of:
 //
 //   - Lookup Type 2 (Pair Adjustment), SubTable Format 1 (specific pairs)
 //   - Lookup Type 2 (Pair Adjustment), SubTable Format 2 (class-based)
@@ -375,9 +375,9 @@ fn process_pair_pos_format1(
 /// (first_gid ∈ coverage ∩ ASCII) × (second_gid ∈ ASCII), look up the
 /// (c1, c2) cell and emit a kerning entry when XAdvance is non-zero.
 ///
-/// This is the most important format for the bundled fonts — Carlito
-/// keeps *all* of its ASCII kerning here and the legacy `kern` table is
-/// empty.
+/// This is the most important format for the fonts the harness loads
+/// — typical Office-substitute faces keep *all* of their ASCII
+/// kerning here and the legacy `kern` table is empty.
 fn process_pair_pos_format2(
   reader : @font.BinaryReader,
   st_abs : Int,

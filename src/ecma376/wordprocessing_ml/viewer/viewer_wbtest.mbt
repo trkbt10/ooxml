@@ -674,7 +674,7 @@ test "render_svg omits bullet when numbering table not wired (§17.9)" {
 /// is `vertAlign_scale = 0.65`, so the rendered font size is
 /// `11 × 96/72 × 0.65 ≈ 9.533 px`. (Before the Office Normal default
 /// was wired in, this value was `10 × 96/72 × 0.65 ≈ 8.667 px`,
-/// which caused a ~6 %/line vertical drift against LibreOffice — see
+/// which caused a ~6 %/line vertical drift against the reference renderer — see
 /// `OFFICE_NORMAL_FONT_SIZE_PT` in `svg.mbt`.)
 test "render_svg scales font for <w:vertAlign> superscript" {
   let document = @domain.CT_Document::new({
@@ -724,7 +724,7 @@ test "render_svg scales font for <w:vertAlign> superscript" {
   // decimals, so the resulting attribute is "9.533" (substring
   // match). Switching from the old 10 pt last-resort default to the
   // Office Normal 11 pt removes the ~6 %/line vertical drift the
-  // section snapshots showed against LibreOffice.
+  // section snapshots showed against the reference renderer.
   assert_true(svg.contains("font-size=\"9.533\""))
   assert_true(svg.contains("Sup"))
 }
@@ -1246,8 +1246,8 @@ test "render_svg emits outline/shadow/em effects" {
   })
   let svg = render_svg(document).pages[0].svg
   // §17.3.2.23 outline — outlined glyphs are HOLLOW (stroke
-  // around a transparent interior), matching what LibreOffice's
-  // PDF reference renders. We assert the stroke is painted AND
+  // around a transparent interior), matching what the reference
+  // PDF renders. We assert the stroke is painted AND
   // the fill is suppressed (`fill="none"`); the `data-ooxml-
   // outline` marker lets consumers find the run without parsing
   // the stroke attributes.
@@ -3830,7 +3830,7 @@ test "render_svg draws a column separator for <w:cols w:sep='1'>" {
 /// second column far enough right that its paragraphs are offset by
 /// the first column's full width plus the declared gap.
 ///
-/// LO renormalises explicit column widths + inter-column spaces so
+/// The reference renderer renormalises explicit column widths + inter-column spaces so
 /// their sum equals the section's `content_width` (page width minus
 /// the left + right margins): if the section's `<w:col>` children
 /// sum to less than the content width the columns are stretched, and
