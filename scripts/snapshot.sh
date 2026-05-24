@@ -182,8 +182,25 @@ ours_png() {
   trap "rm -rf '$tmpdir'" RETURN
   svg="$tmpdir/out.svg"
   pdf="$tmpdir/out.pdf"
-  if ! run_cli render "$fixture" --format svg --output "$svg" \
-       > "$tmpdir/cli.log" 2>&1; then
+  # The CLI streams SVG to stdout via the `svg` subcommand for
+  # WML/SML/PML alike; pptx slides go through `svg-for-slide` with
+  # an explicit 1-based slide index. Pick whichever applies based
+  # on the fixture's extension.
+  case "$fixture" in
+    *.pptx)
+      if ! run_cli svg-for-slide "$fixture" 1 \
+           > "$svg" 2> "$tmpdir/cli.log"; then
+        return 1
+      fi
+      ;;
+    *)
+      if ! run_cli svg "$fixture" \
+           > "$svg" 2> "$tmpdir/cli.log"; then
+        return 1
+      fi
+      ;;
+  esac
+  if [ ! -s "$svg" ]; then
     return 1
   fi
   if ! rsvg-convert -f pdf "$svg" -o "$pdf" > /dev/null 2>&1; then
@@ -201,8 +218,9 @@ ours_png() {
   cp "$rendered" "$out"
 }
 
-shopt -s globstar nullglob
-for fixture in "$FIX"/**/*.docx "$FIX"/**/*.xlsx "$FIX"/**/*.pptx; do
+# Walk fixtures with `find` so the harness works under bash 3.2
+# (the macOS default) — `shopt -s globstar` is bash 4+ only.
+while IFS= read -r fixture; do
   rel="${fixture#$FIX/}"
   if [ -n "$FILTER" ]; then
     case "$rel" in
@@ -241,11 +259,15 @@ for fixture in "$FIX"/**/*.docx "$FIX"/**/*.xlsx "$FIX"/**/*.pptx; do
     "$ref_canvas" 2>/dev/null
   magick "$ours_png_path" -background white -extent "${w}x${h}" \
     "$ours_canvas" 2>/dev/null
+  # ImageMagick's `-metric RMSE` prints `<raw> (<normalised>)`
+  # where <normalised> is the 0..1 quantum-normalised value. Capture
+  # the second token (inside the parens) so reports use the
+  # cross-platform-portable 0..1 scale.
   rmse=$(magick compare -metric RMSE "$ref_canvas" "$ours_canvas" \
-    "$diff_png" 2>&1 | awk '{print $1}' | tr -d '()')
+    "$diff_png" 2>&1 | awk '{print $2}' | tr -d '()')
   rm -f "$ref_canvas" "$ours_canvas"
   printf '%s\t%s\n' "$rel" "$rmse" >> "$REPORT"
-done
+done < <(find "$FIX" -type f \( -name '*.docx' -o -name '*.xlsx' -o -name '*.pptx' \) | sort)
 
 # Summary line.
 total=$(wc -l < "$REPORT" | tr -d ' ')
