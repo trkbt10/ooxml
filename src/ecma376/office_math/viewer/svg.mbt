@@ -225,12 +225,6 @@ fn text_box(
   // host carries; body text defaults to sans-serif by contrast.
   let family = "Noto Serif"
   let weight = if bold { 700 } else { 400 }
-  // Measure with the requested italic/weight first; when the host
-  // catalogue lacks that cut, fall back to the upright/regular cut
-  // before degrading to zero. This mirrors what every font shaper
-  // does when a faux-italic synthesis is acceptable for layout
-  // metrics — the glyph still renders via the SVG `font-style`
-  // attribute below.
   let width = match
     (try? @glyph.measure_text_width(
       content,
@@ -241,31 +235,17 @@ fn text_box(
       italic~,
     )) {
     Ok(w) => w
-    Err(_) =>
-      match
-        (try? @glyph.measure_text_width(
-          content,
-          font_size_pt=ctx.font_size_pt,
-          letter_spacing_px=0.0,
-          family~,
-          weight=400,
-          italic=false,
-        )) {
-        Ok(w) => w
-        Err(_) => 0.0
-      }
+    Err(_) => 0.0
   }
   let px = ctx.font_size_pt * @glyph.pt_to_px
-  // Ascender ratio drives the box's ascent/descent split. Same
-  // italic/regular fallback strategy as `measure_text_width` above.
+  // Ascender ratio drives the box's ascent/descent split. When the
+  // resolver cannot satisfy the request we fall back to 0.8 — the
+  // typical Latin `hhea.ascent / unitsPerEm` value — so the box
+  // bounds still roughly contain the glyph.
   let ascender = match
     (try? @glyph.get_ascender_ratio(family, weight~, italic~)) {
     Ok(r) => r
-    Err(_) =>
-      match (try? @glyph.get_ascender_ratio(family, weight=400, italic=false)) {
-        Ok(r) => r
-        Err(_) => 0.8
-      }
+    Err(_) => 0.8
   }
   // The ascender ratio covers the cap/ascender extent; the descent
   // is the remaining em below the baseline.

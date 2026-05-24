@@ -55,6 +55,11 @@ declare -a FONTS=(
   "NotoSans-BoldItalic.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSans/NotoSans-BoldItalic.ttf"
   "NotoSerif-Regular.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSerif/NotoSerif-Regular.ttf"
   "NotoSerif-Bold.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSerif/NotoSerif-Bold.ttf"
+  "NotoSerif-Italic.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSerif/NotoSerif-Italic.ttf"
+  "NotoSerif-BoldItalic.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSerif/NotoSerif-BoldItalic.ttf"
+  # Noto Sans Mono ships only Regular and Bold cuts upstream — italic
+  # variants do not exist for this family. Requests for italic mono
+  # fall through the resolver chain at the renderer's discretion.
   "NotoSansMono-Regular.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansMono/NotoSansMono-Regular.ttf"
   "NotoSansMono-Bold.ttf|https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansMono/NotoSansMono-Bold.ttf"
 )
