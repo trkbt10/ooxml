@@ -302,6 +302,126 @@ fn on_off_attr(
 }
 
 ///|
+/// Project the WML font-table (`/word/fontTable.xml`) onto a flat
+/// `data-ooxml-fonts-*` attribute list. Each `<w:font>` entry
+/// contributes one attribute per declared sub-element so the
+/// catalog verifier can see the `<w:embedRegular>` / `<w:embedBold>`
+/// / `<w:embedItalic>` / `<w:embedBoldItalic>` / `<w:altName>` /
+/// `<w:family>` / `<w:panose1>` / `<w:pitch>` / `<w:charset>` /
+/// `<w:sig>` presence — every one of those names is a section
+/// in §17.8.2 and the rendered SVG is the only evidence channel.
+///
+/// The attribute key is `data-ooxml-fonts-<name>-<index>` where
+/// `<index>` is the 1-based position of the carrying `<w:font>` in
+/// the document order. Without the index two fonts with the same
+/// embedded face name would collapse into one attribute.
+fn fonts_data_attrs(
+  fonts : @domain.CT_FontsList?,
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let f = match fonts {
+    Some(f) => f
+    None => return attrs
+  }
+  attrs.push(
+    @markup.attr("data-ooxml-fonts-count", f.fonts.length().to_string()),
+  )
+  let mut idx = 1
+  for entry in f.fonts {
+    let i = idx.to_string()
+    attrs.push(@markup.attr("data-ooxml-fonts-name-" + i, entry.name))
+    match entry.alt_name {
+      Some(a) =>
+        attrs.push(@markup.attr("data-ooxml-fonts-alt-name-" + i, a.val))
+      None => ()
+    }
+    match entry.family {
+      Some(fam) =>
+        attrs.push(
+          @markup.attr("data-ooxml-fonts-family-" + i, fam.val.to_string()),
+        )
+      None => ()
+    }
+    match entry.panose1 {
+      Some(p) =>
+        attrs.push(@markup.attr("data-ooxml-fonts-panose1-" + i, p.val))
+      None => ()
+    }
+    match entry.pitch {
+      Some(p) =>
+        attrs.push(
+          @markup.attr("data-ooxml-fonts-pitch-" + i, p.val.to_string()),
+        )
+      None => ()
+    }
+    match entry.charset {
+      Some(c) =>
+        match c.val {
+          Some(v) =>
+            attrs.push(
+              @markup.attr("data-ooxml-fonts-charset-" + i, v.to_string()),
+            )
+          None => attrs.push(@markup.attr("data-ooxml-fonts-charset-" + i, "0"))
+        }
+      None => ()
+    }
+    match entry.sig {
+      Some(s) => {
+        attrs.push(
+          @markup.attr("data-ooxml-fonts-sig-usb0-" + i, s.usb0.to_string()),
+        )
+        attrs.push(
+          @markup.attr("data-ooxml-fonts-sig-csb0-" + i, s.csb0.to_string()),
+        )
+      }
+      None => ()
+    }
+    match entry.embed_regular {
+      Some(e) =>
+        attrs.push(
+          @markup.attr("data-ooxml-fonts-embed-regular-rid-" + i, e.r_id),
+        )
+      None => ()
+    }
+    match entry.embed_bold {
+      Some(e) =>
+        attrs.push(@markup.attr("data-ooxml-fonts-embed-bold-rid-" + i, e.r_id))
+      None => ()
+    }
+    match entry.embed_italic {
+      Some(e) =>
+        attrs.push(
+          @markup.attr("data-ooxml-fonts-embed-italic-rid-" + i, e.r_id),
+        )
+      None => ()
+    }
+    match entry.embed_bold_italic {
+      Some(e) =>
+        attrs.push(
+          @markup.attr("data-ooxml-fonts-embed-bold-italic-rid-" + i, e.r_id),
+        )
+      None => ()
+    }
+    match entry.not_true_type {
+      Some(t) => {
+        let on = match t.val {
+          None => true
+          Some(v) => v
+        }
+        if on {
+          attrs.push(
+            @markup.attr("data-ooxml-fonts-not-true-type-" + i, "1"),
+          )
+        }
+      }
+      None => ()
+    }
+    idx = idx + 1
+  }
+  attrs
+}
+
+///|
 /// Append a `data-ooxml-settings-clr-scheme-<slot>` attribute when
 /// the colour-scheme mapping declared a value for that slot.
 fn clr_scheme_attr(

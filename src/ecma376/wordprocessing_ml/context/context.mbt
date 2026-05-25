@@ -271,6 +271,11 @@ pub fn Document::to_svg(self : Document) -> String {
     // on the root `<svg>` (track-revisions, defaultTabStop,
     // documentProtection, clrSchemeMapping, ...).
     settings=self.settings,
+    // §17.8.2.11 — thread the typed `/word/fontTable.xml` so each
+    // `<w:font>` entry (altName/family/panose1/pitch/charset/sig
+    // + embedRegular/embedBold/embedItalic/embedBoldItalic) leaves
+    // a `data-ooxml-fonts-*-<i>` trace on the root `<svg>`.
+    fonts=self.fonts,
   )
 }
 

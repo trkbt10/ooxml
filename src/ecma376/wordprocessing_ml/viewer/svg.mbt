@@ -1185,6 +1185,12 @@ pub fn render_svg(
   /// re-walking the package.  None when the document ships no
   /// settings part.
   settings? : @domain.CT_Settings? = None,
+  /// §17.8.2.11 — typed `/word/fontTable.xml` projection. Each
+  /// `<w:font>` entry's sub-elements (altName, family, panose1,
+  /// pitch, charset, sig, embedRegular, embedBold, embedItalic,
+  /// embedBoldItalic, notTrueType) are surfaced on the root
+  /// `<svg>` as `data-ooxml-fonts-*-<i>` attributes.
+  fonts? : @domain.CT_FontsList? = None,
 ) -> DocumentSvgResult {
   // Build the theme colour map once per document; the map is
   // empty when no theme part is supplied, in which case the
@@ -1228,6 +1234,7 @@ pub fn render_svg(
     theme_map~,
     font_map~,
     settings~,
+    fonts~,
   )
 }
 
@@ -1244,9 +1251,16 @@ fn render_svg_raw(
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
   settings? : @domain.CT_Settings? = None,
+  fonts? : @domain.CT_FontsList? = None,
 ) -> DocumentSvgResult {
   let warnings : Array[String] = []
   let settings_attrs = settings_data_attrs(settings)
+  // §17.8.2.11 fontTable.xml — surface every `<w:font>` entry as a
+  // `data-ooxml-fonts-*-<i>` attribute so the catalog renderer
+  // verifier sees the embedded-face presence.
+  for a in fonts_data_attrs(fonts) {
+    settings_attrs.push(a)
+  }
   let body = first_child_named(domain.element, "body")
   match body {
     None => {
@@ -1424,6 +1438,9 @@ pub fn render_combined_svg(
   /// on the combined SVG root as `data-ooxml-settings-*` attrs (see
   /// `settings_data_attrs`).
   settings? : @domain.CT_Settings? = None,
+  /// §17.8.2.11 — typed `/word/fontTable.xml` projection; surfaced
+  /// on the combined SVG root as `data-ooxml-fonts-*-<i>` attrs.
+  fonts? : @domain.CT_FontsList? = None,
 ) -> String {
   let theme_map = match theme {
     Some(root) => parse_clr_scheme(root)
@@ -1456,6 +1473,7 @@ pub fn render_combined_svg(
     theme_map~,
     font_map~,
     settings~,
+    fonts~,
   )
 }
 
@@ -1472,9 +1490,13 @@ fn render_combined_svg_raw(
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
   settings? : @domain.CT_Settings? = None,
+  fonts? : @domain.CT_FontsList? = None,
 ) -> String {
   let warnings : Array[String] = []
   let settings_attrs = settings_data_attrs(settings)
+  for a in fonts_data_attrs(fonts) {
+    settings_attrs.push(a)
+  }
   let body = first_child_named(domain.element, "body")
   let (cfg, pages) = match body {
     None =>
