@@ -232,13 +232,7 @@ pub fn apply_self_geometric_constraints_with_registry(
     //      reference each other via `read_bounds_variable`).
     //   3. Literal `val * fact` when no `refType`.
     let resolved = resolve_constraint_value(
-      c,
-      x,
-      y,
-      w,
-      h,
-      parent_bounds,
-      node_bounds_by_name,
+      c, x, y, w, h, parent_bounds, node_bounds_by_name,
     )
     let value = match resolved {
       Some(v) => v
@@ -367,10 +361,7 @@ fn resolve_constraint_value(
 /// Returns `None` for constraint kinds that do not map to a single
 /// rectangle scalar (margins, spacing, offsets, pyraAcctRatio,
 /// catch-all) so the caller can fall back to the literal `val`.
-fn read_bounds_variable(
-  bounds : BoundsRect,
-  kind : ConstraintKind,
-) -> Double? {
+fn read_bounds_variable(bounds : BoundsRect, kind : ConstraintKind) -> Double? {
   match kind {
     ConstrW => Some(bounds.width)
     ConstrH => Some(bounds.height)

@@ -36,8 +36,8 @@ pub fn Presentation::save(Self) -> Bytes
 pub fn Presentation::schedule_animation(Self, @animation_eval.Timeline) -> Array[@animation_eval.Event]
 pub fn Presentation::slide_chain(Self, @domain.CT_SlideMaster, @domain.CT_SlideLayout?, @domain.CT_Slide?) -> @placeholder_resolver.SlideChain
 pub fn Presentation::to_image_for_slide(Self, Int, Int, Int) -> @svg.Image? raise OpenError
-pub fn Presentation::to_svg(Self) -> String
-pub fn Presentation::to_svg_for_slide(Self, Int) -> String raise OpenError
+pub fn Presentation::to_svg(Self, debug_attrs? : Bool) -> String
+pub fn Presentation::to_svg_for_slide(Self, Int, debug_attrs? : Bool) -> String raise OpenError
 
 pub(all) struct SlideLayoutPart {
   name : String

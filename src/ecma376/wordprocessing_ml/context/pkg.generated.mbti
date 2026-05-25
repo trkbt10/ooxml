@@ -36,6 +36,7 @@ pub(all) struct Document {
   comments : @domain.CT_Comments?
   footnotes : @domain.CT_Footnotes?
   endnotes : @domain.CT_Endnotes?
+  web_settings : @domain.CT_WebSettings?
   theme : @xml.Element?
 } derive(Eq, @debug.Debug)
 pub fn Document::decode_simple_field(Self, @domain.CT_SimpleField) -> @field_eval.Field raise OpenError
@@ -47,7 +48,7 @@ pub fn Document::resolve_paragraph_style(Self, @xml.Element?) -> @style_resolver
 pub fn Document::resolve_run_style(Self, @xml.Element?) -> @style_resolver.EffectiveProperties?
 pub fn Document::resolve_style_by_id(Self, @domain.StyleId) -> @style_resolver.EffectiveProperties?
 pub fn Document::save(Self) -> Bytes
-pub fn Document::to_svg(Self) -> String
+pub fn Document::to_svg(Self, debug_attrs? : Bool) -> String
 
 pub(all) struct FooterPart {
   name : String

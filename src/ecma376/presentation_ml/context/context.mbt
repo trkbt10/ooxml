@@ -179,9 +179,13 @@ pub fn Presentation::save(self : Presentation) -> Bytes {
 /// referenced `/ppt/media/imageN.*` parts. Text shapes (`<p:sp>`)
 /// emit `<text>` elements positioned at the EMU coordinates declared
 /// by `<a:xfrm>`.
+/// `debug_attrs` (default `false`) drops every `data-ooxml-*`
+/// attribute on the way out — see `Presentation::to_svg` for the
+/// SoT rationale.
 pub fn Presentation::to_svg_for_slide(
   self : Presentation,
   slide_index : Int,
+  debug_attrs? : Bool = false,
 ) -> String raise OpenError {
   if slide_index < 0 || slide_index >= self.slides.length() {
     raise OpenError(
@@ -218,7 +222,7 @@ pub fn Presentation::to_svg_for_slide(
   // own default (screen4x3 = 10" × 7.5") because the spec does not
   // mandate one.
   let presentation_root : @xml.Element? = Some(self.presentation.element)
-  match self.presentation.sld_sz {
+  let svg = match self.presentation.sld_sz {
     Some(sz) =>
       @pml_viewer.render_svg(
         slide.value,
@@ -239,6 +243,11 @@ pub fn Presentation::to_svg_for_slide(
         chain~,
         presentation=presentation_root,
       )
+  }
+  if debug_attrs {
+    svg
+  } else {
+    @markup.strip_debug_attrs(svg)
   }
 }
 
@@ -471,11 +480,27 @@ fn Presentation::resolve_first_theme(
 /// Backwards-compatible entry point. Returns the first slide's SVG;
 /// falls back to a tiny placeholder when no slides exist or rendering
 /// raises.
-pub fn Presentation::to_svg(self : Presentation) -> String {
+///
+/// `debug_attrs` (default `false`) controls whether the viewer's
+/// `data-ooxml-*` decoration survives in the returned SVG.  The
+/// flag exists because those attributes are inspection labels
+/// (presentation-level metadata, slide transitions, timing trees,
+/// theme references …) that the catalog harness's differential
+/// render verifier consumes; production consumers (browsers,
+/// snapshot diffs) MUST see only paint primitives.  The single
+/// SoT that decides whether labels survive is
+/// `@markup.strip_debug_attrs`, applied here on the way out —
+/// the per-slide viewer code stays free to keep emitting them
+/// unconditionally so spec-aware consumers that opt in
+/// (`debug_attrs=true`) always see the full label set.
+pub fn Presentation::to_svg(
+  self : Presentation,
+  debug_attrs? : Bool = false,
+) -> String {
   if self.slides.length() == 0 {
     return "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"800\" height=\"450\"></svg>"
   }
-  let result = try? self.to_svg_for_slide(0)
+  let result = try? self.to_svg_for_slide(0, debug_attrs~)
   match result {
     Ok(svg) => svg
     Err(_) =>

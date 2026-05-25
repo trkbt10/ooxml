@@ -51,6 +51,7 @@ pub fn edit_main(
     comments: document.comments,
     footnotes: document.footnotes,
     endnotes: document.endnotes,
+    web_settings: document.web_settings,
     theme: document.theme,
   }
 }
@@ -245,6 +246,7 @@ pub fn edit_styles(
         comments: document.comments,
         footnotes: document.footnotes,
         endnotes: document.endnotes,
+        web_settings: document.web_settings,
         theme: document.theme,
       }
     }
@@ -284,6 +286,7 @@ pub fn edit_numbering(
         comments: document.comments,
         footnotes: document.footnotes,
         endnotes: document.endnotes,
+        web_settings: document.web_settings,
         theme: document.theme,
       }
     }
@@ -307,6 +310,7 @@ pub fn with_package(document : Document, package : @opc.Package) -> Document {
     comments: document.comments,
     footnotes: document.footnotes,
     endnotes: document.endnotes,
+    web_settings: document.web_settings,
     theme: document.theme,
   }
 }

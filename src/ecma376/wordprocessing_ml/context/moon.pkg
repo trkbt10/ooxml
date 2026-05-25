@@ -21,6 +21,7 @@ import {
   "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver" @wml_numbering,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/field_eval" @wml_field_eval,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/viewer" @wml_viewer,
+  "trkbt10/ooxml/util/markup" @markup,
   "mizchi/font" @mizchi_font,
   "trkbt10/ooxml/edit" @edit,
   "trkbt10/ooxml/util/base64" @base64,

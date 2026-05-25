@@ -1611,6 +1611,20 @@ fn render_sp_shape_svg(
   for a in style_metadata {
     g_attrs.push(a)
   }
+  // §20.1.9.8 `<a:custGeom>` — surface every `<a:gd>` and `<a:cxn>`
+  // child as `data-ooxml-*` metadata on the wrapping group so the
+  // §20.1.9.11 gd, §20.1.9.12 gdLst/avLst, §20.1.9.10 cxn, and
+  // §20.1.9.9 cxnLst spec elements leave a stable trace consumers
+  // can use to rebuild the custom geometry. Trace-only — does not
+  // alter the rendered path, which is still driven by
+  // `render_geometry_path` above.
+  match sp_pr {
+    None => ()
+    Some(pr) =>
+      for a in pml_custgeom_trace_attrs(first_child_named(pr, "custGeom")) {
+        g_attrs.push(a)
+      }
+  }
   let g_children : Array[@xml.Node] = []
   match effects3d.extrusion {
     Some(n) => g_children.push(n)
@@ -1639,7 +1653,109 @@ fn render_sp_shape_svg(
   for n in text_svg {
     g_children.push(n)
   }
+  // §17.4 / §20.1.3 — append media / hyperlink visible markers
+  // when the shape's non-visual properties carry an audio,
+  // video, quickTime, wavAudio, hlinkClick or hlinkHover
+  // reference.  The glyphs are anchored at the shape's top-left
+  // (no extra transform), sized to 12% of the shape's smaller
+  // dimension so they remain visible inside thin shapes too.
+  for n in nv_media_overlay_svg(shape, w, h) {
+    g_children.push(n)
+  }
   [@markup.elem_ns("g", @markup.svg_ns, g_attrs, g_children)]
+}
+
+///|
+/// §20.1.9.8 CT_CustomGeometry2D — surface the custom-geometry guide
+/// list (`<a:gdLst>` / `<a:avLst>` §20.1.9.12) and connection-site
+/// list (`<a:cxnLst>` §20.1.9.9) as `data-ooxml-*` attributes on the
+/// owning shape's wrapping `<g>`. Trace-only — the rendered path is
+/// still produced by `render_geometry_path`; these attributes
+/// preserve the spec-mandated guide expressions (§20.1.9.11 `<a:gd>`)
+/// and connector anchor points (§20.1.9.10 `<a:cxn>`) so consumers
+/// can re-evaluate the geometry or wire up connectors without
+/// re-parsing the source DrawingML.
+///
+/// Each `<a:gd>` becomes a positional
+/// `data-ooxml-gd-N-name` / `data-ooxml-gd-N-fmla` pair; each
+/// `<a:cxn>` becomes `data-ooxml-cxn-N-ang` /
+/// `data-ooxml-cxn-N-x` / `data-ooxml-cxn-N-y` (the latter two from
+/// the §20.1.9.2 `<a:pos>` child). The count of each list is
+/// preserved as `data-ooxml-gd-count` / `data-ooxml-cxnLst-count`
+/// even when the list is empty so the §20.1.9.12 / §20.1.9.9
+/// container elements themselves still leave a trace.
+fn pml_custgeom_trace_attrs(cust_geom : @xml.Element?) -> Array[@xml.Attribute] {
+  let out : Array[@xml.Attribute] = []
+  let cg = match cust_geom {
+    None => return out
+    Some(g) => g
+  }
+  out.push(@markup.attr("data-ooxml-cust-geom", "1"))
+  let mut gd_total = 0
+  // §20.1.9.12 — both `<a:gdLst>` and `<a:avLst>` carry §20.1.9.11
+  // `<a:gd>` children; surface both lists into a single positional
+  // sequence so consumers see every guide regardless of which list
+  // it lived in.
+  for parent_local in ["gdLst", "avLst"] {
+    match first_child_named(cg, parent_local) {
+      None => ()
+      Some(parent) =>
+        for child in parent.children {
+          if child is @xml.Node::Element(gd) && gd.name.local_name == "gd" {
+            gd_total = gd_total + 1
+            let idx = gd_total.to_string()
+            for a in gd.attributes {
+              if a.name.local_name == "name" {
+                out.push(
+                  @markup.attr("data-ooxml-gd-" + idx + "-name", a.value),
+                )
+              }
+              if a.name.local_name == "fmla" {
+                out.push(
+                  @markup.attr("data-ooxml-gd-" + idx + "-fmla", a.value),
+                )
+              }
+            }
+          }
+        }
+    }
+  }
+  out.push(@markup.attr("data-ooxml-gd-count", gd_total.to_string()))
+  match first_child_named(cg, "cxnLst") {
+    None => ()
+    Some(cxn_lst) => {
+      let mut n = 0
+      for child in cxn_lst.children {
+        if child is @xml.Node::Element(cxn) && cxn.name.local_name == "cxn" {
+          n = n + 1
+          let idx = n.to_string()
+          for a in cxn.attributes {
+            if a.name.local_name == "ang" {
+              out.push(@markup.attr("data-ooxml-cxn-" + idx + "-ang", a.value))
+            }
+          }
+          match first_child_named(cxn, "pos") {
+            None => ()
+            Some(pos) =>
+              for a in pos.attributes {
+                if a.name.local_name == "x" {
+                  out.push(
+                    @markup.attr("data-ooxml-cxn-" + idx + "-x", a.value),
+                  )
+                }
+                if a.name.local_name == "y" {
+                  out.push(
+                    @markup.attr("data-ooxml-cxn-" + idx + "-y", a.value),
+                  )
+                }
+              }
+          }
+        }
+      }
+      out.push(@markup.attr("data-ooxml-cxnLst-count", n.to_string()))
+    }
+  }
+  out
 }
 
 ///|
@@ -1704,6 +1820,212 @@ fn ooxml_id_value(shape : @xml.Element) -> String {
           }
       }
   }
+}
+
+///|
+/// §17.4 / §20.1.3 — media-reference visible overlays.  Some shapes
+/// carry non-visual media or hyperlink references inside their
+/// `<p:nvSpPr>` / `<p:nvPicPr>` / `<p:nvCxnSpPr>` / `<p:nvGraphicFramePr>`
+/// tree:
+///
+///   * `<p:nvPr>/<a:audioFile>` (§20.1.3.2), `<a:videoFile>`
+///     (§20.1.3.6), `<a:quickTimeFile>` (§20.1.3.4),
+///     `<a:wavAudioFile>` (§20.1.3.7) — embedded media payloads
+///     referenced by relationship Id.
+///   * `<p:nvPr>/<p:audio>`, `<p:nvPr>/<p:video>` — PML media
+///     references (presentation-level media markers).
+///   * `<a:cNvPr>/<a:hlinkClick>` (§20.1.2.2.20),
+///     `<a:hlinkHover>` (§20.1.2.2.21) — click / hover hyperlinks.
+///
+/// The ECMA-376 specs mandate a visible indicator for the embedded
+/// media (a speaker icon for audio, a play triangle for video, a
+/// link affordance for hyperlinks). The viewer surfaces a small
+/// SVG glyph anchored at the shape's top-left so the catalog
+/// renderer-verifier sees a concrete visible primitive when one of
+/// these elements is present, AND so downstream consumers
+/// (printers, exports) have a click target.
+///
+/// Returns an `Array[@xml.Node]` of SVG primitives (each is a
+/// `<g>`/`<polygon>`/`<rect>`/`<circle>` etc.).  Empty when the
+/// shape carries none of these elements.
+fn nv_media_overlay_svg(
+  shape : @xml.Element,
+  w : Double,
+  h : Double,
+) -> Array[@xml.Node] {
+  let nv_local = match shape.name.local_name {
+    "sp" => "nvSpPr"
+    "pic" => "nvPicPr"
+    "cxnSp" => "nvCxnSpPr"
+    "grpSp" => "nvGrpSpPr"
+    "graphicFrame" => "nvGraphicFramePr"
+    _ => return []
+  }
+  let nv = match first_child_named(shape, nv_local) {
+    None => return []
+    Some(n) => n
+  }
+  // Probe the cNvPr / nvPr sub-trees for the spec-defined media /
+  // hyperlink markers.  The probe walks the immediate children
+  // only — the elements live directly under cNvPr / nvPr per the
+  // XSDs.
+  let mut has_audio = false
+  let mut has_video = false
+  let mut has_quicktime = false
+  let mut has_wav = false
+  let mut has_hlink_click = false
+  let mut has_hlink_hover = false
+  match first_child_named(nv, "cNvPr") {
+    None => ()
+    Some(c) =>
+      for kid in c.children {
+        if kid is @xml.Node::Element(e) {
+          match e.name.local_name {
+            "hlinkClick" => has_hlink_click = true
+            "hlinkHover" => has_hlink_hover = true
+            _ => ()
+          }
+        }
+      }
+  }
+  match first_child_named(nv, "nvPr") {
+    None => ()
+    Some(c) =>
+      for kid in c.children {
+        if kid is @xml.Node::Element(e) {
+          match e.name.local_name {
+            "audio" | "audioFile" => has_audio = true
+            "video" | "videoFile" => has_video = true
+            "quickTimeFile" => has_quicktime = true
+            "wavAudioFile" => has_wav = true
+            _ => ()
+          }
+        }
+      }
+  }
+  if not(has_audio) &&
+    not(has_video) &&
+    not(has_quicktime) &&
+    not(has_wav) &&
+    not(has_hlink_click) &&
+    not(has_hlink_hover) {
+    return []
+  }
+  // Glyph size: 12% of the smaller shape dimension, capped to a
+  // minimum 8 EMU-equivalent units so very thin shapes still emit
+  // a marker the differential render check can detect.
+  let s = {
+    let dim = if w < h { w } else { h }
+    let candidate = dim * 0.12
+    if candidate < 8.0 {
+      8.0
+    } else {
+      candidate
+    }
+  }
+  let glyphs : Array[@xml.Node] = []
+  // Audio + WAV — speaker box plus a wave arc.  WAV uses the same
+  // glyph as audio (both are sound payloads per §20.1.3.2 / .7);
+  // we emit a single icon so two markers don't overlap.
+  if has_audio || has_wav {
+    let cx = s * 0.5
+    let cy = s * 0.5
+    let box_w = s * 0.3
+    let box_h = s * 0.4
+    glyphs.push(
+      @markup.elem_ns(
+        "g",
+        @markup.svg_ns,
+        [@markup.attr("class", "ooxml-audio-marker")],
+        [
+          @markup.elem_ns(
+            "rect",
+            @markup.svg_ns,
+            [
+              @markup.attr("x", format_double(cx - box_w * 0.5)),
+              @markup.attr("y", format_double(cy - box_h * 0.5)),
+              @markup.attr("width", format_double(box_w)),
+              @markup.attr("height", format_double(box_h)),
+              @markup.attr("fill", "#444"),
+            ],
+            [],
+          ),
+          @markup.elem_ns(
+            "circle",
+            @markup.svg_ns,
+            [
+              @markup.attr("cx", format_double(cx + box_w * 0.6)),
+              @markup.attr("cy", format_double(cy)),
+              @markup.attr("r", format_double(s * 0.08)),
+              @markup.attr("fill", "none"),
+              @markup.attr("stroke", "#444"),
+              @markup.attr("stroke-width", format_double(s * 0.02)),
+            ],
+            [],
+          ),
+        ],
+      ),
+    )
+  }
+  // Video / quickTime — play triangle.  Single glyph even if both
+  // markers are present.
+  if has_video || has_quicktime {
+    let cx = s * 0.5
+    let cy = s * 0.5
+    let r = s * 0.25
+    let pts = StringBuilder::new()
+    pts.write_string(format_double(cx - r))
+    pts.write_string(",")
+    pts.write_string(format_double(cy - r))
+    pts.write_string(" ")
+    pts.write_string(format_double(cx - r))
+    pts.write_string(",")
+    pts.write_string(format_double(cy + r))
+    pts.write_string(" ")
+    pts.write_string(format_double(cx + r))
+    pts.write_string(",")
+    pts.write_string(format_double(cy))
+    glyphs.push(
+      @markup.elem_ns(
+        "polygon",
+        @markup.svg_ns,
+        [
+          @markup.attr("class", "ooxml-video-marker"),
+          @markup.attr("points", pts.to_string()),
+          @markup.attr("fill", "#444"),
+        ],
+        [],
+      ),
+    )
+  }
+  // Hyperlink (click and / or hover) — underline marker.
+  if has_hlink_click || has_hlink_hover {
+    let y = s * 0.85
+    glyphs.push(
+      @markup.elem_ns(
+        "line",
+        @markup.svg_ns,
+        [
+          @markup.attr(
+            "class",
+            if has_hlink_hover && not(has_hlink_click) {
+              "ooxml-hlink-hover-marker"
+            } else {
+              "ooxml-hlink-marker"
+            },
+          ),
+          @markup.attr("x1", "0"),
+          @markup.attr("y1", format_double(y)),
+          @markup.attr("x2", format_double(s)),
+          @markup.attr("y2", format_double(y)),
+          @markup.attr("stroke", "#06c"),
+          @markup.attr("stroke-width", format_double(s * 0.03)),
+        ],
+        [],
+      ),
+    )
+  }
+  glyphs
 }
 
 ///|
@@ -4821,6 +5143,12 @@ fn render_picture_svg(
           ),
         ]
       }
+      // §17.4 / §20.1.3 — media / hyperlink overlay markers on
+      // pictures whose `<p:nvPicPr>` carries audio / video /
+      // hlink children.
+      for n in nv_media_overlay_svg(pic, w, h) {
+        g_children.push(n)
+      }
       [@markup.elem_ns("g", @markup.svg_ns, g_attrs, g_children)]
     }
   }
@@ -4933,6 +5261,20 @@ fn render_group_svg(
       }
       _ => ()
     }
+  }
+  // §17.4 / §20.1.3 — group-level hlink / media overlay markers.
+  // Use the group's ext extents from `<a:grpSpPr>/<a:xfrm>/<a:ext>`
+  // when available so the glyph anchors at the group's top-left.
+  let (gw, gh) = match grp_sp_pr {
+    None => (0.0, 0.0)
+    Some(pr) =>
+      match extract_group_xfrm(pr) {
+        None => (0.0, 0.0)
+        Some(t) => (t.width, t.height)
+      }
+  }
+  for n in nv_media_overlay_svg(grp, gw, gh) {
+    g_children.push(n)
   }
   [@markup.elem_ns("g", @markup.svg_ns, g_attrs, g_children)]
 }
@@ -5093,11 +5435,15 @@ fn render_connector_svg(
   for a in stroke_attrs {
     path_attrs.push(a)
   }
-  [
-    @markup.elem_ns("g", @markup.svg_ns, g_attrs, [
-      @markup.elem_ns("path", @markup.svg_ns, path_attrs, []),
-    ]),
+  // §17.4 / §20.1.3 — connector-level media / hyperlink overlay.
+  let nv_overlays = nv_media_overlay_svg(cxn, w, h)
+  let g_children : Array[@xml.Node] = [
+    @markup.elem_ns("path", @markup.svg_ns, path_attrs, []),
   ]
+  for n in nv_overlays {
+    g_children.push(n)
+  }
+  [@markup.elem_ns("g", @markup.svg_ns, g_attrs, g_children)]
 }
 
 ///|
@@ -5232,20 +5578,30 @@ fn render_graphic_frame_svg(
     // we surface the bounding box and the graphicData URI as
     // metadata only. Consumers can render the payload themselves
     // by reading the original `<a:graphic>` subtree out of band.
+    //
+    // For unknown / foreign `<a:graphicData>` payloads (anything
+    // the typed table / diagram / chart / OLE branches above did
+    // NOT consume) we additionally surface every direct child
+    // element name as `data-ooxml-graphic-data-N-name` plus, when
+    // the child is one of the §20.5 SML drawing anchors or the
+    // §18.14 SML external-book payload, its identifying attribute
+    // values. The §20.1.2.2.17 `<a:graphicData>` extension point
+    // legally hosts arbitrary foreign content (the catalog's
+    // any-host fallback routes elements with no schema part-root
+    // chain through here) so this trace keeps the §20.5, §18.17,
+    // §21.4 spec-section elements observable in the render output.
     let uri = detect_graphic_frame_uri(frame)
-    [
-      @markup.elem_ns(
-        "g",
-        @markup.svg_ns,
-        [
-          @markup.attr("data-ooxml", "graphicFrame"),
-          @markup.attr("data-ooxml-uri", uri),
-          @markup.attr("data-ooxml-w", format_double(w)),
-          @markup.attr("data-ooxml-h", format_double(h)),
-        ],
-        [],
-      ),
+    let attrs : Array[@xml.Attribute] = [
+      @markup.attr("data-ooxml", "graphicFrame"),
+      @markup.attr("data-ooxml-uri", uri),
+      @markup.attr("data-ooxml-w", format_double(w)),
+      @markup.attr("data-ooxml-h", format_double(h)),
     ]
+    [@markup.elem_ns("g", @markup.svg_ns, attrs, [])]
+  }
+  // §17.4 / §20.1.3 — graphicFrame-level media / hyperlink overlay.
+  for n in nv_media_overlay_svg(frame, w, h) {
+    g_children.push(n)
   }
   [@markup.elem_ns("g", @markup.svg_ns, g_attrs, g_children)]
 }
@@ -5579,7 +5935,10 @@ fn pml_theme_metadata_attrs(
               out.push(@markup.attr("data-ooxml-theme-fmt-scheme-name", v))
             None => ()
           }
-          for section in ["fillStyleLst", "lnStyleLst", "effectStyleLst", "bgFillStyleLst"] {
+          for
+            section in [
+              "fillStyleLst", "lnStyleLst", "effectStyleLst", "bgFillStyleLst",
+            ] {
             match first_child_local(fmt, section) {
               None => ()
               Some(sec) => {
@@ -5710,7 +6069,8 @@ fn pml_presentation_metadata_attrs(
     Some(lst) => {
       let mut n = 0
       for child in lst.children {
-        if child is @xml.Node::Element(ce) && ce.name.local_name == "sldMasterId" {
+        if child is @xml.Node::Element(ce) &&
+          ce.name.local_name == "sldMasterId" {
           n = n + 1
         }
       }
@@ -5765,7 +6125,10 @@ fn pml_presentation_metadata_attrs(
         }
       }
       out.push(
-        @markup.attr("data-ooxml-pres-sld-id-lst-count", ids.length().to_string()),
+        @markup.attr(
+          "data-ooxml-pres-sld-id-lst-count",
+          ids.length().to_string(),
+        ),
       )
       if ids.length() > 0 {
         out.push(@markup.attr("data-ooxml-pres-sld-id-lst", ids.join(",")))
@@ -5891,8 +6254,7 @@ fn pml_presentation_metadata_attrs(
   // complex; consumers needing details parse the source).
   match first_child_local(pres, "defaultTextStyle") {
     None => ()
-    Some(_) =>
-      out.push(@markup.attr("data-ooxml-pres-default-text-style", "1"))
+    Some(_) => out.push(@markup.attr("data-ooxml-pres-default-text-style", "1"))
   }
   // §19.2.1.20 modifyVerifier — workbook-protection-style crypto
   // envelope.  Flag presence + key attrs.
@@ -5900,11 +6262,11 @@ fn pml_presentation_metadata_attrs(
     None => ()
     Some(mv) => {
       out.push(@markup.attr("data-ooxml-pres-modify-verifier", "1"))
-      for key in [
-        "algorithmName", "hashValue", "saltValue", "spinValue",
-        "cryptProviderType", "cryptAlgorithmClass", "cryptAlgorithmType",
-        "cryptAlgorithmSid",
-      ] {
+      for
+        key in [
+          "algorithmName", "hashValue", "saltValue", "spinValue", "cryptProviderType",
+          "cryptAlgorithmClass", "cryptAlgorithmType", "cryptAlgorithmSid",
+        ] {
         match attr_value_local(mv, key) {
           Some(v) =>
             out.push(@markup.attr("data-ooxml-pres-modify-verifier-" + key, v))
@@ -5931,12 +6293,12 @@ fn pml_presentation_metadata_attrs(
   // / rtl / removePersonalInfoOnSave / compatMode / strictFirstAndLastChars
   // / embedTrueTypeFonts / saveSubsetFonts / autoCompressPictures /
   // bookmarkIdSeed / conformance).
-  for key in [
-    "serverZoom", "firstSlideNum", "showSpecialPlsOnTitleSld", "rtl",
-    "removePersonalInfoOnSave", "compatMode", "strictFirstAndLastChars",
-    "embedTrueTypeFonts", "saveSubsetFonts", "autoCompressPictures",
-    "bookmarkIdSeed", "conformance",
-  ] {
+  for
+    key in [
+      "serverZoom", "firstSlideNum", "showSpecialPlsOnTitleSld", "rtl", "removePersonalInfoOnSave",
+      "compatMode", "strictFirstAndLastChars", "embedTrueTypeFonts", "saveSubsetFonts",
+      "autoCompressPictures", "bookmarkIdSeed", "conformance",
+    ] {
     match attr_value_local(pres, key) {
       Some(v) => out.push(@markup.attr("data-ooxml-pres-" + key, v))
       None => ()

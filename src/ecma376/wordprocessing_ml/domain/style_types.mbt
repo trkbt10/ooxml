@@ -20,9 +20,15 @@ pub(all) struct StyleId {
 /// raw property element fragments referenced by §17.3.1 (pPr / rPr /
 /// tblPr / trPr / tcPr). `element` is preserved so round-trips through
 /// the writer keep XSD content the typed view does not yet model.
+///
+/// `style_id` and `style_type` are both `Option` because the XSD declares
+/// `@w:styleId` and `@w:type` with `use="optional"` (§17.7.4.17). When
+/// absent, the style still round-trips through `element` but cannot be
+/// looked up by id (no styleId) or used as a style-family discriminator
+/// (no type). Such an entry contributes nothing to chain resolution.
 pub(all) struct CT_Style {
-  style_id : StyleId
-  style_type : ST_StyleType
+  style_id : StyleId?
+  style_type : ST_StyleType?
   name : String?
   based_on : StyleId?
   next : StyleId?
@@ -38,29 +44,27 @@ pub(all) struct CT_Style {
 
 ///|
 /// Construct CT_Style from its WordprocessingML XML element while
-/// validating the required `w:styleId` attribute and `w:type`
-/// enumeration value (ST_StyleType — §17.18.83).
+/// validating the `w:type` enumeration value (ST_StyleType — §17.18.83)
+/// when present. `w:styleId` and `w:type` are both optional per the XSD
+/// (§17.7.4.17).
 pub fn CT_Style::new(element : @xml.Element) -> CT_Style raise SchemaViolation {
   CT_Style::parse(element)
 }
 
 ///|
-/// Parse CT_Style, raising SchemaViolation when the typed contract of
-/// §17.7.4.17 / §17.18.83 is broken (missing styleId, unknown type).
+/// Parse CT_Style, raising SchemaViolation only when the typed contract
+/// of §17.7.4.17 / §17.18.83 is broken (unknown ST_StyleType lexical
+/// value). Both `@w:styleId` and `@w:type` are `use="optional"` per the
+/// XSD, so a missing attribute yields `None` rather than an error.
 pub fn CT_Style::parse(
   element : @xml.Element,
 ) -> CT_Style raise SchemaViolation {
   require_local_name(element, "style")
-  let style_id = match attr_value(element, "styleId") {
-    Some(value) => ({ value, } : StyleId)
-    None =>
-      raise_schema_violation(
-        "CT_Style",
-        element.name.local_name,
-        "missing w:styleId attribute",
-      )
+  let style_id : StyleId? = match attr_value(element, "styleId") {
+    Some(value) => Some({ value, })
+    None => None
   }
-  let style_type = parse_style_type(attr_value(element, "type"), style_id.value)
+  let style_type = parse_style_type(attr_value(element, "type"))
   let is_default = parse_on_off(attr_value(element, "default"))
   let name = child_val(element, "name")
   let based_on = child_style_id(element, "basedOn")
@@ -150,7 +154,14 @@ pub fn CT_Styles::parse(
       @xml.Element(child) =>
         if child.name.local_name == "style" {
           let style = CT_Style::parse(child)
-          styles.set(style.style_id.value, style)
+          // Only index styles that carry @w:styleId. The XSD declares
+          // the attribute optional (§17.7.4.17); when omitted the style
+          // is still preserved via `element` round-trip but cannot be
+          // looked up by id.
+          match style.style_id {
+            Some(id) => styles.set(id.value, style)
+            None => ()
+          }
         } else if child.name.local_name == "docDefaults" {
           doc_default_p_pr = doc_default_property(child, "pPrDefault", "pPr")
           doc_default_r_pr = doc_default_property(child, "rPrDefault", "rPr")
@@ -216,16 +227,10 @@ fn require_local_name(
 }
 
 ///|
-fn parse_style_type(
-  value : String?,
-  style_id : String,
-) -> ST_StyleType raise SchemaViolation {
+fn parse_style_type(value : String?) -> ST_StyleType? raise SchemaViolation {
   match value {
-    Some(lexical) => ST_StyleType::parse(lexical)
-    None =>
-      raise_schema_violation(
-        "CT_Style", style_id, "missing w:type attribute on <w:style>",
-      )
+    Some(lexical) => Some(ST_StyleType::parse(lexical))
+    None => None
   }
 }
 

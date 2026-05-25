@@ -9,6 +9,7 @@
 /// synthesised fragments.  Both the Transitional
 /// (`schemas.openxmlformats.org`) and the Strict (`purl.oclc.org`)
 /// URIs are mapped to the same prefix.
+
 ///|
 /// Inverse of `ns_prefix` — the namespace URI a short prefix maps
 /// to.  Returns "" when the prefix is unknown so callers stamp the
@@ -24,8 +25,7 @@ fn prefix_ns(prefix : String) -> String {
     "p" => "http://schemas.openxmlformats.org/presentationml/2006/main"
     "a" => "http://schemas.openxmlformats.org/drawingml/2006/main"
     "m" => "http://schemas.openxmlformats.org/officeDocument/2006/math"
-    "r" =>
-      "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    "r" => "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
     "c" => "http://schemas.openxmlformats.org/drawingml/2006/chart"
     "dgm" => "http://schemas.openxmlformats.org/drawingml/2006/diagram"
     "pic" => "http://schemas.openxmlformats.org/drawingml/2006/picture"
@@ -651,6 +651,7 @@ fn main {
 
 ///|
 /// Percentage of `n`/`d` scaled to tenths (e.g. 897 == 89.7%).
+
 ///|
 fn pct10(n : Int, d : Int) -> Int {
   if d > 0 {

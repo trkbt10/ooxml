@@ -32,10 +32,25 @@ test "wordprocessing_ml context opens and saves minimal package" {
 }
 
 ///|
+/// `Document::to_svg` returns a clean SVG by default: every
+/// `data-ooxml-*` decoration is stripped on the way out so
+/// production consumers see only paint primitives.  Passing
+/// `debug_attrs=true` opts in to the inspection labels — the
+/// catalog harness's differential render verifier relies on
+/// exactly this flag.  Both modes always carry the document's
+/// visible content (`Hello docx`).
 test "wordprocessing_ml context renders minimal svg" {
-  let svg = open(fixture_bytes()).to_svg()
-  assert_true(svg.contains("data-ooxml=\"wml\""))
-  assert_true(svg.contains("Hello docx"))
+  let document = open(fixture_bytes())
+  let svg_clean = document.to_svg()
+  // Default `debug_attrs=false`: no `data-ooxml-*` decoration
+  // survives, but the rendered text remains.
+  assert_false(svg_clean.contains("data-ooxml=\"wml\""))
+  assert_true(svg_clean.contains("Hello docx"))
+  // Opt-in path: `debug_attrs=true` surfaces every label the
+  // viewer emits, matching the harness's view of the document.
+  let svg_debug = document.to_svg(debug_attrs=true)
+  assert_true(svg_debug.contains("data-ooxml=\"wml\""))
+  assert_true(svg_debug.contains("Hello docx"))
 }
 
 ///|

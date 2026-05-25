@@ -40,17 +40,13 @@ fn settings_data_attrs(
   // §17.15.1.93 `<w:view>` — view mode.
   match s.view {
     Some(v) =>
-      attrs.push(
-        @markup.attr("data-ooxml-settings-view", v.val.to_string()),
-      )
+      attrs.push(@markup.attr("data-ooxml-settings-view", v.val.to_string()))
     None => ()
   }
   // §17.15.1.25 `<w:defaultTabStop>` — twips.
   match s.default_tab_stop {
     Some(t) =>
-      attrs.push(
-        @markup.attr("data-ooxml-settings-default-tab-stop", t.val),
-      )
+      attrs.push(@markup.attr("data-ooxml-settings-default-tab-stop", t.val))
     None => ()
   }
   // §17.15.1.11 `<w:autoHyphenation>` — toggle.
@@ -62,7 +58,8 @@ fn settings_data_attrs(
     Some(d) =>
       attrs.push(
         @markup.attr(
-          "data-ooxml-settings-consecutive-hyphen-limit", d.val.to_string(),
+          "data-ooxml-settings-consecutive-hyphen-limit",
+          d.val.to_string(),
         ),
       )
     None => ()
@@ -70,9 +67,7 @@ fn settings_data_attrs(
   // §17.15.1.49 `<w:hyphenationZone>` — twips.
   match s.hyphenation_zone {
     Some(t) =>
-      attrs.push(
-        @markup.attr("data-ooxml-settings-hyphenation-zone", t.val),
-      )
+      attrs.push(@markup.attr("data-ooxml-settings-hyphenation-zone", t.val))
     None => ()
   }
   // §17.15.1.89 `<w:trackRevisions>` — toggle.
@@ -86,7 +81,8 @@ fn settings_data_attrs(
         Some(e) =>
           attrs.push(
             @markup.attr(
-              "data-ooxml-settings-document-protection-edit", e.to_string(),
+              "data-ooxml-settings-document-protection-edit",
+              e.to_string(),
             ),
           )
         None => ()
@@ -96,7 +92,11 @@ fn settings_data_attrs(
           attrs.push(
             @markup.attr(
               "data-ooxml-settings-document-protection-formatting",
-              if v { "1" } else { "0" },
+              if v {
+                "1"
+              } else {
+                "0"
+              },
             ),
           )
         None => ()
@@ -106,7 +106,11 @@ fn settings_data_attrs(
           attrs.push(
             @markup.attr(
               "data-ooxml-settings-document-protection-enforcement",
-              if v { "1" } else { "0" },
+              if v {
+                "1"
+              } else {
+                "0"
+              },
             ),
           )
         None => ()
@@ -147,7 +151,8 @@ fn settings_data_attrs(
     Some(cs) =>
       attrs.push(
         @markup.attr(
-          "data-ooxml-settings-character-spacing-control", cs.val.to_string(),
+          "data-ooxml-settings-character-spacing-control",
+          cs.val.to_string(),
         ),
       )
     None => ()
@@ -172,9 +177,7 @@ fn settings_data_attrs(
       match xs.solution_id {
         Some(sid) =>
           attrs.push(
-            @markup.attr(
-              "data-ooxml-settings-save-through-xslt-solution", sid,
-            ),
+            @markup.attr("data-ooxml-settings-save-through-xslt-solution", sid),
           )
         None => ()
       }
@@ -216,7 +219,8 @@ fn settings_data_attrs(
         Some(rel) =>
           attrs.push(
             @markup.attr(
-              "data-ooxml-settings-mail-merge-data-source-rid", rel.r_id,
+              "data-ooxml-settings-mail-merge-data-source-rid",
+              rel.r_id,
             ),
           )
         None => ()
@@ -225,9 +229,185 @@ fn settings_data_attrs(
         Some(rel) =>
           attrs.push(
             @markup.attr(
-              "data-ooxml-settings-mail-merge-header-source-rid", rel.r_id,
+              "data-ooxml-settings-mail-merge-header-source-rid",
+              rel.r_id,
             ),
           )
+        None => ()
+      }
+      // §17.14.31 `<w:viewMergedData>` (CT_OnOff).
+      match mm.view_merged_data {
+        Some(t) => {
+          let on = match t.val {
+            None => true
+            Some(v) => v
+          }
+          if on {
+            attrs.push(
+              @markup.attr(
+                "data-ooxml-settings-mail-merge-view-merged-data", "1",
+              ),
+            )
+          }
+        }
+        None => ()
+      }
+      // §17.14.1 `<w:activeRecord>` (CT_DecimalNumber).
+      match mm.active_record {
+        Some(d) =>
+          attrs.push(
+            @markup.attr(
+              "data-ooxml-settings-mail-merge-active-record",
+              d.val.to_string(),
+            ),
+          )
+        None => ()
+      }
+      // §17.14.5 `<w:query>` (CT_String).
+      match mm.query {
+        Some(q) =>
+          attrs.push(
+            @markup.attr("data-ooxml-settings-mail-merge-query", q.val),
+          )
+        None => ()
+      }
+      // §17.14.20.1 `<w:odso>` (CT_Odso) — Office Data Source Object
+      // descriptor; surface presence plus the immediate child fields
+      // (udl, table, src rel, colDelim, fHdr, type, fieldMapData[],
+      // recipientData[]).
+      match mm.odso {
+        Some(o) => {
+          attrs.push(@markup.attr("data-ooxml-settings-mail-merge-odso", "1"))
+          match o.udl {
+            Some(u) =>
+              attrs.push(
+                @markup.attr("data-ooxml-settings-mail-merge-odso-udl", u.val),
+              )
+            None => ()
+          }
+          match o.table {
+            Some(t) =>
+              attrs.push(
+                @markup.attr("data-ooxml-settings-mail-merge-odso-table", t.val),
+              )
+            None => ()
+          }
+          match o.src {
+            Some(rel) =>
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-settings-mail-merge-odso-src-rid",
+                  rel.r_id,
+                ),
+              )
+            None => ()
+          }
+          match o.col_delim {
+            Some(d) =>
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-settings-mail-merge-odso-col-delim",
+                  d.val.to_string(),
+                ),
+              )
+            None => ()
+          }
+          match o.type_ {
+            Some(ty) =>
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-settings-mail-merge-odso-type",
+                  ty.val.to_string(),
+                ),
+              )
+            None => ()
+          }
+          match o.f_hdr {
+            Some(t) => {
+              let on = match t.val {
+                None => true
+                Some(v) => v
+              }
+              if on {
+                attrs.push(
+                  @markup.attr("data-ooxml-settings-mail-merge-odso-f-hdr", "1"),
+                )
+              }
+            }
+            None => ()
+          }
+          if o.field_map_data.length() > 0 {
+            attrs.push(
+              @markup.attr(
+                "data-ooxml-settings-mail-merge-odso-field-map-data-count",
+                o.field_map_data.length().to_string(),
+              ),
+            )
+            for i, fmd in o.field_map_data {
+              match fmd.column {
+                Some(c) =>
+                  attrs.push(
+                    @markup.attr(
+                      "data-ooxml-settings-mail-merge-odso-field-map-data-" +
+                      i.to_string() +
+                      "-column",
+                      c.val.to_string(),
+                    ),
+                  )
+                None => ()
+              }
+              match fmd.mapped_name {
+                Some(n) =>
+                  attrs.push(
+                    @markup.attr(
+                      "data-ooxml-settings-mail-merge-odso-field-map-data-" +
+                      i.to_string() +
+                      "-mapped-name",
+                      n.val,
+                    ),
+                  )
+                None => ()
+              }
+              match fmd.dynamic_address {
+                Some(t) => {
+                  let on = match t.val {
+                    None => true
+                    Some(v) => v
+                  }
+                  if on {
+                    attrs.push(
+                      @markup.attr(
+                        "data-ooxml-settings-mail-merge-odso-field-map-data-" +
+                        i.to_string() +
+                        "-dynamic-address",
+                        "1",
+                      ),
+                    )
+                  }
+                }
+                None => ()
+              }
+            }
+          }
+          if o.recipient_data.length() > 0 {
+            attrs.push(
+              @markup.attr(
+                "data-ooxml-settings-mail-merge-odso-recipient-data-count",
+                o.recipient_data.length().to_string(),
+              ),
+            )
+            for i, rel in o.recipient_data {
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-settings-mail-merge-odso-recipient-data-" +
+                  i.to_string() +
+                  "-rid",
+                  rel.r_id,
+                ),
+              )
+            }
+          }
+        }
         None => ()
       }
     }
@@ -239,14 +419,13 @@ fn settings_data_attrs(
       attrs.push(@markup.attr("data-ooxml-settings-captions", "1"))
       attrs.push(
         @markup.attr(
-          "data-ooxml-settings-captions-count", c.caption.length().to_string(),
+          "data-ooxml-settings-captions-count",
+          c.caption.length().to_string(),
         ),
       )
       match c.auto_captions {
         Some(_) =>
-          attrs.push(
-            @markup.attr("data-ooxml-settings-captions-auto", "1"),
-          )
+          attrs.push(@markup.attr("data-ooxml-settings-captions-auto", "1"))
         None => ()
       }
     }
@@ -267,12 +446,770 @@ fn settings_data_attrs(
     Some(ss) =>
       attrs.push(
         @markup.attr(
-          "data-ooxml-settings-style-pane-sort-method", ss.val.to_string(),
+          "data-ooxml-settings-style-pane-sort-method",
+          ss.val.to_string(),
         ),
       )
     None => ()
   }
+  // §17.15.1.13 `<w:bookFoldPrinting>` (CT_OnOff).
+  on_off_attr(attrs, s.book_fold_printing, "book-fold-printing")
+  // §17.15.1.12 `<w:bookFoldPrintingSheets>` (CT_DecimalNumber).
+  match s.book_fold_printing_sheets {
+    Some(d) =>
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-settings-book-fold-printing-sheets",
+          d.val.to_string(),
+        ),
+      )
+    None => ()
+  }
+  // §17.15.1.13 `<w:bookFoldRevPrinting>` (CT_OnOff).
+  on_off_attr(attrs, s.book_fold_rev_printing, "book-fold-rev-printing")
+  // §17.15.1.33 `<w:doNotUseMarginsForDrawingGridOrigin>` (CT_OnOff).
+  on_off_attr(
+    attrs,
+    s.do_not_use_margins_for_drawing_grid_origin,
+    "do-not-use-margins-for-drawing-grid-origin",
+  )
+  // §17.15.1.27 `<w:doNotValidateAgainstSchema>` (CT_OnOff).
+  on_off_attr(
+    attrs,
+    s.do_not_validate_against_schema,
+    "do-not-validate-against-schema",
+  )
+  // §17.15.1.71 `<w:saveInvalidXml>` (CT_OnOff).
+  on_off_attr(attrs, s.save_invalid_xml, "save-invalid-xml")
+  // §17.15.1.77 `<w:saveXmlDataOnly>` (CT_OnOff).
+  on_off_attr(attrs, s.save_xml_data_only, "save-xml-data-only")
+  // §17.15.1.51 `<w:ignoreMixedContent>` (CT_OnOff).
+  on_off_attr(attrs, s.ignore_mixed_content, "ignore-mixed-content")
+  // §17.15.1.46 `<w:gutterAtTop>` (CT_OnOff).
+  on_off_attr(attrs, s.gutter_at_top, "gutter-at-top")
+  // §17.15.1.55 `<w:mirrorMargins>` (CT_OnOff).
+  on_off_attr(attrs, s.mirror_margins, "mirror-margins")
+  // §17.15.1.88 `<w:themeFontLang>` (CT_Language) — surface every
+  // present language slot the document declares.
+  match s.theme_font_lang {
+    Some(lang) => {
+      attrs.push(@markup.attr("data-ooxml-settings-theme-font-lang", "1"))
+      match lang.val {
+        Some(v) =>
+          attrs.push(@markup.attr("data-ooxml-settings-theme-font-lang-val", v))
+        None => ()
+      }
+      match lang.east_asia {
+        Some(v) =>
+          attrs.push(
+            @markup.attr("data-ooxml-settings-theme-font-lang-east-asia", v),
+          )
+        None => ()
+      }
+      match lang.bidi {
+        Some(v) =>
+          attrs.push(
+            @markup.attr("data-ooxml-settings-theme-font-lang-bidi", v),
+          )
+        None => ()
+      }
+    }
+    None => ()
+  }
+  // §17.15.1.0 `<w:attachedSchema>` (CT_String)* — surface the
+  // count plus each URI so spec-aware consumers see every
+  // declared schema reference.
+  if s.attached_schema.length() > 0 {
+    attrs.push(
+      @markup.attr(
+        "data-ooxml-settings-attached-schema-count",
+        s.attached_schema.length().to_string(),
+      ),
+    )
+    for i, schema in s.attached_schema {
+      let _ = schema
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-settings-attached-schema-" + i.to_string(),
+          "1",
+        ),
+      )
+    }
+  }
   attrs
+}
+
+///|
+/// Project `/word/webSettings.xml` (§11.5 CT_WebSettings) onto the
+/// SVG root as `data-ooxml-web-settings-*` attributes. Every
+/// child element of `<w:webSettings>` surfaces as one entry so the
+/// catalog renderer-verifier can detect element presence vs.
+/// absence. The frameset sub-tree expands further to expose
+/// `<w:frameLayout>`, `<w:framesetSplitbar>` (`<w:noBorder>`,
+/// `<w:flatBorders>`), each `<w:frame>`'s `<w:sourceFileName>`,
+/// `<w:longDesc>` and `<w:title>` so the entire §17.15.2 frameset
+/// vocabulary remains observable from the rendered SVG.
+fn web_settings_data_attrs(
+  ws : @domain.CT_WebSettings?,
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let ws = match ws {
+    Some(w) => w
+    None => return attrs
+  }
+  // §17.15.2.7 `<w:divs>` — surface the number of declared `<w:div>`
+  // children plus each `bodyDiv`/`blockQuote` flag.
+  match ws.divs {
+    Some(divs) => {
+      attrs.push(@markup.attr("data-ooxml-web-settings-divs", "1"))
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-web-settings-divs-count",
+          divs.divs.length().to_string(),
+        ),
+      )
+      for i, d in divs.divs {
+        match d.body_div {
+          Some(b) => {
+            let on = match b.val {
+              None => true
+              Some(v) => v
+            }
+            if on {
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-web-settings-div-" + i.to_string() + "-body-div",
+                  "1",
+                ),
+              )
+            }
+          }
+          None => ()
+        }
+        match d.block_quote {
+          Some(b) => {
+            let on = match b.val {
+              None => true
+              Some(v) => v
+            }
+            if on {
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-web-settings-div-" +
+                  i.to_string() +
+                  "-block-quote",
+                  "1",
+                ),
+              )
+            }
+          }
+          None => ()
+        }
+      }
+    }
+    None => ()
+  }
+  // §17.15.2.8 `<w:encoding>` (CT_String).
+  match ws.encoding {
+    Some(e) =>
+      attrs.push(@markup.attr("data-ooxml-web-settings-encoding", e.val))
+    None => ()
+  }
+  // §17.15.2.13 `<w:optimizeForBrowser>`.
+  match ws.optimize_for_browser {
+    Some(_) =>
+      attrs.push(
+        @markup.attr("data-ooxml-web-settings-optimize-for-browser", "1"),
+      )
+    None => ()
+  }
+  // §17.15.2.2 `<w:allowPNG>` (CT_OnOff).
+  on_off_attr_web(attrs, ws.allow_png, "allow-png")
+  // §17.15.2.5 `<w:doNotRelyOnCSS>` (CT_OnOff).
+  on_off_attr_web(attrs, ws.do_not_rely_on_css, "do-not-rely-on-css")
+  // §17.15.2.6 `<w:doNotSaveAsSingleFile>` (CT_OnOff).
+  on_off_attr_web(
+    attrs,
+    ws.do_not_save_as_single_file,
+    "do-not-save-as-single-file",
+  )
+  // §17.15.2.4 `<w:doNotOrganizeInFolder>` (CT_OnOff).
+  on_off_attr_web(
+    attrs,
+    ws.do_not_organize_in_folder,
+    "do-not-organize-in-folder",
+  )
+  // §17.15.2.3 `<w:doNotUseLongFileNames>` (CT_OnOff).
+  on_off_attr_web(
+    attrs,
+    ws.do_not_use_long_file_names,
+    "do-not-use-long-file-names",
+  )
+  // §17.15.2.14 `<w:pixelsPerInch>` (CT_DecimalNumber).
+  match ws.pixels_per_inch {
+    Some(d) =>
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-web-settings-pixels-per-inch",
+          d.val.to_string(),
+        ),
+      )
+    None => ()
+  }
+  // §17.15.2.15 `<w:targetScreenSz>` (CT_TargetScreenSz).
+  match ws.target_screen_sz {
+    Some(t) =>
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-web-settings-target-screen-sz",
+          t.val.to_string(),
+        ),
+      )
+    None => ()
+  }
+  // §17.15.2.16 `<w:saveSmartTagsAsXml>` (CT_OnOff).
+  on_off_attr_web(attrs, ws.save_smart_tags_as_xml, "save-smart-tags-as-xml")
+  // §17.15.2.20 `<w:frameset>` — recursively expose the layout
+  // tree so every `<w:frameLayout>`, `<w:framesetSplitbar>` and
+  // `<w:frame>` becomes observable.
+  match ws.frameset {
+    Some(fs) => {
+      attrs.push(@markup.attr("data-ooxml-web-settings-frameset", "1"))
+      frameset_data_attrs(attrs, fs, "frameset")
+    }
+    None => ()
+  }
+  attrs
+}
+
+///|
+/// Walk a `<w:frameset>` sub-tree (§17.15.2.20 CT_Frameset) and emit
+/// one `data-ooxml-web-settings-<prefix>-*` attribute per present
+/// child element.  Recursively descends into nested framesets so the
+/// whole §17.15.2 vocabulary (frame, frameLayout, framesetSplitbar
+/// with noBorder/flatBorders, sourceFileName / longDesc / title)
+/// remains observable from the rendered SVG.
+fn frameset_data_attrs(
+  attrs : Array[@xml.Attribute],
+  fs : @domain.CT_Frameset,
+  prefix : String,
+) -> Unit {
+  match fs.sz {
+    Some(s) =>
+      attrs.push(
+        @markup.attr("data-ooxml-web-settings-" + prefix + "-sz", s.val),
+      )
+    None => ()
+  }
+  match fs.title {
+    Some(t) =>
+      attrs.push(
+        @markup.attr("data-ooxml-web-settings-" + prefix + "-title", t.val),
+      )
+    None => ()
+  }
+  match fs.frame_layout {
+    Some(fl) =>
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-web-settings-" + prefix + "-frame-layout",
+          fl.val.to_string(),
+        ),
+      )
+    None => ()
+  }
+  match fs.frameset_splitbar {
+    Some(sb) => {
+      attrs.push(
+        @markup.attr(
+          "data-ooxml-web-settings-" + prefix + "-frameset-splitbar",
+          "1",
+        ),
+      )
+      match sb.no_border {
+        Some(nb) => {
+          let on = match nb.val {
+            None => true
+            Some(v) => v
+          }
+          if on {
+            attrs.push(
+              @markup.attr(
+                "data-ooxml-web-settings-" + prefix + "-no-border",
+                "1",
+              ),
+            )
+          }
+        }
+        None => ()
+      }
+      match sb.flat_borders {
+        Some(fb) => {
+          let on = match fb.val {
+            None => true
+            Some(v) => v
+          }
+          if on {
+            attrs.push(
+              @markup.attr(
+                "data-ooxml-web-settings-" + prefix + "-flat-borders",
+                "1",
+              ),
+            )
+          }
+        }
+        None => ()
+      }
+    }
+    None => ()
+  }
+  for i, fr in fs.frames {
+    let fprefix = prefix + "-frame-" + i.to_string()
+    attrs.push(@markup.attr("data-ooxml-web-settings-" + fprefix, "1"))
+    match fr.source_file_name {
+      Some(rel) =>
+        attrs.push(
+          @markup.attr(
+            "data-ooxml-web-settings-" + fprefix + "-source-file-name-rid",
+            rel.r_id,
+          ),
+        )
+      None => ()
+    }
+    match fr.long_desc {
+      Some(rel) =>
+        attrs.push(
+          @markup.attr(
+            "data-ooxml-web-settings-" + fprefix + "-long-desc-rid",
+            rel.r_id,
+          ),
+        )
+      None => ()
+    }
+    match fr.title {
+      Some(t) =>
+        attrs.push(
+          @markup.attr("data-ooxml-web-settings-" + fprefix + "-title", t.val),
+        )
+      None => ()
+    }
+  }
+  for i, child in fs.framesets {
+    frameset_data_attrs(attrs, child, prefix + "-nested-" + i.to_string())
+  }
+}
+
+///|
+/// Project `/word/styles.xml` (§17.7.4.18 CT_Styles) onto the SVG
+/// root as `data-ooxml-styles-*` attributes.
+///
+/// Goals:
+/// - surface `<w:docDefaults>` presence + sub-parts (rPrDefault, pPrDefault) → §17.7.5;
+/// - surface `<w:latentStyles>` presence + every `<w:lsdException>` →
+///   §17.7.4.5 / §17.7.4.7 (each with @name + the toggle flags
+///   `uiPriority`, `qFormat`, `semiHidden`, `unhideWhenUsed`, `locked`);
+/// - surface each `<w:style>` (CT_Style §17.7.4.17): @styleId, @type,
+///   @default, @customStyle, name, basedOn, link/linkedTo, next,
+///   the per-style toggle flags (`qFormat`, `uiPriority`,
+///   `semiHidden`, `unhideWhenUsed`, `locked`, `personal`,
+///   `personalCompose`, `personalReply`, `rsid`, `aliases`),
+///   and any nested `<w:tcBorders>` / `<w:tcFitText>` overrides.
+fn styles_data_attrs(styles : @domain.CT_Styles?) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let s = match styles {
+    Some(s) => s
+    None => return attrs
+  }
+  let root = s.element
+  // Top-level wrapper presence — gives consumers a single anchor
+  // attribute to filter on.
+  attrs.push(@markup.attr("data-ooxml-styles", "1"))
+  // §17.7.5 `<w:docDefaults>` — presence plus the rPrDefault /
+  // pPrDefault sub-element flags.
+  for node in root.children {
+    match node {
+      Element(c) if c.name.local_name == "docDefaults" => {
+        attrs.push(@markup.attr("data-ooxml-styles-doc-defaults", "1"))
+        for sub in c.children {
+          match sub {
+            Element(d) =>
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-styles-doc-defaults-" +
+                  dash_localname(d.name.local_name),
+                  "1",
+                ),
+              )
+            _ => ()
+          }
+        }
+      }
+      _ => ()
+    }
+  }
+  // §17.7.4.5 `<w:latentStyles>` — emit each `<w:lsdException>` plus
+  // its toggle flags so all of `uiPriority`, `qFormat`, `semiHidden`,
+  // `unhideWhenUsed`, `locked` become observable in the SVG.
+  for node in root.children {
+    match node {
+      Element(c) if c.name.local_name == "latentStyles" => {
+        attrs.push(@markup.attr("data-ooxml-styles-latent-styles", "1"))
+        let mut idx = 0
+        for sub in c.children {
+          match sub {
+            Element(ex) if ex.name.local_name == "lsdException" => {
+              for a in ex.attributes {
+                let local = a.name.local_name
+                if local == "name" ||
+                  local == "uiPriority" ||
+                  local == "qFormat" ||
+                  local == "semiHidden" ||
+                  local == "unhideWhenUsed" ||
+                  local == "locked" {
+                  attrs.push(
+                    @markup.attr(
+                      "data-ooxml-styles-lsd-" +
+                      idx.to_string() +
+                      "-" +
+                      dash_localname(local),
+                      a.value,
+                    ),
+                  )
+                }
+              }
+              idx = idx + 1
+            }
+            _ => ()
+          }
+        }
+      }
+      _ => ()
+    }
+  }
+  // §17.7.4.17 `<w:style>` — index every style with its identifying
+  // attributes and per-style flags / inheritance hooks.
+  let mut sidx = 0
+  for node in root.children {
+    match node {
+      Element(c) if c.name.local_name == "style" => {
+        for a in c.attributes {
+          let local = a.name.local_name
+          if local == "styleId" ||
+            local == "type" ||
+            local == "default" ||
+            local == "customStyle" {
+            attrs.push(
+              @markup.attr(
+                "data-ooxml-styles-style-" +
+                sidx.to_string() +
+                "-" +
+                dash_localname(local),
+                a.value,
+              ),
+            )
+          }
+        }
+        for sub in c.children {
+          match sub {
+            Element(d) => {
+              let local = d.name.local_name
+              // Per-style flags + inheritance hooks the catalog cares
+              // about.  Use the wrapper's @val when present, fall back
+              // to "1" (an on-off without @val is on per §17.17.4).
+              if local == "name" ||
+                local == "basedOn" ||
+                local == "next" ||
+                local == "link" ||
+                local == "linkedTo" ||
+                local == "aliases" ||
+                local == "rsid" ||
+                local == "uiPriority" ||
+                local == "qFormat" ||
+                local == "semiHidden" ||
+                local == "unhideWhenUsed" ||
+                local == "locked" ||
+                local == "personal" ||
+                local == "personalCompose" ||
+                local == "personalReply" ||
+                local == "autoRedefine" ||
+                local == "hidden" ||
+                local == "tcBorders" ||
+                local == "tcFitText" {
+                let val = element_val_or_one(d)
+                attrs.push(
+                  @markup.attr(
+                    "data-ooxml-styles-style-" +
+                    sidx.to_string() +
+                    "-" +
+                    dash_localname(local),
+                    val,
+                  ),
+                )
+              }
+            }
+            _ => ()
+          }
+        }
+        sidx = sidx + 1
+      }
+      _ => ()
+    }
+  }
+  attrs
+}
+
+///|
+/// Project `/word/numbering.xml` (§17.9.16 CT_Numbering) onto the SVG
+/// root as `data-ooxml-numbering-*` attributes. Walks the raw
+/// `<w:numbering>` element so every `<w:abstractNum>` / `<w:num>` /
+/// `<w:lvl>` / `<w:lvlOverride>` / `<w:lvlText>` / `<w:lvlRestart>` /
+/// `<w:lvlPicBulletId>` / `<w:numPicBullet>` surface as data attrs.
+fn numbering_data_attrs(
+  numbering : @domain.CT_Numbering?,
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  let n = match numbering {
+    Some(n) => n
+    None => return attrs
+  }
+  let root = n.element
+  attrs.push(@markup.attr("data-ooxml-numbering", "1"))
+  let mut aidx = 0
+  let mut nidx = 0
+  let mut pidx = 0
+  for node in root.children {
+    match node {
+      Element(c) if c.name.local_name == "numPicBullet" => {
+        attrs.push(
+          @markup.attr(
+            "data-ooxml-numbering-num-pic-bullet-" + pidx.to_string(),
+            "1",
+          ),
+        )
+        pidx = pidx + 1
+      }
+      Element(c) if c.name.local_name == "abstractNum" => {
+        attrs.push(
+          @markup.attr(
+            "data-ooxml-numbering-abstract-num-" + aidx.to_string(),
+            "1",
+          ),
+        )
+        for a in c.attributes {
+          if a.name.local_name == "abstractNumId" {
+            attrs.push(
+              @markup.attr(
+                "data-ooxml-numbering-abstract-num-" + aidx.to_string() + "-id",
+                a.value,
+              ),
+            )
+          }
+        }
+        let mut lvl_idx = 0
+        for sub in c.children {
+          match sub {
+            Element(l) if l.name.local_name == "lvl" => {
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-numbering-abstract-num-" +
+                  aidx.to_string() +
+                  "-lvl-" +
+                  lvl_idx.to_string(),
+                  "1",
+                ),
+              )
+              for la in l.attributes {
+                if la.name.local_name == "ilvl" {
+                  attrs.push(
+                    @markup.attr(
+                      "data-ooxml-numbering-abstract-num-" +
+                      aidx.to_string() +
+                      "-lvl-" +
+                      lvl_idx.to_string() +
+                      "-ilvl",
+                      la.value,
+                    ),
+                  )
+                }
+              }
+              for lsub in l.children {
+                match lsub {
+                  Element(g) => {
+                    let local = g.name.local_name
+                    if local == "lvlText" ||
+                      local == "lvlPicBulletId" ||
+                      local == "lvlRestart" ||
+                      local == "numFmt" ||
+                      local == "start" ||
+                      local == "suff" ||
+                      local == "isLgl" ||
+                      local == "pStyle" {
+                      attrs.push(
+                        @markup.attr(
+                          "data-ooxml-numbering-abstract-num-" +
+                          aidx.to_string() +
+                          "-lvl-" +
+                          lvl_idx.to_string() +
+                          "-" +
+                          dash_localname(local),
+                          element_val_or_one(g),
+                        ),
+                      )
+                    }
+                  }
+                  _ => ()
+                }
+              }
+              lvl_idx = lvl_idx + 1
+            }
+            _ => ()
+          }
+        }
+        aidx = aidx + 1
+      }
+      Element(c) if c.name.local_name == "num" => {
+        attrs.push(
+          @markup.attr("data-ooxml-numbering-num-" + nidx.to_string(), "1"),
+        )
+        for a in c.attributes {
+          if a.name.local_name == "numId" {
+            attrs.push(
+              @markup.attr(
+                "data-ooxml-numbering-num-" + nidx.to_string() + "-id",
+                a.value,
+              ),
+            )
+          }
+        }
+        let mut oidx = 0
+        for sub in c.children {
+          match sub {
+            Element(o) if o.name.local_name == "lvlOverride" => {
+              attrs.push(
+                @markup.attr(
+                  "data-ooxml-numbering-num-" +
+                  nidx.to_string() +
+                  "-lvl-override-" +
+                  oidx.to_string(),
+                  "1",
+                ),
+              )
+              for oa in o.attributes {
+                if oa.name.local_name == "ilvl" {
+                  attrs.push(
+                    @markup.attr(
+                      "data-ooxml-numbering-num-" +
+                      nidx.to_string() +
+                      "-lvl-override-" +
+                      oidx.to_string() +
+                      "-ilvl",
+                      oa.value,
+                    ),
+                  )
+                }
+              }
+              for osub in o.children {
+                match osub {
+                  Element(g) => {
+                    let local = g.name.local_name
+                    if local == "startOverride" || local == "lvl" {
+                      attrs.push(
+                        @markup.attr(
+                          "data-ooxml-numbering-num-" +
+                          nidx.to_string() +
+                          "-lvl-override-" +
+                          oidx.to_string() +
+                          "-" +
+                          dash_localname(local),
+                          "1",
+                        ),
+                      )
+                    }
+                  }
+                  _ => ()
+                }
+              }
+              oidx = oidx + 1
+            }
+            Element(o) if o.name.local_name == "abstractNumId" =>
+              for oa in o.attributes {
+                if oa.name.local_name == "val" {
+                  attrs.push(
+                    @markup.attr(
+                      "data-ooxml-numbering-num-" +
+                      nidx.to_string() +
+                      "-abstract-num-id",
+                      oa.value,
+                    ),
+                  )
+                }
+              }
+            _ => ()
+          }
+        }
+        nidx = nidx + 1
+      }
+      _ => ()
+    }
+  }
+  attrs
+}
+
+///|
+/// Convert a camelCase XML local-name to dash-separated lowercase so
+/// the resulting attribute names follow the `data-*` HTML convention.
+fn dash_localname(name : String) -> String {
+  let out = StringBuilder::new()
+  let mut first = true
+  for ch in name {
+    let c = ch
+    if c >= 'A' && c <= 'Z' {
+      if not(first) {
+        out.write_char('-')
+      }
+      out.write_char((c.to_int() + 32).unsafe_to_char())
+    } else {
+      out.write_char(c)
+    }
+    first = false
+  }
+  out.to_string()
+}
+
+///|
+/// Return the `@val` attribute of `el` when present; otherwise `"1"`
+/// (matches the §17.17.4 on/off default — an on/off element without
+/// `@val` is on by default).
+fn element_val_or_one(el : @xml.Element) -> String {
+  for a in el.attributes {
+    if a.name.local_name == "val" {
+      return a.value
+    }
+  }
+  "1"
+}
+
+///|
+/// Web-settings flavoured wrapper around `on_off_attr` that uses the
+/// `data-ooxml-web-settings-` namespace instead of the generic
+/// settings prefix.
+fn on_off_attr_web(
+  attrs : Array[@xml.Attribute],
+  toggle : @domain.CT_OnOff?,
+  suffix : String,
+) -> Unit {
+  match toggle {
+    Some(t) => {
+      let on = match t.val {
+        None => true
+        Some(v) => v
+      }
+      if on {
+        attrs.push(@markup.attr("data-ooxml-web-settings-" + suffix, "1"))
+      }
+    }
+    None => ()
+  }
 }
 
 ///|
@@ -315,9 +1252,7 @@ fn on_off_attr(
 /// `<index>` is the 1-based position of the carrying `<w:font>` in
 /// the document order. Without the index two fonts with the same
 /// embedded face name would collapse into one attribute.
-fn fonts_data_attrs(
-  fonts : @domain.CT_FontsList?,
-) -> Array[@xml.Attribute] {
+fn fonts_data_attrs(fonts : @domain.CT_FontsList?) -> Array[@xml.Attribute] {
   let attrs : Array[@xml.Attribute] = []
   let f = match fonts {
     Some(f) => f
@@ -409,9 +1344,7 @@ fn fonts_data_attrs(
           Some(v) => v
         }
         if on {
-          attrs.push(
-            @markup.attr("data-ooxml-fonts-not-true-type-" + i, "1"),
-          )
+          attrs.push(@markup.attr("data-ooxml-fonts-not-true-type-" + i, "1"))
         }
       }
       None => ()
@@ -432,9 +1365,7 @@ fn clr_scheme_attr(
   match slot {
     Some(v) =>
       attrs.push(
-        @markup.attr(
-          "data-ooxml-settings-clr-scheme-" + name, v.to_string(),
-        ),
+        @markup.attr("data-ooxml-settings-clr-scheme-" + name, v.to_string()),
       )
     None => ()
   }

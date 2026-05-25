@@ -873,6 +873,136 @@ fn xlsx_package_styled(content : @xml.Element, styles : @xml.Element) -> Bytes {
 }
 
 ///|
+/// `.xlsx` package whose `xl/workbook.xml` declares an
+/// `<externalReferences>` block (§18.14.7) pointing at an
+/// `xl/externalLinks/externalLink1.xml` part.  Used by fixtures that
+/// reference cross-workbook data via `[1]Sheet1!$A$1` formula syntax
+/// (§18.17 / §18.14.5 CT_ExternalBook).
+///
+/// The caller supplies:
+///   * `content` — the `<worksheet>` payload (or a `<sheetData>`).
+///   * `external_link` — the `<externalLink>` root element
+///     (§18.14.8 CT_ExternalLink).  Typically contains a single
+///     `<externalBook>` child with `<sheetNames>` and `<sheetDataSet>`
+///     entries that mirror what the formula references.
+///
+/// The builder owns rId numbering:
+///   * `rId1` — workbook → worksheet.
+///   * `rId2` — workbook → external link part.
+/// The `<externalReference r:id="…">` child the builder inserts into
+/// the workbook MUST resolve to `rId2`; this is wired automatically.
+fn xlsx_package_with_externals(
+  content : @xml.Element,
+  external_link : @xml.Element,
+) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  // The workbook carries both `<sheets>` and `<externalReferences>`.
+  // Per §18.2.1 the canonical sequence places `<externalReferences>`
+  // AFTER `<sheets>` and BEFORE `<definedNames>` / `<calcPr>` — keep
+  // that order so conformant consumers accept the workbook.
+  let workbook : @xml.Element = xe(ns_s, "workbook", [], [
+    Element(
+      xe(ns_s, "sheets", [], [
+        Element(
+          xe(
+            ns_s,
+            "sheet",
+            [
+              xa("name", "S1"),
+              xa("sheetId", "1"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+    Element(
+      xe(ns_s, "externalReferences", [], [
+        Element(
+          xe(
+            ns_s,
+            "externalReference",
+            [
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId2",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+  let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+          ),
+          xa("Target", "worksheets/sheet1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/externalLink",
+          ),
+          xa("Target", "externalLinks/externalLink1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let worksheet : @xml.Element = if content.name.local_name == "worksheet" {
+    content
+  } else {
+    {
+      name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+      attributes: [],
+      children: [Element(content)],
+    }
+  }
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+        (
+          "/xl/externalLinks/externalLink1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(wb_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+    ("xl/externalLinks/externalLink1.xml", write_part(external_link)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
 /// DrawingML namespace URI — used by `pptx_theme_part` and any other
 /// PML helper that needs to embed `<a:*>` payload (clrScheme,
 /// fontScheme, fmtScheme).
@@ -1455,6 +1585,233 @@ fn pptx_package(content : @xml.Element) -> Bytes {
   // IS the slide root — §19.3.1.38 CT_Slide), use it as-is so we
   // never produce a nested `<p:sld><p:sld>...` malformed payload.
   // Otherwise wrap the single child in a `<p:sld>` (the common case).
+  let slide : @xml.Element = if content.name.local_name == "sld" {
+    content
+  } else {
+    {
+      name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
+      attributes: [],
+      children: [Element(content)],
+    }
+  }
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
+        ),
+        (
+          "/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
+        ),
+        (
+          "/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml",
+        ),
+        (
+          "/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml",
+        ),
+        (
+          "/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("ppt/presentation.xml")),
+    ("ppt/presentation.xml", write_part(presentation)),
+    ("ppt/_rels/presentation.xml.rels", write_part(pres_rels)),
+    ("ppt/slides/slide1.xml", write_part(slide)),
+    ("ppt/slides/_rels/slide1.xml.rels", write_part(slide_rels)),
+    ("ppt/slideLayouts/slideLayout1.xml", pptx_slide_layout_part()),
+    ("ppt/slideLayouts/_rels/slideLayout1.xml.rels", write_part(layout_rels)),
+    ("ppt/slideMasters/slideMaster1.xml", pptx_slide_master_part()),
+    ("ppt/slideMasters/_rels/slideMaster1.xml.rels", write_part(master_rels)),
+    ("ppt/theme/theme1.xml", pptx_theme_part()),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `.pptx` package whose slide-side `.rels` part wires up extra
+/// external relationships in addition to the standard
+/// slideLayout rId1.  Use this for fixtures whose content carries
+/// `<a:videoFile r:link="…">` (§20.1.3.6) or `<a:hlinkClick r:id="…">`
+/// (§20.1.2.2.20 / §21.1.2.3.5) — both REQUIRE a relationship target
+/// (XSD `r:link`/`r:id`), and consumers reject a slide whose
+/// referenced rIds are unresolved.
+///
+/// `extra_rels` carries `(rId, type, target, target_mode)` tuples
+/// where `target_mode` is "External" for external URIs (hyperlinks,
+/// external video sources) or "" for internal package targets.
+/// The builder owns rId numbering for the layout (rId1) so callers
+/// MUST start their own rIds at "rId2" upward.
+fn pptx_package_with_slide_rels(
+  content : @xml.Element,
+  extra_rels : Array[(String, String, String, String)],
+) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let presentation : @xml.Element = {
+    name: { prefix: Some("p"), local_name: "presentation", ns: Some(ns_p) },
+    attributes: [],
+    children: [
+      Element(
+        xe(ns_p, "sldMasterIdLst", [], [
+          Element(
+            xe(
+              ns_p,
+              "sldMasterId",
+              [
+                xa("id", "2147483648"),
+                {
+                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                  value: "rId2",
+                },
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xe(ns_p, "sldIdLst", [], [
+          Element(
+            xe(
+              ns_p,
+              "sldId",
+              [
+                xa("id", "256"),
+                {
+                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                  value: "rId1",
+                },
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(xe(ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000")], [])),
+    ],
+  }
+  let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
+          ),
+          xa("Target", "slides/slide1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId3"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let master_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "../theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let layout_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "../slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  // Slide rels: layout (rId1) + caller-supplied extras (rId2..).
+  let slide_rels_kids : Array[@xml.Node] = [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ]
+  for r in extra_rels {
+    let (rid, rtype, target, mode) = r
+    let attrs : Array[@xml.Attribute] = [
+      xa("Id", rid),
+      xa("Type", rtype),
+      xa("Target", target),
+    ]
+    if mode != "" {
+      attrs.push(xa("TargetMode", mode))
+    }
+    slide_rels_kids.push(Element(xe(NS_PKG_REL, "Relationship", attrs, [])))
+  }
+  let slide_rels = xe(NS_PKG_REL, "Relationships", [], slide_rels_kids)
   let slide : @xml.Element = if content.name.local_name == "sld" {
     content
   } else {
@@ -2280,6 +2637,12 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
     Some(i) => which[0:i].to_string()
     None => which
   }
+  // Catalog verification MUST observe the renderer's
+  // `data-ooxml-*` decoration: the differential render verifier
+  // (`verify_entry` ⇒ `svg_visible_skeleton`) discriminates
+  // "rendered" sections precisely by walking those attributes.
+  // Production callers pass the default `debug_attrs=false` and
+  // receive a clean SVG; we explicitly opt in.
   match base {
     "xlsx" =>
       match (try? @sml_context.open(pkg)) {
@@ -2287,7 +2650,7 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
         Ok(w) =>
           match (try? @sml_context.open(w.save())) {
             Err(_) => None
-            Ok(w2) => Some(w2.to_svg())
+            Ok(w2) => Some(w2.to_svg(debug_attrs=true))
           }
       }
     "pptx" =>
@@ -2296,7 +2659,7 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
         Ok(pr) =>
           match (try? @pml_context.open(pr.save())) {
             Err(_) => None
-            Ok(pr2) => Some(pr2.to_svg())
+            Ok(pr2) => Some(pr2.to_svg(debug_attrs=true))
           }
       }
     _ =>
@@ -2305,7 +2668,7 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
         Ok(d) =>
           match (try? @wml_context.open(d.save())) {
             Err(_) => None
-            Ok(d2) => Some(d2.to_svg())
+            Ok(d2) => Some(d2.to_svg(debug_attrs=true))
           }
       }
   }
@@ -2363,64 +2726,55 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
   ) = match part_kind {
     "settings" =>
       (
-        "settings.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings",
+        "settings.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml",
         "settings",
       )
     "styles" =>
       (
-        "styles.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
+        "styles.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml",
         "styles",
       )
     "numbering" =>
       (
-        "numbering.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering",
+        "numbering.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml",
         "numbering",
       )
     "fonts" =>
       (
-        "fontTable.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable",
+        "fontTable.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml",
         "fonts",
       )
     "webSettings" =>
       (
-        "webSettings.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/webSettings",
+        "webSettings.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/webSettings",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml",
         "webSettings",
       )
     "comments" =>
       (
-        "comments.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
+        "comments.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml",
         "comments",
       )
     "footnotes" =>
       (
-        "footnotes.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes",
+        "footnotes.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml",
         "footnotes",
       )
     "endnotes" =>
       (
-        "endnotes.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes",
+        "endnotes.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml",
         "endnotes",
       )
     _ =>
       (
-        "settings.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings",
+        "settings.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml",
         "settings",
       )
@@ -2456,15 +2810,17 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
       xe(
         NS_PKG_REL,
         "Relationship",
-        [
-          xa("Id", "rId1"),
-          xa("Type", rel_type),
-          xa("Target", part_path),
-        ],
+        [xa("Id", "rId1"), xa("Type", rel_type), xa("Target", part_path)],
         [],
       ),
     ),
   ])
+  // §17.8.2.4 — only the `fonts` aux part carries `r:id` pointers
+  // (`<w:embedRegular/Bold/Italic/BoldItalic>` reference satellite
+  // font-data parts). Other WML aux parts (`settings`, `styles`,
+  // ...) do not. Attaching an aux-part rels file unconditionally
+  // breaks the open of the parts that don't need rels because the
+  // Content-Types map lacks the satellite part's content type.
   let parts : Array[(String, Bytes)] = [
     (
       "[Content_Types].xml",
@@ -2480,6 +2836,29 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
     ("word/_rels/document.xml.rels", write_part(doc_rels)),
     ("word/" + part_path, write_part(aux_root)),
   ]
+  if part_kind == "fonts" {
+    // §17.8.2.4 font-data targets: emit a dummy `Id="0"` rel so the
+    // synthesised `<w:embed*/>`'s `r:id="0"` resolves through the
+    // OPC layer's relationship lookup.
+    let aux_rels = xe(NS_PKG_REL, "Relationships", [], [
+      Element(
+        xe(
+          NS_PKG_REL,
+          "Relationship",
+          [
+            xa("Id", "0"),
+            xa(
+              "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/font",
+            ),
+            xa("Target", "fonts/font0.fntdata"),
+            xa("TargetMode", "Internal"),
+          ],
+          [],
+        ),
+      ),
+    ])
+    parts.push(("word/_rels/" + part_path + ".rels", write_part(aux_rels)))
+  }
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
 
@@ -2511,7 +2890,8 @@ fn pptx_with_aux_root_package(
       // Fall back to wrapping in a normal pptx where the
       // `<p:presentation>` part is replaced; if `content` is
       // already a `<p:presentation>` it becomes the part.
-      let pres_root : @xml.Element = if content.name.local_name == "presentation" {
+      let pres_root : @xml.Element = if content.name.local_name ==
+        "presentation" {
         content
       } else {
         xep("p", ns_p, "presentation", [], [Element(content)])
@@ -2548,15 +2928,14 @@ fn xlsx_with_aux_root_package(
         xe(ns_s, "sst", [], [Element(content)])
       }
       xlsx_package_with_aux_part(
-        "sharedStrings",
-        "sharedStrings.xml",
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings",
+        "sharedStrings", "sharedStrings.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml",
         sst_root,
       )
     }
     "styles" => {
-      let styles_root : @xml.Element = if content.name.local_name == "styleSheet" {
+      let styles_root : @xml.Element = if content.name.local_name ==
+        "styleSheet" {
         content
       } else {
         xe(ns_s, "styleSheet", [], [Element(content)])
@@ -2574,7 +2953,9 @@ fn xlsx_with_aux_root_package(
 /// required child (`minOccurs=1`) but downstream consumers expect
 /// the canonical sequence.
 fn theme_child_order() -> Array[String] {
-  ["themeElements", "objectDefaults", "extraClrSchemeLst", "custClrLst", "extLst"]
+  [
+    "themeElements", "objectDefaults", "extraClrSchemeLst", "custClrLst", "extLst",
+  ]
 }
 
 ///|
@@ -2853,9 +3234,7 @@ fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
     attributes: [],
     children: [
       Element(
-        xep("p", ns_p, "cSld", [], [
-          Element(xep("p", ns_p, "spTree", [], [])),
-        ]),
+        xep("p", ns_p, "cSld", [], [Element(xep("p", ns_p, "spTree", [], []))]),
       ),
     ],
   }
@@ -2902,10 +3281,9 @@ fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
 /// reader's per-child handlers see siblings in spec position.
 fn presentation_child_order() -> Array[String] {
   [
-    "sldMasterIdLst", "notesMasterIdLst", "handoutMasterIdLst", "sldIdLst",
-    "sldSz", "notesSz", "smartTags", "embeddedFontLst", "custShowLst",
-    "photoAlbum", "custDataLst", "kinsoku", "defaultTextStyle",
-    "modifyVerifier", "extLst",
+    "sldMasterIdLst", "notesMasterIdLst", "handoutMasterIdLst", "sldIdLst", "sldSz",
+    "notesSz", "smartTags", "embeddedFontLst", "custShowLst", "photoAlbum", "custDataLst",
+    "kinsoku", "defaultTextStyle", "modifyVerifier", "extLst",
   ]
 }
 
@@ -2978,9 +3356,7 @@ fn pptx_package_with_replaced_presentation(
         xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000")], []),
       ),
       Element(
-        xep(
-          "p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [],
-        ),
+        xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], []),
       ),
     ],
   }
@@ -2995,11 +3371,7 @@ fn pptx_package_with_replaced_presentation(
     }
     cur
   } else {
-    splice_child_in_sequence(
-      skeleton,
-      presentation,
-      presentation_child_order(),
-    )
+    splice_child_in_sequence(skeleton, presentation, presentation_child_order())
   }
   // From this point on the original packaging applies — the rels /
   // slide-master / slide-layout / theme parts stay canonical.
@@ -3115,9 +3487,7 @@ fn pptx_package_with_replaced_presentation(
     attributes: [],
     children: [
       Element(
-        xep("p", ns_p, "cSld", [], [
-          Element(xep("p", ns_p, "spTree", [], [])),
-        ]),
+        xep("p", ns_p, "cSld", [], [Element(xep("p", ns_p, "spTree", [], []))]),
       ),
     ],
   }
@@ -3166,11 +3536,10 @@ fn pptx_package_with_replaced_presentation(
 /// keep the canonical order.
 fn workbook_child_order() -> Array[String] {
   [
-    "fileVersion", "fileSharing", "workbookPr", "workbookProtection",
-    "bookViews", "sheets", "functionGroups", "externalReferences",
-    "definedNames", "calcPr", "oleSize", "customWorkbookViews", "pivotCaches",
-    "smartTagPr", "smartTagTypes", "webPublishing", "fileRecoveryPr",
-    "webPublishObjects", "extLst",
+    "fileVersion", "fileSharing", "workbookPr", "workbookProtection", "bookViews",
+    "sheets", "functionGroups", "externalReferences", "definedNames", "calcPr", "oleSize",
+    "customWorkbookViews", "pivotCaches", "smartTagPr", "smartTagTypes", "webPublishing",
+    "fileRecoveryPr", "webPublishObjects", "extLst",
   ]
 }
 
@@ -3516,15 +3885,29 @@ fn verify_entry(
     return "rendered"
   }
   // Differential check: render the same ancestry with the target
-  // subtree pruned.  A difference in the SVG is direct evidence the
-  // renderer reacted to the element's presence.
+  // subtree pruned.  Compare the SVGs by their *visible content
+  // skeleton* (every `<path>`, `<text>`, `<rect>`, `<image>`,
+  // `<circle>`, `<line>`, `<polygon>`, `<polyline>`, `<use>`,
+  // `<g>`, `<svg>` node retained; every `data-*` debug-label
+  // attribute and every XML comment stripped). Differing skeletons
+  // mean the element triggered a real visible-content node.
+  //
+  // Rationale (SoT): `data-ooxml-*` attributes are debug labels —
+  // they decorate already-rendered SVG nodes for inspection, NOT
+  // proof of rendering.  Earlier revisions counted any string
+  // difference (including a single new `data-*` attribute) as
+  // proof of render; that conflated "the package contains this
+  // element" with "the renderer drew a visible mark for it".  The
+  // skeleton comparison restores the original spec-mandated
+  // standard: a section is `rendered` only when the element causes
+  // the renderer to emit a concrete visual outcome.
   let (baseline_tree, did_prune) = prune_target(content)
   if did_prune {
     let baseline_clean = strip_target_attr(baseline_tree)
     let absent_svg = render_svg_of(format, host_package(format, baseline_clean))
     match absent_svg {
       Some(absent) if absent.has_prefix("<svg ") =>
-        if absent != present {
+        if svg_visible_skeleton(absent) != svg_visible_skeleton(present) {
           return "rendered"
         }
       // Pruning the target broke the package — the reader rejected
@@ -3539,7 +3922,7 @@ fn verify_entry(
       // structural break too: pruning degraded the render
       // pipeline.
       Some(absent) =>
-        if absent != present {
+        if svg_visible_skeleton(absent) != svg_visible_skeleton(present) {
           return "rendered"
         }
     }
@@ -3553,13 +3936,151 @@ fn verify_entry(
     let absent_svg = render_svg_of(format, empty_body_package(format))
     match absent_svg {
       Some(absent) if absent.has_prefix("<svg ") =>
-        if absent != present {
+        if svg_visible_skeleton(absent) != svg_visible_skeleton(present) {
           return "rendered"
         }
       _ => return "rendered"
     }
   }
   "parsed"
+}
+
+///|
+/// Reduce an SVG document string to its *visible-content
+/// skeleton*: every `data-*` debug-label attribute is removed,
+/// every XML comment is removed.  Two SVGs whose skeletons match
+/// are visually equivalent up to debug decoration — the renderer
+/// emitted the same draw primitives.  A skeleton difference means
+/// the element under test changed at least one visible node
+/// (added a `<path>`, retitled an `<image>` href, etc.).
+///
+/// Rationale (SoT): `data-ooxml-*` attributes are debug labels —
+/// they decorate already-rendered SVG nodes for inspection, NOT
+/// proof of rendering.  Stripping them before comparison restores
+/// the original spec-mandated standard: a section is `rendered`
+/// only when the element causes the renderer to emit a concrete
+/// visual outcome.
+///
+/// Implementation: a single linear scan over the byte view of the
+/// SVG string.  `<!-- ... -->` comments are dropped wholesale;
+/// inside an element start tag, attribute tokens whose name starts
+/// with `data-` (after a leading space or the tag name) are
+/// elided, honouring quoted attribute values that may contain `>`.
+fn svg_visible_skeleton(svg : String) -> String {
+  let bytes = svg.to_bytes()
+  let out = @buffer.new()
+  let n = bytes.length()
+  let mut i = 0
+  // ASCII codes — comparing UInt16 / Int code units, not Char.
+  let lt = '<'.to_int()
+  let gt = '>'.to_int()
+  let bang = '!'.to_int()
+  let dash = '-'.to_int()
+  let eq = '='.to_int()
+  let dq = '"'.to_int()
+  let sq = '\''.to_int()
+  let sp = ' '.to_int()
+  let tab = '\t'.to_int()
+  let nl = '\n'.to_int()
+  let cr = '\r'.to_int()
+  fn is_ws(b : Int) -> Bool {
+    b == sp || b == tab || b == nl || b == cr
+  }
+  while i < n {
+    let c = bytes[i].to_int()
+    if c == lt {
+      // `<!-- ... -->` comment — skip to the matching `-->`.
+      if i + 3 < n &&
+        bytes[i + 1].to_int() == bang &&
+        bytes[i + 2].to_int() == dash &&
+        bytes[i + 3].to_int() == dash {
+        i = i + 4
+        while i + 2 < n &&
+              not(
+                bytes[i].to_int() == dash &&
+                bytes[i + 1].to_int() == dash &&
+                bytes[i + 2].to_int() == gt,
+              ) {
+          i = i + 1
+        }
+        i = i + 3
+        continue
+      }
+      out.write_byte(b'<')
+      i = i + 1
+      // Walk attributes; drop those whose name starts with "data-".
+      let mut in_quote = 0
+      let mut at_name_start = false
+      let mut attr_first_chars = @buffer.new()
+      let mut attr_buf = @buffer.new()
+      let mut copying = true
+      while i < n {
+        let ch = bytes[i].to_int()
+        if in_quote == 0 {
+          if ch == gt {
+            if copying {
+              out.write_bytes(attr_buf.contents())
+            }
+            out.write_byte(b'>')
+            i = i + 1
+            break
+          } else if is_ws(ch) {
+            if copying {
+              out.write_bytes(attr_buf.contents())
+            }
+            attr_buf = @buffer.new()
+            attr_first_chars = @buffer.new()
+            at_name_start = true
+            copying = true
+            out.write_byte(b' ')
+            i = i + 1
+          } else if ch == eq {
+            // End of attribute name — decide drop/keep.
+            let name = attr_first_chars.contents()
+            if name.length() >= 5 &&
+              name[0] == b'd' &&
+              name[1] == b'a' &&
+              name[2] == b't' &&
+              name[3] == b'a' &&
+              name[4] == b'-' {
+              copying = false
+            }
+            attr_buf.write_byte(b'=')
+            i = i + 1
+            at_name_start = false
+          } else if ch == dq || ch == sq {
+            in_quote = ch
+            attr_buf.write_byte(bytes[i])
+            i = i + 1
+          } else {
+            if at_name_start {
+              attr_first_chars.write_byte(bytes[i])
+            }
+            attr_buf.write_byte(bytes[i])
+            i = i + 1
+          }
+        } else {
+          attr_buf.write_byte(bytes[i])
+          if ch == in_quote {
+            in_quote = 0
+          }
+          i = i + 1
+        }
+      }
+    } else if is_ws(c) {
+      // Collapse runs of whitespace in PCDATA so cosmetic
+      // formatting differences (different layout of the same
+      // characters) do not mask equivalent renders.
+      out.write_byte(b' ')
+      while i < n && is_ws(bytes[i].to_int()) {
+        i = i + 1
+      }
+    } else {
+      out.write_byte(bytes[i])
+      i = i + 1
+    }
+  }
+  @utf8.decode_lossy(out.contents()[:])
 }
 
 ///|
@@ -3594,9 +4115,7 @@ fn empty_body_package(format : String) -> Bytes {
     "xlsx" => xlsx_package(xe(ns_s, "sheetData", [], []))
     "pptx" =>
       pptx_package(
-        xep("p", ns_p, "cSld", [], [
-          Element(xep("p", ns_p, "spTree", [], [])),
-        ]),
+        xep("p", ns_p, "cSld", [], [Element(xep("p", ns_p, "spTree", [], []))]),
       )
     "docx:settings" =>
       docx_aux_package("settings", xep("w", ns_w, "settings", [], []))
@@ -3620,7 +4139,8 @@ fn empty_body_package(format : String) -> Bytes {
       )
     "pptx:presentation" =>
       pptx_with_aux_root_package(
-        "presentation", xep("p", ns_p, "presentation", [], []),
+        "presentation",
+        xep("p", ns_p, "presentation", [], []),
       )
     "xlsx:workbook" =>
       xlsx_with_aux_root_package("workbook", xe(ns_s, "workbook", [], []))

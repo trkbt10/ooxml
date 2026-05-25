@@ -35,6 +35,13 @@ pub(all) struct Document {
   comments : @wml.CT_Comments?
   footnotes : @wml.CT_Footnotes?
   endnotes : @wml.CT_Endnotes?
+  /// §11.5 — `/word/webSettings.xml` (CT_WebSettings) when present.
+  /// Holds the HTML export descriptor (`<w:frameset>`,
+  /// `<w:targetScreenSz>`, `<w:pixelsPerInch>`, etc.). The renderer
+  /// surfaces every child element as a `data-ooxml-web-settings-*`
+  /// attribute on the root `<svg>` so spec-aware consumers see the
+  /// document metadata without re-walking the package.
+  web_settings : @wml.CT_WebSettings?
   /// §17.15.1.85 / Annex A — `/word/theme/theme1.xml` raw root
   /// element when present.  The renderer parses this on demand
   /// to populate its `ThemeColorMap` (for `themeColor`/
@@ -82,6 +89,9 @@ pub fn open(bytes : Bytes) -> Document raise OpenError {
       ),
       endnotes: package.read_optional(
         "/word/endnotes.xml", @wml_reader.read_endnotes,
+      ),
+      web_settings: package.read_optional(
+        "/word/webSettings.xml", @wml_reader.read_web_settings,
       ),
       // §17.15.1.85 / Annex A / OPC §11.3.10 — locate the
       // theme part via the main document's relationship table
@@ -195,6 +205,11 @@ pub fn Document::save(self : Document) -> Bytes {
       self.endnotes,
       @wml_builder.write_endnotes,
     )
+    .with_optional_part(
+      "/word/webSettings.xml",
+      self.web_settings,
+      @wml_builder.write_web_settings,
+    )
   let mut saved = package
   for header in self.headers {
     saved = saved.with_part(header.name, @wml_builder.write_hdr(header.value))
@@ -242,13 +257,26 @@ pub fn Document::save(self : Document) -> Bytes {
 /// Inkscape, browsers, and every other conforming consumer.
 /// Callers wanting per-page output can call
 /// `@wml_viewer.render_svg` directly and walk the `pages` array.
-pub fn Document::to_svg(self : Document) -> String {
+///
+/// `debug_attrs` (default `false`) controls whether the viewer's
+/// `data-ooxml-*` decoration survives in the returned SVG.  The
+/// flag exists because those attributes are inspection labels —
+/// they decorate already-rendered SVG nodes for spec-aware
+/// consumers (the catalog harness's differential render verifier,
+/// devtools) and contribute nothing to the visual output.  The
+/// SoT that decides whether they survive is exactly one byte-
+/// stream pass (`@markup.strip_debug_attrs`) applied here, so
+/// production callers receive a clean SVG by default and harness
+/// code that needs the labels passes `debug_attrs=true`.  The
+/// viewer code below ALWAYS emits the labels; this entry point
+/// drops them on the way out.
+pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String {
   let deco = resolve_header_footer_decoration(self)
   let image_resolver = build_document_image_resolver(
     self.package,
     self.main_part,
   )
-  @wml_viewer.render_combined_svg(
+  let svg = @wml_viewer.render_combined_svg(
     self.main,
     header_blocks=deco.header_default,
     footer_blocks=deco.footer_default,
@@ -276,7 +304,18 @@ pub fn Document::to_svg(self : Document) -> String {
     // + embedRegular/embedBold/embedItalic/embedBoldItalic) leaves
     // a `data-ooxml-fonts-*-<i>` trace on the root `<svg>`.
     fonts=self.fonts,
+    // §11.5 — thread the parsed `/word/webSettings.xml` typed
+    // projection so the viewer surfaces each present `<w:webSettings>`
+    // child (frameset, divs, encoding, optimizeForBrowser,
+    // pixelsPerInch, targetScreenSz, etc.) as
+    // `data-ooxml-web-settings-*` on the root `<svg>`.
+    web_settings=self.web_settings,
   )
+  if debug_attrs {
+    svg
+  } else {
+    @markup.strip_debug_attrs(svg)
+  }
 }
 
 ///|

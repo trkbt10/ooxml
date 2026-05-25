@@ -42,7 +42,7 @@ pub fn Workbook::materialize_pivot_table(Self, @pivot_table.PivotTableDefinition
 pub fn Workbook::parse_auto_filter(Self, @xml.Element) -> @domain.CT_AutoFilter raise OpenError
 pub fn Workbook::parse_formula(Self, String) -> @formula.FormulaAst raise OpenError
 pub fn Workbook::save(Self) -> Bytes
-pub fn Workbook::to_svg(Self) -> String
+pub fn Workbook::to_svg(Self, debug_attrs? : Bool) -> String
 
 pub(all) struct WorksheetPart {
   name : String

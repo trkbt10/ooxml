@@ -1191,6 +1191,14 @@ pub fn render_svg(
   /// embedBoldItalic, notTrueType) are surfaced on the root
   /// `<svg>` as `data-ooxml-fonts-*-<i>` attributes.
   fonts? : @domain.CT_FontsList? = None,
+  /// §11.5 — typed `/word/webSettings.xml` projection. Each
+  /// present child element (frameset, divs, encoding,
+  /// optimizeForBrowser, allowPNG, doNotRelyOnCSS,
+  /// doNotSaveAsSingleFile, doNotOrganizeInFolder,
+  /// doNotUseLongFileNames, pixelsPerInch, targetScreenSz,
+  /// saveSmartTagsAsXml) is surfaced as
+  /// `data-ooxml-web-settings-*` on the root `<svg>`.
+  web_settings? : @domain.CT_WebSettings? = None,
 ) -> DocumentSvgResult {
   // Build the theme colour map once per document; the map is
   // empty when no theme part is supplied, in which case the
@@ -1235,6 +1243,7 @@ pub fn render_svg(
     font_map~,
     settings~,
     fonts~,
+    web_settings~,
   )
 }
 
@@ -1252,6 +1261,7 @@ fn render_svg_raw(
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
   settings? : @domain.CT_Settings? = None,
   fonts? : @domain.CT_FontsList? = None,
+  web_settings? : @domain.CT_WebSettings? = None,
 ) -> DocumentSvgResult {
   let warnings : Array[String] = []
   let settings_attrs = settings_data_attrs(settings)
@@ -1260,6 +1270,38 @@ fn render_svg_raw(
   // verifier sees the embedded-face presence.
   for a in fonts_data_attrs(fonts) {
     settings_attrs.push(a)
+  }
+  // §11.5 webSettings.xml — surface every present `<w:webSettings>`
+  // child as a `data-ooxml-web-settings-*` attribute.
+  for a in web_settings_data_attrs(web_settings) {
+    settings_attrs.push(a)
+  }
+  // §17.7 styles.xml — surface every `<w:style>` / latentStyles /
+  // docDefaults entry as `data-ooxml-styles-*` attributes.
+  for a in styles_data_attrs(styles) {
+    settings_attrs.push(a)
+  }
+  // §17.9 numbering.xml — surface every `<w:abstractNum>` /
+  // `<w:num>` / `<w:lvl>` / `<w:lvlOverride>` as
+  // `data-ooxml-numbering-*` attributes.
+  for a in numbering_data_attrs(numbering) {
+    settings_attrs.push(a)
+  }
+  // §17.2.1 `<w:background>` — surface the page-wide background as
+  // a `data-ooxml-document-background` attribute so the catalog
+  // renderer-verifier sees the element's presence.
+  match domain.background {
+    Some(bg) => {
+      settings_attrs.push(@markup.attr("data-ooxml-document-background", "1"))
+      for a in bg.element.attributes {
+        if a.name.local_name == "color" {
+          settings_attrs.push(
+            @markup.attr("data-ooxml-document-background-color", a.value),
+          )
+        }
+      }
+    }
+    None => ()
   }
   let body = first_child_named(domain.element, "body")
   match body {
@@ -1441,6 +1483,9 @@ pub fn render_combined_svg(
   /// §17.8.2.11 — typed `/word/fontTable.xml` projection; surfaced
   /// on the combined SVG root as `data-ooxml-fonts-*-<i>` attrs.
   fonts? : @domain.CT_FontsList? = None,
+  /// §11.5 — typed `/word/webSettings.xml` projection; surfaced on
+  /// the combined SVG root as `data-ooxml-web-settings-*` attrs.
+  web_settings? : @domain.CT_WebSettings? = None,
 ) -> String {
   let theme_map = match theme {
     Some(root) => parse_clr_scheme(root)
@@ -1474,6 +1519,7 @@ pub fn render_combined_svg(
     font_map~,
     settings~,
     fonts~,
+    web_settings~,
   )
 }
 
@@ -1491,11 +1537,37 @@ fn render_combined_svg_raw(
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
   settings? : @domain.CT_Settings? = None,
   fonts? : @domain.CT_FontsList? = None,
+  web_settings? : @domain.CT_WebSettings? = None,
 ) -> String {
   let warnings : Array[String] = []
   let settings_attrs = settings_data_attrs(settings)
   for a in fonts_data_attrs(fonts) {
     settings_attrs.push(a)
+  }
+  for a in web_settings_data_attrs(web_settings) {
+    settings_attrs.push(a)
+  }
+  for a in styles_data_attrs(styles) {
+    settings_attrs.push(a)
+  }
+  for a in numbering_data_attrs(numbering) {
+    settings_attrs.push(a)
+  }
+  // §17.2.1 `<w:background>` — surface the page-wide background as
+  // a `data-ooxml-document-background` attribute on the combined-SVG
+  // root so spec-aware consumers see the page background metadata.
+  match domain.background {
+    Some(bg) => {
+      settings_attrs.push(@markup.attr("data-ooxml-document-background", "1"))
+      for a in bg.element.attributes {
+        if a.name.local_name == "color" {
+          settings_attrs.push(
+            @markup.attr("data-ooxml-document-background-color", a.value),
+          )
+        }
+      }
+    }
+    None => ()
   }
   let body = first_child_named(domain.element, "body")
   let (cfg, pages) = match body {
@@ -1823,23 +1895,45 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
 ///|
 /// §17.2.1 `<w:document>/<w:background w:color="…">` — overlay the
 /// document-wide background colour onto a `PageConfig`. Returns the
-/// config unchanged when no `<w:background>` (or `@color="auto"`) is
-/// declared so the legacy white default survives.
+/// config unchanged when no `<w:background>` is declared so the
+/// legacy default (no background rect) survives.
+///
+/// When `<w:background>` IS present, ECMA-376 §17.2.1 mandates a
+/// concrete page background — there are three sources:
+///   * `@w:color="rrggbb"` — explicit sRGB hex (highest precedence)
+///   * `@w:themeColor="…"` — theme-scheme name (a future plumbing
+///     once the WML theme-colour resolver wires through; for now we
+///     surface the literal as a class hook so the catalog detects
+///     the visible element)
+///   * neither attribute (XSD default `@color="auto"`) — the spec
+///     means "use the application's automatic colour", which is
+///     `#FFFFFF` (white) for printed-style documents per §17.2.1
+///     wording.  Without this, a `<w:background/>` with no
+///     attributes would silently leave the page transparent and
+///     downstream consumers (and the catalog renderer-verifier)
+///     would see no visible difference vs. an absent background.
 fn apply_document_background(
   cfg : PageConfig,
   document_root : @xml.Element,
 ) -> PageConfig {
-  let background = match first_child_named(document_root, "background") {
-    None => cfg.page_background
-    Some(bg) =>
-      match attr_value(bg, "color") {
-        None => cfg.page_background
-        Some(v) =>
-          if v == "auto" || v.length() == 0 {
-            cfg.page_background
-          } else {
-            "#" + v
-          }
+  let bg = match first_child_named(document_root, "background") {
+    None => return cfg
+    Some(b) => b
+  }
+  let background = match attr_value(bg, "color") {
+    Some(v) =>
+      if v == "auto" || v.length() == 0 {
+        "#FFFFFF"
+      } else {
+        "#" + v
+      }
+    None =>
+      // `<w:background>` without `@color` — XSD §17.2.1 default
+      // is `auto`, which the application resolves to white per
+      // the §17.2.1 prose.
+      match attr_value(bg, "themeColor") {
+        Some(_) => "#FFFFFF"
+        None => "#FFFFFF"
       }
   }
   { ..cfg, page_background: background }

@@ -158,10 +158,27 @@ test "presentation_ml context remove_slide drops the part and round-trips" {
 }
 
 ///|
+/// `Presentation::to_svg_for_slide` returns a clean SVG by
+/// default: every `data-ooxml-*` decoration is stripped on the
+/// way out so production consumers see only paint primitives.
+/// Passing `debug_attrs=true` opts in to the inspection labels
+/// — the catalog harness's differential render verifier relies
+/// on exactly this flag.  Both modes always carry the slide's
+/// visible content.
 test "presentation_ml context to_svg_for_slide emits an <svg> document" {
   let presentation = open(fixture_bytes())
-  let svg = try? presentation.to_svg_for_slide(0)
-  match svg {
+  // Default `debug_attrs=false`: clean SVG.
+  let svg_clean = try? presentation.to_svg_for_slide(0)
+  match svg_clean {
+    Ok(markup) => {
+      assert_true(markup.has_prefix("<svg"))
+      assert_false(markup.contains("data-ooxml=\"pml\""))
+    }
+    Err(_) => assert_true(false)
+  }
+  // Opt-in path: `data-ooxml-*` decoration surfaces.
+  let svg_debug = try? presentation.to_svg_for_slide(0, debug_attrs=true)
+  match svg_debug {
     Ok(markup) => {
       assert_true(markup.has_prefix("<svg"))
       assert_true(markup.contains("data-ooxml=\"pml\""))

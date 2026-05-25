@@ -806,4 +806,130 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
       ]),
     ),
   })
+
+  // ----------------------------------------------------------------
+  // 22. table-cell-borders — §17.4.59 `<w:tcBorders>` per-side
+  //     borders with four distinct colours (red top, green bottom,
+  //     blue left, black right) so each side's colour cascade and
+  //     the per-side stroke pipeline are exercised in one fixture.
+  //     The table sits in a row with NO `<w:tblBorders>` cascade so
+  //     the only visible strokes come from the cell-local override
+  //     — drives the renderer through the tcBorders branch at
+  //     `src/ecma376/wordprocessing_ml/viewer/svg.mbt:901`.
+  // ----------------------------------------------------------------
+  {
+    let coloured_borders = xe(NS_W, "tcBorders", [], [
+      Element(bdr("top", "single", "16", "C00000")),
+      Element(bdr("bottom", "single", "16", "00B050")),
+      Element(bdr("left", "single", "16", "0070C0")),
+      Element(bdr("right", "single", "16", "000000")),
+    ])
+    // A second cell uses different border *styles* per side
+    // (single / double / dashed / dotted) — the renderer's stroke-
+    // dash translator picks each up from the `<w:val>` attribute.
+    let mixed_styles = xe(NS_W, "tcBorders", [], [
+      Element(bdr("top", "single", "16", "C00000")),
+      Element(bdr("bottom", "double", "16", "00B050")),
+      Element(bdr("left", "dashed", "16", "0070C0")),
+      Element(bdr("right", "dotted", "16", "000000")),
+    ])
+    // The empty `<w:tblBorders>` block tells the renderer the table
+    // has no cascaded borders; the only strokes that should appear
+    // are the per-cell overrides, so the fixture isolates the
+    // §17.4.59 path.
+    let no_tbl_borders = xe(NS_W, "tblBorders", [], [
+      Element(bdr_none("top")),
+      Element(bdr_none("left")),
+      Element(bdr_none("bottom")),
+      Element(bdr_none("right")),
+      Element(bdr_none("insideH")),
+      Element(bdr_none("insideV")),
+    ])
+    cases.push({
+      id: "table-cell-borders",
+      format: "docx",
+      category: "table",
+      content: body_of(
+        tbl([no_tbl_borders], tbl_grid(["3000", "3000"]), [
+          tr([
+            tc_w_props("3000", [coloured_borders], "Per-side colours"),
+            tc_w_props("3000", [mixed_styles], "Mixed styles"),
+          ]),
+        ]),
+      ),
+    })
+  }
+
+  // ----------------------------------------------------------------
+  // 23. table-cell-widths — §17.4.61 `<w:tcW>` explicit per-cell
+  //     widths (1000 / 2000 / 3000 dxa).  The columns must render
+  //     at their absolute widths regardless of the equal-grid hint
+  //     so the renderer honours the cell-local override.  Fixed
+  //     layout is set explicitly so the auto-fit pass does not
+  //     redistribute widths.
+  // ----------------------------------------------------------------
+  cases.push({
+    id: "table-cell-widths",
+    format: "docx",
+    category: "table",
+    content: body_of(
+      tbl(
+        [std_borders(), tbl_layout("fixed")],
+        tbl_grid(["1000", "2000", "3000"]),
+        [
+          tr([
+            tc_w_text("1000", "1000"),
+            tc_w_text("2000", "2000"),
+            tc_w_text("3000", "3000"),
+          ]),
+          tr([
+            tc_w_text("1000", "narrow"),
+            tc_w_text("2000", "medium"),
+            tc_w_text("3000", "wide"),
+          ]),
+        ],
+      ),
+    ),
+  })
+
+  // ----------------------------------------------------------------
+  // 24. table-level-borders — §17.4.43 `<w:tblBorders>` cascades to
+  //     all cells.  Each side gets its own colour at the table
+  //     level (the §17.4.59 per-cell overrides are absent).  The
+  //     renderer must paint the outer-edge cells with the
+  //     side-matching cascade colour and the interior edges with
+  //     `insideH` / `insideV` colours.
+  // ----------------------------------------------------------------
+  let cascade_borders = xe(NS_W, "tblBorders", [], [
+    Element(bdr("top", "single", "18", "C00000")),
+    Element(bdr("left", "single", "18", "0070C0")),
+    Element(bdr("bottom", "single", "18", "00B050")),
+    Element(bdr("right", "single", "18", "7030A0")),
+    Element(bdr("insideH", "single", "8", "808080")),
+    Element(bdr("insideV", "single", "8", "808080")),
+  ])
+  cases.push({
+    id: "table-level-borders",
+    format: "docx",
+    category: "table",
+    content: body_of(
+      tbl([cascade_borders], tbl_grid(["2400", "2400", "2400"]), [
+        tr([
+          tc_w_text("2400", "A1"),
+          tc_w_text("2400", "B1"),
+          tc_w_text("2400", "C1"),
+        ]),
+        tr([
+          tc_w_text("2400", "A2"),
+          tc_w_text("2400", "B2"),
+          tc_w_text("2400", "C2"),
+        ]),
+        tr([
+          tc_w_text("2400", "A3"),
+          tc_w_text("2400", "B3"),
+          tc_w_text("2400", "C3"),
+        ]),
+      ]),
+    ),
+  })
 }

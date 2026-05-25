@@ -4915,6 +4915,41 @@ fn generate_visual_fixtures() -> Unit {
       Err(_) => println("!! failed to write " + path)
     }
   }
+  // External-reference-case pass: xlsx fixtures whose workbook
+  // declares `<externalReferences>` resolved to an
+  // `xl/externalLinks/externalLink1.xml` part (§18.14.7 /
+  // §18.14.5).  Built by `xlsx_package_with_externals` which
+  // wires the workbook rId2 → external link relationship and the
+  // `…spreadsheetml.externalLink+xml` content-type override.
+  for c in external_ref_cases() {
+    total = total + 1
+    let bytes = xlsx_package_with_externals(c.content, c.external_link)
+    let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
+    let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
+    let _ = try? @fs.create_dir(dir)
+    let path = dir + "/" + c.id + "." + c.format
+    match (try? @fs.write_bytes_to_file(path, bytes)) {
+      Ok(_) => written = written + 1
+      Err(_) => println("!! failed to write " + path)
+    }
+  }
+  // Media-slide-case pass: pptx fixtures whose slide carries a
+  // `<a:videoFile r:link>` and/or `<a:hlinkClick r:id>` whose
+  // rIds resolve via slide-side External-mode relationships.
+  // Built by `pptx_package_with_slide_rels` which wires the
+  // layout rId1 plus the caller-supplied (rId2..) extras.
+  for c in media_slide_cases() {
+    total = total + 1
+    let bytes = pptx_package_with_slide_rels(c.content, c.extra_rels)
+    let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
+    let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
+    let _ = try? @fs.create_dir(dir)
+    let path = dir + "/" + c.id + "." + c.format
+    match (try? @fs.write_bytes_to_file(path, bytes)) {
+      Ok(_) => written = written + 1
+      Err(_) => println("!! failed to write " + path)
+    }
+  }
   println("visual fixtures: \{written}/\{total} -> .snapshots/fixtures/")
 }
 

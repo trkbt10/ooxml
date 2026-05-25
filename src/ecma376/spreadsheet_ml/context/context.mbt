@@ -182,7 +182,19 @@ pub fn Workbook::save(self : Workbook) -> Bytes {
 ///         because its public API is per-sheet, but the ooxml facade
 ///         emits the workbook as a single document so client code
 ///         doesn't need to know about sheet count up-front.
-pub fn Workbook::to_svg(self : Workbook) -> String {
+///
+/// `debug_attrs` (default `false`) controls whether the viewer's
+/// `data-ooxml-*` decoration survives in the returned SVG.  The
+/// flag exists because those attributes are inspection labels
+/// (workbook protection, file version, pivot/sparkline metadata,
+/// pageSetup …) that the catalog harness's differential render
+/// verifier consumes; production consumers (a browser embedding
+/// the SVG, a snapshot diff against a reference renderer) MUST
+/// see only paint primitives.  The SoT that decides whether they
+/// survive is exactly one byte-stream pass
+/// (`@markup.strip_debug_attrs`) applied here on the way out, so
+/// the per-sheet viewer code stays free to keep emitting labels.
+pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String {
   let buf = StringBuilder::new()
   // §18.8.3 — parse the theme part once per workbook render so
   // each worksheet picks up the same colour scheme.  Failure to
@@ -248,7 +260,12 @@ pub fn Workbook::to_svg(self : Workbook) -> String {
     )
     buf.write_string(result.svg)
   }
-  buf.to_string()
+  let svg = buf.to_string()
+  if debug_attrs {
+    svg
+  } else {
+    @markup.strip_debug_attrs(svg)
+  }
 }
 
 ///|

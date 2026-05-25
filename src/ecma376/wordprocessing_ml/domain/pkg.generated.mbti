@@ -2742,8 +2742,8 @@ pub fn CT_String::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_String::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Style {
-  style_id : StyleId
-  style_type : ST_StyleType
+  style_id : StyleId?
+  style_type : ST_StyleType?
   name : String?
   based_on : StyleId?
   next : StyleId?

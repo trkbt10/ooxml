@@ -66,7 +66,8 @@ fn type_children(schema : Schema, ct : @xml.Element) -> Array[(String, String)] 
   let out : Array[(String, String)] = []
   // Direct `<xsd:element>` children, plus those inside any
   // (transitively) referenced group.  `seen_groups` guards against a
-  // group that references itself.
+  // group that references itself; `seen_bases` guards against base
+  // type chains that loop.
   let seen_groups : Map[String, Bool] = Map::new()
   fn collect(node : @xml.Element) -> Unit {
     // Walk this node's whole subtree; for every `<xsd:element>`
@@ -153,22 +154,23 @@ fn type_has_any(ct : @xml.Element) -> Bool {
 /// → save → open round trip.
 fn part_roots(schema : Schema) -> Array[(String, String)] {
   let roots : Array[(String, String)] = []
-  for name in [
-    // Primary document-body roots.
-    "document", "worksheet", "sld",
-    // Supplementary cross-format roots.
-    "presentation", "workbook", "theme", "styleSheet",
-    // WML auxiliary part roots — without these, WML-only elements
-    // such as `<w:evenAndOddHeaders>` or `<w:characterSpacingControl>`
-    // (defined only inside `<w:settings>`) have no body-rooted BFS
-    // path and fall through to the `graphicData` any-host route,
-    // which lands them in a PPTX slide where the renderer never
-    // surfaces the WML metadata. Adding the aux roots gives them a
-    // canonical WML wrapper chain that `docx_aux_package` can
-    // synthesise into a valid `.docx` package.
-    "settings", "styles", "numbering", "fonts", "webSettings", "comments",
-    "footnotes", "endnotes",
-  ] {
+  for
+    name in [
+      // Primary document-body roots.
+      "document", "worksheet", "sld",
+      // Supplementary cross-format roots.
+       "presentation", "workbook", "theme", "styleSheet",
+      // WML auxiliary part roots — without these, WML-only elements
+      // such as `<w:evenAndOddHeaders>` or `<w:characterSpacingControl>`
+      // (defined only inside `<w:settings>`) have no body-rooted BFS
+      // path and fall through to the `graphicData` any-host route,
+      // which lands them in a PPTX slide where the renderer never
+      // surfaces the WML metadata. Adding the aux roots gives them a
+      // canonical WML wrapper chain that `docx_aux_package` can
+      // synthesise into a valid `.docx` package.
+       "settings", "styles", "numbering", "fonts", "webSettings", "comments", "footnotes",
+      "endnotes",
+    ] {
     match schema.top_elements.get(name) {
       Some((el, _)) =>
         // The root element's `type` is a resolved `ns#localname`.
@@ -405,14 +407,47 @@ fn build_ancestry(schema : Schema) -> Map[String, Array[(String, String)]] {
     }
     let name = nt_name(key)
     let prefer_shape = is_shape_attached_prop(name)
+    // Step 0 — namespace-aligned primary root preference.  When an
+    // element's own namespace identifies a specific renderer
+    // pipeline (WordprocessingML, SpreadsheetML, PresentationML),
+    // an ancestry chain rooted at that pipeline's primary part
+    // ALWAYS beats a chain rooted in a different pipeline — even
+    // when the foreign chain is shallower.  Without this the BFS
+    // picks the shallowest available path (e.g. `<w:tcBorders>`
+    // routed through `<sld>/.../a:tc>/<a:tcPr>` for §17.4.59) and
+    // the wml renderer never sees the element because it lives
+    // in the wrong part.  The renderer pipeline that owns the
+    // element's namespace is the only one able to interpret it,
+    // so we promote a matching primary chain whenever one exists.
+    let preferred_root = match nt_ns(key) {
+      ns if ns.contains("wordprocessingml") => Some("document")
+      ns if ns.contains("spreadsheetml") => Some("worksheet")
+      ns if ns.contains("presentationml") => Some("sld")
+      _ => None
+    }
+    let mut best : Array[(String, String)] = paths[0]
+    match preferred_root {
+      Some(root_name) => {
+        let best_matches = best.length() > 0 && best[0].0 == root_name
+        if not(best_matches) {
+          for p in paths {
+            if p.length() > 0 && p[0].0 == root_name {
+              best = p
+              break
+            }
+          }
+        }
+      }
+      None => ()
+    }
     // Step 1 — primary part-root preference.  Walk candidates in
     // BFS order so we land on the shallowest primary path when
     // multiple primary paths exist (matches the pre-supplementary
     // baseline canonical pick).  An empty path indicates the
     // element IS a primary part root (`<document>`, `<sld>`,
     // `<worksheet>`) — it is its own host and counts as primary.
-    let mut best : Array[(String, String)] = paths[0]
-    let best_is_primary = best.length() == 0 || path_starts_in_primary_root(best)
+    let best_is_primary = best.length() == 0 ||
+      path_starts_in_primary_root(best)
     if not(best_is_primary) {
       for p in paths {
         if p.length() == 0 || path_starts_in_primary_root(p) {
@@ -432,6 +467,21 @@ fn build_ancestry(schema : Schema) -> Map[String, Array[(String, String)]] {
     ancestry[key] = best
   }
   ancestry
+}
+
+///|
+/// Extract the namespace half from an `nt_key` (`<name>\0<type-key>`).
+/// The type key is encoded as `<namespace>#<localname>` so the
+/// namespace identifies the schema pipeline that owns the element.
+fn nt_ns(key : String) -> String {
+  let after = match key.find("\u{0000}") {
+    None => return ""
+    Some(i) => key[i + 1:].to_string()
+  }
+  match after.find("#") {
+    None => after
+    Some(j) => after[0:j].to_string()
+  }
 }
 
 ///|
@@ -569,10 +619,7 @@ fn retarget_attr(
     }
   }
   if not(replaced) {
-    attrs.push({
-      name: { prefix: None, local_name: local, ns: None },
-      value,
-    })
+    attrs.push({ name: { prefix: None, local_name: local, ns: None }, value })
   }
   { name: el.name, attributes: attrs, children: el.children }
 }

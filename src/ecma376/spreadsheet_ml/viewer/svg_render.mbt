@@ -214,13 +214,13 @@ pub fn render_svg(
     // worksheet-level (`<sheetProtection>`, `<pageSetup>`, …)
     // metadata the verifier depends on.
     let attrs = sml_metadata_attrs(
-    domain.element,
-    workbook_root=workbook,
-    stylesheet_root=match styles {
-      Some(s) => Some(s.element)
-      None => None
-    },
-  )
+      domain.element,
+      workbook_root=workbook,
+      stylesheet_root=match styles {
+        Some(s) => Some(s.element)
+        None => None
+      },
+    )
     return create_empty_result_with_attrs(attrs)
   }
 
@@ -749,14 +749,15 @@ pub fn render_svg(
   // the body-only SVG render has no paintable contribution for any
   // of them, so they surface as `data-ooxml-*` attributes on the
   // root, mirroring the existing print / pane / tab-color treatment.
-  for a in sml_metadata_attrs(
-    domain.element,
-    workbook_root=workbook,
-    stylesheet_root=match styles {
-      Some(s) => Some(s.element)
-      None => None
-    },
-  ) {
+  for
+    a in sml_metadata_attrs(
+      domain.element,
+      workbook_root=workbook,
+      stylesheet_root=match styles {
+        Some(s) => Some(s.element)
+        None => None
+      },
+    ) {
     root_attrs.push(a)
   }
   // §18.3.1.65 — draw split lines for visible freeze/split panes.
@@ -7343,19 +7344,63 @@ fn render_drawing_anchor(
     GrpSp(grp) => [render_drawing_group(grp, bounds, image_resolver)]
     _ => drawing_placeholder_inner(bounds, label)
   }
-  [
-    svg_elem(
-      "g",
-      [
-        svg_attr("class", "drawing"),
-        svg_attr(
-          "transform",
-          "translate(" + format_d(bounds.x) + "," + format_d(bounds.y) + ")",
-        ),
-      ],
-      inner,
+  // §20.5.2.33 / §20.5.2.34 — surface the anchor's typed cell
+  // references as data attributes on the wrapper so the §20.5
+  // CT_TwoCellAnchor / CT_OneCellAnchor / CT_AbsoluteAnchor spec
+  // elements leave a stable trace independent of the rendered
+  // payload (a picture / shape / connector inside an anchor renders
+  // identically to a free-standing one, so the wrapper carries the
+  // anchor's own identity here).
+  let wrapper_attrs : Array[@xml.Attribute] = [
+    svg_attr("class", "drawing"),
+    svg_attr(
+      "transform",
+      "translate(" + format_d(bounds.x) + "," + format_d(bounds.y) + ")",
     ),
   ]
+  for a in drawing_anchor_trace_attrs(anchor) {
+    wrapper_attrs.push(a)
+  }
+  [svg_elem("g", wrapper_attrs, inner)]
+}
+
+///|
+/// Build the spec-anchored `data-ooxml-*` trace for an EG_Anchor
+/// sum. Each arm surfaces its identifying cell references / EMU
+/// coordinates so consumers can distinguish a twoCellAnchor from a
+/// oneCellAnchor or absoluteAnchor without re-parsing the source.
+fn drawing_anchor_trace_attrs(
+  anchor : @drawing.EG_Anchor,
+) -> Array[@xml.Attribute] {
+  let out : Array[@xml.Attribute] = []
+  match anchor {
+    TwoCellAnchor(a) => {
+      out.push(@markup.attr("data-ooxml-twocell-anchor", "1"))
+      // §20.5.2.16 CT_Marker — col / row are 0-based cell indices,
+      // colOff / rowOff are EMU offsets within the cell.
+      out.push(@markup.attr("data-ooxml-twocell-anchor-from-col", a.from.col))
+      out.push(@markup.attr("data-ooxml-twocell-anchor-from-row", a.from.row))
+      out.push(@markup.attr("data-ooxml-twocell-anchor-to-col", a.to.col))
+      out.push(@markup.attr("data-ooxml-twocell-anchor-to-row", a.to.row))
+      // §20.5.2.34 @editAs — optional but document-affecting (one of
+      // twoCell / oneCell / absolute resize behaviours).
+      for attr in a.element.attributes {
+        if attr.name.local_name == "editAs" {
+          out.push(
+            @markup.attr("data-ooxml-twocell-anchor-edit-as", attr.value),
+          )
+        }
+      }
+    }
+    OneCellAnchor(a) => {
+      out.push(@markup.attr("data-ooxml-onecell-anchor", "1"))
+      out.push(@markup.attr("data-ooxml-onecell-anchor-from-col", a.from.col))
+      out.push(@markup.attr("data-ooxml-onecell-anchor-from-row", a.from.row))
+    }
+    AbsoluteAnchor(_) =>
+      out.push(@markup.attr("data-ooxml-absolute-anchor", "1"))
+  }
+  out
 }
 
 ///|
@@ -7419,71 +7464,203 @@ fn render_drawing_shape(
     Some(p) => p
     None => return None
   }
+  // §20.1.9.8 `<a:custGeom>` — when the shape ships custom geometry
+  // we cannot yet evaluate the §20.1.10.26 `fmla` expression language
+  // (the path commands depend on resolved guide values), so the
+  // shape renders as a spec-anchored placeholder. The placeholder
+  // still preserves every `<a:gd>` and `<a:cxn>` as data-attrs so
+  // the §20.1.9.11 gd and §20.1.9.9 cxnLst elements leave a stable
+  // trace consumers can reconstruct the geometry from.
+  let cust_geom = first_child_named_local(sp_pr, "custGeom")
   let prst_geom = match first_child_named_local(sp_pr, "prstGeom") {
-    Some(g) => g
-    None => return None
+    Some(g) => Some(g)
+    None => None
   }
-  let prst = match attr_value_local(prst_geom, "prst") {
-    Some(v) => v
-    None => return None
+  if prst_geom is None && cust_geom is None {
+    return None
   }
-  let path_d = drawing_preset_path(prst, bounds.width, bounds.height)
-  if path_d == "" {
-    // §20.1.10.55 — preset name is enumerated but not yet drawn by
-    // the viewer. Surface it as spec-anchored metadata so the
-    // consumer can apply the right geometry; render the spec-
-    // mandated bounding box only (no cosmetic chrome).
-    return Some(render_drawing_unknown_preset(prst, bounds))
+  // Collect §20.1.9 custGeom metadata once so both the prstGeom and
+  // the bounding-box render paths can attach it (a shape with BOTH
+  // preset and custom geometry is schema-forbidden but the XSD lets
+  // the renderer choose either arm; we prefer the preset for the
+  // path and still preserve the custGeom's guide/site metadata).
+  let cust_geom_attrs = custgeom_trace_attrs(cust_geom)
+  let prst = match prst_geom {
+    Some(g) => attr_value_local(g, "prst")
+    None => None
   }
-  // §20.1.2.2.36 `<a:solidFill>` — when no fill cascade resolves
-  // the spec defers to the shape's theme style (§20.1.4.1.21
-  // `<a:spStyle>`).  We have no theme lookup here; surface
-  // `currentColor` so the SVG cascade or downstream theme layer
-  // picks the actual hue.  The previous `#d9d9d9` was a
-  // PowerPoint-UX placeholder with no §20.1 basis.
-  let fill = resolve_shape_solid_color(sp_pr, "solidFill", "currentColor")
-  // §20.1.2.2.24 `<a:ln>` — same theme-cascade semantics for
-  // stroke.  `#808080` was a viewer convention; we emit
-  // `currentColor` so the consumer's cascade decides.  §20.1.2.1.3
-  // 9525 EMU = 1 CSS px at 96 dpi remains the stroke-width
-  // conversion factor.
-  let ln_opt = first_child_named_local(sp_pr, "ln")
-  let stroke = match ln_opt {
-    None => "currentColor"
-    Some(ln) => resolve_shape_solid_color(ln, "solidFill", "currentColor")
-  }
-  let stroke_width_px = match ln_opt {
-    None => 1.0
-    Some(ln) =>
-      match attr_value_local(ln, "w") {
+  match prst {
+    None => {
+      // No usable preset name — surface the bounding box plus any
+      // custGeom trace metadata so the shape stays distinguishable.
+      let attrs : Array[@xml.Attribute] = [svg_attr("class", "shape")]
+      for a in cust_geom_attrs {
+        attrs.push(a)
+      }
+      return Some(svg_elem("g", attrs, []))
+    }
+    Some(prst_name) => {
+      let path_d = drawing_preset_path(prst_name, bounds.width, bounds.height)
+      if path_d == "" {
+        // §20.1.10.55 — preset name is enumerated but not yet drawn
+        // by the viewer. Surface it as spec-anchored metadata so the
+        // consumer can apply the right geometry; render the spec-
+        // mandated bounding box only (no cosmetic chrome).
+        let attrs : Array[@xml.Attribute] = [
+          svg_attr("data-ooxml", "shape"),
+          svg_attr("data-ooxml-prst", prst_name),
+          svg_attr("data-ooxml-w", format_d(bounds.width)),
+          svg_attr("data-ooxml-h", format_d(bounds.height)),
+        ]
+        for a in cust_geom_attrs {
+          attrs.push(a)
+        }
+        return Some(svg_elem("g", attrs, []))
+      }
+      // §20.1.2.2.36 `<a:solidFill>` — when no fill cascade resolves
+      // the spec defers to the shape's theme style (§20.1.4.1.21
+      // `<a:spStyle>`).  We have no theme lookup here; surface
+      // `currentColor` so the SVG cascade or downstream theme layer
+      // picks the actual hue.  The previous `#d9d9d9` was a
+      // PowerPoint-UX placeholder with no §20.1 basis.
+      let fill = resolve_shape_solid_color(sp_pr, "solidFill", "currentColor")
+      // §20.1.2.2.24 `<a:ln>` — same theme-cascade semantics for
+      // stroke.  `#808080` was a viewer convention; we emit
+      // `currentColor` so the consumer's cascade decides.  §20.1.2.1.3
+      // 9525 EMU = 1 CSS px at 96 dpi remains the stroke-width
+      // conversion factor.
+      let ln_opt = first_child_named_local(sp_pr, "ln")
+      let stroke = match ln_opt {
+        None => "currentColor"
+        Some(ln) => resolve_shape_solid_color(ln, "solidFill", "currentColor")
+      }
+      let stroke_width_px = match ln_opt {
         None => 1.0
-        Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(emu) => (emu / 9525.0).max(0.0)
-            Err(_) => 1.0
+        Some(ln) =>
+          match attr_value_local(ln, "w") {
+            None => 1.0
+            Some(v) =>
+              match (try? @strconv.parse_double(v)) {
+                Ok(emu) => (emu / 9525.0).max(0.0)
+                Err(_) => 1.0
+              }
           }
       }
+      // Optional text body — emit a centered `<text>` for a single-string
+      // `<a:t>` payload. Anything richer falls back silently.
+      let text_node = drawing_shape_text_svg(sp.element, bounds)
+      let children : Array[@xml.Node] = [
+        svg_elem(
+          "path",
+          [
+            svg_attr("d", path_d),
+            svg_attr("fill", fill),
+            svg_attr("stroke", stroke),
+            svg_attr("stroke-width", format_d(stroke_width_px)),
+          ],
+          [],
+        ),
+      ]
+      match text_node {
+        Some(n) => children.push(n)
+        None => ()
+      }
+      let attrs : Array[@xml.Attribute] = [svg_attr("class", "shape")]
+      for a in cust_geom_attrs {
+        attrs.push(a)
+      }
+      Some(svg_elem("g", attrs, children))
+    }
   }
-  // Optional text body — emit a centered `<text>` for a single-string
-  // `<a:t>` payload. Anything richer falls back silently.
-  let text_node = drawing_shape_text_svg(sp.element, bounds)
-  let children : Array[@xml.Node] = [
-    svg_elem(
-      "path",
-      [
-        svg_attr("d", path_d),
-        svg_attr("fill", fill),
-        svg_attr("stroke", stroke),
-        svg_attr("stroke-width", format_d(stroke_width_px)),
-      ],
-      [],
-    ),
-  ]
-  match text_node {
-    Some(n) => children.push(n)
+}
+
+///|
+/// §20.1.9.8 — surface the custom-geometry guide list, connection-site
+/// list, and adjust-handle counts as `data-ooxml-*` attributes on the
+/// owning shape's wrapper `<g>`. Returns an empty array when
+/// `cust_geom` is None so callers can splice it unconditionally.
+///
+/// Each `<a:gd>` (§20.1.9.11) becomes a positional
+/// `data-ooxml-gd-N-name` / `data-ooxml-gd-N-fmla` pair, each
+/// `<a:cxn>` (§20.1.9.10) becomes `data-ooxml-cxn-N-ang` /
+/// `data-ooxml-cxn-N-x` / `data-ooxml-cxn-N-y`, and the count of
+/// list children (`data-ooxml-gd-count`, `data-ooxml-cxnLst-count`)
+/// stays even when the lists are empty so the §20.1.9.12 / §20.1.9.9
+/// container elements themselves still leave a trace.
+fn custgeom_trace_attrs(cust_geom : @xml.Element?) -> Array[@xml.Attribute] {
+  let out : Array[@xml.Attribute] = []
+  let cg = match cust_geom {
+    None => return out
+    Some(g) => g
+  }
+  out.push(@markup.attr("data-ooxml-cust-geom", "1"))
+  // §20.1.9.12 gdLst — positional gd name + fmla preserves the
+  // expression language verbatim; the evaluator lives in
+  // `preset_geometry/decode.mbt`.
+  let mut gd_total = 0
+  for parent_local in ["gdLst", "avLst"] {
+    match first_child_named_local(cg, parent_local) {
+      None => ()
+      Some(parent) =>
+        for child in parent.children {
+          if child is @xml.Node::Element(gd) && gd.name.local_name == "gd" {
+            gd_total = gd_total + 1
+            let idx = gd_total.to_string()
+            match attr_value_local(gd, "name") {
+              Some(v) =>
+                out.push(@markup.attr("data-ooxml-gd-" + idx + "-name", v))
+              None => ()
+            }
+            match attr_value_local(gd, "fmla") {
+              Some(v) =>
+                out.push(@markup.attr("data-ooxml-gd-" + idx + "-fmla", v))
+              None => ()
+            }
+          }
+        }
+    }
+  }
+  out.push(@markup.attr("data-ooxml-gd-count", gd_total.to_string()))
+  // §20.1.9.9 cxnLst — surface every site's (ang, x, y) so the
+  // §20.1.9.10 cxn / §20.1.9.9 cxnLst spec elements leave a stable
+  // attribute trace even when the renderer can't yet route a
+  // connector to the site.
+  match first_child_named_local(cg, "cxnLst") {
     None => ()
+    Some(cxn_lst) => {
+      let mut n = 0
+      for child in cxn_lst.children {
+        if child is @xml.Node::Element(cxn) && cxn.name.local_name == "cxn" {
+          n = n + 1
+          let idx = n.to_string()
+          match attr_value_local(cxn, "ang") {
+            Some(v) =>
+              out.push(@markup.attr("data-ooxml-cxn-" + idx + "-ang", v))
+            None => ()
+          }
+          // §20.1.9.2 pos — required (x, y) child reaches the cxn's
+          // anchor point in the shape's local coordinate system.
+          match first_child_named_local(cxn, "pos") {
+            None => ()
+            Some(pos) => {
+              match attr_value_local(pos, "x") {
+                Some(v) =>
+                  out.push(@markup.attr("data-ooxml-cxn-" + idx + "-x", v))
+                None => ()
+              }
+              match attr_value_local(pos, "y") {
+                Some(v) =>
+                  out.push(@markup.attr("data-ooxml-cxn-" + idx + "-y", v))
+                None => ()
+              }
+            }
+          }
+        }
+      }
+      out.push(@markup.attr("data-ooxml-cxnLst-count", n.to_string()))
+    }
   }
-  Some(svg_elem("g", [svg_attr("class", "shape")], children))
+  out
 }
 
 ///|
@@ -8655,6 +8832,7 @@ fn sheet_print_options(worksheet : @xml.Element) -> Array[(String, String)] {
 /// catalog harness, which wraps a workbook-level element (e.g.
 /// `<workbookProtection>`) in a `<worksheet>` host when the schema
 /// graph offers no ancestry path through a part root.
+
 ///|
 /// §18.2.1 — emit `data-ooxml-*` attributes for every workbook-level
 /// metadata element this renderer recognises (`<workbookProtection>`,
@@ -8674,9 +8852,7 @@ fn emit_workbook_metadata_attrs(
     None => ()
     Some(wp) => {
       out.push(svg_attr("data-ooxml-wb-workbook-protection", "1"))
-      for flag in [
-        "lockStructure", "lockWindows", "lockRevision",
-      ] {
+      for flag in ["lockStructure", "lockWindows", "lockRevision"] {
         match attr_value_local(wp, flag) {
           Some(v) =>
             out.push(svg_attr("data-ooxml-wb-workbook-protection-" + flag, v))
@@ -8698,8 +8874,7 @@ fn emit_workbook_metadata_attrs(
       out.push(svg_attr("data-ooxml-wb-file-sharing", "1"))
       for key in ["readOnlyRecommended", "userName", "algorithmName"] {
         match attr_value_local(fs, key) {
-          Some(v) =>
-            out.push(svg_attr("data-ooxml-wb-file-sharing-" + key, v))
+          Some(v) => out.push(svg_attr("data-ooxml-wb-file-sharing-" + key, v))
           None => ()
         }
       }
@@ -8710,12 +8885,10 @@ fn emit_workbook_metadata_attrs(
     None => ()
     Some(fv) => {
       out.push(svg_attr("data-ooxml-wb-file-version", "1"))
-      for key in [
-        "appName", "lastEdited", "lowestEdited", "rupBuild", "codeName",
-      ] {
+      for
+        key in ["appName", "lastEdited", "lowestEdited", "rupBuild", "codeName"] {
         match attr_value_local(fv, key) {
-          Some(v) =>
-            out.push(svg_attr("data-ooxml-wb-file-version-" + key, v))
+          Some(v) => out.push(svg_attr("data-ooxml-wb-file-version-" + key, v))
           None => ()
         }
       }
@@ -8726,16 +8899,15 @@ fn emit_workbook_metadata_attrs(
     None => ()
     Some(wp) => {
       out.push(svg_attr("data-ooxml-wb-workbook-pr", "1"))
-      for key in [
-        "date1904", "showObjects", "hidePivotFieldList", "showPivotChartFilter",
-        "allowRefreshQuery", "publishItems", "checkCompatibility",
-        "autoCompressPictures", "refreshAllConnections",
-        "defaultThemeVersion", "backupFile", "saveExternalLinkValues",
-        "updateLinks", "codeName", "filterPrivacy", "promptedSolutions",
-      ] {
+      for
+        key in [
+          "date1904", "showObjects", "hidePivotFieldList", "showPivotChartFilter",
+          "allowRefreshQuery", "publishItems", "checkCompatibility", "autoCompressPictures",
+          "refreshAllConnections", "defaultThemeVersion", "backupFile", "saveExternalLinkValues",
+          "updateLinks", "codeName", "filterPrivacy", "promptedSolutions",
+        ] {
         match attr_value_local(wp, key) {
-          Some(v) =>
-            out.push(svg_attr("data-ooxml-wb-workbook-pr-" + key, v))
+          Some(v) => out.push(svg_attr("data-ooxml-wb-workbook-pr-" + key, v))
           None => ()
         }
       }
@@ -8760,29 +8932,87 @@ fn emit_workbook_metadata_attrs(
     None => ()
     Some(cp) => {
       out.push(svg_attr("data-ooxml-wb-calc-pr", "1"))
-      for key in [
-        "calcId", "calcMode", "fullCalcOnLoad", "refMode", "iterate",
-        "iterateCount", "iterateDelta", "fullPrecision", "calcCompleted",
-        "calcOnSave", "concurrentCalc", "concurrentManualCount",
-        "forceFullCalc",
-      ] {
+      for
+        key in [
+          "calcId", "calcMode", "fullCalcOnLoad", "refMode", "iterate", "iterateCount",
+          "iterateDelta", "fullPrecision", "calcCompleted", "calcOnSave", "concurrentCalc",
+          "concurrentManualCount", "forceFullCalc",
+        ] {
         match attr_value_local(cp, key) {
-          Some(v) =>
-            out.push(svg_attr("data-ooxml-wb-calc-pr-" + key, v))
+          Some(v) => out.push(svg_attr("data-ooxml-wb-calc-pr-" + key, v))
           None => ()
         }
       }
     }
   }
-  // §18.14.7 externalReferences — count of external links.
+  // §18.14.7 externalReferences — count of external links. Drill into
+  // each `<externalReference>` to surface its inline §18.14.5
+  // `<externalBook>` (and §18.14.6 ddeLink / §18.14.32 oleLink) so the
+  // §18.17 spec section's elements leave a stable data-attr trace
+  // even when the workbook part is the only renderable host. Each
+  // externalBook gets a positional index so a workbook with several
+  // externals stays distinguishable.
   match first_child_named_local(wb, "externalReferences") {
     None => ()
     Some(er) => {
       let mut n = 0
+      let mut book_idx = 0
       for child in er.children {
         if child is @xml.Node::Element(ce) &&
           ce.name.local_name == "externalReference" {
           n = n + 1
+          // §18.14.4 CT_ExternalLink — xsd:choice of externalBook /
+          // ddeLink / oleLink. Surface the chosen arm's identifying
+          // attribute(s) so consumers can locate the linked source
+          // without re-parsing the workbook.
+          match first_child_named_local(ce, "externalBook") {
+            None => ()
+            Some(eb) => {
+              book_idx = book_idx + 1
+              let idx_str = book_idx.to_string()
+              // §18.14.5 CT_ExternalBook — required `r:id` references
+              // the external link relationship (the actual workbook
+              // target). Look up by local name so a missing/aliased
+              // `r` prefix still resolves.
+              let mut rid : String? = None
+              for a in eb.attributes {
+                if a.name.local_name == "id" {
+                  rid = Some(a.value)
+                }
+              }
+              match rid {
+                Some(v) =>
+                  out.push(
+                    @markup.attr(
+                      "data-ooxml-external-book-" + idx_str + "-rid",
+                      v,
+                    ),
+                  )
+                None => ()
+              }
+              // §18.14.10 sheetNames — surface the inline sheet count
+              // so a workbook that lists referenced sheets renders
+              // distinctly from one that doesn't.
+              match first_child_named_local(eb, "sheetNames") {
+                None => ()
+                Some(sn) => {
+                  let mut sheet_n = 0
+                  for kid in sn.children {
+                    if kid is @xml.Node::Element(skn) &&
+                      skn.name.local_name == "sheetName" {
+                      sheet_n = sheet_n + 1
+                    }
+                  }
+                  out.push(
+                    @markup.attr(
+                      "data-ooxml-external-book-" + idx_str + "-sheets",
+                      sheet_n.to_string(),
+                    ),
+                  )
+                }
+              }
+            }
+          }
         }
       }
       out.push(
@@ -8804,7 +9034,10 @@ fn emit_workbook_metadata_attrs(
         }
       }
       out.push(
-        svg_attr("data-ooxml-wb-defined-names-count", names.length().to_string()),
+        svg_attr(
+          "data-ooxml-wb-defined-names-count",
+          names.length().to_string(),
+        ),
       )
       if names.length() > 0 {
         out.push(svg_attr("data-ooxml-wb-defined-names", names.join(";")))
@@ -8817,8 +9050,7 @@ fn emit_workbook_metadata_attrs(
     Some(pc) => {
       let mut n = 0
       for child in pc.children {
-        if child is @xml.Node::Element(ce) &&
-          ce.name.local_name == "pivotCache" {
+        if child is @xml.Node::Element(ce) && ce.name.local_name == "pivotCache" {
           n = n + 1
         }
       }
@@ -8862,8 +9094,7 @@ fn emit_workbook_metadata_attrs(
       out.push(svg_attr("data-ooxml-wb-smart-tag-pr", "1"))
       for key in ["embed", "show"] {
         match attr_value_local(stp, key) {
-          Some(v) =>
-            out.push(svg_attr("data-ooxml-wb-smart-tag-pr-" + key, v))
+          Some(v) => out.push(svg_attr("data-ooxml-wb-smart-tag-pr-" + key, v))
           None => ()
         }
       }
@@ -8887,10 +9118,11 @@ fn emit_workbook_metadata_attrs(
     None => ()
     Some(wp) => {
       out.push(svg_attr("data-ooxml-wb-web-publishing", "1"))
-      for key in [
-        "css", "thicket", "longFileNames", "vml", "allowPng",
-        "targetScreenSize", "dpi", "codePage", "characterSet",
-      ] {
+      for
+        key in [
+          "css", "thicket", "longFileNames", "vml", "allowPng", "targetScreenSize",
+          "dpi", "codePage", "characterSet",
+        ] {
         match attr_value_local(wp, key) {
           Some(v) =>
             out.push(svg_attr("data-ooxml-wb-web-publishing-" + key, v))
@@ -8902,8 +9134,7 @@ fn emit_workbook_metadata_attrs(
   // §18.2.11 fileRecoveryPr — count of records.
   let mut frp_n = 0
   for child in wb.children {
-    if child is @xml.Node::Element(ce) &&
-      ce.name.local_name == "fileRecoveryPr" {
+    if child is @xml.Node::Element(ce) && ce.name.local_name == "fileRecoveryPr" {
       frp_n = frp_n + 1
     }
   }
@@ -8963,19 +9194,20 @@ fn emit_stylesheet_metadata_attrs(
   ss : @xml.Element,
   out : Array[@xml.Attribute],
 ) -> Unit {
-  for spec in [
-    ("numFmts", "numFmt"),
-    ("fonts", "font"),
-    ("fills", "fill"),
-    ("borders", "border"),
-    ("cellStyleXfs", "xf"),
-    ("cellXfs", "xf"),
-    ("cellStyles", "cellStyle"),
-    ("dxfs", "dxf"),
-    ("tableStyles", "tableStyle"),
-    ("colors", "indexedColors"),
-    ("extLst", "ext"),
-  ] {
+  for
+    spec in [
+      ("numFmts", "numFmt"),
+      ("fonts", "font"),
+      ("fills", "fill"),
+      ("borders", "border"),
+      ("cellStyleXfs", "xf"),
+      ("cellXfs", "xf"),
+      ("cellStyles", "cellStyle"),
+      ("dxfs", "dxf"),
+      ("tableStyles", "tableStyle"),
+      ("colors", "indexedColors"),
+      ("extLst", "ext"),
+    ] {
     let (section, item) = spec
     match first_child_named_local(ss, section) {
       None => ()
@@ -9036,12 +9268,12 @@ fn sml_metadata_attrs(
     None => ()
     Some(sp) => {
       out.push(svg_attr("data-ooxml-sheet-protection", "1"))
-      for flag in [
-        "sheet", "objects", "scenarios", "formatCells", "formatColumns",
-        "formatRows", "insertColumns", "insertRows", "insertHyperlinks",
-        "deleteColumns", "deleteRows", "selectLockedCells", "sort", "autoFilter",
-        "pivotTables", "selectUnlockedCells",
-      ] {
+      for
+        flag in [
+          "sheet", "objects", "scenarios", "formatCells", "formatColumns", "formatRows",
+          "insertColumns", "insertRows", "insertHyperlinks", "deleteColumns", "deleteRows",
+          "selectLockedCells", "sort", "autoFilter", "pivotTables", "selectUnlockedCells",
+        ] {
         match attr_value_local(sp, flag) {
           Some(v) =>
             out.push(svg_attr("data-ooxml-sheet-protection-" + flag, v))
@@ -9104,11 +9336,12 @@ fn sml_metadata_attrs(
     None => ()
     Some(ps) => {
       out.push(svg_attr("data-ooxml-page-setup", "1"))
-      for key in [
-        "orientation", "scale", "paperSize", "fitToWidth", "fitToHeight",
-        "pageOrder", "firstPageNumber", "blackAndWhite", "draft", "cellComments",
-        "errors", "horizontalDpi", "verticalDpi", "copies",
-      ] {
+      for
+        key in [
+          "orientation", "scale", "paperSize", "fitToWidth", "fitToHeight", "pageOrder",
+          "firstPageNumber", "blackAndWhite", "draft", "cellComments", "errors",
+          "horizontalDpi", "verticalDpi", "copies",
+        ] {
         match attr_value_local(ps, key) {
           Some(v) => out.push(svg_attr("data-ooxml-page-setup-" + key, v))
           None => ()
@@ -9211,8 +9444,7 @@ fn sml_metadata_attrs(
     Some(fs) => {
       out.push(svg_attr("data-ooxml-file-sharing", "1"))
       match attr_value_local(fs, "readOnlyRecommended") {
-        Some(v) =>
-          out.push(svg_attr("data-ooxml-file-sharing-read-only", v))
+        Some(v) => out.push(svg_attr("data-ooxml-file-sharing-read-only", v))
         None => ()
       }
       match attr_value_local(fs, "userName") {
@@ -9220,8 +9452,7 @@ fn sml_metadata_attrs(
         None => ()
       }
       match attr_value_local(fs, "algorithmName") {
-        Some(v) =>
-          out.push(svg_attr("data-ooxml-file-sharing-algorithm", v))
+        Some(v) => out.push(svg_attr("data-ooxml-file-sharing-algorithm", v))
         None => ()
       }
     }
@@ -9230,10 +9461,11 @@ fn sml_metadata_attrs(
     None => ()
     Some(pcd) => {
       out.push(svg_attr("data-ooxml-pivot-cache-definition", "1"))
-      for key in [
-        "refreshedBy", "refreshedDate", "createdVersion", "refreshedVersion",
-        "minRefreshableVersion", "recordCount", "invalid",
-      ] {
+      for
+        key in [
+          "refreshedBy", "refreshedDate", "createdVersion", "refreshedVersion", "minRefreshableVersion",
+          "recordCount", "invalid",
+        ] {
         match attr_value_local(pcd, key) {
           Some(v) =>
             out.push(svg_attr("data-ooxml-pivot-cache-definition-" + key, v))
@@ -9285,12 +9517,9 @@ fn sml_metadata_attrs(
     None => ()
     Some(mv) => {
       out.push(svg_attr("data-ooxml-modify-verifier", "1"))
-      for key in [
-        "algorithmName", "hashValue", "saltValue", "spinCount",
-      ] {
+      for key in ["algorithmName", "hashValue", "saltValue", "spinCount"] {
         match attr_value_local(mv, key) {
-          Some(v) =>
-            out.push(svg_attr("data-ooxml-modify-verifier-" + key, v))
+          Some(v) => out.push(svg_attr("data-ooxml-modify-verifier-" + key, v))
           None => ()
         }
       }

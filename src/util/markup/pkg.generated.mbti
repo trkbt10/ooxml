@@ -18,6 +18,8 @@ pub fn serialize(@xml.Element) -> String
 
 pub fn serialize_svg(@xml.Element) -> String
 
+pub fn strip_debug_attrs(String) -> String
+
 pub let svg_ns : String
 
 pub fn text(String) -> @xml.Node

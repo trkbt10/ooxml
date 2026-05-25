@@ -108,9 +108,9 @@ test "basedOn chain follows derived to root" {
   ])
   let chain = table.resolve_chain({ value: "A" })
   assert_eq(chain.length(), 3)
-  assert_eq(chain[0].style_id.value, "A")
-  assert_eq(chain[1].style_id.value, "B")
-  assert_eq(chain[2].style_id.value, "C")
+  assert_eq(chain[0].style_id.unwrap().value, "A")
+  assert_eq(chain[1].style_id.unwrap().value, "B")
+  assert_eq(chain[2].style_id.unwrap().value, "C")
 }
 
 ///|
@@ -125,8 +125,8 @@ test "cycle in basedOn chain visits each style once" {
   ])
   let chain = table.resolve_chain({ value: "A" })
   assert_eq(chain.length(), 2)
-  assert_eq(chain[0].style_id.value, "A")
-  assert_eq(chain[1].style_id.value, "B")
+  assert_eq(chain[0].style_id.unwrap().value, "A")
+  assert_eq(chain[1].style_id.unwrap().value, "B")
 }
 
 ///|
@@ -219,7 +219,7 @@ test "missing basedOn parent stops chain without error" {
   ])
   let chain = table.resolve_chain({ value: "Body" })
   assert_eq(chain.length(), 1)
-  assert_eq(chain[0].style_id.value, "Body")
+  assert_eq(chain[0].style_id.unwrap().value, "Body")
 }
 
 ///|
@@ -238,16 +238,19 @@ test "style type discriminator parses all four style families" {
     style("N", "numbering"),
   ])
   assert_true(
-    table.styles.get("P").unwrap().style_type == @domain.StyleTypeParagraph,
+    table.styles.get("P").unwrap().style_type ==
+    Some(@domain.StyleTypeParagraph),
   )
   assert_true(
-    table.styles.get("C").unwrap().style_type == @domain.StyleTypeCharacter,
+    table.styles.get("C").unwrap().style_type ==
+    Some(@domain.StyleTypeCharacter),
   )
   assert_true(
-    table.styles.get("T").unwrap().style_type == @domain.StyleTypeTable,
+    table.styles.get("T").unwrap().style_type == Some(@domain.StyleTypeTable),
   )
   assert_true(
-    table.styles.get("N").unwrap().style_type == @domain.StyleTypeNumbering,
+    table.styles.get("N").unwrap().style_type ==
+    Some(@domain.StyleTypeNumbering),
   )
 }
 
