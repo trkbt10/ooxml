@@ -154,8 +154,20 @@ fn type_has_any(ct : @xml.Element) -> Bool {
 fn part_roots(schema : Schema) -> Array[(String, String)] {
   let roots : Array[(String, String)] = []
   for name in [
-    "document", "worksheet", "sld", "presentation", "workbook", "theme",
-    "styleSheet",
+    // Primary document-body roots.
+    "document", "worksheet", "sld",
+    // Supplementary cross-format roots.
+    "presentation", "workbook", "theme", "styleSheet",
+    // WML auxiliary part roots — without these, WML-only elements
+    // such as `<w:evenAndOddHeaders>` or `<w:characterSpacingControl>`
+    // (defined only inside `<w:settings>`) have no body-rooted BFS
+    // path and fall through to the `graphicData` any-host route,
+    // which lands them in a PPTX slide where the renderer never
+    // surfaces the WML metadata. Adding the aux roots gives them a
+    // canonical WML wrapper chain that `docx_aux_package` can
+    // synthesise into a valid `.docx` package.
+    "settings", "styles", "numbering", "fonts", "webSettings", "comments",
+    "footnotes", "endnotes",
   ] {
     match schema.top_elements.get(name) {
       Some((el, _)) =>
@@ -286,8 +298,21 @@ fn build_ancestry(schema : Schema) -> Map[String, Array[(String, String)]] {
   for entry in queue {
     let (rname, _rtype) = (entry.0, entry.1)
     match rname {
-      "presentation" | "workbook" | "theme" | "styleSheet" =>
-        supp_queue.push(entry)
+      "presentation"
+      | "workbook"
+      | "theme"
+      | "styleSheet"
+      // WML auxiliary parts — same pass as the cross-format
+      // supplementary roots so WML-only elements have a primary
+      // wrapper chain before any `graphicData` any-host fallback.
+      | "settings"
+      | "styles"
+      | "numbering"
+      | "fonts"
+      | "webSettings"
+      | "comments"
+      | "footnotes"
+      | "endnotes" => supp_queue.push(entry)
       _ => ()
     }
   }
