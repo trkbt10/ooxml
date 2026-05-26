@@ -19,11 +19,12 @@ pub fn render_preset_shape_d(prst : String, w : Double, h : Double) -> String? {
   if w <= 0.0 || h <= 0.0 {
     return None
   }
-  let shape = match (try? @preset_geometry.PresetShape::from_attr(prst)) {
-    Ok(s) => s
+  let shape = try @preset_geometry.PresetShape::from_attr(prst) catch {
     // Schema violation — `prst` is outside ST_ShapeType.  Surface
     // None so the caller can emit a spec-anchored metadata fallback.
-    Err(_) => return None
+    _ => return None
+  } noraise {
+    s => s
   }
   // build_geometry generates the path in a `[0, w_i] × [0, h_i]`
   // integer frame; we feed in our pixel dimensions rounded to the

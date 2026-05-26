@@ -141,7 +141,7 @@ pub fn strip_debug_attrs(svg : String) -> String {
   // the scanner sees the same byte stream a downstream consumer
   // (browser, rsvg, Inkscape) would parse.
   let bytes = @utf8.encode(svg[:])
-  let out = @buffer.new()
+  let out = Buffer()
   let n = bytes.length()
   let mut i = 0
   // ASCII codes — comparing UInt16 / Int code units, not Char.
@@ -205,9 +205,9 @@ pub fn strip_debug_attrs(svg : String) -> String {
     let mut in_quote = 0
     let mut at_name_start = true
     let mut tag_name_done = false
-    let mut attr_first_chars = @buffer.new()
-    let mut attr_buf = @buffer.new()
-    let mut ws_buf = @buffer.new()
+    let mut attr_first_chars = Buffer()
+    let mut attr_buf = Buffer()
+    let mut ws_buf = Buffer()
     let mut copying = true
     while i < n {
       let ch = bytes[i].to_int()
@@ -231,7 +231,7 @@ pub fn strip_debug_attrs(svg : String) -> String {
             let ab = attr_buf.contents()
             if ab[ab.length() - 1] == b'/' {
               self_close = true
-              let trimmed = @buffer.new()
+              let trimmed = Buffer()
               for k in 0..<(ab.length() - 1) {
                 trimmed.write_byte(ab[k])
               }
@@ -255,9 +255,9 @@ pub fn strip_debug_attrs(svg : String) -> String {
           // Buffer the whitespace; whether it survives depends
           // on the attribute that follows.
           tag_name_done = true
-          attr_buf = @buffer.new()
-          attr_first_chars = @buffer.new()
-          ws_buf = @buffer.new()
+          attr_buf = Buffer()
+          attr_first_chars = Buffer()
+          ws_buf = Buffer()
           ws_buf.write_byte(bytes[i])
           at_name_start = true
           copying = true
@@ -277,9 +277,9 @@ pub fn strip_debug_attrs(svg : String) -> String {
             out.write_bytes(ws_buf.contents())
             out.write_bytes(attr_buf.contents())
           }
-          attr_buf = @buffer.new()
-          attr_first_chars = @buffer.new()
-          ws_buf = @buffer.new()
+          attr_buf = Buffer()
+          attr_first_chars = Buffer()
+          ws_buf = Buffer()
           ws_buf.write_byte(bytes[i])
           at_name_start = true
           copying = true

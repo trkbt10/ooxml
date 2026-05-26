@@ -19,7 +19,7 @@ fn nt_key(name : String, type_ln : String) -> String {
 /// The element-name part of an `nt_key`.
 fn nt_name(key : String) -> String {
   match key.find("\u{0000}") {
-    Some(i) => key[0:i].to_string()
+    Some(i) => key[0:i].to_owned()
     None => key
   }
 }
@@ -68,8 +68,8 @@ fn type_children(schema : Schema, ct : @xml.Element) -> Array[(String, String)] 
   // (transitively) referenced group.  `seen_groups` guards against a
   // group that references itself; `seen_bases` guards against base
   // type chains that loop.
-  let seen_groups : Map[String, Bool] = Map::new()
-  let seen_bases : Map[String, Bool] = Map::new()
+  let seen_groups : Map[String, Bool] = Map([], capacity=0)
+  let seen_bases : Map[String, Bool] = Map([], capacity=0)
   fn collect(node : @xml.Element) -> Unit {
     // Walk this node's whole subtree; for every `<xsd:element>`
     // record it, and for every `<xsd:group ref>` recurse into the
@@ -87,7 +87,7 @@ fn type_children(schema : Schema, ct : @xml.Element) -> Array[(String, String)] 
         match attr(e, "ref") {
           Some(gname) =>
             // `ref` on a group is an already-resolved `ns#localname`.
-            if not(seen_groups.contains(gname)) {
+            if !(seen_groups.contains(gname)) {
               seen_groups[gname] = true
               match schema.groups.get(gname) {
                 Some(gp) => collect(gp)
@@ -131,7 +131,7 @@ fn type_children(schema : Schema, ct : @xml.Element) -> Array[(String, String)] 
       if is_xsd(e, "extension") || is_xsd(e, "restriction") {
         match attr(e, "base") {
           Some(base_key) =>
-            if not(seen_bases.contains(base_key)) {
+            if !(seen_bases.contains(base_key)) {
               seen_bases[base_key] = true
               match schema.complex_types.get(base_key) {
                 Some(base_ct) => collect(base_ct)
@@ -248,7 +248,7 @@ fn build_ancestry(
   // record both and pick the best one at the end so the chosen
   // canonical path leads through a render-bearing host whenever
   // possible.
-  let all_paths : Map[String, Array[Array[(String, String)]]] = Map::new()
+  let all_paths : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
   // Queue of (name, type, path-of-(name,type)-down-to-parent).
   let queue : Array[(String, String, Array[(String, String)])] = []
   for root in part_roots(schema) {
@@ -280,7 +280,7 @@ fn build_ancestry(
     bfs_queue : Array[(String, String, Array[(String, String)])],
     skip_keys : Map[String, Bool],
   ) -> Unit {
-    let local_expanded : Map[String, Bool] = Map::new()
+    let local_expanded : Map[String, Bool] = Map([], capacity=0)
     let mut h = 0
     while h < bfs_queue.length() {
       let (cur_name, cur_type, path) = bfs_queue[h]
@@ -304,7 +304,7 @@ fn build_ancestry(
             let (cname, ctype) = child
             let ckey = nt_key(cname, ctype)
             let child_existing = all_paths.get(ckey).unwrap_or([])
-            if child_existing.length() == 0 && not(skip_keys.contains(ckey)) {
+            if child_existing.length() == 0 && !(skip_keys.contains(ckey)) {
               bfs_queue.push((cname, ctype, child_path))
             }
             child_existing.push(child_path)
@@ -331,8 +331,8 @@ fn build_ancestry(
       _ => ()
     }
   }
-  run_bfs(primary_queue, Map::new())
-  let primary_keys : Map[String, Bool] = Map::new()
+  run_bfs(primary_queue, Map([], capacity=0))
+  let primary_keys : Map[String, Bool] = Map([], capacity=0)
   for k, _ in all_paths {
     primary_keys[k] = true
   }
@@ -392,7 +392,7 @@ fn build_ancestry(
   // route for Strict-namespace worksheets, and the Strict
   // `<s:worksheet>` element no longer renders because its host
   // package is built as `.docx` instead of `.xlsx`.
-  let nonvisual_by_root : Map[String, Array[(String, String)]] = Map::new()
+  let nonvisual_by_root : Map[String, Array[(String, String)]] = Map([], capacity=0)
   let nonvisual_order : Array[String] = []
   for host_path in any_hosts {
     if any_host_is_visual(host_path) {
@@ -401,7 +401,7 @@ fn build_ancestry(
       }
     } else {
       let root_key = if host_path.length() == 0 { "" } else { host_path[0].0 }
-      if not(nonvisual_by_root.contains(root_key)) {
+      if !(nonvisual_by_root.contains(root_key)) {
         nonvisual_by_root[root_key] = host_path
         nonvisual_order.push(root_key)
       }
@@ -438,7 +438,7 @@ fn build_ancestry(
       // worksheet under `document/background` does not.  Then
       // append the remaining per-root candidates as alternates the
       // multi-path verifier can try.
-      let preferred_root = match strip_ns(decl.namespace) {
+      let preferred_root = match strip_ns(decl.ns) {
         ns if ns == "wordprocessingml/main" => "document"
         ns if ns == "spreadsheetml/main" => "worksheet"
         ns if ns == "presentationml/main" => "sld"
@@ -491,7 +491,7 @@ fn build_ancestry(
   //   grpSp / graphicFrame).
   //
   // Ties are broken by BFS insertion order (stable sort).
-  let ancestry : Map[String, Array[Array[(String, String)]]] = Map::new()
+  let ancestry : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
   for key, paths in all_paths {
     if paths.length() == 0 {
       continue
@@ -544,7 +544,7 @@ fn build_ancestry(
     // and drop later duplicates so the verifier doesn't re-try the
     // same chain.
     let ordered : Array[Array[(String, String)]] = []
-    let seen : Map[String, Bool] = Map::new()
+    let seen : Map[String, Bool] = Map([], capacity=0)
     for entry in scored {
       let p = entry.1
       let buf = StringBuilder::new()
@@ -555,7 +555,7 @@ fn build_ancestry(
         buf.write_char('|')
       }
       let key2 = buf.to_string()
-      if not(seen.contains(key2)) {
+      if !(seen.contains(key2)) {
         seen[key2] = true
         ordered.push(p)
       }
@@ -572,11 +572,11 @@ fn build_ancestry(
 fn nt_ns(key : String) -> String {
   let after = match key.find("\u{0000}") {
     None => return ""
-    Some(i) => key[i + 1:].to_string()
+    Some(i) => key[i + 1:].to_owned()
   }
   match after.find("#") {
     None => after
-    Some(j) => after[0:j].to_string()
+    Some(j) => after[0:j].to_owned()
   }
 }
 
@@ -597,38 +597,6 @@ fn path_starts_in_primary_root(path : Array[(String, String)]) -> Bool {
     "document" | "worksheet" | "sld" => true
     _ => false
   }
-}
-
-///|
-/// True when any path in `paths` starts at a primary document part
-/// root — used to detect whether the BFS reached an element through
-/// at least one renderable route, so the visual any-host fallback
-/// can be skipped when that fallback would not improve coverage.
-fn any_path_starts_in_primary_root(
-  paths : Array[Array[(String, String)]],
-) -> Bool {
-  for p in paths {
-    if path_starts_in_primary_root(p) {
-      return true
-    }
-  }
-  false
-}
-
-///|
-/// True when at least one path in `paths` is the empty wrapper
-/// chain — the element IS itself a part-root (e.g. `<document>`,
-/// `<worksheet>`, `<sld>`).  In that case the canonical-path picker
-/// keeps the empty chain so the verifier wraps the element as its
-/// own document part rather than re-embedding it inside another
-/// host.
-fn any_path_is_empty(paths : Array[Array[(String, String)]]) -> Bool {
-  for p in paths {
-    if p.length() == 0 {
-      return true
-    }
-  }
-  false
 }
 
 ///|
@@ -701,21 +669,21 @@ fn any_host_is_visual(path : Array[(String, String)]) -> Bool {
 /// test.
 fn retarget_attr(
   el : @xml.Element,
-  local : String,
+  local_name : String,
   value : String,
 ) -> @xml.Element {
   let attrs : Array[@xml.Attribute] = []
   let mut replaced = false
   for a in el.attributes {
-    if a.name.local_name == local {
+    if a.name.local_name == local_name {
       attrs.push({ name: a.name, value })
       replaced = true
     } else {
       attrs.push(a)
     }
   }
-  if not(replaced) {
-    attrs.push({ name: { prefix: None, local_name: local, ns: None }, value })
+  if !(replaced) {
+    attrs.push({ name: { prefix: None, local_name: local_name, ns: None }, value })
   }
   { name: el.name, attributes: attrs, children: el.children }
 }
@@ -753,7 +721,7 @@ fn wrap_in_ancestry(
     }
     let wrapper = match schema.complex_types.get(wtype) {
       Some(wct) => {
-        let stack : StrSet = Map::new()
+        let stack : StrSet = Map([], capacity=0)
         stack[wtype] = true
         // Ancestry wrappers are synthesised with a modest rich budget
         // so the immediate context is non-degenerate: the `<w:r>`
@@ -832,7 +800,7 @@ fn insert_path_child(
   let mut replaced = false
   for child in wrapper.children {
     match child {
-      Element(c) if c.name.local_name == child_name && not(replaced) => {
+      Element(c) if c.name.local_name == child_name && !(replaced) => {
         kids.push(Element(inner))
         replaced = true
       }
@@ -844,7 +812,7 @@ fn insert_path_child(
       other => kids.push(other)
     }
   }
-  if not(replaced) {
+  if !(replaced) {
     kids.push(Element(inner))
   }
   { name: wrapper.name, attributes: wrapper.attributes, children: kids }
@@ -861,12 +829,12 @@ fn choice_siblings(
   wrapper_type : String,
   target_name : String,
 ) -> Map[String, Bool] {
-  let out : Map[String, Bool] = Map::new()
+  let out : Map[String, Bool] = Map([], capacity=0)
   let ct = match schema.complex_types.get(wrapper_type) {
     Some(c) => c
     None => return out
   }
-  let walk_seen : Map[String, Bool] = Map::new()
+  let walk_seen : Map[String, Bool] = Map([], capacity=0)
   // Walk both the complexType's content model and the content of any
   // base type it extends — `<xsd:complexContent>/<xsd:extension>` —
   // so a target inside a base-type choice is found too.
@@ -903,7 +871,7 @@ fn choice_siblings(
 /// where the choice members can coexist and pruning is unsound.
 fn particle_max_unbounded(node : @xml.Element) -> Bool {
   match attr(node, "maxOccurs") {
-    Some(v) => v == "unbounded" || (try? @strconv.parse_int(v)).unwrap_or(1) > 1
+    Some(v) => v == "unbounded" || (try? @string.parse_int(v)).unwrap_or(1) > 1
     None => false
   }
 }
@@ -926,9 +894,9 @@ fn walk_for_choice(
 ) -> Unit {
   if is_xsd(node, "choice") {
     let choice_unbounded = unbounded || particle_max_unbounded(node)
-    if not(choice_unbounded) {
-      let names : Map[String, Bool] = Map::new()
-      collect_choice_names(schema, node, Map::new(), names)
+    if !(choice_unbounded) {
+      let names : Map[String, Bool] = Map([], capacity=0)
+      collect_choice_names(schema, node, Map([], capacity=0), names)
       if names.get(target_name) is Some(true) {
         for n, _ in names {
           if n != target_name {
@@ -952,7 +920,7 @@ fn walk_for_choice(
     let ref_unbounded = unbounded || particle_max_unbounded(node)
     match attr(node, "ref") {
       Some(gname) => {
-        if not(walk_seen.contains(gname)) {
+        if !(walk_seen.contains(gname)) {
           walk_seen[gname] = true
           match schema.groups.get(gname) {
             Some(gp) =>
@@ -1001,7 +969,7 @@ fn collect_choice_names(
   if is_xsd(node, "group") {
     match attr(node, "ref") {
       Some(gname) =>
-        if not(seen_groups.contains(gname)) {
+        if !(seen_groups.contains(gname)) {
           seen_groups[gname] = true
           match schema.groups.get(gname) {
             Some(gp) =>

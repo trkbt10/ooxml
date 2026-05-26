@@ -64,18 +64,6 @@ fn array_mean_or_zero(values : Array[Double]) -> Double {
 }
 
 ///|
-fn parse_double_lenient_or_zero(text : String?) -> Double {
-  match text {
-    Some(value) =>
-      match parse_double_lenient(value) {
-        Some(n) => n
-        None => 0.0
-      }
-    None => 0.0
-  }
-}
-
-///|
 fn array_min_or_zero(values : Array[Double]) -> Double {
   if values.length() == 0 {
     return 0.0

@@ -98,15 +98,15 @@ test "render_preset_shape_d resolves geometric primitives" {
 ///|
 test "render_preset_shape_d returns None for schema violation" {
   // §20.1.10.55 — `unknownShape` is not in ST_ShapeType.
-  inspect(render_preset_shape_d("unknownShape", 100.0, 50.0), content="None")
-  inspect(render_preset_shape_d("", 100.0, 50.0), content="None")
+  @debug.debug_inspect(render_preset_shape_d("unknownShape", 100.0, 50.0), content="None")
+  @debug.debug_inspect(render_preset_shape_d("", 100.0, 50.0), content="None")
 }
 
 ///|
 test "render_preset_shape_d returns None for zero-sized bbox" {
-  inspect(render_preset_shape_d("rect", 0.0, 50.0), content="None")
-  inspect(render_preset_shape_d("rect", 100.0, 0.0), content="None")
-  inspect(render_preset_shape_d("rect", -10.0, 50.0), content="None")
+  @debug.debug_inspect(render_preset_shape_d("rect", 0.0, 50.0), content="None")
+  @debug.debug_inspect(render_preset_shape_d("rect", 100.0, 0.0), content="None")
+  @debug.debug_inspect(render_preset_shape_d("rect", -10.0, 50.0), content="None")
 }
 
 ///|
@@ -133,7 +133,7 @@ test "build_pattern_def density family matches spec coverage" {
     let mut idx = 0
     let nlen = needle.length()
     while idx + nlen <= s.length() {
-      let slice = s.substring(start=idx, end=idx + nlen)
+      let slice = s[idx:idx + nlen].to_owned()
       if slice == needle {
         count = count + 1
         idx = idx + nlen
@@ -155,15 +155,15 @@ test "build_pattern_def density family matches spec coverage" {
     }
   }
   // 6.25 % → 4/64
-  assert_eq(count_dots(render("gray0625")), 4)
+  @debug.assert_eq(count_dots(render("gray0625")), 4)
   // 12.5 % → 8/64
-  assert_eq(count_dots(render("gray125")), 8)
+  @debug.assert_eq(count_dots(render("gray125")), 8)
   // 25 % → 16/64
-  assert_eq(count_dots(render("lightGray")), 16)
+  @debug.assert_eq(count_dots(render("lightGray")), 16)
   // 50 % → 32/64
-  assert_eq(count_dots(render("mediumGray")), 32)
+  @debug.assert_eq(count_dots(render("mediumGray")), 32)
   // 75 % → 48/64
-  assert_eq(count_dots(render("darkGray")), 48)
+  @debug.assert_eq(count_dots(render("darkGray")), 48)
 }
 
 ///|

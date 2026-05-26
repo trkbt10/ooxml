@@ -84,7 +84,7 @@ fn parse_hex(s : String) -> Int64 {
 /// Strip a leading `#` if present.
 fn strip_hash(s : String) -> String {
   if s.length() > 0 && s.code_unit_at(0) == 0x23 {
-    s.substring(start=1)
+    s[1:].to_owned()
   } else {
     s
   }
@@ -110,20 +110,20 @@ pub fn hex_to_rgb(hex : String) -> RgbColor {
   // 8-digit `#RRGGBBAA`.  Drop the trailing alpha pair so the parser
   // operates on the canonical 6-digit body.
   let clean = if stripped.length() == 8 {
-    stripped.substring(start=0, end=6)
+    stripped[0:6].to_owned()
   } else {
     stripped
   }
-  let n = parse_hex(clean)
+  let n = parse_hex(clean).reinterpret_as_uint64()
   if clean.length() == 3 {
-    let r = n.lsr(8).land(0xFL).to_int() * 17
-    let g = n.lsr(4).land(0xFL).to_int() * 17
-    let b = n.land(0xFL).to_int() * 17
+    let r = ((n >> 8) & 0xFUL).to_int() * 17
+    let g = ((n >> 4) & 0xFUL).to_int() * 17
+    let b = (n & 0xFUL).to_int() * 17
     { r: r.to_double(), g: g.to_double(), b: b.to_double() }
   } else {
-    let r = n.lsr(16).land(0xFFL).to_int()
-    let g = n.lsr(8).land(0xFFL).to_int()
-    let b = n.land(0xFFL).to_int()
+    let r = ((n >> 16) & 0xFFUL).to_int()
+    let g = ((n >> 8) & 0xFFUL).to_int()
+    let b = (n & 0xFFUL).to_int()
     { r: r.to_double(), g: g.to_double(), b: b.to_double() }
   }
 }

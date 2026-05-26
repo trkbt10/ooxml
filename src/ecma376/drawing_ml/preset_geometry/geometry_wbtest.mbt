@@ -57,7 +57,7 @@ test "§20.1.9.18 decode_preset_geometry reads prst + avLst overrides" {
   assert_true(pg.shape is ShapeRoundRect)
   assert_eq(pg.adjustments.length(), 1)
   assert_eq(pg.adjustments[0].name, "adj")
-  assert_eq(pg.adjustments[0].value, Some(25000))
+  @debug.assert_eq(pg.adjustments[0].value, Some(25000))
 }
 
 ///|
@@ -103,7 +103,7 @@ test "§20.1.9.11 decode_adjustment parses val n formulas" {
   let adj = try! decode_adjustment(element)
   assert_eq(adj.name, "adj1")
   assert_eq(adj.raw_formula, "val 33333")
-  assert_eq(adj.value, Some(33333))
+  @debug.assert_eq(adj.value, Some(33333))
 }
 
 ///|
@@ -111,7 +111,7 @@ test "§20.1.9.11 decode_adjustment preserves non-val formulas" {
   let element = parse_root("<gd name=\"y1\" fmla=\"*/ h 2 3\"/>")
   let adj = try! decode_adjustment(element)
   assert_eq(adj.name, "y1")
-  assert_eq(adj.value, None)
+  @debug.assert_eq(adj.value, None)
   assert_eq(adj.raw_formula, "*/ h 2 3")
 }
 

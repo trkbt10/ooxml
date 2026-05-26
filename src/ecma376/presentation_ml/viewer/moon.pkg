@@ -3,8 +3,9 @@
 // PresentationML context → HTML / SVG renderer.
 
 import {
+  "moonbitlang/core/hashmap" @hashmap,
   "moonbitlang/core/math" @math,
-  "moonbitlang/core/strconv" @strconv,
+  "moonbitlang/core/string" @string,
   "trkbt10/ooxml/ecma376/drawing_ml" @a,
   "trkbt10/ooxml/ecma376/drawing_ml/diagram" @dgm,
   "trkbt10/ooxml/ecma376/drawing_ml/diagram_layout" @diagram_layout,
@@ -20,5 +21,6 @@ import {
 }
 
 import {
+  "moonbitlang/core/debug" @debug,
   "moonbitlang/core/encoding/utf8" @utf8,
 } for "wbtest"

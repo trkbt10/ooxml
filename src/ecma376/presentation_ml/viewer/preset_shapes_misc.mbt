@@ -1485,30 +1485,6 @@ fn ribbon_sy(value : Double, h : Double) -> Double {
 }
 
 ///|
-/// Emit an SVG arc-to from the spec's `wd32 × hR` radii. The arc
-/// command form is `A rx ry 0 large_arc sweep x y`. Both flags are
-/// `false` / `true` per `shape_ribbon{,2}.mbt`'s ArcTo constructors.
-fn ribbon_arc(
-  rx : Double,
-  ry : Double,
-  sweep : Bool,
-  x : Double,
-  y : Double,
-) -> String {
-  "A " +
-  fmt(rx) +
-  " " +
-  fmt(ry) +
-  " 0 0 " +
-  (if sweep { "1" } else { "0" }) +
-  " " +
-  fmt(x) +
-  " " +
-  fmt(y) +
-  " "
-}
-
-///|
 /// `ribbon` — downward banner. preset-shapes.ts:3997 / ECMA-376
 /// §20.1.10.56.
 ///
@@ -3300,37 +3276,6 @@ fn misc_chart_x(w : Double, h : Double) -> String {
   " L 0 " +
   fmt(h) +
   " Z"
-}
-
-///|
-/// Build a star polygon mirroring `generateStar` in preset-shapes.ts:5037.
-fn misc_generate_star(
-  w : Double,
-  h : Double,
-  points : Int,
-  inner_ratio : Double,
-) -> String {
-  let cx = w / 2.0
-  let cy = h / 2.0
-  let outer_r = misc_min(w, h) / 2.0
-  let inner_r = outer_r * inner_ratio
-  let buf = StringBuilder::new()
-  let total = points * 2
-  for i in 0..<total {
-    let angle = (i.to_double() * 180.0 / points.to_double() - 90.0) *
-      misc_pi /
-      180.0
-    let r = if i % 2 == 0 { outer_r } else { inner_r }
-    let x = cx + r * misc_cos(angle)
-    let y = cy + r * misc_sin(angle)
-    if i == 0 {
-      buf.write_string("M " + fmt(x) + " " + fmt(y))
-    } else {
-      buf.write_string(" L " + fmt(x) + " " + fmt(y))
-    }
-  }
-  buf.write_string(" Z")
-  buf.to_string()
 }
 
 ///|

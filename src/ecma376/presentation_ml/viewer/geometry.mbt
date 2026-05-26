@@ -40,14 +40,14 @@ fn parse_adjust_values(av_lst : @xml.Element?) -> Array[AdjustValue] {
               }
               // fmla is "val <number>" — strip the leading "val ".
               let body = if fmla.has_prefix("val ") {
-                fmla.substring(start=4)
+                fmla[4:].to_owned()
               } else {
                 fmla
               }
-              let v = match
-                (try? @strconv.parse_double(body.trim_space().to_string())) {
-                Ok(d) => d
-                Err(_) => 0.0
+              let v = try @string.parse_double(body.trim().to_owned()) catch {
+                _ => 0.0
+              } noraise {
+                d => d
               }
               result.push({ name, value: v })
             }

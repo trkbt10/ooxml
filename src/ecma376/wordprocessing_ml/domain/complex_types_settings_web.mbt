@@ -1668,7 +1668,7 @@ pub fn CT_Settings::new(
   }
   let math_pr : Array[@m.CT_MathPr] = []
   for child in wml_ct_chunk6_children(element, "mathPr") {
-    math_pr.push(wrap_m_violation(fn() { @m.CT_MathPr::new(child) }))
+    math_pr.push(wrap_m_violation(() => @m.CT_MathPr::new(child)))
   }
   let attached_schema : Array[CT_String] = []
   for child in wml_ct_chunk6_children(element, "attachedSchema") {

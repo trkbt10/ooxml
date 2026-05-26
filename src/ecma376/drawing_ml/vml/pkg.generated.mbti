@@ -444,7 +444,7 @@ pub(all) struct CT_Entry {
   old_id : String?
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Entry::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Entry::new(@xml.Element) -> Self
 pub fn CT_Entry::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_EquationXml {
@@ -498,7 +498,7 @@ pub(all) struct CT_F {
   eqn : String?
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_F::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_F::new(@xml.Element) -> Self
 pub fn CT_F::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Fill {
@@ -533,7 +533,7 @@ pub(all) struct CT_Formulas {
   f : Array[CT_F]
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Formulas::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Formulas::new(@xml.Element) -> Self
 pub fn CT_Formulas::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Group {
@@ -798,7 +798,7 @@ pub(all) struct CT_Proxy {
   connectloc : String?
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Proxy::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Proxy::new(@xml.Element) -> Self
 pub fn CT_Proxy::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_R {
@@ -1135,7 +1135,7 @@ pub(all) struct CT_Textbox {
   content : @xml.Element?
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Textbox::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Textbox::new(@xml.Element) -> Self
 pub fn CT_Textbox::to_element(Self) -> @xml.Element
 
 pub(all) struct EG_ShapeElements {

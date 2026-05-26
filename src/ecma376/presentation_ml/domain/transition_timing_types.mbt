@@ -43,23 +43,6 @@ fn ttt_first_child(
 }
 
 ///|
-/// All direct element children whose local name equals `local_name`,
-/// in document order. Used for `maxOccurs="unbounded"` lists.
-fn ttt_children(
-  element : @xml.Element,
-  local_name : String,
-) -> Array[@xml.Element] {
-  let out : Array[@xml.Element] = []
-  for child in element.children {
-    match child {
-      @xml.Element(e) => if e.name.local_name == local_name { out.push(e) }
-      _ => ()
-    }
-  }
-  out
-}
-
-///|
 /// Decode an xsd:boolean attribute value. xsd:boolean lexical space is
 /// `true|false|1|0` per W3C XML Schema Part 2 §3.2.2.
 fn ttt_parse_bool(s : String) -> Bool? {
@@ -1250,7 +1233,7 @@ pub(all) struct CT_TLTextTargetElement {
 ///|
 pub fn CT_TLTextTargetElement::from_element(
   element : @xml.Element,
-) -> CT_TLTextTargetElement raise SchemaViolation {
+) -> CT_TLTextTargetElement {
   let range = match ttt_first_child(element, "charRg") {
     Some(e) => Some(TextTargetCharRg(e))
     None =>
@@ -1266,9 +1249,7 @@ pub fn CT_TLTextTargetElement::from_element(
 pub fn CT_TLTextTargetElement::new(
   element : @xml.Element,
 ) -> CT_TLTextTargetElement {
-  CT_TLTextTargetElement::from_element(element) catch {
-    _ => { range: None, element_name: element.name }
-  }
+  CT_TLTextTargetElement::from_element(element)
 }
 
 ///|

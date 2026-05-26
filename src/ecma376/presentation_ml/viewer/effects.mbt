@@ -85,7 +85,7 @@ fn parse_hex_nibble(code : Int) -> Int {
 /// `effects.ts:55`.
 fn parse_hex_to_rgb(hex : String) -> (Double, Double, Double) {
   let normalized = if hex.length() > 0 && hex.code_unit_at(0).to_int() == 35 {
-    hex.substring(start=1)
+    hex[1:].to_owned()
   } else {
     hex
   }
@@ -330,7 +330,7 @@ fn fe_merge_nodes(results : Array[String]) -> @xml.Node {
 /// Extents added by an effect, expressed as fractional shape-box
 /// margins on each side.  The wrapper viewport is the max across
 /// all effects so the largest blur/glow halo isn't clipped.
-struct FilterExtents {
+priv struct FilterExtents {
   left : Double
   top : Double
   right : Double
@@ -379,7 +379,7 @@ fn FilterExtents::merge(a : FilterExtents, b : FilterExtents) -> FilterExtents {
 /// `merge_over` is true when it should be merged in front
 /// (innerShdw, fillOverlay-mult/over).  softEdge / blur replace the
 /// stack entirely (they declare `result_id = ""`).
-struct EffectContribution {
+priv struct EffectContribution {
   primitives : Array[@xml.Node]
   result_id : String
   merge_under : Bool
@@ -937,9 +937,10 @@ fn attr_double(
   match attr_value(element, name) {
     None => default
     Some(v) =>
-      match (try? @strconv.parse_double(v)) {
-        Ok(d) => d
-        Err(_) => default
+      try @string.parse_double(v) catch {
+        _ => default
+      } noraise {
+        d => d
       }
   }
 }
@@ -971,13 +972,14 @@ fn read_effect_alpha(effect : @xml.Element, default : Double) -> Double {
                   if alpha_el.name.local_name == "alpha" {
                     match attr_value(alpha_el, "val") {
                       Some(v) =>
-                        match (try? @strconv.parse_double(v)) {
+                        try @string.parse_double(v) catch {
                           // §20.1.10.55 ST_PositiveFixedPercentage:
                           // value is in thousandths of a percent
                           // (0..100000), so divide by 100000 to
                           // get the 0..1 opacity multiplier.
-                          Ok(d) => return d / 100000.0
-                          Err(_) => ()
+                          _ => ()
+                        } noraise {
+                          d => return d / 100000.0
                         }
                       None => ()
                     }
@@ -1005,9 +1007,10 @@ fn read_effect_alpha(effect : @xml.Element, default : Double) -> Double {
                             if alpha_el.name.local_name == "alpha" {
                               match attr_value(alpha_el, "val") {
                                 Some(v) =>
-                                  match (try? @strconv.parse_double(v)) {
-                                    Ok(d) => return d / 100000.0
-                                    Err(_) => ()
+                                  try @string.parse_double(v) catch {
+                                    _ => ()
+                                  } noraise {
+                                    d => return d / 100000.0
                                   }
                                 None => ()
                               }

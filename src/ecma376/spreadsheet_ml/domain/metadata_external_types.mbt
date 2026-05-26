@@ -60,7 +60,7 @@ pub(all) struct CT_Schema {
   /// @SchemaRef (xsd:string) — optional.
   schema_ref : String?
   /// @Namespace (xsd:string) — optional.
-  namespace : String?
+  ns : String?
   /// @SchemaLanguage (xsd:token) — optional.
   schema_language : String?
 } derive(Eq, Debug)
@@ -75,7 +75,7 @@ pub fn CT_Schema::new(element : @xml.Element) -> CT_Schema {
     element,
     id,
     schema_ref: attr(element, "SchemaRef"),
-    namespace: attr(element, "Namespace"),
+    ns: attr(element, "Namespace"),
     schema_language: attr(element, "SchemaLanguage"),
   }
 }
@@ -1763,7 +1763,7 @@ fn trim_whitespace(text : String) -> String {
       break
     }
   }
-  text.substring(start~, end=stop)
+  text[start:stop].to_owned()
 }
 
 ///|

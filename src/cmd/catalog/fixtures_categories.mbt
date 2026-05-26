@@ -65,7 +65,7 @@ fn extra_cases() -> Array[VisualCase] {
 /// category extender — pushed onto the `PivotedCase` array via
 /// `pivoted_cases()` rather than `extra_cases()` because pivots
 /// need the multi-part OPC builder.
-fn pivot_fixtures_anchor() -> Unit {
+fn _pivot_fixtures_anchor() -> Unit {
   // Anchor function so subagents searching for "pivot fixtures"
   // land in this file alongside the visual case extender table.
   // The actual fixture pushes live in `extras_sml_pivots`.
@@ -82,7 +82,7 @@ fn pivot_fixtures_anchor() -> Unit {
 /// pushed onto the `ChartedCase` array via `charted_cases()` because
 /// charts need the chart-specific OPC builder, not the plain
 /// `pptx_package`.
-fn chart_fixtures_anchor() -> Unit {
+fn _chart_fixtures_anchor() -> Unit {
   ()
 }
 
@@ -96,6 +96,6 @@ fn chart_fixtures_anchor() -> Unit {
 /// is the per-category extender — pushed onto the `DiagrammedCase`
 /// array via `diagrammed_cases()` because diagrams need the
 /// SmartArt-specific 4-part OPC builder.
-fn diagram_fixtures_anchor() -> Unit {
+fn _diagram_fixtures_anchor() -> Unit {
   ()
 }

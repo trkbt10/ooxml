@@ -30,7 +30,7 @@ fn ctx_with(mutate : (FieldContext) -> FieldContext) -> FieldContext {
 ///|
 test "§17.16.1 tokenizer splits words / quoted / switches" {
   let tokens = try! tokenize_instruction("DATE \\@ \"yyyy-MM-dd\"")
-  assert_eq(tokens.length(), 3)
+  @debug.assert_eq(tokens.length(), 3)
   assert_true(tokens[0] == TWord("DATE"))
   assert_true(tokens[1] == TSwitch('@'))
   assert_true(tokens[2] == TQuoted("yyyy-MM-dd"))
@@ -39,7 +39,7 @@ test "§17.16.1 tokenizer splits words / quoted / switches" {
 ///|
 test "§17.16.1 tokenizer handles escaped quotes inside literal" {
   let tokens = try! tokenize_instruction("REF \"a\\\"b\"")
-  assert_eq(tokens.length(), 2)
+  @debug.assert_eq(tokens.length(), 2)
   assert_true(tokens[1] == TQuoted("a\"b"))
 }
 
@@ -53,12 +53,12 @@ test "§17.16.1 tokenizer raises on unterminated quote" {
 test "§17.16.1 parse_instruction discriminates field type and switches" {
   let field = try! parse_instruction("DATE \\@ \"yyyy-MM-dd\" \\* MERGEFORMAT")
   assert_true(field.instruction == Date)
-  assert_eq(field.arguments.length(), 0)
-  assert_eq(field.switches.length(), 2)
-  assert_eq(field.switches[0].flag, '@')
-  assert_eq(field.switches[0].argument, Some("yyyy-MM-dd"))
-  assert_eq(field.switches[1].flag, '*')
-  assert_eq(field.switches[1].argument, Some("MERGEFORMAT"))
+  @debug.assert_eq(field.arguments.length(), 0)
+  @debug.assert_eq(field.switches.length(), 2)
+  @debug.assert_eq(field.switches[0].flag, '@')
+  @debug.assert_eq(field.switches[0].argument, Some("yyyy-MM-dd"))
+  @debug.assert_eq(field.switches[1].flag, '*')
+  @debug.assert_eq(field.switches[1].argument, Some("MERGEFORMAT"))
 }
 
 ///|
@@ -93,9 +93,9 @@ test "§17.16.2 decode_field_run_sequence walks begin/separate/end" {
     try! @domain.CT_R::new(parse_root("<r><fldChar fldCharType=\"end\"/></r>")),
   ]
   let decoded = try! decode_field_run_sequence(runs)
-  assert_eq(decoded.length(), 1)
+  @debug.assert_eq(decoded.length(), 1)
   assert_true(decoded[0].field.instruction == NumPages)
-  assert_eq(decoded[0].cached_runs.length(), 1)
+  @debug.assert_eq(decoded[0].cached_runs.length(), 1)
 }
 
 ///|
@@ -104,7 +104,7 @@ test "§17.16.5.51 PAGE evaluator returns current_page" {
   let field = try! parse_instruction("PAGE")
   let ctx = ctx_with(fn(c) { { ..c, current_page: 7, total_pages: 12 } })
   let result = evaluate_field(field, ctx, registry)
-  assert_eq(result.to_text(), "7")
+  @debug.assert_eq(result.to_text(), "7")
 }
 
 ///|
@@ -113,7 +113,7 @@ test "§17.16.5.50 NUMPAGES via \\* Roman switch renders roman" {
   let field = try! parse_instruction("NUMPAGES \\* Roman")
   let ctx = ctx_with(fn(c) { { ..c, total_pages: 14 } })
   let result = evaluate_field(field, ctx, registry)
-  assert_eq(result.to_text(), "XIV")
+  @debug.assert_eq(result.to_text(), "XIV")
 }
 
 ///|
@@ -122,27 +122,27 @@ test "§17.16.5.13 DATE uses \\@ template" {
   let field = try! parse_instruction("DATE \\@ \"yyyy-MM-dd\"")
   let ctx = ctx_with(fn(c) { c })
   let result = evaluate_field(field, ctx, registry)
-  assert_eq(result.to_text(), "2026-05-19")
+  @debug.assert_eq(result.to_text(), "2026-05-19")
 }
 
 ///|
 test "§17.16.4.1 format_date_time covers yyyy/MM/dd/HH/mm/ampm/literals" {
   let date = sample_date()
-  assert_eq(format_date_time("yyyy", date), "2026")
-  assert_eq(format_date_time("yy", date), "26")
-  assert_eq(format_date_time("MMMM", date), "May")
-  assert_eq(format_date_time("MMM", date), "May")
-  assert_eq(format_date_time("MM", date), "05")
-  assert_eq(format_date_time("M", date), "5")
-  assert_eq(format_date_time("dd", date), "19")
-  assert_eq(format_date_time("d", date), "19")
-  assert_eq(format_date_time("HH:mm:ss", date), "14:30:45")
-  assert_eq(format_date_time("h:mm am/pm", date), "2:30 pm")
-  assert_eq(format_date_time("h:mm AM/PM", date), "2:30 PM")
-  assert_eq(format_date_time("'on' yyyy", date), "on 2026")
+  @debug.assert_eq(format_date_time("yyyy", date), "2026")
+  @debug.assert_eq(format_date_time("yy", date), "26")
+  @debug.assert_eq(format_date_time("MMMM", date), "May")
+  @debug.assert_eq(format_date_time("MMM", date), "May")
+  @debug.assert_eq(format_date_time("MM", date), "05")
+  @debug.assert_eq(format_date_time("M", date), "5")
+  @debug.assert_eq(format_date_time("dd", date), "19")
+  @debug.assert_eq(format_date_time("d", date), "19")
+  @debug.assert_eq(format_date_time("HH:mm:ss", date), "14:30:45")
+  @debug.assert_eq(format_date_time("h:mm am/pm", date), "2:30 pm")
+  @debug.assert_eq(format_date_time("h:mm AM/PM", date), "2:30 PM")
+  @debug.assert_eq(format_date_time("'on' yyyy", date), "on 2026")
   // Weekday: 2026-05-19 is a Tuesday (verified via Julian-day formula).
-  assert_eq(format_date_time("dddd", date), "Tuesday")
-  assert_eq(format_date_time("ddd", date), "Tue")
+  @debug.assert_eq(format_date_time("dddd", date), "Tuesday")
+  @debug.assert_eq(format_date_time("ddd", date), "Tue")
 }
 
 ///|
@@ -151,7 +151,7 @@ test "§17.16.5.78 TIME defaults to h:mm am/pm" {
   let field = try! parse_instruction("TIME")
   let ctx = ctx_with(fn(c) { c })
   let result = evaluate_field(field, ctx, registry)
-  assert_eq(result.to_text(), "2:30 pm")
+  @debug.assert_eq(result.to_text(), "2:30 pm")
 }
 
 ///|
@@ -160,7 +160,7 @@ test "§17.16.5.4 AUTHOR + \\* Upper switch" {
   let field = try! parse_instruction("AUTHOR \\* Upper")
   let ctx = ctx_with(fn(c) { { ..c, author: Some("Ada Lovelace") } })
   let result = evaluate_field(field, ctx, registry)
-  assert_eq(result.to_text(), "ADA LOVELACE")
+  @debug.assert_eq(result.to_text(), "ADA LOVELACE")
 }
 
 ///|
@@ -173,8 +173,8 @@ test "§17.16.5.25 HYPERLINK returns FieldResult::Hyperlink" {
   let result = evaluate_field(field, ctx, registry)
   match result {
     Hyperlink(url, display) => {
-      assert_eq(url, "https://example.com")
-      assert_eq(display, "Click")
+      @debug.assert_eq(url, "https://example.com")
+      @debug.assert_eq(display, "Click")
     }
     _ => assert_true(false)
   }
@@ -189,10 +189,10 @@ test "§17.16.5.58 REF reads bookmarks[name].text" {
   })
   let ref_field = try! parse_instruction("REF Heading1")
   let result = evaluate_field(ref_field, ctx, registry)
-  assert_eq(result.to_text(), "Introduction")
+  @debug.assert_eq(result.to_text(), "Introduction")
   let page_ref_field = try! parse_instruction("PAGEREF Heading1")
   let page_result = evaluate_field(page_ref_field, ctx, registry)
-  assert_eq(page_result.to_text(), "3")
+  @debug.assert_eq(page_result.to_text(), "3")
 }
 
 ///|
@@ -203,9 +203,9 @@ test "§17.16.5.65 SEQ increments named counter" {
   let first = evaluate_field(field, ctx, registry).to_text()
   let second = evaluate_field(field, ctx, registry).to_text()
   let third = evaluate_field(field, ctx, registry).to_text()
-  assert_eq(first, "1")
-  assert_eq(second, "2")
-  assert_eq(third, "3")
+  @debug.assert_eq(first, "1")
+  @debug.assert_eq(second, "2")
+  @debug.assert_eq(third, "3")
 }
 
 ///|
@@ -217,7 +217,7 @@ test "§17.16.5.45 MERGEFIELD looks up merge record" {
   })
   let field = try! parse_instruction("MERGEFIELD FullName")
   let result = evaluate_field(field, ctx, registry)
-  assert_eq(result.to_text(), "Alan Turing")
+  @debug.assert_eq(result.to_text(), "Alan Turing")
 }
 
 ///|
@@ -225,9 +225,9 @@ test "§17.16.5.32 IF compares positional arguments" {
   let registry = FieldRegistry::with_builtins()
   let ctx = ctx_with(fn(c) { c })
   let yes = try! parse_instruction("IF 5 > 3 \"yes\" \"no\"")
-  assert_eq(evaluate_field(yes, ctx, registry).to_text(), "yes")
+  @debug.assert_eq(evaluate_field(yes, ctx, registry).to_text(), "yes")
   let no = try! parse_instruction("IF 5 < 3 \"yes\" \"no\"")
-  assert_eq(evaluate_field(no, ctx, registry).to_text(), "no")
+  @debug.assert_eq(evaluate_field(no, ctx, registry).to_text(), "no")
 }
 
 ///|
@@ -239,25 +239,25 @@ test "§17.16 unknown instruction falls back to literal" {
     FieldContext::default(sample_date()),
     registry,
   )
-  assert_eq(result.to_text(), "WIDGET 42")
+  @debug.assert_eq(result.to_text(), "WIDGET 42")
 }
 
 ///|
 test "§17.16.4.3 apply_general_switch covers Upper / Lower / Roman / Ordinal" {
-  assert_eq(apply_general_switch("hello", "Upper"), "HELLO")
-  assert_eq(apply_general_switch("HELLO", "Lower"), "hello")
-  assert_eq(apply_general_switch("hello world", "FirstCap"), "Hello world")
-  assert_eq(apply_general_switch("hello world", "Caps"), "Hello World")
-  assert_eq(apply_general_switch("4", "Roman"), "IV")
-  assert_eq(apply_general_switch("4", "roman"), "iv")
-  assert_eq(apply_general_switch("21", "Ordinal"), "21st")
-  assert_eq(apply_general_switch("3", "CardText"), "Three")
-  assert_eq(apply_general_switch("255", "Hex"), "FF")
+  @debug.assert_eq(apply_general_switch("hello", "Upper"), "HELLO")
+  @debug.assert_eq(apply_general_switch("HELLO", "Lower"), "hello")
+  @debug.assert_eq(apply_general_switch("hello world", "FirstCap"), "Hello world")
+  @debug.assert_eq(apply_general_switch("hello world", "Caps"), "Hello World")
+  @debug.assert_eq(apply_general_switch("4", "Roman"), "IV")
+  @debug.assert_eq(apply_general_switch("4", "roman"), "iv")
+  @debug.assert_eq(apply_general_switch("21", "Ordinal"), "21st")
+  @debug.assert_eq(apply_general_switch("3", "CardText"), "Three")
+  @debug.assert_eq(apply_general_switch("255", "Hex"), "FF")
 }
 
 ///|
 test "§17.16 field_part1_17_16_section_name citation" {
-  assert_eq(field_part1_17_16_section_name(), "Part 1 §17.16")
+  @debug.assert_eq(field_part1_17_16_section_name(), "Part 1 §17.16")
 }
 
 ///|

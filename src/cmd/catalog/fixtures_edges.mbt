@@ -20,14 +20,14 @@
 /// every per-category fixture file; lifted here so this module stays
 /// self-contained without depending on the closures inside other
 /// files.
-fn edge_wa(local : String, value : String) -> @xml.Attribute {
-  { name: { prefix: Some("w"), local_name: local, ns: Some(NS_W) }, value }
+fn edge_wa(local_name : String, value : String) -> @xml.Attribute {
+  { name: { prefix: Some("w"), local_name: local_name, ns: Some(NS_W) }, value }
 }
 
 ///|
 /// Build an `a:`-prefixed attribute (DrawingML).
-fn edge_aa(local : String, value : String) -> @xml.Attribute {
-  { name: { prefix: Some("a"), local_name: local, ns: Some(NS_A) }, value }
+fn edge_aa(local_name : String, value : String) -> @xml.Attribute {
+  { name: { prefix: Some("a"), local_name: local_name, ns: Some(NS_A) }, value }
 }
 
 ///|

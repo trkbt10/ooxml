@@ -611,7 +611,7 @@ test "ST_Booleans parses §21.4.7.9 list of xsd:boolean (canonical and numeric f
   // Canonical lexical form: true/false; round-trip is via re-parse.
   assert_eq(value.to_string(), "true false true false")
   let reparsed = ST_Booleans::parse(value.to_string())
-  assert_eq(reparsed.values, value.values)
+  @debug.assert_eq(reparsed.values, value.values)
 }
 
 ///|

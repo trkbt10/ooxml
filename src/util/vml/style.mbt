@@ -71,7 +71,7 @@ pub fn parse_style(s : String) -> StyleProps {
   let mut flip_y = false
   let mut hidden = false
   for decl in s.split(";") {
-    let trimmed = trim_ws(decl.to_string())
+    let trimmed = trim_ws(decl.to_owned())
     let colon = match trimmed.find(":") {
       Some(i) => i
       None => continue
@@ -137,9 +137,10 @@ pub fn parse_length_px(raw : String) -> Double {
   }
   let num_str = raw[0:i].to_owned()
   let unit = trim_ws(raw[i:].to_owned()).to_lower()
-  let v = match (try? @strconv.parse_double(num_str)) {
-    Ok(d) => d
-    Err(_) => return 0.0
+  let v = try @string.parse_double(num_str) catch {
+    _ => return 0.0
+  } noraise {
+    d => d
   }
   match unit {
     "pt" => v * 96.0 / 72.0
@@ -190,9 +191,10 @@ fn parse_rotation_deg(raw : String) -> Double {
   }
   let num_str = raw[0:i].to_owned()
   let unit = trim_ws(raw[i:].to_owned()).to_lower()
-  let v = match (try? @strconv.parse_double(num_str)) {
-    Ok(d) => d
-    Err(_) => return 0.0
+  let v = try @string.parse_double(num_str) catch {
+    _ => return 0.0
+  } noraise {
+    d => d
   }
   match unit {
     "rad" => v * 180.0 / 3.14159265358979323846
@@ -226,5 +228,5 @@ fn trim_ws(s : String) -> String {
       break
     }
   }
-  s[a:b].to_string()
+  s[a:b].to_owned()
 }

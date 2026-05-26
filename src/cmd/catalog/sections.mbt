@@ -27,7 +27,7 @@ fn spec_parts() -> Array[String] {
 /// `the <name> element (§<section>)`; this scans for that pattern and
 /// returns the distinct `<name>` tokens.
 fn extract_section_elements(text : String) -> Array[String] {
-  let found : Map[String, Bool] = Map::new()
+  let found : Map[String, Bool] = Map([], capacity=0)
   let needle = " element (\u{00A7}"
   // The spec uses the section-sign U+00A7; also tolerate a plain
   // "(§" rendered without it.
@@ -46,7 +46,7 @@ fn extract_section_elements(text : String) -> Array[String] {
           start = start - 1
         }
         if start < pos {
-          let name = chars[start:pos].to_string()
+          let name = chars[start:pos].to_owned()
           // Reject the generic words the phrase also produces
           // ("this element", "an element", "child element", ...).
           if is_plausible_element(name) {
@@ -483,13 +483,6 @@ fn is_non_visual_property_name(name : String) -> Bool {
     | "hlinkMouseOver"
     | "equationxml"
     | "ink"
-    // §17.4.x diagram relationship-id container.
-    | "relIds"
-    // SML data-source reference metadata.
-    | "tablePart"
-    | "rangeSet"
-    | "oleLink"
-    | "worksheetSource"
     // §14.8.3.54 transitional table-style attribute swap — selects a
     // style category, not a paint.
     | "tblStylePr"
@@ -527,9 +520,10 @@ fn analyse_sections(
   let parts : Array[PartCoverage] = []
   for part in spec_parts() {
     let dir = "references/spec/" + part + "/sections"
-    let files = match (try? @fs.read_dir(dir)) {
-      Ok(fs) => fs
-      Err(_) => []
+    let files = try @fs.read_dir(dir) catch {
+      _ => []
+    } noraise {
+      fs => fs
     }
     let mut rt_covered = 0
     let mut rt_partial = 0
@@ -544,9 +538,10 @@ fn analyse_sections(
         continue
       }
       total = total + 1
-      let text = match (try? @fs.read_file_to_string(dir + "/" + fname)) {
-        Ok(t) => t
-        Err(_) => ""
+      let text = try @fs.read_file_to_string(dir + "/" + fname) catch {
+        _ => ""
+      } noraise {
+        t => t
       }
       // Keep only tokens that are genuine ECMA-376 XSD element
       // names; prose words / spec typos are discarded.

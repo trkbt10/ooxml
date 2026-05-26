@@ -236,7 +236,7 @@ fn cf_rule_contains_text(
 fn first_cell_of_sqref(sqref : String) -> String {
   let colon = sqref.find(":")
   match colon {
-    Some(i) => sqref.substring(start=0, end=i)
+    Some(i) => sqref[0:i].to_owned()
     None => sqref
   }
 }

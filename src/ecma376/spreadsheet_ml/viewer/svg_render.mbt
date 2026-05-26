@@ -229,7 +229,7 @@ pub fn render_svg(
   // map can apply col.style / row.s fallbacks for cells that omit
   // their own `s` attribute.
   let col_defs = collect_column_defs(domain.element)
-  let cell_map : Map[String, @xml.Element] = Map::new()
+  let cell_map : Map[String, @xml.Element] = Map([], capacity=0)
   collect_cells(domain.element, cell_map, col_defs)
   // §18.3.1.18 — pre-sort `<conditionalFormatting>` rules by their
   // (block, rule.priority) ordering so the overlay pass below can
@@ -809,13 +809,6 @@ pub fn render_svg(
 }
 
 ///|
-/// Build the empty-sheet placeholder.
-/// @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/sheet-renderer.ts:103
-fn create_empty_result() -> SheetSvgResult {
-  create_empty_result_with_attrs([])
-}
-
-///|
 /// Empty-sheet placeholder carrying extra `data-ooxml-*` attributes
 /// on the root SVG.  Used when the metadata pass collected any
 /// signal worth surfacing (workbook-level metadata, worksheet
@@ -864,7 +857,7 @@ fn create_empty_result_with_attrs(
 
 ///|
 /// Pixel layout for a single cell.
-struct CellLayout {
+priv struct CellLayout {
   x : Double
   y : Double
   width : Double
@@ -880,7 +873,7 @@ struct CellLayout {
 /// (cellRef, layout) pairs preserving traversal order — the TS code
 /// uses a Map<string, CellLayout> and iterates insertion-ordered, so
 /// we keep the same convention.
-struct SheetLayout {
+priv struct SheetLayout {
   cells : Array[(String, CellLayout)]
   total_width : Double
   total_height : Double
@@ -897,7 +890,7 @@ struct SheetLayout {
 
 ///|
 /// §18.3.1.13 column definition.
-struct ColumnDef {
+priv struct ColumnDef {
   min : Int
   max : Int
   width : Double?
@@ -919,7 +912,7 @@ fn column_index_to_letter(col : Int) -> String {
   let chars : Array[Char] = []
   while n > 0 {
     let remainder = (n - 1) % 26
-    chars.push(Char::from_int(65 + remainder))
+    chars.push(Int::unsafe_to_char(65 + remainder))
     n = (n - 1) / 26
   }
   let mut i = chars.length() - 1
@@ -941,7 +934,7 @@ fn cell_ref_from_indices(row : Int, col : Int) -> String {
 /// Parse an A1 cell reference (e.g. "AB12") into 1-based (row, col).
 /// Returns `None` when the input is malformed.
 fn parse_cell_ref(ref_str : String) -> (Int, Int)? {
-  let s = ref_str.trim_space().to_string()
+  let s = ref_str.trim().to_owned()
   let len = s.length()
   if len == 0 {
     return None
@@ -969,21 +962,22 @@ fn parse_cell_ref(ref_str : String) -> (Int, Int)? {
   }
   let mut row_str = ""
   for j in i..<len {
-    let ch = s.unsafe_charcode_at(j)
+    let ch = s.unsafe_get(j).to_int()
     if ch == '$'.to_int() {
       continue
     }
     if ch < '0'.to_int() || ch > '9'.to_int() {
       return None
     }
-    row_str = row_str + Char::from_int(ch).to_string()
+    row_str = row_str + Int::unsafe_to_char(ch).to_string()
   }
   if row_str.length() == 0 {
     return None
   }
-  match (try? @strconv.parse_int(row_str)) {
-    Ok(r) => if r > 0 { Some((r, col)) } else { None }
-    Err(_) => None
+  try @string.parse_int(row_str) catch {
+    _ => None
+  } noraise {
+    r => if r > 0 { Some((r, col)) } else { None }
   }
 }
 
@@ -1062,9 +1056,10 @@ fn collect_column_defs(worksheet : @xml.Element) -> Array[ColumnDef] {
                     let width = match attr_value_local(col_el, "width") {
                       None => None
                       Some(v) =>
-                        match (try? @strconv.parse_double(v)) {
-                          Ok(w) => Some(w)
-                          Err(_) => None
+                        try @string.parse_double(v) catch {
+                          _ => None
+                        } noraise {
+                          w => Some(w)
                         }
                     }
                     // §18.3.1.13 col/@hidden — xsd:boolean.
@@ -1113,7 +1108,7 @@ fn column_width_for(
 ///|
 /// Collect row height overrides keyed by 1-based row number.
 fn build_row_height_map(worksheet : @xml.Element) -> Map[Int, Double] {
-  let map : Map[Int, Double] = Map::new()
+  let map : Map[Int, Double] = Map([], capacity=0)
   for child in worksheet.children {
     match child {
       Element(sd) =>
@@ -1158,10 +1153,11 @@ fn build_row_height_map(worksheet : @xml.Element) -> Map[Int, Double] {
                       if !ignore_ht {
                         match attr_value_local(row_el, "ht") {
                           Some(v) =>
-                            match (try? @strconv.parse_double(v)) {
-                              Ok(pts) =>
+                            try @string.parse_double(v) catch {
+                              _ => ()
+                            } noraise {
+                              pts =>
                                 map.set(row_num, row_height_to_pixels(pts))
-                              Err(_) => ()
                             }
                           None => ()
                         }
@@ -1184,7 +1180,7 @@ fn build_row_height_map(worksheet : @xml.Element) -> Map[Int, Double] {
 /// `origin_row` / `origin_col` point at the top-left anchor cell so
 /// grid-line suppression can identify which merged region this cell
 /// belongs to without an extra lookup.
-struct MergeInfo {
+priv struct MergeInfo {
   is_origin : Bool
   colspan : Int
   rowspan : Int
@@ -1196,7 +1192,7 @@ struct MergeInfo {
 /// Build the merged-cells map by expanding every `<mergeCells>/<mergeCell ref="...">`.
 /// @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/layout.ts:118
 fn build_merge_map(worksheet : @xml.Element) -> Map[String, MergeInfo] {
-  let map : Map[String, MergeInfo] = Map::new()
+  let map : Map[String, MergeInfo] = Map([], capacity=0)
   for child in worksheet.children {
     match child {
       Element(mc) =>
@@ -1225,8 +1221,8 @@ fn build_merge_map(worksheet : @xml.Element) -> Map[String, MergeInfo] {
 fn process_merge_range(range : String, map : Map[String, MergeInfo]) -> Unit {
   let parts = range.split(":").collect()
   let (start, end) = match parts.length() {
-    1 => (parts[0].to_string(), parts[0].to_string())
-    2 => (parts[0].to_string(), parts[1].to_string())
+    1 => (parts[0].to_owned(), parts[0].to_owned())
+    2 => (parts[0].to_owned(), parts[1].to_owned())
     _ => return
   }
   let s = match parse_cell_ref(start) {
@@ -1280,12 +1276,12 @@ fn read_dimension(worksheet : @xml.Element) -> (Int, Int) {
               let parts = r.split(":").collect()
               match parts.length() {
                 1 =>
-                  match parse_cell_ref(parts[0].to_string()) {
+                  match parse_cell_ref(parts[0].to_owned()) {
                     Some((row, col)) => return (row, col)
                     None => ()
                   }
                 _ =>
-                  match parse_cell_ref(parts[parts.length() - 1].to_string()) {
+                  match parse_cell_ref(parts[parts.length() - 1].to_owned()) {
                     Some((row, col)) => return (row, col)
                     None => ()
                   }
@@ -1317,17 +1313,19 @@ fn apply_sheet_format_pr(
       let mut opts = options
       match attr_value_local(fp, "defaultColWidth") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(w) => if w > 0.0 { opts = { ..opts, default_column_width: w } }
-            Err(_) => ()
+          try @string.parse_double(v) catch {
+            _ => ()
+          } noraise {
+            w => if w > 0.0 { opts = { ..opts, default_column_width: w } }
           }
         None => ()
       }
       match attr_value_local(fp, "defaultRowHeight") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(h) => if h > 0.0 { opts = { ..opts, default_row_height: h } }
-            Err(_) => ()
+          try @string.parse_double(v) catch {
+            _ => ()
+          } noraise {
+            h => if h > 0.0 { opts = { ..opts, default_row_height: h } }
           }
         None => ()
       }
@@ -1357,7 +1355,7 @@ fn max_col_from_spans(spans : String) -> Int {
       i = i + 1
     }
     if i > token_start {
-      let token = spans.substring(start=token_start, end=i)
+      let token = spans[token_start:i]
       // Find the `:` separator.
       let mut colon = -1
       let mut k = 0
@@ -1369,10 +1367,11 @@ fn max_col_from_spans(spans : String) -> Int {
         k = k + 1
       }
       if colon >= 0 {
-        let hi = token.substring(start=colon + 1, end=token.length())
-        match (try? @strconv.parse_int(hi)) {
-          Ok(m) => if m > max_col { max_col = m }
-          Err(_) => ()
+        let hi = token[colon + 1:token.length()]
+        try @string.parse_int(hi) catch {
+          _ => ()
+        } noraise {
+          m => if m > max_col { max_col = m }
         }
       }
     }
@@ -1475,7 +1474,7 @@ fn compute_sheet_layout(
       row_heights: [],
       column_count: 0,
       row_count: 0,
-      merge_map: Map::new(),
+      merge_map: Map([], capacity=0),
     }
   }
   let columns = collect_column_defs(worksheet)
@@ -1758,7 +1757,7 @@ pub(all) enum ResolvedFill {
 } derive(Eq)
 
 ///|
-struct ResolvedFont {
+priv struct ResolvedFont {
   family : String
   size : Double
   bold : Bool
@@ -1769,13 +1768,13 @@ struct ResolvedFont {
 }
 
 ///|
-struct ResolvedBorderEdge {
+priv struct ResolvedBorderEdge {
   style : String
   color : String
 }
 
 ///|
-struct ResolvedBorder {
+priv struct ResolvedBorder {
   left : ResolvedBorderEdge?
   right : ResolvedBorderEdge?
   top : ResolvedBorderEdge?
@@ -1786,7 +1785,7 @@ struct ResolvedBorder {
 }
 
 ///|
-struct ResolvedAlignment {
+priv struct ResolvedAlignment {
   horizontal : String // general / left / center / right / fill / justify / centerContinuous / distributed
   vertical : String // top / center / bottom / justify / distributed
   wrap_text : Bool
@@ -1806,7 +1805,7 @@ struct ResolvedAlignment {
 }
 
 ///|
-struct ResolvedCellStyle {
+priv struct ResolvedCellStyle {
   font : ResolvedFont
   fill : ResolvedFill
   border : ResolvedBorder
@@ -1942,9 +1941,10 @@ fn resolve_cell_alignment(
     None => return fallback
     Some(v) => v
   }
-  let xf_index = match (try? @strconv.parse_int(s_attr)) {
-    Ok(n) => n
-    Err(_) => return fallback
+  let xf_index = try @string.parse_int(s_attr) catch {
+    _ => return fallback
+  } noraise {
+    n => n
   }
   let cell_xfs = match styles_table.cell_xfs {
     None => return fallback
@@ -2005,9 +2005,10 @@ fn resolve_cell_font(
     None => return fallback
     Some(v) => v
   }
-  let xf_index = match (try? @strconv.parse_int(s_attr)) {
-    Ok(n) => n
-    Err(_) => return fallback
+  let xf_index = try @string.parse_int(s_attr) catch {
+    _ => return fallback
+  } noraise {
+    n => n
   }
   let cell_xfs = match styles_table.cell_xfs {
     None => return fallback
@@ -2189,10 +2190,10 @@ fn apply_cf_overlay(
               // directly. Missing attributes fall back to the spec
               // defaults (axisPosition = "automatic",
               // direction = "context").
-              let axis_position = attr_value_local(bar.element, "axisPosition").or(
+              let axis_position = attr_value_local(bar.element, "axisPosition").unwrap_or(
                 "automatic",
               )
-              let direction = attr_value_local(bar.element, "direction").or(
+              let direction = attr_value_local(bar.element, "direction").unwrap_or(
                 "context",
               )
               let negative_color = read_data_bar_negative_color(bar.element)
@@ -2315,16 +2316,16 @@ fn pad_two_hex(byte : Int) -> String {
 ///|
 fn hex_digit(n : Int) -> Char {
   if n < 10 {
-    Char::from_int(0x30 + n)
+    Int::unsafe_to_char(0x30 + n)
   } else {
-    Char::from_int(0x41 + n - 10)
+    Int::unsafe_to_char(0x41 + n - 10)
   }
 }
 
 ///|
 /// §18.3.1.10 — pre-computed per-block population statistics used by
 /// Top10 / AboveAverage / DuplicateValues / UniqueValues predicates.
-struct PopulationStats {
+priv struct PopulationStats {
   /// (cell_ref, numeric value) pairs for every cell in the block's
   /// sqref that has a numeric value, sorted in descending order.
   /// Used by Top10 (top N) and the bottom variant takes the tail.
@@ -2351,14 +2352,14 @@ fn compute_population_stats(
   shared_strings : @domain.CT_Sst?,
 ) -> PopulationStats {
   let pairs : Array[(String, Double)] = []
-  let counts : Map[String, Int] = Map::new()
+  let counts : Map[String, Int] = Map([], capacity=0)
   let mut sum = 0.0
   let mut count = 0
   for r in block.sqref.ranges {
-    let sr = r.start_row_zero_based.or(0)
-    let er = r.end_row_zero_based.or(sr)
-    let sc = r.start_col_zero_based.or(0)
-    let ec = r.end_col_zero_based.or(sc)
+    let sr = r.start_row_zero_based.unwrap_or(0)
+    let er = r.end_row_zero_based.unwrap_or(sr)
+    let sc = r.start_col_zero_based.unwrap_or(0)
+    let ec = r.end_col_zero_based.unwrap_or(sc)
     for row in sr..<=er {
       for col in sc..<=ec {
         let cref = cell_ref_from_indices(row + 1, col + 1)
@@ -2366,12 +2367,12 @@ fn compute_population_stats(
           None => {
             // Empty cell — count as the empty string for
             // duplicate/unique semantics (Excel parity).
-            let prev = counts.get("").or(0)
+            let prev = counts.get("").unwrap_or(0)
             counts.set("", prev + 1)
           }
           Some(cell_el) => {
             let text = cell_resolved_text(cell_el, shared_strings)
-            let prev = counts.get(text).or(0)
+            let prev = counts.get(text).unwrap_or(0)
             counts.set(text, prev + 1)
             match parse_cell_numeric(cell_el) {
               None => ()
@@ -2461,7 +2462,7 @@ fn top_n_matches(
   cell_ref : String,
   stats : PopulationStats,
 ) -> Bool {
-  let rank = rule.rank.or(1)
+  let rank = rule.rank.unwrap_or(1)
   let pop_size = stats.sorted_desc.length()
   if pop_size == 0 || rank <= 0 {
     return false
@@ -2516,7 +2517,7 @@ fn above_average_matches(
     None => return false
     Some(v) => v
   }
-  let dev_count = rule.std_dev.or(0)
+  let dev_count = rule.std_dev.unwrap_or(0)
   let threshold = if rule.above_average {
     stats.mean + dev_count.to_double() * stats.std_dev
   } else {
@@ -2554,7 +2555,7 @@ fn duplicate_matches(
   // mismatch is between in-band inline strings and SST-resolved
   // strings, which would already differ in the population scan.
   let _ = cell
-  let count = stats.value_counts.get(text).or(0)
+  let count = stats.value_counts.get(text).unwrap_or(0)
   if want_duplicate {
     count > 1
   } else {
@@ -2571,10 +2572,10 @@ fn sqref_contains(sqref : @address.Sqref, row : Int, col : Int) -> Bool {
   let r0 = row - 1
   let c0 = col - 1
   for r in sqref.ranges {
-    let sr = r.start_row_zero_based.or(0)
-    let er = r.end_row_zero_based.or(r.start_row_zero_based.or(0))
-    let sc = r.start_col_zero_based.or(0)
-    let ec = r.end_col_zero_based.or(r.start_col_zero_based.or(0))
+    let sr = r.start_row_zero_based.unwrap_or(0)
+    let er = r.end_row_zero_based.unwrap_or(r.start_row_zero_based.unwrap_or(0))
+    let sc = r.start_col_zero_based.unwrap_or(0)
+    let ec = r.end_col_zero_based.unwrap_or(r.start_col_zero_based.unwrap_or(0))
     let row_ok = r.start_row_zero_based is None || (r0 >= sr && r0 <= er)
     let col_ok = r.start_col_zero_based is None || (c0 >= sc && c0 <= ec)
     if row_ok && col_ok {
@@ -2614,9 +2615,9 @@ fn cf_rule_matches(
     Some(EndsWith) =>
       starts_or_ends_match(rule, cell, shared_strings, starts=false)
     Some(ContainsBlanks) =>
-      cell_resolved_text(cell, shared_strings).trim_space().length() == 0
+      cell_resolved_text(cell, shared_strings).trim().length() == 0
     Some(NotContainsBlanks) =>
-      cell_resolved_text(cell, shared_strings).trim_space().length() > 0
+      cell_resolved_text(cell, shared_strings).trim().length() > 0
     Some(ContainsErrors) => cell_is_error_value(cell, shared_strings)
     Some(NotContainsErrors) => !cell_is_error_value(cell, shared_strings)
     // §18.18.12 — `expression` evaluates the rule's formula as a
@@ -2654,7 +2655,7 @@ fn cell_is_error_value(
     Some("e") => return true
     _ => ()
   }
-  let text = cell_resolved_text(cell, shared_strings).trim_space().to_string()
+  let text = cell_resolved_text(cell, shared_strings).trim().to_owned()
   match text {
     "#REF!"
     | "#NAME?"
@@ -2688,7 +2689,7 @@ fn evaluate_expression_literal(rule : @domain.CT_CfRule) -> Bool {
   if rule.formulas.length() == 0 {
     return false
   }
-  match rule.formulas[0].trim_space().to_string() {
+  match rule.formulas[0].trim().to_owned() {
     "TRUE" | "true" | "1" => true
     _ => false
   }
@@ -2735,17 +2736,19 @@ fn evaluate_cell_is_numeric(
     Some(v) => v
   }
   let f0 = if rule.formulas.length() >= 1 {
-    match (try? @strconv.parse_double(rule.formulas[0])) {
-      Ok(v) => Some(v)
-      Err(_) => None
+    try @string.parse_double(rule.formulas[0]) catch {
+      _ => None
+    } noraise {
+      v => Some(v)
     }
   } else {
     None
   }
   let f1 = if rule.formulas.length() >= 2 {
-    match (try? @strconv.parse_double(rule.formulas[1])) {
-      Ok(v) => Some(v)
-      Err(_) => None
+    try @string.parse_double(rule.formulas[1]) catch {
+      _ => None
+    } noraise {
+      v => Some(v)
     }
   } else {
     None
@@ -2813,11 +2816,11 @@ fn evaluate_cell_is_text(
   if rule.formulas.length() == 0 {
     return false
   }
-  let raw = rule.formulas[0].trim_space().to_string()
+  let raw = rule.formulas[0].trim().to_owned()
   let needle = if raw.length() >= 2 &&
     raw.code_unit_at(0).to_int() == 0x22 &&
     raw.code_unit_at(raw.length() - 1).to_int() == 0x22 {
-    raw[1:raw.length() - 1].to_string()
+    raw[1:raw.length() - 1].to_owned()
   } else {
     raw
   }
@@ -2919,9 +2922,10 @@ fn parse_cell_numeric(cell : @xml.Element) -> Double? {
           _ => ()
         }
       }
-      match (try? @strconv.parse_double(text.trim_space().to_string())) {
-        Ok(d) => Some(d)
-        Err(_) => None
+      try @string.parse_double(text.trim().to_owned()) catch {
+        _ => None
+      } noraise {
+        d => Some(d)
       }
     }
   }
@@ -2948,12 +2952,13 @@ fn cell_resolved_text(
               _ => ()
             }
           }
-          text.trim_space().to_string()
+          text.trim().to_owned()
         }
       }
-      let idx = match (try? @strconv.parse_int(v)) {
-        Ok(n) => n
-        Err(_) => return ""
+      let idx = try @string.parse_int(v) catch {
+        _ => return ""
+      } noraise {
+        n => n
       }
       match shared_strings {
         None => ""
@@ -3102,9 +3107,10 @@ fn resolve_cell_fill(
     None => return fallback
     Some(v) => v
   }
-  let xf_index = match (try? @strconv.parse_int(s_attr)) {
-    Ok(n) => n
-    Err(_) => return fallback
+  let xf_index = try @string.parse_int(s_attr) catch {
+    _ => return fallback
+  } noraise {
+    n => n
   }
   let cell_xfs = match styles_table.cell_xfs {
     None => return fallback
@@ -3153,7 +3159,7 @@ fn ct_fill_to_resolved(
 ) -> ResolvedFill {
   match fill.pattern_fill {
     Some(pf) => {
-      let pt = pf.pattern_type.or("none")
+      let pt = pf.pattern_type.unwrap_or("none")
       match pt {
         "none" => FillNone
         "solid" => {
@@ -3163,7 +3169,7 @@ fn ct_fill_to_resolved(
           // literal "#000000" overrode the cascade.
           let rgb = match pf.fg_color {
             Some(el) =>
-              resolve_color_element_rgb(el, theme_map).or("currentColor")
+              resolve_color_element_rgb(el, theme_map).unwrap_or("currentColor")
             None => "currentColor"
           }
           FillSolid(rgb)
@@ -3179,7 +3185,7 @@ fn ct_fill_to_resolved(
           // the spec-defined pattern identity.
           let fg = match pf.fg_color {
             Some(el) =>
-              resolve_color_element_rgb(el, theme_map).or("currentColor")
+              resolve_color_element_rgb(el, theme_map).unwrap_or("currentColor")
             None => "currentColor"
           }
           let bg = match pf.bg_color {
@@ -3238,9 +3244,10 @@ fn resolve_cell_border(
     None => return fallback
     Some(v) => v
   }
-  let xf_index = match (try? @strconv.parse_int(s_attr)) {
-    Ok(n) => n
-    Err(_) => return fallback
+  let xf_index = try @string.parse_int(s_attr) catch {
+    _ => return fallback
+  } noraise {
+    n => n
   }
   let cell_xfs = match styles_table.cell_xfs {
     None => return fallback
@@ -3279,7 +3286,7 @@ fn resolve_cell_border(
 /// emits the latter even in OOXML Strict files.
 fn ct_border_to_resolved(
   border : @domain.CT_Border,
-  fallback : ResolvedBorder,
+  _fallback : ResolvedBorder,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
 ) -> ResolvedBorder {
   let left = ct_border_pr_to_resolved(
@@ -3294,14 +3301,13 @@ fn ct_border_to_resolved(
   let bottom = ct_border_pr_to_resolved(border.bottom, theme_map~)
   let diagonal = ct_border_pr_to_resolved(border.diagonal, theme_map~)
   {
-    ..fallback,
     left,
     right,
     top,
     bottom,
     diagonal,
-    diagonal_up: border.diagonal_up.or(false),
-    diagonal_down: border.diagonal_down.or(false),
+    diagonal_up: border.diagonal_up.unwrap_or(false),
+    diagonal_down: border.diagonal_down.unwrap_or(false),
   }
 }
 
@@ -3348,7 +3354,7 @@ fn ct_border_pr_to_resolved(
   // §18.8.4 — unresolved theme / indexed border colour resolves
   // to the spec-permitted `auto` sentinel; we surface it as
   // `currentColor` so the SVG cascade picks the actual hue.
-  let color = resolve_ct_color_rgb(pr.color, theme_map~).or("currentColor")
+  let color = resolve_ct_color_rgb(pr.color, theme_map~).unwrap_or("currentColor")
   Some({ style: pr.style, color })
 }
 
@@ -3389,9 +3395,10 @@ fn resolve_color_element_rgb(
   }
   match attr_value_local(element, "indexed") {
     Some(idx_str) =>
-      match (try? @strconv.parse_int(idx_str)) {
-        Ok(idx) => return Some(indexed_color_to_rgb(idx))
-        Err(_) => ()
+      try @string.parse_int(idx_str) catch {
+        _ => ()
+      } noraise {
+        idx => return Some(indexed_color_to_rgb(idx))
       }
     None => ()
   }
@@ -3402,15 +3409,18 @@ fn resolve_color_element_rgb(
   // `@color.apply_lum_off` on the resolved theme RGB.
   match attr_value_local(element, "theme") {
     Some(theme_idx_str) =>
-      match (try? @strconv.parse_int(theme_idx_str)) {
-        Ok(theme_idx) =>
+      try @string.parse_int(theme_idx_str) catch {
+        _ => ()
+      } noraise {
+        theme_idx =>
           match theme_map.lookup(theme_idx) {
             Some(base_hex) => {
               let tint = match attr_value_local(element, "tint") {
                 Some(t) =>
-                  match (try? @strconv.parse_double(t)) {
-                    Ok(d) => d
-                    Err(_) => 0.0
+                  try @string.parse_double(t) catch {
+                    _ => 0.0
+                  } noraise {
+                    d => d
                   }
                 None => 0.0
               }
@@ -3424,7 +3434,6 @@ fn resolve_color_element_rgb(
             }
             None => ()
           }
-        Err(_) => ()
       }
     None => ()
   }
@@ -3441,15 +3450,15 @@ fn resolve_color_element_rgb(
 /// transparent blue (returns "rgba(0, 0, 255, 0.498)").
 fn normalise_argb_hex(hex : String) -> String {
   if hex.length() == 8 {
-    let alpha_hex = hex[0:2].to_string()
-    let rgb_hex = hex[2:].to_string()
+    let alpha_hex = hex[0:2].to_owned()
+    let rgb_hex = hex[2:].to_owned()
     let alpha_byte = parse_hex_byte(alpha_hex)
     if alpha_byte == 255 {
       "#" + rgb_hex
     } else {
-      let r = parse_hex_byte(rgb_hex[0:2].to_string())
-      let g = parse_hex_byte(rgb_hex[2:4].to_string())
-      let b = parse_hex_byte(rgb_hex[4:6].to_string())
+      let r = parse_hex_byte(rgb_hex[0:2].to_owned())
+      let g = parse_hex_byte(rgb_hex[2:4].to_owned())
+      let b = parse_hex_byte(rgb_hex[4:6].to_owned())
       let alpha = alpha_byte.to_double() / 255.0
       "rgba(" +
       r.to_string() +
@@ -3504,7 +3513,7 @@ fn format_alpha(a : Double) -> String {
     let mut frac_str = pad_left_zeros(frac_part.to_string(), 3)
     while frac_str.length() > 1 &&
           frac_str.code_unit_at(frac_str.length() - 1).to_int() == 0x30 {
-      frac_str = frac_str[:frac_str.length() - 1].to_string()
+      frac_str = frac_str[:frac_str.length() - 1].to_owned()
     }
     int_part.to_string() + "." + frac_str
   }
@@ -3612,7 +3621,7 @@ fn indexed_color_to_rgb(idx : Int) -> String {
 /// colour directive (it may be a condition, locale or currency).
 fn format_color_directive_to_rgb(body : String) -> String? {
   // Normalise: drop surrounding whitespace, compare case-folded.
-  let trimmed = body.trim_space().to_string()
+  let trimmed = body.trim().to_owned()
   let lower = trimmed.to_lower()
   match lower {
     "black" => Some(indexed_color_to_rgb(0))
@@ -3626,11 +3635,12 @@ fn format_color_directive_to_rgb(body : String) -> String? {
     _ =>
       // `[Color n]` — the keyword `color` followed by whitespace
       // and a 1-based decimal index.
-      if lower.length() > 5 && lower.substring(start=0, end=5) == "color" {
-        let rest = lower.substring(start=5, end=lower.length()).trim_space()
-        match (try? @strconv.parse_int(rest.to_string())) {
-          Ok(n) => if n >= 1 { Some(indexed_color_to_rgb(n - 1)) } else { None }
-          Err(_) => None
+      if lower.length() > 5 && lower[0:5] == "color" {
+        let rest = lower[5:lower.length()].trim()
+        try @string.parse_int(rest.to_owned()) catch {
+          _ => None
+        } noraise {
+          n => if n >= 1 { Some(indexed_color_to_rgb(n - 1)) } else { None }
         }
       } else {
         None
@@ -3667,7 +3677,7 @@ fn section_format_color(section : String) -> String? {
       while k < section.length() && section.code_unit_at(k).to_int() != 0x5D {
         k = k + 1
       }
-      let body = section.substring(start=body_start, end=k).to_string()
+      let body = section[body_start:k].to_owned()
       match format_color_directive_to_rgb(body) {
         Some(rgb) => return Some(rgb)
         None => ()
@@ -3727,9 +3737,10 @@ fn resolve_cell_number_format(
     None => return fallback
     Some(v) => v
   }
-  let xf_index = match (try? @strconv.parse_int(s_attr)) {
-    Ok(n) => n
-    Err(_) => return fallback
+  let xf_index = try @string.parse_int(s_attr) catch {
+    _ => return fallback
+  } noraise {
+    n => n
   }
   let cell_xfs = match styles_table.cell_xfs {
     None => return fallback
@@ -3833,9 +3844,10 @@ fn parse_inline_font(rpr : @xml.Element, base : ResolvedFont) -> ResolvedFont {
           "sz" =>
             match attr_value_local(e, "val") {
               Some(v) =>
-                match (try? @strconv.parse_double(v)) {
-                  Ok(d) => size = d
-                  Err(_) => ()
+                try @string.parse_double(v) catch {
+                  _ => ()
+                } noraise {
+                  d => size = d
                 }
               None => ()
             }
@@ -3849,7 +3861,7 @@ fn parse_inline_font(rpr : @xml.Element, base : ResolvedFont) -> ResolvedFont {
               Some(v) =>
                 if v.length() == 8 {
                   // ARGB → #RRGGBB
-                  color = Some("#" + v.substring(start=2, end=8))
+                  color = Some("#" + v[2:8].to_owned())
                 } else if v.length() == 6 {
                   color = Some("#" + v)
                 }
@@ -3889,20 +3901,21 @@ fn format_cell_value(
     "s" => {
       // Shared-string index in `<v>`.
       let value_text = match first_child_named_local(cell, "v") {
-        Some(v) => xml_text_content(v).trim_space().to_string()
+        Some(v) => xml_text_content(v).trim().to_owned()
         None => return ""
       }
       match shared_strings {
         None => value_text
         Some(sst) =>
-          match (try? @strconv.parse_int(value_text)) {
-            Ok(idx) =>
+          try @string.parse_int(value_text) catch {
+            _ => value_text
+          } noraise {
+            idx =>
               if idx >= 0 && idx < sst.si_entries.length() {
                 sst.si_entries[idx].to_plain_text()
               } else {
                 value_text
               }
-            Err(_) => value_text
           }
       }
     }
@@ -3925,7 +3938,7 @@ fn format_cell_value(
       // those and warn, rather than discarding the recoverable
       // value behind a `"?"` placeholder.
       let raw = match first_child_named_local(cell, "v") {
-        Some(v) => xml_text_content(v).trim_space().to_string()
+        Some(v) => xml_text_content(v).trim().to_owned()
         None => ""
       }
       match raw {
@@ -3986,9 +3999,10 @@ fn format_cell_value(
           raw
         }
         Some(dt) =>
-          match (try? @date_serial.date_time_to_serial(dt, date_system)) {
-            Err(_) => raw
-            Ok(serial) =>
+          try @date_serial.date_time_to_serial(dt, date_system) catch {
+            _ => raw
+          } noraise {
+            serial =>
               if style.number_format == "General" || style.number_format == "" {
                 raw
               } else {
@@ -4001,15 +4015,16 @@ fn format_cell_value(
       // §18.18.11 default — numeric. Honours the resolved
       // §18.8.30 format code.
       let value_text = match first_child_named_local(cell, "v") {
-        Some(v) => xml_text_content(v).trim_space().to_string()
+        Some(v) => xml_text_content(v).trim().to_owned()
         None => return ""
       }
       if value_text == "" {
         return ""
       }
-      match (try? @strconv.parse_double(value_text)) {
-        Ok(num) => format_number_general(num, style.number_format, date_system~)
-        Err(_) => value_text
+      try @string.parse_double(value_text) catch {
+        _ => value_text
+      } noraise {
+        num => format_number_general(num, style.number_format, date_system~)
       }
     }
     other => {
@@ -4019,15 +4034,16 @@ fn format_cell_value(
       // the schema breach is visible.
       warnings.push("§18.18.11: cell @t='" + other + "' not in ST_CellType")
       let value_text = match first_child_named_local(cell, "v") {
-        Some(v) => xml_text_content(v).trim_space().to_string()
+        Some(v) => xml_text_content(v).trim().to_owned()
         None => return ""
       }
       if value_text == "" {
         return ""
       }
-      match (try? @strconv.parse_double(value_text)) {
-        Ok(num) => format_number_general(num, style.number_format, date_system~)
-        Err(_) => value_text
+      try @string.parse_double(value_text) catch {
+        _ => value_text
+      } noraise {
+        num => format_number_general(num, style.number_format, date_system~)
       }
     }
   }
@@ -4493,7 +4509,7 @@ fn format_excel_date(
     }
     // AM/PM literal — must come before single-char tokens.
     let matches_am_pm = if i + 5 <= format_code.length() {
-      let s = format_code.substring(start=i, end=i + 5)
+      let s = format_code[i:i + 5]
       s == "AM/PM" || s == "am/pm"
     } else {
       false
@@ -5172,7 +5188,7 @@ fn apply_format_section(value : Double, section : String) -> String {
     if keep == 0 {
       ""
     } else {
-      raw.substring(start=0, end=keep)
+      raw[0:keep].to_owned()
     }
   } else {
     ""
@@ -5352,9 +5368,9 @@ fn apply_scientific_format_section(value : Double, section : String) -> String {
   if e_pos < 0 {
     return value.to_string()
   }
-  let mantissa_fmt = section[0:e_pos].to_string()
+  let mantissa_fmt = section[0:e_pos].to_owned()
   let exp_sign_char = section.code_unit_at(e_pos + 1).to_int()
-  let exp_fmt = section[e_pos + 2:].to_string()
+  let exp_fmt = section[e_pos + 2:].to_owned()
   // Count mantissa placeholders: integer side (before `.`) and
   // fractional side (after `.`), distinguishing `0` (pad) from
   // `#`/`?` (trim).  Quoted/escaped/bracketed runs are skipped.
@@ -5478,7 +5494,7 @@ fn apply_scientific_format_section(value : Double, section : String) -> String {
     frac_str = if keep == 0 {
       ""
     } else {
-      frac_str.substring(start=0, end=keep)
+      frac_str[0:keep].to_owned()
     }
   }
   // Exponent sign and magnitude.
@@ -5881,7 +5897,7 @@ fn blend_hex(a : String, b : String, t : Double) -> String {
 /// original input rather than feeding garbage through the parser.
 fn is_hex_color(s : String) -> Bool {
   let body = if s.length() > 0 && s.code_unit_at(0).to_int() == 0x23 {
-    s.substring(start=1)
+    s[1:]
   } else {
     s
   }
@@ -6705,19 +6721,19 @@ fn split_lines(text : String) -> Array[String] {
   let mut i = 0
   let len = text.length()
   while i < len {
-    let c = text.unsafe_charcode_at(i)
+    let c = text.unsafe_get(i).to_int()
     if c == '\r'.to_int() {
       out.push(buf.to_string())
       buf.reset()
       // Skip following \n if present.
-      if i + 1 < len && text.unsafe_charcode_at(i + 1) == '\n'.to_int() {
+      if i + 1 < len && text.unsafe_get(i + 1).to_int() == '\n'.to_int() {
         i = i + 1
       }
     } else if c == '\n'.to_int() {
       out.push(buf.to_string())
       buf.reset()
     } else {
-      buf.write_char(Char::from_int(c))
+      buf.write_char(Int::unsafe_to_char(c))
     }
     i = i + 1
   }
@@ -6730,14 +6746,14 @@ fn split_words(paragraph : String) -> Array[String] {
   let out : Array[String] = []
   let buf = StringBuilder::new()
   for i in 0..<paragraph.length() {
-    let c = paragraph.unsafe_charcode_at(i)
+    let c = paragraph.unsafe_get(i).to_int()
     if c == ' '.to_int() || c == '\t'.to_int() {
       if buf.to_string().length() > 0 {
         out.push(buf.to_string())
         buf.reset()
       }
     } else {
-      buf.write_char(Char::from_int(c))
+      buf.write_char(Int::unsafe_to_char(c))
     }
   }
   if buf.to_string().length() > 0 {
@@ -7221,9 +7237,10 @@ fn parse_int_attr_or(
   match attr_value_local(element, name) {
     None => default
     Some(v) =>
-      match (try? @strconv.parse_int(v.trim_space().to_string())) {
-        Ok(i) => i
-        Err(_) => default
+      try @string.parse_int(v.trim().to_owned()) catch {
+        _ => default
+      } noraise {
+        i => i
       }
   }
 }
@@ -7540,9 +7557,10 @@ fn render_drawing_shape(
           match attr_value_local(ln, "w") {
             None => 1.0
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(emu) => (emu / 9525.0).max(0.0)
-                Err(_) => 1.0
+              try @string.parse_double(v) catch {
+                _ => 1.0
+              } noraise {
+                emu => (emu / 9525.0).max(0.0)
               }
           }
       }
@@ -7771,9 +7789,10 @@ fn drawing_shape_text_svg(
     Some(rp) => {
       let sz = match attr_value_local(rp, "sz") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(hp) => hp / 100.0
-            Err(_) => 11.0
+          try @string.parse_double(v) catch {
+            _ => 11.0
+          } noraise {
+            hp => hp / 100.0
           }
         None => 11.0
       }
@@ -7809,8 +7828,8 @@ fn drawing_shape_text_svg(
 /// `+mj-lt` / `+mn-lt` are passed through verbatim; their full
 /// resolution against the workbook theme is a separate task.
 fn drawing_text_typeface(r_pr : @xml.Element) -> String? {
-  for local in ["latin", "ea", "cs", "sym"] {
-    match first_child_named_local(r_pr, local) {
+  for local_name in ["latin", "ea", "cs", "sym"] {
+    match first_child_named_local(r_pr, local_name) {
       Some(el) =>
         match attr_value_local(el, "typeface") {
           Some(v) => return Some(v)
@@ -8099,35 +8118,14 @@ fn drawing_connector_stroke(sp_pr : @xml.Element) -> (String, Double) {
       match attr_value_local(l, "w") {
         None => 1.0
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(emu) => (emu / 914400.0 * 96.0).max(0.5)
-            Err(_) => 1.0
+          try @string.parse_double(v) catch {
+            _ => 1.0
+          } noraise {
+            emu => (emu / 914400.0 * 96.0).max(0.5)
           }
       }
   }
   (color, width_px)
-}
-
-///|
-/// §20.1.10.55 ST_ShapeType — when the preset name is enumerated
-/// but the viewer has no path for it yet, surface the spec-anchored
-/// preset name as `data-ooxml-prst` metadata on an empty `<g>` so
-/// consumers can render the geometry themselves. The bounding box
-/// dimensions are kept as data attributes for the same reason.
-fn render_drawing_unknown_preset(
-  prst : String,
-  bounds : DrawingBounds,
-) -> @xml.Node {
-  svg_elem(
-    "g",
-    [
-      svg_attr("data-ooxml", "shape"),
-      svg_attr("data-ooxml-prst", prst),
-      svg_attr("data-ooxml-w", format_d(bounds.width)),
-      svg_attr("data-ooxml-h", format_d(bounds.height)),
-    ],
-    [],
-  )
 }
 
 ///|
@@ -8258,11 +8256,12 @@ fn render_sheet_phonetics(
           match first_child_named_local(cell_el, "v") {
             None => ()
             Some(v) =>
-              match
-                (try? @strconv.parse_int(
-                  xml_text_content(v).trim_space().to_string(),
-                )) {
-                Ok(idx) =>
+              try @string.parse_int(
+                  xml_text_content(v).trim().to_owned(),
+                ) catch {
+                _ => ()
+              } noraise {
+                idx =>
                   if idx >= 0 && idx < sst.si_entries.length() {
                     let phon = sst.si_entries[idx].phonetic_text()
                     if phon.length() > 0 {
@@ -8283,7 +8282,6 @@ fn render_sheet_phonetics(
                       )
                     }
                   }
-                Err(_) => ()
               }
           }
         }
@@ -8319,16 +8317,12 @@ fn render_sheet_sparklines(
     Some(e) => e
     None => return None
   }
-  let sparkline_groups = match
-    (try? @sparkline.decode_ext_lst(ext_lst.element)) {
-    Ok(g) => g
-    Err(_) => return None
-  }
+  let sparkline_groups = @sparkline.decode_ext_lst(ext_lst.element)
   if sparkline_groups.groups.length() == 0 {
     return None
   }
   // Build the (cellRef -> CellLayout) map for O(1) anchor lookup.
-  let layout_map : Map[String, CellLayout] = Map::new()
+  let layout_map : Map[String, CellLayout] = Map([], capacity=0)
   for entry in layout.cells {
     let (cref, cl) = entry
     layout_map[cref] = cl
@@ -8378,9 +8372,10 @@ fn resolve_sparkline_data(
   }
   let out : Array[Double] = []
   let range_text = strip_sheet_prefix(spark.data_range)
-  let range = match (try? @address.CellRange::parse_a1(range_text)) {
-    Ok(r) => r
-    Err(_) => return out
+  let range = try @address.CellRange::parse_a1(range_text) catch {
+    _ => return out
+  } noraise {
+    r => r
   }
   let sc = match range.start_col_zero_based {
     Some(n) => n
@@ -8397,9 +8392,10 @@ fn resolve_sparkline_data(
   // is the natural left-to-right / top-to-bottom one).
   for r in sr..<=er {
     for c in sc..<=ec {
-      let cref = match (try? @address.column_index_to_letter(c + 1)) {
-        Ok(letter) => letter + (r + 1).to_string()
-        Err(_) => continue
+      let cref = try @address.column_index_to_letter(c + 1) catch {
+        _ => continue
+      } noraise {
+        letter => letter + (r + 1).to_string()
       }
       match cell_map.get(cref) {
         None => out.push(0.0)
@@ -8426,12 +8422,12 @@ fn cell_numeric_value_default(cell : @xml.Element) -> Double? {
     match first_child_named_local(cell, "v") {
       None => None
       Some(v) =>
-        match
-          (try? @strconv.parse_double(
-            xml_text_content(v).trim_space().to_string(),
-          )) {
-          Ok(n) => Some(n)
-          Err(_) => None
+        try @string.parse_double(
+            xml_text_content(v).trim().to_owned(),
+          ) catch {
+          _ => None
+        } noraise {
+          n => Some(n)
         }
     }
   } else {
@@ -8533,18 +8529,20 @@ fn render_sheet_outline_levels(
             if row.name.local_name == "row" {
               let lvl = match attr_value_local(row, "outlineLevel") {
                 Some(v) =>
-                  match (try? @strconv.parse_int(v)) {
-                    Ok(n) => n
-                    Err(_) => 0
+                  try @string.parse_int(v) catch {
+                    _ => 0
+                  } noraise {
+                    n => n
                   }
                 None => 0
               }
               if lvl > 0 {
                 let r_attr = match attr_value_local(row, "r") {
                   Some(v) =>
-                    match (try? @strconv.parse_int(v)) {
-                      Ok(n) => n
-                      Err(_) => -1
+                    try @string.parse_int(v) catch {
+                      _ => -1
+                    } noraise {
+                      n => n
                     }
                   None => -1
                 }
@@ -8588,26 +8586,29 @@ fn render_sheet_outline_levels(
             if col.name.local_name == "col" {
               let lvl = match attr_value_local(col, "outlineLevel") {
                 Some(v) =>
-                  match (try? @strconv.parse_int(v)) {
-                    Ok(n) => n
-                    Err(_) => 0
+                  try @string.parse_int(v) catch {
+                    _ => 0
+                  } noraise {
+                    n => n
                   }
                 None => 0
               }
               if lvl > 0 {
                 let min = match attr_value_local(col, "min") {
                   Some(v) =>
-                    match (try? @strconv.parse_int(v)) {
-                      Ok(n) => n
-                      Err(_) => 0
+                    try @string.parse_int(v) catch {
+                      _ => 0
+                    } noraise {
+                      n => n
                     }
                   None => 0
                 }
                 let max = match attr_value_local(col, "max") {
                   Some(v) =>
-                    match (try? @strconv.parse_int(v)) {
-                      Ok(n) => n
-                      Err(_) => 0
+                    try @string.parse_int(v) catch {
+                      _ => 0
+                    } noraise {
+                      n => n
                     }
                   None => 0
                 }
@@ -8729,7 +8730,7 @@ fn first_cell_of_range(ref_ : String) -> String {
   let mut i = 0
   while i < ref_.length() {
     if ref_.code_unit_at(i).to_int() == 0x3A {
-      return ref_.substring(start=0, end=i).to_string()
+      return ref_[0:i].to_owned()
     }
     i = i + 1
   }
@@ -8752,7 +8753,7 @@ fn lookup_cell_layout(layout : SheetLayout, cell_key : String) -> CellLayout? {
 ///|
 /// §18.3.1.65 `<pane>` — extracted CT_Pane metadata.  `None`
 /// when no `<sheetView>/<pane>` is present.
-struct SheetPaneInfo {
+priv struct SheetPaneInfo {
   /// @xSplit (xsd:double, default 0).  Horizontal split position
   /// in column-units (frozen: number of frozen columns; split:
   /// pixel position above the column).
@@ -9589,7 +9590,7 @@ fn sheet_tab_color(worksheet : @xml.Element) -> String? {
         Some(argb) =>
           if argb.length() == 8 {
             // Drop the leading 2-hex alpha.
-            Some("#" + argb.substring(start=2, end=8))
+            Some("#" + argb[2:8].to_owned())
           } else if argb.length() == 6 {
             Some("#" + argb)
           } else {
@@ -9626,17 +9627,19 @@ fn sheet_view_pane_info(worksheet : @xml.Element) -> SheetPaneInfo? {
     Some(p) => {
       let x_split = match attr_value_local(p, "xSplit") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => n
-            Err(_) => 0.0
+          try @string.parse_double(v) catch {
+            _ => 0.0
+          } noraise {
+            n => n
           }
         None => 0.0
       }
       let y_split = match attr_value_local(p, "ySplit") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => n
-            Err(_) => 0.0
+          try @string.parse_double(v) catch {
+            _ => 0.0
+          } noraise {
+            n => n
           }
         None => 0.0
       }
@@ -9665,10 +9668,11 @@ fn is_numeric_zero_cell(
   match first_child_named_local(cell, "v") {
     None => false
     Some(v) => {
-      let raw = xml_text_content(v).trim_space().to_string()
-      match (try? @strconv.parse_double(raw)) {
-        Ok(n) => n == 0.0
-        Err(_) => false
+      let raw = xml_text_content(v).trim().to_owned()
+      try @string.parse_double(raw) catch {
+        _ => false
+      } noraise {
+        n => n == 0.0
       }
     }
   }
@@ -9691,10 +9695,11 @@ fn cell_numeric_value(
       match first_child_named_local(cell, "v") {
         None => None
         Some(v) => {
-          let raw = xml_text_content(v).trim_space().to_string()
-          match (try? @strconv.parse_double(raw)) {
-            Ok(n) => Some(n)
-            Err(_) => None
+          let raw = xml_text_content(v).trim().to_owned()
+          try @string.parse_double(raw) catch {
+            _ => None
+          } noraise {
+            n => Some(n)
           }
         }
       }
@@ -9702,13 +9707,14 @@ fn cell_numeric_value(
       match first_child_named_local(cell, "v") {
         None => None
         Some(v) => {
-          let raw = xml_text_content(v).trim_space().to_string()
+          let raw = xml_text_content(v).trim().to_owned()
           match parse_iso8601_date(raw) {
             None => None
             Some(dt) =>
-              match (try? @date_serial.date_time_to_serial(dt, date_system)) {
-                Ok(serial) => Some(serial)
-                Err(_) => None
+              try @date_serial.date_time_to_serial(dt, date_system) catch {
+                _ => None
+              } noraise {
+                serial => Some(serial)
               }
           }
         }
@@ -9845,33 +9851,37 @@ fn sheet_page_margins_px(
     Some(pm) => {
       let l = match attr_value_local(pm, "left") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => n
-            Err(_) => default_lr
+          try @string.parse_double(v) catch {
+            _ => default_lr
+          } noraise {
+            n => n
           }
         None => default_lr
       }
       let t = match attr_value_local(pm, "top") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => n
-            Err(_) => default_tb
+          try @string.parse_double(v) catch {
+            _ => default_tb
+          } noraise {
+            n => n
           }
         None => default_tb
       }
       let r = match attr_value_local(pm, "right") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => n
-            Err(_) => default_lr
+          try @string.parse_double(v) catch {
+            _ => default_lr
+          } noraise {
+            n => n
           }
         None => default_lr
       }
       let b = match attr_value_local(pm, "bottom") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => n
-            Err(_) => default_tb
+          try @string.parse_double(v) catch {
+            _ => default_tb
+          } noraise {
+            n => n
           }
         None => default_tb
       }
@@ -9947,7 +9957,7 @@ fn drawing_placeholder_inner(
 ///|
 /// Pixel bounds for a drawing anchor. Mirrors web-pptx
 /// `DrawingBounds` in drawing-layout.ts.
-struct DrawingBounds {
+priv struct DrawingBounds {
   x : Double
   y : Double
   width : Double
@@ -10085,9 +10095,10 @@ fn graphic_frame_uri_label(gf : @drawing.CT_GraphicalObjectFrame) -> String {
 
 ///|
 fn parse_double_or(text : String, fallback : Double) -> Double {
-  match (try? @strconv.parse_double(text)) {
-    Ok(d) => d
-    Err(_) => fallback
+  try @string.parse_double(text) catch {
+    _ => fallback
+  } noraise {
+    d => d
   }
 }
 
@@ -10107,9 +10118,10 @@ fn positive_size_emu(coord : @a.ST_PositiveCoordinate) -> Double {
 
 ///|
 fn parse_int_or(text : String, fallback : Int) -> Int {
-  match (try? @strconv.parse_int(text)) {
-    Ok(n) => n
-    Err(_) => fallback
+  try @string.parse_int(text) catch {
+    _ => fallback
+  } noraise {
+    n => n
   }
 }
 
@@ -10141,14 +10153,12 @@ fn parse_int_or(text : String, fallback : Int) -> Int {
 
 ///|
 /// Resolved palette for one built-in table style.  All colours are
-/// 7-character `#RRGGBB` literals.  `header_fg` is the text colour
-/// to overlay on the header band; `band_fg` darkens-then-mutes a
-/// row stripe; `border` is the totals-row top border colour.
-struct TableStylePalette {
+/// 7-character `#RRGGBB` literals.  `header_fill` paints the header
+/// band; `band_fill` stripes alternating rows; `totals_border` is
+/// the totals-row top border colour.
+priv struct TableStylePalette {
   header_fill : String
-  header_fg : String
   band_fill : String
-  band_fg : String
   totals_border : String
 }
 
@@ -10204,9 +10214,7 @@ fn lookup_table_style_palette(name : String) -> TableStylePalette {
     TableStyleVariant::Light =>
       {
         header_fill: @color.apply_lum_off(accent_rgb, 0.60),
-        header_fg: "#000000",
         band_fill: @color.apply_lum_off(accent_rgb, 0.80),
-        band_fg: "#000000",
         totals_border: @color.apply_lum_off(accent_rgb, -0.25),
       }
     // §18.8.43 TableStyleMedium* — saturated accent header with
@@ -10215,9 +10223,7 @@ fn lookup_table_style_palette(name : String) -> TableStylePalette {
     TableStyleVariant::Medium =>
       {
         header_fill: accent_rgb,
-        header_fg: "#FFFFFF",
         band_fill: @color.apply_lum_off(accent_rgb, 0.75),
-        band_fg: "#000000",
         totals_border: accent_rgb,
       }
     // §18.8.43 TableStyleDark* — very dark accent header (near
@@ -10225,9 +10231,7 @@ fn lookup_table_style_palette(name : String) -> TableStylePalette {
     TableStyleVariant::Dark =>
       {
         header_fill: @color.apply_lum_off(accent_rgb, -0.40),
-        header_fg: "#FFFFFF",
         band_fill: @color.apply_lum_off(accent_rgb, 0.65),
-        band_fg: "#000000",
         totals_border: @color.apply_lum_off(accent_rgb, -0.50),
       }
   }
@@ -10250,16 +10254,16 @@ fn parse_table_style_name(name : String) -> (TableStyleVariant, Int) {
   let prefix_medium = "TableStyleMedium"
   let prefix_dark = "TableStyleDark"
   if name.has_prefix(prefix_light) {
-    let suffix = name.substring(start=prefix_light.length(), end=name.length())
-    let n = parse_int_or(suffix.to_string(), 1)
+    let suffix = name[prefix_light.length():name.length()]
+    let n = parse_int_or(suffix.to_owned(), 1)
     (TableStyleVariant::Light, n)
   } else if name.has_prefix(prefix_medium) {
-    let suffix = name.substring(start=prefix_medium.length(), end=name.length())
-    let n = parse_int_or(suffix.to_string(), 2)
+    let suffix = name[prefix_medium.length():name.length()]
+    let n = parse_int_or(suffix.to_owned(), 2)
     (TableStyleVariant::Medium, n)
   } else if name.has_prefix(prefix_dark) {
-    let suffix = name.substring(start=prefix_dark.length(), end=name.length())
-    let n = parse_int_or(suffix.to_string(), 1)
+    let suffix = name[prefix_dark.length():name.length()]
+    let n = parse_int_or(suffix.to_owned(), 1)
     (TableStyleVariant::Dark, n)
   } else {
     (TableStyleVariant::Medium, 2)
@@ -10282,8 +10286,6 @@ priv struct TableMeta {
   style_name : String?
   show_row_stripes : Bool
   show_column_stripes : Bool
-  show_first_column : Bool
-  show_last_column : Bool
 }
 
 ///|
@@ -10297,8 +10299,8 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
   }
   let parts = ref_str.split(":").collect()
   let (start_str, end_str) = match parts.length() {
-    1 => (parts[0].to_string(), parts[0].to_string())
-    2 => (parts[0].to_string(), parts[1].to_string())
+    1 => (parts[0].to_owned(), parts[0].to_owned())
+    2 => (parts[0].to_owned(), parts[1].to_owned())
     _ => return None
   }
   let (row_start, col_start) = match parse_cell_ref(start_str) {
@@ -10328,8 +10330,6 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
   let mut style_name : String? = None
   let mut show_row_stripes = false
   let mut show_column_stripes = false
-  let mut show_first_column = false
-  let mut show_last_column = false
   for child in elt.children {
     match child {
       Element(c) =>
@@ -10343,14 +10343,6 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
             )
             show_column_stripes = parse_xsd_boolean_or(
               attr_value_local(c, "showColumnStripes"),
-              false,
-            )
-            show_first_column = parse_xsd_boolean_or(
-              attr_value_local(c, "showFirstColumn"),
-              false,
-            )
-            show_last_column = parse_xsd_boolean_or(
-              attr_value_local(c, "showLastColumn"),
               false,
             )
           }
@@ -10370,8 +10362,6 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
     style_name,
     show_row_stripes,
     show_column_stripes,
-    show_first_column,
-    show_last_column,
   })
 }
 
@@ -10622,8 +10612,8 @@ fn render_table_chrome_over(
     Some(range) => {
       let parts = range.split(":").collect()
       let (start_str, end_str) = match parts.length() {
-        1 => (parts[0].to_string(), parts[0].to_string())
-        2 => (parts[0].to_string(), parts[1].to_string())
+        1 => (parts[0].to_owned(), parts[0].to_owned())
+        2 => (parts[0].to_owned(), parts[1].to_owned())
         _ => return out
       }
       let (r1, c1) = match parse_cell_ref(start_str) {

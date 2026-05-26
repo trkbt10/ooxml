@@ -212,7 +212,6 @@ pub fn build_geometry(
     ShapeLeftCircularArrow => build_left_circular_arrow(width, height)
     ShapeLeftRightCircularArrow =>
       build_left_right_circular_arrow(width, height)
-    _ => rectangular_fallback(width, height)
   }
 }
 
@@ -435,7 +434,6 @@ pub fn supports(shape : PresetShape) -> Bool {
     | ShapeSwooshArrow
     | ShapeLeftCircularArrow
     | ShapeLeftRightCircularArrow => true
-    _ => false
   }
 }
 

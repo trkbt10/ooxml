@@ -2073,20 +2073,3 @@ fn wml_ct_chunk6_children(
   out
 }
 
-///|
-/// All direct element children of `element`, in document order. Used
-/// for CT types whose schema content is an `xsd:group` over a model
-/// group (e.g. EG_BlockLevelElts, EG_ContentCellContent) where the
-/// typed projection is decoded by upstream readers.
-fn wml_ct_chunk6_element_children(
-  element : @xml.Element,
-) -> Array[@xml.Element] {
-  let out : Array[@xml.Element] = []
-  for child in element.children {
-    match child {
-      @xml.Node::Element(e) => out.push(e)
-      _ => ()
-    }
-  }
-  out
-}

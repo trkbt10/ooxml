@@ -273,9 +273,9 @@ pub fn FieldContext::default(
     create_date: None,
     print_date: None,
     save_date: None,
-    bookmarks: @hashmap.HashMap::new(),
-    merge_record: @hashmap.HashMap::new(),
-    seq_counters: @hashmap.HashMap::new(),
+    bookmarks: @hashmap.HashMap([], capacity=0),
+    merge_record: @hashmap.HashMap([], capacity=0),
+    seq_counters: @hashmap.HashMap([], capacity=0),
   }
 }
 
@@ -334,7 +334,7 @@ pub(all) struct FieldRegistry {
 /// Construct an empty registry. Callers can register their own
 /// evaluators (e.g. for product-specific field codes).
 pub fn FieldRegistry::new() -> FieldRegistry {
-  { entries: @hashmap.HashMap::new() }
+  { entries: @hashmap.HashMap([], capacity=0) }
 }
 
 ///|

@@ -269,7 +269,7 @@ pub(all) struct CT_WholeE2oFormatting {
 ///|
 pub fn CT_WholeE2oFormatting::new(
   element : @xml.Element,
-) -> CT_WholeE2oFormatting raise SchemaViolation {
+) -> CT_WholeE2oFormatting {
   let ln = ct_first_child(element, "ln")
   let effect_props = match ct_first_child(element, "effectLst") {
     Some(c) => Some(c)

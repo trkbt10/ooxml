@@ -32,15 +32,15 @@ pub fn CT_BaseStyles::new(
   )
   let fmt_el = required_child(element, "fmtScheme", "CT_BaseStyles/fmtScheme")
   let clr_scheme = wrap_a_violation(
-    fn() { @a.CT_ColorScheme::new(clr_el) },
+    () => @a.CT_ColorScheme::new(clr_el),
     "CT_BaseStyles/clrScheme",
   )
   let font_scheme = wrap_a_violation(
-    fn() { @a.CT_FontScheme::new(font_el) },
+    () => @a.CT_FontScheme::new(font_el),
     "CT_BaseStyles/fontScheme",
   )
   let fmt_scheme = wrap_a_violation(
-    fn() { @a.CT_StyleMatrix::new(fmt_el) },
+    () => @a.CT_StyleMatrix::new(fmt_el),
     "CT_BaseStyles/fmtScheme",
   )
   let ext_lst = match optional_child(element, "extLst") {
@@ -48,7 +48,7 @@ pub fn CT_BaseStyles::new(
     Some(e) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_OfficeArtExtensionList::new(e) },
+          () => @a.CT_OfficeArtExtensionList::new(e),
           "CT_BaseStyles/extLst",
         ),
       )
@@ -89,7 +89,7 @@ pub fn CT_OfficeStyleSheet::new(
     Some(e) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_ObjectStyleDefaults::new(e) },
+          () => @a.CT_ObjectStyleDefaults::new(e),
           "CT_OfficeStyleSheet/objectDefaults",
         ),
       )
@@ -100,7 +100,7 @@ pub fn CT_OfficeStyleSheet::new(
     Some(e) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_ColorSchemeList::new(e) },
+          () => @a.CT_ColorSchemeList::new(e),
           "CT_OfficeStyleSheet/extraClrSchemeLst",
         ),
       )
@@ -110,7 +110,7 @@ pub fn CT_OfficeStyleSheet::new(
     Some(e) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_CustomColorList::new(e) },
+          () => @a.CT_CustomColorList::new(e),
           "CT_OfficeStyleSheet/custClrLst",
         ),
       )
@@ -120,7 +120,7 @@ pub fn CT_OfficeStyleSheet::new(
     Some(e) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_OfficeArtExtensionList::new(e) },
+          () => @a.CT_OfficeArtExtensionList::new(e),
           "CT_OfficeStyleSheet/extLst",
         ),
       )
@@ -159,7 +159,7 @@ pub fn CT_BaseStylesOverride::new(
     Some(e) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_ColorScheme::new(e) },
+          () => @a.CT_ColorScheme::new(e),
           "CT_BaseStylesOverride/clrScheme",
         ),
       )
@@ -169,7 +169,7 @@ pub fn CT_BaseStylesOverride::new(
     Some(e) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_FontScheme::new(e) },
+          () => @a.CT_FontScheme::new(e),
           "CT_BaseStylesOverride/fontScheme",
         ),
       )
@@ -179,7 +179,7 @@ pub fn CT_BaseStylesOverride::new(
     Some(e) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_StyleMatrix::new(e) },
+          () => @a.CT_StyleMatrix::new(e),
           "CT_BaseStylesOverride/fmtScheme",
         ),
       )

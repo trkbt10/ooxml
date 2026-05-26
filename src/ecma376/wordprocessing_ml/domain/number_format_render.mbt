@@ -123,9 +123,9 @@ fn render_hex(value : Int) -> String {
   while n > 0 {
     let idx = n % 16
     let ch = if idx < 10 {
-      Char::from_int(0x30 + idx)
+      (0x30 + idx).unsafe_to_char()
     } else {
-      Char::from_int(0x41 + (idx - 10))
+      (0x41 + (idx - 10)).unsafe_to_char()
     }
     buf.push(ch)
     n = n / 16
@@ -170,7 +170,7 @@ fn render_full_width_digits(value : Int) -> String {
   for c in decimal {
     let code = c.to_int()
     if code >= 0x30 && code <= 0x39 {
-      out.write_char(Char::from_int(0xFF10 + (code - 0x30)))
+      out.write_char((0xFF10 + (code - 0x30)).unsafe_to_char())
     } else {
       out.write_char(c)
     }
@@ -185,7 +185,7 @@ fn render_full_width_digits(value : Int) -> String {
 fn render_enclosed_circle(value : Int) -> String {
   if value >= 1 && value <= 20 {
     let buf = StringBuilder::new()
-    buf.write_char(Char::from_int(0x2460 + value - 1))
+    buf.write_char((0x2460 + value - 1).unsafe_to_char())
     return buf.to_string()
   }
   value.to_string()

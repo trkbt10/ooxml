@@ -38,7 +38,7 @@ pub(all) enum TextAnchor {
   AnchorBottom
   AnchorJustified
   AnchorDistributed
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 /// Horizontal alignment of paragraph text.  Mirrors `TextAlign` in
@@ -54,21 +54,21 @@ pub(all) enum TextAlign {
   /// §21.1.2.2.9 — tab-stop only: aligns the line content on the
   /// decimal separator. Not valid for `<a:pPr @algn>` paragraphs.
   AlignDecimal
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 /// `<a:bodyPr wrap="square|none"/>` plus our internal "wrap" alias.
 pub(all) enum TextWrapping {
   WrapNone
   WrapSquare
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 /// `<a:bodyPr horzOverflow="overflow|clip"/>`.  §21.1.2.1.16.
 pub(all) enum TextOverflow {
   OverflowAllow
   OverflowClip
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 /// `<a:bodyPr vertOverflow="overflow|ellipsis|clip"/>`.  §21.1.2.1.42.
@@ -76,7 +76,7 @@ pub(all) enum TextVerticalOverflow {
   VertOverflowAllow
   VertOverflowEllipsis
   VertOverflowClip
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 /// `<a:bodyPr vert="..."/>`.  §21.1.2.1.39.
@@ -88,7 +88,7 @@ pub(all) enum TextVerticalType {
   VertWordArtVert
   VertMongolianVert
   VertWordArtVertRtl
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 /// `<a:bodyPr>/<a:lnSpc>` either fixed-point or percent of font size.
@@ -110,7 +110,7 @@ pub(all) enum FontAlignment {
   FontAlignCenter
   FontAlignBase
   FontAlignBottom
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 /// Tab-stop position and alignment.  §21.1.2.2.14.

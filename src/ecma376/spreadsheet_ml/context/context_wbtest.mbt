@@ -354,14 +354,15 @@ test "spreadsheet_ml viewer renders SVG from real ECMA-376 fixture" {
       // sml/reader does not yet cover every §18 section.  Treat the
       // open() error path as documented coverage gap — the assertion
       // proves that *if* open() succeeds, the renderer survives.
-      match (try? open(b)) {
-        Err(_) =>
+      try open(b) catch {
+        _ =>
           // Documented coverage gap — fixture opens cleanly via
           // round-trip test above (which catches and swallows the
           // same error path), but the typed reader still has section
           // gaps.  Future work tracked in docs/ECMA376_SDD_COVERAGE.md.
           ()
-        Ok(workbook) => {
+      } noraise {
+        workbook => {
           assert_true(workbook.worksheets.length() > 0)
           let first = workbook.worksheets[0].value
           let svg_result = @sml_viewer.render_svg(first)
@@ -393,12 +394,8 @@ test "spreadsheet_ml reader diagnostic: PivotTableFormats.xlsx open kind" {
   match bytes {
     Err(_) => ()
     Ok(b) =>
-      match (try? open(b)) {
-        Ok(_) =>
-          // The reader is no longer a coverage gap — remove this
-          // diagnostic and update docs/ECMA376_SDD_COVERAGE.md.
-          ()
-        Err(OpenError(kind~, path~, reason~)) =>
+      try open(b) catch {
+        OpenError(kind~, path~, reason~) =>
           // Surface the gap via test failure so the message stays
           // visible in CI output.  Once the gap is closed this test
           // becomes a regression guard (it will pass via the Ok arm).
@@ -410,6 +407,11 @@ test "spreadsheet_ml reader diagnostic: PivotTableFormats.xlsx open kind" {
             " reason=" +
             reason,
           )
+      } noraise {
+        _ =>
+          // The reader is no longer a coverage gap — remove this
+          // diagnostic and update docs/ECMA376_SDD_COVERAGE.md.
+          ()
       }
   }
 }
@@ -536,13 +538,13 @@ test "spreadsheet_ml to_svg keeps per-sheet ids unique" {
       // begins with an id value terminated by the next `"`. Collect
       // the `clip_*` ids and verify none repeats across the
       // concatenated multi-sheet document.
-      let seen : Map[String, Bool] = Map::new()
+      let seen : Map[String, Bool] = Map([], capacity=0)
       let mut dup_found = false
       let segments = text.split("id=\"").collect()
       for i in 1..<segments.length() {
-        let seg = segments[i].to_string()
+        let seg = segments[i].to_owned()
         let id_value = match seg.split("\"").collect() {
-          parts => if parts.length() > 0 { parts[0].to_string() } else { "" }
+          parts => if parts.length() > 0 { parts[0].to_owned() } else { "" }
         }
         if id_value.contains("clip_") {
           if seen.get(id_value) is Some(_) {
@@ -553,7 +555,7 @@ test "spreadsheet_ml to_svg keeps per-sheet ids unique" {
       }
       // The fixture has multiple sheets — at least one clip id must
       // have been emitted, and none may repeat.
-      assert_true(seen.size() > 0)
+      assert_true(seen.length() > 0)
       assert_false(dup_found)
     }
   }

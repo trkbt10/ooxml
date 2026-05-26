@@ -147,7 +147,7 @@ pub fn CT_Colors::new(
   }
   let color_choices : Array[@a.EG_ColorChoice] = []
   for child in element_children(element) {
-    match wrap_a_color_violation(fn() { @a.parse_color_choice_child(child) }) {
+    match wrap_a_color_violation(() => @a.parse_color_choice_child(child)) {
       Some(c) => color_choices.push(c)
       None => ()
     }
@@ -261,6 +261,7 @@ pub fn CT_CTStyleLabel::to_element(self : CT_CTStyleLabel) -> @xml.Element {
 /// (xsd:string, optional). Children: title (CT_CTName*), desc
 /// (CT_CTDescription*), catLst (CT_CTCategories?), styleLbl
 /// (CT_CTStyleLabel*), extLst (raw).
+#alias(ColorsDef)
 pub(all) struct CT_ColorTransform {
   /// @uniqueId — xsd:string (optional, default "").
   unique_id : String
@@ -305,6 +306,7 @@ pub fn CT_ColorTransform::to_element(self : CT_ColorTransform) -> @xml.Element {
 /// minVer (xsd:string, optional), resId (xsd:int, optional default=0).
 /// Children: title (CT_CTName+, minOccurs=1), desc (CT_CTDescription+,
 /// minOccurs=1), catLst (CT_CTCategories?), extLst (raw).
+#alias(ColorsDefHdr)
 pub(all) struct CT_ColorTransformHeader {
   /// @uniqueId — xsd:string (required).
   unique_id : String
@@ -351,6 +353,7 @@ pub fn CT_ColorTransformHeader::to_element(
 /// XSD complex type CT_ColorTransformHeaderLst — Part 1 §21.4.4.5
 /// (colorsDefHdrLst). No attributes. Children: colorsDefHdr
 /// (CT_ColorTransformHeader*).
+#alias(ColorsDefHdrLst)
 pub(all) struct CT_ColorTransformHeaderLst {
   /// <colorsDefHdr>* — CT_ColorTransformHeader (zero or more).
   colors_def_hdr : Array[CT_ColorTransformHeader]
@@ -557,6 +560,7 @@ pub fn CT_CxnList::to_element(self : CT_CxnList) -> @xml.Element {
 /// No attributes. Children: ptLst (CT_PtList, required), cxnLst
 /// (CT_CxnList?), bg (a:CT_BackgroundFormatting? preserved raw),
 /// whole (a:CT_WholeE2oFormatting? preserved raw), extLst (raw).
+#alias(DataModel)
 pub(all) struct CT_DataModel {
   /// <ptLst> — CT_PtList (required, minOccurs=1).
   pt_lst : CT_PtList
@@ -1571,6 +1575,7 @@ pub fn CT_Description::to_element(self : CT_Description) -> @xml.Element {
 /// (CT_SampleData?), styleData (CT_SampleData?), clrData
 /// (CT_SampleData?), layoutNode (CT_LayoutNode, required),
 /// extLst (raw).
+#alias(LayoutDef)
 pub(all) struct CT_DiagramDefinition {
   /// @uniqueId — xsd:string (optional, default "").
   unique_id : String
@@ -1652,6 +1657,7 @@ pub fn CT_DiagramDefinition::to_element(
 /// default=""), resId (xsd:int, optional default=0). Children:
 /// title (CT_Name+ — minOccurs=1), desc (CT_Description+ —
 /// minOccurs=1), catLst (CT_Categories?), extLst (raw).
+#alias(LayoutDefHdr)
 pub(all) struct CT_DiagramDefinitionHeader {
   /// @uniqueId — xsd:string (required).
   unique_id : String
@@ -1711,6 +1717,7 @@ pub fn CT_DiagramDefinitionHeader::to_element(
 /// XSD complex type CT_DiagramDefinitionHeaderLst — Part 1 §21.4.2.18
 /// (layoutDefHdrLst). No attributes. Children: layoutDefHdr
 /// (CT_DiagramDefinitionHeader*).
+#alias(LayoutDefHdrLst)
 pub(all) struct CT_DiagramDefinitionHeaderLst {
   /// <layoutDefHdr>* — CT_DiagramDefinitionHeader (zero or more).
   layout_def_hdr : Array[CT_DiagramDefinitionHeader]
@@ -1741,6 +1748,7 @@ pub fn CT_DiagramDefinitionHeaderLst::to_element(
 /// XSD complex type CT_RelIds — Part 1 §21.4.2.22 (relIds).
 /// Attributes (all required, all r: namespace): r:dm, r:lo, r:qs,
 /// r:cs (each xsd:string relationship id). No children.
+#alias(RelIds)
 pub(all) struct CT_RelIds {
   /// @r:dm — relationship id for data model part (required).
   dm : String
@@ -2341,9 +2349,7 @@ pub(all) struct CT_TextProps {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TextProps::new(
-  element : @xml.Element,
-) -> CT_TextProps raise SchemaViolation {
+pub fn CT_TextProps::new(element : @xml.Element) -> CT_TextProps {
   let text3d = element_children(element)
   { text3d, element }
 }
@@ -2383,7 +2389,7 @@ pub fn CT_StyleLabel::new(
   let name = required_string(element, "name", "CT_StyleLabel/@name")
   let scene3d = optional_child_element(element, "scene3d")
   let sp3d = optional_child_element(element, "sp3d")
-  let tx_pr = decode_optional_child(element, "txPr", CT_TextProps::new)
+  let tx_pr = decode_optional_child(element, "txPr", (e) => CT_TextProps::new(e))
   let style = optional_child_element(element, "style")
   let ext_lst = optional_child_element(element, "extLst")
   { name, scene3d, sp3d, tx_pr, style, ext_lst, element }
@@ -2401,6 +2407,7 @@ pub fn CT_StyleLabel::to_element(self : CT_StyleLabel) -> @xml.Element {
 /// (CT_SDDescription*), catLst (CT_SDCategories?), scene3d
 /// (a:CT_Scene3D? preserved raw), styleLbl (CT_StyleLabel+ —
 /// minOccurs=1), extLst (raw).
+#alias(StyleDef)
 pub(all) struct CT_StyleDefinition {
   /// @uniqueId — xsd:string (optional, default "").
   unique_id : String
@@ -2464,6 +2471,7 @@ pub fn CT_StyleDefinition::to_element(
 /// default=0). Children: title (CT_SDName+ — minOccurs=1), desc
 /// (CT_SDDescription+ — minOccurs=1), catLst (CT_SDCategories?),
 /// extLst (raw).
+#alias(StyleDefHdr)
 pub(all) struct CT_StyleDefinitionHeader {
   /// @uniqueId — xsd:string (required).
   unique_id : String
@@ -2510,6 +2518,7 @@ pub fn CT_StyleDefinitionHeader::to_element(
 /// XSD complex type CT_StyleDefinitionHeaderLst — Part 1 §21.4.5.9
 /// (styleDefHdrLst). No attributes. Children: styleDefHdr
 /// (CT_StyleDefinitionHeader*).
+#alias(StyleDefHdrLst)
 pub(all) struct CT_StyleDefinitionHeaderLst {
   /// <styleDefHdr>* — CT_StyleDefinitionHeader.
   style_def_hdr : Array[CT_StyleDefinitionHeader]
@@ -2578,20 +2587,12 @@ pub fn AG_ConstraintRefAttributes::empty() -> AG_ConstraintRefAttributes {
 // ===========================================================================
 
 ///|
-/// XSD element colorsDef in dml-diagram.xsd (§21.4.4.3).
-pub typealias CT_ColorTransform as ColorsDef
-
-///|
 /// Construct ColorsDef from a preserved XML element.
 pub fn new_colors_def(
   element : @xml.Element,
 ) -> ColorsDef raise SchemaViolation {
   CT_ColorTransform::new(element)
 }
-
-///|
-/// XSD element colorsDefHdr in dml-diagram.xsd (§21.4.4.4).
-pub typealias CT_ColorTransformHeader as ColorsDefHdr
 
 ///|
 pub fn new_colors_def_hdr(
@@ -2601,19 +2602,11 @@ pub fn new_colors_def_hdr(
 }
 
 ///|
-/// XSD element colorsDefHdrLst in dml-diagram.xsd (§21.4.4.5).
-pub typealias CT_ColorTransformHeaderLst as ColorsDefHdrLst
-
-///|
 pub fn new_colors_def_hdr_lst(
   element : @xml.Element,
 ) -> ColorsDefHdrLst raise SchemaViolation {
   CT_ColorTransformHeaderLst::new(element)
 }
-
-///|
-/// XSD element dataModel in dml-diagram.xsd (§21.4.2.10).
-pub typealias CT_DataModel as DataModel
 
 ///|
 pub fn new_data_model(
@@ -2623,19 +2616,11 @@ pub fn new_data_model(
 }
 
 ///|
-/// XSD element layoutDef in dml-diagram.xsd (§21.4.2.16).
-pub typealias CT_DiagramDefinition as LayoutDef
-
-///|
 pub fn new_layout_def(
   element : @xml.Element,
 ) -> LayoutDef raise SchemaViolation {
   CT_DiagramDefinition::new(element)
 }
-
-///|
-/// XSD element layoutDefHdr in dml-diagram.xsd (§21.4.2.17).
-pub typealias CT_DiagramDefinitionHeader as LayoutDefHdr
 
 ///|
 pub fn new_layout_def_hdr(
@@ -2645,10 +2630,6 @@ pub fn new_layout_def_hdr(
 }
 
 ///|
-/// XSD element layoutDefHdrLst in dml-diagram.xsd (§21.4.2.18).
-pub typealias CT_DiagramDefinitionHeaderLst as LayoutDefHdrLst
-
-///|
 pub fn new_layout_def_hdr_lst(
   element : @xml.Element,
 ) -> LayoutDefHdrLst raise SchemaViolation {
@@ -2656,17 +2637,9 @@ pub fn new_layout_def_hdr_lst(
 }
 
 ///|
-/// XSD element relIds in dml-diagram.xsd (§21.4.2.22).
-pub typealias CT_RelIds as RelIds
-
-///|
 pub fn new_rel_ids(element : @xml.Element) -> RelIds raise SchemaViolation {
   CT_RelIds::new(element)
 }
-
-///|
-/// XSD element styleDef in dml-diagram.xsd (§21.4.5.7).
-pub typealias CT_StyleDefinition as StyleDef
 
 ///|
 pub fn new_style_def(element : @xml.Element) -> StyleDef raise SchemaViolation {
@@ -2674,19 +2647,11 @@ pub fn new_style_def(element : @xml.Element) -> StyleDef raise SchemaViolation {
 }
 
 ///|
-/// XSD element styleDefHdr in dml-diagram.xsd (§21.4.5.8).
-pub typealias CT_StyleDefinitionHeader as StyleDefHdr
-
-///|
 pub fn new_style_def_hdr(
   element : @xml.Element,
 ) -> StyleDefHdr raise SchemaViolation {
   CT_StyleDefinitionHeader::new(element)
 }
-
-///|
-/// XSD element styleDefHdrLst in dml-diagram.xsd (§21.4.5.9).
-pub typealias CT_StyleDefinitionHeaderLst as StyleDefHdrLst
 
 ///|
 pub fn new_style_def_hdr_lst(

@@ -122,7 +122,9 @@ test "write_additional_characteristics round-trips through read_additional_chara
   assert_eq(chars.length(), 1)
   assert_eq(chars[0].name, "meta:numWords")
   assert_eq(chars[0].val, "42")
-  inspect(chars[0].vocabulary, content="Some(http://example.com/vocab)")
+  @debug.debug_inspect(chars[0].vocabulary, content=(
+    #|Some("http://example.com/vocab")
+  ))
   // relation enum survives.
   assert_eq(chars[0].relation.to_string(), "eq")
 }

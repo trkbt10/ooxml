@@ -36,7 +36,7 @@ pub fn FontResolver::host() -> FontResolver {
   let label = "host(" + platform.to_string() + ")"
   {
     label,
-    resolve: fn(request) {
+    resolve: (request) => {
       match request.embedded_bytes {
         Some(b) =>
           return { bytes: b, ttc_index: None, source_label: "embedded" }
@@ -80,9 +80,10 @@ fn host_font_dirs(platform : @platform.Platform) -> Array[String] {
       dirs.push("/Library/Fonts")
       match home_opt {
         Some(h) =>
-          match (try? @path.join([h, "Library", "Fonts"])) {
-            Ok(p) => dirs.push(p)
-            Err(_) => ()
+          try @path.join([h, "Library", "Fonts"]) catch {
+            _ => ()
+          } noraise {
+            p => dirs.push(p)
           }
         None => ()
       }
@@ -99,13 +100,15 @@ fn host_font_dirs(platform : @platform.Platform) -> Array[String] {
       dirs.push("/usr/local/share/fonts")
       match home_opt {
         Some(h) => {
-          match (try? @path.join([h, ".local", "share", "fonts"])) {
-            Ok(p) => dirs.push(p)
-            Err(_) => ()
+          try @path.join([h, ".local", "share", "fonts"]) catch {
+            _ => ()
+          } noraise {
+            p => dirs.push(p)
           }
-          match (try? @path.join([h, ".fonts"])) {
-            Ok(p) => dirs.push(p)
-            Err(_) => ()
+          try @path.join([h, ".fonts"]) catch {
+            _ => ()
+          } noraise {
+            p => dirs.push(p)
           }
         }
         None => ()
@@ -113,15 +116,17 @@ fn host_font_dirs(platform : @platform.Platform) -> Array[String] {
     }
     @platform.Windows => {
       let sysroot = @env.get_env_var("SYSTEMROOT").unwrap_or("C:\\Windows")
-      match (try? @path.join([sysroot, "Fonts"])) {
-        Ok(p) => dirs.push(p)
-        Err(_) => ()
+      try @path.join([sysroot, "Fonts"]) catch {
+        _ => ()
+      } noraise {
+        p => dirs.push(p)
       }
       match @env.get_env_var("LOCALAPPDATA") {
         Some(la) =>
-          match (try? @path.join([la, "Microsoft", "Windows", "Fonts"])) {
-            Ok(p) => dirs.push(p)
-            Err(_) => ()
+          try @path.join([la, "Microsoft", "Windows", "Fonts"]) catch {
+            _ => ()
+          } noraise {
+            p => dirs.push(p)
           }
         None => ()
       }

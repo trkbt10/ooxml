@@ -144,7 +144,7 @@ fn count_substring(s : String, needle : String) -> Int {
   let mut count = 0
   let mut i = 0
   while i + n <= s.length() {
-    if s.substring(start=i, end=i + n) == needle {
+    if s[i:i + n] == needle {
       count = count + 1
       i = i + n
     } else {

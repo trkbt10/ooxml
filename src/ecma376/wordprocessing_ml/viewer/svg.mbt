@@ -425,21 +425,6 @@ priv struct PageDecoration {
 }
 
 ///|
-/// An empty decoration set — the renderer draws no header / footer.
-fn PageDecoration::empty() -> PageDecoration {
-  {
-    header_default: [],
-    header_first: [],
-    header_even: [],
-    footer_default: [],
-    footer_first: [],
-    footer_even: [],
-    title_pg: false,
-    even_and_odd: false,
-  }
-}
-
-///|
 /// §17.10.1 — the header block stream for the 0-based `page_index`.
 /// `first` / `even` fall back to `default` when the section declares
 /// no part of that type.
@@ -775,7 +760,7 @@ priv enum LineHeightSpec {
   LineHeightDefault
   LineHeightAuto(Double)
   LineHeightExact(Double)
-} derive(Eq, Debug)
+}
 
 ///|
 /// One laid-out paragraph: a stack of lines, each with a y-baseline.
@@ -967,7 +952,7 @@ fn BorderSide::default_legacy() -> BorderSide {
 /// `top` and `bottom` default to 0 per Word convention; `left` and
 /// `right` default to `DEFAULT_CELL_PADDING_PX` so unspecified
 /// margins still produce visible separation.
-struct CellMargins {
+priv struct CellMargins {
   top : Double
   left : Double
   bottom : Double
@@ -1870,7 +1855,7 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
             _ => true
           }
           let explicit : Array[(Double, Double)] = []
-          if not(equal_width) {
+          if !(equal_width) {
             for child in cols.children {
               match child {
                 Element(e) =>
@@ -2128,10 +2113,10 @@ fn parse_double_attr(
     None => default
     Some(value) =>
       try {
-        let i : Int = @strconv.parse_int(value)
+        let i : Int = @string.parse_int(value)
         i.to_double()
       } catch {
-        _ => @strconv.parse_double(value) catch { _ => default }
+        _ => @string.parse_double(value) catch { _ => default }
       }
   }
 }
@@ -2162,7 +2147,7 @@ fn collect_blocks(
   let apply_office_defaults = styles is None
   // §17.9 — numbering counter state: maps `(num_id, ilvl)` to current
   // counter value. Incremented as each numbered paragraph is encountered.
-  let counters : @hashmap.HashMap[String, Int] = @hashmap.new()
+  let counters : @hashmap.HashMap[String, Int] = HashMap([], capacity=0)
   // §17.3.1.10 framePr — active floating-frame wrap state.  When a
   // paragraph with `<w:framePr wrap="around">` (or any wrap mode
   // that isn't explicitly "none" / "notBeside") has been emitted,
@@ -2449,10 +2434,10 @@ fn apply_numbering_marker(
     // declare that ilvl (which would be a malformed numbering
     // part but degrades gracefully).
     let fmt = if i == lvl.ilvl {
-      lvl.num_fmt.or(@domain.NumFmtDecimal)
+      lvl.num_fmt.unwrap_or(@domain.NumFmtDecimal)
     } else {
       match abstract_num {
-        None => lvl.num_fmt.or(@domain.NumFmtDecimal)
+        None => lvl.num_fmt.unwrap_or(@domain.NumFmtDecimal)
         Some(abs_def) => {
           let mut found : @domain.ST_NumberFormat? = None
           for ancestor_lvl in abs_def.lvls {
@@ -2461,7 +2446,7 @@ fn apply_numbering_marker(
               break
             }
           }
-          found.or(lvl.num_fmt.or(@domain.NumFmtDecimal))
+          found.unwrap_or(lvl.num_fmt.unwrap_or(@domain.NumFmtDecimal))
         }
       }
     }
@@ -2514,9 +2499,10 @@ fn numbering_num_id(num_pr : @xml.Element) -> Int? {
         if e.name.local_name == "numId" {
           for a in e.attributes {
             if a.name.local_name == "val" {
-              match (try? @strconv.parse_int(a.value)) {
-                Ok(v) => return Some(v)
-                Err(_) => ()
+              try @string.parse_int(a.value) catch {
+                _ => ()
+              } noraise {
+                v => return Some(v)
               }
             }
           }
@@ -2666,7 +2652,7 @@ fn merge_run_pr_with_base(
       // resolve_run with the derived rPr — but that strips rStyle
       // resolution we already did. Instead, build a fresh element
       // with override-by-name semantics here.
-      let overridden : @hashmap.HashMap[String, Bool] = @hashmap.new()
+      let overridden : @hashmap.HashMap[String, Bool] = HashMap([], capacity=0)
       let children : Array[@xml.Node] = []
       for node in d.children {
         match node {
@@ -2776,33 +2762,37 @@ fn resolve_para_props(
           // "attribute present" with "value positive".
           match attr_value(ind_el, "left") {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => margin_left = n * TWIPS_TO_PX
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                n => margin_left = n * TWIPS_TO_PX
               }
             None => ()
           }
           match attr_value(ind_el, "start") {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => margin_left = n * TWIPS_TO_PX
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                n => margin_left = n * TWIPS_TO_PX
               }
             None => ()
           }
           match attr_value(ind_el, "right") {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => margin_right = n * TWIPS_TO_PX
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                n => margin_right = n * TWIPS_TO_PX
               }
             None => ()
           }
           match attr_value(ind_el, "end") {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => margin_right = n * TWIPS_TO_PX
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                n => margin_right = n * TWIPS_TO_PX
               }
             None => ()
           }
@@ -2818,33 +2808,37 @@ fn resolve_para_props(
           let char_px = DEFAULT_FONT_SIZE_PT * (96.0 / 72.0) * 0.5
           let fl = match fl_twips {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => n * TWIPS_TO_PX
-                Err(_) => 0.0
+              try @string.parse_double(v) catch {
+                _ => 0.0
+              } noraise {
+                n => n * TWIPS_TO_PX
               }
             None =>
               match attr_value(ind_el, "firstLineChars") {
                 Some(v) =>
-                  match (try? @strconv.parse_double(v)) {
-                    // hundredths of a char → chars → px.
-                    Ok(n) => n / 100.0 * char_px
-                    Err(_) => 0.0
+                  // hundredths of a char → chars → px.
+                  try @string.parse_double(v) catch {
+                    _ => 0.0
+                  } noraise {
+                    n => n / 100.0 * char_px
                   }
                 None => 0.0
               }
           }
           let hg = match hg_twips {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => n * TWIPS_TO_PX
-                Err(_) => 0.0
+              try @string.parse_double(v) catch {
+                _ => 0.0
+              } noraise {
+                n => n * TWIPS_TO_PX
               }
             None =>
               match attr_value(ind_el, "hangingChars") {
                 Some(v) =>
-                  match (try? @strconv.parse_double(v)) {
-                    Ok(n) => n / 100.0 * char_px
-                    Err(_) => 0.0
+                  try @string.parse_double(v) catch {
+                    _ => 0.0
+                  } noraise {
+                    n => n / 100.0 * char_px
                   }
                 None => 0.0
               }
@@ -2864,17 +2858,19 @@ fn resolve_para_props(
           // paragraph declares a `<w:spacing>` for `@line` alone.
           match attr_value(sp_el, "before") {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => space_before = n * TWIPS_TO_PX
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                n => space_before = n * TWIPS_TO_PX
               }
             None => ()
           }
           match attr_value(sp_el, "after") {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => space_after = n * TWIPS_TO_PX
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                n => space_after = n * TWIPS_TO_PX
               }
             None => ()
           }
@@ -2884,9 +2880,10 @@ fn resolve_para_props(
           match attr_value(sp_el, "line") {
             None => ()
             Some(line_v) =>
-              match (try? @strconv.parse_double(line_v)) {
-                Err(_) => ()
-                Ok(line_raw) => {
+              try @string.parse_double(line_v) catch {
+                _ => ()
+              } noraise {
+                line_raw => {
                   let rule = attr_value(sp_el, "lineRule").unwrap_or("auto")
                   line_height_spec = if rule == "exact" || rule == "atLeast" {
                     LineHeightExact(line_raw / 20.0 * 96.0 / 72.0)
@@ -3044,9 +3041,10 @@ fn resolve_para_props(
             match attr_value(fp, name) {
               None => 0.0
               Some(v) =>
-                match (try? @strconv.parse_double(v)) {
-                  Ok(n) => n * TWIPS_TO_PX
-                  Err(_) => 0.0
+                try @string.parse_double(v) catch {
+                  _ => 0.0
+                } noraise {
+                  n => n * TWIPS_TO_PX
                 }
             }
           }
@@ -3169,7 +3167,7 @@ fn resolve_run_props(
           match attr_value(sz_el, "val") {
             Some(v) =>
               try {
-                let hp : Int = @strconv.parse_int(v)
+                let hp : Int = @string.parse_int(v)
                 font_size_pt = hp.to_double() / 2.0
               } catch {
                 _ => ()
@@ -3291,9 +3289,10 @@ fn resolve_run_props(
           match attr_value(sp_el, "val") {
             None => ()
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(d) => letter_spacing_px = d / 20.0 * 96.0 / 72.0
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                d => letter_spacing_px = d / 20.0 * 96.0 / 72.0
               }
           }
       }
@@ -3388,9 +3387,10 @@ fn resolve_run_props(
           match attr_value(pos_el, "val") {
             None => ()
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(d) => position_offset_px = d / 2.0 * 96.0 / 72.0
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                d => position_offset_px = d / 2.0 * 96.0 / 72.0
               }
           }
       }
@@ -3401,9 +3401,10 @@ fn resolve_run_props(
           match attr_value(w_el, "val") {
             None => ()
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(d) => if d > 0.0 { scale_pct = d }
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                d => if d > 0.0 { scale_pct = d }
               }
           }
       }
@@ -3415,9 +3416,10 @@ fn resolve_run_props(
           match attr_value(kern_el, "val") {
             None => ()
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(d) => if d >= 0.0 { kern_half_points = d }
-                Err(_) => ()
+              try @string.parse_double(v) catch {
+                _ => ()
+              } noraise {
+                d => if d >= 0.0 { kern_half_points = d }
               }
           }
       }
@@ -4158,23 +4160,23 @@ fn extract_anchor_info(drawing : @xml.Element) -> AnchorInfo {
           for k in c.children {
             match k {
               Element(e) => {
-                let local = e.name.local_name
-                if local == "wrapSquare" {
+                let local_name = e.name.local_name
+                if local_name == "wrapSquare" {
                   info = { ..info, wrap_mode: "Square" }
-                } else if local == "wrapTight" {
+                } else if local_name == "wrapTight" {
                   info = { ..info, wrap_mode: "Tight" }
-                } else if local == "wrapNone" {
+                } else if local_name == "wrapNone" {
                   info = { ..info, wrap_mode: "None" }
-                } else if local == "wrapTopAndBottom" {
+                } else if local_name == "wrapTopAndBottom" {
                   info = { ..info, wrap_mode: "TopAndBottom" }
-                } else if local == "wrapThrough" {
+                } else if local_name == "wrapThrough" {
                   info = { ..info, wrap_mode: "Through" }
-                } else if local == "positionH" {
+                } else if local_name == "positionH" {
                   match attr_value(e, "relativeFrom") {
                     Some(rel) => info = { ..info, position_h_relative: rel }
                     None => ()
                   }
-                } else if local == "positionV" {
+                } else if local_name == "positionV" {
                   match attr_value(e, "relativeFrom") {
                     Some(rel) => info = { ..info, position_v_relative: rel }
                     None => ()
@@ -4307,9 +4309,10 @@ fn drawing_extent_width_px(drawing : @xml.Element) -> Double {
               match attr_value(extent, "cx") {
                 None => ()
                 Some(v) =>
-                  match (try? @strconv.parse_double(v)) {
-                    Ok(emu) => return emu / 914400.0 * 96.0
-                    Err(_) => ()
+                  try @string.parse_double(v) catch {
+                    _ => ()
+                  } noraise {
+                    emu => return emu / 914400.0 * 96.0
                   }
               }
           }
@@ -4436,7 +4439,7 @@ fn sym_character(sym : @xml.Element) -> (String, String)? {
     return None
   }
   let buf = StringBuilder::new()
-  buf.write_char(Char::from_int(cp))
+  buf.write_char(Int::unsafe_to_char(cp))
   Some((buf.to_string(), font))
 }
 
@@ -4568,17 +4571,17 @@ fn emit_omath_span(
 /// text for smallCaps.
 fn measure_run_text(text : String, template : RunSpan) -> Double {
   let measured_text = if template.caps { to_upper_ascii(text) } else { text }
-  match
-    (try? @glyph.measure_text_width(
+  try @glyph.measure_text_width(
       measured_text,
       font_size_pt=template.font_size_pt,
       letter_spacing_px=template.letter_spacing_px,
       family=template.font_family,
       weight=if template.bold { 700 } else { 400 },
       italic=template.italic,
-    )) {
-    Ok(w) => w
-    Err(_) => 0.0
+    ) catch {
+    _ => 0.0
+  } noraise {
+    w => w
   }
 }
 
@@ -4835,7 +4838,7 @@ fn layout_paragraph(
     // the line, which is not what `both` means).
     let is_last_line = idx == final_lines.length() - 1
     let (justify_extra, justified_width) = if props.alignment == "justify" &&
-      not(is_last_line) &&
+      !(is_last_line) &&
       available > line_width {
       let n_spaces = count_line_spaces(line_spans)
       if n_spaces > 0 {
@@ -4912,7 +4915,7 @@ fn layout_paragraph(
 ///                   effect)
 /// Returned variant lets callers act on the spec-defined kind
 /// instead of silently coalescing them.
-enum BreakKind {
+priv enum BreakKind {
   BreakNone
   BreakPage
   BreakColumn
@@ -4987,21 +4990,14 @@ fn has_column_break_run(p : @xml.Element) -> Bool {
 ///|
 /// §17.4.40 / §17.4.41 — read `<w:tblPr>/<w:tblBorders>` and return
 /// the six BorderSide slots (top, left, bottom, right, insideH,
-/// insideV). Sides that are absent fall back to `BorderSide::none()`
-/// per spec: §17.4.40 mandates "no border" when no tblBorders/
-/// tcBorders are declared.
-fn resolve_table_borders(
-  tbl : @xml.Element,
-) -> (BorderSide, BorderSide, BorderSide, BorderSide, BorderSide, BorderSide) {
-  resolve_table_borders_from_pr(first_child_named(tbl, "tblPr"), tbl)
-}
-
-///|
-/// §17.4.41 — same as `resolve_table_borders` but parametric on a
-/// pre-merged `<w:tblPr>` element so callers that resolved the
-/// tblStyle cascade can feed the merged tblPr instead of the raw
-/// direct one. `_tbl` is unused; kept so the signature stays close
-/// to the original for future shared logic.
+/// §17.4.41 — `<w:tblBorders>` resolution. Sides that are absent
+/// fall back to `BorderSide::default_legacy()` per spec: §17.4.40
+/// mandates a default border when no tblBorders/tcBorders are
+/// declared. Parametric on a pre-merged `<w:tblPr>` element so
+/// callers that resolved the tblStyle cascade can feed the merged
+/// tblPr instead of the raw direct one. `_tbl` is unused; kept so
+/// the signature stays close to the original for future shared
+/// logic.
 fn resolve_table_borders_from_pr(
   tbl_pr : @xml.Element?,
   _tbl : @xml.Element,
@@ -5186,12 +5182,13 @@ fn parse_border_side(el : @xml.Element?, fallback : BorderSide) -> BorderSide {
       let width_px = match attr_value(side, "sz") {
         None => 1.0
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(eighths) => {
+          try @string.parse_double(v) catch {
+            _ => 1.0
+          } noraise {
+            eighths => {
               let pt = eighths / 8.0
               pt * 96.0 / 72.0
             }
-            Err(_) => 1.0
           }
       }
       // §17.3.1.7 `@space` — integer points (§17.18.5
@@ -5202,9 +5199,10 @@ fn parse_border_side(el : @xml.Element?, fallback : BorderSide) -> BorderSide {
       let space_px = match attr_value(side, "space") {
         None => fallback.space_px
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(pt) => pt * 96.0 / 72.0
-            Err(_) => fallback.space_px
+          try @string.parse_double(v) catch {
+            _ => fallback.space_px
+          } noraise {
+            pt => pt * 96.0 / 72.0
           }
       }
       { width_px, color_hex, style, space_px }
@@ -5858,7 +5856,7 @@ fn layout_table(
   // with no val) can find its anchor and contribute its row height
   // back to the anchor. Each entry maps column index → (row index of
   // the laid_rows[] entry, cell index within that row).
-  let v_merge_anchor : @hashmap.HashMap[Int, (Int, Int)] = @hashmap.new()
+  let v_merge_anchor : @hashmap.HashMap[Int, (Int, Int)] = HashMap([], capacity=0)
   let mut row_idx = 0
   for row in rows {
     let cells : Array[LaidTableCell] = []
@@ -5933,9 +5931,10 @@ fn layout_table(
             Some(gs) =>
               match attr_value(gs, "val") {
                 Some(v) =>
-                  match (try? @strconv.parse_int(v)) {
-                    Ok(n) => if n > 0 { n } else { 1 }
-                    Err(_) => 1
+                  try @string.parse_int(v) catch {
+                    _ => 1
+                  } noraise {
+                    n => if n > 0 { n } else { 1 }
                   }
                 None => 1
               }
@@ -5967,7 +5966,7 @@ fn layout_table(
               match attr_value(gs, "val") {
                 Some(v) =>
                   try {
-                    span = @strconv.parse_int(v)
+                    span = @string.parse_int(v)
                   } catch {
                     _ => ()
                   }
@@ -7469,7 +7468,7 @@ fn build_span_text_node(
   // visible justification comes from the per-word `<tspan x="…">`
   // placement built below in `build_text_children`.
   if line.word_spacing_extra > 0.0 &&
-    not(span.bar_tab) &&
+    !(span.bar_tab) &&
     span.inline_image is None &&
     span.math is None {
     attrs.push(
@@ -8035,7 +8034,7 @@ fn border_total_extent_px(side : BorderSide) -> Double {
 /// dash-array), art (the ~80 ornamental patterns), or plain (a
 /// single solid stroke). Returning a typed variant lets the
 /// renderer dispatch exhaustively without a wildcard fallback.
-enum BorderStyleKind {
+priv enum BorderStyleKind {
   BorderNone
   BorderDouble
   BorderTriple

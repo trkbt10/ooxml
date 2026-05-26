@@ -72,7 +72,7 @@ pub fn resolve_level(
   // top of `find_lvl` above; we explicitly re-apply nothing in
   // the linked path because lvlOverrides are gated by the
   // original num's id, not the linked abstract.
-  let visited : Map[Int, Unit] = Map::new()
+  let visited : Map[Int, Unit] = Map([], capacity=0)
   visited.set(abs.abstract_num_id, ())
   let mut cursor = abs
   while true {
@@ -168,10 +168,10 @@ pub fn level_for_paragraph(
   for child in num_pr.children {
     match child {
       @xml.Element(child_element) => {
-        let local = child_element.name.local_name
-        if local == "numId" {
+        let local_name = child_element.name.local_name
+        if local_name == "numId" {
           num_id_opt = paragraph_val_int(child_element)
-        } else if local == "ilvl" {
+        } else if local_name == "ilvl" {
           ilvl_opt = paragraph_val_int(child_element)
         }
       }

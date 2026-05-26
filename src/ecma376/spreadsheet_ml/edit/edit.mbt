@@ -27,7 +27,7 @@ pub fn edit_workbook(
   let new_element = transform(workbook.workbook.element)
   let new_workbook = @sml.CT_Workbook::new(new_element)
   {
-    package: workbook.package,
+    opc_package: workbook.opc_package,
     workbook_part: workbook.workbook_part,
     workbook: new_workbook,
     worksheets: workbook.worksheets,
@@ -81,7 +81,7 @@ pub fn edit_worksheet(
     i = i + 1
   }
   {
-    package: workbook.package,
+    opc_package: workbook.opc_package,
     workbook_part: workbook.workbook_part,
     workbook: workbook.workbook,
     worksheets: new_worksheets,
@@ -119,7 +119,7 @@ pub fn edit_styles(
   let new_element = transform(base_element)
   let new_styles = @sml.CT_Stylesheet::new(new_element)
   {
-    package: workbook.package,
+    opc_package: workbook.opc_package,
     workbook_part: workbook.workbook_part,
     workbook: workbook.workbook,
     worksheets: workbook.worksheets,
@@ -134,9 +134,9 @@ pub fn edit_styles(
 /// already been computed. Used by helpers that go through OPC
 /// (add_part/with_relationship/...) and need to wire the resulting
 /// `Package` back into the facade.
-pub fn with_package(workbook : Workbook, package : @opc.Package) -> Workbook {
+pub fn with_package(workbook : Workbook, opc_package : @opc.Package) -> Workbook {
   {
-    package,
+    opc_package,
     workbook_part: workbook.workbook_part,
     workbook: workbook.workbook,
     worksheets: workbook.worksheets,
@@ -186,34 +186,34 @@ pub fn set_cell_value(
   let template_qname = ws.value.element.name
   let c_element = build_inline_str_cell(template_qname, address, value)
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.update_first(ws_elt, @edit.by_local_name("sheetData"), fn(sd) {
-      let row_pred = @edit.by_local_name_with_attr(
+    @a_edit.update_first(ws_elt, @a_edit.by_local_name("sheetData"), fn(sd) {
+      let row_pred = @a_edit.by_local_name_with_attr(
         "row",
         "r",
         row_index.to_string(),
       )
-      let row_hits = @edit.direct_children(sd, row_pred)
+      let row_hits = @a_edit.direct_children(sd, row_pred)
       if row_hits.length() == 0 {
         // Append a new <row r="N"><c .../></row>.
-        let row_element = @edit.empty_element(template_qname, "row")
-        let row_with_attr = @edit.set_attribute(
+        let row_element = @a_edit.empty_element(template_qname, "row")
+        let row_with_attr = @a_edit.set_attribute(
           row_element,
-          @edit.unprefixed_attribute("r", row_index.to_string()),
+          @a_edit.unprefixed_attribute("r", row_index.to_string()),
         )
-        let row_with_cell = @edit.append_child(
+        let row_with_cell = @a_edit.append_child(
           row_with_attr,
           @xml.Node::Element(c_element),
         )
-        @edit.append_child(sd, @xml.Node::Element(row_with_cell))
+        @a_edit.append_child(sd, @xml.Node::Element(row_with_cell))
       } else {
         // Update the matching row in place.
-        @edit.update_first(sd, row_pred, fn(row_elt) {
-          let cell_pred = @edit.by_local_name_with_attr("c", "r", address)
-          let cell_hits = @edit.direct_children(row_elt, cell_pred)
+        @a_edit.update_first(sd, row_pred, fn(row_elt) {
+          let cell_pred = @a_edit.by_local_name_with_attr("c", "r", address)
+          let cell_hits = @a_edit.direct_children(row_elt, cell_pred)
           if cell_hits.length() == 0 {
-            @edit.append_child(row_elt, @xml.Node::Element(c_element))
+            @a_edit.append_child(row_elt, @xml.Node::Element(c_element))
           } else {
-            @edit.replace_children(row_elt, cell_pred, c_element)
+            @a_edit.replace_children(row_elt, cell_pred, c_element)
           }
         })
       }
@@ -242,41 +242,41 @@ pub fn set_cell_formula(
   }
   let (_col, row_index) = parse_cell_address(address)
   let template_qname = workbook.worksheets[sheet_index].value.element.name
-  let f = @edit.append_child(
-    @edit.empty_element(template_qname, "f"),
+  let f = @a_edit.append_child(
+    @a_edit.empty_element(template_qname, "f"),
     @xml.Node::Text(formula),
   )
-  let c_with_r = @edit.set_attribute(
-    @edit.empty_element(template_qname, "c"),
-    @edit.unprefixed_attribute("r", address),
+  let c_with_r = @a_edit.set_attribute(
+    @a_edit.empty_element(template_qname, "c"),
+    @a_edit.unprefixed_attribute("r", address),
   )
-  let c_element = @edit.append_child(c_with_r, @xml.Node::Element(f))
+  let c_element = @a_edit.append_child(c_with_r, @xml.Node::Element(f))
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.update_first(ws_elt, @edit.by_local_name("sheetData"), fn(sd) {
-      let row_pred = @edit.by_local_name_with_attr(
+    @a_edit.update_first(ws_elt, @a_edit.by_local_name("sheetData"), fn(sd) {
+      let row_pred = @a_edit.by_local_name_with_attr(
         "row",
         "r",
         row_index.to_string(),
       )
-      let row_hits = @edit.direct_children(sd, row_pred)
+      let row_hits = @a_edit.direct_children(sd, row_pred)
       if row_hits.length() == 0 {
-        let row_element = @edit.set_attribute(
-          @edit.empty_element(template_qname, "row"),
-          @edit.unprefixed_attribute("r", row_index.to_string()),
+        let row_element = @a_edit.set_attribute(
+          @a_edit.empty_element(template_qname, "row"),
+          @a_edit.unprefixed_attribute("r", row_index.to_string()),
         )
-        let row_with_cell = @edit.append_child(
+        let row_with_cell = @a_edit.append_child(
           row_element,
           @xml.Node::Element(c_element),
         )
-        @edit.append_child(sd, @xml.Node::Element(row_with_cell))
+        @a_edit.append_child(sd, @xml.Node::Element(row_with_cell))
       } else {
-        @edit.update_first(sd, row_pred, fn(row_elt) {
-          let cell_pred = @edit.by_local_name_with_attr("c", "r", address)
-          let cell_hits = @edit.direct_children(row_elt, cell_pred)
+        @a_edit.update_first(sd, row_pred, fn(row_elt) {
+          let cell_pred = @a_edit.by_local_name_with_attr("c", "r", address)
+          let cell_hits = @a_edit.direct_children(row_elt, cell_pred)
           if cell_hits.length() == 0 {
-            @edit.append_child(row_elt, @xml.Node::Element(c_element))
+            @a_edit.append_child(row_elt, @xml.Node::Element(c_element))
           } else {
-            @edit.replace_children(row_elt, cell_pred, c_element)
+            @a_edit.replace_children(row_elt, cell_pred, c_element)
           }
         })
       }
@@ -301,31 +301,31 @@ pub fn merge_cells(
     )
   }
   let template_qname = workbook.worksheets[sheet_index].value.element.name
-  let merge_cell = @edit.set_attribute(
-    @edit.empty_element(template_qname, "mergeCell"),
-    @edit.unprefixed_attribute("ref", range),
+  let merge_cell = @a_edit.set_attribute(
+    @a_edit.empty_element(template_qname, "mergeCell"),
+    @a_edit.unprefixed_attribute("ref", range),
   )
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    let existing = @edit.direct_children(
+    let existing = @a_edit.direct_children(
       ws_elt,
-      @edit.by_local_name("mergeCells"),
+      @a_edit.by_local_name("mergeCells"),
     )
     if existing.length() == 0 {
-      let merge_cells = @edit.append_child(
-        @edit.empty_element(template_qname, "mergeCells"),
+      let merge_cells = @a_edit.append_child(
+        @a_edit.empty_element(template_qname, "mergeCells"),
         @xml.Node::Element(merge_cell),
       )
       // Place mergeCells immediately after sheetData if present, else
       // append at end. Office tolerates both positions in practice.
-      @edit.append_child(ws_elt, @xml.Node::Element(merge_cells))
+      @a_edit.append_child(ws_elt, @xml.Node::Element(merge_cells))
     } else {
-      @edit.update_first(ws_elt, @edit.by_local_name("mergeCells"), fn(mc) {
-        let dup = @edit.direct_children(
+      @a_edit.update_first(ws_elt, @a_edit.by_local_name("mergeCells"), fn(mc) {
+        let dup = @a_edit.direct_children(
           mc,
-          @edit.by_local_name_with_attr("mergeCell", "ref", range),
+          @a_edit.by_local_name_with_attr("mergeCell", "ref", range),
         )
         if dup.length() == 0 {
-          @edit.append_child(mc, @xml.Node::Element(merge_cell))
+          @a_edit.append_child(mc, @xml.Node::Element(merge_cell))
         } else {
           mc
         }
@@ -359,13 +359,13 @@ pub fn insert_row(
     )
   }
   let template_qname = workbook.worksheets[sheet_index].value.element.name
-  let row_element = @edit.set_attribute(
-    @edit.empty_element(template_qname, "row"),
-    @edit.unprefixed_attribute("r", row_number.to_string()),
+  let row_element = @a_edit.set_attribute(
+    @a_edit.empty_element(template_qname, "row"),
+    @a_edit.unprefixed_attribute("r", row_number.to_string()),
   )
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.update_first(ws_elt, @edit.by_local_name("sheetData"), fn(sd) {
-      @edit.append_child(sd, @xml.Node::Element(row_element))
+    @a_edit.update_first(ws_elt, @a_edit.by_local_name("sheetData"), fn(sd) {
+      @a_edit.append_child(sd, @xml.Node::Element(row_element))
     })
   })
 }
@@ -379,10 +379,10 @@ pub fn remove_row(
   row_number : Int,
 ) -> Workbook raise OpenError {
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.update_first(ws_elt, @edit.by_local_name("sheetData"), fn(sd) {
-      @edit.remove_children(
+    @a_edit.update_first(ws_elt, @a_edit.by_local_name("sheetData"), fn(sd) {
+      @a_edit.remove_children(
         sd,
-        @edit.by_local_name_with_attr("row", "r", row_number.to_string()),
+        @a_edit.by_local_name_with_attr("row", "r", row_number.to_string()),
       )
     })
   })
@@ -416,28 +416,28 @@ pub fn set_column_width(
   }
   let template_qname = workbook.worksheets[sheet_index].value.element.name
   let col_text = column_index.to_string()
-  let col_element = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.set_attribute(
-        @edit.set_attribute(
-          @edit.empty_element(template_qname, "col"),
-          @edit.unprefixed_attribute("min", col_text),
+  let col_element = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.set_attribute(
+        @a_edit.set_attribute(
+          @a_edit.empty_element(template_qname, "col"),
+          @a_edit.unprefixed_attribute("min", col_text),
         ),
-        @edit.unprefixed_attribute("max", col_text),
+        @a_edit.unprefixed_attribute("max", col_text),
       ),
-      @edit.unprefixed_attribute("width", width.to_string()),
+      @a_edit.unprefixed_attribute("width", width.to_string()),
     ),
-    @edit.unprefixed_attribute("customWidth", "1"),
+    @a_edit.unprefixed_attribute("customWidth", "1"),
   )
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    let existing_cols = @edit.direct_children(
+    let existing_cols = @a_edit.direct_children(
       ws_elt,
-      @edit.by_local_name("cols"),
+      @a_edit.by_local_name("cols"),
     )
     if existing_cols.length() == 0 {
       // Insert <cols> immediately before <sheetData> when present.
-      let cols_element = @edit.append_child(
-        @edit.empty_element(template_qname, "cols"),
+      let cols_element = @a_edit.append_child(
+        @a_edit.empty_element(template_qname, "cols"),
         @xml.Node::Element(col_element),
       )
       let mut position = ws_elt.children.length()
@@ -453,15 +453,15 @@ pub fn set_column_width(
         }
         i = i + 1
       }
-      @edit.insert_child(ws_elt, position, @xml.Node::Element(cols_element))
+      @a_edit.insert_child(ws_elt, position, @xml.Node::Element(cols_element))
     } else {
-      @edit.update_first(ws_elt, @edit.by_local_name("cols"), fn(cols) {
-        let pred = @edit.by_local_name_with_attr("col", "min", col_text)
-        let dup = @edit.direct_children(cols, pred)
+      @a_edit.update_first(ws_elt, @a_edit.by_local_name("cols"), fn(cols) {
+        let pred = @a_edit.by_local_name_with_attr("col", "min", col_text)
+        let dup = @a_edit.direct_children(cols, pred)
         if dup.length() == 0 {
-          @edit.append_child(cols, @xml.Node::Element(col_element))
+          @a_edit.append_child(cols, @xml.Node::Element(col_element))
         } else {
-          @edit.replace_children(cols, pred, col_element)
+          @a_edit.replace_children(cols, pred, col_element)
         }
       })
     }
@@ -485,7 +485,7 @@ pub fn rename_sheet(
   }
   let mut counter = 0
   let workbook = edit_workbook(workbook, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("sheets"), fn(sheets) {
+    @a_edit.update_first(root, @a_edit.by_local_name("sheets"), fn(sheets) {
       let new_children : Array[@xml.Node] = []
       for child in sheets.children {
         match child {
@@ -494,9 +494,9 @@ pub fn rename_sheet(
               if counter == sheet_index {
                 new_children.push(
                   @xml.Node::Element(
-                    @edit.set_attribute(
+                    @a_edit.set_attribute(
                       e,
-                      @edit.unprefixed_attribute("name", name),
+                      @a_edit.unprefixed_attribute("name", name),
                     ),
                   ),
                 )
@@ -537,7 +537,7 @@ pub fn set_sheet_visible(
   }
   let mut counter = 0
   edit_workbook(workbook, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("sheets"), fn(sheets) {
+    @a_edit.update_first(root, @a_edit.by_local_name("sheets"), fn(sheets) {
       let new_children : Array[@xml.Node] = []
       for child in sheets.children {
         match child {
@@ -546,9 +546,9 @@ pub fn set_sheet_visible(
               if counter == sheet_index {
                 new_children.push(
                   @xml.Node::Element(
-                    @edit.set_attribute(
+                    @a_edit.set_attribute(
                       e,
-                      @edit.unprefixed_attribute("state", state),
+                      @a_edit.unprefixed_attribute("state", state),
                     ),
                   ),
                 )
@@ -596,36 +596,36 @@ pub fn set_row_hidden(
   }
   let template_qname = workbook.worksheets[sheet_index].value.element.name
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.update_first(ws_elt, @edit.by_local_name("sheetData"), fn(sd) {
-      let row_pred = @edit.by_local_name_with_attr(
+    @a_edit.update_first(ws_elt, @a_edit.by_local_name("sheetData"), fn(sd) {
+      let row_pred = @a_edit.by_local_name_with_attr(
         "row",
         "r",
         row_number.to_string(),
       )
-      let hits = @edit.direct_children(sd, row_pred)
+      let hits = @a_edit.direct_children(sd, row_pred)
       if hits.length() == 0 {
-        let row_element = @edit.set_attribute(
-          @edit.empty_element(template_qname, "row"),
-          @edit.unprefixed_attribute("r", row_number.to_string()),
+        let row_element = @a_edit.set_attribute(
+          @a_edit.empty_element(template_qname, "row"),
+          @a_edit.unprefixed_attribute("r", row_number.to_string()),
         )
         let with_hidden = if hidden {
-          @edit.set_attribute(
+          @a_edit.set_attribute(
             row_element,
-            @edit.unprefixed_attribute("hidden", "1"),
+            @a_edit.unprefixed_attribute("hidden", "1"),
           )
         } else {
           row_element
         }
-        @edit.append_child(sd, @xml.Node::Element(with_hidden))
+        @a_edit.append_child(sd, @xml.Node::Element(with_hidden))
       } else {
-        @edit.update_first(sd, row_pred, fn(row_elt) {
+        @a_edit.update_first(sd, row_pred, fn(row_elt) {
           if hidden {
-            @edit.set_attribute(
+            @a_edit.set_attribute(
               row_elt,
-              @edit.unprefixed_attribute("hidden", "1"),
+              @a_edit.unprefixed_attribute("hidden", "1"),
             )
           } else {
-            @edit.remove_attribute(row_elt, {
+            @a_edit.remove_attribute(row_elt, {
               prefix: None,
               local_name: "hidden",
               ns: None,
@@ -712,46 +712,46 @@ pub fn bind_cell_style(
   let template_qname = workbook.worksheets[sheet_index].value.element.name
   let xf_text = xf_index.to_string()
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.update_first(ws_elt, @edit.by_local_name("sheetData"), fn(sd) {
-      let row_pred = @edit.by_local_name_with_attr(
+    @a_edit.update_first(ws_elt, @a_edit.by_local_name("sheetData"), fn(sd) {
+      let row_pred = @a_edit.by_local_name_with_attr(
         "row",
         "r",
         row_index.to_string(),
       )
-      let row_hits = @edit.direct_children(sd, row_pred)
+      let row_hits = @a_edit.direct_children(sd, row_pred)
       if row_hits.length() == 0 {
         // Create row + empty cell with @s set.
-        let new_cell = @edit.set_attribute(
-          @edit.set_attribute(
-            @edit.empty_element(template_qname, "c"),
-            @edit.unprefixed_attribute("r", address),
+        let new_cell = @a_edit.set_attribute(
+          @a_edit.set_attribute(
+            @a_edit.empty_element(template_qname, "c"),
+            @a_edit.unprefixed_attribute("r", address),
           ),
-          @edit.unprefixed_attribute("s", xf_text),
+          @a_edit.unprefixed_attribute("s", xf_text),
         )
-        let new_row = @edit.append_child(
-          @edit.set_attribute(
-            @edit.empty_element(template_qname, "row"),
-            @edit.unprefixed_attribute("r", row_index.to_string()),
+        let new_row = @a_edit.append_child(
+          @a_edit.set_attribute(
+            @a_edit.empty_element(template_qname, "row"),
+            @a_edit.unprefixed_attribute("r", row_index.to_string()),
           ),
           @xml.Node::Element(new_cell),
         )
-        @edit.append_child(sd, @xml.Node::Element(new_row))
+        @a_edit.append_child(sd, @xml.Node::Element(new_row))
       } else {
-        @edit.update_first(sd, row_pred, fn(row_elt) {
-          let cell_pred = @edit.by_local_name_with_attr("c", "r", address)
-          let cell_hits = @edit.direct_children(row_elt, cell_pred)
+        @a_edit.update_first(sd, row_pred, fn(row_elt) {
+          let cell_pred = @a_edit.by_local_name_with_attr("c", "r", address)
+          let cell_hits = @a_edit.direct_children(row_elt, cell_pred)
           if cell_hits.length() == 0 {
-            let new_cell = @edit.set_attribute(
-              @edit.set_attribute(
-                @edit.empty_element(template_qname, "c"),
-                @edit.unprefixed_attribute("r", address),
+            let new_cell = @a_edit.set_attribute(
+              @a_edit.set_attribute(
+                @a_edit.empty_element(template_qname, "c"),
+                @a_edit.unprefixed_attribute("r", address),
               ),
-              @edit.unprefixed_attribute("s", xf_text),
+              @a_edit.unprefixed_attribute("s", xf_text),
             )
-            @edit.append_child(row_elt, @xml.Node::Element(new_cell))
+            @a_edit.append_child(row_elt, @xml.Node::Element(new_cell))
           } else {
-            @edit.update_first(row_elt, cell_pred, fn(c) {
-              @edit.set_attribute(c, @edit.unprefixed_attribute("s", xf_text))
+            @a_edit.update_first(row_elt, cell_pred, fn(c) {
+              @a_edit.set_attribute(c, @a_edit.unprefixed_attribute("s", xf_text))
             })
           }
         })
@@ -782,7 +782,7 @@ fn allocate_num_fmt(
                     if nf.name.local_name == "numFmt" {
                       for a in nf.attributes {
                         if a.name.local_name == "numFmtId" {
-                          let parsed = Some(@strconv.parse_int(a.value)) catch {
+                          let parsed = Some(@string.parse_int(a.value)) catch {
                             _ => None
                           }
                           match parsed {
@@ -803,13 +803,13 @@ fn allocate_num_fmt(
   }
   let new_id = next_id
   let updated = edit_styles(workbook, fn(root) {
-    let qn = @edit.qname_like(root.name, "numFmt")
-    let num_fmt = @edit.set_attribute(
-      @edit.set_attribute(
-        @edit.empty_element(qn, "numFmt"),
-        @edit.unprefixed_attribute("numFmtId", new_id.to_string()),
+    let qn = @a_edit.qname_like(root.name, "numFmt")
+    let num_fmt = @a_edit.set_attribute(
+      @a_edit.set_attribute(
+        @a_edit.empty_element(qn, "numFmt"),
+        @a_edit.unprefixed_attribute("numFmtId", new_id.to_string()),
       ),
-      @edit.unprefixed_attribute("formatCode", format_code),
+      @a_edit.unprefixed_attribute("formatCode", format_code),
     )
     upsert_styles_container(root, "numFmts", num_fmt)
   })
@@ -848,18 +848,18 @@ fn allocate_font(
   }
   let new_index = current
   let updated = edit_styles(workbook, fn(root) {
-    let qn = @edit.qname_like(root.name, "font")
-    let sz = @edit.set_attribute(
-      @edit.empty_element(qn, "sz"),
-      @edit.unprefixed_attribute("val", half_point_size.to_string()),
+    let qn = @a_edit.qname_like(root.name, "font")
+    let sz = @a_edit.set_attribute(
+      @a_edit.empty_element(qn, "sz"),
+      @a_edit.unprefixed_attribute("val", half_point_size.to_string()),
     )
-    let name_elt = @edit.set_attribute(
-      @edit.empty_element(qn, "name"),
-      @edit.unprefixed_attribute("val", name),
+    let name_elt = @a_edit.set_attribute(
+      @a_edit.empty_element(qn, "name"),
+      @a_edit.unprefixed_attribute("val", name),
     )
-    let font = @edit.append_child(
-      @edit.append_child(
-        @edit.empty_element(qn, "font"),
+    let font = @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(qn, "font"),
         @xml.Node::Element(sz),
       ),
       @xml.Node::Element(name_elt),
@@ -903,21 +903,21 @@ fn allocate_fill(workbook : Workbook, hex : String) -> (Int, Workbook) {
   let mut workbook_ref = workbook
   let new_index = if current == 0 {
     workbook_ref = edit_styles(workbook_ref, fn(root) {
-      let qn = @edit.qname_like(root.name, "fill")
-      let pf_none = @edit.set_attribute(
-        @edit.empty_element(qn, "patternFill"),
-        @edit.unprefixed_attribute("patternType", "none"),
+      let qn = @a_edit.qname_like(root.name, "fill")
+      let pf_none = @a_edit.set_attribute(
+        @a_edit.empty_element(qn, "patternFill"),
+        @a_edit.unprefixed_attribute("patternType", "none"),
       )
-      let pf_gray = @edit.set_attribute(
-        @edit.empty_element(qn, "patternFill"),
-        @edit.unprefixed_attribute("patternType", "gray125"),
+      let pf_gray = @a_edit.set_attribute(
+        @a_edit.empty_element(qn, "patternFill"),
+        @a_edit.unprefixed_attribute("patternType", "gray125"),
       )
-      let f0 = @edit.append_child(
-        @edit.empty_element(qn, "fill"),
+      let f0 = @a_edit.append_child(
+        @a_edit.empty_element(qn, "fill"),
         @xml.Node::Element(pf_none),
       )
-      let f1 = @edit.append_child(
-        @edit.empty_element(qn, "fill"),
+      let f1 = @a_edit.append_child(
+        @a_edit.empty_element(qn, "fill"),
         @xml.Node::Element(pf_gray),
       )
       let with_f0 = upsert_styles_container(root, "fills", f0)
@@ -928,20 +928,20 @@ fn allocate_fill(workbook : Workbook, hex : String) -> (Int, Workbook) {
     current
   }
   let updated = edit_styles(workbook_ref, fn(root) {
-    let qn = @edit.qname_like(root.name, "fill")
-    let fg = @edit.set_attribute(
-      @edit.empty_element(qn, "fgColor"),
-      @edit.unprefixed_attribute("rgb", hex),
+    let qn = @a_edit.qname_like(root.name, "fill")
+    let fg = @a_edit.set_attribute(
+      @a_edit.empty_element(qn, "fgColor"),
+      @a_edit.unprefixed_attribute("rgb", hex),
     )
-    let pattern = @edit.append_child(
-      @edit.set_attribute(
-        @edit.empty_element(qn, "patternFill"),
-        @edit.unprefixed_attribute("patternType", "solid"),
+    let pattern = @a_edit.append_child(
+      @a_edit.set_attribute(
+        @a_edit.empty_element(qn, "patternFill"),
+        @a_edit.unprefixed_attribute("patternType", "solid"),
       ),
       @xml.Node::Element(fg),
     )
-    let fill = @edit.append_child(
-      @edit.empty_element(qn, "fill"),
+    let fill = @a_edit.append_child(
+      @a_edit.empty_element(qn, "fill"),
       @xml.Node::Element(pattern),
     )
     upsert_styles_container(root, "fills", fill)
@@ -959,13 +959,13 @@ fn allocate_xf_with_num_fmt(
 ) -> (Int, Workbook) {
   let new_index = current_xf_count(workbook)
   let updated = edit_styles(workbook, fn(root) {
-    let qn = @edit.qname_like(root.name, "xf")
-    let xf = @edit.set_attribute(
-      @edit.set_attribute(
-        @edit.empty_element(qn, "xf"),
-        @edit.unprefixed_attribute("numFmtId", num_fmt_id.to_string()),
+    let qn = @a_edit.qname_like(root.name, "xf")
+    let xf = @a_edit.set_attribute(
+      @a_edit.set_attribute(
+        @a_edit.empty_element(qn, "xf"),
+        @a_edit.unprefixed_attribute("numFmtId", num_fmt_id.to_string()),
       ),
-      @edit.unprefixed_attribute("applyNumberFormat", "1"),
+      @a_edit.unprefixed_attribute("applyNumberFormat", "1"),
     )
     upsert_styles_container(root, "cellXfs", xf)
   })
@@ -976,13 +976,13 @@ fn allocate_xf_with_num_fmt(
 fn allocate_xf_with_font(workbook : Workbook, font_id : Int) -> (Int, Workbook) {
   let new_index = current_xf_count(workbook)
   let updated = edit_styles(workbook, fn(root) {
-    let qn = @edit.qname_like(root.name, "xf")
-    let xf = @edit.set_attribute(
-      @edit.set_attribute(
-        @edit.empty_element(qn, "xf"),
-        @edit.unprefixed_attribute("fontId", font_id.to_string()),
+    let qn = @a_edit.qname_like(root.name, "xf")
+    let xf = @a_edit.set_attribute(
+      @a_edit.set_attribute(
+        @a_edit.empty_element(qn, "xf"),
+        @a_edit.unprefixed_attribute("fontId", font_id.to_string()),
       ),
-      @edit.unprefixed_attribute("applyFont", "1"),
+      @a_edit.unprefixed_attribute("applyFont", "1"),
     )
     upsert_styles_container(root, "cellXfs", xf)
   })
@@ -993,13 +993,13 @@ fn allocate_xf_with_font(workbook : Workbook, font_id : Int) -> (Int, Workbook) 
 fn allocate_xf_with_fill(workbook : Workbook, fill_id : Int) -> (Int, Workbook) {
   let new_index = current_xf_count(workbook)
   let updated = edit_styles(workbook, fn(root) {
-    let qn = @edit.qname_like(root.name, "xf")
-    let xf = @edit.set_attribute(
-      @edit.set_attribute(
-        @edit.empty_element(qn, "xf"),
-        @edit.unprefixed_attribute("fillId", fill_id.to_string()),
+    let qn = @a_edit.qname_like(root.name, "xf")
+    let xf = @a_edit.set_attribute(
+      @a_edit.set_attribute(
+        @a_edit.empty_element(qn, "xf"),
+        @a_edit.unprefixed_attribute("fillId", fill_id.to_string()),
       ),
-      @edit.unprefixed_attribute("applyFill", "1"),
+      @a_edit.unprefixed_attribute("applyFill", "1"),
     )
     upsert_styles_container(root, "cellXfs", xf)
   })
@@ -1042,17 +1042,17 @@ fn upsert_styles_container(
   local_name : String,
   child : @xml.Element,
 ) -> @xml.Element {
-  let hits = @edit.direct_children(root, @edit.by_local_name(local_name))
+  let hits = @a_edit.direct_children(root, @a_edit.by_local_name(local_name))
   if hits.length() == 0 {
-    let qn = @edit.qname_like(root.name, local_name)
-    let container = @edit.append_child(
-      @edit.empty_element(qn, local_name),
+    let qn = @a_edit.qname_like(root.name, local_name)
+    let container = @a_edit.append_child(
+      @a_edit.empty_element(qn, local_name),
       @xml.Node::Element(child),
     )
-    @edit.append_child(root, @xml.Node::Element(container))
+    @a_edit.append_child(root, @xml.Node::Element(container))
   } else {
-    @edit.update_first(root, @edit.by_local_name(local_name), fn(container) {
-      @edit.append_child(container, @xml.Node::Element(child))
+    @a_edit.update_first(root, @a_edit.by_local_name(local_name), fn(container) {
+      @a_edit.append_child(container, @xml.Node::Element(child))
     })
   }
 }
@@ -1067,23 +1067,23 @@ pub fn unmerge_cells(
   range : String,
 ) -> Workbook raise OpenError {
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    let patched = @edit.update_first(
+    let patched = @a_edit.update_first(
       ws_elt,
-      @edit.by_local_name("mergeCells"),
+      @a_edit.by_local_name("mergeCells"),
       fn(mc) {
-        @edit.remove_children(
+        @a_edit.remove_children(
           mc,
-          @edit.by_local_name_with_attr("mergeCell", "ref", range),
+          @a_edit.by_local_name_with_attr("mergeCell", "ref", range),
         )
       },
     )
     // If <mergeCells> now has zero children, remove it entirely.
-    let mc_hits = @edit.direct_children(
+    let mc_hits = @a_edit.direct_children(
       patched,
-      @edit.by_local_name("mergeCells"),
+      @a_edit.by_local_name("mergeCells"),
     )
     if mc_hits.length() > 0 && mc_hits[0].children.length() == 0 {
-      @edit.remove_children(patched, @edit.by_local_name("mergeCells"))
+      @a_edit.remove_children(patched, @a_edit.by_local_name("mergeCells"))
     } else {
       patched
     }
@@ -1115,30 +1115,30 @@ pub fn set_row_height(
   }
   let template_qname = workbook.worksheets[sheet_index].value.element.name
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.update_first(ws_elt, @edit.by_local_name("sheetData"), fn(sd) {
-      let row_pred = @edit.by_local_name_with_attr(
+    @a_edit.update_first(ws_elt, @a_edit.by_local_name("sheetData"), fn(sd) {
+      let row_pred = @a_edit.by_local_name_with_attr(
         "row",
         "r",
         row_number.to_string(),
       )
-      let hits = @edit.direct_children(sd, row_pred)
+      let hits = @a_edit.direct_children(sd, row_pred)
       let apply : (@xml.Element) -> @xml.Element = fn(row_elt) {
-        @edit.set_attribute(
-          @edit.set_attribute(
+        @a_edit.set_attribute(
+          @a_edit.set_attribute(
             row_elt,
-            @edit.unprefixed_attribute("ht", height_points.to_string()),
+            @a_edit.unprefixed_attribute("ht", height_points.to_string()),
           ),
-          @edit.unprefixed_attribute("customHeight", "1"),
+          @a_edit.unprefixed_attribute("customHeight", "1"),
         )
       }
       if hits.length() == 0 {
-        let row_element = @edit.set_attribute(
-          @edit.empty_element(template_qname, "row"),
-          @edit.unprefixed_attribute("r", row_number.to_string()),
+        let row_element = @a_edit.set_attribute(
+          @a_edit.empty_element(template_qname, "row"),
+          @a_edit.unprefixed_attribute("r", row_number.to_string()),
         )
-        @edit.append_child(sd, @xml.Node::Element(apply(row_element)))
+        @a_edit.append_child(sd, @xml.Node::Element(apply(row_element)))
       } else {
-        @edit.update_first(sd, row_pred, apply)
+        @a_edit.update_first(sd, row_pred, apply)
       }
     })
   })
@@ -1168,18 +1168,18 @@ pub fn insert_column(
   }
   let template_qname = workbook.worksheets[sheet_index].value.element.name
   let col_text = column_index.to_string()
-  let col_element = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(template_qname, "col"),
-      @edit.unprefixed_attribute("min", col_text),
+  let col_element = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(template_qname, "col"),
+      @a_edit.unprefixed_attribute("min", col_text),
     ),
-    @edit.unprefixed_attribute("max", col_text),
+    @a_edit.unprefixed_attribute("max", col_text),
   )
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    let hits = @edit.direct_children(ws_elt, @edit.by_local_name("cols"))
+    let hits = @a_edit.direct_children(ws_elt, @a_edit.by_local_name("cols"))
     if hits.length() == 0 {
-      let cols_element = @edit.append_child(
-        @edit.empty_element(template_qname, "cols"),
+      let cols_element = @a_edit.append_child(
+        @a_edit.empty_element(template_qname, "cols"),
         @xml.Node::Element(col_element),
       )
       // Insert <cols> immediately before <sheetData>.
@@ -1196,10 +1196,10 @@ pub fn insert_column(
         }
         i = i + 1
       }
-      @edit.insert_child(ws_elt, position, @xml.Node::Element(cols_element))
+      @a_edit.insert_child(ws_elt, position, @xml.Node::Element(cols_element))
     } else {
-      @edit.update_first(ws_elt, @edit.by_local_name("cols"), fn(cols) {
-        @edit.append_child(cols, @xml.Node::Element(col_element))
+      @a_edit.update_first(ws_elt, @a_edit.by_local_name("cols"), fn(cols) {
+        @a_edit.append_child(cols, @xml.Node::Element(col_element))
       })
     }
   })
@@ -1214,10 +1214,10 @@ pub fn remove_column(
 ) -> Workbook raise OpenError {
   let col_text = column_index.to_string()
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.update_first(ws_elt, @edit.by_local_name("cols"), fn(cols) {
-      @edit.remove_children(
+    @a_edit.update_first(ws_elt, @a_edit.by_local_name("cols"), fn(cols) {
+      @a_edit.remove_children(
         cols,
-        @edit.by_local_name_with_attr("col", "min", col_text),
+        @a_edit.by_local_name_with_attr("col", "min", col_text),
       )
     })
   })
@@ -1239,16 +1239,16 @@ pub fn set_auto_filter(
     )
   }
   let template_qname = workbook.worksheets[sheet_index].value.element.name
-  let af_element = @edit.set_attribute(
-    @edit.empty_element(template_qname, "autoFilter"),
-    @edit.unprefixed_attribute("ref", range),
+  let af_element = @a_edit.set_attribute(
+    @a_edit.empty_element(template_qname, "autoFilter"),
+    @a_edit.unprefixed_attribute("ref", range),
   )
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    let stripped = @edit.remove_children(
+    let stripped = @a_edit.remove_children(
       ws_elt,
-      @edit.by_local_name("autoFilter"),
+      @a_edit.by_local_name("autoFilter"),
     )
-    @edit.append_child(stripped, @xml.Node::Element(af_element))
+    @a_edit.append_child(stripped, @xml.Node::Element(af_element))
   })
 }
 
@@ -1259,7 +1259,7 @@ pub fn clear_auto_filter(
   sheet_index : Int,
 ) -> Workbook raise OpenError {
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.remove_children(ws_elt, @edit.by_local_name("autoFilter"))
+    @a_edit.remove_children(ws_elt, @a_edit.by_local_name("autoFilter"))
   })
 }
 
@@ -1276,36 +1276,36 @@ fn build_inline_str_cell(
   // value has leading or trailing ASCII whitespace we MUST set
   // `xml:space="preserve"` on the `<t>` element; otherwise the
   // XML normaliser strips the whitespace on round-trip.
-  let t_base = @edit.empty_element(template, "t")
+  let t_base = @a_edit.empty_element(template, "t")
   let t_with_space = if sml_needs_xml_space_preserve(value) {
     let xml_qn : @xml.QName = {
       prefix: Some("xml"),
       local_name: "space",
       ns: Some("http://www.w3.org/XML/1998/namespace"),
     }
-    @edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
+    @a_edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
   } else {
     t_base
   }
-  let t_with_text = @edit.append_child(t_with_space, @xml.Node::Text(value))
-  let is_element = @edit.empty_element(template, "is")
-  let is_with_t = @edit.append_child(
+  let t_with_text = @a_edit.append_child(t_with_space, @xml.Node::Text(value))
+  let is_element = @a_edit.empty_element(template, "is")
+  let is_with_t = @a_edit.append_child(
     is_element,
     @xml.Node::Element(t_with_text),
   )
-  let c_element = @edit.empty_element(template, "c")
-  let c_with_attrs = @edit.set_attribute(
-    @edit.set_attribute(c_element, @edit.unprefixed_attribute("r", address)),
-    @edit.unprefixed_attribute("t", "inlineStr"),
+  let c_element = @a_edit.empty_element(template, "c")
+  let c_with_attrs = @a_edit.set_attribute(
+    @a_edit.set_attribute(c_element, @a_edit.unprefixed_attribute("r", address)),
+    @a_edit.unprefixed_attribute("t", "inlineStr"),
   )
-  @edit.append_child(c_with_attrs, @xml.Node::Element(is_with_t))
+  @a_edit.append_child(c_with_attrs, @xml.Node::Element(is_with_t))
 }
 
 ///|
 /// §18.4.12 CT_Rst — delegates to the shared §3.3.3 whitespace
 /// predicate in the `@edit` package.  See `@edit::needs_xml_space_preserve`.
 fn sml_needs_xml_space_preserve(text : String) -> Bool {
-  @edit.needs_xml_space_preserve(text)
+  @a_edit.needs_xml_space_preserve(text)
 }
 
 ///|
@@ -1319,13 +1319,13 @@ pub fn clear_cell(
   address : String,
 ) -> Workbook raise OpenError {
   edit_worksheet(workbook, sheet_index, fn(ws_elt) {
-    @edit.update_first(ws_elt, @edit.by_local_name("sheetData"), fn(sd) {
+    @a_edit.update_first(ws_elt, @a_edit.by_local_name("sheetData"), fn(sd) {
       // For every <row>, drop any <c r="address"> child.
-      @edit.map_subtree(sd, fn(row_elt) {
+      @a_edit.map_subtree(sd, fn(row_elt) {
         if row_elt.name.local_name == "row" {
-          @edit.remove_children(
+          @a_edit.remove_children(
             row_elt,
-            @edit.by_local_name_with_attr("c", "r", address),
+            @a_edit.by_local_name_with_attr("c", "r", address),
           )
         } else {
           row_elt
@@ -1356,7 +1356,7 @@ pub fn append_sheet(
     if part_name.has_prefix(prefix) && part_name.has_suffix(suffix) {
       let middle = part_name[prefix.length():part_name.length() -
       suffix.length()].to_owned()
-      let parsed = Some(@strconv.parse_int(middle)) catch { _ => None }
+      let parsed = Some(@string.parse_int(middle)) catch { _ => None }
       match parsed {
         Some(n) => if n > max_index { max_index = n }
         None => ()
@@ -1368,8 +1368,8 @@ pub fn append_sheet(
 
   // Build minimal worksheet element (canonical sml namespace).
   let s_ns = Some("http://schemas.openxmlformats.org/spreadsheetml/2006/main")
-  let qn = fn(local : String) -> @xml.QName {
-    { prefix: None, local_name: local, ns: s_ns }
+  let qn = fn(local_name : String) -> @xml.QName {
+    { prefix: None, local_name: local_name, ns: s_ns }
   }
   let xmlns_attrs : Array[@xml.Attribute] = [
     {
@@ -1399,14 +1399,14 @@ pub fn append_sheet(
 
   // Allocate a fresh relationship Id for the workbook rels.
   let existing_rels = match
-    workbook.package.relationships(workbook.workbook_part) {
+    workbook.opc_package.relationships(workbook.workbook_part) {
     Some(rs) => rs.relationships
     None => []
   }
   let mut max_rid = 0
   for r in existing_rels {
     if r.id.has_prefix("rId") {
-      let parsed = Some(@strconv.parse_int(r.id[3:].to_owned())) catch {
+      let parsed = Some(@string.parse_int(r.id[3:].to_owned())) catch {
         _ => None
       }
       match parsed {
@@ -1430,7 +1430,7 @@ pub fn append_sheet(
                 if s.name.local_name == "sheet" {
                   for attr in s.attributes {
                     if attr.name.local_name == "sheetId" {
-                      let parsed = Some(@strconv.parse_int(attr.value)) catch {
+                      let parsed = Some(@string.parse_int(attr.value)) catch {
                         _ => None
                       }
                       match parsed {
@@ -1451,7 +1451,7 @@ pub fn append_sheet(
 
   // Update the OPC package: new part + override + workbook rel.
   let pkg2 = try {
-    let pkg_with_part = workbook.package.add_part(
+    let pkg_with_part = workbook.opc_package.add_part(
       new_part_name, "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
       ws_bytes,
     )
@@ -1543,7 +1543,7 @@ pub fn append_sheet(
     tables: [],
   })
   {
-    package: pkg2,
+    opc_package: pkg2,
     workbook_part: workbook.workbook_part,
     workbook: new_workbook,
     worksheets: new_worksheets,
@@ -1571,7 +1571,7 @@ pub fn remove_sheet(
   let target = workbook.worksheets[sheet_index]
   let target_name = target.name
   let existing_rels = match
-    workbook.package.relationships(workbook.workbook_part) {
+    workbook.opc_package.relationships(workbook.workbook_part) {
     Some(rs) => rs.relationships
     None => []
   }
@@ -1643,8 +1643,8 @@ pub fn remove_sheet(
   let pkg2 = try {
     let pkg_no_rel = match target_rid {
       Some(rid) =>
-        workbook.package.remove_relationship(workbook.workbook_part, rid)
-      None => workbook.package
+        workbook.opc_package.remove_relationship(workbook.workbook_part, rid)
+      None => workbook.opc_package
     }
     pkg_no_rel.remove_part(target_name)
   } catch {
@@ -1664,7 +1664,7 @@ pub fn remove_sheet(
     i = i + 1
   }
   {
-    package: pkg2,
+    opc_package: pkg2,
     workbook_part: workbook.workbook_part,
     workbook: new_workbook,
     worksheets: new_worksheets,
@@ -1672,16 +1672,6 @@ pub fn remove_sheet(
     styles: workbook.styles,
     theme: workbook.theme,
   }
-}
-
-///|
-fn attr_value_of(element : @xml.Element, name : String) -> String? {
-  for attr in element.attributes {
-    if attr.name.local_name == name {
-      return Some(attr.value)
-    }
-  }
-  None
 }
 
 ///|
@@ -1719,7 +1709,7 @@ fn parse_cell_address(address : String) -> (Int, Int) raise OpenError {
     }
     col_index = col_index * 26 + (code - 0x40)
   }
-  let row_index = @strconv.parse_int(row_text) catch {
+  let row_index = @string.parse_int(row_text) catch {
     _ =>
       raise @sml_context.OpenError(
         kind="SchemaViolation",

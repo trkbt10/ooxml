@@ -17,8 +17,7 @@
 // signed bars for `type="stacked"` (win/loss).
 
 import {
-  "moonbitlang/core/strconv" @strconv,
-  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
+  "moonbitlang/core/string" @string,
   "trkbt10/ooxml/util/markup" @markup,
   "trkbt10/ooxml/xml" @xml,
 }

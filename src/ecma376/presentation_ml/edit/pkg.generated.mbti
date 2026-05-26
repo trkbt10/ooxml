@@ -32,7 +32,7 @@ pub fn remove_shape(@context.Presentation, Int, Int) -> @context.Presentation ra
 
 pub fn remove_slide(@context.Presentation, Int) -> @context.Presentation raise @context.OpenError
 
-pub fn reorder_slides(@context.Presentation, Int, Int) -> @context.Presentation raise @context.OpenError
+pub fn reorder_slides(@context.Presentation, Int, Int) -> @context.Presentation
 
 pub fn replace_text_in_run(@context.Presentation, Int, Int, Int, Int, String) -> @context.Presentation raise @context.OpenError
 

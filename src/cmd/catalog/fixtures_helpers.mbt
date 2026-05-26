@@ -211,7 +211,7 @@ fn preset_batch(names : Array[String], hex : String) -> @xml.Element {
 /// Stroke-only variant of `preset_batch` — uses `pptx_shape_outline`
 /// so brackets / braces / connectors are rendered with the bracket
 /// OUTLINE instead of a filled bracket-shaped region.
-fn preset_batch_outline(names : Array[String], hex : String) -> @xml.Element {
+fn _preset_batch_outline(names : Array[String], hex : String) -> @xml.Element {
   let shapes : Array[@xml.Element] = []
   for i, n in names {
     let col = i % 4

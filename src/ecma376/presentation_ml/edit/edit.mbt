@@ -47,35 +47,35 @@ pub fn add_textbox(
   // when the literal text begins or ends with ASCII whitespace
   // we MUST emit `xml:space="preserve"` so the whitespace
   // survives XML normalisation on round-trip.
-  let t_base = @edit.empty_element(a_qn, "t")
+  let t_base = @a_edit.empty_element(a_qn, "t")
   let t_elt_with_space = if needs_xml_space_preserve(text) {
     let xml_qn : @xml.QName = {
       prefix: Some("xml"),
       local_name: "space",
       ns: Some("http://www.w3.org/XML/1998/namespace"),
     }
-    @edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
+    @a_edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
   } else {
     t_base
   }
-  let t_elt = @edit.append_child(t_elt_with_space, @xml.Node::Text(text))
+  let t_elt = @a_edit.append_child(t_elt_with_space, @xml.Node::Text(text))
   // <a:r><a:t/></a:r>
-  let r_elt = @edit.append_child(
-    @edit.empty_element(a_qn, "r"),
+  let r_elt = @a_edit.append_child(
+    @a_edit.empty_element(a_qn, "r"),
     @xml.Node::Element(t_elt),
   )
   // <a:p><a:r/></a:p>
-  let p_elt = @edit.append_child(
-    @edit.empty_element(a_qn, "p"),
+  let p_elt = @a_edit.append_child(
+    @a_edit.empty_element(a_qn, "p"),
     @xml.Node::Element(r_elt),
   )
   // <p:txBody><a:bodyPr/><a:lstStyle/><a:p>...</a:p></p:txBody>
-  let body_pr = @edit.empty_element(a_qn, "bodyPr")
-  let lst_style = @edit.empty_element(a_qn, "lstStyle")
-  let tx_body = @edit.append_child(
-    @edit.append_child(
-      @edit.append_child(
-        @edit.empty_element(p_qn, "txBody"),
+  let body_pr = @a_edit.empty_element(a_qn, "bodyPr")
+  let lst_style = @a_edit.empty_element(a_qn, "lstStyle")
+  let tx_body = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(p_qn, "txBody"),
         @xml.Node::Element(body_pr),
       ),
       @xml.Node::Element(lst_style),
@@ -83,61 +83,61 @@ pub fn add_textbox(
     @xml.Node::Element(p_elt),
   )
   // <p:spPr><a:xfrm><a:off x= y=/><a:ext cx= cy=/></a:xfrm></p:spPr>
-  let off = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "off"),
-      @edit.unprefixed_attribute("x", x.to_string()),
+  let off = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "off"),
+      @a_edit.unprefixed_attribute("x", x.to_string()),
     ),
-    @edit.unprefixed_attribute("y", y.to_string()),
+    @a_edit.unprefixed_attribute("y", y.to_string()),
   )
-  let ext = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "ext"),
-      @edit.unprefixed_attribute("cx", w.to_string()),
+  let ext = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "ext"),
+      @a_edit.unprefixed_attribute("cx", w.to_string()),
     ),
-    @edit.unprefixed_attribute("cy", h.to_string()),
+    @a_edit.unprefixed_attribute("cy", h.to_string()),
   )
-  let xfrm = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(a_qn, "xfrm"),
+  let xfrm = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(a_qn, "xfrm"),
       @xml.Node::Element(off),
     ),
     @xml.Node::Element(ext),
   )
-  let sp_pr = @edit.append_child(
-    @edit.empty_element(p_qn, "spPr"),
+  let sp_pr = @a_edit.append_child(
+    @a_edit.empty_element(p_qn, "spPr"),
     @xml.Node::Element(xfrm),
   )
   // §19.3.1.12 / §20.4.2.5 ST_DrawingElementId — `cNvPr/@id`
   // MUST be unique per slide.  Resolve the slide's current max
   // id by inspecting the existing spTree before insertion.
   let allocated_id = next_drawing_id_for_slide(presentation, slide_index)
-  let c_nv_pr = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(p_qn, "cNvPr"),
-      @edit.unprefixed_attribute("id", allocated_id.to_string()),
+  let c_nv_pr = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(p_qn, "cNvPr"),
+      @a_edit.unprefixed_attribute("id", allocated_id.to_string()),
     ),
-    @edit.unprefixed_attribute("name", "TextBox " + allocated_id.to_string()),
+    @a_edit.unprefixed_attribute("name", "TextBox " + allocated_id.to_string()),
   )
-  let c_nv_sp_pr = @edit.set_attribute(
-    @edit.empty_element(p_qn, "cNvSpPr"),
-    @edit.unprefixed_attribute("txBox", "1"),
+  let c_nv_sp_pr = @a_edit.set_attribute(
+    @a_edit.empty_element(p_qn, "cNvSpPr"),
+    @a_edit.unprefixed_attribute("txBox", "1"),
   )
-  let nv_pr = @edit.empty_element(p_qn, "nvPr")
-  let nv_sp_pr = @edit.append_child(
-    @edit.append_child(
-      @edit.append_child(
-        @edit.empty_element(p_qn, "nvSpPr"),
+  let nv_pr = @a_edit.empty_element(p_qn, "nvPr")
+  let nv_sp_pr = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(p_qn, "nvSpPr"),
         @xml.Node::Element(c_nv_pr),
       ),
       @xml.Node::Element(c_nv_sp_pr),
     ),
     @xml.Node::Element(nv_pr),
   )
-  let sp = @edit.append_child(
-    @edit.append_child(
-      @edit.append_child(
-        @edit.empty_element(p_qn, "sp"),
+  let sp = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(p_qn, "sp"),
         @xml.Node::Element(nv_sp_pr),
       ),
       @xml.Node::Element(sp_pr),
@@ -145,8 +145,8 @@ pub fn add_textbox(
     @xml.Node::Element(tx_body),
   )
   edit_slide(presentation, slide_index, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("spTree"), fn(sp_tree) {
-      @edit.append_child(sp_tree, @xml.Node::Element(sp))
+    @a_edit.update_first(root, @a_edit.by_local_name("spTree"), fn(sp_tree) {
+      @a_edit.append_child(sp_tree, @xml.Node::Element(sp))
     })
   })
 }
@@ -170,7 +170,7 @@ pub fn set_shape_xfrm(
     ns: Some("http://schemas.openxmlformats.org/drawingml/2006/main"),
   }
   edit_slide(presentation, slide_index, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("spTree"), fn(sp_tree) {
+    @a_edit.update_first(root, @a_edit.by_local_name("spTree"), fn(sp_tree) {
       let mut counter = 0
       let new_children : Array[@xml.Node] = []
       for child in sp_tree.children {
@@ -208,7 +208,7 @@ pub fn remove_shape(
   shape_index : Int,
 ) -> Presentation raise OpenError {
   edit_slide(presentation, slide_index, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("spTree"), fn(sp_tree) {
+    @a_edit.update_first(root, @a_edit.by_local_name("spTree"), fn(sp_tree) {
       let mut counter = 0
       let new_children : Array[@xml.Node] = []
       for child in sp_tree.children {
@@ -292,14 +292,14 @@ pub fn add_picture(
   // Allocate /ppt/media/imageN.<ext>; scan existing media parts to
   // find the next index.
   let mut max_index = 0
-  for part in presentation.package.parts {
+  for part in presentation.opc_package.parts {
     let prefix = "/ppt/media/image"
     if part.name.has_prefix(prefix) {
       let rest = part.name[prefix.length():].to_owned()
       let dot = find_char(rest, '.')
       if dot > 0 {
         let head = rest[0:dot].to_owned()
-        let parsed = Some(@strconv.parse_int(head)) catch { _ => None }
+        let parsed = Some(@string.parse_int(head)) catch { _ => None }
         match parsed {
           Some(n) => if n > max_index { max_index = n }
           None => ()
@@ -314,14 +314,14 @@ pub fn add_picture(
   // Add part + relationship under the slide.
   let slide_part_name = presentation.slides[slide_index].name
   let existing_rels = match
-    presentation.package.relationships(slide_part_name) {
+    presentation.opc_package.relationships(slide_part_name) {
     Some(rs) => rs.relationships
     None => []
   }
   let mut max_rid = 0
   for r in existing_rels {
     if r.id.has_prefix("rId") {
-      let parsed = Some(@strconv.parse_int(r.id[3:].to_owned())) catch {
+      let parsed = Some(@string.parse_int(r.id[3:].to_owned())) catch {
         _ => None
       }
       match parsed {
@@ -338,7 +338,7 @@ pub fn add_picture(
     "." +
     extension
   let pkg2 = try {
-    let pkg_with_part = presentation.package.add_part(
+    let pkg_with_part = presentation.opc_package.add_part(
       media_part_name, mime_type, image_bytes,
     )
     pkg_with_part.with_relationship(
@@ -372,56 +372,56 @@ pub fn add_picture(
     ),
   }
   // <a:blip r:embed="rId"/>
-  let blip = @edit.set_attribute(@edit.empty_element(a_qn, "blip"), {
+  let blip = @a_edit.set_attribute(@a_edit.empty_element(a_qn, "blip"), {
     name: r_qn,
     value: new_rid,
   })
   // <a:stretch><a:fillRect/></a:stretch>
-  let stretch = @edit.append_child(
-    @edit.empty_element(a_qn, "stretch"),
-    @xml.Node::Element(@edit.empty_element(a_qn, "fillRect")),
+  let stretch = @a_edit.append_child(
+    @a_edit.empty_element(a_qn, "stretch"),
+    @xml.Node::Element(@a_edit.empty_element(a_qn, "fillRect")),
   )
   // <p:blipFill><a:blip/><a:stretch/></p:blipFill>
-  let blip_fill = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(p_qn, "blipFill"),
+  let blip_fill = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(p_qn, "blipFill"),
       @xml.Node::Element(blip),
     ),
     @xml.Node::Element(stretch),
   )
   // xfrm with off/ext
-  let off = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "off"),
-      @edit.unprefixed_attribute("x", x.to_string()),
+  let off = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "off"),
+      @a_edit.unprefixed_attribute("x", x.to_string()),
     ),
-    @edit.unprefixed_attribute("y", y.to_string()),
+    @a_edit.unprefixed_attribute("y", y.to_string()),
   )
-  let ext = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "ext"),
-      @edit.unprefixed_attribute("cx", w.to_string()),
+  let ext = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "ext"),
+      @a_edit.unprefixed_attribute("cx", w.to_string()),
     ),
-    @edit.unprefixed_attribute("cy", h.to_string()),
+    @a_edit.unprefixed_attribute("cy", h.to_string()),
   )
-  let xfrm = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(a_qn, "xfrm"),
+  let xfrm = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(a_qn, "xfrm"),
       @xml.Node::Element(off),
     ),
     @xml.Node::Element(ext),
   )
-  let prst_geom = @edit.set_attribute(
-    @edit.empty_element(a_qn, "prstGeom"),
-    @edit.unprefixed_attribute("prst", "rect"),
+  let prst_geom = @a_edit.set_attribute(
+    @a_edit.empty_element(a_qn, "prstGeom"),
+    @a_edit.unprefixed_attribute("prst", "rect"),
   )
-  let prst_geom_with_avlst = @edit.append_child(
+  let prst_geom_with_avlst = @a_edit.append_child(
     prst_geom,
-    @xml.Node::Element(@edit.empty_element(a_qn, "avLst")),
+    @xml.Node::Element(@a_edit.empty_element(a_qn, "avLst")),
   )
-  let sp_pr = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(p_qn, "spPr"),
+  let sp_pr = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(p_qn, "spPr"),
       @xml.Node::Element(xfrm),
     ),
     @xml.Node::Element(prst_geom_with_avlst),
@@ -431,29 +431,29 @@ pub fn add_picture(
   // max(existing)+1 and suffix the @name to keep accessibility
   // labels distinct across multiple inserted pictures.
   let pic_id = next_drawing_id_for_slide(presentation, slide_index)
-  let c_nv_pr = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(p_qn, "cNvPr"),
-      @edit.unprefixed_attribute("id", pic_id.to_string()),
+  let c_nv_pr = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(p_qn, "cNvPr"),
+      @a_edit.unprefixed_attribute("id", pic_id.to_string()),
     ),
-    @edit.unprefixed_attribute("name", "Picture " + pic_id.to_string()),
+    @a_edit.unprefixed_attribute("name", "Picture " + pic_id.to_string()),
   )
-  let c_nv_pic_pr = @edit.empty_element(p_qn, "cNvPicPr")
-  let nv_pr = @edit.empty_element(p_qn, "nvPr")
-  let nv_pic_pr = @edit.append_child(
-    @edit.append_child(
-      @edit.append_child(
-        @edit.empty_element(p_qn, "nvPicPr"),
+  let c_nv_pic_pr = @a_edit.empty_element(p_qn, "cNvPicPr")
+  let nv_pr = @a_edit.empty_element(p_qn, "nvPr")
+  let nv_pic_pr = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(p_qn, "nvPicPr"),
         @xml.Node::Element(c_nv_pr),
       ),
       @xml.Node::Element(c_nv_pic_pr),
     ),
     @xml.Node::Element(nv_pr),
   )
-  let pic = @edit.append_child(
-    @edit.append_child(
-      @edit.append_child(
-        @edit.empty_element(p_qn, "pic"),
+  let pic = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(p_qn, "pic"),
         @xml.Node::Element(nv_pic_pr),
       ),
       @xml.Node::Element(blip_fill),
@@ -461,8 +461,8 @@ pub fn add_picture(
     @xml.Node::Element(sp_pr),
   )
   let with_pic = edit_slide(presentation, slide_index, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("spTree"), fn(sp_tree) {
-      @edit.append_child(sp_tree, @xml.Node::Element(pic))
+    @a_edit.update_first(root, @a_edit.by_local_name("spTree"), fn(sp_tree) {
+      @a_edit.append_child(sp_tree, @xml.Node::Element(pic))
     })
   })
   with_package(with_pic, pkg2)
@@ -488,9 +488,9 @@ pub fn set_text_bold(
     run_index,
     fn(r_pr) {
       if value {
-        @edit.set_attribute(r_pr, @edit.unprefixed_attribute("b", "1"))
+        @a_edit.set_attribute(r_pr, @a_edit.unprefixed_attribute("b", "1"))
       } else {
-        @edit.remove_attribute(r_pr, { prefix: None, local_name: "b", ns: None })
+        @a_edit.remove_attribute(r_pr, { prefix: None, local_name: "b", ns: None })
       }
     },
   )
@@ -519,19 +519,19 @@ pub fn set_text_color(
     paragraph_index,
     run_index,
     fn(r_pr) {
-      let srgb = @edit.set_attribute(
-        @edit.empty_element(a_qn, "srgbClr"),
-        @edit.unprefixed_attribute("val", hex),
+      let srgb = @a_edit.set_attribute(
+        @a_edit.empty_element(a_qn, "srgbClr"),
+        @a_edit.unprefixed_attribute("val", hex),
       )
-      let solid_fill = @edit.append_child(
-        @edit.empty_element(a_qn, "solidFill"),
+      let solid_fill = @a_edit.append_child(
+        @a_edit.empty_element(a_qn, "solidFill"),
         @xml.Node::Element(srgb),
       )
-      let stripped = @edit.remove_children(
+      let stripped = @a_edit.remove_children(
         r_pr,
-        @edit.by_local_name("solidFill"),
+        @a_edit.by_local_name("solidFill"),
       )
-      @edit.append_child(stripped, @xml.Node::Element(solid_fill))
+      @a_edit.append_child(stripped, @xml.Node::Element(solid_fill))
     },
   )
 }
@@ -554,9 +554,9 @@ pub fn set_text_font_size(
     paragraph_index,
     run_index,
     fn(r_pr) {
-      @edit.set_attribute(
+      @a_edit.set_attribute(
         r_pr,
-        @edit.unprefixed_attribute("sz", hundredths_of_pt.to_string()),
+        @a_edit.unprefixed_attribute("sz", hundredths_of_pt.to_string()),
       )
     },
   )
@@ -584,18 +584,18 @@ pub fn replace_text_in_run(
     ns: Some("http://schemas.openxmlformats.org/drawingml/2006/main"),
   }
   // Build the new <a:t> element with optional xml:space.
-  let t_base = @edit.empty_element(a_qn_t, "t")
+  let t_base = @a_edit.empty_element(a_qn_t, "t")
   let t_with_space = if needs_xml_space_preserve(new_text) {
     let xml_qn : @xml.QName = {
       prefix: Some("xml"),
       local_name: "space",
       ns: Some("http://www.w3.org/XML/1998/namespace"),
     }
-    @edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
+    @a_edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
   } else {
     t_base
   }
-  let new_t = @edit.append_child(t_with_space, @xml.Node::Text(new_text))
+  let new_t = @a_edit.append_child(t_with_space, @xml.Node::Text(new_text))
   // Walk to the target run and rebuild it with the new <a:t>,
   // preserving the existing <a:rPr> if present.  Other run
   // children (extLst, etc.) are dropped because they reference
@@ -608,7 +608,7 @@ pub fn replace_text_in_run(
   }
   let _ = edit_run
   edit_slide(presentation, slide_index, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("spTree"), fn(sp_tree) {
+    @a_edit.update_first(root, @a_edit.by_local_name("spTree"), fn(sp_tree) {
       let mut shape_counter = 0
       let new_children : Array[@xml.Node] = []
       for child in sp_tree.children {
@@ -780,7 +780,7 @@ pub fn edit_text_run(
     ns: Some("http://schemas.openxmlformats.org/drawingml/2006/main"),
   }
   edit_slide(presentation, slide_index, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("spTree"), fn(sp_tree) {
+    @a_edit.update_first(root, @a_edit.by_local_name("spTree"), fn(sp_tree) {
       let mut shape_counter = 0
       let new_children : Array[@xml.Node] = []
       for child in sp_tree.children {
@@ -838,7 +838,7 @@ pub fn duplicate_slide(
     let suffix = ".xml"
     if name.has_prefix(prefix) && name.has_suffix(suffix) {
       let middle = name[prefix.length():name.length() - suffix.length()].to_owned()
-      let parsed = Some(@strconv.parse_int(middle)) catch { _ => None }
+      let parsed = Some(@string.parse_int(middle)) catch { _ => None }
       match parsed {
         Some(n) => if n > max_index { max_index = n }
         None => ()
@@ -849,14 +849,14 @@ pub fn duplicate_slide(
   let new_part_name = "/ppt/slides/slide" + new_index.to_string() + ".xml"
   let new_bytes = @pml_builder.write_sld(source.value)
   let existing_rels = match
-    presentation.package.relationships(presentation.presentation_part) {
+    presentation.opc_package.relationships(presentation.presentation_part) {
     Some(rs) => rs.relationships
     None => []
   }
   let mut max_rid = 0
   for r in existing_rels {
     if r.id.has_prefix("rId") {
-      let parsed = Some(@strconv.parse_int(r.id[3:].to_owned())) catch {
+      let parsed = Some(@string.parse_int(r.id[3:].to_owned())) catch {
         _ => None
       }
       match parsed {
@@ -867,7 +867,7 @@ pub fn duplicate_slide(
   }
   let new_rid = "rId" + (max_rid + 1).to_string()
   let pkg2 = try {
-    let pkg_with_part = presentation.package.add_part(
+    let pkg_with_part = presentation.opc_package.add_part(
       new_part_name, "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
       new_bytes,
     )
@@ -895,7 +895,7 @@ pub fn duplicate_slide(
   for entry in existing_entries {
     for attr in entry.element.attributes {
       if attr.name.local_name == "id" && attr.name.prefix is None {
-        let parsed = Some(@strconv.parse_int(attr.value)) catch { _ => None }
+        let parsed = Some(@string.parse_int(attr.value)) catch { _ => None }
         match parsed {
           Some(v) => if v > max_sid { max_sid = v }
           None => ()
@@ -916,10 +916,10 @@ pub fn duplicate_slide(
       "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
     ),
   }
-  let sld_id = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(p_qn, "sldId"),
-      @edit.unprefixed_attribute("id", new_sid),
+  let sld_id = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(p_qn, "sldId"),
+      @a_edit.unprefixed_attribute("id", new_sid),
     ),
     { name: r_qn, value: new_rid },
   )
@@ -930,22 +930,22 @@ pub fn duplicate_slide(
   }
   new_slides.push(new_slide_part)
   let updated = edit_presentation(presentation, fn(root) {
-    let hits = @edit.direct_children(root, @edit.by_local_name("sldIdLst"))
+    let hits = @a_edit.direct_children(root, @a_edit.by_local_name("sldIdLst"))
     if hits.length() == 0 {
-      let list_qn = @edit.qname_like(root.name, "sldIdLst")
-      let list = @edit.append_child(
-        @edit.empty_element(list_qn, "sldIdLst"),
+      let list_qn = @a_edit.qname_like(root.name, "sldIdLst")
+      let list = @a_edit.append_child(
+        @a_edit.empty_element(list_qn, "sldIdLst"),
         @xml.Node::Element(sld_id),
       )
-      @edit.append_child(root, @xml.Node::Element(list))
+      @a_edit.append_child(root, @xml.Node::Element(list))
     } else {
-      @edit.update_first(root, @edit.by_local_name("sldIdLst"), fn(list) {
-        @edit.append_child(list, @xml.Node::Element(sld_id))
+      @a_edit.update_first(root, @a_edit.by_local_name("sldIdLst"), fn(list) {
+        @a_edit.append_child(list, @xml.Node::Element(sld_id))
       })
     }
   })
   {
-    package: pkg2,
+    opc_package: pkg2,
     presentation_part: updated.presentation_part,
     presentation: updated.presentation,
     slides: new_slides,
@@ -964,7 +964,7 @@ pub fn reorder_slides(
   presentation : Presentation,
   from_index : Int,
   to_index : Int,
-) -> Presentation raise OpenError {
+) -> Presentation {
   if from_index < 0 ||
     from_index >= presentation.slides.length() ||
     to_index < 0 ||
@@ -980,7 +980,7 @@ pub fn reorder_slides(
   let _ = new_slides.remove(from_index)
   new_slides.insert(to_index, moved)
   let updated = edit_presentation(presentation, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("sldIdLst"), fn(list) {
+    @a_edit.update_first(root, @a_edit.by_local_name("sldIdLst"), fn(list) {
       let entries : Array[@xml.Node] = []
       let non_entries : Array[@xml.Node] = []
       for child in list.children {
@@ -1016,7 +1016,7 @@ pub fn reorder_slides(
     })
   })
   {
-    package: updated.package,
+    opc_package: updated.opc_package,
     presentation_part: updated.presentation_part,
     presentation: updated.presentation,
     slides: new_slides,
@@ -1050,72 +1050,72 @@ pub fn add_connector(
     local_name: "xfrm",
     ns: Some("http://schemas.openxmlformats.org/drawingml/2006/main"),
   }
-  let off = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "off"),
-      @edit.unprefixed_attribute("x", x.to_string()),
+  let off = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "off"),
+      @a_edit.unprefixed_attribute("x", x.to_string()),
     ),
-    @edit.unprefixed_attribute("y", y.to_string()),
+    @a_edit.unprefixed_attribute("y", y.to_string()),
   )
-  let ext = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "ext"),
-      @edit.unprefixed_attribute("cx", w.to_string()),
+  let ext = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "ext"),
+      @a_edit.unprefixed_attribute("cx", w.to_string()),
     ),
-    @edit.unprefixed_attribute("cy", h.to_string()),
+    @a_edit.unprefixed_attribute("cy", h.to_string()),
   )
-  let xfrm = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(a_qn, "xfrm"),
+  let xfrm = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(a_qn, "xfrm"),
       @xml.Node::Element(off),
     ),
     @xml.Node::Element(ext),
   )
-  let prst_geom = @edit.append_child(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "prstGeom"),
-      @edit.unprefixed_attribute("prst", prst),
+  let prst_geom = @a_edit.append_child(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "prstGeom"),
+      @a_edit.unprefixed_attribute("prst", prst),
     ),
-    @xml.Node::Element(@edit.empty_element(a_qn, "avLst")),
+    @xml.Node::Element(@a_edit.empty_element(a_qn, "avLst")),
   )
-  let sp_pr = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(p_qn, "spPr"),
+  let sp_pr = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(p_qn, "spPr"),
       @xml.Node::Element(xfrm),
     ),
     @xml.Node::Element(prst_geom),
   )
   // §19.3.1.12 / §20.4.2.5 — cNvPr/@id unique per slide.
   let cxn_id = next_drawing_id_for_slide(presentation, slide_index)
-  let c_nv_pr = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(p_qn, "cNvPr"),
-      @edit.unprefixed_attribute("id", cxn_id.to_string()),
+  let c_nv_pr = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(p_qn, "cNvPr"),
+      @a_edit.unprefixed_attribute("id", cxn_id.to_string()),
     ),
-    @edit.unprefixed_attribute("name", "Connector " + cxn_id.to_string()),
+    @a_edit.unprefixed_attribute("name", "Connector " + cxn_id.to_string()),
   )
-  let c_nv_cxn_sp_pr = @edit.empty_element(p_qn, "cNvCxnSpPr")
-  let nv_pr = @edit.empty_element(p_qn, "nvPr")
-  let nv_cxn_sp_pr = @edit.append_child(
-    @edit.append_child(
-      @edit.append_child(
-        @edit.empty_element(p_qn, "nvCxnSpPr"),
+  let c_nv_cxn_sp_pr = @a_edit.empty_element(p_qn, "cNvCxnSpPr")
+  let nv_pr = @a_edit.empty_element(p_qn, "nvPr")
+  let nv_cxn_sp_pr = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(p_qn, "nvCxnSpPr"),
         @xml.Node::Element(c_nv_pr),
       ),
       @xml.Node::Element(c_nv_cxn_sp_pr),
     ),
     @xml.Node::Element(nv_pr),
   )
-  let cxn_sp = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(p_qn, "cxnSp"),
+  let cxn_sp = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(p_qn, "cxnSp"),
       @xml.Node::Element(nv_cxn_sp_pr),
     ),
     @xml.Node::Element(sp_pr),
   )
   edit_slide(presentation, slide_index, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("spTree"), fn(sp_tree) {
-      @edit.append_child(sp_tree, @xml.Node::Element(cxn_sp))
+    @a_edit.update_first(root, @a_edit.by_local_name("spTree"), fn(sp_tree) {
+      @a_edit.append_child(sp_tree, @xml.Node::Element(cxn_sp))
     })
   })
 }
@@ -1139,33 +1139,33 @@ pub fn set_slide_background(
     ns: Some("http://schemas.openxmlformats.org/drawingml/2006/main"),
   }
   // <a:srgbClr val="HEX"/>
-  let srgb = @edit.set_attribute(
-    @edit.empty_element(a_qn, "srgbClr"),
-    @edit.unprefixed_attribute("val", hex),
+  let srgb = @a_edit.set_attribute(
+    @a_edit.empty_element(a_qn, "srgbClr"),
+    @a_edit.unprefixed_attribute("val", hex),
   )
   // <a:solidFill><a:srgbClr/></a:solidFill>
-  let solid_fill = @edit.append_child(
-    @edit.empty_element(a_qn, "solidFill"),
+  let solid_fill = @a_edit.append_child(
+    @a_edit.empty_element(a_qn, "solidFill"),
     @xml.Node::Element(srgb),
   )
   // <p:bgPr><a:solidFill/></p:bgPr>
-  let bg_pr = @edit.append_child(
-    @edit.empty_element(p_qn, "bgPr"),
+  let bg_pr = @a_edit.append_child(
+    @a_edit.empty_element(p_qn, "bgPr"),
     @xml.Node::Element(solid_fill),
   )
   // <p:bg><p:bgPr/></p:bg>
-  let bg = @edit.append_child(
-    @edit.empty_element(p_qn, "bg"),
+  let bg = @a_edit.append_child(
+    @a_edit.empty_element(p_qn, "bg"),
     @xml.Node::Element(bg_pr),
   )
   edit_slide(presentation, slide_index, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("cSld"), fn(c_sld) {
+    @a_edit.update_first(root, @a_edit.by_local_name("cSld"), fn(c_sld) {
       // Replace existing <p:bg> if present, else insert at position 0.
-      let hits = @edit.direct_children(c_sld, @edit.by_local_name("bg"))
+      let hits = @a_edit.direct_children(c_sld, @a_edit.by_local_name("bg"))
       if hits.length() == 0 {
-        @edit.insert_child(c_sld, 0, @xml.Node::Element(bg))
+        @a_edit.insert_child(c_sld, 0, @xml.Node::Element(bg))
       } else {
-        @edit.replace_children(c_sld, @edit.by_local_name("bg"), bg)
+        @a_edit.replace_children(c_sld, @a_edit.by_local_name("bg"), bg)
       }
     })
   })
@@ -1199,7 +1199,7 @@ pub fn set_slide_layout(
   let slide_part_name = presentation.slides[slide_index].name
   let layout_part_name = presentation.slide_layouts[layout_index].name
   let existing_rels = match
-    presentation.package.relationships(slide_part_name) {
+    presentation.opc_package.relationships(slide_part_name) {
     Some(rs) => rs.relationships
     None => []
   }
@@ -1214,7 +1214,7 @@ pub fn set_slide_layout(
   let mut max_rid = 0
   for r in existing_rels {
     if r.id.has_prefix("rId") {
-      let parsed = Some(@strconv.parse_int(r.id[3:].to_owned())) catch {
+      let parsed = Some(@string.parse_int(r.id[3:].to_owned())) catch {
         _ => None
       }
       match parsed {
@@ -1236,8 +1236,8 @@ pub fn set_slide_layout(
   let pkg2 = try {
     let without_old = match existing_rid {
       Some(rid) =>
-        presentation.package.remove_relationship(slide_part_name, rid)
-      None => presentation.package
+        presentation.opc_package.remove_relationship(slide_part_name, rid)
+      None => presentation.opc_package
     }
     without_old.with_relationship(
       slide_part_name, new_rid, "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
@@ -1276,7 +1276,7 @@ pub fn append_text_to_slide(
   let slide_elt = presentation.slides[slide_index].value.element
   // Confirm that at least one <txBody> exists before mutating, so the
   // helper raises rather than silently no-oping on shape-less slides.
-  if @edit.find_first(slide_elt, @edit.by_local_name("txBody")) is None {
+  if @a_edit.find_first(slide_elt, @a_edit.by_local_name("txBody")) is None {
     raise @pml_context.OpenError(
       kind="UnsupportedFeature",
       path="slide",
@@ -1284,7 +1284,7 @@ pub fn append_text_to_slide(
     )
   }
   edit_slide(presentation, slide_index, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("txBody"), fn(tx_body) {
+    @a_edit.update_first(root, @a_edit.by_local_name("txBody"), fn(tx_body) {
       let (a_prefix, a_ns) = infer_drawingml_qname_source(tx_body)
       let template_qn : @xml.QName = {
         prefix: a_prefix,
@@ -1294,27 +1294,27 @@ pub fn append_text_to_slide(
       // §22.9.2.2 ST_String / XML 1.0 §3.3.3 — preserve
       // whitespace in the appended text when it has leading or
       // trailing ASCII whitespace.
-      let t_base = @edit.empty_element(template_qn, "t")
+      let t_base = @a_edit.empty_element(template_qn, "t")
       let t_styled = if needs_xml_space_preserve(text) {
         let xml_qn : @xml.QName = {
           prefix: Some("xml"),
           local_name: "space",
           ns: Some("http://www.w3.org/XML/1998/namespace"),
         }
-        @edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
+        @a_edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
       } else {
         t_base
       }
-      let t = @edit.append_child(t_styled, @xml.Node::Text(text))
-      let r = @edit.append_child(
-        @edit.empty_element(template_qn, "r"),
+      let t = @a_edit.append_child(t_styled, @xml.Node::Text(text))
+      let r = @a_edit.append_child(
+        @a_edit.empty_element(template_qn, "r"),
         @xml.Node::Element(t),
       )
-      let p = @edit.append_child(
-        @edit.empty_element(template_qn, "p"),
+      let p = @a_edit.append_child(
+        @a_edit.empty_element(template_qn, "p"),
         @xml.Node::Element(r),
       )
-      @edit.append_child(tx_body, @xml.Node::Element(p))
+      @a_edit.append_child(tx_body, @xml.Node::Element(p))
     })
   })
 }
@@ -1350,7 +1350,7 @@ pub fn edit_slide(
     i = i + 1
   }
   {
-    package: presentation.package,
+    opc_package: presentation.opc_package,
     presentation_part: presentation.presentation_part,
     presentation: presentation.presentation,
     slides: new_slides,
@@ -1372,7 +1372,7 @@ pub fn edit_presentation(
   let new_element = transform(presentation.presentation.element)
   let new_presentation = @pml.CT_Presentation::new(new_element)
   {
-    package: presentation.package,
+    opc_package: presentation.opc_package,
     presentation_part: presentation.presentation_part,
     presentation: new_presentation,
     slides: presentation.slides,
@@ -1387,10 +1387,10 @@ pub fn edit_presentation(
 /// with_relationship calls.
 pub fn with_package(
   presentation : Presentation,
-  package : @opc.Package,
+  opc_package : @opc.Package,
 ) -> Presentation {
   {
-    package,
+    opc_package,
     presentation_part: presentation.presentation_part,
     presentation: presentation.presentation,
     slides: presentation.slides,
@@ -1422,7 +1422,7 @@ pub fn append_slide(
     let suffix = ".xml"
     if name.has_prefix(prefix) && name.has_suffix(suffix) {
       let middle = name[prefix.length():name.length() - suffix.length()].to_owned()
-      let parsed = Some(@strconv.parse_int(middle)) catch { _ => None }
+      let parsed = Some(@string.parse_int(middle)) catch { _ => None }
       match parsed {
         Some(n) => if n > max_index { max_index = n }
         None => ()
@@ -1499,14 +1499,14 @@ pub fn append_slide(
 
   // Compute a fresh relationship Id for the presentation rels.
   let existing_rels = match
-    presentation.package.relationships(presentation.presentation_part) {
+    presentation.opc_package.relationships(presentation.presentation_part) {
     Some(rs) => rs.relationships
     None => []
   }
   let mut max_rid = 0
   for r in existing_rels {
     if r.id.has_prefix("rId") {
-      let parsed = Some(@strconv.parse_int(r.id[3:].to_owned())) catch {
+      let parsed = Some(@string.parse_int(r.id[3:].to_owned())) catch {
         _ => None
       }
       match parsed {
@@ -1519,7 +1519,7 @@ pub fn append_slide(
 
   // Update the OPC package: new part, content-type override, rel.
   let pkg2 = try {
-    let pkg_with_part = presentation.package.add_part(
+    let pkg_with_part = presentation.opc_package.add_part(
       new_part_name, "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
       sld_bytes,
     )
@@ -1549,7 +1549,7 @@ pub fn append_slide(
   for entry in existing_entries {
     for attr in entry.element.attributes {
       if attr.name.local_name == "id" && attr.name.prefix is None {
-        let parsed = Some(@strconv.parse_int(attr.value)) catch { _ => None }
+        let parsed = Some(@string.parse_int(attr.value)) catch { _ => None }
         match parsed {
           Some(v) => if v > max_sid { max_sid = v }
           None => ()
@@ -1643,7 +1643,7 @@ pub fn append_slide(
   }
   new_slides.push(new_slide_part)
   {
-    package: pkg2,
+    opc_package: pkg2,
     presentation_part: presentation.presentation_part,
     presentation: new_presentation,
     slides: new_slides,
@@ -1674,7 +1674,7 @@ pub fn remove_slide(
   let target_name = target.name
   // Resolve the rel Id that points to this slide.
   let existing_rels = match
-    presentation.package.relationships(presentation.presentation_part) {
+    presentation.opc_package.relationships(presentation.presentation_part) {
     Some(rs) => rs.relationships
     None => []
   }
@@ -1752,11 +1752,11 @@ pub fn remove_slide(
   let pkg2 = try {
     let pkg_no_rel = match target_rid {
       Some(rid) =>
-        presentation.package.remove_relationship(
+        presentation.opc_package.remove_relationship(
           presentation.presentation_part,
           rid,
         )
-      None => presentation.package
+      None => presentation.opc_package
     }
     pkg_no_rel.remove_part(target_name)
   } catch {
@@ -1776,7 +1776,7 @@ pub fn remove_slide(
     i = i + 1
   }
   {
-    package: pkg2,
+    opc_package: pkg2,
     presentation_part: presentation.presentation_part,
     presentation: new_presentation,
     slides: new_slides,
@@ -1796,33 +1796,33 @@ fn patch_shape_xfrm(
   h : Int,
 ) -> @xml.Element {
   // Build off/ext.
-  let off = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "off"),
-      @edit.unprefixed_attribute("x", x.to_string()),
+  let off = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "off"),
+      @a_edit.unprefixed_attribute("x", x.to_string()),
     ),
-    @edit.unprefixed_attribute("y", y.to_string()),
+    @a_edit.unprefixed_attribute("y", y.to_string()),
   )
-  let ext = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "ext"),
-      @edit.unprefixed_attribute("cx", w.to_string()),
+  let ext = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "ext"),
+      @a_edit.unprefixed_attribute("cx", w.to_string()),
     ),
-    @edit.unprefixed_attribute("cy", h.to_string()),
+    @a_edit.unprefixed_attribute("cy", h.to_string()),
   )
-  let xfrm = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(a_qn, "xfrm"),
+  let xfrm = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(a_qn, "xfrm"),
       @xml.Node::Element(off),
     ),
     @xml.Node::Element(ext),
   )
-  @edit.update_first(shape, @edit.by_local_name("spPr"), fn(sp_pr) {
-    let xfrm_hits = @edit.direct_children(sp_pr, @edit.by_local_name("xfrm"))
+  @a_edit.update_first(shape, @a_edit.by_local_name("spPr"), fn(sp_pr) {
+    let xfrm_hits = @a_edit.direct_children(sp_pr, @a_edit.by_local_name("xfrm"))
     if xfrm_hits.length() == 0 {
-      @edit.insert_child(sp_pr, 0, @xml.Node::Element(xfrm))
+      @a_edit.insert_child(sp_pr, 0, @xml.Node::Element(xfrm))
     } else {
-      @edit.replace_children(sp_pr, @edit.by_local_name("xfrm"), xfrm)
+      @a_edit.replace_children(sp_pr, @a_edit.by_local_name("xfrm"), xfrm)
     }
   })
 }
@@ -1858,7 +1858,7 @@ fn patch_shape_for_run(
   a_qn : @xml.QName,
   update : (@xml.Element) -> @xml.Element,
 ) -> @xml.Element {
-  @edit.update_first(shape, @edit.by_local_name("txBody"), fn(tx_body) {
+  @a_edit.update_first(shape, @a_edit.by_local_name("txBody"), fn(tx_body) {
     let mut para_counter = 0
     let new_children : Array[@xml.Node] = []
     for child in tx_body.children {
@@ -1900,12 +1900,12 @@ fn patch_paragraph_for_run(
       @xml.Element(e) =>
         if e.name.local_name == "r" {
           if counter == run_index {
-            let r_pr_hits = @edit.direct_children(e, @edit.by_local_name("rPr"))
+            let r_pr_hits = @a_edit.direct_children(e, @a_edit.by_local_name("rPr"))
             let patched = if r_pr_hits.length() == 0 {
-              let new_r_pr = update(@edit.empty_element(a_qn, "rPr"))
-              @edit.insert_child(e, 0, @xml.Node::Element(new_r_pr))
+              let new_r_pr = update(@a_edit.empty_element(a_qn, "rPr"))
+              @a_edit.insert_child(e, 0, @xml.Node::Element(new_r_pr))
             } else {
-              @edit.update_first(e, @edit.by_local_name("rPr"), update)
+              @a_edit.update_first(e, @a_edit.by_local_name("rPr"), update)
             }
             new_children.push(@xml.Node::Element(patched))
           } else {
@@ -1965,9 +1965,10 @@ fn walk_cnv_pr_ids(elt : @xml.Element, on_id : (Int) -> Unit) -> Unit {
   if elt.name.local_name == "cNvPr" {
     for a in elt.attributes {
       if a.name.local_name == "id" {
-        match (try? @strconv.parse_int(a.value)) {
-          Ok(n) => on_id(n)
-          Err(_) => ()
+        try @string.parse_int(a.value) catch {
+          _ => ()
+        } noraise {
+          n => on_id(n)
         }
       }
     }
@@ -1985,5 +1986,5 @@ fn walk_cnv_pr_ids(elt : @xml.Element, on_id : (Int) -> Unit) -> Unit {
 /// predicate in the `@edit` package.  See
 /// `@edit::needs_xml_space_preserve`.
 fn needs_xml_space_preserve(text : String) -> Bool {
-  @edit.needs_xml_space_preserve(text)
+  @a_edit.needs_xml_space_preserve(text)
 }

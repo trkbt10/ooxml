@@ -2206,22 +2206,22 @@ pub(all) struct CT_Members {
   /// @level (xsd:unsignedInt) — optional cache hierarchy level.
   level : Int?
   /// <member>+ (CT_Member) — one or more member entries.
-  member : Array[CT_Member]
+  member_entries : Array[CT_Member]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Members::new(element : @xml.Element) -> CT_Members {
   let count = attr_uint_opt(element, "count")
   let level = attr_uint_opt(element, "level")
-  let member : Array[CT_Member] = []
+  let member_entries : Array[CT_Member] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
       if child_element.name.local_name == "member" {
-        member.push(CT_Member::new(child_element))
+        member_entries.push(CT_Member::new(child_element))
       }
     }
   }
-  { element, count, level, member }
+  { element, count, level, member_entries }
 }
 
 ///|

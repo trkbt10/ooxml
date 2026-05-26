@@ -236,5 +236,5 @@ test "blur grow=\"true\" expands the viewport vs grow=\"false\"" {
   // grow=true widens the viewport.  We don't pin an exact %
   // because the heuristic depends on the rad — just assert it
   // differs from the tight one.
-  assert_true(not(str_grow.contains("x=\"-10%\"")))
+  assert_true(!str_grow.contains("x=\"-10%\""))
 }

@@ -44,8 +44,8 @@ pub fn decode_field_run_sequence(
     for child in run.element.children {
       match child {
         @xml.Element(child_element) => {
-          let local = child_element.name.local_name
-          if local == "fldChar" {
+          let local_name = child_element.name.local_name
+          if local_name == "fldChar" {
             contains_field_marker = true
             let kind = attr(child_element, "fldCharType")
             match kind {
@@ -66,7 +66,7 @@ pub fn decode_field_run_sequence(
               }
               _ => ()
             }
-          } else if local == "instrText" {
+          } else if local_name == "instrText" {
             contains_field_marker = true
             if stack.length() > 0 {
               let top = stack_top(stack)
@@ -95,7 +95,7 @@ pub fn decode_field_run_sequence(
 }
 
 ///|
-struct FieldFrame {
+priv struct FieldFrame {
   instr_buf : StringBuilder
   cached_runs : Array[@domain.CT_R]
   mut past_separate : Bool

@@ -731,7 +731,7 @@ pub(all) struct CT_RevisionHeaders {
   /// @keepChangeHistory (xsd:boolean) — optional, default true.
   keep_change_history : Bool
   /// @protected (xsd:boolean) — optional, default false.
-  protected : Bool
+  is_protected : Bool
   /// @preserveHistory (xsd:unsignedInt) — optional, default 30.
   preserve_history : Int
 } derive(Eq, Debug)
@@ -759,7 +759,7 @@ pub fn CT_RevisionHeaders::new(element : @xml.Element) -> CT_RevisionHeaders {
   let revision_id = attr_uint(element, "revisionId", 0)
   let version = attr_int(element, "version", 1)
   let keep_change_history = attr_bool(element, "keepChangeHistory", true)
-  let protected = attr_bool(element, "protected", false)
+  let is_protected = attr_bool(element, "protected", false)
   let preserve_history = attr_uint(element, "preserveHistory", 30)
   {
     element,
@@ -774,7 +774,7 @@ pub fn CT_RevisionHeaders::new(element : @xml.Element) -> CT_RevisionHeaders {
     revision_id,
     version,
     keep_change_history,
-    protected,
+    is_protected,
     preserve_history,
   }
 }

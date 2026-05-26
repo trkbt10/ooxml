@@ -44,12 +44,12 @@ test "schemeClr looks up the theme palette" {
   let elt = make_elt("schemeClr", [("val", "accent1")], [])
   let scheme : ColorScheme = { "accent1": "4472C4" }
   let ctx : ColorResolveContext = {
-    color_map: Map::new(),
+    color_map: Map([], capacity=0),
     color_map_override: None,
     color_scheme: scheme,
     ph_clr: None,
-    major_font: Map::new(),
-    minor_font: Map::new(),
+    major_font: Map([], capacity=0),
+    minor_font: Map([], capacity=0),
     clamp_overflow_hue: true,
   }
   let rc = resolve_solid_fill(elt, ctx~).unwrap()
@@ -66,8 +66,8 @@ test "schemeClr respects colorMap (tx1 → dk1)" {
     color_map_override: None,
     color_scheme: scheme,
     ph_clr: None,
-    major_font: Map::new(),
-    minor_font: Map::new(),
+    major_font: Map([], capacity=0),
+    minor_font: Map([], capacity=0),
     clamp_overflow_hue: true,
   }
   let rc = resolve_solid_fill(elt, ctx~).unwrap()
@@ -109,8 +109,8 @@ test "alpha 50% is captured" {
 
 ///|
 test "format_resolved_color emits #hex or rgba" {
-  let opaque : ResolvedColor = { hex: "abcdef", alpha: 1.0 }
-  inspect(format_resolved_color(opaque), content="#abcdef")
+  let opaque_color : ResolvedColor = { hex: "abcdef", alpha: 1.0 }
+  inspect(format_resolved_color(opaque_color), content="#abcdef")
   let translucent : ResolvedColor = { hex: "ff0000", alpha: 0.5 }
   // rgba uses integer RGB and double alpha.
   inspect(format_resolved_color(translucent), content="rgba(255, 0, 0, 0.5)")
@@ -173,9 +173,9 @@ test "gray child reduces green to grayscale" {
   let ctx = ColorResolveContext::empty()
   let rc = resolve_solid_fill(elt, ctx~).unwrap()
   // Y = 0.7152 → sRGB byte ≈220 (dc).  All three channels equal.
-  inspect(rc.hex.substring(start=0, end=2), content="dc")
-  inspect(rc.hex.substring(start=2, end=4), content="dc")
-  inspect(rc.hex.substring(start=4, end=6), content="dc")
+  inspect(rc.hex[0:2], content="dc")
+  inspect(rc.hex[2:4], content="dc")
+  inspect(rc.hex[4:6], content="dc")
 }
 
 ///|
@@ -200,10 +200,10 @@ test "blue 25% sets the blue channel" {
   let ctx = ColorResolveContext::empty()
   let rc = resolve_solid_fill(elt, ctx~).unwrap()
   // Red and green untouched.
-  inspect(rc.hex.substring(start=0, end=2), content="80")
-  inspect(rc.hex.substring(start=2, end=4), content="80")
+  inspect(rc.hex[0:2], content="80")
+  inspect(rc.hex[2:4], content="80")
   // Blue ≈ linear_to_srgb(0.25) → 137 (0x89).
-  inspect(rc.hex.substring(start=4, end=6), content="89")
+  inspect(rc.hex[4:6], content="89")
 }
 
 ///|

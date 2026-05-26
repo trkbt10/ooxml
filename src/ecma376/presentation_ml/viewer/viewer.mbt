@@ -68,8 +68,8 @@ pub fn render_svg(
   let ctx = match theme {
     None => ColorResolveContext::empty()
     Some(t) => {
-      let major : Map[String, String] = Map::new()
-      let minor : Map[String, String] = Map::new()
+      let major : Map[String, String] = Map([], capacity=0)
+      let minor : Map[String, String] = Map([], capacity=0)
       let mj = t.theme_elements.font_scheme.major_font
       major.set("lt", mj.latin.typeface.lexical)
       major.set("ea", mj.ea.typeface.lexical)
@@ -82,7 +82,7 @@ pub fn render_svg(
       // schemeClr lookups (accent1..6, dk1/lt1/dk2/lt2,
       // hlink, folHlink) resolve to concrete sRGB hex strings
       // during fill / stroke / text colour resolution.
-      let color_scheme : Map[String, String] = Map::new()
+      let color_scheme : Map[String, String] = Map([], capacity=0)
       populate_color_scheme(color_scheme, t.theme_elements.clr_scheme)
       // §19.3.1.6 <p:clrMap> on the slide-master remaps the
       // abstract slot names (bg1/tx1/bg2/tx2/accent1..6/hlink/
@@ -219,7 +219,7 @@ pub fn render_svg(
 fn build_color_map_from_chain(
   chain : @ph_resolver.SlideChain?,
 ) -> Map[String, String] {
-  let map : Map[String, String] = Map::new()
+  let map : Map[String, String] = Map([], capacity=0)
   match chain {
     None => return map
     Some(c) => {
@@ -272,7 +272,7 @@ fn build_color_map_override_from_chain(
   match first_child_named(ovr_el, "overrideClrMapping") {
     None => None
     Some(remap) => {
-      let map : Map[String, String] = Map::new()
+      let map : Map[String, String] = Map([], capacity=0)
       populate_color_map_from_element(map, remap)
       Some(map)
     }
@@ -392,7 +392,7 @@ fn slide_transition_metadata(
 
 ///|
 /// §19.5.50 CT_SlideTransitionEffect — return the spec lexical
-/// name (matching the XML local element name) for each of the
+/// name (matching the XML local_name element name) for each of the
 /// 22 preset transitions so downstream consumers can dispatch.
 fn transition_effect_name(eff : @domain.CT_SlideTransitionEffect) -> String {
   match eff {
@@ -514,7 +514,7 @@ fn extract_color_scheme_hex(c : @a.CT_Color) -> String? {
           // get_color_name_to_hex returns `#rrggbb`; strip the
           // leading `#` to match the scheme map's storage format.
           if hex.length() == 7 && hex.code_unit_at(0).to_int() == 0x23 {
-            return Some(hex.substring(start=1).to_lower())
+            return Some(hex[1:].to_owned().to_lower())
           }
           return Some(hex.to_lower())
         }
@@ -738,7 +738,7 @@ fn resolve_ph_clr_from_bg_ref(
 /// the spec's `phClr` lexical form (Annex A.4.1 ST_HexColorRGB).
 fn strip_hash(hex : String) -> String {
   if hex.length() > 0 && hex.code_unit_at(0).to_int() == 0x23 {
-    hex.substring(start=1)
+    hex[1:].to_owned()
   } else {
     hex
   }
@@ -874,9 +874,10 @@ fn resolve_fill_ref_template(
     Some(v) => v
     None => return None
   }
-  let idx = match (try? @strconv.parse_int(idx_str)) {
-    Ok(n) => n
-    Err(_) => return None
+  let idx = try @string.parse_int(idx_str) catch {
+    _ => return None
+  } noraise {
+    n => n
   }
   if idx <= 0 {
     return None
@@ -917,9 +918,10 @@ fn resolve_effect_ref_template(
     Some(v) => v
     None => return None
   }
-  let idx = match (try? @strconv.parse_int(idx_str)) {
-    Ok(n) => n
-    Err(_) => return None
+  let idx = try @string.parse_int(idx_str) catch {
+    _ => return None
+  } noraise {
+    n => n
   }
   if idx <= 0 {
     return None
@@ -930,27 +932,6 @@ fn resolve_effect_ref_template(
     Some(entries[style_index].element)
   } else {
     None
-  }
-}
-
-///|
-/// §20.1.4.1.6 `<a:fontRef @idx>` — fontRef has no theme list to
-/// index into; the `@idx` attribute is an ST_FontCollectionIndex
-/// enum (`major`, `minor`, `none`).  Returns the resolved
-/// typeface from ctx.major_font / ctx.minor_font.
-fn resolve_font_ref_typeface(
-  font_ref : @xml.Element,
-  ctx : ColorResolveContext,
-) -> String? {
-  match attr_value(font_ref, "idx") {
-    Some("major") => ctx.major_font.get("lt")
-    Some("minor") => ctx.minor_font.get("lt")
-    // §20.1.10.16 ST_FontCollectionIndex — `none` is the
-    // spec-defined "no font reference"; treat as None.
-    Some("none") => None
-    // Schema violation — fall through to None.
-    Some(_) => None
-    None => None
   }
 }
 
@@ -970,9 +951,10 @@ fn resolve_ln_ref_template(
     Some(v) => v
     None => return None
   }
-  let idx = match (try? @strconv.parse_int(idx_str)) {
-    Ok(n) => n
-    Err(_) => return None
+  let idx = try @string.parse_int(idx_str) catch {
+    _ => return None
+  } noraise {
+    n => n
   }
   if idx <= 0 {
     return None
@@ -998,9 +980,10 @@ fn resolve_bg_ref_template(
     Some(v) => v
     None => return None
   }
-  let idx = match (try? @strconv.parse_int(idx_str)) {
-    Ok(n) => n
-    Err(_) => return None
+  let idx = try @string.parse_int(idx_str) catch {
+    _ => return None
+  } noraise {
+    n => n
   }
   if idx <= 0 {
     return None
@@ -1197,10 +1180,10 @@ fn resolve_shape_with_chain(
         shape
       } else {
         let typed = @domain.CT_Shape::new(shape)
-        let resolved = match
-          (try? @ph_resolver.resolve_placeholder(typed, ch)) {
-          Ok(r) => r
-          Err(_) => return shape
+        let resolved = try @ph_resolver.resolve_placeholder(typed, ch) catch {
+          _ => return shape
+        } noraise {
+          r => r
         }
         match @ph_resolver.synthesize_resolved_shape(resolved) {
           Some(merged) => merged
@@ -1257,9 +1240,10 @@ fn render_layout_only_shapes(
       continue
     }
     // Construct a synthetic ResolvedShape with no slide layer.
-    let resolved = match (try? layout_only_resolve(layout_shape, chain)) {
-      Ok(r) => r
-      Err(_) => continue
+    let resolved = try layout_only_resolve(layout_shape, chain) catch {
+      _ => continue
+    } noraise {
+      r => r
     }
     match @ph_resolver.synthesize_resolved_shape(resolved) {
       Some(merged) =>
@@ -1632,9 +1616,9 @@ fn render_sp_shape_svg(
   }
   // §20.1.8.50 reflection — emitted BEFORE the shape so the mirrored
   // clone sits behind / below the original (the outer <g>'s
-  // `translate(x, y)` puts the local origin at the shape's top-
+  // `translate(x, y)` puts the local_name origin at the shape's top-
   // left; the reflection helper's `matrix(1 0 0 -1 0 2h+dist)`
-  // mirrors the path's local y-axis so the clone lands flush
+  // mirrors the path's local_name y-axis so the clone lands flush
   // underneath).  SVG filter primitives cannot mirror the source
   // alone — this is the only spec-faithful place to add the
   // mirrored copy.
@@ -1770,8 +1754,8 @@ fn build_sp_style_metadata(shape : @xml.Element) -> Array[@xml.Attribute] {
     Some(s) => s
   }
   let attrs : Array[@xml.Attribute] = []
-  let read_ref = fn(local : String, attr_name : String) -> Unit {
-    match first_child_named(style, local) {
+  let read_ref = fn(local_name : String, attr_name : String) -> Unit {
+    match first_child_named(style, local_name) {
       None => ()
       Some(el) =>
         match attr_value(el, "idx") {
@@ -1903,12 +1887,12 @@ fn nv_media_overlay_svg(
         }
       }
   }
-  if not(has_audio) &&
-    not(has_video) &&
-    not(has_quicktime) &&
-    not(has_wav) &&
-    not(has_hlink_click) &&
-    not(has_hlink_hover) {
+  if !(has_audio) &&
+    !(has_video) &&
+    !(has_quicktime) &&
+    !(has_wav) &&
+    !(has_hlink_click) &&
+    !(has_hlink_hover) {
     return []
   }
   // Glyph size: 12% of the smaller shape dimension, capped to a
@@ -2008,7 +1992,7 @@ fn nv_media_overlay_svg(
         [
           @markup.attr(
             "class",
-            if has_hlink_hover && not(has_hlink_click) {
+            if has_hlink_hover && !(has_hlink_click) {
               "ooxml-hlink-hover-marker"
             } else {
               "ooxml-hlink-marker"
@@ -2123,9 +2107,10 @@ fn build_line_attrs(
   // and surface the violation upstream by tagging the rendered
   // attribute `data-ooxml-ln-w-source="violation"` so consumers
   // see the parse failure rather than guessing from output.
-  let stroke_width_emu = match (try? @strconv.parse_double(width_str)) {
-    Ok(d) => d
-    Err(_) => 12700.0
+  let stroke_width_emu = try @string.parse_double(width_str) catch {
+    _ => 12700.0
+  } noraise {
+    d => d
   }
   let stroke_width_px = stroke_width_emu
   let marker_attrs = build_line_marker_attrs(
@@ -2557,9 +2542,10 @@ fn apply_body_rotation(
       match attr_value(bp, "rot") {
         None => 0.0
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(d) => d / 60000.0
-            Err(_) => 0.0
+          try @string.parse_double(v) catch {
+            _ => 0.0
+          } noraise {
+            d => d / 60000.0
           }
       }
   }
@@ -2769,7 +2755,7 @@ fn build_layout_input(
   // bullet would emit "2." instead of "1." and a `romanUcPeriod`
   // would emit "II." instead of "I.".  Verified against the the reference renderer PDF
   // reference for `text-bullet-auto-types`.
-  let auto_num_counters : @hashmap.HashMap[String, Int] = @hashmap.new()
+  let auto_num_counters : @hashmap.HashMap[String, Int] = HashMap([], capacity=0)
   let paragraphs : Array[LayoutParagraphInput] = []
   for child in tx_body.children {
     match child {
@@ -2823,9 +2809,10 @@ fn apply_auto_num_counter(
   }
   let start_at = match attr_value(bu_auto, "startAt") {
     Some(v) =>
-      match (try? @strconv.parse_int(v)) {
-        Ok(n) => n
-        Err(_) => 1
+      try @string.parse_int(v) catch {
+        _ => 1
+      } noraise {
+        n => n
       }
     None => 1
   }
@@ -2836,9 +2823,10 @@ fn apply_auto_num_counter(
     Some(pp) =>
       match attr_value(pp, "lvl") {
         Some(v) =>
-          match (try? @strconv.parse_int(v)) {
-            Ok(n) => n
-            Err(_) => 0
+          try @string.parse_int(v) catch {
+            _ => 0
+          } noraise {
+            n => n
           }
         None => 0
       }
@@ -2890,29 +2878,31 @@ fn parse_body_pr_auto_fit(body_pr : @xml.Element) -> AutoFitConfig {
   for child in body_pr.children {
     match child {
       @xml.Element(e) => {
-        let local = e.name.local_name
-        if local == "noAutofit" {
+        let local_name = e.name.local_name
+        if local_name == "noAutofit" {
           return AutoFitNone
         }
-        if local == "spAutoFit" {
+        if local_name == "spAutoFit" {
           return AutoFitShape
         }
-        if local == "normAutofit" {
+        if local_name == "normAutofit" {
           // §22.9.2.X — `fontScale` and `lnSpcReduction` are
           // 1000ths-of-percent (1000..100000).
           let font_scale = match attr_value(e, "fontScale") {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => n / 100000.0
-                Err(_) => 1.0
+              try @string.parse_double(v) catch {
+                _ => 1.0
+              } noraise {
+                n => n / 100000.0
               }
             None => 1.0
           }
           let ln_spc = match attr_value(e, "lnSpcReduction") {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(n) => n / 100000.0
-                Err(_) => 0.0
+              try @string.parse_double(v) catch {
+                _ => 0.0
+              } noraise {
+                n => n / 100000.0
               }
             None => 0.0
           }
@@ -3022,9 +3012,10 @@ fn build_paragraph_input(
     Some(pp) =>
       match attr_value(pp, "lvl") {
         Some(v) =>
-          match (try? @strconv.parse_int(v)) {
-            Ok(n) => if n < 0 { 0 } else { n }
-            Err(_) => 0
+          try @string.parse_int(v) catch {
+            _ => 0
+          } noraise {
+            n => if n < 0 { 0 } else { n }
           }
         None => 0
       }
@@ -3176,9 +3167,10 @@ fn build_paragraph_input(
       match attr_value(eppr, "sz") {
         None => None
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(d) => Some(d / 100.0)
-            Err(_) => None
+          try @string.parse_double(v) catch {
+            _ => None
+          } noraise {
+            d => Some(d / 100.0)
           }
       }
   }
@@ -3238,9 +3230,10 @@ fn p_pr_emu_with_lvl(
     Some(d) =>
       match attr_value(d, attr_name) {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => return n
-            Err(_) => ()
+          try @string.parse_double(v) catch {
+            _ => ()
+          } noraise {
+            n => return n
           }
         None => ()
       }
@@ -3251,9 +3244,10 @@ fn p_pr_emu_with_lvl(
     Some(l) =>
       match attr_value(l, attr_name) {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => n
-            Err(_) => fallback
+          try @string.parse_double(v) catch {
+            _ => fallback
+          } noraise {
+            n => n
           }
         None => fallback
       }
@@ -3316,9 +3310,10 @@ fn parse_spc_line(p_pr : @xml.Element) -> LineSpacing? {
     Some(pct) =>
       match attr_value(pct, "val") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => return Some(LineSpacingPercent(n / 1000.0))
-            Err(_) => ()
+          try @string.parse_double(v) catch {
+            _ => ()
+          } noraise {
+            n => return Some(LineSpacingPercent(n / 1000.0))
           }
         None => ()
       }
@@ -3328,9 +3323,10 @@ fn parse_spc_line(p_pr : @xml.Element) -> LineSpacing? {
     Some(pts) =>
       match attr_value(pts, "val") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => return Some(LineSpacingPoints(n / 100.0))
-            Err(_) => ()
+          try @string.parse_double(v) catch {
+            _ => ()
+          } noraise {
+            n => return Some(LineSpacingPoints(n / 100.0))
           }
         None => ()
       }
@@ -3345,8 +3341,8 @@ fn parse_spc_line(p_pr : @xml.Element) -> LineSpacing? {
 /// the same `<a:spcPct>` / `<a:spcPts>` choice as `lnSpc` but
 /// returns the resolved point value directly (the layout engine
 /// expects pre/post paragraph spacing in points).
-fn parse_spc_amount_points(p_pr : @xml.Element, local : String) -> Double {
-  let parent = match first_child_named(p_pr, local) {
+fn parse_spc_amount_points(p_pr : @xml.Element, local_name : String) -> Double {
+  let parent = match first_child_named(p_pr, local_name) {
     Some(el) => el
     None => return 0.0
   }
@@ -3354,9 +3350,10 @@ fn parse_spc_amount_points(p_pr : @xml.Element, local : String) -> Double {
     Some(pts) =>
       match attr_value(pts, "val") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => return n / 100.0
-            Err(_) => ()
+          try @string.parse_double(v) catch {
+            _ => ()
+          } noraise {
+            n => return n / 100.0
           }
         None => ()
       }
@@ -3480,9 +3477,10 @@ fn parse_bullet_config(
     Some(el) =>
       match attr_value(el, "val") {
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(n) => n / 100.0
-            Err(_) => 0.0
+          try @string.parse_double(v) catch {
+            _ => 0.0
+          } noraise {
+            n => n / 100.0
           }
         None => 0.0
       }
@@ -3536,7 +3534,7 @@ fn resolve_bullet_inheritance(
   // (`is_break == true`) carry no font metrics worth inheriting.
   let mut source : LayoutSpan? = None
   for s in spans {
-    if not(s.is_break) && s.text.length() > 0 {
+    if !(s.is_break) && s.text.length() > 0 {
       source = Some(s)
       break
     }
@@ -3611,9 +3609,10 @@ fn build_run_span(
   // §17.3.1.36 ST_TextFontSize is in hundredths of a point.
   let font_size_pt = match r_pr_attr("sz") {
     Some(v) =>
-      match (try? @strconv.parse_double(v)) {
-        Ok(d) => d / 100.0
-        Err(_) => default_font_size_pt
+      try @string.parse_double(v) catch {
+        _ => default_font_size_pt
+      } noraise {
+        d => d / 100.0
       }
     None => default_font_size_pt
   }
@@ -3702,9 +3701,10 @@ fn build_run_span(
   // emitter can compute the actual shift from font size.
   let baseline_pct = match r_pr_attr("baseline") {
     Some(v) =>
-      match (try? @strconv.parse_double(v)) {
-        Ok(d) => d
-        Err(_) => 0.0
+      try @string.parse_double(v) catch {
+        _ => 0.0
+      } noraise {
+        d => d
       }
     None => 0.0
   }
@@ -3719,9 +3719,10 @@ fn build_run_span(
   // converted to CSS pixels via PT_TO_PX.
   let letter_spacing = match r_pr_attr("spc") {
     Some(v) =>
-      match (try? @strconv.parse_double(v)) {
-        Ok(d) => d / 100.0 * @glyph.pt_to_px
-        Err(_) => 0.0
+      try @string.parse_double(v) catch {
+        _ => 0.0
+      } noraise {
+        d => d / 100.0 * @glyph.pt_to_px
       }
     None => 0.0
   }
@@ -3729,9 +3730,10 @@ fn build_run_span(
   // activates.
   let kerning : Double? = match r_pr_attr("kern") {
     Some(v) =>
-      match (try? @strconv.parse_double(v)) {
-        Ok(d) => Some(d / 100.0)
-        Err(_) => None
+      try @string.parse_double(v) catch {
+        _ => None
+      } noraise {
+        d => Some(d / 100.0)
       }
     None => None
   }
@@ -3811,8 +3813,8 @@ fn build_run_span(
   // §21.1.2.3.10 — typeface lookup honours the same direct → defRPr
   // cascade. We pick whichever rPr-shaped element actually carries
   // the `<a:latin>` / `<a:ea>` / `<a:cs>` / `<a:sym>` child.
-  let typeface_element = fn(local : String) -> @xml.Element? {
-    r_pr_child(local)
+  let typeface_element = fn(local_name : String) -> @xml.Element? {
+    r_pr_child(local_name)
   }
   {
     text: text_buf.to_string(),
@@ -3872,50 +3874,11 @@ fn build_run_span(
 /// come from the placeholder cascade (slide → layout → master →
 /// theme `<p:txStyles>/<p:bodyStyle>/<a:defRPr>`).  This
 /// function does NOT yet walk that cascade — when the typeface
-/// is missing the local rPr we substitute the SVG generic
+/// is missing the local_name rPr we substitute the SVG generic
 /// `serif` family rather than reach back to the master.
 /// Threading the placeholder cascade through every run-property
 /// reader is tracked as Round 7 #235; the spec-neutral fallback
 /// below keeps the renderer deterministic in the meantime.
-fn resolve_run_typeface(
-  r_pr : @xml.Element?,
-  local_name : String,
-  ctx : ColorResolveContext,
-) -> String {
-  // §19.3.1.42 / §20.1.4.1.14 — when the local rPr lacks the
-  // requested typeface element, fall back to the body-text
-  // typeface from the theme's `<a:fontScheme>/<a:minorFont>`
-  // (populated into ctx by `ColorResolveContext::with_font_scheme`).
-  // The `local_name` argument identifies the face kind:
-  //   "latin" → ctx.minor_font["lt"]
-  //   "ea"    → ctx.minor_font["ea"]
-  //   "cs"    → ctx.minor_font["cs"]
-  //   "sym"   → no scheme mapping; use SVG generic `sans-serif`
-  // When the scheme map is empty (no theme part) we keep the
-  // SVG-neutral `sans-serif` fallback (see `presentation_default_
-  // typeface` for why sans-serif, not serif).
-  match resolve_optional_typeface(r_pr, local_name, ctx) {
-    Some(t) => t
-    None => {
-      let face_kind = match local_name {
-        "latin" => "lt"
-        "ea" => "ea"
-        "cs" => "cs"
-        // `sym` and any other face kind have no fontScheme
-        // counterpart per §20.1.4.1.14; fall back to the default.
-        _ => ""
-      }
-      if face_kind != "" {
-        match ctx.minor_font.get(face_kind) {
-          Some(t) => return t
-          None => ()
-        }
-      }
-      presentation_default_typeface()
-    }
-  }
-}
-
 ///|
 /// The fallback typeface when neither the run properties nor the
 /// theme `<a:fontScheme>` supply one.
@@ -3955,34 +3918,6 @@ fn resolve_typeface_element(
   match ColorResolveContext::resolve_theme_typeface(ctx, raw) {
     Some(resolved) => Some(resolved)
     None => Some(raw)
-  }
-}
-
-///|
-/// Optional variant of `resolve_run_typeface` for the script-specific
-/// fallback fields (east-asian / complex-script / symbol). Returns
-/// `None` when the rPr is missing or the typeface child isn't
-/// present. Theme shortcuts are resolved through `ctx.font_scheme`.
-fn resolve_optional_typeface(
-  r_pr : @xml.Element?,
-  local_name : String,
-  ctx : ColorResolveContext,
-) -> String? {
-  let raw : String? = match r_pr {
-    None => None
-    Some(rp) =>
-      match first_child_named(rp, local_name) {
-        None => None
-        Some(face) => attr_value(face, "typeface")
-      }
-  }
-  match raw {
-    None => None
-    Some(t) =>
-      match ColorResolveContext::resolve_theme_typeface(ctx, t) {
-        Some(resolved) => Some(resolved)
-        None => Some(t)
-      }
   }
 }
 
@@ -4252,7 +4187,7 @@ fn build_wavy_underline_path(
     buf.write_string(" ")
     buf.write_string(format_double(center_y))
     x = next_x
-    up = not(up)
+    up = !(up)
   }
   @markup.elem_ns(
     "path",
@@ -4646,30 +4581,30 @@ fn build_justified_text_children(
       for _ in 0..<leading {
         sp_buf.write_char(' ')
       }
-      match
-        (try? @glyph.measure_text_width(
-          sp_buf.to_string(),
-          font_size_pt=span.font_size,
-          letter_spacing_px=span.letter_spacing,
-          family=span.font_family,
-          weight=span.font_weight,
-        )) {
-        Ok(w) => w
-        Err(_) => 0.0
-      }
-    } else {
-      0.0
-    }
-    let word_w = match
-      (try? @glyph.measure_text_width(
-        word_text,
+      try @glyph.measure_text_width(
+        sp_buf.to_string(),
         font_size_pt=span.font_size,
         letter_spacing_px=span.letter_spacing,
         family=span.font_family,
         weight=span.font_weight,
-      )) {
-      Ok(w) => w
-      Err(_) => 0.0
+      ) catch {
+        _ => 0.0
+      } noraise {
+        w => w
+      }
+    } else {
+      0.0
+    }
+    let word_w = try @glyph.measure_text_width(
+      word_text,
+      font_size_pt=span.font_size,
+      letter_spacing_px=span.letter_spacing,
+      family=span.font_family,
+      weight=span.font_weight,
+    ) catch {
+      _ => 0.0
+    } noraise {
+      w => w
     }
     let x_pos = _cursor +
       natural_advance +
@@ -4915,7 +4850,7 @@ fn simple_to_upper(c : Char) -> Char {
   let u = c.to_int()
   // ASCII a..z
   if u >= 0x61 && u <= 0x7A {
-    return Char::from_int(u - 32)
+    return Int::unsafe_to_char(u - 32)
   }
   // Latin-1 Supplement: à..ö (excluding ÷) and ø..þ (excluding ß).
   // ß (U+00DF) intentionally untouched — its uppercase requires
@@ -4923,29 +4858,29 @@ fn simple_to_upper(c : Char) -> Char {
   // case mapping); we leave that to the consumer per spec note on
   // locale-defined folding.
   if u >= 0xE0 && u <= 0xF6 {
-    return Char::from_int(u - 32)
+    return Int::unsafe_to_char(u - 32)
   }
   if u >= 0xF8 && u <= 0xFE {
-    return Char::from_int(u - 32)
+    return Int::unsafe_to_char(u - 32)
   }
   // Latin Extended-A: U+0100..U+0137 alternates lower/upper at odd
   // offsets, so odd code points map back to their preceding even
   // value.
   if u >= 0x0101 && u <= 0x0137 && u % 2 == 1 {
-    return Char::from_int(u - 1)
+    return Int::unsafe_to_char(u - 1)
   }
   // Latin Extended-A: U+0139..U+0148 alternates upper/lower at
   // odd offsets (so lowercase sits on the even slot).
   if u >= 0x013A && u <= 0x0148 && u % 2 == 0 {
-    return Char::from_int(u - 1)
+    return Int::unsafe_to_char(u - 1)
   }
   // Latin Extended-A: U+014A..U+0177 even/odd like the 0100 block.
   if u >= 0x014B && u <= 0x0177 && u % 2 == 1 {
-    return Char::from_int(u - 1)
+    return Int::unsafe_to_char(u - 1)
   }
   // ÿ (U+00FF) → Ÿ (U+0178), one of the few non-contiguous pairs.
   if u == 0xFF {
-    return Char::from_int(0x0178)
+    return Int::unsafe_to_char(0x0178)
   }
   c
 }
@@ -4954,26 +4889,26 @@ fn simple_to_upper(c : Char) -> Char {
 fn simple_to_lower(c : Char) -> Char {
   let u = c.to_int()
   if u >= 0x41 && u <= 0x5A {
-    return Char::from_int(u + 32)
+    return Int::unsafe_to_char(u + 32)
   }
   if u >= 0xC0 && u <= 0xD6 {
-    return Char::from_int(u + 32)
+    return Int::unsafe_to_char(u + 32)
   }
   if u >= 0xD8 && u <= 0xDE {
-    return Char::from_int(u + 32)
+    return Int::unsafe_to_char(u + 32)
   }
   if u >= 0x0100 && u <= 0x0136 && u % 2 == 0 {
-    return Char::from_int(u + 1)
+    return Int::unsafe_to_char(u + 1)
   }
   if u >= 0x0139 && u <= 0x0147 && u % 2 == 1 {
-    return Char::from_int(u + 1)
+    return Int::unsafe_to_char(u + 1)
   }
   if u >= 0x014A && u <= 0x0176 && u % 2 == 0 {
-    return Char::from_int(u + 1)
+    return Int::unsafe_to_char(u + 1)
   }
   // Ÿ (U+0178) → ÿ (U+00FF).
   if u == 0x0178 {
-    return Char::from_int(0xFF)
+    return Int::unsafe_to_char(0xFF)
   }
   c
 }
@@ -5168,9 +5103,10 @@ fn read_src_rect_percent(
         match attr_value(sr, name) {
           None => 0.0
           Some(v) =>
-            match (try? @strconv.parse_double(v)) {
-              Ok(d) => d / 1000.0
-              Err(_) => 0.0
+            try @string.parse_double(v) catch {
+              _ => 0.0
+            } noraise {
+              d => d / 1000.0
             }
         }
       }
@@ -5239,12 +5175,12 @@ fn render_group_svg(
   for child in grp.children {
     match child {
       Element(e) => {
-        let local = e.name.local_name
-        if local == "sp" ||
-          local == "pic" ||
-          local == "grpSp" ||
-          local == "cxnSp" ||
-          local == "graphicFrame" {
+        let local_name = e.name.local_name
+        if local_name == "sp" ||
+          local_name == "pic" ||
+          local_name == "grpSp" ||
+          local_name == "cxnSp" ||
+          local_name == "graphicFrame" {
           let resolved = resolve_shape_with_chain(e, chain)
           for
             n in render_shape_svg(
@@ -5301,8 +5237,8 @@ fn connector_endpoints_attr(cxn : @xml.Element) -> Array[@xml.Attribute] {
   }
   let attrs : Array[@xml.Attribute] = []
   for tag_kv in [("stCxn", "st"), ("endCxn", "end")] {
-    let (local, slug) = tag_kv
-    match first_child_named(parent, local) {
+    let (local_name, slug) = tag_kv
+    match first_child_named(parent, local_name) {
       None => ()
       Some(e) => {
         match attr_value(e, "id") {
@@ -5470,18 +5406,18 @@ fn connector_path_data(sp_pr : @xml.Element?, w : Double, h : Double) -> String 
     Some(pg) =>
       match attr_value(pg, "prst") {
         Some("line") => diagonal
-        Some("bentConnector2") => render_preset_geometry(pg, w, h).or(diagonal)
-        Some("bentConnector3") => render_preset_geometry(pg, w, h).or(diagonal)
-        Some("bentConnector4") => render_preset_geometry(pg, w, h).or(diagonal)
-        Some("bentConnector5") => render_preset_geometry(pg, w, h).or(diagonal)
+        Some("bentConnector2") => render_preset_geometry(pg, w, h).unwrap_or(diagonal)
+        Some("bentConnector3") => render_preset_geometry(pg, w, h).unwrap_or(diagonal)
+        Some("bentConnector4") => render_preset_geometry(pg, w, h).unwrap_or(diagonal)
+        Some("bentConnector5") => render_preset_geometry(pg, w, h).unwrap_or(diagonal)
         Some("curvedConnector2") =>
-          render_preset_geometry(pg, w, h).or(diagonal)
+          render_preset_geometry(pg, w, h).unwrap_or(diagonal)
         Some("curvedConnector3") =>
-          render_preset_geometry(pg, w, h).or(diagonal)
+          render_preset_geometry(pg, w, h).unwrap_or(diagonal)
         Some("curvedConnector4") =>
-          render_preset_geometry(pg, w, h).or(diagonal)
+          render_preset_geometry(pg, w, h).unwrap_or(diagonal)
         Some("curvedConnector5") =>
-          render_preset_geometry(pg, w, h).or(diagonal)
+          render_preset_geometry(pg, w, h).unwrap_or(diagonal)
         // Schema violation — value outside ST_PresetLineGeometryType.
         // Render the corner-to-corner diagonal so the slide
         // still shows a connector; the raw `@prst` survives on
@@ -5870,9 +5806,10 @@ fn parse_emu_attr_or(
   match attr_value(element, name) {
     None => default
     Some(v) =>
-      match (try? @strconv.parse_double(v)) {
-        Ok(d) => d
-        Err(_) => default
+      try @string.parse_double(v) catch {
+        _ => default
+      } noraise {
+        d => d
       }
   }
 }

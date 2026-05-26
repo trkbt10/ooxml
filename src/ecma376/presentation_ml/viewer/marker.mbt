@@ -57,7 +57,7 @@ fn marker_id(
 ) -> String {
   let normalized_hex = if color_hex.length() > 0 &&
     color_hex.code_unit_at(0).to_int() == 35 {
-    color_hex.substring(start=1)
+    color_hex[1:].to_owned()
   } else {
     color_hex
   }

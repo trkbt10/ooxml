@@ -63,9 +63,10 @@ fn split_whitespace(formula : String) -> Array[String] {
 /// evaluation by returning `None` — matching the TS code's `throw`
 /// path with a softer failure mode appropriate for a renderer.
 fn resolve_arg(arg : String, context : GuideContext) -> Double? {
-  match (try? @strconv.parse_double(arg)) {
-    Ok(d) => Some(d)
-    Err(_) => context.get(arg)
+  try @string.parse_double(arg) catch {
+    _ => context.get(arg)
+  } noraise {
+    d => Some(d)
   }
 }
 
@@ -242,7 +243,7 @@ pub fn create_guide_context(
   height : Double,
   adjust_values? : Array[AdjustValue] = [],
 ) -> GuideContext {
-  let ctx : GuideContext = Map::new()
+  let ctx : GuideContext = Map([], capacity=0)
   // Dimensions
   ctx["w"] = width
   ctx["h"] = height

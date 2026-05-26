@@ -204,9 +204,9 @@ fn render_chart_space(
   for ch in plot_area.children {
     match ch {
       @xml.Node::Element(elem) => {
-        let local = elem.name.local_name
+        let local_name = elem.name.local_name
         let payload = render_chart_payload(
-          local, elem, inner_w, inner_h, w, h, ctx, axes,
+          local_name, elem, inner_w, inner_h, w, h, ctx, axes,
         )
         for n in payload {
           inner_nodes.push(n)
@@ -361,8 +361,8 @@ fn collect_series_entries(
   for ch in plot_area.children {
     match ch {
       @xml.Node::Element(elem) => {
-        let local = elem.name.local_name
-        if is_chart_type_local_name(local) {
+        let local_name = elem.name.local_name
+        if is_chart_type_local_name(local_name) {
           for sub in elem.children {
             match sub {
               @xml.Node::Element(se) =>
@@ -390,8 +390,8 @@ fn collect_series_entries(
 /// True for the local names of `<c:plotArea>` chart-type children we
 /// know how to render. Keeps the legend's series scan from including
 /// e.g. `<c:layout>` or `<c:catAx>` chunks.
-fn is_chart_type_local_name(local : String) -> Bool {
-  match local {
+fn is_chart_type_local_name(local_name : String) -> Bool {
+  match local_name {
     "barChart" | "lineChart" | "pieChart" | "doughnutChart" | "scatterChart" =>
       true
     _ => false
@@ -796,7 +796,6 @@ fn legend_label(
 /// axis, otherwise the plot stays "clean" — the fixtures in our catalogue
 /// omit it so the renderer follows suit.
 priv struct AxisGridlineFlags {
-  cat_major : Bool
   val_major : Bool
 }
 
@@ -807,21 +806,16 @@ priv struct AxisGridlineFlags {
 /// Y both numeric); we OR the two `<c:valAx>` flags together because
 /// gridline rendering follows the same code path.
 fn collect_axis_gridline_flags(plot_area : @xml.Element) -> AxisGridlineFlags {
-  let mut cat_major = false
   let mut val_major = false
   for ch in plot_area.children {
     match ch {
       @xml.Node::Element(elem) => {
-        let local = elem.name.local_name
+        let local_name = elem.name.local_name
         let has_grid = match first_child_named(elem, "majorGridlines") {
           Some(_) => true
           None => false
         }
-        if local == "catAx" || local == "dateAx" {
-          if has_grid {
-            cat_major = true
-          }
-        } else if local == "valAx" {
+        if local_name == "valAx" {
           if has_grid {
             val_major = true
           }
@@ -830,7 +824,7 @@ fn collect_axis_gridline_flags(plot_area : @xml.Element) -> AxisGridlineFlags {
       _ => ()
     }
   }
-  { cat_major, val_major }
+  { val_major, }
 }
 
 ///|
@@ -842,7 +836,7 @@ fn collect_axis_gridline_flags(plot_area : @xml.Element) -> AxisGridlineFlags {
 /// frame (constant gutter width regardless of legend reservation).
 /// Unknown types emit nothing.
 fn render_chart_payload(
-  local : String,
+  local_name : String,
   elem : @xml.Element,
   iw : Double,
   ih : Double,
@@ -851,7 +845,7 @@ fn render_chart_payload(
   ctx : ColorResolveContext,
   axes : AxisGridlineFlags,
 ) -> Array[@xml.Node] {
-  match local {
+  match local_name {
     "barChart" => render_bar_chart(elem, iw, ih, fw, fh, ctx, axes)
     "lineChart" => render_line_chart(elem, iw, ih, fw, fh, ctx, axes)
     "pieChart" => render_pie_chart(elem, iw, ih, ctx, hole_percent=None)
@@ -1434,7 +1428,7 @@ fn doughnut_hole_percent(elem : @xml.Element) -> Int {
           } else {
             v[:]
           }
-          let n = parse_int_lenient(trimmed_view.to_string())
+          let n = parse_int_lenient(trimmed_view.to_owned())
           if n <= 0 || n >= 100 {
             10
           } else {

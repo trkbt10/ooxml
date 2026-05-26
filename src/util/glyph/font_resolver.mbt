@@ -47,7 +47,7 @@ pub(all) enum GenericFamily {
   Math
   Emoji
   Fangsong
-} derive(Eq, Hash, Show)
+} derive(Eq, Hash, Debug)
 
 ///|
 /// One entry in a font candidate stack. `Name` is an explicit family
@@ -58,7 +58,7 @@ pub(all) enum GenericFamily {
 pub(all) enum FontStackCandidate {
   Name(String)
   Generic(GenericFamily)
-} derive(Eq, Show)
+} derive(Eq, Debug)
 
 ///|
 /// Resolution request handed to a `FontResolver`.
@@ -79,7 +79,7 @@ pub(all) struct FontFaceRequest {
   weight : Int
   italic : Bool
   embedded_bytes : Bytes?
-} derive(Show)
+} derive(Debug)
 
 ///|
 /// Convenience constructor for the common "single name + weight +
@@ -127,7 +127,7 @@ pub suberror FontUnresolvedError {
     request~ : FontFaceRequest,
     driver_labels~ : Array[String]
   )
-} derive(Show)
+} derive(Debug)
 
 ///|
 /// Pure-function shape every driver exposes. A driver is a struct
@@ -158,15 +158,16 @@ pub fn FontResolver::compose(drivers : Array[FontResolver]) -> FontResolver {
   label_buf.write_string(")")
   {
     label: label_buf.to_string(),
-    resolve: fn(request) {
+    resolve: (request) => {
       let collected_labels : Array[String] = []
       for d in drivers {
-        match (try? (d.resolve)(request)) {
-          Ok(r) => return r
-          Err(FontUnresolvedError(driver_labels=labels, ..)) =>
+        try (d.resolve)(request) catch {
+          FontUnresolvedError(driver_labels=labels, ..) =>
             for l in labels {
               collected_labels.push(l)
             }
+        } noraise {
+          r => return r
         }
       }
       raise FontUnresolvedError(request~, driver_labels=collected_labels)
@@ -191,7 +192,7 @@ pub fn FontResolver::in_memory(faces : Map[String, Bytes]) -> FontResolver {
   }
   {
     label: "in-memory",
-    resolve: fn(request) {
+    resolve: (request) => {
       match request.embedded_bytes {
         Some(b) =>
           return { bytes: b, ttc_index: None, source_label: "embedded" }
@@ -229,13 +230,13 @@ pub fn parse_font_stack(raw : String) -> Array[FontStackCandidate] {
   }
   let tokens = split_outside_quotes(raw)
   for tok in tokens {
-    let trimmed_tok = tok.trim(chars=" \t\r\n").to_string()
+    let trimmed_tok = tok.trim(chars=" \t\r\n").to_owned()
     let stripped = strip_quotes(trimmed_tok)
     if stripped.length() == 0 {
       continue
     }
     let (was_quoted, _) = quote_state(trimmed_tok)
-    if not(was_quoted) {
+    if !(was_quoted) {
       match generic_from_keyword(stripped) {
         Some(g) => {
           out.push(Generic(g))
@@ -290,7 +291,7 @@ fn quote_state(value : String) -> (Bool, String) {
   let first = chars[0]
   let last = chars[chars.length() - 1]
   if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
-    return (true, value.substring(start=1, end=value.length() - 1).to_string())
+    return (true, value[1:value.length() - 1].to_owned())
   }
   (false, value)
 }
@@ -345,12 +346,12 @@ pub fn lowercase_ascii(s : String) -> String {
 /// `"noto sans"` key the same way.
 pub fn normalize_family(name : String) -> String {
   let lower = lowercase_ascii(name)
-  let trimmed = lower.trim(chars=" \t\r\n").to_string()
+  let trimmed = lower.trim(chars=" \t\r\n").to_owned()
   let buf = StringBuilder::new()
   let prev_space : Ref[Bool] = { val: false }
   for c in trimmed {
     if c == ' ' || c == '\t' {
-      if not(prev_space.val) {
+      if !(prev_space.val) {
         buf.write_char(' ')
         prev_space.val = true
       }

@@ -43,7 +43,7 @@ test "parse_font_stack tokenises a CSS font-family value" {
   }
   // Third candidate: Generic(SansSerif).
   match stack[2] {
-    Generic(g) => inspect(g, content="SansSerif")
+    Generic(g) => @debug.debug_inspect(g, content="SansSerif")
     Name(_) => fail("expected Generic for third candidate")
   }
 }
@@ -64,10 +64,11 @@ test "FontResolver::in_memory raises when family is absent" {
     Map([("Noto Sans", b"FAKE")], capacity=1),
   )
   let request = FontFaceRequest::of_name("Helvetica")
-  match (try? (resolver.resolve)(request)) {
-    Ok(_) => fail("expected FontUnresolvedError")
-    Err(FontUnresolvedError(driver_labels=labels, ..)) =>
+  try (resolver.resolve)(request) catch {
+    FontUnresolvedError(driver_labels=labels, ..) =>
       inspect(labels.length(), content="1")
+  } noraise {
+    _ => fail("expected FontUnresolvedError")
   }
 }
 

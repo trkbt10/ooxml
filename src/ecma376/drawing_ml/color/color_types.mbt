@@ -23,11 +23,11 @@ pub fn CT_ColorScheme::new(
   let mut has_ext = false
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
-      let local = child_element.name.local_name
-      if local == "extLst" {
+      let local_name = child_element.name.local_name
+      if local_name == "extLst" {
         has_ext = true
       } else {
-        slot_names.push(local)
+        slot_names.push(local_name)
       }
     }
   }
@@ -261,9 +261,9 @@ pub fn CT_ColorMRU::new(element : @xml.Element) -> CT_ColorMRU {
   let color_child_names : Array[String] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
-      let local = child_element.name.local_name
-      if is_color_choice_name(local) {
-        color_child_names.push(local)
+      let local_name = child_element.name.local_name
+      if is_color_choice_name(local_name) {
+        color_child_names.push(local_name)
       }
     }
   }
@@ -345,9 +345,9 @@ pub fn CT_SolidColorFillProperties::new(
   let mut color : String? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
-      let local = child_element.name.local_name
-      if is_color_choice_name(local) {
-        color = Some(local)
+      let local_name = child_element.name.local_name
+      if is_color_choice_name(local_name) {
+        color = Some(local_name)
       }
     }
   }
@@ -753,8 +753,8 @@ fn require_mapping(
 }
 
 ///|
-fn is_color_choice_name(local : String) -> Bool {
-  match local {
+fn is_color_choice_name(local_name : String) -> Bool {
+  match local_name {
     "scrgbClr" | "srgbClr" | "hslClr" | "sysClr" | "schemeClr" | "prstClr" =>
       true
     _ => false
@@ -768,9 +768,9 @@ fn required_color_choice(
 ) -> String raise SchemaViolation {
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
-      let local = child_element.name.local_name
-      if is_color_choice_name(local) {
-        return local
+      let local_name = child_element.name.local_name
+      if is_color_choice_name(local_name) {
+        return local_name
       }
     }
   }

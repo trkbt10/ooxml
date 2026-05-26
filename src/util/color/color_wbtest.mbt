@@ -4,49 +4,61 @@
 ///|
 test "hex_to_rgb 6-digit form" {
   let c = hex_to_rgb("FF0000")
-  inspect(c.r, content="255")
-  inspect(c.g, content="0")
-  inspect(c.b, content="0")
+  @debug.debug_inspect(c.r, content="255")
+  @debug.debug_inspect(c.g, content="0")
+  @debug.debug_inspect(c.b, content="0")
 }
 
 ///|
 test "hex_to_rgb 3-digit form expands to 6" {
   // #ABC → #AABBCC
   let c = hex_to_rgb("ABC")
-  inspect(c.r, content="170")
-  inspect(c.g, content="187")
-  inspect(c.b, content="204")
+  @debug.debug_inspect(c.r, content="170")
+  @debug.debug_inspect(c.g, content="187")
+  @debug.debug_inspect(c.b, content="204")
 }
 
 ///|
 test "hex_to_rgb strips leading hash" {
   let c = hex_to_rgb("#00FF00")
-  inspect(c.r, content="0")
-  inspect(c.g, content="255")
-  inspect(c.b, content="0")
+  @debug.debug_inspect(c.r, content="0")
+  @debug.debug_inspect(c.g, content="255")
+  @debug.debug_inspect(c.b, content="0")
 }
 
 ///|
 test "to_hex pads single digit" {
-  inspect(to_hex(15.0), content="0f")
-  inspect(to_hex(0.0), content="00")
-  inspect(to_hex(255.0), content="ff")
+  @debug.debug_inspect(to_hex(15.0), content=(
+    #|"0f"
+  ))
+  @debug.debug_inspect(to_hex(0.0), content=(
+    #|"00"
+  ))
+  @debug.debug_inspect(to_hex(255.0), content=(
+    #|"ff"
+  ))
 }
 
 ///|
 test "rgb_to_hex round trips primary colors" {
-  inspect(rgb_to_hex(255.0, 0.0, 0.0), content="ff0000")
-  inspect(rgb_to_hex(0.0, 255.0, 0.0), content="00ff00")
-  inspect(rgb_to_hex(0.0, 0.0, 255.0), content="0000ff")
+  @debug.debug_inspect(rgb_to_hex(255.0, 0.0, 0.0), content=(
+    #|"ff0000"
+  ))
+  @debug.debug_inspect(rgb_to_hex(0.0, 255.0, 0.0), content=(
+    #|"00ff00"
+  ))
+  @debug.debug_inspect(rgb_to_hex(0.0, 0.0, 255.0), content=(
+    #|"0000ff"
+  ))
 }
 
 ///|
 test "rgb_to_hsl basic conversions" {
   // Pure red: H=0, S=1, L=0.5
   let red = rgb_to_hsl(255.0, 0.0, 0.0)
-  inspect(red.h, content="0")
-  inspect(red.s, content="1")
-  inspect(red.l, content="0.5")
+  @debug.debug_inspect(red.h, content="0")
+  @debug.debug_inspect(red.s, content="1")
+  @debug.debug_inspect(red.l, content="0.5")
 }
 
 ///|
@@ -57,12 +69,16 @@ test "apply_shade 50% in linear RGB" {
   // ≈ 188 (= 0xbc).  This matches PowerPoint, whereas a naive
   // sRGB-space multiply yields 128 (= 0x80) which is visibly darker
   // than the reference.
-  inspect(apply_shade("ff0000", 0.5), content="bc0000")
+  @debug.debug_inspect(apply_shade("ff0000", 0.5), content=(
+    #|"bc0000"
+  ))
 }
 
 ///|
 test "apply_shade 0 yields black" {
-  inspect(apply_shade("ff0000", 0.0), content="000000")
+  @debug.debug_inspect(apply_shade("ff0000", 0.0), content=(
+    #|"000000"
+  ))
 }
 
 ///|
@@ -73,23 +89,35 @@ test "apply_tint 50% in linear RGB" {
   //   G_lin=0.0 → 0.0*0.5 + 0.5 = 0.5 → sRGB ≈188 (0xbc)
   // → `ffbcbc`.  The naive sRGB-space formula yields `ff8080`, which
   // is visibly pinker/less luminous than the reference renderer.
-  inspect(apply_tint("ff0000", 0.5), content="ffbcbc")
+  @debug.debug_inspect(apply_tint("ff0000", 0.5), content=(
+    #|"ffbcbc"
+  ))
 }
 
 ///|
 test "named color lookup returns lowercase hex" {
-  inspect(get_color_name_to_hex("red"), content="Some(ff0000)")
-  inspect(get_color_name_to_hex("RED"), content="Some(ff0000)")
-  inspect(get_color_name_to_hex("Black"), content="Some(000000)")
-  inspect(get_color_name_to_hex("rebeccapurple"), content="Some(663399)")
-  inspect(get_color_name_to_hex("not-a-color"), content="None")
+  @debug.debug_inspect(get_color_name_to_hex("red"), content=(
+    #|Some("ff0000")
+  ))
+  @debug.debug_inspect(get_color_name_to_hex("RED"), content=(
+    #|Some("ff0000")
+  ))
+  @debug.debug_inspect(get_color_name_to_hex("Black"), content=(
+    #|Some("000000")
+  ))
+  @debug.debug_inspect(get_color_name_to_hex("rebeccapurple"), content=(
+    #|Some("663399")
+  ))
+  @debug.debug_inspect(get_color_name_to_hex("not-a-color"), content="None")
 }
 
 ///|
 test "hsl_to_hex_string preserves color through round trip" {
   // ff0000 (red) → HSL(0, 1, 0.5) → ff0000
   let hsl = parse_color_to_hsl("ff0000")
-  inspect(hsl_to_hex_string(hsl, false), content="ff0000")
+  @debug.debug_inspect(hsl_to_hex_string(hsl, false), content=(
+    #|"ff0000"
+  ))
 }
 
 ///|
@@ -105,10 +133,16 @@ test "apply_lum_off increases lightness" {
 /// §20.1.2.3.19 hueOff — pure red (H=0°) shifted by +120° lands
 /// at pure green H=120 (S=L unchanged → 00ff00).
 test "apply_hue_off rotates the hue" {
-  inspect(apply_hue_off("ff0000", 120.0), content="00ff00")
-  inspect(apply_hue_off("ff0000", 240.0), content="0000ff")
+  @debug.debug_inspect(apply_hue_off("ff0000", 120.0), content=(
+    #|"00ff00"
+  ))
+  @debug.debug_inspect(apply_hue_off("ff0000", 240.0), content=(
+    #|"0000ff"
+  ))
   // Wraparound: -120° on pure red lands at H=240 → blue.
-  inspect(apply_hue_off("ff0000", -120.0), content="0000ff")
+  @debug.debug_inspect(apply_hue_off("ff0000", -120.0), content=(
+    #|"0000ff"
+  ))
 }
 
 ///|
@@ -121,13 +155,15 @@ test "apply_hue_off rotates the hue" {
 test "apply_hue_off clamp_overflow_hue clamps over-360 hues to red" {
   // +72° stays in-range under both modes.
   let purple_spec = apply_hue_off("4472c4", 72.0)
-  let purple_compat = apply_hue_off("4472c4", 72.0, clamp_overflow_hue=true)
-  inspect(purple_spec, content=purple_compat) // identical when no clamp
+  let _purple_compat = apply_hue_off("4472c4", 72.0, clamp_overflow_hue=true)
+  @debug.debug_inspect(purple_spec, content=(
+    #|"b044c4"
+  )) // identical when no clamp
   // +144° wraps to ~2° in spec mode (red-ish) and clamps to 0°
   // (red) in compat mode.  Both happen to be red on the wheel, so
   // we assert by sampling: compat result has R clearly dominant.
   let red_compat = apply_hue_off("4472c4", 144.0, clamp_overflow_hue=true)
-  inspect(red_compat.length(), content="6")
+  @debug.debug_inspect(red_compat.length(), content="6")
   // +216° wraps to 74° (yellow-green) in spec mode but clamps to
   // red in compat mode — assert the two diverge.
   let yg_spec = apply_hue_off("4472c4", 216.0)
@@ -136,8 +172,8 @@ test "apply_hue_off clamp_overflow_hue clamps over-360 hues to red" {
   // All three over-180° offsets collapse to the SAME hex in compat
   // mode (the clamp pins them all to hue=360°≡0°).
   let red_compat_3 = apply_hue_off("4472c4", 288.0, clamp_overflow_hue=true)
-  inspect(red_compat == red_compat_2, content="true")
-  inspect(red_compat_2 == red_compat_3, content="true")
+  @debug.debug_inspect(red_compat == red_compat_2, content="true")
+  @debug.debug_inspect(red_compat_2 == red_compat_3, content="true")
 }
 
 ///|
@@ -148,20 +184,28 @@ test "apply_hue_off clamp_overflow_hue clamps over-360 hues to red" {
 /// gray for that lightness.
 test "apply_sat_off clamps saturation" {
   // From red (S=1, L=0.5), satOff(-1.0) gives S=0 → gray at L=0.5.
-  inspect(apply_sat_off("ff0000", -1.0), content="808080")
+  @debug.debug_inspect(apply_sat_off("ff0000", -1.0), content=(
+    #|"808080"
+  ))
   // satOff(+1.0) on a low-sat colour saturates fully — does NOT
   // shift the hue.  For accent1 blue (4472c4) the result keeps
   // the blue hue.  We just assert it produces a valid 6-char hex.
   let saturated = apply_sat_off("4472c4", 1.0)
-  inspect(saturated.length(), content="6")
+  @debug.debug_inspect(saturated.length(), content="6")
 }
 
 ///|
 /// §20.1.2.3.5 comp — hue rotated 180°.  Red (H=0) → cyan (H=180).
 test "apply_comp rotates hue 180" {
-  inspect(apply_comp("ff0000"), content="00ffff")
-  inspect(apply_comp("00ff00"), content="ff00ff")
-  inspect(apply_comp("0000ff"), content="ffff00")
+  @debug.debug_inspect(apply_comp("ff0000"), content=(
+    #|"00ffff"
+  ))
+  @debug.debug_inspect(apply_comp("00ff00"), content=(
+    #|"ff00ff"
+  ))
+  @debug.debug_inspect(apply_comp("0000ff"), content=(
+    #|"ffff00"
+  ))
 }
 
 ///|
@@ -171,10 +215,16 @@ test "apply_comp rotates hue 180" {
 /// gives a sRGB-encoded value close to `bb8d3b` (orange), the
 /// negative on the colour wheel.
 test "apply_inv inverts each channel" {
-  inspect(apply_inv("ffffff"), content="000000")
-  inspect(apply_inv("000000"), content="ffffff")
+  @debug.debug_inspect(apply_inv("ffffff"), content=(
+    #|"000000"
+  ))
+  @debug.debug_inspect(apply_inv("000000"), content=(
+    #|"ffffff"
+  ))
   // Pure red → cyan in linear RGB inversion.
-  inspect(apply_inv("ff0000"), content="00ffff")
+  @debug.debug_inspect(apply_inv("ff0000"), content=(
+    #|"00ffff"
+  ))
 }
 
 ///|
@@ -183,14 +233,24 @@ test "apply_inv inverts each channel" {
 /// 0.2126 the luminance is ≈0.2126 → sRGB byte ≈127 (0x7f).
 test "apply_gray produces luminance-only output" {
   // White stays white, black stays black.
-  inspect(apply_gray("ffffff"), content="ffffff")
-  inspect(apply_gray("000000"), content="000000")
+  @debug.debug_inspect(apply_gray("ffffff"), content=(
+    #|"ffffff"
+  ))
+  @debug.debug_inspect(apply_gray("000000"), content=(
+    #|"000000"
+  ))
   // Pure red → Rec. 709 luminance Y=0.2126 → sRGB byte ~127 ("7f").
   let red_gray = apply_gray("ff0000")
   // All three channels are equal.
-  inspect(red_gray.substring(start=0, end=2), content="7f")
-  inspect(red_gray.substring(start=2, end=4), content="7f")
-  inspect(red_gray.substring(start=4, end=6), content="7f")
+  @debug.debug_inspect(red_gray[0:2].to_owned(), content=(
+    #|"7f"
+  ))
+  @debug.debug_inspect(red_gray[2:4].to_owned(), content=(
+    #|"7f"
+  ))
+  @debug.debug_inspect(red_gray[4:6].to_owned(), content=(
+    #|"7f"
+  ))
 }
 
 ///|
@@ -199,11 +259,19 @@ test "apply_gray produces luminance-only output" {
 /// channel fully on; the value is gamma-encoded from linear-light
 /// 1.0 → sRGB 255.
 test "apply_red sets red channel to linear value" {
-  inspect(apply_red("000000", 1.0), content="ff0000")
-  inspect(apply_green("000000", 1.0), content="00ff00")
-  inspect(apply_blue("000000", 1.0), content="0000ff")
+  @debug.debug_inspect(apply_red("000000", 1.0), content=(
+    #|"ff0000"
+  ))
+  @debug.debug_inspect(apply_green("000000", 1.0), content=(
+    #|"00ff00"
+  ))
+  @debug.debug_inspect(apply_blue("000000", 1.0), content=(
+    #|"0000ff"
+  ))
   // 0% on red of pure red blanks the red channel.
-  inspect(apply_red("ff0000", 0.0), content="000000")
+  @debug.debug_inspect(apply_red("ff0000", 0.0), content=(
+    #|"000000"
+  ))
 }
 
 ///|
@@ -212,17 +280,25 @@ test "apply_red sets red channel to linear value" {
 /// red by 0.5 lands at sRGB byte ≈188 (the linear-half encoded
 /// to sRGB matches the `apply_shade` 50 % test).
 test "apply_red_mod halves the red channel" {
-  inspect(apply_red_mod("ff0000", 0.5), content="bc0000")
+  @debug.debug_inspect(apply_red_mod("ff0000", 0.5), content=(
+    #|"bc0000"
+  ))
 }
 
 ///|
 /// §20.1.2.3.16 gamma — re-encodes the byte/255 value as if it
 /// were already linear.  A 50 % byte (128) maps to ≈188 (0xbc).
 test "apply_gamma lifts mid-tones" {
-  inspect(apply_gamma("808080"), content="bcbcbc")
+  @debug.debug_inspect(apply_gamma("808080"), content=(
+    #|"bcbcbc"
+  ))
   // Black and white are fixed points.
-  inspect(apply_gamma("000000"), content="000000")
-  inspect(apply_gamma("ffffff"), content="ffffff")
+  @debug.debug_inspect(apply_gamma("000000"), content=(
+    #|"000000"
+  ))
+  @debug.debug_inspect(apply_gamma("ffffff"), content=(
+    #|"ffffff"
+  ))
 }
 
 ///|
@@ -230,7 +306,13 @@ test "apply_gamma lifts mid-tones" {
 /// linear and writes the linear value back into the byte slot.
 /// 188 → linear 0.5 → 128 (rounded).
 test "apply_inv_gamma darkens mid-tones" {
-  inspect(apply_inv_gamma("bcbcbc"), content="808080")
-  inspect(apply_inv_gamma("000000"), content="000000")
-  inspect(apply_inv_gamma("ffffff"), content="ffffff")
+  @debug.debug_inspect(apply_inv_gamma("bcbcbc"), content=(
+    #|"808080"
+  ))
+  @debug.debug_inspect(apply_inv_gamma("000000"), content=(
+    #|"000000"
+  ))
+  @debug.debug_inspect(apply_inv_gamma("ffffff"), content=(
+    #|"ffffff"
+  ))
 }

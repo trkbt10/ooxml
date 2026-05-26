@@ -32,7 +32,7 @@ pub(all) struct SlideLayoutPart {
 
 ///|
 pub(all) struct Presentation {
-  package : @opc.Package
+  opc_package : @opc.Package
   presentation_part : String
   presentation : @pml.CT_Presentation
   slides : Array[SlidePart]
@@ -44,23 +44,23 @@ pub(all) struct Presentation {
 ///|
 pub fn open(bytes : Bytes) -> Presentation raise OpenError {
   try {
-    let package = @opc.Package::open(bytes)
+    let opc_package = @opc.Package::open(bytes)
     let presentation_part = find_package_relationship_part(
-      package,
+      opc_package,
       @opc_namespaces.relationship_type_office_document(),
       "ppt/presentation.xml",
     )
     let presentation = @pml_reader.read_presentation(
-      package.required_part(presentation_part, section="6.3.3", source_path="/").data,
+      opc_package.required_part(presentation_part, section="6.3.3", source_path="/").data,
     )
     {
-      package,
+      opc_package,
       presentation_part,
       presentation,
-      slides: read_slides(package, presentation_part),
-      slide_masters: read_slide_masters(package, presentation_part),
-      slide_layouts: read_slide_layouts(package),
-      themes: raw_parts_with_prefix(package, "/ppt/theme/theme"),
+      slides: read_slides(opc_package, presentation_part),
+      slide_masters: read_slide_masters(opc_package, presentation_part),
+      slide_layouts: read_slide_layouts(opc_package),
+      themes: raw_parts_with_prefix(opc_package, "/ppt/theme/theme"),
     }
   } catch {
     @opc_errors.ResourceMissing(section~, path~, target~) =>
@@ -137,7 +137,7 @@ pub fn open(bytes : Bytes) -> Presentation raise OpenError {
 
 ///|
 pub fn Presentation::save(self : Presentation) -> Bytes {
-  let mut saved = self.package.with_part(
+  let mut saved = self.opc_package.with_part(
     self.presentation_part,
     @pml_builder.write_presentation(self.presentation),
   )
@@ -268,7 +268,7 @@ fn Presentation::resolve_slide_chain(
   // so we can walk its `.rels` for the master link.
   let mut layout : @pml.CT_SlideLayout? = None
   let mut layout_name : String? = None
-  match self.package.relationships(slide.name) {
+  match self.opc_package.relationships(slide.name) {
     None => ()
     Some(relationships) =>
       for rel in relationships.relationships {
@@ -297,7 +297,7 @@ fn Presentation::resolve_slide_chain(
     let mut m : @pml.CT_SlideMaster? = None
     match layout_name {
       Some(ln) =>
-        match self.package.relationships(ln) {
+        match self.opc_package.relationships(ln) {
           None => ()
           Some(rs) =>
             for rel in rs.relationships {
@@ -364,7 +364,7 @@ fn Presentation::resolve_theme_for_slide(
   slide : SlidePart,
 ) -> @theme.CT_OfficeStyleSheet? {
   // slide.rels → slideLayout
-  let layout_name = match self.package.relationships(slide.name) {
+  let layout_name = match self.opc_package.relationships(slide.name) {
     None => return None
     Some(rs) => {
       let mut found : String? = None
@@ -391,7 +391,7 @@ fn Presentation::resolve_theme_for_slide(
     }
   }
   // layout.rels → slideMaster
-  let master_name = match self.package.relationships(layout_name) {
+  let master_name = match self.opc_package.relationships(layout_name) {
     None => return None
     Some(rs) => {
       let mut found : String? = None
@@ -418,7 +418,7 @@ fn Presentation::resolve_theme_for_slide(
     }
   }
   // master.rels → theme
-  let theme_name = match self.package.relationships(master_name) {
+  let theme_name = match self.opc_package.relationships(master_name) {
     None => return None
     Some(rs) => {
       let mut found : String? = None
@@ -447,9 +447,10 @@ fn Presentation::resolve_theme_for_slide(
   // Find the theme part bytes and typed-parse it.
   for theme_part in self.themes {
     if theme_part.name == theme_name {
-      match (try? @theme.read_theme(theme_part.data)) {
-        Ok(t) => return Some(t)
-        Err(_) => return None
+      try @theme.read_theme(theme_part.data) catch {
+        _ => return None
+      } noraise {
+        t => return Some(t)
       }
     }
   }
@@ -468,9 +469,10 @@ fn Presentation::resolve_first_theme(
   // explicitly can call `@theme.read_theme` directly on the
   // raw part bytes and inspect the SchemaViolation.
   for theme_part in self.themes {
-    match (try? @theme.read_theme(theme_part.data)) {
-      Ok(t) => return Some(t)
-      Err(_) => continue
+    try @theme.read_theme(theme_part.data) catch {
+      _ => continue
+    } noraise {
+      t => return Some(t)
     }
   }
   None
@@ -523,7 +525,7 @@ fn resolve_slide_part(
   slide_part_name : String,
   rid : String,
 ) -> @xml.Element? {
-  let rels = presentation.package.relationships(slide_part_name)
+  let rels = presentation.opc_package.relationships(slide_part_name)
   let rel = match rels {
     Some(rs) => rs.find_by_id(rid)
     None => return None
@@ -532,18 +534,19 @@ fn resolve_slide_part(
     Some(r) => r
     None => return None
   }
-  let resolved = match
-    (try? @opc_part_name.resolve_target(slide_part_name, target_rel.target)) {
-    Ok(name) => name
-    Err(_) => return None
+  let resolved = try @opc_part_name.resolve_target(slide_part_name, target_rel.target) catch {
+    _ => return None
+  } noraise {
+    name => name
   }
-  let part = match presentation.package.part(resolved) {
+  let part = match presentation.opc_package.part(resolved) {
     Some(p) => p
     None => return None
   }
-  match (try? @xml.parse(part.data)) {
-    Ok(doc) => Some(doc.root)
-    Err(_) => None
+  try @xml.parse(part.data) catch {
+    _ => None
+  } noraise {
+    doc => Some(doc.root)
   }
 }
 
@@ -558,7 +561,7 @@ fn resolve_slide_image(
   slide_part_name : String,
   rid : String,
 ) -> @pml_viewer.ResolvedImage? {
-  let rels = presentation.package.relationships(slide_part_name)
+  let rels = presentation.opc_package.relationships(slide_part_name)
   let found = match rels {
     Some(rs) => rs.find_by_id(rid)
     None => None
@@ -574,7 +577,7 @@ fn resolve_slide_image(
       match resolved {
         None => None
         Some(part_name) =>
-          match presentation.package.part(part_name) {
+          match presentation.opc_package.part(part_name) {
             None => None
             Some(part) => {
               let mime = infer_mime_type(part_name)
@@ -645,17 +648,17 @@ fn infer_mime_type(part_name : String) -> String {
 
 ///|
 fn read_slides(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   owner : String,
 ) -> Array[SlidePart] raise {
   let result : Array[SlidePart] = []
-  match package.relationships(owner) {
+  match opc_package.relationships(owner) {
     Some(relationships) =>
       for rel in relationships.relationships {
         if rel.type_uri.has_suffix("/slide") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let name = @opc_part_name.resolve_target(owner, rel.target)
-          match package.part(name) {
+          match opc_package.part(name) {
             Some(part) =>
               result.push({ name, value: @pml_reader.read_sld(part.data) })
             None => ()
@@ -669,17 +672,17 @@ fn read_slides(
 
 ///|
 fn read_slide_masters(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   owner : String,
 ) -> Array[SlideMasterPart] raise {
   let result : Array[SlideMasterPart] = []
-  match package.relationships(owner) {
+  match opc_package.relationships(owner) {
     Some(relationships) =>
       for rel in relationships.relationships {
         if rel.type_uri.has_suffix("/slideMaster") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let name = @opc_part_name.resolve_target(owner, rel.target)
-          match package.part(name) {
+          match opc_package.part(name) {
             Some(part) =>
               result.push({
                 name,
@@ -695,9 +698,9 @@ fn read_slide_masters(
 }
 
 ///|
-fn read_slide_layouts(package : @opc.Package) -> Array[SlideLayoutPart] raise {
+fn read_slide_layouts(opc_package : @opc.Package) -> Array[SlideLayoutPart] raise {
   let result : Array[SlideLayoutPart] = []
-  for part in package.parts {
+  for part in opc_package.parts {
     if part.name.has_prefix("/ppt/slideLayouts/") &&
       part.name.has_suffix(".xml") {
       result.push({
@@ -711,11 +714,11 @@ fn read_slide_layouts(package : @opc.Package) -> Array[SlideLayoutPart] raise {
 
 ///|
 fn raw_parts_with_prefix(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   prefix : String,
 ) -> Array[@opc.PackagePart] {
   let result : Array[@opc.PackagePart] = []
-  for part in package.parts {
+  for part in opc_package.parts {
     if part.name.has_prefix(prefix) {
       result.push(part)
     }
@@ -725,11 +728,11 @@ fn raw_parts_with_prefix(
 
 ///|
 fn find_package_relationship_part(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   relationship_type : String,
   fallback : String,
 ) -> String raise {
-  match package.relationships("/") {
+  match opc_package.relationships("/") {
     Some(relationships) =>
       for rel in relationships.relationships {
         if rel.type_uri == relationship_type &&

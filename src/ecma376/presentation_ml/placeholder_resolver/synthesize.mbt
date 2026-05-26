@@ -78,14 +78,14 @@ fn merge_shape_children(
   for child in base.children {
     match child {
       @xml.Element(e) => {
-        let local = e.name.local_name
-        if array_contains(well_known, local) {
-          if not(array_contains(inserted, local)) {
-            match first_child_local_in_layers(layers, local) {
+        let local_name = e.name.local_name
+        if array_contains(well_known, local_name) {
+          if !array_contains(inserted, local_name) {
+            match first_child_local_in_layers(layers, local_name) {
               Some(picked) => new_children.push(@xml.Element(picked))
               None => ()
             }
-            inserted.push(local)
+            inserted.push(local_name)
           }
           // else: already emitted via earlier base sibling of same kind.
         } else {
@@ -99,7 +99,7 @@ fn merge_shape_children(
   // layer must still be emitted so the layout/master can contribute
   // (e.g. layout-only title with no slide-side `<p:sp>` children).
   for kind in well_known {
-    if not(array_contains(inserted, kind)) {
+    if !array_contains(inserted, kind) {
       match first_child_local_in_layers(layers, kind) {
         Some(picked) => {
           new_children.push(@xml.Element(picked))

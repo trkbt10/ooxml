@@ -13,12 +13,6 @@ using @wml_context {type Document}
 using @wml_context {type OpenError}
 
 ///|
-using @wml_context {type HeaderPart}
-
-///|
-using @wml_context {type FooterPart}
-
-///|
 /// A-layer primitive on Document. Walk the main `/word/document.xml`
 /// element tree through `transform` and return a Document whose
 /// `main : CT_Document` has been rebuilt from the new element.
@@ -39,7 +33,7 @@ pub fn edit_main(
       )
   }
   {
-    package: document.package,
+    opc_package: document.opc_package,
     main_part: document.main_part,
     main: new_main,
     headers: document.headers,
@@ -79,21 +73,21 @@ pub fn append_paragraph(
   // begins or ends with ASCII whitespace we MUST emit
   // `xml:space="preserve"` so the consumer's XML parser does
   // not strip the whitespace on round-trip.
-  let t_base = @edit.empty_element(w_template, "t")
+  let t_base = @a_edit.empty_element(w_template, "t")
   let t_element = if wml_needs_xml_space_preserve(text) {
     let xml_qn : @xml.QName = {
       prefix: Some("xml"),
       local_name: "space",
       ns: Some("http://www.w3.org/XML/1998/namespace"),
     }
-    @edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
+    @a_edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
   } else {
     t_base
   }
-  let t_with_text = @edit.append_child(t_element, @xml.Node::Text(text))
-  let r_element = @edit.empty_element(w_template, "r")
-  let r_with_t = @edit.append_child(r_element, @xml.Node::Element(t_with_text))
-  let p_element = @edit.empty_element(w_template, "p")
+  let t_with_text = @a_edit.append_child(t_element, @xml.Node::Text(text))
+  let r_element = @a_edit.empty_element(w_template, "r")
+  let r_with_t = @a_edit.append_child(r_element, @xml.Node::Element(t_with_text))
+  let p_element = @a_edit.empty_element(w_template, "p")
   // §17.13.1 / §17.18.50 ST_LongHexNumber — Word stamps every
   // authored paragraph with a fresh `@w:rsidR` so track-changes
   // / merge can identify the revision session.  The spec marks
@@ -104,10 +98,10 @@ pub fn append_paragraph(
   // next ST_LongHexNumber and registering it in
   // `<w:settings>/<w:rsids>`) is tracked as a follow-up;
   // until then we leave the paragraph un-stamped.
-  let p_with_r = @edit.append_child(p_element, @xml.Node::Element(r_with_t))
+  let p_with_r = @a_edit.append_child(p_element, @xml.Node::Element(r_with_t))
   edit_main(document, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("body"), fn(body) {
-      @edit.append_child(body, @xml.Node::Element(p_with_r))
+    @a_edit.update_first(root, @a_edit.by_local_name("body"), fn(body) {
+      @a_edit.append_child(body, @xml.Node::Element(p_with_r))
     })
   })
 }
@@ -144,7 +138,7 @@ pub fn remove_paragraph(
       // block_level_elts upstream) are preserved untouched.
       let counter : RemoveCounter = { current: 0, target: index }
       edit_main(document, fn(root) {
-        @edit.update_first(root, @edit.by_local_name("body"), fn(body_elt) {
+        @a_edit.update_first(root, @a_edit.by_local_name("body"), fn(body_elt) {
           let new_children : Array[@xml.Node] = []
           for child in body_elt.children {
             match child {
@@ -234,7 +228,7 @@ pub fn edit_styles(
           )
       }
       {
-        package: document.package,
+        opc_package: document.opc_package,
         main_part: document.main_part,
         main: document.main,
         headers: document.headers,
@@ -274,7 +268,7 @@ pub fn edit_numbering(
           )
       }
       {
-        package: document.package,
+        opc_package: document.opc_package,
         main_part: document.main_part,
         main: document.main,
         headers: document.headers,
@@ -296,9 +290,9 @@ pub fn edit_numbering(
 ///|
 /// A-layer primitive: install a new OPC package after add_part /
 /// with_relationship calls (e.g. embedding a picture).
-pub fn with_package(document : Document, package : @opc.Package) -> Document {
+pub fn with_package(document : Document, opc_package : @opc.Package) -> Document {
   {
-    package,
+    opc_package,
     main_part: document.main_part,
     main: document.main,
     headers: document.headers,
@@ -334,7 +328,7 @@ pub fn edit_paragraph(
   }
   let counter : RemoveCounter = { current: 0, target: paragraph_index }
   edit_main(document, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("body"), fn(body) {
+    @a_edit.update_first(root, @a_edit.by_local_name("body"), fn(body) {
       let new_children : Array[@xml.Node] = []
       for child in body.children {
         match child {
@@ -398,12 +392,12 @@ pub fn set_paragraph_alignment(
   }
   let w_template = build_w_qname("p")
   edit_paragraph(document, index, fn(p) {
-    let p_pr = match @edit.find_first(p, @edit.by_local_name("pPr")) {
-      Some(existing) =>
-        @edit.update_first(p, @edit.by_local_name("pPr"), fn(pr) {
-          let jc_existing = @edit.direct_children(pr, @edit.by_local_name("jc"))
-          let jc_template = @edit.qname_like(w_template, "jc")
-          let jc = @edit.set_attribute(@edit.empty_element(jc_template, "jc"), {
+    let p_pr = match @a_edit.find_first(p, @a_edit.by_local_name("pPr")) {
+      Some(_existing) =>
+        @a_edit.update_first(p, @a_edit.by_local_name("pPr"), fn(pr) {
+          let jc_existing = @a_edit.direct_children(pr, @a_edit.by_local_name("jc"))
+          let jc_template = @a_edit.qname_like(w_template, "jc")
+          let jc = @a_edit.set_attribute(@a_edit.empty_element(jc_template, "jc"), {
             name: {
               prefix: w_template.prefix,
               local_name: "val",
@@ -412,14 +406,14 @@ pub fn set_paragraph_alignment(
             value,
           })
           if jc_existing.length() == 0 {
-            @edit.append_child(pr, @xml.Node::Element(jc))
+            @a_edit.append_child(pr, @xml.Node::Element(jc))
           } else {
-            @edit.replace_children(pr, @edit.by_local_name("jc"), jc)
+            @a_edit.replace_children(pr, @a_edit.by_local_name("jc"), jc)
           }
         })
       None => {
-        let pr = @edit.empty_element(w_template, "pPr")
-        let jc = @edit.set_attribute(@edit.empty_element(w_template, "jc"), {
+        let pr = @a_edit.empty_element(w_template, "pPr")
+        let jc = @a_edit.set_attribute(@a_edit.empty_element(w_template, "jc"), {
           name: {
             prefix: w_template.prefix,
             local_name: "val",
@@ -427,8 +421,8 @@ pub fn set_paragraph_alignment(
           },
           value,
         })
-        let pr_with_jc = @edit.append_child(pr, @xml.Node::Element(jc))
-        @edit.insert_child(p, 0, @xml.Node::Element(pr_with_jc))
+        let pr_with_jc = @a_edit.append_child(pr, @xml.Node::Element(jc))
+        @a_edit.insert_child(p, 0, @xml.Node::Element(pr_with_jc))
       }
     }
     let _ = p_pr
@@ -458,15 +452,15 @@ pub fn set_paragraph_style(
         },
         value: style_id,
       }
-      let style_elt = @edit.set_attribute(
-        @edit.empty_element(w_template, "pStyle"),
+      let style_elt = @a_edit.set_attribute(
+        @a_edit.empty_element(w_template, "pStyle"),
         style_attr,
       )
-      let hits = @edit.direct_children(p_pr, @edit.by_local_name("pStyle"))
+      let hits = @a_edit.direct_children(p_pr, @a_edit.by_local_name("pStyle"))
       if hits.length() == 0 {
-        @edit.insert_child(p_pr, 0, @xml.Node::Element(style_elt))
+        @a_edit.insert_child(p_pr, 0, @xml.Node::Element(style_elt))
       } else {
-        @edit.replace_children(p_pr, @edit.by_local_name("pStyle"), style_elt)
+        @a_edit.replace_children(p_pr, @a_edit.by_local_name("pStyle"), style_elt)
       }
     })
   })
@@ -486,15 +480,15 @@ pub fn set_run_bold(
   edit_paragraph(document, paragraph_index, fn(p) {
     edit_run_r_pr(p, run_index, w_template, fn(r_pr) {
       if value {
-        let b = @edit.empty_element(w_template, "b")
-        let hits = @edit.direct_children(r_pr, @edit.by_local_name("b"))
+        let b = @a_edit.empty_element(w_template, "b")
+        let hits = @a_edit.direct_children(r_pr, @a_edit.by_local_name("b"))
         if hits.length() == 0 {
-          @edit.append_child(r_pr, @xml.Node::Element(b))
+          @a_edit.append_child(r_pr, @xml.Node::Element(b))
         } else {
-          @edit.replace_children(r_pr, @edit.by_local_name("b"), b)
+          @a_edit.replace_children(r_pr, @a_edit.by_local_name("b"), b)
         }
       } else {
-        @edit.remove_children(r_pr, @edit.by_local_name("b"))
+        @a_edit.remove_children(r_pr, @a_edit.by_local_name("b"))
       }
     })
   })
@@ -521,15 +515,15 @@ pub fn set_run_color(
         },
         value: hex,
       }
-      let color = @edit.set_attribute(
-        @edit.empty_element(w_template, "color"),
+      let color = @a_edit.set_attribute(
+        @a_edit.empty_element(w_template, "color"),
         val_attr,
       )
-      let hits = @edit.direct_children(r_pr, @edit.by_local_name("color"))
+      let hits = @a_edit.direct_children(r_pr, @a_edit.by_local_name("color"))
       if hits.length() == 0 {
-        @edit.append_child(r_pr, @xml.Node::Element(color))
+        @a_edit.append_child(r_pr, @xml.Node::Element(color))
       } else {
-        @edit.replace_children(r_pr, @edit.by_local_name("color"), color)
+        @a_edit.replace_children(r_pr, @a_edit.by_local_name("color"), color)
       }
     })
   })
@@ -556,15 +550,15 @@ pub fn set_run_font_size(
         },
         value: half_points.to_string(),
       }
-      let sz = @edit.set_attribute(
-        @edit.empty_element(w_template, "sz"),
+      let sz = @a_edit.set_attribute(
+        @a_edit.empty_element(w_template, "sz"),
         val_attr,
       )
-      let hits = @edit.direct_children(r_pr, @edit.by_local_name("sz"))
+      let hits = @a_edit.direct_children(r_pr, @a_edit.by_local_name("sz"))
       if hits.length() == 0 {
-        @edit.append_child(r_pr, @xml.Node::Element(sz))
+        @a_edit.append_child(r_pr, @xml.Node::Element(sz))
       } else {
-        @edit.replace_children(r_pr, @edit.by_local_name("sz"), sz)
+        @a_edit.replace_children(r_pr, @a_edit.by_local_name("sz"), sz)
       }
     })
   })
@@ -578,12 +572,12 @@ fn edit_paragraph_p_pr(
   template : @xml.QName,
   update : (@xml.Element) -> @xml.Element,
 ) -> @xml.Element {
-  let p_pr_hits = @edit.direct_children(p, @edit.by_local_name("pPr"))
+  let p_pr_hits = @a_edit.direct_children(p, @a_edit.by_local_name("pPr"))
   if p_pr_hits.length() == 0 {
-    let new_p_pr = update(@edit.empty_element(template, "pPr"))
-    @edit.insert_child(p, 0, @xml.Node::Element(new_p_pr))
+    let new_p_pr = update(@a_edit.empty_element(template, "pPr"))
+    @a_edit.insert_child(p, 0, @xml.Node::Element(new_p_pr))
   } else {
-    @edit.update_first(p, @edit.by_local_name("pPr"), update)
+    @a_edit.update_first(p, @a_edit.by_local_name("pPr"), update)
   }
 }
 
@@ -604,12 +598,12 @@ fn edit_run_r_pr(
       @xml.Element(e) =>
         if e.name.local_name == "r" {
           if counter == run_index {
-            let r_pr_hits = @edit.direct_children(e, @edit.by_local_name("rPr"))
+            let r_pr_hits = @a_edit.direct_children(e, @a_edit.by_local_name("rPr"))
             let new_r = if r_pr_hits.length() == 0 {
-              let new_r_pr = update(@edit.empty_element(template, "rPr"))
-              @edit.insert_child(e, 0, @xml.Node::Element(new_r_pr))
+              let new_r_pr = update(@a_edit.empty_element(template, "rPr"))
+              @a_edit.insert_child(e, 0, @xml.Node::Element(new_r_pr))
             } else {
-              @edit.update_first(e, @edit.by_local_name("rPr"), update)
+              @a_edit.update_first(e, @a_edit.by_local_name("rPr"), update)
             }
             new_children.push(@xml.Node::Element(new_r))
           } else {
@@ -639,13 +633,13 @@ pub fn set_paragraph_text(
     // §17.17.3 — `build_w_t` attaches `xml:space="preserve"` so
     // leading/trailing whitespace survives the round-trip.
     let t = build_w_t(text)
-    let r = @edit.append_child(
-      @edit.empty_element(w_template, "r"),
+    let r = @a_edit.append_child(
+      @a_edit.empty_element(w_template, "r"),
       @xml.Node::Element(t),
     )
     // Drop existing runs, keep pPr.
-    let stripped = @edit.remove_children(p, @edit.by_local_name("r"))
-    @edit.append_child(stripped, @xml.Node::Element(r))
+    let stripped = @a_edit.remove_children(p, @a_edit.by_local_name("r"))
+    @a_edit.append_child(stripped, @xml.Node::Element(r))
   })
 }
 
@@ -664,7 +658,7 @@ pub fn insert_hyperlink(
 ) -> Document raise OpenError {
   // Allocate a fresh r:id under the document part.
   let owner = document.main_part
-  let existing = match document.package.relationships(owner) {
+  let existing = match document.opc_package.relationships(owner) {
     Some(rs) => rs.relationships
     None => []
   }
@@ -678,7 +672,7 @@ pub fn insert_hyperlink(
   let mut max_rid = 0
   for r in existing {
     if r.id.has_prefix("rId") {
-      let parsed = Some(@strconv.parse_int(r.id[3:].to_owned())) catch {
+      let parsed = Some(@string.parse_int(r.id[3:].to_owned())) catch {
         _ => None
       }
       match parsed {
@@ -688,7 +682,7 @@ pub fn insert_hyperlink(
     }
   }
   let new_rid = "rId" + (max_rid + 1).to_string()
-  let pkg2 = document.package.with_relationship(
+  let pkg2 = document.opc_package.with_relationship(
     owner,
     new_rid,
     "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink",
@@ -713,12 +707,12 @@ pub fn insert_hyperlink(
   }
   // §17.17.3 — preserve whitespace in the hyperlink display text.
   let t = build_w_t(text)
-  let r = @edit.append_child(
-    @edit.empty_element(w_template, "r"),
+  let r = @a_edit.append_child(
+    @a_edit.empty_element(w_template, "r"),
     @xml.Node::Element(t),
   )
-  let hyperlink = @edit.append_child(
-    @edit.set_attribute(@edit.empty_element(w_template, "hyperlink"), {
+  let hyperlink = @a_edit.append_child(
+    @a_edit.set_attribute(@a_edit.empty_element(w_template, "hyperlink"), {
       name: r_qn,
       value: new_rid,
     }),
@@ -726,7 +720,7 @@ pub fn insert_hyperlink(
   )
   with_package(
     edit_paragraph(document, paragraph_index, fn(p) {
-      @edit.append_child(p, @xml.Node::Element(hyperlink))
+      @a_edit.append_child(p, @xml.Node::Element(hyperlink))
     }),
     pkg2,
   )
@@ -751,41 +745,41 @@ pub fn append_table(
   let w_template = build_w_qname("p")
   // <w:tc><w:p/></w:tc> -- a single empty paragraph per cell.
   let make_cell : () -> @xml.Element = fn() {
-    let empty_p = @edit.empty_element(w_template, "p")
-    @edit.append_child(
-      @edit.empty_element(w_template, "tc"),
+    let empty_p = @a_edit.empty_element(w_template, "p")
+    @a_edit.append_child(
+      @a_edit.empty_element(w_template, "tc"),
       @xml.Node::Element(empty_p),
     )
   }
   // <w:tr> with `cols` <w:tc> children.
   let make_row : () -> @xml.Element = fn() {
-    let mut tr = @edit.empty_element(w_template, "tr")
+    let mut tr = @a_edit.empty_element(w_template, "tr")
     for _ in 0..<cols {
-      tr = @edit.append_child(tr, @xml.Node::Element(make_cell()))
+      tr = @a_edit.append_child(tr, @xml.Node::Element(make_cell()))
     }
     tr
   }
-  let mut tbl = @edit.empty_element(w_template, "tbl")
+  let mut tbl = @a_edit.empty_element(w_template, "tbl")
   // Minimal <w:tblPr> with default style — Word inserts one for us
   // but Word also accepts tbl without tblPr; we include an empty
   // tblPr for round-trip safety.
-  let tbl_pr = @edit.empty_element(w_template, "tblPr")
-  let tbl_grid = @edit.empty_element(w_template, "tblGrid")
+  let tbl_pr = @a_edit.empty_element(w_template, "tblPr")
+  let tbl_grid = @a_edit.empty_element(w_template, "tblGrid")
   let mut grid = tbl_grid
   for _ in 0..<cols {
-    grid = @edit.append_child(
+    grid = @a_edit.append_child(
       grid,
-      @xml.Node::Element(@edit.empty_element(w_template, "gridCol")),
+      @xml.Node::Element(@a_edit.empty_element(w_template, "gridCol")),
     )
   }
-  tbl = @edit.append_child(tbl, @xml.Node::Element(tbl_pr))
-  tbl = @edit.append_child(tbl, @xml.Node::Element(grid))
+  tbl = @a_edit.append_child(tbl, @xml.Node::Element(tbl_pr))
+  tbl = @a_edit.append_child(tbl, @xml.Node::Element(grid))
   for _ in 0..<rows {
-    tbl = @edit.append_child(tbl, @xml.Node::Element(make_row()))
+    tbl = @a_edit.append_child(tbl, @xml.Node::Element(make_row()))
   }
   edit_main(document, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("body"), fn(body) {
-      @edit.append_child(body, @xml.Node::Element(tbl))
+    @a_edit.update_first(root, @a_edit.by_local_name("body"), fn(body) {
+      @a_edit.append_child(body, @xml.Node::Element(tbl))
     })
   })
 }
@@ -799,7 +793,7 @@ pub fn remove_table(
 ) -> Document raise OpenError {
   let counter : RemoveCounter = { current: 0, target: table_index }
   edit_main(document, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("body"), fn(body) {
+    @a_edit.update_first(root, @a_edit.by_local_name("body"), fn(body) {
       let new_children : Array[@xml.Node] = []
       for child in body.children {
         match child {
@@ -878,14 +872,14 @@ pub fn insert_picture(
   }
   // Find next media image index across the package.
   let mut max_index = 0
-  for part in document.package.parts {
+  for part in document.opc_package.parts {
     let prefix = "/word/media/image"
     if part.name.has_prefix(prefix) {
       let rest = part.name[prefix.length():].to_owned()
       let dot_index = char_index(rest, '.')
       if dot_index > 0 {
         let head = rest[0:dot_index].to_owned()
-        let parsed = Some(@strconv.parse_int(head)) catch { _ => None }
+        let parsed = Some(@string.parse_int(head)) catch { _ => None }
         match parsed {
           Some(n) => if n > max_index { max_index = n }
           None => ()
@@ -899,7 +893,7 @@ pub fn insert_picture(
     extension
   // Allocate a fresh r:id under the document part.
   let owner = document.main_part
-  let existing = match document.package.relationships(owner) {
+  let existing = match document.opc_package.relationships(owner) {
     Some(rs) => rs.relationships
     None => []
   }
@@ -913,7 +907,7 @@ pub fn insert_picture(
   let mut max_rid = 0
   for r in existing {
     if r.id.has_prefix("rId") {
-      let parsed = Some(@strconv.parse_int(r.id[3:].to_owned())) catch {
+      let parsed = Some(@string.parse_int(r.id[3:].to_owned())) catch {
         _ => None
       }
       match parsed {
@@ -925,7 +919,7 @@ pub fn insert_picture(
   let new_rid = "rId" + (max_rid + 1).to_string()
   let rel_target = "media/image" + (max_index + 1).to_string() + "." + extension
   let pkg2 = try {
-    let with_part = document.package.add_part(
+    let with_part = document.opc_package.add_part(
       media_name, mime_type, image_bytes,
     )
     with_part.with_relationship(
@@ -968,54 +962,54 @@ pub fn insert_picture(
     ),
   }
   // <a:blip r:embed="rId"/>
-  let blip = @edit.set_attribute(@edit.empty_element(a_qn, "blip"), {
+  let blip = @a_edit.set_attribute(@a_edit.empty_element(a_qn, "blip"), {
     name: r_qn,
     value: new_rid,
   })
   // <pic:blipFill><a:blip/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>
-  let stretch = @edit.append_child(
-    @edit.empty_element(a_qn, "stretch"),
-    @xml.Node::Element(@edit.empty_element(a_qn, "fillRect")),
+  let stretch = @a_edit.append_child(
+    @a_edit.empty_element(a_qn, "stretch"),
+    @xml.Node::Element(@a_edit.empty_element(a_qn, "fillRect")),
   )
-  let blip_fill = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(pic_qn, "blipFill"),
+  let blip_fill = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(pic_qn, "blipFill"),
       @xml.Node::Element(blip),
     ),
     @xml.Node::Element(stretch),
   )
   // <pic:spPr><a:xfrm><a:off/><a:ext cx cy/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>
-  let off = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "off"),
-      @edit.unprefixed_attribute("x", "0"),
+  let off = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "off"),
+      @a_edit.unprefixed_attribute("x", "0"),
     ),
-    @edit.unprefixed_attribute("y", "0"),
+    @a_edit.unprefixed_attribute("y", "0"),
   )
-  let ext = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "ext"),
-      @edit.unprefixed_attribute("cx", width_emu.to_string()),
+  let ext = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "ext"),
+      @a_edit.unprefixed_attribute("cx", width_emu.to_string()),
     ),
-    @edit.unprefixed_attribute("cy", height_emu.to_string()),
+    @a_edit.unprefixed_attribute("cy", height_emu.to_string()),
   )
-  let xfrm = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(a_qn, "xfrm"),
+  let xfrm = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(a_qn, "xfrm"),
       @xml.Node::Element(off),
     ),
     @xml.Node::Element(ext),
   )
-  let prst_geom = @edit.append_child(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "prstGeom"),
-      @edit.unprefixed_attribute("prst", "rect"),
+  let prst_geom = @a_edit.append_child(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "prstGeom"),
+      @a_edit.unprefixed_attribute("prst", "rect"),
     ),
-    @xml.Node::Element(@edit.empty_element(a_qn, "avLst")),
+    @xml.Node::Element(@a_edit.empty_element(a_qn, "avLst")),
   )
-  let pic_sp_pr = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(pic_qn, "spPr"),
+  let pic_sp_pr = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(pic_qn, "spPr"),
       @xml.Node::Element(xfrm),
     ),
     @xml.Node::Element(prst_geom),
@@ -1024,25 +1018,25 @@ pub fn insert_picture(
   // within the document.  Allocate from the document-wide max
   // by walking `<w:document>` once.
   let pic_id = next_drawing_id_for_document(document)
-  let c_nv_pr = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(pic_qn, "cNvPr"),
-      @edit.unprefixed_attribute("id", pic_id.to_string()),
+  let c_nv_pr = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(pic_qn, "cNvPr"),
+      @a_edit.unprefixed_attribute("id", pic_id.to_string()),
     ),
-    @edit.unprefixed_attribute("name", "Picture " + pic_id.to_string()),
+    @a_edit.unprefixed_attribute("name", "Picture " + pic_id.to_string()),
   )
-  let c_nv_pic_pr = @edit.empty_element(pic_qn, "cNvPicPr")
-  let nv_pic_pr = @edit.append_child(
-    @edit.append_child(
-      @edit.empty_element(pic_qn, "nvPicPr"),
+  let c_nv_pic_pr = @a_edit.empty_element(pic_qn, "cNvPicPr")
+  let nv_pic_pr = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.empty_element(pic_qn, "nvPicPr"),
       @xml.Node::Element(c_nv_pr),
     ),
     @xml.Node::Element(c_nv_pic_pr),
   )
-  let pic = @edit.append_child(
-    @edit.append_child(
-      @edit.append_child(
-        @edit.empty_element(pic_qn, "pic"),
+  let pic = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(pic_qn, "pic"),
         @xml.Node::Element(nv_pic_pr),
       ),
       @xml.Node::Element(blip_fill),
@@ -1050,36 +1044,36 @@ pub fn insert_picture(
     @xml.Node::Element(pic_sp_pr),
   )
   // <a:graphicData uri="...picture"><pic:pic/></a:graphicData>
-  let graphic_data = @edit.append_child(
-    @edit.set_attribute(
-      @edit.empty_element(a_qn, "graphicData"),
-      @edit.unprefixed_attribute(
+  let graphic_data = @a_edit.append_child(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(a_qn, "graphicData"),
+      @a_edit.unprefixed_attribute(
         "uri", "http://schemas.openxmlformats.org/drawingml/2006/picture",
       ),
     ),
     @xml.Node::Element(pic),
   )
-  let graphic = @edit.append_child(
-    @edit.empty_element(a_qn, "graphic"),
+  let graphic = @a_edit.append_child(
+    @a_edit.empty_element(a_qn, "graphic"),
     @xml.Node::Element(graphic_data),
   )
   // <wp:extent cx cy/><wp:docPr id="1" name="Picture"/>
-  let wp_extent = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(wp_qn, "extent"),
-      @edit.unprefixed_attribute("cx", width_emu.to_string()),
+  let wp_extent = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(wp_qn, "extent"),
+      @a_edit.unprefixed_attribute("cx", width_emu.to_string()),
     ),
-    @edit.unprefixed_attribute("cy", height_emu.to_string()),
+    @a_edit.unprefixed_attribute("cy", height_emu.to_string()),
   )
   // §20.4.2.5 — `<wp:docPr>` uses ST_DrawingElementId; share the
   // numbering pool with `pic_id` so the same drawing carries a
   // single coherent identifier.
-  let doc_pr = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.empty_element(wp_qn, "docPr"),
-      @edit.unprefixed_attribute("id", pic_id.to_string()),
+  let doc_pr = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(wp_qn, "docPr"),
+      @a_edit.unprefixed_attribute("id", pic_id.to_string()),
     ),
-    @edit.unprefixed_attribute("name", "Picture " + pic_id.to_string()),
+    @a_edit.unprefixed_attribute("name", "Picture " + pic_id.to_string()),
   )
   // §20.4.2.8 CT_Inline — `distT`, `distB`, `distL`, `distR` are
   // required xsd:unsignedInt attributes (the text-to-image
@@ -1087,38 +1081,38 @@ pub fn insert_picture(
   // side for inline drawings; emitting them satisfies the
   // schema's `use="required"` declaration and prevents Word
   // from rejecting the package as malformed.
-  let inline_el = @edit.set_attribute(
-    @edit.set_attribute(
-      @edit.set_attribute(
-        @edit.set_attribute(
-          @edit.empty_element(wp_qn, "inline"),
-          @edit.unprefixed_attribute("distT", "0"),
+  let inline_el = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.set_attribute(
+        @a_edit.set_attribute(
+          @a_edit.empty_element(wp_qn, "inline"),
+          @a_edit.unprefixed_attribute("distT", "0"),
         ),
-        @edit.unprefixed_attribute("distB", "0"),
+        @a_edit.unprefixed_attribute("distB", "0"),
       ),
-      @edit.unprefixed_attribute("distL", "0"),
+      @a_edit.unprefixed_attribute("distL", "0"),
     ),
-    @edit.unprefixed_attribute("distR", "0"),
+    @a_edit.unprefixed_attribute("distR", "0"),
   )
-  let inline = @edit.append_child(
-    @edit.append_child(
-      @edit.append_child(inline_el, @xml.Node::Element(wp_extent)),
+  let inline = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(inline_el, @xml.Node::Element(wp_extent)),
       @xml.Node::Element(doc_pr),
     ),
     @xml.Node::Element(graphic),
   )
-  let drawing = @edit.append_child(
-    @edit.empty_element(w_qn, "drawing"),
+  let drawing = @a_edit.append_child(
+    @a_edit.empty_element(w_qn, "drawing"),
     @xml.Node::Element(inline),
   )
   // Wrap in <w:r>...</w:r>, append to the paragraph.
-  let r = @edit.append_child(
-    @edit.empty_element(w_qn, "r"),
+  let r = @a_edit.append_child(
+    @a_edit.empty_element(w_qn, "r"),
     @xml.Node::Element(drawing),
   )
   with_package(
     edit_paragraph(document, paragraph_index, fn(p) {
-      @edit.append_child(p, @xml.Node::Element(r))
+      @a_edit.append_child(p, @xml.Node::Element(r))
     }),
     pkg2,
   )
@@ -1155,17 +1149,17 @@ pub fn insert_paragraph_at(
   let w_template = build_w_qname("p")
   // §17.17.3 — preserve whitespace in the inserted paragraph's text.
   let t = build_w_t(text)
-  let r = @edit.append_child(
-    @edit.empty_element(w_template, "r"),
+  let r = @a_edit.append_child(
+    @a_edit.empty_element(w_template, "r"),
     @xml.Node::Element(t),
   )
-  let p = @edit.append_child(
-    @edit.empty_element(w_template, "p"),
+  let p = @a_edit.append_child(
+    @a_edit.empty_element(w_template, "p"),
     @xml.Node::Element(r),
   )
   let counter : RemoveCounter = { current: 0, target: position }
   edit_main(document, fn(root) {
-    @edit.update_first(root, @edit.by_local_name("body"), fn(body) {
+    @a_edit.update_first(root, @a_edit.by_local_name("body"), fn(body) {
       let new_children : Array[@xml.Node] = []
       let mut inserted = false
       for child in body.children {
@@ -1224,9 +1218,10 @@ fn walk_wml_id_attrs(elt : @xml.Element, on_id : (Int) -> Unit) -> Unit {
   if elt.name.local_name == "docPr" || elt.name.local_name == "cNvPr" {
     for a in elt.attributes {
       if a.name.local_name == "id" {
-        match (try? @strconv.parse_int(a.value)) {
-          Ok(n) => on_id(n)
-          Err(_) => ()
+        try @string.parse_int(a.value) catch {
+          _ => ()
+        } noraise {
+          n => on_id(n)
         }
       }
     }
@@ -1243,7 +1238,7 @@ fn walk_wml_id_attrs(elt : @xml.Element, on_id : (Int) -> Unit) -> Unit {
 /// §17.17.3 ST_String — delegates to the shared §3.3.3 whitespace
 /// predicate in the `@edit` package.  See `@edit::needs_xml_space_preserve`.
 fn wml_needs_xml_space_preserve(text : String) -> Bool {
-  @edit.needs_xml_space_preserve(text)
+  @a_edit.needs_xml_space_preserve(text)
 }
 
 ///|
@@ -1285,7 +1280,7 @@ fn transform_revisions(elt : @xml.Element, accept~ : Bool) -> @xml.Element {
   // the snapshot inside the change marker.  We branch up front so
   // the snapshot replacement isn't tangled with the run/insert
   // child walk below.
-  if not(accept) {
+  if !(accept) {
     match revert_property_change(elt) {
       Some(snapshot) => return transform_revisions(snapshot, accept~)
       None => ()
@@ -1295,9 +1290,9 @@ fn transform_revisions(elt : @xml.Element, accept~ : Bool) -> @xml.Element {
   for child in elt.children {
     match child {
       @xml.Node::Element(e) => {
-        let local = e.name.local_name
-        let is_insert = local == "ins" || local == "moveTo"
-        let is_delete = local == "del" || local == "moveFrom"
+        let local_name = e.name.local_name
+        let is_insert = local_name == "ins" || local_name == "moveTo"
+        let is_delete = local_name == "del" || local_name == "moveFrom"
         // §17.13.5.29-.35 — property-change wrappers
         // (pPrChange/rPrChange/sectPrChange/tblPrChange/
         // trPrChange/tcPrChange) live INSIDE the corresponding
@@ -1306,12 +1301,12 @@ fn transform_revisions(elt : @xml.Element, accept~ : Bool) -> @xml.Element {
         // container is replaced via the snapshot — handled
         // earlier by `revert_property_change`, so the marker
         // here is already gone in that path.
-        let is_property_change = local == "pPrChange" ||
-          local == "rPrChange" ||
-          local == "sectPrChange" ||
-          local == "tblPrChange" ||
-          local == "trPrChange" ||
-          local == "tcPrChange"
+        let is_property_change = local_name == "pPrChange" ||
+          local_name == "rPrChange" ||
+          local_name == "sectPrChange" ||
+          local_name == "tblPrChange" ||
+          local_name == "trPrChange" ||
+          local_name == "tcPrChange"
         if is_property_change {
           if accept {
             // Accept: drop the change marker; the current
@@ -1433,16 +1428,16 @@ fn rename_delete_text(node : @xml.Node) -> @xml.Node {
 /// `insert_paragraph_at`).
 fn build_w_t(text : String) -> @xml.Element {
   let w_template = build_w_qname("p")
-  let t_base = @edit.empty_element(w_template, "t")
+  let t_base = @a_edit.empty_element(w_template, "t")
   let t_element = if wml_needs_xml_space_preserve(text) {
     let xml_qn : @xml.QName = {
       prefix: Some("xml"),
       local_name: "space",
       ns: Some("http://www.w3.org/XML/1998/namespace"),
     }
-    @edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
+    @a_edit.set_attribute(t_base, { name: xml_qn, value: "preserve" })
   } else {
     t_base
   }
-  @edit.append_child(t_element, @xml.Node::Text(text))
+  @a_edit.append_child(t_element, @xml.Node::Text(text))
 }

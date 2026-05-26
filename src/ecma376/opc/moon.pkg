@@ -3,7 +3,7 @@
 // ECMA-376 Part 2: Open Packaging Conventions facade. Coordinates content-types, parts and relationships into a coherent package.
 
 import {
-  "moonbitlang/core/strconv" @strconv,
+  "moonbitlang/core/string" @string,
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/ecma376/opc/part_name" @opc_part_name,
   "trkbt10/ooxml/zip" @zip,

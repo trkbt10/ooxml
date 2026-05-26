@@ -50,20 +50,20 @@ pub fn decode_layout_node(
   for child in element.children {
     match child {
       @xml.Element(node) => {
-        let local = node.name.local_name
-        if local == "alg" {
+        let local_name = node.name.local_name
+        if local_name == "alg" {
           algorithm = Some(decode_algorithm(node))
-        } else if local == "shape" {
+        } else if local_name == "shape" {
           shape = Some(decode_shape(node))
-        } else if local == "presOf" {
+        } else if local_name == "presOf" {
           pres_of = Some(decode_pres_of(node))
-        } else if local == "constrLst" {
+        } else if local_name == "constrLst" {
           decode_constraint_list(node, constraints)
-        } else if local == "layoutNode" {
+        } else if local_name == "layoutNode" {
           children.push(LcNode(decode_layout_node(node)))
-        } else if local == "choose" {
+        } else if local_name == "choose" {
           children.push(LcChoose(decode_choose(node)))
-        } else if local == "forEach" {
+        } else if local_name == "forEach" {
           children.push(LcForEach(decode_for_each(node)))
         }
       }
@@ -130,9 +130,10 @@ pub fn decode_shape(element : @xml.Element) -> Shape {
       if trimmed.length() == 0 {
         None
       } else {
-        match (try? @preset_geometry.PresetShape::from_attr(trimmed)) {
-          Ok(shape) => Some(shape)
-          Err(_) => None
+        try @preset_geometry.PresetShape::from_attr(trimmed) catch {
+          _ => None
+        } noraise {
+          shape => Some(shape)
         }
       }
     }
@@ -216,10 +217,10 @@ pub fn decode_choose(
   for child in element.children {
     match child {
       @xml.Element(node) => {
-        let local = node.name.local_name
-        if local == "if" {
+        let local_name = node.name.local_name
+        if local_name == "if" {
           branches.push(decode_branch(node, is_else=false))
-        } else if local == "else" {
+        } else if local_name == "else" {
           branches.push(decode_branch(node, is_else=true))
         }
       }
@@ -281,12 +282,12 @@ fn decode_layout_child_sequence(
   for child in parent.children {
     match child {
       @xml.Element(node) => {
-        let local = node.name.local_name
-        if local == "layoutNode" {
+        let local_name = node.name.local_name
+        if local_name == "layoutNode" {
           children.push(LcNode(decode_layout_node(node)))
-        } else if local == "choose" {
+        } else if local_name == "choose" {
           children.push(LcChoose(decode_choose(node)))
-        } else if local == "forEach" {
+        } else if local_name == "forEach" {
           children.push(LcForEach(decode_for_each(node)))
         }
       }
@@ -397,8 +398,8 @@ pub fn decode_data_model(
   for child in element.children {
     match child {
       @xml.Element(node) => {
-        let local = node.name.local_name
-        if local == "ptLst" {
+        let local_name = node.name.local_name
+        if local_name == "ptLst" {
           for entry in node.children {
             match entry {
               @xml.Element(pt) =>
@@ -408,7 +409,7 @@ pub fn decode_data_model(
               _ => ()
             }
           }
-        } else if local == "cxnLst" {
+        } else if local_name == "cxnLst" {
           for entry in node.children {
             match entry {
               @xml.Element(cxn) =>
@@ -496,12 +497,12 @@ pub fn decode_point(
   for child in element.children {
     match child {
       @xml.Element(node) => {
-        let local = node.name.local_name
-        if local == "t" {
+        let local_name = node.name.local_name
+        if local_name == "t" {
           text = Some(collect_text(node))
-        } else if local == "prSet" {
+        } else if local_name == "prSet" {
           pr_set = Some(node)
-        } else if local == "spPr" {
+        } else if local_name == "spPr" {
           sp_pr = Some(node)
         }
       }

@@ -98,7 +98,7 @@ pub fn Package::save(self : Package) -> Bytes raise {
   //
   // Build the materialised entries first (name → bytes) so the
   // ordering pass is a pure index-into-map.
-  let materialised : Map[String, Bytes] = Map::new()
+  let materialised : Map[String, Bytes] = Map([], capacity=0)
   materialised.set(
     "[Content_Types].xml",
     @content_types.write_content_types(self.content_types),
@@ -135,7 +135,7 @@ pub fn Package::save(self : Package) -> Bytes raise {
   // materialised names that did not appear in the source order
   // (i.e. new parts added since the package was opened).
   let entries : Array[(String, Bytes)] = []
-  let emitted : Map[String, Unit] = Map::new()
+  let emitted : Map[String, Unit] = Map([], capacity=0)
   for name in self.entry_order {
     match materialised.get(name) {
       Some(bytes) => {
@@ -148,19 +148,19 @@ pub fn Package::save(self : Package) -> Bytes raise {
   // Content_Types always exists; if it was absent from
   // entry_order (e.g. constructed package), emit it next so
   // §10.1.2 placement remains valid.
-  if not(emitted.contains("[Content_Types].xml")) {
+  if !emitted.contains("[Content_Types].xml") {
     entries.push(
       ("[Content_Types].xml", materialised.get("[Content_Types].xml").unwrap()),
     )
     emitted.set("[Content_Types].xml", ())
   }
   if materialised.contains("_rels/.rels") &&
-    not(emitted.contains("_rels/.rels")) {
+    !emitted.contains("_rels/.rels") {
     entries.push(("_rels/.rels", materialised.get("_rels/.rels").unwrap()))
     emitted.set("_rels/.rels", ())
   }
   for name in parts_order {
-    if not(emitted.contains(name)) {
+    if !emitted.contains(name) {
       entries.push((name, materialised.get(name).unwrap()))
       emitted.set(name, ())
     }
@@ -592,7 +592,7 @@ pub fn Package::allocate_relationship_id(
   let mut max_rid = 0
   for r in existing {
     if r.id.has_prefix("rId") {
-      let parsed = Some(@strconv.parse_int(r.id[3:].to_owned())) catch {
+      let parsed = Some(@string.parse_int(r.id[3:].to_owned())) catch {
         _ => None
       }
       match parsed {

@@ -48,7 +48,7 @@ fn to_alpha_lower(num : Int) -> String {
   while n > 0 {
     n = n - 1
     let code = 97 + n % 26
-    let c = Char::from_int(code)
+    let c = code.unsafe_to_char()
     buf.push(c)
     n = n / 26
   }
@@ -71,7 +71,7 @@ fn to_alpha_upper(num : Int) -> String {
 fn to_circled_number(num : Int) -> String {
   if num >= 1 && num <= 20 {
     let buf = StringBuilder::new()
-    buf.write_char(Char::from_int(0x2460 + num - 1))
+    buf.write_char((0x2460 + num - 1).unsafe_to_char())
     return buf.to_string()
   }
   num.to_string()
@@ -81,7 +81,7 @@ fn to_circled_number(num : Int) -> String {
 fn to_black_circled_number(num : Int) -> String {
   if num >= 1 && num <= 10 {
     let buf = StringBuilder::new()
-    buf.write_char(Char::from_int(0x2776 + num - 1))
+    buf.write_char((0x2776 + num - 1).unsafe_to_char())
     return buf.to_string()
   }
   if num >= 11 && num <= 20 {
@@ -107,7 +107,7 @@ fn substitute_decimal_digits(num : Int, base : Int) -> String {
   for c in s {
     let code = c.to_int()
     if code >= 0x30 && code <= 0x39 {
-      out.write_char(Char::from_int(base + (code - 0x30)))
+      out.write_char((base + (code - 0x30)).unsafe_to_char())
     } else {
       out.write_char(c)
     }
@@ -151,7 +151,7 @@ fn repeated_letter_numeral(num : Int, charset : Array[Int]) -> String {
     remainder = remainder - size
     repeats = repeats + 1
   }
-  let glyph = Char::from_int(charset[remainder - 1])
+  let glyph = charset[remainder - 1].unsafe_to_char()
   let out = StringBuilder::new()
   for _ in 0..<repeats {
     out.write_char(glyph)
@@ -178,11 +178,11 @@ fn hindi_consonant_numeral(num : Int) -> String {
   // Positions 1–16 → U+0905..U+0914; 17 → U+0905 U+0902; 18 → U+0905 U+0903.
   let unit = if remainder <= 16 {
     let cp = 0x0905 + (remainder - 1)
-    Char::from_int(cp).to_string()
+    cp.unsafe_to_char().to_string()
   } else if remainder == 17 {
-    Char::from_int(0x0905).to_string() + Char::from_int(0x0902).to_string()
+    (0x0905).unsafe_to_char().to_string() + (0x0902).unsafe_to_char().to_string()
   } else {
-    Char::from_int(0x0905).to_string() + Char::from_int(0x0903).to_string()
+    (0x0905).unsafe_to_char().to_string() + (0x0903).unsafe_to_char().to_string()
   }
   let out = StringBuilder::new()
   for _ in 0..<repeats {
@@ -274,15 +274,15 @@ fn to_hebrew_numeral(num : Int) -> String {
   }
   let out = StringBuilder::new()
   if letters.length() == 1 {
-    out.write_char(Char::from_int(letters[0]))
-    out.write_char(Char::from_int(0x05F3)) // geresh ׳
+    out.write_char(letters[0].unsafe_to_char())
+    out.write_char((0x05F3).unsafe_to_char()) // geresh ׳
   } else {
     for idx in 0..<letters.length() {
       // Gershayim ״ precedes the final letter.
       if idx == letters.length() - 1 {
-        out.write_char(Char::from_int(0x05F4))
+        out.write_char((0x05F4).unsafe_to_char())
       }
-      out.write_char(Char::from_int(letters[idx]))
+      out.write_char(letters[idx].unsafe_to_char())
     }
   }
   out.to_string()
@@ -329,9 +329,9 @@ fn to_cjk_numeral(num : Int, chinese~ : Bool) -> String {
   // 2..9 carry their digit in both styles.
   if hundreds >= 1 {
     if hundreds >= 2 || chinese {
-      out.write_char(Char::from_int(cjk_digits[hundreds]))
+      out.write_char(cjk_digits[hundreds].unsafe_to_char())
     }
-    out.write_char(Char::from_int(0x767E)) // 百
+    out.write_char((0x767E).unsafe_to_char()) // 百
   }
   // Tens place.
   if tens >= 1 {
@@ -339,19 +339,19 @@ fn to_cjk_numeral(num : Int, chinese~ : Bool) -> String {
     // when it follows a hundreds place; standalone 10..19 is
     // `十…` in both styles.
     if tens == 1 && chinese && hundreds >= 1 {
-      out.write_char(Char::from_int(cjk_digits[1])) // 一
+      out.write_char(cjk_digits[1].unsafe_to_char()) // 一
     } else if tens >= 2 {
-      out.write_char(Char::from_int(cjk_digits[tens]))
+      out.write_char(cjk_digits[tens].unsafe_to_char())
     }
-    out.write_char(Char::from_int(0x5341)) // 十
+    out.write_char((0x5341).unsafe_to_char()) // 十
   } else if units >= 1 && hundreds >= 1 && chinese {
     // Interior zero: a hundreds place with no tens but a units
     // digit takes the zero glyph in Chinese style (一百〇五).
-    out.write_char(Char::from_int(cjk_digits[0])) // 〇
+    out.write_char(cjk_digits[0].unsafe_to_char()) // 〇
   }
   // Units place.
   if units >= 1 {
-    out.write_char(Char::from_int(cjk_digits[units]))
+    out.write_char(cjk_digits[units].unsafe_to_char())
   }
   out.to_string()
 }

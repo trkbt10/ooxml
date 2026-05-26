@@ -11,7 +11,11 @@
 // rest of the pipeline relies on apply here too.
 
 import {
-  "moonbitlang/core/strconv" @strconv,
+  "moonbitlang/core/string" @string,
   "trkbt10/ooxml/xml" @xml,
   "trkbt10/ooxml/util/markup" @markup,
 }
+
+import {
+  "moonbitlang/core/debug" @debug,
+} for "wbtest"

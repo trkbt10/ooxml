@@ -39,8 +39,8 @@ let g_ns_prefix : Ref[(String) -> String] = { val: fn(_ns) { "x" } }
 
 ///|
 /// Build an `@xml.QName` for an element/attribute in namespace `ns`.
-fn qname(ns : String, local : String) -> @xml.QName {
-  { prefix: Some((g_ns_prefix.val)(ns)), local_name: local, ns: Some(ns) }
+fn qname(ns : String, local_name : String) -> @xml.QName {
+  { prefix: Some((g_ns_prefix.val)(ns)), local_name: local_name, ns: Some(ns) }
 }
 
 ///|
@@ -98,8 +98,8 @@ fn synth_attrs(
   ct : @xml.Element,
   ns : String,
 ) -> Array[@xml.Attribute] {
-  let found : Map[String, String] = Map::new()
-  collect_attrs(schema, ct, found, Map::new(), Map::new())
+  let found : Map[String, String] = Map([], capacity=0)
+  collect_attrs(schema, ct, found, Map([], capacity=0), Map([], capacity=0))
   let out : Array[@xml.Attribute] = []
   for key, value in found {
     // `key` is either a bare local name (inline `<xsd:attribute
@@ -113,10 +113,10 @@ fn synth_attrs(
     match key.find(":") {
       None => out.push({ name: qname(ns, key), value })
       Some(i) => {
-        let prefix = key[0:i].to_string()
-        let local = key[i + 1:].to_string()
+        let prefix = key[0:i].to_owned()
+        let local_name = key[i + 1:].to_owned()
         let attr_ns = (g_prefix_ns.val)(prefix)
-        out.push({ name: qname(attr_ns, local), value })
+        out.push({ name: qname(attr_ns, local_name), value })
       }
     }
   }
@@ -157,7 +157,7 @@ fn model_particles(
   for child in container.children {
     match child {
       Element(p) => {
-        let min_occurs = (try? @strconv.parse_int(
+        let min_occurs = (try? @string.parse_int(
           attr(p, "minOccurs").unwrap_or("1"),
         )).unwrap_or(1)
         // A particle is emitted when it is required (`minOccurs>=1`),
@@ -200,7 +200,7 @@ fn model_particles(
           if eligible {
             match attr(p, "ref") {
               Some(ref_key) =>
-                if not(set_has(stack, ref_key)) {
+                if !(set_has(stack, ref_key)) {
                   match schema.groups.get(ref_key) {
                     Some(gp) => {
                       let sub = copy_set(stack)
@@ -277,12 +277,12 @@ fn model_children(
             out.push(n)
           }
         } else if is_xsd(c, "group") {
-          let min_occurs = (try? @strconv.parse_int(
+          let min_occurs = (try? @string.parse_int(
             attr(c, "minOccurs").unwrap_or("1"),
           )).unwrap_or(1)
           match attr(c, "ref") {
             Some(ref_key) =>
-              if (min_occurs >= 1 || rich >= 1) && not(set_has(stack, ref_key)) {
+              if (min_occurs >= 1 || rich >= 1) && !(set_has(stack, ref_key)) {
                 match schema.groups.get(ref_key) {
                   Some(gp) => {
                     let sub = copy_set(stack)
@@ -324,7 +324,7 @@ fn children_nodes(
           Some(ext) => {
             match attr(ext, "base") {
               Some(base) =>
-                if not(set_has(stack, base)) {
+                if !(set_has(stack, base)) {
                   match schema.complex_types.get(base) {
                     Some(base_ct) => {
                       let sub = copy_set(stack)
@@ -481,7 +481,7 @@ fn synth_element(
 ///|
 /// Shallow copy of a string set (for cycle-guard branches).
 fn copy_set(s : StrSet) -> StrSet {
-  let out : StrSet = Map::new()
+  let out : StrSet = Map([], capacity=0)
   for k, v in s {
     out[k] = v
   }

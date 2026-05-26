@@ -98,10 +98,10 @@ pub fn ST_EditAs::to_string(self : ST_EditAs) -> String {
 /// belong to vml-spreadsheetDrawing.xsd not dml-spreadsheetDrawing.xsd.
 /// Re-exported here through type aliases so existing consumers of
 /// this module keep compiling unchanged.
-pub using @vml_excel {type ST_CF as ST_CF}
+pub using @vml_excel {type ST_CF}
 
 ///|
-pub using @vml_excel {type ST_ObjectType as ST_ObjectType}
+pub using @vml_excel {type ST_ObjectType}
 
 ///|
 /// XSD complex type CT_AnchorClientData — Part 1 §20.5.2.3. Optional
@@ -149,11 +149,11 @@ pub fn CT_ShapeNonVisual::new(
     element, "cNvSpPr", "CT_ShapeNonVisual/cNvSpPr",
   )
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_ShapeNonVisual/cNvPr",
   )
   let c_nv_sp_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingShapeProps::new(c_nv_sp_pr_el) },
+    () => @a.CT_NonVisualDrawingShapeProps::new(c_nv_sp_pr_el),
     "CT_ShapeNonVisual/cNvSpPr",
   )
   { element, c_nv_pr, c_nv_sp_pr }
@@ -193,20 +193,20 @@ pub fn CT_Shape::new(element : @xml.Element) -> CT_Shape raise SchemaViolation {
   let sp_pr_el = required_child(element, "spPr", "CT_Shape/spPr")
   let nv_sp_pr = CT_ShapeNonVisual::new(nv_sp_pr_el)
   let sp_pr = wrap_a_violation(
-    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    () => @a.CT_ShapeProperties::new(sp_pr_el),
     "CT_Shape/spPr",
   )
   let style = match optional_child(element, "style") {
     None => None
     Some(e) =>
       Some(
-        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(e) }, "CT_Shape/style"),
+        wrap_a_violation(() => @a.CT_ShapeStyle::new(e), "CT_Shape/style"),
       )
   }
   let tx_body = match optional_child(element, "txBody") {
     None => None
     Some(e) =>
-      Some(wrap_a_violation(fn() { @a.CT_TextBody::new(e) }, "CT_Shape/txBody"))
+      Some(wrap_a_violation(() => @a.CT_TextBody::new(e), "CT_Shape/txBody"))
   }
   {
     element,
@@ -246,11 +246,11 @@ pub fn CT_ConnectorNonVisual::new(
     element, "cNvCxnSpPr", "CT_ConnectorNonVisual/cNvCxnSpPr",
   )
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_ConnectorNonVisual/cNvPr",
   )
   let c_nv_cxn_sp_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualConnectorProperties::new(c_nv_cxn_sp_pr_el) },
+    () => @a.CT_NonVisualConnectorProperties::new(c_nv_cxn_sp_pr_el),
     "CT_ConnectorNonVisual/cNvCxnSpPr",
   )
   { element, c_nv_pr, c_nv_cxn_sp_pr }
@@ -285,7 +285,7 @@ pub fn CT_Connector::new(
   let sp_pr_el = required_child(element, "spPr", "CT_Connector/spPr")
   let nv_cxn_sp_pr = CT_ConnectorNonVisual::new(nv_el)
   let sp_pr = wrap_a_violation(
-    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    () => @a.CT_ShapeProperties::new(sp_pr_el),
     "CT_Connector/spPr",
   )
   let style = match optional_child(element, "style") {
@@ -293,7 +293,7 @@ pub fn CT_Connector::new(
     Some(e) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_ShapeStyle::new(e) },
+          () => @a.CT_ShapeStyle::new(e),
           "CT_Connector/style",
         ),
       )
@@ -331,11 +331,11 @@ pub fn CT_PictureNonVisual::new(
     element, "cNvPicPr", "CT_PictureNonVisual/cNvPicPr",
   )
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_PictureNonVisual/cNvPr",
   )
   let c_nv_pic_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualPictureProperties::new(c_nv_pic_pr_el) },
+    () => @a.CT_NonVisualPictureProperties::new(c_nv_pic_pr_el),
     "CT_PictureNonVisual/cNvPicPr",
   )
   { element, c_nv_pr, c_nv_pic_pr }
@@ -374,18 +374,18 @@ pub fn CT_Picture::new(
   let sp_pr_el = required_child(element, "spPr", "CT_Picture/spPr")
   let nv_pic_pr = CT_PictureNonVisual::new(nv_el)
   let blip_fill = wrap_a_violation(
-    fn() { @a.CT_BlipFillProperties::new(blip_el) },
+    () => @a.CT_BlipFillProperties::new(blip_el),
     "CT_Picture/blipFill",
   )
   let sp_pr = wrap_a_violation(
-    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    () => @a.CT_ShapeProperties::new(sp_pr_el),
     "CT_Picture/spPr",
   )
   let style = match optional_child(element, "style") {
     None => None
     Some(e) =>
       Some(
-        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(e) }, "CT_Picture/style"),
+        wrap_a_violation(() => @a.CT_ShapeStyle::new(e), "CT_Picture/style"),
       )
   }
   {
@@ -423,13 +423,11 @@ pub fn CT_GraphicalObjectFrameNonVisual::new(
     element, "cNvGraphicFramePr", "CT_GraphicalObjectFrameNonVisual/cNvGraphicFramePr",
   )
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_GraphicalObjectFrameNonVisual/cNvPr",
   )
   let c_nv_graphic_frame_pr = wrap_a_violation(
-    fn() {
-      @a.CT_NonVisualGraphicFrameProperties::new(c_nv_graphic_frame_pr_el)
-    },
+    () => @a.CT_NonVisualGraphicFrameProperties::new(c_nv_graphic_frame_pr_el),
     "CT_GraphicalObjectFrameNonVisual/cNvGraphicFramePr",
   )
   { element, c_nv_pr, c_nv_graphic_frame_pr }
@@ -469,11 +467,11 @@ pub fn CT_GraphicalObjectFrame::new(
   )
   let nv_graphic_frame_pr = CT_GraphicalObjectFrameNonVisual::new(nv_el)
   let xfrm = wrap_a_violation(
-    fn() { @a.CT_Transform2D::new(xfrm_el) },
+    () => @a.CT_Transform2D::new(xfrm_el),
     "CT_GraphicalObjectFrame/xfrm",
   )
   let graphic = wrap_a_violation(
-    fn() { @a.CT_GraphicalObject::new(graphic_el) },
+    () => @a.CT_GraphicalObject::new(graphic_el),
     "CT_GraphicalObjectFrame/graphic",
   )
   {
@@ -511,11 +509,11 @@ pub fn CT_GroupShapeNonVisual::new(
     element, "cNvGrpSpPr", "CT_GroupShapeNonVisual/cNvGrpSpPr",
   )
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_GroupShapeNonVisual/cNvPr",
   )
   let c_nv_grp_sp_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualGroupDrawingShapeProps::new(c_nv_grp_sp_pr_el) },
+    () => @a.CT_NonVisualGroupDrawingShapeProps::new(c_nv_grp_sp_pr_el),
     "CT_GroupShapeNonVisual/cNvGrpSpPr",
   )
   { element, c_nv_pr, c_nv_grp_sp_pr }
@@ -546,7 +544,7 @@ pub fn CT_GroupShape::new(
   let grp_el = required_child(element, "grpSpPr", "CT_GroupShape/grpSpPr")
   let nv_grp_sp_pr = CT_GroupShapeNonVisual::new(nv_el)
   let grp_sp_pr = wrap_a_violation(
-    fn() { @a.CT_GroupShapeProperties::new(grp_el) },
+    () => @a.CT_GroupShapeProperties::new(grp_el),
     "CT_GroupShape/grpSpPr",
   )
   let shapes : Array[EG_ObjectChoices] = []
@@ -687,7 +685,7 @@ pub fn CT_OneCellAnchor::new(
   )
   let from = CT_Marker::new(from_el)
   let ext = wrap_a_violation(
-    fn() { @a.CT_PositiveSize2D::new(ext_el) },
+    () => @a.CT_PositiveSize2D::new(ext_el),
     "CT_OneCellAnchor/ext",
   )
   let client_data = CT_AnchorClientData::new(client_el)
@@ -723,11 +721,11 @@ pub fn CT_AbsoluteAnchor::new(
     element, "clientData", "CT_AbsoluteAnchor/clientData",
   )
   let pos = wrap_a_violation(
-    fn() { @a.CT_Point2D::new(pos_el) },
+    () => @a.CT_Point2D::new(pos_el),
     "CT_AbsoluteAnchor/pos",
   )
   let ext = wrap_a_violation(
-    fn() { @a.CT_PositiveSize2D::new(ext_el) },
+    () => @a.CT_PositiveSize2D::new(ext_el),
     "CT_AbsoluteAnchor/ext",
   )
   let client_data = CT_AnchorClientData::new(client_el)
@@ -806,13 +804,13 @@ pub type WsDr = CT_Drawing
 /// vml-spreadsheetDrawing.xsd schema, which is owned by the dedicated
 /// `drawing_ml/vml_excel` package. Aliased here so consumers don't
 /// need to re-import.
-pub using @vml_excel {type ClientDataChild as ClientDataChild}
+pub using @vml_excel {type ClientDataChild}
 
 ///|
-pub using @vml_excel {type CT_ClientData as CT_ClientData}
+pub using @vml_excel {type CT_ClientData}
 
 ///|
-pub using @vml_excel {type ClientData as ClientData}
+pub using @vml_excel {type ClientData}
 
 ///|
 /// Read top-level XSD element from as CT_Marker.
@@ -919,23 +917,6 @@ fn attr(element : @xml.Element, local_name : String) -> String? {
     }
   }
   None
-}
-
-///|
-fn require_attr(
-  element : @xml.Element,
-  local_name : String,
-  path : String,
-) -> String raise SchemaViolation {
-  match attr(element, local_name) {
-    Some(value) => value
-    None =>
-      raise SchemaViolation(
-        schema="dml-spreadsheetDrawing.xsd",
-        path~,
-        reason="required attribute missing",
-      )
-  }
 }
 
 ///|

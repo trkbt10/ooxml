@@ -2,21 +2,21 @@
 
 ///|
 test "parse_xsd_on_off accepts all 6 spec-permitted lexical forms" {
-  inspect(parse_xsd_on_off(Some("1")), content="Some(true)")
-  inspect(parse_xsd_on_off(Some("true")), content="Some(true)")
-  inspect(parse_xsd_on_off(Some("on")), content="Some(true)")
-  inspect(parse_xsd_on_off(Some("0")), content="Some(false)")
-  inspect(parse_xsd_on_off(Some("false")), content="Some(false)")
-  inspect(parse_xsd_on_off(Some("off")), content="Some(false)")
+  @debug.debug_inspect(parse_xsd_on_off(Some("1")), content="Some(true)")
+  @debug.debug_inspect(parse_xsd_on_off(Some("true")), content="Some(true)")
+  @debug.debug_inspect(parse_xsd_on_off(Some("on")), content="Some(true)")
+  @debug.debug_inspect(parse_xsd_on_off(Some("0")), content="Some(false)")
+  @debug.debug_inspect(parse_xsd_on_off(Some("false")), content="Some(false)")
+  @debug.debug_inspect(parse_xsd_on_off(Some("off")), content="Some(false)")
 }
 
 ///|
 test "parse_xsd_on_off returns None for absent or schema-violating values" {
-  inspect(parse_xsd_on_off(None), content="None")
-  inspect(parse_xsd_on_off(Some("")), content="None")
-  inspect(parse_xsd_on_off(Some("yes")), content="None") // not in ST_OnOff
-  inspect(parse_xsd_on_off(Some("TRUE")), content="None") // case-sensitive
-  inspect(parse_xsd_on_off(Some("garbage")), content="None")
+  @debug.debug_inspect(parse_xsd_on_off(None), content="None")
+  @debug.debug_inspect(parse_xsd_on_off(Some("")), content="None")
+  @debug.debug_inspect(parse_xsd_on_off(Some("yes")), content="None") // not in ST_OnOff
+  @debug.debug_inspect(parse_xsd_on_off(Some("TRUE")), content="None") // case-sensitive
+  @debug.debug_inspect(parse_xsd_on_off(Some("garbage")), content="None")
 }
 
 ///|

@@ -17,7 +17,6 @@
 // therefore injection-safe by construction.
 
 import {
-  "moonbitlang/core/buffer" @buffer,
   "moonbitlang/core/encoding/utf8" @utf8,
   "trkbt10/ooxml/xml" @xml,
 }

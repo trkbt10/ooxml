@@ -108,7 +108,7 @@ test "replace_children swaps matching direct children for replacement" {
 test "set_attribute replaces existing value" {
   let tree = p()
   let updated = set_attribute(tree, unprefixed_attribute("paraId", "99"))
-  assert_eq(attribute_by_local_name(updated, "paraId"), Some("99"))
+  @debug.assert_eq(attribute_by_local_name(updated, "paraId"), Some("99"))
 }
 
 ///|

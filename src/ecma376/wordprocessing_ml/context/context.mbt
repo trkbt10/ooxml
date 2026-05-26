@@ -23,7 +23,7 @@ pub(all) struct FooterPart {
 
 ///|
 pub(all) struct Document {
-  package : @opc.Package
+  opc_package : @opc.Package
   main_part : String
   main : @wml.CT_Document
   headers : Array[HeaderPart]
@@ -56,41 +56,41 @@ pub(all) struct Document {
 /// Open a .docx file from raw bytes.
 pub fn open(bytes : Bytes) -> Document raise OpenError {
   try {
-    let package = @opc.Package::open(bytes)
+    let opc_package = @opc.Package::open(bytes)
     let main_part = find_package_relationship_part(
-      package,
+      opc_package,
       @opc_namespaces.relationship_type_office_document(),
       "word/document.xml",
     )
     let main = @wml_reader.read_document(
-      package.required_part(main_part, section="6.3.3", source_path="/").data,
+      opc_package.required_part(main_part, section="6.3.3", source_path="/").data,
     )
     {
-      package,
+      opc_package,
       main_part,
       main,
-      headers: read_header_parts(package, main_part),
-      footers: read_footer_parts(package, main_part),
-      styles: package.read_optional("/word/styles.xml", @wml_reader.read_styles),
-      numbering: package.read_optional(
+      headers: read_header_parts(opc_package, main_part),
+      footers: read_footer_parts(opc_package, main_part),
+      styles: opc_package.read_optional("/word/styles.xml", @wml_reader.read_styles),
+      numbering: opc_package.read_optional(
         "/word/numbering.xml", @wml_reader.read_numbering,
       ),
-      settings: package.read_optional(
+      settings: opc_package.read_optional(
         "/word/settings.xml", @wml_reader.read_settings,
       ),
-      fonts: package.read_optional(
+      fonts: opc_package.read_optional(
         "/word/fontTable.xml", @wml_reader.read_fonts,
       ),
-      comments: package.read_optional(
+      comments: opc_package.read_optional(
         "/word/comments.xml", @wml_reader.read_comments,
       ),
-      footnotes: package.read_optional(
+      footnotes: opc_package.read_optional(
         "/word/footnotes.xml", @wml_reader.read_footnotes,
       ),
-      endnotes: package.read_optional(
+      endnotes: opc_package.read_optional(
         "/word/endnotes.xml", @wml_reader.read_endnotes,
       ),
-      web_settings: package.read_optional(
+      web_settings: opc_package.read_optional(
         "/word/webSettings.xml", @wml_reader.read_web_settings,
       ),
       // §17.15.1.85 / Annex A / OPC §11.3.10 — locate the
@@ -101,7 +101,7 @@ pub fn open(bytes : Bytes) -> Document raise OpenError {
       // rather than a typed projection because the renderer
       // only needs the colour scheme slots and font scheme
       // typefaces.
-      theme: load_theme_root(package, main_part),
+      theme: load_theme_root(opc_package, main_part),
     }
   } catch {
     @opc_errors.ResourceMissing(section~, path~, target~) =>
@@ -168,7 +168,7 @@ pub fn open(bytes : Bytes) -> Document raise OpenError {
 ///|
 /// Serialise a docx Document back to bytes.
 pub fn Document::save(self : Document) -> Bytes {
-  let package = self.package
+  let opc_package = self.opc_package
     .with_part(self.main_part, @wml_builder.write_document(self.main))
     .with_optional_part(
       "/word/styles.xml",
@@ -210,7 +210,7 @@ pub fn Document::save(self : Document) -> Bytes {
       self.web_settings,
       @wml_builder.write_web_settings,
     )
-  let mut saved = package
+  let mut saved = opc_package
   for header in self.headers {
     saved = saved.with_part(header.name, @wml_builder.write_hdr(header.value))
   }
@@ -273,7 +273,7 @@ pub fn Document::save(self : Document) -> Bytes {
 pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String {
   let deco = resolve_header_footer_decoration(self)
   let image_resolver = build_document_image_resolver(
-    self.package,
+    self.opc_package,
     self.main_part,
   )
   let svg = @wml_viewer.render_combined_svg(
@@ -324,14 +324,14 @@ pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String 
 /// matching `(mime_type, base64_data)` payload — mirrors the xlsx
 /// counterpart so both renderers expose images the same way.
 fn build_document_image_resolver(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   main_part : String,
 ) -> (String) -> @wml_viewer.ResolvedImage? {
-  match package.relationships(main_part) {
+  match opc_package.relationships(main_part) {
     None => fn(_) { None }
     Some(rels) => {
       let part = main_part
-      let pkg = package
+      let pkg = opc_package
       let relationships = rels
       fn(rid : String) -> @wml_viewer.ResolvedImage? {
         for rel in relationships.relationships {
@@ -416,7 +416,7 @@ fn document_mime_for_target(target : String) -> String {
 /// the two §17.10.1 toggles (`<w:titlePg>` and `<w:evenAndOddHeaders>`)
 /// that select between them. Empty streams mean the section declares
 /// no part of that reference type.
-struct ResolvedDecoration {
+priv struct ResolvedDecoration {
   header_default : Array[@wml.EG_BlockLevelElts]
   header_first : Array[@wml.EG_BlockLevelElts]
   header_even : Array[@wml.EG_BlockLevelElts]
@@ -450,7 +450,7 @@ fn ResolvedDecoration::empty() -> ResolvedDecoration {
 /// `<w:titlePg>` / §17.10.1 `<w:evenAndOddHeaders>` toggles are read
 /// so the viewer can pick the right stream per page.
 fn resolve_header_footer_decoration(doc : Document) -> ResolvedDecoration {
-  let main_rels = match doc.package.relationships(doc.main_part) {
+  let main_rels = match doc.opc_package.relationships(doc.main_part) {
     Some(r) => r
     None => return ResolvedDecoration::empty()
   }
@@ -470,10 +470,10 @@ fn resolve_header_footer_decoration(doc : Document) -> ResolvedDecoration {
   for f in doc.footers {
     footer_index.push((f.name, f.value.block_level_elts))
   }
-  let resolve = fn(local : String, type_ : String, idx) {
+  let resolve = fn(local_name : String, type_ : String, idx) {
     resolve_reference_blocks(
       sect_pr,
-      local,
+      local_name,
       type_,
       idx,
       main_rels,
@@ -617,9 +617,10 @@ fn resolve_rid_target(
       // Malformed relationship targets are non-fatal here — degrade
       // to "no header/footer for this section" rather than poisoning
       // Document::to_svg.
-      match (try? @opc_part_name.resolve_target(owner, rel.target)) {
-        Ok(t) => return Some(t)
-        Err(_) => return None
+      try @opc_part_name.resolve_target(owner, rel.target) catch {
+        _ => return None
+      } noraise {
+        t => return Some(t)
       }
     }
   }
@@ -627,10 +628,10 @@ fn resolve_rid_target(
 }
 
 ///|
-fn find_child_local(parent : @xml.Element, local : String) -> @xml.Element? {
+fn find_child_local(parent : @xml.Element, local_name : String) -> @xml.Element? {
   for child in parent.children {
     match child {
-      Element(e) => if e.name.local_name == local { return Some(e) }
+      Element(e) => if e.name.local_name == local_name { return Some(e) }
       _ => ()
     }
   }
@@ -638,9 +639,9 @@ fn find_child_local(parent : @xml.Element, local : String) -> @xml.Element? {
 }
 
 ///|
-fn attr_local(element : @xml.Element, local : String) -> String? {
+fn attr_local(element : @xml.Element, local_name : String) -> String? {
   for a in element.attributes {
-    if a.name.local_name == local {
+    if a.name.local_name == local_name {
       return Some(a.value)
     }
   }
@@ -666,17 +667,17 @@ fn attr_rid(element : @xml.Element) -> String? {
 
 ///|
 fn read_header_parts(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   owner : String,
 ) -> Array[HeaderPart] raise {
   let result : Array[HeaderPart] = []
-  match package.relationships(owner) {
+  match opc_package.relationships(owner) {
     Some(relationships) =>
       for rel in relationships.relationships {
         if rel.type_uri.has_suffix("/header") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let name = @opc_part_name.resolve_target(owner, rel.target)
-          match package.part(name) {
+          match opc_package.part(name) {
             Some(part) =>
               result.push({ name, value: @wml_reader.read_hdr(part.data) })
             None => ()
@@ -690,17 +691,17 @@ fn read_header_parts(
 
 ///|
 fn read_footer_parts(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   owner : String,
 ) -> Array[FooterPart] raise {
   let result : Array[FooterPart] = []
-  match package.relationships(owner) {
+  match opc_package.relationships(owner) {
     Some(relationships) =>
       for rel in relationships.relationships {
         if rel.type_uri.has_suffix("/footer") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let name = @opc_part_name.resolve_target(owner, rel.target)
-          match package.part(name) {
+          match opc_package.part(name) {
             Some(part) =>
               result.push({ name, value: @wml_reader.read_ftr(part.data) })
             None => ()
@@ -724,11 +725,11 @@ fn read_footer_parts(
 /// `/word/theme/theme1.xml` path so packages that omit the
 /// explicit rel (legacy producers) still render with a theme.
 fn load_theme_root(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   main_part : String,
 ) -> @xml.Element? raise {
   // Discover theme target via relationship type.
-  let theme_target : String? = match package.relationships(main_part) {
+  let theme_target : String? = match opc_package.relationships(main_part) {
     None => None
     Some(rs) => {
       let mut found : String? = None
@@ -757,7 +758,7 @@ fn load_theme_root(
     Some(name) => name
     None => "/word/theme/theme1.xml"
   }
-  package.read_optional(primary, read_theme_root)
+  opc_package.read_optional(primary, read_theme_root)
 }
 
 ///|
@@ -789,11 +790,11 @@ fn read_theme_root(bytes : Bytes) -> @xml.Element raise {
 
 ///|
 fn find_package_relationship_part(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   relationship_type : String,
   fallback : String,
 ) -> String raise {
-  match package.relationships("/") {
+  match opc_package.relationships("/") {
     Some(relationships) =>
       for rel in relationships.relationships {
         if rel.type_uri == relationship_type &&
@@ -908,7 +909,7 @@ pub fn Document::open_embedded_font(
   self : Document,
   font_part_name : String,
 ) -> @mizchi_font.TTFont? {
-  match self.package.part(font_part_name) {
+  match self.opc_package.part(font_part_name) {
     None => None
     Some(part) => @mizchi_font.parse_font(part.data)
   }
@@ -920,7 +921,7 @@ pub fn Document::open_embedded_font(
 /// §17.8.3 font.
 pub fn Document::embedded_font_parts(self : Document) -> Array[String] {
   let result : Array[String] = []
-  for part in self.package.parts {
+  for part in self.opc_package.parts {
     if part.name.has_prefix("/word/fonts/") {
       result.push(part.name)
     }

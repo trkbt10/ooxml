@@ -4790,9 +4790,10 @@ fn generate_visual_fixtures() -> Unit {
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
     let path = dir + "/" + c.id + "." + c.format
-    match (try? @fs.write_bytes_to_file(path, bytes)) {
-      Ok(_) => written = written + 1
-      Err(_) => println("!! failed to write " + path)
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
     }
   }
   for c in xcases {
@@ -4812,9 +4813,10 @@ fn generate_visual_fixtures() -> Unit {
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
     let path = dir + "/" + c.id + "." + c.format
-    match (try? @fs.write_bytes_to_file(path, bytes)) {
-      Ok(_) => written = written + 1
-      Err(_) => println("!! failed to write " + path)
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
     }
   }
   // Tabled-case pass: xlsx fixtures whose worksheet references one
@@ -4829,9 +4831,10 @@ fn generate_visual_fixtures() -> Unit {
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
     let path = dir + "/" + c.id + "." + c.format
-    match (try? @fs.write_bytes_to_file(path, bytes)) {
-      Ok(_) => written = written + 1
-      Err(_) => println("!! failed to write " + path)
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
     }
   }
   // Pivot-case pass: xlsx fixtures whose worksheet references a
@@ -4851,9 +4854,10 @@ fn generate_visual_fixtures() -> Unit {
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
     let path = dir + "/" + c.id + "." + c.format
-    match (try? @fs.write_bytes_to_file(path, bytes)) {
-      Ok(_) => written = written + 1
-      Err(_) => println("!! failed to write " + path)
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
     }
   }
   // Sparkline-case pass: xlsx fixtures whose worksheet carries a
@@ -4869,9 +4873,10 @@ fn generate_visual_fixtures() -> Unit {
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
     let path = dir + "/" + c.id + "." + c.format
-    match (try? @fs.write_bytes_to_file(path, bytes)) {
-      Ok(_) => written = written + 1
-      Err(_) => println("!! failed to write " + path)
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
     }
   }
   // Charted-case pass: pptx fixtures whose slide carries a
@@ -4886,9 +4891,10 @@ fn generate_visual_fixtures() -> Unit {
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
     let path = dir + "/" + c.id + "." + c.format
-    match (try? @fs.write_bytes_to_file(path, bytes)) {
-      Ok(_) => written = written + 1
-      Err(_) => println("!! failed to write " + path)
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
     }
   }
   // Diagrammed-case pass: pptx fixtures whose slide carries a
@@ -4910,9 +4916,10 @@ fn generate_visual_fixtures() -> Unit {
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
     let path = dir + "/" + c.id + "." + c.format
-    match (try? @fs.write_bytes_to_file(path, bytes)) {
-      Ok(_) => written = written + 1
-      Err(_) => println("!! failed to write " + path)
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
     }
   }
   // External-reference-case pass: xlsx fixtures whose workbook
@@ -4928,9 +4935,10 @@ fn generate_visual_fixtures() -> Unit {
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
     let path = dir + "/" + c.id + "." + c.format
-    match (try? @fs.write_bytes_to_file(path, bytes)) {
-      Ok(_) => written = written + 1
-      Err(_) => println("!! failed to write " + path)
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
     }
   }
   // Media-slide-case pass: pptx fixtures whose slide carries a
@@ -4945,9 +4953,10 @@ fn generate_visual_fixtures() -> Unit {
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)
     let path = dir + "/" + c.id + "." + c.format
-    match (try? @fs.write_bytes_to_file(path, bytes)) {
-      Ok(_) => written = written + 1
-      Err(_) => println("!! failed to write " + path)
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
     }
   }
   println("visual fixtures: \{written}/\{total} -> .snapshots/fixtures/")

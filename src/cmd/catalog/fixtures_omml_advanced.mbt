@@ -80,20 +80,6 @@ fn ma_delim(beg : String, end : String, inner : @xml.Element) -> @xml.Element {
 }
 
 ///|
-/// Build a `<m:sSubSup>` subscript+superscript-on-base group.
-fn ma_subsup(
-  e : @xml.Element,
-  sub : @xml.Element,
-  sup : @xml.Element,
-) -> @xml.Element {
-  xe(NS_M, "sSubSup", [], [
-    Element(m_arg("e", e)),
-    Element(m_arg("sub", sub)),
-    Element(m_arg("sup", sup)),
-  ])
-}
-
-///|
 /// `<m:sSub>` — base with subscript.
 fn ma_sub(e : @xml.Element, sub : @xml.Element) -> @xml.Element {
   xe(NS_M, "sSub", [], [Element(m_arg("e", e)), Element(m_arg("sub", sub))])

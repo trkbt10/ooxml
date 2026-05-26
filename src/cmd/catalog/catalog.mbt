@@ -48,7 +48,7 @@ fn schema_sets() -> Array[SchemaSet] {
 /// Strip an XSD `prefix:Local` reference down to `Local`.
 fn local_name(qname : String) -> String {
   match qname.rev_find(":") {
-    Some(i) => qname[i + 1:].to_string()
+    Some(i) => qname[i + 1:].to_owned()
     None => qname
   }
 }

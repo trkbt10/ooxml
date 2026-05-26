@@ -61,7 +61,7 @@ fn svg_text_content(svg : String) -> String {
             match find_from(svg, "</text>", content_start) {
               None => break
               Some(close) => {
-                out.write_string(svg[content_start:close].to_string())
+                out.write_string(svg[content_start:close].to_owned())
                 i = close + 7
               }
             }
@@ -232,7 +232,7 @@ test "presentation_ml context add_picture embeds image part and rels" {
       let reopened = open(saved)
       // verify the image part appears in the reopened package
       let mut found = false
-      for part in reopened.package.parts {
+      for part in reopened.opc_package.parts {
         if part.name.has_prefix("/ppt/media/image") {
           found = true
         }

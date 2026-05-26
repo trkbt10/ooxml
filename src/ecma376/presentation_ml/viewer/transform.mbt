@@ -17,7 +17,7 @@
 ///|
 /// Format-agnostic transform data.  Field-by-field mirror of
 /// `TransformData` in `transform.ts:16`.
-struct TransformData {
+priv struct TransformData {
   x : Double
   y : Double
   width : Double
@@ -32,7 +32,7 @@ struct TransformData {
 /// Group transform data, extending `TransformData` with child
 /// coordinate-space attributes.  Mirrors the field set used by
 /// `buildGroupTransformAttr` in `slide-utils.ts:133`.
-struct GroupTransformData {
+priv struct GroupTransformData {
   x : Double
   y : Double
   width : Double
@@ -71,18 +71,6 @@ fn format_double(value : Double) -> String {
     value.to_int().to_string()
   } else {
     value.to_string()
-  }
-}
-
-///|
-/// Append `translate(x, y)` when the offset is non-zero.
-fn append_translate(buf : StringBuilder, x : Double, y : Double) -> Unit {
-  if x != 0.0 || y != 0.0 {
-    buf.write_string("translate(")
-    buf.write_string(format_double(x))
-    buf.write_string(", ")
-    buf.write_string(format_double(y))
-    buf.write_string(")")
   }
 }
 
@@ -345,9 +333,10 @@ fn parse_emu_attr(element : @xml.Element, name : String) -> Double {
   match attr_value(element, name) {
     None => 0.0
     Some(v) =>
-      match (try? @strconv.parse_double(v)) {
-        Ok(d) => d
-        Err(_) => 0.0
+      try @string.parse_double(v) catch {
+        _ => 0.0
+      } noraise {
+        d => d
       }
   }
 }

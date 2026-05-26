@@ -55,12 +55,12 @@ pub struct ColorResolveContext {
 /// unavailable (raw shape rendering, tests).
 pub fn ColorResolveContext::empty() -> ColorResolveContext {
   {
-    color_map: Map::new(),
+    color_map: Map([], capacity=0),
     color_map_override: None,
-    color_scheme: Map::new(),
+    color_scheme: Map([], capacity=0),
     ph_clr: None,
-    major_font: Map::new(),
-    minor_font: Map::new(),
+    major_font: Map([], capacity=0),
+    minor_font: Map([], capacity=0),
     // Default to reference-renderer compat ON because every viewer
     // caller compares against the reference renderer's output through
     // the snapshot harness; a strict-spec consumer must opt out via
@@ -154,8 +154,8 @@ pub fn ColorResolveContext::resolve_theme_typeface(
   if typeface.code_unit_at(3).to_int() != 0x2D { // '-'
     return None
   }
-  let scheme = typeface[1:3].to_string()
-  let face_kind = typeface[4:6].to_string()
+  let scheme = typeface[1:3].to_owned()
+  let face_kind = typeface[4:6].to_owned()
   if face_kind != "lt" && face_kind != "ea" && face_kind != "cs" {
     return None
   }
@@ -338,7 +338,7 @@ pub fn get_scheme_color(
     scheme_clr.code_unit_at(0) == 0x61 &&
     scheme_clr.code_unit_at(1) == 0x3A {
     // "a:..." prefix → drop it.
-    scheme_clr.substring(start=2)
+    scheme_clr[2:].to_owned()
   } else {
     scheme_clr
   }
@@ -394,7 +394,7 @@ fn scrgb_linear_to_srgb_byte(linear : Double) -> Double {
   let encoded = if l <= 0.0031308 {
     l * 12.92
   } else {
-    1.055 * l.pow(1.0 / 2.4) - 0.055
+    1.055 * @math.pow(l, 1.0 / 2.4) - 0.055
   }
   let byte = encoded * 255.0
   if byte < 0.0 {
@@ -411,16 +411,17 @@ fn scrgb_linear_to_srgb_byte(linear : Double) -> Double {
 /// raw `"50000"` (50000 / 100000 = 0.5).  Mirrors
 /// `parsePercentageValue` in `color-resolver.ts:300`.
 fn parse_pct(value : String) -> Double {
-  let trimmed = value.trim_space().to_string()
+  let trimmed = value.trim().to_owned()
   let dropped = if trimmed.length() > 0 &&
     trimmed.code_unit_at(trimmed.length() - 1) == 0x25 {
-    trimmed.substring(start=0, end=trimmed.length() - 1)
+    trimmed[0:trimmed.length() - 1].to_owned()
   } else {
     trimmed
   }
-  match (try? @strconv.parse_double(dropped)) {
-    Ok(v) => v
-    Err(_) => 0.0
+  try @string.parse_double(dropped) catch {
+    _ => 0.0
+  } noraise {
+    v => v
   }
 }
 
@@ -463,9 +464,10 @@ fn int_attr_child(element : @xml.Element, name : String, attr : String) -> Int? 
       match attr_value(c, attr) {
         None => None
         Some(v) =>
-          match (try? @strconv.parse_int(v.trim_space().to_string())) {
-            Ok(n) => Some(n)
-            Err(_) => None
+          try @string.parse_int(v.trim().to_owned()) catch {
+            _ => None
+          } noraise {
+            n => Some(n)
           }
       }
   }

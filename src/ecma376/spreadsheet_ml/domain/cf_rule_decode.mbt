@@ -547,5 +547,5 @@ fn cf_trim_whitespace(text : String) -> String {
       break
     }
   }
-  text.substring(start~, end~)
+  text[start:end].to_owned()
 }

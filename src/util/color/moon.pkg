@@ -6,3 +6,11 @@
 // Faithful MoonBit port of web-pptx's @aurochs/color package.
 // Reference: /Users/terukichi/Workspaces/trkbt10/web-pptx/packages/
 //   @aurochs/color/src/*
+
+import {
+  "moonbitlang/core/math" @math,
+}
+
+import {
+  "moonbitlang/core/debug" @debug,
+} for "wbtest"

@@ -156,13 +156,13 @@ pub fn resolve_placeholder(
   let effective = merge_effective(slide_ph, layout_ph, master_ph)
   let sp_pr = merge_sp_pr(
     typed_sp_pr(slide_shape),
-    layout_shape_match.bind(fn(s) { typed_sp_pr(s) }),
-    master_shape_match.bind(fn(s) { typed_sp_pr(s) }),
+    layout_shape_match.bind((s) => typed_sp_pr(s)),
+    master_shape_match.bind((s) => typed_sp_pr(s)),
   )
   let tx_body = merge_tx_body(
     typed_tx_body(slide_shape),
-    layout_shape_match.bind(fn(s) { typed_tx_body(s) }),
-    master_shape_match.bind(fn(s) { typed_tx_body(s) }),
+    layout_shape_match.bind((s) => typed_tx_body(s)),
+    master_shape_match.bind((s) => typed_tx_body(s)),
   )
   let nv_sp_pr = merge_nv_sp_pr(
     Some(slide_shape.nv_sp_pr),
@@ -244,7 +244,7 @@ fn lookup_master_shape(
 fn typed_sp_pr(
   shape : @domain.CT_Shape,
 ) -> @a.CT_ShapeProperties? raise @domain.SchemaViolation {
-  Some(wrap_a_violation(fn() { @a.CT_ShapeProperties::new(shape.sp_pr) }))
+  Some(wrap_a_violation(() => @a.CT_ShapeProperties::new(shape.sp_pr)))
 }
 
 ///|
@@ -254,7 +254,7 @@ fn typed_tx_body(
   shape : @domain.CT_Shape,
 ) -> @a.CT_TextBody? raise @domain.SchemaViolation {
   match shape.tx_body {
-    Some(e) => Some(wrap_a_violation(fn() { @a.CT_TextBody::new(e) }))
+    Some(e) => Some(wrap_a_violation(() => @a.CT_TextBody::new(e)))
     None => None
   }
 }

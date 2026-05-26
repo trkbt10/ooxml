@@ -252,9 +252,10 @@ fn render_roundrect(
   }
   let arcsize = match attr_value(ve, "arcsize") {
     Some(s) =>
-      match (try? @strconv.parse_double(s)) {
-        Ok(v) => v
-        Err(_) => 0.2
+      try @string.parse_double(s) catch {
+        _ => 0.2
+      } noraise {
+        v => v
       }
     None => 0.2
   }

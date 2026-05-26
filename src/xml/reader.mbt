@@ -419,7 +419,7 @@ fn Reader::resolve_attributes(
   raw_attrs : Array[(String, String)],
 ) -> Array[Attribute] raise {
   let attrs : Array[Attribute] = []
-  let seen : Map[String, Bool] = Map::new()
+  let seen : Map[String, Bool] = Map([], capacity=0)
   for raw_attr in raw_attrs {
     let (raw, value) = raw_attr
     let split = split_qname(raw)

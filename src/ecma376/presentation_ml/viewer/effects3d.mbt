@@ -19,7 +19,7 @@
 ///|
 /// Result of resolving a §20.1.5.2 `camera` preset to a CSS-style
 /// transform. Mirrors `Transform3dResult` in `effects3d.ts:150`.
-struct Transform3d {
+priv struct Transform3d {
   transform : String
   skew_x : Double
   skew_y : Double
@@ -157,7 +157,7 @@ pub fn has_3d_effects(sp_pr : @xml.Element) -> Bool {
   match sp3d {
     Some(s) => {
       if attr_value(s, "extrusionH") is Some(v) {
-        if (try? @strconv.parse_double(v)) is Ok(d) {
+        if (try? @string.parse_double(v)) is Ok(d) {
           if d > 0.0 {
             return true
           }
@@ -679,9 +679,10 @@ fn attr_emu_d(
   match attr_value(element, name) {
     None => default
     Some(v) =>
-      match (try? @strconv.parse_double(v)) {
-        Ok(d) => d
-        Err(_) => default
+      try @string.parse_double(v) catch {
+        _ => default
+      } noraise {
+        d => d
       }
   }
 }

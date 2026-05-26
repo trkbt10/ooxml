@@ -1,27 +1,4 @@
 ///|
-fn validate_wordprocessing_drawing_simple_type(
-  type_name : String,
-  value : String,
-) -> Unit raise SchemaViolation {
-  if value.length() == 0 {
-    raise_schema_violation(type_name, value, "empty lexical value")
-  }
-  let allowed = wordprocessing_drawing_simple_type_values(type_name)
-  if allowed.length() > 0 && !allowed.contains(";" + value + ";") {
-    raise_schema_violation(type_name, value, "unknown enumeration value")
-  }
-}
-
-///|
-fn wordprocessing_drawing_simple_type_values(type_name : String) -> String {
-  match type_name {
-    "ST_AlignH" => ";left;right;center;inside;outside;"
-    "ST_AlignV" => ";top;bottom;center;inside;outside;"
-    _ => ""
-  }
-}
-
-///|
 /// XSD simple type ST_WrapDistance — Part 1 §20.4.3.6.
 /// Restriction of xsd:unsignedInt — a one-dimensional distance stored in EMUs.
 /// Carried as Int64 because xsd:unsignedInt covers 0..2^32-1.
@@ -835,7 +812,7 @@ pub fn CT_WrapPath::new(
       )
   }
   let start = wrap_a_violation(
-    fn() { @a.CT_Point2D::new(start_el) },
+    () => @a.CT_Point2D::new(start_el),
     "CT_WrapPath/start",
   )
   let line_to_raw = wml_ct_chunk4_children(element, "lineTo")
@@ -847,7 +824,7 @@ pub fn CT_WrapPath::new(
   let line_to : Array[@a.CT_Point2D] = []
   for p in line_to_raw {
     line_to.push(
-      wrap_a_violation(fn() { @a.CT_Point2D::new(p) }, "CT_WrapPath/lineTo"),
+      wrap_a_violation(() => @a.CT_Point2D::new(p), "CT_WrapPath/lineTo"),
     )
   }
   let edited = match wml_ct_chunk4_attr(element, "edited") {
@@ -1952,7 +1929,7 @@ pub fn CT_WordprocessingGroup::new(
     Some(c) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_NonVisualDrawingProps::new(c) },
+          () => @a.CT_NonVisualDrawingProps::new(c),
           "CT_WordprocessingGroup/cNvPr",
         ),
       )
@@ -1967,7 +1944,7 @@ pub fn CT_WordprocessingGroup::new(
       )
   }
   let c_nv_grp_sp_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualGroupDrawingShapeProps::new(c_nv_grp_sp_pr_el) },
+    () => @a.CT_NonVisualGroupDrawingShapeProps::new(c_nv_grp_sp_pr_el),
     "CT_WordprocessingGroup/cNvGrpSpPr",
   )
   let grp_sp_pr_el = match wml_ct_chunk4_first_child(element, "grpSpPr") {
@@ -1978,7 +1955,7 @@ pub fn CT_WordprocessingGroup::new(
       )
   }
   let grp_sp_pr = wrap_a_violation(
-    fn() { @a.CT_GroupShapeProperties::new(grp_sp_pr_el) },
+    () => @a.CT_GroupShapeProperties::new(grp_sp_pr_el),
     "CT_WordprocessingGroup/grpSpPr",
   )
   let group_body : Array[WpGroupChild] = []
@@ -1995,7 +1972,7 @@ pub fn CT_WordprocessingGroup::new(
             group_body.push(
               Pic(
                 wrap_dml_pic_violation(
-                  fn() { @dml_pic.CT_Picture::new(e) },
+                  () => @dml_pic.CT_Picture::new(e),
                   "CT_WordprocessingGroup/pic",
                 ),
               ),
@@ -2016,7 +1993,7 @@ pub fn CT_WordprocessingGroup::new(
     Some(c) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_OfficeArtExtensionList::new(c) },
+          () => @a.CT_OfficeArtExtensionList::new(c),
           "CT_WordprocessingGroup/extLst",
         ),
       )
@@ -2079,7 +2056,7 @@ pub fn CT_WordprocessingCanvas::new(
     Some(c) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_BackgroundFormatting::new(c) },
+          () => @a.CT_BackgroundFormatting::new(c),
           "CT_WordprocessingCanvas/bg",
         ),
       )
@@ -2089,7 +2066,7 @@ pub fn CT_WordprocessingCanvas::new(
     Some(c) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_WholeE2oFormatting::new(c) },
+          () => @a.CT_WholeE2oFormatting::new(c),
           "CT_WordprocessingCanvas/whole",
         ),
       )
@@ -2106,7 +2083,7 @@ pub fn CT_WordprocessingCanvas::new(
             canvas_body.push(
               Pic(
                 wrap_dml_pic_violation(
-                  fn() { @dml_pic.CT_Picture::new(e) },
+                  () => @dml_pic.CT_Picture::new(e),
                   "CT_WordprocessingCanvas/pic",
                 ),
               ),
@@ -2130,7 +2107,7 @@ pub fn CT_WordprocessingCanvas::new(
     Some(c) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_OfficeArtExtensionList::new(c) },
+          () => @a.CT_OfficeArtExtensionList::new(c),
           "CT_WordprocessingCanvas/extLst",
         ),
       )

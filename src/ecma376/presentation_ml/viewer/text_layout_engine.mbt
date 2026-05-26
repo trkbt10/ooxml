@@ -43,9 +43,10 @@ fn bullet_width_of(bullet : BulletConfig?) -> Double {
   match bullet {
     None => 0.0
     Some(b) =>
-      match (try? estimate_bullet_width(b.char, b.font_size, b.font_family)) {
-        Ok(w) => w
-        Err(_) => 0.0
+      try estimate_bullet_width(b.char, b.font_size, b.font_family) catch {
+        _ => 0.0
+      } noraise {
+        w => w
       }
   }
 }
@@ -227,9 +228,10 @@ fn layout_paragraph(
   let ml = para.margin_left
   let mr = para.margin_right
   let ind = para.indent
-  let measured = match (try? measure_spans(para.spans)) {
-    Ok(m) => m
-    Err(_) => zero_width_spans(para.spans)
+  let measured = try measure_spans(para.spans) catch {
+    _ => zero_width_spans(para.spans)
+  } noraise {
+    m => m
   }
   let bw = bullet_width_of(para.bullet)
   // Hanging-indent snap: when the bullet area fits entirely inside

@@ -31,7 +31,7 @@
 /// `createGuideContext(w, h, [...])` rather than reusing the dispatcher's
 /// context.  Caller then overrides whatever adjust values are relevant.
 fn clone_ctx(src : GuideContext) -> GuideContext {
-  let dst : GuideContext = Map::new()
+  let dst : GuideContext = Map([], capacity=0)
   for k, v in src {
     dst[k] = v
   }
@@ -49,11 +49,11 @@ fn g(ctx : GuideContext, name : String) -> Double {
 ///|
 /// One path command from the TS `buildPresetPath` repertoire.  Mirrors
 /// `PresetPathCommand` in `preset-shapes.ts:1001`.
-enum ArrowCmd {
+priv enum ArrowCmd {
   MoveTo(Double, Double)
   LineTo(Double, Double)
   QuadTo(Double, Double, Double, Double)
-  ArcTo(Double, Double, Double, Double, Double, Double) // wR, hR, stAng, swAng, currentX, currentY
+  ArcTo(Double, Double, Double, Double) // wR, hR, stAng, swAng
   Close
 }
 
@@ -94,7 +94,7 @@ fn build_arrow_path(commands : Array[ArrowCmd]) -> String {
           "Q " + fmt(qx) + " " + fmt(qy) + " " + fmt(x) + " " + fmt(y),
         )
       }
-      ArcTo(w_r, h_r, st_ang, sw_ang, _, _) => {
+      ArcTo(w_r, h_r, st_ang, sw_ang) => {
         let start_rad = st_ang * arrow_angle_to_rad
         let end_rad = (st_ang + sw_ang) * arrow_angle_to_rad
         let center_x = cx - w_r * @math.cos(start_rad)
@@ -189,11 +189,11 @@ fn dispatch_arrow(
 ///|
 /// `rightArrow` — preset-shapes.ts:19
 fn arrow_right_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 100000 w ss" },
     { name: "a1", formula: "pin 0 adj1 100000" },
@@ -206,15 +206,15 @@ fn arrow_right_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "dx2", formula: "*/ y1 dx1 hd2" },
     { name: "x2", formula: "+- x1 dx2 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let vc = g(local, "vc")
-  let x1 = g(local, "x1")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let vc = g(local_ctx, "vc")
+  let x1 = g(local_ctx, "x1")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
   "M " +
   fmt(l) +
   " " +
@@ -249,11 +249,11 @@ fn arrow_right_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
 ///|
 /// `downArrow` — preset-shapes.ts:64
 fn arrow_down_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 100000 h ss" },
     { name: "a1", formula: "pin 0 adj1 100000" },
@@ -266,15 +266,15 @@ fn arrow_down_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "dy2", formula: "*/ x1 dy1 wd2" },
     { name: "y2", formula: "+- y1 dy2 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let hc = g(local, "hc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let y1 = g(local, "y1")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let hc = g(local_ctx, "hc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let y1 = g(local_ctx, "y1")
   "M " +
   fmt(l) +
   " " +
@@ -311,11 +311,11 @@ fn arrow_down_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
 /// canonical ECMA-376 §20.1.10.56 upArrow definition (mirror of
 /// downArrow across the horizontal midline).
 fn arrow_up_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 100000 h ss" },
     { name: "a1", formula: "pin 0 adj1 100000" },
@@ -328,15 +328,15 @@ fn arrow_up_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "dx2", formula: "*/ x1 dy2 wd2" },
     { name: "y1", formula: "+- y2 0 dx2" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let hc = g(local, "hc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let y2 = g(local, "y2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let hc = g(local_ctx, "hc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let y2 = g(local_ctx, "y2")
   "M " +
   fmt(l) +
   " " +
@@ -371,11 +371,11 @@ fn arrow_up_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
 ///|
 /// `leftArrow` — preset-shapes.ts:109
 fn arrow_left_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 100000 w ss" },
     { name: "a1", formula: "pin 0 adj1 100000" },
@@ -388,15 +388,15 @@ fn arrow_left_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "dx1", formula: "*/ y1 dx2 hd2" },
     { name: "x1", formula: "+- x2 0 dx1" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let vc = g(local, "vc")
-  let x2 = g(local, "x2")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let vc = g(local_ctx, "vc")
+  let x2 = g(local_ctx, "x2")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
   "M " +
   fmt(l) +
   " " +
@@ -435,11 +435,11 @@ fn arrow_left_right_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 w ss" },
     { name: "a1", formula: "pin 0 adj1 100000" },
@@ -453,16 +453,16 @@ fn arrow_left_right_arrow(
     { name: "x1", formula: "+- x2 0 dx1" },
     { name: "x4", formula: "+- x3 dx1 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let vc = g(local, "vc")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let vc = g(local_ctx, "vc")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
   "M " +
   fmt(l) +
   " " +
@@ -509,11 +509,11 @@ fn arrow_left_right_arrow(
 ///|
 /// `upDownArrow` — preset-shapes.ts:202
 fn arrow_up_down_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 h ss" },
     { name: "a1", formula: "pin 0 adj1 100000" },
@@ -527,16 +527,16 @@ fn arrow_up_down_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "y1", formula: "+- y2 0 dy1" },
     { name: "y4", formula: "+- y3 dy1 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let hc = g(local, "hc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let hc = g(local_ctx, "hc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
   "M " +
   fmt(l) +
   " " +
@@ -587,11 +587,11 @@ fn arrow_striped_right_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 84375 w ss" },
     { name: "a1", formula: "pin 0 adj1 100000" },
@@ -605,19 +605,19 @@ fn arrow_striped_right_arrow(
     { name: "dx6", formula: "*/ dy1 dx5 hd2" },
     { name: "x6", formula: "+- r 0 dx6" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let vc = g(local, "vc")
-  let ssd32 = g(local, "ssd32")
-  let ssd16 = g(local, "ssd16")
-  let ssd8 = g(local, "ssd8")
-  let x4 = g(local, "x4")
-  let x5 = g(local, "x5")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let vc = g(local_ctx, "vc")
+  let ssd32 = g(local_ctx, "ssd32")
+  let ssd16 = g(local_ctx, "ssd16")
+  let ssd8 = g(local_ctx, "ssd8")
+  let x4 = g(local_ctx, "x4")
+  let x5 = g(local_ctx, "x5")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
   "M " +
   fmt(l) +
   " " +
@@ -690,11 +690,11 @@ fn arrow_notched_right_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(50000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 100000 w ss" },
     { name: "a1", formula: "pin 0 adj1 100000" },
@@ -707,16 +707,16 @@ fn arrow_notched_right_arrow(
     { name: "x1", formula: "*/ dy1 dx2 hd2" },
     { name: "x3", formula: "+- r 0 x1" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let vc = g(local, "vc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let vc = g(local_ctx, "vc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
   "M " +
   fmt(l) +
   " " +
@@ -803,15 +803,15 @@ fn arrow_left_arrow_callout(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
   let adj4 = ctx.get("adj4").unwrap_or(64977.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 h ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -833,18 +833,18 @@ fn arrow_left_arrow_callout(
     { name: "x2", formula: "+- r 0 dx2" },
     { name: "x3", formula: "+/ x2 r 2" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let vc = g(local, "vc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
-  let y4 = g(local, "y4")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let vc = g(local_ctx, "vc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
+  let y4 = g(local_ctx, "y4")
   "M " +
   fmt(l) +
   " " +
@@ -899,15 +899,15 @@ fn arrow_right_arrow_callout(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
   let adj4 = ctx.get("adj4").unwrap_or(64977.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 h ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -929,18 +929,18 @@ fn arrow_right_arrow_callout(
     { name: "x2", formula: "*/ w a4 100000" },
     { name: "x1", formula: "*/ x2 1 2" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let vc = g(local, "vc")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
-  let y4 = g(local, "y4")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let vc = g(local_ctx, "vc")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
+  let y4 = g(local_ctx, "y4")
   "M " +
   fmt(l) +
   " " +
@@ -995,15 +995,15 @@ fn arrow_up_arrow_callout(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
   let adj4 = ctx.get("adj4").unwrap_or(64977.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 w ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -1025,18 +1025,18 @@ fn arrow_up_arrow_callout(
     { name: "y2", formula: "+- b 0 dy2" },
     { name: "y3", formula: "+/ y2 b 2" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let hc = g(local, "hc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let hc = g(local_ctx, "hc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
   "M " +
   fmt(l) +
   " " +
@@ -1091,15 +1091,15 @@ fn arrow_down_arrow_callout(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
   let adj4 = ctx.get("adj4").unwrap_or(64977.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 w ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -1121,18 +1121,18 @@ fn arrow_down_arrow_callout(
     { name: "y2", formula: "*/ h a4 100000" },
     { name: "y1", formula: "*/ y2 1 2" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let hc = g(local, "hc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let hc = g(local_ctx, "hc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
   "M " +
   fmt(l) +
   " " +
@@ -1187,15 +1187,15 @@ fn arrow_left_right_arrow_callout(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
   let adj4 = ctx.get("adj4").unwrap_or(48123.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 h ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -1218,20 +1218,20 @@ fn arrow_left_right_arrow_callout(
     { name: "x2", formula: "+- hc 0 dx2" },
     { name: "x3", formula: "+- hc dx2 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let vc = g(local, "vc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
-  let y4 = g(local, "y4")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let vc = g(local_ctx, "vc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
+  let y4 = g(local_ctx, "y4")
   "M " +
   fmt(l) +
   " " +
@@ -1314,15 +1314,15 @@ fn arrow_up_down_arrow_callout(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
   let adj4 = ctx.get("adj4").unwrap_or(48123.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 w ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -1345,20 +1345,20 @@ fn arrow_up_down_arrow_callout(
     { name: "y2", formula: "+- vc 0 dy2" },
     { name: "y3", formula: "+- vc dy2 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let hc = g(local, "hc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
-  let y4 = g(local, "y4")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let hc = g(local_ctx, "hc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
+  let y4 = g(local_ctx, "y4")
   "M " +
   fmt(l) +
   " " +
@@ -1441,15 +1441,15 @@ fn arrow_quad_arrow_callout(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(18515.0)
   let adj2 = ctx.get("adj2").unwrap_or(18515.0)
   let adj3 = ctx.get("adj3").unwrap_or(18515.0)
   let adj4 = ctx.get("adj4").unwrap_or(48123.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
   let guides : Array[GuideEntry] = [
     { name: "a2", formula: "pin 0 adj2 50000" },
     { name: "maxAdj1", formula: "*/ a2 2 1" },
@@ -1479,28 +1479,28 @@ fn arrow_quad_arrow_callout(
     { name: "y4", formula: "+- vc 0 dx3" },
     { name: "y5", formula: "+- vc dx3 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let hc = g(local, "hc")
-  let vc = g(local, "vc")
-  let ah = g(local, "ah")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let x5 = g(local, "x5")
-  let x6 = g(local, "x6")
-  let x7 = g(local, "x7")
-  let x8 = g(local, "x8")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
-  let y4 = g(local, "y4")
-  let y5 = g(local, "y5")
-  let y6 = g(local, "y6")
-  let y7 = g(local, "y7")
-  let y8 = g(local, "y8")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let hc = g(local_ctx, "hc")
+  let vc = g(local_ctx, "vc")
+  let ah = g(local_ctx, "ah")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let x5 = g(local_ctx, "x5")
+  let x6 = g(local_ctx, "x6")
+  let x7 = g(local_ctx, "x7")
+  let x8 = g(local_ctx, "x8")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
+  let y4 = g(local_ctx, "y4")
+  let y5 = g(local_ctx, "y5")
+  let y6 = g(local_ctx, "y6")
+  let y7 = g(local_ctx, "y7")
+  let y8 = g(local_ctx, "y8")
   "M " +
   fmt(l) +
   " " +
@@ -1635,15 +1635,15 @@ fn arrow_quad_arrow_callout(
 ///|
 /// `bentArrow` — preset-shapes.ts:783
 fn arrow_bent_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
   let adj4 = ctx.get("adj4").unwrap_or(43750.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
   let guides : Array[GuideEntry] = [
     { name: "a2", formula: "pin 0 adj2 50000" },
     { name: "maxAdj1", formula: "*/ a2 2 1" },
@@ -1669,21 +1669,21 @@ fn arrow_bent_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "y5", formula: "+- dh2 bd 0" },
     { name: "y6", formula: "+- y3 bd2 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let th = g(local, "th")
-  let aw2 = g(local, "aw2")
-  let bd = g(local, "bd")
-  let bd2 = g(local, "bd2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let y3 = g(local, "y3")
-  let y4 = g(local, "y4")
-  let y5 = g(local, "y5")
-  let y6 = g(local, "y6")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let th = g(local_ctx, "th")
+  let aw2 = g(local_ctx, "aw2")
+  let bd = g(local_ctx, "bd")
+  let bd2 = g(local_ctx, "bd2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let y3 = g(local_ctx, "y3")
+  let y4 = g(local_ctx, "y4")
+  let y5 = g(local_ctx, "y5")
+  let y6 = g(local_ctx, "y6")
   "M " +
   fmt(l) +
   " " +
@@ -1742,13 +1742,13 @@ fn arrow_bent_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
 ///|
 /// `bentUpArrow` — preset-shapes.ts:857
 fn arrow_bent_up_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "a1", formula: "pin 0 adj1 50000" },
     { name: "a2", formula: "pin 0 adj2 50000" },
@@ -1767,17 +1767,17 @@ fn arrow_bent_up_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "y3", formula: "+/ y2 b 2" },
     { name: "y15", formula: "+/ y1 b 2" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let y1 = g(local, "y1")
-  let y2 = g(local, "y2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let y1 = g(local_ctx, "y1")
+  let y2 = g(local_ctx, "y2")
   "M " +
   fmt(l) +
   " " +
@@ -1820,17 +1820,17 @@ fn arrow_bent_up_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
 ///|
 /// `uturnArrow` — preset-shapes.ts:914
 fn arrow_uturn_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
   let adj4 = ctx.get("adj4").unwrap_or(43750.0)
   let adj5 = ctx.get("adj5").unwrap_or(75000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
-  local["adj5"] = adj5
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
+  local_ctx["adj5"] = adj5
   let guides : Array[GuideEntry] = [
     { name: "a2", formula: "pin 0 adj2 25000" },
     { name: "maxAdj1", formula: "*/ a2 2 1" },
@@ -1865,22 +1865,22 @@ fn arrow_uturn_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "x5", formula: "+- x7 0 bd2" },
     { name: "cx", formula: "+/ th x7 2" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let th = g(local, "th")
-  let bd = g(local, "bd")
-  let bd2 = g(local, "bd2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let x6 = g(local, "x6")
-  let x7 = g(local, "x7")
-  let x8 = g(local, "x8")
-  let x9 = g(local, "x9")
-  let y4 = g(local, "y4")
-  let y5 = g(local, "y5")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let th = g(local_ctx, "th")
+  let bd = g(local_ctx, "bd")
+  let bd2 = g(local_ctx, "bd2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let x6 = g(local_ctx, "x6")
+  let x7 = g(local_ctx, "x7")
+  let x8 = g(local_ctx, "x8")
+  let x9 = g(local_ctx, "x9")
+  let y4 = g(local_ctx, "y4")
+  let y5 = g(local_ctx, "y5")
   "M " +
   fmt(l) +
   " " +
@@ -1951,13 +1951,13 @@ fn arrow_uturn_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
 ///|
 /// `leftUpArrow` — preset-shapes.ts:1074
 fn arrow_left_up_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "a2", formula: "pin 0 adj2 50000" },
     { name: "maxAdj1", formula: "*/ a2 2 1" },
@@ -1980,20 +1980,20 @@ fn arrow_left_up_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "cx1", formula: "+/ x1 x5 2" },
     { name: "cy1", formula: "+/ x1 y5 2" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let x5 = g(local, "x5")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
-  let y4 = g(local, "y4")
-  let y5 = g(local, "y5")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let x5 = g(local_ctx, "x5")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
+  let y4 = g(local_ctx, "y4")
+  let y5 = g(local_ctx, "y5")
   build_arrow_path([
     MoveTo(l, y4),
     LineTo(x1, y2),
@@ -2018,13 +2018,13 @@ fn arrow_left_right_up_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(25000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "a2", formula: "pin 0 adj2 50000" },
     { name: "maxAdj1", formula: "*/ a2 2 1" },
@@ -2048,22 +2048,22 @@ fn arrow_left_right_up_arrow(
     { name: "il", formula: "*/ dx3 x1 dx2" },
     { name: "ir", formula: "+- r 0 il" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let hc = g(local, "hc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let x5 = g(local, "x5")
-  let x6 = g(local, "x6")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
-  let y4 = g(local, "y4")
-  let y5 = g(local, "y5")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let hc = g(local_ctx, "hc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let x5 = g(local_ctx, "x5")
+  let x6 = g(local_ctx, "x6")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
+  let y4 = g(local_ctx, "y4")
+  let y5 = g(local_ctx, "y5")
   build_arrow_path([
     MoveTo(l, y4),
     LineTo(x1, y2),
@@ -2089,13 +2089,13 @@ fn arrow_left_right_up_arrow(
 ///|
 /// `quadArrow` — preset-shapes.ts:1192
 fn arrow_quad_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(22500.0)
   let adj2 = ctx.get("adj2").unwrap_or(22500.0)
   let adj3 = ctx.get("adj3").unwrap_or(22500.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "a2", formula: "pin 0 adj2 50000" },
     { name: "maxAdj1", formula: "*/ a2 2 1" },
@@ -2119,24 +2119,24 @@ fn arrow_quad_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "il", formula: "*/ dx3 x1 dx2" },
     { name: "ir", formula: "+- r 0 il" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let hc = g(local, "hc")
-  let vc = g(local, "vc")
-  let x1 = g(local, "x1")
-  let x2 = g(local, "x2")
-  let x3 = g(local, "x3")
-  let x4 = g(local, "x4")
-  let x5 = g(local, "x5")
-  let x6 = g(local, "x6")
-  let y2 = g(local, "y2")
-  let y3 = g(local, "y3")
-  let y4 = g(local, "y4")
-  let y5 = g(local, "y5")
-  let y6 = g(local, "y6")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let hc = g(local_ctx, "hc")
+  let vc = g(local_ctx, "vc")
+  let x1 = g(local_ctx, "x1")
+  let x2 = g(local_ctx, "x2")
+  let x3 = g(local_ctx, "x3")
+  let x4 = g(local_ctx, "x4")
+  let x5 = g(local_ctx, "x5")
+  let x6 = g(local_ctx, "x6")
+  let y2 = g(local_ctx, "y2")
+  let y3 = g(local_ctx, "y3")
+  let y4 = g(local_ctx, "y4")
+  let y5 = g(local_ctx, "y5")
+  let y6 = g(local_ctx, "y6")
   build_arrow_path([
     MoveTo(l, vc),
     LineTo(x1, y2),
@@ -2169,17 +2169,17 @@ fn arrow_quad_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
 ///|
 /// `circularArrow` — preset-shapes.ts:1261
 fn arrow_circular_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(12500.0)
   let adj2 = ctx.get("adj2").unwrap_or(1142319.0)
   let adj3 = ctx.get("adj3").unwrap_or(20457681.0)
   let adj4 = ctx.get("adj4").unwrap_or(10800000.0)
   let adj5 = ctx.get("adj5").unwrap_or(12500.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
-  local["adj5"] = adj5
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
+  local_ctx["adj5"] = adj5
   let guides : Array[GuideEntry] = [
     { name: "a5", formula: "pin 0 adj5 25000" },
     { name: "maxAdj1", formula: "*/ a5 2 1" },
@@ -2374,33 +2374,33 @@ fn arrow_circular_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String 
     { name: "it", formula: "+- vc 0 idy" },
     { name: "ib", formula: "+- vc idy 0" },
   ]
-  evaluate_guides(guides, local)
-  let xe = g(local, "xE")
-  let ye = g(local, "yE")
-  let rw1 = g(local, "rw1")
-  let rh1 = g(local, "rh1")
-  let st_ang = g(local, "stAng")
-  let sw_ang = g(local, "swAng")
-  let xgp = g(local, "xGp")
-  let ygp = g(local, "yGp")
-  let xa = g(local, "xA")
-  let ya = g(local, "yA")
-  let xbp = g(local, "xBp")
-  let ybp = g(local, "yBp")
-  let xc = g(local, "xC")
-  let yc = g(local, "yC")
-  let rw2 = g(local, "rw2")
-  let rh2 = g(local, "rh2")
-  let ist_ang = g(local, "istAng")
-  let isw_ang = g(local, "iswAng")
+  evaluate_guides(guides, local_ctx)
+  let xe = g(local_ctx, "xE")
+  let ye = g(local_ctx, "yE")
+  let rw1 = g(local_ctx, "rw1")
+  let rh1 = g(local_ctx, "rh1")
+  let st_ang = g(local_ctx, "stAng")
+  let sw_ang = g(local_ctx, "swAng")
+  let xgp = g(local_ctx, "xGp")
+  let ygp = g(local_ctx, "yGp")
+  let xa = g(local_ctx, "xA")
+  let ya = g(local_ctx, "yA")
+  let xbp = g(local_ctx, "xBp")
+  let ybp = g(local_ctx, "yBp")
+  let xc = g(local_ctx, "xC")
+  let yc = g(local_ctx, "yC")
+  let rw2 = g(local_ctx, "rw2")
+  let rh2 = g(local_ctx, "rh2")
+  let ist_ang = g(local_ctx, "istAng")
+  let isw_ang = g(local_ctx, "iswAng")
   build_arrow_path([
     MoveTo(xe, ye),
-    ArcTo(rw1, rh1, st_ang, sw_ang, 0.0, 0.0),
+    ArcTo(rw1, rh1, st_ang, sw_ang),
     LineTo(xgp, ygp),
     LineTo(xa, ya),
     LineTo(xbp, ybp),
     LineTo(xc, yc),
-    ArcTo(rw2, rh2, ist_ang, isw_ang, 0.0, 0.0),
+    ArcTo(rw2, rh2, ist_ang, isw_ang),
     Close,
   ])
 }
@@ -2412,17 +2412,17 @@ fn arrow_left_circular_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(12500.0)
   let adj2 = ctx.get("adj2").unwrap_or(-1142319.0)
   let adj3 = ctx.get("adj3").unwrap_or(1142319.0)
   let adj4 = ctx.get("adj4").unwrap_or(10800000.0)
   let adj5 = ctx.get("adj5").unwrap_or(12500.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
-  local["adj5"] = adj5
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
+  local_ctx["adj5"] = adj5
   let guides : Array[GuideEntry] = [
     { name: "a5", formula: "pin 0 adj5 25000" },
     { name: "maxAdj1", formula: "*/ a5 2 1" },
@@ -2630,36 +2630,36 @@ fn arrow_left_circular_arrow(
     { name: "it", formula: "+- vc 0 idy" },
     { name: "ib", formula: "+- vc idy 0" },
   ]
-  evaluate_guides(guides, local)
-  let xe = g(local, "xE")
-  let ye = g(local, "yE")
-  let xd = g(local, "xD")
-  let yd = g(local, "yD")
-  let rw2 = g(local, "rw2")
-  let rh2 = g(local, "rh2")
-  let ist_ang = g(local, "istAng")
-  let isw_ang = g(local, "iswAng")
-  let xbp = g(local, "xBp")
-  let ybp = g(local, "yBp")
-  let xa = g(local, "xA")
-  let ya = g(local, "yA")
-  let xgp = g(local, "xGp")
-  let ygp = g(local, "yGp")
-  let xf = g(local, "xF")
-  let yf = g(local, "yF")
-  let rw1 = g(local, "rw1")
-  let rh1 = g(local, "rh1")
-  let st_ang0 = g(local, "stAng0")
-  let sw_ang0 = g(local, "swAng0")
+  evaluate_guides(guides, local_ctx)
+  let xe = g(local_ctx, "xE")
+  let ye = g(local_ctx, "yE")
+  let xd = g(local_ctx, "xD")
+  let yd = g(local_ctx, "yD")
+  let rw2 = g(local_ctx, "rw2")
+  let rh2 = g(local_ctx, "rh2")
+  let ist_ang = g(local_ctx, "istAng")
+  let isw_ang = g(local_ctx, "iswAng")
+  let xbp = g(local_ctx, "xBp")
+  let ybp = g(local_ctx, "yBp")
+  let xa = g(local_ctx, "xA")
+  let ya = g(local_ctx, "yA")
+  let xgp = g(local_ctx, "xGp")
+  let ygp = g(local_ctx, "yGp")
+  let xf = g(local_ctx, "xF")
+  let yf = g(local_ctx, "yF")
+  let rw1 = g(local_ctx, "rw1")
+  let rh1 = g(local_ctx, "rh1")
+  let st_ang0 = g(local_ctx, "stAng0")
+  let sw_ang0 = g(local_ctx, "swAng0")
   build_arrow_path([
     MoveTo(xe, ye),
     LineTo(xd, yd),
-    ArcTo(rw2, rh2, ist_ang, isw_ang, 0.0, 0.0),
+    ArcTo(rw2, rh2, ist_ang, isw_ang),
     LineTo(xbp, ybp),
     LineTo(xa, ya),
     LineTo(xgp, ygp),
     LineTo(xf, yf),
-    ArcTo(rw1, rh1, st_ang0, sw_ang0, 0.0, 0.0),
+    ArcTo(rw1, rh1, st_ang0, sw_ang0),
     Close,
   ])
 }
@@ -2671,17 +2671,17 @@ fn arrow_left_right_circular_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(12500.0)
   let adj2 = ctx.get("adj2").unwrap_or(1142319.0)
   let adj3 = ctx.get("adj3").unwrap_or(20457681.0)
   let adj4 = ctx.get("adj4").unwrap_or(11942319.0)
   let adj5 = ctx.get("adj5").unwrap_or(12500.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
-  local["adj4"] = adj4
-  local["adj5"] = adj5
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
+  local_ctx["adj4"] = adj4
+  local_ctx["adj5"] = adj5
   let guides : Array[GuideEntry] = [
     { name: "a5", formula: "pin 0 adj5 25000" },
     { name: "maxAdj1", formula: "*/ a5 2 1" },
@@ -2914,41 +2914,41 @@ fn arrow_left_right_circular_arrow(
     { name: "it", formula: "+- vc 0 idy" },
     { name: "ib", formula: "+- vc idy 0" },
   ]
-  evaluate_guides(guides, local)
-  let xl = g(local, "xL")
-  let yl = g(local, "yL")
-  let xkp = g(local, "xKp")
-  let ykp = g(local, "yKp")
-  let xe = g(local, "xE")
-  let ye = g(local, "yE")
-  let rw1 = g(local, "rw1")
-  let rh1 = g(local, "rh1")
-  let st2 = g(local, "st2")
-  let sw_ang = g(local, "swAng")
-  let xgp = g(local, "xGp")
-  let ygp = g(local, "yGp")
-  let xa = g(local, "xA")
-  let ya = g(local, "yA")
-  let xbp = g(local, "xBp")
-  let ybp = g(local, "yBp")
-  let xc = g(local, "xC")
-  let yc = g(local, "yC")
-  let rw2 = g(local, "rw2")
-  let rh2 = g(local, "rh2")
-  let ist_ang = g(local, "istAng")
-  let isw_ang = g(local, "iswAng")
-  let xjp = g(local, "xJp")
-  let yjp = g(local, "yJp")
+  evaluate_guides(guides, local_ctx)
+  let xl = g(local_ctx, "xL")
+  let yl = g(local_ctx, "yL")
+  let xkp = g(local_ctx, "xKp")
+  let ykp = g(local_ctx, "yKp")
+  let xe = g(local_ctx, "xE")
+  let ye = g(local_ctx, "yE")
+  let rw1 = g(local_ctx, "rw1")
+  let rh1 = g(local_ctx, "rh1")
+  let st2 = g(local_ctx, "st2")
+  let sw_ang = g(local_ctx, "swAng")
+  let xgp = g(local_ctx, "xGp")
+  let ygp = g(local_ctx, "yGp")
+  let xa = g(local_ctx, "xA")
+  let ya = g(local_ctx, "yA")
+  let xbp = g(local_ctx, "xBp")
+  let ybp = g(local_ctx, "yBp")
+  let xc = g(local_ctx, "xC")
+  let yc = g(local_ctx, "yC")
+  let rw2 = g(local_ctx, "rw2")
+  let rh2 = g(local_ctx, "rh2")
+  let ist_ang = g(local_ctx, "istAng")
+  let isw_ang = g(local_ctx, "iswAng")
+  let xjp = g(local_ctx, "xJp")
+  let yjp = g(local_ctx, "yJp")
   build_arrow_path([
     MoveTo(xl, yl),
     LineTo(xkp, ykp),
     LineTo(xe, ye),
-    ArcTo(rw1, rh1, st2, sw_ang, 0.0, 0.0),
+    ArcTo(rw1, rh1, st2, sw_ang),
     LineTo(xgp, ygp),
     LineTo(xa, ya),
     LineTo(xbp, ybp),
     LineTo(xc, yc),
-    ArcTo(rw2, rh2, ist_ang, isw_ang, 0.0, 0.0),
+    ArcTo(rw2, rh2, ist_ang, isw_ang),
     LineTo(xjp, yjp),
     Close,
   ])
@@ -3050,13 +3050,13 @@ fn arrow_curved_right_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 h ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -3086,19 +3086,19 @@ fn arrow_curved_right_arrow(
     { name: "x1", formula: "+- r 0 ah" },
     { name: "y3", formula: "+- hR th 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let width = g(local, "w")
-  let h_r = g(local, "hR")
-  let th = g(local, "th")
-  let dy = g(local, "dy")
-  let dh = g(local, "dh")
-  let ah = g(local, "ah")
-  let x1 = g(local, "x1")
-  let y3 = g(local, "y3")
-  let y6 = g(local, "y6")
-  let cd2 = g(local, "cd2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let width = g(local_ctx, "w")
+  let h_r = g(local_ctx, "hR")
+  let th = g(local_ctx, "th")
+  let dy = g(local_ctx, "dy")
+  let dh = g(local_ctx, "dh")
+  let ah = g(local_ctx, "ah")
+  let x1 = g(local_ctx, "x1")
+  let y3 = g(local_ctx, "y3")
+  let y6 = g(local_ctx, "y6")
+  let cd2 = g(local_ctx, "cd2")
   // Reference-corrected band endpoints at the arrowhead side.  Inner ribbon edge
   // (on E1) ends at `(x1, hR + dy)`; outer edge (on E2) ends at `(x1, y3
   // + dy)`.  Arrowhead notch wings extend `dh` past those band-ends.
@@ -3116,7 +3116,7 @@ fn arrow_curved_right_arrow(
     // Inner edge (on E1, centre (w, hR)) — sweep CCW from 180° by -sw_main
     // (since the arc goes to (x1, hR+dy) at angle 180°-sw_main ≈ 100.8°
     // in OOXML's y-down angle convention).
-    ArcTo(width, h_r, cd2, -sw_main, 0.0, 0.0),
+    ArcTo(width, h_r, cd2, -sw_main),
     LineTo(x1, notch_top_y),
     LineTo(r, y6),
     LineTo(x1, notch_bot_y),
@@ -3124,7 +3124,7 @@ fn arrow_curved_right_arrow(
     // Outer edge (on E2, centre (w, y3)) — sweep CW from (cd2-sw_main)
     // back to cd2 to land at (l, y3).  current point is (x1, y3+dy), so
     // start angle satisfies cos = -ah/w, sin = +dy/hR (Q2 ≈ 100.8°).
-    ArcTo(width, h_r, cd2 - sw_main, sw_main, 0.0, 0.0),
+    ArcTo(width, h_r, cd2 - sw_main, sw_main),
     Close,
   ])
 }
@@ -3144,13 +3144,13 @@ fn arrow_curved_left_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 h ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -3182,18 +3182,18 @@ fn arrow_curved_left_arrow(
     { name: "ix", formula: "+- l idx 0" },
     { name: "iy", formula: "+/ hR y3 2" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let width = g(local, "w")
-  let h_r = g(local, "hR")
-  let dy = g(local, "dy")
-  let dh = g(local, "dh")
-  let ah = g(local, "ah")
-  let x1 = g(local, "x1") // = l + ah
-  let y3 = g(local, "y3")
-  let y6 = g(local, "y6")
-  let ix = g(local, "ix") // l + idx — intersection x on the right side
-  let iy = g(local, "iy")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let width = g(local_ctx, "w")
+  let h_r = g(local_ctx, "hR")
+  let dy = g(local_ctx, "dy")
+  let dh = g(local_ctx, "dh")
+  let _ah = g(local_ctx, "ah")
+  let x1 = g(local_ctx, "x1") // = l + ah
+  let y3 = g(local_ctx, "y3")
+  let y6 = g(local_ctx, "y6")
+  let ix = g(local_ctx, "ix") // l + idx — intersection x on the right side
+  let iy = g(local_ctx, "iy")
   let inner_end_y = h_r + dy
   let outer_start_y = y3 + dy
   let notch_top_y = inner_end_y - dh
@@ -3217,8 +3217,8 @@ fn arrow_curved_left_arrow(
     MoveTo(l, y6),
     LineTo(x1, notch_top_y),
     LineTo(x1, inner_end_y),
-    ArcTo(width, h_r, st_inner, sw_inner, 0.0, 0.0),
-    ArcTo(width, h_r, st_outer, sw_outer, 0.0, 0.0),
+    ArcTo(width, h_r, st_inner, sw_inner),
+    ArcTo(width, h_r, st_outer, sw_outer),
     LineTo(x1, notch_bot_y),
     Close,
   ])
@@ -3242,13 +3242,13 @@ fn arrow_curved_up_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 w ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -3280,20 +3280,20 @@ fn arrow_curved_up_arrow(
     { name: "ix", formula: "+/ wR x3 2" },
     { name: "iy", formula: "+- t idy 0" },
   ]
-  evaluate_guides(guides, local)
-  let t = g(local, "t")
-  let w_r = g(local, "wR")
-  let height = g(local, "h")
-  let th = g(local, "th")
-  let dx = g(local, "dx")
-  let dh = g(local, "dh")
-  let ah = g(local, "ah")
-  let idy = g(local, "idy")
-  let x3 = g(local, "x3")
-  let x6 = g(local, "x6")
-  let y1 = g(local, "y1")
-  let ix = g(local, "ix")
-  let iy = g(local, "iy")
+  evaluate_guides(guides, local_ctx)
+  let t = g(local_ctx, "t")
+  let w_r = g(local_ctx, "wR")
+  let height = g(local_ctx, "h")
+  let th = g(local_ctx, "th")
+  let dx = g(local_ctx, "dx")
+  let dh = g(local_ctx, "dh")
+  let ah = g(local_ctx, "ah")
+  let idy = g(local_ctx, "idy")
+  let x3 = g(local_ctx, "x3")
+  let x6 = g(local_ctx, "x6")
+  let y1 = g(local_ctx, "y1")
+  let ix = g(local_ctx, "ix")
+  let iy = g(local_ctx, "iy")
   // Band-end x-coords at the arrowhead side (y = y1):
   //   inner edge on E1 ends at (x3 + dx, y1)
   //   outer edge on E2 starts at (wR + dx, y1)
@@ -3321,8 +3321,8 @@ fn arrow_curved_up_arrow(
     MoveTo(x6, t),
     LineTo(notch_right_x, y1),
     LineTo(inner_end_x, y1),
-    ArcTo(w_r, height, st_inner, sw_inner, 0.0, 0.0),
-    ArcTo(w_r, height, st_outer, sw_outer, 0.0, 0.0),
+    ArcTo(w_r, height, st_inner, sw_inner),
+    ArcTo(w_r, height, st_outer, sw_outer),
     LineTo(notch_left_x, y1),
     Close,
   ])
@@ -3344,13 +3344,13 @@ fn arrow_curved_down_arrow(
   _h : Double,
   ctx : GuideContext,
 ) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 w ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -3380,17 +3380,17 @@ fn arrow_curved_down_arrow(
     { name: "x6", formula: "+- r 0 aw2" },
     { name: "y1", formula: "+- b 0 ah" },
   ]
-  evaluate_guides(guides, local)
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let w_r = g(local, "wR")
-  let height = g(local, "h")
-  let dx = g(local, "dx")
-  let dh = g(local, "dh")
-  let ah = g(local, "ah")
-  let x3 = g(local, "x3")
-  let x6 = g(local, "x6")
-  let y1 = g(local, "y1") // = b - ah; arrowhead notch y
+  evaluate_guides(guides, local_ctx)
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let w_r = g(local_ctx, "wR")
+  let height = g(local_ctx, "h")
+  let dx = g(local_ctx, "dx")
+  let dh = g(local_ctx, "dh")
+  let ah = g(local_ctx, "ah")
+  let x3 = g(local_ctx, "x3")
+  let x6 = g(local_ctx, "x6")
+  let y1 = g(local_ctx, "y1") // = b - ah; arrowhead notch y
   // Band-end x-coords at the arrowhead side (y = y1):
   //   inner edge on E1 (centre (wR, b)): point at (wR + dx, y1)
   //   outer edge on E2 (centre (x3, b)): point at (x3 + dx, y1)
@@ -3417,9 +3417,9 @@ fn arrow_curved_down_arrow(
     MoveTo(x6, b),
     LineTo(notch_left_x, y1),
     LineTo(inner_end_x, y1),
-    ArcTo(w_r, height, st_inner, sw_inner, 0.0, 0.0),
+    ArcTo(w_r, height, st_inner, sw_inner),
     LineTo(x3, t),
-    ArcTo(w_r, height, st_outer, sw_outer, 0.0, 0.0),
+    ArcTo(w_r, height, st_outer, sw_outer),
     LineTo(notch_right_x, y1),
     Close,
   ])
@@ -3428,11 +3428,11 @@ fn arrow_curved_down_arrow(
 ///|
 /// `swooshArrow` — preset-shapes.ts:2429
 fn arrow_swoosh_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(16667.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
   let guides : Array[GuideEntry] = [
     { name: "a1", formula: "pin 1 adj1 75000" },
     { name: "maxAdj2", formula: "*/ 70000 w ss" },
@@ -3460,23 +3460,23 @@ fn arrow_swoosh_arrow(_w : Double, _h : Double, ctx : GuideContext) -> String {
     { name: "yP2", formula: "+- yF dy5 0" },
     { name: "xP2", formula: "val wd4" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let xp1 = g(local, "xP1")
-  let yp1 = g(local, "yP1")
-  let xb = g(local, "xB")
-  let yb = g(local, "yB")
-  let xc = g(local, "xC")
-  let yd = g(local, "yD")
-  let xe = g(local, "xE")
-  let ye = g(local, "yE")
-  let xf = g(local, "xF")
-  let yf = g(local, "yF")
-  let xp2 = g(local, "xP2")
-  let yp2 = g(local, "yP2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let xp1 = g(local_ctx, "xP1")
+  let yp1 = g(local_ctx, "yP1")
+  let xb = g(local_ctx, "xB")
+  let yb = g(local_ctx, "yB")
+  let xc = g(local_ctx, "xC")
+  let yd = g(local_ctx, "yD")
+  let xe = g(local_ctx, "xE")
+  let ye = g(local_ctx, "yE")
+  let xf = g(local_ctx, "xF")
+  let yf = g(local_ctx, "yF")
+  let xp2 = g(local_ctx, "xP2")
+  let yp2 = g(local_ctx, "yP2")
   build_arrow_path([
     MoveTo(l, b),
     QuadTo(xp1, yp1, xb, yb),
@@ -3515,13 +3515,13 @@ fn curved_right_arrow_layers(
   _h : Double,
   ctx : GuideContext,
 ) -> Array[PresetLayer] {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 h ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -3540,17 +3540,17 @@ fn curved_right_arrow_layers(
     { name: "y3", formula: "+- hR th 0" },
     { name: "iy", formula: "+/ hR y3 2" },
   ]
-  evaluate_guides(guides, local)
-  let r = g(local, "r")
-  let width = g(local, "w")
-  let h_r = g(local, "hR")
-  let th = g(local, "th")
-  let ix = g(local, "ix")
-  let iy = g(local, "iy")
-  let y3 = g(local, "y3")
-  let three_cd4 = g(local, "3cd4")
-  let cd2 = g(local, "cd2")
-  let cd4 = g(local, "cd4")
+  evaluate_guides(guides, local_ctx)
+  let r = g(local_ctx, "r")
+  let width = g(local_ctx, "w")
+  let h_r = g(local_ctx, "hR")
+  let th = g(local_ctx, "th")
+  let ix = g(local_ctx, "ix")
+  let iy = g(local_ctx, "iy")
+  let y3 = g(local_ctx, "y3")
+  let three_cd4 = g(local_ctx, "3cd4")
+  let cd2 = g(local_ctx, "cd2")
+  let cd4 = g(local_ctx, "cd4")
   // Arc 1 (on E2, centre (w, y3)): start (r, th) at angle 3cd4 (= 270°),
   // sweep CCW (negative sweep) to (ix, iy).
   // (iy - y3) = -th/2, (ix - r) = ix - w = -idx ⇒ atan2 gives Q3 angle
@@ -3568,8 +3568,8 @@ fn curved_right_arrow_layers(
   let _ = (cd2, cd4) // resolved via guide engine
   let dark = build_arrow_path([
     MoveTo(r, th),
-    ArcTo(width, h_r, three_cd4, sw_e2, 0.0, 0.0),
-    ArcTo(width, h_r, st_e1, sw_e1, 0.0, 0.0),
+    ArcTo(width, h_r, three_cd4, sw_e2),
+    ArcTo(width, h_r, st_e1, sw_e1),
     LineTo(r, th),
     Close,
   ])
@@ -3587,13 +3587,13 @@ fn curved_left_arrow_layers(
   _h : Double,
   ctx : GuideContext,
 ) -> Array[PresetLayer] {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 h ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -3604,15 +3604,15 @@ fn curved_left_arrow_layers(
     { name: "hR", formula: "+- hd2 0 q1" },
     { name: "y3", formula: "+- hR th 0" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let r = g(local, "r")
-  let t = g(local, "t")
-  let width = g(local, "w")
-  let h_r = g(local, "hR")
-  let y3 = g(local, "y3")
-  let three_cd4 = g(local, "3cd4")
-  let cd4 = g(local, "cd4")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let r = g(local_ctx, "r")
+  let t = g(local_ctx, "t")
+  let width = g(local_ctx, "w")
+  let h_r = g(local_ctx, "hR")
+  let y3 = g(local_ctx, "y3")
+  let three_cd4 = g(local_ctx, "3cd4")
+  let cd4 = g(local_ctx, "cd4")
   // Spec: M (r, y3)
   //       arcTo (w, hR, 0, -cd4)   — half-arc on E2 → (l, th)
   //       lnTo (l, t)
@@ -3620,9 +3620,9 @@ fn curved_left_arrow_layers(
   //       close
   let dark = build_arrow_path([
     MoveTo(r, y3),
-    ArcTo(width, h_r, 0.0, -cd4, 0.0, 0.0),
+    ArcTo(width, h_r, 0.0, -cd4),
     LineTo(l, t),
-    ArcTo(width, h_r, three_cd4, cd4, 0.0, 0.0),
+    ArcTo(width, h_r, three_cd4, cd4),
     Close,
   ])
   [
@@ -3640,13 +3640,13 @@ fn curved_up_arrow_layers(
   _h : Double,
   ctx : GuideContext,
 ) -> Array[PresetLayer] {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 w ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -3656,14 +3656,14 @@ fn curved_up_arrow_layers(
     { name: "q1", formula: "+/ th aw 4" },
     { name: "wR", formula: "+- wd2 0 q1" },
   ]
-  evaluate_guides(guides, local)
-  let t = g(local, "t")
-  let b = g(local, "b")
-  let w_r = g(local, "wR")
-  let height = g(local, "h")
-  let th = g(local, "th")
-  let cd4 = g(local, "cd4")
-  let cd2 = g(local, "cd2")
+  evaluate_guides(guides, local_ctx)
+  let t = g(local_ctx, "t")
+  let b = g(local_ctx, "b")
+  let w_r = g(local_ctx, "wR")
+  let height = g(local_ctx, "h")
+  let th = g(local_ctx, "th")
+  let cd4 = g(local_ctx, "cd4")
+  let cd2 = g(local_ctx, "cd2")
   // Spec: M (wR, b)
   //       arcTo (wR, h, cd4, cd4)   — 90° arc on E2 → (l, t)
   //       lnTo (th, t)
@@ -3671,9 +3671,9 @@ fn curved_up_arrow_layers(
   //       close
   let dark = build_arrow_path([
     MoveTo(w_r, b),
-    ArcTo(w_r, height, cd4, cd4, 0.0, 0.0),
+    ArcTo(w_r, height, cd4, cd4),
     LineTo(th, t),
-    ArcTo(w_r, height, cd2, -cd4, 0.0, 0.0),
+    ArcTo(w_r, height, cd2, -cd4),
     Close,
   ])
   [
@@ -3713,13 +3713,13 @@ fn curved_down_arrow_layers(
   _h : Double,
   ctx : GuideContext,
 ) -> Array[PresetLayer] {
-  let local = clone_ctx(ctx)
+  let local_ctx = clone_ctx(ctx)
   let adj1 = ctx.get("adj1").unwrap_or(25000.0)
   let adj2 = ctx.get("adj2").unwrap_or(50000.0)
   let adj3 = ctx.get("adj3").unwrap_or(25000.0)
-  local["adj1"] = adj1
-  local["adj2"] = adj2
-  local["adj3"] = adj3
+  local_ctx["adj1"] = adj1
+  local_ctx["adj2"] = adj2
+  local_ctx["adj3"] = adj3
   let guides : Array[GuideEntry] = [
     { name: "maxAdj2", formula: "*/ 50000 w ss" },
     { name: "a2", formula: "pin 0 adj2 maxAdj2" },
@@ -3738,15 +3738,15 @@ fn curved_down_arrow_layers(
     { name: "ix", formula: "+/ wR x3 2" },
     { name: "iy", formula: "+- b 0 idy" },
   ]
-  evaluate_guides(guides, local)
-  let l = g(local, "l")
-  let b = g(local, "b")
-  let w_r = g(local, "wR")
-  let height = g(local, "h")
-  let x3 = g(local, "x3")
-  let ix = g(local, "ix")
-  let iy = g(local, "iy")
-  let cd2 = g(local, "cd2")
+  evaluate_guides(guides, local_ctx)
+  let l = g(local_ctx, "l")
+  let b = g(local_ctx, "b")
+  let w_r = g(local_ctx, "wR")
+  let height = g(local_ctx, "h")
+  let x3 = g(local_ctx, "x3")
+  let ix = g(local_ctx, "ix")
+  let iy = g(local_ctx, "iy")
+  let cd2 = g(local_ctx, "cd2")
   // Arc 1 on E2 (centre (x3, b), radii (wR, h)): start at (ix, iy)
   // (parametric ≈ -105.4°), end at (th, b) which is the axis-aligned
   // 180° point on E2.  Short-way sweep is CW (negative in OOXML units
@@ -3760,9 +3760,9 @@ fn curved_down_arrow_layers(
   let sw_e1 = curved_arrow_normalise_sweep(en_e1 - cd2)
   let dark = build_arrow_path([
     MoveTo(ix, iy),
-    ArcTo(w_r, height, st_e2, sw_e2, 0.0, 0.0),
+    ArcTo(w_r, height, st_e2, sw_e2),
     LineTo(l, b),
-    ArcTo(w_r, height, cd2, sw_e1, 0.0, 0.0),
+    ArcTo(w_r, height, cd2, sw_e1),
     Close,
   ])
   [

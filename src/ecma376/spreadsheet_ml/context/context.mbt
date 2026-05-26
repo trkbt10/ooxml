@@ -39,7 +39,7 @@ pub(all) struct WorksheetPart {
 
 ///|
 pub(all) struct Workbook {
-  package : @opc.Package
+  opc_package : @opc.Package
   workbook_part : String
   workbook : @sml.CT_Workbook
   worksheets : Array[WorksheetPart]
@@ -51,35 +51,35 @@ pub(all) struct Workbook {
 ///|
 pub fn open(bytes : Bytes) -> Workbook raise OpenError {
   try {
-    let package = @opc.Package::open(bytes)
+    let opc_package = @opc.Package::open(bytes)
     let workbook_part = find_package_relationship_part(
-      package,
+      opc_package,
       @opc_namespaces.relationship_type_office_document(),
       "xl/workbook.xml",
     )
     let workbook = @sml_reader.read_workbook(
-      package.required_part(workbook_part, section="6.3.3", source_path="/").data,
+      opc_package.required_part(workbook_part, section="6.3.3", source_path="/").data,
     )
     {
-      package,
+      opc_package,
       workbook_part,
       workbook,
-      worksheets: read_worksheets(package, workbook_part),
+      worksheets: read_worksheets(opc_package, workbook_part),
       // ECMA-376 §18.4.8 specifies `<sst>` as the top-level element
       // name in xl/sharedStrings.xml; use `read_sst` not the
       // `read_shared_strings` legacy alias so Office-produced
       // fixtures (which use the canonical `<sst>` root) open cleanly.
-      shared_strings: package.read_optional(
+      shared_strings: opc_package.read_optional(
         "/xl/sharedStrings.xml", @sml_reader.read_sst,
       ),
-      styles: package.read_optional(
+      styles: opc_package.read_optional(
         "/xl/styles.xml", @sml_reader.read_style_sheet,
       ),
       // §18.8.3 / OPC §11.3.10 — discover the theme part via
       // the workbook's relationship table; fall back to the
       // canonical path so packages without an explicit rel
       // (legacy producers) still render with a theme.
-      theme: locate_theme_part(package, workbook_part),
+      theme: locate_theme_part(opc_package, workbook_part),
     }
   } catch {
     @opc_errors.ResourceMissing(section~, path~, target~) =>
@@ -145,7 +145,7 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
 
 ///|
 pub fn Workbook::save(self : Workbook) -> Bytes {
-  let package = self.package
+  let opc_package = self.opc_package
     .with_part(self.workbook_part, @sml_builder.write_workbook(self.workbook))
     .with_optional_part(
       "/xl/sharedStrings.xml",
@@ -157,7 +157,7 @@ pub fn Workbook::save(self : Workbook) -> Bytes {
       self.styles,
       @sml_builder.write_style_sheet,
     )
-  let mut saved = package
+  let mut saved = opc_package
   for worksheet in self.worksheets {
     saved = saved.with_part(
       worksheet.name,
@@ -203,9 +203,10 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
   let theme_root : @xml.Element? = match self.theme {
     None => None
     Some(part) =>
-      match (try? @xml.parse(part.data)) {
-        Ok(doc) => Some(doc.root)
-        Err(_) => None
+      try @xml.parse(part.data) catch {
+        _ => None
+      } noraise {
+        doc => Some(doc.root)
       }
   }
   // §18.2.28 `<workbookPr @date1904>` — the workbook-wide date
@@ -223,13 +224,13 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
   // related to a `pivotCacheRecords` part via its own `_rels` file
   // (the relationship type ends in `/pivotCacheRecords`).
   let cache_lookup = build_pivot_cache_lookup(
-    self.package,
+    self.opc_package,
     self.workbook_part,
     self.workbook,
   )
   for sheet_index, worksheet in self.worksheets {
     let image_resolver = build_drawing_image_resolver(
-      self.package,
+      self.opc_package,
       worksheet.drawing_part,
     )
     // §18.10 — discover any pivot tables tied to this worksheet via
@@ -238,7 +239,7 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
     // its cache via `cache_lookup`, decode + materialize, then hand
     // the bundle to the renderer.
     let pivots = collect_worksheet_pivots(
-      self.package,
+      self.opc_package,
       worksheet.name,
       cache_lookup,
     )
@@ -276,17 +277,17 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
 /// part is associated (so the SML viewer falls back to its labelled
 /// placeholder transparently).
 fn build_drawing_image_resolver(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   drawing_part_name : String?,
 ) -> (String) -> String? {
   match drawing_part_name {
     None => fn(_) { None }
     Some(part_name) =>
-      match package.relationships(part_name) {
+      match opc_package.relationships(part_name) {
         None => fn(_) { None }
         Some(rels) => {
           let part = part_name
-          let pkg = package
+          let pkg = opc_package
           let relationships = rels
           fn(rid : String) -> String? {
             for rel in relationships.relationships {
@@ -347,25 +348,25 @@ fn drawing_mime_for_target(target : String) -> String {
 
 ///|
 fn read_worksheets(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   owner : String,
 ) -> Array[WorksheetPart] raise {
   let result : Array[WorksheetPart] = []
-  match package.relationships(owner) {
+  match opc_package.relationships(owner) {
     Some(relationships) =>
       for rel in relationships.relationships {
         if rel.type_uri.has_suffix("/worksheet") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let name = @opc_part_name.resolve_target(owner, rel.target)
-          match package.part(name) {
+          match opc_package.part(name) {
             Some(part) => {
               let worksheet = @sml_reader.read_worksheet(part.data)
               let (drawing, drawing_part) = match
-                read_worksheet_drawing(package, name) {
+                read_worksheet_drawing(opc_package, name) {
                 Some((wsdr, dn)) => (Some(wsdr), Some(dn))
                 None => (None, None)
               }
-              let tables = read_worksheet_tables(package, name)
+              let tables = read_worksheet_tables(opc_package, name)
               result.push({
                 name,
                 value: worksheet,
@@ -390,10 +391,10 @@ fn read_worksheets(
 /// drawing part's own `_rels` for image-resolution. `None` when the
 /// worksheet has no drawing reference or the rels can't be resolved.
 fn read_worksheet_drawing(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   worksheet_part_name : String,
 ) -> (@drawing.WsDr, String)? raise {
-  match package.relationships(worksheet_part_name) {
+  match opc_package.relationships(worksheet_part_name) {
     None => None
     Some(rels) => {
       for rel in rels.relationships {
@@ -403,7 +404,7 @@ fn read_worksheet_drawing(
             worksheet_part_name,
             rel.target,
           )
-          match package.part(drawing_name) {
+          match opc_package.part(drawing_name) {
             Some(part) =>
               return Some((@drawing.read_ws_dr(part.data), drawing_name))
             None => ()
@@ -426,38 +427,39 @@ fn read_worksheet_drawing(
 /// chrome in the same z-order Excel uses.  Returns an empty array
 /// when the worksheet declares no table parts (the common case).
 fn read_worksheet_tables(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   worksheet_part_name : String,
 ) -> Array[@xml.Element] {
   let tables : Array[@xml.Element] = []
   // Build a rId → table-part-name map from the worksheet's rels.
-  let rid_to_part : Map[String, String] = Map::new()
-  match package.relationships(worksheet_part_name) {
+  let rid_to_part : Map[String, String] = Map([], capacity=0)
+  match opc_package.relationships(worksheet_part_name) {
     None => return tables
     Some(rels) =>
       for rel in rels.relationships {
         if rel.type_uri.has_suffix("/table") &&
           rel.target_mode == @relationships.TargetMode::Internal {
-          match
-            (try? @opc_part_name.resolve_target(worksheet_part_name, rel.target)) {
-            Ok(name) => rid_to_part.set(rel.id, name)
-            Err(_) => ()
+          try @opc_part_name.resolve_target(worksheet_part_name, rel.target) catch {
+            _ => ()
+          } noraise {
+            name => rid_to_part.set(rel.id, name)
           }
         }
       }
   }
-  if rid_to_part.size() == 0 {
+  if rid_to_part.length() == 0 {
     return tables
   }
   // Walk `<worksheet>/<tableParts>/<tablePart r:id="…"/>` in source
   // order; for each rId, parse the referenced part's XML root.
-  let worksheet_part = match package.part(worksheet_part_name) {
+  let worksheet_part = match opc_package.part(worksheet_part_name) {
     Some(p) => p
     None => return tables
   }
-  let worksheet_root = match (try? @xml.parse(worksheet_part.data)) {
-    Ok(doc) => doc.root
-    Err(_) => return tables
+  let worksheet_root = try @xml.parse(worksheet_part.data) catch {
+    _ => return tables
+  } noraise {
+    doc => doc.root
   }
   for child in worksheet_root.children {
     match child {
@@ -479,11 +481,12 @@ fn read_worksheet_tables(
                     Some(r) =>
                       match rid_to_part.get(r) {
                         Some(part_name) =>
-                          match package.part(part_name) {
+                          match opc_package.part(part_name) {
                             Some(part) =>
-                              match (try? @xml.parse(part.data)) {
-                                Ok(doc) => tables.push(doc.root)
-                                Err(_) => ()
+                              try @xml.parse(part.data) catch {
+                                _ => ()
+                              } noraise {
+                                doc => tables.push(doc.root)
                               }
                             None => ()
                           }
@@ -507,11 +510,11 @@ fn read_worksheet_tables(
 /// via its relationship table.  Returns None when no theme rel
 /// nor canonical `/xl/theme/theme1.xml` part is present.
 fn locate_theme_part(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   workbook_part : String,
 ) -> @opc.PackagePart? {
   // Look for a `/theme` relationship from the workbook.
-  let theme_target : String? = match package.relationships(workbook_part) {
+  let theme_target : String? = match opc_package.relationships(workbook_part) {
     None => None
     Some(rs) => {
       let mut found : String? = None
@@ -538,16 +541,16 @@ fn locate_theme_part(
     Some(name) => name
     None => "/xl/theme/theme1.xml"
   }
-  package.part(primary)
+  opc_package.part(primary)
 }
 
 ///|
 fn find_package_relationship_part(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   relationship_type : String,
   fallback : String,
 ) -> String raise {
-  match package.relationships("/") {
+  match opc_package.relationships("/") {
     Some(relationships) =>
       for rel in relationships.relationships {
         if rel.type_uri == relationship_type &&
@@ -675,7 +678,7 @@ priv struct PivotCacheRef {
 /// then loads the cache definition's own `_rels` to discover the
 /// matching `pivotCacheRecords` part.
 fn build_pivot_cache_lookup(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   workbook_part : String,
   workbook : @sml.CT_Workbook,
 ) -> Array[PivotCacheRef] {
@@ -684,7 +687,7 @@ fn build_pivot_cache_lookup(
     Some(pc) => pc.pivot_cache
     None => return result
   }
-  let wb_rels = match package.relationships(workbook_part) {
+  let wb_rels = match opc_package.relationships(workbook_part) {
     Some(r) => r
     None => return result
   }
@@ -697,9 +700,10 @@ fn build_pivot_cache_lookup(
     for rel in wb_rels.relationships {
       if rel.id == pc.r_id &&
         rel.target_mode == @relationships.TargetMode::Internal {
-        match (try? @opc_part_name.resolve_target(workbook_part, rel.target)) {
-          Ok(name) => def_part = Some(name)
-          Err(_) => ()
+        try @opc_part_name.resolve_target(workbook_part, rel.target) catch {
+          _ => ()
+        } noraise {
+          name => def_part = Some(name)
         }
       }
     }
@@ -711,16 +715,16 @@ fn build_pivot_cache_lookup(
     // own `_rels` (the relationship type ends in
     // `…/pivotCacheRecords`).
     let mut records_part : String? = None
-    match package.relationships(definition_part) {
+    match opc_package.relationships(definition_part) {
       None => ()
       Some(cdef_rels) =>
         for rel in cdef_rels.relationships {
           if rel.type_uri.has_suffix("/pivotCacheRecords") &&
             rel.target_mode == @relationships.TargetMode::Internal {
-            match
-              (try? @opc_part_name.resolve_target(definition_part, rel.target)) {
-              Ok(name) => records_part = Some(name)
-              Err(_) => ()
+            try @opc_part_name.resolve_target(definition_part, rel.target) catch {
+              _ => ()
+            } noraise {
+              name => records_part = Some(name)
             }
           }
         }
@@ -740,12 +744,12 @@ fn build_pivot_cache_lookup(
 /// that pivot silently rather than aborting the worksheet render —
 /// the renderer treats an empty pivot list as "no overlay".
 fn collect_worksheet_pivots(
-  package : @opc.Package,
+  opc_package : @opc.Package,
   worksheet_part : String,
   cache_lookup : Array[PivotCacheRef],
 ) -> Array[@sml_viewer.SheetPivot] {
   let result : Array[@sml_viewer.SheetPivot] = []
-  let rels = match package.relationships(worksheet_part) {
+  let rels = match opc_package.relationships(worksheet_part) {
     Some(r) => r
     None => return result
   }
@@ -754,25 +758,25 @@ fn collect_worksheet_pivots(
       rel.target_mode != @relationships.TargetMode::Internal {
       continue
     }
-    let pivot_part_name = match
-      (try? @opc_part_name.resolve_target(worksheet_part, rel.target)) {
-      Ok(name) => name
-      Err(_) => continue
+    let pivot_part_name = try @opc_part_name.resolve_target(worksheet_part, rel.target) catch {
+      _ => continue
+    } noraise {
+      name => name
     }
-    let pivot_part = match package.part(pivot_part_name) {
+    let pivot_part = match opc_package.part(pivot_part_name) {
       Some(p) => p
       None => continue
     }
     // 1. Decode the pivot table definition.
-    let pivot_dom = match
-      (try? @sml_reader.read_pivot_table_definition(pivot_part.data)) {
-      Ok(v) => v
-      Err(_) => continue
+    let pivot_dom = try @sml_reader.read_pivot_table_definition(pivot_part.data) catch {
+      _ => continue
+    } noraise {
+      v => v
     }
-    let pivot_typed = match
-      (try? @sml_pivot.decode_pivot_table_definition(pivot_dom)) {
-      Ok(v) => v
-      Err(_) => continue
+    let pivot_typed = try @sml_pivot.decode_pivot_table_definition(pivot_dom) catch {
+      _ => continue
+    } noraise {
+      v => v
     }
     // 2. Resolve the cache via @cacheId.
     let cache_id = match pivot_typed.cache_id {
@@ -790,19 +794,19 @@ fn collect_worksheet_pivots(
       Some(v) => v
       None => continue
     }
-    let cache_part = match package.part(cache_entry.definition_part) {
+    let cache_part = match opc_package.part(cache_entry.definition_part) {
       Some(p) => p
       None => continue
     }
-    let cache_dom = match
-      (try? @sml_reader.read_pivot_cache_definition(cache_part.data)) {
-      Ok(v) => v
-      Err(_) => continue
+    let cache_dom = try @sml_reader.read_pivot_cache_definition(cache_part.data) catch {
+      _ => continue
+    } noraise {
+      v => v
     }
-    let cache_typed = match
-      (try? @sml_pivot.decode_pivot_cache_definition(cache_dom)) {
-      Ok(v) => v
-      Err(_) => continue
+    let cache_typed = try @sml_pivot.decode_pivot_cache_definition(cache_dom) catch {
+      _ => continue
+    } noraise {
+      v => v
     }
     // 3. Decode the records.
     let records_typed = match cache_entry.records_part {
@@ -816,32 +820,32 @@ fn collect_worksheet_pivots(
         empty
       }
       Some(records_part_name) =>
-        match package.part(records_part_name) {
+        match opc_package.part(records_part_name) {
           None => { count: Some(0), rows: [] }
           Some(records_part) => {
-            let records_dom = match
-              (try? @sml_reader.read_pivot_cache_records(records_part.data)) {
-              Ok(v) => v
-              Err(_) => continue
+            let records_dom = try @sml_reader.read_pivot_cache_records(records_part.data) catch {
+              _ => continue
+            } noraise {
+              v => v
             }
-            match
-              (try? @sml_pivot.decode_pivot_cache_records(
-                records_dom,
-                cache_typed.cache_fields,
-              )) {
-              Ok(v) => v
-              Err(_) => continue
+            try @sml_pivot.decode_pivot_cache_records(
+              records_dom,
+              cache_typed.cache_fields,
+            ) catch {
+              _ => continue
+            } noraise {
+              v => v
             }
           }
         }
     }
     // 4. Materialize.
-    let materialization = match
-      (try? @sml_pivot.materialize_pivot_table(
-        pivot_typed, cache_typed, records_typed,
-      )) {
-      Ok(v) => v
-      Err(_) => continue
+    let materialization = try @sml_pivot.materialize_pivot_table(
+      pivot_typed, cache_typed, records_typed,
+    ) catch {
+      _ => continue
+    } noraise {
+      v => v
     }
     result.push({ definition: pivot_typed, cache: cache_typed, materialization })
   }

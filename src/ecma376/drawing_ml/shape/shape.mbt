@@ -72,11 +72,11 @@ pub fn CT_GvmlLockedCanvas::new(
   )
   let grp_el = required_child(element, "grpSpPr", "CT_GvmlLockedCanvas/grpSpPr")
   let nv_grp_sp_pr = wrap_a_violation(
-    fn() { @a.CT_GvmlGroupShapeNonVisual::new(nv_el) },
+    () => @a.CT_GvmlGroupShapeNonVisual::new(nv_el),
     "CT_GvmlLockedCanvas/nvGrpSpPr",
   )
   let grp_sp_pr = wrap_a_violation(
-    fn() { @a.CT_GroupShapeProperties::new(grp_el) },
+    () => @a.CT_GroupShapeProperties::new(grp_el),
     "CT_GvmlLockedCanvas/grpSpPr",
   )
   let contents : Array[GvmlGroupContent] = []
@@ -88,7 +88,7 @@ pub fn CT_GvmlLockedCanvas::new(
           contents.push(
             TxSp(
               wrap_a_violation(
-                fn() { @a.CT_GvmlTextShape::new(child_element) },
+                () => @a.CT_GvmlTextShape::new(child_element),
                 "CT_GvmlLockedCanvas/txSp",
               ),
             ),
@@ -97,7 +97,7 @@ pub fn CT_GvmlLockedCanvas::new(
           contents.push(
             Sp(
               wrap_a_violation(
-                fn() { @a.CT_GvmlShape::new(child_element) },
+                () => @a.CT_GvmlShape::new(child_element),
                 "CT_GvmlLockedCanvas/sp",
               ),
             ),
@@ -106,7 +106,7 @@ pub fn CT_GvmlLockedCanvas::new(
           contents.push(
             CxnSp(
               wrap_a_violation(
-                fn() { @a.CT_GvmlConnector::new(child_element) },
+                () => @a.CT_GvmlConnector::new(child_element),
                 "CT_GvmlLockedCanvas/cxnSp",
               ),
             ),
@@ -115,7 +115,7 @@ pub fn CT_GvmlLockedCanvas::new(
           contents.push(
             Pic(
               wrap_a_violation(
-                fn() { @a.CT_GvmlPicture::new(child_element) },
+                () => @a.CT_GvmlPicture::new(child_element),
                 "CT_GvmlLockedCanvas/pic",
               ),
             ),
@@ -124,7 +124,7 @@ pub fn CT_GvmlLockedCanvas::new(
           contents.push(
             GraphicFrame(
               wrap_a_violation(
-                fn() { @a.CT_GvmlGraphicalObjectFrame::new(child_element) },
+                () => @a.CT_GvmlGraphicalObjectFrame::new(child_element),
                 "CT_GvmlLockedCanvas/graphicFrame",
               ),
             ),
@@ -133,7 +133,7 @@ pub fn CT_GvmlLockedCanvas::new(
           contents.push(
             GrpSp(
               wrap_a_violation(
-                fn() { @a.CT_GvmlGroupShape::new(child_element) },
+                () => @a.CT_GvmlGroupShape::new(child_element),
                 "CT_GvmlLockedCanvas/grpSp",
               ),
             ),
@@ -141,7 +141,7 @@ pub fn CT_GvmlLockedCanvas::new(
         "extLst" =>
           ext_lst = Some(
             wrap_a_violation(
-              fn() { @a.CT_OfficeArtExtensionList::new(child_element) },
+              () => @a.CT_OfficeArtExtensionList::new(child_element),
               "CT_GvmlLockedCanvas/extLst",
             ),
           )

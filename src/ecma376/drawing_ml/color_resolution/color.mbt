@@ -882,7 +882,7 @@ fn linear_unit_to_srgb_byte(linear : Double) -> Int {
   let encoded = if l <= 0.0031308 {
     l * 12.92
   } else {
-    1.055 * l.pow(1.0 / 2.4) - 0.055
+    1.055 * @math.pow(l, 1.0 / 2.4) - 0.055
   }
   let byte = (encoded * 255.0).round().to_int()
   if byte < 0 {

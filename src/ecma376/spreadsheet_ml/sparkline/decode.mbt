@@ -20,9 +20,7 @@
 /// Decode every `<x14:sparklineGroups>` found in an extension-list
 /// element. Returns the merged `SparklineGroups` payload — empty
 /// when no x14 sparkline extension is present.
-pub fn decode_ext_lst(
-  ext_lst : @xml.Element,
-) -> SparklineGroups raise @opc_errors.SchemaViolation {
+pub fn decode_ext_lst(ext_lst : @xml.Element) -> SparklineGroups {
   let groups : Array[SparklineGroup] = []
   for node in ext_lst.children {
     if node is @xml.Node::Element(ext) {
@@ -61,7 +59,7 @@ pub fn decode_ext_lst(
 fn decode_sparkline_groups_into(
   groups_elt : @xml.Element,
   out : Array[SparklineGroup],
-) -> Unit raise @opc_errors.SchemaViolation {
+) -> Unit {
   for node in groups_elt.children {
     if node is @xml.Node::Element(el) {
       if is_x14_named(el, "sparklineGroup") {
@@ -75,7 +73,7 @@ fn decode_sparkline_groups_into(
 /// Decode one `<x14:sparklineGroup>` element.
 fn decode_sparkline_group(
   group_elt : @xml.Element,
-) -> SparklineGroup raise @opc_errors.SchemaViolation {
+) -> SparklineGroup {
   let kind = match find_attr(group_elt, "type") {
     Some("column") => Column
     Some("stacked") => Stacked
@@ -152,7 +150,7 @@ fn decode_sparkline_group(
 fn decode_sparklines_into(
   sparklines_elt : @xml.Element,
   out : Array[Sparkline],
-) -> Unit raise @opc_errors.SchemaViolation {
+) -> Unit {
   for node in sparklines_elt.children {
     if node is @xml.Node::Element(el) {
       if is_x14_named(el, "sparkline") {
@@ -166,7 +164,7 @@ fn decode_sparklines_into(
 /// Decode one `<x14:sparkline>` element.
 fn decode_sparkline(
   sparkline_elt : @xml.Element,
-) -> Sparkline raise @opc_errors.SchemaViolation {
+) -> Sparkline {
   let mut data_range : String = ""
   let mut anchor_cell : String = ""
   let literal_values : Array[Double] = []
@@ -196,9 +194,10 @@ fn decode_sparkline(
               Some((k, v)) =>
                 if trim(k) == "values" {
                   for raw in split_all(v, ',') {
-                    match (try? @strconv.parse_double(trim(raw))) {
-                      Ok(d) => literal_values.push(d)
-                      Err(_) => ()
+                    try @string.parse_double(trim(raw)) catch {
+                      _ => ()
+                    } noraise {
+                      d => literal_values.push(d)
                     }
                   }
                 }
@@ -216,9 +215,10 @@ fn decode_sparkline(
         for vnode in el.children {
           if vnode is @xml.Node::Element(vel) {
             if vel.name.local_name == "v" {
-              match (try? @strconv.parse_double(trim(element_text(vel)))) {
-                Ok(d) => literal_values.push(d)
-                Err(_) => ()
+              try @string.parse_double(trim(element_text(vel))) catch {
+                _ => ()
+              } noraise {
+                d => literal_values.push(d)
               }
             }
           }
@@ -235,17 +235,19 @@ fn decode_color(color_elt : @xml.Element) -> SparklineColor {
   let hex = find_attr(color_elt, "rgb")
   let theme = match find_attr(color_elt, "theme") {
     Some(value) =>
-      match (try? @strconv.parse_int(value)) {
-        Ok(n) => Some(n)
-        Err(_) => None
+      try @string.parse_int(value) catch {
+        _ => None
+      } noraise {
+        n => Some(n)
       }
     None => None
   }
   let tint = match find_attr(color_elt, "tint") {
     Some(value) =>
-      match (try? @strconv.parse_double(value)) {
-        Ok(d) => Some(d)
-        Err(_) => None
+      try @string.parse_double(value) catch {
+        _ => None
+      } noraise {
+        d => Some(d)
       }
     None => None
   }

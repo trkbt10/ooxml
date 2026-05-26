@@ -11,7 +11,7 @@
 
 import {
   "moonbitlang/core/env" @env,
-  "moonbitlang/core/strconv" @strconv,
+  "moonbitlang/core/string" @string,
   "moonbitlang/x/fs" @fs,
   "trkbt10/ooxml" @ooxml,
   "trkbt10/ooxml/ecma376/opc" @opc,

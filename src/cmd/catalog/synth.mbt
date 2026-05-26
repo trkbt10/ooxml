@@ -2,8 +2,8 @@
 
 ///|
 /// Sample value for a built-in xsd primitive, or "" when unknown.
-fn primitive_sample(local : String) -> String {
-  match local {
+fn primitive_sample(local_name : String) -> String {
+  match local_name {
     "string" | "token" | "normalizedString" | "NCName" | "QName" => "x"
     "ID" | "IDREF" => "id1"
     "anyURI" => "rId1"
@@ -36,11 +36,11 @@ fn sample_for_simple(
 ) -> String {
   // `type_name` is a resolved `ns#localname` key (or, for an XSD
   // built-in, `http://www.w3.org/2001/XMLSchema#int` etc.).
-  let local = match type_name.rev_find("#") {
-    Some(i) => type_name[i + 1:].to_string()
+  let local_name = match type_name.rev_find("#") {
+    Some(i) => type_name[i + 1:].to_owned()
     None => type_name
   }
-  let prim = primitive_sample(local)
+  let prim = primitive_sample(local_name)
   if prim != "" {
     return prim
   }
@@ -71,7 +71,7 @@ fn sample_for_simple(
             Some(members) => {
               let parts = members.split(" ")
               for part in parts {
-                let p = part.to_string()
+                let p = part.to_owned()
                 if p.length() > 0 {
                   return sample_for_simple(schema, p, depth + 1)
                 }

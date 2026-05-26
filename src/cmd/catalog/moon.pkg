@@ -16,7 +16,7 @@
 // library under test.
 
 import {
-  "moonbitlang/core/strconv" @strconv,
+  "moonbitlang/core/string" @string,
   "moonbitlang/core/encoding/utf8" @utf8,
   "moonbitlang/core/env" @env,
   "moonbitlang/x/fs" @fs,

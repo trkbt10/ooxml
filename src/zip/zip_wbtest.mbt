@@ -155,7 +155,7 @@ fn fixed_deflate_zip() -> Bytes {
 
 ///|
 fn data_descriptor_zip() -> Bytes {
-  let out = @buffer.new()
+  let out = Buffer()
   let name = b("a.txt")
   let data = b("abc")
   let crc = crc32(data)
@@ -202,7 +202,7 @@ fn data_descriptor_zip() -> Bytes {
 
 ///|
 fn zip64_zip() -> Bytes {
-  let out = @buffer.new()
+  let out = Buffer()
   let name = b("z.txt")
   let data = b("zip64")
   let crc = crc32(data)

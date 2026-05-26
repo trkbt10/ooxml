@@ -47,7 +47,7 @@ fn svg_text_content(svg : String) -> String {
             match find_from(svg, "</text>", content_start) {
               None => break
               Some(close) => {
-                out.write_string(svg[content_start:close].to_string())
+                out.write_string(svg[content_start:close].to_owned())
                 i = close + 7
               }
             }
@@ -375,7 +375,7 @@ test "viewer u + strike combine: strike via CSS, underline via overlay" {
   assert_true(svg.contains("<line"))
   // The compound `underline line-through` shorthand is NO LONGER
   // emitted — the explicit overlay replaces the underline half.
-  assert_true(not(svg.contains("underline line-through")))
+  assert_true(!svg.contains("underline line-through"))
 }
 
 ///|
@@ -627,9 +627,10 @@ test "viewer §20.1.4.1.8 effectRef resolves theme effectStyleLst entry" {
     "<a:bgFillStyleLst><a:noFill/><a:noFill/><a:noFill/></a:bgFillStyleLst>" +
     "</a:fmtScheme>"
   let theme_xml = prefix + clr + font + fmt + "</a:themeElements></a:theme>"
-  let theme_ok = match (try? @theme.read_theme(@utf8.encode(theme_xml[:]))) {
-    Ok(t) => t
-    Err(_) => abort("theme construction failed")
+  let theme_ok = try @theme.read_theme(@utf8.encode(theme_xml[:])) catch {
+    _ => abort("theme construction failed")
+  } noraise {
+    t => t
   }
   // Shape: spPr has geometry but no effectLst; style has effectRef.
   let sp : @xml.Node = @xml.Node::Element({
@@ -1426,11 +1427,11 @@ test "viewer §19.5.50 slide transition surfaces data attributes" {
   //     <p:transition spd="fast" advClick="1"><p:fade/></p:transition>
   //   </p:sld>
   let elem : (String, Array[@xml.Attribute], Array[@xml.Node]) -> @xml.Element = fn(
-    local,
+    local_name,
     attrs,
     children,
   ) {
-    { name: name(local), attributes: attrs, children }
+    { name: name(local_name), attributes: attrs, children }
   }
   let c_nv_pr = elem(
     "cNvPr",

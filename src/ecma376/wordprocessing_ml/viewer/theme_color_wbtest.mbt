@@ -36,12 +36,22 @@ test "parse_clr_scheme reads accent / dk / lt slots" {
   let theme_elts = mk_el("themeElements", [], [@xml.Node::Element(scheme)])
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
-  inspect(map.lookup("accent1"), content="Some(4472c4)")
-  inspect(map.lookup("text1"), content="Some(000000)")
-  inspect(map.lookup("background1"), content="Some(ffffff)")
-  inspect(map.lookup("hyperlink"), content="Some(0563c1)")
-  inspect(map.lookup("followedHyperlink"), content="Some(954f72)")
-  inspect(map.lookup("accent3"), content="None")
+  @debug.debug_inspect(map.lookup("accent1"), content=(
+    #|Some("4472c4")
+  ))
+  @debug.debug_inspect(map.lookup("text1"), content=(
+    #|Some("000000")
+  ))
+  @debug.debug_inspect(map.lookup("background1"), content=(
+    #|Some("ffffff")
+  ))
+  @debug.debug_inspect(map.lookup("hyperlink"), content=(
+    #|Some("0563c1")
+  ))
+  @debug.debug_inspect(map.lookup("followedHyperlink"), content=(
+    #|Some("954f72")
+  ))
+  @debug.debug_inspect(map.lookup("accent3"), content="None")
 }
 
 ///|
@@ -54,7 +64,9 @@ test "resolve_themed_color overrides base with themeColor" {
   let map = parse_clr_scheme(theme)
   // themeColor wins over explicit base @color (§17.15.1.51).
   let r = resolve_themed_color(Some("ff0000"), Some("accent1"), None, None, map)
-  inspect(r, content="Some(4472c4)")
+  @debug.debug_inspect(r, content=(
+    #|Some("4472c4")
+  ))
 }
 
 ///|
@@ -67,7 +79,9 @@ test "resolve_themed_color applies themeTint towards white" {
   let map = parse_clr_scheme(theme)
   // tint = FF (1.0) on #000000 should fully brighten to #FFFFFF.
   let r = resolve_themed_color(None, Some("accent1"), Some("FF"), None, map)
-  inspect(r, content="Some(ffffff)")
+  @debug.debug_inspect(r, content=(
+    #|Some("ffffff")
+  ))
 }
 
 ///|
@@ -80,7 +94,9 @@ test "resolve_themed_color applies themeShade towards black" {
   let map = parse_clr_scheme(theme)
   // shade = FF (1.0) on #FFFFFF should fully darken to #000000.
   let r = resolve_themed_color(None, Some("accent1"), None, Some("FF"), map)
-  inspect(r, content="Some(000000)")
+  @debug.debug_inspect(r, content=(
+    #|Some("000000")
+  ))
 }
 
 ///|
@@ -88,13 +104,15 @@ test "resolve_themed_color falls back to base when theme lookup fails" {
   let map = ThemeColorMap::empty()
   // No theme part / no mapping for accent7; base @color survives.
   let r = resolve_themed_color(Some("ff0000"), Some("accent7"), None, None, map)
-  inspect(r, content="Some(ff0000)")
+  @debug.debug_inspect(r, content=(
+    #|Some("ff0000")
+  ))
 }
 
 ///|
 test "resolve_themed_color returns None for auto (no inputs)" {
   let map = ThemeColorMap::empty()
-  inspect(resolve_themed_color(None, None, None, None, map), content="None")
+  @debug.debug_inspect(resolve_themed_color(None, None, None, None, map), content="None")
 }
 
 ///|
@@ -111,7 +129,9 @@ test "resolve_themed_color honours sysClr lastClr fallback" {
   let theme_elts = mk_el("themeElements", [], [@xml.Node::Element(scheme)])
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
-  inspect(map.lookup("text1"), content="Some(000000)")
+  @debug.debug_inspect(map.lookup("text1"), content=(
+    #|Some("000000")
+  ))
 }
 
 ///|
@@ -130,9 +150,11 @@ test "themeColor cascade E2E: accent1 + themeTint produces resolved hex" {
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
   // themeColor="accent1" alone → exact scheme colour.
-  inspect(
+  @debug.debug_inspect(
     resolve_themed_color(None, Some("accent1"), None, None, map),
-    content="Some(4472c4)",
+    content=(
+      #|Some("4472c4")
+    ),
   )
   // themeColor="accent1" + themeShade="80" (50%) → ~half-darkened.
   // 0x80 = 128 ⇒ shade ratio = 128/255 ≈ 0.502
@@ -152,11 +174,11 @@ test "themeColor cascade E2E: accent1 + themeTint produces resolved hex" {
   )
   match shaded {
     Some(hex) => {
-      assert_eq(hex.length(), 6)
+      @debug.assert_eq(hex.length(), 6)
       // Each channel should be strictly less than the base.
-      let r = hex[0:2].to_string()
-      let g = hex[2:4].to_string()
-      let b = hex[4:6].to_string()
+      let r = hex[0:2].to_owned()
+      let g = hex[2:4].to_owned()
+      let b = hex[4:6].to_owned()
       // accent1 base channels are 44 / 72 / c4 — shaded must be <.
       assert_true(r < "44")
       assert_true(g < "72")

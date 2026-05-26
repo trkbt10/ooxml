@@ -225,27 +225,27 @@ fn text_box(
   // host carries; body text defaults to sans-serif by contrast.
   let family = "Noto Serif"
   let weight = if bold { 700 } else { 400 }
-  let width = match
-    (try? @glyph.measure_text_width(
+  let width = try @glyph.measure_text_width(
       content,
       font_size_pt=ctx.font_size_pt,
       letter_spacing_px=0.0,
       family~,
       weight~,
       italic~,
-    )) {
-    Ok(w) => w
-    Err(_) => 0.0
+    ) catch {
+    _ => 0.0
+  } noraise {
+    w => w
   }
   let px = ctx.font_size_pt * @glyph.pt_to_px
   // Ascender ratio drives the box's ascent/descent split. When the
   // resolver cannot satisfy the request we fall back to 0.8 — the
   // typical Latin `hhea.ascent / unitsPerEm` value — so the box
   // bounds still roughly contain the glyph.
-  let ascender = match
-    (try? @glyph.get_ascender_ratio(family, weight~, italic~)) {
-    Ok(r) => r
-    Err(_) => 0.8
+  let ascender = try @glyph.get_ascender_ratio(family, weight~, italic~) catch {
+    _ => 0.8
+  } noraise {
+    r => r
   }
   // The ascender ratio covers the cap/ascender extent; the descent
   // is the remaining em below the baseline.

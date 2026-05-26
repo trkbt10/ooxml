@@ -100,9 +100,9 @@ fn extract_diagram_rel_ids(
 /// Look up a `<dgm:relIds>` attribute by its local name in the
 /// officedoc relationships namespace.  The namespace check guards
 /// against an unrelated attribute with the same local name.
-fn rel_ids_attr(rel_ids : @xml.Element, local : String) -> String? {
+fn rel_ids_attr(rel_ids : @xml.Element, local_name : String) -> String? {
   for a in rel_ids.attributes {
-    if a.name.local_name == local {
+    if a.name.local_name == local_name {
       match a.name.ns {
         Some(uri) => if uri == diagram_rel_ns { return Some(a.value) }
         None =>
@@ -152,24 +152,25 @@ fn render_diagram_svg(
   // CT_* projections in `@dgm` and the engine helpers in
   // `@diagram_layout`. Decoding failures land in the empty branch
   // so the placeholder remains the renderer's safety net.
-  let data_model_typed = match (try? @dgm.CT_DataModel::new(data_model_root)) {
-    Ok(t) => t
-    Err(_) => return []
+  let data_model_typed = try @dgm.CT_DataModel::new(data_model_root) catch {
+    _ => return []
+  } noraise {
+    t => t
   }
-  let definition_typed = match
-    (try? @dgm.CT_DiagramDefinition::new(layout_def_root)) {
-    Ok(t) => t
-    Err(_) => return []
+  let definition_typed = try @dgm.CT_DiagramDefinition::new(layout_def_root) catch {
+    _ => return []
+  } noraise {
+    t => t
   }
-  let data_model = match
-    (try? @diagram_layout.decode_data_model(data_model_typed)) {
-    Ok(t) => t
-    Err(_) => return []
+  let data_model = try @diagram_layout.decode_data_model(data_model_typed) catch {
+    _ => return []
+  } noraise {
+    t => t
   }
-  let definition = match
-    (try? @diagram_layout.decode_diagram_definition(definition_typed)) {
-    Ok(t) => t
-    Err(_) => return []
+  let definition = try @diagram_layout.decode_diagram_definition(definition_typed) catch {
+    _ => return []
+  } noraise {
+    t => t
   }
 
   // §21.4.2.16 CT_DiagramDefinition — real-world SmartArt layouts
@@ -612,13 +613,13 @@ fn colors_palette(colors_def : @xml.Element?) -> Array[String] {
   for child in lst.children {
     match child {
       Element(e) => {
-        let local = e.name.local_name
-        if local == "srgbClr" {
+        let local_name = e.name.local_name
+        if local_name == "srgbClr" {
           match attr_value(e, "val") {
             Some(hex) => result.push("#" + hex)
             None => ()
           }
-        } else if local == "schemeClr" {
+        } else if local_name == "schemeClr" {
           // Scheme colour resolution requires the theme; without
           // it we cannot pin down a concrete sRGB triple. We
           // include the scheme name as a placeholder so the

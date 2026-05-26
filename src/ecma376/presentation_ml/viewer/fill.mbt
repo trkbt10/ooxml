@@ -26,7 +26,7 @@ pub struct FillAttrResult {
 
 ///|
 /// One gradient stop, with position in [0, 100] and resolved color.
-struct GradientStopValue {
+priv struct GradientStopValue {
   position : Double
   color : ResolvedColor
 }
@@ -60,9 +60,10 @@ fn read_gradient_stops(
           // structural order were corrupted.
           let pos = match attr_value(gs, "pos") {
             Some(v) =>
-              match (try? @strconv.parse_double(v)) {
-                Ok(d) => d / 1000.0
-                Err(_) => 0.0
+              try @string.parse_double(v) catch {
+                _ => 0.0
+              } noraise {
+                d => d / 1000.0
               }
             None => 0.0
           }
@@ -107,9 +108,10 @@ fn read_lin_angle(grad_fill : @xml.Element) -> Double {
       match attr_value(lin, "ang") {
         None => 0.0
         Some(v) =>
-          match (try? @strconv.parse_double(v)) {
-            Ok(d) => d / 60000.0
-            Err(_) => 0.0
+          try @string.parse_double(v) catch {
+            _ => 0.0
+          } noraise {
+            d => d / 60000.0
           }
       }
   }

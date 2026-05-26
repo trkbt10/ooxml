@@ -303,133 +303,165 @@ pub fn ST_ParameterVal::parse(
     invalid("ST_ParameterVal", s)
   }
   // Try typed enum branches first; on success, return that variant.
-  match (try? ST_DiagramHorizontalAlignment::parse(s)) {
-    Ok(v) => return ParameterValDiagramHorizontalAlignment(v)
-    Err(_) => ()
+  try ST_DiagramHorizontalAlignment::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValDiagramHorizontalAlignment(v)
   }
-  match (try? ST_VerticalAlignment::parse(s)) {
-    Ok(v) => return ParameterValVerticalAlignment(v)
-    Err(_) => ()
+  try ST_VerticalAlignment::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValVerticalAlignment(v)
   }
-  match (try? ST_ChildDirection::parse(s)) {
-    Ok(v) => return ParameterValChildDirection(v)
-    Err(_) => ()
+  try ST_ChildDirection::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValChildDirection(v)
   }
-  match (try? ST_ChildAlignment::parse(s)) {
-    Ok(v) => return ParameterValChildAlignment(v)
-    Err(_) => ()
+  try ST_ChildAlignment::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValChildAlignment(v)
   }
-  match (try? ST_SecondaryChildAlignment::parse(s)) {
-    Ok(v) => return ParameterValSecondaryChildAlignment(v)
-    Err(_) => ()
+  try ST_SecondaryChildAlignment::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValSecondaryChildAlignment(v)
   }
-  match (try? ST_LinearDirection::parse(s)) {
-    Ok(v) => return ParameterValLinearDirection(v)
-    Err(_) => ()
+  try ST_LinearDirection::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValLinearDirection(v)
   }
-  match (try? ST_SecondaryLinearDirection::parse(s)) {
-    Ok(v) => return ParameterValSecondaryLinearDirection(v)
-    Err(_) => ()
+  try ST_SecondaryLinearDirection::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValSecondaryLinearDirection(v)
   }
-  match (try? ST_StartingElement::parse(s)) {
-    Ok(v) => return ParameterValStartingElement(v)
-    Err(_) => ()
+  try ST_StartingElement::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValStartingElement(v)
   }
-  match (try? ST_BendPoint::parse(s)) {
-    Ok(v) => return ParameterValBendPoint(v)
-    Err(_) => ()
+  try ST_BendPoint::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValBendPoint(v)
   }
-  match (try? ST_ConnectorRouting::parse(s)) {
-    Ok(v) => return ParameterValConnectorRouting(v)
-    Err(_) => ()
+  try ST_ConnectorRouting::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValConnectorRouting(v)
   }
-  match (try? ST_ArrowheadStyle::parse(s)) {
-    Ok(v) => return ParameterValArrowheadStyle(v)
-    Err(_) => ()
+  try ST_ArrowheadStyle::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValArrowheadStyle(v)
   }
-  match (try? ST_ConnectorDimension::parse(s)) {
-    Ok(v) => return ParameterValConnectorDimension(v)
-    Err(_) => ()
+  try ST_ConnectorDimension::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValConnectorDimension(v)
   }
-  match (try? ST_RotationPath::parse(s)) {
-    Ok(v) => return ParameterValRotationPath(v)
-    Err(_) => ()
+  try ST_RotationPath::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValRotationPath(v)
   }
-  match (try? ST_CenterShapeMapping::parse(s)) {
-    Ok(v) => return ParameterValCenterShapeMapping(v)
-    Err(_) => ()
+  try ST_CenterShapeMapping::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValCenterShapeMapping(v)
   }
-  match (try? ST_NodeHorizontalAlignment::parse(s)) {
-    Ok(v) => return ParameterValNodeHorizontalAlignment(v)
-    Err(_) => ()
+  try ST_NodeHorizontalAlignment::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValNodeHorizontalAlignment(v)
   }
-  match (try? ST_NodeVerticalAlignment::parse(s)) {
-    Ok(v) => return ParameterValNodeVerticalAlignment(v)
-    Err(_) => ()
+  try ST_NodeVerticalAlignment::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValNodeVerticalAlignment(v)
   }
-  match (try? ST_FallbackDimension::parse(s)) {
-    Ok(v) => return ParameterValFallbackDimension(v)
-    Err(_) => ()
+  try ST_FallbackDimension::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValFallbackDimension(v)
   }
-  match (try? ST_TextDirection::parse(s)) {
-    Ok(v) => return ParameterValTextDirection(v)
-    Err(_) => ()
+  try ST_TextDirection::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValTextDirection(v)
   }
-  match (try? ST_PyramidAccentPosition::parse(s)) {
-    Ok(v) => return ParameterValPyramidAccentPosition(v)
-    Err(_) => ()
+  try ST_PyramidAccentPosition::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValPyramidAccentPosition(v)
   }
-  match (try? ST_PyramidAccentTextMargin::parse(s)) {
-    Ok(v) => return ParameterValPyramidAccentTextMargin(v)
-    Err(_) => ()
+  try ST_PyramidAccentTextMargin::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValPyramidAccentTextMargin(v)
   }
-  match (try? ST_TextBlockDirection::parse(s)) {
-    Ok(v) => return ParameterValTextBlockDirection(v)
-    Err(_) => ()
+  try ST_TextBlockDirection::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValTextBlockDirection(v)
   }
-  match (try? ST_TextAnchorHorizontal::parse(s)) {
-    Ok(v) => return ParameterValTextAnchorHorizontal(v)
-    Err(_) => ()
+  try ST_TextAnchorHorizontal::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValTextAnchorHorizontal(v)
   }
-  match (try? ST_TextAnchorVertical::parse(s)) {
-    Ok(v) => return ParameterValTextAnchorVertical(v)
-    Err(_) => ()
+  try ST_TextAnchorVertical::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValTextAnchorVertical(v)
   }
-  match (try? ST_DiagramTextAlignment::parse(s)) {
-    Ok(v) => return ParameterValDiagramTextAlignment(v)
-    Err(_) => ()
+  try ST_DiagramTextAlignment::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValDiagramTextAlignment(v)
   }
-  match (try? ST_AutoTextRotation::parse(s)) {
-    Ok(v) => return ParameterValAutoTextRotation(v)
-    Err(_) => ()
+  try ST_AutoTextRotation::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValAutoTextRotation(v)
   }
-  match (try? ST_GrowDirection::parse(s)) {
-    Ok(v) => return ParameterValGrowDirection(v)
-    Err(_) => ()
+  try ST_GrowDirection::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValGrowDirection(v)
   }
-  match (try? ST_FlowDirection::parse(s)) {
-    Ok(v) => return ParameterValFlowDirection(v)
-    Err(_) => ()
+  try ST_FlowDirection::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValFlowDirection(v)
   }
-  match (try? ST_ContinueDirection::parse(s)) {
-    Ok(v) => return ParameterValContinueDirection(v)
-    Err(_) => ()
+  try ST_ContinueDirection::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValContinueDirection(v)
   }
-  match (try? ST_Breakpoint::parse(s)) {
-    Ok(v) => return ParameterValBreakpoint(v)
-    Err(_) => ()
+  try ST_Breakpoint::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValBreakpoint(v)
   }
-  match (try? ST_Offset::parse(s)) {
-    Ok(v) => return ParameterValOffset(v)
-    Err(_) => ()
+  try ST_Offset::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValOffset(v)
   }
-  match (try? ST_HierarchyAlignment::parse(s)) {
-    Ok(v) => return ParameterValHierarchyAlignment(v)
-    Err(_) => ()
+  try ST_HierarchyAlignment::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValHierarchyAlignment(v)
   }
-  match (try? ST_ConnectorPoint::parse(s)) {
-    Ok(v) => return ParameterValConnectorPoint(v)
-    Err(_) => ()
+  try ST_ConnectorPoint::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return ParameterValConnectorPoint(v)
   }
   if s == "true" || s == "1" {
     return ParameterValBool(true)
@@ -1588,7 +1620,7 @@ pub struct ST_Ints {
 ///|
 /// Parse the ST_Ints schema lexical value.
 pub fn ST_Ints::parse(s : String) -> ST_Ints raise SchemaViolation {
-  let values = parse_typed_list("ST_Ints", s, fn(item) {
+  let values = parse_typed_list("ST_Ints", s, (item) => {
     if !is_int(item) {
       invalid("ST_Ints", s)
     }
@@ -1622,7 +1654,7 @@ pub struct ST_UnsignedInts {
 pub fn ST_UnsignedInts::parse(
   s : String,
 ) -> ST_UnsignedInts raise SchemaViolation {
-  let values = parse_typed_list("ST_UnsignedInts", s, fn(item) {
+  let values = parse_typed_list("ST_UnsignedInts", s, (item) => {
     if !is_unsigned_int(item) {
       invalid("ST_UnsignedInts", s)
     }
@@ -1658,7 +1690,7 @@ pub struct ST_Booleans {
 ///|
 /// Parse the ST_Booleans schema lexical value.
 pub fn ST_Booleans::parse(s : String) -> ST_Booleans raise SchemaViolation {
-  let values = parse_typed_list("ST_Booleans", s, fn(item) {
+  let values = parse_typed_list("ST_Booleans", s, (item) => {
     match item {
       "true" | "1" => true
       "false" | "0" => false
@@ -3126,25 +3158,30 @@ pub fn ST_FunctionValue::parse(
   if s == "false" || s == "0" {
     return FunctionValueBool(false)
   }
-  match (try? ST_Direction::parse(s)) {
-    Ok(v) => return FunctionValueDirection(v)
-    Err(_) => ()
+  try ST_Direction::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return FunctionValueDirection(v)
   }
-  match (try? ST_HierBranchStyle::parse(s)) {
-    Ok(v) => return FunctionValueHierBranchStyle(v)
-    Err(_) => ()
+  try ST_HierBranchStyle::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return FunctionValueHierBranchStyle(v)
   }
-  match (try? ST_AnimOneStr::parse(s)) {
-    Ok(v) => return FunctionValueAnimOneStr(v)
-    Err(_) => ()
+  try ST_AnimOneStr::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return FunctionValueAnimOneStr(v)
   }
-  match (try? ST_AnimLvlStr::parse(s)) {
-    Ok(v) => return FunctionValueAnimLvlStr(v)
-    Err(_) => ()
+  try ST_AnimLvlStr::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return FunctionValueAnimLvlStr(v)
   }
-  match (try? ST_ResizeHandlesStr::parse(s)) {
-    Ok(v) => return FunctionValueResizeHandlesStr(v)
-    Err(_) => ()
+  try ST_ResizeHandlesStr::parse(s) catch {
+    _ => ()
+  } noraise {
+    v => return FunctionValueResizeHandlesStr(v)
   }
   invalid("ST_FunctionValue", s)
 }
@@ -3245,9 +3282,10 @@ pub(all) enum ST_FunctionArgument {
 pub fn ST_FunctionArgument::parse(
   s : String,
 ) -> ST_FunctionArgument raise SchemaViolation {
-  match (try? ST_VariableType::parse(s)) {
-    Ok(v) => FunctionArgumentVariable(v)
-    Err(_) => invalid("ST_FunctionArgument", s)
+  try ST_VariableType::parse(s) catch {
+    _ => invalid("ST_FunctionArgument", s)
+  } noraise {
+    v => FunctionArgumentVariable(v)
   }
 }
 

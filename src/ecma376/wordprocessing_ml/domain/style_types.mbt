@@ -146,7 +146,7 @@ pub fn CT_Styles::parse(
   element : @xml.Element,
 ) -> CT_Styles raise SchemaViolation {
   require_local_name(element, "styles")
-  let styles : @hashmap.HashMap[String, CT_Style] = @hashmap.new()
+  let styles : @hashmap.HashMap[String, CT_Style] = @hashmap.HashMap([], capacity=0)
   let mut doc_default_p_pr : @xml.Element? = None
   let mut doc_default_r_pr : @xml.Element? = None
   for node in element.children {
@@ -189,7 +189,7 @@ pub fn CT_Styles::resolve_chain(
   style_id : StyleId,
 ) -> Array[CT_Style] {
   let chain : Array[CT_Style] = []
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.new()
+  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([], capacity=0)
   let mut current = style_id
   let mut keep_going = true
   while keep_going {

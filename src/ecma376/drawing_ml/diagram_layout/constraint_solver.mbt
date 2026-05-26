@@ -188,7 +188,7 @@ pub fn apply_self_geometric_constraints(
   apply_self_geometric_constraints_with_registry(
     parent_bounds,
     constraints,
-    Map::new(),
+    Map([], capacity=0),
   )
 }
 

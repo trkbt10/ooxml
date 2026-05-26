@@ -5,16 +5,16 @@ test "parse_style honours pt / px / in units" {
   let p = parse_style(
     "position:absolute;left:12pt;top:24pt;width:1in;height:96px",
   )
-  assert_eq(p.left, Some(16.0)) // 12 pt * 96/72 = 16 px
-  assert_eq(p.top, Some(32.0)) // 24 pt * 96/72 = 32 px
-  assert_eq(p.width, Some(96.0)) // 1 in = 96 px
-  assert_eq(p.height, Some(96.0))
+  @debug.assert_eq(p.left, Some(16.0)) // 12 pt * 96/72 = 16 px
+  @debug.assert_eq(p.top, Some(32.0)) // 24 pt * 96/72 = 32 px
+  @debug.assert_eq(p.width, Some(96.0)) // 1 in = 96 px
+  @debug.assert_eq(p.height, Some(96.0))
 }
 
 ///|
 test "parse_style picks up rotation and flip" {
   let p = parse_style("rotation:30;flip:x")
-  assert_eq(p.rotation_deg, Some(30.0))
+  @debug.assert_eq(p.rotation_deg, Some(30.0))
   assert_true(p.flip_x)
   assert_false(p.flip_y)
 }
@@ -24,13 +24,13 @@ test "vml_path_to_svg_d translates moveto / lineto / close" {
   // VML: m 0,0 l 100,0 l 100,100 l 0,100 x e
   // SVG: M 0 0 L 100 0 L 100 100 L 0 100 Z Z
   let d = vml_path_to_svg_d("m 0,0 l 100,0 l 100,100 l 0,100 x e")
-  assert_eq(d, "M 0 0 L 100 0 L 100 100 L 0 100 Z Z")
+  @debug.assert_eq(d, "M 0 0 L 100 0 L 100 100 L 0 100 Z Z")
 }
 
 ///|
 test "vml_path_to_svg_d preserves cubic Bézier" {
   let d = vml_path_to_svg_d("m 0,0 c 50,0 50,100 100,100 e")
-  assert_eq(d, "M 0 0 C 50 0 50 100 100 100 Z")
+  @debug.assert_eq(d, "M 0 0 C 50 0 50 100 100 100 Z")
 }
 
 ///|

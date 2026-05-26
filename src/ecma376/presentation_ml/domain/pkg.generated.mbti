@@ -1495,7 +1495,7 @@ pub(all) struct CT_TLTextTargetElement {
   range : CT_TLTextTargetElementRange?
   element_name : @xml.QName
 } derive(Eq, @debug.Debug)
-pub fn CT_TLTextTargetElement::from_element(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TLTextTargetElement::from_element(@xml.Element) -> Self
 pub fn CT_TLTextTargetElement::new(@xml.Element) -> Self
 pub fn CT_TLTextTargetElement::parse(@xml.Element) -> Self
 pub fn CT_TLTextTargetElement::to_element(Self) -> @xml.Element

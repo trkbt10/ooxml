@@ -859,19 +859,19 @@ fn styles_data_attrs(styles : @domain.CT_Styles?) -> Array[@xml.Attribute] {
           match sub {
             Element(ex) if ex.name.local_name == "lsdException" => {
               for a in ex.attributes {
-                let local = a.name.local_name
-                if local == "name" ||
-                  local == "uiPriority" ||
-                  local == "qFormat" ||
-                  local == "semiHidden" ||
-                  local == "unhideWhenUsed" ||
-                  local == "locked" {
+                let local_name = a.name.local_name
+                if local_name == "name" ||
+                  local_name == "uiPriority" ||
+                  local_name == "qFormat" ||
+                  local_name == "semiHidden" ||
+                  local_name == "unhideWhenUsed" ||
+                  local_name == "locked" {
                   attrs.push(
                     @markup.attr(
                       "data-ooxml-styles-lsd-" +
                       idx.to_string() +
                       "-" +
-                      dash_localname(local),
+                      dash_localname(local_name),
                       a.value,
                     ),
                   )
@@ -893,17 +893,17 @@ fn styles_data_attrs(styles : @domain.CT_Styles?) -> Array[@xml.Attribute] {
     match node {
       Element(c) if c.name.local_name == "style" => {
         for a in c.attributes {
-          let local = a.name.local_name
-          if local == "styleId" ||
-            local == "type" ||
-            local == "default" ||
-            local == "customStyle" {
+          let local_name = a.name.local_name
+          if local_name == "styleId" ||
+            local_name == "type" ||
+            local_name == "default" ||
+            local_name == "customStyle" {
             attrs.push(
               @markup.attr(
                 "data-ooxml-styles-style-" +
                 sidx.to_string() +
                 "-" +
-                dash_localname(local),
+                dash_localname(local_name),
                 a.value,
               ),
             )
@@ -912,36 +912,36 @@ fn styles_data_attrs(styles : @domain.CT_Styles?) -> Array[@xml.Attribute] {
         for sub in c.children {
           match sub {
             Element(d) => {
-              let local = d.name.local_name
+              let local_name = d.name.local_name
               // Per-style flags + inheritance hooks the catalog cares
               // about.  Use the wrapper's @val when present, fall back
               // to "1" (an on-off without @val is on per §17.17.4).
-              if local == "name" ||
-                local == "basedOn" ||
-                local == "next" ||
-                local == "link" ||
-                local == "linkedTo" ||
-                local == "aliases" ||
-                local == "rsid" ||
-                local == "uiPriority" ||
-                local == "qFormat" ||
-                local == "semiHidden" ||
-                local == "unhideWhenUsed" ||
-                local == "locked" ||
-                local == "personal" ||
-                local == "personalCompose" ||
-                local == "personalReply" ||
-                local == "autoRedefine" ||
-                local == "hidden" ||
-                local == "tcBorders" ||
-                local == "tcFitText" {
+              if local_name == "name" ||
+                local_name == "basedOn" ||
+                local_name == "next" ||
+                local_name == "link" ||
+                local_name == "linkedTo" ||
+                local_name == "aliases" ||
+                local_name == "rsid" ||
+                local_name == "uiPriority" ||
+                local_name == "qFormat" ||
+                local_name == "semiHidden" ||
+                local_name == "unhideWhenUsed" ||
+                local_name == "locked" ||
+                local_name == "personal" ||
+                local_name == "personalCompose" ||
+                local_name == "personalReply" ||
+                local_name == "autoRedefine" ||
+                local_name == "hidden" ||
+                local_name == "tcBorders" ||
+                local_name == "tcFitText" {
                 let val = element_val_or_one(d)
                 attrs.push(
                   @markup.attr(
                     "data-ooxml-styles-style-" +
                     sidx.to_string() +
                     "-" +
-                    dash_localname(local),
+                    dash_localname(local_name),
                     val,
                   ),
                 )
@@ -1035,15 +1035,15 @@ fn numbering_data_attrs(
               for lsub in l.children {
                 match lsub {
                   Element(g) => {
-                    let local = g.name.local_name
-                    if local == "lvlText" ||
-                      local == "lvlPicBulletId" ||
-                      local == "lvlRestart" ||
-                      local == "numFmt" ||
-                      local == "start" ||
-                      local == "suff" ||
-                      local == "isLgl" ||
-                      local == "pStyle" {
+                    let local_name = g.name.local_name
+                    if local_name == "lvlText" ||
+                      local_name == "lvlPicBulletId" ||
+                      local_name == "lvlRestart" ||
+                      local_name == "numFmt" ||
+                      local_name == "start" ||
+                      local_name == "suff" ||
+                      local_name == "isLgl" ||
+                      local_name == "pStyle" {
                       attrs.push(
                         @markup.attr(
                           "data-ooxml-numbering-abstract-num-" +
@@ -1051,7 +1051,7 @@ fn numbering_data_attrs(
                           "-lvl-" +
                           lvl_idx.to_string() +
                           "-" +
-                          dash_localname(local),
+                          dash_localname(local_name),
                           element_val_or_one(g),
                         ),
                       )
@@ -1111,8 +1111,8 @@ fn numbering_data_attrs(
               for osub in o.children {
                 match osub {
                   Element(g) => {
-                    let local = g.name.local_name
-                    if local == "startOverride" || local == "lvl" {
+                    let local_name = g.name.local_name
+                    if local_name == "startOverride" || local_name == "lvl" {
                       attrs.push(
                         @markup.attr(
                           "data-ooxml-numbering-num-" +
@@ -1120,7 +1120,7 @@ fn numbering_data_attrs(
                           "-lvl-override-" +
                           oidx.to_string() +
                           "-" +
-                          dash_localname(local),
+                          dash_localname(local_name),
                           "1",
                         ),
                       )
@@ -1164,7 +1164,7 @@ fn dash_localname(name : String) -> String {
   for ch in name {
     let c = ch
     if c >= 'A' && c <= 'Z' {
-      if not(first) {
+      if !(first) {
         out.write_char('-')
       }
       out.write_char((c.to_int() + 32).unsafe_to_char())

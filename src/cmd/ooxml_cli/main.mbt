@@ -305,7 +305,7 @@ fn run_show(args : Array[String]) -> Unit {
     try {
       let path = args[2]
       let index_text = args[3]
-      let index = @strconv.parse_int(index_text)
+      let index = @string.parse_int(index_text)
       if index < 1 {
         print_usage_error("index must be >= 1")
       } else {
@@ -408,7 +408,7 @@ fn run_verify(args : Array[String]) -> Unit {
           let saved = document.save()
           let reopened = @wml_context.open(saved)
           let parts_before = part_count(@opc.Package::open(bytes))
-          let parts_after = part_count(reopened.package)
+          let parts_after = part_count(reopened.opc_package)
           println(
             "parts: " +
             parts_before.to_string() +
@@ -428,7 +428,7 @@ fn run_verify(args : Array[String]) -> Unit {
           let saved = workbook.save()
           let reopened = @sml_context.open(saved)
           let parts_before = part_count(@opc.Package::open(bytes))
-          let parts_after = part_count(reopened.package)
+          let parts_after = part_count(reopened.opc_package)
           println(
             "parts: " +
             parts_before.to_string() +
@@ -443,7 +443,7 @@ fn run_verify(args : Array[String]) -> Unit {
           let saved = presentation.save()
           let reopened = @pml_context.open(saved)
           let parts_before = part_count(@opc.Package::open(bytes))
-          let parts_after = part_count(reopened.package)
+          let parts_after = part_count(reopened.opc_package)
           println(
             "parts: " +
             parts_before.to_string() +
@@ -498,7 +498,7 @@ fn run_set_cell(args : Array[String]) -> Unit {
       let cell_ref = args[4]
       let text = args[5]
       let output = args[6]
-      let sheet_index = @strconv.parse_int(sheet_text)
+      let sheet_index = @string.parse_int(sheet_text)
       if sheet_index < 1 {
         print_usage_error("sheet# must be >= 1")
       } else {
@@ -559,7 +559,7 @@ fn run_append_text_to_slide(args : Array[String]) -> Unit {
       let slide_text = args[3]
       let text = args[4]
       let output = args[5]
-      let slide_index = @strconv.parse_int(slide_text)
+      let slide_index = @string.parse_int(slide_text)
       if slide_index < 1 {
         print_usage_error("slide# must be >= 1")
       } else {
@@ -589,7 +589,7 @@ fn run_clear_cell(args : Array[String]) -> Unit {
       let sheet_text = args[3]
       let cell_ref = args[4]
       let output = args[5]
-      let sheet_index = @strconv.parse_int(sheet_text)
+      let sheet_index = @string.parse_int(sheet_text)
       if sheet_index < 1 {
         print_usage_error("sheet# must be >= 1")
       } else {
@@ -614,7 +614,7 @@ fn run_remove_paragraph(args : Array[String]) -> Unit {
       let path = args[2]
       let index_text = args[3]
       let output = args[4]
-      let index = @strconv.parse_int(index_text)
+      let index = @string.parse_int(index_text)
       if index < 1 {
         print_usage_error("index must be >= 1")
       } else {
@@ -658,7 +658,7 @@ fn run_remove_slide(args : Array[String]) -> Unit {
       let path = args[2]
       let slide_text = args[3]
       let output = args[4]
-      let slide_index = @strconv.parse_int(slide_text)
+      let slide_index = @string.parse_int(slide_text)
       if slide_index < 1 {
         print_usage_error("slide# must be >= 1")
       } else {
@@ -703,7 +703,7 @@ fn run_remove_sheet(args : Array[String]) -> Unit {
       let path = args[2]
       let sheet_text = args[3]
       let output = args[4]
-      let sheet_index = @strconv.parse_int(sheet_text)
+      let sheet_index = @string.parse_int(sheet_text)
       if sheet_index < 1 {
         print_usage_error("sheet# must be >= 1")
       } else {
@@ -727,7 +727,7 @@ fn run_svg_for_slide(args : Array[String]) -> Unit {
     try {
       let path = args[2]
       let slide_text = args[3]
-      let slide_index = @strconv.parse_int(slide_text)
+      let slide_index = @string.parse_int(slide_text)
       if slide_index < 1 {
         print_usage_error("slide# must be >= 1")
       } else {
@@ -750,7 +750,7 @@ fn run_set_cell_formula(args : Array[String]) -> Unit {
   } else {
     try {
       let bytes = @fs.read_file_to_bytes(args[2])
-      let sheet_index = @strconv.parse_int(args[3])
+      let sheet_index = @string.parse_int(args[3])
       if sheet_index < 1 {
         print_usage_error("sheet# must be >= 1")
       } else {
@@ -776,7 +776,7 @@ fn run_merge_cells(args : Array[String]) -> Unit {
   } else {
     try {
       let bytes = @fs.read_file_to_bytes(args[2])
-      let sheet_index = @strconv.parse_int(args[3])
+      let sheet_index = @string.parse_int(args[3])
       if sheet_index < 1 {
         print_usage_error("sheet# must be >= 1")
       } else {
@@ -803,7 +803,7 @@ fn run_rename_sheet(args : Array[String]) -> Unit {
   } else {
     try {
       let bytes = @fs.read_file_to_bytes(args[2])
-      let sheet_index = @strconv.parse_int(args[3])
+      let sheet_index = @string.parse_int(args[3])
       if sheet_index < 1 {
         print_usage_error("sheet# must be >= 1")
       } else {
@@ -830,7 +830,7 @@ fn run_set_paragraph_text(args : Array[String]) -> Unit {
   } else {
     try {
       let bytes = @fs.read_file_to_bytes(args[2])
-      let index = @strconv.parse_int(args[3])
+      let index = @string.parse_int(args[3])
       if index < 1 {
         print_usage_error("index must be >= 1")
       } else {
@@ -857,7 +857,7 @@ fn run_set_paragraph_alignment(args : Array[String]) -> Unit {
   } else {
     try {
       let bytes = @fs.read_file_to_bytes(args[2])
-      let index = @strconv.parse_int(args[3])
+      let index = @string.parse_int(args[3])
       if index < 1 {
         print_usage_error("index must be >= 1")
       } else {
@@ -884,11 +884,11 @@ fn run_add_textbox(args : Array[String]) -> Unit {
   } else {
     try {
       let bytes = @fs.read_file_to_bytes(args[2])
-      let slide_index = @strconv.parse_int(args[3])
-      let x = @strconv.parse_int(args[4])
-      let y = @strconv.parse_int(args[5])
-      let w = @strconv.parse_int(args[6])
-      let h = @strconv.parse_int(args[7])
+      let slide_index = @string.parse_int(args[3])
+      let x = @string.parse_int(args[4])
+      let y = @string.parse_int(args[5])
+      let w = @string.parse_int(args[6])
+      let h = @string.parse_int(args[7])
       if slide_index < 1 {
         print_usage_error("slide# must be >= 1")
       } else {
@@ -917,8 +917,8 @@ fn run_remove_shape(args : Array[String]) -> Unit {
   } else {
     try {
       let bytes = @fs.read_file_to_bytes(args[2])
-      let slide_index = @strconv.parse_int(args[3])
-      let shape_index = @strconv.parse_int(args[4])
+      let slide_index = @string.parse_int(args[3])
+      let shape_index = @string.parse_int(args[4])
       if slide_index < 1 || shape_index < 1 {
         print_usage_error("indices must be >= 1")
       } else {

@@ -62,7 +62,7 @@ fn SvgDefsCollector::to_defs_node(self : SvgDefsCollector) -> @xml.Node? {
 /// element node through `@markup.serialize_svg` (i.e. `@xml.write`);
 /// no markup is ever assembled by string concatenation.  Used by the
 /// package's white-box tests to introspect the accumulated defs.
-fn SvgDefsCollector::to_defs_element(self : SvgDefsCollector) -> String {
+pub fn SvgDefsCollector::to_defs_element(self : SvgDefsCollector) -> String {
   match self.to_defs_node() {
     Some(@xml.Node::Element(e)) => @markup.serialize_svg(e)
     _ => ""

@@ -19,10 +19,10 @@ pub fn WorksheetSnapshot::new(
   date_system : @date_serial.DateSystem,
 ) -> WorksheetSnapshot {
   {
-    cells: @hashmap.new(),
+    cells: @hashmap.HashMap([], capacity=0),
     sst: None,
     date_system,
-    shared_formulas: @hashmap.new(),
+    shared_formulas: @hashmap.HashMap([], capacity=0),
     workbook_name: None,
     current_sheet,
   }
@@ -91,7 +91,7 @@ pub fn evaluate_cell(
   snapshot : WorksheetSnapshot,
   address : @address.CellAddress,
 ) -> FormulaValue {
-  let in_progress : @hashmap.HashMap[String, Bool] = @hashmap.new()
+  let in_progress : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([], capacity=0)
   worksheet_eval_cell(snapshot, address, in_progress)
 }
 
@@ -102,7 +102,7 @@ pub fn evaluate_cell(
 pub fn evaluate_sheet(
   snapshot : WorksheetSnapshot,
 ) -> @hashmap.HashMap[String, FormulaValue] {
-  let results : @hashmap.HashMap[String, FormulaValue] = @hashmap.new()
+  let results : @hashmap.HashMap[String, FormulaValue] = @hashmap.HashMap([], capacity=0)
   snapshot.cells.each(fn(key, cell) {
     if worksheet_eval_cell_in_current_sheet(snapshot, key) &&
       worksheet_eval_formula_element(cell) is Some(_) {

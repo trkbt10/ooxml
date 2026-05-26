@@ -409,7 +409,7 @@ pub fn parse_math_content_element(
 ) -> EG_MathContent? raise SchemaViolation {
   match element.name.local_name {
     "oMathPara" =>
-      Some(OMathPara(wrap_m_violation(fn() { @m.CT_OMathPara::new(element) })))
+      Some(OMathPara(wrap_m_violation(() => @m.CT_OMathPara::new(element))))
     "oMath" => Some(OMath(wrap_m_violation(fn() { @m.CT_OMath::new(element) })))
     _ => None
   }

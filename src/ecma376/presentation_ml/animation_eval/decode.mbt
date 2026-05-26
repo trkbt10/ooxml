@@ -1126,12 +1126,13 @@ fn parse_st_tl_time_opt(
   if trimmed.length() == 0 {
     return None
   }
-  match (try? @domain.ST_TLTime::parse(trimmed)) {
-    Ok(v) => Some(v)
-    Err(e) => {
+  try @domain.ST_TLTime::parse(trimmed) catch {
+    e => {
       raise_schema(path, e)
       None
     }
+  } noraise {
+    v => Some(v)
   }
 }
 
@@ -1139,12 +1140,13 @@ fn parse_st_tl_time_opt(
 fn parse_st_fill_type(
   text : String,
 ) -> @domain.ST_TLTimeNodeFillType raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLTimeNodeFillType::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLTimeNodeFillType::parse(text) catch {
+    e => {
       raise_schema("cTn/@fill", e)
       @domain.NodeFillRemove
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1152,12 +1154,13 @@ fn parse_st_fill_type(
 fn parse_st_restart_type(
   text : String,
 ) -> @domain.ST_TLTimeNodeRestartType raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLTimeNodeRestartType::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLTimeNodeRestartType::parse(text) catch {
+    e => {
       raise_schema("cTn/@restart", e)
       @domain.RestartAlways
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1165,12 +1168,13 @@ fn parse_st_restart_type(
 fn parse_st_node_type(
   text : String,
 ) -> @domain.ST_TLTimeNodeType raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLTimeNodeType::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLTimeNodeType::parse(text) catch {
+    e => {
       raise_schema("cTn/@nodeType", e)
       @domain.NodeTmRoot
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1178,12 +1182,13 @@ fn parse_st_node_type(
 fn parse_st_preset_class(
   text : String,
 ) -> @domain.ST_TLTimeNodePresetClassType raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLTimeNodePresetClassType::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLTimeNodePresetClassType::parse(text) catch {
+    e => {
       raise_schema("cTn/@presetClass", e)
       @domain.PresetEntr
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1191,12 +1196,13 @@ fn parse_st_preset_class(
 fn parse_st_calc_mode(
   text : String,
 ) -> @domain.ST_TLAnimateBehaviorCalcMode raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLAnimateBehaviorCalcMode::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLAnimateBehaviorCalcMode::parse(text) catch {
+    e => {
       raise_schema("anim/@calcmode", e)
       @domain.CalcModeLin
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1204,12 +1210,13 @@ fn parse_st_calc_mode(
 fn parse_st_value_type(
   text : String,
 ) -> @domain.ST_TLAnimateBehaviorValueType raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLAnimateBehaviorValueType::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLAnimateBehaviorValueType::parse(text) catch {
+    e => {
       raise_schema("anim/@valueType", e)
       @domain.ValueTypeStr
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1217,12 +1224,13 @@ fn parse_st_value_type(
 fn parse_st_additive_type(
   text : String,
 ) -> @domain.ST_TLBehaviorAdditiveType raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLBehaviorAdditiveType::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLBehaviorAdditiveType::parse(text) catch {
+    e => {
       raise_schema("cBhvr/@additive", e)
       @domain.AdditiveNone
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1230,12 +1238,13 @@ fn parse_st_additive_type(
 fn parse_st_accumulate_type(
   text : String,
 ) -> @domain.ST_TLBehaviorAccumulateType raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLBehaviorAccumulateType::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLBehaviorAccumulateType::parse(text) catch {
+    e => {
       raise_schema("cBhvr/@accumulate", e)
       @domain.AccumulateNone
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1243,12 +1252,13 @@ fn parse_st_accumulate_type(
 fn parse_st_trigger_event(
   text : String,
 ) -> @domain.ST_TLTriggerEvent raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLTriggerEvent::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLTriggerEvent::parse(text) catch {
+    e => {
       raise_schema("cond/@evt", e)
       @domain.TriggerBegin
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1256,12 +1266,13 @@ fn parse_st_trigger_event(
 fn parse_st_color_space(
   text : String,
 ) -> @domain.ST_TLAnimateColorSpace raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLAnimateColorSpace::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLAnimateColorSpace::parse(text) catch {
+    e => {
       raise_schema("animClr/@clrSpc", e)
       @domain.ColorSpaceRgb
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1269,12 +1280,13 @@ fn parse_st_color_space(
 fn parse_st_color_direction(
   text : String,
 ) -> @domain.ST_TLAnimateColorDirection raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLAnimateColorDirection::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLAnimateColorDirection::parse(text) catch {
+    e => {
       raise_schema("animClr/@dir", e)
       @domain.ColorDirCw
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1282,12 +1294,13 @@ fn parse_st_color_direction(
 fn parse_st_motion_origin(
   text : String,
 ) -> @domain.ST_TLAnimateMotionBehaviorOrigin raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLAnimateMotionBehaviorOrigin::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLAnimateMotionBehaviorOrigin::parse(text) catch {
+    e => {
       raise_schema("animMotion/@origin", e)
       @domain.MotionOriginParent
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1295,12 +1308,13 @@ fn parse_st_motion_origin(
 fn parse_st_path_edit_mode(
   text : String,
 ) -> @domain.ST_TLAnimateMotionPathEditMode raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLAnimateMotionPathEditMode::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLAnimateMotionPathEditMode::parse(text) catch {
+    e => {
       raise_schema("animMotion/@pathEditMode", e)
       @domain.PathEditRelative
     }
+  } noraise {
+    v => v
   }
 }
 
@@ -1308,11 +1322,12 @@ fn parse_st_path_edit_mode(
 fn parse_st_command_type(
   text : String,
 ) -> @domain.ST_TLCommandType raise @opc_errors.SchemaViolation {
-  match (try? @domain.ST_TLCommandType::parse(text)) {
-    Ok(v) => v
-    Err(e) => {
+  try @domain.ST_TLCommandType::parse(text) catch {
+    e => {
       raise_schema("cmd/@type", e)
       @domain.CommandCall
     }
+  } noraise {
+    v => v
   }
 }

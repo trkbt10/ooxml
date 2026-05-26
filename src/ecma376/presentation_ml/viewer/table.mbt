@@ -199,9 +199,10 @@ fn render_row(
           let v_merge = parse_xsd_boolean_or(attr_value(elt, "vMerge"), false)
           let grid_span = match attr_value(elt, "gridSpan") {
             Some(v) =>
-              match (try? @strconv.parse_int(v)) {
-                Ok(n) => if n > 0 { n } else { 1 }
-                Err(_) => 1
+              try @string.parse_int(v) catch {
+                _ => 1
+              } noraise {
+                n => if n > 0 { n } else { 1 }
               }
             None => 1
           }
@@ -341,9 +342,10 @@ fn read_cell_margins(
         match attr_value(pr, key) {
           None => fallback
           Some(v) =>
-            match (try? @strconv.parse_double(v)) {
-              Ok(n) => n
-              Err(_) => fallback
+            try @string.parse_double(v) catch {
+              _ => fallback
+            } noraise {
+              n => n
             }
         }
       }
@@ -391,7 +393,7 @@ fn emit_cell_borders(
 /// `render_sp_stroke_attrs` does for shapes.
 fn emit_border_line(
   tc_pr : @xml.Element,
-  local : String,
+  local_name : String,
   x1 : Double,
   y1 : Double,
   x2 : Double,
@@ -400,7 +402,7 @@ fn emit_border_line(
   defs : SvgDefsCollector,
   out : Array[@xml.Node],
 ) -> Unit {
-  match first_child_named(tc_pr, local) {
+  match first_child_named(tc_pr, local_name) {
     None => ()
     Some(ln) => {
       // noFill on the line → skip.
@@ -459,9 +461,10 @@ fn attr_double_or(
   match attr_value(element, name) {
     None => default
     Some(v) =>
-      match (try? @strconv.parse_double(v)) {
-        Ok(d) => d
-        Err(_) => default
+      try @string.parse_double(v) catch {
+        _ => default
+      } noraise {
+        d => d
       }
   }
 }

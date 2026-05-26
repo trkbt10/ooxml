@@ -1081,8 +1081,8 @@ fn pptx_theme_part() -> Bytes {
   // <ea>` and the slide renderer falls back to no-theme, losing
   // schemeClr resolution AND silencing the data-ooxml-theme-*
   // metadata projection.
-  fn font_face(local : String, typeface : String) -> @xml.Element {
-    ae(local, [xa("typeface", typeface)], [])
+  fn font_face(local_name : String, typeface : String) -> @xml.Element {
+    ae(local_name, [xa("typeface", typeface)], [])
   }
 
   // §22.9.2 ST_TextTypeface — non-empty xsd:string.  ECMA-376 Annex
@@ -2634,7 +2634,7 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
   // `pptx:presentation` fell to the default `wml_context.open`
   // arm and every aux part rejected as "expected document".
   let base = match which.find(":") {
-    Some(i) => which[0:i].to_string()
+    Some(i) => which[0:i].to_owned()
     None => which
   }
   // Catalog verification MUST observe the renderer's
@@ -2645,30 +2645,36 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
   // receive a clean SVG; we explicitly opt in.
   match base {
     "xlsx" =>
-      match (try? @sml_context.open(pkg)) {
-        Err(_) => None
-        Ok(w) =>
-          match (try? @sml_context.open(w.save())) {
-            Err(_) => None
-            Ok(w2) => Some(w2.to_svg(debug_attrs=true))
+      try @sml_context.open(pkg) catch {
+        _ => None
+      } noraise {
+        w =>
+          try @sml_context.open(w.save()) catch {
+            _ => None
+          } noraise {
+            w2 => Some(w2.to_svg(debug_attrs=true))
           }
       }
     "pptx" =>
-      match (try? @pml_context.open(pkg)) {
-        Err(_) => None
-        Ok(pr) =>
-          match (try? @pml_context.open(pr.save())) {
-            Err(_) => None
-            Ok(pr2) => Some(pr2.to_svg(debug_attrs=true))
+      try @pml_context.open(pkg) catch {
+        _ => None
+      } noraise {
+        pr =>
+          try @pml_context.open(pr.save()) catch {
+            _ => None
+          } noraise {
+            pr2 => Some(pr2.to_svg(debug_attrs=true))
           }
       }
     _ =>
-      match (try? @wml_context.open(pkg)) {
-        Err(_) => None
-        Ok(d) =>
-          match (try? @wml_context.open(d.save())) {
-            Err(_) => None
-            Ok(d2) => Some(d2.to_svg(debug_attrs=true))
+      try @wml_context.open(pkg) catch {
+        _ => None
+      } noraise {
+        d =>
+          try @wml_context.open(d.save()) catch {
+            _ => None
+          } noraise {
+            d2 => Some(d2.to_svg(debug_attrs=true))
           }
       }
   }
@@ -2990,9 +2996,10 @@ fn theme_elements_child_order() -> Array[String] {
 ///     contract intact.
 fn ensure_theme_skeleton(theme : @xml.Element) -> @xml.Element {
   let canonical_bytes = pptx_theme_part()
-  let canonical = match (try? @xml.parse(canonical_bytes)) {
-    Ok(doc) => doc.root
-    Err(_) => theme
+  let canonical = try @xml.parse(canonical_bytes) catch {
+    _ => theme
+  } noraise {
+    doc => doc.root
   }
   // The single themeElements child of the caller, if any —
   // extracted so its children can be spliced into the canonical
@@ -3580,7 +3587,7 @@ fn splice_child_in_sequence(
             break
           }
         }
-        if not(inserted) && target_pos < ce_pos {
+        if !(inserted) && target_pos < ce_pos {
           kids.push(Element(replacement))
           inserted = true
         }
@@ -3589,7 +3596,7 @@ fn splice_child_in_sequence(
       other => kids.push(other)
     }
   }
-  if not(inserted) {
+  if !(inserted) {
     kids.push(Element(replacement))
   }
   { name: skeleton.name, attributes: skeleton.attributes, children: kids }
@@ -3967,8 +3974,8 @@ fn verify_entry(
 /// with `data-` (after a leading space or the tag name) are
 /// elided, honouring quoted attribute values that may contain `>`.
 fn svg_visible_skeleton(svg : String) -> String {
-  let bytes = svg.to_bytes()
-  let out = @buffer.new()
+  let bytes = @utf8.encode(svg)
+  let out = Buffer()
   let n = bytes.length()
   let mut i = 0
   // ASCII codes — comparing UInt16 / Int code units, not Char.
@@ -3996,10 +4003,10 @@ fn svg_visible_skeleton(svg : String) -> String {
         bytes[i + 3].to_int() == dash {
         i = i + 4
         while i + 2 < n &&
-              not(
+              !(
                 bytes[i].to_int() == dash &&
                 bytes[i + 1].to_int() == dash &&
-                bytes[i + 2].to_int() == gt,
+                bytes[i + 2].to_int() == gt
               ) {
           i = i + 1
         }
@@ -4011,8 +4018,8 @@ fn svg_visible_skeleton(svg : String) -> String {
       // Walk attributes; drop those whose name starts with "data-".
       let mut in_quote = 0
       let mut at_name_start = false
-      let mut attr_first_chars = @buffer.new()
-      let mut attr_buf = @buffer.new()
+      let mut attr_first_chars = Buffer()
+      let mut attr_buf = Buffer()
       let mut copying = true
       while i < n {
         let ch = bytes[i].to_int()
@@ -4028,8 +4035,8 @@ fn svg_visible_skeleton(svg : String) -> String {
             if copying {
               out.write_bytes(attr_buf.contents())
             }
-            attr_buf = @buffer.new()
-            attr_first_chars = @buffer.new()
+            attr_buf = Buffer()
+            attr_first_chars = Buffer()
             at_name_start = true
             copying = true
             out.write_byte(b' ')

@@ -135,7 +135,7 @@ pub fn parse_vml_shape_child(
     "ClientData" =>
       ClientData(
         wrap_vml_excel_violation(
-          fn() { @vml_excel.CT_ClientData::new(element) },
+          () => @vml_excel.CT_ClientData::new(element),
           "VmlShapeChild/x:ClientData",
         ),
       )
@@ -764,7 +764,7 @@ pub(all) struct CT_Fill {
   /// @focusposition — focus position token.
   focusposition : String?
   /// @method — gradient fill method.
-  method : ST_FillMethod?
+  fill_method : ST_FillMethod?
   /// @recolor (s:ST_TrueFalse).
   recolor : Bool?
   /// @rotate (s:ST_TrueFalse).
@@ -808,7 +808,7 @@ pub fn CT_Fill::new(element : @xml.Element) -> CT_Fill raise SchemaViolation {
   let focus = vml_attr(element, "focus")
   let focussize = vml_attr(element, "focussize")
   let focusposition = vml_attr(element, "focusposition")
-  let method = match vml_attr(element, "method") {
+  let fill_method = match vml_attr(element, "method") {
     Some(v) => Some(ST_FillMethod::parse(v))
     None => None
   }
@@ -840,7 +840,7 @@ pub fn CT_Fill::new(element : @xml.Element) -> CT_Fill raise SchemaViolation {
     focus,
     focussize,
     focusposition,
-    method,
+    fill_method,
     recolor,
     rotate,
     office_attributes,
@@ -866,7 +866,7 @@ pub(all) struct CT_Formulas {
 ///|
 pub fn CT_Formulas::new(
   element : @xml.Element,
-) -> CT_Formulas raise SchemaViolation {
+) -> CT_Formulas {
   let f : Array[CT_F] = []
   for child in vml_children(element, "f") {
     f.push(CT_F::new(child))
@@ -889,7 +889,7 @@ pub(all) struct CT_F {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_F::new(element : @xml.Element) -> CT_F raise SchemaViolation {
+pub fn CT_F::new(element : @xml.Element) -> CT_F {
   let eqn = vml_attr(element, "eqn")
   { eqn, raw_element: element }
 }
@@ -1448,7 +1448,7 @@ pub(all) struct CT_Textbox {
 ///|
 pub fn CT_Textbox::new(
   element : @xml.Element,
-) -> CT_Textbox raise SchemaViolation {
+) -> CT_Textbox {
   let id = vml_attr(element, "id")
   let style = vml_attr(element, "style")
   let inset = vml_attr(element, "inset")
@@ -2572,7 +2572,7 @@ pub(all) struct CT_Entry {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Entry::new(element : @xml.Element) -> CT_Entry raise SchemaViolation {
+pub fn CT_Entry::new(element : @xml.Element) -> CT_Entry {
   let new_id = vml_attr(element, "new")
   let old_id = vml_attr(element, "old")
   { new_id, old_id, raw_element: element }
@@ -2678,7 +2678,7 @@ pub(all) struct CT_Proxy {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Proxy::new(element : @xml.Element) -> CT_Proxy raise SchemaViolation {
+pub fn CT_Proxy::new(element : @xml.Element) -> CT_Proxy {
   let start = vml_attr(element, "start")
   let end = vml_attr(element, "end")
   let idref = vml_attr(element, "idref")
@@ -3834,19 +3834,19 @@ pub fn write_vml_complex(value : CT_Complex) -> Bytes {
 // dispatch so existing callers keep working unchanged.
 
 ///|
-pub using @vml_presentation {type CT_Empty as CT_Empty}
+pub using @vml_presentation {type CT_Empty}
 
 ///|
-pub using @vml_presentation {type CT_Rel as CT_Rel}
+pub using @vml_presentation {type CT_Rel}
 
 ///|
-pub using @vml_word {type CT_Border as CT_Border}
+pub using @vml_word {type CT_Border}
 
 ///|
-pub using @vml_word {type CT_Wrap as CT_Wrap}
+pub using @vml_word {type CT_Wrap}
 
 ///|
-pub using @vml_word {type CT_AnchorLock as CT_AnchorLock}
+pub using @vml_word {type CT_AnchorLock}
 
 // ── vml-main.xsd top-level elements ────────────────────────────────
 

@@ -271,7 +271,7 @@ pub fn CT_Picture::new(
         if ln != "movie" && ln != "control" {
           any_legacy.push(
             wrap_vml_violation(
-              fn() { @vml.parse_vml_shape_child(e) },
+              () => @vml.parse_vml_shape_child(e),
               "CT_Picture/legacy",
             ),
           )
@@ -339,7 +339,7 @@ pub fn CT_ShapeDefaults::new(
       @xml.Element(e) =>
         any_office.push(
           wrap_vml_violation(
-            fn() { @vml.parse_vml_shape_child(e) },
+            () => @vml.parse_vml_shape_child(e),
             "CT_ShapeDefaults",
           ),
         )

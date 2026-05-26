@@ -122,7 +122,7 @@ fn panose_to_generic(panose1 : String?) -> GenericFamily? {
   match panose1 {
     None => None
     Some(s) => {
-      let trimmed = s.trim(chars=" \t\r\n").to_string()
+      let trimmed = s.trim(chars=" \t\r\n").to_owned()
       if trimmed.length() < 2 {
         return None
       }

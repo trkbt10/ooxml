@@ -43,7 +43,7 @@ test "§19.3.1.36 CT_Placeholder::from_element returns typed attributes" {
     "<ph type=\"title\" idx=\"3\" sz=\"half\" orient=\"vert\" hasCustomPrompt=\"1\"/>",
   )
   let ph = try! @domain.CT_Placeholder::from_element(element)
-  assert_eq(ph.idx, Some(3))
+  @debug.assert_eq(ph.idx, Some(3))
   assert_true(ph.ph_type == Some(@domain.PhTitle))
   assert_true(ph.size == Some(@domain.PlaceholderHalf))
   assert_true(ph.orient == Some(@domain.DirectionVert))
@@ -54,7 +54,7 @@ test "§19.3.1.36 CT_Placeholder::from_element returns typed attributes" {
 test "§19.3.1.36 absent attributes leave defaults" {
   let element = parse_root("<ph/>")
   let ph = try! @domain.CT_Placeholder::from_element(element)
-  assert_eq(ph.idx, None)
+  @debug.assert_eq(ph.idx, None)
   assert_true(ph.ph_type == None)
   assert_true(ph.size == None)
   assert_true(ph.orient == None)
@@ -81,7 +81,7 @@ test "§19.3.1.36 idx match resolves slide → layout → master" {
   )
   let resolved = try! resolve_placeholder(first_slide_shape(chain), chain)
   let effective = resolved.effective_placeholder.unwrap()
-  assert_eq(effective.idx, Some(2))
+  @debug.assert_eq(effective.idx, Some(2))
   assert_true(effective.ph_type == @domain.PhBody)
   assert_true(resolved.layout_shape is Some(_))
   assert_true(resolved.master_shape is Some(_))
@@ -149,9 +149,9 @@ test "§19.7.9 size and orient inherit from first non-empty layer" {
 test "§19.3.1.36 missing slide / layout still resolves master ph" {
   let master_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr id=\"master-only\"/></sp>"
   let chain = SlideChain::from_parts(build_master(master_xml), None, None)
-  assert_eq(chain.slide_shapes().length(), 0)
-  assert_eq(chain.layout_shapes().length(), 0)
-  assert_eq(chain.master_shapes().length(), 1)
+  @debug.assert_eq(chain.slide_shapes().length(), 0)
+  @debug.assert_eq(chain.layout_shapes().length(), 0)
+  @debug.assert_eq(chain.master_shapes().length(), 1)
   // Building a fake "slide" with just the master shape exercises the
   // resolver for layout-less chains (e.g. previewing the master).
   let synthetic = @domain.CT_Shape::new(
@@ -166,7 +166,7 @@ test "§19.3.1.36 missing slide / layout still resolves master ph" {
 
 ///|
 test "§19.3.1.36 placeholder_part1_19_3_1_36_section_name citation" {
-  assert_eq(placeholder_part1_19_3_1_36_section_name(), "Part 1 §19.3.1.36")
+  @debug.assert_eq(placeholder_part1_19_3_1_36_section_name(), "Part 1 §19.3.1.36")
 }
 
 ///|

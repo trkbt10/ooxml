@@ -146,7 +146,7 @@ fn sml_lower_hex(s : String) -> String {
   for c in s {
     let u = c.to_int()
     if u >= 0x41 && u <= 0x46 {
-      buf.write_char(Char::from_int(u + 32))
+      buf.write_char((u + 32).unsafe_to_char())
     } else if u >= 0x61 && u <= 0x66 {
       buf.write_char(c)
     } else if u >= 0x30 && u <= 0x39 {
@@ -222,7 +222,7 @@ fn normalise_rgb(rgb : String?) -> String? {
       let lower = sml_lower_hex(text)
       if lower.length() == 8 {
         // Strip the alpha-channel prefix.
-        Some(lower.substring(start=2, end=8))
+        Some(lower[2:8].to_owned())
       } else if lower.length() == 6 {
         Some(lower)
       } else {

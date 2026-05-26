@@ -23,7 +23,7 @@ pub fn Writer::new() -> Writer {
 pub fn Writer::write(self : Writer, archive : Archive) -> Bytes raise {
   let _ = self
   checked_u16(archive.entries.length(), "entry count")
-  let out = @buffer.new()
+  let out = Buffer()
   let central : Array[CentralRecord] = []
   for entry in archive.entries {
     let compressed = match entry.compression {
@@ -136,7 +136,7 @@ priv struct BitWriter {
 
 ///|
 fn BitWriter::new() -> BitWriter {
-  { out: @buffer.new(), bits: 0, bit_count: 0 }
+  { out: Buffer(), bits: 0, bit_count: 0 }
 }
 
 ///|

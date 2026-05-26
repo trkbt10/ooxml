@@ -514,25 +514,25 @@ fn cached_drawing(
   // produces an empty drawing — the fixture remains valid OPC
   // because the drawing field is optional from the schema's
   // perspective.
-  let data_model_typed = match
-    (try? @dgm_domain.CT_DataModel::new(data_model_root)) {
-    Ok(t) => t
-    Err(_) => return None
+  let data_model_typed = try @dgm_domain.CT_DataModel::new(data_model_root) catch {
+    _ => return None
+  } noraise {
+    t => t
   }
-  let definition_typed = match
-    (try? @dgm_domain.CT_DiagramDefinition::new(layout_def_root)) {
-    Ok(t) => t
-    Err(_) => return None
+  let definition_typed = try @dgm_domain.CT_DiagramDefinition::new(layout_def_root) catch {
+    _ => return None
+  } noraise {
+    t => t
   }
-  let data_model = match
-    (try? @diagram_layout.decode_data_model(data_model_typed)) {
-    Ok(t) => t
-    Err(_) => return None
+  let data_model = try @diagram_layout.decode_data_model(data_model_typed) catch {
+    _ => return None
+  } noraise {
+    t => t
   }
-  let definition = match
-    (try? @diagram_layout.decode_diagram_definition(definition_typed)) {
-    Ok(t) => t
-    Err(_) => return None
+  let definition = try @diagram_layout.decode_diagram_definition(definition_typed) catch {
+    _ => return None
+  } noraise {
+    t => t
   }
   let engine = @diagram_layout.DiagramLayoutEngine::new()
   let bounds : @diagram_layout.BoundsRect = {

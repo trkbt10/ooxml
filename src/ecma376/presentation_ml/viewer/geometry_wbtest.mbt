@@ -146,5 +146,5 @@ test "preset star5 produces 10 vertices" {
 ///|
 test "unknown preset returns None" {
   let elt = geom_make_elt("nonExistent", [])
-  inspect(render_preset_geometry(elt, 100.0, 50.0), content="None")
+  @debug.debug_inspect(render_preset_geometry(elt, 100.0, 50.0), content="None")
 }

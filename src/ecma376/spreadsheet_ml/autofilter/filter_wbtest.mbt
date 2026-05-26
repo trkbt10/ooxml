@@ -137,7 +137,7 @@ test "§18.3.2 customFilters numeric AND range" {
     row(2, [n(9.0)]),
     row(3, [n(10.0)]),
   ]
-  assert_eq(filter_rows(filter, rows, system()), [1, 2])
+  @debug.assert_eq(filter_rows(filter, rows, system()), [1, 2])
 }
 
 ///|
@@ -208,7 +208,7 @@ test "§18.3.2 dynamicFilter aboveAverage uses full row set" {
     row(2, [n(8.0)]),
     row(3, [n(9.0)]),
   ]
-  assert_eq(filter_rows(filter, rows, system()), [2, 3])
+  @debug.assert_eq(filter_rows(filter, rows, system()), [2, 3])
 }
 
 ///|
@@ -241,7 +241,7 @@ test "§18.3.2 top10 top three numeric values" {
     row(3, [n(7.0)]),
     row(4, [n(3.0)]),
   ]
-  assert_eq(filter_rows(filter, rows, system()), [1, 2, 3])
+  @debug.assert_eq(filter_rows(filter, rows, system()), [1, 2, 3])
 }
 
 ///|
@@ -266,7 +266,7 @@ test "§18.3.2 top10 bottom twenty-five percent" {
     row(6, [n(2.0)]),
     row(7, [n(1.0)]),
   ]
-  assert_eq(filter_rows(filter, rows, system()), [6, 7])
+  @debug.assert_eq(filter_rows(filter, rows, system()), [6, 7])
 }
 
 ///|
@@ -298,7 +298,7 @@ test "§18.3.2 multi-column filters intersect" {
     row(1, [s("foo"), n(4.0)]),
     row(2, [s("bar"), n(9.0)]),
   ]
-  assert_eq(filter_rows(filter, rows, system()), [0])
+  @debug.assert_eq(filter_rows(filter, rows, system()), [0])
 }
 
 ///|
@@ -309,11 +309,11 @@ test "§18.3.2 from_element parses XML fragment" {
     ),
   )
   let filter = try! parse_auto_filter(document.root)
-  assert_eq(filter.range.to_a1(), "A1:B3")
-  assert_eq(filter.filter_columns.length(), 1)
-  assert_eq(filter.filter_columns[0].col_id, 1)
+  @debug.assert_eq(filter.range.to_a1(), "A1:B3")
+  @debug.assert_eq(filter.filter_columns.length(), 1)
+  @debug.assert_eq(filter.filter_columns[0].col_id, 1)
   assert_true(filter.filter_columns[0].hidden_button)
-  assert_eq(
+  @debug.assert_eq(
     filter_rows(
       filter,
       [row(0, [s("x"), n(5.0)]), row(1, [s("x"), n(10.0)])],
@@ -340,5 +340,5 @@ test "§18.3.2 filter_rows returns sorted row indices" {
     ],
   }
   let rows = [row(3, [s("keep")]), row(7, [s("drop")]), row(9, [s("keep")])]
-  assert_eq(filter_rows(filter, rows, system()), [3, 9])
+  @debug.assert_eq(filter_rows(filter, rows, system()), [3, 9])
 }

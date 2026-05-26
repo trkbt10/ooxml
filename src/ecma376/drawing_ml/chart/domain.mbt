@@ -754,7 +754,7 @@ pub fn CT_Tx::new(element : @xml.Element) -> CT_Tx raise SchemaViolation {
             str_ref: None,
             rich: Some(
               wrap_a_violation(
-                fn() { @a.CT_TextBody::new(child) },
+                () => @a.CT_TextBody::new(child),
                 "CT_Tx/rich",
               ),
             ),
@@ -6652,11 +6652,11 @@ pub fn CT_ShapeNonVisual::new(
       )
   }
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_ShapeNonVisual/cNvPr",
   )
   let c_nv_sp_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingShapeProps::new(c_nv_sp_pr_el) },
+    () => @a.CT_NonVisualDrawingShapeProps::new(c_nv_sp_pr_el),
     "CT_ShapeNonVisual/cNvSpPr",
   )
   { c_nv_pr, c_nv_sp_pr }
@@ -6698,11 +6698,11 @@ pub fn CT_ConnectorNonVisual::new(
       )
   }
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_ConnectorNonVisual/cNvPr",
   )
   let c_nv_cxn_sp_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualConnectorProperties::new(c_nv_cxn_sp_pr_el) },
+    () => @a.CT_NonVisualConnectorProperties::new(c_nv_cxn_sp_pr_el),
     "CT_ConnectorNonVisual/cNvCxnSpPr",
   )
   { c_nv_pr, c_nv_cxn_sp_pr }
@@ -6755,7 +6755,7 @@ pub fn CT_Connector::new(
       )
   }
   let sp_pr = wrap_a_violation(
-    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    () => @a.CT_ShapeProperties::new(sp_pr_el),
     "CT_Connector/spPr",
   )
   let style = match first_child_named(element, "style") {
@@ -6763,7 +6763,7 @@ pub fn CT_Connector::new(
     Some(c) =>
       Some(
         wrap_a_violation(
-          fn() { @a.CT_ShapeStyle::new(c) },
+          () => @a.CT_ShapeStyle::new(c),
           "CT_Connector/style",
         ),
       )
@@ -6804,11 +6804,11 @@ pub fn CT_PictureNonVisual::new(
       )
   }
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_PictureNonVisual/cNvPr",
   )
   let c_nv_pic_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualPictureProperties::new(c_nv_pic_pr_el) },
+    () => @a.CT_NonVisualPictureProperties::new(c_nv_pic_pr_el),
     "CT_PictureNonVisual/cNvPicPr",
   )
   { c_nv_pr, c_nv_pic_pr }
@@ -6872,18 +6872,18 @@ pub fn CT_Picture::new(
       )
   }
   let blip_fill = wrap_a_violation(
-    fn() { @a.CT_BlipFillProperties::new(blip_fill_el) },
+    () => @a.CT_BlipFillProperties::new(blip_fill_el),
     "CT_Picture/blipFill",
   )
   let sp_pr = wrap_a_violation(
-    fn() { @a.CT_ShapeProperties::new(sp_pr_el) },
+    () => @a.CT_ShapeProperties::new(sp_pr_el),
     "CT_Picture/spPr",
   )
   let style = match first_child_named(element, "style") {
     None => None
     Some(c) =>
       Some(
-        wrap_a_violation(fn() { @a.CT_ShapeStyle::new(c) }, "CT_Picture/style"),
+        wrap_a_violation(() => @a.CT_ShapeStyle::new(c), "CT_Picture/style"),
       )
   }
   { macro_, f_published, nv_pic_pr, blip_fill, sp_pr, style }
@@ -6924,13 +6924,11 @@ pub fn CT_GraphicFrameNonVisual::new(
       )
   }
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_GraphicFrameNonVisual/cNvPr",
   )
   let c_nv_graphic_frame_pr = wrap_a_violation(
-    fn() {
-      @a.CT_NonVisualGraphicFrameProperties::new(c_nv_graphic_frame_pr_el)
-    },
+    () => @a.CT_NonVisualGraphicFrameProperties::new(c_nv_graphic_frame_pr_el),
     "CT_GraphicFrameNonVisual/cNvGraphicFramePr",
   )
   { c_nv_pr, c_nv_graphic_frame_pr }
@@ -6995,11 +6993,11 @@ pub fn CT_GraphicFrame::new(
       )
   }
   let xfrm = wrap_a_violation(
-    fn() { @a.CT_Transform2D::new(xfrm_el) },
+    () => @a.CT_Transform2D::new(xfrm_el),
     "CT_GraphicFrame/xfrm",
   )
   let graphic = wrap_a_violation(
-    fn() { @a.CT_GraphicalObject::new(graphic_el) },
+    () => @a.CT_GraphicalObject::new(graphic_el),
     "CT_GraphicFrame/graphic",
   )
   { macro_, f_published, nv_graphic_frame_pr, xfrm, graphic }
@@ -7038,11 +7036,11 @@ pub fn CT_GroupShapeNonVisual::new(
       )
   }
   let c_nv_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualDrawingProps::new(c_nv_pr_el) },
+    () => @a.CT_NonVisualDrawingProps::new(c_nv_pr_el),
     "CT_GroupShapeNonVisual/cNvPr",
   )
   let c_nv_grp_sp_pr = wrap_a_violation(
-    fn() { @a.CT_NonVisualGroupDrawingShapeProps::new(c_nv_grp_sp_pr_el) },
+    () => @a.CT_NonVisualGroupDrawingShapeProps::new(c_nv_grp_sp_pr_el),
     "CT_GroupShapeNonVisual/cNvGrpSpPr",
   )
   { c_nv_pr, c_nv_grp_sp_pr }
@@ -7111,7 +7109,7 @@ pub fn CT_GroupShape::new(
       )
   }
   let grp_sp_pr = wrap_a_violation(
-    fn() { @a.CT_GroupShapeProperties::new(grp_sp_pr_el) },
+    () => @a.CT_GroupShapeProperties::new(grp_sp_pr_el),
     "CT_GroupShape/grpSpPr",
   )
   let sp : Array[CT_Shape] = []
@@ -7332,7 +7330,7 @@ fn chart_a_sp_pr_opt(
   match first_child_named(element, "spPr") {
     None => None
     Some(e) =>
-      Some(wrap_a_violation(fn() { @a.CT_ShapeProperties::new(e) }, "spPr"))
+      Some(wrap_a_violation(() => @a.CT_ShapeProperties::new(e), "spPr"))
   }
 }
 
@@ -7344,6 +7342,6 @@ fn chart_a_tx_pr_opt(
 ) -> @a.CT_TextBody? raise SchemaViolation {
   match first_child_named(element, "txPr") {
     None => None
-    Some(e) => Some(wrap_a_violation(fn() { @a.CT_TextBody::new(e) }, "txPr"))
+    Some(e) => Some(wrap_a_violation(() => @a.CT_TextBody::new(e), "txPr"))
   }
 }

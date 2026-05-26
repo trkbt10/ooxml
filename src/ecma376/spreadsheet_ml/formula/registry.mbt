@@ -20,7 +20,7 @@ pub(all) struct FunctionRegistry {
 /// functions are preloaded in this phase; callers and tests register only the
 /// functions they want to expose.
 pub fn FunctionRegistry::new() -> FunctionRegistry {
-  let entries : @hashmap.HashMap[String, FunctionDef] = @hashmap.new()
+  let entries : @hashmap.HashMap[String, FunctionDef] = @hashmap.HashMap([], capacity=0)
   { entries, }
 }
 

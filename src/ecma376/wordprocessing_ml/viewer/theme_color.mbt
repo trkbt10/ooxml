@@ -113,10 +113,10 @@ pub fn parse_font_scheme(theme_root : @xml.Element?) -> ThemeFontMap {
 }
 
 ///|
-fn find_a_child(element : @xml.Element, local : String) -> @xml.Element? {
+fn find_a_child(element : @xml.Element, local_name : String) -> @xml.Element? {
   for child in element.children {
     match child {
-      @xml.Element(e) => if e.name.local_name == local { return Some(e) }
+      @xml.Element(e) => if e.name.local_name == local_name { return Some(e) }
       _ => ()
     }
   }
@@ -340,7 +340,7 @@ fn lowercase_hex(s : String) -> String {
   for c in s {
     let u = c.to_int()
     if u >= 0x41 && u <= 0x46 {
-      buf.write_char(Char::from_int(u + 32))
+      buf.write_char(Int::unsafe_to_char(u + 32))
     } else if u >= 0x61 && u <= 0x66 {
       buf.write_char(c)
     } else if u >= 0x30 && u <= 0x39 {

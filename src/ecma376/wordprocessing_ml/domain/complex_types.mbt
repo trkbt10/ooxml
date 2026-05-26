@@ -7004,7 +7004,7 @@ pub fn CT_ParaRPrOriginal::new(
           ln == "del" ||
           ln == "moveFrom" ||
           ln == "moveTo"
-        if not(is_track) {
+        if !is_track {
           raw.push(e)
         }
       }
@@ -7088,7 +7088,7 @@ pub fn CT_ParaRPr::new(
           ln == "moveFrom" ||
           ln == "moveTo" ||
           ln == "rPrChange"
-        if not(is_track) {
+        if !is_track {
           raw.push(e)
         }
       }

@@ -2731,7 +2731,7 @@ pub(all) struct CT_WholeE2oFormatting {
   effect_props : @xml.Element?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_WholeE2oFormatting::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_WholeE2oFormatting::new(@xml.Element) -> Self
 pub fn CT_WholeE2oFormatting::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_XYAdjustHandle {

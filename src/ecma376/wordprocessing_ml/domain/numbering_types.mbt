@@ -69,46 +69,46 @@ pub fn CT_Lvl::parse(element : @xml.Element) -> CT_Lvl raise SchemaViolation {
   for child in element.children {
     match child {
       @xml.Element(child_element) => {
-        let local = child_element.name.local_name
-        if local == "start" {
+        let local_name = child_element.name.local_name
+        if local_name == "start" {
           match numbering_attr(child_element, "val") {
             Some(value) => start = numbering_parse_int(value)
             None => ()
           }
-        } else if local == "numFmt" {
+        } else if local_name == "numFmt" {
           match numbering_attr(child_element, "val") {
             Some(value) => num_fmt = Some(ST_NumberFormat::parse(value))
             None => ()
           }
-        } else if local == "lvlText" {
+        } else if local_name == "lvlText" {
           lvl_text = numbering_attr(child_element, "val")
-        } else if local == "lvlJc" {
+        } else if local_name == "lvlJc" {
           match numbering_attr(child_element, "val") {
             Some(value) => lvl_jc = Some(ST_Jc::parse(normalise_lvl_jc(value)))
             None => ()
           }
-        } else if local == "lvlRestart" {
+        } else if local_name == "lvlRestart" {
           match numbering_attr(child_element, "val") {
             Some(value) => lvl_restart = numbering_parse_int(value)
             None => ()
           }
-        } else if local == "pStyle" {
+        } else if local_name == "pStyle" {
           p_style = numbering_attr(child_element, "val")
-        } else if local == "suff" {
+        } else if local_name == "suff" {
           match numbering_attr(child_element, "val") {
             Some(value) => suff = Some(ST_LevelSuffix::parse(value))
             None => ()
           }
-        } else if local == "isLgl" {
+        } else if local_name == "isLgl" {
           is_lgl = true
-        } else if local == "lvlPicBulletId" {
+        } else if local_name == "lvlPicBulletId" {
           match numbering_attr(child_element, "val") {
             Some(value) => lvl_pic_bullet_id = numbering_parse_int(value)
             None => ()
           }
-        } else if local == "pPr" {
+        } else if local_name == "pPr" {
           p_pr_element = Some(child_element)
-        } else if local == "rPr" {
+        } else if local_name == "rPr" {
           r_pr_element = Some(child_element)
         }
       }
@@ -157,14 +157,14 @@ pub fn CT_NumLvl::parse(
   for child in element.children {
     match child {
       @xml.Element(child_element) => {
-        let local = child_element.name.local_name
-        if local == "startOverride" {
+        let local_name = child_element.name.local_name
+        if local_name == "startOverride" {
           start_override = Some(
             numbering_required_int(
               child_element, "val", "lvlOverride/startOverride/@val",
             ),
           )
-        } else if local == "lvl" {
+        } else if local_name == "lvl" {
           lvl = Some(CT_Lvl::parse(child_element))
         }
       }
@@ -217,24 +217,24 @@ pub fn CT_AbstractNum::parse(
   for child in element.children {
     match child {
       @xml.Element(child_element) => {
-        let local = child_element.name.local_name
-        if local == "multiLevelType" {
+        let local_name = child_element.name.local_name
+        if local_name == "multiLevelType" {
           match numbering_attr(child_element, "val") {
             Some(value) =>
               multi_level_type = Some(ST_MultiLevelType::parse(value))
             None => ()
           }
-        } else if local == "name" {
+        } else if local_name == "name" {
           name = numbering_attr(child_element, "val")
-        } else if local == "nsid" {
+        } else if local_name == "nsid" {
           nsid = numbering_attr(child_element, "val")
-        } else if local == "tmpl" {
+        } else if local_name == "tmpl" {
           tmpl = numbering_attr(child_element, "val")
-        } else if local == "styleLink" {
+        } else if local_name == "styleLink" {
           style_link = numbering_attr(child_element, "val")
-        } else if local == "numStyleLink" {
+        } else if local_name == "numStyleLink" {
           num_style_link = numbering_attr(child_element, "val")
-        } else if local == "lvl" {
+        } else if local_name == "lvl" {
           lvls.push(CT_Lvl::parse(child_element))
         }
       }
@@ -288,14 +288,14 @@ pub fn CT_Num::parse(element : @xml.Element) -> CT_Num raise SchemaViolation {
   for child in element.children {
     match child {
       @xml.Element(child_element) => {
-        let local = child_element.name.local_name
-        if local == "abstractNumId" {
+        let local_name = child_element.name.local_name
+        if local_name == "abstractNumId" {
           abstract_num_id_opt = Some(
             numbering_required_int(
               child_element, "val", "num/abstractNumId/@val",
             ),
           )
-        } else if local == "lvlOverride" {
+        } else if local_name == "lvlOverride" {
           lvl_overrides.push(CT_NumLvl::parse(child_element))
         }
       }
@@ -352,9 +352,9 @@ pub impl @debug.Debug for CT_Numbering with to_repr(self) {
 pub fn CT_Numbering::parse(
   element : @xml.Element,
 ) -> CT_Numbering raise SchemaViolation {
-  let abstract_nums : @hashmap.HashMap[Int, CT_AbstractNum] = @hashmap.HashMap::new()
-  let nums : @hashmap.HashMap[Int, CT_Num] = @hashmap.HashMap::new()
-  let pic_bullets : @hashmap.HashMap[Int, @xml.Element] = @hashmap.HashMap::new()
+  let abstract_nums : @hashmap.HashMap[Int, CT_AbstractNum] = @hashmap.HashMap([], capacity=0)
+  let nums : @hashmap.HashMap[Int, CT_Num] = @hashmap.HashMap([], capacity=0)
+  let pic_bullets : @hashmap.HashMap[Int, @xml.Element] = @hashmap.HashMap([], capacity=0)
   for child in element.children {
     match child {
       @xml.Element(child_element) => {

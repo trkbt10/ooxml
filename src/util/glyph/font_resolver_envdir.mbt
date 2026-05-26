@@ -54,7 +54,7 @@ pub fn FontResolver::env_dir() -> FontResolver {
   }
   {
     label,
-    resolve: fn(request) {
+    resolve: (request) => {
       match request.embedded_bytes {
         Some(b) =>
           return { bytes: b, ttc_index: None, source_label: "embedded" }
@@ -93,7 +93,7 @@ fn split_path_list(raw : String) -> Array[String] {
   let buf = StringBuilder::new()
   for c in raw {
     if c == ':' {
-      let part = buf.to_string().trim(chars=" \t\r\n").to_string()
+      let part = buf.to_string().trim(chars=" \t\r\n").to_owned()
       if part.length() > 0 {
         out.push(part)
       }
@@ -102,7 +102,7 @@ fn split_path_list(raw : String) -> Array[String] {
       buf.write_char(c)
     }
   }
-  let tail = buf.to_string().trim(chars=" \t\r\n").to_string()
+  let tail = buf.to_string().trim(chars=" \t\r\n").to_owned()
   if tail.length() > 0 {
     out.push(tail)
   }
@@ -114,17 +114,18 @@ fn split_path_list(raw : String) -> Array[String] {
 /// file by `(family|weight|italic)`. Silently skips missing
 /// directories.
 fn populate_envdir_catalog(catalog : Map[String, String], dir : String) -> Unit {
-  match (try? @fs.read_dir(dir)) {
-    Err(_) => return
-    Ok(entries) =>
+  try @fs.read_dir(dir) catch {
+    _ => return
+  } noraise {
+    entries =>
       for name in entries {
         let full = @path.join([dir, name]) catch { _ => continue }
         let is_file = (try? @fs.is_file(full)).unwrap_or(false)
-        if not(is_file) {
+        if !(is_file) {
           continue
         }
         let lower = lowercase_ascii(name)
-        if not(ends_with_lower(lower, ".ttf") || ends_with_lower(lower, ".ttc")) {
+        if !(ends_with_lower(lower, ".ttf") || ends_with_lower(lower, ".ttc")) {
           continue
         }
         let (family, weight, italic) = parse_envdir_filename(name)
@@ -173,7 +174,7 @@ fn parse_envdir_filename(name : String) -> (String, Int, Bool) {
 fn strip_known_suffix(name : String) -> String {
   let lower = lowercase_ascii(name)
   if ends_with_lower(lower, ".ttf") || ends_with_lower(lower, ".ttc") {
-    return name.substring(start=0, end=name.length() - 4).to_string()
+    return name[0:name.length() - 4].to_owned()
   }
   name
 }
@@ -266,9 +267,10 @@ fn substring_chars(chars : Array[Char], start : Int, end : Int) -> String {
 /// future enhancement can use the request's italic / weight to
 /// pick a different index by scanning the TTC's `name` table).
 fn try_read_resource(path : String) -> FontResource? {
-  match (try? @fs.read_file_to_bytes(path)) {
-    Err(_) => None
-    Ok(bytes) => {
+  try @fs.read_file_to_bytes(path) catch {
+    _ => None
+  } noraise {
+    bytes => {
       let ttc_index = if ends_with_lower(lowercase_ascii(path), ".ttc") {
         Some(0)
       } else {

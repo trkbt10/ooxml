@@ -14,8 +14,8 @@
 
 ///|
 /// Build the namespace-qualified key `ns#localname` for a symbol.
-fn qkey(ns : String, local : String) -> String {
-  ns + "#" + local
+fn qkey(ns : String, local_name : String) -> String {
+  ns + "#" + local_name
 }
 
 ///|
@@ -28,7 +28,7 @@ struct ElemDecl {
   /// The XSD `<element>` node (so an inline type can be recovered).
   node : @xml.Element
   /// Target namespace of the schema file the declaration came from.
-  namespace : String
+  ns : String
   /// Schema generations the declaration appears in.
   lineages : Array[String]
 }
@@ -54,13 +54,13 @@ struct Schema {
 /// Construct an empty symbol table.
 fn Schema::new() -> Schema {
   {
-    complex_types: Map::new(),
-    simple_types: Map::new(),
-    groups: Map::new(),
-    attr_groups: Map::new(),
-    type_ns: Map::new(),
-    top_elements: Map::new(),
-    all_elements: Map::new(),
+    complex_types: Map([], capacity=0),
+    simple_types: Map([], capacity=0),
+    groups: Map([], capacity=0),
+    attr_groups: Map([], capacity=0),
+    type_ns: Map([], capacity=0),
+    top_elements: Map([], capacity=0),
+    all_elements: Map([], capacity=0),
   }
 }
 
@@ -75,12 +75,12 @@ fn Schema::new() -> Schema {
 /// the default namespace; in the OOXML XSDs that is the schema's own
 /// target namespace.
 fn prefix_map(xsd_text : String) -> Map[String, String] {
-  let m : Map[String, String] = Map::new()
+  let m : Map[String, String] = Map([], capacity=0)
   // Limit the scan to the opening `<xsd:schema …>` tag.
   let tag_end = find_at(xsd_text, ">", find_schema_tag(xsd_text)).unwrap_or(
     xsd_text.length(),
   )
-  let head = xsd_text[0:tag_end].to_string()
+  let head = xsd_text[0:tag_end].to_owned()
   // Scan for `xmlns` / `xmlns:prefix` = "uri" occurrences.
   let mut i = 0
   while i < head.length() {
@@ -105,7 +105,7 @@ fn prefix_map(xsd_text : String) -> Map[String, String] {
           while pe > ps && head.code_unit_at(pe - 1) == ' ' {
             pe = pe - 1
           }
-          prefix = head[ps:pe].to_string()
+          prefix = head[ps:pe].to_owned()
         } else {
           // Skip whitespace to the '='.
           while j < head.length() &&
@@ -127,7 +127,7 @@ fn prefix_map(xsd_text : String) -> Map[String, String] {
                 continue
               }
               Some(q2) => {
-                let uri = head[q1 + 1:q2].to_string()
+                let uri = head[q1 + 1:q2].to_owned()
                 m[prefix] = uri
                 i = q2 + 1
               }
@@ -155,10 +155,10 @@ fn find_schema_tag(text : String) -> Int {
 fn resolve_qname(qname : String, prefixes : Map[String, String]) -> String {
   match qname.find(":") {
     Some(i) => {
-      let pfx = qname[0:i].to_string()
-      let local = qname[i + 1:].to_string()
+      let pfx = qname[0:i].to_owned()
+      let local_name = qname[i + 1:].to_owned()
       let ns = prefixes.get(pfx).unwrap_or("")
-      qkey(ns, local)
+      qkey(ns, local_name)
     }
     None => {
       let ns = prefixes.get("").unwrap_or("")
@@ -278,7 +278,7 @@ fn Schema::load(
               name,
               type_name: etype,
               node: el,
-              namespace: tns,
+              ns: tns,
               lineages: [lineage],
             }
         }
@@ -298,7 +298,7 @@ fn rewrite_refs(root : @xml.Element, prefixes : Map[String, String]) -> Unit {
   fn visit(el : @xml.Element) -> Unit {
     let is_attr_group = is_xsd(el, "attributeGroup")
     let is_group = is_xsd(el, "group")
-    let is_attribute = is_xsd(el, "attribute")
+    let _is_attribute = is_xsd(el, "attribute")
     let attrs = el.attributes
     for i in 0..<attrs.length() {
       let a = attrs[i]
@@ -325,9 +325,9 @@ fn rewrite_refs(root : @xml.Element, prefixes : Map[String, String]) -> Unit {
         let out = StringBuilder::new()
         let mut first = true
         for part in parts {
-          let p = part.to_string()
+          let p = part.to_owned()
           if p.length() > 0 {
-            if not(first) {
+            if !first {
               out.write_char(' ')
             }
             first = false

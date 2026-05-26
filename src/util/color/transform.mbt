@@ -23,7 +23,7 @@ fn clamp01(v : Double) -> Double {
 /// shorter, returns an empty alpha string.
 fn split_hex_for_transform(hex : String) -> (Double, Double, Double, String) {
   let clean = if hex.length() > 0 && hex.code_unit_at(0) == 0x23 {
-    hex.substring(start=1)
+    hex[1:].to_owned()
   } else {
     hex
   }
@@ -31,7 +31,7 @@ fn split_hex_for_transform(hex : String) -> (Double, Double, Double, String) {
   let g = parse_hex_byte(clean, 2)
   let b = parse_hex_byte(clean, 4)
   let alpha = if clean.length() >= 8 {
-    clean.substring(start=6, end=8)
+    clean[6:8].to_owned()
   } else {
     ""
   }
@@ -45,7 +45,7 @@ fn parse_hex_byte(hex : String, offset : Int) -> Double {
   if offset + 1 >= hex.length() {
     return 0.0
   }
-  let sub = hex.substring(start=offset, end=offset + 2)
+  let sub = hex[offset:offset + 2].to_owned()
   // Re-use the parser from convert.mbt — small loop, no big-int needed.
   let mut acc : Int = 0
   for c in sub {

@@ -647,7 +647,7 @@ pub(all) struct CT_OlapPr {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
   /// @local (xsd:boolean) — optional, default false.
-  local : Bool
+  is_local : Bool
   /// @localConnection (s:ST_Xstring) — optional local connection string.
   local_connection : String?
   /// @localRefresh (xsd:boolean) — optional, default true.
@@ -668,7 +668,7 @@ pub(all) struct CT_OlapPr {
 
 ///|
 pub fn CT_OlapPr::new(element : @xml.Element) -> CT_OlapPr {
-  let local = attr_bool(element, "local", false)
+  let is_local = attr_bool(element, "local", false)
   let local_connection = attr(element, "localConnection")
   let local_refresh = attr_bool(element, "localRefresh", true)
   let send_locale = attr_bool(element, "sendLocale", false)
@@ -679,7 +679,7 @@ pub fn CT_OlapPr::new(element : @xml.Element) -> CT_OlapPr {
   let server_font_color = attr_bool(element, "serverFontColor", true)
   {
     element,
-    local,
+    is_local,
     local_connection,
     local_refresh,
     send_locale,

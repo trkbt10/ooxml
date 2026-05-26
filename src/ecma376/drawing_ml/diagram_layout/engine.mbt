@@ -30,7 +30,7 @@ pub fn DiagramLayoutEngine::apply(
   // shared across the entire walk (forEach iterations carry the
   // same registry forward) so depth-first ordering is sufficient
   // for the common case.
-  let node_bounds_by_name : Map[String, BoundsRect] = Map::new()
+  let node_bounds_by_name : Map[String, BoundsRect] = Map([], capacity=0)
   let context = {
     data_model,
     context_id: root_id,
@@ -349,9 +349,10 @@ fn evaluate_predicate(branch : ChooseBranch, context : EvalContext) -> Bool {
   let lhs = evaluate_function(func, branch.axis, branch.pt_type, context)
   let rhs = match branch.val {
     Some(text) =>
-      match (try? parse_int_string(text, "if/@val")) {
-        Ok(value) => value
-        Err(_) => return false
+      try parse_int_string(text, "if/@val") catch {
+        _ => return false
+      } noraise {
+        value => value
       }
     None => 0
   }

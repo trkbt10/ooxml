@@ -98,9 +98,9 @@ fn strip_ns(ns : String) -> String {
   let trans = "http://schemas.openxmlformats.org/"
   let strict = "http://purl.oclc.org/ooxml/"
   let tail = if ns.has_prefix(trans) {
-    ns.substring(start=trans.length())
+    ns[trans.length():].to_owned()
   } else if ns.has_prefix(strict) {
-    ns.substring(start=strict.length())
+    ns[strict.length():].to_owned()
   } else {
     return ns
   }
@@ -187,9 +187,10 @@ fn main {
             let path = set.dir + "/" + fname
             let text = (try? @fs.read_file_to_string(path)).unwrap_or("")
             if text.length() > 0 {
-              match (try? @xml.parse(@utf8.encode(text[:]))) {
-                Ok(doc) => schema.load(doc.root, text, set.lineage)
-                Err(_) => println("!! parse error: " + path)
+              try @xml.parse(@utf8.encode(text[:])) catch {
+                _ => println("!! parse error: " + path)
+              } noraise {
+                doc => schema.load(doc.root, text, set.lineage)
               }
             }
           }
@@ -197,10 +198,10 @@ fn main {
     }
   }
   println(
-    "loaded: \{schema.complex_types.size()} complexTypes, " +
-    "\{schema.simple_types.size()} simpleTypes, " +
-    "\{schema.all_elements.size()} element declarations, " +
-    "\{schema.groups.size()} groups",
+    "loaded: \{schema.complex_types.length()} complexTypes, " +
+    "\{schema.simple_types.length()} simpleTypes, " +
+    "\{schema.all_elements.length()} element declarations, " +
+    "\{schema.groups.length()} groups",
   )
 
   // Containment ancestry — the wrapper chain from a part root down to
@@ -209,7 +210,7 @@ fn main {
   let ancestry = build_ancestry(schema)
   if ancestry_id != "" {
     println("ancestry probe: \{ancestry_id}")
-    println("  ancestry size: \{ancestry.size()}")
+    println("  ancestry size: \{ancestry.length()}")
     // Direct type_children probe — `ancestry_id` is treated as a
     // complexType name when it starts with `CT_`.
     if ancestry_id.has_prefix("CT_") {
@@ -243,7 +244,7 @@ fn main {
   // Count the distinct types each element name is declared with, so
   // a name with a single type gets a bare id and only genuine
   // name+type collisions are disambiguated with a `__type` suffix.
-  let name_variants : Map[String, Int] = Map::new()
+  let name_variants : Map[String, Int] = Map([], capacity=0)
   for _key, decl in schema.all_elements {
     name_variants[decl.name] = name_variants.get(decl.name).unwrap_or(0) + 1
   }
@@ -253,8 +254,8 @@ fn main {
   let cov_entries : Array[String] = []
   let mut count = 0
   // Tallies for the coverage summary.
-  let outcomes : Map[String, Int] = Map::new()
-  let lineage_tally : Map[String, Int] = Map::new()
+  let outcomes : Map[String, Int] = Map([], capacity=0)
+  let lineage_tally : Map[String, Int] = Map([], capacity=0)
   let mut hosted = 0
   let mut hosted_ok = 0
   let mut hostless = 0
@@ -262,51 +263,50 @@ fn main {
   // Element name -> true once any catalog entry for that name has
   // verified `rendered`; consumed by the spec-section render
   // coverage.
-  let element_ok : Map[String, Bool] = Map::new()
+  let element_ok : Map[String, Bool] = Map([], capacity=0)
   // Element name -> true once any catalog entry for it opened and
   // round-tripped without crash (`rendered` OR `parsed`); consumed by
   // the spec-section round-trip coverage.
-  let element_parsed : Map[String, Bool] = Map::new()
+  let element_parsed : Map[String, Bool] = Map([], capacity=0)
   // Every element name the ECMA-376 XSD declares — lets the section
   // analysis discard prose tokens that are not real elements.
-  let element_known : Map[String, Bool] = Map::new()
+  let element_known : Map[String, Bool] = Map([], capacity=0)
   for _k, decl in schema.all_elements {
     element_known[decl.name] = true
   }
   for _key, decl in schema.all_elements {
-    let prefix = ns_prefix(decl.namespace)
-    let fmt = ns_format(decl.namespace)
-    let stack : StrSet = Map::new()
+    let prefix = ns_prefix(decl.ns)
+    let fmt = ns_format(decl.ns)
     // Synthesise the element under test as an @xml.Element tree.
     // The element under test gets the rich synthesis budget so its
     // instance is visually non-degenerate (see RICH_BUDGET).
     let target : @xml.Element = if decl.type_name == "__inline__" {
       match xsd_child(decl.node, "complexType") {
         Some(ict) => {
-          let st : StrSet = Map::new()
+          let st : StrSet = Map([], capacity=0)
           synth_element(
             schema,
             ict,
-            decl.namespace,
+            decl.ns,
             decl.name,
             st,
             0,
             RICH_BUDGET,
           )
         }
-        None => elem(decl.namespace, decl.name, [], [])
+        None => elem(decl.ns, decl.name, [], [])
       }
     } else if decl.type_name == "__empty__" {
-      elem(decl.namespace, decl.name, [], [])
+      elem(decl.ns, decl.name, [], [])
     } else {
       match schema.complex_types.get(decl.type_name) {
         Some(ct_el) => {
-          let st : StrSet = Map::new()
+          let st : StrSet = Map([], capacity=0)
           st[decl.type_name] = true
           synth_element(
             schema,
             ct_el,
-            decl.namespace,
+            decl.ns,
             decl.name,
             st,
             0,
@@ -317,17 +317,17 @@ fn main {
           // A simple-type-typed element carries its value as text.
           if schema.simple_types.get(decl.type_name) is Some(_) ||
             decl.type_name.has_prefix("http://www.w3.org/2001/XMLSchema#") {
-            elem(decl.namespace, decl.name, [], [
+            elem(decl.ns, decl.name, [], [
               Text(sample_for_simple(schema, decl.type_name, 0)),
             ])
           } else {
-            elem(decl.namespace, decl.name, [], [])
+            elem(decl.ns, decl.name, [], [])
           }
       }
     }
     // The type display (local) name and a stable id.
     let type_local = match decl.type_name.rev_find("#") {
-      Some(i) => decl.type_name[i + 1:].to_string()
+      Some(i) => decl.type_name[i + 1:].to_owned()
       None => decl.type_name
     }
     let ident = if name_variants.get(decl.name).unwrap_or(1) <= 1 ||
@@ -366,7 +366,7 @@ fn main {
       ",\"type\":" +
       type_json +
       ",\"namespace\":" +
-      json_str(decl.namespace) +
+      json_str(decl.ns) +
       ",\"prefix\":" +
       json_str(prefix) +
       ",\"format\":" +
@@ -471,7 +471,7 @@ fn main {
       // same ident (e.g. `shape` lives in chart / diagram / VML
       // namespaces) do not overwrite each other's pkg / SVG when
       // the debug probe runs the catalog with a single id filter.
-      let suffix = ns_prefix(decl.namespace)
+      let suffix = ns_prefix(decl.ns)
       println("debug id=\{ident} element=\{decl.name} fmt=\{fmt}")
       println("  type key    : \{decl.type_name}")
       println("  host format : \{host_fmt}")
@@ -556,11 +556,11 @@ fn main {
   }
   out.write_string("\n]}\n")
   let _ = try? @fs.create_dir(".snapshots")
-  match
-    (try? @fs.write_string_to_file(".snapshots/catalog.json", out.to_string())) {
-    Ok(_) =>
+  try @fs.write_string_to_file(".snapshots/catalog.json", out.to_string()) catch {
+    _ => println("!! failed to write catalog.json")
+  } noraise {
+    _ =>
       println("catalog: \{count} element entries -> .snapshots/catalog.json")
-    Err(_) => println("!! failed to write catalog.json")
   }
 
   // Write coverage.json — the round-trip + render outcome per entry.
@@ -568,7 +568,7 @@ fn main {
   cov.write_string("{\"total\":\{count},\"counts\":{")
   let mut first = true
   for k, v in outcomes {
-    if not(first) {
+    if !first {
       cov.write_char(',')
     }
     first = false
@@ -582,10 +582,10 @@ fn main {
     cov.write_string(e)
   }
   cov.write_string("\n]}\n")
-  match
-    (try? @fs.write_string_to_file(".snapshots/coverage.json", cov.to_string())) {
-    Ok(_) => ()
-    Err(_) => println("!! failed to write coverage.json")
+  try @fs.write_string_to_file(".snapshots/coverage.json", cov.to_string()) catch {
+    _ => println("!! failed to write coverage.json")
+  } noraise {
+    _ => ()
   }
 
   // Print the coverage summary.  Two distinct numbers, kept apart on
@@ -603,7 +603,7 @@ fn main {
   println("L1  schema enumeration  (ECMA-376 Strict + Transitional + OPC)")
   println("    element declarations catalogued : \{count}")
   println(
-    "    complex types                   : \{schema.complex_types.size()}",
+    "    complex types                   : \{schema.complex_types.length()}",
   )
   println("    by schema lineage:")
   for k, v in lineage_tally {

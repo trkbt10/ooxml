@@ -23,3 +23,7 @@ import {
   "trkbt10/osenv/path" @path,
   "trkbt10/osenv/platform" @platform,
 }
+
+import {
+  "moonbitlang/core/debug" @debug,
+} for "wbtest"

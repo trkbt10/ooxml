@@ -2312,13 +2312,13 @@ test "render_svg resolves cell font color through theme cascade" {
   // Theme XML: <a:theme>/<a:themeElements>/<a:clrScheme>
   // with lt1/dk1/lt2/dk2/accent1.  parse_sml_clr_scheme indexes
   // accent1 at slot 4 (the §20.1.4.1.6 ordering).
-  let mk_color_slot = fn(local : String, hex : String) -> @xml.Element {
+  let mk_color_slot = fn(local_name : String, hex : String) -> @xml.Element {
     let srgb : @xml.Element = {
       name: name("srgbClr"),
       attributes: [{ name: name("val"), value: hex }],
       children: [],
     }
-    { name: name(local), attributes: [], children: [@xml.Node::Element(srgb)] }
+    { name: name(local_name), attributes: [], children: [@xml.Node::Element(srgb)] }
   }
   let scheme : @xml.Element = {
     name: name("clrScheme"),
@@ -2388,11 +2388,7 @@ test "render_svg resolves cell font color through theme cascade" {
     attributes: [],
     children: [@xml.Node::Element(fonts_el), @xml.Node::Element(cell_xfs_el)],
   }
-  let stylesheet = try? @domain.CT_Stylesheet::new(stylesheet_el)
-  let styles_ok = match stylesheet {
-    Ok(s) => s
-    Err(_) => abort("stylesheet construction failed")
-  }
+  let styles_ok = @domain.CT_Stylesheet::new(stylesheet_el)
   // Worksheet with one cell <c r="A1" s="0" t="n"><v>42</v></c>.
   let cell : @xml.Element = {
     name: name("c"),
