@@ -112,6 +112,7 @@ pub(all) struct CT_VectorVariant {
   vector_child_name : String
 } derive(Eq, @debug.Debug)
 pub fn CT_VectorVariant::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_VectorVariant::resolve_vector(Self, (String) -> @xml.Element?) -> @xml.Element raise ResourceMissing
 
 // Type aliases
 

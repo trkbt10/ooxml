@@ -73,8 +73,6 @@ pub(all) struct FieldContext {
 }
 pub fn FieldContext::default(@date_serial.CalendarDateTime) -> Self
 
-type FieldFrame
-
 pub(all) enum FieldInstruction {
   Author
   Comments

@@ -7,20 +7,28 @@
 // lighting via a single linearGradient.
 //
 // Spec references:
-//   §20.1.5.2  CT_Camera     (camera preset → 2D skew/scale)
-//   §20.1.5.6  CT_LightRig   (rig + dir → gradient stops)
-//   §20.1.5.1  CT_Bevel      (bevelT/bevelB → trapezoid stack)
-//   §20.1.5.9  CT_Shape3D    (sp3d, extrusionH/contourW)
+//   §20.1.5.5  camera        (camera preset → 2D skew/scale)
+//   §20.1.5.9  lightRig      (rig + dir → gradient stops)
+//   §20.1.5.4  bevelT        (top bevel → trapezoid stack)
+//   §20.1.5.12 sp3d          (extrusionH / contourW / extrusionClr)
+//   §20.1.10.47 ST_PresetCameraType (camera preset enumeration)
+//   §20.1.10.50 ST_LightRigDirection (light direction enumeration)
+//   §20.1.10.51 ST_LightRigType (rig type enumeration)
 //
 // Like effects.mbt and marker.mbt this module operates on raw XML
 // elements so it can be invoked inline from `render_sp_shape_svg`
 // without re-parsing the §20.1.5 substructure.
 
 ///|
-/// Result of resolving a §20.1.5.2 `camera` preset to a CSS-style
+/// Result of resolving a §20.1.5.5 `camera` preset (§20.1.10.47
+/// ST_PresetCameraType) to a CSS-style
 /// transform. Mirrors `Transform3dResult` in `effects3d.ts:150`.
+/// The structured fields are the single source of truth — the
+/// `transform` attribute string is composed from them on demand by
+/// `compose_transform3d_attr` so callers can also re-use the
+/// components when stacking the camera transform with a group / shape
+/// transform.
 priv struct Transform3d {
-  transform : String
   skew_x : Double
   skew_y : Double
   scale_x : Double
@@ -30,14 +38,62 @@ priv struct Transform3d {
 
 ///|
 fn transform3d_identity() -> Transform3d {
-  {
-    transform: "",
-    skew_x: 0.0,
-    skew_y: 0.0,
-    scale_x: 1.0,
-    scale_y: 1.0,
-    rotation: 0.0,
+  { skew_x: 0.0, skew_y: 0.0, scale_x: 1.0, scale_y: 1.0, rotation: 0.0 }
+}
+
+///|
+fn transform3d_is_identity(t : Transform3d) -> Bool {
+  t.skew_x == 0.0 &&
+  t.skew_y == 0.0 &&
+  t.scale_x == 1.0 &&
+  t.scale_y == 1.0 &&
+  t.rotation == 0.0
+}
+
+///|
+/// Compose the §20.1.5.5 camera transform (§20.1.10.47
+/// ST_PresetCameraType preset values) from its structured fields
+/// into a CSS-syntax `transform` attribute value. Emits primitives in
+/// the order `rotate → skewX → skewY → scale`, skipping identity
+/// components so the result matches the inline transform string the
+/// renderer used to produce by hand.
+fn compose_transform3d_attr(t : Transform3d) -> String {
+  let parts = StringBuilder::new()
+  let first : Ref[Bool] = { val: true }
+  let append_sep = fn() {
+    if first.val {
+      first.val = false
+    } else {
+      parts.write_char(' ')
+    }
   }
+  if t.rotation != 0.0 {
+    append_sep()
+    parts.write_string("rotate(")
+    parts.write_string(format_double_for_filter(t.rotation))
+    parts.write_string(")")
+  }
+  if t.skew_x != 0.0 {
+    append_sep()
+    parts.write_string("skewX(")
+    parts.write_string(format_double_for_filter(t.skew_x))
+    parts.write_string(")")
+  }
+  if t.skew_y != 0.0 {
+    append_sep()
+    parts.write_string("skewY(")
+    parts.write_string(format_double_for_filter(t.skew_y))
+    parts.write_string(")")
+  }
+  if t.scale_x != 1.0 || t.scale_y != 1.0 {
+    append_sep()
+    parts.write_string("scale(")
+    parts.write_string(format_double_for_filter(t.scale_x))
+    parts.write_string(", ")
+    parts.write_string(format_double_for_filter(t.scale_y))
+    parts.write_string(")")
+  }
+  parts.to_string()
 }
 
 ///|
@@ -91,10 +147,12 @@ fn compute_3d_effects(
       }
   }
   let transform = calculate_camera_transform(camera_preset)
-  let transform_attrs : Array[@xml.Attribute] = if transform.transform == "" {
+  let transform_attrs : Array[@xml.Attribute] = if transform3d_is_identity(
+      transform,
+    ) {
     []
   } else {
-    [@markup.attr("transform", transform.transform)]
+    [@markup.attr("transform", compose_transform3d_attr(transform))]
   }
   let light_dir = match scene3d {
     None => "tl"
@@ -187,7 +245,7 @@ pub fn has_3d_effects(sp_pr : @xml.Element) -> Bool {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// §20.1.5.2 camera preset → 2D transform.
+// §20.1.5.5 camera preset → 2D transform.
 // Mirrors `calculateCameraTransform` in `effects3d.ts:195`.
 // ─────────────────────────────────────────────────────────────────────
 
@@ -197,51 +255,25 @@ fn calculate_camera_transform(preset : String) -> Transform3d {
   match preset {
     // Isometric — symmetric skews.
     "isometricTopUp" | "isometricTopDown" =>
-      { ..id, skew_x: -30.0, skew_y: 30.0, transform: "skewX(-30) skewY(30)" }
-    "isometricLeftUp" | "isometricLeftDown" =>
-      { ..id, skew_x: 30.0, transform: "skewX(30)" }
-    "isometricRightUp" | "isometricRightDown" =>
-      { ..id, skew_x: -30.0, transform: "skewX(-30)" }
+      { ..id, skew_x: -30.0, skew_y: 30.0 }
+    "isometricLeftUp" | "isometricLeftDown" => { ..id, skew_x: 30.0 }
+    "isometricRightUp" | "isometricRightDown" => { ..id, skew_x: -30.0 }
     // Oblique — 15° offsets.
-    "obliqueTopLeft" =>
-      { ..id, skew_x: -15.0, skew_y: -15.0, transform: "skewX(-15) skewY(-15)" }
-    "obliqueTopRight" =>
-      { ..id, skew_x: 15.0, skew_y: -15.0, transform: "skewX(15) skewY(-15)" }
-    "obliqueBottomLeft" =>
-      { ..id, skew_x: -15.0, skew_y: 15.0, transform: "skewX(-15) skewY(15)" }
-    "obliqueBottomRight" =>
-      { ..id, skew_x: 15.0, skew_y: 15.0, transform: "skewX(15) skewY(15)" }
-    "obliqueTop" => { ..id, skew_y: -15.0, transform: "skewY(-15)" }
-    "obliqueBottom" => { ..id, skew_y: 15.0, transform: "skewY(15)" }
-    "obliqueLeft" => { ..id, skew_x: -15.0, transform: "skewX(-15)" }
-    "obliqueRight" => { ..id, skew_x: 15.0, transform: "skewX(15)" }
+    "obliqueTopLeft" => { ..id, skew_x: -15.0, skew_y: -15.0 }
+    "obliqueTopRight" => { ..id, skew_x: 15.0, skew_y: -15.0 }
+    "obliqueBottomLeft" => { ..id, skew_x: -15.0, skew_y: 15.0 }
+    "obliqueBottomRight" => { ..id, skew_x: 15.0, skew_y: 15.0 }
+    "obliqueTop" => { ..id, skew_y: -15.0 }
+    "obliqueBottom" => { ..id, skew_y: 15.0 }
+    "obliqueLeft" => { ..id, skew_x: -15.0 }
+    "obliqueRight" => { ..id, skew_x: 15.0 }
     // Perspective — depth scale.
-    "perspectiveFront" | "perspectiveRelaxed" =>
-      { ..id, scale_y: 0.9, transform: "scale(1, 0.9)" }
-    "perspectiveAbove" =>
-      {
-        ..id,
-        skew_y: -10.0,
-        scale_y: 0.85,
-        transform: "skewY(-10) scale(1, 0.85)",
-      }
-    "perspectiveBelow" =>
-      {
-        ..id,
-        skew_y: 10.0,
-        scale_y: 0.85,
-        transform: "skewY(10) scale(1, 0.85)",
-      }
-    "perspectiveLeft" =>
-      {
-        ..id,
-        skew_x: -10.0,
-        scale_x: 0.9,
-        transform: "skewX(-10) scale(0.9, 1)",
-      }
-    "perspectiveRight" =>
-      { ..id, skew_x: 10.0, scale_x: 0.9, transform: "skewX(10) scale(0.9, 1)" }
-    // §20.1.10.46 ST_PresetCameraType — `orthographicFront` is
+    "perspectiveFront" | "perspectiveRelaxed" => { ..id, scale_y: 0.9 }
+    "perspectiveAbove" => { ..id, skew_y: -10.0, scale_y: 0.85 }
+    "perspectiveBelow" => { ..id, skew_y: 10.0, scale_y: 0.85 }
+    "perspectiveLeft" => { ..id, skew_x: -10.0, scale_x: 0.9 }
+    "perspectiveRight" => { ..id, skew_x: 10.0, scale_x: 0.9 }
+    // §20.1.10.47 ST_PresetCameraType — `orthographicFront` is
     // the spec default and uses the identity transform.  The
     // 30+ remaining legacy / perspective variants
     // (`legacyObliqueTopLeft`, `legacyPerspectiveRight`,
@@ -257,7 +289,7 @@ fn calculate_camera_transform(preset : String) -> Transform3d {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// §20.1.5.6 light rig → lighting gradient.
+// §20.1.5.9 lightRig → lighting gradient.
 // Mirrors `calculateLightingGradient` in `effects3d.ts:361`.
 // ─────────────────────────────────────────────────────────────────────
 
@@ -364,7 +396,7 @@ fn lighting_intensity(rig : String) -> (Double, Double) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// §20.1.5.1 bevelT → four trapezoidal highlight/shadow paths.
+// §20.1.5.4 bevelT → four trapezoidal highlight/shadow paths.
 // Mirrors `renderBevelEffect` in `effects3d.ts:471`.
 // ─────────────────────────────────────────────────────────────────────
 
@@ -442,7 +474,7 @@ fn bevel_path_top(
   bh : Double,
   highlight : Bool,
 ) -> @xml.Node {
-  // §20.1.5.1 bevelT/bevelB — the spec describes the highlight
+  // §20.1.5.4 bevelT / §20.1.5.3 bevelB — the spec describes the highlight
   // / shadow tonal direction qualitatively but does NOT pin
   // numeric RGBA values; the constants below are renderer
   // policy chosen to match the TS reference's bevel preview.
@@ -567,7 +599,7 @@ fn bevel_sides(direction : String) -> (Array[String], Array[String]) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// §20.1.5.9 sp3d/@extrusionH → layered translate copies of the path.
+// §20.1.5.12 sp3d/@extrusionH → layered translate copies of the path.
 // Mirrors `renderExtrusionEffect` in `effects3d.ts:596`.
 // ─────────────────────────────────────────────────────────────────────
 
@@ -584,7 +616,7 @@ fn extrusion_element(
     return None
   }
   let extrusion_h = extrusion_emu / 9525.0
-  // §20.1.5.2 `<a:sp3d>` — extrusion colour comes from the
+  // §20.1.5.12 `<a:sp3d>` — extrusion colour comes from the
   // optional `<a:extrusionClr>` child.  We resolve its first
   // colour-bearing element through the same path we use for
   // line / fill colours; when no child is present the spec
@@ -688,7 +720,8 @@ fn attr_emu_d(
 }
 
 ///|
-/// §20.1.5.2 `<a:sp3d>/<a:extrusionClr>` — pull the first
+/// §20.1.5.7 `<a:extrusionClr>` (child of §20.1.5.12 sp3d) —
+/// pull the first
 /// `<a:srgbClr>` or `<a:sysClr lastClr>` colour from the
 /// `<a:extrusionClr>` child.  Returns `currentColor` when the
 /// child is absent or carries a colour we can't resolve without

@@ -127,6 +127,7 @@ pub(all) struct CT_Variant {
   payload_name : String
 } derive(Eq, @debug.Debug)
 pub fn CT_Variant::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Variant::resolve_payload(Self, (String) -> @xml.Element?) -> @xml.Element raise ResourceMissing
 
 #alias(VectorElement)
 pub(all) struct CT_Vector {
@@ -136,6 +137,7 @@ pub(all) struct CT_Vector {
   item_names : Array[String]
 } derive(Eq, @debug.Debug)
 pub fn CT_Vector::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_Vector::resolve_items(Self, (String) -> @xml.Element?) -> Array[@xml.Element] raise ResourceMissing
 
 #alias(VstreamElement)
 pub(all) struct CT_Vstream {

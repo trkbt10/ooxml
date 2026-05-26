@@ -1791,7 +1791,7 @@ pub(all) struct CT_Members {
   element : @xml.Element
   count : Int?
   level : Int?
-  member : Array[CT_Member]
+  member_entries : Array[CT_Member]
 } derive(Eq, @debug.Debug)
 pub fn CT_Members::new(@xml.Element) -> Self
 
@@ -1961,7 +1961,7 @@ pub fn CT_ObjectPr::new(@xml.Element) -> Self
 
 pub(all) struct CT_OlapPr {
   element : @xml.Element
-  local : Bool
+  is_local : Bool
   local_connection : String?
   local_refresh : Bool
   send_locale : Bool
@@ -2819,7 +2819,7 @@ pub(all) struct CT_RevisionHeaders {
   revision_id : Int
   version : Int
   keep_change_history : Bool
-  protected : Bool
+  is_protected : Bool
   preserve_history : Int
 } derive(Eq, @debug.Debug)
 pub fn CT_RevisionHeaders::new(@xml.Element) -> Self
@@ -2978,7 +2978,7 @@ pub(all) struct CT_Schema {
   element : @xml.Element
   id : String
   schema_ref : String?
-  namespace : String?
+  ns : String?
   schema_language : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_Schema::new(@xml.Element) -> Self

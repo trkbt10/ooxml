@@ -27,7 +27,7 @@ pub(all) suberror OpenError {
 
 // Types and methods
 pub(all) struct Workbook {
-  package : @opc.Package
+  opc_package : @opc.Package
   workbook_part : String
   workbook : @domain.CT_Workbook
   worksheets : Array[WorksheetPart]

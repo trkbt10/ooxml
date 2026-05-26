@@ -3,12 +3,11 @@ package "trkbt10/ooxml/ecma376/spreadsheet_ml/sparkline"
 
 import {
   "moonbitlang/core/debug",
-  "trkbt10/ooxml/ecma376/opc/errors",
   "trkbt10/ooxml/xml",
 }
 
 // Values
-pub fn decode_ext_lst(@xml.Element) -> SparklineGroups raise @errors.SchemaViolation
+pub fn decode_ext_lst(@xml.Element) -> SparklineGroups
 
 pub fn package_name() -> String
 

@@ -3,6 +3,7 @@ package "trkbt10/ooxml/util/glyph"
 
 import {
   "mizchi/font",
+  "moonbitlang/core/debug",
 }
 
 // Values
@@ -57,7 +58,7 @@ pub fn set_default_font_set(FontSet) -> Unit
 // Errors
 pub suberror FontUnresolvedError {
   FontUnresolvedError(request~ : FontFaceRequest, driver_labels~ : Array[String])
-} derive(Show)
+} derive(@debug.Debug)
 
 // Types and methods
 pub struct CharWidthResult {
@@ -77,7 +78,7 @@ pub(all) struct FontFaceRequest {
   weight : Int
   italic : Bool
   embedded_bytes : Bytes?
-} derive(Show)
+} derive(@debug.Debug)
 pub fn FontFaceRequest::of_name(String, weight? : Int, italic? : Bool) -> Self
 
 pub struct FontMeasurer {
@@ -129,7 +130,7 @@ pub fn FontSet::new(resolver~ : FontResolver) -> Self
 pub(all) enum FontStackCandidate {
   Name(String)
   Generic(GenericFamily)
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum GenericFamily {
   Serif
@@ -145,7 +146,7 @@ pub(all) enum GenericFamily {
   Math
   Emoji
   Fangsong
-} derive(Eq, Hash, Show)
+} derive(Eq, Hash, @debug.Debug)
 
 pub(all) struct GposKernEntry {
   first : Int

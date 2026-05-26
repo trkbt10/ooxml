@@ -239,13 +239,10 @@ fn build_group_transform_attr(
 }
 
 ///|
-/// Read a §20.1.7.6 `<a:xfrm>` element into a `TransformData`.  The
-/// returned `(transform, w, h)` triple is what `build_transform_attr`
-/// and shape rendering expect — `w`/`h` are kept separate so callers
-/// can use them as fallbacks when geometry is absent.
-///
-/// Returns `None` when `<a:xfrm>` is missing.
-fn extract_xfrm(sp_pr : @xml.Element) -> (TransformData, Double, Double)? {
+/// Read a §20.1.7.6 `<a:xfrm>` element into a `TransformData`.
+/// Returns `None` when `<a:xfrm>` is missing. Callers obtain the
+/// shape's extent through `TransformData.width` / `.height`.
+fn extract_xfrm(sp_pr : @xml.Element) -> TransformData? {
   let xfrm = find_child(sp_pr, "xfrm")
   match xfrm {
     None => None
@@ -261,13 +258,7 @@ fn extract_xfrm(sp_pr : @xml.Element) -> (TransformData, Double, Double)? {
       let rotation = parse_emu_attr(x, "rot") / 60000.0
       let flip_h = attr_eq(x, "flipH", "1")
       let flip_v = attr_eq(x, "flipV", "1")
-      Some(
-        (
-          { x: ox, y: oy, width: cx, height: cy, rotation, flip_h, flip_v },
-          cx,
-          cy,
-        ),
-      )
+      Some({ x: ox, y: oy, width: cx, height: cy, rotation, flip_h, flip_v })
     }
   }
 }

@@ -1449,7 +1449,7 @@ fn render_sp_shape_svg(
     Some(pr) =>
       match extract_xfrm(pr) {
         None => ([], 0.0, 0.0)
-        Some((t, ww, hh)) => (build_transform_attr(Some(t), ww, hh), ww, hh)
+        Some(t) => (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
       }
   }
   let ooxml_id = ooxml_id_attr(shape)
@@ -3785,6 +3785,78 @@ fn build_run_span(
         None => "currentColor"
       }
   }
+  // §20.1.2.2.24 `<a:ln>` — text outline (stroke) declared on the
+  // CT_TextCharacterProperties run-property element (§A.4.1 places
+  // `ln` first in the rPr sequence). Spec attributes per
+  // CT_LineProperties: `@w` (ST_LineWidth, EMU 0..20116800),
+  // `@cap` (ST_LineCap §20.1.10.31: `flat` / `sq` / `rnd`),
+  // `@cmpd`, `@algn` (not surfaced yet). Children
+  // EG_LineFillProperties (noFill | solidFill | gradFill | pattFill),
+  // EG_LineDashProperties, EG_LineJoinProperties (round
+  // §20.1.8.52 | bevel §20.1.8.9 | miter §20.1.8.43). Today only
+  // `<a:solidFill>` is materialised as the SVG `stroke="…"` colour
+  // because TextOutlineConfig has no field for a gradient / pattern
+  // stroke. `None` when neither the direct rPr nor the lvl-default
+  // rPr declares `<a:ln>`.
+  let outline_source : @xml.Element? = match r_pr {
+    Some(rp) =>
+      match first_child_named(rp, "ln") {
+        Some(ln) => Some(ln)
+        None =>
+          match lvl_default_r_pr {
+            None => None
+            Some(d) => first_child_named(d, "ln")
+          }
+      }
+    None =>
+      match lvl_default_r_pr {
+        None => None
+        Some(d) => first_child_named(d, "ln")
+      }
+  }
+  let text_outline : TextOutlineConfig? = match outline_source {
+    None => None
+    Some(ln) => Some(build_text_outline_config(ln, ctx~))
+  }
+  // §21.1.2.3.7 / §A.4.1 EG_FillProperties — rich text fill
+  // (gradient / pattern / image / explicit noFill / group-inherit).
+  // The plain solid colour cascade above already populated `color`,
+  // so we only need to surface the non-solid variants here.
+  // `<a:noFill>` (§20.1.8.44) becomes `TextFillNone`; `<a:gradFill>`
+  // (§20.1.8.33) becomes `TextFillGradient`; `<a:pattFill>`
+  // (§20.1.8.47) becomes `TextFillPattern`; `<a:blipFill>`
+  // (§20.1.8.14) becomes `TextFillImage` carrying the `r:embed`
+  // relationship id (the consumer resolves the actual src);
+  // `<a:grpFill>` is left to the plain `color` cascade because we
+  // have no group-fill context at this point.
+  let fill_source : @xml.Element? = match r_pr {
+    Some(rp) =>
+      match find_text_fill_child(rp) {
+        Some(_) => Some(rp)
+        None =>
+          match lvl_default_r_pr {
+            None => None
+            Some(d) =>
+              match find_text_fill_child(d) {
+                Some(_) => Some(d)
+                None => None
+              }
+          }
+      }
+    None =>
+      match lvl_default_r_pr {
+        None => None
+        Some(d) =>
+          match find_text_fill_child(d) {
+            Some(_) => Some(d)
+            None => None
+          }
+      }
+  }
+  let text_fill : TextFillConfig? = match fill_source {
+    None => None
+    Some(src) => resolve_text_fill_choice(src, ctx~)
+  }
   // §21.1.2.3.5 `<a:hlinkClick>` carries the click-time hyperlink
   // identifier (the `r:id` resolves through the slide relationships
   // to a URL) and optional tooltip text. §21.1.2.3.6 `<a:hlinkMouseOver>`
@@ -3852,8 +3924,8 @@ fn build_run_span(
     mouse_over_link_id,
     mouse_over_link_tooltip,
     bookmark: None,
-    text_outline: None,
-    text_fill: None,
+    text_outline,
+    text_fill,
     kerning,
     underline_color: None,
     underline_style: underline_style_raw,
@@ -3958,6 +4030,248 @@ fn make_break_span() -> LayoutSpan {
     underline_color: None,
     underline_style: None,
   }
+}
+
+///|
+/// §20.1.2.2.24 `<a:ln>` — assemble a `TextOutlineConfig` from the
+/// line-property element. Width comes from `@w` (ST_LineWidth, EMU)
+/// and is converted to CSS pixels (1 px = 9525 EMU); when the
+/// attribute is absent we surface `0.0` so consumers can detect
+/// "spec default" (ST_LineWidth has no normative default; renderers
+/// pick the host's hairline width). The cap maps the §20.1.10.31
+/// ST_LineCap enum (`flat` / `sq` / `rnd`) onto the SVG
+/// stroke-linecap values (`butt` / `square` / `round`). The join
+/// honours the first present EG_LineJoinProperties choice — `<a:miter>`
+/// (§20.1.8.43) / `<a:round>` (§20.1.8.52) / `<a:bevel>` (§20.1.8.9)
+/// — and falls back to `miter` when none is declared, matching
+/// SVG's `stroke-linejoin` default. The colour comes from the
+/// EG_LineFillProperties `<a:solidFill>` choice (the other line-fill
+/// choices noFill / gradFill / pattFill from §20.1.8 are not
+/// expressible through `TextOutlineConfig` today; renderers wanting
+/// rich line fills must extend the struct).
+fn build_text_outline_config(
+  ln : @xml.Element,
+  ctx~ : ColorResolveContext,
+) -> TextOutlineConfig {
+  let width_emu = match attr_value(ln, "w") {
+    None => 0.0
+    Some(v) =>
+      try @string.parse_double(v) catch {
+        _ => 0.0
+      } noraise {
+        d => d
+      }
+  }
+  let width = width_emu / 9525.0
+  let cap = match attr_value(ln, "cap") {
+    Some("sq") => "square"
+    Some("rnd") => "round"
+    Some("flat") => "butt"
+    _ => "butt"
+  }
+  let join = if first_child_named(ln, "miter") is Some(_) {
+    "miter"
+  } else if first_child_named(ln, "round") is Some(_) {
+    "round"
+  } else if first_child_named(ln, "bevel") is Some(_) {
+    "bevel"
+  } else {
+    "miter"
+  }
+  let color = match first_child_named(ln, "solidFill") {
+    None => "currentColor"
+    Some(_) =>
+      match resolve_solid_fill(ln, ctx~) {
+        Some(rc) => format_resolved_color(rc)
+        None => "currentColor"
+      }
+  }
+  { width, color, cap, join }
+}
+
+///|
+/// §21.1.2.3.7 / §A.4.1 EG_FillProperties — locate the first
+/// non-solid text-fill child element declared on the run-property
+/// element. The full EG_FillProperties choice set is
+/// {noFill, solidFill, gradFill, blipFill, pattFill, grpFill}.
+/// `solidFill` is intentionally skipped here because the resolved
+/// colour already lives on `LayoutSpan.color` via the existing
+/// solid-fill cascade; the remaining five arms surface as the rich
+/// `TextFillConfig` variants.
+fn find_text_fill_child(r_pr : @xml.Element) -> @xml.Element? {
+  for child in r_pr.children {
+    if child is Element(e) {
+      match e.name.local_name {
+        "noFill" | "gradFill" | "pattFill" | "blipFill" | "grpFill" =>
+          return Some(e)
+        _ => ()
+      }
+    }
+  }
+  None
+}
+
+///|
+/// §21.1.2.3.7 / §A.4.1 EG_FillProperties — read the rich text-fill
+/// choice declared on `r_pr` and project it into a `TextFillConfig`.
+/// `<a:noFill>` (§20.1.8.44) → `TextFillNone`. `<a:gradFill>`
+/// (§20.1.8.33) → `TextFillGradient`. `<a:pattFill>` (§20.1.8.47) →
+/// `TextFillPattern`. `<a:blipFill>` (§20.1.8.14) → `TextFillImage`.
+/// `<a:grpFill>` (CT_GroupFillProperties, §A.4.1) inherits the parent
+/// group's resolved fill; without group-fill context here we fall
+/// back to `TextFillNone` so the consumer's plain `color` field
+/// keeps driving the paint. Returns `None` when no recognised fill
+/// is present.
+fn resolve_text_fill_choice(
+  r_pr : @xml.Element,
+  ctx~ : ColorResolveContext,
+) -> TextFillConfig? {
+  let fill = find_text_fill_child(r_pr)
+  match fill {
+    None => None
+    Some(f) =>
+      match f.name.local_name {
+        "noFill" => Some(TextFillNone)
+        "gradFill" => resolve_text_gradient_fill(f, ctx~)
+        "pattFill" => Some(resolve_text_pattern_fill(f, ctx~))
+        "blipFill" => Some(resolve_text_blip_fill(f))
+        "grpFill" => None
+        _ => None
+      }
+  }
+}
+
+///|
+/// §20.1.8.33 `<a:gradFill>` — build a `TextFillGradient` from the
+/// `<a:gsLst>` stops (CT_GradientStopList, §A.4.1 requires at least
+/// two `<a:gs>` children) and the optional EG_ShadeProperties choice
+/// (`<a:lin>` §20.1.8.41 / `<a:path>` for radial). Stop positions
+/// (`<a:gs @pos>`) are `ST_PositiveFixedPercentage`, which unions the
+/// strict `s:ST_PositiveFixedPercentage` literal (`"50%"`) with the
+/// transitional `xsd:int` (1000ths of a percent, `50000`); both are
+/// normalised to percent here (0..100). Linear angles (`<a:lin @ang>`)
+/// are `ST_PositiveFixedAngle` xsd:int in 60000ths of a degree.
+fn resolve_text_gradient_fill(
+  grad : @xml.Element,
+  ctx~ : ColorResolveContext,
+) -> TextFillConfig? {
+  let stops : Array[TextGradientStop] = []
+  match first_child_named(grad, "gsLst") {
+    None => ()
+    Some(gs_lst) =>
+      for child in gs_lst.children {
+        if child is Element(e) {
+          if e.name.local_name == "gs" {
+            let position = parse_st_positive_fixed_percentage(
+              attr_value(e, "pos"),
+            )
+            let (color, alpha) = match resolve_solid_fill(e, ctx~) {
+              Some(rc) => ("#" + rc.hex, rc.alpha)
+              None => ("#000000", 1.0)
+            }
+            stops.push({ position, color, alpha })
+          }
+        }
+      }
+  }
+  if stops.is_empty() {
+    return None
+  }
+  let is_radial = first_child_named(grad, "path") is Some(_)
+  let angle = if is_radial {
+    0.0
+  } else {
+    match first_child_named(grad, "lin") {
+      None => 0.0
+      Some(lin) =>
+        match attr_value(lin, "ang") {
+          None => 0.0
+          Some(v) =>
+            try @string.parse_double(v) catch {
+              _ => 0.0
+            } noraise {
+              d => d / 60000.0
+            }
+        }
+    }
+  }
+  Some(TextFillGradient(stops, angle, is_radial))
+}
+
+///|
+/// Parse `ST_PositiveFixedPercentage` per §22.9.2.10 (strict
+/// `"50%"`) and the transitional DrawingML 1000ths-of-percent
+/// xsd:int form (`50000`). Returns the value as a percent in
+/// 0..100.
+fn parse_st_positive_fixed_percentage(raw : String?) -> Double {
+  match raw {
+    None => 0.0
+    Some(v) =>
+      if v.length() > 0 && v[v.length() - 1] == '%' {
+        let trimmed = v[0:v.length() - 1].to_owned()
+        try @string.parse_double(trimmed) catch {
+          _ => 0.0
+        } noraise {
+          d => d
+        }
+      } else {
+        try @string.parse_double(v) catch {
+          _ => 0.0
+        } noraise {
+          d => d / 1000.0
+        }
+      }
+  }
+}
+
+///|
+/// §20.1.8.47 `<a:pattFill>` — extract the foreground / background
+/// solid colours and project them into a `TextFillPattern`. The
+/// preset pattern id (`@prst`) is not exposed by `TextFillPattern`
+/// today; consumers approximate the pattern visually through the fg
+/// colour.
+fn resolve_text_pattern_fill(
+  patt : @xml.Element,
+  ctx~ : ColorResolveContext,
+) -> TextFillConfig {
+  let fg = match first_child_named(patt, "fgClr") {
+    None => "#000000"
+    Some(fg_el) =>
+      match resolve_solid_fill(fg_el, ctx~) {
+        Some(rc) => format_resolved_color(rc)
+        None => "#000000"
+      }
+  }
+  let bg = match first_child_named(patt, "bgClr") {
+    None => "#ffffff"
+    Some(bg_el) =>
+      match resolve_solid_fill(bg_el, ctx~) {
+        Some(rc) => format_resolved_color(rc)
+        None => "#ffffff"
+      }
+  }
+  TextFillPattern(fg, bg)
+}
+
+///|
+/// §20.1.8.14 `<a:blipFill>` — surface the `<a:blip r:embed="…">`
+/// relationship id as the `TextFillImage` payload. The downstream
+/// consumer resolves the embed id into a usable image URL through
+/// the slide-part relationships.
+fn resolve_text_blip_fill(blip_fill : @xml.Element) -> TextFillConfig {
+  let rid = match first_child_named(blip_fill, "blip") {
+    None => ""
+    Some(blip) =>
+      match attr_value(blip, "embed") {
+        Some(v) => v
+        None =>
+          match attr_value(blip, "link") {
+            Some(v) => v
+            None => ""
+          }
+      }
+  }
+  TextFillImage(rid)
 }
 
 ///|
@@ -4934,7 +5248,7 @@ fn render_picture_svg(
     Some(pr) =>
       match extract_xfrm(pr) {
         None => ([], 0.0, 0.0)
-        Some((t, ww, hh)) => (build_transform_attr(Some(t), ww, hh), ww, hh)
+        Some(t) => (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
       }
   }
   let ooxml_id = ooxml_id_attr(pic)
@@ -5275,7 +5589,7 @@ fn render_connector_svg(
     Some(pr) =>
       match extract_xfrm(pr) {
         None => ([], 0.0, 0.0)
-        Some((t, ww, hh)) => (build_transform_attr(Some(t), ww, hh), ww, hh)
+        Some(t) => (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
       }
   }
   let ooxml_id = ooxml_id_attr(cxn)
@@ -5455,7 +5769,7 @@ fn render_graphic_frame_svg(
     Some(_) =>
       match extract_xfrm(frame) {
         None => ([], 0.0, 0.0)
-        Some((t, ww, hh)) => (build_transform_attr(Some(t), ww, hh), ww, hh)
+        Some(t) => (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
       }
   }
   let ooxml_id = ooxml_id_attr(frame)

@@ -24,7 +24,7 @@ pub(all) suberror OpenError {
 
 // Types and methods
 pub(all) struct Document {
-  package : @opc.Package
+  opc_package : @opc.Package
   main_part : String
   main : @domain.CT_Document
   headers : Array[HeaderPart]
@@ -59,8 +59,6 @@ pub(all) struct HeaderPart {
   name : String
   value : @domain.CT_HdrFtr
 } derive(Eq, @debug.Debug)
-
-type ResolvedDecoration
 
 // Type aliases
 

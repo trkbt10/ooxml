@@ -15,12 +15,6 @@ pub suberror SchemaViolation {
 } derive(Debug)
 
 ///|
-/// ResourceMissing is reserved for OPC relationship targets referenced by §22.4 values.
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
-} derive(Debug)
-
-///|
 /// XSD simple type ST_VectorBaseType from shared-documentPropertiesVariantTypes.xsd.
 pub struct ST_VectorBaseType {
   value : String

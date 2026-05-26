@@ -2,6 +2,7 @@
 package "trkbt10/ooxml/ecma376/presentation_ml/viewer"
 
 import {
+  "moonbitlang/core/debug",
   "trkbt10/ooxml/ecma376/drawing_ml/theme",
   "trkbt10/ooxml/ecma376/presentation_ml/domain",
   "trkbt10/ooxml/ecma376/presentation_ml/placeholder_resolver",
@@ -92,8 +93,6 @@ pub struct AdjustValue {
   value : Double
 }
 
-type ArrowCmd
-
 pub(all) enum AutoFitConfig {
   AutoFitNone
   AutoFitShape
@@ -126,8 +125,6 @@ pub fn ColorResolveContext::with_maps(Self, Map[String, String], Map[String, Str
 pub fn ColorResolveContext::with_ph_clr(Self, String) -> Self
 pub fn ColorResolveContext::with_strict_spec(Self) -> Self
 
-type EffectContribution
-
 pub struct Effects3d {
   transform_attrs : Array[@xml.Attribute]
   extrusion : @xml.Node?
@@ -140,19 +137,13 @@ pub struct FillAttrResult {
   is_no_fill : Bool
 }
 
-type FilterExtents
-
 pub(all) enum FontAlignment {
   FontAlignAuto
   FontAlignTop
   FontAlignCenter
   FontAlignBase
   FontAlignBottom
-} derive(Eq, Show)
-
-type GradientStopValue
-
-type GroupTransformData
+} derive(Eq, @debug.Debug)
 
 pub struct GuideEntry {
   name : String
@@ -247,8 +238,6 @@ pub struct LineBreakResult {
   line_heights : Array[Double]
 }
 
-type LineBuilder
-
 pub struct LineFontInfo {
   font_size : Double
   font_family : String
@@ -306,6 +295,7 @@ pub(all) struct ResolvedImage {
 }
 
 type SvgDefsCollector
+pub fn SvgDefsCollector::to_defs_element(Self) -> String
 
 pub(all) enum TextAlign {
   AlignLeft
@@ -316,7 +306,7 @@ pub(all) enum TextAlign {
   AlignDistributed
   AlignThaiDistributed
   AlignDecimal
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum TextAnchor {
   AnchorTop
@@ -324,7 +314,7 @@ pub(all) enum TextAnchor {
   AnchorBottom
   AnchorJustified
   AnchorDistributed
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub struct TextBoxConfig {
   width : Double
@@ -371,13 +361,13 @@ pub struct TextOutlineConfig {
 pub(all) enum TextOverflow {
   OverflowAllow
   OverflowClip
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum TextVerticalOverflow {
   VertOverflowAllow
   VertOverflowEllipsis
   VertOverflowClip
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum TextVerticalType {
   VertHorz
@@ -387,16 +377,12 @@ pub(all) enum TextVerticalType {
   VertWordArtVert
   VertMongolianVert
   VertWordArtVertRtl
-} derive(Eq, Show)
+} derive(Eq, @debug.Debug)
 
 pub(all) enum TextWrapping {
   WrapNone
   WrapSquare
-} derive(Eq, Show)
-
-type Transform3d
-
-type TransformData
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 pub type ColorMap = Map[String, String]

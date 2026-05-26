@@ -663,14 +663,14 @@ priv struct ParaProps {
   /// §17.3.1.5 `<w:pageBreakBefore>` — start a new page before this
   /// paragraph. Honoured by `flow_into_pages`.
   page_break_before : Bool
-  /// §17.3.1.10 `<w:framePr>` — when the paragraph is wrapped in a
+  /// §17.3.1.11 `<w:framePr>` — when the paragraph is wrapped in a
   /// positioned text frame (legacy floating frame mechanism). `None`
   /// when the paragraph flows in the normal stream (the common case).
   frame_pr : FramePr?
 }
 
 ///|
-/// §17.3.1.10 `<w:framePr>` resolved attributes. Coordinates are
+/// §17.3.1.11 `<w:framePr>` resolved attributes. Coordinates are
 /// stored in CSS pixels after twips→px conversion; anchors are kept
 /// as raw spec strings so the layout pass can dispatch on them.
 ///
@@ -688,6 +688,16 @@ priv struct ParaProps {
 ///     paragraphs wrap alongside the frame; `none` / `notBeside`
 ///     leave the body at full width and the frame floats over
 ///     (`none`) or under (`notBeside`) the inline flow.
+///   * `w:yAlign="top"|"center"|"bottom"|"inside"|"outside"` per
+///     §22.9.2.20 ST_YAlign — paragraph-band-relative vertical
+///     placement against the `w:vAnchor`-resolved band ("page" →
+///     whole page; "margin" → content area). `inside` / `outside`
+///     map to `top` / `bottom` on unmirrored layouts. `inline` keeps
+///     the frame in line with the surrounding text (no wrap-band
+///     reservation). When `w:vAnchor="text"` the §17.3.1.11 note
+///     mandates that yAlign be ignored (text-anchored frames cannot
+///     use relative vertical positioning); the explicit `w:y`
+///     offset is then honoured. Empty yAlign also defers to `w:y`.
 ///   * The framed paragraph is positioned absolutely without
 ///     advancing the natural flow cursor; subsequent paragraphs
 ///     slide UP into the inline slot the frame vacates.
@@ -698,15 +708,12 @@ priv struct ParaProps {
 ///   * `w:xAlign="inside"|"outside"` — book-spine-relative
 ///     placement; needs facing-page parity tracked through
 ///     `<w:sectPr>`.  Treated as the explicit `w:x` offset.
-///   * `w:yAlign="inline"|"top"|"center"|"bottom"|"inside"|
-///     "outside"` — paragraph-band-relative vertical placement.
-///     Treated as the explicit `w:y` offset.
 ///   * `w:wrap="none"` overlay — the frame is positioned but the
 ///     body keeps the FULL column width, which causes glyphs to
 ///     overlap when both occupy the same coordinates.  The
 ///     side-anchored fixture uses `wrap="around"` which IS
 ///     handled.
-///   * `w:hSpace` / `w:vSpace` (the §17.3.1.10 frame insets) —
+///   * `w:hSpace` / `w:vSpace` (the §17.3.1.11 frame insets) —
 ///     not parsed; the body↔frame gutter uses a fixed empirical
 ///     value (`wrap_gutter`).
 ///   * Body paragraph that EXCEEDS the frame's vertical band:
@@ -731,7 +738,7 @@ priv struct FramePr {
   /// `0.0` when omitted; the frame stays at the current cursor.
   y_px : Double
   /// `w:hAnchor` — "page" | "margin" | "text". Defaults to "page"
-  /// per §17.3.1.10 when omitted, but Word treats omitted as
+  /// per §17.3.1.11 when omitted, but Word treats omitted as
   /// "margin" so we mirror that.
   h_anchor : String
   /// `w:vAnchor` — "page" | "margin" | "text". Defaults to "page"
@@ -816,7 +823,7 @@ priv struct LaidParagraph {
   /// where the border tracks the column width.
   frame_x : Double
   frame_width : Double
-  /// §17.3.1.10 `<w:framePr>` — when set, this paragraph is a
+  /// §17.3.1.11 `<w:framePr>` — when set, this paragraph is a
   /// floating positioned text frame.  Carried through page flow so
   /// `flow_into_pages` can route the paragraph past the natural
   /// cursor advance (no `cur_y` increment) and the emitter can
@@ -2148,7 +2155,7 @@ fn collect_blocks(
   // §17.9 — numbering counter state: maps `(num_id, ilvl)` to current
   // counter value. Incremented as each numbered paragraph is encountered.
   let counters : @hashmap.HashMap[String, Int] = HashMap([], capacity=0)
-  // §17.3.1.10 framePr — active floating-frame wrap state.  When a
+  // §17.3.1.11 framePr — active floating-frame wrap state.  When a
   // paragraph with `<w:framePr wrap="around">` (or any wrap mode
   // that isn't explicitly "none" / "notBeside") has been emitted,
   // subsequent body paragraphs flow alongside the frame in a
@@ -3025,7 +3032,7 @@ fn resolve_para_props(
       (pbb, cs, style)
     }
   }
-  // §17.3.1.10 `<w:framePr>` — parse the legacy floating-frame
+  // §17.3.1.11 `<w:framePr>` — parse the legacy floating-frame
   // attributes when present.  All numeric attributes are in twips
   // (ST_TwipsMeasure) and converted to CSS pixels here.  Missing
   // attributes leave the field at its zero / empty default; the
@@ -4659,7 +4666,7 @@ fn layout_paragraph(
     font_map~,
   )
 
-  // §17.3.1.10 framePr — when the paragraph is wrapped in a floating
+  // §17.3.1.11 framePr — when the paragraph is wrapped in a floating
   // text frame, line-wrap against the frame's `w:w` (the frame's
   // inner width) instead of the column content width.  A frame with
   // no explicit width falls back to the column width minus the
@@ -6473,7 +6480,7 @@ fn flow_into_pages(
   }
 
   for block in blocks {
-    // §17.3.1.10 framePr — floating frames don't consume vertical
+    // §17.3.1.11 framePr — floating frames don't consume vertical
     // space in the natural flow; route them through a dedicated
     // path that positions the paragraph at its anchor coordinates
     // and leaves `cur_y` untouched so the subsequent (already
@@ -6519,7 +6526,38 @@ fn flow_into_pages(
           "margin" => cfg.margin_top
           _ => cur_y
         }
-        let frame_y = v_anchor_base + fp.y_px
+        // §17.3.1.11 yAlign — paragraph-band-relative vertical
+        // placement against the `w:vAnchor`-resolved band. Per the
+        // §17.3.1.11 note, when `w:vAnchor="text"` yAlign is
+        // ignored (text-anchored frames cannot use relative vertical
+        // positioning); the explicit `w:y` offset then drives the
+        // placement. ST_YAlign §22.9.2.20 values map onto SVG as:
+        //   - top / inside    → align to band top
+        //   - center          → centre vertically within band
+        //   - bottom / outside→ align to band bottom
+        //   - inline          → keep the frame in line with text
+        //                       flow (no relative offset added)
+        // Frame height falls back to the laid paragraph height when
+        // `w:h` is omitted.
+        let band_top = v_anchor_base
+        let band_height = match fp.v_anchor {
+          "page" => cfg.page_height
+          "margin" => content_height
+          _ => 0.0
+        }
+        let frame_h = if fp.h_px > 0.0 { fp.h_px } else { p.height }
+        let yalign_applies = fp.v_anchor == "page" || fp.v_anchor == "margin"
+        let frame_y = if yalign_applies {
+          match fp.y_align {
+            "top" | "inside" => band_top
+            "center" => band_top + (band_height - frame_h) / 2.0
+            "bottom" | "outside" => band_top + band_height - frame_h
+            "inline" => v_anchor_base + fp.y_px
+            _ => v_anchor_base + fp.y_px
+          }
+        } else {
+          v_anchor_base + fp.y_px
+        }
         // Translate the laid paragraph so its left-edge / top-edge
         // land at the resolved (frame_x, frame_y).  The laid
         // paragraph carries its content origin at
@@ -6527,7 +6565,7 @@ fn flow_into_pages(
         // vector matches the requested anchor directly.
         let adjusted = offset_paragraph(p, frame_x, frame_y)
         cur_paragraphs.push(adjusted)
-        // §17.3.1.10 — the floating frame does NOT advance the
+        // §17.3.1.11 — the floating frame does NOT advance the
         // flow cursor; subsequent body paragraphs flow at the
         // un-moved `cur_y`.  Page / column breaks declared on
         // the framed paragraph itself are ignored (the spec

@@ -91,6 +91,76 @@ pub fn write_pic(picture : CT_Picture) -> Bytes {
 }
 
 ///|
+/// Resolve the OPC relationship target referenced by the picture's
+/// `<a:blipFill>/<a:blip>` element through `resolver` and return the
+/// resolved part element wrapped in `Some`. Per the dml-main.xsd
+/// `AG_Blob` attribute group (§A.4.1) both `r:embed` and `r:link`
+/// are optional with default `""` — a blip carrying neither
+/// attribute is schema-valid and represents "no externally
+/// referenced image"; this path returns `Ok(None)`. When at least
+/// one of the two attributes carries a non-empty relationship id
+/// but `resolver` cannot supply the referenced element, raises
+/// `ResourceMissing` per §3 OPC. The blip itself is also optional
+/// (CT_BlipFillProperties §A.4.1 `<blip minOccurs="0">`); absent
+/// blip likewise returns `Ok(None)`.
+pub fn CT_Picture::resolve_blip_target(
+  self : CT_Picture,
+  resolver : (String) -> @xml.Element?,
+) -> @xml.Element? raise ResourceMissing {
+  let blip = find_blip(self.blip_fill)
+  let target = match blip {
+    None => return None
+    Some(b) =>
+      match non_empty_attr(b, "embed") {
+        Some(t) => t
+        None =>
+          match non_empty_attr(b, "link") {
+            Some(t) => t
+            None => return None
+          }
+      }
+  }
+  match resolver(target) {
+    Some(element) => Some(element)
+    None =>
+      raise ResourceMissing(
+        section="A.4.1",
+        path="pic/blipFill/blip",
+        target~,
+      )
+  }
+}
+
+///|
+fn find_blip(blip_fill : @xml.Element) -> @xml.Element? {
+  for child in blip_fill.children {
+    if child is @xml.Node::Element(child_element) {
+      if child_element.name.local_name == "blip" {
+        return Some(child_element)
+      }
+    }
+  }
+  None
+}
+
+///|
+/// Return the attribute value when present and non-empty. AG_Blob
+/// declares `r:embed` / `r:link` with `default=""`, so an empty
+/// string means "no relationship reference" rather than "reference
+/// to an empty id".
+fn non_empty_attr(element : @xml.Element, local_name : String) -> String? {
+  for attribute in element.attributes {
+    if attribute.name.local_name == local_name {
+      if attribute.value == "" {
+        return None
+      }
+      return Some(attribute.value)
+    }
+  }
+  None
+}
+
+///|
 fn parse_ct_picture(root : @xml.Element) -> CT_Picture raise SchemaViolation {
   let nv_pic_pr = required_child(root, "nvPicPr", "pic/nvPicPr")
   let blip_fill = required_child(root, "blipFill", "pic/blipFill")

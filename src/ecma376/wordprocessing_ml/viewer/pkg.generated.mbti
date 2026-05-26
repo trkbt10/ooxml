@@ -26,12 +26,6 @@ pub fn resolve_themed_color(String?, String?, String?, String?, ThemeColorMap) -
 // Errors
 
 // Types and methods
-type BorderStyleKind
-
-type BreakKind
-
-type CellMargins
-
 pub struct DocumentSvgResult {
   pages : Array[PageRenderResult]
   total_pages : Int

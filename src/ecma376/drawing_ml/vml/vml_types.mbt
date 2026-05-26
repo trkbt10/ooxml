@@ -94,6 +94,38 @@ fn[T] wrap_vml_excel_violation(
 }
 
 ///|
+/// Bridge `@vml_presentation.SchemaViolation` into this package's local one.
+fn[T] wrap_vml_presentation_violation(
+  body : () -> T raise @vml_presentation.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @vml_presentation.SchemaViolation(schema=_, path=p, reason~) =>
+      raise SchemaViolation(
+        schema="vml-presentationDrawing.xsd",
+        path=path + " (" + p + ")",
+        reason~,
+      )
+  }
+}
+
+///|
+/// Bridge `@vml_word.SchemaViolation` into this package's local one.
+fn[T] wrap_vml_word_violation(
+  body : () -> T raise @vml_word.SchemaViolation,
+  path : String,
+) -> T raise SchemaViolation {
+  body() catch {
+    @vml_word.SchemaViolation(schema=_, path=p, reason~) =>
+      raise SchemaViolation(
+        schema="vml-wordprocessingDrawing.xsd",
+        path=path + " (" + p + ")",
+        reason~,
+      )
+  }
+}
+
+///|
 /// Parse a single VML shape-element child into the typed sum. Every
 /// EG_ShapeElements / CT_Shape extra / CT_Group extra arm declared by
 /// vml-main.xsd, vml-officeDrawing.xsd, vml-wordprocessingDrawing.xsd,
@@ -125,12 +157,48 @@ pub fn parse_vml_shape_child(
     "ink" => Ink(CT_Ink::new(element))
     "equationxml" => EquationXml(CT_EquationXml::new(element))
     // EG_ShapeElements — w10: arm (vml-wordprocessingDrawing.xsd).
-    "wrap" => Wrap(@vml_word.CT_Wrap::new(element))
-    "anchorlock" => AnchorLock(@vml_word.CT_AnchorLock::new(element))
-    "bordertop" => BorderTop(@vml_word.CT_Border::new(element))
-    "borderbottom" => BorderBottom(@vml_word.CT_Border::new(element))
-    "borderleft" => BorderLeft(@vml_word.CT_Border::new(element))
-    "borderright" => BorderRight(@vml_word.CT_Border::new(element))
+    "wrap" =>
+      Wrap(
+        wrap_vml_word_violation(
+          () => @vml_word.CT_Wrap::new(element),
+          "VmlShapeChild/w10:wrap",
+        ),
+      )
+    "anchorlock" =>
+      AnchorLock(
+        wrap_vml_word_violation(
+          () => @vml_word.CT_AnchorLock::new(element),
+          "VmlShapeChild/w10:anchorlock",
+        ),
+      )
+    "bordertop" =>
+      BorderTop(
+        wrap_vml_word_violation(
+          () => @vml_word.CT_Border::new(element),
+          "VmlShapeChild/w10:bordertop",
+        ),
+      )
+    "borderbottom" =>
+      BorderBottom(
+        wrap_vml_word_violation(
+          () => @vml_word.CT_Border::new(element),
+          "VmlShapeChild/w10:borderbottom",
+        ),
+      )
+    "borderleft" =>
+      BorderLeft(
+        wrap_vml_word_violation(
+          () => @vml_word.CT_Border::new(element),
+          "VmlShapeChild/w10:borderleft",
+        ),
+      )
+    "borderright" =>
+      BorderRight(
+        wrap_vml_word_violation(
+          () => @vml_word.CT_Border::new(element),
+          "VmlShapeChild/w10:borderright",
+        ),
+      )
     // EG_ShapeElements — x: arm (vml-spreadsheetDrawing.xsd).
     "ClientData" =>
       ClientData(
@@ -141,8 +209,20 @@ pub fn parse_vml_shape_child(
       )
     // CT_Shape / CT_Group extras — pvml: arm
     // (vml-presentationDrawing.xsd).
-    "iscomment" => Iscomment(@vml_presentation.CT_Empty::new(element))
-    "textdata" => Textdata(@vml_presentation.CT_Rel::new(element))
+    "iscomment" =>
+      Iscomment(
+        wrap_vml_presentation_violation(
+          () => @vml_presentation.CT_Empty::new(element),
+          "VmlShapeChild/pvml:iscomment",
+        ),
+      )
+    "textdata" =>
+      Textdata(
+        wrap_vml_presentation_violation(
+          () => @vml_presentation.CT_Rel::new(element),
+          "VmlShapeChild/pvml:textdata",
+        ),
+      )
     other =>
       raise SchemaViolation(
         schema="vml-main.xsd",

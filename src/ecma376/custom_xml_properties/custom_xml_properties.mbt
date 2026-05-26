@@ -37,24 +37,17 @@ pub fn custom_xml_properties_part1_23_2_elements_section_name() -> String {
 /// shared-documentPropertiesExtended.xsd schema sequence, and V3
 /// materialises CT_VectorVariant defaults at read time.  Errors
 /// SchemaViolation surface when CT_VectorVariant lacks a `vt:vector`
-/// child; ResourceMissing is propagated from the OPC layer when a
-/// `vt:vector` referenced relationship cannot be resolved.  Drift
-/// hook: `coverage.json` tracks the shared-documentPropertiesExtended.xsd
-/// CT_VectorVariant complex type row that backs this schema row.
+/// child.  Drift hook: `coverage.json` tracks the
+/// shared-documentPropertiesExtended.xsd CT_VectorVariant complex
+/// type row that backs this schema row.
 pub fn custom_xml_properties_xsd_ct_vectorvariant_schema_name() -> String {
-  "Schema shared-documentPropertiesExtended.xsd complex type `CT_VectorVariant`. Child elements: `vt:vector`. ResourceMissing is raised by the OPC layer when the `vt:vector` relationship target is unresolved."
+  "Schema shared-documentPropertiesExtended.xsd complex type `CT_VectorVariant`. Child elements: `vt:vector`."
 }
 
 ///|
 /// Custom XML and document properties schema validation error.
 pub suberror SchemaViolation {
   SchemaViolation(schema~ : String, path~ : String, reason~ : String)
-} derive(Debug)
-
-///|
-/// ResourceMissing reports OPC resolver failures for §3 package resources.
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
 } derive(Debug)
 
 ///|

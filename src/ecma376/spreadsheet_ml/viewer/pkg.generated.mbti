@@ -28,36 +28,12 @@ pub fn resolve_sml_color(@domain.CT_Color, SmlThemeColorMap) -> String?
 // Errors
 
 // Types and methods
-type CellLayout
-
-type ColumnDef
-
-type DrawingBounds
-
-type MergeInfo
-
-type PopulationStats
-
-type ResolvedAlignment
-
-type ResolvedBorder
-
-type ResolvedBorderEdge
-
-type ResolvedCellStyle
-
 pub(all) enum ResolvedFill {
   FillNone
   FillSolid(String)
   FillPattern(String, String, String)
   FillGradient(String, Double, Array[(Double, String)])
 } derive(Eq)
-
-type ResolvedFont
-
-type SheetLayout
-
-type SheetPaneInfo
 
 pub(all) struct SheetPivot {
   definition : @pivot_table.PivotTableDefinition
@@ -92,8 +68,6 @@ pub(all) struct SmlThemeColorMap {
 }
 pub fn SmlThemeColorMap::empty() -> Self
 pub fn SmlThemeColorMap::lookup(Self, Int) -> String?
-
-type TableStylePalette
 
 // Type aliases
 

@@ -519,7 +519,7 @@ pub(all) struct CT_Fill {
   focus : String?
   focussize : String?
   focusposition : String?
-  method : ST_FillMethod?
+  fill_method : ST_FillMethod?
   recolor : Bool?
   rotate : Bool?
   office_attributes : Array[@xml.Attribute]
