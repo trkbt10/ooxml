@@ -51,6 +51,7 @@ test "schemeClr looks up the theme palette" {
     major_font: Map([], capacity=0),
     minor_font: Map([], capacity=0),
     clamp_overflow_hue: true,
+    group_fill: None,
   }
   let rc = resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="4472c4")
@@ -69,6 +70,7 @@ test "schemeClr respects colorMap (tx1 → dk1)" {
     major_font: Map([], capacity=0),
     minor_font: Map([], capacity=0),
     clamp_overflow_hue: true,
+    group_fill: None,
   }
   let rc = resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="000000")

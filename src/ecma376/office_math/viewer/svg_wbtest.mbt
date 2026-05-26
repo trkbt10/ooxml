@@ -7,6 +7,34 @@
 // element / attribute tokens.
 
 ///|
+/// Inject a deterministic test font so `text_box` returns real metrics
+/// regardless of the host font catalogue. Without this, hosts that
+/// lack "Noto Serif" silently get width 0.0 for every glyph, which
+/// cascades into lost nodes (script / limit guards check `width > 0`).
+let test_font_ready : Ref[Bool] = { val: false }
+
+fn ensure_test_font() -> Unit {
+  if test_font_ready.val {
+    return
+  }
+  test_font_ready.val = true
+  let bytes = try @fs.read_file_to_bytes(
+      "src/util/glyph/fixtures/subset.ttf",
+    ) catch {
+    _ => abort("Cannot load test font fixture src/util/glyph/fixtures/subset.ttf")
+  } noraise {
+    b => b
+  }
+  @glyph.set_default_font_set(
+    @glyph.FontSet::new(
+      resolver=@glyph.FontResolver::in_memory(
+        Map([("Noto Serif", bytes)], capacity=1),
+      ),
+    ),
+  )
+}
+
+///|
 /// Build an unprefixed `@xml.QName` from a local name.
 fn name(local_name : String) -> @xml.QName {
   { prefix: None, local_name, ns: None }
@@ -42,6 +70,7 @@ fn omml_elem(tag : String, children : Array[@xml.Node]) -> @xml.Node {
 
 ///|
 test "Office Math SVG renders a run as a <text> element" {
+  ensure_test_font()
   let math = @domain.CT_OMath::new({
     name: name("oMath"),
     attributes: [],
@@ -128,6 +157,7 @@ test "Office Math SVG §22.1.2.86 radical emits a path" {
 
 ///|
 test "Office Math SVG §22.1.2.115 superscript lifts the script" {
+  ensure_test_font()
   // <m:sSup><m:e><m:r><m:t>x</m:t></m:r></m:e>
   //         <m:sup><m:r><m:t>2</m:t></m:r></m:sup></m:sSup>
   let s_sup = omml_elem("sSup", [
@@ -160,6 +190,7 @@ test "Office Math SVG §22.1.2.115 superscript lifts the script" {
 
 ///|
 test "Office Math SVG §22.1.2.79 nary emits the operator glyph" {
+  ensure_test_font()
   // <m:nary><m:naryPr><m:chr val="∏"/></m:naryPr>
   //   <m:sub><m:r><m:t>i</m:t></m:r></m:sub>
   //   <m:sup><m:r><m:t>n</m:t></m:r></m:sup>

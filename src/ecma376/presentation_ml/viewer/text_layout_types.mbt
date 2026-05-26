@@ -157,6 +157,15 @@ pub struct TextOutlineConfig {
   cap : String
   /// One of `"miter"`, `"round"`, `"bevel"`.
   join : String
+  /// SVG `stroke-dasharray` value from §20.1.10.49 prstDash or
+  /// §20.1.8.20 custDash. Empty string means solid (no dash).
+  dash : String
+  /// §20.1.10.16 ST_CompoundLine — `"sng"`, `"dbl"`, `"thickThin"`,
+  /// `"thinThick"`, `"tri"`. Empty string means single.
+  compound : String
+  /// §20.1.10.44 ST_PenAlignment — `"ctr"` or `"in"`. Empty string
+  /// means center (spec default).
+  align : String
 }
 
 ///|

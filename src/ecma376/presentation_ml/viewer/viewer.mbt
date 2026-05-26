@@ -2233,6 +2233,55 @@ fn preset_dash_pattern(pattern : String, stroke_width : Double) -> String {
 }
 
 ///|
+/// §20.1.8.20 custDash — build an SVG `stroke-dasharray` from a
+/// `<a:custDash>` element. Each `<a:ds d="..." sp="..."/>` child
+/// encodes a dash length and space length as ST_PositivePercentage
+/// (thousandths of the line width).
+fn build_custom_dash_pattern(
+  cust_dash : @xml.Element,
+  stroke_width : Double,
+) -> String {
+  let buf = StringBuilder::new()
+  let mut first = true
+  for child in cust_dash.children {
+    match child {
+      Element(ds) =>
+        if ds.name.local_name == "ds" {
+          let d_val = match attr_value(ds, "d") {
+            Some(v) =>
+              try @string.parse_double(v) catch {
+                _ => 100000.0
+              } noraise {
+                d => d
+              }
+            None => 100000.0
+          }
+          let sp_val = match attr_value(ds, "sp") {
+            Some(v) =>
+              try @string.parse_double(v) catch {
+                _ => 100000.0
+              } noraise {
+                d => d
+              }
+            None => 100000.0
+          }
+          let dash_len = stroke_width * d_val / 100000.0
+          let space_len = stroke_width * sp_val / 100000.0
+          if !first {
+            buf.write_string(" ")
+          }
+          buf.write_string(format_double(dash_len))
+          buf.write_string(" ")
+          buf.write_string(format_double(space_len))
+          first = false
+        }
+      _ => ()
+    }
+  }
+  buf.to_string()
+}
+
+///|
 /// Return true when `parent` has at least one direct element child
 /// with the given local name. Used for the `<a:ln>` join-style probe
 /// (round / bevel / miter are sibling elements rather than attributes).
@@ -3892,21 +3941,28 @@ fn build_run_span(
     text: text_buf.to_string(),
     font_size: font_size_pt,
     // §20.1.4.1.18 / §21.1.2.3.10 — when no typeface is reachable
-    // we fall back to the CSS generic `sans-serif` family: a slide
-    // with no explicit typeface inherits the application/theme
-    // default, which is a sans-serif in every real OOXML consumer
-    // (see `presentation_default_typeface`).
+    // from the run or its defRPr, fall back to the theme's minor
+    // font (§20.1.4.1.9 CT_FontCollection). The minor font is the
+    // theme's designated body-text face; major font is for titles.
+    // When the theme is also empty we reach the renderer's last
+    // resort (`presentation_default_typeface`).
     font_family: resolve_typeface_element(typeface_element("latin"), ctx).unwrap_or(
-      presentation_default_typeface(),
+      ctx.minor_font.get("lt").unwrap_or(presentation_default_typeface()),
     ),
-    font_family_east_asian: resolve_typeface_element(
-      typeface_element("ea"),
-      ctx,
-    ),
-    font_family_complex_script: resolve_typeface_element(
-      typeface_element("cs"),
-      ctx,
-    ),
+    font_family_east_asian: match resolve_typeface_element(
+        typeface_element("ea"),
+        ctx,
+      ) {
+      Some(v) => Some(v)
+      None => ctx.minor_font.get("ea")
+    },
+    font_family_complex_script: match resolve_typeface_element(
+        typeface_element("cs"),
+        ctx,
+      ) {
+      Some(v) => Some(v)
+      None => ctx.minor_font.get("cs")
+    },
     font_family_symbol: resolve_typeface_element(typeface_element("sym"), ctx),
     font_weight,
     font_style,
@@ -4079,14 +4135,42 @@ fn build_text_outline_config(
     "miter"
   }
   let color = match first_child_named(ln, "solidFill") {
-    None => "currentColor"
+    None =>
+      if first_child_named(ln, "noFill") is Some(_) {
+        "none"
+      } else {
+        "currentColor"
+      }
     Some(_) =>
       match resolve_solid_fill(ln, ctx~) {
         Some(rc) => format_resolved_color(rc)
         None => "currentColor"
       }
   }
-  { width, color, cap, join }
+  // §20.1.10.49 ST_PresetLineDashVal / §20.1.8.20 custDash
+  let dash = match first_child_named(ln, "prstDash") {
+    Some(d) =>
+      match attr_value(d, "val") {
+        Some(pattern) => preset_dash_pattern(pattern, width_emu)
+        None => ""
+      }
+    None =>
+      match first_child_named(ln, "custDash") {
+        Some(cd) => build_custom_dash_pattern(cd, width_emu)
+        None => ""
+      }
+  }
+  // §20.1.10.16 ST_CompoundLine
+  let compound = match attr_value(ln, "cmpd") {
+    Some(v) => v
+    None => ""
+  }
+  // §20.1.10.44 ST_PenAlignment
+  let align = match attr_value(ln, "algn") {
+    Some(v) => v
+    None => ""
+  }
+  { width, color, cap, join, dash, compound, align }
 }
 
 ///|
@@ -4135,7 +4219,23 @@ fn resolve_text_fill_choice(
         "gradFill" => resolve_text_gradient_fill(f, ctx~)
         "pattFill" => Some(resolve_text_pattern_fill(f, ctx~))
         "blipFill" => Some(resolve_text_blip_fill(f))
-        "grpFill" => None
+        "grpFill" =>
+          match ctx.group_fill {
+            Some(gf) =>
+              match gf.name.local_name {
+                "solidFill" =>
+                  match resolve_solid_fill(gf, ctx~) {
+                    Some(_) => None
+                    None => None
+                  }
+                "gradFill" => resolve_text_gradient_fill(gf, ctx~)
+                "pattFill" => Some(resolve_text_pattern_fill(gf, ctx~))
+                "blipFill" => Some(resolve_text_blip_fill(gf))
+                "noFill" => Some(TextFillNone)
+                _ => None
+              }
+            None => None
+          }
         _ => None
       }
   }
@@ -4677,6 +4777,11 @@ fn render_layout_result_svg(
             text_attrs.push(@markup.attr("stroke-linecap", outline.cap))
             text_attrs.push(@markup.attr("stroke-linejoin", outline.join))
             text_attrs.push(@markup.attr("paint-order", "stroke fill"))
+            if outline.dash.length() > 0 {
+              text_attrs.push(
+                @markup.attr("stroke-dasharray", outline.dash),
+              )
+            }
           }
           None => ()
         }
@@ -5472,6 +5577,13 @@ fn render_group_svg(
     None => []
     Some(pr) => build_group_transform_attr(extract_group_xfrm(pr))
   }
+  // §20.1.8.36 grpFill — extract the group's own fill element so
+  // child shapes that declare `<a:grpFill/>` can inherit it.
+  let grp_fill_el : @xml.Element? = match grp_sp_pr {
+    Some(pr) => find_fill_child(pr)
+    None => None
+  }
+  let child_ctx = ColorResolveContext::with_group_fill(ctx, grp_fill_el)
   let g_attrs : Array[@xml.Attribute] = []
   for a in transform_attrs {
     g_attrs.push(a)
@@ -5499,7 +5611,7 @@ fn render_group_svg(
           for
             n in render_shape_svg(
               resolved,
-              ctx,
+              child_ctx,
               defs,
               image_resolver,
               part_resolver,

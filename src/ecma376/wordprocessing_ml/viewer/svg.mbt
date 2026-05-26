@@ -688,6 +688,9 @@ priv struct ParaProps {
 ///     paragraphs wrap alongside the frame; `none` / `notBeside`
 ///     leave the body at full width and the frame floats over
 ///     (`none`) or under (`notBeside`) the inline flow.
+///   * `w:hSpace` / `w:vSpace` — horizontal / vertical insets
+///     between the frame and surrounding body text (twips → px).
+///     When omitted, a 14 px default gutter is used.
 ///   * `w:yAlign="top"|"center"|"bottom"|"inside"|"outside"` per
 ///     §22.9.2.20 ST_YAlign — paragraph-band-relative vertical
 ///     placement against the `w:vAnchor`-resolved band ("page" →
@@ -708,14 +711,6 @@ priv struct ParaProps {
 ///   * `w:xAlign="inside"|"outside"` — book-spine-relative
 ///     placement; needs facing-page parity tracked through
 ///     `<w:sectPr>`.  Treated as the explicit `w:x` offset.
-///   * `w:wrap="none"` overlay — the frame is positioned but the
-///     body keeps the FULL column width, which causes glyphs to
-///     overlap when both occupy the same coordinates.  The
-///     side-anchored fixture uses `wrap="around"` which IS
-///     handled.
-///   * `w:hSpace` / `w:vSpace` (the §17.3.1.11 frame insets) —
-///     not parsed; the body↔frame gutter uses a fixed empirical
-///     value (`wrap_gutter`).
 ///   * Body paragraph that EXCEEDS the frame's vertical band:
 ///     the entire body paragraph is laid out at the narrow band
 ///     width, even when its later lines could re-expand once the
@@ -758,6 +753,18 @@ priv struct FramePr {
   /// flow is NOT narrowed — the frame floats but body text passes
   /// underneath).
   wrap : String
+  /// `w:hSpace` — horizontal inset between the frame and
+  /// surrounding body text (twips → px). §17.3.1.11.
+  h_space_px : Double
+  /// `w:vSpace` — vertical inset above / below the frame
+  /// (twips → px). §17.3.1.11.
+  v_space_px : Double
+  /// `w:dropCap` — §17.18.20 ST_DropCap: `"drop"` (inside text
+  /// margin), `"margin"` (outside text margin), or empty/`"none"`.
+  drop_cap : String
+  /// `w:lines` — number of anchor-paragraph lines the drop cap
+  /// spans. Defaults to 1 when omitted. §17.3.1.11.
+  lines : Int
 }
 
 ///|
@@ -2170,13 +2177,10 @@ fn collect_blocks(
   let mut wrap_height_remaining = 0.0
   let mut wrap_body_width = content_width
   // CSS-pixel gap reserved between the body band and the frame box.
-  // Tuned against the reference renderer for the side-anchored fixture: a
-  // ~14-px gutter keeps the body's three-line wrap (matching the reference renderer's
-  // word-break grid) while preventing the trailing glyph of the
-  // body's longest line from visually bleeding into the frame's
-  // first column.  Pulling it wider forces a fourth body line and
-  // pulling it tighter leaks glyphs into the frame band.
-  let wrap_gutter = 14.0
+  // §17.3.1.11 `w:hSpace` supplies the spec value; when omitted we
+  // fall back to 14 px (tuned against the reference renderer for the
+  // side-anchored fixture).
+  let default_wrap_gutter = 14.0
   for child in body.children {
     match child {
       Element(e) =>
@@ -2213,10 +2217,13 @@ fn collect_blocks(
                 // hard clip.  An empty / zero `w:h` falls back to
                 // the laid paragraph height so the band still
                 // matches the visible frame.
+                // §17.3.1.11 vSpace — vertical insets extend the
+                // wrap band above and below the frame.
+                let v_inset = fp.v_space_px * 2.0
                 let band_h = if fp.h_px > probe.height {
-                  fp.h_px
+                  fp.h_px + v_inset
                 } else {
-                  probe.height
+                  probe.height + v_inset
                 }
                 // Only `around` / `tight` / `through` (and the
                 // default empty / `auto`) cause body wrapping; the
@@ -2258,7 +2265,12 @@ fn collect_blocks(
                         0.0
                       }
                   }
-                  let body_w = (frame_left_in_content - wrap_gutter).max(
+                  let gutter = if fp.h_space_px > 0.0 {
+                    fp.h_space_px
+                  } else {
+                    default_wrap_gutter
+                  }
+                  let body_w = (frame_left_in_content - gutter).max(
                     content_width * 0.4,
                   )
                   wrap_body_width = body_w
@@ -3065,6 +3077,18 @@ fn resolve_para_props(
             x_align: attr_value(fp, "xAlign").unwrap_or(""),
             y_align: attr_value(fp, "yAlign").unwrap_or(""),
             wrap: attr_value(fp, "wrap").unwrap_or(""),
+            h_space_px: read_twips("hSpace"),
+            v_space_px: read_twips("vSpace"),
+            drop_cap: attr_value(fp, "dropCap").unwrap_or(""),
+            lines: match attr_value(fp, "lines") {
+              None => 1
+              Some(v) =>
+                try @string.parse_int(v) catch {
+                  _ => 1
+                } noraise {
+                  n => if n > 0 { n } else { 1 }
+                }
+            },
           })
         }
       }
@@ -5535,7 +5559,14 @@ fn break_into_lines(
       // joined by a literal whitespace run); without this swallow
       // the next line begins with a left-indent that the reference renderer
       // does not draw.
-      if used.val == 0.0 && is_wrap_whitespace(span.text) {
+      //
+      // Tab instruction sentinels (`text == "\t"` from `<w:tab/>`)
+      // are exempt: they are §17.3.1.38 positioning operators, not
+      // ordinary whitespace. `resolve_tab_spans` resolves them to
+      // a tab-stop advance (or a bar-tab decoration) after line
+      // breaking completes, so swallowing them here would lose the
+      // tab.
+      if used.val == 0.0 && span.text != "\t" && is_wrap_whitespace(span.text) {
         continue
       }
       current.push(span)
@@ -6502,11 +6533,43 @@ fn flow_into_pages(
           "page" => 0.0
           _ => cfg.margin_left
         }
-        let frame_x = match fp.x_align {
-          "right" => cfg.page_width - cfg.margin_right - fp.w_px
-          "center" => cfg.margin_left + (content_width - fp.w_px) / 2.0
-          "left" => cfg.margin_left
-          _ => h_anchor_base + fp.x_px
+        // §22.9.2.18 ST_XAlign — inside/outside resolve based on
+        // page parity (§17.6.10 mirrorMargins). On odd pages
+        // (0-based: 0, 2, …) inside = left, outside = right;
+        // on even pages the mapping flips.
+        let is_even_page = pages.length() % 2 == 1
+        // §17.18.20 dropCap — "drop" positions inside the text
+        // margin (left edge at margin_left); "margin" positions
+        // outside (left edge at margin_left − frame_width −
+        // hSpace so the drop cap sits in the margin gutter).
+        let frame_x = if fp.drop_cap == "drop" {
+          cfg.margin_left
+        } else if fp.drop_cap == "margin" {
+          let gutter = if fp.h_space_px > 0.0 {
+            fp.h_space_px
+          } else {
+            0.0
+          }
+          (cfg.margin_left - fp.w_px - gutter).max(0.0)
+        } else {
+          match fp.x_align {
+            "right" => cfg.page_width - cfg.margin_right - fp.w_px
+            "center" => cfg.margin_left + (content_width - fp.w_px) / 2.0
+            "left" => cfg.margin_left
+            "inside" =>
+              if is_even_page {
+                cfg.page_width - cfg.margin_right - fp.w_px
+              } else {
+                cfg.margin_left
+              }
+            "outside" =>
+              if is_even_page {
+                cfg.margin_left
+              } else {
+                cfg.page_width - cfg.margin_right - fp.w_px
+              }
+            _ => h_anchor_base + fp.x_px
+          }
         }
         // Vertical anchor: "page" → page-relative; "margin" →
         // content-area top; "text" / default → the current flow
@@ -6545,8 +6608,21 @@ fn flow_into_pages(
           "margin" => content_height
           _ => 0.0
         }
-        let frame_h = if fp.h_px > 0.0 { fp.h_px } else { p.height }
-        let yalign_applies = fp.v_anchor == "page" || fp.v_anchor == "margin"
+        // §17.18.20 dropCap — when present with lines > 0, the
+        // frame height is governed by the drop-cap line count, not
+        // the declared h. The drop cap aligns to the top of the
+        // anchor paragraph (the next body paragraph at cur_y).
+        let is_drop_cap = fp.drop_cap == "drop" || fp.drop_cap == "margin"
+        let frame_h = if is_drop_cap && fp.lines > 0 {
+          let line_h = p.height / p.lines.length().to_double().max(1.0)
+          line_h * fp.lines.to_double()
+        } else if fp.h_px > 0.0 {
+          fp.h_px
+        } else {
+          p.height
+        }
+        let yalign_applies = !is_drop_cap &&
+          (fp.v_anchor == "page" || fp.v_anchor == "margin")
         let frame_y = if yalign_applies {
           match fp.y_align {
             "top" | "inside" => band_top

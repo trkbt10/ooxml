@@ -2,6 +2,34 @@
 // modules (measurer / line breaker / auto-number).
 
 ///|
+/// Inject a deterministic test font so `measure_span` returns real
+/// metrics regardless of the host font catalogue. Without this, hosts
+/// that lack "Noto Sans" raise `FontUnresolvedError` on every
+/// measurement call.
+let test_font_ready : Ref[Bool] = { val: false }
+
+fn ensure_test_font() -> Unit {
+  if test_font_ready.val {
+    return
+  }
+  test_font_ready.val = true
+  let bytes = try @fs.read_file_to_bytes(
+      "src/util/glyph/fixtures/subset.ttf",
+    ) catch {
+    _ => abort("Cannot load test font fixture src/util/glyph/fixtures/subset.ttf")
+  } noraise {
+    b => b
+  }
+  @glyph.set_default_font_set(
+    @glyph.FontSet::new(
+      resolver=@glyph.FontResolver::in_memory(
+        Map([("Noto Sans", bytes)], capacity=1),
+      ),
+    ),
+  )
+}
+
+///|
 /// Build a plain LayoutSpan for testing.
 fn tl_make_span(
   text : String,
@@ -41,6 +69,7 @@ fn tl_make_span(
 
 ///|
 test "measure_span on a non-empty ASCII string" {
+  ensure_test_font()
   let s = tl_make_span("Hello", font_size=24.0)
   let m = measure_span(s)
   assert_true(m.width > 0.0)
@@ -163,6 +192,7 @@ test "format_auto_number — unknown scheme falls back" {
 
 ///|
 test "break_into_lines respects explicit line breaks" {
+  ensure_test_font()
   let a = tl_make_span("Hello", font_size=18.0)
   let b : LayoutSpan = { ..tl_make_span("", font_size=18.0), is_break: true }
   let c = tl_make_span("World", font_size=18.0)
@@ -178,6 +208,7 @@ test "break_into_lines respects explicit line breaks" {
 
 ///|
 test "break_into_lines wraps long text" {
+  ensure_test_font()
   // A very wide text on a very narrow box must wrap.
   let s = tl_make_span(
     "The quick brown fox jumps over the lazy dog",
@@ -199,6 +230,7 @@ test "break_into_lines wraps long text" {
 /// this trim, every centred / right-aligned wrapped line drifts
 /// half-a-space to the right.
 test "get_line_visible_width trims trailing whitespace" {
+  ensure_test_font()
   let s1 = tl_make_span("Hello ", font_size=24.0)
   let spans = measure_spans([s1])
   let full = get_line_width(spans)
@@ -222,6 +254,7 @@ test "get_line_visible_width trims trailing whitespace" {
 
 ///|
 test "get_line_visible_width returns 0 for whitespace-only line" {
+  ensure_test_font()
   // An empty span produces 0 width and is unaffected; a span that is
   // ALL whitespace gets trimmed down to zero — centring such a line
   // would otherwise place it left-of-centre by half-its-own-width.
@@ -232,6 +265,7 @@ test "get_line_visible_width returns 0 for whitespace-only line" {
 
 ///|
 test "get_line_visible_width preserves interior whitespace" {
+  ensure_test_font()
   // Only the trailing run of whitespace is excluded — interior
   // spaces between visible glyphs must still count toward the
   // alignment width.

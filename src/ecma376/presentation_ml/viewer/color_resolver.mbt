@@ -48,6 +48,12 @@ pub struct ColorResolveContext {
   /// the snapshot harness compares against it); set it to `false` via
   /// `with_strict_spec` for pure ECMA-376 conformance.
   clamp_overflow_hue : Bool
+  /// §20.1.8.36 grpFill / §A.4.1 CT_GroupFillProperties — the fill
+  /// element from the nearest ancestor `<p:grpSp>/<p:grpSpPr>`.
+  /// When a child shape or text run declares `<a:grpFill/>`, this
+  /// element is resolved through the current ctx to produce the
+  /// inherited fill. `None` when outside any group.
+  group_fill : @xml.Element?
 }
 
 ///|
@@ -66,6 +72,7 @@ pub fn ColorResolveContext::empty() -> ColorResolveContext {
     // the snapshot harness; a strict-spec consumer must opt out via
     // `with_strict_spec`.
     clamp_overflow_hue: true,
+    group_fill: None,
   }
 }
 
@@ -80,15 +87,7 @@ pub fn ColorResolveContext::with_clamp_overflow_hue(
   ctx : ColorResolveContext,
   clamp_overflow_hue : Bool,
 ) -> ColorResolveContext {
-  {
-    color_map: ctx.color_map,
-    color_map_override: ctx.color_map_override,
-    color_scheme: ctx.color_scheme,
-    ph_clr: ctx.ph_clr,
-    major_font: ctx.major_font,
-    minor_font: ctx.minor_font,
-    clamp_overflow_hue,
-  }
+  { ..ctx, clamp_overflow_hue }
 }
 
 ///|
@@ -116,15 +115,7 @@ pub fn ColorResolveContext::with_font_scheme(
   major_font : Map[String, String],
   minor_font : Map[String, String],
 ) -> ColorResolveContext {
-  {
-    color_map: ctx.color_map,
-    color_map_override: ctx.color_map_override,
-    color_scheme: ctx.color_scheme,
-    ph_clr: ctx.ph_clr,
-    major_font,
-    minor_font,
-    clamp_overflow_hue: ctx.clamp_overflow_hue,
-  }
+  { ..ctx, major_font, minor_font }
 }
 
 ///|
@@ -187,15 +178,18 @@ pub fn ColorResolveContext::with_ph_clr(
   ctx : ColorResolveContext,
   ph_clr : String,
 ) -> ColorResolveContext {
-  {
-    color_map: ctx.color_map,
-    color_map_override: ctx.color_map_override,
-    color_scheme: ctx.color_scheme,
-    ph_clr: Some(ph_clr),
-    major_font: ctx.major_font,
-    minor_font: ctx.minor_font,
-    clamp_overflow_hue: ctx.clamp_overflow_hue,
-  }
+  { ..ctx, ph_clr: Some(ph_clr) }
+}
+
+///|
+/// §20.1.8.36 grpFill — derive a new context that carries the
+/// ancestor group's fill element. Child shapes / text runs that
+/// declare `<a:grpFill/>` resolve through this element.
+pub fn ColorResolveContext::with_group_fill(
+  ctx : ColorResolveContext,
+  group_fill : @xml.Element?,
+) -> ColorResolveContext {
+  { ..ctx, group_fill }
 }
 
 ///|
@@ -218,15 +212,7 @@ pub fn ColorResolveContext::with_maps(
   color_map : ColorMap,
   color_map_override : ColorMap?,
 ) -> ColorResolveContext {
-  {
-    color_map,
-    color_map_override,
-    color_scheme: ctx.color_scheme,
-    ph_clr: ctx.ph_clr,
-    major_font: ctx.major_font,
-    minor_font: ctx.minor_font,
-    clamp_overflow_hue: ctx.clamp_overflow_hue,
-  }
+  { ..ctx, color_map, color_map_override }
 }
 
 ///|
@@ -234,15 +220,7 @@ pub fn ColorResolveContext::with_color_scheme(
   ctx : ColorResolveContext,
   color_scheme : ColorScheme,
 ) -> ColorResolveContext {
-  {
-    color_map: ctx.color_map,
-    color_map_override: ctx.color_map_override,
-    color_scheme,
-    ph_clr: ctx.ph_clr,
-    major_font: ctx.major_font,
-    minor_font: ctx.minor_font,
-    clamp_overflow_hue: ctx.clamp_overflow_hue,
-  }
+  { ..ctx, color_scheme }
 }
 
 ///|
