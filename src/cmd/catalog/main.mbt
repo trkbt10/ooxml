@@ -226,13 +226,15 @@ fn main {
       }
       return
     }
-    for key, path in ancestry {
+    for key, paths in ancestry {
       if nt_name(key) == ancestry_id {
-        let names : Array[String] = []
-        for step in path {
-          names.push(step.0)
+        for i, path in paths {
+          let names : Array[String] = []
+          for step in path {
+            names.push(step.0)
+          }
+          println("  [#\{i}] \{key} <- " + names.join(" / "))
         }
-        println("  \{key} <- " + names.join(" / "))
       }
     }
     return
@@ -383,38 +385,93 @@ fn main {
     // contains the embed tree; the document body stays minimal).
     // Every host_fmt registered here MUST be handled by
     // `host_package` in verify.mbt.
-    let (host_fmt, embed_tree) = {
-      let akey = nt_key(decl.name, decl.type_name)
-      match ancestry.get(akey) {
-        Some(path) if path.length() >= 1 => {
-          let root_name = path[0].0
-          let host = match root_name {
-            "worksheet" => "xlsx"
-            "sld" => "pptx"
-            "settings" => "docx:settings"
-            "styles" => "docx:styles"
-            "numbering" => "docx:numbering"
-            "fonts" => "docx:fonts"
-            "webSettings" => "docx:webSettings"
-            "comments" => "docx:comments"
-            "footnotes" => "docx:footnotes"
-            "endnotes" => "docx:endnotes"
-            "theme" => "pptx:theme"
-            "presentation" => "pptx:presentation"
-            "workbook" => "xlsx:workbook"
-            "sharedStrings" => "xlsx:sharedStrings"
-            "styleSheet" => "xlsx:styles"
-            _ => "docx"
-          }
-          (host, wrap_in_ancestry(schema, path, 1, target))
-        }
-        _ => (if fmt != "" { fmt } else { "docx" }, target)
+    //
+    // Multi-path ancestry — `build_ancestry` returns an ordered
+    // list of candidate wrapper chains per element.  The first
+    // chain is the historically-canonical pick (the same chain the
+    // pre-multi-path implementation chose); subsequent chains are
+    // alternates discovered by the BFS.  We try each candidate in
+    // order: the first one whose `verify_entry` returns `rendered`
+    // wins.  Falling through the entire list is a `parsed` (or
+    // `open-fail`) outcome — we keep the FIRST candidate's outcome
+    // as canonical for the entry, so a base-walked chain that
+    // round-trips but does not render does not displace the
+    // direct chain's outcome.
+    fn host_for_root(root_name : String) -> String {
+      match root_name {
+        "worksheet" => "xlsx"
+        "sld" => "pptx"
+        "settings" => "docx:settings"
+        "styles" => "docx:styles"
+        "numbering" => "docx:numbering"
+        "fonts" => "docx:fonts"
+        "webSettings" => "docx:webSettings"
+        "comments" => "docx:comments"
+        "footnotes" => "docx:footnotes"
+        "endnotes" => "docx:endnotes"
+        "theme" => "pptx:theme"
+        "presentation" => "pptx:presentation"
+        "workbook" => "xlsx:workbook"
+        "sharedStrings" => "xlsx:sharedStrings"
+        "styleSheet" => "xlsx:styles"
+        _ => "docx"
       }
+    }
+
+    let candidates : Array[(String, @xml.Element)] = []
+    let akey = nt_key(decl.name, decl.type_name)
+    match ancestry.get(akey) {
+      Some(paths) if paths.length() >= 1 =>
+        for path in paths {
+          if path.length() >= 1 {
+            let host = host_for_root(path[0].0)
+            candidates.push((host, wrap_in_ancestry(schema, path, 1, target)))
+          } else {
+            // Empty path — the element IS itself a part-root; embed
+            // unwrapped.
+            candidates.push((if fmt != "" { fmt } else { "docx" }, target))
+          }
+        }
+      _ => candidates.push((if fmt != "" { fmt } else { "docx" }, target))
     }
     // Round-trip + render verification with a unique marker token.
     let marker = "CATm\{count}m"
-    let outcome = verify_entry(host_fmt, embed_tree, marker)
+    let mut host_fmt = candidates[0].0
+    let mut embed_tree = candidates[0].1
+    let mut outcome = ""
+    let mut first_outcome = ""
+    for i, cand in candidates {
+      let (cfmt, ctree) = cand
+      let o = verify_entry(cfmt, ctree, marker)
+      if i == 0 {
+        first_outcome = o
+        // Default canonical pick — the first candidate, kept
+        // unless a later one actually renders.
+        host_fmt = cfmt
+        embed_tree = ctree
+        outcome = o
+      }
+      if o == "rendered" {
+        host_fmt = cfmt
+        embed_tree = ctree
+        outcome = o
+        break
+      }
+    }
+    // If no candidate rendered, fall back to the first candidate's
+    // outcome — that preserves the previously-canonical behaviour
+    // for elements where multi-path didn't help.
+    if outcome != "rendered" {
+      outcome = first_outcome
+      host_fmt = candidates[0].0
+      embed_tree = candidates[0].1
+    }
     if debug_id != "" && ident == debug_id {
+      // Per-namespace dump suffix so multiple entries sharing the
+      // same ident (e.g. `shape` lives in chart / diagram / VML
+      // namespaces) do not overwrite each other's pkg / SVG when
+      // the debug probe runs the catalog with a single id filter.
+      let suffix = ns_prefix(decl.namespace)
       println("debug id=\{ident} element=\{decl.name} fmt=\{fmt}")
       println("  type key    : \{decl.type_name}")
       println("  host format : \{host_fmt}")
@@ -426,14 +483,17 @@ fn main {
         "pptx" => pptx_package(subst)
         _ => docx_package(subst)
       }
-      let _ = try? @fs.write_bytes_to_file("/tmp/dbg.bin", pkg)
-      println("  pkg -> /tmp/dbg.bin (\{pkg.length()}b)")
+      let bin_path = "/tmp/dbg-\{suffix}.bin"
+      let svg_p_path = "/tmp/dbg-\{suffix}-present.svg"
+      let svg_a_path = "/tmp/dbg-\{suffix}-absent.svg"
+      let _ = try? @fs.write_bytes_to_file(bin_path, pkg)
+      println("  pkg -> \{bin_path} (\{pkg.length()}b)")
       let (psvg, asvg) = debug_render_pair(host_fmt, embed_tree)
       println("  present SVG : \{psvg.length()}b")
       println("  absent  SVG : \{asvg.length()}b")
       println("  SVG differ  : \{psvg != asvg}")
-      let _ = try? @fs.write_string_to_file("/tmp/dbg_present.svg", psvg)
-      let _ = try? @fs.write_string_to_file("/tmp/dbg_absent.svg", asvg)
+      let _ = try? @fs.write_string_to_file(svg_p_path, psvg)
+      let _ = try? @fs.write_string_to_file(svg_a_path, asvg)
     }
     // Surface every non-clean outcome with its entry id so a
     // regression can be located without a separate probe run.

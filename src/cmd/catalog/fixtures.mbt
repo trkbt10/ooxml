@@ -4984,6 +4984,7 @@ fn tabled_cases() -> Array[TabledCase] {
 fn pivoted_cases() -> Array[PivotedCase] {
   let pcases : Array[PivotedCase] = []
   extras_sml_pivots(pcases)
+  extras_r29_sml_pivot_cache_rich(pcases)
   pcases
 }
 

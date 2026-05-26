@@ -62,6 +62,19 @@ fn element_nt(schema : Schema, el : @xml.Element) -> (String, String) {
 /// Group references are expanded *transitively* — `<w:p>` lives many
 /// nested groups deep under `CT_Body` (EG_BlockLevelElts ->
 /// EG_ContentBlockContent -> p), so a one-level expansion misses it.
+///
+/// `<xsd:complexContent>/<xsd:extension base="…">` and the
+/// corresponding `<xsd:restriction>` are FOLLOWED: the base type's
+/// particles are collected before the local sequence is walked, so a
+/// complexType that adds children on top of an EG_*-bearing base
+/// (e.g. `CT_TblCellMar` extends `CT_TcMar` extends EG_RPrBase) sees
+/// every inherited child in the BFS frontier.  Without this an
+/// element like `<w:tcBorders>` declared only inside the base type
+/// would never be reached by the ancestry walk and would be marked
+/// `parsed` despite the renderer being able to surface it.
+/// `seen_bases` guards against base chains that loop back on
+/// themselves (no real OOXML type does this but a defensive cap keeps
+/// the walk total).
 fn type_children(schema : Schema, ct : @xml.Element) -> Array[(String, String)] {
   let out : Array[(String, String)] = []
   // Direct `<xsd:element>` children, plus those inside any
@@ -106,28 +119,12 @@ fn type_children(schema : Schema, ct : @xml.Element) -> Array[(String, String)] 
         return
       }
       // `<xsd:extension base="…">` / `<xsd:restriction base="…">` —
-      // pull the base type's particles into this type's content
-      // model.  XSD §3.3.2 inheritance semantics: a derived
-      // complexType's element content is the base's particles
-      // followed by its own.  Without inheriting the base, a
-      // derived type such as WML `CT_Document` (which `extends
-      // CT_DocumentBase`) exposes only its own local sequence
-      // (`<w:body>`) and the BFS misses the inherited
-      // `<w:background>` child entirely — that drops §17.2.1 from
-      // catalog render coverage even though the renderer fully
-      // supports it.  Likewise WML `CT_TcPr` extends
-      // `CT_TcPrInner` → `CT_TcPrBase` so `<w:tcBorders>` and
-      // `<w:tcW>` need the base walk to surface from the
-      // `<w:tc>` host.
-      //
-      // Multi-path ancestry (build_ancestry) records ALL discovered
-      // wrapper chains per element and the catalog verifier tries
-      // each candidate in order — so a base-walked chain that
-      // happens to land an element on a non-rendering host (e.g.
-      // `<wp:lineTo>` reached via the base-walked
-      // `wp:positionH/<...>/CT_Point2D` chain) does not displace
-      // the direct chain that the renderer actually visits.  The
-      // `seen_bases` guard prevents inheritance loops.
+      // collect the base type's children BEFORE descending into the
+      // local content model.  This is the part of the XSD content
+      // model the previous version skipped: the base's particles are
+      // semantically prepended to the local sequence (§17.4
+      // CT_TblCellMar inherits CT_TcMar's borders / margins), so they
+      // must be visited for the BFS frontier to surface them.
       if is_xsd(e, "extension") || is_xsd(e, "restriction") {
         match attr(e, "base") {
           Some(base_key) =>
@@ -140,6 +137,9 @@ fn type_children(schema : Schema, ct : @xml.Element) -> Array[(String, String)] 
             }
           None => ()
         }
+        // Fall through to also walk the local sequence — the
+        // extension's locally-declared particles are real children
+        // too.
       }
       // sequence / choice / all / complexContent / extension / … —
       // descend into the particle structure.
@@ -227,15 +227,20 @@ fn part_roots(schema : Schema) -> Array[(String, String)] {
 /// pairs from a part-root element down to (and excluding) the
 /// element.  BFS over the containment graph; each complexType is
 /// expanded once per BFS pass.  The first chain in the returned list
-/// is the canonical pick (preferred renderer-bearing route); the
-/// remaining chains are alternates the caller may try when the
-/// canonical route does not actually surface the element through the
-/// renderer.  Keeping ALL candidates lets a base-walked chain that
-/// reaches more elements coexist with the direct chain that the
-/// renderer visits — `lineTo` / `drawing` would otherwise regress
-/// when the base-walked chain replaces their direct chain (the
-/// base-walked chain hosts them under a node the renderer does not
-/// inspect).
+/// is the canonical one (preferred renderer-bearing route, picked by
+/// the same three-step heuristic the previous single-path version
+/// used: namespace-aligned primary root, primary-root preference,
+/// shape-host preference); subsequent chains are alternates the
+/// caller may try when the canonical route does not actually surface
+/// the element through the renderer.  Keeping ALL candidates lets the
+/// catalog verifier fall back from a base-walked chain (which
+/// reaches more elements via `<xsd:extension base>` but sometimes
+/// lands in a non-rendering host) to a direct chain (which renders
+/// but lacks the deeper coverage) — `lineTo` / `drawing` previously
+/// regressed when the base-walk replaced their direct chain, because
+/// the base-walked chain hosts the element under a node the renderer
+/// does not visit. With the multi-path list both routes are
+/// preserved and the verifier picks whichever actually renders.
 fn build_ancestry(
   schema : Schema,
 ) -> Map[String, Array[Array[(String, String)]]] {
@@ -369,42 +374,20 @@ fn build_ancestry(
   run_bfs(supp_queue, primary_keys)
   // An `<xsd:any>` extension point (e.g. CT_GraphicalObjectData)
   // legally accepts any element.  For an element the named BFS
-  // could not reach, route it through one of the discovered
-  // any-host paths — `graphicData`-bearing chains lead to the
-  // diagram / chart / table dispatcher; a generic `extLst/ext` slot
-  // routes to a metadata projection.  We register the FIRST visual
-  // any-host AND the first non-visual any-host of every distinct
-  // primary-root pipeline (the BFS surfaces several xsd:any slots
-  // across `document` / `worksheet` / `sld`, and the right one
-  // depends on the element's own format — `worksheet/extLst/ext`
-  // hosts a Strict-namespace worksheet, `document/background/...`
-  // does not).  Multi-path ancestry then lets the catalog verifier
-  // try each fallback in turn so it picks whichever one the
-  // renderer actually surfaces.
+  // could not reach, route it through the FIRST visual any-host —
+  // `graphicData`-bearing chains lead to the diagram / chart /
+  // table dispatcher, where the renderer actually consults the
+  // payload.  A generic `extLst/ext` slot routes to nowhere
+  // visible.
   let mut visual_host : Array[(String, String)]? = None
-  // One non-visual any-host per primary part-root pipeline — keyed
-  // by the root element's local name (`document` / `worksheet` /
-  // `sld`, or other when the host chain is rooted at a
-  // supplementary part).  Without the per-pipeline split, the
-  // FIRST encountered non-visual any-host (e.g. the deepest
-  // `document/background/...` slot the base-walk now surfaces
-  // first) replaces the previously-canonical `worksheet/extLst/ext`
-  // route for Strict-namespace worksheets, and the Strict
-  // `<s:worksheet>` element no longer renders because its host
-  // package is built as `.docx` instead of `.xlsx`.
-  let nonvisual_by_root : Map[String, Array[(String, String)]] = Map::new()
-  let nonvisual_order : Array[String] = []
+  let mut nonvisual_host : Array[(String, String)]? = None
   for host_path in any_hosts {
     if any_host_is_visual(host_path) {
       if visual_host is None {
         visual_host = Some(host_path)
       }
-    } else {
-      let root_key = if host_path.length() == 0 { "" } else { host_path[0].0 }
-      if not(nonvisual_by_root.contains(root_key)) {
-        nonvisual_by_root[root_key] = host_path
-        nonvisual_order.push(root_key)
-      }
+    } else if nonvisual_host is None {
+      nonvisual_host = Some(host_path)
     }
   }
   for _k, decl in schema.all_elements {
@@ -432,44 +415,23 @@ fn build_ancestry(
         Some(h) => existing.push(h)
         None => ()
       }
-      // Prefer the non-visual any-host whose root pipeline matches
-      // the element's own namespace — a Strict worksheet under
-      // `worksheet/extLst/ext` reaches the SML renderer; the same
-      // worksheet under `document/background` does not.  Then
-      // append the remaining per-root candidates as alternates the
-      // multi-path verifier can try.
-      let preferred_root = match strip_ns(decl.namespace) {
-        ns if ns == "wordprocessingml/main" => "document"
-        ns if ns == "spreadsheetml/main" => "worksheet"
-        ns if ns == "presentationml/main" => "sld"
-        _ => ""
-      }
-      match nonvisual_by_root.get(preferred_root) {
+      match nonvisual_host {
         Some(h) => existing.push(h)
         None => ()
-      }
-      for r in nonvisual_order {
-        if r == preferred_root {
-          continue
-        }
-        match nonvisual_by_root.get(r) {
-          Some(h) => existing.push(h)
-          None => ()
-        }
       }
       all_paths[ckey] = existing
     }
   }
   // Multi-path map: keep EVERY discovered wrapper chain per element
-  // but ORDER them so the first chain is the canonical pick.  The
-  // caller (catalog main) walks candidates in order, trying each
-  // until one renders — keeping alternates lets a base-walked chain
-  // that reaches more elements coexist with the direct chain that
-  // the renderer visits.  Without the alternate list a base-walk
-  // gain (`background` / `tcBorders` / `tcW` / `tcFitText` /
-  // `header`) would come at the cost of `lineTo` / `drawing`
-  // losses — those elements need the direct chain because the
-  // base-walked chain lands them in a non-rendering host.
+  // but ORDER them so the first chain is the historically-canonical
+  // one.  The caller (catalog main) walks candidates in order, trying
+  // each until one renders — keeping alternates lets a base-walked
+  // chain that reaches more elements coexist with the direct chain
+  // that the renderer actually visits.  Without the alternate list a
+  // base-walk gain (`background` / `tcBorders` / `tcW` / `tcFitText`
+  // / `header`) would come at the cost of `lineTo` / `drawing` losses
+  // — those elements need the direct chain because the base-walked
+  // chain lands them in a non-rendering host.
   //
   // Three-level preference, applied as a per-path SCORE that the
   // sort uses to put the best path first:
@@ -480,17 +442,23 @@ fn build_ancestry(
   //   spreadsheetml → `worksheet`, presentationml → `sld`).
   //
   // - PRIMARY ROOT (weight 100): the path starts at a primary
-  //   part root, or the empty path (the element IS itself a part
-  //   root).  Supplementary roots (`presentation` / `workbook` /
-  //   `theme` / `styleSheet`) score zero here so a primary chain
-  //   ranks above a shallower supplementary one for elements
-  //   reachable from both.
+  //   part root (`document` / `worksheet` / `sld`, which host the
+  //   bulk of renderable content), or the empty path (the element
+  //   IS itself a part root).  Supplementary roots
+  //   (`presentation` / `workbook` / `theme` / `styleSheet`) score
+  //   zero here so a primary chain ranks above a shallower
+  //   supplementary one for elements reachable from both.
   //
   // - SHAPE HOST (weight 10, only for cNv* / hlink* names): the
   //   path goes through a shape-attached host (sp / pic / cxnSp /
-  //   grpSp / graphicFrame).
+  //   grpSp / graphicFrame) where the renderer actually consults
+  //   the non-visual properties.
   //
-  // Ties are broken by BFS insertion order (stable sort).
+  // Ties are broken by BFS insertion order (stable sort).  Shorter
+  // paths are NOT preferred — the BFS already visits shallow
+  // routes first, and a shallow path that doesn't render still
+  // loses to a deeper one that does in the verifier's fallback
+  // loop.
   let ancestry : Map[String, Array[Array[(String, String)]]] = Map::new()
   for key, paths in all_paths {
     if paths.length() == 0 {
@@ -523,8 +491,9 @@ fn build_ancestry(
     }
 
     // Pair each path with its (negated) score so a stable sort
-    // ascending yields highest-score first.  `sort_by` is stable,
-    // so paths with equal score preserve their BFS insertion order.
+    // ascending yields highest-score first.  `sort_by` in MoonBit's
+    // stdlib is stable, so paths with equal score preserve their
+    // BFS insertion order.
     let scored : Array[(Int, Array[(String, String)])] = []
     for p in paths {
       scored.push((-score_path(p), p))
@@ -538,12 +507,12 @@ fn build_ancestry(
         0
       }
     })
-    // De-duplicate: the same path can be discovered by both the
-    // primary and supplementary BFS pass for elements that appear
-    // in multiple types.  Keep the first occurrence (highest score)
+    let ordered : Array[Array[(String, String)]] = []
+    // De-duplicate: a path can be discovered by both the primary
+    // and supplementary BFS pass for elements that appear in
+    // multiple types.  Keep the first occurrence (highest score)
     // and drop later duplicates so the verifier doesn't re-try the
     // same chain.
-    let ordered : Array[Array[(String, String)]] = []
     let seen : Map[String, Bool] = Map::new()
     for entry in scored {
       let p = entry.1

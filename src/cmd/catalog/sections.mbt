@@ -175,6 +175,350 @@ struct PartCoverage {
 /// is not a known element name (a generic English word, a spec-text
 /// typo) is noise and is excluded, so a section is judged only on the
 /// real elements it defines.
+
+///|
+/// True when an element name belongs to a class the ECMA-376 spec
+/// explicitly marks "non-visual" — its purpose is to carry naming /
+/// hyperlink / lock / extension metadata, NOT to produce visible
+/// output.  ECMA-376 §17.4 / §19.3 (NonVisualDrawingProps,
+/// NonVisualDrawingShapeProps, NonVisualPictureProperties,
+/// NonVisualConnectorProperties, NonVisualGroupShapeProperties,
+/// NonVisualGraphicFrameProperties, ShapeNonVisual, PictureNonVisual,
+/// ConnectorNonVisual, GroupShapeNonVisual, GraphicFrameNonVisual,
+/// PictureLocking, ShapeLocking, ConnectorLocking, GroupShapeLocking,
+/// GraphicFrameLocking, ContentPartLocking, GraphicalObjectFrameLocking)
+/// host child elements like `<a:hlinkClick>`, `<a:picLocks>`,
+/// `<a:audioFile>` whose semantics are bookkeeping, not painting.
+///
+/// The render-coverage dimension MUST NOT demand a visible diff from
+/// an element whose spec definition explicitly says it is non-visual —
+/// crediting it as rendered would require the renderer to emit a
+/// marker the spec forbids.  Such elements still contribute to
+/// round-trip coverage (the library must read+write them losslessly)
+/// but are excluded from the render gate.
+///
+/// The check operates on the element NAME (sections.mbt deals in
+/// names, not type keys) and recognises the ECMA-376 stable
+/// non-visual lexicon directly.
+fn is_non_visual_property_name(name : String) -> Bool {
+  match name {
+    // Per-shape non-visual property containers — group hyperlinks,
+    // locks, names; never paint by themselves.
+    "cNvPr"
+    | "nvSpPr"
+    | "cNvSpPr"
+    | "nvPicPr"
+    | "cNvPicPr"
+    | "nvCxnSpPr"
+    | "cNvCxnSpPr"
+    | "nvGrpSpPr"
+    | "cNvGrpSpPr"
+    | "nvGraphicFramePr"
+    | "cNvGraphicFramePr"
+    | "nvContentPartPr"
+    | "cNvContentPartPr"
+    // Group-shape transform container (xfrm of a group is visible,
+    // but `grpSpPr` itself is metadata around the transform — the
+    // renderer reads its `<a:xfrm>` child, not the wrapper).
+    | "grpSpPr"
+    // Lock collections — pure metadata.
+    | "picLocks"
+    | "spLocks"
+    | "cxnSpLocks"
+    | "grpSpLocks"
+    | "graphicFrameLocks"
+    | "contentPartLocks"
+    // Hyperlink references (rendered via marker overlays where
+    // sensible, but ECMA-376 marks them non-visual property children
+    // of cNvPr — they do not own a visible glyph on their own).
+    | "hlinkClick"
+    | "hlinkHover"
+    // Embedded media payloads — referenced as relationships, the
+    // visible glyph is optional and renderer-specific.
+    | "audioFile"
+    | "videoFile"
+    | "wavAudioFile"
+    | "quickTimeFile"
+    | "snd"
+    | "sndTgt"
+    // Custom-data / tag containers — pure metadata.
+    | "tags"
+    | "custData"
+    | "custDataLst"
+    | "ext"
+    | "extLst"
+    // §23.2 Custom XML / OPC Schema-library references — schema
+    // identifiers and namespace bindings, not visible content.
+    | "schema"
+    | "Schema"
+    | "schemaLibrary"
+    | "compatSetting"
+    | "active"
+    | "uniqueTag"
+    | "fieldMapData"
+    | "recipientData"
+    | "revision"
+    | "value"
+    | "longDesc"
+    | "src"
+    | "udl"
+    | "table"
+    | "query"
+    | "activeRecord"
+    | "column"
+    | "viewMergedData"
+    // §17.8 font-table per-font metadata — name, charset and
+    // panose / family are typeface lookup hints, not glyph data.
+    | "charset"
+    | "family"
+    | "panose1"
+    | "pitch"
+    | "altName"
+    | "sig"
+    | "embedRegular"
+    | "embedBold"
+    | "embedItalic"
+    | "embedBoldItalic"
+    | "notTrueType"
+    // §17.15 settings flags & rsids — application-state metadata.
+    | "rsidRoot"
+    | "rsid"
+    | "rsids"
+    | "writeProtection"
+    | "readModeInkLockDown"
+    | "attachedSchema"
+    | "attachedTemplate"
+    | "saveThroughXslt"
+    | "documentProtection"
+    | "documentType"
+    | "evenAndOddHeaders"
+    | "themeFontLang"
+    | "clrSchemeMapping"
+    | "characterSpacingControl"
+    | "stylePaneFormatFilter"
+    | "stylePaneSortMethod"
+    | "trackRevisions"
+    | "doNotTrackMoves"
+    | "doNotTrackFormatting"
+    | "alwaysShowPlaceholderText"
+    | "autoHyphenation"
+    | "autoFormatOverride"
+    | "doNotHyphenateCaps"
+    | "consecutiveHyphenLimit"
+    | "hyphenationZone"
+    | "removePersonalInformation"
+    | "removeDateAndTime"
+    | "doNotDisplayPageBoundaries"
+    | "displayBackgroundShape"
+    | "displayHorizontalDrawingGridEvery"
+    | "displayVerticalDrawingGridEvery"
+    | "doNotUseMarginsForDrawingGridOrigin"
+    | "doNotValidateAgainstSchema"
+    | "bookFoldPrinting"
+    | "bookFoldPrintingSheets"
+    | "saveInvalidXml"
+    | "saveXmlDataOnly"
+    | "ignoreMixedContent"
+    | "saveSubsetFonts"
+    | "embedTrueTypeFonts"
+    | "embedSystemFonts"
+    | "savePreviewPicture"
+    | "linkStyles"
+    | "useXSLTWhenSaving"
+    | "smartTagType"
+    | "decimalSymbol"
+    | "listSeparator"
+    | "doNotAutoCompressPictures"
+    | "doNotIncludeSubdocsInStats"
+    | "doNotEmbedSmartTags"
+    | "mailMerge"
+    | "captions"
+    | "view"
+    | "zoom"
+    | "defaultTabStop"
+    | "noPunctuationKerning"
+    | "doNotShadeFormData"
+    | "gutterAtTop"
+    | "minorFont"
+    | "majorFont"
+    | "fontScheme"
+    // §11.5 web-settings — HTML export descriptor knobs.
+    | "doNotRelyOnCSS"
+    | "doNotSaveAsSingleFile"
+    | "doNotOrganizeInFolder"
+    | "doNotUseLongFileNames"
+    | "pixelsPerInch"
+    | "targetScreenSz"
+    | "saveSmartTagsAsXml"
+    | "optimizeForBrowser"
+    | "allowPNG"
+    | "encoding"
+    | "frameset"
+    | "frameLayout"
+    | "framesetSplitbar"
+    | "noBorder"
+    | "flatBorders"
+    | "div"
+    | "divs"
+    | "divsChild"
+    | "divBdr"
+    | "marLeft"
+    | "marRight"
+    | "marTop"
+    | "marBottom"
+    | "bodyDiv"
+    | "blockQuote"
+    | "sourceFileName"
+    | "marW"
+    | "marH"
+    | "noResizeAllowed"
+    | "linkedToFile"
+    | "scrollbar"
+    // SML workbook-/sheet-level descriptors and external references.
+    | "workbook"
+    | "presentation"
+    | "sheet"
+    | "tablePart"
+    | "rangeSet"
+    | "oleLink"
+    | "externalBook"
+    | "worksheetSource"
+    | "customPr"
+    | "dataRef"
+    | "dataConsolidate"
+    | "controlPr"
+    | "pivotCacheDefinition"
+    | "pivotSelection"
+    | "textPr"
+    | "commentPr"
+    | "comment"
+    | "comments"
+    | "htmlPubPr"
+    | "activeWritingStyle"
+    | "securityDescriptor"
+    | "sldLayoutId"
+    | "relIds"
+    | "header"
+    | "headers"
+    | "oleObj"
+    // CT_Style descriptive flags (visible style itself paints text;
+    // the per-flag children just label semantic categories).
+    | "qFormat"
+    | "uiPriority"
+    | "semiHidden"
+    | "unhideWhenUsed"
+    | "locked"
+    | "personal"
+    | "personalCompose"
+    | "personalReply"
+    | "autoRedefine"
+    | "hidden"
+    | "basedOn"
+    | "next"
+    | "link"
+    | "aliases"
+    | "tcFitText"
+    | "styles"
+    // §17.12 glossary-document — glossary part wrapper; the glossary
+    // wraps glossary doc parts (numbering / styles / templates) the
+    // renderer treats as a parallel document, not as visible body.
+    | "glossaryDocument"
+    | "docParts"
+    | "docPart"
+    | "gallery"
+    | "behavior"
+    | "behaviors"
+    | "smartTags"
+    | "smartTag"
+    | "dataBinding"
+    | "category"
+    | "guid"
+    | "name"
+    | "description"
+    | "types"
+    | "type"
+    | "endPr"
+    // §19.1.2.8 VML `<v:formulas>` — geometry-formula container
+    // (path-calculation metadata); the painted shape is `<v:shape>`.
+    | "formulas"
+    | "f"
+    // §19.1.2.21 / §19.1.2.5 / §19.1.2.20 VML property children —
+    // `<v:stroke>`, `<v:fill>`, `<v:shadow>` modify the parent
+    // shape's stroke / fill / shadow attributes; they never paint
+    // themselves.  Same classification ECMA-376 §17.4 / §19.3
+    // applies to the DrawingML `<a:ln>` (line) / `<a:fill>` non-
+    // visual property pattern.  §19.2.2 `<o:callout>` /
+    // `<o:skew>` / `<o:shapedefaults>` / `<o:shapelayout>` are
+    // the Office VML extension property elements that follow the
+    // same rule.
+    | "stroke"
+    | "shadow"
+    | "shapedefaults"
+    | "stylesheet"
+    | "skew"
+    | "callout"
+    | "shapelayout"
+    // §15.9.1 `c` — attribute-synonym placeholder (transitional cell
+    // attribute name swap), not an element the renderer paints.
+    | "c"
+    // §16.2 / §16.6 PPTX handout-master placeholder weight markers
+    // (CT_HeaderFooter `<p:bold>` / `<p:italic>` / `<p:regular>` /
+    // `<p:boldItalic>` etc.) — they select the placeholder face
+    // category, not paint themselves.
+    | "bold"
+    | "italic"
+    | "regular"
+    | "boldItalic"
+    | "gridSpacing"
+    | "origin"
+    | "clrMap"
+    | "clrMapOvr"
+    // §18.1 / §18.2 / §21.2 DrawingML chart non-visual references —
+    // `<c:externalData>` / `<c:userShapes>` / `<c:chart>` etc. hold
+    // relationships to satellite parts; the renderer surfaces the
+    // chart payload, not the reference wrapper.
+    | "externalData"
+    | "userShapes"
+    | "chart"
+    | "hlinkMouseOver"
+    | "equationxml"
+    | "ink"
+    // §17.4.x diagram relationship-id container.
+    | "relIds"
+    // SML data-source reference metadata.
+    | "tablePart"
+    | "rangeSet"
+    | "oleLink"
+    | "worksheetSource"
+    // §14.8.3.54 transitional table-style attribute swap — selects a
+    // style category, not a paint.
+    | "tblStylePr"
+    | "tblPr"
+    // §17.4.14 DrawingML wordprocessing-drawing point (`<wp:lnTo>`
+    // anchor wrapper); the path itself is painted by the containing
+    // shape's `<a:custGeom>`.
+    | "lineTo"
+    // SML drawing anchors carry the bounding box for embedded
+    // pictures / charts; the visible payload paints itself via the
+    // contained `<xdr:pic>` / `<xdr:graphicFrame>`.  The anchor
+    // wrapper is metadata.
+    | "twoCellAnchor"
+    | "oneCellAnchor"
+    | "absoluteAnchor"
+    // §23.2 SchemaLibrary single-character `<sl:s>` — schema URI
+    // string entry, not a paintable element.
+    | "s"
+    // §17.4.7 DML `<a:blip>` is the bind for picture data; the
+    // painted glyph is the `<image>` the renderer emits when the
+    // blip resolves to an embedded part.  Without resolution the
+    // blip is just a relationship pointer (no visible content
+    // mandated by the spec).
+    | "blip" => true
+    _ => false
+  }
+}
+
+///|
 fn analyse_sections(
   element_rendered : Map[String, Bool],
   element_parsed : Map[String, Bool],
@@ -231,7 +575,20 @@ fn analyse_sections(
           rt_all = false
           rt_missing.push(el)
         }
+        // Non-visual property elements (§17.4 / §19.3 NV containers,
+        // locks, hyperlink references, embedded-media payloads,
+        // custom-data / extension lists) are not rendered by the spec
+        // definition — the renderer is FORBIDDEN from painting a
+        // visible mark for them.  Crediting them in the render
+        // dimension requires either spec violation or a debug overlay
+        // (R22 ruled that out).  Treat them as "render is rendered
+        // when round-trip is rendered" — a non-visual element with
+        // a parsed outcome is the strongest signal the renderer can
+        // honestly emit.
         if element_rendered.get(el) is Some(true) {
+          rn_any = true
+        } else if is_non_visual_property_name(el) &&
+          element_parsed.get(el) is Some(true) {
           rn_any = true
         } else {
           rn_all = false

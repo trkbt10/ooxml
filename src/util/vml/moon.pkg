@@ -1,0 +1,17 @@
+// trkbt10/ooxml/util/vml
+//
+// ECMA-376 §19 VML → SVG translator.  Pure function package:
+// consumes a `<v:*>` element subtree and produces an SVG fragment
+// (`Array[@xml.Node]`) the host viewer can drop straight into its
+// output.  The translator is namespace- and host-agnostic; the WML
+// and PML viewers wrap the result in their own positioning context.
+//
+// SoT: no string concatenation, every node is built through
+// `@markup.elem_ns` / `@markup.attr` so the same escaping rules the
+// rest of the pipeline relies on apply here too.
+
+import {
+  "moonbitlang/core/strconv" @strconv,
+  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/util/markup" @markup,
+}

@@ -1,0 +1,41 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/util/vml"
+
+import {
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn parse_length_px(String) -> Double
+
+pub fn parse_style(String) -> StyleProps
+
+pub fn render_vml(@xml.Element) -> Array[@xml.Node]
+
+pub fn render_vml_with_size(@xml.Element, Double, Double) -> Array[@xml.Node]
+
+pub let vml_ns : String
+
+pub let vml_office_ns : String
+
+pub fn vml_path_to_svg_d(String) -> String
+
+// Errors
+
+// Types and methods
+pub(all) struct StyleProps {
+  left : Double?
+  top : Double?
+  width : Double?
+  height : Double?
+  rotation_deg : Double?
+  flip_x : Bool
+  flip_y : Bool
+  hidden : Bool
+}
+pub fn StyleProps::empty() -> Self
+
+// Type aliases
+
+// Traits
+
