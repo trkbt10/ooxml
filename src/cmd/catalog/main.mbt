@@ -478,11 +478,7 @@ fn main {
       println("  fragment    : \{fragment}")
       println("  outcome     : \{outcome}")
       let (subst, _h) = substitute_marker(embed_tree, marker)
-      let pkg = match host_fmt {
-        "xlsx" => xlsx_package(subst)
-        "pptx" => pptx_package(subst)
-        _ => docx_package(subst)
-      }
+      let pkg = host_package(host_fmt, subst)
       let bin_path = "/tmp/dbg-\{suffix}.bin"
       let svg_p_path = "/tmp/dbg-\{suffix}-present.svg"
       let svg_a_path = "/tmp/dbg-\{suffix}-absent.svg"

@@ -36,6 +36,17 @@ struct VisualCase {
 }
 
 ///|
+/// A `.pptx` fixture whose slide embeds a binary image part and
+/// applies one or more §20.1.8 blip effects to the `<a:blip>`.
+struct ImageSlideCase {
+  id : String
+  format : String
+  category : String
+  content : @xml.Element
+  image_bytes : Bytes
+}
+
+///|
 /// A fixture that needs auxiliary OPC parts (an xlsx `styles.xml` or
 /// a WML `numbering.xml` / `styles.xml`).  Kept as a separate
 /// extension struct so the 60+ plain-case constructors do not need
@@ -4959,7 +4970,36 @@ fn generate_visual_fixtures() -> Unit {
       _ => written = written + 1
     }
   }
+  // Image-slide-case pass: pptx fixtures whose slide contains a
+  // `<p:pic>` with an embedded image (`r:embed`) and blip effects.
+  // Built by `pptx_package_with_embedded_image` which wires the
+  // slide-side rId2 → `media/image1.png` relationship and the
+  // `Default Extension="png"` content-type.
+  for c in image_slide_cases() {
+    total = total + 1
+    let bytes = pptx_package_with_embedded_image(c.content, c.image_bytes)
+    let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
+    let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
+    let _ = try? @fs.create_dir(dir)
+    let path = dir + "/" + c.id + "." + c.format
+    try @fs.write_bytes_to_file(path, bytes) catch {
+      _ => println("!! failed to write " + path)
+    } noraise {
+      _ => written = written + 1
+    }
+  }
   println("visual fixtures: \{written}/\{total} -> .snapshots/fixtures/")
+}
+
+///|
+/// Collect every `ImageSlideCase` from per-category extender
+/// functions.  Uses `pptx_package_with_embedded_image` for fixtures
+/// whose slide carries a `<p:pic>` with an `r:embed` blip and one
+/// or more §20.1.8 raster effects.
+fn image_slide_cases() -> Array[ImageSlideCase] {
+  let cases : Array[ImageSlideCase] = []
+  extras_pml_blip_effects(cases)
+  cases
 }
 
 ///|

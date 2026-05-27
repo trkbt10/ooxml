@@ -1,0 +1,10 @@
+// trkbt10/ooxml/util/image_ops
+//
+// Pixel-level image processing for ECMA-376 blip effects that cannot
+// be represented by SVG filter primitives (clrChange, tint, hsl).
+// Uses mizchi/image for PNG/JPEG decode and PNG encode.
+
+import {
+  "mizchi/image" @image,
+  "moonbitlang/core/encoding/base64" @base64,
+}

@@ -7,6 +7,7 @@ import {
   "mizchi/svg@0.2.1",
   "mizchi/font@0.7.3",
   "trkbt10/osenv@0.1.0",
+  "mizchi/image@0.4.2",
 }
 
 readme = "README.mbt.md"

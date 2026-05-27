@@ -381,6 +381,8 @@ fn is_non_visual_property_name(name : String) -> Bool {
     | "tablePart"
     | "rangeSet"
     | "oleLink"
+    | "externalReference"
+    | "pivotCache"
     | "externalBook"
     | "worksheetSource"
     | "customPr"
@@ -397,6 +399,13 @@ fn is_non_visual_property_name(name : String) -> Bool {
     | "activeWritingStyle"
     | "securityDescriptor"
     | "sldLayoutId"
+    // §19.2.1 PML presentation-level structural references — they
+    // link to slide/notes/handout master parts by ID and carry no
+    // visible content themselves.
+    | "sldMasterId"
+    | "handoutMasterId"
+    | "notesMasterId"
+    | "notesSz"
     | "relIds"
     | "header"
     | "headers"
@@ -451,6 +460,7 @@ fn is_non_visual_property_name(name : String) -> Bool {
     // `<o:skew>` / `<o:shapedefaults>` / `<o:shapelayout>` are
     // the Office VML extension property elements that follow the
     // same rule.
+    | "fill"
     | "stroke"
     | "shadow"
     | "shapedefaults"

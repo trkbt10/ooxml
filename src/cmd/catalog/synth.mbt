@@ -58,7 +58,32 @@ fn sample_for_simple(
             return attr(enums[0], "value").unwrap_or("0")
           }
           match attr(restr, "base") {
-            Some(base) => return sample_for_simple(schema, base, depth + 1)
+            Some(base) => {
+              let base_local = match base.rev_find("#") {
+                Some(i) => base[i + 1:].to_owned()
+                None => base
+              }
+              if base_local == "hexBinary" {
+                match xsd_child(restr, "length") {
+                  Some(len_el) =>
+                    match attr(len_el, "value") {
+                      Some(len_str) => {
+                        let len = (try? @string.parse_int(len_str)).unwrap_or(
+                          1,
+                        )
+                        let buf = StringBuilder::new()
+                        for _i in 0..<len {
+                          buf.write_string("00")
+                        }
+                        return buf.to_string()
+                      }
+                      None => ()
+                    }
+                  None => ()
+                }
+              }
+              return sample_for_simple(schema, base, depth + 1)
+            }
             None => return "0"
           }
         }

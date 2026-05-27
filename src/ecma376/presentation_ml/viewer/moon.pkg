@@ -17,6 +17,7 @@ import {
   "trkbt10/ooxml/util/glyph" @glyph,
   "trkbt10/ooxml/util/markup" @markup,
   "trkbt10/ooxml/util/vml" @vml,
+  "trkbt10/ooxml/util/image_ops" @image_ops,
   "trkbt10/ooxml/xml" @xml,
 }
 

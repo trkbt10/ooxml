@@ -73,7 +73,15 @@ fn xep(
 ///|
 /// Serialise an element as a standalone XML document to UTF-8 bytes.
 fn write_part(root : @xml.Element) -> Bytes {
-  @xml.write({ declaration: None, doctype: None, root })
+  @xml.write(
+    {
+      declaration: Some(
+        { version: "1.0", encoding: Some("UTF-8"), standalone: Some(true) },
+      ),
+      doctype: None,
+      root,
+    },
+  )
 }
 
 ///|
@@ -1426,14 +1434,12 @@ fn pptx_package(content : @xml.Element) -> Bytes {
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
   // `xmlns:p` / `xmlns:r` are auto-declared by the writer from the
   // QName URIs — no explicit `xmlns:*` attributes (see docx_package).
-  let presentation : @xml.Element = {
-    name: { prefix: Some("p"), local_name: "presentation", ns: Some(ns_p) },
-    attributes: [],
-    children: [
-      Element(
-        xe(ns_p, "sldMasterIdLst", [], [
+  let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
+    Element(
+      xep("p", ns_p, "sldMasterIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldMasterId",
               [
@@ -1449,9 +1455,10 @@ fn pptx_package(content : @xml.Element) -> Bytes {
         ]),
       ),
       Element(
-        xe(ns_p, "sldIdLst", [], [
+        xep("p", ns_p, "sldIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldId",
               [
@@ -1466,9 +1473,9 @@ fn pptx_package(content : @xml.Element) -> Bytes {
           ),
         ]),
       ),
-      Element(xe(ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000")], [])),
-    ],
-  }
+      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
+      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+  ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -1630,6 +1637,301 @@ fn pptx_package(content : @xml.Element) -> Bytes {
 }
 
 ///|
+/// `.pptx` package whose slide embeds a binary image part at
+/// `ppt/media/image1.png` wired via `r:embed="rId2"` on the
+/// `<a:blip>`.  The `[Content_Types].xml` carries a `Default
+/// Extension="png"` entry so the image part is recognised by
+/// conformant readers.
+fn pptx_package_with_embedded_image(
+  content : @xml.Element,
+  image_bytes : Bytes,
+) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
+    Element(
+      xep("p", ns_p, "sldMasterIdLst", [], [
+        Element(
+          xep(
+            "p", ns_p,
+            "sldMasterId",
+              [
+                xa("id", "2147483648"),
+                {
+                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                  value: "rId2",
+                },
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(
+        xep("p", ns_p, "sldIdLst", [], [
+          Element(
+            xep(
+              "p",
+              ns_p,
+              "sldId",
+              [
+                xa("id", "256"),
+                {
+                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                  value: "rId1",
+                },
+              ],
+              [],
+            ),
+          ),
+        ]),
+      ),
+      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
+      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+  ])
+  let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
+          ),
+          xa("Target", "slides/slide1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId3"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let master_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "../theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let layout_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "../slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let slide_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+          ),
+          xa("Target", "../media/image1.png"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let slide : @xml.Element = if content.name.local_name == "sld" {
+    content
+  } else {
+    {
+      name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
+      attributes: [],
+      children: [Element(content)],
+    }
+  }
+  let ct_kids : Array[@xml.Node] = [
+    Element(
+      xe(
+        NS_CT,
+        "Default",
+        [
+          xa("Extension", "rels"),
+          xa(
+            "ContentType", "application/vnd.openxmlformats-package.relationships+xml",
+          ),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Default",
+        [xa("Extension", "xml"), xa("ContentType", "application/xml")],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Default",
+        [xa("Extension", "png"), xa("ContentType", "image/png")],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Override",
+        [
+          xa("PartName", "/ppt/presentation.xml"),
+          xa(
+            "ContentType", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
+          ),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Override",
+        [
+          xa("PartName", "/ppt/slides/slide1.xml"),
+          xa(
+            "ContentType", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
+          ),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Override",
+        [
+          xa("PartName", "/ppt/slideLayouts/slideLayout1.xml"),
+          xa(
+            "ContentType", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml",
+          ),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Override",
+        [
+          xa("PartName", "/ppt/slideMasters/slideMaster1.xml"),
+          xa(
+            "ContentType", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml",
+          ),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Override",
+        [
+          xa("PartName", "/ppt/theme/theme1.xml"),
+          xa(
+            "ContentType", "application/vnd.openxmlformats-officedocument.theme+xml",
+          ),
+        ],
+        [],
+      ),
+    ),
+  ]
+  let parts : Array[(String, Bytes)] = [
+    ("[Content_Types].xml", write_part(xe(NS_CT, "Types", [], ct_kids))),
+    ("_rels/.rels", root_rels_part("ppt/presentation.xml")),
+    ("ppt/presentation.xml", write_part(presentation)),
+    ("ppt/_rels/presentation.xml.rels", write_part(pres_rels)),
+    ("ppt/slides/slide1.xml", write_part(slide)),
+    ("ppt/slides/_rels/slide1.xml.rels", write_part(slide_rels)),
+    ("ppt/slideLayouts/slideLayout1.xml", pptx_slide_layout_part()),
+    ("ppt/slideLayouts/_rels/slideLayout1.xml.rels", write_part(layout_rels)),
+    ("ppt/slideMasters/slideMaster1.xml", pptx_slide_master_part()),
+    ("ppt/slideMasters/_rels/slideMaster1.xml.rels", write_part(master_rels)),
+    ("ppt/theme/theme1.xml", pptx_theme_part()),
+    ("ppt/media/image1.png", image_bytes),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
 /// `.pptx` package whose slide-side `.rels` part wires up extra
 /// external relationships in addition to the standard
 /// slideLayout rId1.  Use this for fixtures whose content carries
@@ -1649,14 +1951,12 @@ fn pptx_package_with_slide_rels(
 ) -> Bytes {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-  let presentation : @xml.Element = {
-    name: { prefix: Some("p"), local_name: "presentation", ns: Some(ns_p) },
-    attributes: [],
-    children: [
-      Element(
-        xe(ns_p, "sldMasterIdLst", [], [
+  let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
+    Element(
+      xep("p", ns_p, "sldMasterIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldMasterId",
               [
@@ -1672,9 +1972,10 @@ fn pptx_package_with_slide_rels(
         ]),
       ),
       Element(
-        xe(ns_p, "sldIdLst", [], [
+        xep("p", ns_p, "sldIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldId",
               [
@@ -1689,9 +1990,9 @@ fn pptx_package_with_slide_rels(
           ),
         ]),
       ),
-      Element(xe(ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000")], [])),
-    ],
-  }
+      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
+      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+  ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -1890,14 +2191,12 @@ fn pptx_package_with_chart(
 ) -> Bytes {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-  let presentation : @xml.Element = {
-    name: { prefix: Some("p"), local_name: "presentation", ns: Some(ns_p) },
-    attributes: [],
-    children: [
-      Element(
-        xe(ns_p, "sldMasterIdLst", [], [
+  let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
+    Element(
+      xep("p", ns_p, "sldMasterIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldMasterId",
               [
@@ -1913,9 +2212,10 @@ fn pptx_package_with_chart(
         ]),
       ),
       Element(
-        xe(ns_p, "sldIdLst", [], [
+        xep("p", ns_p, "sldIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldId",
               [
@@ -1930,9 +2230,9 @@ fn pptx_package_with_chart(
           ),
         ]),
       ),
-      Element(xe(ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000")], [])),
-    ],
-  }
+      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
+      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+  ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -2208,14 +2508,12 @@ fn pptx_package_with_diagram(
       }
     }
   }
-  let presentation : @xml.Element = {
-    name: { prefix: Some("p"), local_name: "presentation", ns: Some(ns_p) },
-    attributes: [],
-    children: [
-      Element(
-        xe(ns_p, "sldMasterIdLst", [], [
+  let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
+    Element(
+      xep("p", ns_p, "sldMasterIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldMasterId",
               [
@@ -2231,9 +2529,10 @@ fn pptx_package_with_diagram(
         ]),
       ),
       Element(
-        xe(ns_p, "sldIdLst", [], [
+        xep("p", ns_p, "sldIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldId",
               [
@@ -2248,9 +2547,9 @@ fn pptx_package_with_diagram(
           ),
         ]),
       ),
-      Element(xe(ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000")], [])),
-    ],
-  }
+      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
+      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+  ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -2827,16 +3126,21 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
   // ...) do not. Attaching an aux-part rels file unconditionally
   // breaks the open of the parts that don't need rels because the
   // Content-Types map lacks the satellite part's content type.
-  let parts : Array[(String, Bytes)] = [
+  let ct_overrides : Array[(String, String)] = [
     (
-      "[Content_Types].xml",
-      content_types_part([
-        (
-          "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
-        ),
-        ("/word/" + part_path, content_type),
-      ]),
+      "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
     ),
+    ("/word/" + part_path, content_type),
+  ]
+  if part_kind == "fonts" {
+    ct_overrides.push(
+      (
+        "/word/fonts/font0.fntdata", "application/x-fontdata",
+      ),
+    )
+  }
+  let parts : Array[(String, Bytes)] = [
+    ("[Content_Types].xml", content_types_part(ct_overrides)),
     ("_rels/.rels", root_rels_part("word/document.xml")),
     ("word/document.xml", write_part(document)),
     ("word/_rels/document.xml.rels", write_part(doc_rels)),
@@ -2845,7 +3149,9 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
   if part_kind == "fonts" {
     // §17.8.2.4 font-data targets: emit a dummy `Id="0"` rel so the
     // synthesised `<w:embed*/>`'s `r:id="0"` resolves through the
-    // OPC layer's relationship lookup.
+    // OPC layer's relationship lookup.  The target part must exist
+    // in the package (the OPC reader validates internal targets) and
+    // its extension must have a content-type mapping.
     let aux_rels = xe(NS_PKG_REL, "Relationships", [], [
       Element(
         xe(
@@ -2864,6 +3170,7 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
       ),
     ])
     parts.push(("word/_rels/" + part_path + ".rels", write_part(aux_rels)))
+    parts.push(("word/fonts/font0.fntdata", Bytes::new(0)))
   }
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
@@ -3087,14 +3394,12 @@ fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
   let theme = ensure_theme_skeleton(theme)
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-  let presentation : @xml.Element = {
-    name: { prefix: Some("p"), local_name: "presentation", ns: Some(ns_p) },
-    attributes: [],
-    children: [
-      Element(
-        xe(ns_p, "sldMasterIdLst", [], [
+  let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
+    Element(
+      xep("p", ns_p, "sldMasterIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldMasterId",
               [
@@ -3110,9 +3415,10 @@ fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
         ]),
       ),
       Element(
-        xe(ns_p, "sldIdLst", [], [
+        xep("p", ns_p, "sldIdLst", [], [
           Element(
-            xe(
+            xep(
+              "p",
               ns_p,
               "sldId",
               [
@@ -3127,9 +3433,9 @@ fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
           ),
         ]),
       ),
-      Element(xe(ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000")], [])),
-    ],
-  }
+      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
+      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+  ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(

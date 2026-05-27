@@ -79,7 +79,7 @@ test "build_run_span resolves a:gradFill with int (1000ths) gs@pos" {
   )
   let span = build_run_span(r, empty_ctx(), None)
   match span.text_fill {
-    Some(TextFillGradient(stops, angle, is_radial)) => {
+    Some(TextFillGradient(stops, angle, is_radial, _, _)) => {
       assert_eq(stops.length(), 2)
       // 100000 (1000ths of percent) → 100 percent
       assert_true(stops[1].position == 100.0)
@@ -99,7 +99,7 @@ test "build_run_span resolves a:gradFill with strict (%) gs@pos" {
   )
   let span = build_run_span(r, empty_ctx(), None)
   match span.text_fill {
-    Some(TextFillGradient(stops, _, _)) => {
+    Some(TextFillGradient(stops, _, _, _, _)) => {
       assert_true(stops[1].position == 50.0)
     }
     _ => fail("expected TextFillGradient")
@@ -113,7 +113,7 @@ test "build_run_span treats a:gradFill with <a:path> as radial" {
   )
   let span = build_run_span(r, empty_ctx(), None)
   match span.text_fill {
-    Some(TextFillGradient(_, _, is_radial)) => assert_eq(is_radial, true)
+    Some(TextFillGradient(_, _, is_radial, _, _)) => assert_eq(is_radial, true)
     _ => fail("expected TextFillGradient")
   }
 }
@@ -125,9 +125,10 @@ test "build_run_span resolves a:pattFill into TextFillPattern" {
   )
   let span = build_run_span(r, empty_ctx(), None)
   match span.text_fill {
-    Some(TextFillPattern(fg, bg)) => {
+    Some(TextFillPattern(fg, bg, prst)) => {
       assert_eq(fg, "#ff0000")
       assert_eq(bg, "#00ff00")
+      assert_eq(prst, "dkVert")
     }
     _ => fail("expected TextFillPattern")
   }

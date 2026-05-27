@@ -4278,6 +4278,26 @@ fn resolve_text_gradient_fill(
     return None
   }
   let is_radial = first_child_named(grad, "path") is Some(_)
+  // §20.1.8.33 / §A.4.1 CT_PathShadeProperties — radial gradient
+  // center from <a:fillToRect l=.. t=.. r=.. b=..>.  The center
+  // point is the average of the left/right and top/bottom edges.
+  let mut radial_cx = 50.0
+  let mut radial_cy = 50.0
+  match first_child_named(grad, "path") {
+    Some(path_el) =>
+      match first_child_named(path_el, "fillToRect") {
+        Some(ftr) => {
+          let l = parse_st_positive_fixed_percentage(attr_value(ftr, "l"))
+          let t = parse_st_positive_fixed_percentage(attr_value(ftr, "t"))
+          let r = parse_st_positive_fixed_percentage(attr_value(ftr, "r"))
+          let b = parse_st_positive_fixed_percentage(attr_value(ftr, "b"))
+          radial_cx = (l + (100.0 - r)) / 2.0
+          radial_cy = (t + (100.0 - b)) / 2.0
+        }
+        None => ()
+      }
+    None => ()
+  }
   let angle = if is_radial {
     0.0
   } else {
@@ -4295,7 +4315,7 @@ fn resolve_text_gradient_fill(
         }
     }
   }
-  Some(TextFillGradient(stops, angle, is_radial))
+  Some(TextFillGradient(stops, angle, is_radial, radial_cx, radial_cy))
 }
 
 ///|
@@ -4350,7 +4370,8 @@ fn resolve_text_pattern_fill(
         None => "#ffffff"
       }
   }
-  TextFillPattern(fg, bg)
+  let prst = attr_value(patt, "prst").unwrap_or("")
+  TextFillPattern(fg, bg, prst)
 }
 
 ///|
@@ -5098,14 +5119,22 @@ fn span_fill_attrs(
             [@markup.attr("fill", color)]
           }
         TextFillNone => [@markup.attr("fill", "none")]
-        TextFillGradient(stops, angle, is_radial) => {
+        TextFillGradient(stops, angle, is_radial, cx, cy) => {
           let grad_id = defs.next_id("text-grad")
           defs.add_def(
-            build_text_gradient_def(grad_id, stops, angle, is_radial),
+            build_text_gradient_def(grad_id, stops, angle, is_radial, cx, cy),
           )
           [@markup.attr("fill", "url(#" + grad_id + ")")]
         }
-        TextFillPattern(fg, _) => [@markup.attr("fill", fg)]
+        TextFillPattern(fg, bg, prst) => {
+          if prst.length() > 0 {
+            let pat_id = defs.next_id("text-pat")
+            defs.add_def(build_text_pattern_def(pat_id, prst, fg, bg))
+            [@markup.attr("fill", "url(#" + pat_id + ")")]
+          } else {
+            [@markup.attr("fill", fg)]
+          }
+        }
         TextFillImage(_) => [@markup.attr("fill", "#000000")]
       }
     None => [@markup.attr("fill", span.color)]
@@ -5121,6 +5150,8 @@ fn build_text_gradient_def(
   stops : Array[TextGradientStop],
   angle : Double,
   is_radial : Bool,
+  radial_cx : Double,
+  radial_cy : Double,
 ) -> @xml.Node {
   let stop_nodes : Array[@xml.Node] = []
   for stop in stops {
@@ -5139,8 +5170,8 @@ fn build_text_gradient_def(
       @markup.svg_ns,
       [
         @markup.attr("id", id),
-        @markup.attr("cx", "50%"),
-        @markup.attr("cy", "50%"),
+        @markup.attr("cx", format_double(radial_cx) + "%"),
+        @markup.attr("cy", format_double(radial_cy) + "%"),
         @markup.attr("r", "50%"),
       ],
       stop_nodes,
@@ -5160,6 +5191,87 @@ fn build_text_gradient_def(
       stop_nodes,
     )
   }
+}
+
+///|
+/// §20.1.8.47 — build an SVG `<pattern>` element approximating the
+/// ST_PresetPatternVal preset. The pattern is a tiny tile (4×4 px)
+/// that repeats to fill the text. For presets we cannot represent
+/// exactly (most of the ~50 variants), we paint the foreground
+/// and background as an alternating stripe whose density matches
+/// the percentage implied by the preset name (pct5 → 5 % fg).
+fn build_text_pattern_def(
+  id : String,
+  prst : String,
+  fg : String,
+  bg : String,
+) -> @xml.Node {
+  let size = 4.0
+  let size_s = format_double(size)
+  // The percentage presets (pct5..pct95) encode the foreground
+  // coverage as a simple number; everything else gets a 50/50
+  // stripe.
+  let fg_ratio = match prst {
+    "pct5" => 0.05
+    "pct10" => 0.10
+    "pct20" => 0.20
+    "pct25" => 0.25
+    "pct30" => 0.30
+    "pct40" => 0.40
+    "pct50" => 0.50
+    "pct60" => 0.60
+    "pct70" => 0.70
+    "pct75" => 0.75
+    "pct80" => 0.80
+    "pct90" => 0.90
+    "pct95" => 0.95
+    "ltVert" | "ltHorz" | "ltDnDiag" | "ltUpDiag" => 0.25
+    "dkVert" | "dkHorz" | "dkDnDiag" | "dkUpDiag" => 0.75
+    "narVert" | "narHorz" => 0.30
+    "wdVert" | "wdHorz" | "wdDnDiag" | "wdUpDiag" => 0.40
+    "dashVert" | "dashHorz" | "dashDnDiag" | "dashUpDiag" => 0.50
+    "lgCheck" | "smCheck" | "cross" | "dnDiag" | "upDiag" |
+    "diagCross" | "horzBrick" | "vertBrick" | "plaid" |
+    "sphere" | "weave" | "divot" | "shingle" | "wave" |
+    "trellis" | "zigZag" | "solidDmnd" | "openDmnd" |
+    "dotDmnd" | "smGrid" | "lgGrid" | "dotGrid" => 0.50
+    _ => 0.50
+  }
+  let fg_h = format_double(size * fg_ratio)
+  // Background rect + foreground rect stacked vertically
+  let children : Array[@xml.Node] = [
+    @markup.elem_ns(
+      "rect",
+      @markup.svg_ns,
+      [
+        @markup.attr("width", size_s),
+        @markup.attr("height", size_s),
+        @markup.attr("fill", bg),
+      ],
+      [],
+    ),
+    @markup.elem_ns(
+      "rect",
+      @markup.svg_ns,
+      [
+        @markup.attr("width", size_s),
+        @markup.attr("height", fg_h),
+        @markup.attr("fill", fg),
+      ],
+      [],
+    ),
+  ]
+  @markup.elem_ns(
+    "pattern",
+    @markup.svg_ns,
+    [
+      @markup.attr("id", id),
+      @markup.attr("width", size_s),
+      @markup.attr("height", size_s),
+      @markup.attr("patternUnits", "userSpaceOnUse"),
+    ],
+    children,
+  )
 }
 
 ///|
@@ -5345,7 +5457,6 @@ fn render_picture_svg(
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
 ) -> Array[@xml.Node] {
-  let _ = ctx
   let sp_pr = first_child_named(pic, "spPr")
   let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match
     sp_pr {
@@ -5426,7 +5537,21 @@ fn render_picture_svg(
       if blip_effects.length() > 0 {
         g_attrs.push(@markup.attr("data-ooxml-blip-effects", blip_effects))
       }
-      let data_uri = "data:" + img.mime_type + ";base64," + img.base64_data
+      match build_blip_effect_filter(bf, defs, ctx) {
+        Some(filter_ref) =>
+          g_attrs.push(@markup.attr("filter", filter_ref))
+        None => ()
+      }
+      let (img_mime, img_b64) = match preprocess_blip_image(
+        bf,
+        img.mime_type,
+        img.base64_data,
+        ctx,
+      ) {
+        Some((m, b)) => (m, b)
+        None => (img.mime_type, img.base64_data)
+      }
+      let data_uri = "data:" + img_mime + ";base64," + img_b64
       let g_children : Array[@xml.Node] = if l != 0.0 ||
         t != 0.0 ||
         r != 0.0 ||

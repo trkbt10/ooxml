@@ -183,8 +183,10 @@ pub struct TextGradientStop {
 pub(all) enum TextFillConfig {
   TextFillSolid(String, Double) // colour-hex (with #), alpha
   TextFillNone
-  TextFillGradient(Array[TextGradientStop], Double, Bool) // stops, angle, isRadial
-  TextFillPattern(String, String) // fg-hex, bg-hex (simplified)
+  /// stops, angle, isRadial, radial_cx%, radial_cy%
+  TextFillGradient(Array[TextGradientStop], Double, Bool, Double, Double)
+  /// fg-hex, bg-hex, prst (ST_PresetPatternVal or empty)
+  TextFillPattern(String, String, String)
   TextFillImage(String) // src URL
 }
 

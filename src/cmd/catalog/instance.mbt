@@ -44,6 +44,48 @@ fn qname(ns : String, local_name : String) -> @xml.QName {
 }
 
 ///|
+/// True when the synthesized element has at least one Element child.
+fn has_element_children(el : @xml.Element) -> Bool {
+  for child in el.children {
+    if child is Element(_) {
+      return true
+    }
+  }
+  false
+}
+
+///|
+/// True when the complex type has at least one required (minOccurs>=1)
+/// child element particle at the top level of its content model.
+/// Used by cycle detection: an empty element of such a type is
+/// schema-invalid (e.g. CT_Divs requires ≥1 <div>).
+fn has_required_child_elements(ct : @xml.Element) -> Bool {
+  fn scan(node : @xml.Element) -> Bool {
+    for child in node.children {
+      match child {
+        Element(c) =>
+          if is_xsd(c, "element") {
+            let min = (try? @string.parse_int(
+              attr(c, "minOccurs").unwrap_or("1"),
+            )).unwrap_or(1)
+            if min >= 1 {
+              return true
+            }
+          } else if is_xsd(c, "sequence") || is_xsd(c, "all") || is_xsd(c, "choice") {
+            if scan(c) {
+              return true
+            }
+          }
+        _ => ()
+      }
+    }
+    false
+  }
+
+  scan(ct)
+}
+
+///|
 /// Build an `@xml.Element` with the given namespace, name, attributes
 /// and children.
 fn elem(
@@ -403,21 +445,35 @@ fn element_instance(
         // (those carry no recursion).  `CT_CustomXmlBlock` nests
         // itself; an attribute-less `<w:customXml/>` is missing its
         // required `@w:element` and the reader rejects it.
-        let cyc_attrs = match schema.complex_types.get(t) {
-          Some(ct) => synth_attrs(schema, ct, ens)
-          None => []
+        //
+        // However, if the type REQUIRES child elements (minOccurs>=1
+        // particles), an empty element violates the schema and the
+        // reader rejects it — e.g. CT_Divs requires ≥1 <div>.
+        // In that case, skip the element entirely (return None) so
+        // the parent does not contain an invalid empty child.
+        match schema.complex_types.get(t) {
+          Some(ct) =>
+            if has_required_child_elements(ct) {
+              return None
+            } else {
+              let cyc_attrs = synth_attrs(schema, ct, ens)
+              return Some(Element(elem(ens, name, cyc_attrs, [])))
+            }
+          None => return Some(Element(elem(ens, name, [], [])))
         }
-        return Some(Element(elem(ens, name, cyc_attrs, [])))
       }
       match schema.complex_types.get(t) {
         Some(ct) => {
           let sub = copy_set(stack)
           sub[t] = true
-          Some(
-            Element(
-              synth_element(schema, ct, ens, name, sub, depth + 1, sub_rich),
-            ),
+          let el = synth_element(
+            schema, ct, ens, name, sub, depth + 1, sub_rich,
           )
+          if has_required_child_elements(ct) && !has_element_children(el) {
+            None
+          } else {
+            Some(Element(el))
+          }
         }
         None => {
           // A simple-type-typed element carries its value as text.
