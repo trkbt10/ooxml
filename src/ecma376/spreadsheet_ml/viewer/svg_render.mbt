@@ -180,6 +180,13 @@ pub fn render_svg(
   /// `None` keeps the per-worksheet behaviour the pre-workbook
   /// callers expect.
   workbook? : @xml.Element? = None,
+  /// §18.17 — pre-computed formula evaluation results keyed by A1
+  /// cell reference (e.g. "A1", "B3"). When supplied, the renderer
+  /// uses the evaluated value instead of the cached `<v>` element
+  /// for formula cells. If evaluation returned `#N/A` and the cell
+  /// has a cached `<v>`, the cached value is used as fallback (this
+  /// matches Excel's offline behaviour for Cube/RTD functions).
+  evaluated_cells? : @hashmap.HashMap[String, @formula.FormulaValue]? = None,
 ) -> SheetSvgResult {
   // §18.2.28 — pick the date system once for the whole sheet.
   let date_system = if date1904 {
@@ -470,13 +477,24 @@ pub fn render_svg(
         }
         let icon_width = 0.0
         if !style.hide_value {
-          let text = format_cell_value(
-            cell_el,
-            shared_strings,
-            style,
-            warnings,
-            date_system~,
-          )
+          let text = match evaluated_cells {
+            Some(evals) =>
+              match evals.get(cell_ref) {
+                Some(@formula.VError(@formula.NotApplicable)) =>
+                  format_cell_value(
+                    cell_el, shared_strings, style, warnings, date_system~,
+                  )
+                Some(val) => format_formula_value(val, style, date_system)
+                None =>
+                  format_cell_value(
+                    cell_el, shared_strings, style, warnings, date_system~,
+                  )
+              }
+            None =>
+              format_cell_value(
+                cell_el, shared_strings, style, warnings, date_system~,
+              )
+          }
           // §18.3.1.87 `<sheetView @showZeros="0">` — when the
           // per-sheet view turns off zero display, numeric cells
           // with value exactly 0 MUST render blank.  The
@@ -541,6 +559,22 @@ pub fn render_svg(
           "g",
           [svg_attr("class", "table-autofilter")],
           table_chrome_over,
+        ),
+      )
+    }
+  }
+
+  // §18.3.1.33 — data validation dropdown arrows on cells with
+  // type="list" validation (renders the same button style as the
+  // autofilter dropdown to indicate a selection dropdown is available).
+  if options.show_table_chrome {
+    let dv_arrows = render_data_validation_arrows(domain.element, layout)
+    if dv_arrows.length() > 0 {
+      body.push(
+        svg_elem(
+          "g",
+          [svg_attr("class", "data-validation-dropdowns")],
+          dv_arrows,
         ),
       )
     }
@@ -3879,6 +3913,31 @@ fn parse_inline_font(rpr : @xml.Element, base : ResolvedFont) -> ResolvedFont {
 // Cell value formatting.
 // @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/cell-renderer.ts:31
 // =============================================================================
+
+///|
+fn format_formula_value(
+  value : @formula.FormulaValue,
+  style : ResolvedCellStyle,
+  date_system : @date_serial.DateSystem,
+) -> String {
+  match value {
+    @formula.VNumber(n) => format_number_general(n, style.number_format, date_system~)
+    @formula.VString(s) => s
+    @formula.VBool(b) => if b { "TRUE" } else { "FALSE" }
+    @formula.VError(err) => err.to_literal()
+    @formula.VEmpty => ""
+    @formula.VArray(rows) =>
+      match rows.get(0) {
+        Some(row) =>
+          match row.get(0) {
+            Some(scalar) =>
+              format_formula_value(scalar, style, date_system)
+            None => ""
+          }
+        None => ""
+      }
+  }
+}
 
 ///|
 /// Resolve a §18.3.1.4 `<c>` element's display text.  Honours the
@@ -7508,8 +7567,38 @@ fn render_drawing_shape(
   }
   match prst {
     None => {
-      // No usable preset name — surface the bounding box plus any
-      // custGeom trace metadata so the shape stays distinguishable.
+      // §20.1.9.8 — attempt to evaluate custGeom guides and render
+      // the path; fall back to bounding-box placeholder on failure.
+      match cust_geom {
+        Some(cg) => {
+          let path_d = eval_custgeom_path(
+            cg, bounds.width, bounds.height,
+          )
+          if path_d != "" {
+            let fill = resolve_shape_solid_color(
+              sp_pr, "solidFill", "currentColor",
+            )
+            let ln_opt = first_child_named_local(sp_pr, "ln")
+            let stroke = match ln_opt {
+              None => "currentColor"
+              Some(ln) =>
+                resolve_shape_solid_color(ln, "solidFill", "currentColor")
+            }
+            let attrs : Array[@xml.Attribute] = [
+              svg_attr("d", path_d),
+              svg_attr("fill", fill),
+              svg_attr("stroke", stroke),
+              svg_attr("stroke-width", "1"),
+              svg_attr("data-ooxml", "custGeom"),
+            ]
+            for a in cust_geom_attrs {
+              attrs.push(a)
+            }
+            return Some(svg_elem("path", attrs, []))
+          }
+        }
+        None => ()
+      }
       let attrs : Array[@xml.Attribute] = [svg_attr("class", "shape")]
       for a in cust_geom_attrs {
         attrs.push(a)
@@ -7601,6 +7690,315 @@ fn render_drawing_shape(
 /// Each `<a:gd>` (§20.1.9.11) becomes a positional
 /// `data-ooxml-gd-N-name` / `data-ooxml-gd-N-fmla` pair, each
 /// `<a:cxn>` (§20.1.9.10) becomes `data-ooxml-cxn-N-ang` /
+let custgeom_pi : Double = 3.14159265358979323846
+
+fn custgeom_sin(x : Double) -> Double {
+  let two_pi = 2.0 * custgeom_pi
+  let mut r = x % two_pi
+  if r > custgeom_pi { r = r - two_pi }
+  if r < -custgeom_pi { r = r + two_pi }
+  let r2 = r * r
+  let mut term = r
+  let mut sum = r
+  for i in 1..=12 {
+    term = -term * r2 / ((2 * i).to_double() * (2 * i + 1).to_double())
+    sum = sum + term
+  }
+  sum
+}
+
+fn custgeom_cos(x : Double) -> Double {
+  let two_pi = 2.0 * custgeom_pi
+  let mut r = x % two_pi
+  if r > custgeom_pi { r = r - two_pi }
+  if r < -custgeom_pi { r = r + two_pi }
+  let r2 = r * r
+  let mut term = 1.0
+  let mut sum = 1.0
+  for i in 1..=12 {
+    term = -term * r2 / ((2 * i - 1).to_double() * (2 * i).to_double())
+    sum = sum + term
+  }
+  sum
+}
+
+fn custgeom_atan2(y : Double, x : Double) -> Double {
+  if x > 0.0 {
+    let r = y / x
+    let r2 = r * r
+    if r2 <= 1.0 {
+      let mut t = r
+      let mut s = r
+      for i in 1..=20 { t = -t * r2; s = s + t / (2 * i + 1).to_double() }
+      s
+    } else {
+      let r_inv = x / y
+      let r2 = r_inv * r_inv
+      let mut t = r_inv
+      let mut s = r_inv
+      for i in 1..=20 { t = -t * r2; s = s + t / (2 * i + 1).to_double() }
+      (if y > 0.0 { custgeom_pi / 2.0 } else { -custgeom_pi / 2.0 }) - s
+    }
+  } else if x < 0.0 {
+    if y >= 0.0 {
+      custgeom_pi + custgeom_atan2(y, -x) * -1.0
+    } else {
+      -custgeom_pi - custgeom_atan2(-y, -x) * -1.0
+    }
+  } else if y > 0.0 {
+    custgeom_pi / 2.0
+  } else if y < 0.0 {
+    -custgeom_pi / 2.0
+  } else {
+    0.0
+  }
+}
+
+///|
+fn eval_custgeom_path(
+  cg : @xml.Element,
+  w : Double,
+  h : Double,
+) -> String {
+  let guides : Map[String, Double] = {}
+  guides["w"] = w
+  guides["h"] = h
+  guides["wd2"] = w / 2.0
+  guides["hd2"] = h / 2.0
+  guides["l"] = 0.0
+  guides["t"] = 0.0
+  guides["r"] = w
+  guides["b"] = h
+  guides["ss"] = if w < h { w } else { h }
+  guides["ls"] = if w > h { w } else { h }
+  for child in cg.children {
+    match child {
+      @xml.Node::Element(el) =>
+        if el.name.local_name == "gdLst" {
+          for gc in el.children {
+            match gc {
+              @xml.Node::Element(gd) =>
+                if gd.name.local_name == "gd" {
+                  let name = match attr_value_local(gd, "name") {
+                    Some(n) => n
+                    None => continue
+                  }
+                  let fmla = match attr_value_local(gd, "fmla") {
+                    Some(f) => f
+                    None => continue
+                  }
+                  guides[name] = eval_guide_fmla(fmla, guides)
+                }
+              _ => ()
+            }
+          }
+        }
+      _ => ()
+    }
+  }
+  let buf = StringBuilder::new()
+  for child in cg.children {
+    match child {
+      @xml.Node::Element(el) =>
+        if el.name.local_name == "pathLst" {
+          for pc in el.children {
+            match pc {
+              @xml.Node::Element(path) =>
+                if path.name.local_name == "path" {
+                  let pw = match attr_value_local(path, "w") {
+                    Some(v) =>
+                      (try? @string.parse_double(v)).unwrap_or(w)
+                    None => w
+                  }
+                  let ph = match attr_value_local(path, "h") {
+                    Some(v) =>
+                      (try? @string.parse_double(v)).unwrap_or(h)
+                    None => h
+                  }
+                  let sx = if pw > 0.0 { w / pw } else { 1.0 }
+                  let sy = if ph > 0.0 { h / ph } else { 1.0 }
+                  render_custgeom_path_cmds(path, guides, sx, sy, buf)
+                }
+              _ => ()
+            }
+          }
+        }
+      _ => ()
+    }
+  }
+  buf.to_string()
+}
+
+///|
+fn eval_guide_fmla(fmla : String, guides : Map[String, Double]) -> Double {
+  let parts : Array[String] = []
+  for p in fmla.split(" ") {
+    let s = p.to_string()
+    if s.length() > 0 {
+      parts.push(s)
+    }
+  }
+  if parts.length() == 0 {
+    return 0.0
+  }
+  let op = parts[0]
+  fn gval(idx : Int) -> Double {
+    if idx >= parts.length() {
+      return 0.0
+    }
+    let token = parts[idx]
+    match guides.get(token) {
+      Some(v) => v
+      None => (try? @string.parse_double(token)).unwrap_or(0.0)
+    }
+  }
+
+  match op {
+    "*/" =>
+      if gval(2) != 0.0 { gval(0) * gval(1) / gval(2) } else { 0.0 }
+    "+-" => gval(0) + gval(1) - gval(2)
+    "+/" =>
+      if gval(2) != 0.0 {
+        (gval(0) + gval(1)) / gval(2)
+      } else {
+        0.0
+      }
+    "val" => gval(0)
+    "abs" => gval(0).abs()
+    "max" => if gval(0) > gval(1) { gval(0) } else { gval(1) }
+    "min" => if gval(0) < gval(1) { gval(0) } else { gval(1) }
+    "mod" => (gval(0) * gval(0) + gval(1) * gval(1) + gval(2) * gval(2)).sqrt()
+    "sqrt" => gval(0).sqrt()
+    "sin" => gval(0) * custgeom_sin(gval(1) / 60000.0 * custgeom_pi / 180.0)
+    "cos" => gval(0) * custgeom_cos(gval(1) / 60000.0 * custgeom_pi / 180.0)
+    "tan" => {
+      let angle = gval(1) / 60000.0 * custgeom_pi / 180.0
+      let c = custgeom_cos(angle)
+      if c.abs() < 1.0e-15 { 0.0 } else { gval(0) * custgeom_sin(angle) / c }
+    }
+    "at2" => custgeom_atan2(gval(1), gval(0)) * 180.0 / custgeom_pi * 60000.0
+    "cat2" => {
+      let angle = gval(2) / 60000.0 * custgeom_pi / 180.0
+      gval(0) * custgeom_cos(angle)
+    }
+    "sat2" => {
+      let angle = gval(2) / 60000.0 * custgeom_pi / 180.0
+      gval(0) * custgeom_sin(angle)
+    }
+    "pin" => {
+      let (lo, x, hi) = (gval(0), gval(1), gval(2))
+      if x < lo { lo } else if x > hi { hi } else { x }
+    }
+    "?:" => if gval(0) > 0.0 { gval(1) } else { gval(2) }
+    _ => (try? @string.parse_double(op)).unwrap_or(0.0)
+  }
+}
+
+///|
+fn render_custgeom_path_cmds(
+  path : @xml.Element,
+  guides : Map[String, Double],
+  sx : Double,
+  sy : Double,
+  buf : StringBuilder,
+) -> Unit {
+  fn resolve(s : String) -> Double {
+    match guides.get(s) {
+      Some(v) => v
+      None => (try? @string.parse_double(s)).unwrap_or(0.0)
+    }
+  }
+
+  for child in path.children {
+    match child {
+      @xml.Node::Element(cmd) =>
+        match cmd.name.local_name {
+          "moveTo" =>
+            match first_child_named_local(cmd, "pt") {
+              Some(pt) => {
+                let x = resolve(attr_value_local(pt, "x").unwrap_or("0")) * sx
+                let y = resolve(attr_value_local(pt, "y").unwrap_or("0")) * sy
+                buf.write_string("M " + format_d(x) + " " + format_d(y) + " ")
+              }
+              None => ()
+            }
+          "lnTo" =>
+            match first_child_named_local(cmd, "pt") {
+              Some(pt) => {
+                let x = resolve(attr_value_local(pt, "x").unwrap_or("0")) * sx
+                let y = resolve(attr_value_local(pt, "y").unwrap_or("0")) * sy
+                buf.write_string("L " + format_d(x) + " " + format_d(y) + " ")
+              }
+              None => ()
+            }
+          "cubicBezTo" => {
+            let pts : Array[@xml.Element] = []
+            for pc in cmd.children {
+              match pc {
+                @xml.Node::Element(p) =>
+                  if p.name.local_name == "pt" { pts.push(p) }
+                _ => ()
+              }
+            }
+            if pts.length() == 3 {
+              buf.write_string("C ")
+              for pt in pts {
+                let x = resolve(attr_value_local(pt, "x").unwrap_or("0")) * sx
+                let y = resolve(attr_value_local(pt, "y").unwrap_or("0")) * sy
+                buf.write_string(format_d(x) + " " + format_d(y) + " ")
+              }
+            }
+          }
+          "quadBezTo" => {
+            let pts : Array[@xml.Element] = []
+            for pc in cmd.children {
+              match pc {
+                @xml.Node::Element(p) =>
+                  if p.name.local_name == "pt" { pts.push(p) }
+                _ => ()
+              }
+            }
+            if pts.length() == 2 {
+              buf.write_string("Q ")
+              for pt in pts {
+                let x = resolve(attr_value_local(pt, "x").unwrap_or("0")) * sx
+                let y = resolve(attr_value_local(pt, "y").unwrap_or("0")) * sy
+                buf.write_string(format_d(x) + " " + format_d(y) + " ")
+              }
+            }
+          }
+          "close" => buf.write_string("Z ")
+          "arcTo" => {
+            let wr = resolve(
+              attr_value_local(cmd, "wR").unwrap_or("0"),
+            ) * sx
+            let hr = resolve(
+              attr_value_local(cmd, "hR").unwrap_or("0"),
+            ) * sy
+            let st = resolve(
+              attr_value_local(cmd, "stAng").unwrap_or("0"),
+            ) / 60000.0
+            let sw = resolve(
+              attr_value_local(cmd, "swAng").unwrap_or("0"),
+            ) / 60000.0
+            let large = if sw.abs() > 180.0 { 1 } else { 0 }
+            let sweep = if sw > 0.0 { 1 } else { 0 }
+            let end_ang = (st + sw) * custgeom_pi / 180.0
+            let ex = wr * custgeom_cos(end_ang)
+            let ey = hr * custgeom_sin(end_ang)
+            buf.write_string(
+              "A " + format_d(wr) + " " + format_d(hr) + " 0 " +
+              large.to_string() + " " + sweep.to_string() + " " +
+              format_d(ex) + " " + format_d(ey) + " ",
+            )
+          }
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+}
+
 /// `data-ooxml-cxn-N-x` / `data-ooxml-cxn-N-y`, and the count of
 /// list children (`data-ooxml-gd-count`, `data-ooxml-cxnLst-count`)
 /// stays even when the lists are empty so the §20.1.9.12 / §20.1.9.9
@@ -10726,5 +11124,92 @@ fn render_autofilter_arrow(
       [],
     ),
   )
+  out
+}
+
+///|
+fn render_data_validation_arrows(
+  worksheet : @xml.Element,
+  layout : SheetLayout,
+) -> Array[@xml.Node] {
+  let out : Array[@xml.Node] = []
+  for child in worksheet.children {
+    match child {
+      @xml.Node::Element(el) =>
+        if el.name.local_name == "dataValidations" {
+          for dv_child in el.children {
+            match dv_child {
+              @xml.Node::Element(dv) =>
+                if dv.name.local_name == "dataValidation" {
+                  let is_list = match attr_value_local(dv, "type") {
+                    Some("list") => true
+                    _ => false
+                  }
+                  if is_list {
+                    match attr_value_local(dv, "sqref") {
+                      Some(sqref) =>
+                        for cell_ref in expand_sqref_to_cells(sqref) {
+                          match lookup_cell_layout(layout, cell_ref) {
+                            Some(cl) =>
+                              for n in render_autofilter_arrow(
+                                (cl.x, cl.y, cl.width, cl.height),
+                              ) {
+                                out.push(n)
+                              }
+                            None => ()
+                          }
+                        }
+                      None => ()
+                    }
+                  }
+                }
+              _ => ()
+            }
+          }
+        }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
+fn expand_sqref_to_cells(sqref : String) -> Array[String] {
+  let out : Array[String] = []
+  for part_iter in sqref.split(" ") {
+    let part = part_iter.to_string()
+    if part.length() == 0 {
+      continue
+    }
+    match part.find(":") {
+      None => out.push(part)
+      Some(colon) => {
+        let start = part.unsafe_substring(start=0, end=colon)
+        let end_ref = part.unsafe_substring(start=colon + 1, end=part.length())
+        let parsed = try {
+          let s = @address.CellAddress::parse_a1(start)
+          let e = @address.CellAddress::parse_a1(end_ref)
+          for r in s.row_zero_based..=e.row_zero_based {
+            for c in s.col_zero_based..=e.col_zero_based {
+              let addr : @address.CellAddress = {
+                col_zero_based: c,
+                row_zero_based: r,
+                col_absolute: false,
+                row_absolute: false,
+                sheet: None,
+              }
+              out.push(addr.to_a1())
+            }
+          }
+          true
+        } catch {
+          _ => false
+        }
+        if !parsed {
+          out.push(part)
+        }
+      }
+    }
+  }
   out
 }

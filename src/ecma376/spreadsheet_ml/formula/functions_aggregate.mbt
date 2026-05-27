@@ -23,6 +23,7 @@ pub fn register_builtin_functions(registry : FunctionRegistry) -> Unit {
   registry.register("PRODUCT", Eager(fn_product))
   registry.register("SUMPRODUCT", Eager(fn_sumproduct))
   register_builtin_math_functions(registry)
+  register_builtin_math_trig_functions(registry)
   register_builtin_logical_functions(registry)
   register_builtin_text_functions(registry)
   register_builtin_info_functions(registry)
@@ -31,6 +32,12 @@ pub fn register_builtin_functions(registry : FunctionRegistry) -> Unit {
   register_builtin_datetime_functions(registry)
   register_builtin_financial_functions(registry)
   register_builtin_statistical_functions(registry)
+  register_builtin_statistical_dist_functions(registry)
+  register_builtin_text_extended_functions(registry)
+  register_builtin_engineering_functions(registry)
+  register_builtin_database_functions(registry)
+  register_builtin_datetime_extended_functions(registry)
+  register_builtin_financial_bond_functions(registry)
 }
 
 ///|

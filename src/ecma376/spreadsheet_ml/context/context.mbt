@@ -243,6 +243,21 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       worksheet.name,
       cache_lookup,
     )
+    // §18.17 — evaluate every formula cell in this worksheet so the
+    // renderer can display computed results instead of cached values.
+    let date_system = if date1904 {
+      @sml_date_serial.DateSystem::Serial1904
+    } else {
+      @sml_date_serial.DateSystem::Serial1900
+    }
+    let snapshot = @sml_formula.WorksheetSnapshot::new(
+      worksheet.name, date_system,
+    ).with_worksheet(worksheet.value)
+    let snapshot = match self.shared_strings {
+      Some(sst) => snapshot.with_sst(sst)
+      None => snapshot
+    }
+    let evaluated = @sml_formula.evaluate_sheet(snapshot)
     // Each sheet's SVG ids are namespaced with the sheet index so
     // per-cell ids (clip paths, defs) stay unique once the sheets
     // are concatenated into a single document.
@@ -258,6 +273,7 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       pivots~,
       tables=worksheet.tables,
       workbook=Some(self.workbook.element),
+      evaluated_cells=Some(evaluated),
     )
     buf.write_string(result.svg)
   }

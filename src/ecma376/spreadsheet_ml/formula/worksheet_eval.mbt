@@ -7,6 +7,7 @@ pub(all) struct WorksheetSnapshot {
   sst : @domain.CT_Sst?
   date_system : @date_serial.DateSystem
   shared_formulas : @hashmap.HashMap[Int, (@address.CellAddress, String)]
+  merge_origins : @hashmap.HashMap[String, String]
   workbook_name : String?
   current_sheet : String
 } derive(Eq, Debug)
@@ -23,6 +24,7 @@ pub fn WorksheetSnapshot::new(
     sst: None,
     date_system,
     shared_formulas: @hashmap.HashMap([], capacity=0),
+    merge_origins: @hashmap.HashMap([], capacity=0),
     workbook_name: None,
     current_sheet,
   }
@@ -50,9 +52,11 @@ pub fn WorksheetSnapshot::with_worksheet(
 ) -> WorksheetSnapshot {
   for child in worksheet.element.children {
     match child {
-      @xml.Node::Element(sheet_data) =>
-        if worksheet_eval_is_element(sheet_data, "sheetData") {
-          self.add_sheet_data(sheet_data)
+      @xml.Node::Element(el) =>
+        if worksheet_eval_is_element(el, "sheetData") {
+          self.add_sheet_data(el)
+        } else if worksheet_eval_is_element(el, "mergeCells") {
+          self.add_merge_cells(el)
         }
       _ => ()
     }
@@ -155,6 +159,65 @@ fn WorksheetSnapshot::add_row(
           }
         }
       _ => ()
+    }
+  }
+}
+
+///|
+fn WorksheetSnapshot::add_merge_cells(
+  self : WorksheetSnapshot,
+  merge_cells_el : @xml.Element,
+) -> Unit {
+  for child in merge_cells_el.children {
+    match child {
+      @xml.Node::Element(mc) =>
+        if worksheet_eval_is_element(mc, "mergeCell") {
+          match worksheet_eval_attr(mc, "ref") {
+            Some(range_ref) => self.add_merge_range(range_ref)
+            None => ()
+          }
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn WorksheetSnapshot::add_merge_range(
+  self : WorksheetSnapshot,
+  range_ref : String,
+) -> Unit {
+  match range_ref.find(":") {
+    None => ()
+    Some(colon) => {
+      let origin_str = range_ref.unsafe_substring(start=0, end=colon)
+      let end_str = range_ref.unsafe_substring(
+        start=colon + 1, end=range_ref.length(),
+      )
+      let origin = match worksheet_eval_parse_address(origin_str) {
+        Some(a) => a
+        None => return
+      }
+      let end_addr = match worksheet_eval_parse_address(end_str) {
+        Some(a) => a
+        None => return
+      }
+      let origin_key = origin.to_a1()
+      for row in origin.row_zero_based..=end_addr.row_zero_based {
+        for col in origin.col_zero_based..=end_addr.col_zero_based {
+          if row == origin.row_zero_based && col == origin.col_zero_based {
+            continue
+          }
+          let addr : @address.CellAddress = {
+            col_zero_based: col,
+            row_zero_based: row,
+            col_absolute: false,
+            row_absolute: false,
+            sheet: None,
+          }
+          self.merge_origins.set(addr.to_a1(), origin_key)
+        }
+      }
     }
   }
 }
@@ -319,8 +382,8 @@ fn worksheet_eval_lookup_cell(
       let unqualified = worksheet_eval_unqualified_key(address)
       match snapshot.cells.get(unqualified) {
         Some(cell) => Some(cell)
-        None =>
-          match address.sheet {
+        None => {
+          let direct = match address.sheet {
             Some(sheet) =>
               if sheet == snapshot.current_sheet {
                 snapshot.cells.get(worksheet_eval_unqualified_key(address))
@@ -334,6 +397,18 @@ fn worksheet_eval_lookup_cell(
                 worksheet_eval_unqualified_key(address),
               )
           }
+          match direct {
+            Some(cell) => Some(cell)
+            None =>
+              // §18.3.1.55 — if the cell is inside a merged range,
+              // resolve to the merge origin's cell (the top-left cell
+              // of the merge carries the value for the entire range).
+              match snapshot.merge_origins.get(unqualified) {
+                Some(origin_key) => snapshot.cells.get(origin_key)
+                None => None
+              }
+          }
+        }
       }
     }
   }

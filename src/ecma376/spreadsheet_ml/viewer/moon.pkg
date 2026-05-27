@@ -3,6 +3,7 @@
 // SpreadsheetML context → HTML / SVG renderer.
 
 import {
+  "moonbitlang/core/hashmap" @hashmap,
   "moonbitlang/core/math" @math,
   "moonbitlang/core/string" @string,
   "trkbt10/ooxml/ecma376/drawing_ml" @a,
