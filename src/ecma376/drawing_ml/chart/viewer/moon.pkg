@@ -1,0 +1,19 @@
+// trkbt10/ooxml/ecma376/drawing_ml/chart/viewer
+//
+// ECMA-376 §21.2 DrawingML chart SVG renderer.  Walks the raw
+// `<c:chartSpace>` XML tree (the typed projections live in
+// `drawing_ml/chart`) and emits the axes, plot area, series, legend,
+// and title geometry as SVG nodes.  Callable from any ML chapter
+// viewer (PML slide / SML sheet / WML drawing) that hosts a
+// `<c:chart r:id="…"/>` reference inside a graphic-frame; the caller
+// supplies the bounding box + a `part_resolver` closure that maps an
+// `r:id` to the referenced chart part's root element.
+
+import {
+  "moonbitlang/core/math" @math,
+  "moonbitlang/core/string" @string,
+  "trkbt10/ooxml/ecma376/drawing_ml/paint" @paint,
+  "trkbt10/ooxml/util/glyph" @glyph,
+  "trkbt10/ooxml/util/markup" @markup,
+  "trkbt10/ooxml/xml" @xml,
+}

@@ -139,9 +139,17 @@ fn synth_attrs(
   schema : Schema,
   ct : @xml.Element,
   ns : String,
+  include_optional~ : Bool = false,
 ) -> Array[@xml.Attribute] {
   let found : Map[String, String] = Map([], capacity=0)
-  collect_attrs(schema, ct, found, Map([], capacity=0), Map([], capacity=0))
+  collect_attrs(
+    schema,
+    ct,
+    found,
+    Map([], capacity=0),
+    Map([], capacity=0),
+    include_optional~,
+  )
   let out : Array[@xml.Attribute] = []
   for key, value in found {
     // `key` is either a bare local name (inline `<xsd:attribute
@@ -525,8 +533,9 @@ fn synth_element(
   stack : StrSet,
   depth : Int,
   rich : Int,
+  include_optional_attrs~ : Bool = false,
 ) -> @xml.Element {
-  let attrs = synth_attrs(schema, ct, ns)
+  let attrs = synth_attrs(schema, ct, ns, include_optional=include_optional_attrs)
   let children = children_nodes(schema, ct, stack, depth, rich)
   if children.length() == 0 && xsd_child(ct, "simpleContent") is Some(_) {
     children.push(Text(TEXT_MARKER))

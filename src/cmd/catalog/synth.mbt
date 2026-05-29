@@ -50,12 +50,54 @@ fn sample_for_simple(
   match schema.simple_types.get(type_name) {
     None => "0"
     Some(st) => {
-      // restriction -> first enumeration, else recurse on base.
+      // restriction -> first enumeration, else pattern-aware fallback,
+      // else recurse on base.
       match xsd_child(st, "restriction") {
         Some(restr) => {
           let enums = xsd_children(restr, "enumeration")
           if enums.length() > 0 {
             return attr(enums[0], "value").unwrap_or("0")
+          }
+          // §3.2.x XSD pattern facet — when the restriction is just a
+          // pattern (no enumerations) the synth needs to honour the
+          // pattern shape so the result parses. We special-case the
+          // common OOXML "<digits>%" pattern (ST_HoleSizePercent,
+          // ST_GapAmountPercent, ST_OverlapPercent, ST_TextScalePercent,
+          // …) because the catalog's sample-for-string fallback ("x")
+          // does not satisfy them and the per-element verifier loses
+          // every chart percentage element to "open-fail".
+          let patterns = xsd_children(restr, "pattern")
+          if patterns.length() > 0 {
+            let pat = attr(patterns[0], "value").unwrap_or("")
+            if pat.length() > 0 && pat[pat.length() - 1:pat.length()] == "%" {
+              // Percentage pattern.  Pick a small non-zero value that
+              // typically matches the upper-bound digit-count branch:
+              // "5%" satisfies every chart percentage type whose lower
+              // bound is 0 (ST_GapAmountPercent / ST_OverlapPercent)
+              // and the 1-90 hole / text-scale ranges
+              // (ST_HoleSizePercent / ST_TextScalePercent).
+              return "5%"
+            }
+          }
+          // §3.2 XSD minInclusive — when the lower bound is strictly
+          // greater than the primitive sample ("1" for ints / doubles),
+          // the synth-default would produce a schema-invalid value.
+          // Bump only in that case so the existing samples (which are
+          // already inside their range) stay untouched.  Examples:
+          //   * ST_LogBase  (minInclusive=2)  → "2"  (synth "1" invalid)
+          //   * ST_GapAmount(minInclusive=0)  → "1"  (kept)
+          //   * ST_RotX     (minInclusive=-90)→ "1"  (kept)
+          let min_incl = xsd_children(restr, "minInclusive")
+          if min_incl.length() > 0 {
+            match attr(min_incl[0], "value") {
+              Some(v) => {
+                let n = (try? @string.parse_int(v)).unwrap_or(0)
+                if n > 1 {
+                  return v
+                }
+              }
+              None => ()
+            }
           }
           match attr(restr, "base") {
             Some(base) => {
@@ -185,11 +227,23 @@ fn collect_attrs(
   found : Map[String, String],
   ct_stack : StrSet,
   ag_stack : StrSet,
+  include_optional~ : Bool = false,
 ) -> Unit {
-  // Required <xsd:attribute> nodes anywhere in this type's subtree.
+  // <xsd:attribute> nodes anywhere in this type's subtree.  When
+  // `include_optional` is true, optional attributes (no `use` or
+  // `use="optional"`) are also synthesised so the target element
+  // carries a non-default value that the renderer's
+  // `<elem val="…">` reads cause a visible-skeleton diff under
+  // per-element differential verification.  Without this, optional
+  // attributes whose absence triggers the spec-default value are
+  // indistinguishable from absent attributes in the rendered SVG.
   let _ = schema
   for a in xsd_descendants(ct, "attribute") {
-    if attr(a, "use") == Some("required") {
+    let use_value = attr(a, "use")
+    let is_required = use_value == Some("required")
+    let is_optional = use_value == None || use_value == Some("optional")
+    let want = is_required || (include_optional && is_optional)
+    if want {
       // For an inline-declared attribute the key is the bare local
       // name; for `<xsd:attribute ref="prefix:name">` the key is
       // `prefix:name` so the downstream synthesiser (`synth_attrs`)
@@ -221,7 +275,7 @@ fn collect_attrs(
           match schema.attr_groups.get(ref_key) {
             Some(ag) => {
               ag_stack[ref_key] = true
-              collect_attrs(schema, ag, found, ct_stack, ag_stack)
+              collect_attrs(schema, ag, found, ct_stack, ag_stack, include_optional~)
             }
             None => ()
           }
@@ -241,7 +295,7 @@ fn collect_attrs(
                   match schema.complex_types.get(base) {
                     Some(base_ct) => {
                       ct_stack[base] = true
-                      collect_attrs(schema, base_ct, found, ct_stack, ag_stack)
+                      collect_attrs(schema, base_ct, found, ct_stack, ag_stack, include_optional~)
                     }
                     None => ()
                   }

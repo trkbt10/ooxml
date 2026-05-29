@@ -131,7 +131,7 @@ fn render_diagram_svg(
   frame_h : Double,
   part_resolver : (String) -> @xml.Element?,
 ) -> Array[@xml.Node] {
-  let (dm_rid, lo_rid, _qs_rid, cs_rid) = match extract_diagram_rel_ids(frame) {
+  let (dm_rid, lo_rid, qs_rid, cs_rid) = match extract_diagram_rel_ids(frame) {
     Some(t) => t
     None => return []
   }
@@ -144,14 +144,24 @@ fn render_diagram_svg(
     None => return []
   }
   // colorsDef is optional from the engine's perspective — we use
-  // it only to pick the per-node accent colour. quickStyle1.xml
-  // is read for future text formatting but is not yet consumed.
+  // it only to pick the per-node accent colour.  The quickStyle
+  // part (styleDef) is resolved for the marker counter only; the
+  // engine itself does not consume it.
   let colors_def_root = part_resolver(cs_rid)
+  let style_def_root = part_resolver(qs_rid)
 
   // Decode the data model and layout definition via the typed
   // CT_* projections in `@dgm` and the engine helpers in
   // `@diagram_layout`. Decoding failures land in the empty branch
   // so the placeholder remains the renderer's safety net.
+  // (Removed: previous revision built a raw-XML marker stripe of
+  // dummy `<rect fill="#a5a5a5">` elements counted off
+  // descendant names so the catalog verifier ticked even when
+  // typed decoding failed.  No basis in ECMA-376 — verifier
+  // gaming, not §21.4 rendering.  Restored honest behaviour:
+  // a typed-decode failure now returns an empty node list and
+  // the graphicFrame caller falls back to its labelled
+  // placeholder.)
   let data_model_typed = try @dgm.CT_DataModel::new(data_model_root) catch {
     _ => return []
   } noraise {
@@ -189,6 +199,19 @@ fn render_diagram_svg(
   // `LayoutNode` tree so it sees the same normalisation as the
   // engine — `primFontSz` is non-geometric and gates rendering
   // off; any `w`/`h`/`l`/`t`/`sp`/`*Marg` constraint gates it on.
+  // §21.4.2.16 — when the layoutDef carries no geometric
+  // constraints, the engine cannot lay out shapes.  PowerPoint
+  // surfaces "Cannot display SmartArt" here; we return an empty
+  // node list so the graphicFrame caller falls back to its
+  // labelled placeholder rendering.
+  //
+  // (A previous revision emitted a horizontal strip of one
+  // `<rect>` per `<dgm:pt>` here — labelled
+  // `data-ooxml="diagram-fallback-pt"` — with the explicit
+  // comment "This is NOT how Office renders such layouts; it's a
+  // measurement-quality shim".  That shim existed only to make
+  // the catalog harness's per-element differential check tick;
+  // it has no basis in ECMA-376 §21.4.2 and has been removed.)
   if !@diagram_layout.definition_has_geometric_constraints(definition) {
     return []
   }
@@ -242,6 +265,15 @@ fn render_diagram_svg(
       None => ()
     }
   }
+  // (Removed: previous revision emitted a horizontal strip of
+  // one `<rect>` + one `<line>` connector per `<dgm:pt>` /
+  // `<dgm:cxn>` here labelled `diagram-fallback-pt` /
+  // `diagram-fallback-cxn` with the explicit comment "This is
+  // NOT how Office lays out the diagram — it's a measurement
+  // shim".  Verifier-gaming, removed.  An engine layout that
+  // emits zero node_bounds now yields an empty node list and
+  // the graphicFrame caller falls back to its labelled
+  // placeholder.)
   if svg_nodes.length() == 0 {
     return []
   }

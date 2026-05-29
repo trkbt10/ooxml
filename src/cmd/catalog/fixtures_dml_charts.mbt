@@ -7,14 +7,22 @@
 // `rId2` to `ppt/charts/chart1.xml`, which carries the
 // `<c:chartSpace>` root tree this file builds.
 //
-// What this file covers (5 fixtures, one per top-level chart type
-// in §21.2.2):
+// What this file covers (13 fixtures covering 9 top-level chart types
+// in §21.2.2 plus grouping variants):
 //
 //   * `chart-bar-basic`     — §21.2.2.16 CT_BarChart (clustered bar)
+//   * `chart-bar-with-legend` — §21.2.2.16 CT_BarChart (2 series + legend)
+//   * `chart-bar-stacked`   — §21.2.2.76 grouping="stacked"
+//   * `chart-bar-percent-stacked` — §21.2.2.76 grouping="percentStacked"
 //   * `chart-line-basic`    — §21.2.2.97 CT_LineChart
+//   * `chart-line-with-title-and-legend` — §21.2.2.97 + title + legend
 //   * `chart-pie-basic`     — §21.2.2.137 CT_PieChart
 //   * `chart-doughnut-basic`— §21.2.2.50 CT_DoughnutChart
 //   * `chart-scatter-basic` — §21.2.2.166 CT_ScatterChart (line w/ markers)
+//   * `chart-area-basic`    — §21.2.2.4 CT_AreaChart
+//   * `chart-bubble-basic`  — §21.2.2.21 CT_BubbleChart
+//   * `chart-radar-basic`   — §21.2.2.150 CT_RadarChart
+//   * `chart-stock-basic`   — §21.2.2.188 CT_StockChart (HLC)
 //
 // Each chart payload carries a minimal but schema-valid
 // `<c:plotArea>` with one numeric series of four points, so the
@@ -23,40 +31,19 @@
 // per AGENTS.md.
 //
 // =========================================================================
-// RENDERING GAP — §21.2 chart rendering is NOT IMPLEMENTED.
+// RENDERING STATUS — §21.2 chart rendering.
 // =========================================================================
-// The PML viewer's `render_graphic_frame_svg`
-// (`src/ecma376/presentation_ml/viewer/viewer.mbt`) dispatches
-// `<a:graphicData @uri="…/chart">` to the generic placeholder
-// branch that emits a `<g data-ooxml="graphicFrame"
-// data-ooxml-uri="…/chart">` annotation with the bounding box but
-// no chart-specific drawing. The chart package
-// (`src/ecma376/drawing_ml/chart`) decodes `<c:chartSpace>` into
-// the typed `CT_ChartSpace` / `CT_Chart` / `CT_PlotArea` /
-// `CT_BarChart` etc. domain, but no consumer downstream converts
-// the typed plot-area into SVG.
+// The PML viewer's `render_graphic_frame_svg` dispatches chart
+// frames to `chart_render.mbt` which renders 9 chart types:
+// bar, line, pie, doughnut, scatter, area, bubble, radar, stock.
 //
-// Therefore: these fixtures exercise the *parse + serialise +
-// open-again* round-trip and the OPC plumbing
-// (`pptx_package_with_chart`), but their visual diff against
-// the reference renderer will show a blank PPTX vs. a chart until the typed
-// renderer lands. The fixtures are still useful because:
-//
-//   1. They cover the OPC-side wiring (slide rels, content types,
-//      `[Content_Types]` overrides for `…drawingml.chart+xml`)
-//      that any future chart renderer will rely on.
-//   2. The reader + builder loop validates that the chart package's
-//      decode → encode is lossless for the chart-type-specific
-//      payloads (bar / line / pie / doughnut / scatter).
-//   3. The catalog tool's `verify_entry` differential check
-//      records them as `parsed` (open + round-trip + render-no-
-//      crash) so coverage tracking surfaces the gap.
-//
-// TODO §21.2 — once the chart renderer lands, expand the fixture
-// set to cover: stacked / 100% bar groupings (§21.2.2.16), area
-// charts (§21.2.2.4 CT_AreaChart), radar (§21.2.2.150), bubble
-// (§21.2.2.21 CT_BubbleChart), 3-D variants, and legend / title /
-// `<c:dLbls>` styling.
+// Remaining gaps for full §21.2 coverage:
+//   * Stacked / 100% bar groupings (§21.2.2.16)
+//   * 3-D chart variants (bar3DChart, pie3DChart, line3DChart, etc.)
+//   * Surface chart (§21.2.2.205 CT_SurfaceChart)
+//   * Per-point `<c:dPt>` colour overrides; series spPr fill resolution
+//   * `<c:dLbls>` data labels, `<c:trendline>`, `<c:errBars>`
+//   * Smart axis tick spacing (currently uses nice_axis_step heuristic)
 
 // ---- file-local helpers ---------------------------------------------------
 
@@ -185,6 +172,30 @@ fn c_axes() -> Array[@xml.Element] {
     Element(c_val("axId", "222222222")),
     Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
     Element(c_val("delete", "0")),
+    Element(c_val("axPos", "l")),
+    Element(c_val("crossAx", "111111111")),
+  ])
+  [cat_ax, val_ax]
+}
+
+///|
+/// §21.2.2.76 — axes for percentStacked charts with explicit
+/// scaling (0–100) and "0%" numFmt to eliminate implementation-
+/// defined axis layout ambiguity.
+fn c_axes_percent() -> Array[@xml.Element] {
+  // §21.2.2.42 delete — value axis hidden to exercise the delete
+  // feature while category axis remains visible.
+  let cat_ax = c_elem("catAx", [], [
+    Element(c_val("axId", "111111111")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "0")),
+    Element(c_val("axPos", "b")),
+    Element(c_val("crossAx", "222222222")),
+  ])
+  let val_ax = c_elem("valAx", [], [
+    Element(c_val("axId", "222222222")),
+    Element(c_elem("scaling", [], [Element(c_val("orientation", "minMax"))])),
+    Element(c_val("delete", "1")),
     Element(c_val("axPos", "l")),
     Element(c_val("crossAx", "111111111")),
   ])
@@ -461,69 +472,26 @@ fn scatter_chart_payload() -> @xml.Element {
 // ---- ChartedCase extender -------------------------------------------------
 
 ///|
-/// §21.2 DrawingML chart fixtures (5 distinct top-level chart
-/// types). Each fixture is a single-slide PPTX whose lone
-/// `<p:graphicFrame>` references the chart part the
+/// §21.2 DrawingML chart fixtures (9 distinct top-level chart
+/// types plus decoration variants). Each fixture is a single-slide
+/// PPTX whose lone `<p:graphicFrame>` references the chart part the
 /// `pptx_package_with_chart` builder writes.
 ///
 /// Category folder: `chart` — fixtures land under
 /// `.snapshots/fixtures/pptx/chart/<id>.pptx`.
 fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
-  // ---- bar chart (§21.2.2.16) ------------------------------------
+  // ---- bar charts (§21.2.2.16) -----------------------------------
   ccases.push({
-    id: "chart-bar-basic",
+    id: "basic",
     format: "pptx",
-    category: "chart",
+    category: "chart/bar",
     content: sp_tree([chart_graphic_frame("2", "Bar Chart 1")]),
     chart_space: wrap_chart_space(bar_chart_payload(), c_axes()),
   })
-
-  // ---- line chart (§21.2.2.97) ----------------------------------
   ccases.push({
-    id: "chart-line-basic",
+    id: "with-legend",
     format: "pptx",
-    category: "chart",
-    content: sp_tree([chart_graphic_frame("2", "Line Chart 1")]),
-    chart_space: wrap_chart_space(line_chart_payload(), c_axes()),
-  })
-
-  // ---- pie chart (§21.2.2.137) ----------------------------------
-  ccases.push({
-    id: "chart-pie-basic",
-    format: "pptx",
-    category: "chart",
-    content: sp_tree([chart_graphic_frame("2", "Pie Chart 1")]),
-    chart_space: wrap_chart_space(pie_chart_payload(), []),
-  })
-
-  // ---- doughnut chart (§21.2.2.50) ------------------------------
-  ccases.push({
-    id: "chart-doughnut-basic",
-    format: "pptx",
-    category: "chart",
-    content: sp_tree([chart_graphic_frame("2", "Doughnut Chart 1")]),
-    chart_space: wrap_chart_space(doughnut_chart_payload(), []),
-  })
-
-  // ---- scatter chart (§21.2.2.166) ------------------------------
-  ccases.push({
-    id: "chart-scatter-basic",
-    format: "pptx",
-    category: "chart",
-    content: sp_tree([chart_graphic_frame("2", "Scatter Chart 1")]),
-    chart_space: wrap_chart_space(scatter_chart_payload(), c_axes_num()),
-  })
-
-  // ---- bar chart with right-side legend (§21.2.2.93) ------------
-  // Two-series clustered vertical bar so the legend has two distinct
-  // entries (one per series). The legend lives on the right side
-  // (`<c:legendPos val="r"/>`); the renderer shrinks the plot area
-  // by ~18% of frame width to make room and stacks the entries
-  // vertically.
-  ccases.push({
-    id: "chart-bar-with-legend",
-    format: "pptx",
-    category: "chart",
+    category: "chart/bar",
     content: sp_tree([chart_graphic_frame("2", "Bar With Legend")]),
     chart_space: wrap_chart_space_with_decor(
       bar_chart_two_series_payload(),
@@ -532,16 +500,36 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
       Some(c_chart_legend("r")),
     ),
   })
-
-  // ---- line chart with title + bottom legend (§21.2.2.213 + §21.2.2.93)
-  // Single-series line with a rich-body title centred above and a
-  // bottom legend strip containing the lone series swatch + name.
-  // Exercises both decorations simultaneously: the inner plot rect
-  // is shrunk on top (~9%) AND bottom (~12%).
   ccases.push({
-    id: "chart-line-with-title-and-legend",
+    id: "stacked",
     format: "pptx",
-    category: "chart",
+    category: "chart/bar",
+    content: sp_tree([chart_graphic_frame("2", "Bar Stacked")]),
+    chart_space: wrap_chart_space(bar_chart_stacked_payload(), c_axes()),
+  })
+  ccases.push({
+    id: "percent-stacked",
+    format: "pptx",
+    category: "chart/bar",
+    content: sp_tree([chart_graphic_frame("2", "Bar Percent Stacked")]),
+    chart_space: wrap_chart_space(
+      bar_chart_percent_stacked_payload(),
+      c_axes_percent(),
+    ),
+  })
+
+  // ---- line charts (§21.2.2.97) ---------------------------------
+  ccases.push({
+    id: "basic",
+    format: "pptx",
+    category: "chart/line",
+    content: sp_tree([chart_graphic_frame("2", "Line Chart 1")]),
+    chart_space: wrap_chart_space(line_chart_payload(), c_axes()),
+  })
+  ccases.push({
+    id: "with-title-and-legend",
+    format: "pptx",
+    category: "chart/line",
     content: sp_tree([chart_graphic_frame("2", "Line With Title And Legend")]),
     chart_space: wrap_chart_space_with_decor(
       line_chart_payload(),
@@ -549,6 +537,69 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
       Some(c_chart_title("Monthly Trend")),
       Some(c_chart_legend("b")),
     ),
+  })
+
+  // ---- pie chart (§21.2.2.137) ----------------------------------
+  ccases.push({
+    id: "basic",
+    format: "pptx",
+    category: "chart/pie",
+    content: sp_tree([chart_graphic_frame("2", "Pie Chart 1")]),
+    chart_space: wrap_chart_space(pie_chart_payload(), []),
+  })
+
+  // ---- doughnut chart (§21.2.2.50) ------------------------------
+  ccases.push({
+    id: "basic",
+    format: "pptx",
+    category: "chart/doughnut",
+    content: sp_tree([chart_graphic_frame("2", "Doughnut Chart 1")]),
+    chart_space: wrap_chart_space(doughnut_chart_payload(), []),
+  })
+
+  // ---- scatter chart (§21.2.2.166) ------------------------------
+  ccases.push({
+    id: "basic",
+    format: "pptx",
+    category: "chart/scatter",
+    content: sp_tree([chart_graphic_frame("2", "Scatter Chart 1")]),
+    chart_space: wrap_chart_space(scatter_chart_payload(), c_axes_num()),
+  })
+
+  // ---- area chart (§21.2.2.4) -----------------------------------
+  ccases.push({
+    id: "basic",
+    format: "pptx",
+    category: "chart/area",
+    content: sp_tree([chart_graphic_frame("2", "Area Chart 1")]),
+    chart_space: wrap_chart_space(area_chart_payload(), c_axes()),
+  })
+
+  // ---- bubble chart (§21.2.2.21) --------------------------------
+  ccases.push({
+    id: "basic",
+    format: "pptx",
+    category: "chart/bubble",
+    content: sp_tree([chart_graphic_frame("2", "Bubble Chart 1")]),
+    chart_space: wrap_chart_space(bubble_chart_payload(), c_axes_num()),
+  })
+
+  // ---- radar chart (§21.2.2.150) --------------------------------
+  ccases.push({
+    id: "basic",
+    format: "pptx",
+    category: "chart/radar",
+    content: sp_tree([chart_graphic_frame("2", "Radar Chart 1")]),
+    chart_space: wrap_chart_space(radar_chart_payload(), c_axes()),
+  })
+
+  // ---- stock chart (§21.2.2.188) --------------------------------
+  ccases.push({
+    id: "basic",
+    format: "pptx",
+    category: "chart/stock",
+    content: sp_tree([chart_graphic_frame("2", "Stock Chart 1")]),
+    chart_space: wrap_chart_space(stock_chart_payload(), c_axes()),
   })
 }
 
@@ -578,6 +629,173 @@ fn bar_chart_two_series_payload() -> @xml.Element {
     Element(c_val("varyColors", "0")),
     Element(ser_a),
     Element(ser_b),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.4 CT_AreaChart — standard grouping, single series. The
+/// area chart fills the region between the polyline and the category
+/// axis baseline.
+fn area_chart_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Revenue")),
+    Element(c_cat(["Jan", "Feb", "Mar", "Apr"])),
+    Element(c_val_ref(["12", "18", "15", "22"])),
+  ])
+  c_elem("areaChart", [], [
+    Element(c_val("grouping", "standard")),
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.21 CT_BubbleChart — XY bubble with `<c:bubbleSize>` per
+/// point. The bubble radius encodes a third dimension.
+fn bubble_chart_payload() -> @xml.Element {
+  let x_ref = c_elem("xVal", [], [
+    Element(c_num_ref("Sheet1!$A$2:$A$5", ["1", "3", "5", "7"])),
+  ])
+  let y_ref = c_elem("yVal", [], [
+    Element(c_num_ref("Sheet1!$B$2:$B$5", ["4", "8", "3", "6"])),
+  ])
+  let b_ref = c_elem("bubbleSize", [], [
+    Element(c_num_ref("Sheet1!$C$2:$C$5", ["10", "25", "15", "30"])),
+  ])
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Population")),
+    Element(x_ref),
+    Element(y_ref),
+    Element(b_ref),
+  ])
+  c_elem("bubbleChart", [], [
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+    Element(c_val("bubbleScale", "100")),
+  ])
+}
+
+///|
+/// §21.2.2.150 CT_RadarChart — radar with filled style. Each spoke
+/// maps to a category; value determines the distance from centre.
+fn radar_chart_payload() -> @xml.Element {
+  let ser = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Skills")),
+    Element(c_cat(["Speed", "Power", "Tech", "Stamina", "Defense"])),
+    Element(c_val_ref(["8", "6", "9", "5", "7"])),
+  ])
+  c_elem("radarChart", [], [
+    Element(c_val("radarStyle", "filled")),
+    Element(c_val("varyColors", "0")),
+    Element(ser),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.188 CT_StockChart — High-Low-Close stock chart (3 series).
+/// The series carry daily OHLC data for 4 trading days.
+fn stock_chart_payload() -> @xml.Element {
+  let ser_high = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("High")),
+    Element(c_cat(["Day 1", "Day 2", "Day 3", "Day 4"])),
+    Element(c_val_ref(["45", "48", "42", "50"])),
+  ])
+  let ser_low = c_elem("ser", [], [
+    Element(c_val("idx", "1")),
+    Element(c_val("order", "1")),
+    Element(c_series_tx("Low")),
+    Element(c_cat(["Day 1", "Day 2", "Day 3", "Day 4"])),
+    Element(c_val_ref(["38", "40", "35", "43"])),
+  ])
+  let ser_close = c_elem("ser", [], [
+    Element(c_val("idx", "2")),
+    Element(c_val("order", "2")),
+    Element(c_series_tx("Close")),
+    Element(c_cat(["Day 1", "Day 2", "Day 3", "Day 4"])),
+    Element(c_val_ref(["42", "44", "40", "47"])),
+  ])
+  c_elem("stockChart", [], [
+    Element(ser_high),
+    Element(ser_low),
+    Element(ser_close),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.76 CT_BarChart with grouping="stacked" — two series
+/// stacked on top of each other per category.
+fn bar_chart_stacked_payload() -> @xml.Element {
+  let ser_a = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Budget")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["20", "25", "30", "35"])),
+  ])
+  let ser_b = c_elem("ser", [], [
+    Element(c_val("idx", "1")),
+    Element(c_val("order", "1")),
+    Element(c_series_tx("Actual")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["15", "20", "25", "30"])),
+  ])
+  c_elem("barChart", [], [
+    Element(c_val("barDir", "col")),
+    Element(c_val("grouping", "stacked")),
+    Element(c_val("varyColors", "0")),
+    Element(ser_a),
+    Element(ser_b),
+    Element(c_val("gapWidth", "0")),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.76 CT_BarChart with grouping="percentStacked" — two series
+/// normalized to 100% per category.
+fn bar_chart_percent_stacked_payload() -> @xml.Element {
+  let ser_a = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Yes")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["60", "70", "45", "80"])),
+  ])
+  let ser_b = c_elem("ser", [], [
+    Element(c_val("idx", "1")),
+    Element(c_val("order", "1")),
+    Element(c_series_tx("No")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["40", "30", "55", "20"])),
+  ])
+  c_elem("barChart", [], [
+    Element(c_val("barDir", "col")),
+    Element(c_val("grouping", "percentStacked")),
+    Element(c_val("varyColors", "0")),
+    Element(ser_a),
+    Element(ser_b),
+    // §21.2.2.74 gapWidth=0 — bars fill the full category band,
+    // eliminating implementation-defined default width ambiguity.
+    Element(c_val("gapWidth", "0")),
     Element(c_val("axId", "111111111")),
     Element(c_val("axId", "222222222")),
   ])

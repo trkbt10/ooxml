@@ -207,6 +207,30 @@ fn part_roots(schema : Schema) -> Array[(String, String)] {
       // synthesise into a valid `.docx` package.
        "settings", "styles", "numbering", "fonts", "webSettings", "comments", "footnotes",
       "endnotes",
+      // §21.2 DrawingML chart — `<c:chartSpace>` is the part root for
+      // `ppt/charts/chartN.xml`. Without it the chart sub-elements
+      // (`<c:plotArea>`, `<c:barChart>`, `<c:ser>`, …) have no
+      // primary-rooted BFS path and fall through to the generic
+      // `graphicData` any-host slot, where they're embedded inside a
+      // slide's `<a:graphicData>` rather than wired into a real chart
+      // part — so the chart-renderer pipeline never sees them.
+      "chartSpace",
+      // §21.4 DrawingML diagram — the four part roots of a SmartArt
+      // bundle: `<dgm:dataModel>` (data1.xml), `<dgm:layoutDef>`
+      // (layout1.xml), `<dgm:styleDef>` (quickStyle1.xml),
+      // `<dgm:colorsDef>` (colors1.xml).  Each is the root of an
+      // independent OPC part bound to the slide via `<dgm:relIds>`;
+      // catalog hosting must route sub-elements through the part
+      // they belong to so the SmartArt engine sees them as
+      // typed data.
+      "dataModel", "layoutDef", "styleDef", "colorsDef",
+      // §21.3 DrawingML chartDrawing — `<c:userShapes>` is the part
+      // root for `ppt/charts/_rels/chartN.xml.rels → userShapes.xml`.
+      // It carries `<cdr:absSizeAnchor>` / `<cdr:relSizeAnchor>` /
+      // shapes that ride on top of a chart.  Without this, every
+      // chartDrawing element falls to the generic `graphicData`
+      // any-host slot.
+      "userShapes",
     ] {
     match schema.top_elements.get(name) {
       Some((el, _)) =>
@@ -367,6 +391,128 @@ fn build_ancestry(
     }
   }
   run_bfs(supp_queue, primary_keys)
+  // PASS 3 — §21.2 DrawingML chart BFS.  `<c:chartSpace>` is a
+  // separate OPC part (`ppt/charts/chartN.xml`) whose schema tree
+  // hosts the chart-namespace element family (plotArea, ser, val,
+  // catAx, …) the primary slide/document/worksheet BFS reaches only
+  // through `<a:graphicData>` (any-host).  Run a focused BFS from
+  // chartSpace and ATTACH the discovered paths only to chart-namespace
+  // elements — DML-core types (`<a:gd>`, `<a:srgbClr>`, …) that the
+  // BFS also visits inside chart shapes keep their primary canonical
+  // paths so the renderer's shape pipeline still credits them.
+  let chart_ns_strict = "http://purl.oclc.org/ooxml/drawingml/chart"
+  let chart_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  // Snapshot every key currently in all_paths so the chart-BFS pass
+  // can identify which (name, type) pairs it adds.
+  let pre_chart_paths : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
+  for k, v in all_paths {
+    let copy : Array[Array[(String, String)]] = []
+    for p in v {
+      copy.push(p)
+    }
+    pre_chart_paths[k] = copy
+  }
+  // Seed pass-3 with BOTH chartSpace declarations (strict + transitional)
+  // so chart sub-elements in either namespace pick up their
+  // chartSpace-rooted ancestry.  `part_roots` returns a single entry
+  // per name and only retains the first encountered namespace; here we
+  // scan `schema.all_elements` for every `chartSpace` declaration so
+  // each namespace variant seeds its own BFS expansion.
+  let chart_queue : Array[(String, String, Array[(String, String)])] = []
+  for _k, decl in schema.all_elements {
+    if decl.name == "chartSpace" {
+      chart_queue.push((decl.name, decl.type_name, []))
+    }
+  }
+  run_bfs(chart_queue, Map([], capacity=0))
+  // Strip any path the chart BFS appended onto a non-chart-namespace
+  // (name, type) — its canonical path stays the primary/supplementary
+  // one.  Distinguishing namespace is straightforward because every
+  // chart element's type carries one of the two chart namespace
+  // prefixes; everything else (DML core, OPC, …) does not.
+  for key, paths in all_paths {
+    // Element key looks like `name#namespace#typeLocalName`.  We
+    // recover the namespace from the type token, which embeds the
+    // resolving namespace as its prefix.
+    let is_chart_key = key.contains(chart_ns_strict) ||
+      key.contains(chart_ns_trans)
+    if is_chart_key {
+      continue
+    }
+    match pre_chart_paths.get(key) {
+      Some(orig) => all_paths[key] = orig
+      None => ()
+    }
+  }
+  // PASS 4 — §21.4 DrawingML diagram BFS.  Snapshot all_paths,
+  // run a focused BFS from each of the four diagram part roots
+  // (dataModel / layoutDef / styleDef / colorsDef) across both
+  // strict and transitional namespaces, then keep the new
+  // paths only for diagram-namespace (name, type) pairs so DML
+  // core / chart types referenced inside diagram parts retain
+  // their original canonical chain.
+  let dgm_ns_strict = "http://purl.oclc.org/ooxml/drawingml/diagram"
+  let dgm_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+  let pre_dgm_paths : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
+  for k, v in all_paths {
+    let copy : Array[Array[(String, String)]] = []
+    for p in v {
+      copy.push(p)
+    }
+    pre_dgm_paths[k] = copy
+  }
+  let dgm_queue : Array[(String, String, Array[(String, String)])] = []
+  for _k, decl in schema.all_elements {
+    match decl.name {
+      "dataModel" | "layoutDef" | "styleDef" | "colorsDef" =>
+        dgm_queue.push((decl.name, decl.type_name, []))
+      _ => ()
+    }
+  }
+  run_bfs(dgm_queue, Map([], capacity=0))
+  for key, paths in all_paths {
+    let is_dgm_key = key.contains(dgm_ns_strict) || key.contains(dgm_ns_trans)
+    if is_dgm_key {
+      continue
+    }
+    match pre_dgm_paths.get(key) {
+      Some(orig) => all_paths[key] = orig
+      None => ()
+    }
+  }
+  // PASS 5 — §21.3 DrawingML chartDrawing BFS.  `<c:userShapes>`
+  // (chart namespace, type cdr:CT_Drawing) is the part root for the
+  // user-shapes overlay on a chart.  Its content is in the
+  // chartDrawing namespace.  Seed from each userShapes declaration
+  // and keep paths only for chartDrawing-namespace (name, type)
+  // pairs.
+  let cdr_ns_strict = "http://purl.oclc.org/ooxml/drawingml/chartDrawing"
+  let cdr_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing"
+  let pre_cdr_paths : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
+  for k, v in all_paths {
+    let copy : Array[Array[(String, String)]] = []
+    for p in v {
+      copy.push(p)
+    }
+    pre_cdr_paths[k] = copy
+  }
+  let cdr_queue : Array[(String, String, Array[(String, String)])] = []
+  for _k, decl in schema.all_elements {
+    if decl.name == "userShapes" {
+      cdr_queue.push((decl.name, decl.type_name, []))
+    }
+  }
+  run_bfs(cdr_queue, Map([], capacity=0))
+  for key, paths in all_paths {
+    let is_cdr_key = key.contains(cdr_ns_strict) || key.contains(cdr_ns_trans)
+    if is_cdr_key {
+      continue
+    }
+    match pre_cdr_paths.get(key) {
+      Some(orig) => all_paths[key] = orig
+      None => ()
+    }
+  }
   // An `<xsd:any>` extension point (e.g. CT_GraphicalObjectData)
   // legally accepts any element.  For an element the named BFS
   // could not reach, route it through one of the discovered
@@ -594,7 +740,15 @@ fn path_starts_in_primary_root(path : Array[(String, String)]) -> Bool {
   }
   let (root_name, _) = path[0]
   match root_name {
-    "document" | "worksheet" | "sld" => true
+    "document"
+    | "worksheet"
+    | "sld"
+    | "chartSpace"
+    | "dataModel"
+    | "layoutDef"
+    | "styleDef"
+    | "colorsDef"
+    | "userShapes" => true
     _ => false
   }
 }

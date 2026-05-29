@@ -207,6 +207,16 @@ pub fn Presentation::to_svg_for_slide(
   let parts_resolver = fn(rid : String) -> @xml.Element? {
     resolve_slide_part(self, slide.name, rid)
   }
+  // §21.3 chartDrawing — given the rId of a chart part on the slide's
+  // rels (i.e. the rId on `<c:chart r:id>`), return a resolver scoped
+  // to that chart part's own rels.  The chart renderer uses it to
+  // resolve `<c:userShapes r:id>` and other chart-internal
+  // references that live in the chart-part rels table.  Returns
+  // `None` when the rId is unknown to the slide rels or the target
+  // part has no rels.
+  let chart_part_resolver_factory = fn(chart_rid : String) -> ((String) -> @xml.Element?)? {
+    resolve_part_scoped_resolver(self, slide.name, chart_rid)
+  }
   // §19.3.1.42 — walk slide → layout → master → theme rels so
   // multi-master decks pick up the theme each master references.
   // Fall back to the first theme part when the chain cannot
@@ -230,6 +240,7 @@ pub fn Presentation::to_svg_for_slide(
         height_emu=sz.cy.emu,
         image_resolver=resolver,
         part_resolver=parts_resolver,
+        chart_part_resolver_factory~,
         theme=typed_theme,
         chain~,
         presentation=presentation_root,
@@ -239,6 +250,7 @@ pub fn Presentation::to_svg_for_slide(
         slide.value,
         image_resolver=resolver,
         part_resolver=parts_resolver,
+        chart_part_resolver_factory~,
         theme=typed_theme,
         chain~,
         presentation=presentation_root,
@@ -510,6 +522,62 @@ pub fn Presentation::to_svg(
       @xml.escape_text(self.presentation.element.name.local_name) +
       "</text></svg>"
   }
+}
+
+///|
+/// §21.3 — given the rId of a part referenced from the SLIDE rels
+/// (e.g. the chart part), return a resolver that walks THAT part's
+/// own rels.  Used by the chart renderer to resolve
+/// `<c:userShapes r:id>` and similar chart-internal references whose
+/// rIds belong to the chart-part rels table, not the slide rels.
+/// Returns `None` when the rId is unknown to the slide rels or the
+/// target part has no rels.
+fn resolve_part_scoped_resolver(
+  presentation : Presentation,
+  slide_part_name : String,
+  outer_rid : String,
+) -> ((String) -> @xml.Element?)? {
+  // Resolve the outer rId against the slide rels.
+  let slide_rels = match presentation.opc_package.relationships(slide_part_name) {
+    Some(r) => r
+    None => return None
+  }
+  let target_rel = match slide_rels.find_by_id(outer_rid) {
+    Some(r) => r
+    None => return None
+  }
+  let nested_part_name = match
+    (try? @opc_part_name.resolve_target(slide_part_name, target_rel.target)) {
+    Ok(name) => name
+    Err(_) => return None
+  }
+  // The nested part may have its own rels file (`_rels/<part>.xml.rels`).
+  let nested_rels = match
+    presentation.opc_package.relationships(nested_part_name) {
+    Some(r) => r
+    None => return None
+  }
+  let pkg = presentation.opc_package
+  let base = nested_part_name
+  let rels = nested_rels
+  Some(fn(rid : String) -> @xml.Element? {
+    let rel = match rels.find_by_id(rid) {
+      Some(r) => r
+      None => return None
+    }
+    let resolved = match (try? @opc_part_name.resolve_target(base, rel.target)) {
+      Ok(name) => name
+      Err(_) => return None
+    }
+    let part = match pkg.part(resolved) {
+      Some(p) => p
+      None => return None
+    }
+    match (try? @xml.parse(part.data)) {
+      Ok(doc) => Some(doc.root)
+      Err(_) => None
+    }
+  })
 }
 
 ///|

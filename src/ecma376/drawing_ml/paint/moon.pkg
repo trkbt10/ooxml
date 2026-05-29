@@ -1,0 +1,17 @@
+// trkbt10/ooxml/ecma376/drawing_ml/paint
+//
+// ECMA-376 §20.1.2 (color reference) + §20.1.6 (theme color scheme)
+// + §20.1.4.1.6 (placeholder color substitution) SVG-side renderer.
+// Holds the rendering-time helpers (ColorResolveContext, ResolvedColor,
+// SvgDefsCollector, resolve_solid_fill, get_scheme_color,
+// format_resolved_color) that turn a raw `@xml.Element` colour tree
+// into a hex/CSS colour string usable by the chapter viewers (PML
+// slide / SML sheet / WML drawing / DML chart).
+
+import {
+  "moonbitlang/core/math" @math,
+  "moonbitlang/core/string" @string,
+  "trkbt10/ooxml/util/color" @color,
+  "trkbt10/ooxml/util/markup" @markup,
+  "trkbt10/ooxml/xml" @xml,
+}

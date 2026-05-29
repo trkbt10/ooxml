@@ -743,7 +743,7 @@ fn collect_color_children_hex(
           | "hslClr"
           | "scrgbClr"
           | "prstClr" =>
-            match resolve_solid_fill(color_el, ctx~) {
+            match @paint.resolve_solid_fill(color_el, ctx~) {
               Some(rc) =>
                 if rc.hex != "" {
                   result.push(rc.hex)

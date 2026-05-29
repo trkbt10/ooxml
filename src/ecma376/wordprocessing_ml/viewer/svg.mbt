@@ -574,6 +574,13 @@ priv struct RunSpan {
   /// vertical line at the span's x position instead of advancing
   /// the text cursor (the span carries zero width).
   bar_tab : Bool
+  /// §17.3.1.10 `<w:autoSpaceDE>` — insert 和欧間隔 (JIS X 4051 四分アキ)
+  /// between East Asian text and adjacent Western *letters*.  Defaults
+  /// to `true` (Word's default); set from the paragraph's `<w:pPr>`.
+  auto_space_de : Bool
+  /// §17.3.1.11 `<w:autoSpaceDN>` — the same, between East Asian text
+  /// and adjacent Western *numbers*.  Defaults to `true`.
+  auto_space_dn : Bool
 }
 
 ///|
@@ -1173,6 +1180,7 @@ pub fn render_svg(
   /// the `even`-type header / footer.
   even_and_odd_headers? : Bool = false,
   image_resolver? : (String) -> ResolvedImage? = _ => None,
+  chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
   /// §17.15.1.85 / Annex A — `/word/theme/theme1.xml` root
@@ -1242,6 +1250,7 @@ pub fn render_svg(
     domain,
     decoration,
     image_resolver,
+    chart_resolver,
     styles,
     numbering,
     theme_map~,
@@ -1260,6 +1269,7 @@ fn render_svg_raw(
   domain : @domain.CT_Document,
   decoration : PageDecoration,
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
@@ -1270,6 +1280,11 @@ fn render_svg_raw(
 ) -> DocumentSvgResult {
   let warnings : Array[String] = []
   let settings_attrs = settings_data_attrs(settings)
+  // (Removed: previous revision counted WML descendant names
+  // across the document / settings / styles / numbering / fonts /
+  // webSettings and threaded the total into a "wml-section-marker"
+  // rect stripe.  Pure verifier gaming — no basis in ECMA-376 §17.
+  // Deleted.)
   // §17.8.2.11 fontTable.xml — surface every `<w:font>` entry as a
   // `data-ooxml-fonts-*-<i>` attribute so the catalog renderer
   // verifier sees the embedded-face presence.
@@ -1326,6 +1341,7 @@ fn render_svg_raw(
         decoration.footers_for(0),
         warnings,
         image_resolver,
+        chart_resolver,
         styles,
         settings_attrs~,
       )
@@ -1344,6 +1360,7 @@ fn render_svg_raw(
         warnings,
         decoration,
         image_resolver,
+        chart_resolver,
         domain.element,
         styles,
         numbering,
@@ -1365,6 +1382,7 @@ fn render_body_to_svg(
   warnings : Array[String],
   decoration : PageDecoration,
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   document_root : @xml.Element,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
@@ -1376,6 +1394,7 @@ fn render_body_to_svg(
     body,
     warnings,
     image_resolver,
+    chart_resolver,
     document_root,
     styles,
     numbering,
@@ -1395,6 +1414,7 @@ fn render_body_to_svg(
         decoration.footers_for(page_index),
         warnings,
         image_resolver,
+        chart_resolver,
         styles,
         settings_attrs~,
       ),
@@ -1419,6 +1439,7 @@ fn lay_out_body(
   body : @xml.Element,
   warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   document_root : @xml.Element,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
@@ -1448,6 +1469,7 @@ fn lay_out_body(
     layout_width,
     warnings,
     image_resolver,
+    chart_resolver,
     styles,
     numbering,
     theme_map~,
@@ -1483,6 +1505,7 @@ pub fn render_combined_svg(
   title_pg? : Bool = false,
   even_and_odd_headers? : Bool = false,
   image_resolver? : (String) -> ResolvedImage? = _ => None,
+  chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
   theme? : @xml.Element? = None,
@@ -1523,6 +1546,7 @@ pub fn render_combined_svg(
     domain,
     decoration,
     image_resolver,
+    chart_resolver,
     styles,
     numbering,
     theme_map~,
@@ -1541,6 +1565,7 @@ fn render_combined_svg_raw(
   domain : @domain.CT_Document,
   decoration : PageDecoration,
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
@@ -1594,6 +1619,7 @@ fn render_combined_svg_raw(
         body_el,
         warnings,
         image_resolver,
+        chart_resolver,
         domain.element,
         styles,
         numbering,
@@ -1601,12 +1627,17 @@ fn render_combined_svg_raw(
         font_map~,
       )
   }
+  // (Removed: previous revision counted WML descendant names and
+  // emitted a dummy marker-rect stripe at the bottom of the
+  // combined SVG.  Pure verifier gaming — no basis in ECMA-376
+  // §17 rendering.  Deleted.)
   build_combined_svg(
     cfg,
     pages,
     decoration,
     warnings,
     image_resolver,
+    chart_resolver,
     styles,
     settings_attrs~,
   )
@@ -1627,6 +1658,7 @@ fn build_combined_svg(
   decoration : PageDecoration,
   warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   settings_attrs? : Array[@xml.Attribute] = [],
 ) -> String {
@@ -1671,6 +1703,7 @@ fn build_combined_svg(
       decoration.footers_for(0),
       warnings,
       image_resolver,
+      chart_resolver,
       styles,
     )
     page_groups.push(
@@ -1693,6 +1726,7 @@ fn build_combined_svg(
         decoration.footers_for(page_index),
         warnings,
         image_resolver,
+        chart_resolver,
         styles,
       )
       let y = h * page_index.to_double()
@@ -1709,6 +1743,10 @@ fn build_combined_svg(
       )
     }
   }
+  // (Removed: dummy `<rect fill="#a5a5a5">` "wml-section-marker"
+  // stripe.  No basis in ECMA-376 — verifier gaming.  Deleted.)
+  let _ = w
+  let _ = total_h
   let root : @xml.Element = {
     name: @markup.qname_ns("svg", @markup.svg_ns),
     attributes: attrs,
@@ -2057,8 +2095,12 @@ fn append_background_drawing_nodes(
         [],
       ),
     )
+    // (Removed: dummy `<rect fill="#a5a5a5">` per
+    // colorsDefHdr/layoutDefHdr/styleDefHdr/relIds descendant.
+    // Pure verifier gaming — deleted.)
   }
 }
+
 
 ///|
 /// Translate a `<w:pict>` watermark into SVG nodes.  Walks every
@@ -2146,6 +2188,7 @@ fn collect_blocks(
   content_width : Double,
   warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
@@ -2198,6 +2241,7 @@ fn collect_blocks(
               with_marker,
               content_width,
               image_resolver,
+              chart_resolver,
               apply_office_defaults~,
               theme_map~,
               font_map~,
@@ -2289,6 +2333,7 @@ fn collect_blocks(
                     with_marker,
                     wrap_body_width,
                     image_resolver,
+                    chart_resolver,
                     apply_office_defaults~,
                     theme_map~,
                     font_map~,
@@ -3498,6 +3543,10 @@ fn resolve_run_props(
     kern_half_points,
     lang,
     bar_tab: false,
+    // Paragraph-level toggles; default ON, overridden per paragraph in
+    // `collect_paragraph_spans`.
+    auto_space_de: true,
+    auto_space_dn: true,
   }
 }
 
@@ -3527,6 +3576,7 @@ fn has_toggle(r_pr : @xml.Element, name : String) -> Bool {
 fn collect_paragraph_spans(
   p : @xml.Element,
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
@@ -3583,11 +3633,45 @@ fn collect_paragraph_spans(
     false,
     spans,
     image_resolver,
+    chart_resolver,
     default_font_size_pt~,
     theme_map~,
     font_map~,
   )
-  spans
+  // §17.3.1.10/.11 — resolve the paragraph's autoSpaceDE / autoSpaceDN
+  // toggles once (both default ON when absent) and stamp every span so
+  // the measurer and emitter apply 和欧間隔 consistently.  When both are
+  // ON (the common case) the spans already carry the default, so the
+  // remap is a no-op clone; we only pay it to honour an explicit
+  // `<w:autoSpaceDE w:val="0"/>` / `<w:autoSpaceDN w:val="0"/>`.
+  let p_pr = first_child_named(p, "pPr")
+  let de = para_toggle_default_true(p_pr, "autoSpaceDE")
+  let dn = para_toggle_default_true(p_pr, "autoSpaceDN")
+  if de && dn {
+    return spans
+  }
+  let adjusted : Array[RunSpan] = []
+  for s in spans {
+    adjusted.push({ ..s, auto_space_de: de, auto_space_dn: dn })
+  }
+  adjusted
+}
+
+///|
+/// Read a §17.3 OnOff paragraph toggle that DEFAULTS TO TRUE when the
+/// element is absent (e.g. autoSpaceDE / autoSpaceDN): present-with-no-
+/// `@val` or `@val="true"` ⇒ true; `@val="false"`/`"0"` ⇒ false;
+/// absent ⇒ true.  (`has_toggle` defaults absent to FALSE, so it is
+/// wrong for default-on toggles.)
+fn para_toggle_default_true(p_pr : @xml.Element?, name : String) -> Bool {
+  match p_pr {
+    None => true
+    Some(pr) =>
+      match first_child_named(pr, name) {
+        None => true
+        Some(el) => parse_xsd_on_off_or(attr_value(el, "val"), true)
+      }
+  }
 }
 
 ///|
@@ -3628,6 +3712,10 @@ fn default_run_template(
     kern_half_points: 0.0,
     lang: "",
     bar_tab: false,
+    // §17.3.1.10/.11 — both East-Asian auto-space toggles default ON;
+    // `collect_paragraph_spans` overrides them per paragraph.
+    auto_space_de: true,
+    auto_space_dn: true,
   }
 }
 
@@ -3664,6 +3752,7 @@ fn collect_paragraph_spans_into(
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
@@ -3678,6 +3767,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
@@ -3689,6 +3779,7 @@ fn collect_paragraph_spans_into(
               true,
               spans,
               image_resolver,
+              chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
@@ -3710,6 +3801,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
@@ -3722,6 +3814,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
@@ -3774,6 +3867,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
@@ -3791,6 +3885,7 @@ fn collect_paragraph_spans_into(
               hyperlink_styling,
               spans,
               image_resolver,
+              chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
@@ -3815,6 +3910,7 @@ fn emit_run_spans(
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
@@ -3918,7 +4014,7 @@ fn emit_run_spans(
             }
           "drawing" =>
             emit_drawing_span(
-              re, template, hyperlink_styling, spans, image_resolver,
+              re, template, hyperlink_styling, spans, image_resolver, chart_resolver,
             )
           "object" | "pict" => {
             // §17.3.3.19 `<w:object>` / §17.3.3.21 `<w:pict>` — legacy
@@ -3928,7 +4024,7 @@ fn emit_run_spans(
             match first_child_named(re, "drawing") {
               Some(d) =>
                 emit_drawing_span(
-                  d, template, hyperlink_styling, spans, image_resolver,
+                  d, template, hyperlink_styling, spans, image_resolver, chart_resolver,
                 )
               None => ()
             }
@@ -4365,6 +4461,7 @@ fn emit_drawing_span(
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
 ) -> Unit {
   match build_inline_image(drawing, image_resolver) {
     Some(img) =>
@@ -4375,6 +4472,13 @@ fn emit_drawing_span(
         ),
       )
     None =>
+      // §21.2 — DrawingML chart payload: `<a:graphicData uri="…/chart">`
+      // carrying a `<c:chart r:id>` reference resolved through the
+      // document's relationships table. The chart renderer
+      // (`drawing_ml/chart/viewer`) returns a self-contained `<g>`
+      // for the plot area; wrap it in a `MathPayload` so the line
+      // emitter places it on the baseline.
+      //
       // §20.5 — no picture payload reached; if the drawing carries a
       // wordprocessing-shape (`<wps:wsp>`) we can still render the
       // preset geometry inline.  Otherwise, if `<a:graphicData>`
@@ -4382,34 +4486,44 @@ fn emit_drawing_span(
       // (`build_inline_vml`) surfaces the same inline-shape slot
       // with a translated `<g>`.  Falls through to the whitespace
       // placeholder when neither path produces a payload.
-      match build_inline_shape(drawing) {
-        Some(shape) =>
+      match build_inline_chart(drawing, chart_resolver) {
+        Some(chart) =>
           spans.push(
             apply_hyperlink_styling(
-              with_math(template, shape),
+              with_math(template, chart),
               hyperlink_styling,
             ),
           )
         None =>
-          match build_inline_vml(drawing) {
-            Some(vml_shape) =>
+          match build_inline_shape(drawing) {
+            Some(shape) =>
               spans.push(
                 apply_hyperlink_styling(
-                  with_math(template, vml_shape),
+                  with_math(template, shape),
                   hyperlink_styling,
                 ),
               )
-            None => {
-              let w_px = drawing_extent_width_px(drawing)
-              if w_px > 0.0 {
-                spans.push(
-                  apply_hyperlink_styling(
-                    with_text(template, " ", w_px),
-                    hyperlink_styling,
-                  ),
-                )
+            None =>
+              match build_inline_vml(drawing) {
+                Some(vml_shape) =>
+                  spans.push(
+                    apply_hyperlink_styling(
+                      with_math(template, vml_shape),
+                      hyperlink_styling,
+                    ),
+                  )
+                None => {
+                  let w_px = drawing_extent_width_px(drawing)
+                  if w_px > 0.0 {
+                    spans.push(
+                      apply_hyperlink_styling(
+                        with_text(template, " ", w_px),
+                        hyperlink_styling,
+                      ),
+                    )
+                  }
+                }
               }
-            }
           }
       }
   }
@@ -4602,7 +4716,7 @@ fn emit_omath_span(
 /// text for smallCaps.
 fn measure_run_text(text : String, template : RunSpan) -> Double {
   let measured_text = if template.caps { to_upper_ascii(text) } else { text }
-  try @glyph.measure_text_width(
+  let glyph_w = try @glyph.measure_text_width(
       measured_text,
       font_size_pt=template.font_size_pt,
       letter_spacing_px=template.letter_spacing_px,
@@ -4614,6 +4728,20 @@ fn measure_run_text(text : String, template : RunSpan) -> Double {
   } noraise {
     w => w
   }
+  // §17.3.1.10/.11 autoSpaceDE / autoSpaceDN (JIS X 4051 和欧間隔) —
+  // add the 四分アキ accrued at this run's internal East-Asian↔Western
+  // boundaries so the measured advance matches the glyphs the emitter
+  // paints (`build_text_children` splits the run into tspans separated
+  // by the same gap), honouring the paragraph's two toggles.  Px (not
+  // pt) because the rest of the layout is in px: `inter_script_advance_px`
+  // is fed the px-equivalent font size.
+  glyph_w +
+  @glyph.inter_script_advance_px(
+    measured_text,
+    font_size_pt=template.font_size_pt * @glyph.pt_to_px,
+    auto_space_de=template.auto_space_de,
+    auto_space_dn=template.auto_space_dn,
+  )
 }
 
 ///|
@@ -4650,6 +4778,7 @@ fn layout_paragraph(
   p : @xml.Element,
   content_width : Double,
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   apply_office_defaults? : Bool = false,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
@@ -4685,6 +4814,7 @@ fn layout_paragraph(
   let spans = collect_paragraph_spans(
     p,
     image_resolver,
+    chart_resolver,
     default_font_size_pt~,
     theme_map~,
     font_map~,
@@ -5475,49 +5605,11 @@ fn count_span_spaces(span : RunSpan) -> Int {
 // Line breaking
 // =============================================================================
 
-///|
-/// True for ASCII break opportunities.
-fn is_break_char_w(c : Char) -> Bool {
-  c == ' ' || c == '\t' || c == '-'
-}
-
-///|
-/// True when `c` is a CJK ideograph / kana / Hangul character. Every CJK
-/// scalar is a soft-wrap opportunity in its own right (UAX #14
-/// classifies CJK ideographs as line-break class `ID`, "Ideographic" —
-/// breaks are allowed before AND after every ID, without consuming any
-/// whitespace). The line breaker uses this to insert per-character
-/// break opportunities for runs of CJK text, mirroring the reference renderer's
-/// per-glyph wrap (verified against `docx/run/run-long-japanese`
-/// reference: a 89-codepoint Japanese paragraph wraps at the 44th
-/// ideograph, NOT only at the 30-twip-wide ASCII break chars the
-/// run is otherwise free of).
-fn is_cjk_break_char_w(c : Char) -> Bool {
-  @glyph.is_cjk_char(c)
-}
-
-///|
-/// True when the segment is composed entirely of soft-wrap whitespace
-/// (U+0020 space, U+0009 tab). Used by `break_span_by_words` to
-/// SWALLOW a whitespace segment that would otherwise overflow the
-/// line — CSS Text and Word both consume the trailing space at a
-/// soft-wrap boundary, so the next line must NOT begin with the
-/// whitespace that triggered the break. Hyphens are deliberately
-/// excluded: a hyphen at a wrap point is a visible glyph that the
-/// line break is allowed to occur AFTER, and it must stay attached
-/// to the preceding word (e.g. "non-trivial" wrapping after "non-"
-/// must keep the hyphen on the line above, not move it down).
-fn is_wrap_whitespace(seg : String) -> Bool {
-  if seg.length() == 0 {
-    return false
-  }
-  for c in seg {
-    if c != ' ' && c != '\t' {
-      return false
-    }
-  }
-  true
-}
+// Line-break segmentation (CJK per-glyph splitting + JIS X 4051
+// kinsoku gluing) and the soft-wrap-whitespace test live in the shared
+// `@glyph` source of truth (`linebreak_segments` /
+// `is_wrap_whitespace_segment`), consumed below and by the SML viewer
+// alike — see src/util/glyph/line_segment.mbt.
 
 ///|
 /// Break `spans` into lines that fit within (first_line_w, next_line_w).
@@ -5566,7 +5658,9 @@ fn break_into_lines(
       // a tab-stop advance (or a bar-tab decoration) after line
       // breaking completes, so swallowing them here would lose the
       // tab.
-      if used.val == 0.0 && span.text != "\t" && is_wrap_whitespace(span.text) {
+      if used.val == 0.0 &&
+        span.text != "\t" &&
+        @glyph.is_wrap_whitespace_segment(span.text) {
         continue
       }
       current.push(span)
@@ -5588,7 +5682,7 @@ fn break_into_lines(
       // emitted by `break_span_by_words` (covers single-span
       // paragraphs whose wrap point fell exactly on a whitespace
       // segment in the inner break loop).
-      if used.val == 0.0 && is_wrap_whitespace(piece.text) {
+      if used.val == 0.0 && @glyph.is_wrap_whitespace_segment(piece.text) {
         continue
       }
       if used.val + piece.width_px <= budget.val || used.val == 0.0 {
@@ -5613,60 +5707,6 @@ fn break_into_lines(
   lines
 }
 
-///|
-/// Decompose text into segments alternating between words and runs of
-/// break characters (space/tab/hyphen).  Each segment is emitted in the
-/// order it appeared so concatenation reproduces the original text.
-///
-/// CJK ideographs are emitted as ONE SEGMENT PER CODEPOINT (UAX #14
-/// class `ID`) — this gives the line breaker a wrap opportunity before
-/// and after every CJK character, matching the reference renderer's per-glyph
-/// CJK wrap behaviour (verified against
-/// `docx/run/run-long-japanese` where an 89-codepoint Japanese
-/// paragraph with no ASCII whitespace must wrap at the column
-/// boundary after every full-em ideograph).  Without this split the
-/// segmenter treats the entire paragraph as a single oversized
-/// "word" and the force-fit branch in `break_into_lines` lets it
-/// overflow the page width.  CJK chars are NEVER pushed into the
-/// `break_buf` (whitespace bucket) — they are visible glyphs and must
-/// not be swallowed at a line start.
-fn split_into_segments(text : String) -> Array[String] {
-  let segments : Array[String] = []
-  let buf : Array[Char] = []
-  let break_buf : Array[Char] = []
-  fn flush_break(segments : Array[String], break_buf : Array[Char]) -> Unit {
-    if break_buf.length() > 0 {
-      segments.push(chars_to_string(break_buf))
-      break_buf.clear()
-    }
-  }
-
-  fn flush_word(segments : Array[String], buf : Array[Char]) -> Unit {
-    if buf.length() > 0 {
-      segments.push(chars_to_string(buf))
-      buf.clear()
-    }
-  }
-
-  for c in text {
-    if is_break_char_w(c) {
-      flush_word(segments, buf)
-      break_buf.push(c)
-    } else if is_cjk_break_char_w(c) {
-      // Every CJK ideograph is its own segment, giving the line
-      // breaker a per-glyph wrap opportunity.
-      flush_break(segments, break_buf)
-      flush_word(segments, buf)
-      segments.push(c.to_string())
-    } else {
-      flush_break(segments, break_buf)
-      buf.push(c)
-    }
-  }
-  flush_break(segments, break_buf)
-  flush_word(segments, buf)
-  segments
-}
 
 ///|
 /// Build a String from an Array[Char].
@@ -5684,23 +5724,14 @@ fn chars_to_string(chars : Array[Char]) -> String {
 /// instruct the caller to start a new line between word groups when
 /// needed.
 ///
-/// KNOWN GAP — emergency character-level wrap (CSS
-/// `overflow-wrap: anywhere`): a run that is one continuous string
-/// with no break opportunity (e.g.
-/// `abcdefghij...` repeated for 500 chars, as in
-/// `.snapshots/fixtures/docx/paragraph/edge-wml-very-long-single-line.docx`)
-/// produces a single oversized segment from `split_into_segments`,
-/// and the `cur_w.val == 0.0` force-fit branch in the caller emits
-/// it as one unbroken line that overruns the column. the reference renderer's
-/// PDF rasteriser falls back to PER-CHARACTER wrapping in this
-/// case, producing 5+ wrapped lines that share the column width.
-/// Reproducing that requires either (a) extending
-/// `split_into_segments` to emit per-grapheme segments once a token
-/// exceeds the column width, or (b) a second-pass character
-/// re-break invoked from the caller. Deferred for now —
-/// `edge-wml-very-long-single-line` is the only fixture that
-/// exercises this path; every real-world docx run carries word
-/// breaks so the existing logic suffices.
+/// Emergency character-level wrap (CSS `overflow-wrap: anywhere`): a
+/// single segment with no internal break opportunity (e.g. a 500-char
+/// unbroken ASCII token, or a long glued-kinsoku run) that is itself
+/// wider than the column is split PER GRAPHEME so it fills successive
+/// lines instead of overrunning the column — matching Word / the
+/// reference renderer.  The per-character break still honours JIS X
+/// 4051: a break is never placed before a 行頭禁則 character (it is
+/// pulled onto the current line — 追い込み — and allowed to hang).
 fn break_span_by_words(
   span : RunSpan,
   first_avail : Double,
@@ -5713,7 +5744,7 @@ fn break_span_by_words(
   if span.math is Some(_) || span.inline_image is Some(_) {
     return [span]
   }
-  let segments = split_into_segments(span.text)
+  let segments = @glyph.linebreak_segments(span.text)
   let pieces : Array[RunSpan] = []
   let cur_chars : Array[Char] = []
   let cur_w : Ref[Double] = { val: 0.0 }
@@ -5739,14 +5770,33 @@ fn break_span_by_words(
     avail.val = next_avail
   }
 
+  // Emergency per-grapheme wrap for a segment that, on its own, is
+  // wider than the line.  Adds one character at a time and breaks when
+  // the column is exceeded — except that JIS X 4051 forbids breaking
+  // before a 行頭禁則 character (or after a 行末禁則 one), in which case
+  // the character is kept on the current line (追い込み) and hangs past
+  // the edge rather than orphaning to the next line's head.
+  fn emergency_char_split(seg : String) {
+    for c in seg {
+      let cw = measure_run_text(c.to_string(), span)
+      if cur_chars.length() > 0 &&
+        cur_w.val + cw > avail.val &&
+        @glyph.kinsoku_break_allowed(cur_chars[cur_chars.length() - 1], c) {
+        flush_with_break()
+      }
+      cur_chars.push(c)
+      cur_w.val = cur_w.val + cw
+    }
+  }
+
   for seg in segments {
     let seg_w = measure_run_text(seg, span)
-    if cur_w.val + seg_w <= avail.val || cur_w.val == 0.0 {
+    if cur_w.val + seg_w <= avail.val {
       for c in seg {
         cur_chars.push(c)
       }
       cur_w.val = cur_w.val + seg_w
-    } else if is_wrap_whitespace(seg) {
+    } else if @glyph.is_wrap_whitespace_segment(seg) {
       // §17.3 / CSS Text — a U+0020 / U+0009 whitespace segment that
       // would overflow the line IS the soft-wrap boundary itself.
       // Both Word and the reference renderer consume the space at the break: the
@@ -5760,11 +5810,22 @@ fn break_span_by_words(
       // so the next non-whitespace segment starts at x=0.
       flush_with_break()
     } else {
-      flush_with_break()
-      for c in seg {
-        cur_chars.push(c)
+      // The segment does not fit the remaining room.  Move to a fresh
+      // line first (only if the current one carries content, so an
+      // empty line never emits a spurious break), then place the
+      // segment — splitting it per grapheme when it is itself wider
+      // than a full line (CSS overflow-wrap: anywhere).
+      if cur_w.val > 0.0 {
+        flush_with_break()
       }
-      cur_w.val = seg_w
+      if seg_w <= avail.val {
+        for c in seg {
+          cur_chars.push(c)
+        }
+        cur_w.val = seg_w
+      } else {
+        emergency_char_split(seg)
+      }
     }
   }
   if cur_chars.length() > 0 {
@@ -6116,6 +6177,7 @@ fn layout_table(
       // no-op resolver so inline `<w:drawing>` payloads still reserve
       // their cx width via the placeholder fallback.
       let cell_noop_resolver : (String) -> ResolvedImage? = _ => None
+      let cell_noop_chart_resolver : (@xml.Element) -> @xml.Node? = _ => None
       // §17.7.5.3 — cell paragraphs honour the same Office Normal
       // docDefaults fallback as body paragraphs when the document has
       // no styles part. Without this, a styles-less table's cells
@@ -6130,6 +6192,7 @@ fn layout_table(
                 e,
                 content_w,
                 cell_noop_resolver,
+                cell_noop_chart_resolver,
                 apply_office_defaults~,
               )
               cell_paras.push(para)
@@ -6796,12 +6859,15 @@ fn emit_page_svg_with_decoration(
   footer_blocks : Array[@xml.Element],
   warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   settings_attrs? : Array[@xml.Attribute] = [],
 ) -> String {
   let children = build_page_decoration_nodes(
-    page, cfg, header_blocks, footer_blocks, warnings, image_resolver, styles,
+    page, cfg, header_blocks, footer_blocks, warnings, image_resolver, chart_resolver, styles,
   )
+  // (Removed: dummy `<rect fill="#a5a5a5">` "wml-section-marker"
+  // stripe.  Pure verifier gaming — deleted.)
   @markup.serialize_svg(build_svg_element(cfg, children, settings_attrs~))
 }
 
@@ -6820,6 +6886,7 @@ fn build_page_decoration_nodes(
   footer_blocks : Array[@xml.Element],
   warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
 ) -> Array[@xml.Node] {
   let children = build_page_body_nodes(page, cfg)
@@ -6831,7 +6898,7 @@ fn build_page_decoration_nodes(
   )
   if header_blocks.length() > 0 {
     let blocks = collect_blocks_from_elements(
-      header_blocks, content_width, warnings, image_resolver, styles,
+      header_blocks, content_width, warnings, image_resolver, chart_resolver, styles,
     )
     let group_children = build_decoration_block_nodes(blocks)
     children.push(
@@ -6850,7 +6917,7 @@ fn build_page_decoration_nodes(
   }
   if footer_blocks.length() > 0 {
     let blocks = collect_blocks_from_elements(
-      footer_blocks, content_width, warnings, image_resolver, styles,
+      footer_blocks, content_width, warnings, image_resolver, chart_resolver, styles,
     )
     let group_children = build_decoration_block_nodes(blocks)
     // Footer goes inside the bottom-margin band.
@@ -6911,6 +6978,7 @@ fn collect_blocks_from_elements(
   content_width : Double,
   warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
+  chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
@@ -6925,6 +6993,7 @@ fn collect_blocks_from_elements(
           elt,
           content_width,
           image_resolver,
+          chart_resolver,
           apply_office_defaults~,
         )
         blocks.push(ParaBlock(lp))
@@ -7790,6 +7859,44 @@ fn build_span_text_node(
 /// shift on the FIRST tspan — we do NOT keep the raw text as a
 /// child, because the parent `<text>`'s `xml:space="preserve"` would
 /// otherwise paint those spaces back in on top of the explicit x.
+/// Split `text` at every East-Asian↔Western boundary (where
+/// `@glyph.inter_script_space_em` is non-zero), returning the
+/// single-side chunks in order.  A run with no such boundary returns a
+/// single-element array (the whole text), so the caller can fast-path
+/// it.  Used by `build_text_children` to place the 和欧間隔 gap.
+fn inter_script_chunks(
+  text : String,
+  auto_space_de : Bool,
+  auto_space_dn : Bool,
+) -> Array[String] {
+  let chunks : Array[String] = []
+  let buf = StringBuilder::new()
+  let mut prev : Char? = None
+  for c in text {
+    match prev {
+      Some(p) =>
+        if @glyph.inter_script_space_em(
+            p,
+            c,
+            auto_space_de~,
+            auto_space_dn~,
+          ) >
+          0.0 {
+          chunks.push(buf.to_string())
+          buf.reset()
+        }
+      None => ()
+    }
+    buf.write_char(c)
+    prev = Some(c)
+  }
+  if buf.to_string().length() > 0 || chunks.length() == 0 {
+    chunks.push(buf.to_string())
+  }
+  chunks
+}
+
+///|
 fn build_text_children(
   span : RunSpan,
   line : LaidLine,
@@ -7800,6 +7907,33 @@ fn build_text_children(
     span.bar_tab ||
     span.inline_image is Some(_) ||
     span.math is Some(_) {
+    // §17.3.1.10/.11 autoSpaceDE / autoSpaceDN — render the 和欧間隔
+    // 四分アキ by splitting the run at East-Asian↔Western boundaries
+    // into tspans, each post-boundary tspan shifted right by the gap
+    // via `dx`.  `measure_run_text` already folds the same gaps into
+    // the run's advance, so the cursor and the painted glyphs agree.
+    let gap_px = @glyph.inter_script_gap_em *
+      span.font_size_pt *
+      @glyph.pt_to_px
+    let chunks = inter_script_chunks(
+      span.text,
+      span.auto_space_de,
+      span.auto_space_dn,
+    )
+    if chunks.length() > 1 {
+      let result : Array[@xml.Node] = []
+      for i, chunk in chunks {
+        let attrs : Array[@xml.Attribute] = if i == 0 {
+          []
+        } else {
+          [@markup.attr("dx", fmt_double(gap_px))]
+        }
+        result.push(
+          @markup.elem_ns("tspan", @markup.svg_ns, attrs, [@markup.text(chunk)]),
+        )
+      }
+      return result
+    }
     return [@markup.text(span.text)]
   }
   let n_spaces = count_span_spaces(span)

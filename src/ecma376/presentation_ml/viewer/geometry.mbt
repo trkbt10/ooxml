@@ -93,6 +93,304 @@ pub fn render_preset_geometry(
 }
 
 ///|
+/// Format a custom-geometry coordinate, snapping floating-point noise.
+/// Trig in `arcTo` leaves residuals like `3.06e-15` where an exact `0`
+/// is meant; rounding to 1e-4 px removes the noise (and the ugly
+/// scientific-notation output) while staying well below sub-pixel
+/// significance, then `fmt` collapses integral results to plain ints.
+fn fmt_coord(value : Double) -> String {
+  let scaled = value * 10000.0
+  let rounded = (scaled + (if scaled >= 0.0 { 0.5 } else { -0.5 })).to_int().to_double() /
+    10000.0
+  // Avoid emitting "-0".
+  let normal = if rounded == 0.0 { 0.0 } else { rounded }
+  fmt(normal)
+}
+
+///|
+/// Read the `<a:gdLst>` of a `<a:custGeom>` into `GuideEntry`s — each
+/// `<a:gd name="…" fmla="…"/>` becomes one entry.  Unlike
+/// `parse_adjust_values` (which only handles the `val N` formulas of an
+/// `<a:avLst>`), these formulas are full guide expressions (`*/ w 2 1`,
+/// `pin 0 x1 w`, …) evaluated by `evaluate_guides`.
+fn parse_geom_guides(gd_lst : @xml.Element?) -> Array[GuideEntry] {
+  let result : Array[GuideEntry] = []
+  match gd_lst {
+    None => return result
+    Some(lst) =>
+      for child in lst.children {
+        match child {
+          Element(gd) =>
+            if gd.name.local_name == "gd" {
+              let name = match attr_value(gd, "name") {
+                Some(n) => n
+                None => continue
+              }
+              let fmla = match attr_value(gd, "fmla") {
+                Some(f) => f
+                None => continue
+              }
+              result.push({ name, formula: fmla })
+            }
+          _ => ()
+        }
+      }
+  }
+  result
+}
+
+///|
+/// Resolve an `<a:pt>` child's `x` / `y` coordinate through the guide
+/// context.  Each attribute is an `ST_AdjCoordinate` — either a literal
+/// number or a guide name — so `evaluate_expression` handles both.
+/// Coordinates are returned in the path's own coordinate space (before
+/// scaling to the rendered box).
+fn resolve_pt(pt : @xml.Element, ctx : GuideContext) -> (Double, Double) {
+  let x = match attr_value(pt, "x") {
+    Some(v) => evaluate_expression(v, ctx)
+    None => 0.0
+  }
+  let y = match attr_value(pt, "y") {
+    Some(v) => evaluate_expression(v, ctx)
+    None => 0.0
+  }
+  (x, y)
+}
+
+///|
+/// Render a `<a:custGeom>` element (§20.1.9.8) to an SVG path-data
+/// string.  Walks `<a:pathLst>/<a:path>` and translates each path
+/// command into its SVG equivalent:
+///
+/// | OOXML (§20.1.9)        | SVG path command            |
+/// |------------------------|-----------------------------|
+/// | `<a:moveTo>`           | `M x y`                     |
+/// | `<a:lnTo>`             | `L x y`                     |
+/// | `<a:cubicBezTo>` (3pt) | `C x1 y1 x2 y2 x y`         |
+/// | `<a:quadBezTo>` (2pt)  | `Q x1 y1 x y`               |
+/// | `<a:arcTo>`            | `A rx ry 0 laf sf ex ey`    |
+/// | `<a:close>`            | `Z`                         |
+///
+/// Point coordinates are resolved through the shape guide engine
+/// (`<a:gdLst>` + `<a:avLst>`), then scaled from each path's declared
+/// `w`/`h` coordinate space into the rendered `width`×`height` box.
+///
+/// Returns `None` when no `<a:pathLst>` is present, mirroring
+/// `render_preset_geometry`'s unknown-geometry contract so the caller
+/// falls back to a bounding rect.
+pub fn render_custom_geometry(
+  cust_geom : @xml.Element,
+  width : Double,
+  height : Double,
+) -> String? {
+  let path_lst = match first_child_named(cust_geom, "pathLst") {
+    Some(p) => p
+    None => return None
+  }
+  let avs = parse_adjust_values(first_child_named(cust_geom, "avLst"))
+  let guides = parse_geom_guides(first_child_named(cust_geom, "gdLst"))
+  let out = StringBuilder::new()
+  let mut emitted = false
+  for path_child in path_lst.children {
+    let path = match path_child {
+      Element(p) => if p.name.local_name == "path" { p } else { continue }
+      _ => continue
+    }
+    // Each `<a:path>` declares the coordinate space its points live in
+    // via `w`/`h`; absent (or zero) means the points are already in the
+    // rendered space, so the scale collapses to 1.
+    let path_w = match attr_value(path, "w") {
+      Some(v) =>
+        try @string.parse_double(v) catch {
+          _ => 0.0
+        } noraise {
+          d => d
+        }
+      None => 0.0
+    }
+    let path_h = match attr_value(path, "h") {
+      Some(v) =>
+        try @string.parse_double(v) catch {
+          _ => 0.0
+        } noraise {
+          d => d
+        }
+      None => 0.0
+    }
+    let sx = if path_w > 0.0 { width / path_w } else { 1.0 }
+    let sy = if path_h > 0.0 { height / path_h } else { 1.0 }
+    // Guide built-ins (`w`,`h`,`hc`,…) are derived from this path's
+    // coordinate space so that guide-driven coordinates land in the
+    // same units as the literal points before scaling.
+    let ctx_w = if path_w > 0.0 { path_w } else { width }
+    let ctx_h = if path_h > 0.0 { path_h } else { height }
+    let ctx = create_guide_context(ctx_w, ctx_h, adjust_values=avs)
+    evaluate_guides(guides, ctx)
+    // The "current point" — arcTo needs it to derive the arc centre.
+    let mut cur_x = 0.0
+    let mut cur_y = 0.0
+    for cmd_node in path.children {
+      let cmd = match cmd_node {
+        Element(c) => c
+        _ => continue
+      }
+      match cmd.name.local_name {
+        "moveTo" =>
+          match first_child_named(cmd, "pt") {
+            Some(pt) => {
+              let (x, y) = resolve_pt(pt, ctx)
+              cur_x = x
+              cur_y = y
+              if emitted {
+                out.write_string(" ")
+              }
+              out.write_string("M " + fmt_coord(x * sx) + " " + fmt_coord(y * sy))
+              emitted = true
+            }
+            None => ()
+          }
+        "lnTo" =>
+          match first_child_named(cmd, "pt") {
+            Some(pt) => {
+              let (x, y) = resolve_pt(pt, ctx)
+              cur_x = x
+              cur_y = y
+              out.write_string(" L " + fmt_coord(x * sx) + " " + fmt_coord(y * sy))
+            }
+            None => ()
+          }
+        "cubicBezTo" => {
+          let pts = pt_children(cmd, ctx)
+          if pts.length() == 3 {
+            let (x1, y1) = pts[0]
+            let (x2, y2) = pts[1]
+            let (x3, y3) = pts[2]
+            cur_x = x3
+            cur_y = y3
+            out.write_string(
+              " C " +
+              fmt_coord(x1 * sx) + " " + fmt_coord(y1 * sy) + " " +
+              fmt_coord(x2 * sx) + " " + fmt_coord(y2 * sy) + " " +
+              fmt_coord(x3 * sx) + " " + fmt_coord(y3 * sy),
+            )
+          }
+        }
+        "quadBezTo" => {
+          let pts = pt_children(cmd, ctx)
+          if pts.length() == 2 {
+            let (x1, y1) = pts[0]
+            let (x2, y2) = pts[1]
+            cur_x = x2
+            cur_y = y2
+            out.write_string(
+              " Q " +
+              fmt_coord(x1 * sx) + " " + fmt_coord(y1 * sy) + " " +
+              fmt_coord(x2 * sx) + " " + fmt_coord(y2 * sy),
+            )
+          }
+        }
+        "arcTo" => {
+          let (seg, ex, ey) = arc_to_svg(cmd, ctx, cur_x, cur_y, sx, sy)
+          cur_x = ex
+          cur_y = ey
+          out.write_string(seg)
+        }
+        "close" => out.write_string(" Z")
+        _ => ()
+      }
+    }
+  }
+  if emitted {
+    Some(out.to_string())
+  } else {
+    None
+  }
+}
+
+///|
+/// Resolve every `<a:pt>` child of a path command into a list of
+/// path-space (x, y) coordinates, in document order.  Used by the
+/// multi-point commands `cubicBezTo` (3) and `quadBezTo` (2).
+fn pt_children(
+  cmd : @xml.Element,
+  ctx : GuideContext,
+) -> Array[(Double, Double)] {
+  let pts : Array[(Double, Double)] = []
+  for child in cmd.children {
+    match child {
+      Element(p) => if p.name.local_name == "pt" { pts.push(resolve_pt(p, ctx)) }
+      _ => ()
+    }
+  }
+  pts
+}
+
+///|
+/// Translate an `<a:arcTo wR hR stAng swAng>` command (§20.1.9.3) into
+/// an SVG elliptical-arc segment, given the current point `(cur_x,
+/// cur_y)` in path space and the path→box scale `(sx, sy)`.
+///
+/// OOXML arc semantics: the arc lies on an axis-aligned ellipse with
+/// radii `wR` (x) and `hR` (y).  `stAng` is the start angle and `swAng`
+/// the swept angle, both in 1/60000 degree.  The ellipse centre is
+/// fixed by requiring the arc to *start* at the current point:
+///   `cx = cur_x − wR·cos(stAng)`, `cy = cur_y − hR·sin(stAng)`.
+/// The end point is `(cx + wR·cos(stAng+swAng), cy + hR·sin(stAng+swAng))`.
+///
+/// SVG mapping: `A rx ry 0 large-arc-flag sweep-flag ex ey` where
+/// `rx=wR·sx`, `ry=hR·sy`.  Both OOXML and SVG use a y-down coordinate
+/// system with angles increasing clockwise, so a positive `swAng` maps
+/// to `sweep-flag = 1`; `large-arc-flag = 1` when `|swAng| > 180°`.
+///
+/// Returns the SVG path segment string plus the unscaled end point
+/// (so the caller can update its current-point tracker).
+fn arc_to_svg(
+  cmd : @xml.Element,
+  ctx : GuideContext,
+  cur_x : Double,
+  cur_y : Double,
+  sx : Double,
+  sy : Double,
+) -> (String, Double, Double) {
+  fn ang(name : String) -> Double {
+    match attr_value(cmd, name) {
+      Some(v) => evaluate_expression(v, ctx)
+      None => 0.0
+    }
+  }
+
+  let w_r = ang("wR")
+  let h_r = ang("hR")
+  // 1/60000 degree → radians.
+  let deg_per_unit = 1.0 / 60000.0
+  let to_rad = 3.141592653589793 / 180.0
+  let st_ang_u = ang("stAng")
+  let sw_ang_u = ang("swAng")
+  let st = st_ang_u * deg_per_unit * to_rad
+  let sw = sw_ang_u * deg_per_unit * to_rad
+  // Centre fixed so the arc starts at the current point.
+  let cx = cur_x - w_r * @math.cos(st)
+  let cy = cur_y - h_r * @math.sin(st)
+  let end = st + sw
+  let ex = cx + w_r * @math.cos(end)
+  let ey = cy + h_r * @math.sin(end)
+  // |swAng| > 180° (10800000 units) selects the large arc.
+  let large = if sw_ang_u > 10800000.0 || sw_ang_u < -10800000.0 {
+    "1"
+  } else {
+    "0"
+  }
+  // y-down clockwise: positive sweep → SVG sweep-flag 1.
+  let sweep = if sw_ang_u >= 0.0 { "1" } else { "0" }
+  let seg =
+    " A " +
+    fmt_coord(w_r * sx) + " " + fmt_coord(h_r * sy) + " 0 " +
+    large + " " + sweep + " " +
+    fmt_coord(ex * sx) + " " + fmt_coord(ey * sy)
+  (seg, ex, ey)
+}
+
+///|
 /// One sub-path of a multi-fill preset.  `path` is the SVG path-data
 /// string; `fill_mod` is a relative luminosity offset applied to the
 /// base fill colour: 0.0 = same fill, +0.25 = 25 % lighter, −0.25 =

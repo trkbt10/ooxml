@@ -44,13 +44,26 @@ fn build_inline_shape(drawing : @xml.Element) -> MathPayload? {
     Some(s) => s
     None => return None
   }
-  let prst_geom = match first_child_named(sp_pr, "prstGeom") {
-    Some(p) => p
-    None => return None
-  }
-  let path_d = match @pml_viewer.render_preset_geometry(prst_geom, w_px, h_px) {
-    Some(d) => d
-    None => return None
+  // §20.1.9 EG_Geometry — a shape carries EITHER a `<a:prstGeom>`
+  // preset or a `<a:custGeom>` explicit path.  Try the preset first,
+  // then fall back to the custom-geometry renderer so freeform /
+  // user-drawn Word shapes paint their real outline instead of
+  // vanishing.
+  let path_d = match first_child_named(sp_pr, "prstGeom") {
+    Some(prst_geom) =>
+      match @pml_viewer.render_preset_geometry(prst_geom, w_px, h_px) {
+        Some(d) => d
+        None => return None
+      }
+    None =>
+      match first_child_named(sp_pr, "custGeom") {
+        Some(cust_geom) =>
+          match @pml_viewer.render_custom_geometry(cust_geom, w_px, h_px) {
+            Some(d) => d
+            None => return None
+          }
+        None => return None
+      }
   }
   let fill_hex = wps_solid_fill_hex(sp_pr)
   let stroke_hex = wps_line_stroke_hex(sp_pr)

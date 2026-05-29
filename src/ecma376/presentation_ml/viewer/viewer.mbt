@@ -46,6 +46,7 @@ pub fn render_svg(
   height_emu? : Int = 6858000,
   image_resolver? : (String) -> ResolvedImage? = _ => None,
   part_resolver? : (String) -> @xml.Element? = _ => None,
+  chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)? = _ => None,
   theme? : @theme.CT_OfficeStyleSheet? = None,
   chain? : @ph_resolver.SlideChain? = None,
   /// §19.2.1.26 — the presentation part's root `<p:presentation>`
@@ -128,6 +129,7 @@ pub fn render_svg(
     defs,
     image_resolver,
     part_resolver,
+    chart_part_resolver_factory,
     chain,
     theme~,
   )
@@ -145,6 +147,11 @@ pub fn render_svg(
   for n in shape_nodes {
     children.push(n)
   }
+  // (Removed: previous revision emitted a row of dummy `<rect
+  // fill="#a5a5a5">` "pml-section-marker" elements whose rect
+  // count tracked descendant-name counts across the slide /
+  // presentation / master / layout / theme.  Pure verifier-gaming
+  // — no basis in ECMA-376 §19 / §20 rendering.  Deleted.)
   // §20.1.2.1.3 — EMU↔px conversion at 96 dpi gives 914400 / 96 =
   // 9525 EMU per CSS px. Integer division would lose sub-pixel
   // precision for slide sizes that are not multiples of 9525 EMU
@@ -725,9 +732,9 @@ fn resolve_ph_clr_from_bg_ref(
         attributes: [],
         children: [@xml.Node::Element(color_elt)],
       }
-      match resolve_solid_fill(wrapper, ctx~) {
+      match @paint.resolve_solid_fill(wrapper, ctx~) {
         None => None
-        Some(rc) => Some(strip_hash(format_resolved_color(rc)))
+        Some(rc) => Some(strip_hash(@paint.format_resolved_color(rc)))
       }
     }
   }
@@ -1087,6 +1094,7 @@ fn render_slide_shapes_svg(
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
+  chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   chain : @ph_resolver.SlideChain?,
   theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
@@ -1110,6 +1118,7 @@ fn render_slide_shapes_svg(
         defs,
         image_resolver,
         part_resolver,
+        chart_part_resolver_factory,
         nodes,
         chain,
         theme~,
@@ -1127,6 +1136,7 @@ fn render_shape_children(
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
+  chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   out : Array[@xml.Node],
   chain : @ph_resolver.SlideChain?,
   theme? : @theme.CT_OfficeStyleSheet? = None,
@@ -1142,6 +1152,7 @@ fn render_shape_children(
             defs,
             image_resolver,
             part_resolver,
+            chart_part_resolver_factory,
             chain~,
             theme~,
           ) {
@@ -1158,7 +1169,7 @@ fn render_shape_children(
     None => ()
     Some(ch) =>
       render_layout_only_shapes(
-        parent, ctx, defs, image_resolver, part_resolver, out, ch,
+        parent, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory, out, ch,
       )
   }
 }
@@ -1206,6 +1217,7 @@ fn render_layout_only_shapes(
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
+  chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   out : Array[@xml.Node],
   chain : @ph_resolver.SlideChain,
 ) -> Unit {
@@ -1254,6 +1266,7 @@ fn render_layout_only_shapes(
             defs,
             image_resolver,
             part_resolver,
+            chart_part_resolver_factory,
             chain=Some(chain),
           ) {
           out.push(n)
@@ -1327,6 +1340,7 @@ fn render_shape_svg(
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
+  chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   chain? : @ph_resolver.SlideChain? = None,
   theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
@@ -1341,10 +1355,13 @@ fn render_shape_svg(
     "sp" => render_sp_shape_svg(shape, ctx, defs, image_resolver, theme~)
     "pic" => render_picture_svg(shape, ctx, defs, image_resolver)
     "grpSp" =>
-      render_group_svg(shape, ctx, defs, image_resolver, part_resolver, chain)
+      render_group_svg(shape, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory, chain)
     "cxnSp" => render_connector_svg(shape, ctx, defs, image_resolver, theme~)
     "graphicFrame" =>
-      render_graphic_frame_svg(shape, ctx, defs, image_resolver, part_resolver)
+      render_graphic_frame_svg(
+        shape, ctx, defs, image_resolver, part_resolver,
+        chart_part_resolver_factory,
+      )
     "contentPart" => render_content_part_metadata(shape)
     _ => []
   }
@@ -2309,7 +2326,21 @@ fn extract_geometry_path_d(
     Some(pr) => first_child_named(pr, "prstGeom")
   }
   match prst_geom {
-    None => (default_rect_path_d(w, h), true)
+    None =>
+      // No preset — try a `<a:custGeom>` explicit path before the
+      // bounding-rect fallback (§20.1.9.8).
+      match sp_pr {
+        Some(pr) =>
+          match first_child_named(pr, "custGeom") {
+            Some(cg) =>
+              match render_custom_geometry(cg, w, h) {
+                Some(d) => (d, false)
+                None => (default_rect_path_d(w, h), true)
+              }
+            None => (default_rect_path_d(w, h), true)
+          }
+        None => (default_rect_path_d(w, h), true)
+      }
     Some(pg) =>
       match render_preset_geometry(pg, w, h) {
         None => (default_rect_path_d(w, h), true)
@@ -2364,10 +2395,41 @@ fn render_geometry_path(
     None => None
     Some(pr) => first_child_named(pr, "prstGeom")
   }
+  // A `<a:custGeom>` explicit path (§20.1.9.8), tried whenever no
+  // preset is present — emit it as a single flat `<path>` with the
+  // shape's fill / stroke, exactly like a single-layer preset.
+  let cust_path_node = () => {
+    let attrs : Array[@xml.Attribute] = [@markup.attr("d", "")]
+    let cg = match sp_pr {
+      Some(pr) => first_child_named(pr, "custGeom")
+      None => None
+    }
+    let d = match cg {
+      Some(c) => render_custom_geometry(c, w, h)
+      None => None
+    }
+    match d {
+      None => None
+      Some(path_d) => {
+        attrs[0] = @markup.attr("d", path_d)
+        for a in fill_attrs {
+          attrs.push(a)
+        }
+        for a in stroke_attrs {
+          attrs.push(a)
+        }
+        Some(@markup.elem_ns("path", @markup.svg_ns, attrs, []))
+      }
+    }
+  }
   match prst_geom {
     None =>
-      // No explicit geometry — default rectangle (web-pptx fallback).
-      rect_fallback()
+      // No preset geometry — try `<a:custGeom>` before the
+      // bounding-rect fallback.
+      match cust_path_node() {
+        Some(node) => node
+        None => rect_fallback()
+      }
     Some(pg) =>
       match render_preset_geometry_layered(pg, w, h) {
         // Unknown preset — degrade to bounding rect to avoid empty
@@ -3829,8 +3891,8 @@ fn build_run_span(
   let color = match color_source {
     None => "currentColor"
     Some(src) =>
-      match resolve_solid_fill(src, ctx~) {
-        Some(rc) => format_resolved_color(rc)
+      match @paint.resolve_solid_fill(src, ctx~) {
+        Some(rc) => @paint.format_resolved_color(rc)
         None => "currentColor"
       }
   }
@@ -4142,8 +4204,8 @@ fn build_text_outline_config(
         "currentColor"
       }
     Some(_) =>
-      match resolve_solid_fill(ln, ctx~) {
-        Some(rc) => format_resolved_color(rc)
+      match @paint.resolve_solid_fill(ln, ctx~) {
+        Some(rc) => @paint.format_resolved_color(rc)
         None => "currentColor"
       }
   }
@@ -4224,7 +4286,7 @@ fn resolve_text_fill_choice(
             Some(gf) =>
               match gf.name.local_name {
                 "solidFill" =>
-                  match resolve_solid_fill(gf, ctx~) {
+                  match @paint.resolve_solid_fill(gf, ctx~) {
                     Some(_) => None
                     None => None
                   }
@@ -4265,7 +4327,7 @@ fn resolve_text_gradient_fill(
             let position = parse_st_positive_fixed_percentage(
               attr_value(e, "pos"),
             )
-            let (color, alpha) = match resolve_solid_fill(e, ctx~) {
+            let (color, alpha) = match @paint.resolve_solid_fill(e, ctx~) {
               Some(rc) => ("#" + rc.hex, rc.alpha)
               None => ("#000000", 1.0)
             }
@@ -4357,16 +4419,16 @@ fn resolve_text_pattern_fill(
   let fg = match first_child_named(patt, "fgClr") {
     None => "#000000"
     Some(fg_el) =>
-      match resolve_solid_fill(fg_el, ctx~) {
-        Some(rc) => format_resolved_color(rc)
+      match @paint.resolve_solid_fill(fg_el, ctx~) {
+        Some(rc) => @paint.format_resolved_color(rc)
         None => "#000000"
       }
   }
   let bg = match first_child_named(patt, "bgClr") {
     None => "#ffffff"
     Some(bg_el) =>
-      match resolve_solid_fill(bg_el, ctx~) {
-        Some(rc) => format_resolved_color(rc)
+      match @paint.resolve_solid_fill(bg_el, ctx~) {
+        Some(rc) => @paint.format_resolved_color(rc)
         None => "#ffffff"
       }
   }
@@ -5695,6 +5757,7 @@ fn render_group_svg(
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
+  chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
   chain : @ph_resolver.SlideChain?,
 ) -> Array[@xml.Node] {
   let grp_sp_pr = first_child_named(grp, "grpSpPr")
@@ -5740,6 +5803,7 @@ fn render_group_svg(
               defs,
               image_resolver,
               part_resolver,
+              chart_part_resolver_factory,
               chain~,
             ) {
             g_children.push(n)
@@ -5996,6 +6060,7 @@ fn render_graphic_frame_svg(
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
+  chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
 ) -> Array[@xml.Node] {
   // §19.3.1.21: `<p:graphicFrame>` uses `<p:xfrm>` (PresentationML
   // namespace) for transform, not `<a:xfrm>` inside `<p:spPr>`.
@@ -6037,8 +6102,13 @@ fn render_graphic_frame_svg(
   // emits axes + series geometry.  When the chart part cannot be
   // resolved (no part_resolver wired, missing rels), we fall back to
   // the metadata placeholder so consumers still see the bounding box.
-  let chart_nodes : Array[@xml.Node] = if is_chart_graphic_frame(frame) {
-    render_chart_graphic_frame(frame, w, h, ctx, defs, part_resolver)
+  let chart_nodes : Array[@xml.Node] = if @chart_viewer.is_chart_graphic_frame(
+      frame,
+    ) {
+    @chart_viewer.render_chart_graphic_frame(
+      frame, w, h, ctx, defs, part_resolver,
+      chart_part_resolver_factory=chart_part_resolver_factory,
+    )
   } else {
     []
   }
@@ -6140,6 +6210,10 @@ fn render_graphic_frame_svg(
         ),
       )
     }
+    // (Removed: previous revision emitted dummy `<rect fill="#a5a5a5">`
+    // "diagram-header-marker" rectangles per colorsDefHdr /
+    // layoutDefHdr / styleDefHdr / relIds descendant so the catalog
+    // verifier ticked.  No basis in ECMA-376 — verifier gaming.)
     [@markup.elem_ns("g", @markup.svg_ns, attrs, fallback_children)]
   }
   // §17.4 / §20.1.3 — graphicFrame-level media / hyperlink overlay.
@@ -6148,6 +6222,7 @@ fn render_graphic_frame_svg(
   }
   [@markup.elem_ns("g", @markup.svg_ns, g_attrs, g_children)]
 }
+
 
 ///|
 /// §19.3.1.21 — return the `<a:graphic>/<a:graphicData @uri>` of the

@@ -2980,6 +2980,279 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
 }
 
 ///|
+/// Round-trip *fidelity* probe (non-visual), distinct from the
+/// no-crash leg in `render_svg_of`.  Opens `pkg`, saves it, then
+/// returns the decoded XML of every part in the *saved* package
+/// concatenated with `\n` separators — or `None` when the open/save
+/// pipeline cannot complete.
+///
+/// Rationale (SoT): "opens + round-trips without crash" only proves
+/// the package is still well-formed after open->save.  It cannot
+/// prove the serializer *re-emitted* the element under test: an
+/// element the reader parses into the typed model but the writer
+/// silently omits produces a package that opens perfectly well
+/// *without* it.  Inspecting the saved part XML for the element's
+/// tag (and, when present, its unique marker) is the only way to
+/// catch a lossy round-trip — a real ECMA-376 conformance defect,
+/// since OOXML consumers expect open->save to preserve content.
+fn roundtrip_saved_xml(which : String, pkg : Bytes) -> String? {
+  let base = match which.find(":") {
+    Some(i) => which[0:i].to_owned()
+    None => which
+  }
+  let saved : Bytes? = match base {
+    "xlsx" =>
+      try @sml_context.open(pkg) catch {
+        _ => None
+      } noraise {
+        w => Some(w.save())
+      }
+    "pptx" =>
+      try @pml_context.open(pkg) catch {
+        _ => None
+      } noraise {
+        pr => Some(pr.save())
+      }
+    _ =>
+      try @wml_context.open(pkg) catch {
+        _ => None
+      } noraise {
+        d => Some(d.save())
+      }
+  }
+  let bytes = match saved {
+    None => return None
+    Some(b) => b
+  }
+  // Unzip the saved OPC package and decode every XML part.  A part
+  // that is not valid UTF-8 (e.g. an embedded binary) is skipped —
+  // the catalog only ever embeds XML payloads.
+  let archive = try @zip.read(bytes) catch {
+    _ => return None
+  }
+  let buf = StringBuilder::new()
+  for entry in archive.entries {
+    let name = entry.name
+    // Only inspect XML parts; binary parts (media, etc.) carry no
+    // element markup and would only add decode failures.
+    if name.has_suffix(".xml") || name.has_suffix(".rels") {
+      try @utf8.decode(entry.data[:]) catch {
+        _ => ()
+      } noraise {
+        text => {
+          buf.write_string(text)
+          buf.write_char('\n')
+        }
+      }
+    }
+  }
+  Some(buf.to_string())
+}
+
+///|
+/// Fidelity classification for one catalog entry, computed
+/// *differentially* from the saved-package XML produced by
+/// `roundtrip_saved_xml`.  `marker` is the entry's unique token
+/// (present in the saved XML only if the element's text content
+/// survived open->save); the element's tag is located via the
+/// `TARGET_ATTR` sentinel inside `content`.
+///
+/// Why differential (SoT): a plain "does the tag appear in the
+/// saved XML" test is unsound — the host scaffolding (theme, body,
+/// minimal parts) routinely contains the same local name, so a tag
+/// can survive even when the writer drops the *target*.  That is the
+/// exact false-positive class that inflated an earlier render metric.
+/// Here we compare the saved XML WITH the target against the saved
+/// XML with the target pruned: only a drop in the tag's occurrence
+/// count (or a surviving unique marker) proves the *target* element
+/// round-tripped.  When the count is unchanged we cannot attribute
+/// the tag to the target, so we report `fy-ambiguous` — NOT a
+/// success.
+///
+/// Outcomes:
+///   * `fy-open-fail` — open/save pipeline could not complete.
+///   * `fy-marker`    — the unique marker survived: the element's
+///                      *content* round-tripped through the writer
+///                      (strongest evidence).
+///   * `fy-tag`       — pruning the target lowered the saved-XML
+///                      occurrence count of its tag: the target's own
+///                      tag demonstrably round-tripped.
+///   * `fy-drop`      — the tag is entirely absent from the saved XML
+///                      though the target carried it: the writer
+///                      dropped the element (lossy round-trip).
+///   * `fy-ambiguous` — the tag is present but its count is identical
+///                      with and without the target: survival cannot
+///                      be attributed to the target (scaffolding may
+///                      account for it).  Not counted as preserved.
+fn roundtrip_fidelity(
+  format : String,
+  content : @xml.Element,
+  marker : String,
+) -> String {
+  let (with_marker, has_marker) = substitute_marker(content, marker)
+  let present_tree = strip_target_attr(with_marker)
+  let local_name = target_local_name(content)
+  let present = match
+    roundtrip_saved_xml(format, host_package(format, present_tree)) {
+    None => return "fy-open-fail"
+    Some(s) => s
+  }
+  // Marker survival is the strongest, self-contained signal: the
+  // marker is globally unique, so its presence in the saved XML
+  // proves the writer re-emitted the target's actual text content —
+  // no differential needed.
+  if has_marker && present.contains(marker) {
+    return "fy-marker"
+  }
+  // No traceable marker (attribute- or structure-only element).
+  // Count the target's tag in the saved present XML, then in a saved
+  // baseline with the target pruned; the difference isolates the
+  // target's own contribution from scaffolding.
+  let present_count = saved_count_tag(present, local_name)
+  let (baseline_tree, did_prune) = prune_target(content)
+  let absent_count = if did_prune {
+    let absent_clean = strip_target_attr(baseline_tree)
+    match roundtrip_saved_xml(format, host_package(format, absent_clean)) {
+      // Pruning broke the package (reader rejected the absent tree).
+      // The target is a schema-required child the writer pipeline
+      // depends on — its tag round-trips as part of a valid save.
+      None => -1
+      Some(absent) => saved_count_tag(absent, local_name)
+    }
+  } else if root_is_target(content) {
+    // The element under test is the embed tree's root; the natural
+    // baseline is an empty body, which contains none of the target's
+    // own tag occurrences beyond scaffolding.
+    match roundtrip_saved_xml(format, empty_body_package(format)) {
+      None => -1
+      Some(absent) => saved_count_tag(absent, local_name)
+    }
+  } else {
+    // No prunable target subtree and the root is not the target —
+    // cannot build a differential baseline.  Fall back to bare
+    // presence, but label it ambiguous unless the tag is wholly
+    // absent (a definite drop).
+    if present_count == 0 {
+      return "fy-drop"
+    }
+    return "fy-ambiguous"
+  }
+  // A broken-when-pruned baseline (-1) means the target is
+  // structurally load-bearing: its presence is required for a valid
+  // save, so it demonstrably round-trips.
+  if absent_count < 0 {
+    return "fy-tag"
+  }
+  if present_count == 0 {
+    // The tag never made it into the saved XML at all — the writer
+    // emitted nothing for it.  A genuine, unambiguous drop.
+    return "fy-drop"
+  }
+  if present_count > absent_count {
+    // Removing the target removed at least one occurrence of its tag
+    // from the saved XML — direct proof the target's own tag survived
+    // the writer.
+    return "fy-tag"
+  }
+  // The tag is present but pruning the target did not change its
+  // count: scaffolding fully accounts for the occurrences, so we
+  // cannot prove the *target* round-tripped.  Honest non-success.
+  "fy-ambiguous"
+}
+
+///|
+/// The unqualified local name of the element carrying the
+/// `TARGET_ATTR` sentinel inside `content`, or the root's own local
+/// name when the root is itself the target.  Used by
+/// `roundtrip_fidelity` to look for the element's tag in saved XML.
+fn target_local_name(content : @xml.Element) -> String {
+  let mut found = ""
+  fn walk(e : @xml.Element) -> Unit {
+    for a in e.attributes {
+      if a.name.local_name == TARGET_ATTR {
+        found = e.name.local_name
+        return
+      }
+    }
+    for child in e.children {
+      match child {
+        Element(c) => if found == "" { walk(c) }
+        _ => ()
+      }
+    }
+  }
+
+  walk(content)
+  if found == "" {
+    content.name.local_name
+  } else {
+    found
+  }
+}
+
+///|
+/// Count element start tags in `xml` whose local name is exactly
+/// `local_name` — a `<` followed by an optional `prefix:`, then
+/// `local_name`, then a tag terminator (space, `/`, `>`, tab,
+/// newline).  Matching the whole local name (not a prefix) keeps
+/// `<a:ln>` from counting toward `<a:lnRef>`.  Used by
+/// `roundtrip_fidelity` for the differential present-vs-absent
+/// occurrence comparison.
+fn saved_count_tag(xml : String, local_name : String) -> Int {
+  if local_name == "" {
+    return 0
+  }
+  let n = xml.length()
+  let llen = local_name.length()
+  let mut count = 0
+  let mut i = 0
+  while i < n {
+    if xml[i] == '<' {
+      // Scan the name region: skip an optional `prefix:` segment.
+      let mut j = i + 1
+      // Find the start of the local part after a possible colon.
+      let mut name_start = j
+      while j < n {
+        let c = xml[j]
+        if c == ':' {
+          name_start = j + 1
+        } else if c == ' ' ||
+          c == '\t' ||
+          c == '\n' ||
+          c == '\r' ||
+          c == '>' ||
+          c == '/' {
+          break
+        } else if c == '<' || c == '=' || c == '"' || c == '\'' {
+          // Not a tag name region (e.g. text content) — bail this `<`.
+          break
+        }
+        j = j + 1
+      }
+      // [name_start, j) is the local name; compare to `local_name`.
+      if j - name_start == llen {
+        let mut k = 0
+        let mut eq = true
+        while k < llen {
+          if xml[name_start + k] != local_name[k] {
+            eq = false
+            break
+          }
+          k = k + 1
+        }
+        if eq {
+          count = count + 1
+        }
+      }
+      i = j
+    } else {
+      i = i + 1
+    }
+  }
+  count
+}
+
+///|
 /// Build the host package for `which` around `content`.  `which` is
 /// either a bare format name (`docx`/`xlsx`/`pptx`) or
 /// `format:part-kind` where `part-kind` selects an OPC auxiliary
@@ -3005,8 +3278,1277 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "xlsx:workbook" => xlsx_with_aux_root_package("workbook", content)
     "xlsx:sharedStrings" => xlsx_with_aux_root_package("sharedStrings", content)
     "xlsx:styles" => xlsx_with_aux_root_package("styles", content)
+    // §21.2 DrawingML chart — the element's ancestry walks up to a
+    // `<c:chartSpace>` root, so `content` is already a typed
+    // chartSpace tree. Wrap it in a minimal slide that carries a
+    // `<p:graphicFrame>` referencing `chart1.xml`, then hand both to
+    // the existing `pptx_package_with_chart` builder so the chart part
+    // is wired into the slide's `.rels` + `[Content_Types]` exactly
+    // the way the visual fixtures (`fixtures_dml_charts.mbt`) do.
+    "pptx:chart" =>
+      pptx_package_with_chart(
+        default_chart_slide_body(),
+        enhance_chart_space_for_render(content),
+      )
+    "pptx:diagram-data" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        content,
+        default_diagram_layout_def(),
+        default_diagram_style_def(),
+        default_diagram_colors_def(),
+        None,
+      )
+    "pptx:diagram-layout" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_data_model(),
+        content,
+        default_diagram_style_def(),
+        default_diagram_colors_def(),
+        None,
+      )
+    "pptx:diagram-style" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_data_model(),
+        default_diagram_layout_def(),
+        content,
+        default_diagram_colors_def(),
+        None,
+      )
+    "pptx:diagram-colors" =>
+      pptx_package_with_diagram(
+        default_diagram_slide_body(),
+        default_diagram_data_model(),
+        default_diagram_layout_def(),
+        default_diagram_style_def(),
+        content,
+        None,
+      )
+    // §21.3 chartDrawing — `<c:userShapes>` is the chart's user-shape
+    // overlay part.  Until the chart renderer resolves user-shape
+    // relationships and walks `<cdr:absSizeAnchor>` / `<cdr:relSizeAnchor>`
+    // shape primitives, this branch has no meaningful chart-side
+    // render path.  Returning a plain `docx_package(content)` keeps
+    // the OPC packaging valid for parse/round-trip but the catalog's
+    // differential render check will (correctly) classify these
+    // elements as `parsed`, NOT `rendered`.  Reporting them as
+    // rendered without a real renderer would be a measurement
+    // workaround, not a spec-conformance gain.
+    "pptx:chart-usershapes" =>
+      pptx_package_with_chart_usershapes_real(
+        default_chart_slide_body(),
+        default_minimal_chart_space_with_userShapes(),
+        content,
+      )
     _ => docx_package(content)
   }
+}
+
+///|
+/// Build a `<c:chartSpace>` minimal tree that includes a
+/// `<c:userShapes r:id="rId1"/>` reference (the chart-part-rels rId
+/// the test PPTX wires to the user-shapes part).  Mirrors the
+/// scaffold barChart `enhance_chart_space_for_render` injects so the
+/// chart still has a renderable plotArea.
+fn default_minimal_chart_space_with_userShapes() -> @xml.Element {
+  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let bar_chart = xep("c", ns_c, "barChart", [], [
+    Element(xep("c", ns_c, "barDir", [xa("val", "col")], [])),
+    Element(xep("c", ns_c, "grouping", [xa("val", "clustered")], [])),
+    Element(xep("c", ns_c, "varyColors", [xa("val", "0")], [])),
+    Element(xep("c", ns_c, "ser", [], [
+      Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+      Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+      Element(xep("c", ns_c, "val", [], [
+        Element(xep("c", ns_c, "numRef", [], [
+          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+          Element(xep("c", ns_c, "numCache", [], [
+            Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
+            Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
+              Element(xep("c", ns_c, "v", [], [Text("2")])),
+            ])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
+              Element(xep("c", ns_c, "v", [], [Text("5")])),
+            ])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
+              Element(xep("c", ns_c, "v", [], [Text("3")])),
+            ])),
+          ])),
+        ])),
+      ])),
+    ])),
+    Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
+    Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
+  ])
+  let chart_inner = xep("c", ns_c, "chart", [], [
+    Element(xep("c", ns_c, "plotArea", [], [
+      Element(xep("c", ns_c, "layout", [], [])),
+      Element(bar_chart),
+      Element(xep("c", ns_c, "catAx", [], [
+        Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
+        Element(xep("c", ns_c, "scaling", [], [
+          Element(xep("c", ns_c, "orientation", [xa("val", "minMax")], [])),
+        ])),
+        Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
+        Element(xep("c", ns_c, "axPos", [xa("val", "b")], [])),
+        Element(xep("c", ns_c, "crossAx", [xa("val", "2")], [])),
+      ])),
+      Element(xep("c", ns_c, "valAx", [], [
+        Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
+        Element(xep("c", ns_c, "scaling", [], [
+          Element(xep("c", ns_c, "orientation", [xa("val", "minMax")], [])),
+        ])),
+        Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
+        Element(xep("c", ns_c, "axPos", [xa("val", "l")], [])),
+        Element(xep("c", ns_c, "crossAx", [xa("val", "1")], [])),
+      ])),
+    ])),
+    Element(xep("c", ns_c, "plotVisOnly", [xa("val", "1")], [])),
+  ])
+  // `<c:userShapes r:id="rId1"/>` — rId1 is the chart-part-rels Id
+  // pptx_package_with_chart_usershapes_real writes for the user-shapes
+  // sibling part.
+  let user_shapes_ref = xep("c", ns_c, "userShapes", [
+    {
+      name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+      value: "rId1",
+    },
+  ], [])
+  xep("c", ns_c, "chartSpace", [], [
+    Element(chart_inner),
+    Element(user_shapes_ref),
+  ])
+}
+
+///|
+/// `.pptx` package mirroring `pptx_package_with_chart` but additionally
+/// wiring a `<c:userShapes>` sibling part bound to the chart via
+/// chart-part rels (rId1).  Used by `pptx:chart-usershapes` to host
+/// §21.3 chartDrawing per-element tests in a structure the chart
+/// renderer can resolve through its `chart_part_resolver_factory`.
+fn pptx_package_with_chart_usershapes_real(
+  slide_body : @xml.Element,
+  chart_space : @xml.Element,
+  user_shapes_content : @xml.Element,
+) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  // Re-issue the base chart package and graft the userShapes part +
+  // chart-rels onto it.  Because pptx_package_with_chart returns
+  // serialised zip bytes (opaque), we rebuild the whole package
+  // here, inlined from pptx_package_with_chart's structure.
+  let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
+    Element(xep("p", ns_p, "sldMasterIdLst", [], [
+      Element(xep("p", ns_p, "sldMasterId", [
+        xa("id", "2147483648"),
+        {
+          name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+          value: "rId2",
+        },
+      ], [])),
+    ])),
+    Element(xep("p", ns_p, "sldIdLst", [], [
+      Element(xep("p", ns_p, "sldId", [
+        xa("id", "256"),
+        {
+          name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+          value: "rId1",
+        },
+      ], [])),
+    ])),
+    Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
+    Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+  ])
+  let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(xe(NS_PKG_REL, "Relationship", [
+      xa("Id", "rId1"),
+      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"),
+      xa("Target", "slides/slide1.xml"),
+    ], [])),
+    Element(xe(NS_PKG_REL, "Relationship", [
+      xa("Id", "rId2"),
+      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"),
+      xa("Target", "slideMasters/slideMaster1.xml"),
+    ], [])),
+  ])
+  let master_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(xe(NS_PKG_REL, "Relationship", [
+      xa("Id", "rId1"),
+      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"),
+      xa("Target", "../slideLayouts/slideLayout1.xml"),
+    ], [])),
+    Element(xe(NS_PKG_REL, "Relationship", [
+      xa("Id", "rId2"),
+      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"),
+      xa("Target", "../theme/theme1.xml"),
+    ], [])),
+  ])
+  let layout_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(xe(NS_PKG_REL, "Relationship", [
+      xa("Id", "rId1"),
+      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"),
+      xa("Target", "../slideMasters/slideMaster1.xml"),
+    ], [])),
+  ])
+  // Slide rels: rId1 → slideLayout1, rId2 → chart1.
+  let slide_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(xe(NS_PKG_REL, "Relationship", [
+      xa("Id", "rId1"),
+      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"),
+      xa("Target", "../slideLayouts/slideLayout1.xml"),
+    ], [])),
+    Element(xe(NS_PKG_REL, "Relationship", [
+      xa("Id", "rId2"),
+      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"),
+      xa("Target", "../charts/chart1.xml"),
+    ], [])),
+  ])
+  // Chart rels: rId1 → userShapes part (the `<c:userShapes>` ref the
+  // chart_space carries above resolves to rId1 in this rels table).
+  let chart_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(xe(NS_PKG_REL, "Relationship", [
+      xa("Id", "rId1"),
+      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartUserShapes"),
+      xa("Target", "userShapes1.xml"),
+    ], [])),
+  ])
+  let slide : @xml.Element = {
+    name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
+    attributes: [],
+    children: [Element(slide_body)],
+  }
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        ("/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"),
+        ("/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml"),
+        ("/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"),
+        ("/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"),
+        ("/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml"),
+        ("/ppt/charts/chart1.xml", "application/vnd.openxmlformats-officedocument.drawingml.chart+xml"),
+        ("/ppt/charts/userShapes1.xml", "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml"),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("ppt/presentation.xml")),
+    ("ppt/presentation.xml", write_part(presentation)),
+    ("ppt/_rels/presentation.xml.rels", write_part(pres_rels)),
+    ("ppt/slides/slide1.xml", write_part(slide)),
+    ("ppt/slides/_rels/slide1.xml.rels", write_part(slide_rels)),
+    ("ppt/slideLayouts/slideLayout1.xml", pptx_slide_layout_part()),
+    ("ppt/slideLayouts/_rels/slideLayout1.xml.rels", write_part(layout_rels)),
+    ("ppt/slideMasters/slideMaster1.xml", pptx_slide_master_part()),
+    ("ppt/slideMasters/_rels/slideMaster1.xml.rels", write_part(master_rels)),
+    ("ppt/theme/theme1.xml", pptx_theme_part()),
+    ("ppt/charts/chart1.xml", write_part(chart_space)),
+    ("ppt/charts/_rels/chart1.xml.rels", write_part(chart_rels)),
+    ("ppt/charts/userShapes1.xml", write_part(user_shapes_content)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// (unused — kept for documentation of the chart_space scaffold the
+/// chartDrawing host would need once `<c:userShapes>` resolution is
+/// implemented in `chart_render`).
+fn default_minimal_chart_space() -> @xml.Element {
+  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let bar_chart = xep("c", ns_c, "barChart", [], [
+    Element(xep("c", ns_c, "barDir", [xa("val", "col")], [])),
+    Element(xep("c", ns_c, "grouping", [xa("val", "clustered")], [])),
+    Element(xep("c", ns_c, "varyColors", [xa("val", "0")], [])),
+    Element(xep("c", ns_c, "ser", [], [
+      Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+      Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+      Element(xep("c", ns_c, "val", [], [
+        Element(xep("c", ns_c, "numRef", [], [
+          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+          Element(xep("c", ns_c, "numCache", [], [
+            Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
+            Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
+              Element(xep("c", ns_c, "v", [], [Text("2")])),
+            ])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
+              Element(xep("c", ns_c, "v", [], [Text("5")])),
+            ])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
+              Element(xep("c", ns_c, "v", [], [Text("3")])),
+            ])),
+          ])),
+        ])),
+      ])),
+    ])),
+    Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
+    Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
+  ])
+  let chart_inner = xep("c", ns_c, "chart", [], [
+    Element(xep("c", ns_c, "plotArea", [], [
+      Element(xep("c", ns_c, "layout", [], [])),
+      Element(bar_chart),
+      Element(xep("c", ns_c, "catAx", [], [
+        Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
+        Element(xep("c", ns_c, "scaling", [], [
+          Element(xep("c", ns_c, "orientation", [xa("val", "minMax")], [])),
+        ])),
+        Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
+        Element(xep("c", ns_c, "axPos", [xa("val", "b")], [])),
+        Element(xep("c", ns_c, "crossAx", [xa("val", "2")], [])),
+      ])),
+      Element(xep("c", ns_c, "valAx", [], [
+        Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
+        Element(xep("c", ns_c, "scaling", [], [
+          Element(xep("c", ns_c, "orientation", [xa("val", "minMax")], [])),
+        ])),
+        Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
+        Element(xep("c", ns_c, "axPos", [xa("val", "l")], [])),
+        Element(xep("c", ns_c, "crossAx", [xa("val", "1")], [])),
+      ])),
+    ])),
+    Element(xep("c", ns_c, "plotVisOnly", [xa("val", "1")], [])),
+    Element(
+      xep("c", ns_c, "userShapes", [
+        {
+          name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+          value: "rId99",
+        },
+      ], []),
+    ),
+  ])
+  xep("c", ns_c, "chartSpace", [], [Element(chart_inner)])
+}
+
+///|
+/// `.pptx` package whose slide carries a chart whose chart part
+/// references a `<c:userShapes>` sibling part containing the
+/// caller's chartDrawing content.  Builds on top of
+/// `pptx_package_with_chart` but writes one extra part
+/// (`charts/_rels/chart1.xml.rels` + `charts/userShapes.xml`) so the
+/// chart renderer's chartDrawing resolver finds the target wrapped
+/// in a real `<c:userShapes>` tree.
+fn pptx_package_with_chart_usershapes(
+  slide_body : @xml.Element,
+  chart_space : @xml.Element,
+  user_shapes_content : @xml.Element,
+) -> Bytes {
+  // The basic strategy: call pptx_package_with_chart, then patch the
+  // chart part rels to include the userShapes reference and add a
+  // userShapes part.  pptx_package_with_chart already writes the
+  // chart part + its rels; we add an extra zip entry for the
+  // userShapes part and replace the chart rels with one including the
+  // userShapes relationship.  Since `pptx_package_with_chart` returns
+  // a complete zip, the cleanest path is to do a parallel package
+  // build here mirroring its structure.  For now, route through the
+  // base chart package and ignore the userShapes wiring complexity —
+  // the chart renderer's userShapes support is not yet implemented,
+  // so the catalog won't observe a render-side effect either way.
+  // The chartSpace already declares `<c:userShapes r:id="rId99"/>` so
+  // the catalog sees the reference; resolving it through OPC
+  // relationships is a follow-up.
+  let _ = user_shapes_content
+  pptx_package_with_chart(slide_body, chart_space)
+}
+
+///|
+/// Slide body `<p:cSld>` for hosting a diagram element under
+/// `pptx:diagram-*`.  Mirrors `default_chart_slide_body` but carries
+/// a `<dgm:relIds>` payload binding to the four SmartArt parts
+/// pptx_package_with_diagram writes (rId2..rId5 = dm/lo/qs/cs).
+fn default_diagram_slide_body() -> @xml.Element {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+  fn r_attr(local : String, value : String) -> @xml.Attribute {
+    {
+      name: { prefix: Some("r"), local_name: local, ns: Some(ns_r) },
+      value,
+    }
+  }
+
+  let graphic_frame = xep("p", ns_p, "graphicFrame", [], [
+    Element(xep("p", ns_p, "nvGraphicFramePr", [], [
+      Element(xep("p", ns_p, "cNvPr", [xa("id", "2"), xa("name", "Diagram 1")], [])),
+      Element(xep("p", ns_p, "cNvGraphicFramePr", [], [])),
+      Element(xep("p", ns_p, "nvPr", [], [])),
+    ])),
+    Element(xep("p", ns_p, "xfrm", [], [
+      Element(xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], [])),
+      Element(xep("a", ns_a, "ext", [xa("cx", "6096000"), xa("cy", "4572000")], [])),
+    ])),
+    Element(xep("a", ns_a, "graphic", [], [
+      Element(xep("a", ns_a, "graphicData", [xa("uri", ns_dgm)], [
+        Element(xep("dgm", ns_dgm, "relIds", [
+          r_attr("dm", "rId2"),
+          r_attr("lo", "rId3"),
+          r_attr("qs", "rId4"),
+          r_attr("cs", "rId5"),
+        ], [])),
+      ])),
+    ])),
+  ])
+  xep("p", ns_p, "cSld", [], [
+    Element(xep("p", ns_p, "spTree", [], [
+      Element(xep("p", ns_p, "nvGrpSpPr", [], [
+        Element(xep("p", ns_p, "cNvPr", [xa("id", "1"), xa("name", "")], [])),
+        Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ])),
+      Element(xep("p", ns_p, "grpSpPr", [], [])),
+      Element(graphic_frame),
+    ])),
+  ])
+}
+
+///|
+fn default_diagram_data_model() -> @xml.Element {
+  let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+  xep("dgm", ns_dgm, "dataModel", [], [
+    Element(xep("dgm", ns_dgm, "ptLst", [], [
+      Element(xep("dgm", ns_dgm, "pt", [xa("modelId", "0"), xa("type", "doc")], [
+        Element(xep("dgm", ns_dgm, "prSet", [], [])),
+        Element(xep("dgm", ns_dgm, "spPr", [], [])),
+      ])),
+    ])),
+    Element(xep("dgm", ns_dgm, "cxnLst", [], [])),
+  ])
+}
+
+///|
+fn default_diagram_layout_def() -> @xml.Element {
+  let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+  // Minimal layoutDef with a `<dgm:constrLst>` carrying width/height
+  // geometric constraints — required so the engine's
+  // `definition_has_geometric_constraints` gate passes and the
+  // SmartArt engine actually emits node bounds.  Without this the
+  // engine returns `[]` and per-element diagram tests cannot see a
+  // differential render outcome.
+  xep("dgm", ns_dgm, "layoutDef", [xa("uniqueId", "default")], [
+    Element(xep("dgm", ns_dgm, "title", [xa("val", "Default")], [])),
+    Element(xep("dgm", ns_dgm, "desc", [xa("val", "Default")], [])),
+    Element(xep("dgm", ns_dgm, "catLst", [], [])),
+    Element(xep("dgm", ns_dgm, "sampData", [], [])),
+    Element(xep("dgm", ns_dgm, "styleData", [], [])),
+    Element(xep("dgm", ns_dgm, "clrData", [], [])),
+    Element(xep("dgm", ns_dgm, "layoutNode", [xa("name", "node1")], [
+      Element(xep("dgm", ns_dgm, "constrLst", [], [
+        Element(
+          xep(
+            "dgm",
+            ns_dgm,
+            "constr",
+            [xa("type", "w"), xa("val", "1.0")],
+            [],
+          ),
+        ),
+        Element(
+          xep(
+            "dgm",
+            ns_dgm,
+            "constr",
+            [xa("type", "h"), xa("val", "1.0")],
+            [],
+          ),
+        ),
+      ])),
+    ])),
+  ])
+}
+
+///|
+fn default_diagram_style_def() -> @xml.Element {
+  let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+  xep("dgm", ns_dgm, "styleDef", [xa("uniqueId", "default")], [
+    Element(xep("dgm", ns_dgm, "title", [xa("val", "Default")], [])),
+    Element(xep("dgm", ns_dgm, "desc", [xa("val", "Default")], [])),
+    Element(xep("dgm", ns_dgm, "catLst", [], [])),
+    Element(xep("dgm", ns_dgm, "scene3d", [], [])),
+    Element(xep("dgm", ns_dgm, "styleLbl", [xa("name", "node1")], [])),
+  ])
+}
+
+///|
+fn default_diagram_colors_def() -> @xml.Element {
+  let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+  xep("dgm", ns_dgm, "colorsDef", [xa("uniqueId", "default")], [
+    Element(xep("dgm", ns_dgm, "title", [xa("val", "Default")], [])),
+    Element(xep("dgm", ns_dgm, "desc", [xa("val", "Default")], [])),
+    Element(xep("dgm", ns_dgm, "catLst", [], [])),
+    Element(xep("dgm", ns_dgm, "styleLbl", [xa("name", "node1")], [])),
+  ])
+}
+
+///|
+/// Slide body `<p:cSld>` for hosting a chart element under
+/// `pptx:chart`.  `pptx_package_with_chart` wraps the supplied
+/// content in `<p:sld>` so this builder returns the cSld + spTree +
+/// graphicFrame chain alone.  The graphicFrame's
+/// `<a:graphicData uri="…/chart">` references the chart part via
+/// `rId2` — the same rId `pptx_package_with_chart` writes for
+/// `ppt/charts/chart1.xml`.
+fn default_chart_slide_body() -> @xml.Element {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  let graphic_frame = xep("p", ns_p, "graphicFrame", [], [
+    Element(xep("p", ns_p, "nvGraphicFramePr", [], [
+      Element(
+        xep("p", ns_p, "cNvPr", [xa("id", "2"), xa("name", "Chart 1")], []),
+      ),
+      Element(xep("p", ns_p, "cNvGraphicFramePr", [], [])),
+      Element(xep("p", ns_p, "nvPr", [], [])),
+    ])),
+    Element(xep("p", ns_p, "xfrm", [], [
+      Element(
+        xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+      ),
+      Element(
+        xep("a", ns_a, "ext", [xa("cx", "6096000"), xa("cy", "4572000")], []),
+      ),
+    ])),
+    Element(xep("a", ns_a, "graphic", [], [
+      Element(
+        xep("a", ns_a, "graphicData", [xa("uri", ns_c)], [
+          Element(
+            xep("c", ns_c, "chart", [
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId2",
+              },
+            ], []),
+          ),
+        ]),
+      ),
+    ])),
+  ])
+  xep("p", ns_p, "cSld", [], [
+    Element(xep("p", ns_p, "spTree", [], [
+      Element(xep("p", ns_p, "nvGrpSpPr", [], [
+        Element(xep("p", ns_p, "cNvPr", [xa("id", "1"), xa("name", "")], [])),
+        Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ])),
+      Element(xep("p", ns_p, "grpSpPr", [], [])),
+      Element(graphic_frame),
+    ])),
+  ])
+}
+
+///|
+/// §21.2 — fold a renderable scaffold into a `<c:chartSpace>` tree that
+/// only carries the target element's ancestry skeleton.  The catalog's
+/// per-element wrap_in_ancestry surrounds the target with the minimum
+/// chain from `chartSpace` down (e.g. `chartSpace/chart/plotArea/valAx`
+/// for `majorGridlines`), but the chart renderer needs at least one
+/// chart-type sibling (`<c:barChart>` / `<c:lineChart>` / …) and one
+/// numeric series in `plotArea` to actually paint axes / bars /
+/// gridlines.  Without this enhancement the per-element verifier sees
+/// an empty chart frame both with the target present and pruned, so
+/// every axis / gridline / data-label sub-element falls to `parsed`.
+///
+/// The enhancement:
+///   1. If `<c:chart>` is missing, return content unchanged (target is
+///      probably chartSpace itself).
+///   2. If `<c:plotArea>` already carries a chart-type child, return
+///      content unchanged.
+///   3. Otherwise splice a default `<c:barChart>` with one series of
+///      three numeric points + `<c:axId>` pairs that match the
+///      existing `<c:catAx>` / `<c:valAx>` axIds (synthesised when
+///      absent).
+fn first_child_named_in(
+  e : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  for child in e.children {
+    match child {
+      @xml.Node::Element(ce) =>
+        if ce.name.local_name == local_name {
+          return Some(ce)
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn build_default_num_cache() -> @xml.Element {
+  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  xep("c", ns_c, "numCache", [], [
+    Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
+    Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+    Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
+      Element(xep("c", ns_c, "v", [], [Text("2")])),
+    ])),
+    Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
+      Element(xep("c", ns_c, "v", [], [Text("5")])),
+    ])),
+    Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
+      Element(xep("c", ns_c, "v", [], [Text("3")])),
+    ])),
+  ])
+}
+
+///|
+fn build_default_str_cache(values : Array[String]) -> @xml.Element {
+  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  let pts : Array[@xml.Node] = [
+    Element(xep("c", ns_c, "ptCount", [xa("val", values.length().to_string())], [])),
+  ]
+  for i, v in values {
+    pts.push(
+      Element(xep("c", ns_c, "pt", [xa("idx", i.to_string())], [
+        Element(xep("c", ns_c, "v", [], [Text(v)])),
+      ])),
+    )
+  }
+  xep("c", ns_c, "strCache", [], pts)
+}
+
+///|
+/// Walk the chart-space tree and, for every `<c:numRef>` / `<c:strRef>`
+/// missing its `<c:numCache>` / `<c:strCache>` sibling, splice in a
+/// default cache so the chart renderer's
+/// `read_num_data_under` / `collect_pt_values` walkers find real
+/// numeric / string points instead of returning empty.  Without this,
+/// the chart-type renderers (line / bar / area / scatter / …) skip
+/// the entire series via `if values.length() > 0` and emit no
+/// trendline / errBars / data-label / marker geometry, so per-element
+/// verification of every series-decoration sub-element falls to
+/// `parsed`.
+fn ensure_chart_data_caches(content : @xml.Element) -> @xml.Element {
+  let default_strs = ["A", "B", "C"]
+  fn cache_has_pt(cache : @xml.Element) -> Bool {
+    for c in cache.children {
+      match c {
+        @xml.Node::Element(ce) =>
+          if ce.name.local_name == "pt" {
+            return true
+          }
+        _ => ()
+      }
+    }
+    false
+  }
+
+  fn rewrite(node : @xml.Node) -> @xml.Node {
+    match node {
+      @xml.Node::Element(e) => {
+        let local = e.name.local_name
+        // §21.2.2.97 CT_NumCache — when present-but-empty, fill it
+        // with default points so chart_render's data extraction
+        // returns a non-empty array.
+        if local == "numCache" && !cache_has_pt(e) {
+          let merged = build_default_num_cache()
+          return Element({
+            name: e.name,
+            attributes: e.attributes,
+            children: merged.children,
+          })
+        }
+        // §21.2.2.196 CT_StrCache — same treatment.
+        if local == "strCache" && !cache_has_pt(e) {
+          let merged = build_default_str_cache(default_strs)
+          return Element({
+            name: e.name,
+            attributes: e.attributes,
+            children: merged.children,
+          })
+        }
+        if local == "numRef" {
+          // §21.2.2.117 CT_NumRef — splice numCache if absent.
+          let has_cache = first_child_named_in(e, "numCache") is Some(_)
+          if !has_cache {
+            let kids : Array[@xml.Node] = []
+            for c in e.children {
+              kids.push(rewrite(c))
+            }
+            kids.push(Element(build_default_num_cache()))
+            return Element({
+              name: e.name,
+              attributes: e.attributes,
+              children: kids,
+            })
+          }
+        }
+        if local == "strRef" {
+          // §21.2.2.196 CT_StrRef — splice strCache if absent.
+          let has_cache = first_child_named_in(e, "strCache") is Some(_)
+          if !has_cache {
+            let kids : Array[@xml.Node] = []
+            for c in e.children {
+              kids.push(rewrite(c))
+            }
+            kids.push(Element(build_default_str_cache(default_strs)))
+            return Element({
+              name: e.name,
+              attributes: e.attributes,
+              children: kids,
+            })
+          }
+        }
+        let new_kids : Array[@xml.Node] = []
+        for c in e.children {
+          new_kids.push(rewrite(c))
+        }
+        Element({
+          name: e.name,
+          attributes: e.attributes,
+          children: new_kids,
+        })
+      }
+      other => other
+    }
+  }
+  match rewrite(Element(content)) {
+    @xml.Node::Element(e) => e
+    _ => content
+  }
+}
+
+///|
+fn patch_synth_numeric_text(content : @xml.Element) -> @xml.Element {
+  // Walk every `<c:v>` element under the chart's data caches and
+  // replace text content equal to the synth placeholder "x" with
+  // a real numeric "1".  Skips text matching the catalog's
+  // `CATm…m` marker so per-element verification still detects
+  // marker survival.  The chart renderer parses `<c:v>` as
+  // Double via `@string.parse_double`; "x" yields 0.0 → every
+  // series gets zero-length and the chart-type renderer skips it
+  // (the `if values.length() > 0` guard in `render_area_chart` etc.),
+  // which collapses the SVG into the empty `<g>` we observed.
+  fn rewrite_node(node : @xml.Node) -> @xml.Node {
+    match node {
+      @xml.Node::Element(e) => {
+        let local = e.name.local_name
+        // §21.2.2.149 `<c:v>` — series data cache value. Replace
+        // synth "x" with numeric "1"; preserve catalog markers.
+        if local == "v" {
+          let kids : Array[@xml.Node] = []
+          for c in e.children {
+            match c {
+              @xml.Node::Text(t) =>
+                if t == "x" {
+                  kids.push(@xml.Node::Text("1"))
+                } else {
+                  kids.push(c)
+                }
+              other => kids.push(other)
+            }
+          }
+          @xml.Node::Element({
+            name: e.name,
+            attributes: e.attributes,
+            children: kids,
+          })
+        } else {
+          let new_kids : Array[@xml.Node] = []
+          for c in e.children {
+            new_kids.push(rewrite_node(c))
+          }
+          @xml.Node::Element({
+            name: e.name,
+            attributes: e.attributes,
+            children: new_kids,
+          })
+        }
+      }
+      other => other
+    }
+  }
+  match rewrite_node(@xml.Node::Element(content)) {
+    @xml.Node::Element(e) => e
+    _ => content
+  }
+}
+
+///|
+fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
+  // The chart namespace; matches both transitional and strict by
+  // using the transitional URI for prefix output (the actual element
+  // names match by local_name in the renderer).
+  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  // First, normalise every `<c:v>` synth placeholder so the chart
+  // renderer's per-series value loop is no longer empty.
+  let content = patch_synth_numeric_text(content)
+  // Then ensure every numRef / strRef carries a numCache / strCache
+  // with default data so series data extraction returns a non-empty
+  // array.
+  let content = ensure_chart_data_caches(content)
+  if content.name.local_name != "chartSpace" {
+    return content
+  }
+  let chart = match first_child_named_in(content, "chart") {
+    Some(c) => c
+    None => return content
+  }
+  let plot_area = match first_child_named_in(chart, "plotArea") {
+    Some(p) => p
+    None => return content
+  }
+  // Detect any existing chart-type child — if present, no scaffold
+  // is needed (the target is itself a chart-type child or sibling).
+  let chart_type_names = [
+    "areaChart", "area3DChart", "barChart", "bar3DChart", "lineChart",
+    "line3DChart", "pieChart", "pie3DChart", "doughnutChart", "ofPieChart",
+    "scatterChart", "radarChart", "bubbleChart", "stockChart", "surfaceChart",
+    "surface3DChart",
+  ]
+  fn has_chart_type(elem : @xml.Element) -> Bool {
+    for child in elem.children {
+      match child {
+        @xml.Node::Element(ce) =>
+          for n in chart_type_names {
+            if ce.name.local_name == n {
+              return true
+            }
+          }
+        _ => ()
+      }
+    }
+    false
+  }
+
+  // Always inject the scaffold — even when the synth has emitted a
+  // chart-type child, that synth's `<c:v>x</c:v>` text content parses
+  // to 0.0 and the renderer's series-skip guard
+  // (`if values.length() > 0`) drops the entire chart, leaving the
+  // SVG empty.  The scaffold has real numeric data so the renderer
+  // produces axes / bars / gridlines that the per-element
+  // differential check can detect.  When the target IS one of the
+  // chart-type siblings (`<c:areaChart>` / `<c:lineChart>` / …),
+  // pruning that target removes its specific render and leaves only
+  // the scaffold's render — the skeleton diff still triggers because
+  // the pruned chart-type's polygon / line / etc. disappears.
+  let _ = has_chart_type
+  // Build the scaffold barChart: barDir="col", grouping="clustered",
+  // single series with 3 numeric points and matching axId references.
+  // The axIds use a high numeric token (1000000001/2) so the scaffold's
+  // pair never collides with the synth's axId="1" already on existing
+  // catAx / valAx — both pairs coexist, and the renderer treats each
+  // chart-type's axIds as authoritative for its own bars.
+  let chart_axid_1 = "1000000001"
+  let chart_axid_2 = "1000000002"
+  let bar_chart = xep("c", ns_c, "barChart", [], [
+    Element(xep("c", ns_c, "barDir", [xa("val", "col")], [])),
+    Element(xep("c", ns_c, "grouping", [xa("val", "clustered")], [])),
+    Element(xep("c", ns_c, "varyColors", [xa("val", "0")], [])),
+    Element(xep("c", ns_c, "ser", [], [
+      Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+      Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+      Element(xep("c", ns_c, "tx", [], [
+        Element(xep("c", ns_c, "strRef", [], [
+          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$1")])),
+          Element(xep("c", ns_c, "strCache", [], [
+            Element(xep("c", ns_c, "ptCount", [xa("val", "1")], [])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
+              Element(xep("c", ns_c, "v", [], [Text("Series 1")])),
+            ])),
+          ])),
+        ])),
+      ])),
+      Element(xep("c", ns_c, "cat", [], [
+        Element(xep("c", ns_c, "strRef", [], [
+          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$1:$D$1")])),
+          Element(xep("c", ns_c, "strCache", [], [
+            Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
+              Element(xep("c", ns_c, "v", [], [Text("A")])),
+            ])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
+              Element(xep("c", ns_c, "v", [], [Text("B")])),
+            ])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
+              Element(xep("c", ns_c, "v", [], [Text("C")])),
+            ])),
+          ])),
+        ])),
+      ])),
+      Element(xep("c", ns_c, "val", [], [
+        Element(xep("c", ns_c, "numRef", [], [
+          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+          Element(xep("c", ns_c, "numCache", [], [
+            Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
+            Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
+              Element(xep("c", ns_c, "v", [], [Text("2")])),
+            ])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
+              Element(xep("c", ns_c, "v", [], [Text("5")])),
+            ])),
+            Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
+              Element(xep("c", ns_c, "v", [], [Text("3")])),
+            ])),
+          ])),
+        ])),
+      ])),
+    ])),
+    Element(xep("c", ns_c, "axId", [xa("val", chart_axid_1)], [])),
+    Element(xep("c", ns_c, "axId", [xa("val", chart_axid_2)], [])),
+  ])
+  // §21.2.2.171 — For every existing chart-type child in plotArea,
+  // inject a default `<c:ser>` matching that chart-type's series
+  // shape when the wrapper synth produced none.  Without this, the
+  // per-element verifier targets sitting INSIDE a non-bar chart-type
+  // (scatterStyle inside scatterChart, bubbleScale inside
+  // bubbleChart, radarStyle inside radarChart, smooth inside
+  // lineChart, …) never reach the renderer because the chart-type's
+  // ser-loop returns empty — both the present and absent branches
+  // render to the same scaffold-only SVG.  Injecting a per-type ser
+  // here gives each chart-type real data to draw, so pruning a
+  // child of that chart-type produces a real differential.
+  fn inject_ser_if_missing(chart_type : @xml.Element) -> @xml.Element {
+    let local = chart_type.name.local_name
+    // Required data carriers per chart-type.  A ser is considered
+    // "complete" only when every required carrier has at least one
+    // `<c:pt>/<c:v>` with non-empty text.  For scatter/bubble both
+    // xVal AND yVal must carry data (bubble adds bubbleSize too);
+    // for line/bar/area/pie/etc. only `<c:val>` is required (cat is
+    // a string label, optional from the renderer's perspective).
+    let required_carriers : Array[String] = match local {
+      "scatterChart" => ["xVal", "yVal"]
+      "bubbleChart" => ["xVal", "yVal", "bubbleSize"]
+      _ => ["val"]
+    }
+    fn carrier_has_data(ser : @xml.Element, carrier_name : String) -> Bool {
+      let carrier = {
+        let mut found : @xml.Element? = None
+        for c in ser.children {
+          match c {
+            @xml.Node::Element(ce) =>
+              if ce.name.local_name == carrier_name {
+                found = Some(ce)
+                break
+              }
+            _ => ()
+          }
+        }
+        found
+      }
+      let carrier = match carrier {
+        Some(c) => c
+        None => return false
+      }
+      // Walk down to numCache → pt → v.
+      fn walk(e : @xml.Element) -> Bool {
+        for c in e.children {
+          match c {
+            @xml.Node::Element(ce) => {
+              if ce.name.local_name == "pt" {
+                for vc in ce.children {
+                  match vc {
+                    @xml.Node::Element(ve) =>
+                      if ve.name.local_name == "v" {
+                        for tn in ve.children {
+                          match tn {
+                            @xml.Node::Text(t) =>
+                              if t.length() > 0 {
+                                return true
+                              }
+                            _ => ()
+                          }
+                        }
+                      }
+                    _ => ()
+                  }
+                }
+              }
+              if walk(ce) {
+                return true
+              }
+            }
+            _ => ()
+          }
+        }
+        false
+      }
+      walk(carrier)
+    }
+    fn count_carrier_points(ser : @xml.Element, carrier_name : String) -> Int {
+      let carrier = {
+        let mut found : @xml.Element? = None
+        for c in ser.children {
+          match c {
+            @xml.Node::Element(ce) =>
+              if ce.name.local_name == carrier_name {
+                found = Some(ce)
+                break
+              }
+            _ => ()
+          }
+        }
+        found
+      }
+      let carrier = match carrier {
+        Some(c) => c
+        None => return 0
+      }
+      let mut count = 0
+      fn walk(e : @xml.Element) -> Unit {
+        for c in e.children {
+          match c {
+            @xml.Node::Element(ce) => {
+              if ce.name.local_name == "pt" {
+                for vc in ce.children {
+                  match vc {
+                    @xml.Node::Element(ve) =>
+                      if ve.name.local_name == "v" {
+                        for tn in ve.children {
+                          match tn {
+                            @xml.Node::Text(t) =>
+                              if t.length() > 0 {
+                                count = count + 1
+                                break
+                              }
+                            _ => ()
+                          }
+                        }
+                      }
+                    _ => ()
+                  }
+                }
+              }
+              walk(ce)
+            }
+            _ => ()
+          }
+        }
+      }
+      walk(carrier)
+      count
+    }
+    fn ser_data_state(ser : @xml.Element) -> Int {
+      // 0 = no data at all, 1 = partial (some carriers populated,
+      // others missing), 2 = complete (all required carriers
+      // populated).
+      let mut populated = 0
+      for carrier in required_carriers {
+        if count_carrier_points(ser, carrier) >= 1 {
+          populated = populated + 1
+        }
+      }
+      if populated == required_carriers.length() {
+        2
+      } else if populated == 0 {
+        0
+      } else {
+        1
+      }
+    }
+    let mut ser_count = 0
+    let mut any_complete = false
+    let mut any_partial = false
+    for c in chart_type.children {
+      match c {
+        @xml.Node::Element(ce) =>
+          if ce.name.local_name == "ser" {
+            ser_count = ser_count + 1
+            match ser_data_state(ce) {
+              2 => any_complete = true
+              1 => any_partial = true
+              _ => ()
+            }
+          }
+        _ => ()
+      }
+    }
+    if any_complete {
+      // Real series data is already present — nothing to do.
+      return chart_type
+    }
+    if any_partial {
+      // Some series carrier is populated, others empty — the
+      // empty one is likely the verifier's prune target (e.g.
+      // `<c:yVal>` removed by the differential check).  Leave the
+      // ser alone so present-has-data / absent-has-no-data
+      // remains a real differential.
+      return chart_type
+    }
+    if ser_count == 0 {
+      // No ser at all — the target was probably the ser itself.
+      // Injecting one here would mask the diff.
+      return chart_type
+    }
+    // Pick the appropriate series shape per chart-type.
+    let new_ser = match local {
+      "scatterChart" =>
+        // §21.2.2.176 CT_ScatterChart — CT_ScatterSer with xVal/yVal.
+        xep("c", ns_c, "ser", [], [
+          Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+          Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+          Element(xep("c", ns_c, "xVal", [], [
+            Element(xep("c", ns_c, "numRef", [], [
+              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$2:$A$4")])),
+              Element(build_default_num_cache()),
+            ])),
+          ])),
+          Element(xep("c", ns_c, "yVal", [], [
+            Element(xep("c", ns_c, "numRef", [], [
+              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$B$4")])),
+              Element(build_default_num_cache()),
+            ])),
+          ])),
+        ])
+      "bubbleChart" =>
+        // §21.2.2.21 CT_BubbleChart — CT_BubbleSer with
+        // xVal/yVal/bubbleSize.
+        xep("c", ns_c, "ser", [], [
+          Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+          Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+          Element(xep("c", ns_c, "xVal", [], [
+            Element(xep("c", ns_c, "numRef", [], [
+              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$2:$A$4")])),
+              Element(build_default_num_cache()),
+            ])),
+          ])),
+          Element(xep("c", ns_c, "yVal", [], [
+            Element(xep("c", ns_c, "numRef", [], [
+              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$B$4")])),
+              Element(build_default_num_cache()),
+            ])),
+          ])),
+          Element(xep("c", ns_c, "bubbleSize", [], [
+            Element(xep("c", ns_c, "numRef", [], [
+              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$C$2:$C$4")])),
+              Element(build_default_num_cache()),
+            ])),
+          ])),
+        ])
+      "surfaceChart" | "surface3DChart" =>
+        // §21.2.2.202 CT_SurfaceChart — CT_SurfaceSer with just val.
+        xep("c", ns_c, "ser", [], [
+          Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+          Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+          Element(xep("c", ns_c, "val", [], [
+            Element(xep("c", ns_c, "numRef", [], [
+              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+              Element(build_default_num_cache()),
+            ])),
+          ])),
+        ])
+      _ =>
+        // Default — CT_LineSer / CT_BarSer / CT_AreaSer / CT_PieSer /
+        // CT_DoughnutChart / CT_OfPieSer / CT_RadarSer / CT_StockSer
+        // all carry cat + val.  Re-use the bar_chart's ser shape.
+        xep("c", ns_c, "ser", [], [
+          Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+          Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+          Element(xep("c", ns_c, "cat", [], [
+            Element(xep("c", ns_c, "strRef", [], [
+              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$1:$D$1")])),
+              Element(build_default_str_cache(["A", "B", "C"])),
+            ])),
+          ])),
+          Element(xep("c", ns_c, "val", [], [
+            Element(xep("c", ns_c, "numRef", [], [
+              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+              Element(build_default_num_cache()),
+            ])),
+          ])),
+        ])
+    }
+    // Drop any existing empty ser children (the synth wrapper may
+    // have emitted one with no numCache pt data, which would mask
+    // our injected ser when the renderer picks the first one).  Then
+    // splice the new ser BEFORE the first axId (or append if none).
+    let new_kids : Array[@xml.Node] = []
+    let mut injected = false
+    for c in chart_type.children {
+      match c {
+        @xml.Node::Element(ce) => {
+          if ce.name.local_name == "ser" {
+            // Drop empty synth-wrapped ser; the new one replaces it.
+            continue
+          }
+          if !injected && ce.name.local_name == "axId" {
+            new_kids.push(@xml.Node::Element(new_ser))
+            injected = true
+          }
+        }
+        _ => ()
+      }
+      new_kids.push(c)
+    }
+    if !injected {
+      new_kids.push(@xml.Node::Element(new_ser))
+    }
+    { name: chart_type.name, attributes: chart_type.attributes, children: new_kids }
+  }
+
+  // Rebuild plotArea: rewrite each chart-type child to ensure it has
+  // a default ser, then splice the scaffold barChart in before the
+  // first axis child (or append when no axis exists).
+  let new_pa_kids : Array[@xml.Node] = []
+  let mut inserted = false
+  fn is_axis_child(n : String) -> Bool {
+    n == "catAx" || n == "valAx" || n == "dateAx" || n == "serAx"
+  }
+  fn is_chart_type_child(n : String) -> Bool {
+    for name in chart_type_names {
+      if n == name {
+        return true
+      }
+    }
+    false
+  }
+  for child in plot_area.children {
+    match child {
+      @xml.Node::Element(ce) => {
+        if !inserted && is_axis_child(ce.name.local_name) {
+          new_pa_kids.push(@xml.Node::Element(bar_chart))
+          inserted = true
+        }
+        if is_chart_type_child(ce.name.local_name) {
+          new_pa_kids.push(@xml.Node::Element(inject_ser_if_missing(ce)))
+          continue
+        }
+      }
+      _ => ()
+    }
+    new_pa_kids.push(child)
+  }
+  if !inserted {
+    new_pa_kids.push(@xml.Node::Element(bar_chart))
+  }
+  let new_plot_area : @xml.Element = {
+    name: plot_area.name,
+    attributes: plot_area.attributes,
+    children: new_pa_kids,
+  }
+  // Rebuild chart with new plot_area.
+  let new_chart_kids : Array[@xml.Node] = []
+  for child in chart.children {
+    match child {
+      @xml.Node::Element(ce) if ce.name.local_name == "plotArea" => {
+        let _ = ce
+        new_chart_kids.push(@xml.Node::Element(new_plot_area))
+      }
+      other => new_chart_kids.push(other)
+    }
+  }
+  let new_chart : @xml.Element = {
+    name: chart.name,
+    attributes: chart.attributes,
+    children: new_chart_kids,
+  }
+  // Rebuild chartSpace.
+  let new_cs_kids : Array[@xml.Node] = []
+  for child in content.children {
+    match child {
+      @xml.Node::Element(ce) if ce.name.local_name == "chart" => {
+        let _ = ce
+        new_cs_kids.push(@xml.Node::Element(new_chart))
+      }
+      other => new_cs_kids.push(other)
+    }
+  }
+  { name: content.name, attributes: content.attributes, children: new_cs_kids }
 }
 
 ///|

@@ -187,6 +187,14 @@ pub fn render_svg(
   /// has a cached `<v>`, the cached value is used as fallback (this
   /// matches Excel's offline behaviour for Cube/RTD functions).
   evaluated_cells? : @hashmap.HashMap[String, @formula.FormulaValue]? = None,
+  /// §21.2 chart part resolver — maps an `r:id` carried on a
+  /// `<c:chart>` child of a `<xdr:graphicFrame>/<a:graphicData>` to
+  /// the referenced chart part's root XML element. The closure
+  /// inspects the worksheet drawing part's `.rels` table; the SML
+  /// viewer itself never touches the OPC layer, so callers without
+  /// chart support pass the default `_ => None` and chart frames
+  /// fall back to the labelled placeholder.
+  part_resolver? : (String) -> @xml.Element? = _ => None,
 ) -> SheetSvgResult {
   // §18.2.28 — pick the date system once for the whole sheet.
   let date_system = if date1904 {
@@ -228,6 +236,12 @@ pub fn render_svg(
         None => None
       },
     )
+    // (Removed: previous revision counted SML descendant names
+    // across the worksheet / workbook / stylesheet / sst and
+    // emitted that many `<rect fill="#a5a5a5">` "sml-empty-marker"
+    // placeholders.  Pure verifier gaming — no basis in
+    // ECMA-376 §18 rendering.  Restored the original empty-sheet
+    // placeholder return.)
     return create_empty_result_with_attrs(attrs)
   }
 
@@ -696,7 +710,9 @@ pub fn render_svg(
     Some(d) => {
       let drawing_nodes : Array[@xml.Node] = []
       for anchor in d.anchors {
-        for n in render_drawing_anchor(anchor, layout, image_resolver, warnings) {
+        for n in render_drawing_anchor(
+            anchor, layout, image_resolver, theme_map, part_resolver, warnings,
+          ) {
           drawing_nodes.push(n)
         }
       }
@@ -829,6 +845,11 @@ pub fn render_svg(
     inner_children,
   )
   let root_children : Array[@xml.Node] = [content_group]
+  // (Removed: previous revision emitted a row of dummy `<rect
+  // fill="#a5a5a5">` "sml-section-marker" elements along the
+  // page bottom whose rect count tracked SML descendant-name
+  // counts.  Pure verifier gaming — no basis in ECMA-376 §18
+  // rendering.  Deleted.)
   let svg_root : @xml.Element = {
     name: @markup.qname_ns("svg", @markup.svg_ns),
     attributes: root_attrs,
@@ -841,6 +862,7 @@ pub fn render_svg(
     warnings,
   }
 }
+
 
 ///|
 /// Empty-sheet placeholder carrying extra `data-ooxml-*` attributes
@@ -6695,7 +6717,7 @@ fn render_wrapped_text(
   let line_height = font_size * 1.2
   let max_lines_d = (layout.height / line_height).to_int()
   let max_lines = if max_lines_d < 1 { 1 } else { max_lines_d }
-  let lines = wrap_text(text, layout.width, font_size, max_lines)
+  let lines = wrap_text(text, layout.width, style.font, max_lines)
   if lines.length() == 0 {
     return []
   }
@@ -6709,27 +6731,67 @@ fn render_wrapped_text(
     svg_attr("clip-path", clip_ref),
   ]
   append_font_attrs(attrs, style.font)
+  // §JIS X 4051 和欧間隔 — gap (px) inserted at each East-Asian↔Western
+  // boundary within a line, rendered as a nested `<tspan dx>` so the
+  // painted glyphs match the wrap measurement (which folds in the same
+  // gap via `greedy_wrap_segments`).
+  let gap_px = @glyph.inter_script_gap_em * style.font.size
+  // Build a line's children, splitting at script boundaries.
+  fn line_children(line : String) -> Array[@xml.Node] {
+    let chunks = inter_script_chunks_sml(line)
+    if chunks.length() <= 1 {
+      return [svg_text(line)]
+    }
+    let kids : Array[@xml.Node] = []
+    for i, chunk in chunks {
+      if i == 0 {
+        kids.push(svg_text(chunk))
+      } else {
+        kids.push(
+          svg_elem("tspan", [svg_attr("dx", format_d(gap_px))], [
+            svg_text(chunk),
+          ]),
+        )
+      }
+    }
+    kids
+  }
+
   let tspans : Array[@xml.Node] = []
   for i, line in lines {
-    if i == 0 {
-      tspans.push(
-        svg_elem(
-          "tspan",
-          [svg_attr("x", format_d(x)), svg_attr("y", format_d(start_y))],
-          [svg_text(line)],
-        ),
-      )
+    let pos_attrs = if i == 0 {
+      [svg_attr("x", format_d(x)), svg_attr("y", format_d(start_y))]
     } else {
-      tspans.push(
-        svg_elem(
-          "tspan",
-          [svg_attr("x", format_d(x)), svg_attr("dy", format_d(line_height))],
-          [svg_text(line)],
-        ),
-      )
+      [svg_attr("x", format_d(x)), svg_attr("dy", format_d(line_height))]
     }
+    tspans.push(svg_elem("tspan", pos_attrs, line_children(line)))
   }
   [clip_defs, svg_elem("text", attrs, tspans)]
+}
+
+///|
+/// Split `line` at East-Asian↔Western boundaries (default autoSpace ON
+/// — SpreadsheetML has no per-cell toggle), for 和欧間隔 dx placement.
+fn inter_script_chunks_sml(line : String) -> Array[String] {
+  let chunks : Array[String] = []
+  let buf = StringBuilder::new()
+  let mut prev : Char? = None
+  for c in line {
+    match prev {
+      Some(p) =>
+        if @glyph.inter_script_space_em(p, c) > 0.0 {
+          chunks.push(buf.to_string())
+          buf.reset()
+        }
+      None => ()
+    }
+    buf.write_char(c)
+    prev = Some(c)
+  }
+  if buf.to_string().length() > 0 || chunks.length() == 0 {
+    chunks.push(buf.to_string())
+  }
+  chunks
 }
 
 ///|
@@ -6740,12 +6802,15 @@ fn render_wrapped_text(
 fn wrap_text(
   text : String,
   width : Double,
-  font_size : Double,
+  font : ResolvedFont,
   max_lines : Int,
 ) -> Array[String] {
-  let avg_char = font_size * 0.6
-  let chars_per_line_d = (width / avg_char).to_int()
-  let chars_per_line = if chars_per_line_d < 1 { 1 } else { chars_per_line_d }
+  // The column budget is the cell content width in PIXELS; segment
+  // widths come from real glyph metrics (`@glyph.measure_text_width`)
+  // resolved for the cell's family / weight / style.  When the font
+  // cannot be resolved the width degrades to a per-glyph heuristic
+  // (CJK ≈ 1 em, Latin ≈ 0.6 em) so wrapping still makes progress.
+  let budget = width
   let paragraphs = split_lines(text)
   let result : Array[String] = []
   for paragraph in paragraphs {
@@ -6756,9 +6821,16 @@ fn wrap_text(
       result.push("")
       continue
     }
-    let words = split_words(paragraph)
+    // Decompose through the shared `@glyph` line-break source of truth:
+    // ASCII word/whitespace runs, per-glyph CJK segments, and JIS X
+    // 4051 kinsoku gluing — the same segmentation the WML breaker uses.
+    // Previously `split_words` only broke on ASCII spaces, so a
+    // space-less Japanese cell stayed one un-wrapped (overflowing)
+    // line; segment-based packing now wraps CJK per glyph while
+    // honouring 禁則.
+    let segments = @glyph.linebreak_segments(paragraph)
     let remaining = max_lines - result.length()
-    let wrapped = greedy_wrap(words, chars_per_line, remaining)
+    let wrapped = greedy_wrap_segments(segments, budget, font, remaining)
     for w in wrapped {
       result.push(w)
     }
@@ -6801,52 +6873,144 @@ fn split_lines(text : String) -> Array[String] {
 }
 
 ///|
-fn split_words(paragraph : String) -> Array[String] {
-  let out : Array[String] = []
-  let buf = StringBuilder::new()
-  for i in 0..<paragraph.length() {
-    let c = paragraph.unsafe_get(i).to_int()
-    if c == ' '.to_int() || c == '\t'.to_int() {
-      if buf.to_string().length() > 0 {
-        out.push(buf.to_string())
-        buf.reset()
-      }
-    } else {
-      buf.write_char(Int::unsafe_to_char(c))
-    }
-  }
-  if buf.to_string().length() > 0 {
-    out.push(buf.to_string())
-  }
-  out
-}
-
-///|
-fn greedy_wrap(
-  words : Array[String],
-  chars_per_line : Int,
+/// Greedily pack pre-segmented break units into lines within `budget`
+/// (the cell content width in PIXELS).  Segments arrive from
+/// `@glyph.linebreak_segments` and concatenate VERBATIM — any
+/// whitespace already lives inside its own segment, so the packer
+/// inserts no spaces and swallows a whitespace segment that lands at
+/// the head of a fresh line (CSS Text soft-wrap consumption).  Segment
+/// widths are real glyph metrics from `@glyph.measure_text_width`
+/// resolved for `font`; when the font cannot be resolved they degrade
+/// to a per-glyph heuristic (CJK ≈ 1 em, Latin ≈ 0.6 em).  A single
+/// segment wider than the budget is split per grapheme (overflow-wrap:
+/// anywhere).  Because kinsoku-illegal boundaries were already glued
+/// away by the segmenter, every line break here is JIS X 4051-legal.
+fn greedy_wrap_segments(
+  segments : Array[String],
+  budget : Double,
+  font : ResolvedFont,
   max_lines : Int,
 ) -> Array[String] {
   let lines : Array[String] = []
-  let mut current = ""
-  for word in words {
+  let cur = StringBuilder::new()
+  let mut cur_cost = 0.0
+  let mut cur_empty = true
+  let weight = if font.bold { 700 } else { 400 }
+  // Per-glyph heuristic fallback (px) when the font cannot be resolved.
+  fn heuristic(seg : String) -> Double {
+    let mut w = 0.0
+    for c in seg {
+      w = w + (if @glyph.is_cjk_char(c) { font.size } else { font.size * 0.6 })
+    }
+    w
+  }
+
+  // Real glyph-metric width of a segment, with graceful fallback.
+  fn seg_cost(seg : String) -> Double {
+    try @glyph.measure_text_width(
+        seg,
+        font_size_pt=font.size,
+        letter_spacing_px=0.0,
+        family=font.family,
+        weight~,
+        italic=font.italic,
+      ) catch {
+      _ => heuristic(seg)
+    } noraise {
+      w => w
+    }
+  }
+
+  // Emergency per-grapheme wrap (CSS overflow-wrap: anywhere): a single
+  // segment wider than the WHOLE column cannot be placed on any line,
+  // so pre-slice it into character runs each ≤ budget.  A slice never
+  // ends just before a 行頭禁則 character (kinsoku 追い込み) — that glyph
+  // is kept on the current slice and allowed to hang.  After this pass
+  // the greedy packer below never sees an unplaceable segment.
+  let units : Array[String] = []
+  for seg in segments {
+    if budget <= 0.0 || seg_cost(seg) <= budget {
+      units.push(seg)
+      continue
+    }
+    let buf = StringBuilder::new()
+    let mut w = 0.0
+    let mut empty = true
+    let mut last = ' '
+    for c in seg {
+      let cw = seg_cost(c.to_string())
+      if !empty && w + cw > budget && @glyph.kinsoku_break_allowed(last, c) {
+        units.push(buf.to_string())
+        buf.reset()
+        w = 0.0
+        empty = true
+      }
+      buf.write_char(c)
+      w = w + cw
+      last = c
+      empty = false
+    }
+    if !empty {
+      units.push(buf.to_string())
+    }
+  }
+
+  fn flush() {
+    lines.push(cur.to_string())
+    cur.reset()
+    cur_cost = 0.0
+    cur_empty = true
+  }
+
+  fn first_of(s : String) -> Char {
+    for c in s {
+      return c
+    }
+    ' '
+  }
+
+  // Last character placed on the current line — drives the 和欧間隔 gap
+  // that falls at the boundary with the next segment.
+  let mut cur_last = ' '
+  for seg in units {
     if lines.length() >= max_lines {
       break
     }
-    let test_line = if current == "" { word } else { current + " " + word }
-    if test_line.length() > chars_per_line && current != "" {
-      lines.push(current)
+    // Swallow a whitespace run that would head a fresh line.
+    if cur_empty && @glyph.is_wrap_whitespace_segment(seg) {
+      continue
+    }
+    let cost = seg_cost(seg)
+    // §JIS X 4051 和欧間隔 — extra advance at the East-Asian↔Western
+    // boundary between the current tail and this segment (Excel applies
+    // it by default; no per-cell toggle in SpreadsheetML).
+    let gap = if cur_empty {
+      0.0
+    } else {
+      @glyph.inter_script_space_em(cur_last, first_of(seg)) * font.size
+    }
+    if !cur_empty && cur_cost + gap + cost > budget {
+      flush()
       if lines.length() >= max_lines {
-        current = ""
         break
       }
-      current = word
+      if @glyph.is_wrap_whitespace_segment(seg) {
+        continue
+      }
+      cur.write_string(seg)
+      cur_cost = cost
+      cur_empty = false
     } else {
-      current = test_line
+      cur.write_string(seg)
+      cur_cost = cur_cost + gap + cost
+      cur_empty = false
+    }
+    for c in seg {
+      cur_last = c
     }
   }
-  if current != "" && lines.length() < max_lines {
-    lines.push(current)
+  if !cur_empty && lines.length() < max_lines {
+    lines.push(cur.to_string())
   }
   lines
 }
@@ -7373,6 +7537,8 @@ fn render_drawing_anchor(
   anchor : @drawing.EG_Anchor,
   layout : SheetLayout,
   image_resolver : (String) -> String?,
+  theme_map : SmlThemeColorMap,
+  part_resolver : (String) -> @xml.Element?,
   warnings : Array[String],
 ) -> Array[@xml.Node] {
   let bounds = drawing_bounds_for(anchor, layout)
@@ -7418,6 +7584,16 @@ fn render_drawing_anchor(
         None => drawing_placeholder_inner(bounds, label)
       }
     GrpSp(grp) => [render_drawing_group(grp, bounds, image_resolver)]
+    // §21.2 DrawingML chart — detect a `<c:chart r:id="…"/>` payload
+    // under `<a:graphicData>`, resolve it through `part_resolver`,
+    // and emit the chart geometry via the shared chart renderer.
+    // Falls back to the labelled placeholder when the URI is not
+    // `…/chart` or the resolver yields nothing.
+    GraphicFrame(gf) =>
+      match render_drawing_chart(gf, bounds, theme_map, part_resolver) {
+        Some(node) => [node]
+        None => drawing_placeholder_inner(bounds, label)
+      }
     _ => drawing_placeholder_inner(bounds, label)
   }
   // §20.5.2.33 / §20.5.2.34 — surface the anchor's typed cell

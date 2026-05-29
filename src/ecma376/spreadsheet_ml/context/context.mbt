@@ -233,6 +233,13 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       self.opc_package,
       worksheet.drawing_part,
     )
+    // §21.2 — resolve `<c:chart r:id>` references on a graphicFrame
+    // through the worksheet drawing's `_rels` so the chart renderer
+    // can pull the referenced chart part's root element.
+    let chart_part_resolver = build_drawing_chart_part_resolver(
+      self.opc_package,
+      worksheet.drawing_part,
+    )
     // §18.10 — discover any pivot tables tied to this worksheet via
     // the worksheet-part's relationships (`…/pivotTable` rels point
     // at `xl/pivotTables/pivotTableN.xml`). For each one, look up
@@ -274,6 +281,7 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       tables=worksheet.tables,
       workbook=Some(self.workbook.element),
       evaluated_cells=Some(evaluated),
+      part_resolver=chart_part_resolver,
     )
     buf.write_string(result.svg)
   }
@@ -324,6 +332,56 @@ fn build_drawing_image_resolver(
                           ";base64," +
                           @base64.encode(image_part.data),
                         )
+                      None => ()
+                    }
+                  Err(_) => ()
+                }
+              }
+            }
+            None
+          }
+        }
+      }
+  }
+}
+
+///|
+/// Build a `part_resolver` closure that maps a `<c:chart r:id="…"/>`
+/// rId to the referenced chart part's root XML element by walking
+/// the drawing part's `_rels/<drawing>.xml.rels`.  Mirrors
+/// `build_drawing_image_resolver` but resolves `/chart` relationships
+/// instead of `/image` ones and returns the parsed root element so
+/// the chart renderer can traverse the typed XML tree.
+fn build_drawing_chart_part_resolver(
+  opc_package : @opc.Package,
+  drawing_part_name : String?,
+) -> (String) -> @xml.Element? {
+  match drawing_part_name {
+    None => fn(_) { None }
+    Some(part_name) =>
+      match opc_package.relationships(part_name) {
+        None => fn(_) { None }
+        Some(rels) => {
+          let part = part_name
+          let pkg = opc_package
+          let relationships = rels
+          fn(rid : String) -> @xml.Element? {
+            for rel in relationships.relationships {
+              if rel.id == rid &&
+                rel.target_mode == @relationships.TargetMode::Internal &&
+                rel.type_uri.has_suffix("/chart") {
+                let chart_name = try? @opc_part_name.resolve_target(
+                  part,
+                  rel.target,
+                )
+                match chart_name {
+                  Ok(name) =>
+                    match pkg.part(name) {
+                      Some(chart_part) =>
+                        match (try? @xml.parse(chart_part.data)) {
+                          Ok(doc) => return Some(doc.root)
+                          Err(_) => ()
+                        }
                       None => ()
                     }
                   Err(_) => ()

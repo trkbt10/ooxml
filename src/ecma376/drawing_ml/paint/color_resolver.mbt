@@ -29,7 +29,7 @@ pub type ColorMap = Map[String, String]
 /// rendering a fill that originates from a fmtScheme template — the
 /// surrounding caller pushes the override before invoking the fill
 /// renderer and the inner `resolve_solid_fill` reads it back.
-pub struct ColorResolveContext {
+pub(all) struct ColorResolveContext {
   color_map : ColorMap
   color_map_override : ColorMap?
   color_scheme : ColorScheme
@@ -341,7 +341,7 @@ pub fn get_scheme_color(
 /// Resolved DrawingML colour: the hex digits, an optional alpha in
 /// [0, 1] and the original transform list (kept abstract because the
 /// renderer applies them immediately).
-pub struct ResolvedColor {
+pub(all) struct ResolvedColor {
   /// Lowercase 6-digit hex without `#`.  Empty when resolution failed.
   hex : String
   /// Alpha in [0, 1].  1.0 when no `<a:alpha>` was present.

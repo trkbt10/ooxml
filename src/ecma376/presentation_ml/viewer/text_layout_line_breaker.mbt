@@ -20,12 +20,6 @@ pub struct LineBreakResult {
 }
 
 ///|
-/// True for ASCII word-break opportunities (space, tab, hyphen).
-fn is_break_char(c : Char) -> Bool {
-  c == ' ' || c == '\t' || c == '-'
-}
-
-///|
 /// Re-measure a single span after splitting its text. Mirrors
 /// `createOverflowSpan` / inline `estimateTextWidth` calls in
 /// `text-layout/line-breaker.ts:45`. A `FontUnresolvedError` from
@@ -130,13 +124,16 @@ fn break_span_at_width(
       break
     }
     accumulated = accumulated + cw
-    // Find break opportunities (ASCII space/tab/hyphen, CJK boundaries).
-    if is_break_char(c) {
+    // Record the boundary after position `i` (split = chars[0,i+1) |
+    // chars[i+1,n)) as a legal break point when the shared
+    // line-composition policy permits it.  `break_allowed_between` is
+    // THE source of truth: it folds the ASCII / CJK break-opportunity
+    // rules together with JIS X 4051 kinsoku, so this breaker carries
+    // no break-policy of its own.  An illegal boundary is simply not
+    // recorded, leaving `break_index` at the previous legal one — the
+    // prohibited character is pushed out (追い出し) to the next line.
+    if i + 1 < n && @glyph.break_allowed_between(chars[i], chars[i + 1]) {
       break_index = i + 1
-    } else if @glyph.is_cjk_char(c) {
-      break_index = i + 1
-    } else if i > 0 && @glyph.is_cjk_char(chars[i - 1]) {
-      break_index = i
     }
     i = i + 1
   }
@@ -158,6 +155,21 @@ fn break_span_at_width(
       }
       if break_index <= 0 {
         break_index = if 1 > n { 1 } else { n }
+      }
+      // 追い込み (push-in): the width-driven force break can land on a
+      // kinsoku-illegal boundary (the column is too narrow to honour
+      // 追い出し).  Rather than strand a line-start-prohibited character
+      // at the head of the next line — or a line-end-prohibited one at
+      // this line's tail — pull the offending character onto the
+      // current line by advancing the split.  JIS X 4051 sanctions this
+      // when 追い出し is impossible; visually the prohibited glyph hangs
+      // slightly past the column edge instead of orphaning.
+      while break_index < n &&
+            !@glyph.kinsoku_break_allowed(
+              chars[break_index - 1],
+              chars[break_index],
+            ) {
+        break_index = break_index + 1
       }
     } else {
       // Can't fit anything; defer this whole span to the next line.

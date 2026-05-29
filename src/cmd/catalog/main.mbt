@@ -255,6 +255,14 @@ fn main {
   let mut count = 0
   // Tallies for the coverage summary.
   let outcomes : Map[String, Int] = Map([], capacity=0)
+  // Round-trip *fidelity* tally — orthogonal to `outcomes`.  Where
+  // `outcomes` measures open->save->open->render *no-crash* + render
+  // trace, `fidelity` measures whether the element actually survived
+  // the writer leg of open->save: its tag (and, when present, its
+  // unique marker) is still in the saved part XML.  A `fy-drop`
+  // entry is a lossy round-trip — the reader parsed the element but
+  // the writer omitted it.
+  let fidelity : Map[String, Int] = Map([], capacity=0)
   let lineage_tally : Map[String, Int] = Map([], capacity=0)
   let mut hosted = 0
   let mut hosted_ok = 0
@@ -280,6 +288,28 @@ fn main {
     // Synthesise the element under test as an @xml.Element tree.
     // The element under test gets the rich synthesis budget so its
     // instance is visually non-degenerate (see RICH_BUDGET).
+    // Include optional attributes for chart-namespace targets — the
+    // chart sub-elements use `val`-style optional attributes whose
+    // absence indistinguishably triggers a spec-default value
+    // (gapWidth → 150, holeSize → 10, firstSliceAng → 0, …); without
+    // the synthesised non-default value the per-element differential
+    // verifier sees identical output with the target present or
+    // pruned.  Other namespaces' synth-time pattern coverage isn't
+    // strong enough to guarantee a parse-valid sample for every
+    // simple-typed optional attribute (e.g. `ST_TextScale` requires a
+    // `\d+%` pattern; sample_for_simple yields "x" which fails parse),
+    // so the include-optional path stays scoped to chart.
+    // Include optional attributes when synthesising the target so
+    // its `val`-style configuration carries a non-default sample value
+    // — without it the per-element differential verifier sees
+    // identical SVG with the target present or pruned (the renderer
+    // falls back to spec-defaults in both cases).  Now scoped to
+    // every namespace; sample_for_simple's percentage-pattern fallback
+    // (`<digits>%`) keeps WML's ST_TextScalePercent / SML's percentage
+    // types parse-valid that would otherwise fail with the synth's
+    // "x" string sample.
+    let _ = strip_ns(decl.ns)
+    let want_opt_attrs = true
     let target : @xml.Element = if decl.type_name == "__inline__" {
       match xsd_child(decl.node, "complexType") {
         Some(ict) => {
@@ -292,6 +322,7 @@ fn main {
             st,
             0,
             RICH_BUDGET,
+            include_optional_attrs=want_opt_attrs,
           )
         }
         None => elem(decl.ns, decl.name, [], [])
@@ -311,6 +342,7 @@ fn main {
             st,
             0,
             RICH_BUDGET,
+            include_optional_attrs=want_opt_attrs,
           )
         }
         None =>
@@ -414,25 +446,84 @@ fn main {
         "workbook" => "xlsx:workbook"
         "sharedStrings" => "xlsx:sharedStrings"
         "styleSheet" => "xlsx:styles"
+        // §21.2 DrawingML chart — `<c:chartSpace>` is the part root
+        // for `ppt/charts/chart1.xml`. Route the element through a
+        // dedicated pptx host that wires the chart part into a
+        // minimal slide carrying a `<p:graphicFrame>`.
+        "chartSpace" => "pptx:chart"
+        // §21.4 DrawingML diagram — four-part SmartArt.  Route each
+        // part root to a dedicated host that splices the target into
+        // the correct OPC part (data1.xml / layout1.xml /
+        // quickStyle1.xml / colors1.xml) with minimal-valid stubs in
+        // the other three.
+        "dataModel" => "pptx:diagram-data"
+        "layoutDef" => "pptx:diagram-layout"
+        "styleDef" => "pptx:diagram-style"
+        "colorsDef" => "pptx:diagram-colors"
+        // §21.3 DrawingML chartDrawing — `<c:userShapes>` part wired
+        // through the chart's own rels.  The host writes a userShapes
+        // sibling part referenced by chart rels rId1; PML context's
+        // `chart_part_resolver_factory` resolves the rId against the
+        // chart-part rels and the chart renderer walks
+        // `<cdr:absSizeAnchor>` / `<cdr:relSizeAnchor>` for each anchor.
+        "userShapes" => "pptx:chart-usershapes"
         _ => "docx"
       }
     }
 
     let candidates : Array[(String, @xml.Element)] = []
     let akey = nt_key(decl.name, decl.type_name)
+    // §21.2 — only chart-namespace elements (`<c:plotArea>`, `<c:ser>`,
+    // …) want their `chartSpace`-rooted ancestry path; DML-core
+    // elements (`<a:gd>`, `<a:srgbClr>`, …) the BFS reaches through
+    // `chartSpace/spPr` should keep their original document/sld
+    // canonical path so the renderer's shape pipeline credits them.
+    let is_chart_ns = strip_ns(decl.ns) == "drawingml/chart"
     match ancestry.get(akey) {
       Some(paths) if paths.length() >= 1 =>
         for path in paths {
           if path.length() >= 1 {
             let host = host_for_root(path[0].0)
-            candidates.push((host, wrap_in_ancestry(schema, path, 1, target)))
+            // Skip chart-host candidates for non-chart-namespace
+            // elements so DML core types do not get hosted in a chart
+            // part where the renderer's shape dispatch never reaches
+            // them.
+            if !is_chart_ns && path[0].0 == "chartSpace" {
+              continue
+            }
+            // For most hosts, the first ancestry step is `document` /
+            // `worksheet` / `sld` and the host package already wraps
+            // the content in that root, so we start wrapping at depth
+            // 1 (skip the implicit root step).  For `chartSpace`, the
+            // four diagram part roots, and `userShapes`, the host
+            // writes `content` AS the part's root element so the
+            // root wrap must survive — start at depth 0.
+            let start = match path[0].0 {
+              "chartSpace" | "dataModel" | "layoutDef" | "styleDef"
+              | "colorsDef" | "userShapes" => 0
+              _ => 1
+            }
+            candidates.push((host, wrap_in_ancestry(schema, path, start, target)))
           } else {
             // Empty path — the element IS itself a part-root; embed
-            // unwrapped.
-            candidates.push((if fmt != "" { fmt } else { "docx" }, target))
+            // unwrapped.  Route diagram / chart part roots to their
+            // dedicated host so the renderer is actually invoked.
+            let root_host = match decl.name {
+              "chartSpace" => "pptx:chart"
+              "dataModel" => "pptx:diagram-data"
+              "layoutDef" => "pptx:diagram-layout"
+              "styleDef" => "pptx:diagram-style"
+              "colorsDef" => "pptx:diagram-colors"
+              "userShapes" => "pptx:chart-usershapes"
+              _ => if fmt != "" { fmt } else { "docx" }
+            }
+            candidates.push((root_host, target))
           }
         }
       _ => candidates.push((if fmt != "" { fmt } else { "docx" }, target))
+    }
+    if candidates.length() == 0 {
+      candidates.push((if fmt != "" { fmt } else { "docx" }, target))
     }
     // Round-trip + render verification with a unique marker token.
     let marker = "CATm\{count}m"
@@ -499,6 +590,32 @@ fn main {
       )
     }
     outcomes[outcome] = outcomes.get(outcome).unwrap_or(0) + 1
+    // Round-trip fidelity (non-visual): re-run the canonical embed
+    // through open->save and inspect the saved XML for the element's
+    // survival.  Only meaningful when the package opens at all, so
+    // `open-fail` entries are recorded as `fy-open-fail` without a
+    // second probe.
+    let fy = if outcome == "open-fail" {
+      "fy-open-fail"
+    } else {
+      roundtrip_fidelity(host_fmt, embed_tree, marker)
+    }
+    fidelity[fy] = fidelity.get(fy).unwrap_or(0) + 1
+    // Surface a genuine writer drop with its id — the reader accepted
+    // the element but the writer did not re-emit it (lossy round-trip,
+    // an ECMA-376 conformance defect worth fixing).  Also surface the
+    // ambiguous cases: the tag is in the saved XML but cannot be
+    // attributed to the target (host scaffolding emits the same name),
+    // so the probe cannot confirm survival — worth eyeballing.
+    if fy == "fy-drop" {
+      println(
+        "    [fy-drop] \{ident}  (element=\{decl.name}, type=\{decl.type_name}, host=\{host_fmt})",
+      )
+    } else if fy == "fy-ambiguous" {
+      println(
+        "    [fy-ambig] \{ident}  (element=\{decl.name}, type=\{decl.type_name}, host=\{host_fmt})",
+      )
+    }
     // A genuine `rendered` outcome counts the element render-verified;
     // `rendered` OR `parsed` counts it round-trip-verified.  Both feed
     // the two-dimensional spec-section coverage.
@@ -633,6 +750,50 @@ fn main {
   )
   println("    elements WITHOUT a standalone host (embedded via a parent):")
   println("      no crash when embedded : \{hostless_ok}/\{hostless}")
+  println("")
+  // L2b — round-trip *fidelity*.  The L2 no-crash leg cannot detect a
+  // writer that silently drops an element it parsed (the package
+  // re-opens fine without it).  This leg opens, saves, and inspects
+  // the *saved* XML: the element's tag (and unique marker when it
+  // carries one) must still be present.  `fy-drop` is a lossy
+  // round-trip — a genuine ECMA-376 conformance defect.
+  let fy_marker = fidelity.get("fy-marker").unwrap_or(0)
+  let fy_tag = fidelity.get("fy-tag").unwrap_or(0)
+  let fy_drop = fidelity.get("fy-drop").unwrap_or(0)
+  let fy_ambiguous = fidelity.get("fy-ambiguous").unwrap_or(0)
+  let fy_openfail = fidelity.get("fy-open-fail").unwrap_or(0)
+  // Proven survival = marker survived OR a differential tag-count
+  // drop attributable to the target.  `fy-ambiguous` is deliberately
+  // NOT counted as proven: the tag is present but indistinguishable
+  // from host scaffolding, so attributing survival to the target
+  // would overclaim.
+  let fy_proven = fy_marker + fy_tag
+  let fy_probed = fy_proven + fy_drop + fy_ambiguous
+  println("L2b round-trip fidelity  (open -> save: does the saved part")
+  println("    XML still contain the element?  differential, non-visual)")
+  println("    marker survived (content round-tripped)  : \{fy_marker}")
+  println("    tag count dropped when pruned (survived) : \{fy_tag}")
+  println("    DROPPED by writer (lossy round-trip)     : \{fy_drop}")
+  println("    ambiguous (tag also in scaffolding)      : \{fy_ambiguous}")
+  println("    open/save could not complete             : \{fy_openfail}")
+  let fpct = pct10(fy_proven, fy_probed)
+  println("")
+  println(
+    "    target provably survived open -> save : \{fy_proven}/\{fy_probed} " +
+    "(\{fpct / 10}.\{fpct % 10}%, of probed; open-fail excluded)",
+  )
+  println("    NOTE on what this proves: every part writer re-emits the")
+  println("    reader's *preserved source element* verbatim (the read")
+  println("    model keeps the raw `.element`; `write_*` serialises it).")
+  println("    So this leg confirms the raw-preservation round-trip +")
+  println("    OPC re-packaging are lossless — a `fy-drop` would mean a")
+  println("    packaging/serialisation regression.  It does NOT exercise")
+  println("    a typed re-serialisation (there is none); structural")
+  println("    *understanding* lives in the typed projection, measured")
+  println("    by the L3 render axis, not here.")
+  println("    (ambiguous = tag present but also emitted by host")
+  println("     scaffolding, so the target's own survival is unprovable")
+  println("     by this method — neither a confirmed pass nor a drop)")
   println("")
 
   // L3 — ECMA-376 specification-section coverage.  The unit here is

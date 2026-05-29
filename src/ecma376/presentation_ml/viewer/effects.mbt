@@ -124,7 +124,7 @@ fn resolve_effect_color_hex(
   element : @xml.Element,
   ctx : ColorResolveContext,
 ) -> String {
-  match resolve_solid_fill(element, ctx~) {
+  match @paint.resolve_solid_fill(element, ctx~) {
     Some(rc) => if rc.hex == "" { "000000" } else { rc.hex }
     None => "000000"
   }

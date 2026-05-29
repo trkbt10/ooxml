@@ -12,7 +12,7 @@
 /// namespace); the tree is serialised once by `@xml.write` so no
 /// `<defs>` payload is ever assembled by string concatenation.
 /// `def_id_counter` produces stable, deterministic IDs.
-struct SvgDefsCollector {
+pub struct SvgDefsCollector {
   defs : Array[@xml.Node]
   def_id_counter : Ref[Int]
 }
@@ -20,7 +20,7 @@ struct SvgDefsCollector {
 ///|
 /// Construct an empty collector.  Mirrors `createDefsCollector` in
 /// `slide-utils.ts:32`.
-fn SvgDefsCollector::new() -> SvgDefsCollector {
+pub fn SvgDefsCollector::new() -> SvgDefsCollector {
   { defs: [], def_id_counter: { val: 0 } }
 }
 
@@ -28,14 +28,14 @@ fn SvgDefsCollector::new() -> SvgDefsCollector {
 /// Append a `<defs>` child node.  The caller supplies a structured
 /// SVG element node; the collector never parses or concatenates
 /// markup strings.
-fn SvgDefsCollector::add_def(self : SvgDefsCollector, def : @xml.Node) -> Unit {
+pub fn SvgDefsCollector::add_def(self : SvgDefsCollector, def : @xml.Node) -> Unit {
   self.defs.push(def)
 }
 
 ///|
 /// Generate a fresh ID with the given prefix.  Format mirrors the TS
 /// implementation: `${prefix}-${counter}` (e.g. `shape-grad-0`).
-fn SvgDefsCollector::next_id(
+pub fn SvgDefsCollector::next_id(
   self : SvgDefsCollector,
   prefix : String,
 ) -> String {
@@ -48,7 +48,7 @@ fn SvgDefsCollector::next_id(
 /// Return the collected definitions wrapped in a single `<defs>`
 /// element node, or `None` when nothing was collected.  Mirrors
 /// `toDefsElement` in `slide-utils.ts:43`.
-fn SvgDefsCollector::to_defs_node(self : SvgDefsCollector) -> @xml.Node? {
+pub fn SvgDefsCollector::to_defs_node(self : SvgDefsCollector) -> @xml.Node? {
   if self.defs.length() == 0 {
     return None
   }

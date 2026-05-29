@@ -67,7 +67,7 @@ fn read_gradient_stops(
               }
             None => 0.0
           }
-          match resolve_solid_fill(gs, ctx~) {
+          match @paint.resolve_solid_fill(gs, ctx~) {
             Some(rc) => result.push({ position: pos, color: rc })
             None => ()
           }
@@ -194,11 +194,11 @@ fn patt_fill_color(
   fallback : String,
   ctx : ColorResolveContext,
 ) -> String {
-  match child_by_local(patt_fill, child_local) {
+  match first_child_named(patt_fill, child_local) {
     None => fallback
     Some(wrapper) =>
-      match resolve_solid_fill(wrapper, ctx~) {
-        Some(rc) => format_resolved_color(rc)
+      match @paint.resolve_solid_fill(wrapper, ctx~) {
+        Some(rc) => @paint.format_resolved_color(rc)
         None => fallback
       }
   }
@@ -447,8 +447,8 @@ pub fn render_fill_attr(
   match fill_element.name.local_name {
     "noFill" => { attr_value: "none", is_no_fill: true }
     "solidFill" =>
-      match resolve_solid_fill(fill_element, ctx~) {
-        Some(rc) => { attr_value: format_resolved_color(rc), is_no_fill: false }
+      match @paint.resolve_solid_fill(fill_element, ctx~) {
+        Some(rc) => { attr_value: @paint.format_resolved_color(rc), is_no_fill: false }
         None => { attr_value: "none", is_no_fill: false }
       }
     "gradFill" => {

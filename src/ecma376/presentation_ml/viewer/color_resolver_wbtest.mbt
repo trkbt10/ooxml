@@ -34,7 +34,7 @@ fn make_elt(
 test "srgbClr resolves to literal hex" {
   let elt = make_elt("srgbClr", [("val", "FF0000")], [])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="ff0000")
   inspect(rc.alpha, content="1")
 }
@@ -53,7 +53,7 @@ test "schemeClr looks up the theme palette" {
     clamp_overflow_hue: true,
     group_fill: None,
   }
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="4472c4")
 }
 
@@ -72,7 +72,7 @@ test "schemeClr respects colorMap (tx1 → dk1)" {
     clamp_overflow_hue: true,
     group_fill: None,
   }
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="000000")
 }
 
@@ -80,7 +80,7 @@ test "schemeClr respects colorMap (tx1 → dk1)" {
 test "prstClr resolves CSS named color" {
   let elt = make_elt("prstClr", [("val", "red")], [])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="ff0000")
 }
 
@@ -88,7 +88,7 @@ test "prstClr resolves CSS named color" {
 test "sysClr lastClr takes precedence" {
   let elt = make_elt("sysClr", [("val", "windowText"), ("lastClr", "112233")], [])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="112233")
 }
 
@@ -96,7 +96,7 @@ test "sysClr lastClr takes precedence" {
 test "sysClr windowText falls back to black" {
   let elt = make_elt("sysClr", [("val", "windowText")], [])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="000000")
 }
 
@@ -105,17 +105,17 @@ test "alpha 50% is captured" {
   let alpha = make_elt("alpha", [("val", "50000")], [])
   let elt = make_elt("srgbClr", [("val", "FF0000")], [alpha])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.alpha, content="0.5")
 }
 
 ///|
 test "format_resolved_color emits #hex or rgba" {
   let opaque_color : ResolvedColor = { hex: "abcdef", alpha: 1.0 }
-  inspect(format_resolved_color(opaque_color), content="#abcdef")
+  inspect(@paint.format_resolved_color(opaque_color), content="#abcdef")
   let translucent : ResolvedColor = { hex: "ff0000", alpha: 0.5 }
   // rgba uses integer RGB and double alpha.
-  inspect(format_resolved_color(translucent), content="rgba(255, 0, 0, 0.5)")
+  inspect(@paint.format_resolved_color(translucent), content="rgba(255, 0, 0, 0.5)")
 }
 
 ///|
@@ -125,7 +125,7 @@ test "solidFill wrapper element is unwrapped" {
   // Wrap in a parent so resolve_solid_fill sees the solidFill child path.
   let parent = make_elt("spPr", [], [sf])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(parent, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(parent, ctx~).unwrap()
   inspect(rc.hex, content="00ff00")
 }
 
@@ -138,7 +138,7 @@ test "hueOff rotates hue by 90 degrees" {
   let hue_off = make_elt("hueOff", [("val", "5400000")], [])
   let elt = make_elt("srgbClr", [("val", "FF0000")], [hue_off])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   // Pure red (H=0) + 90° → H=90 → yellow-green region.
   // HSL(90, 1, 0.5) → #80ff00.
   inspect(rc.hex, content="80ff00")
@@ -151,7 +151,7 @@ test "comp child triggers hue rotation" {
   let comp = make_elt("comp", [], [])
   let elt = make_elt("srgbClr", [("val", "FF0000")], [comp])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="00ffff")
 }
 
@@ -162,7 +162,7 @@ test "inv child inverts white to black" {
   let inv = make_elt("inv", [], [])
   let elt = make_elt("srgbClr", [("val", "FFFFFF")], [inv])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="000000")
 }
 
@@ -173,7 +173,7 @@ test "gray child reduces green to grayscale" {
   let gray = make_elt("gray", [], [])
   let elt = make_elt("srgbClr", [("val", "00FF00")], [gray])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   // Y = 0.7152 → sRGB byte ≈220 (dc).  All three channels equal.
   inspect(rc.hex[0:2], content="dc")
   inspect(rc.hex[2:4], content="dc")
@@ -187,7 +187,7 @@ test "red 100% sets the red channel" {
   let red = make_elt("red", [("val", "100000")], [])
   let elt = make_elt("srgbClr", [("val", "000000")], [red])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="ff0000")
 }
 
@@ -200,7 +200,7 @@ test "blue 25% sets the blue channel" {
   // overwritten with the gamma-encoded 0.25 linear value.
   let elt = make_elt("srgbClr", [("val", "808080")], [blue])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   // Red and green untouched.
   inspect(rc.hex[0:2], content="80")
   inspect(rc.hex[2:4], content="80")
@@ -215,7 +215,7 @@ test "gamma child lifts mid-tones" {
   let gamma = make_elt("gamma", [], [])
   let elt = make_elt("srgbClr", [("val", "808080")], [gamma])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="bcbcbc")
 }
 
@@ -225,7 +225,7 @@ test "invGamma child darkens mid-tones" {
   let inv_gamma = make_elt("invGamma", [], [])
   let elt = make_elt("srgbClr", [("val", "BCBCBC")], [inv_gamma])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="808080")
 }
 
@@ -237,7 +237,7 @@ test "satOff -100 desaturates to gray" {
   let sat_off = make_elt("satOff", [("val", "-100000")], [])
   let elt = make_elt("srgbClr", [("val", "FF0000")], [sat_off])
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   inspect(rc.hex, content="808080")
 }
 
@@ -252,7 +252,7 @@ test "scrgbClr applies linear-to-sRGB gamma" {
     [],
   )
   let ctx = ColorResolveContext::empty()
-  let rc = resolve_solid_fill(elt, ctx~).unwrap()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
   // 50% linear → ≈0xbc (188).  Straight scaling would give 0x80.
   inspect(rc.hex, content="bcbcbc")
   // Full intensity → white.
@@ -261,6 +261,6 @@ test "scrgbClr applies linear-to-sRGB gamma" {
     [("r", "100000"), ("g", "100000"), ("b", "100000")],
     [],
   )
-  let rw = resolve_solid_fill(white, ctx~).unwrap()
+  let rw = @paint.resolve_solid_fill(white, ctx~).unwrap()
   inspect(rw.hex, content="ffffff")
 }

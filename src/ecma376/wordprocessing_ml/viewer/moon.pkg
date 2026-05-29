@@ -8,6 +8,8 @@ import {
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @domain,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/style_resolver" @style_resolver,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver" @numbering_resolver,
+  "trkbt10/ooxml/ecma376/drawing_ml/chart/viewer" @chart_viewer,
+  "trkbt10/ooxml/ecma376/drawing_ml/paint" @paint,
   "trkbt10/ooxml/ecma376/office_math/domain" @omml,
   "trkbt10/ooxml/ecma376/office_math/viewer" @omml_viewer,
   "trkbt10/ooxml/ecma376/presentation_ml/viewer" @pml_viewer,
@@ -20,4 +22,5 @@ import {
 
 import {
   "moonbitlang/core/debug" @debug,
+  "moonbitlang/x/fs" @fs,
 } for "wbtest"

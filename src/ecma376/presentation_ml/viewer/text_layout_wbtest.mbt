@@ -366,3 +366,95 @@ test "format_auto_number — Thai letter alphabetic numbering" {
   // 42 wraps past the 41-glyph set: first glyph doubled.
   inspect(format_auto_number("thaiAlphaPeriod", 42), content="กก.")
 }
+
+///|
+/// First / last visible character of a wrapped line, walking the line's
+/// spans in order.  Used by the kinsoku invariant test below.
+fn line_first_char(line : Array[MeasuredSpan]) -> Char? {
+  for sp in line {
+    for c in sp.span.text {
+      return Some(c)
+    }
+  }
+  None
+}
+
+///|
+fn line_last_char(line : Array[MeasuredSpan]) -> Char? {
+  let mut last : Char? = None
+  for sp in line {
+    for c in sp.span.text {
+      last = Some(c)
+    }
+  }
+  last
+}
+
+///|
+/// JIS X 4051 invariant: when a Japanese paragraph is wrapped, no
+/// produced line may BEGIN with a 行頭禁則文字 (closing punctuation /
+/// bracket / small kana) nor END with a 行末禁則文字 (opening bracket).
+/// Wrapping the same text at several widths exercises many break
+/// positions; every one must respect the constraint.
+test "break_into_lines enforces JIS X 4051 kinsoku at every width" {
+  ensure_test_font()
+  let text = "本日は、晴天なり。（晴れ）また「明日」も雨。さらに……続く。"
+  for width in [40.0, 60.0, 80.0, 120.0, 200.0] {
+    let s = tl_make_span(text, font_size=18.0)
+    let result = break_into_lines(measure_spans([s]), width, width, WrapSquare)
+    for line in result.lines {
+      match line_first_char(line) {
+        Some(c) =>
+          if @glyph.is_line_start_prohibited(c) {
+            fail(
+              "line starts with prohibited char U+" +
+              c.to_int().to_string() +
+              " at width " +
+              width.to_string(),
+            )
+          }
+        None => ()
+      }
+      match line_last_char(line) {
+        Some(c) =>
+          if @glyph.is_line_end_prohibited(c) {
+            fail(
+              "line ends with prohibited char U+" +
+              c.to_int().to_string() +
+              " at width " +
+              width.to_string(),
+            )
+          }
+        None => ()
+      }
+    }
+  }
+}
+
+///|
+/// Concrete 追い出し (push-out) check: a break that would strand a
+/// sentence-final 。 at the head of the next line must instead move
+/// earlier so the 。 stays on the line with its preceding character.
+/// "あい。" measured together fits a width that "あい" + a wrapped "。"
+/// would not split — the breaker must keep 。 attached.
+test "break_into_lines keeps sentence-final 。 attached (push-out)" {
+  ensure_test_font()
+  // Width chosen to fit roughly two CJK glyphs.  At a naive CJK
+  // boundary the break would fall before 。; kinsoku forces it earlier.
+  let cjk_w = @glyph.measure_text_width(
+    "あ",
+    font_size_pt=18.0,
+    letter_spacing_px=0.0,
+    family="Noto Sans",
+  )
+  let s = tl_make_span("あい。うえお", font_size=18.0)
+  let width = cjk_w * 2.5
+  let result = break_into_lines(measure_spans([s]), width, width, WrapSquare)
+  // No line may begin with 。.
+  for line in result.lines {
+    match line_first_char(line) {
+      Some(c) => assert_true(c != '。')
+      None => ()
+    }
+  }
+}
