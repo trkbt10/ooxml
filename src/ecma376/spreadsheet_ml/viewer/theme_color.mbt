@@ -168,9 +168,9 @@ fn sml_lower_hex(s : String) -> String {
 ///      the spec-permitted `auto` sentinel.
 ///   2. When `@theme` is set, it overrides `@rgb` and is resolved
 ///      through the workbook theme map.
-///   3. `@tint` (-1.0..1.0) is applied as an HSL luminance
-///      offset on the resolved RGB.  Negative tints darken;
-///      positive tints brighten.
+///   3. `@tint` (-1.0..1.0) modifies the resolved RGB's HSL
+///      luminance per §18.3.1.15: `L·(1+tint)` when negative
+///      (darken), `L·(1−tint)+tint` when positive (lighten).
 ///   4. When `@indexed` is set without `@rgb`/`@theme`, the
 ///      colour belongs to the legacy indexed palette which is
 ///      out-of-scope here; we return None so the caller can
@@ -200,11 +200,19 @@ pub fn resolve_sml_color(
       if ct_color.tint == 0.0 {
         Some(hex)
       } else {
-        // §18.8.3 — tint applies in HSL space.  Positive values
-        // brighten (add luminance), negative values darken (sub
-        // luminance).  `@color.apply_lum_off` takes the offset
-        // directly and clamps to [0, 1].
-        Some(@color.apply_lum_off(hex, ct_color.tint))
+        // §18.3.1.15 — tint is a double in [-1.0, 1.0] applied to the
+        // HSL LUMINANCE (not a simple offset):
+        //   tint < 0 (darken):  L′ = L · (1 + tint)
+        //   tint > 0 (lighten): L′ = L · (1 − tint) + tint
+        // (The previous `L + tint` offset matched only at the ±1.0
+        // extremes and diverged for every intermediate tint — the
+        // common Excel "lighter / darker N%" theme variants.)
+        let t = ct_color.tint
+        if t < 0.0 {
+          Some(@color.apply_lum_mod(hex, 1.0 + t))
+        } else {
+          Some(@color.apply_lum_off(@color.apply_lum_mod(hex, 1.0 - t), t))
+        }
       }
   }
 }

@@ -3,6 +3,7 @@ package "trkbt10/ooxml/ecma376/presentation_ml/viewer"
 
 import {
   "moonbitlang/core/debug",
+  "trkbt10/ooxml/ecma376/drawing_ml/paint",
   "trkbt10/ooxml/ecma376/drawing_ml/theme",
   "trkbt10/ooxml/ecma376/presentation_ml/domain",
   "trkbt10/ooxml/ecma376/presentation_ml/placeholder_resolver",
@@ -15,7 +16,7 @@ pub fn angle_units_to_degrees(Double) -> Double
 
 pub fn break_into_lines(Array[MeasuredSpan], Double, Double, TextWrapping) -> LineBreakResult
 
-pub fn build_line_marker_attrs(@xml.Element, Double, String, SvgDefsCollector) -> LineMarkerEmission
+pub fn build_line_marker_attrs(@xml.Element, Double, String, @paint.SvgDefsCollector) -> LineMarkerEmission
 
 pub fn count_line_spaces(Array[MeasuredSpan]) -> Int
 
@@ -35,8 +36,6 @@ pub fn fill_to_rect_to_radial_center(Double, Double, Double, Double) -> (Double,
 
 pub fn format_auto_number(String, Int, start_at? : Int) -> String
 
-pub fn format_resolved_color(ResolvedColor) -> String
-
 pub fn get_line_max_font_info(Array[MeasuredSpan]) -> LineFontInfo
 
 pub fn get_line_max_font_size(Array[MeasuredSpan]) -> Double
@@ -46,8 +45,6 @@ pub fn get_line_visible_width(Array[MeasuredSpan]) -> Double
 pub fn get_line_width(Array[MeasuredSpan]) -> Double
 
 pub fn get_radial_gradient_coords(radial_center? : (Double, Double)?, extended? : Bool) -> RadialGradientCoords
-
-pub fn get_scheme_color(String, String?, ColorResolveContext) -> String?
 
 pub fn has_3d_effects(@xml.Element) -> Bool
 
@@ -71,19 +68,19 @@ pub fn reflection_extra_nodes(@xml.Element, @xml.Node, Double) -> Array[@xml.Nod
 
 pub fn render_3d_effects(@xml.Element, String, String, Double, Double) -> Effects3d
 
-pub fn render_effects_filter_attr(@xml.Element, String, ColorResolveContext, SvgDefsCollector) -> Array[@xml.Attribute]
+pub fn render_custom_geometry(@xml.Element, Double, Double) -> String?
 
-pub fn render_fill_attr(@xml.Element, SvgDefsCollector, ColorResolveContext, shape_width? : Double, shape_height? : Double, image_resolver? : (String) -> ResolvedImage?) -> FillAttrResult
+pub fn render_effects_filter_attr(@xml.Element, String, @paint.ColorResolveContext, @paint.SvgDefsCollector) -> Array[@xml.Attribute]
 
-pub fn render_graphic_frame_table_svg(@xml.Element, Double, Double, ColorResolveContext, SvgDefsCollector) -> Array[@xml.Node]
+pub fn render_fill_attr(@xml.Element, @paint.SvgDefsCollector, @paint.ColorResolveContext, shape_width? : Double, shape_height? : Double, image_resolver? : (String) -> ResolvedImage?) -> FillAttrResult
+
+pub fn render_graphic_frame_table_svg(@xml.Element, Double, Double, @paint.ColorResolveContext, @paint.SvgDefsCollector) -> Array[@xml.Node]
 
 pub fn render_preset_geometry(@xml.Element, Double, Double) -> String?
 
 pub fn render_preset_geometry_layered(@xml.Element, Double, Double) -> Array[PresetLayer]?
 
-pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, part_resolver? : (String) -> @xml.Element?, theme? : @theme.CT_OfficeStyleSheet?, chain? : @placeholder_resolver.SlideChain?, presentation? : @xml.Element?) -> String
-
-pub fn resolve_solid_fill(@xml.Element, ph_clr? : String?, ctx~ : ColorResolveContext) -> ResolvedColor?
+pub fn render_svg(@domain.CT_Slide, width_emu? : Int, height_emu? : Int, image_resolver? : (String) -> ResolvedImage?, part_resolver? : (String) -> @xml.Element?, chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)?, theme? : @theme.CT_OfficeStyleSheet?, chain? : @placeholder_resolver.SlideChain?, presentation? : @xml.Element?) -> String
 
 // Errors
 
@@ -106,24 +103,6 @@ pub struct BulletConfig {
   font_family : String
   image_url : String?
 }
-
-pub struct ColorResolveContext {
-  color_map : Map[String, String]
-  color_map_override : Map[String, String]?
-  color_scheme : Map[String, String]
-  ph_clr : String?
-  major_font : Map[String, String]
-  minor_font : Map[String, String]
-  clamp_overflow_hue : Bool
-}
-pub fn ColorResolveContext::empty() -> Self
-pub fn ColorResolveContext::resolve_theme_typeface(Self, String) -> String?
-pub fn ColorResolveContext::with_clamp_overflow_hue(Self, Bool) -> Self
-pub fn ColorResolveContext::with_color_scheme(Self, Map[String, String]) -> Self
-pub fn ColorResolveContext::with_font_scheme(Self, Map[String, String], Map[String, String]) -> Self
-pub fn ColorResolveContext::with_maps(Self, Map[String, String], Map[String, String]?) -> Self
-pub fn ColorResolveContext::with_ph_clr(Self, String) -> Self
-pub fn ColorResolveContext::with_strict_spec(Self) -> Self
 
 pub struct Effects3d {
   transform_attrs : Array[@xml.Attribute]
@@ -284,18 +263,10 @@ pub struct RadialGradientCoords {
   fy : Double?
 }
 
-pub struct ResolvedColor {
-  hex : String
-  alpha : Double
-}
-
 pub(all) struct ResolvedImage {
   mime_type : String
   base64_data : String
 }
-
-type SvgDefsCollector
-pub fn SvgDefsCollector::to_defs_element(Self) -> String
 
 pub(all) enum TextAlign {
   AlignLeft
@@ -340,8 +311,8 @@ pub struct TextBoxConfig {
 pub(all) enum TextFillConfig {
   TextFillSolid(String, Double)
   TextFillNone
-  TextFillGradient(Array[TextGradientStop], Double, Bool)
-  TextFillPattern(String, String)
+  TextFillGradient(Array[TextGradientStop], Double, Bool, Double, Double)
+  TextFillPattern(String, String, String)
   TextFillImage(String)
 }
 
@@ -356,6 +327,9 @@ pub struct TextOutlineConfig {
   color : String
   cap : String
   join : String
+  dash : String
+  compound : String
+  align : String
 }
 
 pub(all) enum TextOverflow {
@@ -385,10 +359,6 @@ pub(all) enum TextWrapping {
 } derive(Eq, @debug.Debug)
 
 // Type aliases
-pub type ColorMap = Map[String, String]
-
-pub type ColorScheme = Map[String, String]
-
 pub type GuideContext = Map[String, Double]
 
 // Traits

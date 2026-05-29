@@ -169,14 +169,15 @@ test "pattFill pct25 builds a dotted pattern def" {
 }
 
 ///|
-/// §20.1.8.47 — a `<a:pattFill>` whose `@prst` geometry is not yet
-/// mapped falls back to the foreground colour as a flat fill (no
-/// `<pattern>` def) so the shape stays visible.
+/// §20.1.8.47 — a `<a:pattFill>` whose `@prst` is outside
+/// ST_PresetPatternVal (a schema violation) falls back to the
+/// foreground colour as a flat fill (no `<pattern>` def) so the shape
+/// stays visible.  Every spec-enumerated preset now maps to geometry.
 test "pattFill unmapped preset falls back to flat fg colour" {
   let fg = fill_make_elt("fgClr", [], [
     fill_make_elt("srgbClr", [("val", "00FF00")], []),
   ])
-  let patt = fill_make_elt("pattFill", [("prst", "sphere")], [fg])
+  let patt = fill_make_elt("pattFill", [("prst", "notARealPreset")], [fg])
   let defs = SvgDefsCollector::new()
   let ctx = ColorResolveContext::empty()
   let r = render_fill_attr(patt, defs, ctx)

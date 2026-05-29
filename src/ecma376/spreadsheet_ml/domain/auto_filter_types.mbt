@@ -148,6 +148,9 @@ pub(all) struct CT_Filters {
   filters : Array[CT_Filter]
   date_group_items : Array[CT_DateGroupItem]
   blank : Bool
+  /// @calendarType (ST_CalendarType) — non-Gregorian grouping calendar;
+  /// default "none" (§18.3.2.7).
+  calendar_type : String
 } derive(Eq, Debug)
 
 ///|

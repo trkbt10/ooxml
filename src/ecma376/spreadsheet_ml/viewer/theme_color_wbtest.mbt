@@ -165,3 +165,31 @@ test "SML theme cascade E2E: CT_Color theme=accent1 + tint=+0.5" {
     None => abort("expected Some(hex) for tinted accent1")
   }
 }
+
+///|
+test "resolve_sml_color tint uses the §18.3.1.15 multiplicative HSL formula" {
+  // Mid-grey #808080 (HSL L ≈ 0.502, S = 0) isolates the luminance
+  // maths.  The spec formula is multiplicative, NOT a simple offset:
+  //   tint −0.5 → L′ = L·(1 + −0.5) = L·0.5  ≈ 0.251 → #404040
+  //   tint +0.5 → L′ = L·(1 − 0.5) + 0.5     ≈ 0.751 → #c0c0c0
+  // A simple `L + tint` offset would instead give #000000 / #ffffff,
+  // so these assertions pin the spec-correct behaviour.
+  let map = SmlThemeColorMap::empty()
+  let darker = resolve_sml_color(
+    sml_mk_ct_color(rgb=Some("FF808080"), tint=-0.5),
+    map,
+  )
+  let lighter = resolve_sml_color(
+    sml_mk_ct_color(rgb=Some("FF808080"), tint=0.5),
+    map,
+  )
+  // Not the offset extremes:
+  assert_true(darker != Some("000000"))
+  assert_true(lighter != Some("ffffff"))
+  @debug.debug_inspect(darker, content=(
+    #|Some("404040")
+  ))
+  @debug.debug_inspect(lighter, content=(
+    #|Some("c0c0c0")
+  ))
+}

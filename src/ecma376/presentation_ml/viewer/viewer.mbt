@@ -1307,6 +1307,53 @@ fn shape_ph_key(shape : @xml.Element) -> String? {
 }
 
 ///|
+/// Extract the master's `<p:txStyles>` (CT_SlideMasterTextStyles
+/// §19.3.1.52) from the placeholder-resolution chain, or `None` when
+/// there is no chain / no master text styles.
+fn chain_master_tx_styles(chain : @ph_resolver.SlideChain?) -> @xml.Element? {
+  match chain {
+    None => None
+    Some(ch) => first_child_named(ch.master.element, "txStyles")
+  }
+}
+
+///|
+/// §19.3.1.52 — select the master text-list style (`<p:titleStyle>` /
+/// `<p:bodyStyle>` / `<p:otherStyle>`) that supplies the inherited
+/// paragraph / run defaults for `shape`'s placeholder text, keyed on
+/// the placeholder type (§19.7.10 ST_PlaceholderType).  Title
+/// placeholders draw from `titleStyle`; the date / footer / slide-
+/// number placeholders from `otherStyle`; every other placeholder
+/// (body / subTitle / obj / the implicit no-`@type` default) from
+/// `bodyStyle`.  Returns `None` for a non-placeholder shape — its text
+/// has no master text-style default — or when the master defines no
+/// `<p:txStyles>`.
+fn select_master_lst_style(
+  master_tx_styles : @xml.Element?,
+  shape : @xml.Element,
+) -> @xml.Element? {
+  let txs = match master_tx_styles {
+    Some(t) => t
+    None => return None
+  }
+  let ph = match @ph_resolver.find_shape_ph(shape) {
+    Some(p) => p
+    None => return None
+  }
+  // §19.7.10 — a `<p:ph>` with no `@type` is the implicit body slot.
+  let ph_type = match attr_value(ph, "type") {
+    Some(v) => v
+    None => "body"
+  }
+  let want = match ph_type {
+    "title" | "ctrTitle" => "titleStyle"
+    "sldNum" | "dt" | "ftr" => "otherStyle"
+    _ => "bodyStyle"
+  }
+  first_child_named(txs, want)
+}
+
+///|
 /// Resolve a layout-only shape against its master so we get the
 /// merged ResolvedShape (slide layer absent, layout layer = the
 /// supplied shape, master layer resolved by the existing matcher).
@@ -1352,7 +1399,11 @@ fn render_shape_svg(
   // referenced through `<p:contentPart r:id="…">`); add a metadata
   // placeholder so the consumer knows the ink payload was elided.
   match shape.name.local_name {
-    "sp" => render_sp_shape_svg(shape, ctx, defs, image_resolver, theme~)
+    "sp" =>
+      render_sp_shape_svg(
+        shape, ctx, defs, image_resolver, theme~,
+        master_tx_styles=chain_master_tx_styles(chain),
+      )
     "pic" => render_picture_svg(shape, ctx, defs, image_resolver)
     "grpSp" =>
       render_group_svg(shape, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory, chain)
@@ -1458,6 +1509,7 @@ fn render_sp_shape_svg(
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
   theme? : @theme.CT_OfficeStyleSheet? = None,
+  master_tx_styles? : @xml.Element? = None,
 ) -> Array[@xml.Node] {
   let sp_pr = first_child_named(shape, "spPr")
   let (transform_attrs, w, h) : (Array[@xml.Attribute], Double, Double) = match
@@ -1570,6 +1622,7 @@ fn render_sp_shape_svg(
           transform_attrs: [],
           extrusion: None,
           bevel: None,
+          contour: None,
           gradient_def: None,
         } : Effects3d)
     Some(pr) => compute_3d_effects(pr, path_d, shape_id, w, h)
@@ -1590,8 +1643,13 @@ fn render_sp_shape_svg(
   // spec-aware consumer can re-derive the cascade if needed.
   let style_metadata = build_sp_style_metadata(shape)
 
-  // Text body.
-  let text_svg = render_shape_text_svg(shape, w, h, ctx, defs)
+  // Text body.  §19.3.1.52 — a placeholder's run / paragraph defaults
+  // inherit from the master's `<p:txStyles>` (title / body / other),
+  // selected by placeholder type.
+  let master_lst_style = select_master_lst_style(master_tx_styles, shape)
+  let text_svg = render_shape_text_svg(
+    shape, w, h, ctx, defs, master_lst_style~,
+  )
 
   // Assemble the wrapping <g>.  Attribute order mirrors the previous
   // string-concatenation emitter: transform, transform3d, ooxml id,
@@ -1648,6 +1706,12 @@ fn render_sp_shape_svg(
   }
   g_children.push(shape_path)
   match effects3d.bevel {
+    Some(n) => g_children.push(n)
+    None => ()
+  }
+  // §20.1.5.12 contour — the coloured edge outline sits on top of the
+  // shape (and its bevel) so it traces the final silhouette.
+  match effects3d.contour {
     Some(n) => g_children.push(n)
     None => ()
   }
@@ -2586,12 +2650,13 @@ fn render_shape_text_svg(
   h_emu : Double,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
+  master_lst_style? : @xml.Element? = None,
 ) -> Array[@xml.Node] {
   let tx_body = first_child_named(shape, "txBody")
   match tx_body {
     None => []
     Some(tb) => {
-      let input = build_layout_input(tb, w_emu, h_emu, ctx)
+      let input = build_layout_input(tb, w_emu, h_emu, ctx, master_lst_style~)
       if input.paragraphs.length() == 0 {
         return []
       }
@@ -2847,6 +2912,7 @@ fn build_layout_input(
   w_emu : Double,
   h_emu : Double,
   ctx : ColorResolveContext,
+  master_lst_style? : @xml.Element? = None,
 ) -> LayoutInput {
   let body_pr = first_child_named(tx_body, "bodyPr")
   let text_box = build_text_box_config(body_pr, w_emu, h_emu)
@@ -2872,7 +2938,7 @@ fn build_layout_input(
     match child {
       Element(e) =>
         if e.name.local_name == "p" {
-          let para = build_paragraph_input(e, ctx, lst_style)
+          let para = build_paragraph_input(e, ctx, lst_style, master_lst_style~)
           let resolved = apply_auto_num_counter(para, e, auto_num_counters)
           paragraphs.push(resolved)
         }
@@ -3113,6 +3179,7 @@ fn build_paragraph_input(
   p : @xml.Element,
   ctx : ColorResolveContext,
   lst_style : @xml.Element?,
+  master_lst_style? : @xml.Element? = None,
 ) -> LayoutParagraphInput {
   let direct_p_pr = first_child_named(p, "pPr")
   // §21.1.2.4.12 lstStyle — resolve the matching `<a:lvlNpPr>` (or
@@ -3131,15 +3198,38 @@ fn build_paragraph_input(
         None => 0
       }
   }
-  let lvl_default_p_pr = resolve_lst_style_p_pr(lst_style, lvl)
-  // For each property we honour the direct `<a:pPr>` value first,
-  // then the lvl default, then the implementation default — this
-  // is the §21.1.2.2 cascade order. The per-property readers below
-  // use `p_pr_attr_or` and `p_pr_child_or` so a None from the
-  // direct pPr falls through to the lvl default.
+  // §21.1.2.4.12 / §19.3.1.52 — the per-level default paragraph
+  // properties come from the text body's own `<a:lstStyle>` first;
+  // when it does not define this level (the common case for a
+  // placeholder, whose `<a:lstStyle>` is usually empty/absent), fall
+  // through to the master's `<p:txStyles>` list-style for the
+  // placeholder type.  Because `lvl_default_r_pr` below is derived
+  // from this element's `<a:defRPr>`, this single fallback carries the
+  // master's run defaults (typeface, size, colour, …) as well as its
+  // paragraph defaults.
+  // §21.1.2.4.12 / §19.3.1.52 — the per-level default paragraph
+  // properties cascade: the text body's own `<a:lstStyle>` first, then
+  // the master's `<p:txStyles>` list-style for this placeholder type.
+  // The cascade is an ORDERED FALLBACK LIST (not a single element), so
+  // a placeholder that overrides only *some* attributes at this level
+  // still inherits the rest — and the run defaults below — from the
+  // master.  (`master_lst_style` is `None` for non-placeholder shapes
+  // and when there is no resolution chain.)
+  let lvl_default_p_prs : Array[@xml.Element] = []
+  match resolve_lst_style_p_pr(lst_style, lvl) {
+    Some(el) => lvl_default_p_prs.push(el)
+    None => ()
+  }
+  match resolve_lst_style_p_pr(master_lst_style, lvl) {
+    Some(el) => lvl_default_p_prs.push(el)
+    None => ()
+  }
+  // For each property we honour the direct `<a:pPr>` value first, then
+  // each lvl default in cascade order, then the implementation
+  // default — the §21.1.2.2 cascade order.
   let p_pr = direct_p_pr
   // §21.1.2.2.1 ST_TextAlignType — exactly 7 values.
-  let alignment = match p_pr_attr_with_lvl(p_pr, lvl_default_p_pr, "algn") {
+  let alignment = match p_pr_attr_with_lvl(p_pr, lvl_default_p_prs, "algn") {
     Some("l") => AlignLeft
     Some("ctr") => AlignCenter
     Some("r") => AlignRight
@@ -3153,92 +3243,102 @@ fn build_paragraph_input(
     Some(_) => AlignLeft
     None => AlignLeft
   }
-  let mar_l = p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "marL", 0.0) /
+  let mar_l = p_pr_emu_with_lvl(p_pr, lvl_default_p_prs, "marL", 0.0) /
     emu_per_px
-  let mar_r = p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "marR", 0.0) /
+  let mar_r = p_pr_emu_with_lvl(p_pr, lvl_default_p_prs, "marR", 0.0) /
     emu_per_px
-  let indent = p_pr_emu_with_lvl(p_pr, lvl_default_p_pr, "indent", 0.0) /
+  let indent = p_pr_emu_with_lvl(p_pr, lvl_default_p_prs, "indent", 0.0) /
     emu_per_px
   // §21.1.2.2.4 lnSpc / §21.1.2.2.5 spcAft / §21.1.2.2.6 spcBef —
   // line spacing and inter-paragraph spacing children. The direct
-  // `<a:pPr>` wins; otherwise the lvl default applies.
-  let line_spacing = p_pr_with_lvl_fn(p_pr, lvl_default_p_pr, parse_spc_line)
-  let space_before : Double = match p_pr {
-    Some(d) => {
-      let v = parse_spc_amount_points(d, "spcBef")
-      if v != 0.0 {
-        v
-      } else {
-        match lvl_default_p_pr {
-          None => 0.0
-          Some(l) => parse_spc_amount_points(l, "spcBef")
+  // `<a:pPr>` wins; otherwise the first lvl default that defines them.
+  let line_spacing = p_pr_with_lvl_fn(p_pr, lvl_default_p_prs, parse_spc_line)
+  // §21.1.2.2.6 spcBef — `parse_spc_amount_points` returns 0.0 when
+  // the child is absent, so we walk the cascade for the first non-zero.
+  let space_before : Double = {
+    let direct_v = match p_pr {
+      Some(d) => parse_spc_amount_points(d, "spcBef")
+      None => 0.0
+    }
+    if direct_v != 0.0 {
+      direct_v
+    } else {
+      let mut v = 0.0
+      for l in lvl_default_p_prs {
+        let x = parse_spc_amount_points(l, "spcBef")
+        if x != 0.0 {
+          v = x
+          break
         }
       }
+      v
     }
-    None =>
-      match lvl_default_p_pr {
-        None => 0.0
-        Some(l) => parse_spc_amount_points(l, "spcBef")
-      }
   }
-  let space_after : Double = match p_pr {
-    Some(d) => {
-      let v = parse_spc_amount_points(d, "spcAft")
-      if v != 0.0 {
-        v
-      } else {
-        match lvl_default_p_pr {
-          None => 0.0
-          Some(l) => parse_spc_amount_points(l, "spcAft")
+  // §21.1.2.2.5 spcAft.
+  let space_after : Double = {
+    let direct_v = match p_pr {
+      Some(d) => parse_spc_amount_points(d, "spcAft")
+      None => 0.0
+    }
+    if direct_v != 0.0 {
+      direct_v
+    } else {
+      let mut v = 0.0
+      for l in lvl_default_p_prs {
+        let x = parse_spc_amount_points(l, "spcAft")
+        if x != 0.0 {
+          v = x
+          break
         }
       }
+      v
     }
-    None =>
-      match lvl_default_p_pr {
-        None => 0.0
-        Some(l) => parse_spc_amount_points(l, "spcAft")
-      }
   }
   // §21.1.2.2.5 defTabSz — default tab stop size on `<a:pPr>`
   // (EMU). Converted to CSS pixels.
   let default_tab_size = p_pr_emu_with_lvl(
-      p_pr, lvl_default_p_pr, "defTabSz", 0.0,
+      p_pr, lvl_default_p_prs, "defTabSz", 0.0,
     ) /
     emu_per_px
   // §21.1.2.2.9 tabLst — explicit tab stop list under `<a:pPr>`.
-  // Use the direct pPr's tabLst when non-empty; otherwise fall
-  // back to the lvl default. LayoutTabStop is not Eq so we test
+  // Use the direct pPr's tabLst when non-empty; otherwise the first
+  // lvl default that defines one. LayoutTabStop is not Eq so we test
   // emptiness by length.
-  let tab_stops : Array[LayoutTabStop] = match p_pr {
-    Some(d) => {
-      let ts = parse_tab_stops(d)
-      if ts.length() > 0 {
-        ts
-      } else {
-        match lvl_default_p_pr {
-          None => []
-          Some(l) => parse_tab_stops(l)
+  let tab_stops : Array[LayoutTabStop] = {
+    let direct_ts = match p_pr {
+      Some(d) => parse_tab_stops(d)
+      None => []
+    }
+    if direct_ts.length() > 0 {
+      direct_ts
+    } else {
+      let mut found : Array[LayoutTabStop] = []
+      for l in lvl_default_p_prs {
+        let ts = parse_tab_stops(l)
+        if ts.length() > 0 {
+          found = ts
+          break
         }
       }
+      found
     }
-    None =>
-      match lvl_default_p_pr {
-        None => []
-        Some(l) => parse_tab_stops(l)
-      }
   }
   // §21.1.2.4.4-8 bullets — `<a:buNone>` / `<a:buChar>` /
   // `<a:buAutoNum>` / `<a:buBlip>` plus `<a:buFont>` /
   // `<a:buClr>` / `<a:buSzPts>` / `<a:buSzPct>`.
-  let raw_bullet = p_pr_with_lvl_fn(p_pr, lvl_default_p_pr, fn(el) {
+  let raw_bullet = p_pr_with_lvl_fn(p_pr, lvl_default_p_prs, fn(el) {
     parse_bullet_config(el, ctx)
   })
-  // §21.1.2.4.12 lstStyle / §21.1.2.3.27 defRPr — extract the
-  // run-default rPr from the matching `<a:lvlNpPr>/<a:defRPr>` so
-  // runs lacking their own rPr inherit the lstStyle's defaults.
-  let lvl_default_r_pr = match lvl_default_p_pr {
-    None => None
-    Some(lvl_el) => first_child_named(lvl_el, "defRPr")
+  // §21.1.2.4.12 lstStyle / §21.1.2.3.27 defRPr — the run-default
+  // cascade is the `<a:defRPr>` of each lvl default in order, so a run
+  // lacking its own rPr inherits from the shape's lstStyle and then the
+  // master's `<p:txStyles>`.
+  let lvl_default_r_prs : Array[@xml.Element] = []
+  for l in lvl_default_p_prs {
+    match first_child_named(l, "defRPr") {
+      Some(d) => lvl_default_r_prs.push(d)
+      None => ()
+    }
   }
   let spans : Array[LayoutSpan] = []
   for child in p.children {
@@ -3246,7 +3346,7 @@ fn build_paragraph_input(
       Element(e) =>
         match e.name.local_name {
           "r" => {
-            let s = build_run_span(e, ctx, lvl_default_r_pr)
+            let s = build_run_span(e, ctx, lvl_default_r_prs)
             spans.push(s)
           }
           "br" => spans.push(make_break_span())
@@ -3311,7 +3411,7 @@ fn build_paragraph_input(
 /// is absent or the attribute is missing.
 fn p_pr_attr_with_lvl(
   direct : @xml.Element?,
-  lvl_default : @xml.Element?,
+  lvl_defaults : Array[@xml.Element],
   attr_name : String,
 ) -> String? {
   match direct {
@@ -3322,10 +3422,13 @@ fn p_pr_attr_with_lvl(
       }
     None => ()
   }
-  match lvl_default {
-    None => None
-    Some(l) => attr_value(l, attr_name)
+  for l in lvl_defaults {
+    match attr_value(l, attr_name) {
+      Some(v) => return Some(v)
+      None => ()
+    }
   }
+  None
 }
 
 ///|
@@ -3333,36 +3436,39 @@ fn p_pr_attr_with_lvl(
 /// cascade as `p_pr_attr_with_lvl`.
 fn p_pr_emu_with_lvl(
   direct : @xml.Element?,
-  lvl_default : @xml.Element?,
+  lvl_defaults : Array[@xml.Element],
   attr_name : String,
   fallback : Double,
 ) -> Double {
+  // Parse `attr_name` off `el`; `None` when absent or malformed (a
+  // malformed value falls through to the next cascade source).
+  fn parse_on(el : @xml.Element) -> Double? {
+    match attr_value(el, attr_name) {
+      Some(v) =>
+        try @string.parse_double(v) catch {
+          _ => None
+        } noraise {
+          n => Some(n)
+        }
+      None => None
+    }
+  }
+
   match direct {
     Some(d) =>
-      match attr_value(d, attr_name) {
-        Some(v) =>
-          try @string.parse_double(v) catch {
-            _ => ()
-          } noraise {
-            n => return n
-          }
+      match parse_on(d) {
+        Some(n) => return n
         None => ()
       }
     None => ()
   }
-  match lvl_default {
-    None => fallback
-    Some(l) =>
-      match attr_value(l, attr_name) {
-        Some(v) =>
-          try @string.parse_double(v) catch {
-            _ => fallback
-          } noraise {
-            n => n
-          }
-        None => fallback
-      }
+  for l in lvl_defaults {
+    match parse_on(l) {
+      Some(n) => return n
+      None => ()
+    }
   }
+  fallback
 }
 
 ///|
@@ -3371,7 +3477,7 @@ fn p_pr_emu_with_lvl(
 /// the first non-`None` result or `None` when both miss.
 fn[T] p_pr_with_lvl_fn(
   direct : @xml.Element?,
-  lvl_default : @xml.Element?,
+  lvl_defaults : Array[@xml.Element],
   reader : (@xml.Element) -> T?,
 ) -> T? {
   match direct {
@@ -3382,10 +3488,13 @@ fn[T] p_pr_with_lvl_fn(
       }
     None => ()
   }
-  match lvl_default {
-    None => None
-    Some(l) => reader(l)
+  for l in lvl_defaults {
+    match reader(l) {
+      Some(v) => return Some(v)
+      None => ()
+    }
   }
+  None
 }
 
 ///|
@@ -3681,12 +3790,13 @@ fn resolve_bullet_inheritance(
 fn build_run_span(
   r : @xml.Element,
   ctx : ColorResolveContext,
-  lvl_default_r_pr : @xml.Element?,
+  lvl_default_r_prs : Array[@xml.Element],
 ) -> LayoutSpan {
   let r_pr = first_child_named(r, "rPr")
-  // §21.1.2.3.27 defRPr — when the direct rPr lacks an attribute
-  // we fall through to the lvl default's defRPr from lstStyle.
-  // `r_pr_attr` reads the named attr from rPr first, then defRPr.
+  // §21.1.2.3.27 defRPr — when the direct rPr lacks an attribute we
+  // fall through to each lvl-default `<a:defRPr>` in cascade order
+  // (shape lstStyle, then master `<p:txStyles>`).  `r_pr_attr` reads
+  // the named attr from rPr first, then each defRPr.
   let r_pr_attr = fn(name : String) -> String? {
     match r_pr {
       Some(rp) =>
@@ -3696,12 +3806,15 @@ fn build_run_span(
         }
       None => ()
     }
-    match lvl_default_r_pr {
-      None => None
-      Some(d) => attr_value(d, name)
+    for d in lvl_default_r_prs {
+      match attr_value(d, name) {
+        Some(v) => return Some(v)
+        None => ()
+      }
     }
+    None
   }
-  // Same direct-then-default lookup for child elements (used by
+  // Same direct-then-cascade lookup for child elements (used by
   // <a:latin>/<a:ea>/<a:cs>/<a:sym>/<a:solidFill> etc.).
   let r_pr_child = fn(name : String) -> @xml.Element? {
     match r_pr {
@@ -3712,10 +3825,29 @@ fn build_run_span(
         }
       None => ()
     }
-    match lvl_default_r_pr {
-      None => None
-      Some(d) => first_child_named(d, name)
+    for d in lvl_default_r_prs {
+      match first_child_named(d, name) {
+        Some(c) => return Some(c)
+        None => ()
+      }
     }
+    None
+  }
+  // §21.1.2.3.7 / §20.1.2.2.24 — the first rPr-shaped source (the
+  // run's own rPr, then each lvl-default defRPr) that owns a child
+  // satisfying `has`; used for fill / outline cascades that need the
+  // owning element, not just the child.
+  let first_source_with = fn(has : (@xml.Element) -> Bool) -> @xml.Element? {
+    match r_pr {
+      Some(rp) => if has(rp) { return Some(rp) }
+      None => ()
+    }
+    for d in lvl_default_r_prs {
+      if has(d) {
+        return Some(d)
+      }
+    }
+    None
   }
   // §17.3.1.36 ST_TextFontSize is in hundredths of a point.
   let font_size_pt = match r_pr_attr("sz") {
@@ -3858,30 +3990,12 @@ fn build_run_span(
   // §21.1.2.3.7 — solidFill colour cascades through defRPr too;
   // we read the resolved colour from whichever rPr-shaped element
   // provides the first `<a:solidFill>` child.
-  let color_source : @xml.Element? = match r_pr {
-    Some(rp) =>
-      match first_child_named(rp, "solidFill") {
-        Some(_) => Some(rp)
-        None =>
-          match lvl_default_r_pr {
-            None => None
-            Some(d) =>
-              match first_child_named(d, "solidFill") {
-                Some(_) => Some(d)
-                None => None
-              }
-          }
-      }
-    None =>
-      match lvl_default_r_pr {
-        None => None
-        Some(d) =>
-          match first_child_named(d, "solidFill") {
-            Some(_) => Some(d)
-            None => None
-          }
-      }
-  }
+  let color_source : @xml.Element? = first_source_with(fn(e) {
+    match first_child_named(e, "solidFill") {
+      Some(_) => true
+      None => false
+    }
+  })
   // §21.1.2.3.7 `<a:solidFill>` — when no fill cascade resolves
   // to a concrete colour the spec leaves the colour as the
   // theme's `phClr` / scheme inheritance. Surfacing
@@ -3909,22 +4023,7 @@ fn build_run_span(
   // because TextOutlineConfig has no field for a gradient / pattern
   // stroke. `None` when neither the direct rPr nor the lvl-default
   // rPr declares `<a:ln>`.
-  let outline_source : @xml.Element? = match r_pr {
-    Some(rp) =>
-      match first_child_named(rp, "ln") {
-        Some(ln) => Some(ln)
-        None =>
-          match lvl_default_r_pr {
-            None => None
-            Some(d) => first_child_named(d, "ln")
-          }
-      }
-    None =>
-      match lvl_default_r_pr {
-        None => None
-        Some(d) => first_child_named(d, "ln")
-      }
-  }
+  let outline_source : @xml.Element? = r_pr_child("ln")
   let text_outline : TextOutlineConfig? = match outline_source {
     None => None
     Some(ln) => Some(build_text_outline_config(ln, ctx~))
@@ -3940,30 +4039,12 @@ fn build_run_span(
   // relationship id (the consumer resolves the actual src);
   // `<a:grpFill>` is left to the plain `color` cascade because we
   // have no group-fill context at this point.
-  let fill_source : @xml.Element? = match r_pr {
-    Some(rp) =>
-      match find_text_fill_child(rp) {
-        Some(_) => Some(rp)
-        None =>
-          match lvl_default_r_pr {
-            None => None
-            Some(d) =>
-              match find_text_fill_child(d) {
-                Some(_) => Some(d)
-                None => None
-              }
-          }
-      }
-    None =>
-      match lvl_default_r_pr {
-        None => None
-        Some(d) =>
-          match find_text_fill_child(d) {
-            Some(_) => Some(d)
-            None => None
-          }
-      }
-  }
+  let fill_source : @xml.Element? = first_source_with(fn(e) {
+    match find_text_fill_child(e) {
+      Some(_) => true
+      None => false
+    }
+  })
   let text_fill : TextFillConfig? = match fill_source {
     None => None
     Some(src) => resolve_text_fill_choice(src, ctx~)
@@ -4059,19 +4140,19 @@ fn build_run_span(
 /// the SVG/CSS generic `serif` family when no typeface is
 /// reachable.
 ///
-/// §21.1.2.3.10 leaves the default typeface implementation-
-/// defined; the spec inheritance chain says the typeface should
-/// come from the placeholder cascade (slide → layout → master →
-/// theme `<p:txStyles>/<p:bodyStyle>/<a:defRPr>`).  This
-/// function does NOT yet walk that cascade — when the typeface
-/// is missing the local_name rPr we substitute the SVG generic
-/// `serif` family rather than reach back to the master.
-/// Threading the placeholder cascade through every run-property
-/// reader is tracked as Round 7 #235; the spec-neutral fallback
-/// below keeps the renderer deterministic in the meantime.
+/// §21.1.2.3.10 leaves the default typeface implementation-defined.
+/// The full §21.1.2.2 inheritance chain is now resolved by the
+/// renderer: a run's typeface falls through `rPr` → the text body's
+/// `<a:lstStyle>` `<a:defRPr>` → the master's
+/// `<p:txStyles>/<p:{title,body,other}Style>/<a:defRPr>` (threaded as
+/// `lvl_default_r_prs` in `build_run_span` via `select_master_lst_style`)
+/// → the theme `<a:fontScheme>` minor / major font shortcut.  This
+/// `presentation_default_typeface` is reached ONLY when every layer of
+/// that cascade is absent.
 ///|
-/// The fallback typeface when neither the run properties nor the
-/// theme `<a:fontScheme>` supply one.
+/// The last-resort typeface when neither the run properties, the
+/// placeholder text-style cascade, nor the theme `<a:fontScheme>`
+/// supply one.
 ///
 /// §20.1.4.1.18 leaves the choice to the consumer once the theme
 /// minor font is also absent. We hand the resolver a single canonical
@@ -4080,10 +4161,6 @@ fn build_run_span(
 /// concrete face the host actually carries. The DOCX viewer carries
 /// its own format-specific default so per-format substitution stays
 /// independent.
-///
-/// TODO: callers that have a document-resolved family from the
-/// theme cascade should pass it through instead of falling back
-/// here.
 fn presentation_default_typeface() -> String {
   "Noto Sans"
 }
@@ -4500,6 +4577,99 @@ fn resolve_text_blip_fill(blip_fill : @xml.Element) -> TextFillConfig {
 /// All overlays use the span's resolved underline colour (or its
 /// text colour) so the visual treatment carries the same fill as
 /// the glyphs.
+/// §20.1.8.58 `<a:tile>` — render a tiled blip fill as an SVG
+/// `<pattern>` repeating the image at its native pixel size scaled by
+/// `@sx`/`@sy` (ST_Percentage, 100000 = 100 %) and offset by
+/// `@tx`/`@ty` (EMU).  A `<rect>` of the shape size filled with the
+/// pattern is returned.  `None` when the image cannot be decoded for
+/// its dimensions, so the caller falls back to the stretch path.
+fn build_tiled_blip_fill(
+  tile_elt : @xml.Element,
+  img_mime : String,
+  img_b64 : String,
+  data_uri : String,
+  w : Double,
+  h : Double,
+  defs : SvgDefsCollector,
+) -> Array[@xml.Node]? {
+  let (iw, ih) = match @image_ops.image_dimensions(img_mime, img_b64) {
+    Some((pw, ph)) => (pw.to_double(), ph.to_double())
+    None => return None
+  }
+  if iw <= 0.0 || ih <= 0.0 {
+    return None
+  }
+  // §20.1.8.58 — @sx / @sy are ST_Percentage (1000ths of a percent;
+  // 100000 = 100 %); @tx / @ty are ST_Coordinate in EMU.
+  fn pct(name : String) -> Double {
+    match attr_value(tile_elt, name) {
+      Some(v) =>
+        (try? @string.parse_double(v)).unwrap_or(100000.0) / 100000.0
+      None => 1.0
+    }
+  }
+
+  fn emu_px(name : String) -> Double {
+    match attr_value(tile_elt, name) {
+      Some(v) => (try? @string.parse_double(v)).unwrap_or(0.0) / 9525.0
+      None => 0.0
+    }
+  }
+
+  let tw = iw * pct("sx")
+  let th = ih * pct("sy")
+  if tw <= 0.0 || th <= 0.0 {
+    return None
+  }
+  let tx = emu_px("tx")
+  let ty = emu_px("ty")
+  let pattern_id = defs.next_id("blip-tile")
+  defs.add_def(
+    @markup.elem_ns(
+      "pattern",
+      @markup.svg_ns,
+      [
+        @markup.attr("id", pattern_id),
+        @markup.attr("patternUnits", "userSpaceOnUse"),
+        @markup.attr("width", format_double(tw)),
+        @markup.attr("height", format_double(th)),
+        @markup.attr("x", format_double(tx)),
+        @markup.attr("y", format_double(ty)),
+      ],
+      [
+        @markup.elem_ns(
+          "image",
+          @markup.svg_ns,
+          [
+            @markup.attr("href", data_uri),
+            @markup.attr("x", "0"),
+            @markup.attr("y", "0"),
+            @markup.attr("width", format_double(tw)),
+            @markup.attr("height", format_double(th)),
+            @markup.attr("preserveAspectRatio", "none"),
+          ],
+          [],
+        ),
+      ],
+    ),
+  )
+  Some([
+    @markup.elem_ns(
+      "rect",
+      @markup.svg_ns,
+      [
+        @markup.attr("x", "0"),
+        @markup.attr("y", "0"),
+        @markup.attr("width", format_double(w)),
+        @markup.attr("height", format_double(h)),
+        @markup.attr("fill", "url(#" + pattern_id + ")"),
+      ],
+      [],
+    ),
+  ])
+}
+
+///|
 fn build_underline_overlay(
   style : String,
   x_start : Double,
@@ -4598,13 +4768,11 @@ fn build_underline_overlay(
           stroke_color,
         ),
       ]
-    // Every other non-`none` value (sng, words, heavy, dotted*,
-    // dash*, dotDash*, dotDotDash*) renders as a single solid line.
-    // librsvg cannot vary the line style through SVG attributes
-    // alone (no `stroke-dasharray` support on `text-decoration`),
-    // so the dash / dotted variants degrade to solid — the same
-    // fallback the reference renderer uses when its font has no dedicated variant
-    // glyph.
+    // §17.18.99 — dotted / dashed / dash-dot variants paint their
+    // actual pattern via `stroke-dasharray` on the underline `<line>`
+    // (librsvg honours it on `<line>`, unlike CSS text-decoration).
+    // Solid variants (sng / words / heavy / thick) return `None` and
+    // render as a plain line.
     _ =>
       [
         build_underline_line(
@@ -4613,33 +4781,72 @@ fn build_underline_overlay(
           baseline_y + base_offset,
           stroke_w,
           stroke_color,
+          dasharray=underline_dasharray(style, stroke_w),
         ),
       ]
   }
 }
 
 ///|
-/// §21.1.2.3.32 — plain horizontal underline line at the given y.
+/// §21.1.2.3.32 — horizontal underline line at the given y.  When
+/// `dasharray` is `Some`, the line carries an SVG `stroke-dasharray`
+/// (and round caps) so the dotted / dashed underline variants paint
+/// their actual pattern rather than degrading to solid.  SVG `<line>`
+/// honours `stroke-dasharray` in librsvg (unlike CSS
+/// `text-decoration`), so this is a faithful render, not an
+/// approximation.
 fn build_underline_line(
   x1 : Double,
   x2 : Double,
   y : Double,
   stroke_width : Double,
   stroke_color : String,
+  dasharray? : String? = None,
 ) -> @xml.Node {
-  @markup.elem_ns(
-    "line",
-    @markup.svg_ns,
-    [
-      @markup.attr("x1", format_double(x1)),
-      @markup.attr("y1", format_double(y)),
-      @markup.attr("x2", format_double(x2)),
-      @markup.attr("y2", format_double(y)),
-      @markup.attr("stroke", stroke_color),
-      @markup.attr("stroke-width", format_double(stroke_width)),
-    ],
-    [],
-  )
+  let attrs : Array[@xml.Attribute] = [
+    @markup.attr("x1", format_double(x1)),
+    @markup.attr("y1", format_double(y)),
+    @markup.attr("x2", format_double(x2)),
+    @markup.attr("y2", format_double(y)),
+    @markup.attr("stroke", stroke_color),
+    @markup.attr("stroke-width", format_double(stroke_width)),
+  ]
+  match dasharray {
+    Some(pattern) => {
+      attrs.push(@markup.attr("stroke-dasharray", pattern))
+      attrs.push(@markup.attr("stroke-linecap", "round"))
+    }
+    None => ()
+  }
+  @markup.elem_ns("line", @markup.svg_ns, attrs, [])
+}
+
+///|
+/// §17.18.99 / §21.1.2.3.32 ST_Underline — the `stroke-dasharray`
+/// pattern (in CSS px, scaled by the underline stroke width `w`) for a
+/// dashed / dotted underline variant.  Returns `None` for the solid
+/// variants (single / words / thick / heavy / double), which carry no
+/// dash pattern.
+fn underline_dasharray(style : String, w : Double) -> String? {
+  fn pat(units : Array[Double]) -> String? {
+    let b = StringBuilder::new()
+    for i, u in units {
+      if i > 0 {
+        b.write_string(" ")
+      }
+      b.write_string(format_double(u * w))
+    }
+    Some(b.to_string())
+  }
+
+  match style {
+    "dotted" | "dottedHeavy" => pat([1.0, 2.0])
+    "dash" | "dashedHeavy" => pat([4.0, 3.0])
+    "dashLong" | "dashLongHeavy" => pat([8.0, 3.0])
+    "dotDash" | "dashDotHeavy" => pat([4.0, 3.0, 1.0, 3.0])
+    "dotDotDash" | "dashDotDotHeavy" => pat([4.0, 3.0, 1.0, 3.0, 1.0, 3.0])
+    _ => None
+  }
 }
 
 ///|
@@ -5256,80 +5463,64 @@ fn build_text_gradient_def(
 }
 
 ///|
-/// §20.1.8.47 — build an SVG `<pattern>` element approximating the
-/// ST_PresetPatternVal preset. The pattern is a tiny tile (4×4 px)
-/// that repeats to fill the text. For presets we cannot represent
-/// exactly (most of the ~50 variants), we paint the foreground
-/// and background as an alternating stripe whose density matches
-/// the percentage implied by the preset name (pct5 → 5 % fg).
+/// §20.1.8.47 / §20.1.10.51 ST_PresetPatternVal — build an SVG
+/// `<pattern>` def for a text fill.  The per-preset hatch geometry is
+/// delegated to the shared `pattern_tile_marks` (fill.mbt) — the same
+/// single source the shape-fill path uses — so text and shape pattern
+/// fills stay consistent and the preset table lives in exactly one
+/// place.  The tile is an 8×8 user-space cell: the background panel
+/// first, then the foreground marks.  A `@prst` outside the enum (a
+/// schema violation) degrades to a 50 % coverage stripe so the text
+/// stays filled.
 fn build_text_pattern_def(
   id : String,
   prst : String,
   fg : String,
   bg : String,
 ) -> @xml.Node {
-  let size = 4.0
-  let size_s = format_double(size)
-  // The percentage presets (pct5..pct95) encode the foreground
-  // coverage as a simple number; everything else gets a 50/50
-  // stripe.
-  let fg_ratio = match prst {
-    "pct5" => 0.05
-    "pct10" => 0.10
-    "pct20" => 0.20
-    "pct25" => 0.25
-    "pct30" => 0.30
-    "pct40" => 0.40
-    "pct50" => 0.50
-    "pct60" => 0.60
-    "pct70" => 0.70
-    "pct75" => 0.75
-    "pct80" => 0.80
-    "pct90" => 0.90
-    "pct95" => 0.95
-    "ltVert" | "ltHorz" | "ltDnDiag" | "ltUpDiag" => 0.25
-    "dkVert" | "dkHorz" | "dkDnDiag" | "dkUpDiag" => 0.75
-    "narVert" | "narHorz" => 0.30
-    "wdVert" | "wdHorz" | "wdDnDiag" | "wdUpDiag" => 0.40
-    "dashVert" | "dashHorz" | "dashDnDiag" | "dashUpDiag" => 0.50
-    "lgCheck" | "smCheck" | "cross" | "dnDiag" | "upDiag" |
-    "diagCross" | "horzBrick" | "vertBrick" | "plaid" |
-    "sphere" | "weave" | "divot" | "shingle" | "wave" |
-    "trellis" | "zigZag" | "solidDmnd" | "openDmnd" |
-    "dotDmnd" | "smGrid" | "lgGrid" | "dotGrid" => 0.50
-    _ => 0.50
-  }
-  let fg_h = format_double(size * fg_ratio)
-  // Background rect + foreground rect stacked vertically
   let children : Array[@xml.Node] = [
     @markup.elem_ns(
       "rect",
       @markup.svg_ns,
       [
-        @markup.attr("width", size_s),
-        @markup.attr("height", size_s),
+        @markup.attr("x", "0"),
+        @markup.attr("y", "0"),
+        @markup.attr("width", "8"),
+        @markup.attr("height", "8"),
         @markup.attr("fill", bg),
       ],
       [],
     ),
-    @markup.elem_ns(
-      "rect",
-      @markup.svg_ns,
-      [
-        @markup.attr("width", size_s),
-        @markup.attr("height", fg_h),
-        @markup.attr("fill", fg),
-      ],
-      [],
-    ),
   ]
+  match pattern_tile_marks(prst, fg) {
+    Some(marks) =>
+      for m in marks {
+        children.push(m)
+      }
+    None =>
+      // Unrecognised preset: paint a 50 % horizontal coverage stripe.
+      children.push(
+        @markup.elem_ns(
+          "rect",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", "0"),
+            @markup.attr("y", "0"),
+            @markup.attr("width", "8"),
+            @markup.attr("height", "4"),
+            @markup.attr("fill", fg),
+          ],
+          [],
+        ),
+      )
+  }
   @markup.elem_ns(
     "pattern",
     @markup.svg_ns,
     [
       @markup.attr("id", id),
-      @markup.attr("width", size_s),
-      @markup.attr("height", size_s),
+      @markup.attr("width", "8"),
+      @markup.attr("height", "8"),
       @markup.attr("patternUnits", "userSpaceOnUse"),
     ],
     children,
@@ -5561,28 +5752,29 @@ fn render_picture_svg(
       // <a:srcRect> crop attributes in 1/1000ths of a percent.
       let (l, t, r, b) = read_src_rect_percent(bf)
       // §20.1.8.55 EG_FillModeProperties — `<a:stretch>` vs
-      // `<a:tile>` choice. Tile mode is not rendered yet; we
-      // surface it via `data-ooxml-fill-mode` metadata so the
-      // consumer can apply an SVG `<pattern>` of the image. When
-      // neither is declared the spec leaves the fill-mode
-      // unspecified; we keep the existing "xMidYMid meet" SVG
-      // policy as a documented viewer convention.
+      // `<a:tile>` choice. Tile mode IS rendered below as an SVG
+      // `<pattern>` (see `build_tiled_blip_fill`); the
+      // `data-ooxml-fill-mode` metadata is additionally surfaced so a
+      // consumer can re-derive the mode. When neither is declared the
+      // spec leaves the fill-mode unspecified; we keep the existing
+      // "xMidYMid meet" SVG policy as a documented viewer convention.
       let stretch = match first_child_named(bf, "stretch") {
         Some(_) => true
         None => false
       }
-      let tile = match first_child_named(bf, "tile") {
-        Some(_) => true
-        None => false
-      }
+      let tile_elt = first_child_named(bf, "tile")
+      let tile = tile_elt is Some(_)
       let aspect = if stretch { "none" } else { "xMidYMid meet" }
-      // §20.1.8.x blip effects — collect the names of any blip
-      // sub-effect elements (biLevel, lum, alphaModFix, duotone,
-      // grayscl, clrChange, alphaInv, alphaCeiling, alphaFloor,
-      // alphaRepl, blur, fillOverlay, hsl, tint, alphaBiLevel)
-      // so the consumer knows which filters to apply. ECMA-376
-      // does not mandate any particular SVG filter mapping; the
-      // metadata-only surface preserves the spec-defined info.
+      // §20.1.8.x blip effects — the effects themselves ARE rendered:
+      // `preprocess_blip_image` bakes the pixel-level ops (clrChange,
+      // tint, hsl) into the image data and `build_blip_effect_filter`
+      // (below) emits an SVG `<filter>` for the rest (grayscl, lum,
+      // blur, biLevel, alphaBiLevel, alphaModFix, alphaRepl, alphaInv,
+      // alphaCeiling, alphaFloor, alphaMod, duotone, fillOverlay,
+      // clrRepl).  In ADDITION we surface the raw effect-name list as
+      // `data-ooxml-blip-effects` so a spec-aware consumer can
+      // re-derive or override the mapping (ECMA-376 does not mandate a
+      // specific SVG filter mapping).
       let blip_effects = collect_blip_effect_names(bf)
       let g_attrs : Array[@xml.Attribute] = []
       for a in transform_attrs {
@@ -5614,10 +5806,20 @@ fn render_picture_svg(
         None => (img.mime_type, img.base64_data)
       }
       let data_uri = "data:" + img_mime + ";base64," + img_b64
-      let g_children : Array[@xml.Node] = if l != 0.0 ||
-        t != 0.0 ||
-        r != 0.0 ||
-        b != 0.0 {
+      // §20.1.8.58 `<a:tile>` — repeat the blip across the shape via an
+      // SVG `<pattern>` sized to the image's native pixels scaled by
+      // `@sx`/`@sy`, offset by `@tx`/`@ty`.  Falls through to the
+      // stretch/crop path when no tile element is present or the image
+      // dimensions cannot be decoded.
+      let tile_nodes : Array[@xml.Node]? = match tile_elt {
+        Some(te) =>
+          build_tiled_blip_fill(te, img_mime, img_b64, data_uri, w, h, defs)
+        None => None
+      }
+      let g_children : Array[@xml.Node] = match tile_nodes {
+        Some(nodes) => nodes
+        None =>
+          if l != 0.0 || t != 0.0 || r != 0.0 || b != 0.0 {
         // §20.1.8.55: build a clipPath and stretch the image so that
         // the visible portion fills the shape exactly.
         let (ix, iy, iw, ih) = compute_cropped_image_layout(w, h, l, t, r, b)
@@ -5683,6 +5885,7 @@ fn render_picture_svg(
             [],
           ),
         ]
+      }
       }
       // §17.4 / §20.1.3 — media / hyperlink overlay markers on
       // pictures whose `<p:nvPicPr>` carries audio / video /

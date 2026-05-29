@@ -2,8 +2,10 @@
 package "trkbt10/ooxml/ecma376/spreadsheet_ml/viewer"
 
 import {
+  "moonbitlang/core/hashmap",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/drawing",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/formula",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/pivot_table",
   "trkbt10/ooxml/xml",
 }
@@ -21,7 +23,7 @@ pub fn parse_xsd_boolean_or(String?, Bool) -> Bool
 
 pub fn render_preset_shape_d(String, Double, Double) -> String?
 
-pub fn render_svg(@domain.CT_Worksheet, shared_strings? : @domain.CT_Sst?, options? : SheetRenderOptions, drawing? : @drawing.CT_Drawing?, image_resolver? : (String) -> String?, styles? : @domain.CT_Stylesheet?, theme? : @xml.Element?, date1904? : Bool, id_prefix? : String, tables? : Array[@xml.Element], pivots? : Array[SheetPivot], workbook? : @xml.Element?) -> SheetSvgResult
+pub fn render_svg(@domain.CT_Worksheet, shared_strings? : @domain.CT_Sst?, options? : SheetRenderOptions, drawing? : @drawing.CT_Drawing?, image_resolver? : (String) -> String?, styles? : @domain.CT_Stylesheet?, theme? : @xml.Element?, date1904? : Bool, id_prefix? : String, tables? : Array[@xml.Element], pivots? : Array[SheetPivot], workbook? : @xml.Element?, evaluated_cells? : @hashmap.HashMap[String, @formula.FormulaValue]?, part_resolver? : (String) -> @xml.Element?) -> SheetSvgResult
 
 pub fn resolve_sml_color(@domain.CT_Color, SmlThemeColorMap) -> String?
 

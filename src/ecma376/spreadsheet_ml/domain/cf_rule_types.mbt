@@ -114,6 +114,9 @@ pub(all) enum ST_CfvoType {
 pub(all) struct CT_Cfvo {
   kind : ST_CfvoType
   value_text : String?
+  /// @gte (xsd:boolean) — when true (default) the threshold is `>=`;
+  /// when false it is a strict `>` boundary (§18.3.1.11).
+  gte : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -178,13 +181,20 @@ pub(all) struct CT_ColorScale {
 /// `@border` attributes; the viewer surfaces these via the raw
 /// `element` until a typed projection is wired in.
 pub(all) struct CT_DataBar {
-  /// Source element preserved so renderers can read the §18.3.1.28
-  /// attributes the typed projection does not yet capture
-  /// (negativeFillColor / axisPosition / direction / etc.).
+  /// Source element preserved so renderers can read any §18.3.1.28
+  /// attributes still surfaced raw (negativeFillColor / axisPosition /
+  /// direction / gradient / border — the 2010 extension set).
   element : @xml.Element
   min_threshold : CT_Cfvo
   max_threshold : CT_Cfvo
   color : CT_ColorArgb
+  /// @minLength (xsd:unsignedInt) — shortest bar as % of cell; default 10.
+  min_length : Int
+  /// @maxLength (xsd:unsignedInt) — longest bar as % of cell; default 90.
+  max_length : Int
+  /// @showValue (xsd:boolean) — draw the cell value over the bar;
+  /// default true.
+  show_value : Bool
 } derive(Eq, Debug)
 
 ///|
@@ -197,6 +207,9 @@ pub(all) struct CT_IconSet {
   thresholds : Array[CT_Cfvo]
   reverse : Bool
   show_value : Bool
+  /// @percent (xsd:boolean) — thresholds are percentages of the range;
+  /// default true (§18.3.1.49).
+  percent : Bool
 } derive(Eq, Debug)
 
 ///|

@@ -37,6 +37,21 @@ pub fn decode_image(
 }
 
 ///|
+/// Decode just the intrinsic `(width, height)` in pixels of a
+/// base64-encoded image, or `None` when it cannot be decoded.  Used by
+/// the renderer to size a `<a:tile>` blip fill's repeat box without
+/// the caller needing to depend on `@mizchi/image` directly.
+pub fn image_dimensions(
+  mime_type : String,
+  base64_data : String,
+) -> (Int, Int)? {
+  match decode_image(mime_type, base64_data) {
+    Some(img) => Some((img.width, img.height))
+    None => None
+  }
+}
+
+///|
 /// Re-encode an RGBA pixel buffer to the original format and return
 /// as `(mime_type, base64)`. JPEG inputs re-encode as JPEG (quality
 /// 90) to avoid size inflation; everything else encodes as PNG.

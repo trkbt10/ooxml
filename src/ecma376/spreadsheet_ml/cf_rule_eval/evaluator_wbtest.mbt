@@ -273,8 +273,8 @@ test "§18.18.12 expression uses the evaluator callback" {
 test "§18.3.1.16 colorScale interpolates between stops" {
   let scale : @domain.CT_ColorScale = {
     thresholds: [
-      { kind: @domain.CfvoMin, value_text: None },
-      { kind: @domain.CfvoMax, value_text: None },
+      { kind: @domain.CfvoMin, value_text: None, gte: true },
+      { kind: @domain.CfvoMax, value_text: None, gte: true },
     ],
     colors: [
       @domain.CT_ColorArgb::new(255, 0, 0, 0),
@@ -301,9 +301,12 @@ test "§18.3.1.28 dataBar ratio saturates outside min/max" {
       attributes: [],
       children: [],
     },
-    min_threshold: { kind: @domain.CfvoNum, value_text: Some("0") },
-    max_threshold: { kind: @domain.CfvoNum, value_text: Some("100") },
+    min_threshold: { kind: @domain.CfvoNum, value_text: Some("0"), gte: true },
+    max_threshold: { kind: @domain.CfvoNum, value_text: Some("100"), gte: true },
     color: @domain.CT_ColorArgb::new(255, 0, 0, 255),
+    min_length: 0,
+    max_length: 100,
+    show_value: true,
   }
   assert_eq(evaluate_bar_ratio(bar, n(-5.0), []).unwrap(), 0.0)
   assert_eq(evaluate_bar_ratio(bar, n(200.0), []).unwrap(), 1.0)
@@ -316,12 +319,13 @@ test "§18.3.1.49 iconSet bucket forward and reverse" {
   let icon : @domain.CT_IconSet = {
     set_name: "3TrafficLights1",
     thresholds: [
-      { kind: @domain.CfvoPercent, value_text: Some("0") },
-      { kind: @domain.CfvoPercent, value_text: Some("33") },
-      { kind: @domain.CfvoPercent, value_text: Some("67") },
+      { kind: @domain.CfvoPercent, value_text: Some("0"), gte: true },
+      { kind: @domain.CfvoPercent, value_text: Some("33"), gte: true },
+      { kind: @domain.CfvoPercent, value_text: Some("67"), gte: true },
     ],
     reverse: false,
     show_value: true,
+    percent: true,
   }
   let pop = [n(0.0), n(50.0), n(100.0)]
   assert_eq(evaluate_icon_bucket(icon, n(10.0), pop).unwrap(), 0)

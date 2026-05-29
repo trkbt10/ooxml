@@ -88,10 +88,6 @@ pub fn write_variant(CT_Variant) -> Bytes
 pub fn write_vector(CT_Vector) -> Bytes
 
 // Errors
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
-} derive(@debug.Debug)
-
 pub suberror SchemaViolation {
   SchemaViolation(schema~ : String, path~ : String, reason~ : String)
 } derive(@debug.Debug)
@@ -127,7 +123,6 @@ pub(all) struct CT_Variant {
   payload_name : String
 } derive(Eq, @debug.Debug)
 pub fn CT_Variant::new(@xml.Element) -> Self raise SchemaViolation
-pub fn CT_Variant::resolve_payload(Self, (String) -> @xml.Element?) -> @xml.Element raise ResourceMissing
 
 #alias(VectorElement)
 pub(all) struct CT_Vector {
@@ -137,7 +132,6 @@ pub(all) struct CT_Vector {
   item_names : Array[String]
 } derive(Eq, @debug.Debug)
 pub fn CT_Vector::new(@xml.Element) -> Self raise SchemaViolation
-pub fn CT_Vector::resolve_items(Self, (String) -> @xml.Element?) -> Array[@xml.Element] raise ResourceMissing
 
 #alias(VstreamElement)
 pub(all) struct CT_Vstream {

@@ -1530,6 +1530,8 @@ pub(all) struct CT_Lvl {
   lvl_pic_bullet_id : Int?
   p_pr_element : @xml.Element?
   r_pr_element : @xml.Element?
+  tplc : String?
+  tentative : Bool
 } derive(Eq, @debug.Debug)
 pub fn CT_Lvl::has_pic_bullet(Self) -> Bool
 pub fn CT_Lvl::parse(@xml.Element) -> Self raise SchemaViolation
@@ -2749,6 +2751,7 @@ pub(all) struct CT_Style {
   next : StyleId?
   linked_to : StyleId?
   is_default : Bool
+  custom_style : Bool
   p_pr : @xml.Element?
   r_pr : @xml.Element?
   tbl_pr : @xml.Element?

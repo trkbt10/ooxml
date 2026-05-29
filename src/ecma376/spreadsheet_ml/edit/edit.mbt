@@ -74,6 +74,7 @@ pub fn edit_worksheet(
         drawing: ws.drawing,
         drawing_part: ws.drawing_part,
         tables: ws.tables,
+        comments: ws.comments,
       })
     } else {
       new_worksheets.push(ws)
@@ -1541,6 +1542,7 @@ pub fn append_sheet(
     drawing: None,
     drawing_part: None,
     tables: [],
+    comments: None,
   })
   {
     opc_package: pkg2,

@@ -44,6 +44,7 @@ test "§18.3.2 filters literal keeps exact text" {
           filters: [{ val: "foo" }],
           date_group_items: [],
           blank: false,
+          calendar_type: "none",
         }),
       ),
     ],
@@ -60,7 +61,7 @@ test "§18.3.2 filters blank_included keeps empty cells" {
       column(
         0,
         false,
-        Filters({ filters: [{ val: "foo" }], date_group_items: [], blank: true }),
+        Filters({ filters: [{ val: "foo" }], date_group_items: [], blank: true, calendar_type: "none" }),
       ),
     ],
   }
@@ -105,6 +106,7 @@ test "§18.3.2 dateGroupItem year level" {
             },
           ],
           blank: false,
+          calendar_type: "none",
         }),
       ),
     ],
@@ -281,6 +283,7 @@ test "§18.3.2 multi-column filters intersect" {
           filters: [{ val: "foo" }],
           date_group_items: [],
           blank: false,
+          calendar_type: "none",
         }),
       ),
       column(
@@ -335,6 +338,7 @@ test "§18.3.2 filter_rows returns sorted row indices" {
           filters: [{ val: "keep" }],
           date_group_items: [],
           blank: false,
+          calendar_type: "none",
         }),
       ),
     ],

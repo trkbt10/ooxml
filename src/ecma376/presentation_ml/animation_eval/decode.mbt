@@ -347,6 +347,68 @@ fn decode_common_time_node_data(
       }
     None => false
   }
+  // §19.5.12 — additional cTn attributes.
+  fn cTn_bool(name : String, default : Bool) -> Bool {
+    match c_tn {
+      Some(t) =>
+        match attr_local(t, name) {
+          Some("1") | Some("true") => true
+          Some("0") | Some("false") => false
+          _ => default
+        }
+      None => default
+    }
+  }
+
+  fn cTn_bool_opt(name : String) -> Bool? {
+    match c_tn {
+      Some(t) =>
+        match attr_local(t, name) {
+          Some("1") | Some("true") => Some(true)
+          Some("0") | Some("false") => Some(false)
+          _ => None
+        }
+      None => None
+    }
+  }
+
+  fn cTn_int_opt(name : String) -> Int? {
+    match c_tn {
+      Some(t) =>
+        match attr_local(t, name) {
+          Some(text) => parse_signed_int(text)
+          None => None
+        }
+      None => None
+    }
+  }
+
+  fn cTn_str_opt(name : String) -> String? {
+    match c_tn {
+      Some(t) => attr_local(t, name)
+      None => None
+    }
+  }
+
+  let after_effect = cTn_bool("afterEffect", false)
+  let display = cTn_bool("display", true)
+  let bld_lvl = cTn_int_opt("bldLvl")
+  let grp_id = cTn_int_opt("grpId")
+  let preset_subtype = cTn_int_opt("presetSubtype")
+  let evt_filter = cTn_str_opt("evtFilter")
+  let master_rel = cTn_str_opt("masterRel")
+  let node_ph = cTn_bool_opt("nodePh")
+  let repeat_dur = match c_tn {
+    Some(t) =>
+      match attr_local(t, "repeatDur") {
+        Some(text) => parse_st_tl_time_opt(text, "cTn/@repeatDur")
+        None => None
+      }
+    None => None
+  }
+  let spd = cTn_str_opt("spd")
+  let sync_behavior = cTn_str_opt("syncBehavior")
+  let tm_filter = cTn_str_opt("tmFilter")
   let (start_conditions, end_conditions, children) = match c_tn {
     Some(t) => {
       let starts = decode_condition_list(t, "stCondLst")
@@ -376,6 +438,18 @@ fn decode_common_time_node_data(
     prev_conditions: [],
     node_kind: kind,
     children,
+    after_effect,
+    display,
+    bld_lvl,
+    grp_id,
+    preset_subtype,
+    evt_filter,
+    master_rel,
+    node_ph,
+    repeat_dur,
+    spd,
+    sync_behavior,
+    tm_filter,
   }
 }
 
@@ -386,25 +460,7 @@ fn with_prev_conditions(
   node : @domain.CT_TLCommonTimeNodeData,
   prev : Array[@domain.CT_TLTimeCondition],
 ) -> @domain.CT_TLCommonTimeNodeData {
-  {
-    node_id: node.node_id,
-    node_type: node.node_type,
-    preset_class: node.preset_class,
-    preset_id: node.preset_id,
-    duration: node.duration,
-    restart: node.restart,
-    fill: node.fill,
-    repeat_count: node.repeat_count,
-    accel: node.accel,
-    decel: node.decel,
-    auto_reverse: node.auto_reverse,
-    start_conditions: node.start_conditions,
-    end_conditions: node.end_conditions,
-    next_conditions: node.next_conditions,
-    prev_conditions: prev,
-    node_kind: node.node_kind,
-    children: node.children,
-  }
+  { ..node, prev_conditions: prev }
 }
 
 ///|
@@ -414,25 +470,7 @@ fn with_next_conditions(
   node : @domain.CT_TLCommonTimeNodeData,
   next : Array[@domain.CT_TLTimeCondition],
 ) -> @domain.CT_TLCommonTimeNodeData {
-  {
-    node_id: node.node_id,
-    node_type: node.node_type,
-    preset_class: node.preset_class,
-    preset_id: node.preset_id,
-    duration: node.duration,
-    restart: node.restart,
-    fill: node.fill,
-    repeat_count: node.repeat_count,
-    accel: node.accel,
-    decel: node.decel,
-    auto_reverse: node.auto_reverse,
-    start_conditions: node.start_conditions,
-    end_conditions: node.end_conditions,
-    next_conditions: next,
-    prev_conditions: node.prev_conditions,
-    node_kind: node.node_kind,
-    children: node.children,
-  }
+  { ..node, next_conditions: next }
 }
 
 ///|
@@ -566,6 +604,9 @@ fn decode_behavior_common(
         tav_list: [],
         calc_mode: None,
         value_type: None,
+        override_behavior: None,
+        runtime_context: None,
+        transform_type: None,
       }
   }
 }
@@ -587,6 +628,10 @@ fn decode_cbhvr_inner(
     None => None
   }
   let attr_names = decode_attr_name_list(cbhvr)
+  // §19.5.6 — runtime/override/transform behaviour attributes on cBhvr.
+  let override_behavior = attr_local(cbhvr, "override")
+  let runtime_context = attr_local(cbhvr, "rctx")
+  let transform_type = attr_local(cbhvr, "xfrmType")
   // cBhvr can also carry inline from/to/by as attributes on the
   // parent element; the helper that calls us folds those in.
   // tavLst lives on the behaviour element rather than on cBhvr.
@@ -601,6 +646,9 @@ fn decode_cbhvr_inner(
     tav_list: [],
     calc_mode: None,
     value_type: None,
+    override_behavior,
+    runtime_context,
+    transform_type,
   }
 }
 
@@ -682,6 +730,9 @@ fn with_anim_attrs(
     tav_list,
     calc_mode,
     value_type: value_type_enum,
+    override_behavior: common.override_behavior,
+    runtime_context: common.runtime_context,
+    transform_type: common.transform_type,
   }
 }
 
@@ -725,6 +776,9 @@ fn with_from_to_by(
     tav_list: common.tav_list,
     calc_mode: common.calc_mode,
     value_type: common.value_type,
+    override_behavior: common.override_behavior,
+    runtime_context: common.runtime_context,
+    transform_type: common.transform_type,
   }
 }
 
@@ -753,6 +807,9 @@ fn with_to_variant(
     tav_list: [],
     calc_mode: None,
     value_type: None,
+    override_behavior: None,
+    runtime_context: None,
+    transform_type: None,
   }
 }
 
@@ -784,6 +841,9 @@ fn with_endpoint_color(
             tav_list: common.tav_list,
             calc_mode: common.calc_mode,
             value_type: common.value_type,
+            override_behavior: common.override_behavior,
+            runtime_context: common.runtime_context,
+            transform_type: common.transform_type,
           }
         "to" =>
           {
@@ -797,6 +857,9 @@ fn with_endpoint_color(
             tav_list: common.tav_list,
             calc_mode: common.calc_mode,
             value_type: common.value_type,
+            override_behavior: common.override_behavior,
+            runtime_context: common.runtime_context,
+            transform_type: common.transform_type,
           }
         _ =>
           {
@@ -810,6 +873,9 @@ fn with_endpoint_color(
             tav_list: common.tav_list,
             calc_mode: common.calc_mode,
             value_type: common.value_type,
+            override_behavior: common.override_behavior,
+            runtime_context: common.runtime_context,
+            transform_type: common.transform_type,
           }
       }
     }

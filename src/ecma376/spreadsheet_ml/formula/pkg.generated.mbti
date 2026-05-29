@@ -169,6 +169,7 @@ pub(all) struct WorksheetSnapshot {
   sst : @domain.CT_Sst?
   date_system : @date_serial.DateSystem
   shared_formulas : @hashmap.HashMap[Int, (@address.CellAddress, String)]
+  merge_origins : @hashmap.HashMap[String, String]
   workbook_name : String?
   current_sheet : String
 } derive(Eq, @debug.Debug)

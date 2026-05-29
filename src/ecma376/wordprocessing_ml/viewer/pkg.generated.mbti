@@ -2,12 +2,17 @@
 package "trkbt10/ooxml/ecma376/wordprocessing_ml/viewer"
 
 import {
+  "trkbt10/ooxml/ecma376/drawing_ml/paint",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
   "trkbt10/ooxml/xml",
 }
 
 // Values
+pub fn build_wml_chart_resolver(ThemeColorMap, (String) -> @xml.Element?) -> (@xml.Element) -> @xml.Node?
+
 pub fn package_name() -> String
+
+pub fn paint_ctx_from_wml_theme(ThemeColorMap) -> @paint.ColorResolveContext
 
 pub fn parse_clr_scheme(@xml.Element) -> ThemeColorMap
 
@@ -17,9 +22,9 @@ pub fn parse_xsd_on_off(String?) -> Bool?
 
 pub fn parse_xsd_on_off_or(String?, Bool) -> Bool
 
-pub fn render_combined_svg(@domain.CT_Document, header_blocks? : Array[@domain.EG_BlockLevelElts], footer_blocks? : Array[@domain.EG_BlockLevelElts], header_blocks_first? : Array[@domain.EG_BlockLevelElts], header_blocks_even? : Array[@domain.EG_BlockLevelElts], footer_blocks_first? : Array[@domain.EG_BlockLevelElts], footer_blocks_even? : Array[@domain.EG_BlockLevelElts], title_pg? : Bool, even_and_odd_headers? : Bool, image_resolver? : (String) -> ResolvedImage?, styles? : @domain.CT_Styles?, numbering? : @domain.CT_Numbering?, theme? : @xml.Element?, settings? : @domain.CT_Settings?, fonts? : @domain.CT_FontsList?, web_settings? : @domain.CT_WebSettings?) -> String
+pub fn render_combined_svg(@domain.CT_Document, header_blocks? : Array[@domain.EG_BlockLevelElts], footer_blocks? : Array[@domain.EG_BlockLevelElts], header_blocks_first? : Array[@domain.EG_BlockLevelElts], header_blocks_even? : Array[@domain.EG_BlockLevelElts], footer_blocks_first? : Array[@domain.EG_BlockLevelElts], footer_blocks_even? : Array[@domain.EG_BlockLevelElts], title_pg? : Bool, even_and_odd_headers? : Bool, image_resolver? : (String) -> ResolvedImage?, chart_resolver? : (@xml.Element) -> @xml.Node?, styles? : @domain.CT_Styles?, numbering? : @domain.CT_Numbering?, theme? : @xml.Element?, settings? : @domain.CT_Settings?, fonts? : @domain.CT_FontsList?, web_settings? : @domain.CT_WebSettings?) -> String
 
-pub fn render_svg(@domain.CT_Document, header_blocks? : Array[@domain.EG_BlockLevelElts], footer_blocks? : Array[@domain.EG_BlockLevelElts], header_blocks_first? : Array[@domain.EG_BlockLevelElts], header_blocks_even? : Array[@domain.EG_BlockLevelElts], footer_blocks_first? : Array[@domain.EG_BlockLevelElts], footer_blocks_even? : Array[@domain.EG_BlockLevelElts], title_pg? : Bool, even_and_odd_headers? : Bool, image_resolver? : (String) -> ResolvedImage?, styles? : @domain.CT_Styles?, numbering? : @domain.CT_Numbering?, theme? : @xml.Element?, settings? : @domain.CT_Settings?, fonts? : @domain.CT_FontsList?, web_settings? : @domain.CT_WebSettings?) -> DocumentSvgResult
+pub fn render_svg(@domain.CT_Document, header_blocks? : Array[@domain.EG_BlockLevelElts], footer_blocks? : Array[@domain.EG_BlockLevelElts], header_blocks_first? : Array[@domain.EG_BlockLevelElts], header_blocks_even? : Array[@domain.EG_BlockLevelElts], footer_blocks_first? : Array[@domain.EG_BlockLevelElts], footer_blocks_even? : Array[@domain.EG_BlockLevelElts], title_pg? : Bool, even_and_odd_headers? : Bool, image_resolver? : (String) -> ResolvedImage?, chart_resolver? : (@xml.Element) -> @xml.Node?, styles? : @domain.CT_Styles?, numbering? : @domain.CT_Numbering?, theme? : @xml.Element?, settings? : @domain.CT_Settings?, fonts? : @domain.CT_FontsList?, web_settings? : @domain.CT_WebSettings?) -> DocumentSvgResult
 
 pub fn resolve_themed_color(String?, String?, String?, String?, ThemeColorMap) -> String?
 

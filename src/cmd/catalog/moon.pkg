@@ -22,6 +22,7 @@ import {
   "moonbitlang/x/fs" @fs,
   "trkbt10/ooxml/xml" @xml,
   "trkbt10/ooxml/zip" @zip,
+  "trkbt10/ooxml/ecma376/opc" @opc,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/context" @wml_context,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/context" @sml_context,
   "trkbt10/ooxml/ecma376/presentation_ml/context" @pml_context,

@@ -103,12 +103,15 @@ fn compose_transform3d_attr(t : Transform3d) -> String {
 ///   the camera preset is the identity) applied on the outer `<g>`.
 /// - `extrusion` is rendered *before* the main shape path.
 /// - `bevel` is rendered *after* the main shape path.
+/// - `contour` (§20.1.5.12 contourW / contourClr) is the edge outline,
+///   rendered *after* the bevel so it traces the shape's silhouette.
 /// - `gradient_def` is pushed into the `<defs>` collector for
 ///   `url(#lighting-<shapeId>)` references.
 pub struct Effects3d {
   transform_attrs : Array[@xml.Attribute]
   extrusion : @xml.Node?
   bevel : @xml.Node?
+  contour : @xml.Node?
   gradient_def : @xml.Node?
 }
 
@@ -131,22 +134,32 @@ fn compute_3d_effects(
       transform_attrs: [],
       extrusion: None,
       bevel: None,
+      contour: None,
       gradient_def: None,
     }
   }
-  let camera_preset = match scene3d {
+  let camera_el = match scene3d {
+    None => None
+    Some(s) => first_child_named(s, "camera")
+  }
+  let camera_preset = match camera_el {
     None => "orthographicFront"
-    Some(s) =>
-      match first_child_named(s, "camera") {
+    Some(c) =>
+      match attr_value(c, "prst") {
+        Some(p) => p
         None => "orthographicFront"
-        Some(c) =>
-          match attr_value(c, "prst") {
-            Some(p) => p
-            None => "orthographicFront"
-          }
       }
   }
-  let transform = calculate_camera_transform(camera_preset)
+  // §20.1.5.5 — the preset gives the base projection; `@zoom` and the
+  // `<a:rot>` child refine it.  `@zoom` (ST_PositivePercentage, default
+  // 100 000 = 100 %) scales the apparent size; `<a:rot @rev>` is the
+  // camera roll (60 000ths of a degree) and maps exactly onto the 2D
+  // rotation.  (`@lat`/`@lon` are out-of-plane rotations a flat
+  // projection cannot reproduce, so they are not applied.)
+  let transform = match camera_el {
+    None => calculate_camera_transform(camera_preset)
+    Some(c) => apply_camera_zoom_rot(calculate_camera_transform(camera_preset), c)
+  }
   let transform_attrs : Array[@xml.Attribute] = if transform3d_is_identity(
       transform,
     ) {
@@ -182,7 +195,11 @@ fn compute_3d_effects(
     None => None
     Some(s) => bevel_element(s, width, height, light_dir)
   }
-  { transform_attrs, extrusion, bevel, gradient_def }
+  let contour = match sp3d {
+    None => None
+    Some(s) => contour_element(s, shape_path)
+  }
+  { transform_attrs, extrusion, bevel, contour, gradient_def }
 }
 
 ///|
@@ -227,17 +244,32 @@ pub fn has_3d_effects(sp_pr : @xml.Element) -> Bool {
       if first_child_named(s, "bevelB") is Some(_) {
         return true
       }
+      // §20.1.5.12 contourW — a coloured edge outline is a 3D effect
+      // even without extrusion / bevel.
+      if attr_value(s, "contourW") is Some(v) {
+        if (try? @string.parse_double(v)) is Ok(d) {
+          if d > 0.0 {
+            return true
+          }
+        }
+      }
     }
     None => ()
   }
   match scene3d {
     Some(s) =>
       match first_child_named(s, "camera") {
-        Some(c) =>
-          match attr_value(c, "prst") {
+        Some(c) => {
+          // A non-default preset, an explicit zoom, or a roll/tilt all
+          // produce a non-identity camera transform.
+          let non_default_prst = match attr_value(c, "prst") {
             Some(p) => p != "orthographicFront"
             None => false
           }
+          let has_zoom = attr_value(c, "zoom") is Some(_)
+          let has_rot = first_child_named(c, "rot") is Some(_)
+          non_default_prst || has_zoom || has_rot
+        }
         None => false
       }
     None => false
@@ -252,39 +284,162 @@ pub fn has_3d_effects(sp_pr : @xml.Element) -> Bool {
 ///|
 fn calculate_camera_transform(preset : String) -> Transform3d {
   let id = transform3d_identity()
+  // §20.1.10.47 ST_PresetCameraType — the 62 enumerated camera
+  // presets.  ECMA-376 names the cameras but does not publish their
+  // projection matrices (the actual rotation/position is application-
+  // defined), so each is approximated here on the 2D SVG surface with
+  // a skew/scale derived from the camera's named direction and family:
+  //   • isometric  → ±30° skews (off-axis variants add a secondary
+  //     skew on the orthogonal axis);
+  //   • oblique / legacyOblique → ±15° directional skews;
+  //   • perspective / legacyPerspective → directional skew + a depth
+  //     foreshortening scale, growing for the heroic / extreme rigs.
+  // `orthographicFront` (the spec default) and the head-on `*Front`
+  // cameras stay at identity.  Schema-violating values fall back to
+  // identity.
   match preset {
-    // Isometric — symmetric skews.
+    // ── Orthographic (spec default, head-on) ─────────────────────
+    "orthographicFront" => id
+    // ── Isometric (±30° symmetric skews) ─────────────────────────
     "isometricTopUp" | "isometricTopDown" =>
       { ..id, skew_x: -30.0, skew_y: 30.0 }
+    "isometricBottomUp" | "isometricBottomDown" =>
+      { ..id, skew_x: 30.0, skew_y: -30.0 }
     "isometricLeftUp" | "isometricLeftDown" => { ..id, skew_x: 30.0 }
     "isometricRightUp" | "isometricRightDown" => { ..id, skew_x: -30.0 }
-    // Oblique — 15° offsets.
-    "obliqueTopLeft" => { ..id, skew_x: -15.0, skew_y: -15.0 }
-    "obliqueTopRight" => { ..id, skew_x: 15.0, skew_y: -15.0 }
-    "obliqueBottomLeft" => { ..id, skew_x: -15.0, skew_y: 15.0 }
-    "obliqueBottomRight" => { ..id, skew_x: 15.0, skew_y: 15.0 }
-    "obliqueTop" => { ..id, skew_y: -15.0 }
-    "obliqueBottom" => { ..id, skew_y: 15.0 }
-    "obliqueLeft" => { ..id, skew_x: -15.0 }
-    "obliqueRight" => { ..id, skew_x: 15.0 }
-    // Perspective — depth scale.
-    "perspectiveFront" | "perspectiveRelaxed" => { ..id, scale_y: 0.9 }
-    "perspectiveAbove" => { ..id, skew_y: -10.0, scale_y: 0.85 }
-    "perspectiveBelow" => { ..id, skew_y: 10.0, scale_y: 0.85 }
-    "perspectiveLeft" => { ..id, skew_x: -10.0, scale_x: 0.9 }
-    "perspectiveRight" => { ..id, skew_x: 10.0, scale_x: 0.9 }
-    // §20.1.10.47 ST_PresetCameraType — `orthographicFront` is
-    // the spec default and uses the identity transform.  The
-    // 30+ remaining legacy / perspective variants
-    // (`legacyObliqueTopLeft`, `legacyPerspectiveRight`,
-    // `perspectiveContrastingLeftFacing`, …) all derive from
-    // the same skew/scale primitives but require dedicated
-    // matrix tables we have not yet built; they render with
-    // the identity transform and surface the camera name as
-    // `data-ooxml-camera="<preset>"` metadata upstream so
-    // consumers can substitute the spec-correct projection.
-    // Schema-violating values share the identity fallback.
+    // Isometric off-axis rigs — primary 30° skew plus a 20° tilt on
+    // the orthogonal axis, signed by the named facing.
+    "isometricOffAxis1Left" => { ..id, skew_x: 30.0, skew_y: 20.0 }
+    "isometricOffAxis1Right" => { ..id, skew_x: -30.0, skew_y: 20.0 }
+    "isometricOffAxis1Top" => { ..id, skew_x: -20.0, skew_y: 30.0 }
+    "isometricOffAxis2Left" => { ..id, skew_x: 30.0, skew_y: -20.0 }
+    "isometricOffAxis2Right" => { ..id, skew_x: -30.0, skew_y: -20.0 }
+    "isometricOffAxis2Top" => { ..id, skew_x: 20.0, skew_y: 30.0 }
+    "isometricOffAxis3Left" => { ..id, skew_x: 20.0, skew_y: -30.0 }
+    "isometricOffAxis3Right" => { ..id, skew_x: -20.0, skew_y: -30.0 }
+    "isometricOffAxis3Bottom" => { ..id, skew_x: -30.0, skew_y: -20.0 }
+    "isometricOffAxis4Left" => { ..id, skew_x: 20.0, skew_y: 30.0 }
+    "isometricOffAxis4Right" => { ..id, skew_x: -20.0, skew_y: 30.0 }
+    "isometricOffAxis4Bottom" => { ..id, skew_x: 30.0, skew_y: 20.0 }
+    // ── Oblique / legacy oblique (15° directional skews) ─────────
+    "obliqueTopLeft" | "legacyObliqueTopLeft" =>
+      { ..id, skew_x: -15.0, skew_y: -15.0 }
+    "obliqueTop" | "legacyObliqueTop" => { ..id, skew_y: -15.0 }
+    "obliqueTopRight" | "legacyObliqueTopRight" =>
+      { ..id, skew_x: 15.0, skew_y: -15.0 }
+    "obliqueLeft" | "legacyObliqueLeft" => { ..id, skew_x: -15.0 }
+    "legacyObliqueFront" => id
+    "obliqueRight" | "legacyObliqueRight" => { ..id, skew_x: 15.0 }
+    "obliqueBottomLeft" | "legacyObliqueBottomLeft" =>
+      { ..id, skew_x: -15.0, skew_y: 15.0 }
+    "obliqueBottom" | "legacyObliqueBottom" => { ..id, skew_y: 15.0 }
+    "obliqueBottomRight" | "legacyObliqueBottomRight" =>
+      { ..id, skew_x: 15.0, skew_y: 15.0 }
+    // ── Perspective / legacy perspective (skew + depth scale) ────
+    "perspectiveFront" | "perspectiveRelaxed" | "legacyPerspectiveFront" =>
+      { ..id, scale_y: 0.9 }
+    "perspectiveRelaxedModerately" => { ..id, scale_y: 0.93 }
+    "perspectiveAbove" | "legacyPerspectiveTop" =>
+      { ..id, skew_y: -10.0, scale_y: 0.85 }
+    "perspectiveBelow" | "legacyPerspectiveBottom" =>
+      { ..id, skew_y: 10.0, scale_y: 0.85 }
+    "perspectiveLeft" | "legacyPerspectiveLeft" =>
+      { ..id, skew_x: -10.0, scale_x: 0.9 }
+    "perspectiveRight" | "legacyPerspectiveRight" =>
+      { ..id, skew_x: 10.0, scale_x: 0.9 }
+    "legacyPerspectiveTopLeft" =>
+      { ..id, skew_x: -10.0, skew_y: -10.0, scale_y: 0.9 }
+    "legacyPerspectiveTopRight" =>
+      { ..id, skew_x: 10.0, skew_y: -10.0, scale_y: 0.9 }
+    "legacyPerspectiveBottomLeft" =>
+      { ..id, skew_x: -10.0, skew_y: 10.0, scale_y: 0.9 }
+    "legacyPerspectiveBottomRight" =>
+      { ..id, skew_x: 10.0, skew_y: 10.0, scale_y: 0.9 }
+    "perspectiveAboveLeftFacing" =>
+      { ..id, skew_x: -10.0, skew_y: -10.0, scale_y: 0.85 }
+    "perspectiveAboveRightFacing" =>
+      { ..id, skew_x: 10.0, skew_y: -10.0, scale_y: 0.85 }
+    "perspectiveContrastingLeftFacing" =>
+      { ..id, skew_x: -15.0, scale_x: 0.9, scale_y: 0.9 }
+    "perspectiveContrastingRightFacing" =>
+      { ..id, skew_x: 15.0, scale_x: 0.9, scale_y: 0.9 }
+    "perspectiveHeroicLeftFacing" => { ..id, skew_x: -20.0, scale_y: 0.85 }
+    "perspectiveHeroicRightFacing" => { ..id, skew_x: 20.0, scale_y: 0.85 }
+    "perspectiveHeroicExtremeLeftFacing" =>
+      { ..id, skew_x: -25.0, scale_x: 0.85, scale_y: 0.8 }
+    "perspectiveHeroicExtremeRightFacing" =>
+      { ..id, skew_x: 25.0, scale_x: 0.85, scale_y: 0.8 }
+    // Schema-violating / unknown values → identity fallback.
     _ => id
+  }
+}
+
+///|
+/// §20.1.5.5 `<a:camera>` — refine the preset transform with the
+/// camera's `@zoom` (ST_PositivePercentage; scales apparent size) and
+/// the `<a:rot lat lon rev>` orientation (ST_Angle, 60 000ths of a
+/// degree).
+///
+///   • `@rev` is the camera roll → the in-plane 2D rotation.
+///   • `@lat` (pitch) and `@lon` (yaw) are out-of-plane rotations.  A
+///     flat projection cannot reveal faces that rotate out of view, but
+///     it CAN reproduce the dominant visible effect: a plane rotated by
+///     θ about an in-view axis foreshortens its projected extent by
+///     cos θ.  We apply that foreshortening (lat → vertical, lon →
+///     horizontal) so lat/lon influence the silhouette, mirroring how
+///     the perspective presets already skew/scale.  (The hidden-face
+///     content a full rotation would expose is genuinely absent from a
+///     2D shape and is the one irreducibly-3D residual.)
+fn apply_camera_zoom_rot(base : Transform3d, camera : @xml.Element) -> Transform3d {
+  // @zoom — thousandths of a percent; default 100000 (= 100 %).
+  let zoom_raw = match attr_value(camera, "zoom") {
+    Some(v) =>
+      try @string.parse_double(v) catch {
+        _ => 100000.0
+      } noraise {
+        n => n
+      }
+    None => 100000.0
+  }
+  let zoom = zoom_raw / 100000.0
+  let zoom_factor = if zoom > 0.0 { zoom } else { 1.0 }
+  // <a:rot lat lon rev> — all in 60000ths of a degree.
+  fn rot_attr(name : String) -> Double {
+    match first_child_named(camera, "rot") {
+      None => 0.0
+      Some(rot) =>
+        match attr_value(rot, name) {
+          Some(v) =>
+            try @string.parse_double(v) catch {
+              _ => 0.0
+            } noraise {
+              n => n / 60000.0
+            }
+          None => 0.0
+        }
+    }
+  }
+
+  let rev_deg = rot_attr("rev")
+  let lat_deg = rot_attr("lat")
+  let lon_deg = rot_attr("lon")
+  // Foreshortening factor |cos θ| (clamped to a small floor so an
+  // edge-on plane does not collapse to a zero-area, invisible shape).
+  fn foreshorten(deg : Double) -> Double {
+    if deg == 0.0 {
+      1.0
+    } else {
+      let c = @math.cos(deg * 3.14159265358979 / 180.0)
+      let a = if c < 0.0 { -c } else { c }
+      if a < 0.05 { 0.05 } else { a }
+    }
+  }
+
+  {
+    ..base,
+    scale_x: base.scale_x * zoom_factor * foreshorten(lon_deg),
+    scale_y: base.scale_y * zoom_factor * foreshorten(lat_deg),
+    rotation: base.rotation + rev_deg,
   }
 }
 
@@ -407,52 +562,110 @@ fn bevel_element(
   height : Double,
   light_direction : String,
 ) -> @xml.Node? {
-  // The TS source uses bevelT (front face) for 2D rendering.
-  let bevel = first_child_named(sp3d, "bevelT")
-  match bevel {
+  // §20.1.5.4 bevelT (front face) + §20.1.5.3 bevelB (back face).  The
+  // back bevel is lit from the opposite side (its facets point away
+  // from the viewer) and reads dimmer, so it is drawn first (behind),
+  // with inverted highlight / shadow and reduced opacity, then the
+  // front bevel on top.
+  let back = match first_child_named(sp3d, "bevelB") {
+    Some(bb) =>
+      bevel_band_group(
+        bb, width, height, light_direction, invert=true, opacity_scale=0.5,
+        class_name="bevel-effect-back",
+      )
     None => None
-    Some(b) => {
-      let bw = attr_emu_d(b, "w", 76200.0) // §20.1.8.5 default 76200 EMU
-      let bh = attr_emu_d(b, "h", 76200.0)
-      let scale_emu = 9525.0 // EMU/px conversion for the 2D-space caps.
-      let bw_px = bw / scale_emu
-      let bh_px = bh / scale_emu
-      let cap_w = min_double(width / 4.0, bw_px)
-      let cap_h = min_double(height / 4.0, bh_px)
-      let bevel_w = min_double(cap_w, cap_h)
-      let bevel_h = bevel_w
-      if bevel_w <= 0.0 || bevel_h <= 0.0 {
-        return None
-      }
-      let (hi_side, sh_side) = bevel_sides(light_direction)
-      let paths : Array[@xml.Node] = [
-        bevel_path_top(width, bevel_w, bevel_h, hi_side.contains("top")),
-        bevel_path_left(height, bevel_w, bevel_h, hi_side.contains("left")),
-        bevel_path_bottom(
-          width,
-          height,
-          bevel_w,
-          bevel_h,
-          !sh_side.contains("bottom"),
-        ),
-        bevel_path_right(
-          width,
-          height,
-          bevel_w,
-          bevel_h,
-          !sh_side.contains("right"),
-        ),
-      ]
+  }
+  let front = match first_child_named(sp3d, "bevelT") {
+    Some(bt) =>
+      bevel_band_group(
+        bt, width, height, light_direction, invert=false, opacity_scale=1.0,
+        class_name="bevel-effect",
+      )
+    None => None
+  }
+  match (back, front) {
+    (None, None) => None
+    (None, Some(f)) => Some(f)
+    (Some(b), None) => Some(b)
+    (Some(b), Some(f)) =>
       Some(
         @markup.elem_ns(
           "g",
           @markup.svg_ns,
           [@markup.attr("class", "bevel-effect")],
-          paths,
+          [b, f],
         ),
       )
-    }
   }
+}
+
+///|
+/// Build the four trapezoidal highlight / shadow bands for a single
+/// bevel (§20.1.5.3 bevelB / §20.1.5.4 bevelT).  `invert` swaps the
+/// highlight / shadow sides for the back face; `opacity_scale` dims the
+/// whole group (the back face reads fainter).  The §20.1.10.27
+/// `@prst` profile further softens rounded edges.
+fn bevel_band_group(
+  bevel_el : @xml.Element,
+  width : Double,
+  height : Double,
+  light_direction : String,
+  invert~ : Bool,
+  opacity_scale~ : Double,
+  class_name~ : String,
+) -> @xml.Node? {
+  let bw = attr_emu_d(bevel_el, "w", 76200.0) // §20.1.8.5 default 76200 EMU
+  let bh = attr_emu_d(bevel_el, "h", 76200.0)
+  let scale_emu = 9525.0 // EMU/px conversion for the 2D-space caps.
+  let bw_px = bw / scale_emu
+  let bh_px = bh / scale_emu
+  let cap_w = min_double(width / 4.0, bw_px)
+  let cap_h = min_double(height / 4.0, bh_px)
+  let bevel_w = min_double(cap_w, cap_h)
+  let bevel_h = bevel_w
+  if bevel_w <= 0.0 || bevel_h <= 0.0 {
+    return None
+  }
+  let (hi_side, sh_side) = bevel_sides(light_direction)
+  // The four edge-highlight booleans, optionally inverted for a back
+  // face whose facets are lit from the opposite direction.
+  let top0 = hi_side.contains("top")
+  let left0 = hi_side.contains("left")
+  let bottom0 = !sh_side.contains("bottom")
+  let right0 = !sh_side.contains("right")
+  let (top, left, bottom, right) = if invert {
+    (!top0, !left0, !bottom0, !right0)
+  } else {
+    (top0, left0, bottom0, right0)
+  }
+  let paths : Array[@xml.Node] = [
+    bevel_path_top(width, bevel_w, bevel_h, top),
+    bevel_path_left(height, bevel_w, bevel_h, left),
+    bevel_path_bottom(width, height, bevel_w, bevel_h, bottom),
+    bevel_path_right(width, height, bevel_w, bevel_h, right),
+  ]
+  // §20.1.10.27 ST_BevelPresetType — the preset names the edge cross-
+  // section profile.  A flat 2D front projection cannot show the
+  // profile geometry, but it CAN reflect how harsh the edge shading
+  // reads: rounded profiles (circle / softRound / convex /
+  // relaxedInset / coolSlant) have a gradual light→shadow falloff, so
+  // we soften the bands via a group opacity; angular / grooved
+  // profiles keep the full-strength edge.  The band geometry / light
+  // direction are already driven by @w / @h / lightRig.
+  let prst = match attr_value(bevel_el, "prst") {
+    Some(p) => p
+    None => "relaxedInset"
+  }
+  let prst_opacity = match prst {
+    "circle" | "softRound" | "convex" | "relaxedInset" | "coolSlant" => 0.65
+    _ => 1.0
+  }
+  let opacity = prst_opacity * opacity_scale
+  let g_attrs : Array[@xml.Attribute] = [@markup.attr("class", class_name)]
+  if opacity != 1.0 {
+    g_attrs.push(@markup.attr("opacity", format_opacity(opacity)))
+  }
+  Some(@markup.elem_ns("g", @markup.svg_ns, g_attrs, paths))
 }
 
 ///|
@@ -727,10 +940,19 @@ fn attr_emu_d(
 /// child is absent or carries a colour we can't resolve without
 /// the full DML colour cascade.
 fn resolve_extrusion_color(sp3d : @xml.Element) -> String {
+  resolve_sp3d_color(sp3d, "extrusionClr")
+}
+
+///|
+/// §20.1.5.12 `<a:sp3d>` colour child resolver — return the first
+/// `srgbClr` / `sysClr` colour under the named child (`extrusionClr`
+/// or `contourClr`), or `currentColor` so the SVG cascade resolves the
+/// hue upstream when the colour is absent or scheme-bound.
+fn resolve_sp3d_color(sp3d : @xml.Element, child_name : String) -> String {
   for child in sp3d.children {
     match child {
       @xml.Node::Element(el) =>
-        if el.name.local_name == "extrusionClr" {
+        if el.name.local_name == child_name {
           for grand in el.children {
             match grand {
               @xml.Node::Element(color_el) =>
@@ -755,6 +977,40 @@ fn resolve_extrusion_color(sp3d : @xml.Element) -> String {
     }
   }
   "currentColor"
+}
+
+///|
+/// §20.1.5.12 `<a:sp3d contourW=… >` + `<a:contourClr>` — the contour
+/// is the coloured edge that outlines a 3D-formatted shape.  Unlike the
+/// extrusion / bevel (which are genuine depth cues a 2D surface can
+/// only approximate), the contour is a stroke and maps exactly onto an
+/// SVG `<path>` outline of the shape silhouette.  `None` when
+/// `@contourW` is absent or zero.
+fn contour_element(sp3d : @xml.Element, shape_path : String) -> @xml.Node? {
+  // contourW is ST_LineWidth in EMU (0 .. 20116800).
+  let contour_emu = attr_emu_d(sp3d, "contourW", 0.0)
+  if contour_emu <= 0.0 {
+    return None
+  }
+  let w_px = contour_emu / 9525.0
+  let color = resolve_sp3d_color(sp3d, "contourClr")
+  Some(
+    @markup.elem_ns(
+      "path",
+      @markup.svg_ns,
+      [
+        @markup.attr("class", "contour-effect"),
+        @markup.attr("d", shape_path),
+        @markup.attr("fill", "none"),
+        @markup.attr("stroke", color),
+        @markup.attr("stroke-width", format_double_for_filter(w_px)),
+        // §20.1.5.12 — the contour hugs the silhouette; round joins
+        // keep convex corners from spiking at wide contour widths.
+        @markup.attr("stroke-linejoin", "round"),
+      ],
+      [],
+    ),
+  )
 }
 
 ///|

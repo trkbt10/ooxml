@@ -163,6 +163,13 @@ pub fn render_svg(
   /// (which do not yet plumb tables through) keep working
   /// unchanged.
   tables? : Array[@xml.Element] = [],
+  /// §18.7.6 `<comments>` — the worksheet's comment part root, when
+  /// the facade resolved one through the `.../comments` relationship.
+  /// The renderer paints a small red indicator triangle in the top-
+  /// right corner of every cell listed in `<commentList>/<comment
+  /// @ref>` (Excel's on-screen comment marker).  `None` (default) for
+  /// worksheets without comments.
+  comments? : @xml.Element? = None,
   /// §18.10.1.73 — pivot tables the facade discovered for this
   /// worksheet, each carrying the typed definition + cache + the
   /// pre-computed materialization. The renderer overlays every
@@ -474,22 +481,22 @@ pub fn render_svg(
           shared_strings,
           theme_map~,
         )
-        // §18.3.1.49 iconSet — emit spec-anchored metadata only.
-        // §18.18.42 ST_IconSetType enumerates the set name; the
-        // actual icon glyph/colour is consumer-defined and outside
-        // ECMA-376 scope, so the viewer surfaces the set name and
-        // bucket index as data-* attributes and reserves no inline
-        // horizontal space for an icon.
-        match style.icon {
-          None => ()
+        // §18.3.1.49 iconSet / §18.18.42 ST_IconSetType — draw the
+        // concrete icon glyph (arrow / light / rating / star / quarter)
+        // at the cell's left edge and reserve its width so the cell
+        // text shifts right, matching Excel's layout.  The glyph group
+        // still carries the `data-ooxml-icon` / `-bucket` metadata.
+        let icon_width = match style.icon {
+          None => 0.0
           Some(pair) => {
             let (set_name, bucket) = pair
-            for n in render_cell_icon_metadata(cl, set_name, bucket) {
+            let (nodes, reserved) = render_cell_icon_glyph(cl, set_name, bucket)
+            for n in nodes {
               cell_text.push(n)
             }
+            reserved
           }
         }
-        let icon_width = 0.0
         if !style.hide_value {
           let text = match evaluated_cells {
             Some(evals) =>
@@ -592,6 +599,22 @@ pub fn render_svg(
         ),
       )
     }
+  }
+
+  // §18.7.3 comment indicators — Excel marks every commented cell
+  // with a small red triangle in its top-right corner.  Painted
+  // regardless of the print-chrome flag (it is a cell annotation, not
+  // table chrome) so the on-screen marker is faithful.
+  match comments {
+    Some(comments_root) => {
+      let marks = render_comment_indicators(comments_root, layout)
+      if marks.length() > 0 {
+        body.push(
+          svg_elem("g", [svg_attr("class", "comment-indicators")], marks),
+        )
+      }
+    }
+    None => ()
   }
 
   // §18.10.1.73 PivotTable overlay — paint each pivot's row × col ×
@@ -3762,16 +3785,11 @@ fn resolve_format_color(num : Double, format_code : String) -> String? {
     let sections = split_format_sections(format_code)
     return section_format_color(sections[0])
   }
+  // Use the same condition-aware section selection as the formatter
+  // so the colour directive (`[Red]`, …) comes from the section that
+  // actually rendered the value.
   let sections = split_format_sections(format_code)
-  let section = if num > 0.0 {
-    sections[0]
-  } else if num < 0.0 && sections.length() >= 2 {
-    sections[1]
-  } else if num == 0.0 && sections.length() >= 3 {
-    sections[2]
-  } else {
-    sections[0]
-  }
+  let (section, _value) = select_format_section(num, sections)
   section_format_color(section)
 }
 
@@ -3963,10 +3981,90 @@ fn format_formula_value(
 
 ///|
 /// Resolve a §18.3.1.4 `<c>` element's display text.  Honours the
+/// §18.8.30 — apply a number-format TEXT section to a string value:
+/// `@` is replaced by the text, quoted/escaped runs and bare literals
+/// are copied, `_x` becomes a space, `*x` is dropped, and `[...]`
+/// directives are dropped.  (e.g. text "5" with `@" kg"` → "5 kg";
+/// with `"Item: "@` → "Item: 5".)
+fn apply_text_format_section(text : String, section : String) -> String {
+  let buf = StringBuilder::new()
+  let n = section.length()
+  let mut i = 0
+  while i < n {
+    let c = section.code_unit_at(i).to_int()
+    if c == 0x22 { // quoted literal
+      i = i + 1
+      while i < n && section.code_unit_at(i).to_int() != 0x22 {
+        buf.write_char(section.code_unit_at(i).to_int().to_char().unwrap())
+        i = i + 1
+      }
+      i = i + 1
+      continue
+    }
+    if c == 0x5C && i + 1 < n { // escaped glyph
+      buf.write_char(section.code_unit_at(i + 1).to_int().to_char().unwrap())
+      i = i + 2
+      continue
+    }
+    if c == 0x5B { // bracket directive — drop
+      i = i + 1
+      while i < n && section.code_unit_at(i).to_int() != 0x5D {
+        i = i + 1
+      }
+      if i < n {
+        i = i + 1
+      }
+      continue
+    }
+    if c == 0x5F && i + 1 < n { // `_x` → space
+      buf.write_char(' ')
+      i = i + 2
+      continue
+    }
+    if c == 0x2A && i + 1 < n { // `*x` → fill (drop)
+      i = i + 2
+      continue
+    }
+    if c == 0x40 { // '@' — the text placeholder
+      buf.write_string(text)
+      i = i + 1
+      continue
+    }
+    buf.write_char(c.to_char().unwrap())
+    i = i + 1
+  }
+  buf.to_string()
+}
+
+///|
+/// §18.8.30 — apply the applicable TEXT section of `format_code` to a
+/// string cell value.  The text section is the 4th `;`-section when
+/// four are present; a single section is a text section only when it
+/// embeds `@`.  Otherwise the text is shown verbatim.
+fn format_text_value(text : String, format_code : String) -> String {
+  if format_code == "" || format_code == "General" {
+    return text
+  }
+  let sections = split_format_sections(format_code)
+  let text_section = if sections.length() >= 4 {
+    Some(sections[3])
+  } else if sections.length() == 1 && sections[0].contains("@") {
+    Some(sections[0])
+  } else {
+    None
+  }
+  match text_section {
+    Some(sec) => apply_text_format_section(text, sec)
+    None => text
+  }
+}
+
+///|
 /// `@t` attribute per §18.18.11 (ST_CellType): `n` numeric, `s`
 /// shared-string, `str` literal, `b` boolean, `e` error, `inlineStr`
 /// inline rich-text.  Numbers respect the resolved
-/// `style.number_format`.
+/// `style.number_format`; string cells respect its §18.8.30 text
+/// section (`@`).
 fn format_cell_value(
   cell : @xml.Element,
   shared_strings : @domain.CT_Sst?,
@@ -3985,7 +4083,7 @@ fn format_cell_value(
         Some(v) => xml_text_content(v).trim().to_owned()
         None => return ""
       }
-      match shared_strings {
+      let resolved = match shared_strings {
         None => value_text
         Some(sst) =>
           try @string.parse_int(value_text) catch {
@@ -3999,19 +4097,26 @@ fn format_cell_value(
               }
           }
       }
+      format_text_value(resolved, style.number_format)
     }
     "str" =>
       // Literal string in `<v>`.
-      match first_child_named_local(cell, "v") {
-        Some(v) => xml_text_content(v)
-        None => ""
-      }
+      format_text_value(
+        match first_child_named_local(cell, "v") {
+          Some(v) => xml_text_content(v)
+          None => ""
+        },
+        style.number_format,
+      )
     "inlineStr" =>
       // §18.3.1.53 inline rich-text under `<is>`.
-      match first_child_named_local(cell, "is") {
-        None => ""
-        Some(is_el) => collect_inline_text(is_el)
-      }
+      format_text_value(
+        match first_child_named_local(cell, "is") {
+          None => ""
+          Some(is_el) => collect_inline_text(is_el)
+        },
+        style.number_format,
+      )
     "b" => {
       // §18.4.2 / §18.18.11 — boolean cell values are `"1"`
       // (true) or `"0"` (false).  Some producers write the
@@ -4202,21 +4307,14 @@ fn format_number_by_code(
   if contains_date_token(format_code) {
     return format_excel_date(num, format_code, date_system~)
   }
-  // Section split by `;` per §18.8.30: pos[;neg[;zero[;text]]].
+  // Section split by `;` per §18.8.30: pos[;neg[;zero[;text]]], with
+  // optional `[<op><num>]` conditional sections.  `select_format_section`
+  // picks the section (by condition when present, else by sign) and
+  // returns the value to format (natural for conditional / positive
+  // sections; magnitude for the negative sign-section, whose literal
+  // supplies the leading "-").
   let sections = split_format_sections(format_code)
-  let section = if num > 0.0 {
-    sections[0]
-  } else if num < 0.0 && sections.length() >= 2 {
-    sections[1]
-  } else if num == 0.0 && sections.length() >= 3 {
-    sections[2]
-  } else {
-    sections[0]
-  }
-  // Apply per-section sign convention: when a negative section is
-  // declared and the value is negative, format the absolute value
-  // (the section literal supplies any leading "-" / "(").
-  let value = if num < 0.0 && sections.length() >= 2 { -num } else { num }
+  let (section, value) = select_format_section(num, sections)
   apply_format_section(value, section)
 }
 
@@ -4450,6 +4548,58 @@ fn parse_iso8601_date(raw : String) -> @date_serial.CalendarDateTime? {
 }
 
 ///|
+/// §18.8.30 — English month name for `mmm` (abbrev) / `mmmm` (full) /
+/// `mmmmm` (single letter).  `month` is 1..12; out-of-range yields "".
+fn month_name(month : Int, run_length : Int) -> String {
+  let full = [
+    "January", "February", "March", "April", "May", "June", "July",
+    "August", "September", "October", "November", "December",
+  ]
+  if month < 1 || month > 12 {
+    return ""
+  }
+  let name = full[month - 1]
+  if run_length >= 5 {
+    name[0:1].to_string() // mmmmm — first letter
+  } else if run_length == 4 {
+    name // mmmm — full
+  } else {
+    name[0:3].to_string() // mmm — three-letter abbreviation
+  }
+}
+
+///|
+/// §18.8.30 — English weekday name for `ddd` (abbrev) / `dddd` (full).
+/// `dow` is 0=Sunday .. 6=Saturday.
+fn weekday_name(dow : Int, run_length : Int) -> String {
+  let full = [
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
+    "Saturday",
+  ]
+  if dow < 0 || dow > 6 {
+    return ""
+  }
+  let name = full[dow]
+  if run_length >= 4 {
+    name // dddd — full
+  } else {
+    name[0:3].to_string() // ddd — three-letter abbreviation
+  }
+}
+
+///|
+/// Day of week (0=Sunday .. 6=Saturday) for a proleptic-Gregorian
+/// date via Zeller's congruence.
+fn day_of_week_sun0(year : Int, month : Int, day : Int) -> Int {
+  let (yy, mm) = if month < 3 { (year - 1, month + 12) } else { (year, month) }
+  let k = yy % 100
+  let j = yy / 100
+  // Zeller: h = 0=Saturday .. 6=Friday.
+  let h = (day + 13 * (mm + 1) / 5 + k + k / 4 + j / 4 + 5 * j) % 7
+  (h + 6) % 7 // shift so 0 = Sunday
+}
+
+///|
 fn format_excel_date(
   serial : Double,
   format_code : String,
@@ -4588,6 +4738,19 @@ fn format_excel_date(
       i = body_end + 1
       continue
     }
+    // §18.8.31 — `_x` aligns by one character's width (emit a single
+    // space) and `*x` fills the column (no width context → emit
+    // nothing).  Both consume the following glyph so it is not
+    // mistaken for a date token (e.g. `_d` must not print the day).
+    if c == 0x5F && i + 1 < format_code.length() {
+      buf.write_char(' ')
+      i = i + 2
+      continue
+    }
+    if c == 0x2A && i + 1 < format_code.length() {
+      i = i + 2
+      continue
+    }
     // AM/PM literal — must come before single-char tokens.
     let matches_am_pm = if i + 5 <= format_code.length() {
       let s = format_code[i:i + 5]
@@ -4645,16 +4808,28 @@ fn format_excel_date(
           break
         }
       }
-      let as_minute = last_token_was_hour || peek_minute
-      let value = if as_minute { dt.minute } else { dt.month }
-      if run_length >= 2 {
-        buf.write_string(pad2(value))
+      // §18.8.30 — `mmm`/`mmmm`/`mmmmm` are ALWAYS month names (a
+      // minute token never runs to 3+).  Only `m`/`mm` can be a
+      // minute (when following an hour or preceding seconds).
+      if run_length >= 3 {
+        buf.write_string(month_name(dt.month, run_length))
       } else {
-        buf.write_string(value.to_string())
+        let as_minute = last_token_was_hour || peek_minute
+        let value = if as_minute { dt.minute } else { dt.month }
+        if run_length >= 2 {
+          buf.write_string(pad2(value))
+        } else {
+          buf.write_string(value.to_string())
+        }
       }
       last_token_was_hour = false
     } else if lower_char == 0x64 { // 'd'
-      if run_length >= 2 {
+      // §18.8.30 — `ddd`/`dddd` are weekday names; `d`/`dd` are the
+      // day of month.
+      if run_length >= 3 {
+        let dow = day_of_week_sun0(dt.year, dt.month, dt.day)
+        buf.write_string(weekday_name(dow, run_length))
+      } else if run_length >= 2 {
         buf.write_string(pad2(dt.day))
       } else {
         buf.write_string(dt.day.to_string())
@@ -4692,6 +4867,128 @@ fn format_excel_date(
     }
   }
   buf.to_string()
+}
+
+///|
+/// §18.8.30 — parse a number-format section's leading `[<op><num>]`
+/// comparison condition (e.g. `[>=100]`, `[<0]`, `[<>5]`).  Leading
+/// `[Color]` / locale brackets are scanned past.  Returns the operator
+/// and threshold, or `None` when the section carries no comparison.
+fn section_numeric_condition(section : String) -> (String, Double)? {
+  let n = section.length()
+  let mut i = 0
+  // Conditions and colour directives are leading bracket groups.
+  while i < n && section.code_unit_at(i).to_int() == 0x5B {
+    let body_start = i + 1
+    let mut k = body_start
+    while k < n && section.code_unit_at(k).to_int() != 0x5D {
+      k = k + 1
+    }
+    let body = section[body_start:k].to_string()
+    match parse_comparison_condition(body) {
+      Some(r) => return Some(r)
+      None => ()
+    }
+    i = if k < n { k + 1 } else { n }
+  }
+  None
+}
+
+///|
+/// Parse a `[...]` body as a `<op><number>` comparison (operators
+/// `<`, `<=`, `>`, `>=`, `=`, `<>`).  Returns `None` for colour names,
+/// locales, currencies and any non-comparison directive.
+fn parse_comparison_condition(body : String) -> (String, Double)? {
+  if body.length() == 0 {
+    return None
+  }
+  let c0 = body.code_unit_at(0).to_int()
+  let (op, rest_start) = if c0 == 0x3C { // '<'
+    if body.length() > 1 && body.code_unit_at(1).to_int() == 0x3D {
+      ("<=", 2)
+    } else if body.length() > 1 && body.code_unit_at(1).to_int() == 0x3E {
+      ("<>", 2)
+    } else {
+      ("<", 1)
+    }
+  } else if c0 == 0x3E { // '>'
+    if body.length() > 1 && body.code_unit_at(1).to_int() == 0x3D {
+      (">=", 2)
+    } else {
+      (">", 1)
+    }
+  } else if c0 == 0x3D { // '='
+    ("=", 1)
+  } else {
+    return None
+  }
+  let num_str = body[rest_start:].to_string()
+  try @string.parse_double(num_str) catch {
+    _ => None
+  } noraise {
+    n => Some((op, n))
+  }
+}
+
+///|
+/// Evaluate a §18.8.30 section comparison `value <op> threshold`.
+fn numeric_condition_matches(op : String, threshold : Double, value : Double) -> Bool {
+  match op {
+    "<" => value < threshold
+    "<=" => value <= threshold
+    ">" => value > threshold
+    ">=" => value >= threshold
+    "=" => value == threshold
+    "<>" => value != threshold
+    _ => false
+  }
+}
+
+///|
+/// §18.8.30 — select the section for `num` from `sections`, honouring
+/// leading `[<op><num>]` conditions when present (first matching
+/// condition wins; an unconditioned section is the catch-all).  Falls
+/// back to the positive / negative / zero sign convention when no
+/// section carries a condition.  Returns `(section, value)` where
+/// `value` is the natural signed value for conditional sections, or
+/// the magnitude for the negative sign-section (whose literal supplies
+/// the sign).
+fn select_format_section(
+  num : Double,
+  sections : Array[String],
+) -> (String, Double) {
+  let mut has_cond = false
+  for s in sections {
+    if section_numeric_condition(s) is Some(_) {
+      has_cond = true
+      break
+    }
+  }
+  if has_cond {
+    for s in sections {
+      match section_numeric_condition(s) {
+        Some((op, th)) =>
+          if numeric_condition_matches(op, th, num) {
+            return (s, num)
+          }
+        None => return (s, num)
+      }
+    }
+    // No condition matched and no catch-all: use the last section.
+    return (sections[sections.length() - 1], num)
+  }
+  // Sign-based default selection (positive;negative;zero).
+  let section = if num > 0.0 {
+    sections[0]
+  } else if num < 0.0 && sections.length() >= 2 {
+    sections[1]
+  } else if num == 0.0 && sections.length() >= 3 {
+    sections[2]
+  } else {
+    sections[0]
+  }
+  let value = if num < 0.0 && sections.length() >= 2 { -num } else { num }
+  (section, value)
 }
 
 ///|
@@ -5150,6 +5447,78 @@ fn best_fraction(value : Double, max_d : Int) -> (Int, Int) {
 }
 
 ///|
+/// §18.8.30 — classify the commas in a section's numeric run
+/// (integer + fractional placeholders):
+///   * a comma with a digit placeholder (`0`/`#`/`?`) to its right is
+///     a thousands GROUPING separator → `grouping = true`;
+///   * a comma with NO digit placeholder anywhere to its right is a
+///     SCALING comma → each divides the value by 1000 (the comma may
+///     sit after the decimal, e.g. `0.0,`).
+/// Returns `(grouping, scale_commas)`.  (e.g. `#,##0` → (true, 0);
+/// `0,` → (false, 1); `0,,` → (false, 2); `#,##0,` → (true, 1);
+/// `0.0,` → (false, 1).)
+fn analyze_section_commas(section : String) -> (Bool, Int) {
+  let n = section.length()
+  let mut i = 0
+  let mut idx = 0
+  let mut last_digit = -1
+  let comma_idx : Array[Int] = []
+  while i < n {
+    let c = section.code_unit_at(i).to_int()
+    if c == 0x22 { // quoted literal
+      i = i + 1
+      while i < n && section.code_unit_at(i).to_int() != 0x22 {
+        i = i + 1
+      }
+      i = i + 1
+      continue
+    }
+    if c == 0x5C && i + 1 < n { // escaped glyph
+      i = i + 2
+      continue
+    }
+    if c == 0x5B { // bracket directive
+      i = i + 1
+      while i < n && section.code_unit_at(i).to_int() != 0x5D {
+        i = i + 1
+      }
+      if i < n {
+        i = i + 1
+      }
+      continue
+    }
+    if (c == 0x5F || c == 0x2A) && i + 1 < n { // `_x` / `*x`
+      i = i + 2
+      continue
+    }
+    // A scaling comma is one with NO digit placeholder to its right
+    // ANYWHERE in the section — including after the decimal point
+    // (e.g. `0.0,` divides by 1000).  So we scan the whole numeric
+    // run, tracking the last digit placeholder across int + frac.
+    if c == 0x30 || c == 0x23 || c == 0x3F { // digit placeholder
+      last_digit = idx
+      idx = idx + 1
+    } else if c == 0x2C { // comma
+      comma_idx.push(idx)
+      idx = idx + 1
+    } else {
+      idx = idx + 1
+    }
+    i = i + 1
+  }
+  let mut grouping = false
+  let mut scale = 0
+  for cp in comma_idx {
+    if cp < last_digit {
+      grouping = true
+    } else {
+      scale = scale + 1
+    }
+  }
+  (grouping, scale)
+}
+
+///|
 fn apply_format_section(value : Double, section : String) -> String {
   // §18.8.31 — when the section carries an unquoted `/` with `?`/`0`
   // digit placeholders on both sides, it's a fraction-format
@@ -5167,13 +5536,15 @@ fn apply_format_section(value : Double, section : String) -> String {
   if scientific_token_position(section) >= 0 {
     return apply_scientific_format_section(value, section)
   }
+  // §18.8.30 — classify integer-part commas: grouping separator vs
+  // trailing scaling commas (each ÷1000).
+  let (thousands, scale_commas) = analyze_section_commas(section)
   // Pre-scan tokens.
   let mut pct_count = 0
   let mut has_decimal = false
   let mut int_zero_count = 0
   let mut frac_zero_count = 0
   let mut frac_hash_count = 0
-  let mut thousands = false
   let mut i = 0
   while i < section.length() {
     let c = section.code_unit_at(i).to_int()
@@ -5219,8 +5590,6 @@ fn apply_format_section(value : Double, section : String) -> String {
       pct_count = pct_count + 1
     } else if c == 0x2E {
       has_decimal = true
-    } else if c == 0x2C && has_decimal == false {
-      thousands = true
     } else if c == 0x30 {
       // '0'
       if has_decimal {
@@ -5236,7 +5605,18 @@ fn apply_format_section(value : Double, section : String) -> String {
     }
     i = i + 1
   }
-  let scaled = if pct_count > 0 { value * 100.0 } else { value }
+  // §18.8.30 — `%` multiplies by 100; each trailing comma divides by
+  // 1000 (1000^scale_commas).
+  let pct_scaled = if pct_count > 0 { value * 100.0 } else { value }
+  let scaled = if scale_commas > 0 {
+    let mut div = 1.0
+    for _c in 0..<scale_commas {
+      div = div * 1000.0
+    }
+    pct_scaled / div
+  } else {
+    pct_scaled
+  }
   let frac_digits = frac_zero_count + frac_hash_count
   let rounded = if frac_digits > 0 {
     let mult = pow10(frac_digits)
@@ -11300,6 +11680,73 @@ fn render_autofilter_arrow(
       [],
     ),
   )
+  out
+}
+
+///|
+/// §18.7.3 `<comment @ref>` — paint Excel's small red comment-marker
+/// triangle in the top-right corner of every commented cell.  Walks
+/// `<comments>/<commentList>/<comment>` for the cell refs and looks up
+/// each cell's rectangle through the sheet layout.
+fn render_comment_indicators(
+  comments_root : @xml.Element,
+  layout : SheetLayout,
+) -> Array[@xml.Node] {
+  let out : Array[@xml.Node] = []
+  let comment_list = match first_child_named_local(comments_root, "commentList") {
+    Some(cl) => cl
+    None => return out
+  }
+  for node in comment_list.children {
+    match node {
+      @xml.Node::Element(c) =>
+        if c.name.local_name == "comment" {
+          match attr_value_local(c, "ref") {
+            Some(cell_ref) =>
+              match lookup_cell_layout(layout, cell_ref) {
+                Some(cl) => {
+                  // A right-triangle hugging the cell's top-right
+                  // corner; side ≈ 6 px, capped to the cell so tiny
+                  // cells stay proportional.
+                  let s = {
+                    let side = 6.0
+                    let cap = if cl.width < cl.height { cl.width } else { cl.height }
+                    if side > cap * 0.5 { cap * 0.5 } else { side }
+                  }
+                  if s > 0.0 {
+                    let rx = cl.x + cl.width
+                    let pts = format_d(rx - s) +
+                      "," +
+                      format_d(cl.y) +
+                      " " +
+                      format_d(rx) +
+                      "," +
+                      format_d(cl.y) +
+                      " " +
+                      format_d(rx) +
+                      "," +
+                      format_d(cl.y + s)
+                    out.push(
+                      svg_elem(
+                        "polygon",
+                        [
+                          svg_attr("points", pts),
+                          svg_attr("fill", "#c00000"),
+                          svg_attr("data-ooxml-comment-ref", cell_ref),
+                        ],
+                        [],
+                      ),
+                    )
+                  }
+                }
+                None => ()
+              }
+            None => ()
+          }
+        }
+      _ => ()
+    }
+  }
   out
 }
 

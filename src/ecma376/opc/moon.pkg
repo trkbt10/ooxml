@@ -9,6 +9,8 @@ import {
   "trkbt10/ooxml/zip" @zip,
   "trkbt10/ooxml/ecma376/opc/content_types" @content_types,
   "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
+  "trkbt10/ooxml/ecma376/opc/namespaces" @opc_namespaces,
+  "trkbt10/ooxml/xml" @xml,
 }
 
 import {

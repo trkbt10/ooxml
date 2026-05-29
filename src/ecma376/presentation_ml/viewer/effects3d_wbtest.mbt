@@ -128,7 +128,10 @@ test "sp3d/bevelT emits four bevel paths" {
   )
   let e = render_3d_effects(sp_pr, "M 0,0 L 100,0", "x", 100.0, 50.0)
   let bv = effects3d_node_markup(e.bevel)
-  assert_true(bv.contains("<g class=\"bevel-effect\">"))
+  // The bevel group is present (the default `relaxedInset` profile
+  // also carries a softened `opacity`, so match the class attribute
+  // without pinning the full tag).
+  assert_true(bv.contains("class=\"bevel-effect\""))
   // Four bevel paths.
   let path_count = count_substring(bv, "<path d=")
   assert_eq(path_count, 4)
@@ -174,4 +177,106 @@ test "perspectiveAbove camera combines skew and scale" {
   let t = effects3d_transform_markup(e)
   assert_true(t.contains("skewY(-10)"))
   assert_true(t.contains("scale(1, 0.85)"))
+}
+
+///|
+test "sp3d contourW renders a coloured silhouette outline (§20.1.5.12)" {
+  let sp_pr = parse_sp_pr(
+    "<p:spPr><a:sp3d contourW=\"19050\"><a:contourClr><a:srgbClr val=\"FF0000\"/></a:contourClr></a:sp3d></p:spPr>",
+  )
+  let e = render_3d_effects(sp_pr, "M 0,0 L 100,0 L 100,50 Z", "x", 100.0, 50.0)
+  let svg = effects3d_node_markup(e.contour)
+  assert_true(svg.contains("class=\"contour-effect\""))
+  assert_true(svg.contains("stroke=\"#ff0000\""))
+  assert_true(svg.contains("fill=\"none\""))
+  // 19050 EMU / 9525 = 2 px.
+  assert_true(svg.contains("stroke-width=\"2"))
+  assert_true(has_3d_effects(sp_pr))
+}
+
+///|
+test "sp3d without contourW renders no contour" {
+  let sp_pr = parse_sp_pr("<p:spPr><a:sp3d extrusionH=\"100000\"/></p:spPr>")
+  let e = render_3d_effects(sp_pr, "M 0,0 L 100,0", "x", 100.0, 50.0)
+  inspect(effects3d_node_markup(e.contour), content="")
+}
+
+///|
+test "bevelT @prst differentiates rounded vs angular profiles (§20.1.10.27)" {
+  // Rounded profile → softened bevel group opacity.
+  let rounded = parse_sp_pr(
+    "<p:spPr><a:sp3d><a:bevelT w=\"76200\" h=\"76200\" prst=\"circle\"/></a:sp3d></p:spPr>",
+  )
+  let r_svg = effects3d_node_markup(
+    render_3d_effects(rounded, "M 0,0 L 100,0", "x", 100.0, 50.0).bevel,
+  )
+  assert_true(r_svg.contains("class=\"bevel-effect\""))
+  assert_true(r_svg.contains("opacity="))
+  // Angular profile → no opacity softening (full-strength edge).
+  let angular = parse_sp_pr(
+    "<p:spPr><a:sp3d><a:bevelT w=\"76200\" h=\"76200\" prst=\"angle\"/></a:sp3d></p:spPr>",
+  )
+  let a_svg = effects3d_node_markup(
+    render_3d_effects(angular, "M 0,0 L 100,0", "x", 100.0, 50.0).bevel,
+  )
+  assert_true(a_svg.contains("class=\"bevel-effect\""))
+  assert_true(!a_svg.contains("opacity="))
+}
+
+///|
+test "camera @zoom scales and <a:rot @rev> rolls the transform (§20.1.5.5)" {
+  // orthographicFront + zoom 200% + roll 45° (45*60000 = 2700000).
+  let sp_pr = parse_sp_pr(
+    "<p:spPr><a:scene3d><a:camera prst=\"orthographicFront\" zoom=\"200000\"><a:rot lat=\"0\" lon=\"0\" rev=\"2700000\"/></a:camera></a:scene3d></p:spPr>",
+  )
+  let e = render_3d_effects(sp_pr, "M 0,0 L 100,0", "x", 100.0, 50.0)
+  let svg = effects3d_transform_markup(e)
+  // roll → rotate(45); zoom 200% → scale(2, 2).
+  assert_true(svg.contains("rotate(45)"))
+  assert_true(svg.contains("scale(2, 2)"))
+  // even with the orthographic (front) preset, zoom/rot make it 3D.
+  assert_true(has_3d_effects(sp_pr))
+}
+
+///|
+test "isometric preset composes with camera zoom" {
+  // isometricTopUp (skewX -30 skewY 30) + zoom 50%.
+  let sp_pr = parse_sp_pr(
+    "<p:spPr><a:scene3d><a:camera prst=\"isometricTopUp\" zoom=\"50000\"/></a:scene3d></p:spPr>",
+  )
+  let e = render_3d_effects(sp_pr, "M 0,0 L 100,0", "x", 100.0, 50.0)
+  let svg = effects3d_transform_markup(e)
+  assert_true(svg.contains("skewX(-30)"))
+  assert_true(svg.contains("skewY(30)"))
+  assert_true(svg.contains("scale(0.5, 0.5)"))
+}
+
+///|
+test "bevelB renders a dimmed inverted-lighting back bevel (§20.1.5.3)" {
+  // bevelT + bevelB → outer bevel-effect group wrapping a front group
+  // (class bevel-effect) and a back group (class bevel-effect-back).
+  let sp_pr = parse_sp_pr(
+    "<p:spPr><a:sp3d><a:bevelT w=\"76200\" h=\"76200\" prst=\"angle\"/><a:bevelB w=\"76200\" h=\"76200\" prst=\"angle\"/></a:sp3d></p:spPr>",
+  )
+  let bv = effects3d_node_markup(
+    render_3d_effects(sp_pr, "M 0,0 L 100,0", "x", 100.0, 50.0).bevel,
+  )
+  assert_true(bv.contains("class=\"bevel-effect-back\""))
+  assert_true(bv.contains("class=\"bevel-effect\""))
+  // 8 paths total (4 front + 4 back).
+  assert_eq(count_substring(bv, "<path d="), 8)
+  // The back group is dimmed (opacity_scale 0.5 on an angular preset).
+  assert_true(bv.contains("opacity=\"0.5\""))
+}
+
+///|
+test "bevelB alone renders the back bevel group" {
+  let sp_pr = parse_sp_pr(
+    "<p:spPr><a:sp3d><a:bevelB w=\"76200\" h=\"76200\" prst=\"angle\"/></a:sp3d></p:spPr>",
+  )
+  let bv = effects3d_node_markup(
+    render_3d_effects(sp_pr, "M 0,0 L 100,0", "x", 100.0, 50.0).bevel,
+  )
+  assert_true(bv.contains("class=\"bevel-effect-back\""))
+  assert_eq(count_substring(bv, "<path d="), 4)
 }

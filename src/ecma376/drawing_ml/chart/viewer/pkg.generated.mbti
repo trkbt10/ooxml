@@ -1,0 +1,23 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/drawing_ml/chart/viewer"
+
+import {
+  "trkbt10/ooxml/ecma376/drawing_ml/paint",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn is_chart_graphic_frame(@xml.Element) -> Bool
+
+pub fn render_chart_graphic_frame(@xml.Element, Double, Double, @paint.ColorResolveContext, @paint.SvgDefsCollector, (String) -> @xml.Element?, chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)?) -> Array[@xml.Node]
+
+pub fn render_chart_space(@xml.Element, (Double, Double, Double, Double), @paint.ColorResolveContext, @paint.SvgDefsCollector, part_resolver? : (String) -> @xml.Element?) -> @xml.Node
+
+// Errors
+
+// Types and methods
+
+// Type aliases
+
+// Traits
+

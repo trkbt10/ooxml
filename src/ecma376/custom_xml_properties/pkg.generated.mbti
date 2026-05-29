@@ -32,10 +32,6 @@ pub fn write_extended_properties(CT_Properties) -> Bytes
 pub fn write_schema_library(CT_SchemaLibrary) -> Bytes
 
 // Errors
-pub suberror ResourceMissing {
-  ResourceMissing(section~ : String, path~ : String, target~ : String)
-} derive(@debug.Debug)
-
 pub suberror SchemaViolation {
   SchemaViolation(schema~ : String, path~ : String, reason~ : String)
 } derive(@debug.Debug)
@@ -112,7 +108,6 @@ pub(all) struct CT_VectorVariant {
   vector_child_name : String
 } derive(Eq, @debug.Debug)
 pub fn CT_VectorVariant::new(@xml.Element) -> Self raise SchemaViolation
-pub fn CT_VectorVariant::resolve_vector(Self, (String) -> @xml.Element?) -> @xml.Element raise ResourceMissing
 
 // Type aliases
 

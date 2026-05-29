@@ -300,3 +300,75 @@ test "save honours entry_order from source archive" {
   assert_eq(names[2], "word/document.xml")
   assert_eq(names[3], "_rels/.rels")
 }
+
+///|
+test "validate accepts a structurally sound package" {
+  let content_types = b(
+    "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>",
+  )
+  let rels = b(
+    "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>",
+  )
+  let archive = @zip.Archive::new([
+    ("[Content_Types].xml", content_types),
+    ("_rels/.rels", rels),
+    ("word/document.xml", b("<document/>")),
+  ])
+  let pkg = try! Package::open(try! @zip.write(archive))
+  // No violations, and survives a round-trip.
+  assert_eq(pkg.validate().length(), 0)
+  let reopened = try! Package::open(try! pkg.save())
+  assert_eq(reopened.validate().length(), 0)
+}
+
+///|
+test "validate flags a package with no office-document root relationship" {
+  let content_types = b(
+    "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/></Types>",
+  )
+  // A root rel of an unrelated type pointing at a present part — opens
+  // fine (target resolves), but there is no entry-point office doc.
+  let rels = b(
+    "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties\" Target=\"docProps/core.xml\"/></Relationships>",
+  )
+  let archive = @zip.Archive::new([
+    ("[Content_Types].xml", content_types),
+    ("_rels/.rels", rels),
+    ("docProps/core.xml", b("<coreProperties/>")),
+  ])
+  let pkg = try! Package::open(try! @zip.write(archive))
+  let v = pkg.validate()
+  assert_true(v.length() >= 1)
+  let mut found = false
+  for msg in v {
+    if msg.contains("office-document") {
+      found = true
+    }
+  }
+  assert_true(found)
+}
+
+///|
+test "validate flags a part that is not well-formed XML" {
+  let content_types = b(
+    "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>",
+  )
+  let rels = b(
+    "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>",
+  )
+  // The document part declares an +xml content type but holds broken XML.
+  let archive = @zip.Archive::new([
+    ("[Content_Types].xml", content_types),
+    ("_rels/.rels", rels),
+    ("word/document.xml", b("<document><unclosed></document>")),
+  ])
+  let pkg = try! Package::open(try! @zip.write(archive))
+  let v = pkg.validate()
+  let mut found = false
+  for msg in v {
+    if msg.contains("well-formed") {
+      found = true
+    }
+  }
+  assert_true(found)
+}

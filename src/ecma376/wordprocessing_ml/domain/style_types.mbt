@@ -34,6 +34,9 @@ pub(all) struct CT_Style {
   next : StyleId?
   linked_to : StyleId?
   is_default : Bool
+  /// §17.7.4.17 `@customStyle` — user-defined (not built-in) style;
+  /// default false.
+  custom_style : Bool
   p_pr : @xml.Element?
   r_pr : @xml.Element?
   tbl_pr : @xml.Element?
@@ -66,6 +69,7 @@ pub fn CT_Style::parse(
   }
   let style_type = parse_style_type(attr_value(element, "type"))
   let is_default = parse_on_off(attr_value(element, "default"))
+  let custom_style = parse_on_off(attr_value(element, "customStyle"))
   let name = child_val(element, "name")
   let based_on = child_style_id(element, "basedOn")
   let next = child_style_id(element, "next")
@@ -84,6 +88,7 @@ pub fn CT_Style::parse(
     next,
     linked_to,
     is_default,
+    custom_style,
     p_pr,
     r_pr,
     tbl_pr,

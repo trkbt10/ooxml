@@ -30,7 +30,7 @@ pub(all) struct CT_Picture {
   sp_pr : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_Picture::new(@xml.Element) -> Self raise SchemaViolation
-pub fn CT_Picture::resolve_blip_target(Self, (String) -> @xml.Element?) -> @xml.Element raise ResourceMissing
+pub fn CT_Picture::resolve_blip_target(Self, (String) -> @xml.Element?) -> @xml.Element? raise ResourceMissing
 
 pub(all) struct CT_PictureNonVisual {
   c_nv_pr : @xml.Element

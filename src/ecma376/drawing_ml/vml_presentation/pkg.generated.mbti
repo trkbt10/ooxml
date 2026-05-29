@@ -17,14 +17,14 @@ pub suberror SchemaViolation {
 pub(all) struct CT_Empty {
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Empty::new(@xml.Element) -> Self
+pub fn CT_Empty::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Empty::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_Rel {
   id : String?
   raw_element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_Rel::new(@xml.Element) -> Self
+pub fn CT_Rel::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_Rel::to_element(Self) -> @xml.Element
 
 // Type aliases

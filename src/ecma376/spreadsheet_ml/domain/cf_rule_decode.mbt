@@ -307,7 +307,23 @@ pub fn CT_DataBar::new(
         reason="dataBar requires a color element",
       )
   }
-  { element, min_threshold: thresholds[0], max_threshold: thresholds[1], color }
+  let min_length = match cf_attr(element, "minLength") {
+    Some(v) => cf_parse_int(v).unwrap_or(10)
+    None => 10
+  }
+  let max_length = match cf_attr(element, "maxLength") {
+    Some(v) => cf_parse_int(v).unwrap_or(90)
+    None => 90
+  }
+  {
+    element,
+    min_threshold: thresholds[0],
+    max_threshold: thresholds[1],
+    color,
+    min_length,
+    max_length,
+    show_value: cf_decode_bool_attr(element, "showValue", true),
+  }
 }
 
 ///|
@@ -319,6 +335,7 @@ pub fn CT_IconSet::new(
   let set_name = cf_attr_or(element, "iconSet", "3TrafficLights1")
   let reverse = cf_decode_bool_attr(element, "reverse", false)
   let show_value = cf_decode_bool_attr(element, "showValue", true)
+  let percent = cf_decode_bool_attr(element, "percent", true)
   let thresholds : Array[CT_Cfvo] = []
   for child in element.children {
     match child {
@@ -336,7 +353,7 @@ pub fn CT_IconSet::new(
       reason="iconSet requires at least two cfvo thresholds",
     )
   }
-  { set_name, thresholds, reverse, show_value }
+  { set_name, thresholds, reverse, show_value, percent }
 }
 
 ///|
@@ -354,7 +371,7 @@ pub fn CT_Cfvo::new(
   // treats that rule arm as inert.
   let kind = decode_cfvo_type(cf_require_attr(element, "type", "cfvo/@type"))
   let value_text = cf_attr(element, "val")
-  { kind, value_text }
+  { kind, value_text, gte: cf_decode_bool_attr(element, "gte", true) }
 }
 
 ///|

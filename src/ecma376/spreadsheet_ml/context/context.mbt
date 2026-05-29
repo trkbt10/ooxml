@@ -35,6 +35,13 @@ pub(all) struct WorksheetPart {
   /// border, autofilter dropdown arrows) per §18.5.1.5
   /// ST_TableStyleType / §18.8.43 built-in styles.
   tables : Array[@xml.Element]
+  /// §18.7.6 `<comments>` — the worksheet's legacy comment part
+  /// (`xl/comments<N>.xml`), resolved through the worksheet-part
+  /// `_rels` `.../comments` relationship.  The root `<comments>`
+  /// element is preserved raw; the renderer reads its
+  /// `<commentList>/<comment @ref>` cells to paint the comment
+  /// indicator triangle.  `None` when the worksheet has no comments.
+  comments : @xml.Element?
 } derive(Eq, Debug)
 
 ///|
@@ -279,6 +286,7 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       id_prefix="s" + sheet_index.to_string() + "-",
       pivots~,
       tables=worksheet.tables,
+      comments=worksheet.comments,
       workbook=Some(self.workbook.element),
       evaluated_cells=Some(evaluated),
       part_resolver=chart_part_resolver,
@@ -441,12 +449,14 @@ fn read_worksheets(
                 None => (None, None)
               }
               let tables = read_worksheet_tables(opc_package, name)
+              let comments = read_worksheet_comments(opc_package, name)
               result.push({
                 name,
                 value: worksheet,
                 drawing,
                 drawing_part,
                 tables,
+                comments,
               })
             }
             None => ()
@@ -456,6 +466,43 @@ fn read_worksheets(
     None => ()
   }
   result
+}
+
+///|
+/// §18.7.6 — resolve the worksheet's `.../comments` relationship and
+/// return the parsed root `<comments>` element of `xl/commentsN.xml`.
+/// Returns `None` when the worksheet references no comment part.
+fn read_worksheet_comments(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+) -> @xml.Element? {
+  match opc_package.relationships(worksheet_part_name) {
+    None => None
+    Some(rels) => {
+      for rel in rels.relationships {
+        if rel.type_uri.has_suffix("/comments") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = try @opc_part_name.resolve_target(
+              worksheet_part_name,
+              rel.target,
+            ) catch {
+            _ => continue
+          } noraise {
+            n => n
+          }
+          match opc_package.part(name) {
+            Some(part) =>
+              match (try? @xml.parse(part.data)) {
+                Ok(doc) => return Some(doc.root)
+                Err(_) => ()
+              }
+            None => ()
+          }
+        }
+      }
+      None
+    }
+  }
 }
 
 ///|

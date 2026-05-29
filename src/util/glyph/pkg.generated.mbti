@@ -7,6 +7,8 @@ import {
 }
 
 // Values
+pub fn break_allowed_between(Char, Char) -> Bool
+
 pub fn build_font_face_request(FontResolutionRequest) -> FontFaceRequest
 
 pub fn calculate_char_width(Char, prev_char? : Char?, font_size_pt~ : Double, family~ : String, weight? : Int, italic? : Bool) -> CharWidthResult raise FontUnresolvedError
@@ -25,9 +27,29 @@ pub fn get_descender_ratio(String, weight? : Int, italic? : Bool) -> Double rais
 
 pub fn get_line_gap_ratio(String, weight? : Int, italic? : Bool) -> Double raise FontUnresolvedError
 
+pub fn inter_script_advance_px(String, font_size_pt~ : Double, auto_space_de? : Bool, auto_space_dn? : Bool) -> Double
+
+pub let inter_script_gap_em : Double
+
+pub fn inter_script_space_em(Char, Char, auto_space_de? : Bool, auto_space_dn? : Bool) -> Double
+
+pub fn is_ascii_break_char(Char) -> Bool
+
 pub fn is_cjk_char(Char) -> Bool
 
 pub fn is_cjk_code_point(Int) -> Bool
+
+pub fn is_line_end_prohibited(Char) -> Bool
+
+pub fn is_line_start_prohibited(Char) -> Bool
+
+pub fn is_wrap_whitespace_segment(String) -> Bool
+
+pub fn is_yakumono(Char) -> Bool
+
+pub fn kinsoku_break_allowed(Char, Char) -> Bool
+
+pub fn linebreak_segments(String) -> Array[String]
 
 pub fn lowercase_ascii(String) -> String
 
@@ -54,6 +76,8 @@ pub let px_to_pt : Double
 pub fn resolve_chain(FontResolutionRequest) -> FontMeasurer raise FontUnresolvedError
 
 pub fn set_default_font_set(FontSet) -> Unit
+
+pub fn yakumono_aki(Char) -> YakumonoAki
 
 // Errors
 pub suberror FontUnresolvedError {
@@ -153,6 +177,13 @@ pub(all) struct GposKernEntry {
   second : Int
   x_advance : Int
 }
+
+pub(all) enum YakumonoAki {
+  NoAki
+  Left
+  Right
+  Both
+} derive(Eq, @debug.Debug)
 
 // Type aliases
 

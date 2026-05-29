@@ -55,10 +55,15 @@ pub(all) struct CT_SheetProtection {
   pivot_tables : Bool
   /// @selectUnlockedCells (xsd:boolean) — optional, default false.
   select_unlocked_cells : Bool
+  /// @password (ST_UnsignedShortHex) — legacy 16-bit verifier hash,
+  /// deprecated in favour of the algorithm/hash/salt/spin attributes
+  /// above; `None` when absent.
+  legacy_password : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_SheetProtection::new(element : @xml.Element) -> CT_SheetProtection {
+  let legacy_password = attr(element, "password")
   let algorithm_name = attr(element, "algorithmName")
   let hash_value = attr(element, "hashValue")
   let salt_value = attr(element, "saltValue")
@@ -101,6 +106,7 @@ pub fn CT_SheetProtection::new(element : @xml.Element) -> CT_SheetProtection {
     auto_filter,
     pivot_tables,
     select_unlocked_cells,
+    legacy_password,
   }
 }
 
@@ -126,6 +132,9 @@ pub(all) struct CT_ChartsheetProtection {
   content : Bool
   /// @objects (xsd:boolean) — optional, default false.
   objects : Bool
+  /// @password (ST_UnsignedShortHex) — legacy 16-bit verifier hash,
+  /// deprecated; `None` when absent.
+  legacy_password : String?
 } derive(Eq, Debug)
 
 ///|
@@ -138,6 +147,7 @@ pub fn CT_ChartsheetProtection::new(
   let spin_count = attr_uint_opt(element, "spinCount")
   let content = attr_bool(element, "content", false)
   let objects = attr_bool(element, "objects", false)
+  let legacy_password = attr(element, "password")
   {
     element,
     algorithm_name,
@@ -146,6 +156,7 @@ pub fn CT_ChartsheetProtection::new(
     spin_count,
     content,
     objects,
+    legacy_password,
   }
 }
 
@@ -1551,6 +1562,11 @@ pub(all) struct CT_WorkbookProtection {
   workbook_salt_value : String?
   /// @workbookSpinCount (xsd:unsignedInt) — optional spin count.
   workbook_spin_count : Int?
+  /// @revisionsPassword / @workbookPassword (ST_UnsignedShortHex) —
+  /// legacy 16-bit verifier hashes, deprecated in favour of the
+  /// algorithm/hash/salt/spin attributes; `None` when absent.
+  revisions_password : String?
+  workbook_password : String?
 } derive(Eq, Debug)
 
 ///|
@@ -1560,6 +1576,8 @@ pub fn CT_WorkbookProtection::new(
   let lock_structure = attr_bool(element, "lockStructure", false)
   let lock_windows = attr_bool(element, "lockWindows", false)
   let lock_revision = attr_bool(element, "lockRevision", false)
+  let revisions_password = attr(element, "revisionsPassword")
+  let workbook_password = attr(element, "workbookPassword")
   let revisions_algorithm_name = attr(element, "revisionsAlgorithmName")
   let revisions_hash_value = attr(element, "revisionsHashValue")
   let revisions_salt_value = attr(element, "revisionsSaltValue")
@@ -1581,5 +1599,7 @@ pub fn CT_WorkbookProtection::new(
     workbook_hash_value,
     workbook_salt_value,
     workbook_spin_count,
+    revisions_password,
+    workbook_password,
   }
 }

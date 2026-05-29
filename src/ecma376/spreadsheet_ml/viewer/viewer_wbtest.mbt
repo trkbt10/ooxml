@@ -3904,3 +3904,182 @@ test "SpreadsheetML viewer §18.5 autofilter dropdown emitted with chrome opt-in
   assert_true(svg.contains("data-ooxml-autofilter=\"button\""))
   assert_true(svg.contains("data-ooxml-autofilter=\"arrow\""))
 }
+
+///|
+fn comment_for(ref_ : String) -> @xml.Node {
+  @xml.Node::Element({
+    name: name("comment"),
+    attributes: [{ name: name("ref"), value: ref_ }],
+    children: [],
+  })
+}
+
+///|
+test "§18.7.3 commented cells get a red corner indicator triangle" {
+  let cells_row1 : Array[@xml.Node] = [build_cell("A1", None, "1"), build_cell("B1", None, "2")]
+  let cells_row2 : Array[@xml.Node] = [build_cell("A2", None, "3"), build_cell("B2", None, "4")]
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:B2" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, cells_row1), build_row(2, cells_row2)],
+      }),
+    ],
+  })
+  let comments : @xml.Element = {
+    name: name("comments"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("commentList"),
+        attributes: [],
+        children: [comment_for("A1"), comment_for("B2")],
+      }),
+    ],
+  }
+  let result = render_svg(worksheet, comments=Some(comments))
+  // Group present + two triangle polygons in Excel's marker red.
+  assert_true(result.svg.contains("class=\"comment-indicators\""))
+  assert_true(result.svg.contains("fill=\"#c00000\""))
+  assert_true(result.svg.contains("data-ooxml-comment-ref=\"A1\""))
+  assert_true(result.svg.contains("data-ooxml-comment-ref=\"B2\""))
+}
+
+///|
+test "no comments part → no indicator group" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet)
+  assert_true(!result.svg.contains("comment-indicators"))
+}
+
+///|
+test "§18.8.30 conditional number-format sections select by condition" {
+  // [>=100]"H";[<100]"L" → section chosen by the comparison, not sign.
+  let code = "[>=100]0\"H\";[<100]0\"L\""
+  inspect(format_number_by_code(150.0, code), content="150H")
+  inspect(format_number_by_code(50.0, code), content="50L")
+  // A negative value matches [<100] and keeps its natural sign
+  // (conditional sections are not magnitude-folded like the default
+  // negative section).
+  inspect(format_number_by_code(-5.0, code), content="-5L")
+}
+
+///|
+test "§18.8.30 conditional sections: unconditioned section is the catch-all" {
+  // [>=1000]0\"K\";0\"x\" → first section conditional, second is the
+  // default for everything below 1000.
+  let code = "[>=1000]0\"K\";0\"x\""
+  inspect(format_number_by_code(2000.0, code), content="2000K")
+  inspect(format_number_by_code(12.0, code), content="12x")
+}
+
+///|
+test "§18.8.30 non-conditional sections keep the sign convention" {
+  // pos;neg → the negative section formats the magnitude (its literal
+  // parens supply the sign); conditions absent ⇒ sign-based select.
+  let code = "0.00;(0.00)"
+  inspect(format_number_by_code(5.0, code), content="5.00")
+  inspect(format_number_by_code(-5.0, code), content="(5.00)")
+}
+
+///|
+test "§18.8.30 trailing comma scales the value by 1000 per comma" {
+  // `0,` divides by 1000; `0,,` by a million — NOT a grouping comma.
+  inspect(format_number_by_code(12345000.0, "0,"), content="12345")
+  inspect(format_number_by_code(12345000.0, "0,,"), content="12")
+  // One decimal place after a scaling comma.
+  inspect(format_number_by_code(12345.0, "0.0,"), content="12.3")
+}
+
+///|
+test "§18.8.30 grouping comma vs scaling comma are distinguished" {
+  // `#,##0` is pure grouping (comma between digit placeholders).
+  inspect(format_number_by_code(12345.0, "#,##0"), content="12,345")
+  // `#,##0,` is grouping PLUS one trailing scaling comma (÷1000).
+  inspect(format_number_by_code(12345000.0, "#,##0,"), content="12,345")
+}
+
+///|
+test "§18.8.30 month/weekday name tokens (mmm/mmmm/ddd/dddd)" {
+  // 2024-03-15 is a Friday.
+  let dt = match parse_iso8601_date("2024-03-15T00:00:00") {
+    Some(v) => v
+    None => abort("failed to parse ISO 8601")
+  }
+  let s = match
+    (try? @date_serial.date_time_to_serial(dt, @date_serial.DateSystem::Serial1900)) {
+    Ok(v) => v
+    Err(_) => abort("date_time_to_serial failed")
+  }
+  // Month names: mmm → abbrev, mmmm → full, mmmmm → first letter.
+  assert_eq(format_number_general(s, "mmm"), "Mar")
+  assert_eq(format_number_general(s, "mmmm"), "March")
+  assert_eq(format_number_general(s, "mmmmm"), "M")
+  // Weekday names: ddd → abbrev, dddd → full.
+  assert_eq(format_number_general(s, "ddd"), "Fri")
+  assert_eq(format_number_general(s, "dddd"), "Friday")
+  // Built-in numFmt 15 `d-mmm-yy` → "15-Mar-24" (NOT "15-03-24").
+  assert_eq(format_number_general(s, "d-mmm-yy"), "15-Mar-24")
+  // d/dd remain day-of-month numbers.
+  assert_eq(format_number_general(s, "dd"), "15")
+}
+
+///|
+test "§18.8.31 _x width-align and *x fill tokens in date formats" {
+  // 2024-03-15.
+  let dt = match parse_iso8601_date("2024-03-15T00:00:00") {
+    Some(v) => v
+    None => abort("failed to parse ISO 8601")
+  }
+  let s = match
+    (try? @date_serial.date_time_to_serial(dt, @date_serial.DateSystem::Serial1900)) {
+    Ok(v) => v
+    Err(_) => abort("date_time_to_serial failed")
+  }
+  // `_)` aligns by one char width → trailing space (NOT the literal
+  // "_)" or "15)").
+  assert_eq(format_number_general(s, "d_)"), "15 ")
+  // `*-` fills the column → emits nothing here (the `-` is consumed,
+  // not printed as the day's neighbour).
+  assert_eq(format_number_general(s, "d*-"), "15")
+}
+
+///|
+test "§18.8.30 @ text-placeholder section formats string values" {
+  // `@" kg"` appends a literal suffix to the text.
+  inspect(format_text_value("5", "@\" kg\""), content="5 kg")
+  // `"Item: "@` prepends a literal prefix.
+  inspect(format_text_value("hi", "\"Item: \"@"), content="Item: hi")
+  // Bare `@` (numFmt 49) is the identity text format.
+  inspect(format_text_value("x", "@"), content="x")
+  // 4-section format: the 4th section is the text section.
+  inspect(format_text_value("note", "0;-0;0;\"[\"@\"]\""), content="[note]")
+}
+
+///|
+test "§18.8.30 text with no text section is shown verbatim" {
+  // General / empty / a purely-numeric single section leave text as-is.
+  inspect(format_text_value("abc", "General"), content="abc")
+  inspect(format_text_value("abc", ""), content="abc")
+  inspect(format_text_value("abc", "0.00"), content="abc")
+  // 2-section numeric format (pos;neg) has no text section either.
+  inspect(format_text_value("abc", "0.00;(0.00)"), content="abc")
+}

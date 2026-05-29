@@ -1656,6 +1656,27 @@ pub(all) struct CT_ModifyVerifier {
   salt_value : String?
   /// @spinValue (xsd:unsignedInt) — optional iteration count.
   spin_value : UInt?
+  /// Legacy CryptoAPI attributes (deprecated in favour of the
+  /// algorithm/hash/salt/spin set above): `@cryptProviderType`,
+  /// `@cryptAlgorithmClass`, `@cryptAlgorithmType`, `@cryptAlgorithmSid`,
+  /// `@cryptProvider`, and the extension `@algIdExt` /
+  /// `@algIdExtSource` / `@cryptProviderTypeExt` /
+  /// `@cryptProviderTypeExtSource`.  Retained as optional strings.
+  crypt_provider_type : String?
+  crypt_algorithm_class : String?
+  crypt_algorithm_type : String?
+  crypt_algorithm_sid : UInt?
+  crypt_provider : String?
+  alg_id_ext : String?
+  alg_id_ext_source : String?
+  crypt_provider_type_ext : String?
+  crypt_provider_type_ext_source : String?
+  /// Legacy `@hashData` / `@saltData` (xsd:base64Binary, lexical) and
+  /// `@spinCount` (xsd:unsignedInt) — the deprecated binary verifier
+  /// data; `None` when absent.
+  hash_data : String?
+  salt_data : String?
+  spin_count : UInt?
 } derive(Eq, Debug)
 
 ///|
@@ -1668,7 +1689,32 @@ pub fn CT_ModifyVerifier::parse(
   let spin_value = pml_optional_unsigned_int(
     element, "spinValue", "CT_ModifyVerifier/@spinValue",
   )
-  { element, algorithm_name, hash_value, salt_value, spin_value }
+  let crypt_algorithm_sid = pml_optional_unsigned_int(
+    element, "cryptAlgorithmSid", "CT_ModifyVerifier/@cryptAlgorithmSid",
+  )
+  {
+    element,
+    algorithm_name,
+    hash_value,
+    salt_value,
+    spin_value,
+    crypt_provider_type: pml_attr(element, "cryptProviderType"),
+    crypt_algorithm_class: pml_attr(element, "cryptAlgorithmClass"),
+    crypt_algorithm_type: pml_attr(element, "cryptAlgorithmType"),
+    crypt_algorithm_sid,
+    crypt_provider: pml_attr(element, "cryptProvider"),
+    alg_id_ext: pml_attr(element, "algIdExt"),
+    alg_id_ext_source: pml_attr(element, "algIdExtSource"),
+    crypt_provider_type_ext: pml_attr(element, "cryptProviderTypeExt"),
+    crypt_provider_type_ext_source: pml_attr(
+      element, "cryptProviderTypeExtSource",
+    ),
+    hash_data: pml_attr(element, "hashData"),
+    salt_data: pml_attr(element, "saltData"),
+    spin_count: pml_optional_unsigned_int(
+      element, "spinCount", "CT_ModifyVerifier/@spinCount",
+    ),
+  }
 }
 
 ///|
@@ -1681,6 +1727,18 @@ pub fn CT_ModifyVerifier::new(element : @xml.Element) -> CT_ModifyVerifier {
         hash_value: None,
         salt_value: None,
         spin_value: None,
+        crypt_provider_type: None,
+        crypt_algorithm_class: None,
+        crypt_algorithm_type: None,
+        crypt_algorithm_sid: None,
+        crypt_provider: None,
+        alg_id_ext: None,
+        alg_id_ext_source: None,
+        crypt_provider_type_ext: None,
+        crypt_provider_type_ext_source: None,
+        hash_data: None,
+        salt_data: None,
+        spin_count: None,
       }
   }
 }

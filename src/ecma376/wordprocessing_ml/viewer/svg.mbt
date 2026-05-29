@@ -1887,18 +1887,27 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
             Some(_) => true
             None => false
           }
-          // §17.6.11 — apply gutter to the binding edge.
-          let (left_eff, top_eff) = if gutter_at_top {
-            (left, top + gutter)
+          // §17.6.11 rtlGutter — when set, the binding gutter is on the
+          // RIGHT edge (right-to-left documents) instead of the left.
+          let rtl_gutter = match first_child_named(sp, "rtlGutter") {
+            Some(rg) => parse_xsd_on_off_or(attr_value(rg, "val"), true)
+            None => false
+          }
+          // §17.6.11 — apply the gutter to the binding edge: the top
+          // (gutterAtTop), the right (rtlGutter), or the left (default).
+          let (left_eff, right_eff, top_eff) = if gutter_at_top {
+            (left, right, top + gutter)
+          } else if rtl_gutter {
+            (left, right + gutter, top)
           } else {
-            (left + gutter, top)
+            (left + gutter, right, top)
           }
           cfg = {
             ..cfg,
             margin_top: top_eff * TWIPS_TO_PX,
             margin_bottom: bot * TWIPS_TO_PX,
             margin_left: left_eff * TWIPS_TO_PX,
-            margin_right: right * TWIPS_TO_PX,
+            margin_right: right_eff * TWIPS_TO_PX,
           }
         }
         None => ()
@@ -3993,6 +4002,37 @@ fn collect_paragraph_spans_into(
 /// Emit spans for a single `<w:r>`. Mirrors the body of the legacy
 /// branch in `collect_paragraph_spans`, but factored out so wrapper
 /// elements can dispatch through `collect_paragraph_spans_into`.
+///|
+/// §17.16.5.4 `<w:checkBox>` — when a run's `<w:fldChar
+/// fldCharType="begin">` hosts a `<w:ffData>/<w:checkBox>` form field,
+/// return the box glyph for its state (☑ checked / ☐ unchecked).
+/// `<w:checked @val>` overrides `<w:default @val>`; both absent ⇒
+/// unchecked.  Returns `None` for any other field boundary.
+fn form_checkbox_glyph(fld_char : @xml.Element) -> String? {
+  match attr_value(fld_char, "fldCharType") {
+    Some("begin") => ()
+    _ => return None
+  }
+  let ff = match first_child_named(fld_char, "ffData") {
+    Some(f) => f
+    None => return None
+  }
+  let cb = match first_child_named(ff, "checkBox") {
+    Some(c) => c
+    None => return None
+  }
+  let checked = match first_child_named(cb, "checked") {
+    Some(c) => parse_xsd_on_off_or(attr_value(c, "val"), true)
+    None =>
+      match first_child_named(cb, "default") {
+        Some(d) => parse_xsd_on_off_or(attr_value(d, "val"), true)
+        None => false
+      }
+  }
+  Some(if checked { "\u{2611}" } else { "\u{2610}" })
+}
+
+///|
 fn emit_run_spans(
   r : @xml.Element,
   hyperlink_styling : Bool,
@@ -4286,6 +4326,27 @@ fn emit_run_spans(
                 hyperlink_styling,
               ),
             )
+          "fldChar" =>
+            // §17.16.18 fldChar — a complex-field boundary.  Ordinary
+            // fields, text form fields (FORMTEXT) and dropdowns
+            // (FORMDROPDOWN) render their result through the runs
+            // between the "separate" and "end" boundaries, so those
+            // boundaries emit no glyph here.  The one boundary that
+            // carries its OWN visible glyph is a §17.16.5.4 form
+            // checkbox at the "begin" boundary: emit ☑ / ☐ for its
+            // checked / unchecked state.
+            match form_checkbox_glyph(re) {
+              Some(ch) => {
+                let w = measure_run_text(ch, template)
+                spans.push(
+                  apply_hyperlink_styling(
+                    with_text(template, ch, w),
+                    hyperlink_styling,
+                  ),
+                )
+              }
+              None => ()
+            }
           _ => ()
         }
       Text(t) | CData(t) => {

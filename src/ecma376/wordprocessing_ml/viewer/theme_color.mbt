@@ -361,8 +361,10 @@ fn lowercase_hex(s : String) -> String {
 /// themeColor, themeTint, themeShade) to a final 6-digit hex
 /// (no leading `#`).  Per the spec:
 ///   1. When `themeColor` is set, it overrides the base colour.
-///   2. The resolved theme RGB is tinted (towards white) by
-///      `themeTint`, then shaded (towards black) by `themeShade`.
+///   2. The resolved theme RGB has its HSL luminance modified by
+///      `themeTint` (`L′ = L·t + (1−t)`) or `themeShade`
+///      (`L′ = L·s`), per §17.15.1.51 — an HSL-luminance operation,
+///      NOT the DrawingML linear-RGB tint/shade.
 ///   3. When `themeColor` resolves to None (e.g. the theme part
 ///      is missing the enumerator), the base colour wins.
 ///   4. When all of the above produce no concrete colour, return
@@ -387,24 +389,30 @@ pub fn resolve_themed_color(
     None => None
     Some(hex) => {
       let mut current = hex
-      // §17.18.98 ST_UcharHexNumber — hex byte, 00..FF.
+      // §17.18.98 ST_UcharHexNumber — hex byte, 00..FF, where the
+      // ratio `value/255` is the tint / shade PERCENTAGE.
       //
-      // WML convention (per [MS-OE376] §1.3.7.10 and ISO/IEC
-      // 29500-1 §17.18.98): the ratio value/255 is the fraction
-      // of *blend toward white* (tint) or *blend toward black*
-      // (shade).  `0x00` is identity (full base colour), `0xFF`
-      // is full white / full black.
+      // CRITICAL: WordprocessingML `@themeTint` / `@themeShade` are
+      // defined (ISO/IEC 29500-1 §17.15.1.51 / §17.6.x worked
+      // examples) as operations on the HSL *luminance*, NOT the
+      // linear-RGB blend used by DrawingML `<a:tint>`/`<a:shade>`:
       //
-      // DrawingML's `<a:tint val>` (§20.1.2.3.34) inverts this:
-      // `1.0` is identity, `0.0` is white — see web-pptx's
-      // `applyTint` semantics.  We therefore feed
-      // `1.0 - (uchar/255)` to the DML helper so the WML
-      // semantics survive the call.
+      //   themeShade:  L′ = L · (shade/255)
+      //   themeTint:   L′ = L · (tint/255) + (1 − tint/255)
+      //
+      // (convert RGB→HSL, modify L, convert back).  Verified against
+      // the spec examples: accent2 C0504D + themeShade=BF → 943634;
+      // accent2 4F81BD + themeTint=99 → 95B3D7.  The previous code
+      // applied the DrawingML linear-RGB transform with an inverted
+      // `1 − ratio` argument, which diverged from both spec examples.
       match theme_tint {
         Some(text) => {
           let ratio = parse_uchar_hex_ratio(text)
           if ratio > 0.0 {
-            current = @color.apply_tint(current, 1.0 - ratio)
+            // L′ = L·ratio + (1 − ratio): scale the luminance, then
+            // offset it toward white by the complementary fraction.
+            current = @color.apply_lum_mod(current, ratio)
+            current = @color.apply_lum_off(current, 1.0 - ratio)
           }
         }
         None => ()
@@ -413,7 +421,8 @@ pub fn resolve_themed_color(
         Some(text) => {
           let ratio = parse_uchar_hex_ratio(text)
           if ratio > 0.0 {
-            current = @color.apply_shade(current, 1.0 - ratio)
+            // L′ = L·ratio: scale the luminance toward black.
+            current = @color.apply_lum_mod(current, ratio)
           }
         }
         None => ()

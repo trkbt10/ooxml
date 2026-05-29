@@ -75,6 +75,9 @@ pub(all) struct CT_CalcCell {
   t : Bool
   /// @a (xsd:boolean) — optional, default false.
   a : Bool
+  /// @ref (ST_Ref) — optional range reference for a shared/array
+  /// formula calc entry; empty when absent.
+  ref_range : String
 } derive(Eq, Debug)
 
 ///|
@@ -88,7 +91,8 @@ pub fn CT_CalcCell::new(element : @xml.Element) -> CT_CalcCell {
   let l = attr_bool(element, "l", false)
   let t = attr_bool(element, "t", false)
   let a = attr_bool(element, "a", false)
-  { element, r, i, s, l, t, a }
+  let ref_range = attr(element, "ref").unwrap_or("")
+  { element, r, i, s, l, t, a, ref_range }
 }
 
 ///|
@@ -2434,6 +2438,8 @@ pub(all) struct CT_DataConsolidate {
   function : String
   /// @startLabels (xsd:boolean, default false).
   start_labels : Bool
+  /// @leftLabels (xsd:boolean, default false).
+  left_labels : Bool
   /// @topLabels (xsd:boolean, default false).
   top_labels : Bool
   /// @link (xsd:boolean, default false).
@@ -2455,9 +2461,18 @@ pub fn CT_DataConsolidate::new(element : @xml.Element) -> CT_DataConsolidate {
     None => "sum"
   }
   let start_labels = attr_bool(element, "startLabels", false)
+  let left_labels = attr_bool(element, "leftLabels", false)
   let top_labels = attr_bool(element, "topLabels", false)
   let link = attr_bool(element, "link", false)
-  { element, data_refs, function, start_labels, top_labels, link }
+  {
+    element,
+    data_refs,
+    function,
+    start_labels,
+    left_labels,
+    top_labels,
+    link,
+  }
 }
 
 ///|
@@ -3466,6 +3481,9 @@ pub(all) struct CT_ProtectedRange {
   salt_value : String?
   /// @spinCount (xsd:unsignedInt) — optional iteration count.
   spin_count : Int?
+  /// @password (ST_UnsignedShortHex) — legacy 16-bit verifier hash,
+  /// deprecated; `None` when absent.
+  legacy_password : String?
 } derive(Eq, Debug)
 
 ///|
@@ -3490,6 +3508,7 @@ pub fn CT_ProtectedRange::new(element : @xml.Element) -> CT_ProtectedRange {
   let hash_value = attr(element, "hashValue")
   let salt_value = attr(element, "saltValue")
   let spin_count = attr_uint_opt(element, "spinCount")
+  let legacy_password = attr(element, "password")
   {
     element,
     security_descriptors,
@@ -3499,6 +3518,7 @@ pub fn CT_ProtectedRange::new(element : @xml.Element) -> CT_ProtectedRange {
     hash_value,
     salt_value,
     spin_count,
+    legacy_password,
   }
 }
 
@@ -3725,475 +3745,964 @@ pub fn CT_Chartsheet::new(element : @xml.Element) -> CT_Chartsheet {
 }
 
 ///|
-/// XSD complex type CT_ChartsheetPr.
+/// XSD complex type CT_ChartsheetPr — Part 1 §18.3.1.12
+/// (`<sheetPr>` of a chartsheet).  Carries the VBA `@codeName`, the
+/// `@published` flag, and an optional `<tabColor>` child.
 pub(all) struct CT_ChartsheetPr {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @codeName (ST_Xstring) — VBA code name; empty when absent.
+  code_name : String
+  /// @published (xsd:boolean) — default true.
+  published : Bool
+  /// <tabColor> (CT_Color) — optional sheet-tab colour, retained raw.
+  tab_color : @xml.Element?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ChartsheetPr::new(element : @xml.Element) -> CT_ChartsheetPr {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut tab_color : @xml.Element? = None
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "tabColor" {
+      tab_color = Some(e)
+    }
+  }
+  {
+    element,
+    code_name: attr(element, "codeName").unwrap_or(""),
+    published: attr_bool(element, "published", true),
+    tab_color,
   }
 }
 
 ///|
-/// XSD complex type CT_ChartsheetViews.
+/// XSD complex type CT_ChartsheetViews — Part 1 §18.3.1.45.  A list of
+/// `<sheetView>` (CT_ChartsheetView) children.
 pub(all) struct CT_ChartsheetViews {
   element : @xml.Element
+  views : Array[CT_ChartsheetView]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ChartsheetViews::new(element : @xml.Element) -> CT_ChartsheetViews {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let views : Array[CT_ChartsheetView] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "sheetView" {
+      views.push(CT_ChartsheetView::new(e))
+    }
   }
+  { element, views }
 }
 
 ///|
-/// XSD complex type CT_ChartsheetView.
+/// XSD complex type CT_ChartsheetView — Part 1 §18.3.1.44.  One chart
+/// sheet view: tab selection, zoom, and the owning workbook view id.
 pub(all) struct CT_ChartsheetView {
   element : @xml.Element
+  /// @tabSelected (xsd:boolean) — default false.
+  tab_selected : Bool
+  /// @zoomScale (xsd:unsignedInt) — default 100.
+  zoom_scale : Int
+  /// @workbookViewId (xsd:unsignedInt) — required; default 0.
+  workbook_view_id : Int
+  /// @zoomToFit (xsd:boolean) — default false.
+  zoom_to_fit : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ChartsheetView::new(element : @xml.Element) -> CT_ChartsheetView {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  {
+    element,
+    tab_selected: attr_bool(element, "tabSelected", false),
+    zoom_scale: attr_int(element, "zoomScale", 100),
+    workbook_view_id: attr_int(element, "workbookViewId", 0),
+    zoom_to_fit: attr_bool(element, "zoomToFit", false),
   }
 }
 
 ///|
-/// XSD complex type CT_CustomChartsheetViews.
+/// XSD complex type CT_CustomChartsheetViews — Part 1 §18.3.1.22.  A
+/// list of `<customSheetView>` (CT_CustomChartsheetView) children.
 pub(all) struct CT_CustomChartsheetViews {
   element : @xml.Element
+  views : Array[CT_CustomChartsheetView]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_CustomChartsheetViews::new(
   element : @xml.Element,
 ) -> CT_CustomChartsheetViews {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let views : Array[CT_CustomChartsheetView] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "customSheetView" {
+      views.push(CT_CustomChartsheetView::new(e))
+    }
   }
+  { element, views }
 }
 
 ///|
-/// XSD complex type CT_CustomChartsheetView.
+/// XSD complex type CT_CustomChartsheetView — Part 1 §18.3.1.21.  A
+/// named custom view of a chart sheet (guid + zoom/state) with optional
+/// page-setup children.
 pub(all) struct CT_CustomChartsheetView {
   element : @xml.Element
+  /// @guid (ST_Guid) — required view identifier.
+  guid : String
+  /// @scale (xsd:unsignedInt) — default 100.
+  scale : Int
+  /// @state (ST_SheetState) — default "visible".
+  state : String
+  /// @zoomToFit (xsd:boolean) — default false.
+  zoom_to_fit : Bool
+  /// <pageMargins> / <pageSetup> / <headerFooter> — retained raw.
+  page_margins : @xml.Element?
+  page_setup : @xml.Element?
+  header_footer : @xml.Element?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_CustomChartsheetView::new(
   element : @xml.Element,
 ) -> CT_CustomChartsheetView {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut page_margins : @xml.Element? = None
+  let mut page_setup : @xml.Element? = None
+  let mut header_footer : @xml.Element? = None
+  for child in element.children {
+    if child is @xml.Node::Element(e) {
+      match e.name.local_name {
+        "pageMargins" => page_margins = Some(e)
+        "pageSetup" => page_setup = Some(e)
+        "headerFooter" => header_footer = Some(e)
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    guid: attr(element, "guid").unwrap_or(""),
+    scale: attr_int(element, "scale", 100),
+    state: attr(element, "state").unwrap_or("visible"),
+    zoom_to_fit: attr_bool(element, "zoomToFit", false),
+    page_margins,
+    page_setup,
+    header_footer,
   }
 }
 
 ///|
-/// XSD complex type CT_CustomProperty.
+/// XSD complex type CT_CustomProperty — Part 1 §18.3.1.18.  A named
+/// custom property of a sheet, referencing a property part via `r:id`.
 pub(all) struct CT_CustomProperty {
   element : @xml.Element
+  /// @name (ST_Xstring) — required property name.
+  name : String
+  /// @r:id (ST_RelationshipId) — relationship to the property part.
+  r_id : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_CustomProperty::new(element : @xml.Element) -> CT_CustomProperty {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  {
+    element,
+    name: attr(element, "name").unwrap_or(""),
+    r_id: attr(element, "id").unwrap_or(""),
   }
 }
 
 ///|
-/// XSD complex type CT_ObjectPr.
+/// XSD complex type CT_ObjectPr — Part 1 §18.3.1.55.  Embedded-object
+/// properties (sizing / printing / fill toggles) plus the cell anchor.
 pub(all) struct CT_ObjectPr {
   element : @xml.Element
+  /// @locked (xsd:boolean) — default true.
+  locked : Bool
+  /// @defaultSize (xsd:boolean) — default true.
+  default_size : Bool
+  /// @disabled (xsd:boolean) — default false.
+  disabled : Bool
+  /// @autoFill (xsd:boolean) — default true.
+  auto_fill : Bool
+  /// @autoPict (xsd:boolean) — default true.
+  auto_pict : Bool
+  /// @autoLine (xsd:boolean) — default true.
+  auto_line : Bool
+  /// @altText (ST_Xstring) — accessibility text; empty when absent.
+  alt_text : String
+  /// @print (xsd:boolean) — default true.
+  print : Bool
+  /// @uiObject (xsd:boolean) — default false.
+  ui_object : Bool
+  /// @dde (xsd:boolean) — DDE-linked object; default false.
+  dde : Bool
+  /// @macro (ST_Formula) — macro reference; empty when absent.
+  macro_ref : String
+  /// @r:id (ST_RelationshipId) — relationship to the embedded object.
+  r_id : String
+  /// <anchor> (CT_ObjectAnchor) — retained raw.
+  anchor : @xml.Element?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ObjectPr::new(element : @xml.Element) -> CT_ObjectPr {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut anchor : @xml.Element? = None
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "anchor" {
+      anchor = Some(e)
+    }
+  }
+  {
+    element,
+    locked: attr_bool(element, "locked", true),
+    default_size: attr_bool(element, "defaultSize", true),
+    disabled: attr_bool(element, "disabled", false),
+    auto_fill: attr_bool(element, "autoFill", true),
+    auto_pict: attr_bool(element, "autoPict", true),
+    auto_line: attr_bool(element, "autoLine", true),
+    alt_text: attr(element, "altText").unwrap_or(""),
+    print: attr_bool(element, "print", true),
+    ui_object: attr_bool(element, "uiObject", false),
+    dde: attr_bool(element, "dde", false),
+    macro_ref: attr(element, "macro").unwrap_or(""),
+    r_id: attr(element, "id").unwrap_or(""),
+    anchor,
   }
 }
 
 ///|
-/// XSD complex type CT_Controls.
+/// XSD complex type CT_Controls — Part 1 §18.3.1.20.  A list of
+/// `<control>` (CT_Control) children.
 pub(all) struct CT_Controls {
   element : @xml.Element
+  controls : Array[CT_Control]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Controls::new(element : @xml.Element) -> CT_Controls {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let controls : Array[CT_Control] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "control" {
+      controls.push(CT_Control::new(e))
+    }
   }
+  { element, controls }
 }
 
 ///|
-/// XSD complex type CT_Control.
+/// XSD complex type CT_Control — Part 1 §18.3.1.32.  A form control on
+/// a worksheet: its `@shapeId`, `r:id` relationship, `@name`, and
+/// optional `<controlPr>`.
 pub(all) struct CT_Control {
   element : @xml.Element
+  /// @shapeId (xsd:unsignedInt) — required drawing shape id; default 0.
+  shape_id : Int
+  /// @r:id (ST_RelationshipId) — relationship to the control part.
+  r_id : String
+  /// @name (ST_Xstring) — control name; empty when absent.
+  name : String
+  /// <controlPr> (CT_ControlPr) — typed control properties.
+  control_pr : CT_ControlPr?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Control::new(element : @xml.Element) -> CT_Control {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut control_pr : CT_ControlPr? = None
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "controlPr" {
+      control_pr = Some(CT_ControlPr::new(e))
+    }
+  }
+  {
+    element,
+    shape_id: attr_int(element, "shapeId", 0),
+    r_id: attr(element, "id").unwrap_or(""),
+    name: attr(element, "name").unwrap_or(""),
+    control_pr,
   }
 }
 
 ///|
-/// XSD complex type CT_ControlPr.
+/// XSD complex type CT_ControlPr — Part 1 §18.3.1.19.  Form-control
+/// properties (sizing / fill / print toggles, alt text) plus anchor.
 pub(all) struct CT_ControlPr {
   element : @xml.Element
+  /// @locked (xsd:boolean) — default true.
+  locked : Bool
+  /// @defaultSize (xsd:boolean) — default true.
+  default_size : Bool
+  /// @disabled (xsd:boolean) — default false.
+  disabled : Bool
+  /// @autoFill (xsd:boolean) — default true.
+  auto_fill : Bool
+  /// @autoLine (xsd:boolean) — default true.
+  auto_line : Bool
+  /// @autoPict (xsd:boolean) — default true.
+  auto_pict : Bool
+  /// @altText (ST_Xstring) — accessibility text; empty when absent.
+  alt_text : String
+  /// @print (xsd:boolean) — default true.
+  print : Bool
+  /// @recalcAlways (xsd:boolean) — default false.
+  recalc_always : Bool
+  /// @uiObject (xsd:boolean) — default false.
+  ui_object : Bool
+  /// @macro (ST_Formula) — macro reference; empty when absent.
+  macro_ref : String
+  /// @cf (ST_Xstring) — clipboard format; default "pict".
+  cf : String
+  /// @linkedCell (ST_Formula) — linked cell reference.
+  linked_cell : String
+  /// @listFillRange (ST_Formula) — list-fill source range.
+  list_fill_range : String
+  /// @r:id (ST_RelationshipId) — relationship to the control part.
+  r_id : String
+  /// <anchor> (CT_ObjectAnchor) — retained raw.
+  anchor : @xml.Element?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_ControlPr::new(element : @xml.Element) -> CT_ControlPr {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut anchor : @xml.Element? = None
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "anchor" {
+      anchor = Some(e)
+    }
+  }
+  {
+    element,
+    locked: attr_bool(element, "locked", true),
+    default_size: attr_bool(element, "defaultSize", true),
+    disabled: attr_bool(element, "disabled", false),
+    auto_fill: attr_bool(element, "autoFill", true),
+    auto_line: attr_bool(element, "autoLine", true),
+    auto_pict: attr_bool(element, "autoPict", true),
+    alt_text: attr(element, "altText").unwrap_or(""),
+    print: attr_bool(element, "print", true),
+    recalc_always: attr_bool(element, "recalcAlways", false),
+    ui_object: attr_bool(element, "uiObject", false),
+    macro_ref: attr(element, "macro").unwrap_or(""),
+    cf: attr(element, "cf").unwrap_or("pict"),
+    linked_cell: attr(element, "linkedCell").unwrap_or(""),
+    list_fill_range: attr(element, "listFillRange").unwrap_or(""),
+    r_id: attr(element, "id").unwrap_or(""),
+    anchor,
   }
 }
 
 ///|
-/// XSD complex type CT_IgnoredErrors.
+/// XSD complex type CT_IgnoredErrors — Part 1 §18.3.1.46.  A list of
+/// `<ignoredError>` (CT_IgnoredError) children.
 pub(all) struct CT_IgnoredErrors {
   element : @xml.Element
+  errors : Array[CT_IgnoredError]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_IgnoredErrors::new(element : @xml.Element) -> CT_IgnoredErrors {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let errors : Array[CT_IgnoredError] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "ignoredError" {
+      errors.push(CT_IgnoredError::new(e))
+    }
   }
+  { element, errors }
 }
 
 ///|
-/// XSD complex type CT_IgnoredError.
+/// XSD complex type CT_IgnoredError — Part 1 §18.3.1.45.  The set of
+/// error checks suppressed over a cell range (`@sqref`), each a boolean
+/// toggle defaulting to false.
 pub(all) struct CT_IgnoredError {
   element : @xml.Element
+  /// @sqref (ST_Sqref) — the cell range(s) the suppression applies to.
+  sqref : String
+  /// @evalError (xsd:boolean) — default false.
+  eval_error : Bool
+  /// @twoDigitTextYear (xsd:boolean) — default false.
+  two_digit_text_year : Bool
+  /// @numberStoredAsText (xsd:boolean) — default false.
+  number_stored_as_text : Bool
+  /// @formula (xsd:boolean) — default false.
+  formula : Bool
+  /// @formulaRange (xsd:boolean) — default false.
+  formula_range : Bool
+  /// @unlockedFormula (xsd:boolean) — default false.
+  unlocked_formula : Bool
+  /// @emptyCellReference (xsd:boolean) — default false.
+  empty_cell_reference : Bool
+  /// @listDataValidation (xsd:boolean) — default false.
+  list_data_validation : Bool
+  /// @calculatedColumn (xsd:boolean) — default false.
+  calculated_column : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_IgnoredError::new(element : @xml.Element) -> CT_IgnoredError {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  {
+    element,
+    sqref: attr(element, "sqref").unwrap_or(""),
+    eval_error: attr_bool(element, "evalError", false),
+    two_digit_text_year: attr_bool(element, "twoDigitTextYear", false),
+    number_stored_as_text: attr_bool(element, "numberStoredAsText", false),
+    formula: attr_bool(element, "formula", false),
+    formula_range: attr_bool(element, "formulaRange", false),
+    unlocked_formula: attr_bool(element, "unlockedFormula", false),
+    empty_cell_reference: attr_bool(element, "emptyCellReference", false),
+    list_data_validation: attr_bool(element, "listDataValidation", false),
+    calculated_column: attr_bool(element, "calculatedColumn", false),
   }
 }
 
 ///|
-/// XSD complex type CT_TableParts.
+/// XSD complex type CT_TableParts — Part 1 §18.3.1.87 (`<tableParts>`).
+/// `@count` (optional) + a sequence of `<tablePart>` children.
 pub(all) struct CT_TableParts {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — number of table parts; default 0.
+  count : Int
+  /// `<tablePart>` (CT_TablePart) children in document order.
+  parts : Array[CT_TablePart]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TableParts::new(element : @xml.Element) -> CT_TableParts {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let parts : Array[CT_TablePart] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "tablePart" {
+      parts.push(CT_TablePart::new(e))
+    }
   }
+  { element, count: attr_int(element, "count", 0), parts }
 }
 
 ///|
-/// XSD complex type CT_TablePart.
+/// XSD complex type CT_TablePart — Part 1 §18.3.1.86 (`<tablePart>`).
+/// A relationship reference (`r:id`) to a table-definition part.
 pub(all) struct CT_TablePart {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @r:id (ST_RelationshipId) — relationship to the table part.
+  r_id : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TablePart::new(element : @xml.Element) -> CT_TablePart {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  { element, r_id: attr(element, "id").unwrap_or("") }
 }
 
 ///|
-/// XSD complex type CT_Table.
+/// XSD complex type CT_Table — Part 1 §18.5.1.2 (`<table>`).  Defines a
+/// SpreadsheetML structured table over a cell range: its name /
+/// display name, the `@ref` range, header / totals row counts, and the
+/// typed column definitions.
 pub(all) struct CT_Table {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @id (xsd:unsignedInt) — table id; default 0.
+  id : Int
+  /// @name (ST_Xstring) — programmatic name.
+  name : String
+  /// @displayName (ST_Xstring) — display name (required by spec).
+  display_name : String
+  /// @comment (ST_Xstring) — optional table comment.
+  comment : String
+  /// @ref (ST_Ref) — the table's cell range (e.g. "A1:C5").
+  ref_range : String
+  /// @headerRowCount (xsd:unsignedInt) — default 1.
+  header_row_count : Int
+  /// @totalsRowCount (xsd:unsignedInt) — default 0.
+  totals_row_count : Int
+  /// @totalsRowShown (xsd:boolean) — default true.
+  totals_row_shown : Bool
+  /// @tableType (ST_TableType) — "worksheet" (default) / "xml" /
+  /// "queryTable".
+  table_type : String
+  /// @connectionId (xsd:unsignedInt) — external connection; default 0.
+  connection_id : Int
+  /// @published (xsd:boolean) — default false.
+  published : Bool
+  /// @insertRow / @insertRowShift (xsd:boolean) — default false.
+  insert_row : Bool
+  insert_row_shift : Bool
+  /// Style references (ST_DxfId / cell-style names).  dxf-id fields use
+  /// -1 to mean "absent" (no default in the schema).
+  header_row_dxf_id : Int
+  data_dxf_id : Int
+  totals_row_dxf_id : Int
+  header_row_border_dxf_id : Int
+  table_border_dxf_id : Int
+  totals_row_border_dxf_id : Int
+  header_row_cell_style : String
+  data_cell_style : String
+  totals_row_cell_style : String
+  /// <tableColumns> (CT_TableColumns) — required column definitions.
+  table_columns : CT_TableColumns?
+  /// <autoFilter> (CT_AutoFilter) — optional, retained raw.
+  auto_filter : @xml.Element?
+  /// <sortState> (CT_SortState) — optional, retained raw.
+  sort_state : @xml.Element?
+  /// <tableStyleInfo> (CT_TableStyleInfo) — optional, retained raw.
+  table_style_info : @xml.Element?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Table::new(element : @xml.Element) -> CT_Table {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut table_columns : CT_TableColumns? = None
+  let mut auto_filter : @xml.Element? = None
+  let mut sort_state : @xml.Element? = None
+  let mut table_style_info : @xml.Element? = None
+  for child in element.children {
+    if child is @xml.Node::Element(e) {
+      match e.name.local_name {
+        "tableColumns" => table_columns = Some(CT_TableColumns::new(e))
+        "autoFilter" => auto_filter = Some(e)
+        "sortState" => sort_state = Some(e)
+        "tableStyleInfo" => table_style_info = Some(e)
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    id: attr_int(element, "id", 0),
+    name: attr(element, "name").unwrap_or(""),
+    display_name: attr(element, "displayName").unwrap_or(""),
+    comment: attr(element, "comment").unwrap_or(""),
+    ref_range: attr(element, "ref").unwrap_or(""),
+    header_row_count: attr_int(element, "headerRowCount", 1),
+    totals_row_count: attr_int(element, "totalsRowCount", 0),
+    totals_row_shown: attr_bool(element, "totalsRowShown", true),
+    table_type: attr(element, "tableType").unwrap_or("worksheet"),
+    connection_id: attr_int(element, "connectionId", 0),
+    published: attr_bool(element, "published", false),
+    insert_row: attr_bool(element, "insertRow", false),
+    insert_row_shift: attr_bool(element, "insertRowShift", false),
+    header_row_dxf_id: attr_int(element, "headerRowDxfId", -1),
+    data_dxf_id: attr_int(element, "dataDxfId", -1),
+    totals_row_dxf_id: attr_int(element, "totalsRowDxfId", -1),
+    header_row_border_dxf_id: attr_int(element, "headerRowBorderDxfId", -1),
+    table_border_dxf_id: attr_int(element, "tableBorderDxfId", -1),
+    totals_row_border_dxf_id: attr_int(element, "totalsRowBorderDxfId", -1),
+    header_row_cell_style: attr(element, "headerRowCellStyle").unwrap_or(""),
+    data_cell_style: attr(element, "dataCellStyle").unwrap_or(""),
+    totals_row_cell_style: attr(element, "totalsRowCellStyle").unwrap_or(""),
+    table_columns,
+    auto_filter,
+    sort_state,
+    table_style_info,
   }
 }
 
 ///|
-/// XSD complex type CT_TableColumns.
+/// XSD complex type CT_TableColumns — Part 1 §18.5.1.4 (`<tableColumns>`).
+/// `@count` + one or more `<tableColumn>` children.
 pub(all) struct CT_TableColumns {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @count (xsd:unsignedInt) — number of columns; default 0.
+  count : Int
+  /// `<tableColumn>` (CT_TableColumn) children in document order.
+  columns : Array[CT_TableColumn]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TableColumns::new(element : @xml.Element) -> CT_TableColumns {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let columns : Array[CT_TableColumn] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "tableColumn" {
+      columns.push(CT_TableColumn::new(e))
+    }
   }
+  { element, count: attr_int(element, "count", 0), columns }
 }
 
 ///|
-/// XSD complex type CT_TableColumn.
+/// XSD complex type CT_TableColumn — Part 1 §18.5.1.3 (`<tableColumn>`).
+/// One column of a structured table: its id / name and optional
+/// calculated-column / totals-row formulas.
 pub(all) struct CT_TableColumn {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @id (xsd:unsignedInt) — column id; default 0.
+  id : Int
+  /// @name (ST_Xstring) — column header text.
+  name : String
+  /// @uniqueName (ST_Xstring) — optional unique name.
+  unique_name : String
+  /// @totalsRowFunction (ST_TotalsRowFunction) — default "none".
+  totals_row_function : String
+  /// @totalsRowLabel (ST_Xstring) — totals-row label text.
+  totals_row_label : String
+  /// @queryTableFieldId (xsd:unsignedInt) — query-table field; -1 absent.
+  query_table_field_id : Int
+  /// Style references (ST_DxfId / cell-style names); dxf-id -1 = absent.
+  header_row_dxf_id : Int
+  data_dxf_id : Int
+  totals_row_dxf_id : Int
+  header_row_cell_style : String
+  data_cell_style : String
+  totals_row_cell_style : String
+  /// <calculatedColumnFormula> text — optional column formula.
+  calculated_column_formula : String?
+  /// <totalsRowFormula> text — optional totals-row formula.
+  totals_row_formula : String?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TableColumn::new(element : @xml.Element) -> CT_TableColumn {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let mut calculated_column_formula : String? = None
+  let mut totals_row_formula : String? = None
+  for child in element.children {
+    if child is @xml.Node::Element(e) {
+      match e.name.local_name {
+        "calculatedColumnFormula" =>
+          calculated_column_formula = Some(element_text(e))
+        "totalsRowFormula" => totals_row_formula = Some(element_text(e))
+        _ => ()
+      }
+    }
+  }
+  {
+    element,
+    id: attr_int(element, "id", 0),
+    name: attr(element, "name").unwrap_or(""),
+    unique_name: attr(element, "uniqueName").unwrap_or(""),
+    totals_row_function: attr(element, "totalsRowFunction").unwrap_or("none"),
+    totals_row_label: attr(element, "totalsRowLabel").unwrap_or(""),
+    query_table_field_id: attr_int(element, "queryTableFieldId", -1),
+    header_row_dxf_id: attr_int(element, "headerRowDxfId", -1),
+    data_dxf_id: attr_int(element, "dataDxfId", -1),
+    totals_row_dxf_id: attr_int(element, "totalsRowDxfId", -1),
+    header_row_cell_style: attr(element, "headerRowCellStyle").unwrap_or(""),
+    data_cell_style: attr(element, "dataCellStyle").unwrap_or(""),
+    totals_row_cell_style: attr(element, "totalsRowCellStyle").unwrap_or(""),
+    calculated_column_formula,
+    totals_row_formula,
   }
 }
 
 ///|
-/// XSD complex type CT_TableFormula.
+/// XSD complex type CT_TableFormula — Part 1 §18.5.1.5
+/// (`<calculatedColumnFormula>` / `<totalsRowFormula>`).  Holds the
+/// formula text and the `@array` flag.
 pub(all) struct CT_TableFormula {
   element : @xml.Element
+  /// @array (xsd:boolean) — array formula flag; default false.
+  array : Bool
+  /// Element text — the formula string.
+  formula : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TableFormula::new(element : @xml.Element) -> CT_TableFormula {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  {
+    element,
+    array: attr_bool(element, "array", false),
+    formula: element_text(element),
   }
 }
 
 ///|
-/// XSD complex type CT_BookViews.
+/// XSD complex type CT_BookViews — Part 1 §18.2.2 (`<bookViews>`).  A
+/// list of `<workbookView>` (CT_BookView) children.
 pub(all) struct CT_BookViews {
   element : @xml.Element
+  views : Array[CT_BookView]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_BookViews::new(element : @xml.Element) -> CT_BookViews {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let views : Array[CT_BookView] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "workbookView" {
+      views.push(CT_BookView::new(e))
+    }
   }
+  { element, views }
 }
 
 ///|
-/// XSD complex type CT_BookView.
+/// XSD complex type CT_BookView — Part 1 §18.2.1 (`<workbookView>`).
+/// One workbook-window view: which sheet tab is active, the first
+/// visible tab, window geometry, and tab-bar / scrollbar visibility.
 pub(all) struct CT_BookView {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @activeTab (xsd:unsignedInt) — 0-based active sheet tab; default 0.
+  active_tab : Int
+  /// @firstSheet (xsd:unsignedInt) — first visible tab; default 0.
+  first_sheet : Int
+  /// @showSheetTabs (xsd:boolean) — default true.
+  show_sheet_tabs : Bool
+  /// @showHorizontalScroll (xsd:boolean) — default true.
+  show_horizontal_scroll : Bool
+  /// @showVerticalScroll (xsd:boolean) — default true.
+  show_vertical_scroll : Bool
+  /// @minimized (xsd:boolean) — default false.
+  minimized : Bool
+  /// @visibility (ST_Visibility) — default "visible".
+  visibility : String
+  /// @xWindow / @yWindow (xsd:int) — window position; default 0.
+  x_window : Int
+  y_window : Int
+  /// @windowWidth / @windowHeight (xsd:unsignedInt) — default 0.
+  window_width : Int
+  window_height : Int
+  /// @tabRatio (xsd:unsignedInt) — sheet-tab / scrollbar split; default 600.
+  tab_ratio : Int
+  /// @autoFilterDateGrouping (xsd:boolean) — default true.
+  auto_filter_date_grouping : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_BookView::new(element : @xml.Element) -> CT_BookView {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  {
+    element,
+    active_tab: attr_int(element, "activeTab", 0),
+    first_sheet: attr_int(element, "firstSheet", 0),
+    show_sheet_tabs: attr_bool(element, "showSheetTabs", true),
+    show_horizontal_scroll: attr_bool(element, "showHorizontalScroll", true),
+    show_vertical_scroll: attr_bool(element, "showVerticalScroll", true),
+    minimized: attr_bool(element, "minimized", false),
+    visibility: attr(element, "visibility").unwrap_or("visible"),
+    x_window: attr_int(element, "xWindow", 0),
+    y_window: attr_int(element, "yWindow", 0),
+    window_width: attr_int(element, "windowWidth", 0),
+    window_height: attr_int(element, "windowHeight", 0),
+    tab_ratio: attr_int(element, "tabRatio", 600),
+    auto_filter_date_grouping: attr_bool(
+      element, "autoFilterDateGrouping", true,
+    ),
   }
 }
 
 ///|
-/// XSD complex type CT_CustomWorkbookViews.
+/// XSD complex type CT_CustomWorkbookViews — Part 1 §18.2.5
+/// (`<customWorkbookViews>`).  A list of `<customWorkbookView>`
+/// (CT_CustomWorkbookView) children.
 pub(all) struct CT_CustomWorkbookViews {
   element : @xml.Element
+  views : Array[CT_CustomWorkbookView]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_CustomWorkbookViews::new(
   element : @xml.Element,
 ) -> CT_CustomWorkbookViews {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let views : Array[CT_CustomWorkbookView] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) &&
+      e.name.local_name == "customWorkbookView" {
+      views.push(CT_CustomWorkbookView::new(e))
+    }
   }
+  { element, views }
 }
 
 ///|
-/// XSD complex type CT_CustomWorkbookView.
+/// XSD complex type CT_CustomWorkbookView — Part 1 §18.2.4
+/// (`<customWorkbookView>`).  A named, GUID-identified custom view of
+/// the workbook with its window geometry and active sheet.
 pub(all) struct CT_CustomWorkbookView {
   element : @xml.Element
+  /// @name (ST_Xstring) — required view name.
+  name : String
+  /// @guid (ST_Guid) — required view identifier.
+  guid : String
+  /// @activeSheetId (xsd:unsignedInt) — active sheet; default 0.
+  active_sheet_id : Int
+  /// @xWindow / @yWindow (xsd:int) — window position; default 0.
+  x_window : Int
+  y_window : Int
+  /// @windowWidth / @windowHeight (xsd:unsignedInt) — default 0.
+  window_width : Int
+  window_height : Int
+  /// @maximized (xsd:boolean) — default false.
+  maximized : Bool
+  /// @showHorizontalScroll / @showVerticalScroll / @showSheetTabs
+  /// (xsd:boolean) — default true.
+  show_horizontal_scroll : Bool
+  show_vertical_scroll : Bool
+  show_sheet_tabs : Bool
+  /// @tabRatio (xsd:unsignedInt) — tab / scrollbar split; default 600.
+  tab_ratio : Int
+  /// @autoUpdate (xsd:boolean) — default false.
+  auto_update : Bool
+  /// @mergeInterval (xsd:unsignedInt) — auto-update interval; default 0.
+  merge_interval : Int
+  /// @changesSavedWin (xsd:boolean) — default false.
+  changes_saved_win : Bool
+  /// @onlySync (xsd:boolean) — default false.
+  only_sync : Bool
+  /// @personalView (xsd:boolean) — default false.
+  personal_view : Bool
+  /// @includePrintSettings (xsd:boolean) — default true.
+  include_print_settings : Bool
+  /// @includeHiddenRowCol (xsd:boolean) — default true.
+  include_hidden_row_col : Bool
+  /// @minimized (xsd:boolean) — default false.
+  minimized : Bool
+  /// @showComments (ST_Comments) — default "commIndicator".
+  show_comments : String
+  /// @showFormulaBar (xsd:boolean) — default true.
+  show_formula_bar : Bool
+  /// @showStatusbar (xsd:boolean) — default true.
+  show_statusbar : Bool
+  /// @showObjects (ST_Objects) — default "all".
+  show_objects : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_CustomWorkbookView::new(
   element : @xml.Element,
 ) -> CT_CustomWorkbookView {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  {
+    element,
+    name: attr(element, "name").unwrap_or(""),
+    guid: attr(element, "guid").unwrap_or(""),
+    active_sheet_id: attr_int(element, "activeSheetId", 0),
+    x_window: attr_int(element, "xWindow", 0),
+    y_window: attr_int(element, "yWindow", 0),
+    window_width: attr_int(element, "windowWidth", 0),
+    window_height: attr_int(element, "windowHeight", 0),
+    maximized: attr_bool(element, "maximized", false),
+    show_horizontal_scroll: attr_bool(element, "showHorizontalScroll", true),
+    show_vertical_scroll: attr_bool(element, "showVerticalScroll", true),
+    show_sheet_tabs: attr_bool(element, "showSheetTabs", true),
+    tab_ratio: attr_int(element, "tabRatio", 600),
+    auto_update: attr_bool(element, "autoUpdate", false),
+    merge_interval: attr_int(element, "mergeInterval", 0),
+    changes_saved_win: attr_bool(element, "changesSavedWin", false),
+    only_sync: attr_bool(element, "onlySync", false),
+    personal_view: attr_bool(element, "personalView", false),
+    include_print_settings: attr_bool(element, "includePrintSettings", true),
+    include_hidden_row_col: attr_bool(element, "includeHiddenRowCol", true),
+    minimized: attr_bool(element, "minimized", false),
+    show_comments: attr(element, "showComments").unwrap_or("commIndicator"),
+    show_formula_bar: attr_bool(element, "showFormulaBar", true),
+    show_statusbar: attr_bool(element, "showStatusbar", true),
+    show_objects: attr(element, "showObjects").unwrap_or("all"),
   }
 }
 
 ///|
-/// XSD complex type CT_Sheets.
+/// XSD complex type CT_Sheets — Part 1 §18.2.20 (`<sheets>`).  The
+/// workbook's ordered list of `<sheet>` (CT_Sheet) entries.
 pub(all) struct CT_Sheets {
   element : @xml.Element
+  sheets : Array[CT_Sheet]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Sheets::new(element : @xml.Element) -> CT_Sheets {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let sheets : Array[CT_Sheet] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "sheet" {
+      sheets.push(CT_Sheet::new(e))
+    }
   }
+  { element, sheets }
 }
 
 ///|
-/// XSD complex type CT_Sheet: Schema sml.xsd complex type `CT_Sheet` has
-/// attributes `name`, `sheetId`, and `state`, and references the `r:id`
-/// relationship attribute group; CT_Sheet and CT_Sheet::new own that workbook
-/// sheet entry.
+/// XSD complex type CT_Sheet — Part 1 §18.2.19 (`<sheet>`).  One entry
+/// in the workbook's `<sheets>` list: the sheet's display `@name`, its
+/// `@sheetId`, visibility `@state`, and the `r:id` relationship to the
+/// sheet part.
 pub(all) struct CT_Sheet {
+  /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// @name (ST_Xstring) — sheet tab display name.
+  name : String
+  /// @sheetId (xsd:unsignedInt) — internal sheet id; default 0.
+  sheet_id : Int
+  /// @state (ST_SheetState) — "visible" (default) / "hidden" /
+  /// "veryHidden".
+  state : String
+  /// @r:id (ST_RelationshipId) — relationship to the worksheet part.
+  r_id : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_Sheet::new(element : @xml.Element) -> CT_Sheet {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  {
+    element,
+    name: attr(element, "name").unwrap_or(""),
+    sheet_id: attr_int(element, "sheetId", 0),
+    state: attr(element, "state").unwrap_or("visible"),
+    r_id: attr(element, "id").unwrap_or(""),
   }
 }
 
 ///|
-/// XSD complex type CT_SheetBackgroundPicture.
+/// XSD complex type CT_SheetBackgroundPicture — Part 1 §18.3.1.84
+/// (`<picture>`).  References the worksheet background image part via
+/// `r:id`.
 pub(all) struct CT_SheetBackgroundPicture {
   element : @xml.Element
+  /// @r:id (ST_RelationshipId) — relationship to the image part.
+  r_id : String
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_SheetBackgroundPicture::new(
   element : @xml.Element,
 ) -> CT_SheetBackgroundPicture {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
-  }
+  { element, r_id: attr(element, "id").unwrap_or("") }
 }
 
 ///|
-/// XSD complex type CT_WebPublishObjects.
+/// XSD complex type CT_WebPublishObjects — Part 1 §18.2.28.  A
+/// `@count` plus a list of `<webPublishObject>` children.
 pub(all) struct CT_WebPublishObjects {
   element : @xml.Element
+  count : Int
+  objects : Array[CT_WebPublishObject]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_WebPublishObjects::new(
   element : @xml.Element,
 ) -> CT_WebPublishObjects {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  let objects : Array[CT_WebPublishObject] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "webPublishObject" {
+      objects.push(CT_WebPublishObject::new(e))
+    }
   }
+  { element, count: attr_int(element, "count", 0), objects }
 }
 
 ///|
-/// XSD complex type CT_WebPublishObject.
+/// XSD complex type CT_WebPublishObject — Part 1 §18.2.27.  One object
+/// published to a web page: its id, the source object name, the
+/// destination file, and republish flag.
 pub(all) struct CT_WebPublishObject {
   element : @xml.Element
+  /// @id (xsd:unsignedInt) — required; default 0.
+  id : Int
+  /// @divId (ST_Xstring) — required HTML div id.
+  div_id : String
+  /// @sourceObject (ST_Xstring) — published object name; empty if absent.
+  source_object : String
+  /// @destinationFile (ST_Xstring) — required destination path.
+  destination_file : String
+  /// @title (ST_Xstring) — optional title.
+  title : String
+  /// @autoRepublish (xsd:boolean) — default false.
+  auto_republish : Bool
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_WebPublishObject::new(element : @xml.Element) -> CT_WebPublishObject {
-  let group_name = sheet_type_group_name()
-  let local_name = element.name.local_name
-  if group_name.length() > 0 || local_name.length() > 0 {
-    { element, }
-  } else {
-    { element, }
+  {
+    element,
+    id: attr_int(element, "id", 0),
+    div_id: attr(element, "divId").unwrap_or(""),
+    source_object: attr(element, "sourceObject").unwrap_or(""),
+    destination_file: attr(element, "destinationFile").unwrap_or(""),
+    title: attr(element, "title").unwrap_or(""),
+    auto_republish: attr_bool(element, "autoRepublish", false),
   }
 }

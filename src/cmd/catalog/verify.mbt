@@ -2995,6 +2995,59 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
 /// tag (and, when present, its unique marker) is the only way to
 /// catch a lossy round-trip — a real ECMA-376 conformance defect,
 /// since OOXML consumers expect open->save to preserve content.
+///|
+/// Open `pkg` through the typed reader for `which` and save it back,
+/// returning the full re-serialised package bytes (or `None` when the
+/// reader rejects the package).  Used by the structural-validity leg
+/// to re-open the round-tripped package as an OPC `Package` and assert
+/// its §6/§7/§11 invariants.
+fn roundtrip_saved_package(which : String, pkg : Bytes) -> Bytes? {
+  let base = match which.find(":") {
+    Some(i) => which[0:i].to_owned()
+    None => which
+  }
+  match base {
+    "xlsx" =>
+      try @sml_context.open(pkg) catch {
+        _ => None
+      } noraise {
+        w => Some(w.save())
+      }
+    "pptx" =>
+      try @pml_context.open(pkg) catch {
+        _ => None
+      } noraise {
+        pr => Some(pr.save())
+      }
+    _ =>
+      try @wml_context.open(pkg) catch {
+        _ => None
+      } noraise {
+        d => Some(d.save())
+      }
+  }
+}
+
+///|
+/// §6/§7/§11 — round-trip an empty-body host package for `format` and
+/// validate the re-opened package's OPC structural invariants.
+/// Returns the violation list (empty ⇒ structurally valid / a
+/// conforming consumer such as Microsoft Office will accept the
+/// package's structure).  A `None` open/reopen is reported as a single
+/// synthetic violation so the caller still sees a non-empty result.
+pub fn structural_validity(format : String) -> Array[String] {
+  let host = empty_body_package(format)
+  match roundtrip_saved_package(format, host) {
+    None => ["round-tripped package failed to re-open"]
+    Some(saved) =>
+      match (try? @opc.Package::open(saved)) {
+        Ok(pkg) => pkg.validate()
+        Err(_) => ["saved bytes are not a readable OPC package"]
+      }
+  }
+}
+
+///|
 fn roundtrip_saved_xml(which : String, pkg : Bytes) -> String? {
   let base = match which.find(":") {
     Some(i) => which[0:i].to_owned()
@@ -5735,8 +5788,14 @@ fn verify_entry(
   if !present.has_prefix("<svg ") {
     return "render-crash"
   }
-  // A surviving marker is unambiguous proof the element rendered.
-  if has_marker && present.contains(marker) {
+  // A surviving marker is proof the element rendered ONLY when it
+  // survives in the *visible skeleton* (data-* debug attributes
+  // stripped).  A marker that lands solely inside a `data-ooxml-*`
+  // attribute is metadata, not a rendered glyph — accepting it here
+  // would over-count metadata-only emissions as "rendered" (the bug
+  // that hid the icon-set / comment-indicator gaps).  The same
+  // data-stripped skeleton is used by the differential check below.
+  if has_marker && svg_visible_skeleton(present).contains(marker) {
     return "rendered"
   }
   // Differential check: render the same ancestry with the target

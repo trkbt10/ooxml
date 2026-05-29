@@ -149,6 +149,7 @@ fn parse_filters(
   element : @xml.Element,
 ) -> @domain.CT_Filters raise @opc_errors.SchemaViolation {
   let blank = parse_bool_attr(element, "blank", false)
+  let calendar_type = attr_or(element, "calendarType", "none")
   let filters : Array[@domain.CT_Filter] = Array::new()
   let date_group_items : Array[@domain.CT_DateGroupItem] = Array::new()
   for child in element.children {
@@ -163,7 +164,7 @@ fn parse_filters(
       _ => ()
     }
   }
-  { filters, date_group_items, blank }
+  { filters, date_group_items, blank, calendar_type }
 }
 
 ///|

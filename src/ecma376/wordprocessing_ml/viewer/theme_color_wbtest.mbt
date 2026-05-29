@@ -70,33 +70,58 @@ test "resolve_themed_color overrides base with themeColor" {
 }
 
 ///|
-test "resolve_themed_color applies themeTint towards white" {
+test "resolve_themed_color applies themeTint per the §17 HSL example" {
+  // ISO/IEC 29500-1 §17.15.1.51 worked example: accent2 = 4F81BD,
+  // themeTint = 99 (0.6) → L′ = L·0.6 + 0.4.  The spec hand-calc
+  // rounds L to 0.53 and reports 95B3D7; the precise luminance
+  // (L = 0.5275) yields 96B3D7 — identical within 1 LSB (the spec's
+  // rounding, not a divergence).
   let scheme = mk_el("clrScheme", [], [
-    @xml.Node::Element(mk_color_child("accent1", "000000")),
+    @xml.Node::Element(mk_color_child("accent2", "4F81BD")),
   ])
   let theme_elts = mk_el("themeElements", [], [@xml.Node::Element(scheme)])
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
-  // tint = FF (1.0) on #000000 should fully brighten to #FFFFFF.
-  let r = resolve_themed_color(None, Some("accent1"), Some("FF"), None, map)
+  let r = resolve_themed_color(None, Some("accent2"), Some("99"), None, map)
   @debug.debug_inspect(r, content=(
-    #|Some("ffffff")
+    #|Some("96b3d7")
   ))
 }
 
 ///|
-test "resolve_themed_color applies themeShade towards black" {
+test "resolve_themed_color applies themeShade per the §17 HSL example" {
+  // §17.15.1.51 worked example: accent2 = C0504D, themeShade = BF
+  // (0.749) → L′ = L·0.749.  The spec hand-calc rounds L to 0.53 and
+  // reports 943634; the precise luminance (L = 0.5275) yields 953735
+  // — identical within 1 LSB (the spec's rounding, not a divergence).
   let scheme = mk_el("clrScheme", [], [
-    @xml.Node::Element(mk_color_child("accent1", "FFFFFF")),
+    @xml.Node::Element(mk_color_child("accent2", "C0504D")),
   ])
   let theme_elts = mk_el("themeElements", [], [@xml.Node::Element(scheme)])
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
-  // shade = FF (1.0) on #FFFFFF should fully darken to #000000.
-  let r = resolve_themed_color(None, Some("accent1"), None, Some("FF"), map)
+  let r = resolve_themed_color(None, Some("accent2"), None, Some("BF"), map)
   @debug.debug_inspect(r, content=(
-    #|Some("000000")
+    #|Some("953735")
   ))
+}
+
+///|
+test "themeTint/themeShade of FF are near-identity (low values darken/lighten most)" {
+  // WML semantics: the ratio value/255 is the luminance multiplier,
+  // so 0xFF ≈ 1.0 ≈ identity (NOT full white/black).  A *small* hex
+  // value is the strong tint (toward white) / shade (toward black).
+  let scheme = mk_el("clrScheme", [], [
+    @xml.Node::Element(mk_color_child("accent1", "808080")),
+  ])
+  let theme_elts = mk_el("themeElements", [], [@xml.Node::Element(scheme)])
+  let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
+  let map = parse_clr_scheme(theme)
+  // tint=FF → L′ = L·1 + 0 = L (identity); shade=FF → L′ = L·1 = L.
+  let tinted = resolve_themed_color(None, Some("accent1"), Some("FF"), None, map)
+  let shaded = resolve_themed_color(None, Some("accent1"), None, Some("FF"), map)
+  assert_eq(tinted, Some("808080"))
+  assert_eq(shaded, Some("808080"))
 }
 
 ///|
@@ -156,14 +181,11 @@ test "themeColor cascade E2E: accent1 + themeTint produces resolved hex" {
       #|Some("4472c4")
     ),
   )
-  // themeColor="accent1" + themeShade="80" (50%) → ~half-darkened.
-  // 0x80 = 128 ⇒ shade ratio = 128/255 ≈ 0.502
-  // apply_shade(rgb, 1 - 0.502) ≈ apply_shade(rgb, 0.498)
-  // which multiplies each channel by 0.498:
-  //   r=0x44(68) → 68 * 0.498 ≈ 33 → 0x21
-  //   g=0x72(114) → 114 * 0.498 ≈ 56 → 0x38
-  //   b=0xC4(196) → 196 * 0.498 ≈ 97 → 0x61
-  // We don't pin the exact byte (depends on rounding); just
+  // themeColor="accent1" + themeShade="80" → §17 HSL luminance
+  // shade.  0x80 = 128 ⇒ shade ratio = 128/255 ≈ 0.502, applied as
+  // L′ = L · 0.502 (the HSL luminance is roughly halved), then
+  // converted back to RGB.  Halving the luminance darkens every
+  // channel, so we don't pin the exact byte (HSL rounding); just
   // verify the result is darker than the base and 6 hex chars.
   let shaded = resolve_themed_color(
     None,

@@ -893,6 +893,8 @@ pub(all) struct CT_TextPr {
   file_type : String
   /// @characterSet (xsd:string) — optional character-set identifier.
   character_set : String?
+  /// @codePage (xsd:int) — optional code page id; `None` when absent.
+  code_page : Int?
   /// @firstRow (xsd:unsignedInt) — optional, default 1.
   first_row : Int
   /// @sourceFile (s:ST_Xstring) — optional, default "".
@@ -935,6 +937,7 @@ pub fn CT_TextPr::new(element : @xml.Element) -> CT_TextPr {
     None => "win"
   }
   let character_set = attr(element, "characterSet")
+  let code_page = attr_uint_opt(element, "codePage")
   let first_row = attr_uint(element, "firstRow", 1)
   let source_file = match attr(element, "sourceFile") {
     Some(value) => value
@@ -965,6 +968,7 @@ pub fn CT_TextPr::new(element : @xml.Element) -> CT_TextPr {
     prompt,
     file_type,
     character_set,
+    code_page,
     first_row,
     source_file,
     delimited,
@@ -3736,6 +3740,9 @@ pub(all) struct CT_FileSharing {
   salt_value : String?
   /// @spinCount (xsd:unsignedInt) — optional iteration count.
   spin_count : Int?
+  /// @reservationPassword (ST_UnsignedShortHex) — legacy 16-bit
+  /// verifier hash, deprecated; `None` when absent.
+  reservation_password : String?
 } derive(Eq, Debug)
 
 ///|
@@ -3746,6 +3753,7 @@ pub fn CT_FileSharing::new(element : @xml.Element) -> CT_FileSharing {
   let hash_value = attr(element, "hashValue")
   let salt_value = attr(element, "saltValue")
   let spin_count = attr_uint_opt(element, "spinCount")
+  let reservation_password = attr(element, "reservationPassword")
   {
     element,
     read_only_recommended,
@@ -3754,6 +3762,7 @@ pub fn CT_FileSharing::new(element : @xml.Element) -> CT_FileSharing {
     hash_value,
     salt_value,
     spin_count,
+    reservation_password,
   }
 }
 
@@ -3784,6 +3793,8 @@ pub(all) struct CT_WebPublishing {
   dpi : Int
   /// @characterSet (xsd:string) — optional character-set name.
   character_set : String?
+  /// @codePage (xsd:int) — optional code page id; `None` when absent.
+  code_page : Int?
 } derive(Eq, Debug)
 
 ///|
@@ -3799,6 +3810,7 @@ pub fn CT_WebPublishing::new(element : @xml.Element) -> CT_WebPublishing {
   }
   let dpi = attr_uint(element, "dpi", 96)
   let character_set = attr(element, "characterSet")
+  let code_page = attr_uint_opt(element, "codePage")
   {
     element,
     css,
@@ -3809,6 +3821,7 @@ pub fn CT_WebPublishing::new(element : @xml.Element) -> CT_WebPublishing {
     target_screen_size,
     dpi,
     character_set,
+    code_page,
   }
 }
 

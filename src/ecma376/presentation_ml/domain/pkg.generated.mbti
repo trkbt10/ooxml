@@ -515,6 +515,18 @@ pub(all) struct CT_ModifyVerifier {
   hash_value : String?
   salt_value : String?
   spin_value : UInt?
+  crypt_provider_type : String?
+  crypt_algorithm_class : String?
+  crypt_algorithm_type : String?
+  crypt_algorithm_sid : UInt?
+  crypt_provider : String?
+  alg_id_ext : String?
+  alg_id_ext_source : String?
+  crypt_provider_type_ext : String?
+  crypt_provider_type_ext_source : String?
+  hash_data : String?
+  salt_data : String?
+  spin_count : UInt?
 } derive(Eq, @debug.Debug)
 pub fn CT_ModifyVerifier::new(@xml.Element) -> Self
 pub fn CT_ModifyVerifier::parse(@xml.Element) -> Self raise SchemaViolation
@@ -1284,6 +1296,9 @@ pub(all) struct CT_TLCommonBehaviorData {
   tav_list : Array[CT_TLTimeAnimateValue]
   calc_mode : ST_TLAnimateBehaviorCalcMode?
   value_type : ST_TLAnimateBehaviorValueType?
+  override_behavior : String?
+  runtime_context : String?
+  transform_type : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_TLCommonBehaviorData::is_empty(Self) -> Bool
 
@@ -1319,6 +1334,18 @@ pub(all) struct CT_TLCommonTimeNodeData {
   prev_conditions : Array[CT_TLTimeCondition]
   node_kind : CT_TLCommonTimeNodeKind
   children : Array[CT_TLCommonTimeNodeData]
+  after_effect : Bool
+  display : Bool
+  bld_lvl : Int?
+  grp_id : Int?
+  preset_subtype : Int?
+  evt_filter : String?
+  master_rel : String?
+  node_ph : Bool?
+  repeat_dur : ST_TLTime?
+  spd : String?
+  sync_behavior : String?
+  tm_filter : String?
 } derive(Eq, @debug.Debug)
 pub fn CT_TLCommonTimeNodeData::behavior_common(Self) -> CT_TLCommonBehaviorData?
 pub fn CT_TLCommonTimeNodeData::is_leaf(Self) -> Bool
@@ -1513,6 +1540,7 @@ pub(all) struct CT_TLTimeAnimateValue {
 
 pub(all) struct CT_TLTimeAnimateValueList {
   element : @xml.Element
+  tav : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
 pub fn CT_TLTimeAnimateValueList::new(@xml.Element) -> Self
 
@@ -1526,6 +1554,7 @@ pub fn CT_TLTimeCondition::is_static(Self) -> Bool
 
 pub(all) struct CT_TLTimeConditionList {
   element : @xml.Element
+  cond : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
 pub fn CT_TLTimeConditionList::new(@xml.Element) -> Self
 
@@ -1613,6 +1642,7 @@ pub fn CT_TagsData::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TimeNodeList {
   element : @xml.Element
+  time_nodes : Array[@xml.Element]
 } derive(Eq, @debug.Debug)
 pub fn CT_TimeNodeList::new(@xml.Element) -> Self
 

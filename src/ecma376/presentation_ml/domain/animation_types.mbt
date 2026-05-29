@@ -114,6 +114,15 @@ pub(all) struct CT_TLCommonBehaviorData {
   calc_mode : ST_TLAnimateBehaviorCalcMode?
   /// §19.5.1 @valueType (anim-only; None elsewhere).
   value_type : ST_TLAnimateBehaviorValueType?
+  /// §19.5.6 @override (ST_TLBehaviorOverride) — "normal" /
+  /// "childStyle"; `None` when absent.
+  override_behavior : String?
+  /// §19.5.6 @rctx (ST_TLBehaviorRuntimeContext) — runtime context
+  /// ("DOM" / "session"); `None` when absent.
+  runtime_context : String?
+  /// §19.5.6 @xfrmType (ST_TLBehaviorTransformType) — "pt" / "img" /
+  /// "all"; `None` when absent.
+  transform_type : String?
 } derive(Eq, Debug)
 
 ///|
@@ -340,6 +349,33 @@ pub(all) struct CT_TLCommonTimeNodeData {
   /// §19.5.33 child `<p:childTnLst>` (CT_TimeNodeList §19.5.25) —
   /// recursively decoded child time-nodes.
   children : Array[CT_TLCommonTimeNodeData]
+  /// §19.5.12 @afterEffect (xsd:boolean) — after-effect node; default false.
+  after_effect : Bool
+  /// §19.5.12 @display (xsd:boolean) — node is displayed; default true.
+  display : Bool
+  /// §19.5.12 @bldLvl (xsd:int) — build level; `None` when absent.
+  bld_lvl : Int?
+  /// §19.5.12 @grpId (xsd:unsignedInt) — build group id; `None` absent.
+  grp_id : Int?
+  /// §19.5.12 @presetSubtype (xsd:int) — preset subtype; `None` absent.
+  preset_subtype : Int?
+  /// §19.5.12 @evtFilter (xsd:string) — event filter; `None` absent.
+  evt_filter : String?
+  /// §19.5.12 @masterRel (ST_TLTimeNodeMasterRelation) — master
+  /// timeline relation; `None` absent.
+  master_rel : String?
+  /// §19.5.12 @nodePh (xsd:boolean) — node is a placeholder; `None`
+  /// when absent.
+  node_ph : Bool?
+  /// §19.5.12 @repeatDur (ST_TLTime) — repeat duration; `None` absent.
+  repeat_dur : ST_TLTime?
+  /// §19.5.12 @spd (ST_Percentage) — playback speed; `None` absent.
+  spd : String?
+  /// §19.5.12 @syncBehavior (ST_TLTimeNodeSyncType) — "canSlip" /
+  /// "locked"; `None` absent.
+  sync_behavior : String?
+  /// §19.5.12 @tmFilter (xsd:string) — time filter list; `None` absent.
+  tm_filter : String?
 } derive(Eq, Debug)
 
 ///|
@@ -442,13 +478,23 @@ pub fn ct_tl_common_time_node_repeat_iterations(
 pub(all) struct CT_TLTimeAnimateValueList {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// §19.5.81 — the `<p:tav>` (CT_TLTimeAnimateValue) keyframe entries
+  /// in document order, retained raw.  The typed list makes the
+  /// keyframe sequence queryable instead of opaque.
+  tav : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TLTimeAnimateValueList::new(
   element : @xml.Element,
 ) -> CT_TLTimeAnimateValueList {
-  { element, }
+  let tav : Array[@xml.Element] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "tav" {
+      tav.push(e)
+    }
+  }
+  { element, tav }
 }
 
 ///|
@@ -464,13 +510,23 @@ pub fn CT_TLTimeAnimateValueList::new(
 pub(all) struct CT_TLTimeConditionList {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// §19.5.27 — the `<p:cond>` (CT_TLTimeCondition) entries in document
+  /// order, retained raw.  The typed list makes the condition sequence
+  /// queryable instead of opaque.
+  cond : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TLTimeConditionList::new(
   element : @xml.Element,
 ) -> CT_TLTimeConditionList {
-  { element, }
+  let cond : Array[@xml.Element] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) && e.name.local_name == "cond" {
+      cond.push(e)
+    }
+  }
+  { element, cond }
 }
 
 ///|
@@ -487,9 +543,20 @@ pub fn CT_TLTimeConditionList::new(
 pub(all) struct CT_TimeNodeList {
   /// Preserve source XML element for byte-identical round-trip.
   element : @xml.Element
+  /// §19.5.84 — the time-node children (`par`/`seq`/`excl`/`anim*`/
+  /// `cmd`/`set`/`audio`/`video`) in document order.  Each is retained
+  /// as its raw element; the typed list makes the choice sequence
+  /// queryable instead of opaque.
+  time_nodes : Array[@xml.Element]
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TimeNodeList::new(element : @xml.Element) -> CT_TimeNodeList {
-  { element, }
+  let time_nodes : Array[@xml.Element] = []
+  for child in element.children {
+    if child is @xml.Node::Element(e) {
+      time_nodes.push(e)
+    }
+  }
+  { element, time_nodes }
 }

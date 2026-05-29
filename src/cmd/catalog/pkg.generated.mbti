@@ -16,6 +16,8 @@ type ExtendedCase
 
 type ExternalRefCase
 
+type ImageSlideCase
+
 type MediaSlideCase
 
 type PartCoverage

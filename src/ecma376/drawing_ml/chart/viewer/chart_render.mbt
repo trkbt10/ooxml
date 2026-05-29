@@ -419,6 +419,201 @@ fn read_trendline_type(tl : @xml.Element) -> (String, Int, Int) {
 }
 
 ///|
+fn trend_abs(v : Double) -> Double {
+  if v < 0.0 {
+    -v
+  } else {
+    v
+  }
+}
+
+///|
+/// Format a double to two decimal places for the trendline equation /
+/// R² label (§21.2.2.49 dispEq, §21.2.2.50 dispRSqr).
+fn fmt2_trend(v : Double) -> String {
+  let scaled = (v * 100.0 + (if v >= 0.0 { 0.5 } else { -0.5 })).to_int()
+  let whole = scaled / 100
+  let frac = scaled - whole * 100
+  let frac_abs = if frac < 0 { -frac } else { frac }
+  let frac_s = if frac_abs < 10 {
+    "0" + frac_abs.to_string()
+  } else {
+    frac_abs.to_string()
+  }
+  whole.to_string() + "." + frac_s
+}
+
+///|
+/// Solve the square linear system A·x = b by Gaussian elimination with
+/// partial pivoting.  `a` (row-major) and `b` are mutated in place.
+/// Returns `None` when the matrix is singular.
+fn solve_linear_system(
+  a : Array[Array[Double]],
+  b : Array[Double],
+) -> Array[Double]? {
+  let n = b.length()
+  for col = 0; col < n; col = col + 1 {
+    // Partial pivot: pick the row with the largest magnitude in `col`.
+    let mut piv = col
+    let mut best = trend_abs(a[col][col])
+    for r = col + 1; r < n; r = r + 1 {
+      let v = trend_abs(a[r][col])
+      if v > best {
+        best = v
+        piv = r
+      }
+    }
+    if best == 0.0 {
+      return None
+    }
+    if piv != col {
+      let tmp = a[piv]
+      a[piv] = a[col]
+      a[col] = tmp
+      let tb = b[piv]
+      b[piv] = b[col]
+      b[col] = tb
+    }
+    let pivot = a[col][col]
+    for r = col + 1; r < n; r = r + 1 {
+      let factor = a[r][col] / pivot
+      if factor != 0.0 {
+        for c = col; c < n; c = c + 1 {
+          a[r][c] = a[r][c] - factor * a[col][c]
+        }
+        b[r] = b[r] - factor * b[col]
+      }
+    }
+  }
+  let x = Array::make(n, 0.0)
+  for i = n - 1; i >= 0; i = i - 1 {
+    let mut s = b[i]
+    for c = i + 1; c < n; c = c + 1 {
+      s = s - a[i][c] * x[c]
+    }
+    x[i] = s / a[i][i]
+  }
+  Some(x)
+}
+
+///|
+/// Least-squares fit of `y = Σ coef[j]·x^exps[j]` to the points
+/// (xs, ys) via the normal equations (Gram matrix of the chosen
+/// monomial basis).  Returns the coefficients aligned to `exps`, or
+/// `None` if the system is singular / underdetermined.
+fn lsq_fit_basis(
+  xs : Array[Double],
+  ys : Array[Double],
+  exps : Array[Int],
+) -> Array[Double]? {
+  let p = exps.length()
+  if xs.length() < p {
+    return None
+  }
+  let mat : Array[Array[Double]] = []
+  for _j = 0; _j < p; _j = _j + 1 {
+    mat.push(Array::make(p, 0.0))
+  }
+  let rhs = Array::make(p, 0.0)
+  for idx = 0; idx < xs.length(); idx = idx + 1 {
+    let x = xs[idx]
+    let y = ys[idx]
+    let pows = Array::make(p, 0.0)
+    for j = 0; j < p; j = j + 1 {
+      pows[j] = @math.pow(x, exps[j].to_double())
+    }
+    for j = 0; j < p; j = j + 1 {
+      rhs[j] = rhs[j] + y * pows[j]
+      for k = 0; k < p; k = k + 1 {
+        mat[j][k] = mat[j][k] + pows[j] * pows[k]
+      }
+    }
+  }
+  solve_linear_system(mat, rhs)
+}
+
+///|
+/// Polynomial least-squares fit of degree `deg` to (xs, ys).  When
+/// `fixed_c0` is `Some`, the constant term is pinned (§21.2.2.83
+/// intercept) and only c1..c_deg are solved.  Returns coefficients
+/// `[c0, c1, …, c_deg]`, or `None` on a singular system.
+fn poly_fit(
+  xs : Array[Double],
+  ys : Array[Double],
+  deg : Int,
+  fixed_c0 : Double?,
+) -> Array[Double]? {
+  match fixed_c0 {
+    Some(c0) => {
+      let ys2 = []
+      for y in ys {
+        ys2.push(y - c0)
+      }
+      let exps = []
+      for k = 1; k <= deg; k = k + 1 {
+        exps.push(k)
+      }
+      match lsq_fit_basis(xs, ys2, exps) {
+        Some(rest) => {
+          let coeffs = [c0]
+          for c in rest {
+            coeffs.push(c)
+          }
+          Some(coeffs)
+        }
+        None => None
+      }
+    }
+    None => {
+      let exps = []
+      for k = 0; k <= deg; k = k + 1 {
+        exps.push(k)
+      }
+      lsq_fit_basis(xs, ys, exps)
+    }
+  }
+}
+
+///|
+/// Evaluate a polynomial `Σ coeffs[k]·x^k` at `x`.
+fn poly_eval(coeffs : Array[Double], x : Double) -> Double {
+  // Horner from the highest-degree term down.
+  let mut acc = 0.0
+  let mut k = coeffs.length() - 1
+  while k >= 0 {
+    acc = acc * x + coeffs[k]
+    k = k - 1
+  }
+  acc
+}
+
+///|
+/// Human-readable polynomial equation, highest degree first, e.g.
+/// `y = 1.50x^2 + -0.30x + 2.00`.
+fn poly_equation(coeffs : Array[Double]) -> String {
+  let sb = StringBuilder::new()
+  sb.write_string("y = ")
+  let mut deg = coeffs.length() - 1
+  let mut first = true
+  while deg >= 0 {
+    let c = coeffs[deg]
+    if !first {
+      sb.write_string(" + ")
+    }
+    sb.write_string(fmt2_trend(c))
+    if deg >= 2 {
+      sb.write_string("x^")
+      sb.write_string(deg.to_string())
+    } else if deg == 1 {
+      sb.write_string("x")
+    }
+    first = false
+    deg = deg - 1
+  }
+  sb.to_string()
+}
+
+///|
 /// §21.2.2.211 — render a trendline for a series' data points.
 /// Supports: linear, exp, log, poly, power, movingAvg per §21.2.2.212.
 fn render_trendline(
@@ -437,7 +632,7 @@ fn render_trendline(
   if n < 2 || max_v <= 0.0 {
     return []
   }
-  let (ttype, _order, period) = read_trendline_type(tl_elem)
+  let (ttype, order, period) = read_trendline_type(tl_elem)
   let dash = format_double(stroke_width * 3.0) +
     " " +
     format_double(stroke_width * 2.0)
@@ -484,46 +679,23 @@ fn render_trendline(
       ),
     ]
   }
-  // Linear regression: y = mx + b (default for all other types).
-  let mut sum_x = 0.0
-  let mut sum_y = 0.0
-  let mut sum_xy = 0.0
-  let mut sum_xx = 0.0
-  for i, v in values {
-    let x = i.to_double()
-    sum_x = sum_x + x
-    sum_y = sum_y + v
-    sum_xy = sum_xy + x * v
-    sum_xx = sum_xx + x * x
+  // Category positions use Excel's category-axis convention: x = 1, 2,
+  // …, n (1-based).  This keeps `log`/`power` (which take ln(x)) well
+  // defined and matches the equation Excel reports.
+  let xs : Array[Double] = []
+  for i = 0; i < n; i = i + 1 {
+    xs.push((i + 1).to_double())
   }
-  let nd = n.to_double()
-  let denom = nd * sum_xx - sum_x * sum_x
-  if denom == 0.0 {
-    return []
-  }
-  let m_raw = (nd * sum_xy - sum_x * sum_y) / denom
-  let b_raw = (sum_y - m_raw * sum_x) / nd
-  // §21.2.2.83 intercept — when present, fix the y-intercept and
-  // recompute m so the line passes through (0, intercept).
-  let (m, b) = match first_child_named(tl_elem, "intercept") {
+  // §21.2.2.83 intercept — fix the constant term (applies to linear /
+  // poly / exp per the schema; ignored for log / power, where Excel
+  // also disables it).
+  let intercept_val : Double? = match first_child_named(tl_elem, "intercept") {
     Some(e) =>
       match attr_value(e, "val") {
-        Some(v) => {
-          let b_fixed = parse_double_lenient(v)
-          // m = Σ((x_i)(y_i - b_fixed)) / Σ(x_i²)
-          let mut num = 0.0
-          let mut den = 0.0
-          for i, vi in values {
-            let x = i.to_double()
-            num = num + x * (vi - b_fixed)
-            den = den + x * x
-          }
-          let m_fixed = if den > 0.0 { num / den } else { m_raw }
-          (m_fixed, b_fixed)
-        }
-        None => (m_raw, b_raw)
+        Some(v) => Some(parse_double_lenient(v))
+        None => None
       }
-    None => (m_raw, b_raw)
+    None => None
   }
   // §21.2.2.71 forward / §21.2.2.20 backward — extend the trendline
   // forward / backward in X by the given number of category units.
@@ -543,41 +715,112 @@ fn render_trendline(
       }
     None => 0.0
   }
-  // For exp/log/power, compute a multi-point polyline approximation.
-  let num_pts = 20
+  // Fit the requested model (§21.2.2.213 ST_TrendlineType).  Each
+  // branch yields `eval` (1-based category x → fitted y) and the
+  // `equation` string for §21.2.2.49 dispEq.  exp / log / power are
+  // linearised — least squares in the transformed space — rather than
+  // approximated from a raw linear fit.  Any singular / underdetermined
+  // fit falls back to a plain linear regression.
+  let linear_model = fn() -> ((Double) -> Double, String) {
+    match poly_fit(xs, values, 1, intercept_val) {
+      Some(c) =>
+        ((x : Double) => poly_eval(c, x), "y = " + fmt2_trend(c[1]) + "x + " + fmt2_trend(c[0]))
+      None => ((_x : Double) => 0.0, "")
+    }
+  }
+  let (eval, equation) : ((Double) -> Double, String) = match ttype {
+    "exp" => {
+      // y = b·e^{m·x} ⇒ ln y = ln b + m·x (requires y > 0).
+      let lx : Array[Double] = []
+      let ly : Array[Double] = []
+      for i = 0; i < n; i = i + 1 {
+        if values[i] > 0.0 {
+          lx.push(xs[i])
+          ly.push(@math.ln(values[i]))
+        }
+      }
+      let fixed_lnb = match intercept_val {
+        Some(b0) => if b0 > 0.0 { Some(@math.ln(b0)) } else { None }
+        None => None
+      }
+      match poly_fit(lx, ly, 1, fixed_lnb) {
+        Some(c) => {
+          let b = @math.exp(c[0])
+          let m = c[1]
+          (
+            (x : Double) => b * @math.exp(m * x),
+            "y = " + fmt2_trend(b) + "e^(" + fmt2_trend(m) + "x)",
+          )
+        }
+        None => linear_model()
+      }
+    }
+    "log" => {
+      // y = m·ln(x) + b ⇒ linear fit on (ln x, y) (requires x > 0).
+      let lx : Array[Double] = []
+      let ly : Array[Double] = []
+      for i = 0; i < n; i = i + 1 {
+        if xs[i] > 0.0 {
+          lx.push(@math.ln(xs[i]))
+          ly.push(values[i])
+        }
+      }
+      match poly_fit(lx, ly, 1, None) {
+        Some(c) => {
+          let b = c[0]
+          let m = c[1]
+          (
+            (x : Double) => if x > 0.0 { m * @math.ln(x) + b } else { b },
+            "y = " + fmt2_trend(m) + "ln(x) + " + fmt2_trend(b),
+          )
+        }
+        None => linear_model()
+      }
+    }
+    "power" => {
+      // y = b·x^m ⇒ ln y = ln b + m·ln x (requires x > 0, y > 0).
+      let lx : Array[Double] = []
+      let ly : Array[Double] = []
+      for i = 0; i < n; i = i + 1 {
+        if xs[i] > 0.0 && values[i] > 0.0 {
+          lx.push(@math.ln(xs[i]))
+          ly.push(@math.ln(values[i]))
+        }
+      }
+      match poly_fit(lx, ly, 1, None) {
+        Some(c) => {
+          let b = @math.exp(c[0])
+          let m = c[1]
+          (
+            (x : Double) => if x > 0.0 { b * @math.pow(x, m) } else { 0.0 },
+            "y = " + fmt2_trend(b) + "x^" + fmt2_trend(m),
+          )
+        }
+        None => linear_model()
+      }
+    }
+    "poly" =>
+      match poly_fit(xs, values, order, intercept_val) {
+        Some(c) => ((x : Double) => poly_eval(c, x), poly_equation(c))
+        None => linear_model()
+      }
+    _ => linear_model()
+  }
+  // Sample the fitted curve across [−backward, (n−1)+forward] in
+  // category coordinates (0-based for pixel placement; the model is
+  // evaluated at the 1-based x = coord + 1).
+  let num_pts = 60
   let pts = StringBuilder::new()
   let mut first = true
   let mut pi = 0
-  let x_start = -backward
-  let x_end = (n - 1).to_double() + forward
-  let x_span = x_end - x_start
+  let coord_start = -backward
+  let coord_end = (n - 1).to_double() + forward
+  let coord_span = coord_end - coord_start
   while pi <= num_pts {
     let t = pi.to_double() / num_pts.to_double()
-    let xi = x_start + t * x_span
-    let y_val = match ttype {
-      "exp" => {
-        // Approximate: use linear regression on log(y) for initial fit,
-        // then evaluate exp curve. Simplified: y = b * exp(m * x).
-        let exp_val = b * @math.pow(2.718281828459045, m * xi / nd * 2.0)
-        if exp_val > 0.0 { exp_val } else { m * xi + b }
-      }
-      "log" => {
-        // y = m * ln(x+1) + b
-        let log_val = m * @math.log10(xi + 1.0) / @math.log10(2.718281828459045) +
-          b
-        log_val
-      }
-      "power" => {
-        // Approximate power: y ≈ b * (x+1)^(m/b)
-        if xi >= 0.0 && b > 0.0 {
-          b * @math.pow(xi + 1.0, m / b)
-        } else {
-          m * xi + b
-        }
-      }
-      _ => m * xi + b
-    }
-    let x = px + xi * step
+    let coord = coord_start + t * coord_span
+    let y_val = eval(coord + 1.0)
+    let x = px + coord * step
     let y = py + ph - y_val / max_v * ph
     if !first {
       pts.write_string(" ")
@@ -664,39 +907,32 @@ fn render_trendline(
     None => ()
   }
   if disp_eq || disp_rsqr {
-    fn fmt2(v : Double) -> String {
-      let scaled = (v * 100.0 + (if v >= 0.0 { 0.5 } else { -0.5 })).to_int()
-      let whole = scaled / 100
-      let frac = scaled - whole * 100
-      let frac_abs = if frac < 0 { -frac } else { frac }
-      let frac_s = if frac_abs < 10 {
-        "0" + frac_abs.to_string()
-      } else {
-        frac_abs.to_string()
-      }
-      whole.to_string() + "." + frac_s
-    }
-
     let mut label = ""
     if disp_eq {
-      label = "y = " + fmt2(m) + "x + " + fmt2(b)
+      label = equation
     }
     if disp_rsqr {
-      // Compute R² for linear regression.
-      let mean_y = sum_y / nd
+      // Coefficient of determination R² = 1 − SS_res / SS_tot, using
+      // the fitted model `eval` (so it is correct for every trendline
+      // type, not just linear).  Residuals are measured against the
+      // 1-based category x = i + 1.
+      let mut sum_y = 0.0
+      for v in values {
+        sum_y = sum_y + v
+      }
+      let mean_y = sum_y / n.to_double()
       let mut ss_tot = 0.0
       let mut ss_res = 0.0
       for i, v in values {
-        let x = i.to_double()
-        let pred = m * x + b
+        let pred = eval((i + 1).to_double())
         ss_tot = ss_tot + (v - mean_y) * (v - mean_y)
         ss_res = ss_res + (v - pred) * (v - pred)
       }
       let rsq = if ss_tot > 0.0 { 1.0 - ss_res / ss_tot } else { 0.0 }
       if label.length() > 0 {
-        label = label + "  R² = " + fmt2(rsq)
+        label = label + "  R² = " + fmt2_trend(rsq)
       } else {
-        label = "R² = " + fmt2(rsq)
+        label = "R² = " + fmt2_trend(rsq)
       }
     }
     let lx = px + pw - stroke_width * 4.0

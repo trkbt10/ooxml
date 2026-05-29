@@ -255,6 +255,13 @@ fn main {
   let mut count = 0
   // Tallies for the coverage summary.
   let outcomes : Map[String, Int] = Map([], capacity=0)
+  // Glyph-level coverage audit: collect every element whose render
+  // verdict is `parsed` (it left NO visible primitive in the SVG —
+  // the data-stripped skeleton is unchanged by its presence) together
+  // with its namespace / type, so the visual-but-unrendered cases can
+  // be triaged out of the genuinely non-visual config / metadata
+  // elements.  Written to /tmp/catalog-parsed.txt at the end.
+  let parsed_elements : Array[String] = []
   // Round-trip *fidelity* tally — orthogonal to `outcomes`.  Where
   // `outcomes` measures open->save->open->render *no-crash* + render
   // trace, `fidelity` measures whether the element actually survived
@@ -590,6 +597,11 @@ fn main {
       )
     }
     outcomes[outcome] = outcomes.get(outcome).unwrap_or(0) + 1
+    if outcome == "parsed" {
+      parsed_elements.push(
+        ns_prefix(decl.ns) + ":" + decl.name + "\t" + decl.type_name + "\thost=" + host_fmt,
+      )
+    }
     // Round-trip fidelity (non-visual): re-run the canonical embed
     // through open->save and inspect the saved XML for the element's
     // survival.  Only meaningful when the package opens at all, so
@@ -794,6 +806,43 @@ fn main {
   println("    (ambiguous = tag present but also emitted by host")
   println("     scaffolding, so the target's own survival is unprovable")
   println("     by this method — neither a confirmed pass nor a drop)")
+  println("")
+
+  // Glyph-level coverage audit dump — every `parsed` (no visible
+  // primitive) element, for triaging visual-but-unrendered gaps.
+  {
+    let sb = StringBuilder::new()
+    for line in parsed_elements {
+      sb.write_string(line)
+      sb.write_char('\n')
+    }
+    let _ = try? @fs.write_string_to_file(
+      "/tmp/catalog-parsed.txt",
+      sb.to_string(),
+    )
+    println("    (\{parsed_elements.length()} `parsed` elements written to /tmp/catalog-parsed.txt for glyph-level triage)")
+  }
+
+  // L2c — OPC structural validity of the round-tripped package.  A
+  // necessary condition for a conforming consumer (incl. Microsoft
+  // Office) to open the file: content types resolve, XML parts are
+  // well-formed, every Internal relationship target exists, and a
+  // root office-document relationship is present.  Self-contained —
+  // no external validator required.
+  println("L2c OPC structural validity  (open -> save -> reopen ->")
+  println("    validate §6/§7/§11 invariants; necessary condition for")
+  println("    Microsoft Office to open the package)")
+  for fmt in ["xlsx", "pptx", "docx"] {
+    let violations = structural_validity(fmt)
+    if violations.length() == 0 {
+      println("    \{fmt}: VALID (0 structural violations)")
+    } else {
+      println("    \{fmt}: \{violations.length()} violation(s):")
+      for v in violations {
+        println("      - \{v}")
+      }
+    }
+  }
   println("")
 
   // L3 — ECMA-376 specification-section coverage.  The unit here is

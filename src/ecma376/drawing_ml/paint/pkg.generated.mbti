@@ -1,0 +1,60 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "trkbt10/ooxml/ecma376/drawing_ml/paint"
+
+import {
+  "moonbitlang/core/ref",
+  "trkbt10/ooxml/xml",
+}
+
+// Values
+pub fn format_resolved_color(ResolvedColor) -> String
+
+pub fn get_scheme_color(String, String?, ColorResolveContext) -> String?
+
+pub fn resolve_solid_fill(@xml.Element, ph_clr? : String?, ctx~ : ColorResolveContext) -> ResolvedColor?
+
+// Errors
+
+// Types and methods
+pub(all) struct ColorResolveContext {
+  color_map : Map[String, String]
+  color_map_override : Map[String, String]?
+  color_scheme : Map[String, String]
+  ph_clr : String?
+  major_font : Map[String, String]
+  minor_font : Map[String, String]
+  clamp_overflow_hue : Bool
+  group_fill : @xml.Element?
+}
+pub fn ColorResolveContext::empty() -> Self
+pub fn ColorResolveContext::resolve_theme_typeface(Self, String) -> String?
+pub fn ColorResolveContext::with_clamp_overflow_hue(Self, Bool) -> Self
+pub fn ColorResolveContext::with_color_scheme(Self, Map[String, String]) -> Self
+pub fn ColorResolveContext::with_font_scheme(Self, Map[String, String], Map[String, String]) -> Self
+pub fn ColorResolveContext::with_group_fill(Self, @xml.Element?) -> Self
+pub fn ColorResolveContext::with_maps(Self, Map[String, String], Map[String, String]?) -> Self
+pub fn ColorResolveContext::with_ph_clr(Self, String) -> Self
+pub fn ColorResolveContext::with_strict_spec(Self) -> Self
+
+pub(all) struct ResolvedColor {
+  hex : String
+  alpha : Double
+}
+
+pub struct SvgDefsCollector {
+  defs : Array[@xml.Node]
+  def_id_counter : @ref.Ref[Int]
+}
+pub fn SvgDefsCollector::add_def(Self, @xml.Node) -> Unit
+pub fn SvgDefsCollector::new() -> Self
+pub fn SvgDefsCollector::next_id(Self, String) -> String
+pub fn SvgDefsCollector::to_defs_element(Self) -> String
+pub fn SvgDefsCollector::to_defs_node(Self) -> @xml.Node?
+
+// Type aliases
+pub type ColorMap = Map[String, String]
+
+pub type ColorScheme = Map[String, String]
+
+// Traits
+

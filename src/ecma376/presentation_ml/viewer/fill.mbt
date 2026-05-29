@@ -272,6 +272,57 @@ fn pattern_tile_marks(prst : String, fg : String) -> Array[@xml.Node]? {
     )
   }
 
+  fn dline(x1 : Double, y1 : Double, x2 : Double, y2 : Double) {
+    @markup.elem_ns(
+      "line",
+      @markup.svg_ns,
+      [
+        @markup.attr("x1", x1.to_string()),
+        @markup.attr("y1", y1.to_string()),
+        @markup.attr("x2", x2.to_string()),
+        @markup.attr("y2", y2.to_string()),
+        @markup.attr("stroke", fg),
+        @markup.attr("stroke-width", "1"),
+        @markup.attr("stroke-dasharray", "3 3"),
+      ],
+      [],
+    )
+  }
+
+  // Stroked open polyline / path (fg, no fill) for zig-zag / wave /
+  // shingle presets.
+  fn stroke_shape(tag : String, geom_attr : String, geom : String) {
+    @markup.elem_ns(
+      tag,
+      @markup.svg_ns,
+      [
+        @markup.attr(geom_attr, geom),
+        @markup.attr("fill", "none"),
+        @markup.attr("stroke", fg),
+        @markup.attr("stroke-width", "1"),
+      ],
+      [],
+    )
+  }
+
+  // Translucent foreground band (used to layer plaid stripes so the
+  // crossings read darker, matching the woven look).
+  fn band(x : Double, y : Double, w : Double, h : Double) {
+    @markup.elem_ns(
+      "rect",
+      @markup.svg_ns,
+      [
+        @markup.attr("x", x.to_string()),
+        @markup.attr("y", y.to_string()),
+        @markup.attr("width", w.to_string()),
+        @markup.attr("height", h.to_string()),
+        @markup.attr("fill", fg),
+        @markup.attr("fill-opacity", "0.5"),
+      ],
+      [],
+    )
+  }
+
   // Percentage-density presets — a single centred dot whose radius
   // grows with the density fraction (area ∝ fraction over the 8×8
   // cell, capped so high percentages still read as a pattern).
@@ -366,8 +417,100 @@ fn pattern_tile_marks(prst : String, fg : String) -> Array[@xml.Node]? {
           [],
         ),
       ])
+    // Dashed rules.
+    "dashHorz" => Some([dline(0.0, 4.0, 8.0, 4.0)])
+    "dashVert" => Some([dline(4.0, 0.0, 4.0, 8.0)])
+    "dashDnDiag" => Some([dline(0.0, 0.0, 8.0, 8.0)])
+    "dashUpDiag" => Some([dline(0.0, 8.0, 8.0, 0.0)])
+    // Brick courses — a horizontal rule per row with staggered head
+    // joints (vertical segments offset by half a tile between rows).
+    "horzBrick" =>
+      Some([
+        line(0.0, 0.0, 8.0, 0.0, 1.0),
+        line(0.0, 4.0, 8.0, 4.0, 1.0),
+        line(0.0, 0.0, 0.0, 4.0, 1.0),
+        line(4.0, 4.0, 4.0, 8.0, 1.0),
+      ])
+    "diagBrick" =>
+      Some([
+        line(0.0, 0.0, 8.0, 8.0, 1.0),
+        line(-8.0, 0.0, 8.0, 16.0, 1.0),
+        line(0.0, -8.0, 16.0, 8.0, 1.0),
+        line(0.0, 8.0, 4.0, 4.0, 1.0),
+      ])
+    // Diamonds — a centred rotated square.
+    "solidDmnd" => Some([patt_diamond_node(8.0, fg, true)])
+    "openDmnd" => Some([patt_diamond_node(8.0, fg, false)])
+    "dotDmnd" => Some([dot(4.0, 4.0, 1.0)])
+    // Confetti — scattered dots; `lg` uses larger dots.
+    "smConfetti" =>
+      Some([dot(1.0, 1.0, 0.6), dot(5.0, 3.0, 0.6), dot(2.5, 6.0, 0.6), dot(6.5, 6.5, 0.6)])
+    "lgConfetti" =>
+      Some([dot(1.0, 1.0, 1.0), dot(5.0, 3.0, 1.0), dot(2.5, 6.0, 1.0), dot(6.5, 6.5, 1.0)])
+    // Zig-zag — a triangular wave repeated across the tile.
+    "zigZag" => Some([stroke_shape("polyline", "points", "0,6 2,2 4,6 6,2 8,6")])
+    // Wave — a smooth sinusoid (two quadratic segments).
+    "wave" => Some([stroke_shape("path", "d", "M0,6 Q2,2 4,6 T8,6")])
+    // Trellis — a dense diagonal lattice (both diagonals, plus the
+    // half-offset diagonals so the cells are smaller than diagCross).
+    "trellis" =>
+      Some([
+        line(0.0, 0.0, 8.0, 8.0, 1.0),
+        line(0.0, 8.0, 8.0, 0.0, 1.0),
+        line(0.0, 4.0, 4.0, 0.0, 1.0),
+        line(4.0, 8.0, 8.0, 4.0, 1.0),
+        line(0.0, 4.0, 4.0, 8.0, 1.0),
+        line(4.0, 0.0, 8.0, 4.0, 1.0),
+      ])
+    // Weave — interlocking horizontal / vertical short segments
+    // (basket weave).
+    "weave" =>
+      Some([
+        line(0.0, 2.0, 4.0, 2.0, 1.0),
+        line(4.0, 6.0, 8.0, 6.0, 1.0),
+        line(6.0, 0.0, 6.0, 4.0, 1.0),
+        line(2.0, 4.0, 2.0, 8.0, 1.0),
+      ])
+    // Plaid — overlapping translucent bands; the crossing region
+    // reads darker like woven tartan.
+    "plaid" => Some([band(0.0, 0.0, 8.0, 4.0), band(0.0, 0.0, 4.0, 8.0)])
+    // Shingle — overlapping roof-tile arcs.
+    "shingle" =>
+      Some([
+        stroke_shape("path", "d", "M0,8 Q4,3 8,8"),
+        stroke_shape("path", "d", "M-4,4 Q0,-1 4,4"),
+        stroke_shape("path", "d", "M4,4 Q8,-1 12,4"),
+      ])
+    // Divot — small chevron marks scattered over the tile.
+    "divot" =>
+      Some([
+        stroke_shape("polyline", "points", "1,3 2,5 3,3"),
+        stroke_shape("polyline", "points", "5,5 6,7 7,5"),
+      ])
+    // Sphere — a shaded ball (approximated by a filled disc).
+    "sphere" => Some([dot(4.0, 4.0, 3.4)])
     _ => None
   }
+}
+
+///|
+/// A diamond (rotated square) centred in a `size`×`size` pattern tile,
+/// either filled or stroked-only (open), used by §20.1.8.47 pattern
+/// fill presets `solidDmnd` / `openDmnd`.
+fn patt_diamond_node(size : Double, color : String, filled : Bool) -> @xml.Node {
+  let c = size / 2.0
+  let s = size.to_string()
+  let cs = c.to_string()
+  let pts = "\{cs},0 \{s},\{cs} \{cs},\{s} 0,\{cs}"
+  let attrs : Array[@xml.Attribute] = [@markup.attr("points", pts)]
+  if filled {
+    attrs.push(@markup.attr("fill", color))
+  } else {
+    attrs.push(@markup.attr("fill", "none"))
+    attrs.push(@markup.attr("stroke", color))
+    attrs.push(@markup.attr("stroke-width", "1"))
+  }
+  @markup.elem_ns("polygon", @markup.svg_ns, attrs, [])
 }
 
 ///|
