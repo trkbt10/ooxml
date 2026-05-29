@@ -874,10 +874,44 @@ priv struct LaidLine {
 }
 
 ///|
-/// Block emitted into the document flow.  Either a paragraph or a table.
+/// A floating anchored drawing (§20.4.2.3 `<wp:anchor>` with a side
+/// wrap) lifted out of the inline run flow.  The emitter paints
+/// `node` at the resolved (x, cur_y) and does NOT advance `cur_y`, so
+/// the surrounding paragraphs — already narrowed by `collect_blocks` —
+/// flow alongside it.
+priv struct FloatDrawing {
+  /// Pre-rendered SVG node for the drawing, drawn at local (0,0).
+  node : @xml.Node
+  /// Reserved box in CSS px.
+  w_px : Double
+  h_px : Double
+  /// Horizontal placement: `"left"` / `"right"` (the resolved side the
+  /// float sits on) — the body band takes the opposite side.
+  side : String
+  /// §20.4.2.3 `distL` horizontal wrap gap (px) between the float and
+  /// the body band.
+  gutter_px : Double
+}
+
+///|
+/// Block emitted into the document flow.  A paragraph, a table, or a
+/// floating anchored drawing.
 priv enum FlowBlock {
   ParaBlock(LaidParagraph)
   TableBlock(LaidTable)
+  FloatBlock(FloatDrawing)
+}
+
+///|
+/// Return a copy of `lp` with every line shifted right by `dx` px —
+/// used to flow a wrap-band body paragraph to the right of a LEFT
+/// side-float.
+fn shift_paragraph_x(lp : LaidParagraph, dx : Double) -> LaidParagraph {
+  let lines : Array[LaidLine] = []
+  for line in lp.lines {
+    lines.push({ ..line, x: line.x + dx })
+  }
+  { ..lp, lines, }
 }
 
 ///|
@@ -1129,11 +1163,23 @@ fn resolve_cell_margins(
 ///|
 /// One assembled page: blocks already positioned with absolute y on this
 /// page (page-relative, starting at margin_top).
+///|
+/// A floating anchored drawing placed at absolute page coordinates
+/// (§20.4.2.3), painted above the body text it wraps.
+priv struct PlacedFloat {
+  node : @xml.Node
+  x : Double
+  y : Double
+}
+
+///|
 priv struct AssembledPage {
   /// Paragraph blocks with absolute coordinates on this page.
   paragraphs : Array[LaidParagraph]
   /// Table blocks with absolute coordinates on this page.
   tables : Array[LaidTable]
+  /// §20.4.2.3 side-float drawings positioned on this page.
+  floats : Array[PlacedFloat]
 }
 
 // =============================================================================
@@ -1333,7 +1379,7 @@ fn render_svg_raw(
       // `<w:background>/<w:drawing>`) still surfaces the
       // graphic.
       let cfg = apply_document_background(default_page_config(), domain.element)
-      let page = AssembledPage::{ paragraphs: [], tables: [] }
+      let page = AssembledPage::{ paragraphs: [], tables: [], floats: [] }
       let svg = emit_page_svg_with_decoration(
         page,
         cfg,
@@ -1612,7 +1658,7 @@ fn render_combined_svg_raw(
         // too so its watermark / colour fill still surfaces on
         // the synthesised blank page.
         apply_document_background(default_page_config(), domain.element),
-        [AssembledPage::{ paragraphs: [], tables: [] }],
+        [AssembledPage::{ paragraphs: [], tables: [], floats: [] }],
       )
     Some(body_el) =>
       lay_out_body(
@@ -1695,7 +1741,7 @@ fn build_combined_svg(
     // No body / no pages — emit a single blank page so the SVG has a
     // viewport. Matches `render_svg_raw`'s "single blank page"
     // fallback.
-    let blank = AssembledPage::{ paragraphs: [], tables: [] }
+    let blank = AssembledPage::{ paragraphs: [], tables: [], floats: [] }
     let nodes = build_page_decoration_nodes(
       blank,
       cfg,
@@ -2219,6 +2265,11 @@ fn collect_blocks(
   // (matches the reference renderer's frame inset).
   let mut wrap_height_remaining = 0.0
   let mut wrap_body_width = content_width
+  // §20.4.2.3 — when the active band is held open by a LEFT side-float,
+  // the body flows to the RIGHT of it: every body line is shifted by
+  // this x offset (float width + gutter).  Zero for right-floats and
+  // for framePr bands (frame on the right, body flush left).
+  let mut wrap_body_x = 0.0
   // CSS-pixel gap reserved between the body band and the frame box.
   // §17.3.1.11 `w:hSpace` supplies the spec value; when omitted we
   // fall back to 14 px (tuned against the reference renderer for the
@@ -2320,15 +2371,45 @@ fn collect_blocks(
                   wrap_body_width = body_w
                 }
               }
-              None =>
+              None => {
+                // §20.4.2.3 — a side-wrapping anchored drawing in THIS
+                // paragraph opens a fresh wrap band (when none is
+                // already active): emit the float as a positioned
+                // block and narrow this + following paragraphs beside
+                // it.  Checked before the active-band path so a float
+                // always wins its own band.
+                if wrap_height_remaining <= 0.0 {
+                  match
+                    paragraph_side_float(
+                      with_marker,
+                      content_width,
+                      image_resolver,
+                    ) {
+                    Some(float) => {
+                      blocks.push(FloatBlock(float))
+                      let gutter = float.gutter_px
+                      wrap_body_width = (content_width - float.w_px - gutter).max(
+                        content_width * 0.3,
+                      )
+                      wrap_body_x = if float.side == "left" {
+                        float.w_px + gutter
+                      } else {
+                        0.0
+                      }
+                      // The band's vertical extent is the float height;
+                      // following paragraphs flow beside it until spent.
+                      wrap_height_remaining = float.h_px
+                    }
+                    None => ()
+                  }
+                }
                 if wrap_height_remaining > 0.0 {
-                  // Active wrap band — re-lay-out at the narrower
-                  // body width and bill the height against the
-                  // budget.  When the paragraph extends past the
-                  // remaining budget we still narrow the WHOLE
-                  // paragraph for the first iteration (the
-                  // partial implementation does not split lines
-                  // mid-paragraph across the band boundary).
+                  // Active wrap band — re-lay-out at the narrower body
+                  // width (and x offset for left-floats), billing the
+                  // height against the budget.  A paragraph longer than
+                  // the remaining band is narrowed whole for its first
+                  // iteration (lines are not split across the band
+                  // boundary).
                   let narrow = layout_paragraph(
                     with_marker,
                     wrap_body_width,
@@ -2338,15 +2419,22 @@ fn collect_blocks(
                     theme_map~,
                     font_map~,
                   )
-                  wrap_height_remaining = wrap_height_remaining - narrow.height
+                  let placed = if wrap_body_x > 0.0 {
+                    shift_paragraph_x(narrow, wrap_body_x)
+                  } else {
+                    narrow
+                  }
+                  wrap_height_remaining = wrap_height_remaining - placed.height
                   if wrap_height_remaining < 0.0 {
                     wrap_height_remaining = 0.0
                     wrap_body_width = content_width
+                    wrap_body_x = 0.0
                   }
-                  blocks.push(ParaBlock(narrow))
+                  blocks.push(ParaBlock(placed))
                 } else {
                   blocks.push(ParaBlock(probe))
                 }
+              }
             }
           }
           "tbl" => {
@@ -4321,6 +4409,200 @@ fn extract_anchor_info(drawing : @xml.Element) -> AnchorInfo {
 }
 
 ///|
+/// True when `drawing` is a *side-wrapping* floating anchor — a
+/// `<wp:anchor>` whose wrap is `Square` / `Tight` / `Through` (the
+/// modes that narrow the surrounding text band).  `None` /
+/// `TopAndBottom` / inline drawings return false: they keep their
+/// existing inline / behind-text rendering.
+fn drawing_is_side_float(drawing : @xml.Element) -> Bool {
+  let info = extract_anchor_info(drawing)
+  // §20.4.2.3 — a `behindDoc` drawing sits BEHIND the text (z-order);
+  // text flows OVER it with no exclusion, so it is not a reflow float
+  // even if it declares a wrap mode.  It keeps its inline / behind-text
+  // rendering (and its `data-ooxml-*` metadata).
+  if info.behind_doc {
+    return false
+  }
+  match info.wrap_mode {
+    "Square" | "Tight" | "Through" => true
+    _ => false
+  }
+}
+
+///|
+/// Resolve the side a side-float sits on from its `<wp:positionH>`:
+/// an `<wp:align>` of `right` (or a `<wp:posOffset>` past the content
+/// midpoint) → `"right"`; everything else → `"left"`.  `content_width`
+/// is the column width used to classify an offset.
+fn float_side(drawing : @xml.Element, content_width : Double) -> String {
+  for child in drawing.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "anchor" {
+          match first_child_named(c, "positionH") {
+            Some(ph) => {
+              match first_child_named(ph, "align") {
+                Some(al) =>
+                  match al.children {
+                    [Text(t)] =>
+                      if t == "right" {
+                        return "right"
+                      } else if t == "left" || t == "inside" {
+                        return "left"
+                      }
+                    _ => ()
+                  }
+                None => ()
+              }
+              match first_child_named(ph, "posOffset") {
+                Some(po) =>
+                  match po.children {
+                    [Text(t)] =>
+                      match (try? @string.parse_double(t)) {
+                        Ok(emu) =>
+                          return if emu / 914400.0 * 96.0 > content_width / 2.0 {
+                            "right"
+                          } else {
+                            "left"
+                          }
+                        Err(_) => ()
+                      }
+                    _ => ()
+                  }
+                None => ()
+              }
+            }
+            None => ()
+          }
+        }
+      _ => ()
+    }
+  }
+  // §20.4.2.3 — Word's default floating picture anchors at the left of
+  // the column; the body then wraps on the right.
+  "left"
+}
+
+///|
+/// `<wp:anchor distL>` horizontal wrap gap (EMU → px), defaulting to a
+/// small 14 px gutter when absent.
+fn float_gutter_px(drawing : @xml.Element) -> Double {
+  for child in drawing.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "anchor" {
+          match attr_value(c, "distL") {
+            Some(v) =>
+              match (try? @string.parse_double(v)) {
+                Ok(emu) => return emu / 914400.0 * 96.0
+                Err(_) => ()
+              }
+            None => ()
+          }
+        }
+      _ => ()
+    }
+  }
+  14.0
+}
+
+///|
+/// Render a side-float `<w:drawing>` to an SVG node positioned at local
+/// (0,0) sized `w_px` × `h_px` — an `<image>` for a picture payload, or
+/// the shape/group/canvas `<g>` (with the inline baseline shift undone)
+/// for a `<wps:wsp>` / `<wpg:wgp>` / `<wpc:wpc>` payload.  `None` when
+/// nothing renderable is found.
+fn render_float_drawing(
+  drawing : @xml.Element,
+  w_px : Double,
+  h_px : Double,
+  image_resolver : (String) -> ResolvedImage?,
+) -> @xml.Node? {
+  match build_inline_image(drawing, image_resolver) {
+    Some(img) =>
+      Some(
+        @markup.elem_ns("image", @markup.svg_ns, [
+          @markup.attr("x", "0"),
+          @markup.attr("y", "0"),
+          @markup.attr("width", fmt_double(w_px)),
+          @markup.attr("height", fmt_double(h_px)),
+          @markup.attr("href", img.href),
+          @markup.attr("preserveAspectRatio", "xMidYMid meet"),
+        ], []),
+      )
+    None => {
+      // Shape / group / canvas payloads surface a `<g>` translated to
+      // (0,−h_px) for inline baseline alignment; undo that shift with
+      // an outer translate so the float draws inside [0, h_px].
+      let payload = match build_inline_canvas(drawing) {
+        Some(p) => Some(p)
+        None =>
+          match build_inline_group(drawing) {
+            Some(p) => Some(p)
+            None => build_inline_shape(drawing)
+          }
+      }
+      match payload {
+        Some(mp) =>
+          Some(
+            @markup.elem_ns("g", @markup.svg_ns, [
+              @markup.attr("transform", "translate(0," + fmt_double(h_px) + ")"),
+            ], [@xml.Node::Element(mp.group)]),
+          )
+        None => None
+      }
+    }
+  }
+}
+
+///|
+/// Find the first side-wrapping float `<w:drawing>` in paragraph `p`
+/// (walking its `<w:r>` runs) and build its `FloatDrawing`, or `None`
+/// when the paragraph carries no side-float.  `content_width` resolves
+/// the float's side from `<wp:positionH>`.
+fn paragraph_side_float(
+  p : @xml.Element,
+  content_width : Double,
+  image_resolver : (String) -> ResolvedImage?,
+) -> FloatDrawing? {
+  fn scan(el : @xml.Element) -> FloatDrawing? {
+    for child in el.children {
+      match child {
+        Element(c) =>
+          if c.name.local_name == "drawing" {
+            if drawing_is_side_float(c) {
+              let (w_px, h_px) = drawing_extent_size_px(c)
+              if w_px > 0.0 && h_px > 0.0 {
+                match render_float_drawing(c, w_px, h_px, image_resolver) {
+                  Some(node) =>
+                    return Some({
+                      node,
+                      w_px,
+                      h_px,
+                      side: float_side(c, content_width),
+                      gutter_px: float_gutter_px(c),
+                    })
+                  None => ()
+                }
+              }
+            }
+          } else {
+            // Recurse into runs / hyperlinks / sdt content.
+            match scan(c) {
+              Some(f) => return Some(f)
+              None => ()
+            }
+          }
+        _ => ()
+      }
+    }
+    None
+  }
+
+  scan(p)
+}
+
+///|
 /// Convert the `<wp:extent cx cy>` attributes of a `<w:drawing>` to
 /// CSS pixels at 96 dpi (per §20.4.2.6 ST_PositiveCoordinate).
 fn drawing_extent_size_px(drawing : @xml.Element) -> (Double, Double) {
@@ -4463,6 +4745,13 @@ fn emit_drawing_span(
   image_resolver : (String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
 ) -> Unit {
+  // §20.4.2.3 — a side-wrapping floating anchor is NOT part of the
+  // inline run flow; `collect_blocks` lifts it into a `FloatBlock` and
+  // narrows the surrounding text.  Emitting nothing here keeps it out
+  // of the line box.
+  if drawing_is_side_float(drawing) {
+    return
+  }
   match build_inline_image(drawing, image_resolver) {
     Some(img) =>
       spans.push(
@@ -4495,6 +4784,27 @@ fn emit_drawing_span(
             ),
           )
         None =>
+          // §20.4.2.29 `<wpc:wpc>` canvas → §20.1.2.2.20 `<wpg:wgp>`
+          // group → single `<wps:wsp>` shape — each carries its own
+          // graphicData URI, tried in turn before the VML fallback.
+          match build_inline_canvas(drawing) {
+            Some(canvas) =>
+              spans.push(
+                apply_hyperlink_styling(
+                  with_math(template, canvas),
+                  hyperlink_styling,
+                ),
+              )
+            None =>
+          match build_inline_group(drawing) {
+            Some(grp) =>
+              spans.push(
+                apply_hyperlink_styling(
+                  with_math(template, grp),
+                  hyperlink_styling,
+                ),
+              )
+            None =>
           match build_inline_shape(drawing) {
             Some(shape) =>
               spans.push(
@@ -4524,6 +4834,8 @@ fn emit_drawing_span(
                   }
                 }
               }
+          }
+          }
           }
       }
   }
@@ -6531,6 +6843,7 @@ fn flow_into_pages(
   let column_count = geometry.length()
   let mut cur_paragraphs : Array[LaidParagraph] = []
   let mut cur_tables : Array[LaidTable] = []
+  let mut cur_floats : Array[PlacedFloat] = []
   // The column currently being filled (0-based) and the running y
   // cursor inside that column.
   let mut cur_column = 0
@@ -6544,11 +6857,17 @@ fn flow_into_pages(
     for x in cur_tables {
       t.push(x)
     }
-    pages.push({ paragraphs: p, tables: t })
+    let f : Array[PlacedFloat] = []
+    for x in cur_floats {
+      f.push(x)
+    }
+    pages.push({ paragraphs: p, tables: t, floats: f })
   }
 
   let has_content = fn() {
-    cur_paragraphs.length() > 0 || cur_tables.length() > 0
+    cur_paragraphs.length() > 0 ||
+    cur_tables.length() > 0 ||
+    cur_floats.length() > 0
   }
   // Close the current column. If columns remain, advance to the next
   // one and reset the y cursor; otherwise close the page.
@@ -6560,6 +6879,7 @@ fn flow_into_pages(
       push_page()
       cur_paragraphs = []
       cur_tables = []
+      cur_floats = []
       cur_column = 0
       cur_y = cfg.margin_top
     }
@@ -6569,6 +6889,7 @@ fn flow_into_pages(
     push_page()
     cur_paragraphs = []
     cur_tables = []
+    cur_floats = []
     cur_column = 0
     cur_y = cfg.margin_top
   }
@@ -6582,8 +6903,23 @@ fn flow_into_pages(
     let frame_pr_opt = match block {
       ParaBlock(p) => p.frame_pr
       TableBlock(_) => None
+      FloatBlock(_) => None
     }
     match (block, frame_pr_opt) {
+      // §20.4.2.3 — a side-float anchored drawing: paint it at the
+      // resolved side, at the current flow y, WITHOUT advancing
+      // `cur_y` so the (already-narrowed) surrounding paragraphs flow
+      // beside it.
+      (FloatBlock(float), _) => {
+        let fx = match float.side {
+          "right" => cfg.page_width - cfg.margin_right - float.w_px
+          _ => cfg.margin_left
+        }
+        cur_floats.push({ node: float.node, x: fx, y: cur_y })
+        // Out of flow: do not advance `cur_y`; the narrowed body
+        // paragraphs flow alongside at the same y.
+        continue
+      }
       (ParaBlock(p), Some(fp)) => {
         // Horizontal anchor: "page" → page-relative;
         // "margin" / "text" / default → content-area-relative.
@@ -6716,6 +7052,8 @@ fn flow_into_pages(
     let block_h = match block {
       ParaBlock(p) => p.height
       TableBlock(t) => t.height + BLOCK_GAP_PX
+      // Unreachable: FloatBlock `continue`s above (out of flow).
+      FloatBlock(_) => 0.0
     }
     let remaining = cfg.margin_top + content_height - cur_y
     // §17.3.1.5 — `<w:pageBreakBefore>` closes the current page
@@ -6723,6 +7061,7 @@ fn flow_into_pages(
     let force_break = match block {
       ParaBlock(p) => p.page_break_before
       TableBlock(_) => false
+      FloatBlock(_) => false
     }
     if force_break && has_content() {
       break_page()
@@ -6753,6 +7092,8 @@ fn flow_into_pages(
         cur_tables.push(adjusted)
         cur_y = cur_y + t.height + BLOCK_GAP_PX
       }
+      // Unreachable: FloatBlock `continue`s above (out of flow).
+      FloatBlock(_) => ()
     }
   }
   // Final page.
@@ -6761,7 +7102,7 @@ fn flow_into_pages(
   }
   // Empty document: emit a single blank page.
   if pages.length() == 0 {
-    pages.push({ paragraphs: [], tables: [] })
+    pages.push({ paragraphs: [], tables: [], floats: [] })
   }
   pages
 }
@@ -6963,6 +7304,14 @@ fn build_decoration_block_nodes(blocks : Array[FlowBlock]) -> Array[@xml.Node] {
         }
         cursor = cursor + t.height
       }
+      // §20.4.2.3 — a side-float in decoration flow (header / footer /
+      // cell): paint at the current cursor without advancing it.
+      FloatBlock(float) =>
+        out.push(
+          @markup.elem_ns("g", @markup.svg_ns, [
+            @markup.attr("transform", "translate(0," + fmt_double(cursor) + ")"),
+          ], [float.node]),
+        )
     }
   }
   out
@@ -7232,6 +7581,18 @@ fn build_page_body_nodes(
         ),
       )
     }
+  }
+  // §20.4.2.3 — side-float drawings, painted above the wrapped body
+  // text at their resolved page coordinates.
+  for fl in page.floats {
+    out.push(
+      @markup.elem_ns("g", @markup.svg_ns, [
+        @markup.attr(
+          "transform",
+          "translate(" + fmt_double(fl.x) + "," + fmt_double(fl.y) + ")",
+        ),
+      ], [fl.node]),
+    )
   }
   out
 }

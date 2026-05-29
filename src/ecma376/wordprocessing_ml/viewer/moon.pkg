@@ -23,4 +23,5 @@ import {
 import {
   "moonbitlang/core/debug" @debug,
   "moonbitlang/x/fs" @fs,
+  "moonbitlang/core/encoding/utf8" @utf8,
 } for "wbtest"
