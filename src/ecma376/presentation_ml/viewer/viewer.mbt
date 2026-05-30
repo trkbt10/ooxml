@@ -2644,6 +2644,590 @@ fn shift_hex_lightness(hex : String, delta : Double) -> String {
 /// `<g transform="scale(EMU_PER_PX)">` so coordinates align with the
 /// EMU viewBox.
 /// @source web-pptx packages/@aurochs-renderer/pptx/src/svg/slide-text.ts:53 (renderTextSvg)
+///|
+/// Concatenate the plain text of every `<a:t>` descendant of a
+/// `<a:txBody>` (runs joined in document order, paragraphs separated
+/// by a space).  Used by the WordArt arch renderer, which lays a
+/// single string along a path.
+fn txbody_plain_text(tx_body : @xml.Element) -> String {
+  let sb = StringBuilder::new()
+  fn walk(el : @xml.Element) -> Unit {
+    for ch in el.children {
+      match ch {
+        @xml.Node::Element(e) =>
+          if e.name.local_name == "t" {
+            for t in e.children {
+              match t {
+                @xml.Node::Text(s) => sb.write_string(s)
+                _ => ()
+              }
+            }
+          } else {
+            walk(e)
+          }
+        _ => ()
+      }
+    }
+  }
+
+  walk(tx_body)
+  sb.to_string()
+}
+
+///|
+/// §20.1.9.x `<a:bodyPr>/<a:prstTxWarp prst="…">` — render the text of
+/// `tx_body` along an SVG arc when the warp preset is an arch / circle
+/// family one (the dominant WordArt shapes).  Returns the SVG nodes
+/// (an arc `<path>` def reference + a `<text><textPath>`), or `None`
+/// for any other preset (the caller then uses the normal span layout,
+/// which renders the text readable but unwarped).
+fn render_warped_text(
+  tx_body : @xml.Element,
+  box_w : Double,
+  box_h : Double,
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+) -> Array[@xml.Node]? {
+  let body_pr = first_child_named(tx_body, "bodyPr")
+  let warp = match body_pr {
+    Some(bp) => first_child_named(bp, "prstTxWarp")
+    None => None
+  }
+  let prst = match warp {
+    Some(w) =>
+      match attr_value(w, "prst") {
+        Some(p) => p
+        None => return None
+      }
+    None => return None
+  }
+  // Two classes of preset are faithfully expressible as text laid on a
+  // single SVG guide path (the glyph BASELINE follows a curve):
+  //   • arch / circle / button  — a circular arc (the dominant WordArt).
+  //   • curve / wave / slant     — open arcs, sine waves, slanted lines.
+  // Both are rendered below by generating the guide `<path>` and binding
+  // the run text to it with `<textPath>`.
+  //
+  // The ENVELOPE families (inflate, deflate, can, triangle, chevron,
+  // cascade, fade, ring) warp the text BODY between two differing
+  // top/bottom curves — a non-affine 2-D mesh distortion of each glyph
+  // outline.  Faithfully rendering those needs per-glyph TrueType `glyf`
+  // outline extraction (which the metrics-only font stack here does not
+  // expose), so they are NOT approximated: the caller falls back to the
+  // readable, unwarped span layout rather than a misleading fake.
+  let text = txbody_plain_text(tx_body)
+  if text.length() == 0 {
+    return None
+  }
+  if box_w <= 0.0 || box_h <= 0.0 {
+    return None
+  }
+  let inset = box_w * 0.06
+  let x0 = inset
+  let x1 = box_w - inset
+  let rx = (x1 - x0) / 2.0
+  // Build a circular-arc guide path bulging up or down with a given
+  // vertical radius ratio (`ry_ratio` × box height).
+  fn arc_d(ry_ratio : Double, down : Bool) -> String {
+    let ry = box_h * ry_ratio
+    let (y_edge, sweep) = if down {
+      (box_h * 0.5 - ry, 0) // baseline near the top, bulging downward
+    } else {
+      (box_h * 0.5 + ry, 1) // baseline near the bottom, bulging upward
+    }
+    "M " +
+    format_double(x0) +
+    "," +
+    format_double(y_edge) +
+    " A " +
+    format_double(rx) +
+    "," +
+    format_double(ry) +
+    " 0 0 " +
+    sweep.to_string() +
+    " " +
+    format_double(x1) +
+    "," +
+    format_double(y_edge)
+  }
+  // Sample y = f(x) across the box width into an `M … L …` polyline the
+  // glyphs ride along — used for the sine-wave and slanted baselines.
+  fn sampled_d(f : (Double) -> Double) -> String {
+    let n = 48
+    let buf = StringBuilder::new()
+    for i in 0..=n {
+      let t = i.to_double() / n.to_double()
+      let x = x0 + (x1 - x0) * t
+      buf.write_string(if i == 0 { "M " } else { " L " })
+      buf.write_string(format_double(x))
+      buf.write_string(",")
+      buf.write_string(format_double(f(x)))
+    }
+    buf.to_string()
+  }
+
+  let pi = 3.141592653589793
+  let cy = box_h * 0.5
+  // §20.1.10.76 ST_TextShapeType — select the guide-path family.
+  let path_d = if prst.has_prefix("textArch") ||
+    prst.has_prefix("textCircle") ||
+    prst.has_prefix("textButton") {
+    // Arch / circle / button: deep circular arc.
+    let down = prst.has_prefix("textArchDown") ||
+      prst == "textCirclePour" ||
+      (prst.has_prefix("textButton") && prst.has_suffix("Pour"))
+    arc_d(0.45, down)
+  } else if prst.has_prefix("textCurve") {
+    // §20.1.10.76 textCurveUp/textCurveDown — a shallow open arc.
+    arc_d(0.28, prst.has_suffix("Down"))
+  } else if prst == "textWave1" || prst == "textWave2" {
+    // One sine period across the width; Wave2 starts on the opposite
+    // phase (cosine) so its crest/trough mirror Wave1.
+    let amp = box_h * 0.22
+    let phase = if prst == "textWave2" { pi } else { 0.0 }
+    sampled_d(fn(x) {
+      cy - amp * @math.sin(2.0 * pi * (x - x0) / (x1 - x0) + phase)
+    })
+  } else if prst == "textDoubleWave1" || prst == "textWave4" {
+    // Two sine periods across the width; Wave4 mirrors the phase so its
+    // first hump dips rather than rises.
+    let amp = box_h * 0.18
+    let phase = if prst == "textWave4" { pi } else { 0.0 }
+    sampled_d(fn(x) {
+      cy - amp * @math.sin(4.0 * pi * (x - x0) / (x1 - x0) + phase)
+    })
+  } else if prst == "textSlantUp" {
+    // Straight baseline rising left→right.
+    sampled_d(fn(x) {
+      box_h * 0.82 - (box_h * 0.64) * ((x - x0) / (x1 - x0))
+    })
+  } else if prst == "textSlantDown" {
+    // Straight baseline falling left→right.
+    sampled_d(fn(x) {
+      box_h * 0.18 + (box_h * 0.64) * ((x - x0) / (x1 - x0))
+    })
+  } else if prst == "textRingInside" || prst == "textRingOutside" {
+    // §20.1.10.76 textRing* — the run wraps fully around a circle.
+    // Two half-arcs trace the complete ring; `Inside` reverses the
+    // sweep so the glyph baselines face inward.
+    let cx = box_w * 0.5
+    let cy = box_h * 0.5
+    let r = (if box_w < box_h { box_w } else { box_h }) * 0.42
+    let sweep = if prst == "textRingInside" { 0 } else { 1 }
+    let s = sweep.to_string()
+    "M " +
+    format_double(cx - r) +
+    "," +
+    format_double(cy) +
+    " A " +
+    format_double(r) +
+    "," +
+    format_double(r) +
+    " 0 1 " +
+    s +
+    " " +
+    format_double(cx + r) +
+    "," +
+    format_double(cy) +
+    " A " +
+    format_double(r) +
+    "," +
+    format_double(r) +
+    " 0 1 " +
+    s +
+    " " +
+    format_double(cx - r) +
+    "," +
+    format_double(cy)
+  } else {
+    // Envelope family (inflate / deflate / can / chevron / triangle /
+    // cascade / fade …): the text BODY is deformed between two guide
+    // curves, which `<textPath>` cannot express.  Warp the real glyph
+    // outlines instead (faithful WordArt), falling back to flat text
+    // only when the font outline cannot be resolved.
+    return render_envelope_warp_text(tx_body, box_w, box_h, ctx, prst)
+  }
+  let arc_id = defs.next_id("txwarp-arc")
+  defs.add_def(
+    @markup.elem_ns(
+      "path",
+      @markup.svg_ns,
+      [
+        @markup.attr("id", arc_id),
+        @markup.attr("d", path_d),
+        @markup.attr("fill", "none"),
+      ],
+      [],
+    ),
+  )
+  // Font size / colour from the first run's properties (or defaults).
+  let first_rpr = warp_first_run_pr(tx_body)
+  let font_px = match first_rpr {
+    Some(rp) =>
+      match attr_value(rp, "sz") {
+        Some(v) =>
+          (try? @string.parse_double(v)).to_option().map_or(box_h * 0.3, fn(d) {
+            d / 100.0 * 96.0 / 72.0
+          })
+        None => box_h * 0.3
+      }
+    None => box_h * 0.3
+  }
+  let fill = match first_rpr {
+    Some(rp) =>
+      match first_child_named(rp, "solidFill") {
+        Some(sf) =>
+          match @paint.resolve_solid_fill(sf, ctx~) {
+            Some(rc) => @paint.format_resolved_color(rc)
+            None => "currentColor"
+          }
+        None => "currentColor"
+      }
+    None => "currentColor"
+  }
+  let text_path = @markup.elem_ns(
+    "textPath",
+    @markup.svg_ns,
+    [
+      @markup.attr("href", "#" + arc_id),
+      @markup.attr("startOffset", "50%"),
+      @markup.attr("text-anchor", "middle"),
+    ],
+    [@markup.text(text)],
+  )
+  Some([
+    @markup.elem_ns(
+      "text",
+      @markup.svg_ns,
+      [
+        @markup.attr("font-size", format_double(font_px)),
+        @markup.attr("font-family", "sans-serif"),
+        @markup.attr("fill", fill),
+        @markup.attr("data-ooxml-text-warp", prst),
+      ],
+      [text_path],
+    ),
+  ])
+}
+
+///|
+/// §20.1.10.76 — geometry of one ENVELOPE warp family as a bilinear
+/// quad over the text rectangle.  A glyph-outline point at normalised
+/// `(u, v)` (u along width, v top→bottom) maps to:
+///
+///   y' = Ttop(u) + v·(Tbot(u) − Ttop(u))            // top/bottom edges
+///   x' = inset + (xl(v) + (xr(v) − xl(v))·u)·usable  // left/right edges
+///
+/// `Ttop`/`Tbot` curve the top/bottom edges (inflate / deflate / can /
+/// triangle / chevron / cascade / fade-left-right).  `xl`/`xr` give the
+/// per-row left/right boundary as a 0..1 width fraction and let the
+/// horizontal extent taper with height (fade-up / fade-down).  Returns
+/// the four profile functions, or `None` for an unknown preset.
+pub(all) struct EnvelopeWarp {
+  top_y : (Double) -> Double
+  bot_y : (Double) -> Double
+  left_x : (Double) -> Double
+  right_x : (Double) -> Double
+}
+
+///|
+fn envelope_profiles(prst : String, box_h : Double) -> EnvelopeWarp? {
+  let pi = 3.141592653589793
+  let t0 = box_h * 0.15 // flat top edge
+  let b0 = box_h * 0.85 // flat bottom edge
+  let mid = box_h * 0.5
+  let bulge = box_h * 0.15
+  let peak = box_h * 0.32
+  let casc = box_h * 0.30
+  // `sinb(u)` peaks (=1) at the centre, 0 at both ends — a smooth
+  // single-hump bow.  `tri(u)` is the piecewise-linear equivalent.
+  fn sinb(u : Double) -> Double {
+    @math.sin(pi * u)
+  }
+
+  fn tri(u : Double) -> Double {
+    let s = 2.0 * u - 1.0
+    1.0 - (if s < 0.0 { -s } else { s })
+  }
+
+  let flat_top = fn(_u : Double) -> Double { t0 }
+  let flat_bot = fn(_u : Double) -> Double { b0 }
+  // Default left/right edges: straight verticals spanning the full
+  // usable width regardless of row height.
+  let full_l = fn(_v : Double) -> Double { 0.0 }
+  let full_r = fn(_v : Double) -> Double { 1.0 }
+  // Helper to assemble a y-only warp (straight vertical sides).
+  fn ywarp(
+    top : (Double) -> Double,
+    bot : (Double) -> Double,
+  ) -> EnvelopeWarp {
+    { top_y: top, bot_y: bot, left_x: full_l, right_x: full_r }
+  }
+
+  match prst {
+    // Barrel out / pinch in (both edges).
+    "textInflate" =>
+      Some(ywarp(fn(u) { t0 - bulge * sinb(u) }, fn(u) { b0 + bulge * sinb(u) }))
+    "textDeflate" =>
+      Some(ywarp(fn(u) { t0 + bulge * sinb(u) }, fn(u) { b0 - bulge * sinb(u) }))
+    // Single-edge variants.
+    "textInflateBottom" =>
+      Some(ywarp(flat_top, fn(u) { b0 + bulge * sinb(u) }))
+    "textDeflateBottom" => Some(ywarp(flat_top, fn(u) { b0 - bulge * sinb(u) }))
+    "textInflateTop" => Some(ywarp(fn(u) { t0 - bulge * sinb(u) }, flat_bot))
+    "textDeflateTop" => Some(ywarp(fn(u) { t0 + bulge * sinb(u) }, flat_bot))
+    // §20.1.10.76 textDeflateInflate — pinch on the left half, bulge on
+    // the right (one full sine over the width).  Deflate-Inflate-Deflate
+    // adds a third region (cosine: pinch–bulge–pinch).
+    "textDeflateInflate" =>
+      Some(
+        ywarp(fn(u) { t0 + bulge * @math.sin(2.0 * pi * u) }, fn(u) {
+          b0 - bulge * @math.sin(2.0 * pi * u)
+        }),
+      )
+    "textDeflateInflateDeflate" =>
+      Some(
+        ywarp(fn(u) { t0 + bulge * @math.cos(2.0 * pi * u) }, fn(u) {
+          b0 - bulge * @math.cos(2.0 * pi * u)
+        }),
+      )
+    // Cylinder perspective: top edge bows more than the bottom.
+    "textCanUp" =>
+      Some(
+        ywarp(fn(u) { t0 - bulge * sinb(u) }, fn(u) {
+          b0 - bulge * 0.45 * sinb(u)
+        }),
+      )
+    "textCanDown" =>
+      Some(
+        ywarp(fn(u) { t0 + bulge * 0.45 * sinb(u) }, fn(u) {
+          b0 + bulge * sinb(u)
+        }),
+      )
+    // Triangles: one edge rises/falls to a central peak.
+    "textTriangle" => Some(ywarp(fn(u) { t0 - peak * tri(u) }, flat_bot))
+    "textTriangleInverted" =>
+      Some(ywarp(flat_top, fn(u) { b0 + peak * tri(u) }))
+    // Chevrons: both edges peak together (^ or v).
+    "textChevron" =>
+      Some(ywarp(fn(u) { t0 - peak * tri(u) }, fn(u) { b0 - peak * tri(u) }))
+    "textChevronInverted" =>
+      Some(ywarp(fn(u) { t0 + peak * tri(u) }, fn(u) { b0 + peak * tri(u) }))
+    // Cascades: the band slants and grows along the width.
+    "textCascadeUp" =>
+      Some(ywarp(fn(u) { t0 - casc * u }, fn(u) { b0 - casc * 0.35 * u }))
+    "textCascadeDown" =>
+      Some(ywarp(fn(u) { t0 + casc * 0.35 * u }, fn(u) { b0 + casc * u }))
+    // Fade left/right: the band HEIGHT collapses to the centre line on
+    // one vertical edge (curved top/bottom converging to `mid`).
+    "textFadeRight" =>
+      Some(
+        ywarp(fn(u) { t0 + (mid - t0) * u }, fn(u) { b0 - (b0 - mid) * u }),
+      )
+    "textFadeLeft" =>
+      Some(
+        ywarp(fn(u) { t0 + (mid - t0) * (1.0 - u) }, fn(u) {
+          b0 - (b0 - mid) * (1.0 - u)
+        }),
+      )
+    // Fade up/down: the band WIDTH tapers to the horizontal centre on
+    // the top / bottom edge (a trapezoid → triangle).  Top/bottom edges
+    // stay flat; the per-row left/right boundaries collapse toward 0.5.
+    "textFadeUp" =>
+      Some({
+        top_y: flat_top,
+        bot_y: flat_bot,
+        left_x: fn(v) { 0.5 * (1.0 - v) }, // v=0 (top) → 0.5, v=1 → 0
+        right_x: fn(v) { 0.5 + 0.5 * v }, // v=0 → 0.5, v=1 → 1
+      })
+    "textFadeDown" =>
+      Some({
+        top_y: flat_top,
+        bot_y: flat_bot,
+        left_x: fn(v) { 0.5 * v }, // v=0 → 0, v=1 (bottom) → 0.5
+        right_x: fn(v) { 1.0 - 0.5 * v }, // v=0 → 1, v=1 → 0.5
+      })
+    // textRing* is handled as a baseline-on-circle textPath, not here.
+    _ => None
+  }
+}
+
+///|
+/// §20.1.10.76 envelope WordArt — warp the run's real glyph outlines
+/// through `envelope_profiles` and emit them as a filled `<path>`.
+/// Returns `None` (→ flat fallback) when the preset is unsupported, the
+/// text is empty, or the font outline cannot be resolved.
+fn render_envelope_warp_text(
+  tx_body : @xml.Element,
+  box_w : Double,
+  box_h : Double,
+  ctx : ColorResolveContext,
+  prst : String,
+) -> Array[@xml.Node]? {
+  if box_w <= 0.0 || box_h <= 0.0 {
+    return None
+  }
+  let warp = match envelope_profiles(prst, box_h) {
+    Some(p) => p
+    None => return None
+  }
+  let text = txbody_plain_text(tx_body)
+  if text.length() == 0 {
+    return None
+  }
+  let first_rpr = warp_first_run_pr(tx_body)
+  // §21.1.2.3.9 sz — hundredths of a point; default to a size that
+  // fills most of the box height.
+  let font_pt = match first_rpr {
+    Some(rp) =>
+      match attr_value(rp, "sz") {
+        Some(v) =>
+          (try? @string.parse_double(v)).to_option().map_or(
+            box_h * 0.3 * 72.0 / 96.0,
+            fn(d) { d / 100.0 },
+          )
+        None => box_h * 0.3 * 72.0 / 96.0
+      }
+    None => box_h * 0.3 * 72.0 / 96.0
+  }
+  // §21.1.2.3.4 latin/@typeface — the run's Latin face; Arial is the
+  // resolver's safe default.
+  let family = match first_rpr {
+    Some(rp) =>
+      match first_child_named(rp, "latin") {
+        Some(l) =>
+          match attr_value(l, "typeface") {
+            Some(tf) => if tf.length() > 0 { tf } else { "Arial" }
+            None => "Arial"
+          }
+        None => "Arial"
+      }
+    None => "Arial"
+  }
+  let fill = match first_rpr {
+    Some(rp) =>
+      match first_child_named(rp, "solidFill") {
+        Some(sf) =>
+          match @paint.resolve_solid_fill(sf, ctx~) {
+            Some(rc) => @paint.format_resolved_color(rc)
+            None => "#000000"
+          }
+        None => "#000000"
+      }
+    None => "#000000"
+  }
+  // Flatten the run's glyph outlines (pixel space, baseline y=0, run
+  // starting at x=0).  An unresolved font yields no contours → None.
+  let contours = (try? @glyph.text_outline_contours(
+      text, family~, font_size_pt=font_pt,
+    )).to_option().unwrap_or([])
+  if contours.length() == 0 {
+    return None
+  }
+  // Natural bounds of the laid-out run, for normalising into (u, v).
+  let mut tx0 = 1.0e18
+  let mut tx1 = -1.0e18
+  let mut ty0 = 1.0e18
+  let mut ty1 = -1.0e18
+  for contour in contours {
+    for p in contour {
+      if p.0 < tx0 {
+        tx0 = p.0
+      }
+      if p.0 > tx1 {
+        tx1 = p.0
+      }
+      if p.1 < ty0 {
+        ty0 = p.1
+      }
+      if p.1 > ty1 {
+        ty1 = p.1
+      }
+    }
+  }
+  let tw = tx1 - tx0
+  let th = ty1 - ty0
+  if tw <= 0.0 {
+    return None
+  }
+  let inset = box_w * 0.04
+  let usable_w = box_w - 2.0 * inset
+  fn clamp01(x : Double) -> Double {
+    if x < 0.0 {
+      0.0
+    } else if x > 1.0 {
+      1.0
+    } else {
+      x
+    }
+  }
+
+  let buf = StringBuilder::new()
+  for contour in contours {
+    if contour.length() < 2 {
+      continue
+    }
+    for i, p in contour {
+      let u = clamp01((p.0 - tx0) / tw)
+      let v = if th > 0.0 { clamp01((p.1 - ty0) / th) } else { 0.5 }
+      // Left/right boundary fractions for this row, then interpolate
+      // the column position between them (handles fade-up/down taper).
+      let fl = (warp.left_x)(v)
+      let fr = (warp.right_x)(v)
+      let nx = inset + (fl + (fr - fl) * u) * usable_w
+      let top = (warp.top_y)(u)
+      let bot = (warp.bot_y)(u)
+      let ny = top + v * (bot - top)
+      buf.write_string(if i == 0 { "M " } else { " L " })
+      buf.write_string(format_double(nx))
+      buf.write_string(",")
+      buf.write_string(format_double(ny))
+    }
+    buf.write_string(" Z")
+  }
+  Some([
+    @markup.elem_ns(
+      "path",
+      @markup.svg_ns,
+      [
+        @markup.attr("d", buf.to_string()),
+        @markup.attr("fill", fill),
+        @markup.attr("fill-rule", "evenodd"),
+        @markup.attr("data-ooxml-text-warp", prst),
+      ],
+      [],
+    ),
+  ])
+}
+
+///|
+/// First `<a:rPr>` (run properties) found under a `<a:txBody>` — used
+/// by the arch renderer for the font size / colour of the warped run.
+fn warp_first_run_pr(tx_body : @xml.Element) -> @xml.Element? {
+  for ch in tx_body.children {
+    match ch {
+      @xml.Node::Element(p) =>
+        if p.name.local_name == "p" {
+          for r in p.children {
+            match r {
+              @xml.Node::Element(re) =>
+                if re.name.local_name == "r" {
+                  match first_child_named(re, "rPr") {
+                    Some(rp) => return Some(rp)
+                    None => ()
+                  }
+                }
+              _ => ()
+            }
+          }
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
 fn render_shape_text_svg(
   shape : @xml.Element,
   w_emu : Double,
@@ -2656,6 +3240,25 @@ fn render_shape_text_svg(
   match tx_body {
     None => []
     Some(tb) => {
+      // §20.1.9.x prstTxWarp — when the body carries an arch-family
+      // text warp, the laid-out span layout cannot express the curve,
+      // so render the text along an SVG arc path instead.  Other warp
+      // presets fall through to the normal (unwarped, readable)
+      // layout.
+      let box_w_px0 = w_emu / emu_per_px
+      let box_h_px0 = h_emu / emu_per_px
+      match render_warped_text(tb, box_w_px0, box_h_px0, ctx, defs) {
+        Some(warp_nodes) =>
+          return [
+            @markup.elem_ns(
+              "g",
+              @markup.svg_ns,
+              [@markup.attr("transform", "scale(" + format_double(emu_per_px) + ")")],
+              warp_nodes,
+            ),
+          ]
+        None => ()
+      }
       let input = build_layout_input(tb, w_emu, h_emu, ctx, master_lst_style~)
       if input.paragraphs.length() == 0 {
         return []
@@ -6295,7 +6898,7 @@ fn render_graphic_frame_svg(
   // parts cannot be resolved, the function returns `[]` and we
   // fall back to the placeholder branch below.
   let diagram_nodes : Array[@xml.Node] = if is_diagram_graphic_frame(frame) {
-    render_diagram_svg(frame, w, h, part_resolver)
+    render_diagram_svg(frame, w, h, part_resolver, ctx)
   } else {
     []
   }

@@ -599,6 +599,67 @@ test "render_svg emits paragraph borders from <w:pBdr>" {
 }
 
 ///|
+/// §17.18.3 `wave` — a wave border renders as a real sine `<path>`,
+/// NOT a dashed `<line>` approximation.
+test "render_svg emits a sine path for a wave paragraph border" {
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("pPr"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("pBdr"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("bottom"),
+                        attributes: [
+                          attr("val", "wave"),
+                          attr("sz", "12"),
+                          attr("color", "FF0000"),
+                        ],
+                        children: [],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("t"),
+                    attributes: [],
+                    children: [@xml.Node::Text("Wavy")],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  // The wave is a <path> stroke (multiple sampled points), red, no fill.
+  assert_true(svg.contains("<path "))
+  assert_true(svg.contains("stroke=\"#FF0000\""))
+  assert_true(svg.contains("Wavy"))
+}
+
+///|
 /// §17.9.20 `<w:pPr><w:numPr>` — list items get a bullet glyph
 /// prepended. The exact glyph / spacing isn't spec'd at the viewer
 /// level so we just check the bullet character (U+2022) made it

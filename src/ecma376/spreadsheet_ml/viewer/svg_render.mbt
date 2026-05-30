@@ -626,7 +626,10 @@ pub fn render_svg(
   // pre-computing the materialization.
   let pivot_nodes : Array[@xml.Node] = []
   for pivot in pivots {
-    for n in render_pivot_overlay(pivot, layout, options) {
+    for n in render_pivot_overlay(
+        pivot, layout, options, cf_blocks, cf_stats, styles, shared_strings,
+        theme_map,
+      ) {
       pivot_nodes.push(n)
     }
   }
@@ -720,7 +723,7 @@ pub fn render_svg(
   // package owns both the typed decoder and the SVG glyph
   // renderer; this hook only routes the cell data into the
   // glyph painter.
-  match render_sheet_sparklines(domain, cell_map, layout) {
+  match render_sheet_sparklines(domain, cell_map, layout, theme_map) {
     Some(node) => body.push(node)
     None => ()
   }
@@ -3961,7 +3964,10 @@ fn format_formula_value(
   date_system : @date_serial.DateSystem,
 ) -> String {
   match value {
-    @formula.VNumber(n) => format_number_general(n, style.number_format, date_system~)
+    @formula.VNumber(n) =>
+      format_number_general(
+        n, style.number_format, date_system~, preserve_fill=true,
+      )
     @formula.VString(s) => s
     @formula.VBool(b) => if b { "TRUE" } else { "FALSE" }
     @formula.VError(err) => err.to_literal()
@@ -4192,7 +4198,9 @@ fn format_cell_value(
               if style.number_format == "General" || style.number_format == "" {
                 raw
               } else {
-                format_number_general(serial, style.number_format, date_system~)
+                format_number_general(
+                  serial, style.number_format, date_system~, preserve_fill=true,
+                )
               }
           }
       }
@@ -4210,7 +4218,10 @@ fn format_cell_value(
       try @string.parse_double(value_text) catch {
         _ => value_text
       } noraise {
-        num => format_number_general(num, style.number_format, date_system~)
+        num =>
+          format_number_general(
+            num, style.number_format, date_system~, preserve_fill=true,
+          )
       }
     }
     other => {
@@ -4229,7 +4240,10 @@ fn format_cell_value(
       try @string.parse_double(value_text) catch {
         _ => value_text
       } noraise {
-        num => format_number_general(num, style.number_format, date_system~)
+        num =>
+          format_number_general(
+            num, style.number_format, date_system~, preserve_fill=true,
+          )
       }
     }
   }
@@ -4277,11 +4291,22 @@ fn format_number_general(
   num : Double,
   format_code : String,
   date_system? : @date_serial.DateSystem = @date_serial.DateSystem::Serial1900,
+  // §18.8.31 — when true the result keeps the `*x` fill sentinel for a
+  // downstream renderer (the cell-render path) to expand; every other
+  // (general display) caller leaves it false so the sentinel is
+  // stripped and the visible text stays clean.
+  preserve_fill? : Bool = false,
 ) -> String {
-  if format_code == "General" || format_code == "" {
-    return format_general(num)
+  let out = if format_code == "General" || format_code == "" {
+    format_general(num)
+  } else {
+    format_number_by_code(num, format_code, date_system~)
   }
-  format_number_by_code(num, format_code, date_system~)
+  if preserve_fill {
+    out
+  } else {
+    strip_fill_directive(out)
+  }
 }
 
 ///|
@@ -5701,12 +5726,16 @@ fn apply_format_section(value : Double, section : String) -> String {
       j = j + 2
       continue
     }
-    // §18.8.31 — `*x` repeats `x` to fill the column width.
-    // Without column-width context at this layer we emit nothing
-    // (zero repetitions is the only spec-conformant choice when
-    // the fill width is unknown — emitting a single `x` would be
-    // an arbitrary approximation).
+    // §18.8.31 — `*x` fills the remaining column width by repeating the
+    // glyph `x`.  This is a RENDER-time alignment directive (tile `x`
+    // across the gap, splitting the section into a left- and a
+    // right-aligned run), not a fixed character count, so it cannot be
+    // expanded in this pure string layer.  Emit a private-use sentinel
+    // (U+E000) followed by the fill glyph; `render_cell_text` detects
+    // it, measures the cell and the two runs, and tiles `x` to fill.
     if c == 0x2A && j + 1 < section.length() {
+      buf.write_char(fill_directive_sentinel)
+      buf.write_char(section.code_unit_at(j + 1).to_int().to_char().unwrap())
       j = j + 2
       continue
     }
@@ -6793,10 +6822,9 @@ fn horizontal_text_pos(
     "right" => (layout.x + layout.width - padding, "end")
     "end" => (layout.x + layout.width - padding, "end")
     "fill" =>
-      // §18.18.40 — `fill` repeats the cell text to fill the cell.
-      // Faithful rendering requires glyph measurement; until that
-      // is wired in we anchor at the cell's start edge and surface
-      // the intent via `horizontal_attr_value` metadata.
+      // §18.18.40 — `fill` repeats the cell text to fill the cell;
+      // `render_cell_text` tiles the text (via glyph measurement) and
+      // anchors the result at the cell's start edge.
       (layout.x + padding, "start")
     "justify" =>
       // §18.18.40 — `justify` distributes the inter-word spacing
@@ -6985,6 +7013,131 @@ fn cell_text_clip(
 /// §18.18.11 ST_CellType (or `None` = numeric default) so the
 /// `general` horizontal alignment resolves per §18.18.40.
 /// @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/cell-renderer.ts:293
+/// §18.8.31 — private-use sentinel `apply_format_section` injects at the
+/// position of a `*x` fill directive (followed by the fill glyph).  Code
+/// point U+E000 cannot occur in real number-format output, so it is a
+/// safe in-band marker the renderer recovers and the fallback strips.
+let fill_directive_sentinel : Char = (0xE000).to_char().unwrap()
+
+///|
+/// Split a formatted string carrying the §18.8.31 fill sentinel into
+/// `(left, fill_glyph, right)`.  Returns `None` when no fill directive
+/// is present.
+fn split_fill_directive(text : String) -> (String, String, String)? {
+  let n = text.length()
+  let mut i = 0
+  while i < n {
+    if text.code_unit_at(i).to_int() == 0xE000 && i + 1 < n {
+      return Some(
+        (text[0:i].to_owned(), text[i + 1:i + 2].to_owned(), text[i + 2:n].to_owned()),
+      )
+    }
+    i = i + 1
+  }
+  None
+}
+
+///|
+/// Strip any fill sentinel + glyph from `text` (the non-fill render
+/// path, e.g. when the cell wraps or is rotated, ignores the directive
+/// but must not leak the sentinel into the output).
+fn strip_fill_directive(text : String) -> String {
+  match split_fill_directive(text) {
+    Some((left, _, right)) => left + right
+    None => text
+  }
+}
+
+///|
+/// Measure the pixel width of `s` for the cell font, degrading to the
+/// per-glyph heuristic (CJK ≈ 1 em, Latin ≈ 0.6 em) when the font is
+/// unresolved — mirrors `wrap_text`'s `seg_cost`.
+fn cell_text_width(s : String, font : ResolvedFont) -> Double {
+  let weight = if font.bold { 700 } else { 400 }
+  try @glyph.measure_text_width(
+      s,
+      font_size_pt=font.size,
+      letter_spacing_px=0.0,
+      family=font.family,
+      weight~,
+      italic=font.italic,
+    ) catch {
+    _ => {
+      let mut w = 0.0
+      for c in s {
+        w = w + (if @glyph.is_cjk_char(c) { font.size } else { font.size * 0.6 })
+      }
+      w
+    }
+  } noraise {
+    w => w
+  }
+}
+
+///|
+/// §18.8.31 `*x` — render a cell whose number format carried a fill
+/// directive: the `left` run sits flush-left, the `right` run
+/// flush-right, and the `fill` glyph is tiled across the gap between
+/// them so the cell reads as Excel's accounting / leader-dot layout.
+fn render_filled_cell_text(
+  id_prefix : String,
+  cell_ref : String,
+  layout : CellLayout,
+  left : String,
+  fill : String,
+  right : String,
+  style : ResolvedCellStyle,
+) -> Array[@xml.Node] {
+  let padding = 2.0
+  let (ty, baseline) = vertical_text_pos(
+    layout, style.alignment.vertical, style.font.size, padding,
+  )
+  let avail = layout.width - 2.0 * padding
+  let left_w = cell_text_width(left, style.font)
+  let right_w = cell_text_width(right, style.font)
+  let fill_w = cell_text_width(fill, style.font)
+  // Tile the fill glyph across the residual gap.
+  let gap = avail - left_w - right_w
+  let reps = if fill_w > 0.0 && gap > 0.0 {
+    (gap / fill_w).to_int()
+  } else {
+    0
+  }
+  let fill_run = StringBuilder::new()
+  for _i in 0..<reps {
+    fill_run.write_string(fill)
+  }
+  let (clip_defs, clip_ref) = cell_text_clip(id_prefix, cell_ref, layout)
+  let nodes : Array[@xml.Node] = [clip_defs]
+  // Left run + the tiled fill, anchored at the cell's left edge.
+  let left_text = left + fill_run.to_string()
+  if left_text.length() > 0 {
+    let attrs : Array[@xml.Attribute] = [
+      svg_attr("x", format_d(layout.x + padding)),
+      svg_attr("y", format_d(ty)),
+      svg_attr("text-anchor", "start"),
+      svg_attr("dominant-baseline", baseline),
+      svg_attr("clip-path", clip_ref),
+    ]
+    append_font_attrs(attrs, style.font)
+    nodes.push(svg_elem("text", attrs, [svg_text(left_text)]))
+  }
+  // Right run, anchored at the cell's right edge.
+  if right.length() > 0 {
+    let attrs : Array[@xml.Attribute] = [
+      svg_attr("x", format_d(layout.x + layout.width - padding)),
+      svg_attr("y", format_d(ty)),
+      svg_attr("text-anchor", "end"),
+      svg_attr("dominant-baseline", baseline),
+      svg_attr("clip-path", clip_ref),
+    ]
+    append_font_attrs(attrs, style.font)
+    nodes.push(svg_elem("text", attrs, [svg_text(right)]))
+  }
+  nodes
+}
+
+///|
 fn render_cell_text(
   id_prefix : String,
   cell_ref : String,
@@ -6993,7 +7146,49 @@ fn render_cell_text(
   style : ResolvedCellStyle,
   cell_t? : String? = None,
 ) -> Array[@xml.Node] {
+  // §18.8.31 `*x` fill directive — honour it only for the simple
+  // (non-wrapped, non-rotated) single-line case; otherwise strip the
+  // sentinel and fall through to the normal path.
+  let fill_split = split_fill_directive(text)
+  match fill_split {
+    Some((left, fill, right)) =>
+      if not(style.alignment.wrap_text) &&
+        style.alignment.text_rotation == 0 &&
+        layout.width > 0.0 {
+        return render_filled_cell_text(
+          id_prefix, cell_ref, layout, left, fill, right, style,
+        )
+      }
+    None => ()
+  }
+  let text = strip_fill_directive(text)
   let padding = 2.0
+  // §18.18.40 `fill` alignment — repeat the whole cell text to fill the
+  // cell width (the same tiling Excel applies, e.g. a `***` divider
+  // row).  Honoured for the simple single-line case; wrapped / rotated
+  // cells keep the un-tiled text.
+  let resolved_h = if style.alignment.horizontal == "general" {
+    general_alignment_for(cell_t)
+  } else {
+    style.alignment.horizontal
+  }
+  let text = if resolved_h == "fill" &&
+    layout.width > 0.0 &&
+    not(style.alignment.wrap_text) &&
+    style.alignment.text_rotation == 0 &&
+    text.length() > 0 {
+    let unit_w = cell_text_width(text, style.font)
+    let avail = layout.width - 2.0 * padding
+    let reps = if unit_w > 0.0 { (avail / unit_w).to_int() } else { 1 }
+    let buf = StringBuilder::new()
+    // Always emit at least the original text once.
+    for _i in 0..<(if reps < 1 { 1 } else { reps }) {
+      buf.write_string(text)
+    }
+    buf.to_string()
+  } else {
+    text
+  }
   let (tx, anchor) = horizontal_text_pos(
     layout,
     style.alignment.horizontal,
@@ -7022,9 +7217,11 @@ fn render_cell_text(
     svg_attr("clip-path", clip_ref),
   ]
   // §18.18.40 — surface the resolved ST_HorizontalAlignment as a
-  // spec-anchored data attribute so consumers can apply alignment
-  // semantics (especially `fill` / `justify` / `distributed` /
-  // `centerContinuous`) the viewer cannot render directly.
+  // spec-anchored data attribute.  `center` / `centerContinuous` /
+  // `distributed` render centred, `fill` tiles the text across the
+  // cell (above), and single-line `justify` is left-aligned (the spec
+  // only distributes spacing across WRAPPED lines).  The attribute lets
+  // consumers refine the multi-line `justify` / `distributed` cases.
   let h_align_attr = horizontal_attr_value(style.alignment.horizontal, cell_t)
   if h_align_attr.length() > 0 {
     attrs.push(svg_attr("data-ooxml-h-align", h_align_attr))
@@ -7963,7 +8160,12 @@ fn render_drawing_anchor(
         Some(node) => [node]
         None => drawing_placeholder_inner(bounds, label)
       }
-    GrpSp(grp) => [render_drawing_group(grp, bounds, image_resolver)]
+    GrpSp(grp) =>
+      [
+        render_drawing_group(
+          grp, bounds, image_resolver, theme_map, part_resolver,
+        ),
+      ]
     // §21.2 DrawingML chart — detect a `<c:chart r:id="…"/>` payload
     // under `<a:graphicData>`, resolve it through `part_resolver`,
     // and emit the chart geometry via the shared chart renderer.
@@ -8825,13 +9027,15 @@ fn render_drawing_group(
   grp : @drawing.CT_GroupShape,
   bounds : DrawingBounds,
   image_resolver : (String) -> String?,
+  theme_map : SmlThemeColorMap,
+  part_resolver : (String) -> @xml.Element?,
 ) -> @xml.Node {
   // §20.1.7.5 grpSpPr/xfrm — the group has its own `chOff` / `chExt`
-  // (child coordinate space) which we translate into the group's
-  // pixel bounds. We approximate by uniformly scaling children using
-  // the ratio between `chExt` and the group's pixel size. When the
-  // group declares no `<a:xfrm>` we default to a 1:1 mapping rooted
-  // at (0, 0).
+  // (child coordinate space) which we map into the group's pixel
+  // bounds with INDEPENDENT x / y scale factors (sx = width/chExt_w,
+  // sy = height/chExt_h in `group_child_bounds`), so non-square groups
+  // are not distorted. When the group declares no `<a:xfrm>` we default
+  // to a 1:1 mapping rooted at (0, 0).
   let (ch_off_x, ch_off_y, ch_ext_w, ch_ext_h) = group_child_coords(grp)
   let group_children : Array[@xml.Node] = []
   for child in grp.shapes {
@@ -8855,8 +9059,19 @@ fn render_drawing_group(
           None => drawing_placeholder_inner(child_bounds, "Connector")
         }
       GrpSp(nested) =>
-        [render_drawing_group(nested, child_bounds, image_resolver)]
-      GraphicFrame(_) => drawing_placeholder_inner(child_bounds, "GraphicFrame")
+        [
+          render_drawing_group(
+            nested, child_bounds, image_resolver, theme_map, part_resolver,
+          ),
+        ]
+      // §21.2 chart inside a grouped shape — render through the shared
+      // chart bridge (the same path as a top-level graphicFrame chart),
+      // falling back to the labelled placeholder for non-chart frames.
+      GraphicFrame(gf) =>
+        match render_drawing_chart(gf, child_bounds, theme_map, part_resolver) {
+          Some(node) => [node]
+          None => drawing_placeholder_inner(child_bounds, "GraphicFrame")
+        }
       ContentPart(_) => drawing_placeholder_inner(child_bounds, "ContentPart")
     }
     group_children.push(
@@ -9262,10 +9477,80 @@ fn render_sheet_phonetics(
 /// fixtures that use the documented `; values=…` escape hatch on
 /// `<xm:f>` get the literal values verbatim. Documented in
 /// `src/ecma376/spreadsheet_ml/sparkline/decode.mbt`.
+/// §18.8.3 — resolve a sparkline `<x14:colorXxx>` whose colour is given
+/// by `@theme` (+ optional `@tint`) into a concrete 6-digit hex, using
+/// the same theme-slot lookup + HSL-luminance tint as cell colours.
+/// An explicit `@rgb` (already in `hex`) is returned unchanged, and an
+/// unresolvable theme index falls back to the renderer's per-colour
+/// default.  Resolving here (in the viewer, which owns the theme map)
+/// keeps the sparkline package free of a circular dependency on the
+/// viewer's theme handling.
+fn resolve_sparkline_color(
+  c : @sparkline.SparklineColor,
+  theme_map : SmlThemeColorMap,
+) -> @sparkline.SparklineColor {
+  match c.hex {
+    Some(_) => c
+    None =>
+      match c.theme {
+        None => c
+        Some(idx) =>
+          match theme_map.lookup(idx) {
+            None => c
+            Some(base) => {
+              let tint = match c.tint {
+                Some(t) => t
+                None => 0.0
+              }
+              let resolved = if tint == 0.0 {
+                base
+              } else {
+                // `apply_lum_off` returns "#rrggbb"; the sparkline
+                // renderer prepends its own "#", so strip the hash.
+                let h = @color.apply_lum_off(base, tint)
+                if h.length() >= 1 && h[0:1] == "#" {
+                  h[1:h.length()].to_owned()
+                } else {
+                  h
+                }
+              }
+              { ..c, hex: Some(resolved) }
+            }
+          }
+      }
+  }
+}
+
+///|
+/// Resolve every `@theme`-based colour on a sparkline group to a
+/// concrete hex (see `resolve_sparkline_color`).
+fn resolve_sparkline_group_colors(
+  g : @sparkline.SparklineGroup,
+  theme_map : SmlThemeColorMap,
+) -> @sparkline.SparklineGroup {
+  fn r(c : @sparkline.SparklineColor) -> @sparkline.SparklineColor {
+    resolve_sparkline_color(c, theme_map)
+  }
+
+  {
+    ..g,
+    color_series: r(g.color_series),
+    color_negative: r(g.color_negative),
+    color_axis: r(g.color_axis),
+    color_markers: r(g.color_markers),
+    color_first: r(g.color_first),
+    color_last: r(g.color_last),
+    color_high: r(g.color_high),
+    color_low: r(g.color_low),
+  }
+}
+
+///|
 fn render_sheet_sparklines(
   domain : @domain.CT_Worksheet,
   cell_map : Map[String, @xml.Element],
   layout : SheetLayout,
+  theme_map : SmlThemeColorMap,
 ) -> @xml.Node? {
   let ext_lst = match domain.ext_lst {
     Some(e) => e
@@ -9299,7 +9584,11 @@ fn render_sheet_sparklines(
             width: (cl.width - 2.0 * pad_x).clamp(min=2.0, max=cl.width),
             height: (cl.height - 2.0 * pad_y).clamp(min=2.0, max=cl.height),
           }
-          nodes.push(@sparkline.render_sparkline(box, data, group))
+          nodes.push(
+            @sparkline.render_sparkline(
+              box, data, resolve_sparkline_group_colors(group, theme_map),
+            ),
+          )
         }
       }
     }
@@ -9351,12 +9640,16 @@ fn resolve_sparkline_data(
       } noraise {
         letter => letter + (r + 1).to_string()
       }
+      // §[MS-XLSX] 2.6.5 — a missing or non-numeric cell is an EMPTY
+      // data point, marked with NaN so the renderer can apply the
+      // group's `displayEmptyCellsAs` (gap / zero / span); pushing 0.0
+      // here would force every blank to the "zero" interpretation.
       match cell_map.get(cref) {
-        None => out.push(0.0)
+        None => out.push(Double::nan())
         Some(cell_el) =>
           match cell_numeric_value_default(cell_el) {
             Some(v) => out.push(v)
-            None => out.push(0.0)
+            None => out.push(Double::nan())
           }
       }
     }

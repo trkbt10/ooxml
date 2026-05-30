@@ -7,6 +7,112 @@
 // =============================================================================
 
 ///|
+/// §21.2.2.218 CT_UpDownBars / §21.2.2.55-.56 upBars / downBars —
+/// render the up/down bars of a line (or stock) chart.  At each
+/// category the bar spans the first series' value to the last series'
+/// value; it is filled with the up colour (default white, or
+/// `<c:upBars>/<a:spPr>` solid fill) when last ≥ first, otherwise the
+/// down colour (default black, or `<c:downBars>`).  `@gapWidth`
+/// (§21.2.2.74) sets the inter-category gap, controlling bar width.
+fn render_up_down_bars(
+  elem : @xml.Element,
+  all_series : Array[(Array[String], Array[Double])],
+  px : Double,
+  py : Double,
+  ph : Double,
+  step : Double,
+  max_v : Double,
+  ctx : ColorResolveContext,
+) -> Array[@xml.Node] {
+  let udb = match first_child_named(elem, "upDownBars") {
+    Some(e) => e
+    None => return []
+  }
+  if all_series.length() < 2 || max_v <= 0.0 {
+    return []
+  }
+  // §21.2.2.74 gapWidth — default 150 (% of bar width).  Bar width =
+  // step / (1 + gapWidth/100); clamp to a sensible fraction of step.
+  let gap_width = match first_child_named(udb, "gapWidth") {
+    Some(g) => parse_int_lenient(attr_or(g, "val", "150"))
+    None => 150
+  }
+  let bar_w = {
+    let w = step / (1.0 + gap_width.to_double() / 100.0)
+    if w > step * 0.9 {
+      step * 0.9
+    } else if w < 1.0 {
+      1.0
+    } else {
+      w
+    }
+  }
+  // Up / down fill: default white / black, overridable by the bars'
+  // `<a:spPr>/<a:solidFill>`.
+  fn bar_fill(child_name : String, default_hex : String) -> String {
+    match first_child_named(udb, child_name) {
+      Some(b) =>
+        match first_child_named(b, "spPr") {
+          Some(sp) =>
+            match first_child_named(sp, "solidFill") {
+              Some(sf) =>
+                match @paint.resolve_solid_fill(sf, ctx~) {
+                  Some(rc) => @paint.format_resolved_color(rc)
+                  None => default_hex
+                }
+              None => default_hex
+            }
+          None => default_hex
+        }
+      None => default_hex
+    }
+  }
+
+  let up_fill = bar_fill("upBars", "#ffffff")
+  let down_fill = bar_fill("downBars", "#000000")
+  let first_vals = all_series[0].1
+  let last_vals = all_series[all_series.length() - 1].1
+  let n = if first_vals.length() < last_vals.length() {
+    first_vals.length()
+  } else {
+    last_vals.length()
+  }
+  let out : Array[@xml.Node] = []
+  for i = 0; i < n; i = i + 1 {
+    let first = first_vals[i]
+    let last = last_vals[i]
+    let cx = px + i.to_double() * step
+    let y_first = py + ph - first / max_v * ph
+    let y_last = py + ph - last / max_v * ph
+    let top = if y_first < y_last { y_first } else { y_last }
+    let bot = if y_first < y_last { y_last } else { y_first }
+    let height = bot - top
+    if height <= 0.0 {
+      continue
+    }
+    // Up bar when the last series value rose above the first.
+    let fill = if last >= first { up_fill } else { down_fill }
+    out.push(
+      @markup.elem_ns(
+        "rect",
+        @markup.svg_ns,
+        [
+          @markup.attr("x", format_double(cx - bar_w / 2.0)),
+          @markup.attr("y", format_double(top)),
+          @markup.attr("width", format_double(bar_w)),
+          @markup.attr("height", format_double(height)),
+          @markup.attr("fill", fill),
+          @markup.attr("stroke", "#404040"),
+          @markup.attr("stroke-width", "0.75"),
+        ],
+        [],
+      ),
+    )
+  }
+  out
+}
+
+///|
 fn render_line_chart(
   elem : @xml.Element,
   w : Double,
@@ -79,6 +185,14 @@ fn render_line_chart(
     }
   }
   let step = if n > 1 { pw / (n - 1).to_double() } else { 0.0 }
+  // §21.2.2.218 upDownBars — when present (and ≥2 series), draw a bar
+  // at each category spanning the first series' value to the last
+  // series' value, coloured "up" (default white) when the last value
+  // exceeds the first and "down" (default black) otherwise.  Painted
+  // BEFORE the series polylines so the lines sit on top.
+  for nd in render_up_down_bars(elem, all_series, px, py, ph, step, max_v, ctx) {
+    nodes.push(nd)
+  }
   for si, s in all_series {
     let (_, values) = s
     let series_color = resolve_series_color(ser_elems[si], si, ctx)

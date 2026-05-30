@@ -15,6 +15,7 @@ import {
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @domain,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/address" @address,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/formula" @formula,
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial" @date_serial,
 }
 
 import {

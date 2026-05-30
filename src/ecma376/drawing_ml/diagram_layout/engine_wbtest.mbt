@@ -979,3 +979,43 @@ fn test_constraint(
     fact,
   }
 }
+
+///|
+/// §21.4.2.8 — the constraint-solver fixed point uses
+/// `node_bounds_maps_equal` to detect when the `layoutNode/@name →
+/// bounds` registry has stabilised between passes.
+test "node_bounds_maps_equal detects convergence and divergence" {
+  let a : Map[String, BoundsRect] = Map([], capacity=0)
+  a["root"] = { x: 0.0, y: 0.0, width: 100.0, height: 50.0 }
+  a["child"] = { x: 10.0, y: 10.0, width: 30.0, height: 30.0 }
+  let b : Map[String, BoundsRect] = Map([], capacity=0)
+  b["root"] = { x: 0.0, y: 0.0, width: 100.0, height: 50.0 }
+  b["child"] = { x: 10.0, y: 10.0, width: 30.0, height: 30.0 }
+  // Identical registries → converged.
+  assert_true(node_bounds_maps_equal(a, b))
+  // A differing bound → not converged.
+  b["child"] = { x: 10.0, y: 10.0, width: 99.0, height: 30.0 }
+  assert_true(!node_bounds_maps_equal(a, b))
+  // A missing / extra key → not converged.
+  let c : Map[String, BoundsRect] = Map([], capacity=0)
+  c["root"] = { x: 0.0, y: 0.0, width: 100.0, height: 50.0 }
+  assert_true(!node_bounds_maps_equal(a, c))
+}
+
+///|
+/// §21.4.2.8 — the engine is idempotent for a forward-reference-free
+/// layout: the fixed-point loop converges on the first pass and yields
+/// the same result as a direct single walk (regression guard for the
+/// multi-pass solver).
+test "fixed-point solver is stable for a plain lin layout" {
+  let engine = DiagramLayoutEngine::new()
+  let def = layout_for("lin", "rect")
+  let dm = flat_data_model(3)
+  let r1 = engine.apply(def, dm, canvas())
+  let r2 = engine.apply(def, dm, canvas())
+  @debug.assert_eq(r1.length(), r2.length())
+  for i in 0..<r1.length() {
+    @debug.assert_eq(r1[i].bounds.x, r2[i].bounds.x)
+    @debug.assert_eq(r1[i].bounds.width, r2[i].bounds.width)
+  }
+}

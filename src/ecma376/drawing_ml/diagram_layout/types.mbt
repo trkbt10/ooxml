@@ -556,6 +556,11 @@ pub(all) struct NodeBounds {
   point_id : String
   bounds : BoundsRect
   shape : @preset_geometry.PresetShape
+  /// §21.4.2.19 layoutNode/@styleLbl — the presentation style label of
+  /// the emitting layout node, used by the renderer to pick this node's
+  /// colour from the matching colorsDef `<dgm:styleLbl>` fill list.
+  /// `None` when the layout node declared no style label.
+  style_lbl : String?
 } derive(Eq, Debug)
 
 ///|
@@ -570,9 +575,9 @@ pub(all) struct NodeBounds {
 /// the walker already laid out. The map is mutable and shared
 /// across every recursive call so a later child can read the
 /// bounds an earlier sibling registered (depth-first walk
-/// guarantees the order). Forward references (the source node
-/// is laid out *after* the target) still no-op; a fully iterative
-/// fixed-point solver is deferred.
+/// guarantees the order). Forward references (the source node is laid
+/// out *after* the target) no-op within a single pass; the engine
+/// iterates the walk to a fixed point so they resolve across passes.
 pub(all) struct EvalContext {
   data_model : DataModel
   context_id : String

@@ -721,6 +721,14 @@ fn effects_filter_attrs(
             let prefix = "eff" + idx.to_string()
             let contribution : EffectContribution? = match el.name.local_name {
               "outerShdw" => Some(outer_shadow_primitives(el, prefix, ctx))
+              // §20.1.8.49 prstShdw (CT_PresetShadowEffect) — a preset
+              // outer shadow (shdw1..20) carrying the same `@dist` /
+              // `@dir` / colour as outerShdw.  Its perspective variants
+              // (shdw17-20) add a skew the flat filter cannot
+              // reproduce, but the dominant visual is a directional
+              // drop shadow, so it renders through the outer-shadow
+              // path (absent `@blurRad` ⇒ a hard directional shadow).
+              "prstShdw" => Some(outer_shadow_primitives(el, prefix, ctx))
               "innerShdw" => Some(inner_shadow_primitives(el, prefix, ctx))
               "glow" => Some(glow_primitives(el, prefix, ctx))
               "softEdge" => Some(soft_edge_primitives(el, prefix))

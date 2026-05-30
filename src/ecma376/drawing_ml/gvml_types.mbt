@@ -5,8 +5,8 @@
 // and WordprocessingDrawingML import from DrawingML Main. The XSD
 // definitions live in Annex A.4.1 dml-main.xsd at the following line ranges:
 //
-//   CT_GvmlUseShapeRectangle      line  938  (chunk4 owner — element wrapper)
-//   CT_GvmlTextShape              lines 939..948 (chunk4 owner — element wrapper)
+//   CT_GvmlUseShapeRectangle      line  938  (§20.1.2.2.42 useSpRect)
+//   CT_GvmlTextShape              lines 939..948 (§20.1.2.2.41 txSp)
 //   CT_GvmlShapeNonVisual         lines 949..954 (§20.1.2.2.29 nvSpPr)
 //   CT_GvmlShape                  lines 955..963 (§20.1.2.2.33 sp)
 //   CT_GvmlConnectorNonVisual     lines 964..970 (§20.1.2.2.25 nvCxnSpPr)
@@ -15,24 +15,20 @@
 //   CT_GvmlPicture                lines 986..994 (§20.1.2.2.30 pic)
 //   CT_GvmlGraphicFrameNonVisual  lines 995..1001 (§20.1.2.2.26 nvGraphicFramePr)
 //   CT_GvmlGraphicalObjectFrame   lines 1002..1010 (§20.1.2.2.18 graphicFrame)
-//   CT_GvmlGroupShapeNonVisual    lines 1011..1017 (chunk4 owner — element wrapper)
-//   CT_GvmlGroupShape             lines 1018..1032 (chunk4 owner — element wrapper)
+//   CT_GvmlGroupShapeNonVisual    lines 1011..1017 (§20.1.2.2.27 nvGrpSpPr)
+//   CT_GvmlGroupShape             lines 1018..1032 (§20.1.2.2.20 grpSp)
 //
 // Per the ct-typing protocol each CT_X is projected as a typed struct
 // with explicit child-element fields decoded from the source
 // `@xml.Element`. The element is preserved so the builder can round-trip
 // unmodelled content (the `to_element` writer returns the captured
-// element verbatim). The non-visual-property children
-// (CT_NonVisualDrawingProps, CT_NonVisualDrawingShapeProps, …) are still
-// element-only wrappers in this chunk (their CT_X projections will be
-// typed by a later chunk) — we capture them as the existing CT_X
-// projection so that callers continue to navigate via the same typed
-// accessors.
+// element verbatim).
 //
-// chunk3 owns the eight CT_Gvml(non-group) types. The recursive group
-// shape and the text-shape choice are deferred to chunk4 and are kept
-// as element-only wrappers here so chunk4 can type them without
-// re-touching chunk3 callsites.
+// All GVML types — including the recursive group shape
+// (`CT_GvmlGroupShape` → `EG_GvmlGroupShapeChild`, with nested `grpSp`)
+// and the text-shape choice (`CT_GvmlTextShape` → `useSpRect` | `xfrm`)
+// — are fully typed here; the model-group children dispatch by
+// local-name into their CT_X projections in document order.
 
 ///|
 /// XSD complex type CT_GvmlShapeNonVisual — Part 1 §20.1.2.2.29 nvSpPr.
@@ -92,9 +88,8 @@ pub(all) struct CT_GvmlShape {
   nv_sp_pr : CT_GvmlShapeNonVisual
   /// <spPr> (CT_ShapeProperties) — required.
   sp_pr : CT_ShapeProperties
-  /// <txSp> (CT_GvmlTextShape) — optional text shape. CT_GvmlTextShape
-  /// remains an element-only wrapper (chunk4 owner) — it is referenced
-  /// here by the typed projection.
+  /// <txSp> (CT_GvmlTextShape) — optional text shape, fully typed
+  /// (`txBody` + `useSpRect`|`xfrm` choice).
   tx_sp : CT_GvmlTextShape?
   /// <style> (CT_ShapeStyle) — optional.
   style : CT_ShapeStyle?

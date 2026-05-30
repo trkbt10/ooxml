@@ -410,6 +410,7 @@ pub fn decode_pivot_table_definition(
   let col_items : Array[PivotAxisItem] = []
   let page_fields : Array[PageFieldDef] = []
   let data_fields : Array[DataFieldDef] = []
+  let mut style_info : PivotTableStyleInfo? = None
   for child in element.children {
     match child {
       @xml.Element(child_element) => {
@@ -462,6 +463,26 @@ pub fn decode_pivot_table_definition(
               _ => ()
             }
           }
+        } else if lname == "pivotTableStyleInfo" {
+          // §18.10.1.74 — name + band / header toggles.
+          style_info = Some({
+            name: attr(child_element, "name"),
+            show_row_headers: decode_bool_attr(
+              child_element, "showRowHeaders", false,
+            ),
+            show_col_headers: decode_bool_attr(
+              child_element, "showColHeaders", false,
+            ),
+            show_row_stripes: decode_bool_attr(
+              child_element, "showRowStripes", false,
+            ),
+            show_col_stripes: decode_bool_attr(
+              child_element, "showColStripes", false,
+            ),
+            show_last_column: decode_bool_attr(
+              child_element, "showLastColumn", false,
+            ),
+          })
         }
       }
       _ => ()
@@ -482,6 +503,7 @@ pub fn decode_pivot_table_definition(
     col_items,
     page_fields,
     data_fields,
+    style_info,
   }
 }
 

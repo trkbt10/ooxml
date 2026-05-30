@@ -49,6 +49,14 @@ pub fn materialize_pivot_table(
     ensure_bucket_shape(buckets, row_idx, col_idx, data_field_count)
     let mut d_idx = 0
     for data_field in definition.data_fields {
+      // §18.10.1.3 — a calculated field has no per-record value; skip
+      // the bucket fill (also avoids indexing `row.cells` at a field
+      // the records don't store).  Its cells are derived later by
+      // `append_calculated_field_cells`.
+      if is_calc_data_field(definition, cache, d_idx) {
+        d_idx = d_idx + 1
+        continue
+      }
       let cell = row.cells[data_field.fld]
       let value = pivot_record_cell_to_formula_value(
         cell,
@@ -124,6 +132,20 @@ pub fn materialize_pivot_table(
       cells, definition, buckets, row_keys, col_keys, data_field_count,
     )
   }
+  // §18.10.1.3 calculated fields — the per-record bucket pass leaves a
+  // calculated field's cells empty (it has no stored per-record value);
+  // derive them here from the kept rows.  No-op when the pivot has no
+  // calculated field, so ordinary pivots are unaffected.
+  append_calculated_field_cells(
+    cells,
+    definition,
+    cache,
+    kept_rows,
+    row_field_positions,
+    col_field_positions,
+    row_keys,
+    col_keys,
+  )
   {
     row_keys: row_keys_final,
     col_keys: col_keys_final,

@@ -584,6 +584,25 @@ pub(all) struct PivotTableDefinition {
   page_fields : Array[PageFieldDef]
   /// §18.10.1.23 dataFields child.
   data_fields : Array[DataFieldDef]
+  /// §18.10.1.74 pivotTableStyleInfo child — the referenced table-style
+  /// name + band/header toggles.  `None` when absent.
+  style_info : PivotTableStyleInfo?
+} derive(Eq, Debug)
+
+///|
+/// §18.10.1.74 CT_PivotTableStyle — the `<pivotTableStyleInfo>` entry.
+/// The built-in table-style colours (`PivotStyleMedium9`, …) are
+/// application-defined and live outside the file, so the renderer
+/// surfaces the style name + band/header toggles as spec-anchored
+/// metadata (mirroring the iconSet handling) for a consumer to apply,
+/// rather than fabricating stripe colours that the file does not carry.
+pub(all) struct PivotTableStyleInfo {
+  name : String?
+  show_row_headers : Bool
+  show_col_headers : Bool
+  show_row_stripes : Bool
+  show_col_stripes : Bool
+  show_last_column : Bool
 } derive(Eq, Debug)
 
 ///|

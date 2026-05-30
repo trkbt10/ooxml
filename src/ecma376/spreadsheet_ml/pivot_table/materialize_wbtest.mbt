@@ -139,6 +139,7 @@ fn definition(
     col_items: [],
     page_fields,
     data_fields,
+    style_info: None,
   }
 }
 
@@ -593,4 +594,61 @@ test "rowFields/-2 sentinel is parsed from XSD-unsigned representation" {
   assert_eq(def.row_fields.length(), 2)
   assert_eq(def.row_fields[0], 0)
   assert_eq(def.row_fields[1], -2)
+}
+
+///|
+/// Build a calculated cache field (databaseField=0 + a formula).
+fn calc_cache_field(name : String, formula : String) -> CacheField {
+  { ..cache_field_named(name, []), database_field: false, formula: Some(formula) }
+}
+
+///|
+/// §18.10.1.3 — a calculated field evaluates its formula over the
+/// SUMMED operands of each cell (SUM(Units)·SUM(Price)), not per record.
+test "calculated field = formula over summed operands" {
+  let cache = cache_with_fields([
+    cache_field_named("Region", [SharedString("East"), SharedString("West")]),
+    cache_field_named("Units", []),
+    cache_field_named("Price", []),
+    calc_cache_field("Revenue", "Units*Price"),
+  ])
+  // Records store only the three database fields (no Revenue cell).
+  let records : PivotCacheRecords = {
+    count: Some(3),
+    rows: [
+      row_of([RefShared(0), Inline(SharedNumber(2.0)), Inline(SharedNumber(10.0))]),
+      row_of([RefShared(0), Inline(SharedNumber(3.0)), Inline(SharedNumber(10.0))]),
+      row_of([RefShared(1), Inline(SharedNumber(1.0)), Inline(SharedNumber(20.0))]),
+    ],
+  }
+  // The single data field references the calculated field (index 3).
+  let def = definition([0], [], [data_def(3, Sum)], [], true, false)
+  let result = try! materialize_pivot_table(def, cache, records)
+  // East: SUM(Units)=5, SUM(Price)=20 → 100.  West: 1·20 = 20.
+  let east = result.find(Items([0]), result.col_keys[0], 0).unwrap()
+  assert_fv_eq(east.aggregated_value, n(100.0))
+  let west = result.find(Items([1]), result.col_keys[0], 0).unwrap()
+  assert_fv_eq(west.aggregated_value, n(20.0))
+  // Row grand total: SUM(Units)=6, SUM(Price)=40 → 240 (formula over the
+  // whole column's sums, the documented calc-field behaviour).
+  let grand = result.find(RowGrand, result.col_keys[0], 0).unwrap()
+  assert_fv_eq(grand.aggregated_value, n(240.0))
+}
+
+///|
+/// §18.10.1.74 pivotTableStyleInfo — decode the style name + band /
+/// header toggles so the renderer can surface them as metadata.
+test "pivotTableStyleInfo decodes name and band toggles" {
+  let root = parse_xml(
+    "<pivotTableDefinition name=\"PT\" cacheId=\"0\"><location ref=\"A1:B3\" firstHeaderRow=\"1\" firstDataRow=\"1\" firstDataCol=\"1\"/><pivotTableStyleInfo name=\"PivotStyleMedium9\" showRowHeaders=\"1\" showColHeaders=\"1\" showRowStripes=\"1\" showColStripes=\"0\" showLastColumn=\"0\"/></pivotTableDefinition>",
+  )
+  let def = try! decode_pivot_table_definition(
+    @domain.CT_pivotTableDefinition::new(root),
+  )
+  guard def.style_info is Some(si) else { fail("expected style_info") }
+  assert_eq(si.name.unwrap(), "PivotStyleMedium9")
+  assert_true(si.show_row_headers)
+  assert_true(si.show_row_stripes)
+  assert_true(!si.show_col_stripes)
+  assert_true(!si.show_last_column)
 }

@@ -71,13 +71,13 @@ fn default_color_low() -> String {
 }
 
 ///|
-/// Resolve a `SparklineColor` to a `"#RRGGBB"` string. When the
-/// theme / tint attributes are present but no `rgb` literal is
-/// supplied the renderer falls back to `default_hex`: §18.8.3
-/// theme-colour resolution lives in the SML viewer and pulling it
-/// into this package would create a circular dependency
-/// (sparkline → viewer → sparkline). The fallback is documented
-/// alongside the package's deferred-features list in the README.
+/// Resolve a `SparklineColor` to a `"#RRGGBB"` string.  `@theme` /
+/// `@tint` colours are pre-resolved to a concrete `hex` by the SML
+/// viewer (`resolve_sparkline_group_colors`) before this renderer runs,
+/// so `hex` is populated for theme colours too; `default_hex` only
+/// applies when neither an `@rgb` nor a resolvable `@theme` was given.
+/// Resolution stays in the viewer (which owns the theme map) to keep
+/// this package free of a circular dependency.
 fn color_or(color : SparklineColor, default_hex : String) -> String {
   let hex = match color.hex {
     Some(h) => h
@@ -113,12 +113,14 @@ pub fn render_sparkline(
     @markup.attr("data-ooxml-sparkline-type", kind_to_string(group.kind)),
   ]
   let children : Array[@xml.Node] = []
-  // Skip empties (per displayEmptyCellsAs="gap" the renderer simply
-  // doesn't paint a glyph; the spec's "zero" and "span" variants
-  // are deferred — see README).
   if data.length() == 0 {
     return @markup.elem_ns("g", @markup.svg_ns, attrs, children)
   }
+  // §[MS-XLSX] 2.6.5 displayEmptyCellsAs — empty data points arrive as
+  // NaN.  `zero` replaces them with 0, `span` interpolates across them,
+  // and `gap` leaves them NaN so the glyph renderers break the line /
+  // skip the bar at that index.
+  let data = apply_empty_cells(data, group.display_empty_cells_as)
   let (min_v, max_v) = data_range(data, group)
   // §[MS-XLSX] 2.6.5 — the axis sits at y=0 for line / column
   // sparklines that span both signs, otherwise at the box's
@@ -135,16 +137,94 @@ pub fn render_sparkline(
 }
 
 ///|
+/// §[MS-XLSX] 2.6.5 displayEmptyCellsAs — convert NaN (empty) points to
+/// the group's empty-cell policy: `zero` → 0, `span` → linear
+/// interpolation across each NaN run (leading / trailing gaps clamp to
+/// the nearest finite value), `gap` → leave NaN for the glyph renderers
+/// to skip.  Returns `data` unchanged when it has no gaps.
+fn apply_empty_cells(
+  data : Array[Double],
+  mode : SparklineEmptyCells,
+) -> Array[Double] {
+  let mut has_gap = false
+  for v in data {
+    if v.is_nan() {
+      has_gap = true
+      break
+    }
+  }
+  if !has_gap {
+    return data
+  }
+  match mode {
+    EmptyGap => data
+    EmptyZero => data.map(fn(v) { if v.is_nan() { 0.0 } else { v } })
+    EmptySpan => {
+      let n = data.length()
+      let out : Array[Double] = []
+      for v in data {
+        out.push(v)
+      }
+      let mut first = -1
+      for i in 0..<n {
+        if !out[i].is_nan() {
+          first = i
+          break
+        }
+      }
+      // All-empty series → flatten to zeros (nothing to interpolate).
+      if first < 0 {
+        return data.map(fn(_v) { 0.0 })
+      }
+      // Leading gap clamps to the first finite value.
+      for i in 0..<first {
+        out[i] = out[first]
+      }
+      let mut prev = first
+      for i in (first + 1)..<n {
+        if !out[i].is_nan() {
+          if i - prev > 1 {
+            let v0 = out[prev]
+            let v1 = out[i]
+            for k in (prev + 1)..<i {
+              let t = (k - prev).to_double() / (i - prev).to_double()
+              out[k] = v0 + (v1 - v0) * t
+            }
+          }
+          prev = i
+        }
+      }
+      // Trailing gap clamps to the last finite value.
+      for k in (prev + 1)..<n {
+        out[k] = out[prev]
+      }
+      out
+    }
+  }
+}
+
+///|
 /// Pick a (min, max) tuple for the value range. Stacked (win/loss)
 /// fixes the range to ±1 because the bars are signed but
-/// unit-height; line / column scale to the data.
+/// unit-height; line / column scale to the data.  NaN (gap) points
+/// are ignored when computing the extent.
 fn data_range(data : Array[Double], group : SparklineGroup) -> (Double, Double) {
   match group.kind {
     Stacked => (-1.0, 1.0)
     _ => {
-      let mut lo = data[0]
-      let mut hi = data[0]
+      // Seed from the first finite point; all-gap falls back to ±1.
+      let mut lo = 0.0
+      let mut hi = 0.0
+      let mut seeded = false
       for v in data {
+        if v.is_nan() {
+          continue
+        }
+        if !seeded {
+          lo = v
+          hi = v
+          seeded = true
+        }
         if v < lo {
           lo = v
         }
@@ -211,33 +291,48 @@ fn render_line_into(
     out.push(axis_line(box, axis_y, group))
   }
   let n = data.length()
+  let stroke = color_or(group.color_series, default_color_series())
+  // §[MS-XLSX] 2.6.5 gap — a NaN point breaks the polyline; each run of
+  // consecutive finite points becomes its own `<polyline>` so the line
+  // is not drawn straight across the gap.
   let buf = StringBuilder::new()
+  let run : Ref[Int] = { val: 0 }
+  fn flush() -> Unit {
+    if run.val >= 2 {
+      out.push(
+        @markup.elem_ns(
+          "polyline",
+          @markup.svg_ns,
+          [
+            @markup.attr("fill", "none"),
+            @markup.attr("stroke", stroke),
+            @markup.attr("stroke-width", "0.75"),
+            @markup.attr("points", buf.to_string()),
+          ],
+          [],
+        ),
+      )
+    }
+    buf.reset()
+    run.val = 0
+  }
+
   for i in 0..<n {
+    if data[i].is_nan() {
+      flush()
+      continue
+    }
     let x = scale_x(i, n, box)
     let y = scale_y(data[i], min_v, max_v, box)
-    if i > 0 {
+    if run.val > 0 {
       buf.write_string(" ")
     }
     buf.write_string(format_d(x))
     buf.write_string(",")
     buf.write_string(format_d(y))
+    run.val = run.val + 1
   }
-  out.push(
-    @markup.elem_ns(
-      "polyline",
-      @markup.svg_ns,
-      [
-        @markup.attr("fill", "none"),
-        @markup.attr(
-          "stroke",
-          color_or(group.color_series, default_color_series()),
-        ),
-        @markup.attr("stroke-width", "0.75"),
-        @markup.attr("points", buf.to_string()),
-      ],
-      [],
-    ),
-  )
+  flush()
   if group.markers {
     push_markers(box, data, group, min_v, max_v, out)
   }
@@ -279,6 +374,9 @@ fn render_column_into(
   }
   for i in 0..<n {
     let v = data[i]
+    if v.is_nan() {
+      continue // gap — no bar at an empty point
+    }
     let x = box.x + i.to_double() * pitch + gap / 2.0
     let y0 = scale_y(0.0, min_v, max_v, box)
     let y1 = scale_y(v, min_v, max_v, box)
@@ -327,8 +425,8 @@ fn render_stacked_into(
   let neg_fill = color_or(group.color_negative, default_color_negative())
   for i in 0..<n {
     let v = data[i]
-    if v == 0.0 {
-      continue
+    if v.is_nan() || v == 0.0 {
+      continue // gap or zero — no win/loss bar
     }
     let x = box.x + i.to_double() * pitch + gap / 2.0
     if v > 0.0 {
@@ -383,6 +481,9 @@ fn push_markers(
   let n = data.length()
   let fill = color_or(group.color_markers, default_color_markers())
   for i in 0..<n {
+    if data[i].is_nan() {
+      continue // gap — no marker at an empty point
+    }
     let cx = scale_x(i, n, box)
     let cy = scale_y(data[i], min_v, max_v, box)
     out.push(marker_dot(cx, cy, fill))
@@ -405,36 +506,41 @@ fn push_highlights(
   if n == 0 {
     return
   }
-  let mut hi_i = 0
-  let mut lo_i = 0
+  // Seed high/low from the first finite point so NaN (gap) points are
+  // never selected as the extreme.
+  let mut hi_i = -1
+  let mut lo_i = -1
   for i in 0..<n {
-    if data[i] > data[hi_i] {
+    if data[i].is_nan() {
+      continue
+    }
+    if hi_i < 0 || data[i] > data[hi_i] {
       hi_i = i
     }
-    if data[i] < data[lo_i] {
+    if lo_i < 0 || data[i] < data[lo_i] {
       lo_i = i
     }
   }
-  if group.high {
+  if group.high && hi_i >= 0 {
     let cx = scale_x(hi_i, n, box)
     let cy = scale_y(data[hi_i], min_v, max_v, box)
     out.push(
       marker_dot(cx, cy, color_or(group.color_high, default_color_high())),
     )
   }
-  if group.low {
+  if group.low && lo_i >= 0 {
     let cx = scale_x(lo_i, n, box)
     let cy = scale_y(data[lo_i], min_v, max_v, box)
     out.push(marker_dot(cx, cy, color_or(group.color_low, default_color_low())))
   }
-  if group.first {
+  if group.first && !data[0].is_nan() {
     let cx = scale_x(0, n, box)
     let cy = scale_y(data[0], min_v, max_v, box)
     out.push(
       marker_dot(cx, cy, color_or(group.color_first, default_color_first())),
     )
   }
-  if group.last {
+  if group.last && !data[n - 1].is_nan() {
     let cx = scale_x(n - 1, n, box)
     let cy = scale_y(data[n - 1], min_v, max_v, box)
     out.push(
@@ -476,17 +582,23 @@ fn push_column_highlights(
   if n == 0 {
     return
   }
-  let mut hi_i = 0
-  let mut lo_i = 0
+  let mut hi_i = -1
+  let mut lo_i = -1
   for i in 0..<n {
-    if data[i] > data[hi_i] {
+    if data[i].is_nan() {
+      continue
+    }
+    if hi_i < 0 || data[i] > data[hi_i] {
       hi_i = i
     }
-    if data[i] < data[lo_i] {
+    if lo_i < 0 || data[i] < data[lo_i] {
       lo_i = i
     }
   }
   let dot = (h : Int, fill : String) => {
+    if h < 0 || data[h].is_nan() {
+      return
+    }
     let cx = box.x + h.to_double() * pitch + gap / 2.0 + bw / 2.0
     let cy = if data[h] >= 0.0 { axis_y - 1.0 } else { axis_y + 1.0 }
     out.push(marker_dot(cx, cy, fill))

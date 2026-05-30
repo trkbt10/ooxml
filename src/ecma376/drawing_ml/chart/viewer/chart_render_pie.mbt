@@ -123,10 +123,16 @@ fn render_pie_chart(
         None => ""
       }
       let pi = 3.141592653589793
-      let label_r = (outer + inner) / 2.0
+      // §21.2.2.48 dLblPos — "outEnd" / "bestFit" place labels OUTSIDE
+      // the pie; everything else (default) places them at the slice
+      // mid-radius.  External labels get §21.2.2.92 leaderLines (when
+      // requested) connecting the slice edge to the label.
+      let external = cfg.pos == "outEnd" || cfg.pos == "bestFit"
+      let label_r = if external { outer * 1.18 } else { (outer + inner) / 2.0 }
       if label_r <= 0.0 {
         return nodes
       }
+      let font_size = (if w < h { w } else { h }) * 0.03
       let mut deg2 = start_deg.to_double()
       for i, v in values {
         if v <= 0.0 {
@@ -136,8 +142,10 @@ fn render_pie_chart(
         let sweep = frac * 360.0
         let mid_deg = deg2 + sweep / 2.0
         let a = (mid_deg - 90.0) * pi / 180.0
-        let lx = cx + label_r * @math.cos(a)
-        let ly = cy + label_r * @math.sin(a)
+        let ca = @math.cos(a)
+        let sa = @math.sin(a)
+        let lx = cx + label_r * ca
+        let ly = cy + label_r * sa
         let cat_name = if i < cat_labels.length() {
           cat_labels[i]
         } else {
@@ -145,7 +153,32 @@ fn render_pie_chart(
         }
         let text = build_data_label_text(cfg, v, cat_name, ser_name, total)
         if text.length() > 0 {
-          let font_size = (if w < h { w } else { h }) * 0.03
+          // §21.2.2.92 leaderLines — for an external label, draw a
+          // connector from the slice's outer edge to the label, then
+          // anchor the text on the side it sits (left / right).
+          if external && cfg.show_leader_lines {
+            nodes.push(
+              @markup.elem_ns(
+                "line",
+                @markup.svg_ns,
+                [
+                  @markup.attr("x1", format_double(cx + outer * ca)),
+                  @markup.attr("y1", format_double(cy + outer * sa)),
+                  @markup.attr("x2", format_double(lx)),
+                  @markup.attr("y2", format_double(ly)),
+                  @markup.attr("stroke", "#808080"),
+                  @markup.attr("stroke-width", format_double(font_size * 0.08)),
+                ],
+                [],
+              ),
+            )
+          }
+          let (anchor, fill) = if external {
+            // Right half → start (left-anchored); left half → end.
+            ((if ca >= 0.0 { "start" } else { "end" }), "#404040")
+          } else {
+            ("middle", "#ffffff")
+          }
           nodes.push(
             @markup.elem_ns(
               "text",
@@ -153,10 +186,10 @@ fn render_pie_chart(
               [
                 @markup.attr("x", format_double(lx)),
                 @markup.attr("y", format_double(ly)),
-                @markup.attr("text-anchor", "middle"),
+                @markup.attr("text-anchor", anchor),
                 @markup.attr("dominant-baseline", "middle"),
                 @markup.attr("font-size", format_double(font_size)),
-                @markup.attr("fill", "#ffffff"),
+                @markup.attr("fill", fill),
                 @markup.attr("font-family", "sans-serif"),
               ],
               [@markup.text(text)],

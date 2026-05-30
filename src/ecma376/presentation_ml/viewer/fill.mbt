@@ -229,8 +229,9 @@ fn pattern_pct_density(prst : String) -> Double? {
 ///|
 /// Build the geometry child nodes of a §20.1.8.47 pattern tile for a
 /// recognised `@prst`. The tile is an 8×8 user-space cell; `fg` paints
-/// the marks. Returns `None` for an unmapped preset so the caller can
-/// fall back to a flat foreground fill.
+/// the marks. Every §20.1.10.50 ST_PresetPatternVal value is mapped;
+/// `None` is returned only for a schema-invalid / unknown preset name,
+/// so the caller falls back to a flat foreground fill.
 ///
 /// Covered families (the geometric basis of ST_PresetPatternVal):
 ///   - percentage dots (`pct5` … `pct90`)
@@ -515,8 +516,9 @@ fn patt_diamond_node(size : Double, color : String, filled : Bool) -> @xml.Node 
 
 ///|
 /// Render an `<a:pattFill>` to an SVG `<pattern>` def. Returns `None`
-/// when `@prst` is absent or its geometry is not yet mapped, so the
-/// caller falls back to a flat foreground fill.
+/// when `@prst` is absent or names a schema-invalid preset (every valid
+/// ST_PresetPatternVal is mapped), so the caller falls back to a flat
+/// foreground fill.
 /// @source web-pptx packages/@aurochs-renderer/pptx/src/svg/fill.ts:100
 fn render_patt_fill_def(
   patt_fill : @xml.Element,

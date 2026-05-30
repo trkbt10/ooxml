@@ -238,3 +238,26 @@ test "blur grow=\"true\" expands the viewport vs grow=\"false\"" {
   // differs from the tight one.
   assert_true(!str_grow.contains("x=\"-10%\""))
 }
+
+///|
+test "prstShdw (§20.1.8.49) emits a directional drop-shadow filter" {
+  // A preset shadow with distance + direction + colour renders
+  // through the outer-shadow path (offset + colour-matrix + merge).
+  let sp_pr = build_sp_pr_with_effect(
+    "<a:prstShdw prst=\"shdw13\" dist=\"38100\" dir=\"2700000\"><a:srgbClr val=\"808080\"/></a:prstShdw>",
+  )
+  let defs = SvgDefsCollector::new()
+  let attr = render_effects_filter_attr(
+    sp_pr,
+    "77",
+    ColorResolveContext::empty(),
+    defs,
+  )
+  assert_true(attrs_markup(attr).contains("filter=\"url(#effect-77)\""))
+  let defs_str = defs.to_defs_element()
+  assert_true(defs_str.contains("<filter id=\"effect-77\""))
+  // Directional shadow → offset + colour-matrix + merge-under.
+  assert_true(defs_str.contains("feOffset"))
+  assert_true(defs_str.contains("feColorMatrix"))
+  assert_true(defs_str.contains("feMerge"))
+}

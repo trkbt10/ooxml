@@ -13,8 +13,11 @@
 // subtree containing one `<rect>` (or `<ellipse>` / `<polygon>`
 // per the layout-node's `<dgm:shape>`) plus a centred `<text>`
 // label per `NodeBounds`. Colours are drawn from
-// `<dgm:fillClrLst>` on the colorsDef so the per-node accent
-// cycles through the theme's colour transform.
+// `<dgm:fillClrLst>` on the colorsDef so the per-node accent cycles
+// through the theme's colour transform; `<a:schemeClr>` entries are
+// resolved against the presentation theme carried in the
+// `ColorResolveContext` (Office-palette fallback when no theme part
+// loaded), so the diagram's accents match the surrounding deck.
 //
 // The renderer is intentionally minimal: it honours the engine's
 // computed `(x, y, width, height)` per data point and emits the
@@ -22,10 +25,14 @@
 // for hierarchical (`hierRoot`/`hierChild`) and cycle layouts —
 // hierarchical connectors run from the parent's bottom-centre to
 // the child's top-centre, while cycle connectors run straight
-// between centres. Spec-correct features such as the `<dgm:bg>`
-// background, per-point `<dgm:prSet>` overrides, and the
-// `<dgm:styleDef>`'s text formatting are still deferred to a
-// future iteration.
+// between centres. Each node picks its fill from the colorsDef
+// `<dgm:styleLbl>` whose name matches the node's layout-assigned style
+// label (`NodeBounds.style_lbl`); nodes sharing a label cycle that
+// label's fill list, and a node with no label (or no matching styleLbl)
+// falls back to the first label's list. Label TEXT colour comes from
+// the same style label's `<dgm:txFillClrLst>` (black when absent), and
+// a `<dgm:bg>` solid background fill (§21.4.2.10) renders behind the
+// whole diagram.
 
 ///|
 /// DrawingML diagram namespace (§21.4) — the URI the
@@ -130,6 +137,7 @@ fn render_diagram_svg(
   frame_w : Double,
   frame_h : Double,
   part_resolver : (String) -> @xml.Element?,
+  ctx : ColorResolveContext,
 ) -> Array[@xml.Node] {
   let (dm_rid, lo_rid, qs_rid, cs_rid) = match extract_diagram_rel_ids(frame) {
     Some(t) => t
@@ -232,8 +240,26 @@ fn render_diagram_svg(
   // <dgm:pt><t><a:p><a:r><a:t> body. The engine returns
   // point_ids verbatim, so a linear scan of the data model is
   // adequate (data models are small).
-  let palette = colors_palette(colors_def_root)
+  // §21.4.2.10 `<dgm:bg>` — a whole-diagram background fill renders
+  // first, behind the connectors and node shapes.
+  let bg_node = emit_diagram_background(data_model_root, frame_w, frame_h, ctx)
+  let palette = colors_palette(colors_def_root, ctx)
+  // §21.4.4.10 — per-style-label fill lists, so each node uses the
+  // colour list of the style label its layout node carries.  Nodes
+  // sharing a label cycle that label's list independently.
+  let label_palettes = colors_by_style_label(colors_def_root, ctx)
+  let label_counts : Map[String, Int] = Map([], capacity=0)
+  // §21.4.4 `<dgm:txFillClrLst>` — per-style-label TEXT colour lists,
+  // so each node's label uses the style label's text colour.
+  let text_palettes = colors_by_style_label(
+    colors_def_root, ctx, list_name="txFillClrLst",
+  )
+  let text_counts : Map[String, Int] = Map([], capacity=0)
   let svg_nodes : Array[@xml.Node] = []
+  match bg_node {
+    Some(n) => svg_nodes.push(n)
+    None => ()
+  }
   // §21.4.2.7 cxnLst — connector lines first, so node bodies render
   // on top and the connector endpoints disappear under the shapes.
   // Hierarchical algorithms (hierRoot/hierChild) draw vertical
@@ -251,7 +277,21 @@ fn render_diagram_svg(
   let mut palette_index = 0
   for nb in node_bounds {
     let text = lookup_point_text(data_model, nb.point_id)
-    let fill = palette_pick(palette, palette_index)
+    // §21.4.4.10 — prefer the node's own style-label colour list; fall
+    // back to the default cycle when the node carries no label or the
+    // colorsDef has no matching styleLbl.
+    let fill = match nb.style_lbl {
+      Some(lbl) =>
+        match label_palettes.get(lbl) {
+          Some(colors) if colors.length() > 0 => {
+            let i = label_counts.get(lbl).unwrap_or(0)
+            label_counts[lbl] = i + 1
+            colors[i % colors.length()]
+          }
+          _ => palette_pick(palette, palette_index)
+        }
+      None => palette_pick(palette, palette_index)
+    }
     palette_index = palette_index + 1
     let shape_nodes = emit_node_shape(nb, fill)
     for n in shape_nodes {
@@ -260,7 +300,21 @@ fn render_diagram_svg(
     match text {
       Some(label) =>
         if label.length() > 0 {
-          svg_nodes.push(emit_node_label(nb, label))
+          // §21.4.4 — text colour from the node's style label's
+          // txFillClrLst, defaulting to black when absent.
+          let text_color = match nb.style_lbl {
+            Some(lbl) =>
+              match text_palettes.get(lbl) {
+                Some(colors) if colors.length() > 0 => {
+                  let i = text_counts.get(lbl).unwrap_or(0)
+                  text_counts[lbl] = i + 1
+                  colors[i % colors.length()]
+                }
+                _ => "#000000"
+              }
+            None => "#000000"
+          }
+          svg_nodes.push(emit_node_label(nb, label, text_color~))
         }
       None => ()
     }
@@ -569,9 +623,49 @@ fn double_min_local(a : Double, b : Double) -> Double {
 /// box's short side, capped so very tall boxes do not produce
 /// overly large text. The text is anchored at the centre so it
 /// stays visually centred for boxes of any aspect ratio.
+/// §21.4.2.10 dataModel/`<dgm:bg>` (CT_BackgroundFormatting) — emit a
+/// background rectangle covering the whole diagram frame when the data
+/// model declares a solid background fill.  `noFill` / absent / non-
+/// solid fills yield `None` (no background rect).
+fn emit_diagram_background(
+  data_model_root : @xml.Element,
+  frame_w : Double,
+  frame_h : Double,
+  ctx : ColorResolveContext,
+) -> @xml.Node? {
+  let bg = match first_child_named(data_model_root, "bg") {
+    Some(b) => b
+    None => return None
+  }
+  let sf = match first_child_named(bg, "solidFill") {
+    Some(s) => s
+    None => return None
+  }
+  let color = match @paint.resolve_solid_fill(sf, ctx~) {
+    Some(rc) => @paint.format_resolved_color(rc)
+    None => return None
+  }
+  Some(
+    @markup.elem_ns(
+      "rect",
+      @markup.svg_ns,
+      [
+        @markup.attr("x", "0"),
+        @markup.attr("y", "0"),
+        @markup.attr("width", format_double(frame_w)),
+        @markup.attr("height", format_double(frame_h)),
+        @markup.attr("fill", color),
+      ],
+      [],
+    ),
+  )
+}
+
+///|
 fn emit_node_label(
   nb : @diagram_layout.NodeBounds,
   label : String,
+  text_color~ : String = "#000000",
 ) -> @xml.Node {
   let cx = nb.bounds.x + nb.bounds.width * 0.5
   let cy = nb.bounds.y + nb.bounds.height * 0.5
@@ -588,7 +682,7 @@ fn emit_node_label(
     @markup.attr("dominant-baseline", "central"),
     @markup.attr("font-family", "sans-serif"),
     @markup.attr("font-size", format_double(font_size)),
-    @markup.attr("fill", "#000000"),
+    @markup.attr("fill", text_color),
   ]
   @markup.elem_ns("text", @markup.svg_ns, attrs, [@markup.text(label)])
 }
@@ -601,16 +695,109 @@ fn emit_node_label(
 /// document order and return their hex strings. When the colorsDef
 /// is absent or empty, we fall back to a small built-in palette so
 /// the diagram still has visible per-node differentiation.
-fn colors_palette(colors_def : @xml.Element?) -> Array[String] {
-  let defaults : Array[String] = [
-    "#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47",
-  ]
+fn diagram_default_palette() -> Array[String] {
+  ["#4472C4", "#ED7D31", "#A5A5A5", "#FFC000", "#5B9BD5", "#70AD47"]
+}
+
+///|
+/// §21.4.4.7 `<dgm:fillClrLst>` — read a styleLbl's fill colour list,
+/// resolving `<a:srgbClr>` literally and `<a:schemeClr>` against the
+/// presentation theme in `ctx` (Office-palette fallback).  Returns an
+/// empty array when the styleLbl carries no fill list.
+fn fill_clr_lst_colors(
+  lbl : @xml.Element,
+  ctx : ColorResolveContext,
+  list_name~ : String = "fillClrLst",
+) -> Array[String] {
+  let result : Array[String] = []
+  let mut fill_lst : @xml.Element? = None
+  for child in lbl.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == list_name {
+          fill_lst = Some(e)
+          break
+        }
+      _ => ()
+    }
+  }
+  let lst = match fill_lst {
+    Some(e) => e
+    None => return result
+  }
+  for child in lst.children {
+    match child {
+      Element(e) => {
+        let local_name = e.name.local_name
+        if local_name == "srgbClr" {
+          match attr_value(e, "val") {
+            Some(hex) => result.push("#" + hex)
+            None => ()
+          }
+        } else if local_name == "schemeClr" {
+          match attr_value(e, "val") {
+            Some(name) =>
+              match @paint.get_scheme_color(name, None, ctx) {
+                Some(hex) => result.push("#" + hex)
+                None => result.push(scheme_default_hex(name))
+              }
+            None => ()
+          }
+        }
+      }
+      _ => ()
+    }
+  }
+  result
+}
+
+///|
+/// §21.4.4.10 — map every `<dgm:styleLbl name="…">` in the colorsDef to
+/// its resolved fill colour list, so a node can pick the colour list of
+/// the style label its layout node carries (rather than always cycling
+/// the first label's list).
+fn colors_by_style_label(
+  colors_def : @xml.Element?,
+  ctx : ColorResolveContext,
+  list_name~ : String = "fillClrLst",
+) -> Map[String, Array[String]] {
+  let map : Map[String, Array[String]] = Map([], capacity=0)
+  let cd = match colors_def {
+    Some(e) => e
+    None => return map
+  }
+  for child in cd.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "styleLbl" {
+          match attr_value(e, "name") {
+            Some(name) => {
+              let colors = fill_clr_lst_colors(e, ctx, list_name~)
+              if colors.length() > 0 {
+                map[name] = colors
+              }
+            }
+            None => ()
+          }
+        }
+      _ => ()
+    }
+  }
+  map
+}
+
+///|
+fn colors_palette(
+  colors_def : @xml.Element?,
+  ctx : ColorResolveContext,
+) -> Array[String] {
+  let defaults = diagram_default_palette()
   let cd = match colors_def {
     Some(e) => e
     None => return defaults
   }
-  // §21.4.4.10 `<dgm:styleLbl>` — find the first one (typically
-  // `name="node1"`) and read its `<dgm:fillClrLst>` children.
+  // §21.4.4.10 `<dgm:styleLbl>` — the first one (typically
+  // `name="node1"`) supplies the default per-node cycle.
   let mut style_lbl : @xml.Element? = None
   for child in cd.children {
     match child {
@@ -622,54 +809,16 @@ fn colors_palette(colors_def : @xml.Element?) -> Array[String] {
       _ => ()
     }
   }
-  let lbl = match style_lbl {
-    Some(e) => e
-    None => return defaults
-  }
-  let mut fill_lst : @xml.Element? = None
-  for child in lbl.children {
-    match child {
-      Element(e) =>
-        if e.name.local_name == "fillClrLst" {
-          fill_lst = Some(e)
-          break
-        }
-      _ => ()
-    }
-  }
-  let lst = match fill_lst {
-    Some(e) => e
-    None => return defaults
-  }
-  let result : Array[String] = []
-  for child in lst.children {
-    match child {
-      Element(e) => {
-        let local_name = e.name.local_name
-        if local_name == "srgbClr" {
-          match attr_value(e, "val") {
-            Some(hex) => result.push("#" + hex)
-            None => ()
-          }
-        } else if local_name == "schemeClr" {
-          // Scheme colour resolution requires the theme; without
-          // it we cannot pin down a concrete sRGB triple. We
-          // include the scheme name as a placeholder so the
-          // palette index advances and downstream callers still
-          // see a varied colour cycle.
-          match attr_value(e, "val") {
-            Some(name) => result.push(scheme_default_hex(name))
-            None => ()
-          }
-        }
+  match style_lbl {
+    None => defaults
+    Some(lbl) => {
+      let result = fill_clr_lst_colors(lbl, ctx)
+      if result.length() == 0 {
+        defaults
+      } else {
+        result
       }
-      _ => ()
     }
-  }
-  if result.length() == 0 {
-    defaults
-  } else {
-    result
   }
 }
 

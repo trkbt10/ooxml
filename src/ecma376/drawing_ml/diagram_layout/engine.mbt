@@ -22,24 +22,66 @@ pub fn DiagramLayoutEngine::apply(
       // can surface a stable empty result rather than crashing.
       ""
   }
-  let results : Array[NodeBounds] = []
   // §21.4.2.19 layoutNode/@name → computed inner bounds map. The
-  // walker registers every named layoutNode's `inner` rectangle so
-  // a later constraint with `<constr refForName="…"/>` can resolve
-  // against the named sibling's bounds. The map is mutable and
-  // shared across the entire walk (forEach iterations carry the
-  // same registry forward) so depth-first ordering is sufficient
-  // for the common case.
-  let node_bounds_by_name : Map[String, BoundsRect] = Map([], capacity=0)
-  let context = {
-    data_model,
-    context_id: root_id,
-    depth: 0,
-    results,
-    node_bounds_by_name,
+  // walker registers every named layoutNode's `inner` rectangle so a
+  // constraint with `<constr refForName="…"/>` can resolve against the
+  // named node's bounds.  A reference to a node appearing EARLIER in
+  // document order resolves within a single depth-first pass; a FORWARD
+  // reference (target walked later) finds nothing on the first pass.
+  //
+  // §21.4.2.8 — to honour forward references we iterate the walk to a
+  // fixed point: each pass seeds the registry with the PREVIOUS pass's
+  // resolved bounds, so a forward reference reads the target's bounds
+  // from the prior pass instead of silently no-op'ing.  Iteration stops
+  // once the registry stabilises.  A layout with no forward references
+  // converges on the first pass and is byte-identical to the former
+  // single-pass result (every reference is backward and is overwritten
+  // with the same value it computed before), so existing layouts are
+  // unaffected; only forward-referencing layouts change (resolving the
+  // constraint rather than dropping it).
+  let max_passes = 6
+  let mut prev_named : Map[String, BoundsRect] = Map([], capacity=0)
+  let mut final_results : Array[NodeBounds] = []
+  for pass in 0..<max_passes {
+    let named : Map[String, BoundsRect] = Map([], capacity=0)
+    for k, v in prev_named {
+      named[k] = v
+    }
+    let results : Array[NodeBounds] = []
+    let context = {
+      data_model,
+      context_id: root_id,
+      depth: 0,
+      results,
+      node_bounds_by_name: named,
+    }
+    walk_layout_node(definition.root, bounds, context)
+    final_results = context.results
+    if pass > 0 && node_bounds_maps_equal(prev_named, named) {
+      break
+    }
+    prev_named = named
   }
-  walk_layout_node(definition.root, bounds, context)
-  context.results
+  final_results
+}
+
+///|
+/// Structural equality for the `layoutNode/@name → bounds` registry,
+/// used to detect fixed-point convergence of the constraint solver.
+fn node_bounds_maps_equal(
+  a : Map[String, BoundsRect],
+  b : Map[String, BoundsRect],
+) -> Bool {
+  if a.length() != b.length() {
+    return false
+  }
+  for k, v in a {
+    match b.get(k) {
+      Some(bv) => if bv != v { return false }
+      None => return false
+    }
+  }
+  true
 }
 
 ///|
@@ -914,7 +956,12 @@ pub fn apply_pres_of(
     return
   }
   for target in targets {
-    context.results.push({ point_id: target.id, bounds, shape })
+    context.results.push({
+      point_id: target.id,
+      bounds,
+      shape,
+      style_lbl: node.style_lbl,
+    })
   }
 }
 

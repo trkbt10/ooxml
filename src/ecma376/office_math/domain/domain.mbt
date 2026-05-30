@@ -2982,9 +2982,9 @@ pub fn CT_OMathPara::new(
 /// Schema shared-math.xsd complex type `CT_OMath`. Child elements:
 /// EG_OMathElements*. Child types: `EG_OMathElements`.
 /// Top-level math zone (§22.1.2.77 oMath) carrying a repeating
-/// EG_OMathElements choice. The model-group classification is deferred
-/// to EG_OMathElements::math_element, so this constructor stays
-/// infallible.
+/// EG_OMathElements choice. Each child's model-group classification is
+/// performed by `EG_OMathElements::new` (every element is dispatched and
+/// rendered by the OMML viewer), so this constructor stays infallible.
 pub(all) struct CT_OMath {
   /// EG_OMathElements*, zero or more — the math/paragraph content of the
   /// zone, dispatched element-by-element into the model group.

@@ -70,6 +70,98 @@ test "make_font_measurer_at returns None when ttc_index is out of range on a TTF
 }
 
 ///|
+test "FontMeasurer::char_outline_contours flattens a glyph into pixel points" {
+  let bytes = load_subset_font()
+  guard make_font_measurer(bytes) is Some(m) else {
+    fail("Failed to parse subset.ttf")
+  }
+  let contours = m.char_outline_contours(
+    'A', font_size_pt=72.0, pen_x=0.0, tolerance=0.5,
+  )
+  // 'A' has at least one outer contour with a handful of vertices.
+  assert_true(contours.length() >= 1)
+  let mut total_pts = 0
+  let mut max_y = -1.0e18
+  for c in contours {
+    total_pts = total_pts + c.length()
+    for p in c {
+      // Baseline at y=0, ascenders go NEGATIVE (screen y-down flip).
+      if p.1 > max_y {
+        max_y = p.1
+      }
+    }
+  }
+  assert_true(total_pts >= 3)
+  // A capital 'A' sits on the baseline, so its lowest point is ~0
+  // (not far below); just assert the flip produced finite extents.
+  assert_true(max_y <= 1.0)
+}
+
+///|
+test "FontMeasurer::char_outline_contours offsets x by the pen position" {
+  let bytes = load_subset_font()
+  guard make_font_measurer(bytes) is Some(m) else {
+    fail("Failed to parse subset.ttf")
+  }
+  fn min_x(pen : Double) -> Double {
+    let cs = m.char_outline_contours('A', font_size_pt=48.0, pen_x=pen, tolerance=0.5)
+    let mut mn = 1.0e18
+    for c in cs {
+      for p in c {
+        if p.0 < mn {
+          mn = p.0
+        }
+      }
+    }
+    mn
+  }
+
+  // Shifting the pen by 100 px shifts every outline point by 100 px.
+  let shift = min_x(100.0) - min_x(0.0)
+  assert_true((shift - 100.0).abs() < 1.0e-6)
+}
+
+///|
+test "text_outline_contours lays glyphs left-to-right at advances" {
+  let bytes = load_subset_font()
+  glyph_test_set_font(bytes)
+  let one = (try? text_outline_contours("A", family="Noto Sans", font_size_pt=48.0)).unwrap_or(
+    [],
+  )
+  let two = (try? text_outline_contours("AA", family="Noto Sans", font_size_pt=48.0)).unwrap_or(
+    [],
+  )
+  assert_true(one.length() >= 1)
+  // The second 'A' contributes additional contours past the first.
+  assert_true(two.length() > one.length())
+  // …and its points reach farther right than the single glyph.
+  fn max_x(cs : Array[Array[(Double, Double)]]) -> Double {
+    let mut mx = -1.0e18
+    for c in cs {
+      for p in c {
+        if p.0 > mx {
+          mx = p.0
+        }
+      }
+    }
+    mx
+  }
+
+  assert_true(max_x(two) > max_x(one))
+}
+
+///|
+/// Register `bytes` as the default "Noto Sans" face for the package
+/// tests that exercise the resolver-backed `text_outline_contours`.
+fn glyph_test_set_font(bytes : Bytes) -> Unit {
+  set_default_font_set(
+    FontSet::new(
+      resolver=FontResolver::in_memory(Map([("Noto Sans", bytes)], capacity=1)),
+    ),
+  )
+}
+
+///|
 test "FontMeasurer::with_gpos_kern attaches a non-empty map" {
   let bytes = load_subset_font()
   guard make_font_measurer(bytes) is Some(base) else {

@@ -712,21 +712,24 @@ priv struct ParaProps {
 ///     advancing the natural flow cursor; subsequent paragraphs
 ///     slide UP into the inline slot the frame vacates.
 ///
-/// DEFERRED (falls back to a sensible default rather than
-/// erroring; full coverage would require splitting body lines
-/// across the band boundary):
-///   * `w:xAlign="inside"|"outside"` — book-spine-relative
-///     placement; needs facing-page parity tracked through
-///     `<w:sectPr>`.  Treated as the explicit `w:x` offset.
-///   * Body paragraph that EXCEEDS the frame's vertical band:
-///     the entire body paragraph is laid out at the narrow band
-///     width, even when its later lines could re-expand once the
-///     band ends.  Splitting the paragraph across the band
-///     boundary would require per-line wrap-width transitions
-///     that the line breaker does not currently support.
-///   * Frame inside a table cell — `layout_table` calls
-///     `layout_paragraph` directly without the wrap-band
-///     bookkeeping that `collect_blocks` performs.
+/// A body paragraph that EXCEEDS the frame's vertical band is laid
+/// out with a per-line wrap-width transition (the §20.4.2.16
+/// `line_budget_fn` mechanism): lines inside the residual band use the
+/// narrow body width, and lines past it re-expand to the full column.
+///
+/// `w:xAlign="inside"|"outside"` (book-spine-relative) is resolved to
+/// the recto-page convention (inside→left, outside→right) since the
+/// renderer produces a single continuous flow without duplex page
+/// parity; the keyword is no longer mistreated as a raw `w:x` offset.
+///
+/// Frame inside a TABLE CELL flows side-by-side: `layout_table` lays the
+/// framed paragraph at its frame inner width and wraps the following
+/// cell paragraphs BESIDE it (narrowed to the residual width + x-shifted
+/// to the opposite side), merging the frame and its beside-text into one
+/// composite paragraph that occupies the frame's vertical band (see
+/// `build_cell_frame_band`).  Honours the frame's anchored side
+/// (`xAlign`/`x`) and `hSpace` gutter; gated on a cell actually
+/// containing a `framePr` paragraph, so ordinary cells are unaffected.
 priv struct FramePr {
   /// `w:w` — frame inner width in CSS pixels. `0.0` when omitted
   /// (the layout pass then falls back to half the content width).
@@ -891,6 +894,11 @@ priv struct FloatDrawing {
   /// §20.4.2.3 `distL` horizontal wrap gap (px) between the float and
   /// the body band.
   gutter_px : Double
+  /// §20.4.2.16 wrapPolygon — the irregular wrap boundary as vertices
+  /// in box-local fractions (0..1 of `w_px` × `h_px`).  Empty when the
+  /// float wraps to its rectangular bounding box (wrapSquare, or
+  /// wrapTight/Through without an explicit polygon).
+  wrap_polygon : Array[(Double, Double)]
 }
 
 ///|
@@ -2279,6 +2287,17 @@ fn collect_blocks(
   // this x offset (float width + gutter).  Zero for right-floats and
   // for framePr bands (frame on the right, body flush left).
   let mut wrap_body_x = 0.0
+  // §20.4.2.16 wrapPolygon — when the active band is held open by a
+  // side-float that carries an irregular wrap polygon, these hold the
+  // geometry needed to compute a per-line variable width / x-offset
+  // (the body follows the polygon edge at each line's height rather
+  // than the float's bounding box).  `wrap_poly` empty ⇒ rectangular
+  // band (the wrap_body_width / wrap_body_x path above).
+  let mut wrap_poly : Array[(Double, Double)] = []
+  let mut wrap_float_h = 0.0
+  let mut wrap_float_w = 0.0
+  let mut wrap_float_side = ""
+  let mut wrap_float_gutter = 0.0
   // CSS-pixel gap reserved between the body band and the frame box.
   // §17.3.1.11 `w:hSpace` supplies the spec value; when omitted we
   // fall back to 14 px (tuned against the reference renderer for the
@@ -2339,23 +2358,27 @@ fn collect_blocks(
                 }
                 if wraps {
                   wrap_height_remaining = band_h
-                  // Body band sits opposite the frame.  We compute
-                  // the frame's HORIZONTAL position inside the
-                  // content area so the body width matches the
-                  // free space LEFT of the frame.  This handles
-                  // the common right-anchored variants (xAlign=
-                  // "right" or a positive `x_px` that pushes the
-                  // frame past the column midpoint).  When the
-                  // frame is left-anchored (xAlign="left" or
-                  // `x_px=0`) the body would need to live on the
-                  // right of the frame — that variant is deferred
-                  // and falls back to the original right-of-frame
-                  // band width here, which still narrows the body
-                  // and reduces but does not eliminate overlap.
+                  // Body band sits opposite the frame.  Resolve the
+                  // frame's HORIZONTAL extent inside the content area,
+                  // then flow the body on whichever side has the most
+                  // free space: a RIGHT-anchored frame leaves room on
+                  // its left (body flush left, `wrap_body_x = 0`); a
+                  // LEFT-anchored frame leaves room on its right (body
+                  // shifted past the frame by `wrap_body_x`, eliminating
+                  // the overlap the old left-only band produced).
                   let frame_left_in_content = match fp.x_align {
                     "right" => content_width - fp.w_px
                     "center" => (content_width - fp.w_px) / 2.0
                     "left" => 0.0
+                    // §17.3.1.11 — `inside`/`outside` are binding-
+                    // relative: on a recto (odd) page `inside` is the
+                    // left (gutter) edge and `outside` the right.  We
+                    // render a single continuous flow without duplex
+                    // page parity, so we resolve to the recto
+                    // convention (the dominant first-page case) rather
+                    // than mistreating the keyword as a raw `w:x`.
+                    "inside" => 0.0
+                    "outside" => content_width - fp.w_px
                     _ =>
                       // `x_px` is relative to the resolved
                       // hAnchor; for hAnchor="margin" (the
@@ -2374,10 +2397,19 @@ fn collect_blocks(
                   } else {
                     default_wrap_gutter
                   }
-                  let body_w = (frame_left_in_content - gutter).max(
-                    content_width * 0.4,
-                  )
-                  wrap_body_width = body_w
+                  let frame_right = frame_left_in_content + fp.w_px
+                  let space_left = frame_left_in_content
+                  let space_right = content_width - frame_right
+                  let min_band = content_width * 0.2
+                  if space_right > space_left {
+                    // Body to the RIGHT of the frame.
+                    wrap_body_x = frame_right + gutter
+                    wrap_body_width = (content_width - wrap_body_x).max(min_band)
+                  } else {
+                    // Body to the LEFT of the frame (right-anchored).
+                    wrap_body_x = 0.0
+                    wrap_body_width = (space_left - gutter).max(min_band)
+                  }
                 }
               }
               None => {
@@ -2408,36 +2440,167 @@ fn collect_blocks(
                       // The band's vertical extent is the float height;
                       // following paragraphs flow beside it until spent.
                       wrap_height_remaining = float.h_px
+                      // §20.4.2.16 — carry the wrap polygon (if any)
+                      // and float geometry so the active-band layout
+                      // below can follow the irregular edge per line.
+                      wrap_poly = float.wrap_polygon
+                      wrap_float_h = float.h_px
+                      wrap_float_w = float.w_px
+                      wrap_float_side = float.side
+                      wrap_float_gutter = gutter
                     }
                     None => ()
                   }
                 }
                 if wrap_height_remaining > 0.0 {
-                  // Active wrap band — re-lay-out at the narrower body
-                  // width (and x offset for left-floats), billing the
-                  // height against the budget.  A paragraph longer than
-                  // the remaining band is narrowed whole for its first
-                  // iteration (lines are not split across the band
-                  // boundary).
-                  let narrow = layout_paragraph(
-                    with_marker,
-                    wrap_body_width,
-                    image_resolver,
-                    chart_resolver,
-                    apply_office_defaults~,
-                    theme_map~,
-                    font_map~,
-                  )
-                  let placed = if wrap_body_x > 0.0 {
-                    shift_paragraph_x(narrow, wrap_body_x)
+                  let placed = if wrap_poly.length() >= 2 {
+                    // §20.4.2.16 — variable-band layout: each line's
+                    // available width / left offset follows the float's
+                    // wrap polygon at that line's vertical position.
+                    //
+                    // `consumed` is the height already billed to earlier
+                    // paragraphs in this band, i.e. how far down the
+                    // float box this paragraph begins.  Line `idx` then
+                    // sits at its centre `consumed + (idx+0.5)*step`,
+                    // normalised by the float height into the polygon's
+                    // 0..1 box-local y.  `step` is the paragraph's own
+                    // baseline pitch (line-to-line distance), so mixed
+                    // font sizes map their lines to the correct height.
+                    let consumed = wrap_float_h - wrap_height_remaining
+                    let step = {
+                      let ls = probe.lines
+                      if ls.length() >= 2 {
+                        ls[1].y_baseline - ls[0].y_baseline
+                      } else if probe.height > 0.0 {
+                        probe.height
+                      } else {
+                        16.0
+                      }
+                    }
+                    let side = wrap_float_side
+                    let fw = wrap_float_w
+                    let fh = wrap_float_h
+                    let gut = wrap_float_gutter
+                    let poly = wrap_poly
+                    // Float box left edge inside the content area: a
+                    // left-float sits flush left (0); a right-float is
+                    // pushed to the right margin.
+                    let float_left = if side == "left" {
+                      0.0
+                    } else {
+                      content_width - fw
+                    }
+                    let min_band = content_width * 0.15
+                    fn fy_of(idx : Int) -> Double {
+                      let y = (consumed + (idx.to_double() + 0.5) * step) / fh
+                      if y < 0.0 {
+                        0.0
+                      } else if y > 1.0 {
+                        1.0
+                      } else {
+                        y
+                      }
+                    }
+
+                    fn body_x_of(idx : Int) -> Double {
+                      // Only the LEFT-float case shifts the body right,
+                      // past the polygon's right edge at this height.
+                      if side != "left" {
+                        return 0.0
+                      }
+                      match polygon_x_span_at(poly, fy_of(idx)) {
+                        Some((_, max_fx)) => float_left + max_fx * fw + gut
+                        None => 0.0
+                      }
+                    }
+
+                    fn budget_of(idx : Int) -> Double {
+                      match polygon_x_span_at(poly, fy_of(idx)) {
+                        Some((min_fx, max_fx)) =>
+                          if side == "left" {
+                            // Body starts past the polygon's right edge.
+                            let bx = float_left + max_fx * fw + gut
+                            (content_width - bx).max(min_band)
+                          } else {
+                            // Body ends before the polygon's left edge.
+                            let edge = float_left + min_fx * fw
+                            (edge - gut).max(min_band)
+                          }
+                        // No polygon edge at this height ⇒ the line is
+                        // above / below the float: use the full width.
+                        None => content_width
+                      }
+                    }
+
+                    layout_paragraph(
+                      with_marker,
+                      content_width,
+                      image_resolver,
+                      chart_resolver,
+                      apply_office_defaults~,
+                      theme_map~,
+                      font_map~,
+                      line_budget_fn=budget_of,
+                      line_x_fn=body_x_of,
+                    )
                   } else {
-                    narrow
+                    // Rectangular band — lines WITHIN the residual band
+                    // height use the narrow body width (and x offset for
+                    // left-floats); any line that falls PAST the band
+                    // re-expands to the full column width.  Line `idx`
+                    // sits ~`idx·step` below the band top, so it is
+                    // inside the band while `idx·step < remaining`.  This
+                    // uses the same per-line budget mechanism as the
+                    // polygon path, so a paragraph taller than the band is
+                    // no longer narrowed as a whole (closing the §17.3.1.11
+                    // "body paragraph exceeds the frame band" gap).
+                    let step = {
+                      let ls = probe.lines
+                      if ls.length() >= 2 {
+                        ls[1].y_baseline - ls[0].y_baseline
+                      } else if probe.height > 0.0 {
+                        probe.height
+                      } else {
+                        16.0
+                      }
+                    }
+                    let remaining = wrap_height_remaining
+                    let body_w = wrap_body_width
+                    let body_x = wrap_body_x
+                    fn in_band(idx : Int) -> Bool {
+                      idx.to_double() * step < remaining
+                    }
+
+                    layout_paragraph(
+                      with_marker,
+                      content_width,
+                      image_resolver,
+                      chart_resolver,
+                      apply_office_defaults~,
+                      theme_map~,
+                      font_map~,
+                      line_budget_fn=fn(idx) {
+                        if in_band(idx) {
+                          body_w
+                        } else {
+                          content_width
+                        }
+                      },
+                      line_x_fn=fn(idx) {
+                        if in_band(idx) {
+                          body_x
+                        } else {
+                          0.0
+                        }
+                      },
+                    )
                   }
                   wrap_height_remaining = wrap_height_remaining - placed.height
                   if wrap_height_remaining < 0.0 {
                     wrap_height_remaining = 0.0
                     wrap_body_width = content_width
                     wrap_body_x = 0.0
+                    wrap_poly = []
                   }
                   blocks.push(ParaBlock(placed))
                 } else {
@@ -4621,6 +4784,98 @@ fn render_float_drawing(
 /// (walking its `<w:r>` runs) and build its `FloatDrawing`, or `None`
 /// when the paragraph carries no side-float.  `content_width` resolves
 /// the float's side from `<wp:positionH>`.
+///|
+/// §20.4.2.16 CT_WrapPath — read the `<wp:wrapPolygon>` of a wrapTight
+/// / wrapThrough anchor and return its vertices as box-local fractions
+/// (0..1 of the drawing extent).  Coordinates are EMU in the extent's
+/// space, so each vertex is divided by the extent (cx, cy).  Returns
+/// an empty array when the drawing has no wrap polygon.
+fn read_wrap_polygon(drawing : @xml.Element) -> Array[(Double, Double)] {
+  let out : Array[(Double, Double)] = []
+  // Locate the anchor and its extent (EMU) for normalisation.
+  let anchor = match first_child_named(drawing, "anchor") {
+    Some(a) => a
+    None => return out
+  }
+  let (cx, cy) = match first_child_named(anchor, "extent") {
+    Some(e) =>
+      (parse_double_attr(e, "cx", 0.0), parse_double_attr(e, "cy", 0.0))
+    None => return out
+  }
+  if cx <= 0.0 || cy <= 0.0 {
+    return out
+  }
+  // wrapPolygon lives under wrapTight or wrapThrough.
+  let poly = match first_child_named(anchor, "wrapTight") {
+    Some(wt) => first_child_named(wt, "wrapPolygon")
+    None =>
+      match first_child_named(anchor, "wrapThrough") {
+        Some(wt) => first_child_named(wt, "wrapPolygon")
+        None => None
+      }
+  }
+  let polygon = match poly {
+    Some(p) => p
+    None => return out
+  }
+  fn add_vertex(v : @xml.Element) -> Unit {
+    let x = parse_double_attr(v, "x", 0.0) / cx
+    let y = parse_double_attr(v, "y", 0.0) / cy
+    out.push((x, y))
+  }
+
+  for ch in polygon.children {
+    match ch {
+      Element(e) =>
+        if e.name.local_name == "start" || e.name.local_name == "lineTo" {
+          add_vertex(e)
+        }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
+/// §20.4.2.16 — the horizontal span `(min_x, max_x)` (box-local
+/// fractions) of a wrap polygon at vertical fraction `fy`, found by
+/// intersecting every polygon edge with the horizontal line `y = fy`.
+/// Returns `None` when no edge crosses that height.
+fn polygon_x_span_at(
+  poly : Array[(Double, Double)],
+  fy : Double,
+) -> (Double, Double)? {
+  let n = poly.length()
+  if n < 2 {
+    return None
+  }
+  let mut min_x = 1.0e9
+  let mut max_x = -1.0e9
+  let mut found = false
+  for i in 0..<n {
+    let (x1, y1) = poly[i]
+    let (x2, y2) = poly[(i + 1) % n]
+    // Edge crosses the scanline when fy lies in [y1, y2) or [y2, y1).
+    if (y1 <= fy && y2 > fy) || (y2 <= fy && y1 > fy) {
+      let t = (fy - y1) / (y2 - y1)
+      let x = x1 + t * (x2 - x1)
+      if x < min_x {
+        min_x = x
+      }
+      if x > max_x {
+        max_x = x
+      }
+      found = true
+    }
+  }
+  if found {
+    Some((min_x, max_x))
+  } else {
+    None
+  }
+}
+
+///|
 fn paragraph_side_float(
   p : @xml.Element,
   content_width : Double,
@@ -4642,6 +4897,7 @@ fn paragraph_side_float(
                       h_px,
                       side: float_side(c, content_width),
                       gutter_px: float_gutter_px(c),
+                      wrap_polygon: read_wrap_polygon(c),
                     })
                   None => ()
                 }
@@ -5155,6 +5411,13 @@ fn layout_paragraph(
   apply_office_defaults? : Bool = false,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  // §20.4.2.16 wrapPolygon — optional per-line available width (line
+  // index → width px).  When supplied it overrides the rectangular
+  // first/next-line widths so text wraps to a float's irregular
+  // polygon edge instead of its bounding box.  `line_x_fn` gives the
+  // matching per-line left offset (for a left-side polygon float).
+  line_budget_fn? : (Int) -> Double,
+  line_x_fn? : (Int) -> Double,
 ) -> LaidParagraph {
   // §17.7.5.3 — `apply_office_defaults` flows into
   // `resolve_para_props` so the line-height multiplier picks up the
@@ -5221,7 +5484,9 @@ fn layout_paragraph(
   )
 
   // Break spans into lines.
-  let span_lines = break_into_lines(spans, first_line_w, next_line_w)
+  let span_lines = break_into_lines(
+    spans, first_line_w, next_line_w, line_budget_fn?,
+  )
   let line_count = span_lines.length()
 
   // For empty paragraphs (no text), emit a single empty line at default
@@ -5360,8 +5625,17 @@ fn layout_paragraph(
     let baseline = baseline + extra_above
     let line_height = line_height + extra_above + extra_below
     let line_width = sum_span_widths(line_spans)
-    let available = if idx == 0 { first_line_w } else { next_line_w }
-    let base_x = props.margin_left + line_indent
+    // §20.4.2.16 — per-line available width / left offset when wrapping
+    // to a float polygon; else the rectangular first/next width.
+    let available = match line_budget_fn {
+      Some(f) => f(idx)
+      None => if idx == 0 { first_line_w } else { next_line_w }
+    }
+    let line_x_off = match line_x_fn {
+      Some(f) => f(idx)
+      None => 0.0
+    }
+    let base_x = props.margin_left + line_indent + line_x_off
     // §17.18.59 ST_Jc `both` — distribute the slack between
     // `line_width` and `available` across the U+0020 spaces in the
     // line. The trailing line of a justified paragraph keeps its
@@ -5992,11 +6266,25 @@ fn break_into_lines(
   spans : Array[RunSpan],
   first_line_w : Double,
   next_line_w : Double,
+  line_budget_fn? : (Int) -> Double,
 ) -> Array[Array[RunSpan]] {
   let lines : Array[Array[RunSpan]] = []
   let current : Array[RunSpan] = []
   let used : Ref[Double] = { val: 0.0 }
-  let budget : Ref[Double] = { val: first_line_w }
+  // §20.4.2.16 wrapPolygon — when `line_budget_fn` is supplied the
+  // available width VARIES per line (the text wraps into / around the
+  // float's irregular polygon edge), so each line's budget is the
+  // polygon-derived width at that line's vertical band rather than the
+  // single first/next rectangular width.
+  let line_idx : Ref[Int] = { val: 0 }
+  fn budget_for(idx : Int) -> Double {
+    match line_budget_fn {
+      Some(f) => f(idx)
+      None => if idx == 0 { first_line_w } else { next_line_w }
+    }
+  }
+
+  let budget : Ref[Double] = { val: budget_for(0) }
   // Helper: flush current line to lines and reset state.
   fn flush() {
     let snapshot : Array[RunSpan] = []
@@ -6006,7 +6294,8 @@ fn break_into_lines(
     lines.push(snapshot)
     current.clear()
     used.val = 0.0
-    budget.val = next_line_w
+    line_idx.val = line_idx.val + 1
+    budget.val = budget_for(line_idx.val)
   }
 
   for span in spans {
@@ -6557,21 +6846,73 @@ fn layout_table(
       // would render with zero `space_after` while the surrounding
       // body picks up the 10 pt baseline.
       let apply_office_defaults = styles is None
+      // §17.3.1.11 — collect the cell's paragraphs, then flow each one.
+      // A `framePr` paragraph floats and the following paragraphs wrap
+      // BESIDE it within its vertical band (merged into one composite so
+      // the cell's stacking renders them side-by-side); ordinary
+      // paragraphs stack at the full cell width exactly as before.
+      let cell_p_elems : Array[@xml.Element] = []
       for child in tc.children {
         match child {
-          Element(e) =>
-            if e.name.local_name == "p" {
-              let para = layout_paragraph(
-                e,
-                content_w,
+          Element(e) => if e.name.local_name == "p" { cell_p_elems.push(e) }
+          _ => ()
+        }
+      }
+      let mut cp_i = 0
+      while cp_i < cell_p_elems.length() {
+        let para = layout_paragraph(
+          cell_p_elems[cp_i],
+          content_w,
+          cell_noop_resolver,
+          cell_noop_chart_resolver,
+          apply_office_defaults~,
+        )
+        let band_fp = match para.frame_pr {
+          Some(fp) =>
+            match fp.wrap {
+              "none" | "notBeside" => None
+              _ => Some(fp)
+            }
+          None => None
+        }
+        match band_fp {
+          Some(fp) => {
+            let frame_w = if fp.w_px > 0.0 { fp.w_px } else { content_w * 0.5 }
+            let gutter = if fp.h_space_px > 0.0 { fp.h_space_px } else { 14.0 }
+            let right_anchored = fp.x_align == "right" ||
+              (fp.x_px > 0.0 && fp.x_px > content_w * 0.5)
+            let body_w = (content_w - frame_w - gutter).max(content_w * 0.2)
+            let (frame_x, body_x) = if right_anchored {
+              (content_w - frame_w, 0.0)
+            } else {
+              (0.0, frame_w + gutter)
+            }
+            let band_h0 = if fp.h_px > para.height { fp.h_px } else { para.height }
+            let beside : Array[LaidParagraph] = []
+            let mut beside_y = 0.0
+            cp_i = cp_i + 1
+            while cp_i < cell_p_elems.length() && beside_y < band_h0 {
+              let bp = layout_paragraph(
+                cell_p_elems[cp_i],
+                body_w,
                 cell_noop_resolver,
                 cell_noop_chart_resolver,
                 apply_office_defaults~,
               )
-              cell_paras.push(para)
-              cell_inner_h = cell_inner_h + para.height
+              beside.push(offset_paragraph(bp, body_x, beside_y))
+              beside_y = beside_y + bp.height
+              cp_i = cp_i + 1
             }
-          _ => ()
+            let band_h = if beside_y > band_h0 { beside_y } else { band_h0 }
+            let composite = build_cell_frame_band(para, frame_x, beside, band_h)
+            cell_paras.push(composite)
+            cell_inner_h = cell_inner_h + composite.height
+          }
+          None => {
+            cell_paras.push(para)
+            cell_inner_h = cell_inner_h + para.height
+            cp_i = cp_i + 1
+          }
         }
       }
       // §17.4 — cell height is derived from content alone (cell
@@ -7190,6 +7531,36 @@ fn offset_paragraph(
   // §17.3.1.7 — translate the border / shading frame by the same
   // dx so it lands in the column's absolute coordinates.
   { ..p, lines, frame_x: p.frame_x + dx }
+}
+
+///|
+/// §17.3.1.11 — merge an in-cell `framePr` paragraph and the body
+/// paragraphs that flow BESIDE it into a single composite
+/// `LaidParagraph` spanning the frame's vertical band: the frame's text
+/// sits on its anchored side (offset by `frame_x`) and the body lines
+/// (already offset to the opposite side + stacked) overlap the same
+/// band.  Returning one paragraph lets the cell's normal
+/// stacking/render place it as a unit (no separate float-positioning
+/// pass needed inside table cells).
+fn build_cell_frame_band(
+  frame_para : LaidParagraph,
+  frame_x : Double,
+  beside : Array[LaidParagraph],
+  band_h : Double,
+) -> LaidParagraph {
+  let base = offset_paragraph(frame_para, frame_x, 0.0)
+  let lines : Array[LaidLine] = []
+  for l in base.lines {
+    lines.push(l)
+  }
+  for bp in beside {
+    for l in bp.lines {
+      lines.push(l)
+    }
+  }
+  // Drop frame_pr so the cell treats the composite as an ordinary
+  // stacked block; keep the frame's border / shading frame.
+  { ..base, frame_pr: None, lines, height: band_h }
 }
 
 ///|
@@ -8659,6 +9030,26 @@ fn append_border_line_nodes(
           name,
         ),
       )
+    BorderWave(double) =>
+      if double {
+        // doubleWave — two parallel sine strokes offset perpendicular.
+        out.push(
+          wave_border_path_node(
+            x1, y1, x2, y2, side.color_hex, side.width_px, -side.width_px,
+          ),
+        )
+        out.push(
+          wave_border_path_node(
+            x1, y1, x2, y2, side.color_hex, side.width_px, side.width_px,
+          ),
+        )
+      } else {
+        out.push(
+          wave_border_path_node(
+            x1, y1, x2, y2, side.color_hex, side.width_px, 0.0,
+          ),
+        )
+      }
     BorderPlain =>
       out.push(
         single_border_line_node(
@@ -8672,6 +9063,63 @@ fn append_border_line_nodes(
         ),
       )
   }
+}
+
+///|
+/// §17.18.3 `wave` — a sine-wave border stroke as an SVG `<path>`.
+/// The edge runs from `(x1,y1)` to `(x2,y2)` (axis-aligned); the wave
+/// oscillates perpendicular to it.  `perp_offset` shifts the whole
+/// wave perpendicular (used to draw the two strands of `doubleWave`).
+fn wave_border_path_node(
+  x1 : Double,
+  y1 : Double,
+  x2 : Double,
+  y2 : Double,
+  color : String,
+  width_px : Double,
+  perp_offset : Double,
+) -> @xml.Node {
+  let stroke = if color.length() == 0 { "currentColor" } else { color }
+  let horizontal = y1 == y2
+  let length = if horizontal { (x2 - x1).abs() } else { (y2 - y1).abs() }
+  let amp = (width_px * 1.5).max(1.5)
+  let wavelength = 6.0
+  let pi = 3.141592653589793
+  // ~2 px between samples, at least 8 segments for a short edge.
+  let n = {
+    let raw = (length / 2.0).to_int()
+    if raw < 8 {
+      8
+    } else {
+      raw
+    }
+  }
+  let buf = StringBuilder::new()
+  for i in 0..=n {
+    let t = i.to_double() / n.to_double()
+    let along = length * t
+    let s = amp * @math.sin(2.0 * pi * along / wavelength) + perp_offset
+    let (px, py) = if horizontal {
+      (x1 + (x2 - x1) * t, y1 + s)
+    } else {
+      (x1 + s, y1 + (y2 - y1) * t)
+    }
+    buf.write_string(if i == 0 { "M " } else { " L " })
+    buf.write_string(fmt_double(px))
+    buf.write_string(",")
+    buf.write_string(fmt_double(py))
+  }
+  @markup.elem_ns(
+    "path",
+    @markup.svg_ns,
+    [
+      @markup.attr("d", buf.to_string()),
+      @markup.attr("fill", "none"),
+      @markup.attr("stroke", stroke),
+      @markup.attr("stroke-width", fmt_double(width_px)),
+    ],
+    [],
+  )
 }
 
 ///|
@@ -8694,6 +9142,9 @@ fn border_total_extent_px(side : BorderSide) -> Double {
     BorderNone => 0.0
     BorderDouble => side.width_px * 3.0
     BorderTriple => side.width_px * 5.0
+    // §17.18.3 wave — the sine amplitude (≈1.5 × width) plus the two
+    // doubleWave strands occupy a band ~3 × width tall.
+    BorderWave(_) => side.width_px * 3.0
     _ => side.width_px
   }
 }
@@ -8712,6 +9163,9 @@ priv enum BorderStyleKind {
   BorderDashed(String)
   /// Carries the original spec name for metadata surface.
   BorderArt(String)
+  /// §17.18.3 `wave` / `doubleWave` — a sine-wave stroke.  The bool is
+  /// `true` for `doubleWave` (two parallel waves).
+  BorderWave(Bool)
   BorderPlain
 }
 
@@ -8723,12 +9177,11 @@ fn border_style_kind(style : String) -> BorderStyleKind {
     "triple" => BorderTriple
     "single" => BorderPlain
     "thick" => BorderPlain
-    "wave" =>
-      // §17.18.3 wave — SVG cannot express a sine wave on a
-      // straight `<line>`; surface as a plain stroke + metadata
-      // upstream is handled by the art branch when called.
-      BorderDashed("2 2")
-    "doubleWave" => BorderDouble
+    // §17.18.3 wave / doubleWave — a true sine-wave stroke, emitted as
+    // an SVG `<path>` (the same sampled-sine technique as the WordArt
+    // wave warps), NOT a dashed approximation.
+    "wave" => BorderWave(false)
+    "doubleWave" => BorderWave(true)
     "dotted" => BorderDashed("1 1")
     "dottedHeavy" => BorderDashed("2 2")
     "dashed" => BorderDashed("4 2")

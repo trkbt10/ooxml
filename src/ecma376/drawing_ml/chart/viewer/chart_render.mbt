@@ -18,14 +18,17 @@
 // `@chart.CT_ChartSpace` remains useful for validation and round-trip; the
 // renderer prefers leniency to maximise visual coverage.
 //
-// Features intentionally deferred (the gap doc in
-// `src/cmd/catalog/fixtures_dml_charts.mbt` tracks them):
+// Implemented: clustered / stacked / percent-stacked bar groupings
+// (§21.2.2.76), per-point `<c:dPt>` colour overrides + series sp_pr fill
+// (collect_dpt_colors), `<c:dLbls>` data labels with leader lines,
+// `<c:trendline>`, `<c:errBars>`, and `<c:upDownBars>`.
 //
-//   * Stacked / percent-stacked bar groupings.
-//   * 3D variants (`<c:bar3DChart>`, `<c:pie3DChart>`, `<c:line3DChart>`).
-//   * Surface chart (§21.2.2.205 CT_SurfaceChart).
-//   * Per-point `<c:dPt>` colour overrides; series sp_pr fill resolution.
-//   * `<c:dLbls>` data labels, `<c:trendline>`, `<c:errBars>`.
+// Remaining geometric approximations (no native SVG equivalent — these
+// project the 3-D / mesh chart onto its closest 2-D form rather than
+// rendering blank): the `*3DChart` variants render as their flat
+// counterparts (no isometric depth) and `<c:surfaceChart>`
+// (§21.2.2.205) renders as an area chart.  Every type is dispatched and
+// drawn; none error or blank.
 //
 // Every helper documents the spec section it implements.
 
@@ -318,6 +321,14 @@ priv struct DataLabelConfig {
   show_cat_name : Bool
   show_percent : Bool
   show_ser_name : Bool
+  /// §21.2.2.48 dLblPos (ST_DLblPos) — label placement: "ctr",
+  /// "inEnd", "inBase", "outEnd", "bestFit", "l/r/t/b".  Empty when
+  /// unspecified (renderer default placement).
+  pos : String
+  /// §21.2.2.187 showLeaderLines — draw connector lines from a slice
+  /// to an externally-placed label (pie / doughnut).  Default true
+  /// when `<c:leaderLines>` is present.
+  show_leader_lines : Bool
 }
 
 ///|
@@ -342,8 +353,25 @@ fn read_data_labels(elem : @xml.Element) -> DataLabelConfig? {
     Some(e) => attr_or(e, "val", "0") == "1"
     None => false
   }
+  // §21.2.2.48 dLblPos.
+  let pos = match first_child_named(dl, "dLblPos") {
+    Some(e) => attr_or(e, "val", "")
+    None => ""
+  }
+  // §21.2.2.187 showLeaderLines (or the presence of <c:leaderLines>).
+  let show_leader_lines = match first_child_named(dl, "showLeaderLines") {
+    Some(e) => attr_or(e, "val", "1") != "0"
+    None => first_child_named(dl, "leaderLines") is Some(_)
+  }
   if show_val || show_cat_name || show_percent || show_ser_name {
-    Some({ show_val, show_cat_name, show_percent, show_ser_name })
+    Some({
+      show_val,
+      show_cat_name,
+      show_percent,
+      show_ser_name,
+      pos,
+      show_leader_lines,
+    })
   } else {
     None
   }

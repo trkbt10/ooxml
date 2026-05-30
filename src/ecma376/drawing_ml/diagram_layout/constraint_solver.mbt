@@ -32,9 +32,10 @@
 //     `inner` rectangle is computed, so a constraint that
 //     references a named sibling/ancestor walked earlier in
 //     document order resolves correctly. A constraint that
-//     references a node not yet walked (forward reference) silently
-//     no-ops; a fully iterative fixed-point solver that re-evaluates
-//     pending constraints across multiple passes is deferred.
+//     references a node not yet walked (forward reference) no-ops
+//     within a SINGLE pass; `DiagramLayoutEngine::apply` re-runs the
+//     walk to a fixed point (seeding each pass's registry from the
+//     previous), so forward references resolve against the prior pass.
 //
 // `for=ch` / `for=des` constraints with `forName` (a name reference
 // into the layout-node tree) are handled by
@@ -205,9 +206,9 @@ pub fn apply_self_geometric_constraints(
 /// resolved to 40 % of the (already-walked) `root` node's width.
 ///
 /// Forward references — where the source node is laid out *after*
-/// the carrying node in document order — still no-op (the map has
-/// no entry for the source name yet). A fully iterative
-/// fixed-point solver is deferred.
+/// the carrying node in document order — no-op within a single pass
+/// (the map has no entry yet), but `DiagramLayoutEngine::apply` iterates
+/// the walk to a fixed point so they resolve against the prior pass.
 pub fn apply_self_geometric_constraints_with_registry(
   parent_bounds : BoundsRect,
   constraints : Array[Constraint],
