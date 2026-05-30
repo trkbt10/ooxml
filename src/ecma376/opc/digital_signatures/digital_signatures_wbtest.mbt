@@ -263,6 +263,141 @@ test "validate signature rejects mutated reference source bytes" {
 }
 
 ///|
+/// FIPS 180-4 SHA-512 verified against the NIST published vectors for the
+/// one-byte, empty, and two-block messages.
+test "sha512 matches NIST vectors" {
+  assert_eq(
+    sha512_hex(b("abc")),
+    "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+  )
+  assert_eq(
+    sha512_hex(b("")),
+    "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e",
+  )
+  // 112-byte message → two 1024-bit blocks, exercising the multi-block path.
+  assert_eq(
+    sha512_hex(
+      b(
+        "abcdefghbcdefghicdefghijdefghijkefghijklfghijklmghijklmnhijklmnoijklmnopjklmnopqklmnopqrlmnopqrsmnopqrstnopqrstu",
+      ),
+    ),
+    "8e959b75dae313da8cf4f72814fc143f8f7779c6eb9f7fa17299aeadb6889018501d289e4900f7e4331b99dec4b5433ac7d329eeb6dd26545e96e55b874be909",
+  )
+}
+
+///|
+/// FIPS 180-4 SHA-384 verified against the NIST published vectors.
+test "sha384 matches NIST vectors" {
+  assert_eq(
+    sha384_hex(b("abc")),
+    "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7",
+  )
+  assert_eq(
+    sha384_hex(b("")),
+    "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b",
+  )
+}
+
+///|
+/// The Reference digest dispatch routes each registered algorithm URI to the
+/// matching hash and rejects anything outside the registry.
+test "digest reference honours the SHA-1/256/384/512 registry" {
+  let payload = b("the quick brown fox")
+  assert_eq(
+    try! digest_reference_bytes(
+      payload, DigestMethod::new("http://www.w3.org/2000/09/xmldsig#sha1", []),
+    ),
+    @base64.encode(@crypto.sha1(payload).unsafe_reinterpret_as_bytes()[:]),
+  )
+  assert_eq(
+    try! digest_reference_bytes(
+      payload, DigestMethod::new("http://www.w3.org/2001/04/xmlenc#sha256", []),
+    ),
+    @base64.encode(@crypto.sha256(payload).unsafe_reinterpret_as_bytes()[:]),
+  )
+  assert_eq(
+    try! digest_reference_bytes(
+      payload,
+      DigestMethod::new("http://www.w3.org/2001/04/xmldsig-more#sha384", []),
+    ),
+    @base64.encode(sha384_bytes(payload).unsafe_reinterpret_as_bytes()[:]),
+  )
+  assert_eq(
+    try! digest_reference_bytes(
+      payload, DigestMethod::new("http://www.w3.org/2001/04/xmlenc#sha512", []),
+    ),
+    @base64.encode(sha512_bytes(payload).unsafe_reinterpret_as_bytes()[:]),
+  )
+  // An identifier outside the registry is a conformant rejection.
+  let unsupported = try? digest_reference_bytes(
+    payload,
+    DigestMethod::new("http://www.w3.org/2001/04/xmlenc#ripemd160", []),
+  )
+  assert_true(unsupported is Err(_))
+}
+
+///|
+/// `apply_transforms` recognises the comment-retaining C14N variant; plain
+/// C14N still drops comment nodes.
+test "c14n with comments transform retains comment nodes" {
+  let input = b("<a><!--keep--><b>x</b></a>")
+  let with_comments = try! apply_transforms(input, [
+    Transform::new(
+      "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments", [],
+    ),
+  ])
+  assert_true(decode_utf8(with_comments).contains("<!--keep-->"))
+  let without = try! apply_transforms(input, [
+    Transform::new("http://www.w3.org/TR/2001/REC-xml-c14n-20010315", []),
+  ])
+  assert_true(!decode_utf8(without).contains("<!--keep-->"))
+}
+
+///|
+/// The base64 transform concatenates the element text (ignoring the line
+/// breaks XML tools insert) and decodes it to the original octets.
+test "base64 transform decodes wrapped payload" {
+  // base64("OOXML") == "T09YTUw=", here split across lines inside an element.
+  let input = b("<Object>\n  T09Y\n  TUw=\n</Object>")
+  let decoded = try! apply_transforms(input, [
+    Transform::new("http://www.w3.org/2000/09/xmldsig#base64", []),
+  ])
+  assert_eq(decode_utf8(decoded), "OOXML")
+}
+
+///|
+fn decode_utf8(bytes : Bytes) -> String {
+  @utf8.decode(bytes[:]) catch {
+    _ => ""
+  }
+}
+
+///|
+fn sha512_hex(input : Bytes) -> String {
+  bytes_to_lower_hex(sha512_bytes(input))
+}
+
+///|
+fn sha384_hex(input : Bytes) -> String {
+  bytes_to_lower_hex(sha384_bytes(input))
+}
+
+///|
+fn bytes_to_lower_hex(bytes : FixedArray[Byte]) -> String {
+  let digits = [
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e',
+    'f',
+  ]
+  let out = StringBuilder::new()
+  for byte in bytes {
+    let value = byte.to_int()
+    out.write_char(digits[value >> 4])
+    out.write_char(digits[value & 0xF])
+  }
+  out.to_string()
+}
+
+///|
 fn b(source : String) -> Bytes {
   @utf8.encode(source[:])
 }

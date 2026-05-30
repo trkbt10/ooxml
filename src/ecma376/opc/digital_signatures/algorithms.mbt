@@ -9,8 +9,23 @@ fn c14n_algorithm() -> String {
 }
 
 ///|
+fn sha1_algorithm() -> String {
+  @opc_namespaces.ns_xmldsig_sha1()
+}
+
+///|
 fn sha256_algorithm() -> String {
   @opc_namespaces.ns_xmlenc_sha256()
+}
+
+///|
+fn sha384_algorithm() -> String {
+  @opc_namespaces.ns_xmldsig_more_sha384()
+}
+
+///|
+fn sha512_algorithm() -> String {
+  @opc_namespaces.ns_xmlenc_sha512()
 }
 
 ///|
@@ -197,6 +212,10 @@ fn apply_transforms(
       )
     } else if transform.algorithm == c14n_algorithm() {
       current = canonicalize_xml(current)
+    } else if transform.algorithm == c14n_with_comments_algorithm() {
+      current = canonicalize_xml(current, with_comments=true)
+    } else if transform.algorithm == base64_transform_algorithm() {
+      current = apply_base64_transform(current)
     } else {
       raise @opc_errors.SchemaViolation(
         section="10.8",
@@ -209,31 +228,101 @@ fn apply_transforms(
 }
 
 ///|
+fn c14n_with_comments_algorithm() -> String {
+  @opc_namespaces.ns_c14n_with_comments()
+}
+
+///|
+fn base64_transform_algorithm() -> String {
+  @opc_namespaces.ns_transform_base64()
+}
+
+///|
+/// W3C XML-Signature §6.6.2 base64 transform.  When the input parses as XML
+/// its text-node content is concatenated; otherwise the whole octet stream is
+/// taken as the base64 text.  Surrounding whitespace is ignored, then the
+/// text is base64-decoded to the octet stream consumed by the next transform
+/// or by digest processing.
+fn apply_base64_transform(
+  source : Bytes,
+) -> Bytes raise @opc_errors.SchemaViolation {
+  let text = StringBuilder::new()
+  let parsed : @xml.Document? = try @xml.parse(source) catch {
+    _ => None
+  } noraise {
+    document => Some(document)
+  }
+  match parsed {
+    Some(document) => collect_element_text(document.root, text)
+    None => text.write_string(@utf8.decode(source[:]) catch { _ => "" })
+  }
+  // The base64 alphabet excludes whitespace, so all ASCII whitespace (the
+  // line breaks XML tools insert into long base64 payloads) is dropped before
+  // decoding rather than only trimmed at the ends.
+  let cleaned = StringBuilder::new()
+  text
+  .to_string()
+  .iter()
+  .each(fn(ch) {
+    if ch != ' ' && ch != '\n' && ch != '\r' && ch != '\t' {
+      cleaned.write_char(ch)
+    }
+  })
+  @base64.decode(cleaned.to_string()[:]) catch {
+    _ =>
+      raise @opc_errors.SchemaViolation(
+        section="10.8",
+        path="/SignedInfo/Reference/Transforms/Transform[@Algorithm='base64']",
+        reason="base64 transform input is not valid base64",
+      )
+  }
+}
+
+///|
+/// Concatenate every descendant text/CDATA node of `element` into `out`.
+fn collect_element_text(element : @xml.Element, out : StringBuilder) -> Unit {
+  for child in element.children {
+    match child {
+      Text(value) | CData(value) => out.write_string(value)
+      Element(child_element) => collect_element_text(child_element, out)
+      _ => ()
+    }
+  }
+}
+
+///|
 /// §10.5 / Part 2 §B — compute the Reference's digest.
 ///
-/// XML-Signature §4.3.3.6 registers SHA-1 / SHA-256 / SHA-384 /
-/// SHA-512 (plus the legacy MD5).  Office authoring tools used
-/// SHA-1 for backward compatibility through Office 2007, then
-/// SHA-256 from Office 2010 onwards.  This implementation
-/// supports SHA-256 only because the `@crypto` dependency only
-/// exposes that algorithm; SHA-1 / SHA-384 / SHA-512 round-trips
-/// raise SchemaViolation upstream.  Extending to the full
-/// registry is tracked as Round 12 #291 — once `@crypto` ships
-/// the additional hash functions this dispatch becomes a
-/// straightforward match on `digest_method.algorithm`.
+/// XML-Signature §6.4.x registers SHA-1, SHA-256, SHA-384 and SHA-512 as
+/// Reference digest algorithms.  Office authoring tools used SHA-1 for
+/// backward compatibility through Office 2007, SHA-256 from Office 2010, and
+/// SHA-512 in newer generations.  SHA-1 and SHA-256 come from `@crypto`;
+/// the 64-bit SHA-2 variants (SHA-384 / SHA-512), which `@crypto` does not
+/// expose, are supplied by this package's FIPS 180-4 implementation in
+/// `sha512.mbt`.  An identifier outside this registry is reported as a §8 E2
+/// SchemaViolation, the conformant response for an unsupported algorithm.
 fn digest_reference_bytes(
   bytes : Bytes,
   digest_method : DigestMethod,
 ) -> String raise @opc_errors.SchemaViolation {
-  if digest_method.algorithm != sha256_algorithm() {
+  let algorithm = digest_method.algorithm
+  let raw : FixedArray[Byte] = if algorithm == sha1_algorithm() {
+    @crypto.sha1(bytes)
+  } else if algorithm == sha256_algorithm() {
+    @crypto.sha256(bytes)
+  } else if algorithm == sha384_algorithm() {
+    sha384_bytes(bytes)
+  } else if algorithm == sha512_algorithm() {
+    sha512_bytes(bytes)
+  } else {
     raise @opc_errors.SchemaViolation(
       section="10.8",
       path="/SignedInfo/Reference/DigestMethod/@Algorithm",
-      reason="unsupported digest algorithm (only SHA-256 is implemented): " +
-        digest_method.algorithm,
+      reason="unsupported digest algorithm (SHA-1, SHA-256, SHA-384 and SHA-512 are implemented): " +
+        algorithm,
     )
   }
-  @base64.encode(@crypto.sha256(bytes).unsafe_reinterpret_as_bytes()[:])
+  @base64.encode(raw.unsafe_reinterpret_as_bytes()[:])
 }
 
 ///|
@@ -513,7 +602,10 @@ fn sort_relationship_transform_entries(
 }
 
 ///|
-fn canonicalize_xml(bytes : Bytes) -> Bytes raise @opc_errors.SchemaViolation {
+fn canonicalize_xml(
+  bytes : Bytes,
+  with_comments~ : Bool = false,
+) -> Bytes raise @opc_errors.SchemaViolation {
   let doc = @xml.parse(bytes) catch {
     _ =>
       raise @opc_errors.SchemaViolation(
@@ -523,9 +615,12 @@ fn canonicalize_xml(bytes : Bytes) -> Bytes raise @opc_errors.SchemaViolation {
       )
   }
   let out = StringBuilder::new()
-  write_canonical_element(out, doc.root, [
-    { prefix: Some("xml"), uri: @opc_namespaces.ns_xml_1998() },
-  ])
+  write_canonical_element(
+    out,
+    doc.root,
+    [{ prefix: Some("xml"), uri: @opc_namespaces.ns_xml_1998() }],
+    with_comments~,
+  )
   @utf8.encode(out.to_string()[:])
 }
 
@@ -534,6 +629,7 @@ fn write_canonical_element(
   out : StringBuilder,
   element : @xml.Element,
   inherited : Array[NamespaceForCanonicalXml],
+  with_comments~ : Bool,
 ) -> Unit {
   out.write_string("<")
   out.write_string(format_algorithm_qname(element.name))
@@ -583,9 +679,14 @@ fn write_canonical_element(
   for child in element.children {
     match child {
       Element(child_element) =>
-        write_canonical_element(out, child_element, active)
+        write_canonical_element(out, child_element, active, with_comments~)
       Text(text) | CData(text) => out.write_string(@xml.escape_text_c14n(text))
-      Comment(_) => ()
+      Comment(text) =>
+        if with_comments {
+          out.write_string("<!--")
+          out.write_string(text)
+          out.write_string("-->")
+        }
       ProcessingInstruction(pi) => {
         out.write_string("<?")
         out.write_string(pi.target)

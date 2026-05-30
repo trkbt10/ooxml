@@ -4,6 +4,8 @@ package "trkbt10/ooxml/ecma376/opc/namespaces"
 // Values
 pub fn ns_c14n() -> String
 
+pub fn ns_c14n_with_comments() -> String
+
 pub fn ns_content_types() -> String
 
 pub fn ns_core_properties() -> String
@@ -16,11 +18,19 @@ pub fn ns_relationships_transform() -> String
 
 pub fn ns_spreadsheet_drawing() -> String
 
+pub fn ns_transform_base64() -> String
+
 pub fn ns_xml_1998() -> String
 
 pub fn ns_xmldsig() -> String
 
+pub fn ns_xmldsig_more_sha384() -> String
+
+pub fn ns_xmldsig_sha1() -> String
+
 pub fn ns_xmlenc_sha256() -> String
+
+pub fn ns_xmlenc_sha512() -> String
 
 pub fn relationship_type_office_document() -> String
 
