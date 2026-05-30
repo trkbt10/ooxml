@@ -2861,6 +2861,53 @@ fn substitute_marker(
 }
 
 ///|
+/// Plant the unique `marker` as a text node directly inside the element
+/// under test (the one carrying `TARGET_ATTR`). Used when the target is
+/// a structural / attribute-only element with no `TEXT_MARKER` text slot
+/// of its own: the raw-preservation writer re-emits the target verbatim,
+/// so a planted marker survives iff the target round-trips — proving
+/// survival even when the target's tag collides with host scaffolding
+/// (the case the differential reports as `fy-ambiguous`). Returns the
+/// new tree and whether a target was found to inject into.
+fn inject_marker_into_target(
+  el : @xml.Element,
+  marker : String,
+) -> (@xml.Element, Bool) {
+  let mut injected = false
+  fn is_target(e : @xml.Element) -> Bool {
+    for a in e.attributes {
+      if a.name.local_name == TARGET_ATTR {
+        return true
+      }
+    }
+    false
+  }
+
+  fn walk(e : @xml.Element) -> @xml.Element {
+    if !injected && is_target(e) {
+      injected = true
+      let kids : Array[@xml.Node] = []
+      for child in e.children {
+        kids.push(child)
+      }
+      kids.push(Text(marker))
+      return { name: e.name, attributes: e.attributes, children: kids }
+    }
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    { name: e.name, attributes: e.attributes, children: kids }
+  }
+
+  let out = walk(el)
+  (out, injected)
+}
+
+///|
 /// Return a copy of `el` with the `TARGET_ATTR` sentinel attribute
 /// removed wherever it appears — the sentinel is verifier bookkeeping
 /// and must not reach the renderer.
@@ -3156,6 +3203,25 @@ fn roundtrip_fidelity(
   // no differential needed.
   if has_marker && present.contains(marker) {
     return "fy-marker"
+  }
+  // No natural text marker (a structural / attribute-only target): plant
+  // the unique marker INSIDE the element under test and probe a second
+  // save. The raw-preservation writer re-emits the target verbatim, so
+  // the planted marker survives iff the target round-trips — proving
+  // survival even when the target's tag collides with host scaffolding
+  // (the differential's `fy-ambiguous` case). This is non-destructive:
+  // if the plant does not cleanly survive (a host that de-dups a
+  // required singleton, or a strict reader that rejects the plant), we
+  // fall through to the differential rather than overclaim a drop.
+  if !has_marker {
+    let (probe, injected) = inject_marker_into_target(with_marker, marker)
+    if injected {
+      match
+        roundtrip_saved_xml(format, host_package(format, strip_target_attr(probe))) {
+        Some(saved) => if saved.contains(marker) { return "fy-inject" }
+        None => ()
+      }
+    }
   }
   // No traceable marker (attribute- or structure-only element).
   // Count the target's tag in the saved present XML, then in a saved

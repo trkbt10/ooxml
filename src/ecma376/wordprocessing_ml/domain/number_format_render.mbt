@@ -51,36 +51,72 @@ pub fn ST_NumberFormat::format(self : ST_NumberFormat, value : Int) -> String {
     NumFmtDecimalEnclosedFullstop => value.to_string() + "."
     NumFmtDecimalEnclosedParen => "(" + value.to_string() + ")"
     NumFmtNumberInDash => "- " + value.to_string() + " -"
-    // §17.18.59 regional script formats — Hindi / Thai / CJK /
-    // Hebrew / Arabic / Vietnamese / Russian require dedicated
-    // glyph tables that we do not yet ship; render arabic
-    // digits and surface the spec format name as
-    // `data-ooxml-numfmt` metadata upstream so consumers can
-    // substitute the correct glyphs themselves.
-    NumFmtIdeographDigital => value.to_string()
-    NumFmtIdeographTraditional => value.to_string()
-    NumFmtIdeographZodiac => value.to_string()
-    NumFmtIdeographZodiacTraditional => value.to_string()
-    NumFmtIdeographLegalTraditional => value.to_string()
-    NumFmtJapaneseCounting => value.to_string()
-    NumFmtJapaneseLegal => value.to_string()
-    NumFmtJapaneseDigitalTenThousand => value.to_string()
+    // §17.18.59 East-Asian ideograph formats — implemented with the
+    // standard CJK place-value / digit-by-digit algorithms.
+    NumFmtIdeographDigital => render_digit_glyphs(value, cjk_digits())
+    NumFmtIdeographTraditional =>
+      render_cjk_counting(
+        value, cjk_digits(), cjk_units(), cjk_myriads_japanese(), false,
+      )
+    NumFmtIdeographZodiac => render_cycle(value, zodiac_branches())
+    NumFmtIdeographZodiacTraditional => render_cycle(value, zodiac_branches())
+    NumFmtIdeographLegalTraditional =>
+      render_cjk_counting(
+        value, cjk_legal_trad_digits(), cjk_legal_units(),
+        cjk_myriads_traditional(), true,
+      )
+    NumFmtJapaneseCounting =>
+      render_cjk_counting(
+        value, cjk_digits(), cjk_units(), cjk_myriads_japanese(), false,
+      )
+    NumFmtJapaneseLegal =>
+      render_cjk_counting(
+        value, cjk_legal_trad_digits(), cjk_legal_units(),
+        cjk_myriads_japanese(), true,
+      )
+    NumFmtJapaneseDigitalTenThousand => render_digit_glyphs(value, cjk_digits())
+    NumFmtTaiwaneseCounting =>
+      render_cjk_counting(
+        value, cjk_digits(), cjk_units(), cjk_myriads_traditional(), false,
+      )
+    NumFmtTaiwaneseCountingThousand =>
+      render_cjk_counting(
+        value, cjk_digits(), cjk_units(), cjk_myriads_traditional(), false,
+      )
+    NumFmtTaiwaneseDigital => render_digit_glyphs(value, cjk_digits())
+    NumFmtChineseCounting =>
+      render_cjk_counting(
+        value, cjk_digits(), cjk_units(), cjk_myriads_simplified(), false,
+      )
+    NumFmtChineseLegalSimplified =>
+      render_cjk_counting(
+        value, cjk_legal_simp_digits(), cjk_legal_units(),
+        cjk_myriads_simplified(), true,
+      )
+    NumFmtChineseCountingThousand =>
+      render_cjk_counting(
+        value, cjk_digits(), cjk_units(), cjk_myriads_simplified(), false,
+      )
+    NumFmtKoreanDigital => render_digit_glyphs(value, cjk_digits())
+    NumFmtKoreanDigital2 => render_digit_glyphs(value, hangul_digits())
+    // §17.18.59 Indic / Thai positional digits — contiguous Unicode
+    // script-digit blocks.
+    NumFmtHindiNumbers => render_digit_range(value, 0x0966)
+    NumFmtThaiNumbers => render_digit_range(value, 0x0E50)
+    // §17.18.59 alphabetic-ordering and spelled-out script formats
+    // (kana あ/い order, Hangul jamo, Cyrillic, Arabic abjad, Hebrew
+    // gematria, Korean/Vietnamese/Hindi/Thai counting words) have
+    // locale-specific collation the spec defers to fonts; rendered as
+    // arabic digits, with the format name surfaced as
+    // `data-ooxml-numfmt` metadata upstream for glyph substitution.
+    NumFmtKoreanCounting => value.to_string()
+    NumFmtKoreanLegal => value.to_string()
     NumFmtAiueo => value.to_string()
     NumFmtAiueoFullWidth => value.to_string()
     NumFmtIroha => value.to_string()
     NumFmtIrohaFullWidth => value.to_string()
     NumFmtGanada => value.to_string()
     NumFmtChosung => value.to_string()
-    NumFmtTaiwaneseCounting => value.to_string()
-    NumFmtTaiwaneseCountingThousand => value.to_string()
-    NumFmtTaiwaneseDigital => value.to_string()
-    NumFmtChineseCounting => value.to_string()
-    NumFmtChineseLegalSimplified => value.to_string()
-    NumFmtChineseCountingThousand => value.to_string()
-    NumFmtKoreanDigital => value.to_string()
-    NumFmtKoreanCounting => value.to_string()
-    NumFmtKoreanLegal => value.to_string()
-    NumFmtKoreanDigital2 => value.to_string()
     NumFmtVietnameseCounting => value.to_string()
     NumFmtRussianLower => value.to_string()
     NumFmtRussianUpper => value.to_string()
@@ -90,10 +126,8 @@ pub fn ST_NumberFormat::format(self : ST_NumberFormat, value : Int) -> String {
     NumFmtArabicAbjad => value.to_string()
     NumFmtHindiVowels => value.to_string()
     NumFmtHindiConsonants => value.to_string()
-    NumFmtHindiNumbers => value.to_string()
     NumFmtHindiCounting => value.to_string()
     NumFmtThaiLetters => value.to_string()
-    NumFmtThaiNumbers => value.to_string()
     NumFmtThaiCounting => value.to_string()
     // §17.18.59 currency text formats — `bahtText` and
     // `dollarText` spell the value out as currency words; we
@@ -176,6 +210,210 @@ fn render_full_width_digits(value : Int) -> String {
     }
   }
   out.to_string()
+}
+
+///|
+/// §17.18.59 — substitute each base-10 digit of `value` with the
+/// contiguous script-digit block starting at `zero_cp` (e.g. Devanagari
+/// U+0966, Thai U+0E50).  Used by the positional non-CJK script digit
+/// formats.
+fn render_digit_range(value : Int, zero_cp : Int) -> String {
+  if value < 0 {
+    return "-" + render_digit_range(-value, zero_cp)
+  }
+  let decimal = value.to_string()
+  let out = StringBuilder::new()
+  for c in decimal {
+    let code = c.to_int()
+    if code >= 0x30 && code <= 0x39 {
+      out.write_char((zero_cp + (code - 0x30)).unsafe_to_char())
+    } else {
+      out.write_char(c)
+    }
+  }
+  out.to_string()
+}
+
+///|
+/// §17.18.59 — render `value` digit-by-digit through a 10-glyph table
+/// (`glyphs[0]`..`glyphs[9]`).  Used by the positional CJK / Hangul
+/// digit formats (`ideographDigital`, `koreanDigital`, …).
+fn render_digit_glyphs(value : Int, glyphs : Array[String]) -> String {
+  if value < 0 {
+    return "-" + render_digit_glyphs(-value, glyphs)
+  }
+  let decimal = value.to_string()
+  let out = StringBuilder::new()
+  for c in decimal {
+    let code = c.to_int()
+    if code >= 0x30 && code <= 0x39 {
+      out.write_string(glyphs[code - 0x30])
+    } else {
+      out.write_char(c)
+    }
+  }
+  out.to_string()
+}
+
+///|
+/// §17.18.59 — render `value` (positive) as a CJK place-value numeral.
+/// `digits` are the ten unit glyphs (index 0 = zero), `units` the four
+/// within-group markers `["", 十, 百, 千]`, and `myriads` the
+/// group separators `["", 万, 億, 兆]`. `legal` selects the formal
+/// "always written" 大字 financial style (no leading-ten elision). The
+/// universal convention is used (the leading 十 drops its 一; every
+/// other place keeps its digit, e.g. 一百), with the standard inter-group
+/// zero filler.  Implemented for the numbering range.
+fn render_cjk_counting(
+  value : Int,
+  digits : Array[String],
+  units : Array[String],
+  myriads : Array[String],
+  legal : Bool,
+) -> String {
+  if value == 0 {
+    return digits[0]
+  }
+  if value < 0 {
+    return "-" + render_cjk_counting(-value, digits, units, myriads, legal)
+  }
+  let groups : Array[Int] = []
+  let mut v = value
+  while v > 0 {
+    groups.push(v % 10000)
+    v = v / 10000
+  }
+  let out = StringBuilder::new()
+  let mut gi = groups.length() - 1
+  let mut started = false
+  while gi >= 0 {
+    let g = groups[gi]
+    if g != 0 {
+      if started && g < 1000 {
+        out.write_string(digits[0])
+      }
+      out.write_string(render_cjk_group(g, digits, units, legal))
+      if gi < myriads.length() {
+        out.write_string(myriads[gi])
+      }
+      started = true
+    }
+    gi = gi - 1
+  }
+  out.to_string()
+}
+
+///|
+/// Render a single 1..9999 group of a CJK place-value numeral.
+fn render_cjk_group(
+  g : Int,
+  digits : Array[String],
+  units : Array[String],
+  legal : Bool,
+) -> String {
+  let out = StringBuilder::new()
+  let mut place = 3
+  let mut need_zero = false
+  let mut emitted = false
+  while place >= 0 {
+    let p10 = match place {
+      3 => 1000
+      2 => 100
+      1 => 10
+      _ => 1
+    }
+    let d = g / p10 % 10
+    if d == 0 {
+      if emitted {
+        need_zero = true
+      }
+    } else {
+      if need_zero {
+        out.write_string(digits[0])
+        need_zero = false
+      }
+      // The leading 十 (10..19) drops its 一 in the informal forms.
+      if d == 1 && !emitted && !legal && place == 1 {
+        out.write_string(units[place])
+      } else {
+        out.write_string(digits[d])
+        out.write_string(units[place])
+      }
+      emitted = true
+    }
+    place = place - 1
+  }
+  out.to_string()
+}
+
+///|
+/// §17.18.59 `ideographZodiac` — map `value` onto a fixed cyclic glyph
+/// table (the twelve Earthly Branches), wrapping beyond its length.
+fn render_cycle(value : Int, glyphs : Array[String]) -> String {
+  if value <= 0 {
+    return value.to_string()
+  }
+  glyphs[(value - 1) % glyphs.length()]
+}
+
+///|
+/// CJK unit glyphs (index 0 = zero) for the informal counting forms.
+fn cjk_digits() -> Array[String] {
+  ["〇", "一", "二", "三", "四", "五", "六", "七", "八", "九"]
+}
+
+///|
+/// Within-group place markers `["", 十, 百, 千]` (informal).
+fn cjk_units() -> Array[String] {
+  ["", "十", "百", "千"]
+}
+
+///|
+/// Formal 大字 within-group place markers `["", 拾, 佰, 仟]`.
+fn cjk_legal_units() -> Array[String] {
+  ["", "拾", "佰", "仟"]
+}
+
+///|
+/// Simplified-Chinese formal (大写) unit glyphs.
+fn cjk_legal_simp_digits() -> Array[String] {
+  ["零", "壹", "贰", "叁", "肆", "伍", "陆", "柒", "捌", "玖"]
+}
+
+///|
+/// Traditional formal (大字) unit glyphs (Japanese / traditional Chinese).
+fn cjk_legal_trad_digits() -> Array[String] {
+  ["零", "壹", "貳", "參", "肆", "伍", "陸", "柒", "捌", "玖"]
+}
+
+///|
+/// Hangul Sino-Korean digit glyphs (index 0 = zero).
+fn hangul_digits() -> Array[String] {
+  ["영", "일", "이", "삼", "사", "오", "육", "칠", "팔", "구"]
+}
+
+///|
+/// Myriad group separators for the simplified-Chinese forms.
+fn cjk_myriads_simplified() -> Array[String] {
+  ["", "万", "亿", "兆"]
+}
+
+///|
+/// Myriad group separators for the Japanese forms (万 + 億 + 兆).
+fn cjk_myriads_japanese() -> Array[String] {
+  ["", "万", "億", "兆"]
+}
+
+///|
+/// Myriad group separators for the traditional-Chinese forms (萬 …).
+fn cjk_myriads_traditional() -> Array[String] {
+  ["", "萬", "億", "兆"]
+}
+
+///|
+/// The twelve Earthly Branches, in cycle order, for `ideographZodiac`.
+fn zodiac_branches() -> Array[String] {
+  ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
 }
 
 ///|

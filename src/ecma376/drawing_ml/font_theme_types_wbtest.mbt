@@ -39,6 +39,17 @@ test "round-trip theme" {
   assert_eq(value.element.name.local_name, "theme")
   let reparsed = read_theme(write_theme(value))
   assert_eq(reparsed.element.name.local_name, "theme")
+  // Lossless round-trip proven by full structural identity, not just
+  // the tag. CT_BaseStyles (<themeElements>) preserves its source
+  // element and to_element returns it verbatim, so parse∘serialize is
+  // the identity on the whole subtree. This is the catalog L2b axis's
+  // one host-de-dup `fy-ambiguous` singleton, proved directly here:
+  // the theme — and its themeElements — round-trip with zero drift.
+  assert_true(reparsed.element == value.element)
+  assert_true(reparsed.theme_elements == value.theme_elements)
+  assert_true(
+    reparsed.theme_elements.to_element() == value.theme_elements.to_element(),
+  )
 }
 
 ///|

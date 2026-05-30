@@ -1567,12 +1567,14 @@ pub fn render_chart_space(
   // still emitted, just floating over the plot area).
   let effective_title = if title_overlay { None } else { title_text }
   let effective_legend_pos = if legend_overlay { None } else { legend_pos }
+  let legend_names = series_entries.map(fn(e) { e.0 })
   let (inner_x, inner_y, inner_w, inner_h) = compute_chart_inner_rect(
     w,
     h,
     effective_title,
     effective_legend_pos,
     series_entries.length(),
+    legend_names,
   )
   let kids : Array[@xml.Node] = []
   // First chart-type child wins (the schema permits multiples in a
@@ -2804,6 +2806,7 @@ fn compute_chart_inner_rect(
   title : String?,
   legend_pos : String?,
   series_count : Int,
+  legend_names : Array[String],
 ) -> (Double, Double, Double, Double) {
   let mut x = 0.0
   let mut y = 0.0
@@ -2822,11 +2825,11 @@ fn compute_chart_inner_rect(
   if series_count > 0 {
     match legend_pos {
       Some("r") => {
-        let lw = chart_legend_vertical_width(w)
+        let lw = chart_legend_vertical_width(legend_names, w, h)
         iw = iw - lw
       }
       Some("l") => {
-        let lw = chart_legend_vertical_width(w)
+        let lw = chart_legend_vertical_width(legend_names, w, h)
         x = x + lw
         iw = iw - lw
       }
@@ -2874,8 +2877,43 @@ fn chart_title_strip_height(h : Double) -> Double {
 /// on a 960px-wide rendered slide (frame at 192..768). The
 /// frame-right inset is 3.1% (chart_plot_inset right), leaving
 /// (768-693)/576 − 0.031 ≈ 0.099 = 9.9% reserved for the legend strip.
-fn chart_legend_vertical_width(w : Double) -> Double {
-  w * 0.10
+fn chart_legend_vertical_width(
+  names : Array[String],
+  w : Double,
+  h : Double,
+) -> Double {
+  let font_size = (if w < h { w } else { h }) * 0.03
+  let swatch_size = font_size * 0.85
+  // Widest entry label, measured through the glyph metrics (the same
+  // path the horizontal legend uses), so a long series name does not
+  // overflow the reserved strip.
+  let mut max_text = 0.0
+  for name in names {
+    let tw = (try? @glyph.measure_text_width(
+      name,
+      font_size_pt=font_size / 96.0 * 72.0,
+      letter_spacing_px=0.0,
+      family=chart_default_family,
+    )).unwrap_or(0.0)
+    if tw > max_text {
+      max_text = tw
+    }
+  }
+  let strip = font_size * 0.5 +
+    swatch_size +
+    font_size * 0.4 +
+    max_text +
+    font_size * 0.5
+  // Floor at the legacy 10% heuristic (so short-label charts keep their
+  // tuned layout) and cap at 40% so the plot area keeps room.
+  let floor = w * 0.10
+  let cap = w * 0.40
+  let v = if strip < floor { floor } else { strip }
+  if v > cap {
+    cap
+  } else {
+    v
+  }
 }
 
 ///|
@@ -2953,7 +2991,7 @@ fn render_chart_legend(
   let row_gap = font_size * 1.6
   match pos {
     "r" | "l" => {
-      let strip_w = chart_legend_vertical_width(w)
+      let strip_w = chart_legend_vertical_width(entries.map(fn(e) { e.0 }), w, h)
       let strip_x = if pos == "l" { 0.0 } else { w - strip_w }
       // Centre the entry block vertically within the inner chart
       // area (title strip excluded so the legend does not bleed into

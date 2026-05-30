@@ -108,7 +108,15 @@ pub struct Effects3d {
   transform_attrs : Array[@xml.Attribute]
   extrusion : @xml.Node?
   bevel : @xml.Node?
+  contour : @xml.Node?
   gradient_def : @xml.Node?
+}
+
+pub(all) struct EnvelopeWarp {
+  top_y : (Double) -> Double
+  bot_y : (Double) -> Double
+  left_x : (Double) -> Double
+  right_x : (Double) -> Double
 }
 
 pub struct FillAttrResult {

@@ -122,6 +122,33 @@ test "§17.18.59 ST_NumberFormat::format covers decimal / roman / letter / ordin
 }
 
 ///|
+test "§17.18.59 ST_NumberFormat::format covers CJK / ideograph / script-digit forms" {
+  // Chinese informal counting (一二三 / 十百千) — leading 十 drops 一.
+  @debug.assert_eq(@domain.NumFmtChineseCounting.format(1), "一")
+  @debug.assert_eq(@domain.NumFmtChineseCounting.format(10), "十")
+  @debug.assert_eq(@domain.NumFmtChineseCounting.format(11), "十一")
+  @debug.assert_eq(@domain.NumFmtChineseCounting.format(20), "二十")
+  @debug.assert_eq(@domain.NumFmtChineseCounting.format(100), "一百")
+  @debug.assert_eq(@domain.NumFmtChineseCounting.format(123), "一百二十三")
+  @debug.assert_eq(@domain.NumFmtChineseCounting.format(1000), "一千")
+  // Simplified-Chinese formal (大写) — always writes the unit digit.
+  @debug.assert_eq(@domain.NumFmtChineseLegalSimplified.format(1), "壹")
+  @debug.assert_eq(@domain.NumFmtChineseLegalSimplified.format(10), "壹拾")
+  @debug.assert_eq(@domain.NumFmtChineseLegalSimplified.format(123), "壹佰贰拾叁")
+  // Ideograph digit-by-digit.
+  @debug.assert_eq(@domain.NumFmtIdeographDigital.format(123), "一二三")
+  // Twelve Earthly Branches zodiac cycle (wraps at 12).
+  @debug.assert_eq(@domain.NumFmtIdeographZodiac.format(1), "子")
+  @debug.assert_eq(@domain.NumFmtIdeographZodiac.format(12), "亥")
+  @debug.assert_eq(@domain.NumFmtIdeographZodiac.format(13), "子")
+  // Hangul Sino-Korean digits.
+  @debug.assert_eq(@domain.NumFmtKoreanDigital2.format(123), "일이삼")
+  // Devanagari (Hindi) and Thai positional digits.
+  @debug.assert_eq(@domain.NumFmtHindiNumbers.format(123), "१२३")
+  @debug.assert_eq(@domain.NumFmtThaiNumbers.format(123), "๑๒๓")
+}
+
+///|
 test "§17.9.11 format_lvl_text substitutes %N placeholders" {
   let counters = [3, 5]
   let formats : Array[@domain.ST_NumberFormat] = [

@@ -1230,80 +1230,272 @@ fn fn_isnontext(
 }
 
 // ---------------------------------------------------------------------------
-// LINEST / LOGEST — simplified single-variable versions
+// LINEST / LOGEST — full multiple linear regression (§ Excel LINEST/LOGEST)
+//
+// Supports multiple independent variables (`known_x's` with several
+// columns/rows), the `const` flag (FALSE forces the intercept to 0), and
+// the `stats` flag (TRUE appends the five-row regression-statistics block:
+// coefficients, their standard errors, [r², se_y], [F, df], [ss_reg,
+// ss_resid]).  Coefficients are emitted in Excel's order — the slopes for
+// the last variable first, the intercept last.  LOGEST fits ln(y) and
+// exponentiates only the coefficient row (the statistics are for the
+// fitted ln(y) line, matching Excel).
 // ---------------------------------------------------------------------------
+
+///|
+/// Coerce a `const`/`stats` argument to a boolean, falling back to
+/// `default` for blanks or non-coercible inputs.
+fn linest_bool_arg(v : FormulaValue, default : Bool) -> Bool {
+  match coerce_to_bool(v) {
+    VBool(b) => b
+    _ => default
+  }
+}
+
+///|
+/// Build the `n × k` observation matrix (each row a variable vector) from
+/// the `known_x's` value, aligning its orientation to the `n` known-y
+/// observations.  `None` yields the default x = 1, 2, …, n single
+/// variable.  Returns the matrix or a formula error on a shape mismatch.
+fn linest_observations(
+  x_val : FormulaValue?,
+  n : Int,
+  ds : @date_serial.DateSystem,
+) -> Array[Array[Double]]? {
+  match x_val {
+    None => {
+      let o : Array[Array[Double]] = []
+      for i in 0..<n {
+        o.push([(i + 1).to_double()])
+      }
+      Some(o)
+    }
+    Some(v) =>
+      match to_matrix(v, ds) {
+        None => None
+        Some(xmat) => {
+          let r = xmat.length()
+          let c = if r > 0 { xmat[0].length() } else { 0 }
+          for row in xmat {
+            if row.length() != c {
+              return None
+            }
+          }
+          if r == n && c >= 1 {
+            Some(xmat)
+          } else if c == n && r >= 1 {
+            // Observations are columns ⇒ transpose so each row is one
+            // observation's variable vector.
+            let o : Array[Array[Double]] = []
+            for j in 0..<n {
+              let vec : Array[Double] = []
+              for i in 0..<r {
+                vec.push(xmat[i][j])
+              }
+              o.push(vec)
+            }
+            Some(o)
+          } else if r * c == n {
+            // Single variable in some flattened shape.
+            let o : Array[Array[Double]] = []
+            for row in xmat {
+              for x in row {
+                o.push([x])
+              }
+            }
+            Some(o)
+          } else {
+            None
+          }
+        }
+      }
+  }
+}
+
+///|
+/// Shared multiple-regression engine for LINEST (`exp_ = false`) and
+/// LOGEST (`exp_ = true`, the `ys` are already ln-transformed).
+fn linest_core(
+  ys : Array[Double],
+  x_val : FormulaValue?,
+  const_ : Bool,
+  stats_ : Bool,
+  exp_ : Bool,
+  ds : @date_serial.DateSystem,
+) -> FormulaValue {
+  let n = ys.length()
+  if n < 2 {
+    return VError(Value)
+  }
+  let obs = match linest_observations(x_val, n, ds) {
+    Some(o) => o
+    None => return VError(Ref)
+  }
+  let k = obs[0].length() // independent-variable count
+  if k < 1 {
+    return VError(Value)
+  }
+  let slope_start = if const_ { 1 } else { 0 }
+  let p = slope_start + k // coefficient count
+  if n < p {
+    return VError(Value)
+  }
+  // Design matrix A (n × p): leading 1 column when fitting an intercept.
+  let a : Array[Array[Double]] = []
+  for i in 0..<n {
+    let row : Array[Double] = []
+    if const_ {
+      row.push(1.0)
+    }
+    for x in obs[i] {
+      row.push(x)
+    }
+    a.push(row)
+  }
+  // Normal equations AᵀA β = Aᵀy.
+  let ata : Array[Array[Double]] = []
+  for r in 0..<p {
+    let rowv : Array[Double] = []
+    for cc in 0..<p {
+      let mut s = 0.0
+      for i in 0..<n {
+        s = s + a[i][r] * a[i][cc]
+      }
+      rowv.push(s)
+    }
+    ata.push(rowv)
+  }
+  let aty : Array[Double] = []
+  for r in 0..<p {
+    let mut s = 0.0
+    for i in 0..<n {
+      s = s + a[i][r] * ys[i]
+    }
+    aty.push(s)
+  }
+  let inv = match invert_matrix(ata, p) {
+    None => return VError(Num) // singular ⇒ collinear predictors
+    Some(m) => m
+  }
+  let beta : Array[Double] = []
+  for r in 0..<p {
+    let mut s = 0.0
+    for cc in 0..<p {
+      s = s + inv[r][cc] * aty[cc]
+    }
+    beta.push(s)
+  }
+  let intercept = if const_ { beta[0] } else { 0.0 }
+  let out_num = fn(x : Double) -> FormulaValue {
+    VNumber(if exp_ { @math.exp(x) } else { x })
+  }
+  // Coefficient row: slopes last-variable-first, then the intercept.
+  let coeff_row : Array[FormulaValue] = []
+  for j = k - 1; j >= 0; j = j - 1 {
+    coeff_row.push(out_num(beta[slope_start + j]))
+  }
+  coeff_row.push(out_num(intercept))
+  if !stats_ {
+    return VArray([coeff_row])
+  }
+  // Regression statistics (computed on the fitted — for LOGEST, ln(y) —
+  // model; not exponentiated, matching Excel).
+  let mut sy = 0.0
+  for y in ys {
+    sy = sy + y
+  }
+  let ybar = sy / n.to_double()
+  let mut ss_resid = 0.0
+  let mut ss_total = 0.0
+  for i in 0..<n {
+    let mut yhat = 0.0
+    for j in 0..<p {
+      yhat = yhat + a[i][j] * beta[j]
+    }
+    let e = ys[i] - yhat
+    ss_resid = ss_resid + e * e
+    ss_total = ss_total +
+      (if const_ { (ys[i] - ybar) * (ys[i] - ybar) } else { ys[i] * ys[i] })
+  }
+  let df_resid = (n - p).to_double()
+  let ss_reg = ss_total - ss_resid
+  let r2 = if ss_total != 0.0 { ss_reg / ss_total } else { 0.0 }
+  let mse = if df_resid > 0.0 { ss_resid / df_resid } else { 0.0 }
+  let se_y = mse.sqrt()
+  let df_reg = k.to_double()
+  let f = if mse != 0.0 { ss_reg / df_reg / mse } else { 0.0 }
+  let na : FormulaValue = VError(NotApplicable)
+  // Standard errors in coefficient order: slopes last-first, intercept.
+  let se_row : Array[FormulaValue] = []
+  for j = k - 1; j >= 0; j = j - 1 {
+    let idx = slope_start + j
+    se_row.push(VNumber((mse * inv[idx][idx]).sqrt()))
+  }
+  se_row.push(if const_ { VNumber((mse * inv[0][0]).sqrt()) } else { na })
+  let width = k + 1
+  let pad_row = fn(a0 : FormulaValue, b0 : FormulaValue) -> Array[FormulaValue] {
+    let row : Array[FormulaValue] = [a0, b0]
+    for _ in 2..<width {
+      row.push(na)
+    }
+    row
+  }
+  VArray([
+    coeff_row,
+    se_row,
+    pad_row(VNumber(r2), VNumber(se_y)),
+    pad_row(VNumber(f), VNumber(df_resid)),
+    pad_row(VNumber(ss_reg), VNumber(ss_resid)),
+  ])
+}
 
 fn fn_linest(
   args : Array[FormulaValue],
   ctx : EvalContext,
 ) -> FormulaValue {
-  if args.length() < 1 || args.length() > 4 { return VError(Value) }
+  if args.length() < 1 || args.length() > 4 {
+    return VError(Value)
+  }
   let ys = extract_number_array(args[0], ctx.date_system)
-  let xs = if args.length() >= 2 {
-    extract_number_array(args[1], ctx.date_system)
+  let x_val = if args.length() >= 2 { Some(args[1]) } else { None }
+  let const_ = if args.length() >= 3 {
+    linest_bool_arg(args[2], true)
   } else {
-    let out : Array[Double] = []
-    for i in 0..<ys.length() { out.push((i + 1).to_double()) }
-    out
+    true
   }
-  let n = if xs.length() < ys.length() { xs.length() } else { ys.length() }
-  if n < 2 { return VError(Value) }
-  let mut sx = 0.0
-  let mut sy = 0.0
-  for i in 0..<n { sx = sx + xs[i]; sy = sy + ys[i] }
-  let mx = sx / n.to_double()
-  let my = sy / n.to_double()
-  let mut sxy = 0.0
-  let mut sxx = 0.0
-  for i in 0..<n {
-    let dx = xs[i] - mx
-    sxy = sxy + dx * (ys[i] - my)
-    sxx = sxx + dx * dx
+  let stats_ = if args.length() >= 4 {
+    linest_bool_arg(args[3], false)
+  } else {
+    false
   }
-  if sxx == 0.0 { return VError(DivZero) }
-  let slope = sxy / sxx
-  let intercept = my - slope * mx
-  VArray([[VNumber(slope), VNumber(intercept)]])
+  linest_core(ys, x_val, const_, stats_, false, ctx.date_system)
 }
 
 fn fn_logest(
   args : Array[FormulaValue],
   ctx : EvalContext,
 ) -> FormulaValue {
-  if args.length() < 1 || args.length() > 4 { return VError(Value) }
-  let ys = extract_number_array(args[0], ctx.date_system)
-  let xs = if args.length() >= 2 {
-    extract_number_array(args[1], ctx.date_system)
-  } else {
-    let out : Array[Double] = []
-    for i in 0..<ys.length() { out.push((i + 1).to_double()) }
-    out
+  if args.length() < 1 || args.length() > 4 {
+    return VError(Value)
   }
+  let ys_raw = extract_number_array(args[0], ctx.date_system)
   let log_ys : Array[Double] = []
-  for y in ys {
-    if y <= 0.0 { return VError(Num) }
+  for y in ys_raw {
+    if y <= 0.0 {
+      return VError(Num)
+    }
     log_ys.push(@math.ln(y))
   }
-  let n = if xs.length() < log_ys.length() {
-    xs.length()
+  let x_val = if args.length() >= 2 { Some(args[1]) } else { None }
+  let const_ = if args.length() >= 3 {
+    linest_bool_arg(args[2], true)
   } else {
-    log_ys.length()
+    true
   }
-  if n < 2 { return VError(Value) }
-  let mut sx = 0.0
-  let mut sy = 0.0
-  for i in 0..<n { sx = sx + xs[i]; sy = sy + log_ys[i] }
-  let mx = sx / n.to_double()
-  let my = sy / n.to_double()
-  let mut sxy = 0.0
-  let mut sxx = 0.0
-  for i in 0..<n {
-    let dx = xs[i] - mx
-    sxy = sxy + dx * (log_ys[i] - my)
-    sxx = sxx + dx * dx
+  let stats_ = if args.length() >= 4 {
+    linest_bool_arg(args[3], false)
+  } else {
+    false
   }
-  if sxx == 0.0 { return VError(DivZero) }
-  let slope = sxy / sxx
-  let intercept = my - slope * mx
-  VArray([[VNumber(@math.exp(slope)), VNumber(@math.exp(intercept))]])
+  linest_core(log_ys, x_val, const_, stats_, true, ctx.date_system)
 }

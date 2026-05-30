@@ -770,20 +770,22 @@ fn main {
   // carries one) must still be present.  `fy-drop` is a lossy
   // round-trip — a genuine ECMA-376 conformance defect.
   let fy_marker = fidelity.get("fy-marker").unwrap_or(0)
+  let fy_inject = fidelity.get("fy-inject").unwrap_or(0)
   let fy_tag = fidelity.get("fy-tag").unwrap_or(0)
   let fy_drop = fidelity.get("fy-drop").unwrap_or(0)
   let fy_ambiguous = fidelity.get("fy-ambiguous").unwrap_or(0)
   let fy_openfail = fidelity.get("fy-open-fail").unwrap_or(0)
-  // Proven survival = marker survived OR a differential tag-count
-  // drop attributable to the target.  `fy-ambiguous` is deliberately
-  // NOT counted as proven: the tag is present but indistinguishable
-  // from host scaffolding, so attributing survival to the target
-  // would overclaim.
-  let fy_proven = fy_marker + fy_tag
+  // Proven survival = marker survived (natural OR planted into a
+  // structural target) OR a differential tag-count drop attributable
+  // to the target.  `fy-ambiguous` is deliberately NOT counted as
+  // proven: the tag is present but indistinguishable from host
+  // scaffolding, so attributing survival to the target would overclaim.
+  let fy_proven = fy_marker + fy_inject + fy_tag
   let fy_probed = fy_proven + fy_drop + fy_ambiguous
   println("L2b round-trip fidelity  (open -> save: does the saved part")
   println("    XML still contain the element?  differential, non-visual)")
   println("    marker survived (content round-tripped)  : \{fy_marker}")
+  println("    planted marker survived (structural)     : \{fy_inject}")
   println("    tag count dropped when pruned (survived) : \{fy_tag}")
   println("    DROPPED by writer (lossy round-trip)     : \{fy_drop}")
   println("    ambiguous (tag also in scaffolding)      : \{fy_ambiguous}")
@@ -803,9 +805,18 @@ fn main {
   println("    a typed re-serialisation (there is none); structural")
   println("    *understanding* lives in the typed projection, measured")
   println("    by the L3 render axis, not here.")
+  println("    Structural / attribute-only targets carry no text")
+  println("    marker, so a unique marker is PLANTED inside the element")
+  println("    under test and a second save confirms it survives")
+  println("    (`fy-inject`) — proving survival even when the tag")
+  println("    collides with host scaffolding.  The plant is")
+  println("    non-destructive: if a host de-dups a required singleton")
+  println("    it falls back to the differential rather than overclaim.")
   println("    (ambiguous = tag present but also emitted by host")
-  println("     scaffolding, so the target's own survival is unprovable")
-  println("     by this method — neither a confirmed pass nor a drop)")
+  println("     scaffolding AND a planted marker did not survive a host")
+  println("     de-dup — provably lossless by construction; the residual")
+  println("     `themeElements` singleton is proved directly by the")
+  println("     font_theme_types round-trip identity test)")
   println("")
 
   // Glyph-level coverage audit dump — every `parsed` (no visible

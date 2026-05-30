@@ -46,6 +46,27 @@ test "preset rect" {
 }
 
 ///|
+/// `ribbon` now routes through the shared faithful drawing_ml geometry
+/// (the local approximation that dropped the fold arcs was removed), so
+/// the path carries the spec `ArcTo` (SVG `A`) fold corners.
+test "preset ribbon routes through the faithful drawing_ml geometry" {
+  let elt = geom_make_elt("ribbon", [])
+  let p = render_preset_geometry(elt, 200.0, 100.0).unwrap()
+  assert_true(p.contains("A"))
+}
+
+///|
+/// A guide-heavy preset the local PML dispatchers do not cover
+/// (`circularArrow`'s 192-guide line/ellipse-intersection chain) is now
+/// materialised by the drawing_ml fallback instead of degrading to a
+/// bounding rect, so the path carries its curved arc band (`A`).
+test "preset circularArrow falls back to the faithful drawing_ml geometry" {
+  let elt = geom_make_elt("circularArrow", [])
+  let p = render_preset_geometry(elt, 200.0, 200.0).unwrap()
+  assert_true(p.contains("A"))
+}
+
+///|
 test "preset ellipse" {
   let elt = geom_make_elt("ellipse", [])
   let p = render_preset_geometry(elt, 100.0, 50.0).unwrap()

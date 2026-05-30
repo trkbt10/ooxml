@@ -89,7 +89,34 @@ pub fn render_preset_geometry(
   }
   let avs = parse_adjust_values(first_child_named(prst_geom, "avLst"))
   let ctx = create_guide_context(width, height, adjust_values=avs)
-  preset_shape_dispatch(prst, width, height, ctx)
+  match preset_shape_dispatch(prst, width, height, ctx) {
+    Some(p) => Some(p)
+    None =>
+      // Faithful fallback: the shared drawing_ml preset-geometry library
+      // materialises (honouring avLst adjustments) any preset the local
+      // dispatchers do not cover, instead of degrading to a bounding
+      // rect — eliminating the parallel-system geometry drift.
+      @preset_geometry.render_shape_path(
+        prst,
+        round_dim(width),
+        round_dim(height),
+        match first_child_named(prst_geom, "avLst") {
+          Some(av) => @preset_geometry.read_adjustments_lenient(av)
+          None => []
+        },
+      )
+  }
+}
+
+///|
+/// Round a positive Double box dimension to the nearest integer for the
+/// integer-coordinate `drawing_ml` preset-geometry generators.
+fn round_dim(v : Double) -> Int {
+  if v <= 0.0 {
+    0
+  } else {
+    (v + 0.5).to_int()
+  }
 }
 
 ///|
