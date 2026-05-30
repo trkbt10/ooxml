@@ -9,13 +9,19 @@
 /// `close`. The closing `ClosePath` draws the chord back to the start.
 /// The default `avLst` is `adj1 = 2700000` (45°), `adj2 = 16200000`
 /// (270°), so the default segment spans 45°→270°.
-pub fn build_chord(width : Int, height : Int) -> ShapeGeometry {
+pub fn build_chord(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 2700000,
+  adj2~ : Int = 16200000,
+) -> ShapeGeometry {
+  // §20.1.10.56 chord: stAng = adj1, enAng = adj2; swAng = enAng − stAng.
   let cx = width / 2
   let cy = height / 2
   let rx = width / 2
   let ry = height / 2
-  let st_ang = 2700000
-  let en_ang = 16200000
+  let st_ang = adj1
+  let en_ang = adj2
   let sw_ang = en_ang - st_ang
   let (x1, y1) = ellipse_point(cx, cy, rx, ry, st_ang)
   let commands : Array[PathCommand] = []

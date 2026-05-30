@@ -16,10 +16,17 @@
 /// → (l,x1) → arc(top-left) → close`, where `x2 = r − dx2`; the
 /// `(x2,t) → (r,dx2)` segment is the diagonal snip and the closing
 /// `ArcTo` rounds the top-left corner.
-pub fn build_snip_round_rect(width : Int, height : Int) -> ShapeGeometry {
+pub fn build_snip_round_rect(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 16667,
+  adj2~ : Int = 16667,
+) -> ShapeGeometry {
+  // §20.1.10.56 snipRoundRect gdLst: aN = pin 0 adjN 50000;
+  // x1 = ss·a1/100000 (rounded top-left), dx2 = ss·a2/100000 (snip top-right).
   let ss = min_dim(width, height)
-  let r = percent(ss, 16667)
-  let s = percent(ss, 16667)
+  let r = percent(ss, pin_int(adj1, 0, 50000))
+  let s = percent(ss, pin_int(adj2, 0, 50000))
   let commands : Array[PathCommand] = []
   // Start just past the rounded top-left corner.
   commands.push(MoveTo(r, 0))

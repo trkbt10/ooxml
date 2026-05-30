@@ -7,6 +7,7 @@
 // a virtual width × height bounding box for downstream renderers.
 
 import {
+  "moonbitlang/core/math" @math,
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/xml" @xml,
 }

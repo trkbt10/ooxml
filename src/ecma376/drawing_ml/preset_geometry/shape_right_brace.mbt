@@ -10,29 +10,46 @@
 /// the left half of the box, two arms curling left at the top and
 /// bottom, and a pinch point jutting right at mid-height.
 ///
-/// Spec geometry: the curl radius is `y1 = ss·a1/100000` (`adj1`
-/// default 8333), and the pinch sits at height `y3 = h·a2/100000`
-/// (`adj2` default 50000 ⇒ `y3 = h/2`). The spec spine runs along
-/// `x = hc`, the arms reach `x = l`, and the pinch tip reaches
-/// `x = r`. The spec draws four quarter / reflex arcs; this
-/// generator approximates the four curls with quadratic Béziers —
-/// the silhouette is the canonical `}` glyph. Open outline (no
-/// `close`).
-pub fn build_right_brace(width : Int, height : Int) -> ShapeGeometry {
+/// Now a FAITHFUL transcription of the spec stroke path using the
+/// independently-verified `rel_arc` (DrawingML relative `arcTo`)
+/// helper. The adjustment math is identical to `leftBrace`: the curl
+/// radius is `y1 = ss·a1/100000` (`a1 = pin 0 adj1 maxAdj1`, default
+/// `adj1 = 8333`); the pinch height is `y3 = h·a2/100000` (`a2 = pin 0
+/// adj2 100000`, default 50000), with `y2 = y3 − y1` and `y4 = b − y1`.
+/// The spec outline is `moveTo(l,t) → arc(wd2,y1,270°,+90°) →
+/// lnTo(hc,y2) → arc(wd2,y1,180°,−90°) → arc(wd2,y1,270°,−90°) →
+/// lnTo(hc,y4) → arc(wd2,y1,0°,+90°)`, drawn open (stroke path) so the
+/// renderer strokes the `}` glyph. The pinch tip reaches `x = r` at
+/// mid-height; the arms curl left to `x = l`.
+pub fn build_right_brace(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 8333,
+  adj2~ : Int = 50000,
+) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let a2 = pin_int(adj2, 0, 100000)
+  let q1 = 100000 - a2
+  let q2 = if q1 < a2 { q1 } else { a2 }
+  let max_adj1 = if ss == 0 { 0 } else { fraction(q2 / 2, height, ss) }
+  let a1 = pin_int(adj1, 0, max_adj1)
+  let y1 = fraction(ss, a1, 100000)
+  let y3 = fraction(height, a2, 100000)
+  let y2 = y3 - y1
+  let y4 = height - y1
+  let wd2 = width / 2
   let hc = width / 2
-  let pinch_y = percent(height, 50000)
   let commands : Array[PathCommand] = []
-  // Top arm tip → curl down to the spine.
   commands.push(MoveTo(0, 0))
-  commands.push(QuadTo(hc, 0, hc, percent(height, 25000)))
-  // Spine down to just above the pinch.
-  commands.push(LineTo(hc, pinch_y - percent(height, 6000)))
-  // Pinch: curl out to the right tip at mid-height, then back in.
-  commands.push(QuadTo(hc, pinch_y, width, pinch_y))
-  commands.push(QuadTo(hc, pinch_y, hc, pinch_y + percent(height, 6000)))
-  // Spine down toward the bottom curl.
-  commands.push(LineTo(hc, percent(height, 75000)))
-  // Bottom curl out to the bottom arm tip.
-  commands.push(QuadTo(hc, height, 0, height))
+  let (c1, _, _) = rel_arc(0, 0, wd2, y1, 16200000, 5400000)
+  commands.push(c1)
+  commands.push(LineTo(hc, y2))
+  let (c2, x2, ym) = rel_arc(hc, y2, wd2, y1, 10800000, -5400000)
+  commands.push(c2)
+  let (c3, _, _) = rel_arc(x2, ym, wd2, y1, 16200000, -5400000)
+  commands.push(c3)
+  commands.push(LineTo(hc, y4))
+  let (c4, _, _) = rel_arc(hc, y4, wd2, y1, 0, 5400000)
+  commands.push(c4)
   { commands, width, height }
 }

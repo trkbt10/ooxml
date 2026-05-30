@@ -42,6 +42,45 @@ pub fn decode_preset_geometry(
 }
 
 ///|
+/// Part 1 §20.1.9.5 avLst — renderer-side, best-effort extractor of
+/// the adjustment-guide overrides. Accepts either a `prstGeom`
+/// element (whose `avLst` child is located) or an `avLst` element
+/// directly, and returns the typed `Adjustment` list, SKIPPING any
+/// `gd` missing the required `@name`/`@fmla` rather than raising.
+///
+/// Renderers prefer best-effort geometry — one malformed guide should
+/// not blank the whole shape — whereas the strict
+/// `decode_preset_geometry` is used on the round-trip path where
+/// schema violations must surface. The `value` field is populated
+/// from the `val n` formula form (the only form §20.1.10.56 permits
+/// in an `avLst`); other formula forms leave `value` as `None`.
+pub fn read_adjustments_lenient(element : @xml.Element) -> Array[Adjustment] {
+  let out : Array[Adjustment] = []
+  let av = if element.name.local_name == "avLst" {
+    element
+  } else {
+    match first_child_by_local_name(element, "avLst") {
+      Some(a) => a
+      None => return out
+    }
+  }
+  for child in av.children {
+    match child {
+      @xml.Element(gd) =>
+        if gd.name.local_name == "gd" {
+          match (attr(gd, "name"), attr(gd, "fmla")) {
+            (Some(name), Some(raw_formula)) =>
+              out.push({ name, raw_formula, value: parse_val_formula(raw_formula) })
+            _ => ()
+          }
+        }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
 /// Part 1 §20.1.9.11 gd — decode a single adjustment guide element.
 /// Both `@name` and `@fmla` are required by the schema; missing
 /// attributes raise `SchemaViolation`. The decoder additionally parses

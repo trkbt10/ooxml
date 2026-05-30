@@ -7,27 +7,38 @@
 /// §20.1.10.56 `quadArrow` — a four-headed arrow with heads pointing
 /// up, down, left and right from a common central junction.
 ///
-/// Adjustment guides (defaults): `adj1` = arrowhead barb spread
-/// (22500), `adj2` = arrowhead length (22500), `adj3` = shaft
-/// thickness (22500). All are taken against the smaller bounding
-/// dimension so the four arms keep a consistent thickness.
-pub fn build_quad_arrow(width : Int, height : Int) -> ShapeGeometry {
-  let smaller = min_dim(width, height)
-  let shaft_t = percent(smaller, 22500)
-  let head_len = percent(smaller, 22500)
-  let head_barb = percent(smaller, 22500)
+/// Per the spec gdLst (defaults all 22500): `adj1` = shaft thickness
+/// (`a1 = pin 0 adj1 2·a2`, half-thickness `dx3 = ss·a1/200000`),
+/// `adj2` = arrowhead half-width (`a2 = pin 0 adj2 50000`, `dx2 =
+/// ss·a2/100000` measured ABSOLUTELY from the centre — NOT added to
+/// the shaft), and `adj3` = arrowhead length (`a3 = pin 0 adj3
+/// (50000−a2)`, `x1 = ss·a3/100000`). All are `ss`-based.
+pub fn build_quad_arrow(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 22500,
+  adj2~ : Int = 22500,
+  adj3~ : Int = 22500,
+) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let a2 = pin_int(adj2, 0, 50000)
+  let a1 = pin_int(adj1, 0, 2 * a2)
+  let a3 = pin_int(adj3, 0, 50000 - a2)
+  let head_barb = percent(ss, a2)
+  let shaft_half = fraction(ss, a1, 200000)
+  let head_len = percent(ss, a3)
   let cx = width / 2
   let cy = height / 2
   // Shaft band edges, centred on each axis.
-  let h_top = cy - shaft_t / 2
-  let h_bottom = cy + shaft_t / 2
-  let v_left = cx - shaft_t / 2
-  let v_right = cx + shaft_t / 2
-  // Arrowhead barb edges (wider than the shaft).
-  let head_top = cy - (shaft_t / 2 + head_barb)
-  let head_bottom = cy + (shaft_t / 2 + head_barb)
-  let head_left = cx - (shaft_t / 2 + head_barb)
-  let head_right = cx + (shaft_t / 2 + head_barb)
+  let h_top = cy - shaft_half
+  let h_bottom = cy + shaft_half
+  let v_left = cx - shaft_half
+  let v_right = cx + shaft_half
+  // Arrowhead barb edges — absolute half-width `dx2` from the centre.
+  let head_top = cy - head_barb
+  let head_bottom = cy + head_barb
+  let head_left = cx - head_barb
+  let head_right = cx + head_barb
   // Arrowhead base offsets from each edge.
   let left_base = head_len
   let right_base = width - head_len

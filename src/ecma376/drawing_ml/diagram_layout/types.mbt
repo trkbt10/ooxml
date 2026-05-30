@@ -18,7 +18,8 @@ pub fn diagram_layout_part1_21_4_section_name() -> String {
 /// Variants follow the spec lexical forms verbatim so the decoder
 /// table stays bit-for-bit aligned with §21.4.7.1.
 pub(all) enum AlgorithmType {
-  /// §21.4.7.1 composite — places children at fixed positions.
+  /// §21.4.7.1 composite — sizes/positions children purely by the
+  /// node's `for="ch"` constraints (no automatic distribution).
   AlgComposite
   /// §21.4.7.1 conn — routes connector lines between nodes.
   AlgConn
@@ -69,12 +70,19 @@ pub fn AlgorithmType::from_attr(
 
 ///|
 /// Report whether the engine has a faithful (non-fallback)
-/// implementation for the supplied algorithm type. `composite`,
-/// `conn`, `sp`, and `tx` fall back to `lin` in this package and
-/// are reported as unsupported here so callers can warn.
+/// implementation for the supplied algorithm type. `composite` is
+/// now faithfully implemented (constraint-driven child placement);
+/// `conn`, `sp`, and `tx` still fall back to `lin` in this package
+/// and are reported as unsupported here so callers can warn.
 pub fn AlgorithmType::is_supported(self : AlgorithmType) -> Bool {
   match self {
-    AlgLin | AlgSnake | AlgCycle | AlgHierRoot | AlgHierChild | AlgPyra => true
+    AlgLin
+    | AlgSnake
+    | AlgCycle
+    | AlgHierRoot
+    | AlgHierChild
+    | AlgPyra
+    | AlgComposite => true
     _ => false
   }
 }

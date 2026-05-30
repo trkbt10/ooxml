@@ -17,12 +17,18 @@
 /// `(x1,t) → (x2,t) → arc(top-right r=a) → (r,y1) → arc(bottom-right
 /// r=x1) → (a,b) → arc(bottom-left r=a) → (l,x1) → arc(top-left
 /// r=x1) → close`.
-pub fn build_round2_diag_rect(width : Int, height : Int) -> ShapeGeometry {
+pub fn build_round2_diag_rect(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 16667,
+  adj2~ : Int = 0,
+) -> ShapeGeometry {
+  // §20.1.10.56 round2DiagRect gdLst: aN = pin 0 adjN 50000; radii ss·aN/100000.
   let ss = min_dim(width, height)
   // adj1 corner radius (top-left, bottom-right).
-  let r1 = percent(ss, 16667)
+  let r1 = percent(ss, pin_int(adj1, 0, 50000))
   // adj2 corner radius (top-right, bottom-left).
-  let r2 = percent(ss, 0)
+  let r2 = percent(ss, pin_int(adj2, 0, 50000))
   let commands : Array[PathCommand] = []
   commands.push(MoveTo(r1, 0))
   commands.push(LineTo(width - r2, 0))

@@ -78,6 +78,8 @@ pub fn first_child_by_local_name(@xml.Element, String) -> @xml.Element?
 
 pub fn int_ceil_sqrt(Int) -> Int
 
+pub fn layout_composite(BoundsRect, Int) -> Array[BoundsRect]
+
 pub fn layout_cycle(BoundsRect, Int) -> Array[BoundsRect]
 
 pub fn layout_hier(BoundsRect, Int) -> (BoundsRect, Array[BoundsRect])

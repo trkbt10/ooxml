@@ -106,6 +106,42 @@ test "§18.17.7 reference ROW COLUMN ROWS COLUMNS ADDRESS AREAS" {
 }
 
 ///|
+/// §18.17.7 CELL — the reference-derived info types are computed from
+/// the argument's address (or, when omitted, the formula's own cell,
+/// here C5), not fabricated. The harness resolves A1=11 … C3=33.
+test "§18.17.7 CELL reference info types" {
+  // address / col / row read the reference's upper-left coordinates.
+  g17_assert_eval("CELL(\"address\", B2)", VString("$B$2"))
+  g17_assert_eval("CELL(\"col\", C3)", VNumber(3.0))
+  g17_assert_eval("CELL(\"row\", A1)", VNumber(1.0))
+  // A range reports its upper-left cell.
+  g17_assert_eval("CELL(\"address\", B2:D4)", VString("$B$2"))
+  // contents returns the cell value; type classifies it (v = value).
+  g17_assert_eval("CELL(\"contents\", A1)", VNumber(11.0))
+  g17_assert_eval("CELL(\"type\", A1)", VString("v"))
+  // An empty cell is type "b" (blank).
+  g17_assert_eval("CELL(\"type\", Z9)", VString("b"))
+  // Reference omitted → the formula's own cell (C5).
+  g17_assert_eval("CELL(\"col\")", VNumber(3.0))
+  g17_assert_eval("CELL(\"row\")", VNumber(5.0))
+  // Format / protection metadata fall back to spec-neutral defaults
+  // (no per-cell format metadata in the formula context).
+  g17_assert_eval("CELL(\"protect\", A1)", VNumber(1.0))
+  g17_assert_eval("CELL(\"format\", A1)", VString("G"))
+}
+
+///|
+/// §18.17.2 ISREF — a cell or range reference is TRUE; a literal value
+/// is FALSE. A single-cell reference must be detected by its AST (it
+/// evaluates to a bare scalar otherwise).
+test "§18.17.2 ISREF detects cell and range references" {
+  g17_assert_eval("ISREF(A1)", VBool(true))
+  g17_assert_eval("ISREF(A1:B2)", VBool(true))
+  g17_assert_eval("ISREF(5)", VBool(false))
+  g17_assert_eval("ISREF(\"text\")", VBool(false))
+}
+
+///|
 test "§18.17.7 datetime DATE TIME field extraction and WEEKDAY" {
   let serial = g17_serial(2024, 12, 31)
   g17_assert_eval("DATE(2024,12,31)", VNumber(serial))

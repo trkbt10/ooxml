@@ -14,10 +14,17 @@
 /// `adj2 = 0`). The clockwise outline is `(tx1,t) → (tx2,t) →
 /// (r,tx1) → (r,by1) → (bx2,b) → (bx1,b) → (l,by1) → (l,tx1) →
 /// close`, where each snipped corner becomes a single diagonal cut.
-pub fn build_snip2_same_rect(width : Int, height : Int) -> ShapeGeometry {
+pub fn build_snip2_same_rect(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 16667,
+  adj2~ : Int = 0,
+) -> ShapeGeometry {
+  // §20.1.10.56 snip2SameRect gdLst: aN = pin 0 adjN 50000;
+  // tx1 = ss·a1/100000 (top), bx1 = ss·a2/100000 (bottom).
   let ss = min_dim(width, height)
-  let ts = percent(ss, 16667)
-  let bs = percent(ss, 0)
+  let ts = percent(ss, pin_int(adj1, 0, 50000))
+  let bs = percent(ss, pin_int(adj2, 0, 50000))
   let commands : Array[PathCommand] = []
   commands.push(MoveTo(ts, 0))
   commands.push(LineTo(width - ts, 0))

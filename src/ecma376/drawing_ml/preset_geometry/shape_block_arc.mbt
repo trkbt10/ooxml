@@ -13,16 +13,25 @@
 /// `adj2 = 0` (inner start 0°), `adj3 = 25000` (band thickness `dr`).
 /// With those values `swAng` normalises to `10800000` (a 180° band
 /// across the top half) and `iswAng = -swAng`.
-pub fn build_block_arc(width : Int, height : Int) -> ShapeGeometry {
+pub fn build_block_arc(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 10800000,
+  adj2~ : Int = 0,
+  adj3~ : Int = 25000,
+) -> ShapeGeometry {
+  // §20.1.10.56 blockArc: stAng = pin 0 adj1 21599999, istAng =
+  // pin 0 adj2 21599999 (ECMA angle units); ring thickness
+  // dr = ss·a3/100000 with a3 = pin 0 adj3 50000.
   let cx = width / 2
   let cy = height / 2
   let rx = width / 2
   let ry = height / 2
-  let dr = percent(min_dim(width, height), 25000)
+  let dr = percent(min_dim(width, height), pin_int(adj3, 0, 50000))
   let irx = rx - dr
   let iry = ry - dr
-  let st_ang = 10800000
-  let ist_ang = 0
+  let st_ang = pin_int(adj1, 0, 21599999)
+  let ist_ang = pin_int(adj2, 0, 21599999)
   // swAng = istAng - stAng, normalised into (0, 21600000].
   let raw = ist_ang - st_ang
   let sw_ang = if raw <= 0 { raw + 21600000 } else { raw }

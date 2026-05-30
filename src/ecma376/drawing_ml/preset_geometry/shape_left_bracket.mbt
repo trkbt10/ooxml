@@ -16,8 +16,12 @@
 /// up the left stem, around the rounded top-left corner, out to the
 /// top-right arm tip. It is an open outline (no `close`), so the
 /// generated geometry is an open stroke path.
-pub fn build_left_bracket(width : Int, height : Int) -> ShapeGeometry {
-  let r = percent(min_dim(width, height), 8333)
+pub fn build_left_bracket(width : Int, height : Int, adj~ : Int = 8333) -> ShapeGeometry {
+  // §20.1.10.56 leftBracket: maxAdj = 50000·h/ss; a = pin 0 adj maxAdj;
+  // corner radius y1 = ss·a/100000.
+  let ss = min_dim(width, height)
+  let max_adj = if ss == 0 { 0 } else { fraction(50000, height, ss) }
+  let r = percent(ss, pin_int(adj, 0, max_adj))
   let commands : Array[PathCommand] = []
   // Bottom arm tip → rounded bottom-left corner.
   commands.push(MoveTo(width, height))

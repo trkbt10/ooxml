@@ -8,72 +8,78 @@
 /// outward bumps) followed by a trail of three shrinking ellipse
 /// bubbles leading to the callout target point.
 ///
-/// The spec preset draws the cloud with eleven `arcTo` lobes in a
-/// 43200×43200 frame. Reproducing every lobe arc faithfully is
-/// unnecessary for a rasteriser: we approximate the bumpy outline with
-/// quadratic Béziers (`QuadTo`) — the same technique already used by
-/// `build_cloud` — which preserves the silhouette character (a closed
-/// scalloped loop) while keeping the path integer-only.
-///
-/// Spec guides (`avLst` defaults): `adj1 = -20833`, `adj2 = 62500`.
-/// `dxPos = w*adj1/100000`, `dyPos = h*adj2/100000`, and the target
-/// point is `(xPos,yPos) = (w/2 + dxPos, h/2 + dyPos)`. The three
-/// trailing bubbles shrink as they approach the target; each is a
-/// closed ellipse subpath emitted as `MoveTo` + two `ArcTo` halves.
-///
-/// The cloud body occupies the upper region of the bounding box so the
-/// trail (which runs down toward `yPos`, below the box) has room.
-pub fn build_cloud_callout(width : Int, height : Int) -> ShapeGeometry {
-  // Cloud body region: full width, top 70% of the box height.
-  let body_h = percent(height, 70000)
-  let q1 = percent(width, 25000)
-  let q2 = percent(width, 50000)
-  let q3 = percent(width, 75000)
-  let bump = fraction(body_h, 30, 100)
+/// FAITHFUL transcription of the spec preset path. The body is the
+/// exact eleven-arc cloud outline (reuses `build_cloud`, which mirrors
+/// the spec's 43200×43200 frame). The tail is the spec's three
+/// full-circle bubbles, whose centres and radii come from a 1:1
+/// transcription of the spec `gdLst`: the target `(xPos, yPos) =
+/// (hc + w·adj1/100000, vc + h·adj2/100000)`, the cloud-edge anchor
+/// `(g4, g5)` via `cat2`/`sat2`, the tail length `g8 = mod(g6, g7)`,
+/// and the bubble radii `g12`, `g25`, `g26` (= `ss·{1800,1200,600}
+/// /21600`). The verified `at2`/`gcat2`/`gsat2`/`gmod` primitives make
+/// the geometry correct by construction. Spec `avLst`: `adj1 = -20833`,
+/// `adj2 = 62500`.
+pub fn build_cloud_callout(
+  width : Int,
+  height : Int,
+  adj1~ : Int = -20833,
+  adj2~ : Int = 62500,
+) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let hc = width / 2
+  let vc = height / 2
+  let wd2 = width / 2
+  let hd2 = height / 2
+  // Cloud body — the faithful eleven-arc outline.
   let commands : Array[PathCommand] = []
-  // Bumpy cloud outline approximated with quadratic Béziers.
-  commands.push(MoveTo(q1, body_h - bump))
-  commands.push(QuadTo(0, body_h - bump, 0, fraction(body_h, 60, 100)))
-  commands.push(
-    QuadTo(0, fraction(body_h, 25, 100), q1, fraction(body_h, 25, 100)),
-  )
-  commands.push(QuadTo(q1, 0, q2, fraction(body_h, 15, 100)))
-  commands.push(QuadTo(q2, 0, q3, fraction(body_h, 20, 100)))
-  commands.push(QuadTo(width, 0, width, fraction(body_h, 40, 100)))
-  commands.push(QuadTo(width, fraction(body_h, 70, 100), q3, body_h - bump))
-  commands.push(QuadTo(q3, body_h, q2, body_h - bump))
-  commands.push(QuadTo(q1, body_h, q1, body_h - bump))
-  commands.push(ClosePath)
-
-  // Callout target point from the avLst guides.
-  let target_x = width / 2 + percent(width, -20833)
-  let target_y = height / 2 + percent(height, 62500)
-  // Trail anchor on the lower cloud edge.
-  let anchor_x = q2
-  let anchor_y = body_h - bump / 2
-
-  // Three shrinking ellipse bubbles interpolated from the cloud edge
-  // toward the target. Bubble i sits at fraction t along the trail
-  // with a radius that shrinks toward the target.
-  fn lerp(a : Int, b : Int, num : Int, den : Int) -> Int {
-    a + fraction(b - a, num, den)
+  for cmd in build_cloud(width, height).commands {
+    commands.push(cmd)
   }
-
-  let base_r = min_dim(percent(width, 9000), percent(height, 9000))
-  let steps = [40, 70, 95]
-  let radii = [
-    fraction(base_r, 70, 100),
-    fraction(base_r, 45, 100),
-    fraction(base_r, 25, 100),
+  // Tail guide chain — faithful transcription of the spec gdLst.
+  let dx_pos = fraction(width, adj1, 100000) // */ w adj1 100000
+  let dy_pos = fraction(height, adj2, 100000) // */ h adj2 100000
+  let x_pos = hc + dx_pos // +- hc dxPos 0
+  let y_pos = vc + dy_pos // +- vc dyPos 0
+  let ht = gcat2(hd2, dx_pos, dy_pos) // cat2 hd2 dxPos dyPos
+  let wt = gsat2(wd2, dx_pos, dy_pos) // sat2 wd2 dxPos dyPos
+  let g2 = gcat2(wd2, ht, wt) // cat2 wd2 ht wt
+  let g3 = gsat2(hd2, ht, wt) // sat2 hd2 ht wt
+  let g4 = hc + g2 // +- hc g2 0
+  let g5 = vc + g3 // +- vc g3 0
+  let g6 = g4 - x_pos // +- g4 0 xPos
+  let g7 = g5 - y_pos // +- g5 0 yPos
+  let g8 = gmod(g6, g7, 0) // mod g6 g7 0
+  let g9 = fraction(ss, 6600, 21600) // */ ss 6600 21600
+  let g10 = g8 - g9 // +- g8 0 g9
+  let g11 = g10 / 3 // */ g10 1 3
+  let g12 = fraction(ss, 1800, 21600) // */ ss 1800 21600
+  let g13 = g11 + g12 // +- g11 g12 0
+  let g14 = if g8 == 0 { 0 } else { fraction(g13, g6, g8) } // */ g13 g6 g8
+  let g15 = if g8 == 0 { 0 } else { fraction(g13, g7, g8) } // */ g13 g7 g8
+  let g16 = g14 + x_pos // +- g14 xPos 0
+  let g17 = g15 + y_pos // +- g15 yPos 0
+  let g18 = fraction(ss, 4800, 21600) // */ ss 4800 21600
+  let g19 = g11 * 2 // */ g11 2 1
+  let g20 = g18 + g19 // +- g18 g19 0
+  let g21 = if g8 == 0 { 0 } else { fraction(g20, g6, g8) } // */ g20 g6 g8
+  let g22 = if g8 == 0 { 0 } else { fraction(g20, g7, g8) } // */ g20 g7 g8
+  let g23 = g21 + x_pos // +- g21 xPos 0
+  let g24 = g22 + y_pos // +- g22 yPos 0
+  let g25 = fraction(ss, 1200, 21600) // */ ss 1200 21600
+  let g26 = fraction(ss, 600, 21600) // */ ss 600 21600
+  // Three tail bubbles (full circles), in spec order: smallest at the
+  // target tip (xPos, yPos), then (g16, g17), then the largest nearest
+  // the cloud body at (g23, g24).
+  let bubbles : Array[(Int, Int, Int)] = [
+    (x_pos, y_pos, g26),
+    (g16, g17, g25),
+    (g23, g24, g12),
   ]
-  for i in 0..<3 {
-    let t = steps[i]
-    let cx = lerp(anchor_x, target_x, t, 100)
-    let cy = lerp(anchor_y, target_y, t, 100)
-    let r = radii[i]
-    commands.push(MoveTo(cx - r, cy))
-    commands.push(ArcTo(r, r, 0, false, true, cx + r, cy))
-    commands.push(ArcTo(r, r, 0, false, true, cx - r, cy))
+  for bubble in bubbles {
+    let (bx, by, br) = bubble
+    commands.push(MoveTo(bx - br, by))
+    commands.push(ArcTo(br, br, 0, false, true, bx + br, by))
+    commands.push(ArcTo(br, br, 0, false, true, bx - br, by))
     commands.push(ClosePath)
   }
   { commands, width, height }

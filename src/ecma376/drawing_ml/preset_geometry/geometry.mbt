@@ -30,8 +30,8 @@ pub fn build_geometry(
     ShapeEllipse | ShapeFlowChartConnector => build_ellipse(width, height)
     ShapeTriangle => build_triangle(width, height)
     ShapeRtTriangle => build_right_triangle(width, height)
-    ShapeParallelogram | ShapeFlowChartInputOutput =>
-      build_parallelogram(width, height)
+    ShapeParallelogram => build_parallelogram(width, height)
+    ShapeFlowChartInputOutput => build_flowchart_input_output(width, height)
     ShapeTrapezoid => build_trapezoid(width, height)
     ShapeDiamond | ShapeFlowChartDecision => build_diamond(width, height)
     ShapePentagon => build_regular_polygon(5, width, height)
@@ -40,16 +40,20 @@ pub fn build_geometry(
     ShapeOctagon => build_regular_polygon(8, width, height)
     ShapeDecagon => build_regular_polygon(10, width, height)
     ShapeDodecagon => build_regular_polygon(12, width, height)
-    ShapeStar4 => build_star(4, width, height)
-    ShapeStar5 => build_star(5, width, height)
-    ShapeStar6 => build_star(6, width, height)
-    ShapeStar7 => build_star(7, width, height)
-    ShapeStar8 => build_star(8, width, height)
-    ShapeStar10 => build_star(10, width, height)
-    ShapeStar12 => build_star(12, width, height)
-    ShapeStar16 => build_star(16, width, height)
-    ShapeStar24 => build_star(24, width, height)
-    ShapeStar32 => build_star(32, width, height)
+    ShapeStar4
+    | ShapeStar5
+    | ShapeStar6
+    | ShapeStar7
+    | ShapeStar8
+    | ShapeStar10
+    | ShapeStar12
+    | ShapeStar16
+    | ShapeStar24
+    | ShapeStar32 =>
+      match star_params(shape) {
+        Some((n, adj, hf, vf)) => build_star(n, width, height, adj~, hf~, vf~)
+        None => rectangular_fallback(width, height)
+      }
     ShapeRightArrow => build_right_arrow(width, height)
     ShapeLeftArrow => build_left_arrow(width, height)
     ShapeUpArrow => build_up_arrow(width, height)
@@ -77,7 +81,8 @@ pub fn build_geometry(
     ShapeHeart => build_heart(width, height)
     ShapeCloud => build_cloud(width, height)
     ShapeSmileyFace => build_smiley_face(width, height)
-    ShapePlus | ShapeMathPlus => build_plus(width, height)
+    ShapePlus => build_plus(width, height)
+    ShapeMathPlus => build_math_plus(width, height)
     ShapeMathMinus => build_minus(width, height)
     ShapeMathMultiply => build_multiply(width, height)
     ShapeMathDivide => build_divide(width, height)

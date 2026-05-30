@@ -173,3 +173,24 @@ test "build_pattern_def returns empty for schema-violating name" {
   )
   assert_true(build_pattern_def("p", "", "#000000", "#ffffff") is None)
 }
+
+///|
+/// §20.1.9.5 avLst — a custom roundRect `adj` guide changes the
+/// emitted SVG path. The default 100×100 roundRect rounds at r=16
+/// (adj 16667); adj=40000 widens it to r=40, so the two `d=` bodies
+/// differ. The no-override call still reproduces the spec default.
+test "render_preset_shape_d honours a custom roundRect adj guide" {
+  let default_d = render_preset_shape_d("roundRect", 100.0, 100.0)
+  let custom_d = render_preset_shape_d(
+    "roundRect",
+    100.0,
+    100.0,
+    adjustments=[{ name: "adj", raw_formula: "val 40000", value: Some(40000) }],
+  )
+  assert_true(default_d is Some(_))
+  assert_true(custom_d is Some(_))
+  // adj=40000 widens the corner radius from the default, so the path body differs.
+  assert_true(default_d != custom_d)
+  // An empty override reproduces the spec-default geometry exactly.
+  assert_true(render_preset_shape_d("roundRect", 100.0, 100.0, adjustments=[]) == default_d)
+}

@@ -137,11 +137,11 @@ pub fn walk_layout_node(
 }
 
 ///|
-/// Resolve the dispatched algorithm: supported algorithms are
-/// returned unchanged; unsupported algorithm types (`composite`,
-/// `conn`, `sp`, `tx`) fall back to `lin` per Requirement 13 so
-/// the engine always produces non-empty bounds for downstream
-/// renderers.
+/// Resolve the dispatched algorithm: supported algorithms (including
+/// `composite`, which has a faithful constraint-driven pass) are
+/// returned unchanged; the remaining unsupported types (`conn`,
+/// `sp`, `tx`) fall back to `lin` per Requirement 13 so the engine
+/// always produces non-empty bounds for downstream renderers.
 pub fn effective_algorithm(kind : AlgorithmType) -> AlgorithmType {
   if kind.is_supported() {
     kind
@@ -190,18 +190,25 @@ pub fn dispatch_algorithm(
       let per_child = layout_lin(inner, algorithm, constraints, n)
       apply_each_child(children, per_child, constraints)
     }
-    // §21.4.7.1 AlgorithmType — closed-10 enum.  The remaining
-    // four algorithms (Composite, Conn, Sp, Tx) do not yet have
-    // dedicated layout passes in this engine; they fall back to
-    // the linear layout which preserves bounds-correctness even
-    // though it does not honour the algorithm's spatial
-    // semantics.  The algorithm name survives on the source
-    // DOM so consumers can re-layout with their own
-    // dispatcher.
+    // §21.4.7.1 composite — children carry NO automatic spatial
+    // distribution; each is sized/positioned purely by the
+    // composite node's `for="ch"` constraints (and its own
+    // `<constrLst>`), measured from the composite origin. Every
+    // child therefore bases off the full composite rect — see
+    // `layout_composite`. `recurse_into_child` then applies the
+    // child-targeting constraints to place and size each one.
     AlgComposite => {
-      let per_child = layout_lin(inner, algorithm, constraints, n)
+      let per_child = layout_composite(inner, n)
       apply_each_child(children, per_child, constraints)
     }
+    // §21.4.7.1 AlgorithmType — closed-10 enum. The remaining three
+    // algorithms (Conn, Sp, Tx) have no dedicated pass yet; they are
+    // coerced to `lin` by `effective_algorithm` BEFORE dispatch (see
+    // Requirement 13), so these arms are unreachable in practice and
+    // exist only to keep the match exhaustive. In canonical layouts
+    // these are leaf nodes (connector / spacer / text), so the
+    // child-distribution they would request never runs; the node's
+    // own bounds come from its self-constraints in `walk_layout_node`.
     AlgConn => {
       let per_child = layout_lin(inner, algorithm, constraints, n)
       apply_each_child(children, per_child, constraints)

@@ -3,8 +3,8 @@
 // ECMA-376 Part 1 §21.4 DrawingML SmartArt layout algorithm. The
 // package decodes a `CT_DiagramDefinition` + `CT_DataModel` into
 // typed values and runs the canonical lin / snake / cycle /
-// hier / pyra algorithms against the data model to emit a
-// per-data-point `NodeBounds` (rectangle + `PresetShape`)
+// hier / pyra / composite algorithms against the data model to
+// emit a per-data-point `NodeBounds` (rectangle + `PresetShape`)
 // suitable for downstream renderers.
 
 import {

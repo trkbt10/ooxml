@@ -20,22 +20,52 @@
 ///
 /// The top edge is two consecutive cubic Béziers (one per period);
 /// the bottom edge mirrors them back to the left.
-pub fn build_double_wave(width : Int, height : Int) -> ShapeGeometry {
-  fn sx(v : Int) -> Int {
-    fraction(width, v, 21600)
-  }
-
-  fn sy(v : Int) -> Int {
-    fraction(height, v, 21600)
-  }
-
+/// Now driven by the §20.1.10.56 doubleWave gdLst: `adj1` = amplitude
+/// (`a1 = pin 0 adj1 12500`), `adj2` = horizontal skew (`a2 = pin
+/// -10000 adj2 10000`). The vertical guides share `wave`'s form
+/// (`dy2 = y1·10/3`); the horizontal guides split each of the two
+/// periods into thirds/halves per the spec, with the `?:` skew offset
+/// `of2 = w·a2/50000`.
+pub fn build_double_wave(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 6250,
+  adj2~ : Int = 0,
+) -> ShapeGeometry {
+  let a1 = pin_int(adj1, 0, 12500)
+  let a2 = pin_int(adj2, -10000, 10000)
+  let y1 = fraction(height, a1, 100000)
+  let y2 = fraction(height, -7 * a1, 300000)
+  let y3 = fraction(height, 13 * a1, 300000)
+  let y4 = fraction(height, 100000 - a1, 100000)
+  let y5 = fraction(height, 300000 - 13 * a1, 300000)
+  let y6 = fraction(height, 300000 + 7 * a1, 300000)
+  let of2 = fraction(width, a2, 50000)
+  let dx2 = if of2 > 0 { 0 } else { of2 }
+  let dx8 = if of2 > 0 { of2 } else { 0 }
+  let x2 = -dx2
+  let x8 = width - dx8
+  let dx3 = (dx2 + x8) / 6
+  let dx4 = (dx2 + x8) / 3
+  let x3 = x2 + dx3
+  let x4 = x2 + dx4
+  let x5 = (x2 + x8) / 2
+  let x6 = x5 + dx3
+  let x7 = (x6 + x8) / 2
+  let x9 = dx8
+  let x15 = width + dx2
+  let x10 = x9 + dx3
+  let x11 = x9 + dx4
+  let x12 = (x9 + x15) / 2
+  let x13 = x12 + dx3
+  let x14 = (x13 + x15) / 2
   let commands : Array[PathCommand] = [
-    MoveTo(sx(0), sy(1350)),
-    CurveTo(sx(3600), sy(-3150), sx(7200), sy(5850), sx(10800), sy(1350)),
-    CurveTo(sx(14400), sy(-3150), sx(18000), sy(5850), sx(21600), sy(1350)),
-    LineTo(sx(21600), sy(20250)),
-    CurveTo(sx(18000), sy(24750), sx(14400), sy(15750), sx(10800), sy(20250)),
-    CurveTo(sx(7200), sy(24750), sx(3600), sy(15750), sx(0), sy(20250)),
+    MoveTo(x2, y1),
+    CurveTo(x3, y2, x4, y3, x5, y1),
+    CurveTo(x6, y2, x7, y3, x8, y1),
+    LineTo(x15, y4),
+    CurveTo(x14, y6, x13, y5, x12, y4),
+    CurveTo(x11, y6, x10, y5, x9, y4),
     ClosePath,
   ]
   { commands, width, height }

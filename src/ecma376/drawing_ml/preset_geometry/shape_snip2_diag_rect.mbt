@@ -16,12 +16,20 @@
 /// (defaults `adj1 = 0`, `adj2 = 16667`). The clockwise outline is
 /// `(lx1,t) → (rx2,t) → (r,rx1) → (r,ly1) → (lx2,b) → (rx1,b) →
 /// (l,ry1) → (l,lx1) → close`.
-pub fn build_snip2_diag_rect(width : Int, height : Int) -> ShapeGeometry {
+pub fn build_snip2_diag_rect(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 0,
+  adj2~ : Int = 16667,
+) -> ShapeGeometry {
+  // §20.1.10.56 snip2DiagRect gdLst: aN = pin 0 adjN 50000; snips ss·aN/100000.
+  // Spec defaults: adj1 = 0 (top-left / bottom-right), adj2 = 16667
+  // (top-right / bottom-left).
   let ss = min_dim(width, height)
   // adj1 snip (top-left, bottom-right); adj2 snip (top-right,
   // bottom-left).
-  let s1 = percent(ss, 0)
-  let s2 = percent(ss, 16667)
+  let s1 = percent(ss, pin_int(adj1, 0, 50000))
+  let s2 = percent(ss, pin_int(adj2, 0, 50000))
   let commands : Array[PathCommand] = []
   commands.push(MoveTo(s1, 0))
   commands.push(LineTo(width - s2, 0))

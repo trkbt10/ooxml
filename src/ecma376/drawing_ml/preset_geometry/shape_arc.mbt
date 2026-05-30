@@ -11,13 +11,20 @@
 /// `[0, 21600000)`: `0 - 16200000 = -16200000`, plus a full turn gives
 /// `5400000` (90°). The default arc therefore sweeps 270°→360°, i.e.
 /// the bottom-right quarter of the bounding ellipse.
-pub fn build_arc(width : Int, height : Int) -> ShapeGeometry {
+pub fn build_arc(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 16200000,
+  adj2~ : Int = 0,
+) -> ShapeGeometry {
+  // §20.1.10.56 arc: stAng = adj1, enAng = adj2; swAng = enAng − stAng
+  // normalised into [0, 21600000) so the open arc sweeps clockwise.
   let cx = width / 2
   let cy = height / 2
   let rx = width / 2
   let ry = height / 2
-  let st_ang = 16200000
-  let en_ang = 0
+  let st_ang = adj1
+  let en_ang = adj2
   let raw = en_ang - st_ang
   // swAng is normalised positive (full revolution = 21600000).
   let sw_ang = if raw < 0 { raw + 21600000 } else { raw }

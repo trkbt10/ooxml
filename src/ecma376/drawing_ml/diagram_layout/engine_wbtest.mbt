@@ -110,11 +110,68 @@ test "§21.4.7.1 AlgorithmType::is_supported flags canonical layouts" {
   assert_true(AlgHierRoot.is_supported())
   assert_true(AlgHierChild.is_supported())
   assert_true(AlgPyra.is_supported())
-  // Out-of-scope algorithms fall back to lin per Requirement 13.
-  assert_false(AlgComposite.is_supported())
+  // composite has a faithful constraint-driven pass (§21.4.7.1).
+  assert_true(AlgComposite.is_supported())
+  // The remaining out-of-scope algorithms fall back to lin per
+  // Requirement 13.
   assert_false(AlgConn.is_supported())
   assert_false(AlgSp.is_supported())
   assert_false(AlgTx.is_supported())
+}
+
+///|
+/// §21.4.7.1 composite — end-to-end proof that a composite node
+/// positions each child from the composite ORIGIN via its
+/// `for="ch" forName=…` constraints, with NO linear distribution.
+/// `boxA` (first child) and `boxB` (second child) are placed by the
+/// composite's own l/t/w/h constraints. Under the former `lin`
+/// fallback `boxB` would have been based off the second linear
+/// sub-band (x ≈ 500), so its `l=100` anchor would land it at
+/// x ≈ 600; the faithful composite pass bases every child off the
+/// full inner rect, so `boxB` lands at x=100 exactly.
+test "§21.4.7.1 composite places children from the composite origin" {
+  let xml = "<layoutDef uniqueId=\"urn:test:composite\">" +
+    "<layoutNode name=\"root\">" +
+    "<alg type=\"composite\"/>" +
+    "<constrLst>" +
+    "<constr type=\"l\" for=\"ch\" forName=\"boxA\" val=\"0\"/>" +
+    "<constr type=\"t\" for=\"ch\" forName=\"boxA\" val=\"0\"/>" +
+    "<constr type=\"w\" for=\"ch\" forName=\"boxA\" val=\"100\"/>" +
+    "<constr type=\"h\" for=\"ch\" forName=\"boxA\" val=\"500\"/>" +
+    "<constr type=\"l\" for=\"ch\" forName=\"boxB\" val=\"100\"/>" +
+    "<constr type=\"t\" for=\"ch\" forName=\"boxB\" val=\"0\"/>" +
+    "<constr type=\"w\" for=\"ch\" forName=\"boxB\" val=\"400\"/>" +
+    "<constr type=\"h\" for=\"ch\" forName=\"boxB\" val=\"250\"/>" +
+    "</constrLst>" +
+    "<layoutNode name=\"boxA\">" +
+    "<alg type=\"sp\"/><shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "<layoutNode name=\"boxB\">" +
+    "<alg type=\"tx\"/><shape type=\"rect\"/>" +
+    "<presOf axis=\"self\" ptType=\"all\"/>" +
+    "</layoutNode>" +
+    "</layoutNode>" +
+    "</layoutDef>"
+  let def = definition(xml)
+  let engine = DiagramLayoutEngine::new()
+  // One doc point; both composite children presOf-bind to it (the
+  // canonical composite case: several shapes for a single point).
+  let result = engine.apply(def, flat_data_model(1), canvas())
+  @debug.assert_eq(result.length(), 2)
+  // boxA: anchored at the composite origin, 100 × 500.
+  let box_a = result[0]
+  @debug.assert_eq(box_a.bounds.x, 0.0)
+  @debug.assert_eq(box_a.bounds.y, 0.0)
+  @debug.assert_eq(box_a.bounds.width, 100.0)
+  @debug.assert_eq(box_a.bounds.height, 500.0)
+  // boxB: l=100 measured from the COMPOSITE origin (not a linear
+  // sub-band), 400 × 250.
+  let box_b = result[1]
+  @debug.assert_eq(box_b.bounds.x, 100.0)
+  @debug.assert_eq(box_b.bounds.y, 0.0)
+  @debug.assert_eq(box_b.bounds.width, 400.0)
+  @debug.assert_eq(box_b.bounds.height, 250.0)
 }
 
 ///|

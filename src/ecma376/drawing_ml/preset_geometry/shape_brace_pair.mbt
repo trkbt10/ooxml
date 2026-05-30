@@ -11,40 +11,57 @@
 /// brace hugging the right edge, each with a mid-height pinch
 /// pointing toward the centre.
 ///
-/// Spec geometry: the curl radius is `x1 = ss·a/100000` with the
-/// `adj` guide defaulting to 8333 (clamped by `pin 0 adj 25000`).
-/// The left brace's spine sits at `x = x1`, its arms reach `x = l`,
-/// its pinch tip points right; the right brace mirrors it at the
-/// other edge. The spec draws curls as quarter / reflex arcs; this
-/// generator approximates them with quadratic Béziers and emits the
-/// two braces as two open subpaths so a renderer draws the `{ }`
-/// pair.
-pub fn build_brace_pair(width : Int, height : Int) -> ShapeGeometry {
-  let h25 = percent(height, 25000)
-  let h50 = percent(height, 50000)
-  let h75 = percent(height, 75000)
-  let pinch_off = percent(height, 6000)
-  // Spine insets: each brace's spine sits one-quarter of the way in.
-  let lsp = percent(width, 12000)
-  let rsp = width - percent(width, 12000)
+/// FAITHFUL transcription of the spec preset stroke `path`
+/// (`fill="none"`) — two open subpaths, one per brace, matching the
+/// open-stroke convention used by `leftBrace`/`rightBrace`. Every
+/// guide is a 1:1 transcription of the spec `gdLst`: `a = pin 0 adj
+/// 25000` (default 8333), the circular curl radius `x1 = ss·a/100000`,
+/// the outer-arm inset `x2 = ss·a/50000` (= 2·x1), `x3 = r − x2`,
+/// `x4 = r − x1`, `y2 = vc − x1`, `y3 = vc + x1`, `y4 = b − x1`. Each
+/// brace is four circular `arcTo` edges (`wR = hR = x1`) joined by two
+/// `lnTo` spine segments; the left brace's pinch tip reaches `(l, vc)`
+/// and the right brace's reaches `(r, vc)`. All arcs are emitted
+/// through the verified `rel_arc` helper, so the geometry is correct
+/// by construction.
+pub fn build_brace_pair(width : Int, height : Int, adj~ : Int = 8333) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let cd4 = 5400000
+  let cd2 = 10800000
+  let c3d4 = 16200000
+  let a = pin_int(adj, 0, 25000)
+  let x1 = fraction(ss, a, 100000) // */ ss a 100000
+  let x2 = fraction(ss, a, 50000) // */ ss a 50000 (= 2·x1)
+  let vc = height / 2
+  let x3 = width - x2 // +- r 0 x2
+  let x4 = width - x1 // +- r 0 x1
+  let y2 = vc - x1 // +- vc 0 x1
+  let y3 = vc + x1 // +- vc x1 0
+  let y4 = height - x1 // +- b 0 x1
   let commands : Array[PathCommand] = []
-  // Left brace `{`: bottom arm at the left edge, spine at `lsp`,
-  // pinch tip pointing right toward the centre.
-  commands.push(MoveTo(0, height))
-  commands.push(QuadTo(lsp, height, lsp, h75))
-  commands.push(LineTo(lsp, h50 + pinch_off))
-  commands.push(QuadTo(lsp, h50, lsp * 2, h50))
-  commands.push(QuadTo(lsp, h50, lsp, h50 - pinch_off))
-  commands.push(LineTo(lsp, h25))
-  commands.push(QuadTo(lsp, 0, 0, 0))
-  // Right brace `}`: top arm at the right edge, spine at `rsp`,
-  // pinch tip pointing left toward the centre.
-  commands.push(MoveTo(width, 0))
-  commands.push(QuadTo(rsp, 0, rsp, h25))
-  commands.push(LineTo(rsp, h50 - pinch_off))
-  commands.push(QuadTo(rsp, h50, rsp - (width - rsp), h50))
-  commands.push(QuadTo(rsp, h50, rsp, h50 + pinch_off))
-  commands.push(LineTo(rsp, h75))
-  commands.push(QuadTo(rsp, height, width, height))
+  // Left brace `{`: bottom arm → up the spine → pinch tip at (l, vc).
+  commands.push(MoveTo(x2, height))
+  let (c1, _, _) = rel_arc(x2, height, x1, x1, cd4, cd4)
+  commands.push(c1)
+  commands.push(LineTo(x1, y3))
+  let (c2, e2x, e2y) = rel_arc(x1, y3, x1, x1, 0, -cd4)
+  commands.push(c2)
+  let (c3, _, _) = rel_arc(e2x, e2y, x1, x1, cd4, -cd4)
+  commands.push(c3)
+  commands.push(LineTo(x1, x1))
+  let (c4, _, _) = rel_arc(x1, x1, x1, x1, cd2, cd4)
+  commands.push(c4)
+  // Second subpath — the right brace `}`: top arm → pinch tip at
+  // (r, vc) → bottom arm.
+  commands.push(MoveTo(x3, 0))
+  let (c5, _, _) = rel_arc(x3, 0, x1, x1, c3d4, cd4)
+  commands.push(c5)
+  commands.push(LineTo(x4, y2))
+  let (c6, e6x, e6y) = rel_arc(x4, y2, x1, x1, cd2, -cd4)
+  commands.push(c6)
+  let (c7, _, _) = rel_arc(e6x, e6y, x1, x1, c3d4, -cd4)
+  commands.push(c7)
+  commands.push(LineTo(x4, y4))
+  let (c8, _, _) = rel_arc(x4, y4, x1, x1, 0, cd4)
+  commands.push(c8)
   { commands, width, height }
 }

@@ -8364,7 +8364,20 @@ fn render_drawing_shape(
       return Some(svg_elem("g", attrs, []))
     }
     Some(prst_name) => {
-      let path_d = drawing_preset_path(prst_name, bounds.width, bounds.height)
+      // §20.1.9.5 avLst — lift the document's adjustment-guide
+      // overrides off the `<a:prstGeom>` so the path honours custom
+      // guides (e.g. a non-default roundRect corner radius). Absent /
+      // default guides reproduce the spec-default geometry exactly.
+      let adjustments = match prst_geom {
+        Some(g) => @preset_geometry.read_adjustments_lenient(g)
+        None => []
+      }
+      let path_d = drawing_preset_path(
+        prst_name,
+        bounds.width,
+        bounds.height,
+        adjustments~,
+      )
       if path_d == "" {
         // §20.1.10.55 — preset name is enumerated but not yet drawn
         // by the viewer. Surface it as spec-anchored metadata so the
@@ -8841,14 +8854,20 @@ fn custgeom_trace_attrs(cust_geom : @xml.Element?) -> Array[@xml.Attribute] {
 /// Emit a minimal SVG `d=` body for a `<a:prstGeom prst="…">` value
 /// in the rectangle (0, 0, w, h). Returns "" for presets we don't yet
 /// understand so the caller can pick a fallback rendering path.
-fn drawing_preset_path(prst : String, w : Double, h : Double) -> String {
+fn drawing_preset_path(
+  prst : String,
+  w : Double,
+  h : Double,
+  adjustments~ : Array[@preset_geometry.Adjustment] = [],
+) -> String {
   // §20.1.10.55 ST_ShapeType — route the preset name through the
   // shared `@preset_geometry` dispatcher that covers the entire
-  // 187-value enumeration.  Returns "" only when the preset name
-  // is outside the spec enum (schema violation), letting the
-  // caller fall through to a metadata-only `<g>` so the spec
+  // 187-value enumeration, honouring the §20.1.9.5 `avLst` guide
+  // overrides supplied by the document.  Returns "" only when the
+  // preset name is outside the spec enum (schema violation), letting
+  // the caller fall through to a metadata-only `<g>` so the spec
   // attribute survives in the output.
-  match render_preset_shape_d(prst, w, h) {
+  match render_preset_shape_d(prst, w, h, adjustments~) {
     Some(d) => d
     None => ""
   }

@@ -8,12 +8,18 @@
 
 ///|
 /// §20.1.10.56 `homePlate` — a five-sided "home-plate" pentagon: a
-/// rectangle with the right edge replaced by an outward point. The
-/// `adj` guide (default 50000) sets how far in from the right edge
-/// the point base sits.
-pub fn build_home_plate(width : Int, height : Int) -> ShapeGeometry {
-  let inset = percent(min_dim(width, height), 50000)
-  let base_x = width - inset
+/// rectangle with the right edge replaced by an outward point. Per the
+/// spec gdLst `maxAdj = 100000·w/ss`, `a = pin 0 adj maxAdj`, and the
+/// point depth `dx1 = ss·a/100000` (`ss = min(w, h)`); the point base
+/// sits at `x1 = w − dx1`. Default `adj = 50000`.
+pub fn build_home_plate(
+  width : Int,
+  height : Int,
+  adj~ : Int = 50000,
+) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let max_adj = if ss == 0 { 0 } else { fraction(100000, width, ss) }
+  let base_x = width - percent(ss, pin_int(adj, 0, max_adj))
   let mid_y = height / 2
   let commands : Array[PathCommand] = [
     MoveTo(0, 0),
@@ -29,17 +35,23 @@ pub fn build_home_plate(width : Int, height : Int) -> ShapeGeometry {
 ///|
 /// §20.1.10.56 `chevron` — an arrow-like chevron: like `homePlate`
 /// but the left edge is also notched inward, so the shape is a
-/// six-point arrow band. `adj` (default 50000) sets the notch depth.
-pub fn build_chevron(width : Int, height : Int) -> ShapeGeometry {
-  let inset = percent(min_dim(width, height), 50000)
+/// six-point arrow band. Per the spec gdLst `x1 = ss·a/100000`
+/// (`a = pin 0 adj maxAdj`, `maxAdj = 100000·w/ss`); the right point
+/// base sits at `x2 = w − x1` and the left notch apex at `(x1, vc)`.
+/// Default `adj = 50000`.
+pub fn build_chevron(width : Int, height : Int, adj~ : Int = 50000) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let max_adj = if ss == 0 { 0 } else { fraction(100000, width, ss) }
+  let x1 = percent(ss, pin_int(adj, 0, max_adj))
+  let x2 = width - x1
   let mid_y = height / 2
   let commands : Array[PathCommand] = [
     MoveTo(0, 0),
-    LineTo(width - inset, 0),
+    LineTo(x2, 0),
     LineTo(width, mid_y),
-    LineTo(width - inset, height),
+    LineTo(x2, height),
     LineTo(0, height),
-    LineTo(inset, mid_y),
+    LineTo(x1, mid_y),
     ClosePath,
   ]
   { commands, width, height }
@@ -51,8 +63,9 @@ pub fn build_chevron(width : Int, height : Int) -> ShapeGeometry {
 /// (default 12500) sets the frame band thickness. Emitted as two
 /// sub-paths (outer CW, inner CCW) so the even-odd / non-zero fill
 /// rule cuts the hole.
-pub fn build_frame(width : Int, height : Int) -> ShapeGeometry {
-  let band = percent(min_dim(width, height), 12500)
+pub fn build_frame(width : Int, height : Int, adj1~ : Int = 12500) -> ShapeGeometry {
+  // §20.1.10.56 frame gdLst: a1 = pin 0 adj1 50000; band x1 = ss·a1/100000.
+  let band = percent(min_dim(width, height), pin_int(adj1, 0, 50000))
   let commands : Array[PathCommand] = [
     // Outer rectangle, clockwise.
     MoveTo(0, 0),
@@ -90,11 +103,23 @@ pub fn build_half_frame(width : Int, height : Int) -> ShapeGeometry {
 
 ///|
 /// §20.1.10.56 `corner` — an L-shaped corner gnomon: a vertical band
-/// on the left joined to a horizontal band along the bottom. The
-/// `adj` guides (defaults 50000) set the band widths.
-pub fn build_corner(width : Int, height : Int) -> ShapeGeometry {
-  let band_w = percent(width, 50000)
-  let band_h = percent(height, 50000)
+/// on the left joined to a horizontal band along the bottom. Per the
+/// spec gdLst the vertical band width `x1 = ss·a2/100000`
+/// (`a2 = pin 0 adj2 maxAdj2`, `maxAdj2 = 100000·w/ss`) and the
+/// horizontal band height `dy1 = ss·a1/100000` (`a1 = pin 0 adj1
+/// maxAdj1`, `maxAdj1 = 100000·h/ss`) are both `ss`-based (NOT
+/// width/height). Defaults `adj1 = adj2 = 50000`.
+pub fn build_corner(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 50000,
+  adj2~ : Int = 50000,
+) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let max_adj1 = if ss == 0 { 0 } else { fraction(100000, height, ss) }
+  let max_adj2 = if ss == 0 { 0 } else { fraction(100000, width, ss) }
+  let band_w = percent(ss, pin_int(adj2, 0, max_adj2))
+  let band_h = percent(ss, pin_int(adj1, 0, max_adj1))
   let commands : Array[PathCommand] = [
     MoveTo(0, 0),
     LineTo(band_w, 0),
@@ -111,12 +136,17 @@ pub fn build_corner(width : Int, height : Int) -> ShapeGeometry {
 /// §20.1.10.56 `diagStripe` — a diagonal band crossing the bounding
 /// box from the bottom-left to the top-right. The `adj` guide
 /// (default 50000) sets the band offset.
-pub fn build_diag_stripe(width : Int, height : Int) -> ShapeGeometry {
-  // The band is bounded by two parallel diagonals; the default
-  // adjustment places the lower diagonal through the bottom-left
-  // corner and the upper one offset toward the top-right.
-  let off_x = percent(width, 50000)
-  let off_y = percent(height, 50000)
+pub fn build_diag_stripe(
+  width : Int,
+  height : Int,
+  adj~ : Int = 50000,
+) -> ShapeGeometry {
+  // §20.1.10.56 diagStripe gdLst: a = pin 0 adj 100000; the upper
+  // diagonal passes through (x2, 0) and (0, y2) with x2 = w·a/100000
+  // (width-based) and y2 = h·a/100000 (height-based).
+  let a = pin_int(adj, 0, 100000)
+  let off_x = percent(width, a)
+  let off_y = percent(height, a)
   let commands : Array[PathCommand] = [
     MoveTo(0, off_y),
     LineTo(off_x, 0),
@@ -131,8 +161,9 @@ pub fn build_diag_stripe(width : Int, height : Int) -> ShapeGeometry {
 /// §20.1.10.56 `cube` — an isometric cube: a front face, a top face
 /// and a right face. The `adj` guide (default 25000) sets the depth
 /// of the receding faces.
-pub fn build_cube(width : Int, height : Int) -> ShapeGeometry {
-  let depth = percent(min_dim(width, height), 25000)
+pub fn build_cube(width : Int, height : Int, adj~ : Int = 25000) -> ShapeGeometry {
+  // §20.1.10.56 cube gdLst: a = pin 0 adj 100000; depth y1 = ss·a/100000.
+  let depth = percent(min_dim(width, height), pin_int(adj, 0, 100000))
   let commands : Array[PathCommand] = [
     // Front face.
     MoveTo(0, depth),
@@ -161,10 +192,14 @@ pub fn build_cube(width : Int, height : Int) -> ShapeGeometry {
 /// capped by an ellipse at the top and the front half of an ellipse
 /// at the bottom. The `adj` guide (default 25000) sets the cap
 /// height as a fraction of the bounding box.
-pub fn build_can(width : Int, height : Int) -> ShapeGeometry {
-  let cap = percent(height, 25000)
+pub fn build_can(width : Int, height : Int, adj~ : Int = 25000) -> ShapeGeometry {
+  // §20.1.10.56 can gdLst: maxAdj = 50000·h/ss; a = pin 0 adj maxAdj;
+  // the cap ellipse vertical radius y1 = ss·a/200000 is `ss`-based
+  // (NOT height-based).
+  let ss = min_dim(width, height)
+  let max_adj = if ss == 0 { 0 } else { fraction(50000, height, ss) }
   let rx = width / 2
-  let ry = cap / 2
+  let ry = fraction(ss, pin_int(adj, 0, max_adj), 200000)
   let commands : Array[PathCommand] = [
     // Body + bottom front arc.
     MoveTo(0, ry),
@@ -184,8 +219,9 @@ pub fn build_can(width : Int, height : Int) -> ShapeGeometry {
 /// an outer rectangle and an inner rectangle joined at the corners
 /// so the four trapezoidal bevel faces are visible. The `adj` guide
 /// (default 12500) sets the bevel width.
-pub fn build_bevel(width : Int, height : Int) -> ShapeGeometry {
-  let b = percent(min_dim(width, height), 12500)
+pub fn build_bevel(width : Int, height : Int, adj~ : Int = 12500) -> ShapeGeometry {
+  // §20.1.10.56 bevel gdLst: a = pin 0 adj 50000; bevel width x1 = ss·a/100000.
+  let b = percent(min_dim(width, height), pin_int(adj, 0, 50000))
   let commands : Array[PathCommand] = [
     // Outer rectangle.
     MoveTo(0, 0),
@@ -216,8 +252,13 @@ pub fn build_bevel(width : Int, height : Int) -> ShapeGeometry {
 /// §20.1.10.56 `foldedCorner` — a rectangle with the bottom-right
 /// corner turned up. The `adj` guide (default 16667) sets the fold
 /// size.
-pub fn build_folded_corner(width : Int, height : Int) -> ShapeGeometry {
-  let fold = percent(min_dim(width, height), 16667)
+pub fn build_folded_corner(
+  width : Int,
+  height : Int,
+  adj~ : Int = 16667,
+) -> ShapeGeometry {
+  // §20.1.10.56 foldedCorner gdLst: a = pin 0 adj 50000; fold = ss·a/100000.
+  let fold = percent(min_dim(width, height), pin_int(adj, 0, 50000))
   let commands : Array[PathCommand] = [
     // Body with the corner cut.
     MoveTo(0, 0),

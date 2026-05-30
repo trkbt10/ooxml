@@ -15,13 +15,14 @@
 /// side (`ss`). Each full ellipse is emitted here as two 180° ArcTo
 /// commands so the `large_arc` flag stays false (matching
 /// `build_ellipse`).
-pub fn build_donut(width : Int, height : Int) -> ShapeGeometry {
+pub fn build_donut(width : Int, height : Int, adj~ : Int = 25000) -> ShapeGeometry {
   let cx = width / 2
   let cy = height / 2
   let rx = width / 2
   let ry = height / 2
-  // dr = ss * adj / 100000, adj default 25000.
-  let dr = percent(min_dim(width, height), 25000)
+  // §20.1.10.56 donut: a = pin 0 adj 50000; ring thickness
+  // dr = ss·a/100000 (adj default 25000).
+  let dr = percent(min_dim(width, height), pin_int(adj, 0, 50000))
   let irx = rx - dr
   let iry = ry - dr
   let commands : Array[PathCommand] = []

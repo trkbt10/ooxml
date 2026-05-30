@@ -8,35 +8,41 @@
 /// horizontal shaft running from the bottom-left turns 90° upward at
 /// the right and ends in an arrowhead pointing up.
 ///
-/// Adjustment guides (defaults): `adj1` = arrowhead width fraction
-/// (25000), `adj2` = arrowhead height fraction (25000), `adj3` = shaft
-/// thickness fraction (25000). All are taken against the smaller
-/// bounding dimension so the elbow stays square.
-pub fn build_bent_up_arrow(width : Int, height : Int) -> ShapeGeometry {
-  let smaller = min_dim(width, height)
-  let head_w = percent(smaller, 25000)
-  let head_h = percent(smaller, 25000)
-  let shaft_t = percent(smaller, 25000)
-  // Vertical arm runs up the right side; arrowhead barbs spread
-  // symmetrically about the vertical shaft band.
-  let barb = (head_w - shaft_t) / 2
-  let arm_left = width - barb - shaft_t
-  let arm_right = width - barb
-  let head_left = width - head_w
-  let head_right = width
-  // Horizontal shaft sits along the bottom edge.
-  let shaft_top = height - shaft_t
-  let shaft_bottom = height
+/// Per the spec gdLst (all `ss`-based, defaults 25000): `a1` = shaft
+/// thickness (`dy2 = ss·a1/100000` horizontal, `dx2 = ss·a1/200000`
+/// vertical half-thickness), `a2` = arrowhead width (`dx1 = ss·a2/50000`
+/// barb spread, tip `x3 = r − ss·a2/100000`), `a3` = arrowhead height
+/// (`y1 = ss·a3/100000`). The spec outline is
+/// `(l,y2)→(x2,y2)→(x2,y1)→(x1,y1)→(x3,t)→(r,y1)→(x4,y1)→(x4,b)→(l,b)`
+/// with `x2 = x3 − dx2`, `x4 = x3 + dx2`, `x1 = r − dx1`.
+pub fn build_bent_up_arrow(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 25000,
+  adj2~ : Int = 25000,
+  adj3~ : Int = 25000,
+) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let a1 = pin_int(adj1, 0, 50000)
+  let a2 = pin_int(adj2, 0, 50000)
+  let a3 = pin_int(adj3, 0, 50000)
+  let y1 = fraction(ss, a3, 100000)
+  let x1 = width - fraction(ss, a2, 50000)
+  let x3 = width - fraction(ss, a2, 100000)
+  let dx2 = fraction(ss, a1, 200000)
+  let x2 = x3 - dx2
+  let x4 = x3 + dx2
+  let y2 = height - fraction(ss, a1, 100000)
   let commands : Array[PathCommand] = [
-    MoveTo(0, shaft_top),
-    LineTo(arm_left, shaft_top),
-    LineTo(arm_left, head_h),
-    LineTo(head_left, head_h),
-    LineTo((head_left + head_right) / 2, 0),
-    LineTo(head_right, head_h),
-    LineTo(arm_right, head_h),
-    LineTo(arm_right, shaft_bottom),
-    LineTo(0, shaft_bottom),
+    MoveTo(0, y2),
+    LineTo(x2, y2),
+    LineTo(x2, y1),
+    LineTo(x1, y1),
+    LineTo(x3, 0),
+    LineTo(width, y1),
+    LineTo(x4, y1),
+    LineTo(x4, height),
+    LineTo(0, height),
     ClosePath,
   ]
   { commands, width, height }

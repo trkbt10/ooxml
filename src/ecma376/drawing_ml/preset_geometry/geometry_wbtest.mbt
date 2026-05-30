@@ -435,19 +435,20 @@ test "build_geometry lightningBolt and seals emit literal polygons" {
 }
 
 ///|
-/// §20.1.10.56 `gear6` / `gear9` — gear wheels whose teeth are
-/// four-vertex trapezoids placed circularly. Each tooth contributes
-/// four path commands, plus the final `ClosePath`.
-test "build_geometry gears emit per-tooth trapezoid vertices" {
+/// §20.1.10.56 `gear6` / `gear9` — gear wheels, both faithful
+/// data-driven spec paths (each tooth: three `lnTo` flanks + one
+/// `arcTo` root fillet). MoveTo + teeth×4 + ClosePath ⇒ gear6 = 26,
+/// gear9 = 38.
+test "build_geometry gears emit per-tooth vertices" {
   let g6 = build_geometry(ShapeGear6, 200, 200)
-  // 6 teeth * 4 vertices + ClosePath = 25.
-  assert_eq(g6.command_count(), 25)
+  assert_eq(g6.command_count(), 26)
   assert_true(g6.is_closed())
   assert_true(g6.commands[0] is MoveTo(_, _))
   assert_true(supports(ShapeGear6))
   let g9 = build_geometry(ShapeGear9, 200, 200)
-  // 9 teeth * 4 vertices + ClosePath = 37.
-  assert_eq(g9.command_count(), 37)
+  // MoveTo + 9 teeth × (3 lnTo + 1 arcTo) + ClosePath = 38.
+  assert_eq(g9.command_count(), 38)
+  assert_true(g9.is_closed())
   assert_true(supports(ShapeGear9))
 }
 

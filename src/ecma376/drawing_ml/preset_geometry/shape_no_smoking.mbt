@@ -4,60 +4,79 @@
 /// §20.1.10.56 `noSmoking` — the prohibition ("no") symbol: a circular
 /// ring with a diagonal bar crossing the inner opening.
 ///
-/// The spec builds this as a full outer ellipse, then two arc-bounded
-/// slices that together form the diagonal bar inside the inner circle.
-/// The exact slice boundaries depend on `at2`/`mod`/`sqrt` guide
-/// formulas that the integer guide engine here does not evaluate, so
-/// this generator reproduces the *silhouette* faithfully with a
-/// simpler, documented construction:
-///
-///   * an outer ellipse and a concentric inner ellipse (the ring), and
-///   * a diagonal bar — a thin rotated rectangle — drawn across the
-///     inner opening from the top-left to the bottom-right of the
-///     inner circle, its width equal to the ring thickness `dr`.
-///
-/// The default `adj` guide is 18750, so `dr = ss * 18750 / 100000`.
-pub fn build_no_smoking(width : Int, height : Int) -> ShapeGeometry {
-  let cx = width / 2
-  let cy = height / 2
-  let rx = width / 2
-  let ry = height / 2
-  let dr = percent(min_dim(width, height), 18750)
-  let irx = rx - dr
-  let iry = ry - dr
+/// FAITHFUL transcription of the spec preset path. The outer ring is
+/// the full ellipse (four quarter `arcTo` edges, radii `wd2 × hd2`);
+/// the diagonal bar is the spec's two arc-bounded slices on the inner
+/// ellipse (radii `iwd2 × ihd2`, `iwd2 = wd2 − dr`, `ihd2 = hd2 − dr`,
+/// `dr = ss·a/100000`). Every guide is a 1:1 transcription of the spec
+/// `gdLst` using the verified primitives: `at2` (diagonal angle and
+/// the `dang` half-width), `cos`/`sin` → `gcos`/`gsin`, `mod` → `gmod`.
+/// The bar endpoints are `(hc ± dx1, vc ± dy1)` with `dx1 = n1·cos
+/// stAng1`, `dy1 = n1·sin stAng1`, `n1 = iwd2·ihd2/mod(ct1,st1)`. All
+/// arcs are emitted through the verified `rel_arc` helper, so the
+/// geometry is correct by construction. Default `adj = 18750`.
+pub fn build_no_smoking(
+  width : Int,
+  height : Int,
+  adj~ : Int = 18750,
+) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let w = width
+  let h = height
+  let wd2 = width / 2
+  let hd2 = height / 2
+  let hc = width / 2
+  let vc = height / 2
+  let cd2 = 10800000
+  let cd4 = 5400000
+  let c3d4 = 16200000
+  // Guide chain — faithful transcription of the spec gdLst.
+  let a = pin_int(adj, 0, 50000)
+  let dr = fraction(ss, a, 100000) // */ ss a 100000
+  let iwd2 = wd2 - dr // +- wd2 0 dr
+  let ihd2 = hd2 - dr // +- hd2 0 dr
+  let ang = at2(w, h) // at2 w h
+  let ct = gcos(ihd2, ang) // cos ihd2 ang
+  let st = gsin(iwd2, ang) // sin iwd2 ang
+  let m = gmod(ct, st, 0) // mod ct st 0
+  let n = if m == 0 { 0 } else { fraction(iwd2, ihd2, m) } // */ iwd2 ihd2 m
+  let drd2 = dr / 2 // */ dr 1 2
+  let dang = at2(n, drd2) // at2 n drd2
+  let two_dang = dang * 2 // */ dang 2 1
+  let sw_ang = -10800000 + two_dang // +- -10800000 2dang 0
+  let st_ang1 = ang - dang // +- t3 0 dang  (t3 = at2 w h = ang)
+  let st_ang2 = st_ang1 - cd2 // +- stAng1 0 cd2
+  let ct1 = gcos(ihd2, st_ang1) // cos ihd2 stAng1
+  let st1 = gsin(iwd2, st_ang1) // sin iwd2 stAng1
+  let m1 = gmod(ct1, st1, 0) // mod ct1 st1 0
+  let n1 = if m1 == 0 { 0 } else { fraction(iwd2, ihd2, m1) } // */ iwd2 ihd2 m1
+  let dx1 = gcos(n1, st_ang1) // cos n1 stAng1
+  let dy1 = gsin(n1, st_ang1) // sin n1 stAng1
+  let x1 = hc + dx1 // +- hc dx1 0
+  let y1 = vc + dy1 // +- vc dy1 0
+  let x2 = hc - dx1 // +- hc 0 dx1
+  let y2 = vc - dy1 // +- vc 0 dy1
   let commands : Array[PathCommand] = []
-  // Outer ellipse — clockwise.
-  commands.push(MoveTo(cx - rx, cy))
-  commands.push(ArcTo(rx, ry, 0, false, true, cx + rx, cy))
-  commands.push(ArcTo(rx, ry, 0, false, true, cx - rx, cy))
+  // Outer ring — full ellipse from the left point, four quarter arcs.
+  commands.push(MoveTo(0, vc))
+  let (o1, ax, ay) = rel_arc(0, vc, wd2, hd2, cd2, cd4)
+  commands.push(o1)
+  let (o2, bx, by) = rel_arc(ax, ay, wd2, hd2, c3d4, cd4)
+  commands.push(o2)
+  let (o3, cx, cy) = rel_arc(bx, by, wd2, hd2, 0, cd4)
+  commands.push(o3)
+  let (o4, _, _) = rel_arc(cx, cy, wd2, hd2, cd4, cd4)
+  commands.push(o4)
   commands.push(ClosePath)
-  // Inner ellipse — counter-clockwise so the ring stays hollow.
-  commands.push(MoveTo(cx - irx, cy))
-  commands.push(ArcTo(irx, iry, 0, false, false, cx + irx, cy))
-  commands.push(ArcTo(irx, iry, 0, false, false, cx - irx, cy))
+  // Bar slice 1 — inner-ellipse arc from (x1, y1).
+  commands.push(MoveTo(x1, y1))
+  let (s1, _, _) = rel_arc(x1, y1, iwd2, ihd2, st_ang1, sw_ang)
+  commands.push(s1)
   commands.push(ClosePath)
-  // Diagonal bar across the inner opening. The bar runs from the
-  // top-left to the bottom-right of the inner circle; its half-width
-  // (perpendicular offset) is dr/2. The diagonal direction is the
-  // 45°/-135° axis of the inner ellipse.
-  let cos45 = cos10000(45)
-  let sin45 = sin10000(45)
-  // Endpoints on the inner circle along the −45° diagonal (top-left,
-  // bottom-right). y grows downward, so the top-left endpoint uses a
-  // negative y offset.
-  let ax = cx - fraction(irx, cos45, 10000)
-  let ay = cy - fraction(iry, sin45, 10000)
-  let bx = cx + fraction(irx, cos45, 10000)
-  let by = cy + fraction(iry, sin45, 10000)
-  // Perpendicular offset vector (length dr/2) — perpendicular to the
-  // diagonal, i.e. along the +45° direction.
-  let half = dr / 2
-  let ox = fraction(half, cos45, 10000)
-  let oy = -fraction(half, sin45, 10000)
-  commands.push(MoveTo(ax + ox, ay + oy))
-  commands.push(LineTo(bx + ox, by + oy))
-  commands.push(LineTo(bx - ox, by - oy))
-  commands.push(LineTo(ax - ox, ay - oy))
+  // Bar slice 2 — inner-ellipse arc from (x2, y2).
+  commands.push(MoveTo(x2, y2))
+  let (s2, _, _) = rel_arc(x2, y2, iwd2, ihd2, st_ang2, sw_ang)
+  commands.push(s2)
   commands.push(ClosePath)
   { commands, width, height }
 }

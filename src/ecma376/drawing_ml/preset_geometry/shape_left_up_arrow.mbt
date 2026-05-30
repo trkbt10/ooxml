@@ -7,51 +7,50 @@
 /// §20.1.10.56 `leftUpArrow` — a two-headed arrow with heads pointing
 /// left and up, joined at a square L-junction at the bottom-right.
 ///
-/// Adjustment guides (defaults): `adj1` = arrowhead barb spread
-/// (25000), `adj2` = arrowhead length (25000), `adj3` = shaft
-/// thickness (25000). Heads are scaled against the smaller bounding
-/// dimension so both arms keep a consistent thickness.
-pub fn build_left_up_arrow(width : Int, height : Int) -> ShapeGeometry {
-  let smaller = min_dim(width, height)
-  let shaft_t = percent(smaller, 25000)
-  let head_len = percent(smaller, 25000)
-  let head_barb = percent(smaller, 25000)
-  // Vertical arm rises on the right; horizontal arm runs along the
-  // bottom. They meet in a shaft_t × shaft_t corner block.
-  let up_left = width - shaft_t
-  let up_right = width
-  let up_head_left = up_left - head_barb
-  let up_head_right = up_right + head_barb
-  // Clamp the up arrowhead within the right edge.
-  let up_head_right_c = if up_head_right > width {
-    width
-  } else {
-    up_head_right
-  }
-  let up_tip_x = (up_left + up_right) / 2
-  let left_tip = 0
-  let left_base = head_len
-  let shaft_top = height - shaft_t
-  let shaft_bottom = height
-  let left_head_top = shaft_top - head_barb
-  let left_mid_y = (left_head_top + shaft_bottom) / 2
+/// Per the spec gdLst (all `ss`-based, defaults 25000): `a2` =
+/// arrowhead length (`x1 = ss·a3/100000`, barb spread `dx2 =
+/// ss·a2/50000`, head half-width `dx4 = ss·a2/100000`), `a1` = shaft
+/// thickness (`dx3 = ss·a1/200000`). The spec outline (with `x4 = r −
+/// dx4`, `y4 = b − dx4`, `x3/x5 = x4 ∓ dx3`, `y3/y5 = y4 ∓ dx3`,
+/// `x2 = r − dx2`, `y2 = b − dx2`) is
+/// `(l,y4)→(x1,y2)→(x1,y3)→(x3,y3)→(x3,x1)→(x2,x1)→(x4,t)→(r,x1)→
+/// (x5,x1)→(x5,y5)→(x1,y5)→(x1,b)` — note `x1` doubles as a Y value.
+pub fn build_left_up_arrow(
+  width : Int,
+  height : Int,
+  adj1~ : Int = 25000,
+  adj2~ : Int = 25000,
+  adj3~ : Int = 25000,
+) -> ShapeGeometry {
+  let ss = min_dim(width, height)
+  let a2 = pin_int(adj2, 0, 50000)
+  let a1 = pin_int(adj1, 0, 2 * a2)
+  let a3 = pin_int(adj3, 0, 100000 - 2 * a2)
+  let x1 = fraction(ss, a3, 100000)
+  let dx2 = fraction(ss, a2, 50000)
+  let x2 = width - dx2
+  let y2 = height - dx2
+  let dx4 = fraction(ss, a2, 100000)
+  let x4 = width - dx4
+  let y4 = height - dx4
+  let dx3 = fraction(ss, a1, 200000)
+  let x3 = x4 - dx3
+  let x5 = x4 + dx3
+  let y3 = y4 - dx3
+  let y5 = y4 + dx3
   let commands : Array[PathCommand] = [
-    // left arrowhead tip
-    MoveTo(left_tip, left_mid_y),
-    LineTo(left_base, left_head_top),
-    LineTo(left_base, shaft_top),
-    // up the inner edge of the vertical arm
-    LineTo(up_left, shaft_top),
-    LineTo(up_left, head_len),
-    LineTo(up_head_left, head_len),
-    // up arrowhead tip
-    LineTo(up_tip_x, 0),
-    LineTo(up_head_right_c, head_len),
-    LineTo(up_right, head_len),
-    // down the outer edge of the vertical arm
-    LineTo(up_right, shaft_bottom),
-    // back along the bottom edge to the left head barb
-    LineTo(left_base, shaft_bottom),
+    MoveTo(0, y4),
+    LineTo(x1, y2),
+    LineTo(x1, y3),
+    LineTo(x3, y3),
+    LineTo(x3, x1),
+    LineTo(x2, x1),
+    LineTo(x4, 0),
+    LineTo(width, x1),
+    LineTo(x5, x1),
+    LineTo(x5, y5),
+    LineTo(x1, y5),
+    LineTo(x1, height),
     ClosePath,
   ]
   { commands, width, height }

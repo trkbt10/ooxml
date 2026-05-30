@@ -16,9 +16,9 @@ fn register_builtin_database_functions(registry : FunctionRegistry) -> Unit {
   registry.register("HYPERLINK", Eager(fn_hyperlink))
   registry.register("GETPIVOTDATA", Eager(fn_getpivotdata))
   registry.register("RTD", Eager(fn_rtd))
-  registry.register("CELL", Eager(fn_cell))
+  registry.register("CELL", Lazy(fn_cell))
   registry.register("INFO", Eager(fn_info))
-  registry.register("ISREF", Eager(fn_isref))
+  registry.register("ISREF", Lazy(fn_isref))
   // Cube functions — OLAP server dependent, return #N/A
   registry.register("CUBEKPIMEMBER", Eager(fn_cube_stub))
   registry.register("CUBEMEMBER", Eager(fn_cube_stub))
@@ -288,22 +288,76 @@ fn fn_cube_stub(
   VError(NotApplicable)
 }
 
-fn fn_cell(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 1 { return VError(Value) }
-  match args[0].first_scalar() {
-    VString(info_type) =>
-      match info_type {
-        "type" => VString("v")
-        "address" => VString("$A$1")
-        "col" => VNumber(1.0)
-        "row" => VNumber(1.0)
-        "contents" => VNumber(0.0)
-        "width" => VNumber(8.0)
-        _ => VString("")
+/// §18.17.7 CELL — information about the formatting, location, or
+/// contents of the upper-left cell of `reference` (or of the cell
+/// containing the formula when `reference` is omitted, matching the
+/// ROW()/COLUMN() default).
+///
+/// Registered `Lazy` so the reference argument keeps its address:
+/// eager evaluation collapses a reference to a bare value and loses
+/// the coordinates `address` / `col` / `row` need. The
+/// reference-derived info types (`address`, `col`, `row`, `contents`,
+/// `type`) are computed exactly. The format / protection / display
+/// types (`format`, `color`, `parentheses`, `prefix`, `protect`,
+/// `width`) need per-cell format metadata the formula `EvalContext`
+/// does not carry, and `filename` needs the workbook path; these
+/// return the spec's neutral defaults rather than fabricated values.
+fn fn_cell(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
+  let info_type = match evaluate(args[0], ctx).first_scalar() {
+    VString(s) => s.to_lower()
+    VError(err) => return VError(err)
+    _ => return VError(Value)
+  }
+  // §18.17.7 — the reference defaults to the cell containing the
+  // formula when the second argument is omitted.
+  let rect = if args.length() == 2 {
+    match reference_rect_from_ast(args[1], ctx) {
+      Some(r) => r
+      None =>
+        // Not a reference — surface a propagated error, else #VALUE!.
+        match evaluate(args[1], ctx).first_error() {
+          Some(err) => return VError(err)
+          None => return VError(Value)
+        }
+    }
+  } else {
+    cell_to_rect(ctx.current_cell, ctx)
+  }
+  let upper_left = @address.CellAddress::{
+    col_zero_based: rect.start_col,
+    row_zero_based: rect.start_row,
+    col_absolute: false,
+    row_absolute: false,
+    sheet: rect.sheet,
+  }
+  match info_type {
+    // §18.17.7 — absolute A1 reference of the upper-left cell as text.
+    "address" =>
+      build_address_text(rect.start_row + 1, rect.start_col + 1, 1, true, VEmpty)
+    "col" => VNumber((rect.start_col + 1).to_double())
+    "row" => VNumber((rect.start_row + 1).to_double())
+    "contents" => (ctx.resolve_cell)(upper_left)
+    // §18.17.7 — "b" blank, "l" text label, "v" any other value.
+    "type" =>
+      match (ctx.resolve_cell)(upper_left).first_scalar() {
+        VEmpty => VString("b")
+        VString("") => VString("b")
+        VString(_) => VString("l")
+        _ => VString("v")
       }
+    // Format / protection / display metadata is not carried by the
+    // formula EvalContext; return the spec's neutral defaults.
+    "prefix" => VString("")
+    "format" => VString("G")
+    "color" => VNumber(0.0)
+    "parentheses" => VNumber(0.0)
+    // §18.3.1.36 `@locked` defaults true → cells are locked by default.
+    "protect" => VNumber(1.0)
+    "filename" => VString("")
+    "width" => VNumber(8.0)
     _ => VError(Value)
   }
 }
@@ -329,13 +383,22 @@ fn fn_info(
   }
 }
 
-fn fn_isref(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
-  match args[0] {
-    VError(Ref) => VBool(false)
+/// §18.17.2 ISREF — TRUE when the argument is a reference (a cell or
+/// a range), FALSE otherwise. Registered `Lazy` so a single-cell
+/// reference (e.g. `ISREF(A1)`), which eager evaluation would
+/// collapse to a bare scalar indistinguishable from a literal, is
+/// detected by its AST shape. A function returning a multi-cell
+/// reference evaluates to an array and is also treated as a reference.
+fn fn_isref(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 1 {
+    return VError(Value)
+  }
+  // A direct cell or range reference is detectable from the AST.
+  if reference_rect_from_ast(args[0], ctx) is Some(_) {
+    return VBool(true)
+  }
+  // A function returning a multi-cell reference evaluates to an array.
+  match evaluate(args[0], ctx) {
     VArray(_) => VBool(true)
     _ => VBool(false)
   }

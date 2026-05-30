@@ -15,7 +15,18 @@
 /// scaled into the rectangle `(0, 0, w, h)`.  Returns `Some(d)`
 /// for every enumerated preset, or `None` when the preset name is
 /// not in ST_ShapeType (schema violation).
-pub fn render_preset_shape_d(prst : String, w : Double, h : Double) -> String? {
+///
+/// `adjustments` carries the decoded §20.1.9.5 `avLst` guide overrides
+/// (`@preset_geometry.read_adjustments_lenient`). When empty — or for
+/// a preset whose builder is not yet adjustment-aware — the geometry
+/// is identical to the spec-default path, so the no-override case never
+/// changes.
+pub fn render_preset_shape_d(
+  prst : String,
+  w : Double,
+  h : Double,
+  adjustments~ : Array[@preset_geometry.Adjustment] = [],
+) -> String? {
   if w <= 0.0 || h <= 0.0 {
     return None
   }
@@ -26,12 +37,18 @@ pub fn render_preset_shape_d(prst : String, w : Double, h : Double) -> String? {
   } noraise {
     s => s
   }
-  // build_geometry generates the path in a `[0, w_i] × [0, h_i]`
-  // integer frame; we feed in our pixel dimensions rounded to the
-  // nearest integer so the output requires no further scaling.
-  // Sub-pixel precision is preserved by the SVG renderer's float
-  // coordinate parser when the viewer rescales the bounding box.
-  let geometry = @preset_geometry.build_geometry(shape, w.to_int(), h.to_int())
+  // build_geometry_with_adjustments generates the path in a
+  // `[0, w_i] × [0, h_i]` integer frame, applying the document's
+  // §20.1.9.11 adjustment guides; we feed in our pixel dimensions
+  // rounded to the nearest integer so the output requires no further
+  // scaling. Sub-pixel precision is preserved by the SVG renderer's
+  // float coordinate parser when the viewer rescales the bounding box.
+  let geometry = @preset_geometry.build_geometry_with_adjustments(
+    shape,
+    w.to_int(),
+    h.to_int(),
+    adjustments,
+  )
   Some(shape_geometry_to_svg_d(geometry))
 }
 
