@@ -183,11 +183,12 @@ Other constraints shall decode without error and remain as
 
 ### Requirement 13: Algorithm-type fallback
 
-Algorithm types outside the canonical list (`composite`, `conn`,
-`sp`, `tx`) shall fall back to the `lin` algorithm to guarantee a
-non-empty geometry response. The engine shall expose
-`Algorithm::is_supported(AlgorithmType)` so audit tooling can
-report which nodes used the fallback.
+The remaining unimplemented algorithm types (`conn`, `sp`, `tx`)
+shall fall back to the `lin` algorithm to guarantee a non-empty
+geometry response. (`composite` is now faithfully implemented — see
+Requirement 15 — and is no longer part of this fallback set.) The
+engine shall expose `Algorithm::is_supported(AlgorithmType)` so
+audit tooling can report which nodes used the fallback.
 
 ### Requirement 14: Diagnostic helpers
 
@@ -195,6 +196,22 @@ The package shall expose a section-name accessor
 `diagram_layout_part1_21_4_section_name()` returning the
 canonical `Part 1 §21.4` citation for use in error reports,
 matching the pattern used by sibling DML packages.
+
+### Requirement 15: Algorithm — `composite`
+
+The composite algorithm shall "specify the size and position for
+all child layout nodes" (§21.4.7.1) purely through the composite
+node's constraints — it performs NO automatic spatial
+distribution. Every child's base rectangle is the composite node's
+full `inner` rectangle, so the child-targeting constraints
+(`<constr for="ch" forName="…" type="l|t|w|h|r|b"/>`) and the
+child's own `<constrLst>` position and size it from the composite
+origin. A child with no targeting constraint inherits the whole
+composite box. The composite `ar` (aspect-ratio) parameter — which
+can temporarily shrink one dimension before computing child
+constraints (`ar = 0`, the default, means "leave as is") — is a
+remaining sub-gap; a non-zero `ar` lays children out against the
+unshrunk box, which is bounds-correct.
 
 ## Non-functional requirements
 
@@ -219,9 +236,10 @@ matching the pattern used by sibling DML packages.
 - Animation timing (§21.4.7.2 / §21.4.7.3 are decoded into the
   data model but not exercised).
 - The OLE / chart embedded SmartArt variant.
-- `composite`, `conn`, `sp`, and `tx` algorithms; these fall back
-  to `lin` per Requirement 13. A follow-up commit may add
-  faithful implementations.
+- `conn`, `sp`, and `tx` algorithms; these fall back to `lin` per
+  Requirement 13. A follow-up commit may add faithful
+  implementations. (`composite` is now implemented — Requirement
+  15 — except for the `ar` aspect-ratio sub-gap noted there.)
 - `var` function evaluation in `Choose / If`. Variable bindings
   live on the `CT_LayoutVariablePropertySet` and require a full
   layout-variable resolver, which is a separate audit gap.
