@@ -70,7 +70,9 @@ test "preset circularArrow falls back to the faithful drawing_ml geometry" {
 test "preset ellipse" {
   let elt = geom_make_elt("ellipse", [])
   let p = render_preset_geometry(elt, 100.0, 50.0).unwrap()
-  inspect(p, content="M 50 0 A 50 25 0 1 1 50 50 A 50 25 0 1 1 50 0 Z")
+  // Canonical drawing_ml SoT geometry: full ellipse as two 180° arcs
+  // from the left point (M l,vc).
+  inspect(p, content="M 0 25 A 50 25 0 0 1 100 25 A 50 25 0 0 1 0 25 Z")
 }
 
 ///|
@@ -139,19 +141,22 @@ test "preset pentagon produces 5 vertices + close" {
 test "preset hexagon with default adj" {
   let elt = geom_make_elt("hexagon", [])
   let p = render_preset_geometry(elt, 100.0, 50.0).unwrap()
-  // The notch is the `adj` fraction of the SHORTER side, so for a
-  // 100×50 box offset = 25000/100000 * min(100,50) = 12.5.
-  inspect(p, content="M 12.5 0 L 87.5 0 L 100 25 L 87.5 50 L 12.5 50 L 0 25 Z")
+  // Canonical drawing_ml SoT geometry: the §20.1.10.56 hexagon is
+  // flat-topped with points at left/right — moveTo(l,vc), x1=ss·a/100000
+  // (=12.5→13), vf=115470 sets the regular aspect. (The previous generic
+  // regular-polygon approximation produced a wrongly pointy-top hexagon.)
+  inspect(p, content="M 0 25 L 13 0 L 88 0 L 100 25 L 88 50 L 13 50 Z")
 }
 
 ///|
 test "preset plus with default adj" {
   let elt = geom_make_elt("plus", [])
   let p = render_preset_geometry(elt, 100.0, 100.0).unwrap()
-  // arm = 25%, x1=25, x2=75, y1=25, y2=75
+  // Canonical drawing_ml SoT geometry: the §20.1.10.56 plus cross
+  // (arm = 25%), walked from the left-inner vertex.
   inspect(
     p,
-    content="M 25 0 L 75 0 L 75 25 L 100 25 L 100 75 L 75 75 L 75 100 L 25 100 L 25 75 L 0 75 L 0 25 L 25 25 Z",
+    content="M 0 25 L 25 25 L 25 0 L 75 0 L 75 25 L 100 25 L 100 75 L 75 75 L 75 100 L 25 100 L 25 75 L 0 75 Z",
   )
 }
 

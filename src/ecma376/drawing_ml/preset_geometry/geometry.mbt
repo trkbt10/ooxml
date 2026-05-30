@@ -34,12 +34,12 @@ pub fn build_geometry(
     ShapeFlowChartInputOutput => build_flowchart_input_output(width, height)
     ShapeTrapezoid => build_trapezoid(width, height)
     ShapeDiamond | ShapeFlowChartDecision => build_diamond(width, height)
-    ShapePentagon => build_regular_polygon(5, width, height)
-    ShapeHexagon => build_regular_polygon(6, width, height)
-    ShapeHeptagon => build_regular_polygon(7, width, height)
-    ShapeOctagon => build_regular_polygon(8, width, height)
-    ShapeDecagon => build_regular_polygon(10, width, height)
-    ShapeDodecagon => build_regular_polygon(12, width, height)
+    ShapePentagon => build_from_definition(pentagon_def(), width, height, [])
+    ShapeHexagon => build_from_definition(hexagon_def(), width, height, [])
+    ShapeHeptagon => build_from_definition(heptagon_def(), width, height, [])
+    ShapeOctagon => build_from_definition(octagon_def(), width, height, [])
+    ShapeDecagon => build_from_definition(decagon_def(), width, height, [])
+    ShapeDodecagon => build_from_definition(dodecagon_def(), width, height, [])
     ShapeStar4
     | ShapeStar5
     | ShapeStar6

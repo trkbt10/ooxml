@@ -346,6 +346,9 @@ pub fn build_geometry_with_adjustments(
     // gear6 / gear9 — data-driven tooth chains via the guide_engine.
     ShapeGear6 => build_from_definition(gear6_def(), width, height, adjustments)
     ShapeGear9 => build_from_definition(gear9_def(), width, height, adjustments)
+    // hexagon / octagon — data-driven n-gons; adj chamfers the corners.
+    ShapeHexagon => build_from_definition(hexagon_def(), width, height, adjustments)
+    ShapeOctagon => build_from_definition(octagon_def(), width, height, adjustments)
     // cloudCallout — cloud body + 3 tail bubbles; adj1/adj2 = tail tip.
     ShapeCloudCallout =>
       build_cloud_callout(

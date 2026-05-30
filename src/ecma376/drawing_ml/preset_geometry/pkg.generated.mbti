@@ -274,8 +274,6 @@ pub fn build_quad_arrow_callout(Int, Int) -> ShapeGeometry
 
 pub fn build_rect(Int, Int) -> ShapeGeometry
 
-pub fn build_regular_polygon(Int, Int, Int) -> ShapeGeometry
-
 pub fn build_ribbon(Int, Int) -> ShapeGeometry
 
 pub fn build_ribbon2(Int, Int) -> ShapeGeometry

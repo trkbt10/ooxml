@@ -194,35 +194,12 @@ pub fn build_diamond(width : Int, height : Int) -> ShapeGeometry {
   { commands, width, height }
 }
 
-///|
-/// Part 1 §20.1.10.56 — regular n-gon inscribed in the bounding box.
-/// The first vertex sits at the top of the inscribing ellipse and the
-/// remaining vertices are placed at equal angular intervals going
-/// clockwise. Used for `pentagon`, `hexagon`, `heptagon`, `octagon`,
-/// `decagon`, and `dodecagon`.
-pub fn build_regular_polygon(
-  sides : Int,
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
-  let cx = width / 2
-  let cy = height / 2
-  let rx = width / 2
-  let ry = height / 2
-  let commands : Array[PathCommand] = []
-  for i in 0..<sides {
-    let theta = -90 + i * 360 / sides
-    let x = cx + fraction(rx, cos10000(theta), 10000)
-    let y = cy + fraction(ry, sin10000(theta), 10000)
-    if i == 0 {
-      commands.push(MoveTo(x, y))
-    } else {
-      commands.push(LineTo(x, y))
-    }
-  }
-  commands.push(ClosePath)
-  { commands, width, height }
-}
+// (The former `build_regular_polygon` generic n-gon generator was
+// removed: the §20.1.10.56 pentagon/hexagon/heptagon/octagon/decagon/
+// dodecagon presets are NOT inscribed regular polygons — they carry
+// per-shape hf/vf aspect factors and edge-pinned vertices — so they are
+// now materialised faithfully from their spec definitions via the
+// data-driven guide engine in `shape_polygons_def.mbt`.)
 
 ///|
 /// Part 1 §20.1.10.56 `heart` — heart shape rendered with two cubic
