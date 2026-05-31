@@ -1421,7 +1421,7 @@ fn render_shape_svg(
   // previous match dropped `contentPart` (§19.3.1.14, ink content
   // referenced through `<p:contentPart r:id="…">`); add a metadata
   // placeholder so the consumer knows the ink payload was elided.
-  match shape.name.local_name {
+  let nodes = match shape.name.local_name {
     "sp" =>
       render_sp_shape_svg(
         shape,
@@ -1447,6 +1447,116 @@ fn render_shape_svg(
     "contentPart" => render_content_part_metadata(shape)
     _ => []
   }
+  // §20.1.2.2.20 CT_Hyperlink — a shape's non-visual drawing
+  // properties (`<p:cNvPr>/<a:hlinkClick r:id>`) make the ENTIRE
+  // shape a clickable link (common for action buttons / clickable
+  // graphics). Wrap the shape's emitted group in an SVG `<a>` anchor
+  // when that cNvPr carries a resolvable shape-level hlinkClick,
+  // reusing the SAME slide `hyperlink_resolver` that resolves the
+  // run-level `<a:rPr>/<a:hlinkClick>` (§21.1.2.3.5). Shapes without
+  // a resolvable shape-level hyperlink pass through unchanged so
+  // their output stays byte-identical.
+  wrap_shape_hyperlink(nodes, shape_cnvpr(shape), hyperlink_resolver)
+}
+
+///|
+/// §20.1.2.2.20 — return the `<p:cNvPr>` (CT_NonVisualDrawingProps)
+/// for a top-level shape, reachable through the shape-kind-specific
+/// non-visual properties wrapper:
+///   * `<p:sp>/<p:nvSpPr>/<p:cNvPr>`
+///   * `<p:pic>/<p:nvPicPr>/<p:cNvPr>`
+///   * `<p:cxnSp>/<p:nvCxnSpPr>/<p:cNvPr>`
+///   * `<p:grpSp>/<p:nvGrpSpPr>/<p:cNvPr>`
+///   * `<p:graphicFrame>/<p:nvGraphicFramePr>/<p:cNvPr>`
+/// Returns `None` for any other element (e.g. `<p:contentPart>`),
+/// or when the wrapper / cNvPr is absent. Mirrors the nv-local
+/// lookup used by `is_shape_hidden` and `ooxml_id_attr`.
+fn shape_cnvpr(shape : @xml.Element) -> @xml.Element? {
+  let nv_local = match shape.name.local_name {
+    "sp" => "nvSpPr"
+    "pic" => "nvPicPr"
+    "cxnSp" => "nvCxnSpPr"
+    "grpSp" => "nvGrpSpPr"
+    "graphicFrame" => "nvGraphicFramePr"
+    _ => return None
+  }
+  match first_child_named(shape, nv_local) {
+    None => None
+    Some(nv) => first_child_named(nv, "cNvPr")
+  }
+}
+
+///|
+/// §20.1.2.2.20 CT_Hyperlink — wrap a shape's emitted SVG node(s) in
+/// an SVG `<a>` anchor when the shape's `<p:cNvPr>` carries a
+/// resolvable shape-level `<a:hlinkClick r:id>`.
+///
+/// The relationship-namespace `id` attribute (`r:id`, read by local
+/// name) names the hyperlink; per §20.1.2.2.20 that r:id resolves
+/// through the SLIDE part's relationship table to a concrete URL.
+/// We REUSE the slide `hyperlink_resolver` already threaded for the
+/// run-level `<a:rPr>/<a:hlinkClick>` links (§21.1.2.3.5) — no new
+/// facade resolver. The resolved URL goes into BOTH `xlink:href`
+/// (SVG 1.1) and `href` (SVG 2 / HTML), mirroring the run-level
+/// anchor so the link navigates in every consumer.
+///
+/// The node(s) pass through UNCHANGED when:
+///   * the shape carries no `<p:cNvPr>` (`cnvpr == None`),
+///   * the cNvPr has no `<a:hlinkClick>` child,
+///   * the `r:id` is empty (an action-only internal jump per
+///     §20.1.2.2.20 carries no relationship target), or
+///   * `hyperlink_resolver(rid)` returns `None` (unknown rId / no
+///     resolver supplied).
+/// In every pass-through case the serialised output is byte-identical
+/// to the pre-hyperlink emitter, so shapes without a resolvable
+/// shape-level hyperlink are unaffected. An empty `nodes` array
+/// (e.g. a hidden shape) is never wrapped.
+fn wrap_shape_hyperlink(
+  nodes : Array[@xml.Node],
+  cnvpr : @xml.Element?,
+  hyperlink_resolver : (String) -> String?,
+) -> Array[@xml.Node] {
+  if nodes.length() == 0 {
+    return nodes
+  }
+  let cnvpr = match cnvpr {
+    None => return nodes
+    Some(c) => c
+  }
+  // §20.1.2.2.20 — the shape-level click hyperlink lives at
+  // `<p:cNvPr>/<a:hlinkClick>`. Read the relationships-namespace
+  // `id` (matched by local name, so `r:id` is found regardless of
+  // prefix), exactly as the run-level resolver reads it.
+  let hlink_click = match first_child_named(cnvpr, "hlinkClick") {
+    None => return nodes
+    Some(h) => h
+  }
+  let rid = match attr_value(hlink_click, "id") {
+    None => return nodes
+    // An empty r:id is action-only (§20.1.2.2.20) and names no
+    // relationship target — leave the shape unwrapped.
+    Some(v) => if v.length() == 0 { return nodes } else { v }
+  }
+  let url = match hyperlink_resolver(rid) {
+    None => return nodes
+    Some(u) => u
+  }
+  // §20.1.2.2.20 — the resolved URL goes into BOTH `xlink:href`
+  // (SVG 1.1) and `href` (SVG 2 / HTML), mirroring the run-level
+  // anchor. The raw r:id surfaces as `data-ooxml-r-id` so consumers
+  // can re-derive the slide-rels lookup; an optional `<a:hlinkClick
+  // @tooltip>` becomes the anchor `xlink:title`.
+  let a_attrs : Array[@xml.Attribute] = [
+    @markup.attr_ns("xlink", "href", @markup.xlink_ns, url),
+    @markup.attr("href", url),
+    @markup.attr("data-ooxml-r-id", rid),
+  ]
+  match attr_value(hlink_click, "tooltip") {
+    Some(t) =>
+      a_attrs.push(@markup.attr_ns("xlink", "title", @markup.xlink_ns, t))
+    None => ()
+  }
+  [@markup.elem_ns("a", @markup.svg_ns, a_attrs, nodes)]
 }
 
 ///|

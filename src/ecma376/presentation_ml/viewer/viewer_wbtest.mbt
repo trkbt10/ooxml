@@ -2159,3 +2159,198 @@ test "build_line_attrs honours custDash on a shape stroke" {
   }
   assert_eq(dash, "38100 19050")
 }
+
+///|
+/// §20.1.2.2.20 — build a one-shape slide whose `<p:sp>` carries a
+/// SHAPE-LEVEL `<p:nvSpPr>/<p:cNvPr>/<a:hlinkClick r:id=rid>` (no
+/// run-level link). The shape has an `<p:spPr>/<a:xfrm>` so it
+/// renders a wrapping `<g>`, which the shape-level hyperlink wraps
+/// in an `<a>` when the rId resolves. `with_cnvpr_hlink` toggles
+/// whether the hlinkClick is present so the byte-identity sanity can
+/// reuse the same geometry with the link removed.
+fn hlink_shape_slide(rid : String, with_cnvpr_hlink : Bool) -> @domain.CT_Slide {
+  let cnvpr_children : Array[@xml.Node] = if with_cnvpr_hlink {
+    [
+      @xml.Node::Element({
+        name: name("hlinkClick"),
+        attributes: [{ name: name("id"), value: rid }],
+        children: [],
+      }),
+    ]
+  } else {
+    []
+  }
+  let sp : @xml.Node = @xml.Node::Element({
+    name: name("sp"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("nvSpPr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("cNvPr"),
+            attributes: [
+              { name: name("id"), value: "2" },
+              { name: name("name"), value: "Button" },
+            ],
+            children: cnvpr_children,
+          }),
+          @xml.Node::Element({
+            name: name("cNvSpPr"),
+            attributes: [],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("nvPr"),
+            attributes: [],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("spPr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("xfrm"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("off"),
+                attributes: [
+                  { name: name("x"), value: "0" },
+                  { name: name("y"), value: "0" },
+                ],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("ext"),
+                attributes: [
+                  { name: name("cx"), value: "914400" },
+                  { name: name("cy"), value: "457200" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("txBody"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("bodyPr"),
+            attributes: [],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("t"),
+                    attributes: [],
+                    children: [@xml.Node::Text("Go")],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  @domain.CT_Slide::new({
+    name: name("sld"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("cSld"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("spTree"),
+            attributes: [],
+            children: [sp],
+          }),
+        ],
+      }),
+    ],
+  })
+}
+
+///|
+/// §20.1.2.2.20 — a `<p:sp>` whose `<p:nvSpPr>/<p:cNvPr>` carries
+/// `<a:hlinkClick r:id="rId7"/>` makes the ENTIRE shape a clickable
+/// link. When the slide `hyperlink_resolver` maps that rId to a URL,
+/// the shape's emitted group is wrapped in an SVG `<a>` carrying the
+/// RESOLVED URL in both `xlink:href` and `href` (mirroring the
+/// run-level anchor). The raw rId surfaces as `data-ooxml-r-id`.
+test "viewer §20.1.2.2.20 shape-level hlinkClick wraps group in anchor" {
+  let slide = hlink_shape_slide("rId7", true)
+  let resolver = fn(rid : String) -> String? {
+    if rid == "rId7" {
+      Some("https://example.com/action")
+    } else {
+      None
+    }
+  }
+  let svg = render_svg(slide, hyperlink_resolver=resolver)
+  // The shape group is wrapped in an `<a>` carrying the resolved URL.
+  assert_true(svg.contains("<a "))
+  assert_true(svg.contains("xlink:href=\"https://example.com/action\""))
+  assert_true(svg.contains("href=\"https://example.com/action\""))
+  // The raw rId must NOT leak into xlink:href and is preserved as
+  // metadata so consumers can re-derive the slide-rels lookup.
+  assert_false(svg.contains("xlink:href=\"rId7\""))
+  assert_true(svg.contains("data-ooxml-r-id=\"rId7\""))
+  assert_true(svg.contains("</a>"))
+}
+
+///|
+/// §20.1.2.2.20 — byte-identity sanity: a shape WITHOUT a shape-level
+/// hlinkClick must render exactly as before regardless of whether a
+/// `hyperlink_resolver` is supplied, and an UNRESOLVED shape-level
+/// rId (resolver returns None) must leave the shape unwrapped and
+/// byte-identical to the no-link rendering. This guards the "do NOT
+/// change output for shapes without a resolvable shape-level
+/// hyperlink" invariant.
+test "viewer §20.1.2.2.20 shape without resolvable hlink is byte-identical" {
+  // Geometry-identical shape with NO cNvPr hlinkClick at all.
+  let no_link_slide = hlink_shape_slide("rId7", false)
+  let resolver = fn(rid : String) -> String? {
+    if rid == "rId7" {
+      Some("https://example.com/action")
+    } else {
+      None
+    }
+  }
+  let baseline = render_svg(no_link_slide)
+  // Supplying a resolver to a shape with no hlinkClick changes
+  // nothing.
+  let with_resolver = render_svg(no_link_slide, hyperlink_resolver=resolver)
+  assert_eq(baseline, with_resolver)
+  // The shape with no link emits no anchor at all.
+  assert_false(baseline.contains("<a "))
+  // A shape that DOES carry a shape-level hlinkClick but whose rId
+  // the resolver cannot resolve must NOT be wrapped — its output is
+  // byte-identical whether no resolver is supplied or a resolver
+  // that returns None for the rId. (Note: the shape's cNvPr
+  // hlinkClick still drives the pre-existing §17.4 hyperlink-marker
+  // overlay glyph; that overlay is unchanged by the anchor wrapping,
+  // so we compare the linked shape against ITSELF, not the no-link
+  // shape, which carries no overlay.)
+  let linked_slide = hlink_shape_slide("rId7", true)
+  let no_resolver = render_svg(linked_slide)
+  let unresolved = fn(_rid : String) -> String? { None }
+  let with_unresolved = render_svg(linked_slide, hyperlink_resolver=unresolved)
+  assert_eq(no_resolver, with_unresolved)
+  // An unresolved shape-level link emits no anchor wrapping.
+  assert_false(no_resolver.contains("<a "))
+}
