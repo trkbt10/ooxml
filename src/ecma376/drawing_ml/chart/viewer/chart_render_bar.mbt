@@ -94,6 +94,12 @@ fn render_bar_chart(
     effective_axis_max(data_max, axes)
   }
   let is_percent = grouping == "percentStacked"
+  // §21.2.2.170 CT_Scaling / orientation — maxMin reverses the axis.
+  // `val_rev` flips the value axis (column grows DOWNWARD from the
+  // top / horizontal bar grows LEFTWARD from the right); `cat_rev`
+  // flips the category band order.
+  let val_rev = axes.val_reversed()
+  let cat_rev = axes.cat_reversed()
   let (px, py, pw, ph) = chart_plot_inset(w, h, fw, fh, axes=Some(axes))
   let nodes : Array[@xml.Node] = []
   if !axes.val_deleted() || !axes.cat_deleted() {
@@ -176,6 +182,7 @@ fn render_bar_chart(
           fh,
           axes.val_major(),
           style=Some(style),
+          reversed=val_rev,
         ) {
         nodes.push(n)
       }
@@ -218,7 +225,10 @@ fn render_bar_chart(
       let sub_h = band * cluster_ratio
       let sub_pad = (band - sub_h) / 2.0
       for i_idx = 0; i_idx < cat_count; i_idx = i_idx + 1 {
-        let band_idx = cat_count - 1 - i_idx
+        // Horizontal bars plot categories bottom-up (Q1 at the bottom)
+        // by convention; §21.2.2.170 catAx maxMin un-reverses that so
+        // Q1 sits at the top.
+        let band_idx = if cat_rev { i_idx } else { cat_count - 1 - i_idx }
         let mut cat_total = 0.0
         if grouping == "percentStacked" {
           for s in series {
@@ -240,8 +250,22 @@ fn render_bar_chart(
           } else {
             v
           }
-          let len = if max_v > 0.0 { norm_v / max_v * pw } else { 0.0 }
-          let x_start = if max_v > 0.0 { px + accum / max_v * pw } else { px }
+          // §21.2.2.170 — the stacked segment spans value [accum,
+          // accum+norm_v].  minMax keeps the exact legacy expression
+          // (start at the left, grow right); maxMin maps BOTH ends
+          // through `value_axis_x` so the stack grows leftward from the
+          // right edge.
+          let (x_start, len) = if val_rev {
+            let x_lo = value_axis_x(accum, max_v, px, pw, true)
+            let x_hi = value_axis_x(accum + norm_v, max_v, px, pw, true)
+            let xs = if x_lo < x_hi { x_lo } else { x_hi }
+            let ln = if x_lo < x_hi { x_hi - x_lo } else { x_lo - x_hi }
+            (xs, ln)
+          } else {
+            let ln = if max_v > 0.0 { norm_v / max_v * pw } else { 0.0 }
+            let xs = if max_v > 0.0 { px + accum / max_v * pw } else { px }
+            (xs, ln)
+          }
           let by = py + band_idx.to_double() * band + sub_pad
           let color = resolve_series_color(ser_elems[si], si, ctx, defs)
           nodes.push(
@@ -284,8 +308,19 @@ fn render_bar_chart(
           if i >= cat_count {
             break
           }
-          let len = if max_v > 0.0 { v / max_v * pw } else { 0.0 }
-          let band_idx = cat_count - 1 - i
+          // §21.2.2.170 — minMax: bar starts at the left axis (px) and
+          // grows right by `len`.  maxMin: value 0 is at the right edge
+          // (px+pw) and the bar grows left, so the rect runs from the
+          // value's pixel x to the right edge.
+          let (bar_x, len) = if val_rev {
+            let x_v = value_axis_x(v, max_v, px, pw, true)
+            (x_v, px + pw - x_v)
+          } else {
+            (px, if max_v > 0.0 { v / max_v * pw } else { 0.0 })
+          }
+          // Horizontal bars plot Q1 at the bottom by convention; catAx
+          // maxMin un-reverses that ordering.
+          let band_idx = if cat_rev { i } else { cat_count - 1 - i }
           let by = py +
             band_idx.to_double() * band +
             sub_pad +
@@ -299,7 +334,7 @@ fn render_bar_chart(
               "rect",
               @markup.svg_ns,
               [
-                @markup.attr("x", format_double(px)),
+                @markup.attr("x", format_double(bar_x)),
                 @markup.attr("y", format_double(by)),
                 @markup.attr("width", format_double(len)),
                 @markup.attr("height", format_double(bar_h)),
@@ -316,7 +351,8 @@ fn render_bar_chart(
         if i >= cat_count {
           break
         }
-        let band_idx = cat_count - 1 - i
+        // Label band must track the bar band under catAx maxMin.
+        let band_idx = if cat_rev { i } else { cat_count - 1 - i }
         let by = py + band_idx.to_double() * band + band / 2.0
         nodes.push(
           chart_text(
@@ -361,6 +397,7 @@ fn render_bar_chart(
           num_fmt=axes.val_num_fmt(),
           tick_lbl_pos=axes.val_tick_lbl_pos(),
           log_base=log_b,
+          reversed=val_rev,
         ) {
         nodes.push(n)
       }
@@ -398,13 +435,28 @@ fn render_bar_chart(
           } else {
             v
           }
-          let hgt = if max_v > 0.0 { norm_v / max_v * ph } else { 0.0 }
-          let y_base = if max_v > 0.0 {
-            py + ph - accum / max_v * ph
+          // §21.2.2.170 — the stacked segment spans value [accum,
+          // accum+norm_v].  minMax keeps the exact legacy expression
+          // (base at the bottom, grow up); maxMin maps BOTH ends through
+          // `value_axis_y` so the stack grows DOWNWARD from the top.
+          let (rect_y, hgt) = if val_rev {
+            let y_lo = value_axis_y(accum, max_v, py, ph, true)
+            let y_hi = value_axis_y(accum + norm_v, max_v, py, ph, true)
+            let yt = if y_lo < y_hi { y_lo } else { y_hi }
+            let hh = if y_lo < y_hi { y_hi - y_lo } else { y_lo - y_hi }
+            (yt, hh)
           } else {
-            py + ph
+            let hh = if max_v > 0.0 { norm_v / max_v * ph } else { 0.0 }
+            let y_base = if max_v > 0.0 {
+              py + ph - accum / max_v * ph
+            } else {
+              py + ph
+            }
+            (y_base - hh, hh)
           }
-          let bx = px + i_idx.to_double() * band + pad
+          // catAx maxMin reverses the category band order along X.
+          let cat_pos = category_index(i_idx, cat_count, cat_rev)
+          let bx = px + cat_pos.to_double() * band + pad
           let color = resolve_series_color(ser_elems[si], si, ctx, defs)
           nodes.push(
             @markup.elem_ns(
@@ -412,7 +464,7 @@ fn render_bar_chart(
               @markup.svg_ns,
               [
                 @markup.attr("x", format_double(bx)),
-                @markup.attr("y", format_double(y_base - hgt)),
+                @markup.attr("y", format_double(rect_y)),
                 @markup.attr("width", format_double(col_w)),
                 @markup.attr("height", format_double(hgt)),
                 @markup.attr("fill", color),
@@ -454,9 +506,25 @@ fn render_bar_chart(
           if i >= cat_count {
             break
           }
-          let hgt = if max_v > 0.0 { v / max_v * ph } else { 0.0 }
-          let bx = px + i.to_double() * band + pad + si.to_double() * bar_w
-          let by = py + ph - hgt
+          // §21.2.2.170 — minMax: column base at the bottom, grows up.
+          // maxMin: value 0 sits at the top (py) and the column grows
+          // DOWNWARD to the value's pixel y.
+          let (by, hgt) = if val_rev {
+            let y0 = value_axis_y(0.0, max_v, py, ph, true)
+            let yv = value_axis_y(v, max_v, py, ph, true)
+            let yt = if y0 < yv { y0 } else { yv }
+            let hh = if y0 < yv { yv - y0 } else { y0 - yv }
+            (yt, hh)
+          } else {
+            let hh = if max_v > 0.0 { v / max_v * ph } else { 0.0 }
+            (py + ph - hh, hh)
+          }
+          // catAx maxMin reverses the category band order along X.
+          let cat_pos = category_index(i, cat_count, cat_rev)
+          let bx = px +
+            cat_pos.to_double() * band +
+            pad +
+            si.to_double() * bar_w
           let fill = match dpt_color_for(dpt_overrides, i) {
             Some(c) => c
             None =>
@@ -495,7 +563,10 @@ fn render_bar_chart(
         if i % skip != 0 {
           continue
         }
-        let bx = px + i.to_double() * band + band / 2.0
+        // catAx maxMin reverses the category label position to match
+        // the reversed column bands.
+        let cat_pos = category_index(i, cat_count, cat_rev)
+        let bx = px + cat_pos.to_double() * band + band / 2.0
         let by = py + ph + fh * 0.018 + fh * 0.05 * lbl_offset_frac
         nodes.push(
           chart_text(
@@ -525,28 +596,36 @@ fn render_bar_chart(
         let total = sum_positive(values)
         let points : Array[(Double, Double, Double, String)] = []
         if bar_dir == "bar" {
-          // Horizontal: label at right end of bar.
+          // Horizontal: label at the value (far) end of the bar — the
+          // right end for minMax, the left end for maxMin.  Tracks the
+          // same band/value mapping the bar geometry uses.
           for i, v in values {
             if i >= cat_count {
               break
             }
             let band2 = ph / cat_count.to_double()
-            let band_idx = cat_count - 1 - i
+            let band_idx = if cat_rev { i } else { cat_count - 1 - i }
             let by = py + band_idx.to_double() * band2 + band2 / 2.0
-            let len = if max_v > 0.0 { v / max_v * pw } else { 0.0 }
+            let x_v = value_axis_x(v, max_v, px, pw, val_rev)
+            let lbl_x = if val_rev {
+              x_v - fw * 0.008
+            } else {
+              x_v + fw * 0.008
+            }
             let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
-            points.push((px + len + fw * 0.008, by, v, cat_name))
+            points.push((lbl_x, by, v, cat_name))
           }
         } else {
-          // Vertical: label above column.
+          // Vertical: label at the value (far) end of the column — above
+          // the column for minMax, below for maxMin.
           let band2 = pw / cat_count.to_double()
           for i, v in values {
             if i >= cat_count {
               break
             }
-            let hgt = if max_v > 0.0 { v / max_v * ph } else { 0.0 }
-            let bx = px + i.to_double() * band2 + band2 / 2.0
-            let by = py + ph - hgt
+            let cat_pos = category_index(i, cat_count, cat_rev)
+            let bx = px + cat_pos.to_double() * band2 + band2 / 2.0
+            let by = value_axis_y(v, max_v, py, ph, val_rev)
             let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
             points.push((bx, by, v, cat_name))
           }

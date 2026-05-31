@@ -45,6 +45,9 @@ test "upDownBars render up=white / down=black rects per category" {
     50.0,
     40.0,
     ColorResolveContext::empty(),
+    3,
+    false,
+    false,
   )
   let sb = StringBuilder::new()
   for nd in nodes {
@@ -78,6 +81,9 @@ test "no upDownBars element → no bars" {
     50.0,
     40.0,
     ColorResolveContext::empty(),
+    1,
+    false,
+    false,
   )
   assert_eq(nodes.length(), 0)
 }
@@ -95,6 +101,9 @@ test "upDownBars need at least two series" {
     50.0,
     40.0,
     ColorResolveContext::empty(),
+    1,
+    false,
+    false,
   )
   assert_eq(nodes.length(), 0)
 }

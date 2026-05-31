@@ -3,6 +3,16 @@
 // Draws a regular polygon per series on a circular grid with radial
 // axes from the centre. The number of spokes equals the category count.
 // Each series fills with a semi-transparent accent colour.
+//
+// §21.2.2.170 CT_Scaling / orientation — value-axis maxMin reversal is
+// DELIBERATELY SCOPED OUT for the radar chart.  The radial value axis
+// maps value→radius (0 at the centre, max at the outer ring); a maxMin
+// radial axis would place the MAX at the centre and MIN at the rim, an
+// inversion of the polar mapping that has no rectangular analogue and
+// is essentially never used in practice.  The renderer also does not
+// receive `ChartAxesInfo` (radar auto-scales via `nice_axis_max`), so
+// there is no orientation to read here.  The cartesian chart types
+// (bar/column, line, area, scatter, bubble) cover the maxMin case.
 // =============================================================================
 
 ///|

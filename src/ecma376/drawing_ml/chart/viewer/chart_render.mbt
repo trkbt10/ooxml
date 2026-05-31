@@ -666,10 +666,20 @@ fn render_trendline(
   step : Double,
   color : String,
   stroke_width : Double,
+  val_rev? : Bool = false,
+  cat_rev? : Bool = false,
 ) -> Array[@xml.Node] {
   let n = values.length()
   if n < 2 || max_v <= 0.0 {
     return []
+  }
+  // §21.2.2.170 — category index → x honouring catAx maxMin.
+  let cat_px = fn(i : Double) -> Double {
+    // `i` is a (possibly fractional) 0-based category coordinate; when
+    // the category axis is reversed the coordinate is mirrored about
+    // the (n−1) span so the trendline tracks the reversed data points.
+    let coord = if cat_rev { (n - 1).to_double() - i } else { i }
+    px + coord * step
   }
   let (ttype, order, period) = read_trendline_type(tl_elem)
   let dash = format_double(stroke_width * 3.0) +
@@ -688,8 +698,8 @@ fn render_trendline(
         j = j + 1
       }
       let avg = sum / period.to_double()
-      let x = px + i.to_double() * step
-      let y = if max_v > 0.0 { py + ph - avg / max_v * ph } else { py + ph }
+      let x = cat_px(i.to_double())
+      let y = value_axis_y(avg, max_v, py, ph, val_rev)
       if !first {
         pts.write_string(" ")
       }
@@ -858,8 +868,8 @@ fn render_trendline(
     let t = pi.to_double() / num_pts.to_double()
     let coord = coord_start + t * coord_span
     let y_val = eval(coord + 1.0)
-    let x = px + coord * step
-    let y = py + ph - y_val / max_v * ph
+    let x = cat_px(coord)
+    let y = value_axis_y(y_val, max_v, py, ph, val_rev)
     if !first {
       pts.write_string(" ")
     }
@@ -1070,11 +1080,16 @@ fn render_err_bars(
   ph : Double,
   color : String,
   stroke_width : Double,
+  reversed? : Bool = false,
 ) -> Array[@xml.Node] {
   let nodes : Array[@xml.Node] = []
   if max_v <= 0.0 {
     return nodes
   }
+  // §21.2.2.170 — the plus (value-increasing) error extends UP in
+  // pixels for a minMax value axis and DOWN for a maxMin one.  `up_dy`
+  // is the signed pixel delta for the plus side; `dn_dy` for the minus.
+  let (up_dy, dn_dy) = if reversed { (1.0, -1.0) } else { (-1.0, 1.0) }
   let cap_w = stroke_width * 3.0
   for i, pt in points {
     let (x, y) = pt
@@ -1120,9 +1135,9 @@ fn render_err_bars(
           @markup.svg_ns,
           [
             @markup.attr("x1", format_double(x)),
-            @markup.attr("y1", format_double(y - err_px_plus)),
+            @markup.attr("y1", format_double(y + up_dy * err_px_plus)),
             @markup.attr("x2", format_double(x)),
-            @markup.attr("y2", format_double(y + err_px_minus)),
+            @markup.attr("y2", format_double(y + dn_dy * err_px_minus)),
             @markup.attr("stroke", color),
             @markup.attr("stroke-width", format_double(stroke_width)),
           ],
@@ -1137,9 +1152,9 @@ fn render_err_bars(
             @markup.svg_ns,
             [
               @markup.attr("x1", format_double(x - cap_w)),
-              @markup.attr("y1", format_double(y - err_px)),
+              @markup.attr("y1", format_double(y + up_dy * err_px)),
               @markup.attr("x2", format_double(x + cap_w)),
-              @markup.attr("y2", format_double(y - err_px)),
+              @markup.attr("y2", format_double(y + up_dy * err_px)),
               @markup.attr("stroke", color),
               @markup.attr("stroke-width", format_double(stroke_width)),
             ],
@@ -1153,9 +1168,9 @@ fn render_err_bars(
             @markup.svg_ns,
             [
               @markup.attr("x1", format_double(x - cap_w)),
-              @markup.attr("y1", format_double(y + err_px)),
+              @markup.attr("y1", format_double(y + dn_dy * err_px)),
               @markup.attr("x2", format_double(x + cap_w)),
-              @markup.attr("y2", format_double(y + err_px)),
+              @markup.attr("y2", format_double(y + dn_dy * err_px)),
               @markup.attr("stroke", color),
               @markup.attr("stroke-width", format_double(stroke_width)),
             ],
@@ -3569,6 +3584,65 @@ fn ChartAxesInfo::val_orientation(self : ChartAxesInfo) -> String {
     }
   }
   "minMax"
+}
+
+///|
+/// §21.2.2.170 CT_Scaling — true when the value axis runs high→low
+/// (`<c:orientation val="maxMin"/>`).  A reversed value axis puts the
+/// MAX at the bottom (vertical) / left (horizontal) and the MIN at the
+/// top / right.  Default (`minMax` or absent) returns false.
+fn ChartAxesInfo::val_reversed(self : ChartAxesInfo) -> Bool {
+  self.val_orientation() == "maxMin"
+}
+
+///|
+/// §21.2.2.170 — true when the value axis positioned at the bottom or
+/// top (`axPos="b"`/`"t"`) runs maxMin.  A scatter / bubble chart has
+/// TWO value axes; this isolates the HORIZONTAL (X) value axis so its
+/// reversal is independent of the vertical one.  Falls back to the
+/// first value axis when none carries a recognisable axPos.
+fn ChartAxesInfo::val_x_reversed(self : ChartAxesInfo) -> Bool {
+  for ax in self.val_axes {
+    if ax.ax_pos == "b" || ax.ax_pos == "t" {
+      return ax.orientation == "maxMin"
+    }
+  }
+  self.val_reversed()
+}
+
+///|
+/// §21.2.2.170 — true when the value axis positioned at the left or
+/// right (`axPos="l"`/`"r"`) runs maxMin — the VERTICAL (Y) value axis
+/// of a scatter / bubble chart.  Falls back to the first value axis.
+fn ChartAxesInfo::val_y_reversed(self : ChartAxesInfo) -> Bool {
+  for ax in self.val_axes {
+    if ax.ax_pos == "l" || ax.ax_pos == "r" {
+      return ax.orientation == "maxMin"
+    }
+  }
+  self.val_reversed()
+}
+
+///|
+/// §21.2.2.170 — return the first category axis's orientation
+/// ("minMax" default or "maxMin").  Read-only companion of
+/// `val_orientation`.
+fn ChartAxesInfo::cat_orientation(self : ChartAxesInfo) -> String {
+  for ax in self.cat_axes {
+    if ax.orientation != "minMax" {
+      return ax.orientation
+    }
+  }
+  "minMax"
+}
+
+///|
+/// §21.2.2.170 CT_Scaling — true when the category axis runs in
+/// reverse (`<c:orientation val="maxMin"/>`), i.e. the last category
+/// is plotted at the origin end and the first at the far end.  Default
+/// returns false.
+fn ChartAxesInfo::cat_reversed(self : ChartAxesInfo) -> Bool {
+  self.cat_orientation() == "maxMin"
 }
 
 ///|

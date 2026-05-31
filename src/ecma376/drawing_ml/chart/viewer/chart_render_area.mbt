@@ -53,6 +53,9 @@ fn render_area_chart(
   }
   let (px, py, pw, ph) = chart_plot_inset(w, h, fw, fh, axes=Some(axes))
   let max_v = effective_axis_max(data_max, axes)
+  // §21.2.2.170 CT_Scaling / orientation — maxMin reverses the axis.
+  let val_rev = axes.val_reversed()
+  let cat_rev = axes.cat_reversed()
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
   if !axes.val_deleted() {
@@ -70,6 +73,7 @@ fn render_area_chart(
         num_fmt=axes.val_num_fmt(),
         tick_lbl_pos=axes.val_tick_lbl_pos(),
         log_base=axes.val_log_base(),
+        reversed=val_rev,
       ) {
       nodes.push(tick)
     }
@@ -95,6 +99,16 @@ fn render_area_chart(
     }
   }
   let step = if n > 1 { pw / (n - 1).to_double() } else { 0.0 }
+  // §21.2.2.170 — single source of truth for area's category→x and
+  // value→y mapping under axis orientation flips.  The area baseline is
+  // the value-0 line: bottom (py+ph) for minMax, top (py) for maxMin.
+  let cat_x = fn(i : Int) -> Double {
+    px + category_index(i, n, cat_rev).to_double() * step
+  }
+  let val_y = fn(v : Double) -> Double {
+    value_axis_y(v, max_v, py, ph, val_rev)
+  }
+  let baseline_y = value_axis_y(0.0, max_v, py, ph, val_rev)
   // §21.2.2.78 grouping — draw back-to-front so the first series
   // (index 0) is visually on top.
   let mut si = all_series.length() - 1
@@ -102,24 +116,24 @@ fn render_area_chart(
     let (_, values) = all_series[si]
     let series_color = resolve_series_color(ser_elems[si], si, ctx, defs)
     let buf = StringBuilder::new()
-    // Start at the baseline at x=0.
-    buf.write_string(format_double(px))
+    // Start at the baseline under the first plotted category.
+    buf.write_string(format_double(cat_x(0)))
     buf.write_string(",")
-    buf.write_string(format_double(py + ph))
+    buf.write_string(format_double(baseline_y))
     for i, v in values {
-      let x = px + i.to_double() * step
-      let y = if max_v > 0.0 { py + ph - v / max_v * ph } else { py + ph }
+      let x = cat_x(i)
+      let y = val_y(v)
       buf.write_string(" ")
       buf.write_string(format_double(x))
       buf.write_string(",")
       buf.write_string(format_double(y))
     }
-    // Close back to the baseline at x=last.
-    let last_x = px + (values.length() - 1).to_double() * step
+    // Close back to the baseline under the last plotted category.
+    let last_x = cat_x(values.length() - 1)
     buf.write_string(" ")
     buf.write_string(format_double(last_x))
     buf.write_string(",")
-    buf.write_string(format_double(py + ph))
+    buf.write_string(format_double(baseline_y))
     nodes.push(
       @markup.elem_ns(
         "polygon",
@@ -148,7 +162,7 @@ fn render_area_chart(
     if i >= n {
       break
     }
-    let bx = px + i.to_double() * step
+    let bx = cat_x(i)
     let by = py + ph + fh * 0.018
     nodes.push(
       chart_text(
@@ -177,10 +191,8 @@ fn render_area_chart(
         let total = sum_positive(values)
         let points : Array[(Double, Double, Double, String)] = []
         for i, v in values {
-          let x = px + i.to_double() * step
-          let y = if max_v > 0.0 { py + ph - v / max_v * ph } else { py + ph }
           let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
-          points.push((x, y, v, cat_name))
+          points.push((cat_x(i), val_y(v), v, cat_name))
         }
         for
           nd in render_data_labels(

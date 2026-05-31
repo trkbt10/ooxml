@@ -23,6 +23,9 @@ fn render_up_down_bars(
   step : Double,
   max_v : Double,
   ctx : ColorResolveContext,
+  cat_count : Int,
+  val_rev : Bool,
+  cat_rev : Bool,
 ) -> Array[@xml.Node] {
   let udb = match first_child_named(elem, "upDownBars") {
     Some(e) => e
@@ -81,9 +84,11 @@ fn render_up_down_bars(
   for i = 0; i < n; i = i + 1 {
     let first = first_vals[i]
     let last = last_vals[i]
-    let cx = px + i.to_double() * step
-    let y_first = py + ph - first / max_v * ph
-    let y_last = py + ph - last / max_v * ph
+    // §21.2.2.170 — honour catAx/valAx orientation flips so the bars
+    // sit under the (reversed) line markers.
+    let cx = px + category_index(i, cat_count, cat_rev).to_double() * step
+    let y_first = value_axis_y(first, max_v, py, ph, val_rev)
+    let y_last = value_axis_y(last, max_v, py, ph, val_rev)
     let top = if y_first < y_last { y_first } else { y_last }
     let bot = if y_first < y_last { y_last } else { y_first }
     let height = bot - top
@@ -158,6 +163,9 @@ fn render_line_chart(
   }
   let (px, py, pw, ph) = chart_plot_inset(w, h, fw, fh, axes=Some(axes))
   let max_v = effective_axis_max(data_max, axes)
+  // §21.2.2.170 CT_Scaling / orientation — maxMin reverses the axis.
+  let val_rev = axes.val_reversed()
+  let cat_rev = axes.cat_reversed()
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
   if !axes.val_deleted() {
@@ -175,6 +183,7 @@ fn render_line_chart(
         num_fmt=axes.val_num_fmt(),
         tick_lbl_pos=axes.val_tick_lbl_pos(),
         log_base=axes.val_log_base(),
+        reversed=val_rev,
       ) {
       nodes.push(n2)
     }
@@ -200,12 +209,25 @@ fn render_line_chart(
     }
   }
   let step = if n > 1 { pw / (n - 1).to_double() } else { 0.0 }
+  // §21.2.2.170 — single source of truth for the line chart's
+  // category→x and value→y pixel mapping, both honouring the axis
+  // orientation flips.  catAx maxMin reverses the category index so
+  // category 0 plots at the right; valAx maxMin flips the value axis.
+  let cat_x = fn(i : Int) -> Double {
+    px + category_index(i, n, cat_rev).to_double() * step
+  }
+  let val_y = fn(v : Double) -> Double {
+    value_axis_y(v, max_v, py, ph, val_rev)
+  }
   // §21.2.2.218 upDownBars — when present (and ≥2 series), draw a bar
   // at each category spanning the first series' value to the last
   // series' value, coloured "up" (default white) when the last value
   // exceeds the first and "down" (default black) otherwise.  Painted
   // BEFORE the series polylines so the lines sit on top.
-  for nd in render_up_down_bars(elem, all_series, px, py, ph, step, max_v, ctx) {
+  for
+    nd in render_up_down_bars(
+      elem, all_series, px, py, ph, step, max_v, ctx, n, val_rev, cat_rev,
+    ) {
     nodes.push(nd)
   }
   for si, s in all_series {
@@ -230,9 +252,7 @@ fn render_line_chart(
     }
     let pts : Array[(Double, Double)] = []
     for i, v in values {
-      let x = px + i.to_double() * step
-      let y = if max_v > 0.0 { py + ph - v / max_v * ph } else { py + ph }
-      pts.push((x, y))
+      pts.push((cat_x(i), val_y(v)))
     }
     if smooth && pts.length() >= 2 {
       // §21.2.2.220 — render the series as a smooth Catmull-Rom curve
@@ -282,9 +302,9 @@ fn render_line_chart(
     let default_r = h * 0.008
     let (marker_sym, marker_r) = read_marker_config(ser_elems[si], default_r)
     for i, v in values {
-      let x = px + i.to_double() * step
-      let y = if max_v > 0.0 { py + ph - v / max_v * ph } else { py + ph }
-      nodes.push(render_marker(x, y, marker_r, marker_sym, series_color))
+      nodes.push(
+        render_marker(cat_x(i), val_y(v), marker_r, marker_sym, series_color),
+      )
     }
     // §21.2.2.211 trendline — linear regression overlay.
     match read_trendline(ser_elems[si]) {
@@ -301,6 +321,8 @@ fn render_line_chart(
             step,
             series_color,
             h * 0.003,
+            val_rev~,
+            cat_rev~,
           ) {
           nodes.push(tn)
         }
@@ -311,12 +333,18 @@ fn render_line_chart(
       Some(eb_cfg) => {
         let pts : Array[(Double, Double)] = []
         for i, v in values {
-          let x = px + i.to_double() * step
-          let y = if max_v > 0.0 { py + ph - v / max_v * ph } else { py + ph }
-          pts.push((x, y))
+          pts.push((cat_x(i), val_y(v)))
         }
         for
-          en in render_err_bars(eb_cfg, pts, max_v, ph, series_color, h * 0.002) {
+          en in render_err_bars(
+            eb_cfg,
+            pts,
+            max_v,
+            ph,
+            series_color,
+            h * 0.002,
+            reversed=val_rev,
+          ) {
           nodes.push(en)
         }
       }
@@ -328,7 +356,9 @@ fn render_line_chart(
       if i >= n {
         break
       }
-      let bx = px + i.to_double() * step
+      // §21.2.2.170 — category labels track the (possibly reversed)
+      // category position so labels sit under their data points.
+      let bx = cat_x(i)
       let by = py + ph + fh * 0.018
       nodes.push(
         chart_text(
@@ -358,10 +388,8 @@ fn render_line_chart(
         let total = sum_positive(values)
         let points : Array[(Double, Double, Double, String)] = []
         for i, v in values {
-          let x = px + i.to_double() * step
-          let y = if max_v > 0.0 { py + ph - v / max_v * ph } else { py + ph }
           let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
-          points.push((x, y, v, cat_name))
+          points.push((cat_x(i), val_y(v), v, cat_name))
         }
         for
           nd in render_data_labels(

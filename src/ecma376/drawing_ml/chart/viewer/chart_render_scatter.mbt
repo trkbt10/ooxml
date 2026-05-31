@@ -39,6 +39,11 @@ fn render_scatter_chart(
   // §21.2.2.170 — axis origin defaults to 0 for scatter/bubble.
   let min_x = effective_axis_min(axes)
   let min_y = effective_axis_min(axes)
+  // §21.2.2.170 CT_Scaling / orientation — the scatter chart has two
+  // INDEPENDENT value axes; resolve the horizontal (X) and vertical (Y)
+  // reversal flags separately by axPos.
+  let val_x_rev = axes.val_x_reversed()
+  let val_y_rev = axes.val_y_reversed()
   let series_color = resolve_series_color(ser, 0, ctx, defs)
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(chart_style)))
@@ -57,6 +62,7 @@ fn render_scatter_chart(
         num_fmt=axes.val_num_fmt(),
         tick_lbl_pos=axes.val_tick_lbl_pos(),
         log_base=axes.val_log_base(),
+        reversed=val_y_rev,
       ) {
       nodes.push(tick)
     }
@@ -77,15 +83,21 @@ fn render_scatter_chart(
         fh,
         axes.val_major(),
         style=Some(chart_style),
+        reversed=val_x_rev,
       ) {
       nodes.push(tick)
     }
   }
   let span_x = if max_x > min_x { max_x - min_x } else { 1.0 }
   let span_y = if max_y > min_y { max_y - min_y } else { 1.0 }
+  // §21.2.2.170 — map a data (x, y) to pixels, flipping each axis's
+  // fraction independently when its orientation is maxMin so markers
+  // and the per-axis ticks reverse together.
   let to_xy = fn(xi : Double, yi : Double) -> (Double, Double) {
-    let x = px + (xi - min_x) / span_x * pw
-    let y = py + ph - (yi - min_y) / span_y * ph
+    let fx = span_axis_fraction(xi, min_x, span_x, val_x_rev)
+    let fy = span_axis_fraction(yi, min_y, span_y, val_y_rev)
+    let x = px + fx * pw
+    let y = py + ph - fy * ph
     (x, y)
   }
   let draw_line = style == "lineMarker" ||

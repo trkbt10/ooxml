@@ -34,6 +34,9 @@ fn render_bubble_chart(
   // §21.2.2.170 — axis origin defaults to 0 for scatter/bubble.
   let min_x = effective_axis_min(axes)
   let min_y = effective_axis_min(axes)
+  // §21.2.2.170 CT_Scaling / orientation — two INDEPENDENT value axes.
+  let val_x_rev = axes.val_x_reversed()
+  let val_y_rev = axes.val_y_reversed()
   let series_color = resolve_series_color(ser, 0, ctx, defs)
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
@@ -52,6 +55,7 @@ fn render_bubble_chart(
         num_fmt=axes.val_num_fmt(),
         tick_lbl_pos=axes.val_tick_lbl_pos(),
         log_base=axes.val_log_base(),
+        reversed=val_y_rev,
       ) {
       nodes.push(tick)
     }
@@ -67,6 +71,7 @@ fn render_bubble_chart(
         fh,
         axes.val_major(),
         style=Some(style),
+        reversed=val_x_rev,
       ) {
       nodes.push(tick)
     }
@@ -110,8 +115,9 @@ fn render_bubble_chart(
   let max_r = base_r * bubble_scale.to_double() / 100.0
   let mut j = 0
   while j < n {
-    let x = px + (xs[j] - min_x) / span_x * pw
-    let y = py + ph - (ys[j] - min_y) / span_y * ph
+    // §21.2.2.170 — flip each axis's fraction independently under maxMin.
+    let x = px + span_axis_fraction(xs[j], min_x, span_x, val_x_rev) * pw
+    let y = py + ph - span_axis_fraction(ys[j], min_y, span_y, val_y_rev) * ph
     let bval = if j < bs.length() { bs[j] } else { max_bs }
     let ratio = if max_bs > 0.0 { bval / max_bs } else { 1.0 }
     // §21.2.2.181 — area mode uses sqrt; width mode uses linear.

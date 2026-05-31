@@ -52,6 +52,104 @@ fn plot_axes_rect(
 }
 
 ///|
+/// §21.2.2.170 CT_Scaling / orientation — the single source of truth
+/// for mapping a value-axis VALUE to its normalised position fraction
+/// in `[0, 1]` along the axis, where `0` is the origin (axis line) end
+/// and `1` is the far end.
+///
+/// `f0` is the natural (minMax) fraction — `v / max_v` for the common
+/// zero-based value axes, or the logarithmic fraction from
+/// `log_scale_frac`, or `(v - min) / span` for scatter/bubble.  When
+/// `reversed` (orientation="maxMin") the fraction is flipped to
+/// `1 - f0` so a HIGH value lands near the origin end (bottom of a
+/// vertical axis / left of a horizontal one) and a LOW value lands at
+/// the far end.
+///
+/// BOTH the data-point path and the tick/gridline/label path call this
+/// helper with the SAME `reversed` flag, so data and ticks can never
+/// diverge.  When `reversed` is false the result is `f0` unchanged —
+/// the identity — keeping the default (minMax) output byte-identical.
+fn axis_fraction(f0 : Double, reversed : Bool) -> Double {
+  if reversed {
+    1.0 - f0
+  } else {
+    f0
+  }
+}
+
+///|
+/// §21.2.2.170 — value→fraction for the common zero-based value axis.
+/// Returns `v / max_v` (clamped to a defined value when `max_v <= 0`)
+/// then applies the orientation flip via `axis_fraction`.
+fn value_axis_fraction(v : Double, max_v : Double, reversed : Bool) -> Double {
+  let f0 = if max_v > 0.0 { v / max_v } else { 0.0 }
+  axis_fraction(f0, reversed)
+}
+
+///|
+/// §21.2.2.170 — value→fraction for a value axis with an explicit,
+/// possibly non-zero, origin (scatter / bubble).  `span` is
+/// `max - min`; the caller guarantees `span > 0`.
+fn span_axis_fraction(
+  v : Double,
+  min_v : Double,
+  span : Double,
+  reversed : Bool,
+) -> Double {
+  let f0 = (v - min_v) / span
+  axis_fraction(f0, reversed)
+}
+
+///|
+/// §21.2.2.170 — map a value to a VERTICAL pixel y inside the plot
+/// rectangle `[py, py + ph]`.  At fraction 0 (axis-line end) the y is
+/// `py + ph` (bottom); at fraction 1 it is `py` (top).  Routing every
+/// vertical value→pixel mapping through this keeps the column/line/
+/// area data and the y-axis ticks aligned under orientation flips.
+fn value_axis_y(
+  v : Double,
+  max_v : Double,
+  py : Double,
+  ph : Double,
+  reversed : Bool,
+) -> Double {
+  let f = value_axis_fraction(v, max_v, reversed)
+  py + ph - f * ph
+}
+
+///|
+/// §21.2.2.170 — map a value to a HORIZONTAL pixel x inside the plot
+/// rectangle `[px, px + pw]`.  At fraction 0 (axis-line end) the x is
+/// `px` (left); at fraction 1 it is `px + pw` (right).  Used by the
+/// horizontal (barDir="bar") value axis so bars and the x-axis value
+/// ticks flip together.
+fn value_axis_x(
+  v : Double,
+  max_v : Double,
+  px : Double,
+  pw : Double,
+  reversed : Bool,
+) -> Double {
+  let f = value_axis_fraction(v, max_v, reversed)
+  px + f * pw
+}
+
+///|
+/// §21.2.2.170 — reverse a category index when the category axis runs
+/// maxMin.  Given `cat_count` categories and a natural index `i` in
+/// `[0, cat_count)`, returns `cat_count - 1 - i` when `reversed`, else
+/// `i` unchanged.  Used to flip the band position of each category for
+/// bar/column/line charts so the categories and their tick labels
+/// reverse together.
+fn category_index(i : Int, cat_count : Int, reversed : Bool) -> Int {
+  if reversed {
+    cat_count - 1 - i
+  } else {
+    i
+  }
+}
+
+///|
 /// Pick a "nice" tick step that lands on whole-number boundaries and
 /// generates 5..11 tick intervals. §21.2.2.170 axis auto-scaling
 /// prefers (1·10^n, 2·10^n, 5·10^n) step sizes.
@@ -108,6 +206,7 @@ fn y_axis_ticks(
   tick_lbl_pos? : String = "nextTo",
   num_fmt? : String? = None,
   draw_minor_gridlines? : Bool = false,
+  reversed? : Bool = false,
 ) -> Array[@xml.Node] {
   if max_v <= 0.0 {
     return []
@@ -150,10 +249,14 @@ fn y_axis_ticks(
   let minor_step = step / minor_per_major.to_double()
   let mut mv = min_v_for_log
   while mv <= max_v + minor_step * 0.001 {
-    let f = log_scale_frac(mv, min_v_for_log, max_v, log_base)
+    // §21.2.2.170 — flip the fraction (NOT the loop) under maxMin so
+    // the minor ticks land on the SAME pixels the data path computes
+    // via `value_axis_y`, keeping ticks and data aligned.
+    let f = axis_fraction(
+      log_scale_frac(mv, min_v_for_log, max_v, log_base),
+      reversed,
+    )
     let y = py + ph - f * ph
-    // Note: orientation="maxMin" reversal is handled by the caller
-    // flipping the y-coordinate; ticks always proceed from min to max.
     nodes.push(
       axis_tick_h_line(
         px - minor_half,
@@ -186,7 +289,10 @@ fn y_axis_ticks(
   }
   let mut tick_v = min_v_for_log
   while tick_v <= max_v + step * 0.001 {
-    let f = log_scale_frac(tick_v, min_v_for_log, max_v, log_base)
+    let f = axis_fraction(
+      log_scale_frac(tick_v, min_v_for_log, max_v, log_base),
+      reversed,
+    )
     let y = py + ph - f * ph
     if tick_v > min_v_for_log && draw_gridlines {
       nodes.push(
@@ -305,6 +411,7 @@ fn x_axis_ticks(
   style? : ChartStyleDefaults? = None,
   tick_lbl_pos? : String = "nextTo",
   num_fmt? : String? = None,
+  reversed? : Bool = false,
 ) -> Array[@xml.Node] {
   if max_v <= 0.0 {
     return []
@@ -332,7 +439,9 @@ fn x_axis_ticks(
   let minor_step = step / minor_per_major.to_double()
   let mut mv = 0.0
   while mv <= max_v + minor_step * 0.001 {
-    let f = mv / max_v
+    // §21.2.2.170 — flip the fraction under maxMin so ticks track the
+    // data drawn via `value_axis_x`.
+    let f = axis_fraction(mv / max_v, reversed)
     let x = px + f * pw
     nodes.push(
       axis_tick_v_line(
@@ -347,7 +456,7 @@ fn x_axis_ticks(
   }
   let mut tick_v = 0.0
   while tick_v <= max_v + step * 0.001 {
-    let f = tick_v / max_v
+    let f = axis_fraction(tick_v / max_v, reversed)
     let x = px + f * pw
     if tick_v > 0.0 && draw_gridlines {
       nodes.push(
