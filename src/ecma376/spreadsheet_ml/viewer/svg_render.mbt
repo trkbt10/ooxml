@@ -556,17 +556,86 @@ pub fn render_svg(
                     { ..style, font: { ..style.font, color: Some(rgb) } }
                 }
             }
-            for
-              n in render_cell_text_offset(
-                id_prefix,
-                cell_ref,
-                cl,
-                text,
-                text_style,
-                icon_width,
-                cell_t~,
-              ) {
-              cell_text.push(n)
+            // §18.4.7 / §18.4.12 — rich-text runs: a string cell may
+            // carry several runs each with its own `<rPr>` font.  When
+            // the cell is genuinely multi-styled and the layout is the
+            // SIMPLE single-line case, render one `<tspan>` per run so
+            // each run keeps its own weight / style / colour / size /
+            // family.  Every other cell (plain / numeric / wrapped /
+            // rotated / shrunk / CF-overlaid / numFmt-coloured / icon-
+            // offset) falls through to the unchanged single-style path
+            // below, so its output is byte-identical to before.
+            let run_base = cell_run_base_font(
+              cell_el, options, styles, theme_map,
+            )
+            let styled_runs = cell_styled_runs(
+              cell_el, shared_strings, run_base,
+            )
+            // Gate (a): genuinely multi-styled — ≥2 runs, OR a single
+            // run whose resolved font differs from the cell base font.
+            let is_multi_styled = styled_runs.length() >= 2 ||
+              (
+                styled_runs.length() == 1 &&
+                not(resolved_font_eq(styled_runs[0].1, run_base))
+              )
+            // Gate (b): the formatted display text equals the plain
+            // concatenation of the runs' text — i.e. no numFmt TEXT
+            // section (`@`, `"lit"@`, …) reshaped the string.  When a
+            // format section injected literals the per-run split would
+            // not reproduce them, so we fall through.
+            let runs_concat = {
+              let b = StringBuilder::new()
+              for r in styled_runs {
+                b.write_string(r.0)
+              }
+              b.to_string()
+            }
+            // Gate (c): simple layout only — no wrap / rotation / fill
+            // directive / shrink-to-fit / CF-icon indent.
+            // Gate (d): no cell-level font override the per-run path
+            // would silently drop — no CF dxf font change
+            // (`style.font` == pre-CF `base_style.font`) and no numFmt
+            // `[Color]` override (`text_style.font.color` unchanged).
+            let no_cf_font = resolved_font_eq(style.font, base_style.font)
+            let no_numfmt_color = text_style.font.color == style.font.color
+            let use_rich = is_multi_styled &&
+              text == runs_concat &&
+              not(text_style.alignment.wrap_text) &&
+              text_style.alignment.text_rotation == 0 &&
+              not(text_style.alignment.shrink_to_fit) &&
+              icon_width == 0.0 &&
+              split_fill_directive(text) is None &&
+              no_cf_font &&
+              no_numfmt_color
+            if use_rich {
+              // The per-run `<tspan>` deltas are measured against
+              // `run_base`, so the `<text>` element must carry that same
+              // base font.  Position / alignment come from `text_style`.
+              let runs_style = { ..text_style, font: run_base }
+              for
+                n in render_cell_text_runs(
+                  id_prefix,
+                  cell_ref,
+                  cl,
+                  styled_runs,
+                  runs_style,
+                  cell_t~,
+                ) {
+                cell_text.push(n)
+              }
+            } else {
+              for
+                n in render_cell_text_offset(
+                  id_prefix,
+                  cell_ref,
+                  cl,
+                  text,
+                  text_style,
+                  icon_width,
+                  cell_t~,
+                ) {
+                cell_text.push(n)
+              }
             }
           }
         }
@@ -4032,6 +4101,131 @@ fn parse_inline_font(rpr : @xml.Element, base : ResolvedFont) -> ResolvedFont {
   { family, size, bold, italic, underline, strikethrough, color }
 }
 
+///|
+/// §18.4.7 / §18.4.12 — structural equality on `ResolvedFont`.  The
+/// struct carries no `derive(Eq)` (it is a private viewer type), so the
+/// rich-text path compares the seven font fields explicitly to decide
+/// (a) whether a single run actually differs from the cell's base font
+/// and (b) whether a cell-level colour override (CF dxf / numFmt
+/// `[Color]`) is active that the per-run path would otherwise drop.
+fn resolved_font_eq(a : ResolvedFont, b : ResolvedFont) -> Bool {
+  a.family == b.family &&
+  a.size == b.size &&
+  a.bold == b.bold &&
+  a.italic == b.italic &&
+  a.underline == b.underline &&
+  a.strikethrough == b.strikethrough &&
+  a.color == b.color
+}
+
+///|
+/// §18.4.7 / §18.4.12 — the per-run base font for a cell's rich text:
+/// the cellXf-resolved font WITHOUT any single run's `<rPr>` layered on
+/// top.  `resolve_cell_style` bakes the FIRST inline run's `<rPr>` into
+/// `style.font`, so it cannot serve as the base for the remaining runs;
+/// we re-resolve the bare cellXf font here so every run (including the
+/// first) layers its own `<rPr>` on a clean base via `parse_inline_font`.
+fn cell_run_base_font(
+  cell : @xml.Element,
+  options : SheetRenderOptions,
+  styles : @domain.CT_Stylesheet?,
+  theme_map : SmlThemeColorMap,
+) -> ResolvedFont {
+  resolve_cell_font(cell, styles, default_cell_style(options).font, theme_map~)
+}
+
+///|
+/// §18.4.7 / §18.4.12 — extract a cell's STYLED rich-text runs as
+/// `(text, resolved font)` pairs, layering each run's `<rPr>` onto
+/// `base` via `parse_inline_font`.  Covers both sources of runs:
+///   - inlineStr: `<c t="inlineStr"><is><r><rPr/><t/></r>…</is>`
+///   - shared string: `<c t="s"><v>idx</v>` → `sst.si_entries[idx]`
+///     (typed `CT_Rst.r : Array[CT_RElt]`), each run's typed
+///     `CT_RPrElt` preserves its source `<rPr>` `@xml.Element` so the
+///     same `parse_inline_font` parser applies to both sources.
+///
+/// Returns an EMPTY array for every cell that is NOT multi-run rich
+/// text — plain `<t>` string items, single bare `<r>` with no `<rPr>`,
+/// numeric / boolean / formula cells, missing shared-string entries —
+/// so the caller falls through to the unchanged single-style path.
+/// A single `<r>` that DOES carry an `<rPr>` is returned (one element)
+/// so the caller can compare its font to the base and decide.
+fn cell_styled_runs(
+  cell : @xml.Element,
+  shared_strings : @domain.CT_Sst?,
+  base : ResolvedFont,
+) -> Array[(String, ResolvedFont)] {
+  let runs : Array[(String, ResolvedFont)] = []
+  match attr_value_local(cell, "t") {
+    Some("inlineStr") =>
+      match first_child_named_local(cell, "is") {
+        None => ()
+        Some(is_el) =>
+          // §18.4.12 — when the inline string is a single bare `<t>`
+          // (no `<r>` runs) there is no per-run formatting; leave the
+          // run list empty so the plain path renders it.
+          for child in is_el.children {
+            match child {
+              @xml.Node::Element(r_el) =>
+                if r_el.name.local_name == "r" {
+                  let mut t = ""
+                  for sub in r_el.children {
+                    match sub {
+                      @xml.Node::Element(e) =>
+                        if e.name.local_name == "t" {
+                          t = t + xml_text_content(e)
+                        }
+                      _ => ()
+                    }
+                  }
+                  let font = match first_child_named_local(r_el, "rPr") {
+                    None => base
+                    Some(rpr) => parse_inline_font(rpr, base)
+                  }
+                  runs.push((t, font))
+                }
+              _ => ()
+            }
+          }
+      }
+    Some("s") => {
+      let idx = match first_child_named_local(cell, "v") {
+        None => return runs
+        Some(v_el) =>
+          try
+            @string.parse_int(xml_text_content(v_el).trim().to_owned())
+          catch {
+            _ => return runs
+          } noraise {
+            n => n
+          }
+      }
+      match shared_strings {
+        None => return runs
+        Some(sst) =>
+          if idx >= 0 && idx < sst.si_entries.length() {
+            let entry = sst.si_entries[idx]
+            // §18.4.8 — a `<si>` whose payload is a single `<t>`
+            // (entry.r empty) has no runs; the typed array is empty so
+            // the plain path is used.
+            for run in entry.r {
+              let font = match run.r_pr {
+                None => base
+                // §18.4.4 — `CT_RPrElt.element` preserves the source
+                // `<rPr>`; reuse the inline parser so shared-string and
+                // inline runs honour identical formatting rules.
+                Some(rpr) => parse_inline_font(rpr.element, base)
+              }
+              runs.push((run.t, font))
+            }
+          }
+      }
+    }
+    _ => ()
+  }
+  runs
+}
+
 // =============================================================================
 // Cell value formatting.
 // @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/cell-renderer.ts:31
@@ -7231,6 +7425,160 @@ fn render_filled_cell_text(
     nodes.push(svg_elem("text", attrs, [svg_text(right)]))
   }
   nodes
+}
+
+///|
+/// §18.4.7 / §18.4.12 — append to `attrs` only the font presentation
+/// attributes of `font` that DIFFER from `base`.  Used on a per-run
+/// `<tspan>`: the parent `<text>` already carries the cell's base font
+/// (via `append_font_attrs`), so a run inherits everything it does not
+/// override and we emit only the deltas — matching Excel, where a run's
+/// `<rPr>` overrides individual properties of the cell font.
+///
+/// `font-weight` / `font-style` are emitted whenever they differ in
+/// either direction (a normal run inside a bold cell must reset to
+/// `font-weight="normal"`), so the override is faithful both ways.
+fn append_tspan_font_attrs(
+  attrs : Array[@xml.Attribute],
+  font : ResolvedFont,
+  base : ResolvedFont,
+) -> Unit {
+  if font.family != base.family {
+    attrs.push(svg_attr("font-family", "'" + font.family + "', sans-serif"))
+  }
+  if font.size != base.size {
+    attrs.push(svg_attr("font-size", format_d(font.size) + "pt"))
+  }
+  if font.bold != base.bold {
+    attrs.push(
+      svg_attr("font-weight", if font.bold { "bold" } else { "normal" }),
+    )
+  }
+  if font.italic != base.italic {
+    attrs.push(
+      svg_attr("font-style", if font.italic { "italic" } else { "normal" }),
+    )
+  }
+  if font.color != base.color {
+    match font.color {
+      Some(c) => attrs.push(svg_attr("fill", c))
+      // The base carries a colour the run clears — restore the SVG
+      // default fill explicitly so the run is not painted with the
+      // inherited colour.
+      None => attrs.push(svg_attr("fill", "currentColor"))
+    }
+  }
+  if font.underline != base.underline ||
+    font.strikethrough != base.strikethrough {
+    let parts : Array[String] = []
+    if font.underline {
+      parts.push("underline")
+    }
+    if font.strikethrough {
+      parts.push("line-through")
+    }
+    if parts.length() > 0 {
+      let mut decoration = ""
+      let mut first = true
+      for p in parts {
+        if first {
+          first = false
+          decoration = p
+        } else {
+          decoration = decoration + " " + p
+        }
+      }
+      attrs.push(svg_attr("text-decoration", decoration))
+    } else {
+      // Run clears a decoration the cell font carries.
+      attrs.push(svg_attr("text-decoration", "none"))
+    }
+  }
+}
+
+///|
+/// §18.4.7 / §18.4.12 — render a multi-run rich-text cell as ONE
+/// `<text>` (positioned exactly like `render_cell_text`'s simple
+/// branch: same tx/ty/anchor/baseline/clip and the same spec-anchored
+/// `data-ooxml-*` attributes) carrying one `<tspan>` per run.  Each
+/// `<tspan>` emits only the font attributes that DIFFER from the cell's
+/// base font, so a `[bold "Total: "][normal "42"]` cell renders the
+/// label bold and the value normal instead of collapsing to one style.
+///
+/// The CALLER is responsible for the gating (string cell, no
+/// wrap / rotation / fill directive / shrink-to-fit / CF-icon offset,
+/// and the formatted text equals the run concatenation); this function
+/// only lays the runs out.
+fn render_cell_text_runs(
+  id_prefix : String,
+  cell_ref : String,
+  layout : CellLayout,
+  runs : Array[(String, ResolvedFont)],
+  style : ResolvedCellStyle,
+  cell_t? : String? = None,
+) -> Array[@xml.Node] {
+  let padding = 2.0
+  let (tx0, anchor) = horizontal_text_pos(
+    layout,
+    style.alignment.horizontal,
+    padding,
+    cell_t~,
+  )
+  // §18.8.1 — indent: identical computation to the simple branch so the
+  // rich-text path lines up with the plain path for the same cell.
+  let tx = if style.alignment.indent != 0 && anchor != "middle" {
+    let unit = cell_text_width("   ", style.font)
+    let offset = unit * style.alignment.indent.to_double()
+    if anchor == "end" {
+      tx0 - offset
+    } else {
+      tx0 + offset
+    }
+  } else {
+    tx0
+  }
+  let (ty, baseline) = vertical_text_pos(
+    layout,
+    style.alignment.vertical,
+    style.font.size,
+    padding,
+  )
+  let (clip_defs, clip_ref) = cell_text_clip(id_prefix, cell_ref, layout)
+  let attrs : Array[@xml.Attribute] = [
+    svg_attr("x", format_d(tx)),
+    svg_attr("y", format_d(ty)),
+    svg_attr("text-anchor", anchor),
+    svg_attr("dominant-baseline", baseline),
+    svg_attr("clip-path", clip_ref),
+  ]
+  let h_align_attr = horizontal_attr_value(style.alignment.horizontal, cell_t)
+  if h_align_attr.length() > 0 {
+    attrs.push(svg_attr("data-ooxml-h-align", h_align_attr))
+  }
+  // The caller gates out text_rotation != 0; indent / reading-order
+  // metadata still mirrors the simple branch for parity.
+  if style.alignment.indent != 0 {
+    attrs.push(
+      svg_attr("data-ooxml-indent", style.alignment.indent.to_string()),
+    )
+  }
+  if style.alignment.reading_order != 0 {
+    attrs.push(
+      svg_attr(
+        "data-ooxml-reading-order",
+        style.alignment.reading_order.to_string(),
+      ),
+    )
+  }
+  append_font_attrs(attrs, style.font)
+  let tspans : Array[@xml.Node] = []
+  for run in runs {
+    let (run_text, run_font) = run
+    let tspan_attrs : Array[@xml.Attribute] = []
+    append_tspan_font_attrs(tspan_attrs, run_font, style.font)
+    tspans.push(svg_elem("tspan", tspan_attrs, [svg_text(run_text)]))
+  }
+  [clip_defs, svg_elem("text", attrs, tspans)]
 }
 
 ///|
