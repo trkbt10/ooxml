@@ -53,7 +53,6 @@ fn render_pie_chart(
     Some(p) => outer * (p.to_double() / 100.0)
     None => 0.0
   }
-  let nodes : Array[@xml.Node] = []
   let dpt_overrides = collect_dpt_colors(ser, ctx, defs, "pie")
   // §21.2.2.64 explosion — per-data-point slice offset (in % of
   // outer radius).  Series-level <c:explosion> applies to all
@@ -63,13 +62,15 @@ fn render_pie_chart(
     None => 0
   }
   let dpt_explosions = collect_dpt_explosions(ser)
-  let mut accum_deg = start_deg.to_double()
+  // Build the slice descriptors (value / colour / explosion%) for the
+  // shared slice emitter, honouring per-point dPt fill + explosion
+  // overrides.  Non-positive values are dropped so the wedge total
+  // stays well-defined.
+  let slices : Array[PieSlice] = []
   for i, v in values {
     if v <= 0.0 {
       continue
     }
-    let frac = v / total
-    let sweep_deg = frac * 360.0
     let color = match dpt_color_for(dpt_overrides, i) {
       Some(c) => c
       None => chart_series_color(ctx, i)
@@ -82,42 +83,17 @@ fn render_pie_chart(
         series_explosion
       }
     }
-    // Slice offset: shift centre outward along the slice's midpoint
-    // direction by `outer * expl_pct / 100`.
-    let (slice_cx, slice_cy) = if expl_pct > 0 {
-      let mid_deg = accum_deg + sweep_deg / 2.0
-      let pi = 3.141592653589793
-      let rad = (mid_deg - 90.0) * pi / 180.0
-      let off = outer * expl_pct.to_double() / 100.0
-      let dx = @math.cos(rad) * off
-      let dy = @math.sin(rad) * off
-      (cx + dx, cy + dy)
-    } else {
-      (cx, cy)
-    }
-    let path_d = pie_slice_path(
-      slice_cx,
-      slice_cy,
-      outer,
-      inner,
-      accum_deg,
-      accum_deg + sweep_deg,
-    )
-    nodes.push(
-      @markup.elem_ns(
-        "path",
-        @markup.svg_ns,
-        [
-          @markup.attr("d", path_d),
-          @markup.attr("fill", color),
-          @markup.attr("stroke", "#ffffff"),
-          @markup.attr("stroke-width", format_double(outer * 0.01)),
-        ],
-        [],
-      ),
-    )
-    accum_deg = accum_deg + sweep_deg
+    slices.push({ value: v, color, explosion_pct: expl_pct })
   }
+  let nodes : Array[@xml.Node] = emit_pie_slices(
+    slices,
+    cx,
+    cy,
+    outer,
+    inner,
+    total,
+    start_deg.to_double(),
+  )
   // §21.2.2.49 dLbls — pie labels at each slice's midpoint.
   let dlbl_config = read_data_labels(elem)
   match dlbl_config {
@@ -233,6 +209,83 @@ fn doughnut_hole_percent(elem : @xml.Element) -> Int {
         }
       }
   }
+}
+
+///|
+/// §21.2.2.141 — one resolved pie slice: its data value, the SVG fill
+/// (a `#rrggbb` solid or a `url(#id)` gradient/pattern reference), and
+/// the §21.2.2.64 explosion offset in percent of the outer radius.
+/// This is the SoT slice descriptor consumed by `emit_pie_slices`,
+/// shared between the plain pie/doughnut renderer and the ofPie
+/// renderer's primary + secondary pies.
+priv struct PieSlice {
+  value : Double
+  color : String
+  explosion_pct : Int
+}
+
+///|
+/// §21.2.2.141 — emit the SVG `<path>` wedge nodes for a sequence of
+/// `PieSlice`s laid out clockwise from `start_deg` around `(cx, cy)`.
+/// Each slice's angular sweep is `value / total * 360°`; an exploded
+/// slice shifts its own centre outward along its midpoint direction by
+/// `outer * explosion_pct / 100` (§21.2.2.64).  `inner > 0` traces a
+/// concentric doughnut cutout.  The white hairline stroke matches the
+/// historical pie renderer (`outer * 0.01`).  This is the single arc
+/// geometry path used by BOTH the plain pie/doughnut renderer and the
+/// two pies of an ofPieChart, so slice maths is never duplicated.
+fn emit_pie_slices(
+  slices : Array[PieSlice],
+  cx : Double,
+  cy : Double,
+  outer : Double,
+  inner : Double,
+  total : Double,
+  start_deg : Double,
+) -> Array[@xml.Node] {
+  let nodes : Array[@xml.Node] = []
+  if total <= 0.0 {
+    return nodes
+  }
+  let pi = 3.141592653589793
+  let mut accum_deg = start_deg
+  for s in slices {
+    if s.value <= 0.0 {
+      continue
+    }
+    let sweep_deg = s.value / total * 360.0
+    let (slice_cx, slice_cy) = if s.explosion_pct > 0 {
+      let mid_deg = accum_deg + sweep_deg / 2.0
+      let rad = (mid_deg - 90.0) * pi / 180.0
+      let off = outer * s.explosion_pct.to_double() / 100.0
+      (cx + @math.cos(rad) * off, cy + @math.sin(rad) * off)
+    } else {
+      (cx, cy)
+    }
+    let path_d = pie_slice_path(
+      slice_cx,
+      slice_cy,
+      outer,
+      inner,
+      accum_deg,
+      accum_deg + sweep_deg,
+    )
+    nodes.push(
+      @markup.elem_ns(
+        "path",
+        @markup.svg_ns,
+        [
+          @markup.attr("d", path_d),
+          @markup.attr("fill", s.color),
+          @markup.attr("stroke", "#ffffff"),
+          @markup.attr("stroke-width", format_double(outer * 0.01)),
+        ],
+        [],
+      ),
+    )
+    accum_deg = accum_deg + sweep_deg
+  }
+  nodes
 }
 
 ///|

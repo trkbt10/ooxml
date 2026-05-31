@@ -3922,8 +3922,12 @@ fn render_chart_payload(
     // §21.2.2.205 surface — no SVG equivalent; render as area chart.
     "surface3DChart" | "surfaceChart" =>
       render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
-    // §21.2.2.126 ofPieChart — pie-of-pie / bar-of-pie; render as pie.
-    "ofPieChart" => render_pie_chart(elem, iw, ih, ctx, defs, hole_percent=None)
+    // §21.2.2.126 ofPieChart — pie-of-pie / bar-of-pie.  Two-tier render:
+    // a primary pie (major points + aggregated "Other") on the left and a
+    // secondary pie/stacked-bar of the "Other" component points on the
+    // right (see chart_render_of_pie.mbt).
+    "ofPieChart" =>
+      render_of_pie_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
     _ => []
   }
 }
