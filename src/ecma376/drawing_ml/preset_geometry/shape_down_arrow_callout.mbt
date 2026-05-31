@@ -14,10 +14,10 @@
 pub fn build_down_arrow_callout(
   width : Int,
   height : Int,
-  adj1~ : Int = 25000,
-  adj2~ : Int = 25000,
-  adj3~ : Int = 25000,
-  adj4~ : Int = 64977,
+  adj1? : Int = 25000,
+  adj2? : Int = 25000,
+  adj3? : Int = 25000,
+  adj4? : Int = 64977,
 ) -> ShapeGeometry {
   // §20.1.10.56 — mirror of upArrowCallout: box on top, arrow down.
   // Same ss-based pin chain; head base sits at h − ss·a3/100000.

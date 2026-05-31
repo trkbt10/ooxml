@@ -2389,7 +2389,7 @@ pub fn CT_StyleLabel::new(
   let name = required_string(element, "name", "CT_StyleLabel/@name")
   let scene3d = optional_child_element(element, "scene3d")
   let sp3d = optional_child_element(element, "sp3d")
-  let tx_pr = decode_optional_child(element, "txPr", (e) => CT_TextProps::new(e))
+  let tx_pr = decode_optional_child(element, "txPr", e => CT_TextProps::new(e))
   let style = optional_child_element(element, "style")
   let ext_lst = optional_child_element(element, "extLst")
   { name, scene3d, sp3d, tx_pr, style, ext_lst, element }

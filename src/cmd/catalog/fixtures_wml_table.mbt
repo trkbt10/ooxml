@@ -18,7 +18,7 @@ fn extras_wml_table(cases : Array[VisualCase]) -> Unit {
 
   // `<w:` attribute factory.
   let wa = fn(local_name : String, value : String) -> @xml.Attribute {
-    { name: { prefix: Some("w"), local_name: local_name, ns: Some(NS_W) }, value }
+    { name: { prefix: Some("w"), local_name, ns: Some(NS_W) }, value }
   }
 
   // `<w:gridCol w:w="..."/>` — column width in twentieths of a point.

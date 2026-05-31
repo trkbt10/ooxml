@@ -12,11 +12,11 @@
 // and ST_ObjectType.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
   "trkbt10/ooxml/ecma376/drawing_ml" @a,
-  "trkbt10/ooxml/ecma376/drawing_ml/vml_excel" @vml_excel,
+  "trkbt10/ooxml/ecma376/drawing_ml/vml_excel",
 }
 
 import {
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

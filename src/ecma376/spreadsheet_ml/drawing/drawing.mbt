@@ -199,9 +199,7 @@ pub fn CT_Shape::new(element : @xml.Element) -> CT_Shape raise SchemaViolation {
   let style = match optional_child(element, "style") {
     None => None
     Some(e) =>
-      Some(
-        wrap_a_violation(() => @a.CT_ShapeStyle::new(e), "CT_Shape/style"),
-      )
+      Some(wrap_a_violation(() => @a.CT_ShapeStyle::new(e), "CT_Shape/style"))
   }
   let tx_body = match optional_child(element, "txBody") {
     None => None
@@ -292,10 +290,7 @@ pub fn CT_Connector::new(
     None => None
     Some(e) =>
       Some(
-        wrap_a_violation(
-          () => @a.CT_ShapeStyle::new(e),
-          "CT_Connector/style",
-        ),
+        wrap_a_violation(() => @a.CT_ShapeStyle::new(e), "CT_Connector/style"),
       )
   }
   {
@@ -384,9 +379,7 @@ pub fn CT_Picture::new(
   let style = match optional_child(element, "style") {
     None => None
     Some(e) =>
-      Some(
-        wrap_a_violation(() => @a.CT_ShapeStyle::new(e), "CT_Picture/style"),
-      )
+      Some(wrap_a_violation(() => @a.CT_ShapeStyle::new(e), "CT_Picture/style"))
   }
   {
     element,

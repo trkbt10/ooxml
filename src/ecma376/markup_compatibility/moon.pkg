@@ -3,9 +3,9 @@
 // ECMA-376 Part 3: Markup Compatibility (mc:Ignorable, mc:AlternateContent).
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }
 
 import {
-  "moonbitlang/core/debug" @debug,
+  "moonbitlang/core/debug",
 } for "wbtest"

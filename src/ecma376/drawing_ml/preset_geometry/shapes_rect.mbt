@@ -21,7 +21,11 @@ pub fn build_rect(width : Int, height : Int) -> ShapeGeometry {
 /// `ss·a/100000`). The implementation uses quadratic Beziers along the
 /// diagonals so the SVG-style ArcTo command stays unused; the
 /// renderer can refine to true arcs later.
-pub fn build_plaque(width : Int, height : Int, adj~ : Int = 16667) -> ShapeGeometry {
+pub fn build_plaque(
+  width : Int,
+  height : Int,
+  adj? : Int = 16667,
+) -> ShapeGeometry {
   let r = percent(min_dim(width, height), pin_int(adj, 0, 50000))
   let commands : Array[PathCommand] = []
   commands.push(MoveTo(r, 0))
@@ -49,7 +53,7 @@ pub fn build_plaque(width : Int, height : Int, adj~ : Int = 16667) -> ShapeGeome
 pub fn build_round_rect(
   width : Int,
   height : Int,
-  adj~ : Int = 16667,
+  adj? : Int = 16667,
 ) -> ShapeGeometry {
   let r = percent(min_dim(width, height), pin_int(adj, 0, 50000))
   let commands : Array[PathCommand] = []
@@ -135,7 +139,7 @@ fn parallelogram_path(width : Int, height : Int, slant : Int) -> ShapeGeometry {
 pub fn build_parallelogram(
   width : Int,
   height : Int,
-  adj~ : Int = 25000,
+  adj? : Int = 25000,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let max_adj = if ss == 0 { 0 } else { fraction(100000, width, ss) }
@@ -149,10 +153,7 @@ pub fn build_parallelogram(
 /// the slant is exactly `w/5` (20 % of the width). It is rendered
 /// separately from `parallelogram` because the latter's slant is an
 /// adjustable fraction of `ss`, not the fixed `w/5` used here.
-pub fn build_flowchart_input_output(
-  width : Int,
-  height : Int,
-) -> ShapeGeometry {
+pub fn build_flowchart_input_output(width : Int, height : Int) -> ShapeGeometry {
   parallelogram_path(width, height, fraction(width, 1, 5))
 }
 
@@ -165,7 +166,7 @@ pub fn build_flowchart_input_output(
 pub fn build_trapezoid(
   width : Int,
   height : Int,
-  adj~ : Int = 25000,
+  adj? : Int = 25000,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let max_adj = if ss == 0 { 0 } else { fraction(50000, width, ss) }
@@ -357,7 +358,11 @@ pub fn build_smiley_face(width : Int, height : Int) -> ShapeGeometry {
 /// follows the spec path `(l,x1) → (x1,x1) → (x1,t) → (x2,t) →
 /// (x2,x1) → (r,x1) → (r,y2) → (x2,y2) → (x2,b) → (x1,b) → (x1,y2) →
 /// (l,y2)` with `x2 = r − x1`, `y2 = b − x1`.
-pub fn build_plus(width : Int, height : Int, adj~ : Int = 25000) -> ShapeGeometry {
+pub fn build_plus(
+  width : Int,
+  height : Int,
+  adj? : Int = 25000,
+) -> ShapeGeometry {
   let x1 = percent(min_dim(width, height), pin_int(adj, 0, 50000))
   let x2 = width - x1
   let y2 = height - x1
@@ -391,7 +396,7 @@ pub fn build_plus(width : Int, height : Int, adj~ : Int = 25000) -> ShapeGeometr
 pub fn build_math_plus(
   width : Int,
   height : Int,
-  adj1~ : Int = 23520,
+  adj1? : Int = 23520,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let a1 = pin_int(adj1, 0, 73490)
@@ -432,7 +437,11 @@ pub fn build_math_plus(
 /// `2·dx1 = w·73490/100000` wide (≈ 73.5 % of the width, centred at
 /// `hc`) — NOT the full width. Both extents are centred via
 /// `x1 = hc − dx1` / `y1 = vc − dy1`.
-pub fn build_minus(width : Int, height : Int, adj~ : Int = 23520) -> ShapeGeometry {
+pub fn build_minus(
+  width : Int,
+  height : Int,
+  adj? : Int = 23520,
+) -> ShapeGeometry {
   let bar_h = percent(height, pin_int(adj, 0, 100000))
   let top_y = (height - bar_h) / 2
   let bottom_y = (height + bar_h) / 2
@@ -507,9 +516,9 @@ pub fn build_multiply(width : Int, height : Int) -> ShapeGeometry {
 pub fn build_divide(
   width : Int,
   height : Int,
-  adj1~ : Int = 23520,
-  adj2~ : Int = 5880,
-  adj3~ : Int = 11760,
+  adj1? : Int = 23520,
+  adj2? : Int = 5880,
+  adj3? : Int = 11760,
 ) -> ShapeGeometry {
   let w = width
   let h = height
@@ -555,8 +564,8 @@ pub fn build_divide(
 pub fn build_equal(
   width : Int,
   height : Int,
-  adj1~ : Int = 23520,
-  adj2~ : Int = 11760,
+  adj1? : Int = 23520,
+  adj2? : Int = 11760,
 ) -> ShapeGeometry {
   let a1 = pin_int(adj1, 0, 36745)
   let m_adj2 = 100000 - 2 * a1

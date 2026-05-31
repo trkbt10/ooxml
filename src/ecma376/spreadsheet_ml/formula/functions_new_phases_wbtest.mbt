@@ -46,9 +46,9 @@ test "§18.17.7 BINOMDIST" {
   let result = evaluate(try! parse_formula("BINOMDIST(6,10,0.5,0)"), ctx)
   // Verify it returns a VNumber (not error/empty)
   match result {
-    VNumber(n) => assert_true!((n - 0.205078125).abs() < 0.1)
-    VError(_) => assert_true!(false)
-    _ => assert_true!(false)
+    VNumber(n) => assert_true((n - 0.205078125).abs() < 0.1)
+    VError(_) => assert_true(false)
+    _ => assert_true(false)
   }
 }
 
@@ -58,14 +58,14 @@ test "§18.17.7 POISSON" {
   // PMF: POISSON(2,5,0) ≈ 0.0842
   let pmf = evaluate(try! parse_formula("POISSON(2,5,0)"), ctx)
   match pmf {
-    VNumber(n) => assert_true!((n - 0.08422433748856833).abs() < 0.01)
-    _ => assert_true!(false)
+    VNumber(n) => assert_true((n - 0.08422433748856833).abs() < 0.01)
+    _ => assert_true(false)
   }
   // PMF for k=0: POISSON(0,1,0) = exp(-1) ≈ 0.3679
   let pmf0 = evaluate(try! parse_formula("POISSON(0,1,0)"), ctx)
   match pmf0 {
-    VNumber(n) => assert_true!((n - 0.36787944117144233).abs() < 0.001)
-    _ => assert_true!(false)
+    VNumber(n) => assert_true((n - 0.36787944117144233).abs() < 0.001)
+    _ => assert_true(false)
   }
 }
 
@@ -198,48 +198,46 @@ test "§18.17.7 TRANSPOSE" {
   let result = evaluate(try! parse_formula("TRANSPOSE({1,2;3,4})"), ctx)
   match result {
     VArray(rows) => {
-      assert_true!(rows.length() == 2)
-      assert_true!(rows[0].length() == 2)
-      assert_true!(rows[0][0] == VNumber(1.0))
-      assert_true!(rows[0][1] == VNumber(3.0))
-      assert_true!(rows[1][0] == VNumber(2.0))
-      assert_true!(rows[1][1] == VNumber(4.0))
+      assert_true(rows.length() == 2)
+      assert_true(rows[0].length() == 2)
+      assert_true(rows[0][0] == VNumber(1.0))
+      assert_true(rows[0][1] == VNumber(3.0))
+      assert_true(rows[1][0] == VNumber(2.0))
+      assert_true(rows[1][1] == VNumber(4.0))
     }
-    _ => assert_true!(false)
+    _ => assert_true(false)
   }
 }
 
 ///|
 test "§18.17.7 FREQUENCY" {
   let ctx = builtin_test_context()
-  let result = evaluate(
-    try! parse_formula("FREQUENCY({1,2,3,4,5},{2,4})"), ctx,
-  )
+  let result = evaluate(try! parse_formula("FREQUENCY({1,2,3,4,5},{2,4})"), ctx)
   match result {
     VArray(rows) => {
-      assert_true!(rows.length() == 3)
-      assert_true!(rows[0][0] == VNumber(2.0))
-      assert_true!(rows[1][0] == VNumber(2.0))
-      assert_true!(rows[2][0] == VNumber(1.0))
+      assert_true(rows.length() == 3)
+      assert_true(rows[0][0] == VNumber(2.0))
+      assert_true(rows[1][0] == VNumber(2.0))
+      assert_true(rows[2][0] == VNumber(1.0))
     }
-    _ => assert_true!(false)
+    _ => assert_true(false)
   }
 }
 
 ///|
 test "§18.17.7 cube functions return #N/A" {
   assert_builtin_eval("CUBEVALUE(\"conn\",\"member\")", VError(NotApplicable))
-  assert_builtin_eval(
-    "CUBEMEMBER(\"conn\",\"member\")", VError(NotApplicable),
-  )
+  assert_builtin_eval("CUBEMEMBER(\"conn\",\"member\")", VError(NotApplicable))
 }
 
 ///|
 test "§18.17.7 HYPERLINK returns display text" {
   assert_builtin_eval(
-    "HYPERLINK(\"http://example.com\",\"Click\")", VString("Click"),
+    "HYPERLINK(\"http://example.com\",\"Click\")",
+    VString("Click"),
   )
   assert_builtin_eval(
-    "HYPERLINK(\"http://example.com\")", VString("http://example.com"),
+    "HYPERLINK(\"http://example.com\")",
+    VString("http://example.com"),
   )
 }

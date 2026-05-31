@@ -350,12 +350,12 @@ pub(all) struct CT_Numbering {
 /// `CT_Numbering` cannot use `derive(Eq, Debug)`. Equality is decided
 /// by the underlying `<w:numbering>` source element — the index maps
 /// are derived state.
-pub impl Eq for CT_Numbering with equal(self, other) {
+pub impl Eq for CT_Numbering with fn equal(self, other) {
   self.element == other.element
 }
 
 ///|
-pub impl @debug.Debug for CT_Numbering with to_repr(self) {
+pub impl @debug.Debug for CT_Numbering with fn to_repr(self) {
   @debug.Debug::to_repr(self.element)
 }
 
@@ -365,9 +365,15 @@ pub impl @debug.Debug for CT_Numbering with to_repr(self) {
 pub fn CT_Numbering::parse(
   element : @xml.Element,
 ) -> CT_Numbering raise SchemaViolation {
-  let abstract_nums : @hashmap.HashMap[Int, CT_AbstractNum] = @hashmap.HashMap([], capacity=0)
+  let abstract_nums : @hashmap.HashMap[Int, CT_AbstractNum] = @hashmap.HashMap(
+    [],
+    capacity=0,
+  )
   let nums : @hashmap.HashMap[Int, CT_Num] = @hashmap.HashMap([], capacity=0)
-  let pic_bullets : @hashmap.HashMap[Int, @xml.Element] = @hashmap.HashMap([], capacity=0)
+  let pic_bullets : @hashmap.HashMap[Int, @xml.Element] = @hashmap.HashMap(
+    [],
+    capacity=0,
+  )
   for child in element.children {
     match child {
       @xml.Element(child_element) => {

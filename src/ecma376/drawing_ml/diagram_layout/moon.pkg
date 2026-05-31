@@ -8,14 +8,14 @@
 // suitable for downstream renderers.
 
 import {
-  "moonbitlang/core/strconv" @strconv,
+  "moonbitlang/core/strconv",
   "trkbt10/ooxml/ecma376/drawing_ml/diagram" @domain,
-  "trkbt10/ooxml/ecma376/drawing_ml/preset_geometry" @preset_geometry,
+  "trkbt10/ooxml/ecma376/drawing_ml/preset_geometry",
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }
 
 import {
-  "moonbitlang/core/debug" @debug,
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

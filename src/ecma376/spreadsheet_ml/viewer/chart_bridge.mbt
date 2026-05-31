@@ -18,8 +18,8 @@ fn paint_ctx_from_sml_theme(
 ) -> @paint.ColorResolveContext {
   let scheme : Map[String, String] = Map([], capacity=0)
   let names = [
-    "lt1", "dk1", "lt2", "dk2", "accent1", "accent2", "accent3", "accent4",
-    "accent5", "accent6", "hlink", "folHlink",
+    "lt1", "dk1", "lt2", "dk2", "accent1", "accent2", "accent3", "accent4", "accent5",
+    "accent6", "hlink", "folHlink",
   ]
   for i, name in names {
     match theme_map.lookup(i) {

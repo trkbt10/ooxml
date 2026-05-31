@@ -12,7 +12,7 @@ fn extras_wml_run(cases : Array[VisualCase]) -> Unit {
   // (`<w:shd>`, `<w:bdr>`).  These cannot be expressed with `w_val`
   // alone because they carry several `w:`-prefixed attributes.
   let w_attr = fn(local_name : String, value : String) -> @xml.Attribute {
-    { name: { prefix: Some("w"), local_name: local_name, ns: Some(NS_W) }, value }
+    { name: { prefix: Some("w"), local_name, ns: Some(NS_W) }, value }
   }
   let w_shd = fn(val : String, color : String, fill : String) -> @xml.Element {
     xe(

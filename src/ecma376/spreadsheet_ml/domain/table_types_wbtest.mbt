@@ -117,7 +117,11 @@ test "CT_Sheets projects its sheet entries as typed children" {
   let s2 = @xml.Node::Element(
     tbl_elem(
       "sheet",
-      [tbl_attr("name", "Two"), tbl_attr("sheetId", "2"), tbl_attr("state", "hidden")],
+      [
+        tbl_attr("name", "Two"),
+        tbl_attr("sheetId", "2"),
+        tbl_attr("state", "hidden"),
+      ],
       [],
     ),
   )
@@ -190,9 +194,7 @@ test "CT_BookView projects activeTab and visibility toggles" {
 
 ///|
 test "CT_Table defaults: headerRowCount=1, totalsRowShown=true" {
-  let t = CT_Table::new(
-    tbl_elem("table", [tbl_attr("displayName", "T")], []),
-  )
+  let t = CT_Table::new(tbl_elem("table", [tbl_attr("displayName", "T")], []))
   inspect(t.header_row_count, content="1")
   inspect(t.totals_row_count, content="0")
   inspect(t.totals_row_shown, content="true")

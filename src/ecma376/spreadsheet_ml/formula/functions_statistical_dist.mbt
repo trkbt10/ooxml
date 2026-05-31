@@ -58,6 +58,7 @@ fn register_builtin_statistical_dist_functions(
   registry.register("LOGEST", Eager(fn_logest))
 }
 
+///|
 fn stat_dist_numbers(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -76,17 +77,19 @@ fn stat_dist_numbers(
   Some(out)
 }
 
-fn fn_normdist(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 4 { return VError(Value) }
+///|
+fn fn_normdist(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 4 {
+    return VError(Value)
+  }
   let first3 : Array[FormulaValue] = [args[0], args[1], args[2]]
   match stat_dist_numbers(first3, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
       let (x, mean, sd) = (ns[0], ns[1], ns[2])
-      if sd <= 0.0 { return VError(Num) }
+      if sd <= 0.0 {
+        return VError(Num)
+      }
       let cumul = match args[3].first_scalar() {
         VBool(b) => b
         VNumber(n) => n != 0.0
@@ -96,54 +99,52 @@ fn fn_normdist(
         VNumber(norm_cdf((x - mean) / sd))
       } else {
         let z = (x - mean) / sd
-        checked_number(
-          @math.exp(-0.5 * z * z) / (sd * (2.0 * trig_pi).sqrt()),
-        )
+        checked_number(@math.exp(-0.5 * z * z) / (sd * (2.0 * trig_pi).sqrt()))
       }
     }
   }
 }
 
-fn fn_norminv(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_norminv(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
       let (p, mean, sd) = (ns[0], ns[1], ns[2])
-      if p <= 0.0 || p >= 1.0 || sd <= 0.0 { return VError(Num) }
+      if p <= 0.0 || p >= 1.0 || sd <= 0.0 {
+        return VError(Num)
+      }
       VNumber(mean + sd * norm_inv(p))
     }
   }
 }
 
-fn fn_normsdist(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_normsdist(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(z) => VNumber(norm_cdf(z))
     other => other
   }
 }
 
-fn fn_normsinv(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_normsinv(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(p) =>
-      if p <= 0.0 || p >= 1.0 { VError(Num) } else { VNumber(norm_inv(p)) }
+      if p <= 0.0 || p >= 1.0 {
+        VError(Num)
+      } else {
+        VNumber(norm_inv(p))
+      }
     other => other
   }
 }
 
-fn fn_betadist(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 3 || args.length() > 5 { return VError(Value) }
+///|
+fn fn_betadist(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() < 3 || args.length() > 5 {
+    return VError(Value)
+  }
   let nums : Array[Double] = []
   for arg in args {
     match coerce_to_number(arg.first_scalar(), ctx.date_system) {
@@ -162,11 +163,11 @@ fn fn_betadist(
   VNumber(beta_regularized((x - a) / (b - a), alpha, beta_p))
 }
 
-fn fn_betainv(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 3 || args.length() > 5 { return VError(Value) }
+///|
+fn fn_betainv(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() < 3 || args.length() > 5 {
+    return VError(Value)
+  }
   let nums : Array[Double] = []
   for arg in args {
     match coerce_to_number(arg.first_scalar(), ctx.date_system) {
@@ -195,11 +196,11 @@ fn fn_betainv(
   VNumber(a + (lo + hi) / 2.0 * (b - a))
 }
 
-fn fn_binomdist(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 4 { return VError(Value) }
+///|
+fn fn_binomdist(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 4 {
+    return VError(Value)
+  }
   let nums : Array[Double] = []
   for i in 0..<3 {
     match coerce_to_number(args[i].first_scalar(), ctx.date_system) {
@@ -215,7 +216,9 @@ fn fn_binomdist(
   let k = nums[0].trunc().to_int()
   let n = nums[1].trunc().to_int()
   let p = nums[2]
-  if k < 0 || n < 0 || k > n || p < 0.0 || p > 1.0 { return VError(Num) }
+  if k < 0 || n < 0 || k > n || p < 0.0 || p > 1.0 {
+    return VError(Num)
+  }
   if cumul {
     VNumber(binom_cdf(k, n, p))
   } else {
@@ -223,6 +226,7 @@ fn fn_binomdist(
   }
 }
 
+///|
 fn fn_negbinomdist(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -233,60 +237,71 @@ fn fn_negbinomdist(
       let f = ns[0].trunc().to_int()
       let s = ns[1].trunc().to_int()
       let p = ns[2]
-      if f < 0 || s < 1 || p <= 0.0 || p >= 1.0 { return VError(Num) }
+      if f < 0 || s < 1 || p <= 0.0 || p >= 1.0 {
+        return VError(Num)
+      }
       let n = f + s - 1
       checked_number(
-        combin_int(n, s - 1) * @math.pow(p, s.to_double()) *
-          @math.pow(1.0 - p, f.to_double()),
+        combin_int(n, s - 1) *
+        @math.pow(p, s.to_double()) *
+        @math.pow(1.0 - p, f.to_double()),
       )
     }
   }
 }
 
-fn fn_chidist(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_chidist(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 2) {
     None => VError(Value)
     Some(ns) => {
-      if ns[0] < 0.0 || ns[1] < 1.0 { return VError(Num) }
+      if ns[0] < 0.0 || ns[1] < 1.0 {
+        return VError(Num)
+      }
       VNumber(1.0 - chi2_cdf(ns[0], ns[1].trunc()))
     }
   }
 }
 
-fn fn_chiinv(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_chiinv(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 2) {
     None => VError(Value)
     Some(ns) => {
       let (p, df) = (ns[0], ns[1].trunc())
-      if p < 0.0 || p > 1.0 || df < 1.0 { return VError(Num) }
+      if p < 0.0 || p > 1.0 || df < 1.0 {
+        return VError(Num)
+      }
       let mut lo = 0.0
       let mut hi = 1000.0
       for _i in 0..<100 {
         let mid = (lo + hi) / 2.0
-        if 1.0 - chi2_cdf(mid, df) > p { lo = mid } else { hi = mid }
+        if 1.0 - chi2_cdf(mid, df) > p {
+          lo = mid
+        } else {
+          hi = mid
+        }
       }
       VNumber((lo + hi) / 2.0)
     }
   }
 }
 
-fn fn_chitest(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 2 { return VError(Value) }
+///|
+fn fn_chitest(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 2 {
+    return VError(Value)
+  }
   let obs = extract_number_array(args[0], ctx.date_system)
   let exp = extract_number_array(args[1], ctx.date_system)
-  if obs.length() != exp.length() || obs.length() == 0 { return VError(NotApplicable) }
+  if obs.length() != exp.length() || obs.length() == 0 {
+    return VError(NotApplicable)
+  }
   let mut chi2 = 0.0
   for i in 0..<obs.length() {
-    if exp[i] == 0.0 { return VError(DivZero) }
+    if exp[i] == 0.0 {
+      return VError(DivZero)
+    }
     let d = obs[i] - exp[i]
     chi2 = chi2 + d * d / exp[i]
   }
@@ -294,10 +309,8 @@ fn fn_chitest(
   VNumber(1.0 - chi2_cdf(chi2, df))
 }
 
-fn fn_confidence(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_confidence(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
@@ -310,10 +323,8 @@ fn fn_confidence(
   }
 }
 
-fn fn_critbinom(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_critbinom(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
@@ -324,7 +335,7 @@ fn fn_critbinom(
         return VError(Num)
       }
       let mut cum = 0.0
-      for k in 0..=n {
+      for k in 0..<=n {
         cum = cum + binom_pmf(k, n, p)
         if cum >= alpha {
           return VNumber(k.to_double())
@@ -335,11 +346,11 @@ fn fn_critbinom(
   }
 }
 
-fn fn_expondist(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 3 { return VError(Value) }
+///|
+fn fn_expondist(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 3 {
+    return VError(Value)
+  }
   let nums : Array[Double] = []
   for i in 0..<2 {
     match coerce_to_number(args[i].first_scalar(), ctx.date_system) {
@@ -353,7 +364,9 @@ fn fn_expondist(
     _ => return VError(Value)
   }
   let (x, lambda) = (nums[0], nums[1])
-  if x < 0.0 || lambda <= 0.0 { return VError(Num) }
+  if x < 0.0 || lambda <= 0.0 {
+    return VError(Num)
+  }
   if cumul {
     VNumber(1.0 - @math.exp(-lambda * x))
   } else {
@@ -361,50 +374,58 @@ fn fn_expondist(
   }
 }
 
-fn fn_fdist(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_fdist(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
-      if ns[0] < 0.0 || ns[1] < 1.0 || ns[2] < 1.0 { return VError(Num) }
+      if ns[0] < 0.0 || ns[1] < 1.0 || ns[2] < 1.0 {
+        return VError(Num)
+      }
       VNumber(1.0 - f_cdf(ns[0], ns[1].trunc(), ns[2].trunc()))
     }
   }
 }
 
-fn fn_finv(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_finv(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
       let (p, df1, df2) = (ns[0], ns[1].trunc(), ns[2].trunc())
-      if p < 0.0 || p > 1.0 || df1 < 1.0 || df2 < 1.0 { return VError(Num) }
+      if p < 0.0 || p > 1.0 || df1 < 1.0 || df2 < 1.0 {
+        return VError(Num)
+      }
       let mut lo = 0.0
       let mut hi = 1000.0
       for _i in 0..<100 {
         let mid = (lo + hi) / 2.0
-        if 1.0 - f_cdf(mid, df1, df2) > p { lo = mid } else { hi = mid }
+        if 1.0 - f_cdf(mid, df1, df2) > p {
+          lo = mid
+        } else {
+          hi = mid
+        }
       }
       VNumber((lo + hi) / 2.0)
     }
   }
 }
 
-fn fn_ftest(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 2 { return VError(Value) }
+///|
+fn fn_ftest(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 2 {
+    return VError(Value)
+  }
   let a1 = extract_number_array(args[0], ctx.date_system)
   let a2 = extract_number_array(args[1], ctx.date_system)
-  if a1.length() < 2 || a2.length() < 2 { return VError(DivZero) }
+  if a1.length() < 2 || a2.length() < 2 {
+    return VError(DivZero)
+  }
   let var1 = sample_variance(a1)
   let var2 = sample_variance(a2)
-  if var1 == 0.0 || var2 == 0.0 { return VError(DivZero) }
+  if var1 == 0.0 || var2 == 0.0 {
+    return VError(DivZero)
+  }
   let f_val = var1 / var2
   let df1 = (a1.length() - 1).to_double()
   let df2 = (a2.length() - 1).to_double()
@@ -416,10 +437,13 @@ fn fn_ftest(
   VNumber(2.0 * p.min(1.0))
 }
 
+///|
 fn sample_variance(arr : Array[Double]) -> Double {
   let n = arr.length().to_double()
   let mut sum = 0.0
-  for v in arr { sum = sum + v }
+  for v in arr {
+    sum = sum + v
+  }
   let mean = sum / n
   let mut ss = 0.0
   for v in arr {
@@ -429,11 +453,11 @@ fn sample_variance(arr : Array[Double]) -> Double {
   ss / (n - 1.0)
 }
 
-fn fn_gammadist(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 4 { return VError(Value) }
+///|
+fn fn_gammadist(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 4 {
+    return VError(Value)
+  }
   let nums : Array[Double] = []
   for i in 0..<3 {
     match coerce_to_number(args[i].first_scalar(), ctx.date_system) {
@@ -447,23 +471,25 @@ fn fn_gammadist(
     _ => return VError(Value)
   }
   let (x, alpha, beta_p) = (nums[0], nums[1], nums[2])
-  if x < 0.0 || alpha <= 0.0 || beta_p <= 0.0 { return VError(Num) }
+  if x < 0.0 || alpha <= 0.0 || beta_p <= 0.0 {
+    return VError(Num)
+  }
   if cumul {
     VNumber(lower_gamma_regularized(alpha, x / beta_p))
   } else {
     checked_number(
       @math.exp(
-        (alpha - 1.0) * @math.ln(x) - x / beta_p - alpha * @math.ln(beta_p) -
-          gamma_ln(alpha),
+        (alpha - 1.0) * @math.ln(x) -
+        x / beta_p -
+        alpha * @math.ln(beta_p) -
+        gamma_ln(alpha),
       ),
     )
   }
 }
 
-fn fn_gammainv(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_gammainv(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
@@ -486,17 +512,20 @@ fn fn_gammainv(
   }
 }
 
-fn fn_gammaln(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_gammaln(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) =>
-      if n <= 0.0 { VError(Num) } else { checked_number(gamma_ln(n)) }
+      if n <= 0.0 {
+        VError(Num)
+      } else {
+        checked_number(gamma_ln(n))
+      }
     other => other
   }
 }
 
+///|
 fn fn_hypgeomdist(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -510,35 +539,40 @@ fn fn_hypgeomdist(
         ns[2].trunc().to_int(),
         ns[3].trunc().to_int(),
       )
-      if s < 0 || n_s < 0 || pop_s < 0 || pop_n < 0 || s > n_s ||
+      if s < 0 ||
+        n_s < 0 ||
+        pop_s < 0 ||
+        pop_n < 0 ||
+        s > n_s ||
         s > pop_s ||
         n_s > pop_n ||
         pop_s > pop_n {
         return VError(Num)
       }
       checked_number(
-        combin_int(pop_s, s) * combin_int(pop_n - pop_s, n_s - s) / combin_int(
-          pop_n, n_s,
-        ),
+        combin_int(pop_s, s) *
+        combin_int(pop_n - pop_s, n_s - s) /
+        combin_int(pop_n, n_s),
       )
     }
   }
 }
 
-fn fn_loginv(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_loginv(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
       let (p, mean, sd) = (ns[0], ns[1], ns[2])
-      if p <= 0.0 || p >= 1.0 || sd <= 0.0 { return VError(Num) }
+      if p <= 0.0 || p >= 1.0 || sd <= 0.0 {
+        return VError(Num)
+      }
       checked_number(@math.exp(mean + sd * norm_inv(p)))
     }
   }
 }
 
+///|
 fn fn_lognormdist(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -547,17 +581,19 @@ fn fn_lognormdist(
     None => VError(Value)
     Some(ns) => {
       let (x, mean, sd) = (ns[0], ns[1], ns[2])
-      if x <= 0.0 || sd <= 0.0 { return VError(Num) }
+      if x <= 0.0 || sd <= 0.0 {
+        return VError(Num)
+      }
       VNumber(norm_cdf((@math.ln(x) - mean) / sd))
     }
   }
 }
 
-fn fn_poisson(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 3 { return VError(Value) }
+///|
+fn fn_poisson(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 3 {
+    return VError(Value)
+  }
   let nums : Array[Double] = []
   for i in 0..<2 {
     match coerce_to_number(args[i].first_scalar(), ctx.date_system) {
@@ -571,7 +607,9 @@ fn fn_poisson(
     _ => return VError(Value)
   }
   let (x, mean) = (nums[0].trunc().to_int(), nums[1])
-  if x < 0 || mean < 0.0 { return VError(Num) }
+  if x < 0 || mean < 0.0 {
+    return VError(Num)
+  }
   if cumul {
     VNumber(poisson_cdf(x, mean))
   } else {
@@ -579,10 +617,8 @@ fn fn_poisson(
   }
 }
 
-fn fn_tdist(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_tdist(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
@@ -596,32 +632,36 @@ fn fn_tdist(
   }
 }
 
-fn fn_tinv(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_tinv(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 2) {
     None => VError(Value)
     Some(ns) => {
       let (p, df) = (ns[0], ns[1].trunc())
-      if p <= 0.0 || p > 1.0 || df < 1.0 { return VError(Num) }
+      if p <= 0.0 || p > 1.0 || df < 1.0 {
+        return VError(Num)
+      }
       let target = 1.0 - p / 2.0
       let mut lo = 0.0
       let mut hi = 1000.0
       for _i in 0..<100 {
         let mid = (lo + hi) / 2.0
-        if t_cdf(mid, df) < target { lo = mid } else { hi = mid }
+        if t_cdf(mid, df) < target {
+          lo = mid
+        } else {
+          hi = mid
+        }
       }
       VNumber((lo + hi) / 2.0)
     }
   }
 }
 
-fn fn_weibull(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 4 { return VError(Value) }
+///|
+fn fn_weibull(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 4 {
+    return VError(Value)
+  }
   let nums : Array[Double] = []
   for i in 0..<3 {
     match coerce_to_number(args[i].first_scalar(), ctx.date_system) {
@@ -635,25 +675,30 @@ fn fn_weibull(
     _ => return VError(Value)
   }
   let (x, alpha, beta_p) = (nums[0], nums[1], nums[2])
-  if x < 0.0 || alpha <= 0.0 || beta_p <= 0.0 { return VError(Num) }
+  if x < 0.0 || alpha <= 0.0 || beta_p <= 0.0 {
+    return VError(Num)
+  }
   if cumul {
     VNumber(1.0 - @math.exp(-@math.pow(x / beta_p, alpha)))
   } else {
     checked_number(
-      alpha / @math.pow(beta_p, alpha) *
-        @math.pow(x, alpha - 1.0) *
-        @math.exp(-@math.pow(x / beta_p, alpha)),
+      alpha /
+      @math.pow(beta_p, alpha) *
+      @math.pow(x, alpha - 1.0) *
+      @math.exp(-@math.pow(x / beta_p, alpha)),
     )
   }
 }
 
-fn fn_ztest(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 2 || args.length() > 3 { return VError(Value) }
+///|
+fn fn_ztest(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() < 2 || args.length() > 3 {
+    return VError(Value)
+  }
   let data = extract_number_array(args[0], ctx.date_system)
-  if data.length() == 0 { return VError(NotApplicable) }
+  if data.length() == 0 {
+    return VError(NotApplicable)
+  }
   let mu = match coerce_to_number(args[1].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     _ => return VError(Value)
@@ -666,18 +711,20 @@ fn fn_ztest(
   } else {
     sample_variance(data).sqrt()
   }
-  if sigma <= 0.0 { return VError(DivZero) }
+  if sigma <= 0.0 {
+    return VError(DivZero)
+  }
   let mut sum = 0.0
-  for v in data { sum = sum + v }
+  for v in data {
+    sum = sum + v
+  }
   let mean = sum / data.length().to_double()
   let z = (mean - mu) / (sigma / data.length().to_double().sqrt())
   VNumber(1.0 - norm_cdf(z))
 }
 
-fn fn_fisher(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_fisher(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(x) =>
       if x <= -1.0 || x >= 1.0 {
@@ -689,10 +736,8 @@ fn fn_fisher(
   }
 }
 
-fn fn_fisherinv(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_fisherinv(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(y) => {
       let e2y = @math.exp(2.0 * y)
@@ -702,6 +747,7 @@ fn fn_fisherinv(
   }
 }
 
+///|
 fn fn_standardize(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -709,29 +755,40 @@ fn fn_standardize(
   match stat_dist_numbers(args, ctx, 3) {
     None => VError(Value)
     Some(ns) => {
-      if ns[2] <= 0.0 { return VError(Num) }
+      if ns[2] <= 0.0 {
+        return VError(Num)
+      }
       VNumber((ns[0] - ns[1]) / ns[2])
     }
   }
 }
 
+///|
 fn fn_percentrank(
   args : Array[FormulaValue],
   ctx : EvalContext,
 ) -> FormulaValue {
-  if args.length() < 2 || args.length() > 3 { return VError(Value) }
+  if args.length() < 2 || args.length() > 3 {
+    return VError(Value)
+  }
   let data = extract_number_array(args[0], ctx.date_system)
   let x = match coerce_to_number(args[1].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     _ => return VError(Value)
   }
-  if data.length() == 0 { return VError(NotApplicable) }
+  if data.length() == 0 {
+    return VError(NotApplicable)
+  }
   let sorted = data.copy()
   sorted.sort_by(fn(a, b) { a.compare(b) })
   let mut below = 0
   let mut equal = 0
   for v in sorted {
-    if v < x { below = below + 1 } else if v == x { equal = equal + 1 }
+    if v < x {
+      below = below + 1
+    } else if v == x {
+      equal = equal + 1
+    }
   }
   if equal == 0 {
     if x < sorted[0] || x > sorted[sorted.length() - 1] {
@@ -739,7 +796,9 @@ fn fn_percentrank(
     }
     let mut lo_idx = 0
     for i in 0..<sorted.length() {
-      if sorted[i] < x { lo_idx = i }
+      if sorted[i] < x {
+        lo_idx = i
+      }
     }
     let lo_val = sorted[lo_idx]
     let hi_val = sorted[lo_idx + 1]
@@ -751,10 +810,8 @@ fn fn_percentrank(
   }
 }
 
-fn fn_kurt(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_kurt(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   let data : Array[Double] = []
   for arg in args {
     for v in extract_number_array(arg, ctx.date_system) {
@@ -762,10 +819,14 @@ fn fn_kurt(
     }
   }
   let n = data.length()
-  if n < 4 { return VError(DivZero) }
+  if n < 4 {
+    return VError(DivZero)
+  }
   let nf = n.to_double()
   let mut sum = 0.0
-  for v in data { sum = sum + v }
+  for v in data {
+    sum = sum + v
+  }
   let mean = sum / nf
   let mut m2 = 0.0
   let mut m4 = 0.0
@@ -775,16 +836,16 @@ fn fn_kurt(
     m4 = m4 + d * d * d * d
   }
   let s2 = m2 / (nf - 1.0)
-  if s2 == 0.0 { return VError(DivZero) }
+  if s2 == 0.0 {
+    return VError(DivZero)
+  }
   let adj = nf * (nf + 1.0) / ((nf - 1.0) * (nf - 2.0) * (nf - 3.0))
   let sub = 3.0 * (nf - 1.0) * (nf - 1.0) / ((nf - 2.0) * (nf - 3.0))
   VNumber(adj * m4 / (s2 * s2) - sub)
 }
 
-fn fn_skew(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_skew(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   let data : Array[Double] = []
   for arg in args {
     for v in extract_number_array(arg, ctx.date_system) {
@@ -792,10 +853,14 @@ fn fn_skew(
     }
   }
   let n = data.length()
-  if n < 3 { return VError(DivZero) }
+  if n < 3 {
+    return VError(DivZero)
+  }
   let nf = n.to_double()
   let mut sum = 0.0
-  for v in data { sum = sum + v }
+  for v in data {
+    sum = sum + v
+  }
   let mean = sum / nf
   let mut m2 = 0.0
   let mut m3 = 0.0
@@ -805,21 +870,25 @@ fn fn_skew(
     m3 = m3 + d * d * d
   }
   let sd = (m2 / (nf - 1.0)).sqrt()
-  if sd == 0.0 { return VError(DivZero) }
+  if sd == 0.0 {
+    return VError(DivZero)
+  }
   VNumber(nf / ((nf - 1.0) * (nf - 2.0)) * m3 / (sd * sd * sd))
 }
 
-fn fn_trimmean(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 2 { return VError(Value) }
+///|
+fn fn_trimmean(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 2 {
+    return VError(Value)
+  }
   let data = extract_number_array(args[0], ctx.date_system)
   let pct = match coerce_to_number(args[1].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     _ => return VError(Value)
   }
-  if pct < 0.0 || pct >= 1.0 || data.length() == 0 { return VError(Num) }
+  if pct < 0.0 || pct >= 1.0 || data.length() == 0 {
+    return VError(Num)
+  }
   let sorted = data.copy()
   sorted.sort_by(fn(a, b) { a.compare(b) })
   let trim = (sorted.length().to_double() * pct / 2.0).floor().to_int()
@@ -829,14 +898,18 @@ fn fn_trimmean(
     sum = sum + sorted[i]
     count = count + 1
   }
-  if count == 0 { VError(Num) } else { VNumber(sum / count.to_double()) }
+  if count == 0 {
+    VError(Num)
+  } else {
+    VNumber(sum / count.to_double())
+  }
 }
 
-fn fn_prob(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 3 || args.length() > 4 { return VError(Value) }
+///|
+fn fn_prob(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() < 3 || args.length() > 4 {
+    return VError(Value)
+  }
   let x_range = extract_number_array(args[0], ctx.date_system)
   let p_range = extract_number_array(args[1], ctx.date_system)
   if x_range.length() != p_range.length() || x_range.length() == 0 {
@@ -867,6 +940,7 @@ fn fn_prob(
 // A-variant aggregate functions (include booleans/text in aggregation)
 // ---------------------------------------------------------------------------
 
+///|
 fn coerce_a_value(v : FormulaValue) -> Double? {
   match v {
     VNumber(n) => Some(n)
@@ -876,15 +950,16 @@ fn coerce_a_value(v : FormulaValue) -> Double? {
   }
 }
 
-fn fn_averagea(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_averagea(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   let mut sum = 0.0
   let mut count = 0
   for arg in args {
     match coerce_a_value(arg.first_scalar()) {
-      Some(n) => { sum = sum + n; count = count + 1 }
+      Some(n) => {
+        sum = sum + n
+        count = count + 1
+      }
       None =>
         match arg.first_scalar() {
           VError(e) => return VError(e)
@@ -892,18 +967,25 @@ fn fn_averagea(
         }
     }
   }
-  if count == 0 { VError(DivZero) } else { VNumber(sum / count.to_double()) }
+  if count == 0 {
+    VError(DivZero)
+  } else {
+    VNumber(sum / count.to_double())
+  }
 }
 
-fn fn_maxa(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_maxa(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   let mut result = -1.0 / 0.0
   let mut any = false
   for arg in args {
     match coerce_a_value(arg.first_scalar()) {
-      Some(n) => { if n > result { result = n }; any = true }
+      Some(n) => {
+        if n > result {
+          result = n
+        }
+        any = true
+      }
       None =>
         match arg.first_scalar() {
           VError(e) => return VError(e)
@@ -911,18 +993,25 @@ fn fn_maxa(
         }
     }
   }
-  if any { VNumber(result) } else { VNumber(0.0) }
+  if any {
+    VNumber(result)
+  } else {
+    VNumber(0.0)
+  }
 }
 
-fn fn_mina(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_mina(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   let mut result = 1.0 / 0.0
   let mut any = false
   for arg in args {
     match coerce_a_value(arg.first_scalar()) {
-      Some(n) => { if n < result { result = n }; any = true }
+      Some(n) => {
+        if n < result {
+          result = n
+        }
+        any = true
+      }
       None =>
         match arg.first_scalar() {
           VError(e) => return VError(e)
@@ -930,9 +1019,14 @@ fn fn_mina(
         }
     }
   }
-  if any { VNumber(result) } else { VNumber(0.0) }
+  if any {
+    VNumber(result)
+  } else {
+    VNumber(0.0)
+  }
 }
 
+///|
 fn a_variant_stats(
   args : Array[FormulaValue],
 ) -> (Array[Double], FormulaError?) {
@@ -949,82 +1043,97 @@ fn a_variant_stats(
   (data, None)
 }
 
-fn fn_stdeva(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_stdeva(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   let (data, err) = a_variant_stats(args)
   match err {
     Some(e) => return VError(e)
     None => ()
   }
-  if data.length() < 2 { return VError(DivZero) }
+  if data.length() < 2 {
+    return VError(DivZero)
+  }
   VNumber(sample_variance(data).sqrt())
 }
 
-fn fn_stdevpa(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_stdevpa(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   let (data, err) = a_variant_stats(args)
   match err {
     Some(e) => return VError(e)
     None => ()
   }
-  if data.length() < 1 { return VError(DivZero) }
+  if data.length() < 1 {
+    return VError(DivZero)
+  }
   let n = data.length().to_double()
   let mut sum = 0.0
-  for v in data { sum = sum + v }
+  for v in data {
+    sum = sum + v
+  }
   let mean = sum / n
   let mut ss = 0.0
-  for v in data { let d = v - mean; ss = ss + d * d }
+  for v in data {
+    let d = v - mean
+    ss = ss + d * d
+  }
   VNumber((ss / n).sqrt())
 }
 
-fn fn_vara(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_vara(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   let (data, err) = a_variant_stats(args)
   match err {
     Some(e) => return VError(e)
     None => ()
   }
-  if data.length() < 2 { return VError(DivZero) }
+  if data.length() < 2 {
+    return VError(DivZero)
+  }
   VNumber(sample_variance(data))
 }
 
-fn fn_varpa(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_varpa(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   let (data, err) = a_variant_stats(args)
   match err {
     Some(e) => return VError(e)
     None => ()
   }
-  if data.length() < 1 { return VError(DivZero) }
+  if data.length() < 1 {
+    return VError(DivZero)
+  }
   let n = data.length().to_double()
   let mut sum = 0.0
-  for v in data { sum = sum + v }
+  for v in data {
+    sum = sum + v
+  }
   let mean = sum / n
   let mut ss = 0.0
-  for v in data { let d = v - mean; ss = ss + d * d }
+  for v in data {
+    let d = v - mean
+    ss = ss + d * d
+  }
   VNumber(ss / n)
 }
 
-fn fn_pearson(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 2 { return VError(Value) }
+///|
+fn fn_pearson(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 2 {
+    return VError(Value)
+  }
   let xs = extract_number_array(args[0], ctx.date_system)
   let ys = extract_number_array(args[1], ctx.date_system)
   let n = if xs.length() < ys.length() { xs.length() } else { ys.length() }
-  if n < 1 { return VError(NotApplicable) }
+  if n < 1 {
+    return VError(NotApplicable)
+  }
   let mut sx = 0.0
   let mut sy = 0.0
-  for i in 0..<n { sx = sx + xs[i]; sy = sy + ys[i] }
+  for i in 0..<n {
+    sx = sx + xs[i]
+    sy = sy + ys[i]
+  }
   let mx = sx / n.to_double()
   let my = sy / n.to_double()
   let mut sxy = 0.0
@@ -1037,32 +1146,37 @@ fn fn_pearson(
     sxx = sxx + dx * dx
     syy = syy + dy * dy
   }
-  if sxx == 0.0 || syy == 0.0 { return VError(DivZero) }
+  if sxx == 0.0 || syy == 0.0 {
+    return VError(DivZero)
+  }
   VNumber(sxy / (sxx * syy).sqrt())
 }
 
-fn fn_rsq(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_rsq(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match fn_pearson(args, ctx) {
     VNumber(r) => VNumber(r * r)
     other => other
   }
 }
 
-fn fn_steyx(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 2 { return VError(Value) }
+///|
+fn fn_steyx(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 2 {
+    return VError(Value)
+  }
   let ys = extract_number_array(args[0], ctx.date_system)
   let xs = extract_number_array(args[1], ctx.date_system)
   let n = if xs.length() < ys.length() { xs.length() } else { ys.length() }
-  if n < 3 { return VError(DivZero) }
+  if n < 3 {
+    return VError(DivZero)
+  }
   let mut sx = 0.0
   let mut sy = 0.0
-  for i in 0..<n { sx = sx + xs[i]; sy = sy + ys[i] }
+  for i in 0..<n {
+    sx = sx + xs[i]
+    sy = sy + ys[i]
+  }
   let mx = sx / n.to_double()
   let my = sy / n.to_double()
   let mut sxy = 0.0
@@ -1075,17 +1189,19 @@ fn fn_steyx(
     sxx = sxx + dx * dx
     syy = syy + dy * dy
   }
-  if sxx == 0.0 { return VError(DivZero) }
+  if sxx == 0.0 {
+    return VError(DivZero)
+  }
   let b = sxy / sxx
   let sse = syy - b * sxy
   checked_number((sse / (n - 2).to_double()).sqrt())
 }
 
-fn fn_ttest(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 4 { return VError(Value) }
+///|
+fn fn_ttest(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 4 {
+    return VError(Value)
+  }
   let a1 = extract_number_array(args[0], ctx.date_system)
   let a2 = extract_number_array(args[1], ctx.date_system)
   let tails = match coerce_to_number(args[2].first_scalar(), ctx.date_system) {
@@ -1099,22 +1215,32 @@ fn fn_ttest(
   if (tails != 1 && tails != 2) || ttype < 1 || ttype > 3 {
     return VError(Num)
   }
-  if a1.length() < 2 || a2.length() < 2 { return VError(NotApplicable) }
+  if a1.length() < 2 || a2.length() < 2 {
+    return VError(NotApplicable)
+  }
   let n1 = a1.length().to_double()
   let n2 = a2.length().to_double()
   let mut s1 = 0.0
   let mut s2 = 0.0
-  for v in a1 { s1 = s1 + v }
-  for v in a2 { s2 = s2 + v }
+  for v in a1 {
+    s1 = s1 + v
+  }
+  for v in a2 {
+    s2 = s2 + v
+  }
   let m1 = s1 / n1
   let m2 = s2 / n2
   let v1 = sample_variance(a1)
   let v2 = sample_variance(a2)
   let (t_stat, df) = match ttype {
     1 => {
-      if a1.length() != a2.length() { return VError(NotApplicable) }
+      if a1.length() != a2.length() {
+        return VError(NotApplicable)
+      }
       let diffs : Array[Double] = []
-      for i in 0..<a1.length() { diffs.push(a1[i] - a2[i]) }
+      for i in 0..<a1.length() {
+        diffs.push(a1[i] - a2[i])
+      }
       let vd = sample_variance(diffs)
       let md = m1 - m2
       let t = md / (vd / n1).sqrt()
@@ -1127,7 +1253,9 @@ fn fn_ttest(
     }
     _ => {
       let se = (v1 / n1 + v2 / n2).sqrt()
-      if se == 0.0 { return VError(DivZero) }
+      if se == 0.0 {
+        return VError(DivZero)
+      }
       let t = (m1 - m2) / se
       let num = (v1 / n1 + v2 / n2) * (v1 / n1 + v2 / n2)
       let den = v1 * v1 / (n1 * n1 * (n1 - 1.0)) +
@@ -1139,16 +1267,19 @@ fn fn_ttest(
   VNumber(p * tails.to_double())
 }
 
-fn fn_frequency(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 2 { return VError(Value) }
+///|
+fn fn_frequency(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 2 {
+    return VError(Value)
+  }
   let data = extract_number_array(args[0], ctx.date_system)
   let bins = extract_number_array(args[1], ctx.date_system)
   let sorted_bins = bins.copy()
   sorted_bins.sort_by(fn(a, b) { a.compare(b) })
-  let counts : Array[FormulaValue] = Array::make(bins.length() + 1, VNumber(0.0))
+  let counts : Array[FormulaValue] = Array::make(
+    bins.length() + 1,
+    VNumber(0.0),
+  )
   for v in data {
     let mut placed = false
     for i in 0..<sorted_bins.length() {
@@ -1180,11 +1311,14 @@ fn fn_frequency(
 // Info functions missing from the existing info module
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_error_type(
   args : Array[FormulaValue],
   _ctx : EvalContext,
 ) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VError(NullErr) => VNumber(1.0)
     VError(DivZero) => VNumber(2.0)
@@ -1198,31 +1332,27 @@ fn fn_error_type(
   }
 }
 
-fn fn_iseven(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_iseven(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => VBool(n.trunc().to_int() % 2 == 0)
     other => other
   }
 }
 
-fn fn_isodd(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_isodd(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => VBool(n.trunc().to_int() % 2 != 0)
     other => other
   }
 }
 
-fn fn_isnontext(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+///|
+fn fn_isnontext(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(_) => VBool(false)
     _ => VBool(true)
@@ -1433,7 +1563,10 @@ fn linest_core(
   }
   se_row.push(if const_ { VNumber((mse * inv[0][0]).sqrt()) } else { na })
   let width = k + 1
-  let pad_row = fn(a0 : FormulaValue, b0 : FormulaValue) -> Array[FormulaValue] {
+  let pad_row = fn(
+    a0 : FormulaValue,
+    b0 : FormulaValue,
+  ) -> Array[FormulaValue] {
     let row : Array[FormulaValue] = [a0, b0]
     for _ in 2..<width {
       row.push(na)
@@ -1449,10 +1582,8 @@ fn linest_core(
   ])
 }
 
-fn fn_linest(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_linest(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() < 1 || args.length() > 4 {
     return VError(Value)
   }
@@ -1471,10 +1602,8 @@ fn fn_linest(
   linest_core(ys, x_val, const_, stats_, false, ctx.date_system)
 }
 
-fn fn_logest(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_logest(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() < 1 || args.length() > 4 {
     return VError(Value)
   }

@@ -9,9 +9,9 @@
 // slide / SML sheet / WML drawing / DML chart).
 
 import {
-  "moonbitlang/core/math" @math,
-  "moonbitlang/core/string" @string,
-  "trkbt10/ooxml/util/color" @color,
-  "trkbt10/ooxml/util/markup" @markup,
-  "trkbt10/ooxml/xml" @xml,
+  "moonbitlang/core/math",
+  "moonbitlang/core/string",
+  "trkbt10/ooxml/util/color",
+  "trkbt10/ooxml/util/markup",
+  "trkbt10/ooxml/xml",
 }

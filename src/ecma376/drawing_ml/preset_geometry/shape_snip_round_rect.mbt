@@ -19,8 +19,8 @@
 pub fn build_snip_round_rect(
   width : Int,
   height : Int,
-  adj1~ : Int = 16667,
-  adj2~ : Int = 16667,
+  adj1? : Int = 16667,
+  adj2? : Int = 16667,
 ) -> ShapeGeometry {
   // §20.1.10.56 snipRoundRect gdLst: aN = pin 0 adjN 50000;
   // x1 = ss·a1/100000 (rounded top-left), dx2 = ss·a2/100000 (snip top-right).

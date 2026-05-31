@@ -156,13 +156,13 @@ pub fn resolve_placeholder(
   let effective = merge_effective(slide_ph, layout_ph, master_ph)
   let sp_pr = merge_sp_pr(
     typed_sp_pr(slide_shape),
-    layout_shape_match.bind((s) => typed_sp_pr(s)),
-    master_shape_match.bind((s) => typed_sp_pr(s)),
+    layout_shape_match.bind(s => typed_sp_pr(s)),
+    master_shape_match.bind(s => typed_sp_pr(s)),
   )
   let tx_body = merge_tx_body(
     typed_tx_body(slide_shape),
-    layout_shape_match.bind((s) => typed_tx_body(s)),
-    master_shape_match.bind((s) => typed_tx_body(s)),
+    layout_shape_match.bind(s => typed_tx_body(s)),
+    master_shape_match.bind(s => typed_tx_body(s)),
   )
   let nv_sp_pr = merge_nv_sp_pr(
     Some(slide_shape.nv_sp_pr),

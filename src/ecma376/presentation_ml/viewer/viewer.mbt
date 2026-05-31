@@ -46,7 +46,9 @@ pub fn render_svg(
   height_emu? : Int = 6858000,
   image_resolver? : (String) -> ResolvedImage? = _ => None,
   part_resolver? : (String) -> @xml.Element? = _ => None,
-  chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)? = _ => None,
+  chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)? = _ => {
+    None
+  },
   theme? : @theme.CT_OfficeStyleSheet? = None,
   chain? : @ph_resolver.SlideChain? = None,
   /// §19.2.1.26 — the presentation part's root `<p:presentation>`
@@ -1169,7 +1171,8 @@ fn render_shape_children(
     None => ()
     Some(ch) =>
       render_layout_only_shapes(
-        parent, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory, out, ch,
+        parent, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
+        out, ch,
       )
   }
 }
@@ -1401,17 +1404,23 @@ fn render_shape_svg(
   match shape.name.local_name {
     "sp" =>
       render_sp_shape_svg(
-        shape, ctx, defs, image_resolver, theme~,
+        shape,
+        ctx,
+        defs,
+        image_resolver,
+        theme~,
         master_tx_styles=chain_master_tx_styles(chain),
       )
     "pic" => render_picture_svg(shape, ctx, defs, image_resolver)
     "grpSp" =>
-      render_group_svg(shape, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory, chain)
+      render_group_svg(
+        shape, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
+        chain,
+      )
     "cxnSp" => render_connector_svg(shape, ctx, defs, image_resolver, theme~)
     "graphicFrame" =>
       render_graphic_frame_svg(
-        shape, ctx, defs, image_resolver, part_resolver,
-        chart_part_resolver_factory,
+        shape, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
       )
     "contentPart" => render_content_part_metadata(shape)
     _ => []
@@ -1518,7 +1527,8 @@ fn render_sp_shape_svg(
     Some(pr) =>
       match extract_xfrm(pr) {
         None => ([], 0.0, 0.0)
-        Some(t) => (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
+        Some(t) =>
+          (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
       }
   }
   let ooxml_id = ooxml_id_attr(shape)
@@ -1648,7 +1658,12 @@ fn render_sp_shape_svg(
   // selected by placeholder type.
   let master_lst_style = select_master_lst_style(master_tx_styles, shape)
   let text_svg = render_shape_text_svg(
-    shape, w, h, ctx, defs, master_lst_style~,
+    shape,
+    w,
+    h,
+    ctx,
+    defs,
+    master_lst_style~,
   )
 
   // Assemble the wrapping <g>.  Attribute order mirrors the previous
@@ -1968,12 +1983,12 @@ fn nv_media_overlay_svg(
         }
       }
   }
-  if !(has_audio) &&
-    !(has_video) &&
-    !(has_quicktime) &&
-    !(has_wav) &&
-    !(has_hlink_click) &&
-    !(has_hlink_hover) {
+  if !has_audio &&
+    !has_video &&
+    !has_quicktime &&
+    !has_wav &&
+    !has_hlink_click &&
+    !has_hlink_hover {
     return []
   }
   // Glyph size: 12% of the smaller shape dimension, capped to a
@@ -2073,7 +2088,7 @@ fn nv_media_overlay_svg(
         [
           @markup.attr(
             "class",
-            if has_hlink_hover && !(has_hlink_click) {
+            if has_hlink_hover && !has_hlink_click {
               "ooxml-hlink-hover-marker"
             } else {
               "ooxml-hlink-marker"
@@ -2644,6 +2659,7 @@ fn shift_hex_lightness(hex : String, delta : Double) -> String {
 /// `<g transform="scale(EMU_PER_PX)">` so coordinates align with the
 /// EMU viewBox.
 /// @source web-pptx packages/@aurochs-renderer/pptx/src/svg/slide-text.ts:53 (renderTextSvg)
+
 ///|
 /// Concatenate the plain text of every `<a:t>` descendant of a
 /// `<a:txBody>` (runs joined in document order, paragraphs separated
@@ -2755,7 +2771,7 @@ fn render_warped_text(
   fn sampled_d(f : (Double) -> Double) -> String {
     let n = 48
     let buf = StringBuilder::new()
-    for i in 0..=n {
+    for i in 0..<=n {
       let t = i.to_double() / n.to_double()
       let x = x0 + (x1 - x0) * t
       buf.write_string(if i == 0 { "M " } else { " L " })
@@ -2798,14 +2814,10 @@ fn render_warped_text(
     })
   } else if prst == "textSlantUp" {
     // Straight baseline rising left→right.
-    sampled_d(fn(x) {
-      box_h * 0.82 - (box_h * 0.64) * ((x - x0) / (x1 - x0))
-    })
+    sampled_d(fn(x) { box_h * 0.82 - box_h * 0.64 * ((x - x0) / (x1 - x0)) })
   } else if prst == "textSlantDown" {
     // Straight baseline falling left→right.
-    sampled_d(fn(x) {
-      box_h * 0.18 + (box_h * 0.64) * ((x - x0) / (x1 - x0))
-    })
+    sampled_d(fn(x) { box_h * 0.18 + box_h * 0.64 * ((x - x0) / (x1 - x0)) })
   } else if prst == "textRingInside" || prst == "textRingOutside" {
     // §20.1.10.76 textRing* — the run wraps fully around a circle.
     // Two half-arcs trace the complete ring; `Inside` reverses the
@@ -2866,9 +2878,9 @@ fn render_warped_text(
     Some(rp) =>
       match attr_value(rp, "sz") {
         Some(v) =>
-          (try? @string.parse_double(v)).to_option().map_or(box_h * 0.3, fn(d) {
-            d / 100.0 * 96.0 / 72.0
-          })
+          (try? @string.parse_double(v))
+          .to_option()
+          .map_or(box_h * 0.3, fn(d) { d / 100.0 * 96.0 / 72.0 })
         None => box_h * 0.3
       }
     None => box_h * 0.3
@@ -2957,22 +2969,22 @@ fn envelope_profiles(prst : String, box_h : Double) -> EnvelopeWarp? {
   let full_l = fn(_v : Double) -> Double { 0.0 }
   let full_r = fn(_v : Double) -> Double { 1.0 }
   // Helper to assemble a y-only warp (straight vertical sides).
-  fn ywarp(
-    top : (Double) -> Double,
-    bot : (Double) -> Double,
-  ) -> EnvelopeWarp {
+  fn ywarp(top : (Double) -> Double, bot : (Double) -> Double) -> EnvelopeWarp {
     { top_y: top, bot_y: bot, left_x: full_l, right_x: full_r }
   }
 
   match prst {
     // Barrel out / pinch in (both edges).
     "textInflate" =>
-      Some(ywarp(fn(u) { t0 - bulge * sinb(u) }, fn(u) { b0 + bulge * sinb(u) }))
+      Some(
+        ywarp(fn(u) { t0 - bulge * sinb(u) }, fn(u) { b0 + bulge * sinb(u) }),
+      )
     "textDeflate" =>
-      Some(ywarp(fn(u) { t0 + bulge * sinb(u) }, fn(u) { b0 - bulge * sinb(u) }))
+      Some(
+        ywarp(fn(u) { t0 + bulge * sinb(u) }, fn(u) { b0 - bulge * sinb(u) }),
+      )
     // Single-edge variants.
-    "textInflateBottom" =>
-      Some(ywarp(flat_top, fn(u) { b0 + bulge * sinb(u) }))
+    "textInflateBottom" => Some(ywarp(flat_top, fn(u) { b0 + bulge * sinb(u) }))
     "textDeflateBottom" => Some(ywarp(flat_top, fn(u) { b0 - bulge * sinb(u) }))
     "textInflateTop" => Some(ywarp(fn(u) { t0 - bulge * sinb(u) }, flat_bot))
     "textDeflateTop" => Some(ywarp(fn(u) { t0 + bulge * sinb(u) }, flat_bot))
@@ -3021,9 +3033,7 @@ fn envelope_profiles(prst : String, box_h : Double) -> EnvelopeWarp? {
     // Fade left/right: the band HEIGHT collapses to the centre line on
     // one vertical edge (curved top/bottom converging to `mid`).
     "textFadeRight" =>
-      Some(
-        ywarp(fn(u) { t0 + (mid - t0) * u }, fn(u) { b0 - (b0 - mid) * u }),
-      )
+      Some(ywarp(fn(u) { t0 + (mid - t0) * u }, fn(u) { b0 - (b0 - mid) * u }))
     "textFadeLeft" =>
       Some(
         ywarp(fn(u) { t0 + (mid - t0) * (1.0 - u) }, fn(u) {
@@ -3082,10 +3092,9 @@ fn render_envelope_warp_text(
     Some(rp) =>
       match attr_value(rp, "sz") {
         Some(v) =>
-          (try? @string.parse_double(v)).to_option().map_or(
-            box_h * 0.3 * 72.0 / 96.0,
-            fn(d) { d / 100.0 },
-          )
+          (try? @string.parse_double(v))
+          .to_option()
+          .map_or(box_h * 0.3 * 72.0 / 96.0, fn(d) { d / 100.0 })
         None => box_h * 0.3 * 72.0 / 96.0
       }
     None => box_h * 0.3 * 72.0 / 96.0
@@ -3119,8 +3128,12 @@ fn render_envelope_warp_text(
   // Flatten the run's glyph outlines (pixel space, baseline y=0, run
   // starting at x=0).  An unresolved font yields no contours → None.
   let contours = (try? @glyph.text_outline_contours(
-      text, family~, font_size_pt=font_pt,
-    )).to_option().unwrap_or([])
+      text,
+      family~,
+      font_size_pt=font_pt,
+    ))
+    .to_option()
+    .unwrap_or([])
   if contours.length() == 0 {
     return None
   }
@@ -3253,7 +3266,12 @@ fn render_shape_text_svg(
             @markup.elem_ns(
               "g",
               @markup.svg_ns,
-              [@markup.attr("transform", "scale(" + format_double(emu_per_px) + ")")],
+              [
+                @markup.attr(
+                  "transform",
+                  "scale(" + format_double(emu_per_px) + ")",
+                ),
+              ],
               warp_nodes,
             ),
           ]
@@ -3535,7 +3553,10 @@ fn build_layout_input(
   // bullet would emit "2." instead of "1." and a `romanUcPeriod`
   // would emit "II." instead of "I.".  Verified against the the reference renderer PDF
   // reference for `text-bullet-auto-types`.
-  let auto_num_counters : @hashmap.HashMap[String, Int] = HashMap([], capacity=0)
+  let auto_num_counters : @hashmap.HashMap[String, Int] = HashMap(
+    [],
+    capacity=0,
+  )
   let paragraphs : Array[LayoutParagraphInput] = []
   for child in tx_body.children {
     match child {
@@ -4357,7 +4378,7 @@ fn resolve_bullet_inheritance(
   // (`is_break == true`) carry no font metrics worth inheriting.
   let mut source : LayoutSpan? = None
   for s in spans {
-    if !(s.is_break) && s.text.length() > 0 {
+    if !s.is_break && s.text.length() > 0 {
       source = Some(s)
       break
     }
@@ -4695,17 +4716,13 @@ fn build_run_span(
     font_family: resolve_typeface_element(typeface_element("latin"), ctx).unwrap_or(
       ctx.minor_font.get("lt").unwrap_or(presentation_default_typeface()),
     ),
-    font_family_east_asian: match resolve_typeface_element(
-        typeface_element("ea"),
-        ctx,
-      ) {
+    font_family_east_asian: match
+      resolve_typeface_element(typeface_element("ea"), ctx) {
       Some(v) => Some(v)
       None => ctx.minor_font.get("ea")
     },
-    font_family_complex_script: match resolve_typeface_element(
-        typeface_element("cs"),
-        ctx,
-      ) {
+    font_family_complex_script: match
+      resolve_typeface_element(typeface_element("cs"), ctx) {
       Some(v) => Some(v)
       None => ctx.minor_font.get("cs")
     },
@@ -4752,6 +4769,7 @@ fn build_run_span(
 /// → the theme `<a:fontScheme>` minor / major font shortcut.  This
 /// `presentation_default_typeface` is reached ONLY when every layer of
 /// that cascade is absent.
+
 ///|
 /// The last-resort typeface when neither the run properties, the
 /// placeholder text-style cascade, nor the theme `<a:fontScheme>`
@@ -5206,8 +5224,7 @@ fn build_tiled_blip_fill(
   // 100000 = 100 %); @tx / @ty are ST_Coordinate in EMU.
   fn pct(name : String) -> Double {
     match attr_value(tile_elt, name) {
-      Some(v) =>
-        (try? @string.parse_double(v)).unwrap_or(100000.0) / 100000.0
+      Some(v) => (try? @string.parse_double(v)).unwrap_or(100000.0) / 100000.0
       None => 1.0
     }
   }
@@ -5494,7 +5511,7 @@ fn build_wavy_underline_path(
     buf.write_string(" ")
     buf.write_string(format_double(center_y))
     x = next_x
-    up = !(up)
+    up = !up
   }
   @markup.elem_ns(
     "path",
@@ -5671,9 +5688,7 @@ fn render_layout_result_svg(
             text_attrs.push(@markup.attr("stroke-linejoin", outline.join))
             text_attrs.push(@markup.attr("paint-order", "stroke fill"))
             if outline.dash.length() > 0 {
-              text_attrs.push(
-                @markup.attr("stroke-dasharray", outline.dash),
-              )
+              text_attrs.push(@markup.attr("stroke-dasharray", outline.dash))
             }
           }
           None => ()
@@ -5893,13 +5908,15 @@ fn build_justified_text_children(
       for _ in 0..<leading {
         sp_buf.write_char(' ')
       }
-      try @glyph.measure_text_width(
-        sp_buf.to_string(),
-        font_size_pt=span.font_size,
-        letter_spacing_px=span.letter_spacing,
-        family=span.font_family,
-        weight=span.font_weight,
-      ) catch {
+      try
+        @glyph.measure_text_width(
+          sp_buf.to_string(),
+          font_size_pt=span.font_size,
+          letter_spacing_px=span.letter_spacing,
+          family=span.font_family,
+          weight=span.font_weight,
+        )
+      catch {
         _ => 0.0
       } noraise {
         w => w
@@ -5907,13 +5924,15 @@ fn build_justified_text_children(
     } else {
       0.0
     }
-    let word_w = try @glyph.measure_text_width(
-      word_text,
-      font_size_pt=span.font_size,
-      letter_spacing_px=span.letter_spacing,
-      family=span.font_family,
-      weight=span.font_weight,
-    ) catch {
+    let word_w = try
+      @glyph.measure_text_width(
+        word_text,
+        font_size_pt=span.font_size,
+        letter_spacing_px=span.letter_spacing,
+        family=span.font_family,
+        weight=span.font_weight,
+      )
+    catch {
       _ => 0.0
     } noraise {
       w => w
@@ -5998,7 +6017,7 @@ fn span_fill_attrs(
           )
           [@markup.attr("fill", "url(#" + grad_id + ")")]
         }
-        TextFillPattern(fg, bg, prst) => {
+        TextFillPattern(fg, bg, prst) =>
           if prst.length() > 0 {
             let pat_id = defs.next_id("text-pat")
             defs.add_def(build_text_pattern_def(pat_id, prst, fg, bg))
@@ -6006,7 +6025,6 @@ fn span_fill_attrs(
           } else {
             [@markup.attr("fill", fg)]
           }
-        }
         TextFillImage(_) => [@markup.attr("fill", "#000000")]
       }
     None => [@markup.attr("fill", span.color)]
@@ -6320,7 +6338,8 @@ fn render_picture_svg(
     Some(pr) =>
       match extract_xfrm(pr) {
         None => ([], 0.0, 0.0)
-        Some(t) => (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
+        Some(t) =>
+          (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
       }
   }
   let ooxml_id = ooxml_id_attr(pic)
@@ -6395,16 +6414,11 @@ fn render_picture_svg(
         g_attrs.push(@markup.attr("data-ooxml-blip-effects", blip_effects))
       }
       match build_blip_effect_filter(bf, defs, ctx) {
-        Some(filter_ref) =>
-          g_attrs.push(@markup.attr("filter", filter_ref))
+        Some(filter_ref) => g_attrs.push(@markup.attr("filter", filter_ref))
         None => ()
       }
-      let (img_mime, img_b64) = match preprocess_blip_image(
-        bf,
-        img.mime_type,
-        img.base64_data,
-        ctx,
-      ) {
+      let (img_mime, img_b64) = match
+        preprocess_blip_image(bf, img.mime_type, img.base64_data, ctx) {
         Some((m, b)) => (m, b)
         None => (img.mime_type, img.base64_data)
       }
@@ -6423,72 +6437,74 @@ fn render_picture_svg(
         Some(nodes) => nodes
         None =>
           if l != 0.0 || t != 0.0 || r != 0.0 || b != 0.0 {
-        // §20.1.8.55: build a clipPath and stretch the image so that
-        // the visible portion fills the shape exactly.
-        let (ix, iy, iw, ih) = compute_cropped_image_layout(w, h, l, t, r, b)
-        let clip_id = defs.next_id("img-clip")
-        defs.add_def(
-          @markup.elem_ns(
-            "clipPath",
-            @markup.svg_ns,
-            [@markup.attr("id", clip_id)],
+            // §20.1.8.55: build a clipPath and stretch the image so that
+            // the visible portion fills the shape exactly.
+            let (ix, iy, iw, ih) = compute_cropped_image_layout(
+              w, h, l, t, r, b,
+            )
+            let clip_id = defs.next_id("img-clip")
+            defs.add_def(
+              @markup.elem_ns(
+                "clipPath",
+                @markup.svg_ns,
+                [@markup.attr("id", clip_id)],
+                [
+                  @markup.elem_ns(
+                    "rect",
+                    @markup.svg_ns,
+                    [
+                      @markup.attr("x", "0"),
+                      @markup.attr("y", "0"),
+                      @markup.attr("width", format_double(w)),
+                      @markup.attr("height", format_double(h)),
+                    ],
+                    [],
+                  ),
+                ],
+              ),
+            )
             [
               @markup.elem_ns(
-                "rect",
+                "g",
                 @markup.svg_ns,
+                [@markup.attr("clip-path", "url(#" + clip_id + ")")],
                 [
-                  @markup.attr("x", "0"),
-                  @markup.attr("y", "0"),
-                  @markup.attr("width", format_double(w)),
-                  @markup.attr("height", format_double(h)),
+                  @markup.elem_ns(
+                    "image",
+                    @markup.svg_ns,
+                    [
+                      @markup.attr("href", data_uri),
+                      @markup.attr("x", format_double(ix)),
+                      @markup.attr("y", format_double(iy)),
+                      @markup.attr("width", format_double(iw)),
+                      @markup.attr("height", format_double(ih)),
+                      @markup.attr("preserveAspectRatio", aspect),
+                      @markup.attr("data-r-embed", rid),
+                    ],
+                    [],
+                  ),
                 ],
-                [],
               ),
-            ],
-          ),
-        )
-        [
-          @markup.elem_ns(
-            "g",
-            @markup.svg_ns,
-            [@markup.attr("clip-path", "url(#" + clip_id + ")")],
+            ]
+          } else {
+            // No cropping — simple <image>.
             [
               @markup.elem_ns(
                 "image",
                 @markup.svg_ns,
                 [
                   @markup.attr("href", data_uri),
-                  @markup.attr("x", format_double(ix)),
-                  @markup.attr("y", format_double(iy)),
-                  @markup.attr("width", format_double(iw)),
-                  @markup.attr("height", format_double(ih)),
+                  @markup.attr("x", "0"),
+                  @markup.attr("y", "0"),
+                  @markup.attr("width", format_double(w)),
+                  @markup.attr("height", format_double(h)),
                   @markup.attr("preserveAspectRatio", aspect),
                   @markup.attr("data-r-embed", rid),
                 ],
                 [],
               ),
-            ],
-          ),
-        ]
-      } else {
-        // No cropping — simple <image>.
-        [
-          @markup.elem_ns(
-            "image",
-            @markup.svg_ns,
-            [
-              @markup.attr("href", data_uri),
-              @markup.attr("x", "0"),
-              @markup.attr("y", "0"),
-              @markup.attr("width", format_double(w)),
-              @markup.attr("height", format_double(h)),
-              @markup.attr("preserveAspectRatio", aspect),
-              @markup.attr("data-r-embed", rid),
-            ],
-            [],
-          ),
-        ]
-      }
+            ]
+          }
       }
       // §17.4 / §20.1.3 — media / hyperlink overlay markers on
       // pictures whose `<p:nvPicPr>` carries audio / video /
@@ -6696,7 +6712,8 @@ fn render_connector_svg(
     Some(pr) =>
       match extract_xfrm(pr) {
         None => ([], 0.0, 0.0)
-        Some(t) => (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
+        Some(t) =>
+          (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
       }
   }
   let ooxml_id = ooxml_id_attr(cxn)
@@ -6827,10 +6844,14 @@ fn connector_path_data(sp_pr : @xml.Element?, w : Double, h : Double) -> String 
     Some(pg) =>
       match attr_value(pg, "prst") {
         Some("line") => diagonal
-        Some("bentConnector2") => render_preset_geometry(pg, w, h).unwrap_or(diagonal)
-        Some("bentConnector3") => render_preset_geometry(pg, w, h).unwrap_or(diagonal)
-        Some("bentConnector4") => render_preset_geometry(pg, w, h).unwrap_or(diagonal)
-        Some("bentConnector5") => render_preset_geometry(pg, w, h).unwrap_or(diagonal)
+        Some("bentConnector2") =>
+          render_preset_geometry(pg, w, h).unwrap_or(diagonal)
+        Some("bentConnector3") =>
+          render_preset_geometry(pg, w, h).unwrap_or(diagonal)
+        Some("bentConnector4") =>
+          render_preset_geometry(pg, w, h).unwrap_or(diagonal)
+        Some("bentConnector5") =>
+          render_preset_geometry(pg, w, h).unwrap_or(diagonal)
         Some("curvedConnector2") =>
           render_preset_geometry(pg, w, h).unwrap_or(diagonal)
         Some("curvedConnector3") =>
@@ -6877,7 +6898,8 @@ fn render_graphic_frame_svg(
     Some(_) =>
       match extract_xfrm(frame) {
         None => ([], 0.0, 0.0)
-        Some(t) => (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
+        Some(t) =>
+          (build_transform_attr(Some(t), t.width, t.height), t.width, t.height)
       }
   }
   let ooxml_id = ooxml_id_attr(frame)
@@ -6912,8 +6934,13 @@ fn render_graphic_frame_svg(
       frame,
     ) {
     @chart_viewer.render_chart_graphic_frame(
-      frame, w, h, ctx, defs, part_resolver,
-      chart_part_resolver_factory=chart_part_resolver_factory,
+      frame,
+      w,
+      h,
+      ctx,
+      defs,
+      part_resolver,
+      chart_part_resolver_factory~,
     )
   } else {
     []
@@ -7028,7 +7055,6 @@ fn render_graphic_frame_svg(
   }
   [@markup.elem_ns("g", @markup.svg_ns, g_attrs, g_children)]
 }
-
 
 ///|
 /// §19.3.1.21 — return the `<a:graphic>/<a:graphicData @uri>` of the

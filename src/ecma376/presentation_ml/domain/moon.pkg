@@ -3,6 +3,6 @@
 // PresentationML domain: presentation, slide, slideLayout, slideMaster, notesMaster, handoutMaster.
 
 import {
-  "moonbitlang/core/strconv" @strconv,
-  "trkbt10/ooxml/xml" @xml,
+  "moonbitlang/core/strconv",
+  "trkbt10/ooxml/xml",
 }

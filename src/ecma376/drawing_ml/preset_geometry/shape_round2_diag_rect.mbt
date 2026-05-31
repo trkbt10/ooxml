@@ -20,8 +20,8 @@
 pub fn build_round2_diag_rect(
   width : Int,
   height : Int,
-  adj1~ : Int = 16667,
-  adj2~ : Int = 0,
+  adj1? : Int = 16667,
+  adj2? : Int = 0,
 ) -> ShapeGeometry {
   // §20.1.10.56 round2DiagRect gdLst: aN = pin 0 adjN 50000; radii ss·aN/100000.
   let ss = min_dim(width, height)

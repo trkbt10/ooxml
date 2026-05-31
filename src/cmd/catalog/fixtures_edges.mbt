@@ -21,13 +21,13 @@
 /// self-contained without depending on the closures inside other
 /// files.
 fn edge_wa(local_name : String, value : String) -> @xml.Attribute {
-  { name: { prefix: Some("w"), local_name: local_name, ns: Some(NS_W) }, value }
+  { name: { prefix: Some("w"), local_name, ns: Some(NS_W) }, value }
 }
 
 ///|
 /// Build an `a:`-prefixed attribute (DrawingML).
 fn edge_aa(local_name : String, value : String) -> @xml.Attribute {
-  { name: { prefix: Some("a"), local_name: local_name, ns: Some(NS_A) }, value }
+  { name: { prefix: Some("a"), local_name, ns: Some(NS_A) }, value }
 }
 
 ///|

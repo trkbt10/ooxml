@@ -76,7 +76,10 @@ test "FontMeasurer::char_outline_contours flattens a glyph into pixel points" {
     fail("Failed to parse subset.ttf")
   }
   let contours = m.char_outline_contours(
-    'A', font_size_pt=72.0, pen_x=0.0, tolerance=0.5,
+    'A',
+    font_size_pt=72.0,
+    pen_x=0.0,
+    tolerance=0.5,
   )
   // 'A' has at least one outer contour with a handful of vertices.
   assert_true(contours.length() >= 1)
@@ -104,7 +107,12 @@ test "FontMeasurer::char_outline_contours offsets x by the pen position" {
     fail("Failed to parse subset.ttf")
   }
   fn min_x(pen : Double) -> Double {
-    let cs = m.char_outline_contours('A', font_size_pt=48.0, pen_x=pen, tolerance=0.5)
+    let cs = m.char_outline_contours(
+      'A',
+      font_size_pt=48.0,
+      pen_x=pen,
+      tolerance=0.5,
+    )
     let mut mn = 1.0e18
     for c in cs {
       for p in c {
@@ -125,12 +133,16 @@ test "FontMeasurer::char_outline_contours offsets x by the pen position" {
 test "text_outline_contours lays glyphs left-to-right at advances" {
   let bytes = load_subset_font()
   glyph_test_set_font(bytes)
-  let one = (try? text_outline_contours("A", family="Noto Sans", font_size_pt=48.0)).unwrap_or(
-    [],
-  )
-  let two = (try? text_outline_contours("AA", family="Noto Sans", font_size_pt=48.0)).unwrap_or(
-    [],
-  )
+  let one = (try? text_outline_contours(
+    "A",
+    family="Noto Sans",
+    font_size_pt=48.0,
+  )).unwrap_or([])
+  let two = (try? text_outline_contours(
+    "AA",
+    family="Noto Sans",
+    font_size_pt=48.0,
+  )).unwrap_or([])
   assert_true(one.length() >= 1)
   // The second 'A' contributes additional contours past the first.
   assert_true(two.length() > one.length())

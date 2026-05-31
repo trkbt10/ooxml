@@ -3,9 +3,9 @@
 // ECMA-376 Part 1 §20: DrawingML facade. Self-contained chapter combining colour, font, theme, shape, picture, chart, diagram subdomains.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }
 
 import {
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

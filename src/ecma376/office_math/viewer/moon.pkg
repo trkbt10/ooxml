@@ -3,12 +3,12 @@
 // OMML → SVG renderer.
 
 import {
-  "trkbt10/ooxml/ecma376/office_math/domain" @domain,
-  "trkbt10/ooxml/util/glyph" @glyph,
-  "trkbt10/ooxml/util/markup" @markup,
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/ecma376/office_math/domain",
+  "trkbt10/ooxml/util/glyph",
+  "trkbt10/ooxml/util/markup",
+  "trkbt10/ooxml/xml",
 }
 
 import {
-  "moonbitlang/x/fs" @fs,
+  "moonbitlang/x/fs",
 } for "wbtest"

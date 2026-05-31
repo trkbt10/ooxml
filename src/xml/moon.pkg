@@ -5,5 +5,5 @@
 
 import {
   // UTF-8 encode/decode is required for the public Bytes reader/writer API.
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/encoding/utf8",
 }

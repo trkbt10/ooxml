@@ -52,7 +52,10 @@ fn collect_calc_fields(
   cache : PivotCacheDefinition,
 ) -> Array[CalcField] {
   let out : Array[CalcField] = []
-  let name_to_idx : Map[String, Int] = Map([], capacity=cache.cache_fields.length())
+  let name_to_idx : Map[String, Int] = Map(
+    [],
+    capacity=cache.cache_fields.length(),
+  )
   for i, cf in cache.cache_fields {
     name_to_idx[cf.name] = i
   }
@@ -118,14 +121,18 @@ fn eval_calc_field_over_rows(
   rows : Array[PivotCacheRow],
   cache : PivotCacheDefinition,
 ) -> @formula.FormulaValue raise @opc_errors.SchemaViolation {
-  let agg : Map[String, @formula.FormulaValue] = Map([], capacity=calc.refs.size())
+  let agg : Map[String, @formula.FormulaValue] = Map(
+    [],
+    capacity=calc.refs.size(),
+  )
   for name, fld in calc.refs {
     let vals : Array[@formula.FormulaValue] = []
     for row in rows {
       if fld >= 0 && fld < row.cells.length() {
         vals.push(
           pivot_record_cell_to_formula_value(
-            row.cells[fld], cache.cache_fields[fld],
+            row.cells[fld],
+            cache.cache_fields[fld],
           ),
         )
       }

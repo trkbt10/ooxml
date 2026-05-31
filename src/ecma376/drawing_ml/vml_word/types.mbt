@@ -45,7 +45,9 @@ pub(all) struct CT_Border {
 /// (ST_BorderShadow enum) attributes and no element children; raises
 /// `SchemaViolation` on attribute names or enumeration values outside
 /// the schema.
-pub fn CT_Border::new(element : @xml.Element) -> CT_Border raise SchemaViolation {
+pub fn CT_Border::new(
+  element : @xml.Element,
+) -> CT_Border raise SchemaViolation {
   validate_no_element_children(element, "CT_Border")
   for attribute in element.attributes {
     match attribute.name.local_name {

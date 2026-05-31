@@ -944,9 +944,7 @@ pub(all) struct CT_Formulas {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Formulas::new(
-  element : @xml.Element,
-) -> CT_Formulas {
+pub fn CT_Formulas::new(element : @xml.Element) -> CT_Formulas {
   let f : Array[CT_F] = []
   for child in vml_children(element, "f") {
     f.push(CT_F::new(child))
@@ -1526,9 +1524,7 @@ pub(all) struct CT_Textbox {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Textbox::new(
-  element : @xml.Element,
-) -> CT_Textbox {
+pub fn CT_Textbox::new(element : @xml.Element) -> CT_Textbox {
   let id = vml_attr(element, "id")
   let style = vml_attr(element, "style")
   let inset = vml_attr(element, "inset")

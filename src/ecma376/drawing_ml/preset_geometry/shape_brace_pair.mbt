@@ -23,7 +23,11 @@
 /// and the right brace's reaches `(r, vc)`. All arcs are emitted
 /// through the verified `rel_arc` helper, so the geometry is correct
 /// by construction.
-pub fn build_brace_pair(width : Int, height : Int, adj~ : Int = 8333) -> ShapeGeometry {
+pub fn build_brace_pair(
+  width : Int,
+  height : Int,
+  adj? : Int = 8333,
+) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let cd4 = 5400000
   let cd2 = 10800000

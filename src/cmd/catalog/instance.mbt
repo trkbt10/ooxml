@@ -40,7 +40,7 @@ let g_ns_prefix : Ref[(String) -> String] = { val: fn(_ns) { "x" } }
 ///|
 /// Build an `@xml.QName` for an element/attribute in namespace `ns`.
 fn qname(ns : String, local_name : String) -> @xml.QName {
-  { prefix: Some((g_ns_prefix.val)(ns)), local_name: local_name, ns: Some(ns) }
+  { prefix: Some((g_ns_prefix.val)(ns)), local_name, ns: Some(ns) }
 }
 
 ///|
@@ -71,7 +71,9 @@ fn has_required_child_elements(ct : @xml.Element) -> Bool {
             if min >= 1 {
               return true
             }
-          } else if is_xsd(c, "sequence") || is_xsd(c, "all") || is_xsd(c, "choice") {
+          } else if is_xsd(c, "sequence") ||
+            is_xsd(c, "all") ||
+            is_xsd(c, "choice") {
             if scan(c) {
               return true
             }
@@ -139,7 +141,7 @@ fn synth_attrs(
   schema : Schema,
   ct : @xml.Element,
   ns : String,
-  include_optional~ : Bool = false,
+  include_optional? : Bool = false,
 ) -> Array[@xml.Attribute] {
   let found : Map[String, String] = Map([], capacity=0)
   collect_attrs(
@@ -250,7 +252,7 @@ fn model_particles(
           if eligible {
             match attr(p, "ref") {
               Some(ref_key) =>
-                if !(set_has(stack, ref_key)) {
+                if !set_has(stack, ref_key) {
                   match schema.groups.get(ref_key) {
                     Some(gp) => {
                       let sub = copy_set(stack)
@@ -332,7 +334,7 @@ fn model_children(
           )).unwrap_or(1)
           match attr(c, "ref") {
             Some(ref_key) =>
-              if (min_occurs >= 1 || rich >= 1) && !(set_has(stack, ref_key)) {
+              if (min_occurs >= 1 || rich >= 1) && !set_has(stack, ref_key) {
                 match schema.groups.get(ref_key) {
                   Some(gp) => {
                     let sub = copy_set(stack)
@@ -374,7 +376,7 @@ fn children_nodes(
           Some(ext) => {
             match attr(ext, "base") {
               Some(base) =>
-                if !(set_has(stack, base)) {
+                if !set_has(stack, base) {
                   match schema.complex_types.get(base) {
                     Some(base_ct) => {
                       let sub = copy_set(stack)
@@ -475,7 +477,13 @@ fn element_instance(
           let sub = copy_set(stack)
           sub[t] = true
           let el = synth_element(
-            schema, ct, ens, name, sub, depth + 1, sub_rich,
+            schema,
+            ct,
+            ens,
+            name,
+            sub,
+            depth + 1,
+            sub_rich,
           )
           if has_required_child_elements(ct) && !has_element_children(el) {
             None
@@ -533,9 +541,14 @@ fn synth_element(
   stack : StrSet,
   depth : Int,
   rich : Int,
-  include_optional_attrs~ : Bool = false,
+  include_optional_attrs? : Bool = false,
 ) -> @xml.Element {
-  let attrs = synth_attrs(schema, ct, ns, include_optional=include_optional_attrs)
+  let attrs = synth_attrs(
+    schema,
+    ct,
+    ns,
+    include_optional=include_optional_attrs,
+  )
   let children = children_nodes(schema, ct, stack, depth, rich)
   if children.length() == 0 && xsd_child(ct, "simpleContent") is Some(_) {
     children.push(Text(TEXT_MARKER))

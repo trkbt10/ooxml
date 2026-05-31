@@ -110,9 +110,7 @@ fn sample_for_simple(
                   Some(len_el) =>
                     match attr(len_el, "value") {
                       Some(len_str) => {
-                        let len = (try? @string.parse_int(len_str)).unwrap_or(
-                          1,
-                        )
+                        let len = (try? @string.parse_int(len_str)).unwrap_or(1)
                         let buf = StringBuilder::new()
                         for _i in 0..<len {
                           buf.write_string("00")
@@ -227,7 +225,7 @@ fn collect_attrs(
   found : Map[String, String],
   ct_stack : StrSet,
   ag_stack : StrSet,
-  include_optional~ : Bool = false,
+  include_optional? : Bool = false,
 ) -> Unit {
   // <xsd:attribute> nodes anywhere in this type's subtree.  When
   // `include_optional` is true, optional attributes (no `use` or
@@ -275,7 +273,14 @@ fn collect_attrs(
           match schema.attr_groups.get(ref_key) {
             Some(ag) => {
               ag_stack[ref_key] = true
-              collect_attrs(schema, ag, found, ct_stack, ag_stack, include_optional~)
+              collect_attrs(
+                schema,
+                ag,
+                found,
+                ct_stack,
+                ag_stack,
+                include_optional~,
+              )
             }
             None => ()
           }
@@ -295,7 +300,14 @@ fn collect_attrs(
                   match schema.complex_types.get(base) {
                     Some(base_ct) => {
                       ct_stack[base] = true
-                      collect_attrs(schema, base_ct, found, ct_stack, ag_stack, include_optional~)
+                      collect_attrs(
+                        schema,
+                        base_ct,
+                        found,
+                        ct_stack,
+                        ag_stack,
+                        include_optional~,
+                      )
                     }
                     None => ()
                   }

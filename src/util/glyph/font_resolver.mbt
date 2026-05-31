@@ -158,7 +158,7 @@ pub fn FontResolver::compose(drivers : Array[FontResolver]) -> FontResolver {
   label_buf.write_string(")")
   {
     label: label_buf.to_string(),
-    resolve: (request) => {
+    resolve: request => {
       let collected_labels : Array[String] = []
       for d in drivers {
         try (d.resolve)(request) catch {
@@ -192,7 +192,7 @@ pub fn FontResolver::in_memory(faces : Map[String, Bytes]) -> FontResolver {
   }
   {
     label: "in-memory",
-    resolve: (request) => {
+    resolve: request => {
       match request.embedded_bytes {
         Some(b) =>
           return { bytes: b, ttc_index: None, source_label: "embedded" }
@@ -236,7 +236,7 @@ pub fn parse_font_stack(raw : String) -> Array[FontStackCandidate] {
       continue
     }
     let (was_quoted, _) = quote_state(trimmed_tok)
-    if !(was_quoted) {
+    if !was_quoted {
       match generic_from_keyword(stripped) {
         Some(g) => {
           out.push(Generic(g))
@@ -351,7 +351,7 @@ pub fn normalize_family(name : String) -> String {
   let prev_space : Ref[Bool] = { val: false }
   for c in trimmed {
     if c == ' ' || c == '\t' {
-      if !(prev_space.val) {
+      if !prev_space.val {
         buf.write_char(' ')
         prev_space.val = true
       }

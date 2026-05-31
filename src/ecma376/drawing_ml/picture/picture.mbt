@@ -123,11 +123,7 @@ pub fn CT_Picture::resolve_blip_target(
   match resolver(target) {
     Some(element) => Some(element)
     None =>
-      raise ResourceMissing(
-        section="A.4.1",
-        path="pic/blipFill/blip",
-        target~,
-      )
+      raise ResourceMissing(section="A.4.1", path="pic/blipFill/blip", target~)
   }
 }
 

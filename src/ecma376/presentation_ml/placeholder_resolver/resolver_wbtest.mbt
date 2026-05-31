@@ -166,7 +166,10 @@ test "§19.3.1.36 missing slide / layout still resolves master ph" {
 
 ///|
 test "§19.3.1.36 placeholder_part1_19_3_1_36_section_name citation" {
-  @debug.assert_eq(placeholder_part1_19_3_1_36_section_name(), "Part 1 §19.3.1.36")
+  @debug.assert_eq(
+    placeholder_part1_19_3_1_36_section_name(),
+    "Part 1 §19.3.1.36",
+  )
 }
 
 ///|

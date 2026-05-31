@@ -6,31 +6,25 @@
 test "every directional camera preset yields a non-identity transform" {
   let directional = [
     // isometric
-    "isometricTopUp", "isometricTopDown", "isometricBottomUp",
-    "isometricBottomDown", "isometricLeftUp", "isometricLeftDown",
-    "isometricRightUp", "isometricRightDown", "isometricOffAxis1Left",
-    "isometricOffAxis1Right", "isometricOffAxis1Top", "isometricOffAxis2Left",
-    "isometricOffAxis2Right", "isometricOffAxis2Top", "isometricOffAxis3Left",
-    "isometricOffAxis3Right", "isometricOffAxis3Bottom",
-    "isometricOffAxis4Left", "isometricOffAxis4Right",
+    "isometricTopUp", "isometricTopDown", "isometricBottomUp", "isometricBottomDown",
+    "isometricLeftUp", "isometricLeftDown", "isometricRightUp", "isometricRightDown",
+    "isometricOffAxis1Left", "isometricOffAxis1Right", "isometricOffAxis1Top", "isometricOffAxis2Left",
+    "isometricOffAxis2Right", "isometricOffAxis2Top", "isometricOffAxis3Left", "isometricOffAxis3Right",
+    "isometricOffAxis3Bottom", "isometricOffAxis4Left", "isometricOffAxis4Right",
     "isometricOffAxis4Bottom",
     // oblique + legacy oblique (Front excluded)
-    "obliqueTopLeft", "obliqueTop", "obliqueTopRight", "obliqueLeft",
-    "obliqueRight", "obliqueBottomLeft", "obliqueBottom", "obliqueBottomRight",
-    "legacyObliqueTopLeft", "legacyObliqueTop", "legacyObliqueTopRight",
-    "legacyObliqueLeft", "legacyObliqueRight", "legacyObliqueBottomLeft",
-    "legacyObliqueBottom", "legacyObliqueBottomRight",
+     "obliqueTopLeft", "obliqueTop", "obliqueTopRight", "obliqueLeft", "obliqueRight",
+    "obliqueBottomLeft", "obliqueBottom", "obliqueBottomRight", "legacyObliqueTopLeft",
+    "legacyObliqueTop", "legacyObliqueTopRight", "legacyObliqueLeft", "legacyObliqueRight",
+    "legacyObliqueBottomLeft", "legacyObliqueBottom", "legacyObliqueBottomRight",
     // perspective + legacy perspective (Front excluded)
-    "perspectiveRelaxed", "perspectiveRelaxedModerately", "perspectiveAbove",
-    "perspectiveBelow", "perspectiveLeft", "perspectiveRight",
-    "legacyPerspectiveTop", "legacyPerspectiveBottom", "legacyPerspectiveLeft",
-    "legacyPerspectiveRight", "legacyPerspectiveTopLeft",
-    "legacyPerspectiveTopRight", "legacyPerspectiveBottomLeft",
-    "legacyPerspectiveBottomRight", "perspectiveAboveLeftFacing",
-    "perspectiveAboveRightFacing", "perspectiveContrastingLeftFacing",
-    "perspectiveContrastingRightFacing", "perspectiveHeroicLeftFacing",
-    "perspectiveHeroicRightFacing", "perspectiveHeroicExtremeLeftFacing",
-    "perspectiveHeroicExtremeRightFacing",
+     "perspectiveRelaxed", "perspectiveRelaxedModerately", "perspectiveAbove", "perspectiveBelow",
+    "perspectiveLeft", "perspectiveRight", "legacyPerspectiveTop", "legacyPerspectiveBottom",
+    "legacyPerspectiveLeft", "legacyPerspectiveRight", "legacyPerspectiveTopLeft",
+    "legacyPerspectiveTopRight", "legacyPerspectiveBottomLeft", "legacyPerspectiveBottomRight",
+    "perspectiveAboveLeftFacing", "perspectiveAboveRightFacing", "perspectiveContrastingLeftFacing",
+    "perspectiveContrastingRightFacing", "perspectiveHeroicLeftFacing", "perspectiveHeroicRightFacing",
+    "perspectiveHeroicExtremeLeftFacing", "perspectiveHeroicExtremeRightFacing",
   ]
   for p in directional {
     let t = calculate_camera_transform(p)
@@ -49,7 +43,9 @@ test "head-on and unknown camera presets are identity" {
   // `perspectiveFront` / `legacyPerspectiveFront` apply only a depth
   // scale, so they ARE non-identity (foreshortened) — sanity check the
   // boundary.
-  assert_true(!transform3d_is_identity(calculate_camera_transform("perspectiveFront")))
+  assert_true(
+    !transform3d_is_identity(calculate_camera_transform("perspectiveFront")),
+  )
   // A schema-violating value falls back to identity.
   assert_true(transform3d_is_identity(calculate_camera_transform("notACamera")))
 }

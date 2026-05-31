@@ -265,7 +265,8 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       @sml_date_serial.DateSystem::Serial1900
     }
     let snapshot = @sml_formula.WorksheetSnapshot::new(
-      worksheet.name, date_system,
+      worksheet.name,
+      date_system,
     ).with_worksheet(worksheet.value)
     let snapshot = match self.shared_strings {
       Some(sst) => snapshot.with_sst(sst)
@@ -482,10 +483,9 @@ fn read_worksheet_comments(
       for rel in rels.relationships {
         if rel.type_uri.has_suffix("/comments") &&
           rel.target_mode == @relationships.TargetMode::Internal {
-          let name = try @opc_part_name.resolve_target(
-              worksheet_part_name,
-              rel.target,
-            ) catch {
+          let name = try
+            @opc_part_name.resolve_target(worksheet_part_name, rel.target)
+          catch {
             _ => continue
           } noraise {
             n => n
@@ -560,7 +560,9 @@ fn read_worksheet_tables(
       for rel in rels.relationships {
         if rel.type_uri.has_suffix("/table") &&
           rel.target_mode == @relationships.TargetMode::Internal {
-          try @opc_part_name.resolve_target(worksheet_part_name, rel.target) catch {
+          try
+            @opc_part_name.resolve_target(worksheet_part_name, rel.target)
+          catch {
             _ => ()
           } noraise {
             name => rid_to_part.set(rel.id, name)
@@ -842,7 +844,9 @@ fn build_pivot_cache_lookup(
         for rel in cdef_rels.relationships {
           if rel.type_uri.has_suffix("/pivotCacheRecords") &&
             rel.target_mode == @relationships.TargetMode::Internal {
-            try @opc_part_name.resolve_target(definition_part, rel.target) catch {
+            try
+              @opc_part_name.resolve_target(definition_part, rel.target)
+            catch {
               _ => ()
             } noraise {
               name => records_part = Some(name)
@@ -879,7 +883,9 @@ fn collect_worksheet_pivots(
       rel.target_mode != @relationships.TargetMode::Internal {
       continue
     }
-    let pivot_part_name = try @opc_part_name.resolve_target(worksheet_part, rel.target) catch {
+    let pivot_part_name = try
+      @opc_part_name.resolve_target(worksheet_part, rel.target)
+    catch {
       _ => continue
     } noraise {
       name => name
@@ -889,12 +895,16 @@ fn collect_worksheet_pivots(
       None => continue
     }
     // 1. Decode the pivot table definition.
-    let pivot_dom = try @sml_reader.read_pivot_table_definition(pivot_part.data) catch {
+    let pivot_dom = try
+      @sml_reader.read_pivot_table_definition(pivot_part.data)
+    catch {
       _ => continue
     } noraise {
       v => v
     }
-    let pivot_typed = try @sml_pivot.decode_pivot_table_definition(pivot_dom) catch {
+    let pivot_typed = try
+      @sml_pivot.decode_pivot_table_definition(pivot_dom)
+    catch {
       _ => continue
     } noraise {
       v => v
@@ -919,12 +929,16 @@ fn collect_worksheet_pivots(
       Some(p) => p
       None => continue
     }
-    let cache_dom = try @sml_reader.read_pivot_cache_definition(cache_part.data) catch {
+    let cache_dom = try
+      @sml_reader.read_pivot_cache_definition(cache_part.data)
+    catch {
       _ => continue
     } noraise {
       v => v
     }
-    let cache_typed = try @sml_pivot.decode_pivot_cache_definition(cache_dom) catch {
+    let cache_typed = try
+      @sml_pivot.decode_pivot_cache_definition(cache_dom)
+    catch {
       _ => continue
     } noraise {
       v => v
@@ -944,15 +958,19 @@ fn collect_worksheet_pivots(
         match opc_package.part(records_part_name) {
           None => { count: Some(0), rows: [] }
           Some(records_part) => {
-            let records_dom = try @sml_reader.read_pivot_cache_records(records_part.data) catch {
+            let records_dom = try
+              @sml_reader.read_pivot_cache_records(records_part.data)
+            catch {
               _ => continue
             } noraise {
               v => v
             }
-            try @sml_pivot.decode_pivot_cache_records(
-              records_dom,
-              cache_typed.cache_fields,
-            ) catch {
+            try
+              @sml_pivot.decode_pivot_cache_records(
+                records_dom,
+                cache_typed.cache_fields,
+              )
+            catch {
               _ => continue
             } noraise {
               v => v
@@ -961,9 +979,11 @@ fn collect_worksheet_pivots(
         }
     }
     // 4. Materialize.
-    let materialization = try @sml_pivot.materialize_pivot_table(
-      pivot_typed, cache_typed, records_typed,
-    ) catch {
+    let materialization = try
+      @sml_pivot.materialize_pivot_table(
+        pivot_typed, cache_typed, records_typed,
+      )
+    catch {
       _ => continue
     } noraise {
       v => v

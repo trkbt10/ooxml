@@ -39,7 +39,12 @@ test "underline_dasharray returns None for solid variants" {
 ///|
 test "build_underline_line emits stroke-dasharray when dashed" {
   let node = build_underline_line(
-    0.0, 100.0, 10.0, 1.0, "#000000", dasharray=Some("4 3"),
+    0.0,
+    100.0,
+    10.0,
+    1.0,
+    "#000000",
+    dasharray=Some("4 3"),
   )
   let svg = match node {
     @xml.Node::Element(e) => @markup.serialize_svg(e)

@@ -24,13 +24,19 @@ test "inter_script_space_em: no gap within the same script" {
 test "inter_script_space_em: autoSpaceDE toggle gates letters" {
   inspect(inter_script_space_em('語', 'A', auto_space_de=false), content="0")
   // Digits still spaced when DN remains on.
-  inspect(inter_script_space_em('語', '5', auto_space_de=false), content="0.25")
+  inspect(
+    inter_script_space_em('語', '5', auto_space_de=false),
+    content="0.25",
+  )
 }
 
 ///|
 test "inter_script_space_em: autoSpaceDN toggle gates digits" {
   inspect(inter_script_space_em('語', '5', auto_space_dn=false), content="0")
-  inspect(inter_script_space_em('語', 'A', auto_space_dn=false), content="0.25")
+  inspect(
+    inter_script_space_em('語', 'A', auto_space_dn=false),
+    content="0.25",
+  )
 }
 
 ///|
@@ -55,5 +61,8 @@ test "inter_script_advance_px: realistic mixed string" {
   // "日本語ABC123" — the only East-Asian↔Western boundary is 語|A
   // (C|1 is letter↔digit, both Western → no gap).  One gap at 20pt:
   // 0.25 × 20 = 5.0 px.
-  inspect(inter_script_advance_px("日本語ABC123", font_size_pt=20.0), content="5")
+  inspect(
+    inter_script_advance_px("日本語ABC123", font_size_pt=20.0),
+    content="5",
+  )
 }

@@ -12,12 +12,12 @@
 // §19.7.48 ST_TLTriggerEvent.
 
 import {
-  "moonbitlang/core/strconv" @strconv,
+  "moonbitlang/core/strconv",
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
-  "trkbt10/ooxml/xml" @xml,
-  "trkbt10/ooxml/ecma376/presentation_ml/domain" @domain,
+  "trkbt10/ooxml/xml",
+  "trkbt10/ooxml/ecma376/presentation_ml/domain",
 }
 
 import {
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

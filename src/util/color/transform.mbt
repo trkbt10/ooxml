@@ -30,11 +30,7 @@ fn split_hex_for_transform(hex : String) -> (Double, Double, Double, String) {
   let r = parse_hex_byte(clean, 0)
   let g = parse_hex_byte(clean, 2)
   let b = parse_hex_byte(clean, 4)
-  let alpha = if clean.length() >= 8 {
-    clean[6:8].to_owned()
-  } else {
-    ""
-  }
+  let alpha = if clean.length() >= 8 { clean[6:8].to_owned() } else { "" }
   (r, g, b, alpha)
 }
 

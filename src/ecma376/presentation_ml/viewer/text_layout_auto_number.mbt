@@ -180,9 +180,11 @@ fn hindi_consonant_numeral(num : Int) -> String {
     let cp = 0x0905 + (remainder - 1)
     cp.unsafe_to_char().to_string()
   } else if remainder == 17 {
-    (0x0905).unsafe_to_char().to_string() + (0x0902).unsafe_to_char().to_string()
+    (0x0905).unsafe_to_char().to_string() +
+    (0x0902).unsafe_to_char().to_string()
   } else {
-    (0x0905).unsafe_to_char().to_string() + (0x0903).unsafe_to_char().to_string()
+    (0x0905).unsafe_to_char().to_string() +
+    (0x0903).unsafe_to_char().to_string()
   }
   let out = StringBuilder::new()
   for _ in 0..<repeats {

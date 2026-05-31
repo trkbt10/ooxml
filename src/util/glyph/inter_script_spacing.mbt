@@ -64,8 +64,8 @@ fn is_western_digit(c : Char) -> Bool {
 pub fn inter_script_space_em(
   prev : Char,
   next : Char,
-  auto_space_de~ : Bool = true,
-  auto_space_dn~ : Bool = true,
+  auto_space_de? : Bool = true,
+  auto_space_dn? : Bool = true,
 ) -> Double {
   let prev_ea = is_east_asian_for_spacing(prev)
   let next_ea = is_east_asian_for_spacing(next)
@@ -91,8 +91,8 @@ pub fn inter_script_space_em(
 pub fn inter_script_advance_px(
   text : String,
   font_size_pt~ : Double,
-  auto_space_de~ : Bool = true,
-  auto_space_dn~ : Bool = true,
+  auto_space_de? : Bool = true,
+  auto_space_dn? : Bool = true,
 ) -> Double {
   let mut total = 0.0
   let mut prev : Char? = None

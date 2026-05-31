@@ -55,7 +55,21 @@ fn render_area_chart(
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
   if !axes.val_deleted() {
-    for tick in y_axis_ticks(px, py, ph, max_v, pw, fw, axes.val_major(), style=Some(style), draw_minor_gridlines=axes.val_minor_gridlines(), num_fmt=axes.val_num_fmt(), tick_lbl_pos=axes.val_tick_lbl_pos(), log_base=axes.val_log_base()) {
+    for
+      tick in y_axis_ticks(
+        px,
+        py,
+        ph,
+        max_v,
+        pw,
+        fw,
+        axes.val_major(),
+        style=Some(style),
+        draw_minor_gridlines=axes.val_minor_gridlines(),
+        num_fmt=axes.val_num_fmt(),
+        tick_lbl_pos=axes.val_tick_lbl_pos(),
+        log_base=axes.val_log_base(),
+      ) {
       nodes.push(tick)
     }
   }
@@ -114,7 +128,11 @@ fn render_area_chart(
           @markup.attr("fill", series_color),
           @markup.attr(
             "fill-opacity",
-            if all_series.length() > 1 { "0.7" } else { "1" },
+            if all_series.length() > 1 {
+              "0.7"
+            } else {
+              "1"
+            },
           ),
           @markup.attr("stroke", series_color),
           @markup.attr("stroke-width", format_double(h * 0.003)),
@@ -132,7 +150,16 @@ fn render_area_chart(
     let bx = px + i.to_double() * step
     let by = py + ph + fh * 0.018
     nodes.push(
-      chart_text(label, bx, by, w, h, anchor="middle", baseline="hanging", style=Some(style)),
+      chart_text(
+        label,
+        bx,
+        by,
+        w,
+        h,
+        anchor="middle",
+        baseline="hanging",
+        style=Some(style),
+      ),
     )
   }
   // §21.2.2.49 dLbls — data labels at each data point.
@@ -154,9 +181,10 @@ fn render_area_chart(
           let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
           points.push((x, y, v, cat_name))
         }
-        for nd in render_data_labels(
-          cfg, points, ser_name, total, w, h, label_offset, style,
-        ) {
+        for
+          nd in render_data_labels(
+            cfg, points, ser_name, total, w, h, label_offset, style,
+          ) {
           nodes.push(nd)
         }
       }

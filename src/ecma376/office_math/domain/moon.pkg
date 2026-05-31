@@ -3,5 +3,5 @@
 // OMML domain types: m:oMath, m:f, m:rad, m:nary, …
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }

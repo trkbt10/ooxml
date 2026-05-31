@@ -25,7 +25,7 @@ pub fn render_preset_shape_d(
   prst : String,
   w : Double,
   h : Double,
-  adjustments~ : Array[@preset_geometry.Adjustment] = [],
+  adjustments? : Array[@preset_geometry.Adjustment] = [],
 ) -> String? {
   if w <= 0.0 || h <= 0.0 {
     return None

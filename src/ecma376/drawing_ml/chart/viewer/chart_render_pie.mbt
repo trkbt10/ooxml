@@ -75,7 +75,11 @@ fn render_pie_chart(
     }
     let expl_pct = {
       let dpt_v = dpt_explosion_for(dpt_explosions, i)
-      if dpt_v > 0 { dpt_v } else { series_explosion }
+      if dpt_v > 0 {
+        dpt_v
+      } else {
+        series_explosion
+      }
     }
     // Slice offset: shift centre outward along the slice's midpoint
     // direction by `outer * expl_pct / 100`.
@@ -146,11 +150,7 @@ fn render_pie_chart(
         let sa = @math.sin(a)
         let lx = cx + label_r * ca
         let ly = cy + label_r * sa
-        let cat_name = if i < cat_labels.length() {
-          cat_labels[i]
-        } else {
-          ""
-        }
+        let cat_name = if i < cat_labels.length() { cat_labels[i] } else { "" }
         let text = build_data_label_text(cfg, v, cat_name, ser_name, total)
         if text.length() > 0 {
           // §21.2.2.92 leaderLines — for an external label, draw a
@@ -175,7 +175,7 @@ fn render_pie_chart(
           }
           let (anchor, fill) = if external {
             // Right half → start (left-anchored); left half → end.
-            ((if ca >= 0.0 { "start" } else { "end" }), "#404040")
+            (if ca >= 0.0 { "start" } else { "end" }, "#404040")
           } else {
             ("middle", "#ffffff")
           }

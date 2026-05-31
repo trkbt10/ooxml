@@ -95,7 +95,10 @@ pub fn evaluate_cell(
   snapshot : WorksheetSnapshot,
   address : @address.CellAddress,
 ) -> FormulaValue {
-  let in_progress : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([], capacity=0)
+  let in_progress : @hashmap.HashMap[String, Bool] = @hashmap.HashMap(
+    [],
+    capacity=0,
+  )
   worksheet_eval_cell(snapshot, address, in_progress)
 }
 
@@ -106,7 +109,10 @@ pub fn evaluate_cell(
 pub fn evaluate_sheet(
   snapshot : WorksheetSnapshot,
 ) -> @hashmap.HashMap[String, FormulaValue] {
-  let results : @hashmap.HashMap[String, FormulaValue] = @hashmap.HashMap([], capacity=0)
+  let results : @hashmap.HashMap[String, FormulaValue] = @hashmap.HashMap(
+    [],
+    capacity=0,
+  )
   snapshot.cells.each(fn(key, cell) {
     if worksheet_eval_cell_in_current_sheet(snapshot, key) &&
       worksheet_eval_formula_element(cell) is Some(_) {
@@ -192,7 +198,8 @@ fn WorksheetSnapshot::add_merge_range(
     Some(colon) => {
       let origin_str = range_ref.unsafe_substring(start=0, end=colon)
       let end_str = range_ref.unsafe_substring(
-        start=colon + 1, end=range_ref.length(),
+        start=colon + 1,
+        end=range_ref.length(),
       )
       let origin = match worksheet_eval_parse_address(origin_str) {
         Some(a) => a
@@ -203,8 +210,8 @@ fn WorksheetSnapshot::add_merge_range(
         None => return
       }
       let origin_key = origin.to_a1()
-      for row in origin.row_zero_based..=end_addr.row_zero_based {
-        for col in origin.col_zero_based..=end_addr.col_zero_based {
+      for row in origin.row_zero_based..<=end_addr.row_zero_based {
+        for col in origin.col_zero_based..<=end_addr.col_zero_based {
           if row == origin.row_zero_based && col == origin.col_zero_based {
             continue
           }

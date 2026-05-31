@@ -120,9 +120,7 @@ pub fn parse_vml_style(s : String) -> VmlInlineStyle {
     let (k, v) = match colon_idx {
       Some(idx) => {
         let k = trim_ascii(trimmed[0:idx].to_owned())
-        let v = trim_ascii(
-          trimmed[idx + 1:trimmed.length()].to_owned(),
-        )
+        let v = trim_ascii(trimmed[idx + 1:trimmed.length()].to_owned())
         (k, v)
       }
       None => (trimmed, "")

@@ -62,10 +62,7 @@ test "render_cell_text expands *x fill into left+right anchored runs" {
 ///|
 test "§18.18.40 fill alignment tiles the whole cell text" {
   let base = default_cell_style(default_render_options())
-  let style = {
-    ..base,
-    alignment: { ..base.alignment, horizontal: "fill" },
-  }
+  let style = { ..base, alignment: { ..base.alignment, horizontal: "fill" } }
   // A 120 px cell with the short text "ab" must repeat it several times.
   let nodes = render_cell_text("s", "A1", fill_layout(), "ab", style)
   let sb = StringBuilder::new()
@@ -83,10 +80,7 @@ test "§18.18.40 fill alignment tiles the whole cell text" {
 ///|
 test "wrapped cell strips the fill sentinel rather than leaking it" {
   let base = default_cell_style(default_render_options())
-  let style = {
-    ..base,
-    alignment: { ..base.alignment, wrap_text: true },
-  }
+  let style = { ..base, alignment: { ..base.alignment, wrap_text: true } }
   let text = apply_format_section(5.0, "\"$\"*.0")
   let nodes = render_cell_text("s", "A1", fill_layout(), text, style)
   let sb = StringBuilder::new()

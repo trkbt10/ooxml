@@ -3,13 +3,13 @@
 // VML Drawing schemas (§20.1.16 transitional): vml-main and vml-officeDrawing identifiers.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
-  "trkbt10/ooxml/ecma376/drawing_ml/vml_presentation" @vml_presentation,
-  "trkbt10/ooxml/ecma376/drawing_ml/vml_word" @vml_word,
-  "trkbt10/ooxml/ecma376/drawing_ml/vml_excel" @vml_excel,
+  "trkbt10/ooxml/xml",
+  "trkbt10/ooxml/ecma376/drawing_ml/vml_presentation",
+  "trkbt10/ooxml/ecma376/drawing_ml/vml_word",
+  "trkbt10/ooxml/ecma376/drawing_ml/vml_excel",
 }
 
 import {
-  "moonbitlang/core/debug" @debug,
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

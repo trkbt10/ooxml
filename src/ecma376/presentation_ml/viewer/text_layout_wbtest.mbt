@@ -8,15 +8,17 @@
 /// measurement call.
 let test_font_ready : Ref[Bool] = { val: false }
 
+///|
 fn ensure_test_font() -> Unit {
   if test_font_ready.val {
     return
   }
   test_font_ready.val = true
-  let bytes = try @fs.read_file_to_bytes(
-      "src/util/glyph/fixtures/subset.ttf",
-    ) catch {
-    _ => abort("Cannot load test font fixture src/util/glyph/fixtures/subset.ttf")
+  let bytes = try
+    @fs.read_file_to_bytes("src/util/glyph/fixtures/subset.ttf")
+  catch {
+    _ =>
+      abort("Cannot load test font fixture src/util/glyph/fixtures/subset.ttf")
   } noraise {
     b => b
   }

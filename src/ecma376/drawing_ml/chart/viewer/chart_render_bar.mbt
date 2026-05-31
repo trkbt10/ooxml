@@ -117,7 +117,11 @@ fn render_bar_chart(
   let gap_width = match first_child_named(elem, "gapWidth") {
     Some(g) => {
       let v = parse_int_lenient(attr_or(g, "val", "150"))
-      if v >= 0 && v <= 500 { v } else { 150 }
+      if v >= 0 && v <= 500 {
+        v
+      } else {
+        150
+      }
     }
     None => 150
   }
@@ -127,7 +131,11 @@ fn render_bar_chart(
   let overlap_pct = match first_child_named(elem, "overlap") {
     Some(o) => {
       let v = parse_int_lenient(attr_or(o, "val", "0"))
-      if v >= -100 && v <= 100 { v } else { 0 }
+      if v >= -100 && v <= 100 {
+        v
+      } else {
+        0
+      }
     }
     None => 0
   }
@@ -140,7 +148,8 @@ fn render_bar_chart(
   } else {
     s_count.to_double()
   }
-  let cluster_ratio = effective_n / (effective_n + gap_width.to_double() / 100.0)
+  let cluster_ratio = effective_n /
+    (effective_n + gap_width.to_double() / 100.0)
   let dlbl_config = read_data_labels(elem)
   if bar_dir == "bar" {
     // Horizontal bars: §21.2.2.15 barDir="bar". The OOXML convention
@@ -156,7 +165,17 @@ fn render_bar_chart(
     // For horizontal bars the value axis is X; gridlines on it follow
     // the valAx `<c:majorGridlines/>` declaration.
     if !axes.val_deleted() {
-      for n in x_axis_ticks(px, py, pw, ph, max_v, fh, axes.val_major(), style=Some(style)) {
+      for
+        n in x_axis_ticks(
+          px,
+          py,
+          pw,
+          ph,
+          max_v,
+          fh,
+          axes.val_major(),
+          style=Some(style),
+        ) {
         nodes.push(n)
       }
     }
@@ -221,11 +240,7 @@ fn render_bar_chart(
             v
           }
           let len = if max_v > 0.0 { norm_v / max_v * pw } else { 0.0 }
-          let x_start = if max_v > 0.0 {
-            px + accum / max_v * pw
-          } else {
-            px
-          }
+          let x_start = if max_v > 0.0 { px + accum / max_v * pw } else { px }
           let by = py + band_idx.to_double() * band + sub_pad
           let color = resolve_series_color(ser_elems[si], si, ctx)
           nodes.push(
@@ -253,7 +268,8 @@ fn render_bar_chart(
       // sub_band/n and positioned to overlap by that percentage.
       let raw_bar_h = sub_band / s_count.to_double()
       let overlap_frac = overlap_pct.to_double() / 100.0
-      let bar_h = raw_bar_h * (1.0 + overlap_frac * (s_count - 1).to_double() / s_count.to_double())
+      let bar_h = raw_bar_h *
+        (1.0 + overlap_frac * (s_count - 1).to_double() / s_count.to_double())
       for si, s in series {
         let (_, values) = s
         let color = resolve_series_color(ser_elems[si], si, ctx)
@@ -324,14 +340,22 @@ fn render_bar_chart(
         Some(b) => if max_v >= 2.0 && b >= 2.0 { Some(b) } else { None }
         None => None
       }
-      for n in y_axis_ticks(
-        px, py, ph, max_v, pw, fw, axes.val_major(),
-        label_suffix=suffix, style=Some(style),
-        draw_minor_gridlines=axes.val_minor_gridlines(),
-        num_fmt=axes.val_num_fmt(),
-        tick_lbl_pos=axes.val_tick_lbl_pos(),
-        log_base=log_b,
-      ) {
+      for
+        n in y_axis_ticks(
+          px,
+          py,
+          ph,
+          max_v,
+          pw,
+          fw,
+          axes.val_major(),
+          label_suffix=suffix,
+          style=Some(style),
+          draw_minor_gridlines=axes.val_minor_gridlines(),
+          num_fmt=axes.val_num_fmt(),
+          tick_lbl_pos=axes.val_tick_lbl_pos(),
+          log_base=log_b,
+        ) {
         nodes.push(n)
       }
     }
@@ -399,7 +423,8 @@ fn render_bar_chart(
       let pad = (band - cluster_w) / 2.0
       let raw_bar_w = cluster_w / s_count.to_double()
       let overlap_frac2 = overlap_pct.to_double() / 100.0
-      let bar_w = raw_bar_w * (1.0 + overlap_frac2 * (s_count - 1).to_double() / s_count.to_double())
+      let bar_w = raw_bar_w *
+        (1.0 + overlap_frac2 * (s_count - 1).to_double() / s_count.to_double())
       // §21.2.2.221 varyColors — when true and there is only one
       // series, each bar gets the next accent colour so the cluster
       // visually distinguishes categories.
@@ -462,7 +487,16 @@ fn render_bar_chart(
         let bx = px + i.to_double() * band + band / 2.0
         let by = py + ph + fh * 0.018 + fh * 0.05 * lbl_offset_frac
         nodes.push(
-          chart_text(label, bx, by, w, h, anchor="middle", baseline="hanging", style=Some(style)),
+          chart_text(
+            label,
+            bx,
+            by,
+            w,
+            h,
+            anchor="middle",
+            baseline="hanging",
+            style=Some(style),
+          ),
         )
       }
     }
@@ -506,9 +540,10 @@ fn render_bar_chart(
             points.push((bx, by, v, cat_name))
           }
         }
-        for n in render_data_labels(
-          cfg, points, ser_name, total, w, h, label_offset, style,
-        ) {
+        for
+          n in render_data_labels(
+            cfg, points, ser_name, total, w, h, label_offset, style,
+          ) {
           nodes.push(n)
         }
       }

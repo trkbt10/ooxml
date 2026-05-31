@@ -490,7 +490,11 @@ pub fn set_text_bold(
       if value {
         @a_edit.set_attribute(r_pr, @a_edit.unprefixed_attribute("b", "1"))
       } else {
-        @a_edit.remove_attribute(r_pr, { prefix: None, local_name: "b", ns: None })
+        @a_edit.remove_attribute(r_pr, {
+          prefix: None,
+          local_name: "b",
+          ns: None,
+        })
       }
     },
   )
@@ -1818,7 +1822,10 @@ fn patch_shape_xfrm(
     @xml.Node::Element(ext),
   )
   @a_edit.update_first(shape, @a_edit.by_local_name("spPr"), fn(sp_pr) {
-    let xfrm_hits = @a_edit.direct_children(sp_pr, @a_edit.by_local_name("xfrm"))
+    let xfrm_hits = @a_edit.direct_children(
+      sp_pr,
+      @a_edit.by_local_name("xfrm"),
+    )
     if xfrm_hits.length() == 0 {
       @a_edit.insert_child(sp_pr, 0, @xml.Node::Element(xfrm))
     } else {
@@ -1900,7 +1907,10 @@ fn patch_paragraph_for_run(
       @xml.Element(e) =>
         if e.name.local_name == "r" {
           if counter == run_index {
-            let r_pr_hits = @a_edit.direct_children(e, @a_edit.by_local_name("rPr"))
+            let r_pr_hits = @a_edit.direct_children(
+              e,
+              @a_edit.by_local_name("rPr"),
+            )
             let patched = if r_pr_hits.length() == 0 {
               let new_r_pr = update(@a_edit.empty_element(a_qn, "rPr"))
               @a_edit.insert_child(e, 0, @xml.Node::Element(new_r_pr))

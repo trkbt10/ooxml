@@ -13,10 +13,10 @@
 pub fn build_left_right_arrow_callout(
   width : Int,
   height : Int,
-  adj1~ : Int = 25000,
-  adj2~ : Int = 25000,
-  adj3~ : Int = 25000,
-  adj4~ : Int = 48123,
+  adj1? : Int = 25000,
+  adj2? : Int = 25000,
+  adj3? : Int = 25000,
+  adj4? : Int = 48123,
 ) -> ShapeGeometry {
   // §20.1.10.56 — a centred box with arrows on both sides. ss-based:
   //   a2 = pin 0 adj2 (50000·h/ss); a1 = pin 0 adj1 (2·a2);

@@ -26,7 +26,11 @@ test "resolve_sparkline_color keeps an explicit rgb unchanged" {
 ///|
 test "resolve_sparkline_color applies tint and strips the hash" {
   let theme_map : SmlThemeColorMap = { slots: [Some("808080")] }
-  let c : @sparkline.SparklineColor = { hex: None, theme: Some(0), tint: Some(0.5) }
+  let c : @sparkline.SparklineColor = {
+    hex: None,
+    theme: Some(0),
+    tint: Some(0.5),
+  }
   let r = resolve_sparkline_color(c, theme_map)
   // Tint resolves to a concrete 6-digit hex with no leading '#'.
   guard r.hex is Some(h) else { fail("expected a resolved hex") }

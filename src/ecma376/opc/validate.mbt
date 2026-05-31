@@ -29,9 +29,7 @@ pub fn Package::validate(self : Package) -> Array[String] {
   // §6.2.2 / §7.3.7 — content type resolvable + XML well-formed.
   for p in self.parts {
     if p.content_type == "" {
-      violations.push(
-        "part has no resolvable content type: " + p.name,
-      )
+      violations.push("part has no resolvable content type: " + p.name)
     }
     if is_xml_content_type(p.content_type) {
       try @xml.parse(p.data) |> ignore catch {
@@ -44,7 +42,10 @@ pub fn Package::validate(self : Package) -> Array[String] {
   // §6.3 — every Internal relationship target must resolve to a part
   // that exists.  (External targets point outside the package and are
   // not checked here.)
-  fn check_rels(owner : String, rels : @relationships.CT_Relationships) -> Unit {
+  fn check_rels(
+    owner : String,
+    rels : @relationships.CT_Relationships,
+  ) -> Unit {
     for r in rels.relationships {
       if r.target_mode == @relationships.TargetMode::Internal {
         try @opc_part_name.resolve_target(owner, r.target) catch {

@@ -4,17 +4,17 @@
 // evaluation.
 
 import {
-  "moonbitlang/core/hashmap" @hashmap,
-  "moonbitlang/core/math" @math,
-  "moonbitlang/core/strconv" @strconv,
-  "trkbt10/ooxml/ecma376/spreadsheet_ml/address" @address,
-  "trkbt10/ooxml/ecma376/spreadsheet_ml/cell_value" @cell_value,
-  "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial" @date_serial,
-  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @domain,
+  "moonbitlang/core/hashmap",
+  "moonbitlang/core/math",
+  "moonbitlang/core/strconv",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/cell_value",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }
 
 import {
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

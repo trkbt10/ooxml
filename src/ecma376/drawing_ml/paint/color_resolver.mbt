@@ -87,7 +87,7 @@ pub fn ColorResolveContext::with_clamp_overflow_hue(
   ctx : ColorResolveContext,
   clamp_overflow_hue : Bool,
 ) -> ColorResolveContext {
-  { ..ctx, clamp_overflow_hue }
+  { ..ctx, clamp_overflow_hue, }
 }
 
 ///|
@@ -189,7 +189,7 @@ pub fn ColorResolveContext::with_group_fill(
   ctx : ColorResolveContext,
   group_fill : @xml.Element?,
 ) -> ColorResolveContext {
-  { ..ctx, group_fill }
+  { ..ctx, group_fill, }
 }
 
 ///|
@@ -220,7 +220,7 @@ pub fn ColorResolveContext::with_color_scheme(
   ctx : ColorResolveContext,
   color_scheme : ColorScheme,
 ) -> ColorResolveContext {
-  { ..ctx, color_scheme }
+  { ..ctx, color_scheme, }
 }
 
 ///|

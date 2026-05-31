@@ -29,12 +29,15 @@ fn register_builtin_database_functions(registry : FunctionRegistry) -> Unit {
   registry.register("CUBEVALUE", Eager(fn_cube_stub))
 }
 
+///|
 fn d_function(
   args : Array[FormulaAst],
   ctx : EvalContext,
   agg : (Array[Double]) -> FormulaValue,
 ) -> FormulaValue {
-  if args.length() != 3 { return VError(Value) }
+  if args.length() != 3 {
+    return VError(Value)
+  }
   let db = evaluate(args[0], ctx)
   let field_arg = evaluate(args[1], ctx)
   let criteria = evaluate(args[2], ctx)
@@ -46,7 +49,9 @@ fn d_function(
     VArray(rows) => rows
     _ => return VError(Value)
   }
-  if db_rows.length() < 2 || crit_rows.length() < 2 { return VError(Value) }
+  if db_rows.length() < 2 || crit_rows.length() < 2 {
+    return VError(Value)
+  }
   let headers : Array[String] = []
   for cell in db_rows[0] {
     match cell {
@@ -59,13 +64,18 @@ fn d_function(
     VString(s) => {
       let mut idx = -1
       for i, h in headers {
-        if h == s { idx = i; break }
+        if h == s {
+          idx = i
+          break
+        }
       }
       idx
     }
     _ => return VError(Value)
   }
-  if field_idx < 0 || field_idx >= headers.length() { return VError(Value) }
+  if field_idx < 0 || field_idx >= headers.length() {
+    return VError(Value)
+  }
   let crit_headers : Array[String] = []
   for cell in crit_rows[0] {
     match cell {
@@ -77,7 +87,10 @@ fn d_function(
   for ch in crit_headers {
     let mut found = -1
     for i, h in headers {
-      if h == ch { found = i; break }
+      if h == ch {
+        found = i
+        break
+      }
     }
     crit_col_indices.push(found)
   }
@@ -90,17 +103,26 @@ fn d_function(
       let mut row_match = true
       for ci in 0..<crit_col_indices.length() {
         let col = crit_col_indices[ci]
-        if col < 0 { continue }
-        if ci >= crit_row.length() { continue }
+        if col < 0 {
+          continue
+        }
+        if ci >= crit_row.length() {
+          continue
+        }
         match crit_row[ci] {
           VEmpty => ()
           crit_val => {
             let cell_val = if col < row.length() { row[col] } else { VEmpty }
-            if !d_criteria_match(cell_val, crit_val) { row_match = false }
+            if !d_criteria_match(cell_val, crit_val) {
+              row_match = false
+            }
           }
         }
       }
-      if row_match { matches = true; break }
+      if row_match {
+        matches = true
+        break
+      }
     }
     if matches {
       if field_idx < row.length() {
@@ -114,6 +136,7 @@ fn d_function(
   agg(values)
 }
 
+///|
 fn d_criteria_match(cell : FormulaValue, crit : FormulaValue) -> Bool {
   match (cell, crit) {
     (VNumber(a), VNumber(b)) => a == b
@@ -123,113 +146,169 @@ fn d_criteria_match(cell : FormulaValue, crit : FormulaValue) -> Bool {
   }
 }
 
+///|
 fn fn_dsum(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
     let mut sum = 0.0
-    for v in vals { sum = sum + v }
+    for v in vals {
+      sum = sum + v
+    }
     VNumber(sum)
   })
 }
 
+///|
 fn fn_daverage(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
-    if vals.length() == 0 { return VError(DivZero) }
+    if vals.length() == 0 {
+      return VError(DivZero)
+    }
     let mut sum = 0.0
-    for v in vals { sum = sum + v }
+    for v in vals {
+      sum = sum + v
+    }
     VNumber(sum / vals.length().to_double())
   })
 }
 
+///|
 fn fn_dcount(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) { VNumber(vals.length().to_double()) })
 }
 
+///|
 fn fn_dcounta(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) { VNumber(vals.length().to_double()) })
 }
 
+///|
 fn fn_dmax(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
-    if vals.length() == 0 { return VNumber(0.0) }
+    if vals.length() == 0 {
+      return VNumber(0.0)
+    }
     let mut m = vals[0]
-    for v in vals { if v > m { m = v } }
+    for v in vals {
+      if v > m {
+        m = v
+      }
+    }
     VNumber(m)
   })
 }
 
+///|
 fn fn_dmin(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
-    if vals.length() == 0 { return VNumber(0.0) }
+    if vals.length() == 0 {
+      return VNumber(0.0)
+    }
     let mut m = vals[0]
-    for v in vals { if v < m { m = v } }
+    for v in vals {
+      if v < m {
+        m = v
+      }
+    }
     VNumber(m)
   })
 }
 
+///|
 fn fn_dproduct(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
     let mut p = 1.0
-    for v in vals { p = p * v }
+    for v in vals {
+      p = p * v
+    }
     VNumber(p)
   })
 }
 
+///|
 fn fn_dget(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
-    if vals.length() == 1 { VNumber(vals[0]) } else if vals.length() == 0 {
+    if vals.length() == 1 {
+      VNumber(vals[0])
+    } else if vals.length() == 0 {
       VError(Value)
-    } else { VError(Num) }
+    } else {
+      VError(Num)
+    }
   })
 }
 
+///|
 fn fn_dstdev(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
-    if vals.length() < 2 { return VError(DivZero) }
+    if vals.length() < 2 {
+      return VError(DivZero)
+    }
     VNumber(sample_variance(vals).sqrt())
   })
 }
 
+///|
 fn fn_dstdevp(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
-    if vals.length() < 1 { return VError(DivZero) }
+    if vals.length() < 1 {
+      return VError(DivZero)
+    }
     let n = vals.length().to_double()
     let mut sum = 0.0
-    for v in vals { sum = sum + v }
+    for v in vals {
+      sum = sum + v
+    }
     let mean = sum / n
     let mut ss = 0.0
-    for v in vals { let d = v - mean; ss = ss + d * d }
+    for v in vals {
+      let d = v - mean
+      ss = ss + d * d
+    }
     VNumber((ss / n).sqrt())
   })
 }
 
+///|
 fn fn_dvar(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
-    if vals.length() < 2 { return VError(DivZero) }
+    if vals.length() < 2 {
+      return VError(DivZero)
+    }
     VNumber(sample_variance(vals))
   })
 }
 
+///|
 fn fn_dvarp(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   d_function(args, ctx, fn(vals) {
-    if vals.length() < 1 { return VError(DivZero) }
+    if vals.length() < 1 {
+      return VError(DivZero)
+    }
     let n = vals.length().to_double()
     let mut sum = 0.0
-    for v in vals { sum = sum + v }
+    for v in vals {
+      sum = sum + v
+    }
     let mean = sum / n
     let mut ss = 0.0
-    for v in vals { let d = v - mean; ss = ss + d * d }
+    for v in vals {
+      let d = v - mean
+      ss = ss + d * d
+    }
     VNumber(ss / n)
   })
 }
 
-fn fn_transpose(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+///|
+fn fn_transpose(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0] {
     VArray(rows) => {
-      if rows.length() == 0 { return VArray([]) }
+      if rows.length() == 0 {
+        return VArray([])
+      }
       let nrows = rows.length()
       let ncols = rows[0].length()
       let result : Array[Array[FormulaValue]] = []
@@ -246,18 +325,19 @@ fn fn_transpose(
   }
 }
 
-fn fn_hyperlink(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 1 || args.length() > 2 { return VError(Value) }
+///|
+fn fn_hyperlink(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
   if args.length() == 2 {
     match args[1].first_scalar() {
       VString(s) => VString(s)
-      _ => match args[0].first_scalar() {
-        VString(s) => VString(s)
-        _ => VError(Value)
-      }
+      _ =>
+        match args[0].first_scalar() {
+          VString(s) => VString(s)
+          _ => VError(Value)
+        }
     }
   } else {
     match args[0].first_scalar() {
@@ -267,6 +347,7 @@ fn fn_hyperlink(
   }
 }
 
+///|
 fn fn_getpivotdata(
   _args : Array[FormulaValue],
   _ctx : EvalContext,
@@ -274,13 +355,12 @@ fn fn_getpivotdata(
   VError(Ref)
 }
 
-fn fn_rtd(
-  _args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
+///|
+fn fn_rtd(_args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   VError(NotApplicable)
 }
 
+///|
 fn fn_cube_stub(
   _args : Array[FormulaValue],
   _ctx : EvalContext,
@@ -288,6 +368,7 @@ fn fn_cube_stub(
   VError(NotApplicable)
 }
 
+///|
 /// §18.17.7 CELL — information about the formatting, location, or
 /// contents of the upper-left cell of `reference` (or of the cell
 /// containing the formula when `reference` is omitted, matching the
@@ -336,7 +417,13 @@ fn fn_cell(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   match info_type {
     // §18.17.7 — absolute A1 reference of the upper-left cell as text.
     "address" =>
-      build_address_text(rect.start_row + 1, rect.start_col + 1, 1, true, VEmpty)
+      build_address_text(
+        rect.start_row + 1,
+        rect.start_col + 1,
+        1,
+        true,
+        VEmpty,
+      )
     "col" => VNumber((rect.start_col + 1).to_double())
     "row" => VNumber((rect.start_row + 1).to_double())
     "contents" => (ctx.resolve_cell)(upper_left)
@@ -362,11 +449,11 @@ fn fn_cell(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
   }
 }
 
-fn fn_info(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+///|
+fn fn_info(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(info_type) =>
       match info_type {
@@ -383,6 +470,7 @@ fn fn_info(
   }
 }
 
+///|
 /// §18.17.2 ISREF — TRUE when the argument is a reference (a cell or
 /// a range), FALSE otherwise. Registered `Lazy` so a single-cell
 /// reference (e.g. `ISREF(A1)`), which eager evaluation would

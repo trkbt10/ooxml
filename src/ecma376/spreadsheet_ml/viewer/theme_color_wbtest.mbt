@@ -37,24 +37,42 @@ fn sml_mk_theme() -> @xml.Element {
 ///|
 test "parse_sml_clr_scheme indexes slots in §20.1.4.1.6 order" {
   let map = parse_sml_clr_scheme(sml_mk_theme())
-  @debug.debug_inspect(map.lookup(0), content=(
-    #|Some("ffffff")
-  )) // lt1
-  @debug.debug_inspect(map.lookup(1), content=(
-    #|Some("000000")
-  )) // dk1
-  @debug.debug_inspect(map.lookup(2), content=(
-    #|Some("e7e6e6")
-  )) // lt2
-  @debug.debug_inspect(map.lookup(3), content=(
-    #|Some("44546a")
-  )) // dk2
-  @debug.debug_inspect(map.lookup(4), content=(
-    #|Some("4472c4")
-  )) // accent1
-  @debug.debug_inspect(map.lookup(5), content=(
-    #|Some("ed7d31")
-  )) // accent2
+  @debug.debug_inspect(
+    map.lookup(0),
+    content=(
+      #|Some("ffffff")
+    ),
+  ) // lt1
+  @debug.debug_inspect(
+    map.lookup(1),
+    content=(
+      #|Some("000000")
+    ),
+  ) // dk1
+  @debug.debug_inspect(
+    map.lookup(2),
+    content=(
+      #|Some("e7e6e6")
+    ),
+  ) // lt2
+  @debug.debug_inspect(
+    map.lookup(3),
+    content=(
+      #|Some("44546a")
+    ),
+  ) // dk2
+  @debug.debug_inspect(
+    map.lookup(4),
+    content=(
+      #|Some("4472c4")
+    ),
+  ) // accent1
+  @debug.debug_inspect(
+    map.lookup(5),
+    content=(
+      #|Some("ed7d31")
+    ),
+  ) // accent2
   @debug.debug_inspect(map.lookup(6), content="None") // accent3 unset
   @debug.debug_inspect(map.lookup(12), content="None") // out of range
 }
@@ -84,9 +102,12 @@ test "resolve_sml_color theme index wins over rgb" {
   let theme_map = parse_sml_clr_scheme(sml_mk_theme())
   let c = sml_mk_ct_color(rgb=Some("FFFF0000"), theme=Some(4))
   // theme=4 → accent1 (#4472c4); the explicit rgb is overridden.
-  @debug.debug_inspect(resolve_sml_color(c, theme_map), content=(
-    #|Some("4472c4")
-  ))
+  @debug.debug_inspect(
+    resolve_sml_color(c, theme_map),
+    content=(
+      #|Some("4472c4")
+    ),
+  )
 }
 
 ///|
@@ -96,9 +117,12 @@ test "resolve_sml_color positive tint brightens" {
   let c = sml_mk_ct_color(theme=Some(1), tint=0.5)
   let result = resolve_sml_color(c, theme_map)
   // L=0 + 0.5 = 0.5; pure neutral mid grey.
-  @debug.debug_inspect(result, content=(
-    #|Some("808080")
-  ))
+  @debug.debug_inspect(
+    result,
+    content=(
+      #|Some("808080")
+    ),
+  )
 }
 
 ///|
@@ -106,9 +130,12 @@ test "resolve_sml_color negative tint darkens" {
   let theme_map = parse_sml_clr_scheme(sml_mk_theme())
   // theme=0 → lt1 (#FFFFFF) tinted by -1.0 (full darken).
   let c = sml_mk_ct_color(theme=Some(0), tint=-1.0)
-  @debug.debug_inspect(resolve_sml_color(c, theme_map), content=(
-    #|Some("000000")
-  ))
+  @debug.debug_inspect(
+    resolve_sml_color(c, theme_map),
+    content=(
+      #|Some("000000")
+    ),
+  )
 }
 
 ///|
@@ -116,9 +143,12 @@ test "resolve_sml_color zero tint preserves base RGB" {
   let theme_map = SmlThemeColorMap::empty()
   let c = sml_mk_ct_color(rgb=Some("FF4472C4"))
   // 8-digit AARRGGBB → strip alpha prefix.
-  @debug.debug_inspect(resolve_sml_color(c, theme_map), content=(
-    #|Some("4472c4")
-  ))
+  @debug.debug_inspect(
+    resolve_sml_color(c, theme_map),
+    content=(
+      #|Some("4472c4")
+    ),
+  )
 }
 
 ///|
@@ -133,9 +163,12 @@ test "resolve_sml_color theme index out of range falls back to rgb" {
   let theme_map = parse_sml_clr_scheme(sml_mk_theme())
   let c = sml_mk_ct_color(rgb=Some("FFEE1111"), theme=Some(99))
   // theme=99 is unmapped; the explicit rgb survives.
-  @debug.debug_inspect(resolve_sml_color(c, theme_map), content=(
-    #|Some("ee1111")
-  ))
+  @debug.debug_inspect(
+    resolve_sml_color(c, theme_map),
+    content=(
+      #|Some("ee1111")
+    ),
+  )
 }
 
 ///|
@@ -186,10 +219,16 @@ test "resolve_sml_color tint uses the §18.3.1.15 multiplicative HSL formula" {
   // Not the offset extremes:
   assert_true(darker != Some("000000"))
   assert_true(lighter != Some("ffffff"))
-  @debug.debug_inspect(darker, content=(
-    #|Some("404040")
-  ))
-  @debug.debug_inspect(lighter, content=(
-    #|Some("c0c0c0")
-  ))
+  @debug.debug_inspect(
+    darker,
+    content=(
+      #|Some("404040")
+    ),
+  )
+  @debug.debug_inspect(
+    lighter,
+    content=(
+      #|Some("c0c0c0")
+    ),
+  )
 }

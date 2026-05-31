@@ -19,9 +19,9 @@
 pub fn build_curved_down_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 25000,
-  adj2~ : Int = 50000,
-  adj3~ : Int = 25000,
+  adj1? : Int = 25000,
+  adj2? : Int = 50000,
+  adj3? : Int = 25000,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let w = width

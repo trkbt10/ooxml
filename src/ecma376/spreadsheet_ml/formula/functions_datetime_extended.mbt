@@ -12,6 +12,7 @@ fn register_builtin_datetime_extended_functions(
   registry.register("YEARFRAC", Eager(fn_yearfrac))
 }
 
+///|
 fn serial_to_ymd(
   serial : Double,
   ds : @date_serial.DateSystem,
@@ -23,6 +24,7 @@ fn serial_to_ymd(
   }
 }
 
+///|
 fn ymd_to_serial(
   y : Int,
   m : Int,
@@ -30,7 +32,13 @@ fn ymd_to_serial(
   ds : @date_serial.DateSystem,
 ) -> Double {
   let dt : @date_serial.CalendarDateTime = {
-    year: y, month: m, day: d, hour: 0, minute: 0, second: 0, millisecond: 0,
+    year: y,
+    month: m,
+    day: d,
+    hour: 0,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
   }
   try @date_serial.date_time_to_serial(dt, ds) catch {
     _ => 0.0
@@ -39,11 +47,11 @@ fn ymd_to_serial(
   }
 }
 
-fn fn_datedif(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() != 3 { return VError(Value) }
+///|
+fn fn_datedif(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() != 3 {
+    return VError(Value)
+  }
   let start = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     VError(e) => return VError(e)
@@ -58,7 +66,9 @@ fn fn_datedif(
     VString(s) => s
     _ => return VError(Value)
   }
-  if start > end { return VError(Num) }
+  if start > end {
+    return VError(Num)
+  }
   let (sy, sm, sd) = match serial_to_ymd(start, ctx.date_system) {
     Some(v) => v
     None => return VError(Value)
@@ -68,7 +78,10 @@ fn fn_datedif(
     None => return VError(Value)
   }
   match unit {
-    "Y" | "y" => VNumber((ey - sy - (if em < sm || (em == sm && ed < sd) { 1 } else { 0 })).to_double())
+    "Y" | "y" =>
+      VNumber(
+        (ey - sy - (if em < sm || (em == sm && ed < sd) { 1 } else { 0 })).to_double(),
+      )
     "M" | "m" => {
       let months = (ey - sy) * 12 + (em - sm) - (if ed < sd { 1 } else { 0 })
       VNumber(months.to_double())
@@ -96,11 +109,11 @@ fn fn_datedif(
   }
 }
 
-fn fn_days360(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 2 || args.length() > 3 { return VError(Value) }
+///|
+fn fn_days360(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() < 2 || args.length() > 3 {
+    return VError(Value)
+  }
   let start = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     _ => return VError(Value)
@@ -139,11 +152,11 @@ fn fn_days360(
   VNumber(days.to_double())
 }
 
-fn fn_weeknum(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 1 || args.length() > 2 { return VError(Value) }
+///|
+fn fn_weeknum(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
   let serial = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     _ => return VError(Value)
@@ -157,11 +170,13 @@ fn fn_weeknum(
   VNumber(((day_of_year + 6.0) / 7.0).ceil())
 }
 
+///|
 fn is_weekend_day(serial : Double, ds : @date_serial.DateSystem) -> Bool {
   let dow = serial_day_of_week(serial, ds)
   dow == 0 || dow == 6
 }
 
+///|
 fn serial_day_of_week(serial : Double, ds : @date_serial.DateSystem) -> Int {
   let base = match ds {
     @date_serial.DateSystem::Serial1900 => 0
@@ -170,11 +185,14 @@ fn serial_day_of_week(serial : Double, ds : @date_serial.DateSystem) -> Int {
   ((serial.trunc().to_int() + base) % 7 + 7) % 7
 }
 
+///|
 fn fn_networkdays(
   args : Array[FormulaValue],
   ctx : EvalContext,
 ) -> FormulaValue {
-  if args.length() < 2 || args.length() > 3 { return VError(Value) }
+  if args.length() < 2 || args.length() > 3 {
+    return VError(Value)
+  }
   let start = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n.trunc()
     _ => return VError(Value)
@@ -199,15 +217,21 @@ fn fn_networkdays(
     if !is_weekend_day(d, ctx.date_system) {
       let mut is_holiday = false
       for h in holidays {
-        if h.trunc() == d { is_holiday = true; break }
+        if h.trunc() == d {
+          is_holiday = true
+          break
+        }
       }
-      if !is_holiday { count = count + 1.0 }
+      if !is_holiday {
+        count = count + 1.0
+      }
     }
     d = d + 1.0
   }
   VNumber(sign * count)
 }
 
+///|
 fn fn_networkdays_intl(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -215,11 +239,11 @@ fn fn_networkdays_intl(
   fn_networkdays(args, ctx)
 }
 
-fn fn_workday(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 2 || args.length() > 3 { return VError(Value) }
+///|
+fn fn_workday(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() < 2 || args.length() > 3 {
+    return VError(Value)
+  }
   let start = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n.trunc()
     _ => return VError(Value)
@@ -241,14 +265,20 @@ fn fn_workday(
     if !is_weekend_day(d, ctx.date_system) {
       let mut is_holiday = false
       for h in holidays {
-        if h.trunc() == d { is_holiday = true; break }
+        if h.trunc() == d {
+          is_holiday = true
+          break
+        }
       }
-      if !is_holiday { remaining = remaining - 1 }
+      if !is_holiday {
+        remaining = remaining - 1
+      }
     }
   }
   VNumber(d)
 }
 
+///|
 fn fn_workday_intl(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -256,11 +286,11 @@ fn fn_workday_intl(
   fn_workday(args, ctx)
 }
 
-fn fn_yearfrac(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  if args.length() < 2 || args.length() > 3 { return VError(Value) }
+///|
+fn fn_yearfrac(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+  if args.length() < 2 || args.length() > 3 {
+    return VError(Value)
+  }
   let start = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     _ => return VError(Value)

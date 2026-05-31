@@ -18,9 +18,9 @@
 pub fn build_bent_up_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 25000,
-  adj2~ : Int = 25000,
-  adj3~ : Int = 25000,
+  adj1? : Int = 25000,
+  adj2? : Int = 25000,
+  adj3? : Int = 25000,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let a1 = pin_int(adj1, 0, 50000)

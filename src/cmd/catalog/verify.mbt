@@ -73,15 +73,15 @@ fn xep(
 ///|
 /// Serialise an element as a standalone XML document to UTF-8 bytes.
 fn write_part(root : @xml.Element) -> Bytes {
-  @xml.write(
-    {
-      declaration: Some(
-        { version: "1.0", encoding: Some("UTF-8"), standalone: Some(true) },
-      ),
-      doctype: None,
-      root,
-    },
-  )
+  @xml.write({
+    declaration: Some({
+      version: "1.0",
+      encoding: Some("UTF-8"),
+      standalone: Some(true),
+    }),
+    doctype: None,
+    root,
+  })
 }
 
 ///|
@@ -1437,44 +1437,54 @@ fn pptx_package(content : @xml.Element) -> Bytes {
   let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
     Element(
       xep("p", ns_p, "sldMasterIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldMasterId",
-              [
-                xa("id", "2147483648"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId2",
-                },
-              ],
-              [],
-            ),
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldMasterId",
+            [
+              xa("id", "2147483648"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId2",
+              },
+            ],
+            [],
           ),
-        ]),
-      ),
-      Element(
-        xep("p", ns_p, "sldIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldId",
-              [
-                xa("id", "256"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId1",
-                },
-              ],
-              [],
-            ),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "sldIdLst", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldId",
+            [
+              xa("id", "256"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
           ),
-        ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep(
+        "p",
+        ns_p,
+        "sldSz",
+        [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")],
+        [],
       ),
-      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
-      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+    ),
+    Element(
+      xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], []),
+    ),
   ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
@@ -1653,41 +1663,52 @@ fn pptx_package_with_embedded_image(
       xep("p", ns_p, "sldMasterIdLst", [], [
         Element(
           xep(
-            "p", ns_p,
+            "p",
+            ns_p,
             "sldMasterId",
-              [
-                xa("id", "2147483648"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId2",
-                },
-              ],
-              [],
-            ),
+            [
+              xa("id", "2147483648"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId2",
+              },
+            ],
+            [],
           ),
-        ]),
-      ),
-      Element(
-        xep("p", ns_p, "sldIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldId",
-              [
-                xa("id", "256"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId1",
-                },
-              ],
-              [],
-            ),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "sldIdLst", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldId",
+            [
+              xa("id", "256"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
           ),
-        ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep(
+        "p",
+        ns_p,
+        "sldSz",
+        [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")],
+        [],
       ),
-      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
-      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+    ),
+    Element(
+      xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], []),
+    ),
   ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
@@ -1954,44 +1975,54 @@ fn pptx_package_with_slide_rels(
   let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
     Element(
       xep("p", ns_p, "sldMasterIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldMasterId",
-              [
-                xa("id", "2147483648"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId2",
-                },
-              ],
-              [],
-            ),
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldMasterId",
+            [
+              xa("id", "2147483648"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId2",
+              },
+            ],
+            [],
           ),
-        ]),
-      ),
-      Element(
-        xep("p", ns_p, "sldIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldId",
-              [
-                xa("id", "256"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId1",
-                },
-              ],
-              [],
-            ),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "sldIdLst", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldId",
+            [
+              xa("id", "256"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
           ),
-        ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep(
+        "p",
+        ns_p,
+        "sldSz",
+        [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")],
+        [],
       ),
-      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
-      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+    ),
+    Element(
+      xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], []),
+    ),
   ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
@@ -2194,44 +2225,54 @@ fn pptx_package_with_chart(
   let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
     Element(
       xep("p", ns_p, "sldMasterIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldMasterId",
-              [
-                xa("id", "2147483648"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId2",
-                },
-              ],
-              [],
-            ),
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldMasterId",
+            [
+              xa("id", "2147483648"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId2",
+              },
+            ],
+            [],
           ),
-        ]),
-      ),
-      Element(
-        xep("p", ns_p, "sldIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldId",
-              [
-                xa("id", "256"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId1",
-                },
-              ],
-              [],
-            ),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "sldIdLst", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldId",
+            [
+              xa("id", "256"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
           ),
-        ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep(
+        "p",
+        ns_p,
+        "sldSz",
+        [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")],
+        [],
       ),
-      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
-      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+    ),
+    Element(
+      xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], []),
+    ),
   ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
@@ -2511,44 +2552,54 @@ fn pptx_package_with_diagram(
   let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
     Element(
       xep("p", ns_p, "sldMasterIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldMasterId",
-              [
-                xa("id", "2147483648"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId2",
-                },
-              ],
-              [],
-            ),
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldMasterId",
+            [
+              xa("id", "2147483648"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId2",
+              },
+            ],
+            [],
           ),
-        ]),
-      ),
-      Element(
-        xep("p", ns_p, "sldIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldId",
-              [
-                xa("id", "256"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId1",
-                },
-              ],
-              [],
-            ),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "sldIdLst", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldId",
+            [
+              xa("id", "256"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
           ),
-        ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep(
+        "p",
+        ns_p,
+        "sldSz",
+        [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")],
+        [],
       ),
-      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
-      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+    ),
+    Element(
+      xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], []),
+    ),
   ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
@@ -3042,6 +3093,7 @@ fn render_svg_of(which : String, pkg : Bytes) -> String? {
 /// tag (and, when present, its unique marker) is the only way to
 /// catch a lossy round-trip — a real ECMA-376 conformance defect,
 /// since OOXML consumers expect open->save to preserve content.
+
 ///|
 /// Open `pkg` through the typed reader for `which` and save it back,
 /// returning the full re-serialised package bytes (or `None` when the
@@ -3127,9 +3179,7 @@ fn roundtrip_saved_xml(which : String, pkg : Bytes) -> String? {
   // Unzip the saved OPC package and decode every XML part.  A part
   // that is not valid UTF-8 (e.g. an embedded binary) is skipped —
   // the catalog only ever embeds XML payloads.
-  let archive = try @zip.read(bytes) catch {
-    _ => return None
-  }
+  let archive = @zip.read(bytes) catch { _ => return None }
   let buf = StringBuilder::new()
   for entry in archive.entries {
     let name = entry.name
@@ -3217,7 +3267,10 @@ fn roundtrip_fidelity(
     let (probe, injected) = inject_marker_into_target(with_marker, marker)
     if injected {
       match
-        roundtrip_saved_xml(format, host_package(format, strip_target_attr(probe))) {
+        roundtrip_saved_xml(
+          format,
+          host_package(format, strip_target_attr(probe)),
+        ) {
         Some(saved) => if saved.contains(marker) { return "fy-inject" }
         None => ()
       }
@@ -3478,65 +3531,99 @@ fn default_minimal_chart_space_with_userShapes() -> @xml.Element {
     Element(xep("c", ns_c, "barDir", [xa("val", "col")], [])),
     Element(xep("c", ns_c, "grouping", [xa("val", "clustered")], [])),
     Element(xep("c", ns_c, "varyColors", [xa("val", "0")], [])),
-    Element(xep("c", ns_c, "ser", [], [
-      Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
-      Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
-      Element(xep("c", ns_c, "val", [], [
-        Element(xep("c", ns_c, "numRef", [], [
-          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
-          Element(xep("c", ns_c, "numCache", [], [
-            Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
-            Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
-              Element(xep("c", ns_c, "v", [], [Text("2")])),
-            ])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
-              Element(xep("c", ns_c, "v", [], [Text("5")])),
-            ])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
-              Element(xep("c", ns_c, "v", [], [Text("3")])),
-            ])),
-          ])),
-        ])),
-      ])),
-    ])),
+    Element(
+      xep("c", ns_c, "ser", [], [
+        Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+        Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+        Element(
+          xep("c", ns_c, "val", [], [
+            Element(
+              xep("c", ns_c, "numRef", [], [
+                Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+                Element(
+                  xep("c", ns_c, "numCache", [], [
+                    Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
+                    Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "0")], [
+                        Element(xep("c", ns_c, "v", [], [Text("2")])),
+                      ]),
+                    ),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "1")], [
+                        Element(xep("c", ns_c, "v", [], [Text("5")])),
+                      ]),
+                    ),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "2")], [
+                        Element(xep("c", ns_c, "v", [], [Text("3")])),
+                      ]),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
     Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
     Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
   ])
   let chart_inner = xep("c", ns_c, "chart", [], [
-    Element(xep("c", ns_c, "plotArea", [], [
-      Element(xep("c", ns_c, "layout", [], [])),
-      Element(bar_chart),
-      Element(xep("c", ns_c, "catAx", [], [
-        Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
-        Element(xep("c", ns_c, "scaling", [], [
-          Element(xep("c", ns_c, "orientation", [xa("val", "minMax")], [])),
-        ])),
-        Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
-        Element(xep("c", ns_c, "axPos", [xa("val", "b")], [])),
-        Element(xep("c", ns_c, "crossAx", [xa("val", "2")], [])),
-      ])),
-      Element(xep("c", ns_c, "valAx", [], [
-        Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
-        Element(xep("c", ns_c, "scaling", [], [
-          Element(xep("c", ns_c, "orientation", [xa("val", "minMax")], [])),
-        ])),
-        Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
-        Element(xep("c", ns_c, "axPos", [xa("val", "l")], [])),
-        Element(xep("c", ns_c, "crossAx", [xa("val", "1")], [])),
-      ])),
-    ])),
+    Element(
+      xep("c", ns_c, "plotArea", [], [
+        Element(xep("c", ns_c, "layout", [], [])),
+        Element(bar_chart),
+        Element(
+          xep("c", ns_c, "catAx", [], [
+            Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
+            Element(
+              xep("c", ns_c, "scaling", [], [
+                Element(
+                  xep("c", ns_c, "orientation", [xa("val", "minMax")], []),
+                ),
+              ]),
+            ),
+            Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
+            Element(xep("c", ns_c, "axPos", [xa("val", "b")], [])),
+            Element(xep("c", ns_c, "crossAx", [xa("val", "2")], [])),
+          ]),
+        ),
+        Element(
+          xep("c", ns_c, "valAx", [], [
+            Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
+            Element(
+              xep("c", ns_c, "scaling", [], [
+                Element(
+                  xep("c", ns_c, "orientation", [xa("val", "minMax")], []),
+                ),
+              ]),
+            ),
+            Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
+            Element(xep("c", ns_c, "axPos", [xa("val", "l")], [])),
+            Element(xep("c", ns_c, "crossAx", [xa("val", "1")], [])),
+          ]),
+        ),
+      ]),
+    ),
     Element(xep("c", ns_c, "plotVisOnly", [xa("val", "1")], [])),
   ])
   // `<c:userShapes r:id="rId1"/>` — rId1 is the chart-part-rels Id
   // pptx_package_with_chart_usershapes_real writes for the user-shapes
   // sibling part.
-  let user_shapes_ref = xep("c", ns_c, "userShapes", [
-    {
-      name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-      value: "rId1",
-    },
-  ], [])
+  let user_shapes_ref = xep(
+    "c",
+    ns_c,
+    "userShapes",
+    [
+      {
+        name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+        value: "rId1",
+      },
+    ],
+    [],
+  )
   xep("c", ns_c, "chartSpace", [], [
     Element(chart_inner),
     Element(user_shapes_ref),
@@ -3561,79 +3648,181 @@ fn pptx_package_with_chart_usershapes_real(
   // serialised zip bytes (opaque), we rebuild the whole package
   // here, inlined from pptx_package_with_chart's structure.
   let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
-    Element(xep("p", ns_p, "sldMasterIdLst", [], [
-      Element(xep("p", ns_p, "sldMasterId", [
-        xa("id", "2147483648"),
-        {
-          name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-          value: "rId2",
-        },
-      ], [])),
-    ])),
-    Element(xep("p", ns_p, "sldIdLst", [], [
-      Element(xep("p", ns_p, "sldId", [
-        xa("id", "256"),
-        {
-          name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-          value: "rId1",
-        },
-      ], [])),
-    ])),
-    Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
-    Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+    Element(
+      xep("p", ns_p, "sldMasterIdLst", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldMasterId",
+            [
+              xa("id", "2147483648"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId2",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "sldIdLst", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldId",
+            [
+              xa("id", "256"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+    Element(
+      xep(
+        "p",
+        ns_p,
+        "sldSz",
+        [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")],
+        [],
+      ),
+    ),
+    Element(
+      xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], []),
+    ),
   ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
-    Element(xe(NS_PKG_REL, "Relationship", [
-      xa("Id", "rId1"),
-      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide"),
-      xa("Target", "slides/slide1.xml"),
-    ], [])),
-    Element(xe(NS_PKG_REL, "Relationship", [
-      xa("Id", "rId2"),
-      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"),
-      xa("Target", "slideMasters/slideMaster1.xml"),
-    ], [])),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
+          ),
+          xa("Target", "slides/slide1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
   ])
   let master_rels = xe(NS_PKG_REL, "Relationships", [], [
-    Element(xe(NS_PKG_REL, "Relationship", [
-      xa("Id", "rId1"),
-      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"),
-      xa("Target", "../slideLayouts/slideLayout1.xml"),
-    ], [])),
-    Element(xe(NS_PKG_REL, "Relationship", [
-      xa("Id", "rId2"),
-      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"),
-      xa("Target", "../theme/theme1.xml"),
-    ], [])),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme",
+          ),
+          xa("Target", "../theme/theme1.xml"),
+        ],
+        [],
+      ),
+    ),
   ])
   let layout_rels = xe(NS_PKG_REL, "Relationships", [], [
-    Element(xe(NS_PKG_REL, "Relationship", [
-      xa("Id", "rId1"),
-      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster"),
-      xa("Target", "../slideMasters/slideMaster1.xml"),
-    ], [])),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster",
+          ),
+          xa("Target", "../slideMasters/slideMaster1.xml"),
+        ],
+        [],
+      ),
+    ),
   ])
   // Slide rels: rId1 → slideLayout1, rId2 → chart1.
   let slide_rels = xe(NS_PKG_REL, "Relationships", [], [
-    Element(xe(NS_PKG_REL, "Relationship", [
-      xa("Id", "rId1"),
-      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout"),
-      xa("Target", "../slideLayouts/slideLayout1.xml"),
-    ], [])),
-    Element(xe(NS_PKG_REL, "Relationship", [
-      xa("Id", "rId2"),
-      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart"),
-      xa("Target", "../charts/chart1.xml"),
-    ], [])),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout",
+          ),
+          xa("Target", "../slideLayouts/slideLayout1.xml"),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart",
+          ),
+          xa("Target", "../charts/chart1.xml"),
+        ],
+        [],
+      ),
+    ),
   ])
   // Chart rels: rId1 → userShapes part (the `<c:userShapes>` ref the
   // chart_space carries above resolves to rId1 in this rels table).
   let chart_rels = xe(NS_PKG_REL, "Relationships", [], [
-    Element(xe(NS_PKG_REL, "Relationship", [
-      xa("Id", "rId1"),
-      xa("Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartUserShapes"),
-      xa("Target", "userShapes1.xml"),
-    ], [])),
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartUserShapes",
+          ),
+          xa("Target", "userShapes1.xml"),
+        ],
+        [],
+      ),
+    ),
   ])
   let slide : @xml.Element = {
     name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
@@ -3644,13 +3833,27 @@ fn pptx_package_with_chart_usershapes_real(
     (
       "[Content_Types].xml",
       content_types_part([
-        ("/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"),
-        ("/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml"),
-        ("/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"),
-        ("/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"),
-        ("/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml"),
-        ("/ppt/charts/chart1.xml", "application/vnd.openxmlformats-officedocument.drawingml.chart+xml"),
-        ("/ppt/charts/userShapes1.xml", "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml"),
+        (
+          "/ppt/presentation.xml", "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml",
+        ),
+        (
+          "/ppt/slides/slide1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slide+xml",
+        ),
+        (
+          "/ppt/slideLayouts/slideLayout1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml",
+        ),
+        (
+          "/ppt/slideMasters/slideMaster1.xml", "application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml",
+        ),
+        (
+          "/ppt/theme/theme1.xml", "application/vnd.openxmlformats-officedocument.theme+xml",
+        ),
+        (
+          "/ppt/charts/chart1.xml", "application/vnd.openxmlformats-officedocument.drawingml.chart+xml",
+        ),
+        (
+          "/ppt/charts/userShapes1.xml", "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml",
+        ),
       ]),
     ),
     ("_rels/.rels", root_rels_part("ppt/presentation.xml")),
@@ -3681,62 +3884,96 @@ fn default_minimal_chart_space() -> @xml.Element {
     Element(xep("c", ns_c, "barDir", [xa("val", "col")], [])),
     Element(xep("c", ns_c, "grouping", [xa("val", "clustered")], [])),
     Element(xep("c", ns_c, "varyColors", [xa("val", "0")], [])),
-    Element(xep("c", ns_c, "ser", [], [
-      Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
-      Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
-      Element(xep("c", ns_c, "val", [], [
-        Element(xep("c", ns_c, "numRef", [], [
-          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
-          Element(xep("c", ns_c, "numCache", [], [
-            Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
-            Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
-              Element(xep("c", ns_c, "v", [], [Text("2")])),
-            ])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
-              Element(xep("c", ns_c, "v", [], [Text("5")])),
-            ])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
-              Element(xep("c", ns_c, "v", [], [Text("3")])),
-            ])),
-          ])),
-        ])),
-      ])),
-    ])),
+    Element(
+      xep("c", ns_c, "ser", [], [
+        Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+        Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+        Element(
+          xep("c", ns_c, "val", [], [
+            Element(
+              xep("c", ns_c, "numRef", [], [
+                Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+                Element(
+                  xep("c", ns_c, "numCache", [], [
+                    Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
+                    Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "0")], [
+                        Element(xep("c", ns_c, "v", [], [Text("2")])),
+                      ]),
+                    ),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "1")], [
+                        Element(xep("c", ns_c, "v", [], [Text("5")])),
+                      ]),
+                    ),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "2")], [
+                        Element(xep("c", ns_c, "v", [], [Text("3")])),
+                      ]),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
     Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
     Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
   ])
   let chart_inner = xep("c", ns_c, "chart", [], [
-    Element(xep("c", ns_c, "plotArea", [], [
-      Element(xep("c", ns_c, "layout", [], [])),
-      Element(bar_chart),
-      Element(xep("c", ns_c, "catAx", [], [
-        Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
-        Element(xep("c", ns_c, "scaling", [], [
-          Element(xep("c", ns_c, "orientation", [xa("val", "minMax")], [])),
-        ])),
-        Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
-        Element(xep("c", ns_c, "axPos", [xa("val", "b")], [])),
-        Element(xep("c", ns_c, "crossAx", [xa("val", "2")], [])),
-      ])),
-      Element(xep("c", ns_c, "valAx", [], [
-        Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
-        Element(xep("c", ns_c, "scaling", [], [
-          Element(xep("c", ns_c, "orientation", [xa("val", "minMax")], [])),
-        ])),
-        Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
-        Element(xep("c", ns_c, "axPos", [xa("val", "l")], [])),
-        Element(xep("c", ns_c, "crossAx", [xa("val", "1")], [])),
-      ])),
-    ])),
+    Element(
+      xep("c", ns_c, "plotArea", [], [
+        Element(xep("c", ns_c, "layout", [], [])),
+        Element(bar_chart),
+        Element(
+          xep("c", ns_c, "catAx", [], [
+            Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
+            Element(
+              xep("c", ns_c, "scaling", [], [
+                Element(
+                  xep("c", ns_c, "orientation", [xa("val", "minMax")], []),
+                ),
+              ]),
+            ),
+            Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
+            Element(xep("c", ns_c, "axPos", [xa("val", "b")], [])),
+            Element(xep("c", ns_c, "crossAx", [xa("val", "2")], [])),
+          ]),
+        ),
+        Element(
+          xep("c", ns_c, "valAx", [], [
+            Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
+            Element(
+              xep("c", ns_c, "scaling", [], [
+                Element(
+                  xep("c", ns_c, "orientation", [xa("val", "minMax")], []),
+                ),
+              ]),
+            ),
+            Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
+            Element(xep("c", ns_c, "axPos", [xa("val", "l")], [])),
+            Element(xep("c", ns_c, "crossAx", [xa("val", "1")], [])),
+          ]),
+        ),
+      ]),
+    ),
     Element(xep("c", ns_c, "plotVisOnly", [xa("val", "1")], [])),
     Element(
-      xep("c", ns_c, "userShapes", [
-        {
-          name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-          value: "rId99",
-        },
-      ], []),
+      xep(
+        "c",
+        ns_c,
+        "userShapes",
+        [
+          {
+            name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+            value: "rId99",
+          },
+        ],
+        [],
+      ),
     ),
   ])
   xep("c", ns_c, "chartSpace", [], [Element(chart_inner)])
@@ -3784,43 +4021,68 @@ fn default_diagram_slide_body() -> @xml.Element {
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
   let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
   fn r_attr(local : String, value : String) -> @xml.Attribute {
-    {
-      name: { prefix: Some("r"), local_name: local, ns: Some(ns_r) },
-      value,
-    }
+    { name: { prefix: Some("r"), local_name: local, ns: Some(ns_r) }, value }
   }
 
   let graphic_frame = xep("p", ns_p, "graphicFrame", [], [
-    Element(xep("p", ns_p, "nvGraphicFramePr", [], [
-      Element(xep("p", ns_p, "cNvPr", [xa("id", "2"), xa("name", "Diagram 1")], [])),
-      Element(xep("p", ns_p, "cNvGraphicFramePr", [], [])),
-      Element(xep("p", ns_p, "nvPr", [], [])),
-    ])),
-    Element(xep("p", ns_p, "xfrm", [], [
-      Element(xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], [])),
-      Element(xep("a", ns_a, "ext", [xa("cx", "6096000"), xa("cy", "4572000")], [])),
-    ])),
-    Element(xep("a", ns_a, "graphic", [], [
-      Element(xep("a", ns_a, "graphicData", [xa("uri", ns_dgm)], [
-        Element(xep("dgm", ns_dgm, "relIds", [
-          r_attr("dm", "rId2"),
-          r_attr("lo", "rId3"),
-          r_attr("qs", "rId4"),
-          r_attr("cs", "rId5"),
-        ], [])),
-      ])),
-    ])),
+    Element(
+      xep("p", ns_p, "nvGraphicFramePr", [], [
+        Element(
+          xep("p", ns_p, "cNvPr", [xa("id", "2"), xa("name", "Diagram 1")], []),
+        ),
+        Element(xep("p", ns_p, "cNvGraphicFramePr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "xfrm", [], [
+        Element(
+          xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+        ),
+        Element(
+          xep("a", ns_a, "ext", [xa("cx", "6096000"), xa("cy", "4572000")], []),
+        ),
+      ]),
+    ),
+    Element(
+      xep("a", ns_a, "graphic", [], [
+        Element(
+          xep("a", ns_a, "graphicData", [xa("uri", ns_dgm)], [
+            Element(
+              xep(
+                "dgm",
+                ns_dgm,
+                "relIds",
+                [
+                  r_attr("dm", "rId2"),
+                  r_attr("lo", "rId3"),
+                  r_attr("qs", "rId4"),
+                  r_attr("cs", "rId5"),
+                ],
+                [],
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    ),
   ])
   xep("p", ns_p, "cSld", [], [
-    Element(xep("p", ns_p, "spTree", [], [
-      Element(xep("p", ns_p, "nvGrpSpPr", [], [
-        Element(xep("p", ns_p, "cNvPr", [xa("id", "1"), xa("name", "")], [])),
-        Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
-        Element(xep("p", ns_p, "nvPr", [], [])),
-      ])),
-      Element(xep("p", ns_p, "grpSpPr", [], [])),
-      Element(graphic_frame),
-    ])),
+    Element(
+      xep("p", ns_p, "spTree", [], [
+        Element(
+          xep("p", ns_p, "nvGrpSpPr", [], [
+            Element(
+              xep("p", ns_p, "cNvPr", [xa("id", "1"), xa("name", "")], []),
+            ),
+            Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
+            Element(xep("p", ns_p, "nvPr", [], [])),
+          ]),
+        ),
+        Element(xep("p", ns_p, "grpSpPr", [], [])),
+        Element(graphic_frame),
+      ]),
+    ),
   ])
 }
 
@@ -3828,12 +4090,16 @@ fn default_diagram_slide_body() -> @xml.Element {
 fn default_diagram_data_model() -> @xml.Element {
   let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
   xep("dgm", ns_dgm, "dataModel", [], [
-    Element(xep("dgm", ns_dgm, "ptLst", [], [
-      Element(xep("dgm", ns_dgm, "pt", [xa("modelId", "0"), xa("type", "doc")], [
-        Element(xep("dgm", ns_dgm, "prSet", [], [])),
-        Element(xep("dgm", ns_dgm, "spPr", [], [])),
-      ])),
-    ])),
+    Element(
+      xep("dgm", ns_dgm, "ptLst", [], [
+        Element(
+          xep("dgm", ns_dgm, "pt", [xa("modelId", "0"), xa("type", "doc")], [
+            Element(xep("dgm", ns_dgm, "prSet", [], [])),
+            Element(xep("dgm", ns_dgm, "spPr", [], [])),
+          ]),
+        ),
+      ]),
+    ),
     Element(xep("dgm", ns_dgm, "cxnLst", [], [])),
   ])
 }
@@ -3854,28 +4120,32 @@ fn default_diagram_layout_def() -> @xml.Element {
     Element(xep("dgm", ns_dgm, "sampData", [], [])),
     Element(xep("dgm", ns_dgm, "styleData", [], [])),
     Element(xep("dgm", ns_dgm, "clrData", [], [])),
-    Element(xep("dgm", ns_dgm, "layoutNode", [xa("name", "node1")], [
-      Element(xep("dgm", ns_dgm, "constrLst", [], [
+    Element(
+      xep("dgm", ns_dgm, "layoutNode", [xa("name", "node1")], [
         Element(
-          xep(
-            "dgm",
-            ns_dgm,
-            "constr",
-            [xa("type", "w"), xa("val", "1.0")],
-            [],
-          ),
+          xep("dgm", ns_dgm, "constrLst", [], [
+            Element(
+              xep(
+                "dgm",
+                ns_dgm,
+                "constr",
+                [xa("type", "w"), xa("val", "1.0")],
+                [],
+              ),
+            ),
+            Element(
+              xep(
+                "dgm",
+                ns_dgm,
+                "constr",
+                [xa("type", "h"), xa("val", "1.0")],
+                [],
+              ),
+            ),
+          ]),
         ),
-        Element(
-          xep(
-            "dgm",
-            ns_dgm,
-            "constr",
-            [xa("type", "h"), xa("val", "1.0")],
-            [],
-          ),
-        ),
-      ])),
-    ])),
+      ]),
+    ),
   ])
 }
 
@@ -3916,46 +4186,68 @@ fn default_chart_slide_body() -> @xml.Element {
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
   let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
   let graphic_frame = xep("p", ns_p, "graphicFrame", [], [
-    Element(xep("p", ns_p, "nvGraphicFramePr", [], [
-      Element(
-        xep("p", ns_p, "cNvPr", [xa("id", "2"), xa("name", "Chart 1")], []),
-      ),
-      Element(xep("p", ns_p, "cNvGraphicFramePr", [], [])),
-      Element(xep("p", ns_p, "nvPr", [], [])),
-    ])),
-    Element(xep("p", ns_p, "xfrm", [], [
-      Element(
-        xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
-      ),
-      Element(
-        xep("a", ns_a, "ext", [xa("cx", "6096000"), xa("cy", "4572000")], []),
-      ),
-    ])),
-    Element(xep("a", ns_a, "graphic", [], [
-      Element(
-        xep("a", ns_a, "graphicData", [xa("uri", ns_c)], [
-          Element(
-            xep("c", ns_c, "chart", [
-              {
-                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                value: "rId2",
-              },
-            ], []),
-          ),
-        ]),
-      ),
-    ])),
+    Element(
+      xep("p", ns_p, "nvGraphicFramePr", [], [
+        Element(
+          xep("p", ns_p, "cNvPr", [xa("id", "2"), xa("name", "Chart 1")], []),
+        ),
+        Element(xep("p", ns_p, "cNvGraphicFramePr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "xfrm", [], [
+        Element(
+          xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+        ),
+        Element(
+          xep("a", ns_a, "ext", [xa("cx", "6096000"), xa("cy", "4572000")], []),
+        ),
+      ]),
+    ),
+    Element(
+      xep("a", ns_a, "graphic", [], [
+        Element(
+          xep("a", ns_a, "graphicData", [xa("uri", ns_c)], [
+            Element(
+              xep(
+                "c",
+                ns_c,
+                "chart",
+                [
+                  {
+                    name: {
+                      prefix: Some("r"),
+                      local_name: "id",
+                      ns: Some(ns_r),
+                    },
+                    value: "rId2",
+                  },
+                ],
+                [],
+              ),
+            ),
+          ]),
+        ),
+      ]),
+    ),
   ])
   xep("p", ns_p, "cSld", [], [
-    Element(xep("p", ns_p, "spTree", [], [
-      Element(xep("p", ns_p, "nvGrpSpPr", [], [
-        Element(xep("p", ns_p, "cNvPr", [xa("id", "1"), xa("name", "")], [])),
-        Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
-        Element(xep("p", ns_p, "nvPr", [], [])),
-      ])),
-      Element(xep("p", ns_p, "grpSpPr", [], [])),
-      Element(graphic_frame),
-    ])),
+    Element(
+      xep("p", ns_p, "spTree", [], [
+        Element(
+          xep("p", ns_p, "nvGrpSpPr", [], [
+            Element(
+              xep("p", ns_p, "cNvPr", [xa("id", "1"), xa("name", "")], []),
+            ),
+            Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
+            Element(xep("p", ns_p, "nvPr", [], [])),
+          ]),
+        ),
+        Element(xep("p", ns_p, "grpSpPr", [], [])),
+        Element(graphic_frame),
+      ]),
+    ),
   ])
 }
 
@@ -3980,10 +4272,7 @@ fn default_chart_slide_body() -> @xml.Element {
 ///      three numeric points + `<c:axId>` pairs that match the
 ///      existing `<c:catAx>` / `<c:valAx>` axIds (synthesised when
 ///      absent).
-fn first_child_named_in(
-  e : @xml.Element,
-  local_name : String,
-) -> @xml.Element? {
+fn first_child_named_in(e : @xml.Element, local_name : String) -> @xml.Element? {
   for child in e.children {
     match child {
       @xml.Node::Element(ce) =>
@@ -4002,15 +4291,21 @@ fn build_default_num_cache() -> @xml.Element {
   xep("c", ns_c, "numCache", [], [
     Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
     Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
-    Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
-      Element(xep("c", ns_c, "v", [], [Text("2")])),
-    ])),
-    Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
-      Element(xep("c", ns_c, "v", [], [Text("5")])),
-    ])),
-    Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
-      Element(xep("c", ns_c, "v", [], [Text("3")])),
-    ])),
+    Element(
+      xep("c", ns_c, "pt", [xa("idx", "0")], [
+        Element(xep("c", ns_c, "v", [], [Text("2")])),
+      ]),
+    ),
+    Element(
+      xep("c", ns_c, "pt", [xa("idx", "1")], [
+        Element(xep("c", ns_c, "v", [], [Text("5")])),
+      ]),
+    ),
+    Element(
+      xep("c", ns_c, "pt", [xa("idx", "2")], [
+        Element(xep("c", ns_c, "v", [], [Text("3")])),
+      ]),
+    ),
   ])
 }
 
@@ -4018,13 +4313,17 @@ fn build_default_num_cache() -> @xml.Element {
 fn build_default_str_cache(values : Array[String]) -> @xml.Element {
   let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
   let pts : Array[@xml.Node] = [
-    Element(xep("c", ns_c, "ptCount", [xa("val", values.length().to_string())], [])),
+    Element(
+      xep("c", ns_c, "ptCount", [xa("val", values.length().to_string())], []),
+    ),
   ]
   for i, v in values {
     pts.push(
-      Element(xep("c", ns_c, "pt", [xa("idx", i.to_string())], [
-        Element(xep("c", ns_c, "v", [], [Text(v)])),
-      ])),
+      Element(
+        xep("c", ns_c, "pt", [xa("idx", i.to_string())], [
+          Element(xep("c", ns_c, "v", [], [Text(v)])),
+        ]),
+      ),
     )
   }
   xep("c", ns_c, "strCache", [], pts)
@@ -4046,10 +4345,7 @@ fn ensure_chart_data_caches(content : @xml.Element) -> @xml.Element {
   fn cache_has_pt(cache : @xml.Element) -> Bool {
     for c in cache.children {
       match c {
-        @xml.Node::Element(ce) =>
-          if ce.name.local_name == "pt" {
-            return true
-          }
+        @xml.Node::Element(ce) => if ce.name.local_name == "pt" { return true }
         _ => ()
       }
     }
@@ -4116,11 +4412,7 @@ fn ensure_chart_data_caches(content : @xml.Element) -> @xml.Element {
         for c in e.children {
           new_kids.push(rewrite(c))
         }
-        Element({
-          name: e.name,
-          attributes: e.attributes,
-          children: new_kids,
-        })
+        Element({ name: e.name, attributes: e.attributes, children: new_kids })
       }
       other => other
     }
@@ -4214,10 +4506,9 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
   // Detect any existing chart-type child — if present, no scaffold
   // is needed (the target is itself a chart-type child or sibling).
   let chart_type_names = [
-    "areaChart", "area3DChart", "barChart", "bar3DChart", "lineChart",
-    "line3DChart", "pieChart", "pie3DChart", "doughnutChart", "ofPieChart",
-    "scatterChart", "radarChart", "bubbleChart", "stockChart", "surfaceChart",
-    "surface3DChart",
+    "areaChart", "area3DChart", "barChart", "bar3DChart", "lineChart", "line3DChart",
+    "pieChart", "pie3DChart", "doughnutChart", "ofPieChart", "scatterChart", "radarChart",
+    "bubbleChart", "stockChart", "surfaceChart", "surface3DChart",
   ]
   fn has_chart_type(elem : @xml.Element) -> Bool {
     for child in elem.children {
@@ -4258,56 +4549,90 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
     Element(xep("c", ns_c, "barDir", [xa("val", "col")], [])),
     Element(xep("c", ns_c, "grouping", [xa("val", "clustered")], [])),
     Element(xep("c", ns_c, "varyColors", [xa("val", "0")], [])),
-    Element(xep("c", ns_c, "ser", [], [
-      Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
-      Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
-      Element(xep("c", ns_c, "tx", [], [
-        Element(xep("c", ns_c, "strRef", [], [
-          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$1")])),
-          Element(xep("c", ns_c, "strCache", [], [
-            Element(xep("c", ns_c, "ptCount", [xa("val", "1")], [])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
-              Element(xep("c", ns_c, "v", [], [Text("Series 1")])),
-            ])),
-          ])),
-        ])),
-      ])),
-      Element(xep("c", ns_c, "cat", [], [
-        Element(xep("c", ns_c, "strRef", [], [
-          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$1:$D$1")])),
-          Element(xep("c", ns_c, "strCache", [], [
-            Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
-              Element(xep("c", ns_c, "v", [], [Text("A")])),
-            ])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
-              Element(xep("c", ns_c, "v", [], [Text("B")])),
-            ])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
-              Element(xep("c", ns_c, "v", [], [Text("C")])),
-            ])),
-          ])),
-        ])),
-      ])),
-      Element(xep("c", ns_c, "val", [], [
-        Element(xep("c", ns_c, "numRef", [], [
-          Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
-          Element(xep("c", ns_c, "numCache", [], [
-            Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
-            Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "0")], [
-              Element(xep("c", ns_c, "v", [], [Text("2")])),
-            ])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "1")], [
-              Element(xep("c", ns_c, "v", [], [Text("5")])),
-            ])),
-            Element(xep("c", ns_c, "pt", [xa("idx", "2")], [
-              Element(xep("c", ns_c, "v", [], [Text("3")])),
-            ])),
-          ])),
-        ])),
-      ])),
-    ])),
+    Element(
+      xep("c", ns_c, "ser", [], [
+        Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
+        Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
+        Element(
+          xep("c", ns_c, "tx", [], [
+            Element(
+              xep("c", ns_c, "strRef", [], [
+                Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$1")])),
+                Element(
+                  xep("c", ns_c, "strCache", [], [
+                    Element(xep("c", ns_c, "ptCount", [xa("val", "1")], [])),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "0")], [
+                        Element(xep("c", ns_c, "v", [], [Text("Series 1")])),
+                      ]),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+        Element(
+          xep("c", ns_c, "cat", [], [
+            Element(
+              xep("c", ns_c, "strRef", [], [
+                Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$1:$D$1")])),
+                Element(
+                  xep("c", ns_c, "strCache", [], [
+                    Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "0")], [
+                        Element(xep("c", ns_c, "v", [], [Text("A")])),
+                      ]),
+                    ),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "1")], [
+                        Element(xep("c", ns_c, "v", [], [Text("B")])),
+                      ]),
+                    ),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "2")], [
+                        Element(xep("c", ns_c, "v", [], [Text("C")])),
+                      ]),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+        Element(
+          xep("c", ns_c, "val", [], [
+            Element(
+              xep("c", ns_c, "numRef", [], [
+                Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+                Element(
+                  xep("c", ns_c, "numCache", [], [
+                    Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
+                    Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "0")], [
+                        Element(xep("c", ns_c, "v", [], [Text("2")])),
+                      ]),
+                    ),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "1")], [
+                        Element(xep("c", ns_c, "v", [], [Text("5")])),
+                      ]),
+                    ),
+                    Element(
+                      xep("c", ns_c, "pt", [xa("idx", "2")], [
+                        Element(xep("c", ns_c, "v", [], [Text("3")])),
+                      ]),
+                    ),
+                  ]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
     Element(xep("c", ns_c, "axId", [xa("val", chart_axid_1)], [])),
     Element(xep("c", ns_c, "axId", [xa("val", chart_axid_2)], [])),
   ])
@@ -4501,18 +4826,26 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
         xep("c", ns_c, "ser", [], [
           Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
           Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
-          Element(xep("c", ns_c, "xVal", [], [
-            Element(xep("c", ns_c, "numRef", [], [
-              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$2:$A$4")])),
-              Element(build_default_num_cache()),
-            ])),
-          ])),
-          Element(xep("c", ns_c, "yVal", [], [
-            Element(xep("c", ns_c, "numRef", [], [
-              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$B$4")])),
-              Element(build_default_num_cache()),
-            ])),
-          ])),
+          Element(
+            xep("c", ns_c, "xVal", [], [
+              Element(
+                xep("c", ns_c, "numRef", [], [
+                  Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$2:$A$4")])),
+                  Element(build_default_num_cache()),
+                ]),
+              ),
+            ]),
+          ),
+          Element(
+            xep("c", ns_c, "yVal", [], [
+              Element(
+                xep("c", ns_c, "numRef", [], [
+                  Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$B$4")])),
+                  Element(build_default_num_cache()),
+                ]),
+              ),
+            ]),
+          ),
         ])
       "bubbleChart" =>
         // §21.2.2.21 CT_BubbleChart — CT_BubbleSer with
@@ -4520,36 +4853,52 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
         xep("c", ns_c, "ser", [], [
           Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
           Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
-          Element(xep("c", ns_c, "xVal", [], [
-            Element(xep("c", ns_c, "numRef", [], [
-              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$2:$A$4")])),
-              Element(build_default_num_cache()),
-            ])),
-          ])),
-          Element(xep("c", ns_c, "yVal", [], [
-            Element(xep("c", ns_c, "numRef", [], [
-              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$B$4")])),
-              Element(build_default_num_cache()),
-            ])),
-          ])),
-          Element(xep("c", ns_c, "bubbleSize", [], [
-            Element(xep("c", ns_c, "numRef", [], [
-              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$C$2:$C$4")])),
-              Element(build_default_num_cache()),
-            ])),
-          ])),
+          Element(
+            xep("c", ns_c, "xVal", [], [
+              Element(
+                xep("c", ns_c, "numRef", [], [
+                  Element(xep("c", ns_c, "f", [], [Text("Sheet1!$A$2:$A$4")])),
+                  Element(build_default_num_cache()),
+                ]),
+              ),
+            ]),
+          ),
+          Element(
+            xep("c", ns_c, "yVal", [], [
+              Element(
+                xep("c", ns_c, "numRef", [], [
+                  Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$B$4")])),
+                  Element(build_default_num_cache()),
+                ]),
+              ),
+            ]),
+          ),
+          Element(
+            xep("c", ns_c, "bubbleSize", [], [
+              Element(
+                xep("c", ns_c, "numRef", [], [
+                  Element(xep("c", ns_c, "f", [], [Text("Sheet1!$C$2:$C$4")])),
+                  Element(build_default_num_cache()),
+                ]),
+              ),
+            ]),
+          ),
         ])
       "surfaceChart" | "surface3DChart" =>
         // §21.2.2.202 CT_SurfaceChart — CT_SurfaceSer with just val.
         xep("c", ns_c, "ser", [], [
           Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
           Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
-          Element(xep("c", ns_c, "val", [], [
-            Element(xep("c", ns_c, "numRef", [], [
-              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
-              Element(build_default_num_cache()),
-            ])),
-          ])),
+          Element(
+            xep("c", ns_c, "val", [], [
+              Element(
+                xep("c", ns_c, "numRef", [], [
+                  Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+                  Element(build_default_num_cache()),
+                ]),
+              ),
+            ]),
+          ),
         ])
       _ =>
         // Default — CT_LineSer / CT_BarSer / CT_AreaSer / CT_PieSer /
@@ -4558,18 +4907,26 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
         xep("c", ns_c, "ser", [], [
           Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
           Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
-          Element(xep("c", ns_c, "cat", [], [
-            Element(xep("c", ns_c, "strRef", [], [
-              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$1:$D$1")])),
-              Element(build_default_str_cache(["A", "B", "C"])),
-            ])),
-          ])),
-          Element(xep("c", ns_c, "val", [], [
-            Element(xep("c", ns_c, "numRef", [], [
-              Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
-              Element(build_default_num_cache()),
-            ])),
-          ])),
+          Element(
+            xep("c", ns_c, "cat", [], [
+              Element(
+                xep("c", ns_c, "strRef", [], [
+                  Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$1:$D$1")])),
+                  Element(build_default_str_cache(["A", "B", "C"])),
+                ]),
+              ),
+            ]),
+          ),
+          Element(
+            xep("c", ns_c, "val", [], [
+              Element(
+                xep("c", ns_c, "numRef", [], [
+                  Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
+                  Element(build_default_num_cache()),
+                ]),
+              ),
+            ]),
+          ),
         ])
     }
     // Drop any existing empty ser children (the synth wrapper may
@@ -4597,7 +4954,11 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
     if !injected {
       new_kids.push(@xml.Node::Element(new_ser))
     }
-    { name: chart_type.name, attributes: chart_type.attributes, children: new_kids }
+    {
+      name: chart_type.name,
+      attributes: chart_type.attributes,
+      children: new_kids,
+    }
   }
 
   // Rebuild plotArea: rewrite each chart-type child to ensure it has
@@ -4794,11 +5155,7 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
     ("/word/" + part_path, content_type),
   ]
   if part_kind == "fonts" {
-    ct_overrides.push(
-      (
-        "/word/fonts/font0.fntdata", "application/x-fontdata",
-      ),
-    )
+    ct_overrides.push(("/word/fonts/font0.fntdata", "application/x-fontdata"))
   }
   let parts : Array[(String, Bytes)] = [
     ("[Content_Types].xml", content_types_part(ct_overrides)),
@@ -5058,44 +5415,54 @@ fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
   let presentation : @xml.Element = xep("p", ns_p, "presentation", [], [
     Element(
       xep("p", ns_p, "sldMasterIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldMasterId",
-              [
-                xa("id", "2147483648"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId2",
-                },
-              ],
-              [],
-            ),
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldMasterId",
+            [
+              xa("id", "2147483648"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId2",
+              },
+            ],
+            [],
           ),
-        ]),
-      ),
-      Element(
-        xep("p", ns_p, "sldIdLst", [], [
-          Element(
-            xep(
-              "p",
-              ns_p,
-              "sldId",
-              [
-                xa("id", "256"),
-                {
-                  name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-                  value: "rId1",
-                },
-              ],
-              [],
-            ),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "sldIdLst", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "sldId",
+            [
+              xa("id", "256"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
           ),
-        ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep(
+        "p",
+        ns_p,
+        "sldSz",
+        [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")],
+        [],
       ),
-      Element(xep("p", ns_p, "sldSz", [xa("cx", "9144000"), xa("cy", "6858000"), xa("type", "screen4x3")], [])),
-      Element(xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], [])),
+    ),
+    Element(
+      xep("p", ns_p, "notesSz", [xa("cx", "6858000"), xa("cy", "9144000")], []),
+    ),
   ])
   let pres_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
@@ -5554,7 +5921,7 @@ fn splice_child_in_sequence(
             break
           }
         }
-        if !(inserted) && target_pos < ce_pos {
+        if !inserted && target_pos < ce_pos {
           kids.push(Element(replacement))
           inserted = true
         }
@@ -5563,7 +5930,7 @@ fn splice_child_in_sequence(
       other => kids.push(other)
     }
   }
-  if !(inserted) {
+  if !inserted {
     kids.push(Element(replacement))
   }
   { name: skeleton.name, attributes: skeleton.attributes, children: kids }
@@ -5976,11 +6343,9 @@ fn svg_visible_skeleton(svg : String) -> String {
         bytes[i + 3].to_int() == dash {
         i = i + 4
         while i + 2 < n &&
-              !(
-                bytes[i].to_int() == dash &&
-                bytes[i + 1].to_int() == dash &&
-                bytes[i + 2].to_int() == gt
-              ) {
+              !(bytes[i].to_int() == dash &&
+              bytes[i + 1].to_int() == dash &&
+              bytes[i + 2].to_int() == gt) {
           i = i + 1
         }
         i = i + 3

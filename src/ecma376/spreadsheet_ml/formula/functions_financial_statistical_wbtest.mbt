@@ -127,14 +127,22 @@ test "§18.17.7 LINEST/LOGEST multiple regression, const, and stats" {
   // four points (y column {6;14;13;24}, x columns x1={1,2,3,4},
   // x2={1,3,2,5}). Excel emits the slopes last-variable-first:
   // [m2, m1, b] = [3, 2, 1].
-  assert_builtin_near("INDEX(LINEST({6;14;13;24},{1,1;2,3;3,2;4,5}),1,1)", 3.0, 0.0001)
-  assert_builtin_near("INDEX(LINEST({6;14;13;24},{1,1;2,3;3,2;4,5}),1,2)", 2.0, 0.0001)
-  assert_builtin_near("INDEX(LINEST({6;14;13;24},{1,1;2,3;3,2;4,5}),1,3)", 1.0, 0.0001)
+  assert_builtin_near(
+    "INDEX(LINEST({6;14;13;24},{1,1;2,3;3,2;4,5}),1,1)", 3.0, 0.0001,
+  )
+  assert_builtin_near(
+    "INDEX(LINEST({6;14;13;24},{1,1;2,3;3,2;4,5}),1,2)", 2.0, 0.0001,
+  )
+  assert_builtin_near(
+    "INDEX(LINEST({6;14;13;24},{1,1;2,3;3,2;4,5}),1,3)", 1.0, 0.0001,
+  )
   // const = FALSE forces the intercept to 0: y = 2x through the origin.
   assert_builtin_near("INDEX(LINEST({2,4,6},{1,2,3},FALSE),1,1)", 2.0, 0.000001)
   assert_builtin_near("INDEX(LINEST({2,4,6},{1,2,3},FALSE),1,2)", 0.0, 0.000001)
   // stats = TRUE: the third row's first cell is R² (perfect fit ⇒ 1).
-  assert_builtin_near("INDEX(LINEST({3,5,7},{1,2,3},TRUE,TRUE),3,1)", 1.0, 0.000001)
+  assert_builtin_near(
+    "INDEX(LINEST({3,5,7},{1,2,3},TRUE,TRUE),3,1)", 1.0, 0.000001,
+  )
   // LOGEST: y = 2^x ⇒ base m = 2, factor b = 1.
   assert_builtin_near("INDEX(LOGEST({2,4,8,16},{1,2,3,4}),1,1)", 2.0, 0.000001)
   assert_builtin_near("INDEX(LOGEST({2,4,8,16},{1,2,3,4}),1,2)", 1.0, 0.000001)

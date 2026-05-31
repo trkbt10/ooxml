@@ -71,7 +71,9 @@ pub fn open(bytes : Bytes) -> Document raise OpenError {
       main,
       headers: read_header_parts(opc_package, main_part),
       footers: read_footer_parts(opc_package, main_part),
-      styles: opc_package.read_optional("/word/styles.xml", @wml_reader.read_styles),
+      styles: opc_package.read_optional(
+        "/word/styles.xml", @wml_reader.read_styles,
+      ),
       numbering: opc_package.read_optional(
         "/word/numbering.xml", @wml_reader.read_numbering,
       ),
@@ -690,7 +692,10 @@ fn resolve_rid_target(
 }
 
 ///|
-fn find_child_local(parent : @xml.Element, local_name : String) -> @xml.Element? {
+fn find_child_local(
+  parent : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
   for child in parent.children {
     match child {
       Element(e) => if e.name.local_name == local_name { return Some(e) }

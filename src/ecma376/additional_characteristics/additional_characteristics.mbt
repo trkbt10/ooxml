@@ -166,7 +166,7 @@ pub fn write_additional_characteristics(
     ns: Some(ns_chars),
   }
   let attr_qn = fn(local_name : String) -> @xml.QName {
-    { prefix: None, local_name: local_name, ns: None }
+    { prefix: None, local_name, ns: None }
   }
   let attrs : Array[@xml.Attribute] = [
     // §22.6.2.1 — single mandatory namespace declaration.

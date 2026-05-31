@@ -6,9 +6,9 @@
 // the building blocks every higher-level facade operation must use.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }
 
 import {
-  "moonbitlang/core/debug" @debug,
+  "moonbitlang/core/debug",
 } for "wbtest"

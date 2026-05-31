@@ -55,7 +55,9 @@ fn ensure_wml_test_font() -> Unit {
     return
   }
   wml_test_font_ready.val = true
-  let bytes = try @fs.read_file_to_bytes("src/util/glyph/fixtures/subset.ttf") catch {
+  let bytes = try
+    @fs.read_file_to_bytes("src/util/glyph/fixtures/subset.ttf")
+  catch {
     _ => abort("cannot load test font src/util/glyph/fixtures/subset.ttf")
   } noraise {
     b => b

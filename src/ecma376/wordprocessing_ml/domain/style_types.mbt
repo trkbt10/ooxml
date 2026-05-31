@@ -122,7 +122,7 @@ pub(all) struct CT_Styles {
 /// `styles` hashmap is a derived projection that is fully determined by
 /// the element content, so element equality implies structural equality
 /// without requiring a HashMap Eq impl.
-pub impl Eq for CT_Styles with equal(self, other) {
+pub impl Eq for CT_Styles with fn equal(self, other) {
   self.element == other.element
 }
 
@@ -130,7 +130,7 @@ pub impl Eq for CT_Styles with equal(self, other) {
 /// CT_Styles Debug delegates to the preserved element representation.
 /// The styles hashmap is a parse-derived projection of the same element
 /// and would otherwise force consumers to provide a HashMap Debug impl.
-pub impl @debug.Debug for CT_Styles with to_repr(self) {
+pub impl @debug.Debug for CT_Styles with fn to_repr(self) {
   @debug.Repr::opaque_("CT_Styles", @debug.to_repr(self.element))
 }
 
@@ -151,7 +151,10 @@ pub fn CT_Styles::parse(
   element : @xml.Element,
 ) -> CT_Styles raise SchemaViolation {
   require_local_name(element, "styles")
-  let styles : @hashmap.HashMap[String, CT_Style] = @hashmap.HashMap([], capacity=0)
+  let styles : @hashmap.HashMap[String, CT_Style] = @hashmap.HashMap(
+    [],
+    capacity=0,
+  )
   let mut doc_default_p_pr : @xml.Element? = None
   let mut doc_default_r_pr : @xml.Element? = None
   for node in element.children {
@@ -194,7 +197,10 @@ pub fn CT_Styles::resolve_chain(
   style_id : StyleId,
 ) -> Array[CT_Style] {
   let chain : Array[CT_Style] = []
-  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([], capacity=0)
+  let visited : @hashmap.HashMap[String, Bool] = @hashmap.HashMap(
+    [],
+    capacity=0,
+  )
   let mut current = style_id
   let mut keep_going = true
   while keep_going {

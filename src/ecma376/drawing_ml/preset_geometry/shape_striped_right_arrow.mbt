@@ -17,8 +17,8 @@
 pub fn build_striped_right_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 50000,
-  adj2~ : Int = 50000,
+  adj1? : Int = 50000,
+  adj2? : Int = 50000,
 ) -> ShapeGeometry {
   // §20.1.10.56: shaft thickness = h·a1/100000; head length dx2 =
   // ss·a2/100000 with maxAdj2 = 84375·w/ss; stripes are spec-fixed.

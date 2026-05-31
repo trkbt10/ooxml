@@ -18,7 +18,7 @@
 pub fn build_no_smoking(
   width : Int,
   height : Int,
-  adj~ : Int = 18750,
+  adj? : Int = 18750,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let w = width

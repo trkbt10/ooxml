@@ -134,7 +134,10 @@ test "§17.18.59 ST_NumberFormat::format covers CJK / ideograph / script-digit f
   // Simplified-Chinese formal (大写) — always writes the unit digit.
   @debug.assert_eq(@domain.NumFmtChineseLegalSimplified.format(1), "壹")
   @debug.assert_eq(@domain.NumFmtChineseLegalSimplified.format(10), "壹拾")
-  @debug.assert_eq(@domain.NumFmtChineseLegalSimplified.format(123), "壹佰贰拾叁")
+  @debug.assert_eq(
+    @domain.NumFmtChineseLegalSimplified.format(123),
+    "壹佰贰拾叁",
+  )
   // Ideograph digit-by-digit.
   @debug.assert_eq(@domain.NumFmtIdeographDigital.format(123), "一二三")
   // Twelve Earthly Branches zodiac cycle (wraps at 12).

@@ -20,7 +20,11 @@
 ///
 /// The implementation emits the two brackets as two separate open
 /// subpaths so a renderer draws them as the canonical `[ ]` glyphs.
-pub fn build_bracket_pair(width : Int, height : Int, adj~ : Int = 16667) -> ShapeGeometry {
+pub fn build_bracket_pair(
+  width : Int,
+  height : Int,
+  adj? : Int = 16667,
+) -> ShapeGeometry {
   // §20.1.10.56 bracketPair: a = pin 0 adj 50000; corner radius
   // x1 = ss·a/100000 (default ss·0.16667).
   let r = percent(min_dim(width, height), pin_int(adj, 0, 50000))

@@ -1,7 +1,5 @@
 ///|
-fn register_builtin_engineering_functions(
-  registry : FunctionRegistry,
-) -> Unit {
+fn register_builtin_engineering_functions(registry : FunctionRegistry) -> Unit {
   registry.register("DELTA", Eager(fn_delta))
   registry.register("GESTEP", Eager(fn_gestep))
   registry.register("ERF", Eager(fn_erf))
@@ -43,8 +41,11 @@ fn register_builtin_engineering_functions(
   registry.register("BESSELY", Eager(fn_bessely))
 }
 
+///|
 fn fn_delta(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
-  if args.length() < 1 || args.length() > 2 { return VError(Value) }
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
   let a = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     VError(e) => return VError(e)
@@ -62,8 +63,11 @@ fn fn_delta(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VNumber(if a == b { 1.0 } else { 0.0 })
 }
 
+///|
 fn fn_gestep(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
-  if args.length() < 1 || args.length() > 2 { return VError(Value) }
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
   let n = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     VError(e) => return VError(e)
@@ -81,8 +85,11 @@ fn fn_gestep(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VNumber(if n >= step { 1.0 } else { 0.0 })
 }
 
+///|
 fn fn_erf(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
-  if args.length() < 1 || args.length() > 2 { return VError(Value) }
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
   let lo = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     VError(e) => return VError(e)
@@ -100,6 +107,7 @@ fn fn_erf(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_erfc(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => VNumber(erfc_raw(n))
@@ -111,6 +119,7 @@ fn fn_erfc(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // Base conversion: 10-digit two's complement for negative numbers
 // ---------------------------------------------------------------------------
 
+///|
 fn parse_base_string(s : String, base : Int) -> Int64? {
   let mut result : Int64 = 0L
   for i in 0..<s.length() {
@@ -124,21 +133,25 @@ fn parse_base_string(s : String, base : Int) -> Int64? {
     } else {
       return None
     }
-    if d >= base { return None }
+    if d >= base {
+      return None
+    }
     result = result * base.to_int64() + d.to_int64()
   }
   Some(result)
 }
 
+///|
 fn to_base_string(val : Int64, base : Int, places : Int) -> String {
   let digit_chars : FixedArray[Char] = [
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D',
-    'E', 'F',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
   ]
   if val == 0L {
     let buf = StringBuilder::new()
     let p = if places > 1 { places } else { 1 }
-    for _i in 0..<p { buf.write_char('0') }
+    for _i in 0..<p {
+      buf.write_char('0')
+    }
     return buf.to_string()
   }
   let mut n = if val < 0L {
@@ -159,13 +172,16 @@ fn to_base_string(val : Int64, base : Int, places : Int) -> String {
   }
   let rev = StringBuilder::new()
   let pad = if places > chars.length() { places - chars.length() } else { 0 }
-  for _i in 0..<pad { rev.write_char('0') }
+  for _i in 0..<pad {
+    rev.write_char('0')
+  }
   for i in 0..<chars.length() {
     rev.write_char(chars[chars.length() - 1 - i])
   }
   rev.to_string()
 }
 
+///|
 fn base_conv(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -173,7 +189,9 @@ fn base_conv(
   to_base : Int,
   max_digits : Int,
 ) -> FormulaValue {
-  if args.length() < 1 || args.length() > 2 { return VError(Value) }
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
   let s = match coerce_to_text(args[0].first_scalar()) {
     VString(s) => s
     VError(e) => return VError(e)
@@ -208,26 +226,34 @@ fn base_conv(
   }
 }
 
+///|
 fn fn_bin2dec(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   base_conv(args, ctx, 2, 10, 10)
 }
 
+///|
 fn fn_bin2hex(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   base_conv(args, ctx, 2, 16, 10)
 }
 
+///|
 fn fn_bin2oct(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   base_conv(args, ctx, 2, 8, 10)
 }
 
+///|
 fn fn_dec2bin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
-  if args.length() < 1 || args.length() > 2 { return VError(Value) }
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
   let n = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n.trunc().to_int64()
     VError(e) => return VError(e)
     _ => return VError(Value)
   }
-  if n < -512L || n > 511L { return VError(Num) }
+  if n < -512L || n > 511L {
+    return VError(Num)
+  }
   let places = if args.length() == 2 {
     match coerce_to_number(args[1].first_scalar(), ctx.date_system) {
       VNumber(n) => n.trunc().to_int()
@@ -239,8 +265,11 @@ fn fn_dec2bin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VString(to_base_string(n, 2, places))
 }
 
+///|
 fn fn_dec2hex(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
-  if args.length() < 1 || args.length() > 2 { return VError(Value) }
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
   let n = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n.trunc().to_int64()
     VError(e) => return VError(e)
@@ -257,8 +286,11 @@ fn fn_dec2hex(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VString(to_base_string(n, 16, places))
 }
 
+///|
 fn fn_dec2oct(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
-  if args.length() < 1 || args.length() > 2 { return VError(Value) }
+  if args.length() < 1 || args.length() > 2 {
+    return VError(Value)
+  }
   let n = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n.trunc().to_int64()
     VError(e) => return VError(e)
@@ -275,26 +307,32 @@ fn fn_dec2oct(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VString(to_base_string(n, 8, places))
 }
 
+///|
 fn fn_hex2bin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   base_conv(args, ctx, 16, 2, 10)
 }
 
+///|
 fn fn_hex2dec(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   base_conv(args, ctx, 16, 10, 10)
 }
 
+///|
 fn fn_hex2oct(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   base_conv(args, ctx, 16, 8, 10)
 }
 
+///|
 fn fn_oct2bin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   base_conv(args, ctx, 8, 2, 10)
 }
 
+///|
 fn fn_oct2dec(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   base_conv(args, ctx, 8, 10, 10)
 }
 
+///|
 fn fn_oct2hex(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   base_conv(args, ctx, 8, 16, 10)
 }
@@ -303,8 +341,11 @@ fn fn_oct2hex(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // Complex number functions — "a+bi" string encoding
 // ---------------------------------------------------------------------------
 
+///|
 fn parse_complex(s : String) -> (Double, Double)? {
-  if s == "" { return Some((0.0, 0.0)) }
+  if s == "" {
+    return Some((0.0, 0.0))
+  }
   let last = s[s.length() - 1]
   if last != 'i' && last != 'j' {
     match (try? @strconv.parse_double(s)) {
@@ -313,8 +354,12 @@ fn parse_complex(s : String) -> (Double, Double)? {
     }
   }
   let body = s.substring(start=0, end=s.length() - 1)
-  if body == "" || body == "+" { return Some((0.0, 1.0)) }
-  if body == "-" { return Some((0.0, -1.0)) }
+  if body == "" || body == "+" {
+    return Some((0.0, 1.0))
+  }
+  if body == "-" {
+    return Some((0.0, -1.0))
+  }
   let mut split_pos = -1
   for i in 1..<body.length() {
     if (body[i] == '+' || body[i] == '-') && split_pos < 0 {
@@ -329,19 +374,34 @@ fn parse_complex(s : String) -> (Double, Double)? {
   } else {
     let re_str = body.substring(start=0, end=split_pos)
     let im_str = body.substring(start=split_pos)
-    match ((try? @strconv.parse_double(re_str)), (try? @strconv.parse_double(
-      if im_str == "+" { "1" } else if im_str == "-" { "-1" } else { im_str },
-    ))) {
+    match
+      (
+        try? @strconv.parse_double(re_str),
+        try? @strconv.parse_double(
+          if im_str == "+" {
+            "1"
+          } else if im_str == "-" {
+            "-1"
+          } else {
+            im_str
+          },
+        ),
+      ) {
       (Ok(re), Ok(im)) => Some((re, im))
       _ => None
     }
   }
 }
 
+///|
 fn format_complex(re : Double, im : Double) -> String {
-  if im == 0.0 { return re.to_string() }
+  if im == 0.0 {
+    return re.to_string()
+  }
   let re_part = if re == 0.0 { "" } else { re.to_string() }
-  let sign = if im > 0.0 && re != 0.0 { "+" } else if im < 0.0 {
+  let sign = if im > 0.0 && re != 0.0 {
+    "+"
+  } else if im < 0.0 {
     "-"
   } else {
     ""
@@ -350,8 +410,11 @@ fn format_complex(re : Double, im : Double) -> String {
   re_part + sign + im_part + "i"
 }
 
+///|
 fn fn_complex(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
-  if args.length() < 2 || args.length() > 3 { return VError(Value) }
+  if args.length() < 2 || args.length() > 3 {
+    return VError(Value)
+  }
   let re = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     _ => return VError(Value)
@@ -363,8 +426,11 @@ fn fn_complex(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VString(format_complex(re, im))
 }
 
+///|
 fn fn_imabs(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
@@ -375,8 +441,11 @@ fn fn_imabs(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_imaginary(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
@@ -388,8 +457,11 @@ fn fn_imaginary(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue 
   }
 }
 
+///|
 fn fn_imreal(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
@@ -401,13 +473,21 @@ fn fn_imreal(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   }
 }
 
-fn fn_imargument(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+///|
+fn fn_imargument(
+  args : Array[FormulaValue],
+  _ctx : EvalContext,
+) -> FormulaValue {
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
         Some((re, im)) =>
-          if re == 0.0 && im == 0.0 { VError(DivZero) } else {
+          if re == 0.0 && im == 0.0 {
+            VError(DivZero)
+          } else {
             VNumber(atan2_raw(im, re))
           }
         None => VError(Num)
@@ -416,8 +496,14 @@ fn fn_imargument(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue
   }
 }
 
-fn fn_imconjugate(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+///|
+fn fn_imconjugate(
+  args : Array[FormulaValue],
+  _ctx : EvalContext,
+) -> FormulaValue {
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
@@ -428,8 +514,11 @@ fn fn_imconjugate(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValu
   }
 }
 
+///|
 fn fn_imcos(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
@@ -444,8 +533,11 @@ fn fn_imcos(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_imsin(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
@@ -460,26 +552,44 @@ fn fn_imsin(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_imdiv(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 2 { return VError(Value) }
+  if args.length() != 2 {
+    return VError(Value)
+  }
   let a = match args[0].first_scalar() {
-    VString(s) => match parse_complex(s) { Some(c) => c; None => return VError(Num) }
+    VString(s) =>
+      match parse_complex(s) {
+        Some(c) => c
+        None => return VError(Num)
+      }
     _ => return VError(Value)
   }
   let b = match args[1].first_scalar() {
-    VString(s) => match parse_complex(s) { Some(c) => c; None => return VError(Num) }
+    VString(s) =>
+      match parse_complex(s) {
+        Some(c) => c
+        None => return VError(Num)
+      }
     _ => return VError(Value)
   }
   let denom = b.0 * b.0 + b.1 * b.1
-  if denom == 0.0 { return VError(Num) }
-  VString(format_complex(
-    (a.0 * b.0 + a.1 * b.1) / denom,
-    (a.1 * b.0 - a.0 * b.1) / denom,
-  ))
+  if denom == 0.0 {
+    return VError(Num)
+  }
+  VString(
+    format_complex(
+      (a.0 * b.0 + a.1 * b.1) / denom,
+      (a.1 * b.0 - a.0 * b.1) / denom,
+    ),
+  )
 }
 
+///|
 fn fn_imexp(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
@@ -493,14 +603,19 @@ fn fn_imexp(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_imln(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
         Some((re, im)) => {
           let r = (re * re + im * im).sqrt()
-          if r == 0.0 { return VError(Num) }
+          if r == 0.0 {
+            return VError(Num)
+          }
           VString(format_complex(@math.ln(r), atan2_raw(im, re)))
         }
         None => VError(Num)
@@ -509,14 +624,19 @@ fn fn_imln(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_imlog10(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
         Some((re, im)) => {
           let r = (re * re + im * im).sqrt()
-          if r == 0.0 { return VError(Num) }
+          if r == 0.0 {
+            return VError(Num)
+          }
           let ln10 = @math.ln(10.0)
           VString(format_complex(@math.ln(r) / ln10, atan2_raw(im, re) / ln10))
         }
@@ -526,14 +646,19 @@ fn fn_imlog10(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_imlog2(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
         Some((re, im)) => {
           let r = (re * re + im * im).sqrt()
-          if r == 0.0 { return VError(Num) }
+          if r == 0.0 {
+            return VError(Num)
+          }
           let ln2 = @math.ln(2.0)
           VString(format_complex(@math.ln(r) / ln2, atan2_raw(im, re) / ln2))
         }
@@ -543,10 +668,17 @@ fn fn_imlog2(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_impower(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
-  if args.length() != 2 { return VError(Value) }
+  if args.length() != 2 {
+    return VError(Value)
+  }
   let c = match args[0].first_scalar() {
-    VString(s) => match parse_complex(s) { Some(c) => c; None => return VError(Num) }
+    VString(s) =>
+      match parse_complex(s) {
+        Some(c) => c
+        None => return VError(Num)
+      }
     _ => return VError(Value)
   }
   let n = match coerce_to_number(args[1].first_scalar(), ctx.date_system) {
@@ -554,18 +686,25 @@ fn fn_impower(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
     _ => return VError(Value)
   }
   let r = (c.0 * c.0 + c.1 * c.1).sqrt()
-  if r == 0.0 { return VString(format_complex(0.0, 0.0)) }
+  if r == 0.0 {
+    return VString(format_complex(0.0, 0.0))
+  }
   let theta = atan2_raw(c.1, c.0)
   let rn = @math.pow(r, n)
   VString(format_complex(rn * cos_raw(n * theta), rn * sin_raw(n * theta)))
 }
 
+///|
 fn fn_improduct(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   let mut re = 1.0
   let mut im = 0.0
   for arg in args {
     let c = match arg.first_scalar() {
-      VString(s) => match parse_complex(s) { Some(c) => c; None => return VError(Num) }
+      VString(s) =>
+        match parse_complex(s) {
+          Some(c) => c
+          None => return VError(Num)
+        }
       VNumber(n) => (n, 0.0)
       _ => return VError(Value)
     }
@@ -577,8 +716,11 @@ fn fn_improduct(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue 
   VString(format_complex(re, im))
 }
 
+///|
 fn fn_imsqrt(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 1 { return VError(Value) }
+  if args.length() != 1 {
+    return VError(Value)
+  }
   match args[0].first_scalar() {
     VString(s) =>
       match parse_complex(s) {
@@ -586,7 +728,9 @@ fn fn_imsqrt(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
           let r = (re * re + im * im).sqrt()
           let sqrt_r = r.sqrt()
           let theta = atan2_raw(im, re) / 2.0
-          VString(format_complex(sqrt_r * cos_raw(theta), sqrt_r * sin_raw(theta)))
+          VString(
+            format_complex(sqrt_r * cos_raw(theta), sqrt_r * sin_raw(theta)),
+          )
         }
         None => VError(Num)
       }
@@ -594,27 +738,43 @@ fn fn_imsqrt(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_imsub(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
-  if args.length() != 2 { return VError(Value) }
+  if args.length() != 2 {
+    return VError(Value)
+  }
   let a = match args[0].first_scalar() {
-    VString(s) => match parse_complex(s) { Some(c) => c; None => return VError(Num) }
+    VString(s) =>
+      match parse_complex(s) {
+        Some(c) => c
+        None => return VError(Num)
+      }
     VNumber(n) => (n, 0.0)
     _ => return VError(Value)
   }
   let b = match args[1].first_scalar() {
-    VString(s) => match parse_complex(s) { Some(c) => c; None => return VError(Num) }
+    VString(s) =>
+      match parse_complex(s) {
+        Some(c) => c
+        None => return VError(Num)
+      }
     VNumber(n) => (n, 0.0)
     _ => return VError(Value)
   }
   VString(format_complex(a.0 - b.0, a.1 - b.1))
 }
 
+///|
 fn fn_imsum(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   let mut re = 0.0
   let mut im = 0.0
   for arg in args {
     let c = match arg.first_scalar() {
-      VString(s) => match parse_complex(s) { Some(c) => c; None => return VError(Num) }
+      VString(s) =>
+        match parse_complex(s) {
+          Some(c) => c
+          None => return VError(Num)
+        }
       VNumber(n) => (n, 0.0)
       _ => return VError(Value)
     }
@@ -624,8 +784,11 @@ fn fn_imsum(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
   VString(format_complex(re, im))
 }
 
+///|
 fn fn_convert(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
-  if args.length() != 3 { return VError(Value) }
+  if args.length() != 3 {
+    return VError(Value)
+  }
   let num = match coerce_to_number(args[0].first_scalar(), ctx.date_system) {
     VNumber(n) => n
     VError(e) => return VError(e)
@@ -645,6 +808,7 @@ fn fn_convert(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn convert_unit(num : Double, from : String, to : String) -> Double? {
   let from_si = match unit_to_si(from) {
     Some(v) => v
@@ -656,10 +820,13 @@ fn convert_unit(num : Double, from : String, to : String) -> Double? {
   }
   let (from_factor, from_dim) = from_si
   let (to_factor, to_dim) = to_si
-  if from_dim != to_dim { return None }
+  if from_dim != to_dim {
+    return None
+  }
   Some(num * from_factor / to_factor)
 }
 
+///|
 fn unit_to_si(unit : String) -> (Double, String)? {
   match unit {
     "m" => Some((1.0, "m"))
@@ -720,79 +887,105 @@ fn unit_to_si(unit : String) -> (Double, String)? {
 // Bessel functions — series expansion
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_besseli(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 2) {
     None => VError(Value)
     Some(ns) => {
       let (x, n) = (ns[0], ns[1].trunc().to_int())
-      if n < 0 { return VError(Num) }
+      if n < 0 {
+        return VError(Num)
+      }
       checked_number(bessel_i(x, n))
     }
   }
 }
 
+///|
 fn fn_besselj(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 2) {
     None => VError(Value)
     Some(ns) => {
       let (x, n) = (ns[0], ns[1].trunc().to_int())
-      if n < 0 { return VError(Num) }
+      if n < 0 {
+        return VError(Num)
+      }
       checked_number(bessel_j(x, n))
     }
   }
 }
 
+///|
 fn fn_besselk(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 2) {
     None => VError(Value)
     Some(ns) => {
       let (x, n) = (ns[0], ns[1].trunc().to_int())
-      if n < 0 || x <= 0.0 { return VError(Num) }
+      if n < 0 || x <= 0.0 {
+        return VError(Num)
+      }
       checked_number(bessel_k(x, n))
     }
   }
 }
 
+///|
 fn fn_bessely(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match stat_dist_numbers(args, ctx, 2) {
     None => VError(Value)
     Some(ns) => {
       let (x, n) = (ns[0], ns[1].trunc().to_int())
-      if n < 0 || x <= 0.0 { return VError(Num) }
+      if n < 0 || x <= 0.0 {
+        return VError(Num)
+      }
       checked_number(bessel_y(x, n))
     }
   }
 }
 
+///|
 fn bessel_j(x : Double, n : Int) -> Double {
   let mut sum = 0.0
   let mut term = 1.0 / gamma_func((n + 1).to_double())
   sum = term * @math.pow(x / 2.0, n.to_double())
-  for m in 1..=50 {
+  for m in 1..<=50 {
     term = -term * (x / 2.0) * (x / 2.0) / (m.to_double() * (n + m).to_double())
     sum = sum + term
-    if term.abs() < sum.abs() * 1.0e-15 { break }
+    if term.abs() < sum.abs() * 1.0e-15 {
+      break
+    }
   }
   sum
 }
 
+///|
 fn bessel_i(x : Double, n : Int) -> Double {
   let mut sum = 0.0
   let mut term = 1.0 / gamma_func((n + 1).to_double())
   sum = term * @math.pow(x / 2.0, n.to_double())
-  for m in 1..=50 {
+  for m in 1..<=50 {
     term = term * (x / 2.0) * (x / 2.0) / (m.to_double() * (n + m).to_double())
     sum = sum + term
-    if term.abs() < sum.abs() * 1.0e-15 { break }
+    if term.abs() < sum.abs() * 1.0e-15 {
+      break
+    }
   }
   sum
 }
 
+///|
 fn bessel_y(x : Double, n : Int) -> Double {
   if n == 0 {
-    2.0 / trig_pi * ((@math.ln(x / 2.0) + 0.5772156649) * bessel_j(x, 0) + bessel_y0_series(x))
+    2.0 /
+    trig_pi *
+    ((@math.ln(x / 2.0) + 0.5772156649) * bessel_j(x, 0) + bessel_y0_series(x))
   } else if n == 1 {
-    2.0 / trig_pi * ((@math.ln(x / 2.0) + 0.5772156649) * bessel_j(x, 1) + bessel_y1_correction(x))
+    2.0 /
+    trig_pi *
+    (
+      (@math.ln(x / 2.0) + 0.5772156649) * bessel_j(x, 1) +
+      bessel_y1_correction(x)
+    )
   } else {
     let y0 = bessel_y(x, 0)
     let y1 = bessel_y(x, 1)
@@ -807,29 +1000,42 @@ fn bessel_y(x : Double, n : Int) -> Double {
   }
 }
 
+///|
 fn bessel_y0_series(x : Double) -> Double {
   let mut sum = 0.0
   let mut sign = -1.0
   let mut h = 0.0
-  for k in 1..=30 {
+  for k in 1..<=30 {
     h = h + 1.0 / k.to_double()
     sign = -sign
-    let term = sign * h * @math.pow(x / 2.0, (2 * k).to_double()) / gamma_func((k + 1).to_double()) / gamma_func((k + 1).to_double())
+    let term = sign *
+      h *
+      @math.pow(x / 2.0, (2 * k).to_double()) /
+      gamma_func((k + 1).to_double()) /
+      gamma_func((k + 1).to_double())
     sum = sum + term
-    if term.abs() < 1.0e-15 { break }
+    if term.abs() < 1.0e-15 {
+      break
+    }
   }
   sum
 }
 
+///|
 fn bessel_y1_correction(x : Double) -> Double {
   -1.0 / x + bessel_y0_series(x) * 0.5
 }
 
+///|
 fn bessel_k(x : Double, n : Int) -> Double {
   let k0 = -(@math.ln(x / 2.0) + 0.5772156649) * bessel_i(x, 0)
-  if n == 0 { return k0 }
+  if n == 0 {
+    return k0
+  }
   let k1 = 1.0 / x + @math.ln(x / 2.0) * bessel_i(x, 1)
-  if n == 1 { return k1 }
+  if n == 1 {
+    return k1
+  }
   let mut km1 = k0
   let mut k_curr = k1
   for k in 1..<n {

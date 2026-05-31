@@ -246,7 +246,10 @@ test "§17.16 unknown instruction falls back to literal" {
 test "§17.16.4.3 apply_general_switch covers Upper / Lower / Roman / Ordinal" {
   @debug.assert_eq(apply_general_switch("hello", "Upper"), "HELLO")
   @debug.assert_eq(apply_general_switch("HELLO", "Lower"), "hello")
-  @debug.assert_eq(apply_general_switch("hello world", "FirstCap"), "Hello world")
+  @debug.assert_eq(
+    apply_general_switch("hello world", "FirstCap"),
+    "Hello world",
+  )
   @debug.assert_eq(apply_general_switch("hello world", "Caps"), "Hello World")
   @debug.assert_eq(apply_general_switch("4", "Roman"), "IV")
   @debug.assert_eq(apply_general_switch("4", "roman"), "iv")

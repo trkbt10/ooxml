@@ -604,7 +604,7 @@ fn sort_relationship_transform_entries(
 ///|
 fn canonicalize_xml(
   bytes : Bytes,
-  with_comments~ : Bool = false,
+  with_comments? : Bool = false,
 ) -> Bytes raise @opc_errors.SchemaViolation {
   let doc = @xml.parse(bytes) catch {
     _ =>

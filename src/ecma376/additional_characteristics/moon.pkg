@@ -3,10 +3,10 @@
 // ECMA-376 Part 1 §22.2 Additional Characteristics.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }
 
 import {
-  "moonbitlang/core/debug" @debug,
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

@@ -1164,7 +1164,7 @@ fn dash_localname(name : String) -> String {
   for ch in name {
     let c = ch
     if c >= 'A' && c <= 'Z' {
-      if !(first) {
+      if !first {
         out.write_char('-')
       }
       out.write_char((c.to_int() + 32).unsafe_to_char())

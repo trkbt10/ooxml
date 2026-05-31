@@ -13,10 +13,10 @@
 pub fn build_up_down_arrow_callout(
   width : Int,
   height : Int,
-  adj1~ : Int = 25000,
-  adj2~ : Int = 25000,
-  adj3~ : Int = 25000,
-  adj4~ : Int = 48123,
+  adj1? : Int = 25000,
+  adj2? : Int = 25000,
+  adj3? : Int = 25000,
+  adj4? : Int = 48123,
 ) -> ShapeGeometry {
   // §20.1.10.56 — vertical analog of leftRightArrowCallout: centred box
   // with arrows up and down. ss-based pin chain; head half-width dx1 =

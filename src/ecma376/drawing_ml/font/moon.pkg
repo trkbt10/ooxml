@@ -3,9 +3,9 @@
 // DrawingML font types (§20.1.10.x): CT_TextFont, ST_TextFontSize, etc.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }
 
 import {
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

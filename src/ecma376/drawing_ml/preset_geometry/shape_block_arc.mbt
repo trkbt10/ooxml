@@ -16,9 +16,9 @@
 pub fn build_block_arc(
   width : Int,
   height : Int,
-  adj1~ : Int = 10800000,
-  adj2~ : Int = 0,
-  adj3~ : Int = 25000,
+  adj1? : Int = 10800000,
+  adj2? : Int = 0,
+  adj3? : Int = 25000,
 ) -> ShapeGeometry {
   // §20.1.10.56 blockArc: stAng = pin 0 adj1 21599999, istAng =
   // pin 0 adj2 21599999 (ECMA angle units); ring thickness

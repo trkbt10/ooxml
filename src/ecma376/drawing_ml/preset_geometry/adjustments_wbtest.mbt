@@ -116,7 +116,9 @@ test "§20.1.10.56 notched/striped right arrows honour adj guides" {
   )
   // A wide notchedRightArrow head is ss-based: on 200×100 ss=100 →
   // head 50 → head base x = 150 (commands[1] LineTo(150, shaft_top)).
-  assert_true(build_notched_right_arrow(200, 100).commands[1] is LineTo(150, 25))
+  assert_true(
+    build_notched_right_arrow(200, 100).commands[1] is LineTo(150, 25),
+  )
   assert_true(
     build_geometry_with_adjustments(ShapeNotchedRightArrow, 100, 100, [
       { name: "adj2", raw_formula: "val 25000", value: Some(25000) },
@@ -172,9 +174,13 @@ test "§20.1.10.56 rightArrowCallout uses ss-based spec geometry" {
     build_geometry(ShapeUpDownArrowCallout, 100, 100),
   )
   // leftRight: left arrow tip at (0, vc) = (0, 50); right at (100, 50).
-  assert_true(build_left_right_arrow_callout(100, 100).commands[14] is LineTo(0, 50))
+  assert_true(
+    build_left_right_arrow_callout(100, 100).commands[14] is LineTo(0, 50),
+  )
   // upDown: up arrow tip at (hc, 0) = (50, 0).
-  assert_true(build_up_down_arrow_callout(100, 100).commands[0] is MoveTo(50, 0))
+  assert_true(
+    build_up_down_arrow_callout(100, 100).commands[0] is MoveTo(50, 0),
+  )
 }
 
 ///|
@@ -667,7 +673,9 @@ test "§20.1.10.56 leftUpArrow uses spec ss-based layout" {
 /// rounded corners (the ArcTo radius). On a 100×100 box default r=8.
 test "§20.1.10.56 left/right brackets honour the corner-radius adj" {
   // Default: the first ArcTo radius is r=8.
-  assert_true(build_left_bracket(100, 100).commands[1] is ArcTo(8, 8, _, _, _, _, _))
+  assert_true(
+    build_left_bracket(100, 100).commands[1] is ArcTo(8, 8, _, _, _, _, _),
+  )
   @debug.assert_eq(
     build_geometry_with_adjustments(ShapeLeftBracket, 100, 100, []),
     build_geometry(ShapeLeftBracket, 100, 100),
@@ -793,7 +801,9 @@ test "§20.1.10.56 quadArrow head barb is absolute (not shaft+barb)" {
 /// point of a 100×100 star5 sits at y = vc − hd2·vf/100000 = 50 − 55 =
 /// −5 (the spec lets the points overshoot slightly).
 test "§20.1.10.56 star5 uses spec hf/vf scaling + adj point sharpness" {
-  assert_true(build_geometry(ShapeStar5, 100, 100).commands[0] is MoveTo(50, -5))
+  assert_true(
+    build_geometry(ShapeStar5, 100, 100).commands[0] is MoveTo(50, -5),
+  )
   @debug.assert_eq(
     build_geometry_with_adjustments(ShapeStar5, 100, 100, []),
     build_geometry(ShapeStar5, 100, 100),
@@ -1039,7 +1049,10 @@ test "§20.1.10.56 homePlate/chevron honour the adj point-depth guide" {
 /// the old swapped-guide code produced.
 test "§20.1.10.56 mathEqual bars are 73.5% wide centred with correct guides" {
   assert_true(build_equal(100, 100).commands[0] is MoveTo(14, 22))
-  @debug.assert_eq(build_geometry(ShapeMathEqual, 100, 100), build_equal(100, 100))
+  @debug.assert_eq(
+    build_geometry(ShapeMathEqual, 100, 100),
+    build_equal(100, 100),
+  )
   // Two closed bars → 10 commands (2 × MoveTo+3 LineTo+ClosePath).
   @debug.assert_eq(build_equal(100, 100).commands.length(), 10)
   // A thicker adj1 grows the bar height (50000 → dy1 50, but pinned to
@@ -1073,21 +1086,28 @@ test "§20.1.10.56 plus arms span w-2·x1; mathPlus/mathMultiply unchanged" {
   // mathPlus is the spec CENTRED cross: on a 100×100 box dx1=36,
   // dx2=11 (a1=23520) → first point (x1,y2) = (14, 39), distinct from
   // the box-filling `plus`.
-  assert_true(build_geometry(ShapeMathPlus, 100, 100).commands[0] is MoveTo(14, 39))
+  assert_true(
+    build_geometry(ShapeMathPlus, 100, 100).commands[0] is MoveTo(14, 39),
+  )
   @debug.assert_eq(
     build_geometry(ShapeMathPlus, 100, 100),
     build_math_plus(100, 100),
   )
   // mathPlus does NOT reach the edges, unlike the box-filling plus.
   assert_true(
-    build_geometry(ShapeMathPlus, 100, 100) != build_geometry(ShapePlus, 100, 100),
+    build_geometry(ShapeMathPlus, 100, 100) !=
+    build_geometry(ShapePlus, 100, 100),
   )
   // mathMultiply: for a SQUARE box ang = at2(w,h) = 45° (cos=sin=7071),
   // so the rotation is unchanged — first command MoveTo(32, 18).
-  assert_true(build_geometry(ShapeMathMultiply, 100, 100).commands[0] is MoveTo(32, 18))
+  assert_true(
+    build_geometry(ShapeMathMultiply, 100, 100).commands[0] is MoveTo(32, 18),
+  )
   // For a NON-square box the cross slants along the box diagonal, so
   // the geometry differs from a naive 45° rotation.
-  assert_true(build_geometry(ShapeMathMultiply, 200, 100).commands[0] is MoveTo(39, 9))
+  assert_true(
+    build_geometry(ShapeMathMultiply, 200, 100).commands[0] is MoveTo(39, 9),
+  )
 }
 
 ///|
@@ -1098,7 +1118,10 @@ test "§20.1.10.56 plus arms span w-2·x1; mathPlus/mathMultiply unchanged" {
 /// bar height (50000 → 50 px tall → top_y 25).
 test "§20.1.10.56 mathMinus bar is 73.5% width centred, not full width" {
   assert_true(build_minus(200, 100).commands[0] is MoveTo(27, 38))
-  @debug.assert_eq(build_geometry(ShapeMathMinus, 200, 100), build_minus(200, 100))
+  @debug.assert_eq(
+    build_geometry(ShapeMathMinus, 200, 100),
+    build_minus(200, 100),
+  )
   let tall = build_geometry_with_adjustments(ShapeMathMinus, 200, 100, [
     { name: "adj1", raw_formula: "val 50000", value: Some(50000) },
   ])
@@ -1110,7 +1133,9 @@ test "§20.1.10.56 mathMinus bar is 73.5% width centred, not full width" {
 /// `w/5` (20 % of width), distinct from the adjustable `ss`-based
 /// `parallelogram`. On a 200-wide box the slant is `40`.
 test "§20.1.10.56 flowChartInputOutput uses the fixed w/5 slant" {
-  assert_true(build_flowchart_input_output(200, 100).commands[0] is MoveTo(40, 0))
+  assert_true(
+    build_flowchart_input_output(200, 100).commands[0] is MoveTo(40, 0),
+  )
   // Dispatched through build_geometry by the ST_ShapeType enum.
   @debug.assert_eq(
     build_geometry(ShapeFlowChartInputOutput, 200, 100),
@@ -1130,12 +1155,9 @@ test "§20.1.10.56 flowChartInputOutput uses the fixed w/5 slant" {
 /// The first command `MoveTo(r, 0)` carries the rounded radius (adj1).
 test "§20.1.9.18 snipRoundRect honours independent adj1/adj2 guides" {
   // adj1 = 40000 → r = 40; differs from the default (r = 16).
-  let geo = build_geometry_with_adjustments(
-    ShapeSnipRoundRect,
-    100,
-    100,
-    [{ name: "adj1", raw_formula: "val 40000", value: Some(40000) }],
-  )
+  let geo = build_geometry_with_adjustments(ShapeSnipRoundRect, 100, 100, [
+    { name: "adj1", raw_formula: "val 40000", value: Some(40000) },
+  ])
   assert_true(geo.commands[0] is MoveTo(40, 0))
   // The default keeps r = 16 (adj1 default 16667 → 16).
   assert_true(
@@ -1153,9 +1175,13 @@ test "§20.1.9.11 roundRect honours a custom adj guide with pinning" {
   // Default adj=16667 → r = 100*16667/100000 = 16 (truncated).
   assert_true(build_round_rect(100, 100).commands[0] is MoveTo(16, 0))
   // adj=30000 → r = 30.
-  assert_true(build_round_rect(100, 100, adj=30000).commands[0] is MoveTo(30, 0))
+  assert_true(
+    build_round_rect(100, 100, adj=30000).commands[0] is MoveTo(30, 0),
+  )
   // adj above the 50000 pin → clamped, r = 50 (a full semicircle end).
-  assert_true(build_round_rect(100, 100, adj=90000).commands[0] is MoveTo(50, 0))
+  assert_true(
+    build_round_rect(100, 100, adj=90000).commands[0] is MoveTo(50, 0),
+  )
   // Negative adj pins to 0 → square corners (r = 0).
   assert_true(build_round_rect(100, 100, adj=-5000).commands[0] is MoveTo(0, 0))
 }
@@ -1167,7 +1193,12 @@ test "§20.1.9.18 adjustment override flows into build_geometry_with_adjustments
   let adjustments : Array[Adjustment] = [
     { name: "adj", raw_formula: "val 30000", value: Some(30000) },
   ]
-  let geo = build_geometry_with_adjustments(ShapeRoundRect, 100, 100, adjustments)
+  let geo = build_geometry_with_adjustments(
+    ShapeRoundRect,
+    100,
+    100,
+    adjustments,
+  )
   assert_true(geo.commands[0] is MoveTo(30, 0))
 }
 

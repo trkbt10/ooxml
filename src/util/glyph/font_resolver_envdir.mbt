@@ -54,7 +54,7 @@ pub fn FontResolver::env_dir() -> FontResolver {
   }
   {
     label,
-    resolve: (request) => {
+    resolve: request => {
       match request.embedded_bytes {
         Some(b) =>
           return { bytes: b, ttc_index: None, source_label: "embedded" }
@@ -121,7 +121,7 @@ fn populate_envdir_catalog(catalog : Map[String, String], dir : String) -> Unit 
       for name in entries {
         let full = @path.join([dir, name]) catch { _ => continue }
         let is_file = (try? @fs.is_file(full)).unwrap_or(false)
-        if !(is_file) {
+        if !is_file {
           continue
         }
         let lower = lowercase_ascii(name)

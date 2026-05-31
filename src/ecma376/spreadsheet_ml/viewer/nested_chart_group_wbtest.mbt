@@ -35,7 +35,9 @@ fn chart_group_element() -> @xml.Element {
   let grp_sp_pr = xek("grpSpPr", [
     xek("xfrm", [
       @xml.Node::Element(xe("chOff", [("x", "0"), ("y", "0")], [])),
-      @xml.Node::Element(xe("chExt", [("cx", "1828800"), ("cy", "1371600")], [])),
+      @xml.Node::Element(
+        xe("chExt", [("cx", "1828800"), ("cy", "1371600")], []),
+      ),
     ]),
   ])
   let graphic_frame = xek("graphicFrame", [

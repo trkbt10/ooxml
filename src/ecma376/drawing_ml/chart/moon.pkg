@@ -3,6 +3,6 @@
 // DrawingML chart (§21.2): chart space, axes, series.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
   "trkbt10/ooxml/ecma376/drawing_ml" @a,
 }

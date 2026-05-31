@@ -13,7 +13,11 @@ fn tile_elt(attrs : Array[(String, String)]) -> @xml.Element {
     let (k, v) = kv
     a.push({ name: { prefix: None, local_name: k, ns: None }, value: v })
   }
-  { name: { prefix: Some("a"), local_name: "tile", ns: None }, attributes: a, children: [] }
+  {
+    name: { prefix: Some("a"), local_name: "tile", ns: None },
+    attributes: a,
+    children: [],
+  }
 }
 
 ///|

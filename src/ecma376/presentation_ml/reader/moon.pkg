@@ -3,6 +3,6 @@
 // PresentationML XML → domain reader.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
-  "trkbt10/ooxml/ecma376/presentation_ml/domain" @domain,
+  "trkbt10/ooxml/xml",
+  "trkbt10/ooxml/ecma376/presentation_ml/domain",
 }

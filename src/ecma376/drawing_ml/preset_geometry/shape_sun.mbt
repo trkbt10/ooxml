@@ -14,7 +14,11 @@
 /// (radii `wR = w·g0/100000`, `hR = h·g0/100000`, `g0 = 50000 − a`),
 /// emitted as two 180° arcs from the left point `(x19, vc)` so the
 /// `large_arc` flag stays false.
-pub fn build_sun(width : Int, height : Int, adj~ : Int = 25000) -> ShapeGeometry {
+pub fn build_sun(
+  width : Int,
+  height : Int,
+  adj? : Int = 25000,
+) -> ShapeGeometry {
   let w = width
   let h = height
   let hc = width / 2

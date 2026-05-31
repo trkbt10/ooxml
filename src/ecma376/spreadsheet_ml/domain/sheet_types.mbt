@@ -2464,15 +2464,7 @@ pub fn CT_DataConsolidate::new(element : @xml.Element) -> CT_DataConsolidate {
   let left_labels = attr_bool(element, "leftLabels", false)
   let top_labels = attr_bool(element, "topLabels", false)
   let link = attr_bool(element, "link", false)
-  {
-    element,
-    data_refs,
-    function,
-    start_labels,
-    left_labels,
-    top_labels,
-    link,
-  }
+  { element, data_refs, function, start_labels, left_labels, top_labels, link }
 }
 
 ///|

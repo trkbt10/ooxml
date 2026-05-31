@@ -71,7 +71,14 @@ pub fn build_wml_chart_resolver(
     if nodes.length() == 0 {
       return None
     }
-    Some(@markup.elem_ns("g", @markup.svg_ns, [@markup.attr("class", "chart")], nodes))
+    Some(
+      @markup.elem_ns(
+        "g",
+        @markup.svg_ns,
+        [@markup.attr("class", "chart")],
+        nodes,
+      ),
+    )
   }
 }
 

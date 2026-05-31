@@ -98,15 +98,24 @@ test "render_preset_shape_d resolves geometric primitives" {
 ///|
 test "render_preset_shape_d returns None for schema violation" {
   // §20.1.10.55 — `unknownShape` is not in ST_ShapeType.
-  @debug.debug_inspect(render_preset_shape_d("unknownShape", 100.0, 50.0), content="None")
+  @debug.debug_inspect(
+    render_preset_shape_d("unknownShape", 100.0, 50.0),
+    content="None",
+  )
   @debug.debug_inspect(render_preset_shape_d("", 100.0, 50.0), content="None")
 }
 
 ///|
 test "render_preset_shape_d returns None for zero-sized bbox" {
   @debug.debug_inspect(render_preset_shape_d("rect", 0.0, 50.0), content="None")
-  @debug.debug_inspect(render_preset_shape_d("rect", 100.0, 0.0), content="None")
-  @debug.debug_inspect(render_preset_shape_d("rect", -10.0, 50.0), content="None")
+  @debug.debug_inspect(
+    render_preset_shape_d("rect", 100.0, 0.0),
+    content="None",
+  )
+  @debug.debug_inspect(
+    render_preset_shape_d("rect", -10.0, 50.0),
+    content="None",
+  )
 }
 
 ///|
@@ -181,16 +190,16 @@ test "build_pattern_def returns empty for schema-violating name" {
 /// differ. The no-override call still reproduces the spec default.
 test "render_preset_shape_d honours a custom roundRect adj guide" {
   let default_d = render_preset_shape_d("roundRect", 100.0, 100.0)
-  let custom_d = render_preset_shape_d(
-    "roundRect",
-    100.0,
-    100.0,
-    adjustments=[{ name: "adj", raw_formula: "val 40000", value: Some(40000) }],
-  )
+  let custom_d = render_preset_shape_d("roundRect", 100.0, 100.0, adjustments=[
+    { name: "adj", raw_formula: "val 40000", value: Some(40000) },
+  ])
   assert_true(default_d is Some(_))
   assert_true(custom_d is Some(_))
   // adj=40000 widens the corner radius from the default, so the path body differs.
   assert_true(default_d != custom_d)
   // An empty override reproduces the spec-default geometry exactly.
-  assert_true(render_preset_shape_d("roundRect", 100.0, 100.0, adjustments=[]) == default_d)
+  assert_true(
+    render_preset_shape_d("roundRect", 100.0, 100.0, adjustments=[]) ==
+    default_d,
+  )
 }

@@ -14,8 +14,8 @@
 pub fn build_notched_right_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 50000,
-  adj2~ : Int = 50000,
+  adj1? : Int = 50000,
+  adj2? : Int = 50000,
 ) -> ShapeGeometry {
   // §20.1.10.56: shaft thickness = h·a1/100000; head length dx2 =
   // ss·a2/100000 (maxAdj2 = 100000·w/ss); notch x1 = dy1·dx2/hd2.

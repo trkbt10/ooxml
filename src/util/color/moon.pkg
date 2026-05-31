@@ -8,9 +8,9 @@
 //   @aurochs/color/src/*
 
 import {
-  "moonbitlang/core/math" @math,
+  "moonbitlang/core/math",
 }
 
 import {
-  "moonbitlang/core/debug" @debug,
+  "moonbitlang/core/debug",
 } for "wbtest"

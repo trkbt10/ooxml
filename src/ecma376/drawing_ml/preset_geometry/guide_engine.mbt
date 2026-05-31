@@ -201,7 +201,10 @@ fn ge_context(
 ///|
 /// Evaluate `(name, fmla)` guides in order, binding each result back
 /// into `ctx` (later guides reference earlier ones).
-fn ge_evaluate(guides : Array[(String, String)], ctx : Map[String, Double]) -> Unit {
+fn ge_evaluate(
+  guides : Array[(String, String)],
+  ctx : Map[String, Double],
+) -> Unit {
   for g in guides {
     let tokens = ge_tokens(g.1)
     if tokens.length() == 0 {
@@ -257,9 +260,19 @@ fn ge_arc_segment(
   let ey = cy + h_r * (@math.sin(en_rad) - @math.sin(st_rad))
   let large_arc = (if sw_ang < 0.0 { -sw_ang } else { sw_ang }) > 10800000.0
   let sweep = sw_ang > 0.0
-  (ArcTo(ge_round(w_r), ge_round(h_r), 0, large_arc, sweep, ge_round(ex), ge_round(
+  (
+    ArcTo(
+      ge_round(w_r),
+      ge_round(h_r),
+      0,
+      large_arc,
+      sweep,
+      ge_round(ex),
+      ge_round(ey),
+    ),
+    ex,
     ey,
-  )), ex, ey)
+  )
 }
 
 ///|
@@ -303,16 +316,25 @@ fn ge_materialize(
         let abs_sw = if sw_ang < 0.0 { -sw_ang } else { sw_ang }
         if abs_sw >= 21600000.0 {
           let half = sw_ang / 2.0
-          let (a1, mx, my) = ge_arc_segment(cur_x, cur_y, w_r, h_r, st_ang, half)
+          let (a1, mx, my) = ge_arc_segment(
+            cur_x, cur_y, w_r, h_r, st_ang, half,
+          )
           commands.push(a1)
           let (a2, ex, ey) = ge_arc_segment(
-            mx, my, w_r, h_r, st_ang + half, sw_ang - half,
+            mx,
+            my,
+            w_r,
+            h_r,
+            st_ang + half,
+            sw_ang - half,
           )
           commands.push(a2)
           cur_x = ex
           cur_y = ey
         } else {
-          let (a, ex, ey) = ge_arc_segment(cur_x, cur_y, w_r, h_r, st_ang, sw_ang)
+          let (a, ex, ey) = ge_arc_segment(
+            cur_x, cur_y, w_r, h_r, st_ang, sw_ang,
+          )
           commands.push(a)
           cur_x = ex
           cur_y = ey

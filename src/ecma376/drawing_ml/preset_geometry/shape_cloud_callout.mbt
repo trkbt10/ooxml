@@ -22,8 +22,8 @@
 pub fn build_cloud_callout(
   width : Int,
   height : Int,
-  adj1~ : Int = -20833,
-  adj2~ : Int = 62500,
+  adj1? : Int = -20833,
+  adj2? : Int = 62500,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let hc = width / 2

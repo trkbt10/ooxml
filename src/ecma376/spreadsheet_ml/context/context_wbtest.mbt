@@ -564,10 +564,8 @@ test "spreadsheet_ml to_svg keeps per-sheet ids unique" {
 ///|
 test "formula xlsx round-trip: open → to_svg (formula eval) → save → re-open" {
   let fixtures : Array[String] = [
-    ".snapshots/fixtures/xlsx/formula/formula-sum.xlsx",
-    ".snapshots/fixtures/xlsx/formula/formula-math.xlsx",
-    ".snapshots/fixtures/xlsx/formula/formula-logic.xlsx",
-    ".snapshots/fixtures/xlsx/formula/formula-text.xlsx",
+    ".snapshots/fixtures/xlsx/formula/formula-sum.xlsx", ".snapshots/fixtures/xlsx/formula/formula-math.xlsx",
+    ".snapshots/fixtures/xlsx/formula/formula-logic.xlsx", ".snapshots/fixtures/xlsx/formula/formula-text.xlsx",
   ]
   for path in fixtures {
     let result = try {

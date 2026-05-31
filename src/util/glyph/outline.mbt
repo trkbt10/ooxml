@@ -81,7 +81,7 @@ fn FontMeasurer::char_outline_contours(
         let c = pt(cfx, cfy)
         let e = pt(fx, fy)
         let n = bezier_segments(dist(cur, c) + dist(c, e), tolerance)
-        for i in 1..=n {
+        for i in 1..<=n {
           let t = i.to_double() / n.to_double()
           let u = 1.0 - t
           let x = u * u * cur.0 + 2.0 * u * t * c.0 + t * t * e.0
@@ -98,7 +98,7 @@ fn FontMeasurer::char_outline_contours(
           dist(cur, c1) + dist(c1, c2) + dist(c2, e),
           tolerance,
         )
-        for i in 1..=n {
+        for i in 1..<=n {
           let t = i.to_double() / n.to_double()
           let u = 1.0 - t
           let x = u * u * u * cur.0 +
@@ -150,8 +150,12 @@ pub fn text_outline_contours(
     if i > 0 {
       pen = pen + m.kerning_adjust(chars[i - 1], ch, font_size_pt~)
     }
-    for contour in m.char_outline_contours(
-        ch, font_size_pt~, pen_x=pen, tolerance~,
+    for
+      contour in m.char_outline_contours(
+        ch,
+        font_size_pt~,
+        pen_x=pen,
+        tolerance~,
       ) {
       out.push(contour)
     }

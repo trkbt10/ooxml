@@ -51,7 +51,9 @@ test "AlternateContent falls back when choices are unsupported" {
 ///|
 test "markup compatibility token list helpers trim whitespace" {
   @debug.assert_eq(parse_ignorable("  w14   w15 "), ["w14", "w15"])
-  @debug.assert_eq(parse_process_content("w14:para w15:run"), ["w14:para", "w15:run"])
+  @debug.assert_eq(parse_process_content("w14:para w15:run"), [
+    "w14:para", "w15:run",
+  ])
   @debug.assert_eq(parse_preserve_attributes("w14:attr"), ["w14:attr"])
   @debug.assert_eq(parse_preserve_elements("w15:el"), ["w15:el"])
 }

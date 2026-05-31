@@ -17,8 +17,8 @@
 pub fn build_snip2_same_rect(
   width : Int,
   height : Int,
-  adj1~ : Int = 16667,
-  adj2~ : Int = 0,
+  adj1? : Int = 16667,
+  adj2? : Int = 0,
 ) -> ShapeGeometry {
   // §20.1.10.56 snip2SameRect gdLst: aN = pin 0 adjN 50000;
   // tx1 = ss·a1/100000 (top), bx1 = ss·a2/100000 (bottom).

@@ -86,7 +86,10 @@ pub fn append_paragraph(
   }
   let t_with_text = @a_edit.append_child(t_element, @xml.Node::Text(text))
   let r_element = @a_edit.empty_element(w_template, "r")
-  let r_with_t = @a_edit.append_child(r_element, @xml.Node::Element(t_with_text))
+  let r_with_t = @a_edit.append_child(
+    r_element,
+    @xml.Node::Element(t_with_text),
+  )
   let p_element = @a_edit.empty_element(w_template, "p")
   // §17.13.1 / §17.18.50 ST_LongHexNumber — Word stamps every
   // authored paragraph with a fresh `@w:rsidR` so track-changes
@@ -290,7 +293,10 @@ pub fn edit_numbering(
 ///|
 /// A-layer primitive: install a new OPC package after add_part /
 /// with_relationship calls (e.g. embedding a picture).
-pub fn with_package(document : Document, opc_package : @opc.Package) -> Document {
+pub fn with_package(
+  document : Document,
+  opc_package : @opc.Package,
+) -> Document {
   {
     opc_package,
     main_part: document.main_part,
@@ -395,16 +401,22 @@ pub fn set_paragraph_alignment(
     let p_pr = match @a_edit.find_first(p, @a_edit.by_local_name("pPr")) {
       Some(_existing) =>
         @a_edit.update_first(p, @a_edit.by_local_name("pPr"), fn(pr) {
-          let jc_existing = @a_edit.direct_children(pr, @a_edit.by_local_name("jc"))
+          let jc_existing = @a_edit.direct_children(
+            pr,
+            @a_edit.by_local_name("jc"),
+          )
           let jc_template = @a_edit.qname_like(w_template, "jc")
-          let jc = @a_edit.set_attribute(@a_edit.empty_element(jc_template, "jc"), {
-            name: {
-              prefix: w_template.prefix,
-              local_name: "val",
-              ns: w_template.ns,
+          let jc = @a_edit.set_attribute(
+            @a_edit.empty_element(jc_template, "jc"),
+            {
+              name: {
+                prefix: w_template.prefix,
+                local_name: "val",
+                ns: w_template.ns,
+              },
+              value,
             },
-            value,
-          })
+          )
           if jc_existing.length() == 0 {
             @a_edit.append_child(pr, @xml.Node::Element(jc))
           } else {
@@ -413,14 +425,17 @@ pub fn set_paragraph_alignment(
         })
       None => {
         let pr = @a_edit.empty_element(w_template, "pPr")
-        let jc = @a_edit.set_attribute(@a_edit.empty_element(w_template, "jc"), {
-          name: {
-            prefix: w_template.prefix,
-            local_name: "val",
-            ns: w_template.ns,
+        let jc = @a_edit.set_attribute(
+          @a_edit.empty_element(w_template, "jc"),
+          {
+            name: {
+              prefix: w_template.prefix,
+              local_name: "val",
+              ns: w_template.ns,
+            },
+            value,
           },
-          value,
-        })
+        )
         let pr_with_jc = @a_edit.append_child(pr, @xml.Node::Element(jc))
         @a_edit.insert_child(p, 0, @xml.Node::Element(pr_with_jc))
       }
@@ -460,7 +475,11 @@ pub fn set_paragraph_style(
       if hits.length() == 0 {
         @a_edit.insert_child(p_pr, 0, @xml.Node::Element(style_elt))
       } else {
-        @a_edit.replace_children(p_pr, @a_edit.by_local_name("pStyle"), style_elt)
+        @a_edit.replace_children(
+          p_pr,
+          @a_edit.by_local_name("pStyle"),
+          style_elt,
+        )
       }
     })
   })
@@ -598,7 +617,10 @@ fn edit_run_r_pr(
       @xml.Element(e) =>
         if e.name.local_name == "r" {
           if counter == run_index {
-            let r_pr_hits = @a_edit.direct_children(e, @a_edit.by_local_name("rPr"))
+            let r_pr_hits = @a_edit.direct_children(
+              e,
+              @a_edit.by_local_name("rPr"),
+            )
             let new_r = if r_pr_hits.length() == 0 {
               let new_r_pr = update(@a_edit.empty_element(template, "rPr"))
               @a_edit.insert_child(e, 0, @xml.Node::Element(new_r_pr))
@@ -1280,7 +1302,7 @@ fn transform_revisions(elt : @xml.Element, accept~ : Bool) -> @xml.Element {
   // the snapshot inside the change marker.  We branch up front so
   // the snapshot replacement isn't tangled with the run/insert
   // child walk below.
-  if !(accept) {
+  if !accept {
     match revert_property_change(elt) {
       Some(snapshot) => return transform_revisions(snapshot, accept~)
       None => ()

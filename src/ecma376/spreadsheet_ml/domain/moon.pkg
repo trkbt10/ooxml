@@ -3,8 +3,8 @@
 // SpreadsheetML domain: workbook, worksheet, cell, sharedStrings, styles, defined names, formulas.
 
 import {
-  "moonbitlang/core/strconv" @strconv,
-  "trkbt10/ooxml/ecma376/spreadsheet_ml/address" @address,
-  "trkbt10/ooxml/xml" @xml,
+  "moonbitlang/core/strconv",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
+  "trkbt10/ooxml/xml",
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
 }

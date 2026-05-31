@@ -2,13 +2,21 @@
 // labels placed outside the pie get connector lines to each slice.
 
 ///|
-fn ce(local : String, attrs : Array[(String, String)], kids : Array[@xml.Node]) -> @xml.Node {
+fn ce(
+  local : String,
+  attrs : Array[(String, String)],
+  kids : Array[@xml.Node],
+) -> @xml.Node {
   let a : Array[@xml.Attribute] = []
   for kv in attrs {
     let (k, v) = kv
     a.push({ name: { prefix: None, local_name: k, ns: None }, value: v })
   }
-  @xml.Node::Element({ name: { prefix: Some("c"), local_name: local, ns: None }, attributes: a, children: kids })
+  @xml.Node::Element({
+    name: { prefix: Some("c"), local_name: local, ns: None },
+    attributes: a,
+    children: kids,
+  })
 }
 
 ///|
@@ -36,7 +44,13 @@ test "pie dLblPos=outEnd + leaderLines emits connector lines + side-anchored lab
     ce("leaderLines", [], []),
   ]
   let elem = pie_with_dlbls(dlbls)
-  let nodes = render_pie_chart(elem, 400.0, 300.0, ColorResolveContext::empty(), hole_percent=None)
+  let nodes = render_pie_chart(
+    elem,
+    400.0,
+    300.0,
+    ColorResolveContext::empty(),
+    hole_percent=None,
+  )
   let sb = StringBuilder::new()
   for nd in nodes {
     match nd {
@@ -48,14 +62,22 @@ test "pie dLblPos=outEnd + leaderLines emits connector lines + side-anchored lab
   // External labels → leader <line> connectors present.
   assert_true(svg.contains("<line "))
   // External labels are side-anchored (start/end), not "middle".
-  assert_true(svg.contains("text-anchor=\"start\"") || svg.contains("text-anchor=\"end\""))
+  assert_true(
+    svg.contains("text-anchor=\"start\"") || svg.contains("text-anchor=\"end\""),
+  )
 }
 
 ///|
 test "pie default label position stays inside (no leader lines)" {
   let dlbls = [ce("showVal", [("val", "1")], [])]
   let elem = pie_with_dlbls(dlbls)
-  let nodes = render_pie_chart(elem, 400.0, 300.0, ColorResolveContext::empty(), hole_percent=None)
+  let nodes = render_pie_chart(
+    elem,
+    400.0,
+    300.0,
+    ColorResolveContext::empty(),
+    hole_percent=None,
+  )
   let sb = StringBuilder::new()
   for nd in nodes {
     match nd {

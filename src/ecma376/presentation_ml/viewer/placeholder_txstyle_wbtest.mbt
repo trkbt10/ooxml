@@ -55,7 +55,9 @@ fn make_ph_shape(ph_type : String?) -> @xml.Element {
     None => []
   }
   let nv_sp_pr = pts_el(Some("p"), "nvSpPr", [], [
-    @xml.Node::Element(pts_el(Some("p"), "cNvPr", [("id", "2"), ("name", "ph")], [])),
+    @xml.Node::Element(
+      pts_el(Some("p"), "cNvPr", [("id", "2"), ("name", "ph")], []),
+    ),
     @xml.Node::Element(pts_el(Some("p"), "cNvSpPr", [], [])),
     @xml.Node::Element(
       pts_el(Some("p"), "nvPr", [], [
@@ -145,7 +147,11 @@ test "placeholder run inherits the master body typeface" {
   let ctx = ColorResolveContext::empty()
   let master_lst = select_master_lst_style(Some(txs), shape)
   let input = build_layout_input(
-    tx_body, 5000000.0, 2000000.0, ctx, master_lst_style=master_lst,
+    tx_body,
+    5000000.0,
+    2000000.0,
+    ctx,
+    master_lst_style=master_lst,
   )
   let span = input.paragraphs[0].spans[0]
   inspect(span.font_family, content="MasterBodyFace")
@@ -182,7 +188,11 @@ test "partial shape lstStyle still inherits missing attrs from master" {
   // body placeholder → master bodyStyle.
   let master_lst = first_child_named(make_tx_styles(), "bodyStyle")
   let input = build_layout_input(
-    tx_body, 5000000.0, 2000000.0, ctx, master_lst_style=master_lst,
+    tx_body,
+    5000000.0,
+    2000000.0,
+    ctx,
+    master_lst_style=master_lst,
   )
   let span = input.paragraphs[0].spans[0]
   // typeface inherited from the master (shape lstStyle had none)…

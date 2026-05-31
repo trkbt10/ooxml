@@ -15,7 +15,10 @@ fn build_pic_with_blip_effects(effects_xml : String) -> @xml.Element raise {
 ///|
 fn mock_image_resolver(rid : String) -> ResolvedImage? {
   if rid == "rId1" {
-    Some({ mime_type: "image/png", base64_data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==" })
+    Some({
+      mime_type: "image/png",
+      base64_data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==",
+    })
   } else {
     None
   }
@@ -68,9 +71,7 @@ test "blip grayscl emits feColorMatrix saturate=0" {
 
 ///|
 test "blip alphaModFix amt=50000 emits feFuncA slope=0.5" {
-  let bf = build_blip_fill_with_effects(
-    "<a:alphaModFix amt=\"50000\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:alphaModFix amt=\"50000\"/>")
   let defs = SvgDefsCollector::new()
   let filter_ref = build_blip_effect_filter(
     bf,
@@ -167,9 +168,7 @@ test "blip blur rad=0 produces no filter" {
 
 ///|
 test "blip alphaBiLevel thresh=50000 emits discrete feFuncA" {
-  let bf = build_blip_fill_with_effects(
-    "<a:alphaBiLevel thresh=\"50000\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:alphaBiLevel thresh=\"50000\"/>")
   let defs = SvgDefsCollector::new()
   let filter_ref = build_blip_effect_filter(
     bf,
@@ -185,9 +184,7 @@ test "blip alphaBiLevel thresh=50000 emits discrete feFuncA" {
 
 ///|
 test "blip biLevel thresh=50000 emits grayscale then threshold" {
-  let bf = build_blip_fill_with_effects(
-    "<a:biLevel thresh=\"50000\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:biLevel thresh=\"50000\"/>")
   let defs = SvgDefsCollector::new()
   let filter_ref = build_blip_effect_filter(
     bf,
@@ -351,9 +348,7 @@ test "no effects produces None" {
 
 ///|
 test "blip lum default bright=0 contrast=0 produces no filter" {
-  let bf = build_blip_fill_with_effects(
-    "<a:lum bright=\"0\" contrast=\"0\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:lum bright=\"0\" contrast=\"0\"/>")
   let defs = SvgDefsCollector::new()
   let filter_ref = build_blip_effect_filter(
     bf,
@@ -477,16 +472,12 @@ test "render_picture_svg: grayscl adds filter attr to <g>" {
 
 ///|
 test "render_picture_svg: alphaModFix 50% adds filter with feFuncA" {
-  let pic = build_pic_with_blip_effects(
-    "<a:alphaModFix amt=\"50000\"/>",
-  )
+  let pic = build_pic_with_blip_effects("<a:alphaModFix amt=\"50000\"/>")
   let svg = render_pic_svg(pic)
   assert_true(svg.contains("filter=\"url(#blip-fx-"))
   assert_true(svg.contains("feFuncA"))
   assert_true(svg.contains("slope=\"0.5\""))
-  assert_true(
-    svg.contains("data-ooxml-blip-effects=\"alphaModFix\""),
-  )
+  assert_true(svg.contains("data-ooxml-blip-effects=\"alphaModFix\""))
 }
 
 ///|
@@ -504,9 +495,7 @@ test "render_picture_svg: grayscl+lum chain produces two-stage filter" {
   assert_true(svg.contains("result=\"bfx0\""))
   assert_true(svg.contains("in=\"bfx0\""))
   assert_true(svg.contains("result=\"bfx1\""))
-  assert_true(
-    svg.contains("data-ooxml-blip-effects=\"grayscl lum\""),
-  )
+  assert_true(svg.contains("data-ooxml-blip-effects=\"grayscl lum\""))
 }
 
 ///|
@@ -519,9 +508,7 @@ test "render_picture_svg: no effects produces no filter attr" {
 
 ///|
 test "render_picture_svg: biLevel produces grayscale + threshold pipeline" {
-  let pic = build_pic_with_blip_effects(
-    "<a:biLevel thresh=\"50000\"/>",
-  )
+  let pic = build_pic_with_blip_effects("<a:biLevel thresh=\"50000\"/>")
   let svg = render_pic_svg(pic)
   assert_true(svg.contains("filter=\"url(#blip-fx-"))
   // Grayscale (BT.601)
@@ -567,9 +554,7 @@ test "blip lum negative contrast clamps slope correctly" {
 
 ///|
 test "blip tint amt=0 produces no SVG filter (pixel ops skip zero amt)" {
-  let bf = build_blip_fill_with_effects(
-    "<a:tint hue=\"5400000\" amt=\"0\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:tint hue=\"5400000\" amt=\"0\"/>")
   let defs = SvgDefsCollector::new()
   let filter_ref = build_blip_effect_filter(
     bf,
@@ -582,9 +567,7 @@ test "blip tint amt=0 produces no SVG filter (pixel ops skip zero amt)" {
 
 ///|
 test "preprocess_blip_image skips tint with amt=0" {
-  let bf = build_blip_fill_with_effects(
-    "<a:tint hue=\"5400000\" amt=\"0\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:tint hue=\"5400000\" amt=\"0\"/>")
   let result = preprocess_blip_image(
     bf,
     "image/png",
@@ -599,9 +582,7 @@ test "preprocess_blip_image skips tint with amt=0" {
 
 ///|
 test "blip tint amt=100000 produces no SVG filter (handled by pixel ops)" {
-  let bf = build_blip_fill_with_effects(
-    "<a:tint hue=\"0\" amt=\"100000\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:tint hue=\"0\" amt=\"100000\"/>")
   let defs = SvgDefsCollector::new()
   let filter_ref = build_blip_effect_filter(
     bf,
@@ -614,9 +595,7 @@ test "blip tint amt=100000 produces no SVG filter (handled by pixel ops)" {
 
 ///|
 test "preprocess_blip_image applies full tint amt=100000" {
-  let bf = build_blip_fill_with_effects(
-    "<a:tint hue=\"0\" amt=\"100000\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:tint hue=\"0\" amt=\"100000\"/>")
   let result = preprocess_blip_image(
     bf,
     "image/png",
@@ -646,9 +625,7 @@ test "blip blur grow=false keeps tight viewport" {
 
 ///|
 test "blip blur grow=true widens viewport" {
-  let bf = build_blip_fill_with_effects(
-    "<a:blur rad=\"95250\" grow=\"true\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:blur rad=\"95250\" grow=\"true\"/>")
   let defs = SvgDefsCollector::new()
   let filter_ref = build_blip_effect_filter(
     bf,
@@ -663,9 +640,7 @@ test "blip blur grow=true widens viewport" {
 
 ///|
 test "blip alphaModFix amt=100000 produces identity slope=1" {
-  let bf = build_blip_fill_with_effects(
-    "<a:alphaModFix amt=\"100000\"/>",
-  )
+  let bf = build_blip_fill_with_effects("<a:alphaModFix amt=\"100000\"/>")
   let defs = SvgDefsCollector::new()
   let filter_ref = build_blip_effect_filter(
     bf,
@@ -717,9 +692,7 @@ test "blip alphaMod with single alphaModFix container applies alpha" {
 
 ///|
 test "blip alphaMod with empty container produces no filter" {
-  let bf = build_blip_fill_with_effects(
-    "<a:alphaMod><a:cont/></a:alphaMod>",
-  )
+  let bf = build_blip_fill_with_effects("<a:alphaMod><a:cont/></a:alphaMod>")
   let defs = SvgDefsCollector::new()
   let filter_ref = build_blip_effect_filter(
     bf,

@@ -137,14 +137,8 @@ pub fn materialize_pivot_table(
   // derive them here from the kept rows.  No-op when the pivot has no
   // calculated field, so ordinary pivots are unaffected.
   append_calculated_field_cells(
-    cells,
-    definition,
-    cache,
-    kept_rows,
-    row_field_positions,
-    col_field_positions,
-    row_keys,
-    col_keys,
+    cells, definition, cache, kept_rows, row_field_positions, col_field_positions,
+    row_keys, col_keys,
   )
   {
     row_keys: row_keys_final,

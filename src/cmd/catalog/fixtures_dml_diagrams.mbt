@@ -514,22 +514,30 @@ fn cached_drawing(
   // produces an empty drawing — the fixture remains valid OPC
   // because the drawing field is optional from the schema's
   // perspective.
-  let data_model_typed = try @dgm_domain.CT_DataModel::new(data_model_root) catch {
+  let data_model_typed = try
+    @dgm_domain.CT_DataModel::new(data_model_root)
+  catch {
     _ => return None
   } noraise {
     t => t
   }
-  let definition_typed = try @dgm_domain.CT_DiagramDefinition::new(layout_def_root) catch {
+  let definition_typed = try
+    @dgm_domain.CT_DiagramDefinition::new(layout_def_root)
+  catch {
     _ => return None
   } noraise {
     t => t
   }
-  let data_model = try @diagram_layout.decode_data_model(data_model_typed) catch {
+  let data_model = try
+    @diagram_layout.decode_data_model(data_model_typed)
+  catch {
     _ => return None
   } noraise {
     t => t
   }
-  let definition = try @diagram_layout.decode_diagram_definition(definition_typed) catch {
+  let definition = try
+    @diagram_layout.decode_diagram_definition(definition_typed)
+  catch {
     _ => return None
   } noraise {
     t => t

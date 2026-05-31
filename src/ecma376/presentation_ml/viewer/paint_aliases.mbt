@@ -7,12 +7,17 @@
 // — compiling without churn until each call site is explicitly
 // requalified with the `@paint.` prefix.
 
-typealias @paint.ColorResolveContext as ColorResolveContext
+///|
+using @paint {type ColorResolveContext as ColorResolveContext}
 
-typealias @paint.ResolvedColor as ResolvedColor
+///|
+using @paint {type ResolvedColor as ResolvedColor}
 
-typealias @paint.ColorScheme as ColorScheme
+///|
+using @paint {type ColorScheme as ColorScheme}
 
-typealias @paint.ColorMap as ColorMap
+///|
+using @paint {type ColorMap as ColorMap}
 
-typealias @paint.SvgDefsCollector as SvgDefsCollector
+///|
+using @paint {type SvgDefsCollector as SvgDefsCollector}

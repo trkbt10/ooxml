@@ -51,7 +51,11 @@ pub fn open(bytes : Bytes) -> Presentation raise OpenError {
       "ppt/presentation.xml",
     )
     let presentation = @pml_reader.read_presentation(
-      opc_package.required_part(presentation_part, section="6.3.3", source_path="/").data,
+      opc_package.required_part(
+        presentation_part,
+        section="6.3.3",
+        source_path="/",
+      ).data,
     )
     {
       opc_package,
@@ -214,7 +218,9 @@ pub fn Presentation::to_svg_for_slide(
   // references that live in the chart-part rels table.  Returns
   // `None` when the rId is unknown to the slide rels or the target
   // part has no rels.
-  let chart_part_resolver_factory = fn(chart_rid : String) -> ((String) -> @xml.Element?)? {
+  let chart_part_resolver_factory = fn(
+    chart_rid : String,
+  ) -> ((String) -> @xml.Element?)? {
     resolve_part_scoped_resolver(self, slide.name, chart_rid)
   }
   // §19.3.1.42 — walk slide → layout → master → theme rels so
@@ -538,7 +544,8 @@ fn resolve_part_scoped_resolver(
   outer_rid : String,
 ) -> ((String) -> @xml.Element?)? {
   // Resolve the outer rId against the slide rels.
-  let slide_rels = match presentation.opc_package.relationships(slide_part_name) {
+  let slide_rels = match
+    presentation.opc_package.relationships(slide_part_name) {
     Some(r) => r
     None => return None
   }
@@ -565,7 +572,8 @@ fn resolve_part_scoped_resolver(
       Some(r) => r
       None => return None
     }
-    let resolved = match (try? @opc_part_name.resolve_target(base, rel.target)) {
+    let resolved = match
+      (try? @opc_part_name.resolve_target(base, rel.target)) {
       Ok(name) => name
       Err(_) => return None
     }
@@ -602,7 +610,9 @@ fn resolve_slide_part(
     Some(r) => r
     None => return None
   }
-  let resolved = try @opc_part_name.resolve_target(slide_part_name, target_rel.target) catch {
+  let resolved = try
+    @opc_part_name.resolve_target(slide_part_name, target_rel.target)
+  catch {
     _ => return None
   } noraise {
     name => name
@@ -766,7 +776,9 @@ fn read_slide_masters(
 }
 
 ///|
-fn read_slide_layouts(opc_package : @opc.Package) -> Array[SlideLayoutPart] raise {
+fn read_slide_layouts(
+  opc_package : @opc.Package,
+) -> Array[SlideLayoutPart] raise {
   let result : Array[SlideLayoutPart] = []
   for part in opc_package.parts {
     if part.name.has_prefix("/ppt/slideLayouts/") &&

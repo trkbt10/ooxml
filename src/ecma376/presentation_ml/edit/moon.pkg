@@ -11,11 +11,11 @@
 import {
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/ecma376/opc/part_name" @opc_part_name,
-  "trkbt10/ooxml/ecma376/opc" @opc,
+  "trkbt10/ooxml/ecma376/opc",
   "trkbt10/ooxml/ecma376/presentation_ml/domain" @pml,
   "trkbt10/ooxml/ecma376/presentation_ml/builder" @pml_builder,
   "trkbt10/ooxml/ecma376/presentation_ml/context" @pml_context,
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
   "trkbt10/ooxml/edit" @a_edit,
-  "moonbitlang/core/string" @string,
+  "moonbitlang/core/string",
 }

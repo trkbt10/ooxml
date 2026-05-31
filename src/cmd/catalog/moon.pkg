@@ -16,19 +16,19 @@
 // library under test.
 
 import {
-  "moonbitlang/core/string" @string,
-  "moonbitlang/core/encoding/utf8" @utf8,
-  "moonbitlang/core/env" @env,
-  "moonbitlang/x/fs" @fs,
-  "trkbt10/ooxml/xml" @xml,
-  "trkbt10/ooxml/zip" @zip,
-  "trkbt10/ooxml/ecma376/opc" @opc,
+  "moonbitlang/core/string",
+  "moonbitlang/core/encoding/utf8",
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+  "trkbt10/ooxml/xml",
+  "trkbt10/ooxml/zip",
+  "trkbt10/ooxml/ecma376/opc",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/context" @wml_context,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/context" @sml_context,
   "trkbt10/ooxml/ecma376/presentation_ml/context" @pml_context,
   "trkbt10/ooxml/ecma376/drawing_ml/diagram" @dgm_domain,
-  "trkbt10/ooxml/ecma376/drawing_ml/diagram_layout" @diagram_layout,
-  "trkbt10/ooxml/ecma376/drawing_ml/preset_geometry" @preset_geometry,
+  "trkbt10/ooxml/ecma376/drawing_ml/diagram_layout",
+  "trkbt10/ooxml/ecma376/drawing_ml/preset_geometry",
 }
 
 options(

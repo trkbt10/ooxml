@@ -11,7 +11,7 @@ fn plot_axes_rect(
   py : Double,
   pw : Double,
   ph : Double,
-  style~ : ChartStyleDefaults? = None,
+  style? : ChartStyleDefaults? = None,
 ) -> @xml.Node {
   let axis_color = match style {
     Some(s) => s.axis_color
@@ -102,12 +102,12 @@ fn y_axis_ticks(
   pw : Double,
   fw : Double,
   draw_gridlines : Bool,
-  label_suffix~ : String = "",
-  log_base~ : Double? = None,
-  style~ : ChartStyleDefaults? = None,
-  tick_lbl_pos~ : String = "nextTo",
-  num_fmt~ : String? = None,
-  draw_minor_gridlines~ : Bool = false,
+  label_suffix? : String = "",
+  log_base? : Double? = None,
+  style? : ChartStyleDefaults? = None,
+  tick_lbl_pos? : String = "nextTo",
+  num_fmt? : String? = None,
+  draw_minor_gridlines? : Bool = false,
 ) -> Array[@xml.Node] {
   if max_v <= 0.0 {
     return []
@@ -226,16 +226,7 @@ fn y_axis_ticks(
         (px - label_gap, "end")
       }
       nodes.push(
-        chart_text(
-          label,
-          lx,
-          y,
-          pw,
-          ph,
-          anchor~,
-          baseline="middle",
-          style~,
-        ),
+        chart_text(label, lx, y, pw, ph, anchor~, baseline="middle", style~),
       )
     }
     tick_v = tick_v + step
@@ -311,9 +302,9 @@ fn x_axis_ticks(
   max_v : Double,
   fh : Double,
   draw_gridlines : Bool,
-  style~ : ChartStyleDefaults? = None,
-  tick_lbl_pos~ : String = "nextTo",
-  num_fmt~ : String? = None,
+  style? : ChartStyleDefaults? = None,
+  tick_lbl_pos? : String = "nextTo",
+  num_fmt? : String? = None,
 ) -> Array[@xml.Node] {
   if max_v <= 0.0 {
     return []
@@ -395,16 +386,7 @@ fn x_axis_ticks(
         (py + ph + fh * 0.018, "hanging")
       }
       nodes.push(
-        chart_text(
-          label,
-          x,
-          ly,
-          pw,
-          ph,
-          anchor="middle",
-          baseline=bl,
-          style~,
-        ),
+        chart_text(label, x, ly, pw, ph, anchor="middle", baseline=bl, style~),
       )
     }
     tick_v = tick_v + step
@@ -564,7 +546,7 @@ fn chart_text(
   h : Double,
   anchor~ : String,
   baseline~ : String,
-  style~ : ChartStyleDefaults? = None,
+  style? : ChartStyleDefaults? = None,
 ) -> @xml.Node {
   let font_size = (if w < h { w } else { h }) * 0.035
   let fill = match style {
@@ -596,4 +578,3 @@ fn chart_text(
     [@markup.text(text)],
   )
 }
-

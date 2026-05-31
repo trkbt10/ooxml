@@ -753,10 +753,7 @@ pub fn CT_Tx::new(element : @xml.Element) -> CT_Tx raise SchemaViolation {
           {
             str_ref: None,
             rich: Some(
-              wrap_a_violation(
-                () => @a.CT_TextBody::new(child),
-                "CT_Tx/rich",
-              ),
+              wrap_a_violation(() => @a.CT_TextBody::new(child), "CT_Tx/rich"),
             ),
           }
         None =>
@@ -6762,10 +6759,7 @@ pub fn CT_Connector::new(
     None => None
     Some(c) =>
       Some(
-        wrap_a_violation(
-          () => @a.CT_ShapeStyle::new(c),
-          "CT_Connector/style",
-        ),
+        wrap_a_violation(() => @a.CT_ShapeStyle::new(c), "CT_Connector/style"),
       )
   }
   { macro_, f_published, nv_cxn_sp_pr, sp_pr, style }
@@ -6882,9 +6876,7 @@ pub fn CT_Picture::new(
   let style = match first_child_named(element, "style") {
     None => None
     Some(c) =>
-      Some(
-        wrap_a_violation(() => @a.CT_ShapeStyle::new(c), "CT_Picture/style"),
-      )
+      Some(wrap_a_violation(() => @a.CT_ShapeStyle::new(c), "CT_Picture/style"))
   }
   { macro_, f_published, nv_pic_pr, blip_fill, sp_pr, style }
 }

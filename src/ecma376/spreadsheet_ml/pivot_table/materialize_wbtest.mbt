@@ -599,7 +599,11 @@ test "rowFields/-2 sentinel is parsed from XSD-unsigned representation" {
 ///|
 /// Build a calculated cache field (databaseField=0 + a formula).
 fn calc_cache_field(name : String, formula : String) -> CacheField {
-  { ..cache_field_named(name, []), database_field: false, formula: Some(formula) }
+  {
+    ..cache_field_named(name, []),
+    database_field: false,
+    formula: Some(formula),
+  }
 }
 
 ///|
@@ -616,9 +620,21 @@ test "calculated field = formula over summed operands" {
   let records : PivotCacheRecords = {
     count: Some(3),
     rows: [
-      row_of([RefShared(0), Inline(SharedNumber(2.0)), Inline(SharedNumber(10.0))]),
-      row_of([RefShared(0), Inline(SharedNumber(3.0)), Inline(SharedNumber(10.0))]),
-      row_of([RefShared(1), Inline(SharedNumber(1.0)), Inline(SharedNumber(20.0))]),
+      row_of([
+        RefShared(0),
+        Inline(SharedNumber(2.0)),
+        Inline(SharedNumber(10.0)),
+      ]),
+      row_of([
+        RefShared(0),
+        Inline(SharedNumber(3.0)),
+        Inline(SharedNumber(10.0)),
+      ]),
+      row_of([
+        RefShared(1),
+        Inline(SharedNumber(1.0)),
+        Inline(SharedNumber(20.0)),
+      ]),
     ],
   }
   // The single data field references the calculated field (index 3).

@@ -14,8 +14,8 @@
 pub fn build_arc(
   width : Int,
   height : Int,
-  adj1~ : Int = 16200000,
-  adj2~ : Int = 0,
+  adj1? : Int = 16200000,
+  adj2? : Int = 0,
 ) -> ShapeGeometry {
   // §20.1.10.56 arc: stAng = adj1, enAng = adj2; swAng = enAng − stAng
   // normalised into [0, 21600000) so the open arc sweeps clockwise.

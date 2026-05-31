@@ -2,7 +2,12 @@
 // along an SVG arc (textPath); other presets defer to span layout.
 
 ///|
-fn warp_el(prefix : String?, tag : String, attrs : Array[(String, String)], kids : Array[@xml.Node]) -> @xml.Element {
+fn warp_el(
+  prefix : String?,
+  tag : String,
+  attrs : Array[(String, String)],
+  kids : Array[@xml.Node],
+) -> @xml.Element {
   let a : Array[@xml.Attribute] = []
   for kv in attrs {
     let (k, v) = kv
@@ -14,7 +19,8 @@ fn warp_el(prefix : String?, tag : String, attrs : Array[(String, String)], kids
 ///|
 fn warp_txbody(prst : String?) -> @xml.Element {
   let bodypr_kids : Array[@xml.Node] = match prst {
-    Some(p) => [@xml.Node::Element(warp_el(Some("a"), "prstTxWarp", [("prst", p)], []))]
+    Some(p) =>
+      [@xml.Node::Element(warp_el(Some("a"), "prstTxWarp", [("prst", p)], []))]
     None => []
   }
   let run = warp_el(Some("a"), "r", [], [
@@ -35,7 +41,9 @@ fn warp_txbody_with_font(prst : String) -> @xml.Element {
     @xml.Node::Element(warp_el(Some("a"), "prstTxWarp", [("prst", prst)], [])),
   ]
   let rpr = warp_el(Some("a"), "rPr", [("sz", "3600")], [
-    @xml.Node::Element(warp_el(Some("a"), "latin", [("typeface", "Noto Sans")], [])),
+    @xml.Node::Element(
+      warp_el(Some("a"), "latin", [("typeface", "Noto Sans")], []),
+    ),
   ])
   let run = warp_el(Some("a"), "r", [], [
     @xml.Node::Element(rpr),
@@ -50,7 +58,13 @@ fn warp_txbody_with_font(prst : String) -> @xml.Element {
 ///|
 fn warp_svg(prst : String?) -> (String, String) {
   let defs = SvgDefsCollector::new()
-  let nodes = render_warped_text(warp_txbody(prst), 200.0, 100.0, ColorResolveContext::empty(), defs)
+  let nodes = render_warped_text(
+    warp_txbody(prst),
+    200.0,
+    100.0,
+    ColorResolveContext::empty(),
+    defs,
+  )
   let body = StringBuilder::new()
   match nodes {
     Some(ns) =>
@@ -166,14 +180,14 @@ test "envelope profiles cover every documented envelope preset" {
   // The complete §20.1.10.76 envelope set must all yield a warp; only
   // the baseline-on-curve presets (handled elsewhere via textPath) and
   // truly unknown names return None here.
-  for prst in [
-    "textInflate", "textDeflate", "textInflateBottom", "textDeflateBottom",
-    "textInflateTop", "textDeflateTop", "textDeflateInflate",
-    "textDeflateInflateDeflate", "textCanUp", "textCanDown", "textTriangle",
-    "textTriangleInverted", "textChevron", "textChevronInverted",
-    "textCascadeUp", "textCascadeDown", "textFadeRight", "textFadeLeft",
-    "textFadeUp", "textFadeDown",
-  ] {
+  for
+    prst in [
+      "textInflate", "textDeflate", "textInflateBottom", "textDeflateBottom", "textInflateTop",
+      "textDeflateTop", "textDeflateInflate", "textDeflateInflateDeflate", "textCanUp",
+      "textCanDown", "textTriangle", "textTriangleInverted", "textChevron", "textChevronInverted",
+      "textCascadeUp", "textCascadeDown", "textFadeRight", "textFadeLeft", "textFadeUp",
+      "textFadeDown",
+    ] {
     assert_true(envelope_profiles(prst, 100.0) is Some(_))
   }
   // Baseline / arc families are not envelope warps; unknown names too.
@@ -202,11 +216,27 @@ test "font-less envelope warp and no-warp defer to span layout (None)" {
   // the metrics-only font stack can't provide → None (flat fallback),
   // never a misleading fake.
   let defs = SvgDefsCollector::new()
-  for prst in ["textInflate", "textDeflate", "textTriangle", "textChevron", "textCascadeUp", "textCanUp", "textFadeRight"] {
-    let n = render_warped_text(warp_txbody(Some(prst)), 200.0, 100.0, ColorResolveContext::empty(), defs)
+  for
+    prst in [
+      "textInflate", "textDeflate", "textTriangle", "textChevron", "textCascadeUp",
+      "textCanUp", "textFadeRight",
+    ] {
+    let n = render_warped_text(
+      warp_txbody(Some(prst)),
+      200.0,
+      100.0,
+      ColorResolveContext::empty(),
+      defs,
+    )
     assert_true(n is None)
   }
   // No prstTxWarp at all → None.
-  let plain = render_warped_text(warp_txbody(None), 200.0, 100.0, ColorResolveContext::empty(), defs)
+  let plain = render_warped_text(
+    warp_txbody(None),
+    200.0,
+    100.0,
+    ColorResolveContext::empty(),
+    defs,
+  )
   assert_true(plain is None)
 }

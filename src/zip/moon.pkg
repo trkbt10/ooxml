@@ -5,6 +5,6 @@
 // Relationships) live in `ecma376/opc`.
 
 import {
-  "moonbitlang/core/buffer" @buffer,
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/buffer",
+  "moonbitlang/core/encoding/utf8",
 }

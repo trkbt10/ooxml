@@ -61,7 +61,12 @@ test "§18.3.2 filters blank_included keeps empty cells" {
       column(
         0,
         false,
-        Filters({ filters: [{ val: "foo" }], date_group_items: [], blank: true, calendar_type: "none" }),
+        Filters({
+          filters: [{ val: "foo" }],
+          date_group_items: [],
+          blank: true,
+          calendar_type: "none",
+        }),
       ),
     ],
   }

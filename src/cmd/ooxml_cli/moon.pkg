@@ -10,12 +10,12 @@
 // from the import list itself.
 
 import {
-  "moonbitlang/core/env" @env,
-  "moonbitlang/core/string" @string,
-  "moonbitlang/x/fs" @fs,
-  "trkbt10/ooxml" @ooxml,
-  "trkbt10/ooxml/ecma376/opc" @opc,
-  "trkbt10/ooxml/xml" @xml,
+  "moonbitlang/core/env",
+  "moonbitlang/core/string",
+  "moonbitlang/x/fs",
+  "trkbt10/ooxml",
+  "trkbt10/ooxml/ecma376/opc",
+  "trkbt10/ooxml/xml",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/context" @wml_context,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/edit" @wml_edit,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/context" @sml_context,

@@ -47,8 +47,10 @@ fn register_builtin_math_trig_functions(registry : FunctionRegistry) -> Unit {
 // Clenshaw summation, range-reduced to [-π, π].
 // ---------------------------------------------------------------------------
 
+///|
 let trig_pi : Double = 3.14159265358979323846
 
+///|
 fn reduce_angle(x : Double) -> Double {
   let two_pi = 2.0 * trig_pi
   let mut r = x % two_pi
@@ -61,30 +63,33 @@ fn reduce_angle(x : Double) -> Double {
   r
 }
 
+///|
 fn sin_raw(x : Double) -> Double {
   let r = reduce_angle(x)
   let r2 = r * r
   let mut term = r
   let mut sum = r
-  for i in 1..=12 {
+  for i in 1..<=12 {
     term = -term * r2 / ((2 * i).to_double() * (2 * i + 1).to_double())
     sum = sum + term
   }
   sum
 }
 
+///|
 fn cos_raw(x : Double) -> Double {
   let r = reduce_angle(x)
   let r2 = r * r
   let mut term = 1.0
   let mut sum = 1.0
-  for i in 1..=12 {
+  for i in 1..<=12 {
     term = -term * r2 / ((2 * i - 1).to_double() * (2 * i).to_double())
     sum = sum + term
   }
   sum
 }
 
+///|
 fn atan_raw(x : Double) -> Double {
   if x > 1.0 {
     return trig_pi / 2.0 - atan_raw(1.0 / x)
@@ -106,17 +111,19 @@ fn atan_raw(x : Double) -> Double {
   atan_series(x)
 }
 
+///|
 fn atan_series(x : Double) -> Double {
   let x2 = x * x
   let mut term = x
   let mut sum = x
-  for i in 1..=25 {
+  for i in 1..<=25 {
     term = -term * x2
     sum = sum + term / (2 * i + 1).to_double()
   }
   sum
 }
 
+///|
 fn atan2_raw(y : Double, x : Double) -> Double {
   if x > 0.0 {
     return atan_raw(y / x)
@@ -137,6 +144,7 @@ fn atan2_raw(y : Double, x : Double) -> Double {
   }
 }
 
+///|
 fn fn_sin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => checked_number(sin_raw(n))
@@ -144,6 +152,7 @@ fn fn_sin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_cos(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => checked_number(cos_raw(n))
@@ -151,6 +160,7 @@ fn fn_cos(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_tan(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => {
@@ -165,6 +175,7 @@ fn fn_tan(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_asin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) =>
@@ -181,6 +192,7 @@ fn fn_asin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_acos(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) =>
@@ -193,6 +205,7 @@ fn fn_acos(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_atan(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => VNumber(atan_raw(n))
@@ -200,6 +213,7 @@ fn fn_atan(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_atan2(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match two_numbers(args, ctx) {
     VArray(rows) =>
@@ -221,22 +235,23 @@ fn fn_atan2(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // Hyperbolic functions — built from exp/ln which exist in @math.
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_sinh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
-    VNumber(n) =>
-      checked_number((@math.exp(n) - @math.exp(-n)) / 2.0)
+    VNumber(n) => checked_number((@math.exp(n) - @math.exp(-n)) / 2.0)
     other => other
   }
 }
 
+///|
 fn fn_cosh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
-    VNumber(n) =>
-      checked_number((@math.exp(n) + @math.exp(-n)) / 2.0)
+    VNumber(n) => checked_number((@math.exp(n) + @math.exp(-n)) / 2.0)
     other => other
   }
 }
 
+///|
 fn fn_tanh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => {
@@ -248,6 +263,7 @@ fn fn_tanh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_asinh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => checked_number(@math.ln(n + (n * n + 1.0).sqrt()))
@@ -255,6 +271,7 @@ fn fn_asinh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_acosh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) =>
@@ -267,6 +284,7 @@ fn fn_acosh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_atanh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) =>
@@ -283,6 +301,7 @@ fn fn_atanh(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // Angle conversion
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_degrees(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => VNumber(n * 180.0 / trig_pi)
@@ -290,6 +309,7 @@ fn fn_degrees(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_radians(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => VNumber(n * trig_pi / 180.0)
@@ -301,6 +321,7 @@ fn fn_radians(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // Combinatorics
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_combin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match two_numbers(args, ctx) {
     VArray(rows) =>
@@ -321,6 +342,7 @@ fn fn_combin(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn combin_int(n : Int, k : Int) -> Double {
   let k = if k > n - k { n - k } else { k }
   let mut result = 1.0
@@ -330,6 +352,7 @@ fn combin_int(n : Int, k : Int) -> Double {
   result
 }
 
+///|
 fn fn_permut(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match two_numbers(args, ctx) {
     VArray(rows) =>
@@ -358,6 +381,7 @@ fn fn_permut(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // Rounding variants
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_even(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => {
@@ -376,6 +400,7 @@ fn fn_even(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_odd(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) =>
@@ -401,6 +426,7 @@ fn fn_odd(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // Factorials
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_fact(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => {
@@ -409,7 +435,7 @@ fn fn_fact(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
         VError(Num)
       } else {
         let mut result = 1.0
-        for i in 2..=k {
+        for i in 2..<=k {
           result = result * i.to_double()
         }
         checked_number(result)
@@ -419,6 +445,7 @@ fn fn_fact(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_factdouble(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => {
@@ -445,6 +472,7 @@ fn fn_factdouble(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue 
 // GCD / LCM
 // ---------------------------------------------------------------------------
 
+///|
 fn gcd_pair(a : Double, b : Double) -> Double {
   let mut a = a.abs().trunc()
   let mut b = b.abs().trunc()
@@ -456,6 +484,7 @@ fn gcd_pair(a : Double, b : Double) -> Double {
   a
 }
 
+///|
 fn fn_gcd(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() == 0 {
     return VError(Value)
@@ -476,6 +505,7 @@ fn fn_gcd(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VNumber(result)
 }
 
+///|
 fn fn_lcm(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() == 0 {
     return VError(Value)
@@ -505,6 +535,7 @@ fn fn_lcm(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // MROUND, QUOTIENT, RANDBETWEEN
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_mround(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match two_numbers(args, ctx) {
     VArray(rows) =>
@@ -524,6 +555,7 @@ fn fn_mround(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_quotient(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match two_numbers(args, ctx) {
     VArray(rows) =>
@@ -541,7 +573,11 @@ fn fn_quotient(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
-fn fn_randbetween(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+///|
+fn fn_randbetween(
+  args : Array[FormulaValue],
+  ctx : EvalContext,
+) -> FormulaValue {
   match two_numbers(args, ctx) {
     VArray(rows) =>
       match (rows[0][0], rows[0][1]) {
@@ -562,6 +598,7 @@ fn fn_randbetween(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue
   }
 }
 
+///|
 fn fn_rand_value() -> Double {
   0.5
 }
@@ -570,7 +607,11 @@ fn fn_rand_value() -> Double {
 // MULTINOMIAL
 // ---------------------------------------------------------------------------
 
-fn fn_multinomial(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
+///|
+fn fn_multinomial(
+  args : Array[FormulaValue],
+  ctx : EvalContext,
+) -> FormulaValue {
   if args.length() == 0 {
     return VError(Value)
   }
@@ -585,7 +626,7 @@ fn fn_multinomial(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue
         }
         sum = sum + k
         let mut f = 1.0
-        for i in 2..=k {
+        for i in 2..<=k {
           f = f * i.to_double()
         }
         denom = denom * f
@@ -595,7 +636,7 @@ fn fn_multinomial(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue
     }
   }
   let mut num = 1.0
-  for i in 2..=sum {
+  for i in 2..<=sum {
     num = num * i.to_double()
   }
   checked_number(num / denom)
@@ -605,6 +646,7 @@ fn fn_multinomial(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue
 // ROMAN
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_roman(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) => {
@@ -621,8 +663,11 @@ fn fn_roman(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn to_roman(n : Int) -> String {
-  let vals : FixedArray[Int] = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1]
+  let vals : FixedArray[Int] = [
+    1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1,
+  ]
   let syms : FixedArray[String] = [
     "M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I",
   ]
@@ -641,6 +686,7 @@ fn to_roman(n : Int) -> String {
 // SQRTPI
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_sqrtpi(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   match one_number(args, ctx) {
     VNumber(n) =>
@@ -657,6 +703,7 @@ fn fn_sqrtpi(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // SUBTOTAL — dispatch to aggregate function by function_num
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_subtotal(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() < 2 {
     return VError(Value)
@@ -687,6 +734,7 @@ fn fn_subtotal(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn fn_subtotal_sum(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -702,6 +750,7 @@ fn fn_subtotal_sum(
   VNumber(total)
 }
 
+///|
 fn fn_subtotal_count(
   args : Array[FormulaValue],
   _ctx : EvalContext,
@@ -716,6 +765,7 @@ fn fn_subtotal_count(
   VNumber(count.to_double())
 }
 
+///|
 fn fn_subtotal_counta(
   args : Array[FormulaValue],
   _ctx : EvalContext,
@@ -730,6 +780,7 @@ fn fn_subtotal_counta(
   VNumber(count.to_double())
 }
 
+///|
 fn fn_subtotal_average(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -753,6 +804,7 @@ fn fn_subtotal_average(
   }
 }
 
+///|
 fn fn_subtotal_max(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -765,9 +817,14 @@ fn fn_subtotal_max(
       _ => ()
     }
   }
-  if result.is_inf() { VNumber(0.0) } else { VNumber(result) }
+  if result.is_inf() {
+    VNumber(0.0)
+  } else {
+    VNumber(result)
+  }
 }
 
+///|
 fn fn_subtotal_min(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -780,9 +837,14 @@ fn fn_subtotal_min(
       _ => ()
     }
   }
-  if result.is_inf() { VNumber(0.0) } else { VNumber(result) }
+  if result.is_inf() {
+    VNumber(0.0)
+  } else {
+    VNumber(result)
+  }
 }
 
+///|
 fn fn_subtotal_product(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -798,6 +860,7 @@ fn fn_subtotal_product(
   VNumber(result)
 }
 
+///|
 fn fn_subtotal_stdev(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -826,6 +889,7 @@ fn fn_subtotal_stdev(
   checked_number((ss / (values.length() - 1).to_double()).sqrt())
 }
 
+///|
 fn fn_subtotal_var(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -858,6 +922,7 @@ fn fn_subtotal_var(
 // SUMSQ, SUMX2MY2, SUMX2PY2, SUMXMY2
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_sumsq(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   let mut total = 0.0
   for arg in args {
@@ -870,6 +935,7 @@ fn fn_sumsq(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VNumber(total)
 }
 
+///|
 fn extract_number_array(
   v : FormulaValue,
   ds : @date_serial.DateSystem,
@@ -891,6 +957,7 @@ fn extract_number_array(
   out
 }
 
+///|
 fn fn_sumx2my2(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() != 2 {
     return VError(Value)
@@ -908,6 +975,7 @@ fn fn_sumx2my2(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VNumber(total)
 }
 
+///|
 fn fn_sumx2py2(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() != 2 {
     return VError(Value)
@@ -925,6 +993,7 @@ fn fn_sumx2py2(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   VNumber(total)
 }
 
+///|
 fn fn_sumxmy2(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() != 2 {
     return VError(Value)
@@ -947,6 +1016,7 @@ fn fn_sumxmy2(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // ECMA.CEILING / ISO.CEILING
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_ecma_ceiling(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -967,6 +1037,7 @@ fn fn_ecma_ceiling(
   }
 }
 
+///|
 fn fn_iso_ceiling(
   args : Array[FormulaValue],
   ctx : EvalContext,
@@ -999,6 +1070,7 @@ fn fn_iso_ceiling(
 // SERIESSUM
 // ---------------------------------------------------------------------------
 
+///|
 fn fn_seriessum(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() != 4 {
     return VError(Value)
@@ -1033,7 +1105,11 @@ fn fn_seriessum(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
 // Matrix: MDETERM, MINVERSE, MMULT
 // ---------------------------------------------------------------------------
 
-fn to_matrix(v : FormulaValue, ds : @date_serial.DateSystem) -> Array[Array[Double]]? {
+///|
+fn to_matrix(
+  v : FormulaValue,
+  ds : @date_serial.DateSystem,
+) -> Array[Array[Double]]? {
   match v {
     VArray(rows) => {
       let out : Array[Array[Double]] = []
@@ -1054,6 +1130,7 @@ fn to_matrix(v : FormulaValue, ds : @date_serial.DateSystem) -> Array[Array[Doub
   }
 }
 
+///|
 fn fn_mdeterm(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() != 1 {
     return VError(Value)
@@ -1075,6 +1152,7 @@ fn fn_mdeterm(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn determinant(mat : Array[Array[Double]], n : Int) -> Double {
   let a : Array[Array[Double]] = []
   for row in mat {
@@ -1112,6 +1190,7 @@ fn determinant(mat : Array[Array[Double]], n : Int) -> Double {
   det
 }
 
+///|
 fn fn_minverse(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() != 1 {
     return VError(Value)
@@ -1146,6 +1225,7 @@ fn fn_minverse(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   }
 }
 
+///|
 fn invert_matrix(mat : Array[Array[Double]], n : Int) -> Array[Array[Double]]? {
   let a : Array[Array[Double]] = []
   for i in 0..<n {
@@ -1199,11 +1279,13 @@ fn invert_matrix(mat : Array[Array[Double]], n : Int) -> Array[Array[Double]]? {
   Some(result)
 }
 
+///|
 fn fn_mmult(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
   if args.length() != 2 {
     return VError(Value)
   }
-  match (to_matrix(args[0], ctx.date_system), to_matrix(args[1], ctx.date_system)) {
+  match
+    (to_matrix(args[0], ctx.date_system), to_matrix(args[1], ctx.date_system)) {
     (Some(a), Some(b)) => {
       let m = a.length()
       if m == 0 {
@@ -1231,4 +1313,3 @@ fn fn_mmult(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
     _ => VError(Value)
   }
 }
-

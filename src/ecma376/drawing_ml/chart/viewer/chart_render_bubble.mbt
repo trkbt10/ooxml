@@ -37,12 +37,36 @@ fn render_bubble_chart(
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
   if !axes.val_deleted() {
-    for tick in y_axis_ticks(px, py, ph, max_y, pw, fw, axes.val_major(), style=Some(style), draw_minor_gridlines=axes.val_minor_gridlines(), num_fmt=axes.val_num_fmt(), tick_lbl_pos=axes.val_tick_lbl_pos(), log_base=axes.val_log_base()) {
+    for
+      tick in y_axis_ticks(
+        px,
+        py,
+        ph,
+        max_y,
+        pw,
+        fw,
+        axes.val_major(),
+        style=Some(style),
+        draw_minor_gridlines=axes.val_minor_gridlines(),
+        num_fmt=axes.val_num_fmt(),
+        tick_lbl_pos=axes.val_tick_lbl_pos(),
+        log_base=axes.val_log_base(),
+      ) {
       nodes.push(tick)
     }
   }
   if !axes.cat_deleted() {
-    for tick in x_axis_ticks(px, py, pw, ph, max_x, fh, axes.val_major(), style=Some(style)) {
+    for
+      tick in x_axis_ticks(
+        px,
+        py,
+        pw,
+        ph,
+        max_x,
+        fh,
+        axes.val_major(),
+        style=Some(style),
+      ) {
       nodes.push(tick)
     }
   }
@@ -61,7 +85,11 @@ fn render_bubble_chart(
   let bubble_scale = match first_child_named(elem, "bubbleScale") {
     Some(e) => {
       let v = parse_int_lenient(attr_or(e, "val", "100"))
-      if v > 0 && v <= 300 { v } else { 100 }
+      if v > 0 && v <= 300 {
+        v
+      } else {
+        100
+      }
     }
     None => 100
   }

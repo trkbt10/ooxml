@@ -99,7 +99,10 @@ pub fn render_preset_geometry(
     None => []
   }
   @preset_geometry.render_shape_path(
-    prst, round_dim(width), round_dim(height), adjustments,
+    prst,
+    round_dim(width),
+    round_dim(height),
+    adjustments,
   )
 }
 
@@ -122,7 +125,9 @@ fn round_dim(v : Double) -> Int {
 /// significance, then `fmt` collapses integral results to plain ints.
 fn fmt_coord(value : Double) -> String {
   let scaled = value * 10000.0
-  let rounded = (scaled + (if scaled >= 0.0 { 0.5 } else { -0.5 })).to_int().to_double() /
+  let rounded = (scaled + (if scaled >= 0.0 { 0.5 } else { -0.5 }))
+    .to_int()
+    .to_double() /
     10000.0
   // Avoid emitting "-0".
   let normal = if rounded == 0.0 { 0.0 } else { rounded }
@@ -266,7 +271,9 @@ pub fn render_custom_geometry(
               if emitted {
                 out.write_string(" ")
               }
-              out.write_string("M " + fmt_coord(x * sx) + " " + fmt_coord(y * sy))
+              out.write_string(
+                "M " + fmt_coord(x * sx) + " " + fmt_coord(y * sy),
+              )
               emitted = true
             }
             None => ()
@@ -277,7 +284,9 @@ pub fn render_custom_geometry(
               let (x, y) = resolve_pt(pt, ctx)
               cur_x = x
               cur_y = y
-              out.write_string(" L " + fmt_coord(x * sx) + " " + fmt_coord(y * sy))
+              out.write_string(
+                " L " + fmt_coord(x * sx) + " " + fmt_coord(y * sy),
+              )
             }
             None => ()
           }
@@ -291,9 +300,17 @@ pub fn render_custom_geometry(
             cur_y = y3
             out.write_string(
               " C " +
-              fmt_coord(x1 * sx) + " " + fmt_coord(y1 * sy) + " " +
-              fmt_coord(x2 * sx) + " " + fmt_coord(y2 * sy) + " " +
-              fmt_coord(x3 * sx) + " " + fmt_coord(y3 * sy),
+              fmt_coord(x1 * sx) +
+              " " +
+              fmt_coord(y1 * sy) +
+              " " +
+              fmt_coord(x2 * sx) +
+              " " +
+              fmt_coord(y2 * sy) +
+              " " +
+              fmt_coord(x3 * sx) +
+              " " +
+              fmt_coord(y3 * sy),
             )
           }
         }
@@ -306,8 +323,13 @@ pub fn render_custom_geometry(
             cur_y = y2
             out.write_string(
               " Q " +
-              fmt_coord(x1 * sx) + " " + fmt_coord(y1 * sy) + " " +
-              fmt_coord(x2 * sx) + " " + fmt_coord(y2 * sy),
+              fmt_coord(x1 * sx) +
+              " " +
+              fmt_coord(y1 * sy) +
+              " " +
+              fmt_coord(x2 * sx) +
+              " " +
+              fmt_coord(y2 * sy),
             )
           }
         }
@@ -340,7 +362,10 @@ fn pt_children(
   let pts : Array[(Double, Double)] = []
   for child in cmd.children {
     match child {
-      Element(p) => if p.name.local_name == "pt" { pts.push(resolve_pt(p, ctx)) }
+      Element(p) =>
+        if p.name.local_name == "pt" {
+          pts.push(resolve_pt(p, ctx))
+        }
       _ => ()
     }
   }
@@ -404,11 +429,18 @@ fn arc_to_svg(
   }
   // y-down clockwise: positive sweep → SVG sweep-flag 1.
   let sweep = if sw_ang_u >= 0.0 { "1" } else { "0" }
-  let seg =
-    " A " +
-    fmt_coord(w_r * sx) + " " + fmt_coord(h_r * sy) + " 0 " +
-    large + " " + sweep + " " +
-    fmt_coord(ex * sx) + " " + fmt_coord(ey * sy)
+  let seg = " A " +
+    fmt_coord(w_r * sx) +
+    " " +
+    fmt_coord(h_r * sy) +
+    " 0 " +
+    large +
+    " " +
+    sweep +
+    " " +
+    fmt_coord(ex * sx) +
+    " " +
+    fmt_coord(ey * sy)
   (seg, ex, ey)
 }
 

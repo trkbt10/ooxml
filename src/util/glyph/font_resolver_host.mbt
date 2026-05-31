@@ -36,7 +36,7 @@ pub fn FontResolver::host() -> FontResolver {
   let label = "host(" + platform.to_string() + ")"
   {
     label,
-    resolve: (request) => {
+    resolve: request => {
       match request.embedded_bytes {
         Some(b) =>
           return { bytes: b, ttc_index: None, source_label: "embedded" }

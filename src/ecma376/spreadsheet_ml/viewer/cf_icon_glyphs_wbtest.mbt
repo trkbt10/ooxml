@@ -37,7 +37,11 @@ fn icon_count_substr(s : String, needle : String) -> Int {
 
 ///|
 fn icon_svg(set_name : String, bucket : Int) -> (String, Double) {
-  let (nodes, reserved) = render_cell_icon_glyph(icon_layout(), set_name, bucket)
+  let (nodes, reserved) = render_cell_icon_glyph(
+    icon_layout(),
+    set_name,
+    bucket,
+  )
   let sb = StringBuilder::new()
   for n in nodes {
     match n {
@@ -66,7 +70,8 @@ test "arrow icon sets render a rotated polygon, graded by band" {
 
 ///|
 test "traffic-light / sign / flag sets render a graded circle" {
-  for s in ["3TrafficLights1", "3TrafficLights2", "3Signs", "3Flags", "3Symbols"] {
+  for
+    s in ["3TrafficLights1", "3TrafficLights2", "3Signs", "3Flags", "3Symbols"] {
     let (svg, _) = icon_svg(s, 0)
     assert_true(svg.contains("<circle "))
     // lowest band → red grade.

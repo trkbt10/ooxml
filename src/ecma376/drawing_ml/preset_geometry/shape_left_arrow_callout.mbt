@@ -14,10 +14,10 @@
 pub fn build_left_arrow_callout(
   width : Int,
   height : Int,
-  adj1~ : Int = 25000,
-  adj2~ : Int = 25000,
-  adj3~ : Int = 25000,
-  adj4~ : Int = 64977,
+  adj1? : Int = 25000,
+  adj2? : Int = 25000,
+  adj3? : Int = 25000,
+  adj4? : Int = 64977,
 ) -> ShapeGeometry {
   // §20.1.10.56 — mirror of rightArrowCallout: arrow on the left, box
   // on the right. Same ss-based pin chain; head base x1 = ss·a3/100000,

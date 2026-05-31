@@ -19,8 +19,8 @@
 pub fn build_snip2_diag_rect(
   width : Int,
   height : Int,
-  adj1~ : Int = 0,
-  adj2~ : Int = 16667,
+  adj1? : Int = 0,
+  adj2? : Int = 16667,
 ) -> ShapeGeometry {
   // §20.1.10.56 snip2DiagRect gdLst: aN = pin 0 adjN 50000; snips ss·aN/100000.
   // Spec defaults: adj1 = 0 (top-left / bottom-right), adj2 = 16667

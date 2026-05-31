@@ -71,9 +71,7 @@ fn decode_sparkline_groups_into(
 
 ///|
 /// Decode one `<x14:sparklineGroup>` element.
-fn decode_sparkline_group(
-  group_elt : @xml.Element,
-) -> SparklineGroup {
+fn decode_sparkline_group(group_elt : @xml.Element) -> SparklineGroup {
   let kind = match find_attr(group_elt, "type") {
     Some("column") => Column
     Some("stacked") => Stacked
@@ -162,9 +160,7 @@ fn decode_sparklines_into(
 
 ///|
 /// Decode one `<x14:sparkline>` element.
-fn decode_sparkline(
-  sparkline_elt : @xml.Element,
-) -> Sparkline {
+fn decode_sparkline(sparkline_elt : @xml.Element) -> Sparkline {
   let mut data_range : String = ""
   let mut anchor_cell : String = ""
   let literal_values : Array[Double] = []

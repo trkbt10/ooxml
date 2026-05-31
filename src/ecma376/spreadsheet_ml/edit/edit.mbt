@@ -135,7 +135,10 @@ pub fn edit_styles(
 /// already been computed. Used by helpers that go through OPC
 /// (add_part/with_relationship/...) and need to wire the resulting
 /// `Package` back into the facade.
-pub fn with_package(workbook : Workbook, opc_package : @opc.Package) -> Workbook {
+pub fn with_package(
+  workbook : Workbook,
+  opc_package : @opc.Package,
+) -> Workbook {
   {
     opc_package,
     workbook_part: workbook.workbook_part,
@@ -752,7 +755,10 @@ pub fn bind_cell_style(
             @a_edit.append_child(row_elt, @xml.Node::Element(new_cell))
           } else {
             @a_edit.update_first(row_elt, cell_pred, fn(c) {
-              @a_edit.set_attribute(c, @a_edit.unprefixed_attribute("s", xf_text))
+              @a_edit.set_attribute(
+                c,
+                @a_edit.unprefixed_attribute("s", xf_text),
+              )
             })
           }
         })
@@ -1052,7 +1058,9 @@ fn upsert_styles_container(
     )
     @a_edit.append_child(root, @xml.Node::Element(container))
   } else {
-    @a_edit.update_first(root, @a_edit.by_local_name(local_name), fn(container) {
+    @a_edit.update_first(root, @a_edit.by_local_name(local_name), fn(
+      container,
+    ) {
       @a_edit.append_child(container, @xml.Node::Element(child))
     })
   }
@@ -1370,7 +1378,7 @@ pub fn append_sheet(
   // Build minimal worksheet element (canonical sml namespace).
   let s_ns = Some("http://schemas.openxmlformats.org/spreadsheetml/2006/main")
   let qn = fn(local_name : String) -> @xml.QName {
-    { prefix: None, local_name: local_name, ns: s_ns }
+    { prefix: None, local_name, ns: s_ns }
   }
   let xmlns_attrs : Array[@xml.Attribute] = [
     {

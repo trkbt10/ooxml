@@ -15,7 +15,11 @@
 /// `dx2p = g0w + g18w − w`. Both arcs are emitted through the verified
 /// `rel_arc` helper and the `at2` primitive, so the geometry is correct
 /// by construction. The default `adj = 50000` produces a half-moon.
-pub fn build_moon(width : Int, height : Int, adj~ : Int = 50000) -> ShapeGeometry {
+pub fn build_moon(
+  width : Int,
+  height : Int,
+  adj? : Int = 50000,
+) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let w = width
   let hd2 = height / 2

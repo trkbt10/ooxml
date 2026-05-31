@@ -32,8 +32,8 @@
 pub fn build_wave(
   width : Int,
   height : Int,
-  adj1~ : Int = 12500,
-  adj2~ : Int = 0,
+  adj1? : Int = 12500,
+  adj2? : Int = 0,
 ) -> ShapeGeometry {
   let a1 = pin_int(adj1, 0, 20000)
   let a2 = pin_int(adj2, -10000, 10000)

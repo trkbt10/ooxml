@@ -255,7 +255,7 @@ fn render_pivot_overlay(
         } else {
           let pf = col_field_labels[ci - 1]
           let mut same = true
-          for k in 0..=f {
+          for k in 0..<=f {
             let a = if k < fields.length() { fields[k] } else { "" }
             let b = if k < pf.length() { pf[k] } else { "" }
             if a != b {
@@ -271,7 +271,11 @@ fn render_pivot_overlay(
             ys[f],
             col_key_span_w(ci),
             hs[f],
-            if collapsed { "" } else { label },
+            if collapsed {
+              ""
+            } else {
+              label
+            },
             options,
             true,
             false,
@@ -376,7 +380,7 @@ fn render_pivot_overlay(
         let collapsed = match prev {
           Some(pf) => {
             let mut same = true
-            for k in 0..=ci {
+            for k in 0..<=ci {
               let a = if k < fields.length() { fields[k] } else { "" }
               let b = if k < pf.length() { pf[k] } else { "" }
               if a != b {
@@ -394,7 +398,11 @@ fn render_pivot_overlay(
             row_y,
             ws[ci],
             row_h,
-            if collapsed { "" } else { label },
+            if collapsed {
+              ""
+            } else {
+              label
+            },
             options,
             false,
             false,
@@ -618,7 +626,14 @@ fn pivot_value_cf_style(
   }
   let base = default_cell_style(options)
   let styled = apply_cf_overlay(
-    cell_ref, c_el, base, cf_blocks, cf_stats, styles, shared_strings, theme_map~,
+    cell_ref,
+    c_el,
+    base,
+    cf_blocks,
+    cf_stats,
+    styles,
+    shared_strings,
+    theme_map~,
   )
   let fill = match styled.fill {
     FillSolid(c) => Some(c)
@@ -910,7 +925,9 @@ fn pivot_axis_key_field_labels(
         let parts : Array[String] = []
         for i, idx in indices {
           if i < positions.length() {
-            parts.push(pivot_shared_item_caption(pivot.cache, positions[i], idx))
+            parts.push(
+              pivot_shared_item_caption(pivot.cache, positions[i], idx),
+            )
           }
         }
         out.push(parts)

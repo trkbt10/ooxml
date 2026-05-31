@@ -9,8 +9,8 @@
 pub fn build_right_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 50000,
-  adj2~ : Int = 50000,
+  adj1? : Int = 50000,
+  adj2? : Int = 50000,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let max_adj2 = if ss == 0 { 0 } else { fraction(100000, width, ss) }
@@ -37,8 +37,8 @@ pub fn build_right_arrow(
 pub fn build_left_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 50000,
-  adj2~ : Int = 50000,
+  adj1? : Int = 50000,
+  adj2? : Int = 50000,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let max_adj2 = if ss == 0 { 0 } else { fraction(100000, width, ss) }
@@ -66,8 +66,8 @@ pub fn build_left_arrow(
 pub fn build_up_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 50000,
-  adj2~ : Int = 50000,
+  adj1? : Int = 50000,
+  adj2? : Int = 50000,
 ) -> ShapeGeometry {
   // §20.1.10.56: head length dy1 = ss·a2/100000 (ss-based, maxAdj2 =
   // 100000·h/ss); shaft thickness 2·dx1 = w·a1/100000.
@@ -97,8 +97,8 @@ pub fn build_up_arrow(
 pub fn build_down_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 50000,
-  adj2~ : Int = 50000,
+  adj1? : Int = 50000,
+  adj2? : Int = 50000,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let max_adj2 = if ss == 0 { 0 } else { fraction(100000, height, ss) }
@@ -129,8 +129,8 @@ pub fn build_down_arrow(
 pub fn build_left_right_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 50000,
-  adj2~ : Int = 50000,
+  adj1? : Int = 50000,
+  adj2? : Int = 50000,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let max_adj2 = if ss == 0 { 0 } else { fraction(50000, width, ss) }
@@ -161,8 +161,8 @@ pub fn build_left_right_arrow(
 pub fn build_up_down_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 50000,
-  adj2~ : Int = 50000,
+  adj1? : Int = 50000,
+  adj2? : Int = 50000,
 ) -> ShapeGeometry {
   // §20.1.10.56: head length = ss·a2/100000 (ss-based, maxAdj2 =
   // 50000·h/ss); shaft thickness = w·a1/100000.

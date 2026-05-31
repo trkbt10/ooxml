@@ -83,7 +83,21 @@ fn render_stock_chart(
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
   if !axes.val_deleted() {
-    for tick in y_axis_ticks(px, py, ph, max_v, pw, fw, axes.val_major(), style=Some(style), draw_minor_gridlines=axes.val_minor_gridlines(), num_fmt=axes.val_num_fmt(), tick_lbl_pos=axes.val_tick_lbl_pos(), log_base=axes.val_log_base()) {
+    for
+      tick in y_axis_ticks(
+        px,
+        py,
+        ph,
+        max_v,
+        pw,
+        fw,
+        axes.val_major(),
+        style=Some(style),
+        draw_minor_gridlines=axes.val_minor_gridlines(),
+        num_fmt=axes.val_num_fmt(),
+        tick_lbl_pos=axes.val_tick_lbl_pos(),
+        log_base=axes.val_log_base(),
+      ) {
       nodes.push(tick)
     }
   }
@@ -148,11 +162,7 @@ fn render_stock_chart(
       if has_up_down && i < open_vals.length() {
         // §21.2.2.219 — filled rectangle from open to close.
         let ov = open_vals[i]
-        let y_o = if max_v > 0.0 {
-          py + ph - ov / max_v * ph
-        } else {
-          py + ph
-        }
+        let y_o = if max_v > 0.0 { py + ph - ov / max_v * ph } else { py + ph }
         let fill = if cv >= ov {
           chart_stock_up_color
         } else {
@@ -205,7 +215,16 @@ fn render_stock_chart(
     let bx = px + (i2.to_double() + 0.5) * band
     let by = py + ph + fh * 0.018
     nodes.push(
-      chart_text(label, bx, by, w, h, anchor="middle", baseline="hanging", style=Some(style)),
+      chart_text(
+        label,
+        bx,
+        by,
+        w,
+        h,
+        anchor="middle",
+        baseline="hanging",
+        style=Some(style),
+      ),
     )
   }
   nodes

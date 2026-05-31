@@ -165,7 +165,10 @@ fn merge_property_element_unchecked(
   base : @xml.Element,
   derived : @xml.Element,
 ) -> @xml.Element {
-  let overridden : @hashmap.HashMap[String, Bool] = @hashmap.HashMap([], capacity=0)
+  let overridden : @hashmap.HashMap[String, Bool] = @hashmap.HashMap(
+    [],
+    capacity=0,
+  )
   let children : Array[@xml.Node] = []
   for node in derived.children {
     match node {

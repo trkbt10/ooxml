@@ -5,6 +5,6 @@
 // Uses mizchi/image for PNG/JPEG decode and PNG encode.
 
 import {
-  "mizchi/image" @image,
-  "moonbitlang/core/encoding/base64" @base64,
+  "mizchi/image",
+  "moonbitlang/core/encoding/base64",
 }

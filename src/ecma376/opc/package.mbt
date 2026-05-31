@@ -154,8 +154,7 @@ pub fn Package::save(self : Package) -> Bytes raise {
     )
     emitted.set("[Content_Types].xml", ())
   }
-  if materialised.contains("_rels/.rels") &&
-    !emitted.contains("_rels/.rels") {
+  if materialised.contains("_rels/.rels") && !emitted.contains("_rels/.rels") {
     entries.push(("_rels/.rels", materialised.get("_rels/.rels").unwrap()))
     emitted.set("_rels/.rels", ())
   }

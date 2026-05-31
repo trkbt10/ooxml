@@ -26,13 +26,15 @@ pub struct LineBreakResult {
 /// the resolver degrades to 0 width so the line breaker still makes
 /// forward progress.
 fn make_span(parent : MeasuredSpan, text : String) -> MeasuredSpan {
-  let width = try @glyph.measure_text_width(
+  let width = try
+    @glyph.measure_text_width(
       text,
       font_size_pt=parent.span.font_size,
       letter_spacing_px=parent.span.letter_spacing,
       family=parent.span.font_family,
       weight=parent.span.font_weight,
-    ) catch {
+    )
+  catch {
     _ => 0.0
   } noraise {
     w => w
@@ -77,13 +79,15 @@ fn make_span(parent : MeasuredSpan, text : String) -> MeasuredSpan {
 fn char_width_estimate(parent : MeasuredSpan, c : Char) -> Double {
   let buf = StringBuilder::new()
   buf.write_char(c)
-  try @glyph.measure_text_width(
+  try
+    @glyph.measure_text_width(
       buf.to_string(),
       font_size_pt=parent.span.font_size,
       letter_spacing_px=0.0,
       family=parent.span.font_family,
       weight=parent.span.font_weight,
-    ) catch {
+    )
+  catch {
     _ => 0.0
   } noraise {
     w => w
@@ -422,13 +426,15 @@ pub fn get_line_visible_width(spans : Array[MeasuredSpan]) -> Double {
       buf.write_char(chars[i])
     }
     let trimmed = buf.to_string()
-    let w = try @glyph.measure_text_width(
+    let w = try
+      @glyph.measure_text_width(
         trimmed,
         font_size_pt=last.span.font_size,
         letter_spacing_px=last.span.letter_spacing,
         family=last.span.font_family,
         weight=last.span.font_weight,
-      ) catch {
+      )
+    catch {
       _ => 0.0
     } noraise {
       v => v

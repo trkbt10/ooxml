@@ -1620,7 +1620,7 @@ pub struct ST_Ints {
 ///|
 /// Parse the ST_Ints schema lexical value.
 pub fn ST_Ints::parse(s : String) -> ST_Ints raise SchemaViolation {
-  let values = parse_typed_list("ST_Ints", s, (item) => {
+  let values = parse_typed_list("ST_Ints", s, item => {
     if !is_int(item) {
       invalid("ST_Ints", s)
     }
@@ -1654,7 +1654,7 @@ pub struct ST_UnsignedInts {
 pub fn ST_UnsignedInts::parse(
   s : String,
 ) -> ST_UnsignedInts raise SchemaViolation {
-  let values = parse_typed_list("ST_UnsignedInts", s, (item) => {
+  let values = parse_typed_list("ST_UnsignedInts", s, item => {
     if !is_unsigned_int(item) {
       invalid("ST_UnsignedInts", s)
     }
@@ -1690,7 +1690,7 @@ pub struct ST_Booleans {
 ///|
 /// Parse the ST_Booleans schema lexical value.
 pub fn ST_Booleans::parse(s : String) -> ST_Booleans raise SchemaViolation {
-  let values = parse_typed_list("ST_Booleans", s, (item) => {
+  let values = parse_typed_list("ST_Booleans", s, item => {
     match item {
       "true" | "1" => true
       "false" | "0" => false

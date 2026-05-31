@@ -28,7 +28,10 @@ pub fn SvgDefsCollector::new() -> SvgDefsCollector {
 /// Append a `<defs>` child node.  The caller supplies a structured
 /// SVG element node; the collector never parses or concatenates
 /// markup strings.
-pub fn SvgDefsCollector::add_def(self : SvgDefsCollector, def : @xml.Node) -> Unit {
+pub fn SvgDefsCollector::add_def(
+  self : SvgDefsCollector,
+  def : @xml.Node,
+) -> Unit {
   self.defs.push(def)
 }
 

@@ -158,7 +158,8 @@ fn compute_3d_effects(
   // projection cannot reproduce, so they are not applied.)
   let transform = match camera_el {
     None => calculate_camera_transform(camera_preset)
-    Some(c) => apply_camera_zoom_rot(calculate_camera_transform(camera_preset), c)
+    Some(c) =>
+      apply_camera_zoom_rot(calculate_camera_transform(camera_preset), c)
   }
   let transform_attrs : Array[@xml.Attribute] = if transform3d_is_identity(
       transform,
@@ -390,7 +391,10 @@ fn calculate_camera_transform(preset : String) -> Transform3d {
 ///     the perspective presets already skew/scale.  (The hidden-face
 ///     content a full rotation would expose is genuinely absent from a
 ///     2D shape and is the one irreducibly-3D residual.)
-fn apply_camera_zoom_rot(base : Transform3d, camera : @xml.Element) -> Transform3d {
+fn apply_camera_zoom_rot(
+  base : Transform3d,
+  camera : @xml.Element,
+) -> Transform3d {
   // @zoom — thousandths of a percent; default 100000 (= 100 %).
   let zoom_raw = match attr_value(camera, "zoom") {
     Some(v) =>
@@ -431,7 +435,11 @@ fn apply_camera_zoom_rot(base : Transform3d, camera : @xml.Element) -> Transform
     } else {
       let c = @math.cos(deg * 3.14159265358979 / 180.0)
       let a = if c < 0.0 { -c } else { c }
-      if a < 0.05 { 0.05 } else { a }
+      if a < 0.05 {
+        0.05
+      } else {
+        a
+      }
     }
   }
 
@@ -570,7 +578,12 @@ fn bevel_element(
   let back = match first_child_named(sp3d, "bevelB") {
     Some(bb) =>
       bevel_band_group(
-        bb, width, height, light_direction, invert=true, opacity_scale=0.5,
+        bb,
+        width,
+        height,
+        light_direction,
+        invert=true,
+        opacity_scale=0.5,
         class_name="bevel-effect-back",
       )
     None => None
@@ -578,7 +591,12 @@ fn bevel_element(
   let front = match first_child_named(sp3d, "bevelT") {
     Some(bt) =>
       bevel_band_group(
-        bt, width, height, light_direction, invert=false, opacity_scale=1.0,
+        bt,
+        width,
+        height,
+        light_direction,
+        invert=false,
+        opacity_scale=1.0,
         class_name="bevel-effect",
       )
     None => None

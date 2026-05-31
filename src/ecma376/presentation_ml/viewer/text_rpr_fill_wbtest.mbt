@@ -99,9 +99,8 @@ test "build_run_span resolves a:gradFill with strict (%) gs@pos" {
   )
   let span = build_run_span(r, empty_ctx(), [])
   match span.text_fill {
-    Some(TextFillGradient(stops, _, _, _, _)) => {
+    Some(TextFillGradient(stops, _, _, _, _)) =>
       assert_true(stops[1].position == 50.0)
-    }
     _ => fail("expected TextFillGradient")
   }
 }

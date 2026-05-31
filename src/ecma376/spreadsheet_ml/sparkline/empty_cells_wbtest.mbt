@@ -33,10 +33,7 @@ test "EmptySpan linearly interpolates an interior gap" {
 
 ///|
 test "EmptySpan clamps leading and trailing gaps to the nearest value" {
-  let out = apply_empty_cells(
-    [Double::nan(), 2.0, Double::nan()],
-    EmptySpan,
-  )
+  let out = apply_empty_cells([Double::nan(), 2.0, Double::nan()], EmptySpan)
   assert_eq(out[0], 2.0) // leading clamps to first finite
   assert_eq(out[1], 2.0)
   assert_eq(out[2], 2.0) // trailing clamps to last finite
@@ -44,10 +41,7 @@ test "EmptySpan clamps leading and trailing gaps to the nearest value" {
 
 ///|
 test "EmptySpan on an all-empty series collapses to zeros" {
-  let out = apply_empty_cells(
-    [Double::nan(), Double::nan()],
-    EmptySpan,
-  )
+  let out = apply_empty_cells([Double::nan(), Double::nan()], EmptySpan)
   assert_eq(out[0], 0.0)
   assert_eq(out[1], 0.0)
 }

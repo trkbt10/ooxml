@@ -87,7 +87,7 @@ fn type_children(schema : Schema, ct : @xml.Element) -> Array[(String, String)] 
         match attr(e, "ref") {
           Some(gname) =>
             // `ref` on a group is an already-resolved `ns#localname`.
-            if !(seen_groups.contains(gname)) {
+            if !seen_groups.contains(gname) {
               seen_groups[gname] = true
               match schema.groups.get(gname) {
                 Some(gp) => collect(gp)
@@ -131,7 +131,7 @@ fn type_children(schema : Schema, ct : @xml.Element) -> Array[(String, String)] 
       if is_xsd(e, "extension") || is_xsd(e, "restriction") {
         match attr(e, "base") {
           Some(base_key) =>
-            if !(seen_bases.contains(base_key)) {
+            if !seen_bases.contains(base_key) {
               seen_bases[base_key] = true
               match schema.complex_types.get(base_key) {
                 Some(base_ct) => collect(base_ct)
@@ -214,7 +214,7 @@ fn part_roots(schema : Schema) -> Array[(String, String)] {
       // `graphicData` any-host slot, where they're embedded inside a
       // slide's `<a:graphicData>` rather than wired into a real chart
       // part — so the chart-renderer pipeline never sees them.
-      "chartSpace",
+       "chartSpace",
       // §21.4 DrawingML diagram — the four part roots of a SmartArt
       // bundle: `<dgm:dataModel>` (data1.xml), `<dgm:layoutDef>`
       // (layout1.xml), `<dgm:styleDef>` (quickStyle1.xml),
@@ -223,14 +223,14 @@ fn part_roots(schema : Schema) -> Array[(String, String)] {
       // catalog hosting must route sub-elements through the part
       // they belong to so the SmartArt engine sees them as
       // typed data.
-      "dataModel", "layoutDef", "styleDef", "colorsDef",
+       "dataModel", "layoutDef", "styleDef", "colorsDef",
       // §21.3 DrawingML chartDrawing — `<c:userShapes>` is the part
       // root for `ppt/charts/_rels/chartN.xml.rels → userShapes.xml`.
       // It carries `<cdr:absSizeAnchor>` / `<cdr:relSizeAnchor>` /
       // shapes that ride on top of a chart.  Without this, every
       // chartDrawing element falls to the generic `graphicData`
       // any-host slot.
-      "userShapes",
+       "userShapes",
     ] {
     match schema.top_elements.get(name) {
       Some((el, _)) =>
@@ -272,7 +272,10 @@ fn build_ancestry(
   // record both and pick the best one at the end so the chosen
   // canonical path leads through a render-bearing host whenever
   // possible.
-  let all_paths : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
+  let all_paths : Map[String, Array[Array[(String, String)]]] = Map(
+    [],
+    capacity=0,
+  )
   // Queue of (name, type, path-of-(name,type)-down-to-parent).
   let queue : Array[(String, String, Array[(String, String)])] = []
   for root in part_roots(schema) {
@@ -328,7 +331,7 @@ fn build_ancestry(
             let (cname, ctype) = child
             let ckey = nt_key(cname, ctype)
             let child_existing = all_paths.get(ckey).unwrap_or([])
-            if child_existing.length() == 0 && !(skip_keys.contains(ckey)) {
+            if child_existing.length() == 0 && !skip_keys.contains(ckey) {
               bfs_queue.push((cname, ctype, child_path))
             }
             child_existing.push(child_path)
@@ -404,7 +407,10 @@ fn build_ancestry(
   let chart_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/chart"
   // Snapshot every key currently in all_paths so the chart-BFS pass
   // can identify which (name, type) pairs it adds.
-  let pre_chart_paths : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
+  let pre_chart_paths : Map[String, Array[Array[(String, String)]]] = Map(
+    [],
+    capacity=0,
+  )
   for k, v in all_paths {
     let copy : Array[Array[(String, String)]] = []
     for p in v {
@@ -453,7 +459,10 @@ fn build_ancestry(
   // their original canonical chain.
   let dgm_ns_strict = "http://purl.oclc.org/ooxml/drawingml/diagram"
   let dgm_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
-  let pre_dgm_paths : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
+  let pre_dgm_paths : Map[String, Array[Array[(String, String)]]] = Map(
+    [],
+    capacity=0,
+  )
   for k, v in all_paths {
     let copy : Array[Array[(String, String)]] = []
     for p in v {
@@ -488,7 +497,10 @@ fn build_ancestry(
   // pairs.
   let cdr_ns_strict = "http://purl.oclc.org/ooxml/drawingml/chartDrawing"
   let cdr_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing"
-  let pre_cdr_paths : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
+  let pre_cdr_paths : Map[String, Array[Array[(String, String)]]] = Map(
+    [],
+    capacity=0,
+  )
   for k, v in all_paths {
     let copy : Array[Array[(String, String)]] = []
     for p in v {
@@ -538,7 +550,10 @@ fn build_ancestry(
   // route for Strict-namespace worksheets, and the Strict
   // `<s:worksheet>` element no longer renders because its host
   // package is built as `.docx` instead of `.xlsx`.
-  let nonvisual_by_root : Map[String, Array[(String, String)]] = Map([], capacity=0)
+  let nonvisual_by_root : Map[String, Array[(String, String)]] = Map(
+    [],
+    capacity=0,
+  )
   let nonvisual_order : Array[String] = []
   for host_path in any_hosts {
     if any_host_is_visual(host_path) {
@@ -547,7 +562,7 @@ fn build_ancestry(
       }
     } else {
       let root_key = if host_path.length() == 0 { "" } else { host_path[0].0 }
-      if !(nonvisual_by_root.contains(root_key)) {
+      if !nonvisual_by_root.contains(root_key) {
         nonvisual_by_root[root_key] = host_path
         nonvisual_order.push(root_key)
       }
@@ -637,7 +652,10 @@ fn build_ancestry(
   //   grpSp / graphicFrame).
   //
   // Ties are broken by BFS insertion order (stable sort).
-  let ancestry : Map[String, Array[Array[(String, String)]]] = Map([], capacity=0)
+  let ancestry : Map[String, Array[Array[(String, String)]]] = Map(
+    [],
+    capacity=0,
+  )
   for key, paths in all_paths {
     if paths.length() == 0 {
       continue
@@ -701,7 +719,7 @@ fn build_ancestry(
         buf.write_char('|')
       }
       let key2 = buf.to_string()
-      if !(seen.contains(key2)) {
+      if !seen.contains(key2) {
         seen[key2] = true
         ordered.push(p)
       }
@@ -836,8 +854,8 @@ fn retarget_attr(
       attrs.push(a)
     }
   }
-  if !(replaced) {
-    attrs.push({ name: { prefix: None, local_name: local_name, ns: None }, value })
+  if !replaced {
+    attrs.push({ name: { prefix: None, local_name, ns: None }, value })
   }
   { name: el.name, attributes: attrs, children: el.children }
 }
@@ -954,7 +972,7 @@ fn insert_path_child(
   let mut replaced = false
   for child in wrapper.children {
     match child {
-      Element(c) if c.name.local_name == child_name && !(replaced) => {
+      Element(c) if c.name.local_name == child_name && !replaced => {
         kids.push(Element(inner))
         replaced = true
       }
@@ -966,7 +984,7 @@ fn insert_path_child(
       other => kids.push(other)
     }
   }
-  if !(replaced) {
+  if !replaced {
     kids.push(Element(inner))
   }
   { name: wrapper.name, attributes: wrapper.attributes, children: kids }
@@ -1048,7 +1066,7 @@ fn walk_for_choice(
 ) -> Unit {
   if is_xsd(node, "choice") {
     let choice_unbounded = unbounded || particle_max_unbounded(node)
-    if !(choice_unbounded) {
+    if !choice_unbounded {
       let names : Map[String, Bool] = Map([], capacity=0)
       collect_choice_names(schema, node, Map([], capacity=0), names)
       if names.get(target_name) is Some(true) {
@@ -1074,7 +1092,7 @@ fn walk_for_choice(
     let ref_unbounded = unbounded || particle_max_unbounded(node)
     match attr(node, "ref") {
       Some(gname) => {
-        if !(walk_seen.contains(gname)) {
+        if !walk_seen.contains(gname) {
           walk_seen[gname] = true
           match schema.groups.get(gname) {
             Some(gp) =>
@@ -1123,7 +1141,7 @@ fn collect_choice_names(
   if is_xsd(node, "group") {
     match attr(node, "ref") {
       Some(gname) =>
-        if !(seen_groups.contains(gname)) {
+        if !seen_groups.contains(gname) {
           seen_groups[gname] = true
           match schema.groups.get(gname) {
             Some(gp) =>

@@ -93,7 +93,11 @@ fn render_radar_chart(
   }
   let grid_levels_safe = {
     let gl = (max_v / radar_step + 0.5).to_int()
-    if gl < 1 { 1 } else { gl }
+    if gl < 1 {
+      1
+    } else {
+      gl
+    }
   }
   let grid_color = style.grid_color
   let grid_stroke = format_double(h * 0.002)
@@ -182,10 +186,7 @@ fn render_radar_chart(
         @markup.svg_ns,
         [
           @markup.attr("points", poly_buf.to_string()),
-          @markup.attr(
-            "fill",
-            if is_filled { series_color } else { "none" },
-          ),
+          @markup.attr("fill", if is_filled { series_color } else { "none" }),
           @markup.attr("stroke", series_color),
           @markup.attr("stroke-width", format_double(h * 0.004)),
           @markup.attr("stroke-linejoin", "round"),

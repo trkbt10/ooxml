@@ -3,11 +3,11 @@
 // OMML XML → domain reader.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
-  "trkbt10/ooxml/ecma376/office_math/domain" @domain,
+  "trkbt10/ooxml/xml",
+  "trkbt10/ooxml/ecma376/office_math/domain",
 }
 
 import {
-  "trkbt10/ooxml/ecma376/office_math/builder" @builder,
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "trkbt10/ooxml/ecma376/office_math/builder",
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

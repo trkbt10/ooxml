@@ -4,5 +4,5 @@
 // markup contracts.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }

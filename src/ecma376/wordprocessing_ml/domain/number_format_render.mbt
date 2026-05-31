@@ -56,46 +56,79 @@ pub fn ST_NumberFormat::format(self : ST_NumberFormat, value : Int) -> String {
     NumFmtIdeographDigital => render_digit_glyphs(value, cjk_digits())
     NumFmtIdeographTraditional =>
       render_cjk_counting(
-        value, cjk_digits(), cjk_units(), cjk_myriads_japanese(), false,
+        value,
+        cjk_digits(),
+        cjk_units(),
+        cjk_myriads_japanese(),
+        false,
       )
     NumFmtIdeographZodiac => render_cycle(value, zodiac_branches())
     NumFmtIdeographZodiacTraditional => render_cycle(value, zodiac_branches())
     NumFmtIdeographLegalTraditional =>
       render_cjk_counting(
-        value, cjk_legal_trad_digits(), cjk_legal_units(),
-        cjk_myriads_traditional(), true,
+        value,
+        cjk_legal_trad_digits(),
+        cjk_legal_units(),
+        cjk_myriads_traditional(),
+        true,
       )
     NumFmtJapaneseCounting =>
       render_cjk_counting(
-        value, cjk_digits(), cjk_units(), cjk_myriads_japanese(), false,
+        value,
+        cjk_digits(),
+        cjk_units(),
+        cjk_myriads_japanese(),
+        false,
       )
     NumFmtJapaneseLegal =>
       render_cjk_counting(
-        value, cjk_legal_trad_digits(), cjk_legal_units(),
-        cjk_myriads_japanese(), true,
+        value,
+        cjk_legal_trad_digits(),
+        cjk_legal_units(),
+        cjk_myriads_japanese(),
+        true,
       )
     NumFmtJapaneseDigitalTenThousand => render_digit_glyphs(value, cjk_digits())
     NumFmtTaiwaneseCounting =>
       render_cjk_counting(
-        value, cjk_digits(), cjk_units(), cjk_myriads_traditional(), false,
+        value,
+        cjk_digits(),
+        cjk_units(),
+        cjk_myriads_traditional(),
+        false,
       )
     NumFmtTaiwaneseCountingThousand =>
       render_cjk_counting(
-        value, cjk_digits(), cjk_units(), cjk_myriads_traditional(), false,
+        value,
+        cjk_digits(),
+        cjk_units(),
+        cjk_myriads_traditional(),
+        false,
       )
     NumFmtTaiwaneseDigital => render_digit_glyphs(value, cjk_digits())
     NumFmtChineseCounting =>
       render_cjk_counting(
-        value, cjk_digits(), cjk_units(), cjk_myriads_simplified(), false,
+        value,
+        cjk_digits(),
+        cjk_units(),
+        cjk_myriads_simplified(),
+        false,
       )
     NumFmtChineseLegalSimplified =>
       render_cjk_counting(
-        value, cjk_legal_simp_digits(), cjk_legal_units(),
-        cjk_myriads_simplified(), true,
+        value,
+        cjk_legal_simp_digits(),
+        cjk_legal_units(),
+        cjk_myriads_simplified(),
+        true,
       )
     NumFmtChineseCountingThousand =>
       render_cjk_counting(
-        value, cjk_digits(), cjk_units(), cjk_myriads_simplified(), false,
+        value,
+        cjk_digits(),
+        cjk_units(),
+        cjk_myriads_simplified(),
+        false,
       )
     NumFmtKoreanDigital => render_digit_glyphs(value, cjk_digits())
     NumFmtKoreanDigital2 => render_digit_glyphs(value, hangul_digits())
@@ -413,7 +446,10 @@ fn cjk_myriads_traditional() -> Array[String] {
 ///|
 /// The twelve Earthly Branches, in cycle order, for `ideographZodiac`.
 fn zodiac_branches() -> Array[String] {
-  ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+  [
+    "子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌",
+    "亥",
+  ]
 }
 
 ///|

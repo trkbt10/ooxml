@@ -24,7 +24,11 @@ fn icon_set_count(set_name : String) -> Int {
 
 ///|
 /// Linear interpolation between two `#rrggbb` colours at `t` ∈ [0,1].
-fn icon_lerp_hex(lo : (Int, Int, Int), hi : (Int, Int, Int), t : Double) -> String {
+fn icon_lerp_hex(
+  lo : (Int, Int, Int),
+  hi : (Int, Int, Int),
+  t : Double,
+) -> String {
   let tc = if t < 0.0 { 0.0 } else if t > 1.0 { 1.0 } else { t }
   let (lr, lg, lb) = lo
   let (hr, hg, hb) = hi
@@ -97,8 +101,13 @@ fn icon_arrow_glyph(
 ) -> @xml.Node {
   // Right-pointing arrow in [0,1]^2.
   let pts_unit = [
-    (0.05, 0.35), (0.55, 0.35), (0.55, 0.18), (0.95, 0.5), (0.55, 0.82),
-    (0.55, 0.65), (0.05, 0.65),
+    (0.05, 0.35),
+    (0.55, 0.35),
+    (0.55, 0.18),
+    (0.95, 0.5),
+    (0.55, 0.82),
+    (0.55, 0.65),
+    (0.05, 0.65),
   ]
   let sb = StringBuilder::new()
   for i, p in pts_unit {
@@ -112,7 +121,11 @@ fn icon_arrow_glyph(
   }
   // Direction: t=0 (lowest) points down (+90°), t=1 (highest) points
   // up (−90°), midband flat (0° = right).
-  let t = if count <= 1 { 0.5 } else { bucket.to_double() / (count - 1).to_double() }
+  let t = if count <= 1 {
+    0.5
+  } else {
+    bucket.to_double() / (count - 1).to_double()
+  }
   let angle = 90.0 - 180.0 * t
   let cx = ox + size / 2.0
   let cy = oy + size / 2.0
@@ -328,7 +341,11 @@ fn render_cell_icon_glyph(
   let size = {
     let s = layout.height * 0.66
     let cap = if layout.width * 0.5 < 18.0 { layout.width * 0.5 } else { 18.0 }
-    if s > cap { cap } else { s }
+    if s > cap {
+      cap
+    } else {
+      s
+    }
   }
   if size <= 1.0 {
     // Too small to draw — fall back to metadata only, no reserved space.
@@ -369,7 +386,14 @@ fn render_cell_icon_glyph(
     } else {
       band.to_double() / (count - 1).to_double()
     }
-    [icon_circle_glyph(ox, oy, size, icon_lerp_hex((0, 0, 0), (0xE0, 0x30, 0x30), t))]
+    [
+      icon_circle_glyph(
+        ox,
+        oy,
+        size,
+        icon_lerp_hex((0, 0, 0), (0xE0, 0x30, 0x30), t),
+      ),
+    ]
   } else {
     // TrafficLights / Signs / Flags / Symbols and any other set:
     // a grade-coloured circle.

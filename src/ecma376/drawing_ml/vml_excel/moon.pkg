@@ -6,5 +6,5 @@
 // the `read_client_data` / `write_client_data` round-trip entry points.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }

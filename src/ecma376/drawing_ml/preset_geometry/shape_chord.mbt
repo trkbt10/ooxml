@@ -12,8 +12,8 @@
 pub fn build_chord(
   width : Int,
   height : Int,
-  adj1~ : Int = 2700000,
-  adj2~ : Int = 16200000,
+  adj1? : Int = 2700000,
+  adj2? : Int = 16200000,
 ) -> ShapeGeometry {
   // §20.1.10.56 chord: stAng = adj1, enAng = adj2; swAng = enAng − stAng.
   let cx = width / 2

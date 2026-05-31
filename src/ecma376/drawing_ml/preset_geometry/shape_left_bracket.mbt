@@ -16,7 +16,11 @@
 /// up the left stem, around the rounded top-left corner, out to the
 /// top-right arm tip. It is an open outline (no `close`), so the
 /// generated geometry is an open stroke path.
-pub fn build_left_bracket(width : Int, height : Int, adj~ : Int = 8333) -> ShapeGeometry {
+pub fn build_left_bracket(
+  width : Int,
+  height : Int,
+  adj? : Int = 8333,
+) -> ShapeGeometry {
   // §20.1.10.56 leftBracket: maxAdj = 50000·h/ss; a = pin 0 adj maxAdj;
   // corner radius y1 = ss·a/100000.
   let ss = min_dim(width, height)

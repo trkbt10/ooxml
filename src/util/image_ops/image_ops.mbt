@@ -189,7 +189,11 @@ pub fn apply_hsl(
     let new_s = clamp01(s + sat_shift)
     let new_l = clamp01(l + lum_shift)
     let (nr, ng, nb) = hsl_to_rgb(
-      if new_h < 0.0 { new_h + 360.0 } else { new_h },
+      if new_h < 0.0 {
+        new_h + 360.0
+      } else {
+        new_h
+      },
       new_s,
       new_l,
     )
@@ -207,8 +211,28 @@ pub fn apply_hsl(
 
 ///|
 fn rgb_to_hsl(r : Double, g : Double, b : Double) -> (Double, Double, Double) {
-  let max = if r > g { if r > b { r } else { b } } else if g > b { g } else { b }
-  let min = if r < g { if r < b { r } else { b } } else if g < b { g } else { b }
+  let max = if r > g {
+    if r > b {
+      r
+    } else {
+      b
+    }
+  } else if g > b {
+    g
+  } else {
+    b
+  }
+  let min = if r < g {
+    if r < b {
+      r
+    } else {
+      b
+    }
+  } else if g < b {
+    g
+  } else {
+    b
+  }
   let l = (max + min) / 2.0
   if max == min {
     return (0.0, 0.0, l)
@@ -217,7 +241,11 @@ fn rgb_to_hsl(r : Double, g : Double, b : Double) -> (Double, Double, Double) {
   let s = if l > 0.5 { d / (2.0 - max - min) } else { d / (max + min) }
   let h = if max == r {
     let h0 = (g - b) / d
-    if h0 < 0.0 { h0 + 6.0 } else { h0 }
+    if h0 < 0.0 {
+      h0 + 6.0
+    } else {
+      h0
+    }
   } else if max == g {
     (b - r) / d + 2.0
   } else {
@@ -267,11 +295,7 @@ fn hue_to_rgb(p : Double, q : Double, t_in : Double) -> Double {
 }
 
 ///|
-fn interpolate_hue(
-  current : Double,
-  target : Double,
-  amt : Double,
-) -> Double {
+fn interpolate_hue(current : Double, target : Double, amt : Double) -> Double {
   let mut diff = target - current
   if diff > 180.0 {
     diff = diff - 360.0

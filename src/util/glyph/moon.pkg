@@ -16,15 +16,15 @@
 //   - trkbt10/osenv (cross-platform OS / dirs detection).
 
 import {
-  "mizchi/font" @font,
-  "mizchi/svg" @svg,
-  "moonbitlang/core/env" @env,
-  "moonbitlang/x/fs" @fs,
-  "trkbt10/osenv/dirs" @dirs,
-  "trkbt10/osenv/path" @path,
-  "trkbt10/osenv/platform" @platform,
+  "mizchi/font",
+  "mizchi/svg",
+  "moonbitlang/core/env",
+  "moonbitlang/x/fs",
+  "trkbt10/osenv/dirs",
+  "trkbt10/osenv/path",
+  "trkbt10/osenv/platform",
 }
 
 import {
-  "moonbitlang/core/debug" @debug,
+  "moonbitlang/core/debug",
 } for "wbtest"

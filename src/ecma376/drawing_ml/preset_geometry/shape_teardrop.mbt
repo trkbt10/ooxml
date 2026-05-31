@@ -16,7 +16,7 @@
 pub fn build_teardrop(
   width : Int,
   height : Int,
-  adj~ : Int = 100000,
+  adj? : Int = 100000,
 ) -> ShapeGeometry {
   let cx = width / 2
   let cy = height / 2

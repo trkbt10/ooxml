@@ -15,7 +15,11 @@
 /// the top-left arm tip, around the rounded top-right corner, down
 /// the right stem, around the rounded bottom-right corner, back to
 /// the bottom-left arm tip. It is an open outline (no `close`).
-pub fn build_right_bracket(width : Int, height : Int, adj~ : Int = 8333) -> ShapeGeometry {
+pub fn build_right_bracket(
+  width : Int,
+  height : Int,
+  adj? : Int = 8333,
+) -> ShapeGeometry {
   // §20.1.10.56 rightBracket: maxAdj = 50000·h/ss; a = pin 0 adj maxAdj;
   // corner radius y1 = ss·a/100000.
   let ss = min_dim(width, height)

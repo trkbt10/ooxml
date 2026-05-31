@@ -7,12 +7,12 @@
 // package only carries the resolver + shape navigation helpers.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
-  "trkbt10/ooxml/ecma376/presentation_ml/domain" @domain,
+  "trkbt10/ooxml/xml",
+  "trkbt10/ooxml/ecma376/presentation_ml/domain",
   "trkbt10/ooxml/ecma376/drawing_ml" @a,
 }
 
 import {
-  "moonbitlang/core/debug" @debug,
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/debug",
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

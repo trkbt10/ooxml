@@ -5,11 +5,11 @@
 
 import {
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
-  "trkbt10/ooxml/ecma376/opc" @opc,
-  "trkbt10/ooxml/ecma376/opc/relationships" @relationships,
+  "trkbt10/ooxml/ecma376/opc",
+  "trkbt10/ooxml/ecma376/opc/relationships",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain" @wml,
   "trkbt10/ooxml/ecma376/wordprocessing_ml/context" @wml_context,
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
   "trkbt10/ooxml/edit" @a_edit,
-  "moonbitlang/core/string" @string,
+  "moonbitlang/core/string",
 }

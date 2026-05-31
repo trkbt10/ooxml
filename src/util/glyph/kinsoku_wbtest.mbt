@@ -103,7 +103,9 @@ test "linebreak_segments: ASCII words stay split, boundaries legal" {
 
 ///|
 test "linebreak_segments: realistic mixed sentence is all-legal" {
-  assert_segments_legal("本日は、晴天なり。（晴れ）また「明日」も雨。続く……")
+  assert_segments_legal(
+    "本日は、晴天なり。（晴れ）また「明日」も雨。続く……",
+  )
 }
 
 ///|

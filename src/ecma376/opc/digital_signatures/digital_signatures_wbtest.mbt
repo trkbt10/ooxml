@@ -305,13 +305,15 @@ test "digest reference honours the SHA-1/256/384/512 registry" {
   let payload = b("the quick brown fox")
   assert_eq(
     try! digest_reference_bytes(
-      payload, DigestMethod::new("http://www.w3.org/2000/09/xmldsig#sha1", []),
+      payload,
+      DigestMethod::new("http://www.w3.org/2000/09/xmldsig#sha1", []),
     ),
     @base64.encode(@crypto.sha1(payload).unsafe_reinterpret_as_bytes()[:]),
   )
   assert_eq(
     try! digest_reference_bytes(
-      payload, DigestMethod::new("http://www.w3.org/2001/04/xmlenc#sha256", []),
+      payload,
+      DigestMethod::new("http://www.w3.org/2001/04/xmlenc#sha256", []),
     ),
     @base64.encode(@crypto.sha256(payload).unsafe_reinterpret_as_bytes()[:]),
   )
@@ -324,7 +326,8 @@ test "digest reference honours the SHA-1/256/384/512 registry" {
   )
   assert_eq(
     try! digest_reference_bytes(
-      payload, DigestMethod::new("http://www.w3.org/2001/04/xmlenc#sha512", []),
+      payload,
+      DigestMethod::new("http://www.w3.org/2001/04/xmlenc#sha512", []),
     ),
     @base64.encode(sha512_bytes(payload).unsafe_reinterpret_as_bytes()[:]),
   )
@@ -343,7 +346,8 @@ test "c14n with comments transform retains comment nodes" {
   let input = b("<a><!--keep--><b>x</b></a>")
   let with_comments = try! apply_transforms(input, [
     Transform::new(
-      "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments", [],
+      "http://www.w3.org/TR/2001/REC-xml-c14n-20010315#WithComments",
+      [],
     ),
   ])
   assert_true(decode_utf8(with_comments).contains("<!--keep-->"))
@@ -385,8 +389,7 @@ fn sha384_hex(input : Bytes) -> String {
 ///|
 fn bytes_to_lower_hex(bytes : FixedArray[Byte]) -> String {
   let digits = [
-    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e',
-    'f',
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
   ]
   let out = StringBuilder::new()
   for byte in bytes {

@@ -17,8 +17,8 @@ pub fn build_star(
   width : Int,
   height : Int,
   adj~ : Int,
-  hf~ : Int = 100000,
-  vf~ : Int = 100000,
+  hf? : Int = 100000,
+  vf? : Int = 100000,
 ) -> ShapeGeometry {
   let cx = width / 2
   let cy = height / 2

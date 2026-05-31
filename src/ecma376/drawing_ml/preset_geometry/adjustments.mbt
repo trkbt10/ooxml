@@ -127,7 +127,8 @@ pub fn build_geometry_with_adjustments(
         adj2=g("adj2", 16667),
       )
     // Single `adj` guide (default 25000); slant / inset are `ss`-based.
-    ShapeParallelogram => build_parallelogram(width, height, adj=g("adj", 25000))
+    ShapeParallelogram =>
+      build_parallelogram(width, height, adj=g("adj", 25000))
     ShapeTrapezoid => build_trapezoid(width, height, adj=g("adj", 25000))
     // mathMinus — bar thickness from the `adj1` guide (default 23520).
     ShapeMathMinus => build_minus(width, height, adj=g("adj1", 23520))
@@ -152,13 +153,33 @@ pub fn build_geometry_with_adjustments(
     ShapeChevron => build_chevron(width, height, adj=g("adj", 50000))
     // Block arrows — adj1 = shaft thickness, adj2 = head length (ss-based).
     ShapeRightArrow =>
-      build_right_arrow(width, height, adj1=g("adj1", 50000), adj2=g("adj2", 50000))
+      build_right_arrow(
+        width,
+        height,
+        adj1=g("adj1", 50000),
+        adj2=g("adj2", 50000),
+      )
     ShapeLeftArrow =>
-      build_left_arrow(width, height, adj1=g("adj1", 50000), adj2=g("adj2", 50000))
+      build_left_arrow(
+        width,
+        height,
+        adj1=g("adj1", 50000),
+        adj2=g("adj2", 50000),
+      )
     ShapeUpArrow =>
-      build_up_arrow(width, height, adj1=g("adj1", 50000), adj2=g("adj2", 50000))
+      build_up_arrow(
+        width,
+        height,
+        adj1=g("adj1", 50000),
+        adj2=g("adj2", 50000),
+      )
     ShapeDownArrow =>
-      build_down_arrow(width, height, adj1=g("adj1", 50000), adj2=g("adj2", 50000))
+      build_down_arrow(
+        width,
+        height,
+        adj1=g("adj1", 50000),
+        adj2=g("adj2", 50000),
+      )
     ShapeLeftRightArrow =>
       build_left_right_arrow(
         width,
@@ -187,11 +208,17 @@ pub fn build_geometry_with_adjustments(
     ShapeCube => build_cube(width, height, adj=g("adj", 25000))
     ShapeCan => build_can(width, height, adj=g("adj", 25000))
     // Circular sectors — adj1 = start angle, adj2 = end angle (ECMA units).
-    ShapePie => build_pie(width, height, adj1=g("adj1", 0), adj2=g("adj2", 16200000))
+    ShapePie =>
+      build_pie(width, height, adj1=g("adj1", 0), adj2=g("adj2", 16200000))
     ShapeArc =>
       build_arc(width, height, adj1=g("adj1", 16200000), adj2=g("adj2", 0))
     ShapeChord =>
-      build_chord(width, height, adj1=g("adj1", 2700000), adj2=g("adj2", 16200000))
+      build_chord(
+        width,
+        height,
+        adj1=g("adj1", 2700000),
+        adj2=g("adj2", 16200000),
+      )
     // teardrop — pull amount of the corner point from `adj` (default 100000).
     ShapeTeardrop => build_teardrop(width, height, adj=g("adj", 100000))
     // notched / striped right arrows — shaft thickness + head length.
@@ -322,9 +349,19 @@ pub fn build_geometry_with_adjustments(
     ShapeNoSmoking => build_no_smoking(width, height, adj=g("adj", 18750))
     // leftBrace — curl radius (adj1) + pinch height (adj2), via rel_arc.
     ShapeLeftBrace =>
-      build_left_brace(width, height, adj1=g("adj1", 8333), adj2=g("adj2", 50000))
+      build_left_brace(
+        width,
+        height,
+        adj1=g("adj1", 8333),
+        adj2=g("adj2", 50000),
+      )
     ShapeRightBrace =>
-      build_right_brace(width, height, adj1=g("adj1", 8333), adj2=g("adj2", 50000))
+      build_right_brace(
+        width,
+        height,
+        adj1=g("adj1", 8333),
+        adj2=g("adj2", 50000),
+      )
     ShapeBracePair => build_brace_pair(width, height, adj=g("adj", 8333))
     // moon — crescent; adj is the inner-arc curvature (at2-derived).
     ShapeMoon => build_moon(width, height, adj=g("adj", 50000))
@@ -335,7 +372,12 @@ pub fn build_geometry_with_adjustments(
     ShapeCircularArrow =>
       build_from_definition(circular_arrow_def(), width, height, adjustments)
     ShapeLeftCircularArrow =>
-      build_from_definition(left_circular_arrow_def(), width, height, adjustments)
+      build_from_definition(
+        left_circular_arrow_def(),
+        width,
+        height,
+        adjustments,
+      )
     ShapeLeftRightCircularArrow =>
       build_from_definition(
         left_right_circular_arrow_def(),
@@ -347,8 +389,10 @@ pub fn build_geometry_with_adjustments(
     ShapeGear6 => build_from_definition(gear6_def(), width, height, adjustments)
     ShapeGear9 => build_from_definition(gear9_def(), width, height, adjustments)
     // hexagon / octagon — data-driven n-gons; adj chamfers the corners.
-    ShapeHexagon => build_from_definition(hexagon_def(), width, height, adjustments)
-    ShapeOctagon => build_from_definition(octagon_def(), width, height, adjustments)
+    ShapeHexagon =>
+      build_from_definition(hexagon_def(), width, height, adjustments)
+    ShapeOctagon =>
+      build_from_definition(octagon_def(), width, height, adjustments)
     // cloudCallout — cloud body + 3 tail bubbles; adj1/adj2 = tail tip.
     ShapeCloudCallout =>
       build_cloud_callout(
@@ -362,7 +406,8 @@ pub fn build_geometry_with_adjustments(
     ShapeRightBracket => build_right_bracket(width, height, adj=g("adj", 8333))
     ShapeBracketPair => build_bracket_pair(width, height, adj=g("adj", 16667))
     // wave / doubleWave — amplitude (adj1) + horizontal skew (adj2).
-    ShapeWave => build_wave(width, height, adj1=g("adj1", 12500), adj2=g("adj2", 0))
+    ShapeWave =>
+      build_wave(width, height, adj1=g("adj1", 12500), adj2=g("adj2", 0))
     ShapeDoubleWave =>
       build_double_wave(width, height, adj1=g("adj1", 6250), adj2=g("adj2", 0))
     // bentUpArrow — L-shaped arrow, ss-based shaft/head guides.

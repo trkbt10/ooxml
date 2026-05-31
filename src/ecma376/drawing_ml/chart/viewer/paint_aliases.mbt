@@ -3,8 +3,11 @@
 // `ResolvedColor` type references without churn.  The SOT for these
 // types lives in `drawing_ml/paint`.
 
-typealias @paint.ColorResolveContext as ColorResolveContext
+///|
+using @paint {type ColorResolveContext as ColorResolveContext}
 
-typealias @paint.ResolvedColor as ResolvedColor
+///|
+using @paint {type ResolvedColor as ResolvedColor}
 
-typealias @paint.SvgDefsCollector as SvgDefsCollector
+///|
+using @paint {type SvgDefsCollector as SvgDefsCollector}

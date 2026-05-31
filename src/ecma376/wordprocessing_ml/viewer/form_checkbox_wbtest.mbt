@@ -18,9 +18,12 @@ test "checked form checkbox renders ☑" {
   let fc = parse_fld_char(
     "<w:fldChar w:fldCharType=\"begin\"><w:ffData><w:checkBox><w:checked w:val=\"1\"/></w:checkBox></w:ffData></w:fldChar>",
   )
-  inspect(form_checkbox_glyph(fc), content=(
-    #|Some(☑)
-  ))
+  inspect(
+    form_checkbox_glyph(fc),
+    content=(
+      #|Some(☑)
+    ),
+  )
 }
 
 ///|
@@ -28,9 +31,12 @@ test "default-checked form checkbox renders ☑ when no explicit checked" {
   let fc = parse_fld_char(
     "<w:fldChar w:fldCharType=\"begin\"><w:ffData><w:checkBox><w:default w:val=\"1\"/></w:checkBox></w:ffData></w:fldChar>",
   )
-  inspect(form_checkbox_glyph(fc), content=(
-    #|Some(☑)
-  ))
+  inspect(
+    form_checkbox_glyph(fc),
+    content=(
+      #|Some(☑)
+    ),
+  )
 }
 
 ///|
@@ -38,9 +44,12 @@ test "unchecked form checkbox renders ☐" {
   let fc = parse_fld_char(
     "<w:fldChar w:fldCharType=\"begin\"><w:ffData><w:checkBox><w:checked w:val=\"0\"/></w:checkBox></w:ffData></w:fldChar>",
   )
-  inspect(form_checkbox_glyph(fc), content=(
-    #|Some(☐)
-  ))
+  inspect(
+    form_checkbox_glyph(fc),
+    content=(
+      #|Some(☐)
+    ),
+  )
 }
 
 ///|
@@ -48,9 +57,12 @@ test "checkbox with neither checked nor default is unchecked" {
   let fc = parse_fld_char(
     "<w:fldChar w:fldCharType=\"begin\"><w:ffData><w:checkBox/></w:ffData></w:fldChar>",
   )
-  inspect(form_checkbox_glyph(fc), content=(
-    #|Some(☐)
-  ))
+  inspect(
+    form_checkbox_glyph(fc),
+    content=(
+      #|Some(☐)
+    ),
+  )
 }
 
 ///|

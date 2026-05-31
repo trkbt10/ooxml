@@ -115,7 +115,10 @@ test "format_resolved_color emits #hex or rgba" {
   inspect(@paint.format_resolved_color(opaque_color), content="#abcdef")
   let translucent : ResolvedColor = { hex: "ff0000", alpha: 0.5 }
   // rgba uses integer RGB and double alpha.
-  inspect(@paint.format_resolved_color(translucent), content="rgba(255, 0, 0, 0.5)")
+  inspect(
+    @paint.format_resolved_color(translucent),
+    content="rgba(255, 0, 0, 0.5)",
+  )
 }
 
 ///|

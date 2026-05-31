@@ -78,10 +78,7 @@ fn preprocess_blip_image(
             let hex_to = resolve_effect_color_hex(clr_to_el, ctx)
             let (fr, fg, fb) = parse_hex_to_rgb(hex_from)
             let (tr, tg, tb) = parse_hex_to_rgb(hex_to)
-            let use_alpha = parse_xsd_boolean_or(
-              attr_value(el, "useA"),
-              true,
-            )
+            let use_alpha = parse_xsd_boolean_or(attr_value(el, "useA"), true)
             img = @image_ops.apply_clr_change(
               img,
               (
@@ -163,8 +160,7 @@ fn build_blip_effect_filter(
           // (pixel-level ops) — skip here to avoid double application.
           "tint" | "hsl" | "clrChange" => []
           "duotone" => blip_fx_duotone(el, prev_result, result_id, ctx)
-          "fillOverlay" =>
-            blip_fx_fill_overlay(el, prev_result, result_id, ctx)
+          "fillOverlay" => blip_fx_fill_overlay(el, prev_result, result_id, ctx)
           "alphaFloor" => blip_fx_alpha_floor(prev_result, result_id)
           "alphaCeiling" => blip_fx_alpha_ceiling(prev_result, result_id)
           "alphaInv" => blip_fx_alpha_inv(prev_result, result_id)
@@ -223,7 +219,11 @@ fn build_blip_effect_filter(
 /// "50000" = 50 %) and the strict "%" suffix format ("50%").
 /// Reuses the viewer's `parse_st_positive_fixed_percentage` per
 /// handover requirement.
-fn read_pct_fraction(el : @xml.Element, name : String, default_pct : Double) -> Double {
+fn read_pct_fraction(
+  el : @xml.Element,
+  name : String,
+  default_pct : Double,
+) -> Double {
   let raw = attr_value(el, name)
   match raw {
     Some(_) => parse_st_positive_fixed_percentage(raw) / 100.0
@@ -252,8 +252,24 @@ fn grayscale_matrix() -> String {
   let r = format_double_for_filter(grayscale_r)
   let g = format_double_for_filter(grayscale_g)
   let b = format_double_for_filter(grayscale_b)
-  r + " " + g + " " + b + " 0 0  " + r + " " + g + " " + b +
-  " 0 0  " + r + " " + g + " " + b + " 0 0  0 0 0 1 0"
+  r +
+  " " +
+  g +
+  " " +
+  b +
+  " 0 0  " +
+  r +
+  " " +
+  g +
+  " " +
+  b +
+  " 0 0  " +
+  r +
+  " " +
+  g +
+  " " +
+  b +
+  " 0 0  0 0 0 1 0"
 }
 
 ///|
@@ -274,13 +290,9 @@ fn blip_fx_alpha_mod_fix(
 ) -> Array[@xml.Node] {
   let amt = read_pct_fraction(el, "amt", 100.0)
   [
-    fe_component_transfer(
-      in_attr,
-      result,
-      func_a=[
-        fe_func("feFuncA", "linear", slope=amt, intercept=0.0),
-      ],
-    ),
+    fe_component_transfer(in_attr, result, func_a=[
+      fe_func("feFuncA", "linear", slope=amt, intercept=0.0),
+    ]),
   ]
 }
 
@@ -294,13 +306,9 @@ fn blip_fx_alpha_repl(
 ) -> Array[@xml.Node] {
   let a = read_pct_fraction(el, "a", 100.0)
   [
-    fe_component_transfer(
-      in_attr,
-      result,
-      func_a=[
-        fe_func("feFuncA", "linear", slope=0.0, intercept=a),
-      ],
-    ),
+    fe_component_transfer(in_attr, result, func_a=[
+      fe_func("feFuncA", "linear", slope=0.0, intercept=a),
+    ]),
   ]
 }
 
@@ -363,11 +371,9 @@ fn blip_fx_alpha_bi_level(
   let thresh = read_pct_fraction(el, "thresh", 50.0)
   let table = generate_discrete_table(thresh)
   [
-    fe_component_transfer(
-      in_attr,
-      result,
-      func_a=[fe_func_discrete("feFuncA", table)],
-    ),
+    fe_component_transfer(in_attr, result, func_a=[
+      fe_func_discrete("feFuncA", table),
+    ]),
   ]
 }
 
@@ -390,15 +396,11 @@ fn blip_fx_bi_level(
   let mid = result + "_gs"
   [
     fe_color_matrix(in_attr, grayscale_matrix(), mid),
-    fe_component_transfer(
-      mid,
-      result,
-      func_rgb=[
-        fe_func_discrete("feFuncR", table),
-        fe_func_discrete("feFuncG", table),
-        fe_func_discrete("feFuncB", table),
-      ],
-    ),
+    fe_component_transfer(mid, result, func_rgb=[
+      fe_func_discrete("feFuncR", table),
+      fe_func_discrete("feFuncG", table),
+      fe_func_discrete("feFuncB", table),
+    ]),
   ]
 }
 
@@ -430,15 +432,11 @@ fn blip_fx_duotone(
   let fr = format_double_for_filter
   [
     fe_color_matrix(in_attr, grayscale_matrix(), mid),
-    fe_component_transfer(
-      mid,
-      result,
-      func_rgb=[
-        fe_func_table("feFuncR", fr(r1) + " " + fr(r2)),
-        fe_func_table("feFuncG", fr(g1) + " " + fr(g2)),
-        fe_func_table("feFuncB", fr(b1) + " " + fr(b2)),
-      ],
-    ),
+    fe_component_transfer(mid, result, func_rgb=[
+      fe_func_table("feFuncR", fr(r1) + " " + fr(r2)),
+      fe_func_table("feFuncG", fr(g1) + " " + fr(g2)),
+      fe_func_table("feFuncB", fr(b1) + " " + fr(b2)),
+    ]),
   ]
 }
 
@@ -474,11 +472,9 @@ fn blip_fx_fill_overlay(
 fn blip_fx_alpha_floor(in_attr : String, result : String) -> Array[@xml.Node] {
   let table = "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1"
   [
-    fe_component_transfer(
-      in_attr,
-      result,
-      func_a=[fe_func_discrete("feFuncA", table)],
-    ),
+    fe_component_transfer(in_attr, result, func_a=[
+      fe_func_discrete("feFuncA", table),
+    ]),
   ]
 }
 
@@ -488,17 +484,12 @@ fn blip_fx_alpha_floor(in_attr : String, result : String) -> Array[@xml.Node] {
 
 ///|
 /// §20.1.8.2 alphaCeiling — ceiling alpha: any non-zero alpha → 1.
-fn blip_fx_alpha_ceiling(
-  in_attr : String,
-  result : String,
-) -> Array[@xml.Node] {
+fn blip_fx_alpha_ceiling(in_attr : String, result : String) -> Array[@xml.Node] {
   let table = "0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1"
   [
-    fe_component_transfer(
-      in_attr,
-      result,
-      func_a=[fe_func_discrete("feFuncA", table)],
-    ),
+    fe_component_transfer(in_attr, result, func_a=[
+      fe_func_discrete("feFuncA", table),
+    ]),
   ]
 }
 
@@ -508,11 +499,9 @@ fn blip_fx_alpha_ceiling(
 /// SVG approximation.
 fn blip_fx_alpha_inv(in_attr : String, result : String) -> Array[@xml.Node] {
   [
-    fe_component_transfer(
-      in_attr,
-      result,
-      func_a=[fe_func_table_values("feFuncA", "1 0")],
-    ),
+    fe_component_transfer(in_attr, result, func_a=[
+      fe_func_table_values("feFuncA", "1 0"),
+    ]),
   ]
 }
 
@@ -634,8 +623,8 @@ fn dispatch_container_effect(
 fn fe_component_transfer(
   in_attr : String,
   result : String,
-  func_rgb~ : Array[@xml.Node] = [],
-  func_a~ : Array[@xml.Node] = [],
+  func_rgb? : Array[@xml.Node] = [],
+  func_a? : Array[@xml.Node] = [],
 ) -> @xml.Node {
   let children : Array[@xml.Node] = []
   for n in func_rgb {
@@ -657,8 +646,8 @@ fn fe_component_transfer(
 fn fe_func(
   name : String,
   func_type : String,
-  slope~ : Double = 1.0,
-  intercept~ : Double = 0.0,
+  slope? : Double = 1.0,
+  intercept? : Double = 0.0,
 ) -> @xml.Node {
   @markup.elem_ns(
     name,
@@ -678,10 +667,7 @@ fn fe_func_discrete(name : String, table : String) -> @xml.Node {
   @markup.elem_ns(
     name,
     @markup.svg_ns,
-    [
-      @markup.attr("type", "discrete"),
-      @markup.attr("tableValues", table),
-    ],
+    [@markup.attr("type", "discrete"), @markup.attr("tableValues", table)],
     [],
   )
 }

@@ -10,11 +10,10 @@
 /// 4×4 solid-red PNG (73 bytes).
 fn test_image_4x4_red() -> Bytes {
   Bytes::from_array([
-    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82,
-    0, 0, 0, 4, 0, 0, 0, 4, 8, 2, 0, 0, 0, 38, 147, 9, 41, 0, 0,
-    0, 16, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 0, 71, 12,
-    196, 113, 0, 174, 147, 15, 241, 208, 95, 35, 158, 0, 0, 0, 0,
-    73, 69, 78, 68, 174, 66, 96, 130,
+    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 4, 0,
+    0, 0, 4, 8, 2, 0, 0, 0, 38, 147, 9, 41, 0, 0, 0, 16, 73, 68, 65, 84, 120, 156,
+    99, 248, 207, 192, 0, 71, 12, 196, 113, 0, 174, 147, 15, 241, 208, 95, 35, 158,
+    0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
   ])
 }
 
@@ -22,12 +21,11 @@ fn test_image_4x4_red() -> Bytes {
 /// 8×8 four-quadrant PNG (85 bytes): red / green / blue / yellow.
 fn test_image_8x8_quad() -> Bytes {
   Bytes::from_array([
-    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82,
-    0, 0, 0, 8, 0, 0, 0, 8, 8, 2, 0, 0, 0, 75, 109, 41, 220, 0,
-    0, 0, 28, 73, 68, 65, 84, 120, 156, 99, 248, 207, 192, 0, 71,
-    12, 255, 113, 32, 10, 37, 144, 121, 255, 255, 51, 192, 17, 21,
-    37, 0, 182, 141, 79, 177, 165, 30, 79, 187, 0, 0, 0, 0, 73, 69,
-    78, 68, 174, 66, 96, 130,
+    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 8, 0,
+    0, 0, 8, 8, 2, 0, 0, 0, 75, 109, 41, 220, 0, 0, 0, 28, 73, 68, 65, 84, 120, 156,
+    99, 248, 207, 192, 0, 71, 12, 255, 113, 32, 10, 37, 144, 121, 255, 255, 51, 192,
+    17, 21, 37, 0, 182, 141, 79, 177, 165, 30, 79, 187, 0, 0, 0, 0, 73, 69, 78, 68,
+    174, 66, 96, 130,
   ])
 }
 
@@ -82,9 +80,7 @@ fn blip_pic(
     Element(ae("stretch", [], [Element(ae("fillRect", [], []))])),
   ])
   let nv_pic_pr = pe("nvPicPr", [], [
-    Element(
-      pe("cNvPr", [xa("id", "2"), xa("name", "BlipEffectPic")], []),
-    ),
+    Element(pe("cNvPr", [xa("id", "2"), xa("name", "BlipEffectPic")], [])),
     Element(
       pe("cNvPicPr", [], [
         Element(ae("picLocks", [xa("noChangeAspect", "1")], [])),
@@ -95,16 +91,10 @@ fn blip_pic(
   let sp_pr = pe("spPr", [], [
     Element(xfrm),
     Element(
-      ae("prstGeom", [xa("prst", "rect")], [
-        Element(ae("avLst", [], [])),
-      ]),
+      ae("prstGeom", [xa("prst", "rect")], [Element(ae("avLst", [], []))]),
     ),
   ])
-  pe("pic", [], [
-    Element(nv_pic_pr),
-    Element(blip_fill),
-    Element(sp_pr),
-  ])
+  pe("pic", [], [Element(nv_pic_pr), Element(blip_fill), Element(sp_pr)])
 }
 
 ///|
@@ -163,13 +153,7 @@ fn extras_pml_blip_effects(cases : Array[ImageSlideCase]) -> Unit {
     format: "pptx",
     category: "pic",
     content: sp_tree_p([
-      blip_pic(
-        [xep("a", NS_A, "grayscl", [], [])],
-        pos.0,
-        pos.1,
-        pos.2,
-        pos.3,
-      ),
+      blip_pic([xep("a", NS_A, "grayscl", [], [])], pos.0, pos.1, pos.2, pos.3),
     ]),
     image_bytes: img,
   })
@@ -196,14 +180,7 @@ fn extras_pml_blip_effects(cases : Array[ImageSlideCase]) -> Unit {
     category: "pic",
     content: sp_tree_p([
       blip_pic(
-        [
-          xe(
-            NS_A,
-            "lum",
-            [xa("bright", "20000"), xa("contrast", "50000")],
-            [],
-          ),
-        ],
+        [xe(NS_A, "lum", [xa("bright", "20000"), xa("contrast", "50000")], [])],
         pos.0,
         pos.1,
         pos.2,
@@ -335,14 +312,7 @@ fn extras_pml_blip_effects(cases : Array[ImageSlideCase]) -> Unit {
     category: "pic",
     content: sp_tree_p([
       blip_pic(
-        [
-          xe(
-            NS_A,
-            "tint",
-            [xa("hue", "5400000"), xa("amt", "50000")],
-            [],
-          ),
-        ],
+        [xe(NS_A, "tint", [xa("hue", "5400000"), xa("amt", "50000")], [])],
         pos.0,
         pos.1,
         pos.2,
@@ -412,13 +382,7 @@ fn extras_pml_blip_effects(cases : Array[ImageSlideCase]) -> Unit {
     format: "pptx",
     category: "pic",
     content: sp_tree_p([
-      blip_pic(
-        [xep("a", NS_A, "alphaInv", [], [])],
-        pos.0,
-        pos.1,
-        pos.2,
-        pos.3,
-      ),
+      blip_pic([xep("a", NS_A, "alphaInv", [], [])], pos.0, pos.1, pos.2, pos.3),
     ]),
     image_bytes: quad,
   })
@@ -473,7 +437,9 @@ fn extras_pml_blip_effects(cases : Array[ImageSlideCase]) -> Unit {
     category: "pic",
     content: sp_tree_p([
       blip_pic(
-        [xep("a", NS_A, "lum", [xa("bright", "30000"), xa("contrast", "0")], [])],
+        [
+          xep("a", NS_A, "lum", [xa("bright", "30000"), xa("contrast", "0")], []),
+        ],
         pos.0,
         pos.1,
         pos.2,
@@ -514,9 +480,7 @@ fn extras_pml_blip_effects(cases : Array[ImageSlideCase]) -> Unit {
           xep("a", NS_A, "alphaMod", [], [
             Element(
               xep("a", NS_A, "cont", [], [
-                Element(
-                  xep("a", NS_A, "alphaModFix", [xa("amt", "60000")], []),
-                ),
+                Element(xep("a", NS_A, "alphaModFix", [xa("amt", "60000")], [])),
               ]),
             ),
           ]),

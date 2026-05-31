@@ -70,7 +70,11 @@ pub fn read_adjustments_lenient(element : @xml.Element) -> Array[Adjustment] {
         if gd.name.local_name == "gd" {
           match (attr(gd, "name"), attr(gd, "fmla")) {
             (Some(name), Some(raw_formula)) =>
-              out.push({ name, raw_formula, value: parse_val_formula(raw_formula) })
+              out.push({
+                name,
+                raw_formula,
+                value: parse_val_formula(raw_formula),
+              })
             _ => ()
           }
         }

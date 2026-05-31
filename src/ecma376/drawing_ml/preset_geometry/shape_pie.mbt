@@ -10,8 +10,8 @@
 pub fn build_pie(
   width : Int,
   height : Int,
-  adj1~ : Int = 0,
-  adj2~ : Int = 16200000,
+  adj1? : Int = 0,
+  adj2? : Int = 16200000,
 ) -> ShapeGeometry {
   // §20.1.10.56 pie: stAng = adj1, enAng = adj2 (ECMA angle units,
   // 60000ths of a degree); swAng = enAng − stAng.

@@ -16,9 +16,9 @@
 pub fn build_quad_arrow(
   width : Int,
   height : Int,
-  adj1~ : Int = 22500,
-  adj2~ : Int = 22500,
-  adj3~ : Int = 22500,
+  adj1? : Int = 22500,
+  adj2? : Int = 22500,
+  adj3? : Int = 22500,
 ) -> ShapeGeometry {
   let ss = min_dim(width, height)
   let a2 = pin_int(adj2, 0, 50000)

@@ -36,21 +36,36 @@ test "parse_clr_scheme reads accent / dk / lt slots" {
   let theme_elts = mk_el("themeElements", [], [@xml.Node::Element(scheme)])
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
-  @debug.debug_inspect(map.lookup("accent1"), content=(
-    #|Some("4472c4")
-  ))
-  @debug.debug_inspect(map.lookup("text1"), content=(
-    #|Some("000000")
-  ))
-  @debug.debug_inspect(map.lookup("background1"), content=(
-    #|Some("ffffff")
-  ))
-  @debug.debug_inspect(map.lookup("hyperlink"), content=(
-    #|Some("0563c1")
-  ))
-  @debug.debug_inspect(map.lookup("followedHyperlink"), content=(
-    #|Some("954f72")
-  ))
+  @debug.debug_inspect(
+    map.lookup("accent1"),
+    content=(
+      #|Some("4472c4")
+    ),
+  )
+  @debug.debug_inspect(
+    map.lookup("text1"),
+    content=(
+      #|Some("000000")
+    ),
+  )
+  @debug.debug_inspect(
+    map.lookup("background1"),
+    content=(
+      #|Some("ffffff")
+    ),
+  )
+  @debug.debug_inspect(
+    map.lookup("hyperlink"),
+    content=(
+      #|Some("0563c1")
+    ),
+  )
+  @debug.debug_inspect(
+    map.lookup("followedHyperlink"),
+    content=(
+      #|Some("954f72")
+    ),
+  )
   @debug.debug_inspect(map.lookup("accent3"), content="None")
 }
 
@@ -64,9 +79,12 @@ test "resolve_themed_color overrides base with themeColor" {
   let map = parse_clr_scheme(theme)
   // themeColor wins over explicit base @color (§17.15.1.51).
   let r = resolve_themed_color(Some("ff0000"), Some("accent1"), None, None, map)
-  @debug.debug_inspect(r, content=(
-    #|Some("4472c4")
-  ))
+  @debug.debug_inspect(
+    r,
+    content=(
+      #|Some("4472c4")
+    ),
+  )
 }
 
 ///|
@@ -83,9 +101,12 @@ test "resolve_themed_color applies themeTint per the §17 HSL example" {
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
   let r = resolve_themed_color(None, Some("accent2"), Some("99"), None, map)
-  @debug.debug_inspect(r, content=(
-    #|Some("96b3d7")
-  ))
+  @debug.debug_inspect(
+    r,
+    content=(
+      #|Some("96b3d7")
+    ),
+  )
 }
 
 ///|
@@ -101,9 +122,12 @@ test "resolve_themed_color applies themeShade per the §17 HSL example" {
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
   let r = resolve_themed_color(None, Some("accent2"), None, Some("BF"), map)
-  @debug.debug_inspect(r, content=(
-    #|Some("953735")
-  ))
+  @debug.debug_inspect(
+    r,
+    content=(
+      #|Some("953735")
+    ),
+  )
 }
 
 ///|
@@ -118,8 +142,20 @@ test "themeTint/themeShade of FF are near-identity (low values darken/lighten mo
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
   // tint=FF → L′ = L·1 + 0 = L (identity); shade=FF → L′ = L·1 = L.
-  let tinted = resolve_themed_color(None, Some("accent1"), Some("FF"), None, map)
-  let shaded = resolve_themed_color(None, Some("accent1"), None, Some("FF"), map)
+  let tinted = resolve_themed_color(
+    None,
+    Some("accent1"),
+    Some("FF"),
+    None,
+    map,
+  )
+  let shaded = resolve_themed_color(
+    None,
+    Some("accent1"),
+    None,
+    Some("FF"),
+    map,
+  )
   assert_eq(tinted, Some("808080"))
   assert_eq(shaded, Some("808080"))
 }
@@ -129,15 +165,21 @@ test "resolve_themed_color falls back to base when theme lookup fails" {
   let map = ThemeColorMap::empty()
   // No theme part / no mapping for accent7; base @color survives.
   let r = resolve_themed_color(Some("ff0000"), Some("accent7"), None, None, map)
-  @debug.debug_inspect(r, content=(
-    #|Some("ff0000")
-  ))
+  @debug.debug_inspect(
+    r,
+    content=(
+      #|Some("ff0000")
+    ),
+  )
 }
 
 ///|
 test "resolve_themed_color returns None for auto (no inputs)" {
   let map = ThemeColorMap::empty()
-  @debug.debug_inspect(resolve_themed_color(None, None, None, None, map), content="None")
+  @debug.debug_inspect(
+    resolve_themed_color(None, None, None, None, map),
+    content="None",
+  )
 }
 
 ///|
@@ -154,9 +196,12 @@ test "resolve_themed_color honours sysClr lastClr fallback" {
   let theme_elts = mk_el("themeElements", [], [@xml.Node::Element(scheme)])
   let theme = mk_el("theme", [], [@xml.Node::Element(theme_elts)])
   let map = parse_clr_scheme(theme)
-  @debug.debug_inspect(map.lookup("text1"), content=(
-    #|Some("000000")
-  ))
+  @debug.debug_inspect(
+    map.lookup("text1"),
+    content=(
+      #|Some("000000")
+    ),
+  )
 }
 
 ///|

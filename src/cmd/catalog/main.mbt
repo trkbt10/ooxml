@@ -506,11 +506,17 @@ fn main {
             // writes `content` AS the part's root element so the
             // root wrap must survive — start at depth 0.
             let start = match path[0].0 {
-              "chartSpace" | "dataModel" | "layoutDef" | "styleDef"
-              | "colorsDef" | "userShapes" => 0
+              "chartSpace"
+              | "dataModel"
+              | "layoutDef"
+              | "styleDef"
+              | "colorsDef"
+              | "userShapes" => 0
               _ => 1
             }
-            candidates.push((host, wrap_in_ancestry(schema, path, start, target)))
+            candidates.push(
+              (host, wrap_in_ancestry(schema, path, start, target)),
+            )
           } else {
             // Empty path — the element IS itself a part-root; embed
             // unwrapped.  Route diagram / chart part roots to their
@@ -599,7 +605,13 @@ fn main {
     outcomes[outcome] = outcomes.get(outcome).unwrap_or(0) + 1
     if outcome == "parsed" {
       parsed_elements.push(
-        ns_prefix(decl.ns) + ":" + decl.name + "\t" + decl.type_name + "\thost=" + host_fmt,
+        ns_prefix(decl.ns) +
+        ":" +
+        decl.name +
+        "\t" +
+        decl.type_name +
+        "\thost=" +
+        host_fmt,
       )
     }
     // Round-trip fidelity (non-visual): re-run the canonical embed
@@ -681,11 +693,12 @@ fn main {
   }
   out.write_string("\n]}\n")
   let _ = try? @fs.create_dir(".snapshots")
-  try @fs.write_string_to_file(".snapshots/catalog.json", out.to_string()) catch {
+  try
+    @fs.write_string_to_file(".snapshots/catalog.json", out.to_string())
+  catch {
     _ => println("!! failed to write catalog.json")
   } noraise {
-    _ =>
-      println("catalog: \{count} element entries -> .snapshots/catalog.json")
+    _ => println("catalog: \{count} element entries -> .snapshots/catalog.json")
   }
 
   // Write coverage.json — the round-trip + render outcome per entry.
@@ -707,7 +720,9 @@ fn main {
     cov.write_string(e)
   }
   cov.write_string("\n]}\n")
-  try @fs.write_string_to_file(".snapshots/coverage.json", cov.to_string()) catch {
+  try
+    @fs.write_string_to_file(".snapshots/coverage.json", cov.to_string())
+  catch {
     _ => println("!! failed to write coverage.json")
   } noraise {
     _ => ()
@@ -831,7 +846,9 @@ fn main {
       "/tmp/catalog-parsed.txt",
       sb.to_string(),
     )
-    println("    (\{parsed_elements.length()} `parsed` elements written to /tmp/catalog-parsed.txt for glyph-level triage)")
+    println(
+      "    (\{parsed_elements.length()} `parsed` elements written to /tmp/catalog-parsed.txt for glyph-level triage)",
+    )
   }
 
   // L2c — OPC structural validity of the round-tripped package.  A

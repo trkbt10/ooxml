@@ -19,7 +19,7 @@
 pub fn build_round1_rect(
   width : Int,
   height : Int,
-  adj~ : Int = 16667,
+  adj? : Int = 16667,
 ) -> ShapeGeometry {
   // §20.1.10.56 round1Rect gdLst: a = pin 0 adj 50000; dx1 = ss·a/100000.
   let r = percent(min_dim(width, height), pin_int(adj, 0, 50000))

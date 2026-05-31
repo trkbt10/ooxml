@@ -3,10 +3,10 @@
 // DrawingML shapes (§20.1.8): preset geometry, custom geometry, fills, lines, effects.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
   "trkbt10/ooxml/ecma376/drawing_ml" @a,
 }
 
 import {
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"

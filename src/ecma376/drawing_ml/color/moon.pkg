@@ -3,9 +3,9 @@
 // DrawingML colour model (§20.1.2 / §20.1.4): sRGB, scheme, system, HSL, preset.
 
 import {
-  "trkbt10/ooxml/xml" @xml,
+  "trkbt10/ooxml/xml",
 }
 
 import {
-  "moonbitlang/core/encoding/utf8" @utf8,
+  "moonbitlang/core/encoding/utf8",
 } for "wbtest"
