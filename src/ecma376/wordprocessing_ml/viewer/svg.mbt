@@ -1307,6 +1307,25 @@ pub fn render_svg(
   /// saveSmartTagsAsXml) is surfaced as
   /// `data-ooxml-web-settings-*` on the root `<svg>`.
   web_settings? : @domain.CT_WebSettings? = None,
+  /// §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — picture-bullet
+  /// image resolver, keyed on the `numPicBulletId` (the `w:val` of a
+  /// level's `<w:lvlPicBulletId>`).  When a numbered paragraph's
+  /// resolved level carries a picture bullet and this resolver returns
+  /// a `ResolvedImage`, the renderer emits the picture as an `<image>`
+  /// glyph at the bullet position INSTEAD of the §17.9.11 lvlText
+  /// marker; when it returns `None` the renderer falls back to the
+  /// text marker.
+  ///
+  /// FACADE CONTRACT: the bullet image's relationship Id lives in
+  /// `/word/numbering.xml.rels`, NOT `/word/document.xml.rels`, so the
+  /// document-scoped `image_resolver` above CANNOT resolve it.  The
+  /// caller must look up the `<w:numPicBullet w:numPicBulletId="N">` in
+  /// the numbering part, read its `<w:drawing>` blip `r:embed` (or VML
+  /// `<v:imagedata r:id>`), resolve that against numbering.xml.rels to
+  /// the media bytes, and return `{ mime_type, base64_data }`.  The
+  /// default (`_ => None`) yields the byte-identical text-marker
+  /// behaviour for documents whose facade does not wire this up.
+  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
 ) -> DocumentSvgResult {
   // Build the theme colour map once per document; the map is
   // empty when no theme part is supplied, in which case the
@@ -1353,6 +1372,7 @@ pub fn render_svg(
     settings~,
     fonts~,
     web_settings~,
+    pic_bullet_resolver~,
   )
 }
 
@@ -1372,6 +1392,8 @@ fn render_svg_raw(
   settings? : @domain.CT_Settings? = None,
   fonts? : @domain.CT_FontsList? = None,
   web_settings? : @domain.CT_WebSettings? = None,
+  // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
+  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
 ) -> DocumentSvgResult {
   let warnings : Array[String] = []
   let settings_attrs = settings_data_attrs(settings)
@@ -1468,6 +1490,7 @@ fn render_svg_raw(
         theme_map~,
         font_map~,
         settings_attrs~,
+        pic_bullet_resolver~,
       )
   }
 }
@@ -1490,6 +1513,8 @@ fn render_body_to_svg(
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
   settings_attrs? : Array[@xml.Attribute] = [],
+  // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
+  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
 ) -> DocumentSvgResult {
   let (cfg, pages) = lay_out_body(
     body,
@@ -1501,6 +1526,7 @@ fn render_body_to_svg(
     numbering,
     theme_map~,
     font_map~,
+    pic_bullet_resolver~,
   )
   // §17.10.1 — the header / footer stream is selected per page index
   // so `titlePg` / `evenAndOddHeaders` documents draw the right first
@@ -1548,6 +1574,8 @@ fn lay_out_body(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
+  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
 ) -> (PageConfig, Array[AssembledPage]) {
   // 1. Resolve page configuration from <w:sectPr>.
   let cfg_base = resolve_page_config(body)
@@ -1577,6 +1605,7 @@ fn lay_out_body(
     numbering,
     theme_map~,
     font_map~,
+    pic_bullet_resolver~,
   )
 
   // 3. Flow blocks into pages.
@@ -1622,6 +1651,13 @@ pub fn render_combined_svg(
   /// §11.5 — typed `/word/webSettings.xml` projection; surfaced on
   /// the combined SVG root as `data-ooxml-web-settings-*` attrs.
   web_settings? : @domain.CT_WebSettings? = None,
+  /// §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — picture-bullet
+  /// image resolver keyed on the `numPicBulletId`.  See `render_svg`
+  /// for the full facade contract (the bullet image's `r:id` lives in
+  /// `/word/numbering.xml.rels`, not the document part's rels).  The
+  /// default (`_ => None`) renders the §17.9.11 lvlText text marker,
+  /// byte-identical to the pre-feature output.
+  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
 ) -> String {
   let theme_map = match theme {
     Some(root) => parse_clr_scheme(root)
@@ -1657,6 +1693,7 @@ pub fn render_combined_svg(
     settings~,
     fonts~,
     web_settings~,
+    pic_bullet_resolver~,
   )
 }
 
@@ -1676,6 +1713,8 @@ fn render_combined_svg_raw(
   settings? : @domain.CT_Settings? = None,
   fonts? : @domain.CT_FontsList? = None,
   web_settings? : @domain.CT_WebSettings? = None,
+  // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
+  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
 ) -> String {
   let warnings : Array[String] = []
   let settings_attrs = settings_data_attrs(settings)
@@ -1732,6 +1771,7 @@ fn render_combined_svg_raw(
         numbering,
         theme_map~,
         font_map~,
+        pic_bullet_resolver~,
       )
   }
   // (Removed: previous revision counted WML descendant names and
@@ -2323,6 +2363,10 @@ fn collect_blocks(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  // §17.9.9 lvlPicBulletId — resolves a `numPicBulletId` to the bullet
+  // image. Defaults to "no picture bullets" so documents without a
+  // wired resolver render the §17.9.11 lvlText marker as before.
+  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
   // §17.7.5.3 — when the package ships no `/word/styles.xml`,
@@ -2377,7 +2421,10 @@ fn collect_blocks(
           "p" => {
             let resolved = apply_styles_to_paragraph(e, styles)
             let with_marker = apply_numbering_marker(
-              resolved, numbering, counters,
+              resolved,
+              numbering,
+              counters,
+              pic_bullet_resolver~,
             )
             // First lay out at the full column width so we can read
             // the paragraph's `frame_pr` (if any) without parsing
@@ -2768,15 +2815,30 @@ fn apply_contextual_spacing(blocks : Array[FlowBlock]) -> Unit {
 ///|
 /// §17.9 — when a paragraph carries `<w:pPr><w:numPr>` and a typed
 /// `CT_Numbering` is available, resolve the level definition and
-/// inject a synthetic `<__bulletMarker val="…"/>` child into the
-/// `<w:pPr>` so `collect_paragraph_spans` can emit the formatted
-/// marker instead of the placeholder `•`. The level counter is
-/// incremented before formatting so the first occurrence uses the
-/// declared `start` value.
+/// inject a synthetic `<__bulletMarker …/>` child into the `<w:pPr>`
+/// so `collect_paragraph_spans` can emit the formatted marker instead
+/// of the placeholder `•`. The level counter is incremented before
+/// formatting so the first occurrence uses the declared `start`
+/// value.
+///
+/// §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — when the resolved
+/// level carries a `<w:lvlPicBulletId w:val="N"/>` AND the caller
+/// supplied a `pic_bullet_resolver` that resolves the `numPicBulletId`
+/// `N` to a `ResolvedImage`, the synthetic marker instead carries the
+/// resolved image's data URI (`picHref`) plus the bullet's intrinsic
+/// aspect (`picAspect`, width÷height from the `<w:numPicBullet>`'s
+/// `<w:drawing>` extent — `0` when unknown so the bullet renders
+/// square) and accessible name (`picAlt`).  `collect_paragraph_spans`
+/// then emits an `<image>` glyph at the bullet position INSTEAD of the
+/// text marker.  When no resolver is supplied, the resolver returns
+/// `None`, or the level has no picture bullet, the function falls back
+/// to the byte-identical §17.9.11 lvlText path below — so documents
+/// without a wired picture-bullet resolver render exactly as before.
 fn apply_numbering_marker(
   p : @xml.Element,
   numbering : @domain.CT_Numbering?,
   counters : @hashmap.HashMap[String, Int],
+  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
 ) -> @xml.Element {
   let table = match numbering {
     None => return p
@@ -2795,6 +2857,31 @@ fn apply_numbering_marker(
     Some(r) => r
   }
   let lvl = resolved.lvl
+  // §17.9.9 lvlPicBulletId — a picture bullet takes precedence over
+  // the §17.9.11 lvlText marker.  We resolve it BEFORE the counter
+  // increment and the `lvlText` early-return below: a picture-bullet
+  // level need not carry a `<w:lvlText>` at all, and a picture bullet
+  // carries no `%N` placeholder, so the numbering counter state is
+  // left untouched (matching Word, which never advances a numeric
+  // counter for a picture bullet).  This branch only fires when the
+  // caller actually resolves the bullet image, keeping every other
+  // document byte-identical.
+  match lvl.lvl_pic_bullet_id {
+    Some(pic_id) if pic_id >= 0 =>
+      match pic_bullet_resolver(pic_id) {
+        Some(img) => {
+          let href = "data:" + img.mime_type + ";base64," + img.base64_data
+          let aspect = num_pic_bullet_aspect(table, pic_id)
+          let alt = num_pic_bullet_alt(table, pic_id)
+          return inject_pic_bullet_marker(p, p_pr, href, aspect, alt)
+        }
+        // No image resolved — fall through to the text-marker path so
+        // a picture-bullet level still shows its `lvlText` placeholder
+        // (byte-identical to the pre-feature behaviour).
+        None => ()
+      }
+    _ => ()
+  }
   let template = match lvl.lvl_text {
     None => return p
     Some(t) => t
@@ -2874,6 +2961,59 @@ fn apply_numbering_marker(
     attributes: p_pr.attributes,
     children: new_p_pr_children,
   }
+  swap_p_pr(p, new_p_pr)
+}
+
+///|
+/// §17.9.9 / §17.9.20 — build the `<w:pPr>` carrying a synthetic
+/// `<__bulletMarker>` whose attributes describe a PICTURE bullet
+/// (data-URI `picHref`, intrinsic `picAspect` width÷height, and
+/// optional `picAlt` accessible name), then splice it back into `p`.
+/// `collect_paragraph_spans` consumes these to emit an `<image>` glyph
+/// at the bullet position.
+fn inject_pic_bullet_marker(
+  p : @xml.Element,
+  p_pr : @xml.Element,
+  href : String,
+  aspect : Double,
+  alt : String,
+) -> @xml.Element {
+  let new_p_pr_children : Array[@xml.Node] = []
+  for c in p_pr.children {
+    new_p_pr_children.push(c)
+  }
+  let marker_attrs : Array[@xml.Attribute] = [
+    { name: { prefix: None, local_name: "picHref", ns: None }, value: href },
+    {
+      name: { prefix: None, local_name: "picAspect", ns: None },
+      value: fmt_double(aspect),
+    },
+  ]
+  if alt.length() > 0 {
+    marker_attrs.push({
+      name: { prefix: None, local_name: "picAlt", ns: None },
+      value: alt,
+    })
+  }
+  new_p_pr_children.push(
+    @xml.Node::Element({
+      name: { prefix: None, local_name: "__bulletMarker", ns: None },
+      attributes: marker_attrs,
+      children: [],
+    }),
+  )
+  let new_p_pr : @xml.Element = {
+    name: p_pr.name,
+    attributes: p_pr.attributes,
+    children: new_p_pr_children,
+  }
+  swap_p_pr(p, new_p_pr)
+}
+
+///|
+/// Replace the `<w:pPr>` child of `p` with `new_p_pr`, preserving the
+/// surrounding children and the paragraph's own name / attributes.
+fn swap_p_pr(p : @xml.Element, new_p_pr : @xml.Element) -> @xml.Element {
   let new_p_children : Array[@xml.Node] = []
   for c in p.children {
     match c {
@@ -2887,6 +3027,47 @@ fn apply_numbering_marker(
     }
   }
   { name: p.name, attributes: p.attributes, children: new_p_children }
+}
+
+///|
+/// §17.9.20 numPicBullet — return the intrinsic aspect ratio
+/// (width ÷ height) of the picture bullet `pic_id` by reading the
+/// `<w:numPicBullet>`'s `<w:drawing>` extent (`<wp:extent cx cy>`).
+/// Returns `0.0` when the bullet, its drawing, or a positive extent is
+/// not reachable; `collect_paragraph_spans` then renders the bullet
+/// square (height = run em-box).  A non-square extent lets the emitter
+/// preserve the picture's proportions inside the bullet box.
+fn num_pic_bullet_aspect(table : @domain.CT_Numbering, pic_id : Int) -> Double {
+  match table.pic_bullets.get(pic_id) {
+    None => 0.0
+    Some(pic_bullet) =>
+      match first_child_named(pic_bullet, "drawing") {
+        None => 0.0
+        Some(drawing) => {
+          let (w_px, h_px) = drawing_extent_size_px(drawing)
+          if w_px > 0.0 && h_px > 0.0 {
+            w_px / h_px
+          } else {
+            0.0
+          }
+        }
+      }
+  }
+}
+
+///|
+/// §17.9.20 numPicBullet — return the picture bullet's accessible name
+/// from its `<w:drawing>`'s `<wp:docPr @descr|@name>`.  Empty string
+/// when no bullet / drawing / alt text is reachable.
+fn num_pic_bullet_alt(table : @domain.CT_Numbering, pic_id : Int) -> String {
+  match table.pic_bullets.get(pic_id) {
+    None => ""
+    Some(pic_bullet) =>
+      match first_child_named(pic_bullet, "drawing") {
+        None => ""
+        Some(drawing) => drawing_alt_text(drawing)
+      }
+  }
 }
 
 ///|
@@ -4274,21 +4455,20 @@ fn collect_paragraph_spans(
   // substitute a literal bullet glyph: §17.9 mandates that the
   // marker text comes from the resolved `lvlText`/`numFmt`; a
   // U+2022 fallback would mis-represent the numbering definition.
-  let bullet_marker : String? = match first_child_named(p, "pPr") {
+  // The synthetic marker element injected by `apply_numbering_marker`
+  // carries EITHER a text marker (`val`, the §17.9.11 lvlText path) or
+  // a PICTURE bullet (`picHref` + `picAspect` + optional `picAlt`, the
+  // §17.9.9 lvlPicBulletId path).  When a picture is present it wins;
+  // otherwise we fall back to the text marker.  Both branches resolve
+  // the same run template so the bullet adopts the level's font size /
+  // colour for sizing and alignment.
+  let marker_el : @xml.Element? = match first_child_named(p, "pPr") {
     None => None
-    Some(p_pr) =>
-      match first_child_named(p_pr, "__bulletMarker") {
-        Some(marker_el) =>
-          match attr_value(marker_el, "val") {
-            Some(v) => Some(v + "\u{0020}")
-            None => None
-          }
-        None => None
-      }
+    Some(p_pr) => first_child_named(p_pr, "__bulletMarker")
   }
-  match bullet_marker {
+  match marker_el {
     None => ()
-    Some(marker) => {
+    Some(marker_el) => {
       let template = match first_child_named(p, "r") {
         Some(r) =>
           resolve_run_props(r, default_font_size_pt~, theme_map~, font_map~)
@@ -4308,8 +4488,48 @@ fn collect_paragraph_spans(
             None => default_run_template(default_font_size_pt~)
           }
       }
-      let w = measure_run_text(marker, template)
-      spans.push(with_text(template, marker, w))
+      match attr_value(marker_el, "picHref") {
+        // §17.9.9 / §17.9.20 — picture bullet.  Size the bullet to the
+        // level run's em-box (font size in px), matching Word, which
+        // scales a picture bullet to the surrounding line.  Width is
+        // derived from the bullet's intrinsic aspect so a non-square
+        // image is not distorted; an unknown / zero aspect renders the
+        // bullet square.  We reserve a trailing space the same width
+        // the text marker's `" "` would have, so the following
+        // run starts at the same x it would after a text marker.
+        Some(href) => {
+          let bullet_h = template.font_size_pt * @glyph.pt_to_px
+          let aspect = parse_double_attr(marker_el, "picAspect", 0.0)
+          let bullet_w = if aspect > 0.0 { bullet_h * aspect } else { bullet_h }
+          let alt = attr_value(marker_el, "picAlt").unwrap_or("")
+          let space_w = measure_run_text("\u{0020}", template)
+          let image : InlineImage = {
+            href,
+            width_px: bullet_w,
+            height_px: bullet_h,
+            alt_text: alt,
+            wrap_mode: "",
+            behind_doc: false,
+            position_h_relative: "",
+            position_v_relative: "",
+          }
+          // Reserve `bullet_w + space_w` of advance but draw the image
+          // at `bullet_w`; `with_inline_image` would tie the two
+          // together, so build the span directly to keep the gap.
+          let bullet_span = with_inline_image(template, image)
+          spans.push({ ..bullet_span, width_px: bullet_w + space_w })
+        }
+        // §17.9.11 lvlText — text marker (byte-identical legacy path).
+        None =>
+          match attr_value(marker_el, "val") {
+            Some(v) => {
+              let marker = v + "\u{0020}"
+              let w = measure_run_text(marker, template)
+              spans.push(with_text(template, marker, w))
+            }
+            None => ()
+          }
+      }
     }
   }
   collect_paragraph_spans_into(
