@@ -330,6 +330,69 @@ test "presentation_ml context preserves slide content across two save cycles" {
 }
 
 ///|
+/// §21.1.2.3.5 CT_Hyperlink — a package whose single slide carries a
+/// run with `<a:hlinkClick r:id="rId2">` and a slide `.rels` part that
+/// maps rId2 to an External hyperlink URL.  Used by the end-to-end
+/// resolution test below.
+fn hyperlink_fixture_bytes() -> Bytes {
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Override PartName=\"/ppt/presentation.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml\"/><Override PartName=\"/ppt/slides/slide1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.presentationml.slide+xml\"/></Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"ppt/presentation.xml\"/></Relationships>",
+      ),
+    ),
+    (
+      "ppt/_rels/presentation.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide\" Target=\"slides/slide1.xml\"/></Relationships>",
+      ),
+    ),
+    ("ppt/presentation.xml", bytes("<p:presentation xmlns:p=\"urn:p\"/>")),
+    // §21.1.2.3.5 — the run's `<a:rPr>` carries `<a:hlinkClick r:id>`;
+    // the shape is sized so the text lays out and the anchor emits.
+    (
+      "ppt/slides/slide1.xml",
+      bytes(
+        "<p:sld xmlns:p=\"urn:p\" xmlns:a=\"urn:a\" xmlns:r=\"urn:r\"><p:cSld><p:spTree><p:sp><p:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"914400\" cy=\"457200\"/></a:xfrm></p:spPr><p:txBody><a:bodyPr/><a:p><a:r><a:rPr><a:hlinkClick r:id=\"rId2\"/></a:rPr><a:t>link</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>",
+      ),
+    ),
+    // §15.2.2 — the slide's relationship part maps rId2 to an External
+    // hyperlink URL; the resolver returns the Target verbatim.
+    (
+      "ppt/slides/_rels/slide1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"https://example.com/docs\" TargetMode=\"External\"/></Relationships>",
+      ),
+    ),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
+/// §21.1.2.3.5 — end-to-end: opening a package whose slide run holds
+/// `<a:hlinkClick r:id="rId2">` and whose slide `.rels` maps rId2 to
+/// an External URL renders the anchor with the RESOLVED URL in
+/// `xlink:href`, not the raw rId.  The raw rId stays in
+/// `data-ooxml-r-id` (visible only with `debug_attrs=true`).
+test "presentation_ml context resolves run hlinkClick r:id to URL" {
+  let presentation = open(hyperlink_fixture_bytes())
+  let svg = try! presentation.to_svg_for_slide(0, debug_attrs=true)
+  assert_true(svg.contains("xlink:href=\"https://example.com/docs\""))
+  assert_true(svg.contains("href=\"https://example.com/docs\""))
+  // The raw rId must NOT leak into xlink:href; the resolved URL wins.
+  assert_false(svg.contains("xlink:href=\"rId2\""))
+  // The raw rId is preserved as metadata for spec-aware consumers.
+  assert_true(svg.contains("data-ooxml-r-id=\"rId2\""))
+}
+
+///|
 fn bytes(source : String) -> Bytes {
   @utf8.encode(source[:])
 }

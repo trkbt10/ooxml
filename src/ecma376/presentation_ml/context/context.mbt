@@ -202,6 +202,15 @@ pub fn Presentation::to_svg_for_slide(
   let resolver = fn(rid : String) -> @pml_viewer.ResolvedImage? {
     resolve_slide_image(self, slide.name, rid)
   }
+  // §21.1.2.3.5 CT_Hyperlink — a run's `<a:rPr>/<a:hlinkClick r:id>`
+  // (and shape-level `<…NvPr>/<a:hlinkClick>`) names a hyperlink as a
+  // relationship id scoped to THIS slide part's rels.  Map that rId
+  // to its external URL so the viewer can place it in `xlink:href`.
+  // The render is per-slide, so a single resolver bound to the
+  // slide's rels suffices.
+  let hyperlink_resolver = fn(rid : String) -> String? {
+    resolve_slide_hyperlink(self, slide.name, rid)
+  }
   // §21.4.2.22 CT_RelIds — resolve an rId on the slide's rels into
   // a part's root XML element. The diagram renderer asks for the
   // four SmartArt parts (data1.xml / layout1.xml / quickStyle1.xml
@@ -247,6 +256,7 @@ pub fn Presentation::to_svg_for_slide(
         image_resolver=resolver,
         part_resolver=parts_resolver,
         chart_part_resolver_factory~,
+        hyperlink_resolver~,
         theme=typed_theme,
         chain~,
         presentation=presentation_root,
@@ -257,6 +267,7 @@ pub fn Presentation::to_svg_for_slide(
         image_resolver=resolver,
         part_resolver=parts_resolver,
         chart_part_resolver_factory~,
+        hyperlink_resolver~,
         theme=typed_theme,
         chain~,
         presentation=presentation_root,
@@ -664,6 +675,43 @@ fn resolve_slide_image(
           }
       }
     }
+  }
+}
+
+///|
+/// §21.1.2.3.5 CT_Hyperlink — resolve a slide-scoped relationship Id
+/// (`rId1`, ...) carried on `<a:hlinkClick r:id>` to the external URL
+/// it points at.  The rId is looked up in THIS slide part's `.rels`
+/// table; a matching relationship of type
+/// `…/officeDocument/2006/relationships/hyperlink` carries the URL in
+/// its `Target` attribute (with `TargetMode="External"`), so we
+/// return `rel.target` directly — the External target IS the URL, no
+/// part-name resolution needed.  Returns `None` when the slide has no
+/// rels, the rId is unknown, or the relationship is not a hyperlink
+/// (e.g. an action-only internal jump), in which case the viewer
+/// keeps the raw rId in `xlink:href`.
+fn resolve_slide_hyperlink(
+  presentation : Presentation,
+  slide_part_name : String,
+  rid : String,
+) -> String? {
+  let rels = presentation.opc_package.relationships(slide_part_name)
+  let found = match rels {
+    Some(rs) => rs.find_by_id(rid)
+    None => None
+  }
+  match found {
+    None => None
+    Some(rel) =>
+      // §15.2.2 — the hyperlink relationship type is the only one
+      // whose Target is an external navigation URL; other rIds on the
+      // slide rels (images, charts, layouts, …) must not leak into
+      // `xlink:href`.
+      if rel.type_uri.has_suffix("/hyperlink") {
+        Some(rel.target)
+      } else {
+        None
+      }
   }
 }
 

@@ -261,6 +261,143 @@ test "viewer §21.1.2.3.5 hlinkClick run emits xlink anchor" {
 }
 
 ///|
+/// §21.1.2.3.5 — build a one-shape, one-run slide whose run carries
+/// `<a:hlinkClick r:id=rid>` so the hyperlink-resolution tests below
+/// share the same fixture.
+fn hlink_run_slide(rid : String) -> @domain.CT_Slide {
+  let r : @xml.Node = @xml.Node::Element({
+    name: name("r"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("rPr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("hlinkClick"),
+            attributes: [{ name: name("id"), value: rid }],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("t"),
+        attributes: [],
+        children: [@xml.Node::Text("link")],
+      }),
+    ],
+  })
+  let sp : @xml.Node = @xml.Node::Element({
+    name: name("sp"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("spPr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("xfrm"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("off"),
+                attributes: [
+                  { name: name("x"), value: "0" },
+                  { name: name("y"), value: "0" },
+                ],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("ext"),
+                attributes: [
+                  { name: name("cx"), value: "914400" },
+                  { name: name("cy"), value: "457200" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("txBody"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("bodyPr"),
+            attributes: [],
+            children: [],
+          }),
+          @xml.Node::Element({ name: name("p"), attributes: [], children: [r] }),
+        ],
+      }),
+    ],
+  })
+  @domain.CT_Slide::new({
+    name: name("sld"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("cSld"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("spTree"),
+            attributes: [],
+            children: [sp],
+          }),
+        ],
+      }),
+    ],
+  })
+}
+
+///|
+/// §21.1.2.3.5 — when a `hyperlink_resolver` maps the run's r:id to a
+/// concrete external URL, that URL (NOT the raw rId) lands in
+/// `xlink:href` / `href`.  The raw rId still surfaces as
+/// `data-ooxml-r-id` so consumers can re-derive the rels lookup.
+test "viewer §21.1.2.3.5 hlinkClick run resolves r:id to URL" {
+  let slide = hlink_run_slide("rId3")
+  let resolver = fn(rid : String) -> String? {
+    if rid == "rId3" {
+      Some("https://example.com/docs")
+    } else {
+      None
+    }
+  }
+  let svg = render_svg(slide, hyperlink_resolver=resolver)
+  assert_true(svg.contains("xlink:href=\"https://example.com/docs\""))
+  assert_true(svg.contains("href=\"https://example.com/docs\""))
+  // The resolved URL replaces the rId in xlink:href; the rId must NOT
+  // appear there any more.
+  assert_false(svg.contains("xlink:href=\"rId3\""))
+  // The raw rId is still preserved as metadata.
+  assert_true(svg.contains("data-ooxml-r-id=\"rId3\""))
+  assert_true(svg.contains("</a>"))
+}
+
+///|
+/// §21.1.2.3.5 — with NO resolver (and with a resolver that does not
+/// know the rId) the renderer keeps TODAY's behaviour exactly: the
+/// raw rId stays in `xlink:href`, no `href` attribute is added, and
+/// the rId is mirrored in `data-ooxml-r-id`.  Guards the byte-
+/// identical fallback for slides without resolvable hyperlinks.
+test "viewer §21.1.2.3.5 hlinkClick run falls back to raw r:id" {
+  let slide = hlink_run_slide("rId3")
+  // No resolver supplied — default `_ => None`.
+  let svg_no_resolver = render_svg(slide)
+  assert_true(svg_no_resolver.contains("xlink:href=\"rId3\""))
+  assert_true(svg_no_resolver.contains("data-ooxml-r-id=\"rId3\""))
+  // A resolver that returns None for this rId must behave identically
+  // — proving the fallback output is byte-for-byte unchanged whether
+  // or not a resolver is supplied, as long as it does not resolve.
+  let unknown = fn(_rid : String) -> String? { None }
+  let svg_unknown = render_svg(slide, hyperlink_resolver=unknown)
+  assert_eq(svg_no_resolver, svg_unknown)
+}
+
+///|
 /// §21.1.2.3.32 + §21.1.2.3.28 — a run with both `u="sng"` and
 /// `strike="sngStrike"` emits:
 ///   • `text-decoration="line-through"` on the `<text>` element

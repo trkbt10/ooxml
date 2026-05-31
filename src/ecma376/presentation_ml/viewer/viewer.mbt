@@ -49,6 +49,18 @@ pub fn render_svg(
   chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)? = _ => {
     None
   },
+  /// §21.1.2.3.5 CT_Hyperlink — a run's `<a:rPr>/<a:hlinkClick r:id>`
+  /// (and shape-level `<…NvPr>/<a:hlinkClick>`) carries the click
+  /// hyperlink as a relationship id scoped to the SLIDE part's rels.
+  /// The render is per-slide, so a single resolver `(rid) -> URL?`
+  /// bound to that slide's rels suffices.  When the resolver maps a
+  /// non-empty r:id to an external URL the renderer places it in
+  /// `xlink:href`; when it returns `None` (no resolver / unknown rId
+  /// / empty r:id) the renderer keeps the raw r:id in `xlink:href`
+  /// so existing output stays byte-identical.  The raw r:id always
+  /// surfaces as `data-ooxml-r-id` so consumers can do their own
+  /// rels lookup.
+  hyperlink_resolver? : (String) -> String? = _ => None,
   theme? : @theme.CT_OfficeStyleSheet? = None,
   chain? : @ph_resolver.SlideChain? = None,
   /// §19.2.1.26 — the presentation part's root `<p:presentation>`
@@ -132,6 +144,7 @@ pub fn render_svg(
     image_resolver,
     part_resolver,
     chart_part_resolver_factory,
+    hyperlink_resolver,
     chain,
     theme~,
   )
@@ -1097,6 +1110,7 @@ fn render_slide_shapes_svg(
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
+  hyperlink_resolver : (String) -> String?,
   chain : @ph_resolver.SlideChain?,
   theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
@@ -1121,6 +1135,7 @@ fn render_slide_shapes_svg(
         image_resolver,
         part_resolver,
         chart_part_resolver_factory,
+        hyperlink_resolver,
         nodes,
         chain,
         theme~,
@@ -1139,6 +1154,7 @@ fn render_shape_children(
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
+  hyperlink_resolver : (String) -> String?,
   out : Array[@xml.Node],
   chain : @ph_resolver.SlideChain?,
   theme? : @theme.CT_OfficeStyleSheet? = None,
@@ -1155,6 +1171,7 @@ fn render_shape_children(
             image_resolver,
             part_resolver,
             chart_part_resolver_factory,
+            hyperlink_resolver,
             chain~,
             theme~,
           ) {
@@ -1172,7 +1189,7 @@ fn render_shape_children(
     Some(ch) =>
       render_layout_only_shapes(
         parent, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
-        out, ch,
+        hyperlink_resolver, out, ch,
       )
   }
 }
@@ -1221,6 +1238,7 @@ fn render_layout_only_shapes(
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
+  hyperlink_resolver : (String) -> String?,
   out : Array[@xml.Node],
   chain : @ph_resolver.SlideChain,
 ) -> Unit {
@@ -1270,6 +1288,7 @@ fn render_layout_only_shapes(
             image_resolver,
             part_resolver,
             chart_part_resolver_factory,
+            hyperlink_resolver,
             chain=Some(chain),
           ) {
           out.push(n)
@@ -1391,6 +1410,7 @@ fn render_shape_svg(
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
+  hyperlink_resolver : (String) -> String?,
   chain? : @ph_resolver.SlideChain? = None,
   theme? : @theme.CT_OfficeStyleSheet? = None,
 ) -> Array[@xml.Node] {
@@ -1408,6 +1428,7 @@ fn render_shape_svg(
         ctx,
         defs,
         image_resolver,
+        hyperlink_resolver,
         theme~,
         master_tx_styles=chain_master_tx_styles(chain),
       )
@@ -1415,12 +1436,13 @@ fn render_shape_svg(
     "grpSp" =>
       render_group_svg(
         shape, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
-        chain,
+        hyperlink_resolver, chain,
       )
     "cxnSp" => render_connector_svg(shape, ctx, defs, image_resolver, theme~)
     "graphicFrame" =>
       render_graphic_frame_svg(
         shape, ctx, defs, image_resolver, part_resolver, chart_part_resolver_factory,
+        hyperlink_resolver,
       )
     "contentPart" => render_content_part_metadata(shape)
     _ => []
@@ -1517,6 +1539,7 @@ fn render_sp_shape_svg(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   image_resolver : (String) -> ResolvedImage?,
+  hyperlink_resolver : (String) -> String?,
   theme? : @theme.CT_OfficeStyleSheet? = None,
   master_tx_styles? : @xml.Element? = None,
 ) -> Array[@xml.Node] {
@@ -1686,6 +1709,7 @@ fn render_sp_shape_svg(
     h,
     ctx,
     defs,
+    hyperlink_resolver,
     master_lst_style~,
   )
 
@@ -3533,6 +3557,7 @@ fn render_shape_text_svg(
   h_emu : Double,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
+  hyperlink_resolver : (String) -> String?,
   master_lst_style? : @xml.Element? = None,
 ) -> Array[@xml.Node] {
   let tx_body = first_child_named(shape, "txBody")
@@ -3568,7 +3593,7 @@ fn render_shape_text_svg(
         return []
       }
       let result = layout_text_body(input)
-      let inner = render_layout_result_svg(result, defs)
+      let inner = render_layout_result_svg(result, defs, hyperlink_resolver)
       if inner.length() == 0 {
         return []
       }
@@ -5899,6 +5924,7 @@ fn build_bullet_text_node(
 fn render_layout_result_svg(
   result : LayoutResult,
   defs : SvgDefsCollector,
+  hyperlink_resolver : (String) -> String?,
 ) -> Array[@xml.Node] {
   let nodes : Array[@xml.Node] = []
   for para in result.paragraphs {
@@ -6084,19 +6110,46 @@ fn render_layout_result_svg(
         let text_node = @markup.elem_ns(
           "text", @markup.svg_ns, text_attrs, text_children,
         )
-        // §21.1.2.3.7 — link wrapping: wrap the `<text>` in a
-        // hyperlink anchor.  The `link_id` carries the raw r:id from
-        // `<a:hlinkClick @r:id>`; per §21.1.2.3.5 the r:id resolves
-        // through the slide's relationship part to a URL.  We surface
-        // the raw r:id as `data-ooxml-r-id` so downstream consumers
-        // can apply the rels lookup; the xlink:href stays the raw
-        // r:id until a rels resolver is wired into render_svg.
+        // §21.1.2.3.5 / §21.1.2.3.7 — link wrapping: wrap the `<text>`
+        // in a hyperlink anchor.  The `link_id` carries the raw r:id
+        // from `<a:hlinkClick @r:id>`; per §21.1.2.3.5 that r:id
+        // resolves through the SLIDE part's relationship table to a
+        // concrete external URL.  When `hyperlink_resolver` maps a
+        // NON-EMPTY r:id to a URL we place the RESOLVED URL in
+        // `xlink:href` / `href`.  Otherwise (no resolver / unknown
+        // rId / empty r:id — the latter being an action-only internal
+        // jump per §21.1.2.3.5) we keep the raw r:id in `xlink:href`
+        // so the output stays byte-identical to the pre-resolver
+        // emitter.  The raw r:id always surfaces as `data-ooxml-r-id`
+        // so consumers can apply the rels lookup themselves.
         match span.span.link_id {
-          Some(href) => {
-            let a_attrs : Array[@xml.Attribute] = [
-              @markup.attr_ns("xlink", "href", @markup.xlink_ns, href),
-              @markup.attr("data-ooxml-r-id", href),
-            ]
+          Some(rid) => {
+            // §21.1.2.3.5 — resolve the slide-rels r:id to an external
+            // URL only for a non-empty r:id; an empty r:id is an
+            // action-only internal jump and stays unresolved.
+            let resolved : String? = if rid.length() > 0 {
+              hyperlink_resolver(rid)
+            } else {
+              None
+            }
+            // When the r:id resolves, the resolved URL goes into BOTH
+            // `xlink:href` (SVG 1.1) and `href` (SVG 2 / HTML) so the
+            // anchor navigates in every consumer.  When it does NOT
+            // resolve we emit ONLY the raw-r:id `xlink:href`, matching
+            // the pre-resolver byte output exactly.
+            let a_attrs : Array[@xml.Attribute] = match resolved {
+              Some(url) =>
+                [
+                  @markup.attr_ns("xlink", "href", @markup.xlink_ns, url),
+                  @markup.attr("href", url),
+                  @markup.attr("data-ooxml-r-id", rid),
+                ]
+              None =>
+                [
+                  @markup.attr_ns("xlink", "href", @markup.xlink_ns, rid),
+                  @markup.attr("data-ooxml-r-id", rid),
+                ]
+            }
             match span.span.link_tooltip {
               Some(t) =>
                 a_attrs.push(
@@ -6915,6 +6968,7 @@ fn render_group_svg(
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
+  hyperlink_resolver : (String) -> String?,
   chain : @ph_resolver.SlideChain?,
 ) -> Array[@xml.Node] {
   let grp_sp_pr = first_child_named(grp, "grpSpPr")
@@ -6961,6 +7015,7 @@ fn render_group_svg(
               image_resolver,
               part_resolver,
               chart_part_resolver_factory,
+              hyperlink_resolver,
               chain~,
             ) {
             g_children.push(n)
@@ -7254,6 +7309,7 @@ fn render_graphic_frame_svg(
   image_resolver : (String) -> ResolvedImage?,
   part_resolver : (String) -> @xml.Element?,
   chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
+  hyperlink_resolver : (String) -> String?,
 ) -> Array[@xml.Node] {
   // §19.3.1.21: `<p:graphicFrame>` uses `<p:xfrm>` (PresentationML
   // namespace) for transform, not `<a:xfrm>` inside `<p:spPr>`.
@@ -7272,7 +7328,9 @@ fn render_graphic_frame_svg(
   // §21.1.3 DrawingML table — detect <a:graphic>/<a:graphicData>/<a:tbl>
   // and emit a full table rendering. Otherwise fall back to the
   // labelled placeholder.
-  let table_nodes = render_graphic_frame_table_nodes(frame, w, h, ctx, defs)
+  let table_nodes = render_graphic_frame_table_nodes(
+    frame, w, h, ctx, defs, hyperlink_resolver,
+  )
   // §19.3.1.16 / §15.2.7 OLE — look for a `<p:oleObj>` carrying a
   // `<p:pic>` (modern preview path) or a sibling `<p:pic>` so we can
   // emit an image instead of the placeholder. Mirrors web-pptx

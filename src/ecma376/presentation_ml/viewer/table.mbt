@@ -39,14 +39,22 @@
 /// frame carries no `<a:graphic>/<a:graphicData>/<a:tbl>`.  Callers
 /// thread the nodes straight into the SVG tree; no markup is ever
 /// assembled by string concatenation.
+/// §21.1.2.3.5 — table cells carry §21.1.2 text bodies whose runs may
+/// hold `<a:hlinkClick r:id>` hyperlinks.  `hyperlink_resolver` maps a
+/// slide-rels r:id to its external URL; it defaults to `_ => None`,
+/// which keeps the raw-r:id fallback (byte-identical to the
+/// pre-resolver emitter) for callers / tests that do not supply one.
 pub fn render_graphic_frame_table_svg(
   frame : @xml.Element,
   width : Double,
   height : Double,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
+  hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> Array[@xml.Node] {
-  render_graphic_frame_table_nodes(frame, width, height, ctx, defs)
+  render_graphic_frame_table_nodes(
+    frame, width, height, ctx, defs, hyperlink_resolver,
+  )
 }
 
 ///|
@@ -59,6 +67,7 @@ fn render_graphic_frame_table_nodes(
   height : Double,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
+  hyperlink_resolver : (String) -> String?,
 ) -> Array[@xml.Node] {
   // <p:graphicFrame> children:
   //   <p:nvGraphicFramePr> ... <p:xfrm/> <a:graphic>
@@ -74,7 +83,7 @@ fn render_graphic_frame_table_nodes(
   }
   match tbl {
     None => []
-    Some(t) => render_table_svg(t, width, height, ctx, defs)
+    Some(t) => render_table_svg(t, width, height, ctx, defs, hyperlink_resolver)
   }
 }
 
@@ -88,6 +97,7 @@ fn render_table_svg(
   height : Double,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
+  hyperlink_resolver : (String) -> String?,
 ) -> Array[@xml.Node] {
   let tbl_grid = first_child_named(tbl, "tblGrid")
   // Column widths in EMU per §20.1.4.2.10. When the sums don't match
@@ -106,7 +116,9 @@ fn render_table_svg(
   for i in 0..<rows.length() {
     let row = rows[i]
     let row_h = row_heights[i]
-    render_row(row, col_widths, y, row_h, ctx, defs, cell_nodes)
+    render_row(
+      row, col_widths, y, row_h, ctx, defs, hyperlink_resolver, cell_nodes,
+    )
     y = y + row_h
   }
   [
@@ -184,6 +196,7 @@ fn render_row(
   row_height : Double,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
+  hyperlink_resolver : (String) -> String?,
   out : Array[@xml.Node],
 ) -> Unit {
   let mut x = 0.0
@@ -214,7 +227,9 @@ fn render_row(
             }
           }
           if !h_merge && !v_merge {
-            render_cell(elt, x, y, span_w, row_height, ctx, defs, out)
+            render_cell(
+              elt, x, y, span_w, row_height, ctx, defs, hyperlink_resolver, out,
+            )
           }
           x = x + span_w
           col_idx = col_idx + grid_span
@@ -234,6 +249,7 @@ fn render_cell(
   h : Double,
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
+  hyperlink_resolver : (String) -> String?,
   out : Array[@xml.Node],
 ) -> Unit {
   let tc_pr = first_child_named(cell, "tcPr")
@@ -312,7 +328,9 @@ fn render_cell(
           "g",
           @markup.svg_ns,
           g_attrs,
-          render_shape_text_svg(cell, inner_w, inner_h, ctx, defs),
+          render_shape_text_svg(
+            cell, inner_w, inner_h, ctx, defs, hyperlink_resolver,
+          ),
         ),
       )
     }
