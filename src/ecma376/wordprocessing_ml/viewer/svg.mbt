@@ -574,6 +574,12 @@ priv struct RunSpan {
   /// vertical line at the span's x position instead of advancing
   /// the text cursor (the span carries zero width).
   bar_tab : Bool
+  /// §17.3.1.38 ST_TabTlc — the tab leader for this `\t` tab span:
+  /// "dot" / "hyphen" / "underscore" / "heavy" / "middleDot", or ""
+  /// (also "none") when the tab has no leader.  The emitter fills the
+  /// tab's advance with a matching dotted / dashed / solid rule at the
+  /// baseline (Word's "Table of Contents"-style dot leaders).
+  tab_leader : String
   /// §17.3.1.10 `<w:autoSpaceDE>` — insert 和欧間隔 (JIS X 4051 四分アキ)
   /// between East Asian text and adjacent Western *letters*.  Defaults
   /// to `true` (Word's default); set from the paragraph's `<w:pPr>`.
@@ -635,7 +641,8 @@ priv struct ParaProps {
   /// ascending so the cursor can advance to the next eligible stop
   /// in a single sweep. Empty when the paragraph declares no custom
   /// tabs (the renderer then falls back to a default 0.5-inch grid).
-  tab_stops : Array[(Double, String)]
+  /// Each entry is `(position_px, ST_TabJc kind, ST_TabTlc leader)`.
+  tab_stops : Array[(Double, String, String)]
   /// §17.3.1.6 `<w:shd @fill>` paragraph shading. `"#rrggbb"` when a
   /// `@fill` hex literal is present; empty string otherwise. Empty
   /// suppresses the background rect emission entirely.
@@ -3075,7 +3082,7 @@ fn resolve_para_props(
   // `<w:spacing>` attributes on `<w:pPr>` still override below.
   let mut space_before = 0.0
   let mut space_after = 0.0
-  let tab_stops : Array[(Double, String)] = []
+  let tab_stops : Array[(Double, String, String)] = []
   let mut line_height_spec : LineHeightSpec = if apply_office_defaults {
     LineHeightAuto(OFFICE_NORMAL_LINE_FACTOR)
   } else {
@@ -3304,7 +3311,17 @@ fn resolve_para_props(
                   if kept {
                     let pos_twips = parse_double_attr(tab_el, "pos", 0.0)
                     if pos_twips > 0.0 {
-                      tab_stops.push((pos_twips * TWIPS_TO_PX, val_kind))
+                      // §17.18.86 ST_TabTlc — the optional `@leader`
+                      // fills the tab gap with a repeated glyph: none
+                      // (default) / dot / hyphen / underscore / heavy /
+                      // middleDot.  Carried alongside the stop so the
+                      // resolved tab span can paint the leader.
+                      let leader = attr_value(tab_el, "leader").unwrap_or(
+                        "none",
+                      )
+                      tab_stops.push(
+                        (pos_twips * TWIPS_TO_PX, val_kind, leader),
+                      )
                     }
                   }
                 }
@@ -3313,8 +3330,8 @@ fn resolve_para_props(
           }
       }
       tab_stops.sort_by(fn(a, b) {
-        let (ap, _) = a
-        let (bp, _) = b
+        let (ap, _, _) = a
+        let (bp, _, _) = b
         ap.compare(bp)
       })
     }
@@ -3843,6 +3860,7 @@ fn resolve_run_props(
     kern_half_points,
     lang,
     bar_tab: false,
+    tab_leader: "",
     // Paragraph-level toggles; default ON, overridden per paragraph in
     // `collect_paragraph_spans`.
     auto_space_de: true,
@@ -4012,6 +4030,7 @@ fn default_run_template(
     kern_half_points: 0.0,
     lang: "",
     bar_tab: false,
+    tab_leader: "",
     // §17.3.1.10/.11 — both East-Asian auto-space toggles default ON;
     // `collect_paragraph_spans` overrides them per paragraph.
     auto_space_de: true,
@@ -6092,7 +6111,7 @@ fn parse_border_side(el : @xml.Element?, fallback : BorderSide) -> BorderSide {
 fn resolve_tab_spans(
   spans : Array[RunSpan],
   line_origin : Double,
-  tab_stops : Array[(Double, String)],
+  tab_stops : Array[(Double, String, String)],
 ) -> Array[RunSpan] {
   let out : Array[RunSpan] = []
   let mut cursor = line_origin
@@ -6102,7 +6121,7 @@ fn resolve_tab_spans(
   while i < spans.length() {
     let span = spans[i]
     if span.text == "\t" {
-      let (target, kind) = next_tab_stop_after(cursor, tab_stops)
+      let (target, kind, leader) = next_tab_stop_after(cursor, tab_stops)
       // §17.18.87 — apply per-justification alignment.  Measure
       // the width of the text run that immediately follows the
       // tab (until the next tab / line break) and adjust the
@@ -6133,6 +6152,14 @@ fn resolve_tab_spans(
         width_px: advance,
         inline_image: None,
         bar_tab: kind == "bar",
+        // §17.3.1.38 — a `bar` tab paints a rule, not a leader; every
+        // other justification carries the stop's leader through to the
+        // emitter (which draws nothing when it is "none"/"").
+        tab_leader: if kind == "bar" {
+          "none"
+        } else {
+          leader
+        },
       })
       cursor = cursor + advance
     } else {
@@ -6207,20 +6234,21 @@ fn decimal_prefix_width(spans : Array[RunSpan], start : Int) -> Double {
 /// when no explicit stop applies.
 fn next_tab_stop_after(
   cursor : Double,
-  tab_stops : Array[(Double, String)],
-) -> (Double, String) {
+  tab_stops : Array[(Double, String, String)],
+) -> (Double, String, String) {
   for stop in tab_stops {
-    let (pos, kind) = stop
+    let (pos, kind, leader) = stop
     if pos > cursor {
-      return (pos, kind)
+      return (pos, kind, leader)
     }
   }
+  // Default-grid stops (no explicit `<w:tab>`) carry no leader.
   let interval = default_tab_interval_px
   if interval <= 0.0 {
-    return (cursor, "left")
+    return (cursor, "left", "none")
   }
   let n = (cursor / interval).floor() + 1.0
-  (n * interval, "left")
+  (n * interval, "left", "none")
 }
 
 ///|
@@ -8430,6 +8458,47 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
           [],
         ),
       )
+      x_cursor = x_cursor + span.width_px
+      continue
+    }
+    // §17.3.1.38 ST_TabTlc — a tab leader fills the tab's advance with
+    // a repeated glyph pattern (dotted "....." in a table of contents,
+    // a solid underscore rule, etc.).  We paint it as a styled
+    // horizontal rule at the line baseline spanning the tab gap
+    // [x_cursor, x_cursor + width_px]: dotted for dot / middleDot,
+    // dashed for hyphen, solid for underscore, thick solid for heavy.
+    if span.text == "\t" &&
+      span.tab_leader != "none" &&
+      span.tab_leader.length() > 0 &&
+      span.width_px > 0.0 {
+      let leader_color = if span.color.length() > 0 {
+        span.color
+      } else {
+        "#000000"
+      }
+      let (dash, sw) = match span.tab_leader {
+        "dot" => ("1 2", 1.0)
+        "middleDot" => ("1 3", 1.0)
+        "hyphen" => ("3 2", 1.0)
+        "underscore" => ("", 1.0)
+        "heavy" => ("", 2.0)
+        // Unknown ST_TabTlc value — thin solid rule so the leader still
+        // reads; the raw value is surfaced via data-ooxml-tab-leader.
+        _ => ("", 1.0)
+      }
+      let leader_attrs : Array[@xml.Attribute] = [
+        @markup.attr("x1", fmt_double(x_cursor)),
+        @markup.attr("y1", fmt_double(line.y_baseline)),
+        @markup.attr("x2", fmt_double(x_cursor + span.width_px)),
+        @markup.attr("y2", fmt_double(line.y_baseline)),
+        @markup.attr("stroke", leader_color),
+        @markup.attr("stroke-width", fmt_double(sw)),
+        @markup.attr("data-ooxml-tab-leader", span.tab_leader),
+      ]
+      if dash.length() > 0 {
+        leader_attrs.push(@markup.attr("stroke-dasharray", dash))
+      }
+      out.push(@markup.elem_ns("line", @markup.svg_ns, leader_attrs, []))
       x_cursor = x_cursor + span.width_px
       continue
     }

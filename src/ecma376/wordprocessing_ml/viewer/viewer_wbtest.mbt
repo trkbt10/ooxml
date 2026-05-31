@@ -4483,3 +4483,81 @@ test "render_svg renders tcBorders diagonal tl2br / tr2bl strokes" {
   }
   assert_eq(count_blue(svg), 2)
 }
+
+///|
+/// §17.3.1.38 ST_TabTlc — a `<w:tab>` stop carrying `w:leader="dot"`
+/// must fill the tab gap with a dotted leader rule (Word's table-of-
+/// contents dot leaders).  Previously the leader attribute was dropped
+/// and the tab rendered as blank whitespace.
+test "render_svg paints a dotted tab leader for w:leader=dot" {
+  let tab_stop = @xml.Node::Element({
+    name: name("tab"),
+    attributes: [
+      attr("val", "left"),
+      attr("pos", "4320"),
+      attr("leader", "dot"),
+    ],
+    children: [],
+  })
+  let p_pr = @xml.Node::Element({
+    name: name("pPr"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("tabs"),
+        attributes: [],
+        children: [tab_stop],
+      }),
+    ],
+  })
+  let run_a = @xml.Node::Element({
+    name: name("r"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("t"),
+        attributes: [],
+        children: [@xml.Node::Text("A")],
+      }),
+    ],
+  })
+  let run_tab = @xml.Node::Element({
+    name: name("r"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({ name: name("tab"), attributes: [], children: [] }),
+    ],
+  })
+  let run_b = @xml.Node::Element({
+    name: name("r"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("t"),
+        attributes: [],
+        children: [@xml.Node::Text("B")],
+      }),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [p_pr, run_a, run_tab, run_b],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  // The leader renders as a dotted <line> tagged with its spec value.
+  assert_true(svg.contains("data-ooxml-tab-leader=\"dot\""))
+  assert_true(svg.contains("stroke-dasharray"))
+}
