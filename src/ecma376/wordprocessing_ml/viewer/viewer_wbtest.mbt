@@ -4363,3 +4363,123 @@ test "render_svg renders OMML paragraph wrapper as pure SVG" {
   assert_true(svg.contains(">y</text>"))
   assert_false(svg.contains("foreignObject"))
 }
+
+///|
+/// §17.4.71 tl2br / §17.4.72 tr2bl — diagonal cell borders.  A cell
+/// whose `<w:tcBorders>` declares `<w:tl2br>` and `<w:tr2bl>` must
+/// emit a diagonal `<line>` across each direction.  Previously the
+/// renderer read only the four cardinal sides, so diagonals were
+/// dropped entirely.
+test "render_svg renders tcBorders diagonal tl2br / tr2bl strokes" {
+  let cell = @xml.Node::Element({
+    name: name("tc"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("tcPr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("tcBorders"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("tl2br"),
+                attributes: [
+                  attr("val", "single"),
+                  attr("sz", "8"),
+                  attr("color", "0000FF"),
+                ],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("tr2bl"),
+                attributes: [
+                  attr("val", "single"),
+                  attr("sz", "8"),
+                  attr("color", "0000FF"),
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("p"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("r"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("t"),
+                attributes: [],
+                children: [@xml.Node::Text("X")],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("tbl"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("tblPr"),
+                attributes: [],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("tblGrid"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("gridCol"),
+                    attributes: [attr("w", "2880")],
+                    children: [],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("tr"),
+                attributes: [],
+                children: [cell],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  // No side borders / tblBorders are set, so the only strokes are the
+  // two diagonals.  Both must render in the declared blue.
+  let count_blue = fn(s : String) -> Int {
+    let needle = "stroke=\"#0000FF\""
+    let mut count = 0
+    let mut idx = 0
+    let nlen = needle.length()
+    while idx + nlen <= s.length() {
+      if s[idx:idx + nlen].to_owned() == needle {
+        count = count + 1
+        idx = idx + nlen
+      } else {
+        idx = idx + 1
+      }
+    }
+    count
+  }
+  assert_eq(count_blue(svg), 2)
+}

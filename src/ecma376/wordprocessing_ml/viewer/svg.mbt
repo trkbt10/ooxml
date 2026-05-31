@@ -959,6 +959,13 @@ priv struct LaidTableCell {
   border_left : BorderSide
   border_bottom : BorderSide
   border_right : BorderSide
+  /// §17.4.71 tl2br / §17.4.72 tr2bl — diagonal cell borders. A
+  /// `tl2br` border strikes from the cell's top-left to its
+  /// bottom-right corner; `tr2bl` from top-right to bottom-left.
+  /// Default `BorderSide::none()` (cells get no diagonal unless one
+  /// is declared — there is no grid fallback for diagonals).
+  border_tl2br : BorderSide
+  border_tr2bl : BorderSide
   /// §17.4.42 tblCellMar / §17.4.69 tcMar — per-cell padding in
   /// pixels, derived from the table-level tblCellMar overlaid by
   /// any cell-level tcMar.
@@ -6715,6 +6722,10 @@ fn layout_table(
       let mut border_left = fb_left
       let mut border_bottom = fb_bottom
       let mut border_right = fb_right
+      // §17.4.71/72 — diagonal borders have no table-grid fallback;
+      // a cell only carries a diagonal when its tcBorders declares one.
+      let mut border_tl2br = BorderSide::none()
+      let mut border_tr2bl = BorderSide::none()
       // §17.7.6 — resolve the cell's effective tcPr by layering
       // the table-style cascade (whole_table / bandX / firstX /
       // lastX / corners) under the direct cell tcPr. The merged
@@ -6842,6 +6853,15 @@ fn layout_table(
               border_right = parse_border_side(
                 first_child_named(borders, "right"),
                 border_right,
+              )
+              // §17.4.71 tl2br / §17.4.72 tr2bl — diagonal borders.
+              border_tl2br = parse_border_side(
+                first_child_named(borders, "tl2br"),
+                border_tl2br,
+              )
+              border_tr2bl = parse_border_side(
+                first_child_named(borders, "tr2bl"),
+                border_tr2bl,
               )
               // §17.4.61 start/end aliases when bidi tables flip
               // left/right. Use them as a fallback when the explicit
@@ -7051,6 +7071,8 @@ fn layout_table(
         border_left,
         border_bottom,
         border_right,
+        border_tl2br,
+        border_tr2bl,
         padding: cell_margins,
         v_align,
       })
@@ -9000,6 +9022,26 @@ fn build_table_nodes(t : LaidTable) -> Array[@xml.Node] {
         cx_right,
         cy_top,
         cx_right,
+        cy_bottom,
+      )
+      // §17.4.71 tl2br — diagonal stroke from the top-left corner to
+      // the bottom-right corner of the cell rectangle.
+      append_border_line_nodes(
+        out,
+        c.border_tl2br,
+        cx_left,
+        cy_top,
+        cx_right,
+        cy_bottom,
+      )
+      // §17.4.72 tr2bl — diagonal stroke from the top-right corner to
+      // the bottom-left corner.
+      append_border_line_nodes(
+        out,
+        c.border_tr2bl,
+        cx_right,
+        cy_top,
+        cx_left,
         cy_bottom,
       )
       // Cell paragraphs (already at absolute coordinates).

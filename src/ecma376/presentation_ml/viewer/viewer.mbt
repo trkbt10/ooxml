@@ -2218,16 +2218,27 @@ fn build_line_attrs(
     @markup.attr("stroke", color_str),
     @markup.attr("stroke-width", width_str),
   ]
-  // §20.1.10.49 ST_PresetLineDashVal — `<a:prstDash val="…">` selects
-  // one of the spec dash patterns; we map them to SVG stroke-dasharray
-  // multiples of the stroke width.
+  // §20.1.10.49 ST_PresetLineDashVal / §20.1.8.20 custDash —
+  // `EG_LineDashProperties` is a choice between `<a:prstDash val="…">`
+  // (a named preset pattern) and `<a:custDash>` (an explicit dash/space
+  // list).  Both map to an SVG `stroke-dasharray` scaled by the stroke
+  // width.  Previously only `<a:prstDash>` was honoured on shape
+  // strokes, so a custom-dashed outline rendered solid.
   match first_child_named(line, "prstDash") {
-    None => ()
     Some(d) =>
       match attr_value(d, "val") {
         None => ()
         Some(pattern) =>
           match preset_dash_pattern(pattern, stroke_width_px) {
+            "" => ()
+            arr => attrs.push(@markup.attr("stroke-dasharray", arr))
+          }
+      }
+    None =>
+      match first_child_named(line, "custDash") {
+        None => ()
+        Some(cd) =>
+          match build_custom_dash_pattern(cd, stroke_width_px) {
             "" => ()
             arr => attrs.push(@markup.attr("stroke-dasharray", arr))
           }

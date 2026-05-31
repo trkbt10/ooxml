@@ -1984,3 +1984,41 @@ test "viewer §20.1.4.2.18 a:tcPr margins + anchor surface as data-ooxml-cell-*"
   // Anchor surfaces.
   assert_true(svg.contains("data-ooxml-cell-anchor=\"ctr\""))
 }
+
+///|
+/// §20.1.8.20 custDash — a shape stroke carrying `<a:custDash>` (rather
+/// than a preset `<a:prstDash>`) must emit a scaled SVG
+/// `stroke-dasharray`.  Previously `build_line_attrs` only honoured
+/// `<a:prstDash>`, so a custom-dashed outline rendered solid.
+test "build_line_attrs honours custDash on a shape stroke" {
+  // d=300% sp=150% of the 12700-EMU (1 pt) stroke width → 38100 19050.
+  let ds : @xml.Node = @xml.Node::Element({
+    name: name("ds"),
+    attributes: [
+      { name: name("d"), value: "300000" },
+      { name: name("sp"), value: "150000" },
+    ],
+    children: [],
+  })
+  let line : @xml.Element = {
+    name: name("ln"),
+    attributes: [{ name: name("w"), value: "12700" }],
+    children: [
+      @xml.Node::Element({
+        name: name("custDash"),
+        attributes: [],
+        children: [ds],
+      }),
+    ],
+  }
+  let defs = SvgDefsCollector::new()
+  let ctx = ColorResolveContext::empty()
+  let attrs = build_line_attrs(line, ctx, defs)
+  let mut dash = ""
+  for a in attrs {
+    if a.name.local_name == "stroke-dasharray" {
+      dash = a.value
+    }
+  }
+  assert_eq(dash, "38100 19050")
+}
