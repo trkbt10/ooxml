@@ -160,7 +160,21 @@ fn render_line_chart(
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
   if !axes.val_deleted() {
-    for n2 in y_axis_ticks(px, py, ph, max_v, pw, fw, axes.val_major(), style=Some(style), draw_minor_gridlines=axes.val_minor_gridlines(), num_fmt=axes.val_num_fmt(), tick_lbl_pos=axes.val_tick_lbl_pos(), log_base=axes.val_log_base()) {
+    for
+      n2 in y_axis_ticks(
+        px,
+        py,
+        ph,
+        max_v,
+        pw,
+        fw,
+        axes.val_major(),
+        style=Some(style),
+        draw_minor_gridlines=axes.val_minor_gridlines(),
+        num_fmt=axes.val_num_fmt(),
+        tick_lbl_pos=axes.val_tick_lbl_pos(),
+        log_base=axes.val_log_base(),
+      ) {
       nodes.push(n2)
     }
   }
@@ -220,49 +234,14 @@ fn render_line_chart(
       pts.push((x, y))
     }
     if smooth && pts.length() >= 2 {
-      // Catmull-Rom → cubic Bezier conversion.  For each interior
-      // segment (P1 → P2), compute control points from the
-      // surrounding points P0 / P3 (clamped to endpoints).
-      let path_buf = StringBuilder::new()
-      let (x0_init, y0_init) = pts[0]
-      path_buf.write_string("M")
-      path_buf.write_string(format_double(x0_init))
-      path_buf.write_string(",")
-      path_buf.write_string(format_double(y0_init))
-      let mut i = 0
-      while i < pts.length() - 1 {
-        let (x_p1, y_p1) = pts[i]
-        let (x_p2, y_p2) = pts[i + 1]
-        let (x_p0, y_p0) = if i == 0 { pts[i] } else { pts[i - 1] }
-        let (x_p3, y_p3) = if i + 2 < pts.length() {
-          pts[i + 2]
-        } else {
-          pts[i + 1]
-        }
-        let cx1 = x_p1 + (x_p2 - x_p0) / 6.0
-        let cy1 = y_p1 + (y_p2 - y_p0) / 6.0
-        let cx2 = x_p2 - (x_p3 - x_p1) / 6.0
-        let cy2 = y_p2 - (y_p3 - y_p1) / 6.0
-        path_buf.write_string(" C")
-        path_buf.write_string(format_double(cx1))
-        path_buf.write_string(",")
-        path_buf.write_string(format_double(cy1))
-        path_buf.write_string(" ")
-        path_buf.write_string(format_double(cx2))
-        path_buf.write_string(",")
-        path_buf.write_string(format_double(cy2))
-        path_buf.write_string(" ")
-        path_buf.write_string(format_double(x_p2))
-        path_buf.write_string(",")
-        path_buf.write_string(format_double(y_p2))
-        i = i + 1
-      }
+      // §21.2.2.220 — render the series as a smooth Catmull-Rom curve
+      // (shared with the scatter chart via `catmull_rom_path`).
       nodes.push(
         @markup.elem_ns(
           "path",
           @markup.svg_ns,
           [
-            @markup.attr("d", path_buf.to_string()),
+            @markup.attr("d", catmull_rom_path(pts)),
             @markup.attr("fill", "none"),
             @markup.attr("stroke", series_color),
             @markup.attr("stroke-width", format_double(h * 0.005)),
@@ -309,10 +288,19 @@ fn render_line_chart(
     // §21.2.2.211 trendline — linear regression overlay.
     match read_trendline(ser_elems[si]) {
       Some(tl_elem) =>
-        for tn in render_trendline(
-          tl_elem, values, px, py, pw, ph, max_v, step, series_color,
-          h * 0.003,
-        ) {
+        for
+          tn in render_trendline(
+            tl_elem,
+            values,
+            px,
+            py,
+            pw,
+            ph,
+            max_v,
+            step,
+            series_color,
+            h * 0.003,
+          ) {
           nodes.push(tn)
         }
       None => ()
@@ -323,16 +311,11 @@ fn render_line_chart(
         let pts : Array[(Double, Double)] = []
         for i, v in values {
           let x = px + i.to_double() * step
-          let y = if max_v > 0.0 {
-            py + ph - v / max_v * ph
-          } else {
-            py + ph
-          }
+          let y = if max_v > 0.0 { py + ph - v / max_v * ph } else { py + ph }
           pts.push((x, y))
         }
-        for en in render_err_bars(
-          eb_cfg, pts, max_v, ph, series_color, h * 0.002,
-        ) {
+        for
+          en in render_err_bars(eb_cfg, pts, max_v, ph, series_color, h * 0.002) {
           nodes.push(en)
         }
       }
@@ -347,7 +330,16 @@ fn render_line_chart(
       let bx = px + i.to_double() * step
       let by = py + ph + fh * 0.018
       nodes.push(
-        chart_text(label, bx, by, w, h, anchor="middle", baseline="hanging", style=Some(style)),
+        chart_text(
+          label,
+          bx,
+          by,
+          w,
+          h,
+          anchor="middle",
+          baseline="hanging",
+          style=Some(style),
+        ),
       )
     }
   }
@@ -370,9 +362,10 @@ fn render_line_chart(
           let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
           points.push((x, y, v, cat_name))
         }
-        for nd in render_data_labels(
-          cfg, points, ser_name, total, w, h, label_offset, style,
-        ) {
+        for
+          nd in render_data_labels(
+            cfg, points, ser_name, total, w, h, label_offset, style,
+          ) {
           nodes.push(nd)
         }
       }

@@ -95,6 +95,37 @@ test "gradFill with path child becomes radialGradient" {
 }
 
 ///|
+/// §20.1.8.46 (a:path) / §20.1.8.30 (a:fillToRect) — a radial shape
+/// fill with an off-centre `<a:fillToRect>` must move the gradient
+/// centre off the 50%/50% default.  With l=50% t=50% r=0% b=0% the
+/// uncovered-area midpoint is (75%, 75%) — a bottom-right highlight.
+test "gradFill path fillToRect shifts radial centre off 50/50" {
+  let stop0 = fill_make_elt("gs", [("pos", "0")], [
+    fill_make_elt("srgbClr", [("val", "FFFFFF")], []),
+  ])
+  let stop100 = fill_make_elt("gs", [("pos", "100000")], [
+    fill_make_elt("srgbClr", [("val", "000000")], []),
+  ])
+  let gs_lst = fill_make_elt("gsLst", [], [stop0, stop100])
+  // fillToRect margins in DrawingML 1000ths-of-percent: l=t=50%, r=b=0%.
+  let ftr = fill_make_elt(
+    "fillToRect",
+    [("l", "50000"), ("t", "50000"), ("r", "0"), ("b", "0")],
+    [],
+  )
+  let path = fill_make_elt("path", [("path", "circle")], [ftr])
+  let grad = fill_make_elt("gradFill", [], [gs_lst, path])
+  let defs = SvgDefsCollector::new()
+  let ctx = ColorResolveContext::empty()
+  let _ = render_fill_attr(grad, defs, ctx)
+  let defs_str = defs.to_defs_element()
+  assert_true(defs_str.contains("radialGradient"))
+  // Centre moved to (75%, 75%), not the default (50%, 50%).
+  assert_true(defs_str.contains("cx=\"75"))
+  assert_true(defs_str.contains("cy=\"75"))
+}
+
+///|
 test "blipFill with no resolver returns none" {
   let blip = fill_make_elt("blip", [("embed", "rId1")], [])
   let bf = fill_make_elt("blipFill", [], [blip])

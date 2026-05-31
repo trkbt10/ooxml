@@ -313,6 +313,7 @@ pub(all) struct NodeBounds {
   point_id : String
   bounds : BoundsRect
   shape : @preset_geometry.PresetShape
+  style_lbl : String?
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PresOfSpec {

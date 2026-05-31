@@ -84,6 +84,23 @@ pub fn measure_text_width(
 }
 
 ///|
+/// True when the resolved face for `(family, weight, italic)` actually
+/// carries a glyph for `codepoint`.  Glyph index 0 is the `.notdef`
+/// fallback box, so a zero result means the face does NOT cover the
+/// codepoint.  Renderers use this to substitute a richer Unicode form
+/// (e.g. a math double-struck letter) only when the active face can draw
+/// it, keeping the base glyph — and its correct advance width — otherwise.
+pub fn font_has_glyph(
+  codepoint : Int,
+  family~ : String,
+  weight? : Int = 400,
+  italic? : Bool = false,
+) -> Bool raise FontUnresolvedError {
+  let m = resolve_measurer(family, weight, italic)
+  m.glyph_index(codepoint) != 0
+}
+
+///|
 /// Single-character width with kerning context (the previous
 /// character contributes the kern adjustment).
 pub fn calculate_char_width(

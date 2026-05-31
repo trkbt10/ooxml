@@ -360,6 +360,8 @@ pub fn read_adjustments_lenient(@xml.Element) -> Array[Adjustment]
 
 pub fn rectangular_fallback(Int, Int) -> ShapeGeometry
 
+pub fn render_preset_shape_path(PresetShape, Int, Int, Array[Adjustment]) -> String
+
 pub fn render_shape_path(String, Int, Int, Array[Adjustment]) -> String?
 
 pub fn star_params(PresetShape) -> (Int, Int, Int, Int)?

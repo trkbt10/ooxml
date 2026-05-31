@@ -42,6 +42,7 @@ pub fn Package::remove_part(Self, String) -> Self raise @errors.SchemaViolation
 pub fn Package::remove_relationship(Self, String, String) -> Self raise @errors.SchemaViolation
 pub fn Package::required_part(Self, String, section~ : String, source_path~ : String) -> PackagePart raise @errors.ResourceMissing
 pub fn Package::save(Self) -> Bytes raise
+pub fn Package::validate(Self) -> Array[String]
 pub fn Package::with_content_type_override(Self, String, String) -> Self raise @errors.SchemaViolation
 pub fn[T] Package::with_optional_part(Self, String, T?, (T) -> Bytes) -> Self
 pub fn Package::with_part(Self, String, Bytes) -> Self

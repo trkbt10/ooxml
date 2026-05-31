@@ -182,15 +182,223 @@ fn xfrm_pair(
 }
 
 ///|
-/// §20.1.2.2.20 `<wpg:wgp>` — render a WordprocessingGroup of shapes.
-/// The group's child coordinate space is defined by
-/// `<wpg:grpSpPr>/<a:xfrm>` `chOff` / `chExt`; each child `<wps:wsp>`
-/// carries its own `<a:xfrm>` `off` / `ext` in that space, which we map
-/// into the group's rendered `w_px` × `h_px` box and render via
-/// `wsp_shape_nodes`.  Nested groups and pictures are not yet walked
-/// (a child without a resolvable shape geometry is simply skipped);
-/// shape children — the common case — paint at their mapped positions.
-fn build_inline_group(drawing : @xml.Element) -> MathPayload? {
+/// Locate a group child's `<a:xfrm>` — under `<wps:spPr>` for a shape /
+/// picture, or under `<wpg:grpSpPr>` for a nested group.
+fn child_xfrm_element(child : @xml.Element) -> @xml.Element? {
+  let props = match first_child_named(child, "spPr") {
+    Some(p) => Some(p)
+    None => first_child_named(child, "grpSpPr")
+  }
+  match props {
+    Some(p) => first_child_named(p, "xfrm")
+    None => None
+  }
+}
+
+///|
+/// Map a group child's `<a:xfrm>` `off`/`ext` from the parent child
+/// coordinate space (origin `ch_off`, scale `sx`/`sy`) into a pixel rect
+/// `(rx, ry, rw, rh)`.  `None` when the transform is absent or degenerate.
+fn group_child_rect(
+  child : @xml.Element,
+  ch_off_x : Double,
+  ch_off_y : Double,
+  sx : Double,
+  sy : Double,
+) -> (Double, Double, Double, Double)? {
+  let xfrm = match child_xfrm_element(child) {
+    Some(x) => x
+    None => return None
+  }
+  let (off_x, off_y) = match xfrm_pair(xfrm, "off", "x", "y") {
+    Some(p) => p
+    None => return None
+  }
+  let (ext_cx, ext_cy) = match xfrm_pair(xfrm, "ext", "cx", "cy") {
+    Some(p) => p
+    None => return None
+  }
+  let rw = ext_cx * sx
+  let rh = ext_cy * sy
+  if rw <= 0.0 || rh <= 0.0 {
+    return None
+  }
+  Some(((off_x - ch_off_x) * sx, (off_y - ch_off_y) * sy, rw, rh))
+}
+
+///|
+/// Wrap rendered child `nodes` in an SVG `<g transform="translate(rx,ry)">`.
+fn translate_group(
+  rx : Double,
+  ry : Double,
+  nodes : Array[@xml.Node],
+) -> @xml.Node {
+  @xml.Node::Element({
+    name: @markup.qname_ns("g", @markup.svg_ns),
+    attributes: [
+      @markup.attr(
+        "transform",
+        "translate(" + fmt_double(rx) + "," + fmt_double(ry) + ")",
+      ),
+    ],
+    children: nodes,
+  })
+}
+
+///|
+/// §20.2.2.5 — the relationship id of a `<pic:pic>`'s blip fill
+/// (`<pic:blipFill>/<a:blip @r:embed|@r:link>`), or `None`.
+fn pic_blip_rid(pic : @xml.Element) -> String? {
+  let bf = match first_child_named(pic, "blipFill") {
+    Some(b) => b
+    None => return None
+  }
+  let blip = match first_child_named(bf, "blip") {
+    Some(b) => b
+    None => return None
+  }
+  match attr_value(blip, "embed") {
+    Some(v) => Some(v)
+    None => attr_value(blip, "link")
+  }
+}
+
+///|
+/// §20.2.2.5 `<pic:pic>` — an SVG `<image>` at pixel rect (rx, ry, rw, rh)
+/// whose `href` is the blip resolved through `image_resolver` as a data
+/// URI.  `None` when the blip id is missing or unresolved.
+fn group_pic_image_node(
+  pic : @xml.Element,
+  rx : Double,
+  ry : Double,
+  rw : Double,
+  rh : Double,
+  image_resolver : (String) -> ResolvedImage?,
+) -> @xml.Node? {
+  let rid = match pic_blip_rid(pic) {
+    Some(r) => r
+    None => return None
+  }
+  let img = match image_resolver(rid) {
+    Some(i) => i
+    None => return None
+  }
+  let href = "data:" + img.mime_type + ";base64," + img.base64_data
+  Some(
+    @markup.elem_ns(
+      "image",
+      @markup.svg_ns,
+      [
+        @markup.attr("x", fmt_double(rx)),
+        @markup.attr("y", fmt_double(ry)),
+        @markup.attr("width", fmt_double(rw)),
+        @markup.attr("height", fmt_double(rh)),
+        @markup.attr("href", href),
+      ],
+      [],
+    ),
+  )
+}
+
+///|
+/// Render one group / canvas child already mapped to pixel rect
+/// (rx, ry, rw, rh): a `<wps:wsp>` paints its preset / custom geometry, a
+/// `<pic:pic>` paints its resolved blip image, and a nested `<wpg:grpSp>`
+/// recurses into its own child coordinate space.  Other child kinds
+/// (connectors, graphic frames) return `None` and are skipped.
+fn render_group_child_node(
+  child : @xml.Element,
+  rx : Double,
+  ry : Double,
+  rw : Double,
+  rh : Double,
+  image_resolver : (String) -> ResolvedImage?,
+) -> @xml.Node? {
+  match child.name.local_name {
+    "wsp" =>
+      match wsp_shape_nodes(child, rw, rh) {
+        Some(nodes) => Some(translate_group(rx, ry, nodes))
+        None => None
+      }
+    "pic" => group_pic_image_node(child, rx, ry, rw, rh, image_resolver)
+    "grpSp" => {
+      let nested = render_wpg_group_children(child, rw, rh, image_resolver)
+      if nested.length() > 0 {
+        Some(translate_group(rx, ry, nested))
+      } else {
+        None
+      }
+    }
+    _ => None
+  }
+}
+
+///|
+/// §20.1.2.2.20 / §20.1.2.2.6 — render the children of a `<wpg:wgp>` or
+/// nested `<wpg:grpSp>` `container` onto a `target_w` × `target_h` pixel
+/// box.  The container's `grpSpPr/xfrm` `chOff`/`chExt` define the child
+/// coordinate space; each child is mapped into the box and dispatched
+/// through `render_group_child_node` (shapes, pictures and nested groups
+/// alike).  Returns an empty array when the container carries no usable
+/// child geometry.
+fn render_wpg_group_children(
+  container : @xml.Element,
+  target_w : Double,
+  target_h : Double,
+  image_resolver : (String) -> ResolvedImage?,
+) -> Array[@xml.Node] {
+  let grp_sp_pr = match first_child_named(container, "grpSpPr") {
+    Some(s) => s
+    None => return []
+  }
+  let xfrm = match first_child_named(grp_sp_pr, "xfrm") {
+    Some(x) => x
+    None => return []
+  }
+  // Child coordinate space: chOff (origin) + chExt (extent).
+  let (ch_off_x, ch_off_y) = match xfrm_pair(xfrm, "chOff", "x", "y") {
+    Some(p) => p
+    None => return []
+  }
+  let (ch_ext_cx, ch_ext_cy) = match xfrm_pair(xfrm, "chExt", "cx", "cy") {
+    Some(p) => p
+    None => return []
+  }
+  if ch_ext_cx <= 0.0 || ch_ext_cy <= 0.0 {
+    return []
+  }
+  let sx = target_w / ch_ext_cx
+  let sy = target_h / ch_ext_cy
+  let children : Array[@xml.Node] = []
+  for child in container.children {
+    match child {
+      Element(c) =>
+        match group_child_rect(c, ch_off_x, ch_off_y, sx, sy) {
+          Some((rx, ry, rw, rh)) =>
+            match render_group_child_node(c, rx, ry, rw, rh, image_resolver) {
+              Some(node) => children.push(node)
+              None => ()
+            }
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  children
+}
+
+///|
+/// §20.1.2.2.20 `<wpg:wgp>` — render a WordprocessingGroup.  The group's
+/// child coordinate space is `<wpg:grpSpPr>/<a:xfrm>` `chOff` / `chExt`;
+/// each child carries its own `<a:xfrm>` `off` / `ext` in that space,
+/// which we map into the group's rendered `w_px` × `h_px` box.  Shapes
+/// (`<wps:wsp>`), pictures (`<pic:pic>`, resolved through `image_resolver`)
+/// and nested groups (`<wpg:grpSp>`, walked recursively) all paint at
+/// their mapped positions.
+fn build_inline_group(
+  drawing : @xml.Element,
+  image_resolver : (String) -> ResolvedImage?,
+) -> MathPayload? {
   let (w_px, h_px) = drawing_extent_size_px(drawing)
   if w_px <= 0.0 || h_px <= 0.0 {
     return None
@@ -199,78 +407,7 @@ fn build_inline_group(drawing : @xml.Element) -> MathPayload? {
     Some(g) => g
     None => return None
   }
-  let grp_sp_pr = match first_child_named(wgp, "grpSpPr") {
-    Some(s) => s
-    None => return None
-  }
-  let xfrm = match first_child_named(grp_sp_pr, "xfrm") {
-    Some(x) => x
-    None => return None
-  }
-  // Child coordinate space: chOff (origin) + chExt (extent).  Without
-  // both we cannot map child positions, so bail to a later renderer.
-  let (ch_off_x, ch_off_y) = match xfrm_pair(xfrm, "chOff", "x", "y") {
-    Some(p) => p
-    None => return None
-  }
-  let (ch_ext_cx, ch_ext_cy) = match xfrm_pair(xfrm, "chExt", "cx", "cy") {
-    Some(p) => p
-    None => return None
-  }
-  if ch_ext_cx <= 0.0 || ch_ext_cy <= 0.0 {
-    return None
-  }
-  let sx = w_px / ch_ext_cx
-  let sy = h_px / ch_ext_cy
-  let children : Array[@xml.Node] = []
-  for child in wgp.children {
-    match child {
-      Element(c) =>
-        if c.name.local_name == "wsp" {
-          // Child shape position / size in the group's child space.
-          let c_sp_pr = match first_child_named(c, "spPr") {
-            Some(s) => s
-            None => continue
-          }
-          let c_xfrm = match first_child_named(c_sp_pr, "xfrm") {
-            Some(x) => x
-            None => continue
-          }
-          let (off_x, off_y) = match xfrm_pair(c_xfrm, "off", "x", "y") {
-            Some(p) => p
-            None => continue
-          }
-          let (ext_cx, ext_cy) = match xfrm_pair(c_xfrm, "ext", "cx", "cy") {
-            Some(p) => p
-            None => continue
-          }
-          let rx = (off_x - ch_off_x) * sx
-          let ry = (off_y - ch_off_y) * sy
-          let rw = ext_cx * sx
-          let rh = ext_cy * sy
-          if rw <= 0.0 || rh <= 0.0 {
-            continue
-          }
-          match wsp_shape_nodes(c, rw, rh) {
-            Some(nodes) => {
-              let g : @xml.Element = {
-                name: @markup.qname_ns("g", @markup.svg_ns),
-                attributes: [
-                  @markup.attr(
-                    "transform",
-                    "translate(" + fmt_double(rx) + "," + fmt_double(ry) + ")",
-                  ),
-                ],
-                children: nodes,
-              }
-              children.push(@xml.Node::Element(g))
-            }
-            None => ()
-          }
-        }
-      _ => ()
-    }
-  }
+  let children = render_wpg_group_children(wgp, w_px, h_px, image_resolver)
   if children.length() == 0 {
     return None
   }
@@ -324,7 +461,10 @@ fn drawing_wpc_canvas(drawing : @xml.Element) -> @xml.Element? {
 /// backing rectangle.  Nested groups / pictures inside the canvas are
 /// not yet walked (skipped), so shape children paint at their EMU
 /// positions.
-fn build_inline_canvas(drawing : @xml.Element) -> MathPayload? {
+fn build_inline_canvas(
+  drawing : @xml.Element,
+  image_resolver : (String) -> ResolvedImage?,
+) -> MathPayload? {
   let (w_px, h_px) = drawing_extent_size_px(drawing)
   if w_px <= 0.0 || h_px <= 0.0 {
     return None
@@ -347,13 +487,18 @@ fn build_inline_canvas(drawing : @xml.Element) -> MathPayload? {
                 Some(v) =>
                   if v.length() == 6 {
                     children.push(
-                      @markup.elem_ns("rect", @markup.svg_ns, [
-                        @markup.attr("x", "0"),
-                        @markup.attr("y", "0"),
-                        @markup.attr("width", fmt_double(w_px)),
-                        @markup.attr("height", fmt_double(h_px)),
-                        @markup.attr("fill", "#" + v),
-                      ], []),
+                      @markup.elem_ns(
+                        "rect",
+                        @markup.svg_ns,
+                        [
+                          @markup.attr("x", "0"),
+                          @markup.attr("y", "0"),
+                          @markup.attr("width", fmt_double(w_px)),
+                          @markup.attr("height", fmt_double(h_px)),
+                          @markup.attr("fill", "#" + v),
+                        ],
+                        [],
+                      ),
                     )
                   }
                 None => ()
@@ -364,51 +509,40 @@ fn build_inline_canvas(drawing : @xml.Element) -> MathPayload? {
       }
     None => ()
   }
+  // §20.4.2.29 — canvas children are positioned in absolute EMU within
+  // the canvas (914400 EMU = 96 px), so each `<a:xfrm>` `off`/`ext` maps
+  // straight through `f`.  Shapes, pictures and nested groups are
+  // dispatched through the shared `render_group_child_node`.
   for child in wpc.children {
     match child {
       Element(c) =>
-        if c.name.local_name == "wsp" {
-          let c_sp_pr = match first_child_named(c, "spPr") {
-            Some(s) => s
-            None => continue
-          }
-          let c_xfrm = match first_child_named(c_sp_pr, "xfrm") {
-            Some(x) => x
-            None => continue
-          }
-          let (off_x, off_y) = match xfrm_pair(c_xfrm, "off", "x", "y") {
-            Some(p) => p
-            None => continue
-          }
-          let (ext_cx, ext_cy) = match xfrm_pair(c_xfrm, "ext", "cx", "cy") {
-            Some(p) => p
-            None => continue
-          }
-          let rw = ext_cx * f
-          let rh = ext_cy * f
-          if rw <= 0.0 || rh <= 0.0 {
-            continue
-          }
-          match wsp_shape_nodes(c, rw, rh) {
-            Some(nodes) => {
-              let g : @xml.Element = {
-                name: @markup.qname_ns("g", @markup.svg_ns),
-                attributes: [
-                  @markup.attr(
-                    "transform",
-                    "translate(" +
-                    fmt_double(off_x * f) +
-                    "," +
-                    fmt_double(off_y * f) +
-                    ")",
-                  ),
-                ],
-                children: nodes,
+        match child_xfrm_element(c) {
+          Some(xfrm) => {
+            let off = xfrm_pair(xfrm, "off", "x", "y")
+            let ext = xfrm_pair(xfrm, "ext", "cx", "cy")
+            match (off, ext) {
+              (Some((off_x, off_y)), Some((ext_cx, ext_cy))) => {
+                let rw = ext_cx * f
+                let rh = ext_cy * f
+                if rw > 0.0 && rh > 0.0 {
+                  match
+                    render_group_child_node(
+                      c,
+                      off_x * f,
+                      off_y * f,
+                      rw,
+                      rh,
+                      image_resolver,
+                    ) {
+                    Some(node) => children.push(node)
+                    None => ()
+                  }
+                }
               }
-              children.push(@xml.Node::Element(g))
+              _ => ()
             }
-            None => ()
           }
+          None => ()
         }
       _ => ()
     }
@@ -476,7 +610,11 @@ fn build_textbox_body_nodes(
             attributes: [
               @markup.attr(
                 "transform",
-                "translate(" + fmt_double(l_ins) + "," + fmt_double(cursor_y) + ")",
+                "translate(" +
+                fmt_double(l_ins) +
+                "," +
+                fmt_double(cursor_y) +
+                ")",
               ),
             ],
             children: para_nodes,

@@ -225,14 +225,16 @@ fn text_box(
   // host carries; body text defaults to sans-serif by contrast.
   let family = "Noto Serif"
   let weight = if bold { 700 } else { 400 }
-  let width = try @glyph.measure_text_width(
+  let width = try
+    @glyph.measure_text_width(
       content,
       font_size_pt=ctx.font_size_pt,
       letter_spacing_px=0.0,
       family~,
       weight~,
       italic~,
-    ) catch {
+    )
+  catch {
     _ => 0.0
   } noraise {
     w => w
@@ -416,6 +418,144 @@ fn layout_element(element : @xml.Element, ctx : MathCtx) -> MathBox {
 }
 
 ///|
+/// §22.1.3.10 ST_Script — map a base ASCII letter / digit to its Unicode
+/// Mathematical Alphanumeric Symbols code point for the OMML run script
+/// `scr` (`double-struck` / `fraktur` / `script` / `sans-serif` /
+/// `monospace`), honouring the Letterlike-Symbols exceptions (`ℝ`, `ℂ`,
+/// `ℜ`, `ℬ`, …) that live outside the U+1D400 block.  Returns `None` for
+/// `roman` / unknown scripts, non-alphanumeric characters, and the
+/// digit-less fraktur / script alphabets.
+fn math_alphabet_codepoint(ch : Char, scr : String) -> Int? {
+  let c = ch.to_int()
+  let upper = c >= 0x41 && c <= 0x5A
+  let lower = c >= 0x61 && c <= 0x7A
+  let digit = c >= 0x30 && c <= 0x39
+  if !(upper || lower || digit) {
+    return None
+  }
+  match scr {
+    "double-struck" =>
+      match ch {
+        'C' => Some(0x2102)
+        'H' => Some(0x210D)
+        'N' => Some(0x2115)
+        'P' => Some(0x2119)
+        'Q' => Some(0x211A)
+        'R' => Some(0x211D)
+        'Z' => Some(0x2124)
+        _ =>
+          if upper {
+            Some(0x1D538 + c - 0x41)
+          } else if lower {
+            Some(0x1D552 + c - 0x61)
+          } else {
+            Some(0x1D7D8 + c - 0x30)
+          }
+      }
+    "fraktur" =>
+      if digit {
+        None
+      } else {
+        match ch {
+          'C' => Some(0x212D)
+          'H' => Some(0x210C)
+          'I' => Some(0x2111)
+          'R' => Some(0x211C)
+          'Z' => Some(0x2128)
+          _ =>
+            if upper {
+              Some(0x1D504 + c - 0x41)
+            } else {
+              Some(0x1D51E + c - 0x61)
+            }
+        }
+      }
+    "script" =>
+      if digit {
+        None
+      } else {
+        match ch {
+          'B' => Some(0x212C)
+          'E' => Some(0x2130)
+          'F' => Some(0x2131)
+          'H' => Some(0x210B)
+          'I' => Some(0x2110)
+          'L' => Some(0x2112)
+          'M' => Some(0x2133)
+          'R' => Some(0x211B)
+          'e' => Some(0x212F)
+          'g' => Some(0x210A)
+          'o' => Some(0x2134)
+          _ =>
+            if upper {
+              Some(0x1D49C + c - 0x41)
+            } else {
+              Some(0x1D4B6 + c - 0x61)
+            }
+        }
+      }
+    "sans-serif" =>
+      if upper {
+        Some(0x1D5A0 + c - 0x41)
+      } else if lower {
+        Some(0x1D5BA + c - 0x61)
+      } else {
+        Some(0x1D7E2 + c - 0x30)
+      }
+    "monospace" =>
+      if upper {
+        Some(0x1D670 + c - 0x41)
+      } else if lower {
+        Some(0x1D68A + c - 0x61)
+      } else {
+        Some(0x1D7F6 + c - 0x30)
+      }
+    _ => None
+  }
+}
+
+///|
+/// Apply the OMML run script `scr` to `text`, substituting each base
+/// letter / digit with its Mathematical Alphanumeric Symbols form — but
+/// ONLY when the active math face (`Noto Serif`, at the run weight) can
+/// actually draw that code point.  When the face lacks the glyph the base
+/// character is kept so its advance width stays correct (a missing glyph
+/// would otherwise collapse to a zero-width box and overlap its
+/// neighbours).  `roman` / empty scripts pass through unchanged.
+fn apply_math_script(
+  text : String,
+  scr : String,
+  bold : Bool,
+  italic : Bool,
+) -> String {
+  if scr == "" || scr == "roman" {
+    return text
+  }
+  let weight = if bold { 700 } else { 400 }
+  let out = StringBuilder::new()
+  for ch in text {
+    let replacement = match math_alphabet_codepoint(ch, scr) {
+      None => ch
+      Some(cp) => {
+        let renderable = (try? @glyph.font_has_glyph(
+          cp,
+          family="Noto Serif",
+          weight~,
+          italic~,
+        )).unwrap_or(false)
+        if renderable {
+          cp.unsafe_to_char()
+        } else {
+          ch
+        }
+      }
+    }
+    out.write_char(replacement)
+  }
+  out.to_string()
+}
+
+///|
 /// §22.1.2.87 r — render an OMML run.  The §22.1.2.94 `<m:scr>` and
 /// §22.1.2.111 `<m:sty>` properties select the glyph styling; only
 /// the bold / italic axes have an SVG `<text>` realisation, so the
@@ -451,17 +591,23 @@ fn layout_math_run(element : @xml.Element, ctx : MathCtx) -> MathBox {
   let style = if sty == "" { "i" } else { sty }
   let italic = !normal && (style == "i" || style == "bi")
   let bold = style == "b" || style == "bi"
-  // The script alphabets (double-struck, fraktur, …) have no plain
-  // <text> equivalent; ignore `scr` beyond noting it was present.
-  let _ = scr
+  // §22.1.2.94 scr — the script alphabets (double-struck, fraktur, …)
+  // are realised by remapping each base letter to its Mathematical
+  // Alphanumeric Symbols code point (guarded by glyph availability in
+  // `apply_math_script`), so `ℝ`, `ℂ`, `𝔄`, `𝒜` etc. render as their
+  // distinct shapes instead of plain ASCII.
   let boxes : Array[MathBox] = []
   for child in element.children {
     match child {
       Element(c) =>
         if c.name.local_name == "t" {
-          boxes.push(text_box(text_content(c), ctx, italic~, bold~))
+          let shaped = apply_math_script(text_content(c), scr, bold, italic)
+          boxes.push(text_box(shaped, ctx, italic~, bold~))
         }
-      Text(t) | CData(t) => boxes.push(text_box(t, ctx, italic~, bold~))
+      Text(t) | CData(t) => {
+        let shaped = apply_math_script(t, scr, bold, italic)
+        boxes.push(text_box(shaped, ctx, italic~, bold~))
+      }
       _ => ()
     }
   }

@@ -21,6 +21,8 @@ pub let env_font_dir_var : String
 
 pub fn extract_gpos_kern_pairs(Bytes) -> Array[GposKernEntry]
 
+pub fn font_has_glyph(Int, family~ : String, weight? : Int, italic? : Bool) -> Bool raise FontUnresolvedError
+
 pub fn get_ascender_ratio(String, weight? : Int, italic? : Bool) -> Double raise FontUnresolvedError
 
 pub fn get_descender_ratio(String, weight? : Int, italic? : Bool) -> Double raise FontUnresolvedError
@@ -76,6 +78,8 @@ pub let px_to_pt : Double
 pub fn resolve_chain(FontResolutionRequest) -> FontMeasurer raise FontUnresolvedError
 
 pub fn set_default_font_set(FontSet) -> Unit
+
+pub fn text_outline_contours(String, family~ : String, font_size_pt~ : Double, weight? : Int, italic? : Bool, tolerance? : Double) -> Array[Array[(Double, Double)]] raise FontUnresolvedError
 
 pub fn yakumono_aki(Char) -> YakumonoAki
 

@@ -116,7 +116,9 @@ pub fn render_chart_graphic_frame(
   /// belong to the chart-part rels table (not the slide rels).
   /// Defaults to a None-returning factory so existing callers that
   /// do not yet wire OPC scoping behave exactly as before.
-  chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)? = _ => None,
+  chart_part_resolver_factory? : (String) -> ((String) -> @xml.Element?)? = _ => {
+    None
+  },
 ) -> Array[@xml.Node] {
   let graphic = match first_child_named(frame, "graphic") {
     Some(g) => g
@@ -431,7 +433,11 @@ fn read_trendline_type(tl : @xml.Element) -> (String, Int, Int) {
   let order = match first_child_named(tl, "order") {
     Some(e) => {
       let v = parse_int_lenient(attr_or(e, "val", "2"))
-      if v >= 2 && v <= 6 { v } else { 2 }
+      if v >= 2 && v <= 6 {
+        v
+      } else {
+        2
+      }
     }
     None => 2
   }
@@ -439,7 +445,11 @@ fn read_trendline_type(tl : @xml.Element) -> (String, Int, Int) {
   let period = match first_child_named(tl, "period") {
     Some(e) => {
       let v = parse_int_lenient(attr_or(e, "val", "2"))
-      if v >= 2 { v } else { 2 }
+      if v >= 2 {
+        v
+      } else {
+        2
+      }
     }
     None => 2
   }
@@ -678,11 +688,7 @@ fn render_trendline(
       }
       let avg = sum / period.to_double()
       let x = px + i.to_double() * step
-      let y = if max_v > 0.0 {
-        py + ph - avg / max_v * ph
-      } else {
-        py + ph
-      }
+      let y = if max_v > 0.0 { py + ph - avg / max_v * ph } else { py + ph }
       if !first {
         pts.write_string(" ")
       }
@@ -752,7 +758,10 @@ fn render_trendline(
   let linear_model = fn() -> ((Double) -> Double, String) {
     match poly_fit(xs, values, 1, intercept_val) {
       Some(c) =>
-        ((x : Double) => poly_eval(c, x), "y = " + fmt2_trend(c[1]) + "x + " + fmt2_trend(c[0]))
+        (
+          (x : Double) => poly_eval(c, x),
+          "y = " + fmt2_trend(c[1]) + "x + " + fmt2_trend(c[0]),
+        )
       None => ((_x : Double) => 0.0, "")
     }
   }
@@ -905,7 +914,11 @@ fn render_trendline(
       let lbl_text = match first_child_named(lbl, "tx") {
         Some(tx) => {
           let t = collect_descendant_at_text(tx)
-          if t.length() > 0 { t } else { trendline_name }
+          if t.length() > 0 {
+            t
+          } else {
+            trendline_name
+          }
         }
         None =>
           if trendline_name.length() > 0 {
@@ -1228,11 +1241,64 @@ fn read_marker_config(
   let size = match first_child_named(marker, "size") {
     Some(s) => {
       let v = parse_int_lenient(attr_or(s, "val", "5"))
-      if v > 0 { default_r * v.to_double() / 5.0 } else { default_r }
+      if v > 0 {
+        default_r * v.to_double() / 5.0
+      } else {
+        default_r
+      }
     }
     None => default_r
   }
   (symbol, size)
+}
+
+///|
+/// §21.2.2.181 / §21.2.2.220 `<c:smooth>` — build an SVG path `d`
+/// string for a smoothed series line through `pts` using a 0.5-tension
+/// Catmull-Rom spline expressed as cubic Bézier (`C`) commands.  For
+/// each interior segment (P1→P2) the control points are derived from
+/// the surrounding points P0/P3 (clamped to the endpoints).  Shared by
+/// the line chart and the scatter chart so both render `<c:smooth>`
+/// the same way.  Returns `""` for fewer than two points.
+fn catmull_rom_path(pts : Array[(Double, Double)]) -> String {
+  if pts.length() < 2 {
+    return ""
+  }
+  let path_buf = StringBuilder::new()
+  let (x0_init, y0_init) = pts[0]
+  path_buf.write_string("M")
+  path_buf.write_string(format_double(x0_init))
+  path_buf.write_string(",")
+  path_buf.write_string(format_double(y0_init))
+  let mut i = 0
+  while i < pts.length() - 1 {
+    let (x_p1, y_p1) = pts[i]
+    let (x_p2, y_p2) = pts[i + 1]
+    let (x_p0, y_p0) = if i == 0 { pts[i] } else { pts[i - 1] }
+    let (x_p3, y_p3) = if i + 2 < pts.length() {
+      pts[i + 2]
+    } else {
+      pts[i + 1]
+    }
+    let cx1 = x_p1 + (x_p2 - x_p0) / 6.0
+    let cy1 = y_p1 + (y_p2 - y_p0) / 6.0
+    let cx2 = x_p2 - (x_p3 - x_p1) / 6.0
+    let cy2 = y_p2 - (y_p3 - y_p1) / 6.0
+    path_buf.write_string(" C")
+    path_buf.write_string(format_double(cx1))
+    path_buf.write_string(",")
+    path_buf.write_string(format_double(cy1))
+    path_buf.write_string(" ")
+    path_buf.write_string(format_double(cx2))
+    path_buf.write_string(",")
+    path_buf.write_string(format_double(cy2))
+    path_buf.write_string(" ")
+    path_buf.write_string(format_double(x_p2))
+    path_buf.write_string(",")
+    path_buf.write_string(format_double(y_p2))
+    i = i + 1
+  }
+  path_buf.to_string()
 }
 
 ///|
@@ -1278,10 +1344,7 @@ fn render_marker(
       @markup.elem_ns(
         "polygon",
         @markup.svg_ns,
-        [
-          @markup.attr("points", pts),
-          @markup.attr("fill", color),
-        ],
+        [@markup.attr("points", pts), @markup.attr("fill", color)],
         [],
       )
     }
@@ -1300,17 +1363,129 @@ fn render_marker(
       @markup.elem_ns(
         "polygon",
         @markup.svg_ns,
+        [@markup.attr("points", pts), @markup.attr("fill", color)],
+        [],
+      )
+    }
+    // §21.2.2.103 ST_MarkerStyle "x" — diagonal cross.  Stroke-based
+    // glyphs (x / plus / star / dash) paint the series colour as the
+    // stroke, not the fill, since they have no enclosed area; the line
+    // weight scales with the marker radius so it stays proportionate at
+    // any marker size.
+    "x" =>
+      // two diagonals: TL→BR then BL→TR
+      stroke_marker_path(
+        "M " +
+        format_double(cx - r) +
+        " " +
+        format_double(cy - r) +
+        " L " +
+        format_double(cx + r) +
+        " " +
+        format_double(cy + r) +
+        " M " +
+        format_double(cx - r) +
+        " " +
+        format_double(cy + r) +
+        " L " +
+        format_double(cx + r) +
+        " " +
+        format_double(cy - r),
+        r,
+        color,
+      )
+    // §21.2.2.103 ST_MarkerStyle "plus" — orthogonal cross.
+    "plus" =>
+      stroke_marker_path(
+        "M " +
+        format_double(cx) +
+        " " +
+        format_double(cy - r) +
+        " L " +
+        format_double(cx) +
+        " " +
+        format_double(cy + r) +
+        " M " +
+        format_double(cx - r) +
+        " " +
+        format_double(cy) +
+        " L " +
+        format_double(cx + r) +
+        " " +
+        format_double(cy),
+        r,
+        color,
+      )
+    // §21.2.2.103 ST_MarkerStyle "star" — eight-armed asterisk
+    // (orthogonal cross overlaid on a diagonal cross).
+    "star" =>
+      stroke_marker_path(
+        "M " +
+        format_double(cx) +
+        " " +
+        format_double(cy - r) +
+        " L " +
+        format_double(cx) +
+        " " +
+        format_double(cy + r) +
+        " M " +
+        format_double(cx - r) +
+        " " +
+        format_double(cy) +
+        " L " +
+        format_double(cx + r) +
+        " " +
+        format_double(cy) +
+        " M " +
+        format_double(cx - r) +
+        " " +
+        format_double(cy - r) +
+        " L " +
+        format_double(cx + r) +
+        " " +
+        format_double(cy + r) +
+        " M " +
+        format_double(cx - r) +
+        " " +
+        format_double(cy + r) +
+        " L " +
+        format_double(cx + r) +
+        " " +
+        format_double(cy - r),
+        r,
+        color,
+      )
+    // §21.2.2.103 ST_MarkerStyle "dash" — short horizontal bar.
+    "dash" =>
+      stroke_marker_path(
+        "M " +
+        format_double(cx - r) +
+        " " +
+        format_double(cy) +
+        " L " +
+        format_double(cx + r) +
+        " " +
+        format_double(cy),
+        r,
+        color,
+      )
+    // §21.2.2.103 ST_MarkerStyle "dot" — small filled circle (Excel
+    // draws it smaller than the "circle" glyph).
+    "dot" =>
+      @markup.elem_ns(
+        "circle",
+        @markup.svg_ns,
         [
-          @markup.attr("points", pts),
+          @markup.attr("cx", format_double(cx)),
+          @markup.attr("cy", format_double(cy)),
+          @markup.attr("r", format_double(r * 0.6)),
           @markup.attr("fill", color),
         ],
         [],
       )
-    }
-    "none" =>
-      @markup.elem_ns("g", @markup.svg_ns, [], [])
+    "none" => @markup.elem_ns("g", @markup.svg_ns, [], [])
     _ =>
-      // Default: circle (also for "auto", "x", "star", "plus")
+      // Default: circle (also for "auto" and "circle")
       @markup.elem_ns(
         "circle",
         @markup.svg_ns,
@@ -1323,6 +1498,28 @@ fn render_marker(
         [],
       )
   }
+}
+
+///|
+/// §21.2.2.103 — emit a stroke-only marker glyph (x / plus / star /
+/// dash) as a single `<path>`.  The `d` argument carries the move/line
+/// subpaths.  Stroke weight scales with the marker radius (≈40% of `r`,
+/// floored at 1px) and uses round caps so the arms read cleanly at
+/// small sizes.
+fn stroke_marker_path(d : String, r : Double, color : String) -> @xml.Node {
+  let sw = if r * 0.4 > 1.0 { r * 0.4 } else { 1.0 }
+  @markup.elem_ns(
+    "path",
+    @markup.svg_ns,
+    [
+      @markup.attr("d", d),
+      @markup.attr("fill", "none"),
+      @markup.attr("stroke", color),
+      @markup.attr("stroke-width", format_double(sw)),
+      @markup.attr("stroke-linecap", "round"),
+    ],
+    [],
+  )
 }
 
 ///|
@@ -1430,7 +1627,7 @@ fn read_chart_style_defaults(
       }
   }
   match txpr {
-    Some(tp) => {
+    Some(tp) =>
       // Walk <a:p>/<a:pPr>/<a:defRPr> for fill + font.
       for ch in tp.children {
         match ch {
@@ -1441,7 +1638,8 @@ fn read_chart_style_defaults(
                   match first_child_named(ppr, "defRPr") {
                     Some(rpr) => {
                       match @paint.resolve_solid_fill(rpr, ctx~) {
-                        Some(rc) => text_color = @paint.format_resolved_color(rc)
+                        Some(rc) =>
+                          text_color = @paint.format_resolved_color(rc)
                         None => ()
                       }
                       match first_child_named(rpr, "latin") {
@@ -1462,7 +1660,6 @@ fn read_chart_style_defaults(
           _ => ()
         }
       }
-    }
     None => ()
   }
   // §20.1.6.2 — try theme tx1 colour for text when no txPr.
@@ -1766,13 +1963,23 @@ pub fn render_chart_space(
         _ => u
       }
       let (du_px, du_py, _, du_ph) = chart_plot_inset(
-        inner_w, inner_h, w, h, axes=Some(axes),
+        inner_w,
+        inner_h,
+        w,
+        h,
+        axes=Some(axes),
       )
       let lx = du_px - w * 0.045
       let ly = du_py + du_ph / 2.0 - h * 0.05
       inner_nodes.push(
         chart_text(
-          lbl, lx, ly, w, h, anchor="middle", baseline="middle",
+          lbl,
+          lx,
+          ly,
+          w,
+          h,
+          anchor="middle",
+          baseline="middle",
           style=Some(style),
         ),
       )
@@ -1801,7 +2008,13 @@ pub fn render_chart_space(
                     let cy = ax_py + ax_ph + h * 0.06
                     inner_nodes.push(
                       chart_text(
-                        text, cx, cy, w, h, anchor="middle", baseline="hanging",
+                        text,
+                        cx,
+                        cy,
+                        w,
+                        h,
+                        anchor="middle",
+                        baseline="hanging",
                         style=Some(style),
                       ),
                     )
@@ -1834,7 +2047,13 @@ pub fn render_chart_space(
                         ],
                         [
                           chart_text(
-                            text, cx, cy, w, h, anchor="middle", baseline="middle",
+                            text,
+                            cx,
+                            cy,
+                            w,
+                            h,
+                            anchor="middle",
+                            baseline="middle",
                             style=Some(style),
                           ),
                         ],
@@ -1861,8 +2080,8 @@ pub fn render_chart_space(
   // decoration sub-element regardless of which chart-type was
   // synthesised.
   let chart_type_names = [
-    "areaChart", "area3DChart", "barChart", "bar3DChart", "lineChart",
-    "line3DChart", "scatterChart", "bubbleChart", "stockChart",
+    "areaChart", "area3DChart", "barChart", "bar3DChart", "lineChart", "line3DChart",
+    "scatterChart", "bubbleChart", "stockChart",
   ]
   fn is_chart_type(local : String) -> Bool {
     for n in chart_type_names {
@@ -1874,7 +2093,11 @@ pub fn render_chart_space(
   }
 
   let (overlay_px, overlay_py, overlay_pw, overlay_ph) = chart_plot_inset(
-    inner_w, inner_h, w, h, axes=Some(axes),
+    inner_w,
+    inner_h,
+    w,
+    h,
+    axes=Some(axes),
   )
   // Compute max value across all chart-types' series for axis scaling.
   let mut overlay_max = 0.0
@@ -1934,10 +2157,19 @@ pub fn render_chart_space(
             // §21.2.2.211 trendline.
             match read_trendline(se) {
               Some(tl_elem) =>
-                for tn in render_trendline(
-                  tl_elem, values, overlay_px, overlay_py, overlay_pw,
-                  overlay_ph, overlay_max, step, series_color, h * 0.003,
-                ) {
+                for
+                  tn in render_trendline(
+                    tl_elem,
+                    values,
+                    overlay_px,
+                    overlay_py,
+                    overlay_pw,
+                    overlay_ph,
+                    overlay_max,
+                    step,
+                    series_color,
+                    h * 0.003,
+                  ) {
                   inner_nodes.push(tn)
                 }
               None => ()
@@ -1955,10 +2187,15 @@ pub fn render_chart_space(
                   }
                   pts.push((x, y))
                 }
-                for en in render_err_bars(
-                  eb_cfg, pts, overlay_max, overlay_ph, series_color,
-                  h * 0.002,
-                ) {
+                for
+                  en in render_err_bars(
+                    eb_cfg,
+                    pts,
+                    overlay_max,
+                    overlay_ph,
+                    series_color,
+                    h * 0.002,
+                  ) {
                   inner_nodes.push(en)
                 }
               }
@@ -1997,7 +2234,10 @@ pub fn render_chart_space(
                         @markup.attr("x1", format_double(x)),
                         @markup.attr("y1", format_double(y_top)),
                         @markup.attr("x2", format_double(x)),
-                        @markup.attr("y2", format_double(overlay_py + overlay_ph)),
+                        @markup.attr(
+                          "y2",
+                          format_double(overlay_py + overlay_ph),
+                        ),
                         @markup.attr("stroke", series_color),
                         @markup.attr("stroke-width", format_double(h * 0.001)),
                         @markup.attr("stroke-dasharray", "4,2"),
@@ -2120,7 +2360,11 @@ pub fn render_chart_space(
                   }
                   let y_top = if y_open < y_close { y_open } else { y_close }
                   let y_bot = if y_open < y_close { y_close } else { y_open }
-                  let fill = if v_close >= v_open { "#ffffff" } else { "#595959" }
+                  let fill = if v_close >= v_open {
+                    "#ffffff"
+                  } else {
+                    "#595959"
+                  }
                   let x = overlay_px + i.to_double() * step - bar_w * 0.5
                   let bar_h = y_bot - y_top
                   inner_nodes.push(
@@ -2185,7 +2429,10 @@ pub fn render_chart_space(
                             @markup.attr("x2", format_double(x)),
                             @markup.attr("y2", format_double(curr_pts[i])),
                             @markup.attr("stroke", series_color),
-                            @markup.attr("stroke-width", format_double(h * 0.001)),
+                            @markup.attr(
+                              "stroke-width",
+                              format_double(h * 0.001),
+                            ),
                           ],
                           [],
                         ),
@@ -2226,13 +2473,25 @@ pub fn render_chart_space(
                   } else {
                     overlay_py + overlay_ph
                   }
-                  let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
+                  let cat_name = if i < labels_s.length() {
+                    labels_s[i]
+                  } else {
+                    ""
+                  }
                   points.push((x, y, v, cat_name))
                 }
                 let _ = si
-                for nd in render_data_labels(
-                  cfg, points, ser_name, total, w, h, -(h * 0.02), style,
-                ) {
+                for
+                  nd in render_data_labels(
+                    cfg,
+                    points,
+                    ser_name,
+                    total,
+                    w,
+                    h,
+                    -(h * 0.02),
+                    style,
+                  ) {
                   inner_nodes.push(nd)
                 }
               }
@@ -2531,7 +2790,9 @@ fn render_chart_user_shapes(
                       @markup.attr("fill", "none"),
                       @markup.attr("stroke", "#5b9bd5"),
                       @markup.attr("stroke-width", format_double(h * 0.0015)),
-                      @markup.attr("data-ooxml", "chart-user-shape-graphicFrame"),
+                      @markup.attr(
+                        "data-ooxml", "chart-user-shape-graphicFrame",
+                      ),
                     ],
                     [],
                   ),
@@ -2694,8 +2955,7 @@ fn is_chart_type_local_name(local_name : String) -> Bool {
     | "area3DChart"
     | "surface3DChart"
     | "surfaceChart"
-    | "ofPieChart" =>
-      true
+    | "ofPieChart" => true
     _ => false
   }
 }
@@ -2991,7 +3251,11 @@ fn render_chart_legend(
   let row_gap = font_size * 1.6
   match pos {
     "r" | "l" => {
-      let strip_w = chart_legend_vertical_width(entries.map(fn(e) { e.0 }), w, h)
+      let strip_w = chart_legend_vertical_width(
+        entries.map(fn(e) { e.0 }),
+        w,
+        h,
+      )
       let strip_x = if pos == "l" { 0.0 } else { w - strip_w }
       // Centre the entry block vertically within the inner chart
       // area (title strip excluded so the legend does not bleed into
@@ -3179,7 +3443,7 @@ priv struct ChartAxesInfo {
 ///|
 /// Legacy accessor — true when any value axis declares
 /// `<c:majorGridlines/>`.
-fn val_major(self : ChartAxesInfo) -> Bool {
+fn ChartAxesInfo::val_major(self : ChartAxesInfo) -> Bool {
   for ax in self.val_axes {
     if ax.major_gridlines {
       return true
@@ -3190,7 +3454,7 @@ fn val_major(self : ChartAxesInfo) -> Bool {
 
 ///|
 /// Return the first value axis's explicit max, or None.
-fn val_scaling_max(self : ChartAxesInfo) -> Double? {
+fn ChartAxesInfo::val_scaling_max(self : ChartAxesInfo) -> Double? {
   for ax in self.val_axes {
     match ax.scaling_max {
       Some(v) => return Some(v)
@@ -3202,7 +3466,7 @@ fn val_scaling_max(self : ChartAxesInfo) -> Double? {
 
 ///|
 /// Return the first value axis's explicit min, or None.
-fn val_scaling_min(self : ChartAxesInfo) -> Double? {
+fn ChartAxesInfo::val_scaling_min(self : ChartAxesInfo) -> Double? {
   for ax in self.val_axes {
     match ax.scaling_min {
       Some(v) => return Some(v)
@@ -3217,7 +3481,7 @@ fn val_scaling_min(self : ChartAxesInfo) -> Double? {
 /// is declared in plotArea.  Per §21.2 the value axis is REQUIRED for
 /// bar/line/area/scatter/bubble plots — its absence is therefore the
 /// same renderer outcome as an explicit delete.
-fn val_deleted(self : ChartAxesInfo) -> Bool {
+fn ChartAxesInfo::val_deleted(self : ChartAxesInfo) -> Bool {
   if self.val_axes.length() == 0 {
     return true
   }
@@ -3235,7 +3499,7 @@ fn val_deleted(self : ChartAxesInfo) -> Bool {
 /// §21.2.2.30 / §21.2.2.51 / §21.2.2.180 specify the category-axis
 /// family as required for non-pie chart-types; treating its absence
 /// as deleted matches the spec's "no axis is drawn" behaviour.
-fn cat_deleted(self : ChartAxesInfo) -> Bool {
+fn ChartAxesInfo::cat_deleted(self : ChartAxesInfo) -> Bool {
   if self.cat_axes.length() == 0 {
     return true
   }
@@ -3250,7 +3514,7 @@ fn cat_deleted(self : ChartAxesInfo) -> Bool {
 ///|
 /// Return the value axis numFmt formatCode if specified.
 /// Return the value axis dispUnits/builtInUnit when configured.
-fn val_disp_units(self : ChartAxesInfo) -> String? {
+fn ChartAxesInfo::val_disp_units(self : ChartAxesInfo) -> String? {
   for ax in self.val_axes {
     match ax.disp_units {
       Some(u) => return Some(u)
@@ -3261,7 +3525,7 @@ fn val_disp_units(self : ChartAxesInfo) -> String? {
 }
 
 ///|
-fn val_num_fmt(self : ChartAxesInfo) -> String? {
+fn ChartAxesInfo::val_num_fmt(self : ChartAxesInfo) -> String? {
   for ax in self.val_axes {
     match ax.num_fmt {
       Some(f) => return Some(f)
@@ -3273,7 +3537,7 @@ fn val_num_fmt(self : ChartAxesInfo) -> String? {
 
 ///|
 /// Return the first value axis's log base, or None for linear.
-fn val_log_base(self : ChartAxesInfo) -> Double? {
+fn ChartAxesInfo::val_log_base(self : ChartAxesInfo) -> Double? {
   for ax in self.val_axes {
     match ax.log_base {
       Some(b) => return Some(b)
@@ -3285,7 +3549,7 @@ fn val_log_base(self : ChartAxesInfo) -> Double? {
 
 ///|
 /// True when any value axis declares `<c:minorGridlines/>`.
-fn val_minor_gridlines(self : ChartAxesInfo) -> Bool {
+fn ChartAxesInfo::val_minor_gridlines(self : ChartAxesInfo) -> Bool {
   for ax in self.val_axes {
     if ax.minor_gridlines {
       return true
@@ -3297,7 +3561,7 @@ fn val_minor_gridlines(self : ChartAxesInfo) -> Bool {
 ///|
 /// §21.2.2.170 — return the first value axis's orientation.
 /// "maxMin" reverses the axis (high at bottom, low at top).
-fn val_orientation(self : ChartAxesInfo) -> String {
+fn ChartAxesInfo::val_orientation(self : ChartAxesInfo) -> String {
   for ax in self.val_axes {
     if ax.orientation != "minMax" {
       return ax.orientation
@@ -3308,7 +3572,7 @@ fn val_orientation(self : ChartAxesInfo) -> String {
 
 ///|
 /// Return the first value axis's tick label position.
-fn val_tick_lbl_pos(self : ChartAxesInfo) -> String {
+fn ChartAxesInfo::val_tick_lbl_pos(self : ChartAxesInfo) -> String {
   for ax in self.val_axes {
     if ax.tick_lbl_pos != "nextTo" {
       return ax.tick_lbl_pos
@@ -3319,7 +3583,7 @@ fn val_tick_lbl_pos(self : ChartAxesInfo) -> String {
 
 ///|
 /// Return the first category axis's tick label position.
-fn cat_tick_lbl_pos(self : ChartAxesInfo) -> String {
+fn ChartAxesInfo::cat_tick_lbl_pos(self : ChartAxesInfo) -> String {
   for ax in self.cat_axes {
     if ax.tick_lbl_pos != "nextTo" {
       return ax.tick_lbl_pos
@@ -3330,7 +3594,7 @@ fn cat_tick_lbl_pos(self : ChartAxesInfo) -> String {
 
 ///|
 /// §21.2.2.34 crossBetween from the first value axis.
-fn val_cross_between(self : ChartAxesInfo) -> String {
+fn ChartAxesInfo::val_cross_between(self : ChartAxesInfo) -> String {
   for ax in self.val_axes {
     if ax.cross_between != "between" {
       return ax.cross_between
@@ -3341,7 +3605,7 @@ fn val_cross_between(self : ChartAxesInfo) -> String {
 
 ///|
 /// §21.2.2.175 tickLblSkip from the first category axis.
-fn cat_tick_lbl_skip(self : ChartAxesInfo) -> Int {
+fn ChartAxesInfo::cat_tick_lbl_skip(self : ChartAxesInfo) -> Int {
   for ax in self.cat_axes {
     if ax.tick_lbl_skip > 0 {
       return ax.tick_lbl_skip
@@ -3353,7 +3617,7 @@ fn cat_tick_lbl_skip(self : ChartAxesInfo) -> Int {
 ///|
 /// §21.2.2.96 lblOffset percentage from the first category axis.
 /// Default 100 (one major-unit gap between the axis and labels).
-fn cat_lbl_offset(self : ChartAxesInfo) -> Int {
+fn ChartAxesInfo::cat_lbl_offset(self : ChartAxesInfo) -> Int {
   for ax in self.cat_axes {
     return ax.lbl_offset
   }
@@ -3362,7 +3626,7 @@ fn cat_lbl_offset(self : ChartAxesInfo) -> Int {
 
 ///|
 /// §21.2.2.88 lblAlgn from the first category axis.
-fn cat_lbl_algn(self : ChartAxesInfo) -> String {
+fn ChartAxesInfo::cat_lbl_algn(self : ChartAxesInfo) -> String {
   for ax in self.cat_axes {
     if ax.lbl_algn != "ctr" {
       return ax.lbl_algn
@@ -3373,7 +3637,7 @@ fn cat_lbl_algn(self : ChartAxesInfo) -> String {
 
 ///|
 /// §21.2.2.35 crosses from the first value axis.
-fn val_crosses(self : ChartAxesInfo) -> String {
+fn ChartAxesInfo::val_crosses(self : ChartAxesInfo) -> String {
   for ax in self.val_axes {
     if ax.crosses != "autoZero" {
       return ax.crosses
@@ -3393,8 +3657,7 @@ fn log_scale_frac(
   log_base : Double?,
 ) -> Double {
   match log_base {
-    None =>
-      if max_v > min_v { (v - min_v) / (max_v - min_v) } else { 0.0 }
+    None => if max_v > min_v { (v - min_v) / (max_v - min_v) } else { 0.0 }
     Some(base) => {
       if base <= 1.0 || v <= 0.0 || min_v <= 0.0 || max_v <= min_v {
         return 0.0
@@ -3496,7 +3759,11 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
   let num_fmt : String? = match first_child_named(elem, "numFmt") {
     Some(e) => {
       let fc = attr_or(e, "formatCode", "")
-      if fc.length() > 0 { Some(fc) } else { None }
+      if fc.length() > 0 {
+        Some(fc)
+      } else {
+        None
+      }
     }
     None => None
   }
@@ -3506,7 +3773,11 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
       match first_child_named(du, "builtInUnit") {
         Some(bu) => {
           let v = attr_or(bu, "val", "")
-          if v.length() > 0 { Some(v) } else { None }
+          if v.length() > 0 {
+            Some(v)
+          } else {
+            None
+          }
         }
         None => None
       }
@@ -3526,7 +3797,11 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
   let tick_lbl_skip = match first_child_named(elem, "tickLblSkip") {
     Some(e) => {
       let v = parse_int_lenient(attr_or(e, "val", "0"))
-      if v > 0 { v } else { 0 }
+      if v > 0 {
+        v
+      } else {
+        0
+      }
     }
     None => 0
   }
@@ -3623,8 +3898,7 @@ fn render_chart_payload(
     "scatterChart" =>
       render_scatter_chart(elem, iw, ih, fw, fh, ctx, axes, style)
     "areaChart" => render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style)
-    "bubbleChart" =>
-      render_bubble_chart(elem, iw, ih, fw, fh, ctx, axes, style)
+    "bubbleChart" => render_bubble_chart(elem, iw, ih, fw, fh, ctx, axes, style)
     "radarChart" => render_radar_chart(elem, iw, ih, fw, fh, ctx, style)
     "stockChart" => render_stock_chart(elem, iw, ih, fw, fh, ctx, axes, style)
     // §21.2 3D chart types — degrade to 2D equivalent (no perspective
@@ -3674,7 +3948,7 @@ fn chart_plot_inset(
   ih : Double,
   fw : Double,
   fh : Double,
-  axes~ : ChartAxesInfo? = None,
+  axes? : ChartAxesInfo? = None,
 ) -> (Double, Double, Double, Double) {
   // §21.2.2.42 — when the value axis is deleted, its label gutter
   // is unnecessary; shrink the left margin accordingly.
@@ -3725,7 +3999,9 @@ fn nice_axis_max(max_v : Double) -> Double {
   // "axis always overshoots the data" auto-scaling convention. The
   // strict comparison (`>` rather than `>=`) is what produces the
   // 40→45 / 30→40 / 25→30 progression per §21.2 axis scaling.
-  let steps = [1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+  let steps = [
+    1.0, 1.25, 1.5, 2.0, 2.5, 3.0, 4.5, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0,
+  ]
   for s in steps {
     if s > m {
       return s * order

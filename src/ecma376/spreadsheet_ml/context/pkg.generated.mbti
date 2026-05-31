@@ -50,6 +50,7 @@ pub(all) struct WorksheetPart {
   drawing : @drawing.CT_Drawing?
   drawing_part : String?
   tables : Array[@xml.Element]
+  comments : @xml.Element?
 } derive(Eq, @debug.Debug)
 
 // Type aliases

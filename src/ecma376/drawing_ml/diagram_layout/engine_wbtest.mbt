@@ -598,8 +598,14 @@ test "§21.4.7.21 constraint_kind_is_geometric separates spatial vs typography" 
   @debug.assert_eq(constraint_kind_is_geometric(ConstrWOff), true)
   @debug.assert_eq(constraint_kind_is_geometric(ConstrPyraAcctRatio), true)
   // Non-spatial — every catch-all (incl. the canonical `primFontSz`).
-  @debug.assert_eq(constraint_kind_is_geometric(ConstrOther("primFontSz")), false)
-  @debug.assert_eq(constraint_kind_is_geometric(ConstrOther("secFontSz")), false)
+  @debug.assert_eq(
+    constraint_kind_is_geometric(ConstrOther("primFontSz")),
+    false,
+  )
+  @debug.assert_eq(
+    constraint_kind_is_geometric(ConstrOther("secFontSz")),
+    false,
+  )
   @debug.assert_eq(constraint_kind_is_geometric(ConstrOther("userA")), false)
 }
 
@@ -895,14 +901,15 @@ test "§21.4.2.8 cross-node refForName resolves via name registry" {
     registry,
   )
   @debug.assert_eq(with_ref.width, 320.0)
-  // refForName pointing at an absent name (forward reference) →
-  // the registry lookup misses, and the solver falls through to the
-  // same-node lookup before reaching the literal `val`. With
-  // refType=w, the same-node lookup reads the in-flight rectangle
-  // (= parent.width 1000) and returns it scaled by fact (default
-  // 1.0). The literal `val=123` therefore never fires for this
-  // input — it would only matter if refType pointed at a kind
-  // `read_bounds_variable` does not recognise (margins / spacing).
+  // refForName pointing at an absent name (forward reference) → the
+  // registry lookup misses. An *explicit* cross-node reference must NOT
+  // fall through to the current node's own rectangle (that would read a
+  // different node's geometry, here parent.width 1000); instead the
+  // constraint no-ops and uses the author's literal `val=123` fallback.
+  // A genuine forward reference is ultimately resolved by
+  // `DiagramLayoutEngine::apply`'s fixed-point re-walk once the target is
+  // registered (see the end-to-end test below); within this single pass
+  // the authored literal is the correct standalone result.
   let forward = apply_self_geometric_constraints_with_registry(
     parent,
     [
@@ -915,7 +922,7 @@ test "§21.4.2.8 cross-node refForName resolves via name registry" {
     ],
     registry,
   )
-  @debug.assert_eq(forward.width, 1000.0)
+  @debug.assert_eq(forward.width, 123.0)
   // refForName + refType=h reads the named source's height.
   let height_ref = apply_self_geometric_constraints_with_registry(
     parent,

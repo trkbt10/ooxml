@@ -213,8 +213,18 @@ pub(all) struct PivotTableDefinition {
   col_items : Array[PivotAxisItem]
   page_fields : Array[PageFieldDef]
   data_fields : Array[DataFieldDef]
+  style_info : PivotTableStyleInfo?
 } derive(Eq, @debug.Debug)
 pub fn PivotTableDefinition::aggregation_function_for(Self, Int) -> DataConsolidateFunction
+
+pub(all) struct PivotTableStyleInfo {
+  name : String?
+  show_row_headers : Bool
+  show_col_headers : Bool
+  show_row_stripes : Bool
+  show_col_stripes : Bool
+  show_last_column : Bool
+} derive(Eq, @debug.Debug)
 
 pub(all) enum SharedItemValue {
   SharedString(String)

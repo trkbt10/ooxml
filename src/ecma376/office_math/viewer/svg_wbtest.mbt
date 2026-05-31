@@ -13,15 +13,17 @@
 /// cascades into lost nodes (script / limit guards check `width > 0`).
 let test_font_ready : Ref[Bool] = { val: false }
 
+///|
 fn ensure_test_font() -> Unit {
   if test_font_ready.val {
     return
   }
   test_font_ready.val = true
-  let bytes = try @fs.read_file_to_bytes(
-      "src/util/glyph/fixtures/subset.ttf",
-    ) catch {
-    _ => abort("Cannot load test font fixture src/util/glyph/fixtures/subset.ttf")
+  let bytes = try
+    @fs.read_file_to_bytes("src/util/glyph/fixtures/subset.ttf")
+  catch {
+    _ =>
+      abort("Cannot load test font fixture src/util/glyph/fixtures/subset.ttf")
   } noraise {
     b => b
   }
@@ -85,6 +87,33 @@ test "Office Math SVG renders a run as a <text> element" {
   // A non-empty run reserves a positive width and vertical extent.
   assert_true(rendered.width > 0.0)
   assert_true(rendered.height() > 0.0)
+}
+
+///|
+/// §22.1.3.10 ST_Script — the base-letter → Mathematical Alphanumeric
+/// Symbols mapping, including the Letterlike-Symbols exceptions that sit
+/// outside the U+1D400 block.
+test "Office Math §22.1.3.10 script-alphabet code points" {
+  // double-struck: exceptions (ℝ ℂ ℕ) + U+1D538 block + digits.
+  assert_true(math_alphabet_codepoint('R', "double-struck") == Some(0x211D))
+  assert_true(math_alphabet_codepoint('C', "double-struck") == Some(0x2102))
+  assert_true(math_alphabet_codepoint('N', "double-struck") == Some(0x2115))
+  assert_true(math_alphabet_codepoint('A', "double-struck") == Some(0x1D538))
+  assert_true(math_alphabet_codepoint('0', "double-struck") == Some(0x1D7D8))
+  // fraktur: exception (ℜ) + block; no digit forms.
+  assert_true(math_alphabet_codepoint('R', "fraktur") == Some(0x211C))
+  assert_true(math_alphabet_codepoint('A', "fraktur") == Some(0x1D504))
+  assert_true(math_alphabet_codepoint('5', "fraktur") == None)
+  // script: upper exception (ℬ) + lower exception (ℯ) + block.
+  assert_true(math_alphabet_codepoint('B', "script") == Some(0x212C))
+  assert_true(math_alphabet_codepoint('e', "script") == Some(0x212F))
+  assert_true(math_alphabet_codepoint('A', "script") == Some(0x1D49C))
+  // sans-serif / monospace blocks.
+  assert_true(math_alphabet_codepoint('A', "sans-serif") == Some(0x1D5A0))
+  assert_true(math_alphabet_codepoint('0', "monospace") == Some(0x1D7F6))
+  // roman / non-alphanumeric / unknown → no remap.
+  assert_true(math_alphabet_codepoint('R', "roman") == None)
+  assert_true(math_alphabet_codepoint('+', "double-struck") == None)
 }
 
 ///|

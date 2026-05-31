@@ -42,7 +42,21 @@ fn render_scatter_chart(
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(chart_style)))
   if !axes.val_deleted() {
-    for tick in y_axis_ticks(px, py, ph, max_y, pw, fw, axes.val_major(), style=Some(chart_style), draw_minor_gridlines=axes.val_minor_gridlines(), num_fmt=axes.val_num_fmt(), tick_lbl_pos=axes.val_tick_lbl_pos(), log_base=axes.val_log_base()) {
+    for
+      tick in y_axis_ticks(
+        px,
+        py,
+        ph,
+        max_y,
+        pw,
+        fw,
+        axes.val_major(),
+        style=Some(chart_style),
+        draw_minor_gridlines=axes.val_minor_gridlines(),
+        num_fmt=axes.val_num_fmt(),
+        tick_lbl_pos=axes.val_tick_lbl_pos(),
+        log_base=axes.val_log_base(),
+      ) {
       nodes.push(tick)
     }
   }
@@ -57,7 +71,32 @@ fn render_scatter_chart(
     style == "smoothMarker" ||
     style == "line" ||
     style == "smooth"
-  if draw_line {
+  // §21.2.2.181 ST_ScatterStyle — "smooth"/"smoothMarker" connect the
+  // points with a smoothed spline (same Catmull-Rom curve as a line
+  // chart's `<c:smooth>`); "line"/"lineMarker" use straight segments.
+  let smooth_line = style == "smoothMarker" || style == "smooth"
+  if draw_line && smooth_line && n >= 2 {
+    let pts : Array[(Double, Double)] = []
+    let mut i = 0
+    while i < n {
+      pts.push(to_xy(xs[i], ys[i]))
+      i = i + 1
+    }
+    nodes.push(
+      @markup.elem_ns(
+        "path",
+        @markup.svg_ns,
+        [
+          @markup.attr("d", catmull_rom_path(pts)),
+          @markup.attr("fill", "none"),
+          @markup.attr("stroke", series_color),
+          @markup.attr("stroke-width", format_double(h * 0.005)),
+          @markup.attr("stroke-linejoin", "round"),
+        ],
+        [],
+      ),
+    )
+  } else if draw_line {
     let buf = StringBuilder::new()
     let mut first = true
     let mut i = 0

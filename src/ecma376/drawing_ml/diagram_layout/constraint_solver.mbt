@@ -298,55 +298,62 @@ fn resolve_constraint_value(
     None => 1.0
   }
   match c.ref_type {
-    None =>
-      match c.val {
-        Some(v) => Some(v * factor)
-        None => None
-      }
-    Some(ref_kind) => {
-      // Cross-node lookup: `refForName` names a layoutNode that may
-      // already be in the registry. The `refFor` axis is treated as
-      // `self` here — that is the schema default and the only
-      // axis the registry semantics support without a full
-      // layout-node tree walker.
+    None => literal_constraint_value(c, factor)
+    Some(ref_kind) =>
       match c.ref_for_name {
+        // §21.4.2.8 — an explicit cross-node reference: `refForName`
+        // names a layoutNode whose bounds may already be in the
+        // registry. The `refFor` axis is treated as `self` (the schema
+        // default and the only axis the registry semantics support
+        // without a full layout-node tree walker).
         Some(source_name) =>
           match node_bounds_by_name.get(source_name) {
-            Some(source_bounds) => {
-              let raw = read_bounds_variable(source_bounds, ref_kind)
-              match raw {
-                Some(v) => return Some(v * factor)
-                None => ()
+            Some(source_bounds) =>
+              match read_bounds_variable(source_bounds, ref_kind) {
+                Some(v) => Some(v * factor)
+                // `ref_kind` is not a per-rectangle variable (e.g.
+                // `lMarg`); use the author's literal `val` if present.
+                None => literal_constraint_value(c, factor)
               }
-              // refType is not a per-rect variable (e.g. lMarg);
-              // fall through to the literal-val branch.
-            }
-            None => ()
+            // Forward / unresolvable cross-node reference: the named
+            // target has not been walked yet in THIS pass, so the
+            // constraint no-ops here (falling back to the literal `val`
+            // when the author supplied one) rather than silently
+            // reading the *current* node's own rectangle — a different
+            // node's geometry.  `DiagramLayoutEngine::apply` re-walks to
+            // a fixed point, seeding each pass's registry from the
+            // previous one, so the reference resolves against the prior
+            // pass's bounds on a later pass.
+            None => literal_constraint_value(c, factor)
           }
-        None => ()
-      }
-      // Same-node lookup: read the in-flight rectangle. Same-node
-      // l/t/r/b references resolve against the offsets relative
-      // to the parent origin so they match how the constraint
-      // writer would have authored a `val` for them.
-      let in_flight : BoundsRect = {
-        x: current_x - parent_bounds.x,
-        y: current_y - parent_bounds.y,
-        width: current_w,
-        height: current_h,
-      }
-      let source = read_bounds_variable(in_flight, ref_kind)
-      match source {
-        Some(value) => Some(value * factor)
-        None =>
-          // No same-node variable to read; fall back to literal val
-          // if present, otherwise underspecified.
-          match c.val {
-            Some(v) => Some(v * factor)
-            None => None
+        // Same-node reference (no `refForName`): read the in-flight
+        // rectangle.  Same-node l/t/r/b references resolve against the
+        // offsets relative to the parent origin so they match how the
+        // constraint writer would have authored a `val` for them.
+        None => {
+          let in_flight : BoundsRect = {
+            x: current_x - parent_bounds.x,
+            y: current_y - parent_bounds.y,
+            width: current_w,
+            height: current_h,
           }
+          match read_bounds_variable(in_flight, ref_kind) {
+            Some(value) => Some(value * factor)
+            None => literal_constraint_value(c, factor)
+          }
+        }
       }
-    }
+  }
+}
+
+///|
+/// A constraint's literal `val` scaled by `fact` (the `<constr val="…"
+/// fact="…"/>` fallback), or `None` when no literal was authored — used
+/// whenever a referenced value cannot (yet) be resolved this pass.
+fn literal_constraint_value(c : Constraint, factor : Double) -> Double? {
+  match c.val {
+    Some(v) => Some(v * factor)
+    None => None
   }
 }
 

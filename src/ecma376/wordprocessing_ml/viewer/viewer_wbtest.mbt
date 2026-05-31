@@ -2640,6 +2640,65 @@ test "render_svg resolves <w:color themeColor> through theme cascade" {
 }
 
 ///|
+/// §17.2.1 / §17.18.97 — a `<w:background w:themeColor="accent1">` with
+/// no explicit `@color` cache must resolve the page background through
+/// the theme scheme (previously it rendered white because the resolver
+/// was not wired into `apply_document_background`).
+test "render_svg resolves <w:background themeColor> through the theme" {
+  let srgb : @xml.Element = {
+    name: name("srgbClr"),
+    attributes: [{ name: name("val"), value: "4472C4" }],
+    children: [],
+  }
+  let accent1 : @xml.Element = {
+    name: name("accent1"),
+    attributes: [],
+    children: [@xml.Node::Element(srgb)],
+  }
+  let clr_scheme : @xml.Element = {
+    name: name("clrScheme"),
+    attributes: [{ name: name("name"), value: "TestScheme" }],
+    children: [@xml.Node::Element(accent1)],
+  }
+  let theme : @xml.Element = {
+    name: name("theme"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("themeElements"),
+        attributes: [],
+        children: [@xml.Node::Element(clr_scheme)],
+      }),
+    ],
+  }
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("background"),
+        attributes: [{ name: name("themeColor"), value: "accent1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({ name: name("p"), attributes: [], children: [] }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(document, theme=Some(theme))
+  let buf = StringBuilder::new()
+  for page in result.pages {
+    buf.write_string(page.svg)
+  }
+  // The page background uses the resolved accent1 (#4472c4), not white.
+  assert_true(buf.to_string().contains("#4472c4"))
+}
+
+///|
 /// §17.18.96 / §20.1.4.1.18 — when render_svg receives a `theme`
 /// part with a `<a:fontScheme>` and the document carries a
 /// `<w:rFonts asciiTheme="minorAscii">`, the rendered SVG MUST

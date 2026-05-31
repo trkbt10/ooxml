@@ -16,6 +16,8 @@ pub fn decode_image(String, String) -> @image.ImageData?
 
 pub fn encode_image_base64(@image.ImageData, String) -> (String, String)?
 
+pub fn image_dimensions(String, String) -> (Int, Int)?
+
 // Errors
 
 // Types and methods

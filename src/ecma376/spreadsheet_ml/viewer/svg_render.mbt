@@ -351,7 +351,9 @@ pub fn render_svg(
   // behaviour.  See `SheetRenderOptions.show_table_chrome` for the
   // editing-view opt-in.
   if options.show_table_chrome {
-    let table_chrome_under = render_table_chrome_under(tables, layout)
+    let table_chrome_under = render_table_chrome_under(
+      tables, layout, styles, theme_map,
+    )
     if table_chrome_under.length() > 0 {
       body.push(
         svg_elem("g", [svg_attr("class", "table-chrome")], table_chrome_under),
@@ -503,17 +505,29 @@ pub fn render_svg(
               match evals.get(cell_ref) {
                 Some(@formula.VError(@formula.NotApplicable)) =>
                   format_cell_value(
-                    cell_el, shared_strings, style, warnings, date_system~,
+                    cell_el,
+                    shared_strings,
+                    style,
+                    warnings,
+                    date_system~,
                   )
                 Some(val) => format_formula_value(val, style, date_system)
                 None =>
                   format_cell_value(
-                    cell_el, shared_strings, style, warnings, date_system~,
+                    cell_el,
+                    shared_strings,
+                    style,
+                    warnings,
+                    date_system~,
                   )
               }
             None =>
               format_cell_value(
-                cell_el, shared_strings, style, warnings, date_system~,
+                cell_el,
+                shared_strings,
+                style,
+                warnings,
+                date_system~,
               )
           }
           // §18.3.1.87 `<sheetView @showZeros="0">` — when the
@@ -626,9 +640,9 @@ pub fn render_svg(
   // pre-computing the materialization.
   let pivot_nodes : Array[@xml.Node] = []
   for pivot in pivots {
-    for n in render_pivot_overlay(
-        pivot, layout, options, cf_blocks, cf_stats, styles, shared_strings,
-        theme_map,
+    for
+      n in render_pivot_overlay(
+        pivot, layout, options, cf_blocks, cf_stats, styles, shared_strings, theme_map,
       ) {
       pivot_nodes.push(n)
     }
@@ -736,7 +750,8 @@ pub fn render_svg(
     Some(d) => {
       let drawing_nodes : Array[@xml.Node] = []
       for anchor in d.anchors {
-        for n in render_drawing_anchor(
+        for
+          n in render_drawing_anchor(
             anchor, layout, image_resolver, theme_map, part_resolver, warnings,
           ) {
           drawing_nodes.push(n)
@@ -888,7 +903,6 @@ pub fn render_svg(
     warnings,
   }
 }
-
 
 ///|
 /// Empty-sheet placeholder carrying extra `data-ooxml-*` attributes
@@ -1238,8 +1252,7 @@ fn build_row_height_map(worksheet : @xml.Element) -> Map[Int, Double] {
                             try @string.parse_double(v) catch {
                               _ => ()
                             } noraise {
-                              pts =>
-                                map.set(row_num, row_height_to_pixels(pts))
+                              pts => map.set(row_num, row_height_to_pixels(pts))
                             }
                           None => ()
                         }
@@ -2036,13 +2049,25 @@ fn resolve_cell_alignment(
     return fallback
   }
   let xf = cell_xfs.xf[xf_index]
-  match xf.apply_alignment {
-    Some(false) => return fallback
-    _ => ()
+  // §18.8.45 — the cell's own `<alignment>` applies unless
+  // `applyAlignment="0"` (explicit inherit) OR the cell xf declares no
+  // `<alignment>` of its own; in either case the alignment is inherited
+  // from the named cell style this xf references (cellStyleXfs[xfId]).
+  let own_alignment = match xf.apply_alignment {
+    Some(false) => None
+    _ => xf.alignment
   }
-  let alignment = match xf.alignment {
-    None => return fallback
+  let alignment = match own_alignment {
     Some(a) => a
+    None =>
+      match inherited_style_xf(styles_table, xf, Some(false)) {
+        Some(style_xf) =>
+          match style_xf.alignment {
+            Some(a) => a
+            None => return fallback
+          }
+        None => return fallback
+      }
   }
   // §18.8.1 — populate every spec field.  The CT_CellAlignment
   // struct in domain/style_types.mbt mirrors the spec exactly.
@@ -2100,11 +2125,14 @@ fn resolve_cell_font(
     return fallback
   }
   let xf = cell_xfs.xf[xf_index]
-  match xf.apply_font {
-    Some(false) => return fallback
-    _ => ()
+  // §18.8.45 — `applyFont="0"` inherits the font from the named cell
+  // style this xf references (cellStyleXfs[xfId]); otherwise the cell's
+  // own `fontId` applies.
+  let effective_xf = match inherited_style_xf(styles_table, xf, xf.apply_font) {
+    None => return fallback
+    Some(e) => e
   }
-  let font_id = match xf.font_id {
+  let font_id = match effective_xf.font_id {
     None => return fallback
     Some(id) => id
   }
@@ -3157,15 +3185,58 @@ fn overlay_dxf_on_style(
     Some(f) => ct_font_to_resolved(f, base.font, theme_map~)
     None => base.font
   }
-  let fill = match dxf.fill {
-    Some(f) => ct_fill_to_resolved(f, base.fill, theme_map~)
-    None => base.fill
+  // §18.8.18 — a differential `<dxf>` overwhelmingly carries a SOLID
+  // fill whose colour sits in `<bgColor>` (the conditional-format /
+  // table-style idiom, frequently with no `patternType`), which the
+  // generic `ct_fill_to_resolved` — tuned for regular `<fgColor>` cell
+  // fills — would drop.  Resolve that solid colour through the
+  // dxf-aware `dxf_fill_css` first; only non-solid differential fills
+  // (gradients, named patterns) fall through to the general resolver.
+  let fill = match dxf_fill_css(dxf, theme_map) {
+    Some(css) => FillSolid(css)
+    None =>
+      match dxf.fill {
+        Some(f) => ct_fill_to_resolved(f, base.fill, theme_map~)
+        None => base.fill
+      }
   }
   let border = match dxf.border {
     Some(b) => ct_border_to_resolved(b, base.border, theme_map~)
     None => base.border
   }
   { ..base, font, fill, border }
+}
+
+///|
+/// §18.8.45 CT_Xf — pick the `<xf>` that actually supplies a format
+/// slot.  When the cell's own `apply*` flag is explicitly `false`, the
+/// spec says to IGNORE this xf's own `*Id` and inherit the slot from the
+/// named cell style the xf points at (`cellStyleXfs[xfId]`); this returns
+/// that parent xf.  Otherwise (flag `true` or absent) the cell's own xf
+/// supplies the slot.  Returns `None` when an inherited lookup has no
+/// reachable parent style.
+fn inherited_style_xf(
+  styles_table : @domain.CT_Stylesheet,
+  cell_xf : @domain.CT_Xf,
+  apply_flag : Bool?,
+) -> @domain.CT_Xf? {
+  match apply_flag {
+    Some(false) =>
+      match styles_table.cell_style_xfs {
+        None => None
+        Some(style_xfs) =>
+          match cell_xf.xf_id {
+            None => None
+            Some(id) =>
+              if id >= 0 && id < style_xfs.xf.length() {
+                Some(style_xfs.xf[id])
+              } else {
+                None
+              }
+          }
+      }
+    _ => Some(cell_xf)
+  }
 }
 
 ///|
@@ -3202,18 +3273,15 @@ fn resolve_cell_fill(
     return fallback
   }
   let xf = cell_xfs.xf[xf_index]
-  // §18.8.4 / §18.8.43 — `applyFill="0"` says "ignore this xf's
-  // fillId and inherit from the parent xf via `xfId` into
-  // `cellStyleXfs`".  Full inheritance walking is tracked as
-  // future work; the current viewer treats applyFill=false as
-  // a hard fallback to the row/column default, which is the
-  // spec-permitted degradation (consumer sees no fill rather
-  // than a wrong one).
-  match xf.apply_fill {
-    Some(false) => return fallback
-    _ => ()
+  // §18.8.45 — `applyFill="0"` inherits the fill from the named cell
+  // style this xf references via `xfId` (cellStyleXfs[xfId]) instead of
+  // using the xf's own `fillId`; otherwise the cell's own `fillId`
+  // applies.
+  let effective_xf = match inherited_style_xf(styles_table, xf, xf.apply_fill) {
+    None => return fallback
+    Some(e) => e
   }
-  let fill_id = match xf.fill_id {
+  let fill_id = match effective_xf.fill_id {
     None => return fallback
     Some(id) => id
   }
@@ -3339,13 +3407,15 @@ fn resolve_cell_border(
     return fallback
   }
   let xf = cell_xfs.xf[xf_index]
-  // §18.8.43 — applyBorder="0" tells the consumer to ignore the
-  // border reference. We honour that exactly.
-  match xf.apply_border {
-    Some(false) => return fallback
-    _ => ()
+  // §18.8.45 — `applyBorder="0"` inherits the border from the named cell
+  // style this xf references (cellStyleXfs[xfId]); otherwise the cell's
+  // own `borderId` applies.
+  let effective_xf = match
+    inherited_style_xf(styles_table, xf, xf.apply_border) {
+    None => return fallback
+    Some(e) => e
   }
-  let border_id = match xf.border_id {
+  let border_id = match effective_xf.border_id {
     None => return fallback
     Some(id) => id
   }
@@ -3436,7 +3506,9 @@ fn ct_border_pr_to_resolved(
   // §18.8.4 — unresolved theme / indexed border colour resolves
   // to the spec-permitted `auto` sentinel; we surface it as
   // `currentColor` so the SVG cascade picks the actual hue.
-  let color = resolve_ct_color_rgb(pr.color, theme_map~).unwrap_or("currentColor")
+  let color = resolve_ct_color_rgb(pr.color, theme_map~).unwrap_or(
+    "currentColor",
+  )
   Some({ style: pr.style, color })
 }
 
@@ -3827,7 +3899,15 @@ fn resolve_cell_number_format(
     return fallback
   }
   let xf = cell_xfs.xf[xf_index]
-  let num_fmt_id = match xf.num_fmt_id {
+  // §18.8.45 — `applyNumberFormat="0"` inherits the number format from
+  // the named cell style this xf references (cellStyleXfs[xfId]);
+  // otherwise the cell's own `numFmtId` applies.
+  let effective_xf = match
+    inherited_style_xf(styles_table, xf, xf.apply_number_format) {
+    None => return fallback
+    Some(e) => e
+  }
+  let num_fmt_id = match effective_xf.num_fmt_id {
     None => return fallback
     Some(id) => id
   }
@@ -3966,7 +4046,10 @@ fn format_formula_value(
   match value {
     @formula.VNumber(n) =>
       format_number_general(
-        n, style.number_format, date_system~, preserve_fill=true,
+        n,
+        style.number_format,
+        date_system~,
+        preserve_fill=true,
       )
     @formula.VString(s) => s
     @formula.VBool(b) => if b { "TRUE" } else { "FALSE" }
@@ -3976,8 +4059,7 @@ fn format_formula_value(
       match rows.get(0) {
         Some(row) =>
           match row.get(0) {
-            Some(scalar) =>
-              format_formula_value(scalar, style, date_system)
+            Some(scalar) => format_formula_value(scalar, style, date_system)
             None => ""
           }
         None => ""
@@ -4199,7 +4281,10 @@ fn format_cell_value(
                 raw
               } else {
                 format_number_general(
-                  serial, style.number_format, date_system~, preserve_fill=true,
+                  serial,
+                  style.number_format,
+                  date_system~,
+                  preserve_fill=true,
                 )
               }
           }
@@ -4220,7 +4305,10 @@ fn format_cell_value(
       } noraise {
         num =>
           format_number_general(
-            num, style.number_format, date_system~, preserve_fill=true,
+            num,
+            style.number_format,
+            date_system~,
+            preserve_fill=true,
           )
       }
     }
@@ -4242,7 +4330,10 @@ fn format_cell_value(
       } noraise {
         num =>
           format_number_general(
-            num, style.number_format, date_system~, preserve_fill=true,
+            num,
+            style.number_format,
+            date_system~,
+            preserve_fill=true,
           )
       }
     }
@@ -4577,8 +4668,8 @@ fn parse_iso8601_date(raw : String) -> @date_serial.CalendarDateTime? {
 /// `mmmmm` (single letter).  `month` is 1..12; out-of-range yields "".
 fn month_name(month : Int, run_length : Int) -> String {
   let full = [
-    "January", "February", "March", "April", "May", "June", "July",
-    "August", "September", "October", "November", "December",
+    "January", "February", "March", "April", "May", "June", "July", "August", "September",
+    "October", "November", "December",
   ]
   if month < 1 || month > 12 {
     return ""
@@ -4598,8 +4689,7 @@ fn month_name(month : Int, run_length : Int) -> String {
 /// `dow` is 0=Sunday .. 6=Saturday.
 fn weekday_name(dow : Int, run_length : Int) -> String {
   let full = [
-    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
-    "Saturday",
+    "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
   ]
   if dow < 0 || dow > 6 {
     return ""
@@ -4957,7 +5047,11 @@ fn parse_comparison_condition(body : String) -> (String, Double)? {
 
 ///|
 /// Evaluate a §18.8.30 section comparison `value <op> threshold`.
-fn numeric_condition_matches(op : String, threshold : Double, value : Double) -> Bool {
+fn numeric_condition_matches(
+  op : String,
+  threshold : Double,
+  value : Double,
+) -> Bool {
   match op {
     "<" => value < threshold
     "<=" => value <= threshold
@@ -5981,11 +6075,7 @@ fn apply_scientific_format_section(value : Double, section : String) -> String {
     while keep > frac_zero && frac_str.code_unit_at(keep - 1).to_int() == 0x30 {
       keep = keep - 1
     }
-    frac_str = if keep == 0 {
-      ""
-    } else {
-      frac_str[0:keep].to_owned()
-    }
+    frac_str = if keep == 0 { "" } else { frac_str[0:keep].to_owned() }
   }
   // Exponent sign and magnitude.
   let exp_neg = e < 0
@@ -7029,7 +7119,11 @@ fn split_fill_directive(text : String) -> (String, String, String)? {
   while i < n {
     if text.code_unit_at(i).to_int() == 0xE000 && i + 1 < n {
       return Some(
-        (text[0:i].to_owned(), text[i + 1:i + 2].to_owned(), text[i + 2:n].to_owned()),
+        (
+          text[0:i].to_owned(),
+          text[i + 1:i + 2].to_owned(),
+          text[i + 2:n].to_owned(),
+        ),
       )
     }
     i = i + 1
@@ -7054,18 +7148,21 @@ fn strip_fill_directive(text : String) -> String {
 /// unresolved — mirrors `wrap_text`'s `seg_cost`.
 fn cell_text_width(s : String, font : ResolvedFont) -> Double {
   let weight = if font.bold { 700 } else { 400 }
-  try @glyph.measure_text_width(
+  try
+    @glyph.measure_text_width(
       s,
       font_size_pt=font.size,
       letter_spacing_px=0.0,
       family=font.family,
       weight~,
       italic=font.italic,
-    ) catch {
+    )
+  catch {
     _ => {
       let mut w = 0.0
       for c in s {
-        w = w + (if @glyph.is_cjk_char(c) { font.size } else { font.size * 0.6 })
+        w = w +
+          (if @glyph.is_cjk_char(c) { font.size } else { font.size * 0.6 })
       }
       w
     }
@@ -7090,7 +7187,10 @@ fn render_filled_cell_text(
 ) -> Array[@xml.Node] {
   let padding = 2.0
   let (ty, baseline) = vertical_text_pos(
-    layout, style.alignment.vertical, style.font.size, padding,
+    layout,
+    style.alignment.vertical,
+    style.font.size,
+    padding,
   )
   let avail = layout.width - 2.0 * padding
   let left_w = cell_text_width(left, style.font)
@@ -7098,11 +7198,7 @@ fn render_filled_cell_text(
   let fill_w = cell_text_width(fill, style.font)
   // Tile the fill glyph across the residual gap.
   let gap = avail - left_w - right_w
-  let reps = if fill_w > 0.0 && gap > 0.0 {
-    (gap / fill_w).to_int()
-  } else {
-    0
-  }
+  let reps = if fill_w > 0.0 && gap > 0.0 { (gap / fill_w).to_int() } else { 0 }
   let fill_run = StringBuilder::new()
   for _i in 0..<reps {
     fill_run.write_string(fill)
@@ -7189,12 +7285,39 @@ fn render_cell_text(
   } else {
     text
   }
-  let (tx, anchor) = horizontal_text_pos(
+  // §18.8.1 textRotation="255" — vertical-stacked glyphs (each
+  // character on its own line, upright; NOT a rotation).  Handled
+  // before the wrap / single-line split because the stack ignores
+  // wrapping and horizontal alignment — Excel centres the glyph column
+  // and tops it at the cell's upper edge.
+  if style.alignment.text_rotation == 255 {
+    return render_vertical_stacked_text(
+      id_prefix, cell_ref, layout, text, style,
+    )
+  }
+  let (tx0, anchor) = horizontal_text_pos(
     layout,
     style.alignment.horizontal,
     padding,
     cell_t~,
   )
+  // §18.8.1 — indent: shift the text anchor by `indent` units, where
+  // ECMA-376 defines one unit as "an increment of 1 represents 3
+  // spaces" of the cell font (measured via the glyph engine, never a
+  // hard-coded width).  Start-anchored text moves right, end-anchored
+  // text moves left; centred text is not indented (Excel ignores
+  // indent under centre alignment).
+  let tx = if style.alignment.indent != 0 && anchor != "middle" {
+    let unit = cell_text_width("   ", style.font)
+    let offset = unit * style.alignment.indent.to_double()
+    if anchor == "end" {
+      tx0 - offset
+    } else {
+      tx0 + offset
+    }
+  } else {
+    tx0
+  }
   let (ty, baseline) = vertical_text_pos(
     layout,
     style.alignment.vertical,
@@ -7226,33 +7349,28 @@ fn render_cell_text(
   if h_align_attr.length() > 0 {
     attrs.push(svg_attr("data-ooxml-h-align", h_align_attr))
   }
-  // §18.8.1 — text-rotation (0..180 or 255 for vertical-stack).
-  // Apply as `transform="rotate(-N,tx,ty)"` so the SVG rotates
-  // the glyphs around the text anchor point; 255 is vertical-
-  // stack (each char on its own line) which we surface as
-  // `data-ooxml-text-rotation="255"` for downstream rendering.
+  // §18.8.1 — text-rotation 1..180 (the 255 vertical-stack value is
+  // handled upstream by `render_vertical_stacked_text`).  Apply as
+  // `transform="rotate(-N,tx,ty)"` so the SVG rotates the glyphs around
+  // the text anchor point.
   if style.alignment.text_rotation != 0 {
     let rot = style.alignment.text_rotation
-    if rot == 255 {
-      attrs.push(svg_attr("data-ooxml-text-rotation", "255"))
-    } else {
-      // §18.8.1 — Excel's rotation is counter-clockwise; SVG's
-      // is clockwise, so negate.  Also surface as data attr so
-      // consumers can read the raw spec value.
-      attrs.push(svg_attr("data-ooxml-text-rotation", rot.to_string()))
-      attrs.push(
-        svg_attr(
-          "transform",
-          "rotate(" +
-          (-rot).to_string() +
-          "," +
-          format_d(tx) +
-          "," +
-          format_d(ty) +
-          ")",
-        ),
-      )
-    }
+    // §18.8.1 — Excel's rotation is counter-clockwise; SVG's is
+    // clockwise, so negate.  Also surface as data attr so consumers can
+    // read the raw spec value.
+    attrs.push(svg_attr("data-ooxml-text-rotation", rot.to_string()))
+    attrs.push(
+      svg_attr(
+        "transform",
+        "rotate(" +
+        (-rot).to_string() +
+        "," +
+        format_d(tx) +
+        "," +
+        format_d(ty) +
+        ")",
+      ),
+    )
   }
   // §18.8.1 — indent: each unit = 3 spaces (§18.18.x).  Surface
   // raw value so consumers can apply left/right padding.
@@ -7274,6 +7392,59 @@ fn render_cell_text(
   }
   append_font_attrs(attrs, style.font)
   [clip_defs, svg_elem("text", attrs, [svg_text(text)])]
+}
+
+///|
+/// §18.8.1 `textRotation="255"` — render the cell text as a vertical
+/// stack of upright glyphs (one character per line), the layout Excel
+/// uses for its "Vertical Text" orientation.  This is NOT a rotation:
+/// each glyph keeps its normal orientation and is centred horizontally
+/// in the cell, with the stack starting at the cell's top edge.  The
+/// `data-ooxml-text-rotation="255"` attribute is preserved so consumers
+/// can still read the raw spec value.
+fn render_vertical_stacked_text(
+  id_prefix : String,
+  cell_ref : String,
+  layout : CellLayout,
+  text : String,
+  style : ResolvedCellStyle,
+) -> Array[@xml.Node] {
+  let padding = 2.0
+  let font_size = style.font.size
+  let cx = layout.x + layout.width / 2.0
+  let (clip_defs, clip_ref) = cell_text_clip(id_prefix, cell_ref, layout)
+  let tspans : Array[@xml.Node] = []
+  let mut first = true
+  for c in text {
+    // Explicit line breaks collapse into the per-glyph stacking: drop
+    // the control character but keep stacking the visible glyphs.
+    if c == '\n' || c == '\r' {
+      continue
+    }
+    // First glyph anchors at `start_y`; each subsequent glyph advances
+    // one em below via `dy` (the standard SVG multi-line idiom).
+    let dy = if first { 0.0 } else { font_size }
+    tspans.push(
+      svg_elem(
+        "tspan",
+        [svg_attr("x", format_d(cx)), svg_attr("dy", format_d(dy))],
+        [svg_text(c.to_string())],
+      ),
+    )
+    first = false
+  }
+  // First-glyph baseline sits one font-size below the cell top so the
+  // glyph box starts at the padding edge.
+  let start_y = layout.y + padding + font_size
+  let attrs : Array[@xml.Attribute] = [
+    svg_attr("x", format_d(cx)),
+    svg_attr("y", format_d(start_y)),
+    svg_attr("text-anchor", "middle"),
+    svg_attr("clip-path", clip_ref),
+    svg_attr("data-ooxml-text-rotation", "255"),
+  ]
+  append_font_attrs(attrs, style.font)
+  [clip_defs, svg_elem("text", attrs, tspans)]
 }
 
 ///|
@@ -7484,14 +7655,16 @@ fn greedy_wrap_segments(
 
   // Real glyph-metric width of a segment, with graceful fallback.
   fn seg_cost(seg : String) -> Double {
-    try @glyph.measure_text_width(
+    try
+      @glyph.measure_text_width(
         seg,
         font_size_pt=font.size,
         letter_spacing_px=0.0,
         family=font.family,
         weight~,
         italic=font.italic,
-      ) catch {
+      )
+    catch {
       _ => heuristic(seg)
     } noraise {
       w => w
@@ -8329,9 +8502,7 @@ fn render_drawing_shape(
       // the path; fall back to bounding-box placeholder on failure.
       match cust_geom {
         Some(cg) => {
-          let path_d = eval_custgeom_path(
-            cg, bounds.width, bounds.height,
-          )
+          let path_d = eval_custgeom_path(cg, bounds.width, bounds.height)
           if path_d != "" {
             let fill = resolve_shape_solid_color(
               sp_pr, "solidFill", "currentColor",
@@ -8463,36 +8634,47 @@ fn render_drawing_shape(
 /// `<a:cxn>` (§20.1.9.10) becomes `data-ooxml-cxn-N-ang` /
 let custgeom_pi : Double = 3.14159265358979323846
 
+///|
 fn custgeom_sin(x : Double) -> Double {
   let two_pi = 2.0 * custgeom_pi
   let mut r = x % two_pi
-  if r > custgeom_pi { r = r - two_pi }
-  if r < -custgeom_pi { r = r + two_pi }
+  if r > custgeom_pi {
+    r = r - two_pi
+  }
+  if r < -custgeom_pi {
+    r = r + two_pi
+  }
   let r2 = r * r
   let mut term = r
   let mut sum = r
-  for i in 1..=12 {
+  for i in 1..<=12 {
     term = -term * r2 / ((2 * i).to_double() * (2 * i + 1).to_double())
     sum = sum + term
   }
   sum
 }
 
+///|
 fn custgeom_cos(x : Double) -> Double {
   let two_pi = 2.0 * custgeom_pi
   let mut r = x % two_pi
-  if r > custgeom_pi { r = r - two_pi }
-  if r < -custgeom_pi { r = r + two_pi }
+  if r > custgeom_pi {
+    r = r - two_pi
+  }
+  if r < -custgeom_pi {
+    r = r + two_pi
+  }
   let r2 = r * r
   let mut term = 1.0
   let mut sum = 1.0
-  for i in 1..=12 {
+  for i in 1..<=12 {
     term = -term * r2 / ((2 * i - 1).to_double() * (2 * i).to_double())
     sum = sum + term
   }
   sum
 }
 
+///|
 fn custgeom_atan2(y : Double, x : Double) -> Double {
   if x > 0.0 {
     let r = y / x
@@ -8500,14 +8682,20 @@ fn custgeom_atan2(y : Double, x : Double) -> Double {
     if r2 <= 1.0 {
       let mut t = r
       let mut s = r
-      for i in 1..=20 { t = -t * r2; s = s + t / (2 * i + 1).to_double() }
+      for i in 1..<=20 {
+        t = -t * r2
+        s = s + t / (2 * i + 1).to_double()
+      }
       s
     } else {
       let r_inv = x / y
       let r2 = r_inv * r_inv
       let mut t = r_inv
       let mut s = r_inv
-      for i in 1..=20 { t = -t * r2; s = s + t / (2 * i + 1).to_double() }
+      for i in 1..<=20 {
+        t = -t * r2
+        s = s + t / (2 * i + 1).to_double()
+      }
       (if y > 0.0 { custgeom_pi / 2.0 } else { -custgeom_pi / 2.0 }) - s
     }
   } else if x < 0.0 {
@@ -8526,11 +8714,7 @@ fn custgeom_atan2(y : Double, x : Double) -> Double {
 }
 
 ///|
-fn eval_custgeom_path(
-  cg : @xml.Element,
-  w : Double,
-  h : Double,
-) -> String {
+fn eval_custgeom_path(cg : @xml.Element, w : Double, h : Double) -> String {
   let guides : Map[String, Double] = {}
   guides["w"] = w
   guides["h"] = h
@@ -8577,13 +8761,11 @@ fn eval_custgeom_path(
               @xml.Node::Element(path) =>
                 if path.name.local_name == "path" {
                   let pw = match attr_value_local(path, "w") {
-                    Some(v) =>
-                      (try? @string.parse_double(v)).unwrap_or(w)
+                    Some(v) => (try? @string.parse_double(v)).unwrap_or(w)
                     None => w
                   }
                   let ph = match attr_value_local(path, "h") {
-                    Some(v) =>
-                      (try? @string.parse_double(v)).unwrap_or(h)
+                    Some(v) => (try? @string.parse_double(v)).unwrap_or(h)
                     None => h
                   }
                   let sx = if pw > 0.0 { w / pw } else { 1.0 }
@@ -8625,15 +8807,9 @@ fn eval_guide_fmla(fmla : String, guides : Map[String, Double]) -> Double {
   }
 
   match op {
-    "*/" =>
-      if gval(2) != 0.0 { gval(0) * gval(1) / gval(2) } else { 0.0 }
+    "*/" => if gval(2) != 0.0 { gval(0) * gval(1) / gval(2) } else { 0.0 }
     "+-" => gval(0) + gval(1) - gval(2)
-    "+/" =>
-      if gval(2) != 0.0 {
-        (gval(0) + gval(1)) / gval(2)
-      } else {
-        0.0
-      }
+    "+/" => if gval(2) != 0.0 { (gval(0) + gval(1)) / gval(2) } else { 0.0 }
     "val" => gval(0)
     "abs" => gval(0).abs()
     "max" => if gval(0) > gval(1) { gval(0) } else { gval(1) }
@@ -8645,7 +8821,11 @@ fn eval_guide_fmla(fmla : String, guides : Map[String, Double]) -> Double {
     "tan" => {
       let angle = gval(1) / 60000.0 * custgeom_pi / 180.0
       let c = custgeom_cos(angle)
-      if c.abs() < 1.0e-15 { 0.0 } else { gval(0) * custgeom_sin(angle) / c }
+      if c.abs() < 1.0e-15 {
+        0.0
+      } else {
+        gval(0) * custgeom_sin(angle) / c
+      }
     }
     "at2" => custgeom_atan2(gval(1), gval(0)) * 180.0 / custgeom_pi * 60000.0
     "cat2" => {
@@ -8658,7 +8838,13 @@ fn eval_guide_fmla(fmla : String, guides : Map[String, Double]) -> Double {
     }
     "pin" => {
       let (lo, x, hi) = (gval(0), gval(1), gval(2))
-      if x < lo { lo } else if x > hi { hi } else { x }
+      if x < lo {
+        lo
+      } else if x > hi {
+        hi
+      } else {
+        x
+      }
     }
     "?:" => if gval(0) > 0.0 { gval(1) } else { gval(2) }
     _ => (try? @string.parse_double(op)).unwrap_or(0.0)
@@ -8707,7 +8893,9 @@ fn render_custgeom_path_cmds(
             for pc in cmd.children {
               match pc {
                 @xml.Node::Element(p) =>
-                  if p.name.local_name == "pt" { pts.push(p) }
+                  if p.name.local_name == "pt" {
+                    pts.push(p)
+                  }
                 _ => ()
               }
             }
@@ -8725,7 +8913,9 @@ fn render_custgeom_path_cmds(
             for pc in cmd.children {
               match pc {
                 @xml.Node::Element(p) =>
-                  if p.name.local_name == "pt" { pts.push(p) }
+                  if p.name.local_name == "pt" {
+                    pts.push(p)
+                  }
                 _ => ()
               }
             }
@@ -8740,27 +8930,31 @@ fn render_custgeom_path_cmds(
           }
           "close" => buf.write_string("Z ")
           "arcTo" => {
-            let wr = resolve(
-              attr_value_local(cmd, "wR").unwrap_or("0"),
-            ) * sx
-            let hr = resolve(
-              attr_value_local(cmd, "hR").unwrap_or("0"),
-            ) * sy
-            let st = resolve(
-              attr_value_local(cmd, "stAng").unwrap_or("0"),
-            ) / 60000.0
-            let sw = resolve(
-              attr_value_local(cmd, "swAng").unwrap_or("0"),
-            ) / 60000.0
+            let wr = resolve(attr_value_local(cmd, "wR").unwrap_or("0")) * sx
+            let hr = resolve(attr_value_local(cmd, "hR").unwrap_or("0")) * sy
+            let st = resolve(attr_value_local(cmd, "stAng").unwrap_or("0")) /
+              60000.0
+            let sw = resolve(attr_value_local(cmd, "swAng").unwrap_or("0")) /
+              60000.0
             let large = if sw.abs() > 180.0 { 1 } else { 0 }
             let sweep = if sw > 0.0 { 1 } else { 0 }
             let end_ang = (st + sw) * custgeom_pi / 180.0
             let ex = wr * custgeom_cos(end_ang)
             let ey = hr * custgeom_sin(end_ang)
             buf.write_string(
-              "A " + format_d(wr) + " " + format_d(hr) + " 0 " +
-              large.to_string() + " " + sweep.to_string() + " " +
-              format_d(ex) + " " + format_d(ey) + " ",
+              "A " +
+              format_d(wr) +
+              " " +
+              format_d(hr) +
+              " 0 " +
+              large.to_string() +
+              " " +
+              sweep.to_string() +
+              " " +
+              format_d(ex) +
+              " " +
+              format_d(ey) +
+              " ",
             )
           }
           _ => ()
@@ -8770,6 +8964,7 @@ fn render_custgeom_path_cmds(
   }
 }
 
+///|
 /// `data-ooxml-cxn-N-x` / `data-ooxml-cxn-N-y`, and the count of
 /// list children (`data-ooxml-gd-count`, `data-ooxml-cxnLst-count`)
 /// stays even when the lists are empty so the §20.1.9.12 / §20.1.9.9
@@ -8858,7 +9053,7 @@ fn drawing_preset_path(
   prst : String,
   w : Double,
   h : Double,
-  adjustments~ : Array[@preset_geometry.Adjustment] = [],
+  adjustments? : Array[@preset_geometry.Adjustment] = [],
 ) -> String {
   // §20.1.10.55 ST_ShapeType — route the preset name through the
   // shared `@preset_geometry` dispatcher that covers the entire
@@ -9444,9 +9639,9 @@ fn render_sheet_phonetics(
           match first_child_named_local(cell_el, "v") {
             None => ()
             Some(v) =>
-              try @string.parse_int(
-                  xml_text_content(v).trim().to_owned(),
-                ) catch {
+              try
+                @string.parse_int(xml_text_content(v).trim().to_owned())
+              catch {
                 _ => ()
               } noraise {
                 idx =>
@@ -9605,7 +9800,9 @@ fn render_sheet_sparklines(
           }
           nodes.push(
             @sparkline.render_sparkline(
-              box, data, resolve_sparkline_group_colors(group, theme_map),
+              box,
+              data,
+              resolve_sparkline_group_colors(group, theme_map),
             ),
           )
         }
@@ -9688,9 +9885,7 @@ fn cell_numeric_value_default(cell : @xml.Element) -> Double? {
     match first_child_named_local(cell, "v") {
       None => None
       Some(v) =>
-        try @string.parse_double(
-            xml_text_content(v).trim().to_owned(),
-          ) catch {
+        try @string.parse_double(xml_text_content(v).trim().to_owned()) catch {
           _ => None
         } noraise {
           n => Some(n)
@@ -11399,13 +11594,21 @@ fn parse_int_or(text : String, fallback : Int) -> Int {
 // slots a table style may paint: `headerRow`, `totalRow`,
 // `firstColumn`, `lastColumn`, `firstRowStripe`, `secondRowStripe`,
 // `firstColumnStripe`, `secondColumnStripe`, `wholeTable`, plus the
-// per-corner / per-subheader slots we do NOT yet honour.  The
-// concrete colours live in the stylesheet's `<tableStyle>` /
-// `<dxf>` cascade (§18.8.41 / §18.8.14), which Excel populates
-// dynamically only when the user customises a built-in.  For the
-// built-in style names (`TableStyleLight*`, `TableStyleMedium*`,
-// `TableStyleDark*`) Excel does not write the dxf payload — the
-// renderer is expected to know the canonical palette.  This file
+// per-corner / per-subheader slots.  The renderer paints the fill of
+// every regular-table region — the header band, row stripes, column
+// stripes, the totals-row border, the `firstColumn` / `lastColumn`
+// emphasis bands, and the four corner cells (`firstHeaderCell`,
+// `lastHeaderCell`, `firstTotalCell`, `lastTotalCell`) — resolving each
+// colour through `resolve_table_style_palette` /
+// `table_style_slot_fill`: a workbook-defined custom `<tableStyle>`
+// overrides each region from its `<tableStyleElement>` `<dxf>`
+// (§18.8.40 / §18.8.39 / §18.8.14).  Only the PivotTable-specific
+// subheader / subtotal / page-field slots and the per-region FONT /
+// BORDER differential (the cell-text layer's bold first column, etc.)
+// remain outside this fill-band layer.  For the built-in style names
+// (`TableStyleLight*`, `TableStyleMedium*`, `TableStyleDark*`) Excel
+// does not write the dxf payload — the renderer is expected to know the
+// canonical palette.  This file
 // hard-codes the most common mappings from §18.8.43 / Annex L
 // (Excel's built-in table-style table).  Unknown style names fall
 // back to `TableStyleMedium2`, which is Excel's documented default
@@ -11511,6 +11714,167 @@ priv enum TableStyleVariant {
 }
 
 ///|
+/// §18.8.20 — the CSS colour of a `<dxf>`'s solid fill, or `None` when
+/// the differential format declares no resolvable solid fill.
+///
+/// A differential `<dxf>` writes a SOLID fill with its colour in
+/// `<bgColor>` — frequently with no `patternType` at all — unlike a
+/// regular cell `<patternFill patternType="solid">` which carries the
+/// colour in `<fgColor>`.  Both idioms are honoured: an explicit
+/// `patternType="solid"` takes `<fgColor>` (falling back to `<bgColor>`),
+/// while the differential idiom (no / non-solid `patternType`) takes
+/// `<bgColor>`.
+fn dxf_fill_css(dxf : @domain.CT_Dxf, theme_map : SmlThemeColorMap) -> String? {
+  guard dxf.fill is Some(fill) else { return None }
+  guard fill.pattern_fill is Some(pf) else { return None }
+  let from_fg = match pf.fg_color {
+    Some(el) => resolve_color_element_rgb(el, theme_map)
+    None => None
+  }
+  let from_bg = match pf.bg_color {
+    Some(el) => resolve_color_element_rgb(el, theme_map)
+    None => None
+  }
+  match pf.pattern_type.unwrap_or("none") {
+    // Differential solid fill (with or without an explicit
+    // `patternType="solid"`): the colour lives in `<bgColor>`; fall back
+    // to `<fgColor>` for the regular-cell idiom.
+    "solid" | "none" =>
+      match from_bg {
+        Some(c) => Some(c)
+        None => from_fg
+      }
+    // A named pattern (gray125, …) is not a plain solid fill; the caller
+    // routes it through the general `ct_fill_to_resolved` resolver, which
+    // preserves the pattern identity.
+    _ => None
+  }
+}
+
+///|
+/// §18.8.42 — find a custom `<tableStyle name="…">` in the stylesheet's
+/// `<tableStyles>` collection, or `None` when no custom style matches.
+fn find_custom_table_style(
+  styles : @domain.CT_Stylesheet?,
+  name : String,
+) -> @domain.CT_TableStyle? {
+  guard styles is Some(stylesheet) else { return None }
+  guard stylesheet.table_styles is Some(table_styles) else { return None }
+  for ts in table_styles.table_style {
+    if ts.name == name {
+      return Some(ts)
+    }
+  }
+  None
+}
+
+///|
+/// §18.8.40 / §18.8.39 — resolve the table-style palette for `name`.
+/// When the workbook defines a custom `<tableStyle>` of that name, its
+/// `<tableStyleElement>` differential formats override the name-derived
+/// built-in palette per painted slot (`headerRow` → header band,
+/// `firstRowStripe` → data band, `totalRow` → totals border); slots the
+/// custom style leaves undefined keep the built-in value, so a partially
+/// customised style still renders sensibly.  A purely custom style name
+/// (no built-in match) starts from the `TableStyleMedium2` default base.
+fn resolve_table_style_palette(
+  name : String,
+  styles : @domain.CT_Stylesheet?,
+  theme_map : SmlThemeColorMap,
+) -> TableStylePalette {
+  let builtin = lookup_table_style_palette(name)
+  guard find_custom_table_style(styles, name) is Some(custom) else {
+    return builtin
+  }
+  let dxfs = match styles {
+    Some(s) => s.dxfs
+    None => None
+  }
+  let mut header = builtin.header_fill
+  let mut band = builtin.band_fill
+  let mut totals = builtin.totals_border
+  for el in custom.table_style_element {
+    guard el.dxf_id is Some(id) else { continue }
+    guard dxfs is Some(table) else { continue }
+    guard id >= 0 && id < table.dxf.length() else { continue }
+    guard dxf_fill_css(table.dxf[id], theme_map) is Some(css) else { continue }
+    match el.type_ {
+      "headerRow" => header = css
+      "firstRowStripe" => band = css
+      "totalRow" => totals = css
+      _ => ()
+    }
+  }
+  { header_fill: header, band_fill: band, totals_border: totals }
+}
+
+///|
+/// §18.8.39 — the resolved CSS fill of a single styled-region slot
+/// (`firstColumn`, `lastColumn`, `firstHeaderCell`, …) declared by the
+/// workbook's custom `<tableStyle>` of `name`, or `None` when no custom
+/// style / matching slot / solid dxf fill exists.  Built-in styles do not
+/// reach here (they have no `<tableStyleElement>` payload on disk).
+fn table_style_slot_fill(
+  styles : @domain.CT_Stylesheet?,
+  name : String,
+  slot_type : String,
+  theme_map : SmlThemeColorMap,
+) -> String? {
+  guard find_custom_table_style(styles, name) is Some(custom) else {
+    return None
+  }
+  let dxfs = match styles {
+    Some(s) => s.dxfs
+    None => None
+  }
+  for el in custom.table_style_element {
+    if el.type_ == slot_type {
+      guard el.dxf_id is Some(id) else { continue }
+      guard dxfs is Some(table) else { continue }
+      guard id >= 0 && id < table.dxf.length() else { continue }
+      return dxf_fill_css(table.dxf[id], theme_map)
+    }
+  }
+  None
+}
+
+///|
+/// Push a solid-fill `<rect>` covering the cell range `(r0..r1, c0..c1)`
+/// into `out`, tagged with the §18.5.1.5 band label, when the range maps
+/// to a positive pixel box.
+fn push_table_fill_rect(
+  out : Array[@xml.Node],
+  layout : SheetLayout,
+  r0 : Int,
+  r1 : Int,
+  c0 : Int,
+  c1 : Int,
+  fill : String,
+  band : String,
+) -> Unit {
+  match table_range_pixel_box(layout, r0, r1, c0, c1) {
+    Some(box) => {
+      let (x, y, w, h) = box
+      out.push(
+        svg_elem(
+          "rect",
+          [
+            svg_attr("x", format_d(x)),
+            svg_attr("y", format_d(y)),
+            svg_attr("width", format_d(w)),
+            svg_attr("height", format_d(h)),
+            svg_attr("fill", fill),
+            svg_attr("data-ooxml-table-band", band),
+          ],
+          [],
+        ),
+      )
+    }
+    None => ()
+  }
+}
+
+///|
 /// Parse a built-in style name `TableStyle{Light|Medium|Dark}{N}`
 /// into `(variant, suffix)`.  Unknown / malformed names fall back
 /// to `(Medium, 2)` (TableStyleMedium2), matching Excel's
@@ -11552,6 +11916,8 @@ priv struct TableMeta {
   style_name : String?
   show_row_stripes : Bool
   show_column_stripes : Bool
+  show_first_column : Bool
+  show_last_column : Bool
 }
 
 ///|
@@ -11596,6 +11962,8 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
   let mut style_name : String? = None
   let mut show_row_stripes = false
   let mut show_column_stripes = false
+  let mut show_first_column = false
+  let mut show_last_column = false
   for child in elt.children {
     match child {
       Element(c) =>
@@ -11609,6 +11977,14 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
             )
             show_column_stripes = parse_xsd_boolean_or(
               attr_value_local(c, "showColumnStripes"),
+              false,
+            )
+            show_first_column = parse_xsd_boolean_or(
+              attr_value_local(c, "showFirstColumn"),
+              false,
+            )
+            show_last_column = parse_xsd_boolean_or(
+              attr_value_local(c, "showLastColumn"),
               false,
             )
           }
@@ -11628,6 +12004,8 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
     style_name,
     show_row_stripes,
     show_column_stripes,
+    show_first_column,
+    show_last_column,
   })
 }
 
@@ -11683,6 +12061,8 @@ fn table_range_pixel_box(
 fn render_table_chrome_under(
   tables : Array[@xml.Element],
   layout : SheetLayout,
+  styles : @domain.CT_Stylesheet?,
+  theme_map : SmlThemeColorMap,
 ) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
   for table_elt in tables {
@@ -11698,7 +12078,7 @@ fn render_table_chrome_under(
       None => continue
       Some(n) => n
     }
-    let palette = lookup_table_style_palette(style_name)
+    let palette = resolve_table_style_palette(style_name, styles, theme_map)
     // Data region row range (excluding header and totals).
     let data_row_start = meta.row_start + meta.header_row_count
     let data_row_end = meta.row_end - meta.totals_row_count
@@ -11827,6 +12207,113 @@ fn render_table_chrome_under(
             ),
           )
         }
+        None => ()
+      }
+    }
+    // 5. §18.5.1.5 firstColumn / lastColumn — emphasis fill over the
+    //    whole first / last table column.  Built-in styles emphasise
+    //    these via font weight (the cell-text layer); a custom
+    //    `<tableStyle>` slot that declares a fill paints the band here.
+    if meta.show_first_column {
+      match
+        table_style_slot_fill(styles, style_name, "firstColumn", theme_map) {
+        Some(fill) =>
+          push_table_fill_rect(
+            out,
+            layout,
+            meta.row_start,
+            meta.row_end,
+            meta.col_start,
+            meta.col_start,
+            fill,
+            "first-column",
+          )
+        None => ()
+      }
+    }
+    if meta.show_last_column {
+      match table_style_slot_fill(styles, style_name, "lastColumn", theme_map) {
+        Some(fill) =>
+          push_table_fill_rect(
+            out,
+            layout,
+            meta.row_start,
+            meta.row_end,
+            meta.col_end,
+            meta.col_end,
+            fill,
+            "last-column",
+          )
+        None => ()
+      }
+    }
+    // 6. §18.5.1.5 corner cells — firstHeaderCell / lastHeaderCell at the
+    //    header-row corners and firstTotalCell / lastTotalCell at the
+    //    totals-row corners, each a single-cell overlay (custom-style
+    //    fills only) painted over the band beneath it.
+    if meta.header_row_count > 0 {
+      let header_row_end = meta.row_start + meta.header_row_count - 1
+      match
+        table_style_slot_fill(styles, style_name, "firstHeaderCell", theme_map) {
+        Some(fill) =>
+          push_table_fill_rect(
+            out,
+            layout,
+            meta.row_start,
+            header_row_end,
+            meta.col_start,
+            meta.col_start,
+            fill,
+            "first-header-cell",
+          )
+        None => ()
+      }
+      match
+        table_style_slot_fill(styles, style_name, "lastHeaderCell", theme_map) {
+        Some(fill) =>
+          push_table_fill_rect(
+            out,
+            layout,
+            meta.row_start,
+            header_row_end,
+            meta.col_end,
+            meta.col_end,
+            fill,
+            "last-header-cell",
+          )
+        None => ()
+      }
+    }
+    if meta.totals_row_count > 0 && data_row_end >= meta.row_start {
+      let totals_row = data_row_end + 1
+      match
+        table_style_slot_fill(styles, style_name, "firstTotalCell", theme_map) {
+        Some(fill) =>
+          push_table_fill_rect(
+            out,
+            layout,
+            totals_row,
+            totals_row,
+            meta.col_start,
+            meta.col_start,
+            fill,
+            "first-total-cell",
+          )
+        None => ()
+      }
+      match
+        table_style_slot_fill(styles, style_name, "lastTotalCell", theme_map) {
+        Some(fill) =>
+          push_table_fill_rect(
+            out,
+            layout,
+            totals_row,
+            totals_row,
+            meta.col_end,
+            meta.col_end,
+            fill,
+            "last-total-cell",
+          )
         None => ()
       }
     }
@@ -12005,7 +12492,8 @@ fn render_comment_indicators(
   layout : SheetLayout,
 ) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
-  let comment_list = match first_child_named_local(comments_root, "commentList") {
+  let comment_list = match
+    first_child_named_local(comments_root, "commentList") {
     Some(cl) => cl
     None => return out
   }
@@ -12022,8 +12510,16 @@ fn render_comment_indicators(
                   // cells stay proportional.
                   let s = {
                     let side = 6.0
-                    let cap = if cl.width < cl.height { cl.width } else { cl.height }
-                    if side > cap * 0.5 { cap * 0.5 } else { side }
+                    let cap = if cl.width < cl.height {
+                      cl.width
+                    } else {
+                      cl.height
+                    }
+                    if side > cap * 0.5 {
+                      cap * 0.5
+                    } else {
+                      side
+                    }
                   }
                   if s > 0.0 {
                     let rx = cl.x + cl.width
@@ -12086,9 +12582,10 @@ fn render_data_validation_arrows(
                         for cell_ref in expand_sqref_to_cells(sqref) {
                           match lookup_cell_layout(layout, cell_ref) {
                             Some(cl) =>
-                              for n in render_autofilter_arrow(
-                                (cl.x, cl.y, cl.width, cl.height),
-                              ) {
+                              for
+                                n in render_autofilter_arrow(
+                                  (cl.x, cl.y, cl.width, cl.height),
+                                ) {
                                 out.push(n)
                               }
                             None => ()
@@ -12124,8 +12621,8 @@ fn expand_sqref_to_cells(sqref : String) -> Array[String] {
         let parsed = try {
           let s = @address.CellAddress::parse_a1(start)
           let e = @address.CellAddress::parse_a1(end_ref)
-          for r in s.row_zero_based..=e.row_zero_based {
-            for c in s.col_zero_based..=e.col_zero_based {
+          for r in s.row_zero_based..<=e.row_zero_based {
+            for c in s.col_zero_based..<=e.col_zero_based {
               let addr : @address.CellAddress = {
                 col_zero_based: c,
                 row_zero_based: r,

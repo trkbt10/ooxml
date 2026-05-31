@@ -19,10 +19,23 @@ pub fn render_shape_path(
   if !supports(shape) {
     return None
   }
-  Some(
-    geometry_to_svg_path(
-      build_geometry_with_adjustments(shape, width, height, adjustments),
-    ),
+  Some(render_preset_shape_path(shape, width, height, adjustments))
+}
+
+///|
+/// Materialise the faithful geometry of an already-typed `PresetShape`
+/// on the `width × height` box as an SVG path `d` string.  Used by
+/// renderers that already hold the typed shape (e.g. the SmartArt diagram
+/// renderer, whose engine attaches a `PresetShape` to every node) rather
+/// than its `<a:prstGeom @prst>` token.
+pub fn render_preset_shape_path(
+  shape : PresetShape,
+  width : Int,
+  height : Int,
+  adjustments : Array[Adjustment],
+) -> String {
+  geometry_to_svg_path(
+    build_geometry_with_adjustments(shape, width, height, adjustments),
   )
 }
 

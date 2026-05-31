@@ -91,6 +91,30 @@ fn is_radial_gradient(grad_fill : @xml.Element) -> Bool {
 }
 
 ///|
+/// §20.1.8.46 (a:path) / §20.1.8.30 (a:fillToRect) — read the radial
+/// gradient focus from `<a:path>/<a:fillToRect l t r b>` (edge margins
+/// as percentages) and return the gradient centre via
+/// `fill_to_rect_to_radial_center`.  Returns `None` when the path
+/// carries no `<a:fillToRect>` (the spec default centred radial), so
+/// the caller keeps the 50%/50% default.
+fn read_radial_fill_center(grad_fill : @xml.Element) -> (Double, Double)? {
+  match first_child_named(grad_fill, "path") {
+    None => None
+    Some(path_el) =>
+      match first_child_named(path_el, "fillToRect") {
+        None => None
+        Some(ftr) => {
+          let l = parse_st_positive_fixed_percentage(attr_value(ftr, "l"))
+          let t = parse_st_positive_fixed_percentage(attr_value(ftr, "t"))
+          let r = parse_st_positive_fixed_percentage(attr_value(ftr, "r"))
+          let b = parse_st_positive_fixed_percentage(attr_value(ftr, "b"))
+          Some(fill_to_rect_to_radial_center(l, t, r, b))
+        }
+      }
+  }
+}
+
+///|
 /// Read `<a:lin ang="..."/>` and return the angle in OOXML
 /// 60000ths-of-a-degree converted to degrees.  Returns 0 when absent
 /// (gradient is left-to-right).
@@ -133,7 +157,14 @@ fn render_grad_fill_def(
   let stop_nodes = build_stop_nodes(stops)
   let radial = is_radial_gradient(grad_fill)
   if radial {
-    let coords = get_radial_gradient_coords()
+    // §20.1.8.46 (a:path) / §20.1.8.30 (a:fillToRect) — honour the
+    // gradient focus rectangle so an off-centre radial (e.g. a
+    // top-left highlight) renders at its true centre instead of the
+    // 50%/50% default.  Matches the text-fill path
+    // (`resolve_text_gradient_fill`).
+    let coords = get_radial_gradient_coords(
+      radial_center=read_radial_fill_center(grad_fill),
+    )
     Some(
       @markup.elem_ns(
         "radialGradient",
@@ -445,11 +476,22 @@ fn pattern_tile_marks(prst : String, fg : String) -> Array[@xml.Node]? {
     "dotDmnd" => Some([dot(4.0, 4.0, 1.0)])
     // Confetti — scattered dots; `lg` uses larger dots.
     "smConfetti" =>
-      Some([dot(1.0, 1.0, 0.6), dot(5.0, 3.0, 0.6), dot(2.5, 6.0, 0.6), dot(6.5, 6.5, 0.6)])
+      Some([
+        dot(1.0, 1.0, 0.6),
+        dot(5.0, 3.0, 0.6),
+        dot(2.5, 6.0, 0.6),
+        dot(6.5, 6.5, 0.6),
+      ])
     "lgConfetti" =>
-      Some([dot(1.0, 1.0, 1.0), dot(5.0, 3.0, 1.0), dot(2.5, 6.0, 1.0), dot(6.5, 6.5, 1.0)])
+      Some([
+        dot(1.0, 1.0, 1.0),
+        dot(5.0, 3.0, 1.0),
+        dot(2.5, 6.0, 1.0),
+        dot(6.5, 6.5, 1.0),
+      ])
     // Zig-zag — a triangular wave repeated across the tile.
-    "zigZag" => Some([stroke_shape("polyline", "points", "0,6 2,2 4,6 6,2 8,6")])
+    "zigZag" =>
+      Some([stroke_shape("polyline", "points", "0,6 2,2 4,6 6,2 8,6")])
     // Wave — a smooth sinusoid (two quadratic segments).
     "wave" => Some([stroke_shape("path", "d", "M0,6 Q2,2 4,6 T8,6")])
     // Trellis — a dense diagonal lattice (both diagonals, plus the
@@ -593,7 +635,8 @@ pub fn render_fill_attr(
     "noFill" => { attr_value: "none", is_no_fill: true }
     "solidFill" =>
       match @paint.resolve_solid_fill(fill_element, ctx~) {
-        Some(rc) => { attr_value: @paint.format_resolved_color(rc), is_no_fill: false }
+        Some(rc) =>
+          { attr_value: @paint.format_resolved_color(rc), is_no_fill: false }
         None => { attr_value: "none", is_no_fill: false }
       }
     "gradFill" => {

@@ -175,17 +175,23 @@ fn render_diagram_svg(
   } noraise {
     t => t
   }
-  let definition_typed = try @dgm.CT_DiagramDefinition::new(layout_def_root) catch {
+  let definition_typed = try
+    @dgm.CT_DiagramDefinition::new(layout_def_root)
+  catch {
     _ => return []
   } noraise {
     t => t
   }
-  let data_model = try @diagram_layout.decode_data_model(data_model_typed) catch {
+  let data_model = try
+    @diagram_layout.decode_data_model(data_model_typed)
+  catch {
     _ => return []
   } noraise {
     t => t
   }
-  let definition = try @diagram_layout.decode_diagram_definition(definition_typed) catch {
+  let definition = try
+    @diagram_layout.decode_diagram_definition(definition_typed)
+  catch {
     _ => return []
   } noraise {
     t => t
@@ -252,7 +258,9 @@ fn render_diagram_svg(
   // §21.4.4 `<dgm:txFillClrLst>` — per-style-label TEXT colour lists,
   // so each node's label uses the style label's text colour.
   let text_palettes = colors_by_style_label(
-    colors_def_root, ctx, list_name="txFillClrLst",
+    colors_def_root,
+    ctx,
+    list_name="txFillClrLst",
   )
   let text_counts : Map[String, Int] = Map([], capacity=0)
   let svg_nodes : Array[@xml.Node] = []
@@ -510,9 +518,11 @@ fn lookup_point_text(
 
 ///|
 /// Emit the SVG shape (or shapes) for one laid-out diagram node.
-/// The preset shape is taken from the engine's `NodeBounds.shape`;
-/// unknown / unsupported presets fall back to a plain `<rect>` so
-/// every diagram point always receives a visible body.
+/// The preset shape is taken from the engine's `NodeBounds.shape`:
+/// ellipse / roundRect / triangle use dedicated SVG primitives, and
+/// every other §20.1.10.56 preset is materialised through the shared
+/// faithful geometry library (translated into the node's bounds), so a
+/// diagram point renders its real shape body rather than a plain rect.
 fn emit_node_shape(
   nb : @diagram_layout.NodeBounds,
   fill : String,
@@ -590,17 +600,39 @@ fn emit_node_shape(
       [@markup.elem_ns("polygon", @markup.svg_ns, attrs, [])]
     }
     _ => {
-      // Default: render as a rect for every other preset.
-      let attrs : Array[@xml.Attribute] = [
-        @markup.attr("x", format_double(x)),
-        @markup.attr("y", format_double(y)),
-        @markup.attr("width", format_double(w)),
-        @markup.attr("height", format_double(h)),
-      ]
-      for a in common_attrs {
-        attrs.push(a)
+      // §20.1.10.56 — render every OTHER preset through the shared
+      // faithful geometry (all 187 ST_ShapeType presets), translated into
+      // the node's bounds, instead of degrading non-trivial SmartArt
+      // shapes (chevron, pentagon, arrows, …) to a plain rect.  The
+      // geometry library always yields a path for a valid `PresetShape`;
+      // a degenerate empty result keeps the bounding rect.
+      let iw = (w + 0.5).to_int()
+      let ih = (h + 0.5).to_int()
+      let d = @preset_geometry.render_preset_shape_path(nb.shape, iw, ih, [])
+      if d == "" {
+        let attrs : Array[@xml.Attribute] = [
+          @markup.attr("x", format_double(x)),
+          @markup.attr("y", format_double(y)),
+          @markup.attr("width", format_double(w)),
+          @markup.attr("height", format_double(h)),
+        ]
+        for a in common_attrs {
+          attrs.push(a)
+        }
+        [@markup.elem_ns("rect", @markup.svg_ns, attrs, [])]
+      } else {
+        let attrs : Array[@xml.Attribute] = [
+          @markup.attr("d", d),
+          @markup.attr(
+            "transform",
+            "translate(" + format_double(x) + "," + format_double(y) + ")",
+          ),
+        ]
+        for a in common_attrs {
+          attrs.push(a)
+        }
+        [@markup.elem_ns("path", @markup.svg_ns, attrs, [])]
       }
-      [@markup.elem_ns("rect", @markup.svg_ns, attrs, [])]
     }
   }
 }
@@ -665,7 +697,7 @@ fn emit_diagram_background(
 fn emit_node_label(
   nb : @diagram_layout.NodeBounds,
   label : String,
-  text_color~ : String = "#000000",
+  text_color? : String = "#000000",
 ) -> @xml.Node {
   let cx = nb.bounds.x + nb.bounds.width * 0.5
   let cy = nb.bounds.y + nb.bounds.height * 0.5
@@ -707,7 +739,7 @@ fn diagram_default_palette() -> Array[String] {
 fn fill_clr_lst_colors(
   lbl : @xml.Element,
   ctx : ColorResolveContext,
-  list_name~ : String = "fillClrLst",
+  list_name? : String = "fillClrLst",
 ) -> Array[String] {
   let result : Array[String] = []
   let mut fill_lst : @xml.Element? = None
@@ -759,7 +791,7 @@ fn fill_clr_lst_colors(
 fn colors_by_style_label(
   colors_def : @xml.Element?,
   ctx : ColorResolveContext,
-  list_name~ : String = "fillClrLst",
+  list_name? : String = "fillClrLst",
 ) -> Map[String, Array[String]] {
   let map : Map[String, Array[String]] = Map([], capacity=0)
   let cd = match colors_def {

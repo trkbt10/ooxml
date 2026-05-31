@@ -72,3 +72,29 @@ test "emit_diagram_background returns None when no dgm:bg is present" {
   let ctx = ColorResolveContext::empty()
   assert_true(emit_diagram_background(dm, 200.0, 100.0, ctx) is None)
 }
+
+///|
+/// §20.1.10.56 — a SmartArt node whose preset is neither ellipse,
+/// roundRect nor triangle must render its FAITHFUL geometry (a real
+/// `<path>` translated into the node's bounds) via the shared
+/// preset-geometry library, not degrade to a plain bounding `<rect>`.
+test "emit_node_shape renders a non-trivial preset via the shared geometry" {
+  let nb : @diagram_layout.NodeBounds = {
+    point_id: "p1",
+    bounds: { x: 10.0, y: 20.0, width: 100.0, height: 50.0 },
+    shape: @preset_geometry.ShapeChevron,
+    style_lbl: None,
+  }
+  let buf = StringBuilder::new()
+  for n in emit_node_shape(nb, "#4472C4") {
+    match n {
+      @xml.Node::Element(e) => buf.write_string(@markup.serialize_svg(e))
+      _ => ()
+    }
+  }
+  let svg = buf.to_string()
+  // A chevron is a real path translated to (10, 20), not a bounding rect.
+  assert_true(svg.contains("<path "))
+  assert_true(svg.contains("translate(10"))
+  assert_true(svg.contains("fill=\"#4472C4\""))
+}

@@ -598,6 +598,127 @@ test "SpreadsheetML viewer resolves cellXfs/fills cascade" {
 }
 
 ///|
+/// §18.8.45 — `applyFill="0"` on a cell `<xf>` must INHERIT the fill
+/// from the named cell style it references via `xfId`
+/// (`cellStyleXfs[xfId]`), not drop it.  The cell's own fillId is 0
+/// (none) but it inherits fillId 1 (yellow) from the named style.
+test "SpreadsheetML viewer §18.8.45 applyFill=0 inherits named cell style fill" {
+  let styles_xml : @xml.Element = {
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("fills"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("fill"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("patternFill"),
+                attributes: [{ name: name("patternType"), value: "none" }],
+                children: [],
+              }),
+            ],
+          }),
+          @xml.Node::Element({
+            name: name("fill"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("patternFill"),
+                attributes: [{ name: name("patternType"), value: "solid" }],
+                children: [
+                  @xml.Node::Element({
+                    name: name("fgColor"),
+                    attributes: [{ name: name("rgb"), value: "FFFFFF00" }],
+                    children: [],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+      // Named cell style xf carries the yellow fill (fillId 1).
+      @xml.Node::Element({
+        name: name("cellStyleXfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [
+              { name: name("fillId"), value: "1" },
+              { name: name("applyFill"), value: "1" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+      // Cell xf: own fillId 0 (none) BUT applyFill=0 → inherit from
+      // cellStyleXfs[0].
+      @xml.Node::Element({
+        name: name("cellXfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [
+              { name: name("xfId"), value: "0" },
+              { name: name("fillId"), value: "0" },
+              { name: name("applyFill"), value: "0" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  }
+  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("row"),
+            attributes: [{ name: name("r"), value: "1" }],
+            children: [
+              @xml.Node::Element({
+                name: name("c"),
+                attributes: [
+                  { name: name("r"), value: "A1" },
+                  { name: name("s"), value: "0" },
+                ],
+                children: [
+                  @xml.Node::Element({
+                    name: name("v"),
+                    attributes: [],
+                    children: [@xml.Node::Text("1")],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet, styles=Some(styles))
+  // The cell inherits the named style's yellow fill despite applyFill=0.
+  assert_true(result.svg.contains("fill=\"#FFFF00\""))
+}
+
+///|
 /// §18.3.1.4 / §18.8.22 / §18.8.43 — a cell with `s="0"` referencing
 /// `cellXfs[0].fontId=1`, where `fonts.font[1]` declares
 /// `<b/>` + `<sz val="14"/>` + `<color rgb="FFFF0000"/>` +
@@ -1032,6 +1153,123 @@ test "SpreadsheetML viewer applies §18.3.1.18 cellIs cf overlay" {
   let result = render_svg(worksheet, styles=Some(styles))
   // A2 (150) and A3 (200) match; A1 (50) does not. The red overlay
   // must therefore appear exactly twice.
+  inspect(count_fill_red(result.svg), content="2")
+}
+
+///|
+/// §18.8.18 / §18.3.1.18 — Excel stores a conditional-format SOLID fill
+/// as `<patternFill><bgColor rgb="…"/></patternFill>` (the colour in
+/// `<bgColor>`, frequently with NO `patternType`), unlike a regular cell
+/// fill (`<fgColor>`).  The dxf overlay must honour that idiom: a cellIs
+/// rule with such a dxf paints the matching cells (it previously dropped
+/// the fill because the generic resolver only read `<fgColor>`).
+test "SpreadsheetML viewer applies a cellIs cf overlay with a bgColor solid dxf" {
+  let styles_xml : @xml.Element = {
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dxfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("dxf"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("fill"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("patternFill"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("bgColor"),
+                        attributes: [{ name: name("rgb"), value: "FFFF0000" }],
+                        children: [],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  }
+  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let cell_with = fn(addr : String, value : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("c"),
+      attributes: [{ name: name("r"), value: addr }],
+      children: [
+        @xml.Node::Element({
+          name: name("v"),
+          attributes: [],
+          children: [@xml.Node::Text(value)],
+        }),
+      ],
+    })
+  }
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A3" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("row"),
+            attributes: [{ name: name("r"), value: "1" }],
+            children: [cell_with("A1", "50")],
+          }),
+          @xml.Node::Element({
+            name: name("row"),
+            attributes: [{ name: name("r"), value: "2" }],
+            children: [cell_with("A2", "150")],
+          }),
+          @xml.Node::Element({
+            name: name("row"),
+            attributes: [{ name: name("r"), value: "3" }],
+            children: [cell_with("A3", "200")],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("conditionalFormatting"),
+        attributes: [{ name: name("sqref"), value: "A1:A3" }],
+        children: [
+          @xml.Node::Element({
+            name: name("cfRule"),
+            attributes: [
+              { name: name("type"), value: "cellIs" },
+              { name: name("operator"), value: "greaterThan" },
+              { name: name("dxfId"), value: "0" },
+              { name: name("priority"), value: "1" },
+            ],
+            children: [
+              @xml.Node::Element({
+                name: name("formula"),
+                attributes: [],
+                children: [@xml.Node::Text("100")],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet, styles=Some(styles))
+  // A2 (150) and A3 (200) exceed 100 → red solid fill from the bgColor
+  // dxf; A1 (50) does not.  Exactly two red fills.
   inspect(count_fill_red(result.svg), content="2")
 }
 
@@ -2318,7 +2556,11 @@ test "render_svg resolves cell font color through theme cascade" {
       attributes: [{ name: name("val"), value: hex }],
       children: [],
     }
-    { name: name(local_name), attributes: [], children: [@xml.Node::Element(srgb)] }
+    {
+      name: name(local_name),
+      attributes: [],
+      children: [@xml.Node::Element(srgb)],
+    }
   }
   let scheme : @xml.Element = {
     name: name("clrScheme"),
@@ -3186,6 +3428,96 @@ test "SpreadsheetML viewer §18.8.1 cell alignment attrs surface as data-ooxml-*
 }
 
 ///|
+/// §18.8.45 — `applyAlignment="0"` (and, more generally, a cell xf with
+/// no `<alignment>` of its own) inherits the alignment from the named
+/// cell style it references via `xfId` (`cellStyleXfs[xfId]`).
+test "SpreadsheetML viewer §18.8.45 applyAlignment=0 inherits named style alignment" {
+  let style_alignment : @xml.Element = {
+    name: name("alignment"),
+    attributes: [
+      { name: name("textRotation"), value: "90" },
+      { name: name("indent"), value: "2" },
+    ],
+    children: [],
+  }
+  let cell_style_xfs : @xml.Element = {
+    name: name("cellStyleXfs"),
+    attributes: [{ name: name("count"), value: "1" }],
+    children: [
+      @xml.Node::Element({
+        name: name("xf"),
+        attributes: [{ name: name("applyAlignment"), value: "1" }],
+        children: [@xml.Node::Element(style_alignment)],
+      }),
+    ],
+  }
+  let cell_xfs : @xml.Element = {
+    name: name("cellXfs"),
+    attributes: [{ name: name("count"), value: "1" }],
+    children: [
+      @xml.Node::Element({
+        name: name("xf"),
+        attributes: [
+          { name: name("xfId"), value: "0" },
+          { name: name("applyAlignment"), value: "0" },
+        ],
+        children: [],
+      }),
+    ],
+  }
+  let stylesheet = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [@xml.Node::Element(cell_style_xfs), @xml.Node::Element(cell_xfs)],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            @xml.Node::Element({
+              name: name("c"),
+              attributes: [
+                { name: name("r"), value: "A1" },
+                { name: name("t"), value: "inlineStr" },
+                { name: name("s"), value: "0" },
+              ],
+              children: [
+                @xml.Node::Element({
+                  name: name("is"),
+                  attributes: [],
+                  children: [
+                    @xml.Node::Element({
+                      name: name("t"),
+                      attributes: [],
+                      children: [@xml.Node::Text("Inherited")],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ]),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet, styles=Some(stylesheet))
+  // Rotation + indent are inherited from the named style despite
+  // applyAlignment=0 on the cell xf.
+  assert_true(result.svg.contains("data-ooxml-text-rotation=\"90\""))
+  assert_true(result.svg.contains("data-ooxml-indent=\"2\""))
+}
+
+///|
 /// §18.8.31 — fraction format codes like `# ?/?`, `# ?/8`, `?/?`.
 /// The denominator MUST be the best rational approximation
 /// constrained by the placeholder digit count (max) or set to
@@ -3856,6 +4188,246 @@ test "SpreadsheetML viewer §18.5 table chrome emitted when show_table_chrome op
 }
 
 ///|
+/// §18.8.40 / §18.8.39 — a workbook-defined custom `<tableStyle>` must
+/// override the name-derived built-in palette: its `headerRow`
+/// `<tableStyleElement>` dxf (here the differential `<bgColor>` idiom)
+/// paints the header band instead of the built-in accent colour.
+test "SpreadsheetML viewer §18.8.40 custom tableStyle dxf overrides band palette" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [build_cell("A1", None, "H")]),
+          build_row(2, [build_cell("A2", None, "1")]),
+          build_row(3, [build_cell("A3", None, "2")]),
+        ],
+      }),
+    ],
+  })
+  // Custom style "MyCustom": headerRow → dxf 0, whose solid fill colour
+  // sits in `<bgColor>` with NO patternType (the differential idiom).
+  let styles_xml : @xml.Element = {
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dxfs"),
+        attributes: [{ name: name("count"), value: "1" }],
+        children: [
+          @xml.Node::Element({
+            name: name("dxf"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("fill"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("patternFill"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("bgColor"),
+                        attributes: [{ name: name("rgb"), value: "FF123456" }],
+                        children: [],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("tableStyles"),
+        attributes: [{ name: name("count"), value: "1" }],
+        children: [
+          @xml.Node::Element({
+            name: name("tableStyle"),
+            attributes: [
+              { name: name("name"), value: "MyCustom" },
+              { name: name("pivot"), value: "0" },
+              { name: name("table"), value: "1" },
+              { name: name("count"), value: "1" },
+            ],
+            children: [
+              @xml.Node::Element({
+                name: name("tableStyleElement"),
+                attributes: [
+                  { name: name("type"), value: "headerRow" },
+                  { name: name("dxfId"), value: "0" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  }
+  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:A3" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("tableStyleInfo"),
+        attributes: [{ name: name("name"), value: "MyCustom" }],
+        children: [],
+      }),
+    ],
+  }
+  let opts = { ..default_render_options(), show_table_chrome: true }
+  let svg = render_svg(
+      worksheet,
+      options=opts,
+      tables=[table],
+      styles=Some(styles),
+    ).svg
+  // Header band present AND painted with the custom dxf colour (#123456),
+  // not the built-in name-derived accent palette.
+  assert_true(svg.contains("data-ooxml-table-band=\"header\""))
+  assert_true(svg.contains("#123456"))
+}
+
+///|
+/// §18.5.1.5 — `showFirstColumn` plus a custom `<tableStyle>` whose
+/// `firstColumn` and `firstHeaderCell` slots carry dxf fills must paint
+/// BOTH the first-column band and the corner-cell overlay.
+test "SpreadsheetML viewer §18.5.1.5 firstColumn + corner-cell slots paint" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", None, "H"),
+            build_cell("B1", None, "I"),
+          ]),
+          build_row(2, [
+            build_cell("A2", None, "1"),
+            build_cell("B2", None, "2"),
+          ]),
+          build_row(3, [
+            build_cell("A3", None, "3"),
+            build_cell("B3", None, "4"),
+          ]),
+        ],
+      }),
+    ],
+  })
+  // dxf 0 → firstColumn fill #ABCDEF; dxf 1 → firstHeaderCell #FEDCBA
+  // (both via the differential <bgColor> idiom).
+  let dxf = fn(rgb : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("dxf"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("fill"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("patternFill"),
+              attributes: [],
+              children: [
+                @xml.Node::Element({
+                  name: name("bgColor"),
+                  attributes: [{ name: name("rgb"), value: rgb }],
+                  children: [],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  let style_elt = fn(type_ : String, dxf_id : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("tableStyleElement"),
+      attributes: [
+        { name: name("type"), value: type_ },
+        { name: name("dxfId"), value: dxf_id },
+      ],
+      children: [],
+    })
+  }
+  let styles_xml : @xml.Element = {
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dxfs"),
+        attributes: [{ name: name("count"), value: "2" }],
+        children: [dxf("FFABCDEF"), dxf("FFFEDCBA")],
+      }),
+      @xml.Node::Element({
+        name: name("tableStyles"),
+        attributes: [{ name: name("count"), value: "1" }],
+        children: [
+          @xml.Node::Element({
+            name: name("tableStyle"),
+            attributes: [{ name: name("name"), value: "ColStyle" }],
+            children: [
+              style_elt("firstColumn", "0"),
+              style_elt("firstHeaderCell", "1"),
+            ],
+          }),
+        ],
+      }),
+    ],
+  }
+  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:B3" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("tableStyleInfo"),
+        attributes: [
+          { name: name("name"), value: "ColStyle" },
+          { name: name("showFirstColumn"), value: "1" },
+        ],
+        children: [],
+      }),
+    ],
+  }
+  let opts = { ..default_render_options(), show_table_chrome: true }
+  let svg = render_svg(
+      worksheet,
+      options=opts,
+      tables=[table],
+      styles=Some(styles),
+    ).svg
+  // First-column band (#ABCDEF) and the corner-cell overlay (#FEDCBA).
+  assert_true(svg.contains("data-ooxml-table-band=\"first-column\""))
+  assert_true(svg.contains("#ABCDEF"))
+  assert_true(svg.contains("data-ooxml-table-band=\"first-header-cell\""))
+  assert_true(svg.contains("#FEDCBA"))
+}
+
+///|
 /// §18.5.1.2 / §18.3.1.2 — when a `<table>` carries an
 /// `<autoFilter>` child AND `show_table_chrome: true`, the renderer
 /// paints the dropdown button glyph on the header row.
@@ -3916,8 +4488,14 @@ fn comment_for(ref_ : String) -> @xml.Node {
 
 ///|
 test "§18.7.3 commented cells get a red corner indicator triangle" {
-  let cells_row1 : Array[@xml.Node] = [build_cell("A1", None, "1"), build_cell("B1", None, "2")]
-  let cells_row2 : Array[@xml.Node] = [build_cell("A2", None, "3"), build_cell("B2", None, "4")]
+  let cells_row1 : Array[@xml.Node] = [
+    build_cell("A1", None, "1"),
+    build_cell("B1", None, "2"),
+  ]
+  let cells_row2 : Array[@xml.Node] = [
+    build_cell("A2", None, "3"),
+    build_cell("B2", None, "4"),
+  ]
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -4025,7 +4603,10 @@ test "§18.8.30 month/weekday name tokens (mmm/mmmm/ddd/dddd)" {
     None => abort("failed to parse ISO 8601")
   }
   let s = match
-    (try? @date_serial.date_time_to_serial(dt, @date_serial.DateSystem::Serial1900)) {
+    (try? @date_serial.date_time_to_serial(
+      dt,
+      @date_serial.DateSystem::Serial1900,
+    )) {
     Ok(v) => v
     Err(_) => abort("date_time_to_serial failed")
   }
@@ -4050,7 +4631,10 @@ test "§18.8.31 _x width-align and *x fill tokens in date formats" {
     None => abort("failed to parse ISO 8601")
   }
   let s = match
-    (try? @date_serial.date_time_to_serial(dt, @date_serial.DateSystem::Serial1900)) {
+    (try? @date_serial.date_time_to_serial(
+      dt,
+      @date_serial.DateSystem::Serial1900,
+    )) {
     Ok(v) => v
     Err(_) => abort("date_time_to_serial failed")
   }
@@ -4082,4 +4666,203 @@ test "§18.8.30 text with no text section is shown verbatim" {
   inspect(format_text_value("abc", "0.00"), content="abc")
   // 2-section numeric format (pos;neg) has no text section either.
   inspect(format_text_value("abc", "0.00;(0.00)"), content="abc")
+}
+
+///|
+/// Render a single left-aligned inline-string cell `A1` whose cellXfs
+/// alignment carries the given `indent` value.  Helper for the
+/// §18.8.1 indent-offset test below.
+fn render_indent_cell(indent : String) -> String raise {
+  let alignment_el : @xml.Element = {
+    name: name("alignment"),
+    attributes: [
+      { name: name("horizontal"), value: "left" },
+      { name: name("indent"), value: indent },
+    ],
+    children: [],
+  }
+  let xf : @xml.Element = {
+    name: name("xf"),
+    attributes: [{ name: name("applyAlignment"), value: "1" }],
+    children: [@xml.Node::Element(alignment_el)],
+  }
+  let cell_xfs : @xml.Element = {
+    name: name("cellXfs"),
+    attributes: [{ name: name("count"), value: "1" }],
+    children: [@xml.Node::Element(xf)],
+  }
+  let stylesheet = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [@xml.Node::Element(cell_xfs)],
+  })
+  let cells : Array[@xml.Node] = [
+    @xml.Node::Element({
+      name: name("c"),
+      attributes: [
+        { name: name("r"), value: "A1" },
+        { name: name("t"), value: "inlineStr" },
+        { name: name("s"), value: "0" },
+      ],
+      children: [
+        @xml.Node::Element({
+          name: name("is"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text("Indented")],
+            }),
+          ],
+        }),
+      ],
+    }),
+  ]
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, cells)],
+      }),
+    ],
+  })
+  render_svg(worksheet, styles=Some(stylesheet)).svg
+}
+
+///|
+/// Extract the `x="…"` value of the first `<text ` element in `svg`,
+/// parsed as a Double.  Returns -1.0 when not found.
+fn first_text_x(svg : String) -> Double {
+  match svg.find("<text ") {
+    None => -1.0
+    Some(t) => {
+      let rest = svg.unsafe_substring(start=t, end=svg.length())
+      match rest.find("x=\"") {
+        None => -1.0
+        Some(xi) => {
+          let after = rest.unsafe_substring(start=xi + 3, end=rest.length())
+          match after.find("\"") {
+            None => -1.0
+            Some(q) => {
+              let num = after.unsafe_substring(start=0, end=q)
+              (try? @string.parse_double(num)).unwrap_or(-1.0)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+/// §18.8.1 — a non-zero `indent` must shift left-aligned cell text to
+/// the RIGHT (one unit = three spaces of the cell font).  Previously
+/// the renderer surfaced `indent` only as `data-ooxml-indent` metadata
+/// and left the text anchor unchanged; this guards the offset.
+test "SpreadsheetML viewer §18.8.1 indent shifts left-aligned text right" {
+  let base_x = first_text_x(render_indent_cell("0"))
+  let indented_x = first_text_x(render_indent_cell("6"))
+  assert_true(base_x >= 0.0)
+  assert_true(indented_x >= 0.0)
+  // Six indent units must move the start anchor measurably right.
+  assert_true(indented_x > base_x)
+}
+
+///|
+/// §18.8.1 — `textRotation="255"` is the special "vertical text"
+/// orientation: glyphs are stacked one-per-line (upright, NOT rotated)
+/// and centred horizontally.  The renderer must emit one `<tspan>` per
+/// glyph with `text-anchor="middle"`, not a single rotated `<text>`.
+test "SpreadsheetML viewer §18.8.1 textRotation=255 stacks glyphs as tspans" {
+  let alignment_el : @xml.Element = {
+    name: name("alignment"),
+    attributes: [{ name: name("textRotation"), value: "255" }],
+    children: [],
+  }
+  let xf : @xml.Element = {
+    name: name("xf"),
+    attributes: [{ name: name("applyAlignment"), value: "1" }],
+    children: [@xml.Node::Element(alignment_el)],
+  }
+  let cell_xfs : @xml.Element = {
+    name: name("cellXfs"),
+    attributes: [{ name: name("count"), value: "1" }],
+    children: [@xml.Node::Element(xf)],
+  }
+  let stylesheet = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [@xml.Node::Element(cell_xfs)],
+  })
+  let cells : Array[@xml.Node] = [
+    @xml.Node::Element({
+      name: name("c"),
+      attributes: [
+        { name: name("r"), value: "A1" },
+        { name: name("t"), value: "inlineStr" },
+        { name: name("s"), value: "0" },
+      ],
+      children: [
+        @xml.Node::Element({
+          name: name("is"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text("ABCD")],
+            }),
+          ],
+        }),
+      ],
+    }),
+  ]
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, cells)],
+      }),
+    ],
+  })
+  let svg = render_svg(worksheet, styles=Some(stylesheet)).svg
+  // Four glyphs → four <tspan> stack lines.
+  let count_tspans = fn(s : String) -> Int {
+    let needle = "<tspan "
+    let mut count = 0
+    let mut idx = 0
+    let nlen = needle.length()
+    while idx + nlen <= s.length() {
+      if s[idx:idx + nlen].to_owned() == needle {
+        count = count + 1
+        idx = idx + nlen
+      } else {
+        idx = idx + 1
+      }
+    }
+    count
+  }
+  assert_eq(count_tspans(svg), 4)
+  assert_true(svg.contains("text-anchor=\"middle\""))
+  // The raw spec value is still surfaced for downstream consumers.
+  assert_true(svg.contains("data-ooxml-text-rotation=\"255\""))
+  // A single character per stack line — no rotate transform.
+  assert_true(!svg.contains("rotate("))
 }

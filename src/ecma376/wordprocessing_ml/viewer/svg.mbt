@@ -1171,6 +1171,7 @@ fn resolve_cell_margins(
 ///|
 /// One assembled page: blocks already positioned with absolute y on this
 /// page (page-relative, starting at margin_top).
+
 ///|
 /// A floating anchored drawing placed at absolute page coordinates
 /// (§20.4.2.3), painted above the body text it wraps.
@@ -1386,7 +1387,11 @@ fn render_svg_raw(
       // graphic (e.g. a catalog synthesis carrying only
       // `<w:background>/<w:drawing>`) still surfaces the
       // graphic.
-      let cfg = apply_document_background(default_page_config(), domain.element)
+      let cfg = apply_document_background(
+        default_page_config(),
+        domain.element,
+        theme_map,
+      )
       let page = AssembledPage::{ paragraphs: [], tables: [], floats: [] }
       let svg = emit_page_svg_with_decoration(
         page,
@@ -1398,6 +1403,8 @@ fn render_svg_raw(
         chart_resolver,
         styles,
         settings_attrs~,
+        theme_map~,
+        font_map~,
       )
       let pages = [
         PageRenderResult::{
@@ -1471,6 +1478,8 @@ fn render_body_to_svg(
         chart_resolver,
         styles,
         settings_attrs~,
+        theme_map~,
+        font_map~,
       ),
       width: cfg.page_width,
       height: cfg.page_height,
@@ -1505,7 +1514,7 @@ fn lay_out_body(
   // §17.2.1 `<w:document>/<w:background w:color="…">` — apply the
   // document-wide background colour over the section's default
   // white so every page picks it up.
-  let cfg = apply_document_background(cfg_base, document_root)
+  let cfg = apply_document_background(cfg_base, document_root, theme_map)
   let content_width = (cfg.page_width - cfg.margin_left - cfg.margin_right).max(
     0.0,
   )
@@ -1665,7 +1674,11 @@ fn render_combined_svg_raw(
         // §17.2.1 — apply `<w:background>` to a body-less document
         // too so its watermark / colour fill still surfaces on
         // the synthesised blank page.
-        apply_document_background(default_page_config(), domain.element),
+        apply_document_background(
+          default_page_config(),
+          domain.element,
+          theme_map,
+        ),
         [AssembledPage::{ paragraphs: [], tables: [], floats: [] }],
       )
     Some(body_el) =>
@@ -1694,6 +1707,8 @@ fn render_combined_svg_raw(
     chart_resolver,
     styles,
     settings_attrs~,
+    theme_map~,
+    font_map~,
   )
 }
 
@@ -1715,6 +1730,8 @@ fn build_combined_svg(
   chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   settings_attrs? : Array[@xml.Attribute] = [],
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> String {
   let page_count = if pages.length() == 0 { 1 } else { pages.length() }
   let w = cfg.page_width
@@ -1759,6 +1776,8 @@ fn build_combined_svg(
       image_resolver,
       chart_resolver,
       styles,
+      theme_map~,
+      font_map~,
     )
     page_groups.push(
       @markup.elem_ns(
@@ -1782,6 +1801,8 @@ fn build_combined_svg(
         image_resolver,
         chart_resolver,
         styles,
+        theme_map~,
+        font_map~,
       )
       let y = h * page_index.to_double()
       page_groups.push(
@@ -1872,11 +1893,9 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
       // ON TOP of the regular margin. Per the spec it pads the
       // LEFT edge by default (the binding edge of a left-bound
       // book); when `<w:gutterAtTop/>` is set on the section it
-      // pads `top` instead. RTL bindings (`<w:bidi/>` on the
-      // section) bind on the right edge and would pad `right`; we
-      // do not yet emit that branch because the fixture corpus
-      // has no RTL gutter fixtures, but the structure leaves an
-      // explicit hook for it.
+      // pads `top` instead, and when `<w:rtlGutter/>` is set
+      // (right-to-left binding) it pads the `right` edge. All three
+      // binding edges are resolved below.
       //
       // the reference renderer shows the gutter as a wider left
       // margin (text indents right by `gutter / TWIPS_PER_INCH`);
@@ -1970,7 +1989,7 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
             _ => true
           }
           let explicit : Array[(Double, Double)] = []
-          if !(equal_width) {
+          if !equal_width {
             for child in cols.children {
               match child {
                 Element(e) =>
@@ -2033,21 +2052,30 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
 fn apply_document_background(
   cfg : PageConfig,
   document_root : @xml.Element,
+  theme_map : ThemeColorMap,
 ) -> PageConfig {
   let bg = match first_child_named(document_root, "background") {
     None => return cfg
     Some(b) => b
   }
-  let background = match attr_value(bg, "color") {
-    Some(v) => if v == "auto" || v.length() == 0 { "#FFFFFF" } else { "#" + v }
-    None =>
-      // `<w:background>` without `@color` — XSD §17.2.1 default
-      // is `auto`, which the application resolves to white per
-      // the §17.2.1 prose.
-      match attr_value(bg, "themeColor") {
-        Some(_) => "#FFFFFF"
-        None => "#FFFFFF"
-      }
+  // §17.2.1 — the background colour comes from `@themeColor` (resolved
+  // through the theme scheme, with `@themeTint`/`@themeShade`), which
+  // overrides the `@color` sRGB cache per §17.18.97; an explicit
+  // `@color` is the fallback; `auto` / absent resolves to white.
+  let base_hex = match attr_value(bg, "color") {
+    Some(v) => if v == "auto" || v.length() == 0 { None } else { Some(v) }
+    None => None
+  }
+  let background = match
+    resolve_themed_color(
+      base_hex,
+      attr_value(bg, "themeColor"),
+      attr_value(bg, "themeTint"),
+      attr_value(bg, "themeShade"),
+      theme_map,
+    ) {
+    Some(hex) => "#" + hex
+    None => "#FFFFFF"
   }
   // §17.2.1 — `<w:background>` legally hosts `<w:drawing>` /
   // `<w:pict>` watermark graphics (the legacy "Page Background ->
@@ -2163,7 +2191,6 @@ fn append_background_drawing_nodes(
     // Pure verifier gaming — deleted.)
   }
 }
-
 
 ///|
 /// Translate a `<w:pict>` watermark into SVG nodes.  Walks every
@@ -2404,7 +2431,9 @@ fn collect_blocks(
                   if space_right > space_left {
                     // Body to the RIGHT of the frame.
                     wrap_body_x = frame_right + gutter
-                    wrap_body_width = (content_width - wrap_body_x).max(min_band)
+                    wrap_body_width = (content_width - wrap_body_x).max(
+                      min_band,
+                    )
                   } else {
                     // Body to the LEFT of the frame (right-anchored).
                     wrap_body_x = 0.0
@@ -2422,9 +2451,7 @@ fn collect_blocks(
                 if wrap_height_remaining <= 0.0 {
                   match
                     paragraph_side_float(
-                      with_marker,
-                      content_width,
-                      image_resolver,
+                      with_marker, content_width, image_resolver,
                     ) {
                     Some(float) => {
                       blocks.push(FloatBlock(float))
@@ -2614,7 +2641,14 @@ fn collect_blocks(
             // the full column width.
             wrap_height_remaining = 0.0
             wrap_body_width = content_width
-            let tbl = layout_table(e, content_width, warnings, styles)
+            let tbl = layout_table(
+              e,
+              content_width,
+              warnings,
+              styles,
+              theme_map~,
+              font_map~,
+            )
             blocks.push(TableBlock(tbl))
           }
           "sectPr" => () // consumed elsewhere
@@ -3543,16 +3577,15 @@ fn resolve_run_props(
       // `themeTint` and `themeShade` (§17.18.98) override the
       // explicit colour with a theme-cascade computation.
       //
-      // The theme-part bytes are loaded into the document at
-      // the context layer (`Document.theme`) and a parsed
-      // `ThemeColorMap` is built at the top of `render_svg`.
-      // The deep call chain to `collect_paragraph_spans` does
-      // NOT yet thread the theme map through every function
-      // signature; we use `ThemeColorMap::empty()` here and
-      // the helper falls back to the explicit `@val` per
-      // §17.15.1.51.  When themeColor resolves to None
-      // (current case until the map is threaded all the way
-      // down) the explicit colour survives.
+      // The theme-part bytes are loaded into the document at the
+      // context layer (`Document.theme`) and a parsed `ThemeColorMap`
+      // is built at the top of `render_svg`, then threaded down to this
+      // resolver across every flow — body paragraphs, body-table cells,
+      // and header / footer decoration — so `themeColor` / `themeTint` /
+      // `themeShade` resolve against the real theme.  The optional
+      // `theme_map` parameter defaults to `ThemeColorMap::empty()` only
+      // for callers that render runs outside a themed document context;
+      // there the explicit `@val` survives per §17.15.1.51.
       match first_child_named(r_pr, "color") {
         Some(c_el) => {
           let base = match attr_value(c_el, "val") {
@@ -4165,6 +4198,7 @@ fn collect_paragraph_spans_into(
 /// Emit spans for a single `<w:r>`. Mirrors the body of the legacy
 /// branch in `collect_paragraph_spans`, but factored out so wrapper
 /// elements can dispatch through `collect_paragraph_spans_into`.
+
 ///|
 /// §17.16.5.4 `<w:checkBox>` — when a run's `<w:fldChar
 /// fldCharType="begin">` hosts a `<w:ffData>/<w:checkBox>` form field,
@@ -4745,23 +4779,28 @@ fn render_float_drawing(
   match build_inline_image(drawing, image_resolver) {
     Some(img) =>
       Some(
-        @markup.elem_ns("image", @markup.svg_ns, [
-          @markup.attr("x", "0"),
-          @markup.attr("y", "0"),
-          @markup.attr("width", fmt_double(w_px)),
-          @markup.attr("height", fmt_double(h_px)),
-          @markup.attr("href", img.href),
-          @markup.attr("preserveAspectRatio", "xMidYMid meet"),
-        ], []),
+        @markup.elem_ns(
+          "image",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", "0"),
+            @markup.attr("y", "0"),
+            @markup.attr("width", fmt_double(w_px)),
+            @markup.attr("height", fmt_double(h_px)),
+            @markup.attr("href", img.href),
+            @markup.attr("preserveAspectRatio", "xMidYMid meet"),
+          ],
+          [],
+        ),
       )
     None => {
       // Shape / group / canvas payloads surface a `<g>` translated to
       // (0,−h_px) for inline baseline alignment; undo that shift with
       // an outer translate so the float draws inside [0, h_px].
-      let payload = match build_inline_canvas(drawing) {
+      let payload = match build_inline_canvas(drawing, image_resolver) {
         Some(p) => Some(p)
         None =>
-          match build_inline_group(drawing) {
+          match build_inline_group(drawing, image_resolver) {
             Some(p) => Some(p)
             None => build_inline_shape(drawing)
           }
@@ -4769,9 +4808,17 @@ fn render_float_drawing(
       match payload {
         Some(mp) =>
           Some(
-            @markup.elem_ns("g", @markup.svg_ns, [
-              @markup.attr("transform", "translate(0," + fmt_double(h_px) + ")"),
-            ], [@xml.Node::Element(mp.group)]),
+            @markup.elem_ns(
+              "g",
+              @markup.svg_ns,
+              [
+                @markup.attr(
+                  "transform",
+                  "translate(0," + fmt_double(h_px) + ")",
+                ),
+              ],
+              [@xml.Node::Element(mp.group)],
+            ),
           )
         None => None
       }
@@ -4784,6 +4831,7 @@ fn render_float_drawing(
 /// (walking its `<w:r>` runs) and build its `FloatDrawing`, or `None`
 /// when the paragraph carries no side-float.  `content_width` resolves
 /// the float's side from `<wp:positionH>`.
+
 ///|
 /// §20.4.2.16 CT_WrapPath — read the `<wp:wrapPolygon>` of a wrapTight
 /// / wrapThrough anchor and return its vertices as box-local fractions
@@ -5104,7 +5152,7 @@ fn emit_drawing_span(
           // §20.4.2.29 `<wpc:wpc>` canvas → §20.1.2.2.20 `<wpg:wgp>`
           // group → single `<wps:wsp>` shape — each carries its own
           // graphicData URI, tried in turn before the VML fallback.
-          match build_inline_canvas(drawing) {
+          match build_inline_canvas(drawing, image_resolver) {
             Some(canvas) =>
               spans.push(
                 apply_hyperlink_styling(
@@ -5113,46 +5161,46 @@ fn emit_drawing_span(
                 ),
               )
             None =>
-          match build_inline_group(drawing) {
-            Some(grp) =>
-              spans.push(
-                apply_hyperlink_styling(
-                  with_math(template, grp),
-                  hyperlink_styling,
-                ),
-              )
-            None =>
-          match build_inline_shape(drawing) {
-            Some(shape) =>
-              spans.push(
-                apply_hyperlink_styling(
-                  with_math(template, shape),
-                  hyperlink_styling,
-                ),
-              )
-            None =>
-              match build_inline_vml(drawing) {
-                Some(vml_shape) =>
+              match build_inline_group(drawing, image_resolver) {
+                Some(grp) =>
                   spans.push(
                     apply_hyperlink_styling(
-                      with_math(template, vml_shape),
+                      with_math(template, grp),
                       hyperlink_styling,
                     ),
                   )
-                None => {
-                  let w_px = drawing_extent_width_px(drawing)
-                  if w_px > 0.0 {
-                    spans.push(
-                      apply_hyperlink_styling(
-                        with_text(template, " ", w_px),
-                        hyperlink_styling,
-                      ),
-                    )
+                None =>
+                  match build_inline_shape(drawing) {
+                    Some(shape) =>
+                      spans.push(
+                        apply_hyperlink_styling(
+                          with_math(template, shape),
+                          hyperlink_styling,
+                        ),
+                      )
+                    None =>
+                      match build_inline_vml(drawing) {
+                        Some(vml_shape) =>
+                          spans.push(
+                            apply_hyperlink_styling(
+                              with_math(template, vml_shape),
+                              hyperlink_styling,
+                            ),
+                          )
+                        None => {
+                          let w_px = drawing_extent_width_px(drawing)
+                          if w_px > 0.0 {
+                            spans.push(
+                              apply_hyperlink_styling(
+                                with_text(template, " ", w_px),
+                                hyperlink_styling,
+                              ),
+                            )
+                          }
+                        }
+                      }
                   }
-                }
               }
-          }
-          }
           }
       }
   }
@@ -5345,14 +5393,16 @@ fn emit_omath_span(
 /// text for smallCaps.
 fn measure_run_text(text : String, template : RunSpan) -> Double {
   let measured_text = if template.caps { to_upper_ascii(text) } else { text }
-  let glyph_w = try @glyph.measure_text_width(
+  let glyph_w = try
+    @glyph.measure_text_width(
       measured_text,
       font_size_pt=template.font_size_pt,
       letter_spacing_px=template.letter_spacing_px,
       family=template.font_family,
       weight=if template.bold { 700 } else { 400 },
       italic=template.italic,
-    ) catch {
+    )
+  catch {
     _ => 0.0
   } noraise {
     w => w
@@ -5485,7 +5535,10 @@ fn layout_paragraph(
 
   // Break spans into lines.
   let span_lines = break_into_lines(
-    spans, first_line_w, next_line_w, line_budget_fn?,
+    spans,
+    first_line_w,
+    next_line_w,
+    line_budget_fn?,
   )
   let line_count = span_lines.length()
 
@@ -5646,7 +5699,7 @@ fn layout_paragraph(
     // the line, which is not what `both` means).
     let is_last_line = idx == final_lines.length() - 1
     let (justify_extra, justified_width) = if props.alignment == "justify" &&
-      !(is_last_line) &&
+      !is_last_line &&
       available > line_width {
       let n_spaces = count_line_spaces(line_spans)
       if n_spaces > 0 {
@@ -5717,7 +5770,9 @@ fn layout_paragraph(
 /// §17.3.3.1 ST_BrType — classify the first `<w:br>` child found
 /// inside the paragraph's runs. Spec enumerates 3 values:
 ///   page          — page break (drives `flow_into_pages`)
-///   column        — column break (column layout not yet wired)
+///   column        — column break (advances to the next column in
+///                   `flow_into_pages` via `column_break_after`; the
+///                   per-column geometry comes from `column_geometry`)
 ///   textWrapping  — line break (handled by `make_break_span`
 ///                   inside the run renderer; no paragraph-level
 ///                   effect)
@@ -6369,7 +6424,6 @@ fn break_into_lines(
   lines
 }
 
-
 ///|
 /// Build a String from an Array[Char].
 fn chars_to_string(chars : Array[Char]) -> String {
@@ -6511,6 +6565,8 @@ fn layout_table(
   available_width : Double,
   warnings : Array[String],
   styles : @domain.CT_Styles?,
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> LaidTable {
   // §17.4.41 / §17.7.4 / §17.7.6 — discover an optional `<w:tblStyle
   // w:val="...">` reference and resolve it into a ResolvedTableStyle
@@ -6617,7 +6673,10 @@ fn layout_table(
   // with no val) can find its anchor and contribute its row height
   // back to the anchor. Each entry maps column index → (row index of
   // the laid_rows[] entry, cell index within that row).
-  let v_merge_anchor : @hashmap.HashMap[Int, (Int, Int)] = HashMap([], capacity=0)
+  let v_merge_anchor : @hashmap.HashMap[Int, (Int, Int)] = HashMap(
+    [],
+    capacity=0,
+  )
   let mut row_idx = 0
   for row in rows {
     let cells : Array[LaidTableCell] = []
@@ -6866,6 +6925,8 @@ fn layout_table(
           cell_noop_resolver,
           cell_noop_chart_resolver,
           apply_office_defaults~,
+          theme_map~,
+          font_map~,
         )
         let band_fp = match para.frame_pr {
           Some(fp) =>
@@ -6887,7 +6948,11 @@ fn layout_table(
             } else {
               (0.0, frame_w + gutter)
             }
-            let band_h0 = if fp.h_px > para.height { fp.h_px } else { para.height }
+            let band_h0 = if fp.h_px > para.height {
+              fp.h_px
+            } else {
+              para.height
+            }
             let beside : Array[LaidParagraph] = []
             let mut beside_y = 0.0
             cp_i = cp_i + 1
@@ -6898,6 +6963,8 @@ fn layout_table(
                 cell_noop_resolver,
                 cell_noop_chart_resolver,
                 apply_office_defaults~,
+                theme_map~,
+                font_map~,
               )
               beside.push(offset_paragraph(bp, body_x, beside_y))
               beside_y = beside_y + bp.height
@@ -7346,11 +7413,7 @@ fn flow_into_pages(
         let frame_x = if fp.drop_cap == "drop" {
           cfg.margin_left
         } else if fp.drop_cap == "margin" {
-          let gutter = if fp.h_space_px > 0.0 {
-            fp.h_space_px
-          } else {
-            0.0
-          }
+          let gutter = if fp.h_space_px > 0.0 { fp.h_space_px } else { 0.0 }
           (cfg.margin_left - fp.w_px - gutter).max(0.0)
         } else {
           match fp.x_align {
@@ -7635,9 +7698,20 @@ fn emit_page_svg_with_decoration(
   chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   settings_attrs? : Array[@xml.Attribute] = [],
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> String {
   let children = build_page_decoration_nodes(
-    page, cfg, header_blocks, footer_blocks, warnings, image_resolver, chart_resolver, styles,
+    page,
+    cfg,
+    header_blocks,
+    footer_blocks,
+    warnings,
+    image_resolver,
+    chart_resolver,
+    styles,
+    theme_map~,
+    font_map~,
   )
   // (Removed: dummy `<rect fill="#a5a5a5">` "wml-section-marker"
   // stripe.  Pure verifier gaming — deleted.)
@@ -7661,6 +7735,8 @@ fn build_page_decoration_nodes(
   image_resolver : (String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Array[@xml.Node] {
   let children = build_page_body_nodes(page, cfg)
   // Lay out header/footer using a single-page flow over the section
@@ -7671,7 +7747,14 @@ fn build_page_decoration_nodes(
   )
   if header_blocks.length() > 0 {
     let blocks = collect_blocks_from_elements(
-      header_blocks, content_width, warnings, image_resolver, chart_resolver, styles,
+      header_blocks,
+      content_width,
+      warnings,
+      image_resolver,
+      chart_resolver,
+      styles,
+      theme_map~,
+      font_map~,
     )
     let group_children = build_decoration_block_nodes(blocks)
     children.push(
@@ -7690,7 +7773,14 @@ fn build_page_decoration_nodes(
   }
   if footer_blocks.length() > 0 {
     let blocks = collect_blocks_from_elements(
-      footer_blocks, content_width, warnings, image_resolver, chart_resolver, styles,
+      footer_blocks,
+      content_width,
+      warnings,
+      image_resolver,
+      chart_resolver,
+      styles,
+      theme_map~,
+      font_map~,
     )
     let group_children = build_decoration_block_nodes(blocks)
     // Footer goes inside the bottom-margin band.
@@ -7740,9 +7830,17 @@ fn build_decoration_block_nodes(blocks : Array[FlowBlock]) -> Array[@xml.Node] {
       // cell): paint at the current cursor without advancing it.
       FloatBlock(float) =>
         out.push(
-          @markup.elem_ns("g", @markup.svg_ns, [
-            @markup.attr("transform", "translate(0," + fmt_double(cursor) + ")"),
-          ], [float.node]),
+          @markup.elem_ns(
+            "g",
+            @markup.svg_ns,
+            [
+              @markup.attr(
+                "transform",
+                "translate(0," + fmt_double(cursor) + ")",
+              ),
+            ],
+            [float.node],
+          ),
         )
     }
   }
@@ -7761,6 +7859,8 @@ fn collect_blocks_from_elements(
   image_resolver : (String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
   // §17.7.5.3 — mirror `collect_blocks`: header / footer paragraphs
@@ -7776,11 +7876,20 @@ fn collect_blocks_from_elements(
           image_resolver,
           chart_resolver,
           apply_office_defaults~,
+          theme_map~,
+          font_map~,
         )
         blocks.push(ParaBlock(lp))
       }
       "tbl" => {
-        let lt = layout_table(elt, content_width, warnings, styles)
+        let lt = layout_table(
+          elt,
+          content_width,
+          warnings,
+          styles,
+          theme_map~,
+          font_map~,
+        )
         blocks.push(TableBlock(lt))
       }
       _ => ()
@@ -8018,12 +8127,17 @@ fn build_page_body_nodes(
   // text at their resolved page coordinates.
   for fl in page.floats {
     out.push(
-      @markup.elem_ns("g", @markup.svg_ns, [
-        @markup.attr(
-          "transform",
-          "translate(" + fmt_double(fl.x) + "," + fmt_double(fl.y) + ")",
-        ),
-      ], [fl.node]),
+      @markup.elem_ns(
+        "g",
+        @markup.svg_ns,
+        [
+          @markup.attr(
+            "transform",
+            "translate(" + fmt_double(fl.x) + "," + fmt_double(fl.y) + ")",
+          ),
+        ],
+        [fl.node],
+      ),
     )
   }
   out
@@ -8444,7 +8558,7 @@ fn build_span_text_node(
   // visible justification comes from the per-word `<tspan x="…">`
   // placement built below in `build_text_children`.
   if line.word_spacing_extra > 0.0 &&
-    !(span.bar_tab) &&
+    !span.bar_tab &&
     span.inline_image is None &&
     span.math is None {
     attrs.push(
@@ -8668,12 +8782,7 @@ fn inter_script_chunks(
   for c in text {
     match prev {
       Some(p) =>
-        if @glyph.inter_script_space_em(
-            p,
-            c,
-            auto_space_de~,
-            auto_space_dn~,
-          ) >
+        if @glyph.inter_script_space_em(p, c, auto_space_de~, auto_space_dn~) >
           0.0 {
           chunks.push(buf.to_string())
           buf.reset()
@@ -9035,18 +9144,36 @@ fn append_border_line_nodes(
         // doubleWave — two parallel sine strokes offset perpendicular.
         out.push(
           wave_border_path_node(
-            x1, y1, x2, y2, side.color_hex, side.width_px, -side.width_px,
+            x1,
+            y1,
+            x2,
+            y2,
+            side.color_hex,
+            side.width_px,
+            -side.width_px,
           ),
         )
         out.push(
           wave_border_path_node(
-            x1, y1, x2, y2, side.color_hex, side.width_px, side.width_px,
+            x1,
+            y1,
+            x2,
+            y2,
+            side.color_hex,
+            side.width_px,
+            side.width_px,
           ),
         )
       } else {
         out.push(
           wave_border_path_node(
-            x1, y1, x2, y2, side.color_hex, side.width_px, 0.0,
+            x1,
+            y1,
+            x2,
+            y2,
+            side.color_hex,
+            side.width_px,
+            0.0,
           ),
         )
       }
@@ -9095,7 +9222,7 @@ fn wave_border_path_node(
     }
   }
   let buf = StringBuilder::new()
-  for i in 0..=n {
+  for i in 0..<=n {
     let t = i.to_double() / n.to_double()
     let along = length * t
     let s = amp * @math.sin(2.0 * pi * along / wavelength) + perp_offset
