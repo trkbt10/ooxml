@@ -647,6 +647,17 @@ priv struct ParaProps {
   /// `@fill` hex literal is present; empty string otherwise. Empty
   /// suppresses the background rect emission entirely.
   background : String
+  /// §17.18.78 ST_Shd — the `<w:shd @val>` pattern selector. Empty /
+  /// `clear` / `nil` mean "no pattern, paint the solid `background`"
+  /// (the byte-identical legacy path). `solid` fills the region with
+  /// `shd_color` (the FOREGROUND). Any pct/stripe/cross value paints
+  /// `shd_color` marks at the named density/shape OVER `background`.
+  shd_val : String
+  /// §17.3.1.6 `<w:shd @color>` — the resolved pattern / foreground
+  /// colour (`"#rrggbb"`), with the same `auto`/themeColor cascade as
+  /// the background. Empty when absent or `auto`. Only consulted when
+  /// `shd_val` selects `solid` or a pct/stripe/cross pattern.
+  shd_color : String
   /// §17.3.1.7 `<w:pBdr>` paragraph borders. Each slot defaults to
   /// `BorderSide::none()` so paragraphs without explicit borders
   /// render their content without an outer frame.
@@ -804,6 +815,13 @@ priv struct LaidParagraph {
   /// emit a background rect even after page flow translates the
   /// paragraph's y position.
   background : String
+  /// §17.18.78 ST_Shd `<w:shd @val>` pattern selector — see
+  /// `ParaProps::shd_val`. Carried through page flow so the emitter
+  /// can choose a solid rect vs. a `<pattern>`-backed rect.
+  shd_val : String
+  /// §17.3.1.6 `<w:shd @color>` resolved foreground / pattern colour —
+  /// see `ParaProps::shd_color`. Carried through page flow.
+  shd_color : String
   /// §17.3.1.7 `<w:pBdr>` paragraph borders carried through page
   /// flow so the emitter can draw them at absolute coordinates.
   border_top : BorderSide
@@ -959,6 +977,14 @@ priv struct LaidTableCell {
   paragraphs : Array[LaidParagraph]
   /// Cell background color (#rrggbb) or empty for transparent.
   background : String
+  /// §17.18.78 ST_Shd `<w:tcPr>/<w:shd @val>` pattern selector — see
+  /// `ParaProps::shd_val`. Empty / `clear` / `nil` keep the legacy
+  /// solid-`background` emit; `solid` paints `shd_color`; a
+  /// pct/stripe/cross value paints `shd_color` marks over `background`.
+  shd_val : String
+  /// §17.4.33 `<w:shd @color>` resolved foreground / pattern colour —
+  /// see `ParaProps::shd_color`.
+  shd_color : String
   /// §17.4.59 `<w:tcBorders>` per-side borders. The four slots are
   /// independent — `BorderSide::none()` falls back to the legacy
   /// 1px gray box so plain tables keep the same appearance.
@@ -3050,6 +3076,362 @@ fn merge_run_pr_with_base(
 }
 
 // =============================================================================
+// §17.3.1.6 / §17.4.33 / §17.18.78 ST_Shd — cell / paragraph shading
+// =============================================================================
+
+///|
+/// §17.18.78 ST_Shd / §17.3.1.6 `<w:shd>` — resolve the shading element
+/// into `(background, val, color)`:
+///
+///   * `background` — the `@fill` / `@themeFill` / `@themeFillTint` /
+///     `@themeFillShade` cascade, returned as `"#rrggbb"` (or `""` when
+///     `@fill` is `auto` / absent / theme-unresolved). This string is
+///     byte-identical to the historical solid-shading resolver so the
+///     common `clear` / `nil` background path is unchanged.
+///   * `val` — the raw `@val` ST_Shd pattern selector (lower-cased
+///     enumerator, e.g. `"clear"`, `"solid"`, `"pct25"`, `"diagStripe"`),
+///     or `""` when `@val` is absent (treated as `clear`).
+///   * `color` — the `@color` / `@themeColor` / `@themeTint` /
+///     `@themeShade` FOREGROUND cascade, returned as `"#rrggbb"` (or `""`
+///     when `auto` / absent / unresolved). The foreground reuses the same
+///     §17.15.1.51 luminance-transform resolver as the background.
+fn resolve_shd(
+  shd : @xml.Element,
+  theme_map : ThemeColorMap,
+) -> (String, String, String) {
+  let bg_base = match attr_value(shd, "fill") {
+    None => None
+    Some(v) => if v == "auto" || v.length() == 0 { None } else { Some(v) }
+  }
+  let background = match
+    resolve_themed_color(
+      bg_base,
+      attr_value(shd, "themeFill"),
+      attr_value(shd, "themeFillTint"),
+      attr_value(shd, "themeFillShade"),
+      theme_map,
+    ) {
+    Some(hex) => "#" + hex
+    None => ""
+  }
+  // §17.18.78 — `@val` defaults to `clear` when absent.
+  let val = attr_value(shd, "val").unwrap_or("")
+  // §17.3.1.6 `@color` foreground cascade: `@color` hex (or `auto`),
+  // overridden by `@themeColor` and adjusted by `@themeTint` /
+  // `@themeShade` exactly like the background `@fill` cascade.
+  let fg_base = match attr_value(shd, "color") {
+    None => None
+    Some(v) => if v == "auto" || v.length() == 0 { None } else { Some(v) }
+  }
+  let color = match
+    resolve_themed_color(
+      fg_base,
+      attr_value(shd, "themeColor"),
+      attr_value(shd, "themeTint"),
+      attr_value(shd, "themeShade"),
+      theme_map,
+    ) {
+    Some(hex) => "#" + hex
+    None => ""
+  }
+  (background, val, color)
+}
+
+///|
+/// §17.18.78 ST_Shd — the percentage-density families (`pct5` …
+/// `pct95`) map to a mark-area fraction in [0,1]; `None` for any
+/// non-percentage value. NOTE the WML ST_Shd ladder runs to `pct95`
+/// (15 stops) whereas the DrawingML ST_PresetPatternVal ladder used by
+/// the chart module stops at `pct90` (12 stops) — they are distinct
+/// enumerations, so this table is WML-local and not shared.
+fn shd_pct_density(val : String) -> Double? {
+  match val {
+    "pct5" => Some(0.05)
+    "pct10" => Some(0.1)
+    "pct12" => Some(0.125)
+    "pct15" => Some(0.15)
+    "pct20" => Some(0.2)
+    "pct25" => Some(0.25)
+    "pct30" => Some(0.3)
+    "pct35" => Some(0.35)
+    "pct37" => Some(0.375)
+    "pct40" => Some(0.4)
+    "pct45" => Some(0.45)
+    "pct50" => Some(0.5)
+    "pct55" => Some(0.55)
+    "pct60" => Some(0.6)
+    "pct62" => Some(0.625)
+    "pct65" => Some(0.65)
+    "pct70" => Some(0.7)
+    "pct75" => Some(0.75)
+    "pct80" => Some(0.8)
+    "pct85" => Some(0.85)
+    "pct87" => Some(0.875)
+    "pct90" => Some(0.9)
+    "pct95" => Some(0.95)
+    _ => None
+  }
+}
+
+///|
+/// §17.18.78 ST_Shd — build the geometry child nodes of an 8×8 pattern
+/// tile for a recognised pattern `@val`, drawn in the foreground `fg`.
+/// `None` for `clear` / `nil` / `solid` / unknown so the caller falls
+/// back to a flat fill. Mirrors the chart module's tile geometry
+/// (`chart_pattern_tile_marks`) for visual consistency but is a WML-local
+/// reimplementation keyed on ST_Shd enumerators (percentage dots,
+/// horizontal / vertical / diagonal rules, and their crosses, plus the
+/// `thin*` thinner-stroke variants).
+fn shd_pattern_tile_marks(val : String, fg : String) -> Array[@xml.Node]? {
+  fn line(x1 : Double, y1 : Double, x2 : Double, y2 : Double, sw : Double) {
+    @markup.elem_ns(
+      "line",
+      @markup.svg_ns,
+      [
+        @markup.attr("x1", fmt_double(x1)),
+        @markup.attr("y1", fmt_double(y1)),
+        @markup.attr("x2", fmt_double(x2)),
+        @markup.attr("y2", fmt_double(y2)),
+        @markup.attr("stroke", fg),
+        @markup.attr("stroke-width", fmt_double(sw)),
+      ],
+      [],
+    )
+  }
+
+  fn dot(cx : Double, cy : Double, r : Double) {
+    @markup.elem_ns(
+      "circle",
+      @markup.svg_ns,
+      [
+        @markup.attr("cx", fmt_double(cx)),
+        @markup.attr("cy", fmt_double(cy)),
+        @markup.attr("r", fmt_double(r)),
+        @markup.attr("fill", fg),
+      ],
+      [],
+    )
+  }
+
+  // §17.18.78 percentage families — a single centred dot whose radius
+  // grows with the density fraction (mark area ∝ fraction over the 8×8
+  // cell, capped so the densest percentages still read as a pattern
+  // rather than a solid block — `solid` is handled separately).
+  match shd_pct_density(val) {
+    Some(frac) => {
+      let r = (frac * 64.0 / 3.14159).sqrt().min(3.6)
+      return Some([dot(4.0, 4.0, r)])
+    }
+    None => ()
+  }
+  // Stripe / cross families. The `thin*` variants use a thinner stroke
+  // than their base counterparts. Diagonal rules are tripled with
+  // ±8 offsets so the 8×8 tile repeats seamlessly across cell edges.
+  let down_diag = fn(sw : Double) {
+    [
+      line(0.0, 0.0, 8.0, 8.0, sw),
+      line(-8.0, 0.0, 8.0, 16.0, sw),
+      line(0.0, -8.0, 16.0, 8.0, sw),
+    ]
+  }
+  let up_diag = fn(sw : Double) {
+    [
+      line(0.0, 8.0, 8.0, 0.0, sw),
+      line(-8.0, 8.0, 8.0, -8.0, sw),
+      line(0.0, 16.0, 16.0, 0.0, sw),
+    ]
+  }
+  match val {
+    "horzStripe" => Some([line(0.0, 4.0, 8.0, 4.0, 1.0)])
+    "thinHorzStripe" => Some([line(0.0, 4.0, 8.0, 4.0, 0.5)])
+    "vertStripe" => Some([line(4.0, 0.0, 4.0, 8.0, 1.0)])
+    "thinVertStripe" => Some([line(4.0, 0.0, 4.0, 8.0, 0.5)])
+    "horzCross" =>
+      Some([line(0.0, 4.0, 8.0, 4.0, 1.0), line(4.0, 0.0, 4.0, 8.0, 1.0)])
+    "thinHorzCross" =>
+      Some([line(0.0, 4.0, 8.0, 4.0, 0.5), line(4.0, 0.0, 4.0, 8.0, 0.5)])
+    "diagStripe" => Some(down_diag(1.0))
+    "thinDiagStripe" => Some(down_diag(0.5))
+    "reverseDiagStripe" => Some(up_diag(1.0))
+    "thinReverseDiagStripe" => Some(up_diag(0.5))
+    "diagCross" => {
+      let marks = down_diag(1.0)
+      for m in up_diag(1.0) {
+        marks.push(m)
+      }
+      Some(marks)
+    }
+    "thinDiagCross" => {
+      let marks = down_diag(0.5)
+      for m in up_diag(0.5) {
+        marks.push(m)
+      }
+      Some(marks)
+    }
+    _ => None
+  }
+}
+
+///|
+/// §17.18.78 ST_Shd — build an SVG `<pattern>` def for a pct/stripe/cross
+/// `@val`, tiling the 8×8 cell with the `bg` background and the `fg`
+/// marks. `None` for `clear` / `nil` / `solid` / unknown so the caller
+/// keeps its solid-fill emit. `pattern_id` must be document-wide unique;
+/// the caller derives it from a render-local counter.
+fn build_shd_pattern_def(
+  val : String,
+  fg : String,
+  bg : String,
+  pattern_id : String,
+) -> @xml.Node? {
+  let marks = match shd_pattern_tile_marks(val, fg) {
+    Some(m) => m
+    None => return None
+  }
+  // §17.18.78 — the tile's panel is the `@fill` background. When `@fill`
+  // is absent/auto the marks float over the document background, matching
+  // Word's transparent-panel behaviour, so only emit the panel rect when
+  // a concrete background colour resolved.
+  let children : Array[@xml.Node] = []
+  if bg.length() > 0 {
+    children.push(
+      @markup.elem_ns(
+        "rect",
+        @markup.svg_ns,
+        [
+          @markup.attr("x", "0"),
+          @markup.attr("y", "0"),
+          @markup.attr("width", "8"),
+          @markup.attr("height", "8"),
+          @markup.attr("fill", bg),
+        ],
+        [],
+      ),
+    )
+  }
+  for m in marks {
+    children.push(m)
+  }
+  Some(
+    @markup.elem_ns(
+      "pattern",
+      @markup.svg_ns,
+      [
+        @markup.attr("id", pattern_id),
+        @markup.attr("patternUnits", "userSpaceOnUse"),
+        @markup.attr("width", "8"),
+        @markup.attr("height", "8"),
+      ],
+      children,
+    ),
+  )
+}
+
+///|
+/// §17.18.78 ST_Shd — resolve a shaded region (paragraph or cell) into
+/// the SVG fill string for its shading `<rect>`, optionally emitting a
+/// sibling `<pattern>` def into `out` first.
+///
+/// `out` is the SAME node array the shading `<rect>` is pushed to; an
+/// SVG `<pattern>` is referenced by id document-wide regardless of where
+/// it sits, so emitting it as a sibling needs no global `<defs>`
+/// collector. Returns `Some(fill)` to paint (the caller then pushes the
+/// rect with `fill=<fill>`), or `None` when nothing should be painted.
+///
+///   * `clear` / `nil` / absent `@val` → `Some(background)` when a
+///     background resolved, else `None` (byte-identical legacy path).
+///   * `solid` → `Some(color)` (the FOREGROUND fills the region), or
+///     `Some(background)` if no foreground resolved (graceful fallback).
+///   * pct/stripe/cross `@val` → emit a `<pattern>` def and return
+///     `Some("url(#id)")`. Unknown `@val` falls back to the solid
+///     `background` so the region is never blank.
+fn resolve_shading_fill(
+  out : Array[@xml.Node],
+  background : String,
+  shd_val : String,
+  shd_color : String,
+  pattern_id : String,
+) -> String? {
+  match shd_val {
+    "" | "clear" | "nil" =>
+      // Legacy path: solid `@fill` background (or nothing).
+      if background.length() > 0 {
+        Some(background)
+      } else {
+        None
+      }
+    "solid" =>
+      // §17.18.78 — `solid` fills the region with the FOREGROUND
+      // `@color`, not `@fill`. Fall back to the background when no
+      // foreground resolved so the region is still painted.
+      if shd_color.length() > 0 {
+        Some(shd_color)
+      } else if background.length() > 0 {
+        Some(background)
+      } else {
+        None
+      }
+    _ =>
+      // pct / stripe / cross — a `<pattern>` tile painted over `@fill`.
+      match
+        build_shd_pattern_def(
+          shd_val,
+          if shd_color.length() > 0 {
+            shd_color
+          } else {
+            "#000000"
+          },
+          background,
+          pattern_id,
+        ) {
+        Some(pattern_node) => {
+          out.push(pattern_node)
+          Some("url(#" + pattern_id + ")")
+        }
+        // Unknown `@val` — graceful fallback to the solid background.
+        None => if background.length() > 0 { Some(background) } else { None }
+      }
+  }
+}
+
+///|
+/// §17.18.78 — build a document-wide-unique, stable, collision-free
+/// `<pattern>` id from the shaded region's kind, its absolute SVG
+/// coordinates, and the ST_Shd `@val`. Two shaded regions cannot occupy
+/// the same absolute (x, y) on a page, so the coordinate pair is a stable
+/// key with no threaded counter; the `@val` suffix keeps the id readable
+/// in the emitted markup. Non-alphanumeric characters (the `.`/`-` of a
+/// formatted double, any stray punctuation in `@val`) are mapped to `_`
+/// so the result is a valid XML id / CSS-safe `url(#…)` fragment.
+fn shd_pattern_id(
+  kind : String,
+  x : Double,
+  y : Double,
+  val : String,
+) -> String {
+  let buf = StringBuilder::new()
+  buf.write_string("wmlshd_")
+  buf.write_string(kind)
+  buf.write_char('_')
+  fn sanitize(s : String) -> Unit {
+    for c in s {
+      let u = c.to_int()
+      let alnum = (u >= 0x30 && u <= 0x39) ||
+        (u >= 0x41 && u <= 0x5A) ||
+        (u >= 0x61 && u <= 0x7A)
+      buf.write_char(if alnum { c } else { '_' })
+    }
+  }
+
+  sanitize(fmt_double(x))
+  buf.write_char('_')
+  sanitize(fmt_double(y))
+  buf.write_char('_')
+  sanitize(val)
+  buf.to_string()
+}
+
+// =============================================================================
 // §17.3.1 Paragraph layout
 // =============================================================================
 
@@ -3336,41 +3718,23 @@ fn resolve_para_props(
       })
     }
   }
-  // §17.3.1.6 / §17.18.78 `<w:shd>` — paragraph shading.  Five
-  // colour-bearing attributes form the cascade:
-  //   @fill — explicit hex (without `#`) or sentinel `auto`.
-  //   @themeFill — ST_ThemeColor name (overrides @fill).
-  //   @themeFillTint / @themeFillShade — ST_UcharHexNumber
-  //     transforms applied on the resolved theme RGB.
-  // (@color and @themeColor describe the *pattern* colour for
-  // non-solid `@val`, not the fill; the renderer paints only the
-  // solid background here.)
-  let background = match first_child_named(p, "pPr") {
-    None => ""
+  // §17.3.1.6 / §17.18.78 `<w:shd>` — paragraph shading.  The element
+  // carries three independent groups (§17.18.78 ST_Shd):
+  //   @fill / @themeFill / @themeFillTint / @themeFillShade — the
+  //     BACKGROUND colour cascade.
+  //   @val — the ST_Shd PATTERN selector (clear/nil/solid/pct*/
+  //     stripe*/cross*).
+  //   @color / @themeColor / @themeTint / @themeShade — the PATTERN /
+  //     FOREGROUND colour cascade (same resolver as the background).
+  // The resolved background string keeps its historical meaning so
+  // the clear/nil/absent path stays byte-identical; @val and @color
+  // are surfaced separately for the emitter to act on.
+  let (background, shd_val, shd_color) = match first_child_named(p, "pPr") {
+    None => ("", "", "")
     Some(p_pr) =>
       match first_child_named(p_pr, "shd") {
-        None => ""
-        Some(shd) => {
-          let base = match attr_value(shd, "fill") {
-            None => None
-            Some(v) =>
-              if v == "auto" || v.length() == 0 {
-                None
-              } else {
-                Some(v)
-              }
-          }
-          let theme_color = attr_value(shd, "themeFill")
-          let theme_tint = attr_value(shd, "themeFillTint")
-          let theme_shade = attr_value(shd, "themeFillShade")
-          match
-            resolve_themed_color(
-              base, theme_color, theme_tint, theme_shade, theme_map,
-            ) {
-            Some(hex) => "#" + hex
-            None => ""
-          }
-        }
+        None => ("", "", "")
+        Some(shd) => resolve_shd(shd, theme_map)
       }
   }
   // §17.3.1.7 `<w:pBdr>` — paragraph borders. Each child is a
@@ -3465,6 +3829,8 @@ fn resolve_para_props(
     space_after,
     tab_stops,
     background,
+    shd_val,
+    shd_color,
     border_top,
     border_left,
     border_bottom,
@@ -5775,6 +6141,8 @@ fn layout_paragraph(
     lines,
     height,
     background: props.background,
+    shd_val: props.shd_val,
+    shd_color: props.shd_color,
     border_top: props.border_top,
     border_left: props.border_left,
     border_bottom: props.border_bottom,
@@ -6734,6 +7102,11 @@ fn layout_table(
       // §17.4.16 <w:tcPr> / <w:gridSpan>
       let mut span = 1
       let mut background = ""
+      // §17.4.33 / §17.18.78 ST_Shd — pattern selector (@val) and the
+      // resolved foreground / pattern colour (@color cascade). Empty
+      // by default so cells without `<w:shd>` keep their legacy emit.
+      let mut shd_val = ""
+      let mut shd_color = ""
       // Pick the cell's per-side fallback from the table-level
       // borders: outer rows / cols use top|bottom|left|right, inner
       // edges use insideH / insideV.
@@ -6833,33 +7206,20 @@ fn layout_table(
               }
             None => ()
           }
-          // §17.4.33 `<w:tc>/<w:tcPr>/<w:shd>` — same theme
-          // cascade as the paragraph-level shading (§17.3.1.6).
+          // §17.4.33 `<w:tc>/<w:tcPr>/<w:shd>` — same ST_Shd model as
+          // the paragraph-level shading (§17.3.1.6 / §17.18.78): the
+          // `@fill` cascade is the background, `@val` is the pattern
+          // selector, and `@color` is the foreground / pattern colour.
+          // The background resolver retains the historical empty theme
+          // map so the legacy solid-background output is byte-identical.
           match first_child_named(tc_pr, "shd") {
             Some(shd) => {
-              let base = match attr_value(shd, "fill") {
-                None => None
-                Some(v) =>
-                  if v == "auto" || v.length() == 0 {
-                    None
-                  } else {
-                    Some(v)
-                  }
+              let (bg, val, color) = resolve_shd(shd, ThemeColorMap::empty())
+              if bg.length() > 0 {
+                background = bg
               }
-              let theme_color = attr_value(shd, "themeFill")
-              let theme_tint = attr_value(shd, "themeFillTint")
-              let theme_shade = attr_value(shd, "themeFillShade")
-              match
-                resolve_themed_color(
-                  base,
-                  theme_color,
-                  theme_tint,
-                  theme_shade,
-                  ThemeColorMap::empty(),
-                ) {
-                Some(hex) => background = "#" + hex
-                None => ()
-              }
+              shd_val = val
+              shd_color = color
             }
             None => ()
           }
@@ -7095,6 +7455,8 @@ fn layout_table(
         height: cell_h,
         paragraphs: cell_paras,
         background,
+        shd_val,
+        shd_color,
         border_top,
         border_left,
         border_bottom,
@@ -8242,27 +8604,41 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
         Some((min_x, min_y, max_x, max_y))
       }
   }
-  // §17.3.1.6 paragraph shading — emit a single background rect
-  // spanning the frame before the glyphs so the fill ends up under
-  // the text.
+  // §17.3.1.6 / §17.18.78 paragraph shading — emit a single shading
+  // rect spanning the frame before the glyphs so the fill ends up
+  // under the text. The ST_Shd `@val` decides whether the rect is a
+  // solid colour (clear/nil → `@fill`; solid → `@color`) or a
+  // `<pattern>`-backed fill (pct/stripe/cross); `resolve_shading_fill`
+  // emits any required `<pattern>` def as a preceding sibling in `out`.
   match frame_rect {
-    Some((min_x, min_y, max_x, max_y)) =>
-      if p.background.length() > 0 {
-        out.push(
-          @markup.elem_ns(
-            "rect",
-            @markup.svg_ns,
-            [
-              @markup.attr("x", fmt_double(min_x)),
-              @markup.attr("y", fmt_double(min_y)),
-              @markup.attr("width", fmt_double(max_x - min_x)),
-              @markup.attr("height", fmt_double(max_y - min_y)),
-              @markup.attr("fill", p.background),
-            ],
-            [],
-          ),
-        )
+    Some((min_x, min_y, max_x, max_y)) => {
+      let pattern_id = shd_pattern_id("p", min_x, min_y, p.shd_val)
+      match
+        resolve_shading_fill(
+          out,
+          p.background,
+          p.shd_val,
+          p.shd_color,
+          pattern_id,
+        ) {
+        Some(fill) =>
+          out.push(
+            @markup.elem_ns(
+              "rect",
+              @markup.svg_ns,
+              [
+                @markup.attr("x", fmt_double(min_x)),
+                @markup.attr("y", fmt_double(min_y)),
+                @markup.attr("width", fmt_double(max_x - min_x)),
+                @markup.attr("height", fmt_double(max_y - min_y)),
+                @markup.attr("fill", fill),
+              ],
+              [],
+            ),
+          )
+        None => ()
       }
+    }
     None => ()
   }
   for line in p.lines {
@@ -9034,27 +9410,41 @@ fn build_table_nodes(t : LaidTable) -> Array[@xml.Node] {
           ),
         )
       }
-      // Background fill (if any).
-      if c.background.length() > 0 {
-        // Row Y is encoded in paragraph absolute coordinates; for the
-        // rectangle we derive it from the first paragraph or fall back
-        // to using cell.height as full row height starting at the
-        // first paragraph's top.
+      // §17.4.33 / §17.18.78 cell shading fill (if any). Row Y is
+      // encoded in paragraph absolute coordinates; the rectangle
+      // derives it from the first paragraph (or falls back to the full
+      // row height starting at the first paragraph's top). The ST_Shd
+      // `@val` selects solid `@fill` (clear/nil), solid `@color`
+      // (solid), or a `<pattern>`-backed fill (pct/stripe/cross);
+      // `resolve_shading_fill` emits any `<pattern>` def into `out`.
+      {
         let cell_top = cell_top_y(c)
-        out.push(
-          @markup.elem_ns(
-            "rect",
-            @markup.svg_ns,
-            [
-              @markup.attr("x", fmt_double(c.x)),
-              @markup.attr("y", fmt_double(cell_top)),
-              @markup.attr("width", fmt_double(c.width)),
-              @markup.attr("height", fmt_double(c.height)),
-              @markup.attr("fill", c.background),
-            ],
-            [],
-          ),
-        )
+        let pattern_id = shd_pattern_id("c", c.x, cell_top, c.shd_val)
+        match
+          resolve_shading_fill(
+            out,
+            c.background,
+            c.shd_val,
+            c.shd_color,
+            pattern_id,
+          ) {
+          Some(fill) =>
+            out.push(
+              @markup.elem_ns(
+                "rect",
+                @markup.svg_ns,
+                [
+                  @markup.attr("x", fmt_double(c.x)),
+                  @markup.attr("y", fmt_double(cell_top)),
+                  @markup.attr("width", fmt_double(c.width)),
+                  @markup.attr("height", fmt_double(c.height)),
+                  @markup.attr("fill", fill),
+                ],
+                [],
+              ),
+            )
+          None => ()
+        }
       }
       // §17.4.59 per-side borders. We emit four `<line>` segments
       // rather than a single rect so each side can carry its own
