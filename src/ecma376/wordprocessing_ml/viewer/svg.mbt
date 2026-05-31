@@ -8522,9 +8522,9 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
     }
     // §17.3.2.4 `<w:bdr>` run border — single rect around the span
     // glyph bbox. Skipped when the run hasn't declared a border or
-    // the style is `none`. The dash style isn't surfaced (`<rect>`
-    // has no shared dispatch with `<line>` here); the colour and
-    // width still match parse_border_side's resolution.
+    // the style is `none`. Colour / width match parse_border_side's
+    // resolution; dotted / dashed `@val` styles now carry through to
+    // the rect's stroke-dasharray via the shared border-style map.
     if span.border.style != "none" && span.border.style != "nil" {
       // §17.18.2 — same `currentColor` fallback as the table /
       // page border emitters.
@@ -8533,22 +8533,26 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
       } else {
         span.border.color_hex
       }
-      out.push(
-        @markup.elem_ns(
-          "rect",
-          @markup.svg_ns,
-          [
-            @markup.attr("x", fmt_double(x_cursor)),
-            @markup.attr("y", fmt_double(line.y_top)),
-            @markup.attr("width", fmt_double(span.width_px)),
-            @markup.attr("height", fmt_double(line.height)),
-            @markup.attr("fill", "none"),
-            @markup.attr("stroke", bdr_stroke),
-            @markup.attr("stroke-width", fmt_double(span.border.width_px)),
-          ],
-          [],
-        ),
-      )
+      // §17.18.3 — dotted / dashed `<w:bdr>` styles map to an SVG
+      // stroke-dasharray (the same patterns the line emitter uses);
+      // solid / double / wave styles leave the rect stroke solid.
+      let bdr_dash = match border_style_kind(span.border.style) {
+        BorderDashed(d) => d
+        _ => ""
+      }
+      let bdr_attrs : Array[@xml.Attribute] = [
+        @markup.attr("x", fmt_double(x_cursor)),
+        @markup.attr("y", fmt_double(line.y_top)),
+        @markup.attr("width", fmt_double(span.width_px)),
+        @markup.attr("height", fmt_double(line.height)),
+        @markup.attr("fill", "none"),
+        @markup.attr("stroke", bdr_stroke),
+        @markup.attr("stroke-width", fmt_double(span.border.width_px)),
+      ]
+      if bdr_dash.length() > 0 {
+        bdr_attrs.push(@markup.attr("stroke-dasharray", bdr_dash))
+      }
+      out.push(@markup.elem_ns("rect", @markup.svg_ns, bdr_attrs, []))
     }
     out.push(build_span_text_node(span, line, x_cursor))
     // §17.18.59 ST_Jc `both` — when the line is justified, each

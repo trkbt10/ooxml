@@ -4561,3 +4561,58 @@ test "render_svg paints a dotted tab leader for w:leader=dot" {
   assert_true(svg.contains("data-ooxml-tab-leader=\"dot\""))
   assert_true(svg.contains("stroke-dasharray"))
 }
+
+///|
+/// §17.3.2.4 `<w:bdr>` — a run border with `w:val="dashed"` must carry
+/// the dash pattern onto the SVG `<rect>` stroke (stroke-dasharray),
+/// not render a solid box.  Maps through the shared border-style table
+/// ("dashed" → "4 2").
+test "render_svg applies dashed run border as stroke-dasharray" {
+  let r_pr = @xml.Node::Element({
+    name: name("rPr"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("bdr"),
+        attributes: [
+          attr("val", "dashed"),
+          attr("sz", "8"),
+          attr("color", "0000FF"),
+        ],
+        children: [],
+      }),
+    ],
+  })
+  let run = @xml.Node::Element({
+    name: name("r"),
+    attributes: [],
+    children: [
+      r_pr,
+      @xml.Node::Element({
+        name: name("t"),
+        attributes: [],
+        children: [@xml.Node::Text("Boxed")],
+      }),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [run],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  // "dashed" → stroke-dasharray "4 2" on the run border rect.
+  assert_true(svg.contains("stroke-dasharray=\"4 2\""))
+}

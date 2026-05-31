@@ -7295,6 +7295,26 @@ fn render_cell_text(
       id_prefix, cell_ref, layout, text, style,
     )
   }
+  // §18.8.1 shrinkToFit — when single-line text overflows the cell
+  // width, Excel scales the font down so it fits (auto-shrink).  Only
+  // the non-wrapped path applies (wrapped cells reflow instead); the
+  // shrunk font then flows into the indent / baseline / glyph metrics
+  // below.  We only ever shrink, never enlarge.
+  let style = if style.alignment.shrink_to_fit &&
+    !style.alignment.wrap_text &&
+    layout.width > 0.0 &&
+    text.length() > 0 {
+    let avail = layout.width - 2.0 * padding
+    let tw = cell_text_width(text, style.font)
+    if tw > avail && avail > 0.0 {
+      let scaled = style.font.size * avail / tw
+      { ..style, font: { ..style.font, size: scaled } }
+    } else {
+      style
+    }
+  } else {
+    style
+  }
   let (tx0, anchor) = horizontal_text_pos(
     layout,
     style.alignment.horizontal,

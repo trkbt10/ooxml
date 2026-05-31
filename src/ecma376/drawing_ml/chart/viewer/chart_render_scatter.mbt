@@ -60,6 +60,26 @@ fn render_scatter_chart(
       nodes.push(tick)
     }
   }
+  // §21.2.2.176 — a scatter chart has TWO value axes (both <c:valAx>,
+  // no <c:catAx>), so the X axis is gated on the value-axis deletion
+  // flag, NOT cat_deleted() (which is always true here because no
+  // category axis exists).  Previously the renderer drew only the Y
+  // axis, leaving the X axis with no ticks or scale.
+  if !axes.val_deleted() {
+    for
+      tick in x_axis_ticks(
+        px,
+        py,
+        pw,
+        ph,
+        max_x,
+        fh,
+        axes.val_major(),
+        style=Some(chart_style),
+      ) {
+      nodes.push(tick)
+    }
+  }
   let span_x = if max_x > min_x { max_x - min_x } else { 1.0 }
   let span_y = if max_y > min_y { max_y - min_y } else { 1.0 }
   let to_xy = fn(xi : Double, yi : Double) -> (Double, Double) {

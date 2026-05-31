@@ -4866,3 +4866,135 @@ test "SpreadsheetML viewer §18.8.1 textRotation=255 stacks glyphs as tspans" {
   // A single character per stack line — no rotate transform.
   assert_true(!svg.contains("rotate("))
 }
+
+///|
+/// Extract the `font-size="…"` value of the first `<text ` element in
+/// `svg`, parsed as a Double.  Returns -1.0 when not found.
+fn first_text_font_size(svg : String) -> Double {
+  match svg.find("<text ") {
+    None => -1.0
+    Some(t) => {
+      let rest = svg.unsafe_substring(start=t, end=svg.length())
+      match rest.find("font-size=\"") {
+        None => -1.0
+        Some(fi) => {
+          let after = rest.unsafe_substring(start=fi + 11, end=rest.length())
+          // The value is `<number>pt` (e.g. `11pt`); read the numeric
+          // prefix up to the "pt" unit suffix.
+          match after.find("pt") {
+            None => -1.0
+            Some(q) => {
+              let num = after.unsafe_substring(start=0, end=q)
+              (try? @string.parse_double(num)).unwrap_or(-1.0)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+/// Render a narrow single-cell worksheet holding a long string, with
+/// `shrinkToFit` either on or off.  Helper for the §18.8.1 shrink test.
+fn render_shrink_cell(shrink : Bool) -> String raise {
+  let align_attrs : Array[@xml.Attribute] = if shrink {
+    [{ name: name("shrinkToFit"), value: "1" }]
+  } else {
+    []
+  }
+  let alignment_el : @xml.Element = {
+    name: name("alignment"),
+    attributes: align_attrs,
+    children: [],
+  }
+  let xf : @xml.Element = {
+    name: name("xf"),
+    attributes: [{ name: name("applyAlignment"), value: "1" }],
+    children: [@xml.Node::Element(alignment_el)],
+  }
+  let cell_xfs : @xml.Element = {
+    name: name("cellXfs"),
+    attributes: [{ name: name("count"), value: "1" }],
+    children: [@xml.Node::Element(xf)],
+  }
+  let stylesheet = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [@xml.Node::Element(cell_xfs)],
+  })
+  // Narrow column so a long string clearly overflows the cell width.
+  let cols : @xml.Element = {
+    name: name("cols"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("col"),
+        attributes: [
+          { name: name("min"), value: "1" },
+          { name: name("max"), value: "1" },
+          { name: name("width"), value: "5" },
+          { name: name("customWidth"), value: "1" },
+        ],
+        children: [],
+      }),
+    ],
+  }
+  let cells : Array[@xml.Node] = [
+    @xml.Node::Element({
+      name: name("c"),
+      attributes: [
+        { name: name("r"), value: "A1" },
+        { name: name("t"), value: "inlineStr" },
+        { name: name("s"), value: "0" },
+      ],
+      children: [
+        @xml.Node::Element({
+          name: name("is"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [
+                @xml.Node::Text(
+                  "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789ABCDEFGHIJ",
+                ),
+              ],
+            }),
+          ],
+        }),
+      ],
+    }),
+  ]
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element(cols),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, cells)],
+      }),
+    ],
+  })
+  render_svg(worksheet, styles=Some(stylesheet)).svg
+}
+
+///|
+/// §18.8.1 shrinkToFit — a long string in a narrow cell must render at
+/// a SMALLER font size when shrinkToFit is set than when it is not
+/// (Excel's auto-shrink).  Previously the attribute was metadata only.
+test "SpreadsheetML viewer §18.8.1 shrinkToFit scales the font down" {
+  let base = first_text_font_size(render_shrink_cell(false))
+  let shrunk = first_text_font_size(render_shrink_cell(true))
+  assert_true(base > 0.0)
+  assert_true(shrunk > 0.0)
+  assert_true(shrunk < base)
+}
