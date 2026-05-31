@@ -247,6 +247,14 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       self.opc_package,
       worksheet.drawing_part,
     )
+    // §18.3.1.47 — resolve `<hyperlink @r:id>` references through the
+    // WORKSHEET part's `_rels` (the rel is External-mode `/hyperlink`,
+    // so its `Target` is the URL) so the renderer can wrap each
+    // hyperlinked cell in a clickable SVG `<a>`.
+    let hyperlink_resolver = build_worksheet_hyperlink_resolver(
+      self.opc_package,
+      worksheet.name,
+    )
     // §18.10 — discover any pivot tables tied to this worksheet via
     // the worksheet-part's relationships (`…/pivotTable` rels point
     // at `xl/pivotTables/pivotTableN.xml`). For each one, look up
@@ -291,6 +299,7 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       workbook=Some(self.workbook.element),
       evaluated_cells=Some(evaluated),
       part_resolver=chart_part_resolver,
+      hyperlink_resolver~,
     )
     buf.write_string(result.svg)
   }
@@ -401,6 +410,42 @@ fn build_drawing_chart_part_resolver(
           }
         }
       }
+  }
+}
+
+///|
+/// §18.3.1.47 CT_Hyperlink — build a `hyperlink_resolver` closure
+/// that maps a worksheet `<hyperlink @r:id>` to its external target
+/// URL by walking the WORKSHEET part's `_rels/<sheet>.xml.rels` for
+/// the matching `/hyperlink` relationship.  These rels are
+/// External-mode (`TargetMode="External"`), so the relationship's
+/// `Target` IS the URL verbatim — no `@opc_part_name.resolve_target`
+/// is applied (that would mangle an absolute URL into a package part
+/// path).  Mirrors `build_drawing_image_resolver` but resolves
+/// against the worksheet part (not the drawing part) and returns the
+/// target string directly.  Returns a closure that always yields
+/// `None` when the worksheet has no relationships, so the SML viewer
+/// falls back to its `@location` / metadata-only behaviour
+/// transparently.
+fn build_worksheet_hyperlink_resolver(
+  opc_package : @opc.Package,
+  worksheet_part_name : String,
+) -> (String) -> String? {
+  match opc_package.relationships(worksheet_part_name) {
+    None => fn(_) { None }
+    Some(rels) => {
+      let relationships = rels
+      fn(rid : String) -> String? {
+        for rel in relationships.relationships {
+          if rel.id == rid &&
+            rel.target_mode == @relationships.TargetMode::External &&
+            rel.type_uri.has_suffix("/hyperlink") {
+            return Some(rel.target)
+          }
+        }
+        None
+      }
+    }
   }
 }
 

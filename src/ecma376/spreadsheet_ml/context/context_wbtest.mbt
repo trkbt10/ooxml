@@ -495,6 +495,76 @@ test "xlsx context without drawing leaves WorksheetPart.drawing = None" {
 }
 
 ///|
+/// §18.3.1.47 CT_Hyperlink — a package whose worksheet declares a
+/// `<hyperlink @ref="A1" r:id="rId1">` and whose worksheet `_rels`
+/// maps `rId1` to an External-mode `/hyperlink` relationship.  The
+/// facade's `build_worksheet_hyperlink_resolver` must surface that
+/// rel's `Target` (the URL) so `to_svg` wraps the cell in a clickable
+/// SVG `<a xlink:href="…">`.
+fn fixture_with_hyperlink() -> Bytes {
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+        "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/_rels/workbook.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/worksheets/_rels/sheet1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"https://example.com/\" TargetMode=\"External\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("xl/workbook.xml", bytes("<s:workbook xmlns:s=\"urn:s\"/>")),
+    (
+      "xl/worksheets/sheet1.xml",
+      bytes(
+        "<s:worksheet xmlns:s=\"urn:s\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:dimension ref=\"A1:A1\"/>" +
+        "<s:sheetData><s:row r=\"1\"><s:c r=\"A1\"><s:v>1</s:v></s:c></s:row></s:sheetData>" +
+        "<s:hyperlinks><s:hyperlink ref=\"A1\" r:id=\"rId1\"/></s:hyperlinks>" +
+        "</s:worksheet>",
+      ),
+    ),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
+test "xlsx context to_svg resolves worksheet hyperlink r:id to external URL" {
+  let workbook = open(fixture_with_hyperlink())
+  // The catalog harness path keeps debug attrs so `data-ooxml-*`
+  // survives; the default production path strips them but the `<a>`
+  // wrapper is a draw primitive, so it survives regardless.
+  let svg = workbook.to_svg()
+  assert_true(svg.contains("<a "))
+  assert_true(svg.contains("xlink:href=\"https://example.com/\""))
+  assert_true(svg.contains("href=\"https://example.com/\""))
+}
+
+///|
 test "xlsx context to_svg renders each worksheet via @sml_viewer" {
   // The minimal fixture has one worksheet with a single cell
   // <s:v>Hello xlsx</s:v>. We don't need to assert layout pixels —

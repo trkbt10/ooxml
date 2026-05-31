@@ -3132,6 +3132,133 @@ test "SpreadsheetML viewer §18.3.1.45 hyperlink with range ref anchors at first
 }
 
 ///|
+/// §18.3.1.47 CT_Hyperlink — when a `hyperlink_resolver` maps the
+/// hyperlink's `@r:id` to an external URL, the renderer MUST wrap the
+/// cell hit-area in a clickable SVG `<a xlink:href="…" href="…">` over
+/// the `@ref` cell.  The `data-ooxml-hyperlink-*` metadata is retained.
+test "SpreadsheetML viewer §18.3.1.47 hyperlink r:id resolves to clickable <a>" {
+  let hyperlink : @xml.Node = @xml.Node::Element({
+    name: name("hyperlink"),
+    attributes: [
+      { name: name("ref"), value: "A1" },
+      { name: name("id"), value: "rId1" },
+    ],
+    children: [],
+  })
+  let hyperlinks_el : @xml.Node = @xml.Node::Element({
+    name: name("hyperlinks"),
+    attributes: [],
+    children: [hyperlink],
+  })
+  let cells_row1 : Array[@xml.Node] = [build_cell("A1", None, "1")]
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, cells_row1)],
+      }),
+      hyperlinks_el,
+    ],
+  })
+  // In-memory resolver: rId1 -> external URL (mirrors the facade's
+  // worksheet-rels `/hyperlink` External-mode lookup).
+  let result = render_svg(worksheet, hyperlink_resolver=fn(rid) {
+    if rid == "rId1" {
+      Some("https://example.com/")
+    } else {
+      None
+    }
+  })
+  // A clickable anchor wraps the hit-area; both SVG 1.1 (`xlink:href`)
+  // and SVG 2 (`href`) forms carry the resolved URL.
+  assert_true(result.svg.contains("<a "))
+  assert_true(result.svg.contains("xlink:href=\"https://example.com/\""))
+  assert_true(result.svg.contains("href=\"https://example.com/\""))
+  // The metadata attribute survives on the wrapped rect.
+  assert_true(result.svg.contains("data-ooxml-hyperlink-r-id=\"rId1\""))
+}
+
+///|
+/// §18.3.1.47 — a hyperlink with no `@r:id` URL but an internal
+/// `@location` renders as a fragment href `#<location>`.
+test "SpreadsheetML viewer §18.3.1.47 hyperlink location renders fragment href" {
+  let hyperlink : @xml.Node = @xml.Node::Element({
+    name: name("hyperlink"),
+    attributes: [
+      { name: name("ref"), value: "A1" },
+      { name: name("location"), value: "Sheet2!A1" },
+    ],
+    children: [],
+  })
+  let hyperlinks_el : @xml.Node = @xml.Node::Element({
+    name: name("hyperlinks"),
+    attributes: [],
+    children: [hyperlink],
+  })
+  let cells_row1 : Array[@xml.Node] = [build_cell("A1", None, "1")]
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, cells_row1)],
+      }),
+      hyperlinks_el,
+    ],
+  })
+  // Default resolver (no external mapping) — `@location` provides the
+  // internal target.
+  let result = render_svg(worksheet)
+  assert_true(result.svg.contains("xlink:href=\"#Sheet2!A1\""))
+  assert_true(result.svg.contains("href=\"#Sheet2!A1\""))
+}
+
+///|
+/// §18.3.1.47 — a worksheet without hyperlinks renders byte-identically
+/// whether or not a `hyperlink_resolver` is supplied (the resolver is
+/// only ever consulted for `<hyperlink @r:id>` elements, which are
+/// absent here).
+test "SpreadsheetML viewer §18.3.1.47 no-hyperlink sheet is resolver-invariant" {
+  let cells_row1 : Array[@xml.Node] = [build_cell("A1", None, "1")]
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, cells_row1)],
+      }),
+    ],
+  })
+  let without = render_svg(worksheet)
+  let with_resolver = render_svg(worksheet, hyperlink_resolver=fn(_rid) {
+    Some("https://example.com/")
+  })
+  assert_eq(without.svg, with_resolver.svg)
+}
+
+///|
 /// §18.3.1.40 `<c><f>FORMULA</f><v>cached</v></c>` — the formula
 /// text and `@t`/`@si`/`@ref` metadata MUST surface as
 /// `data-ooxml-formula` / `data-ooxml-f-*` in a `<g class="formulas">`

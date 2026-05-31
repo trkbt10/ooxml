@@ -202,6 +202,19 @@ pub fn render_svg(
   /// chart support pass the default `_ => None` and chart frames
   /// fall back to the labelled placeholder.
   part_resolver? : (String) -> @xml.Element? = _ => None,
+  /// §18.3.1.47 CT_Hyperlink — maps a worksheet `<hyperlink @r:id>`
+  /// to its external target URL.  The `@r:id` references the
+  /// WORKSHEET part's relationships (an External-mode rel whose
+  /// type ends in `/hyperlink`); the facade resolves that rel and
+  /// returns its `Target` (which, for an External relationship, IS
+  /// the URL verbatim — no part-name resolution).  When this yields
+  /// a URL the renderer wraps the hyperlink's cell hit-area in a
+  /// clickable SVG `<a xlink:href="…">`.  The SML viewer itself
+  /// never touches the OPC layer, so callers without hyperlink
+  /// support pass the default `_ => None`; combined with a
+  /// hyperlink that also lacks an internal `@location`, the cell's
+  /// output then stays byte-identical to the pre-resolution render.
+  hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> SheetSvgResult {
   // §18.2.28 — pick the date system once for the whole sheet.
   let date_system = if date1904 {
@@ -795,7 +808,10 @@ pub fn render_svg(
   // can wrap the cell text in an HTML `<a>`. Excel writes the
   // hyperlink as sibling of `<sheetData>`, not inline on the
   // cell, so we walk the worksheet looking for hyperlink rows.
-  match render_sheet_hyperlinks(domain.element, layout) {
+  // When a target resolves (external URL via `hyperlink_resolver`
+  // or an internal `@location`), the hit-area becomes a clickable
+  // SVG `<a xlink:href="…">`.
+  match render_sheet_hyperlinks(domain.element, layout, hyperlink_resolver) {
     Some(node) => body.push(node)
     None => ()
   }
@@ -10331,13 +10347,6 @@ fn render_sheet_formulas(
 }
 
 ///|
-/// §18.3.1.45 — emit a `<g class="hyperlinks">` group with one
-/// `<rect data-ooxml-hyperlink-*>` per hyperlinked cell.  The
-/// rect spans the cell's grid coordinates so consumers can
-/// detect the hit area and rebuild an `<a>` link.  Excel
-/// supports a range-based `@ref` (e.g. `A1:B3`); we currently
-/// honour the top-left cell only — multi-cell hyperlink coverage
-/// is uncommon and tracked separately.
 /// §18.3.1.73 / §18.3.1.13 — emit a `<g class="outline-levels">`
 /// sidecar containing one transparent rect per row / column that
 /// carries `@outlineLevel > 0`.  The rect spans the row/col's
@@ -10485,16 +10494,43 @@ fn render_sheet_outline_levels(
 }
 
 ///|
+/// §18.3.1.45 `<hyperlinks>` / §18.3.1.47 CT_Hyperlink — emit a
+/// `<g class="hyperlinks">` group with one transparent hit-area
+/// `<rect data-ooxml-hyperlink-*>` per hyperlinked cell.  The rect
+/// spans the layout coordinates of the `@ref` range's top-left cell
+/// (range coverage is anchored at the first cell; see `render_svg`'s
+/// notes — multi-cell `@ref` is uncommon and only the top-left cell
+/// is honoured).
+///
+/// When the hyperlink resolves to a target, the rect is wrapped in a
+/// clickable SVG `<a xlink:href="…" href="…">` (both forms are
+/// emitted: `xlink:href` for SVG 1.1 anchors, `href` for SVG 2 / HTML
+/// consumers).  Targets resolve in §18.3.1.47 order:
+///
+///   1. `@r:id` — the worksheet-rels relationship is an External-mode
+///      `/hyperlink` rel whose `Target` IS the URL; `hyperlink_resolver`
+///      performs that lookup and returns the URL.
+///   2. `@location` — an internal target (e.g. `Sheet2!A1`); rendered
+///      as the fragment href `"#" + location`.
+///
+/// When neither resolves (no `@r:id` URL and no `@location`), the bare
+/// `<rect>` is pushed unchanged, so a worksheet whose hyperlinks have
+/// no resolvable target — or any caller passing the default
+/// `_ => None` resolver with location-less hyperlinks — stays
+/// byte-identical to the pre-resolution output.  The
+/// `data-ooxml-hyperlink-*` metadata attributes remain on the rect in
+/// every case.
 fn render_sheet_hyperlinks(
   worksheet : @xml.Element,
   layout : SheetLayout,
+  hyperlink_resolver : (String) -> String?,
 ) -> @xml.Node? {
   let hyperlinks_el = first_child_named_local(worksheet, "hyperlinks")
   let parent = match hyperlinks_el {
     Some(h) => h
     None => return None
   }
-  let rects : Array[@xml.Node] = []
+  let nodes : Array[@xml.Node] = []
   for child in parent.children {
     match child {
       @xml.Element(e) =>
@@ -10518,12 +10554,14 @@ fn render_sheet_hyperlinks(
                 svg_attr("fill", "transparent"),
                 svg_attr("data-ooxml-hyperlink-ref", ref_),
               ]
-              match attr_value_local(e, "id") {
+              let rid = attr_value_local(e, "id")
+              match rid {
                 Some(rid) =>
                   attrs.push(svg_attr("data-ooxml-hyperlink-r-id", rid))
                 None => ()
               }
-              match attr_value_local(e, "location") {
+              let location = attr_value_local(e, "location")
+              match location {
                 Some(loc) =>
                   attrs.push(svg_attr("data-ooxml-hyperlink-location", loc))
                 None => ()
@@ -10538,17 +10576,56 @@ fn render_sheet_hyperlinks(
                   attrs.push(svg_attr("data-ooxml-hyperlink-display", disp))
                 None => ()
               }
-              rects.push(svg_elem("rect", attrs, []))
+              let rect = svg_elem("rect", attrs, [])
+              // §18.3.1.47 — resolve the click target in spec order:
+              // `@r:id` (external URL via the worksheet-rels resolver)
+              // wins; otherwise `@location` is an internal fragment.
+              let href : String? = match rid {
+                Some(rid) =>
+                  match hyperlink_resolver(rid) {
+                    Some(url) => Some(url)
+                    None =>
+                      match location {
+                        Some(loc) => Some("#" + loc)
+                        None => None
+                      }
+                  }
+                None =>
+                  match location {
+                    Some(loc) => Some("#" + loc)
+                    None => None
+                  }
+              }
+              match href {
+                Some(target) =>
+                  // Clickable anchor.  Emit BOTH `xlink:href` (SVG
+                  // 1.1) and `href` (SVG 2 / HTML) carrying the same
+                  // target; the writer auto-declares the `xlink`
+                  // prefix on first use.
+                  nodes.push(
+                    svg_elem(
+                      "a",
+                      [
+                        @markup.attr_ns(
+                          "xlink", "href", @markup.xlink_ns, target,
+                        ),
+                        svg_attr("href", target),
+                      ],
+                      [rect],
+                    ),
+                  )
+                None => nodes.push(rect)
+              }
             }
           }
         }
       _ => ()
     }
   }
-  if rects.length() == 0 {
+  if nodes.length() == 0 {
     None
   } else {
-    Some(svg_elem("g", [svg_attr("class", "hyperlinks")], rects))
+    Some(svg_elem("g", [svg_attr("class", "hyperlinks")], nodes))
   }
 }
 
