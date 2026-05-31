@@ -293,6 +293,17 @@ pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String 
   let chart_resolver = @wml_viewer.build_wml_chart_resolver(
     theme_map, chart_part_resolver,
   )
+  // §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — resolve a list
+  // level's picture bullet to its image media.  Keyed on the
+  // `numPicBulletId`, this looks up the raw `<w:numPicBullet>` element
+  // in the numbering table, extracts its blip / imagedata relationship
+  // Id, and resolves it against the numbering part's relationships.
+  // Returns `None` for documents without (resolvable) picture bullets,
+  // so the viewer's text-marker path stays byte-identical.
+  let pic_bullet_resolver = build_document_pic_bullet_resolver(
+    self.opc_package,
+    self.numbering,
+  )
   let svg = @wml_viewer.render_combined_svg(
     self.main,
     header_blocks=deco.header_default,
@@ -305,6 +316,7 @@ pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String 
     even_and_odd_headers=deco.even_and_odd,
     image_resolver~,
     chart_resolver~,
+    pic_bullet_resolver~,
     styles=self.styles,
     numbering=self.numbering,
     // §17.15.1.85 / §17.15.1.51 — thread the parsed theme part
@@ -421,6 +433,134 @@ fn build_document_image_resolver(
       }
     }
   }
+}
+
+///|
+/// §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — build a
+/// `ResolvedImage` resolver keyed on the `numPicBulletId` so the
+/// viewer can render a list level's `<w:lvlPicBulletId w:val="N"/>`
+/// as an `<image>` glyph.  This mirrors `build_document_image_resolver`
+/// exactly, with two differences that the picture-bullet model
+/// demands:
+///
+///  • A `numPicBulletId` is NOT itself a relationship Id.  We first
+///    look up the raw `<w:numPicBullet w:numPicBulletId="N">` element
+///    from the typed numbering table (`numbering.pic_bullets`, keyed
+///    by id), then walk it to its embedded image relationship Id (the
+///    `<w:drawing>…<a:blip r:embed="rIdN"/>` for a DrawingML picture
+///    or the `<w:pict><v:shape><v:imagedata r:id="rIdN"/>` for a VML
+///    picture — §17.9.20 permits either).
+///
+///  • The relationship is resolved against the NUMBERING part's
+///    relationships (`/word/numbering.xml` + `_rels/numbering.xml.rels`)
+///    — not the main document part — because the `<w:numPicBullet>`
+///    drawing lives in `numbering.xml` and so its `r:embed` / `r:id`
+///    is scoped to that part's relationship table (OPC §9.3.1).
+///
+/// When the document ships no numbering part, the numbering part has
+/// no relationships, the id is absent from `pic_bullets`, no embed/id
+/// reference is reachable, or the relationship / media part cannot be
+/// resolved, the resolver returns `None`.  The viewer then draws the
+/// §17.9.11 lvlText text marker exactly as before, so documents
+/// without (resolvable) picture bullets stay byte-identical.
+fn build_document_pic_bullet_resolver(
+  opc_package : @opc.Package,
+  numbering : @wml.CT_Numbering?,
+) -> (Int) -> @wml_viewer.ResolvedImage? {
+  // The numPicBullet drawing's blip/imagedata reference is scoped to
+  // the numbering part's relationship table.  `open` loads numbering
+  // from the canonical `/word/numbering.xml` path (see lines ~77 and
+  // ~181), so we resolve against that same part name.
+  let numbering_part = "/word/numbering.xml"
+  match numbering {
+    None => fn(_) { None }
+    Some(table) =>
+      match opc_package.relationships(numbering_part) {
+        None => fn(_) { None }
+        Some(rels) => {
+          let pkg = opc_package
+          let part = numbering_part
+          let relationships = rels
+          let pic_bullets = table.pic_bullets
+          fn(pic_id : Int) -> @wml_viewer.ResolvedImage? {
+            // §17.9.20 — locate the `<w:numPicBullet>` raw element and
+            // extract its embedded image relationship Id.
+            let rid = match pic_bullets.get(pic_id) {
+              None => return None
+              Some(pic_bullet) =>
+                match num_pic_bullet_image_rid(pic_bullet) {
+                  None => return None
+                  Some(r) => r
+                }
+            }
+            // Resolve that rId against the numbering part's rels — the
+            // exact rel-matching logic from build_document_image_resolver.
+            for rel in relationships.relationships {
+              if rel.id == rid &&
+                rel.target_mode == @relationships.TargetMode::Internal &&
+                rel.type_uri.has_suffix("/image") {
+                let resolved = try? @opc_part_name.resolve_target(
+                  part,
+                  rel.target,
+                )
+                match resolved {
+                  Ok(image_name) =>
+                    match pkg.part(image_name) {
+                      Some(image_part) =>
+                        return Some({
+                          mime_type: document_mime_for_target(rel.target),
+                          base64_data: @base64.encode(image_part.data),
+                        })
+                      None => ()
+                    }
+                  Err(_) => ()
+                }
+              }
+            }
+            None
+          }
+        }
+      }
+  }
+}
+
+///|
+/// §17.9.20 numPicBullet — walk a raw `<w:numPicBullet>` element to its
+/// embedded image relationship Id.  A numPicBullet wraps either a
+/// DrawingML picture (`<w:drawing>…<a:blip r:embed="rIdN"/>`, possibly
+/// nested under `<pic:blipFill>`) or a VML picture
+/// (`<w:pict><v:shape><v:imagedata r:id="rIdN"/>`).  We do a
+/// depth-first walk and return the first attribute whose local name is
+/// `embed` (DrawingML blip) or `id` (VML imagedata) in the
+/// officeDocument relationships namespace — matching the same
+/// `r:`-prefix / relationships-namespace discipline as `attr_rid`
+/// (§17.16.22 ST_RelationshipId).  Returns `None` when no such
+/// reference is reachable.
+fn num_pic_bullet_image_rid(element : @xml.Element) -> String? {
+  // A blip `r:embed` (DrawingML) wins when both are present; the
+  // depth-first order below visits the drawing subtree's `r:embed`
+  // before any sibling VML `r:id` because a conforming numPicBullet
+  // carries exactly one of them.
+  for a in element.attributes {
+    if a.name.ns ==
+      Some(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+      ) &&
+      (a.name.local_name == "embed" || a.name.local_name == "id") {
+      return Some(a.value)
+    }
+  }
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match num_pic_bullet_image_rid(child_element) {
+          Some(rid) => return Some(rid)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
 }
 
 ///|
