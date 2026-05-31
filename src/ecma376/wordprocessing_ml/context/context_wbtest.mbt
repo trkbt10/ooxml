@@ -981,6 +981,219 @@ test "wml edit §17.13.5.29 reject_revisions restores pPr snapshot" {
 }
 
 ///|
+/// §17.16.22 CT_Hyperlink — build a `<w:hyperlink>` wrapping a single
+/// run.  `attrs` is the raw attribute string for the `<w:hyperlink>`
+/// element (e.g. `r:id="rId5"` or `w:anchor="Bookmark"`); `text` is the
+/// run's visible content.
+fn hyperlink_paragraph_xml(attrs : String, text : String) -> String {
+  "<w:p><w:hyperlink " +
+  attrs +
+  "><w:r><w:t>" +
+  text +
+  "</w:t></w:r></w:hyperlink></w:p>"
+}
+
+///|
+/// §17.16.22 / OPC §9.3.1 — a package whose body paragraph holds a
+/// `<w:hyperlink r:id="rId5">` over a run, with `document.xml.rels`
+/// mapping `rId5` → an EXTERNAL URL via a `/hyperlink` relationship
+/// (TargetMode="External").  The rendered SVG MUST wrap the run text in
+/// an `<a xlink:href="<the url>">`.
+fn fixture_with_body_hyperlink() -> Bytes {
+  let ns = " xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"" +
+    " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\""
+  let document_xml = "<w:document" +
+    ns +
+    "><w:body>" +
+    hyperlink_paragraph_xml("r:id=\"rId5\"", "Click here") +
+    "</w:body></w:document>"
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "word/_rels/document.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId5\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"https://example.com/body\" TargetMode=\"External\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("word/document.xml", bytes(document_xml)),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
+/// §17.16.22 / OPC §9.3.1 — the body hyperlink's `r:id` resolves against
+/// the main document part's rels to the external URL, and the run's
+/// `<text>` is wrapped in an `<a xlink:href="<url>">`.
+test "wml context body hyperlink r:id wraps run text in an xlink anchor" {
+  let document = open(fixture_with_body_hyperlink())
+  let svg = document.to_svg()
+  // The link target survives as an SVG anchor href.
+  assert_true(svg.contains("xlink:href=\"https://example.com/body\""))
+  // The anchor wraps the run's visible text.
+  assert_true(svg.contains("Click here"))
+  assert_true(svg.contains("<a "))
+}
+
+///|
+/// §17.16.22 / OPC §9.3.1 — PART-AWARE hyperlink resolution.  A header is
+/// a SEPARATE OPC part with its OWN `_rels`, so a `<w:hyperlink r:id>`
+/// inside the header MUST resolve against `/word/_rels/header1.xml.rels`,
+/// NOT the main document part's rels.
+///
+/// Discriminating fixture: BOTH `document.xml.rels` and
+/// `header1.xml.rels` define the SAME hyperlink Id (`rIdLink`) but point
+/// at DIFFERENT URLs — the body part maps it to a BODY url and the header
+/// part to a HEADER url.  The body paragraph and the header each wrap a
+/// run in `<w:hyperlink r:id="rIdLink">`.  With part-aware resolution the
+/// header anchor carries the HEADER url and the body anchor the BODY url.
+fn fixture_with_conflicting_hyperlink_rids() -> Bytes {
+  let ns = " xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"" +
+    " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\""
+  let document_xml = "<w:document" +
+    ns +
+    "><w:body>" +
+    hyperlink_paragraph_xml("r:id=\"rIdLink\"", "BODY LINK") +
+    "<w:sectPr>" +
+    "<w:headerReference w:type=\"default\" r:id=\"rIdH1\"/>" +
+    "</w:sectPr>" +
+    "</w:body></w:document>"
+  let header_xml = "<w:hdr" +
+    ns +
+    ">" +
+    hyperlink_paragraph_xml("r:id=\"rIdLink\"", "HEADER LINK") +
+    "</w:hdr>"
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>" +
+        "<Override PartName=\"/word/header1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    // Body part rels: `rIdLink` → the BODY url; plus the header part.
+    (
+      "word/_rels/document.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdH1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/header\" Target=\"header1.xml\"/>" +
+        "<Relationship Id=\"rIdLink\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"https://example.com/from-body\" TargetMode=\"External\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    // §17.10 / OPC §9.3.1 — header part rels: the SAME `rIdLink` maps to
+    // a DIFFERENT url than the body part's `rIdLink`.
+    (
+      "word/_rels/header1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdLink\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"https://example.com/from-header\" TargetMode=\"External\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("word/document.xml", bytes(document_xml)),
+    ("word/header1.xml", bytes(header_xml)),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
+/// §17.16.22 / OPC §9.3.1 — the header hyperlink resolves its `r:id`
+/// against the HEADER part's rels, not the document's.  The bug would
+/// render the document part's `rIdLink` (the BODY url) inside the header.
+/// Body-link resolution is asserted by the SAME run: the body anchor
+/// still resolves against the main document part's rels (the BODY url).
+test "wml context resolves a header hyperlink against the header part rels" {
+  let document = open(fixture_with_conflicting_hyperlink_rids())
+  let svg = document.to_svg()
+  // The body hyperlink resolves against the BODY part's rels.
+  assert_true(svg.contains("xlink:href=\"https://example.com/from-body\""))
+  // The header hyperlink resolves against the HEADER part's rels — the fix.
+  // (The bug would have rendered the BODY url here too, never the HEADER
+  // url, because the header's rId was wrongly resolved against the
+  // document part.)
+  assert_true(svg.contains("xlink:href=\"https://example.com/from-header\""))
+}
+
+///|
+/// §17.16.22 — a `<w:hyperlink w:anchor="Bookmark">` with NO `r:id` is an
+/// internal bookmark navigation: the run's `<text>` is wrapped in an
+/// `<a xlink:href="#Bookmark">` (the `#` fragment) without consulting the
+/// relationship table.
+test "wml context w:anchor hyperlink wraps run text in a fragment href" {
+  let ns = " xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"" +
+    " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\""
+  let document_xml = "<w:document" +
+    ns +
+    "><w:body>" +
+    hyperlink_paragraph_xml("w:anchor=\"Bookmark\"", "Jump to bookmark") +
+    "</w:body></w:document>"
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/></Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>",
+      ),
+    ),
+    ("word/document.xml", bytes(document_xml)),
+  ])
+  let document = open(try! @zip.write(archive))
+  let svg = document.to_svg()
+  assert_true(svg.contains("xlink:href=\"#Bookmark\""))
+  assert_true(svg.contains("Jump to bookmark"))
+}
+
+///|
+/// §17.16.22 — byte-identity sanity: a plain document with NO
+/// `<w:hyperlink>` emits NO `<a>` anchor at all (the link plumbing is
+/// inert when no hyperlink is present), while its visible text is
+/// unchanged.  Guards the "documents without hyperlinks are unchanged"
+/// invariant.
+test "wml context plain document emits no anchor element" {
+  let document = open(fixture_bytes())
+  let svg = document.to_svg()
+  assert_true(svg.contains("Hello docx"))
+  // No SVG `<a>` anchor and no xlink:href is emitted for a hyperlink-free
+  // document — the run-span emission path is byte-identical to before.
+  assert_false(svg.contains("<a "))
+  assert_false(svg.contains("xlink:href"))
+}
+
+///|
 /// §17.18.44 ST_Jc — set_paragraph_alignment MUST normalise the
 /// transitional aliases "left"/"right" to "start"/"end" and
 /// reject values outside the enumeration.

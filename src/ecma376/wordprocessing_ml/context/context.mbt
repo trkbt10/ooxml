@@ -294,6 +294,17 @@ pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String 
   // `/word/_rels/header*.xml.rels` rather than wrongly against the main
   // document part.  Closed over by the part-aware chart_resolver below.
   let chart_part_resolver = build_document_chart_part_resolver(self.opc_package)
+  // §17.16.22 CT_Hyperlink / OPC §9.3.1 — ONE part-aware hyperlink-target
+  // resolver for the whole document.  Given an opaque OPC part token (the
+  // body part, a header / footer part) and a `<w:hyperlink r:id>`, it
+  // resolves the rId against THAT part's `_rels` for the `…/hyperlink`
+  // relationship type and returns the external URL.  The viewer carries
+  // each content stream's token and hands it back here, so a hyperlink
+  // inside a header / footer resolves its r:id against
+  // `/word/_rels/header*.xml.rels` rather than wrongly against the main
+  // document part.  An internal `<w:hyperlink w:anchor>` needs no
+  // resolver (the viewer renders `#<anchor>` directly).
+  let hyperlink_resolver = build_document_hyperlink_resolver(self.opc_package)
   let theme_map = match self.theme {
     Some(root) => @wml_viewer.parse_clr_scheme(root)
     None => @wml_viewer.ThemeColorMap::empty()
@@ -319,6 +330,10 @@ pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String 
     even_and_odd_headers=deco.even_and_odd,
     image_resolver~,
     chart_resolver~,
+    // §17.16.22 — body / header / footer hyperlinks resolve their r:id
+    // against the relationship table of the part that CONTAINS them
+    // (bound per stream by the viewer with the part tokens below).
+    hyperlink_resolver~,
     // §17 — body content resolves against the main document part.
     body_part=self.main_part,
     // §17.10 / OPC §9.3.1 — each header / footer stream resolves its
@@ -456,6 +471,50 @@ fn build_document_image_resolver(
             }
           Err(_) => ()
         }
+      }
+    }
+    None
+  }
+}
+
+///|
+/// §17.16.22 CT_Hyperlink / OPC §9.3.1 — build the ONE PART-AWARE
+/// hyperlink-target resolver for the whole document.  Given an OPC
+/// `part` token (the containing part's name) and a `rid` (the `<w:hyperlink
+/// r:id>` relationship Id), it resolves the rId against THAT part's
+/// `_rels` for the `…/hyperlink` relationship type and returns the
+/// relationship's `target` — which, for a hyperlink, IS the external URL
+/// string verbatim.
+///
+/// Why `rel.target` is the URL directly (unlike the image / chart
+/// resolvers, which call `resolve_target` then `part(name)`): a hyperlink
+/// relationship's `TargetMode` is `External` (§9.3.1), so its `Target`
+/// attribute is an absolute URI (`https://…`, `mailto:…`, …) that names
+/// an out-of-package resource, NOT a package-relative part name.  There
+/// is no part to look up and no path to resolve — the rendered
+/// `xlink:href` is exactly the stored target.  We therefore match on
+/// `target_mode == External` (the inverse of the image / chart resolvers'
+/// `Internal` guard) and return `rel.target` unmodified.
+///
+/// Relationships are resolved lazily per part inside the closure
+/// (`opc_package.relationships(part)`), so the resolver works for ANY
+/// part without a prebuilt per-part map — body hyperlinks pass `part =
+/// main_part`; a header / footer hyperlink passes that part's own name so
+/// its rId is scoped to `/word/_rels/header*.xml.rels`.  Returns `None`
+/// when no matching hyperlink relationship is present (the run then keeps
+/// its blue / underline styling but emits no `<a>`).
+fn build_document_hyperlink_resolver(
+  opc_package : @opc.Package,
+) -> (String, String) -> String? {
+  let pkg = opc_package
+  fn(part : String, rid : String) -> String? {
+    let relationships = match pkg.relationships(part) {
+      None => return None
+      Some(rels) => rels
+    }
+    for rel in relationships.relationships {
+      if rel.id == rid && rel.type_uri.has_suffix("/hyperlink") {
+        return Some(rel.target)
       }
     }
     None

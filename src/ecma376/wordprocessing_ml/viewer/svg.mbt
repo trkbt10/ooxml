@@ -42,6 +42,24 @@ fn attr_value(element : @xml.Element, local_name : String) -> String? {
 }
 
 ///|
+/// §17.16.22 — value of the `r:id` attribute, i.e. the attribute whose
+/// local name is `id` in the relationships namespace
+/// (`…/officeDocument/2006/relationships`).  Matched namespace-aware (not
+/// merely by local name) so a `<w:hyperlink>` that ALSO carries a
+/// `w:history` / unrelated `id` cannot be mistaken for the relationship
+/// reference.  Mirrors the blip `r:embed` / `r:id` matcher used by the
+/// inline-image resolver.
+fn attr_rid(element : @xml.Element) -> String? {
+  let rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  for attr in element.attributes {
+    if attr.name.local_name == "id" && attr.name.ns == Some(rel_ns) {
+      return Some(attr.value)
+    }
+  }
+  None
+}
+
+///|
 /// Concatenate every descendant text / CData node of `element`.
 fn text_content(element : @xml.Element) -> String {
   let out = StringBuilder::new()
@@ -611,6 +629,15 @@ priv struct RunSpan {
   /// §17.3.1.11 `<w:autoSpaceDN>` — the same, between East Asian text
   /// and adjacent Western *numbers*.  Defaults to `true`.
   auto_space_dn : Bool
+  /// §17.16.22 CT_Hyperlink — the resolved hyperlink target for a run
+  /// that lives inside a `<w:hyperlink>`.  Either the external URL
+  /// resolved from the `<w:hyperlink r:id>` relationship, or `#<anchor>`
+  /// for an internal `<w:hyperlink w:anchor>` bookmark.  Empty when the
+  /// run is not inside a hyperlink OR the hyperlink resolved no target
+  /// (no r:id relationship and no anchor); in that case the emitter
+  /// keeps the §17.16.22 blue / underline styling but emits no `<a>`
+  /// wrapper, so non-hyperlink output is byte-identical.
+  href : String
 }
 
 ///|
@@ -1319,6 +1346,22 @@ pub fn render_svg(
   /// the latent bug where a chart in a header / footer resolved its rId
   /// against the MAIN document part's rels.
   chart_resolver? : (String, @xml.Element) -> @xml.Node? = (_, _) => None,
+  /// §17.16.22 CT_Hyperlink / OPC §9.3.1 — PART-AWARE hyperlink-target
+  /// resolver.  The FIRST argument is the same opaque OPC part token as
+  /// `image_resolver` / `chart_resolver` (the OPC part name in the
+  /// facade), the SECOND is the `<w:hyperlink r:id>` relationship Id.
+  /// The renderer carries the current content stream's token (body part,
+  /// containing header / footer part) and hands it back so the
+  /// hyperlink's r:id is scoped to the CORRECT part's relationship table
+  /// (so the SAME rId in a header resolves against
+  /// `/word/_rels/header*.xml.rels`).  Returns the external URL the run's
+  /// `<a xlink:href>` should carry; `None` when no `/hyperlink`
+  /// relationship matches (the run then keeps its blue / underline
+  /// styling but emits no `<a>` — an internal `<w:hyperlink w:anchor>`
+  /// renders `#<anchor>` without consulting this resolver).  The default
+  /// resolves nothing, so callers that pass no resolver render byte-
+  /// identically to the pre-link viewer.
+  hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
   /// §17.15.1.85 / Annex A — `/word/theme/theme1.xml` root
@@ -1431,6 +1474,7 @@ pub fn render_svg(
     web_settings~,
     numbering_part~,
     body_part~,
+    hyperlink_resolver~,
   )
 }
 
@@ -1465,6 +1509,24 @@ fn bind_part_chart_resolver(
   part : String,
 ) -> (@xml.Element) -> @xml.Node? {
   fn(frame : @xml.Element) -> @xml.Node? { chart_resolver(part, frame) }
+}
+
+///|
+/// §17.16.22 CT_Hyperlink / OPC §9.3.1 — bind an OPC part token into the
+/// part-aware `hyperlink_resolver`, yielding the rId-only resolver that
+/// the span-collection pipeline (`collect_blocks` → `layout_paragraph` →
+/// `collect_paragraph_spans_into`) threads.  EXACT mirror of
+/// `bind_part_image_resolver` / `bind_part_chart_resolver`: every content
+/// stream — body, header, footer — gets its OWN token bound here so a
+/// `<w:hyperlink r:id>` resolves against the relationship table of the
+/// part that CONTAINS it.  Body hyperlinks bind `body_part`; each header
+/// / footer binds its own part, so the SAME rId can point at a different
+/// URL in `/word/_rels/header*.xml.rels`.
+fn bind_part_hyperlink_resolver(
+  hyperlink_resolver : (String, String) -> String?,
+  part : String,
+) -> (String) -> String? {
+  fn(rid : String) -> String? { hyperlink_resolver(part, rid) }
 }
 
 ///|
@@ -1563,6 +1625,8 @@ fn render_svg_raw(
   numbering_part? : String = "",
   // §17 body content — OPC part token for the main document part.
   body_part? : String = "",
+  // §17.16.22 — PART-AWARE hyperlink resolver `(part, rid) -> url?`.
+  hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
 ) -> DocumentSvgResult {
   let warnings : Array[String] = []
   // §17 / OPC §9.3.1 — bind the body part token into a per-stream
@@ -1575,6 +1639,13 @@ fn render_svg_raw(
   // MAIN document part's rels.  Header / footer streams get their OWN
   // token wrapped at the decoration site (`build_page_decoration_nodes`).
   let body_chart_resolver = bind_part_chart_resolver(chart_resolver, body_part)
+  // §17.16.22 / OPC §9.3.1 — bind the body part token into a per-stream
+  // hyperlink resolver so a body `<w:hyperlink r:id>` resolves against the
+  // MAIN document part's rels.  Header / footer streams get their OWN
+  // token wrapped at the decoration site.
+  let body_hyperlink_resolver = bind_part_hyperlink_resolver(
+    hyperlink_resolver, body_part,
+  )
   // §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — fold picture bullets
   // into the SAME part-aware resolver: keyed on the numPicBulletId, walk
   // the `<w:numPicBullet>` to its blip / imagedata rId and resolve it
@@ -1653,6 +1724,7 @@ fn render_svg_raw(
         settings_attrs~,
         theme_map~,
         font_map~,
+        hyperlink_resolver~,
       )
       let pages = [
         PageRenderResult::{
@@ -1679,6 +1751,8 @@ fn render_svg_raw(
         font_map~,
         settings_attrs~,
         pic_bullet_resolver~,
+        hyperlink_resolver~,
+        body_hyperlink_resolver~,
       )
   }
 }
@@ -1715,6 +1789,13 @@ fn render_body_to_svg(
   settings_attrs? : Array[@xml.Attribute] = [],
   // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
   pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
+  // §17.16.22 — PART-AWARE hyperlink resolver, handed to the §17.10
+  // decoration path so each header / footer stream resolves a hyperlink's
+  // r:id against ITS OWN part token (the `(part, rid)` form).
+  hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
+  // §17.16.22 — body-bound rId-only hyperlink resolver (already bound to
+  // the main document part upstream).
+  body_hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> DocumentSvgResult {
   let (cfg, pages) = lay_out_body(
     body,
@@ -1727,6 +1808,7 @@ fn render_body_to_svg(
     theme_map~,
     font_map~,
     pic_bullet_resolver~,
+    hyperlink_resolver=body_hyperlink_resolver,
   )
   // §17.10.1 — the header / footer stream is selected per page index
   // so `titlePg` / `evenAndOddHeaders` documents draw the right first
@@ -1746,6 +1828,7 @@ fn render_body_to_svg(
         settings_attrs~,
         theme_map~,
         font_map~,
+        hyperlink_resolver~,
       ),
       width: cfg.page_width,
       height: cfg.page_height,
@@ -1776,6 +1859,9 @@ fn lay_out_body(
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
   // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
   pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
+  // §17.16.22 — body-bound hyperlink-target resolver (the main document
+  // part's, bound upstream).  Defaults to "no target".
+  hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> (PageConfig, Array[AssembledPage]) {
   // 1. Resolve page configuration from <w:sectPr>.
   let cfg_base = resolve_page_config(body)
@@ -1806,6 +1892,7 @@ fn lay_out_body(
     theme_map~,
     font_map~,
     pic_bullet_resolver~,
+    hyperlink_resolver~,
   )
 
   // 3. Flow blocks into pages.
@@ -1849,6 +1936,12 @@ pub fn render_combined_svg(
   /// header / footer part) and hands it back so the chart's rId is
   /// scoped to the CORRECT part's rels.
   chart_resolver? : (String, @xml.Element) -> @xml.Node? = (_, _) => None,
+  /// §17.16.22 CT_Hyperlink / OPC §9.3.1 — PART-AWARE hyperlink-target
+  /// resolver.  See `render_svg`: the FIRST argument is the opaque OPC
+  /// part token, the SECOND the `<w:hyperlink r:id>` relationship Id; it
+  /// returns the external URL for the run's `<a xlink:href>`, scoped to
+  /// the part that CONTAINS the hyperlink.
+  hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
   theme? : @xml.Element? = None,
@@ -1919,6 +2012,7 @@ pub fn render_combined_svg(
     web_settings~,
     numbering_part~,
     body_part~,
+    hyperlink_resolver~,
   )
 }
 
@@ -1942,6 +2036,8 @@ fn render_combined_svg_raw(
   numbering_part? : String = "",
   // §17 body content — OPC part token for the main document part.
   body_part? : String = "",
+  // §17.16.22 — PART-AWARE hyperlink resolver `(part, rid) -> url?`.
+  hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
 ) -> String {
   let warnings : Array[String] = []
   // §17 / OPC §9.3.1 — body content resolves against the main document
@@ -1952,6 +2048,12 @@ fn render_combined_svg_raw(
   // part; header / footer streams bind their OWN token at the decoration
   // site (`build_page_decoration_nodes`).
   let body_chart_resolver = bind_part_chart_resolver(chart_resolver, body_part)
+  // §17.16.22 / OPC §9.3.1 — body hyperlinks resolve against the main
+  // document part; header / footer streams bind their OWN token at the
+  // decoration site.
+  let body_hyperlink_resolver = bind_part_hyperlink_resolver(
+    hyperlink_resolver, body_part,
+  )
   let pic_bullet_resolver = build_pic_bullet_image_resolver(
     image_resolver, numbering, numbering_part,
   )
@@ -2010,6 +2112,7 @@ fn render_combined_svg_raw(
         theme_map~,
         font_map~,
         pic_bullet_resolver~,
+        hyperlink_resolver=body_hyperlink_resolver,
       )
   }
   // (Removed: previous revision counted WML descendant names and
@@ -2027,6 +2130,7 @@ fn render_combined_svg_raw(
     settings_attrs~,
     theme_map~,
     font_map~,
+    hyperlink_resolver~,
   )
 }
 
@@ -2050,6 +2154,10 @@ fn build_combined_svg(
   settings_attrs? : Array[@xml.Attribute] = [],
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  // §17.16.22 — PART-AWARE hyperlink resolver, forwarded to each page's
+  // `build_page_decoration_nodes` so header / footer hyperlinks bind their
+  // own part token.
+  hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
 ) -> String {
   let page_count = if pages.length() == 0 { 1 } else { pages.length() }
   let w = cfg.page_width
@@ -2096,6 +2204,7 @@ fn build_combined_svg(
       styles,
       theme_map~,
       font_map~,
+      hyperlink_resolver~,
     )
     page_groups.push(
       @markup.elem_ns(
@@ -2121,6 +2230,7 @@ fn build_combined_svg(
         styles,
         theme_map~,
         font_map~,
+        hyperlink_resolver~,
       )
       let y = h * page_index.to_double()
       page_groups.push(
@@ -2605,6 +2715,9 @@ fn collect_blocks(
   // image. Defaults to "no picture bullets" so documents without a
   // wired resolver render the §17.9.11 lvlText marker as before.
   pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
+  // §17.16.22 — per-stream bound hyperlink-target resolver, threaded into
+  // every `layout_paragraph` so a `<w:hyperlink r:id>` resolves to a URL.
+  hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
   // §17.7.5.3 — when the package ships no `/word/styles.xml`,
@@ -2676,6 +2789,7 @@ fn collect_blocks(
               apply_office_defaults~,
               theme_map~,
               font_map~,
+              hyperlink_resolver~,
             )
             match probe.frame_pr {
               Some(fp) => {
@@ -2894,6 +3008,7 @@ fn collect_blocks(
                       font_map~,
                       line_budget_fn=budget_of,
                       line_x_fn=body_x_of,
+                      hyperlink_resolver~,
                     )
                   } else {
                     // Rectangular band — lines WITHIN the residual band
@@ -2945,6 +3060,7 @@ fn collect_blocks(
                           0.0
                         }
                       },
+                      hyperlink_resolver~,
                     )
                   }
                   wrap_height_remaining = wrap_height_remaining - placed.height
@@ -4650,6 +4766,9 @@ fn resolve_run_props(
     // `collect_paragraph_spans`.
     auto_space_de: true,
     auto_space_dn: true,
+    // §17.16.22 — no hyperlink target by default; set when the run is
+    // emitted inside a `<w:hyperlink>` whose r:id / anchor resolved.
+    href: "",
   }
 }
 
@@ -4683,6 +4802,9 @@ fn collect_paragraph_spans(
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  // §17.16.22 — per-stream bound hyperlink-target resolver; threaded into
+  // the `<w:hyperlink>` descent so a run's r:id resolves to a URL.
+  hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> Array[RunSpan] {
   let spans : Array[RunSpan] = []
   // §17.9.20 `<w:pPr><w:numPr>` — when the paragraph references a
@@ -4779,6 +4901,7 @@ fn collect_paragraph_spans(
     default_font_size_pt~,
     theme_map~,
     font_map~,
+    hyperlink_resolver~,
   )
   // §17.3.1.10/.11 — resolve the paragraph's autoSpaceDE / autoSpaceDN
   // toggles once (both default ON when absent) and stamp every span so
@@ -4859,6 +4982,8 @@ fn default_run_template(
     // `collect_paragraph_spans` overrides them per paragraph.
     auto_space_de: true,
     auto_space_dn: true,
+    // §17.16.22 — no hyperlink target by default.
+    href: "",
   }
 }
 
@@ -4890,6 +5015,17 @@ fn math_run_template(
 /// `<w:sdtContent>`) it recurses. The `hyperlink_styling` flag forces
 /// blue + underlined output for runs inside `<w:hyperlink>` so the
 /// downstream emitter can render them consistently with web-pptx.
+///
+/// §17.16.22 — the `<w:hyperlink>` case ALSO resolves the link target:
+/// it reads `r:id` (the relationships-namespace `id` attribute), maps it
+/// through `hyperlink_resolver` (bound to this stream's OPC part) to an
+/// external URL, or falls back to `#<w:anchor>` for an internal bookmark.
+/// The resolved href is stamped onto every span produced by the
+/// hyperlink's descended runs — the SAME post-recursion stamping idiom
+/// the `<w:ins>` / `<w:del>` cases use — so the emitter wraps each run's
+/// `<text>` in an `<a xlink:href="…">`.  `hyperlink_resolver` defaults to
+/// "no target", which (with no `w:anchor`) leaves the href empty and the
+/// output byte-identical.
 fn collect_paragraph_spans_into(
   parent : @xml.Element,
   hyperlink_styling : Bool,
@@ -4899,6 +5035,7 @@ fn collect_paragraph_spans_into(
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> Unit {
   for child in parent.children {
     match child {
@@ -4915,8 +5052,37 @@ fn collect_paragraph_spans_into(
               theme_map~,
               font_map~,
             )
-          "hyperlink" =>
-            // §17.16.22 hyperlink — descend with hyperlink styling on.
+          "hyperlink" => {
+            // §17.16.22 CT_Hyperlink — descend with hyperlink styling on,
+            // then stamp the resolved link target onto the produced spans.
+            //
+            // Target resolution (spec order): an `r:id` names a
+            // `/hyperlink` relationship whose (External) target is the
+            // URL — resolved through `hyperlink_resolver` (bound to this
+            // stream's OPC part, so a header / footer hyperlink resolves
+            // against ITS rels).  When there is no r:id (or it resolves
+            // to nothing), a `w:anchor` names an in-document bookmark and
+            // the href is `#<anchor>` for client-side navigation.  When
+            // neither yields a target the href stays empty and no `<a>`
+            // is emitted (byte-identical to the pre-link styling-only
+            // behaviour).
+            let href = match attr_rid(e) {
+              Some(rid) =>
+                match hyperlink_resolver(rid) {
+                  Some(url) => url
+                  None =>
+                    match attr_value(e, "anchor") {
+                      Some(anchor) => "#" + anchor
+                      None => ""
+                    }
+                }
+              None =>
+                match attr_value(e, "anchor") {
+                  Some(anchor) => "#" + anchor
+                  None => ""
+                }
+            }
+            let start = spans.length()
             collect_paragraph_spans_into(
               e,
               true,
@@ -4926,7 +5092,14 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              hyperlink_resolver~,
             )
+            if href.length() > 0 {
+              for i in start..<spans.length() {
+                spans[i] = { ..spans[i], href, }
+              }
+            }
+          }
           "fldSimple" =>
             // §17.16.19 `<w:fldSimple>` — field with literal
             // instruction.  Word stores the field result as
@@ -4948,6 +5121,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              hyperlink_resolver~,
             )
           "smartTag" | "customXml" | "sdt" | "sdtContent" =>
             // §17.5.1.13 smartTag + §17.5.2.x SDT wrappers —
@@ -4961,6 +5135,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              hyperlink_resolver~,
             )
           // §22.1.2.77 `<m:oMath>` — an inline Office Math zone.
           // Lay it out to a self-contained SVG `<g>` at the
@@ -5014,6 +5189,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              hyperlink_resolver~,
             )
             for i in start..<spans.length() {
               spans[i] = { ..spans[i], underline: true }
@@ -5032,6 +5208,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              hyperlink_resolver~,
             )
             for i in start..<spans.length() {
               spans[i] = { ..spans[i], strike: true }
@@ -6318,6 +6495,9 @@ fn layout_paragraph(
   // matching per-line left offset (for a left-side polygon float).
   line_budget_fn? : (Int) -> Double,
   line_x_fn? : (Int) -> Double,
+  // §17.16.22 — per-stream bound hyperlink-target resolver, threaded to
+  // `collect_paragraph_spans` so a `<w:hyperlink r:id>` resolves to a URL.
+  hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> LaidParagraph {
   // §17.7.5.3 — `apply_office_defaults` flows into
   // `resolve_para_props` so the line-height multiplier picks up the
@@ -6354,6 +6534,7 @@ fn layout_paragraph(
     default_font_size_pt~,
     theme_map~,
     font_map~,
+    hyperlink_resolver~,
   )
 
   // §17.3.1.11 framePr — when the paragraph is wrapped in a floating
@@ -8570,6 +8751,9 @@ fn emit_page_svg_with_decoration(
   settings_attrs? : Array[@xml.Attribute] = [],
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  // §17.16.22 — PART-AWARE hyperlink resolver; bound per header / footer
+  // stream inside `build_page_decoration_nodes`.
+  hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
 ) -> String {
   let children = build_page_decoration_nodes(
     page,
@@ -8582,6 +8766,7 @@ fn emit_page_svg_with_decoration(
     styles,
     theme_map~,
     font_map~,
+    hyperlink_resolver~,
   )
   // (Removed: dummy `<rect fill="#a5a5a5">` "wml-section-marker"
   // stripe.  Pure verifier gaming — deleted.)
@@ -8607,6 +8792,10 @@ fn build_page_decoration_nodes(
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  // §17.16.22 — PART-AWARE hyperlink resolver; bound to each header /
+  // footer part token below so a hyperlink in that stream resolves its
+  // r:id against `/word/_rels/header*.xml.rels`.
+  hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
 ) -> Array[@xml.Node] {
   let children = build_page_body_nodes(page, cfg)
   // Lay out header/footer using a single-page flow over the section
@@ -8630,6 +8819,13 @@ fn build_page_decoration_nodes(
       chart_resolver,
       header.part,
     )
+    // §17.16.22 / OPC §9.3.1 — bind the SAME header part token for
+    // hyperlinks so a `<w:hyperlink r:id>` inside the header resolves
+    // against the header part's rels (the fix), not the body part's.
+    let header_hyperlink_resolver = bind_part_hyperlink_resolver(
+      hyperlink_resolver,
+      header.part,
+    )
     let blocks = collect_blocks_from_elements(
       header.blocks,
       content_width,
@@ -8639,6 +8835,7 @@ fn build_page_decoration_nodes(
       styles,
       theme_map~,
       font_map~,
+      hyperlink_resolver=header_hyperlink_resolver,
     )
     let group_children = build_decoration_block_nodes(blocks)
     children.push(
@@ -8666,6 +8863,12 @@ fn build_page_decoration_nodes(
       chart_resolver,
       footer.part,
     )
+    // §17.16.22 / OPC §9.3.1 — bind the SAME footer part token for
+    // hyperlinks.
+    let footer_hyperlink_resolver = bind_part_hyperlink_resolver(
+      hyperlink_resolver,
+      footer.part,
+    )
     let blocks = collect_blocks_from_elements(
       footer.blocks,
       content_width,
@@ -8675,6 +8878,7 @@ fn build_page_decoration_nodes(
       styles,
       theme_map~,
       font_map~,
+      hyperlink_resolver=footer_hyperlink_resolver,
     )
     let group_children = build_decoration_block_nodes(blocks)
     // Footer goes inside the bottom-margin band.
@@ -8755,6 +8959,11 @@ fn collect_blocks_from_elements(
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  // §17.16.22 — per-stream bound hyperlink-target resolver (the header /
+  // footer part's, bound at the decoration site), threaded into each
+  // `layout_paragraph` so a hyperlink in a header / footer resolves its
+  // r:id against THAT part's rels.
+  hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
   // §17.7.5.3 — mirror `collect_blocks`: header / footer paragraphs
@@ -8772,6 +8981,7 @@ fn collect_blocks_from_elements(
           apply_office_defaults~,
           theme_map~,
           font_map~,
+          hyperlink_resolver~,
         )
         blocks.push(ParaBlock(lp))
       }
@@ -9412,7 +9622,32 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
       }
       out.push(@markup.elem_ns("rect", @markup.svg_ns, bdr_attrs, []))
     }
-    out.push(build_span_text_node(span, line, x_cursor))
+    let text_node = build_span_text_node(span, line, x_cursor)
+    // §17.16.22 CT_Hyperlink — when the run belongs to a `<w:hyperlink>`
+    // whose target resolved (external URL from `r:id`, or `#<anchor>`),
+    // wrap its `<text>` in an SVG `<a>` so the link is clickable.  We
+    // emit BOTH `xlink:href` (SVG 1.1 anchors) and `href` (SVG 2 / HTML
+    // consumers) carrying the same target.  A multi-run / multi-line
+    // hyperlink yields one `<a>`-wrapped `<text>` per span, all pointing
+    // at the same href — valid SVG (an `<a>` may wrap a single `<text>`,
+    // and repeated anchors to one target are well-formed).  An empty
+    // href (non-hyperlink run, or a hyperlink with no resolvable target)
+    // pushes the bare `<text>`, so that output stays byte-identical.
+    if span.href.length() > 0 {
+      out.push(
+        @markup.elem_ns(
+          "a",
+          @markup.svg_ns,
+          [
+            @markup.attr_ns("xlink", "href", @markup.xlink_ns, span.href),
+            @markup.attr("href", span.href),
+          ],
+          [text_node],
+        ),
+      )
+    } else {
+      out.push(text_node)
+    }
     // §17.18.59 ST_Jc `both` — when the line is justified, each
     // U+0020 space inside this span stretches by `word_spacing_extra`.
     // Add that stretch to the cursor so the following span starts at
