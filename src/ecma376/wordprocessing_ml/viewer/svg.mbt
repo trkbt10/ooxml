@@ -638,6 +638,16 @@ priv struct RunSpan {
   /// keeps the §17.16.22 blue / underline styling but emits no `<a>`
   /// wrapper, so non-hyperlink output is byte-identical.
   href : String
+  /// §17.16.2 `<w:bookmarkStart w:name="…">` — the bookmark name this
+  /// span marks an SVG anchor target for.  When non-empty the emitter
+  /// drops a zero-size `<g id="<name>">` at the span's start position
+  /// (no glyphs, no cursor advance) so a `<w:hyperlink w:anchor>` —
+  /// rendered as `<a xlink:href="#<name>">` — has a fragment target to
+  /// navigate to.  Empty (the default) on every ordinary run span, so
+  /// documents WITHOUT bookmarks stay byte-identical.  Carries the RAW
+  /// `w:name` exactly as the hyperlink `#<anchor>` uses it, so link and
+  /// target match character-for-character.
+  bookmark : String
 }
 
 ///|
@@ -984,6 +994,13 @@ priv enum FlowBlock {
   ParaBlock(LaidParagraph)
   TableBlock(LaidTable)
   FloatBlock(FloatDrawing)
+  /// §17.16.2 `<w:bookmarkStart w:name="…">` that appears at BODY level
+  /// (between paragraphs / tables), not inside a paragraph's run flow.
+  /// Carries the RAW `w:name`.  Out of flow: it occupies no vertical
+  /// space — `flow_into_pages` records an `<g id>` anchor at the current
+  /// `cur_y` without advancing the cursor, so the following block lands
+  /// exactly where it would have without the bookmark (no layout shift).
+  BookmarkBlock(String)
 }
 
 ///|
@@ -1273,6 +1290,17 @@ priv struct PlacedFloat {
 }
 
 ///|
+/// §17.16.2 — a body-level bookmark anchor placed at absolute page
+/// coordinates.  `name` is the RAW `w:name` (it becomes the `<g id>`),
+/// emitted at (x, y) with no size so SVG `#name` navigation resolves
+/// here without disturbing any block.
+priv struct PlacedBookmark {
+  name : String
+  x : Double
+  y : Double
+}
+
+///|
 priv struct AssembledPage {
   /// Paragraph blocks with absolute coordinates on this page.
   paragraphs : Array[LaidParagraph]
@@ -1280,6 +1308,9 @@ priv struct AssembledPage {
   tables : Array[LaidTable]
   /// §20.4.2.3 side-float drawings positioned on this page.
   floats : Array[PlacedFloat]
+  /// §17.16.2 body-level bookmark anchors positioned on this page.
+  /// Empty for documents with no body-level `<w:bookmarkStart>`.
+  bookmarks : Array[PlacedBookmark]
 }
 
 // =============================================================================
@@ -1711,7 +1742,12 @@ fn render_svg_raw(
         domain.element,
         theme_map,
       )
-      let page = AssembledPage::{ paragraphs: [], tables: [], floats: [] }
+      let page = AssembledPage::{
+        paragraphs: [],
+        tables: [],
+        floats: [],
+        bookmarks: [],
+      }
       let svg = emit_page_svg_with_decoration(
         page,
         cfg,
@@ -2098,7 +2134,14 @@ fn render_combined_svg_raw(
           domain.element,
           theme_map,
         ),
-        [AssembledPage::{ paragraphs: [], tables: [], floats: [] }],
+        [
+          AssembledPage::{
+            paragraphs: [],
+            tables: [],
+            floats: [],
+            bookmarks: [],
+          },
+        ],
       )
     Some(body_el) =>
       lay_out_body(
@@ -2192,7 +2235,12 @@ fn build_combined_svg(
     // No body / no pages — emit a single blank page so the SVG has a
     // viewport. Matches `render_svg_raw`'s "single blank page"
     // fallback.
-    let blank = AssembledPage::{ paragraphs: [], tables: [], floats: [] }
+    let blank = AssembledPage::{
+      paragraphs: [],
+      tables: [],
+      floats: [],
+      bookmarks: [],
+    }
     let nodes = build_page_decoration_nodes(
       blank,
       cfg,
@@ -3093,7 +3141,24 @@ fn collect_blocks(
             blocks.push(TableBlock(tbl))
           }
           "sectPr" => () // consumed elsewhere
-          _ => () // ignore other elements (sdt, bookmarks, etc.)
+          "bookmarkStart" =>
+            // §17.16.2 — a bookmark anchored at BODY level (between
+            // paragraphs / tables).  Emit a `BookmarkBlock` carrying the
+            // RAW `w:name` so the page-flow pass can drop a zero-size
+            // `<g id>` anchor at the bookmark's flow position without
+            // consuming layout space.  An empty / absent name has no
+            // addressable fragment, so it is skipped (no block emitted),
+            // keeping documents without named body bookmarks unchanged.
+            // The active wrap-band state is left untouched — the marker
+            // is out of flow and must not close a frame band.
+            match attr_value(e, "name") {
+              Some(bookmark_name) =>
+                if bookmark_name.length() > 0 {
+                  blocks.push(BookmarkBlock(bookmark_name))
+                }
+              None => ()
+            }
+          _ => () // ignore other elements (sdt, bookmarkEnd, etc.)
         }
       _ => ()
     }
@@ -3127,7 +3192,21 @@ fn collect_blocks(
 fn apply_contextual_spacing(blocks : Array[FlowBlock]) -> Unit {
   let mut i = 0
   while i + 1 < blocks.length() {
-    match (blocks[i], blocks[i + 1]) {
+    // §17.16.2 — a body-level `BookmarkBlock` is out of flow (it adds no
+    // vertical space), so two §17.3.1.9 paragraphs separated only by a
+    // bookmark are still CONSECUTIVE for contextual-spacing collapse.
+    // Find the next non-bookmark block (its index `j`) so the bookmark
+    // does not break the pair — otherwise a body bookmark between two
+    // same-style contextual-spacing paragraphs would re-introduce the
+    // inter-paragraph gap the spec says to drop.
+    let mut j = i + 1
+    while j < blocks.length() && blocks[j] is BookmarkBlock(_) {
+      j = j + 1
+    }
+    if j >= blocks.length() {
+      break
+    }
+    match (blocks[i], blocks[j]) {
       (ParaBlock(a), ParaBlock(b)) =>
         if a.contextual_spacing &&
           b.contextual_spacing &&
@@ -3158,11 +3237,14 @@ fn apply_contextual_spacing(blocks : Array[FlowBlock]) -> Unit {
             space_before: 0.0,
           }
           blocks[i] = ParaBlock(new_a)
-          blocks[i + 1] = ParaBlock(new_b)
+          blocks[j] = ParaBlock(new_b)
         }
       _ => ()
     }
-    i = i + 1
+    // Advance to the next non-bookmark block so the second paragraph of
+    // this pair becomes the first of the next — preserving the original
+    // sliding-pair walk while stepping over any intervening bookmarks.
+    i = j
   }
 }
 
@@ -4769,6 +4851,9 @@ fn resolve_run_props(
     // §17.16.22 — no hyperlink target by default; set when the run is
     // emitted inside a `<w:hyperlink>` whose r:id / anchor resolved.
     href: "",
+    // §17.16.2 — not a bookmark anchor by default; set only on the
+    // zero-width marker span pushed for a `<w:bookmarkStart>`.
+    bookmark: "",
   }
 }
 
@@ -4984,6 +5069,8 @@ fn default_run_template(
     auto_space_dn: true,
     // §17.16.22 — no hyperlink target by default.
     href: "",
+    // §17.16.2 — no bookmark anchor by default.
+    bookmark: "",
   }
 }
 
@@ -5214,6 +5301,29 @@ fn collect_paragraph_spans_into(
               spans[i] = { ..spans[i], strike: true }
             }
           }
+          "bookmarkStart" =>
+            // §17.16.2 `<w:bookmarkStart w:name="…">` (an EG_RunLevelElts
+            // that may appear mid-paragraph between runs) — push a
+            // zero-width, glyph-less marker span carrying the RAW
+            // `w:name`.  `append_line_nodes` turns it into an empty
+            // `<g id="<name>">` at the span's start x / line top so a
+            // `<w:hyperlink w:anchor="<name>">` — rendered as
+            // `<a xlink:href="#<name>">` — has a fragment target to
+            // navigate to.  The span has `text: ""` / `width_px: 0.0`,
+            // so it is inert to measurement, line breaking, justification
+            // and the cursor advance; it cannot shift any following
+            // content.  §17.16.3 `<w:bookmarkEnd>` only closes the range
+            // and needs no output, so it is ignored.  A bookmark with no
+            // (or an empty) `w:name` is skipped — there is nothing for a
+            // `#fragment` to address.
+            match attr_value(e, "name") {
+              Some(bookmark_name) =>
+                if bookmark_name.length() > 0 {
+                  let marker = default_run_template(default_font_size_pt~)
+                  spans.push({ ..marker, bookmark: bookmark_name })
+                }
+              None => ()
+            }
           _ => ()
         }
       _ => ()
@@ -8364,6 +8474,8 @@ fn flow_into_pages(
   let mut cur_paragraphs : Array[LaidParagraph] = []
   let mut cur_tables : Array[LaidTable] = []
   let mut cur_floats : Array[PlacedFloat] = []
+  // §17.16.2 — body-level bookmark anchors collected for the current page.
+  let mut cur_bookmarks : Array[PlacedBookmark] = []
   // The column currently being filled (0-based) and the running y
   // cursor inside that column.
   let mut cur_column = 0
@@ -8381,13 +8493,23 @@ fn flow_into_pages(
     for x in cur_floats {
       f.push(x)
     }
-    pages.push({ paragraphs: p, tables: t, floats: f })
+    let b : Array[PlacedBookmark] = []
+    for x in cur_bookmarks {
+      b.push(x)
+    }
+    pages.push({ paragraphs: p, tables: t, floats: f, bookmarks: b })
   }
 
   let has_content = fn() {
     cur_paragraphs.length() > 0 ||
     cur_tables.length() > 0 ||
-    cur_floats.length() > 0
+    cur_floats.length() > 0 ||
+    // §17.16.2 — a page holding only a body-level bookmark anchor (e.g.
+    // a document that is a lone `<w:bookmarkStart>`) must still be
+    // flushed so the anchor survives.  `cur_bookmarks` is empty for
+    // every bookmark-free document, so this leaves their page count
+    // unchanged.
+    cur_bookmarks.length() > 0
   }
   // Close the current column. If columns remain, advance to the next
   // one and reset the y cursor; otherwise close the page.
@@ -8400,6 +8522,7 @@ fn flow_into_pages(
       cur_paragraphs = []
       cur_tables = []
       cur_floats = []
+      cur_bookmarks = []
       cur_column = 0
       cur_y = cfg.margin_top
     }
@@ -8410,6 +8533,7 @@ fn flow_into_pages(
     cur_paragraphs = []
     cur_tables = []
     cur_floats = []
+    cur_bookmarks = []
     cur_column = 0
     cur_y = cfg.margin_top
   }
@@ -8424,8 +8548,21 @@ fn flow_into_pages(
       ParaBlock(p) => p.frame_pr
       TableBlock(_) => None
       FloatBlock(_) => None
+      BookmarkBlock(_) => None
     }
     match (block, frame_pr_opt) {
+      // §17.16.2 — a body-level bookmark anchor: record an `<g id>` at
+      // the current column x / flow y WITHOUT advancing `cur_y`, so the
+      // next block lands exactly where it would have.  Out of flow, like
+      // a float.
+      (BookmarkBlock(bm_name), _) => {
+        cur_bookmarks.push({
+          name: bm_name,
+          x: geometry[cur_column].0,
+          y: cur_y,
+        })
+        continue
+      }
       // §20.4.2.3 — a side-float anchored drawing: paint it at the
       // resolved side, at the current flow y, WITHOUT advancing
       // `cur_y` so the (already-narrowed) surrounding paragraphs flow
@@ -8568,8 +8705,10 @@ fn flow_into_pages(
     let block_h = match block {
       ParaBlock(p) => p.height
       TableBlock(t) => t.height + BLOCK_GAP_PX
-      // Unreachable: FloatBlock `continue`s above (out of flow).
+      // Unreachable: FloatBlock / BookmarkBlock `continue` above (out of
+      // flow).
       FloatBlock(_) => 0.0
+      BookmarkBlock(_) => 0.0
     }
     let remaining = cfg.margin_top + content_height - cur_y
     // §17.3.1.5 — `<w:pageBreakBefore>` closes the current page
@@ -8578,6 +8717,7 @@ fn flow_into_pages(
       ParaBlock(p) => p.page_break_before
       TableBlock(_) => false
       FloatBlock(_) => false
+      BookmarkBlock(_) => false
     }
     if force_break && has_content() {
       break_page()
@@ -8608,8 +8748,10 @@ fn flow_into_pages(
         cur_tables.push(adjusted)
         cur_y = cur_y + t.height + BLOCK_GAP_PX
       }
-      // Unreachable: FloatBlock `continue`s above (out of flow).
+      // Unreachable: FloatBlock / BookmarkBlock `continue` above (out of
+      // flow).
       FloatBlock(_) => ()
+      BookmarkBlock(_) => ()
     }
   }
   // Final page.
@@ -8618,7 +8760,7 @@ fn flow_into_pages(
   }
   // Empty document: emit a single blank page.
   if pages.length() == 0 {
-    pages.push({ paragraphs: [], tables: [], floats: [] })
+    pages.push({ paragraphs: [], tables: [], floats: [], bookmarks: [] })
   }
   pages
 }
@@ -8940,6 +9082,25 @@ fn build_decoration_block_nodes(blocks : Array[FlowBlock]) -> Array[@xml.Node] {
             [float.node],
           ),
         )
+      // §17.16.2 — a body-level bookmark in a header / footer stream:
+      // emit a zero-size `<g id>` at the current cursor without
+      // advancing it (out of flow), so a `#<name>` fragment resolves
+      // even when the bookmark lives in a header / footer.
+      BookmarkBlock(bm_name) =>
+        out.push(
+          @markup.elem_ns(
+            "g",
+            @markup.svg_ns,
+            [
+              @markup.attr("id", bm_name),
+              @markup.attr(
+                "transform",
+                "translate(0, " + fmt_double(cursor) + ")",
+              ),
+            ],
+            [],
+          ),
+        )
     }
   }
   out
@@ -8996,6 +9157,17 @@ fn collect_blocks_from_elements(
         )
         blocks.push(TableBlock(lt))
       }
+      "bookmarkStart" =>
+        // §17.16.2 — a bookmark anchored at the header / footer block
+        // level (between paragraphs / tables); mirror `collect_blocks`.
+        // An empty / absent name has no addressable fragment, so skip it.
+        match attr_value(elt, "name") {
+          Some(bookmark_name) =>
+            if bookmark_name.length() > 0 {
+              blocks.push(BookmarkBlock(bookmark_name))
+            }
+          None => ()
+        }
       _ => ()
     }
   }
@@ -9103,6 +9275,28 @@ fn build_page_body_nodes(
     for n in build_paragraph_nodes(p) {
       out.push(n)
     }
+  }
+  // §17.16.2 — body-level bookmark anchors: an empty `<g id="<name>">`
+  // at the bookmark's flow position so an SVG `#<name>` fragment (the
+  // string a `<w:hyperlink w:anchor>` renders as `<a xlink:href="#…">`)
+  // resolves here.  Zero-size, no children → paints nothing and shifts
+  // nothing.  `page.bookmarks` is empty for documents with no
+  // body-level bookmark, so their output is byte-identical.
+  for bm in page.bookmarks {
+    out.push(
+      @markup.elem_ns(
+        "g",
+        @markup.svg_ns,
+        [
+          @markup.attr("id", bm.name),
+          @markup.attr(
+            "transform",
+            "translate(" + fmt_double(bm.x) + ", " + fmt_double(bm.y) + ")",
+          ),
+        ],
+        [],
+      ),
+    )
   }
   // §17.6.10 page borders — draw four `<line>` segments around the
   // content area (margin-bound rectangle). `<w:pgBorders>` defines
@@ -9422,6 +9616,36 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
 fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
   let mut x_cursor = line.x
   for span in line.spans {
+    // §17.16.2 `<w:bookmarkStart>` — a zero-width marker span carrying a
+    // bookmark name.  Emit an empty `<g id="<name>">` at the span's
+    // start (x_cursor, line top) so an SVG fragment reference
+    // (`#<name>`) — the same string a `<w:hyperlink w:anchor>` renders
+    // as `<a xlink:href="#<name>">` — resolves to this point.  The
+    // group has no children and no size, so it paints nothing and does
+    // not shift layout; the cursor is NOT advanced (span width is 0).
+    // Ordinary run spans carry `bookmark == ""` and skip this branch,
+    // keeping bookmark-free documents byte-identical.
+    if span.bookmark.length() > 0 {
+      out.push(
+        @markup.elem_ns(
+          "g",
+          @markup.svg_ns,
+          [
+            @markup.attr("id", span.bookmark),
+            @markup.attr(
+              "transform",
+              "translate(" +
+              fmt_double(x_cursor) +
+              ", " +
+              fmt_double(line.y_top) +
+              ")",
+            ),
+          ],
+          [],
+        ),
+      )
+      continue
+    }
     // §17.3.3.9 inline image — emit an <image> element at the
     // baseline-aligned (x_cursor, y_top) and advance the cursor by
     // the reserved width.

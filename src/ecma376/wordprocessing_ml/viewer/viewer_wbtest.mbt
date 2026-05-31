@@ -4618,3 +4618,199 @@ test "render_svg applies dashed run border as stroke-dasharray" {
   // "dashed" → stroke-dasharray "4 2" on the run border rect.
   assert_true(svg.contains("stroke-dasharray=\"4 2\""))
 }
+
+///|
+/// §17.16.2 bookmarkStart / §17.16.3 bookmarkEnd — a paragraph with an
+/// in-paragraph `<w:bookmarkStart w:name="Target"/>` and a
+/// `<w:hyperlink w:anchor="Target">` over a run must render BOTH the
+/// link (`xlink:href="#Target"`) AND the SVG anchor target (an element
+/// carrying `id="Target"`), so the in-document `#Target` navigation
+/// resolves.  The two strings are the RAW name, so they match
+/// character-for-character.
+test "render_svg emits a bookmark anchor target for an in-paragraph w:bookmarkStart" {
+  // <w:p>
+  //   <w:bookmarkStart w:id="0" w:name="Target"/>
+  //   <w:hyperlink w:anchor="Target"><w:r><w:t>jump</w:t></w:r></w:hyperlink>
+  //   <w:bookmarkEnd w:id="0"/>
+  // </w:p>
+  let bookmark_start = @xml.Node::Element({
+    name: name("bookmarkStart"),
+    attributes: [attr("id", "0"), attr("name", "Target")],
+    children: [],
+  })
+  let link = @xml.Node::Element({
+    name: name("hyperlink"),
+    attributes: [attr("anchor", "Target")],
+    children: [
+      @xml.Node::Element({
+        name: name("r"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("t"),
+            attributes: [],
+            children: [@xml.Node::Text("jump")],
+          }),
+        ],
+      }),
+    ],
+  })
+  let bookmark_end = @xml.Node::Element({
+    name: name("bookmarkEnd"),
+    attributes: [attr("id", "0")],
+    children: [],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [bookmark_start, link, bookmark_end],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  // The link (already working) points at the in-document fragment.
+  assert_true(svg.contains("xlink:href=\"#Target\""))
+  // The new anchor target carries the RAW name as an SVG `id`, so
+  // `#Target` navigation resolves to it.  Round-trip: link ↔ target.
+  assert_true(svg.contains("id=\"Target\""))
+}
+
+///|
+/// §17.16.2 — a `<w:bookmarkStart>` that appears at BODY level (between
+/// paragraphs, an EG_RunLevelElts position) must also emit an `id`
+/// anchor target.
+test "render_svg emits a bookmark anchor target for a body-level w:bookmarkStart" {
+  let para = fn(text : String) {
+    @xml.Node::Element({
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text(text)],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  let bookmark_start = @xml.Node::Element({
+    name: name("bookmarkStart"),
+    attributes: [attr("id", "1"), attr("name", "BodyMark")],
+    children: [],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [para("first"), bookmark_start, para("second")],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  assert_true(svg.contains("id=\"BodyMark\""))
+}
+
+///|
+/// §17.16.2 — a `<w:bookmarkStart>` with an EMPTY `w:name` has no
+/// addressable fragment, so no anchor is emitted (nothing for a
+/// `#fragment` to target).
+test "render_svg skips an empty-named w:bookmarkStart" {
+  let bookmark_start = @xml.Node::Element({
+    name: name("bookmarkStart"),
+    attributes: [attr("id", "0"), attr("name", "")],
+    children: [],
+  })
+  let run = @xml.Node::Element({
+    name: name("r"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("t"),
+        attributes: [],
+        children: [@xml.Node::Text("text")],
+      }),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [bookmark_start, run],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  // An empty name must not produce `id=""`.
+  assert_false(svg.contains("id=\"\""))
+}
+
+///|
+/// §17.16.2 — a document with NO `<w:bookmarkStart>` must be
+/// byte-identical to its render before the bookmark feature: no `<g
+/// id=…>` anchor is added.  This pins the additive-only contract.
+test "render_svg is byte-identical for a document without bookmarks" {
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("t"),
+                    attributes: [],
+                    children: [@xml.Node::Text("plain")],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  // No bookmark span / block was created, so no `<g id=…>` anchor is
+  // emitted.  A plain text paragraph carries no other `id` attribute
+  // (the only other `id` site is a `<pattern>` for `<w:shd>` shading,
+  // absent here), so the whole render is free of `id="`.
+  assert_false(svg.contains("id=\""))
+  assert_true(svg.contains("plain"))
+}
