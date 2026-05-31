@@ -5215,6 +5215,19 @@ fn resolve_text_blip_fill(blip_fill : @xml.Element) -> TextFillConfig {
 /// `@tx`/`@ty` (EMU).  A `<rect>` of the shape size filled with the
 /// pattern is returned.  `None` when the image cannot be decoded for
 /// its dimensions, so the caller falls back to the stretch path.
+///
+/// §20.1.8.55 `<a:srcRect>` — the optional `(l, t, r, b)` edge-inset
+/// percentages (already decoded from 1/1000ths-of-a-percent to plain
+/// 0..100 percentages by `read_src_rect_percent`) crop the SOURCE
+/// image to a sub-rectangle BEFORE it is tiled, so the repeated tile is
+/// the cropped region rather than the whole picture.  This matches the
+/// stretch path (`compute_cropped_image_layout`): the SAME crop math is
+/// reused here so the two paths cannot diverge (single source of
+/// truth).  The crop composes with — does not replace — `@sx`/`@sy`
+/// (scale) and `@tx`/`@ty` (offset): the cropped pixel region is scaled
+/// by `@sx`/`@sy` to size the pattern tile, and `@tx`/`@ty` still offset
+/// the pattern origin.  When all four insets are zero the emitted SVG is
+/// byte-identical to the un-cropped tile.
 fn build_tiled_blip_fill(
   tile_elt : @xml.Element,
   img_mime : String,
@@ -5223,6 +5236,10 @@ fn build_tiled_blip_fill(
   w : Double,
   h : Double,
   defs : SvgDefsCollector,
+  src_l : Double,
+  src_t : Double,
+  src_r : Double,
+  src_b : Double,
 ) -> Array[@xml.Node]? {
   let (iw, ih) = match @image_ops.image_dimensions(img_mime, img_b64) {
     Some((pw, ph)) => (pw.to_double(), ph.to_double())
@@ -5247,13 +5264,40 @@ fn build_tiled_blip_fill(
     }
   }
 
-  let tw = iw * pct("sx")
-  let th = ih * pct("sy")
+  let sx = pct("sx")
+  let sy = pct("sy")
+  // §20.1.8.55 — the cropped source pixel region (visible fraction of
+  // the native image after the edge insets).  With no crop this is the
+  // full native size so `cropped_iw == iw` / `cropped_ih == ih` and the
+  // tile cell below is identical to the un-cropped case.
+  let cropped = src_l != 0.0 || src_t != 0.0 || src_r != 0.0 || src_b != 0.0
+  let visible_w = 100.0 - src_l - src_r
+  let visible_h = 100.0 - src_t - src_b
+  let safe_visible_w = if visible_w < 0.001 { 0.001 } else { visible_w }
+  let safe_visible_h = if visible_h < 0.001 { 0.001 } else { visible_h }
+  let cropped_iw = iw * (safe_visible_w / 100.0)
+  let cropped_ih = ih * (safe_visible_h / 100.0)
+  // The pattern tile cell is the cropped source scaled by @sx / @sy.
+  let tw = cropped_iw * sx
+  let th = cropped_ih * sy
   if tw <= 0.0 || th <= 0.0 {
     return None
   }
   let tx = emu_px("tx")
   let ty = emu_px("ty")
+  // §20.1.8.55 — the tile's `<image>` is laid out by the SAME crop math
+  // the stretch path uses (`compute_cropped_image_layout`): the full
+  // image is scaled up so that only its cropped sub-rectangle lands in
+  // the `[0,tw] × [0,th]` tile viewport, with a negative offset shifting
+  // the cropped-out left/top edges out of view.  Content outside the
+  // pattern tile width/height is clipped by the pattern tile boundary
+  // itself, so no explicit clipPath is needed.  With no crop, the layout
+  // collapses to `(0, 0, tw, th)` — byte-identical to the old emission.
+  let (img_x, img_y, img_w, img_h) = if cropped {
+    compute_cropped_image_layout(tw, th, src_l, src_t, src_r, src_b)
+  } else {
+    (0.0, 0.0, tw, th)
+  }
   let pattern_id = defs.next_id("blip-tile")
   defs.add_def(
     @markup.elem_ns(
@@ -5273,10 +5317,10 @@ fn build_tiled_blip_fill(
           @markup.svg_ns,
           [
             @markup.attr("href", data_uri),
-            @markup.attr("x", "0"),
-            @markup.attr("y", "0"),
-            @markup.attr("width", format_double(tw)),
-            @markup.attr("height", format_double(th)),
+            @markup.attr("x", format_double(img_x)),
+            @markup.attr("y", format_double(img_y)),
+            @markup.attr("width", format_double(img_w)),
+            @markup.attr("height", format_double(img_h)),
             @markup.attr("preserveAspectRatio", "none"),
           ],
           [],
@@ -6438,10 +6482,15 @@ fn render_picture_svg(
       // SVG `<pattern>` sized to the image's native pixels scaled by
       // `@sx`/`@sy`, offset by `@tx`/`@ty`.  Falls through to the
       // stretch/crop path when no tile element is present or the image
-      // dimensions cannot be decoded.
+      // dimensions cannot be decoded.  §20.1.8.55 — the same
+      // `<a:srcRect>` crop `(l, t, r, b)` read above for the stretch
+      // path is threaded in so a tiled cropped fill repeats the cropped
+      // sub-rectangle, not the whole image.
       let tile_nodes : Array[@xml.Node]? = match tile_elt {
         Some(te) =>
-          build_tiled_blip_fill(te, img_mime, img_b64, data_uri, w, h, defs)
+          build_tiled_blip_fill(
+            te, img_mime, img_b64, data_uri, w, h, defs, l, t, r, b,
+          )
         None => None
       }
       let g_children : Array[@xml.Node] = match tile_nodes {
