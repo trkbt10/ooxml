@@ -461,6 +461,168 @@ test "wml context body inline image resolves to the document part media (byte-id
 }
 
 ///|
+/// §21.2 — build a `<w:drawing>` carrying an inline DrawingML chart
+/// graphicFrame that references chart part `rid` via `<c:chart r:id>`.
+/// The `<a:graphicData uri>` is the §15.2 well-known chart URI so the
+/// WML inline-chart bridge (`drawing_chart_frame`) recognises it; the
+/// `<wp:extent>` gives the frame a non-degenerate pixel size so the
+/// chart renderer actually paints.
+fn inline_chart_drawing_xml(rid : String) -> String {
+  "<w:drawing>" +
+  "<wp:inline>" +
+  "<wp:extent cx=\"5486400\" cy=\"4114800\"/>" +
+  "<wp:docPr id=\"2\" name=\"Chart\"/>" +
+  "<a:graphic>" +
+  "<a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/chart\">" +
+  "<c:chart r:id=\"" +
+  rid +
+  "\"/>" +
+  "</a:graphicData>" +
+  "</a:graphic>" +
+  "</wp:inline>" +
+  "</w:drawing>"
+}
+
+///|
+/// §21.2.2.29 — a minimal `<c:chartSpace>` carrying a single-series
+/// `<c:barChart>` and a `<c:title>/<c:tx>/<c:rich>` whose visible text
+/// is `title`.  The chart renderer emits the title as a `<text>` node,
+/// so two charts with distinct titles produce distinguishable SVG.
+fn chart_part_xml(title : String) -> String {
+  let c_ns = " xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\"" +
+    " xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\""
+  "<c:chartSpace" +
+  c_ns +
+  ">" +
+  "<c:chart>" +
+  "<c:title><c:tx><c:rich>" +
+  "<a:bodyPr/><a:lstStyle/>" +
+  "<a:p><a:r><a:t>" +
+  title +
+  "</a:t></a:r></a:p>" +
+  "</c:rich></c:tx><c:overlay val=\"0\"/></c:title>" +
+  "<c:plotArea>" +
+  "<c:barChart>" +
+  "<c:barDir val=\"col\"/>" +
+  "<c:grouping val=\"clustered\"/>" +
+  "<c:ser>" +
+  "<c:idx val=\"0\"/><c:order val=\"0\"/>" +
+  "<c:val><c:numRef><c:numCache>" +
+  "<c:pt idx=\"0\"><c:v>10</c:v></c:pt>" +
+  "<c:pt idx=\"1\"><c:v>20</c:v></c:pt>" +
+  "</c:numCache></c:numRef></c:val>" +
+  "</c:ser>" +
+  "<c:axId val=\"111\"/><c:axId val=\"222\"/>" +
+  "</c:barChart>" +
+  "</c:plotArea>" +
+  "</c:chart>" +
+  "</c:chartSpace>"
+}
+
+///|
+/// §21.2 / OPC §9.3.1 — a package where `/word/_rels/document.xml.rels`
+/// and `/word/_rels/header1.xml.rels` BOTH define the SAME chart rId
+/// (`rIdChart`) but point it at DIFFERENT chart parts: the body's
+/// `rIdChart` → a chart titled "BODY CHART", the header's `rIdChart` →
+/// a chart titled "HEADER CHART".  The body paragraph and the header
+/// each embed an inline chart drawing referencing `rIdChart`.  The
+/// pre-fix renderer resolved BOTH against the document part's rels, so
+/// the header would have shown the BODY chart.
+fn fixture_with_conflicting_chart_rids() -> Bytes {
+  let ns = " xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"" +
+    " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"" +
+    " xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\"" +
+    " xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"" +
+    " xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\""
+  let document_xml = "<w:document" +
+    ns +
+    ">" +
+    "<w:body>" +
+    "<w:p><w:r>" +
+    inline_chart_drawing_xml("rIdChart") +
+    "</w:r></w:p>" +
+    "<w:sectPr>" +
+    "<w:headerReference w:type=\"default\" r:id=\"rIdH1\"/>" +
+    "</w:sectPr>" +
+    "</w:body></w:document>"
+  let header_xml = "<w:hdr" +
+    ns +
+    ">" +
+    "<w:p><w:r>" +
+    inline_chart_drawing_xml("rIdChart") +
+    "</w:r></w:p>" +
+    "</w:hdr>"
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>" +
+        "<Override PartName=\"/word/header1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml\"/>" +
+        "<Override PartName=\"/word/charts/chart1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\"/>" +
+        "<Override PartName=\"/word/charts/chart2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    // Body part rels: `rIdChart` → the BODY chart; plus the header part.
+    (
+      "word/_rels/document.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdH1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/header\" Target=\"header1.xml\"/>" +
+        "<Relationship Id=\"rIdChart\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\" Target=\"charts/chart1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    // §17.10 / OPC §9.3.1 — header part rels: the SAME `rIdChart` maps to
+    // a DIFFERENT chart than the body part's `rIdChart`.
+    (
+      "word/_rels/header1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdChart\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\" Target=\"charts/chart2.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("word/document.xml", bytes(document_xml)),
+    ("word/header1.xml", bytes(header_xml)),
+    ("word/charts/chart1.xml", bytes(chart_part_xml("BODY CHART"))),
+    ("word/charts/chart2.xml", bytes(chart_part_xml("HEADER CHART"))),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
+/// §21.2 / OPC §9.3.1 — the header inline chart resolves its `<c:chart
+/// r:id>` against the HEADER part's rels, not the document's.  The bug
+/// would render the document part's `rIdChart` (the BODY chart) inside
+/// the header.  Body-chart byte-identity is asserted by the SAME run:
+/// the body chart still resolves against the main document part's rels
+/// (`chart_part_resolver(main_part, rid)`), producing the BODY chart —
+/// exactly what the old document-scoped resolver produced.
+test "wml context resolves a header inline chart against the header part rels" {
+  let document = open(fixture_with_conflicting_chart_rids())
+  let svg = document.to_svg()
+  // The body chart resolves against the BODY part's rels (byte-identity
+  // sense: the body still renders the document-part chart).
+  assert_true(svg.contains("BODY CHART"))
+  // The header chart resolves against the HEADER part's rels — the fix.
+  // (The bug would have rendered "BODY CHART" here too, never "HEADER
+  // CHART", because the header's rId was wrongly resolved against the
+  // document part.)
+  assert_true(svg.contains("HEADER CHART"))
+}
+
+///|
 /// §17.13.5 — fixture containing one `<w:ins>` and one `<w:del>` so
 /// `accept_revisions` / `reject_revisions` have something to act on.
 /// `<w:r>` runs nested inside the wrappers, with `<w:t>` / `<w:delText>`

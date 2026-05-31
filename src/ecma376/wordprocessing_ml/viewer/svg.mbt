@@ -1309,7 +1309,16 @@ pub fn render_svg(
   /// This fixes the latent bug where a header / footer inline image's
   /// rId was resolved against the MAIN document part's rels.
   image_resolver? : (String, String) -> ResolvedImage? = (_, _) => None,
-  chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
+  /// §21.2 / OPC §9.3.1 — PART-AWARE chart resolver.  The FIRST argument
+  /// is the same opaque "part context" token as `image_resolver` (the
+  /// OPC part name in the facade), the SECOND is the `<wp:inline>` /
+  /// `<wp:anchor>` graphicFrame carrying a `<c:chart r:id>` payload.
+  /// The renderer carries the current content stream's token (body part,
+  /// containing header / footer part) and hands it back so the chart's
+  /// rId is scoped to the CORRECT part's relationship table.  This fixes
+  /// the latent bug where a chart in a header / footer resolved its rId
+  /// against the MAIN document part's rels.
+  chart_resolver? : (String, @xml.Element) -> @xml.Node? = (_, _) => None,
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
   /// §17.15.1.85 / Annex A — `/word/theme/theme1.xml` root
@@ -1441,6 +1450,24 @@ fn bind_part_image_resolver(
 }
 
 ///|
+/// §21.2 / OPC §9.3.1 — bind an OPC part token into the part-aware
+/// `chart_resolver`, yielding the frame-only resolver that the internal
+/// layout pipeline (`collect_blocks`, `layout_paragraph`,
+/// `build_inline_chart`, …) threads.  EXACT chart-side mirror of
+/// `bind_part_image_resolver`: every content stream — body, header,
+/// footer — gets its OWN token bound here so an inline drawing's
+/// `<c:chart r:id>` resolves against the relationship table of the
+/// part that CONTAINS it, not the body part's.  This fixes the latent
+/// bug where a chart in a header / footer resolved its rId against the
+/// MAIN document part's rels.
+fn bind_part_chart_resolver(
+  chart_resolver : (String, @xml.Element) -> @xml.Node?,
+  part : String,
+) -> (@xml.Element) -> @xml.Node? {
+  fn(frame : @xml.Element) -> @xml.Node? { chart_resolver(part, frame) }
+}
+
+///|
 /// §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — build the
 /// `(numPicBulletId) -> ResolvedImage?` resolver that
 /// `apply_numbering_marker` consults, folding picture bullets into the
@@ -1524,7 +1551,7 @@ fn render_svg_raw(
   domain : @domain.CT_Document,
   decoration : PageDecoration,
   image_resolver : (String, String) -> ResolvedImage?,
-  chart_resolver : (@xml.Element) -> @xml.Node?,
+  chart_resolver : (String, @xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
@@ -1543,6 +1570,11 @@ fn render_svg_raw(
   // resolves its blips against the MAIN document part's rels.  Header /
   // footer streams get their OWN token wrapped at the decoration site.
   let body_image_resolver = bind_part_image_resolver(image_resolver, body_part)
+  // §21.2 / OPC §9.3.1 — bind the body part token into a per-stream chart
+  // resolver so the body pipeline resolves a `<c:chart r:id>` against the
+  // MAIN document part's rels.  Header / footer streams get their OWN
+  // token wrapped at the decoration site (`build_page_decoration_nodes`).
+  let body_chart_resolver = bind_part_chart_resolver(chart_resolver, body_part)
   // §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — fold picture bullets
   // into the SAME part-aware resolver: keyed on the numPicBulletId, walk
   // the `<w:numPicBullet>` to its blip / imagedata rId and resolve it
@@ -1639,6 +1671,7 @@ fn render_svg_raw(
         image_resolver,
         body_image_resolver,
         chart_resolver,
+        body_chart_resolver,
         domain.element,
         styles,
         numbering,
@@ -1666,7 +1699,14 @@ fn render_body_to_svg(
   // Body-bound rId-only resolver — the §17 body content's blips resolve
   // against the main document part's rels (already bound upstream).
   body_image_resolver : (String) -> ResolvedImage?,
-  chart_resolver : (@xml.Element) -> @xml.Node?,
+  // Part-aware chart resolver — handed to the §17.10 decoration path so
+  // each header / footer stream resolves charts against ITS OWN part
+  // token (the `(part, frame)` form).
+  chart_resolver : (String, @xml.Element) -> @xml.Node?,
+  // Body-bound frame-only chart resolver — the §21.2 body content's
+  // `<c:chart r:id>` resolves against the main document part's rels
+  // (already bound upstream).
+  body_chart_resolver : (@xml.Element) -> @xml.Node?,
   document_root : @xml.Element,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
@@ -1680,7 +1720,7 @@ fn render_body_to_svg(
     body,
     warnings,
     body_image_resolver,
-    chart_resolver,
+    body_chart_resolver,
     document_root,
     styles,
     numbering,
@@ -1802,7 +1842,13 @@ pub fn render_combined_svg(
   /// current stream's token (body / header / footer / numbering part)
   /// and hands it back so the rId is scoped to the CORRECT part's rels.
   image_resolver? : (String, String) -> ResolvedImage? = (_, _) => None,
-  chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
+  /// §21.2 / OPC §9.3.1 — PART-AWARE chart resolver.  See `render_svg`:
+  /// the FIRST argument is the opaque OPC part token, the SECOND the
+  /// `<wp:inline>` / `<wp:anchor>` graphicFrame carrying a `<c:chart
+  /// r:id>`.  The renderer carries the current stream's token (body /
+  /// header / footer part) and hands it back so the chart's rId is
+  /// scoped to the CORRECT part's rels.
+  chart_resolver? : (String, @xml.Element) -> @xml.Node? = (_, _) => None,
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
   theme? : @xml.Element? = None,
@@ -1884,7 +1930,7 @@ fn render_combined_svg_raw(
   domain : @domain.CT_Document,
   decoration : PageDecoration,
   image_resolver : (String, String) -> ResolvedImage?,
-  chart_resolver : (@xml.Element) -> @xml.Node?,
+  chart_resolver : (String, @xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
@@ -1902,6 +1948,10 @@ fn render_combined_svg_raw(
   // part; picture bullets fold into the same part-aware resolver
   // scoped to the numbering part (see `render_svg_raw`).
   let body_image_resolver = bind_part_image_resolver(image_resolver, body_part)
+  // §21.2 / OPC §9.3.1 — body charts resolve against the main document
+  // part; header / footer streams bind their OWN token at the decoration
+  // site (`build_page_decoration_nodes`).
+  let body_chart_resolver = bind_part_chart_resolver(chart_resolver, body_part)
   let pic_bullet_resolver = build_pic_bullet_image_resolver(
     image_resolver, numbering, numbering_part,
   )
@@ -1953,7 +2003,7 @@ fn render_combined_svg_raw(
         body_el,
         warnings,
         body_image_resolver,
-        chart_resolver,
+        body_chart_resolver,
         domain.element,
         styles,
         numbering,
@@ -1995,7 +2045,7 @@ fn build_combined_svg(
   decoration : PageDecoration,
   warnings : Array[String],
   image_resolver : (String, String) -> ResolvedImage?,
-  chart_resolver : (@xml.Element) -> @xml.Node?,
+  chart_resolver : (String, @xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   settings_attrs? : Array[@xml.Attribute] = [],
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
@@ -8515,7 +8565,7 @@ fn emit_page_svg_with_decoration(
   footer : HdrFtrStream,
   warnings : Array[String],
   image_resolver : (String, String) -> ResolvedImage?,
-  chart_resolver : (@xml.Element) -> @xml.Node?,
+  chart_resolver : (String, @xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   settings_attrs? : Array[@xml.Attribute] = [],
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
@@ -8553,7 +8603,7 @@ fn build_page_decoration_nodes(
   footer : HdrFtrStream,
   warnings : Array[String],
   image_resolver : (String, String) -> ResolvedImage?,
-  chart_resolver : (@xml.Element) -> @xml.Node?,
+  chart_resolver : (String, @xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
@@ -8573,12 +8623,19 @@ fn build_page_decoration_nodes(
       image_resolver,
       header.part,
     )
+    // §21.2 / OPC §9.3.1 — bind the SAME header part token for charts so
+    // a `<c:chart r:id>` inside the header resolves against the header
+    // part's rels (the fix), not the body part's.
+    let header_chart_resolver = bind_part_chart_resolver(
+      chart_resolver,
+      header.part,
+    )
     let blocks = collect_blocks_from_elements(
       header.blocks,
       content_width,
       warnings,
       header_image_resolver,
-      chart_resolver,
+      header_chart_resolver,
       styles,
       theme_map~,
       font_map~,
@@ -8604,12 +8661,17 @@ fn build_page_decoration_nodes(
       image_resolver,
       footer.part,
     )
+    // §21.2 / OPC §9.3.1 — bind the SAME footer part token for charts.
+    let footer_chart_resolver = bind_part_chart_resolver(
+      chart_resolver,
+      footer.part,
+    )
     let blocks = collect_blocks_from_elements(
       footer.blocks,
       content_width,
       warnings,
       footer_image_resolver,
-      chart_resolver,
+      footer_chart_resolver,
       styles,
       theme_map~,
       font_map~,

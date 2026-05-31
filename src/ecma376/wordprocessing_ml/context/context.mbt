@@ -283,18 +283,27 @@ pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String 
   // inline image's rId is scoped to `/word/_rels/header*.xml.rels`
   // rather than wrongly resolved against the main document part.
   let image_resolver = build_document_image_resolver(self.opc_package)
-  // §21.2 chart bridge — resolve `<c:chart r:id="…"/>` references on
-  // a `<wp:inline>` / `<wp:anchor>` graphicFrame to the matching
-  // chart part's root element by walking the main document part's
-  // relationships. Closed over by the chart_resolver below.
-  let chart_part_resolver = build_document_chart_part_resolver(
-    self.opc_package,
-    self.main_part,
-  )
+  // §21.2 chart bridge / OPC §9.3.1 — ONE part-aware chart-part
+  // resolver for the whole document.  Given an opaque OPC part token
+  // (the body part, a header / footer part) and a relationship Id, it
+  // resolves the rId against THAT part's `_rels` for the `…/chart`
+  // relationship type and parses the chart part's bytes into its root
+  // `<c:chartSpace>` element.  The viewer carries each content stream's
+  // token and hands it back here, so a chart embedded in a header /
+  // footer resolves its `<c:chart r:id>` against
+  // `/word/_rels/header*.xml.rels` rather than wrongly against the main
+  // document part.  Closed over by the part-aware chart_resolver below.
+  let chart_part_resolver = build_document_chart_part_resolver(self.opc_package)
   let theme_map = match self.theme {
     Some(root) => @wml_viewer.parse_clr_scheme(root)
     None => @wml_viewer.ThemeColorMap::empty()
   }
+  // §21.2 — the PART-AWARE chart resolver: `(part, graphicFrame) ->
+  // @xml.Node?`.  It extracts the frame's `<c:chart r:id>` and resolves
+  // the chart part against the supplied stream's `part` token.  The
+  // viewer binds the body / header / footer part token per stream (the
+  // same tokens it already threads for images), so each chart resolves
+  // against the relationship table of the part that CONTAINS it.
   let chart_resolver = @wml_viewer.build_wml_chart_resolver(
     theme_map, chart_part_resolver,
   )
@@ -355,48 +364,51 @@ pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String 
 }
 
 ///|
-/// Build a chart-part resolver that maps a `<c:chart r:id="…"/>` rId
-/// to the chart part's root XML element by walking the main document
-/// part's `_rels/<main>.xml.rels`. Mirrors the same pattern as
-/// `build_document_image_resolver` but resolves `…/chart`
-/// relationships instead of `…/image` and parses the bytes into a
-/// `@xml.Element` so the chart renderer can walk the typed tree.
+/// §21.2 / OPC §9.3.1 — build the ONE PART-AWARE chart-part resolver
+/// for the whole document.  Given an OPC `part` token (the containing
+/// part's name) and a `rid` (the `<c:chart r:id>` relationship Id from
+/// a `<wp:inline>` / `<wp:anchor>` graphicFrame), it resolves the rId
+/// against THAT part's `_rels` for the `…/chart` relationship type and
+/// parses the chart part's bytes into its root `<c:chartSpace>`
+/// element so the chart renderer can walk the typed tree.
+///
+/// Mirrors `build_document_image_resolver` exactly: relationships are
+/// resolved lazily per part inside the closure
+/// (`opc_package.relationships(part)`), so the resolver works for ANY
+/// part without a prebuilt per-part map.  Body charts pass `part =
+/// main_part`, so this resolves byte-identically to the previous
+/// body-only resolver; header / footer charts pass that part's own
+/// name, so their `<c:chart r:id>` is scoped to
+/// `/word/_rels/header*.xml.rels` (the fix).
 fn build_document_chart_part_resolver(
   opc_package : @opc.Package,
-  main_part : String,
-) -> (String) -> @xml.Element? {
-  match opc_package.relationships(main_part) {
-    None => fn(_) { None }
-    Some(rels) => {
-      let part = main_part
-      let pkg = opc_package
-      let relationships = rels
-      fn(rid : String) -> @xml.Element? {
-        for rel in relationships.relationships {
-          if rel.id == rid &&
-            rel.target_mode == @relationships.TargetMode::Internal &&
-            rel.type_uri.has_suffix("/chart") {
-            let chart_name = try? @opc_part_name.resolve_target(
-              part,
-              rel.target,
-            )
-            match chart_name {
-              Ok(name) =>
-                match pkg.part(name) {
-                  Some(chart_part) =>
-                    match (try? @xml.parse(chart_part.data)) {
-                      Ok(doc) => return Some(doc.root)
-                      Err(_) => ()
-                    }
-                  None => ()
+) -> (String, String) -> @xml.Element? {
+  let pkg = opc_package
+  fn(part : String, rid : String) -> @xml.Element? {
+    let relationships = match pkg.relationships(part) {
+      None => return None
+      Some(rels) => rels
+    }
+    for rel in relationships.relationships {
+      if rel.id == rid &&
+        rel.target_mode == @relationships.TargetMode::Internal &&
+        rel.type_uri.has_suffix("/chart") {
+        let chart_name = try? @opc_part_name.resolve_target(part, rel.target)
+        match chart_name {
+          Ok(name) =>
+            match pkg.part(name) {
+              Some(chart_part) =>
+                match (try? @xml.parse(chart_part.data)) {
+                  Ok(doc) => return Some(doc.root)
+                  Err(_) => ()
                 }
-              Err(_) => ()
+              None => ()
             }
-          }
+          Err(_) => ()
         }
-        None
       }
     }
+    None
   }
 }
 

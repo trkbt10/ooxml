@@ -45,28 +45,45 @@ pub fn paint_ctx_from_wml_theme(
 }
 
 ///|
-/// Build the closure the WML viewer threads as `chart_resolver`
-/// through its inline-render pipeline.  When the closure receives a
-/// `<wp:inline>` / `<wp:anchor>` wrapper carrying a
-/// `<c:chart r:id>` payload (caller's `frame` argument), it resolves
-/// the rId via `part_resolver`, hands the resulting chart-space tree
-/// + the WML-derived `ColorResolveContext` to the chart renderer,
-/// and returns the produced SVG node.  Yields `None` for any frame
-/// whose chart URI / rId / part cannot be resolved, so the caller
-/// falls back to the placeholder branch in `emit_drawing_span`.
+/// §21.2 / OPC §9.3.1 — build the PART-AWARE closure the WML viewer
+/// threads as `chart_resolver` through its inline-render pipeline.
+/// The produced closure takes `(part, frame)`: `part` is the opaque
+/// OPC part token of the content stream that CONTAINS the drawing (the
+/// body part, a header / footer part), and `frame` is the
+/// `<wp:inline>` / `<wp:anchor>` wrapper carrying a `<c:chart r:id>`
+/// payload.  When the closure receives such a frame, it resolves the
+/// rId via `part_resolver(part, rid)` — so the chart part is scoped to
+/// the relationship table of the part that contains it, NOT the main
+/// document part — hands the resulting chart-space tree + the
+/// WML-derived `ColorResolveContext` to the chart renderer, and returns
+/// the produced SVG node.  Yields `None` for any frame whose chart URI
+/// / rId / part cannot be resolved, so the caller falls back to the
+/// placeholder branch in `emit_drawing_span`.
+///
+/// §`part_resolver` is itself PART-AWARE — `(part, rid) ->
+/// @xml.Element?` — mirroring the part-aware image resolver.  The chart
+/// renderer's frame-walker takes an rId-only `(rid) -> @xml.Element?`,
+/// so we bind `part` here, yielding the rId-only resolver it expects.
 pub fn build_wml_chart_resolver(
   theme_map : ThemeColorMap,
-  part_resolver : (String) -> @xml.Element?,
-) -> (@xml.Element) -> @xml.Node? {
+  part_resolver : (String, String) -> @xml.Element?,
+) -> (String, @xml.Element) -> @xml.Node? {
   let ctx = paint_ctx_from_wml_theme(theme_map)
-  fn(frame : @xml.Element) -> @xml.Node? {
+  fn(part : String, frame : @xml.Element) -> @xml.Node? {
     let (w_px, h_px) = wp_frame_extent_px(frame)
     if w_px <= 0.0 || h_px <= 0.0 {
       return None
     }
     let defs = @paint.SvgDefsCollector::new()
+    // §21.2 — the chart renderer's frame-walker resolves the frame's
+    // own `<c:chart r:id>` through an rId-only resolver; bind this
+    // stream's `part` token so that rId is scoped to the containing
+    // part's `_rels`.
+    let bound_part_resolver = fn(rid : String) -> @xml.Element? {
+      part_resolver(part, rid)
+    }
     let nodes = @chart_viewer.render_chart_graphic_frame(
-      frame, w_px, h_px, ctx, defs, part_resolver,
+      frame, w_px, h_px, ctx, defs, bound_part_resolver,
     )
     if nodes.length() == 0 {
       return None
