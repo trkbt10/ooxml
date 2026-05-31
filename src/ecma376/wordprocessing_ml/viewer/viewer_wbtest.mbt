@@ -2059,7 +2059,9 @@ test "render_svg emits <image> for inline <w:drawing> via image_resolver" {
       }),
     ],
   })
-  let resolver = fn(rid : String) -> ResolvedImage? {
+  // Part-aware resolver — the body content's blips arrive with the
+  // body part token (here empty / unused); resolution keys on the rId.
+  let resolver = fn(_part : String, rid : String) -> ResolvedImage? {
     if rid == "rId99" {
       Some({ mime_type: "image/png", base64_data: "AAAB" })
     } else {
@@ -2994,7 +2996,7 @@ test "wml viewer §20.4.2.3 wp:anchor wrap+position surface as data-ooxml-*" {
     Ok(d) => d
     Err(_) => abort("CT_Document parse failed")
   }
-  let resolver = fn(rid : String) -> ResolvedImage? {
+  let resolver = fn(_part : String, rid : String) -> ResolvedImage? {
     if rid == "rId1" {
       Some({ mime_type: "image/png", base64_data: "AAAA" })
     } else {

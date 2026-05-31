@@ -1,13 +1,16 @@
 // §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — end-to-end
 // picture-bullet wiring through the WML context facade.  `open`
 // loads `/word/numbering.xml` (typed `CT_Numbering`, with its
-// `pic_bullets` index) and `Document::to_svg` builds a
-// `pic_bullet_resolver` that maps a level's `numPicBulletId` →
-// `<w:numPicBullet>` element → blip/imagedata `r:id` → numbering
-// part's relationships → image media → data URI.  The viewer then
-// emits an `<image>` glyph at the bullet position.  A document with
-// no resolvable picture bullet renders the §17.9.11 lvlText text
-// marker, byte-identical to the pre-feature output.
+// `pic_bullets` index) and `Document::to_svg` passes the ONE
+// part-aware `image_resolver` plus `numbering_part="/word/numbering.xml"`.
+// The viewer folds picture bullets into that resolver: it walks a
+// level's `numPicBulletId` → `<w:numPicBullet>` element →
+// blip/imagedata `r:id`, then calls `image_resolver(numbering_part,
+// rid)` so the rId resolves against the NUMBERING part's relationships
+// (not the document part's).  The viewer then emits an `<image>` glyph
+// at the bullet position.  A document with no resolvable picture
+// bullet renders the §17.9.11 lvlText text marker, byte-identical to
+// the pre-feature output.
 
 ///|
 /// Distinctive PNG media bytes (the 8-byte PNG signature is enough for

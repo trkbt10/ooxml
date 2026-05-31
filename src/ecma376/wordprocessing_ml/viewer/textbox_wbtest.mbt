@@ -118,7 +118,7 @@ test "render_svg paints a WordprocessingCanvas with a shape" {
 /// paragraph's text is present (laid out at the narrowed width).
 test "render_svg reflows text around a wrapSquare floating drawing" {
   ensure_wml_test_font()
-  let resolver = fn(rid : String) -> ResolvedImage? {
+  let resolver = fn(_part : String, rid : String) -> ResolvedImage? {
     if rid == "rIdFloat" {
       Some({ mime_type: "image/png", base64_data: "AAAA" })
     } else {

@@ -274,10 +274,15 @@ pub fn Document::save(self : Document) -> Bytes {
 /// drops them on the way out.
 pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String {
   let deco = resolve_header_footer_decoration(self)
-  let image_resolver = build_document_image_resolver(
-    self.opc_package,
-    self.main_part,
-  )
+  // §17 / OPC §9.3.1 — ONE part-aware image resolver for the whole
+  // document.  Given an opaque OPC part token and a relationship Id, it
+  // resolves the rId against THAT part's `_rels` and returns the media
+  // payload.  The viewer carries each content stream's token (the body
+  // part, the containing header / footer part, the numbering part for
+  // picture bullets) and hands it back here, so a header / footer
+  // inline image's rId is scoped to `/word/_rels/header*.xml.rels`
+  // rather than wrongly resolved against the main document part.
+  let image_resolver = build_document_image_resolver(self.opc_package)
   // §21.2 chart bridge — resolve `<c:chart r:id="…"/>` references on
   // a `<wp:inline>` / `<wp:anchor>` graphicFrame to the matching
   // chart part's root element by walking the main document part's
@@ -293,17 +298,6 @@ pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String 
   let chart_resolver = @wml_viewer.build_wml_chart_resolver(
     theme_map, chart_part_resolver,
   )
-  // §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — resolve a list
-  // level's picture bullet to its image media.  Keyed on the
-  // `numPicBulletId`, this looks up the raw `<w:numPicBullet>` element
-  // in the numbering table, extracts its blip / imagedata relationship
-  // Id, and resolves it against the numbering part's relationships.
-  // Returns `None` for documents without (resolvable) picture bullets,
-  // so the viewer's text-marker path stays byte-identical.
-  let pic_bullet_resolver = build_document_pic_bullet_resolver(
-    self.opc_package,
-    self.numbering,
-  )
   let svg = @wml_viewer.render_combined_svg(
     self.main,
     header_blocks=deco.header_default,
@@ -316,7 +310,19 @@ pub fn Document::to_svg(self : Document, debug_attrs? : Bool = false) -> String 
     even_and_odd_headers=deco.even_and_odd,
     image_resolver~,
     chart_resolver~,
-    pic_bullet_resolver~,
+    // §17 — body content resolves against the main document part.
+    body_part=self.main_part,
+    // §17.10 / OPC §9.3.1 — each header / footer stream resolves its
+    // inline images against ITS OWN part's `_rels`.
+    header_part=deco.header_default_part,
+    header_part_first=deco.header_first_part,
+    header_part_even=deco.header_even_part,
+    footer_part=deco.footer_default_part,
+    footer_part_first=deco.footer_first_part,
+    footer_part_even=deco.footer_even_part,
+    // §17.9.20 numPicBullet — picture bullets resolve against the
+    // numbering part (loaded from the canonical path; see `open`).
+    numbering_part=numbering_part_name(self),
     styles=self.styles,
     numbering=self.numbering,
     // §17.15.1.85 / §17.15.1.51 — thread the parsed theme part
@@ -395,172 +401,67 @@ fn build_document_chart_part_resolver(
 }
 
 ///|
-/// Build a `ResolvedImage` resolver for `<w:drawing>` blip references
-/// inside the main document part. Resolves a relationship Id to the
-/// matching `(mime_type, base64_data)` payload — mirrors the xlsx
-/// counterpart so both renderers expose images the same way.
+/// §17 / OPC §9.3.1 — build the ONE part-aware `ResolvedImage` resolver
+/// for the whole document.  Given an OPC `part` token (the containing
+/// part's name) and a `rid` (a `<a:blip r:embed>` / `<v:imagedata
+/// r:id>` relationship Id), it resolves the rId against THAT part's
+/// `_rels` and returns the matching `(mime_type, base64_data)` payload.
+///
+/// Body images pass `part = main_part`, so this resolves byte-
+/// identically to the previous body-only resolver.  Header / footer
+/// images pass that part's own name, so their rId is scoped to
+/// `/word/_rels/header*.xml.rels` (the fix).  Picture bullets pass the
+/// numbering part — the viewer folds the `<w:numPicBullet>` → blip rId
+/// walk and calls back here with the numbering part token.
+///
+/// Relationships are resolved lazily per part inside the closure
+/// (`opc_package.relationships(part)`), so the resolver works for ANY
+/// part without a prebuilt per-part map.  Reuses `document_mime_for_target`
+/// for the MIME table.
 fn build_document_image_resolver(
   opc_package : @opc.Package,
-  main_part : String,
-) -> (String) -> @wml_viewer.ResolvedImage? {
-  match opc_package.relationships(main_part) {
-    None => fn(_) { None }
-    Some(rels) => {
-      let part = main_part
-      let pkg = opc_package
-      let relationships = rels
-      fn(rid : String) -> @wml_viewer.ResolvedImage? {
-        for rel in relationships.relationships {
-          if rel.id == rid &&
-            rel.target_mode == @relationships.TargetMode::Internal &&
-            rel.type_uri.has_suffix("/image") {
-            let resolved = try? @opc_part_name.resolve_target(part, rel.target)
-            match resolved {
-              Ok(image_name) =>
-                match pkg.part(image_name) {
-                  Some(image_part) =>
-                    return Some({
-                      mime_type: document_mime_for_target(rel.target),
-                      base64_data: @base64.encode(image_part.data),
-                    })
-                  None => ()
-                }
-              Err(_) => ()
+) -> (String, String) -> @wml_viewer.ResolvedImage? {
+  let pkg = opc_package
+  fn(part : String, rid : String) -> @wml_viewer.ResolvedImage? {
+    let relationships = match pkg.relationships(part) {
+      None => return None
+      Some(rels) => rels
+    }
+    for rel in relationships.relationships {
+      if rel.id == rid &&
+        rel.target_mode == @relationships.TargetMode::Internal &&
+        rel.type_uri.has_suffix("/image") {
+        let resolved = try? @opc_part_name.resolve_target(part, rel.target)
+        match resolved {
+          Ok(image_name) =>
+            match pkg.part(image_name) {
+              Some(image_part) =>
+                return Some({
+                  mime_type: document_mime_for_target(rel.target),
+                  base64_data: @base64.encode(image_part.data),
+                })
+              None => ()
             }
-          }
+          Err(_) => ()
         }
-        None
       }
     }
+    None
   }
 }
 
 ///|
-/// §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — build a
-/// `ResolvedImage` resolver keyed on the `numPicBulletId` so the
-/// viewer can render a list level's `<w:lvlPicBulletId w:val="N"/>`
-/// as an `<image>` glyph.  This mirrors `build_document_image_resolver`
-/// exactly, with two differences that the picture-bullet model
-/// demands:
-///
-///  • A `numPicBulletId` is NOT itself a relationship Id.  We first
-///    look up the raw `<w:numPicBullet w:numPicBulletId="N">` element
-///    from the typed numbering table (`numbering.pic_bullets`, keyed
-///    by id), then walk it to its embedded image relationship Id (the
-///    `<w:drawing>…<a:blip r:embed="rIdN"/>` for a DrawingML picture
-///    or the `<w:pict><v:shape><v:imagedata r:id="rIdN"/>` for a VML
-///    picture — §17.9.20 permits either).
-///
-///  • The relationship is resolved against the NUMBERING part's
-///    relationships (`/word/numbering.xml` + `_rels/numbering.xml.rels`)
-///    — not the main document part — because the `<w:numPicBullet>`
-///    drawing lives in `numbering.xml` and so its `r:embed` / `r:id`
-///    is scoped to that part's relationship table (OPC §9.3.1).
-///
-/// When the document ships no numbering part, the numbering part has
-/// no relationships, the id is absent from `pic_bullets`, no embed/id
-/// reference is reachable, or the relationship / media part cannot be
-/// resolved, the resolver returns `None`.  The viewer then draws the
-/// §17.9.11 lvlText text marker exactly as before, so documents
-/// without (resolvable) picture bullets stay byte-identical.
-fn build_document_pic_bullet_resolver(
-  opc_package : @opc.Package,
-  numbering : @wml.CT_Numbering?,
-) -> (Int) -> @wml_viewer.ResolvedImage? {
-  // The numPicBullet drawing's blip/imagedata reference is scoped to
-  // the numbering part's relationship table.  `open` loads numbering
-  // from the canonical `/word/numbering.xml` path (see lines ~77 and
-  // ~181), so we resolve against that same part name.
-  let numbering_part = "/word/numbering.xml"
-  match numbering {
-    None => fn(_) { None }
-    Some(table) =>
-      match opc_package.relationships(numbering_part) {
-        None => fn(_) { None }
-        Some(rels) => {
-          let pkg = opc_package
-          let part = numbering_part
-          let relationships = rels
-          let pic_bullets = table.pic_bullets
-          fn(pic_id : Int) -> @wml_viewer.ResolvedImage? {
-            // §17.9.20 — locate the `<w:numPicBullet>` raw element and
-            // extract its embedded image relationship Id.
-            let rid = match pic_bullets.get(pic_id) {
-              None => return None
-              Some(pic_bullet) =>
-                match num_pic_bullet_image_rid(pic_bullet) {
-                  None => return None
-                  Some(r) => r
-                }
-            }
-            // Resolve that rId against the numbering part's rels — the
-            // exact rel-matching logic from build_document_image_resolver.
-            for rel in relationships.relationships {
-              if rel.id == rid &&
-                rel.target_mode == @relationships.TargetMode::Internal &&
-                rel.type_uri.has_suffix("/image") {
-                let resolved = try? @opc_part_name.resolve_target(
-                  part,
-                  rel.target,
-                )
-                match resolved {
-                  Ok(image_name) =>
-                    match pkg.part(image_name) {
-                      Some(image_part) =>
-                        return Some({
-                          mime_type: document_mime_for_target(rel.target),
-                          base64_data: @base64.encode(image_part.data),
-                        })
-                      None => ()
-                    }
-                  Err(_) => ()
-                }
-              }
-            }
-            None
-          }
-        }
-      }
+/// §17.9.20 numPicBullet — the OPC part token for the numbering part.
+/// `open` loads numbering from the canonical `/word/numbering.xml`
+/// path, so that is the part whose `_rels` scope a picture bullet's
+/// blip / imagedata relationship Id.  Empty when the document ships no
+/// numbering part, in which case the viewer never resolves a picture
+/// bullet and draws the §17.9.11 lvlText marker.
+fn numbering_part_name(doc : Document) -> String {
+  match doc.numbering {
+    Some(_) => "/word/numbering.xml"
+    None => ""
   }
-}
-
-///|
-/// §17.9.20 numPicBullet — walk a raw `<w:numPicBullet>` element to its
-/// embedded image relationship Id.  A numPicBullet wraps either a
-/// DrawingML picture (`<w:drawing>…<a:blip r:embed="rIdN"/>`, possibly
-/// nested under `<pic:blipFill>`) or a VML picture
-/// (`<w:pict><v:shape><v:imagedata r:id="rIdN"/>`).  We do a
-/// depth-first walk and return the first attribute whose local name is
-/// `embed` (DrawingML blip) or `id` (VML imagedata) in the
-/// officeDocument relationships namespace — matching the same
-/// `r:`-prefix / relationships-namespace discipline as `attr_rid`
-/// (§17.16.22 ST_RelationshipId).  Returns `None` when no such
-/// reference is reachable.
-fn num_pic_bullet_image_rid(element : @xml.Element) -> String? {
-  // A blip `r:embed` (DrawingML) wins when both are present; the
-  // depth-first order below visits the drawing subtree's `r:embed`
-  // before any sibling VML `r:id` because a conforming numPicBullet
-  // carries exactly one of them.
-  for a in element.attributes {
-    if a.name.ns ==
-      Some(
-        "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
-      ) &&
-      (a.name.local_name == "embed" || a.name.local_name == "id") {
-      return Some(a.value)
-    }
-  }
-  for child in element.children {
-    match child {
-      Element(child_element) =>
-        match num_pic_bullet_image_rid(child_element) {
-          Some(rid) => return Some(rid)
-          None => ()
-        }
-      _ => ()
-    }
-  }
-  None
 }
 
 ///|
@@ -627,6 +528,17 @@ priv struct ResolvedDecoration {
   footer_default : Array[@wml.EG_BlockLevelElts]
   footer_first : Array[@wml.EG_BlockLevelElts]
   footer_even : Array[@wml.EG_BlockLevelElts]
+  /// §17.10 / OPC §9.3.1 — the OPC part name behind each resolved
+  /// stream (the `HeaderPart.name` / `FooterPart.name`).  Threaded to
+  /// the viewer so an inline image inside a header / footer resolves
+  /// its blip rId against THAT part's `_rels`.  Empty when the stream
+  /// is absent.
+  header_default_part : String
+  header_first_part : String
+  header_even_part : String
+  footer_default_part : String
+  footer_first_part : String
+  footer_even_part : String
   title_pg : Bool
   even_and_odd : Bool
 }
@@ -642,6 +554,12 @@ fn ResolvedDecoration::empty() -> ResolvedDecoration {
     footer_default: [],
     footer_first: [],
     footer_even: [],
+    header_default_part: "",
+    header_first_part: "",
+    header_even_part: "",
+    footer_default_part: "",
+    footer_first_part: "",
+    footer_even_part: "",
     title_pg: false,
     even_and_odd: false,
   }
@@ -698,13 +616,28 @@ fn resolve_header_footer_decoration(doc : Document) -> ResolvedDecoration {
       }
     None => false
   }
+  // §17.10 / OPC §9.3.1 — resolve each stream's blocks AND its OPC part
+  // name so the viewer can scope that stream's image rIds to its own
+  // `_rels`.
+  let (hd_blocks, hd_part) = resolve("headerReference", "default", header_index)
+  let (hf_blocks, hf_part) = resolve("headerReference", "first", header_index)
+  let (he_blocks, he_part) = resolve("headerReference", "even", header_index)
+  let (fd_blocks, fd_part) = resolve("footerReference", "default", footer_index)
+  let (ff_blocks, ff_part) = resolve("footerReference", "first", footer_index)
+  let (fe_blocks, fe_part) = resolve("footerReference", "even", footer_index)
   {
-    header_default: resolve("headerReference", "default", header_index),
-    header_first: resolve("headerReference", "first", header_index),
-    header_even: resolve("headerReference", "even", header_index),
-    footer_default: resolve("footerReference", "default", footer_index),
-    footer_first: resolve("footerReference", "first", footer_index),
-    footer_even: resolve("footerReference", "even", footer_index),
+    header_default: hd_blocks,
+    header_first: hf_blocks,
+    header_even: he_blocks,
+    footer_default: fd_blocks,
+    footer_first: ff_blocks,
+    footer_even: fe_blocks,
+    header_default_part: hd_part,
+    header_first_part: hf_part,
+    header_even_part: he_part,
+    footer_default_part: fd_part,
+    footer_first_part: ff_part,
+    footer_even_part: fe_part,
     title_pg,
     even_and_odd,
   }
@@ -758,7 +691,10 @@ fn find_trailing_sect_pr(body : @xml.Element) -> @xml.Element? {
 /// whose §17.10.1 `@w:type` matches `want_type` (`default` / `first` /
 /// `even`; an unset `@type` is treated as `default`), resolve its
 /// `r:id` to a part name, then locate the matching `HeaderPart` /
-/// `FooterPart` and return its block-level children.
+/// `FooterPart` and return its block-level children PAIRED with the
+/// resolved OPC part name (so the image resolver can scope that
+/// stream's blip rIds to its own `_rels`).  Returns `([], "")` when no
+/// matching reference resolves to a loaded part.
 fn resolve_reference_blocks(
   sect_pr : @xml.Element,
   local_name : String,
@@ -766,7 +702,7 @@ fn resolve_reference_blocks(
   parts : Array[(String, Array[@wml.EG_BlockLevelElts])],
   rels : @relationships.CT_Relationships,
   owner : String,
-) -> Array[@wml.EG_BlockLevelElts] {
+) -> (Array[@wml.EG_BlockLevelElts], String) {
   for child in sect_pr.children {
     match child {
       Element(elt) =>
@@ -781,7 +717,7 @@ fn resolve_reference_blocks(
                 match resolve_rid_target(rels, rid, owner) {
                   Some(target_name) =>
                     match part_blocks_by_name(parts, target_name) {
-                      Some(blocks) => return blocks
+                      Some(blocks) => return (blocks, target_name)
                       None => ()
                     }
                   None => ()
@@ -793,7 +729,7 @@ fn resolve_reference_blocks(
       _ => ()
     }
   }
-  []
+  ([], "")
 }
 
 ///|

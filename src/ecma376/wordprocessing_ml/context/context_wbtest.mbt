@@ -279,6 +279,188 @@ test "wml context to_svg without header/footer still emits body" {
 }
 
 ///|
+/// §17.10 / OPC §9.3.1 — PART-AWARE image resolution.  A header is a
+/// SEPARATE OPC part with its OWN `_rels`, so an inline image's blip
+/// `r:embed` inside the header MUST resolve against
+/// `/word/_rels/header1.xml.rels`, NOT the main document part's rels.
+///
+/// This fixture is the discriminating case for the bug: BOTH
+/// `document.xml.rels` and `header1.xml.rels` define the SAME
+/// relationship Id (`rIdImg`), but point at DIFFERENT media — the body
+/// part maps it to a BODY png and the header part maps it to a HEADER
+/// png with distinct bytes.  The body paragraph and the header each
+/// embed an inline drawing referencing `rIdImg`.  The pre-fix renderer
+/// resolved BOTH against the document part's rels, so the header would
+/// have shown the BODY image.  With part-aware resolution the header
+/// image's data URI is the HEADER png and the body image's is the BODY
+/// png.
+let body_png : Bytes = b"\x89PNG\r\n\x1a\n\x00\x42\x4f\x44\x59"
+
+///|
+let header_png : Bytes = b"\x89PNG\r\n\x1a\n\x00\x48\x44\x52"
+
+///|
+fn inline_drawing_xml(rid : String) -> String {
+  // §20.4.2.8 — `<wp:docPr>` is required inside `<wp:inline>`; the
+  // reader rejects a drawing without it.
+  "<w:drawing>" +
+  "<wp:inline>" +
+  "<wp:extent cx=\"914400\" cy=\"914400\"/>" +
+  "<wp:docPr id=\"1\" name=\"Picture\"/>" +
+  "<a:graphic><a:graphicData><pic:pic><pic:blipFill>" +
+  "<a:blip r:embed=\"" +
+  rid +
+  "\"/>" +
+  "</pic:blipFill></pic:pic></a:graphicData></a:graphic>" +
+  "</wp:inline>" +
+  "</w:drawing>"
+}
+
+///|
+fn fixture_with_conflicting_image_rids() -> Bytes {
+  let ns = " xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"" +
+    " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"" +
+    " xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\"" +
+    " xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"" +
+    " xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\""
+  let document_xml = "<w:document" +
+    ns +
+    ">" +
+    "<w:body>" +
+    "<w:p><w:r>" +
+    inline_drawing_xml("rIdImg") +
+    "</w:r></w:p>" +
+    "<w:sectPr>" +
+    "<w:headerReference w:type=\"default\" r:id=\"rIdH1\"/>" +
+    "</w:sectPr>" +
+    "</w:body></w:document>"
+  let header_xml = "<w:hdr" +
+    ns +
+    ">" +
+    "<w:p><w:r>" +
+    inline_drawing_xml("rIdImg") +
+    "</w:r></w:p>" +
+    "</w:hdr>"
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Default Extension=\"png\" ContentType=\"image/png\"/>" +
+        "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>" +
+        "<Override PartName=\"/word/header1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    // Body part rels: `rIdImg` → the BODY image; plus the header part.
+    (
+      "word/_rels/document.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdH1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/header\" Target=\"header1.xml\"/>" +
+        "<Relationship Id=\"rIdImg\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/body.png\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    // §17.10 / OPC §9.3.1 — header part rels: the SAME `rIdImg` maps to
+    // a DIFFERENT image than the body part's `rIdImg`.
+    (
+      "word/_rels/header1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdImg\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/header.png\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("word/document.xml", bytes(document_xml)),
+    ("word/header1.xml", bytes(header_xml)),
+    ("word/media/body.png", body_png),
+    ("word/media/header.png", header_png),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
+/// §17.10 / OPC §9.3.1 — the header inline image resolves against the
+/// HEADER part's rels, not the document's.  The bug would render the
+/// document part's `rIdImg` (the BODY png) inside the header.
+test "wml context resolves a header inline image against the header part rels" {
+  let document = open(fixture_with_conflicting_image_rids())
+  let svg = document.to_svg()
+  let body_href = "data:image/png;base64," + @base64.encode(body_png)
+  let header_href = "data:image/png;base64," + @base64.encode(header_png)
+  // The body image resolves against the BODY part's rels.
+  assert_true(svg.contains("href=\"" + body_href + "\""))
+  // The header image resolves against the HEADER part's rels — the fix.
+  // (The bug would have rendered `body_href` here too, never `header_href`.)
+  assert_true(svg.contains("href=\"" + header_href + "\""))
+}
+
+///|
+/// §17 — body-image byte-identity.  A package whose body embeds an
+/// inline image resolves that blip against the main document part's
+/// rels.  This asserts the exact data URI the part-aware resolver
+/// emits (`image_resolver(main_part, rid)`) matches the verbatim
+/// base64 of the media bytes — the same payload the previous
+/// document-scoped resolver produced.
+test "wml context body inline image resolves to the document part media (byte-identical)" {
+  let png : Bytes = b"\x89PNG\r\n\x1a\n\x00\x42\x49\x54"
+  let ns = " xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"" +
+    " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"" +
+    " xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\"" +
+    " xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"" +
+    " xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\""
+  let document_xml = "<w:document" +
+    ns +
+    "><w:body><w:p><w:r>" +
+    inline_drawing_xml("rIdImg") +
+    "</w:r></w:p></w:body></w:document>"
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Default Extension=\"png\" ContentType=\"image/png\"/>" +
+        "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "word/_rels/document.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdImg\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/pic.png\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("word/document.xml", bytes(document_xml)),
+    ("word/media/pic.png", png),
+  ])
+  let document = open(try! @zip.write(archive))
+  let svg = document.to_svg()
+  let expected_href = "data:image/png;base64," + @base64.encode(png)
+  assert_true(svg.contains("href=\"" + expected_href + "\""))
+}
+
+///|
 /// §17.13.5 — fixture containing one `<w:ins>` and one `<w:del>` so
 /// `accept_revisions` / `reject_revisions` have something to act on.
 /// `<w:r>` runs nested inside the wrappers, with `<w:t>` / `<w:delText>`

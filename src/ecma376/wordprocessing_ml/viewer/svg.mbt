@@ -416,6 +416,18 @@ priv struct PageDecoration {
   footer_default : Array[@xml.Element]
   footer_first : Array[@xml.Element]
   footer_even : Array[@xml.Element]
+  /// §17.10 / OPC §9.3.1 — the OPC part token paired with EACH header /
+  /// footer block stream.  An inline image inside a header / footer
+  /// resolves its blip `r:embed` against THAT part's `_rels`, so the
+  /// token must travel with the stream down to the blip-resolution
+  /// site (`build_inline_image`).  Empty when the stream is absent or
+  /// the caller keys its resolver on the rId alone.
+  header_default_part : String
+  header_first_part : String
+  header_even_part : String
+  footer_default_part : String
+  footer_first_part : String
+  footer_even_part : String
   /// §17.6.6 `<w:titlePg>` — the section has a distinct first-page
   /// header / footer.
   title_pg : Bool
@@ -425,48 +437,60 @@ priv struct PageDecoration {
 }
 
 ///|
-/// §17.10.1 — the header block stream for the 0-based `page_index`.
-/// `first` / `even` fall back to `default` when the section declares
-/// no part of that type.
+/// §17.10 — a header / footer block stream paired with the OPC part
+/// token whose `_rels` scope the stream's image relationship Ids.
+/// `headers_for` / `footers_for` return this so the decoration
+/// renderer can hand the right part token to the part-aware
+/// `image_resolver` for the stream it is laying out.
+priv struct HdrFtrStream {
+  blocks : Array[@xml.Element]
+  part : String
+}
+
+///|
+/// §17.10.1 — the header block stream (and its OPC part token) for the
+/// 0-based `page_index`.  `first` / `even` fall back to `default` when
+/// the section declares no part of that type.
 fn PageDecoration::headers_for(
   self : PageDecoration,
   page_index : Int,
-) -> Array[@xml.Element] {
+) -> HdrFtrStream {
   if self.title_pg && page_index == 0 {
     if self.header_first.length() > 0 {
-      return self.header_first
+      return { blocks: self.header_first, part: self.header_first_part }
     }
-    return self.header_default
+    return { blocks: self.header_default, part: self.header_default_part }
   }
   // A 0-based index of 1, 3, 5… is a 1-based even page (2, 4, 6…).
   if self.even_and_odd && page_index % 2 == 1 {
     if self.header_even.length() > 0 {
-      return self.header_even
+      return { blocks: self.header_even, part: self.header_even_part }
     }
-    return self.header_default
+    return { blocks: self.header_default, part: self.header_default_part }
   }
-  self.header_default
+  { blocks: self.header_default, part: self.header_default_part }
 }
 
 ///|
-/// §17.10.1 — the footer block stream for the 0-based `page_index`.
+/// §17.10.1 — the footer block stream (and its OPC part token) for the
+/// 0-based `page_index`.
 fn PageDecoration::footers_for(
   self : PageDecoration,
   page_index : Int,
-) -> Array[@xml.Element] {
+) -> HdrFtrStream {
   if self.title_pg && page_index == 0 {
     if self.footer_first.length() > 0 {
-      return self.footer_first
+      return { blocks: self.footer_first, part: self.footer_first_part }
     }
-    return self.footer_default
+    return { blocks: self.footer_default, part: self.footer_default_part }
   }
   if self.even_and_odd && page_index % 2 == 1 {
     if self.footer_even.length() > 0 {
-      return self.footer_even
+      return { blocks: self.footer_even, part: self.footer_even_part }
     }
-    return self.footer_default
+    return { blocks: self.footer_default, part: self.footer_default_part }
   }
-  self.footer_default
+  { blocks: self.footer_default, part: self.footer_default_part }
 }
 
 ///|
@@ -1274,7 +1298,17 @@ pub fn render_svg(
   /// §17.10.1 `<w:evenAndOddHeaders>` — when `true` even pages use
   /// the `even`-type header / footer.
   even_and_odd_headers? : Bool = false,
-  image_resolver? : (String) -> ResolvedImage? = _ => None,
+  /// §17 / OPC §9.3.1 — PART-AWARE image resolver.  The FIRST argument
+  /// is an opaque "part context" token (the OPC part name in the
+  /// facade), the SECOND is the relationship Id from a `<a:blip
+  /// r:embed>` / `<v:imagedata r:id>`.  The renderer NEVER interprets
+  /// the token; it merely carries the current content stream's token
+  /// (the body part, the containing header / footer part, or the
+  /// numbering part for picture bullets) and hands it back so the
+  /// resolver scopes the rId to the CORRECT part's relationship table.
+  /// This fixes the latent bug where a header / footer inline image's
+  /// rId was resolved against the MAIN document part's rels.
+  image_resolver? : (String, String) -> ResolvedImage? = (_, _) => None,
   chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
@@ -1307,25 +1341,33 @@ pub fn render_svg(
   /// saveSmartTagsAsXml) is surfaced as
   /// `data-ooxml-web-settings-*` on the root `<svg>`.
   web_settings? : @domain.CT_WebSettings? = None,
-  /// §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — picture-bullet
-  /// image resolver, keyed on the `numPicBulletId` (the `w:val` of a
-  /// level's `<w:lvlPicBulletId>`).  When a numbered paragraph's
-  /// resolved level carries a picture bullet and this resolver returns
-  /// a `ResolvedImage`, the renderer emits the picture as an `<image>`
-  /// glyph at the bullet position INSTEAD of the §17.9.11 lvlText
-  /// marker; when it returns `None` the renderer falls back to the
-  /// text marker.
-  ///
-  /// FACADE CONTRACT: the bullet image's relationship Id lives in
-  /// `/word/numbering.xml.rels`, NOT `/word/document.xml.rels`, so the
-  /// document-scoped `image_resolver` above CANNOT resolve it.  The
-  /// caller must look up the `<w:numPicBullet w:numPicBulletId="N">` in
-  /// the numbering part, read its `<w:drawing>` blip `r:embed` (or VML
-  /// `<v:imagedata r:id>`), resolve that against numbering.xml.rels to
-  /// the media bytes, and return `{ mime_type, base64_data }`.  The
-  /// default (`_ => None`) yields the byte-identical text-marker
-  /// behaviour for documents whose facade does not wire this up.
-  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
+  /// §17.9.20 numPicBullet — OPC part name (token) for the numbering
+  /// part whose `_rels` scope a picture bullet's blip / imagedata
+  /// relationship Id.  Combined with `image_resolver` so a level's
+  /// `<w:lvlPicBulletId>` resolves through the SAME part-aware
+  /// resolver as every other image.  Empty (default) when the
+  /// document ships no numbering part; the renderer then never
+  /// resolves a picture bullet and draws the §17.9.11 lvlText marker.
+  numbering_part? : String = "",
+  /// §17 body content — OPC part name (token) for the MAIN document
+  /// part whose `_rels` scope every body `<a:blip r:embed>`.  Empty
+  /// (default) leaves the body resolving against the empty token, which
+  /// is byte-identical for callers that key their resolver on the rId
+  /// alone (the viewer's white-box tests).
+  body_part? : String = "",
+  /// §17.10 / OPC §9.3.1 — per-stream OPC part tokens for the six
+  /// header / footer block streams.  Each header / footer is a
+  /// SEPARATE OPC part with its OWN `_rels`, so an inline image's rId
+  /// inside it MUST resolve against THAT part's relationship table —
+  /// not the body part's.  These tokens are threaded to the
+  /// `image_resolver` for the matching stream.  Empty (default) for
+  /// callers that key their resolver on the rId alone.
+  header_part? : String = "",
+  header_part_first? : String = "",
+  header_part_even? : String = "",
+  footer_part? : String = "",
+  footer_part_first? : String = "",
+  footer_part_even? : String = "",
 ) -> DocumentSvgResult {
   // Build the theme colour map once per document; the map is
   // empty when no theme part is supplied, in which case the
@@ -1357,6 +1399,12 @@ pub fn render_svg(
     footer_default: unbox(footer_blocks),
     footer_first: unbox(footer_blocks_first),
     footer_even: unbox(footer_blocks_even),
+    header_default_part: header_part,
+    header_first_part: header_part_first,
+    header_even_part: header_part_even,
+    footer_default_part: footer_part,
+    footer_first_part: footer_part_first,
+    footer_even_part: footer_part_even,
     title_pg,
     even_and_odd: even_and_odd_headers,
   }
@@ -1372,8 +1420,100 @@ pub fn render_svg(
     settings~,
     fonts~,
     web_settings~,
-    pic_bullet_resolver~,
+    numbering_part~,
+    body_part~,
   )
+}
+
+///|
+/// §17 / OPC §9.3.1 — bind an OPC part token into the part-aware
+/// `image_resolver`, yielding the rId-only resolver that the internal
+/// layout pipeline (`collect_blocks`, `layout_paragraph`,
+/// `build_inline_image`, …) threads.  Every content stream — body,
+/// header, footer — gets its OWN token bound here so an inline image's
+/// `<a:blip r:embed>` resolves against the relationship table of the
+/// part that CONTAINS it.
+fn bind_part_image_resolver(
+  image_resolver : (String, String) -> ResolvedImage?,
+  part : String,
+) -> (String) -> ResolvedImage? {
+  fn(rid : String) -> ResolvedImage? { image_resolver(part, rid) }
+}
+
+///|
+/// §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — build the
+/// `(numPicBulletId) -> ResolvedImage?` resolver that
+/// `apply_numbering_marker` consults, folding picture bullets into the
+/// SAME part-aware `image_resolver` as every other image.  A
+/// `numPicBulletId` is NOT itself a relationship Id: we look up the raw
+/// `<w:numPicBullet>` element in the numbering table (`pic_bullets`,
+/// keyed by id), walk it to its embedded image relationship Id (the
+/// `<a:blip r:embed>` for a DrawingML picture or the `<v:imagedata
+/// r:id>` for a VML picture — §17.9.20 permits either), then resolve
+/// THAT rId against the numbering part's token.  Returns `None` (the
+/// byte-identical text-marker fallback) when the document ships no
+/// numbering, the id is absent, no embed / id reference is reachable,
+/// or the resolver cannot resolve it.
+fn build_pic_bullet_image_resolver(
+  image_resolver : (String, String) -> ResolvedImage?,
+  numbering : @domain.CT_Numbering?,
+  numbering_part : String,
+) -> (Int) -> ResolvedImage? {
+  match numbering {
+    None => _ => None
+    Some(table) => {
+      let pic_bullets = table.pic_bullets
+      fn(pic_id : Int) -> ResolvedImage? {
+        // §17.9.20 — locate the `<w:numPicBullet>` raw element and
+        // extract its embedded image relationship Id.
+        match pic_bullets.get(pic_id) {
+          None => None
+          Some(pic_bullet) =>
+            match num_pic_bullet_image_rid(pic_bullet) {
+              None => None
+              Some(rid) => image_resolver(numbering_part, rid)
+            }
+        }
+      }
+    }
+  }
+}
+
+///|
+/// §17.9.20 numPicBullet — walk a raw `<w:numPicBullet>` element to its
+/// embedded image relationship Id.  A numPicBullet wraps either a
+/// DrawingML picture (`<w:drawing>…<a:blip r:embed="rIdN"/>`, possibly
+/// nested under `<pic:blipFill>`) or a VML picture
+/// (`<w:pict><v:shape><v:imagedata r:id="rIdN"/>`).  We do a
+/// depth-first walk and return the first attribute whose local name is
+/// `embed` (DrawingML blip) or `id` (VML imagedata) in the
+/// officeDocument relationships namespace.  Returns `None` when no such
+/// reference is reachable.
+fn num_pic_bullet_image_rid(element : @xml.Element) -> String? {
+  // A blip `r:embed` (DrawingML) wins when both are present; the
+  // depth-first order below visits the drawing subtree's `r:embed`
+  // before any sibling VML `r:id` because a conforming numPicBullet
+  // carries exactly one of them.
+  for a in element.attributes {
+    if a.name.ns ==
+      Some(
+        "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+      ) &&
+      (a.name.local_name == "embed" || a.name.local_name == "id") {
+      return Some(a.value)
+    }
+  }
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        match num_pic_bullet_image_rid(child_element) {
+          Some(rid) => return Some(rid)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
 }
 
 ///|
@@ -1383,7 +1523,7 @@ pub fn render_svg(
 fn render_svg_raw(
   domain : @domain.CT_Document,
   decoration : PageDecoration,
-  image_resolver : (String) -> ResolvedImage?,
+  image_resolver : (String, String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
@@ -1392,10 +1532,24 @@ fn render_svg_raw(
   settings? : @domain.CT_Settings? = None,
   fonts? : @domain.CT_FontsList? = None,
   web_settings? : @domain.CT_WebSettings? = None,
-  // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
-  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
+  // §17.9.20 numPicBullet — OPC part token for the numbering part.
+  numbering_part? : String = "",
+  // §17 body content — OPC part token for the main document part.
+  body_part? : String = "",
 ) -> DocumentSvgResult {
   let warnings : Array[String] = []
+  // §17 / OPC §9.3.1 — bind the body part token into a per-stream
+  // resolver so the body pipeline (`collect_blocks` → `build_inline_image`)
+  // resolves its blips against the MAIN document part's rels.  Header /
+  // footer streams get their OWN token wrapped at the decoration site.
+  let body_image_resolver = bind_part_image_resolver(image_resolver, body_part)
+  // §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — fold picture bullets
+  // into the SAME part-aware resolver: keyed on the numPicBulletId, walk
+  // the `<w:numPicBullet>` to its blip / imagedata rId and resolve it
+  // against the numbering part's token.
+  let pic_bullet_resolver = build_pic_bullet_image_resolver(
+    image_resolver, numbering, numbering_part,
+  )
   let settings_attrs = settings_data_attrs(settings)
   // (Removed: previous revision counted WML descendant names
   // across the document / settings / styles / numbering / fonts /
@@ -1483,6 +1637,7 @@ fn render_svg_raw(
         warnings,
         decoration,
         image_resolver,
+        body_image_resolver,
         chart_resolver,
         domain.element,
         styles,
@@ -1505,7 +1660,12 @@ fn render_body_to_svg(
   body : @xml.Element,
   warnings : Array[String],
   decoration : PageDecoration,
-  image_resolver : (String) -> ResolvedImage?,
+  // Part-aware resolver — handed to the §17.10 decoration path so each
+  // header / footer stream resolves images against ITS OWN part token.
+  image_resolver : (String, String) -> ResolvedImage?,
+  // Body-bound rId-only resolver — the §17 body content's blips resolve
+  // against the main document part's rels (already bound upstream).
+  body_image_resolver : (String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   document_root : @xml.Element,
   styles : @domain.CT_Styles?,
@@ -1519,7 +1679,7 @@ fn render_body_to_svg(
   let (cfg, pages) = lay_out_body(
     body,
     warnings,
-    image_resolver,
+    body_image_resolver,
     chart_resolver,
     document_root,
     styles,
@@ -1636,7 +1796,12 @@ pub fn render_combined_svg(
   footer_blocks_even? : Array[@domain.EG_BlockLevelElts] = [],
   title_pg? : Bool = false,
   even_and_odd_headers? : Bool = false,
-  image_resolver? : (String) -> ResolvedImage? = _ => None,
+  /// §17 / OPC §9.3.1 — PART-AWARE image resolver.  See `render_svg`:
+  /// the FIRST argument is an opaque OPC part token, the SECOND the
+  /// blip / imagedata relationship Id.  The renderer carries the
+  /// current stream's token (body / header / footer / numbering part)
+  /// and hands it back so the rId is scoped to the CORRECT part's rels.
+  image_resolver? : (String, String) -> ResolvedImage? = (_, _) => None,
   chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
   styles? : @domain.CT_Styles? = None,
   numbering? : @domain.CT_Numbering? = None,
@@ -1651,13 +1816,20 @@ pub fn render_combined_svg(
   /// §11.5 — typed `/word/webSettings.xml` projection; surfaced on
   /// the combined SVG root as `data-ooxml-web-settings-*` attrs.
   web_settings? : @domain.CT_WebSettings? = None,
-  /// §17.9.9 lvlPicBulletId / §17.9.20 numPicBullet — picture-bullet
-  /// image resolver keyed on the `numPicBulletId`.  See `render_svg`
-  /// for the full facade contract (the bullet image's `r:id` lives in
-  /// `/word/numbering.xml.rels`, not the document part's rels).  The
-  /// default (`_ => None`) renders the §17.9.11 lvlText text marker,
-  /// byte-identical to the pre-feature output.
-  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
+  /// §17.9.20 numPicBullet — OPC part token for the numbering part
+  /// (see `render_svg`).  Combined with `image_resolver` so a level's
+  /// `<w:lvlPicBulletId>` resolves through the same part-aware resolver.
+  numbering_part? : String = "",
+  /// §17 body content — OPC part token for the main document part.
+  body_part? : String = "",
+  /// §17.10 / OPC §9.3.1 — per-stream OPC part tokens for the six
+  /// header / footer block streams (see `render_svg`).
+  header_part? : String = "",
+  header_part_first? : String = "",
+  header_part_even? : String = "",
+  footer_part? : String = "",
+  footer_part_first? : String = "",
+  footer_part_even? : String = "",
 ) -> String {
   let theme_map = match theme {
     Some(root) => parse_clr_scheme(root)
@@ -1678,6 +1850,12 @@ pub fn render_combined_svg(
     footer_default: unbox(footer_blocks),
     footer_first: unbox(footer_blocks_first),
     footer_even: unbox(footer_blocks_even),
+    header_default_part: header_part,
+    header_first_part: header_part_first,
+    header_even_part: header_part_even,
+    footer_default_part: footer_part,
+    footer_first_part: footer_part_first,
+    footer_even_part: footer_part_even,
     title_pg,
     even_and_odd: even_and_odd_headers,
   }
@@ -1693,7 +1871,8 @@ pub fn render_combined_svg(
     settings~,
     fonts~,
     web_settings~,
-    pic_bullet_resolver~,
+    numbering_part~,
+    body_part~,
   )
 }
 
@@ -1704,7 +1883,7 @@ pub fn render_combined_svg(
 fn render_combined_svg_raw(
   domain : @domain.CT_Document,
   decoration : PageDecoration,
-  image_resolver : (String) -> ResolvedImage?,
+  image_resolver : (String, String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   numbering : @domain.CT_Numbering?,
@@ -1713,10 +1892,19 @@ fn render_combined_svg_raw(
   settings? : @domain.CT_Settings? = None,
   fonts? : @domain.CT_FontsList? = None,
   web_settings? : @domain.CT_WebSettings? = None,
-  // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
-  pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
+  // §17.9.20 numPicBullet — OPC part token for the numbering part.
+  numbering_part? : String = "",
+  // §17 body content — OPC part token for the main document part.
+  body_part? : String = "",
 ) -> String {
   let warnings : Array[String] = []
+  // §17 / OPC §9.3.1 — body content resolves against the main document
+  // part; picture bullets fold into the same part-aware resolver
+  // scoped to the numbering part (see `render_svg_raw`).
+  let body_image_resolver = bind_part_image_resolver(image_resolver, body_part)
+  let pic_bullet_resolver = build_pic_bullet_image_resolver(
+    image_resolver, numbering, numbering_part,
+  )
   let settings_attrs = settings_data_attrs(settings)
   for a in fonts_data_attrs(fonts) {
     settings_attrs.push(a)
@@ -1764,7 +1952,7 @@ fn render_combined_svg_raw(
       lay_out_body(
         body_el,
         warnings,
-        image_resolver,
+        body_image_resolver,
         chart_resolver,
         domain.element,
         styles,
@@ -1806,7 +1994,7 @@ fn build_combined_svg(
   pages : Array[AssembledPage],
   decoration : PageDecoration,
   warnings : Array[String],
-  image_resolver : (String) -> ResolvedImage?,
+  image_resolver : (String, String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   settings_attrs? : Array[@xml.Attribute] = [],
@@ -8323,10 +8511,10 @@ fn offset_table(t : LaidTable, dx : Double, dy : Double) -> LaidTable {
 fn emit_page_svg_with_decoration(
   page : AssembledPage,
   cfg : PageConfig,
-  header_blocks : Array[@xml.Element],
-  footer_blocks : Array[@xml.Element],
+  header : HdrFtrStream,
+  footer : HdrFtrStream,
   warnings : Array[String],
-  image_resolver : (String) -> ResolvedImage?,
+  image_resolver : (String, String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   settings_attrs? : Array[@xml.Attribute] = [],
@@ -8336,8 +8524,8 @@ fn emit_page_svg_with_decoration(
   let children = build_page_decoration_nodes(
     page,
     cfg,
-    header_blocks,
-    footer_blocks,
+    header,
+    footer,
     warnings,
     image_resolver,
     chart_resolver,
@@ -8361,10 +8549,10 @@ fn emit_page_svg_with_decoration(
 fn build_page_decoration_nodes(
   page : AssembledPage,
   cfg : PageConfig,
-  header_blocks : Array[@xml.Element],
-  footer_blocks : Array[@xml.Element],
+  header : HdrFtrStream,
+  footer : HdrFtrStream,
   warnings : Array[String],
-  image_resolver : (String) -> ResolvedImage?,
+  image_resolver : (String, String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
@@ -8377,12 +8565,19 @@ fn build_page_decoration_nodes(
   let content_width = (cfg.page_width - cfg.margin_left - cfg.margin_right).max(
     0.0,
   )
-  if header_blocks.length() > 0 {
+  if header.blocks.length() > 0 {
+    // §17.10 / OPC §9.3.1 — bind THIS header part's token so its inline
+    // images resolve against `/word/_rels/header*.xml.rels`, not the
+    // body part's rels.
+    let header_image_resolver = bind_part_image_resolver(
+      image_resolver,
+      header.part,
+    )
     let blocks = collect_blocks_from_elements(
-      header_blocks,
+      header.blocks,
       content_width,
       warnings,
-      image_resolver,
+      header_image_resolver,
       chart_resolver,
       styles,
       theme_map~,
@@ -8403,12 +8598,17 @@ fn build_page_decoration_nodes(
       ),
     )
   }
-  if footer_blocks.length() > 0 {
+  if footer.blocks.length() > 0 {
+    // §17.10 / OPC §9.3.1 — bind THIS footer part's token.
+    let footer_image_resolver = bind_part_image_resolver(
+      image_resolver,
+      footer.part,
+    )
     let blocks = collect_blocks_from_elements(
-      footer_blocks,
+      footer.blocks,
       content_width,
       warnings,
-      image_resolver,
+      footer_image_resolver,
       chart_resolver,
       styles,
       theme_map~,
