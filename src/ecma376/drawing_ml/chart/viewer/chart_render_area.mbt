@@ -17,6 +17,7 @@ fn render_area_chart(
   ctx : ColorResolveContext,
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
+  defs : SvgDefsCollector,
 ) -> Array[@xml.Node] {
   let all_series : Array[(Array[String], Array[Double])] = []
   let ser_elems : Array[@xml.Element] = []
@@ -99,7 +100,7 @@ fn render_area_chart(
   let mut si = all_series.length() - 1
   while si >= 0 {
     let (_, values) = all_series[si]
-    let series_color = resolve_series_color(ser_elems[si], si, ctx)
+    let series_color = resolve_series_color(ser_elems[si], si, ctx, defs)
     let buf = StringBuilder::new()
     // Start at the baseline at x=0.
     buf.write_string(format_double(px))

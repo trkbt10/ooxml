@@ -22,6 +22,7 @@ fn render_bar_chart(
   ctx : ColorResolveContext,
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
+  defs : SvgDefsCollector,
 ) -> Array[@xml.Node] {
   let bar_dir = match first_child_named(elem, "barDir") {
     Some(d) => attr_or(d, "val", "col")
@@ -242,7 +243,7 @@ fn render_bar_chart(
           let len = if max_v > 0.0 { norm_v / max_v * pw } else { 0.0 }
           let x_start = if max_v > 0.0 { px + accum / max_v * pw } else { px }
           let by = py + band_idx.to_double() * band + sub_pad
-          let color = resolve_series_color(ser_elems[si], si, ctx)
+          let color = resolve_series_color(ser_elems[si], si, ctx, defs)
           nodes.push(
             @markup.elem_ns(
               "rect",
@@ -272,8 +273,13 @@ fn render_bar_chart(
         (1.0 + overlap_frac * (s_count - 1).to_double() / s_count.to_double())
       for si, s in series {
         let (_, values) = s
-        let color = resolve_series_color(ser_elems[si], si, ctx)
-        let dpt_overrides = collect_dpt_colors(ser_elems[si], ctx)
+        let color = resolve_series_color(ser_elems[si], si, ctx, defs)
+        let dpt_overrides = collect_dpt_colors(
+          ser_elems[si],
+          ctx,
+          defs,
+          "ser" + si.to_string(),
+        )
         for i, v in values {
           if i >= cat_count {
             break
@@ -399,7 +405,7 @@ fn render_bar_chart(
             py + ph
           }
           let bx = px + i_idx.to_double() * band + pad
-          let color = resolve_series_color(ser_elems[si], si, ctx)
+          let color = resolve_series_color(ser_elems[si], si, ctx, defs)
           nodes.push(
             @markup.elem_ns(
               "rect",
@@ -437,8 +443,13 @@ fn render_bar_chart(
       }
       for si, s in series {
         let (_, values) = s
-        let color = resolve_series_color(ser_elems[si], si, ctx)
-        let dpt_overrides = collect_dpt_colors(ser_elems[si], ctx)
+        let color = resolve_series_color(ser_elems[si], si, ctx, defs)
+        let dpt_overrides = collect_dpt_colors(
+          ser_elems[si],
+          ctx,
+          defs,
+          "ser" + si.to_string(),
+        )
         for i, v in values {
           if i >= cat_count {
             break

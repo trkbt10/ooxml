@@ -77,6 +77,7 @@ fn scx_render(plot_area : @xml.Element) -> String {
     ColorResolveContext::empty(),
     axes,
     scx_style(),
+    SvgDefsCollector::new(),
   )
   let sb = StringBuilder::new()
   for nd in nodes {

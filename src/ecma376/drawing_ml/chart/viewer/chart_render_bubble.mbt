@@ -15,6 +15,7 @@ fn render_bubble_chart(
   ctx : ColorResolveContext,
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
+  defs : SvgDefsCollector,
 ) -> Array[@xml.Node] {
   let ser = match first_child_named(elem, "ser") {
     Some(s) => s
@@ -33,7 +34,7 @@ fn render_bubble_chart(
   // §21.2.2.170 — axis origin defaults to 0 for scatter/bubble.
   let min_x = effective_axis_min(axes)
   let min_y = effective_axis_min(axes)
-  let series_color = resolve_series_color(ser, 0, ctx)
+  let series_color = resolve_series_color(ser, 0, ctx, defs)
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
   if !axes.val_deleted() {

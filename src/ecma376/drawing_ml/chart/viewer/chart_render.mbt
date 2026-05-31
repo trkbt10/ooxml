@@ -195,44 +195,40 @@ fn chart_series_color(ctx : ColorResolveContext, index : Int) -> String {
 }
 
 ///|
-/// §21.2.2.171 ser — read a series element's `<c:spPr>/<a:solidFill>`
-/// colour. When present, this overrides the accent palette for that
-/// series. Returns None when the series has no explicit fill.
-fn read_series_fill_color(
-  ser : @xml.Element,
-  ctx : ColorResolveContext,
-) -> String? {
-  let sp_pr = match first_child_named(ser, "spPr") {
-    Some(s) => s
-    None => return None
-  }
-  match @paint.resolve_solid_fill(sp_pr, ctx~) {
-    Some(rc) => Some(@paint.format_resolved_color(rc))
-    None => None
-  }
-}
-
-///|
-/// Resolve the fill colour for series index `si`. Checks the series
-/// element's `<c:spPr>/<a:solidFill>` first; falls back to the accent
-/// palette when absent.
+/// §21.2.2.171 ser — resolve the fill for series index `si`.  Delegates
+/// to `resolve_series_fill`, which handles the full §20.1.8
+/// EG_FillProperties surface (solid / gradient / pattern) and registers a
+/// `<defs>` entry for gradient / pattern fills via `defs`, returning a
+/// `url(#id)` reference.  When the series carries no recognised fill the
+/// accent palette supplies the colour (byte-identical to the legacy
+/// solid-only path).  `defs` accumulates any gradient / pattern defs; the
+/// series index seeds a stable, collision-free def id.
 fn resolve_series_color(
   ser : @xml.Element,
   si : Int,
   ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
 ) -> String {
-  match read_series_fill_color(ser, ctx) {
+  match resolve_series_fill(ser, ctx, defs, "ser" + si.to_string()) {
     Some(c) => c
     None => chart_series_color(ctx, si)
   }
 }
 
 ///|
-/// §21.2.2.52 dPt — collect per-point colour overrides from a series.
-/// Returns a map from point index to CSS colour string.
+/// §21.2.2.52 dPt — collect per-point fill overrides from a series.
+/// Returns a map from point index to an SVG `fill="…"` value (a
+/// `#rrggbb` solid or a `url(#id)` gradient / pattern reference; the
+/// latter registers a def in `defs`).  Per-point fills resolve through
+/// the same `resolve_sppr_fill` path as series fills, so a `<c:dPt>`
+/// gradient renders a real gradient rather than degrading to a flat
+/// colour.  `id_hint` seeds the per-point def ids (the series index keeps
+/// ids unique across series).
 fn collect_dpt_colors(
   ser : @xml.Element,
   ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  id_hint : String,
 ) -> Array[(Int, String)] {
   let out : Array[(Int, String)] = []
   for ch in ser.children {
@@ -248,9 +244,14 @@ fn collect_dpt_colors(
               Some(s) => s
               None => continue
             }
-            match @paint.resolve_solid_fill(sp_pr, ctx~) {
-              Some(rc) => out.push((idx, @paint.format_resolved_color(rc)))
-              None => ()
+            let fill = resolve_sppr_fill(
+              sp_pr,
+              ctx,
+              defs,
+              id_hint + "-dpt" + idx.to_string(),
+            )
+            if fill.length() > 0 {
+              out.push((idx, fill))
             }
           }
         }
@@ -1934,7 +1935,7 @@ pub fn render_chart_space(
       @xml.Node::Element(elem) => {
         let local_name = elem.name.local_name
         let payload = render_chart_payload(
-          local_name, elem, inner_w, inner_h, w, h, ctx, axes, style,
+          local_name, elem, inner_w, inner_h, w, h, ctx, axes, style, defs,
         )
         for n in payload {
           inner_nodes.push(n)
@@ -2153,7 +2154,7 @@ pub fn render_chart_space(
             } else {
               0.0
             }
-            let series_color = resolve_series_color(se, si, ctx)
+            let series_color = resolve_series_color(se, si, ctx, defs)
             // §21.2.2.211 trendline.
             match read_trendline(se) {
               Some(tl_elem) =>
@@ -3882,37 +3883,47 @@ fn render_chart_payload(
   ctx : ColorResolveContext,
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
+  defs : SvgDefsCollector,
 ) -> Array[@xml.Node] {
   match local_name {
-    "barChart" => render_bar_chart(elem, iw, ih, fw, fh, ctx, axes, style)
-    "lineChart" => render_line_chart(elem, iw, ih, fw, fh, ctx, axes, style)
-    "pieChart" => render_pie_chart(elem, iw, ih, ctx, hole_percent=None)
+    "barChart" => render_bar_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+    "lineChart" =>
+      render_line_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+    "pieChart" => render_pie_chart(elem, iw, ih, ctx, defs, hole_percent=None)
     "doughnutChart" =>
       render_pie_chart(
         elem,
         iw,
         ih,
         ctx,
+        defs,
         hole_percent=Some(doughnut_hole_percent(elem)),
       )
     "scatterChart" =>
-      render_scatter_chart(elem, iw, ih, fw, fh, ctx, axes, style)
-    "areaChart" => render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style)
-    "bubbleChart" => render_bubble_chart(elem, iw, ih, fw, fh, ctx, axes, style)
-    "radarChart" => render_radar_chart(elem, iw, ih, fw, fh, ctx, style)
+      render_scatter_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+    "areaChart" =>
+      render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+    "bubbleChart" =>
+      render_bubble_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+    "radarChart" => render_radar_chart(elem, iw, ih, fw, fh, ctx, style, defs)
+    // §21.2.2.188 stock — OHLC / HLC lines use solid stroke colours (no
+    // series FILL), so it takes no `defs`; threading would be dead weight.
     "stockChart" => render_stock_chart(elem, iw, ih, fw, fh, ctx, axes, style)
     // §21.2 3D chart types — degrade to 2D equivalent (no perspective
     // projection in SVG). The element structure is compatible: 3D
     // variants carry the same <c:ser>/<c:cat>/<c:val> children.
-    "bar3DChart" => render_bar_chart(elem, iw, ih, fw, fh, ctx, axes, style)
-    "line3DChart" => render_line_chart(elem, iw, ih, fw, fh, ctx, axes, style)
-    "pie3DChart" => render_pie_chart(elem, iw, ih, ctx, hole_percent=None)
-    "area3DChart" => render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style)
+    "bar3DChart" =>
+      render_bar_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+    "line3DChart" =>
+      render_line_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+    "pie3DChart" => render_pie_chart(elem, iw, ih, ctx, defs, hole_percent=None)
+    "area3DChart" =>
+      render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
     // §21.2.2.205 surface — no SVG equivalent; render as area chart.
     "surface3DChart" | "surfaceChart" =>
-      render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style)
+      render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
     // §21.2.2.126 ofPieChart — pie-of-pie / bar-of-pie; render as pie.
-    "ofPieChart" => render_pie_chart(elem, iw, ih, ctx, hole_percent=None)
+    "ofPieChart" => render_pie_chart(elem, iw, ih, ctx, defs, hole_percent=None)
     _ => []
   }
 }

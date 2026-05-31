@@ -15,6 +15,7 @@ fn render_pie_chart(
   w : Double,
   h : Double,
   ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
   hole_percent~ : Int?,
 ) -> Array[@xml.Node] {
   let ser = match first_child_named(elem, "ser") {
@@ -53,7 +54,7 @@ fn render_pie_chart(
     None => 0.0
   }
   let nodes : Array[@xml.Node] = []
-  let dpt_overrides = collect_dpt_colors(ser, ctx)
+  let dpt_overrides = collect_dpt_colors(ser, ctx, defs, "pie")
   // §21.2.2.64 explosion — per-data-point slice offset (in % of
   // outer radius).  Series-level <c:explosion> applies to all
   // slices; per-dPt <c:explosion> overrides individual slices.

@@ -122,6 +122,7 @@ fn render_line_chart(
   ctx : ColorResolveContext,
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
+  defs : SvgDefsCollector,
 ) -> Array[@xml.Node] {
   let all_series : Array[(Array[String], Array[Double])] = []
   let ser_elems : Array[@xml.Element] = []
@@ -209,7 +210,7 @@ fn render_line_chart(
   }
   for si, s in all_series {
     let (_, values) = s
-    let series_color = resolve_series_color(ser_elems[si], si, ctx)
+    let series_color = resolve_series_color(ser_elems[si], si, ctx, defs)
     // §21.2.2.196 smooth — when `<c:smooth val="1"/>` is present on
     // the series, render the line as a smooth Catmull-Rom-style
     // curve via cubic Béziers instead of straight polyline

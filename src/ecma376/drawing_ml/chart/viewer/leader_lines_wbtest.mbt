@@ -49,6 +49,7 @@ test "pie dLblPos=outEnd + leaderLines emits connector lines + side-anchored lab
     400.0,
     300.0,
     ColorResolveContext::empty(),
+    SvgDefsCollector::new(),
     hole_percent=None,
   )
   let sb = StringBuilder::new()
@@ -76,6 +77,7 @@ test "pie default label position stays inside (no leader lines)" {
     400.0,
     300.0,
     ColorResolveContext::empty(),
+    SvgDefsCollector::new(),
     hole_percent=None,
   )
   let sb = StringBuilder::new()

@@ -14,6 +14,7 @@ fn render_radar_chart(
   _fh : Double,
   ctx : ColorResolveContext,
   style : ChartStyleDefaults,
+  defs : SvgDefsCollector,
 ) -> Array[@xml.Node] {
   // §21.2.2.153 radarStyle — "filled" uses opaque fill, "marker"
   // uses outline + markers.
@@ -162,7 +163,7 @@ fn render_radar_chart(
   let mut si = all_series.length() - 1
   while si >= 0 {
     let (_, values) = all_series[si]
-    let series_color = resolve_series_color(ser_elems[si], si, ctx)
+    let series_color = resolve_series_color(ser_elems[si], si, ctx, defs)
     let poly_buf = StringBuilder::new()
     let mut first = true
     let mut j = 0
