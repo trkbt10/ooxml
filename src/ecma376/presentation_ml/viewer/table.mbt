@@ -390,7 +390,7 @@ fn emit_cell_borders(
 ///|
 /// Resolve a `<a:ln*>` child of `tcPr` into a stroke and emit an SVG
 /// `<line>` when present. The fill resolution mirrors what
-/// `render_sp_stroke_attrs` does for shapes.
+/// `build_line_attrs` does for shapes.
 fn emit_border_line(
   tc_pr : @xml.Element,
   local_name : String,

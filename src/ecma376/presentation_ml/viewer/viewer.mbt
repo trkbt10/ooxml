@@ -1571,11 +1571,17 @@ fn render_sp_shape_svg(
   }
   // §20.1.4.1.20 / §20.1.4.1.19 — same cascade for the line:
   // when `<a:spPr>` lacks `<a:ln>`, resolve via `<p:style>/<a:lnRef>`.
-  let stroke_attrs : Array[@xml.Attribute] = match sp_pr {
-    None => []
+  // Resolve the EFFECTIVE `<a:ln>` element once so both the stroke
+  // attributes and the §20.1.10.15 `@cmpd` compound-line class are
+  // read from the same source (direct child takes precedence over the
+  // lnRef template).  `ph_clr_opt` carries the phClr substitution used
+  // when the line came from a theme template.
+  let (effective_line, line_ctx) : (@xml.Element?, ColorResolveContext) = match
+    sp_pr {
+    None => (None, ctx)
     Some(pr) =>
       match first_child_named(pr, "ln") {
-        Some(_) => render_sp_stroke_attrs(pr, ctx, defs)
+        Some(line) => (Some(line), ctx)
         None =>
           match resolve_ln_ref_for_shape(shape, theme) {
             Some((template, ph_clr_opt)) => {
@@ -1583,11 +1589,26 @@ fn render_sp_shape_svg(
                 Some(hex) => with_ph_clr(ctx, hex)
                 None => ctx
               }
-              build_line_attrs(template, ctx2, defs)
+              (Some(template), ctx2)
             }
-            None => render_sp_stroke_attrs(pr, ctx, defs)
+            None => (None, ctx)
           }
       }
+  }
+  // Stroke attributes share the single `build_line_attrs` resolver
+  // (`render_sp_stroke_attrs` is the same lookup for the direct-child
+  // case; using the effective line here also covers the lnRef
+  // template branch with one code path).
+  let stroke_attrs : Array[@xml.Attribute] = match effective_line {
+    Some(line) => build_line_attrs(line, line_ctx, defs)
+    None => []
+  }
+  // §20.1.10.15 ST_CompoundLine — `sng` (or no line) keeps the
+  // single-stroke geometry path; dbl / thickThin / thinThick / tri
+  // request the layered compound rendering in `render_geometry_path`.
+  let line_compound : String = match effective_line {
+    Some(line) => line_cmpd(line)
+    None => "sng"
   }
 
   // §20.1.8 effect chain (outerShdw / innerShdw / glow / softEdge /
@@ -1621,7 +1642,9 @@ fn render_sp_shape_svg(
   }
 
   // Geometry path.
-  let shape_path = render_geometry_path(sp_pr, w, h, fill_attrs, stroke_attrs)
+  let shape_path = render_geometry_path(
+    sp_pr, w, h, fill_attrs, stroke_attrs, line_compound,
+  )
 
   // §20.1.5 3D scene/sp3d → extrusion + bevel + lighting gradient.
   let (path_d, _) = extract_geometry_path_d(sp_pr, w, h)
@@ -2139,22 +2162,6 @@ fn render_sp_fill_attrs(
 }
 
 ///|
-/// Build `stroke="..." stroke-width="..."` attributes from `<a:ln>`.
-/// Returns the empty string when the line is absent or
-/// `<a:noFill/>`-only.
-fn render_sp_stroke_attrs(
-  sp_pr : @xml.Element,
-  ctx : ColorResolveContext,
-  defs : SvgDefsCollector,
-) -> Array[@xml.Attribute] {
-  let ln = first_child_named(sp_pr, "ln")
-  match ln {
-    None => []
-    Some(line) => build_line_attrs(line, ctx, defs)
-  }
-}
-
-///|
 /// Build stroke attributes for a `<a:ln>` element.  Returns the
 /// structured stroke attribute list (empty when the line is absent
 /// or `<a:noFill/>`-only).
@@ -2269,6 +2276,212 @@ fn build_line_attrs(
     attrs.push(a)
   }
   attrs
+}
+
+///|
+/// §20.1.10.15 ST_CompoundLine — read the `@cmpd` attribute of an
+/// `<a:ln>` element, defaulting to `"sng"` (the schema default) when
+/// absent or when the value falls outside the closed enum
+/// {sng, dbl, thickThin, thinThick, tri}.  A schema-violating value
+/// degrades to `"sng"` so the outline still renders as a single
+/// stroke rather than disappearing.
+fn line_cmpd(line : @xml.Element) -> String {
+  match attr_value(line, "cmpd") {
+    Some("dbl") => "dbl"
+    Some("thickThin") => "thickThin"
+    Some("thinThick") => "thinThick"
+    Some("tri") => "tri"
+    // `sng`, absent, or schema-violating → single stroke.
+    _ => "sng"
+  }
+}
+
+///|
+/// Extract the numeric `stroke-width` value (EMU) from a resolved
+/// stroke attribute list produced by `build_line_attrs`.  Returns the
+/// §20.1.2.2.24 default (12700 EMU = 1 pt) when no `stroke-width`
+/// attribute is present or it fails to parse — mirroring the same
+/// fallback `build_line_attrs` itself applies, so the compound-band
+/// math stays consistent with the single-stroke width (SoT: the width
+/// is resolved once inside `build_line_attrs`; this only re-reads it).
+fn stroke_width_from_attrs(stroke_attrs : Array[@xml.Attribute]) -> Double {
+  for a in stroke_attrs {
+    if a.name.local_name == "stroke-width" {
+      return try @string.parse_double(a.value) catch {
+        _ => 12700.0
+      } noraise {
+        d => d
+      }
+    }
+  }
+  12700.0
+}
+
+///|
+/// Extract the resolved `fill` colour from a fill attribute list (as
+/// produced by `render_sp_fill_attrs` / `render_fill_attr`).  This is
+/// the colour used to "carve" the gap(s) of a §20.1.10.15 compound
+/// line — see `build_compound_line_nodes` for why the fill colour is
+/// the only renderer-available backdrop.  Returns `"white"` when the
+/// shape declares no usable fill (`fill="none"` / absent / a
+/// `url(#…)` gradient that cannot be reduced to a flat band colour),
+/// because a `none`-painted overlay would not carve the gap at all
+/// (the underlying full-width stroke would show through, collapsing
+/// the compound line back to a single stroke).
+fn gap_color_from_fill(fill_attrs : Array[@xml.Attribute]) -> String {
+  for a in fill_attrs {
+    if a.name.local_name == "fill" {
+      let v = a.value
+      // A flat colour (hex or named) carves the gap as the shape
+      // interior.  `none` / gradient references cannot, so fall
+      // back to white (documented approximation).
+      if v == "none" || v.has_prefix("url(") || v == "currentColor" {
+        return "white"
+      }
+      return v
+    }
+  }
+  "white"
+}
+
+///|
+/// §20.1.10.15 ST_CompoundLine — build LAYERED stroke nodes for a
+/// compound outline on a single geometry path.
+///
+/// SVG strokes are centred on the path and a single element's stroke
+/// attributes cannot express parallel sub-strokes, so a compound line
+/// is rendered by LAYERING concentric strokes on the SAME path: the
+/// outer stroke is drawn at the full width `w` in the line colour,
+/// then a narrower centred overlay stroke (or strokes) painted in the
+/// shape's resolved FILL colour "carves" the gap band(s).
+///
+/// APPROXIMATION (documented): the gap should reveal the slide
+/// backdrop behind the line, but for a shape OUTLINE the only
+/// renderer-available "behind" colour is the shape's own fill (the
+/// gap over the interior).  There is no portable way to show the true
+/// slide backdrop through a thin gap, so the gap is painted with the
+/// fill colour (`gap_color_from_fill`).  Over the shape interior this
+/// is exact; along the part of the outline that overhangs the
+/// backdrop the gap reads as the fill colour rather than the backdrop
+/// — an accepted fidelity trade-off.
+///
+/// Band ratios (centred bands across the total width `w`):
+///   * dbl       — line w/3 · gap w/3 · line w/3.  One fill-colour
+///                 overlay of width w/3 carves the centre gap.
+///   * tri       — five equal w/5 bands (line·gap·line·gap·line).
+///                 Two fill-colour overlays carve the two gaps; an
+///                 SVG centred stroke cannot place a band off-centre,
+///                 so the two gaps are approximated by a single
+///                 fill-colour overlay of width 3·w/5 with a centre
+///                 line restored on top (line·gap·line·gap·line read
+///                 as line | fill | line | fill | line where the
+///                 middle line is the restored w/5 core).
+///   * thickThin — outer thick 0.5w · gap 0.25w · inner thin 0.25w.
+///                 Faithful asymmetric split is impossible with
+///                 centred strokes (both bands are off-centre), so we
+///                 approximate by carving a single centred gap: a
+///                 0.25w fill-colour overlay leaving 0.375w line on
+///                 each side.  This loses the thick/thin asymmetry —
+///                 see limitations.
+///   * thinThick — same centred-gap approximation as thickThin (the
+///                 asymmetry is not reproducible with centred
+///                 strokes).
+///
+/// The dash / cap / join / marker attributes resolved by
+/// `build_line_attrs` ride on the OUTER (line-colour) stroke only, so
+/// the dash pattern and end markers match the single-stroke output;
+/// the fill-colour overlays are plain solid strokes that only carve
+/// the gap.
+///
+/// Returns `None` for `cmpd == "sng"` (or any unhandled value) so the
+/// caller keeps its existing single-element output BYTE-IDENTICAL.
+fn build_compound_line_nodes(
+  path_d : String,
+  cmpd : String,
+  fill_attrs : Array[@xml.Attribute],
+  stroke_attrs : Array[@xml.Attribute],
+) -> Array[@xml.Node]? {
+  if cmpd == "sng" {
+    return None
+  }
+  let w = stroke_width_from_attrs(stroke_attrs)
+  if w <= 0.0 {
+    return None
+  }
+  let gap_color = gap_color_from_fill(fill_attrs)
+  // Outer full-width stroke: the line colour at width `w`, carrying
+  // every resolved stroke attribute (dash / cap / join / markers).
+  // `fill="none"` keeps the overlay from painting the path interior.
+  let outer_attrs : Array[@xml.Attribute] = [
+    @markup.attr("d", path_d),
+    @markup.attr("fill", "none"),
+  ]
+  for a in stroke_attrs {
+    outer_attrs.push(a)
+  }
+  let nodes : Array[@xml.Node] = [
+    @markup.elem_ns("path", @markup.svg_ns, outer_attrs, []),
+  ]
+  // Helper to build one fill-colour gap overlay stroke at `band_w`.
+  // The overlay carries NO dash / marker — it is a solid carve.
+  let gap_overlay = (band_w : Double) => {
+    let attrs : Array[@xml.Attribute] = [
+      @markup.attr("d", path_d),
+      @markup.attr("fill", "none"),
+      @markup.attr("stroke", gap_color),
+      @markup.attr("stroke-width", format_double(band_w)),
+    ]
+    @markup.elem_ns("path", @markup.svg_ns, attrs, [])
+  }
+  // Helper to restore a line-colour core stroke at `band_w` (used by
+  // `tri` to bring back the centre line after the wide gap carve).
+  let core_overlay = (band_w : Double) => {
+    let line_color = stroke_color_from_attrs(stroke_attrs)
+    let attrs : Array[@xml.Attribute] = [
+      @markup.attr("d", path_d),
+      @markup.attr("fill", "none"),
+      @markup.attr("stroke", line_color),
+      @markup.attr("stroke-width", format_double(band_w)),
+    ]
+    @markup.elem_ns("path", @markup.svg_ns, attrs, [])
+  }
+  match cmpd {
+    "dbl" =>
+      // line w/3 · gap w/3 · line w/3 → carve the centre w/3 band.
+      nodes.push(gap_overlay(w / 3.0))
+    "tri" => {
+      // Five w/5 bands.  Carve a 3·w/5 gap, then restore the centre
+      // w/5 line on top so the result reads line | gap | line | gap |
+      // line.  (Two truly-separate gaps are not expressible with
+      // centred strokes; this layering reproduces the same five
+      // visible bands.)
+      nodes.push(gap_overlay(3.0 * w / 5.0))
+      nodes.push(core_overlay(w / 5.0))
+    }
+    "thickThin" | "thinThick" =>
+      // Asymmetric split is not reproducible with centred strokes;
+      // approximate with a single centred 0.25w gap (0.375w line on
+      // each side).  See doc-comment limitations.
+      nodes.push(gap_overlay(w / 4.0))
+    // `sng` handled above; any other value already returned None.
+    _ => return None
+  }
+  Some(nodes)
+}
+
+///|
+/// Extract the resolved `stroke` colour from a resolved stroke
+/// attribute list produced by `build_line_attrs`.  Used by the `tri`
+/// compound-line path to restore the centre line over the carved gap.
+/// Returns `"currentColor"` (the `build_line_attrs` default for a
+/// line with no explicit fill) when no `stroke` attribute is present.
+fn stroke_color_from_attrs(stroke_attrs : Array[@xml.Attribute]) -> String {
+  for a in stroke_attrs {
+    if a.name.local_name == "stroke" {
+      return a.value
+    }
+  }
+  "currentColor"
 }
 
 ///|
@@ -2463,23 +2676,63 @@ fn render_geometry_path(
   h : Double,
   fill_attrs : Array[@xml.Attribute],
   stroke_attrs : Array[@xml.Attribute],
+  line_compound : String,
 ) -> @xml.Node {
+  // §20.1.10.15 ST_CompoundLine — when the outline is a compound line
+  // (dbl / thickThin / thinThick / tri) the stroke must be split into
+  // parallel sub-strokes, which a single element cannot express.  We
+  // wrap the fill (drawn once on the geometry) and the layered
+  // compound strokes (`build_compound_line_nodes`) in a `<g>`.  When
+  // `line_compound == "sng"` this helper returns `None` and the
+  // single-element output below is kept byte-identical.
+  //
+  // `compound_wrap(path_d)` builds the fill-only geometry element plus
+  // the layered strokes for a given path; it returns `None` to signal
+  // the caller should fall through to the single-element output.
+  let compound_paths = (path_d : String) => {
+    match
+      build_compound_line_nodes(path_d, line_compound, fill_attrs, stroke_attrs) {
+      None => None
+      Some(stroke_nodes) => {
+        // Fill is painted once (no stroke); the compound stroke nodes
+        // are layered on top.
+        let fill_only : Array[@xml.Attribute] = [@markup.attr("d", path_d)]
+        for a in fill_attrs {
+          fill_only.push(a)
+        }
+        let children : Array[@xml.Node] = [
+          @markup.elem_ns("path", @markup.svg_ns, fill_only, []),
+        ]
+        for n in stroke_nodes {
+          children.push(n)
+        }
+        Some(@markup.elem_ns("g", @markup.svg_ns, [], children))
+      }
+    }
+  }
   // Build the bounding-rect fallback used when geometry is missing
-  // or the preset is unknown.
+  // or the preset is unknown.  Compound lines need a path `d` to
+  // overlay, so the rect fallback first converts to the equivalent
+  // path before attempting the compound layering.
   let rect_fallback = () => {
-    let attrs : Array[@xml.Attribute] = [
-      @markup.attr("x", "0"),
-      @markup.attr("y", "0"),
-      @markup.attr("width", format_double(w)),
-      @markup.attr("height", format_double(h)),
-    ]
-    for a in fill_attrs {
-      attrs.push(a)
+    match compound_paths(default_rect_path_d(w, h)) {
+      Some(node) => node
+      None => {
+        let attrs : Array[@xml.Attribute] = [
+          @markup.attr("x", "0"),
+          @markup.attr("y", "0"),
+          @markup.attr("width", format_double(w)),
+          @markup.attr("height", format_double(h)),
+        ]
+        for a in fill_attrs {
+          attrs.push(a)
+        }
+        for a in stroke_attrs {
+          attrs.push(a)
+        }
+        @markup.elem_ns("rect", @markup.svg_ns, attrs, [])
+      }
     }
-    for a in stroke_attrs {
-      attrs.push(a)
-    }
-    @markup.elem_ns("rect", @markup.svg_ns, attrs, [])
   }
   let prst_geom = match sp_pr {
     None => None
@@ -2500,16 +2753,23 @@ fn render_geometry_path(
     }
     match d {
       None => None
-      Some(path_d) => {
-        attrs[0] = @markup.attr("d", path_d)
-        for a in fill_attrs {
-          attrs.push(a)
+      Some(path_d) =>
+        // §20.1.10.15 — a compound outline layers parallel strokes on
+        // the same custom-geometry path; `sng` keeps the single flat
+        // `<path>` byte-identical.
+        match compound_paths(path_d) {
+          Some(node) => Some(node)
+          None => {
+            attrs[0] = @markup.attr("d", path_d)
+            for a in fill_attrs {
+              attrs.push(a)
+            }
+            for a in stroke_attrs {
+              attrs.push(a)
+            }
+            Some(@markup.elem_ns("path", @markup.svg_ns, attrs, []))
+          }
         }
-        for a in stroke_attrs {
-          attrs.push(a)
-        }
-        Some(@markup.elem_ns("path", @markup.svg_ns, attrs, []))
-      }
     }
   }
   match prst_geom {
@@ -2530,20 +2790,35 @@ fn render_geometry_path(
             // Single-layer (the vast majority) — one flat `<path>`
             // with the supplied fill / stroke.
             let d = if layers.length() == 1 { layers[0].path } else { "" }
-            let attrs : Array[@xml.Attribute] = [@markup.attr("d", d)]
-            for a in fill_attrs {
-              attrs.push(a)
+            // §20.1.10.15 — a compound outline layers parallel strokes
+            // on the same path; `sng` keeps the single flat `<path>`
+            // byte-identical.
+            match compound_paths(d) {
+              Some(node) => node
+              None => {
+                let attrs : Array[@xml.Attribute] = [@markup.attr("d", d)]
+                for a in fill_attrs {
+                  attrs.push(a)
+                }
+                for a in stroke_attrs {
+                  attrs.push(a)
+                }
+                @markup.elem_ns("path", @markup.svg_ns, attrs, [])
+              }
             }
-            for a in stroke_attrs {
-              attrs.push(a)
-            }
-            @markup.elem_ns("path", @markup.svg_ns, attrs, [])
           } else {
             // Multi-layer 3D / shaded preset — emit a `<g>` group
             // whose children are one `<path>` per layer, each
             // painted with the base fill modified by the layer's
             // `fill_mod` (lightness offset).  Strokes go on the
             // first layer only so the outline does not double.
+            // §20.1.10.15 compound lines are NOT layered here: a 3D
+            // multi-layer preset already stacks translated copies, so
+            // splitting each into compound sub-strokes would multiply
+            // the geometry confusingly.  These shapes stay on the
+            // single-stroke path (the compound outline is dropped);
+            // this is a rare combination (3D extrusion + compound
+            // outline) — see limitations.
             let layer_nodes : Array[@xml.Node] = []
             for i, layer in layers {
               let layer_fill = derive_layer_fill(fill_attrs, layer.fill_mod)
@@ -6850,6 +7125,17 @@ fn render_connector_svg(
           }
       }
   }
+  // §20.1.10.15 ST_CompoundLine — read `@cmpd` from the direct
+  // `<a:ln>` (a connector almost always carries one).  `sng` (or no
+  // direct line) keeps the single-stroke `<path>` byte-identical.
+  let line_compound : String = match sp_pr {
+    None => "sng"
+    Some(pr) =>
+      match first_child_named(pr, "ln") {
+        Some(line) => line_cmpd(line)
+        None => "sng"
+      }
+  }
   // Path: §20.1.9.18 — connector `line` preset is corner-to-corner.
   let path_data = connector_path_data(sp_pr, w, h)
   let g_attrs : Array[@xml.Attribute] = []
@@ -6862,18 +7148,38 @@ fn render_connector_svg(
   for a in cxn_endpoints_attr {
     g_attrs.push(a)
   }
-  let path_attrs : Array[@xml.Attribute] = [
-    @markup.attr("d", path_data),
-    @markup.attr("fill", "none"),
-  ]
-  for a in stroke_attrs {
-    path_attrs.push(a)
+  // §20.1.10.15 — a compound connector layers parallel strokes on the
+  // single connector path.  A connector has no shape fill, so the gap
+  // is carved with white (`gap_color_from_fill` default) — documented
+  // approximation: there is no portable way to show the true slide
+  // backdrop through the gap.
+  let stroke_nodes : Array[@xml.Node] = match
+    build_compound_line_nodes(
+      path_data,
+      line_compound,
+      [@markup.attr("fill", "none")],
+      stroke_attrs,
+    ) {
+    Some(nodes) => nodes
+    None => {
+      // Single-stroke (sng / unhandled) — one flat `<path>`,
+      // byte-identical to the previous output.
+      let path_attrs : Array[@xml.Attribute] = [
+        @markup.attr("d", path_data),
+        @markup.attr("fill", "none"),
+      ]
+      for a in stroke_attrs {
+        path_attrs.push(a)
+      }
+      [@markup.elem_ns("path", @markup.svg_ns, path_attrs, [])]
+    }
   }
   // §17.4 / §20.1.3 — connector-level media / hyperlink overlay.
   let nv_overlays = nv_media_overlay_svg(cxn, w, h)
-  let g_children : Array[@xml.Node] = [
-    @markup.elem_ns("path", @markup.svg_ns, path_attrs, []),
-  ]
+  let g_children : Array[@xml.Node] = []
+  for n in stroke_nodes {
+    g_children.push(n)
+  }
   for n in nv_overlays {
     g_children.push(n)
   }
