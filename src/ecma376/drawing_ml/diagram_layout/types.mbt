@@ -455,8 +455,11 @@ pub(all) struct ChooseBranch {
 
 ///|
 /// Part 1 §21.4.2.27 shape — the preset-shape reference attached
-/// to a layout node. `hide_geom` controls whether the renderer
-/// draws the shape at all (text-only nodes set it to `true`).
+/// to a layout node. `preset = None` covers omitted type and the
+/// non-preset output shape kinds (`none`, `conn`); invalid preset
+/// tokens are rejected during decode. `hide_geom` controls whether
+/// the renderer draws the shape at all (text-only nodes set it to
+/// `true`).
 pub(all) struct Shape {
   preset : @preset_geometry.PresetShape?
   hide_geom : Bool
@@ -558,8 +561,8 @@ pub(all) struct BoundsRect {
 /// Output record produced by `DiagramLayoutEngine::apply`. One
 /// `NodeBounds` is emitted per data point that the layout reaches;
 /// `shape` is the preset shape the renderer should draw at the
-/// supplied `bounds`. Unknown / missing preset shapes default to
-/// `ShapeRect` so a renderer never sees an empty shape.
+/// supplied `bounds`. Missing or non-preset output shapes default
+/// to `ShapeRect` so a renderer never sees an empty shape.
 pub(all) struct NodeBounds {
   point_id : String
   bounds : BoundsRect

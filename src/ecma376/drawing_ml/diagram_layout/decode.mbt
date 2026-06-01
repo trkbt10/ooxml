@@ -118,32 +118,41 @@ pub fn decode_algorithm(
 
 ///|
 /// Part 1 §21.4.2.27 shape — decode a `shape` element into a
-/// typed `Shape`. The preset shape reference is decoded via
-/// `@preset_geometry.PresetShape::from_attr`; unknown lexical
-/// values are tolerated (recorded as `None`) so the layout decode
-/// does not fail when a layout references a niche shape that the
-/// preset_geometry package has not catalogued yet.
-pub fn decode_shape(element : @xml.Element) -> Shape {
-  let preset = match attribute(element, "type") {
-    Some(value) => {
-      let trimmed = trim_whitespace(value)
-      if trimmed.length() == 0 {
-        None
-      } else {
-        try @preset_geometry.PresetShape::from_attr(trimmed) catch {
-          _ => None
-        } noraise {
-          shape => Some(shape)
-        }
-      }
+/// typed `Shape`. The raw XML is first projected through
+/// `@domain.CT_Shape`, whose `ST_LayoutShapeType` parser delegates
+/// the preset branch to DrawingML `ST_ShapeType`; this package only
+/// converts that typed token into the renderer's `PresetShape`.
+pub fn decode_shape(
+  element : @xml.Element,
+) -> Shape raise @opc_errors.SchemaViolation {
+  let typed = diagram_shape_from_element(element)
+  let preset = match typed.type_ {
+    @domain.LayoutShapeTypePreset(shape_type) => {
+      let shape = @preset_geometry.PresetShape::from_attr(
+        shape_type.to_string(),
+      )
+      Some(shape)
     }
-    None => None
+    @domain.LayoutShapeTypeOutput(_) => None
   }
-  let hide_geom = match attribute(element, "hideGeom") {
-    Some("1") | Some("true") => true
-    _ => false
+  { preset, hide_geom: typed.hide_geom }
+}
+
+///|
+/// Bridge the diagram-domain schema error into this package's
+/// canonical Part 1 §21.4 violation so layout decoding has one
+/// public error type.
+fn diagram_shape_from_element(
+  element : @xml.Element,
+) -> @domain.CT_Shape raise @opc_errors.SchemaViolation {
+  @domain.CT_Shape::new(element) catch {
+    @domain.SchemaViolation(schema=_, path=p, reason~) =>
+      raise @opc_errors.SchemaViolation(
+        section=diagram_layout_section,
+        path=p,
+        reason~,
+      )
   }
-  { preset, hide_geom }
 }
 
 ///|

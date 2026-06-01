@@ -120,6 +120,16 @@ test "§21.4.7.1 AlgorithmType::is_supported flags canonical layouts" {
 }
 
 ///|
+test "§21.4.2.27 shape delegates @type validation to ST_ShapeType" {
+  let valid = try! decode_shape(parse_root("<shape type=\"roundRect\"/>"))
+  assert_true(valid.preset is Some(@preset_geometry.ShapeRoundRect))
+  let output = try! decode_shape(parse_root("<shape type=\"conn\"/>"))
+  assert_true(output.preset is None)
+  let bad = try? decode_shape(parse_root("<shape type=\"notARealShape\"/>"))
+  assert_true(bad is Err(_))
+}
+
+///|
 /// §21.4.7.1 composite — end-to-end proof that a composite node
 /// positions each child from the composite ORIGIN via its
 /// `for="ch" forName=…` constraints, with NO linear distribution.

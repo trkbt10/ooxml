@@ -76,10 +76,21 @@ test "ST_LayoutShapeType parses §21.4.7.41 ST_OutputShapeType branch" {
 test "ST_LayoutShapeType parses §21.4.7.41 ST_ShapeType preset branch" {
   let value = ST_LayoutShapeType::parse("rect")
   match value {
-    LayoutShapeTypePreset(token) => assert_eq(token, "rect")
+    LayoutShapeTypePreset(shape) => assert_true(shape is @a.ShapeRect)
     _ => fail("expected LayoutShapeTypePreset")
   }
   assert_eq(value.to_string(), "rect")
+}
+
+///|
+test "ST_LayoutShapeType rejects non-ST_ShapeType preset tokens" {
+  try {
+    ST_LayoutShapeType::parse("notARealShape") |> ignore
+    fail("expected ST_LayoutShapeType rejection")
+  } catch {
+    SchemaViolation(_) => ()
+    _ => fail("expected SchemaViolation")
+  }
 }
 
 ///|

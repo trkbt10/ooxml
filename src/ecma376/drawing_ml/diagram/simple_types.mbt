@@ -162,18 +162,17 @@ pub fn ST_CxnType::to_string(self : ST_CxnType) -> String {
 /// ST_OutputShapeType (§21.4.7.48, "none" | "conn") and DrawingML
 /// ST_ShapeType (§20.1.10.56, the preset-geometry token set). The
 /// `Output` variant holds the typed enum from this package; the
-/// `Preset` variant holds the §20.1.10.56 token verbatim because that
-/// vocabulary lives in the drawing_ml package and is not importable
-/// here without crossing the diagram package boundary.
+/// `Preset` variant holds the DrawingML typed enum so the §20.1.10.56
+/// vocabulary is owned by dml-main, not duplicated here.
 pub(all) enum ST_LayoutShapeType {
   LayoutShapeTypeOutput(ST_OutputShapeType)
-  LayoutShapeTypePreset(String)
+  LayoutShapeTypePreset(@a.ST_ShapeType)
 } derive(Eq, Debug)
 
 ///|
 /// Parse the ST_LayoutShapeType schema lexical value. Try the typed
-/// ST_OutputShapeType branch first; otherwise accept any non-empty
-/// xsd:token as an ST_ShapeType preset name.
+/// ST_OutputShapeType branch first; otherwise delegate to DrawingML
+/// ST_ShapeType for the preset-shape branch.
 pub fn ST_LayoutShapeType::parse(
   s : String,
 ) -> ST_LayoutShapeType raise SchemaViolation {
@@ -183,7 +182,12 @@ pub fn ST_LayoutShapeType::parse(
   match s {
     "none" => LayoutShapeTypeOutput(OutputShapeTypeNone)
     "conn" => LayoutShapeTypeOutput(OutputShapeTypeConn)
-    _ => LayoutShapeTypePreset(s)
+    _ => {
+      let preset = @a.ST_ShapeType::parse(s) catch {
+        @a.SchemaViolation(_) => invalid("ST_LayoutShapeType", s)
+      }
+      LayoutShapeTypePreset(preset)
+    }
   }
 }
 
@@ -200,7 +204,7 @@ pub fn ST_LayoutShapeType::new(
 pub fn ST_LayoutShapeType::to_string(self : ST_LayoutShapeType) -> String {
   match self {
     LayoutShapeTypeOutput(v) => v.to_string()
-    LayoutShapeTypePreset(s) => s
+    LayoutShapeTypePreset(s) => s.to_string()
   }
 }
 

@@ -54,7 +54,7 @@ pub fn decode_point(@xml.Element) -> DiagramPoint raise @errors.SchemaViolation
 
 pub fn decode_pres_of(@xml.Element) -> PresOfSpec raise @errors.SchemaViolation
 
-pub fn decode_shape(@xml.Element) -> Shape
+pub fn decode_shape(@xml.Element) -> Shape raise @errors.SchemaViolation
 
 pub fn definition_has_geometric_constraints(DiagramDefinition) -> Bool
 

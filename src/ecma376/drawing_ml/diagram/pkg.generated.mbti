@@ -1232,7 +1232,7 @@ pub fn ST_Ints::to_string(Self) -> String
 
 pub(all) enum ST_LayoutShapeType {
   LayoutShapeTypeOutput(ST_OutputShapeType)
-  LayoutShapeTypePreset(String)
+  LayoutShapeTypePreset(@drawing_ml.ST_ShapeType)
 } derive(Eq, @debug.Debug)
 pub fn ST_LayoutShapeType::new(String) -> Self raise SchemaViolation
 pub fn ST_LayoutShapeType::parse(String) -> Self raise SchemaViolation
