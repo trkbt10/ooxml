@@ -25,6 +25,7 @@ fn render_radar_chart(
   ctx : ColorResolveContext,
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
+  disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
 ) -> Array[@xml.Node] {
   // §21.2.2.153 radarStyle — "filled" uses opaque fill, "marker"
   // uses outline + markers.
@@ -33,14 +34,14 @@ fn render_radar_chart(
     None => "marker"
   }
   let is_filled = radar_style == "filled"
-  let all_series : Array[(Array[String], Array[Double])] = []
+  let all_series : Array[(Array[String], Array[Double?])] = []
   let ser_elems : Array[@xml.Element] = []
   for ch in elem.children {
     match ch {
       @xml.Node::Element(se) =>
         if se.name.local_name == "ser" {
           let labels = read_cat_labels(se)
-          let values = read_val_numbers(se)
+          let values = read_val_number_slots(se)
           if values.length() > 0 {
             ser_elems.push(se)
             all_series.push((labels, values))
@@ -60,7 +61,7 @@ fn render_radar_chart(
   let mut data_max = 0.0
   for s in all_series {
     let (_, values) = s
-    let mv = max_positive(values)
+    let mv = max_positive_slots(values, disp_blanks_as)
     if mv > data_max {
       data_max = mv
     }
@@ -176,10 +177,13 @@ fn render_radar_chart(
     let series_color = resolve_series_color(ser_elems[si], si, ctx, defs)
     let poly_buf = StringBuilder::new()
     let mut first = true
-    let mut j = 0
-    while j < n && j < values.length() {
+    for point in chart_rendered_points(values, disp_blanks_as) {
+      let (j, v) = point
+      if j >= n {
+        break
+      }
       let a = spoke_angle(j)
-      let r = values[j] / max_v * outer_r
+      let r = v / max_v * outer_r
       let x = cx + r * @math.cos(a)
       let y = cy + r * @math.sin(a)
       if !first {
@@ -189,7 +193,6 @@ fn render_radar_chart(
       poly_buf.write_string(",")
       poly_buf.write_string(format_double(y))
       first = false
-      j = j + 1
     }
     nodes.push(
       @markup.elem_ns(
@@ -213,10 +216,13 @@ fn render_radar_chart(
     // semantics inside Office.
     if radar_style == "marker" {
       let marker_r = h * 0.01
-      let mut jm = 0
-      while jm < n && jm < values.length() {
+      for point in chart_rendered_points(values, disp_blanks_as) {
+        let (jm, v) = point
+        if jm >= n {
+          break
+        }
         let a = spoke_angle(jm)
-        let r = values[jm] / max_v * outer_r
+        let r = v / max_v * outer_r
         let x = cx + r * @math.cos(a)
         let y = cy + r * @math.sin(a)
         nodes.push(
@@ -232,7 +238,6 @@ fn render_radar_chart(
             [],
           ),
         )
-        jm = jm + 1
       }
     }
     si = si - 1

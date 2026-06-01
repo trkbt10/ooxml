@@ -128,15 +128,16 @@ fn render_line_chart(
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
+  disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
 ) -> Array[@xml.Node] {
-  let all_series : Array[(Array[String], Array[Double])] = []
+  let all_series : Array[(Array[String], Array[Double?])] = []
   let ser_elems : Array[@xml.Element] = []
   for ch in elem.children {
     match ch {
       @xml.Node::Element(se) =>
         if se.name.local_name == "ser" {
           let labels = read_cat_labels(se)
-          let values = read_val_numbers(se)
+          let values = read_val_number_slots(se)
           if values.length() > 0 {
             ser_elems.push(se)
             all_series.push((labels, values))
@@ -153,7 +154,7 @@ fn render_line_chart(
   let mut n = 0
   for s in all_series {
     let (_, values) = s
-    let mv = max_positive(values)
+    let mv = max_positive_slots(values, disp_blanks_as)
     if mv > data_max {
       data_max = mv
     }
@@ -224,11 +225,25 @@ fn render_line_chart(
   // series' value, coloured "up" (default white) when the last value
   // exceeds the first and "down" (default black) otherwise.  Painted
   // BEFORE the series polylines so the lines sit on top.
-  for
-    nd in render_up_down_bars(
-      elem, all_series, px, py, ph, step, max_v, ctx, n, val_rev, cat_rev,
-    ) {
-    nodes.push(nd)
+  let mut up_down_has_blank = false
+  for s in all_series {
+    let (_, values) = s
+    if number_slots_have_blank(values) {
+      up_down_has_blank = true
+    }
+  }
+  if disp_blanks_as_is_zero(disp_blanks_as) || !up_down_has_blank {
+    let up_down_series : Array[(Array[String], Array[Double])] = []
+    for s in all_series {
+      let (labels_s, values) = s
+      up_down_series.push((labels_s, number_slots_to_zeroes(values)))
+    }
+    for
+      nd in render_up_down_bars(
+        elem, up_down_series, px, py, ph, step, max_v, ctx, n, val_rev, cat_rev,
+      ) {
+      nodes.push(nd)
+    }
   }
   for si, s in all_series {
     let (_, values) = s
@@ -241,67 +256,70 @@ fn render_line_chart(
     // standard SVG path C commands so pruning `<c:smooth>` produces
     // a visible diff (path vs polyline) the catalog detects.
     let smooth = match first_child_named(ser_elems[si], "smooth") {
-      // §22.9.2.7 xsd:boolean accepts both "true"/"false" and
-      // "1"/"0" lexical forms; the default when val is absent is
-      // "true" (the synth's `<c:smooth/>` carries no val).
-      Some(e) => {
-        let v = attr_or(e, "val", "true")
-        v == "1" || v == "true"
-      }
+      // CT_Boolean default is true when `@val` is absent.
+      Some(e) => chart_bool_default_true(e)
       None => false
     }
-    let pts : Array[(Double, Double)] = []
-    for i, v in values {
-      pts.push((cat_x(i), val_y(v)))
-    }
-    if smooth && pts.length() >= 2 {
-      // §21.2.2.220 — render the series as a smooth Catmull-Rom curve
-      // (shared with the scatter chart via `catmull_rom_path`).
-      nodes.push(
-        @markup.elem_ns(
-          "path",
-          @markup.svg_ns,
-          [
-            @markup.attr("d", catmull_rom_path(pts)),
-            @markup.attr("fill", "none"),
-            @markup.attr("stroke", series_color),
-            @markup.attr("stroke-width", format_double(h * 0.005)),
-            @markup.attr("stroke-linejoin", "round"),
-          ],
-          [],
-        ),
-      )
-    } else {
-      let buf = StringBuilder::new()
-      let mut first = true
-      for pt in pts {
-        let (x, y) = pt
-        if !first {
-          buf.write_string(" ")
-        }
-        buf.write_string(format_double(x))
-        buf.write_string(",")
-        buf.write_string(format_double(y))
-        first = false
+    let segments = chart_point_segments(values, disp_blanks_as)
+    for segment in segments {
+      let pts : Array[(Double, Double)] = []
+      for point in segment {
+        let (i, v) = point
+        pts.push((cat_x(i), val_y(v)))
       }
-      nodes.push(
-        @markup.elem_ns(
-          "polyline",
-          @markup.svg_ns,
-          [
-            @markup.attr("points", buf.to_string()),
-            @markup.attr("fill", "none"),
-            @markup.attr("stroke", series_color),
-            @markup.attr("stroke-width", format_double(h * 0.005)),
-            @markup.attr("stroke-linejoin", "round"),
-          ],
-          [],
-        ),
-      )
+      if pts.length() < 2 {
+        continue
+      }
+      if smooth {
+        // §21.2.2.220 — render the series as a smooth Catmull-Rom curve
+        // (shared with the scatter chart via `catmull_rom_path`).
+        nodes.push(
+          @markup.elem_ns(
+            "path",
+            @markup.svg_ns,
+            [
+              @markup.attr("d", catmull_rom_path(pts)),
+              @markup.attr("fill", "none"),
+              @markup.attr("stroke", series_color),
+              @markup.attr("stroke-width", format_double(h * 0.005)),
+              @markup.attr("stroke-linejoin", "round"),
+            ],
+            [],
+          ),
+        )
+      } else {
+        let buf = StringBuilder::new()
+        let mut first = true
+        for pt in pts {
+          let (x, y) = pt
+          if !first {
+            buf.write_string(" ")
+          }
+          buf.write_string(format_double(x))
+          buf.write_string(",")
+          buf.write_string(format_double(y))
+          first = false
+        }
+        nodes.push(
+          @markup.elem_ns(
+            "polyline",
+            @markup.svg_ns,
+            [
+              @markup.attr("points", buf.to_string()),
+              @markup.attr("fill", "none"),
+              @markup.attr("stroke", series_color),
+              @markup.attr("stroke-width", format_double(h * 0.005)),
+              @markup.attr("stroke-linejoin", "round"),
+            ],
+            [],
+          ),
+        )
+      }
     }
     let default_r = h * 0.008
     let (marker_sym, marker_r) = read_marker_config(ser_elems[si], default_r)
-    for i, v in values {
+    for point in chart_rendered_points(values, disp_blanks_as) {
+      let (i, v) = point
       nodes.push(
         render_marker(cat_x(i), val_y(v), marker_r, marker_sym, series_color),
       )
@@ -309,22 +327,25 @@ fn render_line_chart(
     // §21.2.2.211 trendline — linear regression overlay.
     match read_trendline(ser_elems[si]) {
       Some(tl_elem) =>
-        for
-          tn in render_trendline(
-            tl_elem,
-            values,
-            px,
-            py,
-            pw,
-            ph,
-            max_v,
-            step,
-            series_color,
-            h * 0.003,
-            val_rev~,
-            cat_rev~,
-          ) {
-          nodes.push(tn)
+        if disp_blanks_as_is_zero(disp_blanks_as) ||
+          !number_slots_have_blank(values) {
+          for
+            tn in render_trendline(
+              tl_elem,
+              number_slots_to_zeroes(values),
+              px,
+              py,
+              pw,
+              ph,
+              max_v,
+              step,
+              series_color,
+              h * 0.003,
+              val_rev~,
+              cat_rev~,
+            ) {
+            nodes.push(tn)
+          }
         }
       None => ()
     }
@@ -332,7 +353,8 @@ fn render_line_chart(
     match read_err_bars(ser_elems[si]) {
       Some(eb_cfg) => {
         let pts : Array[(Double, Double)] = []
-        for i, v in values {
+        for point in chart_rendered_points(values, disp_blanks_as) {
+          let (i, v) = point
           pts.push((cat_x(i), val_y(v)))
         }
         for
@@ -385,9 +407,10 @@ fn render_line_chart(
           Some(nm) => nm
           None => ""
         }
-        let total = sum_positive(values)
+        let total = sum_positive_slots(values, disp_blanks_as)
         let points : Array[(Double, Double, Double, String)] = []
-        for i, v in values {
+        for point in chart_rendered_points(values, disp_blanks_as) {
+          let (i, v) = point
           let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
           points.push((cat_x(i), val_y(v), v, cat_name))
         }

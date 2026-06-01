@@ -207,18 +207,22 @@ fn render_of_pie_chart(
   _axes : ChartAxesInfo,
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
+  disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
 ) -> Array[@xml.Node] {
   let ser = match first_child_named(elem, "ser") {
     Some(s) => s
     None => return []
   }
-  let values = read_val_numbers(ser)
+  let values = read_val_number_slots(ser)
   if values.length() == 0 {
     return []
   }
   let cat_labels = read_cat_labels(ser)
   let split = read_of_pie_split(elem)
-  let is_secondary = classify_of_pie_secondary(split, values)
+  let is_secondary = classify_of_pie_secondary(
+    split,
+    number_slots_to_zeroes(values),
+  )
 
   // Partition into primary points (own slices) + secondary points, and
   // compute the aggregated "Other" value (Σ positive secondary points).
@@ -226,7 +230,8 @@ fn render_of_pie_chart(
   let secondary_slices : Array[PieSlice] = []
   let dpt_overrides = collect_dpt_colors(ser, ctx, defs, "ofpie")
   let mut other_value = 0.0
-  for i, v in values {
+  for point in chart_rendered_points(values, disp_blanks_as) {
+    let (i, v) = point
     if v <= 0.0 {
       continue
     }
@@ -391,7 +396,8 @@ fn render_of_pie_chart(
       let mut accum = start_deg.to_double()
       // Per-point primary labels, in the SAME order the wedges were
       // emitted (primary points in series order, secondary skipped).
-      for i, v in values {
+      for point in chart_rendered_points(values, disp_blanks_as) {
+        let (i, v) = point
         if v <= 0.0 || is_secondary[i] {
           continue
         }

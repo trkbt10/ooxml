@@ -17,16 +17,17 @@ fn render_pie_chart(
   ctx : ColorResolveContext,
   defs : SvgDefsCollector,
   hole_percent~ : Int?,
+  disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
 ) -> Array[@xml.Node] {
   let ser = match first_child_named(elem, "ser") {
     Some(s) => s
     None => return []
   }
-  let values = read_val_numbers(ser)
+  let values = read_val_number_slots(ser)
   if values.length() == 0 {
     return []
   }
-  let total = sum_positive(values)
+  let total = sum_positive_slots(values, disp_blanks_as)
   if total <= 0.0 {
     return []
   }
@@ -67,7 +68,8 @@ fn render_pie_chart(
   // overrides.  Non-positive values are dropped so the wedge total
   // stays well-defined.
   let slices : Array[PieSlice] = []
-  for i, v in values {
+  for point in chart_rendered_points(values, disp_blanks_as) {
+    let (i, v) = point
     if v <= 0.0 {
       continue
     }
@@ -115,7 +117,8 @@ fn render_pie_chart(
       }
       let font_size = (if w < h { w } else { h }) * 0.03
       let mut deg2 = start_deg.to_double()
-      for i, v in values {
+      for point in chart_rendered_points(values, disp_blanks_as) {
+        let (i, v) = point
         if v <= 0.0 {
           continue
         }

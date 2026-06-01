@@ -18,15 +18,16 @@ fn render_area_chart(
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
+  disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
 ) -> Array[@xml.Node] {
-  let all_series : Array[(Array[String], Array[Double])] = []
+  let all_series : Array[(Array[String], Array[Double?])] = []
   let ser_elems : Array[@xml.Element] = []
   for ch in elem.children {
     match ch {
       @xml.Node::Element(se) =>
         if se.name.local_name == "ser" {
           let labels = read_cat_labels(se)
-          let values = read_val_numbers(se)
+          let values = read_val_number_slots(se)
           if values.length() > 0 {
             ser_elems.push(se)
             all_series.push((labels, values))
@@ -43,7 +44,7 @@ fn render_area_chart(
   let mut n = 0
   for s in all_series {
     let (_, values) = s
-    let mv = max_positive(values)
+    let mv = max_positive_slots(values, disp_blanks_as)
     if mv > data_max {
       data_max = mv
     }
@@ -115,47 +116,57 @@ fn render_area_chart(
   while si >= 0 {
     let (_, values) = all_series[si]
     let series_color = resolve_series_color(ser_elems[si], si, ctx, defs)
-    let buf = StringBuilder::new()
-    // Start at the baseline under the first plotted category.
-    buf.write_string(format_double(cat_x(0)))
-    buf.write_string(",")
-    buf.write_string(format_double(baseline_y))
-    for i, v in values {
-      let x = cat_x(i)
-      let y = val_y(v)
-      buf.write_string(" ")
-      buf.write_string(format_double(x))
+    let segments = chart_point_segments(values, disp_blanks_as)
+    for segment in segments {
+      if segment.length() == 0 {
+        continue
+      }
+      let buf = StringBuilder::new()
+      let (first_i, _) = segment[0]
+      // Start at the baseline under the first plotted category in this
+      // contiguous segment. `gap` creates multiple polygons; `span`
+      // keeps one segment and skips the blank vertex.
+      buf.write_string(format_double(cat_x(first_i)))
       buf.write_string(",")
-      buf.write_string(format_double(y))
+      buf.write_string(format_double(baseline_y))
+      for point in segment {
+        let (i, v) = point
+        let x = cat_x(i)
+        let y = val_y(v)
+        buf.write_string(" ")
+        buf.write_string(format_double(x))
+        buf.write_string(",")
+        buf.write_string(format_double(y))
+      }
+      // Close back to the baseline under the last plotted category.
+      let (last_i, _) = segment[segment.length() - 1]
+      buf.write_string(" ")
+      buf.write_string(format_double(cat_x(last_i)))
+      buf.write_string(",")
+      buf.write_string(format_double(baseline_y))
+      nodes.push(
+        @markup.elem_ns(
+          "polygon",
+          @markup.svg_ns,
+          [
+            @markup.attr("points", buf.to_string()),
+            @markup.attr("fill", series_color),
+            @markup.attr(
+              "fill-opacity",
+              if all_series.length() > 1 {
+                "0.7"
+              } else {
+                "1"
+              },
+            ),
+            @markup.attr("stroke", series_color),
+            @markup.attr("stroke-width", format_double(h * 0.003)),
+            @markup.attr("stroke-linejoin", "round"),
+          ],
+          [],
+        ),
+      )
     }
-    // Close back to the baseline under the last plotted category.
-    let last_x = cat_x(values.length() - 1)
-    buf.write_string(" ")
-    buf.write_string(format_double(last_x))
-    buf.write_string(",")
-    buf.write_string(format_double(baseline_y))
-    nodes.push(
-      @markup.elem_ns(
-        "polygon",
-        @markup.svg_ns,
-        [
-          @markup.attr("points", buf.to_string()),
-          @markup.attr("fill", series_color),
-          @markup.attr(
-            "fill-opacity",
-            if all_series.length() > 1 {
-              "0.7"
-            } else {
-              "1"
-            },
-          ),
-          @markup.attr("stroke", series_color),
-          @markup.attr("stroke-width", format_double(h * 0.003)),
-          @markup.attr("stroke-linejoin", "round"),
-        ],
-        [],
-      ),
-    )
     si = si - 1
   }
   for i, label in labels {
@@ -188,9 +199,10 @@ fn render_area_chart(
           Some(nm) => nm
           None => ""
         }
-        let total = sum_positive(values)
+        let total = sum_positive_slots(values, disp_blanks_as)
         let points : Array[(Double, Double, Double, String)] = []
-        for i, v in values {
+        for point in chart_rendered_points(values, disp_blanks_as) {
+          let (i, v) = point
           let cat_name = if i < labels_s.length() { labels_s[i] } else { "" }
           points.push((cat_x(i), val_y(v), v, cat_name))
         }

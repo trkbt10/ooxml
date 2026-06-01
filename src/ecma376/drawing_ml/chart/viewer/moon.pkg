@@ -12,6 +12,7 @@
 import {
   "moonbitlang/core/math",
   "moonbitlang/core/string",
+  "trkbt10/ooxml/ecma376/drawing_ml/chart",
   "trkbt10/ooxml/ecma376/drawing_ml/paint",
   "trkbt10/ooxml/util/glyph",
   "trkbt10/ooxml/util/markup",

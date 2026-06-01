@@ -16,17 +16,18 @@ fn render_stock_chart(
   ctx : ColorResolveContext,
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
+  disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
 ) -> Array[@xml.Node] {
   // §21.2.2.188 — the series order is fixed by convention:
   // 4 series = Open, High, Low, Close
   // 3 series = High, Low, Close
-  let all_series : Array[(Array[String], Array[Double])] = []
+  let all_series : Array[(Array[String], Array[Double?])] = []
   for ch in elem.children {
     match ch {
       @xml.Node::Element(se) =>
         if se.name.local_name == "ser" {
           let labels = read_cat_labels(se)
-          let values = read_val_numbers(se)
+          let values = read_val_number_slots(se)
           all_series.push((labels, values))
         }
       _ => ()
@@ -46,7 +47,7 @@ fn render_stock_chart(
   let (_, high_vals) = all_series[high_idx]
   let (_, low_vals) = all_series[low_idx]
   let (_, close_vals) = all_series[close_idx]
-  let open_vals : Array[Double] = match open_idx {
+  let open_vals : Array[Double?] = match open_idx {
     Some(oi) => {
       let (_, v) = all_series[oi]
       v
@@ -66,7 +67,8 @@ fn render_stock_chart(
   let mut data_min = 1.0e18
   for s in all_series {
     let (_, values) = s
-    for v in values {
+    for point in chart_rendered_points(values, disp_blanks_as) {
+      let (_, v) = point
       if v > data_max {
         data_max = v
       }
@@ -115,8 +117,20 @@ fn render_stock_chart(
   let mut i = 0
   while i < n {
     let x = px + (i.to_double() + 0.5) * band
-    let hi = if i < high_vals.length() { high_vals[i] } else { 0.0 }
-    let lo = if i < low_vals.length() { low_vals[i] } else { 0.0 }
+    let hi = match chart_slot_value_at(high_vals, i, disp_blanks_as) {
+      Some(v) => v
+      None => {
+        i = i + 1
+        continue
+      }
+    }
+    let lo = match chart_slot_value_at(low_vals, i, disp_blanks_as) {
+      Some(v) => v
+      None => {
+        i = i + 1
+        continue
+      }
+    }
     let y_hi = if max_v > 0.0 { py + ph - hi / max_v * ph } else { py + ph }
     let y_lo = if max_v > 0.0 { py + ph - lo / max_v * ph } else { py + ph }
     // Vertical line High → Low.
@@ -136,67 +150,18 @@ fn render_stock_chart(
       ),
     )
     // Open tick (left side).
-    if i < open_vals.length() {
-      let ov = open_vals[i]
-      let y_o = if max_v > 0.0 { py + ph - ov / max_v * ph } else { py + ph }
-      nodes.push(
-        @markup.elem_ns(
-          "line",
-          @markup.svg_ns,
-          [
-            @markup.attr("x1", format_double(x - tick_w)),
-            @markup.attr("y1", format_double(y_o)),
-            @markup.attr("x2", format_double(x)),
-            @markup.attr("y2", format_double(y_o)),
-            @markup.attr("stroke", series_color),
-            @markup.attr("stroke-width", stroke_w),
-          ],
-          [],
-        ),
-      )
-    }
-    // Close tick (right side) or upDownBar rectangle.
-    if i < close_vals.length() {
-      let cv = close_vals[i]
-      let y_c = if max_v > 0.0 { py + ph - cv / max_v * ph } else { py + ph }
-      if has_up_down && i < open_vals.length() {
-        // §21.2.2.219 — filled rectangle from open to close.
-        let ov = open_vals[i]
+    match chart_slot_value_at(open_vals, i, disp_blanks_as) {
+      Some(ov) => {
         let y_o = if max_v > 0.0 { py + ph - ov / max_v * ph } else { py + ph }
-        let fill = if cv >= ov {
-          chart_stock_up_color
-        } else {
-          chart_stock_down_color
-        }
-        let y_top = if y_o < y_c { y_o } else { y_c }
-        let bar_height = if y_o < y_c { y_c - y_o } else { y_o - y_c }
-        let bar_w = band * 0.3
-        nodes.push(
-          @markup.elem_ns(
-            "rect",
-            @markup.svg_ns,
-            [
-              @markup.attr("x", format_double(x - bar_w / 2.0)),
-              @markup.attr("y", format_double(y_top)),
-              @markup.attr("width", format_double(bar_w)),
-              @markup.attr("height", format_double(bar_height)),
-              @markup.attr("fill", fill),
-              @markup.attr("stroke", series_color),
-              @markup.attr("stroke-width", stroke_w),
-            ],
-            [],
-          ),
-        )
-      } else {
         nodes.push(
           @markup.elem_ns(
             "line",
             @markup.svg_ns,
             [
-              @markup.attr("x1", format_double(x)),
-              @markup.attr("y1", format_double(y_c)),
-              @markup.attr("x2", format_double(x + tick_w)),
-              @markup.attr("y2", format_double(y_c)),
+              @markup.attr("x1", format_double(x - tick_w)),
+              @markup.attr("y1", format_double(y_o)),
+              @markup.attr("x2", format_double(x)),
+              @markup.attr("y2", format_double(y_o)),
               @markup.attr("stroke", series_color),
               @markup.attr("stroke-width", stroke_w),
             ],
@@ -204,6 +169,67 @@ fn render_stock_chart(
           ),
         )
       }
+      None => ()
+    }
+    // Close tick (right side) or upDownBar rectangle.
+    match chart_slot_value_at(close_vals, i, disp_blanks_as) {
+      Some(cv) => {
+        let y_c = if max_v > 0.0 { py + ph - cv / max_v * ph } else { py + ph }
+        let open_for_bar = chart_slot_value_at(open_vals, i, disp_blanks_as)
+        if has_up_down && open_for_bar is Some(_) {
+          // §21.2.2.219 — filled rectangle from open to close.
+          let ov = match open_for_bar {
+            Some(v) => v
+            None => 0.0
+          }
+          let y_o = if max_v > 0.0 {
+            py + ph - ov / max_v * ph
+          } else {
+            py + ph
+          }
+          let fill = if cv >= ov {
+            chart_stock_up_color
+          } else {
+            chart_stock_down_color
+          }
+          let y_top = if y_o < y_c { y_o } else { y_c }
+          let bar_height = if y_o < y_c { y_c - y_o } else { y_o - y_c }
+          let bar_w = band * 0.3
+          nodes.push(
+            @markup.elem_ns(
+              "rect",
+              @markup.svg_ns,
+              [
+                @markup.attr("x", format_double(x - bar_w / 2.0)),
+                @markup.attr("y", format_double(y_top)),
+                @markup.attr("width", format_double(bar_w)),
+                @markup.attr("height", format_double(bar_height)),
+                @markup.attr("fill", fill),
+                @markup.attr("stroke", series_color),
+                @markup.attr("stroke-width", stroke_w),
+              ],
+              [],
+            ),
+          )
+        } else {
+          nodes.push(
+            @markup.elem_ns(
+              "line",
+              @markup.svg_ns,
+              [
+                @markup.attr("x1", format_double(x)),
+                @markup.attr("y1", format_double(y_c)),
+                @markup.attr("x2", format_double(x + tick_w)),
+                @markup.attr("y2", format_double(y_c)),
+                @markup.attr("stroke", series_color),
+                @markup.attr("stroke-width", stroke_w),
+              ],
+              [],
+            ),
+          )
+        }
+      }
+      None => ()
     }
     i = i + 1
   }

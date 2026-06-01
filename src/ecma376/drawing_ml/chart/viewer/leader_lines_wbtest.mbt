@@ -92,3 +92,52 @@ test "pie default label position stays inside (no leader lines)" {
   assert_true(!svg.contains("<line "))
   assert_true(svg.contains("text-anchor=\"middle\""))
 }
+
+///|
+test "pie showLeaderLines honours xsd boolean false token" {
+  let dlbls = [
+    ce("showVal", [("val", "1")], []),
+    ce("dLblPos", [("val", "outEnd")], []),
+    ce("showLeaderLines", [("val", "false")], []),
+    ce("leaderLines", [], []),
+  ]
+  let elem = pie_with_dlbls(dlbls)
+  let nodes = render_pie_chart(
+    elem,
+    400.0,
+    300.0,
+    ColorResolveContext::empty(),
+    SvgDefsCollector::new(),
+    hole_percent=None,
+  )
+  let sb = StringBuilder::new()
+  for nd in nodes {
+    match nd {
+      @xml.Node::Element(e) => sb.write_string(@markup.serialize_svg(e))
+      _ => ()
+    }
+  }
+  assert_true(!sb.to_string().contains("<line "))
+}
+
+///|
+test "pie showVal without val uses CT_Boolean default true" {
+  let dlbls = [ce("showVal", [], [])]
+  let elem = pie_with_dlbls(dlbls)
+  let nodes = render_pie_chart(
+    elem,
+    400.0,
+    300.0,
+    ColorResolveContext::empty(),
+    SvgDefsCollector::new(),
+    hole_percent=None,
+  )
+  let sb = StringBuilder::new()
+  for nd in nodes {
+    match nd {
+      @xml.Node::Element(e) => sb.write_string(@markup.serialize_svg(e))
+      _ => ()
+    }
+  }
+  assert_true(sb.to_string().contains(">30<"))
+}

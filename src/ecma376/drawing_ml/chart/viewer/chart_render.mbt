@@ -341,19 +341,19 @@ fn read_data_labels(elem : @xml.Element) -> DataLabelConfig? {
     None => return None
   }
   let show_val = match first_child_named(dl, "showVal") {
-    Some(e) => attr_or(e, "val", "0") == "1"
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   let show_cat_name = match first_child_named(dl, "showCatName") {
-    Some(e) => attr_or(e, "val", "0") == "1"
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   let show_percent = match first_child_named(dl, "showPercent") {
-    Some(e) => attr_or(e, "val", "0") == "1"
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   let show_ser_name = match first_child_named(dl, "showSerName") {
-    Some(e) => attr_or(e, "val", "0") == "1"
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   // §21.2.2.48 dLblPos.
@@ -363,7 +363,7 @@ fn read_data_labels(elem : @xml.Element) -> DataLabelConfig? {
   }
   // §21.2.2.187 showLeaderLines (or the presence of <c:leaderLines>).
   let show_leader_lines = match first_child_named(dl, "showLeaderLines") {
-    Some(e) => attr_or(e, "val", "1") != "0"
+    Some(e) => chart_bool_default_true(e)
     None => first_child_named(dl, "leaderLines") is Some(_)
   }
   if show_val || show_cat_name || show_percent || show_ser_name {
@@ -398,22 +398,141 @@ fn read_data_table(elem : @xml.Element) -> DataTableConfig? {
     None => return None
   }
   let show_hor_border = match first_child_named(dt, "showHorzBorder") {
-    Some(e) => attr_or(e, "val", "1") != "0"
+    Some(e) => chart_bool_default_true(e)
     None => true
   }
   let show_ver_border = match first_child_named(dt, "showVertBorder") {
-    Some(e) => attr_or(e, "val", "1") != "0"
+    Some(e) => chart_bool_default_true(e)
     None => true
   }
   let show_outline = match first_child_named(dt, "showOutline") {
-    Some(e) => attr_or(e, "val", "1") != "0"
+    Some(e) => chart_bool_default_true(e)
     None => true
   }
   let show_keys = match first_child_named(dt, "showKeys") {
-    Some(e) => attr_or(e, "val", "0") == "1"
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   Some({ show_hor_border, show_ver_border, show_outline, show_keys })
+}
+
+///|
+/// §21.2.2.54 CT_DTable — render the chart data-table band below
+/// the plot area.  This is still a compact renderer (it does not
+/// duplicate every cached category/value cell), but it now honours
+/// the four spec flags that control the table frame and legend-key
+/// column instead of emitting one unconditional outline.
+fn render_data_table(
+  cfg : DataTableConfig,
+  x : Double,
+  y : Double,
+  w : Double,
+  h : Double,
+  stroke_width : Double,
+  series_entries : Array[(String, String)],
+) -> Array[@xml.Node] {
+  let nodes : Array[@xml.Node] = []
+  nodes.push(
+    @markup.elem_ns(
+      "rect",
+      @markup.svg_ns,
+      [
+        @markup.attr("x", format_double(x)),
+        @markup.attr("y", format_double(y)),
+        @markup.attr("width", format_double(w)),
+        @markup.attr("height", format_double(h)),
+        @markup.attr("fill", "#ffffff"),
+        @markup.attr(
+          "stroke",
+          if cfg.show_outline {
+            "#bfbfbf"
+          } else {
+            "none"
+          },
+        ),
+        @markup.attr("stroke-width", format_double(stroke_width)),
+        @markup.attr("data-ooxml", "chart-dtable"),
+      ],
+      [],
+    ),
+  )
+  if cfg.show_hor_border {
+    for ly in [y, y + h] {
+      nodes.push(
+        @markup.elem_ns(
+          "line",
+          @markup.svg_ns,
+          [
+            @markup.attr("x1", format_double(x)),
+            @markup.attr("y1", format_double(ly)),
+            @markup.attr("x2", format_double(x + w)),
+            @markup.attr("y2", format_double(ly)),
+            @markup.attr("stroke", "#bfbfbf"),
+            @markup.attr("stroke-width", format_double(stroke_width)),
+            @markup.attr("data-ooxml", "chart-dtable-hborder"),
+          ],
+          [],
+        ),
+      )
+    }
+  }
+  if cfg.show_ver_border {
+    let cols = if series_entries.length() + 1 < 2 {
+      2
+    } else {
+      series_entries.length() + 1
+    }
+    for i in 1..<cols {
+      let lx = x + w * i.to_double() / cols.to_double()
+      nodes.push(
+        @markup.elem_ns(
+          "line",
+          @markup.svg_ns,
+          [
+            @markup.attr("x1", format_double(lx)),
+            @markup.attr("y1", format_double(y)),
+            @markup.attr("x2", format_double(lx)),
+            @markup.attr("y2", format_double(y + h)),
+            @markup.attr("stroke", "#bfbfbf"),
+            @markup.attr("stroke-width", format_double(stroke_width)),
+            @markup.attr("data-ooxml", "chart-dtable-vborder"),
+          ],
+          [],
+        ),
+      )
+    }
+  }
+  if cfg.show_keys {
+    let key_size = if h * 0.32 < 3.0 { 3.0 } else { h * 0.32 }
+    let pad = key_size * 0.75
+    let row_h = if series_entries.length() > 0 {
+      h / series_entries.length().to_double()
+    } else {
+      h
+    }
+    for i, entry in series_entries {
+      let (_, color) = entry
+      let ky = y + row_h * (i.to_double() + 0.5) - key_size / 2.0
+      nodes.push(
+        @markup.elem_ns(
+          "rect",
+          @markup.svg_ns,
+          [
+            @markup.attr("x", format_double(x + pad)),
+            @markup.attr("y", format_double(ky)),
+            @markup.attr("width", format_double(key_size)),
+            @markup.attr("height", format_double(key_size)),
+            @markup.attr("fill", color),
+            @markup.attr("stroke", "#ffffff"),
+            @markup.attr("stroke-width", format_double(stroke_width)),
+            @markup.attr("data-ooxml", "chart-dtable-key"),
+          ],
+          [],
+        ),
+      )
+    }
+  }
+  nodes
 }
 
 ///|
@@ -898,17 +1017,11 @@ fn render_trendline(
   // equation form depends on `ttype`; for linear regression we emit
   // "y = m·x + b" with two-decimal m/b.
   let disp_eq = match first_child_named(tl_elem, "dispEq") {
-    Some(e) => {
-      let v = attr_or(e, "val", "true")
-      v == "1" || v == "true"
-    }
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   let disp_rsqr = match first_child_named(tl_elem, "dispRSqr") {
-    Some(e) => {
-      let v = attr_or(e, "val", "true")
-      v == "1" || v == "true"
-    }
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   // §21.2.2.212 trendlineLbl — when present, emit a text label near
@@ -1047,10 +1160,7 @@ fn read_err_bars(ser : @xml.Element) -> ErrBarConfig? {
     None => 0.0
   }
   let no_end_cap = match first_child_named(eb, "noEndCap") {
-    Some(e) => {
-      let v = attr_or(e, "val", "true")
-      v == "1" || v == "true"
-    }
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   let plus_values = match first_child_named(eb, "plus") {
@@ -1726,10 +1836,7 @@ pub fn render_chart_space(
   // title too for consistency (rare in the wild — auto-titles only fire
   // for single-series charts in PowerPoint anyway).
   // §21.2.2.46 dispBlanksAs — how to treat missing data points.
-  let _disp_blanks_as = match first_child_named(chart, "dispBlanksAs") {
-    Some(e) => attr_or(e, "val", "gap")
-    None => "gap"
-  }
+  let disp_blanks_as = chart_disp_blanks_as(chart)
   let title_text = match first_child_named(chart, "title") {
     Some(t) => read_chart_title_text(t)
     None => None
@@ -1741,10 +1848,7 @@ pub fn render_chart_space(
   let title_overlay = match first_child_named(chart, "title") {
     Some(t) =>
       match first_child_named(t, "overlay") {
-        Some(o) => {
-          let v = attr_or(o, "val", "true")
-          v == "1" || v == "true"
-        }
+        Some(o) => chart_bool_default_true(o)
         None => false
       }
     None => false
@@ -1752,26 +1856,35 @@ pub fn render_chart_space(
   // §21.2.2.93 legend — read <c:legend>/<c:legendPos val="r|t|b|l|tr"/>.
   // When absent the legend is suppressed; when present we collect each
   // series' name + colour for the legend entries.
-  let legend_pos = match first_child_named(chart, "legend") {
+  let legend = first_child_named(chart, "legend")
+  let legend_pos = match legend {
     Some(l) => Some(read_legend_pos(l))
     None => None
   }
   // §21.2.2.123 overlay — same handling for the legend.  When true,
   // the legend draws over the plot area with no reserved strip.
-  let legend_overlay = match first_child_named(chart, "legend") {
+  let legend_overlay = match legend {
     Some(l) =>
       match first_child_named(l, "overlay") {
-        Some(o) => {
-          let v = attr_or(o, "val", "true")
-          v == "1" || v == "true"
-        }
+        Some(o) => chart_bool_default_true(o)
         None => false
       }
     None => false
   }
-  let series_entries : Array[(String, String)] = match legend_pos {
-    Some(_) => collect_series_entries(plot_area, ctx)
+  let deleted_legend_indices = match legend {
+    Some(l) => read_deleted_legend_indices(l)
     None => []
+  }
+  let data_table = read_data_table(plot_area)
+  let series_entries : Array[(String, String)] = match legend_pos {
+    Some(_) =>
+      collect_series_entries(plot_area, ctx, defs, deleted_legend_indices)
+    None =>
+      match data_table {
+        Some(dt) if dt.show_keys =>
+          collect_series_entries(plot_area, ctx, defs, deleted_legend_indices)
+        _ => []
+      }
   }
   // Compute the inner chart-frame rect after title + legend reservations.
   // `inner_x`/`inner_y` translate the chart-type payload's local (0,0).
@@ -1799,10 +1912,7 @@ pub fn render_chart_space(
   // pruning the element produces a visible diff (rx="…" attr
   // changes) but the chart content still has a visible boundary.
   let rounded = match first_child_named(chart_space, "roundedCorners") {
-    Some(e) => {
-      let v = attr_or(e, "val", "true")
-      v == "1" || v == "true"
-    }
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   let frame_attrs : Array[@xml.Attribute] = [
@@ -1907,31 +2017,22 @@ pub fn render_chart_space(
       )
     None => ()
   }
-  // §21.2.2.54 dTable — chart-level data table.  Emit a thin rect
-  // strip beneath the plot area indicating the data table is present;
-  // the spec leaves table size up to the application.
-  let _ = match first_child_named(chart, "plotArea") {
-    Some(pa) =>
-      match first_child_named(pa, "dTable") {
-        Some(_) =>
-          inner_nodes.push(
-            @markup.elem_ns(
-              "rect",
-              @markup.svg_ns,
-              [
-                @markup.attr("x", format_double(wpx)),
-                @markup.attr("y", format_double(wpy + wph + h * 0.02)),
-                @markup.attr("width", format_double(wpw)),
-                @markup.attr("height", format_double(h * 0.04)),
-                @markup.attr("fill", "none"),
-                @markup.attr("stroke", "#bfbfbf"),
-                @markup.attr("stroke-width", format_double(h * 0.001)),
-                @markup.attr("data-ooxml", "chart-dtable"),
-              ],
-              [],
-            ),
-          )
-        None => ()
+  // §21.2.2.54 dTable — chart-level data table.  Emit a compact
+  // data-table band beneath the plot and honour CT_DTable's border /
+  // key flags.
+  match data_table {
+    Some(dt) =>
+      for
+        node in render_data_table(
+          dt,
+          wpx,
+          wpy + wph + h * 0.02,
+          wpw,
+          h * 0.04,
+          h * 0.001,
+          series_entries,
+        ) {
+        inner_nodes.push(node)
       }
     None => ()
   }
@@ -1950,7 +2051,17 @@ pub fn render_chart_space(
       @xml.Node::Element(elem) => {
         let local_name = elem.name.local_name
         let payload = render_chart_payload(
-          local_name, elem, inner_w, inner_h, w, h, ctx, axes, style, defs,
+          local_name,
+          elem,
+          inner_w,
+          inner_h,
+          w,
+          h,
+          ctx,
+          axes,
+          style,
+          defs,
+          disp_blanks_as~,
         )
         for n in payload {
           inner_nodes.push(n)
@@ -2125,7 +2236,12 @@ pub fn render_chart_space(
             match se_ch {
               @xml.Node::Element(se) =>
                 if se.name.local_name == "ser" {
-                  for v in read_val_numbers(se) {
+                  for
+                    point in chart_rendered_points(
+                      read_val_number_slots(se),
+                      disp_blanks_as,
+                    ) {
+                    let (_, v) = point
                     if v > overlay_max {
                       overlay_max = v
                     }
@@ -2159,7 +2275,7 @@ pub fn render_chart_space(
             }
           }
           for si, se in local_sers {
-            let values = read_val_numbers(se)
+            let values = read_val_number_slots(se)
             if values.length() == 0 {
               continue
             }
@@ -2173,20 +2289,23 @@ pub fn render_chart_space(
             // §21.2.2.211 trendline.
             match read_trendline(se) {
               Some(tl_elem) =>
-                for
-                  tn in render_trendline(
-                    tl_elem,
-                    values,
-                    overlay_px,
-                    overlay_py,
-                    overlay_pw,
-                    overlay_ph,
-                    overlay_max,
-                    step,
-                    series_color,
-                    h * 0.003,
-                  ) {
-                  inner_nodes.push(tn)
+                if disp_blanks_as_is_zero(disp_blanks_as) ||
+                  !number_slots_have_blank(values) {
+                  for
+                    tn in render_trendline(
+                      tl_elem,
+                      number_slots_to_zeroes(values),
+                      overlay_px,
+                      overlay_py,
+                      overlay_pw,
+                      overlay_ph,
+                      overlay_max,
+                      step,
+                      series_color,
+                      h * 0.003,
+                    ) {
+                    inner_nodes.push(tn)
+                  }
                 }
               None => ()
             }
@@ -2194,7 +2313,8 @@ pub fn render_chart_space(
             match read_err_bars(se) {
               Some(eb_cfg) => {
                 let pts : Array[(Double, Double)] = []
-                for i, v in values {
+                for point in chart_rendered_points(values, disp_blanks_as) {
+                  let (i, v) = point
                   let x = overlay_px + i.to_double() * step
                   let y = if overlay_max > 0.0 {
                     overlay_py + overlay_ph - v / overlay_max * overlay_ph
@@ -2224,7 +2344,7 @@ pub fn render_chart_space(
             Some(_) =>
               for si, se in local_sers {
                 let _ = si
-                let values = read_val_numbers(se)
+                let values = read_val_number_slots(se)
                 if values.length() == 0 {
                   continue
                 }
@@ -2235,7 +2355,8 @@ pub fn render_chart_space(
                 } else {
                   0.0
                 }
-                for i, v in values {
+                for point in chart_rendered_points(values, disp_blanks_as) {
+                  let (i, v) = point
                   let x = overlay_px + i.to_double() * step
                   let y_top = if overlay_max > 0.0 {
                     overlay_py + overlay_ph - v / overlay_max * overlay_ph
@@ -2272,10 +2393,10 @@ pub fn render_chart_space(
               if local_sers.length() >= 2 {
                 let series_color = "#595959"
                 // Pivot all series' i-th values to find per-index min/max.
-                let series_vals : Array[Array[Double]] = []
+                let series_vals : Array[Array[Double?]] = []
                 let mut max_n = 0
                 for se in local_sers {
-                  let vs = read_val_numbers(se)
+                  let vs = read_val_number_slots(se)
                   series_vals.push(vs)
                   if vs.length() > max_n {
                     max_n = vs.length()
@@ -2291,20 +2412,21 @@ pub fn render_chart_space(
                   let mut hi : Double = 0.0
                   let mut first = true
                   for vs in series_vals {
-                    if i < vs.length() {
-                      let v = vs[i]
-                      if first {
-                        lo = v
-                        hi = v
-                        first = false
-                      } else {
-                        if v < lo {
+                    match chart_slot_value_at(vs, i, disp_blanks_as) {
+                      Some(v) =>
+                        if first {
                           lo = v
-                        }
-                        if v > hi {
                           hi = v
+                          first = false
+                        } else {
+                          if v < lo {
+                            lo = v
+                          }
+                          if v > hi {
+                            hi = v
+                          }
                         }
-                      }
+                      None => ()
                     }
                   }
                   if first {
@@ -2346,8 +2468,8 @@ pub fn render_chart_space(
           match first_child_named(ct_elem, "upDownBars") {
             Some(_) =>
               if local_sers.length() >= 2 {
-                let first_vals = read_val_numbers(local_sers[0])
-                let last_vals = read_val_numbers(
+                let first_vals = read_val_number_slots(local_sers[0])
+                let last_vals = read_val_number_slots(
                   local_sers[local_sers.length() - 1],
                 )
                 let n_pts = if first_vals.length() < last_vals.length() {
@@ -2362,8 +2484,16 @@ pub fn render_chart_space(
                 }
                 let bar_w = step * 0.4
                 for i in 0..<n_pts {
-                  let v_open = first_vals[i]
-                  let v_close = last_vals[i]
+                  let v_open = match
+                    chart_slot_value_at(first_vals, i, disp_blanks_as) {
+                    Some(v) => v
+                    None => continue
+                  }
+                  let v_close = match
+                    chart_slot_value_at(last_vals, i, disp_blanks_as) {
+                    Some(v) => v
+                    None => continue
+                  }
                   let y_open = if overlay_max > 0.0 {
                     overlay_py + overlay_ph - v_open / overlay_max * overlay_ph
                   } else {
@@ -2409,23 +2539,28 @@ pub fn render_chart_space(
             Some(_) =>
               if local_sers.length() >= 2 {
                 let series_color = "#bfbfbf"
-                let n_pts = read_val_numbers(local_sers[0]).length()
+                let n_pts = read_val_number_slots(local_sers[0]).length()
                 let step = if n_pts > 1 {
                   overlay_pw / (n_pts - 1).to_double()
                 } else {
                   0.0
                 }
-                let mut prev_pts : Array[Double] = []
+                let mut prev_pts : Array[Double?] = []
                 for se in local_sers {
-                  let vs = read_val_numbers(se)
-                  let curr_pts : Array[Double] = []
-                  for v in vs {
-                    let y = if overlay_max > 0.0 {
-                      overlay_py + overlay_ph - v / overlay_max * overlay_ph
-                    } else {
-                      overlay_py + overlay_ph
+                  let vs = read_val_number_slots(se)
+                  let curr_pts : Array[Double?] = []
+                  for i in 0..<vs.length() {
+                    match chart_slot_value_at(vs, i, disp_blanks_as) {
+                      Some(v) => {
+                        let y = if overlay_max > 0.0 {
+                          overlay_py + overlay_ph - v / overlay_max * overlay_ph
+                        } else {
+                          overlay_py + overlay_ph
+                        }
+                        curr_pts.push(Some(y))
+                      }
+                      None => curr_pts.push(None)
                     }
-                    curr_pts.push(y)
                   }
                   if prev_pts.length() > 0 {
                     let n = if curr_pts.length() < prev_pts.length() {
@@ -2434,25 +2569,30 @@ pub fn render_chart_space(
                       prev_pts.length()
                     }
                     for i in 0..<n {
-                      let x = overlay_px + i.to_double() * step
-                      inner_nodes.push(
-                        @markup.elem_ns(
-                          "line",
-                          @markup.svg_ns,
-                          [
-                            @markup.attr("x1", format_double(x)),
-                            @markup.attr("y1", format_double(prev_pts[i])),
-                            @markup.attr("x2", format_double(x)),
-                            @markup.attr("y2", format_double(curr_pts[i])),
-                            @markup.attr("stroke", series_color),
-                            @markup.attr(
-                              "stroke-width",
-                              format_double(h * 0.001),
+                      match (prev_pts[i], curr_pts[i]) {
+                        (Some(prev_y), Some(curr_y)) => {
+                          let x = overlay_px + i.to_double() * step
+                          inner_nodes.push(
+                            @markup.elem_ns(
+                              "line",
+                              @markup.svg_ns,
+                              [
+                                @markup.attr("x1", format_double(x)),
+                                @markup.attr("y1", format_double(prev_y)),
+                                @markup.attr("x2", format_double(x)),
+                                @markup.attr("y2", format_double(curr_y)),
+                                @markup.attr("stroke", series_color),
+                                @markup.attr(
+                                  "stroke-width",
+                                  format_double(h * 0.001),
+                                ),
+                              ],
+                              [],
                             ),
-                          ],
-                          [],
-                        ),
-                      )
+                          )
+                        }
+                        _ => ()
+                      }
                     }
                   }
                   prev_pts = curr_pts
@@ -2465,7 +2605,7 @@ pub fn render_chart_space(
           match dlbl_cfg {
             Some(cfg) =>
               for si, se in local_sers {
-                let values = read_val_numbers(se)
+                let values = read_val_number_slots(se)
                 if values.length() == 0 {
                   continue
                 }
@@ -2480,9 +2620,10 @@ pub fn render_chart_space(
                   Some(nm) => nm
                   None => ""
                 }
-                let total = sum_positive(values)
+                let total = sum_positive_slots(values, disp_blanks_as)
                 let points : Array[(Double, Double, Double, String)] = []
-                for i, v in values {
+                for point in chart_rendered_points(values, disp_blanks_as) {
+                  let (i, v) = point
                   let x = overlay_px + i.to_double() * step
                   let y = if overlay_max > 0.0 {
                     overlay_py + overlay_ph - v / overlay_max * overlay_ph
@@ -2910,6 +3051,61 @@ fn read_legend_pos(legend : @xml.Element) -> String {
 }
 
 ///|
+/// §21.2.2.101 legendEntry — collect zero-based series indices whose
+/// legend entries carry `<c:delete>` with CT_Boolean's default-true
+/// semantics. The series scan remains the SoT for names/colours; this
+/// list only masks entries from that projection.
+fn read_deleted_legend_indices(legend : @xml.Element) -> Array[Int] {
+  let deleted : Array[Int] = []
+  for child in legend.children {
+    match child {
+      @xml.Node::Element(entry) =>
+        if entry.name.local_name == "legendEntry" {
+          match
+            (
+              first_child_named(entry, "idx"),
+              first_child_named(entry, "delete"),
+            ) {
+            (Some(idx_element), Some(delete_element)) =>
+              if chart_bool_default_true(delete_element) {
+                let idx = parse_int_lenient(attr_or(idx_element, "val", "-1"))
+                if idx >= 0 {
+                  deleted.push(idx)
+                }
+              }
+            _ => ()
+          }
+        }
+      _ => ()
+    }
+  }
+  deleted
+}
+
+///|
+fn chart_bool_default_true(element : @xml.Element) -> Bool {
+  try @chart.CT_Boolean::new(element) catch {
+    _ => false
+  } noraise {
+    value =>
+      match value.val {
+        Some(v) => v
+        None => true
+      }
+  }
+}
+
+///|
+fn int_array_contains(values : Array[Int], needle : Int) -> Bool {
+  for value in values {
+    if value == needle {
+      return true
+    }
+  }
+  false
+}
+
+///|
 /// §21.2.2.171 ser — collect one (series-name, accent-colour) tuple
 /// per `<c:ser>` child of the plot-area's chart-type element. The
 /// series name comes from `<c:tx>` (preferring `<c:strRef>/<c:strCache>/<c:pt>/<c:v>`,
@@ -2919,6 +3115,8 @@ fn read_legend_pos(legend : @xml.Element) -> String {
 fn collect_series_entries(
   plot_area : @xml.Element,
   ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  deleted_legend_indices : Array[Int],
 ) -> Array[(String, String)] {
   let out : Array[(String, String)] = []
   let mut idx = 0
@@ -2931,12 +3129,14 @@ fn collect_series_entries(
             match sub {
               @xml.Node::Element(se) =>
                 if se.name.local_name == "ser" {
-                  let name = match read_series_name(se) {
-                    Some(s) => s
-                    None => "Series " + (idx + 1).to_string()
+                  if !int_array_contains(deleted_legend_indices, idx) {
+                    let name = match read_series_name(se) {
+                      Some(s) => s
+                      None => "Series " + (idx + 1).to_string()
+                    }
+                    let color = resolve_series_color(se, idx, ctx, defs)
+                    out.push((name, color))
                   }
-                  let color = chart_series_color(ctx, idx)
-                  out.push((name, color))
                   idx = idx + 1
                 }
               _ => ()
@@ -3763,7 +3963,7 @@ fn parse_axis_config(elem : @xml.Element) -> ChartAxisConfig {
     None => 0
   }
   let deleted = match first_child_named(elem, "delete") {
-    Some(e) => attr_or(e, "val", "0") == "1"
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
   let ax_pos = match first_child_named(elem, "axPos") {
@@ -3958,12 +4158,45 @@ fn render_chart_payload(
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
+  disp_blanks_as~ : @chart.ST_DispBlanksAs,
 ) -> Array[@xml.Node] {
   match local_name {
-    "barChart" => render_bar_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+    "barChart" =>
+      render_bar_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
     "lineChart" =>
-      render_line_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
-    "pieChart" => render_pie_chart(elem, iw, ih, ctx, defs, hole_percent=None)
+      render_line_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
+    "pieChart" =>
+      render_pie_chart(
+        elem,
+        iw,
+        ih,
+        ctx,
+        defs,
+        hole_percent=None,
+        disp_blanks_as~,
+      )
     "doughnutChart" =>
       render_pie_chart(
         elem,
@@ -3972,36 +4205,156 @@ fn render_chart_payload(
         ctx,
         defs,
         hole_percent=Some(doughnut_hole_percent(elem)),
+        disp_blanks_as~,
       )
     "scatterChart" =>
-      render_scatter_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+      render_scatter_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
     "areaChart" =>
-      render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+      render_area_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
     "bubbleChart" =>
-      render_bubble_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
-    "radarChart" => render_radar_chart(elem, iw, ih, fw, fh, ctx, style, defs)
+      render_bubble_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
+    "radarChart" =>
+      render_radar_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
     // §21.2.2.188 stock — OHLC / HLC lines use solid stroke colours (no
     // series FILL), so it takes no `defs`; threading would be dead weight.
-    "stockChart" => render_stock_chart(elem, iw, ih, fw, fh, ctx, axes, style)
+    "stockChart" =>
+      render_stock_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        disp_blanks_as~,
+      )
     // §21.2 3D chart types — degrade to 2D equivalent (no perspective
     // projection in SVG). The element structure is compatible: 3D
     // variants carry the same <c:ser>/<c:cat>/<c:val> children.
     "bar3DChart" =>
-      render_bar_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+      render_bar_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
     "line3DChart" =>
-      render_line_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
-    "pie3DChart" => render_pie_chart(elem, iw, ih, ctx, defs, hole_percent=None)
+      render_line_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
+    "pie3DChart" =>
+      render_pie_chart(
+        elem,
+        iw,
+        ih,
+        ctx,
+        defs,
+        hole_percent=None,
+        disp_blanks_as~,
+      )
     "area3DChart" =>
-      render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+      render_area_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
     // §21.2.2.205 surface — no SVG equivalent; render as area chart.
     "surface3DChart" | "surfaceChart" =>
-      render_area_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+      render_area_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
     // §21.2.2.126 ofPieChart — pie-of-pie / bar-of-pie.  Two-tier render:
     // a primary pie (major points + aggregated "Other") on the left and a
     // secondary pie/stacked-bar of the "Other" component points on the
     // right (see chart_render_of_pie.mbt).
     "ofPieChart" =>
-      render_of_pie_chart(elem, iw, ih, fw, fh, ctx, axes, style, defs)
+      render_of_pie_chart(
+        elem,
+        iw,
+        ih,
+        fw,
+        fh,
+        ctx,
+        axes,
+        style,
+        defs,
+        disp_blanks_as~,
+      )
     _ => []
   }
 }
@@ -4130,6 +4483,23 @@ fn effective_axis_min(axes : ChartAxesInfo) -> Double {
 // =============================================================================
 
 ///|
+fn chart_disp_blanks_as(chart : @xml.Element) -> @chart.ST_DispBlanksAs {
+  match first_child_named(chart, "dispBlanksAs") {
+    Some(e) =>
+      try @chart.CT_DispBlanksAs::new(e) catch {
+        _ => @chart.ST_DispBlanksAs::DispBlanksAsZero
+      } noraise {
+        disp =>
+          match disp.val {
+            Some(v) => v
+            None => @chart.ST_DispBlanksAs::DispBlanksAsZero
+          }
+      }
+    None => @chart.ST_DispBlanksAs::DispBlanksAsZero
+  }
+}
+
+///|
 /// Read the category labels for a series. Tries
 /// `<c:cat>/<c:strRef>/<c:strCache>/<c:pt>/<c:v>` first, then falls back
 /// to `<c:cat>/<c:strLit>` and to the numeric `<c:cat>/<c:numRef>` cache
@@ -4181,26 +4551,259 @@ fn read_cat_labels(ser : @xml.Element) -> Array[String] {
 }
 
 ///|
-/// Read numeric values from a series' `<c:val>` child as
-/// (`<c:numRef>/<c:numCache>` preferred, `<c:numLit>` fallback).
-fn read_val_numbers(ser : @xml.Element) -> Array[Double] {
+/// Read numeric values while preserving blank slots introduced by sparse
+/// `c:pt/@idx` caches. `None` means the point exists in the indexed domain
+/// but carries no value; `dispBlanksAs` decides whether that slot is drawn as
+/// zero, skipped with a gap, or spanned over by line/area renderers.
+fn read_val_number_slots(ser : @xml.Element) -> Array[Double?] {
   let val = match first_child_named(ser, "val") {
     Some(v) => v
     None => return []
   }
-  read_num_data_under(val)
+  read_num_slots_under(val)
 }
 
 ///|
-/// Same as `read_val_numbers` but for the scatter chart's `<c:xVal>` /
-/// `<c:yVal>` children. The element name is parameterised because the
-/// schema spells the two axes differently.
-fn read_axis_numbers(ser : @xml.Element, name : String) -> Array[Double] {
+/// Same as `read_val_number_slots` but for the scatter/bubble chart's
+/// `<c:xVal>` / `<c:yVal>` / `<c:bubbleSize>` children.
+fn read_axis_number_slots(ser : @xml.Element, name : String) -> Array[Double?] {
   let v = match first_child_named(ser, name) {
     Some(e) => e
     None => return []
   }
-  read_num_data_under(v)
+  read_num_slots_under(v)
+}
+
+///|
+fn read_num_slots_under(parent : @xml.Element) -> Array[Double?] {
+  let cache = match first_child_named(parent, "numRef") {
+    Some(nr) => first_child_named(nr, "numCache")
+    None => first_child_named(parent, "numLit")
+  }
+  let cache_el = match cache {
+    Some(c) => c
+    None => return []
+  }
+  let strings = collect_pt_values(cache_el)
+  let nums : Array[Double?] = []
+  for s in strings {
+    if s.length() == 0 {
+      nums.push(None)
+    } else {
+      nums.push(Some(parse_double_lenient(s)))
+    }
+  }
+  nums
+}
+
+///|
+fn number_slots_to_zeroes(values : Array[Double?]) -> Array[Double] {
+  let out : Array[Double] = []
+  for slot in values {
+    match slot {
+      Some(v) => out.push(v)
+      None => out.push(0.0)
+    }
+  }
+  out
+}
+
+///|
+fn number_slots_have_blank(values : Array[Double?]) -> Bool {
+  for slot in values {
+    match slot {
+      Some(_) => ()
+      None => return true
+    }
+  }
+  false
+}
+
+///|
+fn max_positive_slots(
+  values : Array[Double?],
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+) -> Double {
+  if disp_blanks_as_is_zero(disp_blanks_as) {
+    return max_positive(number_slots_to_zeroes(values))
+  }
+  let mut m = 0.0
+  for slot in values {
+    match slot {
+      Some(v) => if v > m { m = v }
+      None => ()
+    }
+  }
+  m
+}
+
+///|
+fn sum_positive_slots(
+  values : Array[Double?],
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+) -> Double {
+  if disp_blanks_as_is_zero(disp_blanks_as) {
+    return sum_positive(number_slots_to_zeroes(values))
+  }
+  let mut s = 0.0
+  for slot in values {
+    match slot {
+      Some(v) => if v > 0.0 { s = s + v }
+      None => ()
+    }
+  }
+  s
+}
+
+///|
+fn chart_point_segments(
+  values : Array[Double?],
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+) -> Array[Array[(Int, Double)]] {
+  let segments : Array[Array[(Int, Double)]] = []
+  let mut current : Array[(Int, Double)] = []
+  for i, slot in values {
+    match slot {
+      Some(v) => current.push((i, v))
+      None =>
+        if disp_blanks_as_is_zero(disp_blanks_as) {
+          current.push((i, 0.0))
+        } else if disp_blanks_as_is_gap(disp_blanks_as) {
+          if current.length() > 0 {
+            segments.push(current)
+            current = []
+          }
+        } else {
+          // §21.2.2.46 span — connect neighbouring non-blank points
+          // without creating a point at the blank category.
+        }
+    }
+  }
+  if current.length() > 0 {
+    segments.push(current)
+  }
+  segments
+}
+
+///|
+fn chart_rendered_points(
+  values : Array[Double?],
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+) -> Array[(Int, Double)] {
+  let out : Array[(Int, Double)] = []
+  for segment in chart_point_segments(values, disp_blanks_as) {
+    for point in segment {
+      out.push(point)
+    }
+  }
+  out
+}
+
+///|
+fn chart_slot_value_at(
+  values : Array[Double?],
+  index : Int,
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+) -> Double? {
+  if index < 0 || index >= values.length() {
+    return None
+  }
+  match values[index] {
+    Some(v) => Some(v)
+    None =>
+      if disp_blanks_as_is_zero(disp_blanks_as) {
+        Some(0.0)
+      } else {
+        None
+      }
+  }
+}
+
+///|
+fn disp_blanks_as_is_zero(value : @chart.ST_DispBlanksAs) -> Bool {
+  match value {
+    @chart.ST_DispBlanksAs::DispBlanksAsZero => true
+    _ => false
+  }
+}
+
+///|
+fn disp_blanks_as_is_gap(value : @chart.ST_DispBlanksAs) -> Bool {
+  match value {
+    @chart.ST_DispBlanksAs::DispBlanksAsGap => true
+    _ => false
+  }
+}
+
+///|
+fn min_len(a : Int, b : Int) -> Int {
+  if a < b {
+    a
+  } else {
+    b
+  }
+}
+
+///|
+fn chart_xy_segments(
+  xs : Array[Double?],
+  ys : Array[Double?],
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+) -> Array[Array[(Int, Double, Double)]] {
+  let segments : Array[Array[(Int, Double, Double)]] = []
+  let mut current : Array[(Int, Double, Double)] = []
+  let n = min_len(xs.length(), ys.length())
+  for i in 0..<n {
+    match (xs[i], ys[i]) {
+      (Some(x), Some(y)) => current.push((i, x, y))
+      (Some(x), None) =>
+        if disp_blanks_as_is_zero(disp_blanks_as) {
+          current.push((i, x, 0.0))
+        } else if disp_blanks_as_is_gap(disp_blanks_as) {
+          if current.length() > 0 {
+            segments.push(current)
+            current = []
+          }
+        }
+      (None, Some(y)) =>
+        if disp_blanks_as_is_zero(disp_blanks_as) {
+          current.push((i, 0.0, y))
+        } else if disp_blanks_as_is_gap(disp_blanks_as) {
+          if current.length() > 0 {
+            segments.push(current)
+            current = []
+          }
+        }
+      (None, None) =>
+        if disp_blanks_as_is_zero(disp_blanks_as) {
+          current.push((i, 0.0, 0.0))
+        } else if disp_blanks_as_is_gap(disp_blanks_as) {
+          if current.length() > 0 {
+            segments.push(current)
+            current = []
+          }
+        }
+    }
+  }
+  if current.length() > 0 {
+    segments.push(current)
+  }
+  segments
+}
+
+///|
+fn chart_xy_rendered_points(
+  xs : Array[Double?],
+  ys : Array[Double?],
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+) -> Array[(Int, Double, Double)] {
+  let out : Array[(Int, Double, Double)] = []
+  for segment in chart_xy_segments(xs, ys, disp_blanks_as) {
+    for point in segment {
+      out.push(point)
+    }
+  }
+  out
 }
 
 ///|
@@ -4224,11 +4827,93 @@ fn read_num_data_under(parent : @xml.Element) -> Array[Double] {
 }
 
 ///|
-/// Walk a `<c:strCache>` / `<c:numCache>` element, collecting the text
-/// content of each `<c:pt>/<c:v>` child in document order. The schema
-/// indexes points via `@idx` but we honour the order they appear, which
-/// matches every catalog fixture and the canonical writer output.
+/// Walk a `<c:strCache>` / `<c:numCache>` element, projecting its typed
+/// cache points by `c:pt/@idx`. Missing indexes become empty slots so
+/// render loops keep the category position and `c:dPt/@idx` overrides
+/// target the same point index. The typed `drawing_ml/chart` cache
+/// projection is the SoT; the raw XML fallback only preserves legacy
+/// tolerance for malformed caches.
 fn collect_pt_values(cache : @xml.Element) -> Array[String] {
+  match cache.name.local_name {
+    "numCache" | "numLit" =>
+      try @chart.CT_NumData::new(cache) catch {
+        _ => collect_pt_values_raw(cache)
+      } noraise {
+        data => collect_num_data_indexed_values(data)
+      }
+    "strCache" | "strLit" | "lvl" =>
+      try @chart.CT_StrData::new(cache) catch {
+        _ => collect_pt_values_raw(cache)
+      } noraise {
+        data => collect_str_data_indexed_values(data)
+      }
+    _ => collect_pt_values_raw(cache)
+  }
+}
+
+///|
+fn collect_num_data_indexed_values(data : @chart.CT_NumData) -> Array[String] {
+  let entries : Array[(Int, String)] = []
+  let mut max_idx = -1
+  for pt in data.pt {
+    let idx = pt.idx.to_int()
+    if idx >= 0 {
+      entries.push((idx, pt.v))
+      if idx > max_idx {
+        max_idx = idx
+      }
+    }
+  }
+  let count = indexed_pt_count(data.pt_count, max_idx)
+  indexed_entries_to_values(entries, count)
+}
+
+///|
+fn collect_str_data_indexed_values(data : @chart.CT_StrData) -> Array[String] {
+  let entries : Array[(Int, String)] = []
+  let mut max_idx = -1
+  for pt in data.pt {
+    let idx = pt.idx.to_int()
+    if idx >= 0 {
+      entries.push((idx, pt.v))
+      if idx > max_idx {
+        max_idx = idx
+      }
+    }
+  }
+  let count = indexed_pt_count(data.pt_count, max_idx)
+  indexed_entries_to_values(entries, count)
+}
+
+///|
+fn indexed_pt_count(count : @chart.CT_UnsignedInt?, max_idx : Int) -> Int {
+  match count {
+    Some(pt_count) => pt_count.val.to_int()
+    None => max_idx + 1
+  }
+}
+
+///|
+fn indexed_entries_to_values(
+  entries : Array[(Int, String)],
+  count : Int,
+) -> Array[String] {
+  let out : Array[String] = []
+  for i in 0..<count {
+    let mut value = ""
+    for entry in entries {
+      let (idx, text) = entry
+      if idx == i {
+        value = text
+      }
+    }
+    out.push(value)
+  }
+  out
+}
+
+///|
+fn collect_pt_values_raw(cache : @xml.Element) -> Array[String] {
   let out : Array[String] = []
   for ch in cache.children {
     match ch {

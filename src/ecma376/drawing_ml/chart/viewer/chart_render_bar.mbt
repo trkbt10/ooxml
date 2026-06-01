@@ -23,6 +23,7 @@ fn render_bar_chart(
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
+  disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
 ) -> Array[@xml.Node] {
   let bar_dir = match first_child_named(elem, "barDir") {
     Some(d) => attr_or(d, "val", "col")
@@ -37,13 +38,13 @@ fn render_bar_chart(
   // §21.2.2.171 ser — collect every `<c:ser>` child with its raw
   // element for spPr/dPt access.
   let ser_elems : Array[@xml.Element] = []
-  let series : Array[(Array[String], Array[Double])] = []
+  let series : Array[(Array[String], Array[Double?])] = []
   for ch in elem.children {
     match ch {
       @xml.Node::Element(se) =>
         if se.name.local_name == "ser" {
           let labels = read_cat_labels(se)
-          let values = read_val_numbers(se)
+          let values = read_val_number_slots(se)
           if values.length() > 0 {
             ser_elems.push(se)
             series.push((labels, values))
@@ -66,8 +67,9 @@ fn render_bar_chart(
       let mut stack_sum = 0.0
       for s in series {
         let (_, vals) = s
-        if ci < vals.length() {
-          stack_sum = stack_sum + (if vals[ci] > 0.0 { vals[ci] } else { 0.0 })
+        match chart_slot_value_at(vals, ci, disp_blanks_as) {
+          Some(v) => stack_sum = stack_sum + (if v > 0.0 { v } else { 0.0 })
+          None => ()
         }
       }
       if stack_sum > data_max {
@@ -81,7 +83,7 @@ fn render_bar_chart(
   } else {
     for s in series {
       let (_, values) = s
-      let mv = max_positive(values)
+      let mv = max_positive_slots(values, disp_blanks_as)
       if mv > data_max {
         data_max = mv
       }
@@ -233,18 +235,19 @@ fn render_bar_chart(
         if grouping == "percentStacked" {
           for s in series {
             let (_, vals) = s
-            if i_idx < vals.length() && vals[i_idx] > 0.0 {
-              cat_total = cat_total + vals[i_idx]
+            match chart_slot_value_at(vals, i_idx, disp_blanks_as) {
+              Some(v) => if v > 0.0 { cat_total = cat_total + v }
+              None => ()
             }
           }
         }
         let mut accum = 0.0
         for si, s in series {
           let (_, values) = s
-          if i_idx >= values.length() {
-            continue
+          let v = match chart_slot_value_at(values, i_idx, disp_blanks_as) {
+            Some(v) => v
+            None => continue
           }
-          let v = values[i_idx]
           let norm_v = if grouping == "percentStacked" && cat_total > 0.0 {
             v / cat_total * 100.0
           } else {
@@ -304,7 +307,8 @@ fn render_bar_chart(
           defs,
           "ser" + si.to_string(),
         )
-        for i, v in values {
+        for point in chart_rendered_points(values, disp_blanks_as) {
+          let (i, v) = point
           if i >= cat_count {
             break
           }
@@ -418,18 +422,19 @@ fn render_bar_chart(
         if grouping == "percentStacked" {
           for s in series {
             let (_, vals) = s
-            if i_idx < vals.length() && vals[i_idx] > 0.0 {
-              cat_total = cat_total + vals[i_idx]
+            match chart_slot_value_at(vals, i_idx, disp_blanks_as) {
+              Some(v) => if v > 0.0 { cat_total = cat_total + v }
+              None => ()
             }
           }
         }
         let mut accum = 0.0
         for si, s in series {
           let (_, values) = s
-          if i_idx >= values.length() {
-            continue
+          let v = match chart_slot_value_at(values, i_idx, disp_blanks_as) {
+            Some(v) => v
+            None => continue
           }
-          let v = values[i_idx]
           let norm_v = if grouping == "percentStacked" && cat_total > 0.0 {
             v / cat_total * 100.0
           } else {
@@ -487,10 +492,7 @@ fn render_bar_chart(
       // series, each bar gets the next accent colour so the cluster
       // visually distinguishes categories.
       let vary_colors = match first_child_named(elem, "varyColors") {
-        Some(e) => {
-          let v = attr_or(e, "val", "true")
-          v == "1" || v == "true"
-        }
+        Some(e) => chart_bool_default_true(e)
         None => false
       }
       for si, s in series {
@@ -502,7 +504,8 @@ fn render_bar_chart(
           defs,
           "ser" + si.to_string(),
         )
-        for i, v in values {
+        for point in chart_rendered_points(values, disp_blanks_as) {
+          let (i, v) = point
           if i >= cat_count {
             break
           }
@@ -593,13 +596,14 @@ fn render_bar_chart(
           Some(n) => n
           None => ""
         }
-        let total = sum_positive(values)
+        let total = sum_positive_slots(values, disp_blanks_as)
         let points : Array[(Double, Double, Double, String)] = []
         if bar_dir == "bar" {
           // Horizontal: label at the value (far) end of the bar — the
           // right end for minMax, the left end for maxMin.  Tracks the
           // same band/value mapping the bar geometry uses.
-          for i, v in values {
+          for point in chart_rendered_points(values, disp_blanks_as) {
+            let (i, v) = point
             if i >= cat_count {
               break
             }
@@ -619,7 +623,8 @@ fn render_bar_chart(
           // Vertical: label at the value (far) end of the column — above
           // the column for minMax, below for maxMin.
           let band2 = pw / cat_count.to_double()
-          for i, v in values {
+          for point in chart_rendered_points(values, disp_blanks_as) {
+            let (i, v) = point
             if i >= cat_count {
               break
             }
