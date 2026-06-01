@@ -4,6 +4,7 @@
 
 import {
   "moonbitlang/core/strconv",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml" @sml_types,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
   "trkbt10/ooxml/xml",
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,

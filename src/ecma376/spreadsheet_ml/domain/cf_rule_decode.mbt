@@ -380,7 +380,9 @@ fn cf_decode_srgb_color(
 pub fn CT_IconSet::new(
   element : @xml.Element,
 ) -> CT_IconSet raise @opc_errors.SchemaViolation {
-  let set_name = cf_attr_or(element, "iconSet", "3TrafficLights1")
+  let set_name = cf_decode_icon_set_type(
+    cf_attr_or(element, "iconSet", "3TrafficLights1"),
+  )
   let reverse = cf_decode_bool_attr(element, "reverse", false)
   let show_value = cf_decode_bool_attr(element, "showValue", true)
   let percent = cf_decode_bool_attr(element, "percent", true)
@@ -402,6 +404,22 @@ pub fn CT_IconSet::new(
     )
   }
   { set_name, thresholds, reverse, show_value, percent }
+}
+
+///|
+fn cf_decode_icon_set_type(
+  value : String,
+) -> String raise @opc_errors.SchemaViolation {
+  try @sml_types.ST_IconSetType::new(value) catch {
+    @sml_types.SchemaViolation(_) =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.1.49 / §18.18.42",
+        path="iconSet/@iconSet",
+        reason="value is outside ST_IconSetType enumeration",
+      )
+  } noraise {
+    parsed => parsed.to_string()
+  }
 }
 
 ///|
