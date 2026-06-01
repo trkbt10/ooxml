@@ -175,6 +175,28 @@ test "§21.4.7.1 composite places children from the composite origin" {
 }
 
 ///|
+/// §21.4.7.49 ar — composite applies aspect ratio only to the
+/// temporary rectangle used for child constraints.
+test "§21.4.7.1 composite ar shrinks child constraint rectangle" {
+  let inner : BoundsRect = { x: 10.0, y: 20.0, width: 20.0, height: 10.0 }
+  let algorithm : Algorithm = { kind: AlgComposite, params: [("ar", "1.5")] }
+  let result = layout_composite_with_algorithm(inner, algorithm, 2)
+  @debug.assert_eq(result.length(), 2)
+  @debug.assert_eq(result[0].x, 10.0)
+  @debug.assert_eq(result[0].y, 20.0)
+  @debug.assert_eq(result[0].width, 15.0)
+  @debug.assert_eq(result[0].height, 10.0)
+  @debug.assert_eq(result[1].width, 15.0)
+  let unchanged = layout_composite_with_algorithm(
+    inner,
+    { kind: AlgComposite, params: [("ar", "0")] },
+    1,
+  )
+  @debug.assert_eq(unchanged[0].width, 20.0)
+  @debug.assert_eq(unchanged[0].height, 10.0)
+}
+
+///|
 test "§21.4.7.21 ConstraintKind decoder maps canonical tokens" {
   assert_true(ConstraintKind::from_attr("w") is ConstrW)
   assert_true(ConstraintKind::from_attr("sp") is ConstrSp)

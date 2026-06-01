@@ -198,7 +198,7 @@ pub fn dispatch_algorithm(
     // `layout_composite`. `recurse_into_child` then applies the
     // child-targeting constraints to place and size each one.
     AlgComposite => {
-      let per_child = layout_composite(inner, n)
+      let per_child = layout_composite_with_algorithm(inner, algorithm, n)
       apply_each_child(children, per_child, constraints)
     }
     // §21.4.7.1 AlgorithmType — closed-10 enum. The remaining three

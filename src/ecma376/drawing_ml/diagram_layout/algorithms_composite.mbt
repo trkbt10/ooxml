@@ -28,25 +28,61 @@
 /// caller pairs them with the layout-node iteration result exactly
 /// as it does for the distributing algorithms.
 ///
-/// Scope note — the §21.4 composite `ar` (aspect-ratio) parameter,
-/// which can temporarily shrink one dimension of the composite box
-/// before the child constraints are computed, is not applied here.
-/// `ar = 0` (the schema default, documented as "leave the width and
-/// height constraints as is") is the common case and is handled
-/// exactly. A non-zero `ar` still lays the children out against the
-/// unshrunk box, which is bounds-correct and a strict improvement
-/// over the former `lin` fallback; the ratio refinement is tracked
-/// as a remaining §21.4.7.1 sub-gap.
+/// §21.4.7.49 `ar` (aspect ratio) is applied to the temporary child
+/// constraint rectangle only. `ar = 0` keeps `inner` unchanged; a
+/// non-zero width:height ratio shrinks whichever dimension is too
+/// large and leaves the composite node's origin unchanged.
 pub fn layout_composite(
   inner : BoundsRect,
+  child_count : Int,
+) -> Array[BoundsRect] {
+  layout_composite_with_algorithm(
+    inner,
+    { kind: AlgComposite, params: [] },
+    child_count,
+  )
+}
+
+///|
+fn layout_composite_with_algorithm(
+  inner : BoundsRect,
+  algorithm : Algorithm,
   child_count : Int,
 ) -> Array[BoundsRect] {
   let result : Array[BoundsRect] = []
   if child_count <= 0 {
     return result
   }
+  let child_inner = apply_composite_aspect_ratio(inner, algorithm)
   for _ in 0..<child_count {
-    result.push(inner)
+    result.push(child_inner)
   }
   result
+}
+
+///|
+fn apply_composite_aspect_ratio(
+  inner : BoundsRect,
+  algorithm : Algorithm,
+) -> BoundsRect {
+  let ratio = match algorithm.param("ar") {
+    Some(raw) =>
+      try parse_double_string(raw, "alg/param[@type='ar']") catch {
+        _ => 0.0
+      } noraise {
+        value => value
+      }
+    None => 0.0
+  }
+  if ratio <= 0.0 || inner.width <= 0.0 || inner.height <= 0.0 {
+    return inner
+  }
+  let current = inner.width / inner.height
+  if current > ratio {
+    { ..inner, width: inner.height * ratio }
+  } else if current < ratio {
+    { ..inner, height: inner.width / ratio }
+  } else {
+    inner
+  }
 }
