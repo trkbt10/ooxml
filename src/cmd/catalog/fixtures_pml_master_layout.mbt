@@ -164,24 +164,7 @@ fn pml_ml_cSld_with_extras(
   shapes : Array[@xml.Element],
   extras : Array[@xml.Element],
 ) -> @xml.Element {
-  let kids : Array[@xml.Node] = [
-    Element(
-      xe(NS_PML, "nvGrpSpPr", [], [
-        Element(xe(NS_PML, "cNvPr", [xa("id", "1"), xa("name", "")], [])),
-        Element(xe(NS_PML, "cNvGrpSpPr", [], [])),
-        Element(xe(NS_PML, "nvPr", [], [])),
-      ]),
-    ),
-    Element(xe(NS_PML, "grpSpPr", [], [])),
-  ]
-  for s in shapes {
-    kids.push(Element(s))
-  }
-  let cSld_kids : Array[@xml.Node] = [Element(xe(NS_PML, "spTree", [], kids))]
-  for e in extras {
-    cSld_kids.push(Element(e))
-  }
-  xe(NS_PML, "cSld", [], cSld_kids)
+  pptx_common_slide_data_with_children(NS_PML, [], shapes, extras)
 }
 
 ///|

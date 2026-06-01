@@ -1413,8 +1413,8 @@ pub fn with_package(
 /// and appends a §19.2.1.33 `<p:sldId>` entry to the presentation's
 /// `<p:sldIdLst>` (creating the list when absent). Returns a new
 /// Presentation; the original is unchanged. The new slide carries a
-/// single empty `<p:txBody>` so subsequent `append_text_to_slide`
-/// calls have a target.
+/// schema-valid empty group-shape tree plus one empty text shape so
+/// subsequent `append_text_to_slide` calls have a target.
 pub fn append_slide(
   presentation : Presentation,
 ) -> Presentation raise OpenError {
@@ -1436,7 +1436,8 @@ pub fn append_slide(
   let new_index = max_index + 1
   let new_part_name = "/ppt/slides/slide" + new_index.to_string() + ".xml"
 
-  // Build a minimal CT_Slide element. The slide carries a single
+  // Build a minimal CT_Slide element. The slide carries the
+  // required CT_GroupShape spTree metadata plus a single valid
   // sp/txBody so append_text_to_slide has something to target.
   let p_ns = Some("http://schemas.openxmlformats.org/presentationml/2006/main")
   let a_ns = Some("http://schemas.openxmlformats.org/drawingml/2006/main")
@@ -1460,15 +1461,59 @@ pub fn append_slide(
       @xml.Node::Element(body_p),
     ],
   }
+  let shape_c_nv_pr = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(p_qn("cNvPr"), "cNvPr"),
+      @a_edit.unprefixed_attribute("id", "2"),
+    ),
+    @a_edit.unprefixed_attribute("name", "TextBox 2"),
+  )
+  let shape_nv_sp_pr = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(p_qn("nvSpPr"), "nvSpPr"),
+        @xml.Node::Element(shape_c_nv_pr),
+      ),
+      @xml.Node::Element(@a_edit.empty_element(p_qn("cNvSpPr"), "cNvSpPr")),
+    ),
+    @xml.Node::Element(@a_edit.empty_element(p_qn("nvPr"), "nvPr")),
+  )
   let sp : @xml.Element = {
     name: p_qn("sp"),
     attributes: [],
-    children: [@xml.Node::Element(tx_body)],
+    children: [
+      @xml.Node::Element(shape_nv_sp_pr),
+      @xml.Node::Element(@a_edit.empty_element(p_qn("spPr"), "spPr")),
+      @xml.Node::Element(tx_body),
+    ],
   }
+  let group_c_nv_pr = @a_edit.set_attribute(
+    @a_edit.set_attribute(
+      @a_edit.empty_element(p_qn("cNvPr"), "cNvPr"),
+      @a_edit.unprefixed_attribute("id", "1"),
+    ),
+    @a_edit.unprefixed_attribute("name", ""),
+  )
+  let nv_grp_sp_pr = @a_edit.append_child(
+    @a_edit.append_child(
+      @a_edit.append_child(
+        @a_edit.empty_element(p_qn("nvGrpSpPr"), "nvGrpSpPr"),
+        @xml.Node::Element(group_c_nv_pr),
+      ),
+      @xml.Node::Element(
+        @a_edit.empty_element(p_qn("cNvGrpSpPr"), "cNvGrpSpPr"),
+      ),
+    ),
+    @xml.Node::Element(@a_edit.empty_element(p_qn("nvPr"), "nvPr")),
+  )
   let sp_tree : @xml.Element = {
     name: p_qn("spTree"),
     attributes: [],
-    children: [@xml.Node::Element(sp)],
+    children: [
+      @xml.Node::Element(nv_grp_sp_pr),
+      @xml.Node::Element(@a_edit.empty_element(p_qn("grpSpPr"), "grpSpPr")),
+      @xml.Node::Element(sp),
+    ],
   }
   let c_sld : @xml.Element = {
     name: p_qn("cSld"),
@@ -1498,7 +1543,14 @@ pub fn append_slide(
     attributes: sld_attrs,
     children: [@xml.Node::Element(c_sld)],
   }
-  let new_slide = @pml.CT_Slide::new(sld_element)
+  let new_slide = @pml.CT_Slide::parse(sld_element) catch {
+    @pml.SchemaViolation(type_name~, value~, reason~) =>
+      raise @pml_context.OpenError(
+        kind="SchemaViolation",
+        path=type_name,
+        reason=value + ": " + reason,
+      )
+  }
   let sld_bytes = @pml_builder.write_sld(new_slide)
 
   // Compute a fresh relationship Id for the presentation rels.

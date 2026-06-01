@@ -71,6 +71,71 @@ fn xep(
 }
 
 ///|
+/// §19.3.1.5 / §19.3.1.45 — canonical PresentationML common-slide
+/// data skeleton used by every catalog PPTX host.  The `<p:spTree>`
+/// root is itself a `CT_GroupShape`, so it must carry the required
+/// `<p:nvGrpSpPr>` and `<p:grpSpPr>` children before any visible
+/// shapes. Keeping this in one helper avoids a second source of
+/// truth between structural catalog probes and visual fixtures.
+fn pptx_common_slide_data(
+  ns_p : String,
+  shapes : Array[@xml.Element],
+) -> @xml.Element {
+  pptx_common_slide_data_with_children(ns_p, [], shapes, [])
+}
+
+///|
+/// Variant for §19.3.1.16 child ordering around `<p:spTree>`, e.g.
+/// `<p:bg>` before the tree or tolerated extension probes after it.
+fn pptx_common_slide_data_with_children(
+  ns_p : String,
+  before_sp_tree : Array[@xml.Element],
+  shapes : Array[@xml.Element],
+  after_sp_tree : Array[@xml.Element],
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  for child in before_sp_tree {
+    kids.push(Element(child))
+  }
+  kids.push(Element(pptx_shape_tree(ns_p, shapes)))
+  for child in after_sp_tree {
+    kids.push(Element(child))
+  }
+  xep("p", ns_p, "cSld", [], kids)
+}
+
+///|
+fn pptx_shape_tree(ns_p : String, shapes : Array[@xml.Element]) -> @xml.Element {
+  pptx_shape_tree_with_group_properties(ns_p, shapes, [])
+}
+
+///|
+fn pptx_shape_tree_with_group_properties(
+  ns_p : String,
+  shapes : Array[@xml.Element],
+  grp_sp_pr_children : Array[@xml.Element],
+) -> @xml.Element {
+  let grp_sp_pr_kids : Array[@xml.Node] = []
+  for child in grp_sp_pr_children {
+    grp_sp_pr_kids.push(Element(child))
+  }
+  let kids : Array[@xml.Node] = [
+    Element(
+      xep("p", ns_p, "nvGrpSpPr", [], [
+        Element(xep("p", ns_p, "cNvPr", [xa("id", "1"), xa("name", "")], [])),
+        Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(xep("p", ns_p, "grpSpPr", [], grp_sp_pr_kids)),
+  ]
+  for shape in shapes {
+    kids.push(Element(shape))
+  }
+  xep("p", ns_p, "spTree", [], kids)
+}
+
+///|
 /// Serialise an element as a standalone XML document to UTF-8 bytes.
 fn write_part(root : @xml.Element) -> Bytes {
   @xml.write({
@@ -1418,21 +1483,10 @@ fn pptx_slide_master_part() -> Bytes {
     xa("hlink", "hlink"),
     xa("folHlink", "folHlink"),
   ]
-  // §19.3.1.42 CT_SlideMaster — `<p:cSld>` is required and must
-  // contain `<p:spTree>` with the boilerplate `<p:nvGrpSpPr>` /
-  // `<p:grpSpPr>`.  We skip placeholder shapes entirely so a master
-  // never injects content on top of the fixture's slide.
-  let empty_sp_tree = pe("spTree", [], [
-    Element(
-      pe("nvGrpSpPr", [], [
-        Element(pe("cNvPr", [xa("id", "1"), xa("name", "")], [])),
-        Element(pe("cNvGrpSpPr", [], [])),
-        Element(pe("nvPr", [], [])),
-      ]),
-    ),
-    Element(pe("grpSpPr", [], [])),
-  ])
-  let cSld = pe("cSld", [], [Element(empty_sp_tree)])
+  // §19.3.1.42 CT_SlideMaster — `<p:cSld>` is required.  The
+  // shape-tree skeleton is shared with slide/layout hosts so the
+  // group-shape required-child rules stay single-sourced.
+  let cSld = pptx_common_slide_data(ns_p, [])
   let clr_map = pe("clrMap", cmap_attrs, [])
   let sl_id_lst = pe("sldLayoutIdLst", [], [
     Element(
@@ -1472,17 +1526,7 @@ fn pptx_slide_layout_part() -> Bytes {
     xep("p", ns_p, name, attrs, kids)
   }
 
-  let empty_sp_tree = pe("spTree", [], [
-    Element(
-      pe("nvGrpSpPr", [], [
-        Element(pe("cNvPr", [xa("id", "1"), xa("name", "")], [])),
-        Element(pe("cNvGrpSpPr", [], [])),
-        Element(pe("nvPr", [], [])),
-      ]),
-    ),
-    Element(pe("grpSpPr", [], [])),
-  ])
-  let cSld = pe("cSld", [], [Element(empty_sp_tree)])
+  let cSld = pptx_common_slide_data(ns_p, [])
   let layout = pe("sldLayout", [xa("type", "title"), xa("preserve", "1")], [
     Element(cSld),
   ])
@@ -4137,23 +4181,7 @@ fn default_diagram_slide_body() -> @xml.Element {
       ]),
     ),
   ])
-  xep("p", ns_p, "cSld", [], [
-    Element(
-      xep("p", ns_p, "spTree", [], [
-        Element(
-          xep("p", ns_p, "nvGrpSpPr", [], [
-            Element(
-              xep("p", ns_p, "cNvPr", [xa("id", "1"), xa("name", "")], []),
-            ),
-            Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
-            Element(xep("p", ns_p, "nvPr", [], [])),
-          ]),
-        ),
-        Element(xep("p", ns_p, "grpSpPr", [], [])),
-        Element(graphic_frame),
-      ]),
-    ),
-  ])
+  pptx_common_slide_data(ns_p, [graphic_frame])
 }
 
 ///|
@@ -4302,23 +4330,7 @@ fn default_chart_slide_body() -> @xml.Element {
       ]),
     ),
   ])
-  xep("p", ns_p, "cSld", [], [
-    Element(
-      xep("p", ns_p, "spTree", [], [
-        Element(
-          xep("p", ns_p, "nvGrpSpPr", [], [
-            Element(
-              xep("p", ns_p, "cNvPr", [xa("id", "1"), xa("name", "")], []),
-            ),
-            Element(xep("p", ns_p, "cNvGrpSpPr", [], [])),
-            Element(xep("p", ns_p, "nvPr", [], [])),
-          ]),
-        ),
-        Element(xep("p", ns_p, "grpSpPr", [], [])),
-        Element(graphic_frame),
-      ]),
-    ),
-  ])
+  pptx_common_slide_data(ns_p, [graphic_frame])
 }
 
 ///|
@@ -5643,11 +5655,7 @@ fn pptx_package_with_replaced_theme(theme : @xml.Element) -> Bytes {
   let slide : @xml.Element = {
     name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
     attributes: [],
-    children: [
-      Element(
-        xep("p", ns_p, "cSld", [], [Element(xep("p", ns_p, "spTree", [], []))]),
-      ),
-    ],
+    children: [Element(pptx_common_slide_data(ns_p, []))],
   }
   let parts : Array[(String, Bytes)] = [
     (
@@ -5896,11 +5904,7 @@ fn pptx_package_with_replaced_presentation(
   let slide : @xml.Element = {
     name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
     attributes: [],
-    children: [
-      Element(
-        xep("p", ns_p, "cSld", [], [Element(xep("p", ns_p, "spTree", [], []))]),
-      ),
-    ],
+    children: [Element(pptx_common_slide_data(ns_p, []))],
   }
   let parts : Array[(String, Bytes)] = [
     (
@@ -6576,10 +6580,7 @@ fn empty_body_package(format : String) -> Bytes {
   let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
   match format {
     "xlsx" => xlsx_package(xe(ns_s, "sheetData", [], []))
-    "pptx" =>
-      pptx_package(
-        xep("p", ns_p, "cSld", [], [Element(xep("p", ns_p, "spTree", [], []))]),
-      )
+    "pptx" => pptx_package(pptx_common_slide_data(ns_p, []))
     "docx:settings" =>
       docx_aux_package("settings", xep("w", ns_w, "settings", [], []))
     "docx:styles" =>

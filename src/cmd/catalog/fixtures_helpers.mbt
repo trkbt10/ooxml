@@ -184,20 +184,7 @@ fn pptx_shape_outline(
 /// Wrap a list of shapes in the PresentationML slide tree:
 /// `<p:cSld><p:spTree>(nvGrpSpPr + grpSpPr + shapes)</p:spTree></p:cSld>`.
 fn sp_tree(shapes : Array[@xml.Element]) -> @xml.Element {
-  let kids : Array[@xml.Node] = [
-    Element(
-      xe(NS_PML, "nvGrpSpPr", [], [
-        Element(xe(NS_PML, "cNvPr", [xa("id", "1"), xa("name", "")], [])),
-        Element(xe(NS_PML, "cNvGrpSpPr", [], [])),
-        Element(xe(NS_PML, "nvPr", [], [])),
-      ]),
-    ),
-    Element(xe(NS_PML, "grpSpPr", [], [])),
-  ]
-  for s in shapes {
-    kids.push(Element(s))
-  }
-  xe(NS_PML, "cSld", [], [Element(xe(NS_PML, "spTree", [], kids))])
+  pptx_common_slide_data(NS_PML, shapes)
 }
 
 ///|

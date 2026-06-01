@@ -23,11 +23,48 @@ fn fixture_bytes() -> Bytes {
     (
       "ppt/slides/slide1.xml",
       bytes(
-        "<p:sld xmlns:p=\"urn:p\"><p:cSld><p:spTree><p:sp><p:txBody><p:p><p:r><p:t>Hello pptx</p:t></p:r></p:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>",
+        valid_slide_xml(
+          "xmlns:p=\"urn:p\" xmlns:a=\"urn:a\"",
+          valid_text_shape_xml(
+            "2", "Hello", "", "<a:p><a:r><a:t>Hello pptx</a:t></a:r></a:p>",
+          ),
+        ),
       ),
     ),
   ])
   try! @zip.write(archive)
+}
+
+///|
+/// §19.3.1.45 spTree is a CT_GroupShape, so the test slide
+/// skeleton must include the same required non-visual group metadata
+/// that the production reader enforces.
+fn valid_slide_xml(ns_attrs : String, shape_xml : String) -> String {
+  "<p:sld " +
+  ns_attrs +
+  "><p:cSld><p:spTree>" +
+  "<p:nvGrpSpPr><p:cNvPr id=\"1\" name=\"\"/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>" +
+  "<p:grpSpPr/>" +
+  shape_xml +
+  "</p:spTree></p:cSld></p:sld>"
+}
+
+///|
+fn valid_text_shape_xml(
+  id : String,
+  name : String,
+  sp_pr_children : String,
+  paragraphs : String,
+) -> String {
+  "<p:sp><p:nvSpPr><p:cNvPr id=\"" +
+  id +
+  "\" name=\"" +
+  name +
+  "\"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>" +
+  sp_pr_children +
+  "</p:spPr><p:txBody><a:bodyPr/>" +
+  paragraphs +
+  "</p:txBody></p:sp>"
 }
 
 ///|
@@ -386,7 +423,13 @@ fn hyperlink_fixture_bytes() -> Bytes {
     (
       "ppt/slides/slide1.xml",
       bytes(
-        "<p:sld xmlns:p=\"urn:p\" xmlns:a=\"urn:a\" xmlns:r=\"urn:r\"><p:cSld><p:spTree><p:sp><p:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"914400\" cy=\"457200\"/></a:xfrm></p:spPr><p:txBody><a:bodyPr/><a:p><a:r><a:rPr><a:hlinkClick r:id=\"rId2\"/></a:rPr><a:t>link</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>",
+        valid_slide_xml(
+          "xmlns:p=\"urn:p\" xmlns:a=\"urn:a\" xmlns:r=\"urn:r\"",
+          valid_text_shape_xml(
+            "2", "Link", "<a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"914400\" cy=\"457200\"/></a:xfrm>",
+            "<a:p><a:r><a:rPr><a:hlinkClick r:id=\"rId2\"/></a:rPr><a:t>link</a:t></a:r></a:p>",
+          ),
+        ),
       ),
     ),
     // §15.2.2 — the slide's relationship part maps rId2 to an External

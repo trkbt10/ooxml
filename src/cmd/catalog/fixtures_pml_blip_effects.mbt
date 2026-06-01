@@ -100,16 +100,10 @@ fn blip_pic(
 ///|
 /// `sp_tree` variant that uses `p:` prefix on all PML elements so
 /// PowerPoint accepts the file (PowerPoint rejects default-namespace
-/// PML elements).
+/// PML elements). The root group skeleton is still built by the
+/// package-level PresentationML helper; this variant only supplies
+/// the explicit group transform and trailing color-map override.
 fn sp_tree_p(shapes : Array[@xml.Element]) -> @xml.Element {
-  fn pe(
-    name : String,
-    attrs : Array[@xml.Attribute],
-    kids : Array[@xml.Node],
-  ) -> @xml.Element {
-    xep("p", NS_PML, name, attrs, kids)
-  }
-
   fn ae(
     name : String,
     attrs : Array[@xml.Attribute],
@@ -124,23 +118,11 @@ fn sp_tree_p(shapes : Array[@xml.Element]) -> @xml.Element {
     Element(ae("chOff", [xa("x", "0"), xa("y", "0")], [])),
     Element(ae("chExt", [xa("cx", "0"), xa("cy", "0")], [])),
   ])
-  let kids : Array[@xml.Node] = [
-    Element(
-      pe("nvGrpSpPr", [], [
-        Element(pe("cNvPr", [xa("id", "1"), xa("name", "")], [])),
-        Element(pe("cNvGrpSpPr", [], [])),
-        Element(pe("nvPr", [], [])),
-      ]),
-    ),
-    Element(pe("grpSpPr", [], [Element(grp_xfrm)])),
-  ]
-  for s in shapes {
-    kids.push(Element(s))
-  }
-  let clr_map_ovr = pe("clrMapOvr", [], [
+  let sp_tree = pptx_shape_tree_with_group_properties(NS_PML, shapes, [grp_xfrm])
+  let clr_map_ovr = xep("p", NS_PML, "clrMapOvr", [], [
     Element(ae("masterClrMapping", [], [])),
   ])
-  pe("cSld", [], [Element(pe("spTree", [], kids)), Element(clr_map_ovr)])
+  xep("p", NS_PML, "cSld", [], [Element(sp_tree), Element(clr_map_ovr)])
 }
 
 ///|
