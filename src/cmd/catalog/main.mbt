@@ -425,17 +425,12 @@ fn main {
     // Every host_fmt registered here MUST be handled by
     // `host_package` in verify.mbt.
     //
-    // Multi-path ancestry — `build_ancestry` returns an ordered
-    // list of candidate wrapper chains per element.  The first
-    // chain is the historically-canonical pick (the same chain the
-    // pre-multi-path implementation chose); subsequent chains are
-    // alternates discovered by the BFS.  We try each candidate in
-    // order: the first one whose `verify_entry` returns `rendered`
-    // wins.  Falling through the entire list is a `parsed` (or
-    // `open-fail`) outcome — we keep the FIRST candidate's outcome
-    // as canonical for the entry, so a base-walked chain that
-    // round-trips but does not render does not displace the
-    // direct chain's outcome.
+    // Multi-path ancestry — `build_ancestry` returns an ordered list
+    // of candidate wrapper chains per element.  `verify_entry` owns
+    // the verdict strings; this loop only chooses the strongest
+    // candidate already proved by that single verifier, so a later
+    // schema-correct `parsed` route is not hidden by an earlier
+    // `open-fail` route.
     fn host_for_root(root_name : String) -> String {
       match root_name {
         "worksheet" => "xlsx"
@@ -543,32 +538,22 @@ fn main {
     let mut host_fmt = candidates[0].0
     let mut embed_tree = candidates[0].1
     let mut outcome = ""
-    let mut first_outcome = ""
     for i, cand in candidates {
       let (cfmt, ctree) = cand
       let o = verify_entry(cfmt, ctree, marker)
       if i == 0 {
-        first_outcome = o
-        // Default canonical pick — the first candidate, kept
-        // unless a later one actually renders.
         host_fmt = cfmt
         embed_tree = ctree
         outcome = o
       }
-      if o == "rendered" {
+      if i > 0 && verification_outcome_is_stronger(o, outcome) {
         host_fmt = cfmt
         embed_tree = ctree
         outcome = o
+      }
+      if outcome == "rendered" {
         break
       }
-    }
-    // If no candidate rendered, fall back to the first candidate's
-    // outcome — that preserves the previously-canonical behaviour
-    // for elements where multi-path didn't help.
-    if outcome != "rendered" {
-      outcome = first_outcome
-      host_fmt = candidates[0].0
-      embed_tree = candidates[0].1
     }
     if debug_id != "" && ident == debug_id {
       // Per-namespace dump suffix so multiple entries sharing the
