@@ -67,6 +67,8 @@ struct ExtendedCase {
 /// because table parts require extra OPC machinery (per-worksheet
 /// `_rels` file, `xl/tables/table*.xml` parts, content-type override)
 /// that the styles-only `xlsx_package_styled` builder does not emit.
+/// `styles`, when present, is the workbook-level `xl/styles.xml` part
+/// used by table AutoFilter tests that need resolved cell fills / dxfs.
 ///
 /// Each `tables[i]` is the `<table>` element that becomes
 /// `xl/tables/table{i+1}.xml`; the builder owns the `r:id` numbering
@@ -78,6 +80,7 @@ struct TabledCase {
   category : String
   content : @xml.Element
   tables : Array[@xml.Element]
+  styles : @xml.Element?
 }
 
 ///|
@@ -4770,6 +4773,7 @@ fn extended_cases() -> Array[ExtendedCase] {
   extras_wml_numbering(xcases)
   extras_sml_styled(xcases)
   extras_sml_cf_complete_styled(xcases)
+  extras_sml_autofilter_styled(xcases)
 
   xcases
 }
@@ -4837,7 +4841,7 @@ fn generate_visual_fixtures() -> Unit {
   // content-type override land in the OPC package.
   for c in tabled_cases() {
     total = total + 1
-    let bytes = xlsx_package_with_tables(c.content, c.tables)
+    let bytes = xlsx_package_with_tables(c.content, c.tables, styles=c.styles)
     let _ = try? @fs.create_dir(".snapshots/fixtures/" + c.format)
     let dir = ".snapshots/fixtures/" + c.format + "/" + c.category
     let _ = try? @fs.create_dir(dir)

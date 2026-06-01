@@ -58,28 +58,6 @@
 const NS_S_SPK : String = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 
 ///|
-/// Microsoft Office 2010 x14 extension namespace per `[MS-XLSX]`
-/// §2.2.4. Source-of-truth lives in
-/// `spreadsheet_ml/sparkline/domain.mbt::x14_ns`; duplicated here so
-/// the fixture builders don't need to import the decoder package
-/// just to obtain the namespace literal.
-const NS_X14 : String = "http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"
-
-///|
-/// Excel 2010 "expressions and metadata" namespace per `[MS-XLSX]`.
-/// Used for `<xm:f>` (sparkline data-range formula) and `<xm:sqref>`
-/// (sparkline anchor cell).
-const NS_XM : String = "http://schemas.microsoft.com/office/excel/2006/main"
-
-///|
-/// Sparkline extension URI literal — the GUID
-/// `{05C60535-1F16-4FD2-B633-F4F36F0B64E0}` per `[MS-XLSX]` §2.2.4.
-/// The `verify.mbt` `xlsx_package_with_sparklines` builder also
-/// references this value; keeping the literal in both places is
-/// intentional (each layer documents its own contract).
-const SPARKLINE_EXT_URI : String = "{05C60535-1F16-4FD2-B633-F4F36F0B64E0}"
-
-///|
 /// Build a prefixed `<x14:NAME …>…</x14:NAME>` element. The
 /// `xmlns:x14` declaration is emitted automatically by `@xml.write`
 /// on the worksheet root.
@@ -89,7 +67,11 @@ fn x14_elem(
   kids : Array[@xml.Node],
 ) -> @xml.Element {
   {
-    name: { prefix: Some("x14"), local_name: tag, ns: Some(NS_X14) },
+    name: {
+      prefix: Some("x14"),
+      local_name: tag,
+      ns: Some(@sml_sparkline.x14_ns()),
+    },
     attributes: attrs,
     children: kids,
   }
@@ -103,7 +85,11 @@ fn xm_elem(
   kids : Array[@xml.Node],
 ) -> @xml.Element {
   {
-    name: { prefix: Some("xm"), local_name: tag, ns: Some(NS_XM) },
+    name: {
+      prefix: Some("xm"),
+      local_name: tag,
+      ns: Some(@sml_sparkline.xm_ns()),
+    },
     attributes: attrs,
     children: kids,
   }
@@ -369,11 +355,4 @@ fn extras_sml_sparklines(scases : Array[SparklineCase]) -> Unit {
       ),
     ]),
   })
-  // Silence the unused-constant linter — both NS_XM and
-  // SPARKLINE_EXT_URI are documented in the file header for cross-
-  // reference even when only the helper functions reference NS_XM
-  // directly; SPARKLINE_EXT_URI is documented for symmetry with the
-  // verify.mbt builder that uses the same literal.
-  let _ = NS_XM
-  let _ = SPARKLINE_EXT_URI
 }

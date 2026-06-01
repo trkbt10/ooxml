@@ -595,9 +595,11 @@ fn extras_r29_sml_pivot_cache_rich(cases : Array[PivotedCase]) -> Unit {
           ),
         ]),
       ),
+      Element(axis_fields("colFields", [-2])),
       Element(
-        xe(NS_S, "colItems", [xa("count", "1")], [
-          Element(xe(NS_S, "i", [], [Element(xe(NS_S, "x", [], []))])),
+        axis_items_wrap("colItems", [
+          pivot_axis_item([0], false),
+          pivot_axis_item([1], false),
         ]),
       ),
       Element(
@@ -606,29 +608,29 @@ fn extras_r29_sml_pivot_cache_rich(cases : Array[PivotedCase]) -> Unit {
             xe(
               NS_S,
               "dataField",
-              [
-                xa("name", "Sum of Sales"),
-                xa("fld", "1"),
-                xa("baseField", "0"),
-                xa("baseItem", "0"),
-              ],
+              [xa("name", "Sum of Sales"), xa("fld", "1")],
               [],
             ),
           ),
           Element(
-            xe(
-              NS_S,
-              "dataField",
-              [
-                xa("name", "Sum of Cost"),
-                xa("fld", "2"),
-                xa("baseField", "0"),
-                xa("baseItem", "0"),
-              ],
-              [],
-            ),
+            xe(NS_S, "dataField", [xa("name", "Sum of Cost"), xa("fld", "2")], []),
           ),
         ]),
+      ),
+      Element(
+        xe(
+          NS_S,
+          "pivotTableStyleInfo",
+          [
+            xa("name", "PivotStyleLight16"),
+            xa("showRowHeaders", "1"),
+            xa("showColHeaders", "1"),
+            xa("showRowStripes", "0"),
+            xa("showColStripes", "0"),
+            xa("showLastColumn", "0"),
+          ],
+          [],
+        ),
       ),
     ],
   )

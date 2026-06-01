@@ -32,9 +32,9 @@
 //   * `<pivotTableStyleInfo>` table-style chrome (no banded fills /
 //     theme-driven header colours).
 //   * `<conditionalFormatting>` overlays on pivot cells (§18.10.1.20).
-//   * `<calculatedFields>` (§18.10.1.11) — the materializer treats
-//     them as plain cache fields if shared items are present;
-//     otherwise the bucket is empty.
+//   * Calculated cache fields (`<cacheField @formula>` §18.10.1.3)
+//     are materialized and filtered through `pivot-filter-calc-value`.
+//     Calculated items / members remain deferred.
 //   * `<filters>` / `<pageFields>` dropdown chrome (the records are
 //     filtered; the dropdown UI is not drawn).
 //   * Compact / outline layouts (`@compact`, `@outline`).
@@ -96,6 +96,36 @@ fn cache_field_numbers_inline(name : String) -> @xml.Element {
       ),
     ),
   ])
+}
+
+///|
+/// Calculated cache field (§18.10.1.3) carrying a formula instead of
+/// per-record values. Pivot cache records omit cells for these fields.
+fn cache_field_calculated(name : String, formula : String) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "cacheField",
+    [
+      xa("name", name),
+      xa("numFmtId", "0"),
+      xa("databaseField", "0"),
+      xa("formula", formula),
+    ],
+    [
+      Element(
+        xe(
+          NS_S_PVT,
+          "sharedItems",
+          [
+            xa("containsSemiMixedTypes", "0"),
+            xa("containsString", "0"),
+            xa("containsNumber", "1"),
+          ],
+          [],
+        ),
+      ),
+    ],
+  )
 }
 
 ///|
@@ -203,6 +233,20 @@ fn pivot_field(
   data_field : Bool,
   items_count : Int,
 ) -> @xml.Element {
+  pivot_field_with_hidden_items(axis, data_field, items_count, [])
+}
+
+///|
+/// `<pivotField …>` variant that marks selected shared-item indices hidden.
+/// Real spreadsheet applications use this item visibility state when
+/// opening cached PivotTables; the `<filters>` element records the advanced
+/// filter definition.
+fn pivot_field_with_hidden_items(
+  axis : String,
+  data_field : Bool,
+  items_count : Int,
+  hidden_items : Array[Int],
+) -> @xml.Element {
   let attrs : Array[@xml.Attribute] = []
   if axis != "" {
     attrs.push(xa("axis", axis))
@@ -217,9 +261,11 @@ fn pivot_field(
   if items_count > 0 {
     let item_kids : Array[@xml.Node] = []
     for i in 0..<items_count {
-      item_kids.push(
-        Element(xe(NS_S_PVT, "item", [xa("x", i.to_string())], [])),
-      )
+      let item_attrs = [xa("x", i.to_string())]
+      if int_array_contains(hidden_items, i) {
+        item_attrs.push(xa("h", "1"))
+      }
+      item_kids.push(Element(xe(NS_S_PVT, "item", item_attrs, [])))
     }
     item_kids.push(Element(xe(NS_S_PVT, "item", [xa("t", "default")], [])))
     kids.push(
@@ -234,6 +280,16 @@ fn pivot_field(
     )
   }
   xe(NS_S_PVT, "pivotField", attrs, kids)
+}
+
+///|
+fn int_array_contains(values : Array[Int], target : Int) -> Bool {
+  for value in values {
+    if value == target {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -258,8 +314,10 @@ fn axis_fields(name : String, indices : Array[Int]) -> @xml.Element {
 }
 
 ///|
-/// `<dataField name="..." fld="..." subtotal="..." baseField="0"
-/// baseItem="0"/>` — §18.10.1.22.
+/// `<dataField name="..." fld="..." subtotal="..."/>` — §18.10.1.22.
+/// `baseField` / `baseItem` are only meaningful with showDataAs
+/// calculations; emitting them on plain aggregate fields makes Excel
+/// repair the pivotTable part.
 fn data_field_entry(
   name : String,
   fld : Int,
@@ -272,8 +330,6 @@ fn data_field_entry(
   if subtotal != "sum" {
     attrs.push(xa("subtotal", subtotal))
   }
-  attrs.push(xa("baseField", "0"))
-  attrs.push(xa("baseItem", "0"))
   xe(NS_S_PVT, "dataField", attrs, [])
 }
 
@@ -313,6 +369,113 @@ fn axis_items_wrap(name : String, items : Array[@xml.Element]) -> @xml.Element {
     kids.push(Element(it))
   }
   xe(NS_S_PVT, name, [xa("count", items.length().to_string())], kids)
+}
+
+///|
+/// `<filters><filter><autoFilter>…</autoFilter></filter></filters>`
+/// — §18.10.1.33 / §18.10.1.34 PivotTable advanced filter wrapper.
+fn pivot_filters_wrap(filters : Array[@xml.Element]) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  for filter in filters {
+    kids.push(Element(filter))
+  }
+  xe(NS_S_PVT, "filters", [xa("count", filters.length().to_string())], kids)
+}
+
+///|
+/// Label filter for one cache field, expressed through the shared
+/// SpreadsheetML AutoFilter child. The materializer delegates the
+/// comparison to `spreadsheet_ml/autofilter`.
+fn pivot_caption_equals_filter(
+  fld : Int,
+  id : Int,
+  value : String,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "filter",
+    [
+      xa("fld", fld.to_string()),
+      xa("type", "captionEqual"),
+      xa("id", id.to_string()),
+      xa("stringValue1", value),
+    ],
+    [
+      Element(
+        xe(NS_S_PVT, "autoFilter", [xa("ref", "A1")], [
+          Element(
+            xe(NS_S_PVT, "filterColumn", [xa("colId", "0")], [
+              Element(
+                xe(NS_S_PVT, "filters", [], [
+                  Element(xe(NS_S_PVT, "filter", [xa("val", value)], [])),
+                ]),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+/// Value filter for one row/column field. The candidate value is the
+/// selected data-field aggregate; PivotTable materialization delegates the
+/// custom comparison to the shared SpreadsheetML AutoFilter evaluator.
+fn pivot_sum_greater_than_filter(
+  fld : Int,
+  id : Int,
+  data_field_index : Int,
+  threshold : String,
+) -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "filter",
+    [
+      xa("fld", fld.to_string()),
+      xa("type", "sum"),
+      xa("id", id.to_string()),
+      xa("iMeasureFld", data_field_index.to_string()),
+    ],
+    [
+      Element(
+        xe(NS_S_PVT, "autoFilter", [xa("ref", "A1")], [
+          Element(
+            xe(NS_S_PVT, "filterColumn", [xa("colId", "0")], [
+              Element(
+                xe(NS_S_PVT, "customFilters", [], [
+                  Element(
+                    xe(
+                      NS_S_PVT,
+                      "customFilter",
+                      [xa("operator", "greaterThan"), xa("val", threshold)],
+                      [],
+                    ),
+                  ),
+                ]),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+/// Append a `<filters>` collection to a pivotTableDefinition produced by
+/// `pivot_def_root`. This keeps the common root helper stable while adding
+/// the §18.10.1.34 child in schema order after `<pivotTableStyleInfo>`.
+fn pivot_def_with_filters(
+  root : @xml.Element,
+  filters : @xml.Element,
+) -> @xml.Element {
+  let children : Array[@xml.Node] = []
+  for child in root.children {
+    children.push(child)
+  }
+  children.push(Element(filters))
+  { name: root.name, attributes: root.attributes, children }
 }
 
 ///|
@@ -357,28 +520,51 @@ fn pivot_def_root(
     Some(rf) => kids.push(Element(rf))
     None => ()
   }
+  kids.push(Element(row_items_el))
   match col_fields_el {
     Some(cf) => kids.push(Element(cf))
     None => ()
   }
-  kids.push(Element(row_items_el))
   kids.push(Element(col_items_el))
   kids.push(Element(data_fields_el))
+  kids.push(
+    Element(
+      xe(
+        NS_S_PVT,
+        "pivotTableStyleInfo",
+        [
+          xa("name", "PivotStyleLight16"),
+          xa("showRowHeaders", "1"),
+          xa("showColHeaders", "1"),
+          xa("showRowStripes", "0"),
+          xa("showColStripes", "0"),
+          xa("showLastColumn", "0"),
+        ],
+        [],
+      ),
+    ),
+  )
   xe(NS_S_PVT, "pivotTableDefinition", attrs, kids)
 }
 
 // ---- PivotedCase extender ----------------------------------------
 
 ///|
-/// §18.10 PivotTable fixtures.  Five distinct shapes:
+/// §18.10 PivotTable fixtures.  Eight distinct shapes:
 ///
 ///   1. `pivot-2field-sum`     — one row + one col + sum value
-///   2. `pivot-grand-totals`   — same shape with row + col grand
+///   2. `pivot-filter-caption` — one row + one col + caption
+///                                advanced filter.
+///   3. `pivot-filter-value`   — one row + one col + aggregate value
+///                                advanced filter.
+///   4. `pivot-filter-calc-value` — calculated-field aggregate value
+///                                  advanced filter.
+///   5. `pivot-grand-totals`   — same shape with row + col grand
 ///                                totals on (spec defaults).
-///   3. `pivot-multi-values`   — two data fields (sum + count) on a
+///   6. `pivot-multi-values`   — two data fields (sum + count) on a
 ///                                single row axis.
-///   4. `pivot-row-grouping`   — two row fields nested (Region/City).
-///   5. `pivot-no-grand`       — explicit `rowGrandTotals="0"` +
+///   7. `pivot-row-grouping`   — two row fields nested (Region/City).
+///   8. `pivot-no-grand`       — explicit `rowGrandTotals="0"` +
 ///                                `colGrandTotals="0"` to verify the
 ///                                materializer suppresses the
 ///                                grand-total band.
@@ -473,6 +659,57 @@ fn extras_sml_pivots(pcases : Array[PivotedCase]) -> Unit {
       record_row([rec_x(2), rec_x(1), rec_n("40")]),
     ])
   }
+  fn calc_source_sheet() -> @xml.Element {
+    xe(NS_S_PVT, "sheetData", [], [
+      Element(
+        s_row("1", [
+          s_inline("A1", "Region"),
+          s_inline("B1", "Units"),
+          s_inline("C1", "Price"),
+        ]),
+      ),
+      Element(
+        s_row("2", [
+          s_inline("A2", "East"),
+          s_cell("B2", "2"),
+          s_cell("C2", "10"),
+        ]),
+      ),
+      Element(
+        s_row("3", [
+          s_inline("A3", "East"),
+          s_cell("B3", "3"),
+          s_cell("C3", "10"),
+        ]),
+      ),
+      Element(
+        s_row("4", [
+          s_inline("A4", "West"),
+          s_cell("B4", "1"),
+          s_cell("C4", "20"),
+        ]),
+      ),
+    ])
+  }
+  fn calc_cache_def() -> @xml.Element {
+    cache_def_root(
+      cache_source_worksheet("S1", "A1:C4"),
+      cache_fields_wrap([
+        cache_field_strings("Region", ["East", "West"]),
+        cache_field_numbers_inline("Units"),
+        cache_field_numbers_inline("Price"),
+        cache_field_calculated("Revenue", "Units*Price"),
+      ]),
+      3,
+    )
+  }
+  fn calc_cache_records() -> @xml.Element {
+    records_root([
+      record_row([rec_x(0), rec_n("2"), rec_n("10")]),
+      record_row([rec_x(0), rec_n("3"), rec_n("10")]),
+      record_row([rec_x(1), rec_n("1"), rec_n("20")]),
+    ])
+  }
   // ---- 1. 2-field pivot: one row, one column, sum value --------
   // §18.10.1.83 rowFields=[Region]; §18.10.1.14 colFields=[Product];
   // §18.10.1.22 dataFields=[Sum of Sales]. Default grand totals OFF
@@ -515,6 +752,109 @@ fn extras_sml_pivots(pcases : Array[PivotedCase]) -> Unit {
     cache_def: shared_cache_def(),
     cache_records: shared_cache_records(),
     pivot_def: pivot_def_2field,
+  })
+  // ---- 1b. PivotTable advanced caption filter -------------------
+  // §18.10.1.33 filter / §18.10.1.34 filters — Region is restricted
+  // to "North" through the child §18.3.1.2 autoFilter.
+  let pivot_def_filter_caption = pivot_def_with_filters(
+    pivot_def_root(
+      "PivotFilterCaption",
+      pivot_location("E1:H4", 0, 2, 1),
+      pivot_fields_wrap([
+        pivot_field_with_hidden_items("axisRow", false, 3, [1, 2]),
+        pivot_field("axisCol", false, 2),
+        pivot_field("", true, 0),
+      ]),
+      Some(axis_fields("rowFields", [0])),
+      Some(axis_fields("colFields", [1])),
+      axis_items_wrap("rowItems", [pivot_axis_item([0], false)]),
+      axis_items_wrap("colItems", [
+        pivot_axis_item([0], false),
+        pivot_axis_item([1], false),
+      ]),
+      data_fields_wrap([data_field_entry("Sum of Sales", 2, "sum")]),
+      false,
+      false,
+    ),
+    pivot_filters_wrap([pivot_caption_equals_filter(0, 1, "North")]),
+  )
+  pcases.push({
+    id: "pivot-filter-caption",
+    format: "xlsx",
+    category: "pivot",
+    content: source_sheet(),
+    cache_def: shared_cache_def(),
+    cache_records: shared_cache_records(),
+    pivot_def: pivot_def_filter_caption,
+  })
+  // ---- 1c. PivotTable advanced aggregate value filter ------------
+  // §18.10.1.33 type="sum" — Region is restricted to members whose
+  // Sum of Sales exceeds 150. The `<pivotField>/<item h="1">` state is
+  // mirrored so spreadsheet applications opening the cached pivot display
+  // the same result without refreshing.
+  let pivot_def_filter_value = pivot_def_with_filters(
+    pivot_def_root(
+      "PivotFilterValue",
+      pivot_location("E1:H4", 0, 2, 1),
+      pivot_fields_wrap([
+        pivot_field_with_hidden_items("axisRow", false, 3, [0, 2]),
+        pivot_field("axisCol", false, 2),
+        pivot_field("", true, 0),
+      ]),
+      Some(axis_fields("rowFields", [0])),
+      Some(axis_fields("colFields", [1])),
+      axis_items_wrap("rowItems", [pivot_axis_item([1], false)]),
+      axis_items_wrap("colItems", [
+        pivot_axis_item([0], false),
+        pivot_axis_item([1], false),
+      ]),
+      data_fields_wrap([data_field_entry("Sum of Sales", 2, "sum")]),
+      false,
+      false,
+    ),
+    pivot_filters_wrap([pivot_sum_greater_than_filter(0, 2, 0, "150")]),
+  )
+  pcases.push({
+    id: "pivot-filter-value",
+    format: "xlsx",
+    category: "pivot",
+    content: source_sheet(),
+    cache_def: shared_cache_def(),
+    cache_records: shared_cache_records(),
+    pivot_def: pivot_def_filter_value,
+  })
+  // ---- 1d. Calculated-field aggregate value filter --------------
+  // §18.10.1.3 calculated cacheField Revenue = Units*Price, filtered by
+  // §18.10.1.33 type="sum". The kept member is East because the
+  // calculated field SoT evaluates SUM(Units) * SUM(Price) = 100.
+  let pivot_def_filter_calc_value = pivot_def_with_filters(
+    pivot_def_root(
+      "PivotFilterCalcValue",
+      pivot_location("E1:F4", 0, 1, 1),
+      pivot_fields_wrap([
+        pivot_field_with_hidden_items("axisRow", false, 2, [1]),
+        pivot_field("", false, 0),
+        pivot_field("", false, 0),
+        pivot_field("", true, 0),
+      ]),
+      Some(axis_fields("rowFields", [0])),
+      None,
+      axis_items_wrap("rowItems", [pivot_axis_item([0], false)]),
+      axis_items_wrap("colItems", [pivot_axis_item([], false)]),
+      data_fields_wrap([data_field_entry("Sum of Revenue", 3, "sum")]),
+      false,
+      false,
+    ),
+    pivot_filters_wrap([pivot_sum_greater_than_filter(0, 3, 0, "75")]),
+  )
+  pcases.push({
+    id: "pivot-filter-calc-value",
+    format: "xlsx",
+    category: "pivot",
+    content: calc_source_sheet(),
+    cache_def: calc_cache_def(),
+    cache_records: calc_cache_records(),
+    pivot_def: pivot_def_filter_calc_value,
   })
   // ---- 2. Grand totals on both axes ------------------------------
   // §18.10.1.73 rowGrandTotals / colGrandTotals default to true; this
@@ -612,8 +952,9 @@ fn extras_sml_pivots(pcases : Array[PivotedCase]) -> Unit {
   // the tuple `(Region, Product)` so the row axis carries one cell
   // per unique pair. No column axis fields → a single
   // "Values" column.
-  // Deferred: §18.10.1.44 `@r` repeat-count grouping — every nested
-  // tuple renders as one cell joined by " / ".
+  // §18.10.1.44 `@r` repeat-count grouping is handled by the
+  // materializer; this fixture uses explicit full tuples so the
+  // rendered labels remain easy to audit.
   let pivot_def_grouping = pivot_def_root(
     "PivotGrouping",
     pivot_location("E1:F9", 0, 1, 1),

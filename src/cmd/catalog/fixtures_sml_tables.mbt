@@ -31,17 +31,13 @@
 // `xlsx_package` directly.  AutoFilter is also §18.5.1 territory
 // because the table machinery overlays the same filter dropdown.
 //
-// Renderer support note: at the time of writing, the SML viewer does
-// not consult `CT_Worksheet.table_parts` or
-// `CT_Worksheet.auto_filter`; the parser stores both as raw elements
-// and the SVG renderer ignores them.  The fixtures here exercise the
-// FILE / OPC plumbing — they round-trip cleanly and the reference
-// renderer will paint the table bands + filter dropdowns even though
-// ours will not.  Expect higher RMSE for these fixtures until the
-// renderer learns table-style overlay.
-// TODO(round-N): teach `svg_render.mbt` about
-// `<tableStyleInfo>` (banded fills + header band) and
-// `<autoFilter>` (header-cell dropdown arrows).
+// Renderer support note: the context loader resolves
+// `<tableParts>/<tablePart r:id="…">` to table parts and the SML
+// viewer can paint table chrome in editing-view mode via
+// `show_table_chrome`. The default catalog/page-render path leaves
+// that chrome suppressed to match reference print export, while the
+// dedicated viewer tests exercise the header band, stripes, totals
+// border, and autofilter dropdown arrows.
 
 // ---- file-local helpers ----------------------------------------------
 
@@ -175,10 +171,9 @@ fn tbl_table(
 /// `xlsx_package` (no aux parts).
 ///
 /// Pushed onto the regular `VisualCase` array via `extra_cases()` in
-/// `fixtures_categories.mbt`.  Renderer support: parser preserves
-/// `auto_filter`; svg_render.mbt currently ignores it — the reference
-/// renderer paints the dropdown arrows on the header row, so RMSE is
-/// inflated until rendering catches up (documented TODO above).
+/// `fixtures_categories.mbt`. In the default page-render path the
+/// dropdown chrome is intentionally suppressed; editing-view tests
+/// enable `show_table_chrome` to validate the §18.3.1.2 glyph path.
 fn extras_sml_autofilter_inline(cases : Array[VisualCase]) -> Unit {
   // A 4-row sheet (header + 3 data rows) with `<autoFilter
   // ref="A1:C4">` — the canonical "click the column header to filter"
@@ -225,9 +220,9 @@ fn extras_sml_autofilter_inline(cases : Array[VisualCase]) -> Unit {
   })
   // AutoFilter with a `<filterColumn>` child carrying a `<filters>`
   // value list (§18.3.2.4 CT_Filter): only "North" rows visible.  The
-  // renderer is free to ignore the filter (we do today); the OPC
-  // round-trip exercises the parser branch in
-  // `spreadsheet_ml/autofilter/filter.mbt`.
+  // viewer routes the row decision through
+  // `spreadsheet_ml/autofilter/filter.mbt`, the same SoT used by the
+  // public context API.
   cases.push({
     id: "autofilter-filtered",
     format: "xlsx",
@@ -239,8 +234,12 @@ fn extras_sml_autofilter_inline(cases : Array[VisualCase]) -> Unit {
             s_row("1", [s_inline("A1", "Region"), s_inline("B1", "Sales")]),
           ),
           Element(s_row("2", [s_inline("A2", "North"), s_cell("B2", "120")])),
-          Element(s_row("3", [s_inline("A3", "South"), s_cell("B3", "95")])),
-          Element(s_row("4", [s_inline("A4", "East"), s_cell("B4", "180")])),
+          Element(
+            s_row_hidden("3", [s_inline("A3", "South"), s_cell("B3", "95")]),
+          ),
+          Element(
+            s_row_hidden("4", [s_inline("A4", "East"), s_cell("B4", "180")]),
+          ),
           Element(s_row("5", [s_inline("A5", "North"), s_cell("B5", "150")])),
         ]),
       ),
@@ -258,6 +257,129 @@ fn extras_sml_autofilter_inline(cases : Array[VisualCase]) -> Unit {
         ]),
       ),
     ]),
+  })
+  // AutoFilter with §18.3.2.9 `<iconFilter>`. The worksheet also carries
+  // §18.3.1.18 conditionalFormatting / §18.3.1.49 iconSet so a conformant
+  // renderer can resolve each candidate row's icon bucket before the
+  // AutoFilter package applies the iconFilter comparison. Filtered-out
+  // rows are persisted with `hidden="1"` so Office/Calc open the saved
+  // view in the same state as this package's renderer.
+  cases.push({
+    id: "autofilter-iconfilter-cf",
+    format: "xlsx",
+    category: "table",
+    content: xe(NS_S_TBL, "worksheet", [], [
+      Element(xe(NS_S_TBL, "dimension", [xa("ref", "A1:B4")], [])),
+      Element(
+        xe(NS_S_TBL, "sheetData", [], [
+          Element(
+            s_row("1", [s_inline("A1", "Score"), s_inline("B1", "Label")]),
+          ),
+          Element(
+            s_row_hidden("2", [s_cell("A2", "10"), s_inline("B2", "Drop low")]),
+          ),
+          Element(
+            s_row_hidden("3", [s_cell("A3", "30"), s_inline("B3", "Drop mid")]),
+          ),
+          Element(s_row("4", [s_cell("A4", "50"), s_inline("B4", "Keep high")])),
+        ]),
+      ),
+      Element(
+        s_conditional_formatting("A2:A4", [
+          s_cf_rule_icon_set("1", "3TrafficLights1", [
+            s_cfvo("percent", Some("0")),
+            s_cfvo("percent", Some("33")),
+            s_cfvo("percent", Some("67")),
+          ]),
+        ]),
+      ),
+      Element(
+        xe(NS_S_TBL, "autoFilter", [xa("ref", "A1:B4")], [
+          Element(
+            xe(NS_S_TBL, "filterColumn", [xa("colId", "0")], [
+              Element(
+                xe(
+                  NS_S_TBL,
+                  "iconFilter",
+                  [xa("iconSet", "3TrafficLights1"), xa("iconId", "2")],
+                  [],
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    ]),
+  })
+}
+
+///|
+/// Styled worksheet-level AutoFilter fixtures. These need `styles.xml`
+/// because §18.3.2.1 colorFilter compares the candidate cell's resolved
+/// style with the referenced `<dxf>` entry.
+fn extras_sml_autofilter_styled(xcases : Array[ExtendedCase]) -> Unit {
+  let autofilter_styles = xe(NS_S_TBL, "styleSheet", [], [
+    Element(
+      xe(NS_S_TBL, "fonts", [xa("count", "1")], [
+        Element(ss_font("11", "Calibri", [])),
+      ]),
+    ),
+    Element(
+      xe(NS_S_TBL, "fills", [xa("count", "4")], [
+        Element(ss_fill_none()),
+        Element(ss_fill_gray125()),
+        Element(ss_pattern_fill("solid", Some("FFFF0000"), None)),
+        Element(ss_pattern_fill("solid", Some("FF00FF00"), None)),
+      ]),
+    ),
+    Element(
+      xe(NS_S_TBL, "borders", [xa("count", "1")], [Element(ss_border_none())]),
+    ),
+    Element(
+      xe(NS_S_TBL, "cellXfs", [xa("count", "3")], [
+        Element(ss_cell_xf("0", "0", "0", "0", None)),
+        Element(ss_cell_xf("0", "0", "2", "0", None)),
+        Element(ss_cell_xf("0", "0", "3", "0", None)),
+      ]),
+    ),
+    Element(cf_dxfs([cf_dxf_solid_fill("FFFF0000")])),
+  ])
+  xcases.push({
+    id: "autofilter-colorfilter-styled",
+    format: "xlsx",
+    category: "table",
+    content: xe(NS_S_TBL, "worksheet", [], [
+      Element(xe(NS_S_TBL, "dimension", [xa("ref", "A1:A4")], [])),
+      Element(
+        xe(NS_S_TBL, "sheetData", [], [
+          Element(s_row("1", [s_inline("A1", "Status")])),
+          Element(s_row("2", [s_inline_styled_x("A2", "Keep red", "1")])),
+          Element(
+            s_row_hidden("3", [s_inline_styled_x("A3", "Drop green", "2")]),
+          ),
+          Element(s_row("4", [s_inline_styled_x("A4", "Keep red again", "1")])),
+        ]),
+      ),
+      Element(
+        xe(NS_S_TBL, "autoFilter", [xa("ref", "A1:A4")], [
+          Element(
+            xe(NS_S_TBL, "filterColumn", [xa("colId", "0")], [
+              Element(
+                xe(
+                  NS_S_TBL,
+                  "colorFilter",
+                  [xa("dxfId", "0"), xa("cellColor", "1")],
+                  [],
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    ]),
+    styles: Some(autofilter_styles),
+    numbering: None,
+    doc_styles: None,
   })
 }
 
@@ -283,6 +405,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
     id: "table-simple-header",
     format: "xlsx",
     category: "table",
+    styles: None,
     content: xe(NS_S_TBL, "sheetData", [], [
       Element(
         s_row("1", [
@@ -339,6 +462,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
     id: "table-totals-row",
     format: "xlsx",
     category: "table",
+    styles: None,
     content: xe(NS_S_TBL, "sheetData", [], [
       Element(
         s_row("1", [
@@ -403,6 +527,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
     id: "table-styled-medium2",
     format: "xlsx",
     category: "table",
+    styles: None,
     content: xe(NS_S_TBL, "sheetData", [], [
       Element(
         s_row("1", [
@@ -466,6 +591,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
     id: "table-with-autofilter",
     format: "xlsx",
     category: "table",
+    styles: None,
     content: xe(NS_S_TBL, "sheetData", [], [
       Element(
         s_row("1", [
@@ -530,6 +656,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
     id: "table-adjacent-pair",
     format: "xlsx",
     category: "table",
+    styles: None,
     content: xe(NS_S_TBL, "sheetData", [], [
       Element(
         s_row("1", [
@@ -599,6 +726,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
     id: "table-styled-light9",
     format: "xlsx",
     category: "table",
+    styles: None,
     content: xe(NS_S_TBL, "sheetData", [], [
       Element(
         s_row("1", [
@@ -657,6 +785,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
     id: "table-styled-medium14",
     format: "xlsx",
     category: "table",
+    styles: None,
     content: xe(NS_S_TBL, "sheetData", [], [
       Element(
         s_row("1", [
@@ -720,6 +849,7 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
     id: "table-column-stripes",
     format: "xlsx",
     category: "table",
+    styles: None,
     content: xe(NS_S_TBL, "sheetData", [], [
       Element(
         s_row("1", [
@@ -781,15 +911,42 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
   // §18.3.2.6 CT_ColorFilter — the worksheet declares a sort state
   // (§18.3.2.6 `<sortState>`) AND a `<filterColumn>` carrying a
   // `<colorFilter dxfId="0">` child, which restricts visible rows
-  // to those whose cell-fill DxfId equals `0`.  Our renderer doesn't
-  // hide rows based on the filter (no DxfId resolution yet), but the
-  // OPC round-trip + autofilter chrome MUST still paint on the
-  // header row even when the filter is colour-driven.  Tests the
-  // chrome's robustness to a non-value-based filter payload.
+  // to those whose resolved cell-fill colour matches `dxfId=0`. The
+  // renderer resolves the candidate cell format once, then delegates
+  // colorFilter comparison to the AutoFilter package; the same payload
+  // also keeps exercising OPC round-trip + autofilter chrome rendering
+  // for non-value-based filters.
+  let table_filter_styles = xe(NS_S_TBL, "styleSheet", [], [
+    Element(
+      xe(NS_S_TBL, "fonts", [xa("count", "1")], [
+        Element(ss_font("11", "Calibri", [])),
+      ]),
+    ),
+    Element(
+      xe(NS_S_TBL, "fills", [xa("count", "4")], [
+        Element(ss_fill_none()),
+        Element(ss_fill_gray125()),
+        Element(ss_pattern_fill("solid", Some("FFFF0000"), None)),
+        Element(ss_pattern_fill("solid", Some("FF00FF00"), None)),
+      ]),
+    ),
+    Element(
+      xe(NS_S_TBL, "borders", [xa("count", "1")], [Element(ss_border_none())]),
+    ),
+    Element(
+      xe(NS_S_TBL, "cellXfs", [xa("count", "3")], [
+        Element(ss_cell_xf("0", "0", "0", "0", None)),
+        Element(ss_cell_xf("0", "0", "2", "0", None)),
+        Element(ss_cell_xf("0", "0", "3", "0", None)),
+      ]),
+    ),
+    Element(cf_dxfs([cf_dxf_solid_fill("FFFF0000")])),
+  ])
   tcases.push({
     id: "table-color-filter-after-sort",
     format: "xlsx",
     category: "table",
+    styles: Some(table_filter_styles),
     content: xe(NS_S_TBL, "sheetData", [], [
       Element(
         s_row("1", [
@@ -801,28 +958,28 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
       Element(
         s_row("2", [
           s_inline("A2", "Alpha"),
-          s_inline("B2", "Open"),
+          s_inline_styled_x("B2", "Open", "1"),
           s_inline("C2", "Alice"),
         ]),
       ),
       Element(
-        s_row("3", [
+        s_row_hidden("3", [
           s_inline("A3", "Beta"),
-          s_inline("B3", "Done"),
+          s_inline_styled_x("B3", "Done", "2"),
           s_inline("C3", "Bob"),
         ]),
       ),
       Element(
         s_row("4", [
           s_inline("A4", "Gamma"),
-          s_inline("B4", "Open"),
+          s_inline_styled_x("B4", "Open", "1"),
           s_inline("C4", "Carol"),
         ]),
       ),
       Element(
-        s_row("5", [
+        s_row_hidden("5", [
           s_inline("A5", "Delta"),
-          s_inline("B5", "WIP"),
+          s_inline_styled_x("B5", "WIP", "2"),
           s_inline("C5", "Dave"),
         ]),
       ),
@@ -868,65 +1025,80 @@ fn extras_sml_tables(tcases : Array[TabledCase]) -> Unit {
       ),
     ],
   })
+  // ---- 10. TABLE WITH iconFilter FED BY worksheet iconSet --------
+  // §18.3.2.9 CT_IconFilter inside the table part consumes the same
+  // resolved §18.3.1.49 conditional-formatting bucket facts as a
+  // worksheet-level AutoFilter. Rows hidden in the sheet keep the
+  // persisted Office/Calc view aligned with the renderer's filter pass.
+  tcases.push({
+    id: "table-icon-filter-cf",
+    format: "xlsx",
+    category: "table",
+    styles: None,
+    content: xe(NS_S_TBL, "worksheet", [], [
+      Element(xe(NS_S_TBL, "dimension", [xa("ref", "A1:B4")], [])),
+      Element(
+        xe(NS_S_TBL, "sheetData", [], [
+          Element(
+            s_row("1", [s_inline("A1", "Score"), s_inline("B1", "Label")]),
+          ),
+          Element(
+            s_row_hidden("2", [s_cell("A2", "10"), s_inline("B2", "Drop low")]),
+          ),
+          Element(
+            s_row_hidden("3", [s_cell("A3", "30"), s_inline("B3", "Drop mid")]),
+          ),
+          Element(s_row("4", [s_cell("A4", "50"), s_inline("B4", "Keep high")])),
+        ]),
+      ),
+      Element(
+        s_conditional_formatting("A2:A4", [
+          s_cf_rule_icon_set("1", "3TrafficLights1", [
+            s_cfvo("percent", Some("0")),
+            s_cfvo("percent", Some("33")),
+            s_cfvo("percent", Some("67")),
+          ]),
+        ]),
+      ),
+    ]),
+    tables: [
+      tbl_table(
+        "1",
+        "Table1",
+        "Scores",
+        "A1:B4",
+        0,
+        Some(
+          xe(NS_S_TBL, "autoFilter", [xa("ref", "A1:B4")], [
+            Element(
+              xe(NS_S_TBL, "filterColumn", [xa("colId", "0")], [
+                Element(
+                  xe(
+                    NS_S_TBL,
+                    "iconFilter",
+                    [xa("iconSet", "3TrafficLights1"), xa("iconId", "2")],
+                    [],
+                  ),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+        tbl_columns([tbl_column("1", "Score"), tbl_column("2", "Label")]),
+        Some(tbl_style_info("TableStyleMedium2", true, false)),
+      ),
+    ],
+  })
 }
 
-// ---- PIVOT TABLES (§18.10) — gap documentation -----------------
+// ---- PIVOT TABLES (§18.10) -------------------------------------
 //
-// A round-trip-only pivot fixture would require these OPC parts:
-//
-//   xl/pivotTables/pivotTable1.xml         CT_pivotTableDefinition
-//   xl/pivotTables/_rels/pivotTable1.xml.rels  → cacheDefinition
-//   xl/pivotCache/pivotCacheDefinition1.xml CT_PivotCacheDefinition
-//   xl/pivotCache/pivotCacheRecords1.xml    CT_PivotCacheRecords
-//   xl/pivotCache/_rels/pivotCacheDefinition1.xml.rels → source range
-//   xl/workbook.xml                         <pivotCaches><pivotCache>
-//   xl/_rels/workbook.xml.rels              → pivotCacheDefinition
-//   xl/worksheets/sheet1.xml                <drawingHF>? not needed
-//
-// Plus a worksheet relationships entry pointing at
-// `pivotTables/pivotTable1.xml` and a [Content_Types] override per
-// part.  `spreadsheet_ml/pivot_table/` already has the decoder
-// (`decode.mbt`) and the materializer (`materialize.mbt`), but the
-// SVG renderer doesn't visit pivot output, so a pivot fixture would
-// only verify that the package round-trips through
-// reader.open → ctx.save → reader.open without crashing — it would
-// not contribute to render fidelity.
-//
-// TODO(pivot, future round): add `xlsx_package_with_pivot` builder
-// (mirror `xlsx_package_with_tables` but with two extra part trees)
-// and push at least one `pivot-basic` fixture exercising
-// `<pivotField>` / `<rowFields>` / `<dataFields>` decoding.  Skipped
-// in this round because half-implementing the builder would leave
-// the workbook rel-graph in a state conformant readers reject (a
-// `pivotCache` ref to a missing part triggers a hard error).
+// Pivot fixtures are covered by `fixtures_sml_pivots.mbt`, using
+// `xlsx_package_with_pivot` in verify.mbt to wire the worksheet,
+// pivotTable, pivotCacheDefinition, and pivotCacheRecords parts into
+// the same OPC relationship graph Excel emits.
 
 // ---- SPARKLINES (§18.7 / x14:sparklineGroups) — gap documentation ----
 //
-// Sparklines live in the §18.7 extension namespace
-// `http://schemas.microsoft.com/office/spreadsheetml/2009/9/main`
-// (prefix `x14`), attached to a worksheet via
-// `<extLst><ext uri="…sparklineGroups…"><x14:sparklineGroups>`.  The
-// project does NOT decode this namespace at all: a search for
-// `x14:sparkline` across `src/ecma376/spreadsheet_ml` returns no
-// matches.  The parser stores the unknown `<ext>` payload as the
-// raw `CT_Extension.element` on `CT_ExtensionList` (the catch-all
-// extension list) and the renderer never visits it.
-//
-// A coverage-marker fixture is still useful — it lets the snapshot
-// harness measure how the OPC reader copes with an x14 payload it
-// has no schema for — but it requires:
-//
-//   * a worksheet `<extLst><ext uri="{05C60535-1F16-4FD2-B633-F4F36F0B64E0}"
-//     xmlns:x14="…">…</ext></extLst>`
-//   * the `xmlns:x14` declaration on the `<worksheet>` root (the
-//     `@xml.write` namespace machinery emits it automatically when the
-//     element tree carries the URI).
-//
-// TODO(sparkline, future round): write `extras_sml_sparkline_inline`
-// pushing a `<worksheet>` carrying an `<extLst>` with one
-// `<x14:sparklineGroup>` / `<x14:sparklines>` pair on a small grid.
-// Skipped this round because the rendered output (the reference
-// renderer paints the sparkline; we paint nothing) is fully
-// expected — the marker is only useful once the renderer learns to
-// draw the line/column sparkline glyph itself, otherwise the fixture
-// is noise.
+// Sparklines are covered by `fixtures_sml_sparklines.mbt`, using the
+// same namespace and extension URI SoT as `spreadsheet_ml/sparkline`.

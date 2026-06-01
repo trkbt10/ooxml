@@ -46,6 +46,17 @@ fn s_row(num : String, cells : Array[@xml.Element]) -> @xml.Element {
 }
 
 ///|
+/// SpreadsheetML `<row hidden="1">` carrying cells filtered out by a
+/// persisted AutoFilter view.
+fn s_row_hidden(num : String, cells : Array[@xml.Element]) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  for c in cells {
+    kids.push(Element(c))
+  }
+  xe(NS_S, "row", [xa("r", num), xa("hidden", "1")], kids)
+}
+
+///|
 /// SpreadsheetML inline-string cell — `t="inlineStr"` + `<is><t>`.
 fn s_inline(ref_ : String, text : String) -> @xml.Element {
   xe(NS_S, "c", [xa("r", ref_), xa("t", "inlineStr")], [

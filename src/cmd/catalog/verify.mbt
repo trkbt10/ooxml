@@ -281,6 +281,7 @@ fn xlsx_package(content : @xml.Element) -> Bytes {
 fn xlsx_package_with_tables(
   content : @xml.Element,
   tables : Array[@xml.Element],
+  styles? : @xml.Element? = None,
 ) -> Bytes {
   let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
@@ -305,7 +306,7 @@ fn xlsx_package_with_tables(
       ]),
     ),
   ])
-  let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
+  let wb_rels_kids : Array[@xml.Node] = [
     Element(
       xe(
         NS_PKG_REL,
@@ -320,7 +321,28 @@ fn xlsx_package_with_tables(
         [],
       ),
     ),
-  ])
+  ]
+  match styles {
+    Some(_) =>
+      wb_rels_kids.push(
+        Element(
+          xe(
+            NS_PKG_REL,
+            "Relationship",
+            [
+              xa("Id", "rId2"),
+              xa(
+                "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles",
+              ),
+              xa("Target", "styles.xml"),
+            ],
+            [],
+          ),
+        ),
+      )
+    None => ()
+  }
+  let wb_rels = xe(NS_PKG_REL, "Relationships", [], wb_rels_kids)
   // Build the worksheet's per-part relationships, one rId per table.
   let sheet_rels_kids : Array[@xml.Node] = []
   for i, _t in tables {
@@ -400,6 +422,15 @@ fn xlsx_package_with_tables(
       "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
     ),
   ]
+  match styles {
+    Some(_) =>
+      overrides.push(
+        (
+          "/xl/styles.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml",
+        ),
+      )
+    None => ()
+  }
   for i, _t in tables {
     overrides.push(
       (
@@ -421,17 +452,21 @@ fn xlsx_package_with_tables(
       ("xl/tables/table" + (i + 1).to_string() + ".xml", write_part(t)),
     )
   }
+  match styles {
+    Some(s) => parts.push(("xl/styles.xml", write_part(s)))
+    None => ()
+  }
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
 
 ///|
-/// `.xlsx` package whose `<worksheet>` carries a `<pivotTables>`-style
-/// relationship pointing at a pivot table part, fully wired into the
-/// workbook's `<pivotCaches>`, the per-part `_rels` for the worksheet
-/// + the pivot table + the pivot cache definition, and the three new
-/// `[Content_Types]` overrides (pivotTable, pivotCacheDefinition,
-/// pivotCacheRecords).  Mirrors §18.10 PivotTable plumbing as
-/// produced by Excel.
+/// `.xlsx` package whose `<worksheet>` carries a
+/// `<pivotTableDefinitions>` carrier plus a relationship pointing at a
+/// pivot table part, fully wired into the workbook's `<pivotCaches>`,
+/// the per-part `_rels` for the worksheet + the pivot table + the pivot
+/// cache definition, and the three new `[Content_Types]` overrides
+/// (pivotTable, pivotCacheDefinition, pivotCacheRecords).  Mirrors
+/// §18.10 PivotTable plumbing as produced by Excel.
 ///
 /// The caller supplies the four `<…>` element trees:
 ///
@@ -524,8 +559,12 @@ fn xlsx_package_with_pivot(
       ),
     ),
   ])
-  // Worksheet payload — wrap in `<worksheet>` if it isn't already.
-  let worksheet : @xml.Element = if content.name.local_name == "worksheet" {
+  // Worksheet payload — wrap in `<worksheet>` if it isn't already,
+  // then append the in-worksheet carrier that points at the pivotTable
+  // relationship. The worksheet relationship alone leaves the pivot
+  // part orphaned for Excel, which then repairs the workbook by
+  // removing the PivotTable view.
+  let worksheet_body : @xml.Element = if content.name.local_name == "worksheet" {
     content
   } else {
     {
@@ -533,6 +572,38 @@ fn xlsx_package_with_pivot(
       attributes: [],
       children: [Element(content)],
     }
+  }
+  let pivot_defs = xe(ns_s, "pivotTableDefinitions", [xa("count", "1")], [
+    Element(
+      xe(
+        ns_s,
+        "pivotTableDefinition",
+        [
+          {
+            name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+            value: "rId1",
+          },
+        ],
+        [],
+      ),
+    ),
+  ])
+  let worksheet_children : Array[@xml.Node] = []
+  let ext_children : Array[@xml.Node] = []
+  for n in worksheet_body.children {
+    match n {
+      Element(e) if e.name.local_name == "extLst" => ext_children.push(n)
+      _ => worksheet_children.push(n)
+    }
+  }
+  worksheet_children.push(Element(pivot_defs))
+  for n in ext_children {
+    worksheet_children.push(n)
+  }
+  let worksheet : @xml.Element = {
+    name: worksheet_body.name,
+    attributes: worksheet_body.attributes,
+    children: worksheet_children,
   }
   // Worksheet rels — rId1 → pivotTable1.xml.
   let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
@@ -647,14 +718,13 @@ fn xlsx_package_with_sparklines(
   sparkline_groups : @xml.Element,
 ) -> Bytes {
   let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-  // `[MS-XLSX]` §2.2.4 — every sparkline-bearing `<ext>` carries
-  // the GUID literal `{05C60535-1F16-4FD2-B633-F4F36F0B64E0}` on
-  // `@uri`. Documented in `sparkline/domain.mbt::sparkline_ext_uri`.
-  let sparkline_uri = "{05C60535-1F16-4FD2-B633-F4F36F0B64E0}"
   // Build `<ext uri="…">…</ext>` carrying the sparkline groups.
-  let ext_elt : @xml.Element = xe(ns_s, "ext", [xa("uri", sparkline_uri)], [
-    Element(sparkline_groups),
-  ])
+  let ext_elt : @xml.Element = xe(
+    ns_s,
+    "ext",
+    [xa("uri", @sml_sparkline.sparkline_ext_uri())],
+    [Element(sparkline_groups)],
+  )
   // Build `<extLst><ext>…</ext></extLst>`.
   let ext_lst_elt : @xml.Element = xe(ns_s, "extLst", [], [Element(ext_elt)])
   // Splice `<extLst>` onto the worksheet payload. Per §18.3.1.99
