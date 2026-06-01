@@ -935,6 +935,7 @@ pub(all) struct CT_FFCheckBox {
   default_ : CT_OnOff?
   checked : CT_OnOff?
 } derive(Eq, @debug.Debug)
+pub fn CT_FFCheckBox::checked_state(Self) -> Bool
 pub fn CT_FFCheckBox::new(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FFCheckBox::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_FFCheckBox::to_element(Self) -> @xml.Element
@@ -1812,6 +1813,7 @@ pub(all) struct CT_OnOff {
   element : @xml.Element
   val : Bool?
 } derive(Eq, @debug.Debug)
+pub fn CT_OnOff::effective_value(Self, Bool) -> Bool
 pub fn CT_OnOff::new(@xml.Element) -> Self
 pub fn CT_OnOff::parse(@xml.Element) -> Self
 pub fn CT_OnOff::to_element(Self) -> @xml.Element

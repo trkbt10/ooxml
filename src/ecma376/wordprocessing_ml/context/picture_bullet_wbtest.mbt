@@ -139,7 +139,7 @@ fn pic_bullet_package(vml~ : Bool) -> Bytes {
 /// emitted because the picture replaces it.
 test "wml context renders DrawingML picture bullet as <image> end-to-end" {
   let document = open(pic_bullet_package(vml=false))
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   assert_true(svg.contains("<image"))
   assert_true(
     svg.contains("href=\"data:image/png;base64," + pic_bullet_png_b64 + "\""),
@@ -154,7 +154,7 @@ test "wml context renders DrawingML picture bullet as <image> end-to-end" {
 /// identically: the same `<image>` data URI is rendered end-to-end.
 test "wml context renders VML picture bullet as <image> end-to-end" {
   let document = open(pic_bullet_package(vml=true))
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   assert_true(svg.contains("<image"))
   assert_true(
     svg.contains("href=\"data:image/png;base64," + pic_bullet_png_b64 + "\""),
@@ -235,7 +235,7 @@ test "wml context falls back to text marker when bullet image is unresolvable" {
     ("word/numbering.xml", bytes(numbering_xml)),
   ])
   let document = open(try! @zip.write(archive))
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   // No picture-bullet image is emitted.
   assert_false(svg.contains("data:image/png;base64,"))
   // The §17.9.11 lvlText marker "o " renders as text instead.

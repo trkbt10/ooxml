@@ -22,6 +22,10 @@ pub(all) suberror OpenError {
   OpenError(kind~ : String, path~ : String, reason~ : String)
 } derive(@debug.Debug)
 
+pub(all) suberror SaveError {
+  SaveError(kind~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
+
 // Types and methods
 pub(all) struct Document {
   opc_package : @opc.Package
@@ -48,6 +52,7 @@ pub fn Document::resolve_paragraph_style(Self, @xml.Element?) -> @style_resolver
 pub fn Document::resolve_run_style(Self, @xml.Element?) -> @style_resolver.EffectiveProperties?
 pub fn Document::resolve_style_by_id(Self, @domain.StyleId) -> @style_resolver.EffectiveProperties?
 pub fn Document::save(Self) -> Bytes
+pub fn Document::save_or_raise(Self) -> Bytes raise SaveError
 pub fn Document::to_svg(Self, debug_attrs? : Bool) -> String
 
 pub(all) struct FooterPart {

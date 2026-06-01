@@ -32,6 +32,32 @@ test "wordprocessing_ml context opens and saves minimal package" {
 }
 
 ///|
+test "wordprocessing_ml save_or_raise reports invalid package" {
+  let document = open(fixture_bytes())
+  let broken_parts : Array[@opc.PackagePart] = []
+  for part in document.opc_package.parts {
+    if part.name == document.main_part {
+      broken_parts.push({ ..part, name: "word/document.xml" })
+    } else {
+      broken_parts.push(part)
+    }
+  }
+  let broken = {
+    ..document,
+    opc_package: { ..document.opc_package, parts: broken_parts },
+  }
+  try broken.save_or_raise() catch {
+    SaveError(kind~, path~, reason~) => {
+      assert_eq(kind, "PackageSaveFailed")
+      assert_eq(path, "/word/document.xml")
+      assert_true(reason.length() > 0)
+    }
+  } noraise {
+    _ => abort("expected SaveError")
+  }
+}
+
+///|
 /// `Document::to_svg` returns a clean SVG by default: every
 /// `data-ooxml-*` decoration is stripped on the way out so
 /// production consumers see only paint primitives.  Passing
@@ -41,14 +67,14 @@ test "wordprocessing_ml context opens and saves minimal package" {
 /// visible content (`Hello docx`).
 test "wordprocessing_ml context renders minimal svg" {
   let document = open(fixture_bytes())
-  let svg_clean = document.to_svg()
+  let svg_clean = document.to_svg_for_test()
   // Default `debug_attrs=false`: no `data-ooxml-*` decoration
   // survives, but the rendered text remains.
   assert_false(svg_clean.contains("data-ooxml=\"wml\""))
   assert_true(svg_clean.contains("Hello docx"))
   // Opt-in path: `debug_attrs=true` surfaces every label the
   // viewer emits, matching the harness's view of the document.
-  let svg_debug = document.to_svg(debug_attrs=true)
+  let svg_debug = document.to_svg_for_test(debug_attrs=true)
   assert_true(svg_debug.contains("data-ooxml=\"wml\""))
   assert_true(svg_debug.contains("Hello docx"))
 }
@@ -61,9 +87,9 @@ test "wordprocessing_ml context appends paragraph and round-trips" {
     Ok(modified) => {
       let saved = modified.save()
       let reopened = open(saved)
-      assert_true(reopened.to_svg().contains("appended line"))
+      assert_true(reopened.to_svg_for_test().contains("appended line"))
       // original 'Hello docx' still present
-      assert_true(reopened.to_svg().contains("Hello docx"))
+      assert_true(reopened.to_svg_for_test().contains("Hello docx"))
     }
     Err(_) => assert_true(false)
   }
@@ -75,7 +101,7 @@ test "wordprocessing_ml context set_paragraph_text rewrites the run text" {
   let modified = try? @wml_edit.set_paragraph_text(document, 0, "rewritten")
   match modified {
     Ok(d) => {
-      let svg = open(d.save()).to_svg()
+      let svg = open(d.save()).to_svg_for_test()
       assert_true(svg.contains("rewritten"))
       assert_true(!svg.contains("Hello docx"))
     }
@@ -126,7 +152,7 @@ test "wordprocessing_ml context insert_paragraph_at inserts at position 0" {
   let modified = try? @wml_edit.insert_paragraph_at(document, 0, "first-line")
   match modified {
     Ok(d) => {
-      let svg = open(d.save()).to_svg()
+      let svg = open(d.save()).to_svg_for_test()
       assert_true(svg.contains("first-line"))
       assert_true(svg.contains("Hello docx"))
     }
@@ -155,7 +181,7 @@ test "wordprocessing_ml context remove_paragraph drops a body child and round-tr
           }
           assert_eq(after_count, before_count - 1)
           let reopened = open(d2.save())
-          assert_true(!reopened.to_svg().contains("temporary"))
+          assert_true(!reopened.to_svg_for_test().contains("temporary"))
         }
         Err(_) => assert_true(false)
       }
@@ -182,8 +208,8 @@ test "wordprocessing_ml context preserves text across two save cycles" {
   let cycle1 = open(cycle1_bytes)
   let cycle2_bytes = cycle1.save()
   let cycle2 = open(cycle2_bytes)
-  assert_true(cycle1.to_svg().contains("Hello docx"))
-  assert_true(cycle2.to_svg().contains("Hello docx"))
+  assert_true(cycle1.to_svg_for_test().contains("Hello docx"))
+  assert_true(cycle2.to_svg_for_test().contains("Hello docx"))
   assert_eq(
     initial.main.element.name.local_name,
     cycle2.main.element.name.local_name,
@@ -264,7 +290,7 @@ fn fixture_with_header_footer() -> Bytes {
 ///|
 test "wml context to_svg includes default header/footer text" {
   let document = open(fixture_with_header_footer())
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   assert_true(svg.contains("Body content"))
   assert_true(svg.contains("HEADER-TOKEN"))
   assert_true(svg.contains("FOOTER-TOKEN"))
@@ -273,7 +299,7 @@ test "wml context to_svg includes default header/footer text" {
 ///|
 test "wml context to_svg without header/footer still emits body" {
   let document = open(fixture_bytes())
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   assert_true(svg.contains("Hello docx"))
   assert_false(svg.contains("HEADER-TOKEN"))
 }
@@ -395,7 +421,7 @@ fn fixture_with_conflicting_image_rids() -> Bytes {
 /// document part's `rIdImg` (the BODY png) inside the header.
 test "wml context resolves a header inline image against the header part rels" {
   let document = open(fixture_with_conflicting_image_rids())
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   let body_href = "data:image/png;base64," + @base64.encode(body_png)
   let header_href = "data:image/png;base64," + @base64.encode(header_png)
   // The body image resolves against the BODY part's rels.
@@ -455,7 +481,7 @@ test "wml context body inline image resolves to the document part media (byte-id
     ("word/media/pic.png", png),
   ])
   let document = open(try! @zip.write(archive))
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   let expected_href = "data:image/png;base64," + @base64.encode(png)
   assert_true(svg.contains("href=\"" + expected_href + "\""))
 }
@@ -611,7 +637,7 @@ fn fixture_with_conflicting_chart_rids() -> Bytes {
 /// exactly what the old document-scoped resolver produced.
 test "wml context resolves a header inline chart against the header part rels" {
   let document = open(fixture_with_conflicting_chart_rids())
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   // The body chart resolves against the BODY part's rels (byte-identity
   // sense: the body still renders the document-part chart).
   assert_true(svg.contains("BODY CHART"))
@@ -620,6 +646,70 @@ test "wml context resolves a header inline chart against the header part rels" {
   // CHART", because the header's rId was wrongly resolved against the
   // document part.)
   assert_true(svg.contains("HEADER CHART"))
+}
+
+///|
+/// §17.4 / §21.2 / OPC §9.3.1 — a chart inside a table cell is still a
+/// paragraph run drawing, so it must use the same document-part
+/// chart resolver as a body paragraph chart.
+test "wml context resolves an inline chart inside a table cell" {
+  let ns = " xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"" +
+    " xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\"" +
+    " xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\"" +
+    " xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"" +
+    " xmlns:c=\"http://schemas.openxmlformats.org/drawingml/2006/chart\""
+  let document_xml = "<w:document" +
+    ns +
+    ">" +
+    "<w:body>" +
+    "<w:tbl>" +
+    "<w:tblPr><w:tblW w:w=\"7000\" w:type=\"dxa\"/></w:tblPr>" +
+    "<w:tblGrid><w:gridCol w:w=\"7000\"/></w:tblGrid>" +
+    "<w:tr><w:tc>" +
+    "<w:tcPr><w:tcW w:w=\"7000\" w:type=\"dxa\"/></w:tcPr>" +
+    "<w:p><w:r>" +
+    inline_chart_drawing_xml("rIdChart") +
+    "</w:r></w:p>" +
+    "</w:tc></w:tr>" +
+    "</w:tbl>" +
+    "</w:body></w:document>"
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>" +
+        "<Override PartName=\"/word/charts/chart1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawingml.chart+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "word/_rels/document.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdChart\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart\" Target=\"charts/chart1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("word/document.xml", bytes(document_xml)),
+    ("word/charts/chart1.xml", bytes(chart_part_xml("TABLE CELL CHART"))),
+  ])
+  let document = try open(try! @zip.write(archive)) catch {
+    OpenError(kind~, path~, reason~) => abort(kind + " " + path + " " + reason)
+  } noraise {
+    doc => doc
+  }
+  let svg = document.to_svg_for_test()
+  assert_true(svg.contains("TABLE CELL CHART"))
 }
 
 ///|
@@ -670,7 +760,7 @@ test "wml edit §17.13.5 accept_revisions drops <w:del> and unwraps <w:ins>" {
   let accepted = try? @wml_edit.accept_revisions(document)
   match accepted {
     Ok(d) => {
-      let svg = open(d.save()).to_svg()
+      let svg = open(d.save()).to_svg_for_test()
       // Inserted text survives.
       assert_true(svg.contains("inserted "))
       // Untouched text survives.
@@ -693,7 +783,7 @@ test "wml edit §17.13.5 reject_revisions drops <w:ins> and unwraps <w:del>" {
   let rejected = try? @wml_edit.reject_revisions(document)
   match rejected {
     Ok(d) => {
-      let svg = open(d.save()).to_svg()
+      let svg = open(d.save()).to_svg_for_test()
       // Inserted text is gone.
       assert_false(svg.contains("inserted"))
       // Untouched text and tail survive.
@@ -1044,7 +1134,7 @@ fn fixture_with_body_hyperlink() -> Bytes {
 /// `<text>` is wrapped in an `<a xlink:href="<url>">`.
 test "wml context body hyperlink r:id wraps run text in an xlink anchor" {
   let document = open(fixture_with_body_hyperlink())
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   // The link target survives as an SVG anchor href.
   assert_true(svg.contains("xlink:href=\"https://example.com/body\""))
   // The anchor wraps the run's visible text.
@@ -1133,7 +1223,7 @@ fn fixture_with_conflicting_hyperlink_rids() -> Bytes {
 /// still resolves against the main document part's rels (the BODY url).
 test "wml context resolves a header hyperlink against the header part rels" {
   let document = open(fixture_with_conflicting_hyperlink_rids())
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   // The body hyperlink resolves against the BODY part's rels.
   assert_true(svg.contains("xlink:href=\"https://example.com/from-body\""))
   // The header hyperlink resolves against the HEADER part's rels — the fix.
@@ -1172,7 +1262,7 @@ test "wml context w:anchor hyperlink wraps run text in a fragment href" {
     ("word/document.xml", bytes(document_xml)),
   ])
   let document = open(try! @zip.write(archive))
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   assert_true(svg.contains("xlink:href=\"#Bookmark\""))
   assert_true(svg.contains("Jump to bookmark"))
 }
@@ -1185,7 +1275,7 @@ test "wml context w:anchor hyperlink wraps run text in a fragment href" {
 /// invariant.
 test "wml context plain document emits no anchor element" {
   let document = open(fixture_bytes())
-  let svg = document.to_svg()
+  let svg = document.to_svg_for_test()
   assert_true(svg.contains("Hello docx"))
   // No SVG `<a>` anchor and no xlink:href is emitted for a hyperlink-free
   // document — the run-span emission path is byte-identical to before.

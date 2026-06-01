@@ -2,13 +2,13 @@
 // ☑ / ☐ glyph (was previously dropped: fldChar fell through to no-op).
 
 ///|
-fn parse_fld_char(inner : String) -> @xml.Element raise {
+fn parse_fld_char(inner : String) -> @domain.CT_FldChar raise {
   let src = "<w:r xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">" +
     inner +
     "</w:r>"
   let doc = @xml.parse(@utf8.encode(src[:]))
   match first_child_named(doc.root, "fldChar") {
-    Some(e) => e
+    Some(e) => try! @domain.CT_FldChar::new(e)
     None => abort("expected <w:fldChar>")
   }
 }

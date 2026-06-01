@@ -149,120 +149,13 @@ const DEFAULT_FONT_SIZE_PT : Double = 10.0
 /// `<w:sz>` on `<w:rPr>` still wins because the cascade in
 /// `resolve_run_props` overrides this default.
 ///
-/// Pairs with `OFFICE_NORMAL_LINE_FACTOR` (1.2227, measured): when
-/// no styles part is present the paragraph layout selects
-/// `LineHeightAuto(OFFICE_NORMAL_LINE_FACTOR)` (not the chained
-/// `DEFAULT_LINE_HEIGHT_RATIO × 1.15` the legacy comment claimed —
-/// see line 4227, the two arms are independent), giving a per-line
-/// step of `11 × 96/72 × 1.2227 ≈ 17.93 px`.  This matches the reference renderer's
-/// PDF-export baseline pitch of `13.45 pt` exactly (verified across
-/// `section-cols-3-equal`, `section-margins-narrow`,
-/// `section-letter-narrow-3col`, `section-cols-2-equal` — 84
-/// consecutive baselines, σ = 0).
+/// Pairs with the Office Normal paragraph spacing default: when no
+/// styles part is present the paragraph layout selects
+/// `LineHeightAuto(OFFICE_NORMAL_LINE_AUTO_MULTIPLE)`. The
+/// "single-line" base is resolved from the selected font's hhea
+/// ascender / descender / lineGap through `@glyph`, so this constant
+/// only represents the ECMA-376 auto-line multiple, not font metrics.
 const OFFICE_NORMAL_FONT_SIZE_PT : Double = 11.0
-
-///|
-/// §17.3.1.33 spacing — the default single line height as a multiple
-/// of the font point size.
-///
-/// "Single" line spacing in Word/the reference renderer is the EFFECTIVE line height
-/// the reference renderer uses when nothing tells it otherwise, NOT the raw OS/2 design
-/// height (typoAscender + typoDescender + typoLineGap).  the rendered body face's
-/// OS/2 sums to `(1697 + 383 + 130) / 2048 ≈ 1.079 em` — and that
-/// design metric is what the previous comment block here documented
-/// — but the rendered baseline-to-baseline pitch in every the reference renderer PDF
-/// export is `13.45 pt` for 11 pt body text, i.e. `13.45 / 11 =
-/// 1.2227 em`.  Measured by `pdftotext -bbox-layout` on
-/// `section-cols-3-equal.pdf`, `section-margins-narrow.pdf`,
-/// `section-letter-narrow-3col.pdf`, `section-cols-2-equal.pdf` —
-/// 84 consecutive baselines, all exactly 13.45 pt apart (σ = 0).
-/// Pixel-row spot-check on `.snapshots/ref/docx__section__
-/// section-cols-3-equal.norm.png` confirms: line tops at rows
-/// 99, 115, 132, 150, 168, 186, 204 — pitch ≈17.9 px, which is
-/// `1.2227 × 11 × 96/72 = 17.93 px` (rounded to integer rows).
-///
-/// The 1.079 design metric was the WRONG abstraction.  the reference renderer does not
-/// composite paragraphs at the bare typo-extent; it adds its own
-/// leading to land at 1.2227 — equivalent to the Word "Multiple 1.15"
-/// rule applied on top of a slightly fatter design height
-/// (1.079 × 1.134 ≈ 1.2227, but neither factor is what the user
-/// sees in the the reference renderer UI).  Matching the rendered pitch directly is the
-/// correct constant for paragraph layout.
-///
-/// The same value is used by `OFFICE_NORMAL_LINE_FACTOR` (1.223) for
-/// the styles-less docDefaults fallback path; the two constants
-/// being numerically equal is not a coincidence — both encode the reference renderer's
-/// rendered body line-step.  They are kept distinct because they
-/// represent different ECMA-376 concepts: this one is `<w:spacing
-/// w:line w:lineRule="auto" w:line="240"/>`'s "Single" multiplier,
-/// the other is the implicit `<w:docDefaults><w:pPrDefault>`
-/// fallback.  A future styles-present fixture with explicit
-/// `<w:spacing line="240" lineRule="auto"/>` would exercise this
-/// `LineHeightDefault` path and must land on the same 17.93 px
-/// pitch — which is why correctness here matters even though the
-/// current corpus is dominated by the docDefaults arm.
-const DEFAULT_LINE_HEIGHT_RATIO : Double = 1.2227
-
-///|
-/// The descent of a body font as a fraction of its point size — the
-/// distance from the text baseline down to the line-box bottom.
-/// Used as the floor for `baseline_in_box` when `line_height` is
-/// pathologically small (the legacy `baseline = box_bottom − descent`
-/// branch); the dominant active placement is now driven by
-/// `BODY_ASCENT_RATIO`, which matches the reference renderer's "baseline = box_top +
-/// ascent" convention rather than placing the baseline a descent
-/// above the box bottom.
-///
-/// the rendered body face (the the reference renderer substitute for Calibri) reports
-/// `sTypoDescender = -512 / 2048 = 0.25 em` (verified by dumping
-/// the rendered body face-Regular.ttf's OS/2 / hhea tables — the earlier
-/// `−383 / 2048 ≈ 0.187 em` documented in this file's history did
-/// NOT match any real the rendered body face metric and was the leftover from a
-/// different font's table; see the parallel `BODY_ASCENT_RATIO`
-/// re-calibration below for the cap-top alignment that this
-/// (descent) value pairs with).
-const LINE_DESCENT_RATIO : Double = 0.25
-
-///|
-/// Ascent of the body font as a fraction of its point size — the
-/// distance from the line-box top down to the baseline.
-///
-/// the reference renderer places every line's baseline at
-/// `box_top + ascent` (verified by pixel-row measurement against
-/// `.snapshots/ref/docx__paragraph__paragraph-multiple.norm.png`:
-/// at a 1" top margin = row 96, the reference renderer renders the first cap at
-/// row 97 — i.e. the cap-top sits ≈1 px below the box top, so the
-/// baseline ≈ box_top + ascent and the cap-top ≈ box_top + ascent
-/// − cap_height).
-///
-/// The previous `baseline = box_bottom − descent` model placed the
-/// baseline near the box BOTTOM, with all of the line-height
-/// leading sitting ABOVE the cap.  At Office Normal's 1.223× line
-/// height that put the first-line cap-top ≈3 px lower than the reference renderer's
-/// cap-top — a constant per-paragraph offset that compounded with
-/// the cumulative step drift the `OFFICE_NORMAL_LINE_FACTOR` fix
-/// already removed.
-///
-/// Value 0.75 = the rendered body face's `OS/2.sTypoAscender = 1536 / 2048` AND
-/// `hhea.ascent = 1536 / 2048` (both verified by dumping
-/// `/Applications/the reference renderer.app/Contents/Resources/fonts/truetype/
-/// the rendered body face-Regular.ttf`).  The previous `0.829` value (claimed in
-/// the old comment as "the rendered body face sTypoAscender = 1697 / 2048") did
-/// NOT match the rendered body face at all — the rendered body face's typo-ascender is 1536,
-/// not 1697 — and produced a consistent 1-px-too-low first cap
-/// across every styles-less docx fixture (paragraph-multiple,
-/// section-margins-narrow, section-cols-3-equal). Correcting to
-/// the true the rendered body face metric of 0.75 puts our first cap exactly on
-/// the reference renderer's row (verified empirically via rsvg-convert with
-/// fontconfig backend — Pango places the cap-top at
-/// `baseline − 10 px` for the rendered body face at 14.667 px font-size, and
-/// `baseline = box_top + 11 px` ⇒ cap_top = box_top + 1, matching
-/// the reference renderer's PDF render row-for-row).
-///
-/// Per-font ascender carry is the long-term fix; the
-/// the rendered body face-aligned constant covers the styles-less docx fixtures
-/// that dominate the snapshot corpus.
-const BODY_ASCENT_RATIO : Double = 0.75
 
 ///|
 /// §17.3.2.26 rFonts — ECMA-376 does not mandate a default typeface;
@@ -290,47 +183,12 @@ const BLOCK_GAP_PX : Double = 0.0
 
 ///|
 /// §17.7.5.3 docDefaults / Office Normal — when no `/word/styles.xml`
-/// part is present, both Word and the reference renderer fall back to the
-/// application's built-in `Normal` paragraph style. The spec leaves
-/// every per-attribute baseline to the implementation, but the
-/// observable the reference renderer behaviour (verified against the snapshot
-/// reference renders for the styles-less section/paragraph fixtures
-/// under `.snapshots/fixtures/docx/`) is:
-///
-///   * line rule  : `auto` with a 1.15 multiplier
-///     (`<w:spacing w:line="276" w:lineRule="auto"/>`).
-///   * `@before`  : 0 (paragraphs touch).
-///   * `@after`   : 0 — the reference renderer does NOT add the Word-Online
-///     200-twip default when the styles part is absent; the
-///     reference renders show successive paragraphs separated by
-///     exactly one line height with no extra trailing gap.
-///   * `<w:sz>`   : intentionally NOT overridden. Empirically,
-///     bumping the run-default to 12 pt enlarged every glyph and
-///     pushed word-wrap one word earlier, which raised per-paragraph
-///     RMSE by ~25%. Our reference glyph extent already matches the
-///     10 pt baseline; only the line ratio drifts, and that is what
-///     the constant below corrects.
-///
-/// Applied as the implicit baseline by `resolve_para_props` ONLY when
-/// the document supplies no `<w:styles>` part — when a styles part is
-/// present, its `<w:docDefaults>` / explicit `Normal` style governs.
-///
-/// The literal Word value would be 276 / 240 = 1.15 (single-line
-/// spacing of the body font, multiplied by Office Normal's 1.15
-/// leading boost).  But the rendered line step in the reference renderer for
-/// every styles-less docx fixture is empirically ≈17.9 px at 11 pt
-/// Calibri/the rendered body face (measured pixel-row tops in
-/// `.snapshots/ref/docx__section__section-cols-3-equal.norm.png`:
-/// 97, 114, 132, 150, 168, 186, 204…), i.e. a factor of
-/// 17.9 / (11 × 96/72) ≈ 1.223 of the bare point size.  The 1.15
-/// reading produced ≈16.87 px / line and let multi-line section
-/// fixtures accumulate ≈1 px / line of vertical drift, dominating
-/// their RMSE.  Setting the constant to the measured factor brings
-/// the rendered line step into one-px agreement with the reference
-/// render for all paragraph-stack and column fixtures, and the
-/// per-fixture RMSE drops from the ≈0.10–0.14 floor that no
-/// width / margin tuning could move.
-const OFFICE_NORMAL_LINE_FACTOR : Double = 1.223
+/// part is present, the built-in Normal paragraph style supplies
+/// `<w:spacing w:line="276" w:lineRule="auto"/>`. ECMA-376 defines
+/// auto line values in 240ths of the single-line spacing, so the
+/// multiplier is 276 / 240 = 1.15. The single-line spacing itself is
+/// resolved from the active font via `LineFontMetrics`.
+const OFFICE_NORMAL_LINE_AUTO_MULTIPLE : Double = 276.0 / 240.0
 
 ///|
 /// §17.4.42 tblCellMar / §17.4.69 tcMar — spec leaves the cell
@@ -346,28 +204,6 @@ const OFFICE_NORMAL_LINE_FACTOR : Double = 1.223
 /// this is only the final fallback when neither `<w:tblCellMar>`
 /// nor `<w:tcMar>` declares a side.
 const DEFAULT_CELL_PADDING_PX : Double = 108.0 * TWIPS_TO_PX
-
-///|
-/// §17.4 / §17.18.37 ST_HeightRule — when a `<w:tr>` carries no
-/// explicit `<w:trHeight>`, ECMA-376 leaves the minimum row height
-/// to the implementation. the reference renderer's import floors the row at a
-/// larger ratio than the paragraph line-step: empirically
-/// `19.5 px ÷ 14.667 px = 1.330 em` for 11 pt the rendered body face vs the
-/// 1.2227 em body-paragraph pitch, measured against the the reference renderer
-/// reference for the table-5x5 / table-bordered fixtures. The
-/// constant is the per-line cell content floor — multiplied by the
-/// cell's paragraph count to yield a multi-paragraph cell's
-/// minimum content height. Larger fonts inside a cell scale the
-/// floor linearly because the `max_font_size_pt × pt_to_px`
-/// premultiplier in `layout_table` picks up the cell's resolved sz.
-///
-/// Applies only at the CELL level — body paragraphs continue to use
-/// the calibrated `DEFAULT_LINE_HEIGHT_RATIO` (1.2227) so their
-/// line step matches the reference renderer for the section / paragraph
-/// fixtures. Without the cell-level floor every 11 pt cell row
-/// renders ≈1.3 px short of the reference renderer, drifting per-row borders by
-/// 6-7 px across a 5-row table (table-5x5 RMSE 0.10 → > 0.05).
-const TABLE_CELL_DESIGN_LINE_RATIO : Double = 1.330
 
 // =============================================================================
 // Internal Layout Types (mirrors @aurochs-office/text-layout result types)
@@ -728,14 +564,12 @@ priv struct ParaProps {
   border_right : BorderSide
   /// §17.3.1.33 `<w:spacing w:line w:lineRule>` — line height.
   /// `LineHeightAuto(factor)` → multiplier of SINGLE spacing
-  /// (1.0 == single, 1.5 == one-and-a-half, 2.0 == double); SINGLE
-  /// is the rendered body line-step (≈1.2227 em for 11 pt the rendered body face
-  /// as the reference renderer composites it), not the bare point size and not the
-  /// OS/2 design height — see `DEFAULT_LINE_HEIGHT_RATIO` for the
-  /// measurement that established this.  `LineHeightExact(px)` →
-  /// fixed CSS-pixel line height (lineRule="exact" / "atLeast").
-  /// `LineHeightDefault` → the single line height of the body face
-  /// (`DEFAULT_LINE_HEIGHT_RATIO`).
+  /// (1.0 == single, 1.5 == one-and-a-half, 2.0 == double). SINGLE
+  /// is the selected run font's hhea ascender + descender + lineGap
+  /// resolved through `@glyph`, not a viewer-side em-ratio constant.
+  /// `LineHeightExact(px)` → fixed CSS-pixel line height
+  /// (lineRule="exact" / "atLeast"). `LineHeightDefault` → that same
+  /// glyph-backed SINGLE height.
   line_height : LineHeightSpec
   /// §17.3.1.9 `<w:contextualSpacing>` — when `true`, the
   /// before / after spacing is suppressed between this paragraph
@@ -863,6 +697,17 @@ priv enum LineHeightSpec {
   LineHeightDefault
   LineHeightAuto(Double)
   LineHeightExact(Double)
+}
+
+///|
+/// Font-backed vertical metrics for one laid line. The values are the
+/// only WML viewer source of truth for ascent, descent, and natural
+/// single-line height; both paragraph layout and table row floors
+/// consume this shape.
+priv struct LineFontMetrics {
+  ascent_px : Double
+  descent_px : Double
+  single_line_height_px : Double
 }
 
 ///|
@@ -3137,6 +2982,8 @@ fn collect_blocks(
               styles,
               theme_map~,
               font_map~,
+              image_resolver~,
+              chart_resolver~,
             )
             blocks.push(TableBlock(tbl))
           }
@@ -4059,11 +3906,11 @@ fn shd_pattern_id(
 /// fallback: when `true` AND the resolved cascade supplies no
 /// `<w:spacing>` element (i.e. the document has no styles part at
 /// all, so `apply_styles_to_paragraph` left `<w:pPr>` untouched),
-/// we substitute the Office built-in Normal style values — a
-/// 200-twip trailing gap and a 1.15× auto line height. When `false`
-/// (a styles part IS loaded), the document's own cascade — which has
-/// already been folded into `<w:pPr>` upstream — wins and we leave
-/// the bare `space_after = 0.0` / `LineHeightDefault` baseline alone.
+/// we substitute the Office built-in Normal style auto line multiple
+/// and keep before/after spacing at zero. When `false` (a styles part
+/// IS loaded), the document's own cascade — which has already been
+/// folded into `<w:pPr>` upstream — wins and we leave the bare
+/// `space_after = 0.0` / `LineHeightDefault` baseline alone.
 fn resolve_para_props(
   p : @xml.Element,
   apply_office_defaults? : Bool = false,
@@ -4073,17 +3920,15 @@ fn resolve_para_props(
   let mut margin_left = 0.0
   let mut margin_right = 0.0
   let mut indent = 0.0
-  // §17.7.5.3 — when the styles part is absent the the reference renderer
-  // reference applies the Office Normal AUTO line-height multiplier
-  // (1.15) but keeps `space_before` / `space_after` at zero: in the
-  // snapshot reference renders successive paragraphs touch each
-  // other with a single line gap, NOT an extra 10 pt one. Direct
-  // `<w:spacing>` attributes on `<w:pPr>` still override below.
+  // §17.7.5.3 — when the styles part is absent Office Normal applies
+  // the AUTO line-height multiplier (276 / 240 = 1.15) but keeps
+  // `space_before` / `space_after` at zero. Direct `<w:spacing>`
+  // attributes on `<w:pPr>` still override below.
   let mut space_before = 0.0
   let mut space_after = 0.0
   let tab_stops : Array[(Double, String, String)] = []
   let mut line_height_spec : LineHeightSpec = if apply_office_defaults {
-    LineHeightAuto(OFFICE_NORMAL_LINE_FACTOR)
+    LineHeightAuto(OFFICE_NORMAL_LINE_AUTO_MULTIPLE)
   } else {
     LineHeightDefault
   }
@@ -5027,7 +4872,7 @@ fn para_toggle_default_true(p_pr : @xml.Element?, name : String) -> Bool {
 ///|
 /// Default RunSpan template used when the paragraph has no `<w:r>` to
 /// derive font / colour from. `default_font_size_pt` lets callers
-/// substitute the §17.7.5.3 Office Normal 12 pt baseline when the
+/// substitute the §17.7.5.3 Office Normal 11 pt baseline when the
 /// document supplies no `<w:styles>` part.
 fn default_run_template(
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
@@ -5337,33 +5182,23 @@ fn collect_paragraph_spans_into(
 /// elements can dispatch through `collect_paragraph_spans_into`.
 
 ///|
-/// §17.16.5.4 `<w:checkBox>` — when a run's `<w:fldChar
-/// fldCharType="begin">` hosts a `<w:ffData>/<w:checkBox>` form field,
-/// return the box glyph for its state (☑ checked / ☐ unchecked).
-/// `<w:checked @val>` overrides `<w:default @val>`; both absent ⇒
-/// unchecked.  Returns `None` for any other field boundary.
-fn form_checkbox_glyph(fld_char : @xml.Element) -> String? {
-  match attr_value(fld_char, "fldCharType") {
-    Some("begin") => ()
+/// §17.16.5.4 `<w:checkBox>` — when a run's typed `CT_FldChar`
+/// begin marker hosts a typed `<w:ffData>/<w:checkBox>` form field,
+/// return the box glyph for its domain-owned state.
+fn form_checkbox_glyph(fld_char : @domain.CT_FldChar) -> String? {
+  match fld_char.fld_char_type {
+    @domain.FldCharTypeBegin => ()
     _ => return None
   }
-  let ff = match first_child_named(fld_char, "ffData") {
-    Some(f) => f
+  let ff = match fld_char.ff_data {
+    Some(data) => data
     None => return None
   }
-  let cb = match first_child_named(ff, "checkBox") {
-    Some(c) => c
+  let cb = match ff.check_box {
+    Some(check_box) => check_box
     None => return None
   }
-  let checked = match first_child_named(cb, "checked") {
-    Some(c) => parse_xsd_on_off_or(attr_value(c, "val"), true)
-    None =>
-      match first_child_named(cb, "default") {
-        Some(d) => parse_xsd_on_off_or(attr_value(d, "val"), true)
-        None => false
-      }
-  }
-  Some(if checked { "\u{2611}" } else { "\u{2610}" })
+  Some(if cb.checked_state() { "\u{2611}" } else { "\u{2610}" })
 }
 
 ///|
@@ -5394,12 +5229,12 @@ fn emit_run_spans(
     theme_map~,
     font_map~,
   )
-  // Walk <w:t>, <w:tab>, <w:br>, etc., emitting spans.
+  // Walk <w:t>, <w:delText>, <w:tab>, <w:br>, etc., emitting spans.
   for r_child in r.children {
     match r_child {
       Element(re) =>
         match re.name.local_name {
-          "t" => {
+          "t" | "delText" => {
             let text = text_content(re)
             if text.length() > 0 {
               let w = measure_run_text(text, template)
@@ -5669,17 +5504,22 @@ fn emit_run_spans(
             // carries its OWN visible glyph is a §17.16.5.4 form
             // checkbox at the "begin" boundary: emit ☑ / ☐ for its
             // checked / unchecked state.
-            match form_checkbox_glyph(re) {
-              Some(ch) => {
-                let w = measure_run_text(ch, template)
-                spans.push(
-                  apply_hyperlink_styling(
-                    with_text(template, ch, w),
-                    hyperlink_styling,
-                  ),
-                )
-              }
-              None => ()
+            try @domain.CT_FldChar::new(re) catch {
+              _ => ()
+            } noraise {
+              fld_char =>
+                match form_checkbox_glyph(fld_char) {
+                  Some(ch) => {
+                    let w = measure_run_text(ch, template)
+                    spans.push(
+                      apply_hyperlink_styling(
+                        with_text(template, ch, w),
+                        hyperlink_styling,
+                      ),
+                    )
+                  }
+                  None => ()
+                }
             }
           _ => ()
         }
@@ -6611,26 +6451,10 @@ fn layout_paragraph(
 ) -> LaidParagraph {
   // §17.7.5.3 — `apply_office_defaults` flows into
   // `resolve_para_props` so the line-height multiplier picks up the
-  // Office Normal 1.15 factor when the document carries no styles
-  // part. We ALSO bump the run-default font size to the Office Normal
-  // 11 pt in that case (Word's built-in Normal carries
-  // `<w:sz w:val="22"/>` = 11 pt), so the line-step works out to
-  // 11 × 96/72 × 1.15 ≈ 16.87 px — matching the the reference renderer
-  // reference renders for the styles-less section/paragraph
-  // fixtures. The old 10 pt baseline produced a 15.33 px line-step,
-  // a ~6%/line vertical drift that accumulated to ~38 px by the
-  // bottom of a column.
-  //
-  // A previous attempt at 12 pt enlarged every glyph and pushed
-  // word-wrap breaks one word earlier, which raised per-paragraph
-  // RMSE by ~25%; 11 pt matches Word's documented Normal style and
-  // empirically holds the wrap line-for-line against the reference renderer.
-  //
-  // The cascade still wins: `resolve_run_props` overwrites this
-  // default whenever an `<w:rPr><w:sz>` is reachable, so the only
-  // documents affected are those that ALSO carry no explicit size
-  // anywhere — exactly the case where Word/the reference renderer substitute their own
-  // Normal style.
+  // Office Normal 276/240 auto factor when the document carries no
+  // styles part. We also bump the run-default font size to Word's
+  // built-in Normal 11 pt. The actual line box comes from
+  // `LineFontMetrics`, so font vertical data stays in `@glyph`.
   let default_font_size_pt = if apply_office_defaults {
     OFFICE_NORMAL_FONT_SIZE_PT
   } else {
@@ -6724,24 +6548,19 @@ fn layout_paragraph(
     // settled. Tabs are paragraph-relative — they measure from the
     // start of the line's content origin.
     let line_spans = resolve_tab_spans(raw_spans, line_indent, props.tab_stops)
-    let lh_pt = line_max_font_size(line_spans, default_font_size_pt~)
-    let fs_px = lh_pt * @glyph.pt_to_px
+    let metrics = line_font_metrics(line_spans, default_font_size_pt~)
     let line_height = match props.line_height {
-      LineHeightDefault => fs_px * DEFAULT_LINE_HEIGHT_RATIO
-      LineHeightAuto(factor) => fs_px * factor
+      LineHeightDefault => metrics.single_line_height_px
+      LineHeightAuto(factor) => metrics.single_line_height_px * factor
       LineHeightExact(px) => px
     }
     // §17.3.1.33 — baseline placement within the line box.
     //
-    // the reference renderer uses TWO DIFFERENT rules depending on
-    // `lineRule`:
+    // Office-compatible renderers use TWO DIFFERENT rules depending
+    // on `lineRule`:
     //
-    // 1. For `auto` line height (and the implicit Office-Normal default
-    //    `1.223×`), the reference renderer places baseline at `box_top + ascent`, leaving
-    //    the line-height leading BELOW the descent.  Verified by
-    //    pixel-row measurement: at 11 pt body / 17.94 px auto line
-    //    height, ref cap-top = row 97 = box_top (96) + 1, i.e. baseline
-    //    = box_top + 11 = box_top + ascent (BODY_ASCENT_RATIO * fs_px).
+    // 1. For `auto` line height, baseline sits at `box_top + ascent`.
+    //    The ascent value is read from the selected line font.
     //
     // 2. For `exact` and `atLeast` line heights LARGER than the natural
     //    auto step, the reference renderer places the extra leading ABOVE the cap, NOT
@@ -6752,31 +6571,31 @@ fn layout_paragraph(
     //    box_top (96) + 14 + 1) and `paragraph-line-atleast`
     //    (line=600 twips → 40 px, Δ = 22.07 px extra; ref cap-top
     //    = row 118 = box_top + 22 + 1).  Both match a baseline of
-    //    `box_top + ascent + max(0, line_height - natural_auto_lh)`
+    //    `box_top + ascent + max(0, line_height - natural_line_height)`
     //    to within ±1 px (subpixel rounding).
     //
     // The earlier `line_height − descent` placement put the baseline
     // near the BOX BOTTOM, which when `line_height > ascent + descent`
     // pushed every cap a leading-space below the reference renderer's cap — visible as a
     // constant per-paragraph offset on top of the cumulative step
-    // drift the `OFFICE_NORMAL_LINE_FACTOR` fix removes.
+    // drift caused by measuring against the wrong single-line height.
     //
     // The legacy `line_height − descent` formula remains as the
     // sanity floor for pathologically small `line_height`
     // (`LineHeightExact(px)` with `px < ascent`).
-    let descent = fs_px * LINE_DESCENT_RATIO
-    let ascent = fs_px * BODY_ASCENT_RATIO
-    // Natural Office-Normal auto line height for this run's font size —
-    // the threshold at which the the reference renderer "extra leading goes above the cap"
-    // rule kicks in for `exact`/`atLeast` line specs.
-    let natural_auto_lh = fs_px * OFFICE_NORMAL_LINE_FACTOR
+    let descent = metrics.descent_px
+    let ascent = metrics.ascent_px
+    // Natural single-line height for this run's font — the threshold
+    // at which the "extra leading goes above the cap" rule kicks in
+    // for `exact`/`atLeast` line specs.
+    let natural_line_height = metrics.single_line_height_px
     let baseline_in_box = match props.line_height {
       LineHeightExact(_) =>
         // `exact` / `atLeast` — place baseline so the descent below it
         // stays at the natural value; any extra height past the natural
         // auto line goes ABOVE the cap.
-        if line_height >= natural_auto_lh {
-          ascent + (line_height - natural_auto_lh)
+        if line_height >= natural_line_height {
+          ascent + (line_height - natural_line_height)
         } else if line_height - descent > 0.0 {
           line_height - descent
         } else {
@@ -7376,18 +7195,107 @@ fn next_tab_stop_after(
 let default_tab_interval_px : Double = 48.0
 
 ///|
-/// Return the maximum font size (pt) on a line, used to pick line height.
-fn line_max_font_size(
+/// Resolve one font face's vertical metrics from the shared glyph
+/// resolver. This is the WML viewer's only ascent / descent /
+/// line-gap reader; callers should select the face, then call here.
+fn read_line_font_metrics_for(
+  family : String,
+  weight : Int,
+  italic : Bool,
+  font_size_pt : Double,
+) -> LineFontMetrics raise @glyph.FontUnresolvedError {
+  let ascender = @glyph.get_ascender_ratio(family, weight~, italic~)
+  let descender = @glyph.get_descender_ratio(family, weight~, italic~)
+  let line_gap = @glyph.get_line_gap_ratio(family, weight~, italic~)
+  let font_size_px = font_size_pt * @glyph.pt_to_px
+  let ascent_px = font_size_px * ascender
+  let descent_px = font_size_px * descender
+  let line_gap_px = font_size_px * line_gap
+  {
+    ascent_px,
+    descent_px,
+    single_line_height_px: ascent_px + descent_px + line_gap_px,
+  }
+}
+
+///|
+/// Resolve one font face's vertical metrics from `@glyph`, retrying
+/// once through the renderer default family when the requested face is
+/// unavailable. If even that default cannot be resolved, surface the
+/// font failure instead of manufacturing vertical metrics in the WML
+/// viewer.
+fn line_font_metrics_for(
+  family : String,
+  weight : Int,
+  italic : Bool,
+  font_size_pt : Double,
+) -> LineFontMetrics {
+  try read_line_font_metrics_for(family, weight, italic, font_size_pt) catch {
+    _ =>
+      if family == DEFAULT_FONT_FAMILY {
+        try! read_line_font_metrics_for(family, weight, italic, font_size_pt)
+      } else {
+        line_font_metrics_for(DEFAULT_FONT_FAMILY, weight, italic, font_size_pt)
+      }
+  } noraise {
+    metrics => metrics
+  }
+}
+
+///|
+/// Select the largest resolved run on a line and read its vertical
+/// metrics. Empty lines use the paragraph's default body face.
+fn line_font_metrics(
   spans : Array[RunSpan],
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
-) -> Double {
-  let mut max = default_font_size_pt
+) -> LineFontMetrics {
+  let mut family = DEFAULT_FONT_FAMILY
+  let mut font_size_pt = default_font_size_pt
+  let mut bold = false
+  let mut italic = false
+  let mut seen = false
   for s in spans {
-    if s.font_size_pt > max {
-      max = s.font_size_pt
+    if !seen || s.font_size_pt > font_size_pt {
+      seen = true
+      family = s.font_family
+      font_size_pt = s.font_size_pt
+      bold = s.bold
+      italic = s.italic
     }
   }
-  max
+  line_font_metrics_for(
+    family,
+    if bold {
+      700
+    } else {
+      400
+    },
+    italic,
+    font_size_pt,
+  )
+}
+
+///|
+/// Natural content-height floor for table cells. It sums the glyph
+/// single-line height for each laid line, sharing the same metric SoT
+/// as paragraph layout instead of carrying a table-only em-ratio.
+fn laid_paragraphs_line_metric_floor(
+  paragraphs : Array[LaidParagraph],
+  default_font_size_pt : Double,
+) -> Double {
+  let mut total = 0.0
+  for lp in paragraphs {
+    if lp.lines.length() == 0 {
+      total = total +
+        line_font_metrics([], default_font_size_pt~).single_line_height_px
+    } else {
+      for ln in lp.lines {
+        total = total +
+          line_font_metrics(ln.spans, default_font_size_pt~).single_line_height_px
+      }
+    }
+  }
+  total
 }
 
 ///|
@@ -7719,6 +7627,8 @@ fn layout_table(
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  image_resolver? : (String) -> ResolvedImage? = _ => None,
+  chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
 ) -> LaidTable {
   // §17.4.41 / §17.7.4 / §17.7.6 — discover an optional `<w:tblStyle
   // w:val="...">` reference and resolve it into a ResolvedTableStyle
@@ -8051,11 +7961,6 @@ fn layout_table(
       // Layout paragraphs inside the cell.
       let cell_paras : Array[LaidParagraph] = []
       let mut cell_inner_h = 0.0
-      // Table cells don't have an image_resolver wired in yet; pass a
-      // no-op resolver so inline `<w:drawing>` payloads still reserve
-      // their cx width via the placeholder fallback.
-      let cell_noop_resolver : (String) -> ResolvedImage? = _ => None
-      let cell_noop_chart_resolver : (@xml.Element) -> @xml.Node? = _ => None
       // §17.7.5.3 — cell paragraphs honour the same Office Normal
       // docDefaults fallback as body paragraphs when the document has
       // no styles part. Without this, a styles-less table's cells
@@ -8079,8 +7984,8 @@ fn layout_table(
         let para = layout_paragraph(
           cell_p_elems[cp_i],
           content_w,
-          cell_noop_resolver,
-          cell_noop_chart_resolver,
+          image_resolver,
+          chart_resolver,
           apply_office_defaults~,
           theme_map~,
           font_map~,
@@ -8117,8 +8022,8 @@ fn layout_table(
               let bp = layout_paragraph(
                 cell_p_elems[cp_i],
                 body_w,
-                cell_noop_resolver,
-                cell_noop_chart_resolver,
+                image_resolver,
+                chart_resolver,
                 apply_office_defaults~,
                 theme_map~,
                 font_map~,
@@ -8146,45 +8051,18 @@ fn layout_table(
       //
       // §17.4 / §17.18.37 — when no explicit `<w:trHeight>` is set,
       // ECMA-376 leaves the row's minimum content height to the
-      // implementation. the reference renderer's import sets a per-line floor
-      // equal to the font's NATURAL design line height (typoAscender
-      // + |typoDescender| + typoLineGap), not the abbreviated
-      // (ascent + descent) extent the body-paragraph layout uses.
-      // For the the rendered body face body face that is ≈1.330 em vs the
-      // ≈1.2227 em body-paragraph pitch; the body-paragraph
-      // fixtures already calibrate that path so we apply the
-      // design-line-height floor here only — at the cell-content
-      // level — to avoid inflating non-table lines.
-      // Without this floor every 11 pt cell row reads ≈1.3 px short
-      // (cumulative 6-7 px across a 5-row table) against the the reference renderer
-      // reference and the per-row border lines drift visibly.
+      // implementation. Use the same glyph-backed single-line metric
+      // as paragraph layout for every laid line; this avoids a
+      // table-only font ratio that can drift from the real font.
       let cell_content_floor = if cell_paras.length() > 0 {
-        let mut max_fs_pt = 0.0
-        for lp in cell_paras {
-          for ln in lp.lines {
-            for s in ln.spans {
-              if s.font_size_pt > max_fs_pt {
-                max_fs_pt = s.font_size_pt
-              }
-            }
-          }
-        }
-        // Fall back to the document-wide default font size when the
-        // cell content carries no measured span (e.g. an empty
-        // paragraph). The implicit Office Normal 11 pt baseline is
-        // applied by `layout_paragraph` already, so the only way
-        // `max_fs_pt` stays zero is an entirely empty cell.
-        if max_fs_pt <= 0.0 {
-          max_fs_pt = if apply_office_defaults {
+        laid_paragraphs_line_metric_floor(
+          cell_paras,
+          if apply_office_defaults {
             OFFICE_NORMAL_FONT_SIZE_PT
           } else {
             DEFAULT_FONT_SIZE_PT
-          }
-        }
-        max_fs_pt *
-        @glyph.pt_to_px *
-        TABLE_CELL_DESIGN_LINE_RATIO *
-        cell_paras.length().to_double()
+          },
+        )
       } else {
         0.0
       }
@@ -9154,6 +9032,8 @@ fn collect_blocks_from_elements(
           styles,
           theme_map~,
           font_map~,
+          image_resolver~,
+          chart_resolver~,
         )
         blocks.push(TableBlock(lt))
       }

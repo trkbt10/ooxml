@@ -199,7 +199,7 @@ pub(all) struct CT_FontRel {
 pub fn CT_FontRel::new(
   element : @xml.Element,
 ) -> CT_FontRel raise SchemaViolation {
-  let r_id = wml_ct_chunk1_required_attr(
+  let r_id = wml_ct_chunk1_required_relationship_attr(
     element, "id", "CT_FontRel", "Part 1 §A.1 r:id (ST_RelationshipId)",
   )
   let font_key = wml_ct_chunk1_attr(element, "fontKey")

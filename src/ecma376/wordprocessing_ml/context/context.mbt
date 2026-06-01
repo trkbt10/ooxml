@@ -10,6 +10,11 @@ pub(all) suberror OpenError {
 } derive(Debug)
 
 ///|
+pub(all) suberror SaveError {
+  SaveError(kind~ : String, path~ : String, reason~ : String)
+} derive(Debug)
+
+///|
 pub(all) struct HeaderPart {
   name : String
   value : @wml.CT_HdrFtr
@@ -168,8 +173,10 @@ pub fn open(bytes : Bytes) -> Document raise OpenError {
 }
 
 ///|
-/// Serialise a docx Document back to bytes.
-pub fn Document::save(self : Document) -> Bytes {
+/// Serialise a docx Document back to OPC package bytes, surfacing
+/// package-level write failures instead of returning a body-only XML
+/// payload with a `.docx` extension.
+pub fn Document::save_or_raise(self : Document) -> Bytes raise SaveError {
   let opc_package = self.opc_package
     .with_part(self.main_part, @wml_builder.write_document(self.main))
     .with_optional_part(
@@ -221,24 +228,25 @@ pub fn Document::save(self : Document) -> Bytes {
   }
   // OPC §11.1 — `Package::save` raises typed errors when the
   // package cannot serialise (broken Content-Types map, bad
-  // relationships, etc.).  The previous fallback returned only
-  // the document part XML, which is NOT a conforming `.docx`
-  // package and would be rejected by every consumer.  Until
-  // the function signature can be widened to a Result type
-  // (call sites would need to be updated), we propagate the
-  // typed error via the OPC `panic` channel rather than silently
-  // produce a body-only blob.
+  // relationships, invalid part names, etc.). A raw
+  // `word/document.xml` fallback is not a valid `.docx` package.
   saved.save() catch {
-    err => {
-      let _ = err
-      // §11.1 — emit at least the document part bytes so callers
-      // can salvage the content; surface the failure on a
-      // best-effort log line so the breach is visible.  The
-      // long-term fix is to widen the signature so SchemaViolation
-      // surfaces to the caller.
-      @wml_builder.write_document(self.main)
-    }
+    err =>
+      raise SaveError(
+        kind="PackageSaveFailed",
+        path=self.main_part,
+        reason=err.to_string(),
+      )
   }
+}
+
+///|
+/// Backward-compatible save entry point. Callers that need structured
+/// diagnostics should use `save_or_raise`; this method intentionally
+/// aborts on package serialisation failure rather than producing a
+/// non-OPC XML blob.
+pub fn Document::save(self : Document) -> Bytes {
+  try! self.save_or_raise()
 }
 
 ///|
@@ -413,9 +421,10 @@ fn build_document_chart_part_resolver(
           Ok(name) =>
             match pkg.part(name) {
               Some(chart_part) =>
-                match (try? @xml.parse(chart_part.data)) {
-                  Ok(doc) => return Some(doc.root)
-                  Err(_) => ()
+                try @xml.parse(chart_part.data) catch {
+                  _ => ()
+                } noraise {
+                  doc => return Some(doc.root)
                 }
               None => ()
             }

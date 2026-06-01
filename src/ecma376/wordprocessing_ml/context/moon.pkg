@@ -30,5 +30,7 @@ import {
 
 import {
   "moonbitlang/core/encoding/utf8",
+  "moonbitlang/x/fs",
+  "trkbt10/ooxml/util/glyph",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/edit" @wml_edit,
 } for "wbtest"

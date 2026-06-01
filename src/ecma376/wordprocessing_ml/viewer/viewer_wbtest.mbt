@@ -9,6 +9,89 @@ fn attr(local_name : String, value : String) -> @xml.Attribute {
 }
 
 ///|
+fn assert_close_double(
+  actual : Double,
+  expected : Double,
+  eps : Double,
+  label : String,
+) -> Unit {
+  let diff = (actual - expected).abs()
+  if diff > eps {
+    abort("\{label}: expected \{expected}, got \{actual}")
+  }
+}
+
+///|
+fn glyph_line_metrics_for_test(
+  family : String,
+  font_size_pt : Double,
+) -> (Double, Double) {
+  let asc = try @glyph.get_ascender_ratio(family) catch {
+    _ => abort("cannot resolve ascender for \{family}")
+  } noraise {
+    r => r
+  }
+  let desc = try @glyph.get_descender_ratio(family) catch {
+    _ => abort("cannot resolve descender for \{family}")
+  } noraise {
+    r => r
+  }
+  let gap = try @glyph.get_line_gap_ratio(family) catch {
+    _ => abort("cannot resolve line gap for \{family}")
+  } noraise {
+    r => r
+  }
+  let px = font_size_pt * @glyph.pt_to_px
+  (px * asc, px * (asc + desc + gap))
+}
+
+///|
+fn paragraph_with_spacing(
+  text : String,
+  line : String?,
+  line_rule : String?,
+) -> @xml.Element {
+  let children : Array[@xml.Node] = []
+  match line {
+    Some(line_value) => {
+      let attrs : Array[@xml.Attribute] = [attr("line", line_value)]
+      match line_rule {
+        Some(rule) => attrs.push(attr("lineRule", rule))
+        None => ()
+      }
+      children.push(
+        @xml.Node::Element({
+          name: name("pPr"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("spacing"),
+              attributes: attrs,
+              children: [],
+            }),
+          ],
+        }),
+      )
+    }
+    None => ()
+  }
+  children.push(
+    @xml.Node::Element({
+      name: name("r"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("t"),
+          attributes: [],
+          children: [@xml.Node::Text(text)],
+        }),
+      ],
+    }),
+  )
+  { name: name("p"), attributes: [], children }
+}
+
+///|
 test "render_svg emits one default-letter page for empty body" {
   // §17.6.13 default: letter 12240×15840 twips → 816×1056 px.
   let document = @domain.CT_Document::new({
@@ -73,6 +156,121 @@ test "render_svg emits text from a paragraph as <text> element" {
   // renderer's default body family (`DEFAULT_FONT_FAMILY`) so the
   // host `FontResolver` lands on the configured test catalogue.
   assert_true(svg.contains("font-family=\"Noto Sans\""))
+}
+
+///|
+test "render_svg emits deleted w:delText with strike-through" {
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("del"),
+                attributes: [attr("id", "1"), attr("author", "A")],
+                children: [
+                  @xml.Node::Element({
+                    name: name("r"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("delText"),
+                        attributes: [],
+                        children: [@xml.Node::Text("struck")],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let page = render_svg(document).pages[0]
+  assert_true(page.svg.contains(">struck</text>"))
+  assert_true(page.svg.contains("text-decoration=\"line-through\""))
+}
+
+///|
+test "layout_paragraph uses glyph metrics for default line box" {
+  ensure_wml_test_font()
+  let para = paragraph_with_spacing("Metric", None, None)
+  let laid = layout_paragraph(para, 400.0, _ => None, _ => None)
+  inspect(laid.lines.length(), content="1")
+  let line = laid.lines[0]
+  let (expected_ascent, expected_height) = glyph_line_metrics_for_test(
+    "Noto Sans",
+    DEFAULT_FONT_SIZE_PT,
+  )
+  assert_close_double(line.y_baseline, expected_ascent, 0.0001, "baseline")
+  assert_close_double(line.height, expected_height, 0.0001, "line height")
+}
+
+///|
+test "layout_paragraph auto line spacing multiplies glyph single height" {
+  ensure_wml_test_font()
+  let para = paragraph_with_spacing("Metric", Some("480"), Some("auto"))
+  let laid = layout_paragraph(para, 400.0, _ => None, _ => None)
+  inspect(laid.lines.length(), content="1")
+  let line = laid.lines[0]
+  let (expected_ascent, expected_single) = glyph_line_metrics_for_test(
+    "Noto Sans",
+    DEFAULT_FONT_SIZE_PT,
+  )
+  assert_close_double(line.y_baseline, expected_ascent, 0.0001, "baseline")
+  assert_close_double(line.height, expected_single * 2.0, 0.0001, "line height")
+}
+
+///|
+test "layout_table content floor uses glyph line metrics" {
+  ensure_wml_test_font()
+  let para = paragraph_with_spacing("Cell", Some("120"), Some("exact"))
+  let table = @xml.Element::{
+    name: name("tbl"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("tr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("tc"),
+            attributes: [],
+            children: [@xml.Node::Element(para)],
+          }),
+        ],
+      }),
+    ],
+  }
+  let warnings : Array[String] = []
+  let laid = layout_table(table, 400.0, warnings, None)
+  inspect(laid.rows.length(), content="1")
+  inspect(laid.rows[0].cells.length(), content="1")
+  let (_, expected_single) = glyph_line_metrics_for_test(
+    "Noto Sans",
+    OFFICE_NORMAL_FONT_SIZE_PT,
+  )
+  assert_close_double(
+    laid.rows[0].height,
+    expected_single,
+    0.0001,
+    "row height",
+  )
+  assert_close_double(
+    laid.rows[0].cells[0].height,
+    expected_single,
+    0.0001,
+    "cell height",
+  )
 }
 
 ///|
@@ -976,13 +1174,9 @@ test "render_svg honours <w:document><w:background>" {
 
 ///|
 /// §17.3.1.33 `<w:spacing line="480" lineRule="auto">` — double-line
-/// spacing scales the line height to 2× the font size. The default
-/// 22 half-points = 11pt run yields a baseline at
-/// 11pt × 96/72 × 0.8 ≈ 11.733 px (default Calibri ascender).
-/// With double spacing the next line would start at line-height = 11pt
-/// × 96/72 × 2 ≈ 29.333 px down — assert that the second paragraph's
-/// first line starts well below the single-line distance to confirm
-/// the multiplier got picked up.
+/// spacing scales the line height to 2× the glyph-backed single-line
+/// height. The private layout tests above assert the exact metric
+/// source; this public-render check keeps the document path covered.
 test "render_svg honours <w:spacing line lineRule='auto'>" {
   let para = fn(line_val : String, text : String) -> @xml.Node {
     @xml.Node::Element({
@@ -2074,6 +2268,135 @@ test "render_svg emits <image> for inline <w:drawing> via image_resolver" {
   assert_true(page.svg.contains("href=\"data:image/png;base64,AAAB\""))
   // alt-text (`descr`) surfaces as `<title>` for accessibility.
   assert_true(page.svg.contains("<title>Sample picture</title>"))
+}
+
+///|
+/// §17.4 table cells contain normal §17.3 paragraphs, so an inline
+/// §17.3.3.9 drawing inside `<w:tc>` must resolve its image through
+/// the same part-bound resolver as body paragraphs.
+test "render_svg resolves inline image inside table cell" {
+  let blip : @xml.Node = @xml.Node::Element({
+    name: name("blip"),
+    attributes: [attr("embed", "rIdCell")],
+    children: [],
+  })
+  let pic : @xml.Node = @xml.Node::Element({
+    name: name("pic"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("blipFill"),
+        attributes: [],
+        children: [blip],
+      }),
+    ],
+  })
+  let drawing : @xml.Node = @xml.Node::Element({
+    name: name("drawing"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("inline"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("extent"),
+            attributes: [attr("cx", "914400"), attr("cy", "914400")],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("docPr"),
+            attributes: [
+              attr("id", "1"),
+              attr("name", "Cell picture"),
+              attr("descr", "Picture in table cell"),
+            ],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("graphic"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("graphicData"),
+                attributes: [attr("uri", "test")],
+                children: [pic],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("tbl"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("tblPr"),
+                attributes: [],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("tblGrid"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("gridCol"),
+                    attributes: [attr("w", "1440")],
+                    children: [],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("tr"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("tc"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("p"),
+                        attributes: [],
+                        children: [
+                          @xml.Node::Element({
+                            name: name("r"),
+                            attributes: [],
+                            children: [drawing],
+                          }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let resolver = fn(_part : String, rid : String) -> ResolvedImage? {
+    if rid == "rIdCell" {
+      Some({ mime_type: "image/png", base64_data: "CELL" })
+    } else {
+      None
+    }
+  }
+  let result = render_svg(document, image_resolver=resolver)
+  let page = result.pages[0]
+  assert_true(page.svg.contains("<image"))
+  assert_true(page.svg.contains("href=\"data:image/png;base64,CELL\""))
+  assert_true(page.svg.contains("<title>Picture in table cell</title>"))
 }
 
 ///|

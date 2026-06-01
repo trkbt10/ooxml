@@ -85,6 +85,18 @@ pub fn CT_OnOff::to_element(self : CT_OnOff) -> @xml.Element {
 }
 
 ///|
+/// Effective boolean value for CT_OnOff. Per §17.17.4 / §22.9.2.7,
+/// omitting `@val` means the property is applied, so callers pass
+/// `default` for the surrounding schema default and this helper owns
+/// the `None` interpretation.
+pub fn CT_OnOff::effective_value(self : CT_OnOff, default : Bool) -> Bool {
+  match self.val {
+    Some(value) => value
+    None => default
+  }
+}
+
+///|
 /// XSD complex type CT_LongHexNumber — Part 1 §A.1, simple type
 /// ST_LongHexNumber documented at §17.18.50. Carries a required
 /// eight-hex-digit `@val` attribute used by settings/numbering rsid
@@ -2101,6 +2113,40 @@ fn wml_ct_chunk1_attr(element : @xml.Element, local_name : String) -> String? {
     }
   }
   found
+}
+
+///|
+/// Read a relationship attribute (`r:*`) by the ECMA-376 relationships
+/// namespace. Relationship ids must not be matched by local name alone:
+/// an unqualified `id` is a different attribute from `r:id`.
+fn wml_ct_chunk1_relationship_attr(
+  element : @xml.Element,
+  local_name : String,
+) -> String? {
+  wml_ct_chunk3_attr_ns(element, wml_ct_chunk3_ns_r(), local_name)
+}
+
+///|
+/// Read a required relationship attribute (`r:*`) and raise
+/// SchemaViolation when the namespaced attribute is missing.
+fn wml_ct_chunk1_required_relationship_attr(
+  element : @xml.Element,
+  local_name : String,
+  type_name : String,
+  context : String,
+) -> String raise SchemaViolation {
+  match wml_ct_chunk1_relationship_attr(element, local_name) {
+    Some(text) => text
+    None =>
+      raise_schema_violation(
+        type_name,
+        local_name,
+        context +
+        ": required relationship attribute @r:" +
+        local_name +
+        " is missing",
+      )
+  }
 }
 
 ///|
@@ -4184,7 +4230,7 @@ pub(all) struct CT_Control {
 pub fn CT_Control::new(element : @xml.Element) -> CT_Control {
   let name = wml_ct_chunk1_attr(element, "name")
   let shapeid = wml_ct_chunk1_attr(element, "shapeid")
-  let r_id = wml_ct_chunk1_attr(element, "id")
+  let r_id = wml_ct_chunk1_relationship_attr(element, "id")
   { element, name, shapeid, r_id }
 }
 
@@ -4280,7 +4326,7 @@ pub(all) struct CT_Rel {
 ///|
 /// XSD complex type CT_Rel — Part 1 §A.1.
 pub fn CT_Rel::new(element : @xml.Element) -> CT_Rel raise SchemaViolation {
-  let r_id = wml_ct_chunk1_required_attr(
+  let r_id = wml_ct_chunk1_required_relationship_attr(
     element, "id", "CT_Rel", "Part 1 §A.1 r:id (ST_RelationshipId)",
   )
   { element, r_id }
@@ -4406,7 +4452,7 @@ pub fn CT_ObjectEmbed::new(
     Some(text) => Some(ST_ObjectDrawAspect::parse(text))
     None => None
   }
-  let r_id = wml_ct_chunk1_required_attr(
+  let r_id = wml_ct_chunk1_required_relationship_attr(
     element, "id", "CT_ObjectEmbed", "Part 1 §A.1 r:id (ST_RelationshipId)",
   )
   let prog_id = wml_ct_chunk1_attr(element, "progId")
@@ -4463,7 +4509,7 @@ pub fn CT_ObjectLink::new(
     Some(text) => Some(ST_ObjectDrawAspect::parse(text))
     None => None
   }
-  let r_id = wml_ct_chunk1_required_attr(
+  let r_id = wml_ct_chunk1_required_relationship_attr(
     element, "id", "CT_ObjectLink", "Part 1 §A.1 r:id (ST_RelationshipId)",
   )
   let prog_id = wml_ct_chunk1_attr(element, "progId")
@@ -4789,7 +4835,7 @@ pub fn CT_Hyperlink::new(
   let doc_location = wml_ct_chunk1_attr(element, "docLocation")
   let history = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "history"))
   let anchor = wml_ct_chunk1_attr(element, "anchor")
-  let r_id = wml_ct_chunk1_attr(element, "id")
+  let r_id = wml_ct_chunk1_relationship_attr(element, "id")
   let content = collect_pcontent(wml_ct_chunk2_element_children(element))
   { element, tgt_frame, tooltip, doc_location, history, anchor, r_id, content }
 }
@@ -5078,6 +5124,21 @@ pub fn CT_FFCheckBox::parse(
 /// XSD complex type CT_FFCheckBox — return the preserved element for writers.
 pub fn CT_FFCheckBox::to_element(self : CT_FFCheckBox) -> @xml.Element {
   self.element
+}
+
+///|
+/// Effective checked state for §17.16.7 checkBox. The current
+/// `<checked>` child overrides `<default>`; an on/off child without
+/// `@val` is true per CT_OnOff; both absent means unchecked.
+pub fn CT_FFCheckBox::checked_state(self : CT_FFCheckBox) -> Bool {
+  match self.checked {
+    Some(checked) => checked.effective_value(true)
+    None =>
+      match self.default_ {
+        Some(default_) => default_.effective_value(true)
+        None => false
+      }
+  }
 }
 
 ///|
