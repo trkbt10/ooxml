@@ -6092,6 +6092,7 @@ fn xlsx_package_with_replaced_workbook(workbook : @xml.Element) -> Bytes {
   } else {
     splice_child_in_sequence(skeleton, workbook, workbook_child_order())
   }
+  let merged = retarget_workbook_sheet_rids(merged, ns_r)
   let wb_rels = xe(NS_PKG_REL, "Relationships", [], [
     Element(
       xe(
@@ -6131,6 +6132,53 @@ fn xlsx_package_with_replaced_workbook(workbook : @xml.Element) -> Bytes {
     ("xl/worksheets/sheet1.xml", write_part(worksheet)),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// `xlsx_package_with_replaced_workbook` owns exactly one workbook ->
+/// worksheet relationship (`rId1`).  The schema synthesiser may emit a
+/// facet-valid but unresolved `r:id` such as `"0"` on the target
+/// `<sheet>` element; retarget it here so workbook-child catalog probes
+/// exercise the actual workbook renderer instead of an empty workbook.
+fn retarget_workbook_sheet_rids(
+  element : @xml.Element,
+  ns_r : String,
+) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_rid = false
+  if element.name.local_name == "sheet" {
+    for attr in element.attributes {
+      if attr.name.local_name == "id" &&
+        (attr.name.ns == Some(ns_r) || attr.name.prefix == Some("r")) {
+        attrs.push({
+          name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+          value: "rId1",
+        })
+        saw_rid = true
+      } else {
+        attrs.push(attr)
+      }
+    }
+    if !saw_rid {
+      attrs.push({
+        name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+        value: "rId1",
+      })
+    }
+  } else {
+    for attr in element.attributes {
+      attrs.push(attr)
+    }
+  }
+  let children : Array[@xml.Node] = []
+  for child in element.children {
+    match child {
+      Element(ce) =>
+        children.push(Element(retarget_workbook_sheet_rids(ce, ns_r)))
+      _ => children.push(child)
+    }
+  }
+  { name: element.name, attributes: attrs, children }
 }
 
 ///|
