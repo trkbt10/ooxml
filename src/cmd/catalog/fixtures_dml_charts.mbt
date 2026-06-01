@@ -469,6 +469,54 @@ fn scatter_chart_payload() -> @xml.Element {
   ])
 }
 
+///|
+/// §21.2.2.166 CT_ScatterChart — two independent `<c:ser>`
+/// sequences.  The chart schema permits `ser*`; this fixture ensures
+/// the renderer draws every series and derives axis extents from the
+/// full series set, not only the first series.
+fn scatter_chart_two_series_payload() -> @xml.Element {
+  let ser_a = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Plan")),
+    Element(
+      c_elem("xVal", [], [
+        Element(c_num_ref("Sheet1!$A$2:$A$5", ["1", "2", "3", "4"])),
+      ]),
+    ),
+    Element(
+      c_elem("yVal", [], [
+        Element(c_num_ref("Sheet1!$B$2:$B$5", ["2", "5", "4", "7"])),
+      ]),
+    ),
+    Element(c_val("smooth", "0")),
+  ])
+  let ser_b = c_elem("ser", [], [
+    Element(c_val("idx", "1")),
+    Element(c_val("order", "1")),
+    Element(c_series_tx("Actual")),
+    Element(
+      c_elem("xVal", [], [
+        Element(c_num_ref("Sheet1!$C$2:$C$5", ["1.5", "2.5", "3.5", "4.5"])),
+      ]),
+    ),
+    Element(
+      c_elem("yVal", [], [
+        Element(c_num_ref("Sheet1!$D$2:$D$5", ["3", "6", "8", "10"])),
+      ]),
+    ),
+    Element(c_val("smooth", "0")),
+  ])
+  c_elem("scatterChart", [], [
+    Element(c_val("scatterStyle", "lineMarker")),
+    Element(c_val("varyColors", "0")),
+    Element(ser_a),
+    Element(ser_b),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
 // ---- ChartedCase extender -------------------------------------------------
 
 ///|
@@ -565,6 +613,16 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
     content: sp_tree([chart_graphic_frame("2", "Scatter Chart 1")]),
     chart_space: wrap_chart_space(scatter_chart_payload(), c_axes_num()),
   })
+  ccases.push({
+    id: "two-series",
+    format: "pptx",
+    category: "chart/scatter",
+    content: sp_tree([chart_graphic_frame("2", "Scatter Two Series")]),
+    chart_space: wrap_chart_space(
+      scatter_chart_two_series_payload(),
+      c_axes_num(),
+    ),
+  })
 
   // ---- area chart (§21.2.2.4) -----------------------------------
   ccases.push({
@@ -582,6 +640,16 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
     category: "chart/bubble",
     content: sp_tree([chart_graphic_frame("2", "Bubble Chart 1")]),
     chart_space: wrap_chart_space(bubble_chart_payload(), c_axes_num()),
+  })
+  ccases.push({
+    id: "two-series",
+    format: "pptx",
+    category: "chart/bubble",
+    content: sp_tree([chart_graphic_frame("2", "Bubble Two Series")]),
+    chart_space: wrap_chart_space(
+      bubble_chart_two_series_payload(),
+      c_axes_num(),
+    ),
   })
 
   // ---- radar chart (§21.2.2.150) --------------------------------
@@ -679,6 +747,61 @@ fn bubble_chart_payload() -> @xml.Element {
   c_elem("bubbleChart", [], [
     Element(c_val("varyColors", "0")),
     Element(ser),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+    Element(c_val("bubbleScale", "100")),
+  ])
+}
+
+///|
+/// §21.2.2.21 CT_BubbleChart — two `<c:ser>` payloads.  The second
+/// series carries the largest bubble sizes so axis and radius
+/// normalisation must consider the full `ser*` collection.
+fn bubble_chart_two_series_payload() -> @xml.Element {
+  let ser_a = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("North")),
+    Element(
+      c_elem("xVal", [], [
+        Element(c_num_ref("Sheet1!$A$2:$A$4", ["1", "3", "5"])),
+      ]),
+    ),
+    Element(
+      c_elem("yVal", [], [
+        Element(c_num_ref("Sheet1!$B$2:$B$4", ["4", "8", "3"])),
+      ]),
+    ),
+    Element(
+      c_elem("bubbleSize", [], [
+        Element(c_num_ref("Sheet1!$C$2:$C$4", ["10", "20", "15"])),
+      ]),
+    ),
+  ])
+  let ser_b = c_elem("ser", [], [
+    Element(c_val("idx", "1")),
+    Element(c_val("order", "1")),
+    Element(c_series_tx("South")),
+    Element(
+      c_elem("xVal", [], [
+        Element(c_num_ref("Sheet1!$D$2:$D$4", ["2", "4", "7"])),
+      ]),
+    ),
+    Element(
+      c_elem("yVal", [], [
+        Element(c_num_ref("Sheet1!$E$2:$E$4", ["6", "5", "9"])),
+      ]),
+    ),
+    Element(
+      c_elem("bubbleSize", [], [
+        Element(c_num_ref("Sheet1!$F$2:$F$4", ["25", "35", "45"])),
+      ]),
+    ),
+  ])
+  c_elem("bubbleChart", [], [
+    Element(c_val("varyColors", "0")),
+    Element(ser_a),
+    Element(ser_b),
     Element(c_val("axId", "111111111")),
     Element(c_val("axId", "222222222")),
     Element(c_val("bubbleScale", "100")),

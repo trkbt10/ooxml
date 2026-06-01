@@ -67,9 +67,14 @@ fn scx_style() -> ChartStyleDefaults {
 
 ///|
 fn scx_render(plot_area : @xml.Element) -> String {
+  scx_render_chart(plot_area, scx_scatter())
+}
+
+///|
+fn scx_render_chart(plot_area : @xml.Element, scatter : @xml.Element) -> String {
   let axes = collect_axes_info(plot_area)
   let nodes = render_scatter_chart(
-    scx_scatter(),
+    scatter,
     400.0,
     300.0,
     400.0,
@@ -87,6 +92,21 @@ fn scx_render(plot_area : @xml.Element) -> String {
     }
   }
   sb.to_string()
+}
+
+///|
+fn scx_count(haystack : String, needle : String) -> Int {
+  let mut count = 0
+  let mut i = 0
+  while i + needle.length() <= haystack.length() {
+    if haystack[i:i + needle.length()].to_owned() == needle {
+      count = count + 1
+      i = i + needle.length()
+    } else {
+      i = i + 1
+    }
+  }
+  count
 }
 
 ///|
@@ -110,4 +130,29 @@ test "scatter chart suppresses X-axis ticks when value axis deleted" {
   ])
   let svg = scx_render(plot_area)
   assert_true(!svg.contains("dominant-baseline=\"hanging\""))
+}
+
+///|
+test "scatter chart renders every series, not only the first ser" {
+  let plot_area = scx_elem("plotArea", [], [
+    scx_node("valAx", [], []),
+    scx_node("valAx", [], []),
+  ])
+  let ser1 = scx_node("ser", [], [
+    scx_node("xVal", [], [scx_numlit(["1", "2"])]),
+    scx_node("yVal", [], [scx_numlit(["10", "20"])]),
+  ])
+  let ser2 = scx_node("ser", [], [
+    scx_node("xVal", [], [scx_numlit(["3", "4"])]),
+    scx_node("yVal", [], [scx_numlit(["30", "40"])]),
+  ])
+  let scatter = scx_elem("scatterChart", [], [
+    scx_node("scatterStyle", [("val", "marker")], []),
+    ser1,
+    ser2,
+  ])
+  let svg = scx_render_chart(plot_area, scatter)
+  assert_eq(scx_count(svg, "<circle "), 4)
+  assert_true(svg.contains("fill=\"#4472c4\""))
+  assert_true(svg.contains("fill=\"#ed7d31\""))
 }

@@ -19,6 +19,21 @@ fn first_child_named(element : @xml.Element, name : String) -> @xml.Element? {
 }
 
 ///|
+fn child_elements_named(
+  element : @xml.Element,
+  name : String,
+) -> Array[@xml.Element] {
+  let out : Array[@xml.Element] = []
+  for child in element.children {
+    match child {
+      Element(e) => if e.name.local_name == name { out.push(e) }
+      _ => ()
+    }
+  }
+  out
+}
+
+///|
 fn attr_value(element : @xml.Element, local_name : String) -> String? {
   for attr in element.attributes {
     if attr.name.local_name == local_name {

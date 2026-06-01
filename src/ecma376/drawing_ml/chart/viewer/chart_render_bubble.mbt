@@ -16,28 +16,27 @@ fn render_bubble_chart(
   axes : ChartAxesInfo,
   style : ChartStyleDefaults,
   defs : SvgDefsCollector,
+  disp_blanks_as? : @chart.ST_DispBlanksAs = @chart.ST_DispBlanksAs::DispBlanksAsZero,
 ) -> Array[@xml.Node] {
-  let ser = match first_child_named(elem, "ser") {
-    Some(s) => s
-    None => return []
-  }
-  let xs = read_axis_numbers(ser, "xVal")
-  let ys = read_axis_numbers(ser, "yVal")
-  let bs = read_axis_numbers(ser, "bubbleSize")
-  let n = if xs.length() < ys.length() { xs.length() } else { ys.length() }
-  if n == 0 {
+  let ser_elems = child_elements_named(elem, "ser")
+  if !xy_series_has_rendered_points(ser_elems, disp_blanks_as) {
     return []
   }
   let (px, py, pw, ph) = chart_plot_inset(w, h, fw, fh, axes=Some(axes))
-  let max_x = effective_axis_max(max_positive(xs), axes)
-  let max_y = effective_axis_max(max_positive(ys), axes)
+  let max_x = effective_axis_max(
+    xy_series_axis_max(ser_elems, "xVal", disp_blanks_as),
+    axes,
+  )
+  let max_y = effective_axis_max(
+    xy_series_axis_max(ser_elems, "yVal", disp_blanks_as),
+    axes,
+  )
   // §21.2.2.170 — axis origin defaults to 0 for scatter/bubble.
   let min_x = effective_axis_min(axes)
   let min_y = effective_axis_min(axes)
   // §21.2.2.170 CT_Scaling / orientation — two INDEPENDENT value axes.
   let val_x_rev = axes.val_x_reversed()
   let val_y_rev = axes.val_y_reversed()
-  let series_color = resolve_series_color(ser, 0, ctx, defs)
   let nodes : Array[@xml.Node] = []
   nodes.push(plot_axes_rect(px, py, pw, ph, style=Some(style)))
   if !axes.val_deleted() {
@@ -60,7 +59,10 @@ fn render_bubble_chart(
       nodes.push(tick)
     }
   }
-  if !axes.cat_deleted() {
+  // §21.2.2.20 / §21.2.2.21 — a bubble chart has TWO value axes
+  // (both <c:valAx>, no <c:catAx>), so the X axis is gated on the
+  // value-axis deletion flag, not cat_deleted().
+  if !axes.val_deleted() {
     for
       tick in x_axis_ticks(
         px,
@@ -86,7 +88,6 @@ fn render_bubble_chart(
     Some(e) => attr_or(e, "val", "area")
     None => "area"
   }
-  let max_bs = if bs.length() > 0 { max_positive(bs) } else { 1.0 }
   // §21.2.2.23 bubbleScale — scale factor (default 100%).
   let bubble_scale = match first_child_named(elem, "bubbleScale") {
     Some(e) => {
@@ -102,68 +103,161 @@ fn render_bubble_chart(
   // §21.2.2.22 bubble3D — when val="true", render bubbles with a
   // highlight overlay simulating a 3D shine.  Default is false.
   let is_3d = match first_child_named(elem, "bubble3D") {
-    Some(e) => {
-      let v = attr_or(e, "val", "true")
-      v == "1" || v == "true"
-    }
+    Some(e) => chart_bool_default_true(e)
     None => false
   }
+  // §21.2.2.21 showNegBubbles — an explicit false suppresses
+  // negative bubble-size points.  When shown, the radius uses the
+  // magnitude of the negative value while the X/Y position remains
+  // unchanged.
+  let show_negative_bubbles = match first_child_named(elem, "showNegBubbles") {
+    Some(e) => chart_bool_default_true(e)
+    None => true
+  }
+  let max_bs = max_bubble_size_series(
+    ser_elems, disp_blanks_as, show_negative_bubbles,
+  )
   // §21.2.2.23 — largest bubble radius. The spec leaves the base
   // size implementation-defined; at bubbleScale=100 the largest
   // diameter is ≈ 18% of the shorter plot dimension → radius ≈ 9%.
   let base_r = (if pw < ph { pw } else { ph }) * 0.09
   let max_r = base_r * bubble_scale.to_double() / 100.0
-  let mut j = 0
-  while j < n {
-    // §21.2.2.170 — flip each axis's fraction independently under maxMin.
-    let x = px + span_axis_fraction(xs[j], min_x, span_x, val_x_rev) * pw
-    let y = py + ph - span_axis_fraction(ys[j], min_y, span_y, val_y_rev) * ph
-    let bval = if j < bs.length() { bs[j] } else { max_bs }
-    let ratio = if max_bs > 0.0 { bval / max_bs } else { 1.0 }
-    // §21.2.2.181 — area mode uses sqrt; width mode uses linear.
-    let r = if size_represents == "w" {
-      (if ratio > 0.0 { ratio } else { 0.0 }) * max_r
-    } else {
-      (if ratio > 0.0 { ratio } else { 0.0 }).sqrt() * max_r
+  for si in 0..<ser_elems.length() {
+    let ser = ser_elems[si]
+    let xs = read_axis_number_slots(ser, "xVal")
+    let ys = read_axis_number_slots(ser, "yVal")
+    let bs = read_axis_number_slots(ser, "bubbleSize")
+    if min_len(xs.length(), ys.length()) == 0 {
+      continue
     }
-    let r_safe = if r < h * 0.005 { h * 0.005 } else { r }
-    nodes.push(
-      @markup.elem_ns(
-        "circle",
-        @markup.svg_ns,
-        [
-          @markup.attr("cx", format_double(x)),
-          @markup.attr("cy", format_double(y)),
-          @markup.attr("r", format_double(r_safe)),
-          @markup.attr("fill", series_color),
-          @markup.attr("stroke", series_color),
-          @markup.attr("stroke-width", format_double(h * 0.002)),
-        ],
-        [],
-      ),
-    )
-    // §21.2.2.22 bubble3D — highlight ellipse simulating a 3D shine
-    // at the top-left of each bubble.  Adds one extra `<ellipse>`
-    // node per data point, so pruning `<c:bubble3D>` removes the
-    // highlights and the SVG skeleton differs.
-    if is_3d {
+    let series_color = resolve_series_color(ser, si, ctx, defs)
+    for point in chart_xy_rendered_points(xs, ys, disp_blanks_as) {
+      let (j, xv, yv) = point
+      // §21.2.2.170 — flip each axis's fraction independently under maxMin.
+      let x = px + span_axis_fraction(xv, min_x, span_x, val_x_rev) * pw
+      let y = py + ph - span_axis_fraction(yv, min_y, span_y, val_y_rev) * ph
+      let raw_bval = if j < bs.length() {
+        match bs[j] {
+          Some(v) => v
+          None =>
+            if disp_blanks_as_is_zero(disp_blanks_as) {
+              0.0
+            } else {
+              continue
+            }
+        }
+      } else {
+        max_bs
+      }
+      if raw_bval < 0.0 && !show_negative_bubbles {
+        continue
+      }
+      let bval = if raw_bval < 0.0 { -raw_bval } else { raw_bval }
+      let ratio = if max_bs > 0.0 { bval / max_bs } else { 1.0 }
+      // §21.2.2.181 — area mode uses sqrt; width mode uses linear.
+      let r = if size_represents == "w" {
+        (if ratio > 0.0 { ratio } else { 0.0 }) * max_r
+      } else {
+        (if ratio > 0.0 { ratio } else { 0.0 }).sqrt() * max_r
+      }
+      let r_safe = if r < h * 0.005 { h * 0.005 } else { r }
       nodes.push(
         @markup.elem_ns(
-          "ellipse",
+          "circle",
           @markup.svg_ns,
           [
-            @markup.attr("cx", format_double(x - r_safe * 0.35)),
-            @markup.attr("cy", format_double(y - r_safe * 0.4)),
-            @markup.attr("rx", format_double(r_safe * 0.3)),
-            @markup.attr("ry", format_double(r_safe * 0.2)),
-            @markup.attr("fill", "#ffffff"),
-            @markup.attr("fill-opacity", "0.6"),
+            @markup.attr("cx", format_double(x)),
+            @markup.attr("cy", format_double(y)),
+            @markup.attr("r", format_double(r_safe)),
+            @markup.attr("fill", series_color),
+            @markup.attr("stroke", series_color),
+            @markup.attr("stroke-width", format_double(h * 0.002)),
           ],
           [],
         ),
       )
+      // §21.2.2.22 bubble3D — highlight ellipse simulating a 3D shine
+      // at the top-left of each bubble.  Adds one extra `<ellipse>`
+      // node per data point, so pruning `<c:bubble3D>` removes the
+      // highlights and the SVG skeleton differs.
+      if is_3d {
+        nodes.push(
+          @markup.elem_ns(
+            "ellipse",
+            @markup.svg_ns,
+            [
+              @markup.attr("cx", format_double(x - r_safe * 0.35)),
+              @markup.attr("cy", format_double(y - r_safe * 0.4)),
+              @markup.attr("rx", format_double(r_safe * 0.3)),
+              @markup.attr("ry", format_double(r_safe * 0.2)),
+              @markup.attr("fill", "#ffffff"),
+              @markup.attr("fill-opacity", "0.6"),
+            ],
+            [],
+          ),
+        )
+      }
     }
-    j = j + 1
   }
   nodes
+}
+
+///|
+fn max_bubble_size_series(
+  ser_elems : Array[@xml.Element],
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+  show_negative_bubbles : Bool,
+) -> Double {
+  let mut saw_sizes = false
+  let mut max_value = 0.0
+  for ser in ser_elems {
+    let sizes = read_axis_number_slots(ser, "bubbleSize")
+    if sizes.length() > 0 {
+      saw_sizes = true
+      let series_max = max_bubble_size_slots(
+        sizes, disp_blanks_as, show_negative_bubbles,
+      )
+      if series_max > max_value {
+        max_value = series_max
+      }
+    }
+  }
+  if !saw_sizes || max_value <= 0.0 {
+    1.0
+  } else {
+    max_value
+  }
+}
+
+///|
+fn max_bubble_size_slots(
+  values : Array[Double?],
+  disp_blanks_as : @chart.ST_DispBlanksAs,
+  show_negative_bubbles : Bool,
+) -> Double {
+  let mut m = 0.0
+  for slot in values {
+    let value = match slot {
+      Some(v) => v
+      None =>
+        if disp_blanks_as_is_zero(disp_blanks_as) {
+          0.0
+        } else {
+          continue
+        }
+    }
+    let magnitude = if value < 0.0 {
+      if show_negative_bubbles {
+        -value
+      } else {
+        0.0
+      }
+    } else {
+      value
+    }
+    if magnitude > m {
+      m = magnitude
+    }
+  }
+  m
 }
