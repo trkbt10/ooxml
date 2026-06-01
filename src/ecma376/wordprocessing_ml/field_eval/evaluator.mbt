@@ -23,15 +23,13 @@ pub fn evaluate_field(
 ///|
 /// Apply formatting switches to a raw evaluator result. `\@` is
 /// already applied by the date evaluators themselves (they receive
-/// the switch via `Field::find_switch`); `\*` is applied here.
+/// the switch via `Field::find_switch`); `\#` and `\*` are applied
+/// here in document order.
 fn apply_switches(result : FieldResult, field : Field) -> FieldResult {
   let switches = field.switches
   let formatted_text = match result {
-    Literal(text) => apply_general_switches(text, switches)
-    Number(value) => {
-      let base = format_number_base(value)
-      apply_general_switches(base, switches)
-    }
+    Literal(text) => apply_text_field_switches(text, switches)
+    Number(value) => apply_number_field_switches(value, switches)
     DateResult(_, formatted) => apply_general_switches(formatted, switches)
     Hyperlink(url, display) => {
       let formatted_display = apply_general_switches(display, switches)
@@ -46,6 +44,55 @@ fn apply_switches(result : FieldResult, field : Field) -> FieldResult {
     Hyperlink(_, _) => result
     Empty => Empty
   }
+}
+
+///|
+fn apply_text_field_switches(
+  value : String,
+  switches : Array[FieldSwitch],
+) -> String {
+  let mut current = value
+  for entry in switches {
+    match entry.flag {
+      '#' =>
+        match (entry.argument, parse_field_numeric_value(current)) {
+          (Some(picture), Some(number)) =>
+            current = format_numeric_picture(number, picture)
+          _ => ()
+        }
+      '*' =>
+        match entry.argument {
+          Some(arg) => current = apply_general_switch(current, arg)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  current
+}
+
+///|
+fn apply_number_field_switches(
+  value : Double,
+  switches : Array[FieldSwitch],
+) -> String {
+  let mut current = format_number_base(value)
+  for entry in switches {
+    match entry.flag {
+      '#' =>
+        match entry.argument {
+          Some(picture) => current = format_numeric_picture(value, picture)
+          None => ()
+        }
+      '*' =>
+        match entry.argument {
+          Some(arg) => current = apply_general_switch(current, arg)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  current
 }
 
 ///|

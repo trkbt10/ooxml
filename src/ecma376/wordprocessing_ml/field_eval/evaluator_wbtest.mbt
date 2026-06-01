@@ -117,6 +117,45 @@ test "§17.16.5.50 NUMPAGES via \\* Roman switch renders roman" {
 }
 
 ///|
+test "§17.16.4.2 numeric picture switch formats page numbers" {
+  let registry = FieldRegistry::with_builtins()
+  let field = try! parse_instruction("NUMPAGES \\# \"#,##0.00\"")
+  let ctx = ctx_with(fn(c) { { ..c, total_pages: 12345 } })
+  let result = evaluate_field(field, ctx, registry)
+  @debug.assert_eq(result.to_text(), "12,345.00")
+}
+
+///|
+test "§17.16.4.2 numeric picture switch handles sections and literals" {
+  let registry = FieldRegistry::with_builtins()
+  let negative = try! parse_instruction(
+    "REVNUM \\# \"$#,##0.0;($#,##0.0);zero\"",
+  )
+  let neg_ctx = ctx_with(fn(c) { { ..c, revision_number: Some(-1234) } })
+  @debug.assert_eq(
+    evaluate_field(negative, neg_ctx, registry).to_text(),
+    "($1,234.0)",
+  )
+  let zero_ctx = ctx_with(fn(c) { { ..c, revision_number: Some(0) } })
+  @debug.assert_eq(
+    evaluate_field(negative, zero_ctx, registry).to_text(),
+    "zero",
+  )
+}
+
+///|
+test "§17.16.4.2 numeric picture switch applies to numeric literals" {
+  let registry = FieldRegistry::with_builtins()
+  let field = try! parse_instruction("MERGEFIELD Amount \\# \"0.0%\"")
+  let ctx = ctx_with(fn(c) {
+    c.merge_record.set("Amount", "0.075")
+    c
+  })
+  let result = evaluate_field(field, ctx, registry)
+  @debug.assert_eq(result.to_text(), "7.5%")
+}
+
+///|
 test "§17.16.5.13 DATE uses \\@ template" {
   let registry = FieldRegistry::with_builtins()
   let field = try! parse_instruction("DATE \\@ \"yyyy-MM-dd\"")
