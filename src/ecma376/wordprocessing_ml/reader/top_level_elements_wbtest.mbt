@@ -48,3 +48,13 @@ test "WML top-level readers reject the wrong root element" {
   let invalid = try? read_document(bytes("<w:styles xmlns:w=\"urn:w\"/>"))
   assert_true(invalid is Err(@domain.SchemaViolation(_)))
 }
+
+///|
+test "WML settings reader rejects invalid ST_OnOff values" {
+  let invalid = try? read_settings(
+    bytes(
+      "<w:settings xmlns:w=\"urn:w\"><w:trackRevisions w:val=\"yes\"/></w:settings>",
+    ),
+  )
+  assert_true(invalid is Err(@domain.SchemaViolation(_)))
+}

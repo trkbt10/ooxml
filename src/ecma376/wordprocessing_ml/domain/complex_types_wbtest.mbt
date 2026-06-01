@@ -80,6 +80,41 @@ fn wml_test_element_with_children(
 }
 
 ///|
+test "CT_OnOff parse uses shared ST_OnOff lexical validation" {
+  assert_eq(
+    (try! CT_OnOff::parse(wml_test_element_with_val("trackRevisions", "1"))).val,
+    Some(true),
+  )
+  assert_eq(
+    (try! CT_OnOff::parse(wml_test_element_with_val("trackRevisions", "0"))).val,
+    Some(false),
+  )
+  assert_eq(
+    (try! CT_OnOff::parse(wml_test_element_with_val("trackRevisions", "true"))).val,
+    Some(true),
+  )
+  assert_eq(
+    (try! CT_OnOff::parse(wml_test_element_with_val("trackRevisions", "false"))).val,
+    Some(false),
+  )
+  assert_eq(
+    (try! CT_OnOff::parse(wml_test_element_with_val("trackRevisions", "on"))).val,
+    Some(true),
+  )
+  assert_eq(
+    (try! CT_OnOff::parse(wml_test_element_with_val("trackRevisions", "off"))).val,
+    Some(false),
+  )
+  let invalid = ["yes", "TRUE", ""]
+  for lexical in invalid {
+    let decoded = try? CT_OnOff::parse(
+      wml_test_element_with_val("trackRevisions", lexical),
+    )
+    assert_true(decoded is Err(SchemaViolation(_)))
+  }
+}
+
+///|
 test "WML complex type wrappers preserve source elements" {
   let p = try! CT_P::parse(wml_test_element("p"))
   assert_eq(p.to_element().name.local_name, "p")

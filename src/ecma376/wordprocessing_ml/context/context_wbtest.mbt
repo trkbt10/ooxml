@@ -24,11 +24,56 @@ fn fixture_bytes() -> Bytes {
 }
 
 ///|
+fn fixture_bytes_with_settings(settings_xml : String) -> Bytes {
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/><Override PartName=\"/word/settings.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml\"/></Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>",
+      ),
+    ),
+    (
+      "word/document.xml",
+      bytes(
+        "<w:document xmlns:w=\"urn:w\"><w:body><w:p><w:r><w:t>Hello docx</w:t></w:r></w:p></w:body></w:document>",
+      ),
+    ),
+    ("word/settings.xml", bytes(settings_xml)),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
 test "wordprocessing_ml context opens and saves minimal package" {
   let document = open(fixture_bytes())
   assert_eq(document.main_part, "/word/document.xml")
   let reopened = open(document.save())
   assert_eq(reopened.main.element.name.local_name, "document")
+}
+
+///|
+test "wordprocessing_ml context rejects invalid settings ST_OnOff values" {
+  try
+    open(
+      fixture_bytes_with_settings(
+        "<w:settings xmlns:w=\"urn:w\"><w:trackRevisions w:val=\"yes\"/></w:settings>",
+      ),
+    )
+  catch {
+    OpenError(kind~, path~, reason~) => {
+      assert_eq(kind, "SchemaViolation")
+      assert_eq(path, "ST_OnOff")
+      assert_true(reason.contains("yes"))
+    }
+  } noraise {
+    _ => abort("expected OpenError")
+  }
 }
 
 ///|

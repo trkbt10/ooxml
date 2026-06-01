@@ -63,8 +63,8 @@ pub fn CT_Lvl::parse(element : @xml.Element) -> CT_Lvl raise SchemaViolation {
   let ilvl = numbering_required_int(element, "ilvl", "lvl/@ilvl")
   let tplc = numbering_attr(element, "tplc")
   let tentative = match numbering_attr(element, "tentative") {
-    Some("1") | Some("true") | Some("on") => true
-    _ => false
+    Some(lexical) => wml_st_on_off(lexical)
+    None => false
   }
   let mut start : Int? = None
   let mut num_fmt : ST_NumberFormat? = None

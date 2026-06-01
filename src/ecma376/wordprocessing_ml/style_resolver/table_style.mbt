@@ -145,15 +145,10 @@ pub fn TblLook::from_element(element : @xml.Element) -> TblLook {
 /// is omitted) so the toggle does not silently flip to true on
 /// garbage input.
 fn parse_on_off_simple(v : String) -> Bool {
-  match v {
-    "1" => true
-    "true" => true
-    "on" => true
-    "0" => false
-    "false" => false
-    "off" => false
-    // Schema violation — value outside ST_OnOff.
-    _ => false
+  try @simple_types.ST_OnOff::new(v) catch {
+    @simple_types.SchemaViolation(_) => false
+  } noraise {
+    parsed => parsed.to_bool()
   }
 }
 

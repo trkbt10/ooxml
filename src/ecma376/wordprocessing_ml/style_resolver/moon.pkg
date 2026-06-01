@@ -4,6 +4,7 @@
 
 import {
   "moonbitlang/core/hashmap",
+  "trkbt10/ooxml/ecma376/simple_types",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
   "trkbt10/ooxml/xml",
 }

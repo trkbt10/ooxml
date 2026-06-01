@@ -248,8 +248,13 @@ fn parse_style_type(value : String?) -> ST_StyleType? raise SchemaViolation {
 ///|
 fn parse_on_off(value : String?) -> Bool {
   match value {
-    Some("1") | Some("true") | Some("on") => true
-    _ => false
+    Some(lexical) =>
+      try wml_st_on_off(lexical) catch {
+        _ => false
+      } noraise {
+        parsed => parsed
+      }
+    None => false
   }
 }
 

@@ -2300,15 +2300,14 @@ fn resolve_page_config(body : @xml.Element) -> PageConfig {
         Some(cols) => {
           let num = parse_double_attr(cols, "num", 1.0).to_int()
           let space = parse_double_attr(cols, "space", 0.0)
-          let sep_str = attr_value(cols, "sep").unwrap_or("0")
-          let sep = sep_str == "1" || sep_str == "true"
+          let sep = parse_xsd_on_off_or(attr_value(cols, "sep"), false)
           // §17.6.4 @equalWidth — defaults to `true`. The explicit
           // `<w:col>` geometry is honoured only when it is `false`
           // (`"0"` / `"false"`) AND `<w:col>` children are present.
-          let equal_width = match attr_value(cols, "equalWidth") {
-            Some("0") | Some("false") => false
-            _ => true
-          }
+          let equal_width = parse_xsd_on_off_or(
+            attr_value(cols, "equalWidth"),
+            true,
+          )
           let explicit : Array[(Double, Double)] = []
           if !equal_width {
             for child in cols.children {

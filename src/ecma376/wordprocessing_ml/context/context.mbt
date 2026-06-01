@@ -730,8 +730,12 @@ fn resolve_header_footer_decoration(doc : Document) -> ResolvedDecoration {
 fn attr_on_off(el : @xml.Element) -> Bool {
   match attr_local(el, "val") {
     None => true
-    Some("0") | Some("false") | Some("off") => false
-    Some(_) => true
+    Some(lexical) =>
+      try @simple_types.ST_OnOff::new(lexical) catch {
+        @simple_types.SchemaViolation(_) => true
+      } noraise {
+        parsed => parsed.to_bool()
+      }
   }
 }
 

@@ -19,14 +19,12 @@
 pub fn parse_xsd_on_off(v : String?) -> Bool? {
   match v {
     None => None
-    Some("1") => Some(true)
-    Some("true") => Some(true)
-    Some("on") => Some(true)
-    Some("0") => Some(false)
-    Some("false") => Some(false)
-    Some("off") => Some(false)
-    // Schema violation — value is outside ST_OnOff.
-    Some(_) => None
+    Some(lexical) =>
+      try @simple_types.ST_OnOff::new(lexical) catch {
+        @simple_types.SchemaViolation(_) => None
+      } noraise {
+        parsed => Some(parsed.to_bool())
+      }
   }
 }
 

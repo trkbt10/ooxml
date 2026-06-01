@@ -9,6 +9,7 @@
 // sibling `edit/` package.
 
 import {
+  "trkbt10/ooxml/ecma376/simple_types",
   "trkbt10/ooxml/ecma376/opc/namespaces" @opc_namespaces,
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/ecma376/opc/part_name" @opc_part_name,

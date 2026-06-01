@@ -64,17 +64,18 @@ pub(all) struct CT_OnOff {
 /// XSD complex type CT_OnOff — Part 1 §17.17.4. Decode the optional
 /// ST_OnOff `@val` attribute and preserve the source element.
 pub fn CT_OnOff::new(element : @xml.Element) -> CT_OnOff {
-  let val = wml_ct_chunk1_on_off(wml_ct_chunk1_attr(element, "val"))
+  let val = wml_st_on_off_optional_or_false(wml_ct_chunk1_attr(element, "val"))
   { element, val }
 }
 
 ///|
 /// XSD complex type CT_OnOff — Part 1 §17.17.4. Schema-validating
-/// decoder; the parse function is total because every ST_OnOff
-/// lexical token (including `0/1/on/off/true/false`) is admissible
-/// per §22.9.2.7 and unknown spellings are tolerated by writers.
-pub fn CT_OnOff::parse(element : @xml.Element) -> CT_OnOff {
-  CT_OnOff::new(element)
+/// decoder. Invalid ST_OnOff lexical tokens are schema violations.
+pub fn CT_OnOff::parse(
+  element : @xml.Element,
+) -> CT_OnOff raise SchemaViolation {
+  let val = wml_st_on_off_optional(wml_ct_chunk1_attr(element, "val"))
+  { element, val }
 }
 
 ///|
@@ -2171,27 +2172,50 @@ fn wml_ct_chunk1_required_attr(
 ///|
 /// Decode an optional ST_OnOff lexical token (§22.9.2.7). Returns
 /// `None` when the attribute was omitted and `Some(bool)` otherwise.
-/// All four schema-permitted spellings (`0/1`, `on/off`, `true/false`)
-/// are accepted; unknown tokens fall back to `false` to mirror legacy
-/// writer leniency (per §17.17.4 prose).
+/// Delegates lexical validation to the shared §22.9 ST_OnOff SoT.
 fn wml_ct_chunk1_on_off(value : String?) -> Bool? {
+  wml_st_on_off_optional_or_false(value)
+}
+
+///|
+/// Decode a required ST_OnOff lexical token (§22.9.2.7).
+fn wml_ct_chunk1_on_off_required(value : String) -> Bool raise SchemaViolation {
+  wml_st_on_off(value)
+}
+
+///|
+/// Shared WordprocessingML adapter for §22.9.2.7 ST_OnOff. The lexical
+/// source of truth is `ecma376/simple_types`; this helper only maps its
+/// error into the WML domain error type.
+fn wml_st_on_off(value : String) -> Bool raise SchemaViolation {
+  try @simple_types.ST_OnOff::new(value) catch {
+    @simple_types.SchemaViolation(_) =>
+      raise_schema_violation(
+        "ST_OnOff", value, "invalid ST_OnOff lexical value",
+      )
+  } noraise {
+    parsed => parsed.to_bool()
+  }
+}
+
+///|
+fn wml_st_on_off_optional(value : String?) -> Bool? raise SchemaViolation {
   match value {
-    Some("1") | Some("true") | Some("on") => Some(true)
-    Some("0") | Some("false") | Some("off") => Some(false)
-    Some(_) => Some(false)
+    Some(v) => Some(wml_st_on_off(v))
     None => None
   }
 }
 
 ///|
-/// Decode a required ST_OnOff lexical token (§22.9.2.7). Mirrors
-/// `wml_ct_chunk1_on_off` but unwraps; callers ensure the source
-/// attribute existed.
-fn wml_ct_chunk1_on_off_required(value : String) -> Bool {
-  match value {
-    "1" | "true" | "on" => true
-    "0" | "false" | "off" => false
-    _ => false
+/// Legacy non-raising projection for constructors that intentionally keep
+/// permissive in-memory round-tripping. Lexical recognition still goes
+/// through the shared ST_OnOff SoT; invalid literals keep the previous
+/// false fallback.
+fn wml_st_on_off_optional_or_false(value : String?) -> Bool? {
+  try wml_st_on_off_optional(value) catch {
+    _ => Some(false)
+  } noraise {
+    parsed => parsed
   }
 }
 
@@ -9324,12 +9348,7 @@ fn wml_ct_chunk3_required_attr(
 /// Decode an optional ST_OnOff lexical token (§22.9.2.7) — chunk3 mirror of
 /// the chunk1 helper. Returns `None` when the attribute is absent.
 fn wml_ct_chunk3_on_off(value : String?) -> Bool? {
-  match value {
-    Some("1") | Some("true") | Some("on") => Some(true)
-    Some("0") | Some("false") | Some("off") => Some(false)
-    Some(_) => Some(false)
-    None => None
-  }
+  wml_st_on_off_optional_or_false(value)
 }
 
 ///|
@@ -9457,12 +9476,7 @@ fn wml_ct_chunk4_required_attr(
 /// Decode an optional ST_OnOff lexical token (§22.9.2.7) — chunk4 mirror of
 /// the chunk1/3 helpers. Returns `None` when the attribute is absent.
 fn wml_ct_chunk4_on_off(value : String?) -> Bool? {
-  match value {
-    Some("1") | Some("true") | Some("on") => Some(true)
-    Some("0") | Some("false") | Some("off") => Some(false)
-    Some(_) => Some(false)
-    None => None
-  }
+  wml_st_on_off_optional_or_false(value)
 }
 
 ///|

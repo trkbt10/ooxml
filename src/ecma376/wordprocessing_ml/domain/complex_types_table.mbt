@@ -2019,14 +2019,9 @@ fn wml_ct_chunk6_required_attr(
 ///|
 /// Decode an optional ST_OnOff lexical token (§22.9.2.7). Returns `None`
 /// when the attribute is omitted and `Some(bool)` otherwise. Accepts the
-/// four schema spellings (`0/1`, `on/off`, `true/false`).
+/// six schema spellings (`0/1`, `on/off`, `true/false`).
 fn wml_ct_chunk6_on_off(value : String?) -> Bool? {
-  match value {
-    Some("1") | Some("true") | Some("on") => Some(true)
-    Some("0") | Some("false") | Some("off") => Some(false)
-    Some(_) => Some(false)
-    None => None
-  }
+  wml_st_on_off_optional_or_false(value)
 }
 
 ///|

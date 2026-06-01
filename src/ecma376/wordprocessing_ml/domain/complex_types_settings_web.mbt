@@ -986,11 +986,7 @@ pub fn CT_ReadingModeInkLockDown::new(
   let raw_actual_pg = wml_ct_chunk6_required_attr(
     element, "actualPg", "CT_ReadingModeInkLockDown", "Part 1 §22.9.2.7 s:ST_OnOff",
   )
-  let actual_pg = match raw_actual_pg {
-    "1" | "true" | "on" => true
-    "0" | "false" | "off" => false
-    _ => false
-  }
+  let actual_pg = wml_st_on_off(raw_actual_pg)
   let raw_w = wml_ct_chunk6_required_attr(
     element, "w", "CT_ReadingModeInkLockDown", "Part 1 §17.18.67 ST_PixelsMeasure",
   )
@@ -1289,91 +1285,91 @@ pub fn CT_Settings::new(
   }
   let remove_personal_information = match
     wml_ct_chunk6_first_child(element, "removePersonalInformation") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let remove_date_and_time = match
     wml_ct_chunk6_first_child(element, "removeDateAndTime") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let do_not_display_page_boundaries = match
     wml_ct_chunk6_first_child(element, "doNotDisplayPageBoundaries") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let display_background_shape = match
     wml_ct_chunk6_first_child(element, "displayBackgroundShape") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let print_post_script_over_text = match
     wml_ct_chunk6_first_child(element, "printPostScriptOverText") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let print_fractional_character_width = match
     wml_ct_chunk6_first_child(element, "printFractionalCharacterWidth") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let print_forms_data = match
     wml_ct_chunk6_first_child(element, "printFormsData") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let embed_true_type_fonts = match
     wml_ct_chunk6_first_child(element, "embedTrueTypeFonts") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let embed_system_fonts = match
     wml_ct_chunk6_first_child(element, "embedSystemFonts") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let save_subset_fonts = match
     wml_ct_chunk6_first_child(element, "saveSubsetFonts") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let save_forms_data = match
     wml_ct_chunk6_first_child(element, "saveFormsData") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let mirror_margins = match
     wml_ct_chunk6_first_child(element, "mirrorMargins") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let align_borders_and_edges = match
     wml_ct_chunk6_first_child(element, "alignBordersAndEdges") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let borders_do_not_surround_header = match
     wml_ct_chunk6_first_child(element, "bordersDoNotSurroundHeader") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let borders_do_not_surround_footer = match
     wml_ct_chunk6_first_child(element, "bordersDoNotSurroundFooter") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let gutter_at_top = match wml_ct_chunk6_first_child(element, "gutterAtTop") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let hide_spelling_errors = match
     wml_ct_chunk6_first_child(element, "hideSpellingErrors") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let hide_grammatical_errors = match
     wml_ct_chunk6_first_child(element, "hideGrammaticalErrors") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let active_writing_style : Array[CT_WritingStyle] = []
@@ -1385,7 +1381,7 @@ pub fn CT_Settings::new(
     None => None
   }
   let forms_design = match wml_ct_chunk6_first_child(element, "formsDesign") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let attached_template = match
@@ -1394,7 +1390,7 @@ pub fn CT_Settings::new(
     None => None
   }
   let link_styles = match wml_ct_chunk6_first_child(element, "linkStyles") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let style_pane_format_filter = match
@@ -1421,17 +1417,17 @@ pub fn CT_Settings::new(
   }
   let track_revisions = match
     wml_ct_chunk6_first_child(element, "trackRevisions") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let do_not_track_moves = match
     wml_ct_chunk6_first_child(element, "doNotTrackMoves") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let do_not_track_formatting = match
     wml_ct_chunk6_first_child(element, "doNotTrackFormatting") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let document_protection = match
@@ -1441,17 +1437,17 @@ pub fn CT_Settings::new(
   }
   let auto_format_override = match
     wml_ct_chunk6_first_child(element, "autoFormatOverride") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let style_lock_theme = match
     wml_ct_chunk6_first_child(element, "styleLockTheme") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let style_lock_qf_set = match
     wml_ct_chunk6_first_child(element, "styleLockQFSet") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let default_tab_stop = match
@@ -1461,7 +1457,7 @@ pub fn CT_Settings::new(
   }
   let auto_hyphenation = match
     wml_ct_chunk6_first_child(element, "autoHyphenation") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let consecutive_hyphen_limit = match
@@ -1476,11 +1472,11 @@ pub fn CT_Settings::new(
   }
   let do_not_hyphenate_caps = match
     wml_ct_chunk6_first_child(element, "doNotHyphenateCaps") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let show_envelope = match wml_ct_chunk6_first_child(element, "showEnvelope") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let summary_length = match
@@ -1500,17 +1496,17 @@ pub fn CT_Settings::new(
   }
   let even_and_odd_headers = match
     wml_ct_chunk6_first_child(element, "evenAndOddHeaders") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let book_fold_rev_printing = match
     wml_ct_chunk6_first_child(element, "bookFoldRevPrinting") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let book_fold_printing = match
     wml_ct_chunk6_first_child(element, "bookFoldPrinting") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let book_fold_printing_sheets = match
@@ -1540,7 +1536,7 @@ pub fn CT_Settings::new(
   }
   let do_not_use_margins_for_drawing_grid_origin = match
     wml_ct_chunk6_first_child(element, "doNotUseMarginsForDrawingGridOrigin") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let drawing_grid_horizontal_origin = match
@@ -1555,12 +1551,12 @@ pub fn CT_Settings::new(
   }
   let do_not_shade_form_data = match
     wml_ct_chunk6_first_child(element, "doNotShadeFormData") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let no_punctuation_kerning = match
     wml_ct_chunk6_first_child(element, "noPunctuationKerning") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let character_spacing_control = match
@@ -1570,12 +1566,12 @@ pub fn CT_Settings::new(
   }
   let print_two_on_one = match
     wml_ct_chunk6_first_child(element, "printTwoOnOne") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let strict_first_and_last_chars = match
     wml_ct_chunk6_first_child(element, "strictFirstAndLastChars") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let no_line_breaks_after = match
@@ -1590,42 +1586,42 @@ pub fn CT_Settings::new(
   }
   let save_preview_picture = match
     wml_ct_chunk6_first_child(element, "savePreviewPicture") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let do_not_validate_against_schema = match
     wml_ct_chunk6_first_child(element, "doNotValidateAgainstSchema") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let save_invalid_xml = match
     wml_ct_chunk6_first_child(element, "saveInvalidXml") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let ignore_mixed_content = match
     wml_ct_chunk6_first_child(element, "ignoreMixedContent") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let always_show_placeholder_text = match
     wml_ct_chunk6_first_child(element, "alwaysShowPlaceholderText") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let do_not_demarcate_invalid_xml = match
     wml_ct_chunk6_first_child(element, "doNotDemarcateInvalidXml") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let save_xml_data_only = match
     wml_ct_chunk6_first_child(element, "saveXmlDataOnly") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let use_xslt_when_saving = match
     wml_ct_chunk6_first_child(element, "useXSLTWhenSaving") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let save_through_xslt = match
@@ -1634,16 +1630,16 @@ pub fn CT_Settings::new(
     None => None
   }
   let show_xml_tags = match wml_ct_chunk6_first_child(element, "showXMLTags") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let always_merge_empty_namespace = match
     wml_ct_chunk6_first_child(element, "alwaysMergeEmptyNamespace") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let update_fields = match wml_ct_chunk6_first_child(element, "updateFields") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let footnote_pr = match wml_ct_chunk6_first_child(element, "footnotePr") {
@@ -1686,12 +1682,12 @@ pub fn CT_Settings::new(
   }
   let do_not_include_subdocs_in_stats = match
     wml_ct_chunk6_first_child(element, "doNotIncludeSubdocsInStats") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let do_not_auto_compress_pictures = match
     wml_ct_chunk6_first_child(element, "doNotAutoCompressPictures") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let force_upgrade = match wml_ct_chunk6_first_child(element, "forceUpgrade") {
@@ -1717,7 +1713,7 @@ pub fn CT_Settings::new(
   }
   let do_not_embed_smart_tags = match
     wml_ct_chunk6_first_child(element, "doNotEmbedSmartTags") {
-    Some(c) => Some(CT_OnOff::new(c))
+    Some(c) => Some(CT_OnOff::parse(c))
     None => None
   }
   let decimal_symbol = match
