@@ -388,3 +388,27 @@ test "validate flags a part that is not well-formed XML" {
   }
   assert_true(found)
 }
+
+///|
+test "validate treats parameterized xml content type as XML" {
+  let content_types = b(
+    "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml; charset=utf-8\"/></Types>",
+  )
+  let rels = b(
+    "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>",
+  )
+  let archive = @zip.Archive::new([
+    ("[Content_Types].xml", content_types),
+    ("_rels/.rels", rels),
+    ("word/document.xml", b("<document><unclosed></document>")),
+  ])
+  let pkg = try! Package::open(try! @zip.write(archive))
+  let v = pkg.validate()
+  let mut found = false
+  for msg in v {
+    if msg.contains("well-formed") {
+      found = true
+    }
+  }
+  assert_true(found)
+}

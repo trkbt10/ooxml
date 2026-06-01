@@ -83,6 +83,64 @@ test "reject malformed content types xml" {
 }
 
 ///|
+test "ST_ContentType accepts media type parameters from opc-contentTypes.xsd" {
+  assert_eq(
+    (try! ContentType::parse("text/plain; charset=utf-8")).to_string(),
+    "text/plain; charset=utf-8",
+  )
+  assert_eq(
+    (try! ContentType::parse(
+      "application/example ; name=\"quoted value\"; version=1",
+    )).to_string(),
+    "application/example ; name=\"quoted value\"; version=1",
+  )
+  assert_eq(
+    (try! ContentType::parse("text/plain; title=\"caf\u{00e9}\"")).to_string(),
+    "text/plain; title=\"caf\u{00e9}\"",
+  )
+}
+
+///|
+test "ST_ContentType rejects malformed media type parameters" {
+  for
+    invalid in [
+      "application", "application/", "/xml", "application/xml;", "application/xml; charset",
+      "application/xml; charset=", "application/xml; bad name=utf-8", "application/xml; name=\"unterminated",
+      "application/xml; name=\"bad\nline\"",
+    ] {
+    let result = try? ContentType::parse(invalid)
+    assert_true(result is Err(@opc_errors.SchemaViolation(_)))
+  }
+}
+
+///|
+test "ST_Extension follows opc-contentTypes.xsd extension pattern" {
+  for valid in ["rels", "x%2B", "a+b", "x@y", "weird,=!"] {
+    assert_eq((try! Extension::parse(valid)).to_string(), valid)
+  }
+  for invalid in ["", "bad space", "png.ext", "foo/bar", "%", "%Z0"] {
+    let result = try? Extension::parse(invalid)
+    assert_true(result is Err(@opc_errors.SchemaViolation(_)))
+  }
+}
+
+///|
+test "content types round trip preserves parameterized content type" {
+  let source = b(
+    "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"txt\" ContentType=\"text/plain; charset=utf-8\"/></Types>",
+  )
+  let parsed = try! read_content_types(source)
+  let reparsed = try! read_content_types(write_content_types(parsed))
+  assert_true(reparsed == parsed)
+  let part = try! PartName::parse("/doc/readme.txt")
+  let actual = match parsed.content_type_for_part(part) {
+    Some(t) => t.to_string()
+    None => ""
+  }
+  assert_eq(actual, "text/plain; charset=utf-8")
+}
+
+///|
 test "public E3 and E4 errors carry content-types context" {
   @opc_errors.require_supported_feature(
     false,

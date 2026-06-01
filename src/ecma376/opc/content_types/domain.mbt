@@ -14,7 +14,7 @@ pub fn ContentType::parse(
     raise @opc_errors.SchemaViolation(
       section="10.1",
       path="ST_ContentType",
-      reason="content type must be a type/subtype media type without spaces",
+      reason="content type must match the opc-contentTypes.xsd media-type pattern",
     )
   }
   { value, }
@@ -38,18 +38,11 @@ pub(all) struct Extension {
 pub fn Extension::parse(
   value : String,
 ) -> Extension raise @opc_errors.SchemaViolation {
-  if value == "" ||
-    value.contains("/") ||
-    value.contains("\\") ||
-    value.contains(".") ||
-    value.contains(" ") ||
-    value.contains("\t") ||
-    value.contains("\n") ||
-    value.contains("\r") {
+  if !is_content_type_extension(value) {
     raise @opc_errors.SchemaViolation(
       section="10.1",
       path="ST_Extension",
-      reason="extension must be a non-empty package extension token",
+      reason="extension must match the opc-contentTypes.xsd ST_Extension pattern",
     )
   }
   { value, }
@@ -327,17 +320,181 @@ fn unsafe_content_type(value : String) -> ContentType {
 ///|
 fn is_content_type(value : String) -> Bool {
   let chars = value.to_array()
-  let mut slash = -1
-  for i in 0..<chars.length() {
-    if chars[i] == '/' {
-      slash = i
+  let len = chars.length()
+  let type_end = parse_media_token(chars, 0)
+  if type_end == 0 || type_end >= len || chars[type_end] != '/' {
+    return false
+  }
+  let subtype_start = type_end + 1
+  let subtype_end = parse_media_token(chars, subtype_start)
+  if subtype_end == subtype_start {
+    return false
+  }
+  let mut pos = subtype_end
+  while pos < len {
+    let param_sep = skip_http_spaces(chars, pos)
+    if param_sep >= len || chars[param_sep] != ';' {
+      return false
+    }
+    pos = skip_http_spaces(chars, param_sep + 1)
+    let name_end = parse_media_token(chars, pos)
+    if name_end == pos {
+      return false
+    }
+    pos = skip_http_spaces(chars, name_end)
+    if pos >= len || chars[pos] != '=' {
+      return false
+    }
+    pos = skip_http_spaces(chars, pos + 1)
+    if pos >= len {
+      return false
+    }
+    if chars[pos] == '"' {
+      let quoted_end = parse_quoted_parameter_value(chars, pos)
+      if quoted_end == pos {
+        return false
+      }
+      pos = quoted_end
+    } else {
+      let value_end = parse_media_token(chars, pos)
+      if value_end == pos {
+        return false
+      }
+      pos = value_end
     }
   }
-  slash > 0 &&
-  slash + 1 < value.length() &&
-  !value.contains(" ") &&
-  !value.contains("\t") &&
-  !value.contains("\n") &&
-  !value.contains("\r") &&
-  !value.contains(";")
+  true
+}
+
+///|
+/// opc-contentTypes.xsd `ST_ContentType` token atom: Basic Latin except
+/// controls, DEL, separators, and whitespace. Used for type, subtype,
+/// parameter names, and unquoted parameter values.
+fn parse_media_token(chars : Array[Char], start : Int) -> Int {
+  let mut pos = start
+  while pos < chars.length() && is_media_token_char(chars[pos]) {
+    pos += 1
+  }
+  pos
+}
+
+///|
+fn is_media_token_char(ch : Char) -> Bool {
+  let code = ch.to_int()
+  code > 0x20 && code < 0x7F && !is_media_separator_char(ch)
+}
+
+///|
+fn is_media_separator_char(ch : Char) -> Bool {
+  ch == '(' ||
+  ch == ')' ||
+  ch == '<' ||
+  ch == '>' ||
+  ch == '@' ||
+  ch == ',' ||
+  ch == ';' ||
+  ch == ':' ||
+  ch == '\\' ||
+  ch == '"' ||
+  ch == '/' ||
+  ch == '[' ||
+  ch == ']' ||
+  ch == '?' ||
+  ch == '=' ||
+  ch == '{' ||
+  ch == '}'
+}
+
+///|
+fn skip_http_spaces(chars : Array[Char], start : Int) -> Int {
+  let mut pos = start
+  while pos < chars.length() && (chars[pos] == ' ' || chars[pos] == '\t') {
+    pos += 1
+  }
+  pos
+}
+
+///|
+/// Return the offset after a quoted parameter value, or `start` on failure.
+/// The character class follows the quoted branch of opc-contentTypes.xsd.
+fn parse_quoted_parameter_value(chars : Array[Char], start : Int) -> Int {
+  let mut pos = start + 1
+  while pos < chars.length() {
+    let ch = chars[pos]
+    if ch == '"' {
+      return pos + 1
+    } else if ch == '\\' {
+      if pos + 1 >= chars.length() || chars[pos + 1].to_int() > 0x7F {
+        return start
+      }
+      pos += 2
+    } else if is_quoted_parameter_char(ch) {
+      pos += 1
+    } else {
+      return start
+    }
+  }
+  start
+}
+
+///|
+fn is_quoted_parameter_char(ch : Char) -> Bool {
+  let code = ch.to_int()
+  ch == ' ' ||
+  ch == '\t' ||
+  (code >= 0x20 && code <= 0x7E && ch != '"') ||
+  (code >= 0x80 && code <= 0xFF)
+}
+
+///|
+fn is_content_type_extension(value : String) -> Bool {
+  let chars = value.to_array()
+  if chars.length() == 0 {
+    return false
+  }
+  let mut pos = 0
+  while pos < chars.length() {
+    if chars[pos] == '%' {
+      if pos + 2 >= chars.length() ||
+        !is_ascii_hex(chars[pos + 1]) ||
+        !is_ascii_hex(chars[pos + 2]) {
+        return false
+      }
+      pos += 3
+    } else if is_extension_char(chars[pos]) {
+      pos += 1
+    } else {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn is_extension_char(ch : Char) -> Bool {
+  ('A' <= ch && ch <= 'Z') ||
+  ('a' <= ch && ch <= 'z') ||
+  ('0' <= ch && ch <= '9') ||
+  ch == '-' ||
+  ch == '_' ||
+  ch == '~' ||
+  ch == '!' ||
+  ch == '$' ||
+  ch == '&' ||
+  ch == '\'' ||
+  ch == '(' ||
+  ch == ')' ||
+  ch == '*' ||
+  ch == '+' ||
+  ch == ',' ||
+  ch == ':' ||
+  ch == '=' ||
+  ch == '@'
+}
+
+///|
+fn is_ascii_hex(ch : Char) -> Bool {
+  ('0' <= ch && ch <= '9') ||
+  ('A' <= ch && ch <= 'F') ||
+  ('a' <= ch && ch <= 'f')
 }
