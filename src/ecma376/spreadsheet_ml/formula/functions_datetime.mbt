@@ -178,8 +178,8 @@ fn fn_timevalue(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue 
   }
   match scalar_text(args[0]) {
     VString(text) =>
-      match parse_hms(text.trim().to_owned()) {
-        Some((h, m, s)) => time_fraction(h, m, s)
+      match @date_serial.parse_iso8601_time_of_day_opt(text.trim().to_owned()) {
+        Some(value) => time_of_day_to_value(value)
         None => VError(Value)
       }
     VError(err) => VError(err)
@@ -338,6 +338,16 @@ fn time_fraction(hour : Int, minute : Int, second : Int) -> FormulaValue {
 }
 
 ///|
+fn time_of_day_to_value(value : @date_serial.TimeOfDay) -> FormulaValue {
+  let serial = try @date_serial.time_of_day_to_serial_fraction(value) catch {
+    _ => return VError(Value)
+  } noraise {
+    value => value
+  }
+  VNumber(serial)
+}
+
+///|
 fn weekday_from_serial(
   serial : Double,
   return_type : Int,
@@ -410,56 +420,12 @@ fn shift_month_serial(
 
 ///|
 fn parse_iso_date(text : String) -> @date_serial.CalendarDateTime? {
-  if text.length() != 10 ||
-    text.code_unit_at(4) != '-' ||
-    text.code_unit_at(7) != '-' {
+  // DATEVALUE accepts a date-only text form here; the lexical and
+  // calendar validation itself stays in the §18.17.4 date_serial SoT.
+  if text.length() != 10 {
     return None
   }
-  let year = parse_int_slice(text, 0, 4)
-  let month = parse_int_slice(text, 5, 7)
-  let day = parse_int_slice(text, 8, 10)
-  match (year, month, day) {
-    (Some(y), Some(m), Some(d)) =>
-      Some(@date_serial.CalendarDateTime::{
-        year: y,
-        month: m,
-        day: d,
-        hour: 0,
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      })
-    _ => None
-  }
-}
-
-///|
-fn parse_hms(text : String) -> (Int, Int, Int)? {
-  if text.length() != 8 ||
-    text.code_unit_at(2) != ':' ||
-    text.code_unit_at(5) != ':' {
-    return None
-  }
-  let hour = parse_int_slice(text, 0, 2)
-  let minute = parse_int_slice(text, 3, 5)
-  let second = parse_int_slice(text, 6, 8)
-  match (hour, minute, second) {
-    (Some(h), Some(m), Some(s)) => Some((h, m, s))
-    _ => None
-  }
-}
-
-///|
-fn parse_int_slice(text : String, start : Int, end : Int) -> Int? {
-  let mut value = 0
-  for i in start..<end {
-    let code = text.code_unit_at(i).to_int()
-    if code < 48 || code > 57 {
-      return None
-    }
-    value = value * 10 + code - 48
-  }
-  Some(value)
+  @date_serial.parse_iso8601_date_time_opt(text)
 }
 
 ///|

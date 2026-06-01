@@ -9,6 +9,7 @@
 import {
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/ecma376/opc/part_name" @opc_part_name,
+  "trkbt10/ooxml/ecma376/opc/relationships",
   "trkbt10/ooxml/ecma376/opc",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain" @sml,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/builder" @sml_builder,

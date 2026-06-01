@@ -265,89 +265,10 @@ fn cell_value_parse_double(
 fn cell_value_parse_date_time(
   value : String,
 ) -> @date_serial.CalendarDateTime raise @opc_errors.SchemaViolation {
-  let length = value.length()
-  if length != 19 && length != 20 && length < 21 {
-    cell_value_violation("c/v", "date cell value is not an ISO 8601 dateTime")
+  @date_serial.parse_iso8601_date_time(value) catch {
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
+      cell_value_violation("c/v", section + " " + path + ": " + reason)
   }
-  let has_z = value.code_unit_at(length - 1) == 'Z'
-  let end = if has_z { length - 1 } else { length }
-  if end < 19 ||
-    value.code_unit_at(4) != '-' ||
-    value.code_unit_at(7) != '-' ||
-    value.code_unit_at(10) != 'T' ||
-    value.code_unit_at(13) != ':' ||
-    value.code_unit_at(16) != ':' {
-    cell_value_violation("c/v", "date cell value is not an ISO 8601 dateTime")
-  }
-  let year = cell_value_parse_fixed_int(value, 0, 4, "year")
-  let month = cell_value_parse_fixed_int(value, 5, 7, "month")
-  let day = cell_value_parse_fixed_int(value, 8, 10, "day")
-  let hour = cell_value_parse_fixed_int(value, 11, 13, "hour")
-  let minute = cell_value_parse_fixed_int(value, 14, 16, "minute")
-  let second = cell_value_parse_fixed_int(value, 17, 19, "second")
-  let millisecond = if end == 19 {
-    0
-  } else if value.code_unit_at(19) == '.' {
-    cell_value_parse_fraction_millis(value, 20, end)
-  } else {
-    cell_value_violation("c/v", "date cell timezone offsets are not accepted")
-  }
-  let dt = @date_serial.CalendarDateTime::{
-    year,
-    month,
-    day,
-    hour,
-    minute,
-    second,
-    millisecond,
-  }
-  @date_serial.date_time_to_serial(dt, @date_serial.DateSystem::Serial1900)
-  |> ignore
-  dt
-}
-
-///|
-fn cell_value_parse_fixed_int(
-  value : String,
-  start : Int,
-  end : Int,
-  field : String,
-) -> Int raise @opc_errors.SchemaViolation {
-  let mut out = 0
-  for index in start..<end {
-    let ch = value.code_unit_at(index)
-    if ch < '0' || ch > '9' {
-      cell_value_violation("c/v", "date cell \{field} contains a non-digit")
-    }
-    out = out * 10 + (ch.to_int() - '0'.to_int())
-  }
-  out
-}
-
-///|
-fn cell_value_parse_fraction_millis(
-  value : String,
-  start : Int,
-  end : Int,
-) -> Int raise @opc_errors.SchemaViolation {
-  if start >= end {
-    cell_value_violation("c/v", "date cell fractional second is empty")
-  }
-  let mut millis = 0
-  let mut scale = 100
-  for index in start..<end {
-    let ch = value.code_unit_at(index)
-    if ch < '0' || ch > '9' {
-      cell_value_violation(
-        "c/v", "date cell fractional second contains a non-digit",
-      )
-    }
-    if scale > 0 {
-      millis = millis + (ch.to_int() - '0'.to_int()) * scale
-      scale = scale / 10
-    }
-  }
-  millis
 }
 
 ///|

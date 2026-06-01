@@ -315,6 +315,9 @@ pub fn CT_DataBar::new(
     Some(v) => cf_parse_int(v).unwrap_or(90)
     None => 90
   }
+  let axis_position = cf_attr_or(element, "axisPosition", "automatic")
+  let direction = cf_attr_or(element, "direction", "context")
+  let negative_color = cf_decode_data_bar_negative_color(element)
   {
     element,
     min_threshold: thresholds[0],
@@ -323,6 +326,51 @@ pub fn CT_DataBar::new(
     min_length,
     max_length,
     show_value: cf_decode_bool_attr(element, "showValue", true),
+    axis_position,
+    direction,
+    negative_color,
+  }
+}
+
+///|
+fn cf_decode_data_bar_negative_color(
+  data_bar : @xml.Element,
+) -> CT_ColorArgb? raise @opc_errors.SchemaViolation {
+  match cf_first_child_named(data_bar, "negativeFillColor") {
+    Some(color_el) => return cf_decode_data_bar_color(color_el)
+    None => ()
+  }
+  // Some producers write the DrawingML-style colour child directly
+  // inside dataBar. Preserve that legacy variant in the typed SoT.
+  match cf_first_child_named(data_bar, "srgbClr") {
+    Some(srgb) => cf_decode_srgb_color(srgb, "dataBar/srgbClr/@val")
+    None => None
+  }
+}
+
+///|
+fn cf_decode_data_bar_color(
+  element : @xml.Element,
+) -> CT_ColorArgb? raise @opc_errors.SchemaViolation {
+  match cf_attr(element, "rgb") {
+    Some(value) => return Some(cf_parse_argb_hex(value))
+    None => ()
+  }
+  match cf_first_child_named(element, "srgbClr") {
+    Some(srgb) =>
+      cf_decode_srgb_color(srgb, "dataBar/negativeFillColor/srgbClr/@val")
+    None => None
+  }
+}
+
+///|
+fn cf_decode_srgb_color(
+  element : @xml.Element,
+  path : String,
+) -> CT_ColorArgb? raise @opc_errors.SchemaViolation {
+  match cf_attr(element, "val") {
+    Some(value) => Some(cf_parse_srgb_hex(value, path))
+    None => None
   }
 }
 
@@ -407,6 +455,24 @@ fn cf_parse_argb_hex(
 }
 
 ///|
+fn cf_parse_srgb_hex(
+  value : String,
+  path : String,
+) -> CT_ColorArgb raise @opc_errors.SchemaViolation {
+  if value.length() != 6 {
+    raise @opc_errors.SchemaViolation(
+      section="Part 1 §18.3.1.15",
+      path~,
+      reason="sRGB hex must be exactly 6 characters",
+    )
+  }
+  let red = cf_hex_pair(value, 0)
+  let green = cf_hex_pair(value, 2)
+  let blue = cf_hex_pair(value, 4)
+  CT_ColorArgb::new(255, red, green, blue)
+}
+
+///|
 fn cf_hex_pair(value : String, offset : Int) -> Int {
   let hi = cf_hex_digit(value.code_unit_at(offset).to_int())
   let lo = cf_hex_digit(value.code_unit_at(offset + 1).to_int())
@@ -444,6 +510,23 @@ fn cf_attr(element : @xml.Element, local_name : String) -> String? {
   for a in element.attributes {
     if a.name.local_name == local_name {
       return Some(a.value)
+    }
+  }
+  None
+}
+
+///|
+fn cf_first_child_named(
+  element : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  for child in element.children {
+    match child {
+      @xml.Element(child_element) =>
+        if child_element.name.local_name == local_name {
+          return Some(child_element)
+        }
+      _ => ()
     }
   }
   None

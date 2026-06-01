@@ -4234,8 +4234,10 @@ pub(all) struct CT_Table {
   auto_filter : @xml.Element?
   /// <sortState> (CT_SortState) — optional, retained raw.
   sort_state : @xml.Element?
-  /// <tableStyleInfo> (CT_TableStyleInfo) — optional, retained raw.
-  table_style_info : @xml.Element?
+  /// <tableStyleInfo> (CT_TableStyleInfo) — optional table-style
+  /// projection. The typed value is the SoT for renderers; `element`
+  /// still preserves the raw source XML for round-trip.
+  table_style_info : CT_TableStyleInfo?
 } derive(Eq, Debug)
 
 ///|
@@ -4243,14 +4245,14 @@ pub fn CT_Table::new(element : @xml.Element) -> CT_Table {
   let mut table_columns : CT_TableColumns? = None
   let mut auto_filter : @xml.Element? = None
   let mut sort_state : @xml.Element? = None
-  let mut table_style_info : @xml.Element? = None
+  let mut table_style_info : CT_TableStyleInfo? = None
   for child in element.children {
     if child is @xml.Node::Element(e) {
       match e.name.local_name {
         "tableColumns" => table_columns = Some(CT_TableColumns::new(e))
         "autoFilter" => auto_filter = Some(e)
         "sortState" => sort_state = Some(e)
-        "tableStyleInfo" => table_style_info = Some(e)
+        "tableStyleInfo" => table_style_info = Some(CT_TableStyleInfo::new(e))
         _ => ()
       }
     }
@@ -4335,22 +4337,22 @@ pub(all) struct CT_TableColumn {
   header_row_cell_style : String
   data_cell_style : String
   totals_row_cell_style : String
-  /// <calculatedColumnFormula> text — optional column formula.
-  calculated_column_formula : String?
-  /// <totalsRowFormula> text — optional totals-row formula.
-  totals_row_formula : String?
+  /// <calculatedColumnFormula> — optional typed column formula.
+  calculated_column_formula : CT_TableFormula?
+  /// <totalsRowFormula> — optional typed totals-row formula.
+  totals_row_formula : CT_TableFormula?
 } derive(Eq, Debug)
 
 ///|
 pub fn CT_TableColumn::new(element : @xml.Element) -> CT_TableColumn {
-  let mut calculated_column_formula : String? = None
-  let mut totals_row_formula : String? = None
+  let mut calculated_column_formula : CT_TableFormula? = None
+  let mut totals_row_formula : CT_TableFormula? = None
   for child in element.children {
     if child is @xml.Node::Element(e) {
       match e.name.local_name {
         "calculatedColumnFormula" =>
-          calculated_column_formula = Some(element_text(e))
-        "totalsRowFormula" => totals_row_formula = Some(element_text(e))
+          calculated_column_formula = Some(CT_TableFormula::new(e))
+        "totalsRowFormula" => totals_row_formula = Some(CT_TableFormula::new(e))
         _ => ()
       }
     }

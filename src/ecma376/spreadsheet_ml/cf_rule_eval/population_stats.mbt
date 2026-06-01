@@ -6,12 +6,24 @@
 fn collect_numbers(population : Array[@formula.FormulaValue]) -> Array[Double] {
   let result : Array[Double] = []
   for value in population {
-    match to_number_opt(value) {
+    match number_for_population_opt(value) {
       Some(n) => if !n.is_nan() { result.push(n) }
       None => ()
     }
   }
   result
+}
+
+///|
+/// Numeric projection for population-aware conditional formatting.
+/// Empty cells are not numeric samples for AVERAGE/LARGE/PERCENTILE
+/// style thresholds, even though scalar comparisons may coerce a blank
+/// cell to zero in `cellIs` rules.
+fn number_for_population_opt(value : @formula.FormulaValue) -> Double? {
+  match value {
+    @formula.VEmpty => None
+    _ => to_number_opt(value)
+  }
 }
 
 ///|

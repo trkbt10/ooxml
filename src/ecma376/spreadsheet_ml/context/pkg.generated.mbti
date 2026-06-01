@@ -25,6 +25,10 @@ pub(all) suberror OpenError {
   OpenError(kind~ : String, path~ : String, reason~ : String)
 } derive(@debug.Debug)
 
+pub(all) suberror SaveError {
+  SaveError(kind~ : String, path~ : String, reason~ : String)
+} derive(@debug.Debug)
+
 // Types and methods
 pub(all) struct Workbook {
   opc_package : @opc.Package
@@ -33,15 +37,20 @@ pub(all) struct Workbook {
   worksheets : Array[WorksheetPart]
   shared_strings : @domain.CT_Sst?
   styles : @domain.CT_Stylesheet?
+  metadata : @domain.CT_Metadata?
   theme : @opc.PackagePart?
 } derive(Eq, @debug.Debug)
 pub fn Workbook::auto_filter_row_visible(Self, @domain.CT_AutoFilter, @autofilter.CandidateRow, @date_serial.DateSystem) -> Bool
+pub fn Workbook::auto_filter_row_visible_with_formats(Self, @domain.CT_AutoFilter, @autofilter.FormattedCandidateRow, Array[@autofilter.FilterDxfFormat], @date_serial.DateSystem) -> Bool
+pub fn Workbook::auto_filter_visible_formatted_rows(Self, @domain.CT_AutoFilter, Array[@autofilter.FormattedCandidateRow], Array[@autofilter.FilterDxfFormat], @date_serial.DateSystem) -> Array[Int]
+pub fn Workbook::auto_filter_visible_rows(Self, @domain.CT_AutoFilter, Array[@autofilter.CandidateRow], @date_serial.DateSystem) -> Array[Int]
 pub fn Workbook::evaluate_conditional_formatting(Self, @domain.CT_ConditionalFormatting, Array[(@address.CellAddress, @formula.FormulaValue)], @cf_rule_eval.EvalContext) -> Array[@cf_rule_eval.MatchHit]
 pub fn Workbook::evaluate_formula(Self, @formula.FormulaAst, @formula.EvalContext) -> @formula.FormulaValue
 pub fn Workbook::materialize_pivot_table(Self, @pivot_table.PivotTableDefinition, @pivot_table.PivotCacheDefinition, @pivot_table.PivotCacheRecords) -> @pivot_table.PivotMaterialization raise OpenError
 pub fn Workbook::parse_auto_filter(Self, @xml.Element) -> @domain.CT_AutoFilter raise OpenError
 pub fn Workbook::parse_formula(Self, String) -> @formula.FormulaAst raise OpenError
 pub fn Workbook::save(Self) -> Bytes
+pub fn Workbook::save_or_raise(Self) -> Bytes raise SaveError
 pub fn Workbook::to_svg(Self, debug_attrs? : Bool) -> String
 
 pub(all) struct WorksheetPart {

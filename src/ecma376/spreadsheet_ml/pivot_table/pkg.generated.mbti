@@ -4,6 +4,7 @@ package "trkbt10/ooxml/ecma376/spreadsheet_ml/pivot_table"
 import {
   "moonbitlang/core/debug",
   "trkbt10/ooxml/ecma376/opc/errors",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/formula",
@@ -14,13 +15,23 @@ pub fn aggregate(Array[@formula.FormulaValue], DataConsolidateFunction) -> @form
 
 pub fn coerce_value_to_number(@formula.FormulaValue) -> Double?
 
+pub fn consolidate_function_prefix(DataConsolidateFunction) -> String
+
 pub fn data_consolidate_function_part1_18_18_17_section_name() -> String
+
+pub fn data_field_display_name(PivotTableDefinition, PivotCacheDefinition, Int) -> String?
+
+pub fn data_field_display_names(PivotTableDefinition, PivotCacheDefinition) -> Array[String]
 
 pub fn decode_pivot_cache_definition(@domain.CT_PivotCacheDefinition) -> PivotCacheDefinition raise @errors.SchemaViolation
 
 pub fn decode_pivot_cache_records(@domain.CT_PivotCacheRecords, Array[CacheField]) -> PivotCacheRecords raise @errors.SchemaViolation
 
 pub fn decode_pivot_table_definition(@domain.CT_pivotTableDefinition) -> PivotTableDefinition raise @errors.SchemaViolation
+
+pub fn format_pivot_number(Double) -> String
+
+pub fn get_pivot_data(Array[MaterializedPivotTable], @formula.GetPivotDataRequest) -> @formula.FormulaValue?
 
 pub fn materialize_pivot_table(PivotTableDefinition, PivotCacheDefinition, PivotCacheRecords) -> PivotMaterialization raise @errors.SchemaViolation
 
@@ -33,6 +44,8 @@ pub fn pivot_record_cell_shared_index(PivotRecordCell) -> Int?
 pub fn pivot_record_cell_to_formula_value(PivotRecordCell, CacheField) -> @formula.FormulaValue raise @errors.SchemaViolation
 
 pub fn pivot_table_definition_part1_18_10_1_73_section_name() -> String
+
+pub fn shared_item_value_to_caption(SharedItemValue) -> String
 
 // Errors
 
@@ -74,7 +87,7 @@ pub(all) struct DataFieldDef {
   base_field : Int?
   base_item : Int?
   num_fmt_id : Int?
-  show_data_as : String?
+  show_data_as : @spreadsheet_ml.ST_ShowDataAs?
 } derive(Eq, @debug.Debug)
 
 pub(all) enum ItemType {
@@ -95,6 +108,12 @@ pub(all) enum ItemType {
   Blank
 } derive(Eq, @debug.Debug)
 pub fn ItemType::from_attr(String) -> Self raise @errors.SchemaViolation
+
+pub(all) struct MaterializedPivotTable {
+  definition : PivotTableDefinition
+  cache : PivotCacheDefinition
+  materialization : PivotMaterialization
+} derive(Eq, @debug.Debug)
 
 pub(all) struct PageFieldDef {
   fld : Int
@@ -141,6 +160,7 @@ pub(all) struct PivotCacheDefinition {
   refresh_on_load : Bool
 } derive(Eq, @debug.Debug)
 pub fn PivotCacheDefinition::field_count(Self) -> Int
+pub fn PivotCacheDefinition::shared_item_caption(Self, Int, Int) -> String
 
 pub(all) struct PivotCacheRecords {
   count : Int?
@@ -159,6 +179,21 @@ pub(all) struct PivotFieldDef {
   subtotal_top : Bool
   default_subtotal : Bool
   items : Array[PivotItemDef]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PivotFilterDef {
+  fld : Int
+  mp_fld : Int?
+  type_ : String
+  eval_order : Int
+  id : Int
+  i_measure_hier : Int?
+  i_measure_fld : Int?
+  name : String?
+  description : String?
+  string_value1 : String?
+  string_value2 : String?
+  auto_filter : @domain.CT_AutoFilter
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PivotItemDef {
@@ -212,6 +247,7 @@ pub(all) struct PivotTableDefinition {
   row_items : Array[PivotAxisItem]
   col_items : Array[PivotAxisItem]
   page_fields : Array[PageFieldDef]
+  filters : Array[PivotFilterDef]
   data_fields : Array[DataFieldDef]
   style_info : PivotTableStyleInfo?
 } derive(Eq, @debug.Debug)

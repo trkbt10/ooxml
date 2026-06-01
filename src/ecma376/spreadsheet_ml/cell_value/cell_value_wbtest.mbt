@@ -87,6 +87,14 @@ test "§18.18.11 d decodes ISO 8601 date-time" {
     (try! decode_cell_value(cell(t="d", v="2024-12-31T23:59:59"))) ==
     Date(dt(2024, 12, 31, 23, 59, 59)),
   )
+  assert_true(
+    (try! decode_cell_value(cell(t="d", v="2024-12-31"))) ==
+    Date(dt(2024, 12, 31, 0, 0, 0)),
+  )
+  assert_true(
+    (try! decode_cell_value(cell(t="d", v="2024-12-31T23:59"))) ==
+    Date(dt(2024, 12, 31, 23, 59, 0)),
+  )
 }
 
 ///|

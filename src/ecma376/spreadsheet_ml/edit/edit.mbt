@@ -26,15 +26,7 @@ pub fn edit_workbook(
 ) -> Workbook {
   let new_element = transform(workbook.workbook.element)
   let new_workbook = @sml.CT_Workbook::new(new_element)
-  {
-    opc_package: workbook.opc_package,
-    workbook_part: workbook.workbook_part,
-    workbook: new_workbook,
-    worksheets: workbook.worksheets,
-    shared_strings: workbook.shared_strings,
-    styles: workbook.styles,
-    theme: workbook.theme,
-  }
+  { ..workbook, workbook: new_workbook }
 }
 
 ///|
@@ -81,15 +73,7 @@ pub fn edit_worksheet(
     }
     i = i + 1
   }
-  {
-    opc_package: workbook.opc_package,
-    workbook_part: workbook.workbook_part,
-    workbook: workbook.workbook,
-    worksheets: new_worksheets,
-    shared_strings: workbook.shared_strings,
-    styles: workbook.styles,
-    theme: workbook.theme,
-  }
+  { ..workbook, worksheets: new_worksheets }
 }
 
 ///|
@@ -119,15 +103,7 @@ pub fn edit_styles(
   }
   let new_element = transform(base_element)
   let new_styles = @sml.CT_Stylesheet::new(new_element)
-  {
-    opc_package: workbook.opc_package,
-    workbook_part: workbook.workbook_part,
-    workbook: workbook.workbook,
-    worksheets: workbook.worksheets,
-    shared_strings: workbook.shared_strings,
-    styles: Some(new_styles),
-    theme: workbook.theme,
-  }
+  { ..workbook, styles: Some(new_styles) }
 }
 
 ///|
@@ -139,15 +115,7 @@ pub fn with_package(
   workbook : Workbook,
   opc_package : @opc.Package,
 ) -> Workbook {
-  {
-    opc_package,
-    workbook_part: workbook.workbook_part,
-    workbook: workbook.workbook,
-    worksheets: workbook.worksheets,
-    shared_strings: workbook.shared_strings,
-    styles: workbook.styles,
-    theme: workbook.theme,
-  }
+  { ..workbook, opc_package, }
 }
 
 ///|
@@ -1456,6 +1424,9 @@ pub fn append_sheet(
       _ => ()
     }
   }
+  if max_sheet_id == 0 && workbook.worksheets.length() > 0 {
+    max_sheet_id = workbook.worksheets.length()
+  }
   let new_sheet_id = (max_sheet_id + 1).to_string()
 
   // Update the OPC package: new part + override + workbook rel.
@@ -1527,10 +1498,50 @@ pub fn append_sheet(
     }
   }
   if !sheets_seen {
+    let sheets_children : Array[@xml.Node] = []
+    for i, ws in workbook.worksheets {
+      match
+        worksheet_relationship_id_for_part(
+          existing_rels,
+          workbook.workbook_part,
+          ws.name,
+        ) {
+        Some(rid) => {
+          let existing_sheet_attrs : Array[@xml.Attribute] = [
+            {
+              name: { prefix: None, local_name: "name", ns: None },
+              value: "Sheet " + (i + 1).to_string(),
+            },
+            {
+              name: { prefix: None, local_name: "sheetId", ns: None },
+              value: (i + 1).to_string(),
+            },
+            {
+              name: {
+                prefix: Some("r"),
+                local_name: "id",
+                ns: Some(
+                  "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+                ),
+              },
+              value: rid,
+            },
+          ]
+          let existing_sheet : @xml.Element = {
+            name: qn("sheet"),
+            attributes: existing_sheet_attrs,
+            children: [],
+          }
+          sheets_children.push(@xml.Node::Element(existing_sheet))
+        }
+        None => ()
+      }
+    }
+    sheets_children.push(@xml.Node::Element(sheet_entry))
     let sheets_element : @xml.Element = {
       name: qn("sheets"),
       attributes: [],
-      children: [@xml.Node::Element(sheet_entry)],
+      children: sheets_children,
     }
     new_workbook_children.push(@xml.Node::Element(sheets_element))
   }
@@ -1553,14 +1564,35 @@ pub fn append_sheet(
     comments: None,
   })
   {
+    ..workbook,
     opc_package: pkg2,
-    workbook_part: workbook.workbook_part,
     workbook: new_workbook,
     worksheets: new_worksheets,
-    shared_strings: workbook.shared_strings,
-    styles: workbook.styles,
-    theme: workbook.theme,
   }
+}
+
+///|
+fn worksheet_relationship_id_for_part(
+  relationships : Array[@relationships.CT_Relationship],
+  owner : String,
+  part_name : String,
+) -> String? {
+  for rel in relationships {
+    if rel.type_uri.has_suffix("/worksheet") &&
+      rel.target_mode == @relationships.TargetMode::Internal {
+      let resolved = try
+        @opc_part_name.resolve_target(owner, rel.target)
+      catch {
+        _ => continue
+      } noraise {
+        value => value
+      }
+      if resolved == part_name {
+        return Some(rel.id)
+      }
+    }
+  }
+  None
 }
 
 ///|
@@ -1674,13 +1706,10 @@ pub fn remove_sheet(
     i = i + 1
   }
   {
+    ..workbook,
     opc_package: pkg2,
-    workbook_part: workbook.workbook_part,
     workbook: new_workbook,
     worksheets: new_worksheets,
-    shared_strings: workbook.shared_strings,
-    styles: workbook.styles,
-    theme: workbook.theme,
   }
 }
 

@@ -275,10 +275,11 @@ fn decode_shared_item_value(
 
 ///|
 /// Part 1 §18.10.1.68 pivotCacheRecords — decode the `<r>` rows
-/// into a typed `PivotCacheRecords`. Each `<r>` produces a
-/// `PivotCacheRow` with one cell per cacheField, in field order.
-/// Row width is validated against `cache_fields.length()` so a
-/// malformed records part surfaces immediately.
+/// into a typed `PivotCacheRecords`. Calculated cache fields
+/// (§18.10.1.3 `@formula`) are not stored per record, so rows that
+/// omit those cells are expanded here into cache-field order with a
+/// missing placeholder at each calculated-field position. Downstream
+/// materialization then has one canonical row shape.
 pub fn decode_pivot_cache_records(
   records : @domain.CT_PivotCacheRecords,
   cache_fields : Array[CacheField],
@@ -286,28 +287,58 @@ pub fn decode_pivot_cache_records(
   let element = records.element
   let count = decode_optional_int(element, "count", "pivotCacheRecords/@count")
   let rows : Array[PivotCacheRow] = []
-  let expected = cache_fields.length()
   for child in element.children {
     match child {
       @xml.Element(child_element) =>
         if child_element.name.local_name == "r" {
-          let cells = decode_pivot_cache_row(child_element)
-          if cells.length() != expected && expected > 0 {
-            raise @opc_errors.SchemaViolation(
-              section=pivot_cache_records_part1_18_10_1_68_section_name(),
-              path="pivotCacheRecords/r",
-              reason="row width " +
-                cells.length().to_string() +
-                " does not match cacheFields count " +
-                expected.to_string(),
-            )
-          }
+          let raw_cells = decode_pivot_cache_row(child_element)
+          let cells = align_pivot_cache_row(raw_cells, cache_fields)
           rows.push({ cells, })
         }
       _ => ()
     }
   }
   { count, rows }
+}
+
+///|
+fn align_pivot_cache_row(
+  raw_cells : Array[PivotRecordCell],
+  cache_fields : Array[CacheField],
+) -> Array[PivotRecordCell] raise @opc_errors.SchemaViolation {
+  let expected = cache_fields.length()
+  if expected == 0 || raw_cells.length() == expected {
+    return raw_cells
+  }
+  let mut stored_field_count = 0
+  for field in cache_fields {
+    if !cache_field_is_calculated(field) {
+      stored_field_count += 1
+    }
+  }
+  if raw_cells.length() == stored_field_count {
+    let cells : Array[PivotRecordCell] = []
+    let mut raw_index = 0
+    for field in cache_fields {
+      if cache_field_is_calculated(field) {
+        cells.push(Inline(SharedMissing))
+      } else {
+        cells.push(raw_cells[raw_index])
+        raw_index += 1
+      }
+    }
+    return cells
+  }
+  raise @opc_errors.SchemaViolation(
+    section=pivot_cache_records_part1_18_10_1_68_section_name(),
+    path="pivotCacheRecords/r",
+    reason="row width " +
+      raw_cells.length().to_string() +
+      " does not match cacheFields count " +
+      expected.to_string() +
+      " or stored database-field count " +
+      stored_field_count.to_string(),
+  )
 }
 
 ///|
@@ -388,7 +419,9 @@ pub fn pivot_record_cell_shared_index(cell : PivotRecordCell) -> Int? {
 /// CT_pivotTableDefinition wrapper. The decoder walks the
 /// well-known children (`location`, `pivotFields`, `rowFields`,
 /// `rowItems`, `colFields`, `colItems`, `pageFields`,
-/// `dataFields`) in order; unknown children are ignored so future
+/// `dataFields`) in order; the already-typed domain `filters`
+/// child supplies advanced PivotTable filters, avoiding a second XML
+/// traversal for that subtree. Unknown children are ignored so future
 /// schema additions do not break the parser.
 pub fn decode_pivot_table_definition(
   definition : @domain.CT_pivotTableDefinition,
@@ -409,6 +442,7 @@ pub fn decode_pivot_table_definition(
   let row_items : Array[PivotAxisItem] = []
   let col_items : Array[PivotAxisItem] = []
   let page_fields : Array[PageFieldDef] = []
+  let pivot_filters : Array[PivotFilterDef] = []
   let data_fields : Array[DataFieldDef] = []
   let mut style_info : PivotTableStyleInfo? = None
   for child in element.children {
@@ -488,6 +522,13 @@ pub fn decode_pivot_table_definition(
       _ => ()
     }
   }
+  match definition.filters {
+    Some(filters) =>
+      for filter in filters.filter {
+        pivot_filters.push(decode_pivot_filter(filter))
+      }
+    None => ()
+  }
   {
     name,
     data_caption,
@@ -502,8 +543,41 @@ pub fn decode_pivot_table_definition(
     row_items,
     col_items,
     page_fields,
+    filters: pivot_filters,
     data_fields,
     style_info,
+  }
+}
+
+///|
+/// Part 1 §18.10.1.33 filter — decode the operational PivotTable
+/// filter fields. The embedded AutoFilter child is parsed by the
+/// AutoFilter package so comparison semantics have one source.
+fn decode_pivot_filter(
+  filter : @domain.CT_PivotFilter,
+) -> PivotFilterDef raise @opc_errors.SchemaViolation {
+  let auto_filter = match filter.auto_filter {
+    Some(element) => @autofilter.parse_auto_filter(element)
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.10.1.33",
+        path="filter/autoFilter",
+        reason="pivot filter requires an autoFilter child",
+      )
+  }
+  {
+    fld: filter.fld,
+    mp_fld: filter.mp_fld,
+    type_: filter.type_,
+    eval_order: filter.eval_order,
+    id: filter.id,
+    i_measure_hier: filter.i_measure_hier,
+    i_measure_fld: filter.i_measure_fld,
+    name: filter.name,
+    description: filter.description,
+    string_value1: filter.string_value1,
+    string_value2: filter.string_value2,
+    auto_filter,
   }
 }
 
@@ -630,7 +704,20 @@ fn decode_data_field(
   let num_fmt_id = decode_optional_int(
     element, "numFmtId", "dataField/@numFmtId",
   )
-  let show_data_as = attr(element, "showDataAs")
+  let show_data_as = match attr(element, "showDataAs") {
+    Some(text) =>
+      Some(
+        @sml_types.ST_ShowDataAs::parse(text) catch {
+          @sml_types.SchemaViolation(schema~, path~, reason~) =>
+            raise @opc_errors.SchemaViolation(
+              section="Part 1 §18.10.1.22",
+              path="dataField/@showDataAs",
+              reason=schema + " " + path + ": " + reason,
+            )
+        },
+      )
+    None => None
+  }
   { name, fld, subtotal, base_field, base_item, num_fmt_id, show_data_as }
 }
 

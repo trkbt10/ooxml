@@ -50,6 +50,22 @@ fn resolve_cfvo_value(
 }
 
 ///|
+/// Part 1 §18.3.1.11 cfvo/@gte — true (the default) means a cell at
+/// the resolved threshold enters this bucket; false makes the boundary
+/// strict and requires the cell value to be greater than the threshold.
+fn cfvo_boundary_matches(
+  value : Double,
+  cfvo : @domain.CT_Cfvo,
+  threshold : Double,
+) -> Bool {
+  if cfvo.gte {
+    value >= threshold
+  } else {
+    value > threshold
+  }
+}
+
+///|
 /// Mean helper — empty arrays return 0 to match the existing
 /// `array_*_or_zero` convention.
 fn array_mean_or_zero(values : Array[Double]) -> Double {
@@ -104,7 +120,7 @@ pub fn evaluate_color_scale(
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
 ) -> @domain.CT_ColorArgb? {
-  let cell_number = match to_number_opt(cell) {
+  let cell_number = match number_for_population_opt(cell) {
     Some(n) => n
     None => return None
   }
@@ -142,7 +158,7 @@ pub fn evaluate_bar_ratio(
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
 ) -> Double? {
-  let cell_number = match to_number_opt(cell) {
+  let cell_number = match number_for_population_opt(cell) {
     Some(n) => n
     None => return None
   }
@@ -173,23 +189,21 @@ pub fn evaluate_icon_bucket(
   cell : @formula.FormulaValue,
   population : Array[@formula.FormulaValue],
 ) -> Int? {
-  let cell_number = match to_number_opt(cell) {
+  let cell_number = match number_for_population_opt(cell) {
     Some(n) => n
     None => return None
   }
   let numbers = collect_numbers(population)
-  let resolved : Array[Double] = []
-  for cfvo in icon_set.thresholds {
-    resolved.push(resolve_cfvo_value(cfvo, numbers))
-  }
   let mut bucket = 0
-  for i in 0..<resolved.length() {
-    if cell_number >= resolved[i] {
+  for i in 0..<icon_set.thresholds.length() {
+    let cfvo = icon_set.thresholds[i]
+    let resolved = resolve_cfvo_value(cfvo, numbers)
+    if cfvo_boundary_matches(cell_number, cfvo, resolved) {
       bucket = i
     }
   }
   let final_bucket = if icon_set.reverse {
-    resolved.length() - 1 - bucket
+    icon_set.thresholds.length() - 1 - bucket
   } else {
     bucket
   }

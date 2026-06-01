@@ -10,6 +10,11 @@ pub(all) suberror OpenError {
 } derive(Debug)
 
 ///|
+pub(all) suberror SaveError {
+  SaveError(kind~ : String, path~ : String, reason~ : String)
+} derive(Debug)
+
+///|
 pub(all) struct WorksheetPart {
   name : String
   value : @sml.CT_Worksheet
@@ -52,6 +57,9 @@ pub(all) struct Workbook {
   worksheets : Array[WorksheetPart]
   shared_strings : @sml.CT_Sst?
   styles : @sml.CT_Stylesheet?
+  /// §18.9 Metadata part (`/xl/metadata.xml`). Cells reference
+  /// this workbook-level store through CT_Cell `@cm` / `@vm`.
+  metadata : @sml.CT_Metadata?
   theme : @opc.PackagePart?
 } derive(Eq, Debug)
 
@@ -71,7 +79,7 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
       opc_package,
       workbook_part,
       workbook,
-      worksheets: read_worksheets(opc_package, workbook_part),
+      worksheets: read_worksheets(opc_package, workbook_part, workbook),
       // ECMA-376 §18.4.8 specifies `<sst>` as the top-level element
       // name in xl/sharedStrings.xml; use `read_sst` not the
       // `read_shared_strings` legacy alias so Office-produced
@@ -81,6 +89,9 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
       ),
       styles: opc_package.read_optional(
         "/xl/styles.xml", @sml_reader.read_style_sheet,
+      ),
+      metadata: opc_package.read_optional(
+        "/xl/metadata.xml", @sml_reader.read_metadata,
       ),
       // §18.8.3 / OPC §11.3.10 — discover the theme part via
       // the workbook's relationship table; fall back to the
@@ -151,7 +162,7 @@ pub fn open(bytes : Bytes) -> Workbook raise OpenError {
 }
 
 ///|
-pub fn Workbook::save(self : Workbook) -> Bytes {
+pub fn Workbook::save_or_raise(self : Workbook) -> Bytes raise SaveError {
   let opc_package = self.opc_package
     .with_part(self.workbook_part, @sml_builder.write_workbook(self.workbook))
     .with_optional_part(
@@ -164,6 +175,11 @@ pub fn Workbook::save(self : Workbook) -> Bytes {
       self.styles,
       @sml_builder.write_style_sheet,
     )
+    .with_optional_part(
+      "/xl/metadata.xml",
+      self.metadata,
+      @sml_builder.write_metadata,
+    )
   let mut saved = opc_package
   for worksheet in self.worksheets {
     saved = saved.with_part(
@@ -172,8 +188,22 @@ pub fn Workbook::save(self : Workbook) -> Bytes {
     )
   }
   saved.save() catch {
-    _ => @sml_builder.write_workbook(self.workbook)
+    err =>
+      raise SaveError(
+        kind="PackageSaveFailed",
+        path=self.workbook_part,
+        reason=err.to_string(),
+      )
   }
+}
+
+///|
+/// Backward-compatible save entry point. Callers that need structured
+/// diagnostics should use `save_or_raise`; this method intentionally
+/// aborts on package serialisation failure rather than producing a
+/// non-OPC workbook XML blob.
+pub fn Workbook::save(self : Workbook) -> Bytes {
+  try! self.save_or_raise()
 }
 
 ///|
@@ -280,7 +310,11 @@ pub fn Workbook::to_svg(self : Workbook, debug_attrs? : Bool = false) -> String 
       Some(sst) => snapshot.with_sst(sst)
       None => snapshot
     }
-    let evaluated = @sml_formula.evaluate_sheet(snapshot)
+    let evaluated = @sml_formula.evaluate_sheet_with_pivot_data(snapshot, fn(
+      request,
+    ) {
+      @sml_pivot.get_pivot_data(pivots, request)
+    })
     // Each sheet's SVG ids are namespaced with the sheet index so
     // per-cell ids (clip paths, defs) stay unique once the sheets
     // are concatenated into a single document.
@@ -396,9 +430,10 @@ fn build_drawing_chart_part_resolver(
                   Ok(name) =>
                     match pkg.part(name) {
                       Some(chart_part) =>
-                        match (try? @xml.parse(chart_part.data)) {
-                          Ok(doc) => return Some(doc.root)
-                          Err(_) => ()
+                        try @xml.parse(chart_part.data) catch {
+                          _ => ()
+                        } noraise {
+                          doc => return Some(doc.root)
                         }
                       None => ()
                     }
@@ -478,33 +513,41 @@ fn drawing_mime_for_target(target : String) -> String {
 fn read_worksheets(
   opc_package : @opc.Package,
   owner : String,
+  workbook : @sml.CT_Workbook,
 ) -> Array[WorksheetPart] raise {
   let result : Array[WorksheetPart] = []
+  let rel_targets = worksheet_relationship_targets(opc_package, owner)
+  let has_sheet_entries = match workbook.sheets {
+    Some(sheets) => sheets.sheets.length() > 0
+    None => false
+  }
+  if has_sheet_entries {
+    match workbook.sheets {
+      Some(sheets) =>
+        for sheet in sheets.sheets {
+          match rel_targets.get(sheet.r_id) {
+            Some(name) =>
+              match read_worksheet_part(opc_package, name) {
+                Some(part) => result.push(part)
+                None => ()
+              }
+            None => ()
+          }
+        }
+      None => ()
+    }
+    return result
+  }
+  // Legacy fallback for minimal packages that omit `<workbook>/<sheets>`.
+  // For conforming workbooks, `<sheets>/<sheet r:id>` is the order SoT.
   match opc_package.relationships(owner) {
     Some(relationships) =>
       for rel in relationships.relationships {
         if rel.type_uri.has_suffix("/worksheet") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let name = @opc_part_name.resolve_target(owner, rel.target)
-          match opc_package.part(name) {
-            Some(part) => {
-              let worksheet = @sml_reader.read_worksheet(part.data)
-              let (drawing, drawing_part) = match
-                read_worksheet_drawing(opc_package, name) {
-                Some((wsdr, dn)) => (Some(wsdr), Some(dn))
-                None => (None, None)
-              }
-              let tables = read_worksheet_tables(opc_package, name)
-              let comments = read_worksheet_comments(opc_package, name)
-              result.push({
-                name,
-                value: worksheet,
-                drawing,
-                drawing_part,
-                tables,
-                comments,
-              })
-            }
+          match read_worksheet_part(opc_package, name) {
+            Some(part) => result.push(part)
             None => ()
           }
         }
@@ -512,6 +555,47 @@ fn read_worksheets(
     None => ()
   }
   result
+}
+
+///|
+fn worksheet_relationship_targets(
+  opc_package : @opc.Package,
+  owner : String,
+) -> Map[String, String] raise {
+  let targets : Map[String, String] = Map([], capacity=0)
+  match opc_package.relationships(owner) {
+    Some(relationships) =>
+      for rel in relationships.relationships {
+        if rel.type_uri.has_suffix("/worksheet") &&
+          rel.target_mode == @relationships.TargetMode::Internal {
+          let name = @opc_part_name.resolve_target(owner, rel.target)
+          targets.set(rel.id, name)
+        }
+      }
+    None => ()
+  }
+  targets
+}
+
+///|
+fn read_worksheet_part(
+  opc_package : @opc.Package,
+  name : String,
+) -> WorksheetPart? raise {
+  match opc_package.part(name) {
+    Some(part) => {
+      let worksheet = @sml_reader.read_worksheet(part.data)
+      let (drawing, drawing_part) = match
+        read_worksheet_drawing(opc_package, name, worksheet) {
+        Some((wsdr, dn)) => (Some(wsdr), Some(dn))
+        None => (None, None)
+      }
+      let tables = read_worksheet_tables(opc_package, name)
+      let comments = read_worksheet_comments(opc_package, name)
+      Some({ name, value: worksheet, drawing, drawing_part, tables, comments })
+    }
+    None => None
+  }
 }
 
 ///|
@@ -537,9 +621,10 @@ fn read_worksheet_comments(
           }
           match opc_package.part(name) {
             Some(part) =>
-              match (try? @xml.parse(part.data)) {
-                Ok(doc) => return Some(doc.root)
-                Err(_) => ()
+              try @xml.parse(part.data) catch {
+                _ => ()
+              } noraise {
+                doc => return Some(doc.root)
               }
             None => ()
           }
@@ -559,12 +644,21 @@ fn read_worksheet_comments(
 fn read_worksheet_drawing(
   opc_package : @opc.Package,
   worksheet_part_name : String,
+  worksheet : @sml.CT_Worksheet,
 ) -> (@drawing.WsDr, String)? raise {
+  let drawing_r_id = match worksheet.drawing {
+    Some(drawing) => drawing.r_id
+    None => return None
+  }
+  if drawing_r_id.length() == 0 {
+    return None
+  }
   match opc_package.relationships(worksheet_part_name) {
     None => None
     Some(rels) => {
       for rel in rels.relationships {
-        if rel.type_uri.has_suffix("/drawing") &&
+        if rel.id == drawing_r_id &&
+          rel.type_uri.has_suffix("/drawing") &&
           rel.target_mode == @relationships.TargetMode::Internal {
           let drawing_name = @opc_part_name.resolve_target(
             worksheet_part_name,
@@ -778,6 +872,51 @@ pub fn Workbook::auto_filter_row_visible(
 }
 
 ///|
+/// Evaluate row visibility under §18.3.2 over one row carrying resolved
+/// fill/font colour and iconSet facts.
+pub fn Workbook::auto_filter_row_visible_with_formats(
+  self : Workbook,
+  filter : @sml.CT_AutoFilter,
+  row : @sml_autofilter.FormattedCandidateRow,
+  dxf_formats : Array[@sml_autofilter.FilterDxfFormat],
+  date_system : @sml_date_serial.DateSystem,
+) -> Bool {
+  let _ = self
+  @sml_autofilter.row_visible_with_formats(
+    filter, row, dxf_formats, date_system,
+  )
+}
+
+///|
+/// Evaluate §18.3.2 autoFilter rules over a candidate row set. Returns
+/// visible row indices. Value-only API; `colorFilter` and `iconFilter`
+/// remain false without resolved format facts.
+pub fn Workbook::auto_filter_visible_rows(
+  self : Workbook,
+  filter : @sml.CT_AutoFilter,
+  rows : Array[@sml_autofilter.CandidateRow],
+  date_system : @sml_date_serial.DateSystem,
+) -> Array[Int] {
+  let _ = self
+  @sml_autofilter.filter_rows(filter, rows, date_system)
+}
+
+///|
+/// Evaluate §18.3.2 autoFilter rules over rows that already carry
+/// resolved fill/font colour and iconSet facts. Style/dxf resolution stays
+/// with the caller; AutoFilter owns colorFilter/iconFilter comparison.
+pub fn Workbook::auto_filter_visible_formatted_rows(
+  self : Workbook,
+  filter : @sml.CT_AutoFilter,
+  rows : Array[@sml_autofilter.FormattedCandidateRow],
+  dxf_formats : Array[@sml_autofilter.FilterDxfFormat],
+  date_system : @sml_date_serial.DateSystem,
+) -> Array[Int] {
+  let _ = self
+  @sml_autofilter.filter_formatted_rows(filter, rows, dxf_formats, date_system)
+}
+
+///|
 /// Materialize a pivot table per §18.10. Combines a pivot definition
 /// (§18.10.1) with its cache definition (§18.10.16) and records
 /// (§18.10.18) to produce the row/column matrix and aggregated cells.
@@ -917,8 +1056,8 @@ fn collect_worksheet_pivots(
   opc_package : @opc.Package,
   worksheet_part : String,
   cache_lookup : Array[PivotCacheRef],
-) -> Array[@sml_viewer.SheetPivot] {
-  let result : Array[@sml_viewer.SheetPivot] = []
+) -> Array[@sml_pivot.MaterializedPivotTable] {
+  let result : Array[@sml_pivot.MaterializedPivotTable] = []
   let rels = match opc_package.relationships(worksheet_part) {
     Some(r) => r
     None => return result

@@ -31,12 +31,284 @@ fn fixture_bytes() -> Bytes {
 }
 
 ///|
+fn fixture_with_metadata() -> Bytes {
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+        "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+        "<Override PartName=\"/xl/metadata.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheetMetadata+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/_rels/workbook.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+        "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/sheetMetadata\" Target=\"metadata.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheets><s:sheet name=\"Sheet1\" sheetId=\"1\" r:id=\"rId1\"/></s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
+    (
+      "xl/worksheets/sheet1.xml",
+      bytes(
+        "<s:worksheet xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">" +
+        "<s:sheetData><s:row r=\"1\"><s:c r=\"A1\" cm=\"1\" vm=\"2\"><s:v>7</s:v></s:c></s:row></s:sheetData>" +
+        "</s:worksheet>",
+      ),
+    ),
+    (
+      "xl/metadata.xml",
+      bytes(
+        "<s:metadata xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">" +
+        "<s:metadataTypes count=\"1\"><s:metadataType name=\"XLMDX\" minSupportedVersion=\"120000\" copy=\"1\" pasteAll=\"1\" pasteValues=\"1\" merge=\"1\" splitFirst=\"1\" rowColShift=\"1\" clearFormats=\"1\" clearComments=\"1\" assign=\"1\" coerce=\"1\"/></s:metadataTypes>" +
+        "<s:cellMetadata count=\"1\"><s:bk><s:rc t=\"1\" v=\"0\"/></s:bk></s:cellMetadata>" +
+        "<s:valueMetadata count=\"1\"><s:bk><s:rc t=\"1\" v=\"0\"/></s:bk></s:valueMetadata>" +
+        "</s:metadata>",
+      ),
+    ),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
+fn fixture_with_workbook_sheet_order() -> Bytes {
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+        "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+        "<Override PartName=\"/xl/worksheets/sheet2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/_rels/workbook.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+        "<Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet2.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/workbook.xml",
+      bytes(
+        "<s:workbook xmlns:s=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheets>" +
+        "<s:sheet name=\"Second\" sheetId=\"2\" r:id=\"rId2\"/>" +
+        "<s:sheet name=\"First\" sheetId=\"1\" r:id=\"rId1\"/>" +
+        "</s:sheets>" +
+        "</s:workbook>",
+      ),
+    ),
+    (
+      "xl/worksheets/sheet1.xml",
+      bytes("<s:worksheet xmlns:s=\"urn:s\"><s:sheetData/></s:worksheet>"),
+    ),
+    (
+      "xl/worksheets/sheet2.xml",
+      bytes("<s:worksheet xmlns:s=\"urn:s\"><s:sheetData/></s:worksheet>"),
+    ),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
 test "spreadsheet_ml context opens and saves minimal package" {
   let workbook = open(fixture_bytes())
   assert_eq(workbook.workbook_part, "/xl/workbook.xml")
   assert_eq(workbook.worksheets.length(), 1)
   let reopened = open(workbook.save())
   assert_eq(reopened.workbook.element.name.local_name, "workbook")
+}
+
+///|
+test "spreadsheet_ml context orders worksheets by workbook sheets r:id" {
+  let workbook = open(fixture_with_workbook_sheet_order())
+  assert_eq(workbook.worksheets.length(), 2)
+  assert_eq(workbook.worksheets[0].name, "/xl/worksheets/sheet2.xml")
+  assert_eq(workbook.worksheets[1].name, "/xl/worksheets/sheet1.xml")
+}
+
+///|
+test "spreadsheet_ml context preserves metadata part and cm/vm links" {
+  let workbook = open(fixture_with_metadata())
+  match workbook.metadata {
+    Some(metadata) => {
+      assert_true(metadata.metadata_types is Some(_))
+      assert_true(metadata.cell_metadata is Some(_))
+      assert_true(metadata.value_metadata is Some(_))
+    }
+    None => fail("expected /xl/metadata.xml to be loaded")
+  }
+  match workbook.worksheets[0].value.sheet_data {
+    Some(sheet_data) => {
+      let cell = sheet_data.row[0].cells[0]
+      assert_eq(cell.cm, 1)
+      assert_eq(cell.vm, 2)
+    }
+    None => fail("expected sheetData")
+  }
+  let saved = workbook.save_or_raise()
+  let opc_package = try! @opc.Package::open(saved)
+  match opc_package.part("/xl/metadata.xml") {
+    Some(part) => {
+      let raw = decode_utf8(part.data)
+      assert_true(raw.contains("metadataTypes"))
+      assert_true(raw.contains("cellMetadata"))
+      assert_true(raw.contains("valueMetadata"))
+    }
+    None => fail("expected /xl/metadata.xml to be saved")
+  }
+  let reopened = open(saved)
+  match reopened.metadata {
+    Some(metadata) => assert_true(metadata.cell_metadata is Some(_))
+    None => fail("expected reopened metadata")
+  }
+  match reopened.worksheets[0].value.sheet_data {
+    Some(sheet_data) => {
+      let cell = sheet_data.row[0].cells[0]
+      assert_eq(cell.cm, 1)
+      assert_eq(cell.vm, 2)
+    }
+    None => fail("expected reopened sheetData")
+  }
+}
+
+///|
+test "spreadsheet_ml save_or_raise reports invalid package" {
+  let workbook = open(fixture_bytes())
+  let broken_parts : Array[@opc.PackagePart] = []
+  for part in workbook.opc_package.parts {
+    if part.name == workbook.workbook_part {
+      broken_parts.push({ ..part, name: "xl/workbook.xml" })
+    } else {
+      broken_parts.push(part)
+    }
+  }
+  let broken = {
+    ..workbook,
+    opc_package: { ..workbook.opc_package, parts: broken_parts },
+  }
+  try broken.save_or_raise() catch {
+    SaveError(kind~, path~, reason~) => {
+      assert_eq(kind, "PackageSaveFailed")
+      assert_eq(path, "/xl/workbook.xml")
+      assert_true(reason.length() > 0)
+    }
+  } noraise {
+    _ => abort("expected SaveError")
+  }
+}
+
+///|
+test "spreadsheet_ml context autofilter row-set accepts resolved format facts" {
+  let workbook = open(fixture_bytes())
+  let filter : @sml.CT_AutoFilter = {
+    range: try! @sml_address.CellRange::parse_a1("A1:A3"),
+    filter_columns: [
+      {
+        col_id: 0,
+        hidden_button: false,
+        show_button: true,
+        rule: Some(
+          @sml.CT_FilterColumn_Choice::IconFilter({
+            icon_set: "3TrafficLights1",
+            icon_id: 2,
+          }),
+        ),
+      },
+    ],
+  }
+  let rows : Array[@sml_autofilter.CandidateRow] = [
+    { values: [@sml_formula.FormulaValue::VNumber(10.0)], row_index: 3 },
+    { values: [@sml_formula.FormulaValue::VNumber(30.0)], row_index: 7 },
+    { values: [@sml_formula.FormulaValue::VNumber(20.0)], row_index: 9 },
+  ]
+  let without_matcher = workbook.auto_filter_visible_rows(
+    filter,
+    rows,
+    @sml_date_serial.DateSystem::Serial1900,
+  )
+  assert_true(without_matcher.length() == 0)
+  let formatted_rows : Array[@sml_autofilter.FormattedCandidateRow] = [
+    {
+      row_index: 3,
+      cells: [
+        {
+          value: @sml_formula.FormulaValue::VNumber(10.0),
+          fill_color: None,
+          font_color: None,
+          icon_set: Some("3TrafficLights1"),
+          icon_id: Some(1),
+        },
+      ],
+    },
+    {
+      row_index: 7,
+      cells: [
+        {
+          value: @sml_formula.FormulaValue::VNumber(30.0),
+          fill_color: None,
+          font_color: None,
+          icon_set: Some("3TrafficLights1"),
+          icon_id: Some(2),
+        },
+      ],
+    },
+    {
+      row_index: 9,
+      cells: [
+        {
+          value: @sml_formula.FormulaValue::VNumber(20.0),
+          fill_color: None,
+          font_color: None,
+          icon_set: Some("3TrafficLights1"),
+          icon_id: Some(0),
+        },
+      ],
+    },
+  ]
+  let with_formats = workbook.auto_filter_visible_formatted_rows(
+    filter,
+    formatted_rows,
+    [],
+    @sml_date_serial.DateSystem::Serial1900,
+  )
+  assert_true(with_formats.length() == 1)
+  assert_true(with_formats[0] == 7)
 }
 
 ///|
@@ -476,6 +748,70 @@ fn fixture_with_drawing() -> Bytes {
 }
 
 ///|
+fn fixture_with_drawing_rid_order() -> Bytes {
+  let archive = @zip.Archive::new([
+    (
+      "[Content_Types].xml",
+      bytes(
+        "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">" +
+        "<Default Extension=\"xml\" ContentType=\"application/xml\"/>" +
+        "<Override PartName=\"/xl/workbook.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml\"/>" +
+        "<Override PartName=\"/xl/worksheets/sheet1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml\"/>" +
+        "<Override PartName=\"/xl/drawings/drawing1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawing+xml\"/>" +
+        "<Override PartName=\"/xl/drawings/drawing2.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.drawing+xml\"/>" +
+        "</Types>",
+      ),
+    ),
+    (
+      "_rels/.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"xl/workbook.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/_rels/workbook.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet\" Target=\"worksheets/sheet1.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    (
+      "xl/worksheets/_rels/sheet1.xml.rels",
+      bytes(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\">" +
+        "<Relationship Id=\"rIdD1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing\" Target=\"../drawings/drawing1.xml\"/>" +
+        "<Relationship Id=\"rIdD2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing\" Target=\"../drawings/drawing2.xml\"/>" +
+        "</Relationships>",
+      ),
+    ),
+    ("xl/workbook.xml", bytes("<s:workbook xmlns:s=\"urn:s\"/>")),
+    (
+      "xl/worksheets/sheet1.xml",
+      bytes(
+        "<s:worksheet xmlns:s=\"urn:s\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\">" +
+        "<s:sheetData/><s:drawing r:id=\"rIdD2\"/></s:worksheet>",
+      ),
+    ),
+    (
+      "xl/drawings/drawing1.xml",
+      bytes(
+        "<xdr:wsDr xmlns:xdr=\"http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"/>",
+      ),
+    ),
+    (
+      "xl/drawings/drawing2.xml",
+      bytes(
+        "<xdr:wsDr xmlns:xdr=\"http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\"/>",
+      ),
+    ),
+  ])
+  try! @zip.write(archive)
+}
+
+///|
 test "xlsx context resolves worksheet drawing part into WorksheetPart.drawing" {
   let workbook = open(fixture_with_drawing())
   assert_eq(workbook.worksheets.length(), 1)
@@ -483,6 +819,16 @@ test "xlsx context resolves worksheet drawing part into WorksheetPart.drawing" {
     Some(_) => assert_true(true)
     None => fail("expected WorksheetPart.drawing to be Some(...)")
   }
+}
+
+///|
+test "xlsx context resolves worksheet drawing by drawing r:id" {
+  let workbook = open(fixture_with_drawing_rid_order())
+  assert_eq(workbook.worksheets.length(), 1)
+  assert_eq(
+    workbook.worksheets[0].drawing_part,
+    Some("/xl/drawings/drawing2.xml"),
+  )
 }
 
 ///|
@@ -583,6 +929,13 @@ test "xlsx context to_svg renders each worksheet via @sml_viewer" {
 ///|
 fn bytes(source : String) -> Bytes {
   @utf8.encode(source[:])
+}
+
+///|
+fn decode_utf8(bytes : Bytes) -> String {
+  @utf8.decode(bytes[:]) catch {
+    _ => ""
+  }
 }
 
 ///|

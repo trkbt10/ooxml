@@ -21,6 +21,7 @@ fn eval_test_context() -> EvalContext {
         _ => None
       }
     },
+    resolve_pivot_data: no_pivot_data,
   }
 }
 

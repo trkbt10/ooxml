@@ -99,7 +99,7 @@ pub fn evaluate_cell(
     [],
     capacity=0,
   )
-  worksheet_eval_cell(snapshot, address, in_progress)
+  worksheet_eval_cell(snapshot, address, in_progress, no_pivot_data)
 }
 
 ///|
@@ -108,6 +108,18 @@ pub fn evaluate_cell(
 /// integration sentinel.
 pub fn evaluate_sheet(
   snapshot : WorksheetSnapshot,
+) -> @hashmap.HashMap[String, FormulaValue] {
+  evaluate_sheet_with_pivot_data(snapshot, no_pivot_data)
+}
+
+///|
+/// §18.17.7 GETPIVOTDATA — evaluate every formula cell while delegating
+/// PivotTable lookup to the workbook/pivot owner. The worksheet evaluator
+/// still owns formula traversal; the callback owns only materialized pivot
+/// lookup.
+pub fn evaluate_sheet_with_pivot_data(
+  snapshot : WorksheetSnapshot,
+  resolve_pivot_data : (GetPivotDataRequest) -> FormulaValue?,
 ) -> @hashmap.HashMap[String, FormulaValue] {
   let results : @hashmap.HashMap[String, FormulaValue] = @hashmap.HashMap(
     [],
@@ -118,12 +130,28 @@ pub fn evaluate_sheet(
       worksheet_eval_formula_element(cell) is Some(_) {
       match worksheet_eval_address_from_key(snapshot, key) {
         Some(address) =>
-          results.set(address.to_a1(), evaluate_cell(snapshot, address))
+          results.set(
+            address.to_a1(),
+            evaluate_cell_with_pivot_data(snapshot, address, resolve_pivot_data),
+          )
         None => ()
       }
     }
   })
   results
+}
+
+///|
+fn evaluate_cell_with_pivot_data(
+  snapshot : WorksheetSnapshot,
+  address : @address.CellAddress,
+  resolve_pivot_data : (GetPivotDataRequest) -> FormulaValue?,
+) -> FormulaValue {
+  let in_progress : @hashmap.HashMap[String, Bool] = @hashmap.HashMap(
+    [],
+    capacity=0,
+  )
+  worksheet_eval_cell(snapshot, address, in_progress, resolve_pivot_data)
 }
 
 ///|
@@ -234,6 +262,7 @@ fn worksheet_eval_cell(
   snapshot : WorksheetSnapshot,
   address : @address.CellAddress,
   in_progress : @hashmap.HashMap[String, Bool],
+  resolve_pivot_data : (GetPivotDataRequest) -> FormulaValue?,
 ) -> FormulaValue {
   let key = worksheet_eval_key(snapshot, address)
   if in_progress.contains(key) {
@@ -248,7 +277,7 @@ fn worksheet_eval_cell(
     Some(formula_element) => {
       in_progress.set(key, true)
       let result = worksheet_eval_formula_cell(
-        snapshot, address, formula_element, in_progress,
+        snapshot, address, formula_element, in_progress, resolve_pivot_data,
       )
       in_progress.remove(key)
       result
@@ -262,6 +291,7 @@ fn worksheet_eval_formula_cell(
   address : @address.CellAddress,
   formula_element : @xml.Element,
   in_progress : @hashmap.HashMap[String, Bool],
+  resolve_pivot_data : (GetPivotDataRequest) -> FormulaValue?,
 ) -> FormulaValue {
   let formula_type = worksheet_eval_attr(formula_element, "t")
   let body = worksheet_eval_text(formula_element)
@@ -273,7 +303,12 @@ fn worksheet_eval_formula_cell(
   }
   match ast {
     Some(ast) =>
-      evaluate(ast, worksheet_eval_context(snapshot, address, in_progress))
+      evaluate(
+        ast,
+        worksheet_eval_context(
+          snapshot, address, in_progress, resolve_pivot_data,
+        ),
+      )
     None => VError(Value)
   }
 }
@@ -317,6 +352,7 @@ fn worksheet_eval_context(
   snapshot : WorksheetSnapshot,
   address : @address.CellAddress,
   in_progress : @hashmap.HashMap[String, Bool],
+  resolve_pivot_data : (GetPivotDataRequest) -> FormulaValue?,
 ) -> EvalContext {
   let registry = FunctionRegistry::new()
   register_builtin_functions(registry)
@@ -327,9 +363,10 @@ fn worksheet_eval_context(
     date_system: snapshot.date_system,
     registry,
     resolve_cell: fn(target) {
-      worksheet_eval_cell(snapshot, target, in_progress)
+      worksheet_eval_cell(snapshot, target, in_progress, resolve_pivot_data)
     },
     resolve_name: fn(_) { None },
+    resolve_pivot_data,
   }
 }
 

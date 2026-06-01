@@ -24,6 +24,7 @@ fn g17_test_context() -> EvalContext {
       }
     },
     resolve_name: fn(_) { None },
+    resolve_pivot_data: no_pivot_data,
   }
 }
 
@@ -166,7 +167,13 @@ test "§18.17.7 datetime NOW TODAY parsing and date arithmetic" {
     VNumber(g17_serial(2024, 12, 31)),
   )
   g17_assert_eval("DATEVALUE(\"not-a-date\")", VError(Value))
+  g17_assert_eval("DATEVALUE(\"2023-02-29\")", VError(Value))
+  g17_assert_eval("DATEVALUE(\"2024-12-31T23:59\")", VError(Value))
   g17_assert_eval("TIMEVALUE(\"12:00:00\")", VNumber(0.5))
+  g17_assert_close("TIMEVALUE(\"08:30\")", 8.5 / 24.0)
+  g17_assert_close("TIMEVALUE(\"08:30:00.500\")", 30600500.0 / 86400000.0)
+  g17_assert_eval("TIMEVALUE(\"24:00:00\")", VError(Value))
+  g17_assert_eval("TIMEVALUE(\"99:99:99\")", VError(Value))
   g17_assert_eval("DAYS(DATE(2024,12,31),DATE(2024,12,1))", VNumber(30.0))
   g17_assert_eval("EDATE(DATE(2024,1,31),1)", VNumber(g17_serial(2024, 2, 29)))
   g17_assert_eval(

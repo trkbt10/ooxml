@@ -24,6 +24,12 @@ priv struct CalcField {
 }
 
 ///|
+priv struct PivotRowAxisProjection {
+  row_axis : Array[PivotAxisKey]
+  col_axis : Array[PivotAxisKey]
+}
+
+///|
 /// §18.10.1.3 — true when the data field at `data_field_index` points
 /// at a calculated cache field (carries a `@formula`).  Such fields
 /// have no per-record value, so the main bucket-fill skips them (and
@@ -40,7 +46,19 @@ fn is_calc_data_field(
   }
   let fld = definition.data_fields[data_field_index].fld
   guard fld >= 0 && fld < cache.cache_fields.length() else { return false }
-  cache.cache_fields[fld].formula is Some(_)
+  cache_field_is_calculated(cache.cache_fields[fld])
+}
+
+///|
+fn cache_field_is_calculated(field : CacheField) -> Bool {
+  cache_field_calculated_formula(field) is Some(_)
+}
+
+///|
+fn cache_field_calculated_formula(field : CacheField) -> String? {
+  // §18.10.1.3 marks a calculated cache field by carrying @formula.
+  // Keep databaseField as parsed metadata, not a second identity gate.
+  field.formula
 }
 
 ///|
@@ -64,7 +82,7 @@ fn collect_calc_fields(
       continue
     }
     let cf = cache.cache_fields[df.fld]
-    guard cf.formula is Some(src) else { continue }
+    guard cache_field_calculated_formula(cf) is Some(src) else { continue }
     let ast = (try? @formula.parse_formula(src)).to_option()
     match ast {
       Some(a) => {
@@ -81,6 +99,19 @@ fn collect_calc_fields(
     }
   }
   out
+}
+
+///|
+fn calc_field_for_data_index(
+  calc_fields : Array[CalcField],
+  data_field_index : Int,
+) -> CalcField? {
+  for calc in calc_fields {
+    if calc.data_field_index == data_field_index {
+      return Some(calc)
+    }
+  }
+  None
 }
 
 ///|
@@ -123,7 +154,7 @@ fn eval_calc_field_over_rows(
 ) -> @formula.FormulaValue raise @opc_errors.SchemaViolation {
   let agg : Map[String, @formula.FormulaValue] = Map(
     [],
-    capacity=calc.refs.size(),
+    capacity=calc.refs.length(),
   )
   for name, fld in calc.refs {
     let vals : Array[@formula.FormulaValue] = []
@@ -139,6 +170,8 @@ fn eval_calc_field_over_rows(
     }
     agg[name] = aggregate(vals, Sum)
   }
+  let registry = @formula.FunctionRegistry::new()
+  @formula.register_builtin_functions(registry)
   let ctx : @formula.EvalContext = {
     current_sheet: "",
     current_cell: {
@@ -150,7 +183,7 @@ fn eval_calc_field_over_rows(
     },
     sst: None,
     date_system: @date_serial.DateSystem::Serial1900,
-    registry: @formula.FunctionRegistry::new(),
+    registry,
     resolve_cell: fn(_addr) { @formula.VEmpty },
     resolve_name: fn(name) {
       match agg.get(name) {
@@ -164,8 +197,48 @@ fn eval_calc_field_over_rows(
         _ => Some(@formula.Literal(@formula.LitNumber(0.0)))
       }
     },
+    resolve_pivot_data: fn(_) { None },
   }
   @formula.evaluate(calc.ast, ctx)
+}
+
+///|
+fn build_pivot_row_axis_projection(
+  kept_rows : Array[PivotCacheRow],
+  row_field_positions : Array[Int],
+  col_field_positions : Array[Int],
+) -> PivotRowAxisProjection {
+  let row_axis : Array[PivotAxisKey] = []
+  let col_axis : Array[PivotAxisKey] = []
+  for row in kept_rows {
+    row_axis.push(build_axis_key(row, row_field_positions))
+    col_axis.push(build_axis_key(row, col_field_positions))
+  }
+  { row_axis, col_axis }
+}
+
+///|
+fn pivot_rows_for_axis_subset(
+  kept_rows : Array[PivotCacheRow],
+  projection : PivotRowAxisProjection,
+  row_key : PivotAxisKey?,
+  col_key : PivotAxisKey?,
+) -> Array[PivotCacheRow] {
+  let out : Array[PivotCacheRow] = []
+  for i, row in kept_rows {
+    let row_ok = match row_key {
+      Some(k) => projection.row_axis[i] == k
+      None => true
+    }
+    let col_ok = match col_key {
+      Some(k) => projection.col_axis[i] == k
+      None => true
+    }
+    if row_ok && col_ok {
+      out.push(row)
+    }
+  }
+  out
 }
 
 ///|
@@ -188,39 +261,20 @@ fn append_calculated_field_cells(
   if calc_fields.length() == 0 {
     return
   }
-  // Pre-compute each kept row's (row_key, col_key) so subset selection
-  // is a single linear scan per cell.
-  let row_axis : Array[PivotAxisKey] = []
-  let col_axis : Array[PivotAxisKey] = []
-  for row in kept_rows {
-    row_axis.push(build_axis_key(row, row_field_positions))
-    col_axis.push(build_axis_key(row, col_field_positions))
-  }
-  // Collect the rows matching a (row_key?, col_key?) predicate; `None`
-  // matches any key on that axis (used for grand totals).
-  fn subset(rk : PivotAxisKey?, ck : PivotAxisKey?) -> Array[PivotCacheRow] {
-    let out : Array[PivotCacheRow] = []
-    for i, row in kept_rows {
-      let row_ok = match rk {
-        Some(k) => row_axis[i] == k
-        None => true
-      }
-      let col_ok = match ck {
-        Some(k) => col_axis[i] == k
-        None => true
-      }
-      if row_ok && col_ok {
-        out.push(row)
-      }
-    }
-    out
-  }
+  let projection = build_pivot_row_axis_projection(
+    kept_rows, row_field_positions, col_field_positions,
+  )
 
   for calc in calc_fields {
     // Body cells.
     for rk in row_keys {
       for ck in col_keys {
-        let rows = subset(Some(rk), Some(ck))
+        let rows = pivot_rows_for_axis_subset(
+          kept_rows,
+          projection,
+          Some(rk),
+          Some(ck),
+        )
         if rows.length() == 0 {
           continue
         }
@@ -236,7 +290,12 @@ fn append_calculated_field_cells(
     // appends so the renderer's `find()` lands on them.
     if definition.col_grand_totals && col_keys.length() > 0 {
       for rk in row_keys {
-        let rows = subset(Some(rk), None)
+        let rows = pivot_rows_for_axis_subset(
+          kept_rows,
+          projection,
+          Some(rk),
+          None,
+        )
         if rows.length() == 0 {
           continue
         }
@@ -250,7 +309,12 @@ fn append_calculated_field_cells(
     }
     if definition.row_grand_totals && row_keys.length() > 0 {
       for ck in col_keys {
-        let rows = subset(None, Some(ck))
+        let rows = pivot_rows_for_axis_subset(
+          kept_rows,
+          projection,
+          None,
+          Some(ck),
+        )
         if rows.length() == 0 {
           continue
         }
@@ -266,7 +330,7 @@ fn append_calculated_field_cells(
       definition.col_grand_totals &&
       row_keys.length() > 0 &&
       col_keys.length() > 0 {
-      let rows = subset(None, None)
+      let rows = pivot_rows_for_axis_subset(kept_rows, projection, None, None)
       if rows.length() > 0 {
         cells.push({
           row_key: RowGrand,

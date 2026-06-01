@@ -228,6 +228,76 @@ test "§18.17.7 FREQUENCY" {
 test "§18.17.7 cube functions return #N/A" {
   assert_builtin_eval("CUBEVALUE(\"conn\",\"member\")", VError(NotApplicable))
   assert_builtin_eval("CUBEMEMBER(\"conn\",\"member\")", VError(NotApplicable))
+  assert_builtin_eval(
+    "CUBEKPIMEMBER(\"conn\",\"kpi\",1)",
+    VError(NotApplicable),
+  )
+  assert_builtin_eval(
+    "CUBEMEMBERPROPERTY(\"conn\",\"member\",\"caption\")",
+    VError(NotApplicable),
+  )
+  assert_builtin_eval(
+    "CUBERANKEDMEMBER(\"conn\",\"set\",1)",
+    VError(NotApplicable),
+  )
+  assert_builtin_eval("CUBESET(\"conn\",\"set\")", VError(NotApplicable))
+  assert_builtin_eval("CUBESETCOUNT(\"set\")", VError(NotApplicable))
+}
+
+///|
+test "§18.17.7 cube functions validate errors and argument contracts" {
+  assert_builtin_eval("CUBEVALUE(#DIV/0!,\"member\")", VError(DivZero))
+  assert_builtin_eval("CUBEMEMBER(\"conn\")", VError(Value))
+  assert_builtin_eval("CUBEKPIMEMBER(\"conn\",\"kpi\",0)", VError(Value))
+  assert_builtin_eval("CUBEKPIMEMBER(\"conn\",\"kpi\",7)", VError(Value))
+  assert_builtin_eval("CUBERANKEDMEMBER(\"conn\",\"set\",0)", VError(Value))
+  assert_builtin_eval("CUBESET(\"conn\",\"set\",\"caption\",1)", VError(Value))
+  assert_builtin_eval(
+    "CUBESET(\"conn\",\"set\",\"caption\",1,\"measure\")",
+    VError(NotApplicable),
+  )
+  assert_builtin_eval("CUBESETCOUNT()", VError(Value))
+  assert_builtin_eval("GETPIVOTDATA(\"Sales\",A1,\"Region\")", VError(Value))
+  assert_builtin_eval("GETPIVOTDATA(#REF!,A1)", VError(Ref))
+}
+
+///|
+test "§18.17.7 GETPIVOTDATA delegates a typed pivot lookup request" {
+  let registry = FunctionRegistry::new()
+  register_builtin_functions(registry)
+  let mut seen : GetPivotDataRequest? = None
+  let ctx = {
+    current_sheet: "Sheet1",
+    current_cell: try! @address.CellAddress::parse_a1("D4"),
+    sst: None,
+    date_system: @date_serial.DateSystem::Serial1900,
+    registry,
+    resolve_cell: fn(_) { VString("not the anchor") },
+    resolve_name: fn(_) { None },
+    resolve_pivot_data: fn(request) {
+      seen = Some(request)
+      Some(VNumber(42.0))
+    },
+  }
+  let actual = evaluate(
+    try! parse_formula(
+      "GETPIVOTDATA(\"Sum of Sales\",A3,\"Region\",\"East\",\"Year\",2026)",
+    ),
+    ctx,
+  )
+  assert_true(actual == VNumber(42.0))
+  match seen {
+    Some(request) => {
+      assert_eq(request.data_field, "Sum of Sales")
+      assert_eq(request.anchor.to_a1(), "Sheet1!$A$3")
+      assert_eq(request.filters.length(), 2)
+      assert_eq(request.filters[0].field, "Region")
+      assert_eq(request.filters[0].item, "East")
+      assert_eq(request.filters[1].field, "Year")
+      assert_eq(request.filters[1].item, "2026")
+    }
+    None => assert_true(false)
+  }
 }
 
 ///|

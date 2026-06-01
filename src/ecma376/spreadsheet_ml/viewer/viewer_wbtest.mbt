@@ -1274,6 +1274,172 @@ test "SpreadsheetML viewer applies a cellIs cf overlay with a bgColor solid dxf"
 }
 
 ///|
+/// §18.8.20 / §18.8.32 — when a differential fill explicitly declares
+/// `patternType="solid"`, the foreground colour is the solid colour.
+/// The bgColor-only dxf idiom above remains supported, but a dxf that
+/// carries both fg/bg must not make AutoFilter/CF compare against a
+/// different colour than the renderer paints.
+test "SpreadsheetML viewer resolves explicit solid dxf fgColor before bgColor" {
+  let styles = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dxfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("dxf"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("fill"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("patternFill"),
+                    attributes: [{ name: name("patternType"), value: "solid" }],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("fgColor"),
+                        attributes: [{ name: name("rgb"), value: "FFFF0000" }],
+                        children: [],
+                      }),
+                      @xml.Node::Element({
+                        name: name("bgColor"),
+                        attributes: [{ name: name("rgb"), value: "FF00FF00" }],
+                        children: [],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let worksheet = cf_worksheet_single_value_with_rule("150", [
+    @xml.Node::Element({
+      name: name("cfRule"),
+      attributes: [
+        { name: name("type"), value: "cellIs" },
+        { name: name("operator"), value: "greaterThan" },
+        { name: name("dxfId"), value: "0" },
+        { name: name("priority"), value: "1" },
+      ],
+      children: [
+        @xml.Node::Element({
+          name: name("formula"),
+          attributes: [],
+          children: [@xml.Node::Text("100")],
+        }),
+      ],
+    }),
+  ])
+  let result = render_svg(worksheet, styles=Some(styles))
+  inspect(count_fill_color(result.svg, "#FF0000"), content="1")
+  inspect(count_fill_color(result.svg, "#00FF00"), content="0")
+}
+
+///|
+/// §18.3.1.10 — `cfRule/@priority` is global across overlapping
+/// `<conditionalFormatting>` wrappers. A priority-1 `stopIfTrue`
+/// rule must stop later priority-2 rules even when those rules live
+/// in a different wrapper.
+test "SpreadsheetML viewer applies stopIfTrue across conditionalFormatting blocks by priority" {
+  let dxf = fn(rgb : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("dxf"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("fill"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("patternFill"),
+              attributes: [{ name: name("patternType"), value: "solid" }],
+              children: [
+                @xml.Node::Element({
+                  name: name("fgColor"),
+                  attributes: [{ name: name("rgb"), value: rgb }],
+                  children: [],
+                }),
+              ],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  let cf_rule = fn(
+    dxf_id : String,
+    priority : String,
+    stop_if_true : String,
+  ) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("cfRule"),
+      attributes: [
+        { name: name("type"), value: "cellIs" },
+        { name: name("operator"), value: "greaterThan" },
+        { name: name("dxfId"), value: dxf_id },
+        { name: name("priority"), value: priority },
+        { name: name("stopIfTrue"), value: stop_if_true },
+      ],
+      children: [
+        @xml.Node::Element({
+          name: name("formula"),
+          attributes: [],
+          children: [@xml.Node::Text("0")],
+        }),
+      ],
+    })
+  }
+  let styles = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dxfs"),
+        attributes: [],
+        children: [dxf("FFFF0000"), dxf("FF0000FF")],
+      }),
+    ],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+      @xml.Node::Element({
+        name: name("conditionalFormatting"),
+        attributes: [{ name: name("sqref"), value: "A1" }],
+        children: [cf_rule("1", "1", "1")],
+      }),
+      @xml.Node::Element({
+        name: name("conditionalFormatting"),
+        attributes: [{ name: name("sqref"), value: "A1" }],
+        children: [cf_rule("0", "2", "0")],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet, styles=Some(styles))
+  inspect(count_fill_color(result.svg, "#0000FF"), content="1")
+  inspect(count_fill_color(result.svg, "#FF0000"), content="0")
+}
+
+///|
 /// §18.3.1.10 Top10 — `<cfRule type="top10" rank="2">` over a sqref
 /// of 4 values selects the top 2 cells. They render with the rule's
 /// dxf overlay (solid red); the other 2 do not.
@@ -1316,6 +1482,68 @@ test "SpreadsheetML viewer applies §18.3.1.10 AboveAverage cf overlay" {
   ])
   let result = render_svg(worksheet, styles=Some(styles))
   inspect(count_fill_red(result.svg), content="2")
+}
+
+///|
+/// §18.3.1.10 expression — the viewer delegates rule truth to
+/// `cf_rule_eval`, whose formula callback evaluates SpreadsheetML
+/// formulas instead of the old literal TRUE/1-only path.
+test "SpreadsheetML viewer evaluates §18.3.1.10 expression cfRule through cf_rule_eval" {
+  let styles = cf_styles_with_red_dxf()
+  let worksheet = cf_worksheet_single_value_with_rule("10", [
+    @xml.Node::Element({
+      name: name("cfRule"),
+      attributes: [
+        { name: name("type"), value: "expression" },
+        { name: name("dxfId"), value: "0" },
+        { name: name("priority"), value: "1" },
+      ],
+      children: [
+        @xml.Node::Element({
+          name: name("formula"),
+          attributes: [],
+          children: [@xml.Node::Text("A1>5")],
+        }),
+      ],
+    }),
+  ])
+  let result = render_svg(worksheet, styles=Some(styles))
+  inspect(count_fill_red(result.svg), content="1")
+}
+
+///|
+/// §18.18.82 timePeriod — viewer-side dxf rules use the shared
+/// `cf_rule_eval` date-window evaluator and a caller-supplied
+/// deterministic "today" anchor.
+test "SpreadsheetML viewer evaluates §18.18.82 timePeriod cfRule through cf_rule_eval" {
+  let styles = cf_styles_with_red_dxf()
+  let today : @date_serial.CalendarDateTime = {
+    year: 2026,
+    month: 5,
+    day: 19,
+    hour: 0,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  }
+  let serial = try! @date_serial.date_time_to_serial(
+    today,
+    @date_serial.DateSystem::Serial1900,
+  )
+  let worksheet = cf_worksheet_single_value_with_rule(serial.to_string(), [
+    @xml.Node::Element({
+      name: name("cfRule"),
+      attributes: [
+        { name: name("type"), value: "timePeriod" },
+        { name: name("timePeriod"), value: "today" },
+        { name: name("dxfId"), value: "0" },
+        { name: name("priority"), value: "1" },
+      ],
+      children: [],
+    }),
+  ])
+  let result = render_svg(worksheet, styles=Some(styles), cf_today=Some(today))
+  inspect(count_fill_red(result.svg), content="1")
 }
 
 ///|
@@ -1715,6 +1943,35 @@ fn cf_worksheet_a1_a4_values_with_rule(
       @xml.Node::Element({
         name: name("conditionalFormatting"),
         attributes: [{ name: name("sqref"), value: "A1:A4" }],
+        children: cf_rule_children,
+      }),
+    ],
+  })
+}
+
+///|
+/// Helper — A1 with one value and one custom cfRule.
+fn cf_worksheet_single_value_with_rule(
+  value : String,
+  cf_rule_children : Array[@xml.Node],
+) -> @domain.CT_Worksheet raise {
+  @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, value)])],
+      }),
+      @xml.Node::Element({
+        name: name("conditionalFormatting"),
+        attributes: [{ name: name("sqref"), value: "A1" }],
         children: cf_rule_children,
       }),
     ],
@@ -2869,7 +3126,8 @@ test "SpreadsheetML §18.17.4.1 t=\"d\" cell parses ISO 8601 and applies numFmt"
   // Parse 2024-03-15T00:00:00 → CalendarDateTime → serial.
   // serial = 45000 in our 1900 date system (Excel = 45366; the
   // off-by-one Lotus 1900 leap bug is documented elsewhere).
-  let dt = match parse_iso8601_date("2024-03-15T00:00:00") {
+  let dt = match
+    @date_serial.parse_iso8601_date_time_opt("2024-03-15T00:00:00") {
     Some(v) => v
     None => abort("failed to parse ISO 8601")
   }
@@ -2899,8 +3157,9 @@ test "SpreadsheetML §18.17.4.1 t=\"d\" cell parses ISO 8601 and applies numFmt"
 
 ///|
 /// §18.17.4.1 — fractional-second precision (.fff).
-test "SpreadsheetML §18.17.4.1 parse_iso8601_date handles fractional seconds" {
-  let dt = match parse_iso8601_date("2024-01-01T12:34:56.789") {
+test "SpreadsheetML §18.17.4.1 ISO parser handles fractional seconds" {
+  let dt = match
+    @date_serial.parse_iso8601_date_time_opt("2024-01-01T12:34:56.789") {
     Some(v) => v
     None => abort("failed to parse ISO 8601 with millis")
   }
@@ -2909,7 +3168,8 @@ test "SpreadsheetML §18.17.4.1 parse_iso8601_date handles fractional seconds" {
   assert_eq(dt.second, 56)
   assert_eq(dt.millisecond, 789)
   // Six-digit fractional → truncate to three.
-  let dt2 = match parse_iso8601_date("2024-01-01T00:00:00.123456") {
+  let dt2 = match
+    @date_serial.parse_iso8601_date_time_opt("2024-01-01T00:00:00.123456") {
     Some(v) => v
     None => abort("failed to parse ISO 8601 with 6-digit frac")
   }
@@ -2918,8 +3178,8 @@ test "SpreadsheetML §18.17.4.1 parse_iso8601_date handles fractional seconds" {
 
 ///|
 /// §18.17.4.1 — date-only form (YYYY-MM-DD) is also accepted.
-test "SpreadsheetML §18.17.4.1 parse_iso8601_date handles date-only form" {
-  let dt = match parse_iso8601_date("2024-05-21") {
+test "SpreadsheetML §18.17.4.1 ISO parser handles date-only form" {
+  let dt = match @date_serial.parse_iso8601_date_time_opt("2024-05-21") {
     Some(v) => v
     None => abort("failed to parse date-only form")
   }
@@ -2927,6 +3187,107 @@ test "SpreadsheetML §18.17.4.1 parse_iso8601_date handles date-only form" {
   assert_eq(dt.month, 5)
   assert_eq(dt.day, 21)
   assert_eq(dt.hour, 0)
+}
+
+///|
+test "SpreadsheetML renderer uses date_serial SoT for t=\"d\" minute-only cells" {
+  let styles = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("numFmts"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("numFmt"),
+            attributes: [
+              { name: name("numFmtId"), value: "164" },
+              { name: name("formatCode"), value: "yyyy-mm-dd hh:mm" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("cellXfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [
+              { name: name("numFmtId"), value: "164" },
+              { name: name("applyNumberFormat"), value: "1" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            @xml.Node::Element({
+              name: name("c"),
+              attributes: [
+                { name: name("r"), value: "A1" },
+                { name: name("t"), value: "d" },
+                { name: name("s"), value: "0" },
+              ],
+              children: [
+                @xml.Node::Element({
+                  name: name("v"),
+                  attributes: [],
+                  children: [@xml.Node::Text("1976-11-22T08:30")],
+                }),
+              ],
+            }),
+          ]),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet, styles=Some(styles))
+  assert_eq(result.warnings.length(), 0)
+  assert_true(result.svg.contains("1976-11-22 08:30"))
+}
+
+///|
+test "SpreadsheetML renderer rejects t=\"d\" timezone suffix through date_serial SoT" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [build_cell("A1", Some("d"), "1976-11-22T08:30:00Z")]),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet)
+  assert_true(result.svg.contains("1976-11-22T08:30:00Z"))
+  assert_eq(result.warnings.length(), 1)
+  assert_true(result.warnings[0].contains("unparseable"))
 }
 
 ///|
@@ -4605,6 +4966,556 @@ test "SpreadsheetML viewer §18.5 autofilter dropdown emitted with chrome opt-in
 }
 
 ///|
+/// §18.3.1.2 / §18.3.2 — active worksheet AutoFilter criteria hide
+/// non-matching data rows through the shared AutoFilter evaluator.
+test "SpreadsheetML viewer hides rows using §18.3.2 AutoFilter evaluator" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:B4" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", Some("str"), "Region"),
+            build_cell("B1", Some("str"), "Sales"),
+          ]),
+          build_row(2, [
+            build_cell("A2", Some("str"), "North"),
+            build_cell("B2", None, "120"),
+          ]),
+          build_row(3, [
+            build_cell("A3", Some("str"), "South"),
+            build_cell("B3", None, "200"),
+          ]),
+          build_row(4, [
+            build_cell("A4", Some("str"), "North"),
+            build_cell("B4", None, "150"),
+          ]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:B4" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "0" }],
+            children: [
+              @xml.Node::Element({
+                name: name("filters"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("filter"),
+                    attributes: [{ name: name("val"), value: "North" }],
+                    children: [],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet)
+  assert_true(result.svg.contains("North"))
+  assert_true(!result.svg.contains("South"))
+}
+
+///|
+/// §18.3.2.1 — colorFilter uses resolved fill facts supplied by the
+/// viewer, but the pass/fail comparison remains in spreadsheet_ml/autofilter.
+test "SpreadsheetML viewer supplies fill facts for §18.3.2.1 colorFilter" {
+  let styled_cell = fn(
+    addr : String,
+    style_id : String,
+    text : String,
+  ) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("c"),
+      attributes: [
+        { name: name("r"), value: addr },
+        { name: name("t"), value: "str" },
+        { name: name("s"), value: style_id },
+      ],
+      children: [
+        @xml.Node::Element({
+          name: name("v"),
+          attributes: [],
+          children: [@xml.Node::Text(text)],
+        }),
+      ],
+    })
+  }
+  let solid_fill = fn(rgb : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("fill"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("patternFill"),
+          attributes: [{ name: name("patternType"), value: "solid" }],
+          children: [
+            @xml.Node::Element({
+              name: name("fgColor"),
+              attributes: [{ name: name("rgb"), value: rgb }],
+              children: [],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  let styles = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("fills"),
+        attributes: [],
+        children: [solid_fill("FFFF0000"), solid_fill("FF00FF00")],
+      }),
+      @xml.Node::Element({
+        name: name("cellXfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [
+              { name: name("fillId"), value: "0" },
+              { name: name("applyFill"), value: "1" },
+            ],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [
+              { name: name("fillId"), value: "1" },
+              { name: name("applyFill"), value: "1" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("dxfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("dxf"),
+            attributes: [],
+            children: [solid_fill("FFFF0000")],
+          }),
+        ],
+      }),
+    ],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A3" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [build_cell("A1", Some("str"), "Status")]),
+          build_row(2, [styled_cell("A2", "0", "Keep")]),
+          build_row(3, [styled_cell("A3", "1", "Drop")]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:A3" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "0" }],
+            children: [
+              @xml.Node::Element({
+                name: name("colorFilter"),
+                attributes: [
+                  { name: name("dxfId"), value: "0" },
+                  { name: name("cellColor"), value: "1" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet, styles=Some(styles))
+  assert_true(result.svg.contains("Keep"))
+  assert_true(!result.svg.contains("Drop"))
+}
+
+///|
+/// §18.3.2.1 — `cellColor="0"` selects font colour. The viewer resolves
+/// the font through the normal cellXfs/fonts cascade and only supplies
+/// that fact to the AutoFilter package.
+test "SpreadsheetML viewer supplies font facts for §18.3.2.1 colorFilter" {
+  let styled_cell = fn(
+    addr : String,
+    style_id : String,
+    text : String,
+  ) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("c"),
+      attributes: [
+        { name: name("r"), value: addr },
+        { name: name("t"), value: "str" },
+        { name: name("s"), value: style_id },
+      ],
+      children: [
+        @xml.Node::Element({
+          name: name("v"),
+          attributes: [],
+          children: [@xml.Node::Text(text)],
+        }),
+      ],
+    })
+  }
+  let font_with_color = fn(rgb : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("font"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("color"),
+          attributes: [{ name: name("rgb"), value: rgb }],
+          children: [],
+        }),
+      ],
+    })
+  }
+  let styles = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("fonts"),
+        attributes: [],
+        children: [font_with_color("FF112233"), font_with_color("FF445566")],
+      }),
+      @xml.Node::Element({
+        name: name("cellXfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [
+              { name: name("fontId"), value: "0" },
+              { name: name("applyFont"), value: "1" },
+            ],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [
+              { name: name("fontId"), value: "1" },
+              { name: name("applyFont"), value: "1" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("dxfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("dxf"),
+            attributes: [],
+            children: [font_with_color("FF112233")],
+          }),
+        ],
+      }),
+    ],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A3" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [build_cell("A1", Some("str"), "Status")]),
+          build_row(2, [styled_cell("A2", "0", "Keep")]),
+          build_row(3, [styled_cell("A3", "1", "Drop")]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:A3" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "0" }],
+            children: [
+              @xml.Node::Element({
+                name: name("colorFilter"),
+                attributes: [
+                  { name: name("dxfId"), value: "0" },
+                  { name: name("cellColor"), value: "0" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet, styles=Some(styles))
+  assert_true(result.svg.contains("Keep"))
+  assert_true(!result.svg.contains("Drop"))
+}
+
+///|
+/// §18.3.2.9 — iconFilter consumes the iconSet bucket fact that the
+/// viewer resolved from §18.3.1.49 conditionalFormatting. The bucket
+/// comparison itself remains in spreadsheet_ml/autofilter.
+test "SpreadsheetML viewer supplies iconSet facts for §18.3.2.9 iconFilter" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:B4" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", Some("str"), "Score"),
+            build_cell("B1", Some("str"), "Label"),
+          ]),
+          build_row(2, [
+            build_cell("A2", None, "10"),
+            build_cell("B2", Some("str"), "Drop low"),
+          ]),
+          build_row(3, [
+            build_cell("A3", None, "30"),
+            build_cell("B3", Some("str"), "Drop mid"),
+          ]),
+          build_row(4, [
+            build_cell("A4", None, "50"),
+            build_cell("B4", Some("str"), "Keep high"),
+          ]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("conditionalFormatting"),
+        attributes: [{ name: name("sqref"), value: "A2:A4" }],
+        children: [
+          @xml.Node::Element({
+            name: name("cfRule"),
+            attributes: [
+              { name: name("type"), value: "iconSet" },
+              { name: name("priority"), value: "1" },
+            ],
+            children: [
+              @xml.Node::Element({
+                name: name("iconSet"),
+                attributes: [
+                  { name: name("iconSet"), value: "3TrafficLights1" },
+                ],
+                children: [
+                  @xml.Node::Element({
+                    name: name("cfvo"),
+                    attributes: [
+                      { name: name("type"), value: "percent" },
+                      { name: name("val"), value: "0" },
+                    ],
+                    children: [],
+                  }),
+                  @xml.Node::Element({
+                    name: name("cfvo"),
+                    attributes: [
+                      { name: name("type"), value: "percent" },
+                      { name: name("val"), value: "33" },
+                    ],
+                    children: [],
+                  }),
+                  @xml.Node::Element({
+                    name: name("cfvo"),
+                    attributes: [
+                      { name: name("type"), value: "percent" },
+                      { name: name("val"), value: "67" },
+                    ],
+                    children: [],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:B4" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "0" }],
+            children: [
+              @xml.Node::Element({
+                name: name("iconFilter"),
+                attributes: [
+                  { name: name("iconSet"), value: "3TrafficLights1" },
+                  { name: name("iconId"), value: "2" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet)
+  assert_true(result.svg.contains("Keep high"))
+  assert_true(!result.svg.contains("Drop low"))
+  assert_true(!result.svg.contains("Drop mid"))
+}
+
+///|
+test "SpreadsheetML viewer uses evaluated values for iconFilter facts" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:B4" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", Some("str"), "Score"),
+            build_cell("B1", Some("str"), "Label"),
+          ]),
+          build_row(2, [
+            build_cell("A2", None, "10"),
+            build_cell("B2", Some("str"), "Drop low"),
+          ]),
+          build_row(3, [
+            build_cell("A3", None, "30"),
+            build_cell("B3", Some("str"), "Drop mid"),
+          ]),
+          build_row(4, [
+            build_cell("A4", None, "0"),
+            build_cell("B4", Some("str"), "Keep evaluated high"),
+          ]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("conditionalFormatting"),
+        attributes: [{ name: name("sqref"), value: "A2:A4" }],
+        children: [
+          @xml.Node::Element({
+            name: name("cfRule"),
+            attributes: [
+              { name: name("type"), value: "iconSet" },
+              { name: name("priority"), value: "1" },
+            ],
+            children: [
+              @xml.Node::Element({
+                name: name("iconSet"),
+                attributes: [
+                  { name: name("iconSet"), value: "3TrafficLights1" },
+                ],
+                children: [
+                  @xml.Node::Element({
+                    name: name("cfvo"),
+                    attributes: [
+                      { name: name("type"), value: "percent" },
+                      { name: name("val"), value: "0" },
+                    ],
+                    children: [],
+                  }),
+                  @xml.Node::Element({
+                    name: name("cfvo"),
+                    attributes: [
+                      { name: name("type"), value: "percent" },
+                      { name: name("val"), value: "33" },
+                    ],
+                    children: [],
+                  }),
+                  @xml.Node::Element({
+                    name: name("cfvo"),
+                    attributes: [
+                      { name: name("type"), value: "percent" },
+                      { name: name("val"), value: "67" },
+                    ],
+                    children: [],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:B4" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "0" }],
+            children: [
+              @xml.Node::Element({
+                name: name("iconFilter"),
+                attributes: [
+                  { name: name("iconSet"), value: "3TrafficLights1" },
+                  { name: name("iconId"), value: "2" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let evaluated : @hashmap.HashMap[String, @formula.FormulaValue] = @hashmap.HashMap(
+    [],
+    capacity=0,
+  )
+  evaluated.set("A4", @formula.VNumber(50.0))
+  let result = render_svg(worksheet, evaluated_cells=Some(evaluated))
+  assert_true(result.svg.contains("Keep evaluated high"))
+  assert_true(!result.svg.contains("Drop low"))
+  assert_true(!result.svg.contains("Drop mid"))
+}
+
+///|
 fn comment_for(ref_ : String) -> @xml.Node {
   @xml.Node::Element({
     name: name("comment"),
@@ -4725,7 +5636,8 @@ test "§18.8.30 grouping comma vs scaling comma are distinguished" {
 ///|
 test "§18.8.30 month/weekday name tokens (mmm/mmmm/ddd/dddd)" {
   // 2024-03-15 is a Friday.
-  let dt = match parse_iso8601_date("2024-03-15T00:00:00") {
+  let dt = match
+    @date_serial.parse_iso8601_date_time_opt("2024-03-15T00:00:00") {
     Some(v) => v
     None => abort("failed to parse ISO 8601")
   }
@@ -4753,7 +5665,8 @@ test "§18.8.30 month/weekday name tokens (mmm/mmmm/ddd/dddd)" {
 ///|
 test "§18.8.31 _x width-align and *x fill tokens in date formats" {
   // 2024-03-15.
-  let dt = match parse_iso8601_date("2024-03-15T00:00:00") {
+  let dt = match
+    @date_serial.parse_iso8601_date_time_opt("2024-03-15T00:00:00") {
     Some(v) => v
     None => abort("failed to parse ISO 8601")
   }

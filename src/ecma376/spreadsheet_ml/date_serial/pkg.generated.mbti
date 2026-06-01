@@ -13,7 +13,17 @@ pub fn is_leap_year_gregorian(Int) -> Bool
 
 pub fn is_valid_serial(Double, DateSystem) -> Bool
 
+pub fn parse_iso8601_date_time(String) -> CalendarDateTime raise @errors.SchemaViolation
+
+pub fn parse_iso8601_date_time_opt(String) -> CalendarDateTime?
+
+pub fn parse_iso8601_time_of_day(String) -> TimeOfDay raise @errors.SchemaViolation
+
+pub fn parse_iso8601_time_of_day_opt(String) -> TimeOfDay?
+
 pub fn serial_to_date_time(Double, DateSystem) -> CalendarDateTime raise @errors.SchemaViolation
+
+pub fn time_of_day_to_serial_fraction(TimeOfDay) -> Double raise @errors.SchemaViolation
 
 // Errors
 
@@ -31,6 +41,13 @@ pub(all) struct CalendarDateTime {
 pub(all) enum DateSystem {
   Serial1900
   Serial1904
+} derive(Eq, @debug.Debug)
+
+pub(all) struct TimeOfDay {
+  hour : Int
+  minute : Int
+  second : Int
+  millisecond : Int
 } derive(Eq, @debug.Debug)
 
 // Type aliases

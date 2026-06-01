@@ -76,6 +76,110 @@ pub(all) struct CalendarDateTime {
 } derive(Eq, Debug)
 
 ///|
+/// Time-of-day component in the §18.17.4 ISO 8601 lexical space.
+/// Midnight is represented as hour 0; hour 24 and leap seconds are
+/// rejected by the parser.
+pub(all) struct TimeOfDay {
+  hour : Int
+  minute : Int
+  second : Int
+  millisecond : Int
+} derive(Eq, Debug)
+
+///|
+priv enum IsoLexicalKind {
+  IsoDateTime
+  IsoTimeOfDay
+}
+
+///|
+/// Parse the §18.17.4 ISO 8601 lexical form used by `t="d"` cells:
+/// `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM`, `YYYY-MM-DDTHH:MM:SS`, or
+/// `YYYY-MM-DDTHH:MM:SS.fff...`. SpreadsheetML serial dates are local
+/// date-times; timezone designators are rejected instead of normalized.
+/// The repository stores millisecond precision, so fractional seconds
+/// beyond three digits are truncated.
+pub fn parse_iso8601_date_time(
+  raw : String,
+) -> CalendarDateTime raise @opc_errors.SchemaViolation {
+  let n = raw.length()
+  if n < 10 {
+    invalid_iso8601_date_time("date-time is shorter than YYYY-MM-DD")
+  }
+  let year = parse_iso_fixed_int(raw, 0, 4, "year", IsoDateTime)
+  require_iso_char(raw, 4, '-', "date separator", IsoDateTime)
+  let month = parse_iso_fixed_int(raw, 5, 7, "month", IsoDateTime)
+  require_iso_char(raw, 7, '-', "date separator", IsoDateTime)
+  let day = parse_iso_fixed_int(raw, 8, 10, "day", IsoDateTime)
+  let mut hour = 0
+  let mut minute = 0
+  let mut second = 0
+  let mut millisecond = 0
+  if n == 10 {
+    ()
+  } else {
+    require_iso_char(raw, 10, 'T', "date/time separator", IsoDateTime)
+    let time = parse_iso8601_time_fields(raw, 11, n, IsoDateTime)
+    hour = time.hour
+    minute = time.minute
+    second = time.second
+    millisecond = time.millisecond
+  }
+  let dt = CalendarDateTime::{
+    year,
+    month,
+    day,
+    hour,
+    minute,
+    second,
+    millisecond,
+  }
+  validate_iso8601_calendar_date_time(dt)
+  dt
+}
+
+///|
+pub fn parse_iso8601_date_time_opt(raw : String) -> CalendarDateTime? {
+  try parse_iso8601_date_time(raw) catch {
+    _ => None
+  } noraise {
+    value => Some(value)
+  }
+}
+
+///|
+/// Parse the §18.17.4 ISO 8601 lexical form for a time-of-day-only
+/// value: `HH:MM`, `HH:MM:SS`, or `HH:MM:SS.fff...`.
+pub fn parse_iso8601_time_of_day(
+  raw : String,
+) -> TimeOfDay raise @opc_errors.SchemaViolation {
+  parse_iso8601_time_fields(raw, 0, raw.length(), IsoTimeOfDay)
+}
+
+///|
+pub fn parse_iso8601_time_of_day_opt(raw : String) -> TimeOfDay? {
+  try parse_iso8601_time_of_day(raw) catch {
+    _ => None
+  } noraise {
+    value => Some(value)
+  }
+}
+
+///|
+/// Convert a §18.17.4 time-of-day component into the fractional part
+/// of a serial date-time as defined by §18.17.4.2.
+pub fn time_of_day_to_serial_fraction(
+  value : TimeOfDay,
+) -> Double raise @opc_errors.SchemaViolation {
+  validate_time_of_day_value(value)
+  let total_millis = value.hour * millis_per_hour +
+    value.minute * millis_per_minute +
+    value.second * millis_per_second +
+    value.millisecond
+  total_millis.to_double() / millis_per_day
+}
+
+///|
 let max_calendar_date_time : CalendarDateTime = {
   year: 9999,
   month: 12,
@@ -230,14 +334,36 @@ fn validate_date_time(
 fn validate_time_of_day(
   dt : CalendarDateTime,
 ) -> Unit raise @opc_errors.SchemaViolation {
-  if dt.hour < 0 ||
-    dt.hour > 23 ||
-    dt.minute < 0 ||
-    dt.minute > 59 ||
-    dt.second < 0 ||
-    dt.second > 59 ||
-    dt.millisecond < 0 ||
-    dt.millisecond > 999 {
+  validate_time_of_day_fields(dt.hour, dt.minute, dt.second, dt.millisecond)
+}
+
+///|
+fn validate_time_of_day_value(
+  value : TimeOfDay,
+) -> Unit raise @opc_errors.SchemaViolation {
+  validate_time_of_day_fields(
+    value.hour,
+    value.minute,
+    value.second,
+    value.millisecond,
+  )
+}
+
+///|
+fn validate_time_of_day_fields(
+  hour : Int,
+  minute : Int,
+  second : Int,
+  millisecond : Int,
+) -> Unit raise @opc_errors.SchemaViolation {
+  if hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59 ||
+    millisecond < 0 ||
+    millisecond > 999 {
     invalid_date_time("time-of-day is outside the §18.17.4 range")
   }
 }
@@ -247,6 +373,189 @@ fn invalid_date_time(reason : String) -> Unit raise @opc_errors.SchemaViolation 
   raise @opc_errors.SchemaViolation(
     section="Part 1 §18.17.4.1",
     path="CalendarDateTime",
+    reason~,
+  )
+}
+
+///|
+fn validate_iso8601_calendar_date_time(
+  dt : CalendarDateTime,
+) -> Unit raise @opc_errors.SchemaViolation {
+  if dt.year < 1 || dt.year > 9999 || dt.month < 1 || dt.month > 12 {
+    invalid_iso8601_date_time("year or month is outside the §18.17.4 range")
+  }
+  let max_day = days_in_month(dt.year, dt.month)
+  if dt.day < 1 || dt.day > max_day {
+    invalid_iso8601_date_time("day is not valid for the calendar month")
+  }
+  validate_iso8601_time_of_day_fields(
+    dt.hour,
+    dt.minute,
+    dt.second,
+    dt.millisecond,
+    IsoDateTime,
+  )
+}
+
+///|
+fn parse_iso8601_time_fields(
+  raw : String,
+  start : Int,
+  end : Int,
+  kind : IsoLexicalKind,
+) -> TimeOfDay raise @opc_errors.SchemaViolation {
+  if end - start < 5 {
+    invalid_iso8601(kind, "time-of-day is shorter than HH:MM")
+  }
+  let hour = parse_iso_fixed_int(raw, start, start + 2, "hour", kind)
+  require_iso_char(raw, start + 2, ':', "time separator", kind)
+  let minute = parse_iso_fixed_int(raw, start + 3, start + 5, "minute", kind)
+  let mut second = 0
+  let mut millisecond = 0
+  if end == start + 5 {
+    ()
+  } else {
+    require_iso_char(raw, start + 5, ':', "time separator", kind)
+    if end - start < 8 {
+      invalid_iso8601(kind, "time-of-day is shorter than HH:MM:SS")
+    }
+    second = parse_iso_fixed_int(raw, start + 6, start + 8, "second", kind)
+    if end == start + 8 {
+      ()
+    } else {
+      require_iso_char(raw, start + 8, '.', "fractional second separator", kind)
+      millisecond = parse_iso_fraction_millis(raw, start + 9, end, kind)
+    }
+  }
+  let value = TimeOfDay::{ hour, minute, second, millisecond }
+  validate_iso8601_time_of_day(value, kind)
+  value
+}
+
+///|
+fn validate_iso8601_time_of_day(
+  value : TimeOfDay,
+  kind : IsoLexicalKind,
+) -> Unit raise @opc_errors.SchemaViolation {
+  validate_iso8601_time_of_day_fields(
+    value.hour,
+    value.minute,
+    value.second,
+    value.millisecond,
+    kind,
+  )
+}
+
+///|
+fn validate_iso8601_time_of_day_fields(
+  hour : Int,
+  minute : Int,
+  second : Int,
+  millisecond : Int,
+  kind : IsoLexicalKind,
+) -> Unit raise @opc_errors.SchemaViolation {
+  if hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59 ||
+    millisecond < 0 ||
+    millisecond > 999 {
+    invalid_iso8601(kind, "time-of-day is outside the §18.17.4 range")
+  }
+}
+
+///|
+fn parse_iso_fixed_int(
+  raw : String,
+  start : Int,
+  end : Int,
+  field : String,
+  kind : IsoLexicalKind,
+) -> Int raise @opc_errors.SchemaViolation {
+  if raw.length() < end {
+    invalid_iso8601(kind, "value is truncated while reading " + field)
+  }
+  let mut out = 0
+  for index in start..<end {
+    let ch = raw.code_unit_at(index)
+    if ch < '0' || ch > '9' {
+      invalid_iso8601(kind, field + " contains a non-digit")
+    }
+    out = out * 10 + (ch.to_int() - '0'.to_int())
+  }
+  out
+}
+
+///|
+fn require_iso_char(
+  raw : String,
+  index : Int,
+  expected : Char,
+  field : String,
+  kind : IsoLexicalKind,
+) -> Unit raise @opc_errors.SchemaViolation {
+  if raw.length() <= index ||
+    raw.code_unit_at(index).to_int() != expected.to_int() {
+    invalid_iso8601(kind, "invalid " + field)
+  }
+}
+
+///|
+fn parse_iso_fraction_millis(
+  raw : String,
+  start : Int,
+  end : Int,
+  kind : IsoLexicalKind,
+) -> Int raise @opc_errors.SchemaViolation {
+  if start >= end {
+    invalid_iso8601(kind, "fractional second is empty")
+  }
+  let mut millis = 0
+  let mut scale = 100
+  for index in start..<end {
+    let ch = raw.code_unit_at(index)
+    if ch < '0' || ch > '9' {
+      invalid_iso8601(kind, "fractional second contains a non-digit")
+    }
+    if scale > 0 {
+      millis = millis + (ch.to_int() - '0'.to_int()) * scale
+      scale = scale / 10
+    }
+  }
+  millis
+}
+
+///|
+fn invalid_iso8601(
+  kind : IsoLexicalKind,
+  reason : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  match kind {
+    IsoDateTime => invalid_iso8601_date_time(reason)
+    IsoTimeOfDay => invalid_iso8601_time_of_day(reason)
+  }
+}
+
+///|
+fn invalid_iso8601_date_time(
+  reason : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  raise @opc_errors.SchemaViolation(
+    section="Part 1 §18.17.4",
+    path="ISO 8601 date-time",
+    reason~,
+  )
+}
+
+///|
+fn invalid_iso8601_time_of_day(
+  reason : String,
+) -> Unit raise @opc_errors.SchemaViolation {
+  raise @opc_errors.SchemaViolation(
+    section="Part 1 §18.17.4",
+    path="ISO 8601 time-of-day",
     reason~,
   )
 }

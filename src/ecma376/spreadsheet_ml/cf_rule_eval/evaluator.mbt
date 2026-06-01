@@ -34,7 +34,7 @@ pub fn evaluate_rule(
     Some(@domain.TimePeriod) => evaluate_time_period(rule, cell, ctx)
     Some(@domain.Expression) => evaluate_expression(rule, ctx)
     Some(@domain.ColorScale) | Some(@domain.DataBar) | Some(@domain.IconSet) =>
-      match to_number_opt(cell) {
+      match number_for_population_opt(cell) {
         Some(_) => true
         None => false
       }
@@ -117,7 +117,7 @@ fn evaluate_top10(
     Some(t) => t
     None => return false
   }
-  match to_number_opt(cell) {
+  match number_for_population_opt(cell) {
     Some(value) =>
       if rule.bottom {
         value <= threshold
@@ -150,7 +150,7 @@ fn evaluate_above_average(
     }
     None => avg
   }
-  let value = match to_number_opt(cell) {
+  let value = match number_for_population_opt(cell) {
     Some(v) => v
     None => return false
   }
@@ -177,7 +177,7 @@ fn evaluate_time_period(
     Some(p) => p
     None => return false
   }
-  let serial = match to_number_opt(cell) {
+  let serial = match number_for_population_opt(cell) {
     Some(n) => n
     None => return false
   }
@@ -320,15 +320,16 @@ pub fn evaluate_bucket(
     Some(@domain.ColorScale) =>
       match rule.color_scale {
         Some(scale) => {
-          let cell_number = match to_number_opt(cell) {
+          let cell_number = match number_for_population_opt(cell) {
             Some(n) => n
             None => return None
           }
           let numbers = collect_numbers(population)
           let mut bucket = 0
           for i in 0..<scale.thresholds.length() {
-            let resolved = resolve_cfvo_value(scale.thresholds[i], numbers)
-            if cell_number >= resolved {
+            let cfvo = scale.thresholds[i]
+            let resolved = resolve_cfvo_value(cfvo, numbers)
+            if cfvo_boundary_matches(cell_number, cfvo, resolved) {
               bucket = i
             }
           }

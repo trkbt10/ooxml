@@ -884,6 +884,9 @@ pub(all) struct CT_DataBar {
   min_length : Int
   max_length : Int
   show_value : Bool
+  axis_position : String
+  direction : String
+  negative_color : CT_ColorArgb?
 } derive(Eq, @debug.Debug)
 pub fn CT_DataBar::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
@@ -3457,7 +3460,7 @@ pub(all) struct CT_Table {
   table_columns : CT_TableColumns?
   auto_filter : @xml.Element?
   sort_state : @xml.Element?
-  table_style_info : @xml.Element?
+  table_style_info : CT_TableStyleInfo?
 } derive(Eq, @debug.Debug)
 pub fn CT_Table::new(@xml.Element) -> Self
 
@@ -3475,8 +3478,8 @@ pub(all) struct CT_TableColumn {
   header_row_cell_style : String
   data_cell_style : String
   totals_row_cell_style : String
-  calculated_column_formula : String?
-  totals_row_formula : String?
+  calculated_column_formula : CT_TableFormula?
+  totals_row_formula : CT_TableFormula?
 } derive(Eq, @debug.Debug)
 pub fn CT_TableColumn::new(@xml.Element) -> Self
 

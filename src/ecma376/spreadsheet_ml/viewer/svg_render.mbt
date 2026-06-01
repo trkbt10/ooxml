@@ -176,7 +176,7 @@ pub fn render_svg(
   /// pivot at its `<location/@ref>` rectangle on top of the empty
   /// cell grid. Empty by default — worksheets without pivot tables
   /// stay byte-identical to the pre-pivot output.
-  pivots? : Array[SheetPivot] = [],
+  pivots? : Array[@pivot_table.MaterializedPivotTable] = [],
   /// §18.2.1 — the workbook part's root `<workbook>` element, when
   /// the facade can supply it.  `sml_metadata_attrs` consults this
   /// element so workbook-level metadata
@@ -194,6 +194,12 @@ pub fn render_svg(
   /// has a cached `<v>`, the cached value is used as fallback (this
   /// matches Excel's offline behaviour for Cube/RTD functions).
   evaluated_cells? : @hashmap.HashMap[String, @formula.FormulaValue]? = None,
+  /// §18.3.1.10 `timePeriod` conditional-formatting rules need a
+  /// deterministic "today" anchor.  When omitted, the renderer uses
+  /// the same serial-zero anchor as the value-only AutoFilter path;
+  /// callers that render an interactive/current workbook can pass
+  /// the host date explicitly.
+  cf_today? : @date_serial.CalendarDateTime? = None,
   /// §21.2 chart part resolver — maps an `r:id` carried on a
   /// `<c:chart>` child of a `<xdr:graphicFrame>/<a:graphicData>` to
   /// the referenced chart part's root XML element. The closure
@@ -236,7 +242,56 @@ pub fn render_svg(
   // options for every non-`customWidth` / non-`customHeight`
   // row / column.
   let options = apply_sheet_format_pr(domain.element, options)
-  let layout = compute_sheet_layout(domain.element, options)
+  // Build cell map before layout so §18.3.1.2 AutoFilter can collapse
+  // filtered rows via the same typed evaluator used by the public API.
+  // §18.3.1.13 / §18.3.1.73 — collect col defs first so the cell
+  // map can apply col.style / row.s fallbacks for cells that omit
+  // their own `s` attribute.
+  let col_defs = collect_column_defs(domain.element)
+  let cell_map : Map[String, @xml.Element] = Map([], capacity=0)
+  collect_cells(domain.element, cell_map, col_defs)
+  let cf_formula_snapshot = build_cf_formula_snapshot(
+    domain, shared_strings, date_system,
+  )
+  let cf_today_value = match cf_today {
+    Some(today) => today
+    None => cf_default_today(date_system)
+  }
+  // §18.3.1.18 — keep typed `<conditionalFormatting>` blocks in their
+  // worksheet order. `apply_cf_overlay` flattens only the blocks that
+  // cover a candidate cell and sorts the resulting rules by the global
+  // `cfRule/@priority` value.
+  let cf_blocks = domain.conditional_formatting
+  // §18.3.1.10 — pre-compute per-block population statistics (mean,
+  // std-dev, sorted values, occurrence counts) so the per-cell pass
+  // below can evaluate Top10 / AboveAverage / DuplicateValues /
+  // UniqueValues in O(1).
+  let cf_stats : Array[CfRulePopulation] = []
+  for block in cf_blocks {
+    cf_stats.push(
+      compute_population_stats(block, cell_map, shared_strings, evaluated_cells),
+    )
+  }
+  let auto_filter_hidden_rows = build_autofilter_hidden_row_map(
+    domain.element,
+    tables,
+    cell_map,
+    cf_blocks,
+    cf_stats,
+    options,
+    styles,
+    shared_strings,
+    evaluated_cells,
+    Some(cf_formula_snapshot),
+    cf_today_value,
+    theme_map,
+    date_system,
+  )
+  let layout = compute_sheet_layout(
+    domain.element,
+    options,
+    auto_filter_hidden_rows~,
+  )
   if layout.column_count == 0 || layout.row_count == 0 {
     // Empty sheet — still surface the workbook + worksheet
     // metadata as `data-ooxml-*` attributes on the placeholder
@@ -263,26 +318,6 @@ pub fn render_svg(
     // ECMA-376 §18 rendering.  Restored the original empty-sheet
     // placeholder return.)
     return create_empty_result_with_attrs(attrs)
-  }
-
-  // Build cell map: cell-ref string ("A1") -> XML <c> element.
-  // §18.3.1.13 / §18.3.1.73 — collect col defs first so the cell
-  // map can apply col.style / row.s fallbacks for cells that omit
-  // their own `s` attribute.
-  let col_defs = collect_column_defs(domain.element)
-  let cell_map : Map[String, @xml.Element] = Map([], capacity=0)
-  collect_cells(domain.element, cell_map, col_defs)
-  // §18.3.1.18 — pre-sort `<conditionalFormatting>` rules by their
-  // (block, rule.priority) ordering so the overlay pass below can
-  // walk them in spec precedence order.
-  let cf_blocks = domain.conditional_formatting
-  // §18.3.1.10 — pre-compute per-block population statistics (mean,
-  // std-dev, sorted values, occurrence counts) so the per-cell pass
-  // below can evaluate Top10 / AboveAverage / DuplicateValues /
-  // UniqueValues in O(1).
-  let cf_stats : Array[PopulationStats] = []
-  for block in cf_blocks {
-    cf_stats.push(compute_population_stats(block, cell_map, shared_strings))
   }
 
   // Children of the root `<svg>` element, accumulated as a node
@@ -398,6 +433,10 @@ pub fn render_svg(
           cf_stats,
           styles,
           shared_strings,
+          evaluated_cells~,
+          formula_snapshot=Some(cf_formula_snapshot),
+          cf_today=Some(cf_today_value),
+          date_system~,
           theme_map~,
         )
         // Namespaced id key for the cell's fill defs — `id_prefix`
@@ -460,6 +499,10 @@ pub fn render_svg(
           cf_stats,
           styles,
           shared_strings,
+          evaluated_cells~,
+          formula_snapshot=Some(cf_formula_snapshot),
+          cf_today=Some(cf_today_value),
+          date_system~,
           theme_map~,
         )
         for n in render_cell_borders(cl, style.border) {
@@ -494,6 +537,10 @@ pub fn render_svg(
           cf_stats,
           styles,
           shared_strings,
+          evaluated_cells~,
+          formula_snapshot=Some(cf_formula_snapshot),
+          cf_today=Some(cf_today_value),
+          date_system~,
           theme_map~,
         )
         // §18.3.1.49 iconSet / §18.18.42 ST_IconSetType — draw the
@@ -859,8 +906,13 @@ pub fn render_svg(
   let (margin_left, margin_top, margin_right, margin_bottom) = sheet_page_margins_px(
     domain.element,
   )
-  let page_width = layout.total_width + margin_left + margin_right
-  let page_height = layout.total_height + margin_top + margin_bottom
+  // Some overlays, notably §18.10 PivotTables, are allowed to extend past
+  // the worksheet's nominal `<dimension>`.  Use the SVG nodes already
+  // emitted above as the single source for the body extent, avoiding a
+  // second pivot sizing path that could drift from the renderer.
+  let (body_width, body_height) = svg_nodes_extent(body)
+  let page_width = body_width + margin_left + margin_right
+  let page_height = body_height + margin_top + margin_bottom
 
   // Assemble the final SVG document as a node tree.  The root
   // `<svg>` carries the SVG namespace via `svg_elem` so the writer
@@ -1633,6 +1685,7 @@ fn derive_max_from_data(worksheet : @xml.Element) -> (Int, Int) {
 fn compute_sheet_layout(
   worksheet : @xml.Element,
   options : SheetRenderOptions,
+  auto_filter_hidden_rows? : Map[Int, Bool] = Map([], capacity=0),
 ) -> SheetLayout {
   let (dim_row, dim_col) = read_dimension(worksheet)
   let (max_row, max_col) = if dim_row > 0 && dim_col > 0 {
@@ -1688,9 +1741,13 @@ fn compute_sheet_layout(
   let row_heights : Array[Double] = []
   let default_height_px = row_height_to_pixels(options.default_row_height)
   for row in 1..<=max_row {
-    let h = match row_height_map.get(row) {
-      Some(v) => v
-      None => default_height_px
+    let h = match auto_filter_hidden_rows.get(row) {
+      Some(true) => 0.0
+      _ =>
+        match row_height_map.get(row) {
+          Some(v) => v
+          None => default_height_px
+        }
     }
     row_heights.push(h)
   }
@@ -2000,10 +2057,10 @@ priv struct ResolvedCellStyle {
   data_bar : (Double, String, String, String, String)?
   /// §18.3.1.49 iconSet — `(set_name from §18.18.42, bucket index
   /// from evaluate_icon_bucket)`. The spec only enumerates icon set
-  /// names; the actual glyph/colour is consumer-defined and outside
-  /// ECMA-376 scope. The viewer therefore emits the set name and
-  /// bucket as spec-anchored SVG metadata attributes only and leaves
-  /// rendering to downstream consumers.
+  /// names; the exact glyph artwork is application-defined and outside
+  /// ECMA-376 scope. The viewer uses its deterministic glyph palette for
+  /// visible cells and still emits the set name / bucket as
+  /// spec-anchored SVG metadata.
   icon : (String, Int)?
   /// §18.3.1.49 — when the `<iconSet showValue="0">` flag is false
   /// the matched cell suppresses its numeric text and shows only
@@ -2293,44 +2350,27 @@ fn[T] last_of(xs : Array[T]) -> T? {
 }
 
 ///|
-/// §18.3.1.28 — locate the `<negativeFillColor>` (or legacy
-/// `<a:srgbClr>` variant) child of a `<dataBar>` element and
-/// return its `#RRGGBB`. Returns `""` when no negative-fill
-/// colour is declared so the renderer can fall back to the
-/// positive-bar colour.
-fn read_data_bar_negative_color(
-  data_bar : @xml.Element,
-  theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
-) -> String {
-  let negative = first_child_named_local(data_bar, "negativeFillColor")
-  match negative {
-    None => ""
-    Some(el) =>
-      match resolve_color_element_rgb(el, theme_map) {
-        Some(rgb) => rgb
-        None => ""
-      }
-  }
-}
-
-///|
 /// §18.3.1.18 / §18.3.1.10 / §18.18.13 — apply conditional
 /// formatting overlays onto `base_style`. Walks each
 /// `<conditionalFormatting>` block whose sqref contains `cell_ref`,
 /// then each `<cfRule>` in priority order; the first matching rule
 /// (or every matching rule when `stop_if_true=false`) layers its
-/// referenced `<dxf>` (font / fill / border) onto the style. Rules
-/// requiring a population sweep (top10, aboveAverage, dataBar,
-/// iconSet, colorScale, duplicate/unique) are skipped here for
-/// now — those need a separate value-population pass.
+/// value visualisation or referenced `<dxf>` onto the style. Population
+/// rules reuse the precomputed `cf_stats` table so colorScale, dataBar,
+/// iconSet, top10, aboveAverage, duplicate, and unique stay on the same
+/// evaluator path as scalar cfRules.
 fn apply_cf_overlay(
   cell_ref : String,
   cell : @xml.Element,
   base : ResolvedCellStyle,
   cf_blocks : Array[@domain.CT_ConditionalFormatting],
-  cf_stats : Array[PopulationStats],
+  cf_stats : Array[CfRulePopulation],
   styles : @domain.CT_Stylesheet?,
   shared_strings : @domain.CT_Sst?,
+  evaluated_cells? : @hashmap.HashMap[String, @formula.FormulaValue]? = None,
+  formula_snapshot? : @formula.WorksheetSnapshot? = None,
+  cf_today? : @date_serial.CalendarDateTime? = None,
+  date_system? : @date_serial.DateSystem = @date_serial.DateSystem::Serial1900,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
 ) -> ResolvedCellStyle {
   if cf_blocks.length() == 0 {
@@ -2349,57 +2389,60 @@ fn apply_cf_overlay(
     None => return base
   }
   let mut acc = base
-  for i, block in cf_blocks {
-    if !sqref_contains(block.sqref, row, col) {
-      continue
-    }
-    let stats = cf_stats[i]
-    for rule in block.rules {
-      // §18.3.1.16 colorScale / §18.3.1.28 dataBar — value-driven
-      // visualisations override per-cell dxf paths. Delegate to the
-      // shared `@cf_eval` evaluator (which already implements the
-      // §18.3.1.11 cfvo threshold resolution and linear blending)
-      // so the result matches the validated evaluator output.
-      match rule.color_scale {
-        Some(scale) => {
-          let cell_val = formula_value_for(cell, shared_strings)
-          let population = population_as_formula_values(stats)
+  let cell_val = cf_cell_value_for(
+    cell_ref, cell, shared_strings, evaluated_cells,
+  )
+  let today = match cf_today {
+    Some(value) => value
+    None => cf_default_today(date_system)
+  }
+  let eval_ctx = cf_eval_context_for_cell(
+    cell_ref, formula_snapshot, evaluated_cells, shared_strings, date_system, today,
+  )
+  let entries = collect_cf_rule_entries(cf_blocks, row, col)
+  for entry in entries {
+    let stats = cf_stats[entry.block_index]
+    let population = population_as_formula_values(stats)
+    let rule = entry.rule
+    // §18.3.1.16 colorScale / §18.3.1.28 dataBar — value-driven
+    // visualisations override per-cell dxf paths. Delegate to the
+    // shared `@cf_eval` evaluator (which already implements the
+    // §18.3.1.11 cfvo threshold resolution and linear blending)
+    // so the result matches the validated evaluator output.
+    match rule.color_scale {
+      Some(scale) =>
+        if @cf_eval.evaluate_rule(rule, cell_val, population, eval_ctx) {
           match @cf_eval.evaluate_color_scale(scale, cell_val, population) {
             Some(argb) => acc = { ..acc, fill: FillSolid(argb_to_css(argb)) }
             None => ()
           }
+          if rule.stop_if_true {
+            break
+          }
           continue
         }
-        None => ()
-      }
-      match rule.data_bar {
-        Some(bar) => {
-          let cell_val = formula_value_for(cell, shared_strings)
-          let population = population_as_formula_values(stats)
+      None => ()
+    }
+    match rule.data_bar {
+      Some(bar) =>
+        if @cf_eval.evaluate_rule(rule, cell_val, population, eval_ctx) {
           match @cf_eval.evaluate_bar_ratio(bar, cell_val, population) {
             Some(ratio) => {
-              // §18.3.1.28 — surface the spec-defined @axisPosition
-              // / @direction attributes and a `<negativeFillColor>`
-              // child via metadata so consumers can paint the axis
-              // and negative-bar variant the viewer doesn't render
-              // directly. Missing attributes fall back to the spec
-              // defaults (axisPosition = "automatic",
-              // direction = "context").
-              let axis_position = attr_value_local(bar.element, "axisPosition").unwrap_or(
-                "automatic",
-              )
-              let direction = attr_value_local(bar.element, "direction").unwrap_or(
-                "context",
-              )
-              let negative_color = read_data_bar_negative_color(bar.element)
+              // §18.3.1.28 — surface the typed dataBar display metadata
+              // decoded by SpreadsheetML domain. The viewer does not
+              // parse `bar.element` again; CT_DataBar is the SoT.
+              let negative_color = match bar.negative_color {
+                Some(color) => argb_to_css(color)
+                None => ""
+              }
               acc = {
                 ..acc,
                 data_bar: Some(
                   (
                     ratio,
                     argb_to_css(bar.color),
-                    axis_position,
-                    direction,
+                    bar.axis_position,
+                    bar.direction,
                     negative_color,
                   ),
                 ),
@@ -2407,14 +2450,16 @@ fn apply_cf_overlay(
             }
             None => ()
           }
+          if rule.stop_if_true {
+            break
+          }
           continue
         }
-        None => ()
-      }
-      match rule.icon_set {
-        Some(icon_set) => {
-          let cell_val = formula_value_for(cell, shared_strings)
-          let population = population_as_formula_values(stats)
+      None => ()
+    }
+    match rule.icon_set {
+      Some(icon_set) =>
+        if @cf_eval.evaluate_rule(rule, cell_val, population, eval_ctx) {
           match @cf_eval.evaluate_icon_bucket(icon_set, cell_val, population) {
             Some(bucket) =>
               // §18.3.1.49 / §18.18.42 — surface only the spec-
@@ -2427,28 +2472,26 @@ fn apply_cf_overlay(
               }
             None => ()
           }
+          if rule.stop_if_true {
+            break
+          }
           continue
         }
-        None => ()
-      }
-      let matched = if rule.is_population_rule() {
-        cf_population_rule_matches(rule, cell, cell_ref, stats)
-      } else {
-        cf_rule_matches(rule, cell, shared_strings)
-      }
-      if !matched {
-        continue
-      }
-      match (rule.dxf_id, dxfs) {
-        (Some(id), Some(dxfs_table)) =>
-          if id >= 0 && id < dxfs_table.dxf.length() {
-            acc = overlay_dxf_on_style(acc, dxfs_table.dxf[id], theme_map~)
-          }
-        _ => ()
-      }
-      if rule.stop_if_true {
-        break
-      }
+      None => ()
+    }
+    let matched = @cf_eval.evaluate_rule(rule, cell_val, population, eval_ctx)
+    if !matched {
+      continue
+    }
+    match (rule.dxf_id, dxfs) {
+      (Some(id), Some(dxfs_table)) =>
+        if id >= 0 && id < dxfs_table.dxf.length() {
+          acc = overlay_dxf_on_style(acc, dxfs_table.dxf[id], theme_map~)
+        }
+      _ => ()
+    }
+    if rule.stop_if_true {
+      break
     }
   }
   acc
@@ -2476,18 +2519,428 @@ fn formula_value_for(
 }
 
 ///|
-/// Re-project the population's numeric samples into a `FormulaValue`
-/// array so the cf_eval color_scale / data_bar primitives can
-/// consume them via the shared `collect_numbers` helper.
-fn population_as_formula_values(
-  stats : PopulationStats,
-) -> Array[@formula.FormulaValue] {
-  let out : Array[@formula.FormulaValue] = []
-  for p in stats.sorted_desc {
-    let (_, v) = p
-    out.push(@formula.VNumber(v))
+fn cf_cell_value_for(
+  cell_ref : String,
+  cell : @xml.Element,
+  shared_strings : @domain.CT_Sst?,
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+) -> @formula.FormulaValue {
+  match evaluated_cell_value(cell_ref, evaluated_cells) {
+    Some(value) => value
+    None => formula_value_for(cell, shared_strings)
   }
-  out
+}
+
+///|
+fn build_cf_formula_snapshot(
+  worksheet : @domain.CT_Worksheet,
+  shared_strings : @domain.CT_Sst?,
+  date_system : @date_serial.DateSystem,
+) -> @formula.WorksheetSnapshot {
+  let snapshot = @formula.WorksheetSnapshot::new("", date_system).with_worksheet(
+    worksheet,
+  )
+  match shared_strings {
+    Some(sst) => snapshot.with_sst(sst)
+    None => snapshot
+  }
+}
+
+///|
+fn cf_default_today(
+  date_system : @date_serial.DateSystem,
+) -> @date_serial.CalendarDateTime {
+  @date_serial.serial_to_date_time(0.0, date_system) catch {
+    _ =>
+      @date_serial.CalendarDateTime::{
+        year: 1899,
+        month: 12,
+        day: 30,
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      }
+  }
+}
+
+///|
+fn cf_eval_context_for_cell(
+  cell_ref : String,
+  formula_snapshot : @formula.WorksheetSnapshot?,
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+  shared_strings : @domain.CT_Sst?,
+  date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime,
+) -> @cf_eval.EvalContext {
+  let current_cell = match parse_cell_ref(cell_ref) {
+    Some((row, col)) =>
+      @address.CellAddress::{
+        col_zero_based: col - 1,
+        row_zero_based: row - 1,
+        col_absolute: false,
+        row_absolute: false,
+        sheet: None,
+      }
+    None =>
+      @address.CellAddress::{
+        col_zero_based: 0,
+        row_zero_based: 0,
+        col_absolute: false,
+        row_absolute: false,
+        sheet: None,
+      }
+  }
+  @cf_eval.EvalContext::new(today, date_system, fn(source) {
+    let ast = try @formula.parse_formula(source) catch {
+      _ => return @formula.VError(@formula.Value)
+    } noraise {
+      parsed => parsed
+    }
+    let registry = @formula.FunctionRegistry::new()
+    @formula.register_builtin_functions(registry)
+    let ctx : @formula.EvalContext = {
+      current_sheet: "",
+      current_cell,
+      sst: shared_strings,
+      date_system,
+      registry,
+      resolve_cell: fn(target) {
+        cf_formula_cell_value(target, formula_snapshot, evaluated_cells)
+      },
+      resolve_name: fn(_) { None },
+      resolve_pivot_data: fn(_) { None },
+    }
+    @formula.evaluate(ast, ctx)
+  })
+}
+
+///|
+fn cf_formula_cell_value(
+  address : @address.CellAddress,
+  formula_snapshot : @formula.WorksheetSnapshot?,
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+) -> @formula.FormulaValue {
+  let key = cell_ref_from_indices(
+    address.row_zero_based + 1,
+    address.col_zero_based + 1,
+  )
+  match evaluated_cell_value(key, evaluated_cells) {
+    Some(value) => value
+    None =>
+      match formula_snapshot {
+        Some(snapshot) => @formula.evaluate_cell(snapshot, address)
+        None => @formula.VEmpty
+      }
+  }
+}
+
+///|
+fn evaluated_cell_value(
+  cell_ref : String,
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+) -> @formula.FormulaValue? {
+  match evaluated_cells {
+    Some(evals) => evals.get(cell_ref)
+    None => None
+  }
+}
+
+///|
+/// §18.3.1.2 / §18.3.2 — compute worksheet row numbers hidden by
+/// AutoFilter state. The visibility decision stays in
+/// `spreadsheet_ml/autofilter`; the viewer supplies only the row values
+/// plus its already-resolved fill/font/icon formatting facts.
+fn build_autofilter_hidden_row_map(
+  worksheet : @xml.Element,
+  tables : Array[@xml.Element],
+  cell_map : Map[String, @xml.Element],
+  cf_blocks : Array[@domain.CT_ConditionalFormatting],
+  cf_stats : Array[CfRulePopulation],
+  options : SheetRenderOptions,
+  styles : @domain.CT_Stylesheet?,
+  shared_strings : @domain.CT_Sst?,
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+  formula_snapshot : @formula.WorksheetSnapshot?,
+  cf_today : @date_serial.CalendarDateTime,
+  theme_map : SmlThemeColorMap,
+  date_system : @date_serial.DateSystem,
+) -> Map[Int, Bool] {
+  let hidden : Map[Int, Bool] = Map([], capacity=0)
+  match find_worksheet_autofilter_element(worksheet) {
+    Some(element) =>
+      mark_autofilter_hidden_rows(
+        hidden, element, cell_map, cf_blocks, cf_stats, options, styles, shared_strings,
+        evaluated_cells, formula_snapshot, cf_today, theme_map, date_system,
+      )
+    None => ()
+  }
+  for table in tables {
+    match first_child_named_local(table, "autoFilter") {
+      Some(element) =>
+        mark_autofilter_hidden_rows(
+          hidden, element, cell_map, cf_blocks, cf_stats, options, styles, shared_strings,
+          evaluated_cells, formula_snapshot, cf_today, theme_map, date_system,
+        )
+      None => ()
+    }
+  }
+  hidden
+}
+
+///|
+fn mark_autofilter_hidden_rows(
+  hidden : Map[Int, Bool],
+  element : @xml.Element,
+  cell_map : Map[String, @xml.Element],
+  cf_blocks : Array[@domain.CT_ConditionalFormatting],
+  cf_stats : Array[CfRulePopulation],
+  options : SheetRenderOptions,
+  styles : @domain.CT_Stylesheet?,
+  shared_strings : @domain.CT_Sst?,
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+  formula_snapshot : @formula.WorksheetSnapshot?,
+  cf_today : @date_serial.CalendarDateTime,
+  theme_map : SmlThemeColorMap,
+  date_system : @date_serial.DateSystem,
+) -> Unit {
+  let filter = @autofilter.parse_auto_filter(element) catch { _ => return }
+  let (_start_row, end_row, _start_col, _end_col) = match
+    autofilter_range_bounds(filter) {
+    Some(bounds) => bounds
+    None => return
+  }
+  let candidates = build_autofilter_candidate_rows(
+    filter, cell_map, cf_blocks, cf_stats, options, styles, shared_strings, evaluated_cells,
+    formula_snapshot, cf_today, theme_map, date_system,
+  )
+  if candidates.length() == 0 {
+    return
+  }
+  let visible_rows = @autofilter.filter_formatted_rows(
+    filter,
+    candidates,
+    build_autofilter_dxf_formats(styles, theme_map),
+    date_system,
+  )
+  let visible : Map[Int, Bool] = Map([], capacity=visible_rows.length())
+  for row in visible_rows {
+    visible.set(row, true)
+  }
+  for candidate in candidates {
+    if candidate.row_index <= end_row &&
+      visible.get(candidate.row_index) != Some(true) {
+      hidden.set(candidate.row_index, true)
+    }
+  }
+}
+
+///|
+fn build_autofilter_candidate_rows(
+  filter : @domain.CT_AutoFilter,
+  cell_map : Map[String, @xml.Element],
+  cf_blocks : Array[@domain.CT_ConditionalFormatting],
+  cf_stats : Array[CfRulePopulation],
+  options : SheetRenderOptions,
+  styles : @domain.CT_Stylesheet?,
+  shared_strings : @domain.CT_Sst?,
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+  formula_snapshot : @formula.WorksheetSnapshot?,
+  cf_today : @date_serial.CalendarDateTime,
+  theme_map : SmlThemeColorMap,
+  date_system : @date_serial.DateSystem,
+) -> Array[@autofilter.FormattedCandidateRow] {
+  let rows : Array[@autofilter.FormattedCandidateRow] = []
+  let (start_row, end_row, start_col, end_col) = match
+    autofilter_range_bounds(filter) {
+    Some(bounds) => bounds
+    None => return rows
+  }
+  let data_start = start_row + 1
+  if data_start > end_row {
+    return rows
+  }
+  for row in data_start..<=end_row {
+    let cells : Array[@autofilter.CandidateCellFormat] = []
+    for col in start_col..<=end_col {
+      let cell_ref = cell_ref_from_indices(row, col)
+      cells.push(
+        autofilter_cell_format(
+          cell_ref, cell_map, cf_blocks, cf_stats, options, styles, shared_strings,
+          evaluated_cells, formula_snapshot, cf_today, theme_map, date_system,
+        ),
+      )
+    }
+    rows.push({ cells, row_index: row })
+  }
+  rows
+}
+
+///|
+fn autofilter_range_bounds(
+  filter : @domain.CT_AutoFilter,
+) -> (Int, Int, Int, Int)? {
+  let start_row0 = match filter.range.start_row_zero_based {
+    Some(v) => v
+    None => return None
+  }
+  let end_row0 = match filter.range.end_row_zero_based {
+    Some(v) => v
+    None => return None
+  }
+  let start_col0 = match filter.range.start_col_zero_based {
+    Some(v) => v
+    None => return None
+  }
+  let end_col0 = match filter.range.end_col_zero_based {
+    Some(v) => v
+    None => return None
+  }
+  Some((start_row0 + 1, end_row0 + 1, start_col0 + 1, end_col0 + 1))
+}
+
+///|
+fn autofilter_cell_value(
+  cell_ref : String,
+  cell_map : Map[String, @xml.Element],
+  shared_strings : @domain.CT_Sst?,
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+) -> @formula.FormulaValue {
+  match evaluated_cells {
+    Some(evals) =>
+      match evals.get(cell_ref) {
+        Some(value) => return value
+        None => ()
+      }
+    None => ()
+  }
+  let cell = match cell_map.get(cell_ref) {
+    Some(c) => c
+    None => return @formula.VEmpty
+  }
+  match attr_value_local(cell, "t") {
+    Some("b") =>
+      match read_v_text(cell).trim().to_owned() {
+        "1" | "true" | "TRUE" | "True" => @formula.VBool(true)
+        "0" | "false" | "FALSE" | "False" => @formula.VBool(false)
+        _ => formula_value_for(cell, shared_strings)
+      }
+    Some("e") => {
+      let raw = read_v_text(cell).trim().to_owned()
+      match @formula.FormulaError::from_literal(raw) {
+        Some(err) => @formula.VError(err)
+        None => @formula.VString(raw)
+      }
+    }
+    _ => formula_value_for(cell, shared_strings)
+  }
+}
+
+///|
+fn autofilter_cell_format(
+  cell_ref : String,
+  cell_map : Map[String, @xml.Element],
+  cf_blocks : Array[@domain.CT_ConditionalFormatting],
+  cf_stats : Array[CfRulePopulation],
+  options : SheetRenderOptions,
+  styles : @domain.CT_Stylesheet?,
+  shared_strings : @domain.CT_Sst?,
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+  formula_snapshot : @formula.WorksheetSnapshot?,
+  cf_today : @date_serial.CalendarDateTime,
+  theme_map : SmlThemeColorMap,
+  date_system : @date_serial.DateSystem,
+) -> @autofilter.CandidateCellFormat {
+  let value = autofilter_cell_value(
+    cell_ref, cell_map, shared_strings, evaluated_cells,
+  )
+  let cell = match cell_map.get(cell_ref) {
+    Some(c) => c
+    None =>
+      return {
+        value,
+        fill_color: None,
+        font_color: None,
+        icon_set: None,
+        icon_id: None,
+      }
+  }
+  let base = resolve_cell_style(cell, options, styles, theme_map~)
+  let style = apply_cf_overlay(
+    cell_ref,
+    cell,
+    base,
+    cf_blocks,
+    cf_stats,
+    styles,
+    shared_strings,
+    evaluated_cells~,
+    formula_snapshot~,
+    cf_today=Some(cf_today),
+    date_system~,
+    theme_map~,
+  )
+  let fill_color = match style.fill {
+    FillSolid(c) => Some(c)
+    _ => None
+  }
+  let (icon_set, icon_id) = match style.icon {
+    Some((set_name, bucket)) => (Some(set_name), Some(bucket))
+    None => (None, None)
+  }
+  { value, fill_color, font_color: style.font.color, icon_set, icon_id }
+}
+
+///|
+fn build_autofilter_dxf_formats(
+  styles : @domain.CT_Stylesheet?,
+  theme_map : SmlThemeColorMap,
+) -> Array[@autofilter.FilterDxfFormat] {
+  let out : Array[@autofilter.FilterDxfFormat] = []
+  let dxfs = match styles {
+    Some(s) => s.dxfs
+    None => return out
+  }
+  match dxfs {
+    Some(table) => {
+      for i, dxf in table.dxf {
+        out.push({
+          dxf_id: i,
+          fill_color: dxf_fill_css(dxf, theme_map),
+          font_color: dxf_font_css(dxf, theme_map),
+        })
+      }
+      out
+    }
+    None => out
+  }
+}
+
+///|
+fn dxf_font_css(dxf : @domain.CT_Dxf, theme_map : SmlThemeColorMap) -> String? {
+  let font = match dxf.font {
+    Some(f) => f
+    None => return None
+  }
+  let fallback : ResolvedFont = {
+    family: "",
+    size: 0.0,
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false,
+    color: None,
+  }
+  ct_font_to_resolved(font, fallback, theme_map~).color
+}
+
+///|
+/// Return the sqref population exactly as `cf_rule_eval` consumes it.
+/// The viewer does not compute thresholds or duplicate counts.
+fn population_as_formula_values(
+  stats : CfRulePopulation,
+) -> Array[@formula.FormulaValue] {
+  stats.values
 }
 
 ///|
@@ -2518,38 +2971,70 @@ fn hex_digit(n : Int) -> Char {
 }
 
 ///|
-/// §18.3.1.10 — pre-computed per-block population statistics used by
-/// Top10 / AboveAverage / DuplicateValues / UniqueValues predicates.
-priv struct PopulationStats {
-  /// (cell_ref, numeric value) pairs for every cell in the block's
-  /// sqref that has a numeric value, sorted in descending order.
-  /// Used by Top10 (top N) and the bottom variant takes the tail.
-  sorted_desc : Array[(String, Double)]
-  /// Mean of every numeric cell value in the block's sqref.
-  mean : Double
-  /// Population standard deviation. Zero when fewer than 2 numeric
-  /// cells contribute.
-  std_dev : Double
-  /// Map from cell's resolved text value (number formatted via
-  /// Show or shared-string lookup) to the number of cells carrying
-  /// that exact value. Used by Duplicate/UniqueValues.
-  value_counts : Map[String, Int]
+/// §18.3.1.10 — pre-computed per-block population supplied to
+/// `cf_rule_eval`. The viewer owns only the sqref walk and cell-value
+/// extraction; conditional-formatting predicates and threshold math stay
+/// in `spreadsheet_ml/cf_rule_eval`.
+priv struct CfRulePopulation {
+  values : Array[@formula.FormulaValue]
+}
+
+///|
+/// §18.3.1.10 / §18.3.1.18 — conditional-formatting priority is global
+/// within the sheet, not scoped to one `<conditionalFormatting>` wrapper.
+/// The domain decoder sorts rules inside each block; the viewer flattens
+/// the blocks that cover this cell and sorts the resulting stream by
+/// `cfRule/@priority` before applying `stopIfTrue`.
+priv struct CfRuleEntry {
+  block_index : Int
+  ordinal : Int
+  rule : @domain.CT_CfRule
+}
+
+///|
+fn collect_cf_rule_entries(
+  cf_blocks : Array[@domain.CT_ConditionalFormatting],
+  row : Int,
+  col : Int,
+) -> Array[CfRuleEntry] {
+  let entries : Array[CfRuleEntry] = []
+  let mut ordinal = 0
+  for i, block in cf_blocks {
+    if sqref_contains(block.sqref, row, col) {
+      for rule in block.rules {
+        entries.push({ block_index: i, ordinal, rule })
+        ordinal = ordinal + 1
+      }
+    }
+  }
+  entries.sort_by(fn(a, b) {
+    if a.rule.priority < b.rule.priority {
+      -1
+    } else if a.rule.priority > b.rule.priority {
+      1
+    } else if a.ordinal < b.ordinal {
+      -1
+    } else if a.ordinal > b.ordinal {
+      1
+    } else {
+      0
+    }
+  })
+  entries
 }
 
 ///|
 /// §18.3.1.10 — walk every cell in `block.sqref` and collect the
-/// statistics needed by the four population rules. Cells outside
-/// the worksheet's `cell_map` (= empty cells) contribute the empty
-/// string to `value_counts` but no numeric sample to mean/std-dev.
+/// value population consumed by `cf_rule_eval`. Empty cells are kept
+/// as `VEmpty` so duplicate/unique semantics can still count blanks;
+/// numeric population rules decide which values are numeric samples.
 fn compute_population_stats(
   block : @domain.CT_ConditionalFormatting,
   cell_map : Map[String, @xml.Element],
   shared_strings : @domain.CT_Sst?,
-) -> PopulationStats {
-  let pairs : Array[(String, Double)] = []
-  let counts : Map[String, Int] = Map([], capacity=0)
-  let mut sum = 0.0
-  let mut count = 0
+  evaluated_cells : @hashmap.HashMap[String, @formula.FormulaValue]?,
+) -> CfRulePopulation {
+  let values : Array[@formula.FormulaValue] = []
   for r in block.sqref.ranges {
     let sr = r.start_row_zero_based.unwrap_or(0)
     let er = r.end_row_zero_based.unwrap_or(sr)
@@ -2559,203 +3044,16 @@ fn compute_population_stats(
       for col in sc..<=ec {
         let cref = cell_ref_from_indices(row + 1, col + 1)
         match cell_map.get(cref) {
-          None => {
-            // Empty cell — count as the empty string for
-            // duplicate/unique semantics (Excel parity).
-            let prev = counts.get("").unwrap_or(0)
-            counts.set("", prev + 1)
-          }
-          Some(cell_el) => {
-            let text = cell_resolved_text(cell_el, shared_strings)
-            let prev = counts.get(text).unwrap_or(0)
-            counts.set(text, prev + 1)
-            match parse_cell_numeric(cell_el) {
-              None => ()
-              Some(v) => {
-                pairs.push((cref, v))
-                sum = sum + v
-                count = count + 1
-              }
-            }
-          }
+          None => values.push(@formula.VEmpty)
+          Some(cell_el) =>
+            values.push(
+              cf_cell_value_for(cref, cell_el, shared_strings, evaluated_cells),
+            )
         }
       }
     }
   }
-  // Sort descending by value for Top10.
-  pairs.sort_by(fn(a, b) {
-    let (_, av) = a
-    let (_, bv) = b
-    if av < bv {
-      1
-    } else if av > bv {
-      -1
-    } else {
-      0
-    }
-  })
-  let mean = if count > 0 { sum / count.to_double() } else { 0.0 }
-  let mut variance = 0.0
-  if count >= 2 {
-    for p in pairs {
-      let (_, v) = p
-      let d = v - mean
-      variance = variance + d * d
-    }
-    variance = variance / count.to_double()
-  }
-  let std_dev = sqrt_double(variance)
-  { sorted_desc: pairs, mean, std_dev, value_counts: counts }
-}
-
-///|
-/// Naive Newton sqrt — adequate for the small statistical loads
-/// the cf evaluator handles. Returns 0 for negative or zero input.
-fn sqrt_double(x : Double) -> Double {
-  if x <= 0.0 {
-    return 0.0
-  }
-  let mut g = x
-  let mut prev = 0.0
-  let mut i = 0
-  while i < 50 && (g - prev).abs() > 1.0e-12 {
-    prev = g
-    g = (g + x / g) * 0.5
-    i = i + 1
-  }
-  g
-}
-
-///|
-/// §18.3.1.10 — evaluate a population-based rule against `cell`.
-/// `stats` is the pre-computed `PopulationStats` for the rule's
-/// enclosing block.
-fn cf_population_rule_matches(
-  rule : @domain.CT_CfRule,
-  cell : @xml.Element,
-  cell_ref : String,
-  stats : PopulationStats,
-) -> Bool {
-  match rule.cf_type {
-    Some(Top10) => top_n_matches(rule, cell_ref, stats)
-    Some(AboveAverage) => above_average_matches(rule, cell, stats)
-    Some(DuplicateValues) => duplicate_matches(cell, stats, want_duplicate=true)
-    Some(UniqueValues) => duplicate_matches(cell, stats, want_duplicate=false)
-    // Non-population rule types, and type-less rules (§18.3.1.10
-    // `@type` optional, which draw nothing), do not match here.
-    _ => false
-  }
-}
-
-///|
-/// §18.3.1.10 Top10 — match cells whose numeric value is in the
-/// top (or bottom) N positions, where N is `rule.rank`. When
-/// `rule.percent=true`, N is interpreted as a percentage of the
-/// population. `rule.bottom=true` matches the bottom N instead.
-fn top_n_matches(
-  rule : @domain.CT_CfRule,
-  cell_ref : String,
-  stats : PopulationStats,
-) -> Bool {
-  let rank = rule.rank.unwrap_or(1)
-  let pop_size = stats.sorted_desc.length()
-  if pop_size == 0 || rank <= 0 {
-    return false
-  }
-  let n_cells = if rule.percent {
-    let pct = rank.to_double() / 100.0
-    let approx = (pop_size.to_double() * pct).max(1.0)
-    let n = approx.to_int()
-    if n < 1 {
-      1
-    } else if n > pop_size {
-      pop_size
-    } else {
-      n
-    }
-  } else if rank > pop_size {
-    pop_size
-  } else {
-    rank
-  }
-  if rule.bottom {
-    // Bottom N = the last n_cells of the descending list.
-    for i in (pop_size - n_cells)..<pop_size {
-      let (ref_, _) = stats.sorted_desc[i]
-      if ref_ == cell_ref {
-        return true
-      }
-    }
-  } else {
-    for i in 0..<n_cells {
-      let (ref_, _) = stats.sorted_desc[i]
-      if ref_ == cell_ref {
-        return true
-      }
-    }
-  }
-  false
-}
-
-///|
-/// §18.3.1.10 AboveAverage — match cells whose value is above
-/// (or below, when `rule.above_average=false`) the population mean.
-/// When `rule.equal_average=true`, equal-to-mean also matches.
-/// When `rule.std_dev` is set, the threshold shifts by that many
-/// standard deviations away from the mean.
-fn above_average_matches(
-  rule : @domain.CT_CfRule,
-  cell : @xml.Element,
-  stats : PopulationStats,
-) -> Bool {
-  let value = match parse_cell_numeric(cell) {
-    None => return false
-    Some(v) => v
-  }
-  let dev_count = rule.std_dev.unwrap_or(0)
-  let threshold = if rule.above_average {
-    stats.mean + dev_count.to_double() * stats.std_dev
-  } else {
-    stats.mean - dev_count.to_double() * stats.std_dev
-  }
-  if rule.above_average {
-    if rule.equal_average {
-      value >= threshold
-    } else {
-      value > threshold
-    }
-  } else if rule.equal_average {
-    value <= threshold
-  } else {
-    value < threshold
-  }
-}
-
-///|
-/// §18.3.1.10 DuplicateValues / UniqueValues — match cells whose
-/// resolved text appears more than once (duplicate) or exactly once
-/// (unique) in the block's sqref population. `want_duplicate=true`
-/// implements DuplicateValues; `false` implements UniqueValues.
-fn duplicate_matches(
-  cell : @xml.Element,
-  stats : PopulationStats,
-  want_duplicate~ : Bool,
-) -> Bool {
-  let text = cell_resolved_text(cell, None)
-  // Note: we pass `None` for SST here because the population pass
-  // already resolved each cell's text into the same Map. Cells
-  // carrying `t="s"` will look up the shared-string but for
-  // duplicate matching we compare the resolved text either way —
-  // the production lookup uses the cell's own t attribute so any
-  // mismatch is between in-band inline strings and SST-resolved
-  // strings, which would already differ in the population scan.
-  let _ = cell
-  let count = stats.value_counts.get(text).unwrap_or(0)
-  if want_duplicate {
-    count > 1
-  } else {
-    count == 1
-  }
+  { values, }
 }
 
 ///|
@@ -2778,329 +3076,6 @@ fn sqref_contains(sqref : @address.Sqref, row : Int, col : Int) -> Bool {
     }
   }
   false
-}
-
-///|
-/// §18.3.1.10 — evaluate a single per-cell rule against the cell.
-/// Supports cellIs (greaterThan / lessThan / equal / notEqual /
-/// greaterThanOrEqual / lessThanOrEqual / between / notBetween)
-/// and containsText / notContainsText / beginsWith / endsWith.
-/// Returns `false` for rule shapes we cannot evaluate yet so the
-/// overlay is conservatively skipped.
-fn cf_rule_matches(
-  rule : @domain.CT_CfRule,
-  cell : @xml.Element,
-  shared_strings : @domain.CT_Sst?,
-) -> Bool {
-  // §18.18.12 ST_CfType — every per-cell rule type is matched
-  // explicitly. Population rule types (AboveAverage / Top10 /
-  // DuplicateValues / UniqueValues / ColorScale / DataBar /
-  // IconSet) are dispatched by `cf_population_rule_matches`
-  // upstream so this function returns `false` for them.
-  match rule.cf_type {
-    // §18.3.1.10 — `@type` is `use="optional"`. A type-less rule has
-    // no predicate and draws nothing, so it never matches a cell.
-    None => false
-    Some(CellIs) => evaluate_cell_is(rule, cell)
-    Some(ContainsText) => contains_text_match(rule, cell, shared_strings, true)
-    Some(NotContainsText) =>
-      !contains_text_match(rule, cell, shared_strings, true)
-    Some(BeginsWith) =>
-      starts_or_ends_match(rule, cell, shared_strings, starts=true)
-    Some(EndsWith) =>
-      starts_or_ends_match(rule, cell, shared_strings, starts=false)
-    Some(ContainsBlanks) =>
-      cell_resolved_text(cell, shared_strings).trim().length() == 0
-    Some(NotContainsBlanks) =>
-      cell_resolved_text(cell, shared_strings).trim().length() > 0
-    Some(ContainsErrors) => cell_is_error_value(cell, shared_strings)
-    Some(NotContainsErrors) => !cell_is_error_value(cell, shared_strings)
-    // §18.18.12 — `expression` evaluates the rule's formula as a
-    // boolean. Full §22.1 expression evaluation is not wired in
-    // here; surface the formula via the dxf overlay only when
-    // the formula is literally "TRUE" / "1" (otherwise no match).
-    Some(Expression) => evaluate_expression_literal(rule)
-    // §18.18.82 — `timePeriod` requires date arithmetic against
-    // the workbook epoch. Surface as no-match until the dedicated
-    // TimePeriod evaluator lands (Task #157).
-    Some(TimePeriod) => false
-    // Population rules — dispatched upstream by
-    // `cf_population_rule_matches`. Should not reach here.
-    Some(Top10)
-    | Some(AboveAverage)
-    | Some(DuplicateValues)
-    | Some(UniqueValues)
-    | Some(ColorScale)
-    | Some(DataBar)
-    | Some(IconSet) => false
-  }
-}
-
-///|
-/// §18.18.11 / §18.18.12 — true when the cell carries an error
-/// value (`t="e"` or its resolved text looks like an Excel error
-/// literal such as `"#REF!"`, `"#NAME?"`, `"#DIV/0!"`, `"#NULL!"`,
-/// `"#VALUE!"`, `"#NUM!"`, `"#N/A"`, `"#GETTING_DATA"`).
-fn cell_is_error_value(
-  cell : @xml.Element,
-  shared_strings : @domain.CT_Sst?,
-) -> Bool {
-  // Explicit error type beats every other heuristic.
-  match attr_value_local(cell, "t") {
-    Some("e") => return true
-    _ => ()
-  }
-  let text = cell_resolved_text(cell, shared_strings).trim().to_owned()
-  match text {
-    "#REF!"
-    | "#NAME?"
-    | "#DIV/0!"
-    | "#NULL!"
-    | "#VALUE!"
-    | "#NUM!"
-    | "#N/A"
-    | "#GETTING_DATA"
-    | "#SPILL!"
-    | "#CALC!"
-    | "#FIELD!"
-    | "#UNKNOWN!"
-    | "#BLOCKED!"
-    | "#BUSY!"
-    | "#CONNECT!"
-    | "#EXTERNAL!"
-    | "#PYTHON!" => true
-    _ => false
-  }
-}
-
-///|
-/// §18.18.12 expression — evaluate trivial boolean literals in the
-/// rule's formula. Full expression evaluation requires the §22.1
-/// AST evaluator which lives in a separate package; until that
-/// path is wired through cf_rule_eval the renderer only honours
-/// the `TRUE` / `FALSE` / `1` / `0` literals so explicitly
-/// boolean cfRules behave correctly.
-fn evaluate_expression_literal(rule : @domain.CT_CfRule) -> Bool {
-  if rule.formulas.length() == 0 {
-    return false
-  }
-  match rule.formulas[0].trim().to_owned() {
-    "TRUE" | "true" | "1" => true
-    _ => false
-  }
-}
-
-///|
-/// §18.3.1.10 cellIs — compare the cell's value against the rule's
-/// formula(s) using the chosen operator. §18.18.49 enumerates 12
-/// operators: lessThan, lessThanOrEqual, equal, notEqual,
-/// greaterThanOrEqual, greaterThan, between, notBetween,
-/// containsText, notContains, beginsWith, endsWith. The numeric
-/// arms parse the formula as a literal double; the text arms
-/// compare the cell's resolved text to the formula text via the
-/// same case-insensitive helpers as the standalone containsText
-/// rule type.
-fn evaluate_cell_is(rule : @domain.CT_CfRule, cell : @xml.Element) -> Bool {
-  let op = match rule.operator {
-    None => return false
-    Some(o) => o
-  }
-  match op {
-    OpContainsText | OpNotContains | OpBeginsWith | OpEndsWith =>
-      evaluate_cell_is_text(op, rule, cell)
-    OpEqual
-    | OpNotEqual
-    | OpGreaterThan
-    | OpGreaterThanOrEqual
-    | OpLessThan
-    | OpLessThanOrEqual
-    | OpBetween
-    | OpNotBetween => evaluate_cell_is_numeric(op, rule, cell)
-  }
-}
-
-///|
-/// §18.18.49 — numeric-operator arm of `cellIs`.
-fn evaluate_cell_is_numeric(
-  op : @domain.ST_ConditionalFormattingOperator,
-  rule : @domain.CT_CfRule,
-  cell : @xml.Element,
-) -> Bool {
-  let value = match parse_cell_numeric(cell) {
-    None => return false
-    Some(v) => v
-  }
-  let f0 = if rule.formulas.length() >= 1 {
-    try @string.parse_double(rule.formulas[0]) catch {
-      _ => None
-    } noraise {
-      v => Some(v)
-    }
-  } else {
-    None
-  }
-  let f1 = if rule.formulas.length() >= 2 {
-    try @string.parse_double(rule.formulas[1]) catch {
-      _ => None
-    } noraise {
-      v => Some(v)
-    }
-  } else {
-    None
-  }
-  match op {
-    OpEqual =>
-      match f0 {
-        Some(t) => value == t
-        None => false
-      }
-    OpNotEqual =>
-      match f0 {
-        Some(t) => value != t
-        None => false
-      }
-    OpGreaterThan =>
-      match f0 {
-        Some(t) => value > t
-        None => false
-      }
-    OpGreaterThanOrEqual =>
-      match f0 {
-        Some(t) => value >= t
-        None => false
-      }
-    OpLessThan =>
-      match f0 {
-        Some(t) => value < t
-        None => false
-      }
-    OpLessThanOrEqual =>
-      match f0 {
-        Some(t) => value <= t
-        None => false
-      }
-    OpBetween =>
-      match (f0, f1) {
-        (Some(lo), Some(hi)) => value >= lo && value <= hi
-        _ => false
-      }
-    OpNotBetween =>
-      match (f0, f1) {
-        (Some(lo), Some(hi)) => value < lo || value > hi
-        _ => false
-      }
-    OpContainsText | OpNotContains | OpBeginsWith | OpEndsWith => false
-  }
-}
-
-///|
-/// §18.18.49 — text-operator arm of `cellIs`. The cell's resolved
-/// text is compared against the literal text carried by the
-/// rule's first `<formula>` element. `containsText`, `notContains`,
-/// `beginsWith`, `endsWith` mirror §18.3.1.10's standalone rule
-/// types; comparison is case-insensitive per §22.1.4 SEARCH
-/// semantics (folded through `ascii_lower`). The formula text
-/// arrives literally (no SST resolution / quoting) — Excel writes
-/// `"foo"` with the literal quotes; we strip a single pair when
-/// present so the comparison sees the bare text.
-fn evaluate_cell_is_text(
-  op : @domain.ST_ConditionalFormattingOperator,
-  rule : @domain.CT_CfRule,
-  cell : @xml.Element,
-) -> Bool {
-  if rule.formulas.length() == 0 {
-    return false
-  }
-  let raw = rule.formulas[0].trim().to_owned()
-  let needle = if raw.length() >= 2 &&
-    raw.code_unit_at(0).to_int() == 0x22 &&
-    raw.code_unit_at(raw.length() - 1).to_int() == 0x22 {
-    raw[1:raw.length() - 1].to_owned()
-  } else {
-    raw
-  }
-  if needle.length() == 0 {
-    return false
-  }
-  let haystack = cell_resolved_text(cell, None)
-  let h_lc = ascii_lower(haystack)
-  let n_lc = ascii_lower(needle)
-  match op {
-    OpContainsText => h_lc.contains(n_lc)
-    OpNotContains => !h_lc.contains(n_lc)
-    OpBeginsWith => h_lc.has_prefix(n_lc)
-    OpEndsWith => h_lc.has_suffix(n_lc)
-    _ => false
-  }
-}
-
-///|
-/// §18.3.1.10 containsText / notContainsText — substring test
-/// against the cell's resolved text value. §18.3.1.10 defines the
-/// rule's evaluation as `NOT(ISERROR(SEARCH(text, value)))`; per
-/// §22.1.4 the SEARCH function is case-INSENSITIVE (FIND is the
-/// case-sensitive variant). The comparison therefore lowercases
-/// both sides before checking containment.
-fn contains_text_match(
-  rule : @domain.CT_CfRule,
-  cell : @xml.Element,
-  shared_strings : @domain.CT_Sst?,
-  _matches_text : Bool,
-) -> Bool {
-  let needle = match rule.text {
-    None => return false
-    Some(t) => t
-  }
-  let value = cell_resolved_text(cell, shared_strings)
-  ascii_lower(value).contains(ascii_lower(needle))
-}
-
-///|
-/// §18.3.1.10 beginsWith / endsWith — prefix / suffix test on the
-/// resolved cell text. §18.3.1.10 evaluates these as
-/// `LEFT(value, LEN(text)) = text` / `RIGHT(value, LEN(text)) = text`.
-/// The `=` operator in §22.1 comparison is case-insensitive for
-/// strings, so the comparison lowercases both sides.
-fn starts_or_ends_match(
-  rule : @domain.CT_CfRule,
-  cell : @xml.Element,
-  shared_strings : @domain.CT_Sst?,
-  starts~ : Bool,
-) -> Bool {
-  let needle = match rule.text {
-    None => return false
-    Some(t) => t
-  }
-  let value_lc = ascii_lower(cell_resolved_text(cell, shared_strings))
-  let needle_lc = ascii_lower(needle)
-  if starts {
-    value_lc.has_prefix(needle_lc)
-  } else {
-    value_lc.has_suffix(needle_lc)
-  }
-}
-
-///|
-/// ASCII-only `tolower` — folds A-Z to a-z and leaves every other
-/// code point untouched.
-///
-/// §22.1.4's case-insensitive string comparison follows Excel's
-/// own locale-aware semantics (ICU-derived in modern builds).
-/// The viewer uses ASCII-only folding here as a deterministic
-/// constraint: the spec does not pin a normative Unicode
-/// case-folding table, and ASCII folding matches the behaviour
-/// of every Excel cell whose content lies in the BMP ASCII
-/// range.  Locale-sensitive scripts (Turkish dotless-i, German
-/// ß) preserve their original casing; consumers needing
-/// locale-aware comparison must pre-normalise the input.
-fn ascii_lower(s : String) -> String {
-  let buf = StringBuilder::new()
-  for i in 0..<s.length() {
-    let c = s.code_unit_at(i).to_int()
-    let lower = if c >= 0x41 && c <= 0x5A { c + 0x20 } else { c }
-    buf.write_char(lower.to_char().unwrap())
-  }
-  buf.to_string()
 }
 
 ///|
@@ -4472,7 +4447,7 @@ fn format_cell_value(
       if raw.length() == 0 {
         return ""
       }
-      match parse_iso8601_date(raw) {
+      match @date_serial.parse_iso8601_date_time_opt(raw) {
         None => {
           warnings.push(
             "§18.17.4.1: cell t=\"d\" carries an unparseable" +
@@ -4763,117 +4738,6 @@ fn contains_date_token(format_code : String) -> Bool {
 /// is passed through verbatim.  Out-of-range serials fall
 /// back to the General representation so callers see the
 /// raw number rather than a nonsensical date.
-/// §18.17.4.1 — parse an ISO 8601 date/time literal of the form
-/// `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM:SS[.fff]` (with optional
-/// trailing timezone designator).  Returns `None` for any
-/// lexical form outside the spec.  Timezone designators beyond
-/// `Z` are dropped (Excel ignores them).
-fn parse_iso8601_date(raw : String) -> @date_serial.CalendarDateTime? {
-  let n = raw.length()
-  if n < 10 {
-    return None
-  }
-  let digit = fn(off : Int) -> Int? {
-    let c = raw.code_unit_at(off).to_int()
-    if c >= 0x30 && c <= 0x39 {
-      Some(c - 0x30)
-    } else {
-      None
-    }
-  }
-  let read_int = fn(off : Int, width : Int) -> Int? {
-    let mut acc = 0
-    let mut i = 0
-    while i < width {
-      match digit(off + i) {
-        None => return None
-        Some(d) => acc = acc * 10 + d
-      }
-      i = i + 1
-    }
-    Some(acc)
-  }
-  let year = match read_int(0, 4) {
-    None => return None
-    Some(v) => v
-  }
-  if raw.code_unit_at(4).to_int() != 0x2D {
-    return None
-  }
-  let month = match read_int(5, 2) {
-    None => return None
-    Some(v) => v
-  }
-  if raw.code_unit_at(7).to_int() != 0x2D {
-    return None
-  }
-  let day = match read_int(8, 2) {
-    None => return None
-    Some(v) => v
-  }
-  let mut hour = 0
-  let mut minute = 0
-  let mut second = 0
-  let mut millisecond = 0
-  if n > 10 {
-    if raw.code_unit_at(10).to_int() != 0x54 {
-      return None
-    }
-    if n < 19 {
-      return None
-    }
-    hour = match read_int(11, 2) {
-      None => return None
-      Some(v) => v
-    }
-    if raw.code_unit_at(13).to_int() != 0x3A {
-      return None
-    }
-    minute = match read_int(14, 2) {
-      None => return None
-      Some(v) => v
-    }
-    if raw.code_unit_at(16).to_int() != 0x3A {
-      return None
-    }
-    second = match read_int(17, 2) {
-      None => return None
-      Some(v) => v
-    }
-    // Optional `.fff` fractional seconds.
-    if n > 19 && raw.code_unit_at(19).to_int() == 0x2E {
-      let mut i = 20
-      let mut acc = 0
-      let mut count = 0
-      while i < n {
-        match digit(i) {
-          None => break
-          Some(d) => {
-            acc = acc * 10 + d
-            count = count + 1
-            i = i + 1
-          }
-        }
-      }
-      if count == 0 {
-        return None
-      }
-      // Normalise to three-digit milliseconds.
-      while count < 3 {
-        acc = acc * 10
-        count = count + 1
-      }
-      while count > 3 {
-        acc = acc / 10
-        count = count - 1
-      }
-      millisecond = acc
-    }
-  }
-  Some({ year, month, day, hour, minute, second, millisecond })
-}
-
-///|
 /// §18.8.30 — English month name for `mmm` (abbrev) / `mmmm` (full) /
 /// `mmmmm` (single letter).  `month` is 1..12; out-of-range yields "".
 fn month_name(month : Int, run_length : Int) -> String {
@@ -7212,12 +7076,11 @@ fn vertical_text_pos(
 }
 
 ///|
-/// §18.3.1.49 / §18.18.42 — emit an empty `<g>` element whose
-/// `data-ooxml-icon` attribute carries the ST_IconSetType name and
-/// `data-ooxml-bucket` carries the §18.3.1.49 bucket index. ECMA-
-/// 376 does not specify the actual icon glyph or colour for any
-/// ST_IconSetType value, so the viewer leaves rendering to the
-/// consumer and only surfaces the spec-anchored bucket assignment.
+/// §18.3.1.49 / §18.18.42 — emit an empty metadata fallback when a cell
+/// is too small to fit the deterministic icon glyph. `data-ooxml-icon`
+/// carries the ST_IconSetType name and `data-ooxml-bucket` carries the
+/// §18.3.1.49 bucket index so a consumer can still recover the resolved
+/// assignment.
 fn render_cell_icon_metadata(
   layout : CellLayout,
   set_name : String,
@@ -8628,6 +8491,89 @@ fn svg_attr(name : String, value : String) -> @xml.Attribute {
 /// Wrap a raw string as an XML text node for SVG element content.
 fn svg_text(value : String) -> @xml.Node {
   @markup.text(value)
+}
+
+///|
+fn svg_nodes_extent(nodes : Array[@xml.Node]) -> (Double, Double) {
+  let mut max_x = 0.0
+  let mut max_y = 0.0
+  for node in nodes {
+    let (x, y) = svg_node_extent(node)
+    if x > max_x {
+      max_x = x
+    }
+    if y > max_y {
+      max_y = y
+    }
+  }
+  (max_x, max_y)
+}
+
+///|
+fn svg_node_extent(node : @xml.Node) -> (Double, Double) {
+  match node {
+    Element(element) => svg_element_extent(element)
+    _ => (0.0, 0.0)
+  }
+}
+
+///|
+fn svg_element_extent(element : @xml.Element) -> (Double, Double) {
+  let mut max_x = 0.0
+  let mut max_y = 0.0
+  match svg_attr_double(element, "x") {
+    Some(x) => {
+      let w = svg_attr_double(element, "width").unwrap_or(0.0)
+      max_x = x + w
+    }
+    None => ()
+  }
+  match svg_attr_double(element, "y") {
+    Some(y) => {
+      let h = svg_attr_double(element, "height").unwrap_or(0.0)
+      max_y = y + h
+    }
+    None => ()
+  }
+  match svg_attr_double(element, "x1") {
+    Some(x1) =>
+      match svg_attr_double(element, "x2") {
+        Some(x2) => max_x = if x1 > x2 { x1 } else { x2 }
+        None => max_x = x1
+      }
+    None => ()
+  }
+  match svg_attr_double(element, "y1") {
+    Some(y1) =>
+      match svg_attr_double(element, "y2") {
+        Some(y2) => max_y = if y1 > y2 { y1 } else { y2 }
+        None => max_y = y1
+      }
+    None => ()
+  }
+  for child in element.children {
+    let (child_x, child_y) = svg_node_extent(child)
+    if child_x > max_x {
+      max_x = child_x
+    }
+    if child_y > max_y {
+      max_y = child_y
+    }
+  }
+  (max_x, max_y)
+}
+
+///|
+fn svg_attr_double(element : @xml.Element, name : String) -> Double? {
+  match attr_value_local(element, name) {
+    Some(value) =>
+      try @string.parse_double(value) catch {
+        _ => None
+      } noraise {
+        n => Some(n)
+      }
+    None => None
+  }
 }
 
 ///|
@@ -11614,7 +11560,7 @@ fn cell_numeric_value(
         None => None
         Some(v) => {
           let raw = xml_text_content(v).trim().to_owned()
-          match parse_iso8601_date(raw) {
+          match @date_serial.parse_iso8601_date_time_opt(raw) {
             None => None
             Some(dt) =>
               try @date_serial.date_time_to_serial(dt, date_system) catch {
@@ -12165,10 +12111,10 @@ priv enum TableStyleVariant {
 /// A differential `<dxf>` writes a SOLID fill with its colour in
 /// `<bgColor>` — frequently with no `patternType` at all — unlike a
 /// regular cell `<patternFill patternType="solid">` which carries the
-/// colour in `<fgColor>`.  Both idioms are honoured: an explicit
-/// `patternType="solid"` takes `<fgColor>` (falling back to `<bgColor>`),
-/// while the differential idiom (no / non-solid `patternType`) takes
-/// `<bgColor>`.
+/// colour in `<fgColor>`. Both idioms are honoured from one resolver:
+/// explicit `patternType="solid"` takes `<fgColor>` before `<bgColor>`;
+/// the differential idiom (`patternType` absent or `none`) takes
+/// `<bgColor>` before `<fgColor>`.
 fn dxf_fill_css(dxf : @domain.CT_Dxf, theme_map : SmlThemeColorMap) -> String? {
   guard dxf.fill is Some(fill) else { return None }
   guard fill.pattern_fill is Some(pf) else { return None }
@@ -12181,10 +12127,12 @@ fn dxf_fill_css(dxf : @domain.CT_Dxf, theme_map : SmlThemeColorMap) -> String? {
     None => None
   }
   match pf.pattern_type.unwrap_or("none") {
-    // Differential solid fill (with or without an explicit
-    // `patternType="solid"`): the colour lives in `<bgColor>`; fall back
-    // to `<fgColor>` for the regular-cell idiom.
-    "solid" | "none" =>
+    "solid" =>
+      match from_fg {
+        Some(c) => Some(c)
+        None => from_bg
+      }
+    "none" =>
       match from_bg {
         Some(c) => Some(c)
         None => from_fg
@@ -12370,9 +12318,10 @@ priv struct TableMeta {
 /// when the `ref` attribute is missing or malformed (a spec-required
 /// attribute; without it the chrome cannot be positioned).
 fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
-  let ref_str = match attr_value_local(elt, "ref") {
-    None => return None
-    Some(s) => s
+  let table = @domain.CT_Table::new(elt)
+  let ref_str = table.ref_range
+  if ref_str.length() == 0 {
+    return None
   }
   let parts = ref_str.split(":").collect()
   let (start_str, end_str) = match parts.length() {
@@ -12391,52 +12340,33 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
   // §18.5.1.2 — `headerRowCount` defaults to 1, `totalsRowCount`
   // defaults to 0.  Excel writes both attributes explicitly only
   // when they deviate from the default.
-  let header_row_count = match attr_value_local(elt, "headerRowCount") {
-    Some(s) => parse_int_or(s, 1)
-    None => 1
-  }
-  let totals_row_count = match attr_value_local(elt, "totalsRowCount") {
-    Some(s) => parse_int_or(s, 0)
-    None => 0
-  }
+  let header_row_count = table.header_row_count
+  let totals_row_count = table.totals_row_count
   // §18.5.1.2 — `<autoFilter>` is an OPTIONAL child of `<table>`.
   // When present, the table's header row carries filter dropdown
   // arrows on every column inside the autoFilter's `ref` (which
   // typically equals the table's header row).
-  let mut has_auto_filter = false
-  let mut style_name : String? = None
-  let mut show_row_stripes = false
-  let mut show_column_stripes = false
-  let mut show_first_column = false
-  let mut show_last_column = false
-  for child in elt.children {
-    match child {
-      Element(c) =>
-        match c.name.local_name {
-          "autoFilter" => has_auto_filter = true
-          "tableStyleInfo" => {
-            style_name = attr_value_local(c, "name")
-            show_row_stripes = parse_xsd_boolean_or(
-              attr_value_local(c, "showRowStripes"),
-              false,
-            )
-            show_column_stripes = parse_xsd_boolean_or(
-              attr_value_local(c, "showColumnStripes"),
-              false,
-            )
-            show_first_column = parse_xsd_boolean_or(
-              attr_value_local(c, "showFirstColumn"),
-              false,
-            )
-            show_last_column = parse_xsd_boolean_or(
-              attr_value_local(c, "showLastColumn"),
-              false,
-            )
-          }
-          _ => ()
-        }
-      _ => ()
-    }
+  let has_auto_filter = table.auto_filter is Some(_)
+  let style_info = table.table_style_info
+  let style_name = match style_info {
+    Some(info) => info.name
+    None => None
+  }
+  let show_row_stripes = match style_info {
+    Some(info) => info.show_row_stripes.unwrap_or(false)
+    None => false
+  }
+  let show_column_stripes = match style_info {
+    Some(info) => info.show_column_stripes.unwrap_or(false)
+    None => false
+  }
+  let show_first_column = match style_info {
+    Some(info) => info.show_first_column.unwrap_or(false)
+    None => false
+  }
+  let show_last_column = match style_info {
+    Some(info) => info.show_last_column.unwrap_or(false)
+    None => false
   }
   Some({
     row_start,
@@ -12843,12 +12773,17 @@ fn render_table_chrome_over(
 /// is present.  `<autoFilter>` inside a `<table>` is handled
 /// separately by `render_table_chrome_over`.
 fn find_worksheet_autofilter_ref(worksheet : @xml.Element) -> String? {
+  match find_worksheet_autofilter_element(worksheet) {
+    Some(e) => attr_value_local(e, "ref")
+    None => None
+  }
+}
+
+///|
+fn find_worksheet_autofilter_element(worksheet : @xml.Element) -> @xml.Element? {
   for child in worksheet.children {
     match child {
-      Element(e) =>
-        if e.name.local_name == "autoFilter" {
-          return attr_value_local(e, "ref")
-        }
+      Element(e) => if e.name.local_name == "autoFilter" { return Some(e) }
       _ => ()
     }
   }

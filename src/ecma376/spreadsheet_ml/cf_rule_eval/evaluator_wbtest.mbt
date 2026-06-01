@@ -199,6 +199,21 @@ test "§18.18.12 top10 percent" {
 }
 
 ///|
+test "§18.18.12 population numeric rules ignore blank cells" {
+  let pop = [@formula.FormulaValue::VEmpty, n(10.0)]
+  let top1 = rule_for_test(@domain.Top10, 1, fn(base) {
+    { ..base, rank: Some(1) }
+  })
+  let below = rule_for_test(@domain.AboveAverage, 1, fn(base) {
+    { ..base, above_average: false }
+  })
+  let ctx = context(fixed_today(2026, 5, 19), no_formula())
+  assert_true(!evaluate_rule(top1, @formula.FormulaValue::VEmpty, pop, ctx))
+  assert_true(evaluate_rule(top1, n(10.0), pop, ctx))
+  assert_true(!evaluate_rule(below, @formula.FormulaValue::VEmpty, pop, ctx))
+}
+
+///|
 test "§18.18.12 aboveAverage exclusive vs inclusive" {
   let pop = [n(2.0), n(4.0), n(6.0)] // mean = 4
   let above = rule_for_test(@domain.AboveAverage, 1, fn(base) {
@@ -291,6 +306,9 @@ test "§18.3.1.16 colorScale interpolates between stops" {
   assert_eq(low.red, 0)
   let high = evaluate_color_scale(scale, n(100.0), pop).unwrap()
   assert_eq(high.red, 255)
+  assert_true(
+    evaluate_color_scale(scale, @formula.FormulaValue::VEmpty, pop) is None,
+  )
 }
 
 ///|
@@ -307,6 +325,9 @@ test "§18.3.1.28 dataBar ratio saturates outside min/max" {
     min_length: 0,
     max_length: 100,
     show_value: true,
+    axis_position: "automatic",
+    direction: "context",
+    negative_color: None,
   }
   assert_eq(evaluate_bar_ratio(bar, n(-5.0), []).unwrap(), 0.0)
   assert_eq(evaluate_bar_ratio(bar, n(200.0), []).unwrap(), 1.0)
@@ -333,6 +354,48 @@ test "§18.3.1.49 iconSet bucket forward and reverse" {
   assert_eq(evaluate_icon_bucket(icon, n(80.0), pop).unwrap(), 2)
   let reversed : @domain.CT_IconSet = { ..icon, reverse: true }
   assert_eq(evaluate_icon_bucket(reversed, n(10.0), pop).unwrap(), 2)
+}
+
+///|
+test "§18.3.1.11 cfvo gte=false uses a strict iconSet boundary" {
+  let icon : @domain.CT_IconSet = {
+    set_name: "3TrafficLights1",
+    thresholds: [
+      { kind: @domain.CfvoNum, value_text: Some("0"), gte: true },
+      { kind: @domain.CfvoNum, value_text: Some("50"), gte: false },
+      { kind: @domain.CfvoNum, value_text: Some("80"), gte: true },
+    ],
+    reverse: false,
+    show_value: true,
+    percent: false,
+  }
+  let pop = [n(0.0), n(50.0), n(100.0)]
+  assert_eq(evaluate_icon_bucket(icon, n(50.0), pop).unwrap(), 0)
+  assert_eq(evaluate_icon_bucket(icon, n(50.1), pop).unwrap(), 1)
+}
+
+///|
+test "§18.3.1.11 cfvo gte=false uses the shared bucket boundary helper" {
+  let rule = rule_for_test(@domain.ColorScale, 1, fn(base) {
+    {
+      ..base,
+      color_scale: Some({
+        thresholds: [
+          { kind: @domain.CfvoNum, value_text: Some("0"), gte: true },
+          { kind: @domain.CfvoNum, value_text: Some("50"), gte: false },
+          { kind: @domain.CfvoNum, value_text: Some("80"), gte: true },
+        ],
+        colors: [
+          @domain.CT_ColorArgb::new(255, 255, 0, 0),
+          @domain.CT_ColorArgb::new(255, 255, 255, 0),
+          @domain.CT_ColorArgb::new(255, 0, 255, 0),
+        ],
+      }),
+    }
+  })
+  let pop = [n(0.0), n(50.0), n(100.0)]
+  assert_eq(evaluate_bucket(rule, n(50.0), pop).unwrap(), 0)
+  assert_eq(evaluate_bucket(rule, n(50.1), pop).unwrap(), 1)
 }
 
 ///|

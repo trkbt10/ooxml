@@ -491,9 +491,8 @@ pub(all) struct DataFieldDef {
   base_item : Int?
   /// §18.10.1.22 @numFmtId — number format index.
   num_fmt_id : Int?
-  /// §18.10.1.22 @showDataAs — display-mode discriminator
-  /// (preserved verbatim; Phase 1 ignores it).
-  show_data_as : String?
+  /// §18.10.1.22 @showDataAs — ST_ShowDataAs display-mode discriminator.
+  show_data_as : @sml_types.ST_ShowDataAs?
 } derive(Eq, Debug)
 
 ///|
@@ -512,6 +511,38 @@ pub(all) struct PageFieldDef {
   name : String?
   /// §18.10.1.62 @cap — display caption.
   caption : String?
+} derive(Eq, Debug)
+
+///|
+/// Part 1 §18.10.1.33 filter — one PivotTable advanced filter. The
+/// child `<autoFilter>` is decoded to the shared SpreadsheetML AutoFilter
+/// domain type; PivotTable code supplies only candidate values and does
+/// not reimplement AutoFilter rule semantics.
+pub(all) struct PivotFilterDef {
+  /// §18.10.1.33 @fld — cache-field index to which the filter belongs.
+  fld : Int
+  /// §18.10.1.33 @mpFld — member-property field index for label filters.
+  mp_fld : Int?
+  /// §18.10.1.33 @type — ST_PivotFilterType lexical token.
+  type_ : String
+  /// §18.10.1.33 @evalOrder — zero-based evaluation order.
+  eval_order : Int
+  /// §18.10.1.33 @id — unique PivotTable filter id.
+  id : Int
+  /// §18.10.1.33 @iMeasureHier — OLAP measure hierarchy index.
+  i_measure_hier : Int?
+  /// §18.10.1.33 @iMeasureFld — relational value-filter measure field.
+  i_measure_fld : Int?
+  /// §18.10.1.33 @name — optional display name.
+  name : String?
+  /// §18.10.1.33 @description — optional description.
+  description : String?
+  /// §18.10.1.33 @stringValue1 — label-filter comparand.
+  string_value1 : String?
+  /// §18.10.1.33 @stringValue2 — label-filter second comparand.
+  string_value2 : String?
+  /// §18.10.1.33 autoFilter child.
+  auto_filter : @domain.CT_AutoFilter
 } derive(Eq, Debug)
 
 ///|
@@ -542,8 +573,8 @@ pub(all) struct PivotAxisItem {
 /// `col_grand_totals`, `data_on_rows`), the rectangle (`location`),
 /// the field dictionary (`pivot_fields`), the axis assignments
 /// (`row_fields`, `col_fields`), the materialized row/col tuples
-/// (`row_items`, `col_items`), the filter selection
-/// (`page_fields`), and the value-region definitions
+/// (`row_items`, `col_items`), the filter selections
+/// (`page_fields`, `filters`), and the value-region definitions
 /// (`data_fields`).
 pub(all) struct PivotTableDefinition {
   /// §18.10.1.73 @name — required PivotTable name.
@@ -575,13 +606,15 @@ pub(all) struct PivotTableDefinition {
   /// partition the columns of the result.
   col_fields : Array[Int]
   /// §18.10.1.44 rowItems child — display ordering of the row
-  /// axis tuples (renderer hint; the materializer derives its
-  /// own ordering from record insertion order).
+  /// axis tuples. The materializer expands these tuples into
+  /// `PivotMaterialization.row_keys`.
   row_items : Array[PivotAxisItem]
   /// §18.10.1.17 colItems child — same for the column axis.
   col_items : Array[PivotAxisItem]
   /// §18.10.1.63 pageFields child.
   page_fields : Array[PageFieldDef]
+  /// §18.10.1.34 filters child — advanced PivotTable filters.
+  filters : Array[PivotFilterDef]
   /// §18.10.1.23 dataFields child.
   data_fields : Array[DataFieldDef]
   /// §18.10.1.74 pivotTableStyleInfo child — the referenced table-style
@@ -697,16 +730,26 @@ pub(all) struct PivotResultCell {
 
 ///|
 /// Output of `materialize_pivot_table`. `row_keys` and `col_keys`
-/// are in insertion order; the grand-total sentinels, when
-/// requested, are appended at the end. `cells` carries one entry
-/// per `(row_keys[i], col_keys[j], data_field_index)` combination
-/// — the renderer can index into it via `find()` or scan it
-/// linearly.
+/// follow §18.10.1.44 `rowItems` / `colItems` when present, falling
+/// back to record-discovery order otherwise. `cells` carries one
+/// entry per `(row_key, col_key, data_field_index)` combination —
+/// the renderer can index into it via `find()` or scan it linearly.
 pub(all) struct PivotMaterialization {
   row_keys : Array[PivotAxisKey]
   col_keys : Array[PivotAxisKey]
   cells : Array[PivotResultCell]
   data_field_count : Int
+} derive(Eq, Debug)
+
+///|
+/// Workbook/context-facing bundle for a PivotTable after cache decoding and
+/// materialization. This package owns the bundle so formula lookup and
+/// rendering consume the same `(definition, cache, materialization)` source
+/// instead of carrying parallel viewer-only copies.
+pub(all) struct MaterializedPivotTable {
+  definition : PivotTableDefinition
+  cache : PivotCacheDefinition
+  materialization : PivotMaterialization
 } derive(Eq, Debug)
 
 ///|
@@ -721,7 +764,21 @@ pub fn PivotMaterialization::find(
   col_key : PivotAxisKey,
   data_field_index : Int,
 ) -> PivotResultCell? {
-  for cell in self.cells {
+  find_pivot_result_cell(self.cells, row_key, col_key, data_field_index)
+}
+
+///|
+/// Package-local cell lookup shared by public materialization lookup and
+/// display transforms. Keep the `(row_key, col_key, data_field_index)`
+/// identity test in one place so value rendering and formula lookup do
+/// not grow parallel match logic.
+fn find_pivot_result_cell(
+  cells : Array[PivotResultCell],
+  row_key : PivotAxisKey,
+  col_key : PivotAxisKey,
+  data_field_index : Int,
+) -> PivotResultCell? {
+  for cell in cells {
     if cell.data_field_index == data_field_index &&
       cell.row_key == row_key &&
       cell.col_key == col_key {
@@ -729,6 +786,109 @@ pub fn PivotMaterialization::find(
     }
   }
   None
+}
+
+///|
+/// §18.18.17 — return the canonical "Sum"/"Count"/… prefix used by
+/// spreadsheet applications when auto-naming a data field.
+pub fn consolidate_function_prefix(fn_ : DataConsolidateFunction) -> String {
+  match fn_ {
+    Sum => "Sum"
+    Average => "Average"
+    Count => "Count"
+    CountNums => "Count"
+    Max => "Max"
+    Min => "Min"
+    Product => "Product"
+    StdDev => "StdDev"
+    StdDevP => "StdDevp"
+    Var => "Var"
+    VarP => "Varp"
+  }
+}
+
+///|
+/// Format a double using the PivotTable renderer's General-format
+/// heuristic: drop the fractional component when the value is integral.
+pub fn format_pivot_number(value : Double) -> String {
+  if value == value.to_int().to_double() && value.abs() < 1.0e15 {
+    value.to_int().to_string()
+  } else {
+    value.to_string()
+  }
+}
+
+///|
+/// Project a shared-items value into its PivotTable display caption.
+pub fn shared_item_value_to_caption(value : SharedItemValue) -> String {
+  match value {
+    SharedString(s) => s
+    SharedNumber(n) => format_pivot_number(n)
+    SharedBool(b) => if b { "TRUE" } else { "FALSE" }
+    SharedDate(iso) => iso
+    SharedError(lit) => lit
+    SharedMissing => "(blank)"
+  }
+}
+
+///|
+/// Find the caption for a shared-items entry in cache field `field_idx`.
+pub fn PivotCacheDefinition::shared_item_caption(
+  self : PivotCacheDefinition,
+  field_idx : Int,
+  item_idx : Int,
+) -> String {
+  if field_idx < 0 || field_idx >= self.cache_fields.length() {
+    return ""
+  }
+  let items = self.cache_fields[field_idx].shared_items.items
+  if item_idx < 0 || item_idx >= items.length() {
+    return ""
+  }
+  shared_item_value_to_caption(items[item_idx])
+}
+
+///|
+/// §18.10.1.22 — display name for one data field. The `@name`
+/// attribute overrides; fallback uses the source cache field name
+/// prefixed by the consolidation function.
+pub fn data_field_display_name(
+  definition : PivotTableDefinition,
+  cache : PivotCacheDefinition,
+  data_field_index : Int,
+) -> String? {
+  if data_field_index < 0 || data_field_index >= definition.data_fields.length() {
+    return None
+  }
+  let data_field = definition.data_fields[data_field_index]
+  match data_field.name {
+    Some(name) => Some(name)
+    None => {
+      let base = if data_field.fld >= 0 &&
+        data_field.fld < cache.cache_fields.length() {
+        cache.cache_fields[data_field.fld].name
+      } else {
+        ""
+      }
+      Some(consolidate_function_prefix(data_field.subtotal) + " of " + base)
+    }
+  }
+}
+
+///|
+/// §18.10.1.22 — collect display names for every data field.
+pub fn data_field_display_names(
+  definition : PivotTableDefinition,
+  cache : PivotCacheDefinition,
+) -> Array[String] {
+  let names : Array[String] = []
+  for idx in 0..<definition.data_fields.length() {
+    match data_field_display_name(definition, cache, idx) {
+      Some(name) => names.push(name)
+      None => ()
+    }
+  }
+  names
 }
 
 ///|

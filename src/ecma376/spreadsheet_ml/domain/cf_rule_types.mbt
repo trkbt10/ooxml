@@ -178,12 +178,11 @@ pub(all) struct CT_ColorScale {
 /// thresholds (min/max cfvo pair) plus bar fill color. The spec
 /// also defines several `@*Color`, `@axisPosition`, `@direction`,
 /// `@showValue`, `@minLength`, `@maxLength`, `@gradient`,
-/// `@border` attributes; the viewer surfaces these via the raw
-/// `element` until a typed projection is wired in.
+/// `@border` attributes; supported display metadata is projected
+/// into typed fields here so renderers do not parse a second copy.
 pub(all) struct CT_DataBar {
-  /// Source element preserved so renderers can read any §18.3.1.28
-  /// attributes still surfaced raw (negativeFillColor / axisPosition /
-  /// direction / gradient / border — the 2010 extension set).
+  /// Source element preserved for extension consumers. Runtime
+  /// evaluation/rendering must use the typed fields below.
   element : @xml.Element
   min_threshold : CT_Cfvo
   max_threshold : CT_Cfvo
@@ -195,6 +194,12 @@ pub(all) struct CT_DataBar {
   /// @showValue (xsd:boolean) — draw the cell value over the bar;
   /// default true.
   show_value : Bool
+  /// @axisPosition — axis placement metadata; default automatic.
+  axis_position : String
+  /// @direction — bar direction metadata; default context.
+  direction : String
+  /// <negativeFillColor> / legacy <a:srgbClr> — negative bar colour.
+  negative_color : CT_ColorArgb?
 } derive(Eq, Debug)
 
 ///|

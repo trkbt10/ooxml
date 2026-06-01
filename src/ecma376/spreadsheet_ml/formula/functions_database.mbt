@@ -14,19 +14,21 @@ fn register_builtin_database_functions(registry : FunctionRegistry) -> Unit {
   registry.register("DVARP", Lazy(fn_dvarp))
   registry.register("TRANSPOSE", Eager(fn_transpose))
   registry.register("HYPERLINK", Eager(fn_hyperlink))
-  registry.register("GETPIVOTDATA", Eager(fn_getpivotdata))
+  registry.register("GETPIVOTDATA", Lazy(fn_getpivotdata))
   registry.register("RTD", Eager(fn_rtd))
   registry.register("CELL", Lazy(fn_cell))
   registry.register("INFO", Eager(fn_info))
   registry.register("ISREF", Lazy(fn_isref))
-  // Cube functions — OLAP server dependent, return #N/A
-  registry.register("CUBEKPIMEMBER", Eager(fn_cube_stub))
-  registry.register("CUBEMEMBER", Eager(fn_cube_stub))
-  registry.register("CUBEMEMBERPROPERTY", Eager(fn_cube_stub))
-  registry.register("CUBERANKEDMEMBER", Eager(fn_cube_stub))
-  registry.register("CUBESET", Eager(fn_cube_stub))
-  registry.register("CUBESETCOUNT", Eager(fn_cube_stub))
-  registry.register("CUBEVALUE", Eager(fn_cube_stub))
+  // Cube functions depend on an external OLAP connection; the evaluator
+  // still validates each function's SpreadsheetML argument contract before
+  // returning the spec-compatible unavailable result.
+  registry.register("CUBEKPIMEMBER", Eager(fn_cubekpimember))
+  registry.register("CUBEMEMBER", Eager(fn_cubemember))
+  registry.register("CUBEMEMBERPROPERTY", Eager(fn_cubememberproperty))
+  registry.register("CUBERANKEDMEMBER", Eager(fn_cuberankedmember))
+  registry.register("CUBESET", Eager(fn_cubeset))
+  registry.register("CUBESETCOUNT", Eager(fn_cubesetcount))
+  registry.register("CUBEVALUE", Eager(fn_cubevalue))
 }
 
 ///|
@@ -348,11 +350,48 @@ fn fn_hyperlink(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue 
 }
 
 ///|
-fn fn_getpivotdata(
-  _args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
-  VError(Ref)
+fn fn_getpivotdata(args : Array[FormulaAst], ctx : EvalContext) -> FormulaValue {
+  // §18.17.7 GETPIVOTDATA(data_field, pivot_table, field/item pairs...)
+  // requires at least the data-field and pivot-table reference, followed
+  // by zero or more complete field/item pairs. Registered as `Lazy` so the
+  // second argument remains a reference: eager evaluation would collapse
+  // `A3` into the cell value and lose the PivotTable anchor.
+  if args.length() < 2 || args.length() % 2 != 0 {
+    return VError(Value)
+  }
+  let data_field = match getpivotdata_text_argument(evaluate(args[0], ctx)) {
+    VString(value) => value
+    VError(err) => return VError(err)
+    _ => return VError(Value)
+  }
+  let anchor = match getpivotdata_anchor(args[1], ctx) {
+    Some(value) => value
+    None =>
+      match evaluate(args[1], ctx).first_error() {
+        Some(err) => return VError(err)
+        None => return VError(Ref)
+      }
+  }
+  let filters : Array[GetPivotDataFilter] = []
+  let mut idx = 2
+  while idx < args.length() {
+    let field = match getpivotdata_text_argument(evaluate(args[idx], ctx)) {
+      VString(value) => value
+      VError(err) => return VError(err)
+      _ => return VError(Value)
+    }
+    let item = match getpivotdata_text_argument(evaluate(args[idx + 1], ctx)) {
+      VString(value) => value
+      VError(err) => return VError(err)
+      _ => return VError(Value)
+    }
+    filters.push({ field, item })
+    idx = idx + 2
+  }
+  match (ctx.resolve_pivot_data)({ data_field, anchor, filters }) {
+    Some(value) => value
+    None => VError(Ref)
+  }
 }
 
 ///|
@@ -361,11 +400,153 @@ fn fn_rtd(_args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
 }
 
 ///|
-fn fn_cube_stub(
-  _args : Array[FormulaValue],
+fn getpivotdata_text_argument(value : FormulaValue) -> FormulaValue {
+  match value.first_error() {
+    Some(err) => VError(err)
+    None => coerce_to_text(value.first_scalar())
+  }
+}
+
+///|
+fn getpivotdata_anchor(
+  ast : FormulaAst,
+  ctx : EvalContext,
+) -> @address.CellAddress? {
+  match reference_rect_from_ast(ast, ctx) {
+    Some(rect) =>
+      Some({
+        col_zero_based: rect.start_col,
+        row_zero_based: rect.start_row,
+        col_absolute: true,
+        row_absolute: true,
+        sheet: rect.sheet,
+      })
+    None => None
+  }
+}
+
+///|
+fn fn_cubekpimember(
+  args : Array[FormulaValue],
   _ctx : EvalContext,
 ) -> FormulaValue {
+  match cube_validate_arity(args, 3, 4) {
+    Some(err) => return VError(err)
+    None => ()
+  }
+  match args[2].first_scalar() {
+    VNumber(n) =>
+      if !formula_is_integer(n) || n < 1.0 || n > 6.0 {
+        return VError(Value)
+      }
+    _ => return VError(Value)
+  }
   VError(NotApplicable)
+}
+
+///|
+fn fn_cubemember(
+  args : Array[FormulaValue],
+  _ctx : EvalContext,
+) -> FormulaValue {
+  cube_unavailable_after_arity(args, 2, 3)
+}
+
+///|
+fn fn_cubememberproperty(
+  args : Array[FormulaValue],
+  _ctx : EvalContext,
+) -> FormulaValue {
+  cube_unavailable_after_arity(args, 3, 3)
+}
+
+///|
+fn fn_cuberankedmember(
+  args : Array[FormulaValue],
+  _ctx : EvalContext,
+) -> FormulaValue {
+  match cube_validate_arity(args, 3, 4) {
+    Some(err) => return VError(err)
+    None => ()
+  }
+  match args[2].first_scalar() {
+    VNumber(n) => if !formula_is_integer(n) || n < 1.0 { return VError(Value) }
+    _ => return VError(Value)
+  }
+  VError(NotApplicable)
+}
+
+///|
+fn fn_cubeset(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
+  match cube_validate_arity(args, 2, 5) {
+    Some(err) => return VError(err)
+    None => ()
+  }
+  if args.length() >= 4 {
+    let sort_order = match args[3].first_scalar() {
+      VNumber(n) => n
+      _ => return VError(Value)
+    }
+    // §18.17.7 CUBESET — a non-zero sort_order requires sort_by.
+    if sort_order != 0.0 && args.length() < 5 {
+      return VError(Value)
+    }
+  }
+  VError(NotApplicable)
+}
+
+///|
+fn fn_cubesetcount(
+  args : Array[FormulaValue],
+  _ctx : EvalContext,
+) -> FormulaValue {
+  cube_unavailable_after_arity(args, 1, 1)
+}
+
+///|
+fn fn_cubevalue(args : Array[FormulaValue], _ctx : EvalContext) -> FormulaValue {
+  cube_unavailable_after_arity(args, 1, -1)
+}
+
+///|
+fn cube_unavailable_after_arity(
+  args : Array[FormulaValue],
+  min_args : Int,
+  max_args : Int,
+) -> FormulaValue {
+  match cube_validate_arity(args, min_args, max_args) {
+    Some(err) => VError(err)
+    None => VError(NotApplicable)
+  }
+}
+
+///|
+fn cube_validate_arity(
+  args : Array[FormulaValue],
+  min_args : Int,
+  max_args : Int,
+) -> FormulaError? {
+  match first_formula_error(args) {
+    Some(err) => return Some(err)
+    None => ()
+  }
+  if args.length() < min_args {
+    return Some(Value)
+  }
+  if max_args >= 0 && args.length() > max_args {
+    return Some(Value)
+  }
+  None
+}
+
+///|
+fn first_formula_error(args : Array[FormulaValue]) -> FormulaError? {
+  for arg in args {
+    if arg.first_error() is Some(err) {
+      return Some(err)
+    }
+  }
+  None
 }
 
 ///|

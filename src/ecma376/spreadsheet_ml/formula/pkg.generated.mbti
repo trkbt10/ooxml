@@ -23,6 +23,8 @@ pub fn evaluate_cell(WorksheetSnapshot, @address.CellAddress) -> FormulaValue
 
 pub fn evaluate_sheet(WorksheetSnapshot) -> @hashmap.HashMap[String, FormulaValue]
 
+pub fn evaluate_sheet_with_pivot_data(WorksheetSnapshot, (GetPivotDataRequest) -> FormulaValue?) -> @hashmap.HashMap[String, FormulaValue]
+
 pub fn expand_shared_formula(@address.CellAddress, FormulaAst, @address.CellAddress) -> FormulaAst
 
 pub fn expand_shared_formula_text(@address.CellAddress, String, @address.CellAddress) -> FormulaAst raise @errors.SchemaViolation
@@ -68,6 +70,7 @@ pub(all) struct EvalContext {
   registry : FunctionRegistry
   resolve_cell : (@address.CellAddress) -> FormulaValue
   resolve_name : (String) -> FormulaAst?
+  resolve_pivot_data : (GetPivotDataRequest) -> FormulaValue?
 }
 
 pub(all) enum FormulaAst {
@@ -142,6 +145,17 @@ pub(all) struct FunctionRegistry {
 pub fn FunctionRegistry::lookup(Self, String) -> FunctionDef?
 pub fn FunctionRegistry::new() -> Self
 pub fn FunctionRegistry::register(Self, String, FunctionDef) -> Unit
+
+pub(all) struct GetPivotDataFilter {
+  field : String
+  item : String
+} derive(Eq, @debug.Debug)
+
+pub(all) struct GetPivotDataRequest {
+  data_field : String
+  anchor : @address.CellAddress
+  filters : Array[GetPivotDataFilter]
+} derive(Eq, @debug.Debug)
 
 pub(all) enum LiteralValue {
   LitNumber(Double)

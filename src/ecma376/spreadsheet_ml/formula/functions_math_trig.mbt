@@ -716,206 +716,23 @@ fn fn_subtotal(args : Array[FormulaValue], ctx : EvalContext) -> FormulaValue {
         sub_args.push(args[i])
       }
       match fn_num {
-        1 | 101 => fn_subtotal_average(sub_args, ctx)
-        2 | 102 => fn_subtotal_count(sub_args, ctx)
-        3 | 103 => fn_subtotal_counta(sub_args, ctx)
-        4 | 104 => fn_subtotal_max(sub_args, ctx)
-        5 | 105 => fn_subtotal_min(sub_args, ctx)
-        6 | 106 => fn_subtotal_product(sub_args, ctx)
-        7 | 107 => fn_subtotal_stdev(sub_args, ctx)
-        9 | 109 => fn_subtotal_sum(sub_args, ctx)
-        10 | 110 => fn_subtotal_var(sub_args, ctx)
-        11 | 111 => fn_subtotal_count(sub_args, ctx)
+        1 | 101 => fn_average(sub_args, ctx)
+        2 | 102 => fn_count(sub_args, ctx)
+        3 | 103 => fn_counta(sub_args, ctx)
+        4 | 104 => fn_max(sub_args, ctx)
+        5 | 105 => fn_min(sub_args, ctx)
+        6 | 106 => fn_product(sub_args, ctx)
+        7 | 107 => fn_stdev(sub_args, ctx)
+        8 | 108 => fn_stdevp(sub_args, ctx)
+        9 | 109 => fn_sum(sub_args, ctx)
+        10 | 110 => fn_var(sub_args, ctx)
+        11 | 111 => fn_varp(sub_args, ctx)
         _ => VError(Value)
       }
     }
     VError(e) => VError(e)
     _ => VError(Value)
   }
-}
-
-///|
-fn fn_subtotal_sum(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  let mut total = 0.0
-  for arg in args {
-    match coerce_to_number(arg.first_scalar(), ctx.date_system) {
-      VNumber(n) => total = total + n
-      VError(e) => return VError(e)
-      _ => ()
-    }
-  }
-  VNumber(total)
-}
-
-///|
-fn fn_subtotal_count(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
-  let mut count = 0
-  for arg in args {
-    match arg.first_scalar() {
-      VNumber(_) => count = count + 1
-      _ => ()
-    }
-  }
-  VNumber(count.to_double())
-}
-
-///|
-fn fn_subtotal_counta(
-  args : Array[FormulaValue],
-  _ctx : EvalContext,
-) -> FormulaValue {
-  let mut count = 0
-  for arg in args {
-    match arg.first_scalar() {
-      VEmpty => ()
-      _ => count = count + 1
-    }
-  }
-  VNumber(count.to_double())
-}
-
-///|
-fn fn_subtotal_average(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  let mut total = 0.0
-  let mut count = 0
-  for arg in args {
-    match coerce_to_number(arg.first_scalar(), ctx.date_system) {
-      VNumber(n) => {
-        total = total + n
-        count = count + 1
-      }
-      VError(e) => return VError(e)
-      _ => ()
-    }
-  }
-  if count == 0 {
-    VError(DivZero)
-  } else {
-    VNumber(total / count.to_double())
-  }
-}
-
-///|
-fn fn_subtotal_max(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  let mut result = -1.0 / 0.0
-  for arg in args {
-    match coerce_to_number(arg.first_scalar(), ctx.date_system) {
-      VNumber(n) => if n > result { result = n }
-      VError(e) => return VError(e)
-      _ => ()
-    }
-  }
-  if result.is_inf() {
-    VNumber(0.0)
-  } else {
-    VNumber(result)
-  }
-}
-
-///|
-fn fn_subtotal_min(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  let mut result = 1.0 / 0.0
-  for arg in args {
-    match coerce_to_number(arg.first_scalar(), ctx.date_system) {
-      VNumber(n) => if n < result { result = n }
-      VError(e) => return VError(e)
-      _ => ()
-    }
-  }
-  if result.is_inf() {
-    VNumber(0.0)
-  } else {
-    VNumber(result)
-  }
-}
-
-///|
-fn fn_subtotal_product(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  let mut result = 1.0
-  for arg in args {
-    match coerce_to_number(arg.first_scalar(), ctx.date_system) {
-      VNumber(n) => result = result * n
-      VError(e) => return VError(e)
-      _ => ()
-    }
-  }
-  VNumber(result)
-}
-
-///|
-fn fn_subtotal_stdev(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  let values : Array[Double] = []
-  for arg in args {
-    match coerce_to_number(arg.first_scalar(), ctx.date_system) {
-      VNumber(n) => values.push(n)
-      VError(e) => return VError(e)
-      _ => ()
-    }
-  }
-  if values.length() < 2 {
-    return VError(DivZero)
-  }
-  let mut sum = 0.0
-  for v in values {
-    sum = sum + v
-  }
-  let mean = sum / values.length().to_double()
-  let mut ss = 0.0
-  for v in values {
-    let d = v - mean
-    ss = ss + d * d
-  }
-  checked_number((ss / (values.length() - 1).to_double()).sqrt())
-}
-
-///|
-fn fn_subtotal_var(
-  args : Array[FormulaValue],
-  ctx : EvalContext,
-) -> FormulaValue {
-  let values : Array[Double] = []
-  for arg in args {
-    match coerce_to_number(arg.first_scalar(), ctx.date_system) {
-      VNumber(n) => values.push(n)
-      VError(e) => return VError(e)
-      _ => ()
-    }
-  }
-  if values.length() < 2 {
-    return VError(DivZero)
-  }
-  let mut sum = 0.0
-  for v in values {
-    sum = sum + v
-  }
-  let mean = sum / values.length().to_double()
-  let mut ss = 0.0
-  for v in values {
-    let d = v - mean
-    ss = ss + d * d
-  }
-  VNumber(ss / (values.length() - 1).to_double())
 }
 
 // ---------------------------------------------------------------------------

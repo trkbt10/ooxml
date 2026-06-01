@@ -62,11 +62,106 @@ test "CT_Table projects name / ref / header counts and columns" {
       inspect(tc.columns[0].name, content="Region")
       inspect(tc.columns[1].name, content="Sales")
       match tc.columns[1].calculated_column_formula {
-        Some(f) => inspect(f, content="SUM(1)")
+        Some(f) => {
+          inspect(f.formula, content="SUM(1)")
+          inspect(f.array, content="false")
+        }
         None => fail("expected calculatedColumnFormula on column 2")
       }
     }
     None => fail("expected typed tableColumns projection")
+  }
+}
+
+///|
+test "CT_TableFormula preserves array flag and totals formula" {
+  let col = @xml.Node::Element(
+    tbl_elem("tableColumn", [tbl_attr("id", "1"), tbl_attr("name", "Sales")], [
+      @xml.Node::Element(
+        tbl_elem("calculatedColumnFormula", [tbl_attr("array", "1")], [
+          @xml.Node::Text("SUM([@Sales])"),
+        ]),
+      ),
+      @xml.Node::Element(
+        tbl_elem("totalsRowFormula", [], [
+          @xml.Node::Text("SUBTOTAL(109,[Sales])"),
+        ]),
+      ),
+    ]),
+  )
+  let columns = @xml.Node::Element(
+    tbl_elem("tableColumns", [tbl_attr("count", "1")], [col]),
+  )
+  let table = CT_Table::new(
+    tbl_elem(
+      "table",
+      [
+        tbl_attr("id", "1"),
+        tbl_attr("name", "Table1"),
+        tbl_attr("ref", "A1:A4"),
+      ],
+      [columns],
+    ),
+  )
+  match table.table_columns {
+    Some(cols) => {
+      match cols.columns[0].calculated_column_formula {
+        Some(formula) => {
+          inspect(formula.formula, content="SUM([@Sales])")
+          inspect(formula.array, content="true")
+        }
+        None => fail("expected typed calculated formula")
+      }
+      match cols.columns[0].totals_row_formula {
+        Some(formula) => {
+          inspect(formula.formula, content="SUBTOTAL(109,[Sales])")
+          inspect(formula.array, content="false")
+        }
+        None => fail("expected typed totals formula")
+      }
+    }
+    None => fail("expected table columns")
+  }
+}
+
+///|
+test "CT_Table projects tableStyleInfo through typed style info" {
+  let style = @xml.Node::Element(
+    tbl_elem(
+      "tableStyleInfo",
+      [
+        tbl_attr("name", "TableStyleMedium2"),
+        tbl_attr("showRowStripes", "1"),
+        tbl_attr("showColumnStripes", "0"),
+        tbl_attr("showFirstColumn", "true"),
+        tbl_attr("showLastColumn", "false"),
+      ],
+      [],
+    ),
+  )
+  let table = CT_Table::new(
+    tbl_elem(
+      "table",
+      [
+        tbl_attr("id", "1"),
+        tbl_attr("name", "Table1"),
+        tbl_attr("ref", "A1:B4"),
+      ],
+      [style],
+    ),
+  )
+  match table.table_style_info {
+    Some(info) => {
+      match info.name {
+        Some(name) => inspect(name, content="TableStyleMedium2")
+        None => fail("expected table style name")
+      }
+      assert_true(info.show_row_stripes == Some(true))
+      assert_true(info.show_column_stripes == Some(false))
+      assert_true(info.show_first_column == Some(true))
+      assert_true(info.show_last_column == Some(false))
+    }
+    None => fail("expected typed tableStyleInfo")
   }
 }
 

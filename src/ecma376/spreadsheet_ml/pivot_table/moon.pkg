@@ -13,9 +13,11 @@ import {
   "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/xml",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/autofilter",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/formula",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml" @sml_types,
 }
 
 import {

@@ -5,13 +5,13 @@
 // aggregate) but the SVG renderer never visited the output until now.
 // This file adds:
 //
-//   * `SheetPivot` — the bundle of (definition + cache + records +
-//     materialization) the SML facade (`Workbook::to_svg`) hands to
-//     `render_svg`. The materialization is computed once at facade
-//     time so this file only needs to deal with display.
+//   * `@pivot_table.MaterializedPivotTable` — the bundle of
+//     (definition + cache + materialization) the SML facade
+//     (`Workbook::to_svg`) hands to `render_svg`. The materialization
+//     is computed once at facade time so this file only needs display.
 //
-//   * `render_pivot_overlay` — given the sheet layout and a `SheetPivot`,
-//     emits an `<g class="pivot-table">` rooted at the pivot's
+//   * `render_pivot_overlay` — given the sheet layout and a materialized
+//     pivot, emits an `<g class="pivot-table">` rooted at the pivot's
 //     `<location/@ref>` rectangle, painted on top of the empty cell
 //     grid the worksheet itself produces. Every cell is an `@xml`
 //     element tree built with the same `svg_elem` / `svg_attr` helpers
@@ -27,9 +27,10 @@
 //     double border on top and left (§18.10.1.73 overall grand).
 //
 // Implemented beyond the basic grid:
-//   * `<calculatedFields>` (§18.10.1.3) — each calculated-field cell is
-//     derived by applying the field's formula to the SUMMED operands of
-//     that cell (the documented calc-field semantics); see
+//   * Calculated cache fields (§18.10.1.3 `<cacheField @formula>`) —
+//     each calculated-field cell is derived by applying the field's
+//     formula to the SUMMED operands of that cell (the documented
+//     calc-field semantics); see
 //     `pivot_table/calc_fields.mbt`.
 //   * Multi-level ROW and COLUMN groupings render tabular — one leading
 //     column per row field / one header row per column field — with
@@ -60,19 +61,6 @@
 //     indentation style differs.
 
 ///|
-/// One pivot table the facade discovered for the current worksheet,
-/// ready for the renderer. Bundles the typed definition (carries the
-/// `<location/@ref>` rectangle and the field captions), the cache
-/// (for cache-field captions + shared items used to label row/col
-/// keys), and the materialization (the actual row × col × dataField
-/// grid the renderer paints).
-pub(all) struct SheetPivot {
-  definition : @pivot_table.PivotTableDefinition
-  cache : @pivot_table.PivotCacheDefinition
-  materialization : @pivot_table.PivotMaterialization
-}
-
-///|
 /// §18.10.1.73 — paint one pivot table over the worksheet cell grid.
 /// The pivot's `<location/@ref>` selects the top-left cell; the
 /// renderer extends the painted region across `header_cols` axis
@@ -82,11 +70,11 @@ pub(all) struct SheetPivot {
 /// against the reference renderer which auto-extends the printable
 /// region to cover the pivot, so the renderer mirrors that.
 fn render_pivot_overlay(
-  pivot : SheetPivot,
+  pivot : @pivot_table.MaterializedPivotTable,
   layout : SheetLayout,
   options : SheetRenderOptions,
   cf_blocks : Array[@domain.CT_ConditionalFormatting],
-  cf_stats : Array[PopulationStats],
+  cf_stats : Array[CfRulePopulation],
   styles : @domain.CT_Stylesheet?,
   shared_strings : @domain.CT_Sst?,
   theme_map : SmlThemeColorMap,
@@ -108,6 +96,12 @@ fn render_pivot_overlay(
   let data_field_count = pivot.materialization.data_field_count
   if row_keys.length() == 0 || col_keys.length() == 0 || data_field_count == 0 {
     return []
+  }
+  if pivot.definition.data_on_rows && data_field_count > 1 {
+    return render_pivot_overlay_data_on_rows(
+      pivot, layout, options, cf_blocks, cf_stats, styles, shared_strings, theme_map,
+      start_col, start_row, row_keys, col_keys, data_field_count,
+    )
   }
   // Captions for each row / column axis position.
   let row_axis_caps = pivot_axis_captions(
@@ -492,6 +486,335 @@ fn render_pivot_overlay(
     }
   }
   // ---- 5. Outer border around the entire pivot region.
+  push_pivot_outer_border(nodes, xs, ys, ws, hs)
+  [svg_elem("g", pivot_group_attrs(pivot), nodes)]
+}
+
+///|
+/// §18.10.1.73 @dataOnRows — when multiple data fields are placed
+/// on the row axis, the materialized values remain addressed by
+/// `(row_key, col_key, data_field_index)`; only the display projection
+/// changes. This renderer branch keeps all value lookup through the
+/// same `PivotMaterialization` SoT and expands each row key into one
+/// visible row per data field.
+fn render_pivot_overlay_data_on_rows(
+  pivot : @pivot_table.MaterializedPivotTable,
+  layout : SheetLayout,
+  options : SheetRenderOptions,
+  cf_blocks : Array[@domain.CT_ConditionalFormatting],
+  cf_stats : Array[CfRulePopulation],
+  styles : @domain.CT_Stylesheet?,
+  shared_strings : @domain.CT_Sst?,
+  theme_map : SmlThemeColorMap,
+  start_col : Int,
+  start_row : Int,
+  row_keys : Array[@pivot_table.PivotAxisKey],
+  col_keys : Array[@pivot_table.PivotAxisKey],
+  data_field_count : Int,
+) -> Array[@xml.Node] {
+  let row_slots = pivot_data_on_rows_slots(pivot.definition.row_fields)
+  let row_axis_caps = pivot_axis_slot_captions(
+    pivot.cache,
+    pivot.definition,
+    row_slots,
+  )
+  let row_axis_count = row_slots.length()
+  let real_row_positions = pivot_axis_real_positions(
+    pivot.definition.row_fields,
+  )
+  let col_axis_caps = pivot_axis_captions(
+    pivot.cache,
+    pivot.definition,
+    pivot.definition.col_fields,
+  )
+  let col_axis_count = col_axis_caps.length()
+  let row_field_labels = pivot_axis_key_field_labels(
+    row_keys,
+    pivot,
+    pivot.definition.row_fields,
+  )
+  let col_labels = pivot_axis_key_labels(
+    col_keys,
+    pivot,
+    pivot.definition.col_fields,
+  )
+  let col_field_labels = pivot_axis_key_field_labels(
+    col_keys,
+    pivot,
+    pivot.definition.col_fields,
+  )
+  let data_field_names = pivot_data_field_names(pivot)
+  let leading_cols = if row_axis_count == 0 { 1 } else { row_axis_count }
+  let leading_rows = if col_axis_count == 0 { 1 } else { col_axis_count }
+  let value_cols = col_keys.length()
+  let total_cols = leading_cols + value_cols
+  let total_rows = leading_rows + row_keys.length() * data_field_count
+  let xs : Array[Double] = []
+  let ws : Array[Double] = []
+  for ci in 0..<total_cols {
+    let absolute_col = start_col + ci
+    let (x, w) = pivot_column_geometry(layout, options, absolute_col)
+    xs.push(x)
+    ws.push(w)
+  }
+  let ys : Array[Double] = []
+  let hs : Array[Double] = []
+  for ri in 0..<total_rows {
+    let absolute_row = start_row + ri
+    let (y, h) = pivot_row_geometry(layout, options, absolute_row)
+    ys.push(y)
+    hs.push(h)
+  }
+  let row_grand_idx = pivot_grand_index(row_keys)
+  let col_grand_idx = pivot_grand_index(col_keys)
+  let nodes : Array[@xml.Node] = []
+  for ax in 0..<col_axis_count {
+    nodes.push(
+      pivot_cell(
+        xs[leading_cols - 1],
+        ys[ax],
+        ws[leading_cols - 1],
+        hs[ax],
+        col_axis_caps[ax],
+        options,
+        true,
+        false,
+        false,
+        false,
+      ),
+    )
+  }
+  let label_row = leading_rows - 1
+  if col_axis_count >= 2 {
+    for f in 0..<col_axis_count {
+      for ci in 0..<col_keys.length() {
+        let base_col = leading_cols + ci
+        let is_grand = match col_grand_idx {
+          Some(g) => g == ci
+          None => false
+        }
+        let fields = col_field_labels[ci]
+        let label = if is_grand {
+          if f == 0 {
+            "Grand Total"
+          } else {
+            ""
+          }
+        } else if f < fields.length() {
+          fields[f]
+        } else {
+          ""
+        }
+        let collapsed = if is_grand || ci == 0 {
+          false
+        } else if (match col_grand_idx {
+            Some(g) => g == ci - 1
+            None => false
+          }) {
+          false
+        } else {
+          let pf = col_field_labels[ci - 1]
+          let mut same = true
+          for k in 0..<=f {
+            let a = if k < fields.length() { fields[k] } else { "" }
+            let b = if k < pf.length() { pf[k] } else { "" }
+            if a != b {
+              same = false
+              break
+            }
+          }
+          same
+        }
+        nodes.push(
+          pivot_cell(
+            xs[base_col],
+            ys[f],
+            ws[base_col],
+            hs[f],
+            if collapsed {
+              ""
+            } else {
+              label
+            },
+            options,
+            true,
+            false,
+            is_grand,
+            false,
+          ),
+        )
+      }
+    }
+  } else {
+    for ci in 0..<col_keys.length() {
+      let base_col = leading_cols + ci
+      let is_grand = match col_grand_idx {
+        Some(g) => g == ci
+        None => false
+      }
+      nodes.push(
+        pivot_cell(
+          xs[base_col],
+          ys[label_row],
+          ws[base_col],
+          hs[label_row],
+          col_labels[ci],
+          options,
+          true,
+          false,
+          is_grand,
+          false,
+        ),
+      )
+    }
+  }
+  for ax in 0..<row_axis_count {
+    nodes.push(
+      pivot_cell(
+        xs[ax],
+        ys[label_row],
+        ws[ax],
+        hs[label_row],
+        row_axis_caps[ax],
+        options,
+        true,
+        false,
+        false,
+        false,
+      ),
+    )
+  }
+  let body_top = leading_rows
+  for ri in 0..<row_keys.length() {
+    let is_row_grand = match row_grand_idx {
+      Some(g) => g == ri
+      None => false
+    }
+    let fields = row_field_labels[ri]
+    let prev = if ri > 0 { Some(row_field_labels[ri - 1]) } else { None }
+    for d in 0..<data_field_count {
+      let grid_row = body_top + ri * data_field_count + d
+      let row_y = ys[grid_row]
+      let row_h = hs[grid_row]
+      for slot_idx in 0..<leading_cols {
+        let slot = row_slots[slot_idx]
+        let label = if slot == -2 {
+          data_field_names[d]
+        } else if is_row_grand {
+          if slot_idx == 0 && d == 0 {
+            "Grand Total"
+          } else {
+            ""
+          }
+        } else if d > 0 {
+          ""
+        } else {
+          match pivot_axis_slot_ordinal(real_row_positions, slot) {
+            Some(real_idx) =>
+              if real_idx < fields.length() {
+                let collapsed = match prev {
+                  Some(pf) => {
+                    let mut same = true
+                    for k in 0..<=real_idx {
+                      let a = if k < fields.length() { fields[k] } else { "" }
+                      let b = if k < pf.length() { pf[k] } else { "" }
+                      if a != b {
+                        same = false
+                        break
+                      }
+                    }
+                    same
+                  }
+                  None => false
+                }
+                if collapsed {
+                  ""
+                } else {
+                  fields[real_idx]
+                }
+              } else {
+                ""
+              }
+            None => ""
+          }
+        }
+        let top_border = is_row_grand && d == 0
+        nodes.push(
+          pivot_cell(
+            xs[slot_idx],
+            row_y,
+            ws[slot_idx],
+            row_h,
+            label,
+            options,
+            is_row_grand || slot == -2,
+            top_border,
+            false,
+            false,
+          ),
+        )
+      }
+      for ci in 0..<col_keys.length() {
+        let base_col = leading_cols + ci
+        let is_col_grand = match col_grand_idx {
+          Some(g) => g == ci
+          None => false
+        }
+        let found = pivot.materialization.find(row_keys[ri], col_keys[ci], d)
+        let cell_value = match found {
+          Some(rc) => format_pivot_value(rc.aggregated_value)
+          None => ""
+        }
+        let bold = is_row_grand || is_col_grand
+        let top_border = is_row_grand && d == 0
+        let left_border = is_col_grand
+        let overall = is_row_grand && is_col_grand
+        let (cf_fill, cf_text) = match found {
+          Some(rc) =>
+            pivot_value_cf_style(
+              start_row + grid_row,
+              start_col + base_col,
+              rc.aggregated_value,
+              options,
+              cf_blocks,
+              cf_stats,
+              styles,
+              shared_strings,
+              theme_map,
+            )
+          None => (None, "#000000")
+        }
+        nodes.push(
+          pivot_cell(
+            xs[base_col],
+            row_y,
+            ws[base_col],
+            row_h,
+            cell_value,
+            options,
+            bold,
+            top_border,
+            left_border,
+            overall,
+            fill_override=cf_fill,
+            text_color=cf_text,
+          ),
+        )
+      }
+    }
+  }
+  push_pivot_outer_border(nodes, xs, ys, ws, hs)
+  [svg_elem("g", pivot_group_attrs(pivot), nodes)]
+}
+
+///|
+fn push_pivot_outer_border(
+  nodes : Array[@xml.Node],
+  xs : Array[Double],
+  ys : Array[Double],
+  ws : Array[Double],
+  hs : Array[Double],
+) -> Unit {
   let pivot_x = xs[0]
   let pivot_y = ys[0]
   let pivot_w = {
@@ -523,6 +846,12 @@ fn render_pivot_overlay(
       [],
     ),
   )
+}
+
+///|
+fn pivot_group_attrs(
+  pivot : @pivot_table.MaterializedPivotTable,
+) -> Array[@xml.Attribute] {
   // §18.10.1.74 pivotTableStyleInfo — the built-in table-style colours
   // (`PivotStyleMedium9`, …) are application-defined and not carried in
   // the file, so surface the style name + band/header toggles as
@@ -574,7 +903,7 @@ fn render_pivot_overlay(
       )
     }
   }
-  [svg_elem("g", group_attrs, nodes)]
+  group_attrs
 }
 
 ///|
@@ -596,7 +925,7 @@ fn pivot_value_cf_style(
   value : @formula.FormulaValue,
   options : SheetRenderOptions,
   cf_blocks : Array[@domain.CT_ConditionalFormatting],
-  cf_stats : Array[PopulationStats],
+  cf_stats : Array[CfRulePopulation],
   styles : @domain.CT_Stylesheet?,
   shared_strings : @domain.CT_Sst?,
   theme_map : SmlThemeColorMap,
@@ -831,29 +1160,52 @@ fn pivot_row_geometry(
 }
 
 ///|
-/// §18.10.1.73 — collect the captions for the axis (rowFields /
-/// colFields) cacheField indices. The sentinel `-2` denotes the
-/// data-field pseudo-position; it appears in
-/// `(dataCaption|"Values")` and is included in the caption list so
-/// the renderer can label that band on the corner header.
-fn pivot_axis_captions(
-  cache : @pivot_table.PivotCacheDefinition,
-  definition : @pivot_table.PivotTableDefinition,
-  field_list : Array[Int],
-) -> Array[String] {
-  let captions : Array[String] = []
+fn pivot_axis_real_positions(field_list : Array[Int]) -> Array[Int] {
+  let positions : Array[Int] = []
+  for axis_idx in field_list {
+    if axis_idx != -2 {
+      positions.push(axis_idx)
+    }
+  }
+  positions
+}
+
+///|
+fn pivot_data_on_rows_slots(field_list : Array[Int]) -> Array[Int] {
+  let slots : Array[Int] = []
+  let mut has_data_slot = false
   for axis_idx in field_list {
     if axis_idx == -2 {
-      // §18.10.1.22 — data-field pseudo-position; use the explicit
-      // `dataCaption` (§18.10.1.73 @dataCaption) when provided,
-      // otherwise the canonical Excel label "Values".
+      if !has_data_slot {
+        slots.push(axis_idx)
+        has_data_slot = true
+      }
+    } else {
+      slots.push(axis_idx)
+    }
+  }
+  if !has_data_slot {
+    slots.push(-2)
+  }
+  slots
+}
+
+///|
+fn pivot_axis_slot_captions(
+  cache : @pivot_table.PivotCacheDefinition,
+  definition : @pivot_table.PivotTableDefinition,
+  slots : Array[Int],
+) -> Array[String] {
+  let captions : Array[String] = []
+  for slot in slots {
+    if slot == -2 {
       let caption = match definition.data_caption {
         Some(v) => v
         None => "Values"
       }
       captions.push(caption)
-    } else if axis_idx >= 0 && axis_idx < cache.cache_fields.length() {
-      let field = cache.cache_fields[axis_idx]
+    } else if slot >= 0 && slot < cache.cache_fields.length() {
+      let field = cache.cache_fields[slot]
       let caption = match field.caption {
         Some(v) => v
         None => field.name
@@ -865,6 +1217,30 @@ fn pivot_axis_captions(
 }
 
 ///|
+fn pivot_axis_slot_ordinal(positions : Array[Int], slot : Int) -> Int? {
+  for i, position in positions {
+    if position == slot {
+      return Some(i)
+    }
+  }
+  None
+}
+
+///|
+/// §18.10.1.73 — collect the captions for the axis (rowFields /
+/// colFields) cacheField indices. The sentinel `-2` denotes the
+/// data-field pseudo-position; it appears in
+/// `(dataCaption|"Values")` and is included in the caption list so
+/// the renderer can label that band on the corner header.
+fn pivot_axis_captions(
+  cache : @pivot_table.PivotCacheDefinition,
+  definition : @pivot_table.PivotTableDefinition,
+  field_list : Array[Int],
+) -> Array[String] {
+  pivot_axis_slot_captions(cache, definition, field_list)
+}
+
+///|
 /// Build the labels for each materialized axis key. `Items(indices)`
 /// joins the resolved shared-item captions with " / "; `RowGrand` /
 /// `ColGrand` use the spec's "Grand Total" caption (the spec allows
@@ -872,16 +1248,11 @@ fn pivot_axis_captions(
 /// we leave the default — fixture comments call this out).
 fn pivot_axis_key_labels(
   keys : Array[@pivot_table.PivotAxisKey],
-  pivot : SheetPivot,
+  pivot : @pivot_table.MaterializedPivotTable,
   field_list : Array[Int],
 ) -> Array[String] {
   let labels : Array[String] = []
-  let positions : Array[Int] = []
-  for axis_idx in field_list {
-    if axis_idx != -2 {
-      positions.push(axis_idx)
-    }
-  }
+  let positions = pivot_axis_real_positions(field_list)
   for key in keys {
     match key {
       @pivot_table.PivotAxisKey::Items(indices) => {
@@ -909,15 +1280,10 @@ fn pivot_axis_key_labels(
 /// key yields a single "Grand Total" element.
 fn pivot_axis_key_field_labels(
   keys : Array[@pivot_table.PivotAxisKey],
-  pivot : SheetPivot,
+  pivot : @pivot_table.MaterializedPivotTable,
   field_list : Array[Int],
 ) -> Array[Array[String]] {
-  let positions : Array[Int] = []
-  for axis_idx in field_list {
-    if axis_idx != -2 {
-      positions.push(axis_idx)
-    }
-  }
+  let positions = pivot_axis_real_positions(field_list)
   let out : Array[Array[String]] = []
   for key in keys {
     match key {
@@ -949,32 +1315,7 @@ fn pivot_shared_item_caption(
   field_idx : Int,
   item_idx : Int,
 ) -> String {
-  if field_idx < 0 || field_idx >= cache.cache_fields.length() {
-    return ""
-  }
-  let items = cache.cache_fields[field_idx].shared_items.items
-  if item_idx < 0 || item_idx >= items.length() {
-    return ""
-  }
-  shared_item_value_to_caption(items[item_idx])
-}
-
-///|
-/// Project a `SharedItemValue` into its display caption.
-fn shared_item_value_to_caption(value : @pivot_table.SharedItemValue) -> String {
-  match value {
-    @pivot_table.SharedItemValue::SharedString(s) => s
-    @pivot_table.SharedItemValue::SharedNumber(n) => format_pivot_number(n)
-    @pivot_table.SharedItemValue::SharedBool(b) =>
-      if b {
-        "TRUE"
-      } else {
-        "FALSE"
-      }
-    @pivot_table.SharedItemValue::SharedDate(iso) => iso
-    @pivot_table.SharedItemValue::SharedError(lit) => lit
-    @pivot_table.SharedItemValue::SharedMissing => "(blank)"
-  }
+  cache.shared_item_caption(field_idx, item_idx)
 }
 
 ///|
@@ -982,46 +1323,10 @@ fn shared_item_value_to_caption(value : @pivot_table.SharedItemValue) -> String 
 /// `@name` attribute overrides; fallback uses the cacheField name
 /// prefixed by the consolidation function (matches Excel's default
 /// "Sum of Sales" / "Count of Orders" caption).
-fn pivot_data_field_names(pivot : SheetPivot) -> Array[String] {
-  let names : Array[String] = []
-  for data_field in pivot.definition.data_fields {
-    let display = match data_field.name {
-      Some(v) => v
-      None => {
-        let fld_idx = data_field.fld
-        let base = if fld_idx >= 0 &&
-          fld_idx < pivot.cache.cache_fields.length() {
-          pivot.cache.cache_fields[fld_idx].name
-        } else {
-          ""
-        }
-        consolidate_function_prefix(data_field.subtotal) + " of " + base
-      }
-    }
-    names.push(display)
-  }
-  names
-}
-
-///|
-/// §18.18.17 — return the canonical "Sum"/"Count"/… prefix used by
-/// Excel when auto-naming a data field.
-fn consolidate_function_prefix(
-  fn_ : @pivot_table.DataConsolidateFunction,
-) -> String {
-  match fn_ {
-    @pivot_table.DataConsolidateFunction::Sum => "Sum"
-    @pivot_table.DataConsolidateFunction::Average => "Average"
-    @pivot_table.DataConsolidateFunction::Count => "Count"
-    @pivot_table.DataConsolidateFunction::CountNums => "Count"
-    @pivot_table.DataConsolidateFunction::Max => "Max"
-    @pivot_table.DataConsolidateFunction::Min => "Min"
-    @pivot_table.DataConsolidateFunction::Product => "Product"
-    @pivot_table.DataConsolidateFunction::StdDev => "StdDev"
-    @pivot_table.DataConsolidateFunction::StdDevP => "StdDevp"
-    @pivot_table.DataConsolidateFunction::Var => "Var"
-    @pivot_table.DataConsolidateFunction::VarP => "Varp"
-  }
+fn pivot_data_field_names(
+  pivot : @pivot_table.MaterializedPivotTable,
+) -> Array[String] {
+  @pivot_table.data_field_display_names(pivot.definition, pivot.cache)
 }
 
 ///|
@@ -1046,25 +1351,13 @@ fn pivot_grand_index(keys : Array[@pivot_table.PivotAxisKey]) -> Int? {
 /// errors use the spec literal (`#DIV/0!`, `#N/A`, …).
 fn format_pivot_value(value : @formula.FormulaValue) -> String {
   match value {
-    @formula.VNumber(n) => format_pivot_number(n)
+    @formula.VNumber(n) => @pivot_table.format_pivot_number(n)
     @formula.VString(s) => s
     @formula.VBool(true) => "TRUE"
     @formula.VBool(false) => "FALSE"
     @formula.VError(err) => @formula.FormulaError::to_literal(err)
     @formula.VEmpty => ""
     @formula.VArray(_) => ""
-  }
-}
-
-///|
-/// Format a double using Excel's General-format heuristic: drop the
-/// fractional component when the value is integral so a sum of 12
-/// renders as "12" rather than "12.0".
-fn format_pivot_number(value : Double) -> String {
-  if value == value.to_int().to_double() && value.abs() < 1.0e15 {
-    value.to_int().to_string()
-  } else {
-    value.to_string()
   }
 }
 

@@ -12,6 +12,16 @@ fn dt(
 }
 
 ///|
+fn tod(
+  hour : Int,
+  minute : Int,
+  second? : Int = 0,
+  millisecond? : Int = 0,
+) -> TimeOfDay {
+  { hour, minute, second, millisecond }
+}
+
+///|
 fn assert_close(actual : Double, expected : Double) -> Unit raise {
   assert_true(actual.is_close(expected, absolute_tolerance=0.0000001))
 }
@@ -129,4 +139,98 @@ test "§18.17.4.1 invalid serial and invalid date raise SchemaViolation" {
     (try? date_time_to_serial(dt(2023, 2, 29), Serial1900))
     is Err(@opc_errors.SchemaViolation(_)),
   )
+}
+
+///|
+fn assert_parse_iso8601(
+  raw : String,
+  expected : CalendarDateTime,
+) -> Unit raise {
+  assert_same_datetime(try! parse_iso8601_date_time(raw), expected)
+  assert_true(parse_iso8601_date_time_opt(raw) == Some(expected))
+}
+
+///|
+fn assert_reject_iso8601(raw : String) -> Unit raise {
+  assert_true(
+    (try? parse_iso8601_date_time(raw)) is Err(@opc_errors.SchemaViolation(_)),
+  )
+  assert_true(parse_iso8601_date_time_opt(raw) is None)
+}
+
+///|
+fn assert_parse_iso8601_time(raw : String, expected : TimeOfDay) -> Unit raise {
+  assert_true(try! (parse_iso8601_time_of_day(raw) == expected))
+  assert_true(parse_iso8601_time_of_day_opt(raw) == Some(expected))
+}
+
+///|
+fn assert_reject_iso8601_time(raw : String) -> Unit raise {
+  assert_true(
+    (try? parse_iso8601_time_of_day(raw)) is Err(@opc_errors.SchemaViolation(_)),
+  )
+  assert_true(parse_iso8601_time_of_day_opt(raw) is None)
+}
+
+///|
+test "§18.17.4 parses ISO 8601 date-only and date-time lexical forms" {
+  assert_parse_iso8601("1976-11-22", dt(1976, 11, 22))
+  assert_parse_iso8601("1976-11-22T08:30", dt(1976, 11, 22, hour=8, minute=30))
+  assert_parse_iso8601(
+    "1976-11-22T08:30:45",
+    dt(1976, 11, 22, hour=8, minute=30, second=45),
+  )
+  assert_parse_iso8601(
+    "1976-11-22T08:30:45.007",
+    dt(1976, 11, 22, hour=8, minute=30, second=45, millisecond=7),
+  )
+  assert_parse_iso8601(
+    "1976-11-22T08:30:45.123456",
+    dt(1976, 11, 22, hour=8, minute=30, second=45, millisecond=123),
+  )
+}
+
+///|
+test "§18.17.4 rejects timezone designators and trailing date-time data" {
+  assert_reject_iso8601("1976-11-22T08:30:45Z")
+  assert_reject_iso8601("1976-11-22T08:30:45+09:00")
+  assert_reject_iso8601("1976-11-22T08:30:45.123Z")
+  assert_reject_iso8601("1976-11-22T08:30:45.123abc")
+  assert_reject_iso8601("1976-11-22 trailing")
+}
+
+///|
+test "§18.17.4 rejects invalid Gregorian dates and times" {
+  assert_reject_iso8601("1900-02-29")
+  assert_reject_iso8601("2023-02-29")
+  assert_reject_iso8601("1976-13-22")
+  assert_reject_iso8601("1976-11-22T24:00")
+  assert_reject_iso8601("1976-11-22T08:60")
+  assert_reject_iso8601("1976-11-22T08:30:60")
+}
+
+///|
+test "§18.17.4 parses ISO 8601 time-of-day lexical forms" {
+  assert_parse_iso8601_time("08:30", tod(8, 30))
+  assert_parse_iso8601_time("08:30:45", tod(8, 30, second=45))
+  assert_parse_iso8601_time(
+    "08:30:45.007",
+    tod(8, 30, second=45, millisecond=7),
+  )
+  assert_parse_iso8601_time(
+    "08:30:45.123456",
+    tod(8, 30, second=45, millisecond=123),
+  )
+  assert_close(try! time_of_day_to_serial_fraction(tod(12, 0)), 0.5)
+}
+
+///|
+test "§18.17.4 rejects invalid ISO 8601 time-of-day forms" {
+  assert_reject_iso8601_time("24:00")
+  assert_reject_iso8601_time("08:60")
+  assert_reject_iso8601_time("08:30:60")
+  assert_reject_iso8601_time("08:30:00Z")
+  assert_reject_iso8601_time("08:30:00+09:00")
+  assert_reject_iso8601_time("08:30:00.123Z")
+  assert_reject_iso8601_time("08:30:00.")
 }

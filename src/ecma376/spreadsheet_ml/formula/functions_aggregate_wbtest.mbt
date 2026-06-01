@@ -22,6 +22,7 @@ fn builtin_test_context() -> EvalContext {
       }
     },
     resolve_name: fn(_) { None },
+    resolve_pivot_data: no_pivot_data,
   }
 }
 
@@ -76,6 +77,17 @@ test "§18.17.7 aggregate MIN MAX PRODUCT and SUMPRODUCT" {
   assert_builtin_eval("SUMPRODUCT({2,3},{4,5},{2,2})", VNumber(46.0))
   assert_builtin_eval("SUMPRODUCT({2,3;4,5},{2,2;3,4})", VNumber(42.0))
   assert_builtin_eval("SUMPRODUCT({1,2},{3;4})", VError(Num))
+}
+
+///|
+test "§18.17.7 SUBTOTAL dispatches population stdev and variance codes" {
+  let sample = "{2,4,4,4,5,5,7,9}"
+  assert_builtin_close("SUBTOTAL(1," + sample + ")", 5.0)
+  assert_builtin_close("SUBTOTAL(9," + sample + ")", 40.0)
+  assert_builtin_close("SUBTOTAL(8," + sample + ")", 2.0)
+  assert_builtin_close("SUBTOTAL(108," + sample + ")", 2.0)
+  assert_builtin_close("SUBTOTAL(11," + sample + ")", 4.0)
+  assert_builtin_close("SUBTOTAL(111," + sample + ")", 4.0)
 }
 
 ///|
