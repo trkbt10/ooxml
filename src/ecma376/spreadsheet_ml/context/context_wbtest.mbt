@@ -246,7 +246,7 @@ test "spreadsheet_ml context autofilter row-set accepts resolved format facts" {
         rule: Some(
           @sml.CT_FilterColumn_Choice::IconFilter({
             icon_set: "3TrafficLights1",
-            icon_id: 2,
+            icon_id: Some(2),
           }),
         ),
       },
@@ -271,6 +271,7 @@ test "spreadsheet_ml context autofilter row-set accepts resolved format facts" {
           value: @sml_formula.FormulaValue::VNumber(10.0),
           fill_color: None,
           font_color: None,
+          rich_text_font_colors: [],
           icon_set: Some("3TrafficLights1"),
           icon_id: Some(1),
         },
@@ -283,6 +284,7 @@ test "spreadsheet_ml context autofilter row-set accepts resolved format facts" {
           value: @sml_formula.FormulaValue::VNumber(30.0),
           fill_color: None,
           font_color: None,
+          rich_text_font_colors: [],
           icon_set: Some("3TrafficLights1"),
           icon_id: Some(2),
         },
@@ -295,6 +297,7 @@ test "spreadsheet_ml context autofilter row-set accepts resolved format facts" {
           value: @sml_formula.FormulaValue::VNumber(20.0),
           fill_color: None,
           font_color: None,
+          rich_text_font_colors: [],
           icon_set: Some("3TrafficLights1"),
           icon_id: Some(0),
         },

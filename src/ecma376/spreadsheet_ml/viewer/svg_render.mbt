@@ -2861,6 +2861,7 @@ fn autofilter_cell_format(
         value,
         fill_color: None,
         font_color: None,
+        rich_text_font_colors: [],
         icon_set: None,
         icon_id: None,
       }
@@ -2888,7 +2889,36 @@ fn autofilter_cell_format(
     Some((set_name, bucket)) => (Some(set_name), Some(bucket))
     None => (None, None)
   }
-  { value, fill_color, font_color: style.font.color, icon_set, icon_id }
+  let rich_text_font_colors = autofilter_rich_text_font_colors(
+    cell, shared_strings, options, styles, theme_map,
+  )
+  {
+    value,
+    fill_color,
+    font_color: style.font.color,
+    rich_text_font_colors,
+    icon_set,
+    icon_id,
+  }
+}
+
+///|
+fn autofilter_rich_text_font_colors(
+  cell : @xml.Element,
+  shared_strings : @domain.CT_Sst?,
+  options : SheetRenderOptions,
+  styles : @domain.CT_Stylesheet?,
+  theme_map : SmlThemeColorMap,
+) -> Array[String] {
+  let colors : Array[String] = []
+  let base = cell_run_base_font(cell, options, styles, theme_map)
+  for run in cell_styled_runs(cell, shared_strings, base) {
+    match run.1.color {
+      Some(color) => colors.push(color)
+      None => ()
+    }
+  }
+  colors
 }
 
 ///|

@@ -5361,6 +5361,130 @@ test "SpreadsheetML viewer supplies font facts for §18.3.2.1 colorFilter" {
 }
 
 ///|
+/// §18.3.2.1 — rich text font colour filters match when any run in the
+/// candidate cell uses the dxf font colour. The viewer only supplies the
+/// resolved run colour facts; AutoFilter still owns the comparison.
+test "SpreadsheetML viewer supplies rich text font facts for §18.3.2.1 colorFilter" {
+  let font_with_color = fn(rgb : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("font"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("color"),
+          attributes: [{ name: name("rgb"), value: rgb }],
+          children: [],
+        }),
+      ],
+    })
+  }
+  let rich_run = fn(text : String, rgb : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("r"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("rPr"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("color"),
+              attributes: [{ name: name("rgb"), value: rgb }],
+              children: [],
+            }),
+          ],
+        }),
+        @xml.Node::Element({
+          name: name("t"),
+          attributes: [],
+          children: [@xml.Node::Text(text)],
+        }),
+      ],
+    })
+  }
+  let sst = @domain.CT_Sst::new({
+    name: name("sst"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("si"),
+        attributes: [],
+        children: [rich_run("Keep", "FF112233")],
+      }),
+      @xml.Node::Element({
+        name: name("si"),
+        attributes: [],
+        children: [rich_run("Drop", "FF445566")],
+      }),
+    ],
+  })
+  let styles = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dxfs"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("dxf"),
+            attributes: [],
+            children: [font_with_color("FF112233")],
+          }),
+        ],
+      }),
+    ],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A3" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [build_cell("A1", Some("str"), "Status")]),
+          build_row(2, [build_cell("A2", Some("s"), "0")]),
+          build_row(3, [build_cell("A3", Some("s"), "1")]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:A3" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "0" }],
+            children: [
+              @xml.Node::Element({
+                name: name("colorFilter"),
+                attributes: [
+                  { name: name("dxfId"), value: "0" },
+                  { name: name("cellColor"), value: "0" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(
+    worksheet,
+    styles=Some(styles),
+    shared_strings=Some(sst),
+  )
+  assert_true(result.svg.contains("Keep"))
+  assert_true(!result.svg.contains("Drop"))
+}
+
+///|
 /// §18.3.2.9 — iconFilter consumes the iconSet bucket fact that the
 /// viewer resolved from §18.3.1.49 conditionalFormatting. The bucket
 /// comparison itself remains in spreadsheet_ml/autofilter.

@@ -184,20 +184,21 @@ pub(all) struct CT_DynamicFilter {
 } derive(Eq, Debug)
 
 ///|
-/// XSD complex type CT_ColorFilter — Part 1 §18.3.2.1. `dxf_id` references
-/// a differential format record; `cell_color` (default `true`) selects fill
-/// color over font color.
+/// XSD complex type CT_ColorFilter — Part 1 §18.3.2.1. Optional `dxf_id`
+/// references a differential format record; `cell_color` (default `true`)
+/// selects fill color over font color.
 pub(all) struct CT_ColorFilter {
-  dxf_id : Int
+  dxf_id : Int?
   cell_color : Bool
 } derive(Eq, Debug)
 
 ///|
 /// XSD complex type CT_IconFilter — Part 1 §18.3.2.9. `icon_set` is the
-/// required ST_IconSetType token; `icon_id` is the zero-based icon index.
+/// required ST_IconSetType token; optional `icon_id` is the zero-based icon
+/// index. `None` represents the schema-valid no-icon filter.
 pub(all) struct CT_IconFilter {
   icon_set : String
-  icon_id : Int
+  icon_id : Int?
 } derive(Eq, Debug)
 
 ///|

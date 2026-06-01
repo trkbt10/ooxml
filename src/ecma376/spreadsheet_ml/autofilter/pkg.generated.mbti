@@ -28,6 +28,7 @@ pub(all) struct CandidateCellFormat {
   value : @formula.FormulaValue
   fill_color : String?
   font_color : String?
+  rich_text_font_colors : Array[String]
   icon_set : String?
   icon_id : Int?
 } derive(Eq, @debug.Debug)

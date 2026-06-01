@@ -570,7 +570,7 @@ pub(all) struct CT_ColorArgb {
 pub fn CT_ColorArgb::new(Int, Int, Int, Int) -> Self
 
 pub(all) struct CT_ColorFilter {
-  dxf_id : Int
+  dxf_id : Int?
   cell_color : Bool
 } derive(Eq, @debug.Debug)
 
@@ -1601,7 +1601,7 @@ pub fn CT_I::new(@xml.Element) -> Self
 
 pub(all) struct CT_IconFilter {
   icon_set : String
-  icon_id : Int
+  icon_id : Int?
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CT_IconSet {

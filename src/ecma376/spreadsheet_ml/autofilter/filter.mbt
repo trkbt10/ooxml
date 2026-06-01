@@ -18,6 +18,7 @@ pub(all) struct CandidateCellFormat {
   value : @formula.FormulaValue
   fill_color : String?
   font_color : String?
+  rich_text_font_colors : Array[String]
   icon_set : String?
   icon_id : Int?
 } derive(Eq, Debug)
@@ -210,16 +211,14 @@ fn formatted_filter_matches(
   match choice {
     @domain.CT_FilterColumn_Choice::ColorFilter(filter) => {
       let target = dxf_color_for_filter(dxf_formats, filter)
-      let actual = if filter.cell_color {
-        cell.fill_color
+      if filter.cell_color {
+        optional_color_equal(cell.fill_color, target)
       } else {
-        cell.font_color
+        candidate_font_color_matches(cell, target)
       }
-      optional_color_equal(actual, target)
     }
     IconFilter(filter) =>
-      cell.icon_set == Some(filter.icon_set) &&
-      cell.icon_id == Some(filter.icon_id)
+      cell.icon_set == Some(filter.icon_set) && cell.icon_id == filter.icon_id
     _ => false
   }
 }
@@ -229,12 +228,32 @@ fn dxf_color_for_filter(
   dxf_formats : Array[FilterDxfFormat],
   filter : @domain.CT_ColorFilter,
 ) -> String? {
-  for dxf in dxf_formats {
-    if dxf.dxf_id == filter.dxf_id {
-      return if filter.cell_color { dxf.fill_color } else { dxf.font_color }
-    }
+  match filter.dxf_id {
+    Some(id) =>
+      for dxf in dxf_formats {
+        if dxf.dxf_id == id {
+          return if filter.cell_color { dxf.fill_color } else { dxf.font_color }
+        }
+      }
+    None => ()
   }
   None
+}
+
+///|
+fn candidate_font_color_matches(
+  cell : CandidateCellFormat,
+  target : String?,
+) -> Bool {
+  if optional_color_equal(cell.font_color, target) {
+    return true
+  }
+  for color in cell.rich_text_font_colors {
+    if optional_color_equal(Some(color), target) {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -377,7 +396,7 @@ fn parse_dynamic_filter(
 fn parse_color_filter(
   element : @xml.Element,
 ) -> @domain.CT_ColorFilter raise @opc_errors.SchemaViolation {
-  let dxf_id = parse_required_int(element, "dxfId", "colorFilter/@dxfId")
+  let dxf_id = parse_optional_int(element, "dxfId", "colorFilter/@dxfId")
   let cell_color = parse_bool_attr(element, "cellColor", true)
   { dxf_id, cell_color }
 }
@@ -386,9 +405,27 @@ fn parse_color_filter(
 fn parse_icon_filter(
   element : @xml.Element,
 ) -> @domain.CT_IconFilter raise @opc_errors.SchemaViolation {
-  let icon_set = require_attr(element, "iconSet", "iconFilter/@iconSet")
-  let icon_id = parse_required_int(element, "iconId", "iconFilter/@iconId")
+  let icon_set = parse_icon_set_type(
+    require_attr(element, "iconSet", "iconFilter/@iconSet"),
+  )
+  let icon_id = parse_optional_int(element, "iconId", "iconFilter/@iconId")
   { icon_set, icon_id }
+}
+
+///|
+fn parse_icon_set_type(
+  value : String,
+) -> String raise @opc_errors.SchemaViolation {
+  try @sml_types.ST_IconSetType::new(value) catch {
+    @sml_types.SchemaViolation(_) =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.18.42",
+        path="iconFilter/@iconSet",
+        reason="value is outside ST_IconSetType enumeration",
+      )
+  } noraise {
+    parsed => parsed.to_string()
+  }
 }
 
 ///|
