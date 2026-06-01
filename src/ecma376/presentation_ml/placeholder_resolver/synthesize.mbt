@@ -12,13 +12,12 @@
 // the slide shape's `name` and `attributes` so spec-level identity is
 // preserved.
 //
-// This is a thin XML overlay — it does NOT merge inside `p:spPr`
-// (geometry vs. fill, etc.); for that the typed CT_ShapeProperties
-// cascade in resolver.mbt is the right tool. For the viewer's
-// purposes a missing-element fallback is what the §19.3.1.36 spec
-// actually mandates: when a property is unspecified on the slide
-// shape, the layout's value is used; if also unspecified there, the
-// master's value is used.
+// The `p:spPr` child is merged one direct DrawingML property group at a
+// time (xfrm, geometry, fill, line, effect, 3D, extLst), because a slide
+// placeholder often supplies only geometry while the layout or master
+// supplies paint.  The resolver remains the single source of truth for
+// placeholder cascading; colour/theme/style interpretation stays in the
+// viewer.
 // =============================================================================
 
 ///|
@@ -79,7 +78,15 @@ fn merge_shape_children(
     match child {
       @xml.Element(e) => {
         let local_name = e.name.local_name
-        if array_contains(well_known, local_name) {
+        if local_name == "spPr" {
+          if !array_contains(inserted, local_name) {
+            match merge_sp_pr_from_shape_layers(layers) {
+              Some(picked) => new_children.push(@xml.Element(picked))
+              None => ()
+            }
+            inserted.push(local_name)
+          }
+        } else if array_contains(well_known, local_name) {
           if !array_contains(inserted, local_name) {
             match first_child_local_in_layers(layers, local_name) {
               Some(picked) => new_children.push(@xml.Element(picked))
@@ -100,7 +107,12 @@ fn merge_shape_children(
   // (e.g. layout-only title with no slide-side `<p:sp>` children).
   for kind in well_known {
     if !array_contains(inserted, kind) {
-      match first_child_local_in_layers(layers, kind) {
+      let picked = if kind == "spPr" {
+        merge_sp_pr_from_shape_layers(layers)
+      } else {
+        first_child_local_in_layers(layers, kind)
+      }
+      match picked {
         Some(picked) => {
           new_children.push(@xml.Element(picked))
           inserted.push(kind)
@@ -110,6 +122,123 @@ fn merge_shape_children(
     }
   }
   { name: base.name, attributes: base.attributes, children: new_children }
+}
+
+///|
+/// Part 1 §19.3.1.36 / §20.1.2.2.35 — merge the direct children of
+/// `<p:spPr>` across slide → layout → master. Each DrawingML property
+/// group is chosen independently: slide wins when it specifies that
+/// group, otherwise layout, otherwise master. EG_* choice groups
+/// (geometry, fill, effect) are treated as mutually-exclusive groups,
+/// so an explicit `<a:noFill>` on the slide blocks inherited fills.
+fn merge_sp_pr_from_shape_layers(
+  shape_layers : Array[@xml.Element],
+) -> @xml.Element? {
+  let sp_pr_layers : Array[@xml.Element] = []
+  for layer in shape_layers {
+    match first_child_local(layer, "spPr") {
+      Some(sp_pr) => sp_pr_layers.push(sp_pr)
+      None => ()
+    }
+  }
+  merge_sp_pr_direct_layers(sp_pr_layers)
+}
+
+///|
+fn merge_sp_pr_direct_layers(
+  sp_pr_layers : Array[@xml.Element],
+) -> @xml.Element? {
+  if sp_pr_layers.length() == 0 {
+    return None
+  }
+  let base = sp_pr_layers[0]
+  let new_children : Array[@xml.Node] = []
+  for group in sp_pr_group_order() {
+    match first_sp_pr_child_for_group(sp_pr_layers, group) {
+      Some(child) => new_children.push(@xml.Element(child))
+      None => ()
+    }
+  }
+  for child in base.children {
+    match child {
+      @xml.Element(e) =>
+        if sp_pr_child_group(e.name.local_name) is None {
+          new_children.push(child)
+        }
+      _ => new_children.push(child)
+    }
+  }
+  Some({
+    name: base.name,
+    attributes: merge_sp_pr_attributes(sp_pr_layers),
+    children: new_children,
+  })
+}
+
+///|
+fn sp_pr_group_order() -> Array[String] {
+  ["xfrm", "geometry", "fill", "ln", "effect", "scene3d", "sp3d", "extLst"]
+}
+
+///|
+fn sp_pr_child_group(local_name : String) -> String? {
+  match local_name {
+    "xfrm" => Some("xfrm")
+    "custGeom" | "prstGeom" => Some("geometry")
+    "noFill" | "solidFill" | "gradFill" | "blipFill" | "pattFill" | "grpFill" =>
+      Some("fill")
+    "ln" => Some("ln")
+    "effectLst" | "effectDag" => Some("effect")
+    "scene3d" => Some("scene3d")
+    "sp3d" => Some("sp3d")
+    "extLst" => Some("extLst")
+    _ => None
+  }
+}
+
+///|
+fn first_sp_pr_child_for_group(
+  sp_pr_layers : Array[@xml.Element],
+  group : String,
+) -> @xml.Element? {
+  for sp_pr in sp_pr_layers {
+    for child in sp_pr.children {
+      match child {
+        @xml.Element(e) =>
+          match sp_pr_child_group(e.name.local_name) {
+            Some(g) => if g == group { return Some(e) }
+            None => ()
+          }
+        _ => ()
+      }
+    }
+  }
+  None
+}
+
+///|
+fn merge_sp_pr_attributes(
+  sp_pr_layers : Array[@xml.Element],
+) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  for sp_pr in sp_pr_layers {
+    for attr in sp_pr.attributes {
+      if !has_attr_local(attrs, attr.name.local_name) {
+        attrs.push(attr)
+      }
+    }
+  }
+  attrs
+}
+
+///|
+fn has_attr_local(attrs : Array[@xml.Attribute], local_name : String) -> Bool {
+  for attr in attrs {
+    if attr.name.local_name == local_name {
+      return true
+    }
+  }
+  false
 }
 
 ///|
@@ -125,6 +254,20 @@ fn first_child_local_in_layers(
         @xml.Element(e) => if e.name.local_name == name { return Some(e) }
         _ => ()
       }
+    }
+  }
+  None
+}
+
+///|
+fn first_child_local(
+  parent : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  for child in parent.children {
+    match child {
+      @xml.Element(e) => if e.name.local_name == local_name { return Some(e) }
+      _ => ()
     }
   }
   None

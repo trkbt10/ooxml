@@ -30,6 +30,28 @@ test "colors_by_style_label maps each styleLbl to its fillClrLst" {
 }
 
 ///|
+/// §21.4.5.10 — quickStyle/styleDef contributes style-label line
+/// colours through `<a:style>/<a:lnRef>`.
+test "style_line_colors_by_style_label maps quickStyle line colours" {
+  let style_def = try! @dgm.CT_StyleDefinition::new(
+    dgm_parse(
+      (
+        #|<dgm:styleDef xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
+        #|<dgm:styleLbl name="node0"><a:style><a:lnRef idx="1"><a:srgbClr val="FF0000"/></a:lnRef></a:style></dgm:styleLbl>
+        #|<dgm:styleLbl name="node1"><a:style><a:lnRef idx="1"><a:schemeClr val="accent2"/></a:lnRef></a:style></dgm:styleLbl>
+        #|</dgm:styleDef>
+      ),
+    ),
+  )
+  let map = style_line_colors_by_style_label(
+    Some(style_def),
+    ColorResolveContext::empty(),
+  )
+  assert_eq(map.get("node0").unwrap(), "#FF0000")
+  assert_eq(map.get("node1").unwrap(), "#ed7d31")
+}
+
+///|
 test "colors_palette falls back to the built-in palette without a colorsDef" {
   let ctx = ColorResolveContext::empty()
   let pal = colors_palette(None, ctx)
@@ -97,4 +119,24 @@ test "emit_node_shape renders a non-trivial preset via the shared geometry" {
   assert_true(svg.contains("<path "))
   assert_true(svg.contains("translate(10"))
   assert_true(svg.contains("fill=\"#4472C4\""))
+}
+
+///|
+test "emit_node_shape applies quickStyle stroke colour" {
+  let nb : @diagram_layout.NodeBounds = {
+    point_id: "p1",
+    bounds: { x: 10.0, y: 20.0, width: 100.0, height: 50.0 },
+    shape: @preset_geometry.ShapeRect,
+    style_lbl: Some("node0"),
+  }
+  let buf = StringBuilder::new()
+  for n in emit_node_shape(nb, "#4472C4", stroke="#FF0000") {
+    match n {
+      @xml.Node::Element(e) => buf.write_string(@markup.serialize_svg(e))
+      _ => ()
+    }
+  }
+  let svg = buf.to_string()
+  assert_true(svg.contains("fill=\"#4472C4\""))
+  assert_true(svg.contains("stroke=\"#FF0000\""))
 }

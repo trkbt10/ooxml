@@ -40,6 +40,32 @@ test "presentation_ml context opens and saves minimal package" {
 }
 
 ///|
+test "presentation_ml save_or_raise reports invalid package" {
+  let presentation = open(fixture_bytes())
+  let broken_parts : Array[@opc.PackagePart] = []
+  for part in presentation.opc_package.parts {
+    if part.name == presentation.presentation_part {
+      broken_parts.push({ ..part, name: "ppt/presentation.xml" })
+    } else {
+      broken_parts.push(part)
+    }
+  }
+  let broken = {
+    ..presentation,
+    opc_package: { ..presentation.opc_package, parts: broken_parts },
+  }
+  try broken.save_or_raise() catch {
+    SaveError(kind~, path~, reason~) => {
+      assert_eq(kind, "PackageSaveFailed")
+      assert_eq(path, "/ppt/presentation.xml")
+      assert_true(reason.length() > 0)
+    }
+  } noraise {
+    _ => abort("expected SaveError")
+  }
+}
+
+///|
 /// Concatenate the text content of every `<text>` element in an SVG
 /// string.  The SVG renderer lays a run out into one `<text>` per
 /// laid-out glyph segment, so a logical word is split across several

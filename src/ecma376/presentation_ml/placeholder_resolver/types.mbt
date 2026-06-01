@@ -18,7 +18,7 @@
 
 ///|
 /// Effective placeholder after slide → layout → master inheritance.
-/// `ph_type` defaults to `PhBody` and `size` to `PlaceholderFull` per
+/// `ph_type` defaults to `PhObj` and `size` to `PlaceholderFull` per
 /// the implicit-defaults rule in §19.7.9 / §19.7.10. `orient` defaults
 /// to `DirectionHorz` per §19.3.1.36. `idx` is preserved from whichever
 /// level supplied it. Not a spec complex type — see header comment.

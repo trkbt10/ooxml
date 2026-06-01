@@ -63,6 +63,23 @@ test "§19.3.1.36 absent attributes leave defaults" {
 }
 
 ///|
+test "§19.7.10 missing placeholder type defaults to obj" {
+  let slide_xml = "<sp><nvSpPr><nvPr><ph/></nvPr></nvSpPr><spPr/></sp>"
+  let master_xml = "<sp><nvSpPr><nvPr><ph type=\"obj\"/></nvPr></nvSpPr><spPr id=\"master-obj\"/></sp>"
+  let chain = SlideChain::from_parts(
+    build_master(master_xml),
+    None,
+    Some(build_slide(slide_xml)),
+  )
+  let resolved = try! resolve_placeholder(first_slide_shape(chain), chain)
+  let effective = resolved.effective_placeholder.unwrap()
+  assert_true(effective.ph_type == @domain.PhObj)
+  let master_shape = resolved.master_shape.unwrap()
+  let sp_pr = shape_sp_pr(master_shape.element).unwrap()
+  assert_true(attr_local_test(sp_pr, "id") == Some("master-obj"))
+}
+
+///|
 test "§19.7.10 ST_PlaceholderType rejects unknown lexical values" {
   let element = parse_root("<ph type=\"bogus\"/>")
   let bad = try? @domain.CT_Placeholder::from_element(element)
@@ -85,9 +102,27 @@ test "§19.3.1.36 idx match resolves slide → layout → master" {
   assert_true(effective.ph_type == @domain.PhBody)
   assert_true(resolved.layout_shape is Some(_))
   assert_true(resolved.master_shape is Some(_))
-  // Slide always wins for sp_pr inheritance; layout / master fields
-  // are exposed for callers that need to merge attributes themselves.
+  // The typed view is derived from the same canonical spPr merge used
+  // by the synthetic XML view.
   assert_true(resolved.sp_pr is Some(_))
+}
+
+///|
+test "§19.3.1.36 master idx lookup falls back to slide idx" {
+  let slide_xml = "<sp><nvSpPr><nvPr><ph idx=\"7\" type=\"body\"/></nvPr></nvSpPr><spPr/></sp>"
+  let layout_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr id=\"layout-body\"/></sp>"
+  let master_xml = "<sp><nvSpPr><nvPr><ph idx=\"7\" type=\"title\"/></nvPr></nvSpPr><spPr id=\"master-idx\"/></sp>"
+  let chain = SlideChain::from_parts(
+    build_master(master_xml),
+    Some(build_layout(layout_xml)),
+    Some(build_slide(slide_xml)),
+  )
+  let resolved = try! resolve_placeholder(first_slide_shape(chain), chain)
+  assert_true(resolved.layout_shape is Some(_))
+  let master_shape = resolved.master_shape.unwrap()
+  let sp_pr = shape_sp_pr(master_shape.element).unwrap()
+  assert_true(attr_local_test(sp_pr, "id") == Some("master-idx"))
+  assert_true(resolved.effective_placeholder.unwrap().ph_type == @domain.PhBody)
 }
 
 ///|
@@ -146,6 +181,67 @@ test "§19.7.9 size and orient inherit from first non-empty layer" {
 }
 
 ///|
+test "§19.3.1.36 synthesize merges spPr direct property groups" {
+  let slide_xml = "<sp><nvSpPr><nvPr><ph idx=\"1\" type=\"body\"/></nvPr></nvSpPr><spPr bwMode=\"gray\">" +
+    "<xfrm><off x=\"0\" y=\"0\"/><ext cx=\"100\" cy=\"100\"/></xfrm>" +
+    "</spPr></sp>"
+  let layout_xml = "<sp><nvSpPr><nvPr><ph idx=\"1\" type=\"body\"/></nvPr></nvSpPr><spPr>" +
+    "<solidFill><srgbClr val=\"FF0000\"/></solidFill>" +
+    "</spPr></sp>"
+  let master_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr>" +
+    "<ln w=\"12700\"><solidFill><srgbClr val=\"00FF00\"/></solidFill></ln>" +
+    "</spPr></sp>"
+  let chain = SlideChain::from_parts(
+    build_master(master_xml),
+    Some(build_layout(layout_xml)),
+    Some(build_slide(slide_xml)),
+  )
+  let resolved = try! resolve_placeholder(first_slide_shape(chain), chain)
+  let typed = resolved.sp_pr.unwrap()
+  assert_true(typed.xfrm is Some(_))
+  assert_true(typed.solid_fill is Some(_))
+  assert_true(typed.ln is Some(_))
+  let merged = synthesize_resolved_shape(resolved).unwrap()
+  let sp_pr = shape_sp_pr(merged).unwrap()
+  assert_true(attr_local_test(sp_pr, "bwMode") == Some("gray"))
+  assert_true(has_child_local_test(sp_pr, "xfrm"))
+  assert_true(has_child_local_test(sp_pr, "solidFill"))
+  assert_true(has_child_local_test(sp_pr, "ln"))
+  assert_true(
+    child_local_index_test(sp_pr, "xfrm") <
+    child_local_index_test(sp_pr, "solidFill"),
+  )
+  assert_true(
+    child_local_index_test(sp_pr, "solidFill") <
+    child_local_index_test(sp_pr, "ln"),
+  )
+}
+
+///|
+test "§19.3.1.36 explicit spPr noFill blocks inherited fill" {
+  let slide_xml = "<sp><nvSpPr><nvPr><ph idx=\"1\" type=\"body\"/></nvPr></nvSpPr><spPr>" +
+    "<noFill/>" +
+    "</spPr></sp>"
+  let layout_xml = "<sp><nvSpPr><nvPr><ph idx=\"1\" type=\"body\"/></nvPr></nvSpPr><spPr>" +
+    "<solidFill><srgbClr val=\"FF0000\"/></solidFill>" +
+    "</spPr></sp>"
+  let master_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr/></sp>"
+  let chain = SlideChain::from_parts(
+    build_master(master_xml),
+    Some(build_layout(layout_xml)),
+    Some(build_slide(slide_xml)),
+  )
+  let resolved = try! resolve_placeholder(first_slide_shape(chain), chain)
+  let typed = resolved.sp_pr.unwrap()
+  assert_true(typed.no_fill is Some(_))
+  assert_true(typed.solid_fill is None)
+  let merged = synthesize_resolved_shape(resolved).unwrap()
+  let sp_pr = shape_sp_pr(merged).unwrap()
+  assert_true(has_child_local_test(sp_pr, "noFill"))
+  assert_true(!has_child_local_test(sp_pr, "solidFill"))
+}
+
+///|
 test "§19.3.1.36 missing slide / layout still resolves master ph" {
   let master_xml = "<sp><nvSpPr><nvPr><ph type=\"body\"/></nvPr></nvSpPr><spPr id=\"master-only\"/></sp>"
   let chain = SlideChain::from_parts(build_master(master_xml), None, None)
@@ -180,4 +276,26 @@ fn attr_local_test(element : @xml.Element, local_name : String) -> String? {
     }
   }
   None
+}
+
+///|
+fn has_child_local_test(element : @xml.Element, local_name : String) -> Bool {
+  for child in element.children {
+    match child {
+      @xml.Element(e) => if e.name.local_name == local_name { return true }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn child_local_index_test(element : @xml.Element, local_name : String) -> Int {
+  for i, child in element.children {
+    match child {
+      @xml.Element(e) => if e.name.local_name == local_name { return i }
+      _ => ()
+    }
+  }
+  abort("missing child " + local_name)
 }

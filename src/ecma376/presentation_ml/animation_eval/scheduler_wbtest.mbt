@@ -96,6 +96,109 @@ test "§19.5.31 clickEffect surfaces ConditionalStart" {
 }
 
 ///|
+test "§19.5.3 animEffect decodes as a leaf timing behaviour" {
+  let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animEffect transition=\"out\" filter=\"wipe\" prLst=\"opacity\">" +
+    "<cBhvr><cTn id=\"12\" dur=\"750\" fill=\"hold\"/><tgtEl><spTgt spid=\"9\"/></tgtEl><attrNameLst><attrName>style.opacity</attrName></attrNameLst></cBhvr>" +
+    "<progress><fltVal val=\"0.75\"/></progress>" +
+    "</animEffect>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  let timeline = try! decode_timing(build_timing(xml))
+  let root = root_node(timeline)
+  assert_eq(root.children.length(), 1)
+  let node = root.children[0]
+  assert_eq(node.node_id, 12)
+  assert_true(node.is_leaf())
+  match node.node_kind {
+    @domain.TimeNodeAnimateEffect(behavior) => {
+      assert_true(behavior.transition == Some(@domain.EffectTransitionOut))
+      assert_true(behavior.filter == Some("wipe"))
+      assert_true(behavior.pr_lst == Some("opacity"))
+      assert_true(behavior.common.target_shape_id == Some(9))
+      assert_eq(behavior.common.attr_names[0], "style.opacity")
+      match behavior.progress {
+        Some(@domain.AnimVariantFloat(v)) => assert_true(v > 0.74 && v < 0.76)
+        _ => fail("expected animEffect progress float")
+      }
+    }
+    _ => fail("expected TimeNodeAnimateEffect")
+  }
+  let events = TimingEngine::new(timeline).schedule()
+  let mut saw_start = false
+  let mut saw_end = false
+  for event in events {
+    if event.node_id == 12 {
+      match event.kind {
+        EventStart => saw_start = true
+        EventEnd => saw_end = true
+        _ => ()
+      }
+    }
+  }
+  assert_true(saw_start)
+  assert_true(saw_end)
+}
+
+///|
+test "§19.5.49 audio and §19.5.85 video decode as media time-node leaves" {
+  let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<audio isNarration=\"true\"><cMediaNode vol=\"50000\" mute=\"true\" numSld=\"2\" showWhenStopped=\"false\"><cTn id=\"50\" dur=\"1500\" fill=\"hold\"/><tgtEl><sndTgt/></tgtEl></cMediaNode></audio>" +
+    "<video fullScrn=\"true\"><cMediaNode><cTn id=\"51\" dur=\"500\" fill=\"hold\"/><tgtEl><spTgt spid=\"17\"/></tgtEl></cMediaNode></video>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  let timeline = try! decode_timing(build_timing(xml))
+  let root = root_node(timeline)
+  assert_eq(root.children.length(), 2)
+  let audio = root.children[0]
+  let video = root.children[1]
+  assert_eq(audio.node_id, 50)
+  assert_eq(video.node_id, 51)
+  assert_true(audio.is_leaf())
+  assert_true(video.is_leaf())
+  match audio.node_kind {
+    @domain.TimeNodeAudio(media) => {
+      assert_true(media.is_narration == Some(true))
+      assert_true(media.cMediaNode.mute == Some(true))
+      assert_true(media.cMediaNode.num_sld == Some(2U))
+      assert_true(media.cMediaNode.show_when_stopped == Some(false))
+      assert_true(media.cMediaNode.tgtEl.choice is @domain.TimeTargetSnd(_))
+    }
+    _ => fail("expected TimeNodeAudio")
+  }
+  match video.node_kind {
+    @domain.TimeNodeVideo(media) => {
+      assert_true(media.full_scrn == Some(true))
+      match media.cMediaNode.tgtEl.choice {
+        @domain.TimeTargetSp(target) => assert_eq(target.spid, "17")
+        _ => fail("expected video shape target")
+      }
+    }
+    _ => fail("expected TimeNodeVideo")
+  }
+  let events = TimingEngine::new(timeline).schedule()
+  let mut audio_start = false
+  let mut audio_end_at = -1
+  let mut video_end_at = -1
+  for event in events {
+    if event.node_id == 50 {
+      match event.kind {
+        EventStart => audio_start = true
+        EventEnd => audio_end_at = event.at_ms
+        _ => ()
+      }
+    }
+    if event.node_id == 51 {
+      match event.kind {
+        EventEnd => video_end_at = event.at_ms
+        _ => ()
+      }
+    }
+  }
+  assert_true(audio_start)
+  assert_eq(audio_end_at, 1500)
+  assert_eq(video_end_at, 500)
+}
+
+///|
 test "§19.5.1 anim from/to interpolates linearly" {
   let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<anim from=\"0\" to=\"100\" calcmode=\"lin\" valueType=\"num\"><cBhvr><cTn id=\"5\" dur=\"1000\" fill=\"hold\"/><tgtEl><spTgt spid=\"3\"/></tgtEl><attrNameLst><attrName>ppt_x</attrName></attrNameLst></cBhvr></anim>" +

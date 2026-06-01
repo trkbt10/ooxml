@@ -152,9 +152,9 @@ fn render_diagram_svg(
     None => return []
   }
   // colorsDef is optional from the engine's perspective — we use
-  // it only to pick the per-node accent colour.  The quickStyle
-  // part (styleDef) is resolved for the marker counter only; the
-  // engine itself does not consume it.
+  // it to pick per-node fill/text colours. quickStyle/styleDef is
+  // decoded through the DrawingML diagram domain and contributes
+  // per-style-label shape styling such as line colour.
   let colors_def_root = part_resolver(cs_rid)
   let style_def_root = part_resolver(qs_rid)
 
@@ -195,6 +195,15 @@ fn render_diagram_svg(
     _ => return []
   } noraise {
     t => t
+  }
+  let style_def_typed = match style_def_root {
+    Some(root) =>
+      try @dgm.CT_StyleDefinition::new(root) catch {
+        _ => None
+      } noraise {
+        typed => Some(typed)
+      }
+    None => None
   }
 
   // §21.4.2.16 CT_DiagramDefinition — real-world SmartArt layouts
@@ -263,6 +272,10 @@ fn render_diagram_svg(
     list_name="txFillClrLst",
   )
   let text_counts : Map[String, Int] = Map([], capacity=0)
+  // §21.4.5.10 `<dgm:styleLbl>/<a:style>/<a:lnRef>` — quickStyle
+  // supplies per-style-label shape style. Fill/text colours remain
+  // driven by colorsDef; line colour comes from styleDef.
+  let line_colors = style_line_colors_by_style_label(style_def_typed, ctx)
   let svg_nodes : Array[@xml.Node] = []
   match bg_node {
     Some(n) => svg_nodes.push(n)
@@ -301,7 +314,15 @@ fn render_diagram_svg(
       None => palette_pick(palette, palette_index)
     }
     palette_index = palette_index + 1
-    let shape_nodes = emit_node_shape(nb, fill)
+    let stroke = match nb.style_lbl {
+      Some(lbl) =>
+        match line_colors.get(lbl) {
+          Some(color) => color
+          None => "#333333"
+        }
+      None => "#333333"
+    }
+    let shape_nodes = emit_node_shape(nb, fill, stroke~)
     for n in shape_nodes {
       svg_nodes.push(n)
     }
@@ -526,6 +547,7 @@ fn lookup_point_text(
 fn emit_node_shape(
   nb : @diagram_layout.NodeBounds,
   fill : String,
+  stroke? : String = "#333333",
 ) -> Array[@xml.Node] {
   let x = nb.bounds.x
   let y = nb.bounds.y
@@ -536,7 +558,7 @@ fn emit_node_shape(
   }
   let common_attrs : Array[@xml.Attribute] = [
     @markup.attr("fill", fill),
-    @markup.attr("stroke", "#333333"),
+    @markup.attr("stroke", stroke),
     @markup.attr("stroke-width", "1"),
   ]
   // §20.1.10.56 ST_ShapeType — render the preset shape that the
@@ -759,28 +781,79 @@ fn fill_clr_lst_colors(
   }
   for child in lst.children {
     match child {
-      Element(e) => {
-        let local_name = e.name.local_name
-        if local_name == "srgbClr" {
-          match attr_value(e, "val") {
-            Some(hex) => result.push("#" + hex)
-            None => ()
-          }
-        } else if local_name == "schemeClr" {
-          match attr_value(e, "val") {
-            Some(name) =>
-              match @paint.get_scheme_color(name, None, ctx) {
-                Some(hex) => result.push("#" + hex)
-                None => result.push(scheme_default_hex(name))
-              }
-            None => ()
-          }
+      Element(e) =>
+        match diagram_color_choice_hex(e, ctx) {
+          Some(hex) => result.push(hex)
+          None => ()
         }
-      }
       _ => ()
     }
   }
   result
+}
+
+///|
+/// Resolve the diagram-side subset of DrawingML EG_ColorChoice used by
+/// colorsDef/styleDef colour lists.
+fn diagram_color_choice_hex(
+  element : @xml.Element,
+  ctx : ColorResolveContext,
+) -> String? {
+  match element.name.local_name {
+    "srgbClr" =>
+      match attr_value(element, "val") {
+        Some(hex) => Some("#" + hex)
+        None => None
+      }
+    "schemeClr" =>
+      match attr_value(element, "val") {
+        Some(name) =>
+          match @paint.get_scheme_color(name, None, ctx) {
+            Some(hex) => Some("#" + hex)
+            None => Some(scheme_default_hex(name))
+          }
+        None => None
+      }
+    _ => None
+  }
+}
+
+///|
+/// §21.4.5.10 `<dgm:styleLbl>` — map quickStyle/styleDef style labels
+/// to the line colour declared by their DrawingML `<a:style>/<a:lnRef>`.
+fn style_line_colors_by_style_label(
+  style_def : @dgm.CT_StyleDefinition?,
+  ctx : ColorResolveContext,
+) -> Map[String, String] {
+  let map : Map[String, String] = Map([], capacity=0)
+  let sd = match style_def {
+    Some(s) => s
+    None => return map
+  }
+  for label in sd.style_lbl {
+    let style = match label.style {
+      Some(s) => s
+      None => continue
+    }
+    let ln_ref = match first_child_named(style, "lnRef") {
+      Some(l) => l
+      None => continue
+    }
+    for child in ln_ref.children {
+      match child {
+        Element(e) =>
+          match diagram_color_choice_hex(e, ctx) {
+            Some(hex) => {
+              map[label.name] = hex
+              break
+            }
+            None => ()
+          }
+        _ => ()
+      }
+    }
+  }
+  map
 }
 
 ///|

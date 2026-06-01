@@ -4,6 +4,11 @@ fn name(local_name : String) -> @xml.QName {
 }
 
 ///|
+fn pml_parse_element(source : String) -> @xml.Element {
+  try! @xml.parse(@utf8.encode(source[:])).root
+}
+
+///|
 /// Index of the first occurrence of `needle` in `haystack` at or
 /// after `from`, or None.
 fn find_from(haystack : String, needle : String, from : Int) -> Int? {
@@ -1249,6 +1254,122 @@ test "viewer §19.3.1.36 slide ph inherits spPr from layout by idx" {
   // it must show up somewhere in the SVG via translate / scale on
   // either a wrapping <g> or a child element.
   assert_true(svg.contains("8229600") || svg.contains("864"))
+}
+
+///|
+/// §19.3.1.36 — placeholder inheritance applies inside `<p:spPr>`,
+/// not only when the whole child is missing. A slide placeholder may
+/// supply geometry while the layout supplies fill and the master
+/// supplies line properties. The merged shape should render with all
+/// three property groups.
+test "viewer §19.3.1.36 slide spPr inherits missing fill and line groups" {
+  let slide_sp = pml_parse_element(
+    "<sp><nvSpPr><cNvPr id=\"20\" name=\"SlideTitle\"/><cNvSpPr/><nvPr><ph type=\"title\" idx=\"0\"/></nvPr></nvSpPr>" +
+    "<spPr><xfrm><off x=\"0\" y=\"0\"/><ext cx=\"914400\" cy=\"914400\"/></xfrm></spPr>" +
+    "<txBody><bodyPr/><p><r><t>Slide</t></r></p></txBody></sp>",
+  )
+  let layout_sp = pml_parse_element(
+    "<sp><nvSpPr><cNvPr id=\"21\" name=\"LayoutTitle\"/><cNvSpPr/><nvPr><ph type=\"title\" idx=\"0\"/></nvPr></nvSpPr>" +
+    "<spPr><solidFill><srgbClr val=\"FF0000\"/></solidFill></spPr></sp>",
+  )
+  let master_sp = pml_parse_element(
+    "<sp><nvSpPr><cNvPr id=\"22\" name=\"MasterTitle\"/><cNvSpPr/><nvPr><ph type=\"title\"/></nvPr></nvSpPr>" +
+    "<spPr><ln w=\"12700\"><solidFill><srgbClr val=\"00FF00\"/></solidFill></ln></spPr></sp>",
+  )
+  let slide = @domain.CT_Slide::new(slide_like_with_shapes("sld", [slide_sp]))
+  let layout = @domain.CT_SlideLayout::new(
+    slide_like_with_shapes("sldLayout", [layout_sp]),
+  )
+  let master = @domain.CT_SlideMaster::new(
+    slide_like_with_shapes("sldMaster", [master_sp]),
+  )
+  let chain = @ph_resolver.SlideChain::from_parts(
+    master,
+    Some(layout),
+    Some(slide),
+  )
+  let svg = render_svg(slide, chain=Some(chain))
+  assert_true(svg_text_content(svg).contains("Slide"))
+  assert_true(svg.contains("fill=\"#ff0000\""))
+  assert_true(svg.contains("stroke=\"#00ff00\""))
+}
+
+///|
+/// §19.3.1.38 / §19.3.1.39 AG_ChildSlide — master shapes are shown by
+/// default, while master placeholders remain resolver inputs instead
+/// of being painted directly.
+test "viewer §19.3.1.38 showMasterSp renders master shapes by default" {
+  let master_shape = pml_parse_element(
+    "<sp><nvSpPr><cNvPr id=\"30\" name=\"MasterGraphic\"/><cNvSpPr/><nvPr/></nvSpPr>" +
+    "<spPr><xfrm><off x=\"0\" y=\"0\"/><ext cx=\"914400\" cy=\"914400\"/></xfrm></spPr>" +
+    "<txBody><bodyPr/><p><r><t>MasterGraphic</t></r></p></txBody></sp>",
+  )
+  let master_placeholder = pml_parse_element(
+    "<sp><nvSpPr><cNvPr id=\"31\" name=\"MasterPlaceholder\"/><cNvSpPr/><nvPr><ph type=\"title\"/></nvPr></nvSpPr>" +
+    "<spPr><xfrm><off x=\"0\" y=\"0\"/><ext cx=\"914400\" cy=\"914400\"/></xfrm></spPr>" +
+    "<txBody><bodyPr/><p><r><t>MasterPlaceholder</t></r></p></txBody></sp>",
+  )
+  let slide = @domain.CT_Slide::new(empty_slide_like("sld"))
+  let layout = @domain.CT_SlideLayout::new(empty_slide_like("sldLayout"))
+  let master = @domain.CT_SlideMaster::new(
+    slide_like_with_shapes("sldMaster", [master_shape, master_placeholder]),
+  )
+  let chain = @ph_resolver.SlideChain::from_parts(
+    master,
+    Some(layout),
+    Some(slide),
+  )
+  let text = svg_text_content(render_svg(slide, chain=Some(chain)))
+  assert_true(text.contains("MasterGraphic"))
+  assert_true(!text.contains("MasterPlaceholder"))
+}
+
+///|
+/// §19.3.1.38 / §19.3.1.39 AG_ChildSlide — either a slide-level or
+/// layout-level `showMasterSp="0"` hides master shapes.
+test "viewer §19.3.1.38 showMasterSp false hides master shapes" {
+  let master_shape = pml_parse_element(
+    "<sp><nvSpPr><cNvPr id=\"32\" name=\"HiddenMaster\"/><cNvSpPr/><nvPr/></nvSpPr>" +
+    "<spPr><xfrm><off x=\"0\" y=\"0\"/><ext cx=\"914400\" cy=\"914400\"/></xfrm></spPr>" +
+    "<txBody><bodyPr/><p><r><t>HiddenMaster</t></r></p></txBody></sp>",
+  )
+  let master = @domain.CT_SlideMaster::new(
+    slide_like_with_shapes("sldMaster", [master_shape]),
+  )
+  let visible_slide = @domain.CT_Slide::new(empty_slide_like("sld"))
+  let hidden_slide_element = {
+    ..empty_slide_like("sld"),
+    attributes: [{ name: name("showMasterSp"), value: "0" }],
+  }
+  let hidden_slide = @domain.CT_Slide::new(hidden_slide_element)
+  let visible_layout = @domain.CT_SlideLayout::new(
+    empty_slide_like("sldLayout"),
+  )
+  let hidden_layout_element = {
+    ..empty_slide_like("sldLayout"),
+    attributes: [{ name: name("showMasterSp"), value: "0" }],
+  }
+  let hidden_layout = @domain.CT_SlideLayout::new(hidden_layout_element)
+  let slide_hidden_chain = @ph_resolver.SlideChain::from_parts(
+    master,
+    Some(visible_layout),
+    Some(hidden_slide),
+  )
+  let layout_hidden_chain = @ph_resolver.SlideChain::from_parts(
+    master,
+    Some(hidden_layout),
+    Some(visible_slide),
+  )
+  assert_true(
+    !svg_text_content(render_svg(hidden_slide, chain=Some(slide_hidden_chain))).contains(
+      "HiddenMaster",
+    ),
+  )
+  assert_true(
+    !svg_text_content(
+      render_svg(visible_slide, chain=Some(layout_hidden_chain)),
+    ).contains("HiddenMaster"),
+  )
 }
 
 ///|

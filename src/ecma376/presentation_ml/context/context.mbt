@@ -13,6 +13,11 @@ pub(all) suberror OpenError {
 } derive(Debug)
 
 ///|
+pub(all) suberror SaveError {
+  SaveError(kind~ : String, path~ : String, reason~ : String)
+} derive(Debug)
+
+///|
 pub(all) struct SlidePart {
   name : String
   value : @pml.CT_Slide
@@ -140,7 +145,9 @@ pub fn open(bytes : Bytes) -> Presentation raise OpenError {
 }
 
 ///|
-pub fn Presentation::save(self : Presentation) -> Bytes {
+pub fn Presentation::save_or_raise(
+  self : Presentation,
+) -> Bytes raise SaveError {
   let mut saved = self.opc_package.with_part(
     self.presentation_part,
     @pml_builder.write_presentation(self.presentation),
@@ -162,17 +169,26 @@ pub fn Presentation::save(self : Presentation) -> Bytes {
   }
   // OPC §11 — `Package::save` raises typed errors when the
   // package cannot serialise (e.g. relationship cycles, broken
-  // Content-Types map).  The fallback below returns the
-  // presentation-part XML alone, which is NOT a conforming OPC
-  // package; it is acceptable only because the function's
-  // return type is `Bytes` (no error channel) and the caller
-  // must distinguish a single XML payload from a `.pptx` zip
-  // anyway.  The breach is documented as a known limitation —
-  // the proper fix is to widen the return type to
-  // `Result[Bytes, OpcSaveError]` so the OPC error surfaces.
+  // Content-Types map, invalid part names). A raw
+  // `ppt/presentation.xml` fallback is not a valid `.pptx`
+  // package.
   saved.save() catch {
-    _ => @pml_builder.write_presentation(self.presentation)
+    err =>
+      raise SaveError(
+        kind="PackageSaveFailed",
+        path=self.presentation_part,
+        reason=err.to_string(),
+      )
   }
+}
+
+///|
+/// Backward-compatible save entry point. Callers that need structured
+/// diagnostics should use `save_or_raise`; this method intentionally
+/// aborts on package serialisation failure rather than producing a
+/// non-OPC presentation XML blob.
+pub fn Presentation::save(self : Presentation) -> Bytes {
+  try! self.save_or_raise()
 }
 
 ///|
@@ -564,10 +580,12 @@ fn resolve_part_scoped_resolver(
     Some(r) => r
     None => return None
   }
-  let nested_part_name = match
-    (try? @opc_part_name.resolve_target(slide_part_name, target_rel.target)) {
-    Ok(name) => name
-    Err(_) => return None
+  let nested_part_name = try
+    @opc_part_name.resolve_target(slide_part_name, target_rel.target)
+  catch {
+    _ => return None
+  } noraise {
+    name => name
   }
   // The nested part may have its own rels file (`_rels/<part>.xml.rels`).
   let nested_rels = match
@@ -583,18 +601,19 @@ fn resolve_part_scoped_resolver(
       Some(r) => r
       None => return None
     }
-    let resolved = match
-      (try? @opc_part_name.resolve_target(base, rel.target)) {
-      Ok(name) => name
-      Err(_) => return None
+    let resolved = try @opc_part_name.resolve_target(base, rel.target) catch {
+      _ => return None
+    } noraise {
+      name => name
     }
     let part = match pkg.part(resolved) {
       Some(p) => p
       None => return None
     }
-    match (try? @xml.parse(part.data)) {
-      Ok(doc) => Some(doc.root)
-      Err(_) => None
+    try @xml.parse(part.data) catch {
+      _ => None
+    } noraise {
+      doc => Some(doc.root)
     }
   })
 }

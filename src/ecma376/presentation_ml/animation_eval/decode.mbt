@@ -46,11 +46,14 @@ pub fn decode_time_node(
     "excl" => decode_excl(element)
     "anim" => decode_anim(element)
     "animClr" => decode_anim_clr(element)
+    "animEffect" => decode_anim_effect(element)
     "animMotion" => decode_anim_motion(element)
     "animRot" => decode_anim_rot(element)
     "animScale" => decode_anim_scale(element)
     "set" => decode_set(element)
     "cmd" => decode_cmd(element)
+    "audio" => decode_audio(element)
+    "video" => decode_video(element)
     _ =>
       raise @opc_errors.SchemaViolation(
         section=animation_section,
@@ -132,6 +135,33 @@ pub fn decode_anim_clr(
     direction,
   }
   decode_common_time_node_data(element, @domain.TimeNodeAnimateColor(behaviour))
+}
+
+///|
+/// Decode an `<p:animEffect>` (CT_TLAnimateEffectBehavior) element.
+pub fn decode_anim_effect(
+  element : @xml.Element,
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  let common = decode_behavior_common(element)
+  let progress = match first_child_by_local_name(element, "progress") {
+    Some(p) => decode_anim_variant(p)
+    None => None
+  }
+  let transition = match attr_local(element, "transition") {
+    Some(text) => Some(parse_st_effect_transition(text))
+    None => None
+  }
+  let behaviour : @domain.CT_TLAnimateEffectRuntimeBehavior = {
+    common,
+    progress,
+    transition,
+    filter: attr_local(element, "filter"),
+    pr_lst: attr_local(element, "prLst"),
+  }
+  decode_common_time_node_data(
+    element,
+    @domain.TimeNodeAnimateEffect(behaviour),
+  )
 }
 
 ///|
@@ -234,13 +264,52 @@ pub fn decode_cmd(
 }
 
 ///|
+/// Decode a `<p:audio>` (CT_TLMediaNodeAudio) element. Media node
+/// payload is parsed by the domain wrapper; the timing engine only
+/// inflates the nested `<p:cMediaNode>/<p:cTn>` through the same
+/// common time-node path used by other leaves.
+pub fn decode_audio(
+  element : @xml.Element,
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  let media = try @domain.CT_TLMediaNodeAudio::from_element(element) catch {
+    e => {
+      raise_schema("audio", e)
+      @domain.CT_TLMediaNodeAudio::new(element)
+    }
+  } noraise {
+    v => v
+  }
+  decode_common_time_node_data(element, @domain.TimeNodeAudio(media))
+}
+
+///|
+/// Decode a `<p:video>` (CT_TLMediaNodeVideo) element. Media node
+/// payload is parsed by the domain wrapper; the timing engine only
+/// inflates the nested `<p:cMediaNode>/<p:cTn>` through the same
+/// common time-node path used by other leaves.
+pub fn decode_video(
+  element : @xml.Element,
+) -> @domain.CT_TLCommonTimeNodeData raise @opc_errors.SchemaViolation {
+  let media = try @domain.CT_TLMediaNodeVideo::from_element(element) catch {
+    e => {
+      raise_schema("video", e)
+      @domain.CT_TLMediaNodeVideo::new(element)
+    }
+  } noraise {
+    v => v
+  }
+  decode_common_time_node_data(element, @domain.TimeNodeVideo(media))
+}
+
+///|
 /// Decode the common cTn child of a time-node element. Returns a
 /// `CT_TLCommonTimeNodeData` whose `node_kind` is set to the supplied
 /// container/leaf discriminator and whose attributes / children come
 /// from the cTn. For container kinds (par / seq / excl) the cTn is a
 /// direct child; for leaf behaviours (anim / animClr / animMotion /
 /// animRot / animScale / set / cmd) the cTn lives inside the
-/// `<p:cBhvr>` wrapper.
+/// `<p:cBhvr>` wrapper; for media leaves it lives inside
+/// `<p:cMediaNode>`.
 fn decode_common_time_node_data(
   element : @xml.Element,
   kind : @domain.CT_TLCommonTimeNodeKind,
@@ -1129,10 +1198,19 @@ fn parse_signed_int(text : String) -> Int? {
 
 ///|
 fn find_ctn(element : @xml.Element) -> @xml.Element? {
-  // Leaf behaviour: cTn lives inside cBhvr.
-  match first_child_by_local_name(element, "cBhvr") {
+  // Behaviour leaves: cTn lives inside cBhvr.
+  let behaviour_ctn = match first_child_by_local_name(element, "cBhvr") {
     Some(cb) => first_child_by_local_name(cb, "cTn")
     None => None
+  }
+  match behaviour_ctn {
+    Some(_) => behaviour_ctn
+    None =>
+      // Media leaves: cTn lives inside cMediaNode.
+      match first_child_by_local_name(element, "cMediaNode") {
+        Some(media) => first_child_by_local_name(media, "cTn")
+        None => None
+      }
   }
 }
 
@@ -1392,6 +1470,20 @@ fn parse_st_command_type(
     e => {
       raise_schema("cmd/@type", e)
       @domain.CommandCall
+    }
+  } noraise {
+    v => v
+  }
+}
+
+///|
+fn parse_st_effect_transition(
+  text : String,
+) -> @domain.ST_TLAnimateEffectTransition raise @opc_errors.SchemaViolation {
+  try @domain.ST_TLAnimateEffectTransition::parse(text) catch {
+    e => {
+      raise_schema("animEffect/@transition", e)
+      @domain.EffectTransitionIn
     }
   } noraise {
     v => v

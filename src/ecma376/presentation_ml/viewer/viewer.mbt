@@ -1120,6 +1120,27 @@ fn render_slide_shapes_svg(
     Some(c) => first_child_named(c, "spTree")
   }
   let nodes : Array[@xml.Node] = []
+  // §19.3.1.38 / §19.3.1.39 AG_ChildSlide @showMasterSp —
+  // master slide shapes are visible by default and paint behind the
+  // slide's own shape tree. Placeholder shapes remain cascade sources
+  // for the placeholder resolver, not direct master graphics.
+  match chain {
+    Some(ch) =>
+      if show_master_shapes_for_chain(ch) {
+        render_master_shape_children(
+          ctx,
+          defs,
+          image_resolver,
+          part_resolver,
+          chart_part_resolver_factory,
+          hyperlink_resolver,
+          nodes,
+          ch,
+          theme~,
+        )
+      }
+    None => ()
+  }
   // §19.3.1.38 — `<p:sld>/<p:cSld>/<p:spTree>` is the mandated
   // structure for a slide. When the spTree is absent we emit no
   // shape content rather than descend through arbitrary structure;
@@ -1142,6 +1163,105 @@ fn render_slide_shapes_svg(
       )
   }
   nodes
+}
+
+///|
+/// §19.3.1.38 / §19.3.1.39 AG_ChildSlide — show master shapes unless
+/// either the slide or its layout explicitly says `showMasterSp="0"`.
+fn show_master_shapes_for_chain(chain : @ph_resolver.SlideChain) -> Bool {
+  let slide_ok = match chain.slide {
+    Some(slide) =>
+      match slide.show_master_sp {
+        Some(value) => value
+        None => true
+      }
+    None => true
+  }
+  let layout_ok = match chain.layout {
+    Some(layout) =>
+      match layout.show_master_sp {
+        Some(value) => value
+        None => true
+      }
+    None => true
+  }
+  slide_ok && layout_ok
+}
+
+///|
+/// §19.3.1.42 — render visible, non-placeholder shapes from the slide
+/// master. Placeholder shapes stay in the resolver chain; ordinary
+/// master graphics (background logos, guide lines, fixed labels) are
+/// painted behind slide/layout content.
+fn render_master_shape_children(
+  ctx : ColorResolveContext,
+  defs : SvgDefsCollector,
+  image_resolver : (String) -> ResolvedImage?,
+  part_resolver : (String) -> @xml.Element?,
+  chart_part_resolver_factory : (String) -> ((String) -> @xml.Element?)?,
+  hyperlink_resolver : (String) -> String?,
+  out : Array[@xml.Node],
+  chain : @ph_resolver.SlideChain,
+  theme? : @theme.CT_OfficeStyleSheet? = None,
+) -> Unit {
+  let c_sld = match first_child_named(chain.master.element, "cSld") {
+    Some(c) => c
+    None => return
+  }
+  let sp_tree = match first_child_named(c_sld, "spTree") {
+    Some(st) => st
+    None => return
+  }
+  for child in sp_tree.children {
+    match child {
+      Element(e) =>
+        if is_shape_tree_renderable_child(e) && !shape_has_placeholder(e) {
+          for
+            n in render_shape_svg(
+              e,
+              ctx,
+              defs,
+              image_resolver,
+              part_resolver,
+              chart_part_resolver_factory,
+              hyperlink_resolver,
+              chain=Some(chain),
+              theme~,
+            ) {
+            out.push(n)
+          }
+        }
+      _ => ()
+    }
+  }
+}
+
+///|
+fn is_shape_tree_renderable_child(shape : @xml.Element) -> Bool {
+  match shape.name.local_name {
+    "sp" | "pic" | "grpSp" | "cxnSp" | "graphicFrame" | "contentPart" => true
+    _ => false
+  }
+}
+
+///|
+fn shape_has_placeholder(shape : @xml.Element) -> Bool {
+  let nv_local = match shape.name.local_name {
+    "sp" => "nvSpPr"
+    "pic" => "nvPicPr"
+    "cxnSp" => "nvCxnSpPr"
+    "grpSp" => "nvGrpSpPr"
+    "graphicFrame" => "nvGraphicFramePr"
+    _ => return false
+  }
+  match first_child_named(shape, nv_local) {
+    None => false
+    Some(nv) =>
+      match first_child_named(nv, "nvPr") {
+        None => false
+        Some(nv_pr) => first_child_named(nv_pr, "ph") is Some(_)
+      }
+  }
 }
 
 ///|
@@ -1320,8 +1440,8 @@ fn shape_ph_key(shape : @xml.Element) -> String? {
         None =>
           match ph_type {
             Some(v) => Some("type:" + v)
-            // §19.7.10 — body is the implicit default when no @type.
-            None => Some("type:body")
+            // §19.7.10 — obj is the implicit default when no @type.
+            None => Some("type:obj")
           }
       }
     }
@@ -1362,10 +1482,11 @@ fn select_master_lst_style(
     Some(p) => p
     None => return None
   }
-  // §19.7.10 — a `<p:ph>` with no `@type` is the implicit body slot.
+  // §19.7.10 — a `<p:ph>` with no `@type` is the implicit obj slot;
+  // text-style inheritance still maps object placeholders to bodyStyle.
   let ph_type = match attr_value(ph, "type") {
     Some(v) => v
-    None => "body"
+    None => "obj"
   }
   let want = match ph_type {
     "title" | "ctrTitle" => "titleStyle"

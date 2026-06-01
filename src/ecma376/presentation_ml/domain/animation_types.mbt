@@ -240,6 +240,26 @@ pub(all) struct CT_TLCommandBehavior {
 } derive(Eq, Debug)
 
 ///|
+/// XSD complex type CT_TLAnimateEffectBehavior — Part 1 §19.5.3
+/// animEffect (Animate Effect). The schema-owned raw wrapper lives in
+/// `transition_timing_types.mbt`; this runtime projection folds
+/// `<p:cBhvr>` into the same `CT_TLCommonBehaviorData` SoT used by the
+/// other leaf timing behaviours while preserving the effect-specific
+/// attributes.
+pub(all) struct CT_TLAnimateEffectRuntimeBehavior {
+  /// §19.5.22 cBhvr.
+  common : CT_TLCommonBehaviorData
+  /// §19.5.3 child `<p:progress>` (CT_TLAnimVariant).
+  progress : CT_TLAnimVariant?
+  /// §19.5.3 @transition (ST_TLAnimateEffectTransition).
+  transition : ST_TLAnimateEffectTransition?
+  /// §19.5.3 @filter (xsd:string).
+  filter : String?
+  /// §19.5.3 @prLst (xsd:string).
+  pr_lst : String?
+} derive(Eq, Debug)
+
+///|
 /// XSD complex type CT_TLTimeCondition — Part 1 §19.5.31 cond
 /// (Condition). A single condition entry inside a `<p:stCondLst>`,
 /// `<p:endCondLst>`, `<p:nextCondLst>`, or `<p:prevCondLst>`.
@@ -381,10 +401,8 @@ pub(all) struct CT_TLCommonTimeNodeData {
 ///|
 /// Parent-element discriminator for `CT_TLCommonTimeNodeData`.
 /// Encodes the choice from `CT_TimeNodeList` §19.5.25 (par / seq /
-/// excl / anim / animClr / animMotion / animRot / animScale / set /
-/// cmd). The schema also permits `<p:audio>` and `<p:video>` in the
-/// list — those map to `CT_TLMediaNodeAudio` / `CT_TLMediaNodeVideo`
-/// and are handled at the wrapper layer rather than as time-nodes.
+/// excl / anim / animClr / animEffect / animMotion / animRot /
+/// animScale / set / cmd / audio / video).
 pub(all) enum CT_TLCommonTimeNodeKind {
   /// §19.5.53 par (CT_TLTimeNodeParallel).
   TimeNodePar
@@ -396,6 +414,8 @@ pub(all) enum CT_TLCommonTimeNodeKind {
   TimeNodeAnimate(CT_TLAnimateBehavior)
   /// §19.5.2 animClr (CT_TLAnimateColorBehavior).
   TimeNodeAnimateColor(CT_TLAnimateColorBehavior)
+  /// §19.5.3 animEffect (CT_TLAnimateEffectBehavior).
+  TimeNodeAnimateEffect(CT_TLAnimateEffectRuntimeBehavior)
   /// §19.5.4 animMotion (CT_TLAnimateMotionBehavior).
   TimeNodeAnimateMotion(CT_TLAnimateMotionBehavior)
   /// §19.5.5 animRot (CT_TLAnimateRotationBehavior).
@@ -406,13 +426,17 @@ pub(all) enum CT_TLCommonTimeNodeKind {
   TimeNodeSet(CT_TLSetBehavior)
   /// §19.5.28 cmd (CT_TLCommandBehavior).
   TimeNodeCommand(CT_TLCommandBehavior)
+  /// §19.5.49 audio (CT_TLMediaNodeAudio).
+  TimeNodeAudio(CT_TLMediaNodeAudio)
+  /// §19.5.85 video (CT_TLMediaNodeVideo).
+  TimeNodeVideo(CT_TLMediaNodeVideo)
 } derive(Eq, Debug)
 
 ///|
 /// True when the cTn discriminator is a leaf behaviour (anim,
-/// animClr, animMotion, animRot, animScale, set, cmd). The walker
-/// uses this to short-circuit the children traversal when
-/// collecting active behaviours.
+/// animClr, animMotion, animRot, animScale, set, cmd, audio,
+/// video). The walker uses this to short-circuit the children
+/// traversal when collecting active behaviours.
 pub fn CT_TLCommonTimeNodeData::is_leaf(self : CT_TLCommonTimeNodeData) -> Bool {
   match self.node_kind {
     TimeNodePar => false
@@ -431,6 +455,7 @@ pub fn CT_TLCommonTimeNodeData::behavior_common(
   match self.node_kind {
     TimeNodeAnimate(b) => Some(b.common)
     TimeNodeAnimateColor(b) => Some(b.common)
+    TimeNodeAnimateEffect(b) => Some(b.common)
     TimeNodeAnimateMotion(b) => Some(b.common)
     TimeNodeAnimateRotation(b) => Some(b.common)
     TimeNodeAnimateScale(b) => Some(b.common)

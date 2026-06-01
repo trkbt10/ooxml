@@ -51,9 +51,9 @@ fn lookup_by_type(
                   None => ()
                 }
               None =>
-                // §19.7.10 — body is the implicit default when no @type
+                // §19.7.10 — obj is the implicit default when no @type
                 // is present on a master placeholder.
-                if needle == @domain.PhBody {
+                if needle == @domain.PhObj {
                   return Some(shape)
                 }
             }
@@ -84,7 +84,16 @@ fn type_for_master_lookup(
   }
   let resolved = match direct {
     Some(t) => Some(t)
-    None => from_slide
+    None =>
+      match from_slide {
+        Some(t) => Some(t)
+        None =>
+          if layout_ph is Some(_) || slide_ph is Some(_) {
+            Some(@domain.PhObj)
+          } else {
+            None
+          }
+      }
   }
   match resolved {
     Some(@domain.PhCtrTitle) => Some(@domain.PhTitle)
@@ -96,7 +105,7 @@ fn type_for_master_lookup(
 ///|
 /// Merge slide / layout / master placeholders into an effective view.
 /// Slide values win, then layout, then master. Defaults apply per
-/// §19.7.9 (`PlaceholderFull`), §19.7.10 (`PhBody`), §19.3.1.36
+/// §19.7.9 (`PlaceholderFull`), §19.7.10 (`PhObj`), §19.3.1.36
 /// (`DirectionHorz`).
 fn merge_effective(
   slide_ph : @domain.CT_Placeholder?,
@@ -120,7 +129,7 @@ fn merge_effective(
     None => ()
   }
   let idx = first_idx(layers)
-  let ph_type = first_type(layers).unwrap_or(@domain.PhBody)
+  let ph_type = first_type(layers).unwrap_or(@domain.PhObj)
   let size = first_size(layers).unwrap_or(@domain.PlaceholderFull)
   let orient = first_orient(layers).unwrap_or(@domain.DirectionHorz)
   let has_custom_prompt = layers.iter().any(fn(ph) { ph.has_custom_prompt })
@@ -133,7 +142,9 @@ fn merge_effective(
 /// CT_Shape projection at each level (slide → layout → master) plus
 /// the `EffectivePlaceholder` view and convenience accessors for
 /// `sp_pr`, `tx_body`, `nv_sp_pr` taken from the slide / layout /
-/// master in that priority order.
+/// master cascade. `sp_pr` uses the same direct-property-group merge
+/// as `synthesize_resolved_shape`, so the typed and XML views share a
+/// single source of truth.
 pub fn resolve_placeholder(
   slide_shape : @domain.CT_Shape,
   chain : SlideChain,
@@ -154,11 +165,16 @@ pub fn resolve_placeholder(
     None => None
   }
   let effective = merge_effective(slide_ph, layout_ph, master_ph)
-  let sp_pr = merge_sp_pr(
-    typed_sp_pr(slide_shape),
-    layout_shape_match.bind(s => typed_sp_pr(s)),
-    master_shape_match.bind(s => typed_sp_pr(s)),
-  )
+  let sp_pr_layers : Array[@xml.Element] = [slide_shape.element]
+  match layout_shape_match {
+    Some(shape) => sp_pr_layers.push(shape.element)
+    None => ()
+  }
+  match master_shape_match {
+    Some(shape) => sp_pr_layers.push(shape.element)
+    None => ()
+  }
+  let sp_pr = typed_merged_sp_pr(sp_pr_layers)
   let tx_body = merge_tx_body(
     typed_tx_body(slide_shape),
     layout_shape_match.bind(s => typed_tx_body(s)),
@@ -210,6 +226,7 @@ fn lookup_layout_shape(
           let lookup_target = match ph.ph_type {
             Some(@domain.PhCtrTitle) => Some(@domain.PhCtrTitle)
             Some(@domain.PhSubTitle) => Some(@domain.PhSubTitle)
+            None => Some(@domain.PhObj)
             other => other
           }
           lookup_by_type(layout_shapes, lookup_target)
@@ -225,11 +242,15 @@ fn lookup_master_shape(
   layout_ph : @domain.CT_Placeholder?,
   slide_ph : @domain.CT_Placeholder?,
 ) -> @domain.CT_Shape? {
-  let layout_idx = match layout_ph {
-    Some(ph) => ph.idx
-    None => None
+  let target_idx = match layout_ph {
+    Some({ idx: Some(idx), .. }) => Some(idx)
+    _ =>
+      match slide_ph {
+        Some(ph) => ph.idx
+        None => None
+      }
   }
-  let by_idx = lookup_by_idx(master_shapes, layout_idx)
+  let by_idx = lookup_by_idx(master_shapes, target_idx)
   match by_idx {
     Some(found) => Some(found)
     None =>
@@ -238,13 +259,17 @@ fn lookup_master_shape(
 }
 
 ///|
-/// Project a CT_Shape's `<a:spPr>` raw element into the typed
-/// CT_ShapeProperties. Bridge `@a.SchemaViolation` into the local PML
-/// SchemaViolation so the resolver surface stays uniform.
-fn typed_sp_pr(
-  shape : @domain.CT_Shape,
+/// Project the canonical placeholder `<p:spPr>` merge into typed
+/// CT_ShapeProperties. The XML merge lives in synthesize.mbt and is
+/// also used by the viewer-facing synthetic shape path.
+fn typed_merged_sp_pr(
+  shape_layers : Array[@xml.Element],
 ) -> @a.CT_ShapeProperties? raise @domain.SchemaViolation {
-  Some(wrap_a_violation(() => @a.CT_ShapeProperties::new(shape.sp_pr)))
+  match merge_sp_pr_from_shape_layers(shape_layers) {
+    Some(sp_pr) =>
+      Some(wrap_a_violation(() => @a.CT_ShapeProperties::new(sp_pr)))
+    None => None
+  }
 }
 
 ///|
@@ -270,24 +295,8 @@ fn[T] wrap_a_violation(
   body() catch {
     @a.SchemaViolation(_) =>
       @domain.schema_violation(
-        "placeholder_resolver/typed_sp_pr", "", "DrawingML child failed validation",
+        "placeholder_resolver/typed_merged_sp_pr", "", "DrawingML child failed validation",
       )
-  }
-}
-
-///|
-fn merge_sp_pr(
-  slide : @a.CT_ShapeProperties?,
-  layout : @a.CT_ShapeProperties?,
-  master : @a.CT_ShapeProperties?,
-) -> @a.CT_ShapeProperties? {
-  match slide {
-    Some(_) => slide
-    None =>
-      match layout {
-        Some(_) => layout
-        None => master
-      }
   }
 }
 

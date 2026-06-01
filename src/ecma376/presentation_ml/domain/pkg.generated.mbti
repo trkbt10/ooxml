@@ -1186,6 +1186,14 @@ pub fn CT_TLAnimateEffectBehavior::new(@xml.Element) -> Self
 pub fn CT_TLAnimateEffectBehavior::parse(@xml.Element) -> Self
 pub fn CT_TLAnimateEffectBehavior::to_element(Self) -> @xml.Element
 
+pub(all) struct CT_TLAnimateEffectRuntimeBehavior {
+  common : CT_TLCommonBehaviorData
+  progress : CT_TLAnimVariant?
+  transition : ST_TLAnimateEffectTransition?
+  filter : String?
+  pr_lst : String?
+} derive(Eq, @debug.Debug)
+
 pub(all) struct CT_TLAnimateMotionBehavior {
   common : CT_TLCommonBehaviorData
   origin : ST_TLAnimateMotionBehaviorOrigin?
@@ -1356,11 +1364,14 @@ pub(all) enum CT_TLCommonTimeNodeKind {
   TimeNodeExcl
   TimeNodeAnimate(CT_TLAnimateBehavior)
   TimeNodeAnimateColor(CT_TLAnimateColorBehavior)
+  TimeNodeAnimateEffect(CT_TLAnimateEffectRuntimeBehavior)
   TimeNodeAnimateMotion(CT_TLAnimateMotionBehavior)
   TimeNodeAnimateRotation(CT_TLAnimateRotationBehavior)
   TimeNodeAnimateScale(CT_TLAnimateScaleBehavior)
   TimeNodeSet(CT_TLSetBehavior)
   TimeNodeCommand(CT_TLCommandBehavior)
+  TimeNodeAudio(CT_TLMediaNodeAudio)
+  TimeNodeVideo(CT_TLMediaNodeVideo)
 } derive(Eq, @debug.Debug)
 
 pub(all) struct CT_TLGraphicalObjectBuild {
