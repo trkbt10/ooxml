@@ -40,3 +40,13 @@ test "OMML top-level readers reject the wrong root element" {
   let invalid = try? read_o_math(bytes("<m:mathPr xmlns:m=\"urn:math\"/>"))
   assert_true(invalid is Err(@domain.SchemaViolation(_)))
 }
+
+///|
+test "mathPr rejects invalid CT_OnOff lexical value" {
+  let invalid = try? read_math_pr(
+    bytes(
+      "<m:mathPr xmlns:m=\"urn:math\"><m:smallFrac m:val=\"maybe\"/></m:mathPr>",
+    ),
+  )
+  assert_true(invalid is Err(@domain.SchemaViolation(_)))
+}

@@ -76,7 +76,7 @@ pub(all) struct CT_BorderBoxPr {
   ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_BorderBoxPr::new(@xml.Element) -> Self
+pub fn CT_BorderBoxPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Box {
   box_pr : CT_BoxPr?
@@ -403,7 +403,7 @@ pub(all) struct CT_OnOff {
   value : Bool?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_OnOff::new(@xml.Element) -> Self
+pub fn CT_OnOff::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_Phant {
   phant_pr : CT_PhantPr?
@@ -421,7 +421,7 @@ pub(all) struct CT_PhantPr {
   ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_PhantPr::new(@xml.Element) -> Self
+pub fn CT_PhantPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_R {
   r_pr : CT_RPR?
@@ -457,7 +457,7 @@ pub(all) struct CT_RadPr {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn CT_RadPr::child_names(Self) -> Array[String]
-pub fn CT_RadPr::new(@xml.Element) -> Self
+pub fn CT_RadPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SPre {
   s_pre_pr : CT_SPrePr?
@@ -502,7 +502,7 @@ pub(all) struct CT_SSubSupPr {
   ctrl_pr : CT_CtrlPr?
   element : @xml.Element
 } derive(Eq, @debug.Debug)
-pub fn CT_SSubSupPr::new(@xml.Element) -> Self
+pub fn CT_SSubSupPr::new(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct CT_SSup {
   s_sup_pr : CT_SSupPr?

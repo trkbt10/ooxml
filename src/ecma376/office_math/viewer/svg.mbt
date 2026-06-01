@@ -1767,13 +1767,15 @@ fn read_val(el : @xml.Element) -> String {
 /// (the CT_OnOff default); otherwise an absent `@val` is OFF.
 /// An explicit `@val` always wins over `default_on`.
 fn val_is_on(el : @xml.Element, default_on? : Bool = false) -> Bool {
-  let mut result = default_on
-  for a in el.attributes {
-    if a.name.local_name == "val" {
-      result = a.value == "1" || a.value == "true" || a.value == "on"
-    }
+  try @domain.CT_OnOff::new(el) catch {
+    _ => false
+  } noraise {
+    value =>
+      match value.value {
+        Some(v) => v
+        None => default_on
+      }
   }
-  result
 }
 
 ///|

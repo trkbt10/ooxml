@@ -78,3 +78,26 @@ test "OMML enum simple types parse and reject invalid tokens" {
   assert_eq((try! ST_BreakBinSub::parse("+-")).to_string(), "+-")
   assert_true((try? ST_BreakBinSub::parse("++")) is Err(SchemaViolation(_)))
 }
+
+///|
+test "CT_OnOff uses shared ST_OnOff lexical validation" {
+  let valid = try! CT_OnOff::new({
+    name: { prefix: Some("m"), local_name: "smallFrac", ns: None },
+    attributes: [
+      { name: { prefix: Some("m"), local_name: "val", ns: None }, value: "off" },
+    ],
+    children: [],
+  })
+  assert_eq(valid.value, Some(false))
+  let invalid = try? CT_OnOff::new({
+    name: { prefix: Some("m"), local_name: "smallFrac", ns: None },
+    attributes: [
+      {
+        name: { prefix: Some("m"), local_name: "val", ns: None },
+        value: "maybe",
+      },
+    ],
+    children: [],
+  })
+  assert_true(invalid is Err(SchemaViolation(_)))
+}

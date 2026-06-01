@@ -143,9 +143,8 @@ pub(all) struct CT_OnOff {
   /// default-true semantics defined by the OMML toggle property).
   val : String?
   /// Decoded tri-state: `Some(true)` for 1/true/on, `Some(false)` for
-  /// 0/false/off, `None` when the attribute is absent or has an
-  /// unrecognised token (callers treat that as the default-true state per
-  /// §17.18.66 ST_OnOff).
+  /// 0/false/off, `None` when the attribute is absent (callers treat
+  /// absence as the default-true state per §17.18.66 ST_OnOff).
   value : Bool?
   /// Source XML element preserved for round-trip writers.
   element : @xml.Element
@@ -154,10 +153,10 @@ pub(all) struct CT_OnOff {
 ///|
 /// Construct CT_OnOff by capturing the optional `val` attribute and
 /// decoding it against s:ST_OnOff (§17.18.66 / Part 1 §22.9).
-pub fn CT_OnOff::new(element : @xml.Element) -> CT_OnOff {
+pub fn CT_OnOff::new(element : @xml.Element) -> CT_OnOff raise SchemaViolation {
   let val = attr_value(element, "val")
   let value = match val {
-    Some(v) => decode_on_off(v)
+    Some(v) => Some(decode_on_off(v))
     None => None
   }
   { val, value, element }
@@ -804,9 +803,10 @@ pub(all) struct CT_BorderBoxPr {
 
 ///|
 /// Construct CT_BorderBoxPr by routing each optional child to its slot.
-/// Every child is CT_OnOff or CT_CtrlPr, whose `new` functions never
-/// raise, so this constructor stays infallible.
-pub fn CT_BorderBoxPr::new(element : @xml.Element) -> CT_BorderBoxPr {
+/// Invalid CT_OnOff lexical values raise SchemaViolation.
+pub fn CT_BorderBoxPr::new(
+  element : @xml.Element,
+) -> CT_BorderBoxPr raise SchemaViolation {
   let mut hide_top : CT_OnOff? = None
   let mut hide_bot : CT_OnOff? = None
   let mut hide_left : CT_OnOff? = None
@@ -1433,15 +1433,15 @@ fn require_attr(
 }
 
 ///|
-/// Decode an s:ST_OnOff lexical token to a tri-state Bool. Recognised
-/// tokens follow the shared-types definition: "true"/"1"/"on" → Some(true);
-/// "false"/"0"/"off" → Some(false); anything else → None (callers fall
-/// back to the OMML default-true toggle semantics).
-fn decode_on_off(value : String) -> Bool? {
-  match value {
-    "true" | "1" | "on" => Some(true)
-    "false" | "0" | "off" => Some(false)
-    _ => None
+/// Decode an s:ST_OnOff lexical token through the shared simple-types SoT.
+/// Invalid tokens are schema violations; only absent `@val` carries OMML
+/// toggle default semantics.
+fn decode_on_off(value : String) -> Bool raise SchemaViolation {
+  try @simple_types.ST_OnOff::new(value) catch {
+    @simple_types.SchemaViolation(_) =>
+      raise SchemaViolation(type_name="ST_OnOff", value~)
+  } noraise {
+    on_off => on_off.to_bool()
   }
 }
 
@@ -2121,9 +2121,10 @@ pub(all) struct CT_PhantPr {
 
 ///|
 /// Construct CT_PhantPr by routing each optional child to its slot. Every
-/// child is CT_OnOff or CT_CtrlPr, whose `new` functions never raise, so
-/// this constructor stays infallible.
-pub fn CT_PhantPr::new(element : @xml.Element) -> CT_PhantPr {
+/// invalid CT_OnOff lexical value raises SchemaViolation.
+pub fn CT_PhantPr::new(
+  element : @xml.Element,
+) -> CT_PhantPr raise SchemaViolation {
   let mut show : CT_OnOff? = None
   let mut zero_wid : CT_OnOff? = None
   let mut zero_asc : CT_OnOff? = None
@@ -2203,9 +2204,8 @@ pub(all) struct CT_RadPr {
 
 ///|
 /// Construct CT_RadPr by binding the optional degHide and ctrlPr
-/// children. Every child is CT_OnOff or CT_CtrlPr, whose `new` functions
-/// never raise, so this constructor stays infallible.
-pub fn CT_RadPr::new(element : @xml.Element) -> CT_RadPr {
+/// children. Invalid CT_OnOff lexical values raise SchemaViolation.
+pub fn CT_RadPr::new(element : @xml.Element) -> CT_RadPr raise SchemaViolation {
   let mut deg_hide : CT_OnOff? = None
   let mut ctrl_pr : CT_CtrlPr? = None
   for child in element.children {
@@ -2446,9 +2446,10 @@ pub(all) struct CT_SSubSupPr {
 
 ///|
 /// Construct CT_SSubSupPr by routing each optional child to its slot.
-/// Every child is CT_OnOff or CT_CtrlPr, whose `new` functions never
-/// raise, so this constructor stays infallible.
-pub fn CT_SSubSupPr::new(element : @xml.Element) -> CT_SSubSupPr {
+/// Invalid CT_OnOff lexical values raise SchemaViolation.
+pub fn CT_SSubSupPr::new(
+  element : @xml.Element,
+) -> CT_SSubSupPr raise SchemaViolation {
   let mut aln_scr : CT_OnOff? = None
   let mut ctrl_pr : CT_CtrlPr? = None
   for child in element.children {
