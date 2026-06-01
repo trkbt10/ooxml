@@ -755,9 +755,9 @@ fn diagram_default_palette() -> Array[String] {
 
 ///|
 /// §21.4.4.7 `<dgm:fillClrLst>` — read a styleLbl's fill colour list,
-/// resolving `<a:srgbClr>` literally and `<a:schemeClr>` against the
-/// presentation theme in `ctx` (Office-palette fallback).  Returns an
-/// empty array when the styleLbl carries no fill list.
+/// resolving every DrawingML colour choice through the shared paint
+/// resolver so colorsDef and shape fills share one source of truth.
+/// Returns an empty array when the styleLbl carries no fill list.
 fn fill_clr_lst_colors(
   lbl : @xml.Element,
   ctx : ColorResolveContext,
@@ -793,28 +793,25 @@ fn fill_clr_lst_colors(
 }
 
 ///|
-/// Resolve the diagram-side subset of DrawingML EG_ColorChoice used by
-/// colorsDef/styleDef colour lists.
+/// Resolve the diagram-side DrawingML EG_ColorChoice used by
+/// colorsDef/styleDef colour lists through the shared paint colour
+/// resolver. This keeps SmartArt node/text/line colours aligned with
+/// every other DrawingML fill path and avoids a second, partial colour
+/// implementation in the diagram bridge.
 fn diagram_color_choice_hex(
   element : @xml.Element,
   ctx : ColorResolveContext,
 ) -> String? {
-  match element.name.local_name {
-    "srgbClr" =>
-      match attr_value(element, "val") {
-        Some(hex) => Some("#" + hex)
-        None => None
+  match @paint.resolve_solid_fill(element, ctx~) {
+    Some(rc) => {
+      let color = @paint.format_resolved_color(rc)
+      if color == "none" {
+        None
+      } else {
+        Some(color)
       }
-    "schemeClr" =>
-      match attr_value(element, "val") {
-        Some(name) =>
-          match @paint.get_scheme_color(name, None, ctx) {
-            Some(hex) => Some("#" + hex)
-            None => Some(scheme_default_hex(name))
-          }
-        None => None
-      }
-    _ => None
+    }
+    None => None
   }
 }
 
@@ -924,30 +921,6 @@ fn colors_palette(
         result
       }
     }
-  }
-}
-
-///|
-/// Resolve a §20.1.6.2 scheme colour name to a reasonable default
-/// hex value when the theme is not available. Mirrors the
-/// PowerPoint 2013 default Office theme accents so diagrams render
-/// with familiar colours when the slide's theme cannot be threaded
-/// through to this function.
-fn scheme_default_hex(name : String) -> String {
-  match name {
-    "accent1" => "#4472C4"
-    "accent2" => "#ED7D31"
-    "accent3" => "#A5A5A5"
-    "accent4" => "#FFC000"
-    "accent5" => "#5B9BD5"
-    "accent6" => "#70AD47"
-    "dk1" | "tx1" => "#000000"
-    "lt1" | "bg1" => "#FFFFFF"
-    "dk2" | "tx2" => "#44546A"
-    "lt2" | "bg2" => "#E7E6E6"
-    "hlink" => "#0563C1"
-    "folHlink" => "#954F72"
-    _ => "#4472C4"
   }
 }
 

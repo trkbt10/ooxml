@@ -8,6 +8,8 @@ import {
 }
 
 // Values
+pub fn hsl_to_rgb(Double, Double, Double, Int) -> Rgba8
+
 pub fn parse_srgb_hex(String) -> Rgba8 raise @errors.SchemaViolation
 
 pub fn preset_color(String) -> Rgba8 raise @errors.SchemaViolation
@@ -17,6 +19,8 @@ pub fn read_color_ref(@xml.Element) -> (ColorRef, Array[ColorTransform]) raise @
 pub fn read_color_scheme(@xml.Element) -> ColorScheme raise @errors.SchemaViolation
 
 pub fn resolve_color(ColorRef, Array[ColorTransform], ColorScheme, Rgba8?) -> Rgba8 raise @errors.SchemaViolation
+
+pub fn rgb_to_hsl(Rgba8) -> (Double, Double, Double)
 
 // Errors
 

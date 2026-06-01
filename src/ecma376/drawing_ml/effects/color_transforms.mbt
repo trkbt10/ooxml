@@ -1,14 +1,8 @@
 // §20.1.8.42 / §20.1.8.60 colour transforms.
 //
-// The HSL conversion routines below duplicate `color_resolution`'s
-// private rgb_to_hsl / hsl_to_rgb.  Both packages target the same
-// spec-defined CIE HSL algorithm (§20.1.2.3.14 — `<a:hslClr>`),
-// so the two implementations must converge on identical numeric
-// output for any RGB input.  Test coverage in
-// `color_resolution/color_resolution_wbtest.mbt` and the unit
-// tests below verify this invariant.  Consolidation is tracked
-// as future work — when the upstream package exposes the
-// helpers publicly we delete the duplicates here.
+// HSL conversion is owned by `drawing_ml/color_resolution`, the same SoT used
+// for §20.1.2.3 color references. Effects apply only their §20.1.8-specific
+// channel transforms before delegating back to that shared conversion path.
 
 ///|
 /// §20.1.8.60 tint amount/hue. `amt` and `hue` use §20.1.10.24 fixed
@@ -16,7 +10,7 @@
 /// Positive `amt` shifts the existing hue toward the target hue;
 /// negative `amt` shifts it away. Saturation and luminance are preserved.
 pub fn apply_tint(source : @color.Rgba8, amt : Int, hue : Int) -> @color.Rgba8 {
-  let (h, s, l) = rgb_to_hsl(source)
+  let (h, s, l) = @color.rgb_to_hsl(source)
   let target = angle_units_to_turn(hue)
   let weight = clamp_unit(percent_to_unit(abs_int(amt)))
   let shifted = if amt >= 0 {
@@ -24,7 +18,7 @@ pub fn apply_tint(source : @color.Rgba8, amt : Int, hue : Int) -> @color.Rgba8 {
   } else {
     lerp_hue(h, opposite_hue(target), weight)
   }
-  hsl_to_rgb(shifted, s, l, source.a)
+  @color.hsl_to_rgb(shifted, s, l, source.a)
 }
 
 ///|
@@ -35,10 +29,10 @@ pub fn apply_lum(
   bright : Int,
   contrast : Int,
 ) -> @color.Rgba8 {
-  let (h, s, l) = rgb_to_hsl(source)
+  let (h, s, l) = @color.rgb_to_hsl(source)
   let with_contrast = (l - 0.5) * (1.0 + percent_to_unit(contrast)) + 0.5
   let with_bright = with_contrast + percent_to_unit(bright)
-  hsl_to_rgb(h, s, clamp_unit(with_bright), source.a)
+  @color.hsl_to_rgb(h, s, clamp_unit(with_bright), source.a)
 }
 
 ///|
@@ -50,11 +44,11 @@ pub fn apply_hsl(
   sat_pct : Int,
   lum_pct : Int,
 ) -> @color.Rgba8 {
-  let (h, s, l) = rgb_to_hsl(source)
+  let (h, s, l) = @color.rgb_to_hsl(source)
   let new_h = normalize_turn(h + percent_to_unit(hue_pct))
   let new_s = clamp_unit(s + percent_to_unit(sat_pct))
   let new_l = clamp_unit(l + percent_to_unit(lum_pct))
-  hsl_to_rgb(new_h, new_s, new_l, source.a)
+  @color.hsl_to_rgb(new_h, new_s, new_l, source.a)
 }
 
 ///|
@@ -173,71 +167,6 @@ pub fn apply_alpha_inverse(
 }
 
 ///|
-fn rgb_to_hsl(c : @color.Rgba8) -> (Double, Double, Double) {
-  let r = c.r.to_double() / 255.0
-  let g = c.g.to_double() / 255.0
-  let b = c.b.to_double() / 255.0
-  let maxc = max_double(r, max_double(g, b))
-  let minc = min_double(r, min_double(g, b))
-  let l = (maxc + minc) / 2.0
-  if doubles_close(maxc, minc) {
-    (0.0, 0.0, l)
-  } else {
-    let d = maxc - minc
-    let s = if l > 0.5 { d / (2.0 - maxc - minc) } else { d / (maxc + minc) }
-    let h = if maxc == r {
-      let add = if g < b { 1.0 } else { 0.0 }
-      normalize_turn((g - b) / d / 6.0 + add)
-    } else if maxc == g {
-      ((b - r) / d + 2.0) / 6.0
-    } else {
-      ((r - g) / d + 4.0) / 6.0
-    }
-    (h, s, l)
-  }
-}
-
-///|
-fn hsl_to_rgb(h : Double, s : Double, l : Double, a : Int) -> @color.Rgba8 {
-  let h = normalize_turn(h)
-  let s = clamp_unit(s)
-  let l = clamp_unit(l)
-  if doubles_close(s, 0.0) {
-    let v = percent_unit_to_byte(l)
-    { r: v, g: v, b: v, a }
-  } else {
-    let q = if l < 0.5 { l * (1.0 + s) } else { l + s - l * s }
-    let p = 2.0 * l - q
-    {
-      r: percent_unit_to_byte(hue_to_rgb(p, q, h + 1.0 / 3.0)),
-      g: percent_unit_to_byte(hue_to_rgb(p, q, h)),
-      b: percent_unit_to_byte(hue_to_rgb(p, q, h - 1.0 / 3.0)),
-      a,
-    }
-  }
-}
-
-///|
-fn hue_to_rgb(p : Double, q : Double, t0 : Double) -> Double {
-  let mut t = t0
-  if t < 0.0 {
-    t = t + 1.0
-  }
-  if t > 1.0 {
-    t = t - 1.0
-  }
-  if t < 1.0 / 6.0 {
-    p + (q - p) * 6.0 * t
-  } else if t < 1.0 / 2.0 {
-    q
-  } else if t < 2.0 / 3.0 {
-    p + (q - p) * (2.0 / 3.0 - t) * 6.0
-  } else {
-    p
-  }
-}
-
-///|
 fn relative_luminance(c : @color.Rgba8) -> Double {
   clamp_unit(
     (
@@ -313,31 +242,6 @@ fn clamp_byte(value : Int) -> Int {
   } else {
     value
   }
-}
-
-///|
-fn min_double(a : Double, b : Double) -> Double {
-  if a < b {
-    a
-  } else {
-    b
-  }
-}
-
-///|
-fn max_double(a : Double, b : Double) -> Double {
-  if a > b {
-    a
-  } else {
-    b
-  }
-}
-
-///|
-fn doubles_close(a : Double, b : Double) -> Bool {
-  let diff = a - b
-  let mag = if diff < 0.0 { -diff } else { diff }
-  mag < 0.0000000001
 }
 
 ///|

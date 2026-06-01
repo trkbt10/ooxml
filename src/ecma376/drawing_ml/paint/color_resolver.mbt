@@ -390,13 +390,15 @@ fn scrgb_linear_to_srgb_byte(linear : Double) -> Double {
 /// `parsePercentageValue` in `color-resolver.ts:300`.
 fn parse_pct(value : String) -> Double {
   let trimmed = value.trim().to_owned()
-  let dropped = if trimmed.length() > 0 &&
-    trimmed.code_unit_at(trimmed.length() - 1) == 0x25 {
-    trimmed[0:trimmed.length() - 1].to_owned()
-  } else {
-    trimmed
+  if trimmed.length() > 0 && trimmed.code_unit_at(trimmed.length() - 1) == 0x25 {
+    let dropped = trimmed[0:trimmed.length() - 1].to_owned()
+    return try @string.parse_double(dropped) catch {
+      _ => 0.0
+    } noraise {
+      v => v * 1000.0
+    }
   }
-  try @string.parse_double(dropped) catch {
+  try @string.parse_double(trimmed) catch {
     _ => 0.0
   } noraise {
     v => v

@@ -110,6 +110,17 @@ test "alpha 50% is captured" {
 }
 
 ///|
+/// §22.9.2.10 / §20.1.2.3 percentage forms accept both DrawingML's
+/// fixed-point integer spelling and strict percent-literal spelling.
+test "alpha 50 percent suffix is captured" {
+  let alpha = make_elt("alpha", [("val", "50%")], [])
+  let elt = make_elt("srgbClr", [("val", "FF0000")], [alpha])
+  let ctx = ColorResolveContext::empty()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
+  inspect(rc.alpha, content="0.5")
+}
+
+///|
 test "format_resolved_color emits #hex or rgba" {
   let opaque_color : ResolvedColor = { hex: "abcdef", alpha: 1.0 }
   inspect(@paint.format_resolved_color(opaque_color), content="#abcdef")
@@ -266,4 +277,14 @@ test "scrgbClr applies linear-to-sRGB gamma" {
   )
   let rw = @paint.resolve_solid_fill(white, ctx~).unwrap()
   inspect(rw.hex, content="ffffff")
+}
+
+///|
+/// The same scrgb percentages may be written as strict percent
+/// literals; 50% must mean 0.5, not 0.0005.
+test "scrgbClr percent suffix applies linear-to-sRGB gamma" {
+  let elt = make_elt("scrgbClr", [("r", "50%"), ("g", "50%"), ("b", "50%")], [])
+  let ctx = ColorResolveContext::empty()
+  let rc = @paint.resolve_solid_fill(elt, ctx~).unwrap()
+  inspect(rc.hex, content="bcbcbc")
 }

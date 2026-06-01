@@ -477,7 +477,9 @@ fn parse_scheme_color(
 }
 
 ///|
-fn rgb_to_hsl(c : Rgba8) -> (Double, Double, Double) {
+/// Convert an sRGB color to the HSL coordinate system used by
+/// §20.1.2.3 color transforms and §20.1.8 image effects.
+pub fn rgb_to_hsl(c : Rgba8) -> (Double, Double, Double) {
   let r = c.r.to_double() / 255.0
   let g = c.g.to_double() / 255.0
   let b = c.b.to_double() / 255.0
@@ -502,7 +504,9 @@ fn rgb_to_hsl(c : Rgba8) -> (Double, Double, Double) {
 }
 
 ///|
-fn hsl_to_rgb(h : Double, s : Double, l : Double, a : Int) -> Rgba8 {
+/// Convert an HSL coordinate back to sRGB using the same rounding and
+/// clamping as §20.1.2.3 color resolution. `h` is a turn in 0..1.
+pub fn hsl_to_rgb(h : Double, s : Double, l : Double, a : Int) -> Rgba8 {
   let h = normalize_turn(h)
   let s = clamp_unit(s)
   let l = clamp_unit(l)

@@ -19,14 +19,52 @@ test "colors_by_style_label maps each styleLbl to its fillClrLst" {
   )
   let ctx = ColorResolveContext::empty()
   let fills = colors_by_style_label(Some(cd), ctx)
-  assert_eq(fills.get("node0").unwrap()[0], "#FF0000")
-  assert_eq(fills.get("node1").unwrap()[0], "#00FF00")
+  assert_eq(fills.get("node0").unwrap()[0], "#ff0000")
+  assert_eq(fills.get("node1").unwrap()[0], "#00ff00")
   // Text colours come from txFillClrLst — only node1 declares one.
   let texts = colors_by_style_label(Some(cd), ctx, list_name="txFillClrLst")
-  assert_eq(texts.get("node1").unwrap()[0], "#0000FF")
+  assert_eq(texts.get("node1").unwrap()[0], "#0000ff")
   assert_true(texts.get("node0") is None)
   // The default palette is the first styleLbl's fill list.
-  assert_eq(colors_palette(Some(cd), ctx)[0], "#FF0000")
+  assert_eq(colors_palette(Some(cd), ctx)[0], "#ff0000")
+}
+
+///|
+/// §21.4.4 coloursDef uses DrawingML EG_ColorChoice; resolving it
+/// through `@paint` preserves the same transforms as ordinary fills.
+test "diagram_color_choice_hex resolves DrawingML transforms through paint SoT" {
+  let c = dgm_parse(
+    (
+      #|<a:srgbClr xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" val="FF0000">
+      #|<a:alpha val="50000"/>
+      #|</a:srgbClr>
+    ),
+  )
+  let ctx = ColorResolveContext::empty()
+  assert_eq(diagram_color_choice_hex(c, ctx).unwrap(), "rgba(255, 0, 0, 0.5)")
+}
+
+///|
+/// §20.1.2.3 EG_ColorChoice includes preset colours, not just
+/// srgbClr/schemeClr.
+test "diagram_color_choice_hex resolves preset colors through paint SoT" {
+  let c = dgm_parse(
+    "<a:prstClr xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" val=\"red\"/>",
+  )
+  let ctx = ColorResolveContext::empty()
+  assert_eq(diagram_color_choice_hex(c, ctx).unwrap(), "#ff0000")
+}
+
+///|
+/// Unknown scheme colours are invalid input, not a request for the
+/// Office accent1 fallback. The shared paint resolver reports this as
+/// `none`, which the diagram palette drops.
+test "diagram_color_choice_hex rejects invalid scheme colors" {
+  let c = dgm_parse(
+    "<a:schemeClr xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" val=\"notAColor\"/>",
+  )
+  let ctx = ColorResolveContext::empty()
+  assert_true(diagram_color_choice_hex(c, ctx) is None)
 }
 
 ///|
@@ -47,7 +85,7 @@ test "style_line_colors_by_style_label maps quickStyle line colours" {
     Some(style_def),
     ColorResolveContext::empty(),
   )
-  assert_eq(map.get("node0").unwrap(), "#FF0000")
+  assert_eq(map.get("node0").unwrap(), "#ff0000")
   assert_eq(map.get("node1").unwrap(), "#ed7d31")
 }
 
