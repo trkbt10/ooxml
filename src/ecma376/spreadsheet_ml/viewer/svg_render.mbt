@@ -140,8 +140,8 @@ pub fn render_svg(
   /// §18.8.3 — `/xl/theme/theme1.xml` root element.  When
   /// supplied the renderer builds a `SmlThemeColorMap` from
   /// `<a:clrScheme>` so `<color theme="N">` references and
-  /// `<a:srgbClr>` references resolve to concrete sRGB hex
-  /// strings rather than being silently discarded.
+  /// DrawingML colour choices in sheet drawings resolve to concrete
+  /// sRGB hex strings rather than being silently discarded.
   theme? : @xml.Element? = None,
   /// §18.2.28 `<workbookPr @date1904>` — when `true` the
   /// workbook uses the 1904 date system, so serial date values
@@ -8654,12 +8654,12 @@ fn render_drawing_anchor(
         None => drawing_placeholder_inner(bounds, label)
       }
     Sp(sp) =>
-      match render_drawing_shape(sp, bounds) {
+      match render_drawing_shape(sp, bounds, theme_map) {
         Some(node) => [node]
         None => drawing_placeholder_inner(bounds, label)
       }
     CxnSp(cxn) =>
-      match render_drawing_connector(cxn, bounds) {
+      match render_drawing_connector(cxn, bounds, theme_map) {
         Some(node) => [node]
         None => drawing_placeholder_inner(bounds, label)
       }
@@ -8796,7 +8796,9 @@ fn render_drawing_picture(
 fn render_drawing_shape(
   sp : @drawing.CT_Shape,
   bounds : DrawingBounds,
+  theme_map : SmlThemeColorMap,
 ) -> @xml.Node? {
+  let paint_ctx = paint_ctx_from_sml_theme(theme_map)
   let sp_pr = match first_child_named_local(sp.element, "spPr") {
     Some(p) => p
     None => return None
@@ -8835,13 +8837,15 @@ fn render_drawing_shape(
           let path_d = eval_custgeom_path(cg, bounds.width, bounds.height)
           if path_d != "" {
             let fill = resolve_shape_solid_color(
-              sp_pr, "solidFill", "currentColor",
+              sp_pr, "solidFill", "currentColor", paint_ctx,
             )
             let ln_opt = first_child_named_local(sp_pr, "ln")
             let stroke = match ln_opt {
               None => "currentColor"
               Some(ln) =>
-                resolve_shape_solid_color(ln, "solidFill", "currentColor")
+                resolve_shape_solid_color(
+                  ln, "solidFill", "currentColor", paint_ctx,
+                )
             }
             let attrs : Array[@xml.Attribute] = [
               svg_attr("d", path_d),
@@ -8901,7 +8905,9 @@ fn render_drawing_shape(
       // `currentColor` so the SVG cascade or downstream theme layer
       // picks the actual hue.  The previous `#d9d9d9` was a
       // PowerPoint-UX placeholder with no §20.1 basis.
-      let fill = resolve_shape_solid_color(sp_pr, "solidFill", "currentColor")
+      let fill = resolve_shape_solid_color(
+        sp_pr, "solidFill", "currentColor", paint_ctx,
+      )
       // §20.1.2.2.24 `<a:ln>` — same theme-cascade semantics for
       // stroke.  `#808080` was a viewer convention; we emit
       // `currentColor` so the consumer's cascade decides.  §20.1.2.1.3
@@ -8910,7 +8916,8 @@ fn render_drawing_shape(
       let ln_opt = first_child_named_local(sp_pr, "ln")
       let stroke = match ln_opt {
         None => "currentColor"
-        Some(ln) => resolve_shape_solid_color(ln, "solidFill", "currentColor")
+        Some(ln) =>
+          resolve_shape_solid_color(ln, "solidFill", "currentColor", paint_ctx)
       }
       let stroke_width_px = match ln_opt {
         None => 1.0
@@ -8927,7 +8934,7 @@ fn render_drawing_shape(
       }
       // Optional text body — emit a centered `<text>` for a single-string
       // `<a:t>` payload. Anything richer falls back silently.
-      let text_node = drawing_shape_text_svg(sp.element, bounds)
+      let text_node = drawing_shape_text_svg(sp.element, bounds, paint_ctx)
       let children : Array[@xml.Node] = [
         svg_elem(
           "path",
@@ -9399,24 +9406,30 @@ fn drawing_preset_path(
 }
 
 ///|
-/// Look up `<a:solidFill>/<a:srgbClr @val>` under `parent` (e.g.
-/// `<a:spPr>` or `<a:ln>`) and return `#rrggbb`. Returns `fallback`
-/// when no solid-fill colour is present.
+/// Look up a DrawingML `<a:solidFill>` under `parent` (e.g.
+/// `<a:spPr>`, `<a:ln>`, or text `<a:rPr>`) and resolve its
+/// EG_ColorChoice through the shared paint resolver. Returns
+/// `fallback` when no solid-fill colour is present or the colour
+/// cannot be resolved.
 fn resolve_shape_solid_color(
   parent : @xml.Element,
   fill_local_name : String,
   fallback : String,
+  ctx : @paint.ColorResolveContext,
 ) -> String {
   match first_child_named_local(parent, fill_local_name) {
     None => fallback
     Some(fill) =>
-      match first_child_named_local(fill, "srgbClr") {
+      match @paint.resolve_solid_fill(fill, ctx~) {
         None => fallback
-        Some(c) =>
-          match attr_value_local(c, "val") {
-            None => fallback
-            Some(v) => "#" + v.to_lower()
+        Some(rc) => {
+          let color = @paint.format_resolved_color(rc)
+          if color == "none" {
+            fallback
+          } else {
+            color
           }
+        }
       }
   }
 }
@@ -9428,6 +9441,7 @@ fn resolve_shape_solid_color(
 fn drawing_shape_text_svg(
   sp : @xml.Element,
   bounds : DrawingBounds,
+  ctx : @paint.ColorResolveContext,
 ) -> @xml.Node? {
   let tx_body = match first_child_named_local(sp, "txBody") {
     Some(t) => t
@@ -9475,7 +9489,7 @@ fn drawing_shape_text_svg(
   // §21.1.2.3.1-2/10 latin/ea/cs/sym — pick the first available
   // typeface, falling back to the generic CSS `serif` family per
   // the same convention as the WML viewer.
-  // §21.1.2.3.7 — `<a:solidFill>/<a:srgbClr @val>` for the run
+  // §21.1.2.3.7 — `<a:solidFill>` colour choice for the run
   // §21.1.2.3.13 — when no rPr is present, font defaults come
   // from the theme `<a:fontScheme>` cascade (PowerPoint default
   // 1800 hundredths-of-a-point = 18 pt, applied through the
@@ -9499,7 +9513,7 @@ fn drawing_shape_text_svg(
       // §21.1.2.3.13 — when @typeface is absent, defer to the
       // SVG cascade rather than substituting `serif`.
       let typeface = drawing_text_typeface(rp).unwrap_or("")
-      let color = drawing_text_color(rp).unwrap_or("currentColor")
+      let color = drawing_text_color(rp, ctx).unwrap_or("currentColor")
       (sz, typeface, color)
     }
   }
@@ -9542,21 +9556,17 @@ fn drawing_text_typeface(r_pr : @xml.Element) -> String? {
 }
 
 ///|
-/// §21.1.2.3 EG_TextRunProperties — read `<a:solidFill>/<a:srgbClr
-/// @val>` from `r_pr` and return the resolved RGB hex string.
-fn drawing_text_color(r_pr : @xml.Element) -> String? {
-  let solid = first_child_named_local(r_pr, "solidFill")
-  match solid {
-    None => None
-    Some(sf) =>
-      match first_child_named_local(sf, "srgbClr") {
-        None => None
-        Some(rgb_el) =>
-          match attr_value_local(rgb_el, "val") {
-            Some(hex) => Some("#" + hex)
-            None => None
-          }
-      }
+/// §21.1.2.3 EG_TextRunProperties — resolve `<a:solidFill>` from
+/// `r_pr` through the same DrawingML paint SoT used by shapes.
+fn drawing_text_color(
+  r_pr : @xml.Element,
+  ctx : @paint.ColorResolveContext,
+) -> String? {
+  let color = resolve_shape_solid_color(r_pr, "solidFill", "", ctx)
+  if color == "" {
+    None
+  } else {
+    Some(color)
   }
 }
 
@@ -9588,7 +9598,7 @@ fn render_drawing_group(
     )
     let inner : Array[@xml.Node] = match child {
       Sp(sp) =>
-        match render_drawing_shape(sp, child_bounds) {
+        match render_drawing_shape(sp, child_bounds, theme_map) {
           Some(node) => [node]
           None => drawing_placeholder_inner(child_bounds, "Shape")
         }
@@ -9598,7 +9608,7 @@ fn render_drawing_group(
           None => drawing_placeholder_inner(child_bounds, "Picture")
         }
       CxnSp(cxn) =>
-        match render_drawing_connector(cxn, child_bounds) {
+        match render_drawing_connector(cxn, child_bounds, theme_map) {
           Some(node) => [node]
           None => drawing_placeholder_inner(child_bounds, "Connector")
         }
@@ -9761,6 +9771,7 @@ fn group_child_bounds(
 fn render_drawing_connector(
   cxn : @drawing.CT_Connector,
   bounds : DrawingBounds,
+  theme_map : SmlThemeColorMap,
 ) -> @xml.Node? {
   let sp_pr = match first_child_named_local(cxn.element, "spPr") {
     Some(p) => p
@@ -9770,7 +9781,7 @@ fn render_drawing_connector(
   if path_d == "" {
     return None
   }
-  let (stroke, stroke_width) = drawing_connector_stroke(sp_pr)
+  let (stroke, stroke_width) = drawing_connector_stroke(sp_pr, theme_map)
   Some(
     svg_elem("g", [svg_attr("class", "connector")], [
       svg_elem(
@@ -9815,15 +9826,19 @@ fn drawing_connector_path(
 
 ///|
 /// Pull (stroke colour, stroke width in CSS pixels) from `<a:ln @w>`
-/// + `<a:solidFill>/<a:srgbClr>` of a connector's shape properties.
+/// + `<a:solidFill>` colour choice of a connector's shape properties.
 /// Width default is 1 px when the attribute is absent; the `@w` value
 /// itself is in EMU (914400/inch) so it's converted to CSS px at
 /// 96 dpi.
-fn drawing_connector_stroke(sp_pr : @xml.Element) -> (String, Double) {
+fn drawing_connector_stroke(
+  sp_pr : @xml.Element,
+  theme_map : SmlThemeColorMap,
+) -> (String, Double) {
+  let paint_ctx = paint_ctx_from_sml_theme(theme_map)
   let ln = first_child_named_local(sp_pr, "ln")
   let color = match ln {
     None => "#000000"
-    Some(l) => resolve_shape_solid_color(l, "solidFill", "#000000")
+    Some(l) => resolve_shape_solid_color(l, "solidFill", "#000000", paint_ctx)
   }
   let width_px = match ln {
     None => 1.0

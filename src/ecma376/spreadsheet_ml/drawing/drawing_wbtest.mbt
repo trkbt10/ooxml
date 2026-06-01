@@ -48,6 +48,30 @@ test "read and write DML worksheet drawing with anchors" {
 }
 
 ///|
+test "read DML worksheet drawing transitional namespace two-cell anchor" {
+  let xml = bytes(
+    "<xdr:wsDr xmlns:xdr=\"http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing\" xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\">" +
+    "<xdr:twoCellAnchor editAs=\"twoCell\">" +
+    "<xdr:from><xdr:col>1</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>" +
+    "<xdr:to><xdr:col>5</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>8</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>" +
+    "<xdr:sp><xdr:nvSpPr><xdr:cNvPr id=\"2\" name=\"s\"/><xdr:cNvSpPr/></xdr:nvSpPr><xdr:spPr><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom><a:solidFill><a:schemeClr val=\"accent1\"/></a:solidFill></xdr:spPr></xdr:sp>" +
+    "<xdr:clientData/>" +
+    "</xdr:twoCellAnchor>" +
+    "</xdr:wsDr>",
+  )
+  let drawing = read_ws_dr(xml)
+  assert_eq(drawing.anchors.length(), 1)
+  match drawing.anchors[0] {
+    TwoCellAnchor(a) =>
+      match a.object_choice {
+        Sp(_) => assert_true(true)
+        _ => fail("expected Sp(...) inside TwoCellAnchor")
+      }
+    _ => fail("expected TwoCellAnchor")
+  }
+}
+
+///|
 test "read and write VML ClientData element" {
   let xml = bytes(
     "<x:ClientData xmlns:x=\"urn:schemas-microsoft-com:office:excel\" ObjectType=\"Button\"><x:MoveWithCells/><x:Anchor>1, 0, 2, 0, 3, 0, 4, 0</x:Anchor></x:ClientData>",
