@@ -232,6 +232,9 @@ fn optional_attribute(element : @xml.Element, local_name : String) -> String {
 
 ///|
 fn all_supported(required : Array[String], supported : Array[String]) -> Bool {
+  if required.length() == 0 {
+    return false
+  }
   let mut ok = true
   for token in required {
     if !supported.contains(token) {
@@ -244,11 +247,28 @@ fn all_supported(required : Array[String], supported : Array[String]) -> Bool {
 ///|
 fn parse_token_list(value : String) -> Array[String] {
   let tokens : Array[String] = []
-  for token in value.trim().split(" ") {
-    let clean = token.trim().to_owned()
-    if clean != "" {
-      tokens.push(clean)
+  let chars = value.to_array()
+  let buffer = StringBuilder::new()
+  let mut has_token = false
+  for ch in chars {
+    if is_mc_whitespace(ch) {
+      if has_token {
+        tokens.push(buffer.to_string())
+        buffer.reset()
+        has_token = false
+      }
+    } else {
+      buffer.write_char(ch)
+      has_token = true
     }
   }
+  if has_token {
+    tokens.push(buffer.to_string())
+  }
   tokens
+}
+
+///|
+fn is_mc_whitespace(ch : Char) -> Bool {
+  ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }

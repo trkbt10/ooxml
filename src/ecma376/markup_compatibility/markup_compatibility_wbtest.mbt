@@ -49,9 +49,25 @@ test "AlternateContent falls back when choices are unsupported" {
 }
 
 ///|
+test "AlternateContent does not select Choice with empty or missing Requires" {
+  let ac = parse_alternate_content(
+    element("AlternateContent", [], [
+      @xml.Node::Element(element("Choice", [], [@xml.Node::Text("missing")])),
+      @xml.Node::Element(
+        element("Choice", [attr("Requires", " \t\r\n ")], [
+          @xml.Node::Text("invalid"),
+        ]),
+      ),
+      @xml.Node::Element(element("Fallback", [], [@xml.Node::Text("old")])),
+    ]),
+  )
+  assert_true(ac.evaluate(["w14"]) == [@xml.Node::Text("old")])
+}
+
+///|
 test "markup compatibility token list helpers trim whitespace" {
-  @debug.assert_eq(parse_ignorable("  w14   w15 "), ["w14", "w15"])
-  @debug.assert_eq(parse_process_content("w14:para w15:run"), [
+  @debug.assert_eq(parse_ignorable("  w14\t w15\r\nw16 "), ["w14", "w15", "w16"])
+  @debug.assert_eq(parse_process_content("w14:para\nw15:run"), [
     "w14:para", "w15:run",
   ])
   @debug.assert_eq(parse_preserve_attributes("w14:attr"), ["w14:attr"])
