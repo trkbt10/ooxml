@@ -135,6 +135,22 @@ test "with_relationship appends a relationship under owner" {
 }
 
 ///|
+test "with_relationship rejects non-xsd-ID relationship Id" {
+  let content_types = b(
+    "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/a.xml\" ContentType=\"application/xml\"/></Types>",
+  )
+  let archive = @zip.Archive::new([
+    ("[Content_Types].xml", content_types),
+    ("a.xml", b("<a/>")),
+  ])
+  let pkg = try! Package::open(try! @zip.write(archive))
+  let invalid = try? pkg.with_relationship(
+    "/a.xml", "1", "http://example.test/type", "b.xml",
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "remove_part also strips its Override entry" {
   let content_types = b(
     "<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/a.xml\" ContentType=\"application/xml\"/></Types>",

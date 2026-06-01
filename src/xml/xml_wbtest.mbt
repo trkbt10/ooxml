@@ -27,6 +27,18 @@ test "parse namespaces with default prefix and scoped redefinition" {
 }
 
 ///|
+test "is_ncname validates XML namespace NCName lexical forms" {
+  assert_true(is_ncname("rId1"))
+  assert_true(is_ncname("A5FFC797514BC"))
+  assert_true(is_ncname("_name-1.2"))
+  assert_true(is_ncname("名1"))
+  assert_false(is_ncname(""))
+  assert_false(is_ncname("1"))
+  assert_false(is_ncname("bad id"))
+  assert_false(is_ncname("a:b"))
+}
+
+///|
 test "decode named and numeric entity references" {
   let doc = parse(
     bytes("<root a=\"&quot;&#65;&#x42;&apos;\">&amp;&lt;&gt;&#x43;</root>"),

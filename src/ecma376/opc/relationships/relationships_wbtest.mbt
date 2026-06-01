@@ -29,6 +29,32 @@ test "relationships reject schema violations" {
 }
 
 ///|
+test "Relationship element Id validates xsd:ID NCName lexical form" {
+  let rid = try! read_relationships(
+    b(
+      "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId1\" Type=\"t\" Target=\"x\"/></Relationships>",
+    ),
+  )
+  assert_eq(rid.relationships[0].id, "rId1")
+  let generated = try! read_relationships(
+    b(
+      "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"A5FFC797514BC\" Type=\"t\" Target=\"x\"/></Relationships>",
+    ),
+  )
+  assert_eq(generated.relationships[0].id, "A5FFC797514BC")
+  for invalid_id in ["1", "bad id", "a:b"] {
+    let invalid = try? read_relationships(
+      b(
+        "<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"" +
+        invalid_id +
+        "\" Type=\"t\" Target=\"x\"/></Relationships>",
+      ),
+    )
+    assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+  }
+}
+
+///|
 test "public relationships E3 and E4 errors carry context" {
   @opc_errors.require_supported_feature(
     false,

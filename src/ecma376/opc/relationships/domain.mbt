@@ -58,6 +58,31 @@ pub fn RelationshipId::to_string(self : RelationshipId) -> String {
 pub type ST_RelationshipId = RelationshipId
 
 ///|
+/// OPC Relationships Part `Relationship/@Id` is `xsd:ID` in
+/// opc-relationships.xsd, hence an XML `NCName`. This validator is
+/// intentionally separate from `ST_RelationshipId`, whose schema
+/// base is plain `xsd:string` for relationship-reference markup.
+pub fn validate_relationship_element_id(
+  id : String,
+  path? : String = "Relationship/@Id",
+) -> Unit raise @opc_errors.SchemaViolation {
+  if id == "" {
+    raise @opc_errors.SchemaViolation(
+      section="9.3",
+      path~,
+      reason="Id is required",
+    )
+  }
+  if !@xml.is_ncname(id) {
+    raise @opc_errors.SchemaViolation(
+      section="9.3",
+      path~,
+      reason="Relationship/@Id must be an xsd:ID NCName value",
+    )
+  }
+}
+
+///|
 /// XSD complex type CT_Relationship — ECMA-376 Part 2 §9.3 Relationships Part
 /// / Annex C opc-relationships.xsd. Single relationship entry carrying the
 /// required Id, Type, Target attributes and an optional TargetMode.
@@ -76,13 +101,7 @@ fn CT_Relationship::new(
   target : String,
   target_mode : TargetMode,
 ) -> CT_Relationship raise @opc_errors.SchemaViolation {
-  if id == "" {
-    raise @opc_errors.SchemaViolation(
-      section="",
-      path="Relationship/@Id",
-      reason="Id is required",
-    )
-  }
+  validate_relationship_element_id(id)
   if type_uri == "" {
     raise @opc_errors.SchemaViolation(
       section="",

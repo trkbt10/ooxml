@@ -318,7 +318,7 @@ pub struct ST_XmlName {
 ///|
 /// Part 1 §22.9.2.15 — decode an NCName lexical value.
 pub fn ST_XmlName::new(s : String) -> ST_XmlName raise SchemaViolation {
-  if !is_ncname(s) {
+  if !@xml.is_ncname(s) {
     violation("ST_XmlName", s)
   }
   { lexical: s }
@@ -1466,32 +1466,6 @@ fn trim_leading_zeroes(s : String, start : Int, end : Int) -> String {
     pos = pos + 1
   }
   s[pos:end].to_owned()
-}
-
-///|
-fn is_ncname(s : String) -> Bool {
-  if s.length() == 0 || !is_ncname_start_at(s, 0) {
-    false
-  } else {
-    let mut ok = true
-    for i in 1..<s.length() {
-      ok = ok && is_ncname_char_at(s, i)
-    }
-    ok
-  }
-}
-
-///|
-fn is_ncname_start_at(s : String, index : Int) -> Bool {
-  is_ascii_alpha_at(s, index) || s[index:index + 1] == "_"
-}
-
-///|
-fn is_ncname_char_at(s : String, index : Int) -> Bool {
-  is_ncname_start_at(s, index) ||
-  is_digit_at(s, index) ||
-  s[index:index + 1] == "-" ||
-  s[index:index + 1] == "."
 }
 
 ///|

@@ -73,6 +73,7 @@ test "ST_String accepts xsd:string values" {
 ///|
 test "ST_XmlName validates NCName lexical form" {
   assert_eq((try! ST_XmlName::new("_name-1.2")).to_string(), "_name-1.2")
+  assert_eq((try! ST_XmlName::new("名1")).to_string(), "名1")
   let invalid = try? ST_XmlName::new("p:name")
   assert_true(invalid is Err(SchemaViolation(_)))
 }

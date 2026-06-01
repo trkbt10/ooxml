@@ -299,6 +299,10 @@ pub fn Package::with_relationship(
   target : String,
   target_mode? : @relationships.TargetMode = @relationships.TargetMode::Internal,
 ) -> Package raise @opc_errors.SchemaViolation {
+  @relationships.validate_relationship_element_id(
+    id,
+    path=owner + "/Relationship/@Id",
+  )
   // §9.3.2.4 ST_RelationshipType — the `Type` attribute is an
   // xs:anyURI restricted to absolute URIs.  Reject empty
   // strings; full URI validation (scheme + path) is delegated

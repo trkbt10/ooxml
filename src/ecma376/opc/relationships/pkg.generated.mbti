@@ -13,6 +13,8 @@ pub fn package_name() -> String
 
 pub fn read_relationships(Bytes) -> CT_Relationships raise
 
+pub fn validate_relationship_element_id(String, path? : String) -> Unit raise @errors.SchemaViolation
+
 pub fn write_relationships(CT_Relationships) -> Bytes
 
 // Errors
