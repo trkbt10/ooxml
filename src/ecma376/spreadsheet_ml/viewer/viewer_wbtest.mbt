@@ -5031,6 +5031,75 @@ test "SpreadsheetML viewer hides rows using §18.3.2 AutoFilter evaluator" {
 }
 
 ///|
+test "SpreadsheetML viewer applies worksheet top10 filterVal threshold" {
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", Some("str"), "Score"),
+            build_cell("B1", Some("str"), "Label"),
+          ]),
+          build_row(2, [
+            build_cell("A2", None, "1"),
+            build_cell("B2", Some("str"), "Drop one"),
+          ]),
+          build_row(3, [
+            build_cell("A3", None, "2"),
+            build_cell("B3", Some("str"), "Drop two"),
+          ]),
+          build_row(4, [
+            build_cell("A4", None, "3"),
+            build_cell("B4", Some("str"), "Drop three"),
+          ]),
+          build_row(5, [
+            build_cell("A5", None, "4"),
+            build_cell("B5", Some("str"), "Drop four"),
+          ]),
+          build_row(6, [
+            build_cell("A6", None, "5"),
+            build_cell("B6", Some("str"), "Drop five"),
+          ]),
+          build_row(7, [
+            build_cell("A7", None, "6"),
+            build_cell("B7", Some("str"), "Keep six"),
+          ]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:B7" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "0" }],
+            children: [
+              @xml.Node::Element({
+                name: name("top10"),
+                attributes: [
+                  { name: name("percent"), value: "1" },
+                  { name: name("val"), value: "50" },
+                  { name: name("filterVal"), value: "6" },
+                ],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet)
+  assert_true(result.svg.contains("Keep six"))
+  assert_true(!result.svg.contains("Drop one"))
+  assert_true(!result.svg.contains("Drop five"))
+}
+
+///|
 /// §18.3.2.1 — colorFilter uses resolved fill facts supplied by the
 /// viewer, but the pass/fail comparison remains in spreadsheet_ml/autofilter.
 test "SpreadsheetML viewer supplies fill facts for §18.3.2.1 colorFilter" {

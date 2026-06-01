@@ -258,6 +258,56 @@ fn extras_sml_autofilter_inline(cases : Array[VisualCase]) -> Unit {
       ),
     ]),
   })
+  // AutoFilter with §18.3.2.10 `<top10>` carrying `filterVal`, the
+  // persisted comparison threshold.  Rows filtered out by the saved
+  // view are also persisted with `hidden="1"` so Office/Calc open the
+  // generated fixture in the same view state.
+  cases.push({
+    id: "autofilter-top10-filterval",
+    format: "xlsx",
+    category: "table",
+    content: xe(NS_S_TBL, "worksheet", [], [
+      Element(
+        xe(NS_S_TBL, "sheetData", [], [
+          Element(
+            s_row("1", [s_inline("A1", "Score"), s_inline("B1", "Label")]),
+          ),
+          Element(
+            s_row_hidden("2", [s_cell("A2", "1"), s_inline("B2", "Drop one")]),
+          ),
+          Element(
+            s_row_hidden("3", [s_cell("A3", "2"), s_inline("B3", "Drop two")]),
+          ),
+          Element(
+            s_row_hidden("4", [s_cell("A4", "3"), s_inline("B4", "Drop three")]),
+          ),
+          Element(
+            s_row_hidden("5", [s_cell("A5", "4"), s_inline("B5", "Drop four")]),
+          ),
+          Element(
+            s_row_hidden("6", [s_cell("A6", "5"), s_inline("B6", "Drop five")]),
+          ),
+          Element(s_row("7", [s_cell("A7", "6"), s_inline("B7", "Keep six")])),
+        ]),
+      ),
+      Element(
+        xe(NS_S_TBL, "autoFilter", [xa("ref", "A1:B7")], [
+          Element(
+            xe(NS_S_TBL, "filterColumn", [xa("colId", "0")], [
+              Element(
+                xe(
+                  NS_S_TBL,
+                  "top10",
+                  [xa("percent", "1"), xa("val", "50"), xa("filterVal", "6")],
+                  [],
+                ),
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    ]),
+  })
   // AutoFilter with §18.3.2.9 `<iconFilter>`. The worksheet also carries
   // §18.3.1.18 conditionalFormatting / §18.3.1.49 iconSet so a conformant
   // renderer can resolve each candidate row's icon bucket before the

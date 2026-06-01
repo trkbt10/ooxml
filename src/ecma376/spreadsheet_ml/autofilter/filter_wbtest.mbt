@@ -547,6 +547,29 @@ test "§18.3.2 top10 bottom twenty-five percent" {
 }
 
 ///|
+test "§18.3.2 top10 uses filterVal as persisted threshold" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A6"),
+    filter_columns: [
+      column(
+        0,
+        false,
+        Top10({ top: true, percent: true, val: 50.0, filter_val: Some(6.0) }),
+      ),
+    ],
+  }
+  let rows = [
+    row(0, [n(1.0)]),
+    row(1, [n(2.0)]),
+    row(2, [n(3.0)]),
+    row(3, [n(4.0)]),
+    row(4, [n(5.0)]),
+    row(5, [n(6.0)]),
+  ]
+  @debug.assert_eq(filter_rows(filter, rows, system()), [5])
+}
+
+///|
 test "§18.3.2 multi-column filters intersect" {
   let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:B4"),

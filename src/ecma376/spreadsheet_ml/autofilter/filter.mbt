@@ -589,6 +589,27 @@ fn top10_passes(
   date_system : @date_serial.DateSystem,
   top10 : @domain.CT_Top10,
 ) -> Bool {
+  let candidate = match formula_to_number(value, date_system) {
+    Some(n) => n
+    None => return false
+  }
+  let threshold = match top10.filter_val {
+    Some(n) => Some(n)
+    None => top10_threshold_from_rows(rows, column_id, date_system, top10)
+  }
+  match threshold {
+    Some(n) => if top10.top { candidate >= n } else { candidate <= n }
+    None => false
+  }
+}
+
+///|
+fn top10_threshold_from_rows(
+  rows : Array[CandidateRow],
+  column_id : Int,
+  date_system : @date_serial.DateSystem,
+  top10 : @domain.CT_Top10,
+) -> Double? {
   let numbers = Array::new()
   for row in rows {
     let cell = row.values
@@ -600,7 +621,7 @@ fn top10_passes(
     }
   }
   if numbers.length() == 0 {
-    return false
+    return None
   }
   let sorted = sorted_numbers(numbers)
   let requested = if top10.percent {
@@ -614,10 +635,7 @@ fn top10_passes(
   } else {
     sorted[count - 1]
   }
-  match formula_to_number(value, date_system) {
-    Some(n) => if top10.top { n >= threshold } else { n <= threshold }
-    None => false
-  }
+  Some(threshold)
 }
 
 ///|
