@@ -3017,7 +3017,9 @@ pub(all) struct CT_DataValidations {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DataValidations::new(element : @xml.Element) -> CT_DataValidations {
+pub fn CT_DataValidations::new(
+  element : @xml.Element,
+) -> CT_DataValidations raise @opc_errors.SchemaViolation {
   let data_validations : Array[CT_DataValidation] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3077,7 +3079,9 @@ pub(all) struct CT_DataValidation {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DataValidation::new(element : @xml.Element) -> CT_DataValidation {
+pub fn CT_DataValidation::new(
+  element : @xml.Element,
+) -> CT_DataValidation raise @opc_errors.SchemaViolation {
   let mut formula1 : String? = None
   let mut formula2 : String? = None
   for child in element.children {
@@ -3089,22 +3093,18 @@ pub fn CT_DataValidation::new(element : @xml.Element) -> CT_DataValidation {
       }
     }
   }
-  let type_ = match attr(element, "type") {
-    Some(value) => value
-    None => "none"
-  }
-  let error_style = match attr(element, "errorStyle") {
-    Some(value) => value
-    None => "stop"
-  }
-  let ime_mode = match attr(element, "imeMode") {
-    Some(value) => value
-    None => "noControl"
-  }
-  let operator = match attr(element, "operator") {
-    Some(value) => value
-    None => "between"
-  }
+  let type_ = decode_data_validation_type(
+    attr(element, "type").unwrap_or("none"),
+  )
+  let error_style = decode_data_validation_error_style(
+    attr(element, "errorStyle").unwrap_or("stop"),
+  )
+  let ime_mode = decode_data_validation_ime_mode(
+    attr(element, "imeMode").unwrap_or("noControl"),
+  )
+  let operator = decode_data_validation_operator(
+    attr(element, "operator").unwrap_or("between"),
+  )
   let allow_blank = attr_bool(element, "allowBlank", false)
   let show_drop_down = attr_bool(element, "showDropDown", false)
   let show_input_message = attr_bool(element, "showInputMessage", false)
@@ -3134,6 +3134,70 @@ pub fn CT_DataValidation::new(element : @xml.Element) -> CT_DataValidation {
     prompt_title,
     prompt,
     sqref,
+  }
+}
+
+///|
+fn decode_data_validation_type(
+  value : String,
+) -> String raise @opc_errors.SchemaViolation {
+  try @sml_types.ST_DataValidationType::new(value) catch {
+    @sml_types.SchemaViolation(_) =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.1.32 / §18.18.21",
+        path="dataValidation/@type",
+        reason="value is outside ST_DataValidationType enumeration",
+      )
+  } noraise {
+    parsed => parsed.to_string()
+  }
+}
+
+///|
+fn decode_data_validation_error_style(
+  value : String,
+) -> String raise @opc_errors.SchemaViolation {
+  try @sml_types.ST_DataValidationErrorStyle::new(value) catch {
+    @sml_types.SchemaViolation(_) =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.1.32 / §18.18.18",
+        path="dataValidation/@errorStyle",
+        reason="value is outside ST_DataValidationErrorStyle enumeration",
+      )
+  } noraise {
+    parsed => parsed.to_string()
+  }
+}
+
+///|
+fn decode_data_validation_ime_mode(
+  value : String,
+) -> String raise @opc_errors.SchemaViolation {
+  try @sml_types.ST_DataValidationImeMode::new(value) catch {
+    @sml_types.SchemaViolation(_) =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.1.32 / §18.18.19",
+        path="dataValidation/@imeMode",
+        reason="value is outside ST_DataValidationImeMode enumeration",
+      )
+  } noraise {
+    parsed => parsed.to_string()
+  }
+}
+
+///|
+fn decode_data_validation_operator(
+  value : String,
+) -> String raise @opc_errors.SchemaViolation {
+  try @sml_types.ST_DataValidationOperator::new(value) catch {
+    @sml_types.SchemaViolation(_) =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.1.32 / §18.18.20",
+        path="dataValidation/@operator",
+        reason="value is outside ST_DataValidationOperator enumeration",
+      )
+  } noraise {
+    parsed => parsed.to_string()
   }
 }
 

@@ -966,7 +966,7 @@ pub(all) struct CT_DataValidation {
   prompt : String?
   sqref : String
 } derive(Eq, @debug.Debug)
-pub fn CT_DataValidation::new(@xml.Element) -> Self
+pub fn CT_DataValidation::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DataValidations {
   element : @xml.Element
@@ -976,7 +976,7 @@ pub(all) struct CT_DataValidations {
   y_window : Int?
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_DataValidations::new(@xml.Element) -> Self
+pub fn CT_DataValidations::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DateGroupItem {
   year : Int
