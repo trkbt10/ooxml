@@ -6,3 +6,8 @@ import {
   "trkbt10/ooxml/xml",
   "trkbt10/ooxml/ecma376/presentation_ml/domain",
 }
+
+import {
+  "trkbt10/ooxml/ecma376/presentation_ml/builder",
+  "moonbitlang/core/encoding/utf8",
+} for "wbtest"

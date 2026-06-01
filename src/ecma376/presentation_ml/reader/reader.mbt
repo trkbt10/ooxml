@@ -39,7 +39,7 @@ pub fn read_presentation_pr(
 ///|
 /// Read top-level XSD element sld as CT_Slide (§19).
 pub fn read_sld(bytes : Bytes) -> @domain.CT_Slide raise {
-  @domain.sld(read_pml_root(bytes, "sld"))
+  @domain.CT_Slide::parse(read_pml_root(bytes, "sld"))
 }
 
 ///|
