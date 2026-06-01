@@ -8,6 +8,41 @@ pub(all) struct CandidateRow {
 } derive(Eq, Debug)
 
 ///|
+/// §18.3.2.1 / §18.3.2.9 — runtime formatting facts for one AutoFilter
+/// candidate cell. Producers resolve these through their own style / CF
+/// source of truth; this package only compares the resolved facts to the
+/// active colorFilter / iconFilter rule. Colour strings may be supplied as
+/// CSS `#RRGGBB`, raw `RRGGBB`, or OOXML `AARRGGBB`; comparison is
+/// canonicalized in this package.
+pub(all) struct CandidateCellFormat {
+  value : @formula.FormulaValue
+  fill_color : String?
+  font_color : String?
+  icon_set : String?
+  icon_id : Int?
+} derive(Eq, Debug)
+
+///|
+/// Runtime candidate row carrying both scalar values and resolved format
+/// facts. `cells[N]` corresponds to AutoFilter `filterColumn/@colId=N`.
+pub(all) struct FormattedCandidateRow {
+  cells : Array[CandidateCellFormat]
+  row_index : Int
+} derive(Eq, Debug)
+
+///|
+/// Runtime projection of a referenced differential format (`dxfId`) into
+/// the only facts AutoFilter needs: fill and font colours. The stylesheet
+/// resolver owns conversion from CT_Dxf/theme/indexed colour into these
+/// strings; AutoFilter owns the rule comparison and colour-token
+/// canonicalization.
+pub(all) struct FilterDxfFormat {
+  dxf_id : Int
+  fill_color : String?
+  font_color : String?
+} derive(Eq, Debug)
+
+///|
 /// §18.3.1.2 / §18.3.2.7 — decode a `<autoFilter ref="...">` XML element
 /// into the typed `@domain.CT_AutoFilter`.
 pub fn parse_auto_filter(
@@ -43,12 +78,28 @@ pub fn row_visible(
   row : CandidateRow,
   date_system : @date_serial.DateSystem,
 ) -> Bool {
+  row_visible_internal(filter, row, date_system, None)
+}
+
+///|
+fn row_visible_internal(
+  filter : @domain.CT_AutoFilter,
+  row : CandidateRow,
+  date_system : @date_serial.DateSystem,
+  format_context : FilterFormatContext?,
+) -> Bool {
   for column in filter.filter_columns {
     let value = match row.values.get(column.col_id) {
       Some(v) => v
       None => @formula.FormulaValue::VEmpty
     }
-    if !rule_visible_without_context(column.rule, value, date_system) {
+    if !rule_visible(
+        column.rule,
+        column.col_id,
+        value,
+        date_system,
+        format_context,
+      ) {
       return false
     }
   }
@@ -64,9 +115,66 @@ pub fn filter_rows(
   rows : Array[CandidateRow],
   date_system : @date_serial.DateSystem,
 ) -> Array[Int] {
-  let base = Array::new()
+  filter_rows_internal(filter, rows, date_system, fn(_, _) { None })
+}
+
+///|
+/// §18.3.2 — evaluate row visibility from scalar values plus resolved
+/// cell-format facts. Callers own style / dxf / icon resolution;
+/// AutoFilter remains the single source of truth for `colorFilter` /
+/// `iconFilter` comparison semantics.
+pub fn row_visible_with_formats(
+  filter : @domain.CT_AutoFilter,
+  row : FormattedCandidateRow,
+  dxf_formats : Array[FilterDxfFormat],
+  date_system : @date_serial.DateSystem,
+) -> Bool {
+  let candidate = candidate_row_from_formatted(row)
+  row_visible_internal(
+    filter,
+    candidate,
+    date_system,
+    Some({ row, dxf_formats }),
+  )
+}
+
+///|
+/// §18.3.2 — evaluate a candidate set from scalar values plus resolved
+/// cell-format facts. Returns visible row indices, including set-wide
+/// Top10 / aboveAverage / belowAverage handling.
+pub fn filter_formatted_rows(
+  filter : @domain.CT_AutoFilter,
+  rows : Array[FormattedCandidateRow],
+  dxf_formats : Array[FilterDxfFormat],
+  date_system : @date_serial.DateSystem,
+) -> Array[Int] {
+  let candidates = Array::new()
   for row in rows {
-    if row_visible(filter, row, date_system) {
+    candidates.push(candidate_row_from_formatted(row))
+  }
+  filter_rows_internal(filter, candidates, date_system, fn(_, ordinal) {
+    match rows.get(ordinal) {
+      Some(row) => Some({ row, dxf_formats })
+      None => None
+    }
+  })
+}
+
+///|
+fn filter_rows_internal(
+  filter : @domain.CT_AutoFilter,
+  rows : Array[CandidateRow],
+  date_system : @date_serial.DateSystem,
+  format_context_for_row : (CandidateRow, Int) -> FilterFormatContext?,
+) -> Array[Int] {
+  let base = Array::new()
+  for ordinal, row in rows {
+    if row_visible_internal(
+        filter,
+        row,
+        date_system,
+        format_context_for_row(row, ordinal),
+      ) {
       base.push(row)
     }
   }
@@ -77,6 +185,70 @@ pub fn filter_rows(
     }
   }
   visible
+}
+
+///|
+fn candidate_row_from_formatted(row : FormattedCandidateRow) -> CandidateRow {
+  let values = Array::new()
+  for cell in row.cells {
+    values.push(cell.value)
+  }
+  { values, row_index: row.row_index }
+}
+
+///|
+fn formatted_filter_matches(
+  row : FormattedCandidateRow,
+  dxf_formats : Array[FilterDxfFormat],
+  column_id : Int,
+  choice : @domain.CT_FilterColumn_Choice,
+) -> Bool {
+  let cell = match row.cells.get(column_id) {
+    Some(c) => c
+    None => return false
+  }
+  match choice {
+    @domain.CT_FilterColumn_Choice::ColorFilter(filter) => {
+      let target = dxf_color_for_filter(dxf_formats, filter)
+      let actual = if filter.cell_color {
+        cell.fill_color
+      } else {
+        cell.font_color
+      }
+      optional_color_equal(actual, target)
+    }
+    IconFilter(filter) =>
+      cell.icon_set == Some(filter.icon_set) &&
+      cell.icon_id == Some(filter.icon_id)
+    _ => false
+  }
+}
+
+///|
+fn dxf_color_for_filter(
+  dxf_formats : Array[FilterDxfFormat],
+  filter : @domain.CT_ColorFilter,
+) -> String? {
+  for dxf in dxf_formats {
+    if dxf.dxf_id == filter.dxf_id {
+      return if filter.cell_color { dxf.fill_color } else { dxf.font_color }
+    }
+  }
+  None
+}
+
+///|
+fn optional_color_equal(left : String?, right : String?) -> Bool {
+  match (left, right) {
+    (Some(a), Some(b)) => canonical_filter_color(a) == canonical_filter_color(b)
+    _ => false
+  }
+}
+
+///|
+priv struct FilterFormatContext {
+  row : FormattedCandidateRow
+  dxf_formats : Array[FilterDxfFormat]
 }
 
 ///|
@@ -249,28 +421,37 @@ fn parse_date_group_item(
 }
 
 ///|
-fn rule_visible_without_context(
+fn rule_visible(
   rule : @domain.CT_FilterColumn_Choice?,
+  column_id : Int,
   value : @formula.FormulaValue,
   date_system : @date_serial.DateSystem,
+  format_context : FilterFormatContext?,
 ) -> Bool {
   match rule {
     None => true
-    Some(@domain.CT_FilterColumn_Choice::Filters(filters)) =>
-      filters_pass(value, filters, date_system)
-    Some(@domain.CT_FilterColumn_Choice::CustomFilters(custom)) =>
-      custom_filters_pass(value, custom, date_system)
-    Some(
-      @domain.CT_FilterColumn_Choice::DynamicFilter({ kind: AboveAverage, .. })
-    ) => true
-    Some(
-      @domain.CT_FilterColumn_Choice::DynamicFilter({ kind: BelowAverage, .. })
-    ) => true
-    Some(@domain.CT_FilterColumn_Choice::DynamicFilter(dynamic)) =>
-      dynamic_filter_pass(value, dynamic, date_system)
-    Some(@domain.CT_FilterColumn_Choice::ColorFilter(_)) => false
-    Some(@domain.CT_FilterColumn_Choice::IconFilter(_)) => false
-    Some(@domain.CT_FilterColumn_Choice::Top10(_)) => true
+    Some(choice) =>
+      match choice {
+        @domain.CT_FilterColumn_Choice::Filters(filters) =>
+          filters_pass(value, filters, date_system)
+        CustomFilters(custom) => custom_filters_pass(value, custom, date_system)
+        DynamicFilter({ kind: AboveAverage, .. }) => true
+        DynamicFilter({ kind: BelowAverage, .. }) => true
+        DynamicFilter(dynamic) =>
+          dynamic_filter_pass(value, dynamic, date_system)
+        ColorFilter(_) | IconFilter(_) =>
+          match format_context {
+            Some(ctx) =>
+              formatted_filter_matches(
+                ctx.row,
+                ctx.dxf_formats,
+                column_id,
+                choice,
+              )
+            None => false
+          }
+        Top10(_) => true
+      }
   }
 }
 
@@ -628,6 +809,37 @@ fn serial_for_date(
   ) catch {
     _ => 0.0
   }
+}
+
+///|
+fn canonical_filter_color(value : String) -> String {
+  let lower = value.trim().to_owned().to_lower()
+  let stripped = if lower.has_prefix("#") {
+    lower[1:].to_owned()
+  } else {
+    lower
+  }
+  let rgb = if stripped.length() == 8 && is_ascii_hex(stripped) {
+    stripped[2:].to_owned()
+  } else {
+    stripped
+  }
+  if rgb.length() == 6 && is_ascii_hex(rgb) {
+    "#" + rgb
+  } else {
+    rgb
+  }
+}
+
+///|
+fn is_ascii_hex(value : String) -> Bool {
+  for ch in value {
+    let code = ch.to_int()
+    if !((code >= 0x30 && code <= 0x39) || (code >= 0x61 && code <= 0x66)) {
+      return false
+    }
+  }
+  true
 }
 
 ///|

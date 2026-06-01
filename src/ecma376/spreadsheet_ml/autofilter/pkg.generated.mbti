@@ -11,17 +11,40 @@ import {
 }
 
 // Values
+pub fn filter_formatted_rows(@domain.CT_AutoFilter, Array[FormattedCandidateRow], Array[FilterDxfFormat], @date_serial.DateSystem) -> Array[Int]
+
 pub fn filter_rows(@domain.CT_AutoFilter, Array[CandidateRow], @date_serial.DateSystem) -> Array[Int]
 
 pub fn parse_auto_filter(@xml.Element) -> @domain.CT_AutoFilter raise @errors.SchemaViolation
 
 pub fn row_visible(@domain.CT_AutoFilter, CandidateRow, @date_serial.DateSystem) -> Bool
 
+pub fn row_visible_with_formats(@domain.CT_AutoFilter, FormattedCandidateRow, Array[FilterDxfFormat], @date_serial.DateSystem) -> Bool
+
 // Errors
 
 // Types and methods
+pub(all) struct CandidateCellFormat {
+  value : @formula.FormulaValue
+  fill_color : String?
+  font_color : String?
+  icon_set : String?
+  icon_id : Int?
+} derive(Eq, @debug.Debug)
+
 pub(all) struct CandidateRow {
   values : Array[@formula.FormulaValue]
+  row_index : Int
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FilterDxfFormat {
+  dxf_id : Int
+  fill_color : String?
+  font_color : String?
+} derive(Eq, @debug.Debug)
+
+pub(all) struct FormattedCandidateRow {
+  cells : Array[CandidateCellFormat]
   row_index : Int
 } derive(Eq, @debug.Debug)
 

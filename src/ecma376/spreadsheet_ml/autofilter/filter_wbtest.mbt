@@ -24,6 +24,21 @@ fn bytes(source : String) -> Bytes {
 }
 
 ///|
+fn parsed_auto_filter(source : String) -> @domain.CT_AutoFilter raise {
+  let document = try! @xml.parse(bytes(source))
+  parse_auto_filter(document.root)
+}
+
+///|
+fn assert_auto_filter_schema_violation(source : String) -> Unit raise {
+  let document = try! @xml.parse(bytes(source))
+  assert_true(
+    (try? parse_auto_filter(document.root))
+    is Err(@opc_errors.SchemaViolation(_)),
+  )
+}
+
+///|
 fn column(
   id : Int,
   hidden_button : Bool,
@@ -219,7 +234,7 @@ test "§18.3.2 dynamicFilter aboveAverage uses full row set" {
 }
 
 ///|
-test "§18.3.2 colorFilter stub is false without style tags" {
+test "§18.3.2 value-only colorFilter is false without formatting context" {
   let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A1"),
     filter_columns: [
@@ -227,6 +242,261 @@ test "§18.3.2 colorFilter stub is false without style tags" {
     ],
   }
   assert_true(!row_visible(filter, row(0, [s("foo")]), system()))
+}
+
+///|
+test "§18.3.2 value-only iconFilter is false without formatting context" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A1"),
+    filter_columns: [
+      column(0, false, IconFilter({ icon_set: "3TrafficLights1", icon_id: 2 })),
+    ],
+  }
+  assert_true(!row_visible(filter, row(0, [n(30.0)]), system()))
+}
+
+///|
+test "§18.3.2 formatted rows evaluate colorFilter inside AutoFilter SoT" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A3"),
+    filter_columns: [
+      column(0, false, ColorFilter({ dxf_id: 1, cell_color: true })),
+    ],
+  }
+  let rows : Array[FormattedCandidateRow] = [
+    {
+      row_index: 2,
+      cells: [
+        {
+          value: s("keep"),
+          fill_color: Some("#ff0000"),
+          font_color: None,
+          icon_set: None,
+          icon_id: None,
+        },
+      ],
+    },
+    {
+      row_index: 3,
+      cells: [
+        {
+          value: s("drop"),
+          fill_color: Some("#00ff00"),
+          font_color: None,
+          icon_set: None,
+          icon_id: None,
+        },
+      ],
+    },
+  ]
+  let dxf_formats : Array[FilterDxfFormat] = [
+    { dxf_id: 1, fill_color: Some("FFFF0000"), font_color: None },
+  ]
+  @debug.assert_eq(filter_formatted_rows(filter, rows, dxf_formats, system()), [
+    2,
+  ])
+}
+
+///|
+test "§18.3.2 formatted rows use candidate order, not row-index lookup" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A3"),
+    filter_columns: [
+      column(0, false, ColorFilter({ dxf_id: 1, cell_color: true })),
+    ],
+  }
+  let rows : Array[FormattedCandidateRow] = [
+    {
+      row_index: 7,
+      cells: [
+        {
+          value: s("first"),
+          fill_color: Some("#ff0000"),
+          font_color: None,
+          icon_set: None,
+          icon_id: None,
+        },
+      ],
+    },
+    {
+      row_index: 7,
+      cells: [
+        {
+          value: s("second"),
+          fill_color: Some("#00ff00"),
+          font_color: None,
+          icon_set: None,
+          icon_id: None,
+        },
+      ],
+    },
+  ]
+  let dxf_formats : Array[FilterDxfFormat] = [
+    { dxf_id: 1, fill_color: Some("FFFF0000"), font_color: None },
+  ]
+  @debug.assert_eq(filter_formatted_rows(filter, rows, dxf_formats, system()), [
+    7,
+  ])
+}
+
+///|
+test "§18.3.2 formatted rows evaluate font colorFilter inside AutoFilter SoT" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A3"),
+    filter_columns: [
+      column(0, false, ColorFilter({ dxf_id: 2, cell_color: false })),
+    ],
+  }
+  let rows : Array[FormattedCandidateRow] = [
+    {
+      row_index: 2,
+      cells: [
+        {
+          value: s("keep"),
+          fill_color: None,
+          font_color: Some("#112233"),
+          icon_set: None,
+          icon_id: None,
+        },
+      ],
+    },
+    {
+      row_index: 3,
+      cells: [
+        {
+          value: s("drop"),
+          fill_color: None,
+          font_color: Some("#445566"),
+          icon_set: None,
+          icon_id: None,
+        },
+      ],
+    },
+  ]
+  let dxf_formats : Array[FilterDxfFormat] = [
+    { dxf_id: 2, fill_color: None, font_color: Some("112233") },
+  ]
+  @debug.assert_eq(filter_formatted_rows(filter, rows, dxf_formats, system()), [
+    2,
+  ])
+}
+
+///|
+test "§18.3.2 formatted rows evaluate iconFilter inside AutoFilter SoT" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A3"),
+    filter_columns: [
+      column(0, false, IconFilter({ icon_set: "3TrafficLights1", icon_id: 2 })),
+    ],
+  }
+  let rows : Array[FormattedCandidateRow] = [
+    {
+      row_index: 2,
+      cells: [
+        {
+          value: n(10.0),
+          fill_color: None,
+          font_color: None,
+          icon_set: Some("3TrafficLights1"),
+          icon_id: Some(1),
+        },
+      ],
+    },
+    {
+      row_index: 3,
+      cells: [
+        {
+          value: n(30.0),
+          fill_color: None,
+          font_color: None,
+          icon_set: Some("3TrafficLights1"),
+          icon_id: Some(2),
+        },
+      ],
+    },
+  ]
+  @debug.assert_eq(filter_formatted_rows(filter, rows, [], system()), [3])
+}
+
+///|
+test "§18.3.2 formatted colorFilter fails without matching dxf fact" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A2"),
+    filter_columns: [
+      column(0, false, ColorFilter({ dxf_id: 9, cell_color: true })),
+    ],
+  }
+  let rows : Array[FormattedCandidateRow] = [
+    {
+      row_index: 2,
+      cells: [
+        {
+          value: s("red"),
+          fill_color: Some("#ff0000"),
+          font_color: None,
+          icon_set: None,
+          icon_id: None,
+        },
+      ],
+    },
+  ]
+  let dxf_formats : Array[FilterDxfFormat] = [
+    { dxf_id: 1, fill_color: Some("FFFF0000"), font_color: None },
+  ]
+  @debug.assert_eq(filter_formatted_rows(filter, rows, dxf_formats, system()), [])
+}
+
+///|
+test "§18.3.2 formatted colorFilter fails without candidate color fact" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A2"),
+    filter_columns: [
+      column(0, false, ColorFilter({ dxf_id: 1, cell_color: true })),
+    ],
+  }
+  let rows : Array[FormattedCandidateRow] = [
+    {
+      row_index: 2,
+      cells: [
+        {
+          value: s("unstyled"),
+          fill_color: None,
+          font_color: None,
+          icon_set: None,
+          icon_id: None,
+        },
+      ],
+    },
+  ]
+  let dxf_formats : Array[FilterDxfFormat] = [
+    { dxf_id: 1, fill_color: Some("FFFF0000"), font_color: None },
+  ]
+  @debug.assert_eq(filter_formatted_rows(filter, rows, dxf_formats, system()), [])
+}
+
+///|
+test "§18.3.2 formatted iconFilter requires matching icon set and id" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A2"),
+    filter_columns: [
+      column(0, false, IconFilter({ icon_set: "3TrafficLights1", icon_id: 2 })),
+    ],
+  }
+  let rows : Array[FormattedCandidateRow] = [
+    {
+      row_index: 2,
+      cells: [
+        {
+          value: n(50.0),
+          fill_color: None,
+          font_color: None,
+          icon_set: Some("3Arrows"),
+          icon_id: Some(2),
+        },
+      ],
+    },
+  ]
+  @debug.assert_eq(filter_formatted_rows(filter, rows, [], system()), [])
 }
 
 ///|
@@ -311,12 +581,9 @@ test "§18.3.2 multi-column filters intersect" {
 
 ///|
 test "§18.3.2 from_element parses XML fragment" {
-  let document = try! @xml.parse(
-    bytes(
-      "<autoFilter ref=\"A1:B3\"><filterColumn colId=\"1\" hiddenButton=\"1\"><customFilters and=\"1\"><customFilter operator=\"greaterThanOrEqual\" val=\"5\"/><customFilter operator=\"lessThan\" val=\"10\"/></customFilters></filterColumn></autoFilter>",
-    ),
+  let filter = try! parsed_auto_filter(
+    "<autoFilter ref=\"A1:B3\"><filterColumn colId=\"1\" hiddenButton=\"1\"><customFilters and=\"1\"><customFilter operator=\"greaterThanOrEqual\" val=\"5\"/><customFilter operator=\"lessThan\" val=\"10\"/></customFilters></filterColumn></autoFilter>",
   )
-  let filter = try! parse_auto_filter(document.root)
   @debug.assert_eq(filter.range.to_a1(), "A1:B3")
   @debug.assert_eq(filter.filter_columns.length(), 1)
   @debug.assert_eq(filter.filter_columns[0].col_id, 1)
@@ -328,6 +595,41 @@ test "§18.3.2 from_element parses XML fragment" {
       system(),
     ),
     [0],
+  )
+}
+
+///|
+test "§18.3.2 from_element parses colorFilter and iconFilter attributes" {
+  let filter = try! parsed_auto_filter(
+    "<autoFilter ref=\"A1:B3\"><filterColumn colId=\"0\"><colorFilter dxfId=\"2\"/></filterColumn><filterColumn colId=\"1\"><iconFilter iconSet=\"3TrafficLights1\" iconId=\"2\"/></filterColumn></autoFilter>",
+  )
+  @debug.assert_eq(filter.filter_columns.length(), 2)
+  match filter.filter_columns[0].rule {
+    Some(ColorFilter(color)) => {
+      @debug.assert_eq(color.dxf_id, 2)
+      assert_true(color.cell_color)
+    }
+    _ => fail("expected colorFilter")
+  }
+  match filter.filter_columns[1].rule {
+    Some(IconFilter(icon)) => {
+      @debug.assert_eq(icon.icon_set, "3TrafficLights1")
+      @debug.assert_eq(icon.icon_id, 2)
+    }
+    _ => fail("expected iconFilter")
+  }
+}
+
+///|
+test "§18.3.2 from_element rejects missing colorFilter and iconFilter required attributes" {
+  assert_auto_filter_schema_violation(
+    "<autoFilter ref=\"A1:A2\"><filterColumn colId=\"0\"><colorFilter/></filterColumn></autoFilter>",
+  )
+  assert_auto_filter_schema_violation(
+    "<autoFilter ref=\"A1:A2\"><filterColumn colId=\"0\"><iconFilter iconId=\"1\"/></filterColumn></autoFilter>",
+  )
+  assert_auto_filter_schema_violation(
+    "<autoFilter ref=\"A1:A2\"><filterColumn colId=\"0\"><iconFilter iconSet=\"3TrafficLights1\"/></filterColumn></autoFilter>",
   )
 }
 
