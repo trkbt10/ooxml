@@ -12,10 +12,9 @@ fn first_char(s : String) -> Char {
 }
 
 ///|
-/// A plain test font of the given point size.  No host font is
-/// configured in these tests, so `wrap_text` exercises its per-glyph
-/// width heuristic (CJK ≈ 1 em, Latin ≈ 0.6 em) — sufficient to assert
-/// wrap BEHAVIOUR (where breaks fall) independent of glyph metrics.
+/// A plain test font of the given point size. Tests inject this family
+/// into `FontResolver::in_memory`, so width comes from the TTF fixture
+/// rather than a renderer-side estimate.
 fn tfont(size : Double) -> ResolvedFont {
   {
     family: "Noto Sans",
@@ -30,10 +29,12 @@ fn tfont(size : Double) -> ResolvedFont {
 
 ///|
 test "wrap_text wraps space-less Japanese across multiple lines" {
+  set_sml_fixture_font_faces(["Noto Sans"])
   // Before the segment-based rewrite this produced ONE overflowing
   // line (split_words found no ASCII space).  It must now wrap.
   let text = "本日は晴天なり明日は雨"
-  let lines = wrap_text(text, 40.0, tfont(10.0), 10)
+  let warnings : Array[String] = []
+  let lines = wrap_text(text, 40.0, tfont(10.0), 10, warnings)
   assert_true(lines.length() > 1)
   // Concatenating the wrapped lines reproduces the source text (no
   // glyphs dropped, no spurious spaces inserted between CJK glyphs).
@@ -46,8 +47,10 @@ test "wrap_text wraps space-less Japanese across multiple lines" {
 
 ///|
 test "wrap_text honours kinsoku: no wrapped line starts with 。or 、" {
+  set_sml_fixture_font_faces(["Noto Sans"])
   let text = "本日は、晴天なり。明日も、晴れ。"
-  let lines = wrap_text(text, 32.0, tfont(10.0), 20)
+  let warnings : Array[String] = []
+  let lines = wrap_text(text, 32.0, tfont(10.0), 20, warnings)
   for l in lines {
     if l != "" {
       let c = first_char(l)
@@ -59,9 +62,11 @@ test "wrap_text honours kinsoku: no wrapped line starts with 。or 、" {
 
 ///|
 test "wrap_text preserves ASCII word wrapping" {
+  set_sml_fixture_font_faces(["Noto Sans"])
   // Narrow column forces the sentence across several lines, breaking
   // only at spaces (no mid-word splits for these short words).
-  let lines = wrap_text("the quick brown fox", 30.0, tfont(10.0), 10)
+  let warnings : Array[String] = []
+  let lines = wrap_text("the quick brown fox", 30.0, tfont(10.0), 10, warnings)
   assert_true(lines.length() > 1)
   // No line may begin or end with a stray space (whitespace swallowed
   // at wrap points).
@@ -74,13 +79,15 @@ test "wrap_text preserves ASCII word wrapping" {
 
 ///|
 test "wrap_text emergency-splits an unbreakable long token" {
+  set_sml_fixture_font_faces(["Noto Sans"])
   // A long run with no break opportunity (no space / CJK / hyphen)
   // must still wrap across lines rather than stay one overflowing line.
   let long = StringBuilder::new()
   for _ in 0..<60 {
     long.write_char('a')
   }
-  let lines = wrap_text(long.to_string(), 40.0, tfont(10.0), 20)
+  let warnings : Array[String] = []
+  let lines = wrap_text(long.to_string(), 40.0, tfont(10.0), 20, warnings)
   assert_true(lines.length() > 1)
   // No glyphs lost: the wrapped lines concatenate back to the source.
   let joined = StringBuilder::new()
@@ -92,7 +99,9 @@ test "wrap_text emergency-splits an unbreakable long token" {
 
 ///|
 test "wrap_text respects max_lines" {
+  set_sml_fixture_font_faces(["Noto Sans"])
   let text = "本日は晴天なり明日は雨明後日は曇り"
-  let lines = wrap_text(text, 20.0, tfont(10.0), 2)
+  let warnings : Array[String] = []
+  let lines = wrap_text(text, 20.0, tfont(10.0), 2, warnings)
   assert_true(lines.length() <= 2)
 }

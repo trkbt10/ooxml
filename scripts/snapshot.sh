@@ -34,7 +34,7 @@
 # to be set (the directory `scripts/setup-test-fonts.sh` populates) so
 # both the renderer and the reference office binary read the same
 # fixture font inputs. This is snapshot-test control data, not an
-# ECMA-376 font default or catalogue. Without it, font metrics drift
+# ECMA-376 font default or substitution source. Without it, font metrics drift
 # between the two pipelines and RMSE numbers are meaningless.
 
 set -u

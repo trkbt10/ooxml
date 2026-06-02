@@ -114,7 +114,7 @@ const OP_PAD_EM : Double = 0.11
 ///|
 /// Renderer fallback used only when the host does not supply
 /// §22.1.2.62 `m:mathFont`. This is not an ECMA-376 default face and
-/// not a font catalogue entry; real metrics still come only from the
+/// not a substitution source; real metrics still come only from the
 /// configured `@glyph.FontResolver`.
 const DEFAULT_MATH_FONT_FAMILY : String = "Noto Serif"
 

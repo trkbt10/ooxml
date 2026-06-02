@@ -159,25 +159,18 @@ const OFFICE_NORMAL_FONT_SIZE_PT : Double = 11.0
 
 ///|
 /// §17.3.2.26 rFonts — ECMA-376 does not mandate a default typeface;
-/// the cascade should resolve via `<w:docDefaults>` first. When no
-/// font information is reachable we fall back to the SVG / CSS
-/// generic `sans-serif` family.
-///
-/// Default body family for a document that carries no explicit
-/// `<w:rFonts>`. ECMA-376 §17.8.3 leaves this implementation-defined
-/// — Office consumers fall back to the theme's minor font. The name
-/// here is only the renderer's default request when the document and
-/// theme provide no usable face; it is not an ECMA-376 font
-/// definition. Production resolution still goes through the configured
-/// `FontResolver`, while tests and the catalog harness may inject a
-/// deterministic in-memory TTF fixture under this family name.
+/// the cascade should resolve via `<w:docDefaults>` first. This
+/// renderer-policy family is used only when a legacy caller renders a
+/// document with no reachable typeface at all. It is not an ECMA-376
+/// default or substitution table; metrics still come only from the
+/// configured `@glyph.FontResolver`.
 const DEFAULT_FONT_FAMILY : String = "Noto Sans"
 
 ///|
 /// §22.1.2.62 `m:mathFont` inside `/word/settings.xml` — document-level
 /// math font request. This is the only WML-side source for the OMML
 /// viewer's math face. When absent, the OMML viewer keeps its own
-/// renderer-policy fallback; no font catalogue or alternate table is
+/// renderer-policy fallback; no alternate font-resolution table is
 /// introduced here.
 fn math_font_from_settings(settings : @domain.CT_Settings?) -> String? {
   match settings {
@@ -378,10 +371,231 @@ fn PageDecoration::footers_for(
 }
 
 ///|
+/// §17.8.2.10 fontTable.xml descriptors relevant to the ECMA-376 font
+/// resolution chain. This holds only document-authored facts; it is
+/// not a renderer substitution list and carries no concrete substitute
+/// typefaces.
+priv struct FontDescriptor {
+  alt_name : String?
+  family_hint : @glyph.GenericFamily?
+  panose1 : String?
+}
+
+///|
+fn empty_font_descriptors() -> Map[String, FontDescriptor] {
+  Map([], capacity=0)
+}
+
+///|
+fn font_descriptors_from_table(
+  fonts : @domain.CT_FontsList?,
+) -> Map[String, FontDescriptor] {
+  match fonts {
+    None => empty_font_descriptors()
+    Some(table) => {
+      let descriptors : Map[String, FontDescriptor] = Map(
+        [],
+        capacity=table.fonts.length(),
+      )
+      for font in table.fonts {
+        let primary = trim_non_empty(font.name)
+        match primary {
+          None => ()
+          Some(name) =>
+            descriptors[@glyph.normalize_family(name)] = {
+              alt_name: match font.alt_name {
+                Some(v) => trim_non_empty(v.val)
+                None => None
+              },
+              family_hint: match font.family {
+                Some(f) => wml_font_family_hint(f.val)
+                None => None
+              },
+              panose1: match font.panose1 {
+                Some(p) => trim_non_empty(p.val)
+                None => None
+              },
+            }
+        }
+      }
+      descriptors
+    }
+  }
+}
+
+///|
+fn trim_non_empty(value : String) -> String? {
+  let trimmed = value.trim(chars=" \t\r\n").to_owned()
+  if trimmed.length() == 0 {
+    None
+  } else {
+    Some(trimmed)
+  }
+}
+
+///|
+fn wml_font_family_hint(
+  family : @domain.ST_FontFamily,
+) -> @glyph.GenericFamily? {
+  match family {
+    @domain.FontFamilyDecorative => Some(@glyph.Fantasy)
+    @domain.FontFamilyModern => Some(@glyph.Monospace)
+    @domain.FontFamilyRoman => Some(@glyph.Serif)
+    @domain.FontFamilyScript => Some(@glyph.Cursive)
+    @domain.FontFamilySwiss => Some(@glyph.SansSerif)
+    @domain.FontFamilyAuto => None
+  }
+}
+
+///|
+fn font_descriptor_for(
+  descriptors : Map[String, FontDescriptor],
+  family : String,
+) -> FontDescriptor? {
+  descriptors.get(@glyph.normalize_family(family))
+}
+
+///|
+fn generic_family_keyword(generic : @glyph.GenericFamily) -> String {
+  match generic {
+    @glyph.Serif => "serif"
+    @glyph.SansSerif => "sans-serif"
+    @glyph.Monospace => "monospace"
+    @glyph.Cursive => "cursive"
+    @glyph.Fantasy => "fantasy"
+    @glyph.SystemUi => "system-ui"
+    @glyph.UiSerif => "ui-serif"
+    @glyph.UiSansSerif => "ui-sans-serif"
+    @glyph.UiMonospace => "ui-monospace"
+    @glyph.UiRounded => "ui-rounded"
+    @glyph.Math => "math"
+    @glyph.Emoji => "emoji"
+    @glyph.Fangsong => "fangsong"
+  }
+}
+
+///|
+fn css_font_family_from_request(
+  request : @glyph.FontResolutionRequest,
+) -> String {
+  let parts : Array[String] = []
+  match request.primary {
+    Some(v) => parts.push(v)
+    None => ()
+  }
+  match request.alt_name {
+    Some(v) => parts.push(v)
+    None => ()
+  }
+  match request.family_hint {
+    Some(g) => parts.push(generic_family_keyword(g))
+    None => ()
+  }
+  let out = StringBuilder::new()
+  for i in 0..<parts.length() {
+    if i > 0 {
+      out.write_string(", ")
+    }
+    out.write_string(parts[i])
+  }
+  out.to_string()
+}
+
+///|
+fn push_warning_once(warnings : Array[String], message : String) -> Unit {
+  for existing in warnings {
+    if existing == message {
+      return
+    }
+  }
+  warnings.push(message)
+}
+
+///|
+fn join_strings(values : Array[String], sep : String) -> String {
+  let out = StringBuilder::new()
+  for i in 0..<values.length() {
+    if i > 0 {
+      out.write_string(sep)
+    }
+    out.write_string(values[i])
+  }
+  out.to_string()
+}
+
+///|
+fn warn_font_unresolved(
+  warnings : Array[String],
+  request : @glyph.FontResolutionRequest,
+  driver_labels : Array[String],
+  context : String,
+) -> Unit {
+  let family = css_font_family_from_request(request)
+  let stack = if family.length() > 0 { family } else { "(none)" }
+  let drivers = if driver_labels.length() > 0 {
+    join_strings(driver_labels, ", ")
+  } else {
+    "(no resolver driver)"
+  }
+  push_warning_once(
+    warnings,
+    "WordprocessingML font unresolved (" +
+    context +
+    "): " +
+    stack +
+    "; exact glyph metrics unavailable; SVG keeps the document font-family. Consulted " +
+    drivers,
+  )
+}
+
+///|
+fn warning_data_attrs(warnings : Array[String]) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  for i, warning in warnings {
+    attrs.push(@markup.attr("data-ooxml-warning-" + i.to_string(), warning))
+  }
+  attrs
+}
+
+///|
+fn build_run_font_request(
+  family : String,
+  weight : Int,
+  italic : Bool,
+  descriptors : Map[String, FontDescriptor],
+) -> @glyph.FontResolutionRequest {
+  let descriptor = font_descriptor_for(descriptors, family)
+  {
+    primary: Some(family),
+    alt_name: match descriptor {
+      Some(d) => d.alt_name
+      None => None
+    },
+    family_hint: match descriptor {
+      Some(d) => d.family_hint
+      None => None
+    },
+    panose1: match descriptor {
+      Some(d) => d.panose1
+      None => None
+    },
+    embedded_bytes: None,
+    weight,
+    italic,
+  }
+}
+
+///|
 /// One measured text run within a paragraph.
 priv struct RunSpan {
   text : String
+  /// CSS/SVG family stack derived from the same `font_request` used
+  /// for metrics. It is an emission label, not an independent
+  /// substitution source.
   font_family : String
+  /// ECMA-376 §17.8.3 font resolution request for this run. Width and
+  /// vertical metrics resolve through `@glyph` from this single request.
+  font_request : @glyph.FontResolutionRequest
   font_size_pt : Double
   bold : Bool
   italic : Bool
@@ -1561,6 +1775,7 @@ fn render_svg_raw(
   )
   let settings_attrs = settings_data_attrs(settings)
   let math_font = math_font_from_settings(settings)
+  let font_descriptors = font_descriptors_from_table(fonts)
   // (Removed: previous revision counted WML descendant names
   // across the document / settings / styles / numbering / fonts /
   // webSettings and threaded the total into a "wml-section-marker"
@@ -1636,6 +1851,7 @@ fn render_svg_raw(
         settings_attrs~,
         theme_map~,
         font_map~,
+        font_descriptors~,
         math_font~,
         hyperlink_resolver~,
       )
@@ -1662,6 +1878,7 @@ fn render_svg_raw(
         numbering,
         theme_map~,
         font_map~,
+        font_descriptors~,
         math_font~,
         settings_attrs~,
         pic_bullet_resolver~,
@@ -1700,6 +1917,7 @@ fn render_body_to_svg(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   settings_attrs? : Array[@xml.Attribute] = [],
   // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
@@ -1722,6 +1940,7 @@ fn render_body_to_svg(
     numbering,
     theme_map~,
     font_map~,
+    font_descriptors~,
     math_font~,
     pic_bullet_resolver~,
     hyperlink_resolver=body_hyperlink_resolver,
@@ -1744,6 +1963,7 @@ fn render_body_to_svg(
         settings_attrs~,
         theme_map~,
         font_map~,
+        font_descriptors~,
         math_font~,
         hyperlink_resolver~,
       ),
@@ -1774,6 +1994,7 @@ fn lay_out_body(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
   pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
@@ -1809,6 +2030,7 @@ fn lay_out_body(
     numbering,
     theme_map~,
     font_map~,
+    font_descriptors~,
     math_font~,
     pic_bullet_resolver~,
     hyperlink_resolver~,
@@ -1978,6 +2200,7 @@ fn render_combined_svg_raw(
   )
   let settings_attrs = settings_data_attrs(settings)
   let math_font = math_font_from_settings(settings)
+  let font_descriptors = font_descriptors_from_table(fonts)
   for a in fonts_data_attrs(fonts) {
     settings_attrs.push(a)
   }
@@ -2038,6 +2261,7 @@ fn render_combined_svg_raw(
         numbering,
         theme_map~,
         font_map~,
+        font_descriptors~,
         math_font~,
         pic_bullet_resolver~,
         hyperlink_resolver=body_hyperlink_resolver,
@@ -2058,6 +2282,7 @@ fn render_combined_svg_raw(
     settings_attrs~,
     theme_map~,
     font_map~,
+    font_descriptors~,
     math_font~,
     hyperlink_resolver~,
   )
@@ -2083,6 +2308,7 @@ fn build_combined_svg(
   settings_attrs? : Array[@xml.Attribute] = [],
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   // §17.16.22 — PART-AWARE hyperlink resolver, forwarded to each page's
   // `build_page_decoration_nodes` so header / footer hyperlinks bind their
@@ -2139,6 +2365,7 @@ fn build_combined_svg(
       styles,
       theme_map~,
       font_map~,
+      font_descriptors~,
       math_font~,
       hyperlink_resolver~,
     )
@@ -2166,6 +2393,7 @@ fn build_combined_svg(
         styles,
         theme_map~,
         font_map~,
+        font_descriptors~,
         math_font~,
         hyperlink_resolver~,
       )
@@ -2185,6 +2413,9 @@ fn build_combined_svg(
   }
   // (Removed: dummy `<rect fill="#a5a5a5">` "wml-section-marker"
   // stripe.  No basis in ECMA-376 — verifier gaming.  Deleted.)
+  for a in warning_data_attrs(warnings) {
+    attrs.push(a)
+  }
   let _ = w
   let _ = total_h
   let root : @xml.Element = {
@@ -2647,6 +2878,7 @@ fn collect_blocks(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   // §17.9.9 lvlPicBulletId — resolves a `numPicBulletId` to the bullet
   // image. Defaults to "no picture bullets" so documents without a
@@ -2721,11 +2953,13 @@ fn collect_blocks(
             let probe = layout_paragraph(
               with_marker,
               content_width,
+              warnings,
               image_resolver,
               chart_resolver,
               apply_office_defaults~,
               theme_map~,
               font_map~,
+              font_descriptors~,
               math_font~,
               hyperlink_resolver~,
             )
@@ -2828,7 +3062,7 @@ fn collect_blocks(
                 if wrap_height_remaining <= 0.0 {
                   match
                     paragraph_side_float(
-                      with_marker, content_width, image_resolver,
+                      with_marker, content_width, image_resolver, warnings,
                     ) {
                     Some(float) => {
                       blocks.push(FloatBlock(float))
@@ -2939,11 +3173,13 @@ fn collect_blocks(
                     layout_paragraph(
                       with_marker,
                       content_width,
+                      warnings,
                       image_resolver,
                       chart_resolver,
                       apply_office_defaults~,
                       theme_map~,
                       font_map~,
+                      font_descriptors~,
                       math_font~,
                       line_budget_fn=budget_of,
                       line_x_fn=body_x_of,
@@ -2980,11 +3216,13 @@ fn collect_blocks(
                     layout_paragraph(
                       with_marker,
                       content_width,
+                      warnings,
                       image_resolver,
                       chart_resolver,
                       apply_office_defaults~,
                       theme_map~,
                       font_map~,
+                      font_descriptors~,
                       math_font~,
                       line_budget_fn=fn(idx) {
                         if in_band(idx) {
@@ -3029,6 +3267,7 @@ fn collect_blocks(
               styles,
               theme_map~,
               font_map~,
+              font_descriptors~,
               math_font~,
               image_resolver~,
               chart_resolver~,
@@ -4369,6 +4608,7 @@ fn resolve_run_props(
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
 ) -> RunSpan {
   let mut font_family = DEFAULT_FONT_FAMILY
   let mut font_size_pt = default_font_size_pt
@@ -4706,9 +4946,20 @@ fn resolve_run_props(
       }
     }
   }
+  let font_request = build_run_font_request(
+    font_family,
+    if bold {
+      700
+    } else {
+      400
+    },
+    italic,
+    font_descriptors,
+  )
   RunSpan::{
     text: "",
-    font_family,
+    font_family: css_font_family_from_request(font_request),
+    font_request,
     font_size_pt,
     bold,
     italic,
@@ -4775,11 +5026,13 @@ fn has_toggle(r_pr : @xml.Element, name : String) -> Bool {
 /// proper line height.
 fn collect_paragraph_spans(
   p : @xml.Element,
+  warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   // §17.16.22 — per-stream bound hyperlink-target resolver; threaded into
   // the `<w:hyperlink>` descent so a run's r:id resolves to a URL.
@@ -4810,7 +5063,13 @@ fn collect_paragraph_spans(
     Some(marker_el) => {
       let template = match first_child_named(p, "r") {
         Some(r) =>
-          resolve_run_props(r, default_font_size_pt~, theme_map~, font_map~)
+          resolve_run_props(
+            r,
+            default_font_size_pt~,
+            theme_map~,
+            font_map~,
+            font_descriptors~,
+          )
         None =>
           match first_child_named(p, "pPr") {
             Some(p_pr) =>
@@ -4821,10 +5080,13 @@ fn collect_paragraph_spans(
                     default_font_size_pt~,
                     theme_map~,
                     font_map~,
+                    font_descriptors~,
                   )
-                None => default_run_template(default_font_size_pt~)
+                None =>
+                  default_run_template(default_font_size_pt~, font_descriptors~)
               }
-            None => default_run_template(default_font_size_pt~)
+            None =>
+              default_run_template(default_font_size_pt~, font_descriptors~)
           }
       }
       match attr_value(marker_el, "picHref") {
@@ -4841,7 +5103,7 @@ fn collect_paragraph_spans(
           let aspect = parse_double_attr(marker_el, "picAspect", 0.0)
           let bullet_w = if aspect > 0.0 { bullet_h * aspect } else { bullet_h }
           let alt = attr_value(marker_el, "picAlt").unwrap_or("")
-          let space_w = measure_run_text("\u{0020}", template)
+          let space_w = measure_run_text("\u{0020}", template, warnings)
           let image : InlineImage = {
             href,
             width_px: bullet_w,
@@ -4863,7 +5125,7 @@ fn collect_paragraph_spans(
           match attr_value(marker_el, "val") {
             Some(v) => {
               let marker = v + "\u{0020}"
-              let w = measure_run_text(marker, template)
+              let w = measure_run_text(marker, template, warnings)
               spans.push(with_text(template, marker, w))
             }
             None => ()
@@ -4875,11 +5137,13 @@ fn collect_paragraph_spans(
     p,
     false,
     spans,
+    warnings,
     image_resolver,
     chart_resolver,
     default_font_size_pt~,
     theme_map~,
     font_map~,
+    font_descriptors~,
     math_font~,
     hyperlink_resolver~,
   )
@@ -4926,10 +5190,18 @@ fn para_toggle_default_true(p_pr : @xml.Element?, name : String) -> Bool {
 /// document supplies no `<w:styles>` part.
 fn default_run_template(
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
 ) -> RunSpan {
+  let font_request = build_run_font_request(
+    DEFAULT_FONT_FAMILY,
+    400,
+    false,
+    font_descriptors,
+  )
   {
     text: "",
-    font_family: DEFAULT_FONT_FAMILY,
+    font_family: css_font_family_from_request(font_request),
+    font_request,
     font_size_pt: default_font_size_pt,
     bold: false,
     italic: false,
@@ -4980,11 +5252,18 @@ fn math_run_template(
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
 ) -> RunSpan {
   match first_child_named(parent, "r") {
     Some(r) =>
-      resolve_run_props(r, default_font_size_pt~, theme_map~, font_map~)
-    None => default_run_template(default_font_size_pt~)
+      resolve_run_props(
+        r,
+        default_font_size_pt~,
+        theme_map~,
+        font_map~,
+        font_descriptors~,
+      )
+    None => default_run_template(default_font_size_pt~, font_descriptors~)
   }
 }
 
@@ -5012,11 +5291,13 @@ fn collect_paragraph_spans_into(
   parent : @xml.Element,
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
+  warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> Unit {
@@ -5029,11 +5310,13 @@ fn collect_paragraph_spans_into(
               e,
               hyperlink_styling,
               spans,
+              warnings,
               image_resolver,
               chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              font_descriptors~,
             )
           "hyperlink" => {
             // §17.16.22 CT_Hyperlink — descend with hyperlink styling on,
@@ -5070,11 +5353,13 @@ fn collect_paragraph_spans_into(
               e,
               true,
               spans,
+              warnings,
               image_resolver,
               chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              font_descriptors~,
               math_font~,
               hyperlink_resolver~,
             )
@@ -5100,11 +5385,13 @@ fn collect_paragraph_spans_into(
               e,
               hyperlink_styling,
               spans,
+              warnings,
               image_resolver,
               chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              font_descriptors~,
               math_font~,
               hyperlink_resolver~,
             )
@@ -5115,11 +5402,13 @@ fn collect_paragraph_spans_into(
               e,
               hyperlink_styling,
               spans,
+              warnings,
               image_resolver,
               chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              font_descriptors~,
               math_font~,
               hyperlink_resolver~,
             )
@@ -5135,6 +5424,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              font_descriptors~,
             )
             emit_omath_span(e, template, spans, math_font~)
           }
@@ -5147,6 +5437,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              font_descriptors~,
             )
             for math_child in e.children {
               match math_child {
@@ -5170,11 +5461,13 @@ fn collect_paragraph_spans_into(
               e,
               hyperlink_styling,
               spans,
+              warnings,
               image_resolver,
               chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              font_descriptors~,
               math_font~,
               hyperlink_resolver~,
             )
@@ -5190,11 +5483,13 @@ fn collect_paragraph_spans_into(
               e,
               hyperlink_styling,
               spans,
+              warnings,
               image_resolver,
               chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              font_descriptors~,
               math_font~,
               hyperlink_resolver~,
             )
@@ -5220,7 +5515,10 @@ fn collect_paragraph_spans_into(
             match attr_value(e, "name") {
               Some(bookmark_name) =>
                 if bookmark_name.length() > 0 {
-                  let marker = default_run_template(default_font_size_pt~)
+                  let marker = default_run_template(
+                    default_font_size_pt~,
+                    font_descriptors~,
+                  )
                   spans.push({ ..marker, bookmark: bookmark_name })
                 }
               None => ()
@@ -5262,11 +5560,13 @@ fn emit_run_spans(
   r : @xml.Element,
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
+  warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
 ) -> Unit {
   // §17.3.2.43 vanish + §17.3.2.49 webHidden — hidden runs are
   // suppressed from the rendered output entirely. We still parse
@@ -5284,6 +5584,7 @@ fn emit_run_spans(
     default_font_size_pt~,
     theme_map~,
     font_map~,
+    font_descriptors~,
   )
   // Walk <w:t>, <w:delText>, <w:tab>, <w:br>, etc., emitting spans.
   for r_child in r.children {
@@ -5293,7 +5594,7 @@ fn emit_run_spans(
           "t" | "delText" => {
             let text = text_content(re)
             if text.length() > 0 {
-              let w = measure_run_text(text, template)
+              let w = measure_run_text(text, template, warnings)
               spans.push(
                 apply_hyperlink_styling(
                   with_text(template, text, w),
@@ -5332,7 +5633,7 @@ fn emit_run_spans(
             // together. We measure it with the run template so its
             // width is realistic.
             let text = "\u{2011}"
-            let w = measure_run_text(text, template)
+            let w = measure_run_text(text, template, warnings)
             spans.push(
               apply_hyperlink_styling(
                 with_text(template, text, w),
@@ -5354,20 +5655,31 @@ fn emit_run_spans(
             // and override the font family on the span.
             match sym_character(re) {
               Some((ch, font)) => {
-                let w = measure_run_text(ch, template)
-                let with_font = with_text(template, ch, w)
-                let sym_span = {
-                  ..with_font,
-                  font_family: font,
+                let font_request = build_run_font_request(
+                  font,
+                  if template.bold {
+                    700
+                  } else {
+                    400
+                  },
+                  template.italic,
+                  font_descriptors,
+                )
+                let sym_template = {
+                  ..template,
+                  font_family: css_font_family_from_request(font_request),
+                  font_request,
                   inline_image: None,
                 }
+                let w = measure_run_text(ch, sym_template, warnings)
+                let sym_span = with_text(sym_template, ch, w)
                 spans.push(apply_hyperlink_styling(sym_span, hyperlink_styling))
               }
               None => ()
             }
           "drawing" =>
             emit_drawing_span(
-              re, template, hyperlink_styling, spans, image_resolver, chart_resolver,
+              re, template, hyperlink_styling, spans, warnings, image_resolver, chart_resolver,
             )
           "object" | "pict" => {
             // §17.3.3.19 `<w:object>` / §17.3.3.21 `<w:pict>` — legacy
@@ -5377,7 +5689,8 @@ fn emit_run_spans(
             match first_child_named(re, "drawing") {
               Some(d) =>
                 emit_drawing_span(
-                  d, template, hyperlink_styling, spans, image_resolver, chart_resolver,
+                  d, template, hyperlink_styling, spans, warnings, image_resolver,
+                  chart_resolver,
                 )
               None => ()
             }
@@ -5463,7 +5776,7 @@ fn emit_run_spans(
             // emit a placeholder so the source position is
             // preserved.
             let placeholder = "#"
-            let w = measure_run_text(placeholder, template)
+            let w = measure_run_text(placeholder, template, warnings)
             spans.push(
               apply_hyperlink_styling(
                 with_text(template, placeholder, w),
@@ -5482,7 +5795,7 @@ fn emit_run_spans(
           | "yearShort"
           | "yearLong" => {
             let placeholder = "#"
-            let w = measure_run_text(placeholder, template)
+            let w = measure_run_text(placeholder, template, warnings)
             spans.push(
               apply_hyperlink_styling(
                 with_text(template, placeholder, w),
@@ -5497,7 +5810,7 @@ fn emit_run_spans(
           // placeholder.
           "footnoteRef" | "endnoteRef" => {
             let placeholder = "*"
-            let w = measure_run_text(placeholder, template)
+            let w = measure_run_text(placeholder, template, warnings)
             spans.push(
               apply_hyperlink_styling(
                 with_text(template, placeholder, w),
@@ -5512,7 +5825,7 @@ fn emit_run_spans(
           // in the SVG line.
           "footnoteReference" | "endnoteReference" => {
             let placeholder = "*"
-            let w = measure_run_text(placeholder, template)
+            let w = measure_run_text(placeholder, template, warnings)
             spans.push(
               apply_hyperlink_styling(
                 with_text(template, placeholder, w),
@@ -5532,7 +5845,7 @@ fn emit_run_spans(
           // placeholder so the position is visible.
           "annotationRef" => {
             let placeholder = "*"
-            let w = measure_run_text(placeholder, template)
+            let w = measure_run_text(placeholder, template, warnings)
             spans.push(
               apply_hyperlink_styling(
                 with_text(template, placeholder, w),
@@ -5566,7 +5879,7 @@ fn emit_run_spans(
               fld_char =>
                 match form_checkbox_glyph(fld_char) {
                   Some(ch) => {
-                    let w = measure_run_text(ch, template)
+                    let w = measure_run_text(ch, template, warnings)
                     spans.push(
                       apply_hyperlink_styling(
                         with_text(template, ch, w),
@@ -5580,7 +5893,7 @@ fn emit_run_spans(
           _ => ()
         }
       Text(t) | CData(t) => {
-        let w = measure_run_text(t, template)
+        let w = measure_run_text(t, template, warnings)
         spans.push(
           apply_hyperlink_styling(with_text(template, t, w), hyperlink_styling),
         )
@@ -5808,6 +6121,7 @@ fn render_float_drawing(
   w_px : Double,
   h_px : Double,
   image_resolver : (String) -> ResolvedImage?,
+  warnings : Array[String],
 ) -> @xml.Node? {
   match build_inline_image(drawing, image_resolver) {
     Some(img) =>
@@ -5830,12 +6144,13 @@ fn render_float_drawing(
       // Shape / group / canvas payloads surface a `<g>` translated to
       // (0,−h_px) for inline baseline alignment; undo that shift with
       // an outer translate so the float draws inside [0, h_px].
-      let payload = match build_inline_canvas(drawing, image_resolver) {
+      let payload = match
+        build_inline_canvas(drawing, image_resolver, warnings) {
         Some(p) => Some(p)
         None =>
-          match build_inline_group(drawing, image_resolver) {
+          match build_inline_group(drawing, image_resolver, warnings) {
             Some(p) => Some(p)
-            None => build_inline_shape(drawing)
+            None => build_inline_shape(drawing, warnings)
           }
       }
       match payload {
@@ -5961,6 +6276,7 @@ fn paragraph_side_float(
   p : @xml.Element,
   content_width : Double,
   image_resolver : (String) -> ResolvedImage?,
+  warnings : Array[String],
 ) -> FloatDrawing? {
   fn scan(el : @xml.Element) -> FloatDrawing? {
     for child in el.children {
@@ -5970,7 +6286,8 @@ fn paragraph_side_float(
             if drawing_is_side_float(c) {
               let (w_px, h_px) = drawing_extent_size_px(c)
               if w_px > 0.0 && h_px > 0.0 {
-                match render_float_drawing(c, w_px, h_px, image_resolver) {
+                match
+                  render_float_drawing(c, w_px, h_px, image_resolver, warnings) {
                   Some(node) =>
                     return Some({
                       node,
@@ -6140,6 +6457,7 @@ fn emit_drawing_span(
   template : RunSpan,
   hyperlink_styling : Bool,
   spans : Array[RunSpan],
+  warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
 ) -> Unit {
@@ -6185,7 +6503,7 @@ fn emit_drawing_span(
           // §20.4.2.29 `<wpc:wpc>` canvas → §20.1.2.2.20 `<wpg:wgp>`
           // group → single `<wps:wsp>` shape — each carries its own
           // graphicData URI, tried in turn before the VML fallback.
-          match build_inline_canvas(drawing, image_resolver) {
+          match build_inline_canvas(drawing, image_resolver, warnings) {
             Some(canvas) =>
               spans.push(
                 apply_hyperlink_styling(
@@ -6194,7 +6512,7 @@ fn emit_drawing_span(
                 ),
               )
             None =>
-              match build_inline_group(drawing, image_resolver) {
+              match build_inline_group(drawing, image_resolver, warnings) {
                 Some(grp) =>
                   spans.push(
                     apply_hyperlink_styling(
@@ -6203,7 +6521,7 @@ fn emit_drawing_span(
                     ),
                   )
                 None =>
-                  match build_inline_shape(drawing) {
+                  match build_inline_shape(drawing, warnings) {
                     Some(shape) =>
                       spans.push(
                         apply_hyperlink_styling(
@@ -6425,7 +6743,7 @@ fn emit_omath_span(
 }
 
 ///|
-/// Measure text width using @util/glyph fallback path.
+/// Measure text width using the configured @util/glyph resolver.
 ///
 /// §17.3.2.13 `<w:caps>` renders every glyph as its uppercase
 /// form; uppercase letters are typically wider than lowercase,
@@ -6435,19 +6753,23 @@ fn emit_omath_span(
 /// lowercase letters as small uppercase glyphs (≈80% cap height,
 /// near the lowercase advance), so we measure the as-authored
 /// text for smallCaps.
-fn measure_run_text(text : String, template : RunSpan) -> Double {
+fn measure_run_text(
+  text : String,
+  template : RunSpan,
+  warnings : Array[String],
+) -> Double {
   let measured_text = if template.caps { to_upper_ascii(text) } else { text }
   let glyph_w = try
-    @glyph.measure_text_width(
+    @glyph.resolve_chain(template.font_request).measure_text(
       measured_text,
       font_size_pt=template.font_size_pt,
       letter_spacing_px=template.letter_spacing_px,
-      family=template.font_family,
-      weight=if template.bold { 700 } else { 400 },
-      italic=template.italic,
     )
   catch {
-    _ => 0.0
+    @glyph.FontUnresolvedError(driver_labels=labels, ..) => {
+      warn_font_unresolved(warnings, template.font_request, labels, "width")
+      0.0
+    }
   } noraise {
     w => w
   }
@@ -6500,11 +6822,13 @@ fn to_upper_ascii(text : String) -> String {
 fn layout_paragraph(
   p : @xml.Element,
   content_width : Double,
+  warnings : Array[String],
   image_resolver : (String) -> ResolvedImage?,
   chart_resolver : (@xml.Element) -> @xml.Node?,
   apply_office_defaults? : Bool = false,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   // §20.4.2.16 wrapPolygon — optional per-line available width (line
   // index → width px).  When supplied it overrides the rectangular
@@ -6531,11 +6855,13 @@ fn layout_paragraph(
   let props = resolve_para_props(p, apply_office_defaults~, theme_map~)
   let spans = collect_paragraph_spans(
     p,
+    warnings,
     image_resolver,
     chart_resolver,
     default_font_size_pt~,
     theme_map~,
     font_map~,
+    font_descriptors~,
     math_font~,
     hyperlink_resolver~,
   )
@@ -6572,6 +6898,7 @@ fn layout_paragraph(
     spans,
     first_line_w,
     next_line_w,
+    warnings,
     line_budget_fn?,
   )
   let line_count = span_lines.length()
@@ -6617,7 +6944,7 @@ fn layout_paragraph(
     // settled. Tabs are paragraph-relative — they measure from the
     // start of the line's content origin.
     let line_spans = resolve_tab_spans(raw_spans, line_indent, props.tab_stops)
-    let metrics = line_font_metrics(line_spans, default_font_size_pt~)
+    let metrics = line_font_metrics(line_spans, warnings, default_font_size_pt~)
     let line_height = match props.line_height {
       LineHeightDefault => metrics.single_line_height_px
       LineHeightAuto(factor) => metrics.single_line_height_px * factor
@@ -7268,14 +7595,13 @@ let default_tab_interval_px : Double = 48.0
 /// resolver. This is the WML viewer's only ascent / descent /
 /// line-gap reader; callers should select the face, then call here.
 fn read_line_font_metrics_for(
-  family : String,
-  weight : Int,
-  italic : Bool,
+  request : @glyph.FontResolutionRequest,
   font_size_pt : Double,
 ) -> LineFontMetrics raise @glyph.FontUnresolvedError {
-  let ascender = @glyph.get_ascender_ratio(family, weight~, italic~)
-  let descender = @glyph.get_descender_ratio(family, weight~, italic~)
-  let line_gap = @glyph.get_line_gap_ratio(family, weight~, italic~)
+  let measurer = @glyph.resolve_chain(request)
+  let ascender = measurer.ascender_ratio()
+  let descender = measurer.descender_ratio()
+  let line_gap = measurer.line_gap_ratio()
   let font_size_px = font_size_pt * @glyph.pt_to_px
   let ascent_px = font_size_px * ascender
   let descent_px = font_size_px * descender
@@ -7288,24 +7614,24 @@ fn read_line_font_metrics_for(
 }
 
 ///|
-/// Resolve one font face's vertical metrics from `@glyph`, retrying
-/// once through the renderer default family when the requested face is
-/// unavailable. If even that default cannot be resolved, surface the
-/// font failure instead of manufacturing vertical metrics in the WML
-/// viewer.
+/// Resolve one font face's vertical metrics from `@glyph`. The request
+/// already carries the ECMA-376 fontTable / rFonts chain; the WML
+/// viewer does not add a second fallback family.
 fn line_font_metrics_for(
-  family : String,
-  weight : Int,
-  italic : Bool,
+  request : @glyph.FontResolutionRequest,
   font_size_pt : Double,
+  warnings : Array[String],
 ) -> LineFontMetrics {
-  try read_line_font_metrics_for(family, weight, italic, font_size_pt) catch {
-    _ =>
-      if family == DEFAULT_FONT_FAMILY {
-        try! read_line_font_metrics_for(family, weight, italic, font_size_pt)
-      } else {
-        line_font_metrics_for(DEFAULT_FONT_FAMILY, weight, italic, font_size_pt)
+  try read_line_font_metrics_for(request, font_size_pt) catch {
+    @glyph.FontUnresolvedError(driver_labels=labels, ..) => {
+      warn_font_unresolved(warnings, request, labels, "line metrics")
+      let font_size_px = font_size_pt * @glyph.pt_to_px
+      {
+        ascent_px: font_size_px,
+        descent_px: 0.0,
+        single_line_height_px: font_size_px,
       }
+    }
   } noraise {
     metrics => metrics
   }
@@ -7367,6 +7693,7 @@ fn line_has_text(spans : Array[RunSpan]) -> Bool {
 /// metrics. Empty lines use the paragraph's default body face.
 fn line_font_metrics(
   spans : Array[RunSpan],
+  warnings : Array[String],
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
 ) -> LineFontMetrics {
   let math_metrics = line_math_metrics(spans)
@@ -7376,30 +7703,22 @@ fn line_font_metrics(
       None => ()
     }
   }
-  let mut family = DEFAULT_FONT_FAMILY
+  let mut request = build_run_font_request(
+    DEFAULT_FONT_FAMILY,
+    400,
+    false,
+    empty_font_descriptors(),
+  )
   let mut font_size_pt = default_font_size_pt
-  let mut bold = false
-  let mut italic = false
   let mut seen = false
   for s in spans {
     if !seen || s.font_size_pt > font_size_pt {
       seen = true
-      family = s.font_family
+      request = s.font_request
       font_size_pt = s.font_size_pt
-      bold = s.bold
-      italic = s.italic
     }
   }
-  let text_metrics = line_font_metrics_for(
-    family,
-    if bold {
-      700
-    } else {
-      400
-    },
-    italic,
-    font_size_pt,
-  )
+  let text_metrics = line_font_metrics_for(request, font_size_pt, warnings)
   match math_metrics {
     Some(m) => merge_line_metrics(text_metrics, m)
     None => text_metrics
@@ -7412,17 +7731,18 @@ fn line_font_metrics(
 /// as paragraph layout instead of carrying a table-only em-ratio.
 fn laid_paragraphs_line_metric_floor(
   paragraphs : Array[LaidParagraph],
+  warnings : Array[String],
   default_font_size_pt : Double,
 ) -> Double {
   let mut total = 0.0
   for lp in paragraphs {
     if lp.lines.length() == 0 {
       total = total +
-        line_font_metrics([], default_font_size_pt~).single_line_height_px
+        line_font_metrics([], warnings, default_font_size_pt~).single_line_height_px
     } else {
       for ln in lp.lines {
         total = total +
-          line_font_metrics(ln.spans, default_font_size_pt~).single_line_height_px
+          line_font_metrics(ln.spans, warnings, default_font_size_pt~).single_line_height_px
       }
     }
   }
@@ -7512,6 +7832,7 @@ fn break_into_lines(
   spans : Array[RunSpan],
   first_line_w : Double,
   next_line_w : Double,
+  warnings : Array[String],
   line_budget_fn? : (Int) -> Double,
 ) -> Array[Array[RunSpan]] {
   let lines : Array[Array[RunSpan]] = []
@@ -7580,7 +7901,12 @@ fn break_into_lines(
     // produced after a forced break is budgeted against the FULL
     // `next_line_w` (§17.6.4 column width / subsequent paragraph
     // line width) so a long span keeps wrapping inside the column.
-    let pieces = break_span_by_words(span, budget.val - used.val, next_line_w)
+    let pieces = break_span_by_words(
+      span,
+      budget.val - used.val,
+      next_line_w,
+      warnings,
+    )
     for piece in pieces {
       if piece.text == "\n" {
         flush()
@@ -7643,6 +7969,7 @@ fn break_span_by_words(
   span : RunSpan,
   first_avail : Double,
   next_avail : Double,
+  warnings : Array[String],
 ) -> Array[RunSpan] {
   // An Office Math fragment or an inline image is an indivisible
   // box — it carries no breakable text. Returning it whole keeps
@@ -7668,7 +7995,7 @@ fn break_span_by_words(
   fn flush_with_break() {
     if cur_chars.length() > 0 {
       let text = chars_to_string(cur_chars)
-      let w = measure_run_text(text, span)
+      let w = measure_run_text(text, span, warnings)
       pieces.push(with_text(span, text, w))
       cur_chars.clear()
     }
@@ -7685,7 +8012,7 @@ fn break_span_by_words(
   // the edge rather than orphaning to the next line's head.
   fn emergency_char_split(seg : String) {
     for c in seg {
-      let cw = measure_run_text(c.to_string(), span)
+      let cw = measure_run_text(c.to_string(), span, warnings)
       if cur_chars.length() > 0 &&
         cur_w.val + cw > avail.val &&
         @glyph.kinsoku_break_allowed(cur_chars[cur_chars.length() - 1], c) {
@@ -7697,7 +8024,7 @@ fn break_span_by_words(
   }
 
   for seg in segments {
-    let seg_w = measure_run_text(seg, span)
+    let seg_w = measure_run_text(seg, span, warnings)
     if cur_w.val + seg_w <= avail.val {
       for c in seg {
         cur_chars.push(c)
@@ -7737,7 +8064,7 @@ fn break_span_by_words(
   }
   if cur_chars.length() > 0 {
     let text = chars_to_string(cur_chars)
-    let w = measure_run_text(text, span)
+    let w = measure_run_text(text, span, warnings)
     pieces.push(with_text(span, text, w))
   }
   pieces
@@ -7758,6 +8085,7 @@ fn layout_table(
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   image_resolver? : (String) -> ResolvedImage? = _ => None,
   chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
@@ -8116,11 +8444,13 @@ fn layout_table(
         let para = layout_paragraph(
           cell_p_elems[cp_i],
           content_w,
+          warnings,
           image_resolver,
           chart_resolver,
           apply_office_defaults~,
           theme_map~,
           font_map~,
+          font_descriptors~,
           math_font~,
         )
         let band_fp = match para.frame_pr {
@@ -8155,11 +8485,13 @@ fn layout_table(
               let bp = layout_paragraph(
                 cell_p_elems[cp_i],
                 body_w,
+                warnings,
                 image_resolver,
                 chart_resolver,
                 apply_office_defaults~,
                 theme_map~,
                 font_map~,
+                font_descriptors~,
                 math_font~,
               )
               beside.push(offset_paragraph(bp, body_x, beside_y))
@@ -8191,6 +8523,7 @@ fn layout_table(
       let cell_content_floor = if cell_paras.length() > 0 {
         laid_paragraphs_line_metric_floor(
           cell_paras,
+          warnings,
           if apply_office_defaults {
             OFFICE_NORMAL_FONT_SIZE_PT
           } else {
@@ -8905,6 +9238,7 @@ fn emit_page_svg_with_decoration(
   settings_attrs? : Array[@xml.Attribute] = [],
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   // §17.16.22 — PART-AWARE hyperlink resolver; bound per header / footer
   // stream inside `build_page_decoration_nodes`.
@@ -8921,12 +9255,15 @@ fn emit_page_svg_with_decoration(
     styles,
     theme_map~,
     font_map~,
+    font_descriptors~,
     math_font~,
     hyperlink_resolver~,
   )
   // (Removed: dummy `<rect fill="#a5a5a5">` "wml-section-marker"
   // stripe.  Pure verifier gaming — deleted.)
-  @markup.serialize_svg(build_svg_element(cfg, children, settings_attrs~))
+  @markup.serialize_svg(
+    build_svg_element(cfg, children, settings_attrs~, warnings~),
+  )
 }
 
 ///|
@@ -8948,13 +9285,14 @@ fn build_page_decoration_nodes(
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   // §17.16.22 — PART-AWARE hyperlink resolver; bound to each header /
   // footer part token below so a hyperlink in that stream resolves its
   // r:id against `/word/_rels/header*.xml.rels`.
   hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
 ) -> Array[@xml.Node] {
-  let children = build_page_body_nodes(page, cfg)
+  let children = build_page_body_nodes(page, cfg, warnings)
   // Lay out header/footer using a single-page flow over the section
   // width (margin_left..margin_right). The y-axis origin for each
   // band starts at 0 and we translate into place on the actual page.
@@ -8992,10 +9330,11 @@ fn build_page_decoration_nodes(
       styles,
       theme_map~,
       font_map~,
+      font_descriptors~,
       math_font~,
       hyperlink_resolver=header_hyperlink_resolver,
     )
-    let group_children = build_decoration_block_nodes(blocks)
+    let group_children = build_decoration_block_nodes(blocks, warnings)
     children.push(
       @markup.elem_ns(
         "g",
@@ -9036,10 +9375,11 @@ fn build_page_decoration_nodes(
       styles,
       theme_map~,
       font_map~,
+      font_descriptors~,
       math_font~,
       hyperlink_resolver=footer_hyperlink_resolver,
     )
-    let group_children = build_decoration_block_nodes(blocks)
+    let group_children = build_decoration_block_nodes(blocks, warnings)
     // Footer goes inside the bottom-margin band.
     let footer_y = cfg.page_height - cfg.margin_bottom
     children.push(
@@ -9066,19 +9406,23 @@ fn build_page_decoration_nodes(
 ///|
 /// Flow a header / footer block stream into SVG node children,
 /// translating each block down by the running cursor.
-fn build_decoration_block_nodes(blocks : Array[FlowBlock]) -> Array[@xml.Node] {
+fn build_decoration_block_nodes(
+  blocks : Array[FlowBlock],
+  warnings : Array[String],
+) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
   let mut cursor = 0.0
   for b in blocks {
     match b {
       ParaBlock(p) => {
-        for n in build_paragraph_nodes(offset_paragraph(p, 0.0, cursor)) {
+        for
+          n in build_paragraph_nodes(offset_paragraph(p, 0.0, cursor), warnings) {
           out.push(n)
         }
         cursor = cursor + p.height
       }
       TableBlock(t) => {
-        for n in build_table_nodes(offset_table(t, 0.0, cursor)) {
+        for n in build_table_nodes(offset_table(t, 0.0, cursor), warnings) {
           out.push(n)
         }
         cursor = cursor + t.height
@@ -9137,6 +9481,7 @@ fn collect_blocks_from_elements(
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   // §17.16.22 — per-stream bound hyperlink-target resolver (the header /
   // footer part's, bound at the decoration site), threaded into each
@@ -9155,11 +9500,13 @@ fn collect_blocks_from_elements(
         let lp = layout_paragraph(
           elt,
           content_width,
+          warnings,
           image_resolver,
           chart_resolver,
           apply_office_defaults~,
           theme_map~,
           font_map~,
+          font_descriptors~,
           math_font~,
           hyperlink_resolver~,
         )
@@ -9173,6 +9520,7 @@ fn collect_blocks_from_elements(
           styles,
           theme_map~,
           font_map~,
+          font_descriptors~,
           math_font~,
           image_resolver~,
           chart_resolver~,
@@ -9204,6 +9552,7 @@ fn build_svg_element(
   cfg : PageConfig,
   children : Array[@xml.Node],
   settings_attrs? : Array[@xml.Attribute] = [],
+  warnings? : Array[String] = [],
 ) -> @xml.Element {
   let w = cfg.page_width
   let h = cfg.page_height
@@ -9233,6 +9582,9 @@ fn build_svg_element(
   for a in settings_attrs {
     attrs.push(a)
   }
+  for a in warning_data_attrs(warnings) {
+    attrs.push(a)
+  }
   { name: @markup.qname_ns("svg", @markup.svg_ns), attributes: attrs, children }
 }
 
@@ -9243,6 +9595,7 @@ fn build_svg_element(
 fn build_page_body_nodes(
   page : AssembledPage,
   cfg : PageConfig,
+  warnings : Array[String],
 ) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
   let w = cfg.page_width
@@ -9288,13 +9641,13 @@ fn build_page_body_nodes(
   }
   // Tables (under text).
   for t in page.tables {
-    for n in build_table_nodes(t) {
+    for n in build_table_nodes(t, warnings) {
       out.push(n)
     }
   }
   // Paragraphs.
   for p in page.paragraphs {
-    for n in build_paragraph_nodes(p) {
+    for n in build_paragraph_nodes(p, warnings) {
       out.push(n)
     }
   }
@@ -9465,7 +9818,10 @@ fn build_page_body_nodes(
 
 ///|
 /// Emit one paragraph's lines and runs as SVG <text> elements.
-fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
+fn build_paragraph_nodes(
+  p : LaidParagraph,
+  warnings : Array[String],
+) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
   // Vertical extent for both shading and borders comes from the
   // laid-line stack (top of the first line → bottom of the last
@@ -9553,7 +9909,7 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
     if line.spans.length() == 0 {
       continue
     }
-    append_line_nodes(out, line)
+    append_line_nodes(out, line, warnings)
   }
   // §17.3.1.7 paragraph borders — emit per-side `<line>` segments
   // around the frame after the glyphs so the stroke isn't obscured.
@@ -9635,7 +9991,11 @@ fn build_paragraph_nodes(p : LaidParagraph) -> Array[@xml.Node] {
 /// Append the SVG nodes for one laid-out line's spans (images,
 /// bar-tab rules, highlight / run-border rects, and `<text>`
 /// glyph runs) to `out`.
-fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
+fn append_line_nodes(
+  out : Array[@xml.Node],
+  line : LaidLine,
+  warnings : Array[String],
+) -> Unit {
   let mut x_cursor = line.x
   for span in line.spans {
     // §17.16.2 `<w:bookmarkStart>` — a zero-width marker span carrying a
@@ -9868,7 +10228,7 @@ fn append_line_nodes(out : Array[@xml.Node], line : LaidLine) -> Unit {
       }
       out.push(@markup.elem_ns("rect", @markup.svg_ns, bdr_attrs, []))
     }
-    let text_node = build_span_text_node(span, line, x_cursor)
+    let text_node = build_span_text_node(span, line, x_cursor, warnings)
     // §17.16.22 CT_Hyperlink — when the run belongs to a `<w:hyperlink>`
     // whose target resolved (external URL from `r:id`, or `#<anchor>`),
     // wrap its `<text>` in an SVG `<a>` so the link is clickable.  We
@@ -9916,6 +10276,7 @@ fn build_span_text_node(
   span : RunSpan,
   line : LaidLine,
   x_cursor : Double,
+  warnings : Array[String],
 ) -> @xml.Node {
   // §17.3.2.42 vertAlign / §17.18.94 ST_VerticalAlignRun —
   // three values: `baseline` (identity), `superscript`,
@@ -10171,7 +10532,7 @@ fn build_span_text_node(
     span.color
   }
   attrs.push(@markup.attr("fill", fill))
-  let children = build_text_children(span, line, x_cursor)
+  let children = build_text_children(span, line, x_cursor, warnings)
   @markup.elem_ns("text", @markup.svg_ns, attrs, children)
 }
 
@@ -10237,6 +10598,7 @@ fn build_text_children(
   span : RunSpan,
   line : LaidLine,
   x_cursor : Double,
+  warnings : Array[String],
 ) -> Array[@xml.Node] {
   // Fast path: no justification stretch needed.
   if line.word_spacing_extra <= 0.0 ||
@@ -10315,7 +10677,7 @@ fn build_text_children(
       word_buf.write_char(chars[j])
     }
     let word_text = word_buf.to_string()
-    let word_w = measure_run_text(word_text, span)
+    let word_w = measure_run_text(word_text, span, warnings)
     // Natural space-glyph width for the spaces that preceded this
     // word — keeps `natural_advance` faithful to the span's metrics
     // even though we don't paint the spaces themselves.
@@ -10324,7 +10686,7 @@ fn build_text_children(
       for _ in 0..<leading {
         sp_buf.write_char(' ')
       }
-      measure_run_text(sp_buf.to_string(), span)
+      measure_run_text(sp_buf.to_string(), span, warnings)
     } else {
       0.0
     }
@@ -10347,7 +10709,10 @@ fn build_text_children(
 
 ///|
 /// Emit a table as nested SVG elements: per-cell rect + per-cell paragraphs.
-fn build_table_nodes(t : LaidTable) -> Array[@xml.Node] {
+fn build_table_nodes(
+  t : LaidTable,
+  warnings : Array[String],
+) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
   for row in t.rows {
     for c in row.cells {
@@ -10472,7 +10837,7 @@ fn build_table_nodes(t : LaidTable) -> Array[@xml.Node] {
       )
       // Cell paragraphs (already at absolute coordinates).
       for p in c.paragraphs {
-        for n in build_paragraph_nodes(p) {
+        for n in build_paragraph_nodes(p, warnings) {
           out.push(n)
         }
       }

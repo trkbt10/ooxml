@@ -27,4 +27,5 @@ import {
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/x/fs",
 } for "wbtest"

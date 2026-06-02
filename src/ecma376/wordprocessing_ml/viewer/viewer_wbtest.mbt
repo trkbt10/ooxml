@@ -22,6 +22,24 @@ fn assert_close_double(
 }
 
 ///|
+fn set_wml_fixture_font_faces(families : Array[String]) -> Unit {
+  let bytes = try
+    @fs.read_file_to_bytes("src/util/glyph/fixtures/subset.ttf")
+  catch {
+    _ => abort("cannot load test font src/util/glyph/fixtures/subset.ttf")
+  } noraise {
+    b => b
+  }
+  let faces : Map[String, Bytes] = Map([], capacity=families.length())
+  for family in families {
+    faces[family] = bytes
+  }
+  @glyph.set_default_font_set(
+    @glyph.FontSet::new(resolver=@glyph.FontResolver::in_memory(faces)),
+  )
+}
+
+///|
 fn glyph_line_metrics_for_test(
   family : String,
   font_size_pt : Double,
@@ -152,10 +170,145 @@ test "render_svg emits text from a paragraph as <text> element" {
   // serialises to `Hello &lt;wml>`.
   assert_true(svg.contains("Hello &lt;wml>"))
   // §17.3.2.26 rFonts — without `<w:rFonts>` and without a
-  // `<w:docDefaults>` cascade, the viewer falls back to the
-  // renderer's default body family (`DEFAULT_FONT_FAMILY`) so the
-  // injected test `FontResolver` can supply real TTF metrics.
+  // `<w:docDefaults>` cascade, this legacy entry point uses the
+  // renderer-policy body family so the injected test `FontResolver`
+  // can supply real TTF metrics.
   assert_true(svg.contains("font-family=\"Noto Sans\""))
+}
+
+///|
+test "render_svg uses fontTable altName in the glyph resolution chain" {
+  ensure_wml_test_font()
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("rPr"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("rFonts"),
+                        attributes: [attr("ascii", "Missing Body Face")],
+                        children: [],
+                      }),
+                    ],
+                  }),
+                  @xml.Node::Element({
+                    name: name("t"),
+                    attributes: [],
+                    children: [@xml.Node::Text("alt-chain")],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let fonts = try! @domain.CT_FontsList::new({
+    name: name("fonts"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("font"),
+        attributes: [attr("name", "Missing Body Face")],
+        children: [
+          @xml.Node::Element({
+            name: name("altName"),
+            attributes: [attr("val", "Noto Sans")],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("family"),
+            attributes: [attr("val", "swiss")],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("panose1"),
+            attributes: [attr("val", "020B0604020202020204")],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document, fonts=Some(fonts)).pages[0].svg
+  assert_true(svg.contains("alt-chain"))
+  assert_true(
+    svg.contains("font-family=\"Missing Body Face, Noto Sans, sans-serif\""),
+  )
+}
+
+///|
+test "render_svg warns instead of aborting when run font is unresolved" {
+  @glyph.set_default_font_set(
+    @glyph.FontSet::new(
+      resolver=@glyph.FontResolver::in_memory(Map([], capacity=0)),
+    ),
+  )
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("rPr"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("rFonts"),
+                        attributes: [attr("ascii", "Missing Body Face")],
+                        children: [],
+                      }),
+                    ],
+                  }),
+                  @xml.Node::Element({
+                    name: name("t"),
+                    attributes: [],
+                    children: [@xml.Node::Text("missing-font")],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(document)
+  set_wml_fixture_font_faces(["Noto Sans"])
+  let svg = result.pages[0].svg
+  assert_true(svg.contains("missing-font"))
+  assert_true(svg.contains("font-family=\"Missing Body Face\""))
+  assert_true(svg.contains("data-ooxml-warning-0="))
+  assert_true(result.warnings.length() > 0)
+  assert_true(result.warnings[0].contains("WordprocessingML font unresolved"))
+  assert_true(result.warnings[0].contains("Missing Body Face"))
 }
 
 ///|
@@ -204,7 +357,7 @@ test "render_svg emits deleted w:delText with strike-through" {
 test "layout_paragraph uses glyph metrics for default line box" {
   ensure_wml_test_font()
   let para = paragraph_with_spacing("Metric", None, None)
-  let laid = layout_paragraph(para, 400.0, _ => None, _ => None)
+  let laid = layout_paragraph(para, 400.0, [], _ => None, _ => None)
   inspect(laid.lines.length(), content="1")
   let line = laid.lines[0]
   let (expected_ascent, expected_height) = glyph_line_metrics_for_test(
@@ -219,7 +372,7 @@ test "layout_paragraph uses glyph metrics for default line box" {
 test "layout_paragraph auto line spacing multiplies glyph single height" {
   ensure_wml_test_font()
   let para = paragraph_with_spacing("Metric", Some("480"), Some("auto"))
-  let laid = layout_paragraph(para, 400.0, _ => None, _ => None)
+  let laid = layout_paragraph(para, 400.0, [], _ => None, _ => None)
   inspect(laid.lines.length(), content="1")
   let line = laid.lines[0]
   let (expected_ascent, expected_single) = glyph_line_metrics_for_test(
@@ -2548,6 +2701,7 @@ test "render_svg draws a vertical rule for a bar tab stop" {
 /// regular `<text>` span with the run's font family overridden by
 /// `@font`. `@char="2713"` is the U+2713 check mark.
 test "render_svg emits Symbol-font character for <w:sym>" {
+  set_wml_fixture_font_faces(["Noto Sans", "Wingdings"])
   let document = @domain.CT_Document::new({
     name: name("document"),
     attributes: [],
@@ -3031,6 +3185,7 @@ test "render_svg resolves <w:background themeColor> through the theme" {
 /// `<a:minorFont>/<a:latin>/@typeface` rather than dropping the
 /// reference.
 test "render_svg resolves rFonts asciiTheme through fontScheme" {
+  set_wml_fixture_font_faces(["Noto Sans", "Garamond"])
   // Theme with majorFont/minorFont so resolution has something
   // to find.  Major Latin = "Calibri Light"; Minor Latin = "Garamond".
   let major_latin : @xml.Element = {

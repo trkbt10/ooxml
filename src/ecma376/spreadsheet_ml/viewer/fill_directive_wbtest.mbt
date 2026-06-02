@@ -38,10 +38,12 @@ test "split_fill_directive returns None for an ordinary string" {
 
 ///|
 test "render_cell_text expands *x fill into left+right anchored runs" {
+  set_sml_fixture_font_faces(["Calibri"])
   let style = default_cell_style(default_render_options())
   // Formatted text with a leader-dot fill: left "$", tiled '.', right "5".
   let text = apply_format_section(5.0, "\"$\"*.0")
-  let nodes = render_cell_text("s", "A1", fill_layout(), text, style)
+  let warnings : Array[String] = []
+  let nodes = render_cell_text("s", "A1", fill_layout(), text, style, warnings)
   let sb = StringBuilder::new()
   for n in nodes {
     match n {
@@ -61,10 +63,12 @@ test "render_cell_text expands *x fill into left+right anchored runs" {
 
 ///|
 test "§18.18.40 fill alignment tiles the whole cell text" {
+  set_sml_fixture_font_faces(["Calibri"])
   let base = default_cell_style(default_render_options())
   let style = { ..base, alignment: { ..base.alignment, horizontal: "fill" } }
   // A 120 px cell with the short text "ab" must repeat it several times.
-  let nodes = render_cell_text("s", "A1", fill_layout(), "ab", style)
+  let warnings : Array[String] = []
+  let nodes = render_cell_text("s", "A1", fill_layout(), "ab", style, warnings)
   let sb = StringBuilder::new()
   for n in nodes {
     match n {
@@ -79,10 +83,12 @@ test "§18.18.40 fill alignment tiles the whole cell text" {
 
 ///|
 test "wrapped cell strips the fill sentinel rather than leaking it" {
+  set_sml_fixture_font_faces(["Calibri"])
   let base = default_cell_style(default_render_options())
   let style = { ..base, alignment: { ..base.alignment, wrap_text: true } }
   let text = apply_format_section(5.0, "\"$\"*.0")
-  let nodes = render_cell_text("s", "A1", fill_layout(), text, style)
+  let warnings : Array[String] = []
+  let nodes = render_cell_text("s", "A1", fill_layout(), text, style, warnings)
   let sb = StringBuilder::new()
   for n in nodes {
     match n {

@@ -41,6 +41,7 @@ fn wsp_shape_nodes(
   wsp : @xml.Element,
   w_px : Double,
   h_px : Double,
+  warnings : Array[String],
 ) -> Array[@xml.Node]? {
   let sp_pr = match first_child_named(wsp, "spPr") {
     Some(s) => s
@@ -84,14 +85,17 @@ fn wsp_shape_nodes(
     @markup.elem_ns("path", @markup.svg_ns, path_attrs, []),
   ]
   // §20.1.2.2.40 `<wps:txbx>/<w:txbxContent>` — the shape's text body.
-  for node in build_textbox_body_nodes(wsp, w_px) {
+  for node in build_textbox_body_nodes(wsp, w_px, warnings) {
     children.push(node)
   }
   Some(children)
 }
 
 ///|
-fn build_inline_shape(drawing : @xml.Element) -> MathPayload? {
+fn build_inline_shape(
+  drawing : @xml.Element,
+  warnings : Array[String],
+) -> MathPayload? {
   let (w_px, h_px) = drawing_extent_size_px(drawing)
   if w_px <= 0.0 || h_px <= 0.0 {
     return None
@@ -100,7 +104,7 @@ fn build_inline_shape(drawing : @xml.Element) -> MathPayload? {
     Some(s) => s
     None => return None
   }
-  let children = match wsp_shape_nodes(wsp, w_px, h_px) {
+  let children = match wsp_shape_nodes(wsp, w_px, h_px, warnings) {
     Some(nodes) => nodes
     None => return None
   }
@@ -313,16 +317,19 @@ fn render_group_child_node(
   rw : Double,
   rh : Double,
   image_resolver : (String) -> ResolvedImage?,
+  warnings : Array[String],
 ) -> @xml.Node? {
   match child.name.local_name {
     "wsp" =>
-      match wsp_shape_nodes(child, rw, rh) {
+      match wsp_shape_nodes(child, rw, rh, warnings) {
         Some(nodes) => Some(translate_group(rx, ry, nodes))
         None => None
       }
     "pic" => group_pic_image_node(child, rx, ry, rw, rh, image_resolver)
     "grpSp" => {
-      let nested = render_wpg_group_children(child, rw, rh, image_resolver)
+      let nested = render_wpg_group_children(
+        child, rw, rh, image_resolver, warnings,
+      )
       if nested.length() > 0 {
         Some(translate_group(rx, ry, nested))
       } else {
@@ -346,6 +353,7 @@ fn render_wpg_group_children(
   target_w : Double,
   target_h : Double,
   image_resolver : (String) -> ResolvedImage?,
+  warnings : Array[String],
 ) -> Array[@xml.Node] {
   let grp_sp_pr = match first_child_named(container, "grpSpPr") {
     Some(s) => s
@@ -375,7 +383,10 @@ fn render_wpg_group_children(
       Element(c) =>
         match group_child_rect(c, ch_off_x, ch_off_y, sx, sy) {
           Some((rx, ry, rw, rh)) =>
-            match render_group_child_node(c, rx, ry, rw, rh, image_resolver) {
+            match
+              render_group_child_node(
+                c, rx, ry, rw, rh, image_resolver, warnings,
+              ) {
               Some(node) => children.push(node)
               None => ()
             }
@@ -398,6 +409,7 @@ fn render_wpg_group_children(
 fn build_inline_group(
   drawing : @xml.Element,
   image_resolver : (String) -> ResolvedImage?,
+  warnings : Array[String],
 ) -> MathPayload? {
   let (w_px, h_px) = drawing_extent_size_px(drawing)
   if w_px <= 0.0 || h_px <= 0.0 {
@@ -407,7 +419,9 @@ fn build_inline_group(
     Some(g) => g
     None => return None
   }
-  let children = render_wpg_group_children(wgp, w_px, h_px, image_resolver)
+  let children = render_wpg_group_children(
+    wgp, w_px, h_px, image_resolver, warnings,
+  )
   if children.length() == 0 {
     return None
   }
@@ -464,6 +478,7 @@ fn drawing_wpc_canvas(drawing : @xml.Element) -> @xml.Element? {
 fn build_inline_canvas(
   drawing : @xml.Element,
   image_resolver : (String) -> ResolvedImage?,
+  warnings : Array[String],
 ) -> MathPayload? {
   let (w_px, h_px) = drawing_extent_size_px(drawing)
   if w_px <= 0.0 || h_px <= 0.0 {
@@ -533,6 +548,7 @@ fn build_inline_canvas(
                       rw,
                       rh,
                       image_resolver,
+                      warnings,
                     ) {
                     Some(node) => children.push(node)
                     None => ()
@@ -577,6 +593,7 @@ const TXBX_T_INS_PX : Double = 4.8
 fn build_textbox_body_nodes(
   wsp : @xml.Element,
   w_px : Double,
+  warnings : Array[String],
 ) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
   let txbx = match first_child_named(wsp, "txbx") {
@@ -603,8 +620,8 @@ fn build_textbox_body_nodes(
     match child {
       Element(p) =>
         if p.name.local_name == "p" {
-          let laid = layout_paragraph(p, inner_w, no_image, no_chart)
-          let para_nodes = build_paragraph_nodes(laid)
+          let laid = layout_paragraph(p, inner_w, warnings, no_image, no_chart)
+          let para_nodes = build_paragraph_nodes(laid, warnings)
           let g : @xml.Element = {
             name: @markup.qname_ns("g", @markup.svg_ns),
             attributes: [

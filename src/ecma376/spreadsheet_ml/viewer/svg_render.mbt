@@ -118,6 +118,62 @@ pub(all) struct SheetSvgResult {
   warnings : Array[String]
 }
 
+///|
+fn push_warning_once(warnings : Array[String], message : String) -> Unit {
+  for existing in warnings {
+    if existing == message {
+      return
+    }
+  }
+  warnings.push(message)
+}
+
+///|
+fn join_warning_strings(values : Array[String], sep : String) -> String {
+  let out = StringBuilder::new()
+  for i in 0..<values.length() {
+    if i > 0 {
+      out.write_string(sep)
+    }
+    out.write_string(values[i])
+  }
+  out.to_string()
+}
+
+///|
+fn warn_font_unresolved(
+  warnings : Array[String],
+  font : ResolvedFont,
+  driver_labels : Array[String],
+  context : String,
+) -> Unit {
+  let drivers = if driver_labels.length() > 0 {
+    join_warning_strings(driver_labels, ", ")
+  } else {
+    "(no resolver driver)"
+  }
+  push_warning_once(
+    warnings,
+    "SpreadsheetML font unresolved (" +
+    context +
+    "): " +
+    font.family +
+    " " +
+    format_d(font.size) +
+    "pt; exact glyph metrics unavailable. Consulted " +
+    drivers,
+  )
+}
+
+///|
+fn warning_data_attrs(warnings : Array[String]) -> Array[@xml.Attribute] {
+  let attrs : Array[@xml.Attribute] = []
+  for i, warning in warnings {
+    attrs.push(svg_attr("data-ooxml-warning-" + i.to_string(), warning))
+  }
+  attrs
+}
+
 // =============================================================================
 // Public entry point
 // =============================================================================
@@ -242,6 +298,36 @@ pub fn render_svg(
   // options for every non-`customWidth` / non-`customHeight`
   // row / column.
   let options = apply_sheet_format_pr(domain.element, options)
+  // §18.8.8 / §18.8.9 — the builtin Normal cell style owns the
+  // workbook-default font. Resolve it once and feed that single value
+  // into both cell text defaults and column MDW computation.
+  let normal_font = resolve_normal_style_font(
+    styles,
+    default_cell_style(options).font,
+    theme_map~,
+  )
+  let options = match normal_font {
+    Some(font) =>
+      {
+        ..options,
+        default_font_family: font.family,
+        default_font_size: font.size,
+      }
+    None => options
+  }
+  let mdw_px = match normal_font {
+    Some(font) =>
+      match normal_style_max_digit_width_px(font) {
+        Some(w) => w
+        None => {
+          warnings.push(
+            "SpreadsheetML Normal style font could not be resolved; using renderer column-width fallback",
+          )
+          column_max_digit_width_px()
+        }
+      }
+    None => column_max_digit_width_px()
+  }
   // Build cell map before layout so §18.3.1.2 AutoFilter can collapse
   // filtered rows via the same typed evaluator used by the public API.
   // §18.3.1.13 / §18.3.1.73 — collect col defs first so the cell
@@ -291,6 +377,7 @@ pub fn render_svg(
     domain.element,
     options,
     auto_filter_hidden_rows~,
+    max_digit_width_px=mdw_px,
   )
   if layout.column_count == 0 || layout.row_count == 0 {
     // Empty sheet — still surface the workbook + worksheet
@@ -679,6 +766,7 @@ pub fn render_svg(
                   cl,
                   styled_runs,
                   runs_style,
+                  warnings,
                   cell_t~,
                 ) {
                 cell_text.push(n)
@@ -692,6 +780,7 @@ pub fn render_svg(
                   text,
                   text_style,
                   icon_width,
+                  warnings,
                   cell_t~,
                 ) {
                 cell_text.push(n)
@@ -988,6 +1077,9 @@ pub fn render_svg(
     ) {
     root_attrs.push(a)
   }
+  for a in warning_data_attrs(warnings) {
+    root_attrs.push(a)
+  }
   // §18.3.1.65 — draw split lines for visible freeze/split panes.
   // For "frozen" panes the split values are column / row counts;
   // for "split" panes they are pixel positions.  Project both to
@@ -1219,13 +1311,15 @@ fn parse_cell_ref(ref_str : String) -> (Int, Int)? {
 /// to CSS pixels using the spec-mandated formula:
 ///   Truncate( ((256 × w + Truncate(128 / MDW)) / 256) × MDW )
 /// MDW = max-digit-width = pixel width of the `"0"` glyph in the
-/// Normal style's font at 96 dpi. The Normal-style font is
-/// implementation-resolved; until the Normal-style cascade is
-/// wired in we use 7 px (Calibri 11 at 96 dpi) as the documented
-/// fallback. The previous `width * 7 + 5` heuristic was a web-pptx
-/// shortcut that does not match the spec formula at narrow widths.
-fn column_width_to_pixels(excel_width : Double) -> Double {
-  let mdw = column_max_digit_width_px()
+/// Normal style's font at 96 dpi. The main render path supplies that
+/// value from the stylesheet's builtin Normal style when available.
+/// The previous `width * 7 + 5` heuristic was a web-pptx shortcut
+/// that does not match the spec formula at narrow widths.
+fn column_width_to_pixels(
+  excel_width : Double,
+  mdw_px? : Double = column_max_digit_width_px(),
+) -> Double {
+  let mdw = mdw_px
   let padding = (128.0 / mdw).to_int().to_double()
   let raw = (256.0 * excel_width + padding) / 256.0 * mdw
   let truncated = raw.to_int().to_double()
@@ -1237,27 +1331,37 @@ fn column_width_to_pixels(excel_width : Double) -> Double {
 }
 
 ///|
-/// §18.3.1.13 — pixel width of the `"0"` digit in the Normal style's
-/// font at 96 dpi.  Spec mandates the value come from the Normal
-/// style's font; until that resolution path is wired we use a
-/// documented fallback.
-///
-/// Choice rationale: the snapshot harness (scripts/snapshot.sh)
-/// pins fontconfig so CSS `sans-serif` resolves to the rendered body face
-/// — the same face the reference renderer substitutes for Calibri when
-/// exporting the reference PDF.  the rendered body face's "0" glyph at
-/// 11pt 96 dpi has an advance of ~6.1 pt = ~8.15 px (it is metric-
-/// compatible with Arial, whose 0-glyph advance is 556/1000 EM);
-/// however per ECMA-376 §18.3.1.13 the MDW also subsumes Excel's
-/// small inter-cell padding.  Empirically a bare-grid fixture's
-/// 10-column the reference renderer render produces ~65 px per column, which
-/// the spec formula `Trunc((256·8.43 + Trunc(128/MDW))/256 · MDW)`
-/// reproduces at MDW = 7.7.  The previous 7.0 (Calibri-shaped
-/// fallback) yielded 59 px and accumulated visible offsets across
-/// wide grids.  See the cell-grid-* snapshot family for the
-/// fidelity ratchet that drove this.
+/// Legacy renderer fallback used when callers invoke
+/// `column_width_to_pixels` without a measured Normal-style MDW, or
+/// when the main render path cannot resolve the workbook's Normal
+/// style font. It is not a font metric source; successful document
+/// renders should supply `mdw_px` from `normal_style_max_digit_width_px`.
 fn column_max_digit_width_px() -> Double {
   7.7
+}
+
+///|
+/// §18.3.1.13 — measure the Normal style max-digit-width from the
+/// same glyph resolver used for cell text. Returns None when the
+/// configured resolver cannot satisfy the document/default font
+/// request; callers decide how to surface that document-boundary
+/// failure.
+fn normal_style_max_digit_width_px(font : ResolvedFont) -> Double? {
+  let weight = if font.bold { 700 } else { 400 }
+  try
+    @glyph.measure_text_width(
+      "0",
+      font_size_pt=font.size,
+      letter_spacing_px=0.0,
+      family=font.family,
+      weight~,
+      italic=font.italic,
+    )
+  catch {
+    _ => None
+  } noraise {
+    w => if w > 0.0 { Some(w) } else { None }
+  }
 }
 
 ///|
@@ -1323,6 +1427,7 @@ fn column_width_for(
   col_index : Int,
   columns : Array[ColumnDef],
   options : SheetRenderOptions,
+  mdw_px? : Double = column_max_digit_width_px(),
 ) -> Double {
   for col in columns {
     if col_index >= col.min && col_index <= col.max {
@@ -1330,12 +1435,12 @@ fn column_width_for(
         return 0.0
       }
       match col.width {
-        Some(w) => return column_width_to_pixels(w)
+        Some(w) => return column_width_to_pixels(w, mdw_px~)
         None => ()
       }
     }
   }
-  column_width_to_pixels(options.default_column_width)
+  column_width_to_pixels(options.default_column_width, mdw_px~)
 }
 
 ///|
@@ -1686,6 +1791,7 @@ fn compute_sheet_layout(
   worksheet : @xml.Element,
   options : SheetRenderOptions,
   auto_filter_hidden_rows? : Map[Int, Bool] = Map([], capacity=0),
+  max_digit_width_px? : Double = column_max_digit_width_px(),
 ) -> SheetLayout {
   let (dim_row, dim_col) = read_dimension(worksheet)
   let (max_row, max_col) = if dim_row > 0 && dim_col > 0 {
@@ -1722,7 +1828,9 @@ fn compute_sheet_layout(
   }
   let column_widths : Array[Double] = []
   for col in 1..<=max_col {
-    column_widths.push(column_width_for(col, columns, options))
+    column_widths.push(
+      column_width_for(col, columns, options, mdw_px=max_digit_width_px),
+    )
   }
   let column_positions : Array[Double] = []
   let mut acc = header_x_offset
@@ -2106,6 +2214,58 @@ fn default_cell_style(options : SheetRenderOptions) -> ResolvedCellStyle {
     icon: None,
     hide_value: false,
   }
+}
+
+///|
+/// §18.8.8 `cellStyles` builtinId 0 identifies the workbook's
+/// Normal cell style; its `xfId` points into §18.8.9
+/// `cellStyleXfs`, whose `fontId` points into §18.8.22 `fonts`.
+/// This is the SpreadsheetML-owned default-font path. It does not
+/// invent or consult any external font list.
+fn resolve_normal_style_font(
+  styles : @domain.CT_Stylesheet?,
+  fallback : ResolvedFont,
+  theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+) -> ResolvedFont? {
+  let styles_table = match styles {
+    Some(t) => t
+    None => return None
+  }
+  let cell_styles = match styles_table.cell_styles {
+    Some(cs) => cs
+    None => return None
+  }
+  let mut normal_xf_id : Int? = None
+  for cell_style in cell_styles.cell_style {
+    match cell_style.builtin_id {
+      Some(0) => normal_xf_id = Some(cell_style.xf_id)
+      _ => ()
+    }
+  }
+  let xf_id = match normal_xf_id {
+    Some(id) => id
+    None => return None
+  }
+  let style_xfs = match styles_table.cell_style_xfs {
+    Some(xfs) => xfs
+    None => return None
+  }
+  if xf_id < 0 || xf_id >= style_xfs.xf.length() {
+    return None
+  }
+  let xf = style_xfs.xf[xf_id]
+  let font_id = match xf.font_id {
+    Some(id) => id
+    None => return None
+  }
+  let fonts = match styles_table.fonts {
+    Some(fs) => fs
+    None => return None
+  }
+  if font_id < 0 || font_id >= fonts.font.length() {
+    return None
+  }
+  Some(ct_font_to_resolved(fonts.font[font_id], fallback, theme_map~))
 }
 
 ///|
@@ -7146,10 +7306,19 @@ fn render_cell_text_offset(
   text : String,
   style : ResolvedCellStyle,
   offset_x : Double,
+  warnings : Array[String],
   cell_t? : String? = None,
 ) -> Array[@xml.Node] {
   if offset_x == 0.0 {
-    return render_cell_text(id_prefix, cell_ref, layout, text, style, cell_t~)
+    return render_cell_text(
+      id_prefix,
+      cell_ref,
+      layout,
+      text,
+      style,
+      warnings,
+      cell_t~,
+    )
   }
   let offset_layout : CellLayout = {
     x: layout.x + offset_x,
@@ -7161,7 +7330,15 @@ fn render_cell_text_offset(
     is_merge_origin: layout.is_merge_origin,
     is_hidden_by_merge: layout.is_hidden_by_merge,
   }
-  render_cell_text(id_prefix, cell_ref, offset_layout, text, style, cell_t~)
+  render_cell_text(
+    id_prefix,
+    cell_ref,
+    offset_layout,
+    text,
+    style,
+    warnings,
+    cell_t~,
+  )
 }
 
 ///|
@@ -7246,10 +7423,16 @@ fn strip_fill_directive(text : String) -> String {
 }
 
 ///|
-/// Measure the pixel width of `s` for the cell font, degrading to the
-/// per-glyph heuristic (CJK ≈ 1 em, Latin ≈ 0.6 em) when the font is
-/// unresolved — mirrors `wrap_text`'s `seg_cost`.
-fn cell_text_width(s : String, font : ResolvedFont) -> Double {
+/// Measure the pixel width of `s` for the cell font through the shared
+/// glyph resolver. When the font is unresolved, preserve render
+/// progress without inventing substitute metrics: callers receive
+/// `0.0` and the document-boundary warning records the failed request.
+fn cell_text_width(
+  s : String,
+  font : ResolvedFont,
+  warnings : Array[String],
+  context? : String = "cell text width",
+) -> Double {
   let weight = if font.bold { 700 } else { 400 }
   try
     @glyph.measure_text_width(
@@ -7261,13 +7444,9 @@ fn cell_text_width(s : String, font : ResolvedFont) -> Double {
       italic=font.italic,
     )
   catch {
-    _ => {
-      let mut w = 0.0
-      for c in s {
-        w = w +
-          (if @glyph.is_cjk_char(c) { font.size } else { font.size * 0.6 })
-      }
-      w
+    @glyph.FontUnresolvedError(driver_labels=labels, ..) => {
+      warn_font_unresolved(warnings, font, labels, context)
+      0.0
     }
   } noraise {
     w => w
@@ -7287,6 +7466,7 @@ fn render_filled_cell_text(
   fill : String,
   right : String,
   style : ResolvedCellStyle,
+  warnings : Array[String],
 ) -> Array[@xml.Node] {
   let padding = 2.0
   let (ty, baseline) = vertical_text_pos(
@@ -7296,9 +7476,14 @@ fn render_filled_cell_text(
     padding,
   )
   let avail = layout.width - 2.0 * padding
-  let left_w = cell_text_width(left, style.font)
-  let right_w = cell_text_width(right, style.font)
-  let fill_w = cell_text_width(fill, style.font)
+  let left_w = cell_text_width(left, style.font, warnings, context="fill left")
+  let right_w = cell_text_width(
+    right,
+    style.font,
+    warnings,
+    context="fill right",
+  )
+  let fill_w = cell_text_width(fill, style.font, warnings, context="fill tile")
   // Tile the fill glyph across the residual gap.
   let gap = avail - left_w - right_w
   let reps = if fill_w > 0.0 && gap > 0.0 { (gap / fill_w).to_int() } else { 0 }
@@ -7424,6 +7609,7 @@ fn render_cell_text_runs(
   layout : CellLayout,
   runs : Array[(String, ResolvedFont)],
   style : ResolvedCellStyle,
+  warnings : Array[String],
   cell_t? : String? = None,
 ) -> Array[@xml.Node] {
   let padding = 2.0
@@ -7436,7 +7622,12 @@ fn render_cell_text_runs(
   // §18.8.1 — indent: identical computation to the simple branch so the
   // rich-text path lines up with the plain path for the same cell.
   let tx = if style.alignment.indent != 0 && anchor != "middle" {
-    let unit = cell_text_width("   ", style.font)
+    let unit = cell_text_width(
+      "   ",
+      style.font,
+      warnings,
+      context="rich text indent",
+    )
     let offset = unit * style.alignment.indent.to_double()
     if anchor == "end" {
       tx0 - offset
@@ -7497,6 +7688,7 @@ fn render_cell_text(
   layout : CellLayout,
   text : String,
   style : ResolvedCellStyle,
+  warnings : Array[String],
   cell_t? : String? = None,
 ) -> Array[@xml.Node] {
   // §18.8.31 `*x` fill directive — honour it only for the simple
@@ -7509,7 +7701,7 @@ fn render_cell_text(
         style.alignment.text_rotation == 0 &&
         layout.width > 0.0 {
         return render_filled_cell_text(
-          id_prefix, cell_ref, layout, left, fill, right, style,
+          id_prefix, cell_ref, layout, left, fill, right, style, warnings,
         )
       }
     None => ()
@@ -7530,7 +7722,12 @@ fn render_cell_text(
     not(style.alignment.wrap_text) &&
     style.alignment.text_rotation == 0 &&
     text.length() > 0 {
-    let unit_w = cell_text_width(text, style.font)
+    let unit_w = cell_text_width(
+      text,
+      style.font,
+      warnings,
+      context="fill alignment",
+    )
     let avail = layout.width - 2.0 * padding
     let reps = if unit_w > 0.0 { (avail / unit_w).to_int() } else { 1 }
     let buf = StringBuilder::new()
@@ -7562,7 +7759,12 @@ fn render_cell_text(
     layout.width > 0.0 &&
     text.length() > 0 {
     let avail = layout.width - 2.0 * padding
-    let tw = cell_text_width(text, style.font)
+    let tw = cell_text_width(
+      text,
+      style.font,
+      warnings,
+      context="shrink to fit",
+    )
     if tw > avail && avail > 0.0 {
       let scaled = style.font.size * avail / tw
       { ..style, font: { ..style.font, size: scaled } }
@@ -7585,7 +7787,7 @@ fn render_cell_text(
   // text moves left; centred text is not indented (Excel ignores
   // indent under centre alignment).
   let tx = if style.alignment.indent != 0 && anchor != "middle" {
-    let unit = cell_text_width("   ", style.font)
+    let unit = cell_text_width("   ", style.font, warnings, context="indent")
     let offset = unit * style.alignment.indent.to_double()
     if anchor == "end" {
       tx0 - offset
@@ -7603,7 +7805,7 @@ fn render_cell_text(
   )
   if style.alignment.wrap_text && layout.width > 0.0 {
     return render_wrapped_text(
-      id_prefix, cell_ref, layout, text, style, tx, anchor,
+      id_prefix, cell_ref, layout, text, style, tx, anchor, warnings,
     )
   }
   // §18.3.1.4 — clip the cell text to the cell rectangle so a long
@@ -7737,12 +7939,13 @@ fn render_wrapped_text(
   style : ResolvedCellStyle,
   x : Double,
   anchor : String,
+  warnings : Array[String],
 ) -> Array[@xml.Node] {
   let font_size = style.font.size
   let line_height = font_size * 1.2
   let max_lines_d = (layout.height / line_height).to_int()
   let max_lines = if max_lines_d < 1 { 1 } else { max_lines_d }
-  let lines = wrap_text(text, layout.width, style.font, max_lines)
+  let lines = wrap_text(text, layout.width, style.font, max_lines, warnings)
   if lines.length() == 0 {
     return []
   }
@@ -7829,12 +8032,13 @@ fn wrap_text(
   width : Double,
   font : ResolvedFont,
   max_lines : Int,
+  warnings : Array[String],
 ) -> Array[String] {
   // The column budget is the cell content width in PIXELS; segment
   // widths come from real glyph metrics (`@glyph.measure_text_width`)
   // resolved for the cell's family / weight / style.  When the font
-  // cannot be resolved the width degrades to a per-glyph heuristic
-  // (CJK ≈ 1 em, Latin ≈ 0.6 em) so wrapping still makes progress.
+  // cannot be resolved, width is not guessed; the render result carries
+  // a warning and wrapping degrades to unmeasured progress.
   let budget = width
   let paragraphs = split_lines(text)
   let result : Array[String] = []
@@ -7855,7 +8059,9 @@ fn wrap_text(
     // honouring 禁則.
     let segments = @glyph.linebreak_segments(paragraph)
     let remaining = max_lines - result.length()
-    let wrapped = greedy_wrap_segments(segments, budget, font, remaining)
+    let wrapped = greedy_wrap_segments(
+      segments, budget, font, remaining, warnings,
+    )
     for w in wrapped {
       result.push(w)
     }
@@ -7905,47 +8111,27 @@ fn split_lines(text : String) -> Array[String] {
 /// inserts no spaces and swallows a whitespace segment that lands at
 /// the head of a fresh line (CSS Text soft-wrap consumption).  Segment
 /// widths are real glyph metrics from `@glyph.measure_text_width`
-/// resolved for `font`; when the font cannot be resolved they degrade
-/// to a per-glyph heuristic (CJK ≈ 1 em, Latin ≈ 0.6 em).  A single
-/// segment wider than the budget is split per grapheme (overflow-wrap:
-/// anywhere).  Because kinsoku-illegal boundaries were already glued
-/// away by the segmenter, every line break here is JIS X 4051-legal.
+/// resolved for `font`; when the font cannot be resolved they are not
+/// guessed and a warning is surfaced.  A single segment wider than the
+/// budget is split per grapheme (overflow-wrap: anywhere). Because
+/// kinsoku-illegal boundaries were already glued away by the segmenter,
+/// every line break here is JIS X 4051-legal.
 fn greedy_wrap_segments(
   segments : Array[String],
   budget : Double,
   font : ResolvedFont,
   max_lines : Int,
+  warnings : Array[String],
 ) -> Array[String] {
   let lines : Array[String] = []
   let cur = StringBuilder::new()
   let mut cur_cost = 0.0
   let mut cur_empty = true
-  let weight = if font.bold { 700 } else { 400 }
-  // Per-glyph heuristic fallback (px) when the font cannot be resolved.
-  fn heuristic(seg : String) -> Double {
-    let mut w = 0.0
-    for c in seg {
-      w = w + (if @glyph.is_cjk_char(c) { font.size } else { font.size * 0.6 })
-    }
-    w
-  }
-
-  // Real glyph-metric width of a segment, with graceful fallback.
+  // Real glyph-metric width of a segment. Unresolved fonts warn once
+  // per request/context and return 0.0 rather than manufacturing a
+  // second metric source.
   fn seg_cost(seg : String) -> Double {
-    try
-      @glyph.measure_text_width(
-        seg,
-        font_size_pt=font.size,
-        letter_spacing_px=0.0,
-        family=font.family,
-        weight~,
-        italic=font.italic,
-      )
-    catch {
-      _ => heuristic(seg)
-    } noraise {
-      w => w
-    }
+    cell_text_width(seg, font, warnings, context="wrap")
   }
 
   // Emergency per-grapheme wrap (CSS overflow-wrap: anywhere): a single

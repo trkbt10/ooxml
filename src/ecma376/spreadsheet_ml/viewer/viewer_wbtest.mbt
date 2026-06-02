@@ -39,6 +39,29 @@ fn build_row(row_num : Int, cells : Array[@xml.Node]) -> @xml.Node {
 }
 
 ///|
+fn set_sml_fixture_font_faces(families : Array[String]) -> Unit {
+  let bytes = try
+    @fs.read_file_to_bytes("src/util/glyph/fixtures/subset.ttf")
+  catch {
+    _ => abort("cannot load test font src/util/glyph/fixtures/subset.ttf")
+  } noraise {
+    b => b
+  }
+  let faces : Map[String, Bytes] = Map([], capacity=families.length())
+  for family in families {
+    faces[family] = bytes
+  }
+  @glyph.set_default_font_set(
+    @glyph.FontSet::new(resolver=@glyph.FontResolver::in_memory(faces)),
+  )
+}
+
+///|
+fn attr(local_name : String, value : String) -> @xml.Attribute {
+  { name: name(local_name), value }
+}
+
+///|
 test "SpreadsheetML SVG renderer column letter conversion" {
   inspect(column_index_to_letter(1), content="A")
   inspect(column_index_to_letter(26), content="Z")
@@ -65,8 +88,8 @@ test "SpreadsheetML SVG renderer cell ref round-trip" {
 ///|
 test "SpreadsheetML SVG renderer column / row pixel conversions" {
   // §18.3.1.13 — Truncate(((256*8.43 + Trunc(128/MDW))/256)*MDW)
-  // with MDW = 7.7 (the Calibri-substitute "0" advance @ 11pt 96dpi,
-  // documented in `column_max_digit_width_px`):
+  // with the legacy renderer fallback MDW documented in
+  // `column_max_digit_width_px`:
   //              = Truncate(((2158.08 + 16)/256)*7.7)
   //              = Truncate(8.4925*7.7) = Truncate(65.39) = 65
   inspect(column_width_to_pixels(8.43), content="65")
@@ -74,6 +97,124 @@ test "SpreadsheetML SVG renderer column / row pixel conversions" {
   inspect(row_height_to_pixels(15.0), content="20")
   // 14.4 pt * 96/72 = 19.2 → round → 19.
   inspect(row_height_to_pixels(14.4), content="19")
+}
+
+///|
+test "SpreadsheetML SVG renderer derives defaults and MDW from Normal style" {
+  set_sml_fixture_font_faces(["Noto Sans"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [attr("ref", "A1:A1")],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("row"),
+            attributes: [attr("r", "1")],
+            children: [
+              @xml.Node::Element({
+                name: name("c"),
+                attributes: [attr("r", "A1"), attr("t", "inlineStr")],
+                children: [
+                  @xml.Node::Element({
+                    name: name("is"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("t"),
+                        attributes: [],
+                        children: [@xml.Node::Text("normal-font")],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let stylesheet = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("fonts"),
+        attributes: [attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("font"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("name"),
+                attributes: [attr("val", "Noto Sans")],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("sz"),
+                attributes: [attr("val", "20")],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("cellStyleXfs"),
+        attributes: [attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [attr("fontId", "0")],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("cellStyles"),
+        attributes: [attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("cellStyle"),
+            attributes: [
+              attr("name", "Normal"),
+              attr("xfId", "0"),
+              attr("builtinId", "0"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let normal_font : ResolvedFont = {
+    family: "Noto Sans",
+    size: 20.0,
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false,
+    color: None,
+  }
+  let mdw = match normal_style_max_digit_width_px(normal_font) {
+    Some(w) => w
+    None => abort("fixture font did not resolve")
+  }
+  let expected_width = column_width_to_pixels(8.43, mdw_px=mdw)
+  let result = render_svg(worksheet, styles=Some(stylesheet))
+  assert_true(result.svg.contains("width=\"" + format_d(expected_width) + "\""))
+  assert_true(result.svg.contains("Noto Sans"))
+  assert_true(result.svg.contains("font-size=\"20pt\""))
+  assert_eq(result.warnings.length(), 0)
 }
 
 ///|
@@ -3913,6 +4054,87 @@ test "SpreadsheetML viewer §18.8.1 cell alignment attrs surface as data-ooxml-*
   // §18.8.1 — Excel rotation is counter-clockwise; SVG's
   // transform must negate to clockwise.
   assert_true(result.svg.contains("rotate(-90,"))
+}
+
+///|
+test "SpreadsheetML viewer warns instead of estimating unresolved font width" {
+  @glyph.set_default_font_set(
+    @glyph.FontSet::new(
+      resolver=@glyph.FontResolver::in_memory(Map([], capacity=0)),
+    ),
+  )
+  let alignment_el : @xml.Element = {
+    name: name("alignment"),
+    attributes: [
+      { name: name("horizontal"), value: "left" },
+      { name: name("indent"), value: "1" },
+    ],
+    children: [],
+  }
+  let stylesheet = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("cellXfs"),
+        attributes: [{ name: name("count"), value: "1" }],
+        children: [
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [{ name: name("applyAlignment"), value: "1" }],
+            children: [@xml.Node::Element(alignment_el)],
+          }),
+        ],
+      }),
+    ],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: "A1:A1" }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            @xml.Node::Element({
+              name: name("c"),
+              attributes: [
+                { name: name("r"), value: "A1" },
+                { name: name("t"), value: "inlineStr" },
+                { name: name("s"), value: "0" },
+              ],
+              children: [
+                @xml.Node::Element({
+                  name: name("is"),
+                  attributes: [],
+                  children: [
+                    @xml.Node::Element({
+                      name: name("t"),
+                      attributes: [],
+                      children: [@xml.Node::Text("missing font")],
+                    }),
+                  ],
+                }),
+              ],
+            }),
+          ]),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet, styles=Some(stylesheet))
+  set_sml_fixture_font_faces(["Noto Sans", "Calibri"])
+  assert_true(result.svg.contains("missing font"))
+  assert_true(result.svg.contains("data-ooxml-warning-0="))
+  assert_true(result.warnings.length() > 0)
+  assert_true(result.warnings[0].contains("SpreadsheetML font unresolved"))
+  assert_true(result.warnings[0].contains("Calibri"))
 }
 
 ///|
