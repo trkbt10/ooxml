@@ -26,6 +26,14 @@ const NS_CT : String = "http://schemas.openxmlformats.org/package/2006/content-t
 const RT_OFFICE_DOC : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
 
 ///|
+/// The office-document relationship-reference namespace.
+const NS_OFFICE_REL : String = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+
+///|
+/// Catalog-local embedded font-data relationship id.
+const FONT_TABLE_DATA_RID : String = "rIdFontData1"
+
+///|
 /// Build a plain (no-prefix, no-namespace) attribute.
 fn xa(name : String, value : String) -> @xml.Attribute {
   { name: { prefix: None, local_name: name, ns: None }, value }
@@ -5114,6 +5122,53 @@ fn enhance_chart_space_for_render(content : @xml.Element) -> @xml.Element {
 }
 
 ///|
+/// Return whether `local_name` is one of the §17.8.2.4 embedded-font
+/// relationship elements inside `/word/fontTable.xml`.
+fn is_font_table_embed_element(local_name : String) -> Bool {
+  match local_name {
+    "embedRegular" | "embedBold" | "embedItalic" | "embedBoldItalic" => true
+    _ => false
+  }
+}
+
+///|
+/// `docx_aux_package("fonts", ...)` owns exactly one synthetic
+/// font-data relationship. The catalog synthesiser produces
+/// facet-valid ST_RelationshipId values such as `"0"` for the WML
+/// `r:id` reference, while OPC relationship elements require xsd:ID
+/// NCNames. Retarget only the fontTable embedded-font references here
+/// so OPC validation remains the single source of truth for
+/// relationship-element ids.
+fn retarget_font_table_embed_rids(element : @xml.Element) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  if is_font_table_embed_element(element.name.local_name) {
+    for attr in element.attributes {
+      if attr.name.local_name == "id" &&
+        (attr.name.ns == Some(NS_OFFICE_REL) || attr.name.prefix == Some("r")) {
+        attrs.push({
+          name: { prefix: Some("r"), local_name: "id", ns: Some(NS_OFFICE_REL) },
+          value: FONT_TABLE_DATA_RID,
+        })
+      } else {
+        attrs.push(attr)
+      }
+    }
+  } else {
+    for attr in element.attributes {
+      attrs.push(attr)
+    }
+  }
+  let children : Array[@xml.Node] = []
+  for child in element.children {
+    match child {
+      Element(ce) => children.push(Element(retarget_font_table_embed_rids(ce)))
+      _ => children.push(child)
+    }
+  }
+  { name: element.name, attributes: attrs, children }
+}
+
+///|
 /// `.docx` package that ships `content` as the body of a WML auxiliary
 /// part (`settings.xml` / `styles.xml` / `numbering.xml` /
 /// `fontTable.xml` / `webSettings.xml` / `comments.xml` /
@@ -5191,13 +5246,18 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
   // Wrap `content` in the part's root element if it isn't already —
   // each aux part's root carries the WML namespace and the
   // ECMA-376-defined local name (settings, styles, numbering, ...).
-  let aux_root : @xml.Element = if content.name.local_name == root_name {
+  let aux_content = if part_kind == "fonts" {
+    retarget_font_table_embed_rids(content)
+  } else {
     content
+  }
+  let aux_root : @xml.Element = if aux_content.name.local_name == root_name {
+    aux_content
   } else {
     {
       name: { prefix: Some("w"), local_name: root_name, ns: Some(ns_w) },
       attributes: [],
-      children: [Element(content)],
+      children: [Element(aux_content)],
     }
   }
   // Minimal `<w:document>` body — the auxiliary part is what we
@@ -5247,18 +5307,18 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
     ("word/" + part_path, write_part(aux_root)),
   ]
   if part_kind == "fonts" {
-    // §17.8.2.4 font-data targets: emit a dummy `Id="0"` rel so the
-    // synthesised `<w:embed*/>`'s `r:id="0"` resolves through the
-    // OPC layer's relationship lookup.  The target part must exist
-    // in the package (the OPC reader validates internal targets) and
-    // its extension must have a content-type mapping.
+    // §17.8.2.4 font-data targets: the schema synthesiser's
+    // ST_RelationshipId sample may be `"0"` on `<w:embed*>`, but
+    // OPC Relationship/@Id is xsd:ID. Keep that distinction at the
+    // package boundary by retargeting the fontTable references above
+    // and emitting exactly the matching valid relationship id here.
     let aux_rels = xe(NS_PKG_REL, "Relationships", [], [
       Element(
         xe(
           NS_PKG_REL,
           "Relationship",
           [
-            xa("Id", "0"),
+            xa("Id", FONT_TABLE_DATA_RID),
             xa(
               "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/font",
             ),

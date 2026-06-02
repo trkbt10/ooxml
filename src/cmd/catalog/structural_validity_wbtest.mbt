@@ -16,3 +16,62 @@ test "catalog pptx empty-body package reopens after context save" {
     _ => ()
   }
 }
+
+///|
+test "catalog docx font-table host retargets synthesized font relationship id" {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let font = xep(
+    "w",
+    ns_w,
+    "font",
+    [
+      {
+        name: { prefix: Some("w"), local_name: "name", ns: Some(ns_w) },
+        value: "CatalogFont",
+      },
+    ],
+    [
+      Element(
+        xep(
+          "w",
+          ns_w,
+          "embedRegular",
+          [
+            {
+              name: {
+                prefix: Some("r"),
+                local_name: "id",
+                ns: Some(NS_OFFICE_REL),
+              },
+              value: "0",
+            },
+          ],
+          [],
+        ),
+      ),
+    ],
+  )
+  let host = docx_aux_package("fonts", font)
+  let pkg = @opc.Package::open(host) catch { _ => abort("OPC open failed") }
+  match pkg.relationships("/word/fontTable.xml") {
+    Some(rels) => {
+      assert_eq(rels.relationships.length(), 1)
+      assert_eq(rels.relationships[0].id, FONT_TABLE_DATA_RID)
+    }
+    None => abort("expected fontTable relationships")
+  }
+  let document = @wml_context.open(host) catch {
+    @wml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let saved = document.save_or_raise() catch {
+    @wml_context.SaveError(kind~, path~, reason~) =>
+      abort("save failed: " + kind + " " + path + " " + reason)
+  }
+  try @wml_context.open(saved) catch {
+    @wml_context.OpenError(kind~, path~, reason~) =>
+      abort("reopen failed: " + kind + " " + path + " " + reason)
+  } noraise {
+    _ => ()
+  }
+}
