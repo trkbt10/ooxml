@@ -1,7 +1,7 @@
 // =============================================================================
 // §21.2.2.18 CT_BarChart — clustered bar chart renderer.
 //
-// Reads the first `<c:ser>` (the only one in the fixture catalogue) and
+// Reads the first `<c:ser>` (the only one in the fixture set) and
 // emits one `<rect>` per `<c:pt>` value in `<c:val>/<c:numRef>/<c:numCache>`.
 // Category labels come from `<c:cat>/<c:strRef>/<c:strCache>` and are
 // painted under each bar; the y-axis carries 5 tick labels at 0, ¼·max,

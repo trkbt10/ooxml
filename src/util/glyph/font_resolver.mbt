@@ -16,8 +16,8 @@
 // failure at the document boundary.
 //
 // Drivers MUST NOT silently substitute an unrelated face. Drivers
-// MUST honour `embedded_bytes` ahead of the host catalogue — the
-// document's own font wins by spec.
+// MUST honour `embedded_bytes` before consulting host-installed
+// fonts — the document's own font wins by spec.
 
 ///|
 /// CSS generic family keywords (CSS Fonts L4). The ECMA-376
@@ -71,7 +71,7 @@ pub(all) enum FontStackCandidate {
 ///
 /// `embedded_bytes` lets the renderer pre-supply embedded-font
 /// payload (WML §17.8.2.4, DML §20.1.4.2.1). When non-empty the
-/// driver MUST honour it without consulting the host catalogue.
+/// driver MUST honour it without consulting host-installed fonts.
 ///
 /// `weight` and `italic` select the cut. ≥ 600 selects bold.
 pub(all) struct FontFaceRequest {
@@ -177,7 +177,7 @@ pub fn FontResolver::compose(drivers : Array[FontResolver]) -> FontResolver {
 
 ///|
 /// In-memory resolver — faces are held as `(family-name → bytes)`
-/// in a `Map`. Tests use this to drive a deterministic catalogue
+/// in a `Map`. Tests use this to drive deterministic fixture inputs
 /// without depending on the host filesystem.
 ///
 /// Lookup: walks the request stack in order; for each `Name`

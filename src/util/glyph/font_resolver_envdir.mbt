@@ -44,9 +44,9 @@ pub fn FontResolver::env_dir() -> FontResolver {
     Some(d) => split_path_list(d)
     None => []
   }
-  let catalog : Map[String, String] = Map([], capacity=16)
+  let font_index : Map[String, String] = Map([], capacity=16)
   for dir in dirs {
-    populate_envdir_catalog(catalog, dir)
+    populate_font_index(font_index, dir)
   }
   let label = match dir_opt {
     Some(d) => "envdir(" + d + ")"
@@ -60,14 +60,14 @@ pub fn FontResolver::env_dir() -> FontResolver {
           return { bytes: b, ttc_index: None, source_label: "embedded" }
         None => ()
       }
-      if catalog.is_empty() {
+      if font_index.is_empty() {
         raise FontUnresolvedError(request~, driver_labels=[label])
       }
       for candidate in request.stack {
         match candidate {
           Name(n) => {
-            let key = catalog_key_for(n, request.weight, request.italic)
-            match catalog.get(key) {
+            let key = font_index_key_for(n, request.weight, request.italic)
+            match font_index.get(key) {
               Some(path) =>
                 match try_read_resource(path) {
                   Some(res) => return res
@@ -113,7 +113,7 @@ fn split_path_list(raw : String) -> Array[String] {
 /// Scan `dir` (non-recursively) and index every `.ttf` / `.ttc`
 /// file by `(family|weight|italic)`. Silently skips missing
 /// directories.
-fn populate_envdir_catalog(catalog : Map[String, String], dir : String) -> Unit {
+fn populate_font_index(font_index : Map[String, String], dir : String) -> Unit {
   try @fs.read_dir(dir) catch {
     _ => return
   } noraise {
@@ -132,8 +132,8 @@ fn populate_envdir_catalog(catalog : Map[String, String], dir : String) -> Unit 
         if family.length() == 0 {
           continue
         }
-        let key = catalog_key_for(family, weight, italic)
-        catalog[key] = full
+        let key = font_index_key_for(family, weight, italic)
+        font_index[key] = full
       }
   }
 }
@@ -204,10 +204,10 @@ fn family_decamel(s : String) -> String {
 }
 
 ///|
-/// Cache key for the catalogue. Normalises the family name (lowercase
-/// + collapsed whitespace) and clamps the weight into the regular
-/// (≤599) / bold (≥600) buckets.
-fn catalog_key_for(family : String, weight : Int, italic : Bool) -> String {
+/// Cache key for a scanned font index. Normalises the family name
+/// (lowercase + collapsed whitespace) and clamps the weight into
+/// the regular (≤599) / bold (≥600) buckets.
+fn font_index_key_for(family : String, weight : Int, italic : Bool) -> String {
   let normalized = normalize_family(family)
   let w = if weight >= 600 { 700 } else { 400 }
   normalized +

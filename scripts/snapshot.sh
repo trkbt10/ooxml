@@ -95,7 +95,7 @@ export FONTCONFIG_FILE="$FONT_CONF_DIR/fonts.conf"
 
 # On macOS, Pango ships a CoreText backend by default that ignores
 # $FONTCONFIG_FILE; force the fontconfig backend so the rasteriser
-# walks the same catalogue the renderer measured against.
+# uses the same fixture font directory the renderer measured against.
 export PANGOCAIRO_BACKEND=fontconfig
 
 NO_CACHE=0

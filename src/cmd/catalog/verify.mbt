@@ -3925,15 +3925,10 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
       )
     "pptx:table" => pptx_package(default_table_slide_body(content))
     // §21.3 chartDrawing — `<c:userShapes>` is the chart's user-shape
-    // overlay part.  Until the chart renderer resolves user-shape
-    // relationships and walks `<cdr:absSizeAnchor>` / `<cdr:relSizeAnchor>`
-    // shape primitives, this branch has no meaningful chart-side
-    // render path.  Returning a plain `docx_package(content)` keeps
-    // the OPC packaging valid for parse/round-trip but the catalog's
-    // differential render check will (correctly) classify these
-    // elements as `parsed`, NOT `rendered`.  Reporting them as
-    // rendered without a real renderer would be a measurement
-    // workaround, not a spec-conformance gain.
+    // overlay part.  The host wires the part through chart-part
+    // relationships so the PresentationML chart renderer resolves
+    // `<c:userShapes r:id>` and walks the real
+    // `<cdr:absSizeAnchor>` / `<cdr:relSizeAnchor>` payload.
     "pptx:chart-usershapes" =>
       pptx_package_with_chart_usershapes_real(
         default_chart_slide_body(),
@@ -5152,143 +5147,6 @@ fn pptx_package_with_chart_usershapes_real(
     ("ppt/charts/userShapes1.xml", write_part(user_shapes_content)),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
-}
-
-///|
-/// (unused — kept for documentation of the chart_space scaffold the
-/// chartDrawing host would need once `<c:userShapes>` resolution is
-/// implemented in `chart_render`).
-fn default_minimal_chart_space() -> @xml.Element {
-  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
-  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-  let bar_chart = xep("c", ns_c, "barChart", [], [
-    Element(xep("c", ns_c, "barDir", [xa("val", "col")], [])),
-    Element(xep("c", ns_c, "grouping", [xa("val", "clustered")], [])),
-    Element(xep("c", ns_c, "varyColors", [xa("val", "0")], [])),
-    Element(
-      xep("c", ns_c, "ser", [], [
-        Element(xep("c", ns_c, "idx", [xa("val", "0")], [])),
-        Element(xep("c", ns_c, "order", [xa("val", "0")], [])),
-        Element(
-          xep("c", ns_c, "val", [], [
-            Element(
-              xep("c", ns_c, "numRef", [], [
-                Element(xep("c", ns_c, "f", [], [Text("Sheet1!$B$2:$D$2")])),
-                Element(
-                  xep("c", ns_c, "numCache", [], [
-                    Element(xep("c", ns_c, "formatCode", [], [Text("General")])),
-                    Element(xep("c", ns_c, "ptCount", [xa("val", "3")], [])),
-                    Element(
-                      xep("c", ns_c, "pt", [xa("idx", "0")], [
-                        Element(xep("c", ns_c, "v", [], [Text("2")])),
-                      ]),
-                    ),
-                    Element(
-                      xep("c", ns_c, "pt", [xa("idx", "1")], [
-                        Element(xep("c", ns_c, "v", [], [Text("5")])),
-                      ]),
-                    ),
-                    Element(
-                      xep("c", ns_c, "pt", [xa("idx", "2")], [
-                        Element(xep("c", ns_c, "v", [], [Text("3")])),
-                      ]),
-                    ),
-                  ]),
-                ),
-              ]),
-            ),
-          ]),
-        ),
-      ]),
-    ),
-    Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
-    Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
-  ])
-  let chart_inner = xep("c", ns_c, "chart", [], [
-    Element(
-      xep("c", ns_c, "plotArea", [], [
-        Element(xep("c", ns_c, "layout", [], [])),
-        Element(bar_chart),
-        Element(
-          xep("c", ns_c, "catAx", [], [
-            Element(xep("c", ns_c, "axId", [xa("val", "1")], [])),
-            Element(
-              xep("c", ns_c, "scaling", [], [
-                Element(
-                  xep("c", ns_c, "orientation", [xa("val", "minMax")], []),
-                ),
-              ]),
-            ),
-            Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
-            Element(xep("c", ns_c, "axPos", [xa("val", "b")], [])),
-            Element(xep("c", ns_c, "crossAx", [xa("val", "2")], [])),
-          ]),
-        ),
-        Element(
-          xep("c", ns_c, "valAx", [], [
-            Element(xep("c", ns_c, "axId", [xa("val", "2")], [])),
-            Element(
-              xep("c", ns_c, "scaling", [], [
-                Element(
-                  xep("c", ns_c, "orientation", [xa("val", "minMax")], []),
-                ),
-              ]),
-            ),
-            Element(xep("c", ns_c, "delete", [xa("val", "0")], [])),
-            Element(xep("c", ns_c, "axPos", [xa("val", "l")], [])),
-            Element(xep("c", ns_c, "crossAx", [xa("val", "1")], [])),
-          ]),
-        ),
-      ]),
-    ),
-    Element(xep("c", ns_c, "plotVisOnly", [xa("val", "1")], [])),
-    Element(
-      xep(
-        "c",
-        ns_c,
-        "userShapes",
-        [
-          {
-            name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
-            value: "rId99",
-          },
-        ],
-        [],
-      ),
-    ),
-  ])
-  xep("c", ns_c, "chartSpace", [], [Element(chart_inner)])
-}
-
-///|
-/// `.pptx` package whose slide carries a chart whose chart part
-/// references a `<c:userShapes>` sibling part containing the
-/// caller's chartDrawing content.  Builds on top of
-/// `pptx_package_with_chart` but writes one extra part
-/// (`charts/_rels/chart1.xml.rels` + `charts/userShapes.xml`) so the
-/// chart renderer's chartDrawing resolver finds the target wrapped
-/// in a real `<c:userShapes>` tree.
-fn pptx_package_with_chart_usershapes(
-  slide_body : @xml.Element,
-  chart_space : @xml.Element,
-  user_shapes_content : @xml.Element,
-) -> Bytes {
-  // The basic strategy: call pptx_package_with_chart, then patch the
-  // chart part rels to include the userShapes reference and add a
-  // userShapes part.  pptx_package_with_chart already writes the
-  // chart part + its rels; we add an extra zip entry for the
-  // userShapes part and replace the chart rels with one including the
-  // userShapes relationship.  Since `pptx_package_with_chart` returns
-  // a complete zip, the cleanest path is to do a parallel package
-  // build here mirroring its structure.  For now, route through the
-  // base chart package and ignore the userShapes wiring complexity —
-  // the chart renderer's userShapes support is not yet implemented,
-  // so the catalog won't observe a render-side effect either way.
-  // The chartSpace already declares `<c:userShapes r:id="rId99"/>` so
-  // the catalog sees the reference; resolving it through OPC
-  // relationships is a follow-up.
-  let _ = user_shapes_content
-  pptx_package_with_chart(slide_body, chart_space)
 }
 
 ///|

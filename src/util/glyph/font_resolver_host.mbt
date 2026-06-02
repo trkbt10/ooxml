@@ -29,9 +29,9 @@
 pub fn FontResolver::host() -> FontResolver {
   let platform = @platform.platform()
   let dirs = host_font_dirs(platform)
-  let catalog : Map[String, String] = Map([], capacity=32)
+  let font_index : Map[String, String] = Map([], capacity=32)
   for dir in dirs {
-    populate_envdir_catalog(catalog, dir)
+    populate_font_index(font_index, dir)
   }
   let label = "host(" + platform.to_string() + ")"
   {
@@ -42,14 +42,14 @@ pub fn FontResolver::host() -> FontResolver {
           return { bytes: b, ttc_index: None, source_label: "embedded" }
         None => ()
       }
-      if catalog.is_empty() {
+      if font_index.is_empty() {
         raise FontUnresolvedError(request~, driver_labels=[label])
       }
       for candidate in request.stack {
         match candidate {
           Name(n) => {
-            let key = catalog_key_for(n, request.weight, request.italic)
-            match catalog.get(key) {
+            let key = font_index_key_for(n, request.weight, request.italic)
+            match font_index.get(key) {
               Some(path) =>
                 match try_read_resource(path) {
                   Some(res) => return res
@@ -137,10 +137,10 @@ fn host_font_dirs(platform : @platform.Platform) -> Array[String] {
 }
 
 ///|
-/// Standard wiring point: EnvDir first (operator-supplied
-/// catalogue wins), then the host driver. Both raise on miss so the
-/// composite walks them in order and the caller sees a single
-/// well-formed error naming every driver consulted.
+/// Standard wiring point: EnvDir first (operator-supplied font
+/// directories take precedence), then the host driver. Both raise
+/// on miss so the composite walks them in order and the caller sees
+/// a single well-formed error naming every driver consulted.
 pub fn create_host_font_resolver() -> FontResolver {
   FontResolver::compose([FontResolver::env_dir(), FontResolver::host()])
 }

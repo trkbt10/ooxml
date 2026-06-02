@@ -848,6 +848,78 @@ test "catalog pptx diagram relIds host uses existing SmartArt renderer" {
 }
 
 ///|
+fn catalog_cdr_marker(name : String, x : String, y : String) -> @xml.Element {
+  let ns_cdr = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing"
+  xep("cdr", ns_cdr, name, [], [
+    Element(xep("cdr", ns_cdr, "x", [], [Text(x)])),
+    Element(xep("cdr", ns_cdr, "y", [], [Text(y)])),
+  ])
+}
+
+///|
+fn catalog_cdr_shape() -> @xml.Element {
+  let ns_cdr = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing"
+  xep("cdr", ns_cdr, "sp", [], [
+    Element(
+      xep("cdr", ns_cdr, "nvSpPr", [], [
+        Element(
+          xep(
+            "cdr",
+            ns_cdr,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog Chart User Shape")],
+            [],
+          ),
+        ),
+        Element(xep("cdr", ns_cdr, "cNvSpPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("cdr", ns_cdr, "spPr", [], [
+        Element(
+          xep("a", NS_A, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", NS_A, "avLst", [], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_chart_user_shapes_root(shape : @xml.Element) -> @xml.Element {
+  let ns_c = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+  let ns_cdr = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing"
+  let anchor = xep("cdr", ns_cdr, "absSizeAnchor", [], [
+    Element(catalog_cdr_marker("from", "0.15", "0.20")),
+    Element(
+      xep("cdr", ns_cdr, "ext", [xa("cx", "1800000"), xa("cy", "900000")], []),
+    ),
+    Element(shape),
+  ])
+  xep("c", ns_c, "userShapes", [], [Element(anchor)])
+}
+
+///|
+test "catalog pptx chart userShapes host resolves chartDrawing part" {
+  let root = catalog_chart_user_shapes_root(stamp_target(catalog_cdr_shape()))
+  assert_eq(
+    verify_entry("pptx:chart-usershapes", root, "CAT-CDR-SP"),
+    "rendered",
+  )
+  let svg = match
+    render_svg_of(
+      "pptx:chart-usershapes",
+      host_package("pptx:chart-usershapes", strip_target_attr(root)),
+    ) {
+    Some(s) => s
+    None => abort("expected chart userShapes host to render")
+  }
+  assert_true(svg.contains("data-ooxml=\"chart-user-shape-sp\""))
+  assert_true(svg.contains("fill=\"#dceaff\""))
+}
+
+///|
 test "catalog pptx host inserts required cSld before slide transition" {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let transition = xep("p", ns_p, "transition", [xa("spd", "fast")], [
