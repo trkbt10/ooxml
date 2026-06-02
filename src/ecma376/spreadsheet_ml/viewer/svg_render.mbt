@@ -298,35 +298,53 @@ pub fn render_svg(
   // options for every non-`customWidth` / non-`customHeight`
   // row / column.
   let options = apply_sheet_format_pr(domain.element, options)
+  if worksheet_layout_extent_is_empty(domain.element) {
+    let attrs = sml_metadata_attrs(
+      domain.element,
+      workbook_root=workbook,
+      stylesheet_root=match styles {
+        Some(s) => Some(s.element)
+        None => None
+      },
+    )
+    return create_empty_result_with_attrs(attrs)
+  }
   // §18.8.8 / §18.8.9 — the builtin Normal cell style owns the
   // workbook-default font. Resolve it once and feed that single value
   // into both cell text defaults and column MDW computation.
-  let normal_font = resolve_normal_style_font(
-    styles,
-    default_cell_style(options).font,
-    theme_map~,
-  )
-  let options = match normal_font {
-    Some(font) =>
-      {
-        ..options,
-        default_font_family: font.family,
-        default_font_size: font.size,
-      }
-    None => options
+  let default_font = default_cell_style(options).font
+  let normal_font = resolve_normal_style_font(styles, default_font, theme_map~)
+  let effective_normal_font = match normal_font {
+    Some(font) => font
+    None => default_font
   }
-  let mdw_px = match normal_font {
-    Some(font) =>
-      match normal_style_max_digit_width_px(font) {
-        Some(w) => w
-        None => {
-          warnings.push(
-            "SpreadsheetML Normal style font could not be resolved; using renderer column-width fallback",
-          )
-          column_max_digit_width_px()
-        }
-      }
-    None => column_max_digit_width_px()
+  let options = {
+    ..options,
+    default_font_family: effective_normal_font.family,
+    default_font_size: effective_normal_font.size,
+  }
+  let mdw_px = match normal_style_max_digit_width_px(effective_normal_font) {
+    Some(w) => w
+    None => {
+      warn_font_unresolved(
+        warnings,
+        effective_normal_font,
+        [],
+        "Normal style max digit width",
+      )
+      return create_unrenderable_result_with_attrs(
+        "(unresolved Normal style font)",
+        sml_metadata_attrs(
+          domain.element,
+          workbook_root=workbook,
+          stylesheet_root=match styles {
+            Some(s) => Some(s.element)
+            None => None
+          },
+        ),
+        warnings~,
+      )
+    }
   }
   // Build cell map before layout so §18.3.1.2 AutoFilter can collapse
   // filtered rows via the same typed evaluator used by the public API.
@@ -1186,6 +1204,47 @@ fn create_empty_result_with_attrs(
   }
 }
 
+///|
+/// Document-boundary result for cases where the renderer cannot
+/// obtain a required ECMA-376 metric from the document/font resolver
+/// chain. The sheet is not laid out with a fabricated fallback.
+fn create_unrenderable_result_with_attrs(
+  label : String,
+  extra : Array[@xml.Attribute],
+  warnings~ : Array[String],
+) -> SheetSvgResult {
+  let attrs : Array[@xml.Attribute] = [
+    svg_attr("width", "200"),
+    svg_attr("height", "50"),
+    svg_attr("viewBox", "0 0 200 50"),
+  ]
+  for a in extra {
+    attrs.push(a)
+  }
+  for i, warning in warnings {
+    attrs.push(svg_attr("data-ooxml-warning-" + i.to_string(), warning))
+  }
+  let svg_root : @xml.Element = {
+    name: @markup.qname_ns("svg", @markup.svg_ns),
+    attributes: attrs,
+    children: [
+      svg_elem(
+        "text",
+        [
+          svg_attr("x", "100"),
+          svg_attr("y", "25"),
+          svg_attr("text-anchor", "middle"),
+          svg_attr("dominant-baseline", "middle"),
+          svg_attr("font-size", "12"),
+          svg_attr("fill", "#999999"),
+        ],
+        [svg_text(label)],
+      ),
+    ],
+  }
+  { svg: @markup.serialize_svg(svg_root), width: 200.0, height: 50.0, warnings }
+}
+
 // =============================================================================
 // Layout computation
 // @source web-pptx packages/@aurochs-renderer/xlsx/src/svg/layout.ts
@@ -1321,15 +1380,12 @@ fn parse_cell_ref(ref_str : String) -> (Int, Int)? {
 /// §18.3.1.13 ST_Col @width — Excel column width (character units)
 /// to CSS pixels using the spec-mandated formula:
 ///   Truncate( ((256 × w + Truncate(128 / MDW)) / 256) × MDW )
-/// MDW = max-digit-width = pixel width of the `"0"` glyph in the
-/// Normal style's font at 96 dpi. The main render path supplies that
-/// value from the stylesheet's builtin Normal style when available.
+/// MDW = max-digit-width = maximum pixel width of digits `"0"`..`"9"`
+/// in the Normal style's font at 96 dpi. The main render path supplies
+/// that value from the stylesheet's builtin Normal style when available.
 /// The previous `width * 7 + 5` heuristic was a web-pptx shortcut
 /// that does not match the spec formula at narrow widths.
-fn column_width_to_pixels(
-  excel_width : Double,
-  mdw_px? : Double = column_max_digit_width_px(),
-) -> Double {
+fn column_width_to_pixels(excel_width : Double, mdw_px~ : Double) -> Double {
   let mdw = mdw_px
   let padding = (128.0 / mdw).to_int().to_double()
   let raw = (256.0 * excel_width + padding) / 256.0 * mdw
@@ -1342,16 +1398,6 @@ fn column_width_to_pixels(
 }
 
 ///|
-/// Legacy renderer fallback used when callers invoke
-/// `column_width_to_pixels` without a measured Normal-style MDW, or
-/// when the main render path cannot resolve the workbook's Normal
-/// style font. It is not a font metric source; successful document
-/// renders should supply `mdw_px` from `normal_style_max_digit_width_px`.
-fn column_max_digit_width_px() -> Double {
-  7.7
-}
-
-///|
 /// §18.3.1.13 — measure the Normal style max-digit-width from the
 /// same glyph resolver used for cell text. Returns None when the
 /// configured resolver cannot satisfy the document/default font
@@ -1359,19 +1405,30 @@ fn column_max_digit_width_px() -> Double {
 /// failure.
 fn normal_style_max_digit_width_px(font : ResolvedFont) -> Double? {
   let weight = if font.bold { 700 } else { 400 }
-  try
-    @glyph.measure_text_width(
-      "0",
-      font_size_pt=font.size,
-      letter_spacing_px=0.0,
-      family=font.family,
-      weight~,
-      italic=font.italic,
-    )
-  catch {
-    _ => None
-  } noraise {
-    w => if w > 0.0 { Some(w) } else { None }
+  let mut max_width = 0.0
+  for digit in ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] {
+    let width = try
+      @glyph.measure_text_width(
+        digit,
+        font_size_pt=font.size,
+        letter_spacing_px=0.0,
+        family=font.family,
+        weight~,
+        italic=font.italic,
+      )
+    catch {
+      _ => return None
+    } noraise {
+      w => w
+    }
+    if width > max_width {
+      max_width = width
+    }
+  }
+  if max_width > 0.0 {
+    Some(max_width)
+  } else {
+    None
   }
 }
 
@@ -1438,7 +1495,7 @@ fn column_width_for(
   col_index : Int,
   columns : Array[ColumnDef],
   options : SheetRenderOptions,
-  mdw_px? : Double = column_max_digit_width_px(),
+  mdw_px~ : Double,
 ) -> Double {
   for col in columns {
     if col_index >= col.min && col_index <= col.max {
@@ -1802,7 +1859,7 @@ fn compute_sheet_layout(
   worksheet : @xml.Element,
   options : SheetRenderOptions,
   auto_filter_hidden_rows? : Map[Int, Bool] = Map([], capacity=0),
-  max_digit_width_px? : Double = column_max_digit_width_px(),
+  max_digit_width_px~ : Double,
 ) -> SheetLayout {
   let (dim_row, dim_col) = read_dimension(worksheet)
   let (max_row, max_col) = if dim_row > 0 && dim_col > 0 {
@@ -1958,6 +2015,20 @@ fn compute_sheet_layout(
     row_count: max_row,
     merge_map,
   }
+}
+
+///|
+fn worksheet_layout_extent_is_empty(worksheet : @xml.Element) -> Bool {
+  let (dim_row, dim_col) = read_dimension(worksheet)
+  let (max_row, max_col) = if dim_row > 0 && dim_col > 0 {
+    (dim_row, dim_col)
+  } else {
+    let (dr, dc) = derive_max_from_data(worksheet)
+    let mr = if dim_row > 0 { dim_row } else { dr }
+    let mc = if dim_col > 0 { dim_col } else { dc }
+    (mr, mc)
+  }
+  max_row == 0 || max_col == 0
 }
 
 // =============================================================================

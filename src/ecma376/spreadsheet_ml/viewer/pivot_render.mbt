@@ -78,7 +78,7 @@ fn render_pivot_overlay(
   styles : @domain.CT_Stylesheet?,
   shared_strings : @domain.CT_Sst?,
   theme_map : SmlThemeColorMap,
-  max_digit_width_px? : Double = column_max_digit_width_px(),
+  max_digit_width_px~ : Double,
 ) -> Array[@xml.Node] {
   let location = match pivot.definition.location {
     Some(loc) => loc
@@ -530,7 +530,7 @@ fn render_pivot_overlay_data_on_rows(
   row_keys : Array[@pivot_table.PivotAxisKey],
   col_keys : Array[@pivot_table.PivotAxisKey],
   data_field_count : Int,
-  max_digit_width_px? : Double = column_max_digit_width_px(),
+  max_digit_width_px~ : Double,
 ) -> Array[@xml.Node] {
   let row_slots = pivot_data_on_rows_slots(pivot.definition.row_fields)
   let row_axis_caps = pivot_axis_slot_captions(
@@ -1155,7 +1155,7 @@ fn pivot_column_geometry(
   layout : SheetLayout,
   options : SheetRenderOptions,
   col_zero : Int,
-  max_digit_width_px? : Double = column_max_digit_width_px(),
+  max_digit_width_px~ : Double,
 ) -> (Double, Double) {
   let default_w = column_width_to_pixels(
     options.default_column_width,

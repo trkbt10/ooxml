@@ -57,6 +57,28 @@ fn set_sml_fixture_font_faces(families : Array[String]) -> Unit {
 }
 
 ///|
+fn sml_fixture_mdw(family : String, size : Double) -> Double {
+  let font : ResolvedFont = {
+    family,
+    size,
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false,
+    color: None,
+  }
+  match normal_style_max_digit_width_px(font) {
+    Some(w) => w
+    None => abort("fixture font did not resolve")
+  }
+}
+
+///|
+fn sml_default_lr_margin_px() -> Double {
+  2.0 / 2.54 * 96.0
+}
+
+///|
 fn attr(local_name : String, value : String) -> @xml.Attribute {
   { name: name(local_name), value }
 }
@@ -88,11 +110,10 @@ test "SpreadsheetML SVG renderer cell ref round-trip" {
 ///|
 test "SpreadsheetML SVG renderer column / row pixel conversions" {
   // §18.3.1.13 — Truncate(((256*8.43 + Trunc(128/MDW))/256)*MDW)
-  // with the legacy renderer fallback MDW documented in
-  // `column_max_digit_width_px`:
-  //              = Truncate(((2158.08 + 16)/256)*7.7)
-  //              = Truncate(8.4925*7.7) = Truncate(65.39) = 65
-  inspect(column_width_to_pixels(8.43), content="65")
+  // with an explicit MDW test fixture value:
+  //              = Truncate(((2158.08 + 18)/256)*7.0)
+  //              = Truncate(8.5003125*7.0) = Truncate(59.502) = 59
+  inspect(column_width_to_pixels(8.43, mdw_px=7.0), content="59")
   // 15 pt * 96/72 = 20 → round → 20.
   inspect(row_height_to_pixels(15.0), content="20")
   // 14.4 pt * 96/72 = 19.2 → round → 19.
@@ -232,6 +253,7 @@ test "SpreadsheetML SVG renderer renders empty sheet placeholder" {
 
 ///|
 test "SpreadsheetML SVG renderer renders 2x2 sheet with text cells" {
+  set_sml_fixture_font_faces(["Calibri"])
   // A1 inline string, B1 numeric, A2 numeric, B2 numeric.
   let cells_row1 : Array[@xml.Node] = [
     {
@@ -280,11 +302,14 @@ test "SpreadsheetML SVG renderer renders 2x2 sheet with text cells" {
     ],
   })
   let result = render_svg(worksheet)
-  // §18.3.1.13 spec formula → default col width 8.43 char = 65 px
-  // (MDW = 7.7, see `column_max_digit_width_px`).
-  // Two columns × 65 = 130 px body. Two rows × 17 px (12.75pt × 96/72
-  // rounded — see `default_render_options` for why we use 12.75 pt
-  // instead of the spec's 15 pt) = 34 px body.
+  let mdw = sml_fixture_mdw("Calibri", 11.0)
+  let default_col_width = column_width_to_pixels(8.43, mdw_px=mdw)
+  let expected_width = default_col_width * 2.0 +
+    2.0 * sml_default_lr_margin_px()
+  // §18.3.1.13 spec formula → default col width 8.43 char using
+  // the injected Normal/default font MDW. Two rows × 17 px
+  // (12.75pt × 96/72 rounded — see `default_render_options` for why
+  // we use 12.75 pt instead of the spec's 15 pt) = 34 px body.
   // §18.3.1.62 — `result.width` / `result.height` are the page
   // size, i.e. body + print margins.  This worksheet declares no
   // `<pageMargins>`, so the renderer falls back to Excel's print
@@ -292,14 +317,8 @@ test "SpreadsheetML SVG renderer renders 2x2 sheet with text cells" {
   // the reference PDF export used as the snapshot reference.
   //   2.0 cm = 0.787" = 75.59055 px @ 96 DPI
   //   2.5 cm = 0.984" = 94.48819 px @ 96 DPI
-  //   width  = 130 + 2*75.59055 ≈ 281.181
   //   height =  34 + 2*94.48819 ≈ 222.976
-  inspect(
-    result.width,
-    content=(
-      #|281.1811023622047
-    ),
-  )
+  assert_eq(format_d(result.width), format_d(expected_width))
   inspect(
     result.height,
     content=(
@@ -418,7 +437,8 @@ test "SpreadsheetML SVG renderer respects shared-string table" {
 
 ///|
 test "SpreadsheetML SVG renderer honours merge cell layout" {
-  // A1:B1 merged so width is 2*64 = 128.
+  set_sml_fixture_font_faces(["Calibri"])
+  // A1:B1 merged so width spans two default columns.
   let cells : Array[@xml.Node] = [build_cell("A1", None, "1")]
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
@@ -451,16 +471,11 @@ test "SpreadsheetML SVG renderer honours merge cell layout" {
     ],
   })
   let result = render_svg(worksheet)
-  // §18.3.1.13 spec formula → 2 default columns × 65 px = 130 px
-  // body (MDW = 7.7, see `column_max_digit_width_px`), plus
-  // §18.3.1.62 print-default 2.0 cm L/R print margins
-  // (75.59055 px each, 96 DPI) = 281.181 px page width.
-  inspect(
-    result.width,
-    content=(
-      #|281.1811023622047
-    ),
-  )
+  let mdw = sml_fixture_mdw("Calibri", 11.0)
+  let default_col_width = column_width_to_pixels(8.43, mdw_px=mdw)
+  let expected_width = default_col_width * 2.0 +
+    2.0 * sml_default_lr_margin_px()
+  assert_eq(format_d(result.width), format_d(expected_width))
   // The cell-text group must include "1" exactly once: B1 is hidden by merge.
   assert_true(result.svg.contains(">1<"))
   // It must contain "2" for A2.
@@ -474,6 +489,7 @@ test "SpreadsheetML SVG renderer honours merge cell layout" {
 /// alongside the merged area, while the outer-frame verticals and
 /// the row-2 boundary still must.
 test "SpreadsheetML grid lines skip inside merged regions" {
+  set_sml_fixture_font_faces(["Calibri"])
   let cells_row1 : Array[@xml.Node] = [build_cell("A1", None, "M")]
   let cells_row2 : Array[@xml.Node] = [
     build_cell("A2", None, "x"),
@@ -513,8 +529,13 @@ test "SpreadsheetML grid lines skip inside merged regions" {
   // there would be no `<g class="grid-lines">` group to inspect.
   let opts = { ..default_render_options(), show_grid_lines: true }
   let result = render_svg(worksheet, options=opts)
-  // §18.3.1.13 spec formula → default col width 8.43 char = 65 px
-  // (MDW = 7.7, see `column_max_digit_width_px`).
+  let mdw = sml_fixture_mdw("Calibri", 11.0)
+  let default_col_width = column_width_to_pixels(8.43, mdw_px=mdw)
+  let x1 = format_d(default_col_width)
+  let x2 = format_d(default_col_width * 2.0)
+  let x3 = format_d(default_col_width * 3.0)
+  // §18.3.1.13 spec formula → default col width 8.43 char using
+  // the injected Normal/default font MDW.
   // §18.3.1.81 default row height 12.75 pt × 96/72 = 17 px (see
   // `default_render_options` for the reference-tuned default).
   // With 3 columns and 2 rows the boundary verticals sit at
@@ -523,21 +544,31 @@ test "SpreadsheetML grid lines skip inside merged regions" {
   // verticals must NOT appear: their only emitted segments must
   // start at y=17 and run to y=34. Outer frame is preserved.
   assert_true(
-    !result.svg.contains("<line x1=\"65\" y1=\"0\" x2=\"65\" y2=\"17\""),
+    !result.svg.contains(
+      "<line x1=\"" + x1 + "\" y1=\"0\" x2=\"" + x1 + "\" y2=\"17\"",
+    ),
   )
   assert_true(
-    !result.svg.contains("<line x1=\"130\" y1=\"0\" x2=\"130\" y2=\"17\""),
+    !result.svg.contains(
+      "<line x1=\"" + x2 + "\" y1=\"0\" x2=\"" + x2 + "\" y2=\"17\"",
+    ),
   )
   assert_true(
-    result.svg.contains("<line x1=\"65\" y1=\"17\" x2=\"65\" y2=\"34\""),
+    result.svg.contains(
+      "<line x1=\"" + x1 + "\" y1=\"17\" x2=\"" + x1 + "\" y2=\"34\"",
+    ),
   )
   assert_true(
-    result.svg.contains("<line x1=\"130\" y1=\"17\" x2=\"130\" y2=\"34\""),
+    result.svg.contains(
+      "<line x1=\"" + x2 + "\" y1=\"17\" x2=\"" + x2 + "\" y2=\"34\"",
+    ),
   )
-  // Outer frame: 3 columns × 65 = 195 px total.
+  // Outer frame: 3 columns × measured default column width.
   assert_true(result.svg.contains("<line x1=\"0\" y1=\"0\" x2=\"0\" y2=\"34\""))
   assert_true(
-    result.svg.contains("<line x1=\"195\" y1=\"0\" x2=\"195\" y2=\"34\""),
+    result.svg.contains(
+      "<line x1=\"" + x3 + "\" y1=\"0\" x2=\"" + x3 + "\" y2=\"34\"",
+    ),
   )
 }
 
@@ -2534,6 +2565,7 @@ test "SpreadsheetML scientific-notation format codes (§18.8.30)" {
 
 ///|
 test "SpreadsheetML SVG renderer parses col / row attributes" {
+  set_sml_fixture_font_faces(["Calibri"])
   // Custom column width and row height should propagate into the layout.
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
@@ -2580,22 +2612,16 @@ test "SpreadsheetML SVG renderer parses col / row attributes" {
     ],
   })
   let result = render_svg(worksheet)
-  // §18.3.1.13 spec formula —
-  //   Truncate(((256*20 + Trunc(128/7.7))/256)*7.7)
-  // = Truncate(((5120+16)/256)*7.7)
-  // = Truncate(20.0625*7.7) = Truncate(154.48) = 154 px body width
-  // (MDW = 7.7, see `column_max_digit_width_px`).
+  let mdw = sml_fixture_mdw("Calibri", 11.0)
+  let body_width = column_width_to_pixels(20.0, mdw_px=mdw)
+  let expected_width = body_width + 2.0 * sml_default_lr_margin_px()
+  // §18.3.1.13 spec formula — col/@width=20 using the injected
+  // Normal/default font MDW.
   // 30 pt * 4/3 = 40 px body height (explicit `ht`, not default).
   // §18.3.1.62 — page size = body + print-default margins
   // (2.0 cm = 75.59055 px L/R, 2.5 cm = 94.48819 px T/B).
-  //   width  = 154 + 2*75.59055 ≈ 305.181
   //   height =  40 + 2*94.48819 ≈ 228.976
-  inspect(
-    result.width,
-    content=(
-      #|305.1811023622047
-    ),
-  )
+  assert_eq(format_d(result.width), format_d(expected_width))
   inspect(
     result.height,
     content=(
@@ -4205,7 +4231,7 @@ test "SpreadsheetML viewer §18.8.1 cell alignment attrs surface as data-ooxml-*
 }
 
 ///|
-test "SpreadsheetML viewer warns instead of estimating unresolved font width" {
+test "SpreadsheetML viewer warns instead of estimating unresolved font metrics" {
   @glyph.set_default_font_set(
     @glyph.FontSet::new(
       resolver=@glyph.FontResolver::in_memory(Map([], capacity=0)),
@@ -4278,7 +4304,8 @@ test "SpreadsheetML viewer warns instead of estimating unresolved font width" {
   })
   let result = render_svg(worksheet, styles=Some(stylesheet))
   set_sml_fixture_font_faces(["Noto Sans", "Calibri"])
-  assert_true(result.svg.contains("missing font"))
+  assert_true(result.svg.contains("(unresolved Normal style font)"))
+  assert_false(result.svg.contains("missing font"))
   assert_true(result.svg.contains("data-ooxml-warning-0="))
   assert_true(result.warnings.length() > 0)
   assert_true(result.warnings[0].contains("SpreadsheetML font unresolved"))
@@ -4580,6 +4607,7 @@ test "SpreadsheetML viewer §18.3.1.70 printOptions surface as data-ooxml-print-
 /// still contribute its full column extent to the derived sheet
 /// bounds (otherwise empty trailing columns vanish).
 test "SpreadsheetML viewer §18.3.1.73 row spans widen derived bounds" {
+  set_sml_fixture_font_faces(["Calibri"])
   // Row 1 declares spans "1:5" but only populates A1.
   let row1 : @xml.Node = @xml.Node::Element({
     name: name("row"),
@@ -4602,18 +4630,15 @@ test "SpreadsheetML viewer §18.3.1.73 row spans widen derived bounds" {
     ],
   })
   let result = render_svg(worksheet)
-  // 5 default-width columns (8.43 char × 65 px each, MDW = 7.7 —
-  // see `column_max_digit_width_px`) = 325 px body width.  Without
-  // the spans honoring, only column A (65 px) would show.
+  let mdw = sml_fixture_mdw("Calibri", 11.0)
+  let default_col_width = column_width_to_pixels(8.43, mdw_px=mdw)
+  let expected_width = default_col_width * 5.0 +
+    2.0 * sml_default_lr_margin_px()
+  // 5 default-width columns using the injected Normal/default font
+  // MDW. Without the spans honoring, only column A would show.
   // §18.3.1.62 — `result.width` is the page width (body +
   // print-default 2.0 cm L/R print margins):
-  // 325 + 2*75.59055 ≈ 476.181 px.
-  inspect(
-    result.width,
-    content=(
-      #|476.1811023622047
-    ),
-  )
+  assert_eq(format_d(result.width), format_d(expected_width))
 }
 
 ///|
@@ -4951,7 +4976,8 @@ test "SpreadsheetML SVG renderer extends single-line text through empty cells" {
   ])
   let svg = render_svg(worksheet).svg
   let width = cell_clip_width(svg, "A1")
-  let default_width = column_width_to_pixels(8.43)
+  let mdw = sml_fixture_mdw("Calibri", 11.0)
+  let default_width = column_width_to_pixels(8.43, mdw_px=mdw)
   assert_true(width > default_width + 1.0)
 }
 
@@ -4966,7 +4992,8 @@ test "SpreadsheetML SVG renderer stops single-line overflow at occupied cell" {
   ])
   let svg = render_svg(worksheet).svg
   let width = cell_clip_width(svg, "A1")
-  let default_width = column_width_to_pixels(8.43)
+  let mdw = sml_fixture_mdw("Calibri", 11.0)
+  let default_width = column_width_to_pixels(8.43, mdw_px=mdw)
   assert_true(width <= default_width + 0.5)
 }
 
@@ -4974,12 +5001,14 @@ test "SpreadsheetML SVG renderer stops single-line overflow at occupied cell" {
 /// Numeric cells do not use the string overflow rule; they keep their
 /// own cell clip even when neighbouring cells are empty.
 test "SpreadsheetML SVG renderer does not overflow numeric cells into empty cells" {
+  set_sml_fixture_font_faces(["Calibri"])
   let worksheet = single_row_sheet("A1:C1", [
     build_cell("A1", None, "12345678901234567890"),
   ])
   let svg = render_svg(worksheet).svg
   let width = cell_clip_width(svg, "A1")
-  let default_width = column_width_to_pixels(8.43)
+  let mdw = sml_fixture_mdw("Calibri", 11.0)
+  let default_width = column_width_to_pixels(8.43, mdw_px=mdw)
   assert_true(width <= default_width + 0.5)
 }
 

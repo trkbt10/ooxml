@@ -113,7 +113,9 @@ test "§18.10 pivot overflow columns reuse worksheet Normal-style MDW" {
   let (x, w) = pivot_column_geometry(layout, options, 2, max_digit_width_px=mdw)
   assert_true(w == expected)
   assert_true(x == 20.0 + expected)
-  assert_true(w != column_width_to_pixels(options.default_column_width))
+  assert_true(
+    w != column_width_to_pixels(options.default_column_width, mdw_px=7.0),
+  )
 }
 
 ///|
@@ -294,6 +296,7 @@ test "§18.10.1.69 row subtotal key renders as subtotal row" {
       None,
       None,
       SmlThemeColorMap::empty(),
+      max_digit_width_px=7.0,
     ),
   )
   assert_true(svg.contains(">North Result<"))
@@ -462,8 +465,8 @@ test "render_svg passes Normal-style MDW to pivot overflow geometry" {
     None => abort("fixture font did not resolve")
   }
   let default_w = column_width_to_pixels(8.43, mdw_px=mdw)
-  let fallback_w = column_width_to_pixels(8.43)
-  assert_true(default_w != fallback_w)
+  let explicit_other_w = column_width_to_pixels(8.43, mdw_px=7.0)
+  assert_true(default_w != explicit_other_w)
   let result = render_svg(
     worksheet,
     styles=Some(pivot_test_normal_style("Noto Sans", "20")),
@@ -577,6 +580,7 @@ test "§18.10.1.74 pivotTableStyleInfo emits style metadata" {
       None,
       None,
       SmlThemeColorMap::empty(),
+      max_digit_width_px=7.0,
     ),
   )
   assert_true(svg.contains("data-ooxml-pivot-style=\"PivotStyleMedium9\""))
