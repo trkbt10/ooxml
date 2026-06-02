@@ -84,6 +84,49 @@ fn attr(local_name : String, value : String) -> @xml.Attribute {
 }
 
 ///|
+fn viewer_theme_with_latin_fonts(
+  major : String,
+  minor : String,
+) -> @xml.Element {
+  let major_latin : @xml.Element = {
+    name: name("latin"),
+    attributes: [attr("typeface", major)],
+    children: [],
+  }
+  let minor_latin : @xml.Element = {
+    name: name("latin"),
+    attributes: [attr("typeface", minor)],
+    children: [],
+  }
+  let font_scheme : @xml.Element = {
+    name: name("fontScheme"),
+    attributes: [attr("name", "Test")],
+    children: [
+      @xml.Node::Element({
+        name: name("majorFont"),
+        attributes: [],
+        children: [@xml.Node::Element(major_latin)],
+      }),
+      @xml.Node::Element({
+        name: name("minorFont"),
+        attributes: [],
+        children: [@xml.Node::Element(minor_latin)],
+      }),
+    ],
+  }
+  let theme_elts : @xml.Element = {
+    name: name("themeElements"),
+    attributes: [],
+    children: [@xml.Node::Element(font_scheme)],
+  }
+  {
+    name: name("theme"),
+    attributes: [],
+    children: [@xml.Node::Element(theme_elts)],
+  }
+}
+
+///|
 test "SpreadsheetML SVG renderer column letter conversion" {
   inspect(column_index_to_letter(1), content="A")
   inspect(column_index_to_letter(26), content="Z")
@@ -236,6 +279,410 @@ test "SpreadsheetML SVG renderer derives defaults and MDW from Normal style" {
   assert_true(result.svg.contains("Noto Sans"))
   assert_true(result.svg.contains("font-size=\"20pt\""))
   assert_eq(result.warnings.length(), 0)
+}
+
+///|
+test "SpreadsheetML SVG renderer resolves Normal font scheme from workbook theme" {
+  set_sml_fixture_font_faces(["Noto Sans"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [attr("ref", "A1:A1")],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("row"),
+            attributes: [attr("r", "1")],
+            children: [
+              @xml.Node::Element({
+                name: name("c"),
+                attributes: [attr("r", "A1"), attr("t", "inlineStr")],
+                children: [
+                  @xml.Node::Element({
+                    name: name("is"),
+                    attributes: [],
+                    children: [
+                      @xml.Node::Element({
+                        name: name("t"),
+                        attributes: [],
+                        children: [@xml.Node::Text("theme-font")],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let stylesheet = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("fonts"),
+        attributes: [attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("font"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("name"),
+                attributes: [attr("val", "Theme Placeholder")],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("sz"),
+                attributes: [attr("val", "20")],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("scheme"),
+                attributes: [attr("val", "minor")],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("cellStyleXfs"),
+        attributes: [attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("xf"),
+            attributes: [attr("fontId", "0")],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("cellStyles"),
+        attributes: [attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("cellStyle"),
+            attributes: [
+              attr("name", "Normal"),
+              attr("xfId", "0"),
+              attr("builtinId", "0"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let normal_font : ResolvedFont = {
+    family: "Noto Sans",
+    size: 20.0,
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false,
+    color: None,
+  }
+  let mdw = match normal_style_max_digit_width_px(normal_font) {
+    Some(w) => w
+    None => abort("fixture font did not resolve")
+  }
+  let expected_width = column_width_to_pixels(8.43, mdw_px=mdw)
+  let theme = viewer_theme_with_latin_fonts("Theme Major", "Noto Sans")
+  let result = render_svg(worksheet, styles=Some(stylesheet), theme=Some(theme))
+  assert_true(result.svg.contains("width=\"" + format_d(expected_width) + "\""))
+  assert_true(result.svg.contains("Noto Sans"))
+  assert_false(result.svg.contains("Theme Placeholder"))
+  assert_eq(result.warnings.length(), 0)
+}
+
+///|
+test "SpreadsheetML rich text scheme uses theme font only when document supplies it" {
+  let base : ResolvedFont = {
+    family: "Base Font",
+    size: 11.0,
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false,
+    color: None,
+  }
+  let rpr : @xml.Element = {
+    name: name("rPr"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("rFont"),
+        attributes: [attr("val", "Run Font")],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("scheme"),
+        attributes: [attr("val", "major")],
+        children: [],
+      }),
+    ],
+  }
+  let theme_fonts : SmlThemeFontMap = {
+    major_latin: Some("Theme Major"),
+    minor_latin: None,
+  }
+  let themed = parse_inline_font(rpr, base, theme_fonts~)
+  assert_eq(themed.family, "Theme Major")
+  let unthemed = parse_inline_font(rpr, base)
+  assert_eq(unthemed.family, "Run Font")
+  let reversed_rpr : @xml.Element = {
+    name: name("rPr"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("scheme"),
+        attributes: [attr("val", "major")],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("rFont"),
+        attributes: [attr("val", "Run Font")],
+        children: [],
+      }),
+    ],
+  }
+  let reversed = parse_inline_font(reversed_rpr, base, theme_fonts~)
+  assert_eq(reversed.family, "Theme Major")
+  let reversed_unthemed = parse_inline_font(reversed_rpr, base)
+  assert_eq(reversed_unthemed.family, "Run Font")
+}
+
+///|
+test "SpreadsheetML inline rich text scheme resolves through workbook theme" {
+  set_sml_fixture_font_faces(["Calibri", "Noto Sans"])
+  let rpr : @xml.Element = {
+    name: name("rPr"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("scheme"),
+        attributes: [attr("val", "major")],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("rFont"),
+        attributes: [attr("val", "Inline Placeholder")],
+        children: [],
+      }),
+    ],
+  }
+  let run : @xml.Element = {
+    name: name("r"),
+    attributes: [],
+    children: [
+      @xml.Node::Element(rpr),
+      @xml.Node::Element({
+        name: name("t"),
+        attributes: [],
+        children: [@xml.Node::Text("inline-theme")],
+      }),
+    ],
+  }
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [attr("ref", "A1:A1")],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("row"),
+            attributes: [attr("r", "1")],
+            children: [
+              @xml.Node::Element({
+                name: name("c"),
+                attributes: [attr("r", "A1"), attr("t", "inlineStr")],
+                children: [
+                  @xml.Node::Element({
+                    name: name("is"),
+                    attributes: [],
+                    children: [@xml.Node::Element(run)],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let theme = viewer_theme_with_latin_fonts("Noto Sans", "Calibri")
+  let result = render_svg(worksheet, theme=Some(theme))
+  assert_true(result.svg.contains("inline-theme"))
+  assert_true(result.svg.contains("Noto Sans"))
+  assert_false(result.svg.contains("Inline Placeholder"))
+}
+
+///|
+test "SpreadsheetML shared-string rich text scheme resolves through workbook theme" {
+  set_sml_fixture_font_faces(["Calibri", "Noto Sans"])
+  let sst = @domain.CT_Sst::new({
+    name: name("sst"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("si"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("r"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("rPr"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("rFont"),
+                    attributes: [attr("val", "Shared Placeholder")],
+                    children: [],
+                  }),
+                  @xml.Node::Element({
+                    name: name("scheme"),
+                    attributes: [attr("val", "minor")],
+                    children: [],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("t"),
+                attributes: [],
+                children: [@xml.Node::Text("shared-theme")],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [attr("ref", "A1:A1")],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", Some("s"), "0")])],
+      }),
+    ],
+  })
+  let theme = viewer_theme_with_latin_fonts("Calibri", "Noto Sans")
+  let result = render_svg(
+    worksheet,
+    shared_strings=Some(sst),
+    theme=Some(theme),
+  )
+  assert_true(result.svg.contains("shared-theme"))
+  assert_true(result.svg.contains("Noto Sans"))
+  assert_false(result.svg.contains("Shared Placeholder"))
+}
+
+///|
+test "SpreadsheetML conditional-format dxf font scheme resolves through workbook theme" {
+  set_sml_fixture_font_faces(["Calibri", "Noto Sans"])
+  let styles = @domain.CT_Stylesheet::new({
+    name: name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dxfs"),
+        attributes: [attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: name("dxf"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("font"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("name"),
+                    attributes: [attr("val", "Dxf Placeholder")],
+                    children: [],
+                  }),
+                  @xml.Node::Element({
+                    name: name("scheme"),
+                    attributes: [attr("val", "minor")],
+                    children: [],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [attr("ref", "A1:A1")],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, [build_cell("A1", None, "1")])],
+      }),
+      @xml.Node::Element({
+        name: name("conditionalFormatting"),
+        attributes: [attr("sqref", "A1:A1")],
+        children: [
+          @xml.Node::Element({
+            name: name("cfRule"),
+            attributes: [
+              attr("type", "cellIs"),
+              attr("operator", "greaterThan"),
+              attr("dxfId", "0"),
+              attr("priority", "1"),
+            ],
+            children: [
+              @xml.Node::Element({
+                name: name("formula"),
+                attributes: [],
+                children: [@xml.Node::Text("0")],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let theme = viewer_theme_with_latin_fonts("Calibri", "Noto Sans")
+  let result = render_svg(worksheet, styles=Some(styles), theme=Some(theme))
+  assert_true(result.svg.contains(">1<"))
+  assert_true(result.svg.contains("Noto Sans"))
+  assert_false(result.svg.contains("Dxf Placeholder"))
 }
 
 ///|

@@ -35,6 +35,30 @@ fn sml_mk_theme() -> @xml.Element {
 }
 
 ///|
+fn sml_mk_font_scheme_theme() -> @xml.Element {
+  let major_latin = sml_mk_el(
+    "latin",
+    [sml_mk_attr("typeface", "Theme Major")],
+    [],
+  )
+  let minor_latin = sml_mk_el(
+    "latin",
+    [sml_mk_attr("typeface", "Theme Minor")],
+    [],
+  )
+  let major_font = sml_mk_el("majorFont", [], [@xml.Node::Element(major_latin)])
+  let minor_font = sml_mk_el("minorFont", [], [@xml.Node::Element(minor_latin)])
+  let font_scheme = sml_mk_el("fontScheme", [sml_mk_attr("name", "Test")], [
+    @xml.Node::Element(major_font),
+    @xml.Node::Element(minor_font),
+  ])
+  let theme_elts = sml_mk_el("themeElements", [], [
+    @xml.Node::Element(font_scheme),
+  ])
+  sml_mk_el("theme", [], [@xml.Node::Element(theme_elts)])
+}
+
+///|
 test "parse_sml_clr_scheme indexes slots in §20.1.4.1.6 order" {
   let map = parse_sml_clr_scheme(sml_mk_theme())
   @debug.debug_inspect(
@@ -75,6 +99,24 @@ test "parse_sml_clr_scheme indexes slots in §20.1.4.1.6 order" {
   ) // accent2
   @debug.debug_inspect(map.lookup(6), content="None") // accent3 unset
   @debug.debug_inspect(map.lookup(12), content="None") // out of range
+}
+
+///|
+test "parse_sml_theme extracts fontScheme latin typefaces for §18.8.35" {
+  let theme = parse_sml_theme(sml_mk_font_scheme_theme())
+  @debug.debug_inspect(
+    theme.fonts.lookup_scheme("major"),
+    content=(
+      #|Some("Theme Major")
+    ),
+  )
+  @debug.debug_inspect(
+    theme.fonts.lookup_scheme("minor"),
+    content=(
+      #|Some("Theme Minor")
+    ),
+  )
+  @debug.debug_inspect(theme.fonts.lookup_scheme("none"), content="None")
 }
 
 ///|

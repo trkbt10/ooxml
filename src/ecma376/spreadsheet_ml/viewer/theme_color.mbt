@@ -52,6 +52,80 @@ pub fn SmlThemeColorMap::lookup(
 }
 
 ///|
+/// §20.1.4.1.18 / §18.8.35 — workbook theme font map used by
+/// SpreadsheetML `<font><scheme val="major|minor"/>`. The entries are
+/// document-supplied `<a:fontScheme>` latin typefaces only; when a
+/// workbook omits them, callers fall back through the font name chain
+/// they already had and never consult a hard-coded font list.
+priv struct SmlThemeFontMap {
+  major_latin : String?
+  minor_latin : String?
+}
+
+///|
+fn SmlThemeFontMap::empty() -> SmlThemeFontMap {
+  { major_latin: None, minor_latin: None }
+}
+
+///|
+fn SmlThemeFontMap::lookup_scheme(
+  self : SmlThemeFontMap,
+  scheme : String,
+) -> String? {
+  match scheme {
+    "major" => self.major_latin
+    "minor" => self.minor_latin
+    _ => None
+  }
+}
+
+///|
+/// Single parsed view of the workbook theme part. Existing public
+/// colour APIs stay on `SmlThemeColorMap`; renderer internals use this
+/// aggregate so colour and font scheme data are read from the same
+/// document theme part exactly once.
+priv struct SmlThemeMap {
+  colors : SmlThemeColorMap
+  fonts : SmlThemeFontMap
+}
+
+///|
+fn SmlThemeMap::empty() -> SmlThemeMap {
+  { colors: SmlThemeColorMap::empty(), fonts: SmlThemeFontMap::empty() }
+}
+
+///|
+fn parse_sml_theme(theme_root : @xml.Element) -> SmlThemeMap {
+  let colors = SmlThemeColorMap::empty()
+  let mut major_latin : String? = None
+  let mut minor_latin : String? = None
+  for theme_child in theme_root.children {
+    match theme_child {
+      @xml.Node::Element(theme_elts) =>
+        if theme_elts.name.local_name == "themeElements" {
+          for elts_child in theme_elts.children {
+            match elts_child {
+              @xml.Node::Element(theme_part) =>
+                match theme_part.name.local_name {
+                  "clrScheme" => read_sml_clr_scheme_into(colors, theme_part)
+                  "fontScheme" => {
+                    let fonts = parse_sml_font_scheme_element(theme_part)
+                    major_latin = fonts.major_latin
+                    minor_latin = fonts.minor_latin
+                  }
+                  _ => ()
+                }
+              _ => ()
+            }
+          }
+        }
+      _ => ()
+    }
+  }
+  { colors, fonts: { major_latin, minor_latin } }
+}
+
+///|
 /// Parse `<a:theme>/<a:themeElements>/<a:clrScheme>` into a
 /// SmlThemeColorMap.  Slot ordering follows the §20.1.4.1.6
 /// canonical sequence: lt1=0, dk1=1, lt2=2, dk2=3, accent1=4,
@@ -72,33 +146,7 @@ pub fn parse_sml_clr_scheme(theme_root : @xml.Element) -> SmlThemeColorMap {
             match elts_child {
               @xml.Node::Element(clr_scheme) =>
                 if clr_scheme.name.local_name == "clrScheme" {
-                  for color_child in clr_scheme.children {
-                    match color_child {
-                      @xml.Node::Element(color_el) => {
-                        let slot = match color_el.name.local_name {
-                          "lt1" => 0
-                          "dk1" => 1
-                          "lt2" => 2
-                          "dk2" => 3
-                          "accent1" => 4
-                          "accent2" => 5
-                          "accent3" => 6
-                          "accent4" => 7
-                          "accent5" => 8
-                          "accent6" => 9
-                          "hlink" => 10
-                          "folHlink" => 11
-                          // Schema violation — unknown scheme child.
-                          _ => -1
-                        }
-                        if slot >= 0 {
-                          let hex = extract_sml_scheme_hex(color_el)
-                          map.slots[slot] = hex
-                        }
-                      }
-                      _ => ()
-                    }
-                  }
+                  read_sml_clr_scheme_into(map, clr_scheme)
                 }
               _ => ()
             }
@@ -108,6 +156,80 @@ pub fn parse_sml_clr_scheme(theme_root : @xml.Element) -> SmlThemeColorMap {
     }
   }
   map
+}
+
+///|
+fn read_sml_clr_scheme_into(
+  map : SmlThemeColorMap,
+  clr_scheme : @xml.Element,
+) -> Unit {
+  for color_child in clr_scheme.children {
+    match color_child {
+      @xml.Node::Element(color_el) => {
+        let slot = match color_el.name.local_name {
+          "lt1" => 0
+          "dk1" => 1
+          "lt2" => 2
+          "dk2" => 3
+          "accent1" => 4
+          "accent2" => 5
+          "accent3" => 6
+          "accent4" => 7
+          "accent5" => 8
+          "accent6" => 9
+          "hlink" => 10
+          "folHlink" => 11
+          // Schema violation — unknown scheme child.
+          _ => -1
+        }
+        if slot >= 0 {
+          let hex = extract_sml_scheme_hex(color_el)
+          map.slots[slot] = hex
+        }
+      }
+      _ => ()
+    }
+  }
+}
+
+///|
+/// Parse a `<a:fontScheme>` element into a `SmlThemeFontMap`. Only
+/// `<majorFont|minorFont>/<latin @typeface>` is consumed because
+/// SpreadsheetML's `<scheme>` has no script selector. East Asian /
+/// complex-script font resolution remains a document-bound future
+/// extension rather than a fabricated fallback.
+fn parse_sml_font_scheme_element(font_scheme : @xml.Element) -> SmlThemeFontMap {
+  let mut major_latin : String? = None
+  let mut minor_latin : String? = None
+  for font_child in font_scheme.children {
+    match font_child {
+      @xml.Node::Element(collection) =>
+        match collection.name.local_name {
+          "majorFont" => major_latin = extract_sml_latin_typeface(collection)
+          "minorFont" => minor_latin = extract_sml_latin_typeface(collection)
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  { major_latin, minor_latin }
+}
+
+///|
+fn extract_sml_latin_typeface(font_collection : @xml.Element) -> String? {
+  for child in font_collection.children {
+    match child {
+      @xml.Node::Element(font) =>
+        if font.name.local_name == "latin" {
+          match sml_attr_value(font, "typeface") {
+            Some(typeface) => if typeface.length() > 0 { return Some(typeface) }
+            None => ()
+          }
+        }
+      _ => ()
+    }
+  }
+  None
 }
 
 ///|
@@ -125,6 +247,16 @@ fn extract_sml_scheme_hex(color_el : @xml.Element) -> String? {
           _ => ()
         }
       _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn sml_attr_value(element : @xml.Element, attr_name : String) -> String? {
+  for attr in element.attributes {
+    if attr.name.local_name == attr_name {
+      return Some(attr.value)
     }
   }
   None

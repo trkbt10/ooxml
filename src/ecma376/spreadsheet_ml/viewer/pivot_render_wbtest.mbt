@@ -296,6 +296,7 @@ test "§18.10.1.69 row subtotal key renders as subtotal row" {
       None,
       None,
       SmlThemeColorMap::empty(),
+      SmlThemeFontMap::empty(),
       max_digit_width_px=7.0,
     ),
   )
@@ -580,6 +581,7 @@ test "§18.10.1.74 pivotTableStyleInfo emits style metadata" {
       None,
       None,
       SmlThemeColorMap::empty(),
+      SmlThemeFontMap::empty(),
       max_digit_width_px=7.0,
     ),
   )
@@ -718,6 +720,7 @@ test "§18.10.1.73 dataOnRows renders data fields on row axis" {
       None,
       None,
       SmlThemeColorMap::empty(),
+      SmlThemeFontMap::empty(),
       max_digit_width_px=mdw,
     ),
   )

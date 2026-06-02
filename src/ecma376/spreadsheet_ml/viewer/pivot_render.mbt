@@ -49,7 +49,7 @@
 //     whose sqref covers the pivot region, so each pivot value cell is
 //     run through the same `apply_cf_overlay` evaluator (synthesizing a
 //     `<c>` from its aggregate); the dxf fill / colour-scale / font
-//     colour is applied to the cell.
+//     font override is applied to the cell.
 //
 //   * `<pageFields>` (§18.10.1.62) — the records are filtered by
 //     `apply_page_filter` and the active per-field selection is surfaced
@@ -78,6 +78,7 @@ fn render_pivot_overlay(
   styles : @domain.CT_Stylesheet?,
   shared_strings : @domain.CT_Sst?,
   theme_map : SmlThemeColorMap,
+  theme_fonts : SmlThemeFontMap,
   max_digit_width_px~ : Double,
 ) -> Array[@xml.Node] {
   let location = match pivot.definition.location {
@@ -108,6 +109,7 @@ fn render_pivot_overlay(
       styles,
       shared_strings,
       theme_map,
+      theme_fonts,
       start_col,
       start_row,
       row_keys,
@@ -470,7 +472,7 @@ fn render_pivot_overlay(
         // worksheet `<conditionalFormatting>` block over the pivot
         // region).  The sheet position is the pivot origin plus the
         // cell's grid offset.
-        let (cf_fill, cf_text) = match found {
+        let (cf_fill, cf_font) = match found {
           Some(rc) =>
             pivot_value_cf_style(
               start_row + body_top + ri,
@@ -482,8 +484,9 @@ fn render_pivot_overlay(
               styles,
               shared_strings,
               theme_map,
+              theme_fonts,
             )
-          None => (None, "#000000")
+          None => (None, None)
         }
         nodes.push(
           pivot_cell(
@@ -498,7 +501,7 @@ fn render_pivot_overlay(
             left_border,
             overall,
             fill_override=cf_fill,
-            text_color=cf_text,
+            text_font=cf_font,
           ),
         )
       }
@@ -525,6 +528,7 @@ fn render_pivot_overlay_data_on_rows(
   styles : @domain.CT_Stylesheet?,
   shared_strings : @domain.CT_Sst?,
   theme_map : SmlThemeColorMap,
+  theme_fonts : SmlThemeFontMap,
   start_col : Int,
   start_row : Int,
   row_keys : Array[@pivot_table.PivotAxisKey],
@@ -806,7 +810,7 @@ fn render_pivot_overlay_data_on_rows(
         let top_border = (is_row_grand || is_row_subtotal) && d == 0
         let left_border = is_col_grand
         let overall = is_row_grand && is_col_grand
-        let (cf_fill, cf_text) = match found {
+        let (cf_fill, cf_font) = match found {
           Some(rc) =>
             pivot_value_cf_style(
               start_row + grid_row,
@@ -818,8 +822,9 @@ fn render_pivot_overlay_data_on_rows(
               styles,
               shared_strings,
               theme_map,
+              theme_fonts,
             )
-          None => (None, "#000000")
+          None => (None, None)
         }
         nodes.push(
           pivot_cell(
@@ -834,7 +839,7 @@ fn render_pivot_overlay_data_on_rows(
             left_border,
             overall,
             fill_override=cf_fill,
-            text_color=cf_text,
+            text_font=cf_font,
           ),
         )
       }
@@ -954,8 +959,8 @@ fn pivot_group_attrs(
 /// sqref covers the pivot region, cross-referenced by the pivot's
 /// `<conditionalFormats>` priority).  Synthesizes a one-cell `<c>` from
 /// the aggregated numeric value and reuses the same `apply_cf_overlay`
-/// evaluator as ordinary cells, returning `(dxf fill override, text
-/// colour)` for `pivot_cell`.  Non-numeric values get no CF.
+/// evaluator as ordinary cells, returning `(dxf fill override, font
+/// override)` for `pivot_cell`.  Non-numeric values get no CF.
 fn pivot_value_cf_style(
   abs_row : Int,
   abs_col : Int,
@@ -966,15 +971,16 @@ fn pivot_value_cf_style(
   styles : @domain.CT_Stylesheet?,
   shared_strings : @domain.CT_Sst?,
   theme_map : SmlThemeColorMap,
-) -> (String?, String) {
+  theme_fonts : SmlThemeFontMap,
+) -> (String?, ResolvedFont?) {
   if cf_blocks.length() == 0 {
-    return (None, "#000000")
+    return (None, None)
   }
-  guard value is @formula.VNumber(num) else { return (None, "#000000") }
-  let letter = (try? @address.column_index_to_letter(abs_col + 1)).to_option()
+  guard value is @formula.VNumber(num) else { return (None, None) }
+  let letter = (try? @address.column_index_to_letter(abs_col)).to_option()
   let cell_ref = match letter {
     Some(l) => l + (abs_row + 1).to_string()
-    None => return (None, "#000000")
+    None => return (None, None)
   }
   // Synthesize `<c r="…"><v>num</v></c>` so the shared CF evaluator can
   // read the cell value through its usual `<v>` path.
@@ -1000,16 +1006,18 @@ fn pivot_value_cf_style(
     styles,
     shared_strings,
     theme_map~,
+    theme_fonts~,
   )
   let fill = match styled.fill {
     FillSolid(c) => Some(c)
     _ => None
   }
-  let text_color = match styled.font.color {
-    Some(c) => c
-    None => "#000000"
+  let font = if resolved_font_eq(styled.font, base.font) {
+    None
+  } else {
+    Some(styled.font)
   }
-  (fill, text_color)
+  (fill, font)
 }
 
 ///|
@@ -1026,6 +1034,7 @@ fn pivot_cell(
   overall : Bool,
   fill_override? : String? = None,
   text_color? : String = "#000000",
+  text_font? : ResolvedFont? = None,
 ) -> @xml.Node {
   let kids : Array[@xml.Node] = []
   // §18.3.1.18 — a conditional-format dxf fill (resolved by the caller
@@ -1129,15 +1138,63 @@ fn pivot_cell(
   }
   if text != "" {
     let padding = 2.0
+    let font_family = match text_font {
+      Some(font) => "'" + font.family + "', sans-serif"
+      None => options.default_font_family
+    }
+    let font_size = match text_font {
+      Some(font) => font.size
+      None => options.default_font_size
+    }
+    let resolved_text_color = match text_font {
+      Some(font) =>
+        match font.color {
+          Some(color) => color
+          None => text_color
+        }
+      None => text_color
+    }
     let text_attrs : Array[@xml.Attribute] = [
       svg_attr("x", format_d(x + padding)),
-      svg_attr("y", format_d(y + h / 2.0 + options.default_font_size * 0.35)),
-      svg_attr("font-family", options.default_font_family),
-      svg_attr("font-size", format_d(options.default_font_size)),
-      svg_attr("fill", text_color),
+      svg_attr("y", format_d(y + h / 2.0 + font_size * 0.35)),
+      svg_attr("font-family", font_family),
+      svg_attr("font-size", format_d(font_size)),
+      svg_attr("fill", resolved_text_color),
     ]
-    if bold {
+    let font_bold = match text_font {
+      Some(font) => font.bold
+      None => false
+    }
+    if bold || font_bold {
       text_attrs.push(svg_attr("font-weight", "bold"))
+    }
+    match text_font {
+      Some(font) => {
+        if font.italic {
+          text_attrs.push(svg_attr("font-style", "italic"))
+        }
+        let decorations : Array[String] = []
+        if font.underline {
+          decorations.push("underline")
+        }
+        if font.strikethrough {
+          decorations.push("line-through")
+        }
+        if decorations.length() > 0 {
+          let mut decoration = ""
+          let mut first = true
+          for part in decorations {
+            if first {
+              first = false
+              decoration = part
+            } else {
+              decoration = decoration + " " + part
+            }
+          }
+          text_attrs.push(svg_attr("text-decoration", decoration))
+        }
+      }
+      None => ()
     }
     kids.push(svg_elem("text", text_attrs, [svg_text(text)]))
   }

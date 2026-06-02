@@ -193,11 +193,11 @@ pub fn render_svg(
   drawing? : @drawing.WsDr? = None,
   image_resolver? : (String) -> String? = _ => None,
   styles? : @domain.CT_Stylesheet? = None,
-  /// §18.8.3 — `/xl/theme/theme1.xml` root element.  When
-  /// supplied the renderer builds a `SmlThemeColorMap` from
-  /// `<a:clrScheme>` so `<color theme="N">` references and
-  /// DrawingML colour choices in sheet drawings resolve to concrete
-  /// sRGB hex strings rather than being silently discarded.
+  /// §18.8.3 / §18.8.35 — `/xl/theme/theme1.xml` root element.  When
+  /// supplied the renderer builds its theme map from `<a:clrScheme>`
+  /// and `<a:fontScheme>` so `<color theme="N">` references,
+  /// DrawingML colour choices, and `<font><scheme val="major|minor"/>`
+  /// resolve from the workbook's own theme part.
   theme? : @xml.Element? = None,
   /// §18.2.28 `<workbookPr @date1904>` — when `true` the
   /// workbook uses the 1904 date system, so serial date values
@@ -285,12 +285,14 @@ pub fn render_svg(
     @date_serial.DateSystem::Serial1900
   }
   // Build the theme map once; empty when no theme part.
-  let theme_map = match theme {
-    Some(root) => parse_sml_clr_scheme(root)
-    None => SmlThemeColorMap::empty()
+  let theme_data = match theme {
+    Some(root) => parse_sml_theme(root)
+    None => SmlThemeMap::empty()
   }
-  // theme_map is consumed below by resolve_cell_style and its
-  // descendants (ct_font_to_resolved / ct_fill_to_resolved /
+  let theme_map = theme_data.colors
+  let theme_fonts = theme_data.fonts
+  // theme_map/theme_fonts are consumed below by resolve_cell_style and
+  // its descendants (ct_font_to_resolved / ct_fill_to_resolved /
   // ct_border_to_resolved / resolve_color_element_rgb).
   let warnings : Array[String] = []
   // §18.3.1.81 `<sheetFormatPr defaultColWidth defaultRowHeight>`
@@ -313,7 +315,12 @@ pub fn render_svg(
   // workbook-default font. Resolve it once and feed that single value
   // into both cell text defaults and column MDW computation.
   let default_font = default_cell_style(options).font
-  let normal_font = resolve_normal_style_font(styles, default_font, theme_map~)
+  let normal_font = resolve_normal_style_font(
+    styles,
+    default_font,
+    theme_map~,
+    theme_fonts~,
+  )
   let effective_normal_font = match normal_font {
     Some(font) => font
     None => default_font
@@ -389,6 +396,7 @@ pub fn render_svg(
     Some(cf_formula_snapshot),
     cf_today_value,
     theme_map,
+    theme_fonts,
     date_system,
   )
   let layout = compute_sheet_layout(
@@ -529,6 +537,7 @@ pub fn render_svg(
           options,
           styles,
           theme_map~,
+          theme_fonts~,
         )
         let style = apply_cf_overlay(
           cell_ref,
@@ -543,6 +552,7 @@ pub fn render_svg(
           cf_today=Some(cf_today_value),
           date_system~,
           theme_map~,
+          theme_fonts~,
         )
         // Namespaced id key for the cell's fill defs — `id_prefix`
         // keeps it unique once several sheets share a document.
@@ -588,6 +598,7 @@ pub fn render_svg(
           options,
           styles,
           theme_map~,
+          theme_fonts~,
         )
         let style = apply_cf_overlay(
           cell_ref,
@@ -602,6 +613,7 @@ pub fn render_svg(
           cf_today=Some(cf_today_value),
           date_system~,
           theme_map~,
+          theme_fonts~,
         )
         for n in render_cell_borders(cl, style.border) {
           cell_borders.push(n)
@@ -626,6 +638,7 @@ pub fn render_svg(
           options,
           styles,
           theme_map~,
+          theme_fonts~,
         )
         let style = apply_cf_overlay(
           cell_ref,
@@ -640,6 +653,7 @@ pub fn render_svg(
           cf_today=Some(cf_today_value),
           date_system~,
           theme_map~,
+          theme_fonts~,
         )
         // §18.3.1.49 iconSet / §18.18.42 ST_IconSetType — draw the
         // concrete icon glyph (arrow / light / rating / star / quarter)
@@ -724,10 +738,17 @@ pub fn render_svg(
             // offset) falls through to the unchanged single-style path
             // below, so its output is byte-identical to before.
             let run_base = cell_run_base_font(
-              cell_el, options, styles, theme_map,
+              cell_el,
+              options,
+              styles,
+              theme_map,
+              theme_fonts~,
             )
             let styled_runs = cell_styled_runs(
-              cell_el, shared_strings, run_base,
+              cell_el,
+              shared_strings,
+              run_base,
+              theme_fonts~,
             )
             // Gate (a): genuinely multi-styled — ≥2 runs, OR a single
             // run whose resolved font differs from the cell base font.
@@ -889,6 +910,7 @@ pub fn render_svg(
         styles,
         shared_strings,
         theme_map,
+        theme_fonts,
         max_digit_width_px=mdw_px,
       ) {
       pivot_nodes.push(n)
@@ -2304,6 +2326,7 @@ fn resolve_normal_style_font(
   styles : @domain.CT_Stylesheet?,
   fallback : ResolvedFont,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> ResolvedFont? {
   let styles_table = match styles {
     Some(t) => t
@@ -2343,7 +2366,9 @@ fn resolve_normal_style_font(
   if font_id < 0 || font_id >= fonts.font.length() {
     return None
   }
-  Some(ct_font_to_resolved(fonts.font[font_id], fallback, theme_map~))
+  Some(
+    ct_font_to_resolved(fonts.font[font_id], fallback, theme_map~, theme_fonts~),
+  )
 }
 
 ///|
@@ -2356,6 +2381,7 @@ fn resolve_cell_style(
   options : SheetRenderOptions,
   styles : @domain.CT_Stylesheet?,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> ResolvedCellStyle {
   let base = default_cell_style(options)
   // Excel writes inline rich-text in `<is><r><rPr>...`; we honour
@@ -2373,10 +2399,16 @@ fn resolve_cell_style(
   // as the cell's base font; any inline rPr on the same cell then
   // layers on top (Excel semantics: cellXf font is the default that
   // inline runs override per-property).
-  let cell_xf_font = resolve_cell_font(cell, styles, base.font, theme_map~)
+  let cell_xf_font = resolve_cell_font(
+    cell,
+    styles,
+    base.font,
+    theme_map~,
+    theme_fonts~,
+  )
   let font = match inline_rpr {
     None => cell_xf_font
-    Some(rpr) => parse_inline_font(rpr, cell_xf_font)
+    Some(rpr) => parse_inline_font(rpr, cell_xf_font, theme_fonts~)
   }
   // §18.8.30 / §18.8.10 — resolve `<c s="N">` against
   // styles.cellXfs[N].numFmtId, then against numFmts (or the spec
@@ -2483,6 +2515,7 @@ fn resolve_cell_font(
   styles : @domain.CT_Stylesheet?,
   fallback : ResolvedFont,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> ResolvedFont {
   let styles_table = match styles {
     None => return fallback
@@ -2523,7 +2556,7 @@ fn resolve_cell_font(
   if font_id < 0 || font_id >= fonts.font.length() {
     return fallback
   }
-  ct_font_to_resolved(fonts.font[font_id], fallback, theme_map~)
+  ct_font_to_resolved(fonts.font[font_id], fallback, theme_map~, theme_fonts~)
 }
 
 ///|
@@ -2541,10 +2574,19 @@ fn ct_font_to_resolved(
   font : @domain.CT_Font,
   fallback : ResolvedFont,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> ResolvedFont {
-  let family = match last_of(font.name) {
+  let named_family = match last_of(font.name) {
     Some(n) => n.val
     None => fallback.family
+  }
+  let family = match last_of(font.scheme) {
+    Some(scheme) =>
+      match theme_fonts.lookup_scheme(scheme.val) {
+        Some(typeface) => typeface
+        None => named_family
+      }
+    None => named_family
   }
   let size = match last_of(font.sz) {
     Some(s) => s.val
@@ -2610,6 +2652,7 @@ fn apply_cf_overlay(
   cf_today? : @date_serial.CalendarDateTime? = None,
   date_system? : @date_serial.DateSystem = @date_serial.DateSystem::Serial1900,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> ResolvedCellStyle {
   if cf_blocks.length() == 0 {
     return base
@@ -2704,7 +2747,12 @@ fn apply_cf_overlay(
     match (rule.dxf_id, dxfs) {
       (Some(id), Some(dxfs_table)) =>
         if id >= 0 && id < dxfs_table.dxf.length() {
-          acc = overlay_dxf_on_style(acc, dxfs_table.dxf[id], theme_map~)
+          acc = overlay_dxf_on_style(
+            acc,
+            dxfs_table.dxf[id],
+            theme_map~,
+            theme_fonts~,
+          )
         }
       _ => ()
     }
@@ -2882,6 +2930,7 @@ fn build_autofilter_hidden_row_map(
   formula_snapshot : @formula.WorksheetSnapshot?,
   cf_today : @date_serial.CalendarDateTime,
   theme_map : SmlThemeColorMap,
+  theme_fonts : SmlThemeFontMap,
   date_system : @date_serial.DateSystem,
 ) -> Map[Int, Bool] {
   let hidden : Map[Int, Bool] = Map([], capacity=0)
@@ -2889,7 +2938,7 @@ fn build_autofilter_hidden_row_map(
     Some(element) =>
       mark_autofilter_hidden_rows(
         hidden, element, cell_map, cf_blocks, cf_stats, options, styles, shared_strings,
-        evaluated_cells, formula_snapshot, cf_today, theme_map, date_system,
+        evaluated_cells, formula_snapshot, cf_today, theme_map, theme_fonts, date_system,
       )
     None => ()
   }
@@ -2898,7 +2947,7 @@ fn build_autofilter_hidden_row_map(
       Some(element) =>
         mark_autofilter_hidden_rows(
           hidden, element, cell_map, cf_blocks, cf_stats, options, styles, shared_strings,
-          evaluated_cells, formula_snapshot, cf_today, theme_map, date_system,
+          evaluated_cells, formula_snapshot, cf_today, theme_map, theme_fonts, date_system,
         )
       None => ()
     }
@@ -2920,6 +2969,7 @@ fn mark_autofilter_hidden_rows(
   formula_snapshot : @formula.WorksheetSnapshot?,
   cf_today : @date_serial.CalendarDateTime,
   theme_map : SmlThemeColorMap,
+  theme_fonts : SmlThemeFontMap,
   date_system : @date_serial.DateSystem,
 ) -> Unit {
   let filter = @autofilter.parse_auto_filter(element) catch { _ => return }
@@ -2930,7 +2980,7 @@ fn mark_autofilter_hidden_rows(
   }
   let candidates = build_autofilter_candidate_rows(
     filter, cell_map, cf_blocks, cf_stats, options, styles, shared_strings, evaluated_cells,
-    formula_snapshot, cf_today, theme_map, date_system,
+    formula_snapshot, cf_today, theme_map, theme_fonts, date_system,
   )
   if candidates.length() == 0 {
     return
@@ -2938,7 +2988,7 @@ fn mark_autofilter_hidden_rows(
   let visible_rows = @autofilter.filter_formatted_rows(
     filter,
     candidates,
-    build_autofilter_dxf_formats(styles, theme_map),
+    build_autofilter_dxf_formats(styles, theme_map, theme_fonts~),
     date_system,
   )
   let visible : Map[Int, Bool] = Map([], capacity=visible_rows.length())
@@ -2966,6 +3016,7 @@ fn build_autofilter_candidate_rows(
   formula_snapshot : @formula.WorksheetSnapshot?,
   cf_today : @date_serial.CalendarDateTime,
   theme_map : SmlThemeColorMap,
+  theme_fonts : SmlThemeFontMap,
   date_system : @date_serial.DateSystem,
 ) -> Array[@autofilter.FormattedCandidateRow] {
   let rows : Array[@autofilter.FormattedCandidateRow] = []
@@ -2985,7 +3036,7 @@ fn build_autofilter_candidate_rows(
       cells.push(
         autofilter_cell_format(
           cell_ref, cell_map, cf_blocks, cf_stats, options, styles, shared_strings,
-          evaluated_cells, formula_snapshot, cf_today, theme_map, date_system,
+          evaluated_cells, formula_snapshot, cf_today, theme_map, theme_fonts, date_system,
         ),
       )
     }
@@ -3067,6 +3118,7 @@ fn autofilter_cell_format(
   formula_snapshot : @formula.WorksheetSnapshot?,
   cf_today : @date_serial.CalendarDateTime,
   theme_map : SmlThemeColorMap,
+  theme_fonts : SmlThemeFontMap,
   date_system : @date_serial.DateSystem,
 ) -> @autofilter.CandidateCellFormat {
   let value = autofilter_cell_value(
@@ -3084,7 +3136,7 @@ fn autofilter_cell_format(
         icon_id: None,
       }
   }
-  let base = resolve_cell_style(cell, options, styles, theme_map~)
+  let base = resolve_cell_style(cell, options, styles, theme_map~, theme_fonts~)
   let style = apply_cf_overlay(
     cell_ref,
     cell,
@@ -3098,6 +3150,7 @@ fn autofilter_cell_format(
     cf_today=Some(cf_today),
     date_system~,
     theme_map~,
+    theme_fonts~,
   )
   let fill_color = match style.fill {
     FillSolid(c) => Some(c)
@@ -3108,7 +3161,12 @@ fn autofilter_cell_format(
     None => (None, None)
   }
   let rich_text_font_colors = autofilter_rich_text_font_colors(
-    cell, shared_strings, options, styles, theme_map,
+    cell,
+    shared_strings,
+    options,
+    styles,
+    theme_map,
+    theme_fonts~,
   )
   {
     value,
@@ -3127,10 +3185,11 @@ fn autofilter_rich_text_font_colors(
   options : SheetRenderOptions,
   styles : @domain.CT_Stylesheet?,
   theme_map : SmlThemeColorMap,
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> Array[String] {
   let colors : Array[String] = []
-  let base = cell_run_base_font(cell, options, styles, theme_map)
-  for run in cell_styled_runs(cell, shared_strings, base) {
+  let base = cell_run_base_font(cell, options, styles, theme_map, theme_fonts~)
+  for run in cell_styled_runs(cell, shared_strings, base, theme_fonts~) {
     match run.1.color {
       Some(color) => colors.push(color)
       None => ()
@@ -3143,6 +3202,7 @@ fn autofilter_rich_text_font_colors(
 fn build_autofilter_dxf_formats(
   styles : @domain.CT_Stylesheet?,
   theme_map : SmlThemeColorMap,
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> Array[@autofilter.FilterDxfFormat] {
   let out : Array[@autofilter.FilterDxfFormat] = []
   let dxfs = match styles {
@@ -3155,7 +3215,7 @@ fn build_autofilter_dxf_formats(
         out.push({
           dxf_id: i,
           fill_color: dxf_fill_css(dxf, theme_map),
-          font_color: dxf_font_css(dxf, theme_map),
+          font_color: dxf_font_css(dxf, theme_map, theme_fonts~),
         })
       }
       out
@@ -3165,7 +3225,11 @@ fn build_autofilter_dxf_formats(
 }
 
 ///|
-fn dxf_font_css(dxf : @domain.CT_Dxf, theme_map : SmlThemeColorMap) -> String? {
+fn dxf_font_css(
+  dxf : @domain.CT_Dxf,
+  theme_map : SmlThemeColorMap,
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
+) -> String? {
   let font = match dxf.font {
     Some(f) => f
     None => return None
@@ -3179,7 +3243,7 @@ fn dxf_font_css(dxf : @domain.CT_Dxf, theme_map : SmlThemeColorMap) -> String? {
     strikethrough: false,
     color: None,
   }
-  ct_font_to_resolved(font, fallback, theme_map~).color
+  ct_font_to_resolved(font, fallback, theme_map~, theme_fonts~).color
 }
 
 ///|
@@ -3488,9 +3552,10 @@ fn overlay_dxf_on_style(
   base : ResolvedCellStyle,
   dxf : @domain.CT_Dxf,
   theme_map? : SmlThemeColorMap = SmlThemeColorMap::empty(),
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> ResolvedCellStyle {
   let font = match dxf.font {
-    Some(f) => ct_font_to_resolved(f, base.font, theme_map~)
+    Some(f) => ct_font_to_resolved(f, base.font, theme_map~, theme_fonts~)
     None => base.font
   }
   // §18.8.18 — a differential `<dxf>` overwhelmingly carries a SOLID
@@ -4289,9 +4354,14 @@ fn builtin_number_format(id : Int, fallback : String) -> String {
 ///|
 /// Parse a §18.4.7 inline `<rPr>` element.  Recognised children:
 /// `<sz val="..."/>`, `<b/>`, `<i/>`, `<u/>`, `<strike/>`,
-/// `<color rgb="..."/>`, `<rFont val="..."/>`.
-fn parse_inline_font(rpr : @xml.Element, base : ResolvedFont) -> ResolvedFont {
+/// `<color rgb="..."/>`, `<rFont val="..."/>`, `<scheme val="..."/>`.
+fn parse_inline_font(
+  rpr : @xml.Element,
+  base : ResolvedFont,
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
+) -> ResolvedFont {
   let mut family = base.family
+  let mut scheme_value : String? = None
   let mut size = base.size
   let mut bold = base.bold
   let mut italic = base.italic
@@ -4321,6 +4391,11 @@ fn parse_inline_font(rpr : @xml.Element, base : ResolvedFont) -> ResolvedFont {
               Some(v) => family = v
               None => ()
             }
+          "scheme" =>
+            match attr_value_local(e, "val") {
+              Some(v) => scheme_value = Some(v)
+              None => ()
+            }
           "color" =>
             match attr_value_local(e, "rgb") {
               Some(v) =>
@@ -4336,6 +4411,14 @@ fn parse_inline_font(rpr : @xml.Element, base : ResolvedFont) -> ResolvedFont {
         }
       _ => ()
     }
+  }
+  let family = match scheme_value {
+    Some(scheme) =>
+      match theme_fonts.lookup_scheme(scheme) {
+        Some(typeface) => typeface
+        None => family
+      }
+    None => family
   }
   { family, size, bold, italic, underline, strikethrough, color }
 }
@@ -4369,8 +4452,15 @@ fn cell_run_base_font(
   options : SheetRenderOptions,
   styles : @domain.CT_Stylesheet?,
   theme_map : SmlThemeColorMap,
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> ResolvedFont {
-  resolve_cell_font(cell, styles, default_cell_style(options).font, theme_map~)
+  resolve_cell_font(
+    cell,
+    styles,
+    default_cell_style(options).font,
+    theme_map~,
+    theme_fonts~,
+  )
 }
 
 ///|
@@ -4393,6 +4483,7 @@ fn cell_styled_runs(
   cell : @xml.Element,
   shared_strings : @domain.CT_Sst?,
   base : ResolvedFont,
+  theme_fonts? : SmlThemeFontMap = SmlThemeFontMap::empty(),
 ) -> Array[(String, ResolvedFont)] {
   let runs : Array[(String, ResolvedFont)] = []
   match attr_value_local(cell, "t") {
@@ -4419,7 +4510,7 @@ fn cell_styled_runs(
                   }
                   let font = match first_child_named_local(r_el, "rPr") {
                     None => base
-                    Some(rpr) => parse_inline_font(rpr, base)
+                    Some(rpr) => parse_inline_font(rpr, base, theme_fonts~)
                   }
                   runs.push((t, font))
                 }
@@ -4453,7 +4544,7 @@ fn cell_styled_runs(
                 // §18.4.4 — `CT_RPrElt.element` preserves the source
                 // `<rPr>`; reuse the inline parser so shared-string and
                 // inline runs honour identical formatting rules.
-                Some(rpr) => parse_inline_font(rpr.element, base)
+                Some(rpr) => parse_inline_font(rpr.element, base, theme_fonts~)
               }
               runs.push((run.t, font))
             }
