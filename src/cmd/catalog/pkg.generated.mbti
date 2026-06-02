@@ -7,6 +7,8 @@ pub fn structural_validity(String) -> Array[String]
 // Errors
 
 // Types and methods
+type CatalogPartRoot
+
 type ChartedCase
 
 type DiagrammedCase

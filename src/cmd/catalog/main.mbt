@@ -94,40 +94,274 @@ fn ns_format(ns : String) -> String {
 /// this as the single source of truth for both normal ancestry paths
 /// and empty paths where the element under test is itself the part
 /// root.
+struct CatalogPartRoot {
+  name : String
+  type_ns_tail : String
+  type_local : String
+  host : String
+  phase : String
+}
+
+///|
+/// The ECMA-376 OPC part roots the catalog can synthesize.
+///
+/// Name alone is intentionally insufficient here: `<comments>` is
+/// both an SML comments part and a WML comments part, and `<fonts>` is
+/// a WML font-table part while SML also uses `<fonts>` inside
+/// `styles.xml`.  Type namespace + type local name are the key that
+/// keeps host selection and BFS seeding on one source of truth.
+fn catalog_part_roots() -> Array[CatalogPartRoot] {
+  [
+    {
+      name: "document",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_Document",
+      host: "docx",
+      phase: "primary",
+    },
+    {
+      name: "worksheet",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Worksheet",
+      host: "xlsx",
+      phase: "primary",
+    },
+    {
+      name: "sld",
+      type_ns_tail: "presentationml/main",
+      type_local: "CT_Slide",
+      host: "pptx",
+      phase: "primary",
+    },
+    {
+      name: "presentation",
+      type_ns_tail: "presentationml/main",
+      type_local: "CT_Presentation",
+      host: "pptx:presentation",
+      phase: "supplementary",
+    },
+    {
+      name: "workbook",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Workbook",
+      host: "xlsx:workbook",
+      phase: "supplementary",
+    },
+    {
+      name: "sst",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Sst",
+      host: "xlsx:sharedStrings",
+      phase: "supplementary",
+    },
+    {
+      name: "styleSheet",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Stylesheet",
+      host: "xlsx:styles",
+      phase: "supplementary",
+    },
+    {
+      name: "comments",
+      type_ns_tail: "spreadsheetml/main",
+      type_local: "CT_Comments",
+      host: "xlsx:comments",
+      phase: "supplementary",
+    },
+    {
+      name: "theme",
+      type_ns_tail: "drawingml/main",
+      type_local: "CT_OfficeStyleSheet",
+      host: "pptx:theme",
+      phase: "supplementary",
+    },
+    {
+      name: "settings",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_Settings",
+      host: "docx:settings",
+      phase: "supplementary",
+    },
+    {
+      name: "styles",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_Styles",
+      host: "docx:styles",
+      phase: "supplementary",
+    },
+    {
+      name: "numbering",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_Numbering",
+      host: "docx:numbering",
+      phase: "supplementary",
+    },
+    {
+      name: "fonts",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_FontsList",
+      host: "docx:fonts",
+      phase: "supplementary",
+    },
+    {
+      name: "webSettings",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_WebSettings",
+      host: "docx:webSettings",
+      phase: "supplementary",
+    },
+    {
+      name: "comments",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_Comments",
+      host: "docx:comments",
+      phase: "supplementary",
+    },
+    {
+      name: "footnotes",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_Footnotes",
+      host: "docx:footnotes",
+      phase: "supplementary",
+    },
+    {
+      name: "endnotes",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_Endnotes",
+      host: "docx:endnotes",
+      phase: "supplementary",
+    },
+    {
+      name: "chartSpace",
+      type_ns_tail: "drawingml/chart",
+      type_local: "CT_ChartSpace",
+      host: "pptx:chart",
+      phase: "chart",
+    },
+    {
+      name: "dataModel",
+      type_ns_tail: "drawingml/diagram",
+      type_local: "CT_DataModel",
+      host: "pptx:diagram-data",
+      phase: "diagram",
+    },
+    {
+      name: "layoutDef",
+      type_ns_tail: "drawingml/diagram",
+      type_local: "CT_DiagramDefinition",
+      host: "pptx:diagram-layout",
+      phase: "diagram",
+    },
+    {
+      name: "styleDef",
+      type_ns_tail: "drawingml/diagram",
+      type_local: "CT_StyleDefinition",
+      host: "pptx:diagram-style",
+      phase: "diagram",
+    },
+    {
+      name: "colorsDef",
+      type_ns_tail: "drawingml/diagram",
+      type_local: "CT_ColorTransform",
+      host: "pptx:diagram-colors",
+      phase: "diagram",
+    },
+    {
+      name: "userShapes",
+      type_ns_tail: "drawingml/chartDrawing",
+      type_local: "CT_Drawing",
+      host: "pptx:chart-usershapes",
+      phase: "chartDrawing",
+    },
+  ]
+}
+
+///|
+fn catalog_type_namespace_tail(type_name : String) -> String {
+  match type_name.find("#") {
+    None => ""
+    Some(i) => strip_ns(type_name[0:i].to_owned())
+  }
+}
+
+///|
+fn catalog_type_local(type_name : String) -> String {
+  match type_name.rev_find("#") {
+    Some(i) => type_name[i + 1:].to_owned()
+    None => type_name
+  }
+}
+
+///|
+fn catalog_part_root_matches(
+  root : CatalogPartRoot,
+  name : String,
+  type_name : String,
+) -> Bool {
+  name == root.name &&
+  catalog_type_namespace_tail(type_name) == root.type_ns_tail &&
+  catalog_type_local(type_name) == root.type_local
+}
+
+///|
+fn catalog_part_root_for_decl(
+  name : String,
+  type_name : String,
+) -> CatalogPartRoot? {
+  for root in catalog_part_roots() {
+    if catalog_part_root_matches(root, name, type_name) {
+      return Some(root)
+    }
+  }
+  None
+}
+
+///|
+fn catalog_part_root_phase_for_decl(
+  name : String,
+  type_name : String,
+) -> String? {
+  match catalog_part_root_for_decl(name, type_name) {
+    Some(root) => Some(root.phase)
+    None => None
+  }
+}
+
+///|
+fn catalog_host_for_root_type(
+  root_name : String,
+  root_type : String,
+  fallback_format : String,
+) -> String {
+  match catalog_part_root_for_decl(root_name, root_type) {
+    Some(root) => root.host
+    None => catalog_host_for_root(root_name, fallback_format)
+  }
+}
+
+///|
+/// Name-only compatibility wrapper. Main catalog embedding should use
+/// `catalog_host_for_root_type` so ambiguous names (`comments`,
+/// `fonts`) stay type-qualified.
 fn catalog_host_for_root(
   root_name : String,
   fallback_format : String,
 ) -> String {
-  match root_name {
-    "worksheet" => "xlsx"
-    "sld" => "pptx"
-    "settings" => "docx:settings"
-    "styles" => "docx:styles"
-    "numbering" => "docx:numbering"
-    "fonts" => "docx:fonts"
-    "webSettings" => "docx:webSettings"
-    "comments" => "docx:comments"
-    "footnotes" => "docx:footnotes"
-    "endnotes" => "docx:endnotes"
-    "theme" => "pptx:theme"
-    "presentation" => "pptx:presentation"
-    "workbook" => "xlsx:workbook"
-    "sharedStrings" => "xlsx:sharedStrings"
-    "styleSheet" => "xlsx:styles"
-    // §21.2 DrawingML chart — `<c:chartSpace>` is the part root
-    // for `ppt/charts/chart1.xml`. Route the element through a
-    // dedicated pptx host that wires the chart part into a minimal
-    // slide carrying a `<p:graphicFrame>`.
-    "chartSpace" => "pptx:chart"
-    // §21.4 DrawingML diagram — four-part SmartArt.
-    "dataModel" => "pptx:diagram-data"
-    "layoutDef" => "pptx:diagram-layout"
-    "styleDef" => "pptx:diagram-style"
-    "colorsDef" => "pptx:diagram-colors"
-    // §21.3 DrawingML chartDrawing — `<c:userShapes>` part wired
-    // through the chart's own rels.
-    "userShapes" => "pptx:chart-usershapes"
-    _ => if fallback_format != "" { fallback_format } else { "docx" }
+  let mut matched : String? = None
+  for root in catalog_part_roots() {
+    if root.name == root_name {
+      match matched {
+        None => matched = Some(root.host)
+        Some(existing) =>
+          if existing != root.host {
+            return if fallback_format != "" { fallback_format } else { "docx" }
+          }
+      }
+    }
+  }
+  match matched {
+    Some(host) => host
+    None => if fallback_format != "" { fallback_format } else { "docx" }
   }
 }
 
@@ -216,29 +450,7 @@ fn main {
   } else {
     ""
   }
-  let schema = Schema::new()
-  // Load every schema set in order; Transitional first so a
-  // dual-generation element keeps its Transitional namespace.
-  for set in schema_sets() {
-    let files = try? @fs.read_dir(set.dir)
-    match files {
-      Err(_) => println("!! schema set missing: " + set.dir)
-      Ok(names) =>
-        for fname in names {
-          if fname.has_suffix(".xsd") {
-            let path = set.dir + "/" + fname
-            let text = (try? @fs.read_file_to_string(path)).unwrap_or("")
-            if text.length() > 0 {
-              try @xml.parse(@utf8.encode(text[:])) catch {
-                _ => println("!! parse error: " + path)
-              } noraise {
-                doc => schema.load(doc.root, text, set.lineage)
-              }
-            }
-          }
-        }
-    }
-  }
+  let schema = load_catalog_schema()
   println(
     "loaded: \{schema.complex_types.length()} complexTypes, " +
     "\{schema.simple_types.length()} simpleTypes, " +
@@ -485,7 +697,7 @@ fn main {
       Some(paths) if paths.length() >= 1 =>
         for path in paths {
           if path.length() >= 1 {
-            let host = catalog_host_for_root(path[0].0, fmt)
+            let host = catalog_host_for_root_type(path[0].0, path[0].1, fmt)
             // Skip chart-host candidates for non-chart-namespace
             // elements so DML core types do not get hosted in a chart
             // part where the renderer's shape dispatch never reaches
@@ -516,7 +728,11 @@ fn main {
             // Empty path — the element IS itself a part-root; embed
             // unwrapped.  Route diagram / chart part roots to their
             // dedicated host so the renderer is actually invoked.
-            let root_host = catalog_host_for_root(decl.name, fmt)
+            let root_host = catalog_host_for_root_type(
+              decl.name,
+              decl.type_name,
+              fmt,
+            )
             candidates.push((root_host, target))
           }
         }
@@ -803,12 +1019,12 @@ fn main {
   println("    (`fy-inject`) — proving survival even when the tag")
   println("    collides with host scaffolding.  The plant is")
   println("    non-destructive: if a host de-dups a required singleton")
-  println("    it falls back to the differential rather than overclaim.")
+  println("    it retries through the singleton's spec-defined `extLst`")
+  println("    slot, then falls back to the differential rather than")
+  println("    overclaim.")
   println("    (ambiguous = tag present but also emitted by host")
   println("     scaffolding AND a planted marker did not survive a host")
-  println("     de-dup — provably lossless by construction; the residual")
-  println("     `themeElements` singleton is proved directly by the")
-  println("     font_theme_types round-trip identity test)")
+  println("     de-dup or an `extLst` retry — not counted as preserved)")
   println("")
 
   // Glyph-level coverage audit dump — every `parsed` (no visible

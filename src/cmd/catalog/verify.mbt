@@ -3137,6 +3137,103 @@ fn inject_marker_into_target(
 }
 
 ///|
+/// Plant the unique `marker` inside the target element's ECMA-376
+/// extension-list slot, for structural singletons whose host builder
+/// splices element children into a spec-valid skeleton.  Plain text
+/// injection is still tried first; this helper is only used after the
+/// normal differential cannot distinguish the target from scaffolding.
+fn inject_extlst_marker_into_target(
+  el : @xml.Element,
+  marker : String,
+) -> (@xml.Element, Bool) {
+  let mut injected = false
+  fn is_target(e : @xml.Element) -> Bool {
+    for a in e.attributes {
+      if a.name.local_name == TARGET_ATTR {
+        return true
+      }
+    }
+    false
+  }
+
+  fn target_extlst(e : @xml.Element) -> @xml.Element? {
+    let ns = e.name.ns.unwrap_or("")
+    let prefix = e.name.prefix.unwrap_or(
+      if ns.contains("presentationml") {
+        "p"
+      } else {
+        "a"
+      },
+    )
+    let target_name = e.name.local_name
+    let marker_payload = xep(
+      "cat",
+      "urn:ooxml-catalog-fidelity",
+      "marker",
+      [],
+      [Text(marker)],
+    )
+    // §20.1.6.9 `<a:theme>` and §20.1.6.2
+    // `<a:themeElements>` both allow trailing
+    // `<a:extLst>` (CT_OfficeArtExtensionList).
+    if ns.contains("drawingml") &&
+      (target_name == "theme" || target_name == "themeElements") {
+      return Some(
+        xep(prefix, ns, "extLst", [], [
+          Element(
+            xep("a", ns, "ext", [xa("uri", "urn:ooxml-catalog-fidelity")], [
+              Element(marker_payload),
+            ]),
+          ),
+        ]),
+      )
+    }
+    // §19.2.1.26 `<p:presentation>` allows trailing
+    // `<p:extLst>` (CT_ExtensionList).
+    if ns.contains("presentationml") && target_name == "presentation" {
+      return Some(
+        xep(prefix, ns, "extLst", [], [
+          Element(
+            xep("p", ns, "ext", [xa("uri", "urn:ooxml-catalog-fidelity")], [
+              Element(marker_payload),
+            ]),
+          ),
+        ]),
+      )
+    }
+    None
+  }
+
+  fn walk(e : @xml.Element) -> @xml.Element {
+    if !injected && is_target(e) {
+      match target_extlst(e) {
+        Some(ext) => {
+          injected = true
+          let kids : Array[@xml.Node] = []
+          for child in e.children {
+            kids.push(child)
+          }
+          kids.push(Element(ext))
+          return { name: e.name, attributes: e.attributes, children: kids }
+        }
+        None => ()
+      }
+    }
+    let kids : Array[@xml.Node] = []
+    for child in e.children {
+      match child {
+        Element(c) => kids.push(Element(walk(c)))
+        other => kids.push(other)
+      }
+    }
+    { name: e.name, attributes: e.attributes, children: kids }
+  }
+
+  let out = walk(el)
+  (out, injected)
+}
+
+///|
 /// Return a copy of `el` with the `TARGET_ATTR` sentinel attribute
 /// removed wherever it appears — the sentinel is verifier bookkeeping
 /// and must not reach the renderer.
@@ -3504,6 +3601,21 @@ fn roundtrip_fidelity(
     // the writer.
     return "fy-tag"
   }
+  if !has_marker {
+    let (probe, injected) = inject_extlst_marker_into_target(
+      with_marker, marker,
+    )
+    if injected {
+      match
+        roundtrip_saved_xml(
+          format,
+          host_package(format, strip_target_attr(probe)),
+        ) {
+        Some(saved) => if saved.contains(marker) { return "fy-inject" }
+        None => ()
+      }
+    }
+  }
   // The tag is present but pruning the target did not change its
   // count: scaffolding fully accounts for the occurrences, so we
   // cannot prove the *target* round-tripped.  Honest non-success.
@@ -3628,6 +3740,7 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "xlsx:workbook" => xlsx_with_aux_root_package("workbook", content)
     "xlsx:sharedStrings" => xlsx_with_aux_root_package("sharedStrings", content)
     "xlsx:styles" => xlsx_with_aux_root_package("styles", content)
+    "xlsx:comments" => xlsx_with_aux_root_package("comments", content)
     // §21.2 DrawingML chart — the element's ancestry walks up to a
     // `<c:chartSpace>` root, so `content` is already a typed
     // chartSpace tree. Wrap it in a minimal slide that carries a
@@ -5471,8 +5584,117 @@ fn xlsx_with_aux_root_package(
       }
       xlsx_package_styled(xe(ns_s, "sheetData", [], []), styles_root)
     }
+    "comments" => {
+      let comments_root : @xml.Element = if content.name.local_name ==
+        "comments" {
+        content
+      } else {
+        xe(ns_s, "comments", [], [Element(content)])
+      }
+      xlsx_package_with_comments_part(comments_root)
+    }
     _ => xlsx_package(content)
   }
+}
+
+///|
+/// `.xlsx` package whose worksheet owns a comments part.  Comments
+/// are resolved from `xl/worksheets/sheet1.xml.rels`, not from the
+/// workbook relationship table, per ECMA-376 §18.7.
+fn xlsx_package_with_comments_part(comments_root : @xml.Element) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let workbook : @xml.Element = xe(ns_s, "workbook", [], [
+    Element(
+      xe(ns_s, "sheets", [], [
+        Element(
+          xe(
+            ns_s,
+            "sheet",
+            [
+              xa("name", "S1"),
+              xa("sheetId", "1"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+  let workbook_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+          ),
+          xa("Target", "worksheets/sheet1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let worksheet : @xml.Element = xe(ns_s, "worksheet", [], [
+    Element(
+      xe(ns_s, "sheetData", [], [
+        Element(
+          xe(ns_s, "row", [xa("r", "1")], [
+            Element(
+              xe(ns_s, "c", [xa("r", "A1"), xa("t", "str")], [
+                Element(xe(ns_s, "v", [], [Text("commented")])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  let sheet_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments",
+          ),
+          xa("Target", "../comments1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+        (
+          "/xl/comments1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(workbook_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+    ("xl/worksheets/_rels/sheet1.xml.rels", write_part(sheet_rels)),
+    ("xl/comments1.xml", write_part(comments_root)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
 }
 
 ///|
@@ -6728,6 +6950,8 @@ fn empty_body_package(format : String) -> Bytes {
       xlsx_with_aux_root_package("sharedStrings", xe(ns_s, "sst", [], []))
     "xlsx:styles" =>
       xlsx_with_aux_root_package("styles", xe(ns_s, "styleSheet", [], []))
+    "xlsx:comments" =>
+      xlsx_with_aux_root_package("comments", xe(ns_s, "comments", [], []))
     _ => docx_package(xep("w", ns_w, "body", [], []))
   }
 }

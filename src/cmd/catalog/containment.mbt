@@ -168,94 +168,62 @@ fn type_has_any(ct : @xml.Element) -> Bool {
 }
 
 ///|
-/// True only for primary document part root declarations.  Several
-/// schemas reuse names such as `<p:sld>` for non-root relationship
-/// lists / outline entries; those must not seed a standalone host.
-fn is_primary_part_root_decl(name : String, type_name : String) -> Bool {
-  match name {
-    "document" => type_name.has_suffix("#CT_Document")
-    "worksheet" => type_name.has_suffix("#CT_Worksheet")
-    "sld" => type_name.has_suffix("#CT_Slide")
-    _ => false
-  }
-}
-
-///|
 /// The document-part root elements a fixture can be built around,
 /// with their type names.
 ///
 /// The three primary document parts (`document` / `worksheet` /
-/// `sld`) carry the bulk of the renderable content per
-/// ECMA-376 §17 / §18 / §19.  The four supplementary part roots
-/// (`presentation` / `workbook` / `theme` / `styleSheet`) anchor
-/// presentation-level metadata, workbook-level configuration,
-/// theme palettes, and styled-cell tables respectively; including
-/// them widens the BFS so child elements of those parts (`<sldSz>`,
-/// `<workbookProtection>`, `<themeElements>`, `<numFmts>`, …) get
-/// a wrapper chain that lands them in their canonical OPC part
-/// rather than the default docx fallback.  The corresponding
-/// auxiliary-part builders (`xlsx_package_with_replaced_workbook`,
-/// `pptx_package_with_replaced_presentation`,
-/// `pptx_package_with_replaced_theme`,
-/// `xlsx_package_with_replaced_stylesheet`) must synthesise a
-/// spec-valid minimum skeleton (required siblings such as
-/// `<sheets>` / `<sldIdLst>` / `<themeElements>` / required
-/// `<extLst>` slots) for the embedded element to survive the open
-/// → save → open round trip.
+/// `sld`) carry the bulk of renderable content per ECMA-376 §17 /
+/// §18 / §19.  Supplementary roots anchor OPC parts such as
+/// presentation, workbook, shared strings, styles, theme, comments,
+/// WML auxiliary parts, charts, diagrams, and chart user-shapes.
+/// The concrete name/type/host set lives in `catalog_part_roots`;
+/// this function only resolves those declarations against the loaded
+/// XSD symbol table so Strict and Transitional variants both seed
+/// their own BFS.
 fn part_roots(schema : Schema) -> Array[(String, String)] {
   let roots : Array[(String, String)] = []
-  for
-    name in [
-      // Primary document-body roots.
-      "document", "worksheet", "sld",
-      // Supplementary cross-format roots.
-       "presentation", "workbook", "theme", "styleSheet",
-      // WML auxiliary part roots — without these, WML-only elements
-      // such as `<w:evenAndOddHeaders>` or `<w:characterSpacingControl>`
-      // (defined only inside `<w:settings>`) have no body-rooted BFS
-      // path and fall through to the `graphicData` any-host route,
-      // which lands them in a PPTX slide where the renderer never
-      // surfaces the WML metadata. Adding the aux roots gives them a
-      // canonical WML wrapper chain that `docx_aux_package` can
-      // synthesise into a valid `.docx` package.
-       "settings", "styles", "numbering", "fonts", "webSettings", "comments", "footnotes",
-      "endnotes",
-      // §21.2 DrawingML chart — `<c:chartSpace>` is the part root for
-      // `ppt/charts/chartN.xml`. Without it the chart sub-elements
-      // (`<c:plotArea>`, `<c:barChart>`, `<c:ser>`, …) have no
-      // primary-rooted BFS path and fall through to the generic
-      // `graphicData` any-host slot, where they're embedded inside a
-      // slide's `<a:graphicData>` rather than wired into a real chart
-      // part — so the chart-renderer pipeline never sees them.
-       "chartSpace",
-      // §21.4 DrawingML diagram — the four part roots of a SmartArt
-      // bundle: `<dgm:dataModel>` (data1.xml), `<dgm:layoutDef>`
-      // (layout1.xml), `<dgm:styleDef>` (quickStyle1.xml),
-      // `<dgm:colorsDef>` (colors1.xml).  Each is the root of an
-      // independent OPC part bound to the slide via `<dgm:relIds>`;
-      // catalog hosting must route sub-elements through the part
-      // they belong to so the SmartArt engine sees them as
-      // typed data.
-       "dataModel", "layoutDef", "styleDef", "colorsDef",
-      // §21.3 DrawingML chartDrawing — `<c:userShapes>` is the part
-      // root for `ppt/charts/_rels/chartN.xml.rels → userShapes.xml`.
-      // It carries `<cdr:absSizeAnchor>` / `<cdr:relSizeAnchor>` /
-      // shapes that ride on top of a chart.  Without this, every
-      // chartDrawing element falls to the generic `graphicData`
-      // any-host slot.
-       "userShapes",
-    ] {
-    match schema.top_elements.get(name) {
-      Some((el, _)) =>
-        // The root element's `type` is a resolved `ns#localname`.
-        match attr(el, "type") {
-          Some(t) => roots.push((name, t))
-          None => ()
-        }
-      None => ()
+  for root in catalog_part_roots() {
+    let matches : Array[(String, String)] = []
+    for _k, decl in schema.all_elements {
+      if catalog_part_root_matches(root, decl.name, decl.type_name) {
+        matches.push((decl.name, decl.type_name))
+      }
+    }
+    matches.sort_by(fn(a, b) {
+      let ar = catalog_generation_rank(a.1)
+      let br = catalog_generation_rank(b.1)
+      if ar < br {
+        -1
+      } else if ar > br {
+        1
+      } else if a.1 < b.1 {
+        -1
+      } else if a.1 > b.1 {
+        1
+      } else {
+        0
+      }
+    })
+    for entry in matches {
+      roots.push(entry)
     }
   }
   roots
+}
+
+///|
+fn catalog_generation_rank(type_name : String) -> Int {
+  let ns = match type_name.find("#") {
+    Some(i) => type_name[0:i].to_owned()
+    None => type_name
+  }
+  if ns.has_prefix("http://schemas.openxmlformats.org/") {
+    0
+  } else if ns.has_prefix("http://purl.oclc.org/ooxml/") {
+    1
+  } else {
+    2
+  }
 }
 
 ///|
@@ -387,8 +355,10 @@ fn build_ancestry(
   }
   let primary_variant_queue : Array[(String, String, Array[(String, String)])] = []
   for _k, decl in schema.all_elements {
-    if is_primary_part_root_decl(decl.name, decl.type_name) {
-      primary_variant_queue.push((decl.name, decl.type_name, []))
+    match catalog_part_root_phase_for_decl(decl.name, decl.type_name) {
+      Some("primary") =>
+        primary_variant_queue.push((decl.name, decl.type_name, []))
+      _ => ()
     }
   }
   run_bfs(primary_variant_queue, pre_primary_variant_keys)
@@ -407,22 +377,9 @@ fn build_ancestry(
   let supp_queue : Array[(String, String, Array[(String, String)])] = []
   for entry in queue {
     let (rname, _rtype) = (entry.0, entry.1)
-    match rname {
-      "presentation"
-      | "workbook"
-      | "theme"
-      | "styleSheet"
-      // WML auxiliary parts — same pass as the cross-format
-      // supplementary roots so WML-only elements have a primary
-      // wrapper chain before any `graphicData` any-host fallback.
-      | "settings"
-      | "styles"
-      | "numbering"
-      | "fonts"
-      | "webSettings"
-      | "comments"
-      | "footnotes"
-      | "endnotes" => supp_queue.push(entry)
+    let rtype = entry.1
+    match catalog_part_root_phase_for_decl(rname, rtype) {
+      Some("supplementary") => supp_queue.push(entry)
       _ => ()
     }
   }
@@ -459,8 +416,9 @@ fn build_ancestry(
   // each namespace variant seeds its own BFS expansion.
   let chart_queue : Array[(String, String, Array[(String, String)])] = []
   for _k, decl in schema.all_elements {
-    if decl.name == "chartSpace" {
-      chart_queue.push((decl.name, decl.type_name, []))
+    match catalog_part_root_phase_for_decl(decl.name, decl.type_name) {
+      Some("chart") => chart_queue.push((decl.name, decl.type_name, []))
+      _ => ()
     }
   }
   run_bfs(chart_queue, Map([], capacity=0))
@@ -469,7 +427,7 @@ fn build_ancestry(
   // one.  Distinguishing namespace is straightforward because every
   // chart element's type carries one of the two chart namespace
   // prefixes; everything else (DML core, OPC, …) does not.
-  for key, paths in all_paths {
+  for key, _paths in all_paths {
     // Element key looks like `name#namespace#typeLocalName`.  We
     // recover the namespace from the type token, which embeds the
     // resolving namespace as its prefix.
@@ -505,14 +463,13 @@ fn build_ancestry(
   }
   let dgm_queue : Array[(String, String, Array[(String, String)])] = []
   for _k, decl in schema.all_elements {
-    match decl.name {
-      "dataModel" | "layoutDef" | "styleDef" | "colorsDef" =>
-        dgm_queue.push((decl.name, decl.type_name, []))
+    match catalog_part_root_phase_for_decl(decl.name, decl.type_name) {
+      Some("diagram") => dgm_queue.push((decl.name, decl.type_name, []))
       _ => ()
     }
   }
   run_bfs(dgm_queue, Map([], capacity=0))
-  for key, paths in all_paths {
+  for key, _paths in all_paths {
     let is_dgm_key = key.contains(dgm_ns_strict) || key.contains(dgm_ns_trans)
     if is_dgm_key {
       continue
@@ -543,12 +500,13 @@ fn build_ancestry(
   }
   let cdr_queue : Array[(String, String, Array[(String, String)])] = []
   for _k, decl in schema.all_elements {
-    if decl.name == "userShapes" {
-      cdr_queue.push((decl.name, decl.type_name, []))
+    match catalog_part_root_phase_for_decl(decl.name, decl.type_name) {
+      Some("chartDrawing") => cdr_queue.push((decl.name, decl.type_name, []))
+      _ => ()
     }
   }
   run_bfs(cdr_queue, Map([], capacity=0))
-  for key, paths in all_paths {
+  for key, _paths in all_paths {
     let is_cdr_key = key.contains(cdr_ns_strict) || key.contains(cdr_ns_trans)
     if is_cdr_key {
       continue
