@@ -12,7 +12,7 @@
 #     family slots without per-OS substitution.
 #   - The TTFs are direct-downloadable single-file releases (no
 #     per-OS packaging, no .ttc unpacking).
-#   - One catalogue works for both our `@glyph` measurer and the
+#   - One fixture set works for both our `@glyph` measurer and the
 #     downstream rasteriser the snapshot harness drives.
 #
 # The cache directory follows the XDG-style temp/cache convention

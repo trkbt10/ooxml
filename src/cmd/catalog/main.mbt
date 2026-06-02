@@ -735,6 +735,9 @@ fn main {
       catalog_type_local(decl.type_name) == "CT_RelIds" {
       candidates.push(("pptx:diagram-relids", target))
     }
+    if is_drawingml_table_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(("pptx:table", catalog_table_root(target)))
+    }
     match ancestry.get(akey) {
       Some(paths) if paths.length() >= 1 =>
         for path in paths {

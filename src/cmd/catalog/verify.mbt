@@ -3909,6 +3909,7 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
         content,
         None,
       )
+    "pptx:table" => pptx_package(default_table_slide_body(content))
     // §21.3 chartDrawing — `<c:userShapes>` is the chart's user-shape
     // overlay part.  Until the chart renderer resolves user-shape
     // relationships and walks `<cdr:absSizeAnchor>` / `<cdr:relSizeAnchor>`
@@ -3927,6 +3928,213 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
       )
     _ => docx_package(content)
   }
+}
+
+///|
+/// True when an ECMA-376 §21.1.3 DrawingML table element has a
+/// renderer-observable effect in the PresentationML graphicFrame table
+/// renderer.
+/// This is catalog-host selection only: the table model and renderer
+/// remain in `drawing_ml/shape_table_types.mbt` and
+/// `presentation_ml/viewer/table.mbt`.
+fn is_drawingml_table_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  let ns_tail = strip_ns(ns)
+  let type_local = catalog_type_local(type_name)
+  let is_dml_main = ns_tail == "drawingml/main"
+  if is_dml_main {
+    match type_local {
+      "CT_Table"
+      | "CT_TableGrid"
+      | "CT_TableCol"
+      | "CT_TableRow"
+      | "CT_TableCell"
+      | "CT_TableCellProperties" => return true
+      "CT_LineProperties" =>
+        match local_name {
+          "lnL" | "lnR" | "lnT" | "lnB" | "lnTlToBr" | "lnBlToTr" => return true
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  false
+}
+
+///|
+fn table_ns_for(content : @xml.Element) -> String {
+  match content.name.ns {
+    Some(ns) if ns.contains("drawingml/main") => ns
+    _ => NS_A
+  }
+}
+
+///|
+fn table_elem(
+  ns : String,
+  local_name : String,
+  attrs : Array[@xml.Attribute],
+  children : Array[@xml.Node],
+) -> @xml.Element {
+  xep("a", ns, local_name, attrs, children)
+}
+
+///|
+fn default_table_grid(ns : String) -> @xml.Element {
+  table_elem(ns, "tblGrid", [], [
+    Element(table_elem(ns, "gridCol", [xa("w", "914400")], [])),
+  ])
+}
+
+///|
+fn default_table_text_body(ns : String) -> @xml.Element {
+  table_elem(ns, "txBody", [], [
+    Element(table_elem(ns, "bodyPr", [], [])),
+    Element(table_elem(ns, "lstStyle", [], [])),
+    Element(
+      table_elem(ns, "p", [], [
+        Element(
+          table_elem(ns, "r", [], [
+            Element(table_elem(ns, "t", [], [Text("Catalog table")])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn default_table_cell(ns : String) -> @xml.Element {
+  table_elem(ns, "tc", [], [
+    Element(default_table_text_body(ns)),
+    Element(table_elem(ns, "tcPr", [], [])),
+  ])
+}
+
+///|
+fn default_table_row(ns : String) -> @xml.Element {
+  table_elem(ns, "tr", [xa("h", "914400")], [Element(default_table_cell(ns))])
+}
+
+///|
+fn table_cell_with_pr(ns : String, tc_pr : @xml.Element) -> @xml.Element {
+  table_elem(ns, "tc", [], [
+    Element(default_table_text_body(ns)),
+    Element(tc_pr),
+  ])
+}
+
+///|
+fn table_with_parts(
+  ns : String,
+  tbl_pr : @xml.Element?,
+  tbl_grid : @xml.Element,
+  row : @xml.Element,
+) -> @xml.Element {
+  let children : Array[@xml.Node] = []
+  match tbl_pr {
+    Some(pr) => children.push(Element(pr))
+    None => ()
+  }
+  children.push(Element(tbl_grid))
+  children.push(Element(row))
+  table_elem(ns, "tbl", [], children)
+}
+
+///|
+/// Normalize a catalog table-family target into the minimum
+/// `<a:tbl>` context consumed by the existing PresentationML table
+/// renderer. The target subtree itself is left intact and, for
+/// non-`tbl` roots, remains below the table root so the differential
+/// verifier compares the same table host with and without the target.
+fn catalog_table_root(content : @xml.Element) -> @xml.Element {
+  let ns = table_ns_for(content)
+  match content.name.local_name {
+    "tbl" => content
+    "tblGrid" => table_with_parts(ns, None, content, default_table_row(ns))
+    "gridCol" =>
+      table_with_parts(
+        ns,
+        None,
+        table_elem(ns, "tblGrid", [], [Element(content)]),
+        default_table_row(ns),
+      )
+    "tr" => table_with_parts(ns, None, default_table_grid(ns), content)
+    "tc" =>
+      table_with_parts(
+        ns,
+        None,
+        default_table_grid(ns),
+        table_elem(ns, "tr", [xa("h", "914400")], [Element(content)]),
+      )
+    "tcPr" =>
+      table_with_parts(
+        ns,
+        None,
+        default_table_grid(ns),
+        table_elem(ns, "tr", [xa("h", "914400")], [
+          Element(table_cell_with_pr(ns, content)),
+        ]),
+      )
+    "lnL" | "lnR" | "lnT" | "lnB" | "lnTlToBr" | "lnBlToTr" =>
+      table_with_parts(
+        ns,
+        None,
+        default_table_grid(ns),
+        table_elem(ns, "tr", [xa("h", "914400")], [
+          Element(
+            table_cell_with_pr(
+              ns,
+              table_elem(ns, "tcPr", [], [Element(content)]),
+            ),
+          ),
+        ]),
+      )
+    _ =>
+      table_with_parts(ns, None, default_table_grid(ns), default_table_row(ns))
+  }
+}
+
+///|
+/// Slide body `<p:cSld>` for hosting DrawingML table catalog probes
+/// under the existing PresentationML graphicFrame table renderer.
+fn default_table_slide_body(content : @xml.Element) -> @xml.Element {
+  let ns_p = NS_PML
+  let ns_a = table_ns_for(content)
+  let table_uri = "http://schemas.openxmlformats.org/drawingml/2006/table"
+  let tbl = catalog_table_root(content)
+  let graphic_frame = xep("p", ns_p, "graphicFrame", [], [
+    Element(
+      xep("p", ns_p, "nvGraphicFramePr", [], [
+        Element(
+          xep("p", ns_p, "cNvPr", [xa("id", "2"), xa("name", "Table 1")], []),
+        ),
+        Element(xep("p", ns_p, "cNvGraphicFramePr", [], [])),
+        Element(xep("p", ns_p, "nvPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "xfrm", [], [
+        Element(
+          xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+        ),
+        Element(
+          xep("a", ns_a, "ext", [xa("cx", "6096000"), xa("cy", "2743200")], []),
+        ),
+      ]),
+    ),
+    Element(
+      xep("a", ns_a, "graphic", [], [
+        Element(
+          xep("a", ns_a, "graphicData", [xa("uri", table_uri)], [Element(tbl)]),
+        ),
+      ]),
+    ),
+  ])
+  pptx_common_slide_data(ns_p, [graphic_frame])
 }
 
 ///|
@@ -7349,6 +7557,7 @@ fn empty_body_package(format : String) -> Bytes {
         "presentation",
         xep("p", ns_p, "presentation", [], []),
       )
+    "pptx:table" => pptx_package(pptx_common_slide_data(ns_p, []))
     "pptx:diagram-relids" => pptx_package(pptx_common_slide_data(ns_p, []))
     "xlsx:workbook" =>
       xlsx_with_aux_root_package("workbook", xe(ns_s, "workbook", [], []))

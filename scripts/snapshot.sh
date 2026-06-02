@@ -30,11 +30,11 @@
 # Requires: soffice (any headless office suite that exports PDF),
 #           pdftoppm (poppler), rsvg-convert, ImageMagick.
 #
-# Font catalogue: the harness REQUIRES `OOXML_FONT_DIR` to be set
-# (the directory `scripts/setup-test-fonts.sh` populates) so both
-# the renderer and the reference office binary read the same Noto
-# Sans/Serif/Mono families. Without this, font metrics drift between
-# the two pipelines and RMSE numbers are meaningless.
+# Test font fixture directory: the harness REQUIRES `OOXML_FONT_DIR`
+# to be set (the directory `scripts/setup-test-fonts.sh` populates) so
+# both the renderer and the reference office binary read the same Noto
+# Sans/Serif/Mono fixture inputs. Without this, font metrics drift
+# between the two pipelines and RMSE numbers are meaningless.
 
 set -u
 
@@ -67,7 +67,7 @@ if [ ! -f "$OOXML_FONT_DIR/NotoSans-Regular.ttf" ]; then
 fi
 
 # Snapshot-scoped fontconfig that points the rasteriser at the same
-# Noto catalogue as the renderer. The user's system fontconfig is
+# Noto fixture directory as the renderer. The user's system fontconfig is
 # untouched — we only set $FONTCONFIG_FILE for this script.
 FONT_CONF_DIR="$SNAP/fontconfig"
 mkdir -p "$FONT_CONF_DIR"

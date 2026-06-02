@@ -483,6 +483,82 @@ test "catalog xlsx autofilter host supplies icon facts for iconFilter" {
 }
 
 ///|
+test "catalog pptx table host routes DrawingML table root to existing renderer" {
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  let tbl = stamp_target(
+    xep("a", ns_a, "tbl", [], [
+      Element(
+        xep("a", ns_a, "tblGrid", [], [
+          Element(xep("a", ns_a, "gridCol", [xa("w", "914400")], [])),
+        ]),
+      ),
+      Element(
+        xep("a", ns_a, "tr", [xa("h", "914400")], [
+          Element(xep("a", ns_a, "tc", [], [])),
+        ]),
+      ),
+    ]),
+  )
+  assert_true(
+    is_drawingml_table_catalog_target("tbl", ns_a + "#CT_Table", ns_a),
+  )
+  let probe = catalog_table_root(tbl)
+  assert_eq(verify_entry("pptx:table", probe, "CAT-TABLE"), "rendered")
+  let svg = match
+    render_svg_of(
+      "pptx:table",
+      host_package("pptx:table", strip_target_attr(probe)),
+    ) {
+    Some(s) => s
+    None => abort("expected table host to render")
+  }
+  assert_true(svg.contains("<g class=\"tbl\">"))
+  assert_true(svg.contains("<rect "))
+}
+
+///|
+test "catalog pptx table host routes table border children through table renderer" {
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  let ln_b = stamp_target(
+    xep("a", ns_a, "lnB", [xa("w", "19050")], [
+      Element(
+        xep("a", ns_a, "solidFill", [], [
+          Element(xep("a", ns_a, "srgbClr", [xa("val", "000000")], [])),
+        ]),
+      ),
+    ]),
+  )
+  assert_true(
+    is_drawingml_table_catalog_target("lnB", ns_a + "#CT_LineProperties", ns_a),
+  )
+  let probe = catalog_table_root(ln_b)
+  assert_eq(verify_entry("pptx:table", probe, "CAT-TABLE-LNB"), "rendered")
+  let svg = match
+    render_svg_of(
+      "pptx:table",
+      host_package("pptx:table", strip_target_attr(probe)),
+    ) {
+    Some(s) => s
+    None => abort("expected table border host to render")
+  }
+  assert_true(svg.contains("<g class=\"tbl\">"))
+  assert_true(svg.contains("<line "))
+  assert_true(svg.contains("stroke=\"#000000\""))
+}
+
+///|
+test "catalog pptx table host does not credit noFill border scaffolding" {
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  let ln_b = stamp_target(
+    xep("a", ns_a, "lnB", [xa("w", "19050")], [
+      Element(xep("a", ns_a, "noFill", [], [])),
+    ]),
+  )
+  let probe = catalog_table_root(ln_b)
+  assert_eq(verify_entry("pptx:table", probe, "CAT-TABLE-LNB-NOFILL"), "parsed")
+}
+
+///|
 test "catalog pptx diagram relIds host uses existing SmartArt renderer" {
   fn r_attr(local_name : String, value : String) -> @xml.Attribute {
     { name: { prefix: Some("r"), local_name, ns: Some(NS_OFFICE_REL) }, value }
