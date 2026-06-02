@@ -39,42 +39,26 @@
 // `data_model` shape is shared, and only `layout_def` varies.
 //
 // =========================================================================
-// RENDERING GAP — §21.4 diagram rendering is NOT IMPLEMENTED.
+// RENDERING STATUS — §21.4 bridge is implemented for constrained layouts.
 // =========================================================================
 // The PML viewer's `render_graphic_frame_svg`
-// (`src/ecma376/presentation_ml/viewer/viewer.mbt`) dispatches
-// `<a:graphicData @uri="…/diagram">` to the generic placeholder
-// branch that emits a `<g data-ooxml="graphicFrame"
-// data-ooxml-uri="…/diagram">` annotation with the bounding box
-// but no SmartArt-specific drawing. The `diagram_layout` package
-// (`src/ecma376/drawing_ml/diagram_layout`) already implements
-// the orgChart / hierarchy / linear / cycle / pyramid algorithms,
-// and the `diagram` package decodes the four part roots, but no
-// consumer downstream:
-//   (a) resolves the `<dgm:relIds>` on the graphicFrame to the
-//       four parts loaded by the PML reader, and
-//   (b) feeds the resolved data model + layout definition into
-//       `diagram_layout::engine` to produce the per-shape
-//       positions, and
-//   (c) emits `<g class="diagram"><rect/><text/></g>` per laid-out
-//       shape.
+// (`src/ecma376/presentation_ml/viewer/viewer.mbt`) detects
+// `<a:graphicData @uri="…/diagram">`, reads the `<dgm:relIds>`
+// payload, resolves the four slide relationships, and calls
+// `presentation_ml/viewer/diagram_render.mbt`.  That bridge decodes
+// the data model and layout definition, runs `@diagram_layout`, and
+// emits a `<g data-ooxml="diagram">` SVG subtree when the layoutDef
+// carries geometric constraints.  If any relationship or part cannot
+// be resolved, typed decoding fails, or the layoutDef has no geometric
+// constraints, it returns an empty node list so the graphicFrame
+// renderer falls back to the generic placeholder.
 //
-// Therefore: these fixtures exercise the *parse + serialise +
-// open-again* round-trip and the OPC plumbing
-// (`pptx_package_with_diagram`), but their visual diff against
-// the reference renderer will show a blank PPTX vs. a SmartArt diagram
-// until the bridge lands. The fixtures are still useful because:
-//
-//   1. They cover the OPC-side wiring (slide rels rId2..rId5,
-//      content types for all four diagram parts) any future
-//      diagram renderer will rely on.
-//   2. The reader + builder loop validates that the diagram
-//      package's decode → encode is lossless for the four
-//      part-root types (dataModel / layoutDef / styleDef /
-//      colorsDef).
-//   3. The catalog tool's `verify_entry` differential check
-//      records them as `parsed` so coverage tracking surfaces
-//      the gap.
+// Therefore: constrained fixtures exercise the full parse + serialise
+// + open-again + render path.  Unconstrained fixtures still cover OPC
+// wiring and the decode / encode round-trip for the four part-root
+// types (dataModel / layoutDef / styleDef / colorsDef), while the
+// catalog result honestly reflects whether the current renderer could
+// produce SmartArt geometry.
 //
 // TODO §21.4 — once the bridge lands, expand the fixture set to
 // cover: orgChart variants (left / right hanging branches per
@@ -92,6 +76,41 @@ const NS_DGM : String = "http://schemas.openxmlformats.org/drawingml/2006/diagra
 ///|
 /// DrawingML diagram graphicData URI — §15.2 well-known URI registry.
 const DIAGRAM_URI : String = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
+
+///|
+const DIAGRAM_REL_ID_DATA_MODEL : String = "rId2"
+
+///|
+const DIAGRAM_REL_ID_LAYOUT : String = "rId3"
+
+///|
+const DIAGRAM_REL_ID_QUICK_STYLE : String = "rId4"
+
+///|
+const DIAGRAM_REL_ID_COLORS : String = "rId5"
+
+///|
+/// The package fixture's slide relationship ids for
+/// §21.4.2.22 CT_RelIds. `pptx_package_with_diagram` owns the
+/// corresponding slide `.rels` entries; all `<dgm:relIds>` payloads
+/// use this function so the mapping cannot drift.
+fn diagram_part_rel_id(local_name : String) -> String {
+  match local_name {
+    "dm" => DIAGRAM_REL_ID_DATA_MODEL
+    "lo" => DIAGRAM_REL_ID_LAYOUT
+    "qs" => DIAGRAM_REL_ID_QUICK_STYLE
+    "cs" => DIAGRAM_REL_ID_COLORS
+    _ => abort("unknown diagram relationship role")
+  }
+}
+
+///|
+fn diagram_rel_ids_attr(local_name : String) -> @xml.Attribute {
+  {
+    name: { prefix: Some("r"), local_name, ns: Some(NS_OFFICE_REL) },
+    value: diagram_part_rel_id(local_name),
+  }
+}
 
 ///|
 /// Build a prefixed `<dgm:NAME …>…</dgm:NAME>` element. The
@@ -311,26 +330,13 @@ fn make_colors_def(unique_id : String) -> @xml.Element {
 /// four SmartArt parts the builder writes (rId2 → dm, rId3 → lo,
 /// rId4 → qs, rId5 → cs per §21.4.2.22 CT_RelIds).
 fn diagram_graphic_frame(id_ : String, name : String) -> @xml.Element {
-  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
   let rel_ids : @xml.Element = {
     name: { prefix: Some("dgm"), local_name: "relIds", ns: Some(NS_DGM) },
     attributes: [
-      {
-        name: { prefix: Some("r"), local_name: "dm", ns: Some(ns_r) },
-        value: "rId2",
-      },
-      {
-        name: { prefix: Some("r"), local_name: "lo", ns: Some(ns_r) },
-        value: "rId3",
-      },
-      {
-        name: { prefix: Some("r"), local_name: "qs", ns: Some(ns_r) },
-        value: "rId4",
-      },
-      {
-        name: { prefix: Some("r"), local_name: "cs", ns: Some(ns_r) },
-        value: "rId5",
-      },
+      diagram_rel_ids_attr("dm"),
+      diagram_rel_ids_attr("lo"),
+      diagram_rel_ids_attr("qs"),
+      diagram_rel_ids_attr("cs"),
     ],
     children: [],
   }

@@ -700,6 +700,11 @@ fn main {
     // `chartSpace/spPr` should keep their original document/sld
     // canonical path so the renderer's shape pipeline credits them.
     let is_chart_ns = strip_ns(decl.ns) == "drawingml/chart"
+    if decl.name == "relIds" &&
+      strip_ns(decl.ns) == "drawingml/diagram" &&
+      catalog_type_local(decl.type_name) == "CT_RelIds" {
+      candidates.push(("pptx:diagram-relids", target))
+    }
     match ancestry.get(akey) {
       Some(paths) if paths.length() >= 1 =>
         for path in paths {

@@ -178,18 +178,14 @@ struct ChartedCase {
 /// `<dgm:relIds>` references inside `content` MUST match the
 /// `rId2..rId5` the builder writes (`dm`, `lo`, `qs`, `cs`).
 ///
-/// §21.4 diagram rendering status: the renderer currently routes
-/// `<a:graphicData uri="…/diagram">` to the generic
-/// `[Diagram]` placeholder rect in
-/// `render_graphic_frame_svg`.  The `diagram_layout` package
-/// already implements the orgChart / hierarchy / linear / cycle /
-/// pyramid algorithms; what's missing is the bridge from the
-/// graphicFrame's `<dgm:relIds>` to the layout engine + an SVG
-/// emitter.  Fixtures here cover the *parse + serialise* loop
-/// and the OPC plumbing — the visual diff will be a placeholder
-/// rect until the bridge lands.
-/// TODO §21.4 — drive `@diagram_layout.engine` from the slide-side
-/// `<dgm:relIds>` resolution and emit `<g class="diagram">`.
+/// §21.4 diagram rendering status: `render_graphic_frame_svg`
+/// detects `<a:graphicData uri="…/diagram">`, resolves the
+/// slide-side `<dgm:relIds>` references, and delegates to the
+/// SmartArt bridge in `presentation_ml/viewer/diagram_render.mbt`.
+/// Layout definitions with geometric constraints render through
+/// `@diagram_layout`; unresolved parts, typed decode failures, or
+/// layout definitions without geometric constraints fall back to the
+/// generic `[Diagram]` placeholder.
 struct DiagrammedCase {
   id : String
   format : String

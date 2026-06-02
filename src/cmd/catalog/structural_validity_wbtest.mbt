@@ -461,6 +461,41 @@ test "catalog xlsx autofilter host supplies icon facts for iconFilter" {
 }
 
 ///|
+test "catalog pptx diagram relIds host uses existing SmartArt renderer" {
+  fn r_attr(local_name : String, value : String) -> @xml.Attribute {
+    { name: { prefix: Some("r"), local_name, ns: Some(NS_OFFICE_REL) }, value }
+  }
+
+  let rel_ids = stamp_target(
+    xep(
+      "dgm",
+      NS_DGM,
+      "relIds",
+      [
+        r_attr("dm", "catalogDm"),
+        r_attr("lo", "catalogLo"),
+        r_attr("qs", "catalogQs"),
+        r_attr("cs", "catalogCs"),
+      ],
+      [],
+    ),
+  )
+  assert_eq(
+    verify_entry("pptx:diagram-relids", rel_ids, "CAT-DGM-RELIDS"),
+    "rendered",
+  )
+  let svg = match
+    render_svg_of(
+      "pptx:diagram-relids",
+      host_package("pptx:diagram-relids", strip_target_attr(rel_ids)),
+    ) {
+    Some(s) => s
+    None => abort("expected diagram relIds host to render")
+  }
+  assert_true(svg.contains("data-ooxml=\"diagram\""))
+}
+
+///|
 test "catalog pptx host inserts required cSld before slide transition" {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let transition = xep("p", ns_p, "transition", [xa("spd", "fast")], [

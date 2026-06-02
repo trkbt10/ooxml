@@ -2756,13 +2756,12 @@ fn pptx_package_with_chart(
 ///     (§21.4.2.1) — the color transform that maps logical
 ///     accent indices to the theme.
 ///
-/// The renderer presently falls back to a `[Diagram]` placeholder
-/// rect; this builder is the OPC-coverage side of the SmartArt
-/// story until the `diagram_layout` engine wires its output back
-/// into the graphicFrame renderer.  §21.4 diagram rendering TODO:
-/// route `<a:graphicData uri="…/diagram">` through
-/// `diagram_layout::engine` and emit one `<g class="diagram">`
-/// per laid-out shape.
+/// The renderer resolves the slide-side `<dgm:relIds>` references
+/// and emits SmartArt SVG through `diagram_layout` when the layoutDef
+/// carries geometric constraints.  Unresolved parts, typed decode
+/// failures, or layout definitions without geometric constraints fall
+/// back to the graphicFrame placeholder, so this builder remains the
+/// OPC and host-package source of truth for the four SmartArt parts.
 fn pptx_package_with_diagram(
   content : @xml.Element,
   data_model : @xml.Element,
@@ -2997,7 +2996,7 @@ fn pptx_package_with_diagram(
         NS_PKG_REL,
         "Relationship",
         [
-          xa("Id", "rId2"),
+          xa("Id", DIAGRAM_REL_ID_DATA_MODEL),
           xa(
             "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData",
           ),
@@ -3011,7 +3010,7 @@ fn pptx_package_with_diagram(
         NS_PKG_REL,
         "Relationship",
         [
-          xa("Id", "rId3"),
+          xa("Id", DIAGRAM_REL_ID_LAYOUT),
           xa(
             "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramLayout",
           ),
@@ -3025,7 +3024,7 @@ fn pptx_package_with_diagram(
         NS_PKG_REL,
         "Relationship",
         [
-          xa("Id", "rId4"),
+          xa("Id", DIAGRAM_REL_ID_QUICK_STYLE),
           xa(
             "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramQuickStyle",
           ),
@@ -3039,7 +3038,7 @@ fn pptx_package_with_diagram(
         NS_PKG_REL,
         "Relationship",
         [
-          xa("Id", "rId5"),
+          xa("Id", DIAGRAM_REL_ID_COLORS),
           xa(
             "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramColors",
           ),
@@ -3860,6 +3859,20 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
         default_chart_slide_body(),
         enhance_chart_space_for_render(content),
       )
+    "pptx:diagram-relids" =>
+      pptx_package_with_diagram(
+        diagram_slide_body_with_rel_ids(content),
+        shared_data_model(["Catalog"]),
+        make_layout_def_with_child_constraints(
+          "urn:catalog:diagram-relids",
+          "lin",
+          explicit_w=900000.0,
+          explicit_h=360000.0,
+        ),
+        make_style_def("urn:catalog:diagram-relids:style"),
+        make_colors_def("urn:catalog:diagram-relids:colors"),
+        None,
+      )
     "pptx:diagram-data" =>
       pptx_package_with_diagram(
         default_diagram_slide_body(),
@@ -4629,13 +4642,9 @@ fn pptx_package_with_chart_usershapes(
 /// a `<dgm:relIds>` payload binding to the four SmartArt parts
 /// pptx_package_with_diagram writes (rId2..rId5 = dm/lo/qs/cs).
 fn default_diagram_slide_body() -> @xml.Element {
-  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
-  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
-  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
-  let ns_dgm = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
-  fn r_attr(local : String, value : String) -> @xml.Attribute {
-    { name: { prefix: Some("r"), local_name: local, ns: Some(ns_r) }, value }
-  }
+  let ns_p = NS_PML
+  let ns_a = NS_A
+  let ns_dgm = DIAGRAM_URI
 
   let graphic_frame = xep("p", ns_p, "graphicFrame", [], [
     Element(
@@ -4667,10 +4676,10 @@ fn default_diagram_slide_body() -> @xml.Element {
                 ns_dgm,
                 "relIds",
                 [
-                  r_attr("dm", "rId2"),
-                  r_attr("lo", "rId3"),
-                  r_attr("qs", "rId4"),
-                  r_attr("cs", "rId5"),
+                  diagram_rel_ids_attr("dm"),
+                  diagram_rel_ids_attr("lo"),
+                  diagram_rel_ids_attr("qs"),
+                  diagram_rel_ids_attr("cs"),
                 ],
                 [],
               ),
@@ -4681,6 +4690,47 @@ fn default_diagram_slide_body() -> @xml.Element {
     ),
   ])
   pptx_common_slide_data(ns_p, [graphic_frame])
+}
+
+///|
+fn normalize_diagram_rel_ids(rel_ids : @xml.Element) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  for attr in rel_ids.attributes {
+    if attr.name.ns == Some(NS_OFFICE_REL) || attr.name.prefix == Some("r") {
+      match attr.name.local_name {
+        "dm" | "lo" | "qs" | "cs" => ()
+        _ => attrs.push(attr)
+      }
+    } else {
+      attrs.push(attr)
+    }
+  }
+  attrs.push(diagram_rel_ids_attr("dm"))
+  attrs.push(diagram_rel_ids_attr("lo"))
+  attrs.push(diagram_rel_ids_attr("qs"))
+  attrs.push(diagram_rel_ids_attr("cs"))
+  { name: rel_ids.name, attributes: attrs, children: rel_ids.children }
+}
+
+///|
+fn diagram_slide_body_with_rel_ids(rel_ids : @xml.Element) -> @xml.Element {
+  let replacement = normalize_diagram_rel_ids(rel_ids)
+  fn rewrite(element : @xml.Element) -> @xml.Element {
+    if element.name.local_name == "relIds" && element.name.ns == Some(NS_DGM) {
+      return replacement
+    }
+    let kids : Array[@xml.Node] = []
+    for child in element.children {
+      match child {
+        @xml.Node::Element(child_element) =>
+          kids.push(@xml.Node::Element(rewrite(child_element)))
+        other => kids.push(other)
+      }
+    }
+    { name: element.name, attributes: element.attributes, children: kids }
+  }
+
+  rewrite(default_diagram_slide_body())
 }
 
 ///|
@@ -7299,6 +7349,7 @@ fn empty_body_package(format : String) -> Bytes {
         "presentation",
         xep("p", ns_p, "presentation", [], []),
       )
+    "pptx:diagram-relids" => pptx_package(pptx_common_slide_data(ns_p, []))
     "xlsx:workbook" =>
       xlsx_with_aux_root_package("workbook", xe(ns_s, "workbook", [], []))
     "xlsx:sharedStrings" =>
