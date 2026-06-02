@@ -233,6 +233,20 @@ fn catalog_part_roots() -> Array[CatalogPartRoot] {
       phase: "supplementary",
     },
     {
+      name: "hdr",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_HdrFtr",
+      host: "docx:header",
+      phase: "supplementary",
+    },
+    {
+      name: "ftr",
+      type_ns_tail: "wordprocessingml/main",
+      type_local: "CT_HdrFtr",
+      host: "docx:footer",
+      phase: "supplementary",
+    },
+    {
       name: "fonts",
       type_ns_tail: "wordprocessingml/main",
       type_local: "CT_FontsList",

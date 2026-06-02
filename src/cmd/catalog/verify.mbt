@@ -3845,6 +3845,8 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "docx:settings" => docx_aux_package("settings", content)
     "docx:styles" => docx_aux_package("styles", content)
     "docx:numbering" => docx_aux_package("numbering", content)
+    "docx:header" => docx_header_footer_package("header", content)
+    "docx:footer" => docx_header_footer_package("footer", content)
     "docx:fonts" => docx_aux_package("fonts", content)
     "docx:webSettings" => docx_aux_package("webSettings", content)
     "docx:comments" => docx_aux_package("comments", content)
@@ -6369,6 +6371,102 @@ fn docx_aux_package(part_kind : String, content : @xml.Element) -> Bytes {
 }
 
 ///|
+/// `.docx` package with a header or footer part wired through
+/// `<w:sectPr>` in `word/document.xml`.  Rendering stays owned by the
+/// WML context/viewer header-footer path; this host only supplies the
+/// ECMA-376 OPC relationship and section reference.
+fn docx_header_footer_package(
+  part_kind : String,
+  content : @xml.Element,
+) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let (root_name, part_path, rel_type, content_type, reference_name) : (
+    String,
+    String,
+    String,
+    String,
+    String,
+  ) = match part_kind {
+    "footer" =>
+      (
+        "ftr", "footer1.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml",
+        "footerReference",
+      )
+    _ =>
+      (
+        "hdr", "header1.xml", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/header",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.header+xml",
+        "headerReference",
+      )
+  }
+  let part_root : @xml.Element = if content.name.local_name == root_name {
+    content
+  } else {
+    xep("w", ns_w, root_name, [], [Element(content)])
+  }
+  let reference = xep(
+    "w",
+    ns_w,
+    reference_name,
+    [
+      {
+        name: { prefix: Some("w"), local_name: "type", ns: Some(ns_w) },
+        value: "default",
+      },
+      {
+        name: { prefix: Some("r"), local_name: "id", ns: Some(NS_OFFICE_REL) },
+        value: "rId1",
+      },
+    ],
+    [],
+  )
+  let body = xep("w", ns_w, "body", [], [
+    Element(
+      xep("w", ns_w, "p", [], [
+        Element(
+          xep("w", ns_w, "r", [], [
+            Element(xep("w", ns_w, "t", [], [Text("Catalog body")])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(xep("w", ns_w, "sectPr", [], [Element(reference)])),
+  ])
+  let document : @xml.Element = {
+    name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+    attributes: [],
+    children: [Element(body)],
+  }
+  let doc_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [xa("Id", "rId1"), xa("Type", rel_type), xa("Target", part_path)],
+        [],
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/word/document.xml", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+        ),
+        ("/word/" + part_path, content_type),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("word/document.xml")),
+    ("word/document.xml", write_part(document)),
+    ("word/_rels/document.xml.rels", write_part(doc_rels)),
+    ("word/" + part_path, write_part(part_root)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
 /// `.pptx` package whose `ppt/theme/theme1.xml` (or
 /// `ppt/presentation.xml`) is replaced with `content`.  The slide /
 /// slideLayout / slideMaster chain stays minimal so the rendered
@@ -7425,9 +7523,11 @@ fn retarget_workbook_sheet_rids(
 /// is the only current case; others use the dedicated `xlsx_*`
 /// builders).  `aux_root` is the part's root element; `part_path`,
 /// `rel_type`, `content_type` come from §18.2 / §18.8 part-name
-/// conventions.  A minimal `<worksheet>` body remains.
+/// conventions.  The sharedStrings host supplies an A1 string cell so
+/// the SML viewer resolves `/xl/sharedStrings.xml` through a real
+/// worksheet reference.
 fn xlsx_package_with_aux_part(
-  _part_kind : String,
+  part_kind : String,
   part_path : String,
   rel_type : String,
   content_type : String,
@@ -7480,10 +7580,33 @@ fn xlsx_package_with_aux_part(
       ),
     ),
   ])
-  let worksheet : @xml.Element = {
-    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
-    attributes: [],
-    children: [Element(xe(ns_s, "sheetData", [], []))],
+  let worksheet : @xml.Element = if part_kind == "sharedStrings" {
+    {
+      name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+      attributes: [],
+      children: [
+        Element(xe(ns_s, "dimension", [xa("ref", "A1:A1")], [])),
+        Element(
+          xe(ns_s, "sheetData", [], [
+            Element(
+              xe(ns_s, "row", [xa("r", "1")], [
+                Element(
+                  xe(ns_s, "c", [xa("r", "A1"), xa("t", "s")], [
+                    Element(xe(ns_s, "v", [], [Text("0")])),
+                  ]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ],
+    }
+  } else {
+    {
+      name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+      attributes: [],
+      children: [Element(xe(ns_s, "sheetData", [], []))],
+    }
   }
   let parts : Array[(String, Bytes)] = [
     (
@@ -7822,6 +7945,10 @@ fn empty_body_package(format : String) -> Bytes {
       docx_aux_package("styles", xep("w", ns_w, "styles", [], []))
     "docx:numbering" =>
       docx_aux_package("numbering", xep("w", ns_w, "numbering", [], []))
+    "docx:header" =>
+      docx_header_footer_package("header", xep("w", ns_w, "hdr", [], []))
+    "docx:footer" =>
+      docx_header_footer_package("footer", xep("w", ns_w, "ftr", [], []))
     "docx:fonts" => docx_aux_package("fonts", xep("w", ns_w, "fonts", [], []))
     "docx:webSettings" =>
       docx_aux_package("webSettings", xep("w", ns_w, "webSettings", [], []))

@@ -132,6 +132,17 @@ test "catalog seeds strict supplementary roots through type-qualified registry" 
     "docx:fonts",
   )
   assert_catalog_empty_root_path(ancestry, "fonts", strict_wml_fonts)
+  let strict_wml_hdr_ftr = "http://purl.oclc.org/ooxml/wordprocessingml/main#CT_HdrFtr"
+  assert_eq(
+    catalog_host_for_root_type("hdr", strict_wml_hdr_ftr, "docx"),
+    "docx:header",
+  )
+  assert_catalog_empty_root_path(ancestry, "hdr", strict_wml_hdr_ftr)
+  assert_eq(
+    catalog_host_for_root_type("ftr", strict_wml_hdr_ftr, "docx"),
+    "docx:footer",
+  )
+  assert_catalog_empty_root_path(ancestry, "ftr", strict_wml_hdr_ftr)
   assert_catalog_first_path_root(
     ancestry, "fonts", "http://purl.oclc.org/ooxml/spreadsheetml/main#CT_Fonts",
     "styleSheet",
@@ -221,6 +232,55 @@ test "catalog docx font-table host retargets synthesized font relationship id" {
 }
 
 ///|
+fn catalog_wml_hdr_ftr_probe(root_name : String, text : String) -> @xml.Element {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xep("w", ns_w, root_name, [], [
+    Element(
+      xep("w", ns_w, "p", [], [
+        Element(
+          xep("w", ns_w, "r", [], [
+            Element(xep("w", ns_w, "t", [], [Text(text)])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+test "catalog docx header and footer hosts render referenced section parts" {
+  install_catalog_font_fixture()
+  let header = stamp_target(catalog_wml_hdr_ftr_probe("hdr", TEXT_MARKER))
+  assert_eq(verify_entry("docx:header", header, "CAT-WML-HDR"), "rendered")
+  let header_svg = match
+    render_svg_of(
+      "docx:header",
+      host_package(
+        "docx:header",
+        catalog_wml_hdr_ftr_probe("hdr", "Catalog header text"),
+      ),
+    ) {
+    Some(s) => s
+    None => abort("expected header host to render")
+  }
+  assert_true(header_svg.contains("Catalog header text"))
+  let footer = stamp_target(catalog_wml_hdr_ftr_probe("ftr", TEXT_MARKER))
+  assert_eq(verify_entry("docx:footer", footer, "CAT-WML-FTR"), "rendered")
+  let footer_svg = match
+    render_svg_of(
+      "docx:footer",
+      host_package(
+        "docx:footer",
+        catalog_wml_hdr_ftr_probe("ftr", "Catalog footer text"),
+      ),
+    ) {
+    Some(s) => s
+    None => abort("expected footer host to render")
+  }
+  assert_true(footer_svg.contains("Catalog footer text"))
+}
+
+///|
 test "catalog font fixture lets docx render default font metrics" {
   install_catalog_font_fixture()
   let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
@@ -292,6 +352,47 @@ test "catalog xlsx comments host retargets synthesized comment ref to sheet cell
   assert_true(svg.contains("class=\"comment-indicators\""))
   assert_true(svg.contains("data-ooxml-comment-ref=\"A1\""))
   assert_true(!svg.contains("data-ooxml-comment-ref=\"x\""))
+}
+
+///|
+fn catalog_sml_shared_strings_probe(text : String) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xep("s", ns_s, "sst", [], [
+    Element(
+      xep("s", ns_s, "si", [], [
+        Element(
+          xep("s", ns_s, "r", [], [
+            Element(xep("s", ns_s, "t", [], [Text(text)])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+test "catalog xlsx sharedStrings host resolves sheet cell text" {
+  let sst = stamp_target(catalog_sml_shared_strings_probe(TEXT_MARKER))
+  assert_eq(verify_entry("xlsx:sharedStrings", sst, "CAT-SST-TEXT"), "rendered")
+  let workbook = @sml_context.open(
+    xlsx_with_aux_root_package(
+      "sharedStrings",
+      catalog_sml_shared_strings_probe("Catalog shared string"),
+    ),
+  ) catch {
+    @sml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let saved = workbook.save_or_raise() catch {
+    @sml_context.SaveError(kind~, path~, reason~) =>
+      abort("save failed: " + kind + " " + path + " " + reason)
+  }
+  let reopened = @sml_context.open(saved) catch {
+    @sml_context.OpenError(kind~, path~, reason~) =>
+      abort("reopen failed: " + kind + " " + path + " " + reason)
+  }
+  let svg = reopened.to_svg(debug_attrs=true)
+  assert_true(svg.contains("Catalog shared string"))
 }
 
 ///|
