@@ -4630,13 +4630,11 @@ fn pptx_package_with_slide_rels(
 ///
 /// The four wired auxiliary parts (theme1.xml, slideMaster1.xml,
 /// slideLayout1.xml, chart1.xml) match the spec-recommended
-/// "minimum chart-bearing PPTX" layout — the renderer presently
-/// falls back to a `[Chart]` placeholder rect, so this builder
-/// is the OPC-coverage side of the chart story until the typed
-/// chart renderer lands. §21.2 chart rendering TODO: route
-/// `<a:graphicData uri="…/chart">` through the chart package's
-/// reader and emit `<g class="chart">` from the
-/// `<c:plotArea>` payload.
+/// "minimum chart-bearing PPTX" layout.  The PML viewer resolves
+/// the graphic-frame `rId2` through this package relationship and
+/// hands the resulting `<c:chartSpace>` to the DrawingML chart
+/// viewer; only unresolved chart references fall back to a metadata
+/// placeholder.
 fn pptx_package_with_chart(
   content : @xml.Element,
   chart_space : @xml.Element,

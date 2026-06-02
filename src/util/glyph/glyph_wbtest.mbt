@@ -100,6 +100,57 @@ test "FontResolver::compose walks drivers in order" {
 }
 
 ///|
+test "FontSet cache key includes the whole substitution stack" {
+  let primary_alt_a : FontFaceRequest = {
+    stack: [Name("Primary"), Name("Alt A")],
+    weight: 400,
+    italic: false,
+    embedded_bytes: None,
+  }
+  let primary_alt_b : FontFaceRequest = {
+    stack: [Name("Primary"), Name("Alt B")],
+    weight: 400,
+    italic: false,
+    embedded_bytes: None,
+  }
+  assert_true(cache_key_for(primary_alt_a) != cache_key_for(primary_alt_b))
+}
+
+///|
+test "FontSet cache key includes generic fallback candidates" {
+  let serif_request : FontFaceRequest = {
+    stack: [Name("Primary"), Generic(Serif)],
+    weight: 400,
+    italic: false,
+    embedded_bytes: None,
+  }
+  let sans_request : FontFaceRequest = {
+    stack: [Name("Primary"), Generic(SansSerif)],
+    weight: 400,
+    italic: false,
+    embedded_bytes: None,
+  }
+  assert_true(cache_key_for(serif_request) != cache_key_for(sans_request))
+}
+
+///|
+test "FontSet cache key includes embedded font payload fingerprint" {
+  let embedded_a : FontFaceRequest = {
+    stack: [Name("Primary")],
+    weight: 400,
+    italic: false,
+    embedded_bytes: Some(b"EMBEDDED-A"),
+  }
+  let embedded_b : FontFaceRequest = {
+    stack: [Name("Primary")],
+    weight: 400,
+    italic: false,
+    embedded_bytes: Some(b"EMBEDDED-B"),
+  }
+  assert_true(cache_key_for(embedded_a) != cache_key_for(embedded_b))
+}
+
+///|
 test "extract_gpos_kern_pairs returns empty for too-short bytes" {
   let extracted = extract_gpos_kern_pairs(b"abc")
   inspect(extracted.length(), content="0")

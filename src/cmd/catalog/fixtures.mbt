@@ -143,17 +143,12 @@ struct SparklineCase {
 /// and the part-name layout.  The `<c:chart r:id="rId2"/>` ref
 /// inside `content` MUST match the `rId2` the builder writes.
 ///
-/// §21.2 chart rendering status: the renderer currently routes
-/// `<a:graphicData uri="…/chart">` to the generic
-/// `[Chart]` placeholder rect in
-/// `render_graphic_frame_svg`.  The fixtures here therefore
-/// exercise the *parse + serialise* loop (open → save → open →
-/// to_svg) and the OPC plumbing, but they will not visually
-/// match the reference renderer until the typed chart renderer
-/// lands.
-/// TODO §21.2 — wire `chartSpace::CT_Chart::plot_area`
-/// (bar / line / pie / doughnut / scatter / area) through to
-/// SVG output via the `chart` package's domain.
+/// §21.2 chart rendering status: `render_graphic_frame_svg`
+/// dispatches `<a:graphicData uri="…/chart">` through the
+/// DrawingML chart viewer, resolving `rId2` to the chart part the
+/// builder writes.  The fixtures therefore exercise the OPC
+/// plumbing and the visual chart renderer; unresolved chart
+/// references remain the only placeholder path.
 struct ChartedCase {
   id : String
   format : String

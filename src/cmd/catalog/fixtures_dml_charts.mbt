@@ -7,12 +7,13 @@
 // `rId2` to `ppt/charts/chart1.xml`, which carries the
 // `<c:chartSpace>` root tree this file builds.
 //
-// What this file covers (13 fixtures covering 9 top-level chart types
-// in §21.2.2 plus grouping variants):
+// What this file covers (chart fixtures covering 9 top-level chart
+// types in §21.2.2 plus grouping / formatting variants):
 //
 //   * `chart-bar-basic`     — §21.2.2.16 CT_BarChart (clustered bar)
 //   * `chart-bar-with-legend` — §21.2.2.16 CT_BarChart (2 series + legend)
 //   * `chart-bar-stacked`   — §21.2.2.76 grouping="stacked"
+//   * `chart-bar-stacked-dpt-fill` — §21.2.2.52 dPt fill on stacked bar
 //   * `chart-bar-percent-stacked` — §21.2.2.76 grouping="percentStacked"
 //   * `chart-line-basic`    — §21.2.2.97 CT_LineChart
 //   * `chart-line-with-title-and-legend` — §21.2.2.97 + title + legend
@@ -34,15 +35,14 @@
 // RENDERING STATUS — §21.2 chart rendering.
 // =========================================================================
 // The PML viewer's `render_graphic_frame_svg` dispatches chart
-// frames to `chart_render.mbt` which renders 9 chart types:
-// bar, line, pie, doughnut, scatter, area, bubble, radar, stock.
+// frames to `chart_render.mbt` which renders bar, line, pie,
+// doughnut, scatter, area, bubble, radar, stock, ofPie, and flattened
+// 3-D/surface chart variants.  Bar fixtures include clustered,
+// stacked, and percentStacked grouping coverage.
 //
-// Remaining gaps for full §21.2 coverage:
-//   * Stacked / 100% bar groupings (§21.2.2.16)
-//   * 3-D chart variants (bar3DChart, pie3DChart, line3DChart, etc.)
-//   * Surface chart (§21.2.2.205 CT_SurfaceChart)
-//   * Per-point `<c:dPt>` colour overrides; series spPr fill resolution
-//   * `<c:dLbls>` data labels, `<c:trendline>`, `<c:errBars>`
+// Remaining approximations for full §21.2 visual fidelity:
+//   * 3-D chart variants render as their closest 2-D equivalent.
+//   * Surface charts (§21.2.2.205 CT_SurfaceChart) render as area charts.
 //   * Smart axis tick spacing (currently uses nice_axis_step heuristic)
 
 // ---- file-local helpers ---------------------------------------------------
@@ -154,6 +154,25 @@ fn c_cat(labels : Array[String]) -> @xml.Element {
 /// `<c:val>` containing a numeric reference to series values.
 fn c_val_ref(values : Array[String]) -> @xml.Element {
   c_elem("val", [], [Element(c_num_ref("Sheet1!$B$2:$B$5", values))])
+}
+
+///|
+/// §21.2.2.52 `<c:dPt>` carrying a chart shape property override.
+/// The fill payload stays in DrawingML main (`a:`); the chart element
+/// only owns the `<c:dPt>/<c:spPr>` carrier.
+fn c_dpt_solid_fill(idx : Int, hex : String) -> @xml.Element {
+  c_elem("dPt", [], [
+    Element(c_val("idx", idx.to_string())),
+    Element(
+      c_elem("spPr", [], [
+        Element(
+          xe(NS_A, "solidFill", [], [
+            Element(xe(NS_A, "srgbClr", [xa("val", hex)], [])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
 }
 
 ///|
@@ -322,8 +341,8 @@ fn c_chart_legend(pos : String) -> @xml.Element {
 /// points its `<a:graphicData>` at `r:id="rId2"` — the rel the
 /// builder writes for the chart part. The frame is positioned at a
 /// fixed offset and given a 6 in × 4.5 in (5486400 × 4114800 EMU)
-/// extent so the placeholder rect is visible during the OPC-loop
-/// verification.
+/// extent so the rendered chart has the same geometry during
+/// OPC-loop verification.
 fn chart_graphic_frame(id_ : String, name : String) -> @xml.Element {
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
   xe(NS_PML, "graphicFrame", [], [
@@ -520,9 +539,9 @@ fn scatter_chart_two_series_payload() -> @xml.Element {
 // ---- ChartedCase extender -------------------------------------------------
 
 ///|
-/// §21.2 DrawingML chart fixtures (9 distinct top-level chart
-/// types plus decoration variants). Each fixture is a single-slide
-/// PPTX whose lone `<p:graphicFrame>` references the chart part the
+/// §21.2 DrawingML chart fixtures (chart-type, grouping, and
+/// formatting variants). Each fixture is a single-slide PPTX whose
+/// lone `<p:graphicFrame>` references the chart part the
 /// `pptx_package_with_chart` builder writes.
 ///
 /// Category folder: `chart` — fixtures land under
@@ -554,6 +573,13 @@ fn extras_dml_charts(ccases : Array[ChartedCase]) -> Unit {
     category: "chart/bar",
     content: sp_tree([chart_graphic_frame("2", "Bar Stacked")]),
     chart_space: wrap_chart_space(bar_chart_stacked_payload(), c_axes()),
+  })
+  ccases.push({
+    id: "stacked-dpt-fill",
+    format: "pptx",
+    category: "chart/bar",
+    content: sp_tree([chart_graphic_frame("2", "Bar Stacked Dpt Fill")]),
+    chart_space: wrap_chart_space(bar_chart_stacked_dpt_payload(), c_axes()),
   })
   ccases.push({
     id: "percent-stacked",
@@ -877,6 +903,37 @@ fn bar_chart_stacked_payload() -> @xml.Element {
     Element(c_val("idx", "1")),
     Element(c_val("order", "1")),
     Element(c_series_tx("Actual")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["15", "20", "25", "30"])),
+  ])
+  c_elem("barChart", [], [
+    Element(c_val("barDir", "col")),
+    Element(c_val("grouping", "stacked")),
+    Element(c_val("varyColors", "0")),
+    Element(ser_a),
+    Element(ser_b),
+    Element(c_val("gapWidth", "0")),
+    Element(c_val("axId", "111111111")),
+    Element(c_val("axId", "222222222")),
+  ])
+}
+
+///|
+/// §21.2.2.52 dPt + §21.2.2.76 stacked bar — a point-level shape
+/// fill override on a stacked segment.
+fn bar_chart_stacked_dpt_payload() -> @xml.Element {
+  let ser_a = c_elem("ser", [], [
+    Element(c_val("idx", "0")),
+    Element(c_val("order", "0")),
+    Element(c_series_tx("Budget")),
+    Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
+    Element(c_val_ref(["20", "25", "30", "35"])),
+  ])
+  let ser_b = c_elem("ser", [], [
+    Element(c_val("idx", "1")),
+    Element(c_val("order", "1")),
+    Element(c_series_tx("Actual")),
+    Element(c_dpt_solid_fill(1, "00FF99")),
     Element(c_cat(["Q1", "Q2", "Q3", "Q4"])),
     Element(c_val_ref(["15", "20", "25", "30"])),
   ])

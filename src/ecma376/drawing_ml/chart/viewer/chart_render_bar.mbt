@@ -1,11 +1,10 @@
 // =============================================================================
-// §21.2.2.18 CT_BarChart — clustered bar chart renderer.
+// §21.2.2.18 CT_BarChart — bar chart renderer.
 //
-// Reads the first `<c:ser>` (the only one in the fixture set) and
-// emits one `<rect>` per `<c:pt>` value in `<c:val>/<c:numRef>/<c:numCache>`.
-// Category labels come from `<c:cat>/<c:strRef>/<c:strCache>` and are
-// painted under each bar; the y-axis carries 5 tick labels at 0, ¼·max,
-// ½·max, ¾·max, max.
+// Reads every `<c:ser>` and emits `<rect>` geometry for clustered,
+// stacked, and percentStacked groupings. Category labels come from
+// `<c:cat>/<c:strRef>/<c:strCache>` and are painted under/beside the
+// category bands; the value axis uses the shared chart axis helpers.
 //
 // `barDir = "col"` (default) draws vertical columns; `barDir = "bar"`
 // draws horizontal bars. The fixtures use "bar" which in OOXML
@@ -159,6 +158,12 @@ fn render_bar_chart(
   }
   let cluster_ratio = effective_n /
     (effective_n + gap_width.to_double() / 100.0)
+  let dpt_overrides_by_series : Array[Array[(Int, String)]] = []
+  for si, se in ser_elems {
+    dpt_overrides_by_series.push(
+      collect_dpt_colors(se, ctx, defs, "ser" + si.to_string()),
+    )
+  }
   let dlbl_config = read_data_labels(elem)
   if bar_dir == "bar" {
     // Horizontal bars: §21.2.2.15 barDir="bar". The OOXML convention
@@ -271,6 +276,10 @@ fn render_bar_chart(
           }
           let by = py + band_idx.to_double() * band + sub_pad
           let color = resolve_series_color(ser_elems[si], si, ctx, defs)
+          let fill = match dpt_color_for(dpt_overrides_by_series[si], i_idx) {
+            Some(c) => c
+            None => color
+          }
           nodes.push(
             @markup.elem_ns(
               "rect",
@@ -280,7 +289,7 @@ fn render_bar_chart(
                 @markup.attr("y", format_double(by)),
                 @markup.attr("width", format_double(len)),
                 @markup.attr("height", format_double(sub_h)),
-                @markup.attr("fill", color),
+                @markup.attr("fill", fill),
               ],
               [],
             ),
@@ -301,12 +310,7 @@ fn render_bar_chart(
       for si, s in series {
         let (_, values) = s
         let color = resolve_series_color(ser_elems[si], si, ctx, defs)
-        let dpt_overrides = collect_dpt_colors(
-          ser_elems[si],
-          ctx,
-          defs,
-          "ser" + si.to_string(),
-        )
+        let dpt_overrides = dpt_overrides_by_series[si]
         for point in chart_rendered_points(values, disp_blanks_as) {
           let (i, v) = point
           if i >= cat_count {
@@ -463,6 +467,10 @@ fn render_bar_chart(
           let cat_pos = category_index(i_idx, cat_count, cat_rev)
           let bx = px + cat_pos.to_double() * band + pad
           let color = resolve_series_color(ser_elems[si], si, ctx, defs)
+          let fill = match dpt_color_for(dpt_overrides_by_series[si], i_idx) {
+            Some(c) => c
+            None => color
+          }
           nodes.push(
             @markup.elem_ns(
               "rect",
@@ -472,7 +480,7 @@ fn render_bar_chart(
                 @markup.attr("y", format_double(rect_y)),
                 @markup.attr("width", format_double(col_w)),
                 @markup.attr("height", format_double(hgt)),
-                @markup.attr("fill", color),
+                @markup.attr("fill", fill),
               ],
               [],
             ),
@@ -498,12 +506,7 @@ fn render_bar_chart(
       for si, s in series {
         let (_, values) = s
         let color = resolve_series_color(ser_elems[si], si, ctx, defs)
-        let dpt_overrides = collect_dpt_colors(
-          ser_elems[si],
-          ctx,
-          defs,
-          "ser" + si.to_string(),
-        )
+        let dpt_overrides = dpt_overrides_by_series[si]
         for point in chart_rendered_points(values, disp_blanks_as) {
           let (i, v) = point
           if i >= cat_count {

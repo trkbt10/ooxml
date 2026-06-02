@@ -14,9 +14,9 @@
 // the renderer BEFORE constructing a `FontFaceRequest`.
 
 ///|
-/// Process-wide font cache. Each `(family, weight, italic)` triple
-/// is resolved through the `FontResolver` exactly once; subsequent
-/// requests return the cached `FontMeasurer`.
+/// Process-wide font cache. Each distinct `FontFaceRequest` chain is
+/// resolved through the `FontResolver`; subsequent equivalent requests
+/// return the cached `FontMeasurer`.
 pub struct FontSet {
   cache : Map[String, FontMeasurer]
   resolver : FontResolver
@@ -63,31 +63,111 @@ pub fn FontSet::measurer_for_request(
 }
 
 ///|
-/// Cache key composed from the request. Uses the lowercase-normalised
-/// primary family name (or `"__embedded__"` when embedded bytes are
-/// supplied) plus weight + italic. The candidate stack tail is
-/// ignored because resolution returns the first success and any
-/// fallback would have produced a different primary name.
+/// Cache key composed from the whole request. The ordered candidate
+/// stack is part of the key because ECMA-376 substitution inputs
+/// (`altName`, PANOSE-derived generic, typed `w:family` generic) can
+/// differ while sharing the same primary face name. Embedded bytes are
+/// keyed by a fingerprint of the payload so two documents that embed
+/// different fonts under the same family name cannot share a parsed
+/// `FontMeasurer`.
 fn cache_key_for(request : FontFaceRequest) -> String {
-  let primary = match request.embedded_bytes {
-    Some(_) => "__embedded__"
-    None => {
-      let first_name : Ref[String?] = { val: None }
-      for c in request.stack {
-        match c {
-          Name(n) =>
-            if first_name.val is None {
-              first_name.val = Some(normalize_family(n))
-            }
-          Generic(_) => ()
-        }
-      }
-      first_name.val.unwrap_or("(none)")
-    }
-  }
   let w = if request.weight >= 600 { 700 } else { 400 }
   let i = if request.italic { "i" } else { "u" }
-  primary + "|" + w.to_string() + "|" + i
+  let buf = StringBuilder::new()
+  buf.write_string("w=")
+  buf.write_string(w.to_string())
+  buf.write_string("|i=")
+  buf.write_string(i)
+  buf.write_string("|stack=")
+  if request.stack.length() == 0 {
+    buf.write_string("(empty)")
+  } else {
+    for idx, candidate in request.stack {
+      if idx > 0 {
+        buf.write_string(",")
+      }
+      match candidate {
+        Name(n) => {
+          buf.write_string("n:")
+          buf.write_string(normalize_family(n))
+        }
+        Generic(g) => {
+          buf.write_string("g:")
+          buf.write_string(generic_family_key(g))
+        }
+      }
+    }
+  }
+  buf.write_string("|embedded=")
+  match request.embedded_bytes {
+    Some(bytes) => buf.write_string(font_bytes_fingerprint(bytes))
+    None => buf.write_string("none")
+  }
+  buf.to_string()
+}
+
+///|
+fn generic_family_key(generic : GenericFamily) -> String {
+  match generic {
+    Serif => "serif"
+    SansSerif => "sans-serif"
+    Monospace => "monospace"
+    Cursive => "cursive"
+    Fantasy => "fantasy"
+    SystemUi => "system-ui"
+    UiSerif => "ui-serif"
+    UiSansSerif => "ui-sans-serif"
+    UiMonospace => "ui-monospace"
+    UiRounded => "ui-rounded"
+    Math => "math"
+    Emoji => "emoji"
+    Fangsong => "fangsong"
+  }
+}
+
+///|
+fn font_bytes_fingerprint(bytes : Bytes) -> String {
+  bytes.length().to_string() +
+  ":" +
+  crc32_forward(bytes).to_string() +
+  ":" +
+  crc32_reverse(bytes).to_string()
+}
+
+///|
+fn crc32_forward(bytes : Bytes) -> Int64 {
+  let mut crc = 0xffffffffL
+  for byte in bytes {
+    crc = crc32_update(crc, byte.to_int64())
+  }
+  (crc ^ 0xffffffffL) & 0xffffffffL
+}
+
+///|
+fn crc32_reverse(bytes : Bytes) -> Int64 {
+  let mut crc = 0xffffffffL
+  let mut i = bytes.length() - 1
+  while i >= 0 {
+    crc = crc32_update(crc, bytes[i].to_int64())
+    if i == 0 {
+      break
+    }
+    i = i - 1
+  }
+  (crc ^ 0xffffffffL) & 0xffffffffL
+}
+
+///|
+fn crc32_update(crc : Int64, byte : Int64) -> Int64 {
+  let mut next = crc ^ byte
+  for _ in 0..<8 {
+    if (next & 1L) != 0L {
+      next = (next >> 1) ^ 0xedb88320L
+    } else {
+      next = next >> 1
+    }
+  }
+  next
 }
 
 ///|

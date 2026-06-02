@@ -216,3 +216,50 @@ test "per-point dPt gradFill renders a gradient def + url() reference" {
   // The non-overridden points keep flat accent fills (no url ref for them).
   assert_true(svg.contains("fill=\"#4472c4\""))
 }
+
+///|
+test "stacked bar dPt solidFill overrides the stacked segment fill" {
+  // §21.2.2.52 dPt applies to the point shape regardless of the
+  // §21.2.2.76 bar grouping. Stacked segments therefore use the same
+  // per-point fill resolver as clustered bars.
+  let dpt = sf_cn("dPt", [], [
+    sf_cn("idx", [("val", "1")], []),
+    sf_cn("spPr", [], [
+      sf_a("solidFill", [], [sf_a("srgbClr", [("val", "00ff99")], [])]),
+    ]),
+  ])
+  let ser_a = sf_cn("ser", [], [sf_numval(["10", "20", "30"])])
+  let ser_b = sf_cn("ser", [], [dpt, sf_numval(["5", "15", "25"])])
+  let chart = sf_c("barChart", [], [
+    sf_cn("barDir", [("val", "col")], []),
+    sf_cn("grouping", [("val", "stacked")], []),
+    ser_a,
+    ser_b,
+  ])
+  let (svg, defs) = sf_render(chart)
+  assert_eq(defs, "")
+  assert_true(svg.contains("fill=\"#00ff99\""))
+}
+
+///|
+test "horizontal percentStacked bar dPt solidFill uses the same override path" {
+  // Covers the horizontal percentStacked branch so the dPt resolver is
+  // not limited to vertical stacked columns.
+  let dpt = sf_cn("dPt", [], [
+    sf_cn("idx", [("val", "2")], []),
+    sf_cn("spPr", [], [
+      sf_a("solidFill", [], [sf_a("srgbClr", [("val", "123456")], [])]),
+    ]),
+  ])
+  let ser_a = sf_cn("ser", [], [sf_numval(["10", "20", "30"])])
+  let ser_b = sf_cn("ser", [], [dpt, sf_numval(["5", "15", "25"])])
+  let chart = sf_c("barChart", [], [
+    sf_cn("barDir", [("val", "bar")], []),
+    sf_cn("grouping", [("val", "percentStacked")], []),
+    ser_a,
+    ser_b,
+  ])
+  let (svg, defs) = sf_render(chart)
+  assert_eq(defs, "")
+  assert_true(svg.contains("fill=\"#123456\""))
+}
