@@ -36,6 +36,8 @@ pub fn evaluate_cf_block(@domain.CT_ConditionalFormatting, Array[(@address.CellA
 
 pub fn evaluate_color_scale(@domain.CT_ColorScale, @formula.FormulaValue, Array[@formula.FormulaValue]) -> @domain.CT_ColorArgb?
 
+pub fn evaluate_data_bar_geometry(@domain.CT_DataBar, @formula.FormulaValue, Array[@formula.FormulaValue]) -> DataBarGeometry?
+
 pub fn evaluate_icon_bucket(@domain.CT_IconSet, @formula.FormulaValue, Array[@formula.FormulaValue]) -> Int?
 
 pub fn evaluate_rule(@domain.CT_CfRule, @formula.FormulaValue, Array[@formula.FormulaValue], EvalContext) -> Bool
@@ -43,6 +45,16 @@ pub fn evaluate_rule(@domain.CT_CfRule, @formula.FormulaValue, Array[@formula.Fo
 // Errors
 
 // Types and methods
+pub(all) struct DataBarGeometry {
+  start_ratio : Double
+  end_ratio : Double
+  axis_ratio : Double
+  fill_color : @domain.CT_ColorArgb
+  axis_color : @domain.CT_ColorArgb?
+  show_axis : Bool
+  direction : String
+} derive(Eq, @debug.Debug)
+
 pub(all) struct EvalContext {
   today : @date_serial.CalendarDateTime
   date_system : @date_serial.DateSystem

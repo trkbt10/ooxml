@@ -180,6 +180,94 @@ pub fn evaluate_bar_ratio(
 }
 
 ///|
+/// Part 1 §18.3.1.28 dataBar — resolve the bar segment and optional
+/// zero-axis metadata for a cell. This is the single evaluator-side
+/// source for dataBar colour/ratio decisions; viewers must only scale
+/// these normalized ratios into their own cell coordinate systems.
+pub fn evaluate_data_bar_geometry(
+  bar : @domain.CT_DataBar,
+  cell : @formula.FormulaValue,
+  population : Array[@formula.FormulaValue],
+) -> DataBarGeometry? {
+  let cell_number = match number_for_population_opt(cell) {
+    Some(n) => n
+    None => return None
+  }
+  let numbers = collect_numbers(population)
+  let lo = resolve_cfvo_value(bar.min_threshold, numbers)
+  let hi = resolve_cfvo_value(bar.max_threshold, numbers)
+  let ratio = data_bar_ratio_for(cell_number, lo, hi)
+  let crosses_zero = lo < 0.0 && hi > 0.0
+  let raw_axis = data_bar_axis_ratio(bar.axis_position, lo, hi, crosses_zero)
+  let (start, end) = if bar.direction == "rightToLeft" {
+    (1.0 - ratio, 1.0)
+  } else {
+    (0.0, ratio)
+  }
+  let fill_color = match (cell_number < 0.0, bar.negative_color) {
+    (true, Some(color)) => color
+    _ => bar.color
+  }
+  let final_axis = if bar.direction == "rightToLeft" {
+    1.0 - raw_axis
+  } else {
+    raw_axis
+  }
+  Some({
+    start_ratio: start.max(0.0).min(1.0),
+    end_ratio: end.max(0.0).min(1.0),
+    axis_ratio: final_axis.max(0.0).min(1.0),
+    fill_color,
+    axis_color: bar.axis_color,
+    show_axis: bar.axis_position != "none" &&
+    (crosses_zero || bar.axis_position == "middle"),
+    direction: bar.direction,
+  })
+}
+
+///|
+fn data_bar_ratio_for(value : Double, lo : Double, hi : Double) -> Double {
+  if value <= lo {
+    return 0.0
+  }
+  if value >= hi {
+    return 1.0
+  }
+  let span = hi - lo
+  if span == 0.0 {
+    0.0
+  } else {
+    ((value - lo) / span).max(0.0).min(1.0)
+  }
+}
+
+///|
+fn data_bar_axis_ratio(
+  axis_position : String,
+  lo : Double,
+  hi : Double,
+  crosses_zero : Bool,
+) -> Double {
+  match axis_position {
+    "middle" => 0.5
+    "none" => 0.0
+    _ =>
+      if crosses_zero {
+        let span = hi - lo
+        if span == 0.0 {
+          0.0
+        } else {
+          ((0.0 - lo) / span).max(0.0).min(1.0)
+        }
+      } else if hi <= 0.0 {
+        1.0
+      } else {
+        0.0
+      }
+  }
+}
+
+///|
 /// Part 1 §18.3.1.49 iconSet — pick an icon bucket (0..thresholds-1)
 /// for a numeric cell value. The thresholds are sorted ascending
 /// after resolution, so the lowest icon is bucket 0; when @reverse is

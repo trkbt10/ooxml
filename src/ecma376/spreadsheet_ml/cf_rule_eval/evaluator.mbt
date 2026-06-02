@@ -385,7 +385,12 @@ pub fn evaluate_cf_block(
         let bar_ratio = match rule.cf_type {
           Some(@domain.DataBar) =>
             match rule.data_bar {
-              Some(bar) => evaluate_bar_ratio(bar, value, population)
+              Some(bar) =>
+                match evaluate_data_bar_geometry(bar, value, population) {
+                  Some(geometry) =>
+                    Some((geometry.end_ratio - geometry.start_ratio).abs())
+                  None => None
+                }
               None => None
             }
           _ => None

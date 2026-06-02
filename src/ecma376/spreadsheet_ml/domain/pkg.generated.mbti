@@ -887,6 +887,7 @@ pub(all) struct CT_DataBar {
   axis_position : String
   direction : String
   negative_color : CT_ColorArgb?
+  axis_color : CT_ColorArgb?
 } derive(Eq, @debug.Debug)
 pub fn CT_DataBar::new(@xml.Element) -> Self raise @errors.SchemaViolation
 

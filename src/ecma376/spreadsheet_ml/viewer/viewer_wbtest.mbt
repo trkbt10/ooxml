@@ -1808,6 +1808,98 @@ test "SpreadsheetML viewer renders §18.3.1.28 dataBar visualisation" {
 }
 
 ///|
+test "SpreadsheetML viewer renders §18.3.1.28 dataBar negative fill" {
+  let worksheet = cf_worksheet_a_values_with_rule(
+    ["-50", "-30", "-10", "100"],
+    [
+      @xml.Node::Element({
+        name: name("cfRule"),
+        attributes: [
+          { name: name("type"), value: "dataBar" },
+          { name: name("priority"), value: "1" },
+        ],
+        children: [
+          @xml.Node::Element({
+            name: name("dataBar"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("cfvo"),
+                attributes: [{ name: name("type"), value: "min" }],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("cfvo"),
+                attributes: [{ name: name("type"), value: "max" }],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("color"),
+                attributes: [{ name: name("rgb"), value: "FF638EC6" }],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("negativeFillColor"),
+                attributes: [{ name: name("rgb"), value: "FFFF555A" }],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  )
+  let result = render_svg(worksheet)
+  inspect(count_fill_color(result.svg, "#FF555A"), content="2")
+  inspect(count_fill_color(result.svg, "#638EC6"), content="1")
+  assert_true(result.svg.contains("data-ooxml-axis-ratio="))
+}
+
+///|
+test "SpreadsheetML viewer renders §18.3.1.28 dataBar middle axis color" {
+  let worksheet = cf_worksheet_a_values_with_rule(["-50", "0", "100"], [
+    @xml.Node::Element({
+      name: name("cfRule"),
+      attributes: [
+        { name: name("type"), value: "dataBar" },
+        { name: name("priority"), value: "1" },
+      ],
+      children: [
+        @xml.Node::Element({
+          name: name("dataBar"),
+          attributes: [{ name: name("axisPosition"), value: "middle" }],
+          children: [
+            @xml.Node::Element({
+              name: name("cfvo"),
+              attributes: [{ name: name("type"), value: "min" }],
+              children: [],
+            }),
+            @xml.Node::Element({
+              name: name("cfvo"),
+              attributes: [{ name: name("type"), value: "max" }],
+              children: [],
+            }),
+            @xml.Node::Element({
+              name: name("color"),
+              attributes: [{ name: name("rgb"), value: "FF638EC6" }],
+              children: [],
+            }),
+            @xml.Node::Element({
+              name: name("axisColor"),
+              attributes: [{ name: name("rgb"), value: "FF404040" }],
+              children: [],
+            }),
+          ],
+        }),
+      ],
+    }),
+  ])
+  let result = render_svg(worksheet)
+  assert_true(result.svg.contains("data-ooxml-axis-ratio=\"0.5\""))
+  assert_true(result.svg.contains("data-ooxml-axis-color=\"#404040\""))
+}
+
+///|
 /// §18.3.1.49 iconSet — `<iconSet iconSet="3TrafficLights1">` with
 /// 3 cfvo thresholds (min / 33% / 67%) over the population
 /// [10, 30, 50] assigns A1→red, A2→yellow, A3→green.
@@ -2084,6 +2176,62 @@ fn cf_worksheet_a1_a4_values_with_rule(
       @xml.Node::Element({
         name: name("conditionalFormatting"),
         attributes: [{ name: name("sqref"), value: "A1:A4" }],
+        children: cf_rule_children,
+      }),
+    ],
+  })
+}
+
+///|
+/// Helper — A1:A{n} with the supplied values and one custom cfRule.
+fn cf_worksheet_a_values_with_rule(
+  values : Array[String],
+  cf_rule_children : Array[@xml.Node],
+) -> @domain.CT_Worksheet raise {
+  let cell_with = fn(addr : String, value : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("c"),
+      attributes: [{ name: name("r"), value: addr }],
+      children: [
+        @xml.Node::Element({
+          name: name("v"),
+          attributes: [],
+          children: [@xml.Node::Text(value)],
+        }),
+      ],
+    })
+  }
+  let rows : Array[@xml.Node] = []
+  for i, value in values {
+    let row_number = i + 1
+    let addr = "A" + row_number.to_string()
+    rows.push(
+      @xml.Node::Element({
+        name: name("row"),
+        attributes: [{ name: name("r"), value: row_number.to_string() }],
+        children: [cell_with(addr, value)],
+      }),
+    )
+  }
+  let last_row = if values.length() == 0 { 1 } else { values.length() }
+  let ref_text = "A1:A" + last_row.to_string()
+  @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [{ name: name("ref"), value: ref_text }],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: rows,
+      }),
+      @xml.Node::Element({
+        name: name("conditionalFormatting"),
+        attributes: [{ name: name("sqref"), value: ref_text }],
         children: cf_rule_children,
       }),
     ],

@@ -44,6 +44,9 @@ test "§18.3.1.28 CT_DataBar decodes typed display metadata" {
         @xml.Node::Element(
           cf_elem_test("negativeFillColor", [cf_attr_test("rgb", "FFFF0000")], []),
         ),
+        @xml.Node::Element(
+          cf_elem_test("axisColor", [cf_attr_test("rgb", "FF404040")], []),
+        ),
       ],
     ),
   )
@@ -54,6 +57,14 @@ test "§18.3.1.28 CT_DataBar decodes typed display metadata" {
       assert_eq(c.red, 255)
       assert_eq(c.green, 0)
       assert_eq(c.blue, 0)
+    }
+    None => assert_true(false)
+  }
+  match bar.axis_color {
+    Some(c) => {
+      assert_eq(c.red, 64)
+      assert_eq(c.green, 64)
+      assert_eq(c.blue, 64)
     }
     None => assert_true(false)
   }

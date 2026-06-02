@@ -540,22 +540,15 @@ pub fn render_svg(
         for n in fill_nodes {
           cell_fills.push(n)
         }
-        // §18.3.1.28 dataBar — draw the proportional bar over the
-        // cell background. Width = cell.width * ratio. Left-aligned
-        // for positive bars; ECMA-376 §18.3.1.28 also supports
-        // negative bars centred on the axis but the most common
-        // case is min=0 so we ship the simple left-aligned form.
+        // §18.3.1.28 dataBar — draw the evaluator-provided segment
+        // over the cell background. Thresholds, axis placement, and
+        // negative-fill selection stay in `@cf_eval`.
         match style.data_bar {
           None => ()
-          Some(pair) => {
-            let (ratio, bar_color, axis_position, direction, negative_color) = pair
-            for
-              n in render_data_bar(
-                cl, ratio, bar_color, axis_position, direction, negative_color,
-              ) {
+          Some(geometry) =>
+            for n in render_data_bar(cl, geometry) {
               cell_fills.push(n)
             }
-          }
         }
       }
     }
@@ -2156,13 +2149,9 @@ priv struct ResolvedCellStyle {
   border : ResolvedBorder
   alignment : ResolvedAlignment
   number_format : String
-  /// §18.3.1.28 dataBar overlay — `(ratio in 0..1, bar fill color,
-  /// axis_position metadata, direction metadata, negative fill
-  /// colour or empty)` derived from `<dataBar>` attributes
-  /// (`@axisPosition`, `@direction`, `<a:negativeFillColor>`). The
-  /// renderer paints the rect using `ratio`/`bar fill color` and
-  /// surfaces the rest as spec-anchored metadata.
-  data_bar : (Double, String, String, String, String)?
+  /// §18.3.1.28 dataBar overlay geometry produced by `@cf_eval`.
+  /// The viewer only scales normalized ratios into SVG coordinates.
+  data_bar : @cf_eval.DataBarGeometry?
   /// §18.3.1.49 iconSet — `(set_name from §18.18.42, bucket index
   /// from evaluate_icon_bucket)`. The spec only enumerates icon set
   /// names; the exact glyph artwork is application-defined and outside
@@ -2586,28 +2575,8 @@ fn apply_cf_overlay(
     match rule.data_bar {
       Some(bar) =>
         if @cf_eval.evaluate_rule(rule, cell_val, population, eval_ctx) {
-          match @cf_eval.evaluate_bar_ratio(bar, cell_val, population) {
-            Some(ratio) => {
-              // §18.3.1.28 — surface the typed dataBar display metadata
-              // decoded by SpreadsheetML domain. The viewer does not
-              // parse `bar.element` again; CT_DataBar is the SoT.
-              let negative_color = match bar.negative_color {
-                Some(color) => argb_to_css(color)
-                None => ""
-              }
-              acc = {
-                ..acc,
-                data_bar: Some(
-                  (
-                    ratio,
-                    argb_to_css(bar.color),
-                    bar.axis_position,
-                    bar.direction,
-                    negative_color,
-                  ),
-                ),
-              }
-            }
+          match @cf_eval.evaluate_data_bar_geometry(bar, cell_val, population) {
+            Some(geometry) => acc = { ..acc, data_bar: Some(geometry) }
             None => ()
           }
           if rule.stop_if_true {
@@ -6460,47 +6429,48 @@ fn format_general(value : Double) -> String {
 // =============================================================================
 
 ///|
-/// §18.3.1.28 dataBar — emit a `<rect>` overlay positioned over the
-/// cell, with width = layout.width * ratio (clamped to [0, width]).
-/// The bar is inset 2 px on each side as a viewer convention so the
-/// cell text remains readable; spec leaves the visual inset unset.
-/// `axis_position`, `direction`, and `negative_color` carry the
-/// §18.3.1.28 attributes that the viewer does not render directly
-/// (centred axis, RTL direction, negative-fill bar) — they surface
-/// as `data-ooxml-axis-position` / `data-ooxml-direction` /
-/// `data-ooxml-negative-color` so the consumer can apply them.
+/// §18.3.1.28 dataBar — emit SVG for the evaluator-provided bar
+/// geometry. The bar is inset 2 px on each side as a viewer
+/// convention so the cell text remains readable; spec leaves the
+/// visual inset unset.
 fn render_data_bar(
   layout : CellLayout,
-  ratio : Double,
-  color : String,
-  axis_position : String,
-  direction : String,
-  negative_color : String,
+  geometry : @cf_eval.DataBarGeometry,
 ) -> Array[@xml.Node] {
   let inset = 2.0
   let max_bar_width = (layout.width - inset * 2.0).max(0.0)
-  let bar_width = (max_bar_width * ratio.max(0.0).min(1.0)).max(0.0)
-  if bar_width == 0.0 {
-    return []
-  }
+  let start = geometry.start_ratio.max(0.0).min(1.0)
+  let end = geometry.end_ratio.max(0.0).min(1.0)
+  let left = start.min(end)
+  let right = start.max(end)
+  let bar_width = (max_bar_width * (right - left)).max(0.0)
   let bar_height = (layout.height - inset * 2.0).max(0.0)
-  let attrs : Array[@xml.Attribute] = [
-    svg_attr("x", format_d(layout.x + inset)),
-    svg_attr("y", format_d(layout.y + inset)),
-    svg_attr("width", format_d(bar_width)),
-    svg_attr("height", format_d(bar_height)),
-    svg_attr("fill", color),
-  ]
-  if axis_position != "automatic" {
-    attrs.push(svg_attr("data-ooxml-axis-position", axis_position))
+  let nodes : Array[@xml.Node] = []
+  if bar_width > 0.0 && bar_height > 0.0 {
+    let attrs : Array[@xml.Attribute] = [
+      svg_attr("x", format_d(layout.x + inset + max_bar_width * left)),
+      svg_attr("y", format_d(layout.y + inset)),
+      svg_attr("width", format_d(bar_width)),
+      svg_attr("height", format_d(bar_height)),
+      svg_attr("fill", argb_to_css(geometry.fill_color)),
+      svg_attr("data-ooxml-databar", "segment"),
+    ]
+    if geometry.direction != "context" {
+      attrs.push(svg_attr("data-ooxml-direction", geometry.direction))
+    }
+    if geometry.show_axis {
+      attrs.push(
+        svg_attr("data-ooxml-axis-ratio", format_d(geometry.axis_ratio)),
+      )
+      match geometry.axis_color {
+        Some(axis_color) =>
+          attrs.push(svg_attr("data-ooxml-axis-color", argb_to_css(axis_color)))
+        None => ()
+      }
+    }
+    nodes.push(svg_elem("rect", attrs, []))
   }
-  if direction != "context" {
-    attrs.push(svg_attr("data-ooxml-direction", direction))
-  }
-  if negative_color != "" {
-    attrs.push(svg_attr("data-ooxml-negative-color", negative_color))
-  }
-  [svg_elem("rect", attrs, [])]
+  nodes
 }
 
 ///|

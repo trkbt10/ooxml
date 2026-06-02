@@ -318,6 +318,7 @@ pub fn CT_DataBar::new(
   let axis_position = cf_attr_or(element, "axisPosition", "automatic")
   let direction = cf_attr_or(element, "direction", "context")
   let negative_color = cf_decode_data_bar_negative_color(element)
+  let axis_color = cf_decode_data_bar_axis_color(element)
   {
     element,
     min_threshold: thresholds[0],
@@ -329,6 +330,7 @@ pub fn CT_DataBar::new(
     axis_position,
     direction,
     negative_color,
+    axis_color,
   }
 }
 
@@ -337,7 +339,8 @@ fn cf_decode_data_bar_negative_color(
   data_bar : @xml.Element,
 ) -> CT_ColorArgb? raise @opc_errors.SchemaViolation {
   match cf_first_child_named(data_bar, "negativeFillColor") {
-    Some(color_el) => return cf_decode_data_bar_color(color_el)
+    Some(color_el) =>
+      return cf_decode_data_bar_color(color_el, "dataBar/negativeFillColor")
     None => ()
   }
   // Some producers write the DrawingML-style colour child directly
@@ -349,16 +352,26 @@ fn cf_decode_data_bar_negative_color(
 }
 
 ///|
+fn cf_decode_data_bar_axis_color(
+  data_bar : @xml.Element,
+) -> CT_ColorArgb? raise @opc_errors.SchemaViolation {
+  match cf_first_child_named(data_bar, "axisColor") {
+    Some(color_el) => cf_decode_data_bar_color(color_el, "dataBar/axisColor")
+    None => None
+  }
+}
+
+///|
 fn cf_decode_data_bar_color(
   element : @xml.Element,
+  path : String,
 ) -> CT_ColorArgb? raise @opc_errors.SchemaViolation {
   match cf_attr(element, "rgb") {
     Some(value) => return Some(cf_parse_argb_hex(value))
     None => ()
   }
   match cf_first_child_named(element, "srgbClr") {
-    Some(srgb) =>
-      cf_decode_srgb_color(srgb, "dataBar/negativeFillColor/srgbClr/@val")
+    Some(srgb) => cf_decode_srgb_color(srgb, path + "/srgbClr/@val")
     None => None
   }
 }

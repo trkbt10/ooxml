@@ -200,6 +200,8 @@ pub(all) struct CT_DataBar {
   direction : String
   /// <negativeFillColor> / legacy <a:srgbClr> — negative bar colour.
   negative_color : CT_ColorArgb?
+  /// <axisColor> — zero-axis colour when the data bar displays one.
+  axis_color : CT_ColorArgb?
 } derive(Eq, Debug)
 
 ///|

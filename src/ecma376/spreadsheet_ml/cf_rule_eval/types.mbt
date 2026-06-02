@@ -49,6 +49,21 @@ pub(all) struct MatchHit {
 } derive(Eq, Debug)
 
 ///|
+/// Evaluator-side §18.3.1.28 dataBar geometry. Ratios are normalized
+/// to the cell's inner bar box (`0.0` left edge, `1.0` right edge) so
+/// renderers can paint without re-resolving cfvo thresholds or
+/// interpreting `@axisPosition` / `@direction` a second time.
+pub(all) struct DataBarGeometry {
+  start_ratio : Double
+  end_ratio : Double
+  axis_ratio : Double
+  fill_color : @domain.CT_ColorArgb
+  axis_color : @domain.CT_ColorArgb?
+  show_axis : Bool
+  direction : String
+} derive(Eq, Debug)
+
+///|
 let cf_rule_section : String = "Part 1 §18.3.1.10 / §18.18.12"
 
 ///|

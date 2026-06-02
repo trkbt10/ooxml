@@ -328,11 +328,70 @@ test "§18.3.1.28 dataBar ratio saturates outside min/max" {
     axis_position: "automatic",
     direction: "context",
     negative_color: None,
+    axis_color: None,
   }
   assert_eq(evaluate_bar_ratio(bar, n(-5.0), []).unwrap(), 0.0)
   assert_eq(evaluate_bar_ratio(bar, n(200.0), []).unwrap(), 1.0)
   let mid = evaluate_bar_ratio(bar, n(25.0), []).unwrap()
   assert_true(mid > 0.24 && mid < 0.26)
+}
+
+///|
+test "§18.3.1.28 dataBar geometry keeps ratio SoT and negative fill" {
+  let bar : @domain.CT_DataBar = {
+    element: {
+      name: { prefix: None, local_name: "dataBar", ns: None },
+      attributes: [],
+      children: [],
+    },
+    min_threshold: { kind: @domain.CfvoMin, value_text: None, gte: true },
+    max_threshold: { kind: @domain.CfvoMax, value_text: None, gte: true },
+    color: @domain.CT_ColorArgb::new(255, 0, 0, 255),
+    min_length: 0,
+    max_length: 100,
+    show_value: true,
+    axis_position: "automatic",
+    direction: "context",
+    negative_color: Some(@domain.CT_ColorArgb::new(255, 255, 0, 0)),
+    axis_color: Some(@domain.CT_ColorArgb::new(255, 64, 64, 64)),
+  }
+  let pop = [n(-50.0), n(0.0), n(100.0)]
+  let neg = evaluate_data_bar_geometry(bar, n(-30.0), pop).unwrap()
+  assert_eq(neg.start_ratio, 0.0)
+  assert_true(neg.end_ratio > 0.13 && neg.end_ratio < 0.14)
+  assert_true(neg.axis_ratio > 0.32 && neg.axis_ratio < 0.34)
+  assert_true(neg.show_axis)
+  assert_eq(neg.fill_color.red, 255)
+  let pos = evaluate_data_bar_geometry(bar, n(100.0), pop).unwrap()
+  assert_eq(pos.start_ratio, 0.0)
+  assert_true(pos.end_ratio > 0.99)
+  assert_eq(pos.fill_color.blue, 255)
+}
+
+///|
+test "§18.3.1.28 dataBar geometry honors forced middle axis" {
+  let bar : @domain.CT_DataBar = {
+    element: {
+      name: { prefix: None, local_name: "dataBar", ns: None },
+      attributes: [],
+      children: [],
+    },
+    min_threshold: { kind: @domain.CfvoMin, value_text: None, gte: true },
+    max_threshold: { kind: @domain.CfvoMax, value_text: None, gte: true },
+    color: @domain.CT_ColorArgb::new(255, 0, 0, 255),
+    min_length: 0,
+    max_length: 100,
+    show_value: true,
+    axis_position: "middle",
+    direction: "context",
+    negative_color: None,
+    axis_color: None,
+  }
+  let pop = [n(-50.0), n(100.0)]
+  let geom = evaluate_data_bar_geometry(bar, n(100.0), pop).unwrap()
+  assert_eq(geom.axis_ratio, 0.5)
+  assert_eq(geom.start_ratio, 0.0)
+  assert_eq(geom.end_ratio, 1.0)
 }
 
 ///|
