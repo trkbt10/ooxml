@@ -857,6 +857,768 @@ fn xlsx_package_with_pivot(
 }
 
 ///|
+/// Catalog-only §18.10 host selection.  These are the PivotTable
+/// elements whose content reaches the existing
+/// `spreadsheet_ml/pivot_table` materializer and `viewer/pivot_render`
+/// overlay.  Metadata-only PivotTable children are intentionally left
+/// to the generic `parsed` path so the catalog does not over-count
+/// data-attribute-only traces as rendered output.
+fn is_sml_pivot_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "spreadsheetml/main" {
+    return false
+  }
+  let type_local = catalog_type_local(type_name)
+  match type_local {
+    "CT_PivotCacheDefinition"
+    | "CT_CacheSource"
+    | "CT_CacheFields"
+    | "CT_CacheField"
+    | "CT_SharedItems"
+    | "CT_PivotCacheRecords"
+    | "CT_Record"
+    | "CT_Index"
+    | "CT_Number"
+    | "CT_String"
+    | "CT_pivotTableDefinition"
+    | "CT_Location"
+    | "CT_PivotFields"
+    | "CT_PivotField"
+    | "CT_RowFields"
+    | "CT_ColFields"
+    | "CT_rowItems"
+    | "CT_colItems"
+    | "CT_DataFields"
+    | "CT_DataField"
+    | "CT_Field"
+    | "CT_I" => true
+    _ =>
+      match local_name {
+        "pivotCacheDefinition" | "pivotCacheRecords" | "pivotTableDefinition" =>
+          true
+        _ => false
+      }
+  }
+}
+
+///|
+/// Normalize a catalog target into one of the three §18.10 PivotTable
+/// part roots.  This is host scaffolding only: it supplies the
+/// required siblings around the target so the existing reader ->
+/// context -> pivot materializer -> viewer path is exercised.  The
+/// host later packages the returned root verbatim; it does not fill
+/// pruned children back in, preserving the verifier's differential
+/// baseline.
+fn catalog_sml_pivot_root(
+  content : @xml.Element,
+  type_name : String,
+) -> @xml.Element {
+  let type_local = catalog_type_local(type_name)
+  match catalog_sml_pivot_branch(content.name.local_name, type_local) {
+    "cache" => catalog_sml_pivot_cache_def_root(content)
+    "records" => catalog_sml_pivot_records_root(content)
+    _ => catalog_sml_pivot_table_def_root(content)
+  }
+}
+
+///|
+fn catalog_sml_pivot_branch(local_name : String, type_local : String) -> String {
+  match type_local {
+    "CT_PivotCacheDefinition"
+    | "CT_CacheSource"
+    | "CT_CacheFields"
+    | "CT_CacheField"
+    | "CT_SharedItems"
+    | "CT_String" => "cache"
+    "CT_PivotCacheRecords" | "CT_Record" | "CT_Index" | "CT_Number" => "records"
+    _ =>
+      match local_name {
+        "pivotCacheDefinition" => "cache"
+        "pivotCacheRecords" => "records"
+        _ => "pivot"
+      }
+  }
+}
+
+///|
+fn catalog_sml_pivot_parts(
+  content : @xml.Element,
+) -> (@xml.Element, @xml.Element, @xml.Element, @xml.Element) {
+  let sheet = catalog_sml_pivot_sheet_data()
+  let cache_def = match content.name.local_name {
+    "pivotCacheDefinition" => content
+    _ => catalog_sml_pivot_default_cache_def()
+  }
+  let cache_records = match content.name.local_name {
+    "pivotCacheRecords" => content
+    _ => catalog_sml_pivot_default_records()
+  }
+  let pivot_def = match content.name.local_name {
+    "pivotTableDefinition" => content
+    _ => catalog_sml_pivot_default_table_def()
+  }
+  (sheet, cache_def, cache_records, pivot_def)
+}
+
+///|
+fn catalog_sml_pivot_sheet_data() -> @xml.Element {
+  xe(NS_S_PVT, "sheetData", [], [
+    Element(s_row("1", [s_inline("A1", "Region"), s_inline("B1", "Sales")])),
+    Element(s_row("2", [s_inline("A2", "East"), s_cell("B2", "10")])),
+    Element(s_row("3", [s_inline("A3", "West"), s_cell("B3", "20")])),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_default_cache_def() -> @xml.Element {
+  cache_def_root(
+    cache_source_worksheet("S1", "A1:B3"),
+    catalog_sml_pivot_default_cache_fields(),
+    2,
+  )
+}
+
+///|
+fn catalog_sml_pivot_default_cache_fields() -> @xml.Element {
+  cache_fields_wrap([
+    cache_field_strings("Region", ["East", "West"]),
+    cache_field_numbers_inline("Sales"),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_default_records() -> @xml.Element {
+  records_root([
+    record_row([rec_x(0), rec_n("10")]),
+    record_row([rec_x(1), rec_n("20")]),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_default_table_def() -> @xml.Element {
+  pivot_def_root(
+    "CatalogPivot",
+    pivot_location("E1:F4", 0, 1, 1),
+    pivot_fields_wrap([
+      pivot_field("axisRow", false, 2),
+      pivot_field("", true, 0),
+    ]),
+    Some(axis_fields("rowFields", [0])),
+    None,
+    axis_items_wrap("rowItems", [
+      pivot_axis_item([0], false),
+      pivot_axis_item([1], false),
+    ]),
+    axis_items_wrap("colItems", [pivot_axis_item([], false)]),
+    data_fields_wrap([data_field_entry("Sum of Sales", 1, "sum")]),
+    false,
+    false,
+  )
+}
+
+///|
+fn catalog_sml_pivot_cache_def_root(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "pivotCacheDefinition" =>
+      catalog_sml_pivot_element_with_children(
+        content,
+        catalog_pivot_attrs_with_defaults(content.attributes, [
+          ("recordCount", "2"),
+          ("createdVersion", "3"),
+          ("refreshedVersion", "3"),
+        ]),
+        [
+          Element(cache_source_worksheet("S1", "A1:B3")),
+          Element(
+            cache_fields_wrap([
+              cache_field_strings("Region", ["North", "South"]),
+              cache_field_numbers_inline("Sales"),
+            ]),
+          ),
+        ],
+      )
+    "cacheSource" =>
+      cache_def_root(
+        catalog_sml_pivot_cache_source(content),
+        catalog_sml_pivot_default_cache_fields(),
+        2,
+      )
+    "cacheFields" =>
+      cache_def_root(
+        cache_source_worksheet("S1", "A1:B3"),
+        catalog_sml_pivot_cache_fields(content),
+        2,
+      )
+    "cacheField" =>
+      cache_def_root(
+        cache_source_worksheet("S1", "A1:B3"),
+        catalog_sml_pivot_cache_fields_with_region(
+          catalog_sml_pivot_region_cache_field(content),
+        ),
+        2,
+      )
+    "sharedItems" =>
+      cache_def_root(
+        cache_source_worksheet("S1", "A1:B3"),
+        catalog_sml_pivot_cache_fields_with_region(
+          catalog_sml_pivot_region_cache_field_with_shared_items(content),
+        ),
+        2,
+      )
+    "s" =>
+      cache_def_root(
+        cache_source_worksheet("S1", "A1:B3"),
+        catalog_sml_pivot_cache_fields_with_region(
+          catalog_sml_pivot_region_cache_field_with_shared_items(
+            catalog_sml_pivot_shared_items_with_value(content),
+          ),
+        ),
+        2,
+      )
+    _ => catalog_sml_pivot_default_cache_def()
+  }
+}
+
+///|
+fn catalog_sml_pivot_cache_source(source : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    source,
+    catalog_pivot_force_attrs(source.attributes, [("type", "worksheet")]),
+    [
+      Element(
+        xe(
+          NS_S_PVT,
+          "worksheetSource",
+          [xa("sheet", "S1"), xa("ref", "A1:B3")],
+          [],
+        ),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_sml_pivot_cache_fields(fields : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_region = false
+  for child in fields.children {
+    match child {
+      Element(ce) if ce.name.local_name == "cacheField" => {
+        kids.push(Element(catalog_sml_pivot_region_cache_field(ce)))
+        saw_region = true
+      }
+      _ => ()
+    }
+  }
+  if !saw_region {
+    kids.push(Element(cache_field_strings("Region", ["East", "West"])))
+  }
+  kids.push(Element(cache_field_numbers_inline("Sales")))
+  catalog_sml_pivot_element_with_children(
+    fields,
+    catalog_pivot_force_attrs(fields.attributes, [("count", "2")]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_cache_fields_with_region(
+  region : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "cacheFields", [xa("count", "2")], [
+    Element(region),
+    Element(cache_field_numbers_inline("Sales")),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_region_cache_field(field : @xml.Element) -> @xml.Element {
+  let shared = match first_child_named_local_local(field, "sharedItems") {
+    Some(items) => catalog_sml_pivot_shared_items(items)
+    None => catalog_sml_pivot_shared_items_default()
+  }
+  catalog_sml_pivot_element_with_children(
+    field,
+    catalog_pivot_force_attrs(field.attributes, [
+      ("name", "Region"),
+      ("numFmtId", "0"),
+    ]),
+    [Element(shared)],
+  )
+}
+
+///|
+fn catalog_sml_pivot_region_cache_field_with_shared_items(
+  shared_items : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "cacheField", [xa("name", "Region"), xa("numFmtId", "0")], [
+    Element(catalog_sml_pivot_shared_items(shared_items)),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_shared_items_default() -> @xml.Element {
+  xe(NS_S_PVT, "sharedItems", [xa("count", "2"), xa("containsString", "1")], [
+    Element(xe(NS_S_PVT, "s", [xa("v", "East")], [])),
+    Element(xe(NS_S_PVT, "s", [xa("v", "West")], [])),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_shared_items(shared_items : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut saw_value = false
+  for child in shared_items.children {
+    match child {
+      Element(ce) if ce.name.local_name == "s" => {
+        kids.push(Element(catalog_sml_pivot_shared_string_value(ce, "East")))
+        saw_value = true
+      }
+      _ => ()
+    }
+  }
+  if !saw_value {
+    kids.push(Element(xe(NS_S_PVT, "s", [xa("v", "East")], [])))
+  }
+  kids.push(Element(xe(NS_S_PVT, "s", [xa("v", "West")], [])))
+  catalog_sml_pivot_element_with_children(
+    shared_items,
+    catalog_pivot_force_attrs(shared_items.attributes, [
+      ("count", "2"),
+      ("containsString", "1"),
+    ]),
+    kids,
+  )
+}
+
+///|
+fn catalog_sml_pivot_shared_items_with_value(
+  value : @xml.Element,
+) -> @xml.Element {
+  xe(NS_S_PVT, "sharedItems", [xa("count", "2"), xa("containsString", "1")], [
+    Element(catalog_sml_pivot_shared_string_value(value, "East")),
+    Element(xe(NS_S_PVT, "s", [xa("v", "West")], [])),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_shared_string_value(
+  value : @xml.Element,
+  fallback : String,
+) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    value,
+    catalog_pivot_force_attrs(value.attributes, [("v", fallback)]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_records_root(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "pivotCacheRecords" =>
+      catalog_sml_pivot_element_with_children(
+        content,
+        catalog_pivot_force_attrs(content.attributes, [("count", "2")]),
+        [
+          Element(record_row([rec_x(0), rec_n("90")])),
+          Element(record_row([rec_x(1), rec_n("80")])),
+        ],
+      )
+    "r" =>
+      xe(NS_S_PVT, "pivotCacheRecords", [xa("count", "2")], [
+        Element(catalog_sml_pivot_record(content)),
+        Element(record_row([rec_x(1), rec_n("20")])),
+      ])
+    "x" =>
+      xe(NS_S_PVT, "pivotCacheRecords", [xa("count", "2")], [
+        Element(
+          record_row([catalog_sml_pivot_record_index(content, "0"), rec_n("10")]),
+        ),
+        Element(record_row([rec_x(1), rec_n("20")])),
+      ])
+    "n" =>
+      xe(NS_S_PVT, "pivotCacheRecords", [xa("count", "2")], [
+        Element(
+          record_row([rec_x(0), catalog_sml_pivot_record_number(content, "10")]),
+        ),
+        Element(record_row([rec_x(1), rec_n("20")])),
+      ])
+    _ => catalog_sml_pivot_default_records()
+  }
+}
+
+///|
+fn catalog_sml_pivot_record(record : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(record, record.attributes, [
+    Element(rec_x(0)),
+    Element(rec_n("10")),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_record_index(
+  value : @xml.Element,
+  fallback : String,
+) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    value,
+    catalog_pivot_force_attrs(value.attributes, [("v", fallback)]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_record_number(
+  value : @xml.Element,
+  fallback : String,
+) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    value,
+    catalog_pivot_force_attrs(value.attributes, [("v", fallback)]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_table_def_root(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "pivotTableDefinition" =>
+      catalog_sml_pivot_element_with_children(
+        content,
+        catalog_pivot_force_attrs(content.attributes, [
+          ("name", "CatalogPivot"),
+          ("cacheId", "0"),
+          ("dataCaption", "Values"),
+        ]),
+        catalog_sml_pivot_table_def_children(),
+      )
+    "location" =>
+      catalog_sml_pivot_table_def_with(
+        "location",
+        catalog_sml_pivot_location(content),
+      )
+    "pivotFields" =>
+      catalog_sml_pivot_table_def_with(
+        "pivotFields",
+        catalog_sml_pivot_pivot_fields(content),
+      )
+    "pivotField" =>
+      catalog_sml_pivot_table_def_with(
+        "pivotFields",
+        pivot_fields_wrap([
+          catalog_sml_pivot_axis_field(content),
+          pivot_field("", true, 0),
+        ]),
+      )
+    "rowFields" =>
+      catalog_sml_pivot_table_def_with(
+        "rowFields",
+        catalog_sml_pivot_row_fields(content),
+      )
+    "colFields" =>
+      catalog_sml_pivot_table_def_with_col_axis(
+        catalog_sml_pivot_col_fields(content),
+        axis_items_wrap("colItems", [pivot_axis_item([0], false)]),
+      )
+    "field" =>
+      catalog_sml_pivot_table_def_with(
+        "rowFields",
+        xe(NS_S_PVT, "rowFields", [xa("count", "1")], [
+          Element(catalog_sml_pivot_field_index(content, "0")),
+        ]),
+      )
+    "rowItems" =>
+      catalog_sml_pivot_table_def_with(
+        "rowItems",
+        catalog_sml_pivot_axis_items(content),
+      )
+    "colItems" =>
+      catalog_sml_pivot_table_def_with_col_axis(
+        axis_fields("colFields", [0]),
+        catalog_sml_pivot_axis_items(content),
+      )
+    "i" =>
+      catalog_sml_pivot_table_def_with(
+        "rowItems",
+        xe(NS_S_PVT, "rowItems", [xa("count", "1")], [
+          Element(catalog_sml_pivot_axis_item(content)),
+        ]),
+      )
+    "dataFields" =>
+      catalog_sml_pivot_table_def_with(
+        "dataFields",
+        catalog_sml_pivot_data_fields(content),
+      )
+    "dataField" =>
+      catalog_sml_pivot_table_def_with(
+        "dataFields",
+        xe(NS_S_PVT, "dataFields", [xa("count", "1")], [
+          Element(catalog_sml_pivot_data_field(content)),
+        ]),
+      )
+    _ => catalog_sml_pivot_default_table_def()
+  }
+}
+
+///|
+fn catalog_sml_pivot_table_def_with(
+  local_name : String,
+  replacement : @xml.Element,
+) -> @xml.Element {
+  let default = catalog_sml_pivot_default_table_def()
+  let kids : Array[@xml.Node] = []
+  for child in default.children {
+    match child {
+      Element(ce) if ce.name.local_name == local_name =>
+        kids.push(Element(replacement))
+      _ => kids.push(child)
+    }
+  }
+  { name: default.name, attributes: default.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_pivot_table_def_with_col_axis(
+  col_fields : @xml.Element,
+  col_items : @xml.Element,
+) -> @xml.Element {
+  let default = catalog_sml_pivot_default_table_def()
+  let kids : Array[@xml.Node] = []
+  for child in default.children {
+    match child {
+      Element(ce) if ce.name.local_name == "colItems" => {
+        kids.push(Element(col_fields))
+        kids.push(Element(col_items))
+      }
+      _ => kids.push(child)
+    }
+  }
+  { name: default.name, attributes: default.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_pivot_table_def_children() -> Array[@xml.Node] {
+  let default = catalog_sml_pivot_default_table_def()
+  let kids : Array[@xml.Node] = []
+  for child in default.children {
+    kids.push(child)
+  }
+  kids
+}
+
+///|
+fn catalog_sml_pivot_location(location : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    location,
+    catalog_pivot_force_attrs(location.attributes, [
+      ("ref", "E1:F4"),
+      ("firstHeaderRow", "0"),
+      ("firstDataRow", "1"),
+      ("firstDataCol", "1"),
+    ]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_pivot_fields(fields : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    fields,
+    catalog_pivot_force_attrs(fields.attributes, [("count", "2")]),
+    [
+      Element(catalog_sml_pivot_hidden_axis_field()),
+      Element(pivot_field("", true, 0)),
+    ],
+  )
+}
+
+///|
+fn catalog_sml_pivot_hidden_axis_field() -> @xml.Element {
+  xe(
+    NS_S_PVT,
+    "pivotField",
+    [
+      xa("axis", "axisRow"),
+      xa("compact", "0"),
+      xa("outline", "0"),
+      xa("showAll", "0"),
+    ],
+    [
+      Element(
+        xe(NS_S_PVT, "items", [xa("count", "3")], [
+          Element(xe(NS_S_PVT, "item", [xa("x", "0")], [])),
+          Element(xe(NS_S_PVT, "item", [xa("x", "1"), xa("h", "1")], [])),
+          Element(xe(NS_S_PVT, "item", [xa("t", "default")], [])),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_sml_pivot_axis_field(field : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    field,
+    catalog_pivot_force_attrs(field.attributes, [
+      ("axis", "axisRow"),
+      ("compact", "0"),
+      ("outline", "0"),
+      ("showAll", "0"),
+    ]),
+    [
+      Element(
+        xe(NS_S_PVT, "items", [xa("count", "3")], [
+          Element(xe(NS_S_PVT, "item", [xa("x", "0")], [])),
+          Element(xe(NS_S_PVT, "item", [xa("x", "1"), xa("h", "1")], [])),
+          Element(xe(NS_S_PVT, "item", [xa("t", "default")], [])),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_sml_pivot_row_fields(fields : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    fields,
+    catalog_pivot_force_attrs(fields.attributes, [("count", "1")]),
+    [Element(xe(NS_S_PVT, "field", [xa("x", "0")], []))],
+  )
+}
+
+///|
+fn catalog_sml_pivot_col_fields(fields : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    fields,
+    catalog_pivot_force_attrs(fields.attributes, [("count", "1")]),
+    [Element(xe(NS_S_PVT, "field", [xa("x", "0")], []))],
+  )
+}
+
+///|
+fn catalog_sml_pivot_field_index(
+  field : @xml.Element,
+  fallback : String,
+) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    field,
+    catalog_pivot_force_attrs(field.attributes, [("x", fallback)]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_axis_items(items : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    items,
+    catalog_pivot_force_attrs(items.attributes, [("count", "1")]),
+    [Element(pivot_axis_item([1], false))],
+  )
+}
+
+///|
+fn catalog_sml_pivot_axis_item(item : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(item, item.attributes, [
+    Element(xe(NS_S_PVT, "x", [xa("v", "1")], [])),
+  ])
+}
+
+///|
+fn catalog_sml_pivot_data_fields(fields : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    fields,
+    catalog_pivot_force_attrs(fields.attributes, [("count", "1")]),
+    [Element(data_field_entry("Sum of Sales", 1, "sum"))],
+  )
+}
+
+///|
+fn catalog_sml_pivot_data_field(field : @xml.Element) -> @xml.Element {
+  catalog_sml_pivot_element_with_children(
+    field,
+    catalog_pivot_force_attrs(field.attributes, [
+      ("name", "Sum of Sales"),
+      ("fld", "1"),
+    ]),
+    [],
+  )
+}
+
+///|
+fn catalog_sml_pivot_element_with_children(
+  element : @xml.Element,
+  attributes : Array[@xml.Attribute],
+  children : Array[@xml.Node],
+) -> @xml.Element {
+  { name: element.name, attributes, children }
+}
+
+///|
+fn catalog_pivot_attrs_with_defaults(
+  attrs : Array[@xml.Attribute],
+  defaults : Array[(String, String)],
+) -> Array[@xml.Attribute] {
+  let out : Array[@xml.Attribute] = []
+  for a in attrs {
+    out.push(a)
+  }
+  for d in defaults {
+    let (name, value) = d
+    let mut found = false
+    for a in out {
+      if a.name.local_name == name {
+        found = true
+        break
+      }
+    }
+    if !found {
+      out.push(xa(name, value))
+    }
+  }
+  out
+}
+
+///|
+fn catalog_pivot_force_attrs(
+  attrs : Array[@xml.Attribute],
+  forced : Array[(String, String)],
+) -> Array[@xml.Attribute] {
+  let out : Array[@xml.Attribute] = []
+  for a in attrs {
+    let mut replaced = false
+    for f in forced {
+      let (name, value) = f
+      if a.name.local_name == name {
+        out.push({ name: a.name, value })
+        replaced = true
+        break
+      }
+    }
+    if !replaced {
+      out.push(a)
+    }
+  }
+  for f in forced {
+    let (name, value) = f
+    let mut found = false
+    for a in out {
+      if a.name.local_name == name {
+        found = true
+        break
+      }
+    }
+    if !found {
+      out.push(xa(name, value))
+    }
+  }
+  out
+}
+
+///|
 /// `.xlsx` package whose `<worksheet>` carries a Microsoft x14
 /// sparklines extension inline via
 /// `<extLst>/<ext uri="{05C60535-1F16-4FD2-B633-F4F36F0B64E0}">/<x14:sparklineGroups>`.
@@ -4632,6 +5394,12 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "xlsx:styles" => xlsx_with_aux_root_package("styles", content)
     "xlsx:comments" => xlsx_with_aux_root_package("comments", content)
     "xlsx:drawing" => xlsx_with_drawing_root_package(content)
+    "xlsx:pivot" => {
+      let (sheet, cache_def, cache_records, pivot_def) = catalog_sml_pivot_parts(
+        content,
+      )
+      xlsx_package_with_pivot(sheet, cache_def, cache_records, pivot_def)
+    }
     // §21.2 DrawingML chart — the element's ancestry walks up to a
     // `<c:chartSpace>` root, so `content` is already a typed
     // chartSpace tree. Wrap it in a minimal slide that carries a
@@ -8778,6 +9546,13 @@ fn empty_body_package(format : String) -> Bytes {
           [],
           [],
         ),
+      )
+    "xlsx:pivot" =>
+      xlsx_package_with_pivot(
+        catalog_sml_pivot_sheet_data(),
+        catalog_sml_pivot_default_cache_def(),
+        catalog_sml_pivot_default_records(),
+        catalog_sml_pivot_default_table_def(),
       )
     _ => docx_package(xep("w", ns_w, "body", [], []))
   }
