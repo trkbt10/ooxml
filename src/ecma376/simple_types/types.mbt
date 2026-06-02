@@ -192,6 +192,22 @@ pub fn ST_CalendarType::to_string(self : ST_CalendarType) -> String {
 }
 
 ///|
+/// Part 1 §22.9.2.4 — true when this calendar token uses Gregorian
+/// year/month/day fields for consumers that compare date components.
+pub fn ST_CalendarType::uses_gregorian_fields(self : ST_CalendarType) -> Bool {
+  match self {
+    Gregorian
+    | GregorianUs
+    | GregorianMeFrench
+    | GregorianArabic
+    | GregorianXlitEnglish
+    | GregorianXlitFrench
+    | NoneCalendar => true
+    _ => false
+  }
+}
+
+///|
 /// XSD simple type ST_Guid — Part 1 §22.9.2.3 brace-delimited GUID
 /// stored as the 16 raw bytes (network byte order, matching the
 /// lexical form's reading order). The lexical form is

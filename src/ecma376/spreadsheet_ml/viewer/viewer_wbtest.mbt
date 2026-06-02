@@ -5877,6 +5877,7 @@ test "SpreadsheetML viewer §18.5.1.5 firstColumn + corner-cell slots paint" {
 /// `<autoFilter>` child AND `show_table_chrome: true`, the renderer
 /// paints the dropdown button glyph on the header row.
 test "SpreadsheetML viewer §18.5 autofilter dropdown emitted with chrome opt-in" {
+  set_sml_fixture_font_faces(["Calibri"])
   let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
   let worksheet = @domain.CT_Worksheet::new({
     name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
@@ -5920,6 +5921,189 @@ test "SpreadsheetML viewer §18.5 autofilter dropdown emitted with chrome opt-in
   assert_true(svg.contains("class=\"table-autofilter\""))
   assert_true(svg.contains("data-ooxml-autofilter=\"button\""))
   assert_true(svg.contains("data-ooxml-autofilter=\"arrow\""))
+}
+
+///|
+test "SpreadsheetML viewer §18.3 AutoFilter arrow helper emits per visible column" {
+  let layout : SheetLayout = {
+    cells: [],
+    total_width: 180.0,
+    total_height: 40.0,
+    column_positions: [0.0, 60.0, 120.0],
+    row_positions: [0.0, 20.0],
+    column_widths: [60.0, 60.0, 60.0],
+    row_heights: [20.0, 20.0],
+    column_count: 3,
+    row_count: 2,
+    merge_map: Map([], capacity=0),
+  }
+  let out : Array[@xml.Node] = []
+  push_autofilter_arrows_for_range(out, layout, "A1:C2", None)
+  @debug.assert_eq(out.length(), 6)
+}
+
+///|
+test "SpreadsheetML viewer §18.5 AutoFilter over-layer emits from table child" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [],
+  })
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:B2" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:B2" }],
+        children: [],
+      }),
+    ],
+  }
+  let layout : SheetLayout = {
+    cells: [],
+    total_width: 120.0,
+    total_height: 40.0,
+    column_positions: [0.0, 60.0],
+    row_positions: [0.0, 20.0],
+    column_widths: [60.0, 60.0],
+    row_heights: [20.0, 20.0],
+    column_count: 2,
+    row_count: 2,
+    merge_map: Map([], capacity=0),
+  }
+  let nodes = render_table_chrome_over([table], worksheet.element, layout)
+  @debug.assert_eq(nodes.length(), 4)
+}
+
+///|
+test "SpreadsheetML viewer §18.3 AutoFilter buttons honor filterColumn flags" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", Some("str"), "A"),
+            build_cell("B1", Some("str"), "B"),
+            build_cell("C1", Some("str"), "C"),
+          ]),
+          build_row(2, [
+            build_cell("A2", Some("str"), "x"),
+            build_cell("B2", Some("str"), "y"),
+            build_cell("C2", Some("str"), "z"),
+          ]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:C2" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [
+              { name: name("colId"), value: "0" },
+              { name: name("showButton"), value: "0" },
+            ],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [
+              { name: name("colId"), value: "1" },
+              { name: name("hiddenButton"), value: "1" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let opts = { ..default_render_options(), show_table_chrome: true }
+  let svg = render_svg(worksheet, options=opts).svg
+  let button_count = svg
+    .split("data-ooxml-autofilter=\"button\"")
+    .collect()
+    .length() -
+    1
+  let arrow_count = svg
+    .split("data-ooxml-autofilter=\"arrow\"")
+    .collect()
+    .length() -
+    1
+  @debug.assert_eq(button_count, 1)
+  @debug.assert_eq(arrow_count, 1)
+}
+
+///|
+test "SpreadsheetML viewer §18.5 table AutoFilter buttons use table ref default" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", None, "A"),
+            build_cell("B1", None, "B"),
+            build_cell("C1", None, "C"),
+          ]),
+          build_row(2, [
+            build_cell("A2", None, "x"),
+            build_cell("B2", None, "y"),
+            build_cell("C2", None, "z"),
+          ]),
+        ],
+      }),
+    ],
+  })
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:C2" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [
+              { name: name("colId"), value: "1" },
+              { name: name("showButton"), value: "0" },
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  }
+  let opts = { ..default_render_options(), show_table_chrome: true }
+  let svg = render_svg(worksheet, options=opts, tables=[table]).svg
+  let button_count = svg
+    .split("data-ooxml-autofilter=\"button\"")
+    .collect()
+    .length() -
+    1
+  @debug.assert_eq(button_count, 2)
 }
 
 ///|

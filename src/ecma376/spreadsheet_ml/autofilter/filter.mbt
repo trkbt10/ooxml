@@ -49,7 +49,33 @@ pub(all) struct FilterDxfFormat {
 pub fn parse_auto_filter(
   element : @xml.Element,
 ) -> @domain.CT_AutoFilter raise @opc_errors.SchemaViolation {
-  let ref_value = require_attr(element, "ref", "autoFilter/@ref")
+  parse_auto_filter_with_ref(element, None)
+}
+
+///|
+/// §18.3.1.2 — decode `<autoFilter>` using `default_ref` when the XML omits
+/// `@ref`.  Table markup supplies the table range as the owning context; the
+/// parsing of `filterColumn` and its presentation flags remains shared here.
+pub fn parse_auto_filter_with_default_ref(
+  element : @xml.Element,
+  default_ref : String,
+) -> @domain.CT_AutoFilter raise @opc_errors.SchemaViolation {
+  parse_auto_filter_with_ref(element, Some(default_ref))
+}
+
+///|
+fn parse_auto_filter_with_ref(
+  element : @xml.Element,
+  default_ref : String?,
+) -> @domain.CT_AutoFilter raise @opc_errors.SchemaViolation {
+  let ref_value = match attr(element, "ref") {
+    Some(value) => value
+    None =>
+      match default_ref {
+        Some(value) => value
+        None => require_attr(element, "ref", "autoFilter/@ref")
+      }
+  }
   let range = @address.CellRange::parse_a1(ref_value) catch {
     _ =>
       raise @opc_errors.SchemaViolation(
@@ -444,7 +470,10 @@ fn parse_filters(
   element : @xml.Element,
 ) -> @domain.CT_Filters raise @opc_errors.SchemaViolation {
   let blank = parse_bool_attr(element, "blank", false)
-  let calendar_type = attr_or(element, "calendarType", "none")
+  let calendar_type = parse_calendar_type_attr(
+    attr_or(element, "calendarType", "none"),
+    "filters/@calendarType",
+  )
   let filters : Array[@domain.CT_Filter] = Array::new()
   let date_group_items : Array[@domain.CT_DateGroupItem] = Array::new()
   for child in element.children {
@@ -613,11 +642,21 @@ fn filters_pass(
     }
   }
   for group in filters.date_group_items {
-    if date_group_matches(value, group, date_system) {
+    if calendar_type_uses_gregorian_fields(filters.calendar_type) &&
+      date_group_matches(value, group, date_system) {
       return true
     }
   }
   false
+}
+
+///|
+fn calendar_type_uses_gregorian_fields(calendar_type : String) -> Bool {
+  try @simple_types.ST_CalendarType::new(calendar_type) catch {
+    @simple_types.SchemaViolation(_) => false
+  } noraise {
+    calendar => calendar.uses_gregorian_fields()
+  }
 }
 
 ///|
@@ -1230,6 +1269,23 @@ fn parse_date_time_grouping(
         path="dateGroupItem/@dateTimeGrouping",
         reason="unknown ST_DateTimeGrouping value",
       )
+  }
+}
+
+///|
+fn parse_calendar_type_attr(
+  value : String,
+  path : String,
+) -> String raise @opc_errors.SchemaViolation {
+  try @simple_types.ST_CalendarType::new(value) catch {
+    @simple_types.SchemaViolation(_) =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §22.9.2.4",
+        path~,
+        reason="unknown ST_CalendarType value",
+      )
+  } noraise {
+    calendar => calendar.to_string()
   }
 }
 

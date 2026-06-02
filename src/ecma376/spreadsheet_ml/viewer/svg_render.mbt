@@ -12844,9 +12844,9 @@ priv struct TableMeta {
   row_end : Int
   col_start : Int
   col_end : Int
+  ref_value : String
   header_row_count : Int
   totals_row_count : Int
-  has_auto_filter : Bool
   style_name : String?
   show_row_stripes : Bool
   show_column_stripes : Bool
@@ -12883,11 +12883,6 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
   // when they deviate from the default.
   let header_row_count = table.header_row_count
   let totals_row_count = table.totals_row_count
-  // §18.5.1.2 — `<autoFilter>` is an OPTIONAL child of `<table>`.
-  // When present, the table's header row carries filter dropdown
-  // arrows on every column inside the autoFilter's `ref` (which
-  // typically equals the table's header row).
-  let has_auto_filter = table.auto_filter is Some(_)
   let style_info = table.table_style_info
   let style_name = match style_info {
     Some(info) => info.name
@@ -12914,9 +12909,9 @@ fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
     row_end,
     col_start,
     col_end,
+    ref_value: ref_str,
     header_row_count,
     totals_row_count,
-    has_auto_filter,
     style_name,
     show_row_stripes,
     show_column_stripes,
@@ -13249,75 +13244,102 @@ fn render_table_chrome_over(
   layout : SheetLayout,
 ) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
-  // Table-driven autofilter — every table whose `<autoFilter>`
-  // child is present paints arrows on its header row.
+  // Table-driven autofilter — parse through the shared AutoFilter
+  // package so `filterColumn/@hiddenButton` and `@showButton` remain
+  // the single source for column-level button visibility.
   for table_elt in tables {
     let meta = match parse_table_meta(table_elt) {
       None => continue
       Some(m) => m
     }
-    if !meta.has_auto_filter || meta.header_row_count <= 0 {
+    if meta.header_row_count <= 0 {
       continue
     }
-    let header_row = meta.row_start
-    for col in meta.col_start..<=meta.col_end {
-      match table_range_pixel_box(layout, header_row, header_row, col, col) {
-        Some(box) =>
-          for n in render_autofilter_arrow(box) {
-            out.push(n)
-          }
-        None => ()
+    match first_child_named_local(table_elt, "autoFilter") {
+      Some(element) => {
+        let filter = @autofilter.parse_auto_filter_with_default_ref(
+          element,
+          meta.ref_value,
+        ) catch {
+          _ => continue
+        }
+        let range = attr_value_local(element, "ref").unwrap_or(meta.ref_value)
+        push_autofilter_arrows_for_range(out, layout, range, Some(filter))
       }
+      None => ()
     }
   }
   // Worksheet-level autofilter (§18.3.1.2) — independent of
   // `<table>`; the renderer paints arrows on the first row of the
-  // filter range.  When a `<table>` already covers the same
+  // filter range when the column's presentation flags allow a
+  // button.  When a `<table>` already covers the same
   // header row, both code paths will emit arrows at the same
   // position; the overlapping `<text>` nodes paint identically so
   // the duplicate is visually idempotent.
-  match find_worksheet_autofilter_ref(worksheet) {
+  match find_worksheet_autofilter_element(worksheet) {
     None => ()
-    Some(range) => {
-      let parts = range.split(":").collect()
-      let (start_str, end_str) = match parts.length() {
-        1 => (parts[0].to_owned(), parts[0].to_owned())
-        2 => (parts[0].to_owned(), parts[1].to_owned())
+    Some(element) => {
+      let filter = @autofilter.parse_auto_filter(element) catch {
         _ => return out
       }
-      let (r1, c1) = match parse_cell_ref(start_str) {
-        Some(p) => p
-        None => return out
-      }
-      let (_r2, c2) = match parse_cell_ref(end_str) {
-        Some(p) => p
-        None => return out
-      }
-      let header_row = r1
-      for col in c1..<=c2 {
-        match table_range_pixel_box(layout, header_row, header_row, col, col) {
-          Some(box) =>
-            for n in render_autofilter_arrow(box) {
-              out.push(n)
-            }
-          None => ()
-        }
-      }
+      let range = attr_value_local(element, "ref").unwrap_or(
+        filter.range.to_a1(),
+      )
+      push_autofilter_arrows_for_range(out, layout, range, Some(filter))
     }
   }
   out
 }
 
 ///|
-/// Locate the worksheet's top-level `<autoFilter ref="...">` and
-/// return its `ref` attribute.  Returns `None` when no autoFilter
-/// is present.  `<autoFilter>` inside a `<table>` is handled
-/// separately by `render_table_chrome_over`.
-fn find_worksheet_autofilter_ref(worksheet : @xml.Element) -> String? {
-  match find_worksheet_autofilter_element(worksheet) {
-    Some(e) => attr_value_local(e, "ref")
-    None => None
+fn push_autofilter_arrows_for_range(
+  out : Array[@xml.Node],
+  layout : SheetLayout,
+  range : String,
+  filter : @domain.CT_AutoFilter?,
+) -> Unit {
+  let parts = range.split(":").collect()
+  let (start_str, end_str) = match parts.length() {
+    1 => (parts[0].to_owned(), parts[0].to_owned())
+    2 => (parts[0].to_owned(), parts[1].to_owned())
+    _ => return
   }
+  let (header_row, start_col) = match parse_cell_ref(start_str) {
+    Some(p) => p
+    None => return
+  }
+  let (_end_row, end_col) = match parse_cell_ref(end_str) {
+    Some(p) => p
+    None => return
+  }
+  for col in start_col..<=end_col {
+    let col_id = col - start_col
+    match filter {
+      Some(f) => if !autofilter_button_visible(f, col_id) { continue }
+      None => ()
+    }
+    match table_range_pixel_box(layout, header_row, header_row, col, col) {
+      Some(box) =>
+        for n in render_autofilter_arrow(box) {
+          out.push(n)
+        }
+      None => ()
+    }
+  }
+}
+
+///|
+fn autofilter_button_visible(
+  filter : @domain.CT_AutoFilter,
+  col_id : Int,
+) -> Bool {
+  let mut visible = true
+  for column in filter.filter_columns {
+    if column.col_id == col_id && (column.hidden_button || !column.show_button) {
+      visible = false
+    }
+  }
+  visible
 }
 
 ///|

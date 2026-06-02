@@ -10,6 +10,7 @@ import {
   "trkbt10/ooxml/ecma376/spreadsheet_ml/date_serial",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/formula",
+  "trkbt10/ooxml/ecma376/simple_types",
   "trkbt10/ooxml/ecma376/spreadsheet_ml" @sml_types,
 }
 

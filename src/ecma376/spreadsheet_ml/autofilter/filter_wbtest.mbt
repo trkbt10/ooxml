@@ -146,6 +146,70 @@ test "§18.3.2 dateGroupItem year level" {
 }
 
 ///|
+test "§18.3.2 dateGroupItem honors Gregorian calendarType family only" {
+  let serial = serial_date(2006, 5, 1)
+  let gregorian_filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A3"),
+    filter_columns: [
+      column(
+        0,
+        false,
+        Filters({
+          filters: [],
+          date_group_items: [
+            {
+              year: 2006,
+              month: None,
+              day: None,
+              hour: None,
+              minute: None,
+              second: None,
+              date_time_grouping: Year,
+            },
+          ],
+          blank: false,
+          calendar_type: "gregorianUs",
+        }),
+      ),
+    ],
+  }
+  let hijri_filter : @domain.CT_AutoFilter = {
+    ..gregorian_filter,
+    filter_columns: [
+      column(
+        0,
+        false,
+        Filters({
+          filters: [],
+          date_group_items: [
+            {
+              year: 2006,
+              month: None,
+              day: None,
+              hour: None,
+              minute: None,
+              second: None,
+              date_time_grouping: Year,
+            },
+          ],
+          blank: false,
+          calendar_type: "hijri",
+        }),
+      ),
+    ],
+  }
+  assert_true(row_visible(gregorian_filter, row(0, [n(serial)]), system()))
+  assert_true(!row_visible(hijri_filter, row(0, [n(serial)]), system()))
+}
+
+///|
+test "§18.3.2 filters calendarType validates ST_CalendarType" {
+  assert_auto_filter_schema_violation(
+    "<autoFilter ref=\"A1:A2\"><filterColumn colId=\"0\"><filters calendarType=\"lunar\"><dateGroupItem year=\"2006\" dateTimeGrouping=\"year\"/></filters></filterColumn></autoFilter>",
+  )
+}
+
+///|
 test "§18.3.2 customFilters numeric AND range" {
   let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A12"),
@@ -779,6 +843,19 @@ test "§18.3.2 from_element parses XML fragment" {
     ),
     [0],
   )
+}
+
+///|
+test "§18.3.1.2 parses caller default ref for table AutoFilter" {
+  let document = try! @xml.parse(
+    bytes(
+      "<autoFilter><filterColumn colId=\"0\" showButton=\"0\"/></autoFilter>",
+    ),
+  )
+  let filter = try! parse_auto_filter_with_default_ref(document.root, "C2:D4")
+  @debug.assert_eq(filter.range.to_a1(), "C2:D4")
+  @debug.assert_eq(filter.filter_columns.length(), 1)
+  assert_true(!filter.filter_columns[0].show_button)
 }
 
 ///|

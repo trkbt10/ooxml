@@ -40,6 +40,10 @@ test "ST_CalendarType validates enumeration" {
     (try! ST_CalendarType::new("gregorianUs")).to_string(),
     "gregorianUs",
   )
+  assert_true(
+    (try! ST_CalendarType::new("gregorianUs")).uses_gregorian_fields(),
+  )
+  assert_true(!(try! ST_CalendarType::new("hijri")).uses_gregorian_fields())
   let invalid = try? ST_CalendarType::new("lunar")
   assert_true(invalid is Err(SchemaViolation(_)))
 }
