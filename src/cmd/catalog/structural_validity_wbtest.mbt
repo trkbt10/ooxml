@@ -667,6 +667,47 @@ test "catalog pptx picture blip host resolves embedded image" {
 }
 
 ///|
+test "catalog docx picture blip host resolves embedded image" {
+  install_catalog_font_fixture()
+  let ns_pic = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+  let ns_wp = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  assert_true(
+    is_wml_picture_blip_catalog_target("pic", ns_pic + "#CT_Picture", ns_pic),
+  )
+  assert_true(
+    is_wml_picture_blip_catalog_target("inline", ns_wp + "#CT_Inline", ns_wp),
+  )
+  assert_true(
+    is_wml_picture_blip_catalog_target("anchor", ns_wp + "#CT_Anchor", ns_wp),
+  )
+  assert_false(
+    is_wml_picture_blip_catalog_target(
+      "grayscl", "http://schemas.openxmlformats.org/drawingml/2006/main#CT_GrayscaleEffect",
+      "http://schemas.openxmlformats.org/drawingml/2006/main",
+    ),
+  )
+  let pic = stamp_target(xep("pic", ns_pic, "pic", [], []))
+  let root = catalog_wml_picture_blip_root(pic)
+  assert_eq(verify_entry("docx:picture-blip", root, "CAT-WML-PIC"), "rendered")
+  let svg = match
+    render_svg_of(
+      "docx:picture-blip",
+      host_package("docx:picture-blip", strip_target_attr(root)),
+    ) {
+    Some(s) => s
+    None => abort("expected WML picture blip host to render")
+  }
+  assert_true(svg.contains("data:image/png;base64,"))
+  assert_true(svg.contains("<image "))
+  let inline = stamp_target(xep("wp", ns_wp, "inline", [], []))
+  let inline_root = catalog_wml_picture_blip_root(inline)
+  assert_eq(
+    verify_entry("docx:picture-blip", inline_root, "CAT-WML-INLINE"),
+    "rendered",
+  )
+}
+
+///|
 test "catalog pptx picture blip host renders blip effects" {
   assert_true(
     is_pml_picture_blip_catalog_target(

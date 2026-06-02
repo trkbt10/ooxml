@@ -754,6 +754,11 @@ fn main {
         ("pptx:picture-blip", catalog_pml_picture_blip_root(target)),
       )
     }
+    if is_wml_picture_blip_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(
+        ("docx:picture-blip", catalog_wml_picture_blip_root(target)),
+      )
+    }
     if is_drawingml_table_catalog_target(decl.name, decl.type_name, decl.ns) {
       candidates.push(("pptx:table", catalog_table_root(target)))
     }

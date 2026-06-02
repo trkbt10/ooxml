@@ -254,6 +254,96 @@ fn docx_package(body : @xml.Element) -> Bytes {
 }
 
 ///|
+/// `.docx` package whose main document embeds a binary image part at
+/// `word/media/image1.png` and wires `r:embed="rId2"` through
+/// `word/_rels/document.xml.rels`.  The renderer still resolves images
+/// through the normal WML context's part-aware resolver; this host only
+/// supplies the OPC relationship/media parts that a picture blip needs.
+fn docx_package_with_embedded_image(
+  body : @xml.Element,
+  image_bytes : Bytes,
+) -> Bytes {
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let document : @xml.Element = if body.name.local_name == "document" {
+    body
+  } else {
+    {
+      name: { prefix: Some("w"), local_name: "document", ns: Some(ns_w) },
+      attributes: [],
+      children: [Element(body)],
+    }
+  }
+  let doc_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId2"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image",
+          ),
+          xa("Target", "media/image1.png"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let ct_kids : Array[@xml.Node] = [
+    Element(
+      xe(
+        NS_CT,
+        "Default",
+        [
+          xa("Extension", "rels"),
+          xa(
+            "ContentType", "application/vnd.openxmlformats-package.relationships+xml",
+          ),
+        ],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Default",
+        [xa("Extension", "xml"), xa("ContentType", "application/xml")],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Default",
+        [xa("Extension", "png"), xa("ContentType", "image/png")],
+        [],
+      ),
+    ),
+    Element(
+      xe(
+        NS_CT,
+        "Override",
+        [
+          xa("PartName", "/word/document.xml"),
+          xa(
+            "ContentType", "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml",
+          ),
+        ],
+        [],
+      ),
+    ),
+  ]
+  let parts : Array[(String, Bytes)] = [
+    ("[Content_Types].xml", write_part(xe(NS_CT, "Types", [], ct_kids))),
+    ("_rels/.rels", root_rels_part("word/document.xml")),
+    ("word/document.xml", write_part(document)),
+    ("word/_rels/document.xml.rels", write_part(doc_rels)),
+    ("word/media/image1.png", image_bytes),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
 /// Assemble an `.xlsx` package whose `<worksheet>` directly contains
 /// `content`.
 fn xlsx_package(content : @xml.Element) -> Bytes {
@@ -2247,11 +2337,346 @@ fn pptx_package_with_embedded_image(
 }
 
 ///|
-/// True for PML picture / DrawingML blip elements that only become
-/// visible when hosted in a real slide picture with a slide-scoped
-/// image relationship.  The catalog host below supplies that OPC
-/// plumbing; the existing PresentationML context + picture renderer
-/// remain the only rendering SoT.
+/// True for WML DrawingML picture elements that only become visible
+/// when hosted in a real document drawing with a document-scoped image
+/// relationship.  The catalog host below supplies that OPC plumbing;
+/// the existing WML context + viewer remain the only rendering SoT.
+fn is_wml_picture_blip_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  let type_local = catalog_type_local(type_name)
+  match strip_ns(ns) {
+    "drawingml/picture" => local_name == "pic" && type_local == "CT_Picture"
+    "drawingml/wordprocessingDrawing" =>
+      (local_name == "inline" && type_local == "CT_Inline") ||
+      (local_name == "anchor" && type_local == "CT_Anchor")
+    _ => false
+  }
+}
+
+///|
+/// Normalize a WordprocessingML picture target into
+/// `<w:body>/<w:p>/<w:r>/<w:drawing>...`.  The added OPC host supplies
+/// the body-part image relationship; the existing WML viewer remains
+/// the rendering SoT.
+fn catalog_wml_picture_blip_root(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "body" => content
+    _ =>
+      xep("w", NS_W, "body", [], [
+        Element(
+          xep("w", NS_W, "p", [], [
+            Element(
+              xep("w", NS_W, "r", [], [
+                Element(catalog_wml_picture_blip_drawing(content)),
+              ]),
+            ),
+          ]),
+        ),
+      ])
+  }
+}
+
+///|
+fn catalog_wml_picture_blip_drawing(content : @xml.Element) -> @xml.Element {
+  let frame = match content.name.local_name {
+    "inline" => catalog_wml_normalize_inline_picture(content)
+    "anchor" => catalog_wml_normalize_anchor_picture(content)
+    _ =>
+      catalog_wml_default_inline_picture(
+        catalog_wml_picture_graphic(catalog_wml_picture_pic(content)),
+      )
+  }
+  xep("w", NS_W, "drawing", [], [Element(frame)])
+}
+
+///|
+fn catalog_wml_picture_pic(content : @xml.Element) -> @xml.Element {
+  if content.name.local_name == "pic" &&
+    strip_ns(content.name.ns.unwrap_or("")) == "drawingml/picture" {
+    return catalog_wml_normalize_pic(content)
+  }
+  xep(
+    "pic",
+    "http://schemas.openxmlformats.org/drawingml/2006/picture",
+    "pic",
+    [],
+    [
+      Element(catalog_wml_default_nv_pic_pr()),
+      Element(catalog_wml_default_blip_fill()),
+      Element(catalog_wml_default_pic_sp_pr()),
+    ],
+  )
+}
+
+///|
+fn catalog_wml_normalize_pic(pic : @xml.Element) -> @xml.Element {
+  catalog_normalize_picture_element(
+    pic,
+    catalog_wml_default_nv_pic_pr,
+    catalog_wml_normalize_blip_fill,
+    fn(sp_pr) {
+      catalog_ensure_picture_sp_pr(sp_pr, catalog_wml_default_pic_xfrm)
+    },
+    catalog_wml_default_blip_fill,
+    catalog_wml_default_pic_sp_pr,
+  )
+}
+
+///|
+fn catalog_wml_normalize_blip_fill(blip_fill : @xml.Element) -> @xml.Element {
+  catalog_normalize_picture_blip_fill(
+    blip_fill, catalog_default_blip_to_catalog_image, catalog_default_stretch,
+  )
+}
+
+///|
+fn catalog_wml_normalize_inline_picture(inline : @xml.Element) -> @xml.Element {
+  catalog_wml_normalize_picture_frame(inline, "inline")
+}
+
+///|
+fn catalog_wml_normalize_anchor_picture(anchor : @xml.Element) -> @xml.Element {
+  catalog_wml_normalize_picture_frame(anchor, "anchor")
+}
+
+///|
+fn catalog_wml_normalize_picture_frame(
+  frame : @xml.Element,
+  local_name : String,
+) -> @xml.Element {
+  let has_content = frame.children.length() > 0
+  if !has_content {
+    let default_frame = if local_name == "anchor" {
+      catalog_wml_default_anchor_picture(catalog_wml_default_picture_graphic())
+    } else {
+      catalog_wml_default_inline_picture(catalog_wml_default_picture_graphic())
+    }
+    return {
+      name: frame.name,
+      attributes: catalog_wml_attrs_with_defaults(
+        frame.attributes,
+        default_frame.attributes,
+      ),
+      children: default_frame.children,
+    }
+  }
+  let kids : Array[@xml.Node] = []
+  let mut has_graphic = false
+  for child in frame.children {
+    match child {
+      Element(ce) =>
+        if ce.name.local_name == "graphic" {
+          has_graphic = true
+          kids.push(Element(catalog_wml_default_picture_graphic()))
+        } else {
+          kids.push(child)
+        }
+      _ => kids.push(child)
+    }
+  }
+  if !has_graphic {
+    kids.push(Element(catalog_wml_default_picture_graphic()))
+  }
+  { name: frame.name, attributes: frame.attributes, children: kids }
+}
+
+///|
+fn catalog_wml_attrs_with_defaults(
+  attrs : Array[@xml.Attribute],
+  defaults : Array[@xml.Attribute],
+) -> Array[@xml.Attribute] {
+  let out : Array[@xml.Attribute] = []
+  for a in attrs {
+    out.push(a)
+  }
+  for d in defaults {
+    let mut exists = false
+    for a in out {
+      if a.name.local_name == d.name.local_name && a.name.ns == d.name.ns {
+        exists = true
+        break
+      }
+    }
+    if !exists {
+      out.push(d)
+    }
+  }
+  out
+}
+
+///|
+fn catalog_wml_picture_graphic(pic : @xml.Element) -> @xml.Element {
+  xep("a", NS_A, "graphic", [], [
+    Element(
+      xep(
+        "a",
+        NS_A,
+        "graphicData",
+        [xa("uri", "http://schemas.openxmlformats.org/drawingml/2006/picture")],
+        [Element(pic)],
+      ),
+    ),
+  ])
+}
+
+///|
+fn catalog_wml_default_picture_graphic() -> @xml.Element {
+  catalog_wml_picture_graphic(
+    catalog_wml_picture_pic(
+      xep(
+        "pic",
+        "http://schemas.openxmlformats.org/drawingml/2006/picture",
+        "pic",
+        [],
+        [],
+      ),
+    ),
+  )
+}
+
+///|
+fn catalog_wml_default_inline_picture(graphic : @xml.Element) -> @xml.Element {
+  xep(
+    "wp",
+    "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    "inline",
+    [],
+    [
+      Element(catalog_wml_default_extent()),
+      Element(catalog_wml_default_doc_pr()),
+      Element(graphic),
+    ],
+  )
+}
+
+///|
+fn catalog_wml_default_anchor_picture(graphic : @xml.Element) -> @xml.Element {
+  let ns_wp = "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xep(
+    "wp",
+    ns_wp,
+    "anchor",
+    [
+      xa("distT", "0"),
+      xa("distB", "0"),
+      xa("distL", "0"),
+      xa("distR", "0"),
+      xa("simplePos", "0"),
+      xa("relativeHeight", "251658240"),
+      xa("behindDoc", "0"),
+      xa("locked", "0"),
+      xa("layoutInCell", "1"),
+      xa("allowOverlap", "1"),
+    ],
+    [
+      Element(xep("wp", ns_wp, "simplePos", [xa("x", "0"), xa("y", "0")], [])),
+      Element(
+        xep("wp", ns_wp, "positionH", [xa("relativeFrom", "column")], [
+          Element(xep("wp", ns_wp, "posOffset", [], [Text("0")])),
+        ]),
+      ),
+      Element(
+        xep("wp", ns_wp, "positionV", [xa("relativeFrom", "paragraph")], [
+          Element(xep("wp", ns_wp, "posOffset", [], [Text("0")])),
+        ]),
+      ),
+      Element(catalog_wml_default_extent()),
+      Element(xep("wp", ns_wp, "wrapNone", [], [])),
+      Element(catalog_wml_default_doc_pr()),
+      Element(graphic),
+    ],
+  )
+}
+
+///|
+fn catalog_wml_default_extent() -> @xml.Element {
+  xep(
+    "wp",
+    "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    "extent",
+    [xa("cx", "1828800"), xa("cy", "1371600")],
+    [],
+  )
+}
+
+///|
+fn catalog_wml_default_doc_pr() -> @xml.Element {
+  xep(
+    "wp",
+    "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
+    "docPr",
+    [xa("id", "1"), xa("name", "Catalog Picture")],
+    [],
+  )
+}
+
+///|
+fn catalog_wml_default_nv_pic_pr() -> @xml.Element {
+  let ns_pic = "http://schemas.openxmlformats.org/drawingml/2006/picture"
+  xep("pic", ns_pic, "nvPicPr", [], [
+    Element(
+      xep(
+        "pic",
+        ns_pic,
+        "cNvPr",
+        [xa("id", "2"), xa("name", "Catalog Picture")],
+        [],
+      ),
+    ),
+    Element(
+      xep("pic", ns_pic, "cNvPicPr", [], [
+        Element(xep("a", NS_A, "picLocks", [xa("noChangeAspect", "1")], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_wml_default_blip_fill() -> @xml.Element {
+  xep(
+    "pic",
+    "http://schemas.openxmlformats.org/drawingml/2006/picture",
+    "blipFill",
+    [],
+    [
+      Element(catalog_default_blip_to_catalog_image()),
+      Element(catalog_default_stretch()),
+    ],
+  )
+}
+
+///|
+fn catalog_wml_default_pic_sp_pr() -> @xml.Element {
+  xep(
+    "pic",
+    "http://schemas.openxmlformats.org/drawingml/2006/picture",
+    "spPr",
+    [],
+    [
+      Element(catalog_wml_default_pic_xfrm()),
+      Element(
+        xep("a", NS_A, "prstGeom", [xa("prst", "rect")], [
+          Element(xep("a", NS_A, "avLst", [], [])),
+        ]),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_wml_default_pic_xfrm() -> @xml.Element {
+  xep("a", NS_A, "xfrm", [], [
+    Element(xep("a", NS_A, "off", [xa("x", "0"), xa("y", "0")], [])),
+    Element(
+      xep("a", NS_A, "ext", [xa("cx", "1828800"), xa("cy", "1371600")], []),
+    ),
+  ])
+}
+
+///|
 fn is_pml_picture_blip_catalog_target(
   local_name : String,
   type_name : String,
@@ -2336,46 +2761,16 @@ fn catalog_pml_picture_blip_pic(content : @xml.Element) -> @xml.Element {
 
 ///|
 fn catalog_pml_normalize_pic(pic : @xml.Element) -> @xml.Element {
-  let mut nv_pic_pr : @xml.Element? = None
-  let mut blip_fill : @xml.Element? = None
-  let mut sp_pr : @xml.Element? = None
-  let rest : Array[@xml.Node] = []
-  for child in pic.children {
-    match child {
-      Element(ce) =>
-        match ce.name.local_name {
-          "nvPicPr" =>
-            if nv_pic_pr is None {
-              nv_pic_pr = Some(ce)
-            } else {
-              rest.push(child)
-            }
-          "blipFill" =>
-            if blip_fill is None {
-              blip_fill = Some(catalog_pml_normalize_blip_fill(ce))
-            } else {
-              rest.push(child)
-            }
-          "spPr" =>
-            if sp_pr is None {
-              sp_pr = Some(catalog_pml_ensure_pic_sp_pr(ce))
-            } else {
-              rest.push(child)
-            }
-          _ => rest.push(child)
-        }
-      _ => rest.push(child)
-    }
-  }
-  let kids : Array[@xml.Node] = [
-    Element(nv_pic_pr.unwrap_or(catalog_pml_default_nv_pic_pr())),
-    Element(blip_fill.unwrap_or(catalog_pml_default_blip_fill())),
-    Element(sp_pr.unwrap_or(catalog_pml_default_pic_sp_pr())),
-  ]
-  for child in rest {
-    kids.push(child)
-  }
-  { name: pic.name, attributes: pic.attributes, children: kids }
+  catalog_normalize_picture_element(
+    pic,
+    catalog_pml_default_nv_pic_pr,
+    catalog_pml_normalize_blip_fill,
+    fn(sp_pr) {
+      catalog_ensure_picture_sp_pr(sp_pr, catalog_pml_default_pic_xfrm)
+    },
+    catalog_pml_default_blip_fill,
+    catalog_pml_default_pic_sp_pr,
+  )
 }
 
 ///|
@@ -2397,20 +2792,20 @@ fn catalog_pml_blip_fill_for_target(target : @xml.Element) -> @xml.Element {
   let kids : Array[@xml.Node] = []
   match lname {
     "blip" => {
-      kids.push(Element(catalog_pml_retarget_blip(target)))
-      kids.push(Element(catalog_pml_default_stretch()))
+      kids.push(Element(catalog_retarget_blip_to_catalog_image(target)))
+      kids.push(Element(catalog_default_stretch()))
     }
     "srcRect" | "tile" | "stretch" => {
-      kids.push(Element(catalog_pml_default_blip()))
+      kids.push(Element(catalog_default_blip_to_catalog_image()))
       kids.push(Element(target))
     }
     "fillRect" => {
-      kids.push(Element(catalog_pml_default_blip()))
+      kids.push(Element(catalog_default_blip_to_catalog_image()))
       kids.push(Element(xep("a", NS_A, "stretch", [], [Element(target)])))
     }
     _ => {
-      kids.push(Element(catalog_pml_default_blip_with_child(target)))
-      kids.push(Element(catalog_pml_default_stretch()))
+      kids.push(Element(catalog_default_blip_with_child(target)))
+      kids.push(Element(catalog_default_stretch()))
     }
   }
   xep("p", NS_PML, "blipFill", [], kids)
@@ -2418,6 +2813,68 @@ fn catalog_pml_blip_fill_for_target(target : @xml.Element) -> @xml.Element {
 
 ///|
 fn catalog_pml_normalize_blip_fill(blip_fill : @xml.Element) -> @xml.Element {
+  catalog_normalize_picture_blip_fill(
+    blip_fill, catalog_default_blip_to_catalog_image, catalog_default_stretch,
+  )
+}
+
+///|
+fn catalog_normalize_picture_element(
+  pic : @xml.Element,
+  default_nv_pic_pr : () -> @xml.Element,
+  normalize_blip_fill : (@xml.Element) -> @xml.Element,
+  ensure_pic_sp_pr : (@xml.Element) -> @xml.Element,
+  default_blip_fill : () -> @xml.Element,
+  default_pic_sp_pr : () -> @xml.Element,
+) -> @xml.Element {
+  let mut nv_pic_pr : @xml.Element? = None
+  let mut blip_fill : @xml.Element? = None
+  let mut sp_pr : @xml.Element? = None
+  let rest : Array[@xml.Node] = []
+  for child in pic.children {
+    match child {
+      Element(ce) =>
+        match ce.name.local_name {
+          "nvPicPr" =>
+            if nv_pic_pr is None {
+              nv_pic_pr = Some(ce)
+            } else {
+              rest.push(child)
+            }
+          "blipFill" =>
+            if blip_fill is None {
+              blip_fill = Some(normalize_blip_fill(ce))
+            } else {
+              rest.push(child)
+            }
+          "spPr" =>
+            if sp_pr is None {
+              sp_pr = Some(ensure_pic_sp_pr(ce))
+            } else {
+              rest.push(child)
+            }
+          _ => rest.push(child)
+        }
+      _ => rest.push(child)
+    }
+  }
+  let kids : Array[@xml.Node] = [
+    Element(nv_pic_pr.unwrap_or(default_nv_pic_pr())),
+    Element(blip_fill.unwrap_or(default_blip_fill())),
+    Element(sp_pr.unwrap_or(default_pic_sp_pr())),
+  ]
+  for child in rest {
+    kids.push(child)
+  }
+  { name: pic.name, attributes: pic.attributes, children: kids }
+}
+
+///|
+fn catalog_normalize_picture_blip_fill(
+  blip_fill : @xml.Element,
+  default_blip : () -> @xml.Element,
+  default_stretch : () -> @xml.Element,
+) -> @xml.Element {
   let parsed_kids : Array[@xml.Node] = []
   let mut has_blip = false
   let mut has_mode = false
@@ -2427,7 +2884,9 @@ fn catalog_pml_normalize_blip_fill(blip_fill : @xml.Element) -> @xml.Element {
         match ce.name.local_name {
           "blip" => {
             has_blip = true
-            parsed_kids.push(Element(catalog_pml_retarget_blip(ce)))
+            parsed_kids.push(
+              Element(catalog_retarget_blip_to_catalog_image(ce)),
+            )
           }
           "tile" | "stretch" => {
             has_mode = true
@@ -2440,19 +2899,19 @@ fn catalog_pml_normalize_blip_fill(blip_fill : @xml.Element) -> @xml.Element {
   }
   let kids : Array[@xml.Node] = []
   if !has_blip {
-    kids.push(Element(catalog_pml_default_blip()))
+    kids.push(Element(default_blip()))
   }
   for child in parsed_kids {
     kids.push(child)
   }
   if !has_mode {
-    kids.push(Element(catalog_pml_default_stretch()))
+    kids.push(Element(default_stretch()))
   }
   { name: blip_fill.name, attributes: blip_fill.attributes, children: kids }
 }
 
 ///|
-fn catalog_pml_retarget_blip(blip : @xml.Element) -> @xml.Element {
+fn catalog_retarget_blip_to_catalog_image(blip : @xml.Element) -> @xml.Element {
   let attrs : Array[@xml.Attribute] = []
   for a in blip.attributes {
     if a.name.local_name != "embed" && a.name.local_name != "link" {
@@ -2467,33 +2926,18 @@ fn catalog_pml_retarget_blip(blip : @xml.Element) -> @xml.Element {
 }
 
 ///|
-fn catalog_pml_default_blip() -> @xml.Element {
-  xep(
-    "a",
-    NS_A,
-    "blip",
-    [
-      {
-        name: {
-          prefix: Some("r"),
-          local_name: "embed",
-          ns: Some(NS_OFFICE_REL),
-        },
-        value: "rId2",
-      },
-    ],
-    [],
-  )
+fn catalog_default_blip_to_catalog_image() -> @xml.Element {
+  catalog_retarget_blip_to_catalog_image(xep("a", NS_A, "blip", [], []))
 }
 
 ///|
-fn catalog_pml_default_blip_with_child(child : @xml.Element) -> @xml.Element {
-  let blip = catalog_pml_default_blip()
+fn catalog_default_blip_with_child(child : @xml.Element) -> @xml.Element {
+  let blip = catalog_default_blip_to_catalog_image()
   { name: blip.name, attributes: blip.attributes, children: [Element(child)] }
 }
 
 ///|
-fn catalog_pml_default_stretch() -> @xml.Element {
+fn catalog_default_stretch() -> @xml.Element {
   xep("a", NS_A, "stretch", [], [Element(xep("a", NS_A, "fillRect", [], []))])
 }
 
@@ -2531,11 +2975,14 @@ fn catalog_pml_default_pic_sp_pr() -> @xml.Element {
 }
 
 ///|
-fn catalog_pml_ensure_pic_sp_pr(sp_pr : @xml.Element) -> @xml.Element {
+fn catalog_ensure_picture_sp_pr(
+  sp_pr : @xml.Element,
+  default_xfrm : () -> @xml.Element,
+) -> @xml.Element {
   if first_child_named_in(sp_pr, "xfrm") is Some(_) {
     return sp_pr
   }
-  let kids : Array[@xml.Node] = [Element(catalog_pml_default_pic_xfrm())]
+  let kids : Array[@xml.Node] = [Element(default_xfrm())]
   for child in sp_pr.children {
     kids.push(child)
   }
@@ -2555,8 +3002,8 @@ fn catalog_pml_default_pic_xfrm() -> @xml.Element {
 ///|
 fn catalog_pml_default_blip_fill() -> @xml.Element {
   xep("p", NS_PML, "blipFill", [], [
-    Element(catalog_pml_default_blip()),
-    Element(catalog_pml_default_stretch()),
+    Element(catalog_default_blip_to_catalog_image()),
+    Element(catalog_default_stretch()),
   ])
 }
 
@@ -4166,6 +4613,11 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "docx:comments" => docx_aux_package("comments", content)
     "docx:footnotes" => docx_aux_package("footnotes", content)
     "docx:endnotes" => docx_aux_package("endnotes", content)
+    "docx:picture-blip" =>
+      docx_package_with_embedded_image(
+        catalog_wml_picture_blip_root(content),
+        test_image_8x8_quad(),
+      )
     "pptx:theme" => pptx_with_aux_root_package("theme", content)
     "pptx:presentation" => pptx_with_aux_root_package("presentation", content)
     "pptx:master-txstyle" => pptx_package_with_master_tx_styles(content)
