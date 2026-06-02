@@ -100,6 +100,57 @@ fn elem(
 }
 
 ///|
+fn is_spreadsheet_drawing_ns(ns : String) -> Bool {
+  ns == "http://purl.oclc.org/ooxml/drawingml/spreadsheetDrawing" ||
+  ns == "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+}
+
+///|
+/// Keep synthesised SpreadsheetDrawing anchors non-degenerate. The
+/// generic simple-type sample for ST_ColID / ST_RowID is "1"; when
+/// both `<xdr:from>` and `<xdr:to>` inherit that value the SML viewer
+/// correctly skips the zero-sized anchor. Normalize only the marker
+/// endpoints here so every catalog host observes the same fixture.
+fn normalize_spreadsheet_drawing_marker(el : @xml.Element) -> @xml.Element {
+  let ns = match el.name.ns {
+    Some(v) => v
+    None => ""
+  }
+  if !is_spreadsheet_drawing_ns(ns) ||
+    (el.name.local_name != "from" && el.name.local_name != "to") {
+    return el
+  }
+  let col = if el.name.local_name == "to" { "3" } else { "0" }
+  let row = if el.name.local_name == "to" { "5" } else { "0" }
+  let children : Array[@xml.Node] = []
+  for child in el.children {
+    match child {
+      Element(ce) => {
+        let value = match ce.name.local_name {
+          "col" => Some(col)
+          "row" => Some(row)
+          "colOff" | "rowOff" => Some("0")
+          _ => None
+        }
+        match value {
+          Some(v) =>
+            children.push(
+              Element({
+                name: ce.name,
+                attributes: ce.attributes,
+                children: [Text(v)],
+              }),
+            )
+          None => children.push(child)
+        }
+      }
+      _ => children.push(child)
+    }
+  }
+  { name: el.name, attributes: el.attributes, children }
+}
+
+///|
 /// The namespace an `<xsd:element>` node declares its instance in
 /// (its `__ns` stamp), or "" when unstamped.
 fn element_ns(el : @xml.Element) -> String {
@@ -553,7 +604,11 @@ fn synth_element(
   if children.length() == 0 && xsd_child(ct, "simpleContent") is Some(_) {
     children.push(Text(TEXT_MARKER))
   }
-  { name: qname(ns, name), attributes: attrs, children }
+  normalize_spreadsheet_drawing_marker({
+    name: qname(ns, name),
+    attributes: attrs,
+    children,
+  })
 }
 
 ///|

@@ -169,6 +169,13 @@ fn catalog_part_roots() -> Array[CatalogPartRoot] {
       phase: "supplementary",
     },
     {
+      name: "wsDr",
+      type_ns_tail: "drawingml/spreadsheetDrawing",
+      type_local: "CT_Drawing",
+      host: "xlsx:drawing",
+      phase: "spreadsheetDrawing",
+    },
+    {
       name: "theme",
       type_ns_tail: "drawingml/main",
       type_local: "CT_OfficeStyleSheet",
@@ -718,6 +725,7 @@ fn main {
               | "layoutDef"
               | "styleDef"
               | "colorsDef"
+              | "wsDr"
               | "userShapes" => 0
               _ => 1
             }

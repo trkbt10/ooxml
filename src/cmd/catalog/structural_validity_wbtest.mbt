@@ -111,6 +111,15 @@ test "catalog seeds strict supplementary roots through type-qualified registry" 
     "xlsx:comments",
   )
   assert_catalog_empty_root_path(ancestry, "comments", strict_sml_comments)
+  let strict_xdr = "http://purl.oclc.org/ooxml/drawingml/spreadsheetDrawing#CT_Drawing"
+  assert_eq(catalog_host_for_root_type("wsDr", strict_xdr, ""), "xlsx:drawing")
+  assert_catalog_empty_root_path(ancestry, "wsDr", strict_xdr)
+  let trans_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing#CT_Drawing"
+  assert_eq(
+    catalog_host_for_root_type("wsDr", trans_xdr, "xlsx"),
+    "xlsx:drawing",
+  )
+  assert_catalog_empty_root_path(ancestry, "wsDr", trans_xdr)
   let strict_wml_comments = "http://purl.oclc.org/ooxml/wordprocessingml/main#CT_Comments"
   assert_eq(
     catalog_host_for_root_type("comments", strict_wml_comments, "docx"),
@@ -261,6 +270,132 @@ test "catalog xlsx comments host retargets synthesized comment ref to sheet cell
   assert_true(svg.contains("class=\"comment-indicators\""))
   assert_true(svg.contains("data-ooxml-comment-ref=\"A1\""))
   assert_true(!svg.contains("data-ooxml-comment-ref=\"x\""))
+}
+
+///|
+fn catalog_xdr_marker(
+  local_name : String,
+  col : String,
+  row : String,
+) -> @xml.Element {
+  let ns_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+  xep("xdr", ns_xdr, local_name, [], [
+    Element(xep("xdr", ns_xdr, "col", [], [Text(col)])),
+    Element(xep("xdr", ns_xdr, "colOff", [], [Text("0")])),
+    Element(xep("xdr", ns_xdr, "row", [], [Text(row)])),
+    Element(xep("xdr", ns_xdr, "rowOff", [], [Text("0")])),
+  ])
+}
+
+///|
+fn catalog_xdr_shape() -> @xml.Element {
+  let ns_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  xep("xdr", ns_xdr, "sp", [], [
+    Element(
+      xep("xdr", ns_xdr, "nvSpPr", [], [
+        Element(
+          xep(
+            "xdr",
+            ns_xdr,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog Shape")],
+            [],
+          ),
+        ),
+        Element(xep("xdr", ns_xdr, "cNvSpPr", [], [])),
+      ]),
+    ),
+    Element(
+      xep("xdr", ns_xdr, "spPr", [], [
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "solidFill", [], [
+            Element(xep("a", ns_a, "srgbClr", [xa("val", "4472C4")], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep("xdr", ns_xdr, "txBody", [], [
+        Element(xep("a", ns_a, "bodyPr", [], [])),
+        Element(xep("a", ns_a, "lstStyle", [], [])),
+        Element(xep("a", ns_a, "p", [], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+test "catalog xlsx drawing host wires wsDr through worksheet drawing rel" {
+  let ns_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+  let anchor = xep("xdr", ns_xdr, "twoCellAnchor", [], [
+    Element(catalog_xdr_marker("from", "0", "0")),
+    Element(catalog_xdr_marker("to", "3", "5")),
+    Element(catalog_xdr_shape()),
+    Element(xep("xdr", ns_xdr, "clientData", [], [])),
+  ])
+  let ws_dr = xep("xdr", ns_xdr, "wsDr", [], [Element(stamp_target(anchor))])
+  assert_eq(verify_entry("xlsx:drawing", ws_dr, "CAT-XDR-DRAWING"), "rendered")
+  let workbook = @sml_context.open(
+    host_package("xlsx:drawing", strip_target_attr(ws_dr)),
+  ) catch {
+    @sml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  match workbook.worksheets[0].drawing {
+    Some(drawing) => assert_true(drawing.anchors.length() > 0)
+    None => abort("expected WorksheetPart.drawing to be resolved")
+  }
+  match workbook.worksheets[0].drawing_part {
+    Some(part) => assert_eq(part, "/xl/drawings/drawing1.xml")
+    None => abort("expected drawing_part to be resolved")
+  }
+  let svg = workbook.to_svg(debug_attrs=true)
+  assert_true(svg.contains("<g class=\"drawings\">"))
+  assert_true(svg.contains("<g class=\"drawing\""))
+  assert_true(svg.contains("data-ooxml-twocell-anchor=\"1\""))
+  assert_true(svg.contains("data-ooxml-twocell-anchor-to-col=\"3\""))
+}
+
+///|
+test "catalog synth emits non-degenerate xdr twoCellAnchor" {
+  let ns_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+  let schema = load_catalog_schema()
+  let mut anchor : @xml.Element? = None
+  for _key, decl in schema.all_elements {
+    if decl.name == "twoCellAnchor" && decl.ns == ns_xdr {
+      match schema.complex_types.get(decl.type_name) {
+        Some(ct) => {
+          let st : StrSet = Map([], capacity=0)
+          st[decl.type_name] = true
+          anchor = Some(
+            synth_element(
+              schema,
+              ct,
+              decl.ns,
+              decl.name,
+              st,
+              0,
+              RICH_BUDGET,
+              include_optional_attrs=true,
+            ),
+          )
+        }
+        None => ()
+      }
+    }
+  }
+  let anchor = match anchor {
+    Some(a) => a
+    None => abort("expected transitional xdr twoCellAnchor declaration")
+  }
+  let ws_dr = xep("xdr", ns_xdr, "wsDr", [], [Element(stamp_target(anchor))])
+  assert_eq(verify_entry("xlsx:drawing", ws_dr, "CAT-XDR-SYNTH"), "rendered")
 }
 
 ///|

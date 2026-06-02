@@ -1024,6 +1024,112 @@ fn xlsx_package_styled(content : @xml.Element, styles : @xml.Element) -> Bytes {
 }
 
 ///|
+/// `.xlsx` package whose worksheet references a dedicated
+/// `xl/drawings/drawing1.xml` part. The catalog supplies the
+/// `<xdr:wsDr>` root; SpreadsheetML context owns the worksheet
+/// `<drawing r:id>` relationship resolution and the SML viewer owns
+/// anchor rendering.
+fn xlsx_with_drawing_root_package(drawing_root : @xml.Element) -> Bytes {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  let workbook : @xml.Element = xe(ns_s, "workbook", [], [
+    Element(
+      xe(ns_s, "sheets", [], [
+        Element(
+          xe(
+            ns_s,
+            "sheet",
+            [
+              xa("name", "S1"),
+              xa("sheetId", "1"),
+              {
+                name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+                value: "rId1",
+              },
+            ],
+            [],
+          ),
+        ),
+      ]),
+    ),
+  ])
+  let workbook_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rId1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
+          ),
+          xa("Target", "worksheets/sheet1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let worksheet_rels = xe(NS_PKG_REL, "Relationships", [], [
+    Element(
+      xe(
+        NS_PKG_REL,
+        "Relationship",
+        [
+          xa("Id", "rIdD1"),
+          xa(
+            "Type", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing",
+          ),
+          xa("Target", "../drawings/drawing1.xml"),
+        ],
+        [],
+      ),
+    ),
+  ])
+  let worksheet = xe(ns_s, "worksheet", [], [
+    Element(xe(ns_s, "dimension", [xa("ref", "A1:D10")], [])),
+    Element(
+      xe(ns_s, "sheetData", [], [Element(s_row("1", [s_cell("A1", "1")]))]),
+    ),
+    Element(
+      xe(
+        ns_s,
+        "drawing",
+        [
+          {
+            name: { prefix: Some("r"), local_name: "id", ns: Some(ns_r) },
+            value: "rIdD1",
+          },
+        ],
+        [],
+      ),
+    ),
+  ])
+  let parts : Array[(String, Bytes)] = [
+    (
+      "[Content_Types].xml",
+      content_types_part([
+        (
+          "/xl/workbook.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml",
+        ),
+        (
+          "/xl/worksheets/sheet1.xml", "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml",
+        ),
+        (
+          "/xl/drawings/drawing1.xml", "application/vnd.openxmlformats-officedocument.drawing+xml",
+        ),
+      ]),
+    ),
+    ("_rels/.rels", root_rels_part("xl/workbook.xml")),
+    ("xl/workbook.xml", write_part(workbook)),
+    ("xl/_rels/workbook.xml.rels", write_part(workbook_rels)),
+    ("xl/worksheets/sheet1.xml", write_part(worksheet)),
+    ("xl/worksheets/_rels/sheet1.xml.rels", write_part(worksheet_rels)),
+    ("xl/drawings/drawing1.xml", write_part(drawing_root)),
+  ]
+  (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
 /// `.xlsx` package whose `xl/workbook.xml` declares an
 /// `<externalReferences>` block (§18.14.7) pointing at an
 /// `xl/externalLinks/externalLink1.xml` part.  Used by fixtures that
@@ -3741,6 +3847,7 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "xlsx:sharedStrings" => xlsx_with_aux_root_package("sharedStrings", content)
     "xlsx:styles" => xlsx_with_aux_root_package("styles", content)
     "xlsx:comments" => xlsx_with_aux_root_package("comments", content)
+    "xlsx:drawing" => xlsx_with_drawing_root_package(content)
     // §21.2 DrawingML chart — the element's ancestry walks up to a
     // `<c:chartSpace>` root, so `content` is already a typed
     // chartSpace tree. Wrap it in a minimal slide that carries a
@@ -7200,6 +7307,16 @@ fn empty_body_package(format : String) -> Bytes {
       xlsx_with_aux_root_package("styles", xe(ns_s, "styleSheet", [], []))
     "xlsx:comments" =>
       xlsx_with_aux_root_package("comments", xe(ns_s, "comments", [], []))
+    "xlsx:drawing" =>
+      xlsx_with_drawing_root_package(
+        xep(
+          "xdr",
+          "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+          "wsDr",
+          [],
+          [],
+        ),
+      )
     _ => docx_package(xep("w", ns_w, "body", [], []))
   }
 }

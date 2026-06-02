@@ -326,6 +326,43 @@ fn build_ancestry(
     }
   }
 
+  fn run_phase_namespace_bfs(
+    phase : String,
+    ns_strict : String,
+    ns_trans : String,
+  ) -> Unit {
+    let before_paths : Map[String, Array[Array[(String, String)]]] = Map(
+      [],
+      capacity=0,
+    )
+    for k, v in all_paths {
+      let copy : Array[Array[(String, String)]] = []
+      for p in v {
+        copy.push(p)
+      }
+      before_paths[k] = copy
+    }
+    let phase_queue : Array[(String, String, Array[(String, String)])] = []
+    for _k, decl in schema.all_elements {
+      match catalog_part_root_phase_for_decl(decl.name, decl.type_name) {
+        Some(p) if p == phase =>
+          phase_queue.push((decl.name, decl.type_name, []))
+        _ => ()
+      }
+    }
+    run_bfs(phase_queue, Map([], capacity=0))
+    for key, _paths in all_paths {
+      let is_phase_key = key.contains(ns_strict) || key.contains(ns_trans)
+      if is_phase_key {
+        continue
+      }
+      match before_paths.get(key) {
+        Some(orig) => all_paths[key] = orig
+        None => ()
+      }
+    }
+  }
+
   // PASS 1 — primary-root BFS.  Seed only `document` /
   // `worksheet` / `sld`; expand to fixpoint.  This is the
   // pre-supplementary baseline behaviour, so primary-rooted
@@ -395,52 +432,7 @@ fn build_ancestry(
   // paths so the renderer's shape pipeline still credits them.
   let chart_ns_strict = "http://purl.oclc.org/ooxml/drawingml/chart"
   let chart_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/chart"
-  // Snapshot every key currently in all_paths so the chart-BFS pass
-  // can identify which (name, type) pairs it adds.
-  let pre_chart_paths : Map[String, Array[Array[(String, String)]]] = Map(
-    [],
-    capacity=0,
-  )
-  for k, v in all_paths {
-    let copy : Array[Array[(String, String)]] = []
-    for p in v {
-      copy.push(p)
-    }
-    pre_chart_paths[k] = copy
-  }
-  // Seed pass-3 with BOTH chartSpace declarations (strict + transitional)
-  // so chart sub-elements in either namespace pick up their
-  // chartSpace-rooted ancestry.  `part_roots` returns a single entry
-  // per name and only retains the first encountered namespace; here we
-  // scan `schema.all_elements` for every `chartSpace` declaration so
-  // each namespace variant seeds its own BFS expansion.
-  let chart_queue : Array[(String, String, Array[(String, String)])] = []
-  for _k, decl in schema.all_elements {
-    match catalog_part_root_phase_for_decl(decl.name, decl.type_name) {
-      Some("chart") => chart_queue.push((decl.name, decl.type_name, []))
-      _ => ()
-    }
-  }
-  run_bfs(chart_queue, Map([], capacity=0))
-  // Strip any path the chart BFS appended onto a non-chart-namespace
-  // (name, type) — its canonical path stays the primary/supplementary
-  // one.  Distinguishing namespace is straightforward because every
-  // chart element's type carries one of the two chart namespace
-  // prefixes; everything else (DML core, OPC, …) does not.
-  for key, _paths in all_paths {
-    // Element key looks like `name#namespace#typeLocalName`.  We
-    // recover the namespace from the type token, which embeds the
-    // resolving namespace as its prefix.
-    let is_chart_key = key.contains(chart_ns_strict) ||
-      key.contains(chart_ns_trans)
-    if is_chart_key {
-      continue
-    }
-    match pre_chart_paths.get(key) {
-      Some(orig) => all_paths[key] = orig
-      None => ()
-    }
-  }
+  run_phase_namespace_bfs("chart", chart_ns_strict, chart_ns_trans)
   // PASS 4 — §21.4 DrawingML diagram BFS.  Snapshot all_paths,
   // run a focused BFS from each of the four diagram part roots
   // (dataModel / layoutDef / styleDef / colorsDef) across both
@@ -450,35 +442,7 @@ fn build_ancestry(
   // their original canonical chain.
   let dgm_ns_strict = "http://purl.oclc.org/ooxml/drawingml/diagram"
   let dgm_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/diagram"
-  let pre_dgm_paths : Map[String, Array[Array[(String, String)]]] = Map(
-    [],
-    capacity=0,
-  )
-  for k, v in all_paths {
-    let copy : Array[Array[(String, String)]] = []
-    for p in v {
-      copy.push(p)
-    }
-    pre_dgm_paths[k] = copy
-  }
-  let dgm_queue : Array[(String, String, Array[(String, String)])] = []
-  for _k, decl in schema.all_elements {
-    match catalog_part_root_phase_for_decl(decl.name, decl.type_name) {
-      Some("diagram") => dgm_queue.push((decl.name, decl.type_name, []))
-      _ => ()
-    }
-  }
-  run_bfs(dgm_queue, Map([], capacity=0))
-  for key, _paths in all_paths {
-    let is_dgm_key = key.contains(dgm_ns_strict) || key.contains(dgm_ns_trans)
-    if is_dgm_key {
-      continue
-    }
-    match pre_dgm_paths.get(key) {
-      Some(orig) => all_paths[key] = orig
-      None => ()
-    }
-  }
+  run_phase_namespace_bfs("diagram", dgm_ns_strict, dgm_ns_trans)
   // PASS 5 — §21.3 DrawingML chartDrawing BFS.  `<c:userShapes>`
   // (chart namespace, type cdr:CT_Drawing) is the part root for the
   // user-shapes overlay on a chart.  Its content is in the
@@ -487,35 +451,16 @@ fn build_ancestry(
   // pairs.
   let cdr_ns_strict = "http://purl.oclc.org/ooxml/drawingml/chartDrawing"
   let cdr_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/chartDrawing"
-  let pre_cdr_paths : Map[String, Array[Array[(String, String)]]] = Map(
-    [],
-    capacity=0,
-  )
-  for k, v in all_paths {
-    let copy : Array[Array[(String, String)]] = []
-    for p in v {
-      copy.push(p)
-    }
-    pre_cdr_paths[k] = copy
-  }
-  let cdr_queue : Array[(String, String, Array[(String, String)])] = []
-  for _k, decl in schema.all_elements {
-    match catalog_part_root_phase_for_decl(decl.name, decl.type_name) {
-      Some("chartDrawing") => cdr_queue.push((decl.name, decl.type_name, []))
-      _ => ()
-    }
-  }
-  run_bfs(cdr_queue, Map([], capacity=0))
-  for key, _paths in all_paths {
-    let is_cdr_key = key.contains(cdr_ns_strict) || key.contains(cdr_ns_trans)
-    if is_cdr_key {
-      continue
-    }
-    match pre_cdr_paths.get(key) {
-      Some(orig) => all_paths[key] = orig
-      None => ()
-    }
-  }
+  run_phase_namespace_bfs("chartDrawing", cdr_ns_strict, cdr_ns_trans)
+  // PASS 6 — §20.5 DrawingML spreadsheetDrawing BFS.  `<xdr:wsDr>`
+  // is a separate worksheet drawing part (`xl/drawings/drawingN.xml`)
+  // reached by SpreadsheetML through `<worksheet>/<drawing r:id>`.
+  // The primary/supplementary BFS can otherwise reach xdr elements
+  // only through generic extension/background any-host paths, which
+  // parse but never exercise the SML drawing resolver or viewer.
+  let xdr_ns_strict = "http://purl.oclc.org/ooxml/drawingml/spreadsheetDrawing"
+  let xdr_ns_trans = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
+  run_phase_namespace_bfs("spreadsheetDrawing", xdr_ns_strict, xdr_ns_trans)
   // An `<xsd:any>` extension point (e.g. CT_GraphicalObjectData)
   // legally accepts any element.  For an element the named BFS
   // could not reach, route it through one of the discovered
