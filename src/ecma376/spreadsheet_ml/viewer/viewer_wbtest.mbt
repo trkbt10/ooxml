@@ -4814,11 +4814,78 @@ test "SpreadsheetML viewer §18.2.28 date1904 flag shifts date epoch" {
 }
 
 ///|
-/// §18.3.1.4 — cell text is clipped to the cell rectangle via a
-/// `<clipPath>` so an overlong string cannot bleed into adjacent
-/// cells. Mirrors `renderCellText` in web-pptx
-/// `@aurochs-renderer/xlsx/src/svg/cell-renderer.ts:308-318`.
-test "SpreadsheetML SVG renderer clips cell text to the cell rect" {
+/// Extract the `width="…"` value from the clipPath for `cell_ref`.
+/// Returns -1.0 when not found.
+fn cell_clip_width(svg : String, cell_ref : String) -> Double {
+  match svg.find("id=\"clip_" + cell_ref + "\"") {
+    None => -1.0
+    Some(i) => {
+      let rest = svg.unsafe_substring(start=i, end=svg.length())
+      match rest.find("width=\"") {
+        None => -1.0
+        Some(wi) => {
+          let after = rest.unsafe_substring(start=wi + 7, end=rest.length())
+          match after.find("\"") {
+            None => -1.0
+            Some(q) => {
+              let num = after.unsafe_substring(start=0, end=q)
+              (try? @string.parse_double(num)).unwrap_or(-1.0)
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+///|
+fn inline_string_cell(cell_ref : String, text : String) -> @xml.Node {
+  @xml.Node::Element({
+    name: name("c"),
+    attributes: [attr("r", cell_ref), attr("t", "inlineStr")],
+    children: [
+      @xml.Node::Element({
+        name: name("is"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("t"),
+            attributes: [],
+            children: [@xml.Node::Text(text)],
+          }),
+        ],
+      }),
+    ],
+  })
+}
+
+///|
+fn single_row_sheet(
+  dimension_ref : String,
+  cells : Array[@xml.Node],
+) -> @domain.CT_Worksheet raise {
+  @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("dimension"),
+        attributes: [attr("ref", dimension_ref)],
+        children: [],
+      }),
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [build_row(1, cells)],
+      }),
+    ],
+  })
+}
+
+///|
+/// §18.3.1.4 — cell text is emitted with a stable per-cell
+/// `<clipPath>`.
+test "SpreadsheetML SVG renderer emits cell text clip path" {
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -4870,6 +4937,50 @@ test "SpreadsheetML SVG renderer clips cell text to the cell rect" {
   // <clipPath> definition is emitted.
   assert_true(svg.contains("<clipPath "))
   assert_true(svg.contains("clip-path=\"url(#clip_"))
+}
+
+///|
+/// §18.3.1.4 / §18.3.1.81 — a single-line string may visually extend
+/// through adjacent empty cells. The glyph measurement still comes from
+/// the injected in-memory TTF resolver; there is no precomputed font
+/// catalogue here.
+test "SpreadsheetML SVG renderer extends single-line text through empty cells" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let worksheet = single_row_sheet("A1:C1", [
+    inline_string_cell("A1", "This inline string is wider than one cell"),
+  ])
+  let svg = render_svg(worksheet).svg
+  let width = cell_clip_width(svg, "A1")
+  let default_width = column_width_to_pixels(8.43)
+  assert_true(width > default_width + 1.0)
+}
+
+///|
+/// §18.3.1.4 / §18.3.1.81 — a neighbouring non-empty cell stops
+/// single-line overflow, so text remains clipped to the source cell.
+test "SpreadsheetML SVG renderer stops single-line overflow at occupied cell" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let worksheet = single_row_sheet("A1:B1", [
+    inline_string_cell("A1", "This inline string is wider than one cell"),
+    inline_string_cell("B1", "block"),
+  ])
+  let svg = render_svg(worksheet).svg
+  let width = cell_clip_width(svg, "A1")
+  let default_width = column_width_to_pixels(8.43)
+  assert_true(width <= default_width + 0.5)
+}
+
+///|
+/// Numeric cells do not use the string overflow rule; they keep their
+/// own cell clip even when neighbouring cells are empty.
+test "SpreadsheetML SVG renderer does not overflow numeric cells into empty cells" {
+  let worksheet = single_row_sheet("A1:C1", [
+    build_cell("A1", None, "12345678901234567890"),
+  ])
+  let svg = render_svg(worksheet).svg
+  let width = cell_clip_width(svg, "A1")
+  let default_width = column_width_to_pixels(8.43)
+  assert_true(width <= default_width + 0.5)
 }
 
 ///|

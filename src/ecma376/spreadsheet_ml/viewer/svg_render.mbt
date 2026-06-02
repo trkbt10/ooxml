@@ -757,6 +757,9 @@ pub fn render_svg(
                   id_prefix,
                   cell_ref,
                   cl,
+                  cell_text_overflow_clip_layout(
+                    cell_ref, cl, text, runs_style, cell_t, cell_map, layout,
+                  ),
                   styled_runs,
                   runs_style,
                   warnings,
@@ -773,6 +776,13 @@ pub fn render_svg(
                   text,
                   text_style,
                   icon_width,
+                  if icon_width == 0.0 {
+                    cell_text_overflow_clip_layout(
+                      cell_ref, cl, text, text_style, cell_t, cell_map, layout,
+                    )
+                  } else {
+                    cl
+                  },
                   warnings,
                   cell_t~,
                 ) {
@@ -7276,6 +7286,7 @@ fn render_cell_text_offset(
   text : String,
   style : ResolvedCellStyle,
   offset_x : Double,
+  clip_layout : CellLayout,
   warnings : Array[String],
   cell_t? : String? = None,
 ) -> Array[@xml.Node] {
@@ -7284,6 +7295,7 @@ fn render_cell_text_offset(
       id_prefix,
       cell_ref,
       layout,
+      clip_layout,
       text,
       style,
       warnings,
@@ -7304,6 +7316,7 @@ fn render_cell_text_offset(
     id_prefix,
     cell_ref,
     offset_layout,
+    offset_layout,
     text,
     style,
     warnings,
@@ -7316,13 +7329,12 @@ fn render_cell_text_offset(
 /// Returns the `<defs>` node carrying the clip path and the
 /// `url(#id)` reference string to attach to the cell's `<text>`.
 ///
-/// Mirrors `renderCellText` in
-/// `@aurochs-renderer/xlsx/src/svg/cell-renderer.ts:308-318`, which
-/// wraps every cell's text in a `<clipPath>` so overlong content is
-/// bounded to the cell instead of bleeding across the grid. The id
-/// derives from the §18.17.7 A1-style cell reference (e.g. `clip_B7`)
-/// so every cell gets a unique, stable clip-path id — a coordinate-
-/// derived key collides whenever two cells share a pixel origin.
+/// The id derives from the §18.17.7 A1-style cell reference (e.g.
+/// `clip_B7`) so every cell gets a unique, stable clip-path id — a
+/// coordinate-derived key collides whenever two cells share a pixel
+/// origin.  Single-line string cells may pass an expanded `layout`
+/// spanning adjacent empty cells; wrapped / rotated / value cells pass
+/// their own cell rectangle.
 fn cell_text_clip(
   id_prefix : String,
   cell_ref : String,
@@ -7345,6 +7357,195 @@ fn cell_text_clip(
   let clip_path = svg_elem("clipPath", [svg_attr("id", id)], [rect])
   let defs = svg_elem("defs", [], [clip_path])
   (defs, "url(#" + id + ")")
+}
+
+///|
+fn cell_text_anchor_with_indent(
+  layout : CellLayout,
+  style : ResolvedCellStyle,
+  warnings : Array[String],
+  cell_t : String?,
+  context : String,
+) -> (Double, String) {
+  let padding = 2.0
+  let (tx0, anchor) = horizontal_text_pos(
+    layout,
+    style.alignment.horizontal,
+    padding,
+    cell_t~,
+  )
+  if style.alignment.indent != 0 && anchor != "middle" {
+    let unit = cell_text_width("   ", style.font, warnings, context~)
+    let offset = unit * style.alignment.indent.to_double()
+    if anchor == "end" {
+      (tx0 - offset, anchor)
+    } else {
+      (tx0 + offset, anchor)
+    }
+  } else {
+    (tx0, anchor)
+  }
+}
+
+///|
+fn cell_blocks_text_overflow(cell : @xml.Element) -> Bool {
+  match first_child_named_local(cell, "f") {
+    Some(_) => return true
+    None => ()
+  }
+  match first_child_named_local(cell, "v") {
+    Some(v) => if xml_text_content(v).trim().to_owned() != "" { return true }
+    None => ()
+  }
+  match first_child_named_local(cell, "is") {
+    Some(is_el) => extract_text_from_is(is_el) != ""
+    None => false
+  }
+}
+
+///|
+fn cell_type_allows_text_overflow(cell_t : String?) -> Bool {
+  match cell_t {
+    Some("s") | Some("str") | Some("inlineStr") => true
+    _ => false
+  }
+}
+
+///|
+fn empty_text_overflow_right_limit(
+  row : Int,
+  col : Int,
+  cell_layout : CellLayout,
+  sheet_layout : SheetLayout,
+  cell_map : Map[String, @xml.Element],
+  required_right : Double,
+) -> Double {
+  let mut right_limit = cell_layout.x + cell_layout.width
+  let mut blocked = false
+  let mut scan_col = col + cell_layout.colspan
+  while scan_col <= sheet_layout.column_count && !blocked {
+    let ref_text = cell_ref_from_indices(row, scan_col)
+    match cell_map.get(ref_text) {
+      Some(cell) =>
+        if cell_blocks_text_overflow(cell) {
+          blocked = true
+        } else {
+          right_limit = sheet_layout.column_positions[scan_col - 1] +
+            sheet_layout.column_widths[scan_col - 1]
+        }
+      None =>
+        right_limit = sheet_layout.column_positions[scan_col - 1] +
+          sheet_layout.column_widths[scan_col - 1]
+    }
+    scan_col = scan_col + 1
+  }
+  if !blocked {
+    right_limit.max(required_right)
+  } else {
+    right_limit
+  }
+}
+
+///|
+fn empty_text_overflow_left_limit(
+  row : Int,
+  col : Int,
+  cell_layout : CellLayout,
+  sheet_layout : SheetLayout,
+  cell_map : Map[String, @xml.Element],
+  required_left : Double,
+) -> Double {
+  let mut left_limit = cell_layout.x
+  let mut blocked = false
+  let mut scan_col = col - 1
+  while scan_col >= 1 && !blocked {
+    let ref_text = cell_ref_from_indices(row, scan_col)
+    match cell_map.get(ref_text) {
+      Some(cell) =>
+        if cell_blocks_text_overflow(cell) {
+          blocked = true
+        } else {
+          left_limit = sheet_layout.column_positions[scan_col - 1]
+        }
+      None => left_limit = sheet_layout.column_positions[scan_col - 1]
+    }
+    scan_col = scan_col - 1
+  }
+  if !blocked {
+    left_limit.min(required_left).max(0.0)
+  } else {
+    left_limit
+  }
+}
+
+///|
+fn cell_text_overflow_clip_layout(
+  cell_ref : String,
+  layout : CellLayout,
+  text : String,
+  style : ResolvedCellStyle,
+  cell_t : String?,
+  cell_map : Map[String, @xml.Element],
+  sheet_layout : SheetLayout,
+) -> CellLayout {
+  if !cell_type_allows_text_overflow(cell_t) ||
+    style.alignment.wrap_text ||
+    style.alignment.shrink_to_fit ||
+    style.alignment.text_rotation != 0 ||
+    split_fill_directive(text) is Some(_) {
+    return layout
+  }
+  let (row, col) = match parse_cell_ref(cell_ref) {
+    Some(rc) => rc
+    None => return layout
+  }
+  let overflow_warnings : Array[String] = []
+  let (tx, anchor) = cell_text_anchor_with_indent(
+    layout, style, overflow_warnings, cell_t, "single-line overflow indent",
+  )
+  let text_width = cell_text_width(
+    text,
+    style.font,
+    overflow_warnings,
+    context="single-line overflow",
+  )
+  if text_width <= 0.0 || anchor == "middle" {
+    return layout
+  }
+  let padding = 2.0
+  let current_left = layout.x
+  let current_right = layout.x + layout.width
+  if anchor == "start" {
+    let required_right = tx + text_width + padding
+    if required_right <= current_right {
+      return layout
+    }
+    let right_limit = empty_text_overflow_right_limit(
+      row, col, layout, sheet_layout, cell_map, required_right,
+    )
+    let clip_right = required_right.min(right_limit)
+    if clip_right <= current_right {
+      layout
+    } else {
+      { ..layout, width: clip_right - current_left }
+    }
+  } else if anchor == "end" {
+    let required_left = tx - text_width - padding
+    if required_left >= current_left {
+      return layout
+    }
+    let left_limit = empty_text_overflow_left_limit(
+      row, col, layout, sheet_layout, cell_map, required_left,
+    )
+    let clip_left = required_left.max(left_limit)
+    if clip_left >= current_left {
+      layout
+    } else {
+      { ..layout, x: clip_left, width: current_right - clip_left }
+    }
+  } else {
+    layout
+  }
 }
 
 ///|
@@ -7577,43 +7778,23 @@ fn render_cell_text_runs(
   id_prefix : String,
   cell_ref : String,
   layout : CellLayout,
+  clip_layout : CellLayout,
   runs : Array[(String, ResolvedFont)],
   style : ResolvedCellStyle,
   warnings : Array[String],
   cell_t? : String? = None,
 ) -> Array[@xml.Node] {
-  let padding = 2.0
-  let (tx0, anchor) = horizontal_text_pos(
-    layout,
-    style.alignment.horizontal,
-    padding,
-    cell_t~,
+  let (tx, anchor) = cell_text_anchor_with_indent(
+    layout, style, warnings, cell_t, "rich text indent",
   )
-  // §18.8.1 — indent: identical computation to the simple branch so the
-  // rich-text path lines up with the plain path for the same cell.
-  let tx = if style.alignment.indent != 0 && anchor != "middle" {
-    let unit = cell_text_width(
-      "   ",
-      style.font,
-      warnings,
-      context="rich text indent",
-    )
-    let offset = unit * style.alignment.indent.to_double()
-    if anchor == "end" {
-      tx0 - offset
-    } else {
-      tx0 + offset
-    }
-  } else {
-    tx0
-  }
+  let padding = 2.0
   let (ty, baseline) = vertical_text_pos(
     layout,
     style.alignment.vertical,
     style.font.size,
     padding,
   )
-  let (clip_defs, clip_ref) = cell_text_clip(id_prefix, cell_ref, layout)
+  let (clip_defs, clip_ref) = cell_text_clip(id_prefix, cell_ref, clip_layout)
   let attrs : Array[@xml.Attribute] = [
     svg_attr("x", format_d(tx)),
     svg_attr("y", format_d(ty)),
@@ -7656,6 +7837,7 @@ fn render_cell_text(
   id_prefix : String,
   cell_ref : String,
   layout : CellLayout,
+  clip_layout : CellLayout,
   text : String,
   style : ResolvedCellStyle,
   warnings : Array[String],
@@ -7744,29 +7926,15 @@ fn render_cell_text(
   } else {
     style
   }
-  let (tx0, anchor) = horizontal_text_pos(
-    layout,
-    style.alignment.horizontal,
-    padding,
-    cell_t~,
-  )
   // §18.8.1 — indent: shift the text anchor by `indent` units, where
   // ECMA-376 defines one unit as "an increment of 1 represents 3
   // spaces" of the cell font (measured via the glyph engine, never a
   // hard-coded width).  Start-anchored text moves right, end-anchored
   // text moves left; centred text is not indented (Excel ignores
   // indent under centre alignment).
-  let tx = if style.alignment.indent != 0 && anchor != "middle" {
-    let unit = cell_text_width("   ", style.font, warnings, context="indent")
-    let offset = unit * style.alignment.indent.to_double()
-    if anchor == "end" {
-      tx0 - offset
-    } else {
-      tx0 + offset
-    }
-  } else {
-    tx0
-  }
+  let (tx, anchor) = cell_text_anchor_with_indent(
+    layout, style, warnings, cell_t, "indent",
+  )
   let (ty, baseline) = vertical_text_pos(
     layout,
     style.alignment.vertical,
@@ -7778,9 +7946,10 @@ fn render_cell_text(
       id_prefix, cell_ref, layout, text, style, tx, anchor, warnings,
     )
   }
-  // §18.3.1.4 — clip the cell text to the cell rectangle so a long
-  // string does not bleed into neighbouring cells.
-  let (clip_defs, clip_ref) = cell_text_clip(id_prefix, cell_ref, layout)
+  // §18.3.1.4 / §18.3.1.81 — single-line text may extend through
+  // adjacent empty cells. The text anchor remains the source cell's
+  // layout; only the clip rectangle expands to the empty-cell span.
+  let (clip_defs, clip_ref) = cell_text_clip(id_prefix, cell_ref, clip_layout)
   let attrs : Array[@xml.Attribute] = [
     svg_attr("x", format_d(tx)),
     svg_attr("y", format_d(ty)),

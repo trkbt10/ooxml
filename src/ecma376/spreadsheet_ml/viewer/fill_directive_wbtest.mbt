@@ -43,7 +43,8 @@ test "render_cell_text expands *x fill into left+right anchored runs" {
   // Formatted text with a leader-dot fill: left "$", tiled '.', right "5".
   let text = apply_format_section(5.0, "\"$\"*.0")
   let warnings : Array[String] = []
-  let nodes = render_cell_text("s", "A1", fill_layout(), text, style, warnings)
+  let layout = fill_layout()
+  let nodes = render_cell_text("s", "A1", layout, layout, text, style, warnings)
   let sb = StringBuilder::new()
   for n in nodes {
     match n {
@@ -68,7 +69,8 @@ test "§18.18.40 fill alignment tiles the whole cell text" {
   let style = { ..base, alignment: { ..base.alignment, horizontal: "fill" } }
   // A 120 px cell with the short text "ab" must repeat it several times.
   let warnings : Array[String] = []
-  let nodes = render_cell_text("s", "A1", fill_layout(), "ab", style, warnings)
+  let layout = fill_layout()
+  let nodes = render_cell_text("s", "A1", layout, layout, "ab", style, warnings)
   let sb = StringBuilder::new()
   for n in nodes {
     match n {
@@ -88,7 +90,8 @@ test "wrapped cell strips the fill sentinel rather than leaking it" {
   let style = { ..base, alignment: { ..base.alignment, wrap_text: true } }
   let text = apply_format_section(5.0, "\"$\"*.0")
   let warnings : Array[String] = []
-  let nodes = render_cell_text("s", "A1", fill_layout(), text, style, warnings)
+  let layout = fill_layout()
+  let nodes = render_cell_text("s", "A1", layout, layout, text, style, warnings)
   let sb = StringBuilder::new()
   for n in nodes {
     match n {
