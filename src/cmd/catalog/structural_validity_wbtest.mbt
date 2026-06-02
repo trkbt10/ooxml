@@ -212,6 +212,58 @@ test "catalog docx font-table host retargets synthesized font relationship id" {
 }
 
 ///|
+test "catalog xlsx comments host retargets synthesized comment ref to sheet cell" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let s_attr = fn(local_name : String, value : String) -> @xml.Attribute {
+    { name: { prefix: Some("s"), local_name, ns: Some(ns_s) }, value }
+  }
+  let comments = xep("s", ns_s, "comments", [], [
+    Element(
+      xep("s", ns_s, "authors", [], [
+        Element(xep("s", ns_s, "author", [], [Text("Catalog")])),
+      ]),
+    ),
+    Element(
+      xep("s", ns_s, "commentList", [], [
+        Element(
+          xep(
+            "s",
+            ns_s,
+            "comment",
+            [s_attr("ref", "x"), s_attr("authorId", "0")],
+            [
+              Element(
+                xep("s", ns_s, "text", [], [
+                  Element(xep("s", ns_s, "t", [], [Text("note")])),
+                ]),
+              ),
+            ],
+          ),
+        ),
+      ]),
+    ),
+  ])
+  let workbook = @sml_context.open(
+    xlsx_with_aux_root_package("comments", comments),
+  ) catch {
+    @sml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let saved = workbook.save_or_raise() catch {
+    @sml_context.SaveError(kind~, path~, reason~) =>
+      abort("save failed: " + kind + " " + path + " " + reason)
+  }
+  let reopened = @sml_context.open(saved) catch {
+    @sml_context.OpenError(kind~, path~, reason~) =>
+      abort("reopen failed: " + kind + " " + path + " " + reason)
+  }
+  let svg = reopened.to_svg(debug_attrs=true)
+  assert_true(svg.contains("class=\"comment-indicators\""))
+  assert_true(svg.contains("data-ooxml-comment-ref=\"A1\""))
+  assert_true(!svg.contains("data-ooxml-comment-ref=\"x\""))
+}
+
+///|
 test "catalog pptx host inserts required cSld before slide transition" {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let transition = xep("p", ns_p, "transition", [xa("spd", "fast")], [

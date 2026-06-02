@@ -5591,10 +5591,43 @@ fn xlsx_with_aux_root_package(
       } else {
         xe(ns_s, "comments", [], [Element(content)])
       }
-      xlsx_package_with_comments_part(comments_root)
+      xlsx_package_with_comments_part(
+        retarget_spreadsheet_comment_refs(comments_root),
+      )
     }
     _ => xlsx_package(content)
   }
+}
+
+///|
+/// The catalog comments host paints indicators on a synthetic sheet
+/// containing `A1`; keep generated `<comment @ref>` values aligned
+/// with that sheet so §18.7 comments exercise the real renderer path.
+fn retarget_spreadsheet_comment_refs(element : @xml.Element) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  if element.name.local_name == "comment" {
+    for attr in element.attributes {
+      if attr.name.local_name == "ref" &&
+        (attr.value == "x" || attr.value == "") {
+        attrs.push({ name: attr.name, value: "A1" })
+      } else {
+        attrs.push(attr)
+      }
+    }
+  } else {
+    for attr in element.attributes {
+      attrs.push(attr)
+    }
+  }
+  let children : Array[@xml.Node] = []
+  for child in element.children {
+    match child {
+      Element(ce) =>
+        children.push(Element(retarget_spreadsheet_comment_refs(ce)))
+      _ => children.push(child)
+    }
+  }
+  { name: element.name, attributes: attrs, children }
 }
 
 ///|
