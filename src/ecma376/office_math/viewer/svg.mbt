@@ -218,11 +218,9 @@ fn text_box(
   if content == "" {
     return empty_box()
   }
-  // Math notation conventionally renders in a serif/roman face — the
-  // OOXML math font (Cambria Math) and every TeX math font (Latin
-  // Modern Math, STIX) are serif. We pass the canonical Noto serif
-  // family name and let the resolver pick whatever serif face the
-  // host carries; body text defaults to sans-serif by contrast.
+  // Math notation conventionally renders in a serif/roman face. The
+  // concrete face name below is a last-resort resolver request, not an
+  // ECMA-376-defined font value.
   let family = "Noto Serif"
   let weight = if bold { 700 } else { 400 }
   let width = try

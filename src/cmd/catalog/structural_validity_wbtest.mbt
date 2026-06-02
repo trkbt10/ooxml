@@ -396,6 +396,102 @@ test "catalog xlsx sharedStrings host resolves sheet cell text" {
 }
 
 ///|
+fn catalog_sml_render_styles_svg(styles : @xml.Element) -> String {
+  let workbook = @sml_context.open(xlsx_with_aux_root_package("styles", styles)) catch {
+    @sml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let saved = workbook.save_or_raise() catch {
+    @sml_context.SaveError(kind~, path~, reason~) =>
+      abort("save failed: " + kind + " " + path + " " + reason)
+  }
+  let reopened = @sml_context.open(saved) catch {
+    @sml_context.OpenError(kind~, path~, reason~) =>
+      abort("reopen failed: " + kind + " " + path + " " + reason)
+  }
+  reopened.to_svg(debug_attrs=true)
+}
+
+///|
+test "catalog xlsx styles host applies nested fgColor to visible cell" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let fg_color = stamp_target(
+    xep("s", ns_s, "fgColor", [xa("rgb", "FFFF0000")], []),
+  )
+  let styles = xep("s", ns_s, "styleSheet", [], [
+    Element(
+      xep("s", ns_s, "fills", [xa("count", "1")], [
+        Element(
+          xep("s", ns_s, "fill", [], [
+            Element(
+              xep("s", ns_s, "patternFill", [xa("patternType", "solid")], [
+                Element(fg_color),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  assert_eq(verify_entry("xlsx:styles", styles, "CAT-SML-FG"), "rendered")
+  let svg = catalog_sml_render_styles_svg(strip_target_attr(styles))
+  assert_true(svg.contains("#FF0000"))
+}
+
+///|
+test "catalog xlsx styles host applies nested bgColor to visible pattern" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let bg_color = stamp_target(
+    xep("s", ns_s, "bgColor", [xa("rgb", "FFFFFF00")], []),
+  )
+  let styles = xep("s", ns_s, "styleSheet", [], [
+    Element(
+      xep("s", ns_s, "fills", [xa("count", "1")], [
+        Element(
+          xep("s", ns_s, "fill", [], [
+            Element(
+              xep("s", ns_s, "patternFill", [xa("patternType", "darkGrid")], [
+                Element(xep("s", ns_s, "fgColor", [xa("rgb", "FFFF0000")], [])),
+                Element(bg_color),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  assert_eq(verify_entry("xlsx:styles", styles, "CAT-SML-BG"), "rendered")
+  let svg = catalog_sml_render_styles_svg(strip_target_attr(styles))
+  assert_true(svg.contains("data-ooxml-pattern-bg=\"#FFFF00\""))
+}
+
+///|
+test "catalog xlsx styles host routes numFmt through cell style index" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let num_fmt = stamp_target(
+    xep(
+      "s",
+      ns_s,
+      "numFmt",
+      [xa("numFmtId", "164"), xa("formatCode", "0.00")],
+      [],
+    ),
+  )
+  assert_eq(verify_entry("xlsx:styles", num_fmt, "CAT-SML-NUMFMT"), "rendered")
+  let svg = catalog_sml_render_styles_svg(strip_target_attr(num_fmt))
+  assert_true(svg.contains("1234.50"))
+}
+
+///|
+test "catalog xlsx styles host routes font color through cell style index" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let color = stamp_target(xep("s", ns_s, "color", [xa("rgb", "FFFF0000")], []))
+  assert_eq(verify_entry("xlsx:styles", color, "CAT-SML-FONT"), "rendered")
+  let svg = catalog_sml_render_styles_svg(strip_target_attr(color))
+  assert_true(svg.contains("#FF0000"))
+}
+
+///|
 fn catalog_xdr_marker(
   local_name : String,
   col : String,

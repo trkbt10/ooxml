@@ -1558,7 +1558,7 @@ fn catalog_sml_pivot_element_with_children(
 }
 
 ///|
-fn catalog_pivot_attrs_with_defaults(
+fn catalog_attrs_with_defaults(
   attrs : Array[@xml.Attribute],
   defaults : Array[(String, String)],
 ) -> Array[@xml.Attribute] {
@@ -1583,7 +1583,7 @@ fn catalog_pivot_attrs_with_defaults(
 }
 
 ///|
-fn catalog_pivot_force_attrs(
+fn catalog_force_attrs(
   attrs : Array[@xml.Attribute],
   forced : Array[(String, String)],
 ) -> Array[@xml.Attribute] {
@@ -1616,6 +1616,22 @@ fn catalog_pivot_force_attrs(
     }
   }
   out
+}
+
+///|
+fn catalog_pivot_attrs_with_defaults(
+  attrs : Array[@xml.Attribute],
+  defaults : Array[(String, String)],
+) -> Array[@xml.Attribute] {
+  catalog_attrs_with_defaults(attrs, defaults)
+}
+
+///|
+fn catalog_pivot_force_attrs(
+  attrs : Array[@xml.Attribute],
+  forced : Array[(String, String)],
+) -> Array[@xml.Attribute] {
+  catalog_force_attrs(attrs, forced)
 }
 
 ///|
@@ -1873,6 +1889,595 @@ fn xlsx_package_styled(content : @xml.Element, styles : @xml.Element) -> Bytes {
     ("xl/styles.xml", write_part(styles)),
   ]
   (try? @zip.write(@zip.Archive::new(parts))).unwrap_or(Bytes::new(0))
+}
+
+///|
+/// Worksheet probe used by the styles.xml catalog host.  The only
+/// style-bearing surface is A1, which references `cellXfs[1]`; all
+/// style semantics remain in the SpreadsheetML reader/context/viewer.
+fn catalog_sml_style_probe_worksheet() -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xep("s", ns_s, "worksheet", [], [
+    Element(xep("s", ns_s, "dimension", [xa("ref", "A1:A1")], [])),
+    Element(
+      xep("s", ns_s, "sheetData", [], [
+        Element(
+          xep("s", ns_s, "row", [xa("r", "1")], [
+            Element(
+              xep("s", ns_s, "c", [xa("r", "A1"), xa("s", "1")], [
+                Element(xep("s", ns_s, "v", [], [Text("1234.5")])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_sml_style_name_in(
+  local_name : String,
+  names : Array[String],
+) -> Bool {
+  for name in names {
+    if local_name == name {
+      return true
+    }
+  }
+  false
+}
+
+///|
+fn catalog_sml_style_find_any(
+  element : @xml.Element,
+  names : Array[String],
+) -> @xml.Element? {
+  if catalog_sml_style_name_in(element.name.local_name, names) {
+    return Some(element)
+  }
+  for child in element.children {
+    match child {
+      Element(c) =>
+        match catalog_sml_style_find_any(c, names) {
+          Some(found) => return Some(found)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn catalog_sml_style_force_element(
+  element : @xml.Element,
+  attrs : Array[(String, String)],
+) -> @xml.Element {
+  {
+    name: element.name,
+    attributes: catalog_force_attrs(element.attributes, attrs),
+    children: element.children,
+  }
+}
+
+///|
+fn catalog_sml_style_default_font() -> @xml.Element {
+  ss_font("11", "sans-serif", [])
+}
+
+///|
+fn catalog_sml_style_font_blue() -> @xml.Element {
+  ss_font("11", "sans-serif", [ss_color("FF0000FF")])
+}
+
+///|
+fn catalog_sml_style_default_fills() -> Array[@xml.Element] {
+  [ss_fill_none(), ss_fill_gray125()]
+}
+
+///|
+fn catalog_sml_style_default_borders() -> Array[@xml.Element] {
+  [ss_border_none()]
+}
+
+///|
+fn catalog_sml_style_default_xf() -> @xml.Element {
+  ss_cell_xf("0", "0", "0", "0", None)
+}
+
+///|
+fn catalog_sml_style_default_sheet() -> @xml.Element {
+  ss_sheet(
+    [],
+    [catalog_sml_style_default_font()],
+    catalog_sml_style_default_fills(),
+    catalog_sml_style_default_borders(),
+    [catalog_sml_style_default_xf(), catalog_sml_style_default_xf()],
+  )
+}
+
+///|
+fn catalog_sml_style_color_with_rgb(
+  color : @xml.Element,
+  argb : String,
+) -> @xml.Element {
+  catalog_sml_style_force_element(color, [("rgb", argb)])
+}
+
+///|
+fn catalog_sml_style_font_child(child : @xml.Element) -> @xml.Element {
+  match child.name.local_name {
+    "color" => catalog_sml_style_color_with_rgb(child, "FFFF0000")
+    "sz" => catalog_sml_style_force_element(child, [("val", "18")])
+    "name" => catalog_sml_style_force_element(child, [("val", "serif")])
+    "b" | "i" | "strike" | "outline" | "shadow" | "condense" | "extend" =>
+      catalog_sml_style_force_element(child, [("val", "1")])
+    "u" => catalog_sml_style_force_element(child, [("val", "single")])
+    _ => child
+  }
+}
+
+///|
+fn catalog_sml_style_font_from_font(font : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_sz = false
+  let mut has_name = false
+  let mut has_visible_child = false
+  for child in font.children {
+    match child {
+      Element(c) => {
+        match c.name.local_name {
+          "sz" => has_sz = true
+          "name" => has_name = true
+          "color"
+          | "b"
+          | "i"
+          | "strike"
+          | "outline"
+          | "shadow"
+          | "condense"
+          | "extend"
+          | "u" => has_visible_child = true
+          _ => ()
+        }
+        kids.push(Element(catalog_sml_style_font_child(c)))
+      }
+      other => kids.push(other)
+    }
+  }
+  if !has_sz {
+    kids.push(Element(xe(NS_S, "sz", [xa("val", "11")], [])))
+  }
+  if !has_visible_child {
+    kids.push(Element(ss_color("FF0000FF")))
+  }
+  if !has_name {
+    kids.push(Element(xe(NS_S, "name", [xa("val", "sans-serif")], [])))
+  }
+  { name: font.name, attributes: font.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_style_font_from_child(child : @xml.Element) -> @xml.Element {
+  ss_font("11", "sans-serif", [catalog_sml_style_font_child(child)])
+}
+
+///|
+fn catalog_sml_style_font_sheet(font : @xml.Element) -> @xml.Element {
+  let styled_font = if font.name.local_name == "font" {
+    catalog_sml_style_font_from_font(font)
+  } else {
+    catalog_sml_style_font_from_child(font)
+  }
+  ss_sheet(
+    [],
+    [catalog_sml_style_default_font(), styled_font],
+    catalog_sml_style_default_fills(),
+    catalog_sml_style_default_borders(),
+    [catalog_sml_style_default_xf(), ss_cell_xf("0", "1", "0", "0", None)],
+  )
+}
+
+///|
+fn catalog_sml_style_pattern_fill_from(pattern : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_fg = false
+  let mut has_bg = false
+  for child in pattern.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "fgColor" {
+          has_fg = true
+          kids.push(Element(catalog_sml_style_color_with_rgb(c, "FFFF0000")))
+        } else if c.name.local_name == "bgColor" {
+          has_bg = true
+          kids.push(Element(catalog_sml_style_color_with_rgb(c, "FFFFFF00")))
+        } else {
+          kids.push(Element(c))
+        }
+      other => kids.push(other)
+    }
+  }
+  if !has_fg {
+    kids.push(Element(xe(NS_S, "fgColor", [xa("rgb", "FF0000FF")], [])))
+  }
+  {
+    name: pattern.name,
+    attributes: catalog_force_attrs(pattern.attributes, [
+      ("patternType", if has_bg { "darkGrid" } else { "solid" }),
+    ]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_style_gradient_stop_from(stop : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_color = false
+  for child in stop.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "color" {
+          has_color = true
+          kids.push(Element(catalog_sml_style_color_with_rgb(c, "FFFF0000")))
+        } else {
+          kids.push(Element(c))
+        }
+      other => kids.push(other)
+    }
+  }
+  if !has_color {
+    kids.push(Element(ss_color("FFFF0000")))
+  }
+  {
+    name: stop.name,
+    attributes: catalog_force_attrs(stop.attributes, [("position", "0")]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_style_gradient_fill_from(
+  gradient : @xml.Element,
+) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_stop = false
+  for child in gradient.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "stop" {
+          has_stop = true
+          kids.push(Element(catalog_sml_style_gradient_stop_from(c)))
+        } else {
+          kids.push(Element(c))
+        }
+      other => kids.push(other)
+    }
+  }
+  if !has_stop {
+    kids.push(
+      Element(
+        xe(NS_S, "stop", [xa("position", "0")], [Element(ss_color("FFFF0000"))]),
+      ),
+    )
+    kids.push(
+      Element(
+        xe(NS_S, "stop", [xa("position", "1")], [Element(ss_color("FFFFFFFF"))]),
+      ),
+    )
+  }
+  {
+    name: gradient.name,
+    attributes: catalog_attrs_with_defaults(gradient.attributes, [
+      ("type", "linear"),
+    ]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_style_fill_from_fill(fill : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_fill_child = false
+  for child in fill.children {
+    match child {
+      Element(c) => {
+        has_fill_child = true
+        if c.name.local_name == "patternFill" {
+          kids.push(Element(catalog_sml_style_pattern_fill_from(c)))
+        } else if c.name.local_name == "gradientFill" {
+          kids.push(Element(catalog_sml_style_gradient_fill_from(c)))
+        } else {
+          kids.push(Element(c))
+        }
+      }
+      other => kids.push(other)
+    }
+  }
+  if !has_fill_child {
+    kids.push(
+      Element(
+        xe(NS_S, "patternFill", [xa("patternType", "solid")], [
+          Element(xe(NS_S, "fgColor", [xa("rgb", "FF0000FF")], [])),
+        ]),
+      ),
+    )
+  }
+  { name: fill.name, attributes: fill.attributes, children: kids }
+}
+
+///|
+fn catalog_sml_style_fill_from_child(child : @xml.Element) -> @xml.Element {
+  match child.name.local_name {
+    "patternFill" =>
+      xe(NS_S, "fill", [], [Element(catalog_sml_style_pattern_fill_from(child))])
+    "fgColor" =>
+      xe(NS_S, "fill", [], [
+        Element(
+          xe(NS_S, "patternFill", [xa("patternType", "solid")], [
+            Element(catalog_sml_style_color_with_rgb(child, "FFFF0000")),
+          ]),
+        ),
+      ])
+    "bgColor" =>
+      xe(NS_S, "fill", [], [
+        Element(
+          xe(NS_S, "patternFill", [xa("patternType", "darkGrid")], [
+            Element(xe(NS_S, "fgColor", [xa("rgb", "FFFF0000")], [])),
+            Element(catalog_sml_style_color_with_rgb(child, "FFFFFF00")),
+          ]),
+        ),
+      ])
+    "gradientFill" =>
+      xe(NS_S, "fill", [], [
+        Element(catalog_sml_style_gradient_fill_from(child)),
+      ])
+    "stop" =>
+      xe(NS_S, "fill", [], [
+        Element(
+          xe(NS_S, "gradientFill", [xa("type", "linear")], [
+            Element(catalog_sml_style_gradient_stop_from(child)),
+            Element(
+              xe(NS_S, "stop", [xa("position", "1")], [
+                Element(ss_color("FFFFFFFF")),
+              ]),
+            ),
+          ]),
+        ),
+      ])
+    _ => ss_pattern_fill("solid", Some("FF0000FF"), None)
+  }
+}
+
+///|
+fn catalog_sml_style_fill_sheet(fill : @xml.Element) -> @xml.Element {
+  let styled_fill = if fill.name.local_name == "fill" {
+    catalog_sml_style_fill_from_fill(fill)
+  } else {
+    catalog_sml_style_fill_from_child(fill)
+  }
+  ss_sheet(
+    [],
+    [catalog_sml_style_default_font()],
+    [ss_fill_none(), styled_fill],
+    catalog_sml_style_default_borders(),
+    [catalog_sml_style_default_xf(), ss_cell_xf("0", "0", "1", "0", None)],
+  )
+}
+
+///|
+fn catalog_sml_style_border_side(side : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_color = false
+  for child in side.children {
+    match child {
+      Element(c) =>
+        if c.name.local_name == "color" {
+          has_color = true
+          kids.push(Element(catalog_sml_style_color_with_rgb(c, "FF000000")))
+        } else {
+          kids.push(Element(c))
+        }
+      other => kids.push(other)
+    }
+  }
+  if !has_color {
+    kids.push(Element(ss_color("FF000000")))
+  }
+  {
+    name: side.name,
+    attributes: catalog_force_attrs(side.attributes, [("style", "thin")]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_style_border_from_border(border : @xml.Element) -> @xml.Element {
+  let kids : Array[@xml.Node] = []
+  let mut has_side = false
+  for child in border.children {
+    match child {
+      Element(c) =>
+        match c.name.local_name {
+          "start" | "end" | "left" | "right" | "top" | "bottom" | "diagonal" => {
+            has_side = true
+            kids.push(Element(catalog_sml_style_border_side(c)))
+          }
+          _ => kids.push(Element(c))
+        }
+      other => kids.push(other)
+    }
+  }
+  if !has_side {
+    kids.push(
+      Element(
+        xe(NS_S, "left", [xa("style", "thin")], [Element(ss_color("FF000000"))]),
+      ),
+    )
+  }
+  {
+    name: border.name,
+    attributes: catalog_attrs_with_defaults(border.attributes, [
+      ("diagonalUp", "1"),
+      ("diagonalDown", "1"),
+    ]),
+    children: kids,
+  }
+}
+
+///|
+fn catalog_sml_style_border_from_child(child : @xml.Element) -> @xml.Element {
+  let side = catalog_sml_style_border_side(child)
+  let attrs = if child.name.local_name == "diagonal" {
+    [xa("diagonalUp", "1"), xa("diagonalDown", "1")]
+  } else {
+    []
+  }
+  xe(NS_S, "border", attrs, [Element(side)])
+}
+
+///|
+fn catalog_sml_style_border_sheet(border : @xml.Element) -> @xml.Element {
+  let styled_border = if border.name.local_name == "border" {
+    catalog_sml_style_border_from_border(border)
+  } else {
+    catalog_sml_style_border_from_child(border)
+  }
+  ss_sheet(
+    [],
+    [catalog_sml_style_default_font()],
+    catalog_sml_style_default_fills(),
+    [ss_border_none(), styled_border],
+    [catalog_sml_style_default_xf(), ss_cell_xf("0", "0", "0", "1", None)],
+  )
+}
+
+///|
+fn catalog_sml_style_alignment_from(alignment : @xml.Element) -> @xml.Element {
+  catalog_sml_style_force_element(alignment, [
+    ("horizontal", "right"),
+    ("vertical", "top"),
+  ])
+}
+
+///|
+fn catalog_sml_style_alignment_sheet(alignment : @xml.Element) -> @xml.Element {
+  ss_sheet(
+    [],
+    [catalog_sml_style_default_font()],
+    catalog_sml_style_default_fills(),
+    catalog_sml_style_default_borders(),
+    [
+      catalog_sml_style_default_xf(),
+      ss_cell_xf(
+        "0",
+        "0",
+        "0",
+        "0",
+        Some(catalog_sml_style_alignment_from(alignment)),
+      ),
+    ],
+  )
+}
+
+///|
+fn catalog_sml_style_num_fmt_sheet(num_fmt : @xml.Element) -> @xml.Element {
+  let fmt = catalog_sml_style_force_element(num_fmt, [
+    ("numFmtId", "164"),
+    ("formatCode", "0.00"),
+  ])
+  ss_sheet(
+    [fmt],
+    [catalog_sml_style_default_font()],
+    catalog_sml_style_default_fills(),
+    catalog_sml_style_default_borders(),
+    [catalog_sml_style_default_xf(), ss_cell_xf("164", "0", "0", "0", None)],
+  )
+}
+
+///|
+fn catalog_sml_style_xf_sheet(xf : @xml.Element) -> @xml.Element {
+  let style_xf = catalog_sml_style_force_element(xf, [
+    ("numFmtId", "164"),
+    ("fontId", "1"),
+    ("fillId", "1"),
+    ("borderId", "1"),
+    ("applyNumberFormat", "1"),
+    ("applyFont", "1"),
+    ("applyFill", "1"),
+    ("applyBorder", "1"),
+  ])
+  ss_sheet(
+    [ss_num_fmt("164", "0.00")],
+    [catalog_sml_style_default_font(), catalog_sml_style_font_blue()],
+    [ss_fill_none(), ss_pattern_fill("solid", Some("FFFFFF00"), None)],
+    [
+      ss_border_none(),
+      ss_border("thin", "thin", "thin", "thin", "", [], "FF000000"),
+    ],
+    [catalog_sml_style_default_xf(), style_xf],
+  )
+}
+
+///|
+/// Build a styleSheet that connects the catalog target to A1's
+/// `s="1"` style index.  This is host scaffolding only: the
+/// SpreadsheetML reader/context/viewer remains the single source of
+/// style interpretation.
+fn catalog_sml_stylesheet_for_render(content : @xml.Element) -> @xml.Element {
+  let root : @xml.Element = if content.name.local_name == "styleSheet" {
+    content
+  } else {
+    xe(NS_S, "styleSheet", [], [Element(content)])
+  }
+  match catalog_sml_style_find_any(root, ["numFmt"]) {
+    Some(num_fmt) => return catalog_sml_style_num_fmt_sheet(num_fmt)
+    None => ()
+  }
+  match catalog_sml_style_find_any(root, ["xf"]) {
+    Some(xf) => return catalog_sml_style_xf_sheet(xf)
+    None => ()
+  }
+  match catalog_sml_style_find_any(root, ["alignment"]) {
+    Some(alignment) => return catalog_sml_style_alignment_sheet(alignment)
+    None => ()
+  }
+  match
+    catalog_sml_style_find_any(root, [
+      "color", "sz", "name", "b", "i", "u", "strike", "outline", "shadow", "condense",
+      "extend",
+    ]) {
+    Some(font_child) => return catalog_sml_style_font_sheet(font_child)
+    None => ()
+  }
+  match catalog_sml_style_find_any(root, ["font"]) {
+    Some(font) => return catalog_sml_style_font_sheet(font)
+    None => ()
+  }
+  match catalog_sml_style_find_any(root, ["fill"]) {
+    Some(fill) => return catalog_sml_style_fill_sheet(fill)
+    None => ()
+  }
+  match
+    catalog_sml_style_find_any(root, [
+      "patternFill", "gradientFill", "stop", "fgColor", "bgColor",
+    ]) {
+    Some(fill_child) => return catalog_sml_style_fill_sheet(fill_child)
+    None => ()
+  }
+  match
+    catalog_sml_style_find_any(root, [
+      "start", "end", "left", "right", "top", "bottom", "diagonal",
+    ]) {
+    Some(border_child) => return catalog_sml_style_border_sheet(border_child)
+    None => ()
+  }
+  match catalog_sml_style_find_any(root, ["border"]) {
+    Some(border) => return catalog_sml_style_border_sheet(border)
+    None => ()
+  }
+  catalog_sml_style_default_sheet()
 }
 
 ///|
@@ -8102,7 +8707,10 @@ fn xlsx_with_aux_root_package(
       } else {
         xe(ns_s, "styleSheet", [], [Element(content)])
       }
-      xlsx_package_styled(xe(ns_s, "sheetData", [], []), styles_root)
+      xlsx_package_styled(
+        catalog_sml_style_probe_worksheet(),
+        catalog_sml_stylesheet_for_render(styles_root),
+      )
     }
     "comments" => {
       let comments_root : @xml.Element = if content.name.local_name ==
