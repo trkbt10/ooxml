@@ -267,8 +267,10 @@ fn is_non_visual_property_name(name : String) -> Bool {
     | "activeRecord"
     | "column"
     | "viewMergedData"
-    // §17.8 font-table per-font metadata — name, charset and
-    // panose / family are typeface lookup hints, not glyph data.
+    // §17.8 font-table per-font metadata — the per-font container
+    // and its name, charset, panose / family children are typeface
+    // lookup hints, not glyph data.
+    | "font"
     | "charset"
     | "family"
     | "panose1"
