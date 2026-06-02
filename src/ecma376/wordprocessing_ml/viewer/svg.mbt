@@ -6758,7 +6758,7 @@ fn measure_run_text(
   template : RunSpan,
   warnings : Array[String],
 ) -> Double {
-  let measured_text = if template.caps { to_upper_ascii(text) } else { text }
+  let measured_text = if template.caps { text.to_upper() } else { text }
   let glyph_w = try
     @glyph.resolve_chain(template.font_request).measure_text(
       measured_text,
@@ -6787,26 +6787,6 @@ fn measure_run_text(
     auto_space_de=template.auto_space_de,
     auto_space_dn=template.auto_space_dn,
   )
-}
-
-///|
-/// Uppercase the ASCII letters of a string in place.  §17.3.2.13
-/// caps applies to the full Unicode range, but the glyph-width
-/// estimator's fallback table is ASCII-bucketed, so ASCII-only
-/// folding is sufficient to keep the width estimate consistent.
-fn to_upper_ascii(text : String) -> String {
-  let buf = StringBuilder::new()
-  let mut i = 0
-  while i < text.length() {
-    let c = text.code_unit_at(i).to_int()
-    if c >= 0x61 && c <= 0x7A {
-      buf.write_char((c - 0x20).to_char().unwrap())
-    } else {
-      buf.write_char(c.to_char().unwrap())
-    }
-    i = i + 1
-  }
-  buf.to_string()
 }
 
 ///|

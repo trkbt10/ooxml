@@ -126,8 +126,8 @@ The viewer packages produce both:
   inspection for tests and quick previews.
 - **SVG output** (`render_svg`) — pixel-faithful rendering ported from
   the web-pptx reference, using:
-  - `util/glyph` for real TTF font measurement (mizchi/font integration)
-    plus a statistical fallback;
+  - `util/glyph` for real TTF/TTC font measurement (mizchi/font integration)
+    with unresolved fonts surfaced through `FontUnresolvedError`;
   - `util/color` for DrawingML colour transforms (shade / tint /
     lumMod / lumOff / hueMod / satMod) and CSS named-colour resolution;
   - 187 DrawingML preset-shape generators (§20.1.10.55 ST_ShapeType

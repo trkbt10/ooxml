@@ -2804,9 +2804,8 @@ fn pptx_theme_part() -> Bytes {
   // typeface fields blank by writing `typeface=""`, but the typed
   // theme reader rejects that as "value outside the
   // schema-permitted range" so we mirror the latin face name into
-  // ea / cs.  Consumers that resolve via fontconfig keep their
-  // platform's CJK fallback regardless of the literal typeface
-  // name supplied here.
+  // ea / cs. Font resolution remains the renderer's ECMA-376 chain;
+  // this helper does not add any extra font-resolution source.
   let font_scheme = ae("fontScheme", [xa("name", "Office")], [
     Element(
       ae("majorFont", [], [

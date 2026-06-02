@@ -45,13 +45,20 @@ pub(all) struct GposKernEntry {
 pub fn make_font_measurer(bytes : Bytes) -> FontMeasurer? {
   match @font.parse_font(bytes) {
     None => None
-    Some(tt) =>
-      Some({
-        ttfont: tt,
-        units_per_em: tt.units_per_em,
-        gpos_kern_map: Map([], capacity=0),
-      })
+    Some(tt) => font_measurer_from_ttfont(tt)
   }
+}
+
+///|
+fn font_measurer_from_ttfont(tt : @font.TTFont) -> FontMeasurer? {
+  if tt.units_per_em <= 0 {
+    return None
+  }
+  Some({
+    ttfont: tt,
+    units_per_em: tt.units_per_em,
+    gpos_kern_map: Map([], capacity=0),
+  })
 }
 
 ///|
@@ -69,12 +76,7 @@ pub fn make_font_measurer_at(bytes : Bytes, ttc_index : Int?) -> FontMeasurer? {
     Some(idx) =>
       match @font.parse_font_at(bytes, idx) {
         None => None
-        Some(tt) =>
-          Some({
-            ttfont: tt,
-            units_per_em: tt.units_per_em,
-            gpos_kern_map: Map([], capacity=0),
-          })
+        Some(tt) => font_measurer_from_ttfont(tt)
       }
   }
 }
@@ -116,18 +118,12 @@ pub fn FontMeasurer::glyph_index(self : FontMeasurer, codepoint : Int) -> Int {
 }
 
 ///|
-/// Real advance width of `char` at `font_size_pt`. Computed as
-/// `advance_units * font_size_px / units_per_em`. Result is in
-/// pixels at 96 DPI.
-///
-/// CJK fallback: when the loaded font has no cmap entry for `char`
-/// AND the codepoint sits in a CJK block, the `.notdef` rectangle
-/// advance is replaced with a full em-square (`font_size_px`). This
-/// matches the layout behaviour every CJK system font produces
-/// (one em-square per ideograph) so the renderer's line breaker
-/// computes correct wrap points when a body face lacks CJK
-/// coverage and the host's CJK fallback face fills in at paint
-/// time.
+/// Real advance width of `char` at `font_size_pt`. Computed from the
+/// resolved font's `cmap` and `hmtx` tables as
+/// `advance_units * font_size_px / units_per_em`. When `cmap` has no
+/// entry for `char`, glyph id 0 (`.notdef`) is still measured from the
+/// same font; callers that need another face must resolve that face
+/// before measuring.
 pub fn FontMeasurer::char_advance(
   self : FontMeasurer,
   char : Char,
@@ -135,9 +131,6 @@ pub fn FontMeasurer::char_advance(
 ) -> Double {
   let glyph_id = self.ttfont.glyph_index(char.to_int())
   let font_size_px = font_size_pt * pt_to_px
-  if glyph_id == 0 && is_cjk_char(char) {
-    return font_size_px
-  }
   let metrics = self.ttfont.glyph_metrics(glyph_id)
   let scale = font_size_px / self.units_per_em.to_double()
   metrics.advance_width.to_double() * scale
@@ -208,9 +201,6 @@ pub fn FontMeasurer::measure_text(
 /// Ascender ratio. `ascent / units_per_em` — the fraction of the
 /// font size from the baseline to the top of the line box.
 pub fn FontMeasurer::ascender_ratio(self : FontMeasurer) -> Double {
-  if self.units_per_em == 0 {
-    return 0.8
-  }
   self.ttfont.ascent.to_double() / self.units_per_em.to_double()
 }
 
@@ -218,9 +208,6 @@ pub fn FontMeasurer::ascender_ratio(self : FontMeasurer) -> Double {
 /// Descender ratio (positive value, even though `descent` is
 /// typically negative in TrueType conventions).
 pub fn FontMeasurer::descender_ratio(self : FontMeasurer) -> Double {
-  if self.units_per_em == 0 {
-    return 0.2
-  }
   let d = self.ttfont.descent.to_double()
   let abs_d = if d < 0.0 { -d } else { d }
   abs_d / self.units_per_em.to_double()
@@ -230,8 +217,5 @@ pub fn FontMeasurer::descender_ratio(self : FontMeasurer) -> Double {
 /// Line-gap ratio (additional leading recommended by the font's
 /// `hhea` line_gap).
 pub fn FontMeasurer::line_gap_ratio(self : FontMeasurer) -> Double {
-  if self.units_per_em == 0 {
-    return 0.0
-  }
   self.ttfont.line_gap.to_double() / self.units_per_em.to_double()
 }

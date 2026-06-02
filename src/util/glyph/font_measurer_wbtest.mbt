@@ -46,6 +46,22 @@ test "FontMeasurer::char_advance scales linearly with font size" {
 }
 
 ///|
+test "FontMeasurer::char_advance reads .notdef hmtx for missing CJK glyphs" {
+  let bytes = load_subset_font()
+  guard make_font_measurer(bytes) is Some(m) else {
+    fail("Failed to parse subset.ttf")
+  }
+  let cjk = Int::unsafe_to_char(0x6F22)
+  @debug.assert_eq(m.glyph_index(cjk.to_int()), 0)
+  let font_size_pt = 12.0
+  let scale = font_size_pt * pt_to_px / m.units_per_em.to_double()
+  let expected = m.ttfont.glyph_metrics(0).advance_width.to_double() * scale
+  let actual = m.char_advance(cjk, font_size_pt~)
+  assert_true((actual - expected).abs() < 1.0e-6)
+  assert_true(actual != font_size_pt * pt_to_px)
+}
+
+///|
 test "FontMeasurer::ascender_ratio is in (0, 1.5]" {
   let bytes = load_subset_font()
   guard make_font_measurer(bytes) is Some(m) else {

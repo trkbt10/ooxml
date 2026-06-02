@@ -535,10 +535,9 @@ fn extras_misc(cases : Array[VisualCase]) -> Unit {
   // 13. WML run — Chinese (simplified) + Latin
   // ===================================================================
   //
-  // CJK alongside ASCII — a common business-document pattern; the
-  // renderer must pick a CJK fallback for the Han glyphs and keep
-  // the ASCII run in the body face without doubling the cell
-  // height.
+  // CJK alongside ASCII — a common business-document pattern. The
+  // renderer must keep the run on the document font-resolution path
+  // and must not synthesize a separate CJK metrics table.
   cases.push({
     id: "misc-wml-mixed-script-chinese-latin",
     format: "docx",
