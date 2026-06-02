@@ -174,6 +174,36 @@ const OFFICE_NORMAL_FONT_SIZE_PT : Double = 11.0
 const DEFAULT_FONT_FAMILY : String = "Noto Sans"
 
 ///|
+/// §22.1.2.62 `m:mathFont` inside `/word/settings.xml` — document-level
+/// math font request. This is the only WML-side source for the OMML
+/// viewer's math face. When absent, the OMML viewer keeps its own
+/// renderer-policy fallback; no font catalogue or alternate table is
+/// introduced here.
+fn math_font_from_settings(settings : @domain.CT_Settings?) -> String? {
+  match settings {
+    None => None
+    Some(s) => {
+      for math_pr in s.math_pr {
+        match math_pr.math_font {
+          Some(font) =>
+            match font.val {
+              Some(v) => {
+                let trimmed = v.trim(chars=" \t\r\n").to_owned()
+                if trimmed.length() > 0 {
+                  return Some(trimmed)
+                }
+              }
+              None => ()
+            }
+          None => ()
+        }
+      }
+      None
+    }
+  }
+}
+
+///|
 /// §17.3.1.33 / §17.4 — ECMA-376 has no implicit gap between a
 /// table block and the following block; paragraph and table
 /// spacing are fully specified by `<w:spacing>` and `<w:tblPr>`
@@ -1530,6 +1560,7 @@ fn render_svg_raw(
     image_resolver, numbering, numbering_part,
   )
   let settings_attrs = settings_data_attrs(settings)
+  let math_font = math_font_from_settings(settings)
   // (Removed: previous revision counted WML descendant names
   // across the document / settings / styles / numbering / fonts /
   // webSettings and threaded the total into a "wml-section-marker"
@@ -1605,6 +1636,7 @@ fn render_svg_raw(
         settings_attrs~,
         theme_map~,
         font_map~,
+        math_font~,
         hyperlink_resolver~,
       )
       let pages = [
@@ -1630,6 +1662,7 @@ fn render_svg_raw(
         numbering,
         theme_map~,
         font_map~,
+        math_font~,
         settings_attrs~,
         pic_bullet_resolver~,
         hyperlink_resolver~,
@@ -1667,6 +1700,7 @@ fn render_body_to_svg(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   settings_attrs? : Array[@xml.Attribute] = [],
   // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
   pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
@@ -1688,6 +1722,7 @@ fn render_body_to_svg(
     numbering,
     theme_map~,
     font_map~,
+    math_font~,
     pic_bullet_resolver~,
     hyperlink_resolver=body_hyperlink_resolver,
   )
@@ -1709,6 +1744,7 @@ fn render_body_to_svg(
         settings_attrs~,
         theme_map~,
         font_map~,
+        math_font~,
         hyperlink_resolver~,
       ),
       width: cfg.page_width,
@@ -1738,6 +1774,7 @@ fn lay_out_body(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   // §17.9.9 lvlPicBulletId — see `collect_blocks`. Defaults to none.
   pic_bullet_resolver? : (Int) -> ResolvedImage? = _ => None,
   // §17.16.22 — body-bound hyperlink-target resolver (the main document
@@ -1772,6 +1809,7 @@ fn lay_out_body(
     numbering,
     theme_map~,
     font_map~,
+    math_font~,
     pic_bullet_resolver~,
     hyperlink_resolver~,
   )
@@ -1939,6 +1977,7 @@ fn render_combined_svg_raw(
     image_resolver, numbering, numbering_part,
   )
   let settings_attrs = settings_data_attrs(settings)
+  let math_font = math_font_from_settings(settings)
   for a in fonts_data_attrs(fonts) {
     settings_attrs.push(a)
   }
@@ -1999,6 +2038,7 @@ fn render_combined_svg_raw(
         numbering,
         theme_map~,
         font_map~,
+        math_font~,
         pic_bullet_resolver~,
         hyperlink_resolver=body_hyperlink_resolver,
       )
@@ -2018,6 +2058,7 @@ fn render_combined_svg_raw(
     settings_attrs~,
     theme_map~,
     font_map~,
+    math_font~,
     hyperlink_resolver~,
   )
 }
@@ -2042,6 +2083,7 @@ fn build_combined_svg(
   settings_attrs? : Array[@xml.Attribute] = [],
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   // §17.16.22 — PART-AWARE hyperlink resolver, forwarded to each page's
   // `build_page_decoration_nodes` so header / footer hyperlinks bind their
   // own part token.
@@ -2097,6 +2139,7 @@ fn build_combined_svg(
       styles,
       theme_map~,
       font_map~,
+      math_font~,
       hyperlink_resolver~,
     )
     page_groups.push(
@@ -2123,6 +2166,7 @@ fn build_combined_svg(
         styles,
         theme_map~,
         font_map~,
+        math_font~,
         hyperlink_resolver~,
       )
       let y = h * page_index.to_double()
@@ -2603,6 +2647,7 @@ fn collect_blocks(
   numbering : @domain.CT_Numbering?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   // §17.9.9 lvlPicBulletId — resolves a `numPicBulletId` to the bullet
   // image. Defaults to "no picture bullets" so documents without a
   // wired resolver render the §17.9.11 lvlText marker as before.
@@ -2681,6 +2726,7 @@ fn collect_blocks(
               apply_office_defaults~,
               theme_map~,
               font_map~,
+              math_font~,
               hyperlink_resolver~,
             )
             match probe.frame_pr {
@@ -2898,6 +2944,7 @@ fn collect_blocks(
                       apply_office_defaults~,
                       theme_map~,
                       font_map~,
+                      math_font~,
                       line_budget_fn=budget_of,
                       line_x_fn=body_x_of,
                       hyperlink_resolver~,
@@ -2938,6 +2985,7 @@ fn collect_blocks(
                       apply_office_defaults~,
                       theme_map~,
                       font_map~,
+                      math_font~,
                       line_budget_fn=fn(idx) {
                         if in_band(idx) {
                           body_w
@@ -2981,6 +3029,7 @@ fn collect_blocks(
               styles,
               theme_map~,
               font_map~,
+              math_font~,
               image_resolver~,
               chart_resolver~,
             )
@@ -4731,6 +4780,7 @@ fn collect_paragraph_spans(
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   // §17.16.22 — per-stream bound hyperlink-target resolver; threaded into
   // the `<w:hyperlink>` descent so a run's r:id resolves to a URL.
   hyperlink_resolver? : (String) -> String? = _ => None,
@@ -4830,6 +4880,7 @@ fn collect_paragraph_spans(
     default_font_size_pt~,
     theme_map~,
     font_map~,
+    math_font~,
     hyperlink_resolver~,
   )
   // §17.3.1.10/.11 — resolve the paragraph's autoSpaceDE / autoSpaceDN
@@ -4966,6 +5017,7 @@ fn collect_paragraph_spans_into(
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   hyperlink_resolver? : (String) -> String? = _ => None,
 ) -> Unit {
   for child in parent.children {
@@ -5023,6 +5075,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              math_font~,
               hyperlink_resolver~,
             )
             if href.length() > 0 {
@@ -5052,6 +5105,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              math_font~,
               hyperlink_resolver~,
             )
           "smartTag" | "customXml" | "sdt" | "sdtContent" =>
@@ -5066,6 +5120,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              math_font~,
               hyperlink_resolver~,
             )
           // §22.1.2.77 `<m:oMath>` — an inline Office Math zone.
@@ -5081,7 +5136,7 @@ fn collect_paragraph_spans_into(
               theme_map~,
               font_map~,
             )
-            emit_omath_span(e, template, spans)
+            emit_omath_span(e, template, spans, math_font~)
           }
           // §22.1.2.78 `<m:oMathPara>` — a paragraph-level math
           // wrapper holding one or more `<m:oMath>` children;
@@ -5097,7 +5152,7 @@ fn collect_paragraph_spans_into(
               match math_child {
                 Element(me) =>
                   if me.name.local_name == "oMath" {
-                    emit_omath_span(me, template, spans)
+                    emit_omath_span(me, template, spans, math_font~)
                   }
                 _ => ()
               }
@@ -5120,6 +5175,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              math_font~,
               hyperlink_resolver~,
             )
             for i in start..<spans.length() {
@@ -5139,6 +5195,7 @@ fn collect_paragraph_spans_into(
               default_font_size_pt~,
               theme_map~,
               font_map~,
+              math_font~,
               hyperlink_resolver~,
             )
             for i in start..<spans.length() {
@@ -6336,17 +6393,28 @@ fn emit_omath_span(
   o_math : @xml.Element,
   template : RunSpan,
   spans : Array[RunSpan],
+  math_font? : String? = None,
 ) -> Unit {
   let color = if template.color.length() > 0 {
     template.color
   } else {
     "#000000"
   }
-  let rendered = @omml_viewer.render_svg(
-    @omml.CT_OMath::new(o_math),
-    font_size_pt=template.font_size_pt,
-    color~,
-  )
+  let rendered = match math_font {
+    Some(font) =>
+      @omml_viewer.render_svg(
+        @omml.CT_OMath::new(o_math),
+        font_size_pt=template.font_size_pt,
+        color~,
+        math_font=Some(font),
+      )
+    None =>
+      @omml_viewer.render_svg(
+        @omml.CT_OMath::new(o_math),
+        font_size_pt=template.font_size_pt,
+        color~,
+      )
+  }
   let payload = {
     group: rendered.group,
     width_px: rendered.width,
@@ -6437,6 +6505,7 @@ fn layout_paragraph(
   apply_office_defaults? : Bool = false,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   // §20.4.2.16 wrapPolygon — optional per-line available width (line
   // index → width px).  When supplied it overrides the rectangular
   // first/next-line widths so text wraps to a float's irregular
@@ -6467,6 +6536,7 @@ fn layout_paragraph(
     default_font_size_pt~,
     theme_map~,
     font_map~,
+    math_font~,
     hyperlink_resolver~,
   )
 
@@ -7242,12 +7312,70 @@ fn line_font_metrics_for(
 }
 
 ///|
+/// Line metrics already computed by the OMML renderer for inline math
+/// payloads. A math-only line must not consult the surrounding WML
+/// default text face just to place its baseline; the OMML box is the
+/// only glyph metric source for that line.
+fn metrics_from_math_payload(math : MathPayload) -> LineFontMetrics {
+  {
+    ascent_px: math.ascent_px,
+    descent_px: math.descent_px,
+    single_line_height_px: math.ascent_px + math.descent_px,
+  }
+}
+
+///|
+fn merge_line_metrics(
+  a : LineFontMetrics,
+  b : LineFontMetrics,
+) -> LineFontMetrics {
+  let ascent_px = a.ascent_px.max(b.ascent_px)
+  let descent_px = a.descent_px.max(b.descent_px)
+  { ascent_px, descent_px, single_line_height_px: ascent_px + descent_px }
+}
+
+///|
+fn line_math_metrics(spans : Array[RunSpan]) -> LineFontMetrics? {
+  let acc : Ref[LineFontMetrics?] = { val: None }
+  for s in spans {
+    match s.math {
+      Some(math) => {
+        let m = metrics_from_math_payload(math)
+        acc.val = match acc.val {
+          None => Some(m)
+          Some(prev) => Some(merge_line_metrics(prev, m))
+        }
+      }
+      None => ()
+    }
+  }
+  acc.val
+}
+
+///|
+fn line_has_text(spans : Array[RunSpan]) -> Bool {
+  for s in spans {
+    if s.text.length() > 0 {
+      return true
+    }
+  }
+  false
+}
+
+///|
 /// Select the largest resolved run on a line and read its vertical
 /// metrics. Empty lines use the paragraph's default body face.
 fn line_font_metrics(
   spans : Array[RunSpan],
   default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
 ) -> LineFontMetrics {
+  let math_metrics = line_math_metrics(spans)
+  if !line_has_text(spans) {
+    match math_metrics {
+      Some(m) => return m
+      None => ()
+    }
+  }
   let mut family = DEFAULT_FONT_FAMILY
   let mut font_size_pt = default_font_size_pt
   let mut bold = false
@@ -7262,7 +7390,7 @@ fn line_font_metrics(
       italic = s.italic
     }
   }
-  line_font_metrics_for(
+  let text_metrics = line_font_metrics_for(
     family,
     if bold {
       700
@@ -7272,6 +7400,10 @@ fn line_font_metrics(
     italic,
     font_size_pt,
   )
+  match math_metrics {
+    Some(m) => merge_line_metrics(text_metrics, m)
+    None => text_metrics
+  }
 }
 
 ///|
@@ -7626,6 +7758,7 @@ fn layout_table(
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   image_resolver? : (String) -> ResolvedImage? = _ => None,
   chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
 ) -> LaidTable {
@@ -7988,6 +8121,7 @@ fn layout_table(
           apply_office_defaults~,
           theme_map~,
           font_map~,
+          math_font~,
         )
         let band_fp = match para.frame_pr {
           Some(fp) =>
@@ -8026,6 +8160,7 @@ fn layout_table(
                 apply_office_defaults~,
                 theme_map~,
                 font_map~,
+                math_font~,
               )
               beside.push(offset_paragraph(bp, body_x, beside_y))
               beside_y = beside_y + bp.height
@@ -8770,6 +8905,7 @@ fn emit_page_svg_with_decoration(
   settings_attrs? : Array[@xml.Attribute] = [],
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   // §17.16.22 — PART-AWARE hyperlink resolver; bound per header / footer
   // stream inside `build_page_decoration_nodes`.
   hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
@@ -8785,6 +8921,7 @@ fn emit_page_svg_with_decoration(
     styles,
     theme_map~,
     font_map~,
+    math_font~,
     hyperlink_resolver~,
   )
   // (Removed: dummy `<rect fill="#a5a5a5">` "wml-section-marker"
@@ -8811,6 +8948,7 @@ fn build_page_decoration_nodes(
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   // §17.16.22 — PART-AWARE hyperlink resolver; bound to each header /
   // footer part token below so a hyperlink in that stream resolves its
   // r:id against `/word/_rels/header*.xml.rels`.
@@ -8854,6 +8992,7 @@ fn build_page_decoration_nodes(
       styles,
       theme_map~,
       font_map~,
+      math_font~,
       hyperlink_resolver=header_hyperlink_resolver,
     )
     let group_children = build_decoration_block_nodes(blocks)
@@ -8897,6 +9036,7 @@ fn build_page_decoration_nodes(
       styles,
       theme_map~,
       font_map~,
+      math_font~,
       hyperlink_resolver=footer_hyperlink_resolver,
     )
     let group_children = build_decoration_block_nodes(blocks)
@@ -8997,6 +9137,7 @@ fn collect_blocks_from_elements(
   styles : @domain.CT_Styles?,
   theme_map? : ThemeColorMap = ThemeColorMap::empty(),
   font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  math_font? : String? = None,
   // §17.16.22 — per-stream bound hyperlink-target resolver (the header /
   // footer part's, bound at the decoration site), threaded into each
   // `layout_paragraph` so a hyperlink in a header / footer resolves its
@@ -9019,6 +9160,7 @@ fn collect_blocks_from_elements(
           apply_office_defaults~,
           theme_map~,
           font_map~,
+          math_font~,
           hyperlink_resolver~,
         )
         blocks.push(ParaBlock(lp))
@@ -9031,6 +9173,7 @@ fn collect_blocks_from_elements(
           styles,
           theme_map~,
           font_map~,
+          math_font~,
           image_resolver~,
           chart_resolver~,
         )

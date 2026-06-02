@@ -91,6 +91,18 @@ test "Office Math SVG renders a run as a <text> element" {
 }
 
 ///|
+test "Office Math SVG §22.1.2.62 render_svg uses supplied math font" {
+  let math = @domain.CT_OMath::new({
+    name: name("oMath"),
+    attributes: [],
+    children: [omml_run("x")],
+  })
+  let svg = svg_string(render_svg(math, math_font=Some("Cambria Math")))
+  assert_true(svg.contains("font-family=\"Cambria Math\""))
+  assert_false(svg.contains("font-family=\"Noto Serif\""))
+}
+
+///|
 /// §22.1.3.10 ST_Script — the base-letter → Mathematical Alphanumeric
 /// Symbols mapping, including the Letterlike-Symbols exceptions that sit
 /// outside the U+1D400 block.

@@ -6,10 +6,14 @@
 # against, and that set must be reproducible across macOS / Linux /
 # Windows so the snapshot RMSE comparisons stay deterministic.
 #
+# This script deliberately provisions test fixture inputs only. The
+# files it downloads are not an ECMA-376 default font set, not a
+# renderer substitution table, and not a production source of truth.
+#
 # We pick the Noto family (Apache 2.0, ships from Google Fonts) for
 # all three OSes because:
-#   - Noto Sans / Serif / Mono cover the renderer's three generic
-#     family slots without per-OS substitution.
+#   - Noto Sans / Serif / Mono give the harness deterministic
+#     sans/serif/mono requests without per-OS substitution.
 #   - The TTFs are direct-downloadable single-file releases (no
 #     per-OS packaging, no .ttc unpacking).
 #   - One fixture set works for both our `@glyph` measurer and the
@@ -22,7 +26,7 @@
 #   Linux:   ${XDG_CACHE_HOME:-$HOME/.cache}/ooxml-test-fonts
 #   Windows: %LOCALAPPDATA%/ooxml-test-fonts
 #
-# Operators export `OOXML_FONT_DIR` to the cache path before
+# Operators export `OOXML_FONT_DIR` to the fixture path before
 # `moon test` / `scripts/snapshot.sh`. This script prints the
 # `export` line on completion so a bare `source` integration is
 # obvious.

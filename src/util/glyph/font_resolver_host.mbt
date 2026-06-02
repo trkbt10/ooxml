@@ -137,7 +137,7 @@ fn host_font_dirs(platform : @platform.Platform) -> Array[String] {
 }
 
 ///|
-/// Standard wiring point: EnvDir first (operator-supplied font
+/// Process default wiring point: EnvDir first (operator-supplied font
 /// directories take precedence), then the host driver. Both raise
 /// on miss so the composite walks them in order and the caller sees
 /// a single well-formed error naming every driver consulted.

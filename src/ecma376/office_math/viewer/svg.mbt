@@ -48,6 +48,7 @@ priv struct MathBox {
 priv struct MathCtx {
   font_size_pt : Double
   color : String
+  math_font : String
 }
 
 ///|
@@ -111,11 +112,19 @@ const SUB_SHIFT_EM : Double = 0.20
 const OP_PAD_EM : Double = 0.11
 
 ///|
+/// Renderer fallback used only when the host does not supply
+/// §22.1.2.62 `m:mathFont`. This is not an ECMA-376 default face and
+/// not a font catalogue entry; real metrics still come only from the
+/// configured `@glyph.FontResolver`.
+const DEFAULT_MATH_FONT_FAMILY : String = "Noto Serif"
+
+///|
 /// Render an OMML `CT_OMath` tree as a self-contained SVG fragment.
 ///
 /// `font_size_pt` is the base math font size; nested scripts and
 /// fraction parts shrink relative to it.  `color` is the CSS colour
-/// for every glyph and rule (e.g. `#000000`).
+/// for every glyph and rule (e.g. `#000000`). `math_font` is the
+/// host-supplied §22.1.2.62 `m:mathFont` value when available.
 ///
 /// The returned `MathSvg` carries a `<g>` laid out with the math
 /// baseline at y = 0: a host translates the group by its desired
@@ -124,8 +133,13 @@ pub fn render_svg(
   domain : @domain.CT_OMath,
   font_size_pt? : Double = 12.0,
   color? : String = "#000000",
+  math_font? : String? = None,
 ) -> MathSvg {
-  let ctx = { font_size_pt, color }
+  let ctx = {
+    font_size_pt,
+    color,
+    math_font: math_font.unwrap_or(DEFAULT_MATH_FONT_FAMILY),
+  }
   let box = layout_row(domain.element.children, ctx)
   // The group's own content is already baseline-relative; the host
   // applies the outer translate.
@@ -218,10 +232,10 @@ fn text_box(
   if content == "" {
     return empty_box()
   }
-  // Math notation conventionally renders in a serif/roman face. The
-  // concrete face name below is a last-resort resolver request, not an
-  // ECMA-376-defined font value.
-  let family = "Noto Serif"
+  // `ctx.math_font` comes from the document's §22.1.2.62 `mathFont`
+  // when the host WML pipeline has one. The default is only this
+  // renderer's last-resort request, not an ECMA-376-defined font value.
+  let family = ctx.math_font
   let weight = if bold { 700 } else { 400 }
   let width = try
     @glyph.measure_text_width(
@@ -515,7 +529,7 @@ fn math_alphabet_codepoint(ch : Char, scr : String) -> Int? {
 ///|
 /// Apply the OMML run script `scr` to `text`, substituting each base
 /// letter / digit with its Mathematical Alphanumeric Symbols form — but
-/// ONLY when the active math face (`Noto Serif`, at the run weight) can
+/// ONLY when the active math face (`ctx.math_font`, at the run weight) can
 /// actually draw that code point.  When the face lacks the glyph the base
 /// character is kept so its advance width stays correct (a missing glyph
 /// would otherwise collapse to a zero-width box and overlap its
@@ -525,6 +539,7 @@ fn apply_math_script(
   scr : String,
   bold : Bool,
   italic : Bool,
+  ctx : MathCtx,
 ) -> String {
   if scr == "" || scr == "roman" {
     return text
@@ -537,7 +552,7 @@ fn apply_math_script(
       Some(cp) => {
         let renderable = (try? @glyph.font_has_glyph(
           cp,
-          family="Noto Serif",
+          family=ctx.math_font,
           weight~,
           italic~,
         )).unwrap_or(false)
@@ -599,11 +614,17 @@ fn layout_math_run(element : @xml.Element, ctx : MathCtx) -> MathBox {
     match child {
       Element(c) =>
         if c.name.local_name == "t" {
-          let shaped = apply_math_script(text_content(c), scr, bold, italic)
+          let shaped = apply_math_script(
+            text_content(c),
+            scr,
+            bold,
+            italic,
+            ctx,
+          )
           boxes.push(text_box(shaped, ctx, italic~, bold~))
         }
       Text(t) | CData(t) => {
-        let shaped = apply_math_script(t, scr, bold, italic)
+        let shaped = apply_math_script(t, scr, bold, italic, ctx)
         boxes.push(text_box(shaped, ctx, italic~, bold~))
       }
       _ => ()

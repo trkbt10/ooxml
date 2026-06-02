@@ -4645,6 +4645,63 @@ test "render_svg renders inline OMML as pure SVG" {
 }
 
 ///|
+test "render_svg applies settings mathPr mathFont to inline OMML" {
+  let omml_run = fn(text : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("r"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("t"),
+          attributes: [],
+          children: [@xml.Node::Text(text)],
+        }),
+      ],
+    })
+  }
+  let omml_elem = fn(tag : String, children : Array[@xml.Node]) -> @xml.Node {
+    @xml.Node::Element({ name: name(tag), attributes: [], children })
+  }
+  let settings = try! @domain.CT_Settings::new({
+    name: name("settings"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("mathPr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("mathFont"),
+            attributes: [attr("val", "Cambria Math")],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [omml_elem("oMath", [omml_run("x")])],
+          }),
+        ],
+      }),
+    ],
+  })
+  let svg = render_svg(document, settings=Some(settings)).pages[0].svg
+  assert_true(svg.contains("font-family=\"Cambria Math\""))
+  assert_false(svg.contains("font-family=\"Noto Serif\""))
+}
+
+///|
 /// §22.1.2.78 `<m:oMathPara>` — a paragraph-level math wrapper is
 /// rendered: each nested `<m:oMath>` becomes its own SVG `<g>`.
 test "render_svg renders OMML paragraph wrapper as pure SVG" {

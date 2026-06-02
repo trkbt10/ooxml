@@ -32,8 +32,9 @@
 #
 # Test font fixture directory: the harness REQUIRES `OOXML_FONT_DIR`
 # to be set (the directory `scripts/setup-test-fonts.sh` populates) so
-# both the renderer and the reference office binary read the same Noto
-# Sans/Serif/Mono fixture inputs. Without this, font metrics drift
+# both the renderer and the reference office binary read the same
+# fixture font inputs. This is snapshot-test control data, not an
+# ECMA-376 font default or catalogue. Without it, font metrics drift
 # between the two pipelines and RMSE numbers are meaningless.
 
 set -u
@@ -48,11 +49,11 @@ CACHE="$SNAP/.refcache"
 REPORT="$SNAP/report.txt"
 SOFFICE="${SOFFICE:-soffice}"
 
-# Bootstrap the cross-platform test font cache. The renderer's
+# Bootstrap the cross-platform test fixture cache. The renderer's
 # FontResolver and the reference office binary both read fonts out
-# of $OOXML_FONT_DIR; setup-test-fonts.sh downloads Noto Sans /
-# Serif / Mono into the OS-canonical cache directory and prints the
-# path. We re-run it on every invocation; the script is idempotent
+# of $OOXML_FONT_DIR; setup-test-fonts.sh downloads one deterministic
+# fixture family set into the OS-canonical cache directory and prints
+# the path. We re-run it on every invocation; the script is idempotent
 # (cached files are not re-downloaded).
 if [ -z "${OOXML_FONT_DIR:-}" ]; then
   case "$(uname -s)" in
@@ -67,7 +68,7 @@ if [ ! -f "$OOXML_FONT_DIR/NotoSans-Regular.ttf" ]; then
 fi
 
 # Snapshot-scoped fontconfig that points the rasteriser at the same
-# Noto fixture directory as the renderer. The user's system fontconfig is
+# fixture directory as the renderer. The user's system fontconfig is
 # untouched — we only set $FONTCONFIG_FILE for this script.
 FONT_CONF_DIR="$SNAP/fontconfig"
 mkdir -p "$FONT_CONF_DIR"

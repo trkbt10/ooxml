@@ -75,7 +75,7 @@ test "FontResolver::in_memory raises when family is absent" {
 ///|
 test "FontResolver::in_memory honours embedded_bytes ahead of in-memory faces" {
   let resolver = FontResolver::in_memory(
-    Map([("Noto Sans", b"CATALOG")], capacity=1),
+    Map([("Noto Sans", b"FIXTURE")], capacity=1),
   )
   let request : FontFaceRequest = {
     stack: [Name("Helvetica")],
