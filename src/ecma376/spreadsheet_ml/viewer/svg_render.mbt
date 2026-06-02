@@ -863,7 +863,15 @@ pub fn render_svg(
   for pivot in pivots {
     for
       n in render_pivot_overlay(
-        pivot, layout, options, cf_blocks, cf_stats, styles, shared_strings, theme_map,
+        pivot,
+        layout,
+        options,
+        cf_blocks,
+        cf_stats,
+        styles,
+        shared_strings,
+        theme_map,
+        max_digit_width_px=mdw_px,
       ) {
       pivot_nodes.push(n)
     }

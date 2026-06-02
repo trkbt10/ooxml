@@ -78,6 +78,7 @@ fn render_pivot_overlay(
   styles : @domain.CT_Stylesheet?,
   shared_strings : @domain.CT_Sst?,
   theme_map : SmlThemeColorMap,
+  max_digit_width_px? : Double = column_max_digit_width_px(),
 ) -> Array[@xml.Node] {
   let location = match pivot.definition.location {
     Some(loc) => loc
@@ -99,8 +100,20 @@ fn render_pivot_overlay(
   }
   if pivot.definition.data_on_rows && data_field_count > 1 {
     return render_pivot_overlay_data_on_rows(
-      pivot, layout, options, cf_blocks, cf_stats, styles, shared_strings, theme_map,
-      start_col, start_row, row_keys, col_keys, data_field_count,
+      pivot,
+      layout,
+      options,
+      cf_blocks,
+      cf_stats,
+      styles,
+      shared_strings,
+      theme_map,
+      start_col,
+      start_row,
+      row_keys,
+      col_keys,
+      data_field_count,
+      max_digit_width_px~,
     )
   }
   // Captions for each row / column axis position.
@@ -165,7 +178,12 @@ fn render_pivot_overlay(
   let ws : Array[Double] = []
   for ci in 0..<total_cols {
     let absolute_col = start_col + ci
-    let (x, w) = pivot_column_geometry(layout, options, absolute_col)
+    let (x, w) = pivot_column_geometry(
+      layout,
+      options,
+      absolute_col,
+      max_digit_width_px~,
+    )
     xs.push(x)
     ws.push(w)
   }
@@ -512,6 +530,7 @@ fn render_pivot_overlay_data_on_rows(
   row_keys : Array[@pivot_table.PivotAxisKey],
   col_keys : Array[@pivot_table.PivotAxisKey],
   data_field_count : Int,
+  max_digit_width_px? : Double = column_max_digit_width_px(),
 ) -> Array[@xml.Node] {
   let row_slots = pivot_data_on_rows_slots(pivot.definition.row_fields)
   let row_axis_caps = pivot_axis_slot_captions(
@@ -559,7 +578,12 @@ fn render_pivot_overlay_data_on_rows(
   let ws : Array[Double] = []
   for ci in 0..<total_cols {
     let absolute_col = start_col + ci
-    let (x, w) = pivot_column_geometry(layout, options, absolute_col)
+    let (x, w) = pivot_column_geometry(
+      layout,
+      options,
+      absolute_col,
+      max_digit_width_px~,
+    )
     xs.push(x)
     ws.push(w)
   }
@@ -1125,13 +1149,18 @@ fn pivot_cell(
 /// `col_zero` (an absolute 0-based column index). Returns
 /// `(x, width)`. When the column index falls outside the layout's
 /// `column_positions`, the renderer extends from the last known
-/// column using `column_width_to_pixels(options.default_column_width)`.
+/// column using the same default-width + Normal-style MDW path as
+/// `compute_sheet_layout`.
 fn pivot_column_geometry(
   layout : SheetLayout,
   options : SheetRenderOptions,
   col_zero : Int,
+  max_digit_width_px? : Double = column_max_digit_width_px(),
 ) -> (Double, Double) {
-  let default_w = column_width_to_pixels(options.default_column_width)
+  let default_w = column_width_to_pixels(
+    options.default_column_width,
+    mdw_px=max_digit_width_px,
+  )
   if col_zero < layout.column_positions.length() {
     (layout.column_positions[col_zero], layout.column_widths[col_zero])
   } else {

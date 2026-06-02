@@ -96,8 +96,95 @@ fn pivot_test_svg(nodes : Array[@xml.Node]) -> String {
 }
 
 ///|
+test "§18.10 pivot overflow columns reuse worksheet Normal-style MDW" {
+  let layout = {
+    ..pivot_test_layout(),
+    total_width: 20.0,
+    column_positions: [0.0],
+    column_widths: [20.0],
+    column_count: 1,
+  }
+  let options = default_render_options()
+  let mdw = 10.0
+  let expected = column_width_to_pixels(
+    options.default_column_width,
+    mdw_px=mdw,
+  )
+  let (x, w) = pivot_column_geometry(layout, options, 2, max_digit_width_px=mdw)
+  assert_true(w == expected)
+  assert_true(x == 20.0 + expected)
+  assert_true(w != column_width_to_pixels(options.default_column_width))
+}
+
+///|
 fn pivot_test_xml_name(local_name : String) -> @xml.QName {
   { prefix: None, local_name, ns: None }
+}
+
+///|
+fn pivot_test_attr(local_name : String, value : String) -> @xml.Attribute {
+  { name: pivot_test_xml_name(local_name), value }
+}
+
+///|
+fn pivot_test_normal_style(
+  family : String,
+  size_pt : String,
+) -> @domain.CT_Stylesheet {
+  @domain.CT_Stylesheet::new({
+    name: pivot_test_xml_name("styleSheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: pivot_test_xml_name("fonts"),
+        attributes: [pivot_test_attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: pivot_test_xml_name("font"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: pivot_test_xml_name("name"),
+                attributes: [pivot_test_attr("val", family)],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: pivot_test_xml_name("sz"),
+                attributes: [pivot_test_attr("val", size_pt)],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: pivot_test_xml_name("cellStyleXfs"),
+        attributes: [pivot_test_attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: pivot_test_xml_name("xf"),
+            attributes: [pivot_test_attr("fontId", "0")],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: pivot_test_xml_name("cellStyles"),
+        attributes: [pivot_test_attr("count", "1")],
+        children: [
+          @xml.Node::Element({
+            name: pivot_test_xml_name("cellStyle"),
+            attributes: [
+              pivot_test_attr("name", "Normal"),
+              pivot_test_attr("xfId", "0"),
+              pivot_test_attr("builtinId", "0"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
 }
 
 ///|
@@ -330,6 +417,72 @@ test "render_svg viewBox extends to pivot overlay outside sheet dimension" {
 }
 
 ///|
+test "render_svg passes Normal-style MDW to pivot overflow geometry" {
+  set_sml_fixture_font_faces(["Noto Sans"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: pivot_test_xml_name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: pivot_test_xml_name("sheetData"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: pivot_test_xml_name("row"),
+            attributes: [pivot_test_attr("r", "1")],
+            children: [
+              @xml.Node::Element({
+                name: pivot_test_xml_name("c"),
+                attributes: [pivot_test_attr("r", "A1")],
+                children: [
+                  @xml.Node::Element({
+                    name: pivot_test_xml_name("v"),
+                    attributes: [],
+                    children: [@xml.Node::Text("1")],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let normal_font : ResolvedFont = {
+    family: "Noto Sans",
+    size: 20.0,
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false,
+    color: None,
+  }
+  let mdw = match normal_style_max_digit_width_px(normal_font) {
+    Some(w) => w
+    None => abort("fixture font did not resolve")
+  }
+  let default_w = column_width_to_pixels(8.43, mdw_px=mdw)
+  let fallback_w = column_width_to_pixels(8.43)
+  assert_true(default_w != fallback_w)
+  let result = render_svg(
+    worksheet,
+    styles=Some(pivot_test_normal_style("Noto Sans", "20")),
+    pivots=[pivot_test_basic_materialized("C1:D2")],
+  )
+  assert_true(result.warnings.length() == 0)
+  assert_true(result.svg.contains("Noto Sans"))
+  assert_true(
+    result.svg.contains(
+      "<rect x=\"" +
+      format_d(default_w * 2.0) +
+      "\" y=\"0\" width=\"" +
+      format_d(default_w * 2.0) +
+      "\" height=\"34\" fill=\"none\" stroke=\"#808080\"",
+    ),
+  )
+}
+
+///|
 test "§18.10.1.74 pivotTableStyleInfo emits style metadata" {
   let cache : @pivot_table.PivotCacheDefinition = {
     cache_source: {
@@ -539,16 +692,29 @@ test "§18.10.1.73 dataOnRows renders data fields on row axis" {
     cache,
     materialization,
   }
+  let mdw = 10.0
+  let overflow_w = column_width_to_pixels(
+    default_render_options().default_column_width,
+    mdw_px=mdw,
+  )
+  let layout = {
+    ..pivot_test_layout(),
+    total_width: 20.0,
+    column_positions: [0.0],
+    column_widths: [20.0],
+    column_count: 1,
+  }
   let svg = pivot_test_svg(
     render_pivot_overlay(
       pivot,
-      pivot_test_layout(),
+      layout,
       default_render_options(),
       [],
       [],
       None,
       None,
       SmlThemeColorMap::empty(),
+      max_digit_width_px=mdw,
     ),
   )
   assert_true(svg.contains(">Values<"))
@@ -560,7 +726,9 @@ test "§18.10.1.73 dataOnRows renders data fields on row axis" {
   // column per column-key, while expanding the two data fields vertically.
   assert_true(
     svg.contains(
-      "<rect x=\"0\" y=\"0\" width=\"200\" height=\"100\" fill=\"none\" stroke=\"#808080\"",
+      "<rect x=\"0\" y=\"0\" width=\"" +
+      format_d(20.0 + overflow_w * 3.0) +
+      "\" height=\"100\" fill=\"none\" stroke=\"#808080\"",
     ),
   )
 }
