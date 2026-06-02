@@ -546,6 +546,58 @@ pub(all) struct PivotFilterDef {
 } derive(Eq, Debug)
 
 ///|
+/// Runtime scope for a PivotTable AutoFilter candidate that may carry
+/// resolved cell-format facts. These scopes are not ECMA-376 XML types;
+/// they identify which pivot materialization candidate a caller is
+/// describing when the source worksheet / conditional-format pipeline can
+/// provide fill, font, or icon facts.
+pub(all) enum PivotFilterCandidateScope {
+  /// Candidate built from one original pivot-cache record index.
+  PivotFilterRawRecord(Int)
+  /// Candidate built from one materialized row-axis item index.
+  PivotFilterRowAxis(Int)
+  /// Candidate built from one materialized column-axis item index.
+  PivotFilterColAxis(Int)
+} derive(Eq, Debug)
+
+///|
+/// Runtime request for formatting facts attached to one AutoFilter
+/// candidate cell. `value` is the materializer's projected candidate value;
+/// facts providers must not use a different value as a second source of
+/// truth. The materializer keeps this value when it constructs the
+/// `@autofilter.FormattedCandidateRow`.
+pub(all) struct PivotFilterFormatRequest {
+  /// §18.10.1.33 `filter/@id`.
+  filter_id : Int
+  /// §18.10.1.33 `filter/@fld`.
+  field_index : Int
+  /// §18.10.1.33 `filter/@type`.
+  filter_type : String
+  /// Raw record, row-axis, or column-axis candidate identity.
+  candidate : PivotFilterCandidateScope
+  /// `autoFilter/filterColumn/@colId` projected by this candidate cell.
+  column_id : Int
+  /// Materializer-owned candidate value for this column.
+  value : @formula.FormulaValue
+} derive(Eq, Debug)
+
+///|
+/// Runtime facts used when PivotTable filters contain SpreadsheetML
+/// `colorFilter` or `iconFilter` rules. The provider resolves formatting
+/// from its own source of truth; PivotTable materialization only forwards
+/// those facts to `spreadsheet_ml/autofilter`, which remains the single
+/// comparison implementation.
+pub(all) struct PivotFilterFormatFacts {
+  dxf_formats : Array[@autofilter.FilterDxfFormat]
+  cell_format_for : (PivotFilterFormatRequest) -> @autofilter.CandidateCellFormat?
+}
+
+///|
+pub fn PivotFilterFormatFacts::none() -> PivotFilterFormatFacts {
+  { dxf_formats: [], cell_format_for: fn(_) { None } }
+}
+
+///|
 /// Part 1 §18.10.1.44 i — one row / column axis tuple inside
 /// `rowItems` / `colItems`. The semantics are positional: the
 /// `<x>` children represent item indices for the axis fields, and

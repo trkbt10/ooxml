@@ -38,9 +38,32 @@ pub fn materialize_pivot_table(
   cache : PivotCacheDefinition,
   records : PivotCacheRecords,
 ) -> PivotMaterialization raise @opc_errors.SchemaViolation {
+  materialize_pivot_table_with_filter_formats(
+    definition,
+    cache,
+    records,
+    PivotFilterFormatFacts::none(),
+  )
+}
+
+///|
+/// Variant of `materialize_pivot_table` that accepts resolved formatting
+/// facts for PivotTable AutoFilter candidates. This preserves the existing
+/// value-only public API while letting callers that have source worksheet /
+/// conditional-format facts evaluate `colorFilter` and `iconFilter` through
+/// the shared AutoFilter evaluator.
+pub fn materialize_pivot_table_with_filter_formats(
+  definition : PivotTableDefinition,
+  cache : PivotCacheDefinition,
+  records : PivotCacheRecords,
+  filter_format_facts : PivotFilterFormatFacts,
+) -> PivotMaterialization raise @opc_errors.SchemaViolation {
   let field_count = cache.field_count()
   validate_field_indices(definition, field_count)
-  let kept_rows = apply_record_filters(definition, cache, records)
+  let kept_indexed_rows = apply_record_filters(
+    definition, cache, records, filter_format_facts,
+  )
+  let kept_rows = pivot_indexed_rows_to_rows(kept_indexed_rows)
   let row_field_positions = extract_real_field_positions(definition.row_fields)
   let col_field_positions = extract_real_field_positions(definition.col_fields)
   let lut = AxisLookup::new()
@@ -81,6 +104,7 @@ pub fn materialize_pivot_table(
     row_field_positions,
     col_field_positions,
     data_field_count,
+    filter_format_facts,
   )
   let row_keys = select_axis_keys(lut.row_keys, axis_filter.row_indices)
   let col_keys = select_axis_keys(lut.col_keys, axis_filter.col_indices)
@@ -181,6 +205,23 @@ pub fn materialize_pivot_table(
 }
 
 ///|
+priv struct PivotIndexedRow {
+  source_index : Int
+  row : PivotCacheRow
+}
+
+///|
+fn pivot_indexed_rows_to_rows(
+  rows : Array[PivotIndexedRow],
+) -> Array[PivotCacheRow] {
+  let out : Array[PivotCacheRow] = []
+  for entry in rows {
+    out.push(entry.row)
+  }
+  out
+}
+
+///|
 /// Validate that every `dataField/@fld`, `pageField/@fld`, and
 /// PivotTable `filter/@fld`
 /// index falls inside the cacheFields collection. Surfacing this
@@ -265,15 +306,16 @@ fn apply_record_filters(
   definition : PivotTableDefinition,
   cache : PivotCacheDefinition,
   records : PivotCacheRecords,
-) -> Array[PivotCacheRow] raise @opc_errors.SchemaViolation {
-  let kept : Array[PivotCacheRow] = []
-  for row in records.rows {
+  filter_format_facts : PivotFilterFormatFacts,
+) -> Array[PivotIndexedRow] raise @opc_errors.SchemaViolation {
+  let kept : Array[PivotIndexedRow] = []
+  for source_index, row in records.rows {
     if row_matches_page_fields(definition, row) &&
       row_matches_visible_pivot_items(definition, row) {
-      kept.push(row)
+      kept.push({ source_index, row })
     }
   }
-  apply_pivot_advanced_filters(definition, cache, kept)
+  apply_pivot_advanced_filters(definition, cache, kept, filter_format_facts)
 }
 
 ///|
@@ -341,12 +383,15 @@ fn pivot_item_is_hidden(field : PivotFieldDef, item_idx : Int) -> Bool {
 fn apply_pivot_advanced_filters(
   definition : PivotTableDefinition,
   cache : PivotCacheDefinition,
-  rows : Array[PivotCacheRow],
-) -> Array[PivotCacheRow] raise @opc_errors.SchemaViolation {
+  rows : Array[PivotIndexedRow],
+  filter_format_facts : PivotFilterFormatFacts,
+) -> Array[PivotIndexedRow] raise @opc_errors.SchemaViolation {
   let mut current = rows
   for filter in definition.filters {
     if pivot_filter_targets_raw_records(filter) {
-      current = apply_pivot_auto_filter(cache, current, filter)
+      current = apply_pivot_auto_filter(
+        cache, current, filter, filter_format_facts,
+      )
     }
   }
   current
@@ -355,19 +400,26 @@ fn apply_pivot_advanced_filters(
 ///|
 fn apply_pivot_auto_filter(
   cache : PivotCacheDefinition,
-  rows : Array[PivotCacheRow],
+  rows : Array[PivotIndexedRow],
   filter : PivotFilterDef,
-) -> Array[PivotCacheRow] raise @opc_errors.SchemaViolation {
+  filter_format_facts : PivotFilterFormatFacts,
+) -> Array[PivotIndexedRow] raise @opc_errors.SchemaViolation {
   let candidates = pivot_filter_candidate_rows(cache, rows, filter)
-  let visible_indices = @autofilter.filter_rows(
-    filter.auto_filter,
+  let visible_indices = pivot_filter_visible_indices(
+    filter,
     candidates,
-    @date_serial.DateSystem::Serial1900,
+    filter_format_facts,
+    fn(ordinal) {
+      match rows.get(ordinal) {
+        Some(entry) => PivotFilterRawRecord(entry.source_index)
+        None => PivotFilterRawRecord(ordinal)
+      }
+    },
   )
-  let out : Array[PivotCacheRow] = []
+  let out : Array[PivotIndexedRow] = []
   for index in visible_indices {
     match rows.get(index) {
-      Some(row) => out.push(row)
+      Some(entry) => out.push(entry)
       None => ()
     }
   }
@@ -377,12 +429,13 @@ fn apply_pivot_auto_filter(
 ///|
 fn pivot_filter_candidate_rows(
   cache : PivotCacheDefinition,
-  rows : Array[PivotCacheRow],
+  rows : Array[PivotIndexedRow],
   filter : PivotFilterDef,
 ) -> Array[@autofilter.CandidateRow] raise @opc_errors.SchemaViolation {
   let candidates : Array[@autofilter.CandidateRow] = []
   let mut row_index = 0
-  for row in rows {
+  for entry in rows {
+    let row = entry.row
     let value = if filter.fld < row.cells.length() {
       pivot_record_cell_to_formula_value(
         row.cells[filter.fld],
@@ -409,6 +462,88 @@ fn pivot_filter_candidate_column_count(filter : @domain.CT_AutoFilter) -> Int {
     }
   }
   count
+}
+
+///|
+fn pivot_filter_visible_indices(
+  filter : PivotFilterDef,
+  candidates : Array[@autofilter.CandidateRow],
+  filter_format_facts : PivotFilterFormatFacts,
+  candidate_scope_for_ordinal : (Int) -> PivotFilterCandidateScope,
+) -> Array[Int] {
+  let formatted : Array[@autofilter.FormattedCandidateRow] = []
+  for ordinal, candidate in candidates {
+    formatted.push(
+      pivot_filter_formatted_candidate_row(
+        filter,
+        candidate,
+        filter_format_facts,
+        candidate_scope_for_ordinal(ordinal),
+      ),
+    )
+  }
+  @autofilter.filter_formatted_rows(
+    filter.auto_filter,
+    formatted,
+    filter_format_facts.dxf_formats,
+    @date_serial.DateSystem::Serial1900,
+  )
+}
+
+///|
+fn pivot_filter_formatted_candidate_row(
+  filter : PivotFilterDef,
+  candidate : @autofilter.CandidateRow,
+  filter_format_facts : PivotFilterFormatFacts,
+  scope : PivotFilterCandidateScope,
+) -> @autofilter.FormattedCandidateRow {
+  let cells : Array[@autofilter.CandidateCellFormat] = []
+  let mut column_id = 0
+  for value in candidate.values {
+    let request : PivotFilterFormatRequest = {
+      filter_id: filter.id,
+      field_index: filter.fld,
+      filter_type: filter.type_,
+      candidate: scope,
+      column_id,
+      value,
+    }
+    cells.push(
+      pivot_filter_cell_format(
+        value,
+        (filter_format_facts.cell_format_for)(request),
+      ),
+    )
+    column_id = column_id + 1
+  }
+  { cells, row_index: candidate.row_index }
+}
+
+///|
+fn pivot_filter_cell_format(
+  value : @formula.FormulaValue,
+  supplied : @autofilter.CandidateCellFormat?,
+) -> @autofilter.CandidateCellFormat {
+  match supplied {
+    Some(format) =>
+      {
+        value,
+        fill_color: format.fill_color,
+        font_color: format.font_color,
+        rich_text_font_colors: format.rich_text_font_colors,
+        icon_set: format.icon_set,
+        icon_id: format.icon_id,
+      }
+    None =>
+      {
+        value,
+        fill_color: None,
+        font_color: None,
+        rich_text_font_colors: [],
+        icon_set: None,
+        icon_id: None,
+      }
+  }
 }
 
 ///|
@@ -494,6 +629,7 @@ fn apply_pivot_aggregate_filters(
   row_field_positions : Array[Int],
   col_field_positions : Array[Int],
   data_field_count : Int,
+  filter_format_facts : PivotFilterFormatFacts,
 ) -> PivotAggregateFilterState raise @opc_errors.SchemaViolation {
   let mut row_indices = axis_indices(row_keys.length())
   let mut col_indices = axis_indices(col_keys.length())
@@ -520,12 +656,12 @@ fn apply_pivot_aggregate_filters(
     if field_index_in_positions(row_field_positions, filter.fld) {
       row_indices = filter_row_axis_indices(
         definition, cache, buckets, kept_rows, axis_projection, row_keys, col_keys,
-        row_indices, col_indices, data_field_index, calc_field, filter,
+        row_indices, col_indices, data_field_index, calc_field, filter, filter_format_facts,
       )
     } else if field_index_in_positions(col_field_positions, filter.fld) {
       col_indices = filter_col_axis_indices(
         definition, cache, buckets, kept_rows, axis_projection, row_keys, col_keys,
-        row_indices, col_indices, data_field_index, calc_field, filter,
+        row_indices, col_indices, data_field_index, calc_field, filter, filter_format_facts,
       )
     }
   }
@@ -597,6 +733,7 @@ fn filter_row_axis_indices(
   data_field_index : Int,
   calc_field : CalcField?,
   filter : PivotFilterDef,
+  filter_format_facts : PivotFilterFormatFacts,
 ) -> Array[Int] raise @opc_errors.SchemaViolation {
   let candidates : Array[@autofilter.CandidateRow] = []
   let selected_col_keys = select_axis_keys(col_keys, col_indices)
@@ -622,10 +759,16 @@ fn filter_row_axis_indices(
     })
     candidate_index = candidate_index + 1
   }
-  let visible = @autofilter.filter_rows(
-    filter.auto_filter,
+  let visible = pivot_filter_visible_indices(
+    filter,
     candidates,
-    @date_serial.DateSystem::Serial1900,
+    filter_format_facts,
+    fn(ordinal) {
+      match row_indices.get(ordinal) {
+        Some(row_index) => PivotFilterRowAxis(row_index)
+        None => PivotFilterRowAxis(ordinal)
+      }
+    },
   )
   let out : Array[Int] = []
   for index in visible {
@@ -651,6 +794,7 @@ fn filter_col_axis_indices(
   data_field_index : Int,
   calc_field : CalcField?,
   filter : PivotFilterDef,
+  filter_format_facts : PivotFilterFormatFacts,
 ) -> Array[Int] raise @opc_errors.SchemaViolation {
   let candidates : Array[@autofilter.CandidateRow] = []
   let selected_row_keys = select_axis_keys(row_keys, row_indices)
@@ -676,10 +820,16 @@ fn filter_col_axis_indices(
     })
     candidate_index = candidate_index + 1
   }
-  let visible = @autofilter.filter_rows(
-    filter.auto_filter,
+  let visible = pivot_filter_visible_indices(
+    filter,
     candidates,
-    @date_serial.DateSystem::Serial1900,
+    filter_format_facts,
+    fn(ordinal) {
+      match col_indices.get(ordinal) {
+        Some(col_index) => PivotFilterColAxis(col_index)
+        None => PivotFilterColAxis(ordinal)
+      }
+    },
   )
   let out : Array[Int] = []
   for index in visible {

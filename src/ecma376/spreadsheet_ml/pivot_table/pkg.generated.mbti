@@ -6,6 +6,7 @@ import {
   "trkbt10/ooxml/ecma376/opc/errors",
   "trkbt10/ooxml/ecma376/spreadsheet_ml",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
+  "trkbt10/ooxml/ecma376/spreadsheet_ml/autofilter",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/domain",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/formula",
 }
@@ -34,6 +35,8 @@ pub fn format_pivot_number(Double) -> String
 pub fn get_pivot_data(Array[MaterializedPivotTable], @formula.GetPivotDataRequest) -> @formula.FormulaValue?
 
 pub fn materialize_pivot_table(PivotTableDefinition, PivotCacheDefinition, PivotCacheRecords) -> PivotMaterialization raise @errors.SchemaViolation
+
+pub fn materialize_pivot_table_with_filter_formats(PivotTableDefinition, PivotCacheDefinition, PivotCacheRecords, PivotFilterFormatFacts) -> PivotMaterialization raise @errors.SchemaViolation
 
 pub fn pivot_cache_definition_part1_18_10_1_67_section_name() -> String
 
@@ -181,6 +184,12 @@ pub(all) struct PivotFieldDef {
   items : Array[PivotItemDef]
 } derive(Eq, @debug.Debug)
 
+pub(all) enum PivotFilterCandidateScope {
+  PivotFilterRawRecord(Int)
+  PivotFilterRowAxis(Int)
+  PivotFilterColAxis(Int)
+} derive(Eq, @debug.Debug)
+
 pub(all) struct PivotFilterDef {
   fld : Int
   mp_fld : Int?
@@ -194,6 +203,21 @@ pub(all) struct PivotFilterDef {
   string_value1 : String?
   string_value2 : String?
   auto_filter : @domain.CT_AutoFilter
+} derive(Eq, @debug.Debug)
+
+pub(all) struct PivotFilterFormatFacts {
+  dxf_formats : Array[@autofilter.FilterDxfFormat]
+  cell_format_for : (PivotFilterFormatRequest) -> @autofilter.CandidateCellFormat?
+}
+pub fn PivotFilterFormatFacts::none() -> Self
+
+pub(all) struct PivotFilterFormatRequest {
+  filter_id : Int
+  field_index : Int
+  filter_type : String
+  candidate : PivotFilterCandidateScope
+  column_id : Int
+  value : @formula.FormulaValue
 } derive(Eq, @debug.Debug)
 
 pub(all) struct PivotItemDef {

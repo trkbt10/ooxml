@@ -125,6 +125,24 @@ fn pivot_filter_def(
 }
 
 ///|
+fn pivot_candidate_format(
+  value : @formula.FormulaValue,
+  fill_color : String?,
+  font_color : String?,
+  icon_set : String?,
+  icon_id : Int?,
+) -> @autofilter.CandidateCellFormat {
+  {
+    value,
+    fill_color,
+    font_color,
+    rich_text_font_colors: [],
+    icon_set,
+    icon_id,
+  }
+}
+
+///|
 fn pivot_item_def(item_index : Int, hidden : Bool) -> PivotItemDef {
   {
     item_index: Some(item_index),
@@ -765,6 +783,192 @@ test "§18.10.1.33 value pivot filters can filter column axis aggregate values" 
     ],
   }
   let result = try! materialize_pivot_table(def, cache, records)
+  assert_eq(result.col_keys.length(), 1)
+  assert_true(result.col_keys[0] == Items([1]))
+  assert_true(result.find(Items([0]), Items([0]), 0) is None)
+  let east_helmet = result.find(Items([0]), Items([1]), 0).unwrap()
+  let west_helmet = result.find(Items([1]), Items([1]), 0).unwrap()
+  assert_fv_eq(east_helmet.aggregated_value, n(20.0))
+  assert_fv_eq(west_helmet.aggregated_value, n(40.0))
+}
+
+///|
+test "§18.10.1.33 pivot raw colorFilter uses supplied AutoFilter format facts" {
+  let cache = cache_with_fields([
+    cache_field_named("Region", [SharedString("East"), SharedString("West")]),
+    cache_field_named("Sales", []),
+  ])
+  let records : PivotCacheRecords = {
+    count: Some(4),
+    rows: [
+      row_of([RefShared(0), Inline(SharedNumber(10.0))]),
+      row_of([RefShared(1), Inline(SharedNumber(20.0))]),
+      row_of([RefShared(0), Inline(SharedNumber(30.0))]),
+      row_of([RefShared(1), Inline(SharedNumber(40.0))]),
+    ],
+  }
+  let def = {
+    ..definition([0], [], [data_def(1, Sum)], [], false, false),
+    filters: [
+      pivot_filter_def(
+        0, "captionEqual", "<autoFilter ref=\"A1\"><filterColumn colId=\"0\"><colorFilter dxfId=\"1\" cellColor=\"1\"/></filterColumn></autoFilter>",
+      ),
+    ],
+  }
+  let without_facts = try! materialize_pivot_table(def, cache, records)
+  assert_eq(without_facts.row_keys.length(), 0)
+  let facts : PivotFilterFormatFacts = {
+    dxf_formats: [{ dxf_id: 1, fill_color: Some("FFFF0000"), font_color: None }],
+    cell_format_for: fn(request) {
+      match request.candidate {
+        PivotFilterRawRecord(0) | PivotFilterRawRecord(2) =>
+          Some(
+            pivot_candidate_format(
+              request.value,
+              Some("#ff0000"),
+              None,
+              None,
+              None,
+            ),
+          )
+        PivotFilterRawRecord(_) =>
+          Some(
+            pivot_candidate_format(
+              request.value,
+              Some("#00ff00"),
+              None,
+              None,
+              None,
+            ),
+          )
+        _ => None
+      }
+    },
+  }
+  let result = try! materialize_pivot_table_with_filter_formats(
+    def, cache, records, facts,
+  )
+  assert_eq(result.row_keys.length(), 1)
+  assert_true(result.row_keys[0] == Items([0]))
+  let east = result.find(Items([0]), result.col_keys[0], 0).unwrap()
+  assert_fv_eq(east.aggregated_value, n(40.0))
+  assert_true(result.find(Items([1]), result.col_keys[0], 0) is None)
+}
+
+///|
+test "§18.10.1.33 row-axis aggregate font colorFilter uses supplied facts" {
+  let cache = cache_with_fields([
+    cache_field_named("Region", [SharedString("East"), SharedString("West")]),
+    cache_field_named("Sales", []),
+  ])
+  let records : PivotCacheRecords = {
+    count: Some(2),
+    rows: [
+      row_of([RefShared(0), Inline(SharedNumber(10.0))]),
+      row_of([RefShared(1), Inline(SharedNumber(40.0))]),
+    ],
+  }
+  let def = {
+    ..definition([0], [], [data_def(1, Sum)], [], false, false),
+    filters: [
+      pivot_filter_def(
+        0, "sum", "<autoFilter ref=\"A1\"><filterColumn colId=\"0\"><colorFilter dxfId=\"2\" cellColor=\"0\"/></filterColumn></autoFilter>",
+      ),
+    ],
+  }
+  let facts : PivotFilterFormatFacts = {
+    dxf_formats: [{ dxf_id: 2, fill_color: None, font_color: Some("112233") }],
+    cell_format_for: fn(request) {
+      match request.candidate {
+        PivotFilterRowAxis(1) =>
+          Some(
+            pivot_candidate_format(
+              request.value,
+              None,
+              Some("#112233"),
+              None,
+              None,
+            ),
+          )
+        PivotFilterRowAxis(_) =>
+          Some(
+            pivot_candidate_format(
+              request.value,
+              None,
+              Some("#445566"),
+              None,
+              None,
+            ),
+          )
+        _ => None
+      }
+    },
+  }
+  let result = try! materialize_pivot_table_with_filter_formats(
+    def, cache, records, facts,
+  )
+  assert_eq(result.row_keys.length(), 1)
+  assert_true(result.row_keys[0] == Items([1]))
+  assert_true(result.find(Items([0]), result.col_keys[0], 0) is None)
+  let west = result.find(Items([1]), result.col_keys[0], 0).unwrap()
+  assert_fv_eq(west.aggregated_value, n(40.0))
+}
+
+///|
+test "§18.10.1.33 column-axis aggregate iconFilter uses supplied facts" {
+  let cache = cache_with_fields([
+    cache_field_named("Region", [SharedString("East"), SharedString("West")]),
+    cache_field_named("Product", [SharedString("Bike"), SharedString("Helmet")]),
+    cache_field_named("Sales", []),
+  ])
+  let records : PivotCacheRecords = {
+    count: Some(4),
+    rows: [
+      row_of([RefShared(0), RefShared(0), Inline(SharedNumber(10.0))]),
+      row_of([RefShared(0), RefShared(1), Inline(SharedNumber(20.0))]),
+      row_of([RefShared(1), RefShared(0), Inline(SharedNumber(30.0))]),
+      row_of([RefShared(1), RefShared(1), Inline(SharedNumber(40.0))]),
+    ],
+  }
+  let def = {
+    ..definition([0], [1], [data_def(2, Sum)], [], false, false),
+    filters: [
+      pivot_filter_def(
+        1, "valueGreaterThan", "<autoFilter ref=\"A1\"><filterColumn colId=\"0\"><iconFilter iconSet=\"3TrafficLights1\" iconId=\"2\"/></filterColumn></autoFilter>",
+      ),
+    ],
+  }
+  let facts : PivotFilterFormatFacts = {
+    dxf_formats: [],
+    cell_format_for: fn(request) {
+      match request.candidate {
+        PivotFilterColAxis(1) =>
+          Some(
+            pivot_candidate_format(
+              request.value,
+              None,
+              None,
+              Some("3TrafficLights1"),
+              Some(2),
+            ),
+          )
+        PivotFilterColAxis(_) =>
+          Some(
+            pivot_candidate_format(
+              request.value,
+              None,
+              None,
+              Some("3TrafficLights1"),
+              Some(1),
+            ),
+          )
+        _ => None
+      }
+    },
+  }
+  let result = try! materialize_pivot_table_with_filter_formats(
+    def, cache, records, facts,
+  )
   assert_eq(result.col_keys.length(), 1)
   assert_true(result.col_keys[0] == Items([1]))
   assert_true(result.find(Items([0]), Items([0]), 0) is None)
