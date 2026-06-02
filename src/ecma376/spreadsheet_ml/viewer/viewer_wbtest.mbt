@@ -5926,6 +5926,7 @@ test "SpreadsheetML viewer §18.5 autofilter dropdown emitted with chrome opt-in
 /// §18.3.1.2 / §18.3.2 — active worksheet AutoFilter criteria hide
 /// non-matching data rows through the shared AutoFilter evaluator.
 test "SpreadsheetML viewer hides rows using §18.3.2 AutoFilter evaluator" {
+  set_sml_fixture_font_faces(["Calibri"])
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -5985,6 +5986,73 @@ test "SpreadsheetML viewer hides rows using §18.3.2 AutoFilter evaluator" {
   let result = render_svg(worksheet)
   assert_true(result.svg.contains("North"))
   assert_true(!result.svg.contains("South"))
+}
+
+///|
+test "SpreadsheetML viewer shares cf_today with worksheet dynamic AutoFilter" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let today : @date_serial.CalendarDateTime = {
+    year: 2024,
+    month: 3,
+    day: 15,
+    hour: 0,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  }
+  let today_serial = try! @date_serial.date_time_to_serial(
+    today,
+    @date_serial.DateSystem::Serial1900,
+  )
+  let tomorrow : @date_serial.CalendarDateTime = { ..today, day: 16 }
+  let tomorrow_serial = try! @date_serial.date_time_to_serial(
+    tomorrow,
+    @date_serial.DateSystem::Serial1900,
+  )
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", Some("str"), "Date"),
+            build_cell("B1", Some("str"), "Label"),
+          ]),
+          build_row(2, [
+            build_cell("A2", None, today_serial.to_string()),
+            build_cell("B2", Some("str"), "Keep Today"),
+          ]),
+          build_row(3, [
+            build_cell("A3", None, tomorrow_serial.to_string()),
+            build_cell("B3", Some("str"), "Drop Tomorrow"),
+          ]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:B3" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "0" }],
+            children: [
+              @xml.Node::Element({
+                name: name("dynamicFilter"),
+                attributes: [{ name: name("type"), value: "today" }],
+                children: [],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet, cf_today=Some(today))
+  assert_true(result.svg.contains("Keep Today"))
+  assert_true(!result.svg.contains("Drop Tomorrow"))
 }
 
 ///|

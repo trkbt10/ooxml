@@ -19,6 +19,16 @@ fn system() -> @date_serial.DateSystem {
 }
 
 ///|
+fn dt(year : Int, month : Int, day : Int) -> @date_serial.CalendarDateTime {
+  { year, month, day, hour: 0, minute: 0, second: 0, millisecond: 0 }
+}
+
+///|
+fn serial_date(year : Int, month : Int, day : Int) -> Double {
+  try! @date_serial.date_time_to_serial(dt(year, month, day), system())
+}
+
+///|
 fn bytes(source : String) -> Bytes {
   @utf8.encode(source[:])
 }
@@ -201,7 +211,7 @@ test "§18.3.2 customFilters question wildcard" {
 }
 
 ///|
-test "§18.3.2 dynamicFilter today uses deterministic serial-zero anchor" {
+test "§18.3.2 dynamicFilter today legacy API uses deterministic serial-zero anchor" {
   let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A3"),
     filter_columns: [
@@ -210,6 +220,33 @@ test "§18.3.2 dynamicFilter today uses deterministic serial-zero anchor" {
   }
   assert_true(row_visible(filter, row(0, [n(0.25)]), system()))
   assert_true(!row_visible(filter, row(1, [n(1.25)]), system()))
+}
+
+///|
+test "§18.3.2 dynamicFilter today uses explicit reference date" {
+  let filter : @domain.CT_AutoFilter = {
+    range: try! @address.CellRange::parse_a1("A1:A3"),
+    filter_columns: [
+      column(0, false, DynamicFilter({ kind: Today, val: None, max_val: None })),
+    ],
+  }
+  let today = dt(2024, 3, 15)
+  assert_true(
+    row_visible_at(
+      filter,
+      row(0, [n(serial_date(2024, 3, 15) + 0.25)]),
+      system(),
+      today,
+    ),
+  )
+  assert_true(
+    !row_visible_at(
+      filter,
+      row(1, [n(serial_date(2024, 3, 16) + 0.25)]),
+      system(),
+      today,
+    ),
+  )
 }
 
 ///|

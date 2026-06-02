@@ -250,11 +250,11 @@ pub fn render_svg(
   /// has a cached `<v>`, the cached value is used as fallback (this
   /// matches Excel's offline behaviour for Cube/RTD functions).
   evaluated_cells? : @hashmap.HashMap[String, @formula.FormulaValue]? = None,
-  /// §18.3.1.10 `timePeriod` conditional-formatting rules need a
-  /// deterministic "today" anchor.  When omitted, the renderer uses
-  /// the same serial-zero anchor as the value-only AutoFilter path;
-  /// callers that render an interactive/current workbook can pass
-  /// the host date explicitly.
+  /// §18.3.1.10 `timePeriod` conditional-formatting rules and
+  /// §18.3.2.5 AutoFilter dynamic filters need the same "today" anchor.
+  /// When omitted, the renderer uses a deterministic serial-zero anchor;
+  /// callers that render an interactive/current workbook can pass the
+  /// host date explicitly.
   cf_today? : @date_serial.CalendarDateTime? = None,
   /// §21.2 chart part resolver — maps an `r:id` carried on a
   /// `<c:chart>` child of a `<xdr:graphicFrame>/<a:graphicData>` to
@@ -2985,11 +2985,12 @@ fn mark_autofilter_hidden_rows(
   if candidates.length() == 0 {
     return
   }
-  let visible_rows = @autofilter.filter_formatted_rows(
+  let visible_rows = @autofilter.filter_formatted_rows_at(
     filter,
     candidates,
     build_autofilter_dxf_formats(styles, theme_map, theme_fonts~),
     date_system,
+    cf_today,
   )
   let visible : Map[Int, Bool] = Map([], capacity=visible_rows.length())
   for row in visible_rows {

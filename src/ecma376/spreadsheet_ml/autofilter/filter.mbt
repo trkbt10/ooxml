@@ -79,7 +79,21 @@ pub fn row_visible(
   row : CandidateRow,
   date_system : @date_serial.DateSystem,
 ) -> Bool {
-  row_visible_internal(filter, row, date_system, None)
+  row_visible_internal(filter, row, date_system, None, None)
+}
+
+///|
+/// §18.3.2.5 — value-only row visibility with an explicit date anchor for
+/// dynamic filters (`today`, `thisMonth`, `yearToDate`, ...).  The legacy
+/// `row_visible` API is retained for deterministic callers; interactive
+/// renderers should pass their host/workbook "today" through this entry point.
+pub fn row_visible_at(
+  filter : @domain.CT_AutoFilter,
+  row : CandidateRow,
+  date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime,
+) -> Bool {
+  row_visible_internal(filter, row, date_system, Some(today), None)
 }
 
 ///|
@@ -87,6 +101,7 @@ fn row_visible_internal(
   filter : @domain.CT_AutoFilter,
   row : CandidateRow,
   date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime?,
   format_context : FilterFormatContext?,
 ) -> Bool {
   for column in filter.filter_columns {
@@ -99,6 +114,7 @@ fn row_visible_internal(
         column.col_id,
         value,
         date_system,
+        today,
         format_context,
       ) {
       return false
@@ -116,7 +132,19 @@ pub fn filter_rows(
   rows : Array[CandidateRow],
   date_system : @date_serial.DateSystem,
 ) -> Array[Int] {
-  filter_rows_internal(filter, rows, date_system, fn(_, _) { None })
+  filter_rows_internal(filter, rows, date_system, None, fn(_, _) { None })
+}
+
+///|
+/// §18.3.2.5 / §18.3.2.10 — value-only candidate-set filtering with an
+/// explicit date anchor for dynamic filters.
+pub fn filter_rows_at(
+  filter : @domain.CT_AutoFilter,
+  rows : Array[CandidateRow],
+  date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime,
+) -> Array[Int] {
+  filter_rows_internal(filter, rows, date_system, Some(today), fn(_, _) { None })
 }
 
 ///|
@@ -130,11 +158,49 @@ pub fn row_visible_with_formats(
   dxf_formats : Array[FilterDxfFormat],
   date_system : @date_serial.DateSystem,
 ) -> Bool {
+  row_visible_with_formats_at_internal(
+    filter,
+    row,
+    dxf_formats,
+    date_system,
+    None,
+  )
+}
+
+///|
+/// §18.3.2 — formatted row visibility with an explicit date anchor for
+/// dynamic filters. Formatting facts are still supplied by the caller; this
+/// package remains the single comparison SoT.
+pub fn row_visible_with_formats_at(
+  filter : @domain.CT_AutoFilter,
+  row : FormattedCandidateRow,
+  dxf_formats : Array[FilterDxfFormat],
+  date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime,
+) -> Bool {
+  row_visible_with_formats_at_internal(
+    filter,
+    row,
+    dxf_formats,
+    date_system,
+    Some(today),
+  )
+}
+
+///|
+fn row_visible_with_formats_at_internal(
+  filter : @domain.CT_AutoFilter,
+  row : FormattedCandidateRow,
+  dxf_formats : Array[FilterDxfFormat],
+  date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime?,
+) -> Bool {
   let candidate = candidate_row_from_formatted(row)
   row_visible_internal(
     filter,
     candidate,
     date_system,
+    today,
     Some({ row, dxf_formats }),
   )
 }
@@ -149,11 +215,47 @@ pub fn filter_formatted_rows(
   dxf_formats : Array[FilterDxfFormat],
   date_system : @date_serial.DateSystem,
 ) -> Array[Int] {
+  filter_formatted_rows_at_internal(
+    filter,
+    rows,
+    dxf_formats,
+    date_system,
+    None,
+  )
+}
+
+///|
+/// §18.3.2 — formatted candidate-set filtering with an explicit date anchor
+/// for dynamic filters.
+pub fn filter_formatted_rows_at(
+  filter : @domain.CT_AutoFilter,
+  rows : Array[FormattedCandidateRow],
+  dxf_formats : Array[FilterDxfFormat],
+  date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime,
+) -> Array[Int] {
+  filter_formatted_rows_at_internal(
+    filter,
+    rows,
+    dxf_formats,
+    date_system,
+    Some(today),
+  )
+}
+
+///|
+fn filter_formatted_rows_at_internal(
+  filter : @domain.CT_AutoFilter,
+  rows : Array[FormattedCandidateRow],
+  dxf_formats : Array[FilterDxfFormat],
+  date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime?,
+) -> Array[Int] {
   let candidates = Array::new()
   for row in rows {
     candidates.push(candidate_row_from_formatted(row))
   }
-  filter_rows_internal(filter, candidates, date_system, fn(_, ordinal) {
+  filter_rows_internal(filter, candidates, date_system, today, fn(_, ordinal) {
     match rows.get(ordinal) {
       Some(row) => Some({ row, dxf_formats })
       None => None
@@ -166,6 +268,7 @@ fn filter_rows_internal(
   filter : @domain.CT_AutoFilter,
   rows : Array[CandidateRow],
   date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime?,
   format_context_for_row : (CandidateRow, Int) -> FilterFormatContext?,
 ) -> Array[Int] {
   let base = Array::new()
@@ -174,6 +277,7 @@ fn filter_rows_internal(
         filter,
         row,
         date_system,
+        today,
         format_context_for_row(row, ordinal),
       ) {
       base.push(row)
@@ -463,6 +567,7 @@ fn rule_visible(
   column_id : Int,
   value : @formula.FormulaValue,
   date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime?,
   format_context : FilterFormatContext?,
 ) -> Bool {
   match rule {
@@ -475,7 +580,7 @@ fn rule_visible(
         DynamicFilter({ kind: AboveAverage, .. }) => true
         DynamicFilter({ kind: BelowAverage, .. }) => true
         DynamicFilter(dynamic) =>
-          dynamic_filter_pass(value, dynamic, date_system)
+          dynamic_filter_pass(value, dynamic, date_system, today)
         ColorFilter(_) | IconFilter(_) =>
           match format_context {
             Some(ctx) =>
@@ -566,13 +671,14 @@ fn dynamic_filter_pass(
   value : @formula.FormulaValue,
   dynamic : @domain.CT_DynamicFilter,
   date_system : @date_serial.DateSystem,
+  today : @date_serial.CalendarDateTime?,
 ) -> Bool {
   if dynamic.val is Some(min_value) && dynamic.max_val is Some(max_value) {
     return formula_to_number(value, date_system) is Some(n) &&
       n >= min_value &&
       n < max_value
   }
-  match dynamic_interval(dynamic.kind, date_system) {
+  match dynamic_interval(dynamic.kind, date_system, today) {
     Some((start, end)) =>
       match formula_to_number(value, date_system) {
         Some(n) => n >= start && n < end
@@ -720,9 +826,14 @@ fn date_group_matches(
 fn dynamic_interval(
   kind : @domain.ST_DynamicFilterType,
   date_system : @date_serial.DateSystem,
+  today_anchor : @date_serial.CalendarDateTime?,
 ) -> (Double, Double)? {
-  let today = @date_serial.serial_to_date_time(0.0, date_system) catch {
-    _ => return None
+  let today = match today_anchor {
+    Some(value) => value
+    None =>
+      @date_serial.serial_to_date_time(0.0, date_system) catch {
+        _ => return None
+      }
   }
   let today_start = serial_for_date(
     today.year,

@@ -773,8 +773,22 @@ priv struct MathPayload {
 priv struct ParaProps {
   alignment : String // "left" | "center" | "right" | "justify"
   margin_left : Double
+  /// §17.3.1.12 `<w:ind @startChars|@leftChars>` — raw hundredths of
+  /// a character unit. Converted after run collection because the unit
+  /// must come from the active glyph metrics, not a renderer constant.
+  margin_left_chars : Double?
   margin_right : Double
+  /// §17.3.1.12 `<w:ind @endChars|@rightChars>` — raw hundredths of a
+  /// character unit. See `margin_left_chars`.
+  margin_right_chars : Double?
   indent : Double
+  /// §17.3.1.12 `<w:ind @firstLineChars>` — raw hundredths of a
+  /// character unit. Supersedes the twips-based `@firstLine`.
+  first_line_chars : Double?
+  /// §17.3.1.12 `<w:ind @hangingChars>` — raw hundredths of a
+  /// character unit. Supersedes `@hanging` and wins over
+  /// `firstLineChars` when both are present.
+  hanging_chars : Double?
   space_before : Double
   space_after : Double
   /// §17.3.1.38 `<w:tabs>` tab-stop positions in CSS pixels relative
@@ -2926,6 +2940,26 @@ fn parse_double_attr(
   }
 }
 
+///|
+/// Parse an XML attribute as Double while preserving absence. Used for
+/// WordprocessingML properties where "attribute present with zero" and
+/// "attribute omitted" have different cascade semantics.
+fn parse_optional_double_attr(
+  element : @xml.Element,
+  local_name : String,
+) -> Double? {
+  match attr_value(element, local_name) {
+    None => None
+    Some(value) =>
+      try {
+        let i : Int = @string.parse_int(value)
+        Some(i.to_double())
+      } catch {
+        _ => Some(@string.parse_double(value)) catch { _ => None }
+      }
+  }
+}
+
 // =============================================================================
 // §17.3 Block collection: paragraphs and tables
 // =============================================================================
@@ -4280,8 +4314,12 @@ fn resolve_para_props(
 ) -> ParaProps {
   let mut alignment = "left"
   let mut margin_left = 0.0
+  let mut margin_left_chars : Double? = None
   let mut margin_right = 0.0
+  let mut margin_right_chars : Double? = None
   let mut indent = 0.0
+  let mut first_line_chars : Double? = None
+  let mut hanging_chars : Double? = None
   // §17.7.5.3 — when the styles part is absent Office Normal applies
   // the AUTO line-height multiplier (276 / 240 = 1.15) but keeps
   // `space_before` / `space_after` at zero. Direct `<w:spacing>`
@@ -4332,94 +4370,114 @@ fn resolve_para_props(
       // §17.3.1.12 <w:ind>
       match first_child_named(p_pr, "ind") {
         Some(ind_el) => {
-          // §17.3.1.12 — `@start` is the writing-direction-aware
-          // spelling of `@left` and overrides it WHEN PRESENT.  A
-          // value of `0` (explicitly clearing an inherited indent)
-          // or a negative outdent are both valid and MUST NOT be
-          // ignored — the previous `> 0.0` test conflated
-          // "attribute present" with "value positive".
-          match attr_value(ind_el, "left") {
-            Some(v) =>
-              try @string.parse_double(v) catch {
-                _ => ()
-              } noraise {
-                n => margin_left = n * TWIPS_TO_PX
-              }
-            None => ()
+          let read_twips_px = fn(local_name : String) -> Double? {
+            match parse_optional_double_attr(ind_el, local_name) {
+              Some(n) => Some(n * TWIPS_TO_PX)
+              None => None
+            }
           }
-          match attr_value(ind_el, "start") {
-            Some(v) =>
-              try @string.parse_double(v) catch {
-                _ => ()
-              } noraise {
-                n => margin_left = n * TWIPS_TO_PX
-              }
-            None => ()
-          }
-          match attr_value(ind_el, "right") {
-            Some(v) =>
-              try @string.parse_double(v) catch {
-                _ => ()
-              } noraise {
-                n => margin_right = n * TWIPS_TO_PX
-              }
-            None => ()
-          }
-          match attr_value(ind_el, "end") {
-            Some(v) =>
-              try @string.parse_double(v) catch {
-                _ => ()
-              } noraise {
-                n => margin_right = n * TWIPS_TO_PX
-              }
-            None => ()
-          }
-          // first-line indent (positive) / hanging (negative).
-          // §17.3.1.12 — the twips-based `@firstLine`/`@hanging`
-          // win when present; the char-based `@firstLineChars`/
-          // `@hangingChars` (hundredths of a character, §17.3.1.12)
-          // are the fallback.  A "character" is the default-font
-          // average advance — approximated here as 0.5em of the
-          // WML default font size (11 pt → ≈7.3 px).
-          let fl_twips = attr_value(ind_el, "firstLine")
-          let hg_twips = attr_value(ind_el, "hanging")
-          let char_px = DEFAULT_FONT_SIZE_PT * (96.0 / 72.0) * 0.5
-          let fl = match fl_twips {
-            Some(v) =>
-              try @string.parse_double(v) catch {
-                _ => 0.0
-              } noraise {
-                n => n * TWIPS_TO_PX
-              }
+
+          // §17.3.1.12 — strict `@start`/`@end` supersede legacy
+          // `@left`/`@right`; char-unit forms supersede their twips
+          // counterparts. Presence matters even for zero/negative
+          // values, so this branch works from optional attributes.
+          let left_twips = read_twips_px("left")
+          let start_twips = read_twips_px("start")
+          let left_chars = parse_optional_double_attr(ind_el, "leftChars")
+          let start_chars = parse_optional_double_attr(ind_el, "startChars")
+          match start_chars {
+            Some(n) => {
+              margin_left = 0.0
+              margin_left_chars = Some(n)
+            }
             None =>
-              match attr_value(ind_el, "firstLineChars") {
-                Some(v) =>
-                  // hundredths of a char → chars → px.
-                  try @string.parse_double(v) catch {
-                    _ => 0.0
-                  } noraise {
-                    n => n / 100.0 * char_px
+              match start_twips {
+                Some(px) => {
+                  margin_left = px
+                  margin_left_chars = None
+                }
+                None =>
+                  match left_chars {
+                    Some(n) => {
+                      margin_left = 0.0
+                      margin_left_chars = Some(n)
+                    }
+                    None =>
+                      match left_twips {
+                        Some(px) => margin_left = px
+                        None => ()
+                      }
                   }
-                None => 0.0
               }
+          }
+
+          let right_twips = read_twips_px("right")
+          let end_twips = read_twips_px("end")
+          let right_chars = parse_optional_double_attr(ind_el, "rightChars")
+          let end_chars = parse_optional_double_attr(ind_el, "endChars")
+          match end_chars {
+            Some(n) => {
+              margin_right = 0.0
+              margin_right_chars = Some(n)
+            }
+            None =>
+              match end_twips {
+                Some(px) => {
+                  margin_right = px
+                  margin_right_chars = None
+                }
+                None =>
+                  match right_chars {
+                    Some(n) => {
+                      margin_right = 0.0
+                      margin_right_chars = Some(n)
+                    }
+                    None =>
+                      match right_twips {
+                        Some(px) => margin_right = px
+                        None => ()
+                      }
+                  }
+              }
+          }
+
+          // first-line indent (positive) / hanging (negative).
+          // §17.3.1.12 — char-based values are raw hundredths of a
+          // character unit.  They are converted after run collection
+          // through the same glyph resolver used for text measurement.
+          let first_line_chars_attr = parse_optional_double_attr(
+            ind_el, "firstLineChars",
+          )
+          let hanging_chars_attr = parse_optional_double_attr(
+            ind_el, "hangingChars",
+          )
+          first_line_chars = match hanging_chars_attr {
+            Some(_) => None
+            None => first_line_chars_attr
+          }
+          hanging_chars = hanging_chars_attr
+
+          let fl_twips = if first_line_chars_attr is Some(_) {
+            None
+          } else {
+            read_twips_px("firstLine")
+          }
+          let hg_twips = if hanging_chars_attr is Some(_) {
+            None
+          } else {
+            read_twips_px("hanging")
+          }
+          let fl = match (fl_twips, hg_twips) {
+            // `@firstLine` and `@hanging` are mutually exclusive; if
+            // both twips forms are present, ECMA-376 says
+            // `@firstLine` is ignored.
+            (Some(_), Some(_)) => 0.0
+            (Some(px), None) => px
+            _ => 0.0
           }
           let hg = match hg_twips {
-            Some(v) =>
-              try @string.parse_double(v) catch {
-                _ => 0.0
-              } noraise {
-                n => n * TWIPS_TO_PX
-              }
-            None =>
-              match attr_value(ind_el, "hangingChars") {
-                Some(v) =>
-                  try @string.parse_double(v) catch {
-                    _ => 0.0
-                  } noraise {
-                    n => n / 100.0 * char_px
-                  }
-                None => 0.0
-              }
+            Some(px) => px
+            None => 0.0
           }
           indent = fl - hg
         }
@@ -4647,8 +4705,12 @@ fn resolve_para_props(
   ParaProps::{
     alignment,
     margin_left,
+    margin_left_chars,
     margin_right,
+    margin_right_chars,
     indent,
+    first_line_chars,
+    hanging_chars,
     space_before,
     space_after,
     tab_stops,
@@ -7160,6 +7222,83 @@ fn measure_run_text(
 }
 
 ///|
+fn para_props_has_character_indents(props : ParaProps) -> Bool {
+  props.margin_left_chars is Some(_) ||
+  props.margin_right_chars is Some(_) ||
+  props.first_line_chars is Some(_) ||
+  props.hanging_chars is Some(_)
+}
+
+///|
+/// Resolve one §17.3.1.12 "character unit" to CSS pixels using the
+/// paragraph's active glyph metrics.  ECMA-376 defines the attributes
+/// as hundredths of a character unit; this viewer has no separate font
+/// metric table, so the unit is measured through the same
+/// `RunSpan.font_request` / `@glyph` path as normal text width.
+fn paragraph_character_unit_px(
+  spans : Array[RunSpan],
+  warnings : Array[String],
+  default_font_size_pt : Double,
+  font_descriptors : Map[String, FontDescriptor],
+) -> Double {
+  for span in spans {
+    if span.text.length() > 0 {
+      let w = measure_run_text("0", span, warnings)
+      if w > 0.0 {
+        return w
+      }
+    }
+  }
+  let template = default_run_template(default_font_size_pt~, font_descriptors~)
+  measure_run_text("0", template, warnings)
+}
+
+///|
+/// Apply §17.3.1.12 char-unit indentation after run collection.  The
+/// raw values were preserved by `resolve_para_props`; converting here
+/// lets us use the resolved paragraph/run font request as the sole
+/// source of glyph width.
+fn apply_character_indents_to_props(
+  props : ParaProps,
+  spans : Array[RunSpan],
+  warnings : Array[String],
+  default_font_size_pt : Double,
+  font_descriptors : Map[String, FontDescriptor],
+) -> ParaProps {
+  if !para_props_has_character_indents(props) {
+    return props
+  }
+  let unit_px = paragraph_character_unit_px(
+    spans, warnings, default_font_size_pt, font_descriptors,
+  )
+  if unit_px <= 0.0 {
+    return props
+  }
+  let margin_left = match props.margin_left_chars {
+    Some(n) => n / 100.0 * unit_px
+    None => props.margin_left
+  }
+  let margin_right = match props.margin_right_chars {
+    Some(n) => n / 100.0 * unit_px
+    None => props.margin_right
+  }
+  let first_line = match props.first_line_chars {
+    Some(n) => n / 100.0 * unit_px
+    None => 0.0
+  }
+  let hanging = match props.hanging_chars {
+    Some(n) => n / 100.0 * unit_px
+    None => 0.0
+  }
+  {
+    ..props,
+    margin_left,
+    margin_right,
+    indent: props.indent + first_line - hanging,
+  }
+}
+
+///|
 /// Layout one paragraph into a stack of lines.  Uses content_width as
 /// available inline size, applies §17.3.1.12 indent / margin offsets,
 /// and word-wraps using @util/glyph measurements.
@@ -7205,7 +7344,7 @@ fn layout_paragraph(
   } else {
     DEFAULT_FONT_SIZE_PT
   }
-  let props = resolve_para_props(p, apply_office_defaults~, theme_map~)
+  let raw_props = resolve_para_props(p, apply_office_defaults~, theme_map~)
   let spans = collect_paragraph_spans(
     p,
     warnings,
@@ -7219,6 +7358,9 @@ fn layout_paragraph(
     hyperlink_resolver~,
     field_context~,
     field_registry~,
+  )
+  let props = apply_character_indents_to_props(
+    raw_props, spans, warnings, default_font_size_pt, font_descriptors,
   )
 
   // §17.3.1.11 framePr — when the paragraph is wrapped in a floating

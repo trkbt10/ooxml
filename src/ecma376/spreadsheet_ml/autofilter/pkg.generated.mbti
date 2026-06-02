@@ -13,13 +13,21 @@ import {
 // Values
 pub fn filter_formatted_rows(@domain.CT_AutoFilter, Array[FormattedCandidateRow], Array[FilterDxfFormat], @date_serial.DateSystem) -> Array[Int]
 
+pub fn filter_formatted_rows_at(@domain.CT_AutoFilter, Array[FormattedCandidateRow], Array[FilterDxfFormat], @date_serial.DateSystem, @date_serial.CalendarDateTime) -> Array[Int]
+
 pub fn filter_rows(@domain.CT_AutoFilter, Array[CandidateRow], @date_serial.DateSystem) -> Array[Int]
+
+pub fn filter_rows_at(@domain.CT_AutoFilter, Array[CandidateRow], @date_serial.DateSystem, @date_serial.CalendarDateTime) -> Array[Int]
 
 pub fn parse_auto_filter(@xml.Element) -> @domain.CT_AutoFilter raise @errors.SchemaViolation
 
 pub fn row_visible(@domain.CT_AutoFilter, CandidateRow, @date_serial.DateSystem) -> Bool
 
+pub fn row_visible_at(@domain.CT_AutoFilter, CandidateRow, @date_serial.DateSystem, @date_serial.CalendarDateTime) -> Bool
+
 pub fn row_visible_with_formats(@domain.CT_AutoFilter, FormattedCandidateRow, Array[FilterDxfFormat], @date_serial.DateSystem) -> Bool
+
+pub fn row_visible_with_formats_at(@domain.CT_AutoFilter, FormattedCandidateRow, Array[FilterDxfFormat], @date_serial.DateSystem, @date_serial.CalendarDateTime) -> Bool
 
 // Errors
 

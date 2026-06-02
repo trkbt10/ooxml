@@ -4222,6 +4222,137 @@ test "wml viewer §17.3.1.12 ind firstLineChars resolves char-based indent" {
 }
 
 ///|
+test "wml viewer §17.3.1.12 ind firstLineChars uses glyph character unit" {
+  set_wml_fixture_font_faces(["Noto Sans"])
+  let p : @xml.Element = {
+    name: name("p"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("pPr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("ind"),
+            attributes: [
+              attr("firstLine", "720"),
+              attr("firstLineChars", "200"),
+            ],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("r"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("rPr"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("rFonts"),
+                attributes: [attr("ascii", "Noto Sans")],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("sz"),
+                attributes: [attr("val", "20")],
+                children: [],
+              }),
+            ],
+          }),
+          @xml.Node::Element({
+            name: name("t"),
+            attributes: [],
+            children: [@xml.Node::Text("indented")],
+          }),
+        ],
+      }),
+    ],
+  }
+  let laid = layout_paragraph(p, 400.0, [], _ => None, _ => None)
+  let unit = try
+    @glyph.measure_text_width(
+      "0",
+      font_size_pt=10.0,
+      letter_spacing_px=0.0,
+      family="Noto Sans",
+    )
+  catch {
+    _ => abort("cannot measure fixture font")
+  } noraise {
+    w => w
+  }
+  // `firstLineChars` supersedes the twips `firstLine`; 200 hundredths
+  // of a character therefore equals exactly two measured glyph units.
+  assert_close_double(laid.lines[0].x, unit * 2.0, 0.01, "firstLineChars x")
+}
+
+///|
+test "wml viewer §17.3.1.12 ind hangingChars uses glyph character unit" {
+  set_wml_fixture_font_faces(["Noto Sans"])
+  let p : @xml.Element = {
+    name: name("p"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("pPr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("ind"),
+            attributes: [attr("hanging", "720"), attr("hangingChars", "100")],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("r"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("rPr"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("rFonts"),
+                attributes: [attr("ascii", "Noto Sans")],
+                children: [],
+              }),
+              @xml.Node::Element({
+                name: name("sz"),
+                attributes: [attr("val", "20")],
+                children: [],
+              }),
+            ],
+          }),
+          @xml.Node::Element({
+            name: name("t"),
+            attributes: [],
+            children: [@xml.Node::Text("hanging")],
+          }),
+        ],
+      }),
+    ],
+  }
+  let laid = layout_paragraph(p, 400.0, [], _ => None, _ => None)
+  let unit = try
+    @glyph.measure_text_width(
+      "0",
+      font_size_pt=10.0,
+      letter_spacing_px=0.0,
+      family="Noto Sans",
+    )
+  catch {
+    _ => abort("cannot measure fixture font")
+  } noraise {
+    w => w
+  }
+  assert_close_double(laid.lines[0].x, 0.0 - unit, 0.01, "hangingChars x")
+}
+
+///|
 /// §17.3.1.12 `<w:ind w:start="0">` — an explicit zero start
 /// indent MUST clear (not be ignored by a positivity test).
 test "wml viewer §17.3.1.12 ind start=0 explicitly clears indent" {
