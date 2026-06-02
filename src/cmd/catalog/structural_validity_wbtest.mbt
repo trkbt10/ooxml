@@ -639,6 +639,72 @@ test "catalog pptx placeholder host renders ph through slide layout chain" {
 }
 
 ///|
+test "catalog pptx picture blip host resolves embedded image" {
+  assert_true(
+    is_pml_picture_blip_catalog_target(
+      "pic", "http://schemas.openxmlformats.org/presentationml/2006/main#CT_Picture",
+      "http://schemas.openxmlformats.org/presentationml/2006/main",
+    ),
+  )
+  assert_true(
+    is_pml_picture_blip_catalog_target(
+      "blip", "http://schemas.openxmlformats.org/drawingml/2006/main#CT_Blip", "http://schemas.openxmlformats.org/drawingml/2006/main",
+    ),
+  )
+  let pic = stamp_target(xep("p", NS_PML, "pic", [], []))
+  let root = catalog_pml_picture_blip_root(pic)
+  assert_eq(verify_entry("pptx:picture-blip", root, "CAT-PML-PIC"), "rendered")
+  let svg = match
+    render_svg_of(
+      "pptx:picture-blip",
+      host_package("pptx:picture-blip", strip_target_attr(root)),
+    ) {
+    Some(s) => s
+    None => abort("expected picture blip host to render")
+  }
+  assert_true(svg.contains("data:image/png;base64,"))
+  assert_true(svg.contains("data-r-embed=\"rId2\""))
+}
+
+///|
+test "catalog pptx picture blip host renders blip effects" {
+  assert_true(
+    is_pml_picture_blip_catalog_target(
+      "grayscl", "http://schemas.openxmlformats.org/drawingml/2006/main#CT_GrayscaleEffect",
+      "http://schemas.openxmlformats.org/drawingml/2006/main",
+    ),
+  )
+  assert_true(
+    is_pml_picture_blip_catalog_target(
+      "tint", "http://schemas.openxmlformats.org/drawingml/2006/main#CT_TintEffect",
+      "http://schemas.openxmlformats.org/drawingml/2006/main",
+    ),
+  )
+  assert_false(
+    is_pml_picture_blip_catalog_target(
+      "tint", "http://schemas.openxmlformats.org/drawingml/2006/main#CT_PositiveFixedPercentage",
+      "http://schemas.openxmlformats.org/drawingml/2006/main",
+    ),
+  )
+  let grayscl = stamp_target(xep("a", NS_A, "grayscl", [], []))
+  let root = catalog_pml_picture_blip_root(grayscl)
+  assert_eq(
+    verify_entry("pptx:picture-blip", root, "CAT-PML-BLIP-FX"),
+    "rendered",
+  )
+  let svg = match
+    render_svg_of(
+      "pptx:picture-blip",
+      host_package("pptx:picture-blip", strip_target_attr(root)),
+    ) {
+    Some(s) => s
+    None => abort("expected picture blip effect host to render")
+  }
+  assert_true(svg.contains("data-ooxml-blip-effects=\"grayscl\""))
+  assert_true(svg.contains("<filter "))
+}
+
+///|
 test "catalog synth emits non-degenerate xdr twoCellAnchor" {
   let ns_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
   let schema = load_catalog_schema()

@@ -749,6 +749,11 @@ fn main {
       catalog_type_local(decl.type_name) == "CT_RelIds" {
       candidates.push(("pptx:diagram-relids", target))
     }
+    if is_pml_picture_blip_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(
+        ("pptx:picture-blip", catalog_pml_picture_blip_root(target)),
+      )
+    }
     if is_drawingml_table_catalog_target(decl.name, decl.type_name, decl.ns) {
       candidates.push(("pptx:table", catalog_table_root(target)))
     }

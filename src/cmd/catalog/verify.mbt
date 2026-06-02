@@ -2247,6 +2247,320 @@ fn pptx_package_with_embedded_image(
 }
 
 ///|
+/// True for PML picture / DrawingML blip elements that only become
+/// visible when hosted in a real slide picture with a slide-scoped
+/// image relationship.  The catalog host below supplies that OPC
+/// plumbing; the existing PresentationML context + picture renderer
+/// remain the only rendering SoT.
+fn is_pml_picture_blip_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  let type_local = catalog_type_local(type_name)
+  let ns_tail = strip_ns(ns)
+  if ns_tail == "presentationml/main" {
+    match local_name {
+      "pic" => return type_local == "CT_Picture"
+      "blipFill" => return type_local == "CT_BlipFillProperties"
+      _ => ()
+    }
+  }
+  if ns_tail == "drawingml/main" {
+    match local_name {
+      "blip" => return type_local == "CT_Blip"
+      "srcRect" | "fillRect" => return type_local == "CT_RelativeRect"
+      "tile" => return type_local == "CT_TileInfoProperties"
+      "stretch" => return type_local == "CT_StretchInfoProperties"
+      _ => return is_dml_blip_effect_catalog_target(local_name, type_local)
+    }
+  }
+  false
+}
+
+///|
+fn is_dml_blip_effect_catalog_target(
+  local_name : String,
+  type_local : String,
+) -> Bool {
+  match local_name {
+    "alphaBiLevel" => type_local == "CT_AlphaBiLevelEffect"
+    "alphaCeiling" => type_local == "CT_AlphaCeilingEffect"
+    "alphaFloor" => type_local == "CT_AlphaFloorEffect"
+    "alphaInv" => type_local == "CT_AlphaInverseEffect"
+    "alphaMod" => type_local == "CT_AlphaModulateEffect"
+    "alphaModFix" => type_local == "CT_AlphaModulateFixedEffect"
+    "alphaRepl" => type_local == "CT_AlphaReplaceEffect"
+    "biLevel" => type_local == "CT_BiLevelEffect"
+    "blur" => type_local == "CT_BlurEffect"
+    "clrChange" => type_local == "CT_ColorChangeEffect"
+    "clrRepl" => type_local == "CT_ColorReplaceEffect"
+    "duotone" => type_local == "CT_DuotoneEffect"
+    "fillOverlay" => type_local == "CT_FillOverlayEffect"
+    "grayscl" => type_local == "CT_GrayscaleEffect"
+    "hsl" => type_local == "CT_HSLEffect"
+    "lum" => type_local == "CT_LuminanceEffect"
+    "tint" => type_local == "CT_TintEffect"
+    _ => false
+  }
+}
+
+///|
+/// Normalize a picture/blip target into a slide body:
+/// `<p:cSld>/<p:spTree>/<p:pic>...`.
+///
+/// The target subtree is preserved and merely placed in the
+/// schema-correct picture branch.  Any `<a:blip>` in that branch is
+/// retargeted to slide relationship `rId2`, which
+/// `pptx_package_with_embedded_image` owns.
+fn catalog_pml_picture_blip_root(content : @xml.Element) -> @xml.Element {
+  match content.name.local_name {
+    "cSld" => content
+    "spTree" => xep("p", NS_PML, "cSld", [], [Element(content)])
+    _ => pptx_common_slide_data(NS_PML, [catalog_pml_picture_blip_pic(content)])
+  }
+}
+
+///|
+fn catalog_pml_picture_blip_pic(content : @xml.Element) -> @xml.Element {
+  if content.name.local_name == "pic" &&
+    strip_ns(content.name.ns.unwrap_or("")) == "presentationml/main" {
+    return catalog_pml_normalize_pic(content)
+  }
+  xep("p", NS_PML, "pic", [], [
+    Element(catalog_pml_default_nv_pic_pr()),
+    Element(catalog_pml_blip_fill_for_target(content)),
+    Element(catalog_pml_default_pic_sp_pr()),
+  ])
+}
+
+///|
+fn catalog_pml_normalize_pic(pic : @xml.Element) -> @xml.Element {
+  let mut nv_pic_pr : @xml.Element? = None
+  let mut blip_fill : @xml.Element? = None
+  let mut sp_pr : @xml.Element? = None
+  let rest : Array[@xml.Node] = []
+  for child in pic.children {
+    match child {
+      Element(ce) =>
+        match ce.name.local_name {
+          "nvPicPr" =>
+            if nv_pic_pr is None {
+              nv_pic_pr = Some(ce)
+            } else {
+              rest.push(child)
+            }
+          "blipFill" =>
+            if blip_fill is None {
+              blip_fill = Some(catalog_pml_normalize_blip_fill(ce))
+            } else {
+              rest.push(child)
+            }
+          "spPr" =>
+            if sp_pr is None {
+              sp_pr = Some(catalog_pml_ensure_pic_sp_pr(ce))
+            } else {
+              rest.push(child)
+            }
+          _ => rest.push(child)
+        }
+      _ => rest.push(child)
+    }
+  }
+  let kids : Array[@xml.Node] = [
+    Element(nv_pic_pr.unwrap_or(catalog_pml_default_nv_pic_pr())),
+    Element(blip_fill.unwrap_or(catalog_pml_default_blip_fill())),
+    Element(sp_pr.unwrap_or(catalog_pml_default_pic_sp_pr())),
+  ]
+  for child in rest {
+    kids.push(child)
+  }
+  { name: pic.name, attributes: pic.attributes, children: kids }
+}
+
+///|
+fn catalog_pml_blip_fill_for_target(target : @xml.Element) -> @xml.Element {
+  let lname = target.name.local_name
+  if lname == "blipFill" {
+    return catalog_pml_normalize_blip_fill(
+      if strip_ns(target.name.ns.unwrap_or("")) == "presentationml/main" {
+        target
+      } else {
+        {
+          name: { prefix: Some("p"), local_name: "blipFill", ns: Some(NS_PML) },
+          attributes: target.attributes,
+          children: target.children,
+        }
+      },
+    )
+  }
+  let kids : Array[@xml.Node] = []
+  match lname {
+    "blip" => {
+      kids.push(Element(catalog_pml_retarget_blip(target)))
+      kids.push(Element(catalog_pml_default_stretch()))
+    }
+    "srcRect" | "tile" | "stretch" => {
+      kids.push(Element(catalog_pml_default_blip()))
+      kids.push(Element(target))
+    }
+    "fillRect" => {
+      kids.push(Element(catalog_pml_default_blip()))
+      kids.push(Element(xep("a", NS_A, "stretch", [], [Element(target)])))
+    }
+    _ => {
+      kids.push(Element(catalog_pml_default_blip_with_child(target)))
+      kids.push(Element(catalog_pml_default_stretch()))
+    }
+  }
+  xep("p", NS_PML, "blipFill", [], kids)
+}
+
+///|
+fn catalog_pml_normalize_blip_fill(blip_fill : @xml.Element) -> @xml.Element {
+  let parsed_kids : Array[@xml.Node] = []
+  let mut has_blip = false
+  let mut has_mode = false
+  for child in blip_fill.children {
+    match child {
+      Element(ce) =>
+        match ce.name.local_name {
+          "blip" => {
+            has_blip = true
+            parsed_kids.push(Element(catalog_pml_retarget_blip(ce)))
+          }
+          "tile" | "stretch" => {
+            has_mode = true
+            parsed_kids.push(child)
+          }
+          _ => parsed_kids.push(child)
+        }
+      _ => parsed_kids.push(child)
+    }
+  }
+  let kids : Array[@xml.Node] = []
+  if !has_blip {
+    kids.push(Element(catalog_pml_default_blip()))
+  }
+  for child in parsed_kids {
+    kids.push(child)
+  }
+  if !has_mode {
+    kids.push(Element(catalog_pml_default_stretch()))
+  }
+  { name: blip_fill.name, attributes: blip_fill.attributes, children: kids }
+}
+
+///|
+fn catalog_pml_retarget_blip(blip : @xml.Element) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  for a in blip.attributes {
+    if a.name.local_name != "embed" && a.name.local_name != "link" {
+      attrs.push(a)
+    }
+  }
+  attrs.push({
+    name: { prefix: Some("r"), local_name: "embed", ns: Some(NS_OFFICE_REL) },
+    value: "rId2",
+  })
+  { name: blip.name, attributes: attrs, children: blip.children }
+}
+
+///|
+fn catalog_pml_default_blip() -> @xml.Element {
+  xep(
+    "a",
+    NS_A,
+    "blip",
+    [
+      {
+        name: {
+          prefix: Some("r"),
+          local_name: "embed",
+          ns: Some(NS_OFFICE_REL),
+        },
+        value: "rId2",
+      },
+    ],
+    [],
+  )
+}
+
+///|
+fn catalog_pml_default_blip_with_child(child : @xml.Element) -> @xml.Element {
+  let blip = catalog_pml_default_blip()
+  { name: blip.name, attributes: blip.attributes, children: [Element(child)] }
+}
+
+///|
+fn catalog_pml_default_stretch() -> @xml.Element {
+  xep("a", NS_A, "stretch", [], [Element(xep("a", NS_A, "fillRect", [], []))])
+}
+
+///|
+fn catalog_pml_default_nv_pic_pr() -> @xml.Element {
+  xep("p", NS_PML, "nvPicPr", [], [
+    Element(
+      xep(
+        "p",
+        NS_PML,
+        "cNvPr",
+        [xa("id", "2"), xa("name", "Catalog Picture")],
+        [],
+      ),
+    ),
+    Element(
+      xep("p", NS_PML, "cNvPicPr", [], [
+        Element(xep("a", NS_A, "picLocks", [xa("noChangeAspect", "1")], [])),
+      ]),
+    ),
+    Element(xep("p", NS_PML, "nvPr", [], [])),
+  ])
+}
+
+///|
+fn catalog_pml_default_pic_sp_pr() -> @xml.Element {
+  xep("p", NS_PML, "spPr", [], [
+    Element(catalog_pml_default_pic_xfrm()),
+    Element(
+      xep("a", NS_A, "prstGeom", [xa("prst", "rect")], [
+        Element(xep("a", NS_A, "avLst", [], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_pml_ensure_pic_sp_pr(sp_pr : @xml.Element) -> @xml.Element {
+  if first_child_named_in(sp_pr, "xfrm") is Some(_) {
+    return sp_pr
+  }
+  let kids : Array[@xml.Node] = [Element(catalog_pml_default_pic_xfrm())]
+  for child in sp_pr.children {
+    kids.push(child)
+  }
+  { name: sp_pr.name, attributes: sp_pr.attributes, children: kids }
+}
+
+///|
+fn catalog_pml_default_pic_xfrm() -> @xml.Element {
+  xep("a", NS_A, "xfrm", [], [
+    Element(xep("a", NS_A, "off", [xa("x", "914400"), xa("y", "914400")], [])),
+    Element(
+      xep("a", NS_A, "ext", [xa("cx", "2743200"), xa("cy", "1828800")], []),
+    ),
+  ])
+}
+
+///|
+fn catalog_pml_default_blip_fill() -> @xml.Element {
+  xep("p", NS_PML, "blipFill", [], [
+    Element(catalog_pml_default_blip()),
+    Element(catalog_pml_default_stretch()),
+  ])
+}
+
+///|
 /// `.pptx` package whose slide-side `.rels` part wires up extra
 /// external relationships in addition to the standard
 /// slideLayout rId1.  Use this for fixtures whose content carries
@@ -3856,6 +4170,11 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "pptx:presentation" => pptx_with_aux_root_package("presentation", content)
     "pptx:master-txstyle" => pptx_package_with_master_tx_styles(content)
     "pptx:placeholder-chain" => pptx_package_with_placeholder_chain(content)
+    "pptx:picture-blip" =>
+      pptx_package_with_embedded_image(
+        catalog_pml_picture_blip_root(content),
+        test_image_8x8_quad(),
+      )
     "xlsx:workbook" => xlsx_with_aux_root_package("workbook", content)
     "xlsx:sharedStrings" => xlsx_with_aux_root_package("sharedStrings", content)
     "xlsx:styles" => xlsx_with_aux_root_package("styles", content)
