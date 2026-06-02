@@ -281,6 +281,7 @@ test "get_line_visible_width preserves interior whitespace" {
 
 ///|
 test "layout_text_body lays out a single short line" {
+  ensure_test_font()
   let s = tl_make_span("Hello", font_size=24.0)
   let para : LayoutParagraphInput = {
     spans: [s],
@@ -328,6 +329,61 @@ test "layout_text_body lays out a single short line" {
   inspect(result.paragraphs[0].lines.length(), content="1")
   // Baseline must be positive (above 0 in SVG y-down coordinates).
   assert_true(result.paragraphs[0].lines[0].y > 0.0)
+}
+
+///|
+test "layout_text_body baseline uses resolved font descender metric" {
+  ensure_test_font()
+  let font_size = 24.0
+  let s = tl_make_span("Hello", font_size~)
+  let para : LayoutParagraphInput = {
+    spans: [s],
+    alignment: AlignLeft,
+    margin_left: 0.0,
+    indent: 0.0,
+    margin_right: 0.0,
+    space_before: 0.0,
+    space_after: 0.0,
+    line_spacing: None,
+    bullet: None,
+    font_alignment: FontAlignBase,
+    default_tab_size: 36.0,
+    tab_stops: [],
+    ea_line_break: true,
+    latin_line_break: true,
+    hanging_punctuation: false,
+    end_para_font_size: None,
+  }
+  let input : LayoutInput = {
+    text_box: {
+      width: 200.0,
+      height: 100.0,
+      inset_left: 0.0,
+      inset_right: 0.0,
+      inset_top: 0.0,
+      inset_bottom: 0.0,
+      anchor: AnchorTop,
+      anchor_center: false,
+      wrap_mode: WrapSquare,
+      auto_fit: AutoFitNone,
+      horz_overflow: OverflowAllow,
+      vert_overflow: VertOverflowAllow,
+      compat_ln_spc: false,
+      force_aa: false,
+      rtl_col: false,
+      spc_first_last_para: false,
+      upright: false,
+      vertical_type: VertHorz,
+    },
+    paragraphs: [para],
+  }
+  let result = layout_text_body(input)
+  let line_h = font_size * @glyph.pt_to_px * LINE_HEIGHT_RATIO
+  let descent = @glyph.get_descender_ratio("Noto Sans") *
+    font_size *
+    @glyph.pt_to_px
+  let expected = line_h - descent
+  assert_true((result.paragraphs[0].lines[0].y - expected).abs() < 1.0e-6)
 }
 
 ///|

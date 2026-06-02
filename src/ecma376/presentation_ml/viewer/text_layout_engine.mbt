@@ -120,16 +120,47 @@ fn scale_bullet(bullet : BulletConfig?, percent : Double) -> BulletConfig? {
 const LINE_HEIGHT_RATIO : Double = 1.2
 
 ///|
-/// The descent of an OOXML body font as a fraction of its point size
-/// — the distance from the text baseline down to the bottom of the
-/// line box. Used to place the baseline within the line box
-/// (`baseline = box_bottom − descent`).
-///
-/// Empirical mid-range value for Latin sans-serif body faces
-/// (`sTypoDescender / unitsPerEm ≈ 0.21`). The exact value differs
-/// per face — this is the layout fallback when the engine has not
-/// yet queried the resolved font's hhea descender directly.
-const LINE_DESCENT_RATIO : Double = 0.2119
+fn span_is_italic(span : LayoutSpan) -> Bool {
+  span.font_style == "italic"
+}
+
+///|
+/// Baseline descent for one laid-out line. The metric comes from the
+/// resolved run font's TrueType `hhea` descender through `@glyph`;
+/// when no span font resolves, the renderer keeps layout moving with
+/// no synthetic descent rather than inventing a statistical fallback.
+fn line_descent_px(spans : Array[MeasuredSpan]) -> Double {
+  if spans.length() == 0 {
+    return 0.0
+  }
+  let mut best : MeasuredSpan? = None
+  for s in spans {
+    if s.span.is_break {
+      continue
+    }
+    match best {
+      None => best = Some(s)
+      Some(b) => if s.span.font_size > b.span.font_size { best = Some(s) }
+    }
+  }
+  match best {
+    None => 0.0
+    Some(s) => {
+      let ratio = try
+        @glyph.get_descender_ratio(
+          s.span.font_family,
+          weight=s.span.font_weight,
+          italic=span_is_italic(s.span),
+        )
+      catch {
+        _ => 0.0
+      } noraise {
+        v => v
+      }
+      ratio * s.span.font_size * @glyph.pt_to_px
+    }
+  }
+}
 
 ///|
 /// Calculate the line height (in pixels) from `line_spacing`.
@@ -270,16 +301,11 @@ fn layout_paragraph(
     let line_spans = span_lines[idx]
     let lh_pt = line_font_size(line_heights[idx], para.end_para_font_size)
     let lh_px = calc_line_height(lh_pt, para.line_spacing)
-    let fs_px = lh_pt * @glyph.pt_to_px
     // Baseline placement within the line box. The line box is
     // `lh_px` tall; the baseline sits one DESCENT up from the box
-    // bottom — `LINE_DESCENT_RATIO` is the mid-range descent for
-    // Latin sans-serif body faces. (An earlier `half_leading +
-    // fs*cap_height` model placed the baseline ≈one descent too high
-    // and drifted upward against PowerPoint's reference.) This
-    // formula puts the baseline `lh_px - LINE_DESCENT_RATIO*fs_px`
-    // from the box top, matching PowerPoint for single-spaced lines.
-    let descent = fs_px * LINE_DESCENT_RATIO
+    // bottom. The descent is read from the resolved run font rather
+    // than a renderer-local font catalogue or hard-coded ratio.
+    let descent = line_descent_px(line_spans)
     let baseline_in_box = if lh_px - descent > 0.0 {
       lh_px - descent
     } else {
