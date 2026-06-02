@@ -633,6 +633,8 @@ fn decode_pivot_field(
     element, "includeNewItemsInFilter", false,
   )
   let name = attr(element, "name")
+  let subtotal_caption = attr(element, "subtotalCaption")
+  let outline = decode_bool_attr(element, "outline", true)
   let subtotal_top = decode_bool_attr(element, "subtotalTop", true)
   let default_subtotal = decode_bool_attr(element, "defaultSubtotal", true)
   let items : Array[PivotItemDef] = []
@@ -658,6 +660,8 @@ fn decode_pivot_field(
     data_field,
     include_new_items_in_filter,
     name,
+    subtotal_caption,
+    outline,
     subtotal_top,
     default_subtotal,
     items,

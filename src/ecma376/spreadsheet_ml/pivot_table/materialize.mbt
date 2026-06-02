@@ -21,11 +21,15 @@
 /// 4. Expand §18.10.1.44 `rowItems` / `colItems` into the public
 ///    `row_keys` / `col_keys` order, falling back to discovery
 ///    order when the item list is absent.
-/// 5. When `row_grand_totals` / `col_grand_totals` is true (their
+/// 5. Insert default row-field subtotal keys from §18.10.1.69
+///    `pivotField/@defaultSubtotal`, placing them according to
+///    `@outline` + `@subtotalTop`, and emit their aggregate cells from
+///    the same record buckets as body/grand-total cells.
+/// 6. When `row_grand_totals` / `col_grand_totals` is true (their
 ///    spec defaults), include the matching `RowGrand` / `ColGrand`
 ///    sentinel and emit the aggregated cells for the full
 ///    population.
-/// 6. Apply supported §18.10.1.22 `dataField/@showDataAs`
+/// 7. Apply supported §18.10.1.22 `dataField/@showDataAs`
 ///    display transforms to the materialized cells. This is done
 ///    inside the materializer so renderers and GETPIVOTDATA keep
 ///    consuming the same result-cell SoT.
@@ -151,12 +155,15 @@ pub fn materialize_pivot_table_with_filter_formats(
   // §18.10.1.44 rowItems / colItems define the display order of
   // axis tuples. The materializer owns this ordering so renderers and
   // formula lookup consume one PivotMaterialization SoT.
-  let row_keys_final = order_axis_keys(
+  let row_keys_ordered = order_axis_keys(
     row_keys,
     definition.row_items,
     row_field_positions.length(),
     RowGrand,
     definition.row_grand_totals && row_keys.length() > 0,
+  )
+  let row_keys_final = insert_row_default_subtotals(
+    row_keys_ordered, definition, row_field_positions,
   )
   let col_keys_final = order_axis_keys(
     col_keys,
@@ -164,6 +171,9 @@ pub fn materialize_pivot_table_with_filter_formats(
     col_field_positions.length(),
     ColGrand,
     definition.col_grand_totals && col_keys.length() > 0,
+  )
+  emit_row_default_subtotal_cells(
+    cells, definition, buckets, row_keys, col_keys, row_keys_final, data_field_count,
   )
   if definition.col_grand_totals && col_keys.length() > 0 {
     emit_col_grand_totals(
@@ -188,12 +198,27 @@ pub fn materialize_pivot_table_with_filter_formats(
   // derive them here from the kept rows.  No-op when the pivot has no
   // calculated field, so ordinary pivots are unaffected.
   append_calculated_field_cells(
-    cells, definition, cache, kept_rows, row_field_positions, col_field_positions,
-    row_keys, col_keys,
+    cells,
+    definition,
+    cache,
+    kept_rows,
+    row_field_positions,
+    col_field_positions,
+    row_axis_keys_without_grand(row_keys_final),
+    col_keys,
   )
   let show_data_as_basis = build_show_data_as_basis(
-    cells, definition, cache, kept_rows, row_field_positions, col_field_positions,
-    buckets, row_keys, col_keys, data_field_count,
+    cells,
+    definition,
+    cache,
+    kept_rows,
+    row_field_positions,
+    col_field_positions,
+    buckets,
+    row_keys,
+    row_axis_keys_without_grand(row_keys_final),
+    col_keys,
+    data_field_count,
   )
   apply_show_data_as(cells, definition, show_data_as_basis)
   {
@@ -1127,6 +1152,166 @@ fn order_axis_keys(
 }
 
 ///|
+priv struct RowDefaultSubtotalSpec {
+  prefix_len : Int
+  place_top : Bool
+}
+
+///|
+/// §18.10.1.69 — synthesize default row subtotal axis keys from the
+/// decoded pivotField flags. A single row field has no subtotal per
+/// the spec; only non-leaf row fields create subtotal buckets.
+fn row_default_subtotal_specs(
+  definition : PivotTableDefinition,
+  row_field_positions : Array[Int],
+) -> Array[RowDefaultSubtotalSpec] {
+  let specs : Array[RowDefaultSubtotalSpec] = []
+  if row_field_positions.length() <= 1 {
+    return specs
+  }
+  for ordinal in 0..<(row_field_positions.length() - 1) {
+    let field_index = row_field_positions[ordinal]
+    match definition.pivot_fields.get(field_index) {
+      Some(field) =>
+        if field.default_subtotal {
+          specs.push({
+            prefix_len: ordinal + 1,
+            place_top: field.outline && field.subtotal_top,
+          })
+        }
+      None => ()
+    }
+  }
+  specs
+}
+
+///|
+fn insert_row_default_subtotals(
+  ordered : Array[PivotAxisKey],
+  definition : PivotTableDefinition,
+  row_field_positions : Array[Int],
+) -> Array[PivotAxisKey] {
+  let specs = row_default_subtotal_specs(definition, row_field_positions)
+  if specs.length() == 0 || ordered.length() == 0 {
+    return ordered
+  }
+  let out : Array[PivotAxisKey] = []
+  let seen : @hashmap.HashMap[String, Bool] = @hashmap.HashMap::from_array([])
+  for i, key in ordered {
+    match key {
+      Items(indices) => {
+        let prev = previous_items_indices(ordered, i)
+        for spec in specs {
+          if spec.place_top &&
+            subtotal_group_boundary(indices, prev, spec.prefix_len) {
+            push_row_subtotal_key(out, seen, indices, spec.prefix_len)
+          }
+        }
+        push_unique_axis_key(out, seen, key)
+        let next = next_items_indices(ordered, i + 1)
+        let mut j = specs.length()
+        while j > 0 {
+          j = j - 1
+          let spec = specs[j]
+          if !spec.place_top &&
+            subtotal_group_boundary(indices, next, spec.prefix_len) {
+            push_row_subtotal_key(out, seen, indices, spec.prefix_len)
+          }
+        }
+      }
+      _ => push_unique_axis_key(out, seen, key)
+    }
+  }
+  out
+}
+
+///|
+fn previous_items_indices(
+  keys : Array[PivotAxisKey],
+  start_index : Int,
+) -> Array[Int]? {
+  let mut i = start_index
+  while i > 0 {
+    i = i - 1
+    match keys[i] {
+      Items(indices) => return Some(indices)
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn next_items_indices(
+  keys : Array[PivotAxisKey],
+  start_index : Int,
+) -> Array[Int]? {
+  for i in start_index..<keys.length() {
+    match keys[i] {
+      Items(indices) => return Some(indices)
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn subtotal_group_boundary(
+  indices : Array[Int],
+  neighbor : Array[Int]?,
+  prefix_len : Int,
+) -> Bool {
+  if indices.length() < prefix_len {
+    return false
+  }
+  match neighbor {
+    Some(other) => !indices_share_prefix(indices, other, prefix_len)
+    None => true
+  }
+}
+
+///|
+fn indices_share_prefix(
+  left : Array[Int],
+  right : Array[Int],
+  prefix_len : Int,
+) -> Bool {
+  if left.length() < prefix_len || right.length() < prefix_len {
+    return false
+  }
+  for i in 0..<prefix_len {
+    if left[i] != right[i] {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn indices_prefix(indices : Array[Int], prefix_len : Int) -> Array[Int] {
+  let prefix : Array[Int] = []
+  let limit = min_int(indices.length(), prefix_len)
+  for i in 0..<limit {
+    prefix.push(indices[i])
+  }
+  prefix
+}
+
+///|
+fn push_row_subtotal_key(
+  ordered : Array[PivotAxisKey],
+  seen : @hashmap.HashMap[String, Bool],
+  indices : Array[Int],
+  prefix_len : Int,
+) -> Unit {
+  push_unique_axis_key(
+    ordered,
+    seen,
+    RowSubtotal(indices_prefix(indices, prefix_len)),
+  )
+}
+
+///|
 /// §18.10.1.44 CT_I: `@r` repeats that many leading item indices
 /// from the previous axis tuple, then the `<x>` children supply the
 /// remaining item indices. Grand-total entries are represented by
@@ -1266,6 +1451,156 @@ fn AxisLookup::intern_col(self : AxisLookup, key : PivotAxisKey) -> Int {
       new_idx
     }
   }
+}
+
+///|
+/// Emit one `RowSubtotal(prefix)` cell per visible column key and data
+/// field by flattening every leaf row bucket whose row-axis key starts
+/// with `prefix`.
+fn emit_row_default_subtotal_cells(
+  cells : Array[PivotResultCell],
+  definition : PivotTableDefinition,
+  buckets : Array[Array[Array[Array[@formula.FormulaValue]]]],
+  row_keys : Array[PivotAxisKey],
+  col_keys : Array[PivotAxisKey],
+  display_row_keys : Array[PivotAxisKey],
+  data_field_count : Int,
+) -> Unit {
+  for key in display_row_keys {
+    match key {
+      RowSubtotal(prefix) =>
+        emit_one_row_default_subtotal_cells(
+          cells, definition, buckets, row_keys, col_keys, key, prefix, data_field_count,
+        )
+      _ => ()
+    }
+  }
+}
+
+///|
+fn emit_one_row_default_subtotal_cells(
+  cells : Array[PivotResultCell],
+  definition : PivotTableDefinition,
+  buckets : Array[Array[Array[Array[@formula.FormulaValue]]]],
+  row_keys : Array[PivotAxisKey],
+  col_keys : Array[PivotAxisKey],
+  subtotal_key : PivotAxisKey,
+  prefix : Array[Int],
+  data_field_count : Int,
+) -> Unit {
+  let mut c_idx = 0
+  for col_key in col_keys {
+    for d_idx in 0..<data_field_count {
+      let combined : Array[@formula.FormulaValue] = []
+      push_row_subtotal_values(
+        combined,
+        buckets,
+        row_keys,
+        prefix,
+        [c_idx],
+        d_idx,
+      )
+      if combined.length() > 0 {
+        cells.push({
+          row_key: subtotal_key,
+          col_key,
+          data_field_index: d_idx,
+          aggregated_value: aggregate(
+            combined,
+            definition.aggregation_function_for(d_idx),
+          ),
+        })
+      }
+    }
+    c_idx = c_idx + 1
+  }
+  if definition.col_grand_totals && col_keys.length() > 0 {
+    let all_col_indices = axis_indices(col_keys.length())
+    for d_idx in 0..<data_field_count {
+      let combined : Array[@formula.FormulaValue] = []
+      push_row_subtotal_values(
+        combined, buckets, row_keys, prefix, all_col_indices, d_idx,
+      )
+      if combined.length() > 0 {
+        cells.push({
+          row_key: subtotal_key,
+          col_key: ColGrand,
+          data_field_index: d_idx,
+          aggregated_value: aggregate(
+            combined,
+            definition.aggregation_function_for(d_idx),
+          ),
+        })
+      }
+    }
+  }
+}
+
+///|
+fn push_row_subtotal_values(
+  out : Array[@formula.FormulaValue],
+  buckets : Array[Array[Array[Array[@formula.FormulaValue]]]],
+  row_keys : Array[PivotAxisKey],
+  prefix : Array[Int],
+  col_indices : Array[Int],
+  data_field_index : Int,
+) -> Unit {
+  let mut r_idx = 0
+  for row_key in row_keys {
+    if axis_key_matches_filter(row_key, RowSubtotal(prefix)) {
+      for c_idx in col_indices {
+        push_bucket_values(out, buckets, r_idx, c_idx, data_field_index)
+      }
+    }
+    r_idx = r_idx + 1
+  }
+}
+
+///|
+fn axis_key_matches_filter(
+  actual : PivotAxisKey,
+  filter : PivotAxisKey,
+) -> Bool {
+  match filter {
+    RowSubtotal(prefix) => axis_key_starts_with(actual, prefix)
+    _ => actual == filter
+  }
+}
+
+///|
+fn axis_key_starts_with(key : PivotAxisKey, prefix : Array[Int]) -> Bool {
+  match key {
+    Items(indices) => indices_start_with(indices, prefix)
+    RowSubtotal(indices) => indices_start_with(indices, prefix)
+    _ => false
+  }
+}
+
+///|
+fn indices_start_with(indices : Array[Int], prefix : Array[Int]) -> Bool {
+  if prefix.length() == 0 || indices.length() < prefix.length() {
+    return false
+  }
+  for i in 0..<prefix.length() {
+    if indices[i] != prefix[i] {
+      return false
+    }
+  }
+  true
+}
+
+///|
+fn row_axis_keys_without_grand(
+  row_keys : Array[PivotAxisKey],
+) -> Array[PivotAxisKey] {
+  let out : Array[PivotAxisKey] = []
+  for key in row_keys {
+    match key {
+      RowGrand => ()
+      _ => out.push(key)
+    }
+  }
+  out
 }
 
 ///|
@@ -1412,6 +1747,7 @@ fn build_show_data_as_basis(
   col_field_positions : Array[Int],
   buckets : Array[Array[Array[Array[@formula.FormulaValue]]]],
   row_keys : Array[PivotAxisKey],
+  display_row_keys : Array[PivotAxisKey],
   col_keys : Array[PivotAxisKey],
   data_field_count : Int,
 ) -> Array[PivotResultCell] raise @opc_errors.SchemaViolation {
@@ -1428,6 +1764,9 @@ fn build_show_data_as_basis(
   emit_col_grand_totals(
     totals, forced_definition, buckets, row_keys, col_keys, data_field_count,
   )
+  emit_row_default_subtotal_cells(
+    totals, forced_definition, buckets, row_keys, col_keys, display_row_keys, data_field_count,
+  )
   emit_row_grand_totals(
     totals, forced_definition, buckets, row_keys, col_keys, data_field_count,
   )
@@ -1436,7 +1775,7 @@ fn build_show_data_as_basis(
   )
   append_calculated_field_cells(
     totals, forced_definition, cache, kept_rows, row_field_positions, col_field_positions,
-    row_keys, col_keys,
+    display_row_keys, col_keys,
   )
   for cell in totals {
     push_missing_pivot_result_cell(basis, cell)
@@ -1729,6 +2068,14 @@ fn replace_axis_item(
       } else {
         None
       }
+    RowSubtotal(prefix) =>
+      if position >= 0 && position < prefix.length() {
+        let out = prefix.copy()
+        out[position] = item
+        Some(RowSubtotal(out))
+      } else {
+        None
+      }
     _ => None
   }
 }
@@ -1787,6 +2134,12 @@ fn axis_key_item_at(key : PivotAxisKey, position : Int) -> Int? {
       } else {
         None
       }
+    RowSubtotal(prefix) =>
+      if position >= 0 && position < prefix.length() {
+        Some(prefix[position])
+      } else {
+        None
+      }
     _ => None
   }
 }
@@ -1815,6 +2168,17 @@ fn axis_key_matches_except(
 ) -> Bool {
   match (left, right) {
     (Items(left_items), Items(right_items)) => {
+      if left_items.length() != right_items.length() {
+        return false
+      }
+      for index in 0..<left_items.length() {
+        if index != skip && left_items[index] != right_items[index] {
+          return false
+        }
+      }
+      true
+    }
+    (RowSubtotal(left_items), RowSubtotal(right_items)) => {
       if left_items.length() != right_items.length() {
         return false
       }

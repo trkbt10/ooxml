@@ -116,7 +116,7 @@ fn render_pivot_overlay(
   )
   let row_axis_count = row_axis_caps.length()
   let col_axis_count = col_axis_caps.length()
-  // Row labels — one for every materialized row key (Items / RowGrand).
+  // Row labels — one for every materialized row key.
   let row_labels = pivot_axis_key_labels(
     row_keys,
     pivot,
@@ -357,13 +357,14 @@ fn render_pivot_overlay(
       Some(g) => g == ri
       None => false
     }
+    let is_row_subtotal = pivot_axis_key_is_row_subtotal(row_keys[ri])
     // Row label(s).  §18.10.1.44 — with two or more row fields the
     // TABULAR layout gives each field its own leading column and blanks
     // a key segment that repeats the previous row's value (its parent
     // segments matching), so the grouping reads as a hierarchy rather
     // than a fully-repeated key on every row.  A single row field (or a
     // grand-total row) keeps the compact spanning cell.
-    let tabular = row_axis_count >= 2 && !is_row_grand
+    let tabular = row_axis_count >= 2 && !is_row_grand && !is_row_subtotal
     if tabular {
       let fields = row_field_labels[ri]
       let prev = if ri > 0 { Some(row_field_labels[ri - 1]) } else { None }
@@ -422,8 +423,8 @@ fn render_pivot_overlay(
           row_h,
           row_labels[ri],
           options,
-          is_row_grand,
-          is_row_grand,
+          is_row_grand || is_row_subtotal,
+          is_row_grand || is_row_subtotal,
           false,
           false,
         ),
@@ -442,8 +443,8 @@ fn render_pivot_overlay(
           Some(rc) => format_pivot_value(rc.aggregated_value)
           None => ""
         }
-        let bold = is_row_grand || is_col_grand
-        let top_border = is_row_grand
+        let bold = is_row_grand || is_row_subtotal || is_col_grand
+        let top_border = is_row_grand || is_row_subtotal
         let left_border = is_col_grand
         let overall = is_row_grand && is_col_grand
         // §18.3.1.18 — apply any worksheet conditional formatting whose
@@ -520,6 +521,11 @@ fn render_pivot_overlay_data_on_rows(
   )
   let row_axis_count = row_slots.length()
   let real_row_positions = pivot_axis_real_positions(
+    pivot.definition.row_fields,
+  )
+  let row_labels = pivot_axis_key_labels(
+    row_keys,
+    pivot,
     pivot.definition.row_fields,
   )
   let col_axis_caps = pivot_axis_captions(
@@ -690,6 +696,7 @@ fn render_pivot_overlay_data_on_rows(
       Some(g) => g == ri
       None => false
     }
+    let is_row_subtotal = pivot_axis_key_is_row_subtotal(row_keys[ri])
     let fields = row_field_labels[ri]
     let prev = if ri > 0 { Some(row_field_labels[ri - 1]) } else { None }
     for d in 0..<data_field_count {
@@ -703,6 +710,12 @@ fn render_pivot_overlay_data_on_rows(
         } else if is_row_grand {
           if slot_idx == 0 && d == 0 {
             "Grand Total"
+          } else {
+            ""
+          }
+        } else if is_row_subtotal {
+          if slot_idx == 0 && d == 0 {
+            row_labels[ri]
           } else {
             ""
           }
@@ -738,7 +751,7 @@ fn render_pivot_overlay_data_on_rows(
             None => ""
           }
         }
-        let top_border = is_row_grand && d == 0
+        let top_border = (is_row_grand || is_row_subtotal) && d == 0
         nodes.push(
           pivot_cell(
             xs[slot_idx],
@@ -747,7 +760,7 @@ fn render_pivot_overlay_data_on_rows(
             row_h,
             label,
             options,
-            is_row_grand || slot == -2,
+            is_row_grand || is_row_subtotal || slot == -2,
             top_border,
             false,
             false,
@@ -765,8 +778,8 @@ fn render_pivot_overlay_data_on_rows(
           Some(rc) => format_pivot_value(rc.aggregated_value)
           None => ""
         }
-        let bold = is_row_grand || is_col_grand
-        let top_border = is_row_grand && d == 0
+        let bold = is_row_grand || is_row_subtotal || is_col_grand
+        let top_border = (is_row_grand || is_row_subtotal) && d == 0
         let left_border = is_col_grand
         let overall = is_row_grand && is_col_grand
         let (cf_fill, cf_text) = match found {
@@ -1242,10 +1255,11 @@ fn pivot_axis_captions(
 
 ///|
 /// Build the labels for each materialized axis key. `Items(indices)`
-/// joins the resolved shared-item captions with " / "; `RowGrand` /
-/// `ColGrand` use the spec's "Grand Total" caption (the spec allows
-/// override via `<pivotField/@grandTotalCaption>` per §18.10.1.73, but
-/// we leave the default — fixture comments call this out).
+/// joins the resolved shared-item captions with " / "; `RowSubtotal`
+/// labels the subtotaled group; `RowGrand` / `ColGrand` use the spec's
+/// "Grand Total" caption (the spec allows override via
+/// `<pivotField/@grandTotalCaption>` per §18.10.1.73, but we leave the
+/// default — fixture comments call this out).
 fn pivot_axis_key_labels(
   keys : Array[@pivot_table.PivotAxisKey],
   pivot : @pivot_table.MaterializedPivotTable,
@@ -1266,6 +1280,8 @@ fn pivot_axis_key_labels(
         }
         labels.push(join_strings(parts, " / "))
       }
+      @pivot_table.PivotAxisKey::RowSubtotal(prefix) =>
+        labels.push(pivot_row_subtotal_label(prefix, pivot, positions))
       @pivot_table.PivotAxisKey::RowGrand => labels.push("Grand Total")
       @pivot_table.PivotAxisKey::ColGrand => labels.push("Grand Total")
     }
@@ -1277,7 +1293,7 @@ fn pivot_axis_key_labels(
 /// §18.10.1.44 — per-FIELD captions for each axis key (one entry per
 /// row/col field position), used for the multi-level TABULAR layout
 /// where each field occupies its own leading column.  A grand-total
-/// key yields a single "Grand Total" element.
+/// key yields a single subtotal / grand-total element.
 fn pivot_axis_key_field_labels(
   keys : Array[@pivot_table.PivotAxisKey],
   pivot : @pivot_table.MaterializedPivotTable,
@@ -1298,11 +1314,60 @@ fn pivot_axis_key_field_labels(
         }
         out.push(parts)
       }
+      @pivot_table.PivotAxisKey::RowSubtotal(prefix) =>
+        out.push([pivot_row_subtotal_label(prefix, pivot, positions)])
       @pivot_table.PivotAxisKey::RowGrand
       | @pivot_table.PivotAxisKey::ColGrand => out.push(["Grand Total"])
     }
   }
   out
+}
+
+///|
+fn pivot_row_subtotal_label(
+  prefix : Array[Int],
+  pivot : @pivot_table.MaterializedPivotTable,
+  positions : Array[Int],
+) -> String {
+  if prefix.length() == 0 {
+    return pivot_row_subtotal_caption(prefix, pivot, positions)
+  }
+  let last = prefix.length() - 1
+  let base = if last < positions.length() {
+    pivot_shared_item_caption(pivot.cache, positions[last], prefix[last])
+  } else {
+    ""
+  }
+  let caption = pivot_row_subtotal_caption(prefix, pivot, positions)
+  if base.length() == 0 {
+    caption
+  } else if caption.length() == 0 {
+    base
+  } else {
+    base + " " + caption
+  }
+}
+
+///|
+fn pivot_row_subtotal_caption(
+  prefix : Array[Int],
+  pivot : @pivot_table.MaterializedPivotTable,
+  positions : Array[Int],
+) -> String {
+  if prefix.length() > 0 {
+    let ordinal = prefix.length() - 1
+    if ordinal < positions.length() {
+      match pivot.definition.pivot_fields.get(positions[ordinal]) {
+        Some(field) =>
+          match field.subtotal_caption {
+            Some(caption) => return caption
+            None => ()
+          }
+        None => ()
+      }
+    }
+  }
+  "Result"
 }
 
 ///|
@@ -1342,6 +1407,14 @@ fn pivot_grand_index(keys : Array[@pivot_table.PivotAxisKey]) -> Int? {
     idx = idx + 1
   }
   None
+}
+
+///|
+fn pivot_axis_key_is_row_subtotal(key : @pivot_table.PivotAxisKey) -> Bool {
+  match key {
+    @pivot_table.PivotAxisKey::RowSubtotal(_) => true
+    _ => false
+  }
 }
 
 ///|

@@ -109,9 +109,9 @@ pub fn PivotAxis::from_attr(
 ///|
 /// Part 1 §18.18.43 ST_ItemType — the discriminator on
 /// `<item>` (§18.10.1.45) and `<i>` (§18.10.1.44) entries. Most
-/// values are subtotal markers used by the renderer; the
-/// materializer only inspects `Data` (the data-field caption row /
-/// column) and `Default` (grand-total row / column).
+/// values are subtotal markers. The materializer keeps the
+/// subtotal semantics in the PivotTable result SoT rather than
+/// duplicating them in renderers.
 pub(all) enum ItemType {
   /// §18.18.43 data — caption row/column for the data field name
   /// when there is more than one data field.
@@ -462,8 +462,13 @@ pub(all) struct PivotFieldDef {
   include_new_items_in_filter : Bool
   /// §18.10.1.69 @name — user-supplied caption override.
   name : String?
+  /// §18.10.1.69 @subtotalCaption — custom label text for subtotal rows.
+  subtotal_caption : String?
+  /// §18.10.1.69 @outline — outline layout flag. `subtotalTop`
+  /// only controls row subtotal placement when this flag is true.
+  outline : Bool
   /// §18.10.1.69 @subtotalTop — render subtotals above the group
-  /// rather than below.
+  /// rather than below when outline layout is active.
   subtotal_top : Bool
   /// §18.10.1.69 @defaultSubtotal — display the default subtotal.
   default_subtotal : Bool
@@ -715,14 +720,19 @@ pub fn PivotTableDefinition::aggregation_function_for(
 ///|
 /// Pivot axis key — one cell's position along the row axis or the
 /// column axis after the materializer extracts the per-record
-/// item indices for the non-sentinel fields of that axis. Grand
-/// total buckets carry the sentinel variants so the result table
-/// reads as a regular `Array[PivotResultCell]`.
+/// item indices for the non-sentinel fields of that axis. Subtotal
+/// and grand-total buckets carry sentinel variants so the result
+/// table reads as a regular `Array[PivotResultCell]`.
 pub(all) enum PivotAxisKey {
   /// `Items(indices)` — concrete axis tuple. `indices.length()`
   /// equals the number of non-sentinel entries in the
   /// corresponding `row_fields` / `col_fields`.
   Items(Array[Int])
+  /// `RowSubtotal(prefix)` — default subtotal bucket for a row-axis
+  /// field group. The prefix identifies the parent tuple being
+  /// subtotaled; e.g. `[0]` for the first Region group in a
+  /// `(Region, Product)` row axis.
+  RowSubtotal(Array[Int])
   /// `RowGrand` — the grand-total bucket along the row axis.
   RowGrand
   /// `ColGrand` — the grand-total bucket along the column axis.
@@ -733,8 +743,9 @@ pub(all) enum PivotAxisKey {
 /// `PivotAxisKey::serialize` — produce a stable string form used
 /// as a HashMap key when interning row / col tuples. The encoding
 /// joins each integer index with `|` and prefixes the variant with
-/// `i`, `R`, or `C` so the grand sentinels can never collide with
-/// a concrete tuple that happens to spell out the same characters.
+/// `i`, `S`, `R`, or `C` so subtotal/grand sentinels can never
+/// collide with a concrete tuple that happens to spell out the
+/// same characters.
 pub fn PivotAxisKey::serialize(self : PivotAxisKey) -> String {
   match self {
     Items(indices) => {
@@ -742,6 +753,19 @@ pub fn PivotAxisKey::serialize(self : PivotAxisKey) -> String {
       buf.write_string("i")
       let mut first = true
       for index in indices {
+        if !first {
+          buf.write_string("|")
+        }
+        buf.write_string(index.to_string())
+        first = false
+      }
+      buf.to_string()
+    }
+    RowSubtotal(prefix) => {
+      let buf = StringBuilder::new()
+      buf.write_string("S")
+      let mut first = true
+      for index in prefix {
         if !first {
           buf.write_string("|")
         }

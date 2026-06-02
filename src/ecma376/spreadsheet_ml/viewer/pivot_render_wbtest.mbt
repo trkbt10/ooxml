@@ -53,6 +53,25 @@ fn pivot_test_data_field(
 }
 
 ///|
+fn pivot_test_pivot_field(
+  default_subtotal : Bool,
+  outline : Bool,
+  subtotal_caption : String?,
+) -> @pivot_table.PivotFieldDef {
+  {
+    axis: None,
+    data_field: false,
+    include_new_items_in_filter: false,
+    name: None,
+    subtotal_caption,
+    outline,
+    subtotal_top: true,
+    default_subtotal,
+    items: [],
+  }
+}
+
+///|
 fn pivot_test_layout() -> SheetLayout {
   {
     cells: [],
@@ -79,6 +98,121 @@ fn pivot_test_svg(nodes : Array[@xml.Node]) -> String {
 ///|
 fn pivot_test_xml_name(local_name : String) -> @xml.QName {
   { prefix: None, local_name, ns: None }
+}
+
+///|
+test "§18.10.1.69 row subtotal key renders as subtotal row" {
+  let cache : @pivot_table.PivotCacheDefinition = {
+    cache_source: {
+      source_type: "worksheet",
+      connection_id: None,
+      worksheet_source: None,
+    },
+    cache_fields: [
+      pivot_test_cache_field("Region", [
+        @pivot_table.SharedItemValue::SharedString("North"),
+      ]),
+      pivot_test_cache_field("Product", [
+        @pivot_table.SharedItemValue::SharedString("Apple"),
+        @pivot_table.SharedItemValue::SharedString("Bread"),
+      ]),
+      pivot_test_cache_field("Sales", []),
+    ],
+    refreshed_by: None,
+    refreshed_date_iso: None,
+    record_count: None,
+    created_version: None,
+    refreshed_version: None,
+    min_refreshable_version: None,
+    save_data: true,
+    invalid: false,
+    refresh_on_load: false,
+  }
+  let apple = @pivot_table.PivotAxisKey::Items([0, 0])
+  let bread = @pivot_table.PivotAxisKey::Items([0, 1])
+  let north_total = @pivot_table.PivotAxisKey::RowSubtotal([0])
+  let col = @pivot_table.PivotAxisKey::Items([])
+  let definition : @pivot_table.PivotTableDefinition = {
+    name: "PT",
+    data_caption: Some("Values"),
+    cache_id: Some(0),
+    row_grand_totals: false,
+    col_grand_totals: false,
+    data_on_rows: false,
+    location: Some({
+      ref_range: try! @address.CellRange::parse_a1("A1:C4"),
+      first_header_row: 0,
+      first_data_row: 1,
+      first_data_col: 1,
+      row_page_count: 0,
+      col_page_count: 0,
+    }),
+    pivot_fields: [
+      pivot_test_pivot_field(true, false, None),
+      pivot_test_pivot_field(true, true, None),
+      pivot_test_pivot_field(false, true, None),
+    ],
+    row_fields: [0, 1],
+    col_fields: [],
+    row_items: [],
+    col_items: [],
+    page_fields: [],
+    filters: [],
+    data_fields: [
+      pivot_test_data_field(
+        "Sum of Sales",
+        2,
+        @pivot_table.DataConsolidateFunction::Sum,
+      ),
+    ],
+    style_info: None,
+  }
+  let materialization : @pivot_table.PivotMaterialization = {
+    row_keys: [apple, bread, north_total],
+    col_keys: [col],
+    data_field_count: 1,
+    cells: [
+      {
+        row_key: apple,
+        col_key: col,
+        data_field_index: 0,
+        aggregated_value: @formula.VNumber(100.0),
+      },
+      {
+        row_key: bread,
+        col_key: col,
+        data_field_index: 0,
+        aggregated_value: @formula.VNumber(50.0),
+      },
+      {
+        row_key: north_total,
+        col_key: col,
+        data_field_index: 0,
+        aggregated_value: @formula.VNumber(150.0),
+      },
+    ],
+  }
+  let pivot : @pivot_table.MaterializedPivotTable = {
+    definition,
+    cache,
+    materialization,
+  }
+  let svg = pivot_test_svg(
+    render_pivot_overlay(
+      pivot,
+      pivot_test_layout(),
+      default_render_options(),
+      [],
+      [],
+      None,
+      None,
+      SmlThemeColorMap::empty(),
+    ),
+  )
+  assert_true(svg.contains(">North Result<"))
+  assert_true(svg.contains(">150<"))
+  assert_true(svg.contains("font-weight=\"bold\""))
+  assert_true(svg.contains("fill=\"#F2F2F2\""))
 }
 
 ///|

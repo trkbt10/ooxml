@@ -154,12 +154,25 @@ fn pivot_item_def(item_index : Int, hidden : Bool) -> PivotItemDef {
 }
 
 ///|
+fn pivot_item_marker(item_type : ItemType) -> PivotItemDef {
+  {
+    item_index: None,
+    item_type: Some(item_type),
+    hidden: false,
+    caption: None,
+    character: false,
+  }
+}
+
+///|
 fn pivot_field_def(items : Array[PivotItemDef]) -> PivotFieldDef {
   {
     axis: None,
     data_field: false,
     include_new_items_in_filter: false,
     name: None,
+    subtotal_caption: None,
+    outline: true,
     subtotal_top: true,
     default_subtotal: true,
     items,
@@ -492,6 +505,100 @@ test "§18.10.1.44 rowItems and colItems order materialized axis keys" {
   assert_fv_eq(south_bread_2025.aggregated_value, n(30.0))
   let north_apple_2025 = result.find(Items([0, 0]), Items([0]), 0).unwrap()
   assert_fv_eq(north_apple_2025.aggregated_value, n(10.0))
+}
+
+///|
+test "§18.10.1.69 row-field default subtotals materialize from pivotField flags" {
+  let cache = cache_with_fields([
+    cache_field_named("Region", [
+      SharedString("North"),
+      SharedString("South"),
+      SharedString("East"),
+    ]),
+    cache_field_named("Product", [SharedString("Apple"), SharedString("Bread")]),
+    cache_field_named("Sales", []),
+  ])
+  let records : PivotCacheRecords = {
+    count: Some(6),
+    rows: [
+      row_of([RefShared(0), RefShared(0), Inline(SharedNumber(100.0))]),
+      row_of([RefShared(0), RefShared(1), Inline(SharedNumber(50.0))]),
+      row_of([RefShared(1), RefShared(0), Inline(SharedNumber(80.0))]),
+      row_of([RefShared(1), RefShared(1), Inline(SharedNumber(120.0))]),
+      row_of([RefShared(2), RefShared(0), Inline(SharedNumber(60.0))]),
+      row_of([RefShared(2), RefShared(1), Inline(SharedNumber(40.0))]),
+    ],
+  }
+  let def = {
+    ..definition([0, 1], [], [data_def(2, Sum)], [], false, false),
+    location: Some(pivot_location("A1:C10")),
+    pivot_fields: [
+      {
+        ..pivot_field_def([
+          pivot_item_def(0, false),
+          pivot_item_def(1, false),
+          pivot_item_def(2, false),
+          pivot_item_marker(Default),
+        ])
+        // `subtotalTop` applies only when outline layout is active.
+        ,
+        outline: false,
+      },
+      pivot_field_def([
+        pivot_item_def(0, false),
+        pivot_item_def(1, false),
+        pivot_item_marker(Default),
+      ]),
+      pivot_field_def([]),
+    ],
+    row_items: [
+      axis_item([0, 0], 0, None),
+      axis_item([0, 1], 0, None),
+      axis_item([1, 0], 0, None),
+      axis_item([1, 1], 0, None),
+      axis_item([2, 0], 0, None),
+      axis_item([2, 1], 0, None),
+    ],
+    col_items: [axis_item([], 0, None)],
+  }
+  let result = try! materialize_pivot_table(def, cache, records)
+  assert_eq(result.row_keys.length(), 9)
+  assert_true(result.row_keys[0] == Items([0, 0]))
+  assert_true(result.row_keys[1] == Items([0, 1]))
+  assert_true(result.row_keys[2] == RowSubtotal([0]))
+  assert_true(result.row_keys[3] == Items([1, 0]))
+  assert_true(result.row_keys[4] == Items([1, 1]))
+  assert_true(result.row_keys[5] == RowSubtotal([1]))
+  assert_true(result.row_keys[6] == Items([2, 0]))
+  assert_true(result.row_keys[7] == Items([2, 1]))
+  assert_true(result.row_keys[8] == RowSubtotal([2]))
+  let north = result.find(RowSubtotal([0]), Items([]), 0).unwrap()
+  let south = result.find(RowSubtotal([1]), Items([]), 0).unwrap()
+  let east = result.find(RowSubtotal([2]), Items([]), 0).unwrap()
+  assert_fv_eq(north.aggregated_value, n(150.0))
+  assert_fv_eq(south.aggregated_value, n(200.0))
+  assert_fv_eq(east.aggregated_value, n(100.0))
+  let pivot : MaterializedPivotTable = {
+    definition: def,
+    cache,
+    materialization: result,
+  }
+  let anchor = try! @address.CellAddress::parse_a1("A1")
+  let prefix_request = get_pivot_data([pivot], {
+    data_field: "Sum of Sales",
+    anchor,
+    filters: [{ field: "Region", item: "North" }],
+  })
+  match prefix_request {
+    Some(value) => assert_fv_eq(value, n(150.0))
+    None => assert_true(false)
+  }
+  let non_prefix_request = get_pivot_data([pivot], {
+    data_field: "Sum of Sales",
+    anchor,
+    filters: [{ field: "Product", item: "Apple" }],
+  })
+  assert_true(non_prefix_request is None)
 }
 
 ///|
@@ -1240,6 +1347,67 @@ test "§18.10.1.22 showDataAs percentages do not require visible grand totals" {
 }
 
 ///|
+test "§18.10.1.22 row subtotal percentOfRow uses hidden subtotal total" {
+  let cache = cache_with_fields([
+    cache_field_named("Region", [SharedString("East")]),
+    cache_field_named("Product", [SharedString("Bike"), SharedString("Helmet")]),
+    cache_field_named("Quarter", [SharedString("Q1"), SharedString("Q2")]),
+    cache_field_named("Sales", []),
+  ])
+  let records : PivotCacheRecords = {
+    count: Some(4),
+    rows: [
+      row_of([
+        RefShared(0),
+        RefShared(0),
+        RefShared(0),
+        Inline(SharedNumber(10.0)),
+      ]),
+      row_of([
+        RefShared(0),
+        RefShared(0),
+        RefShared(1),
+        Inline(SharedNumber(30.0)),
+      ]),
+      row_of([
+        RefShared(0),
+        RefShared(1),
+        RefShared(0),
+        Inline(SharedNumber(20.0)),
+      ]),
+      row_of([
+        RefShared(0),
+        RefShared(1),
+        RefShared(1),
+        Inline(SharedNumber(30.0)),
+      ]),
+    ],
+  }
+  let def = {
+    ..definition(
+      [0, 1],
+      [2],
+      [data_def_show_as(3, Sum, "percentOfRow")],
+      [],
+      false,
+      false,
+    ),
+    pivot_fields: [
+      { ..pivot_field_def([]), outline: false },
+      pivot_field_def([]),
+      pivot_field_def([]),
+      pivot_field_def([]),
+    ],
+  }
+  let result = try! materialize_pivot_table(def, cache, records)
+  assert_true(result.find(RowSubtotal([0]), ColGrand, 0) is None)
+  let subtotal_q1 = result.find(RowSubtotal([0]), Items([0]), 0).unwrap()
+  let subtotal_q2 = result.find(RowSubtotal([0]), Items([1]), 0).unwrap()
+  assert_fv_near(subtotal_q1.aggregated_value, 30.0 / 90.0, 0.0001)
+  assert_fv_near(subtotal_q2.aggregated_value, 60.0 / 90.0, 0.0001)
+}
+
+///|
 test "§18.18.17 unknown subtotal raises SchemaViolation" {
   let bad = try? DataConsolidateFunction::from_attr("notARealOne")
   assert_true(bad is Err(_))
@@ -1269,7 +1437,7 @@ test "§18.10.1.22 out-of-range fld raises SchemaViolation" {
 ///|
 test "§18.10.1.73 decode_pivot_table_definition reads all axis lists" {
   let root = parse_xml(
-    "<pivotTableDefinition name=\"P1\" dataCaption=\"Values\" cacheId=\"1\"><location ref=\"A3:C7\" firstHeaderRow=\"0\" firstDataRow=\"1\" firstDataCol=\"1\"/><pivotFields count=\"3\"><pivotField axis=\"axisRow\"/><pivotField axis=\"axisCol\"/><pivotField dataField=\"1\"/></pivotFields><rowFields count=\"1\"><field x=\"0\"/></rowFields><colFields count=\"1\"><field x=\"1\"/></colFields><dataFields count=\"1\"><dataField name=\"Sum of Sales\" fld=\"2\" subtotal=\"sum\"/></dataFields></pivotTableDefinition>",
+    "<pivotTableDefinition name=\"P1\" dataCaption=\"Values\" cacheId=\"1\"><location ref=\"A3:C7\" firstHeaderRow=\"0\" firstDataRow=\"1\" firstDataCol=\"1\"/><pivotFields count=\"3\"><pivotField axis=\"axisRow\" outline=\"0\" subtotalCaption=\"Result\"/><pivotField axis=\"axisCol\"/><pivotField dataField=\"1\"/></pivotFields><rowFields count=\"1\"><field x=\"0\"/></rowFields><colFields count=\"1\"><field x=\"1\"/></colFields><dataFields count=\"1\"><dataField name=\"Sum of Sales\" fld=\"2\" subtotal=\"sum\"/></dataFields></pivotTableDefinition>",
   )
   let def = try! decode_pivot_table_definition(
     @domain.CT_pivotTableDefinition::new(root),
@@ -1292,6 +1460,8 @@ test "§18.10.1.73 decode_pivot_table_definition reads all axis lists" {
     Some(AxisRow) => ()
     _ => assert_true(false)
   }
+  assert_true(!def.pivot_fields[0].outline)
+  assert_eq(def.pivot_fields[0].subtotal_caption.unwrap(), "Result")
   match def.location {
     Some(loc) => assert_eq(loc.ref_range.to_a1(), "A3:C7")
     None => assert_true(false)
@@ -1358,6 +1528,8 @@ test "PivotAxisKey::serialize distinguishes grand sentinels from items" {
   assert_eq(PivotAxisKey::Items([]).serialize(), "i")
   assert_eq(PivotAxisKey::Items([0]).serialize(), "i0")
   assert_eq(PivotAxisKey::Items([1, 2, 3]).serialize(), "i1|2|3")
+  assert_eq(PivotAxisKey::RowSubtotal([0]).serialize(), "S0")
+  assert_eq(PivotAxisKey::RowSubtotal([1, 2]).serialize(), "S1|2")
   assert_eq(PivotAxisKey::RowGrand.serialize(), "R")
   assert_eq(PivotAxisKey::ColGrand.serialize(), "C")
 }

@@ -143,6 +143,7 @@ pub(all) struct PivotAxisItem {
 
 pub(all) enum PivotAxisKey {
   Items(Array[Int])
+  RowSubtotal(Array[Int])
   RowGrand
   ColGrand
 } derive(Eq, @debug.Debug)
@@ -179,6 +180,8 @@ pub(all) struct PivotFieldDef {
   data_field : Bool
   include_new_items_in_filter : Bool
   name : String?
+  subtotal_caption : String?
+  outline : Bool
   subtotal_top : Bool
   default_subtotal : Bool
   items : Array[PivotItemDef]

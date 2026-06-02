@@ -272,19 +272,33 @@ fn axis_key_for_request(
   }
   let item_indices : Array[Int] = []
   let mut matched = 0
+  let mut saw_gap = false
+  let mut matched_prefix_only = true
   for field_idx in real_fields {
     match filters.get(field_idx) {
       Some(item_idx) => {
-        item_indices.push(item_idx)
         matched = matched + 1
+        if saw_gap {
+          matched_prefix_only = false
+        } else {
+          item_indices.push(item_idx)
+        }
       }
-      None => ()
+      None => saw_gap = true
     }
   }
   if matched == real_fields.length() {
     return Some(Items(item_indices))
   }
   if matched > 0 {
+    if row_axis {
+      if matched_prefix_only && item_indices.length() == matched {
+        let subtotal = RowSubtotal(item_indices)
+        if materialization_has_axis_key(materialization, subtotal, true) {
+          return Some(subtotal)
+        }
+      }
+    }
     return None
   }
   let grand = if row_axis { RowGrand } else { ColGrand }

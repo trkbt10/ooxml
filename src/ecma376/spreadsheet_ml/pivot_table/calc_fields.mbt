@@ -227,11 +227,11 @@ fn pivot_rows_for_axis_subset(
   let out : Array[PivotCacheRow] = []
   for i, row in kept_rows {
     let row_ok = match row_key {
-      Some(k) => projection.row_axis[i] == k
+      Some(k) => axis_key_matches_filter(projection.row_axis[i], k)
       None => true
     }
     let col_ok = match col_key {
-      Some(k) => projection.col_axis[i] == k
+      Some(k) => axis_key_matches_filter(projection.col_axis[i], k)
       None => true
     }
     if row_ok && col_ok {
