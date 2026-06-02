@@ -3725,7 +3725,7 @@ fn saved_count_tag(xml : String, local_name : String) -> Int {
 /// fully spec-valid OPC.
 fn host_package(which : String, content : @xml.Element) -> Bytes {
   match which {
-    "xlsx" => xlsx_package(content)
+    "xlsx" => catalog_xlsx_package(content)
     "pptx" => pptx_package(content)
     "docx:settings" => docx_aux_package("settings", content)
     "docx:styles" => docx_aux_package("styles", content)
@@ -3807,6 +3807,221 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
       )
     _ => docx_package(content)
   }
+}
+
+///|
+/// Catalog-specific `.xlsx` host. A synthesised AutoFilter subtree is
+/// structurally valid but not render-observable by itself when it has
+/// no `@ref`, candidate rows, `styles.xml` dxfs, or iconSet conditional
+/// formatting to compare. When the generated tree carries an
+/// `<autoFilter>/<filterColumn>` path, provide those runtime facts as
+/// fixture data; the row decision stays in
+/// `spreadsheet_ml/autofilter`.
+fn catalog_xlsx_package(content : @xml.Element) -> Bytes {
+  if has_autofilter_filter_column(content) {
+    xlsx_package_styled(
+      catalog_autofilter_worksheet(content),
+      catalog_autofilter_styles(),
+    )
+  } else {
+    xlsx_package(content)
+  }
+}
+
+///|
+fn has_autofilter_filter_column(element : @xml.Element) -> Bool {
+  if !is_catalog_autofilter_probe_root(element) &&
+    element.name.local_name != "autoFilter" {
+    return false
+  }
+  fn walk(e : @xml.Element) -> Bool {
+    if e.name.local_name == "filterColumn" {
+      return true
+    }
+    for child in e.children {
+      match child {
+        Element(ce) => if walk(ce) { return true }
+        _ => ()
+      }
+    }
+    false
+  }
+  walk(element)
+}
+
+///|
+/// The catalog ancestry for `<colorFilter>` / `<iconFilter>` is a
+/// synthetic `worksheet -> autoFilter -> filterColumn -> target` tree;
+/// `main.mbt` skips the implicit worksheet root before calling
+/// `host_package`, so the production probe arrives here as an
+/// `autoFilter` root.  This helper keeps the white-box worksheet
+/// shape accepted too, while excluding real worksheet, table, pivot,
+/// or dialog-sheet roots so their original content still drives the
+/// round-trip fidelity checks.
+fn is_catalog_autofilter_probe_root(element : @xml.Element) -> Bool {
+  if element.name.local_name != "worksheet" {
+    return false
+  }
+  let mut element_child_count = 0
+  let mut only_child_is_autofilter = false
+  for child in element.children {
+    match child {
+      Element(ce) => {
+        element_child_count += 1
+        only_child_is_autofilter = ce.name.local_name == "autoFilter"
+      }
+      _ => ()
+    }
+  }
+  element_child_count == 1 && only_child_is_autofilter
+}
+
+///|
+fn catalog_autofilter_worksheet(content : @xml.Element) -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let auto_filter = match first_descendant_named_local(content, "autoFilter") {
+    Some(e) => normalize_catalog_autofilter(e)
+    None => return content
+  }
+  xe(ns_s, "worksheet", [], [
+    Element(xe(ns_s, "dimension", [xa("ref", "A1:B4")], [])),
+    Element(
+      xe(ns_s, "sheetData", [], [
+        Element(s_row("1", [s_inline("A1", "Item"), s_inline("B1", "Score")])),
+        Element(
+          s_row("2", [
+            s_inline("A2", "Red low"),
+            s_cell_styled_x("B2", "10", "1"),
+          ]),
+        ),
+        Element(
+          s_row("3", [
+            s_inline("A3", "Green middle"),
+            s_cell_styled_x("B3", "50", "2"),
+          ]),
+        ),
+        Element(
+          s_row("4", [
+            s_inline("A4", "Red high"),
+            s_cell_styled_x("B4", "90", "1"),
+          ]),
+        ),
+      ]),
+    ),
+    Element(catalog_autofilter_iconset_cf()),
+    Element(auto_filter),
+  ])
+}
+
+///|
+fn first_descendant_named_local(
+  element : @xml.Element,
+  local_name : String,
+) -> @xml.Element? {
+  if element.name.local_name == local_name {
+    return Some(element)
+  }
+  for child in element.children {
+    match child {
+      Element(ce) =>
+        match first_descendant_named_local(ce, local_name) {
+          Some(found) => return Some(found)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn normalize_catalog_autofilter(element : @xml.Element) -> @xml.Element {
+  let attrs : Array[@xml.Attribute] = []
+  let mut saw_ref = false
+  let mut saw_col_id = false
+  for attr in element.attributes {
+    if element.name.local_name == "autoFilter" && attr.name.local_name == "ref" {
+      attrs.push({ name: attr.name, value: "A1:B4" })
+      saw_ref = true
+    } else if element.name.local_name == "filterColumn" &&
+      attr.name.local_name == "colId" {
+      attrs.push({ name: attr.name, value: "1" })
+      saw_col_id = true
+    } else {
+      attrs.push(attr)
+    }
+  }
+  if element.name.local_name == "autoFilter" && !saw_ref {
+    attrs.push(xa("ref", "A1:B4"))
+  }
+  if element.name.local_name == "filterColumn" && !saw_col_id {
+    attrs.push(xa("colId", "1"))
+  }
+  let children : Array[@xml.Node] = []
+  for child in element.children {
+    match child {
+      Element(ce) => children.push(Element(normalize_catalog_autofilter(ce)))
+      _ => children.push(child)
+    }
+  }
+  { name: element.name, attributes: attrs, children }
+}
+
+///|
+fn catalog_autofilter_iconset_cf() -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(ns_s, "conditionalFormatting", [xa("sqref", "B2:B4")], [
+    Element(
+      xe(ns_s, "cfRule", [xa("type", "iconSet"), xa("priority", "1")], [
+        Element(
+          xe(ns_s, "iconSet", [xa("iconSet", "3Arrows")], [
+            Element(
+              xe(ns_s, "cfvo", [xa("type", "percent"), xa("val", "0")], []),
+            ),
+            Element(
+              xe(ns_s, "cfvo", [xa("type", "percent"), xa("val", "33")], []),
+            ),
+            Element(
+              xe(ns_s, "cfvo", [xa("type", "percent"), xa("val", "67")], []),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_autofilter_styles() -> @xml.Element {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  xe(ns_s, "styleSheet", [], [
+    Element(
+      xe(ns_s, "fonts", [xa("count", "1")], [
+        Element(ss_font("11", "Calibri", [])),
+      ]),
+    ),
+    Element(
+      xe(ns_s, "fills", [xa("count", "4")], [
+        Element(ss_fill_none()),
+        Element(ss_fill_gray125()),
+        Element(ss_pattern_fill("solid", Some("FFFF0000"), None)),
+        Element(ss_pattern_fill("solid", Some("FF00FF00"), None)),
+      ]),
+    ),
+    Element(
+      xe(ns_s, "borders", [xa("count", "1")], [Element(ss_border_none())]),
+    ),
+    Element(
+      xe(ns_s, "cellXfs", [xa("count", "3")], [
+        Element(ss_cell_xf("0", "0", "0", "0", None)),
+        Element(ss_cell_xf("0", "0", "2", "0", None)),
+        Element(ss_cell_xf("0", "0", "3", "0", None)),
+      ]),
+    ),
+    Element(
+      cf_dxfs([cf_dxf_solid_fill("FF00FF00"), cf_dxf_solid_fill("FFFF0000")]),
+    ),
+  ])
 }
 
 ///|

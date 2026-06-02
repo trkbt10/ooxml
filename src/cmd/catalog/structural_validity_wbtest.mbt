@@ -264,6 +264,68 @@ test "catalog xlsx comments host retargets synthesized comment ref to sheet cell
 }
 
 ///|
+test "catalog xlsx autofilter host supplies dxf facts for colorFilter" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let color_filter = stamp_target(
+    xep("s", ns_s, "colorFilter", [xa("dxfId", "1"), xa("cellColor", "1")], []),
+  )
+  let worksheet = xep("s", ns_s, "worksheet", [], [
+    Element(
+      xep("s", ns_s, "autoFilter", [], [
+        Element(
+          xep("s", ns_s, "filterColumn", [xa("colId", "1")], [
+            Element(color_filter),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  assert_eq(verify_entry("xlsx", worksheet, "CAT-AF-COLOR"), "rendered")
+  let svg = match
+    render_svg_of("xlsx", host_package("xlsx", strip_target_attr(worksheet))) {
+    Some(s) => s
+    None => abort("expected colorFilter host to render")
+  }
+  assert_true(svg.contains("Red low"))
+  assert_true(!svg.contains("Green middle"))
+  assert_true(svg.contains("Red high"))
+}
+
+///|
+test "catalog xlsx autofilter host supplies icon facts for iconFilter" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let icon_filter = stamp_target(
+    xep(
+      "s",
+      ns_s,
+      "iconFilter",
+      [xa("iconSet", "3Arrows"), xa("iconId", "1")],
+      [],
+    ),
+  )
+  let worksheet = xep("s", ns_s, "worksheet", [], [
+    Element(
+      xep("s", ns_s, "autoFilter", [], [
+        Element(
+          xep("s", ns_s, "filterColumn", [xa("colId", "1")], [
+            Element(icon_filter),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  assert_eq(verify_entry("xlsx", worksheet, "CAT-AF-ICON"), "rendered")
+  let svg = match
+    render_svg_of("xlsx", host_package("xlsx", strip_target_attr(worksheet))) {
+    Some(s) => s
+    None => abort("expected iconFilter host to render")
+  }
+  assert_true(!svg.contains("Red low"))
+  assert_true(svg.contains("Green middle"))
+  assert_true(!svg.contains("Red high"))
+}
+
+///|
 test "catalog pptx host inserts required cSld before slide transition" {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let transition = xep("p", ns_p, "transition", [xa("spd", "fast")], [
