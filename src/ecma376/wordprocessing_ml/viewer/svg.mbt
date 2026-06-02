@@ -1108,6 +1108,7 @@ fn shift_paragraph_x(lp : LaidParagraph, dx : Double) -> LaidParagraph {
 /// Laid-out table.
 priv struct LaidTable {
   x : Double
+  y : Double
   width : Double
   /// Total height (sum of row heights).
   height : Double
@@ -1126,6 +1127,8 @@ priv struct LaidTableRow {
 priv struct LaidTableCell {
   /// Cell left-edge x within the table.
   x : Double
+  /// Cell top-edge y within the page.
+  y : Double
   /// Cell width.
   width : Double
   /// Cell height.
@@ -8904,6 +8907,7 @@ fn layout_table(
       cell_xs.push(x_cursor)
       cells.push({
         x: x_cursor,
+        y: 0.0,
         width: cw,
         height: cell_h,
         paragraphs: cell_paras,
@@ -9007,6 +9011,7 @@ fn layout_table(
   }
   LaidTable::{
     x: tbl_ind_px,
+    y: 0.0,
     width: table_width,
     height: total_h,
     rows: laid_rows,
@@ -9560,12 +9565,12 @@ fn offset_table(t : LaidTable, dx : Double, dy : Double) -> LaidTable {
         inner_paras.push(abs_para)
         local_y = local_y + p.height
       }
-      cells.push({ ..c, x: dx + t.x + c.x, paragraphs: inner_paras })
+      cells.push({ ..c, x: dx + t.x + c.x, y: row_y, paragraphs: inner_paras })
     }
     rows.push({ height: r.height, cells })
     row_y = row_y + r.height
   }
-  LaidTable::{ x: dx + t.x, width: t.width, height: t.height, rows }
+  LaidTable::{ x: dx + t.x, y: dy, width: t.width, height: t.height, rows }
 }
 
 // =============================================================================
@@ -10122,18 +10127,10 @@ fn build_page_body_nodes(
       if col < 0 {
         continue
       }
-      // Tables advance the flow by their height; use the first row's
-      // first cell's first paragraph y_top + table.height as the
-      // bottom, falling back to y0 + height when row metadata is
-      // sparse.
-      let mut top = y0
-      if tbl.rows.length() > 0 && tbl.rows[0].cells.length() > 0 {
-        let cell = tbl.rows[0].cells[0]
-        if cell.paragraphs.length() > 0 && cell.paragraphs[0].lines.length() > 0 {
-          top = cell.paragraphs[0].lines[0].y_top - cell.padding.top
-        }
-      }
-      let b = top + tbl.height
+      // Tables advance the flow by their table geometry. §17.4.83
+      // vAlign can shift a cell's first paragraph, so paragraph y is
+      // not a valid table top source.
+      let b = tbl.y + tbl.height
       if b > col_bottom[col] {
         col_bottom[col] = b
       }
@@ -11099,14 +11096,13 @@ fn build_table_nodes(
       // consumers can detect the vertical-alignment intent.  The
       // paragraph offset above already implements the visual shift.
       if c.v_align != "top" {
-        let cell_top = cell_top_y(c)
         out.push(
           @markup.elem_ns(
             "rect",
             @markup.svg_ns,
             [
               @markup.attr("x", fmt_double(c.x)),
-              @markup.attr("y", fmt_double(cell_top)),
+              @markup.attr("y", fmt_double(c.y)),
               @markup.attr("width", fmt_double(c.width)),
               @markup.attr("height", fmt_double(c.height)),
               @markup.attr("fill", "transparent"),
@@ -11116,16 +11112,12 @@ fn build_table_nodes(
           ),
         )
       }
-      // §17.4.33 / §17.18.78 cell shading fill (if any). Row Y is
-      // encoded in paragraph absolute coordinates; the rectangle
-      // derives it from the first paragraph (or falls back to the full
-      // row height starting at the first paragraph's top). The ST_Shd
-      // `@val` selects solid `@fill` (clear/nil), solid `@color`
-      // (solid), or a `<pattern>`-backed fill (pct/stripe/cross);
-      // `resolve_shading_fill` emits any `<pattern>` def into `out`.
+      // §17.4.33 / §17.18.78 cell shading fill (if any). Cell
+      // geometry comes from the table layout itself; it must not be
+      // derived from paragraph y because §17.4.83 vAlign shifts only
+      // the content stack, not the cell rectangle.
       {
-        let cell_top = cell_top_y(c)
-        let pattern_id = shd_pattern_id("c", c.x, cell_top, c.shd_val)
+        let pattern_id = shd_pattern_id("c", c.x, c.y, c.shd_val)
         match
           resolve_shading_fill(
             out,
@@ -11141,7 +11133,7 @@ fn build_table_nodes(
                 @markup.svg_ns,
                 [
                   @markup.attr("x", fmt_double(c.x)),
-                  @markup.attr("y", fmt_double(cell_top)),
+                  @markup.attr("y", fmt_double(c.y)),
                   @markup.attr("width", fmt_double(c.width)),
                   @markup.attr("height", fmt_double(c.height)),
                   @markup.attr("fill", fill),
@@ -11156,11 +11148,10 @@ fn build_table_nodes(
       // rather than a single rect so each side can carry its own
       // colour / width / dash style — matching Word's per-side
       // semantics. Sides with `style="none"` are skipped entirely.
-      let cell_top = cell_top_y(c)
       let cx_left = c.x
       let cx_right = c.x + c.width
-      let cy_top = cell_top
-      let cy_bottom = cell_top + c.height
+      let cy_top = c.y
+      let cy_bottom = c.y + c.height
       append_border_line_nodes(
         out,
         c.border_top,
@@ -11781,23 +11772,6 @@ fn single_border_line_node(
     attrs.push(@markup.attr("stroke-dasharray", dash))
   }
   @markup.elem_ns("line", @markup.svg_ns, attrs, [])
-}
-
-///|
-/// Get the top y of a cell by inspecting its first paragraph's first line.
-/// Falls back to 0 if cell has no content.
-fn cell_top_y(c : LaidTableCell) -> Double {
-  if c.paragraphs.length() == 0 {
-    return 0.0
-  }
-  let first = c.paragraphs[0]
-  if first.lines.length() == 0 {
-    return 0.0
-  }
-  // §17.4.42 / §17.4.69 — the cell's content top is padding above
-  // the first line's y_top (resolved per-cell from tblCellMar /
-  // tcMar).
-  first.lines[0].y_top - c.padding.top
 }
 
 // =============================================================================

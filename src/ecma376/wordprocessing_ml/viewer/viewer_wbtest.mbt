@@ -843,6 +843,142 @@ test "render_svg inherits cell borders from <w:tblBorders>" {
 }
 
 ///|
+/// §17.4.83 — `<w:vAlign>` shifts the paragraph stack inside a cell;
+/// it must not move the cell rectangle, shading, or borders. A single
+/// row with top / center / bottom cells therefore keeps one shared row
+/// top while the later cells' text moves down.
+test "render_svg keeps table cell geometry independent of w:vAlign" {
+  ensure_wml_test_font()
+  let p_with = fn(txt : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("p"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("r"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("t"),
+              attributes: [],
+              children: [@xml.Node::Text(txt)],
+            }),
+          ],
+        }),
+      ],
+    })
+  }
+  let cell = fn(anchor : String, txt : String) -> @xml.Node {
+    @xml.Node::Element({
+      name: name("tc"),
+      attributes: [],
+      children: [
+        @xml.Node::Element({
+          name: name("tcPr"),
+          attributes: [],
+          children: [
+            @xml.Node::Element({
+              name: name("vAlign"),
+              attributes: [attr("val", anchor)],
+              children: [],
+            }),
+          ],
+        }),
+        p_with(txt),
+      ],
+    })
+  }
+  let table = @xml.Element::{
+    name: name("tbl"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({ name: name("tblPr"), attributes: [], children: [] }),
+      @xml.Node::Element({
+        name: name("tblGrid"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("gridCol"),
+            attributes: [attr("w", "2000")],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("gridCol"),
+            attributes: [attr("w", "2000")],
+            children: [],
+          }),
+          @xml.Node::Element({
+            name: name("gridCol"),
+            attributes: [attr("w", "2000")],
+            children: [],
+          }),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("tr"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("trPr"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("trHeight"),
+                attributes: [attr("val", "1400"), attr("hRule", "atLeast")],
+                children: [],
+              }),
+            ],
+          }),
+          cell("top", "top"),
+          cell("center", "center"),
+          cell("bottom", "bottom"),
+        ],
+      }),
+    ],
+  }
+  let warnings : Array[String] = []
+  let laid = layout_table(table, 400.0, warnings, None)
+  let adjusted = offset_table(laid, 96.0, 96.0)
+  inspect(adjusted.rows.length(), content="1")
+  inspect(adjusted.rows[0].cells.length(), content="3")
+  for c in adjusted.rows[0].cells {
+    assert_close_double(c.y, 96.0, 0.0001, "cell top")
+    assert_close_double(c.height, 1400.0 * TWIPS_TO_PX, 0.0001, "cell height")
+  }
+  let top_y = adjusted.rows[0].cells[0].paragraphs[0].lines[0].y_top
+  let center_y = adjusted.rows[0].cells[1].paragraphs[0].lines[0].y_top
+  let bottom_y = adjusted.rows[0].cells[2].paragraphs[0].lines[0].y_top
+  assert_true(center_y > top_y)
+  assert_true(bottom_y > center_y)
+  let document = @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [@xml.Node::Element(table)],
+      }),
+    ],
+  })
+  let svg = render_svg(document).pages[0].svg
+  inspect(count_occurrences(svg, "data-ooxml-v-align=\"center\""), content="1")
+  inspect(count_occurrences(svg, "data-ooxml-v-align=\"bottom\""), content="1")
+  inspect(
+    count_occurrences(
+      svg, "y=\"96\" width=\"133.333\" height=\"93.333\" fill=\"transparent\" data-ooxml-v-align=\"center\"",
+    ),
+    content="1",
+  )
+  inspect(
+    count_occurrences(
+      svg, "y=\"96\" width=\"133.333\" height=\"93.333\" fill=\"transparent\" data-ooxml-v-align=\"bottom\"",
+    ),
+    content="1",
+  )
+}
+
+///|
 /// §17.3.1.6 `<w:pPr><w:shd>` — paragraph shading emits a `<rect>`
 /// behind the paragraph's glyphs. `@fill="FFFF00"` paints the
 /// paragraph yellow.
