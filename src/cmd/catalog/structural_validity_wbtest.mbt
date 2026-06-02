@@ -18,6 +18,28 @@ test "catalog pptx empty-body package reopens after context save" {
 }
 
 ///|
+test "catalog routes presentation part root through presentation host" {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let host_name = catalog_host_for_root("presentation", "pptx")
+  assert_eq(host_name, "pptx:presentation")
+  let host = host_package(host_name, xep("p", ns_p, "presentation", [], []))
+  let presentation = @pml_context.open(host) catch {
+    @pml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let saved = presentation.save_or_raise() catch {
+    @pml_context.SaveError(kind~, path~, reason~) =>
+      abort("save failed: " + kind + " " + path + " " + reason)
+  }
+  try @pml_context.open(saved) catch {
+    @pml_context.OpenError(kind~, path~, reason~) =>
+      abort("reopen failed: " + kind + " " + path + " " + reason)
+  } noraise {
+    _ => ()
+  }
+}
+
+///|
 test "catalog docx font-table host retargets synthesized font relationship id" {
   let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   let font = xep(

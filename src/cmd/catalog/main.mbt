@@ -90,6 +90,48 @@ fn ns_format(ns : String) -> String {
 }
 
 ///|
+/// Catalog host selection for an ancestry root / part root.  Keep
+/// this as the single source of truth for both normal ancestry paths
+/// and empty paths where the element under test is itself the part
+/// root.
+fn catalog_host_for_root(
+  root_name : String,
+  fallback_format : String,
+) -> String {
+  match root_name {
+    "worksheet" => "xlsx"
+    "sld" => "pptx"
+    "settings" => "docx:settings"
+    "styles" => "docx:styles"
+    "numbering" => "docx:numbering"
+    "fonts" => "docx:fonts"
+    "webSettings" => "docx:webSettings"
+    "comments" => "docx:comments"
+    "footnotes" => "docx:footnotes"
+    "endnotes" => "docx:endnotes"
+    "theme" => "pptx:theme"
+    "presentation" => "pptx:presentation"
+    "workbook" => "xlsx:workbook"
+    "sharedStrings" => "xlsx:sharedStrings"
+    "styleSheet" => "xlsx:styles"
+    // §21.2 DrawingML chart — `<c:chartSpace>` is the part root
+    // for `ppt/charts/chart1.xml`. Route the element through a
+    // dedicated pptx host that wires the chart part into a minimal
+    // slide carrying a `<p:graphicFrame>`.
+    "chartSpace" => "pptx:chart"
+    // §21.4 DrawingML diagram — four-part SmartArt.
+    "dataModel" => "pptx:diagram-data"
+    "layoutDef" => "pptx:diagram-layout"
+    "styleDef" => "pptx:diagram-style"
+    "colorsDef" => "pptx:diagram-colors"
+    // §21.3 DrawingML chartDrawing — `<c:userShapes>` part wired
+    // through the chart's own rels.
+    "userShapes" => "pptx:chart-usershapes"
+    _ => if fallback_format != "" { fallback_format } else { "docx" }
+  }
+}
+
+///|
 /// Reduce a Transitional or Strict OOXML namespace URI to its
 /// generation-independent tail (e.g. both
 /// `…/wordprocessingml/2006/main` and `…/ooxml/wordprocessingml/main`
@@ -431,48 +473,6 @@ fn main {
     // candidate already proved by that single verifier, so a later
     // schema-correct `parsed` route is not hidden by an earlier
     // `open-fail` route.
-    fn host_for_root(root_name : String) -> String {
-      match root_name {
-        "worksheet" => "xlsx"
-        "sld" => "pptx"
-        "settings" => "docx:settings"
-        "styles" => "docx:styles"
-        "numbering" => "docx:numbering"
-        "fonts" => "docx:fonts"
-        "webSettings" => "docx:webSettings"
-        "comments" => "docx:comments"
-        "footnotes" => "docx:footnotes"
-        "endnotes" => "docx:endnotes"
-        "theme" => "pptx:theme"
-        "presentation" => "pptx:presentation"
-        "workbook" => "xlsx:workbook"
-        "sharedStrings" => "xlsx:sharedStrings"
-        "styleSheet" => "xlsx:styles"
-        // §21.2 DrawingML chart — `<c:chartSpace>` is the part root
-        // for `ppt/charts/chart1.xml`. Route the element through a
-        // dedicated pptx host that wires the chart part into a
-        // minimal slide carrying a `<p:graphicFrame>`.
-        "chartSpace" => "pptx:chart"
-        // §21.4 DrawingML diagram — four-part SmartArt.  Route each
-        // part root to a dedicated host that splices the target into
-        // the correct OPC part (data1.xml / layout1.xml /
-        // quickStyle1.xml / colors1.xml) with minimal-valid stubs in
-        // the other three.
-        "dataModel" => "pptx:diagram-data"
-        "layoutDef" => "pptx:diagram-layout"
-        "styleDef" => "pptx:diagram-style"
-        "colorsDef" => "pptx:diagram-colors"
-        // §21.3 DrawingML chartDrawing — `<c:userShapes>` part wired
-        // through the chart's own rels.  The host writes a userShapes
-        // sibling part referenced by chart rels rId1; PML context's
-        // `chart_part_resolver_factory` resolves the rId against the
-        // chart-part rels and the chart renderer walks
-        // `<cdr:absSizeAnchor>` / `<cdr:relSizeAnchor>` for each anchor.
-        "userShapes" => "pptx:chart-usershapes"
-        _ => "docx"
-      }
-    }
-
     let candidates : Array[(String, @xml.Element)] = []
     let akey = nt_key(decl.name, decl.type_name)
     // §21.2 — only chart-namespace elements (`<c:plotArea>`, `<c:ser>`,
@@ -485,7 +485,7 @@ fn main {
       Some(paths) if paths.length() >= 1 =>
         for path in paths {
           if path.length() >= 1 {
-            let host = host_for_root(path[0].0)
+            let host = catalog_host_for_root(path[0].0, fmt)
             // Skip chart-host candidates for non-chart-namespace
             // elements so DML core types do not get hosted in a chart
             // part where the renderer's shape dispatch never reaches
@@ -516,15 +516,7 @@ fn main {
             // Empty path — the element IS itself a part-root; embed
             // unwrapped.  Route diagram / chart part roots to their
             // dedicated host so the renderer is actually invoked.
-            let root_host = match decl.name {
-              "chartSpace" => "pptx:chart"
-              "dataModel" => "pptx:diagram-data"
-              "layoutDef" => "pptx:diagram-layout"
-              "styleDef" => "pptx:diagram-style"
-              "colorsDef" => "pptx:diagram-colors"
-              "userShapes" => "pptx:chart-usershapes"
-              _ => if fmt != "" { fmt } else { "docx" }
-            }
+            let root_host = catalog_host_for_root(decl.name, fmt)
             candidates.push((root_host, target))
           }
         }

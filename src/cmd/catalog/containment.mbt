@@ -168,6 +168,19 @@ fn type_has_any(ct : @xml.Element) -> Bool {
 }
 
 ///|
+/// True only for primary document part root declarations.  Several
+/// schemas reuse names such as `<p:sld>` for non-root relationship
+/// lists / outline entries; those must not seed a standalone host.
+fn is_primary_part_root_decl(name : String, type_name : String) -> Bool {
+  match name {
+    "document" => type_name.has_suffix("#CT_Document")
+    "worksheet" => type_name.has_suffix("#CT_Worksheet")
+    "sld" => type_name.has_suffix("#CT_Slide")
+    _ => false
+  }
+}
+
+///|
 /// The document-part root elements a fixture can be built around,
 /// with their type names.
 ///
@@ -359,6 +372,26 @@ fn build_ancestry(
     }
   }
   run_bfs(primary_queue, Map([], capacity=0))
+  // PASS 1b — primary-root namespace variants.  `part_roots` is
+  // keyed by element local name, so a root present in both Strict and
+  // Transitional schemas contributes only one declaration to PASS 1.
+  // Seed every primary document root variant from `all_elements` and
+  // skip keys already reached by PASS 1; this preserves the canonical
+  // primary paths while giving Strict-only descendants (for example
+  // DrawingML main elements under a Strict PresentationML `<sld>`) a
+  // real slide-rooted ancestry instead of falling through to a
+  // malformed generic host.
+  let pre_primary_variant_keys : Map[String, Bool] = Map([], capacity=0)
+  for k, _ in all_paths {
+    pre_primary_variant_keys[k] = true
+  }
+  let primary_variant_queue : Array[(String, String, Array[(String, String)])] = []
+  for _k, decl in schema.all_elements {
+    if is_primary_part_root_decl(decl.name, decl.type_name) {
+      primary_variant_queue.push((decl.name, decl.type_name, []))
+    }
+  }
+  run_bfs(primary_variant_queue, pre_primary_variant_keys)
   let primary_keys : Map[String, Bool] = Map([], capacity=0)
   for k, _ in all_paths {
     primary_keys[k] = true
