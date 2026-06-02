@@ -1542,6 +1542,74 @@ fn pptx_slide_layout_part() -> Bytes {
 }
 
 ///|
+/// Complete a catalog-built `<p:cSld>` with the required
+/// `<p:spTree>` when the element under test is a common-slide child
+/// such as `<p:bg>`.  The canonical shape-tree skeleton is owned by
+/// `pptx_shape_tree`; this helper only splices it at the schema slot.
+fn pptx_complete_common_slide_data(
+  ns_p : String,
+  c_sld : @xml.Element,
+) -> @xml.Element {
+  for child in c_sld.children {
+    match child {
+      Element(e) if e.name.local_name == "spTree" => return c_sld
+      _ => ()
+    }
+  }
+  let children : Array[@xml.Node] = []
+  let mut inserted = false
+  for child in c_sld.children {
+    if !inserted {
+      match child {
+        Element(e) if e.name.local_name == "bg" => ()
+        _ => {
+          children.push(Element(pptx_shape_tree(ns_p, [])))
+          inserted = true
+        }
+      }
+    }
+    children.push(child)
+  }
+  if !inserted {
+    children.push(Element(pptx_shape_tree(ns_p, [])))
+  }
+  { name: c_sld.name, attributes: c_sld.attributes, children }
+}
+
+///|
+/// Build the slide part root for catalog probes.  `wrap_in_ancestry`
+/// deliberately omits the part root (`sld`), so a probe for
+/// slide-level siblings (`clrMapOvr`, `transition`, `timing`,
+/// `extLst`) arrives here as that sibling alone.  CT_Slide still
+/// requires `<p:cSld>` first; keep that skeleton in one host helper
+/// instead of spreading special cases through the verifier.
+fn pptx_slide_for_catalog_content(
+  ns_p : String,
+  content : @xml.Element,
+) -> @xml.Element {
+  if content.name.local_name == "sld" {
+    return content
+  }
+  let slide_children : Array[@xml.Node] = []
+  match content.name.local_name {
+    "cSld" =>
+      slide_children.push(
+        Element(pptx_complete_common_slide_data(ns_p, content)),
+      )
+    "clrMapOvr" | "transition" | "timing" | "extLst" => {
+      slide_children.push(Element(pptx_common_slide_data(ns_p, [])))
+      slide_children.push(Element(content))
+    }
+    _ => slide_children.push(Element(content))
+  }
+  {
+    name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
+    attributes: [],
+    children: slide_children,
+  }
+}
+
+///|
 /// Assemble a `.pptx` package whose `<p:sld>` directly contains
 /// `content`.  Ships a canonical Office-palette theme part plus a
 /// minimal slideMaster / slideLayout chain so consumers (PowerPoint,
@@ -1720,19 +1788,7 @@ fn pptx_package(content : @xml.Element) -> Bytes {
   // Namespaces are auto-declared by `@xml.write` from QName URIs; no
   // explicit `xmlns:*` attributes (see `docx_package`).
   //
-  // If `content` is already a `<p:sld>` element (the element-under-test
-  // IS the slide root — §19.3.1.38 CT_Slide), use it as-is so we
-  // never produce a nested `<p:sld><p:sld>...` malformed payload.
-  // Otherwise wrap the single child in a `<p:sld>` (the common case).
-  let slide : @xml.Element = if content.name.local_name == "sld" {
-    content
-  } else {
-    {
-      name: { prefix: Some("p"), local_name: "sld", ns: Some(ns_p) },
-      attributes: [],
-      children: [Element(content)],
-    }
-  }
+  let slide = pptx_slide_for_catalog_content(ns_p, content)
   let parts : Array[(String, Bytes)] = [
     (
       "[Content_Types].xml",

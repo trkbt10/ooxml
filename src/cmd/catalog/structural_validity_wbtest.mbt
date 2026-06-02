@@ -75,3 +75,51 @@ test "catalog docx font-table host retargets synthesized font relationship id" {
     _ => ()
   }
 }
+
+///|
+test "catalog pptx host inserts required cSld before slide transition" {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let transition = xep("p", ns_p, "transition", [xa("spd", "fast")], [
+    Element(xep("p", ns_p, "fade", [], [])),
+  ])
+  let presentation = @pml_context.open(pptx_package(transition)) catch {
+    @pml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let saved = presentation.save_or_raise() catch {
+    @pml_context.SaveError(kind~, path~, reason~) =>
+      abort("save failed: " + kind + " " + path + " " + reason)
+  }
+  let reopened = @pml_context.open(saved) catch {
+    @pml_context.OpenError(kind~, path~, reason~) =>
+      abort("reopen failed: " + kind + " " + path + " " + reason)
+  }
+  let svg = reopened.to_svg(debug_attrs=true)
+  assert_true(svg.contains("data-ooxml-transition=\"fade\""))
+  assert_true(svg.contains("data-ooxml-transition-spd=\"fast\""))
+}
+
+///|
+test "catalog pptx host inserts required cSld before slide timing" {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let timing = xep("p", ns_p, "timing", [], [
+    Element(
+      xep("p", ns_p, "tnLst", [], [Element(xep("p", ns_p, "par", [], []))]),
+    ),
+  ])
+  let presentation = @pml_context.open(pptx_package(timing)) catch {
+    @pml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let saved = presentation.save_or_raise() catch {
+    @pml_context.SaveError(kind~, path~, reason~) =>
+      abort("save failed: " + kind + " " + path + " " + reason)
+  }
+  let reopened = @pml_context.open(saved) catch {
+    @pml_context.OpenError(kind~, path~, reason~) =>
+      abort("reopen failed: " + kind + " " + path + " " + reason)
+  }
+  let svg = reopened.to_svg(debug_attrs=true)
+  assert_true(svg.contains("data-ooxml-timing-tnLst=\"par\""))
+  assert_true(svg.contains("data-ooxml-timing-count=\"1\""))
+}
