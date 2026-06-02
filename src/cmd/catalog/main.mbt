@@ -766,6 +766,11 @@ fn main {
         ("pptx:master-txstyle", catalog_master_tx_paragraph_style_root(target)),
       )
     }
+    if is_pml_placeholder_catalog_target(decl.name, decl.type_name, decl.ns) {
+      candidates.push(
+        ("pptx:placeholder-chain", catalog_pml_placeholder_chain_root(target)),
+      )
+    }
     match ancestry.get(akey) {
       Some(paths) if paths.length() >= 1 =>
         for path in paths {

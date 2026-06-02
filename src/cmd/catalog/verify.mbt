@@ -3855,6 +3855,7 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "pptx:theme" => pptx_with_aux_root_package("theme", content)
     "pptx:presentation" => pptx_with_aux_root_package("presentation", content)
     "pptx:master-txstyle" => pptx_package_with_master_tx_styles(content)
+    "pptx:placeholder-chain" => pptx_package_with_placeholder_chain(content)
     "xlsx:workbook" => xlsx_with_aux_root_package("workbook", content)
     "xlsx:sharedStrings" => xlsx_with_aux_root_package("sharedStrings", content)
     "xlsx:styles" => xlsx_with_aux_root_package("styles", content)
@@ -4172,6 +4173,166 @@ fn pptx_package_with_master_tx_styles(tx_styles : @xml.Element) -> Bytes {
     base,
     "ppt/slideMasters/slideMaster1.xml",
     write_part(pptx_slide_master_root(Some(tx_styles_root))),
+  )
+}
+
+///|
+fn is_pml_placeholder_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  local_name == "ph" &&
+  strip_ns(ns) == "presentationml/main" &&
+  catalog_type_local(type_name) == "CT_Placeholder"
+}
+
+///|
+fn catalog_pml_placeholder_chain_root(content : @xml.Element) -> @xml.Element {
+  let ns_p = content.name.ns.unwrap_or(NS_PML)
+  let ph_root = if content.name.local_name == "ph" {
+    content
+  } else {
+    xep("p", ns_p, "ph", [xa("type", "title"), xa("idx", "0")], [
+      Element(content),
+    ])
+  }
+  xep("p", ns_p, "cSld", [], [
+    Element(
+      pptx_shape_tree(ns_p, [
+        xep("p", ns_p, "sp", [], [
+          Element(
+            xep("p", ns_p, "nvSpPr", [], [
+              Element(
+                xep(
+                  "p",
+                  ns_p,
+                  "cNvPr",
+                  [xa("id", "2"), xa("name", "Catalog Placeholder Probe")],
+                  [],
+                ),
+              ),
+              Element(xep("p", ns_p, "cNvSpPr", [], [])),
+              Element(xep("p", ns_p, "nvPr", [], [Element(ph_root)])),
+            ]),
+          ),
+          Element(
+            catalog_pml_placeholder_sp_pr(
+              ns_p, "914400", "2743200", "5486400", "914400", "E97132",
+            ),
+          ),
+        ]),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_pml_placeholder_sp_pr(
+  ns_p : String,
+  x : String,
+  y : String,
+  cx : String,
+  cy : String,
+  fill : String,
+) -> @xml.Element {
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  xep("p", ns_p, "spPr", [], [
+    Element(
+      xep("a", ns_a, "xfrm", [], [
+        Element(xep("a", ns_a, "off", [xa("x", x), xa("y", y)], [])),
+        Element(xep("a", ns_a, "ext", [xa("cx", cx), xa("cy", cy)], [])),
+      ]),
+    ),
+    Element(
+      xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+        Element(xep("a", ns_a, "avLst", [], [])),
+      ]),
+    ),
+    Element(
+      xep("a", ns_a, "solidFill", [], [
+        Element(xep("a", ns_a, "srgbClr", [xa("val", fill)], [])),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn catalog_pml_placeholder_layout_shape(ns_p : String) -> @xml.Element {
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  xep("p", ns_p, "sp", [], [
+    Element(
+      xep("p", ns_p, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [xa("id", "3"), xa("name", "Catalog Layout Placeholder")],
+            [],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvSpPr", [], [])),
+        Element(
+          xep("p", ns_p, "nvPr", [], [
+            Element(
+              xep("p", ns_p, "ph", [xa("type", "title"), xa("idx", "0")], []),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      catalog_pml_placeholder_sp_pr(
+        ns_p, "914400", "914400", "5486400", "914400", "4472C4",
+      ),
+    ),
+    Element(
+      xep("p", ns_p, "txBody", [], [
+        Element(xep("a", ns_a, "bodyPr", [], [])),
+        Element(xep("a", ns_a, "lstStyle", [], [])),
+        Element(
+          xep("a", ns_a, "p", [], [
+            Element(
+              xep("a", ns_a, "r", [], [
+                Element(
+                  xep("a", ns_a, "t", [], [Text("Catalog placeholder text")]),
+                ),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn pptx_package_with_placeholder_chain(content : @xml.Element) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let slide_root = if content.name.local_name == "cSld" {
+    content
+  } else {
+    catalog_pml_placeholder_chain_root(content)
+  }
+  let base = pptx_package(slide_root)
+  let layout_root = xep(
+    "p",
+    ns_p,
+    "sldLayout",
+    [xa("type", "title"), xa("preserve", "1")],
+    [
+      Element(
+        pptx_common_slide_data(ns_p, [
+          catalog_pml_placeholder_layout_shape(ns_p),
+        ]),
+      ),
+    ],
+  )
+  replace_zip_entry(
+    base,
+    "ppt/slideLayouts/slideLayout1.xml",
+    write_part(layout_root),
   )
 }
 

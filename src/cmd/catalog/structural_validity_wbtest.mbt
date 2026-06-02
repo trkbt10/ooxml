@@ -613,6 +613,32 @@ test "catalog pptx master txstyle host renders paragraph-level defaults" {
 }
 
 ///|
+test "catalog pptx placeholder host renders ph through slide layout chain" {
+  assert_true(
+    is_pml_placeholder_catalog_target(
+      "ph", "http://schemas.openxmlformats.org/presentationml/2006/main#CT_Placeholder",
+      "http://schemas.openxmlformats.org/presentationml/2006/main",
+    ),
+  )
+  let ph = stamp_target(
+    xep("p", NS_PML, "ph", [xa("type", "title"), xa("idx", "0")], []),
+  )
+  let root = catalog_pml_placeholder_chain_root(ph)
+  let presentation = @pml_context.open(
+    host_package("pptx:placeholder-chain", strip_target_attr(root)),
+  ) catch {
+    @pml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let svg = presentation.to_svg(debug_attrs=true)
+  assert_true(svg.contains("Catalog placeholder text"))
+  assert_eq(
+    verify_entry("pptx:placeholder-chain", root, "CAT-PML-PH"),
+    "rendered",
+  )
+}
+
+///|
 test "catalog synth emits non-degenerate xdr twoCellAnchor" {
   let ns_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
   let schema = load_catalog_schema()
