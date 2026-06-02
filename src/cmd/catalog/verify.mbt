@@ -1561,14 +1561,15 @@ fn pptx_theme_part() -> Bytes {
 }
 
 ///|
-/// Build a `theme1.xml` companion `<p:slideMaster>` part.  The master
+/// Build a `theme1.xml` companion `<p:slideMaster>` root.  The master
 /// declares the colour map (`<p:clrMap>`) that maps abstract slots
-/// (`bg1`/`tx1`/…) onto the concrete `<a:clrScheme>` entries the
-/// theme provides.  A spec-valid master also needs `<p:cSld>` (with
-/// an empty shape tree) and `<p:txStyles>` placeholders; we keep
-/// every section to the smallest payload that PowerPoint and other
-/// conformant readers will load without warning.
-fn pptx_slide_master_part() -> Bytes {
+/// (`bg1`/`tx1`/...) onto the concrete `<a:clrScheme>` entries the
+/// theme provides.  A spec-valid master needs `<p:cSld>` (with an
+/// empty shape tree); catalog text-style probes may also supply the
+/// optional `<p:txStyles>` slot so the existing PresentationML viewer
+/// can exercise §19.3.1.52 through the real slide -> layout -> master
+/// chain.
+fn pptx_slide_master_root(tx_styles : @xml.Element?) -> @xml.Element {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let ns_r = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
   // All `<p:*>` payload must carry the `p:` prefix for conformant
@@ -1617,12 +1618,21 @@ fn pptx_slide_master_part() -> Bytes {
       ),
     ),
   ])
-  let master = pe("sldMaster", [], [
+  let kids : Array[@xml.Node] = [
     Element(cSld),
     Element(clr_map),
     Element(sl_id_lst),
-  ])
-  write_part(master)
+  ]
+  match tx_styles {
+    Some(txs) => kids.push(Element(txs))
+    None => ()
+  }
+  pe("sldMaster", [], kids)
+}
+
+///|
+fn pptx_slide_master_part() -> Bytes {
+  write_part(pptx_slide_master_root(None))
 }
 
 ///|
@@ -3842,6 +3852,7 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
     "docx:endnotes" => docx_aux_package("endnotes", content)
     "pptx:theme" => pptx_with_aux_root_package("theme", content)
     "pptx:presentation" => pptx_with_aux_root_package("presentation", content)
+    "pptx:master-txstyle" => pptx_package_with_master_tx_styles(content)
     "xlsx:workbook" => xlsx_with_aux_root_package("workbook", content)
     "xlsx:sharedStrings" => xlsx_with_aux_root_package("sharedStrings", content)
     "xlsx:styles" => xlsx_with_aux_root_package("styles", content)
@@ -3927,6 +3938,167 @@ fn host_package(which : String, content : @xml.Element) -> Bytes {
         content,
       )
     _ => docx_package(content)
+  }
+}
+
+///|
+fn replace_zip_entry(bytes : Bytes, name : String, data : Bytes) -> Bytes {
+  let archive = @zip.read(bytes) catch { _ => return bytes }
+  let entries : Array[(String, Bytes)] = []
+  let mut replaced = false
+  for entry in archive.entries {
+    if entry.name == name {
+      entries.push((entry.name, data))
+      replaced = true
+    } else {
+      entries.push((entry.name, entry.data))
+    }
+  }
+  if !replaced {
+    entries.push((name, data))
+  }
+  (try? @zip.write(@zip.Archive::new(entries))).unwrap_or(bytes)
+}
+
+///|
+fn pml_master_tx_style_kind(tx_styles : @xml.Element) -> String {
+  match tx_styles.name.local_name {
+    "titleStyle" | "bodyStyle" | "otherStyle" =>
+      return tx_styles.name.local_name
+    _ => ()
+  }
+  for child in tx_styles.children {
+    match child {
+      Element(el) =>
+        match el.name.local_name {
+          "titleStyle" | "bodyStyle" | "otherStyle" => return el.name.local_name
+          _ => ()
+        }
+      _ => ()
+    }
+  }
+  "bodyStyle"
+}
+
+///|
+fn pml_master_tx_style_placeholder_type(style_name : String) -> String {
+  match style_name {
+    "titleStyle" => "title"
+    "otherStyle" => "ftr"
+    _ => "body"
+  }
+}
+
+///|
+fn catalog_master_tx_styles_root(content : @xml.Element) -> @xml.Element {
+  if content.name.local_name == "txStyles" {
+    return content
+  }
+  let ns_p = content.name.ns.unwrap_or(
+    "http://schemas.openxmlformats.org/presentationml/2006/main",
+  )
+  let prefix = content.name.prefix.unwrap_or("p")
+  xep(prefix, ns_p, "txStyles", [], [Element(content)])
+}
+
+///|
+fn catalog_txstyle_placeholder_shape(
+  style_name : String,
+  ns_p : String,
+) -> @xml.Element {
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  let ph_type = pml_master_tx_style_placeholder_type(style_name)
+  xep("p", ns_p, "sp", [], [
+    Element(
+      xep("p", ns_p, "nvSpPr", [], [
+        Element(
+          xep(
+            "p",
+            ns_p,
+            "cNvPr",
+            [xa("id", "2"), xa("name", "Catalog Placeholder")],
+            [],
+          ),
+        ),
+        Element(xep("p", ns_p, "cNvSpPr", [], [])),
+        Element(
+          xep("p", ns_p, "nvPr", [], [
+            Element(xep("p", ns_p, "ph", [xa("type", ph_type)], [])),
+          ]),
+        ),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "spPr", [], [
+        Element(
+          xep("a", ns_a, "xfrm", [], [
+            Element(
+              xep("a", ns_a, "off", [xa("x", "914400"), xa("y", "914400")], []),
+            ),
+            Element(
+              xep("a", ns_a, "ext", [xa("cx", "5486400"), xa("cy", "914400")], []),
+            ),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "prstGeom", [xa("prst", "rect")], [
+            Element(xep("a", ns_a, "avLst", [], [])),
+          ]),
+        ),
+        Element(xep("a", ns_a, "noFill", [], [])),
+      ]),
+    ),
+    Element(
+      xep("p", ns_p, "txBody", [], [
+        Element(xep("a", ns_a, "bodyPr", [], [])),
+        Element(
+          xep("a", ns_a, "p", [], [
+            Element(
+              xep("a", ns_a, "r", [], [
+                Element(xep("a", ns_a, "t", [], [Text("Catalog master text")])),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+fn pptx_package_with_master_tx_styles(tx_styles : @xml.Element) -> Bytes {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let tx_styles_root = catalog_master_tx_styles_root(tx_styles)
+  let style_name = pml_master_tx_style_kind(tx_styles_root)
+  let base = pptx_package(
+    pptx_common_slide_data(ns_p, [
+      catalog_txstyle_placeholder_shape(style_name, ns_p),
+    ]),
+  )
+  replace_zip_entry(
+    base,
+    "ppt/slideMasters/slideMaster1.xml",
+    write_part(pptx_slide_master_root(Some(tx_styles_root))),
+  )
+}
+
+///|
+/// True when a PresentationML master text style can be verified through
+/// the existing slide-master placeholder cascade.  `notesStyle` is
+/// intentionally excluded: it belongs to notes masters and the slide
+/// renderer does not render a notes-master style path here.
+fn is_pml_master_tx_style_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "presentationml/main" ||
+    catalog_type_local(type_name) != "CT_TextListStyle" {
+    return false
+  }
+  match local_name {
+    "titleStyle" | "bodyStyle" | "otherStyle" => true
+    _ => false
   }
 }
 
@@ -7558,6 +7730,7 @@ fn empty_body_package(format : String) -> Bytes {
         xep("p", ns_p, "presentation", [], []),
       )
     "pptx:table" => pptx_package(pptx_common_slide_data(ns_p, []))
+    "pptx:master-txstyle" => pptx_package(pptx_common_slide_data(ns_p, []))
     "pptx:diagram-relids" => pptx_package(pptx_common_slide_data(ns_p, []))
     "xlsx:workbook" =>
       xlsx_with_aux_root_package("workbook", xe(ns_s, "workbook", [], []))

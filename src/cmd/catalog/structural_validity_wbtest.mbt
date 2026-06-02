@@ -385,6 +385,75 @@ test "catalog xlsx drawing host wires wsDr through worksheet drawing rel" {
 }
 
 ///|
+fn catalog_master_txstyle_probe(style_name : String) -> @xml.Element {
+  let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  xep("p", ns_p, style_name, [], [
+    Element(
+      xep("a", ns_a, "lvl1pPr", [], [
+        Element(
+          xep("a", ns_a, "defRPr", [xa("sz", "2800")], [
+            Element(
+              xep("a", ns_a, "solidFill", [], [
+                Element(xep("a", ns_a, "srgbClr", [xa("val", "C00000")], [])),
+              ]),
+            ),
+            Element(
+              xep("a", ns_a, "latin", [xa("typeface", "CatalogMasterFace")], []),
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+test "catalog pptx master txstyle host renders placeholder inherited style" {
+  assert_true(
+    is_pml_master_tx_style_catalog_target(
+      "titleStyle", "http://schemas.openxmlformats.org/presentationml/2006/main#CT_TextListStyle",
+      "http://schemas.openxmlformats.org/presentationml/2006/main",
+    ),
+  )
+  assert_true(
+    is_pml_master_tx_style_catalog_target(
+      "bodyStyle", "http://schemas.openxmlformats.org/presentationml/2006/main#CT_TextListStyle",
+      "http://schemas.openxmlformats.org/presentationml/2006/main",
+    ),
+  )
+  assert_true(
+    is_pml_master_tx_style_catalog_target(
+      "otherStyle", "http://schemas.openxmlformats.org/presentationml/2006/main#CT_TextListStyle",
+      "http://schemas.openxmlformats.org/presentationml/2006/main",
+    ),
+  )
+  assert_true(
+    !is_pml_master_tx_style_catalog_target(
+      "notesStyle", "http://schemas.openxmlformats.org/presentationml/2006/main#CT_TextListStyle",
+      "http://schemas.openxmlformats.org/presentationml/2006/main",
+    ),
+  )
+  let tx_styles = catalog_master_tx_styles_root(
+    stamp_target(catalog_master_txstyle_probe("bodyStyle")),
+  )
+  assert_eq(
+    verify_entry("pptx:master-txstyle", tx_styles, "CAT-PML-MASTER-TX"),
+    "rendered",
+  )
+  let presentation = @pml_context.open(
+    host_package("pptx:master-txstyle", strip_target_attr(tx_styles)),
+  ) catch {
+    @pml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let svg = presentation.to_svg(debug_attrs=true)
+  assert_true(svg.contains("Catalog master text"))
+  assert_true(svg.contains("CatalogMasterFace"))
+  assert_true(svg.contains("font-size=\"37.333333"))
+}
+
+///|
 test "catalog synth emits non-degenerate xdr twoCellAnchor" {
   let ns_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
   let schema = load_catalog_schema()
