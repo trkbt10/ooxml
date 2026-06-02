@@ -8,6 +8,7 @@ import {
   "moonbitlang/core/string",
   "trkbt10/ooxml/ecma376/simple_types",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/domain",
+  "trkbt10/ooxml/ecma376/wordprocessing_ml/field_eval",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/style_resolver",
   "trkbt10/ooxml/ecma376/wordprocessing_ml/numbering_resolver",
   "trkbt10/ooxml/ecma376/drawing_ml/chart/viewer" @chart_viewer,

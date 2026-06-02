@@ -99,6 +99,28 @@ test "§17.16.2 decode_field_run_sequence walks begin/separate/end" {
 }
 
 ///|
+test "§17.16.2 decode_field_run_ranges reports source run indexes" {
+  let runs : Array[@domain.CT_R] = [
+    try! @domain.CT_R::new(
+      parse_root("<r><fldChar fldCharType=\"begin\"/></r>"),
+    ),
+    try! @domain.CT_R::new(parse_root("<r><instrText>PAGE</instrText></r>")),
+    try! @domain.CT_R::new(
+      parse_root("<r><fldChar fldCharType=\"separate\"/></r>"),
+    ),
+    try! @domain.CT_R::new(parse_root("<r><t>cached</t></r>")),
+    try! @domain.CT_R::new(parse_root("<r><fldChar fldCharType=\"end\"/></r>")),
+  ]
+  let decoded = try! decode_field_run_ranges(runs)
+  @debug.assert_eq(decoded.length(), 1)
+  assert_true(decoded[0].field.instruction == Page)
+  @debug.assert_eq(decoded[0].start_run, 0)
+  @debug.assert_eq(decoded[0].separate_run, Some(2))
+  @debug.assert_eq(decoded[0].end_run, 4)
+  @debug.assert_eq(decoded[0].cached_runs.length(), 1)
+}
+
+///|
 test "§17.16.5.51 PAGE evaluator returns current_page" {
   let registry = FieldRegistry::with_builtins()
   let field = try! parse_instruction("PAGE")

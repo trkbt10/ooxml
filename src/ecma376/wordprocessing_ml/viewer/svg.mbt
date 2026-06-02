@@ -1540,6 +1540,17 @@ pub fn render_svg(
   footer_part? : String = "",
   footer_part_first? : String = "",
   footer_part_even? : String = "",
+  /// §17.16 fields — optional evaluator context for `<w:fldSimple>`.
+  /// When absent the renderer preserves Word's cached field-result runs
+  /// exactly as stored in the document. When present, registered
+  /// `@field_eval` evaluators may replace a simple field's cached text;
+  /// `Empty` evaluator results still fall back to the cached runs.
+  field_context? : @field_eval.FieldContext? = None,
+  /// §17.16 fields — optional evaluator registry. Defaults to
+  /// `FieldRegistry::with_builtins()` only when `field_context` is
+  /// supplied, so documents are not silently re-evaluated without an
+  /// explicit context.
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> DocumentSvgResult {
   // Build the theme colour map once per document; the map is
   // empty when no theme part is supplied, in which case the
@@ -1553,6 +1564,9 @@ pub fn render_svg(
   // `<w:rFonts asciiTheme="majorAscii"/>` etc. resolve to the
   // theme's typeface (rather than the WML default Calibri).
   let font_map = parse_font_scheme(theme)
+  let active_field_registry = active_field_registry_for(
+    field_context, field_registry,
+  )
   // The renderer walks raw XML elements via the layout pipeline;
   // unbox each typed block-level projection through its
   // `source_element()` accessor so the legacy emit/flow code paths
@@ -1595,6 +1609,8 @@ pub fn render_svg(
     numbering_part~,
     body_part~,
     hyperlink_resolver~,
+    field_context~,
+    field_registry=active_field_registry,
   )
 }
 
@@ -1747,6 +1763,9 @@ fn render_svg_raw(
   body_part? : String = "",
   // §17.16.22 — PART-AWARE hyperlink resolver `(part, rid) -> url?`.
   hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> DocumentSvgResult {
   let warnings : Array[String] = []
   // §17 / OPC §9.3.1 — bind the body part token into a per-stream
@@ -1854,6 +1873,8 @@ fn render_svg_raw(
         font_descriptors~,
         math_font~,
         hyperlink_resolver~,
+        field_context~,
+        field_registry~,
       )
       let pages = [
         PageRenderResult::{
@@ -1884,6 +1905,8 @@ fn render_svg_raw(
         pic_bullet_resolver~,
         hyperlink_resolver~,
         body_hyperlink_resolver~,
+        field_context~,
+        field_registry~,
       )
   }
 }
@@ -1929,6 +1952,9 @@ fn render_body_to_svg(
   // §17.16.22 — body-bound rId-only hyperlink resolver (already bound to
   // the main document part upstream).
   body_hyperlink_resolver? : (String) -> String? = _ => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> DocumentSvgResult {
   let (cfg, pages) = lay_out_body(
     body,
@@ -1944,6 +1970,8 @@ fn render_body_to_svg(
     math_font~,
     pic_bullet_resolver~,
     hyperlink_resolver=body_hyperlink_resolver,
+    field_context~,
+    field_registry~,
   )
   // §17.10.1 — the header / footer stream is selected per page index
   // so `titlePg` / `evenAndOddHeaders` documents draw the right first
@@ -1966,6 +1994,8 @@ fn render_body_to_svg(
         font_descriptors~,
         math_font~,
         hyperlink_resolver~,
+        field_context~,
+        field_registry~,
       ),
       width: cfg.page_width,
       height: cfg.page_height,
@@ -2001,6 +2031,9 @@ fn lay_out_body(
   // §17.16.22 — body-bound hyperlink-target resolver (the main document
   // part's, bound upstream).  Defaults to "no target".
   hyperlink_resolver? : (String) -> String? = _ => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> (PageConfig, Array[AssembledPage]) {
   // 1. Resolve page configuration from <w:sectPr>.
   let cfg_base = resolve_page_config(body)
@@ -2034,6 +2067,8 @@ fn lay_out_body(
     math_font~,
     pic_bullet_resolver~,
     hyperlink_resolver~,
+    field_context~,
+    field_registry~,
   )
 
   // 3. Flow blocks into pages.
@@ -2110,12 +2145,22 @@ pub fn render_combined_svg(
   footer_part? : String = "",
   footer_part_first? : String = "",
   footer_part_even? : String = "",
+  /// §17.16 fields — optional evaluator context for `<w:fldSimple>`.
+  /// Absent preserves cached field-result runs; present permits registered
+  /// `@field_eval` evaluators to replace simple fields.
+  field_context? : @field_eval.FieldContext? = None,
+  /// §17.16 fields — optional evaluator registry. Defaults to the
+  /// built-in registry only when `field_context` is supplied.
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> String {
   let theme_map = match theme {
     Some(root) => parse_clr_scheme(root)
     None => ThemeColorMap::empty()
   }
   let font_map = parse_font_scheme(theme)
+  let active_field_registry = active_field_registry_for(
+    field_context, field_registry,
+  )
   let unbox = fn(blocks : Array[@domain.EG_BlockLevelElts]) {
     let raw : Array[@xml.Element] = []
     for b in blocks {
@@ -2154,6 +2199,8 @@ pub fn render_combined_svg(
     numbering_part~,
     body_part~,
     hyperlink_resolver~,
+    field_context~,
+    field_registry=active_field_registry,
   )
 }
 
@@ -2179,6 +2226,9 @@ fn render_combined_svg_raw(
   body_part? : String = "",
   // §17.16.22 — PART-AWARE hyperlink resolver `(part, rid) -> url?`.
   hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> String {
   let warnings : Array[String] = []
   // §17 / OPC §9.3.1 — body content resolves against the main document
@@ -2265,6 +2315,8 @@ fn render_combined_svg_raw(
         math_font~,
         pic_bullet_resolver~,
         hyperlink_resolver=body_hyperlink_resolver,
+        field_context~,
+        field_registry~,
       )
   }
   // (Removed: previous revision counted WML descendant names and
@@ -2285,6 +2337,8 @@ fn render_combined_svg_raw(
     font_descriptors~,
     math_font~,
     hyperlink_resolver~,
+    field_context~,
+    field_registry~,
   )
 }
 
@@ -2314,6 +2368,9 @@ fn build_combined_svg(
   // `build_page_decoration_nodes` so header / footer hyperlinks bind their
   // own part token.
   hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> String {
   let page_count = if pages.length() == 0 { 1 } else { pages.length() }
   let w = cfg.page_width
@@ -2368,6 +2425,8 @@ fn build_combined_svg(
       font_descriptors~,
       math_font~,
       hyperlink_resolver~,
+      field_context~,
+      field_registry~,
     )
     page_groups.push(
       @markup.elem_ns(
@@ -2396,6 +2455,8 @@ fn build_combined_svg(
         font_descriptors~,
         math_font~,
         hyperlink_resolver~,
+        field_context~,
+        field_registry~,
       )
       let y = h * page_index.to_double()
       page_groups.push(
@@ -2887,6 +2948,9 @@ fn collect_blocks(
   // §17.16.22 — per-stream bound hyperlink-target resolver, threaded into
   // every `layout_paragraph` so a `<w:hyperlink r:id>` resolves to a URL.
   hyperlink_resolver? : (String) -> String? = _ => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
   // §17.7.5.3 — when the package ships no `/word/styles.xml`,
@@ -2962,6 +3026,8 @@ fn collect_blocks(
               font_descriptors~,
               math_font~,
               hyperlink_resolver~,
+              field_context~,
+              field_registry~,
             )
             match probe.frame_pr {
               Some(fp) => {
@@ -3184,6 +3250,8 @@ fn collect_blocks(
                       line_budget_fn=budget_of,
                       line_x_fn=body_x_of,
                       hyperlink_resolver~,
+                      field_context~,
+                      field_registry~,
                     )
                   } else {
                     // Rectangular band — lines WITHIN the residual band
@@ -3239,6 +3307,8 @@ fn collect_blocks(
                         }
                       },
                       hyperlink_resolver~,
+                      field_context~,
+                      field_registry~,
                     )
                   }
                   wrap_height_remaining = wrap_height_remaining - placed.height
@@ -3271,6 +3341,8 @@ fn collect_blocks(
               math_font~,
               image_resolver~,
               chart_resolver~,
+              field_context~,
+              field_registry~,
             )
             blocks.push(TableBlock(tbl))
           }
@@ -5037,6 +5109,9 @@ fn collect_paragraph_spans(
   // §17.16.22 — per-stream bound hyperlink-target resolver; threaded into
   // the `<w:hyperlink>` descent so a run's r:id resolves to a URL.
   hyperlink_resolver? : (String) -> String? = _ => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> Array[RunSpan] {
   let spans : Array[RunSpan] = []
   // §17.9.20 `<w:pPr><w:numPr>` — when the paragraph references a
@@ -5146,6 +5221,8 @@ fn collect_paragraph_spans(
     font_descriptors~,
     math_font~,
     hyperlink_resolver~,
+    field_context~,
+    field_registry~,
   )
   // §17.3.1.10/.11 — resolve the paragraph's autoSpaceDE / autoSpaceDN
   // toggles once (both default ON when absent) and stamp every span so
@@ -5268,6 +5345,246 @@ fn math_run_template(
 }
 
 ///|
+/// Build the active §17.16 registry only when a caller supplied field
+/// context. Without context the renderer preserves cached field-result
+/// runs and never re-evaluates simple fields implicitly.
+fn active_field_registry_for(
+  field_context : @field_eval.FieldContext?,
+  field_registry : @field_eval.FieldRegistry?,
+) -> @field_eval.FieldRegistry? {
+  match field_context {
+    None => None
+    Some(_) =>
+      match field_registry {
+        Some(registry) => Some(registry)
+        None => Some(@field_eval.FieldRegistry::with_builtins())
+      }
+  }
+}
+
+///|
+/// Evaluate a decoded §17.16 field through the field_eval package.
+/// Returns None for unregistered instructions and `FieldResult::Empty`
+/// so the caller can preserve cached field-result runs.
+fn evaluated_field_result(
+  field : @field_eval.Field,
+  field_context : @field_eval.FieldContext?,
+  field_registry : @field_eval.FieldRegistry?,
+) -> @field_eval.FieldResult? {
+  let ctx = match field_context {
+    None => return None
+    Some(value) => value
+  }
+  let registry = match field_registry {
+    Some(value) => value
+    None => @field_eval.FieldRegistry::with_builtins()
+  }
+  match registry.lookup(field.instruction.canonical_name()) {
+    None => return None
+    Some(_) => ()
+  }
+  let result = @field_eval.evaluate_field(field, ctx, registry)
+  match result {
+    @field_eval.Empty => None
+    _ => Some(result)
+  }
+}
+
+///|
+/// Evaluate a §17.16.19 `<w:fldSimple>` through the field_eval package.
+/// Returns None for malformed fields, unregistered instructions, and
+/// `FieldResult::Empty` so the caller can render the cached child runs.
+fn evaluated_simple_field_result(
+  fld_simple : @xml.Element,
+  field_context : @field_eval.FieldContext?,
+  field_registry : @field_eval.FieldRegistry?,
+) -> @field_eval.FieldResult? {
+  let typed = try @domain.CT_SimpleField::new(fld_simple) catch {
+    _ => return None
+  } noraise {
+    value => value
+  }
+  let field = try @field_eval.decode_simple_field(typed) catch {
+    _ => return None
+  } noraise {
+    value => value
+  }
+  evaluated_field_result(field, field_context, field_registry)
+}
+
+///|
+priv struct ComplexFieldReplacement {
+  start_run : Int
+  end_run : Int
+  result : @field_eval.FieldResult
+  template_run : @xml.Element
+}
+
+///|
+/// Decode direct child runs with field_eval's complex-field range API
+/// and build non-overlapping live-result replacements. Fields that are
+/// unregistered, malformed, or evaluate to Empty are omitted so the
+/// caller's ordinary cached-run streaming remains the fallback.
+fn complex_field_replacements(
+  parent : @xml.Element,
+  field_context : @field_eval.FieldContext?,
+  field_registry : @field_eval.FieldRegistry?,
+) -> Array[ComplexFieldReplacement] {
+  match field_context {
+    None => return []
+    Some(_) => ()
+  }
+  let run_elements : Array[@xml.Element] = []
+  let runs : Array[@domain.CT_R] = []
+  for child in parent.children {
+    match child {
+      Element(e) =>
+        if e.name.local_name == "r" {
+          let run = try @domain.CT_R::new(e) catch {
+            _ => return []
+          } noraise {
+            value => value
+          }
+          run_elements.push(e)
+          runs.push(run)
+        }
+      _ => ()
+    }
+  }
+  if runs.length() == 0 {
+    return []
+  }
+  let ranges = try @field_eval.decode_field_run_ranges(runs) catch {
+    _ => return []
+  } noraise {
+    value => value
+  }
+  let replacements : Array[ComplexFieldReplacement] = []
+  let mut covered_until = -1
+  for start in 0..<runs.length() {
+    if start <= covered_until {
+      continue
+    }
+    let mut selected : @field_eval.DecodedFieldRange? = None
+    for range in ranges {
+      if selected is None && range.start_run == start {
+        selected = Some(range)
+      }
+    }
+    match selected {
+      None => ()
+      Some(range) =>
+        match
+          evaluated_field_result(range.field, field_context, field_registry) {
+          None => ()
+          Some(result) =>
+            match run_elements.get(range.start_run) {
+              None => ()
+              Some(template_run) => {
+                replacements.push({
+                  start_run: range.start_run,
+                  end_run: range.end_run,
+                  result,
+                  template_run,
+                })
+                covered_until = range.end_run
+              }
+            }
+        }
+    }
+  }
+  replacements
+}
+
+///|
+fn emit_field_result_span(
+  result : @field_eval.FieldResult,
+  template : RunSpan,
+  hyperlink_styling : Bool,
+  spans : Array[RunSpan],
+  warnings : Array[String],
+) -> Unit {
+  let text = result.to_text()
+  if text.length() > 0 {
+    let w = measure_run_text(text, template, warnings)
+    let span0 = with_text(template, text, w)
+    let span = match result {
+      @field_eval.Hyperlink(url, _) =>
+        if url.length() > 0 {
+          { ..span0, href: url }
+        } else {
+          span0
+        }
+      _ => span0
+    }
+    spans.push(apply_hyperlink_styling(span, hyperlink_styling))
+  }
+}
+
+///|
+/// Emit an evaluated simple-field result as one run-shaped span. The
+/// first cached child run supplies formatting; evaluation text, switches,
+/// and hyperlink display stay owned by `@field_eval`.
+fn emit_evaluated_simple_field(
+  fld_simple : @xml.Element,
+  hyperlink_styling : Bool,
+  spans : Array[RunSpan],
+  warnings : Array[String],
+  default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
+) -> Bool {
+  let result = match
+    evaluated_simple_field_result(fld_simple, field_context, field_registry) {
+    None => return false
+    Some(value) => value
+  }
+  let template = match first_child_named(fld_simple, "r") {
+    Some(r) =>
+      resolve_run_props(
+        r,
+        default_font_size_pt~,
+        theme_map~,
+        font_map~,
+        font_descriptors~,
+      )
+    None => default_run_template(default_font_size_pt~, font_descriptors~)
+  }
+  emit_field_result_span(result, template, hyperlink_styling, spans, warnings)
+  true
+}
+
+///|
+fn emit_complex_field_replacement(
+  replacement : ComplexFieldReplacement,
+  hyperlink_styling : Bool,
+  spans : Array[RunSpan],
+  warnings : Array[String],
+  default_font_size_pt? : Double = DEFAULT_FONT_SIZE_PT,
+  theme_map? : ThemeColorMap = ThemeColorMap::empty(),
+  font_map? : ThemeFontMap = ThemeFontMap::empty(),
+  font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
+) -> Unit {
+  let template = resolve_run_props(
+    replacement.template_run,
+    default_font_size_pt~,
+    theme_map~,
+    font_map~,
+    font_descriptors~,
+  )
+  emit_field_result_span(
+    replacement.result,
+    template,
+    hyperlink_styling,
+    spans,
+    warnings,
+  )
+}
+
+///|
 /// Recursive helper for `collect_paragraph_spans`. Walks every child
 /// element of `parent`; when it sees a `<w:r>` it emits run spans, and
 /// when it sees a wrapper element that may itself contain runs
@@ -5300,24 +5617,55 @@ fn collect_paragraph_spans_into(
   font_descriptors? : Map[String, FontDescriptor] = empty_font_descriptors(),
   math_font? : String? = None,
   hyperlink_resolver? : (String) -> String? = _ => None,
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> Unit {
+  let complex_replacements = complex_field_replacements(
+    parent, field_context, field_registry,
+  )
+  let mut complex_replacement_index = 0
+  let mut complex_skip_until = -1
+  let mut run_ordinal = 0
   for child in parent.children {
     match child {
       Element(e) =>
         match e.name.local_name {
-          "r" =>
-            emit_run_spans(
-              e,
-              hyperlink_styling,
-              spans,
-              warnings,
-              image_resolver,
-              chart_resolver,
-              default_font_size_pt~,
-              theme_map~,
-              font_map~,
-              font_descriptors~,
-            )
+          "r" => {
+            let current_run = run_ordinal
+            run_ordinal = run_ordinal + 1
+            if current_run <= complex_skip_until {
+              ()
+            } else if complex_replacement_index < complex_replacements.length() &&
+              complex_replacements[complex_replacement_index].start_run ==
+              current_run {
+              let replacement = complex_replacements[complex_replacement_index]
+              emit_complex_field_replacement(
+                replacement,
+                hyperlink_styling,
+                spans,
+                warnings,
+                default_font_size_pt~,
+                theme_map~,
+                font_map~,
+                font_descriptors~,
+              )
+              complex_skip_until = replacement.end_run
+              complex_replacement_index = complex_replacement_index + 1
+            } else {
+              emit_run_spans(
+                e,
+                hyperlink_styling,
+                spans,
+                warnings,
+                image_resolver,
+                chart_resolver,
+                default_font_size_pt~,
+                theme_map~,
+                font_map~,
+                font_descriptors~,
+              )
+            }
+          }
           "hyperlink" => {
             // §17.16.22 CT_Hyperlink — descend with hyperlink styling on,
             // then stamp the resolved link target onto the produced spans.
@@ -5362,6 +5710,8 @@ fn collect_paragraph_spans_into(
               font_descriptors~,
               math_font~,
               hyperlink_resolver~,
+              field_context~,
+              field_registry~,
             )
             if href.length() > 0 {
               for i in start..<spans.length() {
@@ -5369,32 +5719,43 @@ fn collect_paragraph_spans_into(
               }
             }
           }
-          "fldSimple" =>
-            // §17.16.19 `<w:fldSimple>` — field with literal
-            // instruction.  Word stores the field result as
-            // ordinary runs inside `<w:fldSimple>`, so descending
-            // already shows the cached result.  Dynamic
-            // evaluation (DATE/PAGE/AUTHOR etc.) is owned by
-            // `@field_eval` — until the viewer wires the
-            // evaluator (Round 13 #297) we honour the cached
-            // result by treating the element as a transparent
-            // container, matching Word's behaviour for
-            // documents whose `<w:settings>/<w:updateFields>`
-            // is unset.
-            collect_paragraph_spans_into(
+          "fldSimple" => {
+            // §17.16.19 `<w:fldSimple>` — preserve cached result runs
+            // unless the caller supplied a §17.16 FieldContext.  The
+            // parse/evaluate SoT remains `@field_eval`; this branch only
+            // chooses between evaluated text and the document's cached
+            // child runs.
+            let emitted = emit_evaluated_simple_field(
               e,
               hyperlink_styling,
               spans,
               warnings,
-              image_resolver,
-              chart_resolver,
               default_font_size_pt~,
               theme_map~,
               font_map~,
               font_descriptors~,
-              math_font~,
-              hyperlink_resolver~,
+              field_context~,
+              field_registry~,
             )
+            if !emitted {
+              collect_paragraph_spans_into(
+                e,
+                hyperlink_styling,
+                spans,
+                warnings,
+                image_resolver,
+                chart_resolver,
+                default_font_size_pt~,
+                theme_map~,
+                font_map~,
+                font_descriptors~,
+                math_font~,
+                hyperlink_resolver~,
+                field_context~,
+                field_registry~,
+              )
+            }
+          }
           "smartTag" | "customXml" | "sdt" | "sdtContent" =>
             // §17.5.1.13 smartTag + §17.5.2.x SDT wrappers —
             // descend transparently.
@@ -5411,6 +5772,8 @@ fn collect_paragraph_spans_into(
               font_descriptors~,
               math_font~,
               hyperlink_resolver~,
+              field_context~,
+              field_registry~,
             )
           // §22.1.2.77 `<m:oMath>` — an inline Office Math zone.
           // Lay it out to a self-contained SVG `<g>` at the
@@ -5470,6 +5833,8 @@ fn collect_paragraph_spans_into(
               font_descriptors~,
               math_font~,
               hyperlink_resolver~,
+              field_context~,
+              field_registry~,
             )
             for i in start..<spans.length() {
               spans[i] = { ..spans[i], underline: true }
@@ -5492,6 +5857,8 @@ fn collect_paragraph_spans_into(
               font_descriptors~,
               math_font~,
               hyperlink_resolver~,
+              field_context~,
+              field_registry~,
             )
             for i in start..<spans.length() {
               spans[i] = { ..spans[i], strike: true }
@@ -6820,6 +7187,9 @@ fn layout_paragraph(
   // §17.16.22 — per-stream bound hyperlink-target resolver, threaded to
   // `collect_paragraph_spans` so a `<w:hyperlink r:id>` resolves to a URL.
   hyperlink_resolver? : (String) -> String? = _ => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> LaidParagraph {
   // §17.7.5.3 — `apply_office_defaults` flows into
   // `resolve_para_props` so the line-height multiplier picks up the
@@ -6844,6 +7214,8 @@ fn layout_paragraph(
     font_descriptors~,
     math_font~,
     hyperlink_resolver~,
+    field_context~,
+    field_registry~,
   )
 
   // §17.3.1.11 framePr — when the paragraph is wrapped in a floating
@@ -8069,6 +8441,9 @@ fn layout_table(
   math_font? : String? = None,
   image_resolver? : (String) -> ResolvedImage? = _ => None,
   chart_resolver? : (@xml.Element) -> @xml.Node? = _ => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> LaidTable {
   // §17.4.41 / §17.7.4 / §17.7.6 — discover an optional `<w:tblStyle
   // w:val="...">` reference and resolve it into a ResolvedTableStyle
@@ -8432,6 +8807,8 @@ fn layout_table(
           font_map~,
           font_descriptors~,
           math_font~,
+          field_context~,
+          field_registry~,
         )
         let band_fp = match para.frame_pr {
           Some(fp) =>
@@ -8473,6 +8850,8 @@ fn layout_table(
                 font_map~,
                 font_descriptors~,
                 math_font~,
+                field_context~,
+                field_registry~,
               )
               beside.push(offset_paragraph(bp, body_x, beside_y))
               beside_y = beside_y + bp.height
@@ -9223,6 +9602,9 @@ fn emit_page_svg_with_decoration(
   // §17.16.22 — PART-AWARE hyperlink resolver; bound per header / footer
   // stream inside `build_page_decoration_nodes`.
   hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> String {
   let children = build_page_decoration_nodes(
     page,
@@ -9238,6 +9620,8 @@ fn emit_page_svg_with_decoration(
     font_descriptors~,
     math_font~,
     hyperlink_resolver~,
+    field_context~,
+    field_registry~,
   )
   // (Removed: dummy `<rect fill="#a5a5a5">` "wml-section-marker"
   // stripe.  Pure verifier gaming — deleted.)
@@ -9271,6 +9655,9 @@ fn build_page_decoration_nodes(
   // footer part token below so a hyperlink in that stream resolves its
   // r:id against `/word/_rels/header*.xml.rels`.
   hyperlink_resolver? : (String, String) -> String? = (_, _) => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> Array[@xml.Node] {
   let children = build_page_body_nodes(page, cfg, warnings)
   // Lay out header/footer using a single-page flow over the section
@@ -9313,6 +9700,8 @@ fn build_page_decoration_nodes(
       font_descriptors~,
       math_font~,
       hyperlink_resolver=header_hyperlink_resolver,
+      field_context~,
+      field_registry~,
     )
     let group_children = build_decoration_block_nodes(blocks, warnings)
     children.push(
@@ -9358,6 +9747,8 @@ fn build_page_decoration_nodes(
       font_descriptors~,
       math_font~,
       hyperlink_resolver=footer_hyperlink_resolver,
+      field_context~,
+      field_registry~,
     )
     let group_children = build_decoration_block_nodes(blocks, warnings)
     // Footer goes inside the bottom-margin band.
@@ -9468,6 +9859,9 @@ fn collect_blocks_from_elements(
   // `layout_paragraph` so a hyperlink in a header / footer resolves its
   // r:id against THAT part's rels.
   hyperlink_resolver? : (String) -> String? = _ => None,
+  // §17.16 fields — active simple-field evaluation context/registry.
+  field_context? : @field_eval.FieldContext? = None,
+  field_registry? : @field_eval.FieldRegistry? = None,
 ) -> Array[FlowBlock] {
   let blocks : Array[FlowBlock] = []
   // §17.7.5.3 — mirror `collect_blocks`: header / footer paragraphs
@@ -9489,6 +9883,8 @@ fn collect_blocks_from_elements(
           font_descriptors~,
           math_font~,
           hyperlink_resolver~,
+          field_context~,
+          field_registry~,
         )
         blocks.push(ParaBlock(lp))
       }
@@ -9504,6 +9900,8 @@ fn collect_blocks_from_elements(
           math_font~,
           image_resolver~,
           chart_resolver~,
+          field_context~,
+          field_registry~,
         )
         blocks.push(TableBlock(lt))
       }

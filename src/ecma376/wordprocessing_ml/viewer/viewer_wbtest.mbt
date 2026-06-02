@@ -9,6 +9,20 @@ fn attr(local_name : String, value : String) -> @xml.Attribute {
 }
 
 ///|
+fn sample_field_context(current_page? : Int = 1) -> @field_eval.FieldContext {
+  let base = @field_eval.FieldContext::default({
+    year: 2026,
+    month: 6,
+    day: 3,
+    hour: 10,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  })
+  { ..base, current_page, }
+}
+
+///|
 fn assert_close_double(
   actual : Double,
   expected : Double,
@@ -2202,8 +2216,11 @@ test "render_svg paginates when content exceeds page height" {
 ///|
 /// §17.16.20 `<w:fldSimple>` — runs inside a simple-field wrapper are
 /// still rendered because the collector descends through the wrapper.
-test "render_svg picks up text inside <w:fldSimple>" {
-  let document = @domain.CT_Document::new({
+fn fld_simple_document(
+  instr : String,
+  cached_text : String,
+) -> @domain.CT_Document {
+  try! @domain.CT_Document::new({
     name: name("document"),
     attributes: [],
     children: [
@@ -2217,7 +2234,7 @@ test "render_svg picks up text inside <w:fldSimple>" {
             children: [
               @xml.Node::Element({
                 name: name("fldSimple"),
-                attributes: [attr("instr", "PAGE")],
+                attributes: [attr("instr", instr)],
                 children: [
                   @xml.Node::Element({
                     name: name("r"),
@@ -2226,7 +2243,7 @@ test "render_svg picks up text inside <w:fldSimple>" {
                       @xml.Node::Element({
                         name: name("t"),
                         attributes: [],
-                        children: [@xml.Node::Text("Page 1")],
+                        children: [@xml.Node::Text(cached_text)],
                       }),
                     ],
                   }),
@@ -2238,9 +2255,168 @@ test "render_svg picks up text inside <w:fldSimple>" {
       }),
     ],
   })
+}
+
+///|
+fn complex_field_document(
+  instr : String,
+  cached_text : String,
+) -> @domain.CT_Document {
+  try! @domain.CT_Document::new({
+    name: name("document"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("body"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("p"),
+            attributes: [],
+            children: [
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("fldChar"),
+                    attributes: [attr("fldCharType", "begin")],
+                    children: [],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("instrText"),
+                    attributes: [],
+                    children: [@xml.Node::Text(instr)],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("fldChar"),
+                    attributes: [attr("fldCharType", "separate")],
+                    children: [],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("t"),
+                    attributes: [],
+                    children: [@xml.Node::Text(cached_text)],
+                  }),
+                ],
+              }),
+              @xml.Node::Element({
+                name: name("r"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("fldChar"),
+                    attributes: [attr("fldCharType", "end")],
+                    children: [],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  })
+}
+
+///|
+/// §17.16.20 `<w:fldSimple>` — runs inside a simple-field wrapper are
+/// still rendered because the collector descends through the wrapper.
+test "render_svg picks up text inside <w:fldSimple>" {
+  let document = fld_simple_document("PAGE", "Page 1")
   let result = render_svg(document)
   let page = result.pages[0]
   assert_true(page.svg.contains("Page 1"))
+}
+
+///|
+/// §17.16.19 `<w:fldSimple>` — when the caller supplies a FieldContext,
+/// the viewer delegates parsing/evaluation to `field_eval` and renders
+/// the evaluated result instead of stale cached text.
+test "render_svg evaluates <w:fldSimple> with supplied field context" {
+  let document = fld_simple_document("PAGE", "stale page")
+  let result = render_svg(
+    document,
+    field_context=Some(sample_field_context(current_page=7)),
+  )
+  let page = result.pages[0]
+  assert_true(page.svg.contains(">7</text>"))
+  assert_true(!page.svg.contains("stale page"))
+}
+
+///|
+/// §17.16.1 unknown / user-defined fields — no registered evaluator
+/// means the cached result remains the rendered SoT, not the raw
+/// instruction string returned by `evaluate_field`'s unknown fallback.
+test "render_svg keeps cached text for unregistered <w:fldSimple>" {
+  let document = fld_simple_document("PRIVATEFIELD", "cached private")
+  let result = render_svg(document, field_context=Some(sample_field_context()))
+  let page = result.pages[0]
+  assert_true(page.svg.contains("cached private"))
+  assert_true(!page.svg.contains("PRIVATEFIELD"))
+}
+
+///|
+/// §17.16.5 structural fields such as TOC deliberately evaluate to
+/// `Empty`; the viewer must then render the cached child runs.
+test "render_svg keeps cached text when simple-field evaluator returns Empty" {
+  let document = fld_simple_document("TOC", "cached toc")
+  let result = render_svg(document, field_context=Some(sample_field_context()))
+  let page = result.pages[0]
+  assert_true(page.svg.contains("cached toc"))
+}
+
+///|
+/// §17.16.18 complex fields — without an explicit FieldContext, the
+/// cached result runs between separate/end remain the rendered text.
+test "render_svg keeps cached text for complex field by default" {
+  let document = complex_field_document("PAGE", "cached complex")
+  let result = render_svg(document)
+  let page = result.pages[0]
+  assert_true(page.svg.contains("cached complex"))
+}
+
+///|
+/// §17.16.18 complex fields — with a FieldContext, the viewer uses
+/// field_eval's run-range decoder and evaluator to replace the whole
+/// begin/instr/separate/cached/end run range.
+test "render_svg evaluates complex PAGE field with supplied context" {
+  let document = complex_field_document("PAGE", "stale complex")
+  let result = render_svg(
+    document,
+    field_context=Some(sample_field_context(current_page=9)),
+  )
+  let page = result.pages[0]
+  assert_true(page.svg.contains(">9</text>"))
+  assert_true(!page.svg.contains("stale complex"))
+}
+
+///|
+/// §17.16.5 structural complex fields evaluate to Empty and therefore
+/// continue to render their cached runs.
+test "render_svg keeps cached text when complex evaluator returns Empty" {
+  let document = complex_field_document("TOC", "cached complex toc")
+  let result = render_svg(document, field_context=Some(sample_field_context()))
+  let page = result.pages[0]
+  assert_true(page.svg.contains("cached complex toc"))
 }
 
 ///|

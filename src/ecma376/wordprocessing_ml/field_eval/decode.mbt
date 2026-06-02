@@ -30,6 +30,20 @@ pub(all) struct DecodedField {
 } derive(Eq, Debug)
 
 ///|
+/// Part 1 §17.16.2 — decoded complex field plus source-run range.
+/// `start_run`, `separate_run`, and `end_run` are indexes into the
+/// run array passed to `decode_field_run_ranges`, allowing renderers
+/// to replace exactly the field's original run span without re-parsing
+/// the instruction text locally.
+pub(all) struct DecodedFieldRange {
+  field : Field
+  cached_runs : Array[@domain.CT_R]
+  start_run : Int
+  separate_run : Int?
+  end_run : Int
+} derive(Eq, Debug)
+
+///|
 /// Part 1 §17.16.2 — walk a run sequence and decode every begin /
 /// separate / end field. Nested fields are supported: the inner field
 /// is decoded first and its decoded form is appended to the outer
@@ -37,9 +51,25 @@ pub(all) struct DecodedField {
 pub fn decode_field_run_sequence(
   runs : Array[@domain.CT_R],
 ) -> Array[DecodedField] raise @opc_errors.SchemaViolation {
+  let ranges = decode_field_run_ranges(runs)
   let result : Array[DecodedField] = []
+  for entry in ranges {
+    result.push({ field: entry.field, cached_runs: entry.cached_runs })
+  }
+  result
+}
+
+///|
+/// Part 1 §17.16.2 — walk a run sequence and decode every begin /
+/// separate / end field, including the original source-run range for
+/// each field. Renderers use the range to decide which original runs to
+/// replace when a field evaluator produces a live result.
+pub fn decode_field_run_ranges(
+  runs : Array[@domain.CT_R],
+) -> Array[DecodedFieldRange] raise @opc_errors.SchemaViolation {
+  let result : Array[DecodedFieldRange] = []
   let stack : Array[FieldFrame] = []
-  for run in runs {
+  for run_idx, run in runs {
     let mut contains_field_marker = false
     for child in run.element.children {
       match child {
@@ -53,16 +83,25 @@ pub fn decode_field_run_sequence(
                 stack.push({
                   instr_buf: StringBuilder::new(),
                   cached_runs: [],
+                  start_run: run_idx,
+                  separate_run: None,
                   past_separate: false,
                 })
               Some("separate") => {
                 let top = stack_top(stack)
                 top.past_separate = true
+                top.separate_run = Some(run_idx)
               }
               Some("end") => {
                 let top = stack_pop(stack)
                 let field = parse_instruction(top.instr_buf.to_string())
-                result.push({ field, cached_runs: top.cached_runs })
+                result.push({
+                  field,
+                  cached_runs: top.cached_runs,
+                  start_run: top.start_run,
+                  separate_run: top.separate_run,
+                  end_run: run_idx,
+                })
               }
               _ => ()
             }
@@ -98,6 +137,8 @@ pub fn decode_field_run_sequence(
 priv struct FieldFrame {
   instr_buf : StringBuilder
   cached_runs : Array[@domain.CT_R]
+  start_run : Int
+  mut separate_run : Int?
   mut past_separate : Bool
 }
 

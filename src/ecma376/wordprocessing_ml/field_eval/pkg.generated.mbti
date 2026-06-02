@@ -14,6 +14,8 @@ pub fn apply_general_switch(String, String) -> String
 
 pub fn apply_general_switches(String, Array[FieldSwitch]) -> String
 
+pub fn decode_field_run_ranges(Array[@domain.CT_R]) -> Array[DecodedFieldRange] raise @errors.SchemaViolation
+
 pub fn decode_field_run_sequence(Array[@domain.CT_R]) -> Array[DecodedField] raise @errors.SchemaViolation
 
 pub fn decode_simple_field(@domain.CT_SimpleField) -> Field raise @errors.SchemaViolation
@@ -40,6 +42,14 @@ pub fn BookmarkValue::new(String, Int) -> Self
 pub(all) struct DecodedField {
   field : Field
   cached_runs : Array[@domain.CT_R]
+} derive(Eq, @debug.Debug)
+
+pub(all) struct DecodedFieldRange {
+  field : Field
+  cached_runs : Array[@domain.CT_R]
+  start_run : Int
+  separate_run : Int?
+  end_run : Int
 } derive(Eq, @debug.Debug)
 
 pub(all) struct Field {
