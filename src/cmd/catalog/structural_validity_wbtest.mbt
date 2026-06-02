@@ -454,6 +454,64 @@ test "catalog pptx master txstyle host renders placeholder inherited style" {
 }
 
 ///|
+fn catalog_master_txstyle_lvl2_probe() -> @xml.Element {
+  let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
+  xep("a", ns_a, "lvl2pPr", [], [
+    Element(
+      xep("a", ns_a, "defRPr", [xa("sz", "2800")], [
+        Element(
+          xep("a", ns_a, "solidFill", [], [
+            Element(xep("a", ns_a, "srgbClr", [xa("val", "C00000")], [])),
+          ]),
+        ),
+        Element(
+          xep("a", ns_a, "latin", [xa("typeface", "CatalogMasterFace")], []),
+        ),
+      ]),
+    ),
+  ])
+}
+
+///|
+test "catalog pptx master txstyle host renders paragraph-level defaults" {
+  assert_true(
+    is_pml_master_tx_paragraph_style_catalog_target(
+      "lvl2pPr", "http://schemas.openxmlformats.org/drawingml/2006/main#CT_TextParagraphProperties",
+      "http://schemas.openxmlformats.org/drawingml/2006/main",
+    ),
+  )
+  assert_true(
+    is_pml_master_tx_paragraph_style_catalog_target(
+      "defPPr", "http://purl.oclc.org/ooxml/drawingml/main#CT_TextParagraphProperties",
+      "http://purl.oclc.org/ooxml/drawingml/main",
+    ),
+  )
+  assert_true(
+    !is_pml_master_tx_paragraph_style_catalog_target(
+      "rPr", "http://schemas.openxmlformats.org/drawingml/2006/main#CT_TextCharacterProperties",
+      "http://schemas.openxmlformats.org/drawingml/2006/main",
+    ),
+  )
+  let tx_styles = catalog_master_tx_paragraph_style_root(
+    stamp_target(catalog_master_txstyle_lvl2_probe()),
+  )
+  assert_eq(
+    verify_entry("pptx:master-txstyle", tx_styles, "CAT-PML-MASTER-LVL2"),
+    "rendered",
+  )
+  let presentation = @pml_context.open(
+    host_package("pptx:master-txstyle", strip_target_attr(tx_styles)),
+  ) catch {
+    @pml_context.OpenError(kind~, path~, reason~) =>
+      abort("initial open failed: " + kind + " " + path + " " + reason)
+  }
+  let svg = presentation.to_svg(debug_attrs=true)
+  assert_true(svg.contains("Catalog master text"))
+  assert_true(svg.contains("CatalogMasterFace"))
+  assert_true(svg.contains("font-size=\"37.333333"))
+}
+
+///|
 test "catalog synth emits non-degenerate xdr twoCellAnchor" {
   let ns_xdr = "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
   let schema = load_catalog_schema()

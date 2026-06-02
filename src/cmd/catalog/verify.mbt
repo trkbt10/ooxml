@@ -3981,6 +3981,72 @@ fn pml_master_tx_style_kind(tx_styles : @xml.Element) -> String {
 }
 
 ///|
+fn pml_master_tx_style_level_name(local_name : String) -> Int? {
+  if !local_name.has_prefix("lvl") || !local_name.has_suffix("pPr") {
+    return None
+  }
+  let digit = local_name[3:local_name.length() - 3].to_owned()
+  try @string.parse_int(digit) catch {
+    _ => None
+  } noraise {
+    n => if n >= 1 && n <= 9 { Some(n - 1) } else { None }
+  }
+}
+
+///|
+fn pml_master_tx_style_level_in_tree(element : @xml.Element) -> Int? {
+  if element.name.local_name == "defPPr" {
+    return Some(0)
+  }
+  match pml_master_tx_style_level_name(element.name.local_name) {
+    Some(level) => return Some(level)
+    None => ()
+  }
+  for child in element.children {
+    match child {
+      Element(el) =>
+        match pml_master_tx_style_level_in_tree(el) {
+          Some(level) => return Some(level)
+          None => ()
+        }
+      _ => ()
+    }
+  }
+  None
+}
+
+///|
+fn pml_master_tx_style_paragraph_level(
+  tx_styles : @xml.Element,
+  style_name : String,
+) -> Int {
+  match tx_styles.name.local_name {
+    "titleStyle" | "bodyStyle" | "otherStyle" =>
+      match pml_master_tx_style_level_in_tree(tx_styles) {
+        Some(level) => return level
+        None => return 0
+      }
+    _ => ()
+  }
+  for child in tx_styles.children {
+    match child {
+      Element(el) =>
+        if el.name.local_name == style_name {
+          match pml_master_tx_style_level_in_tree(el) {
+            Some(level) => return level
+            None => return 0
+          }
+        }
+      _ => ()
+    }
+  }
+  match pml_master_tx_style_level_in_tree(tx_styles) {
+    Some(level) => level
+    None => 0
+  }
+}
+
+///|
 fn pml_master_tx_style_placeholder_type(style_name : String) -> String {
   match style_name {
     "titleStyle" => "title"
@@ -4002,12 +4068,42 @@ fn catalog_master_tx_styles_root(content : @xml.Element) -> @xml.Element {
 }
 
 ///|
+fn catalog_master_tx_paragraph_style_root(
+  content : @xml.Element,
+) -> @xml.Element {
+  match content.name.local_name {
+    "txStyles" | "titleStyle" | "bodyStyle" | "otherStyle" =>
+      catalog_master_tx_styles_root(content)
+    _ =>
+      catalog_master_tx_styles_root(
+        xep("p", NS_PML, "bodyStyle", [], [Element(content)]),
+      )
+  }
+}
+
+///|
 fn catalog_txstyle_placeholder_shape(
   style_name : String,
+  paragraph_level : Int,
   ns_p : String,
 ) -> @xml.Element {
   let ns_a = "http://schemas.openxmlformats.org/drawingml/2006/main"
   let ph_type = pml_master_tx_style_placeholder_type(style_name)
+  let p_children : Array[@xml.Node] = []
+  if paragraph_level > 0 {
+    p_children.push(
+      Element(
+        xep("a", ns_a, "pPr", [xa("lvl", paragraph_level.to_string())], []),
+      ),
+    )
+  }
+  p_children.push(
+    Element(
+      xep("a", ns_a, "r", [], [
+        Element(xep("a", ns_a, "t", [], [Text("Catalog master text")])),
+      ]),
+    ),
+  )
   xep("p", ns_p, "sp", [], [
     Element(
       xep("p", ns_p, "nvSpPr", [], [
@@ -4051,15 +4147,7 @@ fn catalog_txstyle_placeholder_shape(
     Element(
       xep("p", ns_p, "txBody", [], [
         Element(xep("a", ns_a, "bodyPr", [], [])),
-        Element(
-          xep("a", ns_a, "p", [], [
-            Element(
-              xep("a", ns_a, "r", [], [
-                Element(xep("a", ns_a, "t", [], [Text("Catalog master text")])),
-              ]),
-            ),
-          ]),
-        ),
+        Element(xep("a", ns_a, "p", [], p_children)),
       ]),
     ),
   ])
@@ -4070,9 +4158,12 @@ fn pptx_package_with_master_tx_styles(tx_styles : @xml.Element) -> Bytes {
   let ns_p = "http://schemas.openxmlformats.org/presentationml/2006/main"
   let tx_styles_root = catalog_master_tx_styles_root(tx_styles)
   let style_name = pml_master_tx_style_kind(tx_styles_root)
+  let paragraph_level = pml_master_tx_style_paragraph_level(
+    tx_styles_root, style_name,
+  )
   let base = pptx_package(
     pptx_common_slide_data(ns_p, [
-      catalog_txstyle_placeholder_shape(style_name, ns_p),
+      catalog_txstyle_placeholder_shape(style_name, paragraph_level, ns_p),
     ]),
   )
   replace_zip_entry(
@@ -4080,6 +4171,27 @@ fn pptx_package_with_master_tx_styles(tx_styles : @xml.Element) -> Bytes {
     "ppt/slideMasters/slideMaster1.xml",
     write_part(pptx_slide_master_root(Some(tx_styles_root))),
   )
+}
+
+///|
+/// True when a DrawingML paragraph-default element can be verified
+/// through the existing PresentationML slide-master text-style cascade.
+/// The renderer consumes these only when they live under
+/// `<p:txStyles>/<p:*Style>`; the catalog host supplies that wrapper
+/// and leaves DrawingML parsing / layout to the PresentationML viewer.
+fn is_pml_master_tx_paragraph_style_catalog_target(
+  local_name : String,
+  type_name : String,
+  ns : String,
+) -> Bool {
+  if strip_ns(ns) != "drawingml/main" ||
+    catalog_type_local(type_name) != "CT_TextParagraphProperties" {
+    return false
+  }
+  if local_name == "defPPr" {
+    return true
+  }
+  pml_master_tx_style_level_name(local_name) is Some(_)
 }
 
 ///|

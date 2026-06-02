@@ -743,6 +743,15 @@ fn main {
         ("pptx:master-txstyle", catalog_master_tx_styles_root(target)),
       )
     }
+    if is_pml_master_tx_paragraph_style_catalog_target(
+        decl.name,
+        decl.type_name,
+        decl.ns,
+      ) {
+      candidates.push(
+        ("pptx:master-txstyle", catalog_master_tx_paragraph_style_root(target)),
+      )
+    }
     match ancestry.get(akey) {
       Some(paths) if paths.length() >= 1 =>
         for path in paths {
