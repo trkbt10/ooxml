@@ -8,9 +8,10 @@
 
 ///|
 /// Inject a deterministic test font so `text_box` returns real metrics
-/// regardless of the host font catalogue. Without this, hosts that
-/// lack "Noto Serif" silently get width 0.0 for every glyph, which
-/// cascades into lost nodes (script / limit guards check `width > 0`).
+/// through an injected resolver. Without this, hosts that lack the
+/// requested fixture family silently get width 0.0 for every glyph,
+/// which cascades into lost nodes (script / limit guards check
+/// `width > 0`).
 let test_font_ready : Ref[Bool] = { val: false }
 
 ///|

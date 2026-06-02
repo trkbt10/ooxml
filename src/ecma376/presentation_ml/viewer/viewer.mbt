@@ -5318,12 +5318,12 @@ fn build_run_span(
 /// supply one.
 ///
 /// §20.1.4.1.18 leaves the choice to the consumer once the theme
-/// minor font is also absent. We hand the resolver a single canonical
-/// sans-serif family name — `"Noto Sans"` — and let the ECMA-376
-/// §17.8.3 substitution chain in `@glyph` map it to whatever
-/// concrete face the host actually carries. The DOCX viewer carries
-/// its own format-specific default so per-format substitution stays
-/// independent.
+/// minor font is also absent. The fallback name below is only the
+/// renderer's last-resort request; it is not an ECMA-376 font
+/// definition, and the `FontResolver` must still resolve it from
+/// embedded bytes, an operator-supplied directory, or host fonts. The
+/// DOCX viewer carries its own format-specific default so per-format
+/// substitution stays independent.
 fn presentation_default_typeface() -> String {
   "Noto Sans"
 }

@@ -87,9 +87,11 @@ moon run src/cmd/ooxml_cli          # run native CLI
 `src/util/glyph` is **TTF-only**. Every glyph advance, kerning
 pair, ascender, descender, and line-gap value is read at runtime
 from a TrueType file the `FontResolver` returns. The repository
-ships **no** bundled fonts — every measurement reads bytes the
-host OS, an operator-supplied directory, or an in-test catalogue
-provides.
+ships **no bundled production fonts** — production measurements read
+bytes from embedded OOXML fonts, the host OS, or an operator-supplied
+directory. Tests and catalog verification may inject explicit fixture
+TTF bytes through `FontResolver::in_memory`; those fixtures are test
+inputs, not ECMA-376 defaults.
 
 - **Never** add a hard-coded char-width table, ascender table, or
   per-font em-ratio map. Any "measurement constant" living in code
@@ -117,7 +119,8 @@ plus every disambiguating hint the document supplied
 → altName → PANOSE-derived generic → typed `<w:family>` generic —
 into a `FontFaceRequest` the resolver consumes.
 
-`@glyph.create_host_font_resolver()` composes the standard chain:
+`@glyph.create_host_font_resolver()` composes the project resolver
+chain:
 
   1. `FontResolver::env_dir` — scans `$OOXML_FONT_DIR` directories.
   2. `FontResolver::host` — walks the OS-canonical font dirs
@@ -126,15 +129,16 @@ into a `FontFaceRequest` the resolver consumes.
 
 Tests inject `FontResolver::in_memory` through
 `@glyph.set_default_font_set(...)` to drive deterministic
-catalogues without filesystem dependence.
+fixture-backed measurements without filesystem dependence.
 
 ### Snapshot harness
 
 `scripts/snapshot.sh` requires `OOXML_FONT_DIR` to point at the
-cross-platform Noto cache populated by `scripts/setup-test-fonts.sh`.
-Both the renderer and the reference office binary read the same
-catalogue — without that, metrics drift between pipelines and RMSE
-values become meaningless.
+test font fixture cache populated by `scripts/setup-test-fonts.sh`.
+Both the renderer and the reference office binary read the same test
+inputs — without that, metrics drift between pipelines and RMSE
+values become meaningless. This cache is a snapshot-test fixture,
+not an OOXML-defined requirement or default.
 
 ## Spec-Driven Development
 

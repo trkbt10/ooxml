@@ -4,7 +4,7 @@
 ///|
 /// Measure a single `LayoutSpan`. Line-break spans always have
 /// width 0. Raises `@glyph.FontUnresolvedError` when the font
-/// catalogue cannot satisfy the span's family.
+/// resolver cannot satisfy the span's family.
 pub fn measure_span(
   span : LayoutSpan,
 ) -> MeasuredSpan raise @glyph.FontUnresolvedError {

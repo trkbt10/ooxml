@@ -221,6 +221,28 @@ test "catalog docx font-table host retargets synthesized font relationship id" {
 }
 
 ///|
+test "catalog font fixture lets docx render default font metrics" {
+  install_catalog_font_fixture()
+  let ns_w = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  let body = xep("w", ns_w, "body", [], [
+    Element(
+      xep("w", ns_w, "p", [], [
+        Element(
+          xep("w", ns_w, "r", [], [
+            Element(xep("w", ns_w, "t", [], [Text("Catalog font fixture")])),
+          ]),
+        ),
+      ]),
+    ),
+  ])
+  let svg = match render_svg_of("docx", host_package("docx", body)) {
+    Some(s) => s
+    None => abort("expected docx render with catalog font fixture")
+  }
+  assert_true(svg.contains("Catalog font fixture"))
+}
+
+///|
 test "catalog xlsx comments host retargets synthesized comment ref to sheet cell" {
   let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
   let s_attr = fn(local_name : String, value : String) -> @xml.Attribute {

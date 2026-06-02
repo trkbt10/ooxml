@@ -5,6 +5,35 @@
 // for each, and writes .snapshots/catalog.json.
 
 ///|
+/// Install the catalog harness's deterministic TTF fixture.
+///
+/// The harness exercises renderers as part of coverage measurement,
+/// including WML paragraph layout where vertical metrics come from
+/// `@glyph`. ECMA-376 does not define a renderer-wide fallback font;
+/// this is only a test input that satisfies the process-wide
+/// `FontResolver` with real TTF bytes, avoiding host-specific font
+/// discovery and avoiding any synthetic metric table.
+fn install_catalog_font_fixture() -> Unit {
+  let bytes = try
+    @fs.read_file_to_bytes("src/util/glyph/fixtures/subset.ttf")
+  catch {
+    _ =>
+      abort(
+        "cannot load catalog font fixture src/util/glyph/fixtures/subset.ttf",
+      )
+  } noraise {
+    b => b
+  }
+  @glyph.set_default_font_set(
+    @glyph.FontSet::new(
+      resolver=@glyph.FontResolver::in_memory(
+        Map([("Noto Sans", bytes)], capacity=1),
+      ),
+    ),
+  )
+}
+
+///|
 /// Map an OOXML target namespace to the short prefix used in the
 /// synthesised fragments.  Both the Transitional
 /// (`schemas.openxmlformats.org`) and the Strict (`purl.oclc.org`)
@@ -438,6 +467,7 @@ fn json_str(s : String) -> String {
 /// `catalog fixtures`   — write the content-rich visual fixtures
 ///                        under .snapshots/fixtures/.
 fn main {
+  install_catalog_font_fixture()
   // Install the namespace -> prefix mapping the synthesiser uses so
   // every emitted element carries the prefix of its own namespace.
   g_ns_prefix.val = ns_prefix

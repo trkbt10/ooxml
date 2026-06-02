@@ -3,9 +3,9 @@
 
 ///|
 /// Inject a deterministic test font so `measure_span` returns real
-/// metrics regardless of the host font catalogue. Without this, hosts
-/// that lack "Noto Sans" raise `FontUnresolvedError` on every
-/// measurement call.
+/// metrics through an injected resolver. Without this, hosts that
+/// lack the requested fixture family raise `FontUnresolvedError` on
+/// every measurement call.
 let test_font_ready : Ref[Bool] = { val: false }
 
 ///|

@@ -154,7 +154,7 @@ test "render_svg emits text from a paragraph as <text> element" {
   // §17.3.2.26 rFonts — without `<w:rFonts>` and without a
   // `<w:docDefaults>` cascade, the viewer falls back to the
   // renderer's default body family (`DEFAULT_FONT_FAMILY`) so the
-  // host `FontResolver` lands on the configured test catalogue.
+  // injected test `FontResolver` can supply real TTF metrics.
   assert_true(svg.contains("font-family=\"Noto Sans\""))
 }
 

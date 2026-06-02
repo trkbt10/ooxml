@@ -165,12 +165,12 @@ const OFFICE_NORMAL_FONT_SIZE_PT : Double = 11.0
 ///
 /// Default body family for a document that carries no explicit
 /// `<w:rFonts>`. ECMA-376 §17.8.3 leaves this implementation-defined
-/// — Office consumers fall back to the theme's minor font. The
-/// renderer picks the canonical Noto Sans name so the host
-/// `FontResolver` lands on the cross-platform Noto cache that
-/// `scripts/setup-test-fonts.sh` provisions; callers that resolve a
-/// real `<w:rFonts>` chain pass their own family name and never
-/// touch this constant.
+/// — Office consumers fall back to the theme's minor font. The name
+/// here is only the renderer's default request when the document and
+/// theme provide no usable face; it is not an ECMA-376 font
+/// definition. Production resolution still goes through the configured
+/// `FontResolver`, while tests and the catalog harness may inject a
+/// deterministic in-memory TTF fixture under this family name.
 const DEFAULT_FONT_FAMILY : String = "Noto Sans"
 
 ///|

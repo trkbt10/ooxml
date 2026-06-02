@@ -37,9 +37,10 @@
 /// axis labels) when the chart element itself does not specify one.
 /// §21.2.2.213 / §21.2.2.93 leave the default to the consumer —
 /// PowerPoint substitutes the theme minor font, which for the Office
-/// theme resolves through the renderer's font chain to a sans-serif
-/// face. We pass a single canonical name and let the resolver pick
-/// the best installed match.
+/// theme usually resolves to a sans-serif face. The fallback below is
+/// only the renderer's last-resort request; it is not an ECMA-376 font
+/// definition, and the resolver must still satisfy it from real font
+/// bytes.
 let chart_default_family : String = "Noto Sans"
 
 ///|

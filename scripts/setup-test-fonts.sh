@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Provision the cross-platform test font catalogue.
+# Provision the cross-platform test font fixture cache.
 #
 # Round 17 removed every bundled TTF from the repository. The
 # rendering test harness needs *some* set of fonts to measure

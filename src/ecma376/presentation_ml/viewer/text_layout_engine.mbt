@@ -53,9 +53,9 @@ fn bullet_width_of(bullet : BulletConfig?) -> Double {
 
 ///|
 /// Build a `MeasuredSpan` array whose widths are all zero. Used as a
-/// safety-net fallback when the font catalogue cannot satisfy any of
-/// the spans in a paragraph (e.g. test harness without preloaded
-/// faces).
+/// safety-net fallback when the configured `FontResolver` cannot
+/// resolve any of the spans in a paragraph (e.g. test harness without
+/// injected fixture faces).
 fn zero_width_spans(spans : Array[LayoutSpan]) -> Array[MeasuredSpan] {
   let out : Array[MeasuredSpan] = []
   for s in spans {

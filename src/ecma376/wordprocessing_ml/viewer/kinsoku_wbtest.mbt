@@ -44,9 +44,10 @@ test "WML run segmentation keeps ASCII word wrapping intact" {
 
 ///|
 /// Inject the deterministic test font so `measure_run_text` returns
-/// real metrics — without it the host may lack "Noto Sans" and every
-/// measurement degrades to 0, defeating any wrap assertion.  Mirrors
-/// the PML viewer's `ensure_test_font`.
+/// real metrics — without it the host may lack the requested
+/// renderer-default family and every measurement degrades to 0,
+/// defeating any wrap assertion.  Mirrors the PML viewer's
+/// `ensure_test_font`.
 let wml_test_font_ready : Ref[Bool] = { val: false }
 
 ///|

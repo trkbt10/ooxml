@@ -86,7 +86,7 @@ pub fn FontResolver::env_dir() -> FontResolver {
 
 ///|
 /// Split a colon-separated path list. Empty fragments are dropped
-/// rather than treated as `.` — a font catalogue indexing the
+/// rather than treated as `.` — a font resolver indexing the
 /// current directory by accident would be surprising.
 fn split_path_list(raw : String) -> Array[String] {
   let out : Array[String] = []

@@ -2,7 +2,7 @@
 //
 // Real-font measurement tests live in `gpos_extract_wbtest.mbt` and
 // `font_measurer_wbtest.mbt`; this file covers only the type-level
-// behaviours that don't depend on a host font catalogue.
+// behaviours that don't depend on host font discovery.
 
 ///|
 test "is_cjk_code_point classifies Unicode ranges" {
@@ -73,7 +73,7 @@ test "FontResolver::in_memory raises when family is absent" {
 }
 
 ///|
-test "FontResolver::in_memory honours embedded_bytes ahead of the catalogue" {
+test "FontResolver::in_memory honours embedded_bytes ahead of in-memory faces" {
   let resolver = FontResolver::in_memory(
     Map([("Noto Sans", b"CATALOG")], capacity=1),
   )
