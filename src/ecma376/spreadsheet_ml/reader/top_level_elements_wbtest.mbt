@@ -221,6 +221,14 @@ fn assert_pivot_cache_definition_schema_violation(
 }
 
 ///|
+fn assert_pivot_table_definition_schema_violation(
+  source : String,
+) -> Unit raise {
+  let invalid = try? read_pivot_table_definition(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed definition booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\" saveData=\"maybe\"/>",
@@ -323,6 +331,16 @@ test "SML pivotCacheDefinition reader rejects malformed calculated-member boolea
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
     "<s:calculatedMembers><s:calculatedMember set=\"maybe\"/></s:calculatedMembers>" +
     "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
+test "SML pivotTableDefinition reader rejects malformed definition booleans" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\" dataOnRows=\"maybe\"/>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\" fieldListSortAscending=\"maybe\"/>",
   )
 }
 

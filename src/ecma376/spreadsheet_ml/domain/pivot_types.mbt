@@ -1487,15 +1487,26 @@ pub(all) struct CT_pivotTableDefinition {
 } derive(Eq, Debug)
 
 ///|
+fn pivot_table_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.10.1.73", "pivotTableDefinition",
+  )
+}
+
+///|
 pub fn CT_pivotTableDefinition::new(
   element : @xml.Element,
-) -> CT_pivotTableDefinition {
+) -> CT_pivotTableDefinition raise @opc_errors.SchemaViolation {
   let name = match attr(element, "name") {
     Some(v) => v
     None => ""
   }
   let cache_id = attr_uint(element, "cacheId", 0)
-  let data_on_rows = attr_bool(element, "dataOnRows", false)
+  let data_on_rows = pivot_table_bool(element, "dataOnRows", false)
   let data_position = attr_uint_opt(element, "dataPosition")
   let data_caption = match attr(element, "dataCaption") {
     Some(v) => v
@@ -1503,66 +1514,74 @@ pub fn CT_pivotTableDefinition::new(
   }
   let grand_total_caption = attr(element, "grandTotalCaption")
   let error_caption = attr(element, "errorCaption")
-  let show_error = attr_bool(element, "showError", false)
+  let show_error = pivot_table_bool(element, "showError", false)
   let missing_caption = attr(element, "missingCaption")
-  let show_missing = attr_bool(element, "showMissing", true)
+  let show_missing = pivot_table_bool(element, "showMissing", true)
   let page_style = attr(element, "pageStyle")
   let pivot_table_style = attr(element, "pivotTableStyle")
   let vacated_style = attr(element, "vacatedStyle")
   let tag = attr(element, "tag")
   let updated_version = attr_uint(element, "updatedVersion", 0)
   let min_refreshable_version = attr_uint(element, "minRefreshableVersion", 0)
-  let asterisk_totals = attr_bool(element, "asteriskTotals", false)
-  let show_items = attr_bool(element, "showItems", true)
-  let edit_data = attr_bool(element, "editData", false)
-  let disable_field_list = attr_bool(element, "disableFieldList", false)
-  let show_calc_mbrs = attr_bool(element, "showCalcMbrs", true)
-  let visual_totals = attr_bool(element, "visualTotals", true)
-  let show_multiple_label = attr_bool(element, "showMultipleLabel", true)
-  let show_data_drop_down = attr_bool(element, "showDataDropDown", true)
-  let show_drill = attr_bool(element, "showDrill", true)
-  let print_drill = attr_bool(element, "printDrill", false)
-  let show_member_property_tips = attr_bool(
+  let asterisk_totals = pivot_table_bool(element, "asteriskTotals", false)
+  let show_items = pivot_table_bool(element, "showItems", true)
+  let edit_data = pivot_table_bool(element, "editData", false)
+  let disable_field_list = pivot_table_bool(element, "disableFieldList", false)
+  let show_calc_mbrs = pivot_table_bool(element, "showCalcMbrs", true)
+  let visual_totals = pivot_table_bool(element, "visualTotals", true)
+  let show_multiple_label = pivot_table_bool(element, "showMultipleLabel", true)
+  let show_data_drop_down = pivot_table_bool(element, "showDataDropDown", true)
+  let show_drill = pivot_table_bool(element, "showDrill", true)
+  let print_drill = pivot_table_bool(element, "printDrill", false)
+  let show_member_property_tips = pivot_table_bool(
     element, "showMemberPropertyTips", true,
   )
-  let show_data_tips = attr_bool(element, "showDataTips", true)
-  let enable_wizard = attr_bool(element, "enableWizard", true)
-  let enable_drill = attr_bool(element, "enableDrill", true)
-  let enable_field_properties = attr_bool(
+  let show_data_tips = pivot_table_bool(element, "showDataTips", true)
+  let enable_wizard = pivot_table_bool(element, "enableWizard", true)
+  let enable_drill = pivot_table_bool(element, "enableDrill", true)
+  let enable_field_properties = pivot_table_bool(
     element, "enableFieldProperties", true,
   )
-  let preserve_formatting = attr_bool(element, "preserveFormatting", true)
-  let use_auto_formatting = attr_bool(element, "useAutoFormatting", false)
+  let preserve_formatting = pivot_table_bool(
+    element, "preserveFormatting", true,
+  )
+  let use_auto_formatting = pivot_table_bool(
+    element, "useAutoFormatting", false,
+  )
   let page_wrap = attr_uint(element, "pageWrap", 0)
-  let page_over_then_down = attr_bool(element, "pageOverThenDown", false)
-  let subtotal_hidden_items = attr_bool(element, "subtotalHiddenItems", false)
-  let row_grand_totals = attr_bool(element, "rowGrandTotals", true)
-  let col_grand_totals = attr_bool(element, "colGrandTotals", true)
-  let field_print_titles = attr_bool(element, "fieldPrintTitles", false)
-  let item_print_titles = attr_bool(element, "itemPrintTitles", false)
-  let merge_item = attr_bool(element, "mergeItem", false)
-  let show_drop_zones = attr_bool(element, "showDropZones", true)
+  let page_over_then_down = pivot_table_bool(element, "pageOverThenDown", false)
+  let subtotal_hidden_items = pivot_table_bool(
+    element, "subtotalHiddenItems", false,
+  )
+  let row_grand_totals = pivot_table_bool(element, "rowGrandTotals", true)
+  let col_grand_totals = pivot_table_bool(element, "colGrandTotals", true)
+  let field_print_titles = pivot_table_bool(element, "fieldPrintTitles", false)
+  let item_print_titles = pivot_table_bool(element, "itemPrintTitles", false)
+  let merge_item = pivot_table_bool(element, "mergeItem", false)
+  let show_drop_zones = pivot_table_bool(element, "showDropZones", true)
   let created_version = attr_uint(element, "createdVersion", 0)
   let indent = attr_uint(element, "indent", 1)
-  let show_empty_row = attr_bool(element, "showEmptyRow", false)
-  let show_empty_col = attr_bool(element, "showEmptyCol", false)
-  let show_headers = attr_bool(element, "showHeaders", true)
-  let compact = attr_bool(element, "compact", true)
-  let outline = attr_bool(element, "outline", false)
-  let outline_data = attr_bool(element, "outlineData", false)
-  let compact_data = attr_bool(element, "compactData", true)
-  let published = attr_bool(element, "published", false)
-  let grid_drop_zones = attr_bool(element, "gridDropZones", false)
-  let immersive = attr_bool(element, "immersive", true)
-  let multiple_field_filters = attr_bool(element, "multipleFieldFilters", true)
+  let show_empty_row = pivot_table_bool(element, "showEmptyRow", false)
+  let show_empty_col = pivot_table_bool(element, "showEmptyCol", false)
+  let show_headers = pivot_table_bool(element, "showHeaders", true)
+  let compact = pivot_table_bool(element, "compact", true)
+  let outline = pivot_table_bool(element, "outline", false)
+  let outline_data = pivot_table_bool(element, "outlineData", false)
+  let compact_data = pivot_table_bool(element, "compactData", true)
+  let published = pivot_table_bool(element, "published", false)
+  let grid_drop_zones = pivot_table_bool(element, "gridDropZones", false)
+  let immersive = pivot_table_bool(element, "immersive", true)
+  let multiple_field_filters = pivot_table_bool(
+    element, "multipleFieldFilters", true,
+  )
   let chart_format = attr_uint(element, "chartFormat", 0)
   let row_header_caption = attr(element, "rowHeaderCaption")
   let col_header_caption = attr(element, "colHeaderCaption")
-  let field_list_sort_ascending = attr_bool(
+  let field_list_sort_ascending = pivot_table_bool(
     element, "fieldListSortAscending", false,
   )
-  let mdx_subqueries = attr_bool(element, "mdxSubqueries", false)
-  let custom_list_sort = attr_bool(element, "customListSort", true)
+  let mdx_subqueries = pivot_table_bool(element, "mdxSubqueries", false)
+  let custom_list_sort = pivot_table_bool(element, "customListSort", true)
   let mut location : CT_Location? = None
   let mut pivot_fields : CT_PivotFields? = None
   let mut row_fields : CT_RowFields? = None
