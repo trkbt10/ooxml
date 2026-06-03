@@ -157,6 +157,121 @@ test "SML top-level readers reject the wrong root element" {
 }
 
 ///|
+fn assert_style_sheet_schema_violation(body : String) -> Unit raise {
+  let invalid = try? read_style_sheet(
+    bytes("<s:styleSheet xmlns:s=\"urn:s\">" + body + "</s:styleSheet>"),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+fn assert_style_xf_bool_schema_violation(local_name : String) -> Unit raise {
+  assert_style_sheet_schema_violation(
+    "<s:cellXfs><s:xf " + local_name + "=\"maybe\"/></s:cellXfs>",
+  )
+}
+
+///|
+fn assert_style_alignment_bool_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_style_sheet_schema_violation(
+    "<s:cellXfs><s:xf><s:alignment " +
+    local_name +
+    "=\"maybe\"/></s:xf></s:cellXfs>",
+  )
+}
+
+///|
+fn assert_style_border_bool_schema_violation(local_name : String) -> Unit raise {
+  assert_style_sheet_schema_violation(
+    "<s:borders><s:border " + local_name + "=\"maybe\"/></s:borders>",
+  )
+}
+
+///|
+fn assert_style_cell_protection_bool_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_style_sheet_schema_violation(
+    "<s:cellXfs><s:xf><s:protection " +
+    local_name +
+    "=\"maybe\"/></s:xf></s:cellXfs>",
+  )
+}
+
+///|
+fn assert_style_cell_style_bool_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_style_sheet_schema_violation(
+    "<s:cellStyles><s:cellStyle xfId=\"0\" " +
+    local_name +
+    "=\"maybe\"/></s:cellStyles>",
+  )
+}
+
+///|
+fn assert_table_style_bool_schema_violation(local_name : String) -> Unit raise {
+  assert_style_sheet_schema_violation(
+    "<s:tableStyles><s:tableStyle name=\"Custom\" " +
+    local_name +
+    "=\"maybe\"/></s:tableStyles>",
+  )
+}
+
+///|
+test "SML styleSheet reader rejects malformed style booleans" {
+  assert_style_alignment_bool_schema_violation("wrapText")
+  assert_style_alignment_bool_schema_violation("justifyLastLine")
+  assert_style_alignment_bool_schema_violation("shrinkToFit")
+  assert_style_border_bool_schema_violation("diagonalUp")
+  assert_style_border_bool_schema_violation("diagonalDown")
+  assert_style_border_bool_schema_violation("outline")
+  assert_style_sheet_schema_violation(
+    "<s:borders><s:border><s:top><s:color auto=\"maybe\"/></s:top></s:border></s:borders>",
+  )
+  assert_style_cell_protection_bool_schema_violation("locked")
+  assert_style_cell_protection_bool_schema_violation("hidden")
+  assert_style_xf_bool_schema_violation("quotePrefix")
+  assert_style_xf_bool_schema_violation("pivotButton")
+  assert_style_xf_bool_schema_violation("applyNumberFormat")
+  assert_style_xf_bool_schema_violation("applyFont")
+  assert_style_xf_bool_schema_violation("applyFill")
+  assert_style_xf_bool_schema_violation("applyBorder")
+  assert_style_xf_bool_schema_violation("applyAlignment")
+  assert_style_xf_bool_schema_violation("applyProtection")
+  assert_style_cell_style_bool_schema_violation("hidden")
+  assert_style_cell_style_bool_schema_violation("customBuiltin")
+  assert_table_style_bool_schema_violation("pivot")
+  assert_table_style_bool_schema_violation("table")
+  assert_style_sheet_schema_violation(
+    "<s:fonts><s:font><s:b val=\"maybe\"/></s:font></s:fonts>",
+  )
+  assert_style_sheet_schema_violation(
+    "<s:colors><s:mruColors><s:color auto=\"maybe\"/></s:mruColors></s:colors>",
+  )
+}
+
+///|
+fn assert_sst_schema_violation(body : String) -> Unit raise {
+  let invalid = try? read_sst(
+    bytes("<s:sst xmlns:s=\"urn:s\">" + body + "</s:sst>"),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML shared-string reader rejects malformed rich-text booleans" {
+  assert_sst_schema_violation(
+    "<s:si><s:r><s:rPr><s:b val=\"maybe\"/></s:rPr><s:t>x</s:t></s:r></s:si>",
+  )
+  assert_sst_schema_violation(
+    "<s:si><s:r><s:rPr><s:color auto=\"maybe\"/></s:rPr><s:t>x</s:t></s:r></s:si>",
+  )
+}
+
+///|
 fn assert_workbook_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_workbook(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
@@ -287,6 +402,24 @@ test "SML workbook reader rejects malformed workbook property booleans" {
   assert_workbook_pr_bool_schema_violation("checkCompatibility")
   assert_workbook_pr_bool_schema_violation("autoCompressPictures")
   assert_workbook_pr_bool_schema_violation("refreshAllConnections")
+}
+
+///|
+fn assert_workbook_protection_bool_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:workbookProtection " +
+    local_name +
+    "=\"maybe\"/></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed workbook protection booleans" {
+  assert_workbook_protection_bool_schema_violation("lockStructure")
+  assert_workbook_protection_bool_schema_violation("lockWindows")
+  assert_workbook_protection_bool_schema_violation("lockRevision")
 }
 
 ///|

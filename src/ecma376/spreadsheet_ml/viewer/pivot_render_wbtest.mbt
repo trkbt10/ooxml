@@ -133,7 +133,7 @@ fn pivot_test_normal_style(
   family : String,
   size_pt : String,
 ) -> @domain.CT_Stylesheet {
-  @domain.CT_Stylesheet::new({
+  try! @domain.CT_Stylesheet::new({
     name: pivot_test_xml_name("styleSheet"),
     attributes: [],
     children: [

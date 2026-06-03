@@ -206,7 +206,7 @@ test "SpreadsheetML SVG renderer derives defaults and MDW from Normal style" {
       }),
     ],
   })
-  let stylesheet = @domain.CT_Stylesheet::new({
+  let stylesheet = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -324,7 +324,7 @@ test "SpreadsheetML SVG renderer resolves Normal font scheme from workbook theme
       }),
     ],
   })
-  let stylesheet = @domain.CT_Stylesheet::new({
+  let stylesheet = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -606,7 +606,7 @@ test "SpreadsheetML shared-string rich text scheme resolves through workbook the
 ///|
 test "SpreadsheetML conditional-format dxf font scheme resolves through workbook theme" {
   set_sml_fixture_font_faces(["Calibri", "Noto Sans"])
-  let styles = @domain.CT_Stylesheet::new({
+  let styles = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -1068,7 +1068,7 @@ test "SpreadsheetML viewer resolves cellXfs/borders cascade" {
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -1174,7 +1174,7 @@ test "SpreadsheetML viewer resolves cellXfs/fills cascade" {
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -1294,7 +1294,7 @@ test "SpreadsheetML viewer §18.8.45 applyFill=0 inherits named cell style fill"
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -1412,7 +1412,7 @@ test "SpreadsheetML viewer resolves cellXfs/fonts cascade" {
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -1498,7 +1498,7 @@ test "SpreadsheetML number-format colour bracket sets text fill" {
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let cell_a1 = @xml.Node::Element({
     name: name("c"),
     attributes: [
@@ -1619,7 +1619,7 @@ test "SpreadsheetML viewer respects row.s row-level style fallback" {
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -1701,7 +1701,7 @@ test "SpreadsheetML viewer applies §18.3.1.18 cellIs cf overlay" {
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let cell_with = fn(addr : String, value : String) -> @xml.Node {
     @xml.Node::Element({
       name: name("c"),
@@ -1818,7 +1818,7 @@ test "SpreadsheetML viewer applies a cellIs cf overlay with a bgColor solid dxf"
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let cell_with = fn(addr : String, value : String) -> @xml.Node {
     @xml.Node::Element({
       name: name("c"),
@@ -1899,7 +1899,7 @@ test "SpreadsheetML viewer applies a cellIs cf overlay with a bgColor solid dxf"
 /// carries both fg/bg must not make AutoFilter/CF compare against a
 /// different colour than the renderer paints.
 test "SpreadsheetML viewer resolves explicit solid dxf fgColor before bgColor" {
-  let styles = @domain.CT_Stylesheet::new({
+  let styles = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -2016,7 +2016,7 @@ test "SpreadsheetML viewer applies stopIfTrue across conditionalFormatting block
       ],
     })
   }
-  let styles = @domain.CT_Stylesheet::new({
+  let styles = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -2561,7 +2561,7 @@ fn count_fill_color(haystack : String, color : String) -> Int {
 ///|
 /// Helper — build a CT_Stylesheet whose dxfs[0] is a solid red fill.
 fn cf_styles_with_red_dxf() -> @domain.CT_Stylesheet {
-  @domain.CT_Stylesheet::new({
+  try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -2838,7 +2838,7 @@ test "SpreadsheetML viewer respects <col style> column-level fallback" {
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -2930,7 +2930,7 @@ test "SpreadsheetML viewer resolves cellXfs/numFmts cascade" {
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let worksheet = @domain.CT_Worksheet::new({
     name: name("worksheet"),
     attributes: [],
@@ -3649,7 +3649,7 @@ test "render_svg resolves cell font color through theme cascade" {
     attributes: [],
     children: [@xml.Node::Element(fonts_el), @xml.Node::Element(cell_xfs_el)],
   }
-  let styles_ok = @domain.CT_Stylesheet::new(stylesheet_el)
+  let styles_ok = try! @domain.CT_Stylesheet::new(stylesheet_el)
   // Worksheet with one cell <c r="A1" s="0" t="n"><v>42</v></c>.
   let cell : @xml.Element = {
     name: name("c"),
@@ -3953,7 +3953,7 @@ test "SpreadsheetML §18.17.4.1 ISO parser handles date-only form" {
 
 ///|
 test "SpreadsheetML renderer uses date_serial SoT for t=\"d\" minute-only cells" {
-  let styles = @domain.CT_Stylesheet::new({
+  let styles = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -4627,7 +4627,7 @@ test "SpreadsheetML viewer §18.8.1 cell alignment attrs surface as data-ooxml-*
     attributes: [],
     children: [@xml.Node::Element(cell_xfs)],
   }
-  let stylesheet = @domain.CT_Stylesheet::new(stylesheet_el)
+  let stylesheet = try! @domain.CT_Stylesheet::new(stylesheet_el)
   let cells_row1 : Array[@xml.Node] = [
     @xml.Node::Element({
       name: name("c"),
@@ -4692,7 +4692,7 @@ test "SpreadsheetML viewer warns instead of estimating unresolved font metrics" 
     ],
     children: [],
   }
-  let stylesheet = @domain.CT_Stylesheet::new({
+  let stylesheet = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -4797,7 +4797,7 @@ test "SpreadsheetML viewer §18.8.45 applyAlignment=0 inherits named style align
       }),
     ],
   }
-  let stylesheet = @domain.CT_Stylesheet::new({
+  let stylesheet = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [@xml.Node::Element(cell_style_xfs), @xml.Node::Element(cell_xfs)],
@@ -5230,7 +5230,7 @@ test "SpreadsheetML viewer §18.2.28 date1904 flag shifts date epoch" {
     attributes: [{ name: name("count"), value: "1" }],
     children: [@xml.Node::Element(xf)],
   }
-  let stylesheet = @domain.CT_Stylesheet::new({
+  let stylesheet = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [@xml.Node::Element(cell_xfs)],
@@ -5716,7 +5716,7 @@ test "SpreadsheetML viewer §18.8.40 custom tableStyle dxf overrides band palett
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let table : @xml.Element = {
     name: { prefix: None, local_name: "table", ns: Some(ns_s) },
     attributes: [
@@ -5838,7 +5838,7 @@ test "SpreadsheetML viewer §18.5.1.5 firstColumn + corner-cell slots paint" {
       }),
     ],
   }
-  let styles = @domain.CT_Stylesheet::new(styles_xml)
+  let styles = try! @domain.CT_Stylesheet::new(styles_xml)
   let table : @xml.Element = {
     name: { prefix: None, local_name: "table", ns: Some(ns_s) },
     attributes: [
@@ -6517,7 +6517,7 @@ test "SpreadsheetML viewer supplies fill facts for §18.3.2.1 colorFilter" {
       ],
     })
   }
-  let styles = @domain.CT_Stylesheet::new({
+  let styles = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -6645,7 +6645,7 @@ test "SpreadsheetML viewer supplies font facts for §18.3.2.1 colorFilter" {
       ],
     })
   }
-  let styles = @domain.CT_Stylesheet::new({
+  let styles = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -6792,7 +6792,7 @@ test "SpreadsheetML viewer supplies rich text font facts for §18.3.2.1 colorFil
       }),
     ],
   })
-  let styles = @domain.CT_Stylesheet::new({
+  let styles = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [
@@ -7298,7 +7298,7 @@ fn render_indent_cell(indent : String) -> String raise {
     attributes: [{ name: name("count"), value: "1" }],
     children: [@xml.Node::Element(xf)],
   }
-  let stylesheet = @domain.CT_Stylesheet::new({
+  let stylesheet = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [@xml.Node::Element(cell_xfs)],
@@ -7405,7 +7405,7 @@ test "SpreadsheetML viewer §18.8.1 textRotation=255 stacks glyphs as tspans" {
     attributes: [{ name: name("count"), value: "1" }],
     children: [@xml.Node::Element(xf)],
   }
-  let stylesheet = @domain.CT_Stylesheet::new({
+  let stylesheet = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [@xml.Node::Element(cell_xfs)],
@@ -7525,7 +7525,7 @@ fn render_shrink_cell(shrink : Bool) -> String raise {
     attributes: [{ name: name("count"), value: "1" }],
     children: [@xml.Node::Element(xf)],
   }
-  let stylesheet = @domain.CT_Stylesheet::new({
+  let stylesheet = try! @domain.CT_Stylesheet::new({
     name: name("styleSheet"),
     attributes: [],
     children: [@xml.Node::Element(cell_xfs)],

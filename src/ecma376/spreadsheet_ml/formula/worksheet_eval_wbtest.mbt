@@ -12,7 +12,9 @@ fn worksheet_eval_test_cell(source : String) -> @domain.CT_Cell {
 
 ///|
 fn worksheet_eval_test_sst(source : String) -> @domain.CT_Sst {
-  @domain.CT_Sst::new(try! @xml.parse(worksheet_eval_test_bytes(source)).root)
+  try! @domain.CT_Sst::new(
+    try! @xml.parse(worksheet_eval_test_bytes(source)).root,
+  )
 }
 
 ///|

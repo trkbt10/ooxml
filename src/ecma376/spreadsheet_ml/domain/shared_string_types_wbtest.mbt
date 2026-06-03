@@ -36,7 +36,11 @@ fn shared_string_test_si(children : Array[@xml.Node]) -> @xml.Node {
 
 ///|
 fn shared_string_test_sst(children : Array[@xml.Node]) -> CT_Sst {
-  CT_Sst::new({ name: shared_string_test_name("sst"), attributes: [], children })
+  try! CT_Sst::new({
+    name: shared_string_test_name("sst"),
+    attributes: [],
+    children,
+  })
 }
 
 ///|

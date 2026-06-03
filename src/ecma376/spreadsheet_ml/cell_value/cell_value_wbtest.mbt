@@ -47,7 +47,7 @@ fn cell(t? : String, v? : String, inline? : String) -> @domain.CT_Cell {
 
 ///|
 fn sst(children : Array[@xml.Node]) -> @domain.CT_Sst {
-  @domain.CT_Sst::new(element("sst", children~))
+  try! @domain.CT_Sst::new(element("sst", children~))
 }
 
 ///|

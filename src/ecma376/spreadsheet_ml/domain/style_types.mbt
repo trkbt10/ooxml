@@ -224,7 +224,9 @@ pub(all) struct CT_Stylesheet {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Stylesheet::new(element : @xml.Element) -> CT_Stylesheet {
+pub fn CT_Stylesheet::new(
+  element : @xml.Element,
+) -> CT_Stylesheet raise @opc_errors.SchemaViolation {
   let mut num_fmts : CT_NumFmts? = None
   let mut fonts : CT_Fonts? = None
   let mut fills : CT_Fills? = None
@@ -299,18 +301,28 @@ pub(all) struct CT_CellAlignment {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CellAlignment::new(element : @xml.Element) -> CT_CellAlignment {
+fn cell_alignment_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(element, local_name, "Part 1 §18.8.1", "alignment")
+}
+
+///|
+pub fn CT_CellAlignment::new(
+  element : @xml.Element,
+) -> CT_CellAlignment raise @opc_errors.SchemaViolation {
   let horizontal = attr(element, "horizontal")
   let vertical = match attr(element, "vertical") {
     Some(value) => value
     None => "bottom"
   }
   let text_rotation = attr_uint_opt(element, "textRotation")
-  let wrap_text = attr_bool_opt(element, "wrapText")
+  let wrap_text = cell_alignment_bool_opt(element, "wrapText")
   let indent = attr_uint_opt(element, "indent")
   let relative_indent = attr_int_opt(element, "relativeIndent")
-  let justify_last_line = attr_bool_opt(element, "justifyLastLine")
-  let shrink_to_fit = attr_bool_opt(element, "shrinkToFit")
+  let justify_last_line = cell_alignment_bool_opt(element, "justifyLastLine")
+  let shrink_to_fit = cell_alignment_bool_opt(element, "shrinkToFit")
   let reading_order = attr_uint_opt(element, "readingOrder")
   {
     element,
@@ -341,7 +353,9 @@ pub(all) struct CT_Borders {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Borders::new(element : @xml.Element) -> CT_Borders {
+pub fn CT_Borders::new(
+  element : @xml.Element,
+) -> CT_Borders raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let border : Array[CT_Border] = []
   for child in element.children {
@@ -386,7 +400,26 @@ pub(all) struct CT_Border {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Border::new(element : @xml.Element) -> CT_Border {
+fn border_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.8.4", "border")
+}
+
+///|
+fn border_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(element, local_name, "Part 1 §18.8.4", "border")
+}
+
+///|
+pub fn CT_Border::new(
+  element : @xml.Element,
+) -> CT_Border raise @opc_errors.SchemaViolation {
   let mut start : CT_BorderPr? = None
   let mut end : CT_BorderPr? = None
   let mut top : CT_BorderPr? = None
@@ -408,9 +441,9 @@ pub fn CT_Border::new(element : @xml.Element) -> CT_Border {
       }
     }
   }
-  let diagonal_up = attr_bool_opt(element, "diagonalUp")
-  let diagonal_down = attr_bool_opt(element, "diagonalDown")
-  let outline = attr_bool(element, "outline", true)
+  let diagonal_up = border_bool_opt(element, "diagonalUp")
+  let diagonal_down = border_bool_opt(element, "diagonalDown")
+  let outline = border_bool(element, "outline", true)
   {
     element,
     start,
@@ -442,7 +475,9 @@ pub(all) struct CT_BorderPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_BorderPr::new(element : @xml.Element) -> CT_BorderPr {
+pub fn CT_BorderPr::new(
+  element : @xml.Element,
+) -> CT_BorderPr raise @opc_errors.SchemaViolation {
   let mut color : CT_Color? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -472,9 +507,19 @@ pub(all) struct CT_CellProtection {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CellProtection::new(element : @xml.Element) -> CT_CellProtection {
-  let locked = attr_bool_opt(element, "locked")
-  let hidden = attr_bool_opt(element, "hidden")
+fn cell_protection_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(element, local_name, "Part 1 §18.8.33", "protection")
+}
+
+///|
+pub fn CT_CellProtection::new(
+  element : @xml.Element,
+) -> CT_CellProtection raise @opc_errors.SchemaViolation {
+  let locked = cell_protection_bool_opt(element, "locked")
+  let hidden = cell_protection_bool_opt(element, "hidden")
   { element, locked, hidden }
 }
 
@@ -495,7 +540,9 @@ pub(all) struct CT_Fonts {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Fonts::new(element : @xml.Element) -> CT_Fonts {
+pub fn CT_Fonts::new(
+  element : @xml.Element,
+) -> CT_Fonts raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let font : Array[CT_Font] = []
   for child in element.children {
@@ -738,7 +785,9 @@ pub(all) struct CT_CellStyleXfs {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CellStyleXfs::new(element : @xml.Element) -> CT_CellStyleXfs {
+pub fn CT_CellStyleXfs::new(
+  element : @xml.Element,
+) -> CT_CellStyleXfs raise @opc_errors.SchemaViolation {
   let xf : Array[CT_Xf] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -766,7 +815,9 @@ pub(all) struct CT_CellXfs {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CellXfs::new(element : @xml.Element) -> CT_CellXfs {
+pub fn CT_CellXfs::new(
+  element : @xml.Element,
+) -> CT_CellXfs raise @opc_errors.SchemaViolation {
   let xf : Array[CT_Xf] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -827,7 +878,26 @@ pub(all) struct CT_Xf {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Xf::new(element : @xml.Element) -> CT_Xf {
+fn xf_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.8.45", "xf")
+}
+
+///|
+fn xf_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(element, local_name, "Part 1 §18.8.45", "xf")
+}
+
+///|
+pub fn CT_Xf::new(
+  element : @xml.Element,
+) -> CT_Xf raise @opc_errors.SchemaViolation {
   let mut alignment : CT_CellAlignment? = None
   let mut protection : CT_CellProtection? = None
   let mut ext_lst : CT_ExtensionList? = None
@@ -846,14 +916,14 @@ pub fn CT_Xf::new(element : @xml.Element) -> CT_Xf {
   let fill_id = attr_uint_opt(element, "fillId")
   let border_id = attr_uint_opt(element, "borderId")
   let xf_id = attr_uint_opt(element, "xfId")
-  let quote_prefix = attr_bool(element, "quotePrefix", false)
-  let pivot_button = attr_bool(element, "pivotButton", false)
-  let apply_number_format = attr_bool_opt(element, "applyNumberFormat")
-  let apply_font = attr_bool_opt(element, "applyFont")
-  let apply_fill = attr_bool_opt(element, "applyFill")
-  let apply_border = attr_bool_opt(element, "applyBorder")
-  let apply_alignment = attr_bool_opt(element, "applyAlignment")
-  let apply_protection = attr_bool_opt(element, "applyProtection")
+  let quote_prefix = xf_bool(element, "quotePrefix", false)
+  let pivot_button = xf_bool(element, "pivotButton", false)
+  let apply_number_format = xf_bool_opt(element, "applyNumberFormat")
+  let apply_font = xf_bool_opt(element, "applyFont")
+  let apply_fill = xf_bool_opt(element, "applyFill")
+  let apply_border = xf_bool_opt(element, "applyBorder")
+  let apply_alignment = xf_bool_opt(element, "applyAlignment")
+  let apply_protection = xf_bool_opt(element, "applyProtection")
   {
     element,
     alignment,
@@ -889,7 +959,9 @@ pub(all) struct CT_CellStyles {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CellStyles::new(element : @xml.Element) -> CT_CellStyles {
+pub fn CT_CellStyles::new(
+  element : @xml.Element,
+) -> CT_CellStyles raise @opc_errors.SchemaViolation {
   let cell_style : Array[CT_CellStyle] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -929,7 +1001,17 @@ pub(all) struct CT_CellStyle {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CellStyle::new(element : @xml.Element) -> CT_CellStyle {
+fn cell_style_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(element, local_name, "Part 1 §18.8.8", "cellStyle")
+}
+
+///|
+pub fn CT_CellStyle::new(
+  element : @xml.Element,
+) -> CT_CellStyle raise @opc_errors.SchemaViolation {
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -942,8 +1024,8 @@ pub fn CT_CellStyle::new(element : @xml.Element) -> CT_CellStyle {
   let xf_id = attr_uint(element, "xfId", 0)
   let builtin_id = attr_uint_opt(element, "builtinId")
   let i_level = attr_uint_opt(element, "iLevel")
-  let hidden = attr_bool_opt(element, "hidden")
-  let custom_builtin = attr_bool_opt(element, "customBuiltin")
+  let hidden = cell_style_bool_opt(element, "hidden")
+  let custom_builtin = cell_style_bool_opt(element, "customBuiltin")
   { element, ext_lst, name, xf_id, builtin_id, i_level, hidden, custom_builtin }
 }
 
@@ -963,7 +1045,9 @@ pub(all) struct CT_Dxfs {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Dxfs::new(element : @xml.Element) -> CT_Dxfs {
+pub fn CT_Dxfs::new(
+  element : @xml.Element,
+) -> CT_Dxfs raise @opc_errors.SchemaViolation {
   let dxf : Array[CT_Dxf] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1002,7 +1086,9 @@ pub(all) struct CT_Dxf {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Dxf::new(element : @xml.Element) -> CT_Dxf {
+pub fn CT_Dxf::new(
+  element : @xml.Element,
+) -> CT_Dxf raise @opc_errors.SchemaViolation {
   let mut font : CT_Font? = None
   let mut num_fmt : CT_NumFmt? = None
   let mut fill : CT_Fill? = None
@@ -1041,7 +1127,9 @@ pub(all) struct CT_Colors {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Colors::new(element : @xml.Element) -> CT_Colors {
+pub fn CT_Colors::new(
+  element : @xml.Element,
+) -> CT_Colors raise @opc_errors.SchemaViolation {
   let mut indexed_colors : CT_IndexedColors? = None
   let mut mru_colors : CT_MRUColors? = None
   for child in element.children {
@@ -1093,7 +1181,9 @@ pub(all) struct CT_MRUColors {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MRUColors::new(element : @xml.Element) -> CT_MRUColors {
+pub fn CT_MRUColors::new(
+  element : @xml.Element,
+) -> CT_MRUColors raise @opc_errors.SchemaViolation {
   let color : Array[CT_Color] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1142,7 +1232,9 @@ pub(all) struct CT_TableStyles {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TableStyles::new(element : @xml.Element) -> CT_TableStyles {
+pub fn CT_TableStyles::new(
+  element : @xml.Element,
+) -> CT_TableStyles raise @opc_errors.SchemaViolation {
   let table_style : Array[CT_TableStyle] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1179,7 +1271,20 @@ pub(all) struct CT_TableStyle {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TableStyle::new(element : @xml.Element) -> CT_TableStyle {
+fn table_style_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.8.40", "tableStyle",
+  )
+}
+
+///|
+pub fn CT_TableStyle::new(
+  element : @xml.Element,
+) -> CT_TableStyle raise @opc_errors.SchemaViolation {
   let table_style_element : Array[CT_TableStyleElement] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1192,8 +1297,8 @@ pub fn CT_TableStyle::new(element : @xml.Element) -> CT_TableStyle {
     Some(value) => value
     None => ""
   }
-  let pivot = attr_bool(element, "pivot", true)
-  let table = attr_bool(element, "table", true)
+  let pivot = table_style_bool(element, "pivot", true)
+  let table = table_style_bool(element, "table", true)
   let count = attr_uint_opt(element, "count")
   { element, table_style_element, name, pivot, table, count }
 }
@@ -1250,8 +1355,19 @@ pub(all) struct CT_Color {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Color::new(element : @xml.Element) -> CT_Color {
-  let auto_ = attr_bool(element, "auto", false)
+fn color_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.8.3", "color")
+}
+
+///|
+pub fn CT_Color::new(
+  element : @xml.Element,
+) -> CT_Color raise @opc_errors.SchemaViolation {
+  let auto_ = color_bool(element, "auto", false)
   let indexed = attr_uint_opt(element, "indexed")
   let rgb = attr(element, "rgb")
   let theme = attr_uint_opt(element, "theme")
@@ -1270,8 +1386,21 @@ pub(all) struct CT_BooleanProperty {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_BooleanProperty::new(element : @xml.Element) -> CT_BooleanProperty {
-  let val = attr_bool(element, "val", true)
+fn boolean_property_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.8.2", "booleanProperty",
+  )
+}
+
+///|
+pub fn CT_BooleanProperty::new(
+  element : @xml.Element,
+) -> CT_BooleanProperty raise @opc_errors.SchemaViolation {
+  let val = boolean_property_bool(element, "val", true)
   { element, val }
 }
 
@@ -1460,7 +1589,9 @@ pub(all) struct CT_Font {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Font::new(element : @xml.Element) -> CT_Font {
+pub fn CT_Font::new(
+  element : @xml.Element,
+) -> CT_Font raise @opc_errors.SchemaViolation {
   let name : Array[CT_FontName] = []
   let charset : Array[CT_IntProperty] = []
   let family : Array[CT_FontFamily] = []
@@ -1610,12 +1741,23 @@ pub(all) struct CT_WorkbookProtection {
 } derive(Eq, Debug)
 
 ///|
+fn workbook_protection_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.29", "workbookProtection",
+  )
+}
+
+///|
 pub fn CT_WorkbookProtection::new(
   element : @xml.Element,
-) -> CT_WorkbookProtection {
-  let lock_structure = attr_bool(element, "lockStructure", false)
-  let lock_windows = attr_bool(element, "lockWindows", false)
-  let lock_revision = attr_bool(element, "lockRevision", false)
+) -> CT_WorkbookProtection raise @opc_errors.SchemaViolation {
+  let lock_structure = workbook_protection_bool(element, "lockStructure", false)
+  let lock_windows = workbook_protection_bool(element, "lockWindows", false)
+  let lock_revision = workbook_protection_bool(element, "lockRevision", false)
   let revisions_password = attr(element, "revisionsPassword")
   let workbook_password = attr(element, "workbookPassword")
   let revisions_algorithm_name = attr(element, "revisionsAlgorithmName")

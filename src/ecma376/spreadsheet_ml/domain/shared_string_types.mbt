@@ -129,7 +129,9 @@ pub(all) struct CT_Sst {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Sst::new(element : @xml.Element) -> CT_Sst {
+pub fn CT_Sst::new(
+  element : @xml.Element,
+) -> CT_Sst raise @opc_errors.SchemaViolation {
   let count_attr = attr_uint_opt(element, "count")
   let unique_count = attr_uint_opt(element, "uniqueCount")
   let si_entries : Array[CT_Rst] = []
@@ -192,7 +194,9 @@ pub(all) struct CT_RElt {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RElt::new(element : @xml.Element) -> CT_RElt {
+pub fn CT_RElt::new(
+  element : @xml.Element,
+) -> CT_RElt raise @opc_errors.SchemaViolation {
   let mut r_pr : CT_RPrElt? = None
   let mut t : String = ""
   for child in element.children {
@@ -251,7 +255,9 @@ pub(all) struct CT_RPrElt {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RPrElt::new(element : @xml.Element) -> CT_RPrElt {
+pub fn CT_RPrElt::new(
+  element : @xml.Element,
+) -> CT_RPrElt raise @opc_errors.SchemaViolation {
   let r_font : Array[CT_FontName] = []
   let charset : Array[CT_IntProperty] = []
   let family : Array[CT_IntProperty] = []
@@ -330,7 +336,9 @@ pub(all) struct CT_Rst {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Rst::new(element : @xml.Element) -> CT_Rst {
+pub fn CT_Rst::new(
+  element : @xml.Element,
+) -> CT_Rst raise @opc_errors.SchemaViolation {
   let mut t : String? = None
   let r : Array[CT_RElt] = []
   let r_ph : Array[CT_PhoneticRun] = []

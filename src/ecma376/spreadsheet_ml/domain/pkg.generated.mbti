@@ -112,7 +112,7 @@ pub(all) struct CT_BooleanProperty {
   element : @xml.Element
   val : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_BooleanProperty::new(@xml.Element) -> Self
+pub fn CT_BooleanProperty::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Border {
   element : @xml.Element
@@ -127,21 +127,21 @@ pub(all) struct CT_Border {
   diagonal_down : Bool?
   outline : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Border::new(@xml.Element) -> Self
+pub fn CT_Border::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_BorderPr {
   element : @xml.Element
   color : CT_Color?
   style : String
 } derive(Eq, @debug.Debug)
-pub fn CT_BorderPr::new(@xml.Element) -> Self
+pub fn CT_BorderPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Borders {
   element : @xml.Element
   count : Int?
   border : Array[CT_Border]
 } derive(Eq, @debug.Debug)
-pub fn CT_Borders::new(@xml.Element) -> Self
+pub fn CT_Borders::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Break {
   element : @xml.Element
@@ -329,7 +329,7 @@ pub(all) struct CT_CellAlignment {
   shrink_to_fit : Bool?
   reading_order : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_CellAlignment::new(@xml.Element) -> Self
+pub fn CT_CellAlignment::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CellFormula {
   element : @xml.Element
@@ -354,7 +354,7 @@ pub(all) struct CT_CellProtection {
   locked : Bool?
   hidden : Bool?
 } derive(Eq, @debug.Debug)
-pub fn CT_CellProtection::new(@xml.Element) -> Self
+pub fn CT_CellProtection::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CellSmartTag {
   element : @xml.Element
@@ -389,21 +389,21 @@ pub(all) struct CT_CellStyle {
   hidden : Bool?
   custom_builtin : Bool?
 } derive(Eq, @debug.Debug)
-pub fn CT_CellStyle::new(@xml.Element) -> Self
+pub fn CT_CellStyle::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CellStyleXfs {
   element : @xml.Element
   xf : Array[CT_Xf]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_CellStyleXfs::new(@xml.Element) -> Self
+pub fn CT_CellStyleXfs::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CellStyles {
   element : @xml.Element
   cell_style : Array[CT_CellStyle]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_CellStyles::new(@xml.Element) -> Self
+pub fn CT_CellStyles::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CellWatch {
   element : @xml.Element
@@ -422,7 +422,7 @@ pub(all) struct CT_CellXfs {
   xf : Array[CT_Xf]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_CellXfs::new(@xml.Element) -> Self
+pub fn CT_CellXfs::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CfRule {
   cf_type : ST_CfType?
@@ -559,7 +559,7 @@ pub(all) struct CT_Color {
   theme : Int?
   tint : Double
 } derive(Eq, @debug.Debug)
-pub fn CT_Color::new(@xml.Element) -> Self
+pub fn CT_Color::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ColorArgb {
   alpha : Int
@@ -585,7 +585,7 @@ pub(all) struct CT_Colors {
   indexed_colors : CT_IndexedColors?
   mru_colors : CT_MRUColors?
 } derive(Eq, @debug.Debug)
-pub fn CT_Colors::new(@xml.Element) -> Self
+pub fn CT_Colors::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Cols {
   element : @xml.Element
@@ -1154,14 +1154,14 @@ pub(all) struct CT_Dxf {
   protection : CT_CellProtection?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_Dxf::new(@xml.Element) -> Self
+pub fn CT_Dxf::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Dxfs {
   element : @xml.Element
   dxf : Array[CT_Dxf]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Dxfs::new(@xml.Element) -> Self
+pub fn CT_Dxfs::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DynamicFilter {
   kind : ST_DynamicFilterType
@@ -1407,7 +1407,7 @@ pub(all) struct CT_Font {
   vert_align : Array[CT_VerticalAlignFontProperty]
   scheme : Array[CT_FontScheme]
 } derive(Eq, @debug.Debug)
-pub fn CT_Font::new(@xml.Element) -> Self
+pub fn CT_Font::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FontFamily {
   element : @xml.Element
@@ -1438,7 +1438,7 @@ pub(all) struct CT_Fonts {
   count : Int?
   font : Array[CT_Font]
 } derive(Eq, @debug.Debug)
-pub fn CT_Fonts::new(@xml.Element) -> Self
+pub fn CT_Fonts::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Format {
   element : @xml.Element
@@ -1718,7 +1718,7 @@ pub(all) struct CT_MRUColors {
   element : @xml.Element
   color : Array[CT_Color]
 } derive(Eq, @debug.Debug)
-pub fn CT_MRUColors::new(@xml.Element) -> Self
+pub fn CT_MRUColors::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Macrosheet {
   element : @xml.Element
@@ -2712,7 +2712,7 @@ pub(all) struct CT_RElt {
   r_pr : CT_RPrElt?
   t : String
 } derive(Eq, @debug.Debug)
-pub fn CT_RElt::new(@xml.Element) -> Self
+pub fn CT_RElt::new(@xml.Element) -> Self raise @errors.SchemaViolation
 pub fn CT_RElt::to_plain_text(Self) -> String
 
 pub(all) struct CT_RPrElt {
@@ -2733,7 +2733,7 @@ pub(all) struct CT_RPrElt {
   vert_align : Array[CT_VerticalAlignFontProperty]
   scheme : Array[CT_FontScheme]
 } derive(Eq, @debug.Debug)
-pub fn CT_RPrElt::new(@xml.Element) -> Self
+pub fn CT_RPrElt::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RangePr {
   element : @xml.Element
@@ -3066,7 +3066,7 @@ pub(all) struct CT_Rst {
   r_ph : Array[CT_PhoneticRun]
   phonetic_pr : CT_PhoneticPr?
 } derive(Eq, @debug.Debug)
-pub fn CT_Rst::new(@xml.Element) -> Self
+pub fn CT_Rst::new(@xml.Element) -> Self raise @errors.SchemaViolation
 pub fn CT_Rst::phonetic_text(Self) -> String
 pub fn CT_Rst::to_plain_text(Self) -> String
 
@@ -3397,7 +3397,7 @@ pub(all) struct CT_Sst {
 pub fn CT_Sst::count(Self) -> Int
 pub fn CT_Sst::entries(Self) -> Array[CT_Rst]
 pub fn CT_Sst::lookup(Self, Int) -> String?
-pub fn CT_Sst::new(@xml.Element) -> Self
+pub fn CT_Sst::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_String {
   element : @xml.Element
@@ -3432,7 +3432,7 @@ pub(all) struct CT_Stylesheet {
   colors : CT_Colors?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_Stylesheet::new(@xml.Element) -> Self
+pub fn CT_Stylesheet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Table {
   element : @xml.Element
@@ -3526,7 +3526,7 @@ pub(all) struct CT_TableStyle {
   table : Bool
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_TableStyle::new(@xml.Element) -> Self
+pub fn CT_TableStyle::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TableStyleElement {
   element : @xml.Element
@@ -3553,7 +3553,7 @@ pub(all) struct CT_TableStyles {
   default_table_style : String?
   default_pivot_style : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_TableStyles::new(@xml.Element) -> Self
+pub fn CT_TableStyles::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Tables {
   element : @xml.Element
@@ -3839,7 +3839,7 @@ pub(all) struct CT_WorkbookProtection {
   revisions_password : String?
   workbook_password : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_WorkbookProtection::new(@xml.Element) -> Self
+pub fn CT_WorkbookProtection::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Worksheet {
   element : @xml.Element
@@ -3923,7 +3923,7 @@ pub(all) struct CT_Xf {
   apply_alignment : Bool?
   apply_protection : Bool?
 } derive(Eq, @debug.Debug)
-pub fn CT_Xf::new(@xml.Element) -> Self
+pub fn CT_Xf::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_XmlCellPr {
   element : @xml.Element

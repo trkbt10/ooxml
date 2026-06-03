@@ -65,7 +65,7 @@ fn pivot_cf_node(
 
 ///|
 fn pivot_cf_scheme_font_styles() -> @domain.CT_Stylesheet {
-  @domain.CT_Stylesheet::new({
+  try! @domain.CT_Stylesheet::new({
     name: pivot_cf_name("styleSheet"),
     attributes: [],
     children: [

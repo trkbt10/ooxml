@@ -1827,25 +1827,6 @@ fn trim_whitespace(text : String) -> String {
 }
 
 ///|
-/// Parse an attribute as xsd:boolean using the lexical forms permitted by
-/// W3C XML Schema (`1`/`0`/`true`/`false`). Returns `default` when the
-/// attribute is missing or unparseable.
-fn attr_bool(
-  element : @xml.Element,
-  local_name : String,
-  default : Bool,
-) -> Bool {
-  match attr(element, local_name) {
-    Some(value) =>
-      match parse_bool_text(value) {
-        Some(parsed) => parsed
-        None => default
-      }
-    None => default
-  }
-}
-
-///|
 /// Parse an attribute as xsd:boolean at a schema reader boundary. Missing
 /// attributes keep their schema default; present malformed lexicals raise.
 fn attr_bool_strict(
@@ -1916,15 +1897,6 @@ fn parse_bool_text(text : String) -> Bool? {
     "0" => Some(false)
     "false" => Some(false)
     _ => None
-  }
-}
-
-///|
-/// Parse an attribute as xsd:boolean and return None when absent.
-fn attr_bool_opt(element : @xml.Element, local_name : String) -> Bool? {
-  match attr(element, local_name) {
-    Some(value) => parse_bool_text(value)
-    None => None
   }
 }
 

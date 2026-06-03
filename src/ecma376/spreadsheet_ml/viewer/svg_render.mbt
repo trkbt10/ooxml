@@ -3952,7 +3952,12 @@ fn prefer_edge(
     Some(_) => typed
     None =>
       match first_child_named_local(border.element, transitional_name) {
-        Some(raw) => Some(@domain.CT_BorderPr::new(raw))
+        Some(raw) =>
+          try @domain.CT_BorderPr::new(raw) catch {
+            _ => None
+          } noraise {
+            border_pr => Some(border_pr)
+          }
         None => None
       }
   }

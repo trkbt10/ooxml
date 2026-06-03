@@ -116,7 +116,7 @@ pub fn edit_styles(
     }
   }
   let new_element = transform(base_element)
-  let new_styles = @sml.CT_Stylesheet::new(new_element)
+  let new_styles = try! @sml.CT_Stylesheet::new(new_element)
   { ..workbook, styles: Some(new_styles) }
 }
 
