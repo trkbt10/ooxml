@@ -35,7 +35,9 @@ pub(all) struct CT_ObjectAnchor {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ObjectAnchor::new(element : @xml.Element) -> CT_ObjectAnchor {
+pub fn CT_ObjectAnchor::new(
+  element : @xml.Element,
+) -> CT_ObjectAnchor raise @opc_errors.SchemaViolation {
   let mut from : @xml.Element? = None
   let mut to : @xml.Element? = None
   for child in element.children {
@@ -47,8 +49,12 @@ pub fn CT_ObjectAnchor::new(element : @xml.Element) -> CT_ObjectAnchor {
       }
     }
   }
-  let move_with_cells = attr_bool(element, "moveWithCells", false)
-  let size_with_cells = attr_bool(element, "sizeWithCells", false)
+  let move_with_cells = attr_bool_schema(
+    element, "moveWithCells", false, "Part 1 §18.3.1.1", "anchor",
+  )
+  let size_with_cells = attr_bool_schema(
+    element, "sizeWithCells", false, "Part 1 §18.3.1.1", "anchor",
+  )
   { element, from, to, move_with_cells, size_with_cells }
 }
 

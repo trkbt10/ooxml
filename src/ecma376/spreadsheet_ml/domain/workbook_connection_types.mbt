@@ -213,7 +213,9 @@ pub(all) struct CT_Comments {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Comments::new(element : @xml.Element) -> CT_Comments {
+pub fn CT_Comments::new(
+  element : @xml.Element,
+) -> CT_Comments raise @opc_errors.SchemaViolation {
   let mut authors : CT_Authors? = None
   let mut comment_list : CT_CommentList? = None
   let mut ext_lst : CT_ExtensionList? = None
@@ -274,7 +276,9 @@ pub(all) struct CT_CommentList {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CommentList::new(element : @xml.Element) -> CT_CommentList {
+pub fn CT_CommentList::new(
+  element : @xml.Element,
+) -> CT_CommentList raise @opc_errors.SchemaViolation {
   let comment : Array[CT_Comment] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -310,7 +314,9 @@ pub(all) struct CT_Comment {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Comment::new(element : @xml.Element) -> CT_Comment {
+pub fn CT_Comment::new(
+  element : @xml.Element,
+) -> CT_Comment raise @opc_errors.SchemaViolation {
   let mut text : CT_Rst? = None
   let mut comment_pr : CT_CommentPr? = None
   for child in element.children {
@@ -380,7 +386,9 @@ pub(all) struct CT_CommentPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CommentPr::new(element : @xml.Element) -> CT_CommentPr {
+pub fn CT_CommentPr::new(
+  element : @xml.Element,
+) -> CT_CommentPr raise @opc_errors.SchemaViolation {
   let mut anchor : CT_ObjectAnchor? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -393,12 +401,24 @@ pub fn CT_CommentPr::new(element : @xml.Element) -> CT_CommentPr {
     Some(value) => value
     None => CT_ObjectAnchor::new(element)
   }
-  let locked = attr_bool(element, "locked", true)
-  let default_size = attr_bool(element, "defaultSize", true)
-  let print = attr_bool(element, "print", true)
-  let disabled = attr_bool(element, "disabled", false)
-  let auto_fill = attr_bool(element, "autoFill", true)
-  let auto_line = attr_bool(element, "autoLine", true)
+  let locked = attr_bool_schema(
+    element, "locked", true, "Part 1 §18.7.5", "commentPr",
+  )
+  let default_size = attr_bool_schema(
+    element, "defaultSize", true, "Part 1 §18.7.5", "commentPr",
+  )
+  let print = attr_bool_schema(
+    element, "print", true, "Part 1 §18.7.5", "commentPr",
+  )
+  let disabled = attr_bool_schema(
+    element, "disabled", false, "Part 1 §18.7.5", "commentPr",
+  )
+  let auto_fill = attr_bool_schema(
+    element, "autoFill", true, "Part 1 §18.7.5", "commentPr",
+  )
+  let auto_line = attr_bool_schema(
+    element, "autoLine", true, "Part 1 §18.7.5", "commentPr",
+  )
   let alt_text = attr(element, "altText")
   let text_h_align = match attr(element, "textHAlign") {
     Some(value) => value
@@ -408,9 +428,15 @@ pub fn CT_CommentPr::new(element : @xml.Element) -> CT_CommentPr {
     Some(value) => value
     None => "top"
   }
-  let lock_text = attr_bool(element, "lockText", true)
-  let just_last_x = attr_bool(element, "justLastX", false)
-  let auto_scale = attr_bool(element, "autoScale", false)
+  let lock_text = attr_bool_schema(
+    element, "lockText", true, "Part 1 §18.7.5", "commentPr",
+  )
+  let just_last_x = attr_bool_schema(
+    element, "justLastX", false, "Part 1 §18.7.5", "commentPr",
+  )
+  let auto_scale = attr_bool_schema(
+    element, "autoScale", false, "Part 1 §18.7.5", "commentPr",
+  )
   {
     element,
     anchor: anchor_value,

@@ -602,13 +602,13 @@ pub(all) struct CT_Comment {
   guid : String?
   shape_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Comment::new(@xml.Element) -> Self
+pub fn CT_Comment::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CommentList {
   element : @xml.Element
   comment : Array[CT_Comment]
 } derive(Eq, @debug.Debug)
-pub fn CT_CommentList::new(@xml.Element) -> Self
+pub fn CT_CommentList::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CommentPr {
   element : @xml.Element
@@ -626,7 +626,7 @@ pub(all) struct CT_CommentPr {
   just_last_x : Bool
   auto_scale : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_CommentPr::new(@xml.Element) -> Self
+pub fn CT_CommentPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Comments {
   element : @xml.Element
@@ -634,7 +634,7 @@ pub(all) struct CT_Comments {
   comment_list : CT_CommentList
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_Comments::new(@xml.Element) -> Self
+pub fn CT_Comments::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ConditionalFormat {
   element : @xml.Element
@@ -2055,7 +2055,7 @@ pub(all) struct CT_ObjectAnchor {
   move_with_cells : Bool
   size_with_cells : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_ObjectAnchor::new(@xml.Element) -> Self
+pub fn CT_ObjectAnchor::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ObjectPr {
   element : @xml.Element

@@ -763,3 +763,33 @@ test "SML calc chain reader rejects malformed calc cell booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML comments reader rejects malformed comment presentation booleans" {
+  let invalid = try? read_comments(
+    bytes(
+      "<s:comments xmlns:s=\"urn:s\">" +
+      "<s:authors><s:author>A</s:author></s:authors>" +
+      "<s:commentList><s:comment ref=\"A1\" authorId=\"0\">" +
+      "<s:text/><s:commentPr locked=\"maybe\"/>" +
+      "</s:comment></s:commentList>" +
+      "</s:comments>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML comments reader rejects malformed comment anchor booleans" {
+  let invalid = try? read_comments(
+    bytes(
+      "<s:comments xmlns:s=\"urn:s\">" +
+      "<s:authors><s:author>A</s:author></s:authors>" +
+      "<s:commentList><s:comment ref=\"A1\" authorId=\"0\">" +
+      "<s:text/><s:commentPr><s:anchor moveWithCells=\"maybe\"/>" +
+      "</s:commentPr></s:comment></s:commentList>" +
+      "</s:comments>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
