@@ -2340,11 +2340,11 @@ pub fn CT_MemberProperty::new(
   let show_cell = member_property_bool(element, "showCell", false)
   let show_tip = member_property_bool(element, "showTip", false)
   let show_as_caption = member_property_bool(element, "showAsCaption", false)
-  let name_len = attr_uint_opt(element, "nameLen")
-  let p_pos = attr_uint_opt(element, "pPos")
-  let p_len = attr_uint_opt(element, "pLen")
-  let level = attr_uint_opt(element, "level")
-  let field = attr_uint(element, "field", 0)
+  let name_len = attr_uint_opt_schema(element, "nameLen")
+  let p_pos = attr_uint_opt_schema(element, "pPos")
+  let p_len = attr_uint_opt_schema(element, "pLen")
+  let level = attr_uint_opt_schema(element, "level")
+  let field = attr_uint_schema(element, "field", 0)
   {
     element,
     name,

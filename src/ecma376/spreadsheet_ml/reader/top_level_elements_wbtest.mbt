@@ -1593,6 +1593,31 @@ test "SML pivotTableDefinition reader rejects malformed pivot-hierarchy numerics
     "<s:pivotHierarchies><s:pivotHierarchy><s:mps count=\"abc\"/></s:pivotHierarchy></s:pivotHierarchies>" +
     "</s:pivotTableDefinition>",
   )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotHierarchies><s:pivotHierarchy><s:mps><s:mp nameLen=\"abc\"/></s:mps></s:pivotHierarchy></s:pivotHierarchies>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotHierarchies><s:pivotHierarchy><s:mps><s:mp pPos=\"abc\"/></s:mps></s:pivotHierarchy></s:pivotHierarchies>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotHierarchies><s:pivotHierarchy><s:mps><s:mp pLen=\"abc\"/></s:mps></s:pivotHierarchy></s:pivotHierarchies>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotHierarchies><s:pivotHierarchy><s:mps><s:mp level=\"abc\"/></s:mps></s:pivotHierarchy></s:pivotHierarchies>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotHierarchies><s:pivotHierarchy><s:mps><s:mp field=\"abc\"/></s:mps></s:pivotHierarchy></s:pivotHierarchies>" +
+    "</s:pivotTableDefinition>",
+  )
 }
 
 ///|
