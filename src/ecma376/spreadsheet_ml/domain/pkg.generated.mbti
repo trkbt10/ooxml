@@ -2746,7 +2746,7 @@ pub(all) struct CT_RangePr {
   end_date : String?
   group_interval : Double
 } derive(Eq, @debug.Debug)
-pub fn CT_RangePr::new(@xml.Element) -> Self
+pub fn CT_RangePr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RangeSet {
   element : @xml.Element

@@ -1650,9 +1650,15 @@ pub(all) struct CT_RangePr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RangePr::new(element : @xml.Element) -> CT_RangePr {
-  let auto_start = attr_bool(element, "autoStart", true)
-  let auto_end = attr_bool(element, "autoEnd", true)
+pub fn CT_RangePr::new(
+  element : @xml.Element,
+) -> CT_RangePr raise @opc_errors.SchemaViolation {
+  let auto_start = attr_bool_schema(
+    element, "autoStart", true, "Part 1 §18.10.1.78", "rangePr",
+  )
+  let auto_end = attr_bool_schema(
+    element, "autoEnd", true, "Part 1 §18.10.1.78", "rangePr",
+  )
   let group_by = match attr(element, "groupBy") {
     Some(value) => value
     None => "range"

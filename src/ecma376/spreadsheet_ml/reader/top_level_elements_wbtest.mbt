@@ -435,6 +435,20 @@ test "SML pivotCacheDefinition reader rejects malformed cache-hierarchy booleans
 test "SML pivotCacheDefinition reader rejects malformed group-level booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField>" +
+    "<s:fieldGroup><s:rangePr autoStart=\"maybe\"/></s:fieldGroup>" +
+    "</s:cacheField></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField>" +
+    "<s:fieldGroup><s:rangePr autoEnd=\"maybe\"/></s:fieldGroup>" +
+    "</s:cacheField></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
     "<s:cacheHierarchies><s:cacheHierarchy><s:groupLevels>" +
     "<s:groupLevel user=\"maybe\"/>" +
     "</s:groupLevels></s:cacheHierarchy></s:cacheHierarchies>" +
