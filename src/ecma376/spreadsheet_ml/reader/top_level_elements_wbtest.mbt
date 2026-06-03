@@ -179,6 +179,48 @@ test "SML headers reader rejects malformed revision-header booleans" {
 }
 
 ///|
+fn assert_connections_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_connections(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML connections reader rejects malformed connection booleans" {
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection keepAlive=\"maybe\"/>" +
+    "</s:connections>",
+  )
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection savePassword=\"maybe\"/>" +
+    "</s:connections>",
+  )
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection new=\"maybe\"/>" +
+    "</s:connections>",
+  )
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection deleted=\"maybe\"/>" +
+    "</s:connections>",
+  )
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection onlyUseConnectionFile=\"maybe\"/>" +
+    "</s:connections>",
+  )
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection background=\"maybe\"/>" +
+    "</s:connections>",
+  )
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection refreshOnLoad=\"maybe\"/>" +
+    "</s:connections>",
+  )
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection saveData=\"maybe\"/>" +
+    "</s:connections>",
+  )
+}
+
+///|
 fn assert_revisions_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_revisions(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))

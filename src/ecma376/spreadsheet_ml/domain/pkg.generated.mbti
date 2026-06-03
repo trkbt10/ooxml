@@ -689,13 +689,13 @@ pub(all) struct CT_Connection {
   credentials : String
   single_sign_on_id : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Connection::new(@xml.Element) -> Self
+pub fn CT_Connection::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Connections {
   element : @xml.Element
   connection : Array[CT_Connection]
 } derive(Eq, @debug.Debug)
-pub fn CT_Connections::new(@xml.Element) -> Self
+pub fn CT_Connections::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Consolidation {
   element : @xml.Element

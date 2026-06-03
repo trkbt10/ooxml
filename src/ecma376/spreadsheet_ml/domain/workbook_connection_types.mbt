@@ -498,7 +498,9 @@ pub(all) struct CT_Connections {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Connections::new(element : @xml.Element) -> CT_Connections {
+pub fn CT_Connections::new(
+  element : @xml.Element,
+) -> CT_Connections raise @opc_errors.SchemaViolation {
   let connection : Array[CT_Connection] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -584,7 +586,20 @@ pub(all) struct CT_Connection {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Connection::new(element : @xml.Element) -> CT_Connection {
+fn connection_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.13.1", "connection",
+  )
+}
+
+///|
+pub fn CT_Connection::new(
+  element : @xml.Element,
+) -> CT_Connection raise @opc_errors.SchemaViolation {
   let mut db_pr : CT_DbPr? = None
   let mut olap_pr : CT_OlapPr? = None
   let mut web_pr : CT_WebPr? = None
@@ -607,7 +622,7 @@ pub fn CT_Connection::new(element : @xml.Element) -> CT_Connection {
   let id = attr_uint(element, "id", 0)
   let source_file = attr(element, "sourceFile")
   let odc_file = attr(element, "odcFile")
-  let keep_alive = attr_bool(element, "keepAlive", false)
+  let keep_alive = connection_bool(element, "keepAlive", false)
   let interval = attr_uint(element, "interval", 0)
   let name = attr(element, "name")
   let description = attr(element, "description")
@@ -615,15 +630,15 @@ pub fn CT_Connection::new(element : @xml.Element) -> CT_Connection {
   let reconnection_method = attr_uint(element, "reconnectionMethod", 1)
   let refreshed_version = attr_uint(element, "refreshedVersion", 0)
   let min_refreshable_version = attr_uint(element, "minRefreshableVersion", 0)
-  let save_password = attr_bool(element, "savePassword", false)
-  let new_ = attr_bool(element, "new", false)
-  let deleted = attr_bool(element, "deleted", false)
-  let only_use_connection_file = attr_bool(
+  let save_password = connection_bool(element, "savePassword", false)
+  let new_ = connection_bool(element, "new", false)
+  let deleted = connection_bool(element, "deleted", false)
+  let only_use_connection_file = connection_bool(
     element, "onlyUseConnectionFile", false,
   )
-  let background = attr_bool(element, "background", false)
-  let refresh_on_load = attr_bool(element, "refreshOnLoad", false)
-  let save_data = attr_bool(element, "saveData", false)
+  let background = connection_bool(element, "background", false)
+  let refresh_on_load = connection_bool(element, "refreshOnLoad", false)
+  let save_data = connection_bool(element, "saveData", false)
   let credentials = match attr(element, "credentials") {
     Some(value) => value
     None => "integrated"
