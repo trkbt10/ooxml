@@ -2951,6 +2951,17 @@ pub(all) struct CT_CustomSheetView {
 } derive(Eq, Debug)
 
 ///|
+fn custom_sheet_view_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.26", "customSheetView",
+  )
+}
+
+///|
 pub fn CT_CustomSheetView::new(
   element : @xml.Element,
 ) -> CT_CustomSheetView raise @opc_errors.SchemaViolation {
@@ -2989,28 +3000,32 @@ pub fn CT_CustomSheetView::new(
   }
   let scale = attr_uint(element, "scale", 100)
   let color_id = attr_uint(element, "colorId", 64)
-  let show_page_breaks = attr_bool(element, "showPageBreaks", false)
-  let show_formulas = attr_bool(element, "showFormulas", false)
-  let show_grid_lines = attr_bool(element, "showGridLines", true)
-  let show_row_col = attr_bool(element, "showRowCol", true)
-  let outline_symbols = attr_bool(element, "outlineSymbols", true)
-  let zero_values = attr_bool(element, "zeroValues", true)
-  let fit_to_page = attr_bool(element, "fitToPage", false)
-  let print_area = attr_bool(element, "printArea", false)
-  let filter = attr_bool(element, "filter", false)
-  let show_auto_filter = attr_bool(element, "showAutoFilter", false)
-  let hidden_rows = attr_bool(element, "hiddenRows", false)
-  let hidden_columns = attr_bool(element, "hiddenColumns", false)
+  let show_page_breaks = custom_sheet_view_bool(
+    element, "showPageBreaks", false,
+  )
+  let show_formulas = custom_sheet_view_bool(element, "showFormulas", false)
+  let show_grid_lines = custom_sheet_view_bool(element, "showGridLines", true)
+  let show_row_col = custom_sheet_view_bool(element, "showRowCol", true)
+  let outline_symbols = custom_sheet_view_bool(element, "outlineSymbols", true)
+  let zero_values = custom_sheet_view_bool(element, "zeroValues", true)
+  let fit_to_page = custom_sheet_view_bool(element, "fitToPage", false)
+  let print_area = custom_sheet_view_bool(element, "printArea", false)
+  let filter = custom_sheet_view_bool(element, "filter", false)
+  let show_auto_filter = custom_sheet_view_bool(
+    element, "showAutoFilter", false,
+  )
+  let hidden_rows = custom_sheet_view_bool(element, "hiddenRows", false)
+  let hidden_columns = custom_sheet_view_bool(element, "hiddenColumns", false)
   let state = match attr(element, "state") {
     Some(value) => value
     None => "visible"
   }
-  let filter_unique = attr_bool(element, "filterUnique", false)
+  let filter_unique = custom_sheet_view_bool(element, "filterUnique", false)
   let view = match attr(element, "view") {
     Some(value) => value
     None => "normal"
   }
-  let show_ruler = attr_bool(element, "showRuler", true)
+  let show_ruler = custom_sheet_view_bool(element, "showRuler", true)
   let top_left_cell = attr(element, "topLeftCell")
   {
     element,
