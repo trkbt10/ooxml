@@ -39,6 +39,17 @@ fn file_recovery_pr_bool(
 }
 
 ///|
+fn workbook_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.28", "workbookPr",
+  )
+}
+
+///|
 fn calc_pr_bool(
   element : @xml.Element,
   local_name : String,
@@ -3711,20 +3722,22 @@ pub(all) struct CT_WorkbookPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_WorkbookPr::new(element : @xml.Element) -> CT_WorkbookPr {
-  let date1904 = attr_bool(element, "date1904", false)
+pub fn CT_WorkbookPr::new(
+  element : @xml.Element,
+) -> CT_WorkbookPr raise @opc_errors.SchemaViolation {
+  let date1904 = workbook_pr_bool(element, "date1904", false)
   let show_objects = match attr(element, "showObjects") {
     Some(value) => value
     None => "all"
   }
-  let show_border_unselected_tables = attr_bool(
+  let show_border_unselected_tables = workbook_pr_bool(
     element, "showBorderUnselectedTables", true,
   )
-  let filter_privacy = attr_bool(element, "filterPrivacy", false)
-  let prompted_solutions = attr_bool(element, "promptedSolutions", false)
-  let show_ink_annotation = attr_bool(element, "showInkAnnotation", true)
-  let backup_file = attr_bool(element, "backupFile", false)
-  let save_external_link_values = attr_bool(
+  let filter_privacy = workbook_pr_bool(element, "filterPrivacy", false)
+  let prompted_solutions = workbook_pr_bool(element, "promptedSolutions", false)
+  let show_ink_annotation = workbook_pr_bool(element, "showInkAnnotation", true)
+  let backup_file = workbook_pr_bool(element, "backupFile", false)
+  let save_external_link_values = workbook_pr_bool(
     element, "saveExternalLinkValues", true,
   )
   let update_links = match attr(element, "updateLinks") {
@@ -3732,15 +3745,23 @@ pub fn CT_WorkbookPr::new(element : @xml.Element) -> CT_WorkbookPr {
     None => "userSet"
   }
   let code_name = attr(element, "codeName")
-  let hide_pivot_field_list = attr_bool(element, "hidePivotFieldList", false)
-  let show_pivot_chart_filter = attr_bool(
+  let hide_pivot_field_list = workbook_pr_bool(
+    element, "hidePivotFieldList", false,
+  )
+  let show_pivot_chart_filter = workbook_pr_bool(
     element, "showPivotChartFilter", false,
   )
-  let allow_refresh_query = attr_bool(element, "allowRefreshQuery", false)
-  let publish_items = attr_bool(element, "publishItems", false)
-  let check_compatibility = attr_bool(element, "checkCompatibility", false)
-  let auto_compress_pictures = attr_bool(element, "autoCompressPictures", true)
-  let refresh_all_connections = attr_bool(
+  let allow_refresh_query = workbook_pr_bool(
+    element, "allowRefreshQuery", false,
+  )
+  let publish_items = workbook_pr_bool(element, "publishItems", false)
+  let check_compatibility = workbook_pr_bool(
+    element, "checkCompatibility", false,
+  )
+  let auto_compress_pictures = workbook_pr_bool(
+    element, "autoCompressPictures", true,
+  )
+  let refresh_all_connections = workbook_pr_bool(
     element, "refreshAllConnections", false,
   )
   let default_theme_version = attr_uint_opt(element, "defaultThemeVersion")

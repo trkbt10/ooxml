@@ -3821,7 +3821,7 @@ pub(all) struct CT_WorkbookPr {
   refresh_all_connections : Bool
   default_theme_version : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_WorkbookPr::new(@xml.Element) -> Self
+pub fn CT_WorkbookPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_WorkbookProtection {
   element : @xml.Element

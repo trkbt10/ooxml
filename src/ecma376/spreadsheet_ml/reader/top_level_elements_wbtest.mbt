@@ -263,6 +263,33 @@ test "SML workbook reader rejects malformed defined name booleans" {
 }
 
 ///|
+fn assert_workbook_pr_bool_schema_violation(local_name : String) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:workbookPr " +
+    local_name +
+    "=\"maybe\"/></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed workbook property booleans" {
+  assert_workbook_pr_bool_schema_violation("date1904")
+  assert_workbook_pr_bool_schema_violation("showBorderUnselectedTables")
+  assert_workbook_pr_bool_schema_violation("filterPrivacy")
+  assert_workbook_pr_bool_schema_violation("promptedSolutions")
+  assert_workbook_pr_bool_schema_violation("showInkAnnotation")
+  assert_workbook_pr_bool_schema_violation("backupFile")
+  assert_workbook_pr_bool_schema_violation("saveExternalLinkValues")
+  assert_workbook_pr_bool_schema_violation("hidePivotFieldList")
+  assert_workbook_pr_bool_schema_violation("showPivotChartFilter")
+  assert_workbook_pr_bool_schema_violation("allowRefreshQuery")
+  assert_workbook_pr_bool_schema_violation("publishItems")
+  assert_workbook_pr_bool_schema_violation("checkCompatibility")
+  assert_workbook_pr_bool_schema_violation("autoCompressPictures")
+  assert_workbook_pr_bool_schema_violation("refreshAllConnections")
+}
+
+///|
 test "SML metadata reader rejects malformed metadataType booleans" {
   let invalid = try? read_metadata(
     bytes(
