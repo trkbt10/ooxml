@@ -1874,7 +1874,7 @@ pub(all) struct CT_MemberProperties {
   count : Int?
   mp : Array[CT_MemberProperty]
 } derive(Eq, @debug.Debug)
-pub fn CT_MemberProperties::new(@xml.Element) -> Self
+pub fn CT_MemberProperties::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MemberProperty {
   element : @xml.Element
@@ -1888,7 +1888,7 @@ pub(all) struct CT_MemberProperty {
   level : Int?
   field : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_MemberProperty::new(@xml.Element) -> Self
+pub fn CT_MemberProperty::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Members {
   element : @xml.Element

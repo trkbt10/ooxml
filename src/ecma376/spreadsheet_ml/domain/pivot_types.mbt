@@ -2264,7 +2264,9 @@ pub(all) struct CT_MemberProperties {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MemberProperties::new(element : @xml.Element) -> CT_MemberProperties {
+pub fn CT_MemberProperties::new(
+  element : @xml.Element,
+) -> CT_MemberProperties raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let mp : Array[CT_MemberProperty] = []
   for child in element.children {
@@ -2308,11 +2310,22 @@ pub(all) struct CT_MemberProperty {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MemberProperty::new(element : @xml.Element) -> CT_MemberProperty {
+fn member_property_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.10.1.56", "mp")
+}
+
+///|
+pub fn CT_MemberProperty::new(
+  element : @xml.Element,
+) -> CT_MemberProperty raise @opc_errors.SchemaViolation {
   let name = attr(element, "name")
-  let show_cell = attr_bool(element, "showCell", false)
-  let show_tip = attr_bool(element, "showTip", false)
-  let show_as_caption = attr_bool(element, "showAsCaption", false)
+  let show_cell = member_property_bool(element, "showCell", false)
+  let show_tip = member_property_bool(element, "showTip", false)
+  let show_as_caption = member_property_bool(element, "showAsCaption", false)
   let name_len = attr_uint_opt(element, "nameLen")
   let p_pos = attr_uint_opt(element, "pPos")
   let p_len = attr_uint_opt(element, "pLen")

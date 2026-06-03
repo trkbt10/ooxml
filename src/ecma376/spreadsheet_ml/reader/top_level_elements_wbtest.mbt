@@ -373,6 +373,20 @@ test "SML pivotTableDefinition reader rejects malformed pivot-hierarchy booleans
 }
 
 ///|
+test "SML pivotTableDefinition reader rejects malformed member-property booleans" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotHierarchies><s:pivotHierarchy><s:mps><s:mp field=\"0\" showCell=\"maybe\"/></s:mps></s:pivotHierarchy></s:pivotHierarchies>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotHierarchies><s:pivotHierarchy><s:mps><s:mp field=\"0\" showAsCaption=\"maybe\"/></s:mps></s:pivotHierarchy></s:pivotHierarchies>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheRecords reader rejects malformed record booleans" {
   let invalid = try? read_pivot_cache_records(
     bytes(
