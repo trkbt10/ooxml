@@ -868,13 +868,13 @@ pub(all) struct CT_CustomWorkbookView {
   show_statusbar : Bool
   show_objects : String
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomWorkbookView::new(@xml.Element) -> Self
+pub fn CT_CustomWorkbookView::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CustomWorkbookViews {
   element : @xml.Element
   views : Array[CT_CustomWorkbookView]
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomWorkbookViews::new(@xml.Element) -> Self
+pub fn CT_CustomWorkbookViews::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DataBar {
   element : @xml.Element

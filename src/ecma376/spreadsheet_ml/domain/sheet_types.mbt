@@ -4942,7 +4942,7 @@ pub(all) struct CT_CustomWorkbookViews {
 ///|
 pub fn CT_CustomWorkbookViews::new(
   element : @xml.Element,
-) -> CT_CustomWorkbookViews {
+) -> CT_CustomWorkbookViews raise @opc_errors.SchemaViolation {
   let views : Array[CT_CustomWorkbookView] = []
   for child in element.children {
     if child is @xml.Node::Element(e) &&
@@ -5007,9 +5007,20 @@ pub(all) struct CT_CustomWorkbookView {
 } derive(Eq, Debug)
 
 ///|
+fn custom_workbook_view_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.4", "customWorkbookView",
+  )
+}
+
+///|
 pub fn CT_CustomWorkbookView::new(
   element : @xml.Element,
-) -> CT_CustomWorkbookView {
+) -> CT_CustomWorkbookView raise @opc_errors.SchemaViolation {
   {
     element,
     name: attr(element, "name").unwrap_or(""),
@@ -5019,22 +5030,32 @@ pub fn CT_CustomWorkbookView::new(
     y_window: attr_int(element, "yWindow", 0),
     window_width: attr_int(element, "windowWidth", 0),
     window_height: attr_int(element, "windowHeight", 0),
-    maximized: attr_bool(element, "maximized", false),
-    show_horizontal_scroll: attr_bool(element, "showHorizontalScroll", true),
-    show_vertical_scroll: attr_bool(element, "showVerticalScroll", true),
-    show_sheet_tabs: attr_bool(element, "showSheetTabs", true),
+    maximized: custom_workbook_view_bool(element, "maximized", false),
+    show_horizontal_scroll: custom_workbook_view_bool(
+      element, "showHorizontalScroll", true,
+    ),
+    show_vertical_scroll: custom_workbook_view_bool(
+      element, "showVerticalScroll", true,
+    ),
+    show_sheet_tabs: custom_workbook_view_bool(element, "showSheetTabs", true),
     tab_ratio: attr_int(element, "tabRatio", 600),
-    auto_update: attr_bool(element, "autoUpdate", false),
+    auto_update: custom_workbook_view_bool(element, "autoUpdate", false),
     merge_interval: attr_int(element, "mergeInterval", 0),
-    changes_saved_win: attr_bool(element, "changesSavedWin", false),
-    only_sync: attr_bool(element, "onlySync", false),
-    personal_view: attr_bool(element, "personalView", false),
-    include_print_settings: attr_bool(element, "includePrintSettings", true),
-    include_hidden_row_col: attr_bool(element, "includeHiddenRowCol", true),
-    minimized: attr_bool(element, "minimized", false),
+    changes_saved_win: custom_workbook_view_bool(
+      element, "changesSavedWin", false,
+    ),
+    only_sync: custom_workbook_view_bool(element, "onlySync", false),
+    personal_view: custom_workbook_view_bool(element, "personalView", false),
+    include_print_settings: custom_workbook_view_bool(
+      element, "includePrintSettings", true,
+    ),
+    include_hidden_row_col: custom_workbook_view_bool(
+      element, "includeHiddenRowCol", true,
+    ),
+    minimized: custom_workbook_view_bool(element, "minimized", false),
     show_comments: attr(element, "showComments").unwrap_or("commIndicator"),
-    show_formula_bar: attr_bool(element, "showFormulaBar", true),
-    show_statusbar: attr_bool(element, "showStatusbar", true),
+    show_formula_bar: custom_workbook_view_bool(element, "showFormulaBar", true),
+    show_statusbar: custom_workbook_view_bool(element, "showStatusbar", true),
     show_objects: attr(element, "showObjects").unwrap_or("all"),
   }
 }

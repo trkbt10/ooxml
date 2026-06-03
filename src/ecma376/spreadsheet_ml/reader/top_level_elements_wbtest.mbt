@@ -320,6 +320,35 @@ test "SML workbook reader rejects malformed workbook view booleans" {
 }
 
 ///|
+fn assert_custom_workbook_view_bool_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:customWorkbookViews>" +
+    "<s:customWorkbookView name=\"View\" guid=\"{GUID}\" " +
+    local_name +
+    "=\"maybe\"/></s:customWorkbookViews></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed custom workbook view booleans" {
+  assert_custom_workbook_view_bool_schema_violation("maximized")
+  assert_custom_workbook_view_bool_schema_violation("showHorizontalScroll")
+  assert_custom_workbook_view_bool_schema_violation("showVerticalScroll")
+  assert_custom_workbook_view_bool_schema_violation("showSheetTabs")
+  assert_custom_workbook_view_bool_schema_violation("autoUpdate")
+  assert_custom_workbook_view_bool_schema_violation("changesSavedWin")
+  assert_custom_workbook_view_bool_schema_violation("onlySync")
+  assert_custom_workbook_view_bool_schema_violation("personalView")
+  assert_custom_workbook_view_bool_schema_violation("includePrintSettings")
+  assert_custom_workbook_view_bool_schema_violation("includeHiddenRowCol")
+  assert_custom_workbook_view_bool_schema_violation("minimized")
+  assert_custom_workbook_view_bool_schema_violation("showFormulaBar")
+  assert_custom_workbook_view_bool_schema_violation("showStatusbar")
+}
+
+///|
 test "SML metadata reader rejects malformed metadataType booleans" {
   let invalid = try? read_metadata(
     bytes(
