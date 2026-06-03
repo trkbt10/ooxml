@@ -741,16 +741,27 @@ pub(all) struct CT_OlapPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_OlapPr::new(element : @xml.Element) -> CT_OlapPr {
-  let is_local = attr_bool(element, "local", false)
+fn olap_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.13.6", "olapPr")
+}
+
+///|
+pub fn CT_OlapPr::new(
+  element : @xml.Element,
+) -> CT_OlapPr raise @opc_errors.SchemaViolation {
+  let is_local = olap_pr_bool(element, "local", false)
   let local_connection = attr(element, "localConnection")
-  let local_refresh = attr_bool(element, "localRefresh", true)
-  let send_locale = attr_bool(element, "sendLocale", false)
+  let local_refresh = olap_pr_bool(element, "localRefresh", true)
+  let send_locale = olap_pr_bool(element, "sendLocale", false)
   let row_drill_count = attr_uint_opt(element, "rowDrillCount")
-  let server_fill = attr_bool(element, "serverFill", true)
-  let server_number_format = attr_bool(element, "serverNumberFormat", true)
-  let server_font = attr_bool(element, "serverFont", true)
-  let server_font_color = attr_bool(element, "serverFontColor", true)
+  let server_fill = olap_pr_bool(element, "serverFill", true)
+  let server_number_format = olap_pr_bool(element, "serverNumberFormat", true)
+  let server_font = olap_pr_bool(element, "serverFont", true)
+  let server_font_color = olap_pr_bool(element, "serverFontColor", true)
   {
     element,
     is_local,
@@ -811,7 +822,18 @@ pub(all) struct CT_WebPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_WebPr::new(element : @xml.Element) -> CT_WebPr {
+fn web_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.13.16", "webPr")
+}
+
+///|
+pub fn CT_WebPr::new(
+  element : @xml.Element,
+) -> CT_WebPr raise @opc_errors.SchemaViolation {
   let mut tables : CT_Tables? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -820,17 +842,17 @@ pub fn CT_WebPr::new(element : @xml.Element) -> CT_WebPr {
       }
     }
   }
-  let xml = attr_bool(element, "xml", false)
-  let source_data = attr_bool(element, "sourceData", false)
-  let parse_pre = attr_bool(element, "parsePre", false)
-  let consecutive = attr_bool(element, "consecutive", false)
-  let first_row = attr_bool(element, "firstRow", false)
-  let xl97 = attr_bool(element, "xl97", false)
-  let text_dates = attr_bool(element, "textDates", false)
-  let xl2000 = attr_bool(element, "xl2000", false)
+  let xml = web_pr_bool(element, "xml", false)
+  let source_data = web_pr_bool(element, "sourceData", false)
+  let parse_pre = web_pr_bool(element, "parsePre", false)
+  let consecutive = web_pr_bool(element, "consecutive", false)
+  let first_row = web_pr_bool(element, "firstRow", false)
+  let xl97 = web_pr_bool(element, "xl97", false)
+  let text_dates = web_pr_bool(element, "textDates", false)
+  let xl2000 = web_pr_bool(element, "xl2000", false)
   let url = attr(element, "url")
   let post = attr(element, "post")
-  let html_tables = attr_bool(element, "htmlTables", false)
+  let html_tables = web_pr_bool(element, "htmlTables", false)
   let html_format = match attr(element, "htmlFormat") {
     Some(value) => value
     None => "none"
@@ -869,7 +891,9 @@ pub(all) struct CT_Parameters {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Parameters::new(element : @xml.Element) -> CT_Parameters {
+pub fn CT_Parameters::new(
+  element : @xml.Element,
+) -> CT_Parameters raise @opc_errors.SchemaViolation {
   let parameter : Array[CT_Parameter] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -915,16 +939,31 @@ pub(all) struct CT_Parameter {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Parameter::new(element : @xml.Element) -> CT_Parameter {
+fn parameter_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.13.8", "parameter",
+  )
+}
+
+///|
+pub fn CT_Parameter::new(
+  element : @xml.Element,
+) -> CT_Parameter raise @opc_errors.SchemaViolation {
   let name = attr(element, "name")
   let sql_type = attr_int(element, "sqlType", 0)
   let parameter_type = match attr(element, "parameterType") {
     Some(value) => value
     None => "prompt"
   }
-  let refresh_on_change = attr_bool(element, "refreshOnChange", false)
+  let refresh_on_change = parameter_bool(element, "refreshOnChange", false)
   let prompt = attr(element, "prompt")
-  let boolean = attr_bool_opt(element, "boolean")
+  let boolean = attr_bool_schema_opt(
+    element, "boolean", "Part 1 §18.13.8", "parameter",
+  )
   let double = attr_double_opt(element, "double")
   let integer = attr_int_opt(element, "integer")
   let string = attr(element, "string")
@@ -996,7 +1035,18 @@ pub(all) struct CT_TextPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TextPr::new(element : @xml.Element) -> CT_TextPr {
+fn text_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.13.13", "textPr")
+}
+
+///|
+pub fn CT_TextPr::new(
+  element : @xml.Element,
+) -> CT_TextPr raise @opc_errors.SchemaViolation {
   let mut text_fields : CT_TextFields? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1005,7 +1055,7 @@ pub fn CT_TextPr::new(element : @xml.Element) -> CT_TextPr {
       }
     }
   }
-  let prompt = attr_bool(element, "prompt", true)
+  let prompt = text_pr_bool(element, "prompt", true)
   let file_type = match attr(element, "fileType") {
     Some(value) => value
     None => "win"
@@ -1017,7 +1067,7 @@ pub fn CT_TextPr::new(element : @xml.Element) -> CT_TextPr {
     Some(value) => value
     None => ""
   }
-  let delimited = attr_bool(element, "delimited", true)
+  let delimited = text_pr_bool(element, "delimited", true)
   let decimal = match attr(element, "decimal") {
     Some(value) => value
     None => "."
@@ -1026,11 +1076,11 @@ pub fn CT_TextPr::new(element : @xml.Element) -> CT_TextPr {
     Some(value) => value
     None => ","
   }
-  let tab = attr_bool(element, "tab", true)
-  let space = attr_bool(element, "space", false)
-  let comma = attr_bool(element, "comma", false)
-  let semicolon = attr_bool(element, "semicolon", false)
-  let consecutive = attr_bool(element, "consecutive", false)
+  let tab = text_pr_bool(element, "tab", true)
+  let space = text_pr_bool(element, "space", false)
+  let comma = text_pr_bool(element, "comma", false)
+  let semicolon = text_pr_bool(element, "semicolon", false)
+  let consecutive = text_pr_bool(element, "consecutive", false)
   let qualifier = match attr(element, "qualifier") {
     Some(value) => value
     None => "doubleQuote"

@@ -185,6 +185,15 @@ fn assert_connections_schema_violation(source : String) -> Unit raise {
 }
 
 ///|
+fn assert_connection_child_schema_violation(source : String) -> Unit raise {
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection>" +
+    source +
+    "</s:connection></s:connections>",
+  )
+}
+
+///|
 test "SML connections reader rejects malformed connection booleans" {
   assert_connections_schema_violation(
     "<s:connections xmlns:s=\"urn:s\"><s:connection keepAlive=\"maybe\"/>" +
@@ -218,6 +227,43 @@ test "SML connections reader rejects malformed connection booleans" {
     "<s:connections xmlns:s=\"urn:s\"><s:connection saveData=\"maybe\"/>" +
     "</s:connections>",
   )
+}
+
+///|
+test "SML connections reader rejects malformed connection property booleans" {
+  assert_connection_child_schema_violation("<s:olapPr local=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:olapPr localRefresh=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:olapPr sendLocale=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:olapPr serverFill=\"maybe\"/>")
+  assert_connection_child_schema_violation(
+    "<s:olapPr serverNumberFormat=\"maybe\"/>",
+  )
+  assert_connection_child_schema_violation("<s:olapPr serverFont=\"maybe\"/>")
+  assert_connection_child_schema_violation(
+    "<s:olapPr serverFontColor=\"maybe\"/>",
+  )
+  assert_connection_child_schema_violation("<s:webPr xml=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:webPr sourceData=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:webPr parsePre=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:webPr consecutive=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:webPr firstRow=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:webPr xl97=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:webPr textDates=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:webPr xl2000=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:webPr htmlTables=\"maybe\"/>")
+  assert_connection_child_schema_violation(
+    "<s:parameters><s:parameter refreshOnChange=\"maybe\"/></s:parameters>",
+  )
+  assert_connection_child_schema_violation(
+    "<s:parameters><s:parameter boolean=\"maybe\"/></s:parameters>",
+  )
+  assert_connection_child_schema_violation("<s:textPr prompt=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:textPr delimited=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:textPr tab=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:textPr space=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:textPr comma=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:textPr semicolon=\"maybe\"/>")
+  assert_connection_child_schema_violation("<s:textPr consecutive=\"maybe\"/>")
 }
 
 ///|

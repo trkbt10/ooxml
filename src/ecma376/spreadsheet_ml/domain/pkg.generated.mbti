@@ -2087,7 +2087,7 @@ pub(all) struct CT_OlapPr {
   server_font : Bool
   server_font_color : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_OlapPr::new(@xml.Element) -> Self
+pub fn CT_OlapPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_OleItem {
   element : @xml.Element
@@ -2290,14 +2290,14 @@ pub(all) struct CT_Parameter {
   string : String?
   cell : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Parameter::new(@xml.Element) -> Self
+pub fn CT_Parameter::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Parameters {
   element : @xml.Element
   parameter : Array[CT_Parameter]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Parameters::new(@xml.Element) -> Self
+pub fn CT_Parameters::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PatternFill {
   element : @xml.Element
@@ -3598,7 +3598,7 @@ pub(all) struct CT_TextPr {
   qualifier : String
   delimiter : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_TextPr::new(@xml.Element) -> Self
+pub fn CT_TextPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Top10 {
   top : Bool
@@ -3721,7 +3721,7 @@ pub(all) struct CT_WebPr {
   html_format : String
   edit_page : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_WebPr::new(@xml.Element) -> Self
+pub fn CT_WebPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_WebPublishItem {
   element : @xml.Element
