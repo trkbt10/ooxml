@@ -755,7 +755,20 @@ pub(all) struct CT_RevisionHeaders {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RevisionHeaders::new(element : @xml.Element) -> CT_RevisionHeaders {
+fn revision_headers_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.11.1.2", "headers",
+  )
+}
+
+///|
+pub fn CT_RevisionHeaders::new(
+  element : @xml.Element,
+) -> CT_RevisionHeaders raise @opc_errors.SchemaViolation {
   let header : Array[CT_RevisionHeader] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -769,15 +782,17 @@ pub fn CT_RevisionHeaders::new(element : @xml.Element) -> CT_RevisionHeaders {
     None => ""
   }
   let last_guid = attr(element, "lastGuid")
-  let shared = attr_bool(element, "shared", true)
-  let disk_revisions = attr_bool(element, "diskRevisions", false)
-  let history = attr_bool(element, "history", true)
-  let track_revisions = attr_bool(element, "trackRevisions", true)
-  let exclusive = attr_bool(element, "exclusive", false)
+  let shared = revision_headers_bool(element, "shared", true)
+  let disk_revisions = revision_headers_bool(element, "diskRevisions", false)
+  let history = revision_headers_bool(element, "history", true)
+  let track_revisions = revision_headers_bool(element, "trackRevisions", true)
+  let exclusive = revision_headers_bool(element, "exclusive", false)
   let revision_id = attr_uint(element, "revisionId", 0)
   let version = attr_int(element, "version", 1)
-  let keep_change_history = attr_bool(element, "keepChangeHistory", true)
-  let is_protected = attr_bool(element, "protected", false)
+  let keep_change_history = revision_headers_bool(
+    element, "keepChangeHistory", true,
+  )
+  let is_protected = revision_headers_bool(element, "protected", false)
   let preserve_history = attr_uint(element, "preserveHistory", 30)
   {
     element,

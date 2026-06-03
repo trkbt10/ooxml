@@ -171,6 +171,14 @@ test "SML metadata reader rejects malformed metadataType booleans" {
 }
 
 ///|
+test "SML headers reader rejects malformed revision-header booleans" {
+  let invalid = try? read_headers(
+    bytes("<s:headers xmlns:s=\"urn:s\" shared=\"maybe\"/>"),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 fn assert_metadata_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_metadata(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
