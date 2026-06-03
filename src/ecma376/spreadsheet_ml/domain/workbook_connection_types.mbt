@@ -1251,6 +1251,17 @@ pub(all) struct CT_SharedItems {
 } derive(Eq, Debug)
 
 ///|
+fn shared_items_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.10.1.41", "sharedItems",
+  )
+}
+
+///|
 pub fn CT_SharedItems::new(
   element : @xml.Element,
 ) -> CT_SharedItems raise @opc_errors.SchemaViolation {
@@ -1273,22 +1284,24 @@ pub fn CT_SharedItems::new(
       }
     }
   }
-  let contains_semi_mixed_types = attr_bool(
+  let contains_semi_mixed_types = shared_items_bool(
     element, "containsSemiMixedTypes", true,
   )
-  let contains_non_date = attr_bool(element, "containsNonDate", true)
-  let contains_date = attr_bool(element, "containsDate", false)
-  let contains_string = attr_bool(element, "containsString", true)
-  let contains_blank = attr_bool(element, "containsBlank", false)
-  let contains_mixed_types = attr_bool(element, "containsMixedTypes", false)
-  let contains_number = attr_bool(element, "containsNumber", false)
-  let contains_integer = attr_bool(element, "containsInteger", false)
+  let contains_non_date = shared_items_bool(element, "containsNonDate", true)
+  let contains_date = shared_items_bool(element, "containsDate", false)
+  let contains_string = shared_items_bool(element, "containsString", true)
+  let contains_blank = shared_items_bool(element, "containsBlank", false)
+  let contains_mixed_types = shared_items_bool(
+    element, "containsMixedTypes", false,
+  )
+  let contains_number = shared_items_bool(element, "containsNumber", false)
+  let contains_integer = shared_items_bool(element, "containsInteger", false)
   let min_value = attr_double_opt(element, "minValue")
   let max_value = attr_double_opt(element, "maxValue")
   let min_date = attr(element, "minDate")
   let max_date = attr(element, "maxDate")
   let count = attr_uint_opt(element, "count")
-  let long_text = attr_bool(element, "longText", false)
+  let long_text = shared_items_bool(element, "longText", false)
   {
     element,
     missings,

@@ -353,6 +353,19 @@ fn assert_pivot_table_definition_schema_violation(
 }
 
 ///|
+fn assert_pivot_cache_shared_items_schema_violation(
+  shared_items_attr : String,
+) -> Unit raise {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField><s:sharedItems " +
+    shared_items_attr +
+    "/></s:cacheField></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 fn assert_query_table_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_query_table(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
@@ -440,6 +453,19 @@ test "SML pivotCacheDefinition reader rejects malformed group-level booleans" {
 
 ///|
 test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
+  assert_pivot_cache_shared_items_schema_violation(
+    "containsSemiMixedTypes=\"maybe\"",
+  )
+  assert_pivot_cache_shared_items_schema_violation("containsNonDate=\"maybe\"")
+  assert_pivot_cache_shared_items_schema_violation("containsDate=\"maybe\"")
+  assert_pivot_cache_shared_items_schema_violation("containsString=\"maybe\"")
+  assert_pivot_cache_shared_items_schema_violation("containsBlank=\"maybe\"")
+  assert_pivot_cache_shared_items_schema_violation(
+    "containsMixedTypes=\"maybe\"",
+  )
+  assert_pivot_cache_shared_items_schema_violation("containsNumber=\"maybe\"")
+  assert_pivot_cache_shared_items_schema_violation("containsInteger=\"maybe\"")
+  assert_pivot_cache_shared_items_schema_violation("longText=\"maybe\"")
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
     "<s:cacheFields><s:cacheField>" +
