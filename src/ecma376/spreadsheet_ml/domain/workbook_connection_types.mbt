@@ -2700,7 +2700,7 @@ pub(all) struct CT_UndoInfo {
 pub fn CT_UndoInfo::new(
   element : @xml.Element,
 ) -> CT_UndoInfo raise @opc_errors.SchemaViolation {
-  let index = attr_uint(element, "index", 0)
+  let index = attr_uint_schema(element, "index", 0)
   let exp = match attr(element, "exp") {
     Some(value) => value
     None => ""
@@ -2720,7 +2720,7 @@ pub fn CT_UndoInfo::new(
   }
   let dn = attr(element, "dn")
   let r = attr(element, "r")
-  let s_id = attr_uint_opt(element, "sId")
+  let s_id = attr_uint_opt_schema(element, "sId")
   { element, index, exp, ref3_d, array, v, nf, cs, dr, dn, r, s_id }
 }
 
@@ -2776,10 +2776,10 @@ pub fn CT_RevisionMove::new(
       }
     }
   }
-  let r_id = attr_uint(element, "rId", 0)
+  let r_id = attr_uint_schema(element, "rId", 0)
   let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.19", "rm")
   let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.19", "rm")
-  let sheet_id = attr_uint(element, "sheetId", 0)
+  let sheet_id = attr_uint_schema(element, "sheetId", 0)
   let source = match attr(element, "source") {
     Some(value) => value
     None => ""
@@ -2788,7 +2788,7 @@ pub fn CT_RevisionMove::new(
     Some(value) => value
     None => ""
   }
-  let source_sheet_id = attr_uint(element, "sourceSheetId", 0)
+  let source_sheet_id = attr_uint_schema(element, "sourceSheetId", 0)
   {
     element,
     undo,
@@ -2848,7 +2848,7 @@ pub fn CT_RevisionFormatting::new(
       }
     }
   }
-  let sheet_id = attr_uint(element, "sheetId", 0)
+  let sheet_id = attr_uint_schema(element, "sheetId", 0)
   let xf_dxf = revision_bool(
     element, "xfDxf", false, "Part 1 §18.11.1.17", "rfmt",
   )
@@ -2857,8 +2857,8 @@ pub fn CT_RevisionFormatting::new(
     Some(value) => value
     None => ""
   }
-  let start = attr_uint_opt(element, "start")
-  let length = attr_uint_opt(element, "length")
+  let start = attr_uint_opt_schema(element, "start")
+  let length = attr_uint_opt_schema(element, "length")
   { element, dxf, ext_lst, sheet_id, xf_dxf, s, sqref, start, length }
 }
 
@@ -2897,8 +2897,8 @@ pub(all) struct CT_RevisionAutoFormatting {
 pub fn CT_RevisionAutoFormatting::new(
   element : @xml.Element,
 ) -> CT_RevisionAutoFormatting raise @opc_errors.SchemaViolation {
-  let sheet_id = attr_uint(element, "sheetId", 0)
-  let auto_format_id = attr_uint_opt(element, "autoFormatId")
+  let sheet_id = attr_uint_schema(element, "sheetId", 0)
+  let auto_format_id = attr_uint_opt_schema(element, "autoFormatId")
   let apply_number_formats = revision_bool_opt(
     element, "applyNumberFormats", "Part 1 §18.11.1.7", "raf",
   )
@@ -2974,7 +2974,7 @@ pub(all) struct CT_RevisionComment {
 pub fn CT_RevisionComment::new(
   element : @xml.Element,
 ) -> CT_RevisionComment raise @opc_errors.SchemaViolation {
-  let sheet_id = attr_uint(element, "sheetId", 0)
+  let sheet_id = attr_uint_schema(element, "sheetId", 0)
   let cell = match attr(element, "cell") {
     Some(value) => value
     None => ""
@@ -3001,8 +3001,8 @@ pub fn CT_RevisionComment::new(
     Some(value) => value
     None => ""
   }
-  let old_length = attr_uint(element, "oldLength", 0)
-  let new_length = attr_uint(element, "newLength", 0)
+  let old_length = attr_uint_schema(element, "oldLength", 0)
+  let new_length = attr_uint_schema(element, "newLength", 0)
   {
     element,
     sheet_id,

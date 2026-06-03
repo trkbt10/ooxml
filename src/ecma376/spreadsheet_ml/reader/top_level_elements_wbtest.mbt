@@ -975,6 +975,47 @@ test "SML revisions reader rejects malformed sheet revision numerics" {
   assert_revisions_schema_violation(
     "<s:revisions xmlns:s=\"urn:s\"><s:rcc numFmtId=\"abc\"/></s:revisions>",
   )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rm><s:undo index=\"abc\"/>" +
+    "</s:rm></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rm><s:undo sId=\"abc\"/>" +
+    "</s:rm></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rm rId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rm sheetId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rm sourceSheetId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rfmt sheetId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rfmt start=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rfmt length=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:raf sheetId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:raf autoFormatId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rcmt sheetId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rcmt oldLength=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rcmt newLength=\"abc\"/></s:revisions>",
+  )
 }
 
 ///|
