@@ -210,6 +210,25 @@ test "§18.3.2 filters calendarType validates ST_CalendarType" {
 }
 
 ///|
+test "§18.3.2 filterColumn rejects malformed boolean attributes" {
+  try {
+    ignore(
+      parsed_auto_filter(
+        "<autoFilter ref=\"A1:A2\"><filterColumn colId=\"0\" hiddenButton=\"maybe\"/></autoFilter>",
+      ),
+    )
+    fail("expected @opc_errors.SchemaViolation")
+  } catch {
+    @opc_errors.SchemaViolation(
+      section="Part 1 §18.3.2",
+      path="filterColumn/@hiddenButton",
+      reason=_
+    ) => ()
+    _ => fail("expected filterColumn SchemaViolation")
+  }
+}
+
+///|
 test "§18.3.2 customFilters numeric AND range" {
   let filter : @domain.CT_AutoFilter = {
     range: try! @address.CellRange::parse_a1("A1:A12"),

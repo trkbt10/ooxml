@@ -1330,13 +1330,17 @@ fn parse_bool_attr(
   element : @xml.Element,
   local_name : String,
   fallback : Bool,
-) -> Bool {
+) -> Bool raise @opc_errors.SchemaViolation {
   match attr(element, local_name) {
-    Some("1") => true
-    Some("true") => true
-    Some("0") => false
-    Some("false") => false
-    _ => fallback
+    Some("1") | Some("true") => true
+    Some("0") | Some("false") => false
+    Some(value) =>
+      raise @opc_errors.SchemaViolation(
+        section="Part 1 §18.3.2",
+        path=element.name.local_name + "/@" + local_name,
+        reason="xsd:boolean value is malformed: " + value,
+      )
+    None => fallback
   }
 }
 
