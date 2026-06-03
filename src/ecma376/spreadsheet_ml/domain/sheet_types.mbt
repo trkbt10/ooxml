@@ -3053,7 +3053,9 @@ pub fn CT_DataValidations::new(
       }
     }
   }
-  let disable_prompts = attr_bool(element, "disablePrompts", false)
+  let disable_prompts = attr_bool_schema(
+    element, "disablePrompts", false, "Part 1 §18.3.1.33", "dataValidations",
+  )
   let x_window = attr_uint_opt(element, "xWindow")
   let y_window = attr_uint_opt(element, "yWindow")
   let count = attr_uint_opt(element, "count")
@@ -3104,6 +3106,17 @@ pub(all) struct CT_DataValidation {
 } derive(Eq, Debug)
 
 ///|
+fn data_validation_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.32", "dataValidation",
+  )
+}
+
+///|
 pub fn CT_DataValidation::new(
   element : @xml.Element,
 ) -> CT_DataValidation raise @opc_errors.SchemaViolation {
@@ -3130,10 +3143,14 @@ pub fn CT_DataValidation::new(
   let operator = decode_data_validation_operator(
     attr(element, "operator").unwrap_or("between"),
   )
-  let allow_blank = attr_bool(element, "allowBlank", false)
-  let show_drop_down = attr_bool(element, "showDropDown", false)
-  let show_input_message = attr_bool(element, "showInputMessage", false)
-  let show_error_message = attr_bool(element, "showErrorMessage", false)
+  let allow_blank = data_validation_bool(element, "allowBlank", false)
+  let show_drop_down = data_validation_bool(element, "showDropDown", false)
+  let show_input_message = data_validation_bool(
+    element, "showInputMessage", false,
+  )
+  let show_error_message = data_validation_bool(
+    element, "showErrorMessage", false,
+  )
   let error_title = attr(element, "errorTitle")
   let error = attr(element, "error")
   let prompt_title = attr(element, "promptTitle")

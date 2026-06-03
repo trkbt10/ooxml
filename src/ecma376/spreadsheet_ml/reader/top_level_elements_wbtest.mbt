@@ -655,3 +655,27 @@ test "SML chartsheet reader rejects malformed header-footer booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed data-validations booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:dataValidations disablePrompts=\"maybe\"/>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed data-validation booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:dataValidations><s:dataValidation allowBlank=\"maybe\"/></s:dataValidations>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
