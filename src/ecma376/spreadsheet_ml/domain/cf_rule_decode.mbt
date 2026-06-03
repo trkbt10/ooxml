@@ -476,10 +476,10 @@ fn cf_parse_argb_hex(
       reason="ARGB hex must be exactly 8 characters",
     )
   }
-  let alpha = cf_hex_pair(value, 0)
-  let red = cf_hex_pair(value, 2)
-  let green = cf_hex_pair(value, 4)
-  let blue = cf_hex_pair(value, 6)
+  let alpha = cf_hex_pair(value, 0, "color/@rgb")
+  let red = cf_hex_pair(value, 2, "color/@rgb")
+  let green = cf_hex_pair(value, 4, "color/@rgb")
+  let blue = cf_hex_pair(value, 6, "color/@rgb")
   CT_ColorArgb::new(alpha, red, green, blue)
 }
 
@@ -495,21 +495,28 @@ fn cf_parse_srgb_hex(
       reason="sRGB hex must be exactly 6 characters",
     )
   }
-  let red = cf_hex_pair(value, 0)
-  let green = cf_hex_pair(value, 2)
-  let blue = cf_hex_pair(value, 4)
+  let red = cf_hex_pair(value, 0, path)
+  let green = cf_hex_pair(value, 2, path)
+  let blue = cf_hex_pair(value, 4, path)
   CT_ColorArgb::new(255, red, green, blue)
 }
 
 ///|
-fn cf_hex_pair(value : String, offset : Int) -> Int {
-  let hi = cf_hex_digit(value.code_unit_at(offset).to_int())
-  let lo = cf_hex_digit(value.code_unit_at(offset + 1).to_int())
+fn cf_hex_pair(
+  value : String,
+  offset : Int,
+  path : String,
+) -> Int raise @opc_errors.SchemaViolation {
+  let hi = cf_hex_digit(value.code_unit_at(offset).to_int(), path)
+  let lo = cf_hex_digit(value.code_unit_at(offset + 1).to_int(), path)
   hi * 16 + lo
 }
 
 ///|
-fn cf_hex_digit(unit : Int) -> Int {
+fn cf_hex_digit(
+  unit : Int,
+  path : String,
+) -> Int raise @opc_errors.SchemaViolation {
   if unit >= 0x30 && unit <= 0x39 {
     unit - 0x30
   } else if unit >= 0x41 && unit <= 0x46 {
@@ -517,7 +524,11 @@ fn cf_hex_digit(unit : Int) -> Int {
   } else if unit >= 0x61 && unit <= 0x66 {
     unit - 0x61 + 10
   } else {
-    0
+    raise @opc_errors.SchemaViolation(
+      section="Part 1 §18.3.1.15",
+      path~,
+      reason="hex color contains a non-hexadecimal character",
+    )
   }
 }
 

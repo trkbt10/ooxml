@@ -116,6 +116,45 @@ test "§18.3.1.28 CT_DataBar rejects malformed length attributes" {
 }
 
 ///|
+test "§18.3.1.28 CT_DataBar rejects malformed color hex" {
+  let invalid_argb = try? CT_DataBar::new(
+    cf_elem_test("dataBar", [], [
+      @xml.Node::Element(
+        cf_elem_test("cfvo", [cf_attr_test("type", "min")], []),
+      ),
+      @xml.Node::Element(
+        cf_elem_test("cfvo", [cf_attr_test("type", "max")], []),
+      ),
+      @xml.Node::Element(
+        cf_elem_test("color", [cf_attr_test("rgb", "FF00GGFF")], []),
+      ),
+    ]),
+  )
+  assert_true(invalid_argb is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_srgb = try? CT_DataBar::new(
+    cf_elem_test("dataBar", [], [
+      @xml.Node::Element(
+        cf_elem_test("cfvo", [cf_attr_test("type", "min")], []),
+      ),
+      @xml.Node::Element(
+        cf_elem_test("cfvo", [cf_attr_test("type", "max")], []),
+      ),
+      @xml.Node::Element(
+        cf_elem_test("color", [cf_attr_test("rgb", "FF0000FF")], []),
+      ),
+      @xml.Node::Element(
+        cf_elem_test("negativeFillColor", [], [
+          @xml.Node::Element(
+            cf_elem_test("srgbClr", [cf_attr_test("val", "00GGFF")], []),
+          ),
+        ]),
+      ),
+    ]),
+  )
+  assert_true(invalid_srgb is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 fn icon_set_for_test(attrs : Array[@xml.Attribute]) -> @xml.Element {
   cf_elem_test("iconSet", attrs, [
     @xml.Node::Element(cf_elem_test("cfvo", [cf_attr_test("type", "min")], [])),

@@ -2948,6 +2948,17 @@ test "SML worksheet reader rejects malformed sort-condition unsigned integers" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed conditional-formatting color hex" {
+  assert_worksheet_body_schema_violation(
+    "<s:conditionalFormatting sqref=\"A1\">" +
+    "<s:cfRule type=\"dataBar\" priority=\"1\">" +
+    "<s:dataBar><s:cfvo type=\"min\"/><s:cfvo type=\"max\"/>" +
+    "<s:color rgb=\"FF00GGFF\"/></s:dataBar>" +
+    "</s:cfRule></s:conditionalFormatting>",
+  )
+}
+
+///|
 test "SML worksheet reader rejects malformed sheet properties booleans" {
   let invalid = try? read_worksheet(
     bytes(
