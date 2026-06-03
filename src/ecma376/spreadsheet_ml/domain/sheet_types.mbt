@@ -4848,7 +4848,9 @@ pub(all) struct CT_BookViews {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_BookViews::new(element : @xml.Element) -> CT_BookViews {
+pub fn CT_BookViews::new(
+  element : @xml.Element,
+) -> CT_BookViews raise @opc_errors.SchemaViolation {
   let views : Array[CT_BookView] = []
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "workbookView" {
@@ -4892,22 +4894,37 @@ pub(all) struct CT_BookView {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_BookView::new(element : @xml.Element) -> CT_BookView {
+fn book_view_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.1", "workbookView",
+  )
+}
+
+///|
+pub fn CT_BookView::new(
+  element : @xml.Element,
+) -> CT_BookView raise @opc_errors.SchemaViolation {
   {
     element,
     active_tab: attr_int(element, "activeTab", 0),
     first_sheet: attr_int(element, "firstSheet", 0),
-    show_sheet_tabs: attr_bool(element, "showSheetTabs", true),
-    show_horizontal_scroll: attr_bool(element, "showHorizontalScroll", true),
-    show_vertical_scroll: attr_bool(element, "showVerticalScroll", true),
-    minimized: attr_bool(element, "minimized", false),
+    show_sheet_tabs: book_view_bool(element, "showSheetTabs", true),
+    show_horizontal_scroll: book_view_bool(
+      element, "showHorizontalScroll", true,
+    ),
+    show_vertical_scroll: book_view_bool(element, "showVerticalScroll", true),
+    minimized: book_view_bool(element, "minimized", false),
     visibility: attr(element, "visibility").unwrap_or("visible"),
     x_window: attr_int(element, "xWindow", 0),
     y_window: attr_int(element, "yWindow", 0),
     window_width: attr_int(element, "windowWidth", 0),
     window_height: attr_int(element, "windowHeight", 0),
     tab_ratio: attr_int(element, "tabRatio", 600),
-    auto_filter_date_grouping: attr_bool(
+    auto_filter_date_grouping: book_view_bool(
       element, "autoFilterDateGrouping", true,
     ),
   }

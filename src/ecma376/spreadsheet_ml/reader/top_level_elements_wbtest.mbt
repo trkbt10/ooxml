@@ -300,6 +300,26 @@ test "SML workbook reader rejects malformed web publish object booleans" {
 }
 
 ///|
+fn assert_workbook_view_bool_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:bookViews><s:workbookView " +
+    local_name +
+    "=\"maybe\"/></s:bookViews></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed workbook view booleans" {
+  assert_workbook_view_bool_schema_violation("showSheetTabs")
+  assert_workbook_view_bool_schema_violation("showHorizontalScroll")
+  assert_workbook_view_bool_schema_violation("showVerticalScroll")
+  assert_workbook_view_bool_schema_violation("minimized")
+  assert_workbook_view_bool_schema_violation("autoFilterDateGrouping")
+}
+
+///|
 test "SML metadata reader rejects malformed metadataType booleans" {
   let invalid = try? read_metadata(
     bytes(
