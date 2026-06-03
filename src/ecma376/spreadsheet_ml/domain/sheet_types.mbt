@@ -2476,7 +2476,9 @@ pub(all) struct CT_PageBreak {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageBreak::new(element : @xml.Element) -> CT_PageBreak {
+pub fn CT_PageBreak::new(
+  element : @xml.Element,
+) -> CT_PageBreak raise @opc_errors.SchemaViolation {
   let brks : Array[CT_Break] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2510,12 +2512,23 @@ pub(all) struct CT_Break {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Break::new(element : @xml.Element) -> CT_Break {
+fn break_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.3.1.1", "brk")
+}
+
+///|
+pub fn CT_Break::new(
+  element : @xml.Element,
+) -> CT_Break raise @opc_errors.SchemaViolation {
   let id = attr_uint(element, "id", 0)
   let min = attr_uint(element, "min", 0)
   let max = attr_uint(element, "max", 0)
-  let man = attr_bool(element, "man", false)
-  let pt = attr_bool(element, "pt", false)
+  let man = break_bool(element, "man", false)
+  let pt = break_bool(element, "pt", false)
   { element, id, min, max, man, pt }
 }
 

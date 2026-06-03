@@ -151,7 +151,7 @@ pub(all) struct CT_Break {
   man : Bool
   pt : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Break::new(@xml.Element) -> Self
+pub fn CT_Break::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CacheField {
   element : @xml.Element
@@ -2192,7 +2192,7 @@ pub(all) struct CT_PageBreak {
   count : Int
   manual_break_count : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_PageBreak::new(@xml.Element) -> Self
+pub fn CT_PageBreak::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PageField {
   element : @xml.Element
