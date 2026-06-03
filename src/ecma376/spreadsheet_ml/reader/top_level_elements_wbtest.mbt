@@ -2197,6 +2197,27 @@ test "SML worksheet reader rejects malformed page-setup booleans" {
 }
 
 ///|
+fn assert_page_setup_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_worksheet_body_schema_violation(
+    "<s:pageSetup " + local_name + "=\"abc\"/>",
+  )
+}
+
+///|
+test "SML worksheet reader rejects malformed page-setup numerics" {
+  assert_page_setup_numeric_schema_violation("paperSize")
+  assert_page_setup_numeric_schema_violation("scale")
+  assert_page_setup_numeric_schema_violation("firstPageNumber")
+  assert_page_setup_numeric_schema_violation("fitToWidth")
+  assert_page_setup_numeric_schema_violation("fitToHeight")
+  assert_page_setup_numeric_schema_violation("horizontalDpi")
+  assert_page_setup_numeric_schema_violation("verticalDpi")
+  assert_page_setup_numeric_schema_violation("copies")
+}
+
+///|
 test "SML worksheet reader rejects malformed custom-sheet-view page-setup booleans" {
   let invalid = try? read_worksheet(
     bytes(
@@ -2211,6 +2232,14 @@ test "SML worksheet reader rejects malformed custom-sheet-view page-setup boolea
 }
 
 ///|
+test "SML worksheet reader rejects malformed custom-sheet-view page-setup numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:customSheetViews><s:customSheetView><s:pageSetup copies=\"abc\"/>" +
+    "</s:customSheetView></s:customSheetViews>",
+  )
+}
+
+///|
 test "SML chartsheet reader rejects malformed page-setup booleans" {
   let invalid = try? read_chartsheet(
     bytes(
@@ -2220,6 +2249,29 @@ test "SML chartsheet reader rejects malformed page-setup booleans" {
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+fn assert_chartsheet_page_setup_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  let invalid = try? read_chartsheet(
+    bytes(
+      "<s:chartsheet xmlns:s=\"urn:s\"><s:pageSetup " +
+      local_name +
+      "=\"abc\"/></s:chartsheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML chartsheet reader rejects malformed page-setup numerics" {
+  assert_chartsheet_page_setup_numeric_schema_violation("paperSize")
+  assert_chartsheet_page_setup_numeric_schema_violation("firstPageNumber")
+  assert_chartsheet_page_setup_numeric_schema_violation("horizontalDpi")
+  assert_chartsheet_page_setup_numeric_schema_violation("verticalDpi")
+  assert_chartsheet_page_setup_numeric_schema_violation("copies")
 }
 
 ///|

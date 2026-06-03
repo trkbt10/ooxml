@@ -3682,13 +3682,13 @@ fn page_setup_bool(
 pub fn CT_PageSetup::new(
   element : @xml.Element,
 ) -> CT_PageSetup raise @opc_errors.SchemaViolation {
-  let paper_size = attr_uint(element, "paperSize", 1)
+  let paper_size = attr_uint_schema(element, "paperSize", 1)
   let paper_height = attr(element, "paperHeight")
   let paper_width = attr(element, "paperWidth")
-  let scale = attr_uint(element, "scale", 100)
-  let first_page_number = attr_uint(element, "firstPageNumber", 1)
-  let fit_to_width = attr_uint(element, "fitToWidth", 1)
-  let fit_to_height = attr_uint(element, "fitToHeight", 1)
+  let scale = attr_uint_schema(element, "scale", 100)
+  let first_page_number = attr_uint_schema(element, "firstPageNumber", 1)
+  let fit_to_width = attr_uint_schema(element, "fitToWidth", 1)
+  let fit_to_height = attr_uint_schema(element, "fitToHeight", 1)
   let page_order = match attr(element, "pageOrder") {
     Some(value) => value
     None => "downThenOver"
@@ -3713,9 +3713,9 @@ pub fn CT_PageSetup::new(
     Some(value) => value
     None => "displayed"
   }
-  let horizontal_dpi = attr_uint(element, "horizontalDpi", 600)
-  let vertical_dpi = attr_uint(element, "verticalDpi", 600)
-  let copies = attr_uint(element, "copies", 1)
+  let horizontal_dpi = attr_uint_schema(element, "horizontalDpi", 600)
+  let vertical_dpi = attr_uint_schema(element, "verticalDpi", 600)
+  let copies = attr_uint_schema(element, "copies", 1)
   let r_id = attr_with_ns(element, "id")
   {
     element,
@@ -3797,10 +3797,10 @@ fn cs_page_setup_bool(
 pub fn CT_CsPageSetup::new(
   element : @xml.Element,
 ) -> CT_CsPageSetup raise @opc_errors.SchemaViolation {
-  let paper_size = attr_uint(element, "paperSize", 1)
+  let paper_size = attr_uint_schema(element, "paperSize", 1)
   let paper_height = attr(element, "paperHeight")
   let paper_width = attr(element, "paperWidth")
-  let first_page_number = attr_uint(element, "firstPageNumber", 1)
+  let first_page_number = attr_uint_schema(element, "firstPageNumber", 1)
   let orientation = match attr(element, "orientation") {
     Some(value) => value
     None => "default"
@@ -3813,9 +3813,9 @@ pub fn CT_CsPageSetup::new(
   let use_first_page_number = cs_page_setup_bool(
     element, "useFirstPageNumber", false,
   )
-  let horizontal_dpi = attr_uint(element, "horizontalDpi", 600)
-  let vertical_dpi = attr_uint(element, "verticalDpi", 600)
-  let copies = attr_uint(element, "copies", 1)
+  let horizontal_dpi = attr_uint_schema(element, "horizontalDpi", 600)
+  let vertical_dpi = attr_uint_schema(element, "verticalDpi", 600)
+  let copies = attr_uint_schema(element, "copies", 1)
   let r_id = attr_with_ns(element, "id")
   {
     element,
