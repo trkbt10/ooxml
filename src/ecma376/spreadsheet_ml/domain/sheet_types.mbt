@@ -2542,7 +2542,20 @@ pub(all) struct CT_DataConsolidate {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DataConsolidate::new(element : @xml.Element) -> CT_DataConsolidate {
+fn data_consolidate_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.3", "dataConsolidate",
+  )
+}
+
+///|
+pub fn CT_DataConsolidate::new(
+  element : @xml.Element,
+) -> CT_DataConsolidate raise @opc_errors.SchemaViolation {
   let mut data_refs : CT_DataRefs? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2555,10 +2568,10 @@ pub fn CT_DataConsolidate::new(element : @xml.Element) -> CT_DataConsolidate {
     Some(value) => value
     None => "sum"
   }
-  let start_labels = attr_bool(element, "startLabels", false)
-  let left_labels = attr_bool(element, "leftLabels", false)
-  let top_labels = attr_bool(element, "topLabels", false)
-  let link = attr_bool(element, "link", false)
+  let start_labels = data_consolidate_bool(element, "startLabels", false)
+  let left_labels = data_consolidate_bool(element, "leftLabels", false)
+  let top_labels = data_consolidate_bool(element, "topLabels", false)
+  let link = data_consolidate_bool(element, "link", false)
   { element, data_refs, function, start_labels, left_labels, top_labels, link }
 }
 
