@@ -3111,10 +3111,10 @@ pub fn CT_RevisionDefinedName::new(
       }
     }
   }
-  let r_id = attr_uint(element, "rId", 0)
+  let r_id = attr_uint_schema(element, "rId", 0)
   let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.13", "rdn")
   let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.13", "rdn")
-  let local_sheet_id = attr_uint_opt(element, "localSheetId")
+  let local_sheet_id = attr_uint_opt_schema(element, "localSheetId")
   let custom_view = revision_bool(
     element, "customView", false, "Part 1 §18.11.1.13", "rdn",
   )
@@ -3128,10 +3128,12 @@ pub fn CT_RevisionDefinedName::new(
   let old_function = revision_bool(
     element, "oldFunction", false, "Part 1 §18.11.1.13", "rdn",
   )
-  let function_group_id = attr_uint_opt(element, "functionGroupId")
-  let old_function_group_id = attr_uint_opt(element, "oldFunctionGroupId")
-  let shortcut_key = attr_uint_opt(element, "shortcutKey")
-  let old_shortcut_key = attr_uint_opt(element, "oldShortcutKey")
+  let function_group_id = attr_uint_opt_schema(element, "functionGroupId")
+  let old_function_group_id = attr_uint_opt_schema(
+    element, "oldFunctionGroupId",
+  )
+  let shortcut_key = attr_uint_opt_schema(element, "shortcutKey")
+  let old_shortcut_key = attr_uint_opt_schema(element, "oldShortcutKey")
   let hidden = revision_bool(
     element, "hidden", false, "Part 1 §18.11.1.13", "rdn",
   )
@@ -3203,10 +3205,10 @@ pub(all) struct CT_RevisionConflict {
 pub fn CT_RevisionConflict::new(
   element : @xml.Element,
 ) -> CT_RevisionConflict raise @opc_errors.SchemaViolation {
-  let r_id = attr_uint(element, "rId", 0)
+  let r_id = attr_uint_schema(element, "rId", 0)
   let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.11", "rcft")
   let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.11", "rcft")
-  let sheet_id = attr_uint_opt(element, "sheetId")
+  let sheet_id = attr_uint_opt_schema(element, "sheetId")
   { element, r_id, ua, ra, sheet_id }
 }
 

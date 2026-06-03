@@ -1016,6 +1016,30 @@ test "SML revisions reader rejects malformed sheet revision numerics" {
   assert_revisions_schema_violation(
     "<s:revisions xmlns:s=\"urn:s\"><s:rcmt newLength=\"abc\"/></s:revisions>",
   )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rdn rId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rdn localSheetId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rdn functionGroupId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rdn oldFunctionGroupId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rdn shortcutKey=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rdn oldShortcutKey=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rcft rId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rcft sheetId=\"abc\"/></s:revisions>",
+  )
 }
 
 ///|
