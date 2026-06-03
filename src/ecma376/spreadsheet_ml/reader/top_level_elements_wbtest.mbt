@@ -366,6 +366,19 @@ fn assert_pivot_cache_shared_items_schema_violation(
 }
 
 ///|
+fn assert_pivot_cache_shared_item_schema_violation(
+  item_xml : String,
+) -> Unit raise {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField><s:sharedItems>" +
+    item_xml +
+    "</s:sharedItems></s:cacheField></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 fn assert_query_table_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_query_table(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
@@ -480,6 +493,42 @@ test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
   assert_pivot_cache_shared_items_schema_violation("containsNumber=\"maybe\"")
   assert_pivot_cache_shared_items_schema_violation("containsInteger=\"maybe\"")
   assert_pivot_cache_shared_items_schema_violation("longText=\"maybe\"")
+  assert_pivot_cache_shared_item_schema_violation("<s:m u=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:m f=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:m i=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:m un=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:m st=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:m b=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:n v=\"1\" u=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:n v=\"1\" f=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:n v=\"1\" i=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:n v=\"1\" un=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:n v=\"1\" st=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:n v=\"1\" b=\"maybe\"/>")
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:e v=\"#N/A\" u=\"maybe\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:e v=\"#N/A\" f=\"maybe\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:e v=\"#N/A\" i=\"maybe\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:e v=\"#N/A\" un=\"maybe\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:e v=\"#N/A\" st=\"maybe\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:e v=\"#N/A\" b=\"maybe\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:d v=\"2020-01-01T00:00:00\" u=\"maybe\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:d v=\"2020-01-01T00:00:00\" f=\"maybe\"/>",
+  )
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
     "<s:cacheFields><s:cacheField>" +

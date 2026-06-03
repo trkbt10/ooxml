@@ -1366,7 +1366,9 @@ pub(all) struct CT_Missing {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Missing::new(element : @xml.Element) -> CT_Missing {
+pub fn CT_Missing::new(
+  element : @xml.Element,
+) -> CT_Missing raise @opc_errors.SchemaViolation {
   let tpls : Array[CT_Tuples] = []
   let x : Array[CT_X] = []
   for child in element.children {
@@ -1378,17 +1380,17 @@ pub fn CT_Missing::new(element : @xml.Element) -> CT_Missing {
       }
     }
   }
-  let u = attr_bool_opt(element, "u")
-  let f = attr_bool_opt(element, "f")
+  let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.46", "m")
+  let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.46", "m")
   let c = attr(element, "c")
   let cp = attr_uint_opt(element, "cp")
   let in_ = attr_uint_opt(element, "in")
   let bc = attr_hex_uint_opt(element, "bc")
   let fc = attr_hex_uint_opt(element, "fc")
-  let i = attr_bool(element, "i", false)
-  let un = attr_bool(element, "un", false)
-  let st = attr_bool(element, "st", false)
-  let b = attr_bool(element, "b", false)
+  let i = attr_bool_schema(element, "i", false, "Part 1 §18.10.1.46", "m")
+  let un = attr_bool_schema(element, "un", false, "Part 1 §18.10.1.46", "m")
+  let st = attr_bool_schema(element, "st", false, "Part 1 §18.10.1.46", "m")
+  let b = attr_bool_schema(element, "b", false, "Part 1 §18.10.1.46", "m")
   { element, tpls, x, u, f, c, cp, in_, bc, fc, i, un, st, b }
 }
 
@@ -1435,7 +1437,9 @@ pub(all) struct CT_Number {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Number::new(element : @xml.Element) -> CT_Number {
+pub fn CT_Number::new(
+  element : @xml.Element,
+) -> CT_Number raise @opc_errors.SchemaViolation {
   let tpls : Array[CT_Tuples] = []
   let x : Array[CT_X] = []
   for child in element.children {
@@ -1448,17 +1452,17 @@ pub fn CT_Number::new(element : @xml.Element) -> CT_Number {
     }
   }
   let v = attr_double(element, "v", 0.0)
-  let u = attr_bool_opt(element, "u")
-  let f = attr_bool_opt(element, "f")
+  let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.69", "n")
+  let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.69", "n")
   let c = attr(element, "c")
   let cp = attr_uint_opt(element, "cp")
   let in_ = attr_uint_opt(element, "in")
   let bc = attr_hex_uint_opt(element, "bc")
   let fc = attr_hex_uint_opt(element, "fc")
-  let i = attr_bool(element, "i", false)
-  let un = attr_bool(element, "un", false)
-  let st = attr_bool(element, "st", false)
-  let b = attr_bool(element, "b", false)
+  let i = attr_bool_schema(element, "i", false, "Part 1 §18.10.1.69", "n")
+  let un = attr_bool_schema(element, "un", false, "Part 1 §18.10.1.69", "n")
+  let st = attr_bool_schema(element, "st", false, "Part 1 §18.10.1.69", "n")
+  let b = attr_bool_schema(element, "b", false, "Part 1 §18.10.1.69", "n")
   { element, tpls, x, v, u, f, c, cp, in_, bc, fc, i, un, st, b }
 }
 
@@ -1506,7 +1510,9 @@ pub(all) struct CT_Error {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Error::new(element : @xml.Element) -> CT_Error {
+pub fn CT_Error::new(
+  element : @xml.Element,
+) -> CT_Error raise @opc_errors.SchemaViolation {
   let mut tpls : CT_Tuples? = None
   let x : Array[CT_X] = []
   for child in element.children {
@@ -1522,17 +1528,17 @@ pub fn CT_Error::new(element : @xml.Element) -> CT_Error {
     Some(value) => value
     None => ""
   }
-  let u = attr_bool_opt(element, "u")
-  let f = attr_bool_opt(element, "f")
+  let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.25", "e")
+  let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.25", "e")
   let c = attr(element, "c")
   let cp = attr_uint_opt(element, "cp")
   let in_ = attr_uint_opt(element, "in")
   let bc = attr_hex_uint_opt(element, "bc")
   let fc = attr_hex_uint_opt(element, "fc")
-  let i = attr_bool(element, "i", false)
-  let un = attr_bool(element, "un", false)
-  let st = attr_bool(element, "st", false)
-  let b = attr_bool(element, "b", false)
+  let i = attr_bool_schema(element, "i", false, "Part 1 §18.10.1.25", "e")
+  let un = attr_bool_schema(element, "un", false, "Part 1 §18.10.1.25", "e")
+  let st = attr_bool_schema(element, "st", false, "Part 1 §18.10.1.25", "e")
+  let b = attr_bool_schema(element, "b", false, "Part 1 §18.10.1.25", "e")
   { element, tpls, x, v, u, f, c, cp, in_, bc, fc, i, un, st, b }
 }
 
@@ -1559,7 +1565,9 @@ pub(all) struct CT_DateTime {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DateTime::new(element : @xml.Element) -> CT_DateTime {
+pub fn CT_DateTime::new(
+  element : @xml.Element,
+) -> CT_DateTime raise @opc_errors.SchemaViolation {
   let x : Array[CT_X] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1572,8 +1580,8 @@ pub fn CT_DateTime::new(element : @xml.Element) -> CT_DateTime {
     Some(value) => value
     None => ""
   }
-  let u = attr_bool_opt(element, "u")
-  let f = attr_bool_opt(element, "f")
+  let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.20", "d")
+  let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.20", "d")
   let c = attr(element, "c")
   let cp = attr_uint_opt(element, "cp")
   { element, x, v, u, f, c, cp }

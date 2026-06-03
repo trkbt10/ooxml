@@ -998,7 +998,7 @@ pub(all) struct CT_DateTime {
   c : String?
   cp : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_DateTime::new(@xml.Element) -> Self
+pub fn CT_DateTime::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DbPr {
   element : @xml.Element
@@ -1186,7 +1186,7 @@ pub(all) struct CT_Error {
   st : Bool
   b : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Error::new(@xml.Element) -> Self
+pub fn CT_Error::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Extension {
   element : @xml.Element
@@ -2013,7 +2013,7 @@ pub(all) struct CT_Missing {
   st : Bool
   b : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Missing::new(@xml.Element) -> Self
+pub fn CT_Missing::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_NumFmt {
   element : @xml.Element
@@ -2046,7 +2046,7 @@ pub(all) struct CT_Number {
   st : Bool
   b : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Number::new(@xml.Element) -> Self
+pub fn CT_Number::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ObjectAnchor {
   element : @xml.Element
