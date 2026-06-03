@@ -2181,7 +2181,9 @@ pub(all) struct CT_Items {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Items::new(element : @xml.Element) -> CT_Items {
+pub fn CT_Items::new(
+  element : @xml.Element,
+) -> CT_Items raise @opc_errors.SchemaViolation {
   let item : Array[CT_Item] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2192,6 +2194,15 @@ pub fn CT_Items::new(element : @xml.Element) -> CT_Items {
   }
   let count = attr_uint_opt(element, "count")
   { element, item, count }
+}
+
+///|
+fn item_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.10.1.43", "item")
 }
 
 ///|
@@ -2228,21 +2239,23 @@ pub(all) struct CT_Item {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Item::new(element : @xml.Element) -> CT_Item {
+pub fn CT_Item::new(
+  element : @xml.Element,
+) -> CT_Item raise @opc_errors.SchemaViolation {
   let n = attr(element, "n")
   let t = match attr(element, "t") {
     Some(value) => value
     None => "data"
   }
-  let h = attr_bool(element, "h", false)
-  let s = attr_bool(element, "s", false)
-  let sd = attr_bool(element, "sd", true)
-  let f = attr_bool(element, "f", false)
-  let m = attr_bool(element, "m", false)
-  let c = attr_bool(element, "c", false)
+  let h = item_bool(element, "h", false)
+  let s = item_bool(element, "s", false)
+  let sd = item_bool(element, "sd", true)
+  let f = item_bool(element, "f", false)
+  let m = item_bool(element, "m", false)
+  let c = item_bool(element, "c", false)
   let x = attr_uint_opt(element, "x")
-  let d = attr_bool(element, "d", false)
-  let e = attr_bool(element, "e", true)
+  let d = item_bool(element, "d", false)
+  let e = item_bool(element, "e", true)
   { element, n, t, h, s, sd, f, m, c, x, d, e }
 }
 

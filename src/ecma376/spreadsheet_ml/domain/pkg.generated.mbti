@@ -1677,14 +1677,14 @@ pub(all) struct CT_Item {
   d : Bool
   e : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Item::new(@xml.Element) -> Self
+pub fn CT_Item::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Items {
   element : @xml.Element
   item : Array[CT_Item]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Items::new(@xml.Element) -> Self
+pub fn CT_Items::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_LegacyDrawing {
   element : @xml.Element

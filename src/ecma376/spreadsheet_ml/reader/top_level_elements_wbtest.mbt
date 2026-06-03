@@ -353,6 +353,17 @@ fn assert_pivot_table_definition_schema_violation(
 }
 
 ///|
+fn assert_pivot_table_item_schema_violation(item_attr : String) -> Unit raise {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotFields><s:pivotField><s:items><s:item " +
+    item_attr +
+    "/></s:items></s:pivotField></s:pivotFields>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 fn assert_pivot_cache_shared_items_schema_violation(
   shared_items_attr : String,
 ) -> Unit raise {
@@ -617,6 +628,14 @@ test "SML pivotTableDefinition reader rejects malformed pivot-field booleans" {
     "<s:pivotFields><s:pivotField dataSourceSort=\"maybe\"/></s:pivotFields>" +
     "</s:pivotTableDefinition>",
   )
+  assert_pivot_table_item_schema_violation("h=\"maybe\"")
+  assert_pivot_table_item_schema_violation("s=\"maybe\"")
+  assert_pivot_table_item_schema_violation("sd=\"maybe\"")
+  assert_pivot_table_item_schema_violation("f=\"maybe\"")
+  assert_pivot_table_item_schema_violation("m=\"maybe\"")
+  assert_pivot_table_item_schema_violation("c=\"maybe\"")
+  assert_pivot_table_item_schema_violation("d=\"maybe\"")
+  assert_pivot_table_item_schema_violation("e=\"maybe\"")
 }
 
 ///|
