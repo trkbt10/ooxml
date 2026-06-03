@@ -1627,13 +1627,13 @@ pub(all) struct CT_IgnoredError {
   list_data_validation : Bool
   calculated_column : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_IgnoredError::new(@xml.Element) -> Self
+pub fn CT_IgnoredError::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_IgnoredErrors {
   element : @xml.Element
   errors : Array[CT_IgnoredError]
 } derive(Eq, @debug.Debug)
-pub fn CT_IgnoredErrors::new(@xml.Element) -> Self
+pub fn CT_IgnoredErrors::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Index {
   element : @xml.Element

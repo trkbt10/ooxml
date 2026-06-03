@@ -4358,7 +4358,9 @@ pub(all) struct CT_IgnoredErrors {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_IgnoredErrors::new(element : @xml.Element) -> CT_IgnoredErrors {
+pub fn CT_IgnoredErrors::new(
+  element : @xml.Element,
+) -> CT_IgnoredErrors raise @opc_errors.SchemaViolation {
   let errors : Array[CT_IgnoredError] = []
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "ignoredError" {
@@ -4397,19 +4399,38 @@ pub(all) struct CT_IgnoredError {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_IgnoredError::new(element : @xml.Element) -> CT_IgnoredError {
+fn ignored_error_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.45", "ignoredError",
+  )
+}
+
+///|
+pub fn CT_IgnoredError::new(
+  element : @xml.Element,
+) -> CT_IgnoredError raise @opc_errors.SchemaViolation {
   {
     element,
     sqref: attr(element, "sqref").unwrap_or(""),
-    eval_error: attr_bool(element, "evalError", false),
-    two_digit_text_year: attr_bool(element, "twoDigitTextYear", false),
-    number_stored_as_text: attr_bool(element, "numberStoredAsText", false),
-    formula: attr_bool(element, "formula", false),
-    formula_range: attr_bool(element, "formulaRange", false),
-    unlocked_formula: attr_bool(element, "unlockedFormula", false),
-    empty_cell_reference: attr_bool(element, "emptyCellReference", false),
-    list_data_validation: attr_bool(element, "listDataValidation", false),
-    calculated_column: attr_bool(element, "calculatedColumn", false),
+    eval_error: ignored_error_bool(element, "evalError", false),
+    two_digit_text_year: ignored_error_bool(element, "twoDigitTextYear", false),
+    number_stored_as_text: ignored_error_bool(
+      element, "numberStoredAsText", false,
+    ),
+    formula: ignored_error_bool(element, "formula", false),
+    formula_range: ignored_error_bool(element, "formulaRange", false),
+    unlocked_formula: ignored_error_bool(element, "unlockedFormula", false),
+    empty_cell_reference: ignored_error_bool(
+      element, "emptyCellReference", false,
+    ),
+    list_data_validation: ignored_error_bool(
+      element, "listDataValidation", false,
+    ),
+    calculated_column: ignored_error_bool(element, "calculatedColumn", false),
   }
 }
 

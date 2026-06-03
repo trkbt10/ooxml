@@ -855,3 +855,17 @@ test "SML worksheet reader rejects malformed smart tag booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed ignored error booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:ignoredErrors>" +
+      "<s:ignoredError sqref=\"A1\" numberStoredAsText=\"maybe\"/>" +
+      "</s:ignoredErrors>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
