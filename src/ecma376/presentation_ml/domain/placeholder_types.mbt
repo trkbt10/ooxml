@@ -104,7 +104,13 @@ pub fn CT_Placeholder::from_element(
     ct_placeholder_attr(element, "hasCustomPrompt") {
     Some("1") => true
     Some("true") => true
-    _ => false
+    Some("0") => false
+    Some("false") => false
+    Some(text) =>
+      invalid_simple_type(
+        "CT_Placeholder/@hasCustomPrompt", text, "expected xsd:boolean",
+      )
+    None => false
   }
   { idx, ph_type, size, orient, has_custom_prompt }
 }

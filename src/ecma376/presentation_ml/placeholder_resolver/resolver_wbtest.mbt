@@ -87,6 +87,13 @@ test "§19.7.10 ST_PlaceholderType rejects unknown lexical values" {
 }
 
 ///|
+test "§19.3.1.36 hasCustomPrompt rejects malformed booleans" {
+  let element = parse_root("<ph hasCustomPrompt=\"maybe\"/>")
+  let bad = try? @domain.CT_Placeholder::from_element(element)
+  assert_true(bad is Err(@domain.SchemaViolation(_)))
+}
+
+///|
 test "§19.3.1.36 idx match resolves slide → layout → master" {
   let slide_xml = "<sp><nvSpPr><nvPr><ph idx=\"2\"/></nvPr></nvSpPr><spPr/></sp>"
   let layout_xml = "<sp><nvSpPr><nvPr><ph idx=\"2\" type=\"body\"/></nvPr></nvSpPr><spPr/></sp>"
