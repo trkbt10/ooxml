@@ -50,3 +50,37 @@ test "mathPr rejects invalid CT_OnOff lexical value" {
   )
   assert_true(invalid is Err(@domain.SchemaViolation(_)))
 }
+
+///|
+test "oMath reader rejects malformed nested CT_OnOff values" {
+  let invalid = try? read_o_math(
+    bytes(
+      "<m:oMath xmlns:m=\"urn:math\">" +
+      "<m:rad>" +
+      "<m:radPr><m:degHide m:val=\"maybe\"/></m:radPr>" +
+      "<m:deg/>" +
+      "<m:e/>" +
+      "</m:rad>" +
+      "</m:oMath>",
+    ),
+  )
+  assert_true(invalid is Err(@domain.SchemaViolation(_)))
+}
+
+///|
+test "oMathPara reader rejects malformed nested oMath values" {
+  let invalid = try? read_o_math_para(
+    bytes(
+      "<m:oMathPara xmlns:m=\"urn:math\">" +
+      "<m:oMath>" +
+      "<m:rad>" +
+      "<m:radPr><m:degHide m:val=\"maybe\"/></m:radPr>" +
+      "<m:deg/>" +
+      "<m:e/>" +
+      "</m:rad>" +
+      "</m:oMath>" +
+      "</m:oMathPara>",
+    ),
+  )
+  assert_true(invalid is Err(@domain.SchemaViolation(_)))
+}

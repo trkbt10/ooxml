@@ -15,7 +15,7 @@ pub fn eg_script_style(@xml.Element) -> EG_ScriptStyle
 
 pub fn math_pr(@xml.Element) -> CT_MathPr raise SchemaViolation
 
-pub fn o_math(@xml.Element) -> CT_OMath
+pub fn o_math(@xml.Element) -> CT_OMath raise SchemaViolation
 
 pub fn o_math_para(@xml.Element) -> CT_OMathPara raise SchemaViolation
 
@@ -363,6 +363,7 @@ pub(all) struct CT_OMath {
 } derive(Eq, @debug.Debug)
 pub fn CT_OMath::children(Self) -> Array[EG_OMathElements]
 pub fn CT_OMath::new(@xml.Element) -> Self
+pub fn CT_OMath::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_OMath::schema_type_name(Self) -> String
 
 pub(all) struct CT_OMathArg {
@@ -591,12 +592,14 @@ pub(all) struct EG_OMathElements {
 pub fn EG_OMathElements::is_math_element(Self) -> Bool
 pub fn EG_OMathElements::math_element(Self) -> EG_OMathMathElements?
 pub fn EG_OMathElements::new(@xml.Element) -> Self
+pub fn EG_OMathElements::parse(@xml.Element) -> Self raise SchemaViolation
 
 pub(all) struct EG_OMathMathElements {
   element : @xml.Element
 } derive(Eq, @debug.Debug)
 pub fn EG_OMathMathElements::child_elements(Self) -> Array[@xml.Element]
 pub fn EG_OMathMathElements::new(@xml.Element) -> Self
+pub fn EG_OMathMathElements::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn EG_OMathMathElements::selected_name(Self) -> String
 
 pub(all) struct EG_ScriptStyle {

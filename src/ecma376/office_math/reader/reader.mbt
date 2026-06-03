@@ -9,7 +9,7 @@ pub fn package_name() -> String {
 pub fn read_o_math(bytes : Bytes) -> @domain.CT_OMath raise {
   let root = @xml.parse(bytes).root
   require_local(root, "oMath")
-  @domain.CT_OMath::new(root)
+  @domain.o_math(root)
 }
 
 ///|

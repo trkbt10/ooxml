@@ -58,3 +58,23 @@ test "WML settings reader rejects invalid ST_OnOff values" {
   )
   assert_true(invalid is Err(@domain.SchemaViolation(_)))
 }
+
+///|
+test "WML document reader rejects malformed embedded OMML values" {
+  let invalid = try? read_document(
+    bytes(
+      "<w:document xmlns:w=\"urn:w\" xmlns:m=\"urn:math\">" +
+      "<w:body><w:p>" +
+      "<m:oMath>" +
+      "<m:rad>" +
+      "<m:radPr><m:degHide m:val=\"maybe\"/></m:radPr>" +
+      "<m:deg/>" +
+      "<m:e/>" +
+      "</m:rad>" +
+      "</m:oMath>" +
+      "</w:p></w:body>" +
+      "</w:document>",
+    ),
+  )
+  assert_true(invalid is Err(@domain.SchemaViolation(_)))
+}

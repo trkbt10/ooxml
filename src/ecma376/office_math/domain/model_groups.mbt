@@ -53,6 +53,78 @@ pub fn EG_OMathMathElements::new(
 }
 
 ///|
+/// Parse EG_OMathMathElements by validating the selected OMML math arm.
+pub fn EG_OMathMathElements::parse(
+  element : @xml.Element,
+) -> EG_OMathMathElements raise SchemaViolation {
+  match element.name.local_name {
+    "acc" => {
+      let _ = CT_Acc::new(element)
+    }
+    "bar" => {
+      let _ = CT_Bar::new(element)
+    }
+    "box" => {
+      let _ = CT_Box::new(element)
+    }
+    "borderBox" => {
+      let _ = CT_BorderBox::new(element)
+    }
+    "d" => {
+      let _ = CT_D::new(element)
+    }
+    "eqArr" => {
+      let _ = CT_EqArr::new(element)
+    }
+    "f" => {
+      let _ = CT_F::new(element)
+    }
+    "func" => {
+      let _ = CT_Func::new(element)
+    }
+    "groupChr" => {
+      let _ = CT_GroupChr::new(element)
+    }
+    "limLow" => {
+      let _ = CT_LimLow::new(element)
+    }
+    "limUpp" => {
+      let _ = CT_LimUpp::new(element)
+    }
+    "m" => {
+      let _ = CT_M::new(element)
+    }
+    "nary" => {
+      let _ = CT_Nary::new(element)
+    }
+    "phant" => {
+      let _ = CT_Phant::new(element)
+    }
+    "rad" => {
+      let _ = CT_Rad::new(element)
+    }
+    "sPre" => {
+      let _ = CT_SPre::new(element)
+    }
+    "sSub" => {
+      let _ = CT_SSub::new(element)
+    }
+    "sSubSup" => {
+      let _ = CT_SSubSup::new(element)
+    }
+    "sSup" => {
+      let _ = CT_SSup::new(element)
+    }
+    "r" => {
+      let _ = CT_R::new(element)
+    }
+    other =>
+      raise SchemaViolation(type_name="EG_OMathMathElements", value=other)
+  }
+  { element, }
+}
+
+///|
 /// Construct XSD model group EG_OMathMathElements (§22.1.x).
 pub fn eg_o_math_math_elements(element : @xml.Element) -> EG_OMathMathElements {
   EG_OMathMathElements::new(element)
@@ -115,6 +187,20 @@ pub(all) struct EG_OMathElements {
 /// Construct EG_OMathElements from the XML element selected by the group.
 pub fn EG_OMathElements::new(element : @xml.Element) -> EG_OMathElements {
   { element, }
+}
+
+///|
+/// Parse EG_OMathElements, validating OMML math arms and preserving
+/// non-OMML paragraph content for the WordprocessingML-owned side of
+/// the choice.
+pub fn EG_OMathElements::parse(
+  element : @xml.Element,
+) -> EG_OMathElements raise SchemaViolation {
+  let group = EG_OMathElements::new(element)
+  if group.is_math_element() {
+    let _ = EG_OMathMathElements::parse(element)
+  }
+  group
 }
 
 ///|

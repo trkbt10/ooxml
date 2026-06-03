@@ -1272,9 +1272,9 @@ pub fn CT_R::child_names(self : CT_R) -> Array[String] {
 }
 
 ///|
-/// Construct top-level XSD element oMath as CT_OMath (§22.1).
-pub fn o_math(element : @xml.Element) -> CT_OMath {
-  CT_OMath::new(element)
+/// Parse top-level XSD element oMath as CT_OMath (§22.1).
+pub fn o_math(element : @xml.Element) -> CT_OMath raise SchemaViolation {
+  CT_OMath::parse(element)
 }
 
 ///|
@@ -2653,7 +2653,7 @@ pub(all) struct CT_OMathArg {
 
 ///|
 /// Construct CT_OMathArg by binding argPr / ctrlPr children and routing
-/// every EG_OMathElements choice child through the model group wrapper.
+/// every EG_OMathElements choice child through the strict model group parser.
 pub fn CT_OMathArg::new(
   element : @xml.Element,
 ) -> CT_OMathArg raise SchemaViolation {
@@ -2666,7 +2666,7 @@ pub fn CT_OMathArg::new(
         match child_element.name.local_name {
           "argPr" => arg_pr = Some(CT_OMathArgPr::new(child_element))
           "ctrlPr" => ctrl_pr = Some(CT_CtrlPr::new(child_element))
-          _ => omml_elements.push(EG_OMathElements::new(child_element))
+          _ => omml_elements.push(EG_OMathElements::parse(child_element))
         }
       _ => ()
     }
@@ -2969,7 +2969,7 @@ pub fn CT_OMathPara::new(
         match child_element.name.local_name {
           "oMathParaPr" =>
             o_math_para_pr = Some(CT_OMathParaPr::new(child_element))
-          "oMath" => o_math.push(CT_OMath::new(child_element))
+          "oMath" => o_math.push(CT_OMath::parse(child_element))
           _ => ()
         }
       _ => ()
@@ -3003,6 +3003,24 @@ pub fn CT_OMath::new(element : @xml.Element) -> CT_OMath {
     match child {
       Element(child_element) =>
         omml_elements.push(EG_OMathElements::new(child_element))
+      _ => ()
+    }
+  }
+  { omml_elements, element }
+}
+
+///|
+/// Parse CT_OMath by validating each OMML math arm in the
+/// EG_OMathElements choice while preserving WordprocessingML paragraph
+/// content carried by the cross-chapter half of the group.
+pub fn CT_OMath::parse(
+  element : @xml.Element,
+) -> CT_OMath raise SchemaViolation {
+  let omml_elements : Array[EG_OMathElements] = []
+  for child in element.children {
+    match child {
+      Element(child_element) =>
+        omml_elements.push(EG_OMathElements::parse(child_element))
       _ => ()
     }
   }

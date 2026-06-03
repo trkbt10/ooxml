@@ -3642,11 +3642,11 @@ pub fn CT_RunTrackChange::new(
     match parse_content_run_content_element(raw) {
       Some(r) => run_content.push(RunContent(r))
       None =>
-        // Not an EG_ContentRunContent arm — assume OMML m:* element.
-        // EG_OMathMathElements::new currently preserves the raw
-        // element; the typed projection lives in the office_math
-        // package and decodes m:f / m:rad / m:nary / etc. there.
-        run_content.push(Math(@m.EG_OMathMathElements::new(raw)))
+        // Not an EG_ContentRunContent arm — validate it as an OMML
+        // m:EG_OMathMathElements choice from the office_math package.
+        run_content.push(
+          Math(wrap_m_violation(() => @m.EG_OMathMathElements::parse(raw))),
+        )
     }
   }
   { element, id, author, date, run_content }
