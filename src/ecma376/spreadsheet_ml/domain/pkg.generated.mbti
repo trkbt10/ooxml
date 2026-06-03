@@ -1105,7 +1105,7 @@ pub(all) struct CT_Dimensions {
   dimension : Array[CT_PivotDimension]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Dimensions::new(@xml.Element) -> Self
+pub fn CT_Dimensions::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DiscretePr {
   element : @xml.Element
@@ -2442,7 +2442,7 @@ pub(all) struct CT_PivotDimension {
   unique_name : String
   caption : String
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotDimension::new(@xml.Element) -> Self
+pub fn CT_PivotDimension::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotField {
   element : @xml.Element

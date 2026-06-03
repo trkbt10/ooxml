@@ -335,6 +335,15 @@ test "SML pivotCacheDefinition reader rejects malformed calculated-member boolea
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed pivot-dimension booleans" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:dimensions><s:dimension measure=\"maybe\"/></s:dimensions>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed definition booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\" dataOnRows=\"maybe\"/>",

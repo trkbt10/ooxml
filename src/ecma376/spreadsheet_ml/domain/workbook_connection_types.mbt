@@ -2248,7 +2248,9 @@ pub(all) struct CT_Dimensions {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Dimensions::new(element : @xml.Element) -> CT_Dimensions {
+pub fn CT_Dimensions::new(
+  element : @xml.Element,
+) -> CT_Dimensions raise @opc_errors.SchemaViolation {
   let dimension : Array[CT_PivotDimension] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {

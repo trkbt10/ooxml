@@ -2415,8 +2415,21 @@ pub(all) struct CT_PivotDimension {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotDimension::new(element : @xml.Element) -> CT_PivotDimension {
-  let measure = attr_bool(element, "measure", false)
+fn pivot_dimension_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.10.1.64", "dimension",
+  )
+}
+
+///|
+pub fn CT_PivotDimension::new(
+  element : @xml.Element,
+) -> CT_PivotDimension raise @opc_errors.SchemaViolation {
+  let measure = pivot_dimension_bool(element, "measure", false)
   let name = match attr(element, "name") {
     Some(value) => value
     None => ""
