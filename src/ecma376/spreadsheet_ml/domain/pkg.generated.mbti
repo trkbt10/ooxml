@@ -2227,7 +2227,7 @@ pub(all) struct CT_PageMargins {
   header : Double
   footer : Double
 } derive(Eq, @debug.Debug)
-pub fn CT_PageMargins::new(@xml.Element) -> Self
+pub fn CT_PageMargins::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PageSetUpPr {
   element : @xml.Element
@@ -2275,7 +2275,7 @@ pub(all) struct CT_Pane {
   active_pane : String
   state : String
 } derive(Eq, @debug.Debug)
-pub fn CT_Pane::new(@xml.Element) -> Self
+pub fn CT_Pane::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Parameter {
   element : @xml.Element
@@ -3107,7 +3107,7 @@ pub(all) struct CT_Selection {
   active_cell_id : Int
   sqref : String
 } derive(Eq, @debug.Debug)
-pub fn CT_Selection::new(@xml.Element) -> Self
+pub fn CT_Selection::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ServerFormat {
   element : @xml.Element

@@ -2398,16 +2398,16 @@ pub fn CT_SheetView::new(
     None => "normal"
   }
   let top_left_cell = attr(element, "topLeftCell")
-  let color_id = attr_uint(element, "colorId", 64)
-  let zoom_scale = attr_uint(element, "zoomScale", 100)
-  let zoom_scale_normal = attr_uint(element, "zoomScaleNormal", 0)
-  let zoom_scale_sheet_layout_view = attr_uint(
+  let color_id = attr_uint_schema(element, "colorId", 64)
+  let zoom_scale = attr_uint_schema(element, "zoomScale", 100)
+  let zoom_scale_normal = attr_uint_schema(element, "zoomScaleNormal", 0)
+  let zoom_scale_sheet_layout_view = attr_uint_schema(
     element, "zoomScaleSheetLayoutView", 0,
   )
-  let zoom_scale_page_layout_view = attr_uint(
+  let zoom_scale_page_layout_view = attr_uint_schema(
     element, "zoomScalePageLayoutView", 0,
   )
-  let workbook_view_id = attr_uint(element, "workbookViewId", 0)
+  let workbook_view_id = attr_uint_schema(element, "workbookViewId", 0)
   {
     element,
     pane,
@@ -2457,9 +2457,11 @@ pub(all) struct CT_Pane {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Pane::new(element : @xml.Element) -> CT_Pane {
-  let x_split = attr_double(element, "xSplit", 0.0)
-  let y_split = attr_double(element, "ySplit", 0.0)
+pub fn CT_Pane::new(
+  element : @xml.Element,
+) -> CT_Pane raise @opc_errors.SchemaViolation {
+  let x_split = attr_double_schema(element, "xSplit", 0.0)
+  let y_split = attr_double_schema(element, "ySplit", 0.0)
   let top_left_cell = attr(element, "topLeftCell")
   let active_pane = match attr(element, "activePane") {
     Some(value) => value
@@ -2491,13 +2493,15 @@ pub(all) struct CT_Selection {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Selection::new(element : @xml.Element) -> CT_Selection {
+pub fn CT_Selection::new(
+  element : @xml.Element,
+) -> CT_Selection raise @opc_errors.SchemaViolation {
   let pane = match attr(element, "pane") {
     Some(value) => value
     None => "topLeft"
   }
   let active_cell = attr(element, "activeCell")
-  let active_cell_id = attr_uint(element, "activeCellId", 0)
+  let active_cell_id = attr_uint_schema(element, "activeCellId", 0)
   let sqref = match attr(element, "sqref") {
     Some(value) => value
     None => "A1"
@@ -2533,8 +2537,8 @@ pub fn CT_PageBreak::new(
       }
     }
   }
-  let count = attr_uint(element, "count", 0)
-  let manual_break_count = attr_uint(element, "manualBreakCount", 0)
+  let count = attr_uint_schema(element, "count", 0)
+  let manual_break_count = attr_uint_schema(element, "manualBreakCount", 0)
   { element, brks, count, manual_break_count }
 }
 
@@ -2570,9 +2574,9 @@ fn break_bool(
 pub fn CT_Break::new(
   element : @xml.Element,
 ) -> CT_Break raise @opc_errors.SchemaViolation {
-  let id = attr_uint(element, "id", 0)
-  let min = attr_uint(element, "min", 0)
-  let max = attr_uint(element, "max", 0)
+  let id = attr_uint_schema(element, "id", 0)
+  let min = attr_uint_schema(element, "min", 0)
+  let max = attr_uint_schema(element, "max", 0)
   let man = break_bool(element, "man", false)
   let pt = break_bool(element, "pt", false)
   { element, id, min, max, man, pt }
@@ -3540,7 +3544,7 @@ pub fn CT_CellFormula::new(
   let r1 = attr(element, "r1")
   let r2 = attr(element, "r2")
   let ca = cell_formula_bool(element, "ca", false)
-  let si = attr_uint_opt(element, "si")
+  let si = attr_uint_opt_schema(element, "si")
   let bx = cell_formula_bool(element, "bx", false)
   { element, formula, t, aca, ref_, dt2_d, dtr, del1, del2, r1, r2, ca, si, bx }
 }
@@ -3567,13 +3571,15 @@ pub(all) struct CT_PageMargins {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageMargins::new(element : @xml.Element) -> CT_PageMargins {
-  let left = attr_double(element, "left", 0.0)
-  let right = attr_double(element, "right", 0.0)
-  let top = attr_double(element, "top", 0.0)
-  let bottom = attr_double(element, "bottom", 0.0)
-  let header = attr_double(element, "header", 0.0)
-  let footer = attr_double(element, "footer", 0.0)
+pub fn CT_PageMargins::new(
+  element : @xml.Element,
+) -> CT_PageMargins raise @opc_errors.SchemaViolation {
+  let left = attr_double_schema(element, "left", 0.0)
+  let right = attr_double_schema(element, "right", 0.0)
+  let top = attr_double_schema(element, "top", 0.0)
+  let bottom = attr_double_schema(element, "bottom", 0.0)
+  let header = attr_double_schema(element, "header", 0.0)
+  let footer = attr_double_schema(element, "footer", 0.0)
   { element, left, right, top, bottom, header, footer }
 }
 

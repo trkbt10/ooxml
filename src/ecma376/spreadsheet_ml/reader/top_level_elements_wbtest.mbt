@@ -1660,6 +1660,13 @@ test "SML worksheet reader rejects malformed cell formula booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed cell formula unsigned integers" {
+  assert_worksheet_cell_schema_violation(
+    "<s:c r=\"A1\"><s:f si=\"abc\">A1</s:f></s:c>",
+  )
+}
+
+///|
 fn assert_sheet_protection_schema_violation(
   protection_attr : String,
 ) -> Unit raise {
@@ -1737,6 +1744,37 @@ test "SML worksheet reader rejects malformed sheet view booleans" {
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed sheet view numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView colorId=\"abc\"/></s:sheetViews>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView zoomScale=\"abc\"/></s:sheetViews>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView zoomScaleNormal=\"abc\"/></s:sheetViews>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView zoomScaleSheetLayoutView=\"abc\"/></s:sheetViews>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView zoomScalePageLayoutView=\"abc\"/></s:sheetViews>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView workbookViewId=\"abc\"/></s:sheetViews>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView><s:pane xSplit=\"abc\"/></s:sheetView></s:sheetViews>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView><s:pane ySplit=\"abc\"/></s:sheetView></s:sheetViews>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView><s:selection activeCellId=\"abc\"/></s:sheetView></s:sheetViews>",
+  )
 }
 
 ///|
@@ -1920,6 +1958,16 @@ test "SML worksheet reader rejects malformed row numerics" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed page margin doubles" {
+  assert_worksheet_body_schema_violation("<s:pageMargins left=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:pageMargins right=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:pageMargins top=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:pageMargins bottom=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:pageMargins header=\"abc\"/>")
+  assert_worksheet_body_schema_violation("<s:pageMargins footer=\"abc\"/>")
+}
+
+///|
 test "SML worksheet reader rejects malformed data consolidation booleans" {
   let invalid = try? read_worksheet(
     bytes(
@@ -1941,6 +1989,25 @@ test "SML worksheet reader rejects malformed page break booleans" {
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed page break numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:rowBreaks count=\"abc\"><s:brk id=\"1\"/></s:rowBreaks>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:rowBreaks manualBreakCount=\"abc\"><s:brk id=\"1\"/></s:rowBreaks>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:rowBreaks><s:brk id=\"abc\"/></s:rowBreaks>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:rowBreaks><s:brk id=\"1\" min=\"abc\"/></s:rowBreaks>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:rowBreaks><s:brk id=\"1\" max=\"abc\"/></s:rowBreaks>",
+  )
 }
 
 ///|
