@@ -3409,7 +3409,7 @@ pub fn CT_WebPublishItems::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, web_publish_item, count }
 }
 
@@ -3456,7 +3456,7 @@ fn web_publish_item_bool(
 pub fn CT_WebPublishItem::new(
   element : @xml.Element,
 ) -> CT_WebPublishItem raise @opc_errors.SchemaViolation {
-  let id = attr_uint(element, "id", 0)
+  let id = attr_uint_schema(element, "id", 0)
   let div_id = match attr(element, "divId") {
     Some(value) => value
     None => ""

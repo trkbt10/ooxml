@@ -3414,6 +3414,22 @@ test "SML worksheet reader rejects malformed web publish item booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed web publish item numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:webPublishItems count=\"abc\">" +
+    "<s:webPublishItem id=\"1\" divId=\"d1\" sourceType=\"sheet\" " +
+    "destinationFile=\"out.htm\"/>" +
+    "</s:webPublishItems>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:webPublishItems>" +
+    "<s:webPublishItem id=\"abc\" divId=\"d1\" sourceType=\"sheet\" " +
+    "destinationFile=\"out.htm\"/>" +
+    "</s:webPublishItems>",
+  )
+}
+
+///|
 test "SML worksheet reader rejects malformed scenario booleans" {
   let invalid_scenario = try? read_worksheet(
     bytes(

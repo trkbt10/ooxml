@@ -1763,26 +1763,6 @@ fn attr_with_ns(element : @xml.Element, local_name : String) -> String? {
 }
 
 ///|
-/// Parse an attribute as xsd:unsignedInt (non-negative). Returns the
-/// supplied default when the attribute is missing or unparseable.
-fn attr_uint(element : @xml.Element, local_name : String, default : Int) -> Int {
-  match attr_uint_opt(element, local_name) {
-    Some(n) => n
-    None => default
-  }
-}
-
-///|
-/// Parse an attribute as xsd:unsignedInt and return None when absent.
-/// Malformed present values are treated as absent by legacy callers.
-fn attr_uint_opt(element : @xml.Element, local_name : String) -> Int? {
-  match attr(element, local_name) {
-    Some(value) => parse_uint_text(value)
-    None => None
-  }
-}
-
-///|
 /// Strict xsd:unsignedInt reader for schema boundary constructors.
 /// Missing attributes use the schema default; malformed present values raise.
 fn attr_uint_schema(
