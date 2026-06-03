@@ -4334,12 +4334,20 @@ pub fn CT_Table::new(
     ref_range: attr(element, "ref").unwrap_or(""),
     header_row_count: attr_int(element, "headerRowCount", 1),
     totals_row_count: attr_int(element, "totalsRowCount", 0),
-    totals_row_shown: attr_bool(element, "totalsRowShown", true),
+    totals_row_shown: attr_bool_schema(
+      element, "totalsRowShown", true, "Part 1 §18.5.1.2", "table",
+    ),
     table_type: attr(element, "tableType").unwrap_or("worksheet"),
     connection_id: attr_int(element, "connectionId", 0),
-    published: attr_bool(element, "published", false),
-    insert_row: attr_bool(element, "insertRow", false),
-    insert_row_shift: attr_bool(element, "insertRowShift", false),
+    published: attr_bool_schema(
+      element, "published", false, "Part 1 §18.5.1.2", "table",
+    ),
+    insert_row: attr_bool_schema(
+      element, "insertRow", false, "Part 1 §18.5.1.2", "table",
+    ),
+    insert_row_shift: attr_bool_schema(
+      element, "insertRowShift", false, "Part 1 §18.5.1.2", "table",
+    ),
     header_row_dxf_id: attr_int(element, "headerRowDxfId", -1),
     data_dxf_id: attr_int(element, "dataDxfId", -1),
     totals_row_dxf_id: attr_int(element, "totalsRowDxfId", -1),
@@ -4466,10 +4474,18 @@ pub(all) struct CT_TableFormula {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TableFormula::new(element : @xml.Element) -> CT_TableFormula {
+pub fn CT_TableFormula::new(
+  element : @xml.Element,
+) -> CT_TableFormula raise @opc_errors.SchemaViolation {
   {
     element,
-    array: attr_bool(element, "array", false),
+    array: attr_bool_schema(
+      element,
+      "array",
+      false,
+      "Part 1 §18.5.1.5",
+      element.name.local_name,
+    ),
     formula: element_text(element),
   }
 }

@@ -251,17 +251,38 @@ test "SML pivotCacheRecords reader rejects malformed record booleans" {
 }
 
 ///|
-test "SML table reader rejects malformed XML column booleans" {
-  let invalid = try? read_table(
-    bytes(
-      "<s:table xmlns:s=\"urn:s\">" +
-      "<s:tableColumns><s:tableColumn>" +
-      "<s:xmlColumnPr denormalized=\"maybe\"/>" +
-      "</s:tableColumn></s:tableColumns>" +
-      "</s:table>",
-    ),
-  )
+fn assert_table_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_table(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML table reader rejects malformed table booleans" {
+  assert_table_schema_violation(
+    "<s:table xmlns:s=\"urn:s\" totalsRowShown=\"maybe\"/>",
+  )
+}
+
+///|
+test "SML table reader rejects malformed table formula booleans" {
+  assert_table_schema_violation(
+    "<s:table xmlns:s=\"urn:s\">" +
+    "<s:tableColumns><s:tableColumn>" +
+    "<s:calculatedColumnFormula array=\"maybe\"/>" +
+    "</s:tableColumn></s:tableColumns>" +
+    "</s:table>",
+  )
+}
+
+///|
+test "SML table reader rejects malformed XML column booleans" {
+  assert_table_schema_violation(
+    "<s:table xmlns:s=\"urn:s\">" +
+    "<s:tableColumns><s:tableColumn>" +
+    "<s:xmlColumnPr denormalized=\"maybe\"/>" +
+    "</s:tableColumn></s:tableColumns>" +
+    "</s:table>",
+  )
 }
 
 ///|
