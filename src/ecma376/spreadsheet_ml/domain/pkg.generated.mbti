@@ -1098,7 +1098,7 @@ pub(all) struct CT_Dialogsheet {
   controls : CT_Controls?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_Dialogsheet::new(@xml.Element) -> Self
+pub fn CT_Dialogsheet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Dimensions {
   element : @xml.Element
@@ -2123,13 +2123,13 @@ pub(all) struct CT_OleObject {
   r_id : String?
   object_pr : CT_ObjectPr?
 } derive(Eq, @debug.Debug)
-pub fn CT_OleObject::new(@xml.Element) -> Self
+pub fn CT_OleObject::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_OleObjects {
   element : @xml.Element
   ole_objects : Array[CT_OleObject]
 } derive(Eq, @debug.Debug)
-pub fn CT_OleObjects::new(@xml.Element) -> Self
+pub fn CT_OleObjects::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_OleSize {
   element : @xml.Element

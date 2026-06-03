@@ -1433,7 +1433,9 @@ pub(all) struct CT_Dialogsheet {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Dialogsheet::new(element : @xml.Element) -> CT_Dialogsheet {
+pub fn CT_Dialogsheet::new(
+  element : @xml.Element,
+) -> CT_Dialogsheet raise @opc_errors.SchemaViolation {
   let mut sheet_pr : CT_SheetPr? = None
   let mut sheet_views : CT_SheetViews? = None
   let mut sheet_format_pr : CT_SheetFormatPr? = None

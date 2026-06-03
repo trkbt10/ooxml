@@ -246,7 +246,9 @@ pub(all) struct CT_OleObjects {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_OleObjects::new(element : @xml.Element) -> CT_OleObjects {
+pub fn CT_OleObjects::new(
+  element : @xml.Element,
+) -> CT_OleObjects raise @opc_errors.SchemaViolation {
   let ole_objects : Array[CT_OleObject] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -287,12 +289,16 @@ pub(all) struct CT_OleObject {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_OleObject::new(element : @xml.Element) -> CT_OleObject {
+pub fn CT_OleObject::new(
+  element : @xml.Element,
+) -> CT_OleObject raise @opc_errors.SchemaViolation {
   let prog_id = attr(element, "progId")
   let dv_aspect = attr(element, "dvAspect")
   let link = attr(element, "link")
   let ole_update = attr(element, "oleUpdate")
-  let auto_load = attr_bool(element, "autoLoad", false)
+  let auto_load = attr_bool_schema(
+    element, "autoLoad", false, "Part 1 §18.3.1.59", "oleObject",
+  )
   let shape_id = attr_uint(element, "shapeId", 0)
   let r_id = attr_with_ns(element, "id")
   let mut object_pr : CT_ObjectPr? = None

@@ -240,3 +240,15 @@ test "SML externalLink reader rejects malformed OLE booleans" {
     "</s:externalLink>",
   )
 }
+
+///|
+test "SML worksheet reader rejects malformed OLE object booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:oleObjects><s:oleObject autoLoad=\"maybe\"/></s:oleObjects>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
