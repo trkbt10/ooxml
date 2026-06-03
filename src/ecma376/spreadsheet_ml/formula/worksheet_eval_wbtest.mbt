@@ -5,7 +5,9 @@ fn worksheet_eval_test_bytes(source : String) -> Bytes {
 
 ///|
 fn worksheet_eval_test_cell(source : String) -> @domain.CT_Cell {
-  @domain.CT_Cell::new(try! @xml.parse(worksheet_eval_test_bytes(source)).root)
+  try! @domain.CT_Cell::new(
+    try! @xml.parse(worksheet_eval_test_bytes(source)).root,
+  )
 }
 
 ///|

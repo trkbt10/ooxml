@@ -1245,6 +1245,43 @@ test "SML worksheet reader rejects malformed sheet properties booleans" {
 }
 
 ///|
+fn assert_worksheet_cell_schema_violation(cell_markup : String) -> Unit raise {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:sheetData><s:row>" +
+      cell_markup +
+      "</s:row></s:sheetData>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed cell booleans" {
+  assert_worksheet_cell_schema_violation("<s:c ph=\"maybe\"/>")
+}
+
+///|
+fn assert_cell_formula_bool_schema_violation(local_name : String) -> Unit raise {
+  assert_worksheet_cell_schema_violation(
+    "<s:c r=\"A1\"><s:f " + local_name + "=\"maybe\">A1</s:f></s:c>",
+  )
+}
+
+///|
+test "SML worksheet reader rejects malformed cell formula booleans" {
+  assert_cell_formula_bool_schema_violation("aca")
+  assert_cell_formula_bool_schema_violation("dt2D")
+  assert_cell_formula_bool_schema_violation("dtr")
+  assert_cell_formula_bool_schema_violation("del1")
+  assert_cell_formula_bool_schema_violation("del2")
+  assert_cell_formula_bool_schema_violation("ca")
+  assert_cell_formula_bool_schema_violation("bx")
+}
+
+///|
 fn assert_sheet_protection_schema_violation(
   protection_attr : String,
 ) -> Unit raise {

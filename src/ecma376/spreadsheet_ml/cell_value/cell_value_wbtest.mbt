@@ -42,7 +42,7 @@ fn cell(t? : String, v? : String, inline? : String) -> @domain.CT_Cell {
       ]
     _ => []
   }
-  @domain.CT_Cell::new(element("c", attributes~, children~))
+  try! @domain.CT_Cell::new(element("c", attributes~, children~))
 }
 
 ///|

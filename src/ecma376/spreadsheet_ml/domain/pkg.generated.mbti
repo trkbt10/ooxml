@@ -315,7 +315,7 @@ pub(all) struct CT_Cell {
   vm : Int
   ph : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Cell::new(@xml.Element) -> Self
+pub fn CT_Cell::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CellAlignment {
   element : @xml.Element
@@ -347,7 +347,7 @@ pub(all) struct CT_CellFormula {
   si : Int?
   bx : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_CellFormula::new(@xml.Element) -> Self
+pub fn CT_CellFormula::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CellProtection {
   element : @xml.Element

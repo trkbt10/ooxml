@@ -2094,7 +2094,18 @@ pub(all) struct CT_Cell {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Cell::new(element : @xml.Element) -> CT_Cell {
+fn cell_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.3.1.4", "c")
+}
+
+///|
+pub fn CT_Cell::new(
+  element : @xml.Element,
+) -> CT_Cell raise @opc_errors.SchemaViolation {
   let mut f : CT_CellFormula? = None
   let mut v : String? = None
   let mut is_ : CT_Rst? = None
@@ -2118,7 +2129,7 @@ pub fn CT_Cell::new(element : @xml.Element) -> CT_Cell {
   }
   let cm = attr_uint(element, "cm", 0)
   let vm = attr_uint(element, "vm", 0)
-  let ph = attr_bool(element, "ph", false)
+  let ph = cell_bool(element, "ph", false)
   { element, f, v, is_, ext_lst, r, s, t, cm, vm, ph }
 }
 
@@ -3497,23 +3508,34 @@ pub(all) struct CT_CellFormula {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CellFormula::new(element : @xml.Element) -> CT_CellFormula {
+fn cell_formula_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.3.1.40", "f")
+}
+
+///|
+pub fn CT_CellFormula::new(
+  element : @xml.Element,
+) -> CT_CellFormula raise @opc_errors.SchemaViolation {
   let formula = element_text(element)
   let t = match attr(element, "t") {
     Some(value) => value
     None => "normal"
   }
-  let aca = attr_bool(element, "aca", false)
+  let aca = cell_formula_bool(element, "aca", false)
   let ref_ = attr(element, "ref")
-  let dt2_d = attr_bool(element, "dt2D", false)
-  let dtr = attr_bool(element, "dtr", false)
-  let del1 = attr_bool(element, "del1", false)
-  let del2 = attr_bool(element, "del2", false)
+  let dt2_d = cell_formula_bool(element, "dt2D", false)
+  let dtr = cell_formula_bool(element, "dtr", false)
+  let del1 = cell_formula_bool(element, "del1", false)
+  let del2 = cell_formula_bool(element, "del2", false)
   let r1 = attr(element, "r1")
   let r2 = attr(element, "r2")
-  let ca = attr_bool(element, "ca", false)
+  let ca = cell_formula_bool(element, "ca", false)
   let si = attr_uint_opt(element, "si")
-  let bx = attr_bool(element, "bx", false)
+  let bx = cell_formula_bool(element, "bx", false)
   { element, formula, t, aca, ref_, dt2_d, dtr, del1, del2, r1, r2, ca, si, bx }
 }
 

@@ -183,10 +183,15 @@ fn WorksheetSnapshot::add_row(
             Some(reference) =>
               match worksheet_eval_parse_address(reference) {
                 Some(address) =>
-                  self.cells.set(
-                    worksheet_eval_key_for_store(address),
-                    @domain.CT_Cell::new(cell_element),
-                  )
+                  try @domain.CT_Cell::new(cell_element) catch {
+                    _ => ()
+                  } noraise {
+                    cell =>
+                      self.cells.set(
+                        worksheet_eval_key_for_store(address),
+                        cell,
+                      )
+                  }
                 None => ()
               }
             None => ()
