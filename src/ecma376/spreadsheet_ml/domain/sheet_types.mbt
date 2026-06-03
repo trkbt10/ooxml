@@ -1738,7 +1738,9 @@ pub(all) struct CT_SheetData {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SheetData::new(element : @xml.Element) -> CT_SheetData {
+pub fn CT_SheetData::new(
+  element : @xml.Element,
+) -> CT_SheetData raise @opc_errors.SchemaViolation {
   let row : Array[CT_Row] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1976,7 +1978,18 @@ pub(all) struct CT_Row {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Row::new(element : @xml.Element) -> CT_Row {
+fn row_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.3.1.73", "row")
+}
+
+///|
+pub fn CT_Row::new(
+  element : @xml.Element,
+) -> CT_Row raise @opc_errors.SchemaViolation {
   let cells : Array[CT_Cell] = []
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -1991,15 +2004,15 @@ pub fn CT_Row::new(element : @xml.Element) -> CT_Row {
   let r = attr_uint_opt(element, "r")
   let spans = attr(element, "spans")
   let s = attr_uint(element, "s", 0)
-  let custom_format = attr_bool(element, "customFormat", false)
+  let custom_format = row_bool(element, "customFormat", false)
   let ht = attr_double_opt(element, "ht")
-  let hidden = attr_bool(element, "hidden", false)
-  let custom_height = attr_bool(element, "customHeight", false)
+  let hidden = row_bool(element, "hidden", false)
+  let custom_height = row_bool(element, "customHeight", false)
   let outline_level = attr_uint(element, "outlineLevel", 0)
-  let collapsed = attr_bool(element, "collapsed", false)
-  let thick_top = attr_bool(element, "thickTop", false)
-  let thick_bot = attr_bool(element, "thickBot", false)
-  let ph = attr_bool(element, "ph", false)
+  let collapsed = row_bool(element, "collapsed", false)
+  let thick_top = row_bool(element, "thickTop", false)
+  let thick_bot = row_bool(element, "thickBot", false)
+  let ph = row_bool(element, "ph", false)
   {
     element,
     cells,

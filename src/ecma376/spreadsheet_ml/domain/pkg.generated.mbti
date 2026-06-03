@@ -3043,7 +3043,7 @@ pub(all) struct CT_Row {
   thick_bot : Bool
   ph : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Row::new(@xml.Element) -> Self
+pub fn CT_Row::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RowFields {
   element : @xml.Element
@@ -3202,7 +3202,7 @@ pub(all) struct CT_SheetData {
   element : @xml.Element
   row : Array[CT_Row]
 } derive(Eq, @debug.Debug)
-pub fn CT_SheetData::new(@xml.Element) -> Self
+pub fn CT_SheetData::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SheetDimension {
   element : @xml.Element
