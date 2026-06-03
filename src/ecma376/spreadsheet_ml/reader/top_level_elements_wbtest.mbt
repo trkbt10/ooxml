@@ -275,6 +275,15 @@ test "SML table reader rejects malformed table formula booleans" {
 }
 
 ///|
+test "SML table reader rejects malformed table style booleans" {
+  assert_table_schema_violation(
+    "<s:table xmlns:s=\"urn:s\">" +
+    "<s:tableStyleInfo showRowStripes=\"maybe\"/>" +
+    "</s:table>",
+  )
+}
+
+///|
 test "SML table reader rejects malformed XML column booleans" {
   assert_table_schema_violation(
     "<s:table xmlns:s=\"urn:s\">" +

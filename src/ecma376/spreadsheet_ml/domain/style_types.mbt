@@ -1511,12 +1511,22 @@ pub(all) struct CT_TableStyleInfo {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TableStyleInfo::new(element : @xml.Element) -> CT_TableStyleInfo {
+pub fn CT_TableStyleInfo::new(
+  element : @xml.Element,
+) -> CT_TableStyleInfo raise @opc_errors.SchemaViolation {
   let name = attr(element, "name")
-  let show_first_column = attr_bool_opt(element, "showFirstColumn")
-  let show_last_column = attr_bool_opt(element, "showLastColumn")
-  let show_row_stripes = attr_bool_opt(element, "showRowStripes")
-  let show_column_stripes = attr_bool_opt(element, "showColumnStripes")
+  let show_first_column = attr_bool_schema_opt(
+    element, "showFirstColumn", "Part 1 §18.8.41", "tableStyleInfo",
+  )
+  let show_last_column = attr_bool_schema_opt(
+    element, "showLastColumn", "Part 1 §18.8.41", "tableStyleInfo",
+  )
+  let show_row_stripes = attr_bool_schema_opt(
+    element, "showRowStripes", "Part 1 §18.8.41", "tableStyleInfo",
+  )
+  let show_column_stripes = attr_bool_schema_opt(
+    element, "showColumnStripes", "Part 1 §18.8.41", "tableStyleInfo",
+  )
   {
     element,
     name,
