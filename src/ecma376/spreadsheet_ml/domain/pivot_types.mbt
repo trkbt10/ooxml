@@ -3477,7 +3477,9 @@ pub(all) struct CT_MdxMetadata {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MdxMetadata::new(element : @xml.Element) -> CT_MdxMetadata {
+pub fn CT_MdxMetadata::new(
+  element : @xml.Element,
+) -> CT_MdxMetadata raise @opc_errors.SchemaViolation {
   let count = attr_uint(element, "count", 0)
   let mdx : Array[CT_Mdx] = []
   for child in element.children {
@@ -3520,7 +3522,9 @@ pub(all) enum CT_Mdx_Choice {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Mdx::new(element : @xml.Element) -> CT_Mdx {
+pub fn CT_Mdx::new(
+  element : @xml.Element,
+) -> CT_Mdx raise @opc_errors.SchemaViolation {
   let n = attr_uint(element, "n", 0)
   let f = match attr(element, "f") {
     Some(value) => value
@@ -3579,17 +3583,19 @@ pub(all) struct CT_MdxTuple {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MdxTuple::new(element : @xml.Element) -> CT_MdxTuple {
+pub fn CT_MdxTuple::new(
+  element : @xml.Element,
+) -> CT_MdxTuple raise @opc_errors.SchemaViolation {
   let c = attr_uint(element, "c", 0)
   let ct = attr(element, "ct")
   let si = attr_uint_opt(element, "si")
   let fi = attr_uint_opt(element, "fi")
   let bc = attr_hex_uint_opt(element, "bc")
   let fc = attr_hex_uint_opt(element, "fc")
-  let i = attr_bool(element, "i", false)
-  let u = attr_bool(element, "u", false)
-  let st = attr_bool(element, "st", false)
-  let b = attr_bool(element, "b", false)
+  let i = attr_bool_schema(element, "i", false, "Part 1 §18.9.9", "t")
+  let u = attr_bool_schema(element, "u", false, "Part 1 §18.9.9", "t")
+  let st = attr_bool_schema(element, "st", false, "Part 1 §18.9.9", "t")
+  let b = attr_bool_schema(element, "b", false, "Part 1 §18.9.9", "t")
   let n : Array[CT_MetadataStringIndex] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3625,7 +3631,9 @@ pub(all) struct CT_MdxSet {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MdxSet::new(element : @xml.Element) -> CT_MdxSet {
+pub fn CT_MdxSet::new(
+  element : @xml.Element,
+) -> CT_MdxSet raise @opc_errors.SchemaViolation {
   let ns = attr_uint(element, "ns", 0)
   let c = attr_uint(element, "c", 0)
   let o = match attr(element, "o") {

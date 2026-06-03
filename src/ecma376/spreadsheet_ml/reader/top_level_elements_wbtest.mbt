@@ -171,6 +171,30 @@ test "SML metadata reader rejects malformed metadataType booleans" {
 }
 
 ///|
+fn assert_metadata_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_metadata(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML metadata reader rejects malformed MDX tuple booleans" {
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:t i=\"maybe\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+}
+
+///|
+test "SML metadata reader rejects malformed MDX member index booleans" {
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:ms><s:n s=\"maybe\"/></s:ms></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+}
+
+///|
 test "SML MapInfo reader rejects malformed Map booleans" {
   let invalid = try? read_map_info(
     bytes(

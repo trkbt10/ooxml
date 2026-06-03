@@ -680,9 +680,9 @@ pub(all) struct CT_MetadataStringIndex {
 ///|
 pub fn CT_MetadataStringIndex::new(
   element : @xml.Element,
-) -> CT_MetadataStringIndex {
+) -> CT_MetadataStringIndex raise @opc_errors.SchemaViolation {
   let x = attr_uint(element, "x", 0)
-  let s = attr_bool(element, "s", false)
+  let s = attr_bool_schema(element, "s", false, "Part 1 §18.9.13", "n")
   { element, x, s }
 }
 

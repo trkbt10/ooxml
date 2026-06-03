@@ -1779,7 +1779,7 @@ pub(all) struct CT_Mdx {
   f : String
   choice : CT_Mdx_Choice?
 } derive(Eq, @debug.Debug)
-pub fn CT_Mdx::new(@xml.Element) -> Self
+pub fn CT_Mdx::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MdxKPI {
   element : @xml.Element
@@ -1801,7 +1801,7 @@ pub(all) struct CT_MdxMetadata {
   count : Int
   mdx : Array[CT_Mdx]
 } derive(Eq, @debug.Debug)
-pub fn CT_MdxMetadata::new(@xml.Element) -> Self
+pub fn CT_MdxMetadata::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MdxSet {
   element : @xml.Element
@@ -1810,7 +1810,7 @@ pub(all) struct CT_MdxSet {
   o : String
   n : Array[CT_MetadataStringIndex]
 } derive(Eq, @debug.Debug)
-pub fn CT_MdxSet::new(@xml.Element) -> Self
+pub fn CT_MdxSet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MdxTuple {
   element : @xml.Element
@@ -1826,7 +1826,7 @@ pub(all) struct CT_MdxTuple {
   b : Bool
   n : Array[CT_MetadataStringIndex]
 } derive(Eq, @debug.Debug)
-pub fn CT_MdxTuple::new(@xml.Element) -> Self
+pub fn CT_MdxTuple::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) enum CT_Mdx_Choice {
   T(CT_MdxTuple)
@@ -1948,7 +1948,7 @@ pub(all) struct CT_MetadataStringIndex {
   x : Int
   s : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_MetadataStringIndex::new(@xml.Element) -> Self
+pub fn CT_MetadataStringIndex::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MetadataStrings {
   element : @xml.Element
