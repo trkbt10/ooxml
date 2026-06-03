@@ -1567,7 +1567,7 @@ pub(all) struct CT_HeaderFooter {
   scale_with_doc : Bool
   align_with_margins : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_HeaderFooter::new(@xml.Element) -> Self
+pub fn CT_HeaderFooter::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_HierarchyUsage {
   element : @xml.Element
@@ -2600,7 +2600,7 @@ pub(all) struct CT_PrintOptions {
   grid_lines : Bool
   grid_lines_set : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_PrintOptions::new(@xml.Element) -> Self
+pub fn CT_PrintOptions::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ProtectedRange {
   element : @xml.Element

@@ -619,3 +619,39 @@ test "SML chartsheet reader rejects malformed page-setup booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed print-options booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:printOptions gridLinesSet=\"maybe\"/>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed header-footer booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:headerFooter scaleWithDoc=\"maybe\"/>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML chartsheet reader rejects malformed header-footer booleans" {
+  let invalid = try? read_chartsheet(
+    bytes(
+      "<s:chartsheet xmlns:s=\"urn:s\">" +
+      "<s:headerFooter alignWithMargins=\"maybe\"/>" +
+      "</s:chartsheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}

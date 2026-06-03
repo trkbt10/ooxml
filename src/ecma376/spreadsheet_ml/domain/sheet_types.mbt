@@ -3394,12 +3394,27 @@ pub(all) struct CT_PrintOptions {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PrintOptions::new(element : @xml.Element) -> CT_PrintOptions {
-  let horizontal_centered = attr_bool(element, "horizontalCentered", false)
-  let vertical_centered = attr_bool(element, "verticalCentered", false)
-  let headings = attr_bool(element, "headings", false)
-  let grid_lines = attr_bool(element, "gridLines", false)
-  let grid_lines_set = attr_bool(element, "gridLinesSet", true)
+fn print_options_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.70", "printOptions",
+  )
+}
+
+///|
+pub fn CT_PrintOptions::new(
+  element : @xml.Element,
+) -> CT_PrintOptions raise @opc_errors.SchemaViolation {
+  let horizontal_centered = print_options_bool(
+    element, "horizontalCentered", false,
+  )
+  let vertical_centered = print_options_bool(element, "verticalCentered", false)
+  let headings = print_options_bool(element, "headings", false)
+  let grid_lines = print_options_bool(element, "gridLines", false)
+  let grid_lines_set = print_options_bool(element, "gridLinesSet", true)
   {
     element,
     horizontal_centered,
@@ -3443,7 +3458,20 @@ pub(all) struct CT_HeaderFooter {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_HeaderFooter::new(element : @xml.Element) -> CT_HeaderFooter {
+fn header_footer_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.46", "headerFooter",
+  )
+}
+
+///|
+pub fn CT_HeaderFooter::new(
+  element : @xml.Element,
+) -> CT_HeaderFooter raise @opc_errors.SchemaViolation {
   let mut odd_header : String? = None
   let mut odd_footer : String? = None
   let mut even_header : String? = None
@@ -3463,10 +3491,12 @@ pub fn CT_HeaderFooter::new(element : @xml.Element) -> CT_HeaderFooter {
       }
     }
   }
-  let different_odd_even = attr_bool(element, "differentOddEven", false)
-  let different_first = attr_bool(element, "differentFirst", false)
-  let scale_with_doc = attr_bool(element, "scaleWithDoc", true)
-  let align_with_margins = attr_bool(element, "alignWithMargins", true)
+  let different_odd_even = header_footer_bool(
+    element, "differentOddEven", false,
+  )
+  let different_first = header_footer_bool(element, "differentFirst", false)
+  let scale_with_doc = header_footer_bool(element, "scaleWithDoc", true)
+  let align_with_margins = header_footer_bool(element, "alignWithMargins", true)
   {
     element,
     odd_header,
