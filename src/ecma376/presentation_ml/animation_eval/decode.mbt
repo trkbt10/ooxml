@@ -180,7 +180,7 @@ pub fn decode_anim_motion(
     None => None
   }
   let r_ang = match attr_local(element, "rAng") {
-    Some(text) => parse_double(text)
+    Some(text) => Some(parse_double_attr(text, "animMotion/@rAng"))
     None => None
   }
   let pts_types = attr_local(element, "ptsTypes")
@@ -220,11 +220,8 @@ pub fn decode_anim_scale(
   let common = decode_behavior_common(element)
   let merged = with_from_to_by(common, element)
   let zoom_contents = match attr_local(element, "zoomContents") {
-    Some("1") => Some(true)
-    Some("true") => Some(true)
-    Some("0") => Some(false)
-    Some("false") => Some(false)
-    _ => None
+    Some(text) => Some(parse_xsd_bool(text, "animScale/@zoomContents"))
+    None => None
   }
   let behaviour : @domain.CT_TLAnimateScaleBehavior = {
     common: merged,
@@ -354,7 +351,7 @@ fn decode_common_time_node_data(
   let preset_id = match c_tn {
     Some(t) =>
       match attr_local(t, "presetID") {
-        Some(text) => parse_signed_int(text)
+        Some(text) => Some(parse_signed_int_attr(text, "cTn/@presetID"))
         None => None
       }
     None => None
@@ -394,7 +391,7 @@ fn decode_common_time_node_data(
   let accel = match c_tn {
     Some(t) =>
       match attr_local(t, "accel") {
-        Some(text) => parse_percentage(text).unwrap_or(0.0)
+        Some(text) => parse_percentage_attr(text, "cTn/@accel")
         None => 0.0
       }
     None => 0.0
@@ -402,7 +399,7 @@ fn decode_common_time_node_data(
   let decel = match c_tn {
     Some(t) =>
       match attr_local(t, "decel") {
-        Some(text) => parse_percentage(text).unwrap_or(0.0)
+        Some(text) => parse_percentage_attr(text, "cTn/@decel")
         None => 0.0
       }
     None => 0.0
@@ -410,42 +407,53 @@ fn decode_common_time_node_data(
   let auto_reverse = match c_tn {
     Some(t) =>
       match attr_local(t, "autoRev") {
-        Some("1") => true
-        Some("true") => true
-        _ => false
+        Some(text) => parse_xsd_bool(text, "cTn/@autoRev")
+        None => false
       }
     None => false
   }
   // §19.5.12 — additional cTn attributes.
-  fn cTn_bool(name : String, default : Bool) -> Bool {
+  fn cTn_bool(
+    name : String,
+    default : Bool,
+  ) -> Bool raise @opc_errors.SchemaViolation {
     match c_tn {
       Some(t) =>
         match attr_local(t, name) {
-          Some("1") | Some("true") => true
-          Some("0") | Some("false") => false
-          _ => default
+          Some(text) => parse_xsd_bool(text, "cTn/@" + name)
+          None => default
         }
       None => default
     }
   }
 
-  fn cTn_bool_opt(name : String) -> Bool? {
+  fn cTn_bool_opt(name : String) -> Bool? raise @opc_errors.SchemaViolation {
     match c_tn {
       Some(t) =>
         match attr_local(t, name) {
-          Some("1") | Some("true") => Some(true)
-          Some("0") | Some("false") => Some(false)
-          _ => None
+          Some(text) => Some(parse_xsd_bool(text, "cTn/@" + name))
+          None => None
         }
       None => None
     }
   }
 
-  fn cTn_int_opt(name : String) -> Int? {
+  fn cTn_int_opt(name : String) -> Int? raise @opc_errors.SchemaViolation {
     match c_tn {
       Some(t) =>
         match attr_local(t, name) {
-          Some(text) => parse_signed_int(text)
+          Some(text) => Some(parse_signed_int_attr(text, "cTn/@" + name))
+          None => None
+        }
+      None => None
+    }
+  }
+
+  fn cTn_uint_opt(name : String) -> Int? raise @opc_errors.SchemaViolation {
+    match c_tn {
+      Some(t) =>
+        match attr_local(t, name) {
+          Some(text) => Some(parse_unsigned_int_attr(text, "cTn/@" + name))
           None => None
         }
       None => None
@@ -462,7 +470,7 @@ fn decode_common_time_node_data(
   let after_effect = cTn_bool("afterEffect", false)
   let display = cTn_bool("display", true)
   let bld_lvl = cTn_int_opt("bldLvl")
-  let grp_id = cTn_int_opt("grpId")
+  let grp_id = cTn_uint_opt("grpId")
   let preset_subtype = cTn_int_opt("presetSubtype")
   let evt_filter = cTn_str_opt("evtFilter")
   let master_rel = cTn_str_opt("masterRel")
@@ -608,7 +616,7 @@ fn decode_cond_target(
   let runtime_id = match tn {
     Some(t) =>
       match attr_local(t, "val") {
-        Some(text) => parse_signed_int(text)
+        Some(text) => Some(parse_signed_int_attr(text, "tn/@val"))
         None => None
       }
     None => None
@@ -1037,11 +1045,11 @@ pub fn decode_anim_variant(
         return match kind_local {
           "boolVal" =>
             match value {
-              Some("1") => Some(@domain.AnimVariantBool(true))
-              Some("true") => Some(@domain.AnimVariantBool(true))
-              Some("0") => Some(@domain.AnimVariantBool(false))
-              Some("false") => Some(@domain.AnimVariantBool(false))
-              _ => None
+              Some(text) =>
+                Some(
+                  @domain.AnimVariantBool(parse_xsd_bool(text, "boolVal/@val")),
+                )
+              None => None
             }
           "intVal" =>
             match value {
@@ -1111,25 +1119,120 @@ fn variant_from_attr(
 ///   - a percentage like `25%` → 0.25
 ///   - an unsignedInt 0..100000 (ST_PositiveFixedPercentage in
 ///     thousandths) → divided by 100000.
-fn parse_tav_time(text : String) -> Double? {
+fn parse_tav_time(text : String) -> Double? raise @opc_errors.SchemaViolation {
   let trimmed = trim_whitespace(text)
   if trimmed == "indefinite" {
     return None
   }
   if trimmed.length() == 0 {
-    return Some(0.0)
+    raise @opc_errors.SchemaViolation(
+      section=animation_section,
+      path="tav/@tm",
+      reason="malformed ST_TLTimeAnimateValueTime: " + text,
+    )
   }
   let last = trimmed.code_unit_at(trimmed.length() - 1).to_int()
   if last == 0x25 {
     let body = trimmed.unsafe_substring(start=0, end=trimmed.length() - 1)
     match parse_double(body) {
       Some(d) => return Some(d / 100.0)
-      None => return Some(0.0)
+      None =>
+        raise @opc_errors.SchemaViolation(
+          section=animation_section,
+          path="tav/@tm",
+          reason="malformed ST_TLTimeAnimateValueTime: " + text,
+        )
     }
   }
   match parse_unsigned_int(trimmed) {
     Some(n) => Some(n.to_double() / 100000.0)
-    None => Some(0.0)
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path="tav/@tm",
+        reason="malformed ST_TLTimeAnimateValueTime: " + text,
+      )
+  }
+}
+
+///|
+fn parse_percentage_attr(
+  text : String,
+  path : String,
+) -> Double raise @opc_errors.SchemaViolation {
+  match parse_percentage(text) {
+    Some(value) => value
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path~,
+        reason="malformed ST_PositiveFixedPercentage: " + text,
+      )
+  }
+}
+
+///|
+fn parse_xsd_bool(
+  text : String,
+  path : String,
+) -> Bool raise @opc_errors.SchemaViolation {
+  match text {
+    "1" | "true" => true
+    "0" | "false" => false
+    _ =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path~,
+        reason="invalid xsd:boolean lexical form: " + text,
+      )
+  }
+}
+
+///|
+fn parse_double_attr(
+  text : String,
+  path : String,
+) -> Double raise @opc_errors.SchemaViolation {
+  match parse_double(text) {
+    Some(value) => value
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path~,
+        reason="malformed xsd:double: " + text,
+      )
+  }
+}
+
+///|
+fn parse_signed_int_attr(
+  text : String,
+  path : String,
+) -> Int raise @opc_errors.SchemaViolation {
+  match parse_signed_int(text) {
+    Some(value) => value
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path~,
+        reason="malformed xsd:int: " + text,
+      )
+  }
+}
+
+///|
+fn parse_unsigned_int_attr(
+  text : String,
+  path : String,
+) -> Int raise @opc_errors.SchemaViolation {
+  match parse_unsigned_int(trim_whitespace(text)) {
+    Some(value) => value
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path~,
+        reason="malformed xsd:unsignedInt: " + text,
+      )
   }
 }
 

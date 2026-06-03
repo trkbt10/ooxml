@@ -20,6 +20,12 @@ fn root_node(timeline : Timeline) -> @domain.CT_TLCommonTimeNodeData {
 }
 
 ///|
+fn assert_timing_schema_violation(timing_xml : String) -> Unit raise {
+  let decoded = try? decode_timing(build_timing(timing_xml))
+  assert_true(decoded is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "§19.5 par container with two set children" {
   let xml = "<timing><tnLst><par><cTn id=\"1\" nodeType=\"tmRoot\"><childTnLst>" +
     "<set><cBhvr><cTn id=\"10\" dur=\"1\" fill=\"hold\"/><tgtEl><spTgt spid=\"7\"/></tgtEl><attrNameLst><attrName>style.visibility</attrName></attrNameLst></cBhvr><to><strVal val=\"visible\"/></to></set>" +
@@ -196,6 +202,46 @@ test "§19.5.49 audio and §19.5.85 video decode as media time-node leaves" {
   assert_true(audio_start)
   assert_eq(audio_end_at, 1500)
   assert_eq(video_end_at, 500)
+}
+
+///|
+test "§19.5.33 cTn rejects malformed percentage and boolean attributes" {
+  let before = "<timing><tnLst><par><cTn id=\"1\" "
+  let after = "/></par></tnLst></timing>"
+  assert_timing_schema_violation(before + "accel=\"bad\"" + after)
+  assert_timing_schema_violation(before + "decel=\"bad\"" + after)
+  assert_timing_schema_violation(before + "autoRev=\"maybe\"" + after)
+  assert_timing_schema_violation(before + "afterEffect=\"maybe\"" + after)
+  assert_timing_schema_violation(before + "display=\"maybe\"" + after)
+  assert_timing_schema_violation(before + "nodePh=\"maybe\"" + after)
+  assert_timing_schema_violation(before + "presetID=\"bad\"" + after)
+  assert_timing_schema_violation(before + "bldLvl=\"bad\"" + after)
+  assert_timing_schema_violation(before + "grpId=\"-1\"" + after)
+  assert_timing_schema_violation(before + "presetSubtype=\"bad\"" + after)
+}
+
+///|
+test "§19.5 animation variants reject malformed boolean and tav timing" {
+  let scale = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animScale zoomContents=\"maybe\"><cBhvr><cTn id=\"2\"/></cBhvr></animScale>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(scale)
+  let bool_val = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr><cTn id=\"3\"/></cBhvr><to><boolVal val=\"maybe\"/></to></set>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(bool_val)
+  let tav = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"bogus\"/></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(tav)
+  let motion = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<animMotion rAng=\"bad\"><cBhvr><cTn id=\"5\"/></cBhvr></animMotion>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(motion)
+  let condition = "<timing><tnLst><par><cTn id=\"1\">" +
+    "<stCondLst><cond><tn val=\"bad\"/></cond></stCondLst>" +
+    "</cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(condition)
 }
 
 ///|
