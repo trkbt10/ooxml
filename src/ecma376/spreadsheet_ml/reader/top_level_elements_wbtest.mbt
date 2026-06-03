@@ -205,6 +205,15 @@ test "SML workbook reader rejects malformed calculation property booleans" {
 }
 
 ///|
+test "SML workbook reader rejects malformed file sharing booleans" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\">" +
+    "<s:fileSharing readOnlyRecommended=\"maybe\"/>" +
+    "</s:workbook>",
+  )
+}
+
+///|
 test "SML metadata reader rejects malformed metadataType booleans" {
   let invalid = try? read_metadata(
     bytes(

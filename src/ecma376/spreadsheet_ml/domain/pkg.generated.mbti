@@ -1335,7 +1335,7 @@ pub(all) struct CT_FileSharing {
   spin_count : Int?
   reservation_password : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_FileSharing::new(@xml.Element) -> Self
+pub fn CT_FileSharing::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FileVersion {
   element : @xml.Element

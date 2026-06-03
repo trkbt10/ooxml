@@ -56,6 +56,17 @@ fn calc_pr_bool_opt(
 }
 
 ///|
+fn file_sharing_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.12", "fileSharing",
+  )
+}
+
+///|
 /// XSD complex type CT_SortState — Part 1 §18.3.1.92 (`<sortState>` Sort
 /// State). Sequence children: `<sortCondition>*` (CT_SortCondition,
 /// 0..64) and optional `<extLst>` (CT_ExtensionList). Attributes:
@@ -4052,8 +4063,12 @@ pub(all) struct CT_FileSharing {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FileSharing::new(element : @xml.Element) -> CT_FileSharing {
-  let read_only_recommended = attr_bool(element, "readOnlyRecommended", false)
+pub fn CT_FileSharing::new(
+  element : @xml.Element,
+) -> CT_FileSharing raise @opc_errors.SchemaViolation {
+  let read_only_recommended = file_sharing_bool(
+    element, "readOnlyRecommended", false,
+  )
   let user_name = attr(element, "userName")
   let algorithm_name = attr(element, "algorithmName")
   let hash_value = attr(element, "hashValue")
