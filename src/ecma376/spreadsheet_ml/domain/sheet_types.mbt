@@ -598,7 +598,7 @@ pub fn CT_ConditionalFormats::new(
       }
     }
   }
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   { element, conditional_format, count }
 }
 
@@ -647,7 +647,7 @@ pub fn CT_ConditionalFormat::new(
     Some(value) => value
     None => "none"
   }
-  let priority = attr_uint(element, "priority", 0)
+  let priority = attr_uint_schema(element, "priority", 0)
   { element, pivot_areas, ext_lst, scope, type_, priority }
 }
 

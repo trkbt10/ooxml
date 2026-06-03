@@ -2057,7 +2057,7 @@ pub(all) struct CT_PivotAreas {
 pub fn CT_PivotAreas::new(
   element : @xml.Element,
 ) -> CT_PivotAreas raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let pivot_areas : Array[CT_PivotArea] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {

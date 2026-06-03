@@ -1848,6 +1848,23 @@ test "SML pivotTableDefinition reader rejects malformed pivot-area booleans" {
 test "SML pivotTableDefinition reader rejects malformed pivot-area numerics" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:conditionalFormats count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:conditionalFormats><s:conditionalFormat priority=\"abc\"/></s:conditionalFormats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:conditionalFormats><s:conditionalFormat>" +
+    "<s:pivotAreas count=\"abc\"/>" +
+    "</s:conditionalFormat></s:conditionalFormats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
     "<s:formats><s:format><s:pivotArea field=\"abc\"/></s:format></s:formats>" +
     "</s:pivotTableDefinition>",
   )
