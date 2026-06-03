@@ -1851,7 +1851,9 @@ pub(all) struct CT_Cols {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Cols::new(element : @xml.Element) -> CT_Cols {
+pub fn CT_Cols::new(
+  element : @xml.Element,
+) -> CT_Cols raise @opc_errors.SchemaViolation {
   let cols : Array[CT_Col] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1896,17 +1898,28 @@ pub(all) struct CT_Col {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Col::new(element : @xml.Element) -> CT_Col {
+fn col_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.3.1.13", "col")
+}
+
+///|
+pub fn CT_Col::new(
+  element : @xml.Element,
+) -> CT_Col raise @opc_errors.SchemaViolation {
   let min = attr_uint(element, "min", 0)
   let max = attr_uint(element, "max", 0)
   let width = attr_double_opt(element, "width")
   let style = attr_uint(element, "style", 0)
-  let hidden = attr_bool(element, "hidden", false)
-  let best_fit = attr_bool(element, "bestFit", false)
-  let custom_width = attr_bool(element, "customWidth", false)
-  let phonetic = attr_bool(element, "phonetic", false)
+  let hidden = col_bool(element, "hidden", false)
+  let best_fit = col_bool(element, "bestFit", false)
+  let custom_width = col_bool(element, "customWidth", false)
+  let phonetic = col_bool(element, "phonetic", false)
   let outline_level = attr_uint(element, "outlineLevel", 0)
-  let collapsed = attr_bool(element, "collapsed", false)
+  let collapsed = col_bool(element, "collapsed", false)
   {
     element,
     min,

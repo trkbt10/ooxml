@@ -535,7 +535,7 @@ pub(all) struct CT_Col {
   outline_level : Int
   collapsed : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Col::new(@xml.Element) -> Self
+pub fn CT_Col::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ColFields {
   element : @xml.Element
@@ -591,7 +591,7 @@ pub(all) struct CT_Cols {
   element : @xml.Element
   cols : Array[CT_Col]
 } derive(Eq, @debug.Debug)
-pub fn CT_Cols::new(@xml.Element) -> Self
+pub fn CT_Cols::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Comment {
   element : @xml.Element
