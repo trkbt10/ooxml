@@ -873,7 +873,9 @@ pub(all) struct CT_ExternalLink {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ExternalLink::new(element : @xml.Element) -> CT_ExternalLink {
+pub fn CT_ExternalLink::new(
+  element : @xml.Element,
+) -> CT_ExternalLink raise @opc_errors.SchemaViolation {
   let mut external_book : CT_ExternalBook? = None
   let mut dde_link : CT_DdeLink? = None
   let mut ole_link : CT_OleLink? = None
@@ -913,7 +915,9 @@ pub(all) struct CT_ExternalBook {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ExternalBook::new(element : @xml.Element) -> CT_ExternalBook {
+pub fn CT_ExternalBook::new(
+  element : @xml.Element,
+) -> CT_ExternalBook raise @opc_errors.SchemaViolation {
   let r_id = match attr_with_ns(element, "id") {
     Some(v) => v
     None => ""
@@ -1055,9 +1059,11 @@ pub(all) struct CT_ExternalSheetData {
 ///|
 pub fn CT_ExternalSheetData::new(
   element : @xml.Element,
-) -> CT_ExternalSheetData {
+) -> CT_ExternalSheetData raise @opc_errors.SchemaViolation {
   let sheet_id = attr_uint(element, "sheetId", 0)
-  let refresh_error = attr_bool(element, "refreshError", false)
+  let refresh_error = attr_bool_schema(
+    element, "refreshError", false, "Part 1 §18.14.13", "sheetData",
+  )
   let rows : Array[CT_ExternalRow] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1149,7 +1155,9 @@ pub(all) struct CT_DdeLink {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DdeLink::new(element : @xml.Element) -> CT_DdeLink {
+pub fn CT_DdeLink::new(
+  element : @xml.Element,
+) -> CT_DdeLink raise @opc_errors.SchemaViolation {
   let dde_service = match attr(element, "ddeService") {
     Some(v) => v
     None => ""
@@ -1180,7 +1188,9 @@ pub(all) struct CT_DdeItems {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DdeItems::new(element : @xml.Element) -> CT_DdeItems {
+pub fn CT_DdeItems::new(
+  element : @xml.Element,
+) -> CT_DdeItems raise @opc_errors.SchemaViolation {
   let dde_items : Array[CT_DdeItem] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1213,14 +1223,22 @@ pub(all) struct CT_DdeItem {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DdeItem::new(element : @xml.Element) -> CT_DdeItem {
+pub fn CT_DdeItem::new(
+  element : @xml.Element,
+) -> CT_DdeItem raise @opc_errors.SchemaViolation {
   let name = match attr(element, "name") {
     Some(v) => v
     None => "0"
   }
-  let ole = attr_bool(element, "ole", false)
-  let advise = attr_bool(element, "advise", false)
-  let prefer_pic = attr_bool(element, "preferPic", false)
+  let ole = attr_bool_schema(
+    element, "ole", false, "Part 1 §18.14.2", "ddeItem",
+  )
+  let advise = attr_bool_schema(
+    element, "advise", false, "Part 1 §18.14.2", "ddeItem",
+  )
+  let prefer_pic = attr_bool_schema(
+    element, "preferPic", false, "Part 1 §18.14.2", "ddeItem",
+  )
   let mut values : CT_DdeValues? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1308,7 +1326,9 @@ pub(all) struct CT_OleLink {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_OleLink::new(element : @xml.Element) -> CT_OleLink {
+pub fn CT_OleLink::new(
+  element : @xml.Element,
+) -> CT_OleLink raise @opc_errors.SchemaViolation {
   let r_id = match attr_with_ns(element, "id") {
     Some(v) => v
     None => ""
@@ -1339,7 +1359,9 @@ pub(all) struct CT_OleItems {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_OleItems::new(element : @xml.Element) -> CT_OleItems {
+pub fn CT_OleItems::new(
+  element : @xml.Element,
+) -> CT_OleItems raise @opc_errors.SchemaViolation {
   let ole_items : Array[CT_OleItem] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1369,14 +1391,22 @@ pub(all) struct CT_OleItem {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_OleItem::new(element : @xml.Element) -> CT_OleItem {
+pub fn CT_OleItem::new(
+  element : @xml.Element,
+) -> CT_OleItem raise @opc_errors.SchemaViolation {
   let name = match attr(element, "name") {
     Some(v) => v
     None => ""
   }
-  let icon = attr_bool(element, "icon", false)
-  let advise = attr_bool(element, "advise", false)
-  let prefer_pic = attr_bool(element, "preferPic", false)
+  let icon = attr_bool_schema(
+    element, "icon", false, "Part 1 §18.14.9", "oleItem",
+  )
+  let advise = attr_bool_schema(
+    element, "advise", false, "Part 1 §18.14.9", "oleItem",
+  )
+  let prefer_pic = attr_bool_schema(
+    element, "preferPic", false, "Part 1 §18.14.9", "oleItem",
+  )
   { element, name, icon, advise, prefer_pic }
 }
 

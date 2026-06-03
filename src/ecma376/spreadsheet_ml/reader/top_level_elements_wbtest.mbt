@@ -181,3 +181,38 @@ test "SML MapInfo reader rejects malformed Map booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+fn assert_external_link_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_external_link(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML externalLink reader rejects malformed sheet data booleans" {
+  assert_external_link_schema_violation(
+    "<s:externalLink xmlns:s=\"urn:s\">" +
+    "<s:externalBook>" +
+    "<s:sheetDataSet><s:sheetData refreshError=\"maybe\"/></s:sheetDataSet>" +
+    "</s:externalBook>" +
+    "</s:externalLink>",
+  )
+}
+
+///|
+test "SML externalLink reader rejects malformed DDE booleans" {
+  assert_external_link_schema_violation(
+    "<s:externalLink xmlns:s=\"urn:s\">" +
+    "<s:ddeLink><s:ddeItems><s:ddeItem advise=\"maybe\"/></s:ddeItems></s:ddeLink>" +
+    "</s:externalLink>",
+  )
+}
+
+///|
+test "SML externalLink reader rejects malformed OLE booleans" {
+  assert_external_link_schema_violation(
+    "<s:externalLink xmlns:s=\"urn:s\">" +
+    "<s:oleLink><s:oleItems><s:oleItem name=\"Item\" icon=\"maybe\"/></s:oleItems></s:oleLink>" +
+    "</s:externalLink>",
+  )
+}

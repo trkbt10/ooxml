@@ -3706,7 +3706,7 @@ pub(all) struct CT_ExternalSheetDataSet {
 ///|
 pub fn CT_ExternalSheetDataSet::new(
   element : @xml.Element,
-) -> CT_ExternalSheetDataSet {
+) -> CT_ExternalSheetDataSet raise @opc_errors.SchemaViolation {
   let sheet_data : Array[CT_ExternalSheetData] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
