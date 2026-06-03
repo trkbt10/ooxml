@@ -245,6 +245,20 @@ test "SML pivotCacheDefinition reader rejects malformed cache-field booleans" {
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed cache-hierarchy booleans" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy measure=\"maybe\"/></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy unbalancedGroup=\"maybe\"/></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +

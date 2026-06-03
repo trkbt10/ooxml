@@ -628,7 +628,9 @@ pub(all) struct CT_CacheHierarchies {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CacheHierarchies::new(element : @xml.Element) -> CT_CacheHierarchies {
+pub fn CT_CacheHierarchies::new(
+  element : @xml.Element,
+) -> CT_CacheHierarchies raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let cache_hierarchies : Array[CT_CacheHierarchy] = []
   for child in element.children {
@@ -709,32 +711,54 @@ pub(all) struct CT_CacheHierarchy {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CacheHierarchy::new(element : @xml.Element) -> CT_CacheHierarchy {
+pub fn CT_CacheHierarchy::new(
+  element : @xml.Element,
+) -> CT_CacheHierarchy raise @opc_errors.SchemaViolation {
   let unique_name = match attr(element, "uniqueName") {
     Some(v) => v
     None => ""
   }
   let caption = attr(element, "caption")
-  let measure = attr_bool(element, "measure", false)
-  let set_ = attr_bool(element, "set", false)
+  let measure = attr_bool_schema(
+    element, "measure", false, "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
+  let set_ = attr_bool_schema(
+    element, "set", false, "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
   let parent_set = attr_uint_opt(element, "parentSet")
   let icon_set = attr_int(element, "iconSet", 0)
-  let attribute = attr_bool(element, "attribute", false)
-  let time = attr_bool(element, "time", false)
-  let key_attribute = attr_bool(element, "keyAttribute", false)
+  let attribute = attr_bool_schema(
+    element, "attribute", false, "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
+  let time = attr_bool_schema(
+    element, "time", false, "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
+  let key_attribute = attr_bool_schema(
+    element, "keyAttribute", false, "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
   let default_member_unique_name = attr(element, "defaultMemberUniqueName")
   let all_unique_name = attr(element, "allUniqueName")
   let all_caption = attr(element, "allCaption")
   let dimension_unique_name = attr(element, "dimensionUniqueName")
   let display_folder = attr(element, "displayFolder")
   let measure_group = attr(element, "measureGroup")
-  let measures = attr_bool(element, "measures", false)
+  let measures = attr_bool_schema(
+    element, "measures", false, "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
   let count = attr_uint(element, "count", 0)
-  let one_field = attr_bool(element, "oneField", false)
+  let one_field = attr_bool_schema(
+    element, "oneField", false, "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
   let member_value_datatype = attr_uint_opt(element, "memberValueDatatype")
-  let unbalanced = attr_bool_opt(element, "unbalanced")
-  let unbalanced_group = attr_bool_opt(element, "unbalancedGroup")
-  let hidden = attr_bool(element, "hidden", false)
+  let unbalanced = attr_bool_schema_opt(
+    element, "unbalanced", "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
+  let unbalanced_group = attr_bool_schema_opt(
+    element, "unbalancedGroup", "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
+  let hidden = attr_bool_schema(
+    element, "hidden", false, "Part 1 §18.10.1.6", "cacheHierarchy",
+  )
   let mut fields_usage : CT_FieldsUsage? = None
   let mut group_levels : CT_GroupLevels? = None
   let mut ext_lst : CT_ExtensionList? = None

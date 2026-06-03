@@ -187,7 +187,7 @@ pub(all) struct CT_CacheHierarchies {
   count : Int?
   cache_hierarchies : Array[CT_CacheHierarchy]
 } derive(Eq, @debug.Debug)
-pub fn CT_CacheHierarchies::new(@xml.Element) -> Self
+pub fn CT_CacheHierarchies::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CacheHierarchy {
   element : @xml.Element
@@ -217,7 +217,7 @@ pub(all) struct CT_CacheHierarchy {
   group_levels : CT_GroupLevels?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_CacheHierarchy::new(@xml.Element) -> Self
+pub fn CT_CacheHierarchy::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CacheSource {
   element : @xml.Element
