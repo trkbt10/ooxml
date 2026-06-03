@@ -16,6 +16,20 @@ using @sml_context {type OpenError}
 using @sml_context {type WorksheetPart}
 
 ///|
+fn parse_workbook_for_edit(
+  element : @xml.Element,
+) -> @sml.CT_Workbook raise OpenError {
+  @sml.CT_Workbook::new(element) catch {
+    @opc_errors.SchemaViolation(section~, path~, reason~) =>
+      raise @sml_context.OpenError(
+        kind="SchemaViolation \{section}",
+        path~,
+        reason~,
+      )
+  }
+}
+
+///|
 /// A-layer primitive on Workbook. Replace the workbook part's typed
 /// projection by re-parsing `transform(workbook.element)`. Every
 /// helper that mutates `/xl/workbook.xml` (append_sheet,
@@ -23,9 +37,9 @@ using @sml_context {type WorksheetPart}
 pub fn edit_workbook(
   workbook : Workbook,
   transform : (@xml.Element) -> @xml.Element,
-) -> Workbook {
+) -> Workbook raise OpenError {
   let new_element = transform(workbook.workbook.element)
-  let new_workbook = @sml.CT_Workbook::new(new_element)
+  let new_workbook = parse_workbook_for_edit(new_element)
   { ..workbook, workbook: new_workbook }
 }
 
@@ -1550,7 +1564,7 @@ pub fn append_sheet(
     attributes: workbook_element.attributes,
     children: new_workbook_children,
   }
-  let new_workbook = @sml.CT_Workbook::new(new_workbook_element)
+  let new_workbook = parse_workbook_for_edit(new_workbook_element)
   let new_worksheets : Array[WorksheetPart] = []
   for ws in workbook.worksheets {
     new_worksheets.push(ws)
@@ -1681,7 +1695,7 @@ pub fn remove_sheet(
     attributes: workbook_element.attributes,
     children: new_workbook_children,
   }
-  let new_workbook = @sml.CT_Workbook::new(new_workbook_element)
+  let new_workbook = parse_workbook_for_edit(new_workbook_element)
   let pkg2 = try {
     let pkg_no_rel = match target_rid {
       Some(rid) =>

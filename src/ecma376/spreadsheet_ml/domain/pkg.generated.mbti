@@ -1323,7 +1323,7 @@ pub(all) struct CT_FileRecoveryPr {
   data_extract_load : Bool
   repair_load : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_FileRecoveryPr::new(@xml.Element) -> Self
+pub fn CT_FileRecoveryPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FileSharing {
   element : @xml.Element
@@ -3798,7 +3798,7 @@ pub(all) struct CT_Workbook {
   ext_lst : CT_ExtensionList?
   conformance : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Workbook::new(@xml.Element) -> Self
+pub fn CT_Workbook::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_WorkbookPr {
   element : @xml.Element

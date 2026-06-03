@@ -18,7 +18,7 @@ pub fn clear_cell(@context.Workbook, Int, String) -> @context.Workbook raise @co
 
 pub fn edit_styles(@context.Workbook, (@xml.Element) -> @xml.Element) -> @context.Workbook
 
-pub fn edit_workbook(@context.Workbook, (@xml.Element) -> @xml.Element) -> @context.Workbook
+pub fn edit_workbook(@context.Workbook, (@xml.Element) -> @xml.Element) -> @context.Workbook raise @context.OpenError
 
 pub fn edit_worksheet(@context.Workbook, Int, (@xml.Element) -> @xml.Element) -> @context.Workbook raise @context.OpenError
 

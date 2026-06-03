@@ -28,6 +28,17 @@ fn revision_bool_opt(
 }
 
 ///|
+fn file_recovery_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.11", "fileRecoveryPr",
+  )
+}
+
+///|
 /// XSD complex type CT_SortState — Part 1 §18.3.1.92 (`<sortState>` Sort
 /// State). Sequence children: `<sortCondition>*` (CT_SortCondition,
 /// 0..64) and optional `<extLst>` (CT_ExtensionList). Attributes:
@@ -3465,7 +3476,9 @@ pub(all) struct CT_Workbook {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Workbook::new(element : @xml.Element) -> CT_Workbook {
+pub fn CT_Workbook::new(
+  element : @xml.Element,
+) -> CT_Workbook raise @opc_errors.SchemaViolation {
   let mut file_version : CT_FileVersion? = None
   let mut file_sharing : CT_FileSharing? = None
   let mut workbook_pr : CT_WorkbookPr? = None
@@ -3785,11 +3798,15 @@ pub(all) struct CT_FileRecoveryPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FileRecoveryPr::new(element : @xml.Element) -> CT_FileRecoveryPr {
-  let auto_recover = attr_bool(element, "autoRecover", true)
-  let crash_save = attr_bool(element, "crashSave", false)
-  let data_extract_load = attr_bool(element, "dataExtractLoad", false)
-  let repair_load = attr_bool(element, "repairLoad", false)
+pub fn CT_FileRecoveryPr::new(
+  element : @xml.Element,
+) -> CT_FileRecoveryPr raise @opc_errors.SchemaViolation {
+  let auto_recover = file_recovery_pr_bool(element, "autoRecover", true)
+  let crash_save = file_recovery_pr_bool(element, "crashSave", false)
+  let data_extract_load = file_recovery_pr_bool(
+    element, "dataExtractLoad", false,
+  )
+  let repair_load = file_recovery_pr_bool(element, "repairLoad", false)
   { element, auto_recover, crash_save, data_extract_load, repair_load }
 }
 
