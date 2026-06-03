@@ -87,10 +87,10 @@ pub fn CT_String::new(
   let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.79", "s")
   let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.79", "s")
   let c = attr(element, "c")
-  let cp = attr_uint_opt(element, "cp")
-  let in_ = attr_uint_opt(element, "in")
-  let bc = attr_hex_uint_opt(element, "bc")
-  let fc = attr_hex_uint_opt(element, "fc")
+  let cp = attr_uint_opt_schema(element, "cp")
+  let in_ = attr_uint_opt_schema(element, "in")
+  let bc = attr_hex_uint_opt_schema(element, "bc")
+  let fc = attr_hex_uint_opt_schema(element, "fc")
   let i = attr_bool_schema(element, "i", false, "Part 1 §18.10.1.79", "s")
   let un = attr_bool_schema(element, "un", false, "Part 1 §18.10.1.79", "s")
   let st = attr_bool_schema(element, "st", false, "Part 1 §18.10.1.79", "s")
@@ -132,8 +132,8 @@ pub(all) struct CT_Sst {
 pub fn CT_Sst::new(
   element : @xml.Element,
 ) -> CT_Sst raise @opc_errors.SchemaViolation {
-  let count_attr = attr_uint_opt(element, "count")
-  let unique_count = attr_uint_opt(element, "uniqueCount")
+  let count_attr = attr_uint_opt_schema(element, "count")
+  let unique_count = attr_uint_opt_schema(element, "uniqueCount")
   let si_entries : Array[CT_Rst] = []
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -164,9 +164,11 @@ pub(all) struct CT_PhoneticRun {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PhoneticRun::new(element : @xml.Element) -> CT_PhoneticRun {
-  let sb = attr_uint(element, "sb", 0)
-  let eb = attr_uint(element, "eb", 0)
+pub fn CT_PhoneticRun::new(
+  element : @xml.Element,
+) -> CT_PhoneticRun raise @opc_errors.SchemaViolation {
+  let sb = attr_uint_schema(element, "sb", 0)
+  let eb = attr_uint_schema(element, "eb", 0)
   let mut t = ""
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -377,8 +379,10 @@ pub(all) struct CT_PhoneticPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PhoneticPr::new(element : @xml.Element) -> CT_PhoneticPr {
-  let font_id = attr_uint(element, "fontId", 0)
+pub fn CT_PhoneticPr::new(
+  element : @xml.Element,
+) -> CT_PhoneticPr raise @opc_errors.SchemaViolation {
+  let font_id = attr_uint_schema(element, "fontId", 0)
   let type_ = match attr(element, "type") {
     Some(value) => value
     None => "fullwidthKatakana"

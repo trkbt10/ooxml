@@ -308,6 +308,12 @@ fn assert_sst_schema_violation(body : String) -> Unit raise {
 }
 
 ///|
+fn assert_sst_source_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_sst(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "SML shared-string reader rejects malformed rich-text booleans" {
   assert_sst_schema_violation(
     "<s:si><s:r><s:rPr><s:b val=\"maybe\"/></s:rPr><s:t>x</s:t></s:r></s:si>",
@@ -315,6 +321,26 @@ test "SML shared-string reader rejects malformed rich-text booleans" {
   assert_sst_schema_violation(
     "<s:si><s:r><s:rPr><s:color auto=\"maybe\"/></s:rPr><s:t>x</s:t></s:r></s:si>",
   )
+}
+
+///|
+test "SML shared-string reader rejects malformed root unsigned integers" {
+  assert_sst_source_schema_violation("<s:sst xmlns:s=\"urn:s\" count=\"abc\"/>")
+  let invalid_shared_strings = try? read_shared_strings(
+    bytes("<s:sharedStrings xmlns:s=\"urn:s\" uniqueCount=\"abc\"/>"),
+  )
+  assert_true(invalid_shared_strings is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML shared-string reader rejects malformed phonetic unsigned integers" {
+  assert_sst_schema_violation(
+    "<s:si><s:rPh sb=\"abc\" eb=\"1\"><s:t>x</s:t></s:rPh></s:si>",
+  )
+  assert_sst_schema_violation(
+    "<s:si><s:rPh sb=\"0\" eb=\"abc\"><s:t>x</s:t></s:rPh></s:si>",
+  )
+  assert_sst_schema_violation("<s:si><s:phoneticPr fontId=\"abc\"/></s:si>")
 }
 
 ///|
@@ -1004,6 +1030,22 @@ test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
     "<s:tupleCache><s:entries><s:s v=\"East\" b=\"maybe\"/></s:entries></s:tupleCache>" +
     "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
+test "SML pivotCacheDefinition reader rejects malformed shared string numerics" {
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:s v=\"East\" cp=\"abc\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:s v=\"East\" in=\"abc\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:s v=\"East\" bc=\"nothex\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:s v=\"East\" fc=\"nothex\"/>",
   )
 }
 

@@ -2313,7 +2313,7 @@ pub(all) struct CT_PhoneticPr {
   type_ : String
   alignment : String
 } derive(Eq, @debug.Debug)
-pub fn CT_PhoneticPr::new(@xml.Element) -> Self
+pub fn CT_PhoneticPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PhoneticRun {
   element : @xml.Element
@@ -2321,7 +2321,7 @@ pub(all) struct CT_PhoneticRun {
   eb : Int
   t : String
 } derive(Eq, @debug.Debug)
-pub fn CT_PhoneticRun::new(@xml.Element) -> Self
+pub fn CT_PhoneticRun::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotArea {
   element : @xml.Element
