@@ -2592,6 +2592,20 @@ test "SML worksheet reader rejects malformed sort-state booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed sort-condition unsigned integers" {
+  assert_worksheet_body_schema_violation(
+    "<s:sortState ref=\"A1\">" +
+    "<s:sortCondition ref=\"A1\" dxfId=\"abc\"/>" +
+    "</s:sortState>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sortState ref=\"A1\">" +
+    "<s:sortCondition ref=\"A1\" iconId=\"abc\"/>" +
+    "</s:sortState>",
+  )
+}
+
+///|
 test "SML worksheet reader rejects malformed sheet properties booleans" {
   let invalid = try? read_worksheet(
     bytes(

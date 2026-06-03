@@ -217,12 +217,12 @@ pub fn CT_SortCondition::new(
     None => ""
   }
   let custom_list = attr(element, "customList")
-  let dxf_id = attr_uint_opt(element, "dxfId")
+  let dxf_id = attr_uint_opt_schema(element, "dxfId")
   let icon_set = match attr(element, "iconSet") {
     Some(value) => value
     None => "3Arrows"
   }
-  let icon_id = attr_uint_opt(element, "iconId")
+  let icon_id = attr_uint_opt_schema(element, "iconId")
   { element, descending, sort_by, ref_, custom_list, dxf_id, icon_set, icon_id }
 }
 
