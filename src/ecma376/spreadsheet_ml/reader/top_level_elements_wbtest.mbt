@@ -557,3 +557,15 @@ test "SML worksheet reader rejects malformed OLE object booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed pivot-selection booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:sheetViews><s:sheetView><s:pivotSelection showHeader=\"maybe\"/></s:sheetView></s:sheetViews>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}

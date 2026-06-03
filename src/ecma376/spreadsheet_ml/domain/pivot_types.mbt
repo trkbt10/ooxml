@@ -3477,6 +3477,17 @@ pub(all) struct CT_PivotSelection {
 } derive(Eq, Debug)
 
 ///|
+fn pivot_selection_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.18.71", "pivotSelection",
+  )
+}
+
+///|
 pub fn CT_PivotSelection::new(
   element : @xml.Element,
 ) -> CT_PivotSelection raise @opc_errors.SchemaViolation {
@@ -3484,10 +3495,10 @@ pub fn CT_PivotSelection::new(
     Some(value) => value
     None => "topLeft"
   }
-  let show_header = attr_bool(element, "showHeader", false)
-  let label = attr_bool(element, "label", false)
-  let data = attr_bool(element, "data", false)
-  let extendable = attr_bool(element, "extendable", false)
+  let show_header = pivot_selection_bool(element, "showHeader", false)
+  let label = pivot_selection_bool(element, "label", false)
+  let data = pivot_selection_bool(element, "data", false)
+  let extendable = pivot_selection_bool(element, "extendable", false)
   let count = attr_uint(element, "count", 0)
   let axis = attr(element, "axis")
   let dimension = attr_uint(element, "dimension", 0)
