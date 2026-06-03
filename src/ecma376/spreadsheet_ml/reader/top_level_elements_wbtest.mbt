@@ -715,3 +715,15 @@ test "SML worksheet reader rejects malformed custom sheet view booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed sheet calculation booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:sheetCalcPr fullCalcOnLoad=\"maybe\"/>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}

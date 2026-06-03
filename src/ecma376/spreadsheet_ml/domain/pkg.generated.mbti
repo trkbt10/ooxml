@@ -3196,7 +3196,7 @@ pub(all) struct CT_SheetCalcPr {
   element : @xml.Element
   full_calc_on_load : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_SheetCalcPr::new(@xml.Element) -> Self
+pub fn CT_SheetCalcPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SheetData {
   element : @xml.Element

@@ -1754,8 +1754,12 @@ pub(all) struct CT_SheetCalcPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SheetCalcPr::new(element : @xml.Element) -> CT_SheetCalcPr {
-  let full_calc_on_load = attr_bool(element, "fullCalcOnLoad", false)
+pub fn CT_SheetCalcPr::new(
+  element : @xml.Element,
+) -> CT_SheetCalcPr raise @opc_errors.SchemaViolation {
+  let full_calc_on_load = attr_bool_schema(
+    element, "fullCalcOnLoad", false, "Part 1 §18.3.1.79", "sheetCalcPr",
+  )
   { element, full_calc_on_load }
 }
 
