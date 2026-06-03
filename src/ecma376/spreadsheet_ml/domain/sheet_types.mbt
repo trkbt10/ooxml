@@ -1358,7 +1358,10 @@ pub fn CT_Macrosheet::new(
         "printOptions" =>
           print_options = Some(CT_PrintOptions::new(child_element))
         "pageMargins" => page_margins = Some(CT_PageMargins::new(child_element))
-        "pageSetup" => page_setup = Some(child_element)
+        "pageSetup" => {
+          let _ = CT_PageSetup::new(child_element)
+          page_setup = Some(child_element)
+        }
         "headerFooter" =>
           header_footer = Some(CT_HeaderFooter::new(child_element))
         "rowBreaks" => row_breaks = Some(CT_PageBreak::new(child_element))
@@ -1468,7 +1471,10 @@ pub fn CT_Dialogsheet::new(
         "printOptions" =>
           print_options = Some(CT_PrintOptions::new(child_element))
         "pageMargins" => page_margins = Some(CT_PageMargins::new(child_element))
-        "pageSetup" => page_setup = Some(child_element)
+        "pageSetup" => {
+          let _ = CT_PageSetup::new(child_element)
+          page_setup = Some(child_element)
+        }
         "headerFooter" =>
           header_footer = Some(CT_HeaderFooter::new(child_element))
         "drawing" => drawing = Some(CT_Drawing::new(child_element))
@@ -1643,7 +1649,10 @@ pub fn CT_Worksheet::new(
         "printOptions" =>
           print_options = Some(CT_PrintOptions::new(child_element))
         "pageMargins" => page_margins = Some(CT_PageMargins::new(child_element))
-        "pageSetup" => page_setup = Some(child_element)
+        "pageSetup" => {
+          let _ = CT_PageSetup::new(child_element)
+          page_setup = Some(child_element)
+        }
         "headerFooter" =>
           header_footer = Some(CT_HeaderFooter::new(child_element))
         "rowBreaks" => row_breaks = Some(CT_PageBreak::new(child_element))
@@ -2079,7 +2088,9 @@ pub(all) struct CT_SheetPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SheetPr::new(element : @xml.Element) -> CT_SheetPr {
+pub fn CT_SheetPr::new(
+  element : @xml.Element,
+) -> CT_SheetPr raise @opc_errors.SchemaViolation {
   let mut tab_color : @xml.Element? = None
   let mut outline_pr : CT_OutlinePr? = None
   let mut page_set_up_pr : CT_PageSetUpPr? = None
@@ -2818,7 +2829,9 @@ pub(all) struct CT_CustomSheetViews {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CustomSheetViews::new(element : @xml.Element) -> CT_CustomSheetViews {
+pub fn CT_CustomSheetViews::new(
+  element : @xml.Element,
+) -> CT_CustomSheetViews raise @opc_errors.SchemaViolation {
   let custom_sheet_views : Array[CT_CustomSheetView] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2912,7 +2925,9 @@ pub(all) struct CT_CustomSheetView {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CustomSheetView::new(element : @xml.Element) -> CT_CustomSheetView {
+pub fn CT_CustomSheetView::new(
+  element : @xml.Element,
+) -> CT_CustomSheetView raise @opc_errors.SchemaViolation {
   let mut pane : CT_Pane? = None
   let mut selection : CT_Selection? = None
   let mut row_breaks : CT_PageBreak? = None
@@ -3753,7 +3768,9 @@ pub(all) struct CT_Chartsheet {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Chartsheet::new(element : @xml.Element) -> CT_Chartsheet {
+pub fn CT_Chartsheet::new(
+  element : @xml.Element,
+) -> CT_Chartsheet raise @opc_errors.SchemaViolation {
   let mut sheet_pr : CT_ChartsheetPr? = None
   let mut sheet_views : CT_ChartsheetViews? = None
   let mut sheet_protection : CT_ChartsheetProtection? = None

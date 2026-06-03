@@ -569,3 +569,53 @@ test "SML worksheet reader rejects malformed pivot-selection booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed page-setup-pr booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:sheetPr><s:pageSetUpPr autoPageBreaks=\"maybe\"/></s:sheetPr>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed page-setup booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:pageSetup usePrinterDefaults=\"maybe\"/>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed custom-sheet-view page-setup booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:customSheetViews><s:customSheetView>" +
+      "<s:pageSetup blackAndWhite=\"maybe\"/>" +
+      "</s:customSheetView></s:customSheetViews>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML chartsheet reader rejects malformed page-setup booleans" {
+  let invalid = try? read_chartsheet(
+    bytes(
+      "<s:chartsheet xmlns:s=\"urn:s\">" +
+      "<s:pageSetup draft=\"maybe\"/>" +
+      "</s:chartsheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}

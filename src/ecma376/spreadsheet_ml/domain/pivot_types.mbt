@@ -3556,9 +3556,22 @@ pub(all) struct CT_PageSetUpPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageSetUpPr::new(element : @xml.Element) -> CT_PageSetUpPr {
-  let auto_page_breaks = attr_bool(element, "autoPageBreaks", true)
-  let fit_to_page = attr_bool(element, "fitToPage", false)
+fn page_set_up_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.60", "pageSetUpPr",
+  )
+}
+
+///|
+pub fn CT_PageSetUpPr::new(
+  element : @xml.Element,
+) -> CT_PageSetUpPr raise @opc_errors.SchemaViolation {
+  let auto_page_breaks = page_set_up_pr_bool(element, "autoPageBreaks", true)
+  let fit_to_page = page_set_up_pr_bool(element, "fitToPage", false)
   { element, auto_page_breaks, fit_to_page }
 }
 
@@ -3619,7 +3632,20 @@ pub(all) struct CT_PageSetup {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageSetup::new(element : @xml.Element) -> CT_PageSetup {
+fn page_setup_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.63", "pageSetup",
+  )
+}
+
+///|
+pub fn CT_PageSetup::new(
+  element : @xml.Element,
+) -> CT_PageSetup raise @opc_errors.SchemaViolation {
   let paper_size = attr_uint(element, "paperSize", 1)
   let paper_height = attr(element, "paperHeight")
   let paper_width = attr(element, "paperWidth")
@@ -3635,14 +3661,18 @@ pub fn CT_PageSetup::new(element : @xml.Element) -> CT_PageSetup {
     Some(value) => value
     None => "default"
   }
-  let use_printer_defaults = attr_bool(element, "usePrinterDefaults", true)
-  let black_and_white = attr_bool(element, "blackAndWhite", false)
-  let draft = attr_bool(element, "draft", false)
+  let use_printer_defaults = page_setup_bool(
+    element, "usePrinterDefaults", true,
+  )
+  let black_and_white = page_setup_bool(element, "blackAndWhite", false)
+  let draft = page_setup_bool(element, "draft", false)
   let cell_comments = match attr(element, "cellComments") {
     Some(value) => value
     None => "none"
   }
-  let use_first_page_number = attr_bool(element, "useFirstPageNumber", false)
+  let use_first_page_number = page_setup_bool(
+    element, "useFirstPageNumber", false,
+  )
   let errors = match attr(element, "errors") {
     Some(value) => value
     None => "displayed"
@@ -3717,7 +3747,20 @@ pub(all) struct CT_CsPageSetup {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CsPageSetup::new(element : @xml.Element) -> CT_CsPageSetup {
+fn cs_page_setup_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.13", "pageSetup",
+  )
+}
+
+///|
+pub fn CT_CsPageSetup::new(
+  element : @xml.Element,
+) -> CT_CsPageSetup raise @opc_errors.SchemaViolation {
   let paper_size = attr_uint(element, "paperSize", 1)
   let paper_height = attr(element, "paperHeight")
   let paper_width = attr(element, "paperWidth")
@@ -3726,10 +3769,14 @@ pub fn CT_CsPageSetup::new(element : @xml.Element) -> CT_CsPageSetup {
     Some(value) => value
     None => "default"
   }
-  let use_printer_defaults = attr_bool(element, "usePrinterDefaults", true)
-  let black_and_white = attr_bool(element, "blackAndWhite", false)
-  let draft = attr_bool(element, "draft", false)
-  let use_first_page_number = attr_bool(element, "useFirstPageNumber", false)
+  let use_printer_defaults = cs_page_setup_bool(
+    element, "usePrinterDefaults", true,
+  )
+  let black_and_white = cs_page_setup_bool(element, "blackAndWhite", false)
+  let draft = cs_page_setup_bool(element, "draft", false)
+  let use_first_page_number = cs_page_setup_bool(
+    element, "useFirstPageNumber", false,
+  )
   let horizontal_dpi = attr_uint(element, "horizontalDpi", 600)
   let vertical_dpi = attr_uint(element, "verticalDpi", 600)
   let copies = attr_uint(element, "copies", 1)

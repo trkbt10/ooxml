@@ -485,7 +485,7 @@ pub(all) struct CT_Chartsheet {
   web_publish_items : CT_WebPublishItems?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_Chartsheet::new(@xml.Element) -> Self
+pub fn CT_Chartsheet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ChartsheetPr {
   element : @xml.Element
@@ -757,7 +757,7 @@ pub(all) struct CT_CsPageSetup {
   copies : Int
   r_id : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_CsPageSetup::new(@xml.Element) -> Self
+pub fn CT_CsPageSetup::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CustomChartsheetView {
   element : @xml.Element
@@ -833,13 +833,13 @@ pub(all) struct CT_CustomSheetView {
   show_ruler : Bool
   top_left_cell : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomSheetView::new(@xml.Element) -> Self
+pub fn CT_CustomSheetView::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CustomSheetViews {
   element : @xml.Element
   custom_sheet_views : Array[CT_CustomSheetView]
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomSheetViews::new(@xml.Element) -> Self
+pub fn CT_CustomSheetViews::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CustomWorkbookView {
   element : @xml.Element
@@ -2234,7 +2234,7 @@ pub(all) struct CT_PageSetUpPr {
   auto_page_breaks : Bool
   fit_to_page : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_PageSetUpPr::new(@xml.Element) -> Self
+pub fn CT_PageSetUpPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PageSetup {
   element : @xml.Element
@@ -2258,7 +2258,7 @@ pub(all) struct CT_PageSetup {
   copies : Int
   r_id : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_PageSetup::new(@xml.Element) -> Self
+pub fn CT_PageSetup::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Pages {
   element : @xml.Element
@@ -3252,7 +3252,7 @@ pub(all) struct CT_SheetPr {
   filter_mode : Bool
   enable_format_conditions_calculation : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_SheetPr::new(@xml.Element) -> Self
+pub fn CT_SheetPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SheetProtection {
   element : @xml.Element
