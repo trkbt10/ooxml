@@ -80,7 +80,7 @@ pub fn CT_SheetProtection::new(
   let algorithm_name = attr(element, "algorithmName")
   let hash_value = attr(element, "hashValue")
   let salt_value = attr(element, "saltValue")
-  let spin_count = attr_uint_opt(element, "spinCount")
+  let spin_count = attr_uint_opt_schema(element, "spinCount")
   let sheet = sheet_protection_bool(element, "sheet", false)
   let objects = sheet_protection_bool(element, "objects", false)
   let scenarios = sheet_protection_bool(element, "scenarios", false)
@@ -174,7 +174,7 @@ pub fn CT_ChartsheetProtection::new(
   let algorithm_name = attr(element, "algorithmName")
   let hash_value = attr(element, "hashValue")
   let salt_value = attr(element, "saltValue")
-  let spin_count = attr_uint_opt(element, "spinCount")
+  let spin_count = attr_uint_opt_schema(element, "spinCount")
   let content = chartsheet_protection_bool(element, "content", false)
   let objects = chartsheet_protection_bool(element, "objects", false)
   let legacy_password = attr(element, "password")
@@ -317,13 +317,13 @@ pub fn CT_CellAlignment::new(
     Some(value) => value
     None => "bottom"
   }
-  let text_rotation = attr_uint_opt(element, "textRotation")
+  let text_rotation = attr_uint_opt_schema(element, "textRotation")
   let wrap_text = cell_alignment_bool_opt(element, "wrapText")
-  let indent = attr_uint_opt(element, "indent")
-  let relative_indent = attr_int_opt(element, "relativeIndent")
+  let indent = attr_uint_opt_schema(element, "indent")
+  let relative_indent = attr_int_opt_schema(element, "relativeIndent")
   let justify_last_line = cell_alignment_bool_opt(element, "justifyLastLine")
   let shrink_to_fit = cell_alignment_bool_opt(element, "shrinkToFit")
-  let reading_order = attr_uint_opt(element, "readingOrder")
+  let reading_order = attr_uint_opt_schema(element, "readingOrder")
   {
     element,
     horizontal,
@@ -356,7 +356,7 @@ pub(all) struct CT_Borders {
 pub fn CT_Borders::new(
   element : @xml.Element,
 ) -> CT_Borders raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let border : Array[CT_Border] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -543,7 +543,7 @@ pub(all) struct CT_Fonts {
 pub fn CT_Fonts::new(
   element : @xml.Element,
 ) -> CT_Fonts raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let font : Array[CT_Font] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -572,8 +572,10 @@ pub(all) struct CT_Fills {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Fills::new(element : @xml.Element) -> CT_Fills {
-  let count = attr_uint_opt(element, "count")
+pub fn CT_Fills::new(
+  element : @xml.Element,
+) -> CT_Fills raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let fill : Array[CT_Fill] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -603,7 +605,9 @@ pub(all) struct CT_Fill {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Fill::new(element : @xml.Element) -> CT_Fill {
+pub fn CT_Fill::new(
+  element : @xml.Element,
+) -> CT_Fill raise @opc_errors.SchemaViolation {
   let mut pattern_fill : CT_PatternFill? = None
   let mut gradient_fill : CT_GradientFill? = None
   for child in element.children {
@@ -684,7 +688,9 @@ pub(all) struct CT_GradientFill {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GradientFill::new(element : @xml.Element) -> CT_GradientFill {
+pub fn CT_GradientFill::new(
+  element : @xml.Element,
+) -> CT_GradientFill raise @opc_errors.SchemaViolation {
   let stop : Array[CT_GradientStop] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -697,11 +703,11 @@ pub fn CT_GradientFill::new(element : @xml.Element) -> CT_GradientFill {
     Some(value) => value
     None => "linear"
   }
-  let degree = attr_double(element, "degree", 0.0)
-  let left = attr_double(element, "left", 0.0)
-  let right = attr_double(element, "right", 0.0)
-  let top = attr_double(element, "top", 0.0)
-  let bottom = attr_double(element, "bottom", 0.0)
+  let degree = attr_double_schema(element, "degree", 0.0)
+  let left = attr_double_schema(element, "left", 0.0)
+  let right = attr_double_schema(element, "right", 0.0)
+  let top = attr_double_schema(element, "top", 0.0)
+  let bottom = attr_double_schema(element, "bottom", 0.0)
   { element, stop, type_, degree, left, right, top, bottom }
 }
 
@@ -725,7 +731,9 @@ pub(all) struct CT_NumFmts {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_NumFmts::new(element : @xml.Element) -> CT_NumFmts {
+pub fn CT_NumFmts::new(
+  element : @xml.Element,
+) -> CT_NumFmts raise @opc_errors.SchemaViolation {
   let num_fmt : Array[CT_NumFmt] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -734,7 +742,7 @@ pub fn CT_NumFmts::new(element : @xml.Element) -> CT_NumFmts {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, num_fmt, count }
 }
 
@@ -753,17 +761,12 @@ pub(all) struct CT_NumFmt {
 
 ///|
 /// §18.8.30 CT_NumFmt — `@numFmtId` and `@formatCode` are both
-/// `use="required"` per the schema.  Missing attributes default
-/// to `0` / `""` here to keep the parser tolerant of malformed
-/// stylesheet parts (Excel's strict validator accepts these as
-/// degenerate but consumers should treat them as schema
-/// violations).  A stricter SchemaViolation-raising
-/// constructor is tracked as Round 13 #303 — promoting this
-/// helper requires raise-propagation through every styles.xml
-/// caller (CT_Stylesheet::new ← read_style_sheet ← context
-/// open), which is out of scope here.
-pub fn CT_NumFmt::new(element : @xml.Element) -> CT_NumFmt {
-  let num_fmt_id = attr_uint(element, "numFmtId", 0)
+/// `use="required"` per the schema. Missing attributes keep legacy
+/// defaults here, while malformed present numeric values raise.
+pub fn CT_NumFmt::new(
+  element : @xml.Element,
+) -> CT_NumFmt raise @opc_errors.SchemaViolation {
+  let num_fmt_id = attr_uint_schema(element, "numFmtId", 0)
   let format_code = match attr(element, "formatCode") {
     Some(value) => value
     None => ""
@@ -796,7 +799,7 @@ pub fn CT_CellStyleXfs::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, xf, count }
 }
 
@@ -826,7 +829,7 @@ pub fn CT_CellXfs::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, xf, count }
 }
 
@@ -911,11 +914,11 @@ pub fn CT_Xf::new(
       }
     }
   }
-  let num_fmt_id = attr_uint_opt(element, "numFmtId")
-  let font_id = attr_uint_opt(element, "fontId")
-  let fill_id = attr_uint_opt(element, "fillId")
-  let border_id = attr_uint_opt(element, "borderId")
-  let xf_id = attr_uint_opt(element, "xfId")
+  let num_fmt_id = attr_uint_opt_schema(element, "numFmtId")
+  let font_id = attr_uint_opt_schema(element, "fontId")
+  let fill_id = attr_uint_opt_schema(element, "fillId")
+  let border_id = attr_uint_opt_schema(element, "borderId")
+  let xf_id = attr_uint_opt_schema(element, "xfId")
   let quote_prefix = xf_bool(element, "quotePrefix", false)
   let pivot_button = xf_bool(element, "pivotButton", false)
   let apply_number_format = xf_bool_opt(element, "applyNumberFormat")
@@ -970,7 +973,7 @@ pub fn CT_CellStyles::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, cell_style, count }
 }
 
@@ -1021,9 +1024,9 @@ pub fn CT_CellStyle::new(
     }
   }
   let name = attr(element, "name")
-  let xf_id = attr_uint(element, "xfId", 0)
-  let builtin_id = attr_uint_opt(element, "builtinId")
-  let i_level = attr_uint_opt(element, "iLevel")
+  let xf_id = attr_uint_schema(element, "xfId", 0)
+  let builtin_id = attr_uint_opt_schema(element, "builtinId")
+  let i_level = attr_uint_opt_schema(element, "iLevel")
   let hidden = cell_style_bool_opt(element, "hidden")
   let custom_builtin = cell_style_bool_opt(element, "customBuiltin")
   { element, ext_lst, name, xf_id, builtin_id, i_level, hidden, custom_builtin }
@@ -1056,7 +1059,7 @@ pub fn CT_Dxfs::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, dxf, count }
 }
 
@@ -1157,7 +1160,9 @@ pub(all) struct CT_IndexedColors {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_IndexedColors::new(element : @xml.Element) -> CT_IndexedColors {
+pub fn CT_IndexedColors::new(
+  element : @xml.Element,
+) -> CT_IndexedColors raise @opc_errors.SchemaViolation {
   let rgb_color : Array[CT_RgbColor] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1207,8 +1212,10 @@ pub(all) struct CT_RgbColor {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RgbColor::new(element : @xml.Element) -> CT_RgbColor {
-  let rgb = attr_hex_uint_opt(element, "rgb")
+pub fn CT_RgbColor::new(
+  element : @xml.Element,
+) -> CT_RgbColor raise @opc_errors.SchemaViolation {
+  let rgb = attr_hex_uint_opt_schema(element, "rgb")
   { element, rgb }
 }
 
@@ -1243,7 +1250,7 @@ pub fn CT_TableStyles::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let default_table_style = attr(element, "defaultTableStyle")
   let default_pivot_style = attr(element, "defaultPivotStyle")
   { element, table_style, count, default_table_style, default_pivot_style }
@@ -1299,7 +1306,7 @@ pub fn CT_TableStyle::new(
   }
   let pivot = table_style_bool(element, "pivot", true)
   let table = table_style_bool(element, "table", true)
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, table_style_element, name, pivot, table, count }
 }
 
@@ -1322,13 +1329,13 @@ pub(all) struct CT_TableStyleElement {
 ///|
 pub fn CT_TableStyleElement::new(
   element : @xml.Element,
-) -> CT_TableStyleElement {
+) -> CT_TableStyleElement raise @opc_errors.SchemaViolation {
   let type_ = match attr(element, "type") {
     Some(value) => value
     None => ""
   }
-  let size = attr_uint(element, "size", 1)
-  let dxf_id = attr_uint_opt(element, "dxfId")
+  let size = attr_uint_schema(element, "size", 1)
+  let dxf_id = attr_uint_opt_schema(element, "dxfId")
   { element, type_, size, dxf_id }
 }
 
@@ -1368,10 +1375,10 @@ pub fn CT_Color::new(
   element : @xml.Element,
 ) -> CT_Color raise @opc_errors.SchemaViolation {
   let auto_ = color_bool(element, "auto", false)
-  let indexed = attr_uint_opt(element, "indexed")
+  let indexed = attr_uint_opt_schema(element, "indexed")
   let rgb = attr(element, "rgb")
-  let theme = attr_uint_opt(element, "theme")
-  let tint = attr_double(element, "tint", 0.0)
+  let theme = attr_uint_opt_schema(element, "theme")
+  let tint = attr_double_schema(element, "tint", 0.0)
   { element, auto_, indexed, rgb, theme, tint }
 }
 
@@ -1415,8 +1422,10 @@ pub(all) struct CT_FontSize {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FontSize::new(element : @xml.Element) -> CT_FontSize {
-  let val = attr_double(element, "val", 0.0)
+pub fn CT_FontSize::new(
+  element : @xml.Element,
+) -> CT_FontSize raise @opc_errors.SchemaViolation {
+  let val = attr_double_schema(element, "val", 0.0)
   { element, val }
 }
 
@@ -1432,8 +1441,10 @@ pub(all) struct CT_IntProperty {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_IntProperty::new(element : @xml.Element) -> CT_IntProperty {
-  let val = attr_int(element, "val", 0)
+pub fn CT_IntProperty::new(
+  element : @xml.Element,
+) -> CT_IntProperty raise @opc_errors.SchemaViolation {
+  let val = attr_int_schema(element, "val", 0)
   { element, val }
 }
 
@@ -1531,8 +1542,10 @@ pub(all) struct CT_FontFamily {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FontFamily::new(element : @xml.Element) -> CT_FontFamily {
-  let val = attr_int(element, "val", 0)
+pub fn CT_FontFamily::new(
+  element : @xml.Element,
+) -> CT_FontFamily raise @opc_errors.SchemaViolation {
+  let val = attr_int_schema(element, "val", 0)
   { element, val }
 }
 
@@ -1763,11 +1776,11 @@ pub fn CT_WorkbookProtection::new(
   let revisions_algorithm_name = attr(element, "revisionsAlgorithmName")
   let revisions_hash_value = attr(element, "revisionsHashValue")
   let revisions_salt_value = attr(element, "revisionsSaltValue")
-  let revisions_spin_count = attr_uint_opt(element, "revisionsSpinCount")
+  let revisions_spin_count = attr_uint_opt_schema(element, "revisionsSpinCount")
   let workbook_algorithm_name = attr(element, "workbookAlgorithmName")
   let workbook_hash_value = attr(element, "workbookHashValue")
   let workbook_salt_value = attr(element, "workbookSaltValue")
-  let workbook_spin_count = attr_uint_opt(element, "workbookSpinCount")
+  let workbook_spin_count = attr_uint_opt_schema(element, "workbookSpinCount")
   {
     element,
     lock_structure,

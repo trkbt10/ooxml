@@ -254,6 +254,52 @@ test "SML styleSheet reader rejects malformed style booleans" {
 }
 
 ///|
+test "SML styleSheet reader rejects malformed style unsigned integers" {
+  assert_style_sheet_schema_violation("<s:fonts count=\"abc\"/>")
+  assert_style_sheet_schema_violation(
+    "<s:numFmts><s:numFmt numFmtId=\"abc\"/></s:numFmts>",
+  )
+  assert_style_sheet_schema_violation(
+    "<s:cellXfs><s:xf fontId=\"abc\"/></s:cellXfs>",
+  )
+  assert_style_sheet_schema_violation(
+    "<s:tableStyles><s:tableStyle name=\"Custom\">" +
+    "<s:tableStyleElement size=\"abc\"/>" +
+    "</s:tableStyle></s:tableStyles>",
+  )
+}
+
+///|
+test "SML styleSheet reader rejects malformed style signed integers" {
+  assert_style_sheet_schema_violation(
+    "<s:cellXfs><s:xf><s:alignment relativeIndent=\"abc\"/></s:xf></s:cellXfs>",
+  )
+  assert_style_sheet_schema_violation(
+    "<s:fonts><s:font><s:charset val=\"abc\"/></s:font></s:fonts>",
+  )
+}
+
+///|
+test "SML styleSheet reader rejects malformed style doubles" {
+  assert_style_sheet_schema_violation(
+    "<s:fills><s:fill><s:gradientFill degree=\"abc\"/></s:fill></s:fills>",
+  )
+  assert_style_sheet_schema_violation(
+    "<s:fonts><s:font><s:sz val=\"abc\"/></s:font></s:fonts>",
+  )
+  assert_style_sheet_schema_violation(
+    "<s:colors><s:mruColors><s:color tint=\"abc\"/></s:mruColors></s:colors>",
+  )
+}
+
+///|
+test "SML styleSheet reader rejects malformed style hex integers" {
+  assert_style_sheet_schema_violation(
+    "<s:colors><s:indexedColors><s:rgbColor rgb=\"nothex\"/></s:indexedColors></s:colors>",
+  )
+}
+
+///|
 fn assert_sst_schema_violation(body : String) -> Unit raise {
   let invalid = try? read_sst(
     bytes("<s:sst xmlns:s=\"urn:s\">" + body + "</s:sst>"),
@@ -420,6 +466,15 @@ test "SML workbook reader rejects malformed workbook protection booleans" {
   assert_workbook_protection_bool_schema_violation("lockStructure")
   assert_workbook_protection_bool_schema_violation("lockWindows")
   assert_workbook_protection_bool_schema_violation("lockRevision")
+}
+
+///|
+test "SML workbook reader rejects malformed workbook protection unsigned integers" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\">" +
+    "<s:workbookProtection revisionsSpinCount=\"abc\"/>" +
+    "</s:workbook>",
+  )
 }
 
 ///|
@@ -1538,6 +1593,11 @@ test "SML worksheet reader rejects malformed sheet protection booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed sheet protection unsigned integers" {
+  assert_sheet_protection_schema_violation("spinCount=\"abc\"")
+}
+
+///|
 fn assert_chartsheet_protection_schema_violation(
   protection_attr : String,
 ) -> Unit raise {
@@ -1557,6 +1617,11 @@ fn assert_chartsheet_protection_schema_violation(
 test "SML chartsheet reader rejects malformed sheet protection booleans" {
   assert_chartsheet_protection_schema_violation("content=\"maybe\"")
   assert_chartsheet_protection_schema_violation("objects=\"maybe\"")
+}
+
+///|
+test "SML chartsheet reader rejects malformed sheet protection unsigned integers" {
+  assert_chartsheet_protection_schema_violation("spinCount=\"abc\"")
 }
 
 ///|

@@ -1844,6 +1844,34 @@ fn attr_int_opt(element : @xml.Element, local_name : String) -> Int? {
 }
 
 ///|
+/// Strict xsd:int reader for schema boundary constructors.
+fn attr_int_schema(
+  element : @xml.Element,
+  local_name : String,
+  default : Int,
+) -> Int raise @opc_errors.SchemaViolation {
+  match attr_int_opt_schema(element, local_name) {
+    Some(n) => n
+    None => default
+  }
+}
+
+///|
+fn attr_int_opt_schema(
+  element : @xml.Element,
+  local_name : String,
+) -> Int? raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_int_text(value) {
+        Some(n) => Some(n)
+        None => raise_numeric_attr_violation(element, local_name, "xsd:int")
+      }
+    None => None
+  }
+}
+
+///|
 /// Helper: parse a signed integer per xsd:int. Whitespace is trimmed;
 /// empty tokens are rejected.
 fn parse_int_text(text : String) -> Int? {
@@ -2006,6 +2034,23 @@ fn attr_hex_uint_opt(element : @xml.Element, local_name : String) -> Int? {
 }
 
 ///|
+/// Strict ST_UnsignedIntHex reader for schema boundary constructors.
+fn attr_hex_uint_opt_schema(
+  element : @xml.Element,
+  local_name : String,
+) -> Int? raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_hex_uint_text(value) {
+        Some(n) => Some(n)
+        None =>
+          raise_numeric_attr_violation(element, local_name, "ST_UnsignedIntHex")
+      }
+    None => None
+  }
+}
+
+///|
 /// Helper: parse a hex-encoded unsigned integer. Accepts both upper and
 /// lower-case hex digits. Up to eight hex digits (xsd:hexBinary length=4)
 /// pack into a single Int payload. Returns None on empty / non-hex input.
@@ -2043,6 +2088,22 @@ fn attr_double_opt(element : @xml.Element, local_name : String) -> Double? {
 }
 
 ///|
+/// Strict xsd:double reader for schema boundary constructors.
+fn attr_double_opt_schema(
+  element : @xml.Element,
+  local_name : String,
+) -> Double? raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_double_text(value) {
+        Some(n) => Some(n)
+        None => raise_numeric_attr_violation(element, local_name, "xsd:double")
+      }
+    None => None
+  }
+}
+
+///|
 /// Parse an attribute as xsd:double with a default fallback.
 fn attr_double(
   element : @xml.Element,
@@ -2050,6 +2111,18 @@ fn attr_double(
   default : Double,
 ) -> Double {
   match attr_double_opt(element, local_name) {
+    Some(d) => d
+    None => default
+  }
+}
+
+///|
+fn attr_double_schema(
+  element : @xml.Element,
+  local_name : String,
+  default : Double,
+) -> Double raise @opc_errors.SchemaViolation {
+  match attr_double_opt_schema(element, local_name) {
     Some(d) => d
     None => default
   }

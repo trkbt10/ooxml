@@ -1352,14 +1352,14 @@ pub(all) struct CT_Fill {
   pattern_fill : CT_PatternFill?
   gradient_fill : CT_GradientFill?
 } derive(Eq, @debug.Debug)
-pub fn CT_Fill::new(@xml.Element) -> Self
+pub fn CT_Fill::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Fills {
   element : @xml.Element
   count : Int?
   fill : Array[CT_Fill]
 } derive(Eq, @debug.Debug)
-pub fn CT_Fills::new(@xml.Element) -> Self
+pub fn CT_Fills::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Filter {
   val : String
@@ -1413,7 +1413,7 @@ pub(all) struct CT_FontFamily {
   element : @xml.Element
   val : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_FontFamily::new(@xml.Element) -> Self
+pub fn CT_FontFamily::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FontName {
   element : @xml.Element
@@ -1431,7 +1431,7 @@ pub(all) struct CT_FontSize {
   element : @xml.Element
   val : Double
 } derive(Eq, @debug.Debug)
-pub fn CT_FontSize::new(@xml.Element) -> Self
+pub fn CT_FontSize::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Fonts {
   element : @xml.Element
@@ -1494,7 +1494,7 @@ pub(all) struct CT_GradientFill {
   top : Double
   bottom : Double
 } derive(Eq, @debug.Debug)
-pub fn CT_GradientFill::new(@xml.Element) -> Self
+pub fn CT_GradientFill::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_GradientStop {
   element : @xml.Element
@@ -1645,7 +1645,7 @@ pub(all) struct CT_IndexedColors {
   element : @xml.Element
   rgb_color : Array[CT_RgbColor]
 } derive(Eq, @debug.Debug)
-pub fn CT_IndexedColors::new(@xml.Element) -> Self
+pub fn CT_IndexedColors::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_InputCells {
   element : @xml.Element
@@ -1661,7 +1661,7 @@ pub(all) struct CT_IntProperty {
   element : @xml.Element
   val : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_IntProperty::new(@xml.Element) -> Self
+pub fn CT_IntProperty::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Item {
   element : @xml.Element
@@ -2020,14 +2020,14 @@ pub(all) struct CT_NumFmt {
   num_fmt_id : Int
   format_code : String
 } derive(Eq, @debug.Debug)
-pub fn CT_NumFmt::new(@xml.Element) -> Self
+pub fn CT_NumFmt::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_NumFmts {
   element : @xml.Element
   num_fmt : Array[CT_NumFmt]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_NumFmts::new(@xml.Element) -> Self
+pub fn CT_NumFmts::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Number {
   element : @xml.Element
@@ -3024,7 +3024,7 @@ pub(all) struct CT_RgbColor {
   element : @xml.Element
   rgb : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_RgbColor::new(@xml.Element) -> Self
+pub fn CT_RgbColor::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Row {
   element : @xml.Element
@@ -3534,7 +3534,7 @@ pub(all) struct CT_TableStyleElement {
   size : Int
   dxf_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_TableStyleElement::new(@xml.Element) -> Self
+pub fn CT_TableStyleElement::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TableStyleInfo {
   element : @xml.Element
