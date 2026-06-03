@@ -505,7 +505,7 @@ pub(all) struct CT_ChartsheetProtection {
   objects : Bool
   legacy_password : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_ChartsheetProtection::new(@xml.Element) -> Self
+pub fn CT_ChartsheetProtection::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ChartsheetView {
   element : @xml.Element
@@ -3278,7 +3278,7 @@ pub(all) struct CT_SheetProtection {
   select_unlocked_cells : Bool
   legacy_password : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_SheetProtection::new(@xml.Element) -> Self
+pub fn CT_SheetProtection::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SheetView {
   element : @xml.Element

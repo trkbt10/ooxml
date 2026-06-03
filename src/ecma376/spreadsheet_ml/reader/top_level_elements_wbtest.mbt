@@ -1053,6 +1053,64 @@ test "SML worksheet reader rejects malformed sheet properties booleans" {
 }
 
 ///|
+fn assert_sheet_protection_schema_violation(
+  protection_attr : String,
+) -> Unit raise {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:sheetProtection " +
+      protection_attr +
+      "/>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed sheet protection booleans" {
+  assert_sheet_protection_schema_violation("sheet=\"maybe\"")
+  assert_sheet_protection_schema_violation("objects=\"maybe\"")
+  assert_sheet_protection_schema_violation("scenarios=\"maybe\"")
+  assert_sheet_protection_schema_violation("formatCells=\"maybe\"")
+  assert_sheet_protection_schema_violation("formatColumns=\"maybe\"")
+  assert_sheet_protection_schema_violation("formatRows=\"maybe\"")
+  assert_sheet_protection_schema_violation("insertColumns=\"maybe\"")
+  assert_sheet_protection_schema_violation("insertRows=\"maybe\"")
+  assert_sheet_protection_schema_violation("insertHyperlinks=\"maybe\"")
+  assert_sheet_protection_schema_violation("deleteColumns=\"maybe\"")
+  assert_sheet_protection_schema_violation("deleteRows=\"maybe\"")
+  assert_sheet_protection_schema_violation("selectLockedCells=\"maybe\"")
+  assert_sheet_protection_schema_violation("sort=\"maybe\"")
+  assert_sheet_protection_schema_violation("autoFilter=\"maybe\"")
+  assert_sheet_protection_schema_violation("pivotTables=\"maybe\"")
+  assert_sheet_protection_schema_violation("selectUnlockedCells=\"maybe\"")
+}
+
+///|
+fn assert_chartsheet_protection_schema_violation(
+  protection_attr : String,
+) -> Unit raise {
+  let invalid = try? read_chartsheet(
+    bytes(
+      "<s:chartsheet xmlns:s=\"urn:s\">" +
+      "<s:sheetProtection " +
+      protection_attr +
+      "/>" +
+      "</s:chartsheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML chartsheet reader rejects malformed sheet protection booleans" {
+  assert_chartsheet_protection_schema_violation("content=\"maybe\"")
+  assert_chartsheet_protection_schema_violation("objects=\"maybe\"")
+}
+
+///|
 test "SML worksheet reader rejects malformed sheet view booleans" {
   let invalid = try? read_worksheet(
     bytes(

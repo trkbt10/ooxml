@@ -62,28 +62,47 @@ pub(all) struct CT_SheetProtection {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SheetProtection::new(element : @xml.Element) -> CT_SheetProtection {
+fn sheet_protection_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.85", "sheetProtection",
+  )
+}
+
+///|
+pub fn CT_SheetProtection::new(
+  element : @xml.Element,
+) -> CT_SheetProtection raise @opc_errors.SchemaViolation {
   let legacy_password = attr(element, "password")
   let algorithm_name = attr(element, "algorithmName")
   let hash_value = attr(element, "hashValue")
   let salt_value = attr(element, "saltValue")
   let spin_count = attr_uint_opt(element, "spinCount")
-  let sheet = attr_bool(element, "sheet", false)
-  let objects = attr_bool(element, "objects", false)
-  let scenarios = attr_bool(element, "scenarios", false)
-  let format_cells = attr_bool(element, "formatCells", true)
-  let format_columns = attr_bool(element, "formatColumns", true)
-  let format_rows = attr_bool(element, "formatRows", true)
-  let insert_columns = attr_bool(element, "insertColumns", true)
-  let insert_rows = attr_bool(element, "insertRows", true)
-  let insert_hyperlinks = attr_bool(element, "insertHyperlinks", true)
-  let delete_columns = attr_bool(element, "deleteColumns", true)
-  let delete_rows = attr_bool(element, "deleteRows", true)
-  let select_locked_cells = attr_bool(element, "selectLockedCells", false)
-  let sort = attr_bool(element, "sort", true)
-  let auto_filter = attr_bool(element, "autoFilter", true)
-  let pivot_tables = attr_bool(element, "pivotTables", true)
-  let select_unlocked_cells = attr_bool(element, "selectUnlockedCells", false)
+  let sheet = sheet_protection_bool(element, "sheet", false)
+  let objects = sheet_protection_bool(element, "objects", false)
+  let scenarios = sheet_protection_bool(element, "scenarios", false)
+  let format_cells = sheet_protection_bool(element, "formatCells", true)
+  let format_columns = sheet_protection_bool(element, "formatColumns", true)
+  let format_rows = sheet_protection_bool(element, "formatRows", true)
+  let insert_columns = sheet_protection_bool(element, "insertColumns", true)
+  let insert_rows = sheet_protection_bool(element, "insertRows", true)
+  let insert_hyperlinks = sheet_protection_bool(
+    element, "insertHyperlinks", true,
+  )
+  let delete_columns = sheet_protection_bool(element, "deleteColumns", true)
+  let delete_rows = sheet_protection_bool(element, "deleteRows", true)
+  let select_locked_cells = sheet_protection_bool(
+    element, "selectLockedCells", false,
+  )
+  let sort = sheet_protection_bool(element, "sort", true)
+  let auto_filter = sheet_protection_bool(element, "autoFilter", true)
+  let pivot_tables = sheet_protection_bool(element, "pivotTables", true)
+  let select_unlocked_cells = sheet_protection_bool(
+    element, "selectUnlockedCells", false,
+  )
   {
     element,
     algorithm_name,
@@ -138,15 +157,26 @@ pub(all) struct CT_ChartsheetProtection {
 } derive(Eq, Debug)
 
 ///|
+fn chartsheet_protection_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.84", "sheetProtection",
+  )
+}
+
+///|
 pub fn CT_ChartsheetProtection::new(
   element : @xml.Element,
-) -> CT_ChartsheetProtection {
+) -> CT_ChartsheetProtection raise @opc_errors.SchemaViolation {
   let algorithm_name = attr(element, "algorithmName")
   let hash_value = attr(element, "hashValue")
   let salt_value = attr(element, "saltValue")
   let spin_count = attr_uint_opt(element, "spinCount")
-  let content = attr_bool(element, "content", false)
-  let objects = attr_bool(element, "objects", false)
+  let content = chartsheet_protection_bool(element, "content", false)
+  let objects = chartsheet_protection_bool(element, "objects", false)
   let legacy_password = attr(element, "password")
   {
     element,
