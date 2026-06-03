@@ -2088,6 +2088,17 @@ pub(all) struct CT_SheetPr {
 } derive(Eq, Debug)
 
 ///|
+fn sheet_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.82", "sheetPr",
+  )
+}
+
+///|
 pub fn CT_SheetPr::new(
   element : @xml.Element,
 ) -> CT_SheetPr raise @opc_errors.SchemaViolation {
@@ -2105,15 +2116,17 @@ pub fn CT_SheetPr::new(
       }
     }
   }
-  let sync_horizontal = attr_bool(element, "syncHorizontal", false)
-  let sync_vertical = attr_bool(element, "syncVertical", false)
+  let sync_horizontal = sheet_pr_bool(element, "syncHorizontal", false)
+  let sync_vertical = sheet_pr_bool(element, "syncVertical", false)
   let sync_ref = attr(element, "syncRef")
-  let transition_evaluation = attr_bool(element, "transitionEvaluation", false)
-  let transition_entry = attr_bool(element, "transitionEntry", false)
-  let published = attr_bool(element, "published", true)
+  let transition_evaluation = sheet_pr_bool(
+    element, "transitionEvaluation", false,
+  )
+  let transition_entry = sheet_pr_bool(element, "transitionEntry", false)
+  let published = sheet_pr_bool(element, "published", true)
   let code_name = attr(element, "codeName")
-  let filter_mode = attr_bool(element, "filterMode", false)
-  let enable_format_conditions_calculation = attr_bool(
+  let filter_mode = sheet_pr_bool(element, "filterMode", false)
+  let enable_format_conditions_calculation = sheet_pr_bool(
     element, "enableFormatConditionsCalculation", true,
   )
   {
@@ -2243,6 +2256,17 @@ pub(all) struct CT_SheetView {
 } derive(Eq, Debug)
 
 ///|
+fn sheet_view_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.87", "sheetView",
+  )
+}
+
+///|
 pub fn CT_SheetView::new(
   element : @xml.Element,
 ) -> CT_SheetView raise @opc_errors.SchemaViolation {
@@ -2262,17 +2286,19 @@ pub fn CT_SheetView::new(
       }
     }
   }
-  let window_protection = attr_bool(element, "windowProtection", false)
-  let show_formulas = attr_bool(element, "showFormulas", false)
-  let show_grid_lines = attr_bool(element, "showGridLines", true)
-  let show_row_col_headers = attr_bool(element, "showRowColHeaders", true)
-  let show_zeros = attr_bool(element, "showZeros", true)
-  let right_to_left = attr_bool(element, "rightToLeft", false)
-  let tab_selected = attr_bool(element, "tabSelected", false)
-  let show_ruler = attr_bool(element, "showRuler", true)
-  let show_outline_symbols = attr_bool(element, "showOutlineSymbols", true)
-  let default_grid_color = attr_bool(element, "defaultGridColor", true)
-  let show_white_space = attr_bool(element, "showWhiteSpace", true)
+  let window_protection = sheet_view_bool(element, "windowProtection", false)
+  let show_formulas = sheet_view_bool(element, "showFormulas", false)
+  let show_grid_lines = sheet_view_bool(element, "showGridLines", true)
+  let show_row_col_headers = sheet_view_bool(element, "showRowColHeaders", true)
+  let show_zeros = sheet_view_bool(element, "showZeros", true)
+  let right_to_left = sheet_view_bool(element, "rightToLeft", false)
+  let tab_selected = sheet_view_bool(element, "tabSelected", false)
+  let show_ruler = sheet_view_bool(element, "showRuler", true)
+  let show_outline_symbols = sheet_view_bool(
+    element, "showOutlineSymbols", true,
+  )
+  let default_grid_color = sheet_view_bool(element, "defaultGridColor", true)
+  let show_white_space = sheet_view_bool(element, "showWhiteSpace", true)
   let view = match attr(element, "view") {
     Some(value) => value
     None => "normal"
