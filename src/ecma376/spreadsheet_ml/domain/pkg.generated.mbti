@@ -293,14 +293,14 @@ pub(all) struct CT_CalculatedMember {
   set_ : Bool
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_CalculatedMember::new(@xml.Element) -> Self
+pub fn CT_CalculatedMember::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CalculatedMembers {
   element : @xml.Element
   count : Int?
   calculated_members : Array[CT_CalculatedMember]
 } derive(Eq, @debug.Debug)
-pub fn CT_CalculatedMembers::new(@xml.Element) -> Self
+pub fn CT_CalculatedMembers::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Cell {
   element : @xml.Element
@@ -3133,14 +3133,14 @@ pub(all) struct CT_Set {
   tpls : Array[CT_Tuples]
   sort_by_tuple : CT_Tuples?
 } derive(Eq, @debug.Debug)
-pub fn CT_Set::new(@xml.Element) -> Self
+pub fn CT_Set::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Sets {
   element : @xml.Element
   count : Int?
   sets : Array[CT_Set]
 } derive(Eq, @debug.Debug)
-pub fn CT_Sets::new(@xml.Element) -> Self
+pub fn CT_Sets::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SharedItems {
   element : @xml.Element

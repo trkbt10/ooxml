@@ -1017,7 +1017,9 @@ pub(all) struct CT_Sets {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Sets::new(element : @xml.Element) -> CT_Sets {
+pub fn CT_Sets::new(
+  element : @xml.Element,
+) -> CT_Sets raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let sets : Array[CT_Set] = []
   for child in element.children {
@@ -1057,7 +1059,9 @@ pub(all) struct CT_Set {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Set::new(element : @xml.Element) -> CT_Set {
+pub fn CT_Set::new(
+  element : @xml.Element,
+) -> CT_Set raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let max_rank = attr_int(element, "maxRank", 0)
   let set_definition = match attr(element, "setDefinition") {
@@ -1065,7 +1069,9 @@ pub fn CT_Set::new(element : @xml.Element) -> CT_Set {
     None => ""
   }
   let sort_type = attr(element, "sortType")
-  let query_failed = attr_bool(element, "queryFailed", false)
+  let query_failed = attr_bool_schema(
+    element, "queryFailed", false, "Part 1 §18.10.1.88", "set",
+  )
   let tpls : Array[CT_Tuples] = []
   let mut sort_by_tuple : CT_Tuples? = None
   for child in element.children {
@@ -1227,7 +1233,7 @@ pub(all) struct CT_CalculatedMembers {
 ///|
 pub fn CT_CalculatedMembers::new(
   element : @xml.Element,
-) -> CT_CalculatedMembers {
+) -> CT_CalculatedMembers raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let calculated_members : Array[CT_CalculatedMember] = []
   for child in element.children {
@@ -1269,7 +1275,9 @@ pub(all) struct CT_CalculatedMember {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CalculatedMember::new(element : @xml.Element) -> CT_CalculatedMember {
+pub fn CT_CalculatedMember::new(
+  element : @xml.Element,
+) -> CT_CalculatedMember raise @opc_errors.SchemaViolation {
   let name = match attr(element, "name") {
     Some(v) => v
     None => ""
@@ -1282,7 +1290,9 @@ pub fn CT_CalculatedMember::new(element : @xml.Element) -> CT_CalculatedMember {
   let hierarchy = attr(element, "hierarchy")
   let parent = attr(element, "parent")
   let solve_order = attr_int(element, "solveOrder", 0)
-  let set_ = attr_bool(element, "set", false)
+  let set_ = attr_bool_schema(
+    element, "set", false, "Part 1 §18.10.1.10", "calculatedMember",
+  )
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {

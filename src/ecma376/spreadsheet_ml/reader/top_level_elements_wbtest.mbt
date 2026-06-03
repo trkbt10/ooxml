@@ -309,6 +309,24 @@ test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed tuple-set booleans" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:sets><s:set queryFailed=\"maybe\"/></s:sets></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
+test "SML pivotCacheDefinition reader rejects malformed calculated-member booleans" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:calculatedMembers><s:calculatedMember set=\"maybe\"/></s:calculatedMembers>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheRecords reader rejects malformed record booleans" {
   let invalid = try? read_pivot_cache_records(
     bytes(
