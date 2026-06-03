@@ -1008,7 +1008,7 @@ fn decode_tav_list(
 
 ///|
 /// Decode a single `<p:tav>` (CT_TLTimeAnimateValue §19.5.79)
-/// keypoint. `tm` is either `indefinite`, a percentage, or an
+/// keypoint. Required `tm` is either `indefinite`, a percentage, or an
 /// unsignedInt; we always normalise to `[0.0, 1.0]`.
 pub fn decode_tav(
   element : @xml.Element,
@@ -1016,7 +1016,12 @@ pub fn decode_tav(
   let tm = attr_local(element, "tm")
   let tm_percent = match tm {
     Some(text) => parse_tav_time(text)
-    None => Some(0.0)
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path="tav/@tm",
+        reason="missing required @tm attribute",
+      )
   }
   let value_el = first_child_by_local_name(element, "val")
   let value = match value_el {

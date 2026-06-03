@@ -234,6 +234,10 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
     "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav tm=\"bogus\"/></tavLst></anim>" +
     "</childTnLst></cTn></par></tnLst></timing>"
   assert_timing_schema_violation(tav)
+  let missing_tav_tm = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<anim><cBhvr><cTn id=\"4\"/></cBhvr><tavLst><tav/></tavLst></anim>" +
+    "</childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(missing_tav_tm)
   let motion = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<animMotion rAng=\"bad\"><cBhvr><cTn id=\"5\"/></cBhvr></animMotion>" +
     "</childTnLst></cTn></par></tnLst></timing>"
