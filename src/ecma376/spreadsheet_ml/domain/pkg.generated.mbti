@@ -1112,7 +1112,7 @@ pub(all) struct CT_DiscretePr {
   x : Array[CT_Index]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_DiscretePr::new(@xml.Element) -> Self
+pub fn CT_DiscretePr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Drawing {
   element : @xml.Element

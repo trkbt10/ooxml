@@ -1720,8 +1720,8 @@ pub fn CT_FieldGroup::new(
       }
     }
   }
-  let par = attr_uint_opt(element, "par")
-  let base = attr_uint_opt(element, "base")
+  let par = attr_uint_opt_schema(element, "par")
+  let base = attr_uint_opt_schema(element, "base")
   { element, range_pr, discrete_pr, group_items, par, base }
 }
 
@@ -1766,11 +1766,11 @@ pub fn CT_RangePr::new(
     Some(value) => value
     None => "range"
   }
-  let start_num = attr_double_opt(element, "startNum")
-  let end_num = attr_double_opt(element, "endNum")
+  let start_num = attr_double_opt_schema(element, "startNum")
+  let end_num = attr_double_opt_schema(element, "endNum")
   let start_date = attr(element, "startDate")
   let end_date = attr(element, "endDate")
-  let group_interval = attr_double(element, "groupInterval", 1.0)
+  let group_interval = attr_double_schema(element, "groupInterval", 1.0)
   {
     element,
     auto_start,
@@ -1798,7 +1798,9 @@ pub(all) struct CT_DiscretePr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DiscretePr::new(element : @xml.Element) -> CT_DiscretePr {
+pub fn CT_DiscretePr::new(
+  element : @xml.Element,
+) -> CT_DiscretePr raise @opc_errors.SchemaViolation {
   let x : Array[CT_Index] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1807,7 +1809,7 @@ pub fn CT_DiscretePr::new(element : @xml.Element) -> CT_DiscretePr {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, x, count }
 }
 
@@ -1859,7 +1861,7 @@ pub fn CT_GroupItems::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, missings, numbers, booleans, errors, strings, date_times, count }
 }
 

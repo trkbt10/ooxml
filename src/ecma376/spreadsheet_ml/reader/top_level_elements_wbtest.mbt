@@ -1192,6 +1192,19 @@ fn assert_pivot_cache_shared_item_schema_violation(
 }
 
 ///|
+fn assert_pivot_cache_field_group_schema_violation(
+  field_group_xml : String,
+) -> Unit raise {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField>" +
+    field_group_xml +
+    "</s:cacheField></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 fn assert_query_table_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_query_table(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
@@ -1506,6 +1519,29 @@ test "SML pivotCacheDefinition reader rejects malformed group-level booleans" {
     "</s:group></s:groups></s:groupLevel>" +
     "</s:groupLevels></s:cacheHierarchy></s:cacheHierarchies>" +
     "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
+test "SML pivotCacheDefinition reader rejects malformed field-group numerics" {
+  assert_pivot_cache_field_group_schema_violation("<s:fieldGroup par=\"abc\"/>")
+  assert_pivot_cache_field_group_schema_violation(
+    "<s:fieldGroup base=\"abc\"/>",
+  )
+  assert_pivot_cache_field_group_schema_violation(
+    "<s:fieldGroup><s:rangePr startNum=\"abc\"/></s:fieldGroup>",
+  )
+  assert_pivot_cache_field_group_schema_violation(
+    "<s:fieldGroup><s:rangePr endNum=\"abc\"/></s:fieldGroup>",
+  )
+  assert_pivot_cache_field_group_schema_violation(
+    "<s:fieldGroup><s:rangePr groupInterval=\"abc\"/></s:fieldGroup>",
+  )
+  assert_pivot_cache_field_group_schema_violation(
+    "<s:fieldGroup><s:discretePr count=\"abc\"/></s:fieldGroup>",
+  )
+  assert_pivot_cache_field_group_schema_violation(
+    "<s:fieldGroup><s:groupItems count=\"abc\"/></s:fieldGroup>",
   )
 }
 
