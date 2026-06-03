@@ -1806,26 +1806,6 @@ fn[T] raise_numeric_attr_violation(
 }
 
 ///|
-/// Parse an attribute as xsd:int (signed). Returns the supplied default
-/// when the attribute is missing or unparseable.
-fn attr_int(element : @xml.Element, local_name : String, default : Int) -> Int {
-  match attr_int_opt(element, local_name) {
-    Some(n) => n
-    None => default
-  }
-}
-
-///|
-/// Parse an attribute as xsd:int (signed) and return None when absent or
-/// unparseable.
-fn attr_int_opt(element : @xml.Element, local_name : String) -> Int? {
-  match attr(element, local_name) {
-    Some(value) => parse_int_text(value)
-    None => None
-  }
-}
-
-///|
 /// Strict xsd:int reader for schema boundary constructors.
 fn attr_int_schema(
   element : @xml.Element,

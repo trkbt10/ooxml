@@ -587,6 +587,22 @@ test "SML workbook reader rejects malformed web publish object booleans" {
 }
 
 ///|
+test "SML workbook reader rejects malformed web publish object unsigned integers" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:webPublishObjects count=\"abc\">" +
+    "<s:webPublishObject id=\"1\" divId=\"d1\" sourceObject=\"Sheet1\" " +
+    "destinationFile=\"out.htm\"/>" +
+    "</s:webPublishObjects></s:workbook>",
+  )
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:webPublishObjects>" +
+    "<s:webPublishObject id=\"abc\" divId=\"d1\" sourceObject=\"Sheet1\" " +
+    "destinationFile=\"out.htm\"/>" +
+    "</s:webPublishObjects></s:workbook>",
+  )
+}
+
+///|
 test "SML workbook reader rejects malformed function group unsigned integers" {
   assert_workbook_schema_violation(
     "<s:workbook xmlns:s=\"urn:s\"><s:functionGroups builtInGroupCount=\"abc\"/>" +
@@ -2438,6 +2454,44 @@ test "SML table reader rejects malformed table booleans" {
 }
 
 ///|
+fn assert_table_attr_schema_violation(local_name : String) -> Unit raise {
+  assert_table_schema_violation(
+    "<s:table xmlns:s=\"urn:s\" " + local_name + "=\"abc\"/>",
+  )
+}
+
+///|
+fn assert_table_column_attr_schema_violation(local_name : String) -> Unit raise {
+  assert_table_schema_violation(
+    "<s:table xmlns:s=\"urn:s\"><s:tableColumns><s:tableColumn " +
+    local_name +
+    "=\"abc\"/></s:tableColumns></s:table>",
+  )
+}
+
+///|
+test "SML table reader rejects malformed table unsigned integers" {
+  assert_table_attr_schema_violation("id")
+  assert_table_attr_schema_violation("headerRowCount")
+  assert_table_attr_schema_violation("totalsRowCount")
+  assert_table_attr_schema_violation("connectionId")
+  assert_table_attr_schema_violation("headerRowDxfId")
+  assert_table_attr_schema_violation("dataDxfId")
+  assert_table_attr_schema_violation("totalsRowDxfId")
+  assert_table_attr_schema_violation("headerRowBorderDxfId")
+  assert_table_attr_schema_violation("tableBorderDxfId")
+  assert_table_attr_schema_violation("totalsRowBorderDxfId")
+  assert_table_schema_violation(
+    "<s:table xmlns:s=\"urn:s\"><s:tableColumns count=\"abc\"/></s:table>",
+  )
+  assert_table_column_attr_schema_violation("id")
+  assert_table_column_attr_schema_violation("queryTableFieldId")
+  assert_table_column_attr_schema_violation("headerRowDxfId")
+  assert_table_column_attr_schema_violation("dataDxfId")
+  assert_table_column_attr_schema_violation("totalsRowDxfId")
+}
+
+///|
 test "SML table reader rejects malformed table formula booleans" {
   assert_table_schema_violation(
     "<s:table xmlns:s=\"urn:s\">" +
@@ -2772,6 +2826,12 @@ test "SML chartsheet reader rejects malformed header-footer booleans" {
 }
 
 ///|
+fn assert_chartsheet_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_chartsheet(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "SML chartsheet reader rejects malformed chartsheet booleans" {
   let invalid_pr = try? read_chartsheet(
     bytes(
@@ -2806,6 +2866,25 @@ test "SML chartsheet reader rejects malformed chartsheet booleans" {
     ),
   )
   assert_true(invalid_custom_view is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML chartsheet reader rejects malformed chartsheet unsigned integers" {
+  assert_chartsheet_schema_violation(
+    "<s:chartsheet xmlns:s=\"urn:s\">" +
+    "<s:sheetViews><s:sheetView zoomScale=\"abc\"/></s:sheetViews>" +
+    "</s:chartsheet>",
+  )
+  assert_chartsheet_schema_violation(
+    "<s:chartsheet xmlns:s=\"urn:s\">" +
+    "<s:sheetViews><s:sheetView workbookViewId=\"abc\"/></s:sheetViews>" +
+    "</s:chartsheet>",
+  )
+  assert_chartsheet_schema_violation(
+    "<s:chartsheet xmlns:s=\"urn:s\">" +
+    "<s:customSheetViews><s:customSheetView scale=\"abc\"/>" +
+    "</s:customSheetViews></s:chartsheet>",
+  )
 }
 
 ///|

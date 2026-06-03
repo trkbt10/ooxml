@@ -4214,8 +4214,8 @@ pub fn CT_ChartsheetView::new(
   {
     element,
     tab_selected: chartsheet_view_bool(element, "tabSelected", false),
-    zoom_scale: attr_int(element, "zoomScale", 100),
-    workbook_view_id: attr_int(element, "workbookViewId", 0),
+    zoom_scale: attr_uint_schema(element, "zoomScale", 100),
+    workbook_view_id: attr_uint_schema(element, "workbookViewId", 0),
     zoom_to_fit: chartsheet_view_bool(element, "zoomToFit", false),
   }
 }
@@ -4292,7 +4292,7 @@ pub fn CT_CustomChartsheetView::new(
   {
     element,
     guid: attr(element, "guid").unwrap_or(""),
-    scale: attr_int(element, "scale", 100),
+    scale: attr_uint_schema(element, "scale", 100),
     state: attr(element, "state").unwrap_or("visible"),
     zoom_to_fit: custom_chartsheet_view_bool(element, "zoomToFit", false),
     page_margins,
@@ -4744,18 +4744,18 @@ pub fn CT_Table::new(
   }
   {
     element,
-    id: attr_int(element, "id", 0),
+    id: attr_uint_schema(element, "id", 0),
     name: attr(element, "name").unwrap_or(""),
     display_name: attr(element, "displayName").unwrap_or(""),
     comment: attr(element, "comment").unwrap_or(""),
     ref_range: attr(element, "ref").unwrap_or(""),
-    header_row_count: attr_int(element, "headerRowCount", 1),
-    totals_row_count: attr_int(element, "totalsRowCount", 0),
+    header_row_count: attr_uint_schema(element, "headerRowCount", 1),
+    totals_row_count: attr_uint_schema(element, "totalsRowCount", 0),
     totals_row_shown: attr_bool_schema(
       element, "totalsRowShown", true, "Part 1 §18.5.1.2", "table",
     ),
     table_type: attr(element, "tableType").unwrap_or("worksheet"),
-    connection_id: attr_int(element, "connectionId", 0),
+    connection_id: attr_uint_schema(element, "connectionId", 0),
     published: attr_bool_schema(
       element, "published", false, "Part 1 §18.5.1.2", "table",
     ),
@@ -4765,12 +4765,16 @@ pub fn CT_Table::new(
     insert_row_shift: attr_bool_schema(
       element, "insertRowShift", false, "Part 1 §18.5.1.2", "table",
     ),
-    header_row_dxf_id: attr_int(element, "headerRowDxfId", -1),
-    data_dxf_id: attr_int(element, "dataDxfId", -1),
-    totals_row_dxf_id: attr_int(element, "totalsRowDxfId", -1),
-    header_row_border_dxf_id: attr_int(element, "headerRowBorderDxfId", -1),
-    table_border_dxf_id: attr_int(element, "tableBorderDxfId", -1),
-    totals_row_border_dxf_id: attr_int(element, "totalsRowBorderDxfId", -1),
+    header_row_dxf_id: attr_uint_schema(element, "headerRowDxfId", -1),
+    data_dxf_id: attr_uint_schema(element, "dataDxfId", -1),
+    totals_row_dxf_id: attr_uint_schema(element, "totalsRowDxfId", -1),
+    header_row_border_dxf_id: attr_uint_schema(
+      element, "headerRowBorderDxfId", -1,
+    ),
+    table_border_dxf_id: attr_uint_schema(element, "tableBorderDxfId", -1),
+    totals_row_border_dxf_id: attr_uint_schema(
+      element, "totalsRowBorderDxfId", -1,
+    ),
     header_row_cell_style: attr(element, "headerRowCellStyle").unwrap_or(""),
     data_cell_style: attr(element, "dataCellStyle").unwrap_or(""),
     totals_row_cell_style: attr(element, "totalsRowCellStyle").unwrap_or(""),
@@ -4803,7 +4807,7 @@ pub fn CT_TableColumns::new(
       columns.push(CT_TableColumn::new(e))
     }
   }
-  { element, count: attr_int(element, "count", 0), columns }
+  { element, count: attr_uint_schema(element, "count", 0), columns }
 }
 
 ///|
@@ -4860,15 +4864,15 @@ pub fn CT_TableColumn::new(
   }
   {
     element,
-    id: attr_int(element, "id", 0),
+    id: attr_uint_schema(element, "id", 0),
     name: attr(element, "name").unwrap_or(""),
     unique_name: attr(element, "uniqueName").unwrap_or(""),
     totals_row_function: attr(element, "totalsRowFunction").unwrap_or("none"),
     totals_row_label: attr(element, "totalsRowLabel").unwrap_or(""),
-    query_table_field_id: attr_int(element, "queryTableFieldId", -1),
-    header_row_dxf_id: attr_int(element, "headerRowDxfId", -1),
-    data_dxf_id: attr_int(element, "dataDxfId", -1),
-    totals_row_dxf_id: attr_int(element, "totalsRowDxfId", -1),
+    query_table_field_id: attr_uint_schema(element, "queryTableFieldId", -1),
+    header_row_dxf_id: attr_uint_schema(element, "headerRowDxfId", -1),
+    data_dxf_id: attr_uint_schema(element, "dataDxfId", -1),
+    totals_row_dxf_id: attr_uint_schema(element, "totalsRowDxfId", -1),
     header_row_cell_style: attr(element, "headerRowCellStyle").unwrap_or(""),
     data_cell_style: attr(element, "dataCellStyle").unwrap_or(""),
     totals_row_cell_style: attr(element, "totalsRowCellStyle").unwrap_or(""),
@@ -5217,7 +5221,7 @@ pub fn CT_WebPublishObjects::new(
       objects.push(CT_WebPublishObject::new(e))
     }
   }
-  { element, count: attr_int(element, "count", 0), objects }
+  { element, count: attr_uint_schema(element, "count", 0), objects }
 }
 
 ///|
@@ -5246,7 +5250,7 @@ pub fn CT_WebPublishObject::new(
 ) -> CT_WebPublishObject raise @opc_errors.SchemaViolation {
   {
     element,
-    id: attr_int(element, "id", 0),
+    id: attr_uint_schema(element, "id", 0),
     div_id: attr(element, "divId").unwrap_or(""),
     source_object: attr(element, "sourceObject").unwrap_or(""),
     destination_file: attr(element, "destinationFile").unwrap_or(""),
