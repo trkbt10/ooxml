@@ -1175,7 +1175,9 @@ pub(all) struct CT_Consolidation {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Consolidation::new(element : @xml.Element) -> CT_Consolidation {
+pub fn CT_Consolidation::new(
+  element : @xml.Element,
+) -> CT_Consolidation raise @opc_errors.SchemaViolation {
   let mut pages : CT_Pages? = None
   let mut range_sets : CT_RangeSets? = None
   for child in element.children {
@@ -1191,7 +1193,9 @@ pub fn CT_Consolidation::new(element : @xml.Element) -> CT_Consolidation {
     Some(value) => value
     None => CT_RangeSets::new(element)
   }
-  let auto_page = attr_bool(element, "autoPage", true)
+  let auto_page = attr_bool_schema(
+    element, "autoPage", true, "Part 1 §18.10.1.13", "consolidation",
+  )
   { element, pages, range_sets: range_sets_value, auto_page }
 }
 

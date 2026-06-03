@@ -366,7 +366,9 @@ pub(all) struct CT_CacheSource {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CacheSource::new(element : @xml.Element) -> CT_CacheSource {
+pub fn CT_CacheSource::new(
+  element : @xml.Element,
+) -> CT_CacheSource raise @opc_errors.SchemaViolation {
   let type_ = match attr(element, "type") {
     Some(v) => v
     None => ""

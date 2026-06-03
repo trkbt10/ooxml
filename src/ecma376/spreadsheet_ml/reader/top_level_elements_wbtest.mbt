@@ -417,6 +417,17 @@ test "SML pivotCacheDefinition reader rejects malformed definition booleans" {
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed cache-source booleans" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheSource type=\"consolidation\">" +
+    "<s:consolidation autoPage=\"maybe\"><s:rangeSets/></s:consolidation>" +
+    "</s:cacheSource>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed cache-field booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +

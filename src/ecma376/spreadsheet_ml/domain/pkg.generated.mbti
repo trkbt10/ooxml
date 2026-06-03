@@ -227,7 +227,7 @@ pub(all) struct CT_CacheSource {
   consolidation : CT_Consolidation?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_CacheSource::new(@xml.Element) -> Self
+pub fn CT_CacheSource::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CalcCell {
   element : @xml.Element
@@ -703,7 +703,7 @@ pub(all) struct CT_Consolidation {
   range_sets : CT_RangeSets
   auto_page : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_Consolidation::new(@xml.Element) -> Self
+pub fn CT_Consolidation::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Control {
   element : @xml.Element
