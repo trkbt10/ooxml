@@ -2795,7 +2795,7 @@ fn pivot_area_bool(
 pub fn CT_PivotArea::new(
   element : @xml.Element,
 ) -> CT_PivotArea raise @opc_errors.SchemaViolation {
-  let field = attr_int_opt(element, "field")
+  let field = attr_int_opt_schema(element, "field")
   let type_ = match attr(element, "type") {
     Some(value) => value
     None => "normal"
@@ -2811,7 +2811,7 @@ pub fn CT_PivotArea::new(
     element, "collapsedLevelsAreSubtotals", false,
   )
   let axis = attr(element, "axis")
-  let field_position = attr_uint_opt(element, "fieldPosition")
+  let field_position = attr_uint_opt_schema(element, "fieldPosition")
   let mut references : CT_PivotAreaReferences? = None
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -2860,7 +2860,7 @@ pub(all) struct CT_PivotAreaReferences {
 pub fn CT_PivotAreaReferences::new(
   element : @xml.Element,
 ) -> CT_PivotAreaReferences raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let reference : Array[CT_PivotAreaReference] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2941,8 +2941,8 @@ fn pivot_area_reference_bool(
 pub fn CT_PivotAreaReference::new(
   element : @xml.Element,
 ) -> CT_PivotAreaReference raise @opc_errors.SchemaViolation {
-  let field = attr_uint_opt(element, "field")
-  let count = attr_uint_opt(element, "count")
+  let field = attr_uint_opt_schema(element, "field")
+  let count = attr_uint_opt_schema(element, "count")
   let selected = pivot_area_reference_bool(element, "selected", true)
   let by_position = pivot_area_reference_bool(element, "byPosition", false)
   let relative = pivot_area_reference_bool(element, "relative", false)

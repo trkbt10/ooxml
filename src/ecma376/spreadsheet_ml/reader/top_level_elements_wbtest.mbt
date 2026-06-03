@@ -1626,6 +1626,41 @@ test "SML pivotTableDefinition reader rejects malformed pivot-area booleans" {
 }
 
 ///|
+test "SML pivotTableDefinition reader rejects malformed pivot-area numerics" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats><s:format><s:pivotArea field=\"abc\"/></s:format></s:formats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats><s:format><s:pivotArea fieldPosition=\"abc\"/></s:format></s:formats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats><s:format><s:pivotArea>" +
+    "<s:references count=\"abc\"/>" +
+    "</s:pivotArea></s:format></s:formats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats><s:format><s:pivotArea>" +
+    "<s:references><s:reference field=\"abc\"/></s:references>" +
+    "</s:pivotArea></s:format></s:formats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats><s:format><s:pivotArea>" +
+    "<s:references><s:reference count=\"abc\"/></s:references>" +
+    "</s:pivotArea></s:format></s:formats>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed chart-format booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
