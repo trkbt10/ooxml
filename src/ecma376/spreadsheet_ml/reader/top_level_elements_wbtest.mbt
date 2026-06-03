@@ -657,6 +657,43 @@ test "SML chartsheet reader rejects malformed header-footer booleans" {
 }
 
 ///|
+test "SML chartsheet reader rejects malformed chartsheet booleans" {
+  let invalid_pr = try? read_chartsheet(
+    bytes(
+      "<s:chartsheet xmlns:s=\"urn:s\">" +
+      "<s:sheetPr published=\"maybe\"/>" +
+      "</s:chartsheet>",
+    ),
+  )
+  assert_true(invalid_pr is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_view_tab = try? read_chartsheet(
+    bytes(
+      "<s:chartsheet xmlns:s=\"urn:s\">" +
+      "<s:sheetViews><s:sheetView tabSelected=\"maybe\"/></s:sheetViews>" +
+      "</s:chartsheet>",
+    ),
+  )
+  assert_true(invalid_view_tab is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_view_zoom = try? read_chartsheet(
+    bytes(
+      "<s:chartsheet xmlns:s=\"urn:s\">" +
+      "<s:sheetViews><s:sheetView zoomToFit=\"maybe\"/></s:sheetViews>" +
+      "</s:chartsheet>",
+    ),
+  )
+  assert_true(invalid_view_zoom is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_custom_view = try? read_chartsheet(
+    bytes(
+      "<s:chartsheet xmlns:s=\"urn:s\">" +
+      "<s:customSheetViews><s:customSheetView zoomToFit=\"maybe\"/>" +
+      "</s:customSheetViews>" +
+      "</s:chartsheet>",
+    ),
+  )
+  assert_true(invalid_custom_view is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "SML worksheet reader rejects malformed data-validations booleans" {
   let invalid = try? read_worksheet(
     bytes(

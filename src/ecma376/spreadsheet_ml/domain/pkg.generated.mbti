@@ -493,7 +493,7 @@ pub(all) struct CT_ChartsheetPr {
   published : Bool
   tab_color : @xml.Element?
 } derive(Eq, @debug.Debug)
-pub fn CT_ChartsheetPr::new(@xml.Element) -> Self
+pub fn CT_ChartsheetPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ChartsheetProtection {
   element : @xml.Element
@@ -514,13 +514,13 @@ pub(all) struct CT_ChartsheetView {
   workbook_view_id : Int
   zoom_to_fit : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_ChartsheetView::new(@xml.Element) -> Self
+pub fn CT_ChartsheetView::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ChartsheetViews {
   element : @xml.Element
   views : Array[CT_ChartsheetView]
 } derive(Eq, @debug.Debug)
-pub fn CT_ChartsheetViews::new(@xml.Element) -> Self
+pub fn CT_ChartsheetViews::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Col {
   element : @xml.Element
@@ -769,13 +769,13 @@ pub(all) struct CT_CustomChartsheetView {
   page_setup : @xml.Element?
   header_footer : @xml.Element?
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomChartsheetView::new(@xml.Element) -> Self
+pub fn CT_CustomChartsheetView::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CustomChartsheetViews {
   element : @xml.Element
   views : Array[CT_CustomChartsheetView]
 } derive(Eq, @debug.Debug)
-pub fn CT_CustomChartsheetViews::new(@xml.Element) -> Self
+pub fn CT_CustomChartsheetViews::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CustomFilter {
   operator : ST_FilterOperator

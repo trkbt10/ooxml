@@ -4048,7 +4048,9 @@ pub(all) struct CT_ChartsheetPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ChartsheetPr::new(element : @xml.Element) -> CT_ChartsheetPr {
+pub fn CT_ChartsheetPr::new(
+  element : @xml.Element,
+) -> CT_ChartsheetPr raise @opc_errors.SchemaViolation {
   let mut tab_color : @xml.Element? = None
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "tabColor" {
@@ -4058,9 +4060,20 @@ pub fn CT_ChartsheetPr::new(element : @xml.Element) -> CT_ChartsheetPr {
   {
     element,
     code_name: attr(element, "codeName").unwrap_or(""),
-    published: attr_bool(element, "published", true),
+    published: chartsheet_pr_bool(element, "published", true),
     tab_color,
   }
+}
+
+///|
+fn chartsheet_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.12", "sheetPr",
+  )
 }
 
 ///|
@@ -4072,7 +4085,9 @@ pub(all) struct CT_ChartsheetViews {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ChartsheetViews::new(element : @xml.Element) -> CT_ChartsheetViews {
+pub fn CT_ChartsheetViews::new(
+  element : @xml.Element,
+) -> CT_ChartsheetViews raise @opc_errors.SchemaViolation {
   let views : Array[CT_ChartsheetView] = []
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "sheetView" {
@@ -4098,14 +4113,27 @@ pub(all) struct CT_ChartsheetView {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ChartsheetView::new(element : @xml.Element) -> CT_ChartsheetView {
+pub fn CT_ChartsheetView::new(
+  element : @xml.Element,
+) -> CT_ChartsheetView raise @opc_errors.SchemaViolation {
   {
     element,
-    tab_selected: attr_bool(element, "tabSelected", false),
+    tab_selected: chartsheet_view_bool(element, "tabSelected", false),
     zoom_scale: attr_int(element, "zoomScale", 100),
     workbook_view_id: attr_int(element, "workbookViewId", 0),
-    zoom_to_fit: attr_bool(element, "zoomToFit", false),
+    zoom_to_fit: chartsheet_view_bool(element, "zoomToFit", false),
   }
+}
+
+///|
+fn chartsheet_view_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.44", "sheetView",
+  )
 }
 
 ///|
@@ -4119,7 +4147,7 @@ pub(all) struct CT_CustomChartsheetViews {
 ///|
 pub fn CT_CustomChartsheetViews::new(
   element : @xml.Element,
-) -> CT_CustomChartsheetViews {
+) -> CT_CustomChartsheetViews raise @opc_errors.SchemaViolation {
   let views : Array[CT_CustomChartsheetView] = []
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "customSheetView" {
@@ -4152,7 +4180,7 @@ pub(all) struct CT_CustomChartsheetView {
 ///|
 pub fn CT_CustomChartsheetView::new(
   element : @xml.Element,
-) -> CT_CustomChartsheetView {
+) -> CT_CustomChartsheetView raise @opc_errors.SchemaViolation {
   let mut page_margins : @xml.Element? = None
   let mut page_setup : @xml.Element? = None
   let mut header_footer : @xml.Element? = None
@@ -4171,11 +4199,22 @@ pub fn CT_CustomChartsheetView::new(
     guid: attr(element, "guid").unwrap_or(""),
     scale: attr_int(element, "scale", 100),
     state: attr(element, "state").unwrap_or("visible"),
-    zoom_to_fit: attr_bool(element, "zoomToFit", false),
+    zoom_to_fit: custom_chartsheet_view_bool(element, "zoomToFit", false),
     page_margins,
     page_setup,
     header_footer,
   }
+}
+
+///|
+fn custom_chartsheet_view_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.21", "customSheetView",
+  )
 }
 
 ///|
