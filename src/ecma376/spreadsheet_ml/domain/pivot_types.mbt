@@ -116,11 +116,13 @@ pub fn CT_PivotCacheDefinition::new(
   let background_query = attr_bool_schema(
     element, "backgroundQuery", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
   )
-  let missing_items_limit = attr_uint_opt(element, "missingItemsLimit")
-  let created_version = attr_uint(element, "createdVersion", 0)
-  let refreshed_version = attr_uint(element, "refreshedVersion", 0)
-  let min_refreshable_version = attr_uint(element, "minRefreshableVersion", 0)
-  let record_count = attr_uint_opt(element, "recordCount")
+  let missing_items_limit = attr_uint_opt_schema(element, "missingItemsLimit")
+  let created_version = attr_uint_schema(element, "createdVersion", 0)
+  let refreshed_version = attr_uint_schema(element, "refreshedVersion", 0)
+  let min_refreshable_version = attr_uint_schema(
+    element, "minRefreshableVersion", 0,
+  )
+  let record_count = attr_uint_opt_schema(element, "recordCount")
   let upgrade_on_refresh = attr_bool_schema(
     element, "upgradeOnRefresh", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
   )
@@ -217,7 +219,7 @@ pub(all) struct CT_CacheFields {
 pub fn CT_CacheFields::new(
   element : @xml.Element,
 ) -> CT_CacheFields raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let cache_fields : Array[CT_CacheField] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -296,13 +298,13 @@ pub fn CT_CacheField::new(
   )
   let num_fmt_id = attr(element, "numFmtId")
   let formula = attr(element, "formula")
-  let sql_type = attr_int(element, "sqlType", 0)
-  let hierarchy = attr_int(element, "hierarchy", 0)
-  let level = attr_uint(element, "level", 0)
+  let sql_type = attr_int_schema(element, "sqlType", 0)
+  let hierarchy = attr_int_schema(element, "hierarchy", 0)
+  let level = attr_uint_schema(element, "level", 0)
   let database_field = attr_bool_schema(
     element, "databaseField", true, "Part 1 §18.10.1.3", "cacheField",
   )
-  let mapping_count = attr_uint_opt(element, "mappingCount")
+  let mapping_count = attr_uint_opt_schema(element, "mappingCount")
   let member_property_field = attr_bool_schema(
     element, "memberPropertyField", false, "Part 1 §18.10.1.3", "cacheField",
   )
@@ -373,7 +375,7 @@ pub fn CT_CacheSource::new(
     Some(v) => v
     None => ""
   }
-  let connection_id = attr_uint(element, "connectionId", 0)
+  let connection_id = attr_uint_schema(element, "connectionId", 0)
   let mut worksheet_source : CT_WorksheetSource? = None
   let mut consolidation : CT_Consolidation? = None
   let mut ext_lst : CT_ExtensionList? = None

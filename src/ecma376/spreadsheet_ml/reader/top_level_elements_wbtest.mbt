@@ -1156,12 +1156,41 @@ test "SML pivotCacheDefinition reader rejects malformed definition booleans" {
 }
 
 ///|
+fn assert_pivot_cache_definition_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\" " + local_name + "=\"abc\"/>",
+  )
+}
+
+///|
+test "SML pivotCacheDefinition reader rejects malformed definition unsigned integers" {
+  assert_pivot_cache_definition_numeric_schema_violation("missingItemsLimit")
+  assert_pivot_cache_definition_numeric_schema_violation("createdVersion")
+  assert_pivot_cache_definition_numeric_schema_violation("refreshedVersion")
+  assert_pivot_cache_definition_numeric_schema_violation(
+    "minRefreshableVersion",
+  )
+  assert_pivot_cache_definition_numeric_schema_violation("recordCount")
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed cache-source booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
     "<s:cacheSource type=\"consolidation\">" +
     "<s:consolidation autoPage=\"maybe\"><s:rangeSets/></s:consolidation>" +
     "</s:cacheSource>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
+test "SML pivotCacheDefinition reader rejects malformed cache-source unsigned integers" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheSource connectionId=\"abc\"/>" +
     "</s:pivotCacheDefinition>",
   )
 }
@@ -1176,6 +1205,34 @@ test "SML pivotCacheDefinition reader rejects malformed cache-field booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
     "<s:cacheFields><s:cacheField memberPropertyField=\"maybe\"/></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
+test "SML pivotCacheDefinition reader rejects malformed cache-field numerics" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields count=\"abc\"/></s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField sqlType=\"abc\"/></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField hierarchy=\"abc\"/></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField level=\"abc\"/></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField mappingCount=\"abc\"/></s:cacheFields>" +
     "</s:pivotCacheDefinition>",
   )
 }
