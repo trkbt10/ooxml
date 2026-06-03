@@ -56,6 +56,17 @@ fn calc_pr_bool_opt(
 }
 
 ///|
+fn defined_name_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.5", "definedName",
+  )
+}
+
+///|
 fn file_sharing_bool(
   element : @xml.Element,
   local_name : String,
@@ -3957,7 +3968,9 @@ pub(all) struct CT_DefinedNames {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DefinedNames::new(element : @xml.Element) -> CT_DefinedNames {
+pub fn CT_DefinedNames::new(
+  element : @xml.Element,
+) -> CT_DefinedNames raise @opc_errors.SchemaViolation {
   let defined_name : Array[CT_DefinedName] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -4017,7 +4030,9 @@ pub(all) struct CT_DefinedName {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DefinedName::new(element : @xml.Element) -> CT_DefinedName {
+pub fn CT_DefinedName::new(
+  element : @xml.Element,
+) -> CT_DefinedName raise @opc_errors.SchemaViolation {
   let formula = element_text(element)
   let name = match attr(element, "name") {
     Some(value) => value
@@ -4029,14 +4044,16 @@ pub fn CT_DefinedName::new(element : @xml.Element) -> CT_DefinedName {
   let help = attr(element, "help")
   let status_bar = attr(element, "statusBar")
   let local_sheet_id = attr_uint_opt(element, "localSheetId")
-  let hidden = attr_bool(element, "hidden", false)
-  let function = attr_bool(element, "function", false)
-  let vb_procedure = attr_bool(element, "vbProcedure", false)
-  let xlm = attr_bool(element, "xlm", false)
+  let hidden = defined_name_bool(element, "hidden", false)
+  let function = defined_name_bool(element, "function", false)
+  let vb_procedure = defined_name_bool(element, "vbProcedure", false)
+  let xlm = defined_name_bool(element, "xlm", false)
   let function_group_id = attr_uint_opt(element, "functionGroupId")
   let shortcut_key = attr(element, "shortcutKey")
-  let publish_to_server = attr_bool(element, "publishToServer", false)
-  let workbook_parameter = attr_bool(element, "workbookParameter", false)
+  let publish_to_server = defined_name_bool(element, "publishToServer", false)
+  let workbook_parameter = defined_name_bool(
+    element, "workbookParameter", false,
+  )
   {
     element,
     formula,

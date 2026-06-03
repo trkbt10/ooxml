@@ -1067,13 +1067,13 @@ pub(all) struct CT_DefinedName {
   publish_to_server : Bool
   workbook_parameter : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_DefinedName::new(@xml.Element) -> Self
+pub fn CT_DefinedName::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DefinedNames {
   element : @xml.Element
   defined_name : Array[CT_DefinedName]
 } derive(Eq, @debug.Debug)
-pub fn CT_DefinedNames::new(@xml.Element) -> Self
+pub fn CT_DefinedNames::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DeletedField {
   element : @xml.Element

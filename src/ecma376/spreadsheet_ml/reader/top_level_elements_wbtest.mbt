@@ -242,6 +242,27 @@ test "SML workbook reader rejects malformed web publishing booleans" {
 }
 
 ///|
+fn assert_workbook_defined_name_bool_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:definedNames><s:definedName name=\"n\" " +
+    local_name +
+    "=\"maybe\">Sheet1!$A$1</s:definedName></s:definedNames></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed defined name booleans" {
+  assert_workbook_defined_name_bool_schema_violation("hidden")
+  assert_workbook_defined_name_bool_schema_violation("function")
+  assert_workbook_defined_name_bool_schema_violation("vbProcedure")
+  assert_workbook_defined_name_bool_schema_violation("xlm")
+  assert_workbook_defined_name_bool_schema_violation("publishToServer")
+  assert_workbook_defined_name_bool_schema_violation("workbookParameter")
+}
+
+///|
 test "SML metadata reader rejects malformed metadataType booleans" {
   let invalid = try? read_metadata(
     bytes(
