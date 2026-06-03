@@ -2638,8 +2638,10 @@ pub(all) struct CT_PivotFilters {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotFilters::new(element : @xml.Element) -> CT_PivotFilters {
-  let count = attr_uint(element, "count", 0)
+pub fn CT_PivotFilters::new(
+  element : @xml.Element,
+) -> CT_PivotFilters raise @opc_errors.SchemaViolation {
+  let count = attr_uint_schema(element, "count", 0)
   let filter : Array[CT_PivotFilter] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2696,17 +2698,19 @@ pub(all) struct CT_PivotFilter {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotFilter::new(element : @xml.Element) -> CT_PivotFilter {
-  let fld = attr_uint(element, "fld", 0)
-  let mp_fld = attr_uint_opt(element, "mpFld")
+pub fn CT_PivotFilter::new(
+  element : @xml.Element,
+) -> CT_PivotFilter raise @opc_errors.SchemaViolation {
+  let fld = attr_uint_schema(element, "fld", 0)
+  let mp_fld = attr_uint_opt_schema(element, "mpFld")
   let type_ = match attr(element, "type") {
     Some(value) => value
     None => ""
   }
-  let eval_order = attr_int(element, "evalOrder", 0)
-  let id = attr_uint(element, "id", 0)
-  let i_measure_hier = attr_uint_opt(element, "iMeasureHier")
-  let i_measure_fld = attr_uint_opt(element, "iMeasureFld")
+  let eval_order = attr_int_schema(element, "evalOrder", 0)
+  let id = attr_uint_schema(element, "id", 0)
+  let i_measure_hier = attr_uint_opt_schema(element, "iMeasureHier")
+  let i_measure_fld = attr_uint_opt_schema(element, "iMeasureFld")
   let name = attr(element, "name")
   let description = attr(element, "description")
   let string_value1 = attr(element, "stringValue1")
