@@ -6,3 +6,7 @@ import {
   "moonbitlang/core/strconv",
   "trkbt10/ooxml/xml",
 }
+
+import {
+  "moonbitlang/core/encoding/utf8",
+} for "wbtest"

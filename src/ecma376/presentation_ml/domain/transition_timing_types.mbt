@@ -2018,16 +2018,14 @@ pub fn CT_TLAnimVariantBooleanVal::from_element(
 ///|
 pub fn CT_TLAnimVariantBooleanVal::new(
   element : @xml.Element,
-) -> CT_TLAnimVariantBooleanVal {
-  CT_TLAnimVariantBooleanVal::from_element(element) catch {
-    _ => { val: false, element_name: element.name }
-  }
+) -> CT_TLAnimVariantBooleanVal raise SchemaViolation {
+  CT_TLAnimVariantBooleanVal::from_element(element)
 }
 
 ///|
 pub fn CT_TLAnimVariantBooleanVal::parse(
   element : @xml.Element,
-) -> CT_TLAnimVariantBooleanVal {
+) -> CT_TLAnimVariantBooleanVal raise SchemaViolation {
   CT_TLAnimVariantBooleanVal::new(element)
 }
 
@@ -2077,16 +2075,14 @@ pub fn CT_TLAnimVariantIntegerVal::from_element(
 ///|
 pub fn CT_TLAnimVariantIntegerVal::new(
   element : @xml.Element,
-) -> CT_TLAnimVariantIntegerVal {
-  CT_TLAnimVariantIntegerVal::from_element(element) catch {
-    _ => { val: 0, element_name: element.name }
-  }
+) -> CT_TLAnimVariantIntegerVal raise SchemaViolation {
+  CT_TLAnimVariantIntegerVal::from_element(element)
 }
 
 ///|
 pub fn CT_TLAnimVariantIntegerVal::parse(
   element : @xml.Element,
-) -> CT_TLAnimVariantIntegerVal {
+) -> CT_TLAnimVariantIntegerVal raise SchemaViolation {
   CT_TLAnimVariantIntegerVal::new(element)
 }
 
@@ -2135,16 +2131,14 @@ pub fn CT_TLAnimVariantFloatVal::from_element(
 ///|
 pub fn CT_TLAnimVariantFloatVal::new(
   element : @xml.Element,
-) -> CT_TLAnimVariantFloatVal {
-  CT_TLAnimVariantFloatVal::from_element(element) catch {
-    _ => { val: 0.0, element_name: element.name }
-  }
+) -> CT_TLAnimVariantFloatVal raise SchemaViolation {
+  CT_TLAnimVariantFloatVal::from_element(element)
 }
 
 ///|
 pub fn CT_TLAnimVariantFloatVal::parse(
   element : @xml.Element,
-) -> CT_TLAnimVariantFloatVal {
+) -> CT_TLAnimVariantFloatVal raise SchemaViolation {
   CT_TLAnimVariantFloatVal::new(element)
 }
 
@@ -2186,16 +2180,14 @@ pub fn CT_TLAnimVariantStringVal::from_element(
 ///|
 pub fn CT_TLAnimVariantStringVal::new(
   element : @xml.Element,
-) -> CT_TLAnimVariantStringVal {
-  CT_TLAnimVariantStringVal::from_element(element) catch {
-    _ => { val: "", element_name: element.name }
-  }
+) -> CT_TLAnimVariantStringVal raise SchemaViolation {
+  CT_TLAnimVariantStringVal::from_element(element)
 }
 
 ///|
 pub fn CT_TLAnimVariantStringVal::parse(
   element : @xml.Element,
-) -> CT_TLAnimVariantStringVal {
+) -> CT_TLAnimVariantStringVal raise SchemaViolation {
   CT_TLAnimVariantStringVal::new(element)
 }
 

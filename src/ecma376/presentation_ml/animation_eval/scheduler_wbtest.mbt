@@ -245,6 +245,17 @@ test "§19.5 animation variants reject malformed boolean and tav timing" {
 }
 
 ///|
+test "§19.5 animation variants reject missing required val attributes" {
+  let before = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
+    "<set><cBhvr><cTn id=\"6\"/></cBhvr><to>"
+  let after = "</to></set></childTnLst></cTn></par></tnLst></timing>"
+  assert_timing_schema_violation(before + "<boolVal/>" + after)
+  assert_timing_schema_violation(before + "<intVal/>" + after)
+  assert_timing_schema_violation(before + "<fltVal/>" + after)
+  assert_timing_schema_violation(before + "<strVal/>" + after)
+}
+
+///|
 test "§19.5.1 anim from/to interpolates linearly" {
   let xml = "<timing><tnLst><par><cTn id=\"1\"><childTnLst>" +
     "<anim from=\"0\" to=\"100\" calcmode=\"lin\" valueType=\"num\"><cBhvr><cTn id=\"5\" dur=\"1000\" fill=\"hold\"/><tgtEl><spTgt spid=\"3\"/></tgtEl><attrNameLst><attrName>ppt_x</attrName></attrNameLst></cBhvr></anim>" +

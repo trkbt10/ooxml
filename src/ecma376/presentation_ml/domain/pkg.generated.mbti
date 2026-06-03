@@ -1132,8 +1132,8 @@ pub(all) struct CT_TLAnimVariantBooleanVal {
   element_name : @xml.QName
 } derive(Eq, @debug.Debug)
 pub fn CT_TLAnimVariantBooleanVal::from_element(@xml.Element) -> Self raise SchemaViolation
-pub fn CT_TLAnimVariantBooleanVal::new(@xml.Element) -> Self
-pub fn CT_TLAnimVariantBooleanVal::parse(@xml.Element) -> Self
+pub fn CT_TLAnimVariantBooleanVal::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TLAnimVariantBooleanVal::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLAnimVariantBooleanVal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimVariantFloatVal {
@@ -1141,8 +1141,8 @@ pub(all) struct CT_TLAnimVariantFloatVal {
   element_name : @xml.QName
 } derive(Eq, @debug.Debug)
 pub fn CT_TLAnimVariantFloatVal::from_element(@xml.Element) -> Self raise SchemaViolation
-pub fn CT_TLAnimVariantFloatVal::new(@xml.Element) -> Self
-pub fn CT_TLAnimVariantFloatVal::parse(@xml.Element) -> Self
+pub fn CT_TLAnimVariantFloatVal::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TLAnimVariantFloatVal::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLAnimVariantFloatVal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimVariantIntegerVal {
@@ -1150,8 +1150,8 @@ pub(all) struct CT_TLAnimVariantIntegerVal {
   element_name : @xml.QName
 } derive(Eq, @debug.Debug)
 pub fn CT_TLAnimVariantIntegerVal::from_element(@xml.Element) -> Self raise SchemaViolation
-pub fn CT_TLAnimVariantIntegerVal::new(@xml.Element) -> Self
-pub fn CT_TLAnimVariantIntegerVal::parse(@xml.Element) -> Self
+pub fn CT_TLAnimVariantIntegerVal::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TLAnimVariantIntegerVal::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLAnimVariantIntegerVal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimVariantStringVal {
@@ -1159,8 +1159,8 @@ pub(all) struct CT_TLAnimVariantStringVal {
   element_name : @xml.QName
 } derive(Eq, @debug.Debug)
 pub fn CT_TLAnimVariantStringVal::from_element(@xml.Element) -> Self raise SchemaViolation
-pub fn CT_TLAnimVariantStringVal::new(@xml.Element) -> Self
-pub fn CT_TLAnimVariantStringVal::parse(@xml.Element) -> Self
+pub fn CT_TLAnimVariantStringVal::new(@xml.Element) -> Self raise SchemaViolation
+pub fn CT_TLAnimVariantStringVal::parse(@xml.Element) -> Self raise SchemaViolation
 pub fn CT_TLAnimVariantStringVal::to_element(Self) -> @xml.Element
 
 pub(all) struct CT_TLAnimateBehavior {

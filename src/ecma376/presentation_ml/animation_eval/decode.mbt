@@ -1043,47 +1043,38 @@ pub fn decode_anim_variant(
         let kind_local = element.name.local_name
         let value = attr_local(element, "val")
         return match kind_local {
-          "boolVal" =>
-            match value {
-              Some(text) =>
-                Some(
-                  @domain.AnimVariantBool(parse_xsd_bool(text, "boolVal/@val")),
+          "boolVal" => {
+            let text = require_anim_variant_val(value, "boolVal/@val")
+            Some(@domain.AnimVariantBool(parse_xsd_bool(text, "boolVal/@val")))
+          }
+          "intVal" => {
+            let text = require_anim_variant_val(value, "intVal/@val")
+            match parse_signed_int(text) {
+              Some(n) => Some(@domain.AnimVariantInt(n))
+              None =>
+                raise @opc_errors.SchemaViolation(
+                  section=animation_section,
+                  path="intVal/@val",
+                  reason="malformed integer: " + text,
                 )
-              None => None
             }
-          "intVal" =>
-            match value {
-              Some(text) =>
-                match parse_signed_int(text) {
-                  Some(n) => Some(@domain.AnimVariantInt(n))
-                  None =>
-                    raise @opc_errors.SchemaViolation(
-                      section=animation_section,
-                      path="intVal/@val",
-                      reason="malformed integer: " + text,
-                    )
-                }
-              None => None
+          }
+          "fltVal" => {
+            let text = require_anim_variant_val(value, "fltVal/@val")
+            match parse_double(text) {
+              Some(d) => Some(@domain.AnimVariantFloat(d))
+              None =>
+                raise @opc_errors.SchemaViolation(
+                  section=animation_section,
+                  path="fltVal/@val",
+                  reason="malformed float: " + text,
+                )
             }
-          "fltVal" =>
-            match value {
-              Some(text) =>
-                match parse_double(text) {
-                  Some(d) => Some(@domain.AnimVariantFloat(d))
-                  None =>
-                    raise @opc_errors.SchemaViolation(
-                      section=animation_section,
-                      path="fltVal/@val",
-                      reason="malformed float: " + text,
-                    )
-                }
-              None => None
-            }
-          "strVal" =>
-            match value {
-              Some(text) => Some(@domain.AnimVariantString(text))
-              None => None
-            }
+          }
+          "strVal" => {
+            let text = require_anim_variant_val(value, "strVal/@val")
+            Some(@domain.AnimVariantString(text))
+          }
           "clrVal" =>
             Some(
               @domain.AnimVariantColor(serialise_color_endpoint(val_element)),
@@ -1095,6 +1086,22 @@ pub fn decode_anim_variant(
     }
   }
   None
+}
+
+///|
+fn require_anim_variant_val(
+  value : String?,
+  path : String,
+) -> String raise @opc_errors.SchemaViolation {
+  match value {
+    Some(text) => text
+    None =>
+      raise @opc_errors.SchemaViolation(
+        section=animation_section,
+        path~,
+        reason="missing required @val attribute",
+      )
+  }
 }
 
 ///|
