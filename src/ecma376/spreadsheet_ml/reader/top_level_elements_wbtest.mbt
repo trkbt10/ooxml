@@ -1511,6 +1511,41 @@ test "SML pivotCacheDefinition reader rejects malformed tuple-set numerics" {
     "<s:tupleCache><s:sets><s:set maxRank=\"abc\"/></s:sets></s:tupleCache>" +
     "</s:pivotCacheDefinition>",
   )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:sets><s:set><s:tpls c=\"abc\"/></s:set></s:sets></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:sets><s:set><s:sortByTuple c=\"abc\"/></s:set></s:sets></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:sets><s:set><s:tpls><s:tpl fld=\"abc\"/></s:tpls></s:set></s:sets></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:sets><s:set><s:tpls><s:tpl hier=\"abc\"/></s:tpls></s:set></s:sets></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:sets><s:set><s:tpls><s:tpl item=\"abc\"/></s:tpls></s:set></s:sets></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:queryCache count=\"abc\"/></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:queryCache><s:query><s:tpls c=\"abc\"/></s:query></s:queryCache></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
 }
 
 ///|

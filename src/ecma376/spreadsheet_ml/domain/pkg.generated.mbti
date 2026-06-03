@@ -2626,14 +2626,14 @@ pub(all) struct CT_Query {
   mdx : String
   tpls : CT_Tuples?
 } derive(Eq, @debug.Debug)
-pub fn CT_Query::new(@xml.Element) -> Self
+pub fn CT_Query::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_QueryCache {
   element : @xml.Element
   count : Int?
   queries : Array[CT_Query]
 } derive(Eq, @debug.Debug)
-pub fn CT_QueryCache::new(@xml.Element) -> Self
+pub fn CT_QueryCache::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_QueryTable {
   element : @xml.Element
@@ -3613,7 +3613,7 @@ pub(all) struct CT_Tuple {
   hier : Int?
   item : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_Tuple::new(@xml.Element) -> Self
+pub fn CT_Tuple::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TupleCache {
   element : @xml.Element
@@ -3630,7 +3630,7 @@ pub(all) struct CT_Tuples {
   c : Int?
   tpls : Array[CT_Tuple]
 } derive(Eq, @debug.Debug)
-pub fn CT_Tuples::new(@xml.Element) -> Self
+pub fn CT_Tuples::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_UnderlineProperty {
   element : @xml.Element

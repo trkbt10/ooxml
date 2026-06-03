@@ -977,8 +977,10 @@ pub(all) struct CT_Tuples {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Tuples::new(element : @xml.Element) -> CT_Tuples {
-  let c = attr_uint_opt(element, "c")
+pub fn CT_Tuples::new(
+  element : @xml.Element,
+) -> CT_Tuples raise @opc_errors.SchemaViolation {
+  let c = attr_uint_opt_schema(element, "c")
   let tpls : Array[CT_Tuple] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1007,10 +1009,12 @@ pub(all) struct CT_Tuple {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Tuple::new(element : @xml.Element) -> CT_Tuple {
-  let fld = attr_uint_opt(element, "fld")
-  let hier = attr_uint_opt(element, "hier")
-  let item = attr_uint(element, "item", 0)
+pub fn CT_Tuple::new(
+  element : @xml.Element,
+) -> CT_Tuple raise @opc_errors.SchemaViolation {
+  let fld = attr_uint_opt_schema(element, "fld")
+  let hier = attr_uint_opt_schema(element, "hier")
+  let item = attr_uint_schema(element, "item", 0)
   { element, fld, hier, item }
 }
 
@@ -1123,8 +1127,10 @@ pub(all) struct CT_QueryCache {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_QueryCache::new(element : @xml.Element) -> CT_QueryCache {
-  let count = attr_uint_opt(element, "count")
+pub fn CT_QueryCache::new(
+  element : @xml.Element,
+) -> CT_QueryCache raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let queries : Array[CT_Query] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1152,7 +1158,9 @@ pub(all) struct CT_Query {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Query::new(element : @xml.Element) -> CT_Query {
+pub fn CT_Query::new(
+  element : @xml.Element,
+) -> CT_Query raise @opc_errors.SchemaViolation {
   let mdx = match attr(element, "mdx") {
     Some(v) => v
     None => ""
