@@ -1440,13 +1440,17 @@ pub(all) struct CT_XmlColumnPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_XmlColumnPr::new(element : @xml.Element) -> CT_XmlColumnPr {
+pub fn CT_XmlColumnPr::new(
+  element : @xml.Element,
+) -> CT_XmlColumnPr raise @opc_errors.SchemaViolation {
   let map_id = attr_uint(element, "mapId", 0)
   let xpath = match attr(element, "xpath") {
     Some(v) => v
     None => ""
   }
-  let denormalized = attr_bool(element, "denormalized", false)
+  let denormalized = attr_bool_schema(
+    element, "denormalized", false, "Part 1 §18.5.1.7", "xmlColumnPr",
+  )
   let xml_data_type = match attr(element, "xmlDataType") {
     Some(v) => v
     None => ""

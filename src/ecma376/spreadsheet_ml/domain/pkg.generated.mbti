@@ -3463,7 +3463,7 @@ pub(all) struct CT_Table {
   sort_state : @xml.Element?
   table_style_info : CT_TableStyleInfo?
 } derive(Eq, @debug.Debug)
-pub fn CT_Table::new(@xml.Element) -> Self
+pub fn CT_Table::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TableColumn {
   element : @xml.Element
@@ -3479,17 +3479,18 @@ pub(all) struct CT_TableColumn {
   header_row_cell_style : String
   data_cell_style : String
   totals_row_cell_style : String
+  xml_column_pr : CT_XmlColumnPr?
   calculated_column_formula : CT_TableFormula?
   totals_row_formula : CT_TableFormula?
 } derive(Eq, @debug.Debug)
-pub fn CT_TableColumn::new(@xml.Element) -> Self
+pub fn CT_TableColumn::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TableColumns {
   element : @xml.Element
   count : Int
   columns : Array[CT_TableColumn]
 } derive(Eq, @debug.Debug)
-pub fn CT_TableColumns::new(@xml.Element) -> Self
+pub fn CT_TableColumns::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TableFormula {
   element : @xml.Element
@@ -3941,7 +3942,7 @@ pub(all) struct CT_XmlColumnPr {
   xml_data_type : String
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_XmlColumnPr::new(@xml.Element) -> Self
+pub fn CT_XmlColumnPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_XmlPr {
   element : @xml.Element

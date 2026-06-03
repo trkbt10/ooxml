@@ -4307,7 +4307,9 @@ pub(all) struct CT_Table {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Table::new(element : @xml.Element) -> CT_Table {
+pub fn CT_Table::new(
+  element : @xml.Element,
+) -> CT_Table raise @opc_errors.SchemaViolation {
   let mut table_columns : CT_TableColumns? = None
   let mut auto_filter : @xml.Element? = None
   let mut sort_state : @xml.Element? = None
@@ -4367,7 +4369,9 @@ pub(all) struct CT_TableColumns {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TableColumns::new(element : @xml.Element) -> CT_TableColumns {
+pub fn CT_TableColumns::new(
+  element : @xml.Element,
+) -> CT_TableColumns raise @opc_errors.SchemaViolation {
   let columns : Array[CT_TableColumn] = []
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "tableColumn" {
@@ -4403,6 +4407,8 @@ pub(all) struct CT_TableColumn {
   header_row_cell_style : String
   data_cell_style : String
   totals_row_cell_style : String
+  /// <xmlColumnPr> — optional XML mapping properties.
+  xml_column_pr : CT_XmlColumnPr?
   /// <calculatedColumnFormula> — optional typed column formula.
   calculated_column_formula : CT_TableFormula?
   /// <totalsRowFormula> — optional typed totals-row formula.
@@ -4410,12 +4416,16 @@ pub(all) struct CT_TableColumn {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TableColumn::new(element : @xml.Element) -> CT_TableColumn {
+pub fn CT_TableColumn::new(
+  element : @xml.Element,
+) -> CT_TableColumn raise @opc_errors.SchemaViolation {
+  let mut xml_column_pr : CT_XmlColumnPr? = None
   let mut calculated_column_formula : CT_TableFormula? = None
   let mut totals_row_formula : CT_TableFormula? = None
   for child in element.children {
     if child is @xml.Node::Element(e) {
       match e.name.local_name {
+        "xmlColumnPr" => xml_column_pr = Some(CT_XmlColumnPr::new(e))
         "calculatedColumnFormula" =>
           calculated_column_formula = Some(CT_TableFormula::new(e))
         "totalsRowFormula" => totals_row_formula = Some(CT_TableFormula::new(e))
@@ -4437,6 +4447,7 @@ pub fn CT_TableColumn::new(element : @xml.Element) -> CT_TableColumn {
     header_row_cell_style: attr(element, "headerRowCellStyle").unwrap_or(""),
     data_cell_style: attr(element, "dataCellStyle").unwrap_or(""),
     totals_row_cell_style: attr(element, "totalsRowCellStyle").unwrap_or(""),
+    xml_column_pr,
     calculated_column_formula,
     totals_row_formula,
   }

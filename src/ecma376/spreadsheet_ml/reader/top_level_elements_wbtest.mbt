@@ -251,6 +251,20 @@ test "SML pivotCacheRecords reader rejects malformed record booleans" {
 }
 
 ///|
+test "SML table reader rejects malformed XML column booleans" {
+  let invalid = try? read_table(
+    bytes(
+      "<s:table xmlns:s=\"urn:s\">" +
+      "<s:tableColumns><s:tableColumn>" +
+      "<s:xmlColumnPr denormalized=\"maybe\"/>" +
+      "</s:tableColumn></s:tableColumns>" +
+      "</s:table>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "SML externalLink reader rejects malformed sheet data booleans" {
   assert_external_link_schema_violation(
     "<s:externalLink xmlns:s=\"urn:s\">" +

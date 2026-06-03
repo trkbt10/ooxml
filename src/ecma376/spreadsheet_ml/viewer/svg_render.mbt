@@ -12955,7 +12955,11 @@ priv struct TableMeta {
 /// when the `ref` attribute is missing or malformed (a spec-required
 /// attribute; without it the chrome cannot be positioned).
 fn parse_table_meta(elt : @xml.Element) -> TableMeta? {
-  let table = @domain.CT_Table::new(elt)
+  let table = try @domain.CT_Table::new(elt) catch {
+    _ => return None
+  } noraise {
+    value => value
+  }
   let ref_str = table.ref_range
   if ref_str.length() == 0 {
     return None

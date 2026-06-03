@@ -26,7 +26,20 @@ fn tbl_elem(
 ///|
 test "CT_Table projects name / ref / header counts and columns" {
   let col1 = @xml.Node::Element(
-    tbl_elem("tableColumn", [tbl_attr("id", "1"), tbl_attr("name", "Region")], []),
+    tbl_elem("tableColumn", [tbl_attr("id", "1"), tbl_attr("name", "Region")], [
+      @xml.Node::Element(
+        tbl_elem(
+          "xmlColumnPr",
+          [
+            tbl_attr("mapId", "2"),
+            tbl_attr("xpath", "/root/region"),
+            tbl_attr("denormalized", "1"),
+            tbl_attr("xmlDataType", "string"),
+          ],
+          [],
+        ),
+      ),
+    ]),
   )
   let col2 = @xml.Node::Element(
     tbl_elem("tableColumn", [tbl_attr("id", "2"), tbl_attr("name", "Sales")], [
@@ -61,6 +74,15 @@ test "CT_Table projects name / ref / header counts and columns" {
       inspect(tc.columns.length(), content="2")
       inspect(tc.columns[0].name, content="Region")
       inspect(tc.columns[1].name, content="Sales")
+      match tc.columns[0].xml_column_pr {
+        Some(pr) => {
+          inspect(pr.map_id, content="2")
+          inspect(pr.xpath, content="/root/region")
+          inspect(pr.denormalized, content="true")
+          inspect(pr.xml_data_type, content="string")
+        }
+        None => fail("expected xmlColumnPr on column 1")
+      }
       match tc.columns[1].calculated_column_formula {
         Some(f) => {
           inspect(f.formula, content="SUM(1)")
