@@ -392,10 +392,37 @@ test "SML workbook reader rejects malformed calculation property booleans" {
 }
 
 ///|
+fn assert_workbook_calc_pr_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:calcPr " +
+    local_name +
+    "=\"abc\"/></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed calculation property numerics" {
+  assert_workbook_calc_pr_numeric_schema_violation("calcId")
+  assert_workbook_calc_pr_numeric_schema_violation("iterateCount")
+  assert_workbook_calc_pr_numeric_schema_violation("iterateDelta")
+  assert_workbook_calc_pr_numeric_schema_violation("concurrentManualCount")
+}
+
+///|
 test "SML workbook reader rejects malformed file sharing booleans" {
   assert_workbook_schema_violation(
     "<s:workbook xmlns:s=\"urn:s\">" +
     "<s:fileSharing readOnlyRecommended=\"maybe\"/>" +
+    "</s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed file sharing unsigned integers" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:fileSharing spinCount=\"abc\"/>" +
     "</s:workbook>",
   )
 }
@@ -429,6 +456,23 @@ test "SML workbook reader rejects malformed web publishing booleans" {
 }
 
 ///|
+fn assert_workbook_web_publishing_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:webPublishing " +
+    local_name +
+    "=\"abc\"/></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed web publishing numerics" {
+  assert_workbook_web_publishing_numeric_schema_violation("dpi")
+  assert_workbook_web_publishing_numeric_schema_violation("codePage")
+}
+
+///|
 fn assert_workbook_defined_name_bool_schema_violation(
   local_name : String,
 ) -> Unit raise {
@@ -447,6 +491,23 @@ test "SML workbook reader rejects malformed defined name booleans" {
   assert_workbook_defined_name_bool_schema_violation("xlm")
   assert_workbook_defined_name_bool_schema_violation("publishToServer")
   assert_workbook_defined_name_bool_schema_violation("workbookParameter")
+}
+
+///|
+fn assert_workbook_defined_name_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:definedNames><s:definedName name=\"n\" " +
+    local_name +
+    "=\"abc\">Sheet1!$A$1</s:definedName></s:definedNames></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed defined name numerics" {
+  assert_workbook_defined_name_numeric_schema_violation("localSheetId")
+  assert_workbook_defined_name_numeric_schema_violation("functionGroupId")
 }
 
 ///|
@@ -474,6 +535,14 @@ test "SML workbook reader rejects malformed workbook property booleans" {
   assert_workbook_pr_bool_schema_violation("checkCompatibility")
   assert_workbook_pr_bool_schema_violation("autoCompressPictures")
   assert_workbook_pr_bool_schema_violation("refreshAllConnections")
+}
+
+///|
+test "SML workbook reader rejects malformed workbook property unsigned integers" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:workbookPr defaultThemeVersion=\"abc\"/>" +
+    "</s:workbook>",
+  )
 }
 
 ///|
@@ -514,6 +583,21 @@ test "SML workbook reader rejects malformed web publish object booleans" {
 }
 
 ///|
+test "SML workbook reader rejects malformed function group unsigned integers" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:functionGroups builtInGroupCount=\"abc\"/>" +
+    "</s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed sheet unsigned integers" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:sheets><s:sheet name=\"Sheet1\" sheetId=\"abc\"/></s:sheets></s:workbook>",
+  )
+}
+
+///|
 fn assert_workbook_view_bool_schema_violation(
   local_name : String,
 ) -> Unit raise {
@@ -531,6 +615,28 @@ test "SML workbook reader rejects malformed workbook view booleans" {
   assert_workbook_view_bool_schema_violation("showVerticalScroll")
   assert_workbook_view_bool_schema_violation("minimized")
   assert_workbook_view_bool_schema_violation("autoFilterDateGrouping")
+}
+
+///|
+fn assert_workbook_view_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:bookViews><s:workbookView " +
+    local_name +
+    "=\"abc\"/></s:bookViews></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed workbook view numerics" {
+  assert_workbook_view_numeric_schema_violation("activeTab")
+  assert_workbook_view_numeric_schema_violation("firstSheet")
+  assert_workbook_view_numeric_schema_violation("xWindow")
+  assert_workbook_view_numeric_schema_violation("yWindow")
+  assert_workbook_view_numeric_schema_violation("windowWidth")
+  assert_workbook_view_numeric_schema_violation("windowHeight")
+  assert_workbook_view_numeric_schema_violation("tabRatio")
 }
 
 ///|
@@ -560,6 +666,29 @@ test "SML workbook reader rejects malformed custom workbook view booleans" {
   assert_custom_workbook_view_bool_schema_violation("minimized")
   assert_custom_workbook_view_bool_schema_violation("showFormulaBar")
   assert_custom_workbook_view_bool_schema_violation("showStatusbar")
+}
+
+///|
+fn assert_custom_workbook_view_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:customWorkbookViews>" +
+    "<s:customWorkbookView name=\"View\" guid=\"{GUID}\" " +
+    local_name +
+    "=\"abc\"/></s:customWorkbookViews></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed custom workbook view numerics" {
+  assert_custom_workbook_view_numeric_schema_violation("activeSheetId")
+  assert_custom_workbook_view_numeric_schema_violation("xWindow")
+  assert_custom_workbook_view_numeric_schema_violation("yWindow")
+  assert_custom_workbook_view_numeric_schema_violation("windowWidth")
+  assert_custom_workbook_view_numeric_schema_violation("windowHeight")
+  assert_custom_workbook_view_numeric_schema_violation("tabRatio")
+  assert_custom_workbook_view_numeric_schema_violation("mergeInterval")
 }
 
 ///|

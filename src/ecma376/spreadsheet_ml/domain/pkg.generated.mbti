@@ -1467,7 +1467,7 @@ pub(all) struct CT_FunctionGroups {
   function_group : Array[CT_FunctionGroup]
   built_in_group_count : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_FunctionGroups::new(@xml.Element) -> Self
+pub fn CT_FunctionGroups::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FutureMetadata {
   element : @xml.Element
@@ -3184,7 +3184,7 @@ pub(all) struct CT_Sheet {
   state : String
   r_id : String
 } derive(Eq, @debug.Debug)
-pub fn CT_Sheet::new(@xml.Element) -> Self
+pub fn CT_Sheet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SheetBackgroundPicture {
   element : @xml.Element
@@ -3319,7 +3319,7 @@ pub(all) struct CT_Sheets {
   element : @xml.Element
   sheets : Array[CT_Sheet]
 } derive(Eq, @debug.Debug)
-pub fn CT_Sheets::new(@xml.Element) -> Self
+pub fn CT_Sheets::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SingleXmlCell {
   element : @xml.Element

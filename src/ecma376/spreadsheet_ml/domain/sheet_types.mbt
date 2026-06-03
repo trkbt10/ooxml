@@ -4956,8 +4956,8 @@ pub fn CT_BookView::new(
 ) -> CT_BookView raise @opc_errors.SchemaViolation {
   {
     element,
-    active_tab: attr_int(element, "activeTab", 0),
-    first_sheet: attr_int(element, "firstSheet", 0),
+    active_tab: attr_uint_schema(element, "activeTab", 0),
+    first_sheet: attr_uint_schema(element, "firstSheet", 0),
     show_sheet_tabs: book_view_bool(element, "showSheetTabs", true),
     show_horizontal_scroll: book_view_bool(
       element, "showHorizontalScroll", true,
@@ -4965,11 +4965,11 @@ pub fn CT_BookView::new(
     show_vertical_scroll: book_view_bool(element, "showVerticalScroll", true),
     minimized: book_view_bool(element, "minimized", false),
     visibility: attr(element, "visibility").unwrap_or("visible"),
-    x_window: attr_int(element, "xWindow", 0),
-    y_window: attr_int(element, "yWindow", 0),
-    window_width: attr_int(element, "windowWidth", 0),
-    window_height: attr_int(element, "windowHeight", 0),
-    tab_ratio: attr_int(element, "tabRatio", 600),
+    x_window: attr_int_schema(element, "xWindow", 0),
+    y_window: attr_int_schema(element, "yWindow", 0),
+    window_width: attr_uint_schema(element, "windowWidth", 0),
+    window_height: attr_uint_schema(element, "windowHeight", 0),
+    tab_ratio: attr_uint_schema(element, "tabRatio", 600),
     auto_filter_date_grouping: book_view_bool(
       element, "autoFilterDateGrouping", true,
     ),
@@ -5071,11 +5071,11 @@ pub fn CT_CustomWorkbookView::new(
     element,
     name: attr(element, "name").unwrap_or(""),
     guid: attr(element, "guid").unwrap_or(""),
-    active_sheet_id: attr_int(element, "activeSheetId", 0),
-    x_window: attr_int(element, "xWindow", 0),
-    y_window: attr_int(element, "yWindow", 0),
-    window_width: attr_int(element, "windowWidth", 0),
-    window_height: attr_int(element, "windowHeight", 0),
+    active_sheet_id: attr_uint_schema(element, "activeSheetId", 0),
+    x_window: attr_int_schema(element, "xWindow", 0),
+    y_window: attr_int_schema(element, "yWindow", 0),
+    window_width: attr_uint_schema(element, "windowWidth", 0),
+    window_height: attr_uint_schema(element, "windowHeight", 0),
     maximized: custom_workbook_view_bool(element, "maximized", false),
     show_horizontal_scroll: custom_workbook_view_bool(
       element, "showHorizontalScroll", true,
@@ -5084,9 +5084,9 @@ pub fn CT_CustomWorkbookView::new(
       element, "showVerticalScroll", true,
     ),
     show_sheet_tabs: custom_workbook_view_bool(element, "showSheetTabs", true),
-    tab_ratio: attr_int(element, "tabRatio", 600),
+    tab_ratio: attr_uint_schema(element, "tabRatio", 600),
     auto_update: custom_workbook_view_bool(element, "autoUpdate", false),
-    merge_interval: attr_int(element, "mergeInterval", 0),
+    merge_interval: attr_uint_schema(element, "mergeInterval", 0),
     changes_saved_win: custom_workbook_view_bool(
       element, "changesSavedWin", false,
     ),
@@ -5115,7 +5115,9 @@ pub(all) struct CT_Sheets {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Sheets::new(element : @xml.Element) -> CT_Sheets {
+pub fn CT_Sheets::new(
+  element : @xml.Element,
+) -> CT_Sheets raise @opc_errors.SchemaViolation {
   let sheets : Array[CT_Sheet] = []
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "sheet" {
@@ -5145,11 +5147,13 @@ pub(all) struct CT_Sheet {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Sheet::new(element : @xml.Element) -> CT_Sheet {
+pub fn CT_Sheet::new(
+  element : @xml.Element,
+) -> CT_Sheet raise @opc_errors.SchemaViolation {
   {
     element,
     name: attr(element, "name").unwrap_or(""),
-    sheet_id: attr_int(element, "sheetId", 0),
+    sheet_id: attr_uint_schema(element, "sheetId", 0),
     state: attr(element, "state").unwrap_or("visible"),
     r_id: attr(element, "id").unwrap_or(""),
   }

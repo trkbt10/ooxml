@@ -3764,7 +3764,9 @@ pub fn CT_WorkbookPr::new(
   let refresh_all_connections = workbook_pr_bool(
     element, "refreshAllConnections", false,
   )
-  let default_theme_version = attr_uint_opt(element, "defaultThemeVersion")
+  let default_theme_version = attr_uint_opt_schema(
+    element, "defaultThemeVersion",
+  )
   {
     element,
     date1904,
@@ -3940,7 +3942,7 @@ pub(all) struct CT_CalcPr {
 pub fn CT_CalcPr::new(
   element : @xml.Element,
 ) -> CT_CalcPr raise @opc_errors.SchemaViolation {
-  let calc_id = attr_uint_opt(element, "calcId")
+  let calc_id = attr_uint_opt_schema(element, "calcId")
   let calc_mode = match attr(element, "calcMode") {
     Some(value) => value
     None => "auto"
@@ -3951,13 +3953,15 @@ pub fn CT_CalcPr::new(
     None => "A1"
   }
   let iterate = calc_pr_bool(element, "iterate", false)
-  let iterate_count = attr_uint(element, "iterateCount", 100)
-  let iterate_delta = attr_double(element, "iterateDelta", 0.001)
+  let iterate_count = attr_uint_schema(element, "iterateCount", 100)
+  let iterate_delta = attr_double_schema(element, "iterateDelta", 0.001)
   let full_precision = calc_pr_bool(element, "fullPrecision", true)
   let calc_completed = calc_pr_bool(element, "calcCompleted", true)
   let calc_on_save = calc_pr_bool(element, "calcOnSave", true)
   let concurrent_calc = calc_pr_bool(element, "concurrentCalc", true)
-  let concurrent_manual_count = attr_uint_opt(element, "concurrentManualCount")
+  let concurrent_manual_count = attr_uint_opt_schema(
+    element, "concurrentManualCount",
+  )
   let force_full_calc = calc_pr_bool_opt(element, "forceFullCalc")
   {
     element,
@@ -4064,12 +4068,12 @@ pub fn CT_DefinedName::new(
   let description = attr(element, "description")
   let help = attr(element, "help")
   let status_bar = attr(element, "statusBar")
-  let local_sheet_id = attr_uint_opt(element, "localSheetId")
+  let local_sheet_id = attr_uint_opt_schema(element, "localSheetId")
   let hidden = defined_name_bool(element, "hidden", false)
   let function = defined_name_bool(element, "function", false)
   let vb_procedure = defined_name_bool(element, "vbProcedure", false)
   let xlm = defined_name_bool(element, "xlm", false)
-  let function_group_id = attr_uint_opt(element, "functionGroupId")
+  let function_group_id = attr_uint_opt_schema(element, "functionGroupId")
   let shortcut_key = attr(element, "shortcutKey")
   let publish_to_server = defined_name_bool(element, "publishToServer", false)
   let workbook_parameter = defined_name_bool(
@@ -4135,7 +4139,7 @@ pub fn CT_FileSharing::new(
   let algorithm_name = attr(element, "algorithmName")
   let hash_value = attr(element, "hashValue")
   let salt_value = attr(element, "saltValue")
-  let spin_count = attr_uint_opt(element, "spinCount")
+  let spin_count = attr_uint_opt_schema(element, "spinCount")
   let reservation_password = attr(element, "reservationPassword")
   {
     element,
@@ -4193,9 +4197,9 @@ pub fn CT_WebPublishing::new(
     Some(value) => value
     None => "800x600"
   }
-  let dpi = attr_uint(element, "dpi", 96)
+  let dpi = attr_uint_schema(element, "dpi", 96)
   let character_set = attr(element, "characterSet")
-  let code_page = attr_uint_opt(element, "codePage")
+  let code_page = attr_uint_opt_schema(element, "codePage")
   {
     element,
     css,
@@ -4226,7 +4230,9 @@ pub(all) struct CT_FunctionGroups {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FunctionGroups::new(element : @xml.Element) -> CT_FunctionGroups {
+pub fn CT_FunctionGroups::new(
+  element : @xml.Element,
+) -> CT_FunctionGroups raise @opc_errors.SchemaViolation {
   let function_group : Array[CT_FunctionGroup] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -4235,7 +4241,7 @@ pub fn CT_FunctionGroups::new(element : @xml.Element) -> CT_FunctionGroups {
       }
     }
   }
-  let built_in_group_count = attr_uint(element, "builtInGroupCount", 16)
+  let built_in_group_count = attr_uint_schema(element, "builtInGroupCount", 16)
   { element, function_group, built_in_group_count }
 }
 
