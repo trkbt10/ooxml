@@ -2415,8 +2415,10 @@ pub(all) struct CT_X {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_X::new(element : @xml.Element) -> CT_X {
-  let v = attr_int(element, "v", 0)
+pub fn CT_X::new(
+  element : @xml.Element,
+) -> CT_X raise @opc_errors.SchemaViolation {
+  let v = attr_int_schema(element, "v", 0)
   { element, v }
 }
 

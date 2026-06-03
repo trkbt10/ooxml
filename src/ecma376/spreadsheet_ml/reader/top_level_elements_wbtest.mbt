@@ -1434,6 +1434,11 @@ test "SML pivotCacheDefinition reader rejects malformed cache-field numerics" {
     "<s:cacheFields><s:cacheField mappingCount=\"abc\"/></s:cacheFields>" +
     "</s:pivotCacheDefinition>",
   )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField><s:mpMap v=\"abc\"/></s:cacheField></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
 }
 
 ///|
@@ -1679,6 +1684,7 @@ test "SML pivotCacheDefinition reader rejects malformed shared-item numerics" {
   assert_pivot_cache_shared_item_schema_violation(
     "<s:d v=\"2020-01-01T00:00:00\" cp=\"abc\"/>",
   )
+  assert_pivot_cache_shared_item_schema_violation("<s:m><s:x v=\"abc\"/></s:m>")
 }
 
 ///|
@@ -1694,6 +1700,9 @@ test "SML pivotCacheDefinition reader rejects malformed shared string numerics" 
   )
   assert_pivot_cache_shared_item_schema_violation(
     "<s:s v=\"East\" fc=\"nothex\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:s v=\"East\"><s:x v=\"abc\"/></s:s>",
   )
 }
 
@@ -1965,6 +1974,10 @@ test "SML pivotTableDefinition reader rejects malformed field item numerics" {
   )
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:rowItems><s:i i=\"abc\"/></s:rowItems>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:rowItems><s:i><s:x v=\"abc\"/></s:i></s:rowItems>" +
     "</s:pivotTableDefinition>",
   )
   assert_pivot_table_definition_schema_violation(
