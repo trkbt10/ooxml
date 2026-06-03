@@ -3664,11 +3664,11 @@ pub fn CT_Slide::parse(
   }
   let clr_map_ovr = pml_first_child(element, "clrMapOvr")
   let transition = match pml_first_child(element, "transition") {
-    Some(c) => Some(CT_SlideTransition::parse(c))
+    Some(c) => Some(CT_SlideTransition::from_element(c))
     None => None
   }
   let timing = match pml_first_child(element, "timing") {
-    Some(c) => Some(CT_SlideTiming::new(c))
+    Some(c) => Some(CT_SlideTiming::from_element(c))
     None => None
   }
   let ext_lst = match pml_first_child(element, "extLst") {
@@ -3784,11 +3784,11 @@ pub fn CT_SlideLayout::parse(
   }
   let clr_map_ovr = pml_first_child(element, "clrMapOvr")
   let transition = match pml_first_child(element, "transition") {
-    Some(c) => Some(CT_SlideTransition::parse(c))
+    Some(c) => Some(CT_SlideTransition::from_element(c))
     None => None
   }
   let timing = match pml_first_child(element, "timing") {
-    Some(c) => Some(CT_SlideTiming::new(c))
+    Some(c) => Some(CT_SlideTiming::from_element(c))
     None => None
   }
   let hf = match pml_first_child(element, "hf") {
@@ -4049,11 +4049,11 @@ pub fn CT_SlideMaster::parse(
     None => None
   }
   let transition = match pml_first_child(element, "transition") {
-    Some(c) => Some(CT_SlideTransition::parse(c))
+    Some(c) => Some(CT_SlideTransition::from_element(c))
     None => None
   }
   let timing = match pml_first_child(element, "timing") {
-    Some(c) => Some(CT_SlideTiming::new(c))
+    Some(c) => Some(CT_SlideTiming::from_element(c))
     None => None
   }
   let hf = match pml_first_child(element, "hf") {

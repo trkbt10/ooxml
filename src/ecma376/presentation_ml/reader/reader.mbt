@@ -45,13 +45,13 @@ pub fn read_sld(bytes : Bytes) -> @domain.CT_Slide raise {
 ///|
 /// Read top-level XSD element sldLayout as CT_SlideLayout (§19).
 pub fn read_sld_layout(bytes : Bytes) -> @domain.CT_SlideLayout raise {
-  @domain.sld_layout(read_pml_root(bytes, "sldLayout"))
+  @domain.CT_SlideLayout::parse(read_pml_root(bytes, "sldLayout"))
 }
 
 ///|
 /// Read top-level XSD element sldMaster as CT_SlideMaster (§19).
 pub fn read_sld_master(bytes : Bytes) -> @domain.CT_SlideMaster raise {
-  @domain.sld_master(read_pml_root(bytes, "sldMaster"))
+  @domain.CT_SlideMaster::parse(read_pml_root(bytes, "sldMaster"))
 }
 
 ///|
