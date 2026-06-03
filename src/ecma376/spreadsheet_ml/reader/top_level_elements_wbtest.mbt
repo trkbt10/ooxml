@@ -727,3 +727,27 @@ test "SML worksheet reader rejects malformed sheet calculation booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed sheet format booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:sheetFormatPr defaultRowHeight=\"15\" customHeight=\"maybe\"/>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML dialogsheet reader rejects malformed sheet format booleans" {
+  let invalid = try? read_dialogsheet(
+    bytes(
+      "<s:dialogsheet xmlns:s=\"urn:s\">" +
+      "<s:sheetFormatPr defaultRowHeight=\"15\" zeroHeight=\"maybe\"/>" +
+      "</s:dialogsheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}

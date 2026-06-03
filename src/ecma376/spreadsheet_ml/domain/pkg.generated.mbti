@@ -3222,7 +3222,7 @@ pub(all) struct CT_SheetFormatPr {
   outline_level_row : Int
   outline_level_col : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_SheetFormatPr::new(@xml.Element) -> Self
+pub fn CT_SheetFormatPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SheetId {
   element : @xml.Element

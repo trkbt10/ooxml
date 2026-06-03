@@ -1796,14 +1796,24 @@ pub(all) struct CT_SheetFormatPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SheetFormatPr::new(element : @xml.Element) -> CT_SheetFormatPr {
+pub fn CT_SheetFormatPr::new(
+  element : @xml.Element,
+) -> CT_SheetFormatPr raise @opc_errors.SchemaViolation {
   let base_col_width = attr_uint(element, "baseColWidth", 8)
   let default_col_width = attr_double_opt(element, "defaultColWidth")
   let default_row_height = attr_double(element, "defaultRowHeight", 0.0)
-  let custom_height = attr_bool(element, "customHeight", false)
-  let zero_height = attr_bool(element, "zeroHeight", false)
-  let thick_top = attr_bool(element, "thickTop", false)
-  let thick_bottom = attr_bool(element, "thickBottom", false)
+  let custom_height = attr_bool_schema(
+    element, "customHeight", false, "Part 1 §18.3.1.81", "sheetFormatPr",
+  )
+  let zero_height = attr_bool_schema(
+    element, "zeroHeight", false, "Part 1 §18.3.1.81", "sheetFormatPr",
+  )
+  let thick_top = attr_bool_schema(
+    element, "thickTop", false, "Part 1 §18.3.1.81", "sheetFormatPr",
+  )
+  let thick_bottom = attr_bool_schema(
+    element, "thickBottom", false, "Part 1 §18.3.1.81", "sheetFormatPr",
+  )
   let outline_level_row = attr_uint(element, "outlineLevelRow", 0)
   let outline_level_col = attr_uint(element, "outlineLevelCol", 0)
   {
