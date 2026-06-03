@@ -3773,7 +3773,7 @@ pub(all) struct CT_WebPublishing {
   character_set : String?
   code_page : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_WebPublishing::new(@xml.Element) -> Self
+pub fn CT_WebPublishing::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Workbook {
   element : @xml.Element

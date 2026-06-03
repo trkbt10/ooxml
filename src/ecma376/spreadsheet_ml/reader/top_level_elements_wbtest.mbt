@@ -222,6 +222,26 @@ test "SML workbook reader rejects malformed smart tag property booleans" {
 }
 
 ///|
+fn assert_workbook_web_publishing_bool_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:webPublishing " +
+    local_name +
+    "=\"maybe\"/></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed web publishing booleans" {
+  assert_workbook_web_publishing_bool_schema_violation("css")
+  assert_workbook_web_publishing_bool_schema_violation("thicket")
+  assert_workbook_web_publishing_bool_schema_violation("longFileNames")
+  assert_workbook_web_publishing_bool_schema_violation("vml")
+  assert_workbook_web_publishing_bool_schema_violation("allowPng")
+}
+
+///|
 test "SML metadata reader rejects malformed metadataType booleans" {
   let invalid = try? read_metadata(
     bytes(

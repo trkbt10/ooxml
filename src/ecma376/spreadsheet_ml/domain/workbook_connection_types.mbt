@@ -78,6 +78,17 @@ fn smart_tag_pr_bool(
 }
 
 ///|
+fn web_publishing_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.24", "webPublishing",
+  )
+}
+
+///|
 /// XSD complex type CT_SortState — Part 1 §18.3.1.92 (`<sortState>` Sort
 /// State). Sequence children: `<sortCondition>*` (CT_SortCondition,
 /// 0..64) and optional `<extLst>` (CT_ExtensionList). Attributes:
@@ -4132,12 +4143,14 @@ pub(all) struct CT_WebPublishing {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_WebPublishing::new(element : @xml.Element) -> CT_WebPublishing {
-  let css = attr_bool(element, "css", true)
-  let thicket = attr_bool(element, "thicket", true)
-  let long_file_names = attr_bool(element, "longFileNames", true)
-  let vml = attr_bool(element, "vml", false)
-  let allow_png = attr_bool(element, "allowPng", false)
+pub fn CT_WebPublishing::new(
+  element : @xml.Element,
+) -> CT_WebPublishing raise @opc_errors.SchemaViolation {
+  let css = web_publishing_bool(element, "css", true)
+  let thicket = web_publishing_bool(element, "thicket", true)
+  let long_file_names = web_publishing_bool(element, "longFileNames", true)
+  let vml = web_publishing_bool(element, "vml", false)
+  let allow_png = web_publishing_bool(element, "allowPng", false)
   let target_screen_size = match attr(element, "targetScreenSize") {
     Some(value) => value
     None => "800x600"
