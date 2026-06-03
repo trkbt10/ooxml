@@ -2073,7 +2073,7 @@ pub(all) struct CT_ObjectPr {
   r_id : String
   anchor : @xml.Element?
 } derive(Eq, @debug.Debug)
-pub fn CT_ObjectPr::new(@xml.Element) -> Self
+pub fn CT_ObjectPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_OlapPr {
   element : @xml.Element

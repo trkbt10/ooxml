@@ -4271,7 +4271,9 @@ pub(all) struct CT_ObjectPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ObjectPr::new(element : @xml.Element) -> CT_ObjectPr {
+pub fn CT_ObjectPr::new(
+  element : @xml.Element,
+) -> CT_ObjectPr raise @opc_errors.SchemaViolation {
   let mut anchor : @xml.Element? = None
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "anchor" {
@@ -4280,20 +4282,31 @@ pub fn CT_ObjectPr::new(element : @xml.Element) -> CT_ObjectPr {
   }
   {
     element,
-    locked: attr_bool(element, "locked", true),
-    default_size: attr_bool(element, "defaultSize", true),
-    disabled: attr_bool(element, "disabled", false),
-    auto_fill: attr_bool(element, "autoFill", true),
-    auto_pict: attr_bool(element, "autoPict", true),
-    auto_line: attr_bool(element, "autoLine", true),
+    locked: object_pr_bool(element, "locked", true),
+    default_size: object_pr_bool(element, "defaultSize", true),
+    disabled: object_pr_bool(element, "disabled", false),
+    auto_fill: object_pr_bool(element, "autoFill", true),
+    auto_pict: object_pr_bool(element, "autoPict", true),
+    auto_line: object_pr_bool(element, "autoLine", true),
     alt_text: attr(element, "altText").unwrap_or(""),
-    print: attr_bool(element, "print", true),
-    ui_object: attr_bool(element, "uiObject", false),
-    dde: attr_bool(element, "dde", false),
+    print: object_pr_bool(element, "print", true),
+    ui_object: object_pr_bool(element, "uiObject", false),
+    dde: object_pr_bool(element, "dde", false),
     macro_ref: attr(element, "macro").unwrap_or(""),
     r_id: attr(element, "id").unwrap_or(""),
     anchor,
   }
+}
+
+///|
+fn object_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.55", "objectPr",
+  )
 }
 
 ///|

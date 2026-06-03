@@ -559,6 +559,20 @@ test "SML worksheet reader rejects malformed OLE object booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed object property booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:oleObjects><s:oleObject shapeId=\"1\">" +
+      "<s:objectPr defaultSize=\"maybe\"/>" +
+      "</s:oleObject></s:oleObjects>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "SML worksheet reader rejects malformed pivot-selection booleans" {
   let invalid = try? read_worksheet(
     bytes(
