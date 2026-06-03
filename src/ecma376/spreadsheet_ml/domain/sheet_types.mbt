@@ -4266,7 +4266,9 @@ pub(all) struct CT_Controls {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Controls::new(element : @xml.Element) -> CT_Controls {
+pub fn CT_Controls::new(
+  element : @xml.Element,
+) -> CT_Controls raise @opc_errors.SchemaViolation {
   let controls : Array[CT_Control] = []
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "control" {
@@ -4293,7 +4295,9 @@ pub(all) struct CT_Control {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Control::new(element : @xml.Element) -> CT_Control {
+pub fn CT_Control::new(
+  element : @xml.Element,
+) -> CT_Control raise @opc_errors.SchemaViolation {
   let mut control_pr : CT_ControlPr? = None
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "controlPr" {
@@ -4349,7 +4353,9 @@ pub(all) struct CT_ControlPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ControlPr::new(element : @xml.Element) -> CT_ControlPr {
+pub fn CT_ControlPr::new(
+  element : @xml.Element,
+) -> CT_ControlPr raise @opc_errors.SchemaViolation {
   let mut anchor : @xml.Element? = None
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "anchor" {
@@ -4358,16 +4364,16 @@ pub fn CT_ControlPr::new(element : @xml.Element) -> CT_ControlPr {
   }
   {
     element,
-    locked: attr_bool(element, "locked", true),
-    default_size: attr_bool(element, "defaultSize", true),
-    disabled: attr_bool(element, "disabled", false),
-    auto_fill: attr_bool(element, "autoFill", true),
-    auto_line: attr_bool(element, "autoLine", true),
-    auto_pict: attr_bool(element, "autoPict", true),
+    locked: control_pr_bool(element, "locked", true),
+    default_size: control_pr_bool(element, "defaultSize", true),
+    disabled: control_pr_bool(element, "disabled", false),
+    auto_fill: control_pr_bool(element, "autoFill", true),
+    auto_line: control_pr_bool(element, "autoLine", true),
+    auto_pict: control_pr_bool(element, "autoPict", true),
     alt_text: attr(element, "altText").unwrap_or(""),
-    print: attr_bool(element, "print", true),
-    recalc_always: attr_bool(element, "recalcAlways", false),
-    ui_object: attr_bool(element, "uiObject", false),
+    print: control_pr_bool(element, "print", true),
+    recalc_always: control_pr_bool(element, "recalcAlways", false),
+    ui_object: control_pr_bool(element, "uiObject", false),
     macro_ref: attr(element, "macro").unwrap_or(""),
     cf: attr(element, "cf").unwrap_or("pict"),
     linked_cell: attr(element, "linkedCell").unwrap_or(""),
@@ -4375,6 +4381,17 @@ pub fn CT_ControlPr::new(element : @xml.Element) -> CT_ControlPr {
     r_id: attr(element, "id").unwrap_or(""),
     anchor,
   }
+}
+
+///|
+fn control_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.19", "controlPr",
+  )
 }
 
 ///|

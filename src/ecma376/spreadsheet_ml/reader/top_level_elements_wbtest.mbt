@@ -907,3 +907,17 @@ test "SML worksheet reader rejects malformed scenario booleans" {
   )
   assert_true(invalid_input_cell is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed control property booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:controls><s:control shapeId=\"1\">" +
+      "<s:controlPr disabled=\"maybe\"/>" +
+      "</s:control></s:controls>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
