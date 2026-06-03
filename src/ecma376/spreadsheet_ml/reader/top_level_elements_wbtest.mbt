@@ -1997,6 +1997,27 @@ test "SML pivotTableDefinition reader rejects malformed chart-format booleans" {
 }
 
 ///|
+test "SML pivotTableDefinition reader rejects malformed chart-format numerics" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:chartFormats count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:chartFormats><s:chartFormat chart=\"abc\" format=\"0\"/>" +
+    "</s:chartFormats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:chartFormats><s:chartFormat chart=\"0\" format=\"abc\"/>" +
+    "</s:chartFormats>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed member-property booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +

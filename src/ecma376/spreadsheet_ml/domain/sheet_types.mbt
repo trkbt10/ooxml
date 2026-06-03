@@ -679,7 +679,7 @@ pub fn CT_ChartFormats::new(
       }
     }
   }
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   { element, chart_format, count }
 }
 
@@ -714,8 +714,8 @@ pub fn CT_ChartFormat::new(
       }
     }
   }
-  let chart = attr_uint(element, "chart", 0)
-  let format = attr_uint(element, "format", 0)
+  let chart = attr_uint_schema(element, "chart", 0)
+  let format = attr_uint_schema(element, "format", 0)
   let series = attr_bool_schema(
     element, "series", false, "Part 1 §18.10.1.12", "chartFormat",
   )
