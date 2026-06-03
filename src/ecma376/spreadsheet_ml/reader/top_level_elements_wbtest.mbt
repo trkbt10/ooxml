@@ -213,6 +213,44 @@ fn assert_external_link_schema_violation(source : String) -> Unit raise {
 }
 
 ///|
+fn assert_pivot_cache_definition_schema_violation(
+  source : String,
+) -> Unit raise {
+  let invalid = try? read_pivot_cache_definition(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField>" +
+    "<s:sharedItems><s:b v=\"1\" u=\"maybe\"/></s:sharedItems>" +
+    "</s:cacheField></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField>" +
+    "<s:fieldGroup><s:groupItems><s:b v=\"maybe\"/></s:groupItems></s:fieldGroup>" +
+    "</s:cacheField></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
+test "SML pivotCacheRecords reader rejects malformed record booleans" {
+  let invalid = try? read_pivot_cache_records(
+    bytes(
+      "<s:pivotCacheRecords xmlns:s=\"urn:s\">" +
+      "<s:r><s:b v=\"1\" f=\"maybe\"/></s:r>" +
+      "</s:pivotCacheRecords>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "SML externalLink reader rejects malformed sheet data booleans" {
   assert_external_link_schema_violation(
     "<s:externalLink xmlns:s=\"urn:s\">" +

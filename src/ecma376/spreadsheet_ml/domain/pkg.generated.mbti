@@ -106,7 +106,7 @@ pub(all) struct CT_Boolean {
   cp : Int?
   x : Array[CT_X]
 } derive(Eq, @debug.Debug)
-pub fn CT_Boolean::new(@xml.Element) -> Self
+pub fn CT_Boolean::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_BooleanProperty {
   element : @xml.Element
@@ -173,14 +173,14 @@ pub(all) struct CT_CacheField {
   mp_maps : Array[CT_X]
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_CacheField::new(@xml.Element) -> Self
+pub fn CT_CacheField::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CacheFields {
   element : @xml.Element
   count : Int?
   cache_fields : Array[CT_CacheField]
 } derive(Eq, @debug.Debug)
-pub fn CT_CacheFields::new(@xml.Element) -> Self
+pub fn CT_CacheFields::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CacheHierarchies {
   element : @xml.Element
@@ -1301,7 +1301,7 @@ pub(all) struct CT_FieldGroup {
   par : Int?
   base : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_FieldGroup::new(@xml.Element) -> Self
+pub fn CT_FieldGroup::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FieldUsage {
   element : @xml.Element
@@ -1513,7 +1513,7 @@ pub(all) struct CT_GroupItems {
   date_times : Array[CT_DateTime]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_GroupItems::new(@xml.Element) -> Self
+pub fn CT_GroupItems::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_GroupLevel {
   element : @xml.Element
@@ -2419,7 +2419,7 @@ pub(all) struct CT_PivotCacheDefinition {
   maps : CT_MeasureDimensionMaps?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotCacheDefinition::new(@xml.Element) -> Self
+pub fn CT_PivotCacheDefinition::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotCacheRecords {
   element : @xml.Element
@@ -2427,7 +2427,7 @@ pub(all) struct CT_PivotCacheRecords {
   records : Array[CT_Record]
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotCacheRecords::new(@xml.Element) -> Self
+pub fn CT_PivotCacheRecords::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotCaches {
   element : @xml.Element
@@ -2778,7 +2778,7 @@ pub(all) struct CT_Record {
   date_times : Array[CT_DateTime]
   x : Array[CT_Index]
 } derive(Eq, @debug.Debug)
-pub fn CT_Record::new(@xml.Element) -> Self
+pub fn CT_Record::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Reviewed {
   element : @xml.Element
@@ -3165,7 +3165,7 @@ pub(all) struct CT_SharedItems {
   count : Int?
   long_text : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_SharedItems::new(@xml.Element) -> Self
+pub fn CT_SharedItems::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SharedUser {
   element : @xml.Element

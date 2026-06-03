@@ -1127,7 +1127,9 @@ pub(all) struct CT_SharedItems {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SharedItems::new(element : @xml.Element) -> CT_SharedItems {
+pub fn CT_SharedItems::new(
+  element : @xml.Element,
+) -> CT_SharedItems raise @opc_errors.SchemaViolation {
   let missings : Array[CT_Missing] = []
   let numbers : Array[CT_Number] = []
   let booleans : Array[CT_Boolean] = []
@@ -1462,7 +1464,9 @@ pub(all) struct CT_FieldGroup {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FieldGroup::new(element : @xml.Element) -> CT_FieldGroup {
+pub fn CT_FieldGroup::new(
+  element : @xml.Element,
+) -> CT_FieldGroup raise @opc_errors.SchemaViolation {
   let mut range_pr : CT_RangePr? = None
   let mut discrete_pr : CT_DiscretePr? = None
   let mut group_items : CT_GroupItems? = None
@@ -1587,7 +1591,9 @@ pub(all) struct CT_GroupItems {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GroupItems::new(element : @xml.Element) -> CT_GroupItems {
+pub fn CT_GroupItems::new(
+  element : @xml.Element,
+) -> CT_GroupItems raise @opc_errors.SchemaViolation {
   let missings : Array[CT_Missing] = []
   let numbers : Array[CT_Number] = []
   let booleans : Array[CT_Boolean] = []
@@ -1636,7 +1642,9 @@ pub(all) struct CT_Record {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Record::new(element : @xml.Element) -> CT_Record {
+pub fn CT_Record::new(
+  element : @xml.Element,
+) -> CT_Record raise @opc_errors.SchemaViolation {
   let missings : Array[CT_Missing] = []
   let numbers : Array[CT_Number] = []
   let booleans : Array[CT_Boolean] = []

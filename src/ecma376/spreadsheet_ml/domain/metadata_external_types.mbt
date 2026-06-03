@@ -191,10 +191,12 @@ pub(all) struct CT_Boolean {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Boolean::new(element : @xml.Element) -> CT_Boolean {
-  let v = attr_bool(element, "v", false)
-  let u = attr_bool_opt(element, "u")
-  let f = attr_bool_opt(element, "f")
+pub fn CT_Boolean::new(
+  element : @xml.Element,
+) -> CT_Boolean raise @opc_errors.SchemaViolation {
+  let v = attr_bool_schema(element, "v", false, "Part 1 §18.10.1.2", "b")
+  let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.2", "b")
+  let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.2", "b")
   let c = attr(element, "c")
   let cp = attr_uint_opt(element, "cp")
   let x : Array[CT_X] = []
@@ -1874,6 +1876,29 @@ fn attr_bool_schema(
           )
       }
     None => default
+  }
+}
+
+///|
+/// Parse an optional xsd:boolean attribute at a schema reader boundary.
+fn attr_bool_schema_opt(
+  element : @xml.Element,
+  local_name : String,
+  section : String,
+  path_prefix : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_bool_text(value) {
+        Some(parsed) => Some(parsed)
+        None =>
+          raise @opc_errors.SchemaViolation(
+            section~,
+            path=path_prefix + "/@" + local_name,
+            reason="expected xsd:boolean lexical, got " + value,
+          )
+      }
+    None => None
   }
 }
 

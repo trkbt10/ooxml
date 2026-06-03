@@ -94,7 +94,7 @@ pub(all) struct CT_PivotCacheDefinition {
 ///|
 pub fn CT_PivotCacheDefinition::new(
   element : @xml.Element,
-) -> CT_PivotCacheDefinition {
+) -> CT_PivotCacheDefinition raise @opc_errors.SchemaViolation {
   let r_id = attr_with_ns(element, "id")
   let invalid = attr_bool(element, "invalid", false)
   let save_data = attr_bool(element, "saveData", true)
@@ -194,7 +194,9 @@ pub(all) struct CT_CacheFields {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CacheFields::new(element : @xml.Element) -> CT_CacheFields {
+pub fn CT_CacheFields::new(
+  element : @xml.Element,
+) -> CT_CacheFields raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let cache_fields : Array[CT_CacheField] = []
   for child in element.children {
@@ -257,7 +259,9 @@ pub(all) struct CT_CacheField {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CacheField::new(element : @xml.Element) -> CT_CacheField {
+pub fn CT_CacheField::new(
+  element : @xml.Element,
+) -> CT_CacheField raise @opc_errors.SchemaViolation {
   let name = match attr(element, "name") {
     Some(v) => v
     None => ""
@@ -471,7 +475,7 @@ pub(all) struct CT_PivotCacheRecords {
 ///|
 pub fn CT_PivotCacheRecords::new(
   element : @xml.Element,
-) -> CT_PivotCacheRecords {
+) -> CT_PivotCacheRecords raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let records : Array[CT_Record] = []
   let mut ext_lst : CT_ExtensionList? = None
