@@ -1168,7 +1168,9 @@ pub(all) struct CT_CalculatedItems {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CalculatedItems::new(element : @xml.Element) -> CT_CalculatedItems {
+pub fn CT_CalculatedItems::new(
+  element : @xml.Element,
+) -> CT_CalculatedItems raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let calculated_items : Array[CT_CalculatedItem] = []
   for child in element.children {
@@ -1200,7 +1202,9 @@ pub(all) struct CT_CalculatedItem {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CalculatedItem::new(element : @xml.Element) -> CT_CalculatedItem {
+pub fn CT_CalculatedItem::new(
+  element : @xml.Element,
+) -> CT_CalculatedItem raise @opc_errors.SchemaViolation {
   let field = attr_uint_opt(element, "field")
   let formula = attr(element, "formula")
   let mut pivot_area : CT_PivotArea? = None
@@ -2026,7 +2030,9 @@ pub(all) struct CT_PivotAreas {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotAreas::new(element : @xml.Element) -> CT_PivotAreas {
+pub fn CT_PivotAreas::new(
+  element : @xml.Element,
+) -> CT_PivotAreas raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let pivot_areas : Array[CT_PivotArea] = []
   for child in element.children {
@@ -2767,20 +2773,33 @@ pub(all) struct CT_PivotArea {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotArea::new(element : @xml.Element) -> CT_PivotArea {
+fn pivot_area_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.10.1.65", "pivotArea",
+  )
+}
+
+///|
+pub fn CT_PivotArea::new(
+  element : @xml.Element,
+) -> CT_PivotArea raise @opc_errors.SchemaViolation {
   let field = attr_int_opt(element, "field")
   let type_ = match attr(element, "type") {
     Some(value) => value
     None => "normal"
   }
-  let data_only = attr_bool(element, "dataOnly", true)
-  let label_only = attr_bool(element, "labelOnly", false)
-  let grand_row = attr_bool(element, "grandRow", false)
-  let grand_col = attr_bool(element, "grandCol", false)
-  let cache_index = attr_bool(element, "cacheIndex", false)
-  let outline = attr_bool(element, "outline", true)
+  let data_only = pivot_area_bool(element, "dataOnly", true)
+  let label_only = pivot_area_bool(element, "labelOnly", false)
+  let grand_row = pivot_area_bool(element, "grandRow", false)
+  let grand_col = pivot_area_bool(element, "grandCol", false)
+  let cache_index = pivot_area_bool(element, "cacheIndex", false)
+  let outline = pivot_area_bool(element, "outline", true)
   let offset = attr(element, "offset")
-  let collapsed_levels_are_subtotals = attr_bool(
+  let collapsed_levels_are_subtotals = pivot_area_bool(
     element, "collapsedLevelsAreSubtotals", false,
   )
   let axis = attr(element, "axis")
@@ -2832,7 +2851,7 @@ pub(all) struct CT_PivotAreaReferences {
 ///|
 pub fn CT_PivotAreaReferences::new(
   element : @xml.Element,
-) -> CT_PivotAreaReferences {
+) -> CT_PivotAreaReferences raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let reference : Array[CT_PivotAreaReference] = []
   for child in element.children {
@@ -2900,26 +2919,49 @@ pub(all) struct CT_PivotAreaReference {
 } derive(Eq, Debug)
 
 ///|
+fn pivot_area_reference_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.10.1.66", "reference",
+  )
+}
+
+///|
 pub fn CT_PivotAreaReference::new(
   element : @xml.Element,
-) -> CT_PivotAreaReference {
+) -> CT_PivotAreaReference raise @opc_errors.SchemaViolation {
   let field = attr_uint_opt(element, "field")
   let count = attr_uint_opt(element, "count")
-  let selected = attr_bool(element, "selected", true)
-  let by_position = attr_bool(element, "byPosition", false)
-  let relative = attr_bool(element, "relative", false)
-  let default_subtotal = attr_bool(element, "defaultSubtotal", false)
-  let sum_subtotal = attr_bool(element, "sumSubtotal", false)
-  let count_a_subtotal = attr_bool(element, "countASubtotal", false)
-  let avg_subtotal = attr_bool(element, "avgSubtotal", false)
-  let max_subtotal = attr_bool(element, "maxSubtotal", false)
-  let min_subtotal = attr_bool(element, "minSubtotal", false)
-  let product_subtotal = attr_bool(element, "productSubtotal", false)
-  let count_subtotal = attr_bool(element, "countSubtotal", false)
-  let std_dev_subtotal = attr_bool(element, "stdDevSubtotal", false)
-  let std_dev_p_subtotal = attr_bool(element, "stdDevPSubtotal", false)
-  let var_subtotal = attr_bool(element, "varSubtotal", false)
-  let var_p_subtotal = attr_bool(element, "varPSubtotal", false)
+  let selected = pivot_area_reference_bool(element, "selected", true)
+  let by_position = pivot_area_reference_bool(element, "byPosition", false)
+  let relative = pivot_area_reference_bool(element, "relative", false)
+  let default_subtotal = pivot_area_reference_bool(
+    element, "defaultSubtotal", false,
+  )
+  let sum_subtotal = pivot_area_reference_bool(element, "sumSubtotal", false)
+  let count_a_subtotal = pivot_area_reference_bool(
+    element, "countASubtotal", false,
+  )
+  let avg_subtotal = pivot_area_reference_bool(element, "avgSubtotal", false)
+  let max_subtotal = pivot_area_reference_bool(element, "maxSubtotal", false)
+  let min_subtotal = pivot_area_reference_bool(element, "minSubtotal", false)
+  let product_subtotal = pivot_area_reference_bool(
+    element, "productSubtotal", false,
+  )
+  let count_subtotal = pivot_area_reference_bool(
+    element, "countSubtotal", false,
+  )
+  let std_dev_subtotal = pivot_area_reference_bool(
+    element, "stdDevSubtotal", false,
+  )
+  let std_dev_p_subtotal = pivot_area_reference_bool(
+    element, "stdDevPSubtotal", false,
+  )
+  let var_subtotal = pivot_area_reference_bool(element, "varSubtotal", false)
+  let var_p_subtotal = pivot_area_reference_bool(element, "varPSubtotal", false)
   let x : Array[CT_Index] = []
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -3378,7 +3420,9 @@ pub(all) struct CT_PivotSelection {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotSelection::new(element : @xml.Element) -> CT_PivotSelection {
+pub fn CT_PivotSelection::new(
+  element : @xml.Element,
+) -> CT_PivotSelection raise @opc_errors.SchemaViolation {
   let pane = match attr(element, "pane") {
     Some(value) => value
     None => "topLeft"

@@ -573,7 +573,7 @@ pub(all) struct CT_ConditionalFormats {
 ///|
 pub fn CT_ConditionalFormats::new(
   element : @xml.Element,
-) -> CT_ConditionalFormats {
+) -> CT_ConditionalFormats raise @opc_errors.SchemaViolation {
   let conditional_format : Array[CT_ConditionalFormat] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -611,7 +611,7 @@ pub(all) struct CT_ConditionalFormat {
 ///|
 pub fn CT_ConditionalFormat::new(
   element : @xml.Element,
-) -> CT_ConditionalFormat {
+) -> CT_ConditionalFormat raise @opc_errors.SchemaViolation {
   let mut pivot_areas : CT_PivotAreas? = None
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -650,7 +650,9 @@ pub(all) struct CT_ChartFormats {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ChartFormats::new(element : @xml.Element) -> CT_ChartFormats {
+pub fn CT_ChartFormats::new(
+  element : @xml.Element,
+) -> CT_ChartFormats raise @opc_errors.SchemaViolation {
   let chart_format : Array[CT_ChartFormat] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -683,7 +685,9 @@ pub(all) struct CT_ChartFormat {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ChartFormat::new(element : @xml.Element) -> CT_ChartFormat {
+pub fn CT_ChartFormat::new(
+  element : @xml.Element,
+) -> CT_ChartFormat raise @opc_errors.SchemaViolation {
   let mut pivot_area : CT_PivotArea? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2151,7 +2155,9 @@ pub(all) struct CT_SheetViews {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SheetViews::new(element : @xml.Element) -> CT_SheetViews {
+pub fn CT_SheetViews::new(
+  element : @xml.Element,
+) -> CT_SheetViews raise @opc_errors.SchemaViolation {
   let sheet_views : Array[CT_SheetView] = []
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -2226,7 +2232,9 @@ pub(all) struct CT_SheetView {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SheetView::new(element : @xml.Element) -> CT_SheetView {
+pub fn CT_SheetView::new(
+  element : @xml.Element,
+) -> CT_SheetView raise @opc_errors.SchemaViolation {
   let mut pane : CT_Pane? = None
   let selections : Array[CT_Selection] = []
   let pivot_selections : Array[CT_PivotSelection] = []

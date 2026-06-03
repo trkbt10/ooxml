@@ -1994,7 +1994,9 @@ pub(all) struct CT_AutoSortScope {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_AutoSortScope::new(element : @xml.Element) -> CT_AutoSortScope {
+pub fn CT_AutoSortScope::new(
+  element : @xml.Element,
+) -> CT_AutoSortScope raise @opc_errors.SchemaViolation {
   let mut pivot_area : CT_PivotArea? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2178,7 +2180,9 @@ pub(all) struct CT_Formats {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Formats::new(element : @xml.Element) -> CT_Formats {
+pub fn CT_Formats::new(
+  element : @xml.Element,
+) -> CT_Formats raise @opc_errors.SchemaViolation {
   let format : Array[CT_Format] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2210,7 +2214,9 @@ pub(all) struct CT_Format {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Format::new(element : @xml.Element) -> CT_Format {
+pub fn CT_Format::new(
+  element : @xml.Element,
+) -> CT_Format raise @opc_errors.SchemaViolation {
   let mut pivot_area : CT_PivotArea? = None
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {

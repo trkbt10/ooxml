@@ -71,7 +71,7 @@ pub(all) struct CT_AutoSortScope {
   element : @xml.Element
   pivot_area : CT_PivotArea
 } derive(Eq, @debug.Debug)
-pub fn CT_AutoSortScope::new(@xml.Element) -> Self
+pub fn CT_AutoSortScope::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_BookView {
   element : @xml.Element
@@ -273,14 +273,14 @@ pub(all) struct CT_CalculatedItem {
   pivot_area : CT_PivotArea?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_CalculatedItem::new(@xml.Element) -> Self
+pub fn CT_CalculatedItem::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CalculatedItems {
   element : @xml.Element
   count : Int?
   calculated_items : Array[CT_CalculatedItem]
 } derive(Eq, @debug.Debug)
-pub fn CT_CalculatedItems::new(@xml.Element) -> Self
+pub fn CT_CalculatedItems::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CalculatedMember {
   element : @xml.Element
@@ -461,14 +461,14 @@ pub(all) struct CT_ChartFormat {
   format : Int
   series : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_ChartFormat::new(@xml.Element) -> Self
+pub fn CT_ChartFormat::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ChartFormats {
   element : @xml.Element
   chart_format : Array[CT_ChartFormat]
   count : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_ChartFormats::new(@xml.Element) -> Self
+pub fn CT_ChartFormats::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Chartsheet {
   element : @xml.Element
@@ -644,14 +644,14 @@ pub(all) struct CT_ConditionalFormat {
   type_ : String
   priority : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_ConditionalFormat::new(@xml.Element) -> Self
+pub fn CT_ConditionalFormat::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ConditionalFormats {
   element : @xml.Element
   conditional_format : Array[CT_ConditionalFormat]
   count : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_ConditionalFormats::new(@xml.Element) -> Self
+pub fn CT_ConditionalFormats::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ConditionalFormatting {
   pivot : Bool
@@ -1447,14 +1447,14 @@ pub(all) struct CT_Format {
   action : String
   dxf_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Format::new(@xml.Element) -> Self
+pub fn CT_Format::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Formats {
   element : @xml.Element
   format : Array[CT_Format]
   count : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_Formats::new(@xml.Element) -> Self
+pub fn CT_Formats::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FunctionGroup {
   element : @xml.Element
@@ -2340,7 +2340,7 @@ pub(all) struct CT_PivotArea {
   references : CT_PivotAreaReferences?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotArea::new(@xml.Element) -> Self
+pub fn CT_PivotArea::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotAreaReference {
   element : @xml.Element
@@ -2364,21 +2364,21 @@ pub(all) struct CT_PivotAreaReference {
   x : Array[CT_Index]
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotAreaReference::new(@xml.Element) -> Self
+pub fn CT_PivotAreaReference::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotAreaReferences {
   element : @xml.Element
   count : Int?
   reference : Array[CT_PivotAreaReference]
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotAreaReferences::new(@xml.Element) -> Self
+pub fn CT_PivotAreaReferences::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotAreas {
   element : @xml.Element
   count : Int?
   pivot_areas : Array[CT_PivotArea]
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotAreas::new(@xml.Element) -> Self
+pub fn CT_PivotAreas::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotCache {
   element : @xml.Element
@@ -2579,7 +2579,7 @@ pub(all) struct CT_PivotSelection {
   r_id : String?
   pivot_area : CT_PivotArea?
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotSelection::new(@xml.Element) -> Self
+pub fn CT_PivotSelection::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotTableStyle {
   element : @xml.Element
@@ -3306,14 +3306,14 @@ pub(all) struct CT_SheetView {
   zoom_scale_page_layout_view : Int
   workbook_view_id : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_SheetView::new(@xml.Element) -> Self
+pub fn CT_SheetView::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SheetViews {
   element : @xml.Element
   sheet_views : Array[CT_SheetView]
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_SheetViews::new(@xml.Element) -> Self
+pub fn CT_SheetViews::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Sheets {
   element : @xml.Element

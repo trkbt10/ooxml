@@ -396,6 +396,22 @@ test "SML pivotTableDefinition reader rejects malformed style booleans" {
 }
 
 ///|
+test "SML pivotTableDefinition reader rejects malformed pivot-area booleans" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats><s:format><s:pivotArea dataOnly=\"maybe\"/></s:format></s:formats>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:formats><s:format><s:pivotArea>" +
+    "<s:references><s:reference selected=\"maybe\"/></s:references>" +
+    "</s:pivotArea></s:format></s:formats>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed member-property booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
