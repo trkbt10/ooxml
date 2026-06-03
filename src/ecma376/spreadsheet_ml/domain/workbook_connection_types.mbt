@@ -450,9 +450,9 @@ pub fn CT_Comment::new(
     Some(value) => value
     None => ""
   }
-  let author_id = attr_uint(element, "authorId", 0)
+  let author_id = attr_uint_schema(element, "authorId", 0)
   let guid = attr(element, "guid")
-  let shape_id = attr_uint_opt(element, "shapeId")
+  let shape_id = attr_uint_opt_schema(element, "shapeId")
   { element, text: text_value, comment_pr, ref_, author_id, guid, shape_id }
 }
 

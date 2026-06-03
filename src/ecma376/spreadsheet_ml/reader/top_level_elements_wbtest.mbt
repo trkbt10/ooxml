@@ -2916,6 +2916,32 @@ test "SML comments reader rejects malformed comment presentation booleans" {
 }
 
 ///|
+test "SML comments reader rejects malformed comment unsigned integers" {
+  let invalid_author_id = try? read_comments(
+    bytes(
+      "<s:comments xmlns:s=\"urn:s\">" +
+      "<s:authors><s:author>A</s:author></s:authors>" +
+      "<s:commentList><s:comment ref=\"A1\" authorId=\"abc\">" +
+      "<s:text/>" +
+      "</s:comment></s:commentList>" +
+      "</s:comments>",
+    ),
+  )
+  assert_true(invalid_author_id is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_shape_id = try? read_comments(
+    bytes(
+      "<s:comments xmlns:s=\"urn:s\">" +
+      "<s:authors><s:author>A</s:author></s:authors>" +
+      "<s:commentList><s:comment ref=\"A1\" authorId=\"0\" shapeId=\"abc\">" +
+      "<s:text/>" +
+      "</s:comment></s:commentList>" +
+      "</s:comments>",
+    ),
+  )
+  assert_true(invalid_shape_id is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "SML comments reader rejects malformed comment anchor booleans" {
   let invalid = try? read_comments(
     bytes(
