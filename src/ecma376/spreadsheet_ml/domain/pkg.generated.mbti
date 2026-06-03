@@ -363,7 +363,7 @@ pub(all) struct CT_CellSmartTag {
   deleted : Bool
   xml_based : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_CellSmartTag::new(@xml.Element) -> Self
+pub fn CT_CellSmartTag::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CellSmartTagPr {
   element : @xml.Element
@@ -377,7 +377,7 @@ pub(all) struct CT_CellSmartTags {
   cell_smart_tags : Array[CT_CellSmartTag]
   r : String
 } derive(Eq, @debug.Debug)
-pub fn CT_CellSmartTags::new(@xml.Element) -> Self
+pub fn CT_CellSmartTags::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_CellStyle {
   element : @xml.Element
@@ -3362,7 +3362,7 @@ pub(all) struct CT_SmartTags {
   element : @xml.Element
   cell_smart_tags : Array[CT_CellSmartTags]
 } derive(Eq, @debug.Debug)
-pub fn CT_SmartTags::new(@xml.Element) -> Self
+pub fn CT_SmartTags::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SortCondition {
   element : @xml.Element

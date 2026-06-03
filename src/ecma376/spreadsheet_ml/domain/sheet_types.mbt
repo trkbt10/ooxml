@@ -2701,7 +2701,9 @@ pub(all) struct CT_CellSmartTags {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CellSmartTags::new(element : @xml.Element) -> CT_CellSmartTags {
+pub fn CT_CellSmartTags::new(
+  element : @xml.Element,
+) -> CT_CellSmartTags raise @opc_errors.SchemaViolation {
   let cell_smart_tags : Array[CT_CellSmartTag] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2736,7 +2738,20 @@ pub(all) struct CT_CellSmartTag {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CellSmartTag::new(element : @xml.Element) -> CT_CellSmartTag {
+fn cell_smart_tag_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.7", "cellSmartTag",
+  )
+}
+
+///|
+pub fn CT_CellSmartTag::new(
+  element : @xml.Element,
+) -> CT_CellSmartTag raise @opc_errors.SchemaViolation {
   let cell_smart_tag_prs : Array[CT_CellSmartTagPr] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2746,8 +2761,8 @@ pub fn CT_CellSmartTag::new(element : @xml.Element) -> CT_CellSmartTag {
     }
   }
   let type_ = attr_uint(element, "type", 0)
-  let deleted = attr_bool(element, "deleted", false)
-  let xml_based = attr_bool(element, "xmlBased", false)
+  let deleted = cell_smart_tag_bool(element, "deleted", false)
+  let xml_based = cell_smart_tag_bool(element, "xmlBased", false)
   { element, cell_smart_tag_prs, type_, deleted, xml_based }
 }
 

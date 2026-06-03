@@ -841,3 +841,17 @@ test "SML worksheet reader rejects malformed page break booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed smart tag booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:smartTags><s:cellSmartTags r=\"A1\">" +
+      "<s:cellSmartTag type=\"1\" deleted=\"maybe\"/>" +
+      "</s:cellSmartTags></s:smartTags>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}

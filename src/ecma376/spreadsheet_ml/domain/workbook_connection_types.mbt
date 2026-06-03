@@ -3033,7 +3033,9 @@ pub(all) struct CT_SmartTags {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SmartTags::new(element : @xml.Element) -> CT_SmartTags {
+pub fn CT_SmartTags::new(
+  element : @xml.Element,
+) -> CT_SmartTags raise @opc_errors.SchemaViolation {
   let cell_smart_tags : Array[CT_CellSmartTags] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
