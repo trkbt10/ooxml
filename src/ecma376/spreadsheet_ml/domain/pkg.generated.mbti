@@ -1007,7 +1007,7 @@ pub(all) struct CT_DbPr {
   server_command : String?
   command_type : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_DbPr::new(@xml.Element) -> Self
+pub fn CT_DbPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DdeItem {
   element : @xml.Element
@@ -3562,21 +3562,21 @@ pub(all) struct CT_Tables {
   indexes : Array[CT_Index]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Tables::new(@xml.Element) -> Self
+pub fn CT_Tables::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TextField {
   element : @xml.Element
   type_ : String
   position : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_TextField::new(@xml.Element) -> Self
+pub fn CT_TextField::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TextFields {
   element : @xml.Element
   text_field : Array[CT_TextField]
   count : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_TextFields::new(@xml.Element) -> Self
+pub fn CT_TextFields::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_TextPr {
   element : @xml.Element

@@ -702,17 +702,19 @@ pub fn CT_Connection::new(
       }
     }
   }
-  let id = attr_uint(element, "id", 0)
+  let id = attr_uint_schema(element, "id", 0)
   let source_file = attr(element, "sourceFile")
   let odc_file = attr(element, "odcFile")
   let keep_alive = connection_bool(element, "keepAlive", false)
-  let interval = attr_uint(element, "interval", 0)
+  let interval = attr_uint_schema(element, "interval", 0)
   let name = attr(element, "name")
   let description = attr(element, "description")
-  let type_ = attr_uint_opt(element, "type")
-  let reconnection_method = attr_uint(element, "reconnectionMethod", 1)
-  let refreshed_version = attr_uint(element, "refreshedVersion", 0)
-  let min_refreshable_version = attr_uint(element, "minRefreshableVersion", 0)
+  let type_ = attr_uint_opt_schema(element, "type")
+  let reconnection_method = attr_uint_schema(element, "reconnectionMethod", 1)
+  let refreshed_version = attr_uint_schema(element, "refreshedVersion", 0)
+  let min_refreshable_version = attr_uint_schema(
+    element, "minRefreshableVersion", 0,
+  )
   let save_password = connection_bool(element, "savePassword", false)
   let new_ = connection_bool(element, "new", false)
   let deleted = connection_bool(element, "deleted", false)
@@ -777,14 +779,16 @@ pub(all) struct CT_DbPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DbPr::new(element : @xml.Element) -> CT_DbPr {
+pub fn CT_DbPr::new(
+  element : @xml.Element,
+) -> CT_DbPr raise @opc_errors.SchemaViolation {
   let connection = match attr(element, "connection") {
     Some(value) => value
     None => ""
   }
   let command = attr(element, "command")
   let server_command = attr(element, "serverCommand")
-  let command_type = attr_uint(element, "commandType", 2)
+  let command_type = attr_uint_schema(element, "commandType", 2)
   { element, connection, command, server_command, command_type }
 }
 
@@ -840,7 +844,7 @@ pub fn CT_OlapPr::new(
   let local_connection = attr(element, "localConnection")
   let local_refresh = olap_pr_bool(element, "localRefresh", true)
   let send_locale = olap_pr_bool(element, "sendLocale", false)
-  let row_drill_count = attr_uint_opt(element, "rowDrillCount")
+  let row_drill_count = attr_uint_opt_schema(element, "rowDrillCount")
   let server_fill = olap_pr_bool(element, "serverFill", true)
   let server_number_format = olap_pr_bool(element, "serverNumberFormat", true)
   let server_font = olap_pr_bool(element, "serverFont", true)
@@ -985,7 +989,7 @@ pub fn CT_Parameters::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, parameter, count }
 }
 
@@ -1037,7 +1041,7 @@ pub fn CT_Parameter::new(
   element : @xml.Element,
 ) -> CT_Parameter raise @opc_errors.SchemaViolation {
   let name = attr(element, "name")
-  let sql_type = attr_int(element, "sqlType", 0)
+  let sql_type = attr_int_schema(element, "sqlType", 0)
   let parameter_type = match attr(element, "parameterType") {
     Some(value) => value
     None => "prompt"
@@ -1047,8 +1051,8 @@ pub fn CT_Parameter::new(
   let boolean = attr_bool_schema_opt(
     element, "boolean", "Part 1 §18.13.8", "parameter",
   )
-  let double = attr_double_opt(element, "double")
-  let integer = attr_int_opt(element, "integer")
+  let double = attr_double_opt_schema(element, "double")
+  let integer = attr_int_opt_schema(element, "integer")
   let string = attr(element, "string")
   let cell = attr(element, "cell")
   {
@@ -1144,8 +1148,8 @@ pub fn CT_TextPr::new(
     None => "win"
   }
   let character_set = attr(element, "characterSet")
-  let code_page = attr_uint_opt(element, "codePage")
-  let first_row = attr_uint(element, "firstRow", 1)
+  let code_page = attr_uint_opt_schema(element, "codePage")
+  let first_row = attr_uint_schema(element, "firstRow", 1)
   let source_file = match attr(element, "sourceFile") {
     Some(value) => value
     None => ""
@@ -1205,7 +1209,9 @@ pub(all) struct CT_TextFields {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TextFields::new(element : @xml.Element) -> CT_TextFields {
+pub fn CT_TextFields::new(
+  element : @xml.Element,
+) -> CT_TextFields raise @opc_errors.SchemaViolation {
   let text_field : Array[CT_TextField] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1214,7 +1220,7 @@ pub fn CT_TextFields::new(element : @xml.Element) -> CT_TextFields {
       }
     }
   }
-  let count = attr_uint(element, "count", 1)
+  let count = attr_uint_schema(element, "count", 1)
   { element, text_field, count }
 }
 
@@ -1232,12 +1238,14 @@ pub(all) struct CT_TextField {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TextField::new(element : @xml.Element) -> CT_TextField {
+pub fn CT_TextField::new(
+  element : @xml.Element,
+) -> CT_TextField raise @opc_errors.SchemaViolation {
   let type_ = match attr(element, "type") {
     Some(value) => value
     None => "general"
   }
-  let position = attr_uint(element, "position", 0)
+  let position = attr_uint_schema(element, "position", 0)
   { element, type_, position }
 }
 

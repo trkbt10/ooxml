@@ -811,6 +811,27 @@ test "SML connections reader rejects malformed connection booleans" {
 }
 
 ///|
+fn assert_connection_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_connections_schema_violation(
+    "<s:connections xmlns:s=\"urn:s\"><s:connection " +
+    local_name +
+    "=\"abc\"/></s:connections>",
+  )
+}
+
+///|
+test "SML connections reader rejects malformed connection unsigned integers" {
+  assert_connection_numeric_schema_violation("id")
+  assert_connection_numeric_schema_violation("interval")
+  assert_connection_numeric_schema_violation("type")
+  assert_connection_numeric_schema_violation("reconnectionMethod")
+  assert_connection_numeric_schema_violation("refreshedVersion")
+  assert_connection_numeric_schema_violation("minRefreshableVersion")
+}
+
+///|
 test "SML connections reader rejects malformed connection property booleans" {
   assert_connection_child_schema_violation("<s:olapPr local=\"maybe\"/>")
   assert_connection_child_schema_violation("<s:olapPr localRefresh=\"maybe\"/>")
@@ -845,6 +866,34 @@ test "SML connections reader rejects malformed connection property booleans" {
   assert_connection_child_schema_violation("<s:textPr comma=\"maybe\"/>")
   assert_connection_child_schema_violation("<s:textPr semicolon=\"maybe\"/>")
   assert_connection_child_schema_violation("<s:textPr consecutive=\"maybe\"/>")
+}
+
+///|
+test "SML connections reader rejects malformed connection property numerics" {
+  assert_connection_child_schema_violation("<s:dbPr commandType=\"abc\"/>")
+  assert_connection_child_schema_violation("<s:olapPr rowDrillCount=\"abc\"/>")
+  assert_connection_child_schema_violation(
+    "<s:webPr><s:tables count=\"abc\"/></s:webPr>",
+  )
+  assert_connection_child_schema_violation("<s:parameters count=\"abc\"/>")
+  assert_connection_child_schema_violation(
+    "<s:parameters><s:parameter sqlType=\"abc\"/></s:parameters>",
+  )
+  assert_connection_child_schema_violation(
+    "<s:parameters><s:parameter double=\"abc\"/></s:parameters>",
+  )
+  assert_connection_child_schema_violation(
+    "<s:parameters><s:parameter integer=\"abc\"/></s:parameters>",
+  )
+  assert_connection_child_schema_violation("<s:textPr codePage=\"abc\"/>")
+  assert_connection_child_schema_violation("<s:textPr firstRow=\"abc\"/>")
+  assert_connection_child_schema_violation(
+    "<s:textPr><s:textFields count=\"abc\"/></s:textPr>",
+  )
+  assert_connection_child_schema_violation(
+    "<s:textPr><s:textFields><s:textField position=\"abc\"/>" +
+    "</s:textFields></s:textPr>",
+  )
 }
 
 ///|

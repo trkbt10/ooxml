@@ -178,7 +178,9 @@ pub(all) struct CT_Tables {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Tables::new(element : @xml.Element) -> CT_Tables {
+pub fn CT_Tables::new(
+  element : @xml.Element,
+) -> CT_Tables raise @opc_errors.SchemaViolation {
   let missings : Array[CT_TableMissing] = []
   let strings : Array[CT_XStringElement] = []
   let indexes : Array[CT_Index] = []
@@ -192,7 +194,7 @@ pub fn CT_Tables::new(element : @xml.Element) -> CT_Tables {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, missings, strings, indexes, count }
 }
 
