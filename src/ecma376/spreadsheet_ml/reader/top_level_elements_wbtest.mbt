@@ -778,6 +778,28 @@ test "SML worksheet reader rejects malformed data-validation booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed sort-state booleans" {
+  let invalid_state = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:sortState ref=\"A1\" columnSort=\"maybe\"/>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid_state is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_condition = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:sortState ref=\"A1\">" +
+      "<s:sortCondition ref=\"A1\" descending=\"maybe\"/>" +
+      "</s:sortState>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid_condition is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 test "SML worksheet reader rejects malformed sheet properties booleans" {
   let invalid = try? read_worksheet(
     bytes(

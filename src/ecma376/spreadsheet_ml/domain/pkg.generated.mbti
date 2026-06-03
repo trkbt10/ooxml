@@ -3374,7 +3374,7 @@ pub(all) struct CT_SortCondition {
   icon_set : String
   icon_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_SortCondition::new(@xml.Element) -> Self
+pub fn CT_SortCondition::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SortState {
   element : @xml.Element
@@ -3385,7 +3385,7 @@ pub(all) struct CT_SortState {
   sort_method : String
   ref_ : String
 } derive(Eq, @debug.Debug)
-pub fn CT_SortState::new(@xml.Element) -> Self
+pub fn CT_SortState::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Sst {
   element : @xml.Element

@@ -52,7 +52,9 @@ pub(all) struct CT_SortState {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SortState::new(element : @xml.Element) -> CT_SortState {
+pub fn CT_SortState::new(
+  element : @xml.Element,
+) -> CT_SortState raise @opc_errors.SchemaViolation {
   let sort_condition : Array[CT_SortCondition] = []
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -65,8 +67,12 @@ pub fn CT_SortState::new(element : @xml.Element) -> CT_SortState {
       }
     }
   }
-  let column_sort = attr_bool(element, "columnSort", false)
-  let case_sensitive = attr_bool(element, "caseSensitive", false)
+  let column_sort = attr_bool_schema(
+    element, "columnSort", false, "Part 1 §18.3.1.92", "sortState",
+  )
+  let case_sensitive = attr_bool_schema(
+    element, "caseSensitive", false, "Part 1 §18.3.1.92", "sortState",
+  )
   let sort_method = match attr(element, "sortMethod") {
     Some(value) => value
     None => "none"
@@ -113,8 +119,12 @@ pub(all) struct CT_SortCondition {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SortCondition::new(element : @xml.Element) -> CT_SortCondition {
-  let descending = attr_bool(element, "descending", false)
+pub fn CT_SortCondition::new(
+  element : @xml.Element,
+) -> CT_SortCondition raise @opc_errors.SchemaViolation {
+  let descending = attr_bool_schema(
+    element, "descending", false, "Part 1 §18.3.1.91", "sortCondition",
+  )
   let sort_by = match attr(element, "sortBy") {
     Some(value) => value
     None => "value"
