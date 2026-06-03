@@ -3113,8 +3113,8 @@ pub fn CT_QueryTable::new(
   )
   let adjust_column_width = query_table_bool(element, "adjustColumnWidth", true)
   let intermediate = query_table_bool(element, "intermediate", false)
-  let connection_id = attr_uint(element, "connectionId", 0)
-  let auto_format_id = attr_uint_opt(element, "autoFormatId")
+  let connection_id = attr_uint_schema(element, "connectionId", 0)
+  let auto_format_id = attr_uint_opt_schema(element, "autoFormatId")
   let apply_number_formats = query_table_bool_opt(element, "applyNumberFormats")
   let apply_border_formats = query_table_bool_opt(element, "applyBorderFormats")
   let apply_font_formats = query_table_bool_opt(element, "applyFontFormats")
@@ -3229,10 +3229,12 @@ pub fn CT_QueryTableRefresh::new(
   let headers_in_last_refresh = query_table_refresh_bool(
     element, "headersInLastRefresh", true,
   )
-  let minimum_version = attr_uint(element, "minimumVersion", 0)
-  let next_id = attr_uint(element, "nextId", 1)
-  let unbound_columns_left = attr_uint(element, "unboundColumnsLeft", 0)
-  let unbound_columns_right = attr_uint(element, "unboundColumnsRight", 0)
+  let minimum_version = attr_uint_schema(element, "minimumVersion", 0)
+  let next_id = attr_uint_schema(element, "nextId", 1)
+  let unbound_columns_left = attr_uint_schema(element, "unboundColumnsLeft", 0)
+  let unbound_columns_right = attr_uint_schema(
+    element, "unboundColumnsRight", 0,
+  )
   let mut query_table_fields : CT_QueryTableFields? = None
   let mut query_table_deleted_fields : CT_QueryTableDeletedFields? = None
   let mut sort_state : CT_SortState? = None
@@ -3285,8 +3287,8 @@ pub(all) struct CT_QueryTableDeletedFields {
 ///|
 pub fn CT_QueryTableDeletedFields::new(
   element : @xml.Element,
-) -> CT_QueryTableDeletedFields {
-  let count = attr_uint_opt(element, "count")
+) -> CT_QueryTableDeletedFields raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let deleted_field : Array[CT_DeletedField] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3315,7 +3317,7 @@ pub(all) struct CT_QueryTableFields {
 pub fn CT_QueryTableFields::new(
   element : @xml.Element,
 ) -> CT_QueryTableFields raise @opc_errors.SchemaViolation {
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   let query_table_field : Array[CT_QueryTableField] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3370,13 +3372,13 @@ fn query_table_field_bool(
 pub fn CT_QueryTableField::new(
   element : @xml.Element,
 ) -> CT_QueryTableField raise @opc_errors.SchemaViolation {
-  let id = attr_uint(element, "id", 0)
+  let id = attr_uint_schema(element, "id", 0)
   let name = attr(element, "name")
   let data_bound = query_table_field_bool(element, "dataBound", true)
   let row_numbers = query_table_field_bool(element, "rowNumbers", false)
   let fill_formulas = query_table_field_bool(element, "fillFormulas", false)
   let clipped = query_table_field_bool(element, "clipped", false)
-  let table_column_id = attr_uint(element, "tableColumnId", 0)
+  let table_column_id = attr_uint_schema(element, "tableColumnId", 0)
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {

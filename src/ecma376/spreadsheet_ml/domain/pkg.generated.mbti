@@ -2669,7 +2669,7 @@ pub(all) struct CT_QueryTableDeletedFields {
   count : Int?
   deleted_field : Array[CT_DeletedField]
 } derive(Eq, @debug.Debug)
-pub fn CT_QueryTableDeletedFields::new(@xml.Element) -> Self
+pub fn CT_QueryTableDeletedFields::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_QueryTableField {
   element : @xml.Element

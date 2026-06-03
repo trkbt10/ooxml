@@ -1096,6 +1096,56 @@ test "SML queryTable reader rejects malformed booleans" {
 }
 
 ///|
+fn assert_query_table_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\" " + local_name + "=\"abc\"/>",
+  )
+}
+
+///|
+fn assert_query_table_refresh_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\"><s:queryTableRefresh " +
+    local_name +
+    "=\"abc\"/></s:queryTable>",
+  )
+}
+
+///|
+test "SML queryTable reader rejects malformed unsigned integers" {
+  assert_query_table_numeric_schema_violation("connectionId")
+  assert_query_table_numeric_schema_violation("autoFormatId")
+  assert_query_table_refresh_numeric_schema_violation("minimumVersion")
+  assert_query_table_refresh_numeric_schema_violation("nextId")
+  assert_query_table_refresh_numeric_schema_violation("unboundColumnsLeft")
+  assert_query_table_refresh_numeric_schema_violation("unboundColumnsRight")
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\"><s:queryTableRefresh>" +
+    "<s:queryTableDeletedFields count=\"abc\"/>" +
+    "</s:queryTableRefresh></s:queryTable>",
+  )
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\"><s:queryTableRefresh>" +
+    "<s:queryTableFields count=\"abc\"/>" +
+    "</s:queryTableRefresh></s:queryTable>",
+  )
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\"><s:queryTableRefresh>" +
+    "<s:queryTableFields><s:queryTableField id=\"abc\"/>" +
+    "</s:queryTableFields></s:queryTableRefresh></s:queryTable>",
+  )
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\"><s:queryTableRefresh>" +
+    "<s:queryTableFields><s:queryTableField tableColumnId=\"abc\"/>" +
+    "</s:queryTableFields></s:queryTableRefresh></s:queryTable>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed definition booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\" saveData=\"maybe\"/>",
