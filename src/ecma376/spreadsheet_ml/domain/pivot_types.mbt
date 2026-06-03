@@ -288,16 +288,24 @@ pub fn CT_CacheField::new(
   }
   let caption = attr(element, "caption")
   let property_name = attr(element, "propertyName")
-  let server_field = attr_bool(element, "serverField", false)
-  let unique_list = attr_bool(element, "uniqueList", true)
+  let server_field = attr_bool_schema(
+    element, "serverField", false, "Part 1 §18.10.1.3", "cacheField",
+  )
+  let unique_list = attr_bool_schema(
+    element, "uniqueList", true, "Part 1 §18.10.1.3", "cacheField",
+  )
   let num_fmt_id = attr(element, "numFmtId")
   let formula = attr(element, "formula")
   let sql_type = attr_int(element, "sqlType", 0)
   let hierarchy = attr_int(element, "hierarchy", 0)
   let level = attr_uint(element, "level", 0)
-  let database_field = attr_bool(element, "databaseField", true)
+  let database_field = attr_bool_schema(
+    element, "databaseField", true, "Part 1 §18.10.1.3", "cacheField",
+  )
   let mapping_count = attr_uint_opt(element, "mappingCount")
-  let member_property_field = attr_bool(element, "memberPropertyField", false)
+  let member_property_field = attr_bool_schema(
+    element, "memberPropertyField", false, "Part 1 §18.10.1.3", "cacheField",
+  )
   let mut shared_items : CT_SharedItems? = None
   let mut field_group : CT_FieldGroup? = None
   let mp_maps : Array[CT_X] = []
