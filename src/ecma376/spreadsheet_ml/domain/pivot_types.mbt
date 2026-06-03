@@ -2070,7 +2070,7 @@ pub(all) struct CT_PivotHierarchies {
 pub fn CT_PivotHierarchies::new(
   element : @xml.Element,
 ) -> CT_PivotHierarchies raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let pivot_hierarchies : Array[CT_PivotHierarchy] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2281,7 +2281,7 @@ pub(all) struct CT_MemberProperties {
 pub fn CT_MemberProperties::new(
   element : @xml.Element,
 ) -> CT_MemberProperties raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let mp : Array[CT_MemberProperty] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
