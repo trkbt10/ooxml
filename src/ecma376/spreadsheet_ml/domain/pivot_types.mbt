@@ -1177,7 +1177,7 @@ pub(all) struct CT_CalculatedItems {
 pub fn CT_CalculatedItems::new(
   element : @xml.Element,
 ) -> CT_CalculatedItems raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let calculated_items : Array[CT_CalculatedItem] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1211,7 +1211,7 @@ pub(all) struct CT_CalculatedItem {
 pub fn CT_CalculatedItem::new(
   element : @xml.Element,
 ) -> CT_CalculatedItem raise @opc_errors.SchemaViolation {
-  let field = attr_uint_opt(element, "field")
+  let field = attr_uint_opt_schema(element, "field")
   let formula = attr(element, "formula")
   let mut pivot_area : CT_PivotArea? = None
   let mut ext_lst : CT_ExtensionList? = None
@@ -1244,7 +1244,7 @@ pub(all) struct CT_CalculatedMembers {
 pub fn CT_CalculatedMembers::new(
   element : @xml.Element,
 ) -> CT_CalculatedMembers raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let calculated_members : Array[CT_CalculatedMember] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1299,7 +1299,7 @@ pub fn CT_CalculatedMember::new(
   let member_name = attr(element, "memberName")
   let hierarchy = attr(element, "hierarchy")
   let parent = attr(element, "parent")
-  let solve_order = attr_int(element, "solveOrder", 0)
+  let solve_order = attr_int_schema(element, "solveOrder", 0)
   let set_ = attr_bool_schema(
     element, "set", false, "Part 1 §18.10.1.10", "calculatedMember",
   )

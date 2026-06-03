@@ -1461,6 +1461,30 @@ test "SML pivotCacheDefinition reader rejects malformed calculated-member boolea
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed calculated numerics" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:calculatedItems count=\"abc\"/>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:calculatedItems><s:calculatedItem field=\"abc\"/></s:calculatedItems>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:calculatedMembers count=\"abc\"/>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:calculatedMembers><s:calculatedMember solveOrder=\"abc\"/></s:calculatedMembers>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed pivot-dimension booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
