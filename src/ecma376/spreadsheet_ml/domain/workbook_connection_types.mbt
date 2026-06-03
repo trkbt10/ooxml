@@ -67,6 +67,17 @@ fn file_sharing_bool(
 }
 
 ///|
+fn smart_tag_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.2.21", "smartTagPr",
+  )
+}
+
+///|
 /// XSD complex type CT_SortState — Part 1 §18.3.1.92 (`<sortState>` Sort
 /// State). Sequence children: `<sortCondition>*` (CT_SortCondition,
 /// 0..64) and optional `<extLst>` (CT_ExtensionList). Attributes:
@@ -3749,8 +3760,10 @@ pub(all) struct CT_SmartTagPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SmartTagPr::new(element : @xml.Element) -> CT_SmartTagPr {
-  let embed = attr_bool(element, "embed", false)
+pub fn CT_SmartTagPr::new(
+  element : @xml.Element,
+) -> CT_SmartTagPr raise @opc_errors.SchemaViolation {
+  let embed = smart_tag_pr_bool(element, "embed", false)
   let show = match attr(element, "show") {
     Some(value) => value
     None => "all"

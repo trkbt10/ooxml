@@ -214,6 +214,14 @@ test "SML workbook reader rejects malformed file sharing booleans" {
 }
 
 ///|
+test "SML workbook reader rejects malformed smart tag property booleans" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:smartTagPr embed=\"maybe\"/>" +
+    "</s:workbook>",
+  )
+}
+
+///|
 test "SML metadata reader rejects malformed metadataType booleans" {
   let invalid = try? read_metadata(
     bytes(
