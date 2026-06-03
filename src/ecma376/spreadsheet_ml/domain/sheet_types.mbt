@@ -706,7 +706,9 @@ pub fn CT_ChartFormat::new(
   }
   let chart = attr_uint(element, "chart", 0)
   let format = attr_uint(element, "format", 0)
-  let series = attr_bool(element, "series", false)
+  let series = attr_bool_schema(
+    element, "series", false, "Part 1 §18.10.1.12", "chartFormat",
+  )
   { element, pivot_area, chart, format, series }
 }
 

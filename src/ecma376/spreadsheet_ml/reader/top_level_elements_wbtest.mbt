@@ -440,6 +440,16 @@ test "SML pivotTableDefinition reader rejects malformed pivot-area booleans" {
 }
 
 ///|
+test "SML pivotTableDefinition reader rejects malformed chart-format booleans" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:chartFormats><s:chartFormat chart=\"0\" format=\"0\" series=\"maybe\"/>" +
+    "</s:chartFormats>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed member-property booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
