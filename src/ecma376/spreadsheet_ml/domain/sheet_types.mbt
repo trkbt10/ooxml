@@ -130,7 +130,9 @@ pub(all) struct CT_DataBinding {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DataBinding::new(element : @xml.Element) -> CT_DataBinding {
+pub fn CT_DataBinding::new(
+  element : @xml.Element,
+) -> CT_DataBinding raise @opc_errors.SchemaViolation {
   let any_children : Array[@xml.Element] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -138,7 +140,9 @@ pub fn CT_DataBinding::new(element : @xml.Element) -> CT_DataBinding {
     }
   }
   let data_binding_name = attr(element, "DataBindingName")
-  let file_binding = attr_bool_opt(element, "FileBinding")
+  let file_binding = attr_bool_schema_opt(
+    element, "FileBinding", "Part 1 §18.16.1", "DataBinding",
+  )
   let connection_id = attr_uint_opt(element, "ConnectionID")
   let file_binding_name = attr(element, "FileBindingName")
   let data_binding_load_mode = attr_uint(element, "DataBindingLoadMode", 0)

@@ -900,7 +900,7 @@ pub(all) struct CT_DataBinding {
   file_binding_name : String?
   data_binding_load_mode : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_DataBinding::new(@xml.Element) -> Self
+pub fn CT_DataBinding::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DataConsolidate {
   element : @xml.Element

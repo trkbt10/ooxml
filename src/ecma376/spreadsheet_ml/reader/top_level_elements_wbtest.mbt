@@ -331,6 +331,18 @@ test "SML MapInfo reader rejects malformed Map booleans" {
 }
 
 ///|
+test "SML MapInfo reader rejects malformed DataBinding booleans" {
+  let invalid = try? read_map_info(
+    bytes(
+      "<s:MapInfo xmlns:s=\"urn:s\">" +
+      "<s:Map><s:DataBinding FileBinding=\"maybe\"/></s:Map>" +
+      "</s:MapInfo>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 fn assert_external_link_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_external_link(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
