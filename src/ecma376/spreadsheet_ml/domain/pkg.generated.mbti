@@ -1307,14 +1307,14 @@ pub(all) struct CT_FieldUsage {
   element : @xml.Element
   x : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_FieldUsage::new(@xml.Element) -> Self
+pub fn CT_FieldUsage::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FieldsUsage {
   element : @xml.Element
   field_usage : Array[CT_FieldUsage]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_FieldsUsage::new(@xml.Element) -> Self
+pub fn CT_FieldsUsage::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FileRecoveryPr {
   element : @xml.Element
@@ -1712,7 +1712,7 @@ pub(all) struct CT_Location {
   row_page_count : Int
   col_page_count : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_Location::new(@xml.Element) -> Self
+pub fn CT_Location::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MRUColors {
   element : @xml.Element
@@ -3121,7 +3121,7 @@ pub(all) struct CT_ServerFormats {
   server_format : Array[CT_ServerFormat]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_ServerFormats::new(@xml.Element) -> Self
+pub fn CT_ServerFormats::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Set {
   element : @xml.Element

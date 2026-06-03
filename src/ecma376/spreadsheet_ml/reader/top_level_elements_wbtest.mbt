@@ -1479,6 +1479,39 @@ test "SML pivotCacheDefinition reader rejects malformed cache-hierarchy numerics
   )
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy><s:fieldsUsage count=\"abc\"/>" +
+    "</s:cacheHierarchy></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy><s:fieldsUsage>" +
+    "<s:fieldUsage x=\"abc\"/>" +
+    "</s:fieldsUsage></s:cacheHierarchy></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy><s:groupLevels count=\"abc\"/>" +
+    "</s:cacheHierarchy></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy><s:groupLevels>" +
+    "<s:groupLevel><s:groups count=\"abc\"/></s:groupLevel>" +
+    "</s:groupLevels></s:cacheHierarchy></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy><s:groupLevels>" +
+    "<s:groupLevel><s:groups><s:group id=\"abc\"/></s:groups></s:groupLevel>" +
+    "</s:groupLevels></s:cacheHierarchy></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
     "<s:cacheHierarchies><s:cacheHierarchy><s:groupLevels>" +
     "<s:groupLevel><s:groups><s:group>" +
     "<s:groupMembers count=\"abc\"/>" +
@@ -1727,6 +1760,11 @@ test "SML pivotCacheDefinition reader rejects malformed tuple-set numerics" {
     "<s:tupleCache><s:queryCache><s:query><s:tpls c=\"abc\"/></s:query></s:queryCache></s:tupleCache>" +
     "</s:pivotCacheDefinition>",
   )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:serverFormats count=\"abc\"/></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
 }
 
 ///|
@@ -1826,6 +1864,31 @@ test "SML pivotTableDefinition reader rejects malformed definition numerics" {
   assert_pivot_table_definition_numeric_schema_violation("createdVersion")
   assert_pivot_table_definition_numeric_schema_violation("indent")
   assert_pivot_table_definition_numeric_schema_violation("chartFormat")
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:location firstHeaderRow=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:location firstDataRow=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:location firstDataCol=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:location rowPageCount=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:location colPageCount=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
 }
 
 ///|

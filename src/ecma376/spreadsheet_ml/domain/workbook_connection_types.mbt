@@ -1931,7 +1931,9 @@ pub(all) struct CT_FieldsUsage {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FieldsUsage::new(element : @xml.Element) -> CT_FieldsUsage {
+pub fn CT_FieldsUsage::new(
+  element : @xml.Element,
+) -> CT_FieldsUsage raise @opc_errors.SchemaViolation {
   let field_usage : Array[CT_FieldUsage] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1940,7 +1942,7 @@ pub fn CT_FieldsUsage::new(element : @xml.Element) -> CT_FieldsUsage {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, field_usage, count }
 }
 
@@ -1955,8 +1957,10 @@ pub(all) struct CT_FieldUsage {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FieldUsage::new(element : @xml.Element) -> CT_FieldUsage {
-  let x = attr_int(element, "x", 0)
+pub fn CT_FieldUsage::new(
+  element : @xml.Element,
+) -> CT_FieldUsage raise @opc_errors.SchemaViolation {
+  let x = attr_int_schema(element, "x", 0)
   { element, x }
 }
 
@@ -1985,7 +1989,7 @@ pub fn CT_GroupLevels::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, group_level, count }
 }
 
@@ -2071,7 +2075,7 @@ pub fn CT_Groups::new(
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, group, count }
 }
 
@@ -2126,7 +2130,7 @@ pub fn CT_LevelGroup::new(
     None => ""
   }
   let unique_parent = attr(element, "uniqueParent")
-  let id = attr_int_opt(element, "id")
+  let id = attr_int_opt_schema(element, "id")
   {
     element,
     group_members: group_members_value,
@@ -2172,7 +2176,9 @@ pub(all) struct CT_ServerFormats {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ServerFormats::new(element : @xml.Element) -> CT_ServerFormats {
+pub fn CT_ServerFormats::new(
+  element : @xml.Element,
+) -> CT_ServerFormats raise @opc_errors.SchemaViolation {
   let server_format : Array[CT_ServerFormat] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2181,7 +2187,7 @@ pub fn CT_ServerFormats::new(element : @xml.Element) -> CT_ServerFormats {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, server_format, count }
 }
 
@@ -2209,16 +2215,18 @@ pub(all) struct CT_Location {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Location::new(element : @xml.Element) -> CT_Location {
+pub fn CT_Location::new(
+  element : @xml.Element,
+) -> CT_Location raise @opc_errors.SchemaViolation {
   let ref_ = match attr(element, "ref") {
     Some(value) => value
     None => ""
   }
-  let first_header_row = attr_uint(element, "firstHeaderRow", 0)
-  let first_data_row = attr_uint(element, "firstDataRow", 0)
-  let first_data_col = attr_uint(element, "firstDataCol", 0)
-  let row_page_count = attr_uint(element, "rowPageCount", 0)
-  let col_page_count = attr_uint(element, "colPageCount", 0)
+  let first_header_row = attr_uint_schema(element, "firstHeaderRow", 0)
+  let first_data_row = attr_uint_schema(element, "firstDataRow", 0)
+  let first_data_col = attr_uint_schema(element, "firstDataCol", 0)
+  let row_page_count = attr_uint_schema(element, "rowPageCount", 0)
+  let col_page_count = attr_uint_schema(element, "colPageCount", 0)
   {
     element,
     ref_,
