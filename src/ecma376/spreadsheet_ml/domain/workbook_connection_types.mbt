@@ -179,7 +179,9 @@ pub(all) struct CT_CalcChain {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CalcChain::new(element : @xml.Element) -> CT_CalcChain {
+pub fn CT_CalcChain::new(
+  element : @xml.Element,
+) -> CT_CalcChain raise @opc_errors.SchemaViolation {
   let c : Array[CT_CalcCell] = []
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {

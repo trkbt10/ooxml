@@ -81,16 +81,18 @@ pub(all) struct CT_CalcCell {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CalcCell::new(element : @xml.Element) -> CT_CalcCell {
+pub fn CT_CalcCell::new(
+  element : @xml.Element,
+) -> CT_CalcCell raise @opc_errors.SchemaViolation {
   let r = match attr(element, "r") {
     Some(value) => value
     None => ""
   }
   let i = attr_int(element, "i", 0)
-  let s = attr_bool(element, "s", false)
-  let l = attr_bool(element, "l", false)
-  let t = attr_bool(element, "t", false)
-  let a = attr_bool(element, "a", false)
+  let s = attr_bool_schema(element, "s", false, "Part 1 §18.6.1", "c")
+  let l = attr_bool_schema(element, "l", false, "Part 1 §18.6.1", "c")
+  let t = attr_bool_schema(element, "t", false, "Part 1 §18.6.1", "c")
+  let a = attr_bool_schema(element, "a", false, "Part 1 §18.6.1", "c")
   let ref_range = attr(element, "ref").unwrap_or("")
   { element, r, i, s, l, t, a, ref_range }
 }

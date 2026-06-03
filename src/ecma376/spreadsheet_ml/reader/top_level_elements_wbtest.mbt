@@ -751,3 +751,15 @@ test "SML dialogsheet reader rejects malformed sheet format booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML calc chain reader rejects malformed calc cell booleans" {
+  let invalid = try? read_calc_chain(
+    bytes(
+      "<s:calcChain xmlns:s=\"urn:s\">" +
+      "<s:c r=\"A1\" s=\"maybe\"/>" +
+      "</s:calcChain>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
