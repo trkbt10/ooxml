@@ -1196,6 +1196,68 @@ test "SML pivotCacheDefinition reader rejects malformed cache-source unsigned in
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed consolidation numerics" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheSource type=\"consolidation\"><s:consolidation>" +
+    "<s:pages count=\"abc\"/><s:rangeSets/>" +
+    "</s:consolidation></s:cacheSource>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheSource type=\"consolidation\"><s:consolidation>" +
+    "<s:pages><s:page count=\"abc\"/></s:pages><s:rangeSets/>" +
+    "</s:consolidation></s:cacheSource>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheSource type=\"consolidation\"><s:consolidation>" +
+    "<s:rangeSets count=\"abc\"/>" +
+    "</s:consolidation></s:cacheSource>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheSource type=\"consolidation\"><s:consolidation>" +
+    "<s:rangeSets><s:rangeSet i1=\"abc\"/></s:rangeSets>" +
+    "</s:consolidation></s:cacheSource>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheSource type=\"consolidation\"><s:consolidation>" +
+    "<s:rangeSets><s:rangeSet i2=\"abc\"/></s:rangeSets>" +
+    "</s:consolidation></s:cacheSource>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheSource type=\"consolidation\"><s:consolidation>" +
+    "<s:rangeSets><s:rangeSet i3=\"abc\"/></s:rangeSets>" +
+    "</s:consolidation></s:cacheSource>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheSource type=\"consolidation\"><s:consolidation>" +
+    "<s:rangeSets><s:rangeSet i4=\"abc\"/></s:rangeSets>" +
+    "</s:consolidation></s:cacheSource>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
+test "SML pivotCacheDefinition reader rejects malformed KPI numerics" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:kpis count=\"abc\"/>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed cache-field booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +

@@ -408,8 +408,10 @@ pub(all) struct CT_PCDSCPage {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PCDSCPage::new(element : @xml.Element) -> CT_PCDSCPage {
-  let count = attr_uint_opt(element, "count")
+pub fn CT_PCDSCPage::new(
+  element : @xml.Element,
+) -> CT_PCDSCPage raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let page_items : Array[CT_PageItem] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -435,8 +437,10 @@ pub(all) struct CT_RangeSets {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RangeSets::new(element : @xml.Element) -> CT_RangeSets {
-  let count = attr_uint_opt(element, "count")
+pub fn CT_RangeSets::new(
+  element : @xml.Element,
+) -> CT_RangeSets raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let range_sets : Array[CT_RangeSet] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -476,11 +480,13 @@ pub(all) struct CT_RangeSet {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RangeSet::new(element : @xml.Element) -> CT_RangeSet {
-  let i1 = attr_uint_opt(element, "i1")
-  let i2 = attr_uint_opt(element, "i2")
-  let i3 = attr_uint_opt(element, "i3")
-  let i4 = attr_uint_opt(element, "i4")
+pub fn CT_RangeSet::new(
+  element : @xml.Element,
+) -> CT_RangeSet raise @opc_errors.SchemaViolation {
+  let i1 = attr_uint_opt_schema(element, "i1")
+  let i2 = attr_uint_opt_schema(element, "i2")
+  let i3 = attr_uint_opt_schema(element, "i3")
+  let i4 = attr_uint_opt_schema(element, "i4")
   let ref_ = attr(element, "ref")
   let name = attr(element, "name")
   let sheet = attr(element, "sheet")
@@ -537,8 +543,10 @@ pub(all) struct CT_PCDKPIs {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PCDKPIs::new(element : @xml.Element) -> CT_PCDKPIs {
-  let count = attr_uint_opt(element, "count")
+pub fn CT_PCDKPIs::new(
+  element : @xml.Element,
+) -> CT_PCDKPIs raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let kpis : Array[CT_PCDKPI] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {

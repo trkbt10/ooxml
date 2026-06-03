@@ -2167,14 +2167,14 @@ pub(all) struct CT_PCDKPIs {
   count : Int?
   kpis : Array[CT_PCDKPI]
 } derive(Eq, @debug.Debug)
-pub fn CT_PCDKPIs::new(@xml.Element) -> Self
+pub fn CT_PCDKPIs::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PCDSCPage {
   element : @xml.Element
   count : Int?
   page_items : Array[CT_PageItem]
 } derive(Eq, @debug.Debug)
-pub fn CT_PCDSCPage::new(@xml.Element) -> Self
+pub fn CT_PCDSCPage::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PCDSDTCEntries {
   element : @xml.Element
@@ -2265,7 +2265,7 @@ pub(all) struct CT_Pages {
   page : Array[CT_PCDSCPage]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Pages::new(@xml.Element) -> Self
+pub fn CT_Pages::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Pane {
   element : @xml.Element
@@ -2759,14 +2759,14 @@ pub(all) struct CT_RangeSet {
   sheet : String?
   r_id : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_RangeSet::new(@xml.Element) -> Self
+pub fn CT_RangeSet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RangeSets {
   element : @xml.Element
   count : Int?
   range_sets : Array[CT_RangeSet]
 } derive(Eq, @debug.Debug)
-pub fn CT_RangeSets::new(@xml.Element) -> Self
+pub fn CT_RangeSets::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Record {
   element : @xml.Element

@@ -266,7 +266,9 @@ pub(all) struct CT_Pages {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Pages::new(element : @xml.Element) -> CT_Pages {
+pub fn CT_Pages::new(
+  element : @xml.Element,
+) -> CT_Pages raise @opc_errors.SchemaViolation {
   let page : Array[CT_PCDSCPage] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -275,7 +277,7 @@ pub fn CT_Pages::new(element : @xml.Element) -> CT_Pages {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, page, count }
 }
 
