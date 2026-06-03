@@ -1840,14 +1840,14 @@ pub(all) struct CT_MeasureDimensionMap {
   measure_group : Int?
   dimension : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_MeasureDimensionMap::new(@xml.Element) -> Self
+pub fn CT_MeasureDimensionMap::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MeasureDimensionMaps {
   element : @xml.Element
   count : Int?
   map : Array[CT_MeasureDimensionMap]
 } derive(Eq, @debug.Debug)
-pub fn CT_MeasureDimensionMaps::new(@xml.Element) -> Self
+pub fn CT_MeasureDimensionMaps::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MeasureGroup {
   element : @xml.Element
@@ -1861,7 +1861,7 @@ pub(all) struct CT_MeasureGroups {
   count : Int?
   measure_group : Array[CT_MeasureGroup]
 } derive(Eq, @debug.Debug)
-pub fn CT_MeasureGroups::new(@xml.Element) -> Self
+pub fn CT_MeasureGroups::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Member {
   element : @xml.Element

@@ -2477,8 +2477,10 @@ pub(all) struct CT_MeasureGroups {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MeasureGroups::new(element : @xml.Element) -> CT_MeasureGroups {
-  let count = attr_uint_opt(element, "count")
+pub fn CT_MeasureGroups::new(
+  element : @xml.Element,
+) -> CT_MeasureGroups raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let measure_group : Array[CT_MeasureGroup] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2508,8 +2510,8 @@ pub(all) struct CT_MeasureDimensionMaps {
 ///|
 pub fn CT_MeasureDimensionMaps::new(
   element : @xml.Element,
-) -> CT_MeasureDimensionMaps {
-  let count = attr_uint_opt(element, "count")
+) -> CT_MeasureDimensionMaps raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let map : Array[CT_MeasureDimensionMap] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2564,9 +2566,9 @@ pub(all) struct CT_MeasureDimensionMap {
 ///|
 pub fn CT_MeasureDimensionMap::new(
   element : @xml.Element,
-) -> CT_MeasureDimensionMap {
-  let measure_group = attr_uint_opt(element, "measureGroup")
-  let dimension = attr_uint_opt(element, "dimension")
+) -> CT_MeasureDimensionMap raise @opc_errors.SchemaViolation {
+  let measure_group = attr_uint_opt_schema(element, "measureGroup")
+  let dimension = attr_uint_opt_schema(element, "dimension")
   { element, measure_group, dimension }
 }
 

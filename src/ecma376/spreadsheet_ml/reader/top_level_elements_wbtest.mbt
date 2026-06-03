@@ -1494,6 +1494,30 @@ test "SML pivotCacheDefinition reader rejects malformed pivot-dimension booleans
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed measure-map numerics" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:measureGroups count=\"abc\"/>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:maps count=\"abc\"/>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:maps><s:map measureGroup=\"abc\"/></s:maps>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:maps><s:map dimension=\"abc\"/></s:maps>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed definition booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\" dataOnRows=\"maybe\"/>",
