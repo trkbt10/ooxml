@@ -3677,7 +3677,9 @@ pub(all) struct CT_Scenarios {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Scenarios::new(element : @xml.Element) -> CT_Scenarios {
+pub fn CT_Scenarios::new(
+  element : @xml.Element,
+) -> CT_Scenarios raise @opc_errors.SchemaViolation {
   let scenarios : Array[CT_Scenario] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3806,7 +3808,20 @@ pub(all) struct CT_Scenario {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Scenario::new(element : @xml.Element) -> CT_Scenario {
+fn scenario_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.75", "scenario",
+  )
+}
+
+///|
+pub fn CT_Scenario::new(
+  element : @xml.Element,
+) -> CT_Scenario raise @opc_errors.SchemaViolation {
   let input_cells : Array[CT_InputCells] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3819,8 +3834,8 @@ pub fn CT_Scenario::new(element : @xml.Element) -> CT_Scenario {
     Some(value) => value
     None => ""
   }
-  let locked = attr_bool(element, "locked", false)
-  let hidden = attr_bool(element, "hidden", false)
+  let locked = scenario_bool(element, "locked", false)
+  let hidden = scenario_bool(element, "hidden", false)
   let count = attr_uint_opt(element, "count")
   let user = attr(element, "user")
   let comment = attr(element, "comment")
@@ -3848,13 +3863,26 @@ pub(all) struct CT_InputCells {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_InputCells::new(element : @xml.Element) -> CT_InputCells {
+fn input_cells_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.49", "inputCells",
+  )
+}
+
+///|
+pub fn CT_InputCells::new(
+  element : @xml.Element,
+) -> CT_InputCells raise @opc_errors.SchemaViolation {
   let r = match attr(element, "r") {
     Some(value) => value
     None => ""
   }
-  let deleted = attr_bool(element, "deleted", false)
-  let undone = attr_bool(element, "undone", false)
+  let deleted = input_cells_bool(element, "deleted", false)
+  let undone = input_cells_bool(element, "undone", false)
   let val = match attr(element, "val") {
     Some(value) => value
     None => ""

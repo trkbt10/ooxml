@@ -1655,7 +1655,7 @@ pub(all) struct CT_InputCells {
   val : String
   num_fmt_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_InputCells::new(@xml.Element) -> Self
+pub fn CT_InputCells::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_IntProperty {
   element : @xml.Element
@@ -3080,7 +3080,7 @@ pub(all) struct CT_Scenario {
   user : String?
   comment : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Scenario::new(@xml.Element) -> Self
+pub fn CT_Scenario::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Scenarios {
   element : @xml.Element
@@ -3089,7 +3089,7 @@ pub(all) struct CT_Scenarios {
   show : Int?
   sqref : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_Scenarios::new(@xml.Element) -> Self
+pub fn CT_Scenarios::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Schema {
   element : @xml.Element

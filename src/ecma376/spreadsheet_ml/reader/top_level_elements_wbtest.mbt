@@ -884,3 +884,26 @@ test "SML worksheet reader rejects malformed web publish item booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed scenario booleans" {
+  let invalid_scenario = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:scenarios><s:scenario name=\"Case\" locked=\"maybe\"/>" +
+      "</s:scenarios>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid_scenario is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_input_cell = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:scenarios><s:scenario name=\"Case\">" +
+      "<s:inputCells r=\"A1\" val=\"1\" deleted=\"maybe\"/>" +
+      "</s:scenario></s:scenarios>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid_input_cell is Err(@opc_errors.SchemaViolation(_)))
+}
