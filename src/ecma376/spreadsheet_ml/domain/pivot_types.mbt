@@ -2053,7 +2053,9 @@ pub(all) struct CT_PivotHierarchies {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotHierarchies::new(element : @xml.Element) -> CT_PivotHierarchies {
+pub fn CT_PivotHierarchies::new(
+  element : @xml.Element,
+) -> CT_PivotHierarchies raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let pivot_hierarchies : Array[CT_PivotHierarchy] = []
   for child in element.children {
@@ -2109,19 +2111,34 @@ pub(all) struct CT_PivotHierarchy {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotHierarchy::new(element : @xml.Element) -> CT_PivotHierarchy {
-  let outline = attr_bool(element, "outline", false)
-  let multiple_item_selection_allowed = attr_bool(
+fn pivot_hierarchy_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.10.1.72", "pivotHierarchy",
+  )
+}
+
+///|
+pub fn CT_PivotHierarchy::new(
+  element : @xml.Element,
+) -> CT_PivotHierarchy raise @opc_errors.SchemaViolation {
+  let outline = pivot_hierarchy_bool(element, "outline", false)
+  let multiple_item_selection_allowed = pivot_hierarchy_bool(
     element, "multipleItemSelectionAllowed", false,
   )
-  let subtotal_top = attr_bool(element, "subtotalTop", false)
-  let show_in_field_list = attr_bool(element, "showInFieldList", true)
-  let drag_to_row = attr_bool(element, "dragToRow", true)
-  let drag_to_col = attr_bool(element, "dragToCol", true)
-  let drag_to_page = attr_bool(element, "dragToPage", true)
-  let drag_to_data = attr_bool(element, "dragToData", false)
-  let drag_off = attr_bool(element, "dragOff", true)
-  let include_new_items_in_filter = attr_bool(
+  let subtotal_top = pivot_hierarchy_bool(element, "subtotalTop", false)
+  let show_in_field_list = pivot_hierarchy_bool(
+    element, "showInFieldList", true,
+  )
+  let drag_to_row = pivot_hierarchy_bool(element, "dragToRow", true)
+  let drag_to_col = pivot_hierarchy_bool(element, "dragToCol", true)
+  let drag_to_page = pivot_hierarchy_bool(element, "dragToPage", true)
+  let drag_to_data = pivot_hierarchy_bool(element, "dragToData", false)
+  let drag_off = pivot_hierarchy_bool(element, "dragOff", true)
+  let include_new_items_in_filter = pivot_hierarchy_bool(
     element, "includeNewItemsInFilter", false,
   )
   let caption = attr(element, "caption")

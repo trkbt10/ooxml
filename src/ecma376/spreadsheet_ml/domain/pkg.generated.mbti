@@ -2537,7 +2537,7 @@ pub(all) struct CT_PivotHierarchies {
   count : Int?
   pivot_hierarchies : Array[CT_PivotHierarchy]
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotHierarchies::new(@xml.Element) -> Self
+pub fn CT_PivotHierarchies::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotHierarchy {
   element : @xml.Element
@@ -2556,7 +2556,7 @@ pub(all) struct CT_PivotHierarchy {
   members : Array[CT_Members]
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotHierarchy::new(@xml.Element) -> Self
+pub fn CT_PivotHierarchy::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotSelection {
   element : @xml.Element
