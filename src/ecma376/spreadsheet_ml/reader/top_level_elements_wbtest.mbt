@@ -1813,6 +1813,69 @@ test "SML pivotTableDefinition reader rejects malformed pivot-field numerics" {
 }
 
 ///|
+test "SML pivotTableDefinition reader rejects malformed field item numerics" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:rowFields count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:colFields count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:rowItems count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:colItems count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:pageFields count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pageFields><s:pageField fld=\"abc\"/></s:pageFields>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pageFields><s:pageField item=\"abc\"/></s:pageFields>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pageFields><s:pageField hier=\"abc\"/></s:pageFields>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\"><s:dataFields count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:dataFields><s:dataField fld=\"abc\"/></s:dataFields>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:dataFields><s:dataField baseField=\"abc\"/></s:dataFields>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:dataFields><s:dataField baseItem=\"abc\"/></s:dataFields>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:dataFields><s:dataField numFmtId=\"abc\"/></s:dataFields>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed pivot-hierarchy booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +

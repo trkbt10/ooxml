@@ -317,7 +317,9 @@ pub(all) struct CT_PageFields {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageFields::new(element : @xml.Element) -> CT_PageFields {
+pub fn CT_PageFields::new(
+  element : @xml.Element,
+) -> CT_PageFields raise @opc_errors.SchemaViolation {
   let page_field : Array[CT_PageField] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -326,7 +328,7 @@ pub fn CT_PageFields::new(element : @xml.Element) -> CT_PageFields {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, page_field, count }
 }
 
@@ -355,7 +357,9 @@ pub(all) struct CT_PageField {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PageField::new(element : @xml.Element) -> CT_PageField {
+pub fn CT_PageField::new(
+  element : @xml.Element,
+) -> CT_PageField raise @opc_errors.SchemaViolation {
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -364,9 +368,9 @@ pub fn CT_PageField::new(element : @xml.Element) -> CT_PageField {
       }
     }
   }
-  let fld = attr_int(element, "fld", 0)
-  let item = attr_uint_opt(element, "item")
-  let hier = attr_int_opt(element, "hier")
+  let fld = attr_int_schema(element, "fld", 0)
+  let item = attr_uint_opt_schema(element, "item")
+  let hier = attr_int_opt_schema(element, "hier")
   let name = attr(element, "name")
   let cap = attr(element, "cap")
   { element, ext_lst, fld, item, hier, name, cap }
@@ -386,7 +390,9 @@ pub(all) struct CT_DataFields {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DataFields::new(element : @xml.Element) -> CT_DataFields {
+pub fn CT_DataFields::new(
+  element : @xml.Element,
+) -> CT_DataFields raise @opc_errors.SchemaViolation {
   let data_field : Array[CT_DataField] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -395,7 +401,7 @@ pub fn CT_DataFields::new(element : @xml.Element) -> CT_DataFields {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, data_field, count }
 }
 
@@ -431,7 +437,9 @@ pub(all) struct CT_DataField {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DataField::new(element : @xml.Element) -> CT_DataField {
+pub fn CT_DataField::new(
+  element : @xml.Element,
+) -> CT_DataField raise @opc_errors.SchemaViolation {
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -441,7 +449,7 @@ pub fn CT_DataField::new(element : @xml.Element) -> CT_DataField {
     }
   }
   let name = attr(element, "name")
-  let fld = attr_uint(element, "fld", 0)
+  let fld = attr_uint_schema(element, "fld", 0)
   let subtotal = match attr(element, "subtotal") {
     Some(value) => value
     None => "sum"
@@ -450,9 +458,9 @@ pub fn CT_DataField::new(element : @xml.Element) -> CT_DataField {
     Some(value) => value
     None => "normal"
   }
-  let base_field = attr_int(element, "baseField", -1)
-  let base_item = attr_uint(element, "baseItem", 1048832)
-  let num_fmt_id = attr_uint_opt(element, "numFmtId")
+  let base_field = attr_int_schema(element, "baseField", -1)
+  let base_item = attr_uint_schema(element, "baseItem", 1048832)
+  let num_fmt_id = attr_uint_opt_schema(element, "numFmtId")
   {
     element,
     ext_lst,
@@ -480,7 +488,9 @@ pub(all) struct CT_rowItems {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_rowItems::new(element : @xml.Element) -> CT_rowItems {
+pub fn CT_rowItems::new(
+  element : @xml.Element,
+) -> CT_rowItems raise @opc_errors.SchemaViolation {
   let i : Array[CT_I] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -489,7 +499,7 @@ pub fn CT_rowItems::new(element : @xml.Element) -> CT_rowItems {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, i, count }
 }
 
@@ -507,7 +517,9 @@ pub(all) struct CT_colItems {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_colItems::new(element : @xml.Element) -> CT_colItems {
+pub fn CT_colItems::new(
+  element : @xml.Element,
+) -> CT_colItems raise @opc_errors.SchemaViolation {
   let i : Array[CT_I] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -516,7 +528,7 @@ pub fn CT_colItems::new(element : @xml.Element) -> CT_colItems {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, i, count }
 }
 
@@ -534,7 +546,9 @@ pub(all) struct CT_RowFields {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RowFields::new(element : @xml.Element) -> CT_RowFields {
+pub fn CT_RowFields::new(
+  element : @xml.Element,
+) -> CT_RowFields raise @opc_errors.SchemaViolation {
   let field : Array[CT_Field] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -543,7 +557,7 @@ pub fn CT_RowFields::new(element : @xml.Element) -> CT_RowFields {
       }
     }
   }
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   { element, field, count }
 }
 
@@ -561,7 +575,9 @@ pub(all) struct CT_ColFields {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ColFields::new(element : @xml.Element) -> CT_ColFields {
+pub fn CT_ColFields::new(
+  element : @xml.Element,
+) -> CT_ColFields raise @opc_errors.SchemaViolation {
   let field : Array[CT_Field] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -570,7 +586,7 @@ pub fn CT_ColFields::new(element : @xml.Element) -> CT_ColFields {
       }
     }
   }
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   { element, field, count }
 }
 

@@ -542,7 +542,7 @@ pub(all) struct CT_ColFields {
   field : Array[CT_Field]
   count : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_ColFields::new(@xml.Element) -> Self
+pub fn CT_ColFields::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ColHierarchiesUsage {
   element : @xml.Element
@@ -924,14 +924,14 @@ pub(all) struct CT_DataField {
   base_item : Int
   num_fmt_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_DataField::new(@xml.Element) -> Self
+pub fn CT_DataField::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DataFields {
   element : @xml.Element
   data_field : Array[CT_DataField]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_DataFields::new(@xml.Element) -> Self
+pub fn CT_DataFields::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DataRef {
   element : @xml.Element
@@ -2203,14 +2203,14 @@ pub(all) struct CT_PageField {
   name : String?
   cap : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_PageField::new(@xml.Element) -> Self
+pub fn CT_PageField::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PageFields {
   element : @xml.Element
   page_field : Array[CT_PageField]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_PageFields::new(@xml.Element) -> Self
+pub fn CT_PageFields::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PageItem {
   element : @xml.Element
@@ -3050,7 +3050,7 @@ pub(all) struct CT_RowFields {
   field : Array[CT_Field]
   count : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_RowFields::new(@xml.Element) -> Self
+pub fn CT_RowFields::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RowHierarchiesUsage {
   element : @xml.Element
@@ -3958,7 +3958,7 @@ pub(all) struct CT_colItems {
   i : Array[CT_I]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_colItems::new(@xml.Element) -> Self
+pub fn CT_colItems::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_pivotTableDefinition {
   element : @xml.Element
@@ -4048,7 +4048,7 @@ pub(all) struct CT_rowItems {
   i : Array[CT_I]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_rowItems::new(@xml.Element) -> Self
+pub fn CT_rowItems::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct EG_ExtensionList {
   ext : Array[CT_Extension]
