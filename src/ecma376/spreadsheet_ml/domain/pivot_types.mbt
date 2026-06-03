@@ -2576,13 +2576,25 @@ pub(all) struct CT_PivotTableStyle {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotTableStyle::new(element : @xml.Element) -> CT_PivotTableStyle {
+fn pivot_table_style_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(
+    element, local_name, "Part 1 §18.10.1.74", "pivotTableStyleInfo",
+  )
+}
+
+///|
+pub fn CT_PivotTableStyle::new(
+  element : @xml.Element,
+) -> CT_PivotTableStyle raise @opc_errors.SchemaViolation {
   let name = attr(element, "name")
-  let show_row_headers = attr_bool_opt(element, "showRowHeaders")
-  let show_col_headers = attr_bool_opt(element, "showColHeaders")
-  let show_row_stripes = attr_bool_opt(element, "showRowStripes")
-  let show_col_stripes = attr_bool_opt(element, "showColStripes")
-  let show_last_column = attr_bool_opt(element, "showLastColumn")
+  let show_row_headers = pivot_table_style_bool_opt(element, "showRowHeaders")
+  let show_col_headers = pivot_table_style_bool_opt(element, "showColHeaders")
+  let show_row_stripes = pivot_table_style_bool_opt(element, "showRowStripes")
+  let show_col_stripes = pivot_table_style_bool_opt(element, "showColStripes")
+  let show_last_column = pivot_table_style_bool_opt(element, "showLastColumn")
   {
     element,
     name,

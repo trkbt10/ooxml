@@ -382,6 +382,20 @@ test "SML pivotTableDefinition reader rejects malformed pivot-hierarchy booleans
 }
 
 ///|
+test "SML pivotTableDefinition reader rejects malformed style booleans" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotTableStyleInfo showRowHeaders=\"maybe\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotTableStyleInfo showLastColumn=\"maybe\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed member-property booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
