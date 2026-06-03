@@ -179,6 +179,34 @@ test "SML headers reader rejects malformed revision-header booleans" {
 }
 
 ///|
+fn assert_revisions_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_revisions(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML revisions reader rejects malformed revision booleans" {
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rrc ua=\"maybe\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rm><s:undo ref3D=\"maybe\"/>" +
+    "</s:rm></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rcc odxf=\"maybe\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:raf applyNumberFormats=\"maybe\"/>" +
+    "</s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rdn customView=\"maybe\"/>" +
+    "</s:revisions>",
+  )
+}
+
+///|
 fn assert_metadata_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_metadata(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))

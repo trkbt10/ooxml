@@ -7,6 +7,27 @@ pub fn workbook_connection_type_group_name() -> String {
 }
 
 ///|
+fn revision_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+  section : String,
+  path_prefix : String,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, section, path_prefix)
+}
+
+///|
+fn revision_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+  section : String,
+  path_prefix : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(element, local_name, section, path_prefix)
+}
+
+///|
 /// XSD complex type CT_SortState — Part 1 §18.3.1.92 (`<sortState>` Sort
 /// State). Sequence children: `<sortCondition>*` (CT_SortCondition,
 /// 0..64) and optional `<extLst>` (CT_ExtensionList). Attributes:
@@ -2376,7 +2397,9 @@ pub(all) struct CT_Revisions {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Revisions::new(element : @xml.Element) -> CT_Revisions {
+pub fn CT_Revisions::new(
+  element : @xml.Element,
+) -> CT_Revisions raise @opc_errors.SchemaViolation {
   let rrc : Array[CT_RevisionRowColumn] = []
   let rm : Array[CT_RevisionMove] = []
   let rcv : Array[CT_RevisionCustomView] = []
@@ -2446,17 +2469,23 @@ pub(all) struct CT_UndoInfo {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_UndoInfo::new(element : @xml.Element) -> CT_UndoInfo {
+pub fn CT_UndoInfo::new(
+  element : @xml.Element,
+) -> CT_UndoInfo raise @opc_errors.SchemaViolation {
   let index = attr_uint(element, "index", 0)
   let exp = match attr(element, "exp") {
     Some(value) => value
     None => ""
   }
-  let ref3_d = attr_bool(element, "ref3D", false)
-  let array = attr_bool(element, "array", false)
-  let v = attr_bool(element, "v", false)
-  let nf = attr_bool(element, "nf", false)
-  let cs = attr_bool(element, "cs", false)
+  let ref3_d = revision_bool(
+    element, "ref3D", false, "Part 1 §18.11.1.27", "undo",
+  )
+  let array = revision_bool(
+    element, "array", false, "Part 1 §18.11.1.27", "undo",
+  )
+  let v = revision_bool(element, "v", false, "Part 1 §18.11.1.27", "undo")
+  let nf = revision_bool(element, "nf", false, "Part 1 §18.11.1.27", "undo")
+  let cs = revision_bool(element, "cs", false, "Part 1 §18.11.1.27", "undo")
   let dr = match attr(element, "dr") {
     Some(value) => value
     None => ""
@@ -2503,7 +2532,9 @@ pub(all) struct CT_RevisionMove {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RevisionMove::new(element : @xml.Element) -> CT_RevisionMove {
+pub fn CT_RevisionMove::new(
+  element : @xml.Element,
+) -> CT_RevisionMove raise @opc_errors.SchemaViolation {
   let undo : Array[CT_UndoInfo] = []
   let rcc : Array[CT_RevisionCellChange] = []
   let rfmt : Array[CT_RevisionFormatting] = []
@@ -2518,8 +2549,8 @@ pub fn CT_RevisionMove::new(element : @xml.Element) -> CT_RevisionMove {
     }
   }
   let r_id = attr_uint(element, "rId", 0)
-  let ua = attr_bool(element, "ua", false)
-  let ra = attr_bool(element, "ra", false)
+  let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.19", "rm")
+  let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.19", "rm")
   let sheet_id = attr_uint(element, "sheetId", 0)
   let source = match attr(element, "source") {
     Some(value) => value
@@ -2577,7 +2608,7 @@ pub(all) struct CT_RevisionFormatting {
 ///|
 pub fn CT_RevisionFormatting::new(
   element : @xml.Element,
-) -> CT_RevisionFormatting {
+) -> CT_RevisionFormatting raise @opc_errors.SchemaViolation {
   let mut dxf : CT_Dxf? = None
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -2590,8 +2621,10 @@ pub fn CT_RevisionFormatting::new(
     }
   }
   let sheet_id = attr_uint(element, "sheetId", 0)
-  let xf_dxf = attr_bool(element, "xfDxf", false)
-  let s = attr_bool(element, "s", false)
+  let xf_dxf = revision_bool(
+    element, "xfDxf", false, "Part 1 §18.11.1.17", "rfmt",
+  )
+  let s = revision_bool(element, "s", false, "Part 1 §18.11.1.17", "rfmt")
   let sqref = match attr(element, "sqref") {
     Some(value) => value
     None => ""
@@ -2635,16 +2668,26 @@ pub(all) struct CT_RevisionAutoFormatting {
 ///|
 pub fn CT_RevisionAutoFormatting::new(
   element : @xml.Element,
-) -> CT_RevisionAutoFormatting {
+) -> CT_RevisionAutoFormatting raise @opc_errors.SchemaViolation {
   let sheet_id = attr_uint(element, "sheetId", 0)
   let auto_format_id = attr_uint_opt(element, "autoFormatId")
-  let apply_number_formats = attr_bool_opt(element, "applyNumberFormats")
-  let apply_border_formats = attr_bool_opt(element, "applyBorderFormats")
-  let apply_font_formats = attr_bool_opt(element, "applyFontFormats")
-  let apply_pattern_formats = attr_bool_opt(element, "applyPatternFormats")
-  let apply_alignment_formats = attr_bool_opt(element, "applyAlignmentFormats")
-  let apply_width_height_formats = attr_bool_opt(
-    element, "applyWidthHeightFormats",
+  let apply_number_formats = revision_bool_opt(
+    element, "applyNumberFormats", "Part 1 §18.11.1.7", "raf",
+  )
+  let apply_border_formats = revision_bool_opt(
+    element, "applyBorderFormats", "Part 1 §18.11.1.7", "raf",
+  )
+  let apply_font_formats = revision_bool_opt(
+    element, "applyFontFormats", "Part 1 §18.11.1.7", "raf",
+  )
+  let apply_pattern_formats = revision_bool_opt(
+    element, "applyPatternFormats", "Part 1 §18.11.1.7", "raf",
+  )
+  let apply_alignment_formats = revision_bool_opt(
+    element, "applyAlignmentFormats", "Part 1 §18.11.1.7", "raf",
+  )
+  let apply_width_height_formats = revision_bool_opt(
+    element, "applyWidthHeightFormats", "Part 1 §18.11.1.7", "raf",
   )
   let ref_ = match attr(element, "ref") {
     Some(value) => value
@@ -2700,7 +2743,9 @@ pub(all) struct CT_RevisionComment {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RevisionComment::new(element : @xml.Element) -> CT_RevisionComment {
+pub fn CT_RevisionComment::new(
+  element : @xml.Element,
+) -> CT_RevisionComment raise @opc_errors.SchemaViolation {
   let sheet_id = attr_uint(element, "sheetId", 0)
   let cell = match attr(element, "cell") {
     Some(value) => value
@@ -2714,10 +2759,16 @@ pub fn CT_RevisionComment::new(element : @xml.Element) -> CT_RevisionComment {
     Some(value) => value
     None => "add"
   }
-  let always_show = attr_bool(element, "alwaysShow", false)
-  let old = attr_bool(element, "old", false)
-  let hidden_row = attr_bool(element, "hiddenRow", false)
-  let hidden_column = attr_bool(element, "hiddenColumn", false)
+  let always_show = revision_bool(
+    element, "alwaysShow", false, "Part 1 §18.11.1.10", "rcmt",
+  )
+  let old = revision_bool(element, "old", false, "Part 1 §18.11.1.10", "rcmt")
+  let hidden_row = revision_bool(
+    element, "hiddenRow", false, "Part 1 §18.11.1.10", "rcmt",
+  )
+  let hidden_column = revision_bool(
+    element, "hiddenColumn", false, "Part 1 §18.11.1.10", "rcmt",
+  )
   let author = match attr(element, "author") {
     Some(value) => value
     None => ""
@@ -2818,7 +2869,7 @@ pub(all) struct CT_RevisionDefinedName {
 ///|
 pub fn CT_RevisionDefinedName::new(
   element : @xml.Element,
-) -> CT_RevisionDefinedName {
+) -> CT_RevisionDefinedName raise @opc_errors.SchemaViolation {
   let mut formula : String? = None
   let mut old_formula : String? = None
   let mut ext_lst : CT_ExtensionList? = None
@@ -2833,22 +2884,32 @@ pub fn CT_RevisionDefinedName::new(
     }
   }
   let r_id = attr_uint(element, "rId", 0)
-  let ua = attr_bool(element, "ua", false)
-  let ra = attr_bool(element, "ra", false)
+  let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.13", "rdn")
+  let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.13", "rdn")
   let local_sheet_id = attr_uint_opt(element, "localSheetId")
-  let custom_view = attr_bool(element, "customView", false)
+  let custom_view = revision_bool(
+    element, "customView", false, "Part 1 §18.11.1.13", "rdn",
+  )
   let name = match attr(element, "name") {
     Some(value) => value
     None => ""
   }
-  let function = attr_bool(element, "function", false)
-  let old_function = attr_bool(element, "oldFunction", false)
+  let function = revision_bool(
+    element, "function", false, "Part 1 §18.11.1.13", "rdn",
+  )
+  let old_function = revision_bool(
+    element, "oldFunction", false, "Part 1 §18.11.1.13", "rdn",
+  )
   let function_group_id = attr_uint_opt(element, "functionGroupId")
   let old_function_group_id = attr_uint_opt(element, "oldFunctionGroupId")
   let shortcut_key = attr_uint_opt(element, "shortcutKey")
   let old_shortcut_key = attr_uint_opt(element, "oldShortcutKey")
-  let hidden = attr_bool(element, "hidden", false)
-  let old_hidden = attr_bool(element, "oldHidden", false)
+  let hidden = revision_bool(
+    element, "hidden", false, "Part 1 §18.11.1.13", "rdn",
+  )
+  let old_hidden = revision_bool(
+    element, "oldHidden", false, "Part 1 §18.11.1.13", "rdn",
+  )
   let custom_menu = attr(element, "customMenu")
   let old_custom_menu = attr(element, "oldCustomMenu")
   let description = attr(element, "description")
@@ -2911,10 +2972,12 @@ pub(all) struct CT_RevisionConflict {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_RevisionConflict::new(element : @xml.Element) -> CT_RevisionConflict {
+pub fn CT_RevisionConflict::new(
+  element : @xml.Element,
+) -> CT_RevisionConflict raise @opc_errors.SchemaViolation {
   let r_id = attr_uint(element, "rId", 0)
-  let ua = attr_bool(element, "ua", false)
-  let ra = attr_bool(element, "ra", false)
+  let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.11", "rcft")
+  let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.11", "rcft")
   let sheet_id = attr_uint_opt(element, "sheetId")
   { element, r_id, ua, ra, sheet_id }
 }

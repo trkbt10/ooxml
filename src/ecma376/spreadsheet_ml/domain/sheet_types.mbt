@@ -1001,7 +1001,7 @@ pub(all) struct CT_RevisionRowColumn {
 ///|
 pub fn CT_RevisionRowColumn::new(
   element : @xml.Element,
-) -> CT_RevisionRowColumn {
+) -> CT_RevisionRowColumn raise @opc_errors.SchemaViolation {
   let undo : Array[CT_UndoInfo] = []
   let rcc : Array[CT_RevisionCellChange] = []
   let rfmt : Array[CT_RevisionFormatting] = []
@@ -1016,10 +1016,10 @@ pub fn CT_RevisionRowColumn::new(
     }
   }
   let r_id = attr_uint(element, "rId", 0)
-  let ua = attr_bool(element, "ua", false)
-  let ra = attr_bool(element, "ra", false)
+  let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.21", "rrc")
+  let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.21", "rrc")
   let s_id = attr_uint(element, "sId", 0)
-  let eol = attr_bool(element, "eol", false)
+  let eol = revision_bool(element, "eol", false, "Part 1 §18.11.1.21", "rrc")
   let ref_ = match attr(element, "ref") {
     Some(value) => value
     None => ""
@@ -1028,7 +1028,7 @@ pub fn CT_RevisionRowColumn::new(
     Some(value) => value
     None => ""
   }
-  let edge = attr_bool(element, "edge", false)
+  let edge = revision_bool(element, "edge", false, "Part 1 §18.11.1.21", "rrc")
   { element, undo, rcc, rfmt, r_id, ua, ra, s_id, eol, ref_, action, edge }
 }
 
@@ -1090,7 +1090,7 @@ pub(all) struct CT_RevisionSheetRename {
 ///|
 pub fn CT_RevisionSheetRename::new(
   element : @xml.Element,
-) -> CT_RevisionSheetRename {
+) -> CT_RevisionSheetRename raise @opc_errors.SchemaViolation {
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1100,8 +1100,8 @@ pub fn CT_RevisionSheetRename::new(
     }
   }
   let r_id = attr_uint(element, "rId", 0)
-  let ua = attr_bool(element, "ua", false)
-  let ra = attr_bool(element, "ra", false)
+  let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.22", "rsnm")
+  let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.22", "rsnm")
   let sheet_id = attr_uint(element, "sheetId", 0)
   let old_name = match attr(element, "oldName") {
     Some(value) => value
@@ -1140,10 +1140,10 @@ pub(all) struct CT_RevisionInsertSheet {
 ///|
 pub fn CT_RevisionInsertSheet::new(
   element : @xml.Element,
-) -> CT_RevisionInsertSheet {
+) -> CT_RevisionInsertSheet raise @opc_errors.SchemaViolation {
   let r_id = attr_uint(element, "rId", 0)
-  let ua = attr_bool(element, "ua", false)
-  let ra = attr_bool(element, "ra", false)
+  let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.18", "ris")
+  let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.18", "ris")
   let sheet_id = attr_uint(element, "sheetId", 0)
   let name = match attr(element, "name") {
     Some(value) => value
@@ -1214,7 +1214,7 @@ pub(all) struct CT_RevisionCellChange {
 ///|
 pub fn CT_RevisionCellChange::new(
   element : @xml.Element,
-) -> CT_RevisionCellChange {
+) -> CT_RevisionCellChange raise @opc_errors.SchemaViolation {
   let mut oc : CT_Cell? = None
   let mut nc : CT_Cell? = None
   let mut odxf_child : CT_Dxf? = None
@@ -1233,20 +1233,28 @@ pub fn CT_RevisionCellChange::new(
     }
   }
   let r_id = attr_uint(element, "rId", 0)
-  let ua = attr_bool(element, "ua", false)
-  let ra = attr_bool(element, "ra", false)
+  let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.9", "rcc")
+  let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.9", "rcc")
   let s_id = attr_uint(element, "sId", 0)
-  let odxf = attr_bool(element, "odxf", false)
-  let xf_dxf = attr_bool(element, "xfDxf", false)
-  let s = attr_bool(element, "s", false)
-  let dxf = attr_bool(element, "dxf", false)
+  let odxf = revision_bool(element, "odxf", false, "Part 1 §18.11.1.9", "rcc")
+  let xf_dxf = revision_bool(
+    element, "xfDxf", false, "Part 1 §18.11.1.9", "rcc",
+  )
+  let s = revision_bool(element, "s", false, "Part 1 §18.11.1.9", "rcc")
+  let dxf = revision_bool(element, "dxf", false, "Part 1 §18.11.1.9", "rcc")
   let num_fmt_id = attr_uint_opt(element, "numFmtId")
-  let quote_prefix = attr_bool(element, "quotePrefix", false)
-  let old_quote_prefix = attr_bool(element, "oldQuotePrefix", false)
-  let ph = attr_bool(element, "ph", false)
-  let old_ph = attr_bool(element, "oldPh", false)
-  let end_of_list_formula_update = attr_bool(
-    element, "endOfListFormulaUpdate", false,
+  let quote_prefix = revision_bool(
+    element, "quotePrefix", false, "Part 1 §18.11.1.9", "rcc",
+  )
+  let old_quote_prefix = revision_bool(
+    element, "oldQuotePrefix", false, "Part 1 §18.11.1.9", "rcc",
+  )
+  let ph = revision_bool(element, "ph", false, "Part 1 §18.11.1.9", "rcc")
+  let old_ph = revision_bool(
+    element, "oldPh", false, "Part 1 §18.11.1.9", "rcc",
+  )
+  let end_of_list_formula_update = revision_bool(
+    element, "endOfListFormulaUpdate", false, "Part 1 §18.11.1.9", "rcc",
   )
   {
     element,

@@ -2805,7 +2805,7 @@ pub(all) struct CT_RevisionAutoFormatting {
   apply_width_height_formats : Bool?
   ref_ : String
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionAutoFormatting::new(@xml.Element) -> Self
+pub fn CT_RevisionAutoFormatting::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionCellChange {
   element : @xml.Element
@@ -2829,7 +2829,7 @@ pub(all) struct CT_RevisionCellChange {
   old_ph : Bool
   end_of_list_formula_update : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionCellChange::new(@xml.Element) -> Self
+pub fn CT_RevisionCellChange::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionComment {
   element : @xml.Element
@@ -2845,7 +2845,7 @@ pub(all) struct CT_RevisionComment {
   old_length : Int
   new_length : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionComment::new(@xml.Element) -> Self
+pub fn CT_RevisionComment::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionConflict {
   element : @xml.Element
@@ -2854,7 +2854,7 @@ pub(all) struct CT_RevisionConflict {
   ra : Bool
   sheet_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionConflict::new(@xml.Element) -> Self
+pub fn CT_RevisionConflict::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionCustomView {
   element : @xml.Element
@@ -2893,7 +2893,7 @@ pub(all) struct CT_RevisionDefinedName {
   comment : String?
   old_comment : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionDefinedName::new(@xml.Element) -> Self
+pub fn CT_RevisionDefinedName::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionFormatting {
   element : @xml.Element
@@ -2906,7 +2906,7 @@ pub(all) struct CT_RevisionFormatting {
   start : Int?
   length : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionFormatting::new(@xml.Element) -> Self
+pub fn CT_RevisionFormatting::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionHeader {
   element : @xml.Element
@@ -2950,7 +2950,7 @@ pub(all) struct CT_RevisionInsertSheet {
   name : String
   sheet_position : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionInsertSheet::new(@xml.Element) -> Self
+pub fn CT_RevisionInsertSheet::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionMove {
   element : @xml.Element
@@ -2965,7 +2965,7 @@ pub(all) struct CT_RevisionMove {
   destination : String
   source_sheet_id : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionMove::new(@xml.Element) -> Self
+pub fn CT_RevisionMove::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionQueryTableField {
   element : @xml.Element
@@ -2989,7 +2989,7 @@ pub(all) struct CT_RevisionRowColumn {
   action : String
   edge : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionRowColumn::new(@xml.Element) -> Self
+pub fn CT_RevisionRowColumn::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RevisionSheetRename {
   element : @xml.Element
@@ -3001,7 +3001,7 @@ pub(all) struct CT_RevisionSheetRename {
   old_name : String
   new_name : String
 } derive(Eq, @debug.Debug)
-pub fn CT_RevisionSheetRename::new(@xml.Element) -> Self
+pub fn CT_RevisionSheetRename::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Revisions {
   element : @xml.Element
@@ -3018,7 +3018,7 @@ pub(all) struct CT_Revisions {
   rqt : Array[CT_RevisionQueryTableField]
   rcft : Array[CT_RevisionConflict]
 } derive(Eq, @debug.Debug)
-pub fn CT_Revisions::new(@xml.Element) -> Self
+pub fn CT_Revisions::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RgbColor {
   element : @xml.Element
@@ -3652,7 +3652,7 @@ pub(all) struct CT_UndoInfo {
   r : String?
   s_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_UndoInfo::new(@xml.Element) -> Self
+pub fn CT_UndoInfo::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Users {
   element : @xml.Element
