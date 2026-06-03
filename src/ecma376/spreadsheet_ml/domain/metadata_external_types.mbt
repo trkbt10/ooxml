@@ -2060,16 +2060,6 @@ fn parse_hex_uint_text(text : String) -> Int? {
 }
 
 ///|
-/// Parse an attribute as xsd:double. Returns None when absent or
-/// unparseable. Both signs and exponent forms accepted per XSD §3.2.5.
-fn attr_double_opt(element : @xml.Element, local_name : String) -> Double? {
-  match attr(element, local_name) {
-    Some(value) => parse_double_text(value)
-    None => None
-  }
-}
-
-///|
 /// Strict xsd:double reader for schema boundary constructors.
 fn attr_double_opt_schema(
   element : @xml.Element,
@@ -2082,19 +2072,6 @@ fn attr_double_opt_schema(
         None => raise_numeric_attr_violation(element, local_name, "xsd:double")
       }
     None => None
-  }
-}
-
-///|
-/// Parse an attribute as xsd:double with a default fallback.
-fn attr_double(
-  element : @xml.Element,
-  local_name : String,
-  default : Double,
-) -> Double {
-  match attr_double_opt(element, local_name) {
-    Some(d) => d
-    None => default
   }
 }
 

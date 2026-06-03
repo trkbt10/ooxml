@@ -1501,7 +1501,7 @@ pub(all) struct CT_GradientStop {
   color : @xml.Element?
   position : Double
 } derive(Eq, @debug.Debug)
-pub fn CT_GradientStop::new(@xml.Element) -> Self
+pub fn CT_GradientStop::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_GroupItems {
   element : @xml.Element

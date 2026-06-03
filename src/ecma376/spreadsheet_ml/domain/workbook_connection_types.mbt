@@ -3506,7 +3506,9 @@ pub(all) struct CT_GradientStop {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_GradientStop::new(element : @xml.Element) -> CT_GradientStop {
+pub fn CT_GradientStop::new(
+  element : @xml.Element,
+) -> CT_GradientStop raise @opc_errors.SchemaViolation {
   let mut color : @xml.Element? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3515,7 +3517,7 @@ pub fn CT_GradientStop::new(element : @xml.Element) -> CT_GradientStop {
       }
     }
   }
-  let position = attr_double(element, "position", 0.0)
+  let position = attr_double_schema(element, "position", 0.0)
   { element, color, position }
 }
 

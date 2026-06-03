@@ -285,6 +285,10 @@ test "SML styleSheet reader rejects malformed style doubles" {
     "<s:fills><s:fill><s:gradientFill degree=\"abc\"/></s:fill></s:fills>",
   )
   assert_style_sheet_schema_violation(
+    "<s:fills><s:fill><s:gradientFill><s:stop position=\"abc\"/>" +
+    "</s:gradientFill></s:fill></s:fills>",
+  )
+  assert_style_sheet_schema_violation(
     "<s:fonts><s:font><s:sz val=\"abc\"/></s:font></s:fonts>",
   )
   assert_style_sheet_schema_violation(
