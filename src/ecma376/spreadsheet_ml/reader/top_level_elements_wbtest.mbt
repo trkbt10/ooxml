@@ -221,6 +221,16 @@ fn assert_pivot_cache_definition_schema_violation(
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed definition booleans" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\" saveData=\"maybe\"/>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\" supportAdvancedDrill=\"maybe\"/>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +

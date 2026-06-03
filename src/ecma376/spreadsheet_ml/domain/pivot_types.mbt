@@ -96,23 +96,43 @@ pub fn CT_PivotCacheDefinition::new(
   element : @xml.Element,
 ) -> CT_PivotCacheDefinition raise @opc_errors.SchemaViolation {
   let r_id = attr_with_ns(element, "id")
-  let invalid = attr_bool(element, "invalid", false)
-  let save_data = attr_bool(element, "saveData", true)
-  let refresh_on_load = attr_bool(element, "refreshOnLoad", false)
-  let optimize_memory = attr_bool(element, "optimizeMemory", false)
-  let enable_refresh = attr_bool(element, "enableRefresh", true)
+  let invalid = attr_bool_schema(
+    element, "invalid", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let save_data = attr_bool_schema(
+    element, "saveData", true, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let refresh_on_load = attr_bool_schema(
+    element, "refreshOnLoad", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let optimize_memory = attr_bool_schema(
+    element, "optimizeMemory", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let enable_refresh = attr_bool_schema(
+    element, "enableRefresh", true, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
   let refreshed_by = attr(element, "refreshedBy")
   let refreshed_date_iso = attr(element, "refreshedDateIso")
-  let background_query = attr_bool(element, "backgroundQuery", false)
+  let background_query = attr_bool_schema(
+    element, "backgroundQuery", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
   let missing_items_limit = attr_uint_opt(element, "missingItemsLimit")
   let created_version = attr_uint(element, "createdVersion", 0)
   let refreshed_version = attr_uint(element, "refreshedVersion", 0)
   let min_refreshable_version = attr_uint(element, "minRefreshableVersion", 0)
   let record_count = attr_uint_opt(element, "recordCount")
-  let upgrade_on_refresh = attr_bool(element, "upgradeOnRefresh", false)
-  let tuple_cache_attr = attr_bool(element, "tupleCache", false)
-  let support_subquery = attr_bool(element, "supportSubquery", false)
-  let support_advanced_drill = attr_bool(element, "supportAdvancedDrill", false)
+  let upgrade_on_refresh = attr_bool_schema(
+    element, "upgradeOnRefresh", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let tuple_cache_attr = attr_bool_schema(
+    element, "tupleCache", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let support_subquery = attr_bool_schema(
+    element, "supportSubquery", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
+  let support_advanced_drill = attr_bool_schema(
+    element, "supportAdvancedDrill", false, "Part 1 §18.10.1.67", "pivotCacheDefinition",
+  )
   let mut cache_source : CT_CacheSource? = None
   let mut cache_fields : CT_CacheFields? = None
   let mut cache_hierarchies : CT_CacheHierarchies? = None
