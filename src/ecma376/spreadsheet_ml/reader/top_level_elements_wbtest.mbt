@@ -169,3 +169,15 @@ test "SML metadata reader rejects malformed metadataType booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML MapInfo reader rejects malformed Map booleans" {
+  let invalid = try? read_map_info(
+    bytes(
+      "<s:MapInfo xmlns:s=\"urn:s\">" +
+      "<s:Map AutoFit=\"maybe\"/>" +
+      "</s:MapInfo>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}

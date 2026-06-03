@@ -1763,7 +1763,7 @@ pub(all) struct CT_Map {
   preserve_format : Bool
   data_binding : CT_DataBinding?
 } derive(Eq, @debug.Debug)
-pub fn CT_Map::new(@xml.Element) -> Self
+pub fn CT_Map::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MapInfo {
   element : @xml.Element
@@ -1771,7 +1771,7 @@ pub(all) struct CT_MapInfo {
   schemas : Array[CT_Schema]
   maps : Array[CT_Map]
 } derive(Eq, @debug.Debug)
-pub fn CT_MapInfo::new(@xml.Element) -> Self
+pub fn CT_MapInfo::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Mdx {
   element : @xml.Element

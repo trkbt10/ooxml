@@ -29,7 +29,9 @@ pub(all) struct CT_MapInfo {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MapInfo::new(element : @xml.Element) -> CT_MapInfo {
+pub fn CT_MapInfo::new(
+  element : @xml.Element,
+) -> CT_MapInfo raise @opc_errors.SchemaViolation {
   let selection_namespaces = match attr(element, "SelectionNamespaces") {
     Some(value) => value
     None => ""
@@ -112,7 +114,9 @@ pub(all) struct CT_Map {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Map::new(element : @xml.Element) -> CT_Map {
+pub fn CT_Map::new(
+  element : @xml.Element,
+) -> CT_Map raise @opc_errors.SchemaViolation {
   let id = attr_uint(element, "ID", 0)
   let name = match attr(element, "Name") {
     Some(v) => v
@@ -126,15 +130,21 @@ pub fn CT_Map::new(element : @xml.Element) -> CT_Map {
     Some(v) => v
     None => ""
   }
-  let show_import_export_validation_errors = attr_bool(
-    element, "ShowImportExportValidationErrors", false,
+  let show_import_export_validation_errors = attr_bool_schema(
+    element, "ShowImportExportValidationErrors", false, "Part 1 §18.16.2", "Map",
   )
-  let auto_fit = attr_bool(element, "AutoFit", false)
-  let append = attr_bool(element, "Append", false)
-  let preserve_sort_af_layout = attr_bool(
-    element, "PreserveSortAFLayout", false,
+  let auto_fit = attr_bool_schema(
+    element, "AutoFit", false, "Part 1 §18.16.2", "Map",
   )
-  let preserve_format = attr_bool(element, "PreserveFormat", false)
+  let append = attr_bool_schema(
+    element, "Append", false, "Part 1 §18.16.2", "Map",
+  )
+  let preserve_sort_af_layout = attr_bool_schema(
+    element, "PreserveSortAFLayout", false, "Part 1 §18.16.2", "Map",
+  )
+  let preserve_format = attr_bool_schema(
+    element, "PreserveFormat", false, "Part 1 §18.16.2", "Map",
+  )
   let mut data_binding : CT_DataBinding? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1801,14 +1811,29 @@ fn attr_bool_strict(
   local_name : String,
   default : Bool,
 ) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.9.10", "metadataType",
+  )
+}
+
+///|
+/// Parse an attribute as xsd:boolean at a schema reader boundary using a
+/// caller-supplied ECMA section and element path.
+fn attr_bool_schema(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+  section : String,
+  path_prefix : String,
+) -> Bool raise @opc_errors.SchemaViolation {
   match attr(element, local_name) {
     Some(value) =>
       match parse_bool_text(value) {
         Some(parsed) => parsed
         None =>
           raise @opc_errors.SchemaViolation(
-            section="Part 1 §18.9.10",
-            path="metadataType/@" + local_name,
+            section~,
+            path=path_prefix + "/@" + local_name,
             reason="expected xsd:boolean lexical, got " + value,
           )
       }
