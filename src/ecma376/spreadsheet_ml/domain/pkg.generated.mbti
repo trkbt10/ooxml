@@ -2662,7 +2662,7 @@ pub(all) struct CT_QueryTable {
   query_table_refresh : CT_QueryTableRefresh?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_QueryTable::new(@xml.Element) -> Self
+pub fn CT_QueryTable::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_QueryTableDeletedFields {
   element : @xml.Element
@@ -2682,14 +2682,14 @@ pub(all) struct CT_QueryTableField {
   table_column_id : Int
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_QueryTableField::new(@xml.Element) -> Self
+pub fn CT_QueryTableField::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_QueryTableFields {
   element : @xml.Element
   count : Int
   query_table_field : Array[CT_QueryTableField]
 } derive(Eq, @debug.Debug)
-pub fn CT_QueryTableFields::new(@xml.Element) -> Self
+pub fn CT_QueryTableFields::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_QueryTableRefresh {
   element : @xml.Element
@@ -2705,7 +2705,7 @@ pub(all) struct CT_QueryTableRefresh {
   sort_state : CT_SortState?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_QueryTableRefresh::new(@xml.Element) -> Self
+pub fn CT_QueryTableRefresh::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_RElt {
   element : @xml.Element

@@ -229,6 +229,34 @@ fn assert_pivot_table_definition_schema_violation(
 }
 
 ///|
+fn assert_query_table_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_query_table(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML queryTable reader rejects malformed booleans" {
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\" headers=\"maybe\"/>",
+  )
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\" applyNumberFormats=\"maybe\"/>",
+  )
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\">" +
+    "<s:queryTableRefresh preserveSortFilterLayout=\"maybe\"/>" +
+    "</s:queryTable>",
+  )
+  assert_query_table_schema_violation(
+    "<s:queryTable xmlns:s=\"urn:s\">" +
+    "<s:queryTableRefresh><s:queryTableFields>" +
+    "<s:queryTableField dataBound=\"maybe\"/>" +
+    "</s:queryTableFields></s:queryTableRefresh>" +
+    "</s:queryTable>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed definition booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\" saveData=\"maybe\"/>",

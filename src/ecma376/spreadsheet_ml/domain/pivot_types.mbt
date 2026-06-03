@@ -3065,37 +3065,64 @@ pub(all) struct CT_QueryTable {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_QueryTable::new(element : @xml.Element) -> CT_QueryTable {
+fn query_table_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.12.5", "queryTable",
+  )
+}
+
+///|
+fn query_table_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(element, local_name, "Part 1 §18.12.5", "queryTable")
+}
+
+///|
+pub fn CT_QueryTable::new(
+  element : @xml.Element,
+) -> CT_QueryTable raise @opc_errors.SchemaViolation {
   let name = match attr(element, "name") {
     Some(value) => value
     None => ""
   }
-  let headers = attr_bool(element, "headers", true)
-  let row_numbers = attr_bool(element, "rowNumbers", false)
-  let disable_refresh = attr_bool(element, "disableRefresh", false)
-  let background_refresh = attr_bool(element, "backgroundRefresh", true)
-  let first_background_refresh = attr_bool(
+  let headers = query_table_bool(element, "headers", true)
+  let row_numbers = query_table_bool(element, "rowNumbers", false)
+  let disable_refresh = query_table_bool(element, "disableRefresh", false)
+  let background_refresh = query_table_bool(element, "backgroundRefresh", true)
+  let first_background_refresh = query_table_bool(
     element, "firstBackgroundRefresh", false,
   )
-  let refresh_on_load = attr_bool(element, "refreshOnLoad", false)
+  let refresh_on_load = query_table_bool(element, "refreshOnLoad", false)
   let grow_shrink_type = match attr(element, "growShrinkType") {
     Some(value) => value
     None => "insertDelete"
   }
-  let fill_formulas = attr_bool(element, "fillFormulas", false)
-  let remove_data_on_save = attr_bool(element, "removeDataOnSave", false)
-  let disable_edit = attr_bool(element, "disableEdit", false)
-  let preserve_formatting = attr_bool(element, "preserveFormatting", true)
-  let adjust_column_width = attr_bool(element, "adjustColumnWidth", true)
-  let intermediate = attr_bool(element, "intermediate", false)
+  let fill_formulas = query_table_bool(element, "fillFormulas", false)
+  let remove_data_on_save = query_table_bool(element, "removeDataOnSave", false)
+  let disable_edit = query_table_bool(element, "disableEdit", false)
+  let preserve_formatting = query_table_bool(
+    element, "preserveFormatting", true,
+  )
+  let adjust_column_width = query_table_bool(element, "adjustColumnWidth", true)
+  let intermediate = query_table_bool(element, "intermediate", false)
   let connection_id = attr_uint(element, "connectionId", 0)
   let auto_format_id = attr_uint_opt(element, "autoFormatId")
-  let apply_number_formats = attr_bool_opt(element, "applyNumberFormats")
-  let apply_border_formats = attr_bool_opt(element, "applyBorderFormats")
-  let apply_font_formats = attr_bool_opt(element, "applyFontFormats")
-  let apply_pattern_formats = attr_bool_opt(element, "applyPatternFormats")
-  let apply_alignment_formats = attr_bool_opt(element, "applyAlignmentFormats")
-  let apply_width_height_formats = attr_bool_opt(
+  let apply_number_formats = query_table_bool_opt(element, "applyNumberFormats")
+  let apply_border_formats = query_table_bool_opt(element, "applyBorderFormats")
+  let apply_font_formats = query_table_bool_opt(element, "applyFontFormats")
+  let apply_pattern_formats = query_table_bool_opt(
+    element, "applyPatternFormats",
+  )
+  let apply_alignment_formats = query_table_bool_opt(
+    element, "applyAlignmentFormats",
+  )
+  let apply_width_height_formats = query_table_bool_opt(
     element, "applyWidthHeightFormats",
   )
   let mut query_table_refresh : CT_QueryTableRefresh? = None
@@ -3177,14 +3204,29 @@ pub(all) struct CT_QueryTableRefresh {
 } derive(Eq, Debug)
 
 ///|
+fn query_table_refresh_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.12.7", "queryTableRefresh",
+  )
+}
+
+///|
 pub fn CT_QueryTableRefresh::new(
   element : @xml.Element,
-) -> CT_QueryTableRefresh {
-  let preserve_sort_filter_layout = attr_bool(
+) -> CT_QueryTableRefresh raise @opc_errors.SchemaViolation {
+  let preserve_sort_filter_layout = query_table_refresh_bool(
     element, "preserveSortFilterLayout", true,
   )
-  let field_id_wrapped = attr_bool(element, "fieldIdWrapped", false)
-  let headers_in_last_refresh = attr_bool(element, "headersInLastRefresh", true)
+  let field_id_wrapped = query_table_refresh_bool(
+    element, "fieldIdWrapped", false,
+  )
+  let headers_in_last_refresh = query_table_refresh_bool(
+    element, "headersInLastRefresh", true,
+  )
   let minimum_version = attr_uint(element, "minimumVersion", 0)
   let next_id = attr_uint(element, "nextId", 1)
   let unbound_columns_left = attr_uint(element, "unboundColumnsLeft", 0)
@@ -3268,7 +3310,9 @@ pub(all) struct CT_QueryTableFields {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_QueryTableFields::new(element : @xml.Element) -> CT_QueryTableFields {
+pub fn CT_QueryTableFields::new(
+  element : @xml.Element,
+) -> CT_QueryTableFields raise @opc_errors.SchemaViolation {
   let count = attr_uint(element, "count", 0)
   let query_table_field : Array[CT_QueryTableField] = []
   for child in element.children {
@@ -3310,13 +3354,26 @@ pub(all) struct CT_QueryTableField {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_QueryTableField::new(element : @xml.Element) -> CT_QueryTableField {
+fn query_table_field_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.12.4", "queryTableField",
+  )
+}
+
+///|
+pub fn CT_QueryTableField::new(
+  element : @xml.Element,
+) -> CT_QueryTableField raise @opc_errors.SchemaViolation {
   let id = attr_uint(element, "id", 0)
   let name = attr(element, "name")
-  let data_bound = attr_bool(element, "dataBound", true)
-  let row_numbers = attr_bool(element, "rowNumbers", false)
-  let fill_formulas = attr_bool(element, "fillFormulas", false)
-  let clipped = attr_bool(element, "clipped", false)
+  let data_bound = query_table_field_bool(element, "dataBound", true)
+  let row_numbers = query_table_field_bool(element, "rowNumbers", false)
+  let fill_formulas = query_table_field_bool(element, "fillFormulas", false)
+  let clipped = query_table_field_bool(element, "clipped", false)
   let table_column_id = attr_uint(element, "tableColumnId", 0)
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
