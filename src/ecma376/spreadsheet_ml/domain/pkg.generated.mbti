@@ -2498,14 +2498,14 @@ pub(all) struct CT_PivotField {
   auto_sort_scope : CT_AutoSortScope?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotField::new(@xml.Element) -> Self
+pub fn CT_PivotField::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotFields {
   element : @xml.Element
   count : Int?
   pivot_fields : Array[CT_PivotField]
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotFields::new(@xml.Element) -> Self
+pub fn CT_PivotFields::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotFilter {
   element : @xml.Element

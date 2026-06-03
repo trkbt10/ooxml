@@ -345,6 +345,20 @@ test "SML pivotTableDefinition reader rejects malformed definition booleans" {
 }
 
 ///|
+test "SML pivotTableDefinition reader rejects malformed pivot-field booleans" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotFields><s:pivotField dataField=\"maybe\"/></s:pivotFields>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotFields><s:pivotField dataSourceSort=\"maybe\"/></s:pivotFields>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheRecords reader rejects malformed record booleans" {
   let invalid = try? read_pivot_cache_records(
     bytes(

@@ -1730,7 +1730,9 @@ pub(all) struct CT_PivotFields {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotFields::new(element : @xml.Element) -> CT_PivotFields {
+pub fn CT_PivotFields::new(
+  element : @xml.Element,
+) -> CT_PivotFields raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let pivot_fields : Array[CT_PivotField] = []
   for child in element.children {
@@ -1859,59 +1861,84 @@ pub(all) struct CT_PivotField {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotField::new(element : @xml.Element) -> CT_PivotField {
+fn pivot_field_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.10.1.69", "pivotField",
+  )
+}
+
+///|
+fn pivot_field_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(element, local_name, "Part 1 §18.10.1.69", "pivotField")
+}
+
+///|
+pub fn CT_PivotField::new(
+  element : @xml.Element,
+) -> CT_PivotField raise @opc_errors.SchemaViolation {
   let name = attr(element, "name")
   let axis = attr(element, "axis")
-  let data_field = attr_bool(element, "dataField", false)
+  let data_field = pivot_field_bool(element, "dataField", false)
   let subtotal_caption = attr(element, "subtotalCaption")
-  let show_drop_downs = attr_bool(element, "showDropDowns", true)
-  let hidden_level = attr_bool(element, "hiddenLevel", false)
+  let show_drop_downs = pivot_field_bool(element, "showDropDowns", true)
+  let hidden_level = pivot_field_bool(element, "hiddenLevel", false)
   let unique_member_property = attr(element, "uniqueMemberProperty")
-  let compact = attr_bool(element, "compact", true)
-  let all_drilled = attr_bool(element, "allDrilled", false)
+  let compact = pivot_field_bool(element, "compact", true)
+  let all_drilled = pivot_field_bool(element, "allDrilled", false)
   let num_fmt_id = attr(element, "numFmtId")
-  let outline = attr_bool(element, "outline", true)
-  let subtotal_top = attr_bool(element, "subtotalTop", true)
-  let drag_to_row = attr_bool(element, "dragToRow", true)
-  let drag_to_col = attr_bool(element, "dragToCol", true)
-  let multiple_item_selection_allowed = attr_bool(
+  let outline = pivot_field_bool(element, "outline", true)
+  let subtotal_top = pivot_field_bool(element, "subtotalTop", true)
+  let drag_to_row = pivot_field_bool(element, "dragToRow", true)
+  let drag_to_col = pivot_field_bool(element, "dragToCol", true)
+  let multiple_item_selection_allowed = pivot_field_bool(
     element, "multipleItemSelectionAllowed", false,
   )
-  let drag_to_page = attr_bool(element, "dragToPage", true)
-  let drag_to_data = attr_bool(element, "dragToData", true)
-  let drag_off = attr_bool(element, "dragOff", true)
-  let show_all = attr_bool(element, "showAll", true)
-  let insert_blank_row = attr_bool(element, "insertBlankRow", false)
-  let server_field = attr_bool(element, "serverField", false)
-  let insert_page_break = attr_bool(element, "insertPageBreak", false)
-  let auto_show = attr_bool(element, "autoShow", false)
-  let top_auto_show = attr_bool(element, "topAutoShow", true)
-  let hide_new_items = attr_bool(element, "hideNewItems", false)
-  let measure_filter = attr_bool(element, "measureFilter", false)
-  let include_new_items_in_filter = attr_bool(
+  let drag_to_page = pivot_field_bool(element, "dragToPage", true)
+  let drag_to_data = pivot_field_bool(element, "dragToData", true)
+  let drag_off = pivot_field_bool(element, "dragOff", true)
+  let show_all = pivot_field_bool(element, "showAll", true)
+  let insert_blank_row = pivot_field_bool(element, "insertBlankRow", false)
+  let server_field = pivot_field_bool(element, "serverField", false)
+  let insert_page_break = pivot_field_bool(element, "insertPageBreak", false)
+  let auto_show = pivot_field_bool(element, "autoShow", false)
+  let top_auto_show = pivot_field_bool(element, "topAutoShow", true)
+  let hide_new_items = pivot_field_bool(element, "hideNewItems", false)
+  let measure_filter = pivot_field_bool(element, "measureFilter", false)
+  let include_new_items_in_filter = pivot_field_bool(
     element, "includeNewItemsInFilter", false,
   )
   let item_page_count = attr_uint(element, "itemPageCount", 10)
   let sort_type = attr(element, "sortType")
-  let data_source_sort = attr_bool_opt(element, "dataSourceSort")
-  let non_auto_sort_default = attr_bool(element, "nonAutoSortDefault", false)
+  let data_source_sort = pivot_field_bool_opt(element, "dataSourceSort")
+  let non_auto_sort_default = pivot_field_bool(
+    element, "nonAutoSortDefault", false,
+  )
   let rank_by = attr_uint_opt(element, "rankBy")
-  let default_subtotal = attr_bool(element, "defaultSubtotal", true)
-  let sum_subtotal = attr_bool(element, "sumSubtotal", false)
-  let count_a_subtotal = attr_bool(element, "countASubtotal", false)
-  let avg_subtotal = attr_bool(element, "avgSubtotal", false)
-  let max_subtotal = attr_bool(element, "maxSubtotal", false)
-  let min_subtotal = attr_bool(element, "minSubtotal", false)
-  let product_subtotal = attr_bool(element, "productSubtotal", false)
-  let count_subtotal = attr_bool(element, "countSubtotal", false)
-  let std_dev_subtotal = attr_bool(element, "stdDevSubtotal", false)
-  let std_dev_p_subtotal = attr_bool(element, "stdDevPSubtotal", false)
-  let var_subtotal = attr_bool(element, "varSubtotal", false)
-  let var_p_subtotal = attr_bool(element, "varPSubtotal", false)
-  let show_prop_cell = attr_bool(element, "showPropCell", false)
-  let show_prop_tip = attr_bool(element, "showPropTip", false)
-  let show_prop_as_caption = attr_bool(element, "showPropAsCaption", false)
-  let default_attribute_drill_state = attr_bool(
+  let default_subtotal = pivot_field_bool(element, "defaultSubtotal", true)
+  let sum_subtotal = pivot_field_bool(element, "sumSubtotal", false)
+  let count_a_subtotal = pivot_field_bool(element, "countASubtotal", false)
+  let avg_subtotal = pivot_field_bool(element, "avgSubtotal", false)
+  let max_subtotal = pivot_field_bool(element, "maxSubtotal", false)
+  let min_subtotal = pivot_field_bool(element, "minSubtotal", false)
+  let product_subtotal = pivot_field_bool(element, "productSubtotal", false)
+  let count_subtotal = pivot_field_bool(element, "countSubtotal", false)
+  let std_dev_subtotal = pivot_field_bool(element, "stdDevSubtotal", false)
+  let std_dev_p_subtotal = pivot_field_bool(element, "stdDevPSubtotal", false)
+  let var_subtotal = pivot_field_bool(element, "varSubtotal", false)
+  let var_p_subtotal = pivot_field_bool(element, "varPSubtotal", false)
+  let show_prop_cell = pivot_field_bool(element, "showPropCell", false)
+  let show_prop_tip = pivot_field_bool(element, "showPropTip", false)
+  let show_prop_as_caption = pivot_field_bool(
+    element, "showPropAsCaption", false,
+  )
+  let default_attribute_drill_state = pivot_field_bool(
     element, "defaultAttributeDrillState", false,
   )
   let mut items : CT_Items? = None
