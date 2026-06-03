@@ -307,14 +307,12 @@ pub fn CT_DataBar::new(
         reason="dataBar requires a color element",
       )
   }
-  let min_length = match cf_attr(element, "minLength") {
-    Some(v) => cf_parse_int(v).unwrap_or(10)
-    None => 10
-  }
-  let max_length = match cf_attr(element, "maxLength") {
-    Some(v) => cf_parse_int(v).unwrap_or(90)
-    None => 90
-  }
+  let min_length = cf_decode_optional_int(
+    element, "minLength", "dataBar/@minLength",
+  ).unwrap_or(10)
+  let max_length = cf_decode_optional_int(
+    element, "maxLength", "dataBar/@maxLength",
+  ).unwrap_or(90)
   let axis_position = cf_attr_or(element, "axisPosition", "automatic")
   let direction = cf_attr_or(element, "direction", "context")
   let negative_color = cf_decode_data_bar_negative_color(element)
@@ -582,9 +580,29 @@ fn cf_require_attr(
     Some(value) => value
     None =>
       raise @opc_errors.SchemaViolation(
-        section=cf_rule_section,
+        section=cf_decode_section_for_element(element),
         path~,
         reason="required attribute is missing",
+      )
+  }
+}
+
+///|
+fn cf_decode_bool_text(
+  text : String,
+  path : String,
+  section : String,
+) -> Bool raise @opc_errors.SchemaViolation {
+  match text {
+    "1" => true
+    "true" => true
+    "0" => false
+    "false" => false
+    _ =>
+      raise @opc_errors.SchemaViolation(
+        section~,
+        path~,
+        reason="xsd:boolean value is malformed: " + text,
       )
   }
 }
@@ -594,13 +612,28 @@ fn cf_decode_bool_attr(
   element : @xml.Element,
   local_name : String,
   fallback : Bool,
-) -> Bool {
+) -> Bool raise @opc_errors.SchemaViolation {
   match cf_attr(element, local_name) {
-    Some("1") => true
-    Some("true") => true
-    Some("0") => false
-    Some("false") => false
-    _ => fallback
+    Some(value) =>
+      cf_decode_bool_text(
+        value,
+        element.name.local_name + "/@" + local_name,
+        cf_decode_section_for_element(element),
+      )
+    None => fallback
+  }
+}
+
+///|
+fn cf_decode_section_for_element(element : @xml.Element) -> String {
+  match element.name.local_name {
+    "conditionalFormatting" => "Part 1 §18.3.1.18"
+    "cfRule" => cf_rule_section
+    "cfvo" => cfvo_section
+    "colorScale" => "Part 1 §18.3.1.16"
+    "dataBar" => "Part 1 §18.3.1.28"
+    "iconSet" => "Part 1 §18.3.1.49"
+    _ => cf_rule_section
   }
 }
 
@@ -615,7 +648,7 @@ fn cf_decode_required_int(
     Some(n) => n
     None =>
       raise @opc_errors.SchemaViolation(
-        section=cf_rule_section,
+        section=cf_decode_section_for_element(element),
         path~,
         reason="integer attribute is malformed: " + value,
       )
@@ -634,7 +667,7 @@ fn cf_decode_optional_int(
         Some(n) => Some(n)
         None =>
           raise @opc_errors.SchemaViolation(
-            section=cf_rule_section,
+            section=cf_decode_section_for_element(element),
             path~,
             reason="integer attribute is malformed: " + value,
           )

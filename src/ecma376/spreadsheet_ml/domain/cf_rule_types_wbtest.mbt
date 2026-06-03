@@ -23,6 +23,17 @@ fn cf_elem_test(
 }
 
 ///|
+fn data_bar_for_test(attrs : Array[@xml.Attribute]) -> @xml.Element {
+  cf_elem_test("dataBar", attrs, [
+    @xml.Node::Element(cf_elem_test("cfvo", [cf_attr_test("type", "min")], [])),
+    @xml.Node::Element(cf_elem_test("cfvo", [cf_attr_test("type", "max")], [])),
+    @xml.Node::Element(
+      cf_elem_test("color", [cf_attr_test("rgb", "FF0000FF")], []),
+    ),
+  ])
+}
+
+///|
 test "§18.3.1.28 CT_DataBar decodes typed display metadata" {
   let bar = try! CT_DataBar::new(
     cf_elem_test(
@@ -67,6 +78,40 @@ test "§18.3.1.28 CT_DataBar decodes typed display metadata" {
       assert_eq(c.blue, 64)
     }
     None => assert_true(false)
+  }
+}
+
+///|
+test "§18.3.1.28 CT_DataBar rejects malformed boolean attributes" {
+  try {
+    ignore(
+      CT_DataBar::new(data_bar_for_test([cf_attr_test("showValue", "maybe")])),
+    )
+    fail("expected @opc_errors.SchemaViolation")
+  } catch {
+    @opc_errors.SchemaViolation(
+      section="Part 1 §18.3.1.28",
+      path="dataBar/@showValue",
+      reason=_
+    ) => ()
+    _ => fail("expected dataBar SchemaViolation")
+  }
+}
+
+///|
+test "§18.3.1.28 CT_DataBar rejects malformed length attributes" {
+  try {
+    ignore(
+      CT_DataBar::new(data_bar_for_test([cf_attr_test("minLength", "many")])),
+    )
+    fail("expected @opc_errors.SchemaViolation")
+  } catch {
+    @opc_errors.SchemaViolation(
+      section="Part 1 §18.3.1.28",
+      path="dataBar/@minLength",
+      reason=_
+    ) => ()
+    _ => fail("expected dataBar SchemaViolation")
   }
 }
 
