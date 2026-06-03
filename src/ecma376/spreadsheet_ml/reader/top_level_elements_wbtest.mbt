@@ -290,6 +290,16 @@ test "SML workbook reader rejects malformed workbook property booleans" {
 }
 
 ///|
+test "SML workbook reader rejects malformed web publish object booleans" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:webPublishObjects>" +
+    "<s:webPublishObject id=\"1\" divId=\"d1\" sourceObject=\"Sheet1\" " +
+    "destinationFile=\"out.htm\" autoRepublish=\"maybe\"/>" +
+    "</s:webPublishObjects></s:workbook>",
+  )
+}
+
+///|
 test "SML metadata reader rejects malformed metadataType booleans" {
   let invalid = try? read_metadata(
     bytes(

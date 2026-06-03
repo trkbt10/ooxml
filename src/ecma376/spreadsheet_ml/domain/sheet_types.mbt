@@ -5100,7 +5100,7 @@ pub(all) struct CT_WebPublishObjects {
 ///|
 pub fn CT_WebPublishObjects::new(
   element : @xml.Element,
-) -> CT_WebPublishObjects {
+) -> CT_WebPublishObjects raise @opc_errors.SchemaViolation {
   let objects : Array[CT_WebPublishObject] = []
   for child in element.children {
     if child is @xml.Node::Element(e) && e.name.local_name == "webPublishObject" {
@@ -5131,7 +5131,9 @@ pub(all) struct CT_WebPublishObject {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_WebPublishObject::new(element : @xml.Element) -> CT_WebPublishObject {
+pub fn CT_WebPublishObject::new(
+  element : @xml.Element,
+) -> CT_WebPublishObject raise @opc_errors.SchemaViolation {
   {
     element,
     id: attr_int(element, "id", 0),
@@ -5139,6 +5141,8 @@ pub fn CT_WebPublishObject::new(element : @xml.Element) -> CT_WebPublishObject {
     source_object: attr(element, "sourceObject").unwrap_or(""),
     destination_file: attr(element, "destinationFile").unwrap_or(""),
     title: attr(element, "title").unwrap_or(""),
-    auto_republish: attr_bool(element, "autoRepublish", false),
+    auto_republish: attr_bool_schema(
+      element, "autoRepublish", false, "Part 1 §18.2.27", "webPublishObject",
+    ),
   }
 }
