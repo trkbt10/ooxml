@@ -1745,7 +1745,7 @@ pub(all) struct CT_PivotFields {
 pub fn CT_PivotFields::new(
   element : @xml.Element,
 ) -> CT_PivotFields raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let pivot_fields : Array[CT_PivotField] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1926,13 +1926,13 @@ pub fn CT_PivotField::new(
   let include_new_items_in_filter = pivot_field_bool(
     element, "includeNewItemsInFilter", false,
   )
-  let item_page_count = attr_uint(element, "itemPageCount", 10)
+  let item_page_count = attr_uint_schema(element, "itemPageCount", 10)
   let sort_type = attr(element, "sortType")
   let data_source_sort = pivot_field_bool_opt(element, "dataSourceSort")
   let non_auto_sort_default = pivot_field_bool(
     element, "nonAutoSortDefault", false,
   )
-  let rank_by = attr_uint_opt(element, "rankBy")
+  let rank_by = attr_uint_opt_schema(element, "rankBy")
   let default_subtotal = pivot_field_bool(element, "defaultSubtotal", true)
   let sum_subtotal = pivot_field_bool(element, "sumSubtotal", false)
   let count_a_subtotal = pivot_field_bool(element, "countASubtotal", false)

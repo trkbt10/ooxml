@@ -1549,6 +1549,25 @@ test "SML pivotTableDefinition reader rejects malformed pivot-field booleans" {
 }
 
 ///|
+test "SML pivotTableDefinition reader rejects malformed pivot-field numerics" {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotFields count=\"abc\"/>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotFields><s:pivotField itemPageCount=\"abc\"/></s:pivotFields>" +
+    "</s:pivotTableDefinition>",
+  )
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
+    "<s:pivotFields><s:pivotField rankBy=\"abc\"/></s:pivotFields>" +
+    "</s:pivotTableDefinition>",
+  )
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed pivot-hierarchy booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
