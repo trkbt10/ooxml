@@ -77,22 +77,24 @@ pub(all) struct CT_String {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_String::new(element : @xml.Element) -> CT_String {
+pub fn CT_String::new(
+  element : @xml.Element,
+) -> CT_String raise @opc_errors.SchemaViolation {
   let v = match attr(element, "v") {
     Some(value) => value
     None => ""
   }
-  let u = attr_bool_opt(element, "u")
-  let f = attr_bool_opt(element, "f")
+  let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.79", "s")
+  let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.79", "s")
   let c = attr(element, "c")
   let cp = attr_uint_opt(element, "cp")
   let in_ = attr_uint_opt(element, "in")
   let bc = attr_hex_uint_opt(element, "bc")
   let fc = attr_hex_uint_opt(element, "fc")
-  let i = attr_bool(element, "i", false)
-  let un = attr_bool(element, "un", false)
-  let st = attr_bool(element, "st", false)
-  let b = attr_bool(element, "b", false)
+  let i = attr_bool_schema(element, "i", false, "Part 1 §18.10.1.79", "s")
+  let un = attr_bool_schema(element, "un", false, "Part 1 §18.10.1.79", "s")
+  let st = attr_bool_schema(element, "st", false, "Part 1 §18.10.1.79", "s")
+  let b = attr_bool_schema(element, "b", false, "Part 1 §18.10.1.79", "s")
   let tpls : Array[CT_Tuples] = []
   let x : Array[CT_X] = []
   for child in element.children {

@@ -822,7 +822,9 @@ pub(all) struct CT_TupleCache {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_TupleCache::new(element : @xml.Element) -> CT_TupleCache {
+pub fn CT_TupleCache::new(
+  element : @xml.Element,
+) -> CT_TupleCache raise @opc_errors.SchemaViolation {
   let mut entries : CT_PCDSDTCEntries? = None
   let mut sets : CT_Sets? = None
   let mut query_cache : CT_QueryCache? = None
@@ -867,7 +869,9 @@ pub(all) struct CT_PCDSDTCEntries {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PCDSDTCEntries::new(element : @xml.Element) -> CT_PCDSDTCEntries {
+pub fn CT_PCDSDTCEntries::new(
+  element : @xml.Element,
+) -> CT_PCDSDTCEntries raise @opc_errors.SchemaViolation {
   let count = attr_uint_opt(element, "count")
   let missings : Array[CT_Missing] = []
   let numbers : Array[CT_Number] = []

@@ -236,6 +236,18 @@ test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
     "</s:cacheField></s:cacheFields>" +
     "</s:pivotCacheDefinition>",
   )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheFields><s:cacheField>" +
+    "<s:sharedItems><s:s v=\"East\" i=\"maybe\"/></s:sharedItems>" +
+    "</s:cacheField></s:cacheFields>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:entries><s:s v=\"East\" b=\"maybe\"/></s:entries></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
 }
 
 ///|
@@ -248,6 +260,14 @@ test "SML pivotCacheRecords reader rejects malformed record booleans" {
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+  let invalid_string = try? read_pivot_cache_records(
+    bytes(
+      "<s:pivotCacheRecords xmlns:s=\"urn:s\">" +
+      "<s:r><s:s v=\"East\" f=\"maybe\"/></s:r>" +
+      "</s:pivotCacheRecords>",
+    ),
+  )
+  assert_true(invalid_string is Err(@opc_errors.SchemaViolation(_)))
 }
 
 ///|

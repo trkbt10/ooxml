@@ -2184,7 +2184,7 @@ pub(all) struct CT_PCDSDTCEntries {
   errors : Array[CT_Error]
   strings : Array[CT_String]
 } derive(Eq, @debug.Debug)
-pub fn CT_PCDSDTCEntries::new(@xml.Element) -> Self
+pub fn CT_PCDSDTCEntries::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PageBreak {
   element : @xml.Element
@@ -3416,7 +3416,7 @@ pub(all) struct CT_String {
   tpls : Array[CT_Tuples]
   x : Array[CT_X]
 } derive(Eq, @debug.Debug)
-pub fn CT_String::new(@xml.Element) -> Self
+pub fn CT_String::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Stylesheet {
   element : @xml.Element
@@ -3623,7 +3623,7 @@ pub(all) struct CT_TupleCache {
   server_formats : CT_ServerFormats?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_TupleCache::new(@xml.Element) -> Self
+pub fn CT_TupleCache::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Tuples {
   element : @xml.Element
