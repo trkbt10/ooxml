@@ -10,6 +10,7 @@ import {
   "trkbt10/ooxml/ecma376/drawing_ml/chart/viewer" @chart_viewer,
   "trkbt10/ooxml/ecma376/drawing_ml/paint",
   "trkbt10/ooxml/ecma376/drawing_ml/preset_geometry",
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "trkbt10/ooxml/ecma376/spreadsheet_ml/address",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/autofilter",
   "trkbt10/ooxml/ecma376/spreadsheet_ml/cf_rule_eval" @cf_eval,

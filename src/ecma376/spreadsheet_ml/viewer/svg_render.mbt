@@ -166,6 +166,62 @@ fn warn_font_unresolved(
 }
 
 ///|
+fn warn_autofilter_schema_violation(
+  warnings : Array[String],
+  context : String,
+  section : String,
+  path : String,
+  reason : String,
+) -> Unit {
+  push_warning_once(
+    warnings,
+    "SpreadsheetML AutoFilter schema violation (" +
+    context +
+    "): " +
+    section +
+    " " +
+    path +
+    ": " +
+    reason,
+  )
+}
+
+///|
+fn parse_autofilter_for_viewer(
+  element : @xml.Element,
+  default_ref : String?,
+  warnings : Array[String],
+  warning_context : String,
+) -> @domain.CT_AutoFilter? {
+  match default_ref {
+    Some(ref_value) => {
+      let parsed = @autofilter.parse_auto_filter_with_default_ref(
+        element, ref_value,
+      ) catch {
+        @opc_errors.SchemaViolation(section~, path~, reason~) => {
+          warn_autofilter_schema_violation(
+            warnings, warning_context, section, path, reason,
+          )
+          return None
+        }
+      }
+      Some(parsed)
+    }
+    None => {
+      let parsed = @autofilter.parse_auto_filter(element) catch {
+        @opc_errors.SchemaViolation(section~, path~, reason~) => {
+          warn_autofilter_schema_violation(
+            warnings, warning_context, section, path, reason,
+          )
+          return None
+        }
+      }
+      Some(parsed)
+    }
+  }
+}
+
+///|
 fn warning_data_attrs(warnings : Array[String]) -> Array[@xml.Attribute] {
   let attrs : Array[@xml.Attribute] = []
   for i, warning in warnings {
@@ -398,6 +454,7 @@ pub fn render_svg(
     theme_map,
     theme_fonts,
     date_system,
+    warnings,
   )
   let layout = compute_sheet_layout(
     domain.element,
@@ -847,6 +904,7 @@ pub fn render_svg(
       tables,
       domain.element,
       layout,
+      warnings,
     )
     if table_chrome_over.length() > 0 {
       body.push(
@@ -2932,13 +2990,29 @@ fn build_autofilter_hidden_row_map(
   theme_map : SmlThemeColorMap,
   theme_fonts : SmlThemeFontMap,
   date_system : @date_serial.DateSystem,
+  warnings : Array[String],
 ) -> Map[Int, Bool] {
   let hidden : Map[Int, Bool] = Map([], capacity=0)
   match find_worksheet_autofilter_element(worksheet) {
     Some(element) =>
       mark_autofilter_hidden_rows(
-        hidden, element, cell_map, cf_blocks, cf_stats, options, styles, shared_strings,
-        evaluated_cells, formula_snapshot, cf_today, theme_map, theme_fonts, date_system,
+        hidden,
+        element,
+        cell_map,
+        cf_blocks,
+        cf_stats,
+        options,
+        styles,
+        shared_strings,
+        evaluated_cells,
+        formula_snapshot,
+        cf_today,
+        theme_map,
+        theme_fonts,
+        date_system,
+        None,
+        warnings,
+        "worksheet AutoFilter row filtering",
       )
     None => ()
   }
@@ -2946,8 +3020,23 @@ fn build_autofilter_hidden_row_map(
     match first_child_named_local(table, "autoFilter") {
       Some(element) =>
         mark_autofilter_hidden_rows(
-          hidden, element, cell_map, cf_blocks, cf_stats, options, styles, shared_strings,
-          evaluated_cells, formula_snapshot, cf_today, theme_map, theme_fonts, date_system,
+          hidden,
+          element,
+          cell_map,
+          cf_blocks,
+          cf_stats,
+          options,
+          styles,
+          shared_strings,
+          evaluated_cells,
+          formula_snapshot,
+          cf_today,
+          theme_map,
+          theme_fonts,
+          date_system,
+          attr_value_local(table, "ref"),
+          warnings,
+          "table AutoFilter row filtering",
         )
       None => ()
     }
@@ -2971,8 +3060,15 @@ fn mark_autofilter_hidden_rows(
   theme_map : SmlThemeColorMap,
   theme_fonts : SmlThemeFontMap,
   date_system : @date_serial.DateSystem,
+  default_ref : String?,
+  warnings : Array[String],
+  warning_context : String,
 ) -> Unit {
-  let filter = @autofilter.parse_auto_filter(element) catch { _ => return }
+  let filter = match
+    parse_autofilter_for_viewer(element, default_ref, warnings, warning_context) {
+    Some(f) => f
+    None => return
+  }
   let (_start_row, end_row, _start_col, _end_col) = match
     autofilter_range_bounds(filter) {
     Some(bounds) => bounds
@@ -13242,6 +13338,7 @@ fn render_table_chrome_over(
   tables : Array[@xml.Element],
   worksheet : @xml.Element,
   layout : SheetLayout,
+  warnings : Array[String],
 ) -> Array[@xml.Node] {
   let out : Array[@xml.Node] = []
   // Table-driven autofilter — parse through the shared AutoFilter
@@ -13257,11 +13354,15 @@ fn render_table_chrome_over(
     }
     match first_child_named_local(table_elt, "autoFilter") {
       Some(element) => {
-        let filter = @autofilter.parse_auto_filter_with_default_ref(
-          element,
-          meta.ref_value,
-        ) catch {
-          _ => continue
+        let filter = match
+          parse_autofilter_for_viewer(
+            element,
+            Some(meta.ref_value),
+            warnings,
+            "table AutoFilter dropdown",
+          ) {
+          Some(f) => f
+          None => continue
         }
         let range = attr_value_local(element, "ref").unwrap_or(meta.ref_value)
         push_autofilter_arrows_for_range(out, layout, range, Some(filter))
@@ -13279,8 +13380,15 @@ fn render_table_chrome_over(
   match find_worksheet_autofilter_element(worksheet) {
     None => ()
     Some(element) => {
-      let filter = @autofilter.parse_auto_filter(element) catch {
-        _ => return out
+      let filter = match
+        parse_autofilter_for_viewer(
+          element,
+          None,
+          warnings,
+          "worksheet AutoFilter dropdown",
+        ) {
+        Some(f) => f
+        None => return out
       }
       let range = attr_value_local(element, "ref").unwrap_or(
         filter.range.to_a1(),

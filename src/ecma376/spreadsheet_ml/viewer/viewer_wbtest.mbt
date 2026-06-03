@@ -5978,8 +5978,70 @@ test "SpreadsheetML viewer §18.5 AutoFilter over-layer emits from table child" 
     row_count: 2,
     merge_map: Map([], capacity=0),
   }
-  let nodes = render_table_chrome_over([table], worksheet.element, layout)
+  let warnings : Array[String] = []
+  let nodes = render_table_chrome_over(
+    [table],
+    worksheet.element,
+    layout,
+    warnings,
+  )
   @debug.assert_eq(nodes.length(), 4)
+  @debug.assert_eq(warnings.length(), 0)
+}
+
+///|
+test "SpreadsheetML viewer §18.5 AutoFilter over-layer reports invalid table child" {
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [],
+  })
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:B2" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  }
+  let layout : SheetLayout = {
+    cells: [],
+    total_width: 120.0,
+    total_height: 40.0,
+    column_positions: [0.0, 60.0],
+    row_positions: [0.0, 20.0],
+    column_widths: [60.0, 60.0],
+    row_heights: [20.0, 20.0],
+    column_count: 2,
+    row_count: 2,
+    merge_map: Map([], capacity=0),
+  }
+  let warnings : Array[String] = []
+  let nodes = render_table_chrome_over(
+    [table],
+    worksheet.element,
+    layout,
+    warnings,
+  )
+  @debug.assert_eq(nodes.length(), 0)
+  @debug.assert_eq(warnings.length(), 1)
+  assert_true(warnings[0].contains("table AutoFilter dropdown"))
+  assert_true(warnings[0].contains("filterColumn/@colId"))
 }
 
 ///|
@@ -6104,6 +6166,109 @@ test "SpreadsheetML viewer §18.5 table AutoFilter buttons use table ref default
     .length() -
     1
   @debug.assert_eq(button_count, 2)
+}
+
+///|
+test "SpreadsheetML viewer surfaces invalid worksheet AutoFilter warnings" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let worksheet = @domain.CT_Worksheet::new({
+    name: name("worksheet"),
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [build_cell("A1", Some("str"), "Header")]),
+          build_row(2, [build_cell("A2", Some("str"), "Value")]),
+        ],
+      }),
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [{ name: name("ref"), value: "A1:A2" }],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [],
+            children: [],
+          }),
+        ],
+      }),
+    ],
+  })
+  let result = render_svg(worksheet)
+  @debug.assert_eq(result.warnings.length(), 1)
+  assert_true(result.warnings[0].contains("worksheet AutoFilter row filtering"))
+  assert_true(result.warnings[0].contains("filterColumn/@colId"))
+  assert_true(result.svg.contains("data-ooxml-warning-0="))
+}
+
+///|
+test "SpreadsheetML viewer applies table AutoFilter ref default to row hiding" {
+  set_sml_fixture_font_faces(["Calibri"])
+  let ns_s = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+  let worksheet = @domain.CT_Worksheet::new({
+    name: { prefix: None, local_name: "worksheet", ns: Some(ns_s) },
+    attributes: [],
+    children: [
+      @xml.Node::Element({
+        name: name("sheetData"),
+        attributes: [],
+        children: [
+          build_row(1, [
+            build_cell("A1", Some("str"), "Region"),
+            build_cell("B1", Some("str"), "Sales"),
+          ]),
+          build_row(2, [
+            build_cell("A2", Some("str"), "North"),
+            build_cell("B2", Some("str"), "Keep North"),
+          ]),
+          build_row(3, [
+            build_cell("A3", Some("str"), "South"),
+            build_cell("B3", Some("str"), "Drop South"),
+          ]),
+        ],
+      }),
+    ],
+  })
+  let table : @xml.Element = {
+    name: { prefix: None, local_name: "table", ns: Some(ns_s) },
+    attributes: [
+      { name: name("id"), value: "1" },
+      { name: name("name"), value: "T1" },
+      { name: name("displayName"), value: "T1" },
+      { name: name("ref"), value: "A1:B3" },
+    ],
+    children: [
+      @xml.Node::Element({
+        name: name("autoFilter"),
+        attributes: [],
+        children: [
+          @xml.Node::Element({
+            name: name("filterColumn"),
+            attributes: [{ name: name("colId"), value: "0" }],
+            children: [
+              @xml.Node::Element({
+                name: name("filters"),
+                attributes: [],
+                children: [
+                  @xml.Node::Element({
+                    name: name("filter"),
+                    attributes: [{ name: name("val"), value: "North" }],
+                    children: [],
+                  }),
+                ],
+              }),
+            ],
+          }),
+        ],
+      }),
+    ],
+  }
+  let result = render_svg(worksheet, tables=[table])
+  @debug.assert_eq(result.warnings.length(), 0)
+  assert_true(result.svg.contains("Keep North"))
+  assert_true(!result.svg.contains("Drop South"))
 }
 
 ///|
