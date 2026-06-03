@@ -508,7 +508,7 @@ pub(all) struct CT_PivotCacheRecords {
 pub fn CT_PivotCacheRecords::new(
   element : @xml.Element,
 ) -> CT_PivotCacheRecords raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let records : Array[CT_Record] = []
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -635,7 +635,7 @@ pub(all) struct CT_CacheHierarchies {
 pub fn CT_CacheHierarchies::new(
   element : @xml.Element,
 ) -> CT_CacheHierarchies raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let cache_hierarchies : Array[CT_CacheHierarchy] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -729,8 +729,8 @@ pub fn CT_CacheHierarchy::new(
   let set_ = attr_bool_schema(
     element, "set", false, "Part 1 §18.10.1.6", "cacheHierarchy",
   )
-  let parent_set = attr_uint_opt(element, "parentSet")
-  let icon_set = attr_int(element, "iconSet", 0)
+  let parent_set = attr_uint_opt_schema(element, "parentSet")
+  let icon_set = attr_int_schema(element, "iconSet", 0)
   let attribute = attr_bool_schema(
     element, "attribute", false, "Part 1 §18.10.1.6", "cacheHierarchy",
   )
@@ -749,11 +749,13 @@ pub fn CT_CacheHierarchy::new(
   let measures = attr_bool_schema(
     element, "measures", false, "Part 1 §18.10.1.6", "cacheHierarchy",
   )
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   let one_field = attr_bool_schema(
     element, "oneField", false, "Part 1 §18.10.1.6", "cacheHierarchy",
   )
-  let member_value_datatype = attr_uint_opt(element, "memberValueDatatype")
+  let member_value_datatype = attr_uint_opt_schema(
+    element, "memberValueDatatype",
+  )
   let unbalanced = attr_bool_schema_opt(
     element, "unbalanced", "Part 1 §18.10.1.6", "cacheHierarchy",
   )
@@ -823,7 +825,7 @@ pub(all) struct CT_GroupMembers {
 pub fn CT_GroupMembers::new(
   element : @xml.Element,
 ) -> CT_GroupMembers raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let group_members : Array[CT_GroupMember] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -934,7 +936,7 @@ pub(all) struct CT_PCDSDTCEntries {
 pub fn CT_PCDSDTCEntries::new(
   element : @xml.Element,
 ) -> CT_PCDSDTCEntries raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let missings : Array[CT_Missing] = []
   let numbers : Array[CT_Number] = []
   let errors : Array[CT_Error] = []
@@ -1024,7 +1026,7 @@ pub(all) struct CT_Sets {
 pub fn CT_Sets::new(
   element : @xml.Element,
 ) -> CT_Sets raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let sets : Array[CT_Set] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1066,8 +1068,8 @@ pub(all) struct CT_Set {
 pub fn CT_Set::new(
   element : @xml.Element,
 ) -> CT_Set raise @opc_errors.SchemaViolation {
-  let count = attr_uint_opt(element, "count")
-  let max_rank = attr_int(element, "maxRank", 0)
+  let count = attr_uint_opt_schema(element, "count")
+  let max_rank = attr_int_schema(element, "maxRank", 0)
   let set_definition = match attr(element, "setDefinition") {
     Some(v) => v
     None => ""

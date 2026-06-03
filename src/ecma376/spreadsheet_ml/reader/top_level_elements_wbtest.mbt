@@ -1252,6 +1252,44 @@ test "SML pivotCacheDefinition reader rejects malformed cache-hierarchy booleans
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed cache-hierarchy numerics" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies count=\"abc\"/>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy parentSet=\"abc\"/>" +
+    "</s:cacheHierarchies></s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy iconSet=\"abc\"/>" +
+    "</s:cacheHierarchies></s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy count=\"abc\"/>" +
+    "</s:cacheHierarchies></s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy memberValueDatatype=\"abc\"/>" +
+    "</s:cacheHierarchies></s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:cacheHierarchies><s:cacheHierarchy><s:groupLevels>" +
+    "<s:groupLevel><s:groups><s:group>" +
+    "<s:groupMembers count=\"abc\"/>" +
+    "</s:group></s:groups></s:groupLevel>" +
+    "</s:groupLevels></s:cacheHierarchy></s:cacheHierarchies>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed group-level booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
@@ -1390,6 +1428,30 @@ test "SML pivotCacheDefinition reader rejects malformed tuple-set booleans" {
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed tuple-set numerics" {
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:entries count=\"abc\"/></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:sets count=\"abc\"/></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:sets><s:set count=\"abc\"/></s:sets></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+  assert_pivot_cache_definition_schema_violation(
+    "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
+    "<s:tupleCache><s:sets><s:set maxRank=\"abc\"/></s:sets></s:tupleCache>" +
+    "</s:pivotCacheDefinition>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed calculated-member booleans" {
   assert_pivot_cache_definition_schema_violation(
     "<s:pivotCacheDefinition xmlns:s=\"urn:s\">" +
@@ -1504,6 +1566,19 @@ test "SML pivotTableDefinition reader rejects malformed member-property booleans
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
     "<s:pivotHierarchies><s:pivotHierarchy><s:mps><s:mp field=\"0\" showAsCaption=\"maybe\"/></s:mps></s:pivotHierarchy></s:pivotHierarchies>" +
     "</s:pivotTableDefinition>",
+  )
+}
+
+///|
+fn assert_pivot_cache_records_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_pivot_cache_records(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML pivotCacheRecords reader rejects malformed top-level numerics" {
+  assert_pivot_cache_records_schema_violation(
+    "<s:pivotCacheRecords xmlns:s=\"urn:s\" count=\"abc\"/>",
   )
 }
 
