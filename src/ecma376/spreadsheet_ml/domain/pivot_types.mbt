@@ -3852,7 +3852,7 @@ pub(all) struct CT_MdxMetadata {
 pub fn CT_MdxMetadata::new(
   element : @xml.Element,
 ) -> CT_MdxMetadata raise @opc_errors.SchemaViolation {
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   let mdx : Array[CT_Mdx] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3897,7 +3897,7 @@ pub(all) enum CT_Mdx_Choice {
 pub fn CT_Mdx::new(
   element : @xml.Element,
 ) -> CT_Mdx raise @opc_errors.SchemaViolation {
-  let n = attr_uint(element, "n", 0)
+  let n = attr_uint_schema(element, "n", 0)
   let f = match attr(element, "f") {
     Some(value) => value
     None => ""
@@ -3958,10 +3958,10 @@ pub(all) struct CT_MdxTuple {
 pub fn CT_MdxTuple::new(
   element : @xml.Element,
 ) -> CT_MdxTuple raise @opc_errors.SchemaViolation {
-  let c = attr_uint(element, "c", 0)
+  let c = attr_uint_schema(element, "c", 0)
   let ct = attr(element, "ct")
-  let si = attr_uint_opt(element, "si")
-  let fi = attr_uint_opt(element, "fi")
+  let si = attr_uint_opt_schema(element, "si")
+  let fi = attr_uint_opt_schema(element, "fi")
   let bc = attr_hex_uint_opt(element, "bc")
   let fc = attr_hex_uint_opt(element, "fc")
   let i = attr_bool_schema(element, "i", false, "Part 1 §18.9.9", "t")
@@ -4006,8 +4006,8 @@ pub(all) struct CT_MdxSet {
 pub fn CT_MdxSet::new(
   element : @xml.Element,
 ) -> CT_MdxSet raise @opc_errors.SchemaViolation {
-  let ns = attr_uint(element, "ns", 0)
-  let c = attr_uint(element, "c", 0)
+  let ns = attr_uint_schema(element, "ns", 0)
+  let c = attr_uint_schema(element, "c", 0)
   let o = match attr(element, "o") {
     Some(value) => value
     None => "u"
@@ -4038,9 +4038,11 @@ pub(all) struct CT_MdxMemeberProp {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MdxMemeberProp::new(element : @xml.Element) -> CT_MdxMemeberProp {
-  let n = attr_uint(element, "n", 0)
-  let np = attr_uint(element, "np", 0)
+pub fn CT_MdxMemeberProp::new(
+  element : @xml.Element,
+) -> CT_MdxMemeberProp raise @opc_errors.SchemaViolation {
+  let n = attr_uint_schema(element, "n", 0)
+  let np = attr_uint_schema(element, "np", 0)
   { element, n, np }
 }
 
@@ -4062,9 +4064,11 @@ pub(all) struct CT_MdxKPI {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MdxKPI::new(element : @xml.Element) -> CT_MdxKPI {
-  let n = attr_uint(element, "n", 0)
-  let np = attr_uint(element, "np", 0)
+pub fn CT_MdxKPI::new(
+  element : @xml.Element,
+) -> CT_MdxKPI raise @opc_errors.SchemaViolation {
+  let n = attr_uint_schema(element, "n", 0)
+  let np = attr_uint_schema(element, "np", 0)
   let p = match attr(element, "p") {
     Some(value) => value
     None => ""

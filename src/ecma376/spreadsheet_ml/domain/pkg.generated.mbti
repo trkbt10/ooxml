@@ -1787,14 +1787,14 @@ pub(all) struct CT_MdxKPI {
   np : Int
   p : String
 } derive(Eq, @debug.Debug)
-pub fn CT_MdxKPI::new(@xml.Element) -> Self
+pub fn CT_MdxKPI::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MdxMemeberProp {
   element : @xml.Element
   n : Int
   np : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_MdxMemeberProp::new(@xml.Element) -> Self
+pub fn CT_MdxMemeberProp::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MdxMetadata {
   element : @xml.Element

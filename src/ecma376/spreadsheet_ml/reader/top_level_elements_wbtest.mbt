@@ -970,6 +970,61 @@ test "SML metadata reader rejects malformed unsigned integers" {
     "<s:cellMetadata><s:bk><s:rc t=\"abc\" v=\"0\"/></s:bk></s:cellMetadata>" +
     "</s:metadata>",
   )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata count=\"abc\"/>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx n=\"abc\"/></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:t c=\"abc\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:t si=\"abc\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:t fi=\"abc\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:ms ns=\"abc\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:ms c=\"abc\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:p n=\"abc\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:p np=\"abc\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:k n=\"abc\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:mdxMetadata><s:mdx><s:k np=\"abc\"/></s:mdx></s:mdxMetadata>" +
+    "</s:metadata>",
+  )
 }
 
 ///|
