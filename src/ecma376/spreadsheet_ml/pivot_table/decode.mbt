@@ -865,8 +865,18 @@ fn decode_bool_text(
 ///|
 fn pivot_decode_section_for_element(element : @xml.Element) -> String {
   match element.name.local_name {
-    "pivotCacheDefinition" | "cacheField" | "sharedItems" =>
-      pivot_cache_definition_part1_18_10_1_67_section_name()
+    "pivotCacheDefinition"
+    | "cacheSource"
+    | "worksheetSource"
+    | "cacheFields"
+    | "cacheField"
+    | "sharedItems"
+    | "s"
+    | "n"
+    | "b"
+    | "d"
+    | "e"
+    | "m" => pivot_cache_definition_part1_18_10_1_67_section_name()
     _ => pivot_table_definition_part1_18_10_1_73_section_name()
   }
 }
@@ -900,7 +910,7 @@ fn require_attr(
     Some(value) => value
     None =>
       raise @opc_errors.SchemaViolation(
-        section=pivot_table_definition_part1_18_10_1_73_section_name(),
+        section=pivot_decode_section_for_element(element),
         path~,
         reason="required attribute is missing",
       )
@@ -935,7 +945,7 @@ fn decode_required_int(
     Some(n) => n
     None =>
       raise @opc_errors.SchemaViolation(
-        section=pivot_table_definition_part1_18_10_1_73_section_name(),
+        section=pivot_decode_section_for_element(element),
         path~,
         reason="integer attribute is malformed: " + value,
       )
@@ -954,7 +964,7 @@ fn decode_optional_int(
         Some(n) => Some(n)
         None =>
           raise @opc_errors.SchemaViolation(
-            section=pivot_table_definition_part1_18_10_1_73_section_name(),
+            section=pivot_decode_section_for_element(element),
             path~,
             reason="integer attribute is malformed: " + value,
           )
@@ -974,7 +984,7 @@ fn decode_required_double(
     Some(n) => n
     None =>
       raise @opc_errors.SchemaViolation(
-        section=pivot_table_definition_part1_18_10_1_73_section_name(),
+        section=pivot_decode_section_for_element(element),
         path~,
         reason="numeric attribute is malformed: " + value,
       )
@@ -993,7 +1003,7 @@ fn decode_optional_double(
         Some(n) => Some(n)
         None =>
           raise @opc_errors.SchemaViolation(
-            section=pivot_table_definition_part1_18_10_1_73_section_name(),
+            section=pivot_decode_section_for_element(element),
             path~,
             reason="numeric attribute is malformed: " + value,
           )

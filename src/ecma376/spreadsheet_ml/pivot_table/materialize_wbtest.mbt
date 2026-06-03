@@ -316,6 +316,26 @@ test "§18.10.1.67 pivotCacheDefinition rejects malformed boolean attributes" {
 }
 
 ///|
+test "§18.10.1.67 pivotCacheDefinition numeric diagnostics cite cache definition" {
+  let root = parse_xml(
+    "<pivotCacheDefinition recordCount=\"many\"><cacheSource type=\"worksheet\"><worksheetSource sheet=\"Sheet1\" ref=\"A1:A2\"/></cacheSource><cacheFields count=\"0\"/></pivotCacheDefinition>",
+  )
+  try {
+    ignore(
+      decode_pivot_cache_definition(@domain.CT_PivotCacheDefinition::new(root)),
+    )
+    fail("expected @opc_errors.SchemaViolation")
+  } catch {
+    @opc_errors.SchemaViolation(
+      section="Part 1 §18.10.1.67",
+      path="pivotCacheDefinition/@recordCount",
+      reason=_
+    ) => ()
+    _ => fail("expected pivotCacheDefinition SchemaViolation")
+  }
+}
+
+///|
 test "§18.10.1.3 cacheField decodes shared string and numeric items" {
   let root = parse_xml(
     "<pivotCacheDefinition><cacheSource type=\"worksheet\"><worksheetSource sheet=\"S\" ref=\"A1:A2\"/></cacheSource><cacheFields count=\"2\"><cacheField name=\"Region\"><sharedItems count=\"3\"><s v=\"East\"/><s v=\"West\"/><s v=\"North\"/></sharedItems></cacheField><cacheField name=\"Sales\"><sharedItems containsString=\"0\" containsNumber=\"1\" count=\"2\"><n v=\"10\"/><n v=\"20.5\"/></sharedItems></cacheField></cacheFields></pivotCacheDefinition>",
@@ -351,6 +371,26 @@ test "§18.10.1.2 pivot cache boolean item rejects malformed v" {
     ))
     is Err(@opc_errors.SchemaViolation(_)),
   )
+}
+
+///|
+test "§18.10.1.60 pivot cache numeric item diagnostics cite cache definition" {
+  let root = parse_xml(
+    "<pivotCacheDefinition><cacheSource type=\"worksheet\"><worksheetSource sheet=\"S\" ref=\"A1:A2\"/></cacheSource><cacheFields count=\"1\"><cacheField name=\"Sales\"><sharedItems><n v=\"many\"/></sharedItems></cacheField></cacheFields></pivotCacheDefinition>",
+  )
+  try {
+    ignore(
+      decode_pivot_cache_definition(@domain.CT_PivotCacheDefinition::new(root)),
+    )
+    fail("expected @opc_errors.SchemaViolation")
+  } catch {
+    @opc_errors.SchemaViolation(
+      section="Part 1 §18.10.1.67",
+      path="n/@v",
+      reason=_
+    ) => ()
+    _ => fail("expected pivot cache shared item SchemaViolation")
+  }
 }
 
 ///|
