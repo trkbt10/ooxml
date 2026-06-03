@@ -1921,7 +1921,7 @@ pub(all) struct CT_Metadata {
   value_metadata : CT_MetadataBlocks?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_Metadata::new(@xml.Element) -> Self
+pub fn CT_Metadata::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MetadataBlock {
   element : @xml.Element
@@ -1988,14 +1988,14 @@ pub(all) struct CT_MetadataType {
   adjust : Bool
   cell_meta : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_MetadataType::new(@xml.Element) -> Self
+pub fn CT_MetadataType::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MetadataTypes {
   element : @xml.Element
   count : Int
   metadata_types : Array[CT_MetadataType]
 } derive(Eq, @debug.Debug)
-pub fn CT_MetadataTypes::new(@xml.Element) -> Self
+pub fn CT_MetadataTypes::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Missing {
   element : @xml.Element

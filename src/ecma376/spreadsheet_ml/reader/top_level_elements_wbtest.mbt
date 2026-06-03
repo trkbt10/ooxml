@@ -155,3 +155,17 @@ test "SML top-level readers reject the wrong root element" {
   let invalid = try? read_worksheet(bytes("<s:chartsheet xmlns:s=\"urn:s\"/>"))
   assert_true(invalid is Err(SchemaViolation(_)))
 }
+
+///|
+test "SML metadata reader rejects malformed metadataType booleans" {
+  let invalid = try? read_metadata(
+    bytes(
+      "<s:metadata xmlns:s=\"urn:s\">" +
+      "<s:metadataTypes>" +
+      "<s:metadataType name=\"XLMDX\" minSupportedVersion=\"120000\" copy=\"maybe\"/>" +
+      "</s:metadataTypes>" +
+      "</s:metadata>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}

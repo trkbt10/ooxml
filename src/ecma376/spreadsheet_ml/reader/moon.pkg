@@ -9,5 +9,6 @@ import {
 
 import {
   "trkbt10/ooxml/ecma376/spreadsheet_ml/builder",
+  "trkbt10/ooxml/ecma376/opc/errors" @opc_errors,
   "moonbitlang/core/encoding/utf8",
 } for "wbtest"

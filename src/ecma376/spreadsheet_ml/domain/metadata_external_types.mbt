@@ -333,7 +333,9 @@ pub(all) struct CT_Metadata {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Metadata::new(element : @xml.Element) -> CT_Metadata {
+pub fn CT_Metadata::new(
+  element : @xml.Element,
+) -> CT_Metadata raise @opc_errors.SchemaViolation {
   let mut metadata_types : CT_MetadataTypes? = None
   let mut metadata_strings : CT_MetadataStrings? = None
   let mut mdx_metadata : CT_MdxMetadata? = None
@@ -385,7 +387,9 @@ pub(all) struct CT_MetadataTypes {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MetadataTypes::new(element : @xml.Element) -> CT_MetadataTypes {
+pub fn CT_MetadataTypes::new(
+  element : @xml.Element,
+) -> CT_MetadataTypes raise @opc_errors.SchemaViolation {
   let count = attr_uint(element, "count", 0)
   let metadata_types : Array[CT_MetadataType] = []
   for child in element.children {
@@ -470,7 +474,9 @@ pub(all) struct CT_MetadataType {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MetadataType::new(element : @xml.Element) -> CT_MetadataType {
+pub fn CT_MetadataType::new(
+  element : @xml.Element,
+) -> CT_MetadataType raise @opc_errors.SchemaViolation {
   let name = match attr(element, "name") {
     Some(v) => v
     None => ""
@@ -480,32 +486,34 @@ pub fn CT_MetadataType::new(element : @xml.Element) -> CT_MetadataType {
     element,
     name,
     min_supported_version,
-    ghost_row: attr_bool(element, "ghostRow", false),
-    ghost_col: attr_bool(element, "ghostCol", false),
-    edit: attr_bool(element, "edit", false),
-    delete: attr_bool(element, "delete", false),
-    copy: attr_bool(element, "copy", false),
-    paste_all: attr_bool(element, "pasteAll", false),
-    paste_formulas: attr_bool(element, "pasteFormulas", false),
-    paste_values: attr_bool(element, "pasteValues", false),
-    paste_formats: attr_bool(element, "pasteFormats", false),
-    paste_comments: attr_bool(element, "pasteComments", false),
-    paste_data_validation: attr_bool(element, "pasteDataValidation", false),
-    paste_borders: attr_bool(element, "pasteBorders", false),
-    paste_col_widths: attr_bool(element, "pasteColWidths", false),
-    paste_number_formats: attr_bool(element, "pasteNumberFormats", false),
-    merge: attr_bool(element, "merge", false),
-    split_first: attr_bool(element, "splitFirst", false),
-    split_all: attr_bool(element, "splitAll", false),
-    row_col_shift: attr_bool(element, "rowColShift", false),
-    clear_all: attr_bool(element, "clearAll", false),
-    clear_formats: attr_bool(element, "clearFormats", false),
-    clear_contents: attr_bool(element, "clearContents", false),
-    clear_comments: attr_bool(element, "clearComments", false),
-    assign: attr_bool(element, "assign", false),
-    coerce: attr_bool(element, "coerce", false),
-    adjust: attr_bool(element, "adjust", false),
-    cell_meta: attr_bool(element, "cellMeta", false),
+    ghost_row: attr_bool_strict(element, "ghostRow", false),
+    ghost_col: attr_bool_strict(element, "ghostCol", false),
+    edit: attr_bool_strict(element, "edit", false),
+    delete: attr_bool_strict(element, "delete", false),
+    copy: attr_bool_strict(element, "copy", false),
+    paste_all: attr_bool_strict(element, "pasteAll", false),
+    paste_formulas: attr_bool_strict(element, "pasteFormulas", false),
+    paste_values: attr_bool_strict(element, "pasteValues", false),
+    paste_formats: attr_bool_strict(element, "pasteFormats", false),
+    paste_comments: attr_bool_strict(element, "pasteComments", false),
+    paste_data_validation: attr_bool_strict(
+      element, "pasteDataValidation", false,
+    ),
+    paste_borders: attr_bool_strict(element, "pasteBorders", false),
+    paste_col_widths: attr_bool_strict(element, "pasteColWidths", false),
+    paste_number_formats: attr_bool_strict(element, "pasteNumberFormats", false),
+    merge: attr_bool_strict(element, "merge", false),
+    split_first: attr_bool_strict(element, "splitFirst", false),
+    split_all: attr_bool_strict(element, "splitAll", false),
+    row_col_shift: attr_bool_strict(element, "rowColShift", false),
+    clear_all: attr_bool_strict(element, "clearAll", false),
+    clear_formats: attr_bool_strict(element, "clearFormats", false),
+    clear_contents: attr_bool_strict(element, "clearContents", false),
+    clear_comments: attr_bool_strict(element, "clearComments", false),
+    assign: attr_bool_strict(element, "assign", false),
+    coerce: attr_bool_strict(element, "coerce", false),
+    adjust: attr_bool_strict(element, "adjust", false),
+    cell_meta: attr_bool_strict(element, "cellMeta", false),
   }
 }
 
@@ -1776,12 +1784,48 @@ fn attr_bool(
   default : Bool,
 ) -> Bool {
   match attr(element, local_name) {
-    Some("1") => true
-    Some("true") => true
-    Some("0") => false
-    Some("false") => false
-    Some(_) => default
+    Some(value) =>
+      match parse_bool_text(value) {
+        Some(parsed) => parsed
+        None => default
+      }
     None => default
+  }
+}
+
+///|
+/// Parse an attribute as xsd:boolean at a schema reader boundary. Missing
+/// attributes keep their schema default; present malformed lexicals raise.
+fn attr_bool_strict(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_bool_text(value) {
+        Some(parsed) => parsed
+        None =>
+          raise @opc_errors.SchemaViolation(
+            section="Part 1 §18.9.10",
+            path="metadataType/@" + local_name,
+            reason="expected xsd:boolean lexical, got " + value,
+          )
+      }
+    None => default
+  }
+}
+
+///|
+/// Parse W3C XML Schema xsd:boolean after the simple type whitespace
+/// collapse step. The only permitted lexical values are 1, 0, true, false.
+fn parse_bool_text(text : String) -> Bool? {
+  match trim_whitespace(text) {
+    "1" => Some(true)
+    "true" => Some(true)
+    "0" => Some(false)
+    "false" => Some(false)
+    _ => None
   }
 }
 
@@ -1789,11 +1833,7 @@ fn attr_bool(
 /// Parse an attribute as xsd:boolean and return None when absent.
 fn attr_bool_opt(element : @xml.Element, local_name : String) -> Bool? {
   match attr(element, local_name) {
-    Some("1") => Some(true)
-    Some("true") => Some(true)
-    Some("0") => Some(false)
-    Some("false") => Some(false)
-    Some(_) => None
+    Some(value) => parse_bool_text(value)
     None => None
   }
 }
