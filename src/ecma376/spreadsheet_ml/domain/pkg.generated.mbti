@@ -2144,7 +2144,7 @@ pub(all) struct CT_OutlinePr {
   summary_right : Bool
   show_outline_symbols : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_OutlinePr::new(@xml.Element) -> Self
+pub fn CT_OutlinePr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PCDKPI {
   element : @xml.Element

@@ -3195,11 +3195,26 @@ pub(all) struct CT_OutlinePr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_OutlinePr::new(element : @xml.Element) -> CT_OutlinePr {
-  let apply_styles = attr_bool(element, "applyStyles", false)
-  let summary_below = attr_bool(element, "summaryBelow", true)
-  let summary_right = attr_bool(element, "summaryRight", true)
-  let show_outline_symbols = attr_bool(element, "showOutlineSymbols", true)
+fn outline_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.61", "outlinePr",
+  )
+}
+
+///|
+pub fn CT_OutlinePr::new(
+  element : @xml.Element,
+) -> CT_OutlinePr raise @opc_errors.SchemaViolation {
+  let apply_styles = outline_pr_bool(element, "applyStyles", false)
+  let summary_below = outline_pr_bool(element, "summaryBelow", true)
+  let summary_right = outline_pr_bool(element, "summaryRight", true)
+  let show_outline_symbols = outline_pr_bool(
+    element, "showOutlineSymbols", true,
+  )
   { element, apply_styles, summary_below, summary_right, show_outline_symbols }
 }
 

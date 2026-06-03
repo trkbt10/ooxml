@@ -850,6 +850,28 @@ test "SML worksheet reader rejects malformed page-setup-pr booleans" {
 }
 
 ///|
+fn assert_outline_pr_schema_violation(outline_pr_attr : String) -> Unit raise {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:sheetPr><s:outlinePr " +
+      outline_pr_attr +
+      "/></s:sheetPr>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed outline properties booleans" {
+  assert_outline_pr_schema_violation("applyStyles=\"maybe\"")
+  assert_outline_pr_schema_violation("summaryBelow=\"maybe\"")
+  assert_outline_pr_schema_violation("summaryRight=\"maybe\"")
+  assert_outline_pr_schema_violation("showOutlineSymbols=\"maybe\"")
+}
+
+///|
 test "SML worksheet reader rejects malformed page-setup booleans" {
   let invalid = try? read_worksheet(
     bytes(
