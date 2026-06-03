@@ -1046,7 +1046,7 @@ pub(all) struct CT_DdeValues {
   cols : Int
   values : Array[CT_DdeValue]
 } derive(Eq, @debug.Debug)
-pub fn CT_DdeValues::new(@xml.Element) -> Self
+pub fn CT_DdeValues::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_DefinedName {
   element : @xml.Element
@@ -1217,7 +1217,7 @@ pub(all) struct CT_ExternalCell {
   vm : Int
   v : String?
 } derive(Eq, @debug.Debug)
-pub fn CT_ExternalCell::new(@xml.Element) -> Self
+pub fn CT_ExternalCell::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ExternalDefinedName {
   element : @xml.Element
@@ -1225,13 +1225,13 @@ pub(all) struct CT_ExternalDefinedName {
   refers_to : String?
   sheet_id : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_ExternalDefinedName::new(@xml.Element) -> Self
+pub fn CT_ExternalDefinedName::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ExternalDefinedNames {
   element : @xml.Element
   defined_names : Array[CT_ExternalDefinedName]
 } derive(Eq, @debug.Debug)
-pub fn CT_ExternalDefinedNames::new(@xml.Element) -> Self
+pub fn CT_ExternalDefinedNames::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ExternalLink {
   element : @xml.Element
@@ -1259,7 +1259,7 @@ pub(all) struct CT_ExternalRow {
   r : Int
   cells : Array[CT_ExternalCell]
 } derive(Eq, @debug.Debug)
-pub fn CT_ExternalRow::new(@xml.Element) -> Self
+pub fn CT_ExternalRow::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_ExternalSheetData {
   element : @xml.Element
@@ -1476,7 +1476,7 @@ pub(all) struct CT_FutureMetadata {
   blocks : Array[CT_FutureMetadataBlock]
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_FutureMetadata::new(@xml.Element) -> Self
+pub fn CT_FutureMetadata::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_FutureMetadataBlock {
   element : @xml.Element
@@ -1927,21 +1927,21 @@ pub(all) struct CT_MetadataBlock {
   element : @xml.Element
   records : Array[CT_MetadataRecord]
 } derive(Eq, @debug.Debug)
-pub fn CT_MetadataBlock::new(@xml.Element) -> Self
+pub fn CT_MetadataBlock::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MetadataBlocks {
   element : @xml.Element
   count : Int
   blocks : Array[CT_MetadataBlock]
 } derive(Eq, @debug.Debug)
-pub fn CT_MetadataBlocks::new(@xml.Element) -> Self
+pub fn CT_MetadataBlocks::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MetadataRecord {
   element : @xml.Element
   t : Int
   v : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_MetadataRecord::new(@xml.Element) -> Self
+pub fn CT_MetadataRecord::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MetadataStringIndex {
   element : @xml.Element
@@ -1955,7 +1955,7 @@ pub(all) struct CT_MetadataStrings {
   count : Int
   strings : Array[CT_XStringElement]
 } derive(Eq, @debug.Debug)
-pub fn CT_MetadataStrings::new(@xml.Element) -> Self
+pub fn CT_MetadataStrings::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MetadataType {
   element : @xml.Element
@@ -3329,13 +3329,13 @@ pub(all) struct CT_SingleXmlCell {
   xml_cell_pr : CT_XmlCellPr?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_SingleXmlCell::new(@xml.Element) -> Self
+pub fn CT_SingleXmlCell::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SingleXmlCells {
   element : @xml.Element
   single_xml_cells : Array[CT_SingleXmlCell]
 } derive(Eq, @debug.Debug)
-pub fn CT_SingleXmlCells::new(@xml.Element) -> Self
+pub fn CT_SingleXmlCells::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_SmartTagPr {
   element : @xml.Element
@@ -3672,7 +3672,7 @@ pub(all) struct CT_VolMain {
   first : String
   tps : Array[CT_VolTopic]
 } derive(Eq, @debug.Debug)
-pub fn CT_VolMain::new(@xml.Element) -> Self
+pub fn CT_VolMain::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_VolTopic {
   element : @xml.Element
@@ -3681,28 +3681,28 @@ pub(all) struct CT_VolTopic {
   stps : Array[String]
   trs : Array[CT_VolTopicRef]
 } derive(Eq, @debug.Debug)
-pub fn CT_VolTopic::new(@xml.Element) -> Self
+pub fn CT_VolTopic::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_VolTopicRef {
   element : @xml.Element
   r : String
   s : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_VolTopicRef::new(@xml.Element) -> Self
+pub fn CT_VolTopicRef::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_VolType {
   element : @xml.Element
   type_ : String
   mains : Array[CT_VolMain]
 } derive(Eq, @debug.Debug)
-pub fn CT_VolType::new(@xml.Element) -> Self
+pub fn CT_VolType::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_VolTypes {
   element : @xml.Element
   vol_types : Array[CT_VolType]
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_VolTypes::new(@xml.Element) -> Self
+pub fn CT_VolTypes::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_WebPr {
   element : @xml.Element
@@ -3932,7 +3932,7 @@ pub(all) struct CT_XmlCellPr {
   xml_pr : CT_XmlPr?
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_XmlCellPr::new(@xml.Element) -> Self
+pub fn CT_XmlCellPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_XmlColumnPr {
   element : @xml.Element
@@ -3951,7 +3951,7 @@ pub(all) struct CT_XmlPr {
   xml_data_type : String
   ext_lst : CT_ExtensionList?
 } derive(Eq, @debug.Debug)
-pub fn CT_XmlPr::new(@xml.Element) -> Self
+pub fn CT_XmlPr::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_colItems {
   element : @xml.Element

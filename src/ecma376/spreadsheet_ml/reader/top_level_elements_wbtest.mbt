@@ -644,6 +644,20 @@ test "SML metadata reader rejects malformed MDX member index booleans" {
 }
 
 ///|
+test "SML metadata reader rejects malformed unsigned integers" {
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:metadataTypes count=\"abc\"/>" +
+    "</s:metadata>",
+  )
+  assert_metadata_schema_violation(
+    "<s:metadata xmlns:s=\"urn:s\">" +
+    "<s:cellMetadata><s:bk><s:rc t=\"abc\" v=\"0\"/></s:bk></s:cellMetadata>" +
+    "</s:metadata>",
+  )
+}
+
+///|
 test "SML MapInfo reader rejects malformed Map booleans" {
   let invalid = try? read_map_info(
     bytes(
@@ -662,6 +676,28 @@ test "SML MapInfo reader rejects malformed DataBinding booleans" {
       "<s:MapInfo xmlns:s=\"urn:s\">" +
       "<s:Map><s:DataBinding FileBinding=\"maybe\"/></s:Map>" +
       "</s:MapInfo>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML MapInfo reader rejects malformed unsigned integers" {
+  let invalid = try? read_map_info(
+    bytes(
+      "<s:MapInfo xmlns:s=\"urn:s\">" + "<s:Map ID=\"abc\"/>" + "</s:MapInfo>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML singleXmlCells reader rejects malformed unsigned integers" {
+  let invalid = try? read_single_xml_cells(
+    bytes(
+      "<s:singleXmlCells xmlns:s=\"urn:s\">" +
+      "<s:singleXmlCell id=\"abc\" r=\"A1\" connectionId=\"1\"/>" +
+      "</s:singleXmlCells>",
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
@@ -1108,6 +1144,17 @@ test "SML table reader rejects malformed XML column booleans" {
 }
 
 ///|
+test "SML table reader rejects malformed XML column unsigned integers" {
+  assert_table_schema_violation(
+    "<s:table xmlns:s=\"urn:s\">" +
+    "<s:tableColumns><s:tableColumn>" +
+    "<s:xmlColumnPr mapId=\"abc\"/>" +
+    "</s:tableColumn></s:tableColumns>" +
+    "</s:table>",
+  )
+}
+
+///|
 test "SML externalLink reader rejects malformed sheet data booleans" {
   assert_external_link_schema_violation(
     "<s:externalLink xmlns:s=\"urn:s\">" +
@@ -1137,12 +1184,52 @@ test "SML externalLink reader rejects malformed OLE booleans" {
 }
 
 ///|
+test "SML externalLink reader rejects malformed unsigned integers" {
+  assert_external_link_schema_violation(
+    "<s:externalLink xmlns:s=\"urn:s\">" +
+    "<s:externalBook><s:definedNames>" +
+    "<s:definedName name=\"n\" sheetId=\"abc\"/>" +
+    "</s:definedNames></s:externalBook>" +
+    "</s:externalLink>",
+  )
+  assert_external_link_schema_violation(
+    "<s:externalLink xmlns:s=\"urn:s\">" +
+    "<s:ddeLink><s:ddeItems><s:ddeItem><s:values rows=\"abc\"/></s:ddeItem></s:ddeItems></s:ddeLink>" +
+    "</s:externalLink>",
+  )
+}
+
+///|
 test "SML worksheet reader rejects malformed OLE object booleans" {
   let invalid = try? read_worksheet(
     bytes(
       "<s:worksheet xmlns:s=\"urn:s\">" +
       "<s:oleObjects><s:oleObject autoLoad=\"maybe\"/></s:oleObjects>" +
       "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed OLE object unsigned integers" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:oleObjects><s:oleObject shapeId=\"abc\"/></s:oleObjects>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML volTypes reader rejects malformed unsigned integers" {
+  let invalid = try? read_vol_types(
+    bytes(
+      "<s:volTypes xmlns:s=\"urn:s\">" +
+      "<s:volType><s:main><s:tp><s:v>x</s:v><s:tr r=\"A1\" s=\"abc\"/></s:tp></s:main></s:volType>" +
+      "</s:volTypes>",
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))

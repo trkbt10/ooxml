@@ -117,7 +117,7 @@ pub(all) struct CT_Map {
 pub fn CT_Map::new(
   element : @xml.Element,
 ) -> CT_Map raise @opc_errors.SchemaViolation {
-  let id = attr_uint(element, "ID", 0)
+  let id = attr_uint_schema(element, "ID", 0)
   let name = match attr(element, "Name") {
     Some(v) => v
     None => ""
@@ -198,7 +198,7 @@ pub fn CT_Boolean::new(
   let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.2", "b")
   let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.2", "b")
   let c = attr(element, "c")
-  let cp = attr_uint_opt(element, "cp")
+  let cp = attr_uint_opt_schema(element, "cp")
   let x : Array[CT_X] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -301,7 +301,7 @@ pub fn CT_OleObject::new(
   let auto_load = attr_bool_schema(
     element, "autoLoad", false, "Part 1 §18.3.1.59", "oleObject",
   )
-  let shape_id = attr_uint(element, "shapeId", 0)
+  let shape_id = attr_uint_schema(element, "shapeId", 0)
   let r_id = attr_with_ns(element, "id")
   let mut object_pr : CT_ObjectPr? = None
   for child in element.children {
@@ -408,7 +408,7 @@ pub(all) struct CT_MetadataTypes {
 pub fn CT_MetadataTypes::new(
   element : @xml.Element,
 ) -> CT_MetadataTypes raise @opc_errors.SchemaViolation {
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   let metadata_types : Array[CT_MetadataType] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -499,7 +499,9 @@ pub fn CT_MetadataType::new(
     Some(v) => v
     None => ""
   }
-  let min_supported_version = attr_uint(element, "minSupportedVersion", 0)
+  let min_supported_version = attr_uint_schema(
+    element, "minSupportedVersion", 0,
+  )
   {
     element,
     name,
@@ -549,8 +551,10 @@ pub(all) struct CT_MetadataBlocks {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MetadataBlocks::new(element : @xml.Element) -> CT_MetadataBlocks {
-  let count = attr_uint(element, "count", 0)
+pub fn CT_MetadataBlocks::new(
+  element : @xml.Element,
+) -> CT_MetadataBlocks raise @opc_errors.SchemaViolation {
+  let count = attr_uint_schema(element, "count", 0)
   let blocks : Array[CT_MetadataBlock] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -574,7 +578,9 @@ pub(all) struct CT_MetadataBlock {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MetadataBlock::new(element : @xml.Element) -> CT_MetadataBlock {
+pub fn CT_MetadataBlock::new(
+  element : @xml.Element,
+) -> CT_MetadataBlock raise @opc_errors.SchemaViolation {
   let records : Array[CT_MetadataRecord] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -600,9 +606,11 @@ pub(all) struct CT_MetadataRecord {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MetadataRecord::new(element : @xml.Element) -> CT_MetadataRecord {
-  let t = attr_uint(element, "t", 0)
-  let v = attr_uint(element, "v", 0)
+pub fn CT_MetadataRecord::new(
+  element : @xml.Element,
+) -> CT_MetadataRecord raise @opc_errors.SchemaViolation {
+  let t = attr_uint_schema(element, "t", 0)
+  let v = attr_uint_schema(element, "v", 0)
   { element, t, v }
 }
 
@@ -625,12 +633,14 @@ pub(all) struct CT_FutureMetadata {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_FutureMetadata::new(element : @xml.Element) -> CT_FutureMetadata {
+pub fn CT_FutureMetadata::new(
+  element : @xml.Element,
+) -> CT_FutureMetadata raise @opc_errors.SchemaViolation {
   let name = match attr(element, "name") {
     Some(v) => v
     None => ""
   }
-  let count = attr_uint(element, "count", 0)
+  let count = attr_uint_schema(element, "count", 0)
   let blocks : Array[CT_FutureMetadataBlock] = []
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -689,7 +699,7 @@ pub(all) struct CT_MetadataStringIndex {
 pub fn CT_MetadataStringIndex::new(
   element : @xml.Element,
 ) -> CT_MetadataStringIndex raise @opc_errors.SchemaViolation {
-  let x = attr_uint(element, "x", 0)
+  let x = attr_uint_schema(element, "x", 0)
   let s = attr_bool_schema(element, "s", false, "Part 1 §18.9.13", "n")
   { element, x, s }
 }
@@ -708,8 +718,10 @@ pub(all) struct CT_MetadataStrings {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_MetadataStrings::new(element : @xml.Element) -> CT_MetadataStrings {
-  let count = attr_uint(element, "count", 0)
+pub fn CT_MetadataStrings::new(
+  element : @xml.Element,
+) -> CT_MetadataStrings raise @opc_errors.SchemaViolation {
+  let count = attr_uint_schema(element, "count", 0)
   let strings : Array[CT_XStringElement] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -732,7 +744,9 @@ pub(all) struct CT_SingleXmlCells {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SingleXmlCells::new(element : @xml.Element) -> CT_SingleXmlCells {
+pub fn CT_SingleXmlCells::new(
+  element : @xml.Element,
+) -> CT_SingleXmlCells raise @opc_errors.SchemaViolation {
   let single_xml_cells : Array[CT_SingleXmlCell] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -765,13 +779,15 @@ pub(all) struct CT_SingleXmlCell {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SingleXmlCell::new(element : @xml.Element) -> CT_SingleXmlCell {
-  let id = attr_uint(element, "id", 0)
+pub fn CT_SingleXmlCell::new(
+  element : @xml.Element,
+) -> CT_SingleXmlCell raise @opc_errors.SchemaViolation {
+  let id = attr_uint_schema(element, "id", 0)
   let r = match attr(element, "r") {
     Some(v) => v
     None => ""
   }
-  let connection_id = attr_uint(element, "connectionId", 0)
+  let connection_id = attr_uint_schema(element, "connectionId", 0)
   let mut xml_cell_pr : CT_XmlCellPr? = None
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -805,8 +821,10 @@ pub(all) struct CT_XmlCellPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_XmlCellPr::new(element : @xml.Element) -> CT_XmlCellPr {
-  let id = attr_uint(element, "id", 0)
+pub fn CT_XmlCellPr::new(
+  element : @xml.Element,
+) -> CT_XmlCellPr raise @opc_errors.SchemaViolation {
+  let id = attr_uint_schema(element, "id", 0)
   let unique_name = attr(element, "uniqueName")
   let mut xml_pr : CT_XmlPr? = None
   let mut ext_lst : CT_ExtensionList? = None
@@ -841,8 +859,10 @@ pub(all) struct CT_XmlPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_XmlPr::new(element : @xml.Element) -> CT_XmlPr {
-  let map_id = attr_uint(element, "mapId", 0)
+pub fn CT_XmlPr::new(
+  element : @xml.Element,
+) -> CT_XmlPr raise @opc_errors.SchemaViolation {
+  let map_id = attr_uint_schema(element, "mapId", 0)
   let xpath = match attr(element, "xpath") {
     Some(v) => v
     None => ""
@@ -1008,7 +1028,7 @@ pub(all) struct CT_ExternalDefinedNames {
 ///|
 pub fn CT_ExternalDefinedNames::new(
   element : @xml.Element,
-) -> CT_ExternalDefinedNames {
+) -> CT_ExternalDefinedNames raise @opc_errors.SchemaViolation {
   let defined_names : Array[CT_ExternalDefinedName] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1038,13 +1058,13 @@ pub(all) struct CT_ExternalDefinedName {
 ///|
 pub fn CT_ExternalDefinedName::new(
   element : @xml.Element,
-) -> CT_ExternalDefinedName {
+) -> CT_ExternalDefinedName raise @opc_errors.SchemaViolation {
   let name = match attr(element, "name") {
     Some(v) => v
     None => ""
   }
   let refers_to = attr(element, "refersTo")
-  let sheet_id = attr_uint_opt(element, "sheetId")
+  let sheet_id = attr_uint_opt_schema(element, "sheetId")
   { element, name, refers_to, sheet_id }
 }
 
@@ -1068,7 +1088,7 @@ pub(all) struct CT_ExternalSheetData {
 pub fn CT_ExternalSheetData::new(
   element : @xml.Element,
 ) -> CT_ExternalSheetData raise @opc_errors.SchemaViolation {
-  let sheet_id = attr_uint(element, "sheetId", 0)
+  let sheet_id = attr_uint_schema(element, "sheetId", 0)
   let refresh_error = attr_bool_schema(
     element, "refreshError", false, "Part 1 §18.14.13", "sheetData",
   )
@@ -1097,8 +1117,10 @@ pub(all) struct CT_ExternalRow {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ExternalRow::new(element : @xml.Element) -> CT_ExternalRow {
-  let r = attr_uint(element, "r", 0)
+pub fn CT_ExternalRow::new(
+  element : @xml.Element,
+) -> CT_ExternalRow raise @opc_errors.SchemaViolation {
+  let r = attr_uint_schema(element, "r", 0)
   let cells : Array[CT_ExternalCell] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1129,13 +1151,15 @@ pub(all) struct CT_ExternalCell {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_ExternalCell::new(element : @xml.Element) -> CT_ExternalCell {
+pub fn CT_ExternalCell::new(
+  element : @xml.Element,
+) -> CT_ExternalCell raise @opc_errors.SchemaViolation {
   let r = attr(element, "r")
   let t = match attr(element, "t") {
     Some(v) => v
     None => "n"
   }
-  let vm = attr_uint(element, "vm", 0)
+  let vm = attr_uint_schema(element, "vm", 0)
   let mut v : String? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1274,9 +1298,11 @@ pub(all) struct CT_DdeValues {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_DdeValues::new(element : @xml.Element) -> CT_DdeValues {
-  let rows = attr_uint(element, "rows", 1)
-  let cols = attr_uint(element, "cols", 1)
+pub fn CT_DdeValues::new(
+  element : @xml.Element,
+) -> CT_DdeValues raise @opc_errors.SchemaViolation {
+  let rows = attr_uint_schema(element, "rows", 1)
+  let cols = attr_uint_schema(element, "cols", 1)
   let values : Array[CT_DdeValue] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -1443,7 +1469,7 @@ pub(all) struct CT_XmlColumnPr {
 pub fn CT_XmlColumnPr::new(
   element : @xml.Element,
 ) -> CT_XmlColumnPr raise @opc_errors.SchemaViolation {
-  let map_id = attr_uint(element, "mapId", 0)
+  let map_id = attr_uint_schema(element, "mapId", 0)
   let xpath = match attr(element, "xpath") {
     Some(v) => v
     None => ""
@@ -1480,7 +1506,9 @@ pub(all) struct CT_VolTypes {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_VolTypes::new(element : @xml.Element) -> CT_VolTypes {
+pub fn CT_VolTypes::new(
+  element : @xml.Element,
+) -> CT_VolTypes raise @opc_errors.SchemaViolation {
   let vol_types : Array[CT_VolType] = []
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
@@ -1516,7 +1544,9 @@ pub(all) struct CT_VolType {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_VolType::new(element : @xml.Element) -> CT_VolType {
+pub fn CT_VolType::new(
+  element : @xml.Element,
+) -> CT_VolType raise @opc_errors.SchemaViolation {
   let type_ = match attr(element, "type") {
     Some(value) => value
     None => ""
@@ -1549,7 +1579,9 @@ pub(all) struct CT_VolMain {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_VolMain::new(element : @xml.Element) -> CT_VolMain {
+pub fn CT_VolMain::new(
+  element : @xml.Element,
+) -> CT_VolMain raise @opc_errors.SchemaViolation {
   let first = match attr(element, "first") {
     Some(value) => value
     None => ""
@@ -1585,7 +1617,9 @@ pub(all) struct CT_VolTopic {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_VolTopic::new(element : @xml.Element) -> CT_VolTopic {
+pub fn CT_VolTopic::new(
+  element : @xml.Element,
+) -> CT_VolTopic raise @opc_errors.SchemaViolation {
   let t = attr(element, "t")
   let mut v = ""
   let stps : Array[String] = []
@@ -1617,12 +1651,14 @@ pub(all) struct CT_VolTopicRef {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_VolTopicRef::new(element : @xml.Element) -> CT_VolTopicRef {
+pub fn CT_VolTopicRef::new(
+  element : @xml.Element,
+) -> CT_VolTopicRef raise @opc_errors.SchemaViolation {
   let r = match attr(element, "r") {
     Some(value) => value
     None => ""
   }
-  let s = attr_uint(element, "s", 0)
+  let s = attr_uint_schema(element, "s", 0)
   { element, r, s }
 }
 
@@ -1735,13 +1771,56 @@ fn attr_uint(element : @xml.Element, local_name : String, default : Int) -> Int 
 }
 
 ///|
-/// Parse an attribute as xsd:unsignedInt and return None when absent or
-/// unparseable. Negative values are rejected per the XSD facet.
+/// Parse an attribute as xsd:unsignedInt and return None when absent.
+/// Malformed present values are treated as absent by legacy callers.
 fn attr_uint_opt(element : @xml.Element, local_name : String) -> Int? {
   match attr(element, local_name) {
     Some(value) => parse_uint_text(value)
     None => None
   }
+}
+
+///|
+/// Strict xsd:unsignedInt reader for schema boundary constructors.
+/// Missing attributes use the schema default; malformed present values raise.
+fn attr_uint_schema(
+  element : @xml.Element,
+  local_name : String,
+  default : Int,
+) -> Int raise @opc_errors.SchemaViolation {
+  match attr_uint_opt_schema(element, local_name) {
+    Some(n) => n
+    None => default
+  }
+}
+
+///|
+fn attr_uint_opt_schema(
+  element : @xml.Element,
+  local_name : String,
+) -> Int? raise @opc_errors.SchemaViolation {
+  match attr(element, local_name) {
+    Some(value) =>
+      match parse_uint_text(value) {
+        Some(n) => Some(n)
+        None =>
+          raise_numeric_attr_violation(element, local_name, "xsd:unsignedInt")
+      }
+    None => None
+  }
+}
+
+///|
+fn[T] raise_numeric_attr_violation(
+  element : @xml.Element,
+  local_name : String,
+  type_name : String,
+) -> T raise @opc_errors.SchemaViolation {
+  raise @opc_errors.SchemaViolation(
+    section="Part 1 §18 SpreadsheetML",
+    path=element.name.local_name + "/@" + local_name,
+    reason="value is outside " + type_name,
+  )
 }
 
 ///|
