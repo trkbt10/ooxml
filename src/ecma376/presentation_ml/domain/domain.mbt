@@ -5655,85 +5655,103 @@ pub fn EG_Background::child_names(self : EG_Background) -> Array[String] {
 }
 
 ///|
-/// Construct top-level pml.xsd element cmAuthorLst as CT_CommentAuthorList (§19).
-pub fn cm_author_lst(element : @xml.Element) -> CT_CommentAuthorList {
-  CT_CommentAuthorList::new(element)
+/// Parse top-level pml.xsd element cmAuthorLst as CT_CommentAuthorList (§19).
+pub fn cm_author_lst(
+  element : @xml.Element,
+) -> CT_CommentAuthorList raise SchemaViolation {
+  CT_CommentAuthorList::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element cmLst as CT_CommentList (§19).
-pub fn cm_lst(element : @xml.Element) -> CT_CommentList {
-  CT_CommentList::new(element)
+/// Parse top-level pml.xsd element cmLst as CT_CommentList (§19).
+pub fn cm_lst(element : @xml.Element) -> CT_CommentList raise SchemaViolation {
+  CT_CommentList::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element oleObj as CT_OleObject (§19).
-pub fn ole_obj(element : @xml.Element) -> CT_OleObject {
-  CT_OleObject::new(element)
+/// Parse top-level pml.xsd element oleObj as CT_OleObject (§19).
+pub fn ole_obj(element : @xml.Element) -> CT_OleObject raise SchemaViolation {
+  CT_OleObject::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element presentation as CT_Presentation (§19).
-pub fn presentation(element : @xml.Element) -> CT_Presentation {
-  CT_Presentation::new(element)
+/// Parse top-level pml.xsd element presentation as CT_Presentation (§19).
+pub fn presentation(
+  element : @xml.Element,
+) -> CT_Presentation raise SchemaViolation {
+  CT_Presentation::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element presentationPr as CT_PresentationProperties (§19).
-pub fn presentation_pr(element : @xml.Element) -> CT_PresentationProperties {
-  CT_PresentationProperties::new(element)
+/// Parse top-level pml.xsd element presentationPr as CT_PresentationProperties (§19).
+pub fn presentation_pr(
+  element : @xml.Element,
+) -> CT_PresentationProperties raise SchemaViolation {
+  CT_PresentationProperties::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element sld as CT_Slide (§19).
-pub fn sld(element : @xml.Element) -> CT_Slide {
-  CT_Slide::new(element)
+/// Parse top-level pml.xsd element sld as CT_Slide (§19).
+pub fn sld(element : @xml.Element) -> CT_Slide raise SchemaViolation {
+  CT_Slide::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element sldLayout as CT_SlideLayout (§19).
-pub fn sld_layout(element : @xml.Element) -> CT_SlideLayout {
-  CT_SlideLayout::new(element)
+/// Parse top-level pml.xsd element sldLayout as CT_SlideLayout (§19).
+pub fn sld_layout(
+  element : @xml.Element,
+) -> CT_SlideLayout raise SchemaViolation {
+  CT_SlideLayout::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element sldMaster as CT_SlideMaster (§19).
-pub fn sld_master(element : @xml.Element) -> CT_SlideMaster {
-  CT_SlideMaster::new(element)
+/// Parse top-level pml.xsd element sldMaster as CT_SlideMaster (§19).
+pub fn sld_master(
+  element : @xml.Element,
+) -> CT_SlideMaster raise SchemaViolation {
+  CT_SlideMaster::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element handoutMaster as CT_HandoutMaster (§19).
-pub fn handout_master(element : @xml.Element) -> CT_HandoutMaster {
-  CT_HandoutMaster::new(element)
+/// Parse top-level pml.xsd element handoutMaster as CT_HandoutMaster (§19).
+pub fn handout_master(
+  element : @xml.Element,
+) -> CT_HandoutMaster raise SchemaViolation {
+  CT_HandoutMaster::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element notesMaster as CT_NotesMaster (§19).
-pub fn notes_master(element : @xml.Element) -> CT_NotesMaster {
-  CT_NotesMaster::new(element)
+/// Parse top-level pml.xsd element notesMaster as CT_NotesMaster (§19).
+pub fn notes_master(
+  element : @xml.Element,
+) -> CT_NotesMaster raise SchemaViolation {
+  CT_NotesMaster::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element notes as CT_NotesSlide (§19).
-pub fn notes(element : @xml.Element) -> CT_NotesSlide {
-  CT_NotesSlide::new(element)
+/// Parse top-level pml.xsd element notes as CT_NotesSlide (§19).
+pub fn notes(element : @xml.Element) -> CT_NotesSlide raise SchemaViolation {
+  CT_NotesSlide::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element sldSyncPr as CT_SlideSyncProperties (§19).
-pub fn sld_sync_pr(element : @xml.Element) -> CT_SlideSyncProperties {
-  CT_SlideSyncProperties::new(element)
+/// Parse top-level pml.xsd element sldSyncPr as CT_SlideSyncProperties (§19).
+pub fn sld_sync_pr(
+  element : @xml.Element,
+) -> CT_SlideSyncProperties raise SchemaViolation {
+  CT_SlideSyncProperties::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element tagLst as CT_TagList (§19).
-pub fn tag_lst(element : @xml.Element) -> CT_TagList {
-  CT_TagList::new(element)
+/// Parse top-level pml.xsd element tagLst as CT_TagList (§19).
+pub fn tag_lst(element : @xml.Element) -> CT_TagList raise SchemaViolation {
+  CT_TagList::parse(element)
 }
 
 ///|
-/// Construct top-level pml.xsd element viewPr as CT_ViewProperties (§19).
-pub fn view_pr(element : @xml.Element) -> CT_ViewProperties {
-  CT_ViewProperties::new(element)
+/// Parse top-level pml.xsd element viewPr as CT_ViewProperties (§19).
+pub fn view_pr(
+  element : @xml.Element,
+) -> CT_ViewProperties raise SchemaViolation {
+  CT_ViewProperties::parse(element)
 }

@@ -77,3 +77,54 @@ test "PML layout and master readers reject malformed transition booleans" {
   )
   assert_true(master is Err(@domain.SchemaViolation(_)))
 }
+
+///|
+test "PML presentation reader rejects malformed top-level booleans" {
+  let result = try? read_presentation(
+    bytes(
+      "<p:presentation xmlns:p=\"urn:p\" rtl=\"maybe\">" +
+      "<p:notesSz/>" +
+      "</p:presentation>",
+    ),
+  )
+  assert_true(result is Err(@domain.SchemaViolation(_)))
+}
+
+///|
+test "PML presentationPr reader rejects malformed nested booleans" {
+  let result = try? read_presentation_pr(
+    bytes(
+      "<p:presentationPr xmlns:p=\"urn:p\">" +
+      "<p:prnPr hiddenSlides=\"maybe\"/>" +
+      "</p:presentationPr>",
+    ),
+  )
+  assert_true(result is Err(@domain.SchemaViolation(_)))
+}
+
+///|
+test "PML notes reader rejects malformed top-level booleans" {
+  let result = try? read_notes(
+    bytes(
+      "<p:notes xmlns:p=\"urn:p\" showMasterSp=\"maybe\">" +
+      common_slide_data_xml() +
+      "</p:notes>",
+    ),
+  )
+  assert_true(result is Err(@domain.SchemaViolation(_)))
+}
+
+///|
+test "PML viewPr reader rejects malformed nested booleans" {
+  let result = try? read_view_pr(
+    bytes(
+      "<p:viewPr xmlns:p=\"urn:p\">" +
+      "<p:normalViewPr showOutlineIcons=\"maybe\">" +
+      "<p:restoredLeft sz=\"1\"/>" +
+      "<p:restoredTop sz=\"1\"/>" +
+      "</p:normalViewPr>" +
+      "</p:viewPr>",
+    ),
+  )
+  assert_true(result is Err(@domain.SchemaViolation(_)))
+}

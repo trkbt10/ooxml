@@ -7,45 +7,45 @@ import {
 }
 
 // Values
-pub fn cm_author_lst(@xml.Element) -> CT_CommentAuthorList
+pub fn cm_author_lst(@xml.Element) -> CT_CommentAuthorList raise SchemaViolation
 
-pub fn cm_lst(@xml.Element) -> CT_CommentList
+pub fn cm_lst(@xml.Element) -> CT_CommentList raise SchemaViolation
 
 pub fn ct_placeholder_section_name() -> String
 
 pub fn ct_tl_common_time_node_repeat_iterations(ST_TLTime?) -> Int
 
-pub fn handout_master(@xml.Element) -> CT_HandoutMaster
+pub fn handout_master(@xml.Element) -> CT_HandoutMaster raise SchemaViolation
 
-pub fn notes(@xml.Element) -> CT_NotesSlide
+pub fn notes(@xml.Element) -> CT_NotesSlide raise SchemaViolation
 
-pub fn notes_master(@xml.Element) -> CT_NotesMaster
+pub fn notes_master(@xml.Element) -> CT_NotesMaster raise SchemaViolation
 
-pub fn ole_obj(@xml.Element) -> CT_OleObject
+pub fn ole_obj(@xml.Element) -> CT_OleObject raise SchemaViolation
 
 pub fn package_name() -> String
 
-pub fn presentation(@xml.Element) -> CT_Presentation
+pub fn presentation(@xml.Element) -> CT_Presentation raise SchemaViolation
 
-pub fn presentation_pr(@xml.Element) -> CT_PresentationProperties
+pub fn presentation_pr(@xml.Element) -> CT_PresentationProperties raise SchemaViolation
 
 pub fn raise_schema_violation(String, String, String) -> Unit raise SchemaViolation
 
 pub fn[T] schema_violation(String, String, String) -> T raise SchemaViolation
 
-pub fn sld(@xml.Element) -> CT_Slide
+pub fn sld(@xml.Element) -> CT_Slide raise SchemaViolation
 
-pub fn sld_layout(@xml.Element) -> CT_SlideLayout
+pub fn sld_layout(@xml.Element) -> CT_SlideLayout raise SchemaViolation
 
-pub fn sld_master(@xml.Element) -> CT_SlideMaster
+pub fn sld_master(@xml.Element) -> CT_SlideMaster raise SchemaViolation
 
-pub fn sld_sync_pr(@xml.Element) -> CT_SlideSyncProperties
+pub fn sld_sync_pr(@xml.Element) -> CT_SlideSyncProperties raise SchemaViolation
 
 pub fn st_tl_trigger_event_is_runtime(ST_TLTriggerEvent) -> Bool
 
-pub fn tag_lst(@xml.Element) -> CT_TagList
+pub fn tag_lst(@xml.Element) -> CT_TagList raise SchemaViolation
 
-pub fn view_pr(@xml.Element) -> CT_ViewProperties
+pub fn view_pr(@xml.Element) -> CT_ViewProperties raise SchemaViolation
 
 pub fn vml_presentation_drawing_iscomment(@xml.Element) -> VmlPresentationDrawing_CT_Empty
 
