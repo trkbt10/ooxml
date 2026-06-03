@@ -1043,6 +1043,20 @@ test "SML revisions reader rejects malformed sheet revision numerics" {
 }
 
 ///|
+fn assert_users_schema_violation(source : String) -> Unit raise {
+  let invalid = try? read_users(bytes(source))
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML users reader rejects malformed numerics" {
+  assert_users_schema_violation("<s:users xmlns:s=\"urn:s\" count=\"abc\"/>")
+  assert_users_schema_violation(
+    "<s:users xmlns:s=\"urn:s\"><s:userInfo id=\"abc\"/></s:users>",
+  )
+}
+
+///|
 fn assert_metadata_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_metadata(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))

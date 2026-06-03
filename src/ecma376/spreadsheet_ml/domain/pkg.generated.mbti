@@ -3175,7 +3175,7 @@ pub(all) struct CT_SharedUser {
   id : Int
   date_time : String
 } derive(Eq, @debug.Debug)
-pub fn CT_SharedUser::new(@xml.Element) -> Self
+pub fn CT_SharedUser::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Sheet {
   element : @xml.Element
@@ -3659,7 +3659,7 @@ pub(all) struct CT_Users {
   user_info : Array[CT_SharedUser]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_Users::new(@xml.Element) -> Self
+pub fn CT_Users::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_VerticalAlignFontProperty {
   element : @xml.Element

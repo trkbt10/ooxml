@@ -3227,7 +3227,9 @@ pub(all) struct CT_Users {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Users::new(element : @xml.Element) -> CT_Users {
+pub fn CT_Users::new(
+  element : @xml.Element,
+) -> CT_Users raise @opc_errors.SchemaViolation {
   let user_info : Array[CT_SharedUser] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3236,7 +3238,7 @@ pub fn CT_Users::new(element : @xml.Element) -> CT_Users {
       }
     }
   }
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   { element, user_info, count }
 }
 
@@ -3261,7 +3263,9 @@ pub(all) struct CT_SharedUser {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_SharedUser::new(element : @xml.Element) -> CT_SharedUser {
+pub fn CT_SharedUser::new(
+  element : @xml.Element,
+) -> CT_SharedUser raise @opc_errors.SchemaViolation {
   let mut ext_lst : CT_ExtensionList? = None
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3278,7 +3282,7 @@ pub fn CT_SharedUser::new(element : @xml.Element) -> CT_SharedUser {
     Some(value) => value
     None => ""
   }
-  let id = attr_int(element, "id", 0)
+  let id = attr_int_schema(element, "id", 0)
   let date_time = match attr(element, "dateTime") {
     Some(value) => value
     None => ""
