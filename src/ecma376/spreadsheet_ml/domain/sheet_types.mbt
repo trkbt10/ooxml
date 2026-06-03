@@ -1031,10 +1031,10 @@ pub fn CT_RevisionRowColumn::new(
       }
     }
   }
-  let r_id = attr_uint(element, "rId", 0)
+  let r_id = attr_uint_schema(element, "rId", 0)
   let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.21", "rrc")
   let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.21", "rrc")
-  let s_id = attr_uint(element, "sId", 0)
+  let s_id = attr_uint_schema(element, "sId", 0)
   let eol = revision_bool(element, "eol", false, "Part 1 §18.11.1.21", "rrc")
   let ref_ = match attr(element, "ref") {
     Some(value) => value
@@ -1115,10 +1115,10 @@ pub fn CT_RevisionSheetRename::new(
       }
     }
   }
-  let r_id = attr_uint(element, "rId", 0)
+  let r_id = attr_uint_schema(element, "rId", 0)
   let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.22", "rsnm")
   let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.22", "rsnm")
-  let sheet_id = attr_uint(element, "sheetId", 0)
+  let sheet_id = attr_uint_schema(element, "sheetId", 0)
   let old_name = match attr(element, "oldName") {
     Some(value) => value
     None => ""
@@ -1157,15 +1157,15 @@ pub(all) struct CT_RevisionInsertSheet {
 pub fn CT_RevisionInsertSheet::new(
   element : @xml.Element,
 ) -> CT_RevisionInsertSheet raise @opc_errors.SchemaViolation {
-  let r_id = attr_uint(element, "rId", 0)
+  let r_id = attr_uint_schema(element, "rId", 0)
   let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.18", "ris")
   let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.18", "ris")
-  let sheet_id = attr_uint(element, "sheetId", 0)
+  let sheet_id = attr_uint_schema(element, "sheetId", 0)
   let name = match attr(element, "name") {
     Some(value) => value
     None => ""
   }
-  let sheet_position = attr_uint(element, "sheetPosition", 0)
+  let sheet_position = attr_uint_schema(element, "sheetPosition", 0)
   { element, r_id, ua, ra, sheet_id, name, sheet_position }
 }
 
@@ -1248,17 +1248,17 @@ pub fn CT_RevisionCellChange::new(
       }
     }
   }
-  let r_id = attr_uint(element, "rId", 0)
+  let r_id = attr_uint_schema(element, "rId", 0)
   let ua = revision_bool(element, "ua", false, "Part 1 §18.11.1.9", "rcc")
   let ra = revision_bool(element, "ra", false, "Part 1 §18.11.1.9", "rcc")
-  let s_id = attr_uint(element, "sId", 0)
+  let s_id = attr_uint_schema(element, "sId", 0)
   let odxf = revision_bool(element, "odxf", false, "Part 1 §18.11.1.9", "rcc")
   let xf_dxf = revision_bool(
     element, "xfDxf", false, "Part 1 §18.11.1.9", "rcc",
   )
   let s = revision_bool(element, "s", false, "Part 1 §18.11.1.9", "rcc")
   let dxf = revision_bool(element, "dxf", false, "Part 1 §18.11.1.9", "rcc")
-  let num_fmt_id = attr_uint_opt(element, "numFmtId")
+  let num_fmt_id = attr_uint_opt_schema(element, "numFmtId")
   let quote_prefix = revision_bool(
     element, "quotePrefix", false, "Part 1 §18.11.1.9", "rcc",
   )

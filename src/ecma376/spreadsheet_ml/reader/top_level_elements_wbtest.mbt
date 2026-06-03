@@ -944,6 +944,40 @@ test "SML revisions reader rejects malformed query-table field numerics" {
 }
 
 ///|
+test "SML revisions reader rejects malformed sheet revision numerics" {
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rrc rId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rrc sId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rsnm rId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rsnm sheetId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:ris rId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:ris sheetId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:ris sheetPosition=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rcc rId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rcc sId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rcc numFmtId=\"abc\"/></s:revisions>",
+  )
+}
+
+///|
 fn assert_metadata_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_metadata(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
