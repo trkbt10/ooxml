@@ -303,6 +303,19 @@ test "§18.10.1.67 decode_pivot_cache_definition reads refresh metadata" {
 }
 
 ///|
+test "§18.10.1.67 pivotCacheDefinition rejects malformed boolean attributes" {
+  let root = parse_xml(
+    "<pivotCacheDefinition saveData=\"maybe\"><cacheSource type=\"worksheet\"><worksheetSource sheet=\"Sheet1\" ref=\"A1:A2\"/></cacheSource><cacheFields count=\"0\"/></pivotCacheDefinition>",
+  )
+  assert_true(
+    (try? decode_pivot_cache_definition(
+      @domain.CT_PivotCacheDefinition::new(root),
+    ))
+    is Err(@opc_errors.SchemaViolation(_)),
+  )
+}
+
+///|
 test "§18.10.1.3 cacheField decodes shared string and numeric items" {
   let root = parse_xml(
     "<pivotCacheDefinition><cacheSource type=\"worksheet\"><worksheetSource sheet=\"S\" ref=\"A1:A2\"/></cacheSource><cacheFields count=\"2\"><cacheField name=\"Region\"><sharedItems count=\"3\"><s v=\"East\"/><s v=\"West\"/><s v=\"North\"/></sharedItems></cacheField><cacheField name=\"Sales\"><sharedItems containsString=\"0\" containsNumber=\"1\" count=\"2\"><n v=\"10\"/><n v=\"20.5\"/></sharedItems></cacheField></cacheFields></pivotCacheDefinition>",
@@ -325,6 +338,19 @@ test "§18.10.1.3 cacheField decodes shared string and numeric items" {
     SharedNumber(value) => assert_eq(value, 20.5)
     _ => assert_true(false)
   }
+}
+
+///|
+test "§18.10.1.2 pivot cache boolean item rejects malformed v" {
+  let root = parse_xml(
+    "<pivotCacheDefinition><cacheSource type=\"worksheet\"><worksheetSource sheet=\"S\" ref=\"A1:A2\"/></cacheSource><cacheFields count=\"1\"><cacheField name=\"Flag\"><sharedItems><b v=\"maybe\"/></sharedItems></cacheField></cacheFields></pivotCacheDefinition>",
+  )
+  assert_true(
+    (try? decode_pivot_cache_definition(
+      @domain.CT_PivotCacheDefinition::new(root),
+    ))
+    is Err(@opc_errors.SchemaViolation(_)),
+  )
 }
 
 ///|

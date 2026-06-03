@@ -246,7 +246,13 @@ fn decode_shared_item_value_opt(
   match name {
     "s" => Some(SharedString(attr_or(element, "v", "")))
     "n" => Some(SharedNumber(decode_required_double(element, "v", "n/@v")))
-    "b" => Some(SharedBool(parse_bool_text(attr_or(element, "v", "false"))))
+    "b" => {
+      let value = match attr(element, "v") {
+        Some(raw) => parse_bool_text(raw, "b/@v")
+        None => false
+      }
+      Some(SharedBool(value))
+    }
     "d" => Some(SharedDate(attr_or(element, "v", "")))
     "e" => Some(SharedError(attr_or(element, "v", "#VALUE!")))
     "m" => Some(SharedMissing)
@@ -829,13 +835,39 @@ fn parse_signed_or_unsigned(
 }
 
 ///|
-fn parse_bool_text(text : String) -> Bool {
+fn parse_bool_text(
+  text : String,
+  path : String,
+) -> Bool raise @opc_errors.SchemaViolation {
+  decode_bool_text(text, path, "Part 1 §18.10.1.2")
+}
+
+///|
+fn decode_bool_text(
+  text : String,
+  path : String,
+  section : String,
+) -> Bool raise @opc_errors.SchemaViolation {
   match text {
     "1" => true
     "true" => true
     "0" => false
     "false" => false
-    _ => false
+    _ =>
+      raise @opc_errors.SchemaViolation(
+        section~,
+        path~,
+        reason="xsd:boolean value is malformed: " + text,
+      )
+  }
+}
+
+///|
+fn pivot_decode_section_for_element(element : @xml.Element) -> String {
+  match element.name.local_name {
+    "pivotCacheDefinition" | "cacheField" | "sharedItems" =>
+      pivot_cache_definition_part1_18_10_1_67_section_name()
+    _ => pivot_table_definition_part1_18_10_1_73_section_name()
   }
 }
 
@@ -880,13 +912,15 @@ fn decode_bool_attr(
   element : @xml.Element,
   local_name : String,
   fallback : Bool,
-) -> Bool {
+) -> Bool raise @opc_errors.SchemaViolation {
   match attr(element, local_name) {
-    Some("1") => true
-    Some("true") => true
-    Some("0") => false
-    Some("false") => false
-    _ => fallback
+    Some(value) =>
+      decode_bool_text(
+        value,
+        element.name.local_name + "/@" + local_name,
+        pivot_decode_section_for_element(element),
+      )
+    None => fallback
   }
 }
 
