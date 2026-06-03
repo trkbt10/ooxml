@@ -2205,8 +2205,8 @@ pub(all) struct CT_RowHierarchiesUsage {
 ///|
 pub fn CT_RowHierarchiesUsage::new(
   element : @xml.Element,
-) -> CT_RowHierarchiesUsage {
-  let count = attr_uint_opt(element, "count")
+) -> CT_RowHierarchiesUsage raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let row_hierarchy_usages : Array[CT_HierarchyUsage] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2234,8 +2234,8 @@ pub(all) struct CT_ColHierarchiesUsage {
 ///|
 pub fn CT_ColHierarchiesUsage::new(
   element : @xml.Element,
-) -> CT_ColHierarchiesUsage {
-  let count = attr_uint_opt(element, "count")
+) -> CT_ColHierarchiesUsage raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
   let col_hierarchy_usage : Array[CT_HierarchyUsage] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -2259,8 +2259,10 @@ pub(all) struct CT_HierarchyUsage {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_HierarchyUsage::new(element : @xml.Element) -> CT_HierarchyUsage {
-  let hierarchy_usage = attr_int(element, "hierarchyUsage", 0)
+pub fn CT_HierarchyUsage::new(
+  element : @xml.Element,
+) -> CT_HierarchyUsage raise @opc_errors.SchemaViolation {
+  let hierarchy_usage = attr_int_schema(element, "hierarchyUsage", 0)
   { element, hierarchy_usage }
 }
 
@@ -2376,9 +2378,11 @@ pub(all) struct CT_Members {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_Members::new(element : @xml.Element) -> CT_Members {
-  let count = attr_uint_opt(element, "count")
-  let level = attr_uint_opt(element, "level")
+pub fn CT_Members::new(
+  element : @xml.Element,
+) -> CT_Members raise @opc_errors.SchemaViolation {
+  let count = attr_uint_opt_schema(element, "count")
+  let level = attr_uint_opt_schema(element, "level")
   let member_entries : Array[CT_Member] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {

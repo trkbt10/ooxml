@@ -549,7 +549,7 @@ pub(all) struct CT_ColHierarchiesUsage {
   count : Int?
   col_hierarchy_usage : Array[CT_HierarchyUsage]
 } derive(Eq, @debug.Debug)
-pub fn CT_ColHierarchiesUsage::new(@xml.Element) -> Self
+pub fn CT_ColHierarchiesUsage::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Color {
   element : @xml.Element
@@ -1573,7 +1573,7 @@ pub(all) struct CT_HierarchyUsage {
   element : @xml.Element
   hierarchy_usage : Int
 } derive(Eq, @debug.Debug)
-pub fn CT_HierarchyUsage::new(@xml.Element) -> Self
+pub fn CT_HierarchyUsage::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Hyperlink {
   element : @xml.Element
@@ -1896,7 +1896,7 @@ pub(all) struct CT_Members {
   level : Int?
   member_entries : Array[CT_Member]
 } derive(Eq, @debug.Debug)
-pub fn CT_Members::new(@xml.Element) -> Self
+pub fn CT_Members::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_MergeCell {
   element : @xml.Element
@@ -3057,7 +3057,7 @@ pub(all) struct CT_RowHierarchiesUsage {
   count : Int?
   row_hierarchy_usages : Array[CT_HierarchyUsage]
 } derive(Eq, @debug.Debug)
-pub fn CT_RowHierarchiesUsage::new(@xml.Element) -> Self
+pub fn CT_RowHierarchiesUsage::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_Rst {
   element : @xml.Element
