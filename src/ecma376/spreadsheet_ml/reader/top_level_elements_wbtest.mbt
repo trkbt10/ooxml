@@ -598,6 +598,15 @@ test "SML workbook reader rejects malformed sheet unsigned integers" {
 }
 
 ///|
+test "SML workbook reader rejects malformed pivot cache unsigned integers" {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:pivotCaches>" +
+    "<s:pivotCache cacheId=\"abc\"/>" +
+    "</s:pivotCaches></s:workbook>",
+  )
+}
+
+///|
 fn assert_workbook_view_bool_schema_violation(
   local_name : String,
 ) -> Unit raise {

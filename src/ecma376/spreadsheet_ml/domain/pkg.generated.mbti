@@ -2385,7 +2385,7 @@ pub(all) struct CT_PivotCache {
   cache_id : Int
   r_id : String
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotCache::new(@xml.Element) -> Self
+pub fn CT_PivotCache::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotCacheDefinition {
   element : @xml.Element
@@ -2433,7 +2433,7 @@ pub(all) struct CT_PivotCaches {
   element : @xml.Element
   pivot_cache : Array[CT_PivotCache]
 } derive(Eq, @debug.Debug)
-pub fn CT_PivotCaches::new(@xml.Element) -> Self
+pub fn CT_PivotCaches::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_PivotDimension {
   element : @xml.Element

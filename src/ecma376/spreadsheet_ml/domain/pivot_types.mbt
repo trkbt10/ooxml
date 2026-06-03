@@ -4114,7 +4114,9 @@ pub(all) struct CT_PivotCaches {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotCaches::new(element : @xml.Element) -> CT_PivotCaches {
+pub fn CT_PivotCaches::new(
+  element : @xml.Element,
+) -> CT_PivotCaches raise @opc_errors.SchemaViolation {
   let pivot_cache : Array[CT_PivotCache] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -4142,8 +4144,10 @@ pub(all) struct CT_PivotCache {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_PivotCache::new(element : @xml.Element) -> CT_PivotCache {
-  let cache_id = attr_uint(element, "cacheId", 0)
+pub fn CT_PivotCache::new(
+  element : @xml.Element,
+) -> CT_PivotCache raise @opc_errors.SchemaViolation {
+  let cache_id = attr_uint_schema(element, "cacheId", 0)
   let r_id = match attr_with_ns(element, "id") {
     Some(value) => value
     None => ""
