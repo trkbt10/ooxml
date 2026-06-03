@@ -869,3 +869,18 @@ test "SML worksheet reader rejects malformed ignored error booleans" {
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
 }
+
+///|
+test "SML worksheet reader rejects malformed web publish item booleans" {
+  let invalid = try? read_worksheet(
+    bytes(
+      "<s:worksheet xmlns:s=\"urn:s\">" +
+      "<s:webPublishItems>" +
+      "<s:webPublishItem id=\"1\" divId=\"d1\" sourceType=\"sheet\" " +
+      "destinationFile=\"out.htm\" autoRepublish=\"maybe\"/>" +
+      "</s:webPublishItems>" +
+      "</s:worksheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}

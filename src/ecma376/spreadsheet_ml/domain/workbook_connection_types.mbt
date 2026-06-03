@@ -3086,7 +3086,9 @@ pub(all) struct CT_WebPublishItems {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_WebPublishItems::new(element : @xml.Element) -> CT_WebPublishItems {
+pub fn CT_WebPublishItems::new(
+  element : @xml.Element,
+) -> CT_WebPublishItems raise @opc_errors.SchemaViolation {
   let web_publish_item : Array[CT_WebPublishItem] = []
   for child in element.children {
     if child is @xml.Node::Element(child_element) {
@@ -3128,7 +3130,20 @@ pub(all) struct CT_WebPublishItem {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_WebPublishItem::new(element : @xml.Element) -> CT_WebPublishItem {
+fn web_publish_item_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(
+    element, local_name, default, "Part 1 §18.3.1.95", "webPublishItem",
+  )
+}
+
+///|
+pub fn CT_WebPublishItem::new(
+  element : @xml.Element,
+) -> CT_WebPublishItem raise @opc_errors.SchemaViolation {
   let id = attr_uint(element, "id", 0)
   let div_id = match attr(element, "divId") {
     Some(value) => value
@@ -3145,7 +3160,7 @@ pub fn CT_WebPublishItem::new(element : @xml.Element) -> CT_WebPublishItem {
     None => ""
   }
   let title = attr(element, "title")
-  let auto_republish = attr_bool(element, "autoRepublish", false)
+  let auto_republish = web_publish_item_bool(element, "autoRepublish", false)
   {
     element,
     id,

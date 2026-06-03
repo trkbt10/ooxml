@@ -3734,14 +3734,14 @@ pub(all) struct CT_WebPublishItem {
   title : String?
   auto_republish : Bool
 } derive(Eq, @debug.Debug)
-pub fn CT_WebPublishItem::new(@xml.Element) -> Self
+pub fn CT_WebPublishItem::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_WebPublishItems {
   element : @xml.Element
   web_publish_item : Array[CT_WebPublishItem]
   count : Int?
 } derive(Eq, @debug.Debug)
-pub fn CT_WebPublishItems::new(@xml.Element) -> Self
+pub fn CT_WebPublishItems::new(@xml.Element) -> Self raise @errors.SchemaViolation
 
 pub(all) struct CT_WebPublishObject {
   element : @xml.Element
