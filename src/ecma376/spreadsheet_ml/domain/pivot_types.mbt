@@ -3451,13 +3451,13 @@ pub(all) struct CT_RevisionQueryTableField {
 ///|
 pub fn CT_RevisionQueryTableField::new(
   element : @xml.Element,
-) -> CT_RevisionQueryTableField {
-  let sheet_id = attr_uint(element, "sheetId", 0)
+) -> CT_RevisionQueryTableField raise @opc_errors.SchemaViolation {
+  let sheet_id = attr_uint_schema(element, "sheetId", 0)
   let ref_ = match attr(element, "ref") {
     Some(value) => value
     None => ""
   }
-  let field_id = attr_uint(element, "fieldId", 0)
+  let field_id = attr_uint_schema(element, "fieldId", 0)
   { element, sheet_id, ref_, field_id }
 }
 

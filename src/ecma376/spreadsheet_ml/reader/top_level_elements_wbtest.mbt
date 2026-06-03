@@ -925,6 +925,16 @@ test "SML revisions reader rejects malformed revision booleans" {
 }
 
 ///|
+test "SML revisions reader rejects malformed query-table field numerics" {
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rqt sheetId=\"abc\"/></s:revisions>",
+  )
+  assert_revisions_schema_violation(
+    "<s:revisions xmlns:s=\"urn:s\"><s:rqt fieldId=\"abc\"/></s:revisions>",
+  )
+}
+
+///|
 fn assert_metadata_schema_violation(source : String) -> Unit raise {
   let invalid = try? read_metadata(bytes(source))
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
