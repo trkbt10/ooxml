@@ -1515,9 +1515,9 @@ pub fn CT_pivotTableDefinition::new(
     Some(v) => v
     None => ""
   }
-  let cache_id = attr_uint(element, "cacheId", 0)
+  let cache_id = attr_uint_schema(element, "cacheId", 0)
   let data_on_rows = pivot_table_bool(element, "dataOnRows", false)
-  let data_position = attr_uint_opt(element, "dataPosition")
+  let data_position = attr_uint_opt_schema(element, "dataPosition")
   let data_caption = match attr(element, "dataCaption") {
     Some(v) => v
     None => ""
@@ -1531,8 +1531,10 @@ pub fn CT_pivotTableDefinition::new(
   let pivot_table_style = attr(element, "pivotTableStyle")
   let vacated_style = attr(element, "vacatedStyle")
   let tag = attr(element, "tag")
-  let updated_version = attr_uint(element, "updatedVersion", 0)
-  let min_refreshable_version = attr_uint(element, "minRefreshableVersion", 0)
+  let updated_version = attr_uint_schema(element, "updatedVersion", 0)
+  let min_refreshable_version = attr_uint_schema(
+    element, "minRefreshableVersion", 0,
+  )
   let asterisk_totals = pivot_table_bool(element, "asteriskTotals", false)
   let show_items = pivot_table_bool(element, "showItems", true)
   let edit_data = pivot_table_bool(element, "editData", false)
@@ -1558,7 +1560,7 @@ pub fn CT_pivotTableDefinition::new(
   let use_auto_formatting = pivot_table_bool(
     element, "useAutoFormatting", false,
   )
-  let page_wrap = attr_uint(element, "pageWrap", 0)
+  let page_wrap = attr_uint_schema(element, "pageWrap", 0)
   let page_over_then_down = pivot_table_bool(element, "pageOverThenDown", false)
   let subtotal_hidden_items = pivot_table_bool(
     element, "subtotalHiddenItems", false,
@@ -1569,8 +1571,8 @@ pub fn CT_pivotTableDefinition::new(
   let item_print_titles = pivot_table_bool(element, "itemPrintTitles", false)
   let merge_item = pivot_table_bool(element, "mergeItem", false)
   let show_drop_zones = pivot_table_bool(element, "showDropZones", true)
-  let created_version = attr_uint(element, "createdVersion", 0)
-  let indent = attr_uint(element, "indent", 1)
+  let created_version = attr_uint_schema(element, "createdVersion", 0)
+  let indent = attr_uint_schema(element, "indent", 1)
   let show_empty_row = pivot_table_bool(element, "showEmptyRow", false)
   let show_empty_col = pivot_table_bool(element, "showEmptyCol", false)
   let show_headers = pivot_table_bool(element, "showHeaders", true)
@@ -1584,7 +1586,7 @@ pub fn CT_pivotTableDefinition::new(
   let multiple_field_filters = pivot_table_bool(
     element, "multipleFieldFilters", true,
   )
-  let chart_format = attr_uint(element, "chartFormat", 0)
+  let chart_format = attr_uint_schema(element, "chartFormat", 0)
   let row_header_caption = attr(element, "rowHeaderCaption")
   let col_header_caption = attr(element, "colHeaderCaption")
   let field_list_sort_ascending = pivot_table_bool(

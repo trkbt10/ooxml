@@ -1504,6 +1504,29 @@ test "SML pivotTableDefinition reader rejects malformed definition booleans" {
 }
 
 ///|
+fn assert_pivot_table_definition_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_pivot_table_definition_schema_violation(
+    "<s:pivotTableDefinition xmlns:s=\"urn:s\" " + local_name + "=\"abc\"/>",
+  )
+}
+
+///|
+test "SML pivotTableDefinition reader rejects malformed definition numerics" {
+  assert_pivot_table_definition_numeric_schema_violation("cacheId")
+  assert_pivot_table_definition_numeric_schema_violation("dataPosition")
+  assert_pivot_table_definition_numeric_schema_violation("updatedVersion")
+  assert_pivot_table_definition_numeric_schema_violation(
+    "minRefreshableVersion",
+  )
+  assert_pivot_table_definition_numeric_schema_violation("pageWrap")
+  assert_pivot_table_definition_numeric_schema_violation("createdVersion")
+  assert_pivot_table_definition_numeric_schema_violation("indent")
+  assert_pivot_table_definition_numeric_schema_violation("chartFormat")
+}
+
+///|
 test "SML pivotTableDefinition reader rejects malformed pivot-field booleans" {
   assert_pivot_table_definition_schema_violation(
     "<s:pivotTableDefinition xmlns:s=\"urn:s\">" +
