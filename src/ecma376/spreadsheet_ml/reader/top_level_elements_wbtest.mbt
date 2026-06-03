@@ -2116,6 +2116,31 @@ test "SML worksheet reader rejects malformed pivot-selection booleans" {
 }
 
 ///|
+fn assert_pivot_selection_numeric_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_worksheet_body_schema_violation(
+    "<s:sheetViews><s:sheetView><s:pivotSelection " +
+    local_name +
+    "=\"abc\"/></s:sheetView></s:sheetViews>",
+  )
+}
+
+///|
+test "SML worksheet reader rejects malformed pivot-selection numerics" {
+  assert_pivot_selection_numeric_schema_violation("count")
+  assert_pivot_selection_numeric_schema_violation("dimension")
+  assert_pivot_selection_numeric_schema_violation("start")
+  assert_pivot_selection_numeric_schema_violation("min")
+  assert_pivot_selection_numeric_schema_violation("max")
+  assert_pivot_selection_numeric_schema_violation("activeRow")
+  assert_pivot_selection_numeric_schema_violation("activeCol")
+  assert_pivot_selection_numeric_schema_violation("previousRow")
+  assert_pivot_selection_numeric_schema_violation("previousCol")
+  assert_pivot_selection_numeric_schema_violation("click")
+}
+
+///|
 test "SML worksheet reader rejects malformed page-setup-pr booleans" {
   let invalid = try? read_worksheet(
     bytes(
