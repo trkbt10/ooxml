@@ -39,6 +39,23 @@ fn file_recovery_pr_bool(
 }
 
 ///|
+fn calc_pr_bool(
+  element : @xml.Element,
+  local_name : String,
+  default : Bool,
+) -> Bool raise @opc_errors.SchemaViolation {
+  attr_bool_schema(element, local_name, default, "Part 1 §18.2.2", "calcPr")
+}
+
+///|
+fn calc_pr_bool_opt(
+  element : @xml.Element,
+  local_name : String,
+) -> Bool? raise @opc_errors.SchemaViolation {
+  attr_bool_schema_opt(element, local_name, "Part 1 §18.2.2", "calcPr")
+}
+
+///|
 /// XSD complex type CT_SortState — Part 1 §18.3.1.92 (`<sortState>` Sort
 /// State). Sequence children: `<sortCondition>*` (CT_SortCondition,
 /// 0..64) and optional `<extLst>` (CT_ExtensionList). Attributes:
@@ -3853,26 +3870,28 @@ pub(all) struct CT_CalcPr {
 } derive(Eq, Debug)
 
 ///|
-pub fn CT_CalcPr::new(element : @xml.Element) -> CT_CalcPr {
+pub fn CT_CalcPr::new(
+  element : @xml.Element,
+) -> CT_CalcPr raise @opc_errors.SchemaViolation {
   let calc_id = attr_uint_opt(element, "calcId")
   let calc_mode = match attr(element, "calcMode") {
     Some(value) => value
     None => "auto"
   }
-  let full_calc_on_load = attr_bool(element, "fullCalcOnLoad", false)
+  let full_calc_on_load = calc_pr_bool(element, "fullCalcOnLoad", false)
   let ref_mode = match attr(element, "refMode") {
     Some(value) => value
     None => "A1"
   }
-  let iterate = attr_bool(element, "iterate", false)
+  let iterate = calc_pr_bool(element, "iterate", false)
   let iterate_count = attr_uint(element, "iterateCount", 100)
   let iterate_delta = attr_double(element, "iterateDelta", 0.001)
-  let full_precision = attr_bool(element, "fullPrecision", true)
-  let calc_completed = attr_bool(element, "calcCompleted", true)
-  let calc_on_save = attr_bool(element, "calcOnSave", true)
-  let concurrent_calc = attr_bool(element, "concurrentCalc", true)
+  let full_precision = calc_pr_bool(element, "fullPrecision", true)
+  let calc_completed = calc_pr_bool(element, "calcCompleted", true)
+  let calc_on_save = calc_pr_bool(element, "calcOnSave", true)
+  let concurrent_calc = calc_pr_bool(element, "concurrentCalc", true)
   let concurrent_manual_count = attr_uint_opt(element, "concurrentManualCount")
-  let force_full_calc = attr_bool_opt(element, "forceFullCalc")
+  let force_full_calc = calc_pr_bool_opt(element, "forceFullCalc")
   {
     element,
     calc_id,

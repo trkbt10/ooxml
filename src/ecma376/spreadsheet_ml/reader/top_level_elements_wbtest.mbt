@@ -183,6 +183,28 @@ test "SML workbook reader rejects malformed file recovery booleans" {
 }
 
 ///|
+fn assert_workbook_calc_pr_bool_schema_violation(
+  local_name : String,
+) -> Unit raise {
+  assert_workbook_schema_violation(
+    "<s:workbook xmlns:s=\"urn:s\"><s:calcPr " +
+    local_name +
+    "=\"maybe\"/></s:workbook>",
+  )
+}
+
+///|
+test "SML workbook reader rejects malformed calculation property booleans" {
+  assert_workbook_calc_pr_bool_schema_violation("fullCalcOnLoad")
+  assert_workbook_calc_pr_bool_schema_violation("iterate")
+  assert_workbook_calc_pr_bool_schema_violation("fullPrecision")
+  assert_workbook_calc_pr_bool_schema_violation("calcCompleted")
+  assert_workbook_calc_pr_bool_schema_violation("calcOnSave")
+  assert_workbook_calc_pr_bool_schema_violation("concurrentCalc")
+  assert_workbook_calc_pr_bool_schema_violation("forceFullCalc")
+}
+
+///|
 test "SML metadata reader rejects malformed metadataType booleans" {
   let invalid = try? read_metadata(
     bytes(
