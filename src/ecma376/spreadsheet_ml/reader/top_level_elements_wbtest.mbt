@@ -1589,6 +1589,27 @@ test "SML pivotCacheDefinition reader rejects malformed shared-item booleans" {
 }
 
 ///|
+test "SML pivotCacheDefinition reader rejects malformed shared-item numerics" {
+  assert_pivot_cache_shared_items_schema_violation("minValue=\"abc\"")
+  assert_pivot_cache_shared_items_schema_violation("maxValue=\"abc\"")
+  assert_pivot_cache_shared_items_schema_violation("count=\"abc\"")
+  assert_pivot_cache_shared_item_schema_violation("<s:m cp=\"abc\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:m in=\"abc\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:n v=\"abc\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:n v=\"1\" cp=\"abc\"/>")
+  assert_pivot_cache_shared_item_schema_violation("<s:n v=\"1\" in=\"abc\"/>")
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:e v=\"#N/A\" cp=\"abc\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:e v=\"#N/A\" in=\"abc\"/>",
+  )
+  assert_pivot_cache_shared_item_schema_violation(
+    "<s:d v=\"2020-01-01T00:00:00\" cp=\"abc\"/>",
+  )
+}
+
+///|
 test "SML pivotCacheDefinition reader rejects malformed shared string numerics" {
   assert_pivot_cache_shared_item_schema_violation(
     "<s:s v=\"East\" cp=\"abc\"/>",

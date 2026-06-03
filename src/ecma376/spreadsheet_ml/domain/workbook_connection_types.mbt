@@ -1391,11 +1391,11 @@ pub fn CT_SharedItems::new(
   )
   let contains_number = shared_items_bool(element, "containsNumber", false)
   let contains_integer = shared_items_bool(element, "containsInteger", false)
-  let min_value = attr_double_opt(element, "minValue")
-  let max_value = attr_double_opt(element, "maxValue")
+  let min_value = attr_double_opt_schema(element, "minValue")
+  let max_value = attr_double_opt_schema(element, "maxValue")
   let min_date = attr(element, "minDate")
   let max_date = attr(element, "maxDate")
-  let count = attr_uint_opt(element, "count")
+  let count = attr_uint_opt_schema(element, "count")
   let long_text = shared_items_bool(element, "longText", false)
   {
     element,
@@ -1478,8 +1478,8 @@ pub fn CT_Missing::new(
   let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.46", "m")
   let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.46", "m")
   let c = attr(element, "c")
-  let cp = attr_uint_opt(element, "cp")
-  let in_ = attr_uint_opt(element, "in")
+  let cp = attr_uint_opt_schema(element, "cp")
+  let in_ = attr_uint_opt_schema(element, "in")
   let bc = attr_hex_uint_opt(element, "bc")
   let fc = attr_hex_uint_opt(element, "fc")
   let i = attr_bool_schema(element, "i", false, "Part 1 §18.10.1.46", "m")
@@ -1546,12 +1546,12 @@ pub fn CT_Number::new(
       }
     }
   }
-  let v = attr_double(element, "v", 0.0)
+  let v = attr_double_schema(element, "v", 0.0)
   let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.69", "n")
   let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.69", "n")
   let c = attr(element, "c")
-  let cp = attr_uint_opt(element, "cp")
-  let in_ = attr_uint_opt(element, "in")
+  let cp = attr_uint_opt_schema(element, "cp")
+  let in_ = attr_uint_opt_schema(element, "in")
   let bc = attr_hex_uint_opt(element, "bc")
   let fc = attr_hex_uint_opt(element, "fc")
   let i = attr_bool_schema(element, "i", false, "Part 1 §18.10.1.69", "n")
@@ -1626,8 +1626,8 @@ pub fn CT_Error::new(
   let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.25", "e")
   let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.25", "e")
   let c = attr(element, "c")
-  let cp = attr_uint_opt(element, "cp")
-  let in_ = attr_uint_opt(element, "in")
+  let cp = attr_uint_opt_schema(element, "cp")
+  let in_ = attr_uint_opt_schema(element, "in")
   let bc = attr_hex_uint_opt(element, "bc")
   let fc = attr_hex_uint_opt(element, "fc")
   let i = attr_bool_schema(element, "i", false, "Part 1 §18.10.1.25", "e")
@@ -1678,7 +1678,7 @@ pub fn CT_DateTime::new(
   let u = attr_bool_schema_opt(element, "u", "Part 1 §18.10.1.20", "d")
   let f = attr_bool_schema_opt(element, "f", "Part 1 §18.10.1.20", "d")
   let c = attr(element, "c")
-  let cp = attr_uint_opt(element, "cp")
+  let cp = attr_uint_opt_schema(element, "cp")
   { element, x, v, u, f, c, cp }
 }
 
