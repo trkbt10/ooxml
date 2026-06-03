@@ -1608,6 +1608,14 @@ test "SML worksheet reader rejects malformed sheet properties booleans" {
 }
 
 ///|
+fn assert_worksheet_body_schema_violation(body : String) -> Unit raise {
+  let invalid = try? read_worksheet(
+    bytes("<s:worksheet xmlns:s=\"urn:s\">" + body + "</s:worksheet>"),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
 fn assert_worksheet_cell_schema_violation(cell_markup : String) -> Unit raise {
   let invalid = try? read_worksheet(
     bytes(
@@ -1624,6 +1632,13 @@ fn assert_worksheet_cell_schema_violation(cell_markup : String) -> Unit raise {
 ///|
 test "SML worksheet reader rejects malformed cell booleans" {
   assert_worksheet_cell_schema_violation("<s:c ph=\"maybe\"/>")
+}
+
+///|
+test "SML worksheet reader rejects malformed cell unsigned integers" {
+  assert_worksheet_cell_schema_violation("<s:c s=\"abc\"/>")
+  assert_worksheet_cell_schema_violation("<s:c cm=\"abc\"/>")
+  assert_worksheet_cell_schema_violation("<s:c vm=\"abc\"/>")
 }
 
 ///|
@@ -1761,11 +1776,42 @@ test "SML worksheet reader rejects malformed sheet format booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed sheet format numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:sheetFormatPr baseColWidth=\"abc\"/>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetFormatPr defaultColWidth=\"abc\"/>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetFormatPr defaultRowHeight=\"abc\"/>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetFormatPr outlineLevelRow=\"abc\"/>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetFormatPr outlineLevelCol=\"abc\"/>",
+  )
+}
+
+///|
 test "SML dialogsheet reader rejects malformed sheet format booleans" {
   let invalid = try? read_dialogsheet(
     bytes(
       "<s:dialogsheet xmlns:s=\"urn:s\">" +
       "<s:sheetFormatPr defaultRowHeight=\"15\" zeroHeight=\"maybe\"/>" +
+      "</s:dialogsheet>",
+    ),
+  )
+  assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML dialogsheet reader rejects malformed sheet format numerics" {
+  let invalid = try? read_dialogsheet(
+    bytes(
+      "<s:dialogsheet xmlns:s=\"urn:s\">" +
+      "<s:sheetFormatPr defaultRowHeight=\"abc\"/>" +
       "</s:dialogsheet>",
     ),
   )
@@ -1827,6 +1873,25 @@ test "SML worksheet reader rejects malformed column booleans" {
 }
 
 ///|
+test "SML worksheet reader rejects malformed column numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:cols><s:col min=\"abc\" max=\"1\"/></s:cols>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:cols><s:col min=\"1\" max=\"abc\"/></s:cols>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:cols><s:col min=\"1\" max=\"1\" width=\"abc\"/></s:cols>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:cols><s:col min=\"1\" max=\"1\" style=\"abc\"/></s:cols>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:cols><s:col min=\"1\" max=\"1\" outlineLevel=\"abc\"/></s:cols>",
+  )
+}
+
+///|
 test "SML worksheet reader rejects malformed row booleans" {
   let invalid = try? read_worksheet(
     bytes(
@@ -1836,6 +1901,22 @@ test "SML worksheet reader rejects malformed row booleans" {
     ),
   )
   assert_true(invalid is Err(@opc_errors.SchemaViolation(_)))
+}
+
+///|
+test "SML worksheet reader rejects malformed row numerics" {
+  assert_worksheet_body_schema_violation(
+    "<s:sheetData><s:row r=\"abc\"/></s:sheetData>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetData><s:row s=\"abc\"/></s:sheetData>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetData><s:row ht=\"abc\"/></s:sheetData>",
+  )
+  assert_worksheet_body_schema_violation(
+    "<s:sheetData><s:row outlineLevel=\"abc\"/></s:sheetData>",
+  )
 }
 
 ///|

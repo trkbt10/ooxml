@@ -1844,9 +1844,9 @@ pub(all) struct CT_SheetFormatPr {
 pub fn CT_SheetFormatPr::new(
   element : @xml.Element,
 ) -> CT_SheetFormatPr raise @opc_errors.SchemaViolation {
-  let base_col_width = attr_uint(element, "baseColWidth", 8)
-  let default_col_width = attr_double_opt(element, "defaultColWidth")
-  let default_row_height = attr_double(element, "defaultRowHeight", 0.0)
+  let base_col_width = attr_uint_schema(element, "baseColWidth", 8)
+  let default_col_width = attr_double_opt_schema(element, "defaultColWidth")
+  let default_row_height = attr_double_schema(element, "defaultRowHeight", 0.0)
   let custom_height = attr_bool_schema(
     element, "customHeight", false, "Part 1 §18.3.1.81", "sheetFormatPr",
   )
@@ -1859,8 +1859,8 @@ pub fn CT_SheetFormatPr::new(
   let thick_bottom = attr_bool_schema(
     element, "thickBottom", false, "Part 1 §18.3.1.81", "sheetFormatPr",
   )
-  let outline_level_row = attr_uint(element, "outlineLevelRow", 0)
-  let outline_level_col = attr_uint(element, "outlineLevelCol", 0)
+  let outline_level_row = attr_uint_schema(element, "outlineLevelRow", 0)
+  let outline_level_col = attr_uint_schema(element, "outlineLevelCol", 0)
   {
     element,
     base_col_width,
@@ -1947,15 +1947,15 @@ fn col_bool(
 pub fn CT_Col::new(
   element : @xml.Element,
 ) -> CT_Col raise @opc_errors.SchemaViolation {
-  let min = attr_uint(element, "min", 0)
-  let max = attr_uint(element, "max", 0)
-  let width = attr_double_opt(element, "width")
-  let style = attr_uint(element, "style", 0)
+  let min = attr_uint_schema(element, "min", 0)
+  let max = attr_uint_schema(element, "max", 0)
+  let width = attr_double_opt_schema(element, "width")
+  let style = attr_uint_schema(element, "style", 0)
   let hidden = col_bool(element, "hidden", false)
   let best_fit = col_bool(element, "bestFit", false)
   let custom_width = col_bool(element, "customWidth", false)
   let phonetic = col_bool(element, "phonetic", false)
-  let outline_level = attr_uint(element, "outlineLevel", 0)
+  let outline_level = attr_uint_schema(element, "outlineLevel", 0)
   let collapsed = col_bool(element, "collapsed", false)
   {
     element,
@@ -2036,14 +2036,14 @@ pub fn CT_Row::new(
       }
     }
   }
-  let r = attr_uint_opt(element, "r")
+  let r = attr_uint_opt_schema(element, "r")
   let spans = attr(element, "spans")
-  let s = attr_uint(element, "s", 0)
+  let s = attr_uint_schema(element, "s", 0)
   let custom_format = row_bool(element, "customFormat", false)
-  let ht = attr_double_opt(element, "ht")
+  let ht = attr_double_opt_schema(element, "ht")
   let hidden = row_bool(element, "hidden", false)
   let custom_height = row_bool(element, "customHeight", false)
-  let outline_level = attr_uint(element, "outlineLevel", 0)
+  let outline_level = attr_uint_schema(element, "outlineLevel", 0)
   let collapsed = row_bool(element, "collapsed", false)
   let thick_top = row_bool(element, "thickTop", false)
   let thick_bot = row_bool(element, "thickBot", false)
@@ -2128,13 +2128,13 @@ pub fn CT_Cell::new(
     }
   }
   let r = attr(element, "r")
-  let s = attr_uint(element, "s", 0)
+  let s = attr_uint_schema(element, "s", 0)
   let t = match attr(element, "t") {
     Some(value) => value
     None => "n"
   }
-  let cm = attr_uint(element, "cm", 0)
-  let vm = attr_uint(element, "vm", 0)
+  let cm = attr_uint_schema(element, "cm", 0)
+  let vm = attr_uint_schema(element, "vm", 0)
   let ph = cell_bool(element, "ph", false)
   { element, f, v, is_, ext_lst, r, s, t, cm, vm, ph }
 }
